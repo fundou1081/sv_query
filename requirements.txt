@@ -1,0 +1,11 @@
+# sv_query dependencies
+
+# Core
+networkx>=3.0
+
+# Optional: for better performance
+# scipy>=1.10  # for faster graph algorithms
+
+# Development
+pytest>=7.0
+pytest-cov>=4.0
