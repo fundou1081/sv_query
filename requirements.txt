@@ -9,3 +9,6 @@ networkx>=3.0
 # Development
 pytest>=7.0
 pytest-cov>=4.0
+
+# Parser (optional)
+# pyslang @ https://github.com/standardcells/pyslang
