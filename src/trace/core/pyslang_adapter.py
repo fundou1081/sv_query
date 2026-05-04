@@ -1,30 +1,15 @@
 #==============================================================================
-# pyslang_adapter.py - pyslang 适配器
+# pyslang_adapter.py - 适配器
 #==============================================================================
 
 from pyslang import SyntaxTree, SyntaxKind
 from typing import List, Dict, Optional
 
 from data_models import (
-    SignalDef, DriverInfo, LoadInfo, SignalChain,
-    ContinuousAssignStmt, ProceduralAssignStmt,
+    SignalNode, ConnectionEdge, SignalChain,
+    DriverClassifier,
+    new_signal_node, new_signal_chain,
 )
-
-
-def _extract_recursive(node, func, depth=0):
-    if depth > 20 or not node:
-        return
-    func(node)
-    for attr in ['statements', 'items', 'body', 'statement']:
-        if hasattr(node, attr):
-            child = getattr(node, attr)
-            if child:
-                if isinstance(child, list):
-                    for x in child:
-                        _extract_recursive(x, func, depth+1)
-                else:
-                    _extract_recursive(child, func, depth+1)
-
 
 class PyslangAdapter:
     def __init__(self, tree: SyntaxTree):
@@ -33,10 +18,12 @@ class PyslangAdapter:
         self.module_name = "top"
         if self.module and self.module.header:
             self.module_name = self.module.header.name
-            
-        self.signals: Dict[str, SignalDef] = {}
-        self.drivers: Dict[str, List[DriverInfo]] = {}
-        self.loads: Dict[str, List[LoadInfo]] = {}
+        
+        self.nodes: Dict[str, SignalNode] = {}
+        self.drivers: Dict[str, List[ConnectionEdge]] = {}
+        self.loads: Dict[str, List[ConnectionEdge]] = {}
+        
+        self.driver_clf = DriverClassifier.all_drivers()
         
     def _get_module(self):
         return self.tree.root.members[0] if self.tree.root and self.tree.root.members else None
@@ -48,110 +35,105 @@ class PyslangAdapter:
             return n.value if hasattr(n, 'value') else str(n)
         if hasattr(node, 'identifier') and node.identifier:
             return node.identifier.value
-        # 尝试 header.name
-        if hasattr(node, 'header') and node.header:
-            return node.header.name
         return None
     
-    def _get_port_name(self, port) -> Optional[str]:
-        """获取端口名称"""
-        if hasattr(port, 'name'):
-            n = port.name
-            if hasattr(n, 'value'):
-                return n.value
-            return str(n)
-        return None
+    def _port_name(self, port_node) -> Optional[str]:
+        if hasattr(port_node, 'declarator'):
+            decl = port_node.declarator
+            return self._name(decl)
+        return self._name(port_node)
     
     def _process_node(self, node):
-        kind = node.kind
+        kind_value = node.kind.value
         
-        if kind == SyntaxKind.ContinuousAssign:
-            for a in node.assignments:
-                lhs = self._name(a.left)
-                rhs = self._name(a.right)
-                if lhs and rhs:
-                    stmt = ContinuousAssignStmt(lhs=lhs, rhs=rhs)
-                    self.drivers.setdefault(lhs, []).append(DriverInfo(rhs, stmt))
-                    self.loads.setdefault(rhs, []).append(LoadInfo(lhs, stmt))
+        if not self.driver_clf.classify(kind_value):
+            return
         
-        elif kind.value == 331:  # Nonblocking
+        try:
             lhs = self._name(node.left)
             rhs = self._name(node.right)
-            if lhs and rhs:
-                stmt = ProceduralAssignStmt(lhs=lhs, rhs=rhs, blocking=False)
-                self.drivers.setdefault(lhs, []).append(DriverInfo(rhs, stmt))
-                self.loads.setdefault(rhs, []).append(LoadInfo(lhs, stmt))
+        except:
+            return
+            
+        if not lhs or not rhs:
+            return
         
-        elif kind.value == 30:  # Blocking
-            lhs = self._name(node.left)
-            rhs = self._name(node.right)
-            if lhs and rhs:
-                stmt = ProceduralAssignStmt(lhs=lhs, rhs=rhs, blocking=True)
-                self.drivers.setdefault(lhs, []).append(DriverInfo(rhs, stmt))
-                self.loads.setdefault(rhs, []).append(LoadInfo(lhs, stmt))
+        if kind_value == SyntaxKind.NonblockingAssignmentExpression.value:
+            edge_type = "seq_driver"
+        else:
+            edge_type = "driver"
+        
+        driver_edge = ConnectionEdge(source=rhs, sink=lhs, edge_type=edge_type)
+        self.drivers.setdefault(lhs, []).append(driver_edge)
+        self.loads.setdefault(rhs, []).append(ConnectionEdge(source=lhs, sink=rhs, edge_type="load"))
+    
+    def _parse(self):
+        def visitor(node):
+            if node.kind.name == 'ImplicitAnsiPort':
+                n = self._port_name(node)
+                if n:
+                    self.nodes[n] = new_signal_node(f"{self.module_name}.{n}", 1, is_port=True)
+            self._process_node(node)
+        
+        self.tree.root.visit(visitor)
     
     def parse(self) -> 'PyslangAdapter':
-        if not self.module:
-            return self
+        if not self.module: return self
         
-        # ports (正确遍���方式)
-        h = self.module.header
-        if h and hasattr(h, 'ports'):
-            pl = h.ports
-            if hasattr(pl, 'ports'):
-                for p in pl.ports:
-                    n = self._get_port_name(p)
-                    if n:
-                        # 检查方向
-                        direction = "input"
-                        if hasattr(p, 'direction'):
-                            d = p.direction
-                            if hasattr(d, 'name'):
-                                direction = d.name.lower()
-                            elif 'out' in str(d).lower():
-                                direction = "output"
-                        self.signals[n] = SignalDef(n, f"{self.module_name}.{n}", "port", direction)
+        self._parse()
         
-        # 声明
         for m in self.module.members:
-            if m.kind.value in [118, 323]:
+            if m.kind.value == SyntaxKind.DataDeclaration.value:
                 if hasattr(m, 'declarators'):
                     for d in m.declarators:
                         n = self._name(d)
-                        if n:
-                            k = "reg" if m.kind.value == 118 else "wire"
-                            self.signals[n] = SignalDef(n, f"{self.module_name}.{n}", k)
-        
-        _extract_recursive(self.tree.root, self._process_node)
+                        if n and n not in self.nodes:
+                            self.nodes[n] = new_signal_node(f"{self.module_name}.{n}", 1, is_reg=True)
+            elif m.kind.value == SyntaxKind.NetDeclaration.value:
+                if hasattr(m, 'declarators'):
+                    for d in m.declarators:
+                        n = self._name(d)
+                        if n and n not in self.nodes:
+                            self.nodes[n] = new_signal_node(f"{self.module_name}.{n}", 1)
         
         return self
     
-    def get_drivers(self, sig): return self.drivers.get(sig, [])
-    def get_loads(self, sig): return self.loads.get(sig, [])
+    def get_drivers(self, s): return self.drivers.get(s, [])
+    def get_loads(self, s): return self.loads.get(s, [])
     
     def trace_signal(self, signal: str) -> SignalChain:
         full = f"{self.module_name}.{signal}"
         
-        if signal not in self.signals:
-            return SignalChain(full, signal, self.module_name, confidence="uncertain",
-                            caveats=[f"Signal {signal} not found"])
+        if signal not in self.nodes:
+            return new_signal_chain(full, confidence="uncertain", caveats=[f"Signal {signal} not found"])
         
         drivers = self.get_drivers(signal)
         loads = self.get_loads(signal)
         
-        path, visited, queue = [], {signal}, list(loads)
+        via_assign = [e.source for e in drivers if e.edge_type == "driver"]
+        via_seq = [e.source for e in drivers if e.edge_type == "seq_driver"]
+        via_comb = [e.source for e in drivers if e.edge_type == "comb_driver"]
+        
+        # BFS 数据路径 - 追踪下游 (source 是下游)
+        path, visited = [], {signal}
+        queue = list(loads)
         while queue and len(path) < 20:
             l = queue.pop(0)
-            if l.signal in visited: continue
-            visited.add(l.signal)
-            path.append(l.signal)
-            queue.extend(self.get_loads(l.signal))
+            # 检查 l.source (下游信号) 是否已访问
+            if l.source in visited: continue
+            visited.add(l.source)
+            path.append(l.source)
+            # 扩展下游信号的 loads
+            queue.extend(self.get_loads(l.source))
         
-        return SignalChain(full, signal, self.module_name, drivers, loads, path,
-                         confidence="high" if drivers else "medium")
+        return new_signal_chain(full, drivers=drivers, loads=loads, data_path=path,
+                            via_assign=via_assign, via_seq=via_seq, via_comb=via_comb,
+                            confidence="high" if drivers else "medium")
 
 def trace_signal_from_file(f, sig):
-    return PyslangAdapter(SyntaxTree.fromFile(f)).parse().trace_signal(sig)
+    import pyslang
+    return PyslangAdapter(pyslang.SyntaxTree.fromFile(f)).parse().trace_signal(sig)
 
 def trace_signal_from_code(c, sig):
-    return PyslangAdapter(SyntaxTree.fromText(c)).parse().trace_signal(sig)
+    import pyslang
+    return PyslangAdapter(pyslang.SyntaxTree.fromText(c)).parse().trace_signal(sig)
