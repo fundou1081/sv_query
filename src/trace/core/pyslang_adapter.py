@@ -1,5 +1,6 @@
 #==============================================================================
 # pyslang_adapter.py - 适配器
+# 使用 SemanticCollector 模式
 #==============================================================================
 
 from pyslang import SyntaxTree, SyntaxKind
@@ -7,7 +8,8 @@ from typing import List, Dict, Optional
 
 from data_models import (
     SignalNode, ConnectionEdge, SignalChain,
-    DriverClassifier,
+    SemanticCollector,
+    DriverCollector, SequentialDriverCollector, CombinationalDriverCollector,
     new_signal_node, new_signal_chain,
 )
 
@@ -23,7 +25,10 @@ class PyslangAdapter:
         self.drivers: Dict[str, List[ConnectionEdge]] = {}
         self.loads: Dict[str, List[ConnectionEdge]] = {}
         
-        self.driver_clf = DriverClassifier.all_drivers()
+        # 收集器
+        self.driver_clf = DriverCollector
+        self.seq_clf = SequentialDriverCollector
+        self.comb_clf = CombinationalDriverCollector
         
     def _get_module(self):
         return self.tree.root.members[0] if self.tree.root and self.tree.root.members else None
@@ -43,10 +48,18 @@ class PyslangAdapter:
             return self._name(decl)
         return self._name(port_node)
     
+    def _edge_type(self, kind_value: int) -> str:
+        if SequentialDriverCollector.accepts(kind_value):
+            return "seq_driver"
+        elif CombinationalDriverCollector.accepts(kind_value):
+            return "comb_driver"
+        else:
+            return "driver"
+    
     def _process_node(self, node):
         kind_value = node.kind.value
         
-        if not self.driver_clf.classify(kind_value):
+        if not DriverCollector.accepts(kind_value):
             return
         
         try:
@@ -58,10 +71,7 @@ class PyslangAdapter:
         if not lhs or not rhs:
             return
         
-        if kind_value == SyntaxKind.NonblockingAssignmentExpression.value:
-            edge_type = "seq_driver"
-        else:
-            edge_type = "driver"
+        edge_type = self._edge_type(kind_value)
         
         driver_edge = ConnectionEdge(source=rhs, sink=lhs, edge_type=edge_type)
         self.drivers.setdefault(lhs, []).append(driver_edge)
@@ -110,20 +120,19 @@ class PyslangAdapter:
         drivers = self.get_drivers(signal)
         loads = self.get_loads(signal)
         
+        # 分类
         via_assign = [e.source for e in drivers if e.edge_type == "driver"]
         via_seq = [e.source for e in drivers if e.edge_type == "seq_driver"]
         via_comb = [e.source for e in drivers if e.edge_type == "comb_driver"]
         
-        # BFS 数据路径 - 追踪下游 (source 是下游)
+        # BFS
         path, visited = [], {signal}
         queue = list(loads)
         while queue and len(path) < 20:
             l = queue.pop(0)
-            # 检查 l.source (下游信号) 是否已访问
             if l.source in visited: continue
             visited.add(l.source)
             path.append(l.source)
-            # 扩展下游信号的 loads
             queue.extend(self.get_loads(l.source))
         
         return new_signal_chain(full, drivers=drivers, loads=loads, data_path=path,

@@ -1,48 +1,61 @@
 #==============================================================================
-# data_models.py - 中间语义层
-# 底层: 直接使用 pyslang.SyntaxKind
+# data_models.py - 语义分类层
+# 每个类声明自己的 kind，更内聚
 #==============================================================================
 
 from pyslang import SyntaxKind
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Set, Callable
+from typing import List, Optional, Dict, Set, Callable, Type
 
 #==============================================================================
-# I. 驱动分类器 (使用 pyslang SyntaxKind)
+# I. 语义收集器基类
 #==============================================================================
 
-@dataclass
-class DriverClassifier:
-    """驱动分类器"""
-    predicate: Callable[[int], bool]  # 输入 kind value (int)
+class SemanticCollector:
+    """语义收集器基类 - 子类声明自己的 kind"""
     
-    @staticmethod
-    def all_drivers() -> 'DriverClassifier':
-        """所有驱动: assign, <=, ="""
-        return DriverClassifier(lambda k: k in {
-            SyntaxKind.ContinuousAssign.value,
-            SyntaxKind.NonblockingAssignmentExpression.value,
-            SyntaxKind.AssignmentExpression.value,
-        })
+    # 子类覆盖: 支持的 kind 值集合
+    SUPPORTED_KINDS: Set[int] = set()
     
-    @staticmethod
-    def sequential() -> 'DriverClassifier':
-        """时序驱动: always_ff, nonblocking"""
-        return DriverClassifier(lambda k: k == SyntaxKind.NonblockingAssignmentExpression.value)
-    
-    @staticmethod
-    def combinational() -> 'DriverClassifier':
-        """组合驱动: assign, always_comb, ="""
-        return DriverClassifier(lambda k: k in {
-            SyntaxKind.ContinuousAssign.value,
-            SyntaxKind.AssignmentExpression.value,
-        })
-    
-    def classify(self, kind_value: int) -> bool:
-        return self.predicate(kind_value)
+    @classmethod
+    def accepts(cls, kind_value: int) -> bool:
+        return kind_value in cls.SUPPORTED_KINDS
 
 #==============================================================================
-# 信号节点
+# II. 驱动分类器 (具体实现)
+#==============================================================================
+
+class DriverCollector(SemanticCollector):
+    """驱动关系收集器"""
+    SUPPORTED_KINDS = {
+        SyntaxKind.ContinuousAssign.value,
+        SyntaxKind.NonblockingAssignmentExpression.value,
+        SyntaxKind.AssignmentExpression.value,
+    }
+
+class SequentialDriverCollector(SemanticCollector):
+    """时序驱动 (<=)"""
+    SUPPORTED_KINDS = {
+        SyntaxKind.NonblockingAssignmentExpression.value,
+    }
+
+class CombinationalDriverCollector(SemanticCollector):
+    """组合驱动 (= 或 assign)"""
+    SUPPORTED_KINDS = {
+        SyntaxKind.ContinuousAssign.value,
+        SyntaxKind.AssignmentExpression.value,
+    }
+
+#==============================================================================
+# III. 端口分类器
+#==============================================================================
+
+class PortCollector(SemanticCollector):
+    """端口收集器"""
+    SUPPORTED_KINDS = set()  # 通过 visitor 单独处理
+
+#==============================================================================
+# IV. 信号节点
 #==============================================================================
 
 @dataclass(frozen=True)
@@ -61,20 +74,20 @@ class SignalNode:
         return self.path.split('.')[-1]
 
 #==============================================================================
-# 连接边
+# V. 连接边
 #==============================================================================
 
 @dataclass
 class ConnectionEdge:
     source: str
     sink: str
-    edge_type: str = "driver"  # driver/seq_driver/comb_driver/load
+    edge_type: str = "driver"
     source_file: str = ""
     source_line: int = 0
     condition: Optional[str] = None
 
 #==============================================================================
-# 场景A: 信号追踪结果
+# VI. 场景结果模型
 #==============================================================================
 
 @dataclass
@@ -104,10 +117,6 @@ class SignalChain:
             "caveats": self.caveats
         }
 
-#==============================================================================
-# 场景B/C
-#==============================================================================
-
 @dataclass
 class ModuleConnections:
     module: str
@@ -130,7 +139,7 @@ class ClockDomainResult:
     caveats: List[str] = field(default_factory=list)
 
 #==============================================================================
-# 工厂函数
+# VII. 工厂函数
 #==============================================================================
 
 def new_signal_node(path: str, width: int = 1, is_port: bool = False, is_reg: bool = False) -> SignalNode:
