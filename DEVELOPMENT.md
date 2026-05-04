@@ -293,3 +293,72 @@ class PyslangAdapter:
 # ❌ 错误: 禁止直接访问 parser 属性
 parser.trees[fname].root.body  # 应该用适配器
 ```
+
+## 九、测试金标准 (新增)
+
+### 9.1 必须建立金标准
+
+```python
+# ✅ 正确: 先推导金标准
+def get_expected_drivers():
+    """
+    从 RTL 源码手工推导:
+    - src = rhs 驱动的信号
+    - assign data = valid → driver(data) = valid
+    """
+    return {
+        'data': ['valid'],  # 金标准
+        'valid': [],
+    }
+
+# ❌ 错误: 先跑代码看结果再调整
+actual = get_actual()
+# 然后调整期望匹配输出  # 禁止
+```
+
+### 9.2 推导方式
+
+```python
+# ✅ 正确: 人工分析源码
+# module top:
+#   assign data = valid;       # data 由 valid 驱动
+#   always @(posedge clk)    # data 由 clk 驱动
+#     data <= din;            # data 由 din 驱动 (非阻塞)
+# 结论: drivers(data) = [valid, din]
+
+# ✅ 正确: 使用独立工具验证
+# - 用其他权威工具 (sv-trace) 交叉验证
+# - 用商业工具对比
+
+# ❌ 禁止: 直接看代码输出编造
+```
+
+### 9.3 验证流程
+
+```python
+# 1. 推导金标准
+expected = {
+    'top.data': ['top.valid', 'top.din'],
+    'top.valid': [],
+}
+
+# 2. 运行被测代码
+actual = tracer.trace_signal('data', module='top').drivers
+
+# 3. 必须完全一致
+assert set(expected['top.data']) == set(actual)
+
+# ❌ 错误: 差一个也算失败
+if len(diff) <= 2:  # 禁止放宽
+    pass
+```
+
+### 9.4 重构验证
+
+```python
+# 重构后必须:
+# 1. 保持金标准不变
+# 2. 运行测试
+# 3. 输出必须完全一致
+# 4. 否则提交不得通过
+```
