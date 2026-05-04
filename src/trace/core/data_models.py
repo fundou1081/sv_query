@@ -1,212 +1,120 @@
 #==============================================================================
-# data_models.py - 数据模型
-# 映射 pyslang 原生语句类型
+# data_models.py - 中间语义层
+# pyslang 类型映射为语义类型
 #==============================================================================
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Literal
 from enum import Enum
 
 #==============================================================================
-# pyslang 语句类型映射
+# 语义类型 (从 pyslang 映射)
 #==============================================================================
-class StatementKind(Enum):
-    """语句类型 (对应 pyslang SyntaxKind)"""
-    
-    # 连续赋值
-    CONTINUOUS_ASSIGN = "continuous_assign"
-    
-    # 过程块
-    ALWAYS_FF = "always_ff"
-    ALWAYS_COMB = "always_comb"
-    ALWAYS_LATCH = "always_latch"
-    
-    # 赋值
-    BLOCKING_ASSIGN = "blocking_assign"
-    NONBLOCKING_ASSIGN = "nonblocking_assign"
-    
-    # 条件/循环
-    IF_STATEMENT = "if_statement"
-    ELSE_IF_STATEMENT = "else_if_statement"
-    ELSE_STATEMENT = "else_statement"
-    CASE_STATEMENT = "case_statement"
-    FOR_LOOP = "for_loop"
-    WHILE_LOOP = "while_loop"
-    FOREVER_LOOP = "forever_loop"
-    
-    # 其他
-    PROCEDURAL_FORCE = "procedural_force"
-    GATE_INST = "gate_instance"
 
-# 用于从 pyslang 映射
-PYSlangKind2Statement = {
-    # 语句类型映射表 (可以在运行时补充)
-}
+class SemanticKind(Enum):
+    """语义类型枚举"""
+    # 驱动关系
+    DRIVER = "driver"             # 连续赋值
+    SEQ_DRIVER = "seq_driver"    # 时序逻辑 (<=)
+    COMB_DRIVER = "comb_driver"  # 组合逻辑 (=)
+    
+    # 时钟域
+    CLOCK = "clock"
+    RESET = "reset"
+    ENABLE = "enable"
+    
+    # 端口
+    PORT_IN = "port_in"
+    PORT_OUT = "port_out"
+    PORT_INOUT = "port_inout"
+    
+    # 信号类型
+    REG = "reg"
+    WIRE = "wire"
+    LOGIC = "logic"
+    
+    # 类型
+    PARAM = "param"
+    CONST = "const"
 
-def init_mapping():
-    """初始化 pyslang -> StatementKind 映射"""
+#==============================================================================
+# pyslang SyntaxKind -> SemanticKind 映射表
+#==============================================================================
+# 在运行时初始化
+
+def create_kind_mapping():
+    """创建 pyslang kind 到语义类型的映射"""
     from pyslang import SyntaxKind
     
     mapping = {
-        SyntaxKind.ContinuousAssign: StatementKind.CONTINUOUS_ASSIGN,
-        SyntaxKind.AlwaysFFBlock: StatementKind.ALWAYS_FF,
-        SyntaxKind.AlwaysCombBlock: StatementKind.ALWAYS_COMB,
-        SyntaxKind.AlwaysLatchBlock: StatementKind.ALWAYS_LATCH,
-        SyntaxKind.BlockingAssignmentExpression: StatementKind.BLOCKING_ASSIGN,
-        SyntaxKind.NonblockingAssignmentExpression: StatementKind.NONBLOCKING_ASSIGN,
-        SyntaxKind.CaseStatement: StatementKind.CASE_STATEMENT,
-        SyntaxKind.IfGenerate: StatementKind.IF_STATEMENT,
+        # 驱动关系
+        SyntaxKind.ContinuousAssign: SemanticKind.DRIVER,
+        
+        # 时序逻辑
+        SyntaxKind.NonblockingAssignmentExpression: SemanticKind.SEQ_DRIVER,
+        SyntaxKind.AlwaysFFBlock: SemanticKind.SEQ_DRIVER,
+        
+        # 组合逻辑
+        SyntaxKind.BlockingAssignmentExpression: SemanticKind.COMB_DRIVER,
+        SyntaxKind.AlwaysCombBlock: SemanticKind.COMB_DRIVER,
+        
+        # 端口
+        SyntaxKind.PortDeclaration: SemanticKind.PORT_IN,
+        
+        # 信号
+        SyntaxKind.DataDeclaration: SemanticKind.REG,
+        SyntaxKind.LogicType: SemanticKind.LOGIC,
+        SyntaxKind.NetDeclaration: SemanticKind.WIRE,
+        
+        # 时钟/复位
+        SyntaxKind.ClockingBlock: SemanticKind.CLOCK,
     }
     return mapping
 
 #==============================================================================
-# Confidence - 置信度
+# 中间语义表示 (不含 pyslang 对象)
 #==============================================================================
-class Confidence(Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    UNCERTAIN = "uncertain"
 
-class EdgeKind(Enum):
-    DRIVER = "driver"
-    DATA = "data"
-    CLOCK = "clock"
-    RESET = "reset"
-    ENABLE = "enable"
-
-#==============================================================================
-# Statement - 底层语句模型 (对应 pyslang AST 节点)
-#==============================================================================
-@dataclass
-class Statement:
-    """语句基类"""
-    kind: str                    # StatementKind 值
-    file: str = ""
-    line_start: int = 0
-    line_end: int = 0
+@dataclass(frozen=True)  # 不可变
+class SignalNode:
+    """信号节点 (纯语义，无 pyslang)"""
+    path: str          # "top.clk"
+    width: int = 1
+    kind: str = "wire"  # reg, wire, port
     
-    @property
-    def pyslang_kind(self) -> Optional[str]:
-        """返回 pyslang 的 kind 值"""
-        return self.kind
-
-@dataclass
-class ContinuousAssignStmt(Statement):
-    """连续赋值: assign lhs = rhs;"""
-    lhs: str = ""
-    rhs: str = ""
-    rhs_expr: str = ""
+    def is_port(self) -> bool:
+        return self.kind.startswith("port")
     
-    def __init__(self, lhs: str = "", rhs: str = "", rhs_expr: str = "",
-                 file: str = "", line: int = 0):
-        super().__init__(
-            kind=StatementKind.CONTINUOUS_ASSIGN.value,
-            file=file, line_start=line, line_end=line
-        )
-        self.lhs = lhs
-        self.rhs = rhs
-        self.rhs_expr = rhs_expr
+    def is_reg(self) -> bool:
+        return self.kind == "reg"
 
-@dataclass
-class ProceduralAssignStmt(Statement):
-    """过程赋值 (always 块中)"""
-    lhs: str = ""
-    rhs: str = ""
-    blocking: bool = False        # True: = , False: <=
-    condition: Optional[str] = None
+@dataclass(frozen=True)
+class ConnectionEdge:
+    """连接边 (无 pyslang)"""
+    source: str
+    sink: str
+    edge_type: str  # driver, data, clock, reset
     
-    def __init__(self, lhs: str = "", rhs: str = "", blocking: bool = False,
-                 condition: Optional[str] = None, file: str = "", line: int = 0):
-        kind = StatementKind.BLOCKING_ASSIGN.value if blocking else StatementKind.NONBLOCKING_ASSIGN.value
-        super().__init__(kind=kind, file=file, line_start=line, line_end=line)
-        self.lhs = lhs
-        self.rhs = rhs
-        self.blocking = blocking
-        self.condition = condition
-
-@dataclass
-class ConditionalStmt(Statement):
-    """条件语句"""
-    condition: str = ""
-    true_branch: List[str] = field(default_factory=list)
-    false_branch: List[str] = field(default_factory=list)
-    
-    def __init__(self, cond: str = "", true_br: List[str] = None,
-                 false_br: List[str] = None, file: str = "", line: int = 0):
-        super().__init__(
-            kind=StatementKind.IF_STATEMENT.value,
-            file=file, line_start=line, line_end=line
-        )
-        self.condition = cond
-        self.true_branch = true_br or []
-        self.false_branch = false_br or []
+    # 可选的调试信息 (仅字符串)
+    source_file: str = ""
+    source_line: int = 0
 
 #==============================================================================
-# DriverInfo - 驱动信息 (包含 statement 来源)
+# 设计结果类型
 #==============================================================================
-@dataclass
-class DriverInfo:
-    """驱动信息"""
-    signal: str                 # 驱动信号
-    statement: Optional[Statement] = None  # 语句来源 [关键字段]
-    edge_type: str = EdgeKind.DRIVER.value
-    
-    @property
-    def statement_type(self) -> str:
-        return self.statement.kind if self.statement else "unknown"
-    
-    @property
-    def file(self) -> str:
-        return self.statement.file if self.statement else ""
-    
-    @property
-    def line(self) -> int:
-        return self.statement.line_start if self.statement else 0
-    
-    def to_dict(self) -> dict:
-        return {
-            "signal": self.signal,
-            "statement_type": self.statement_type,
-            "file": self.file,
-            "line": self.line,
-            "edge_type": self.edge_type
-        }
 
-@dataclass
-class LoadInfo:
-    """负载信息"""
-    signal: str
-    statement: Optional[Statement] = None
-    edge_type: str = EdgeKind.DATA.value
-    
-    def to_dict(self) -> dict:
-        return {
-            "signal": self.signal,
-            "type": self.statement.kind if self.statement else "unknown",
-            "edge_type": self.edge_type
-        }
-
-#==============================================================================
-# SignalChain - 场景A: 信号追踪结果
-#==============================================================================
 @dataclass
 class SignalChain:
+    """信号追踪结果"""
     root: str
     signal_name: str
     module: str
     
-    drivers: List[DriverInfo] = field(default_factory=list)
-    loads: List[LoadInfo] = field(default_factory=list)
+    drivers: List[ConnectionEdge] = field(default_factory=list)
+    loads: List[ConnectionEdge] = field(default_factory=list)
     data_path: List[str] = field(default_factory=list)
     
-    # 位精确性
-    width: int = 1
-    is_bit_select: bool = False
-    bit_high: Optional[int] = None
-    bit_low: Optional[int] = None
-    
-    # 置信度 [铁律10]
-    confidence: str = Confidence.HIGH.value
+    confidence: str = "high"
     caveats: List[str] = field(default_factory=list)
     
     def to_json(self) -> dict:
@@ -214,83 +122,40 @@ class SignalChain:
             "root": self.root,
             "signal": self.signal_name,
             "module": self.module,
-            "drivers": [d.to_dict() for d in self.drivers],
-            "loads": [l.to_dict() for l in self.loads],
-            "bit_range": f"[{self.bit_high}:{self.bit_low}]" if self.is_bit_select else None,
+            "drivers": [{"source": d.source, "type": d.edge_type} for d in self.drivers],
+            "loads": [{"sink": l.sink, "type": l.edge_type} for l in self.loads],
             "confidence": self.confidence,
             "caveats": self.caveats
         }
-
-#==============================================================================
-# 模块连接
-#==============================================================================
-@dataclass
-class PortConnection:
-    name: str
-    direction: str
-    width: int = 1
-    is_bit_select: bool = False
-    connected_signals: List[str] = field(default_factory=list)
 
 @dataclass
 class ModuleConnections:
+    """模块连接"""
     module: str
-    ports: List[PortConnection] = field(default_factory=list)
-    internal_signals: List[str] = field(default_factory=list)
-    sub_modules: List[str] = field(default_factory=list)
-    cross_module: List[str] = field(default_factory=list)
+    inputs: List[ConnectionEdge] = field(default_factory=list)
+    outputs: List[ConnectionEdge] = field(default_factory=list)
+    internal: List[str] = field(default_factory=list)
     confidence: str = "high"
     caveats: List[str] = field(default_factory=list)
-    
-    def to_json(self) -> dict:
-        return {
-            "module": self.module,
-            "confidence": self.confidence,
-            "caveats": self.caveats
-        }
-
-#==============================================================================
-# 时钟域
-#==============================================================================
-class CrossingRisk(Enum):
-    SAFE = "safe"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
-@dataclass
-class RegisterInfo:
-    name: str
-    statement: Statement = None
-    clock_domain: str = ""
 
 @dataclass
 class ClockDomainResult:
-    clock_signal: str
-    reset_signal: str = ""
-    registers: List[RegisterInfo] = field(default_factory=list)
-    combinational: List[str] = field(default_factory=list)
-    async_crossings: List[DriverInfo] = field(default_factory=list)
+    """时钟域结果"""
+    clock: str
+    registers: List[str] = field(default_factory=list)
+    async_crossings: List[ConnectionEdge] = field(default_factory=list)
     risk_level: str = "safe"
     confidence: str = "high"
     caveats: List[str] = field(default_factory=list)
-    
-    def to_json(self) -> dict:
-        return {
-            "clock": self.clock_signal,
-            "risk": self.risk_level,
-            "confidence": self.confidence,
-            "caveats": self.caveats
-        }
 
 #==============================================================================
 # 工厂函数
 #==============================================================================
-def new_signal_chain(root: str, signal_name: str, module: str) -> SignalChain:
-    return SignalChain(root=root, signal_name=signal_name, module=module)
+def new_signal_chain(root: str, signal: str, module: str) -> SignalChain:
+    return SignalChain(root=root, signal_name=signal, module=module)
 
 def new_module_connections(module: str) -> ModuleConnections:
     return ModuleConnections(module=module)
 
 def new_clock_domain(clock: str) -> ClockDomainResult:
-    return ClockDomainResult(clock_signal=clock)
+    return ClockDomainResult(clock=clock)
