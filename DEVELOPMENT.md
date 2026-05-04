@@ -240,3 +240,56 @@ my-branch
 ---
 
 *更新时间: 2026-05-04*
+
+## 八、Parser 规则 (新增)
+
+### 8.1 必须使用 AST (pyslang)
+
+```python
+# ✅ 正确: 通过 pyslang AST
+from base import PyslangAdapter
+
+adapter = PyslangAdapter(parser)
+modules = adapter.get_modules()
+
+# ✅ 正确: 使用 ASTWalker
+class MyCollector(ASTWalker):
+    def _collect(self):
+        def visitor(node):
+            self._process(node)
+        self.walk_all(visitor)
+
+# ❌ 错误: 禁止使用正则
+import re
+match = re.search(r'reg\s+(\w+)', source_code)
+
+# ❌ 错误: 禁止字符串匹配
+if 'reg ' in line:
+    ...
+```
+
+### 8.2 禁止直接读取源代码
+
+```python
+# ❌ 错误: 禁止
+with open(fname) as f:
+    content = f.read()
+
+# ❌ 错误: 禁止
+lines = fname.readlines()
+```
+
+### 8.3 Parser 接口
+
+```python
+# ✅ 正确: 通过适配器访问
+class PyslangAdapter:
+    def get_modules(self): ...
+    def get_module(self, name): ...
+    def get_port_declarations(self, module): ...
+    def get_assignments(self, module): ...
+    def get_always_blocks(self, module): ...
+
+# ❌ 错误: 禁止直接访问 parser 属性
+parser.trees[fname].root.body  # 应该用适配器
+```
