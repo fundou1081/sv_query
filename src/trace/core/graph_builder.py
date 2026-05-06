@@ -105,6 +105,10 @@ class DriverExtractor:
         if kind and ('Blocking' in kind_str or 'AssignmentExpression' == kind_str):
             statements.append(node)
             return
+        # [P0] 支持 always_ff 内部 ExpressionStatement
+        if kind and 'ExpressionStatement' in kind_str:
+            statements.append(node)
+            return
         
         for attr in dir(node):
             if attr.startswith('_'):
@@ -125,6 +129,10 @@ class DriverExtractor:
                 pass
     
     def _parse_assign(self, assign) -> tuple:
+        # [P0] 处理 ExpressionStatement (always_ff/always_comb 内部)
+        if hasattr(assign, 'expr'):
+            assign = assign.expr
+        
         try:
             if hasattr(assign, 'assignments') and assign.assignments:
                 a = assign.assignments[0]
