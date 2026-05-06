@@ -304,6 +304,14 @@ class LoadExtractor:
         else:
             name = str(signal)
         
+        # 过滤掉复合表达式节点 {a,b} 和 [3:0]
+        if name and ('{' in name or '[' in name):
+            # 尝试提取内部信号
+            inner = name.strip('{}[]')
+            if ',' in inner:
+                name = inner.split(',')[0].strip()
+            elif inner:
+                name = inner
         return self.adapter.clean_name(name) if name else None
 
 class ConnectionExtractor:
