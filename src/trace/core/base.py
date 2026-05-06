@@ -146,7 +146,7 @@ class PyslangAdapter:
             if hasattr(header, 'ports'):
                 port_list = header.ports
                 # port_list[1] 是实际的端口列表
-                if len(port_list) > 1:
+            if port_list and len(port_list) > 1:
                     actual_ports = port_list[1]
                     if hasattr(actual_ports, 'elements'):
                         for port in actual_ports.elements:
