@@ -174,3 +174,133 @@ endmodule'''
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestBoundaryExtensive(unittest.TestCase):
+    """扩展边界测试"""
+    
+    def _make_tracer(self, source):
+        tree = pyslang.SyntaxTree.fromText(source)
+        return UnifiedTracer(trees={'test': tree})
+    
+    def test_signal_without_module_prefix(self):
+        """不带模块前缀"""
+        source = '''
+module top(input wire din, output wire dout);
+    assign dout = din;
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        # 尝试不带模块名
+        result = tracer.trace_signal('dout')
+        
+        self.assertIsNotNone(result.confidence)
+    
+    def test_case_sensitive_signal(self):
+        """大小写敏感"""
+        source = '''
+module top(input wire Din, input wire din, output wire dout);
+    assign dout = din;
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        
+        # Din 和 din 应该区分
+        result = tracer.trace_signal('Din', 'top')
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_underscore_in_name(self):
+        """下划线信号名"""
+        source = '''
+module top(input wire s_i, output wire d_o);
+    assign d_o = s_i;
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('d_o', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_dollar_in_name(self):
+        """美元符信号名"""
+        source = '''
+module top(input wire $data, output wire dout);
+    assign dout = $data;
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('dout', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_array_signal(self):
+        """数组信号"""
+        source = '''
+module top(input wire [7:0] data [3:0], output wire [7:0] dout);
+    assign dout = data[0];
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('dout', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_parameterized_module(self):
+        """参数化模块"""
+        source = '''
+module #(
+    parameter WIDTH = 8
+) top(input wire [WIDTH-1:0] din, output wire [WIDTH-1:0] dout);
+    assign dout = din;
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('dout', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_generate_for(self):
+        """generate for 块"""
+        source = '''
+module top(input wire clk, output wire out);
+    genvar i;
+    generate for (i=0; i<1; i=i+1) begin
+        assign out = clk;
+    end
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('out', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_function(self):
+        """function 定义"""
+        source = '''
+module top(input wire [7:0] a, input wire [7:0] b, output wire [7:0] y);
+    function [7:0] add;
+        input [7:0] x;
+        add = x + 1;
+    endfunction
+    assign y = add(a);
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('y', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+    
+    def test_task(self):
+        """task 定义"""
+        source = '''
+module top(input wire clk);
+    task wait_clk;
+        input clk;
+        begin end
+    endtask
+endmodule'''
+        
+        tracer = self._make_tracer(source)
+        result = tracer.trace_signal('clk', 'top')
+        
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
