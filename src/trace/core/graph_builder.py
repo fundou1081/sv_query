@@ -174,6 +174,17 @@ class DriverExtractor:
         if signal is None:
             return None
         
+        # [P2] 处理 MultipleConcatenationExpression: {N{signal}}
+        if hasattr(signal, 'kind') and 'MultipleConcatenation' in str(signal.kind):
+            # 结构: signal.concatenation.expressions
+            if hasattr(signal, 'concatenation'):
+                concat = signal.concatenation
+                if hasattr(concat, 'expressions'):
+                    # 直接处理
+                    result = self._get_signal(concat.expressions)
+                    return result
+            return None
+        
         name = None
         if hasattr(signal, 'name'):
             name = signal.name.value if hasattr(signal.name, 'value') else str(signal.name)
