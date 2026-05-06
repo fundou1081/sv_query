@@ -96,8 +96,16 @@ class DriverExtractor:
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
         # [P1] 支持 case 语句内的赋值
-        if kind and ('Case' in kind_str or 'Statement' in kind_str):
-            pass  # 继续遍历内部
+        # case 语句需要遍历 items 或 body
+        if kind and ('Case' in kind_str):
+            # 遍历 case 的 items
+            if hasattr(node, 'items'):
+                for item in node.items:
+                    if item and hasattr(item, 'statement'):
+                        stmt = item.statement
+                        if stmt:
+                            statements.append(stmt)
+            return
         if kind and ('Assignment' in kind_str):
             statements.append(node)
             return
