@@ -191,6 +191,17 @@ class DriverExtractor:
                     return right_name
                 return None
         
+        # [P1增强] 处理拼接: {a,b} -> 提取 values
+        if hasattr(signal, 'kind'):
+            kind_str = str(signal.kind)
+            if 'Replication' in kind_str or 'Concat' in kind_str:
+                if hasattr(signal, 'values'):
+                    vals = signal.values
+                    if vals and len(vals) > 0:
+                        first_val = self._get_signal(vals[0])
+                        if first_val:
+                            return first_val
+        
         return name
 
 class LoadExtractor:
