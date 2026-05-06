@@ -104,16 +104,17 @@ class DriverExtractor:
                     return
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
-        # [P1] 支持 case 语句内的赋值
-        # case 语句需要遍历 items 或 body
-        if kind and ('Case' in kind_str):
-            # 遍历 case 的 items
-            if hasattr(node, 'items'):
+        # [P1] 支持 case 语句内的赋值 - 正确递归
+        if kind and 'Case' in kind_str:
+            # 遍历 case 的 items 获取每个分支的赋值
+            if hasattr(node, 'items') and node.items:
                 for item in node.items:
-                    if item and hasattr(item, 'statement'):
-                        stmt = item.statement
+                    if item:
+                        # 获取 item 中的赋值语句 (可能是 ExpressionStatement)
+                        stmt = getattr(item, 'statement', None)
                         if stmt:
-                            statements.append(stmt)
+                            # 递归处理这个 statement
+                            self._collect_assignments_from_stmt(stmt, statements, depth+1)
             return
         if kind and ('Assignment' in kind_str):
             statements.append(node)
