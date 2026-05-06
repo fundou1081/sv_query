@@ -92,7 +92,16 @@ class DriverExtractor:
         if node is None or depth > 30:
             return
         
+        # [P0] 处理 always_comb 的 statement 属性 (不是 body)
         kind = getattr(node, 'kind', None)
+        
+        # 递归进入 always_comb 的 statement
+        if kind and 'AlwaysCombBlock' in str(kind):
+            if hasattr(node, 'statement'):
+                stmt = node.statement
+                if stmt:
+                    self._collect_assignments_from_stmt(stmt, statements, depth+1)
+                    return
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
         # [P1] 支持 case 语句内的赋值
