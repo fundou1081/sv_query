@@ -304,14 +304,22 @@ class LoadExtractor:
         else:
             name = str(signal)
         
-        # 过滤掉复合表达式节点 {a,b} 和 [3:0]
+        # 过滤掉复合表达式节点 {a,b} 和 [数字] - 完全跳过
         if name and ('{' in name or '[' in name):
             # 尝试提取内部信号
-            inner = name.strip('{}[]')
-            if ',' in inner:
-                name = inner.split(',')[0].strip()
-            elif inner:
-                name = inner
+            import re
+            # {a,b} -> a
+            if '{' in name and '}' in name:
+                inner = name.strip('{}')
+                if ',' in inner:
+                    name = inner.split(',')[0].strip()
+                else:
+                    name = inner.strip()
+            # [3:0] 或 [5] -> d
+            if '[' in name and ']' in name:
+                match = re.search(r'([a-zA-Z_][a-zA-Z0-9_]*)', name)
+                if match:
+                    name = match.group(1)
         return self.adapter.clean_name(name) if name else None
 
 class ConnectionExtractor:
@@ -404,6 +412,15 @@ class GraphBuilder:
         self._extract_all_nodes()
         self._extract_all_edges()
         self._mark_special_signals()
+
+        # 过滤掉带括号的中间节点 (复合表达式)
+        nodes_to_remove = [n for n in list(self.graph.nodes()) if '[' in n or '{' in n]
+        for n in nodes_to_remove:
+            if n in self.graph.nodes():
+                self.graph.remove_node(n)
+            if n in self.graph._node_data:
+                del self.graph._node_data[n]
+
         return self.graph
     
     def get_extractor(self, name):
