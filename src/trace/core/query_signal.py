@@ -37,13 +37,33 @@ class SignalTracer:
         return signal
     
     def _find_drivers(self, signal_id: str) -> List[TraceNode]:
+        """[P2增强] 支持 concat 多驱动返回"""
         drivers = []
         for pred in self.graph.predecessors(signal_id):
             edge = self.graph.get_edge(pred, signal_id)
             if edge and edge.kind == EdgeKind.DRIVER:
                 node = self.graph.get_node(pred)
                 if node:
-                    drivers.append(node)
+                    # 检查是否是复合表达式
+                    driver_name = node.name
+                    
+                    # 如果是 concat 形式 {a,b}，尝试提取多个
+                    if driver_name and '{' in driver_name and '}' in driver_name:
+                        # 提取内部信号
+                        inner = driver_name.strip('{}').strip()
+                        parts = [p.strip() for p in inner.split(',')]
+                        
+                        # 为每个部分查找节点
+                        for part in parts:
+                            # 尝试在图中查找这个信号
+                            for n in self.graph.nodes():
+                                if n.endswith(part) or n == part:
+                                    nodedata = self.graph.get_node(n)
+                                    if nodedata:
+                                        drivers.append(nodedata)
+                                        break
+                    else:
+                        drivers.append(node)
         return drivers
     
     def _find_loads(self, signal_id: str) -> List[TraceNode]:
