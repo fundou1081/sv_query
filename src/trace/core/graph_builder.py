@@ -106,15 +106,26 @@ class DriverExtractor:
         kind_str = str(kind) if kind else ''
         # [P1] 支持 case 语句内的赋值 - 正确递归
         if kind and 'Case' in kind_str:
-            # 遍历 case 的 items 获取每个分支的赋值
+            # 使用 clause 而不是 statement
+            for item in node.items:
+                if item:
+                    # StandardCaseItem 和 DefaultCaseItem 使用 clause 属性
+                    stmt = getattr(item, 'clause', None) or getattr(item, 'statement', None)
+                    if stmt:
+                        self._collect_assignments_from_stmt(stmt, statements, depth+1)
+            return
             if hasattr(node, 'items') and node.items:
-                for item in node.items:
-                    if item:
-                        # 获取 item 中的赋值语句 (可能是 ExpressionStatement)
-                        stmt = getattr(item, 'statement', None)
-                        if stmt:
-                            # 递归处理这个 statement
-                            self._collect_assignments_from_stmt(stmt, statements, depth+1)
+                print(f'[DEBUG case] items count={len(list(node.items))}')
+                for idx, item in enumerate(node.items):
+                    print(f'[DEBUG case] item[{idx}]: {type(item).__name__}')
+                    if hasattr(item, 'statement'):
+                        print(f'  statement: {item.statement}')
+            
+            for item in node.items:
+                if item:
+                    stmt = getattr(item, 'statement', None)
+                    if stmt:
+                        self._collect_assignments_from_stmt(stmt, statements, depth+1)
             return
         if kind and ('Assignment' in kind_str):
             statements.append(node)
