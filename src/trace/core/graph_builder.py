@@ -89,6 +89,9 @@ class DriverExtractor:
 
     
     def _collect_assignments_from_stmt(self, node, statements: list, depth=0):
+        # DEBUG
+        kind = getattr(node, 'kind', None)
+        if depth < 3:
         if node is None or depth > 30:
             return
         
