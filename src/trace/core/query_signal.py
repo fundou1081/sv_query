@@ -37,8 +37,25 @@ class SignalTracer:
         return signal
     
     def _find_drivers(self, signal_id: str) -> List[TraceNode]:
-        """[P2增强] 支持 concat 多驱动返回"""
+        """[P2增强] 支持 concat 多驱动 + hierarchy 追踪"""
         drivers = []
+        
+        # [P2] 首先通过 instance 连接追踪
+        # 查找所有指向这个 signal 的边
+        for src, dst in list(self.graph.edges()):
+            if dst == signal_id:
+                # 这条边指向目标信号
+                node = self.graph.get_node(src)
+                if node:
+                    drivers.append(node)
+                # 继续递归追踪这个 src
+                if src in self.graph.nodes():
+                    for pred in self.graph.predecessors(src):
+                        n = self.graph.get_node(pred)
+                        if n and n not in drivers:
+                            drivers.append(n)
+        
+        # 直接前置驱动
         for pred in self.graph.predecessors(signal_id):
             edge = self.graph.get_edge(pred, signal_id)
             if edge and edge.kind == EdgeKind.DRIVER:

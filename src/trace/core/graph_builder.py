@@ -377,13 +377,25 @@ class ConnectionExtractor:
                 port_name = self.adapter.clean_name(port_name)
                 signal_name = self.adapter.clean_name(signal_name)
                 
-                # driver edge: external -> port
+                # [P2] 支持 hierarchy: 实例端口 -> 顶层端口
+                # 1. 实例端口被外部驱动
                 result.edges.append(TraceEdge(
                     src=f"top.{signal_name}",
-                    dst=f"{inst_name}.{port_name}",
+                    dst=f"top.{inst_name}.{port_name}",
                     kind=EdgeKind.DRIVER,
                     assign_type="connection"
                 ))
+                
+                # 2. 顶层端口被实例驱动 (输出端口)
+                # 对于 input 端口，外部驱动实例
+                # 对于 output 端口，实例驱动外部
+                if port_name:  # output port
+                    result.edges.append(TraceEdge(
+                        src=f"top.{inst_name}.{port_name}",
+                        dst=f"top.{signal_name}",
+                        kind=EdgeKind.DRIVER,
+                        assign_type="connection"
+                    ))
         
         return result
 
