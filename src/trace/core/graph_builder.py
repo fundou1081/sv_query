@@ -99,8 +99,12 @@ class DriverExtractor:
             statements.append(node)
             return
         if kind and 'Nonblocking' in kind_str:
-            # Nonblocking 需要继续遍历找左右操作数
             pass  # 继续遍历
+        # [P0] 支持 always_comb 阻塞赋值
+        #pyslang 10.0: always_comb 用 AssignmentExpression
+        if kind and ('Blocking' in kind_str or 'AssignmentExpression' == kind_str):
+            statements.append(node)
+            return
         
         for attr in dir(node):
             if attr.startswith('_'):
@@ -149,7 +153,23 @@ class DriverExtractor:
         else:
             name = str(signal)
         
-        return self.adapter.clean_name(name) if name else None
+        name = self.adapter.clean_name(name) if name else None
+        
+        # [P0 Fix] 处理复合表达式: "a & b" -> 返回第一个操作数
+        # 简化处理：如果是表达式，尝试提取操作数
+        if name and '&' in name or '|' in name or '+' in name or '-' in name:
+            # 尝试从原始对象获取操作数
+            if hasattr(signal, 'left') and hasattr(signal, 'right'):
+                # 二元表达式，递归获取
+                left_name = self._get_signal(signal.left)
+                if left_name:
+                    return left_name
+                right_name = self._get_signal(signal.right)
+                if right_name:
+                    return right_name
+            return None
+        
+        return name
 
 class LoadExtractor:
     def __init__(self, adapter: PyslangAdapter):
