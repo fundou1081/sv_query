@@ -194,17 +194,32 @@ class DriverExtractor:
                     return right_name
                 return None
         
-        # [P1增强] 处理拼接: {a,b} -> 提取 values
+        # [P1增强] 处理拼接: {a,b} -> 提取所有 values
         if hasattr(signal, 'kind'):
             kind_str = str(signal.kind)
             if 'Replication' in kind_str or 'Concat' in kind_str:
+                # 使用 values 列表构建返回
                 if hasattr(signal, 'values'):
                     vals = signal.values
                     if vals and len(vals) > 0:
-                        first_val = self._get_signal(vals[0])
-                        if first_val:
-                            return first_val
+                        all_names = []
+                        for v in vals:
+                            vn = self._get_signal(v)
+                            if vn: all_names.append(vn)
+                        if all_names:
+                            # 返回第一个 (主driver)
+                            # 注意: 完整实现需要在 caller 侧处理多个
+                            return all_names[0]
         
+
+        # [P2] Clean 特殊语法格式: {a,b} -> a
+        if name and name.startswith("{") and name.endswith("}"):
+            # 提取内部第一个标识符
+            inner = name[1:-1].strip()  # 去掉 {}
+            first = inner.split(",")[0].strip().split()[-1]  # 取第一个
+            if first:
+                return first
+    
         return name
 
 class LoadExtractor:
