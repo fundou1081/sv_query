@@ -102,6 +102,21 @@ class DriverExtractor:
                 if stmt:
                     self._collect_assignments_from_stmt(stmt, statements, depth+1)
                     return
+        
+        # [P2] 处理 InitialBlock (initial 块) - 在 statement 中
+        if kind and 'InitialBlock' in str(kind):
+            #statement = getattr(node, 'statement', None)
+            #if statement:
+            #    self._collect_assignments_from_stmt(statement, statements, depth+1)
+            pass
+        
+        # [P2] 处理 ProceduralBlockSyntax (initial/always_comb/always_ff)
+        if kind and 'ProceduralBlock' in str(kind):
+            if hasattr(node, 'statement') or hasattr(node, 'body'):
+                stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+                if stmt:
+                    self._collect_assignments_from_stmt(stmt, statements, depth+1)
+            return
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
         # [P1] 支持 case 语句内的赋值 - 正确递归

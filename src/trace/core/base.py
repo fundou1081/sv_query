@@ -306,7 +306,7 @@ class PyslangAdapter:
         
         for member in module.members:
             if hasattr(member, 'kind'):
-                if member.kind in [SyntaxKind.AlwaysBlock, SyntaxKind.AlwaysFFBlock, SyntaxKind.AlwaysCombBlock, SyntaxKind.AlwaysLatchBlock]:
+                if member.kind in [SyntaxKind.AlwaysBlock, SyntaxKind.AlwaysFFBlock, SyntaxKind.AlwaysCombBlock, SyntaxKind.AlwaysLatchBlock, SyntaxKind.InitialBlock]:
                     always_blocks.append(member)
         
         return always_blocks
