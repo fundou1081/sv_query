@@ -59,7 +59,27 @@ class SignalGraph(nx.DiGraph):
         super().add_node(node.id)
     
     def add_trace_edge(self, edge: TraceEdge):
-        self._edge_data[(edge.src, edge.dst)] = edge
+        # Skip self-loops
+        if edge.src == edge.dst:
+            return
+        
+        key = (edge.src, edge.dst)
+        
+        existing = self._edge_data.get(key)
+        
+        # Skip duplicate if same type
+        if existing and existing.kind == edge.kind:
+            return
+        
+        # Add edge
+        self._edge_data[key] = edge
+        super().add_edge(edge.src, edge.dst)
+        
+        if edge.src == edge.dst:
+            return
+        
+        # 不检查直接添加
+        self._edge_data[key] = edge
         super().add_edge(edge.src, edge.dst)
     
     def get_node(self, node_id: str) -> Optional[TraceNode]:

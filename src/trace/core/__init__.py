@@ -2,7 +2,7 @@
 # trace.core - 统一查询入口
 #==============================================================================
 
-from graph_models import (
+from .graph_models import (
     SignalGraph,
     TraceNode,
     TraceEdge,
@@ -10,7 +10,7 @@ from graph_models import (
     EdgeKind,
 )
 
-from graph_builder import (
+from .graph_builder import (
     GraphBuilder,
     DriverExtractor,
     LoadExtractor,
@@ -18,21 +18,24 @@ from graph_builder import (
     ClockDomainExtractor,
 )
 
-from query_signal import (
+from .query_signal import (
     SignalTracer,
     SignalChain,
 )
 
-from query_module import (
+from .query_module import (
     ModuleTracer,
     ModuleConnections,
 )
 
-from query_clock_domain import (
+from .query_clock_domain import (
     ClockDomainTracer,
     ClockDomainTrace,
     CrossingRisk,
 )
+
+# 也导出 base 模块
+from .base import PyslangAdapter, ASTWalker
 
 __all__ = [
     # Graph Models
@@ -57,4 +60,7 @@ __all__ = [
     "ClockDomainTracer",
     "ClockDomainTrace", 
     "CrossingRisk",
+    # Syntax Layer
+    "PyslangAdapter",
+    "ASTWalker",
 ]

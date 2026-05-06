@@ -1,3 +1,4 @@
+from pyslang import SyntaxKind
 #==============================================================================
 # base.py - AST Walker 基类
 # 公共 AST 遍历基础设施
@@ -61,15 +62,42 @@ class ASTWalker:
 
 
 #==============================================================================
-#pyslang 接口适配器
-#==============================================================================
-
 class PyslangAdapter:
     """pyslang 适配器 - 将 pyslang AST 转换为内部表示"""
     
     def __init__(self, parser):
         self.parser = parser
         self._cache = {}
+    
+    def get_module_name(self, module) -> str:
+        """获取模块名"""
+        # 方式1: header.name
+        if hasattr(module, 'header') and module.header:
+            if hasattr(module.header, 'name'):
+                name = module.header.name
+                name_str = name.value if hasattr(name, 'value') else str(name)
+                result = name_str.strip() if name_str else None
+                if result:
+                    return result
+        
+        # 方式2: 直接 module.name
+        if hasattr(module, 'name'):
+            n = module.name
+            name_str = n.value if hasattr(n, 'value') else str(n)
+            result = name_str.strip() if name_str else None
+            if result:
+                return result
+        
+        return "unknown"
+    
+    def clean_name(self, name) -> str:
+        """清理名称：去除前后空格和换行"""
+        if not name:
+            return ""
+        s = str(name).strip()
+        # 去除多余空白
+        s = ' '.join(s.split())
+        return s
     
     def get_modules(self) -> List:
         """获取所有模块"""
@@ -87,7 +115,7 @@ class PyslangAdapter:
             
         # 检查是否是 ModuleDeclaration
         if hasattr(node, 'kind'):
-            if node.kind == 'ModuleDeclaration':
+            if node.kind == SyntaxKind.ModuleDeclaration:
                 modules.append(node)
         
         # 递归子节点
@@ -107,12 +135,128 @@ class PyslangAdapter:
         return None
     
     def get_port_declarations(self, module) -> List:
-        """获取端口声明"""
-        return self._get_declarations_by_type(module, 'PortDeclaration')
+        """获取端口声明 - 从 header.ports 遍历"""
+        ports = []
+        if not module:
+            return ports
+        
+        # pyslang: module.header.ports 是 AnsiPortListSyntax [paren, list, paren]
+        if hasattr(module, 'header') and module.header:
+            header = module.header
+            if hasattr(header, 'ports'):
+                port_list = header.ports
+                # port_list[1] 是实际的端口列表
+                if len(port_list) > 1:
+                    actual_ports = port_list[1]
+                    if hasattr(actual_ports, 'elements'):
+                        for port in actual_ports.elements:
+                            if hasattr(port, 'kind') and port.kind == SyntaxKind.ImplicitAnsiPort:
+                                ports.append(port)
+                    elif hasattr(actual_ports, '__iter__'):
+                        for port in actual_ports:
+                            if hasattr(port, 'kind') and port.kind == SyntaxKind.ImplicitAnsiPort:
+                                ports.append(port)
+        
+        return ports
+    
+
+    def get_port_names(self, module) -> List[str]:
+        """获取端口名称列表"""
+        ports = []
+        port_decls = self.get_port_declarations(module)
+        for port in port_decls:
+            name, direction = self.get_port_name_and_direction(port)
+            if name:
+                ports.append(name)
+        return ports
+
+    def get_port_name_and_direction(self, port) -> tuple:
+        """获取端口名称和方向 (name, direction)"""
+        if not port:
+            return None, 'unknown'
+        
+        # 名称: port.declarator.name
+        name = None
+        if hasattr(port, 'declarator') and port.declarator:
+            decl = port.declarator
+            if hasattr(decl, 'name'):
+                n = decl.name
+                name = n.value if hasattr(n, 'value') else str(n)
+        
+        # 方向: port.header.direction
+        direction = 'unknown'
+        if hasattr(port, 'header') and port.header:
+            header = port.header
+            if hasattr(header, 'direction'):
+                direction = str(header.direction)
+        
+        return name, direction
+    
+    def get_module_instances(self, trees: dict = None) -> List:
+        """获取模块实例化"""
+        instances = []
+        
+        for fname, tree in (trees or {}).items():
+            if not tree or not hasattr(tree, 'root'):
+                continue
+            
+            # 遍历找 HierarchicalInstance
+            def find_inst(node):
+                if node is None:
+                    return
+                kind = getattr(node, 'kind', None)
+                if kind and 'Instance' in str(kind):
+                    instances.append(node)
+                for attr in dir(node):
+                    if attr.startswith('_') or attr in ['parent', 'sourceRange']:
+                        continue
+                    try:
+                        child = getattr(node, attr)
+                        if callable(child):
+                            continue
+                        if hasattr(child, '__iter__') and not isinstance(child, str):
+                            for c in child:
+                                find_inst(c)
+                        elif hasattr(child, 'kind'):
+                            find_inst(child)
+                    except:
+                        pass
+            
+            find_inst(tree.root)
+        
+        return instances
+    
+    def get_instance_connection(self, instance) -> List:
+        """获取实例的端口连接 [(port_name, signal_name), ...]"""
+        connections = []
+        
+        if not hasattr(instance, 'connections'):
+            return connections
+        
+        for conn in instance.connections:
+            if not hasattr(conn, 'kind') or 'NamedPort' not in str(conn.kind):
+                continue
+            
+            # port: conn.name, signal: conn.expr
+            port_name = None
+            signal_name = None
+            
+            if hasattr(conn, 'name'):
+                n = conn.name
+                port_name = n.value if hasattr(n, 'value') else str(n)
+            
+            if hasattr(conn, 'expr'):
+                e = conn.expr
+                signal_name = e.value if hasattr(e, 'value') else str(e)
+            
+            if port_name and signal_name:
+                connections.append((port_name, signal_name))
+        
+        return connections
     
     def get_data_declarations(self, module) -> List:
         """获取数据声明"""
-        return self._get_declarations_by_type(module, 'DataDeclaration')
+        return self._get_declarations_by_kind(module, SyntaxKind.DataDeclaration)
     
     def _get_declarations_by_type(self, module, decl_type: str) -> List:
         """按类型获取声明"""
@@ -121,14 +265,14 @@ class PyslangAdapter:
             return decls
         
         for member in module.members:
-            if hasattr(member, 'kind') and member.kind == decl_type:
+            if hasattr(member, 'kind') and member.kind.value == getattr(SyntaxKind, decl_type.replace("PortDeclaration", "PortDeclaration").replace("DataDeclaration", "DataDeclaration"), SyntaxKind.DataDeclaration).value:
                 decls.append(member)
         
         return decls
     
     def get_assignments(self, module) -> List:
         """获取赋值语句"""
-        return self._get_statements_by_type(module, 'Assign')
+        return self._get_statements_by_kind(module, SyntaxKind.ContinuousAssign)
     
     def get_always_blocks(self, module) -> List:
         """获取 always 块"""
@@ -138,22 +282,34 @@ class PyslangAdapter:
         
         for member in module.members:
             if hasattr(member, 'kind'):
-                if member.kind in ['AlwaysFF', 'AlwaysComb', 'AlwaysLatch']:
+                if member.kind in [SyntaxKind.AlwaysBlock, SyntaxKind.AlwaysFFBlock, SyntaxKind.AlwaysCombBlock, SyntaxKind.AlwaysLatchBlock]:
                     always_blocks.append(member)
         
         return always_blocks
     
-    def _get_statements_by_type(self, module, stmt_type: str) -> List:
-        """按类型获取语句"""
+    def _get_statements_by_kind(self, module, kind: SyntaxKind) -> List:
+        """按 SyntaxKind 获取语句"""
         stmts = []
         if not module or not hasattr(module, 'members'):
             return stmts
         
         for member in module.members:
-            if hasattr(member, 'kind') and member.kind == stmt_type:
+            if hasattr(member, 'kind') and member.kind == kind:
                 stmts.append(member)
         
         return stmts
+    
+    def _get_declarations_by_kind(self, module, kind: SyntaxKind) -> List:
+        """按 SyntaxKind 获取声明"""
+        decls = []
+        if not module or not hasattr(module, 'members'):
+            return decls
+        
+        for member in module.members:
+            if hasattr(member, 'kind') and member.kind == kind:
+                decls.append(member)
+        
+        return decls
 
 
 #==============================================================================

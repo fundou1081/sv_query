@@ -1,33 +1,46 @@
 #==============================================================================
 # unified_tracer.py - Query Layer
+# 使用 PyslangAdapter (Syntax Layer)
 #==============================================================================
 
 from typing import Optional
 import networkx as nx
 
-from .graph_models import (
+from .core.graph_models import (
     SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 )
-from .graph_builder import GraphBuilder
-from .query_signal import SignalTracer, SignalChain
-from .query_module import ModuleTracer, ModuleConnections
-from .query_clock_domain import ClockDomainTracer, ClockDomainTrace
+from .core.graph_builder import GraphBuilder
+from .core.query_signal import SignalTracer, SignalChain
+from .core.query_module import ModuleTracer, ModuleConnections
+from .core.query_clock_domain import ClockDomainTracer, ClockDomainTrace
+from .core.base import PyslangAdapter
 
 class UnifiedTracer:
     """统一追踪入口"""
     
-    def __init__(self, parser=None):
+    def __init__(self, parser=None, trees: dict = None):
         self.parser = parser
+        self.trees = trees or {}
+        self._adapter: Optional[PyslangAdapter] = None
         self._graph: Optional[SignalGraph] = None
         self._signal_tracer: Optional[SignalTracer] = None
         self._module_tracer: Optional[ModuleTracer] = None
         self._clock_tracer: Optional[ClockDomainTracer] = None
     
+    def _get_adapter(self) -> PyslangAdapter:
+        """获取 PyslangAdapter (Syntax Layer)"""
+        if self._adapter is None:
+            # 构造适配器需要的 parser 结构
+            class TreeParser:
+                def __init__(self, trees):
+                    self.trees = trees
+            self._adapter = PyslangAdapter(TreeParser(self.trees))
+        return self._adapter
+    
     def build_graph(self, force: bool = False) -> SignalGraph:
         if self._graph is None or force:
-            if self.parser is None:
-                raise ValueError("Parser required")
-            builder = GraphBuilder(self.parser)
+            adapter = self._get_adapter()
+            builder = GraphBuilder(adapter)
             self._graph = builder.build()
             self._init_tracers()
         return self._graph
@@ -42,6 +55,8 @@ class UnifiedTracer:
     # 场景A
     def trace_signal(self, signal: str, module: str = None) -> SignalChain:
         self.build_graph()
+        print(f"trace_signal({signal}, {module}) called")
+        print(f"  graph: {self._graph}")
         return self._signal_tracer.trace(signal, module)
     
     def trace_fanout(self, signal: str, module: str = None) -> list:

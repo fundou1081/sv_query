@@ -289,3 +289,38 @@ Types:
 *更新时间: 2026-05-04*
 *下次审查: 2026-07-01*
 *继承自: sv-trace 开发纪律*
+
+---
+
+## 2026-05-05 架构修正
+
+### 铁律14: Syntax中间层 [生效]
+
+**必须**：GraphBuilder 必须通过 PyslangAdapter (base.py) 获取信息
+
+**禁止**：直接访问 parser.modules / parser.assignments 等属性
+
+**原理**：实现解耦，PyslangAdapter 将 pyslang AST 适配为统一接口
+
+**示例**：
+```python
+# 正确
+adapter = PyslangAdapter(parser)
+modules = adapter.get_modules()
+for module in modules:
+    assignments = adapter.get_assignments(module)
+
+# 错误
+for module in parser.modules:  # 禁止直接访问
+    for assign in module.assignments:
+```
+
+### 架构对齐
+
+```
+Builder Layer: GraphBuilder
+    ↓ 调用
+Syntax Layer: PyslangAdapter (base.py)
+    ↓ 遍历
+Extractor Layer: pyslang AST
+```

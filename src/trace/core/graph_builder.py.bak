@@ -23,84 +23,42 @@ class DriverExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
-                if port_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(TraceNode(
-                        id=port_id,
-                        name=port,
-                        module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
-                    ))
-            
-            # [铁律4] 为每个信号创建 TraceNode
             # assign 语句
             for assign in self.adapter.get_assignments(module):
                 lhs, rhs = self._parse_assign(assign)
                 if lhs and rhs:
-                    # 创建 dst 节点
-                    dst_node_id = f"{module_name}.{lhs}"
-                    if dst_node_id not in [n.id for n in result.nodes]:
-                        result.nodes.append(TraceNode(
-                            id=dst_node_id, name=lhs, module=module_name,
-                            kind=NodeKind.SIGNAL, width=(1, 0)
-                        ))
-                    # 创建 src 节点
-                    src_node_id = f"{module_name}.{rhs}"
-                    if src_node_id not in [n.id for n in result.nodes]:
-                        result.nodes.append(TraceNode(
-                            id=src_node_id, name=rhs, module=module_name,
-                            kind=NodeKind.SIGNAL, width=(1, 0)
-                        ))
                     result.edges.append(TraceEdge(
-                        src=src_node_id, dst=dst_node_id,
-                        kind=EdgeKind.DRIVER, assign_type="continuous"
+                        src=f"{module_name}.{rhs}",
+                        dst=f"{module_name}.{lhs}",
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous"
                     ))
             
-            # always 块 - [铁律7金标准]
-            # 金标准: always_ff @(posedge clk) dout <= data;
+            # always 块
             for always in self.adapter.get_always_blocks(module):
                 stmts = []
                 self._collect_assignments_from_stmt(always, stmts)
+                
                 for stmt in stmts:
                     lhs, rhs = self._parse_assign(stmt)
                     if lhs and rhs:
-                        dst_node_id = f"{module_name}.{lhs}"
-                        if dst_node_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(TraceNode(
-                                id=dst_node_id, name=lhs, module=module_name,
-                                kind=NodeKind.REG, width=(1, 0)
-                            ))
-                        src_node_id = f"{module_name}.{rhs}"
-                        if src_node_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(TraceNode(
-                                id=src_node_id, name=rhs, module=module_name,
-                                kind=NodeKind.SIGNAL, width=(1, 0)
-                            ))
                         result.edges.append(TraceEdge(
-                            src=src_node_id, dst=dst_node_id,
-                            kind=EdgeKind.DRIVER, assign_type="nonblocking"
+                            src=f"{module_name}.{rhs}",
+                            dst=f"{module_name}.{lhs}",
+                            kind=EdgeKind.DRIVER,
+                            assign_type="nonblocking"
                         ))
         
         return result
-
     
     def _collect_assignments_from_stmt(self, node, statements: list, depth=0):
         if node is None or depth > 30:
             return
         
         kind = getattr(node, 'kind', None)
-        # [铁律2] 支持所有赋值类型
-        kind_str = str(kind) if kind else ''
-        if kind and ('Assignment' in kind_str):
+        if kind and 'Assignment' in str(kind):
             statements.append(node)
             return
-        if kind and 'Nonblocking' in kind_str:
-            # Nonblocking 需要继续遍历找左右操作数
-            pass  # 继续遍历
         
         for attr in dir(node):
             if attr.startswith('_'):
@@ -161,40 +119,24 @@ class LoadExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
-                if port_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(TraceNode(
-                        id=port_id,
-                        name=port,
-                        module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
-                    ))
-            
             for assign in self.adapter.get_assignments(module):
                 lhs, rhs = self._parse_assign(assign)
                 if lhs and rhs:
                     result.edges.append(TraceEdge(
                         src=f"{module_name}.{rhs}",
                         dst=f"{module_name}.{lhs}",
-                        kind=EdgeKind.DRIVER
+                        kind=EdgeKind.DATA
                     ))
         
         return result
     
     def _parse_assign(self, assign) -> tuple:
-        # [铁律2] 支持所有赋值语法结构
         try:
             if hasattr(assign, 'assignments') and assign.assignments:
-                # ContinuousAssign
                 a = assign.assignments[0]
                 lhs = a.left if hasattr(a, 'left') else None
                 rhs = a.right if hasattr(a, 'right') else None
-            elif hasattr(assign, 'left') and hasattr(assign, 'right'):
-                # NonblockingAssignmentExpression / BlockingAssignmentExpression
+            else:
                 lhs = getattr(assign, 'left', None)
                 rhs = getattr(assign, 'right', None)
             
@@ -256,20 +198,7 @@ class ClockDomainExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
-                if port_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(TraceNode(
-                        id=port_id,
-                        name=port,
-                        module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
-                    ))
-            
-            for port in self.adapter.get_port_names(module):
+            for port in self.adapter.get_port_declarations(module):
                 port_name, direction = self.adapter.get_port_name_and_direction(port)
                 if not port_name:
                     continue
