@@ -277,8 +277,8 @@ class LoadExtractor:
     def _parse_assign(self, assign) -> tuple:
         # [铁律2] 支持所有赋值语法结构
         try:
+            # [P2] 支持 ContinuousAssign 嵌套结构: assign.assignments[0]
             if hasattr(assign, 'assignments') and assign.assignments:
-                # ContinuousAssign
                 a = assign.assignments[0]
                 lhs = a.left if hasattr(a, 'left') else None
                 rhs = a.right if hasattr(a, 'right') else None
@@ -286,6 +286,10 @@ class LoadExtractor:
                 # NonblockingAssignmentExpression / BlockingAssignmentExpression
                 lhs = getattr(assign, 'left', None)
                 rhs = getattr(assign, 'right', None)
+            else:
+                # 兜底: 直接尝试 lhs/rhs
+                lhs = getattr(assign, 'lhs', None)
+                rhs = getattr(assign, 'rhs', None)
             
             lhs_name = self._get_signal(lhs)
             rhs_name = self._get_signal(rhs)
@@ -296,6 +300,16 @@ class LoadExtractor:
     
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:
+            return None
+        
+        # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
+        if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
+            if hasattr(signal, 'values'):
+                vals = signal.values
+                if vals and len(vals) > 0:
+                    first_val = vals[0]
+                    # 递归调用获取内部信号名
+                    return self._get_signal(first_val)
             return None
         
         name = None
