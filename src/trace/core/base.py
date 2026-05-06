@@ -192,6 +192,30 @@ class PyslangAdapter:
         
         return name, direction
     
+    def _extract_bit_width(self, node) -> tuple:
+        """提取信号位宽 (MSB, LSB)"""
+        # 默认宽度
+        msb, lsb = 0, 0
+        
+        # 尝试从 dims 获取
+        if hasattr(node, 'dims') and node.dims:
+            dims = node.dims
+            if hasattr(dims, '__iter__') and not isinstance(dims, str):
+                for dim in dims:
+                    if hasattr(dim, 'range'):
+                        rng = dim.range
+                        if rng:
+                            # 查看范围
+                            if hasattr(rng, 'left'):
+                                left = rng.left
+                                msb = int(str(left.value)) if hasattr(left, 'value') else 0
+                            if hasattr(rng, 'right'):
+                                right = rng.right
+                                lsb = int(str(right.value)) if hasattr(right, 'value') else 0
+                            return (msb, lsb)
+        return (msb, lsb)
+
+    
     def get_module_instances(self, trees: dict = None) -> List:
         """获取模块实例化"""
         instances = []
