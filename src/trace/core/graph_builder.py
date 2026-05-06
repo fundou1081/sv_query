@@ -163,19 +163,33 @@ class DriverExtractor:
         
         name = self.adapter.clean_name(name) if name else None
         
-        # [P0 Fix] 处理复合表达式: "a & b" -> 返回第一个操作数
-        # 简化处理：如果是表达式，尝试提取操作数
-        if name and '&' in name or '|' in name or '+' in name or '-' in name:
-            # 尝试从原始对象获取操作数
-            if hasattr(signal, 'left') and hasattr(signal, 'right'):
-                # 二元表达式，递归获取
+        # [P2增强] 递归提取复合表达式的操作数
+        # 处理三元、拼接、一元、移位等复杂运算符
+        special_attrs = ['left', 'right', 'operand', 'ifTrue', 'ifFalse', 
+                       'target', 'increment', 'left', 'right']
+        for attr in special_attrs:
+            if hasattr(signal, attr):
+                try:
+                    child = getattr(signal, attr)
+                    if child and not callable(child):
+                        result = self._get_signal(child)
+                        if result:
+                            return result
+                except:
+                    pass
+        
+        # [P0 Fix] 复合表达式处理
+        if name:
+            # 处理 & | + - 等运算符
+            has_binary_op = any(op in name for op in ['&', '|', '+', '-', '^', '<<', '>>'])
+            if has_binary_op and hasattr(signal, 'left') and hasattr(signal, 'right'):
                 left_name = self._get_signal(signal.left)
                 if left_name:
                     return left_name
                 right_name = self._get_signal(signal.right)
                 if right_name:
                     return right_name
-            return None
+                return None
         
         return name
 
