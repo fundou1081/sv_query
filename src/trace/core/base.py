@@ -139,13 +139,20 @@ class PyslangAdapter:
             return classes
         
         # 检查是否是 ClassDeclaration
-        if hasattr(node, 'kind'):
-            if node.kind == SyntaxKind.ClassDeclaration:
-                classes.append(node)
+        try:
+            if hasattr(node, 'kind'):
+                if node.kind == SyntaxKind.ClassDeclaration:
+                    classes.append(node)
+        except (ValueError, AttributeError):
+            # pyslang AST 节点可能被垃圾回收导致 kind 访问出错
+            pass
         
         # 递归子节点
-        for child in self.iter_children(node):
-            classes.extend(self._extract_classes(child))
+        try:
+            for child in self.iter_children(node):
+                classes.extend(self._extract_classes(child))
+        except (ValueError, AttributeError, TypeError):
+            pass
         
         return classes
     
@@ -400,14 +407,21 @@ class PyslangAdapter:
             items = cls.items
             if items and hasattr(items, '__iter__') and not isinstance(items, str):
                 for item in items:
-                    kind = getattr(item, 'kind', None)
-                    if kind:
-                        # ClassPropertyDeclaration - rand 变量
-                        if kind == SyntaxKind.ClassPropertyDeclaration:
-                            members.append(item)
-                        # ConstraintDeclaration - 约束块
-                        elif 'Constraint' in str(kind):
-                            members.append(item)
+                    try:
+                        kind = getattr(item, 'kind', None)
+                        if kind:
+                            # ClassPropertyDeclaration - rand 变量
+                            if kind == SyntaxKind.ClassPropertyDeclaration:
+                                members.append(item)
+                            # ConstraintDeclaration - 约束块
+                            elif 'Constraint' in str(kind):
+                                members.append(item)
+                            # ClassMethodDeclaration - 方法
+                            elif 'ClassMethod' in str(kind):
+                                members.append(item)
+                    except (ValueError, AttributeError):
+                        # pyslang AST 节点可能被垃圾回收导致 kind 访问出错
+                        pass
         return members
     
     def _collect_assignments_recursive(self, node, stmts):
