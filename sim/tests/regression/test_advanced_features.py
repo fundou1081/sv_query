@@ -50,7 +50,7 @@ endmodule'''
         self.assertGreaterEqual(len(result.drivers), 1)
     
     def test_task_call(self):
-        """[Golden] 任务调用"""
+        """[Golden] 任务调用 - task 不驱动信号，期望 0 个驱动"""
         src = '''
 module top(input a);
     task my_task;
@@ -59,8 +59,11 @@ module top(input a);
     endtask
     my_task(a);
 endmodule'''
-        # task 不驱动信号，跳过
-        self.skipTest('task 不驱动信号')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('a', 'top')
+        
+        self.assertEqual(len(result.drivers), 0)
 
 
 class TestModuleHierarchy(unittest.TestCase):
@@ -112,8 +115,11 @@ endinterface
 module top(input my_if.tb);
     assign tb.data = 8b0;
 endmodule'''
-        # 接口需要特殊处理
-        self.skipTest('接口需要特殊处理')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('tb', 'top')
+        
+        self.assertGreaterEqual(len(result.drivers), 1)
     
     def test_modport(self):
         """[Golden] modport"""
@@ -126,7 +132,11 @@ endinterface
 module top(my_if.mp m);
     assign m.data = 8b0;
 endmodule'''
-        self.skipTest('modport 需要特殊处理')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('m', 'top')
+        
+        self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestLoop(unittest.TestCase):
@@ -159,14 +169,18 @@ module top(input a, output y);
         end
     end
 endmodule'''
-        self.skipTest('while 循环需要特殊处理')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('y', 'top')
+        
+        self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestClass(unittest.TestCase):
     """类测试"""
     
     def test_class_decl(self):
-        """[Golden] 类声明"""
+        """[Golden] 类声明 - class 实例未赋值，期望 0 个驱动"""
         src = '''
 class my_class;
     logic [7:0] data;
@@ -175,7 +189,11 @@ endclass
 module top();
     my_class obj;
 endmodule'''
-        self.skipTest('class 需要特殊处理')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('obj', 'top')
+        
+        self.assertEqual(len(result.drivers), 0)
     
     def test_class_method(self):
         """[Golden] 类方法"""
@@ -189,7 +207,11 @@ module top(input a);
     my_class obj = new();
     obj.do_work(a);
 endmodule'''
-        self.skipTest('class 方法需要特殊处理')
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'t': tree})
+        result = tracer.trace_signal('obj', 'top')
+        
+        self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestInitialBlock(unittest.TestCase):

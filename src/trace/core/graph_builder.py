@@ -48,17 +48,27 @@ class DriverExtractor:
                             id=dst_node_id, name=lhs, module=module_name,
                             kind=NodeKind.SIGNAL, width=(1, 0)
                         ))
-                    # 创建 src 节点
-                    src_node_id = f"{module_name}.{rhs}"
-                    if src_node_id not in [n.id for n in result.nodes]:
-                        result.nodes.append(TraceNode(
-                            id=src_node_id, name=rhs, module=module_name,
-                            kind=NodeKind.SIGNAL, width=(1, 0)
+                    # [NEW] 使用 _get_all_signals 提取所有驱动源
+                    rhs_signals = self._get_all_signals(
+                        getattr(assign, 'assignments', [assign])[0].right
+                        if hasattr(assign, 'assignments') and assign.assignments
+                        else getattr(assign, 'right', None) or getattr(assign, 'rhs', None)
+                    ) if rhs else [rhs]
+                    if not rhs_signals:
+                        rhs_signals = [rhs]
+                    for rhs_name in rhs_signals:
+                        if not rhs_name:
+                            continue
+                        src_node_id = f"{module_name}.{rhs_name}"
+                        if src_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(TraceNode(
+                                id=src_node_id, name=rhs_name, module=module_name,
+                                kind=NodeKind.SIGNAL, width=(1, 0)
+                            ))
+                        result.edges.append(TraceEdge(
+                            src=src_node_id, dst=dst_node_id,
+                            kind=EdgeKind.DRIVER, assign_type="continuous"
                         ))
-                    result.edges.append(TraceEdge(
-                        src=src_node_id, dst=dst_node_id,
-                        kind=EdgeKind.DRIVER, assign_type="continuous"
-                    ))
             
             # always 块 - [铁律7金标准]
             # 金标准: always_ff @(posedge clk) dout <= data;
@@ -74,16 +84,28 @@ class DriverExtractor:
                                 id=dst_node_id, name=lhs, module=module_name,
                                 kind=NodeKind.REG, width=(1, 0)
                             ))
-                        src_node_id = f"{module_name}.{rhs}"
-                        if src_node_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(TraceNode(
-                                id=src_node_id, name=rhs, module=module_name,
-                                kind=NodeKind.SIGNAL, width=(1, 0)
+                        # [NEW] 使用 _get_all_signals 提取所有驱动源
+                        stmt_expr = stmt
+                        if hasattr(stmt, 'expr'):
+                            stmt_expr = stmt.expr
+                        rhs_signals = self._get_all_signals(
+                            getattr(stmt_expr, 'right', None) or getattr(stmt_expr, 'rhs', None)
+                        ) if stmt_expr else [rhs]
+                        if not rhs_signals:
+                            rhs_signals = [rhs]
+                        for rhs_name in rhs_signals:
+                            if not rhs_name:
+                                continue
+                            src_node_id = f"{module_name}.{rhs_name}"
+                            if src_node_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=src_node_id, name=rhs_name, module=module_name,
+                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                                ))
+                            result.edges.append(TraceEdge(
+                                src=src_node_id, dst=dst_node_id,
+                                kind=EdgeKind.DRIVER, assign_type="nonblocking"
                             ))
-                        result.edges.append(TraceEdge(
-                            src=src_node_id, dst=dst_node_id,
-                            kind=EdgeKind.DRIVER, assign_type="nonblocking"
-                        ))
         
         return result
 
@@ -247,6 +269,53 @@ class DriverExtractor:
             return name.value if hasattr(name, 'value') else str(name)
         return 'new'  # 默认返回 new
     
+    def _get_all_signals(self, signal) -> List[str]:
+        """提取表达式中的所有信号名（三元、拼接等返回多个）"""
+        if signal is None:
+            return []
+        
+        kind = getattr(signal, 'kind', None)
+        kind_str = str(kind) if kind else ''
+        
+        # 三元运算符: sel ? a : b → [sel, a, b]
+        if 'ConditionalExpression' in kind_str:
+            signals = []
+            # predicate (condition)
+            pred = getattr(signal, 'predicate', None)
+            if pred:
+                signals.extend(self._get_all_signals(pred))
+            # left (true branch)
+            left = getattr(signal, 'left', None)
+            if left:
+                signals.extend(self._get_all_signals(left))
+            # right (false branch)
+            right = getattr(signal, 'right', None)
+            if right:
+                signals.extend(self._get_all_signals(right))
+            return [s for s in signals if s]
+        
+        # ConditionalPredicate → 递归进入 conditions
+        if 'ConditionalPredicate' in kind_str or 'ConditionalPattern' in kind_str:
+            for attr in ['conditions', 'expr']:
+                child = getattr(signal, attr, None)
+                if child:
+                    return self._get_all_signals(child)
+            return []
+        
+        # 拼接: {a, b, c} → [a, b, c]
+        if 'Concatenation' in kind_str and 'Multiple' not in kind_str:
+            signals = []
+            if hasattr(signal, 'expressions'):
+                for expr in signal.expressions:
+                    expr_kind = getattr(expr, 'kind', None)
+                    if expr_kind and 'Token' not in str(expr_kind):
+                        signals.extend(self._get_all_signals(expr))
+            return [s for s in signals if s]
+        
+        # 默认: 单个信号
+        name = self._get_signal(signal)
+        return [name] if name else []
+    
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:
             return None
@@ -261,6 +330,16 @@ class DriverExtractor:
                     result = self._get_signal(concat.expressions)
                     return result
             return None
+        
+        # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名 data[3]
+        # 位选择信息在 build() 中处理为父子节点
+        kind = getattr(signal, 'kind', None)
+        if kind and 'IdentifierSelect' in str(kind):
+            # 返回完整名 (含位选择), 如 data[3]
+            name = str(signal).strip()
+            name = self.adapter.clean_name(name) if name else None
+            if name:
+                return name
         
         name = None
         if hasattr(signal, 'name'):
@@ -304,18 +383,23 @@ class DriverExtractor:
         if hasattr(signal, 'kind'):
             kind_str = str(signal.kind)
             if 'Replication' in kind_str or 'Concat' in kind_str:
-                # 使用 values 列表构建返回
-                if hasattr(signal, 'values'):
-                    vals = signal.values
-                    if vals and len(vals) > 0:
-                        all_names = []
-                        for v in vals:
-                            vn = self._get_signal(v)
-                            if vn: all_names.append(vn)
-                        if all_names:
-                            # 返回第一个 (主driver)
-                            # 注意: 完整实现需要在 caller 侧处理多个
-                            return all_names[0]
+                # 使用 expressions 或 values 列表构建返回
+                items = None
+                if hasattr(signal, 'expressions'):
+                    items = signal.expressions
+                elif hasattr(signal, 'values'):
+                    items = signal.values
+                if items:
+                    all_names = []
+                    for v in items:
+                        v_kind = getattr(v, 'kind', None)
+                        if v_kind and 'Token' in str(v_kind):
+                            continue
+                        vn = self._get_signal(v)
+                        if vn: all_names.append(vn)
+                    if all_names:
+                        # 返回第一个 (主driver)
+                        return all_names[0]
         
 
         # [P2] Clean 特殊语法格式: {a,b} -> a
@@ -400,28 +484,26 @@ class LoadExtractor:
                     return self._get_signal(first_val)
             return None
         
+        # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名
+        kind = getattr(signal, 'kind', None)
+        if kind and 'IdentifierSelect' in str(kind):
+            name = str(signal).strip()
+            return self.adapter.clean_name(name) if name else None
+        
         name = None
         if hasattr(signal, 'name'):
             name = signal.name.value if hasattr(signal.name, 'value') else str(signal.name)
         else:
             name = str(signal)
         
-        # 过滤掉复合表达式节点 {a,b} 和 [数字] - 完全跳过
-        if name and ('{' in name or '[' in name):
-            # 尝试提取内部信号
-            import re
-            # {a,b} -> a
-            if '{' in name and '}' in name:
+        # [MODIFIED] 保留位选择信息，只过滤拼接
+        if name and '{' in name:
+            if '}' in name:
                 inner = name.strip('{}')
                 if ',' in inner:
                     name = inner.split(',')[0].strip()
                 else:
                     name = inner.strip()
-            # [3:0] 或 [5] -> d
-            if '[' in name and ']' in name:
-                match = re.search(r'([a-zA-Z_][a-zA-Z0-9_]*)', name)
-                if match:
-                    name = match.group(1)
         return self.adapter.clean_name(name) if name else None
 
 # New ConnectionExtractor to replace existing one
@@ -575,16 +657,57 @@ class GraphBuilder:
         self._extract_all_nodes()
         self._extract_all_edges()
         self._mark_special_signals()
-
-        # 过滤掉带括号的中间节点 (复合表达式)
-        nodes_to_remove = [n for n in list(self.graph.nodes()) if '[' in n or '{' in n]
-        for n in nodes_to_remove:
-            if n in self.graph.nodes():
-                self.graph.remove_node(n)
-            if n in self.graph._node_data:
-                del self.graph._node_data[n]
+        self._create_hierarchical_bit_nodes()
 
         return self.graph
+    
+    def _create_hierarchical_bit_nodes(self):
+        """方案C: 为位选择节点创建父子关系
+        - 识别 data[3] 形式的节点
+        - 创建/找到父节点 data
+        - 设置 child.parent = data
+        - 创建聚合边 data[3] → data (BIT_SELECT)
+        - 重命名边: 所有引用 data[3] 的边保持不变
+        """
+        import re
+        
+        child_ids = [nid for nid in list(self.graph.nodes()) if '[' in nid and ']' in nid]
+        
+        for child_id in child_ids:
+            # 提取父节点名: top.data[3] → top.data
+            parent_id = re.sub(r'\[.*?\]', '', child_id)
+            
+            if not parent_id or parent_id == child_id:
+                continue
+            
+            # 确保父节点存在
+            if parent_id not in self.graph.nodes():
+                # 从子节点推断父节点属性
+                child_node = self.graph.get_node(child_id)
+                if child_node:
+                    parent_name = re.sub(r'\[.*?\]', '', child_node.name)
+                    parent_node = TraceNode(
+                        id=parent_id,
+                        name=parent_name,
+                        module=child_node.module,
+                        kind=child_node.kind,
+                        width=child_node.width,
+                    )
+                    self.graph.add_trace_node(parent_node)
+            
+            # 设置子节点的 parent
+            child_node = self.graph.get_node(child_id)
+            if child_node:
+                child_node.parent = parent_id
+                child_node.kind = NodeKind.SIGNAL  # 子节点标记为 SIGNAL
+            
+            # 创建聚合边: child → parent (BIT_SELECT)
+            agg_edge = TraceEdge(
+                src=child_id,
+                dst=parent_id,
+                kind=EdgeKind.BIT_SELECT,
+            )
+            self.graph.add_trace_edge(agg_edge)
     
     def get_extractor(self, name):
         return self._extractors.get(name)
