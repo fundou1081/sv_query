@@ -30,6 +30,7 @@ module top(input simple_if ifc);
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         # 接口信号追踪
         self.assertIsNotNone(tracer.get_graph())
     
@@ -49,6 +50,7 @@ module master(output bus_if.master ifc);
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
     
     def test_interface_array(self):
@@ -63,6 +65,7 @@ module top(if_array ifc [3:0]);
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
     
     def test_interface_class(self):
@@ -78,6 +81,7 @@ module top(base_if ifc);
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
 
 

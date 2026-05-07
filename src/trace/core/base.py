@@ -229,7 +229,7 @@ class PyslangAdapter:
                 if node is None:
                     return
                 kind = getattr(node, 'kind', None)
-                if kind and 'Instance' in str(kind):
+                if kind and 'Instance' in str(kind) and hasattr(node, 'decl'):
                     instances.append(node)
                 for attr in dir(node):
                     if attr.startswith('_') or attr in ['parent', 'sourceRange']:

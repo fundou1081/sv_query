@@ -44,6 +44,7 @@ module top;
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
     
     def test_typedef_enum(self):
@@ -56,6 +57,7 @@ module top;
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
     
     def test_covergroup(self):
@@ -71,6 +73,7 @@ module top(input clk, input a);
 endmodule'''
         
         tracer = self._make_tracer(source)
+        tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
 
 
