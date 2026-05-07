@@ -74,7 +74,7 @@ interface simple_if;
 endinterface
 
 module top(input simple_if ifc);
-    assign ifc.data = 8'hFF;
+    assign ifc.data = din;
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -87,6 +87,9 @@ endmodule'''
         nodes = list(tracer.get_graph().nodes())
         has_ifc_data = any('ifc.data' in n for n in nodes)
         self.assertTrue(has_ifc_data, f'ifc.data not found in {nodes}')
+        # din 作为外部信号应该也能被追踪到
+        has_din = any('din' in n for n in nodes)
+        self.assertTrue(has_din, f'din not found in {nodes}')
 
 
 class TestClockingBlock(unittest.TestCase):
