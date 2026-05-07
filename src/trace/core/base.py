@@ -358,8 +358,11 @@ class PyslangAdapter:
         return decls
     
     def get_assignments(self, module) -> List:
-        """获取赋值语句"""
-        return self._get_statements_by_kind(module, SyntaxKind.ContinuousAssign)
+        """获取赋值语句 (包括连续赋值和数据声明)"""
+        stmts = self._get_statements_by_kind(module, SyntaxKind.ContinuousAssign)
+        # [P1] DataDeclaration - 包括 class 实例化 my_cls obj = new()
+        stmts.extend(self._get_statements_by_kind(module, SyntaxKind.DataDeclaration))
+        return stmts
     
     def get_always_blocks(self, module) -> List:
         """获取 always 块"""

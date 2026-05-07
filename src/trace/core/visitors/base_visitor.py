@@ -58,6 +58,31 @@ class BaseVisitor(ABC):
         self.generic_visit(node)
     
     # ========================================
+    # [P2] Class OOP Visitors
+    # ========================================
+    
+    def visit_class_declaration(self, node):
+        """class...endclass 声明"""
+        # class 成员在 items 中
+        for attr in ['items', 'members', 'body']:
+            if hasattr(node, attr):
+                block = getattr(node, attr)
+                if block and hasattr(block, '__iter__') and not isinstance(block, str):
+                    for item in block:
+                        self.visit(item)
+                elif block:
+                    self.visit(block)
+    
+    def visit_class_property(self, node):
+        """class 成员变量"""
+        # class 成员变量声明
+        self.generic_visit(node)
+    
+    def visit_class_method(self, node):
+        """class 方法"""
+        self.generic_visit(node)
+    
+    # ========================================
     # [P2] 循环语句 Visitors
     # ========================================
     
@@ -95,4 +120,13 @@ class BaseVisitor(ABC):
     
     def visit_expression_statement(self, node):
         """表达式语句"""
+        self.generic_visit(node)
+    
+    # ========================================
+    # [P1] DataDeclaration Visitors
+    # ========================================
+    
+    def visit_data_declaration(self, node):
+        """数据声明 (reg, wire, class instance)"""
+        # 收集声明的变量
         self.generic_visit(node)

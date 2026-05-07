@@ -210,6 +210,17 @@ class DriverExtractor:
             assign = assign.expr
         
         try:
+            # [P1] DataDeclaration 处理 (class 实例化等)
+            # 格式: my_cls obj = new();
+            if hasattr(assign, 'declarators') and assign.declarators:
+                decl = assign.declarators[0]
+                lhs = getattr(decl, 'name', None)
+                rhs = getattr(decl, 'initializer', None)
+                lhs_name = self._get_signal(lhs)
+                # RHS 是构造函数调用，提取函数名
+                rhs_name = self._get_constructor_call(rhs) if rhs else None
+                return lhs_name, rhs_name
+            
             if hasattr(assign, 'assignments') and assign.assignments:
                 a = assign.assignments[0]
                 lhs = a.left if hasattr(a, 'left') else None
@@ -224,6 +235,17 @@ class DriverExtractor:
             return lhs_name, rhs_name
         except:
             return None, None
+    
+    def _get_constructor_call(self, initializer) -> Optional[str]:
+        """提取构造函数调用名 (new())"""
+        if initializer is None:
+            return None
+        # initializer 结构: = new() 
+        # 提取函数调用名
+        if hasattr(initializer, 'name'):
+            name = initializer.name
+            return name.value if hasattr(name, 'value') else str(name)
+        return 'new'  # 默认返回 new
     
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:

@@ -36,6 +36,13 @@ class StatementVisitor(BaseVisitor):
         if 'AlwaysCombBlock' in kind_str or 'AlwaysBlock' in kind_str:
             return self.visit_always_block(node)
         
+        # [P2] Class OOP
+        if 'ClassDeclaration' in kind_str:
+            return self.visit_class_declaration(node)
+        
+        if 'ClassProperty' in kind_str:
+            return self.visit_class_property(node)
+        
         # [P1] 条件语句
         if 'Case' in kind_str:
             return self.visit_case(node)
@@ -52,6 +59,9 @@ class StatementVisitor(BaseVisitor):
         
         if 'ContinuousAssignment' in kind_str:
             return self.visit_continuous_assignment(node)
+        
+        if 'DataDeclaration' in kind_str:
+            return self.visit_data_declaration(node)
         
         if 'ExpressionStatement' in kind_str:
             return self.visit_expression_statement(node)
