@@ -83,6 +83,35 @@ class BaseVisitor(ABC):
         self.generic_visit(node)
     
     # ========================================
+    # [P2] Generate 块 Visitors
+    # ========================================
+    
+    def visit_generate_region(self, node):
+        """generate...endgenerate 块"""
+        # 进入 members
+        for attr in ['members', 'body', 'items']:
+            if hasattr(node, attr):
+                block = getattr(node, attr)
+                if block and hasattr(block, '__iter__') and not isinstance(block, str):
+                    for item in block:
+                        self.visit(item)
+                elif block:
+                    self.visit(block)
+    
+    def visit_if_generate(self, node):
+        """generate if 语句"""
+        # 进入 if 分支
+        if hasattr(node, 'block'):
+            self.visit(node.block)
+        # 进入 else 分支
+        if hasattr(node, 'elseClause'):
+            self.visit(node.elseClause)
+    
+    def visit_generate_block(self, node):
+        """generate 块 (begin...end)"""
+        self.generic_visit(node)
+    
+    # ========================================
     # [P2] 循环语句 Visitors
     # ========================================
     

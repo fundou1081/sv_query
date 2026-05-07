@@ -359,10 +359,49 @@ class PyslangAdapter:
     
     def get_assignments(self, module) -> List:
         """获取赋值语句 (包括连续赋值和数据声明)"""
-        stmts = self._get_statements_by_kind(module, SyntaxKind.ContinuousAssign)
-        # [P1] DataDeclaration - 包括 class 实例化 my_cls obj = new()
-        stmts.extend(self._get_statements_by_kind(module, SyntaxKind.DataDeclaration))
+        stmts = []
+        # [P2] 递归收集所有赋值，包括 generate 块内的
+        self._collect_assignments_recursive(module, stmts)
         return stmts
+    
+    def _collect_assignments_recursive(self, node, stmts):
+        """递归收集所有赋值语句，包括嵌套在 generate 等结构内的"""
+        if node is None:
+            return
+        
+        kind = getattr(node, 'kind', None)
+        if kind:
+            # 如果是赋值类型，直接添加
+            if kind in [SyntaxKind.ContinuousAssign, SyntaxKind.DataDeclaration]:
+                stmts.append(node)
+                return  # 不再递归进入
+        
+        # [P2] 特殊处理 GenerateBlock - 内容在 members 属性中，不要迭代
+        if kind == SyntaxKind.GenerateBlock:
+            if hasattr(node, 'members'):
+                for item in node.members:
+                    self._collect_assignments_recursive(item, stmts)
+            return
+        
+        # [P2] 特殊处理 IfGenerate.block - 不是迭代，是单个节点
+        if kind == SyntaxKind.IfGenerate:
+            if hasattr(node, 'block'):
+                block = getattr(node, 'block')
+                self._collect_assignments_recursive(block, stmts)
+            if hasattr(node, 'elseClause') and getattr(node, 'elseClause'):
+                else_block = getattr(node, 'elseClause')
+                self._collect_assignments_recursive(else_block, stmts)
+            return
+        
+        # 否则递归进入子节点
+        for attr in ['members', 'body', 'statements', 'items', 'children', 'block', 'elseClause']:
+            if hasattr(node, attr):
+                child = getattr(node, attr)
+                if child and hasattr(child, '__iter__') and not isinstance(child, str):
+                    for item in child:
+                        self._collect_assignments_recursive(item, stmts)
+                elif child:
+                    self._collect_assignments_recursive(child, stmts)
     
     def get_always_blocks(self, module) -> List:
         """获取 always 块"""

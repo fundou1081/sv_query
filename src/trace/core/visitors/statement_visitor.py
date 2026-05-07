@@ -43,6 +43,16 @@ class StatementVisitor(BaseVisitor):
         if 'ClassProperty' in kind_str:
             return self.visit_class_property(node)
         
+        # [P2] Generate 块
+        if 'GenerateRegion' in kind_str:
+            return self.visit_generate_region(node)
+        
+        if 'IfGenerate' in kind_str:
+            return self.visit_if_generate(node)
+        
+        if 'GenerateBlock' in kind_str:
+            return self.visit_generate_block(node)
+        
         # [P1] 条件语句
         if 'Case' in kind_str:
             return self.visit_case(node)
