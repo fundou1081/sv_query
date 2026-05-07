@@ -134,6 +134,35 @@ class PyslangAdapter:
                 return module
         return None
     
+    def get_modport_declarations(self, module) -> List:
+        """获取 modport 声明"""
+        modports = []
+        if not module:
+            return modports
+        
+        # 查找 ModportDeclaration
+        def find_modport(node):
+            if node is None:
+                return
+            kind = getattr(node, 'kind', None)
+            if kind and 'Modport' in str(kind):
+                modports.append(node)
+            for attr in ['members', 'body']:
+                if hasattr(node, attr):
+                    child = getattr(node, attr)
+                    if hasattr(child, '__iter__') and not isinstance(child, str):
+                        for c in child:
+                            find_modport(c)
+        
+        if hasattr(module, '__iter__') and not isinstance(module, str):
+            for m in module:
+                find_modport(m)
+        else:
+            find_modport(module)
+        
+        return modports
+    
+    # 现有的 get_port_declarations
     def get_port_declarations(self, module) -> List:
         """获取端口声明 - 从 header.ports 遍历"""
         ports = []
