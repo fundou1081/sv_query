@@ -150,8 +150,8 @@ endmodule'''
         endmodule
         
         预期:
-        - ifc.data 信号可追踪
-        - 驱动关系正确
+        - ifc.data 节点存在
+        - 8'h0 是 ifc.data 的驱动
         """
         source = '''interface bus_if;
     logic [7:0] data;
@@ -167,9 +167,15 @@ endmodule'''
         self.assertIsNotNone(tracer.get_graph())
         
         nodes = list(tracer.get_graph().nodes())
-        # TODO: ifc.data 应该被识别为信号
-        # self.assertTrue(any('ifc.data' in n for n in nodes), 
-        #     f"ifc.data not found in {nodes}")
+        edges = list(tracer.get_graph().edges())
+        
+        # 验证: ifc.data 节点存在
+        has_ifc_data = any('ifc.data' in n for n in nodes)
+        self.assertTrue(has_ifc_data, f"ifc.data not found in {nodes}")
+        
+        # 验证: 8'h0 是 ifc.data 的驱动
+        has_driver = any("8'h0" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
+        self.assertTrue(has_driver, f"8'h0 -> ifc.data not found in {edges}")
 
 if __name__ == '__main__':
     unittest.main()
