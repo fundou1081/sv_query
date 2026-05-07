@@ -119,15 +119,21 @@ class DriverExtractor:
             return
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
-        # [P1] 支持 case 语句内的赋值 - 正确递归
+        # [P1] 支持 case 语句内的赋值 - 需同时提取 condition
         if kind and 'Case' in kind_str:
-            # 使用 clause 而不是 statement
             for item in node.items:
-                if item:
-                    # StandardCaseItem 和 DefaultCaseItem 使用 clause 属性
-                    stmt = getattr(item, 'clause', None) or getattr(item, 'statement', None)
-                    if stmt:
-                        self._collect_assignments_from_stmt(stmt, statements, depth+1)
+                if not item:
+                    continue
+                # 获取赋值 statement (y = 1 或 y = 0)
+                stmt = getattr(item, 'clause', None) or getattr(item, 'statement', None)
+                if stmt:
+                    self._collect_assignments_from_stmt(stmt, statements, depth+1)
+                
+                # [NEW] 获取 case condition (a 或 b) 作为驱动
+                condition = getattr(item, 'condition', None)
+                if condition:
+                    # 将 condition 作为驱动源添加
+                    statements.append(condition)
             return
             if hasattr(node, 'items') and node.items:
                 print(f'[DEBUG case] items count={len(list(node.items))}')
