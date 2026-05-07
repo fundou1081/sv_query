@@ -324,3 +324,66 @@ Syntax Layer: PyslangAdapter (base.py)
     ↓ 遍历
 Extractor Layer: pyslang AST
 ```
+
+---
+
+## 2026-05-07 Visitor 模式重构 [生效]
+
+### 铁律15: Visitor 模式必须使用 [生效]
+
+**必须**：AST 遍历和语法节点处理必须使用 Visitor 模式
+
+**禁止**：
+- 在单个方法中使用 if-elif 链处理所有语法类型
+- 直接在 graph_builder.py 中添加语法类型判断
+
+**原因**：
+- SystemVerilog 语法类型 200+，if-elif 不可维护
+- Visitor 模式符合开闭原则，新增语法不破坏现有代码
+- 每个语法类型独立方法，可单独测试
+
+**正确做法**：
+```python
+# 每个语法类型 → 独立的 visitor 方法
+class StatementVisitor:
+    def visit_while_loop(self, node):
+        ...
+    
+    def visit_for_loop(self, node):
+        ...
+
+# 禁止：
+# if kind and 'While' in str(kind):
+#     ...
+# elif kind and 'For' in str(kind):
+#     ...
+```
+
+### Visitor 架构
+
+```
+sv_visitor/
+├── __init__.py
+├── base_visitor.py          # 抽象基类 + 通用遍历
+├── statement_visitor.py    # 语句处理 (while/for/case/if)
+├── assignment_visitor.py   # 赋值处理 (assign/<=)
+├── declaration_visitor.py # 声明处理 (module/interface/class)
+└── block_visitor.py         # 块处理 (begin-end/always)
+```
+
+### 新语法支持流程
+
+1. 在对应 Visitor 中添加 `visit_<syntax_type>` 方法
+2. 编写金标准测试
+3. 在 base_visitor.py 中注册到 dispatch 表
+
+---
+
+## 架构演进
+
+```
+Phase 1 (当前):  if-elif 链 → 独立文件重构
+Phase 2:        Visitor 基类建立
+Phase 3:        每个语法族独立 Visitor
+Phase 4:        完整 Visitor 架构
+```
