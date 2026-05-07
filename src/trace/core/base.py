@@ -132,6 +132,14 @@ class PyslangAdapter:
                 classes.extend(self._extract_classes(tree.root))
         return classes
     
+    def get_interfaces(self) -> List:
+        """获取所有接口声明"""
+        interfaces = []
+        for fname, tree in self.parser.trees.items():
+            if tree and hasattr(tree, 'root'):
+                interfaces.extend(self._extract_interfaces(tree.root))
+        return interfaces
+    
     def _extract_classes(self, node) -> List:
         """提取类声明"""
         classes = []
@@ -155,6 +163,29 @@ class PyslangAdapter:
             pass
         
         return classes
+    
+    def _extract_interfaces(self, node) -> List:
+        """提取接口声明"""
+        interfaces = []
+        if node is None:
+            return interfaces
+        
+        # 检查是否是 InterfaceDeclaration
+        try:
+            if hasattr(node, 'kind'):
+                if node.kind == SyntaxKind.InterfaceDeclaration:
+                    interfaces.append(node)
+        except (ValueError, AttributeError):
+            pass
+        
+        # 递归子节点
+        try:
+            for child in self.iter_children(node):
+                interfaces.extend(self._extract_interfaces(child))
+        except (ValueError, AttributeError, TypeError):
+            pass
+        
+        return interfaces
     
     def iter_children(self, node) -> List:
         return ASTWalker.iter_children(self, node)
@@ -186,11 +217,8 @@ class PyslangAdapter:
                         for c in child:
                             find_modport(c)
         
-        if hasattr(module, '__iter__') and not isinstance(module, str):
-            for m in module:
-                find_modport(m)
-        else:
-            find_modport(module)
+        # 直接调用 find_modport
+        find_modport(module)
         
         return modports
     
