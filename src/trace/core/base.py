@@ -1,4 +1,4 @@
-from pyslang import SyntaxKind
+from pyslang import SyntaxKind, TokenKind
 #==============================================================================
 # base.py - AST Walker 基类
 # 公共 AST 遍历基础设施
@@ -375,6 +375,11 @@ class PyslangAdapter:
             if kind in [SyntaxKind.ContinuousAssign, SyntaxKind.DataDeclaration]:
                 stmts.append(node)
                 return  # 不再递归进入
+            
+            # [P2] ExpressionStatement (procedural blocking assignment like data = a;)
+            if kind == SyntaxKind.ExpressionStatement:
+                stmts.append(node)
+                return
         
         # [P2] 特殊处理 GenerateBlock - 内容在 members 属性中，不要迭代
         if kind == SyntaxKind.GenerateBlock:
@@ -393,7 +398,37 @@ class PyslangAdapter:
                 self._collect_assignments_recursive(else_block, stmts)
             return
         
+        # [P2] 特殊处理 Fork/Join - TokenKind.ForkKeyword 后面是 SyntaxList
+        # 需要手动遍历来检测 ForkKeyword
+        if kind == SyntaxKind.SyntaxList:
+            # 检查是否在 fork 块内
+            items = list(node) if hasattr(node, '__iter__') else []
+            
+            for idx, item in enumerate(items):
+                item_kind = getattr(item, 'kind', None)
+                
+                
+                # 检测 ForkKeyword - kind 本身就是 TokenKind
+                if item_kind == TokenKind.ForkKeyword:
+                    
+                    # 下一个应该是包含 fork 内语句的 SyntaxList
+                    if idx + 1 < len(items):
+                        next_item = items[idx + 1]
+                        next_kind = getattr(next_item, 'kind', None)
+                        
+                        if next_kind == SyntaxKind.SyntaxList:
+                            # 递归处理 fork 内语句
+                            for fork_stmt in next_item:
+                                self._collect_assignments_recursive(fork_stmt, stmts)
+                    return
+        
         # 否则递归进入子节点
+        # 优先检查是否可以直接迭代 (如 BlockStatementSyntax)
+        if hasattr(node, '__iter__') and not isinstance(node, str):
+            for item in node:
+                self._collect_assignments_recursive(item, stmts)
+            return
+        
         for attr in ['members', 'body', 'statements', 'items', 'children', 'block', 'elseClause']:
             if hasattr(node, attr):
                 child = getattr(node, attr)

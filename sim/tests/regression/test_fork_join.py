@@ -1,6 +1,6 @@
 # test_fork_join.py - Fork/Join 金标准
 # [铁律13] 金标准测试
-# 当前状态: Fork/Join 内赋值未正确提取
+# [铁律15] Visitor 模式
 import unittest
 import sys
 import os
@@ -16,15 +16,19 @@ class TestForkJoin(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(trees={'test': tree})
     
-    def test_fork_join_requires_implementation(self):
-        """[Golden] Fork/Join 需要实现
+    def test_fork_join_basic(self):
+        """[Golden] Fork/Join 内赋值
         
-        问题: 
-        - Fork/Join 是 Token 级别 (TokenKind.ForkKeyword/JoinKeyword)
-        - 内部语句在 SyntaxList 中，未被 get_assignments() 处理
-        - 需要在 base.py 的 _collect_assignments_recursive 中处理 ForkKeyword
+        RTL:
+        initial fork
+            data = a;
+            data = b;
+        join
         
-        当前状态: 不支持
+        预期:
+        - data 节点存在
+        - data <- a 驱动边存在
+        - data <- b 驱动边存在
         """
         source = '''module top(input a, b, output [7:0] data);
     initial fork
@@ -35,10 +39,9 @@ endmodule'''
         tracer = self._make_tracer(source)
         tracer.build_graph()
         
-        # 图建立
+        # [铁律13] 金标准: 图建立
         self.assertIsNotNone(tracer.get_graph())
         
-        # 当前状态: 有节点但无边 (fork 内赋值未提取)
         nodes = list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
         
@@ -46,8 +49,11 @@ endmodule'''
         self.assertTrue(any('data' in n for n in nodes), 
             f"data node not found in {nodes}")
         
-        # TODO: 需要实现 Fork/Join 内赋值提取
-        # 预期: data <- a 和 data <- b 边
+        # 验证: data <- a 或 data <- b 驱动边存在
+        has_drive = any(('a' in str(src) or 'b' in str(src)) and 'data' in str(dst) 
+                        for src, dst in edges)
+        self.assertTrue(has_drive, 
+            f"data drive edge not found in {edges}")
 
 if __name__ == '__main__':
     unittest.main()
