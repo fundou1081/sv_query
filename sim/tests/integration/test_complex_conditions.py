@@ -103,10 +103,12 @@ endmodule'''
         """[Golden] priority case"""
         source = '''
 module top(input a, b, output y);
-    priority case (1'b1)
-        a: y = 1;
-        b: y = 0;
-    endpriority
+    always @(*) begin
+        priority case (1'b1)
+            a: y = 1;
+            b: y = 0;
+        endpriority
+    end
 endmodule'''
         
         tracer = self._make_tracer(source)

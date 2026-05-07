@@ -523,3 +523,45 @@ class ConnectionCollector(ASTWalker):
         if hasattr(node, 'name'):
             return node.name
         return None
+
+    # [P2] case 语句提取
+    def get_case_statements(self, module) -> List:
+        """获取 case 语句"""
+        cases = []
+        if not module or not hasattr(module, 'members'):
+            return cases
+        
+        for member in module.members:
+            if hasattr(member, 'kind'):
+                # CaseStatement 或_case_generate
+                kind_str = str(member.kind)
+                if 'Case' in kind_str:
+                    cases.append(member)
+        
+        return cases
+    
+    # [P2] 提取 always 块内的 case 语句
+    def get_case_in_always(self, always_block) -> List:
+        """从 always 块中提取 case 语句"""
+        cases = []
+        
+        def find_case(node):
+            if node is None:
+                return
+            kind = getattr(node, 'kind', None)
+            if kind:
+                kind_str = str(kind)
+                if 'Case' in kind_str:
+                    cases.append(node)
+            # 遍历子节点
+            for attr in ['body', 'statement', 'cases']:
+                if hasattr(node, attr):
+                    child = getattr(node, attr)
+                    if hasattr(child, '__iter__') and not isinstance(child, str):
+                        for c in child:
+                            find_case(c)
+        
+        if always_block:
+            find_case(always_block)
+        
+        return cases
