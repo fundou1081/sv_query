@@ -222,6 +222,46 @@ class PyslangAdapter:
         
         return modports
     
+    def get_modport_info(self, modport) -> dict:
+        """获取 modport 详细信息 (名称、方向、端口列表)"""
+        info = {
+            'name': '',
+            'direction': '',
+            'ports': []
+        }
+        
+        if modport is None:
+            return info
+        
+        try:
+            # 获取端口信息
+            if hasattr(modport, 'items'):
+                items = list(modport.items)
+                for item in items:
+                    # 获取 modport 名称 (在 ModportItem 中)
+                    item_name = getattr(item, 'name', None)
+                    if item_name:
+                        info['name'] = item_name.value if hasattr(item_name, 'value') else str(item_name)
+                    
+                    # 获取端口方向信息 (ports 是 SeparatedList)
+                    if hasattr(item, 'ports'):
+                        ports = list(item.ports)
+                        for port in ports:
+                            port_kind = getattr(port, 'kind', None)
+                            # SeparatedList 包含 ModportSimplePortList
+                            if port_kind and 'SeparatedList' in str(port_kind):
+                                for child in port:
+                                    child_kind = getattr(child, 'kind', None)
+                                    if child_kind and 'ModportSimplePortList' in str(child_kind):
+                                        info['direction'] = str(getattr(child, 'direction', ''))
+                                        if hasattr(child, 'ports'):
+                                            port_names = str(getattr(child, 'ports', ''))
+                                            info['ports'] = [p.strip() for p in port_names.split(',')]
+        except (ValueError, AttributeError, TypeError):
+            pass
+        
+        return info
+    
     # 现有的 get_port_declarations
     def get_port_declarations(self, module) -> List:
         """获取端口声明 - 从 header.ports 遍历"""

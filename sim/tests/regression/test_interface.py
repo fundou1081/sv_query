@@ -24,12 +24,10 @@ class TestInterface(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(trees={'test': tree})
     
-    def _get_interfaces(self, tree):
-        """获取所有 InterfaceDeclaration"""
+    def _get_adapter(self, tree):
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test': tree}))
-        return adapter.get_interfaces() if hasattr(adapter, 'get_interfaces') else []
+        return PyslangAdapter(FP({'test': tree}))
     
     def test_interface_declaration(self):
         """[Golden] interface 声明
@@ -72,8 +70,8 @@ endinterface'''
         
         预期:
         - ModportDeclaration 存在
-        - master 方向为 output
-        - slave 方向为 input
+        - master 方向为 output，端口为 data, valid
+        - slave 方向为 input，端口为 data, valid
         """
         source = '''interface bus_if;
     logic [7:0] data;
@@ -83,12 +81,29 @@ endinterface'''
     modport slave(input data, valid);
 endinterface'''
         tree = pyslang.SyntaxTree.fromText(source)
-        root = tree.root
+        adapter = self._get_adapter(tree)
         
-        # 检查 ModportDeclaration
-        members = list(root.members)
-        modports = [m for m in members if m.kind == pyslang.SyntaxKind.ModportDeclaration]
+        # 获取接口
+        interfaces = adapter.get_interfaces()
+        self.assertEqual(len(interfaces), 1)
+        
+        # 获取 modport
+        modports = adapter.get_modport_declarations(interfaces[0])
         self.assertGreaterEqual(len(modports), 2, "Should have at least 2 modports")
+        
+        # 检查 master modport
+        master_info = adapter.get_modport_info(modports[0])
+        self.assertEqual(master_info['name'], 'master')
+        self.assertEqual(master_info['direction'], 'output')
+        self.assertIn('data', master_info['ports'])
+        self.assertIn('valid', master_info['ports'])
+        
+        # 检查 slave modport
+        slave_info = adapter.get_modport_info(modports[1])
+        self.assertEqual(slave_info['name'], 'slave')
+        self.assertEqual(slave_info['direction'], 'input')
+        self.assertIn('data', slave_info['ports'])
+        self.assertIn('valid', slave_info['ports'])
     
     def test_interface_port_in_module(self):
         """[Golden] interface 端口传递
