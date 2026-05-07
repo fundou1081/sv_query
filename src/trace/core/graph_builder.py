@@ -117,6 +117,29 @@ class DriverExtractor:
                 if stmt:
                     self._collect_assignments_from_stmt(stmt, statements, depth+1)
             return
+        # [P2] 处理 EventControlWithExpression (@posedge clk 等)
+        if kind and 'EventControl' in str(kind):
+            if hasattr(node, 'statement'):
+                self._collect_assignments_from_stmt(node.statement, statements, depth+1)
+            return
+        
+        # [P2] 处理 SequentialBlockStatement (begin...end 块)
+        if kind and 'SequentialBlock' in str(kind):
+            for attr in ['body', 'statements', 'items']:
+                if hasattr(node, attr):
+                    block = getattr(node, attr)
+                    if block and hasattr(block, '__iter__') and not isinstance(block, str):
+                        for item in block:
+                            self._collect_assignments_from_stmt(item, statements, depth+1)
+            return
+        
+        # [P2] 处理 LoopStatement (while/for/repeat 循环)
+        if kind and 'LoopStatement' in str(kind):
+            # while 循环体在 statement 属性中
+            if hasattr(node, 'statement'):
+                self._collect_assignments_from_stmt(node.statement, statements, depth+1)
+            return
+        
         # [铁律2] 支持所有赋值类型
         kind_str = str(kind) if kind else ''
         # [P1] 支持 case 语句内的赋值 - 需同时提取 condition

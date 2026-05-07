@@ -1,5 +1,5 @@
 # test_while_loop.py - While 循环金标准
-# TODO: 需要更深入的 pyslang AST 分析来支持 while 循环内的赋值提取
+# [铁律13] 金标准测试
 import unittest
 import sys
 import os
@@ -9,14 +9,25 @@ import pyslang
 from trace.unified_tracer import UnifiedTracer
 
 class TestWhileLoop(unittest.TestCase):
-    def test_while_exists(self):
-        """[Golden] While 循环测试
+    """While 循环信号追踪测试"""
+    
+    def _make_tracer(self, source):
+        tree = pyslang.SyntaxTree.fromText(source)
+        return UnifiedTracer(trees={'test': tree})
+    
+    def test_while_basic(self):
+        """[Golden] While 循环内非阻塞赋值
         
         RTL:
-        always @(posedge clk) while(cnt > 0) q <= cnt;
+        always @(posedge clk) begin
+            while (cnt > 0) begin
+                q <= cnt;
+            end
+        end
         
-        预期: q 节点存在
-        注意: 内部赋值的完整提取需要更深入开发
+        预期:
+        - q 节点存在
+        - q <- cnt 驱动边存在 (while 循环体内)
         """
         source = '''module top(input clk, output [7:0] q);
 reg [7:0] cnt = 8;
@@ -26,16 +37,23 @@ always @(posedge clk) begin
     end
 end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = self._make_tracer(source)
         tracer.build_graph()
         
-        # 金标准: 图建立
+        # [铁律13] 金标准: 图建立
         self.assertIsNotNone(tracer.get_graph())
         
-        # 验证: q 节点存在
         nodes = list(tracer.get_graph().nodes())
-        self.assertTrue(any('q' in n for n in nodes), f'q not in {nodes}')
+        edges = list(tracer.get_graph().edges())
+        
+        # 验证: q 节点存在
+        self.assertTrue(any('q' in n for n in nodes), 
+            f"q node not found in {nodes}")
+        
+        # 验证: q <- cnt 驱动边存在
+        has_drive = any('cnt' in str(src) and 'q' in str(dst) for src, dst in edges)
+        self.assertTrue(has_drive, 
+            f"q <- cnt edge not found in {edges}")
 
 if __name__ == '__main__':
     unittest.main()
