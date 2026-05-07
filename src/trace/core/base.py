@@ -124,6 +124,31 @@ class PyslangAdapter:
         
         return modules
     
+    def get_classes(self) -> List:
+        """获取所有类声明"""
+        classes = []
+        for fname, tree in self.parser.trees.items():
+            if tree and hasattr(tree, 'root'):
+                classes.extend(self._extract_classes(tree.root))
+        return classes
+    
+    def _extract_classes(self, node) -> List:
+        """提取类声明"""
+        classes = []
+        if node is None:
+            return classes
+        
+        # 检查是否是 ClassDeclaration
+        if hasattr(node, 'kind'):
+            if node.kind == SyntaxKind.ClassDeclaration:
+                classes.append(node)
+        
+        # 递归子节点
+        for child in self.iter_children(node):
+            classes.extend(self._extract_classes(child))
+        
+        return classes
+    
     def iter_children(self, node) -> List:
         return ASTWalker.iter_children(self, node)
     
@@ -363,6 +388,27 @@ class PyslangAdapter:
         # [P2] 递归收集所有赋值，包括 generate 块内的
         self._collect_assignments_recursive(module, stmts)
         return stmts
+    
+    def get_class_members(self, cls) -> List:
+        """获取类的成员声明 (rand 变量等)"""
+        members = []
+        if cls is None:
+            return members
+        
+        # ClassDeclaration 有 items 属性
+        if hasattr(cls, 'items'):
+            items = cls.items
+            if items and hasattr(items, '__iter__') and not isinstance(items, str):
+                for item in items:
+                    kind = getattr(item, 'kind', None)
+                    if kind:
+                        # ClassPropertyDeclaration - rand 变量
+                        if kind == SyntaxKind.ClassPropertyDeclaration:
+                            members.append(item)
+                        # ConstraintDeclaration - 约束块
+                        elif 'Constraint' in str(kind):
+                            members.append(item)
+        return members
     
     def _collect_assignments_recursive(self, node, stmts):
         """递归收集所有赋值语句，包括嵌套在 generate 等结构内的"""
