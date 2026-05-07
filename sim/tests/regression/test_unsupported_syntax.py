@@ -49,7 +49,9 @@ endmodule'''
         # 金标准: 能建立图
         self.assertIsNotNone(tracer.get_graph())
         
-        # TODO: 未来验证 modport 方向
+        # 验证: 至少有节点
+        nodes = tracer.get_graph().nodes()
+        self.assertGreaterEqual(len(list(nodes)), 1)
 
 
 class TestInterfaceSignal(unittest.TestCase):
@@ -81,7 +83,10 @@ endmodule'''
         # 金标准: 能建立图
         self.assertIsNotNone(tracer.get_graph())
         
-        # TODO: ifc.data 追踪
+        # 验证: ifc.data 节点存在
+        nodes = list(tracer.get_graph().nodes())
+        has_ifc_data = any('ifc.data' in n for n in nodes)
+        self.assertTrue(has_ifc_data, f'ifc.data not found in {nodes}')
 
 
 class TestClockingBlock(unittest.TestCase):
