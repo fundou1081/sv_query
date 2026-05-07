@@ -373,6 +373,8 @@ class LoadExtractor:
                     name = match.group(1)
         return self.adapter.clean_name(name) if name else None
 
+# New ConnectionExtractor to replace existing one
+
 class ConnectionExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
@@ -383,37 +385,84 @@ class ConnectionExtractor:
         trees = getattr(self.adapter.parser, 'trees', {})
         instances = self.adapter.get_module_instances(trees)
         
+        # [P2] 收集所有模块的端口定义 (用于推断方向)
+        all_module_ports = {}
+        for module in self.adapter.get_modules():
+            module_name = self.adapter.get_module_name(module)
+            port_dirs = {}
+            for port in self.adapter.get_port_declarations(module):
+                name, direction = self.adapter.get_port_name_and_direction(port)
+                port_dirs[name] = direction.strip()
+            all_module_ports[module_name] = port_dirs
+        
         for inst in instances:
             inst_name = inst.decl.value if hasattr(inst.decl, 'value') else str(inst.decl)
             
+            # [P2] 推断子模块类型和端口定义
+            module_ref = 'child'  # 默认
+            if hasattr(inst, 'module') and hasattr(inst.module, 'value'):
+                module_ref = inst.module.value
+            
+            module_ports = all_module_ports.get(module_ref, {})
+            
+            # 端口连接
             conns = self.adapter.get_instance_connection(inst)
             
-            for port_name, signal_name in conns:
+            # 处理位置端口 vs 命名端口
+            named_conns = {}
+            positional_conns = []
+            
+            for port_key, signal_name in conns:
+                if port_key.startswith('_pos_'):
+                    # 位置端口
+                    idx = int(port_key.replace('_pos_', ''))
+                    positional_conns.append((idx, signal_name))
+                else:
+                    named_conns[port_key] = signal_name
+            
+            # 位置端口按顺序匹配子模块端口定义
+            positional_conns.sort(key=lambda x: x[0])
+            port_names = list(module_ports.keys())
+            
+            for idx, signal_name in positional_conns:
+                if idx < len(port_names):
+                    port_name = port_names[idx]
+                    named_conns[port_name] = signal_name
+            
+            # [铁律4] 为每个端口创建节点和边
+            for port_name, signal_name in named_conns.items():
                 port_name = self.adapter.clean_name(port_name)
                 signal_name = self.adapter.clean_name(signal_name)
                 
-                # [P2] 支持 hierarchy: 实例端口 -> 顶层端口
-                # 1. 实例端口被外部驱动
-                result.edges.append(TraceEdge(
-                    src=f"top.{signal_name}",
-                    dst=f"top.{inst_name}.{port_name}",
-                    kind=EdgeKind.DRIVER,
-                    assign_type="connection"
+                direction = module_ports.get(port_name, 'unknown').strip()
+                
+                # 节点: 实例端口
+                inst_port_id = f"top.{inst_name}.{port_name}"
+                result.nodes.append(TraceNode(
+                    id=inst_port_id,
+                    name=port_name,
+                    module=f"top.{inst_name}",
+                    kind=NodeKind.PORT_IN if direction == 'input' else NodeKind.PORT_OUT,
+                    width=(1, 0)
                 ))
                 
-                # 2. 顶层端口被实例驱动 (输出端口)
-                # 对于 input 端口，外部驱动实例
-                # 对于 output 端口，实例驱动外部
-                if port_name:  # output port
+                # 边: 外部 -> 实例 (input) 或 实例 -> 外部 (output)
+                if direction == 'input':
                     result.edges.append(TraceEdge(
-                        src=f"top.{inst_name}.{port_name}",
+                        src=f"top.{signal_name}",
+                        dst=inst_port_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="connection"
+                    ))
+                elif direction == 'output':
+                    result.edges.append(TraceEdge(
+                        src=inst_port_id,
                         dst=f"top.{signal_name}",
                         kind=EdgeKind.DRIVER,
                         assign_type="connection"
                     ))
         
         return result
-
 class ClockDomainExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter

@@ -38,7 +38,7 @@ endmodule'''
         
         # 应提取多个驱动
         driver_count = len(result.drivers)
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain')
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
         self.assertEqual(result.confidence, 'high')
     
     def test_nested_if_three_levels(self):
@@ -97,7 +97,7 @@ endmodule'''
         result = tracer.trace_signal('y', 'top')
         
         driver_count = len(result.drivers)
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain')
+        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
     
     def test_case_priority(self):
         """[Golden] priority case"""

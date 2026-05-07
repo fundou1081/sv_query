@@ -250,6 +250,7 @@ class PyslangAdapter:
         
         return instances
     
+
     def get_instance_connection(self, instance) -> List:
         """获取实例的端口连接 [(port_name, signal_name), ...]"""
         connections = []
@@ -257,27 +258,60 @@ class PyslangAdapter:
         if not hasattr(instance, 'connections'):
             return connections
         
-        for conn in instance.connections:
-            if not hasattr(conn, 'kind') or 'NamedPort' not in str(conn.kind):
-                continue
+        conn_attr = instance.connections
+        
+        # 方式1: connections 是 SyntaxNode (pyslang 对象)
+        if hasattr(conn_attr, 'kind'):
+            kind_str = str(conn_attr.kind)
             
-            # port: conn.name, signal: conn.expr
-            port_name = None
-            signal_name = None
+            if 'SeparatedList' in kind_str:
+                idx = 0
+                for item in conn_attr:
+                    if hasattr(item, 'kind') and 'Token' in str(item.kind):
+                        continue
+                    
+                    if hasattr(item, 'kind') and 'OrderedPort' in str(item.kind):
+                        if hasattr(item, 'expr'):
+                            expr = item.expr
+                            signal_name = expr.value if hasattr(expr, 'value') else str(expr)
+                            if signal_name:
+                                connections.append(('_pos_' + str(idx), signal_name))
+                                idx += 1
+                    
+                    elif hasattr(item, 'kind') and 'NamedPort' in str(item.kind):
+                        port_name = None
+                        signal_name = None
+                        if hasattr(item, 'name'):
+                            n = item.name
+                            port_name = n.value if hasattr(n, 'value') else str(n)
+                        if hasattr(item, 'expr'):
+                            e = item.expr
+                            signal_name = e.value if hasattr(e, 'value') else str(e)
+                        if port_name and signal_name:
+                            connections.append((port_name, signal_name))
+        
+        elif isinstance(conn_attr, str):
+            conn_str = conn_attr.strip()
+            if not conn_str:
+                return connections
             
-            if hasattr(conn, 'name'):
-                n = conn.name
-                port_name = n.value if hasattr(n, 'value') else str(n)
+            if conn_str.startswith('(') and conn_str.endswith(')'):
+                conn_str = conn_str[1:-1]
             
-            if hasattr(conn, 'expr'):
-                e = conn.expr
-                signal_name = e.value if hasattr(e, 'value') else str(e)
-            
-            if port_name and signal_name:
-                connections.append((port_name, signal_name))
+            if conn_str.startswith('.'):
+                import re
+                pattern = r'\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)'
+                matches = re.findall(pattern, conn_str)
+                for pn, sn in matches:
+                    if pn and sn:
+                        connections.append((pn, sn))
+            else:
+                parts = [p.strip() for p in conn_str.split(',')]
+                for idx, sn in enumerate(parts):
+                    if sn:
+                        connections.append(('_pos_' + str(idx), sn))
         
         return connections
-    
     def get_data_declarations(self, module) -> List:
         """获取数据声明"""
         return self._get_declarations_by_kind(module, SyntaxKind.DataDeclaration)

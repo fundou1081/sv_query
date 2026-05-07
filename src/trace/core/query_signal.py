@@ -20,8 +20,20 @@ class SignalTracer:
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
         signal_id = self._make_id(signal, module)
-        drivers = self._find_drivers(signal_id)
+        
+        # [铁律3] 不可信则不输出 - 节点不存在时返回 uncertain
+        if signal_id not in self.graph.nodes():
+            return SignalChain(
+                root=signal_id,
+                drivers=[],
+                loads=[],
+                confidence="uncertain"
+            )
+        
+        drivers = self._collect_all_drivers(signal_id)
         loads = self._find_loads(signal_id)
+        
+        # [铁律3] 无驱动时返回 uncertain
         confidence = "high" if drivers else "uncertain"
         
         return SignalChain(
@@ -36,59 +48,60 @@ class SignalTracer:
             return f"{module}.{signal}"
         return signal
     
-    def _find_drivers(self, signal_id: str) -> List[TraceNode]:
-        """[P2增强] 支持 concat 多驱动 + hierarchy 追踪"""
+    def _collect_all_drivers(self, signal_id: str) -> List[TraceNode]:
+        """[P2] 递归收集所有驱动，包括实例端口追溯"""
         drivers = []
+        seen_ids = set()
         
-        # [P2] 首先通过 instance 连接追踪
-        # 查找所有指向这个 signal 的边
+        # 递归追溯
+        self._trace_drivers_recursive(signal_id, drivers, seen_ids)
+        
+        return drivers
+    
+    def _trace_drivers_recursive(self, signal_id: str, drivers: List[TraceNode], seen_ids: set):
+        """递归追溯驱动"""
+        if signal_id not in self.graph.nodes():
+            return
+        
+        # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
-                # 这条边指向目标信号
+                node = self.graph.get_node(src)
+                if node and node.id not in seen_ids:
+                    drivers.append(node)
+                    seen_ids.add(node.id)
+                else:
+                    # [P2] 如果节点已存在但可能通过实例端口还有上游，继续追溯
+                    pass
+                
+                # [P2] 继续递归追溯这个 src 的驱动
+                if src in self.graph.nodes():
+                    self._trace_drivers_recursive(src, drivers, seen_ids)
+    
+    def _find_drivers(self, signal_id: str) -> List[TraceNode]:
+        """[兼容] 直接驱动"""
+        if signal_id not in self.graph.nodes():
+            return []
+        
+        drivers = []
+        for src, dst in list(self.graph.edges()):
+            if dst == signal_id:
                 node = self.graph.get_node(src)
                 if node:
                     drivers.append(node)
-                # 继续递归追踪这个 src
-                if src in self.graph.nodes():
-                    for pred in self.graph.predecessors(src):
-                        n = self.graph.get_node(pred)
-                        if n and n not in drivers:
-                            drivers.append(n)
-        
-        # 直接前置驱动
-        for pred in self.graph.predecessors(signal_id):
-            edge = self.graph.get_edge(pred, signal_id)
-            if edge and edge.kind == EdgeKind.DRIVER:
-                node = self.graph.get_node(pred)
-                if node:
-                    # 检查是否是复合表达式
-                    driver_name = node.name
-                    
-                    # 如果是 concat 形式 {a,b}，尝试提取多个
-                    if driver_name and '{' in driver_name and '}' in driver_name:
-                        # 提取内部信号
-                        inner = driver_name.strip('{}').strip()
-                        parts = [p.strip() for p in inner.split(',')]
-                        
-                        # 为每个部分查找节点
-                        for part in parts:
-                            # 尝试在图中查找这个信号
-                            for n in self.graph.nodes():
-                                if n.endswith(part) or n == part:
-                                    nodedata = self.graph.get_node(n)
-                                    if nodedata:
-                                        drivers.append(nodedata)
-                                        break
-                    else:
-                        drivers.append(node)
         return drivers
     
     def _find_loads(self, signal_id: str) -> List[TraceNode]:
+        if signal_id not in self.graph.nodes():
+            return []
+        
         loads = []
+        seen_ids = set()
+        
         for succ in self.graph.successors(signal_id):
-            edge = self.graph.get_edge(signal_id, succ)
-            if edge and edge.kind in [EdgeKind.DRIVER, EdgeKind.DATA]:
-                node = self.graph.get_node(succ)
-                if node:
-                    loads.append(node)
+            node = self.graph.get_node(succ)
+            if node and node.id not in seen_ids:
+                loads.append(node)
+                seen_ids.add(node.id)
+        
         return loads
