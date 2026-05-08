@@ -497,6 +497,10 @@ class DriverExtractor:
                         # 跳过数字字面量（简单判断：如果 rhs_src 是纯数字）
                         if rhs_src.isdigit():
                             continue
+                        # 跳过 task 参数的自环 (r = r | ...)
+                        # 如果 rhs_call_arg 等于目标 output 参数本身，则是自环
+                        if rhs_call_arg == param_map.get(param_name):
+                            continue  # 跳过 output 参数到自身的驱动
                         
                         # 建立边: rhs_call_arg -> param_map[param_name] (output 参数)
                         src_node_id = f"{module_name}.{rhs_call_arg}"
