@@ -779,6 +779,16 @@ class PyslangAdapter:
                     return
             return
         
+        # ParallelBlockStatement: fork...join 块
+        if 'ParallelBlock' in kind:
+            for attr in ['items', 'statements', 'body', 'blocks']:
+                block_items = getattr(stmt, attr, None)
+                if block_items and hasattr(block_items, '__iter__'):
+                    for item in block_items:
+                        self._analyze_stmt_for_drivers(item, drivers, depth+1)
+                    return
+            return
+        
         # LoopStatement: for, while
         if 'Loop' in kind and 'Statement' in kind:
             # 循环体

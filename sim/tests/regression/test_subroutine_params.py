@@ -335,6 +335,107 @@ endmodule'''
             "命名参数调用应有驱动")
 
 
+class TestWhileForkDisable(unittest.TestCase):
+    """while, fork, disable 语法测试"""
+
+    def test_task_while_loop(self):
+        """[Golden] task 内部 while 循环
+        RTL:
+            task t; input [7:0] v; output [7:0] r;
+                while (v > 0) begin
+                    r = v;
+                    v = v - 1;
+                end
+            endtask
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | task | (v 映射到 a)
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    task automatic t;
+        input [7:0] v;
+        output [7:0] r;
+        while (v > 0) begin
+            r = v;
+            v = v - 1;
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "while 循环 b 应被 a 驱动")
+
+    def test_task_fork_join(self):
+        """[Golden] task 内部 fork-join
+        RTL:
+            task t; input [7:0] v; output [7:0] r;
+                fork
+                    r = v;
+                join
+            endtask
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | task |
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    task automatic t;
+        input [7:0] v;
+        output [7:0] r;
+        fork
+            r = v;
+        join
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "fork-join b 应被 a 驱动")
+
+    def test_task_disable(self):
+        """[Golden] task 内部 disable 语句
+        RTL:
+            task t; input [7:0] v; output [7:0] r;
+                begin : block
+                    r = v;
+                    disable block;
+                    r = 0;
+                end
+            endtask
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | task | (disable 不影响主要驱动)
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    task automatic t;
+        input [7:0] v;
+        output [7:0] r;
+        begin : block
+            r = v;
+            disable block;
+            r = 0;
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "disable 语句 b 应被 a 驱动")
+
+
+
 class TestEnumSelfDrive(unittest.TestCase):
     """自更新场景（enum 计数器等）"""
 
