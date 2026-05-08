@@ -4,7 +4,7 @@ from pyslang import SyntaxKind, TokenKind
 # 公共 AST 遍历基础设施
 #==============================================================================
 
-from typing import Callable, Optional, List, Any
+from typing import Callable, Optional, List, Any, Dict
 from abc import ABC, abstractmethod
 
 class ASTWalker:
@@ -579,6 +579,180 @@ class PyslangAdapter:
         
         return always_blocks
     
+
+
+    def get_task_declarations(self, module) -> List:
+        """获取 module 中的 task 声明"""
+        tasks = []
+        if not module or not hasattr(module, 'members'):
+            return tasks
+        
+        for member in module.members:
+            if hasattr(member, 'kind'):
+                kind = str(member.kind)
+                if 'TaskDeclaration' in kind:
+                    tasks.append(member)
+        
+        return tasks
+    
+    def get_function_declarations(self, module) -> List:
+        """获取 module 中的 function 声明"""
+        functions = []
+        if not module or not hasattr(module, 'members'):
+            return functions
+        
+        for member in module.members:
+            if hasattr(member, 'kind'):
+                kind = str(member.kind)
+                if 'FunctionDeclaration' in kind:
+                    functions.append(member)
+        
+        return functions
+    
+    def get_task_name(self, task_decl) -> str:
+        """从 task 声明中提取名称"""
+        prototype = getattr(task_decl, 'prototype', None)
+        if prototype:
+            name = getattr(prototype, 'name', None)
+            if name:
+                return str(name).strip()
+        return ""
+    
+    def get_function_name(self, func_decl) -> str:
+        """从 function 声明中提取名称"""
+        prototype = getattr(func_decl, 'prototype', None)
+        if prototype:
+            name = getattr(prototype, 'name', None)
+            if name:
+                return str(name).strip()
+        return ""
+    
+    def get_task_params(self, task_decl) -> List:
+        """
+        获取 task 的参数列表
+        返回: [(direction, name), ...]
+        direction: 'input', 'output', 'inout', 'ref'
+        """
+        params = []
+        items = getattr(task_decl, 'items', [])
+        
+        for item in items:
+            kind = str(getattr(item, 'kind', ''))
+            if 'PortDeclaration' not in kind:
+                continue
+            
+            header = getattr(item, 'header', None)
+            direction = 'input'
+            if header:
+                direction_attr = getattr(header, 'direction', None)
+                if direction_attr:
+                    # direction_attr 是 Token，检查其 kind
+                    d_kind = str(getattr(direction_attr, 'kind', ''))
+                    if 'Output' in d_kind:
+                        direction = 'output'
+                    elif 'Inout' in d_kind:
+                        direction = 'inout'
+                    elif 'Ref' in d_kind:
+                        direction = 'ref'
+            
+            declarators = getattr(item, 'declarators', [])
+            for decl in declarators:
+                decl_kind = str(getattr(decl, 'kind', ''))
+                if 'Declarator' in decl_kind:
+                    name = str(decl).strip()
+                    params.append((direction, name))
+        
+        return params
+    
+    def get_function_params(self, func_decl) -> List:
+        """
+        获取 function 的参数列表
+        返回: [(direction, name), ...]
+        """
+        params = []
+        items = getattr(func_decl, 'items', [])
+        
+        for item in items:
+            kind = str(getattr(item, 'kind', ''))
+            if 'PortDeclaration' not in kind:
+                continue
+            
+            header = getattr(item, 'header', None)
+            direction = 'input'
+            if header:
+                direction_attr = getattr(header, 'direction', None)
+                if direction_attr:
+                    d = str(direction_attr).strip()
+                    if 'Output' in d:
+                        direction = 'output'
+            
+            declarators = getattr(item, 'declarators', [])
+            for decl in declarators:
+                decl_kind = str(getattr(decl, 'kind', ''))
+                if 'Declarator' in decl_kind:
+                    name = str(decl).strip()
+                    params.append((direction, name))
+        
+        return params
+
+
+
+    def _extract_signals_from_expr(self, expr) -> List[str]:
+        """递归提取表达式中的所有信号"""
+        if expr is None:
+            return []
+        
+        kind = getattr(expr, 'kind', None)
+        kind_str = str(kind) if kind else ''
+        
+        # 二元表达式 (a + b, a & b, etc.)
+        if any(x in kind_str for x in ['Binary', 'And', 'Or', 'Xor', 'Add', 'Sub']):
+            signals = []
+            l = getattr(expr, 'left', None)
+            r = getattr(expr, 'right', None)
+            if l: signals.extend(self._extract_signals_from_expr(l))
+            if r: signals.extend(self._extract_signals_from_expr(r))
+            return signals
+        
+        # 标识符
+        result = str(expr).strip()
+        if result:
+            return [result]
+        return []
+    
+    def analyze_task_internal_drivers(self, task_decl) -> Dict[str, List[str]]:
+        """
+        分析 task 内部的驱动关系
+        返回: {internal_var: [source_vars]}
+        例如: task 内 out = in + 1; 返回 {'out': ['in', '1']}
+        """
+        drivers = {}
+        
+        for item in getattr(task_decl, 'items', []):
+            if 'ExpressionStatement' not in str(getattr(item, 'kind', '')):
+                continue
+            
+            expr = getattr(item, 'expr', None)
+            if not expr:
+                continue
+            
+            left = getattr(expr, 'left', None)
+            right = getattr(expr, 'right', None)
+            
+            if not left or not right:
+                continue
+            
+            left_name = str(left).strip()
+            
+            # 递归提取 right 中的所有信号
+            right_signals = self._extract_signals_from_expr(right)
+            
+            if left_name:
+                drivers[left_name] = right_signals
+        
+        return drivers
+
+
     def _get_statements_by_kind(self, module, kind: SyntaxKind) -> List:
         """按 SyntaxKind 获取语句"""
         stmts = []

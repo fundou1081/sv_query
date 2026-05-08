@@ -116,6 +116,12 @@ class DriverExtractor:
             e = getattr(n, "expr", None)
             if e: r.extend(self._collect_stmts_with_context(e, ctx, d+1, _s))
             return r
+        
+        # [NEW] 处理 task/function 调用
+        if "InvocationExpression" in ks:
+            # 收集这个调用表达式和上下文
+            r.append((n, ctx, "invocation"))  # (node, ctx, type)
+            return r
             
         if "Assignment" in ks:
             r.append((n, ctx))
@@ -191,7 +197,20 @@ class DriverExtractor:
             for always in self.adapter.get_always_blocks(module):
                 # 使用语义上下文方法收集语句
                 stmts_ctx = self._collect_stmts_with_context(always)
-                for stmt, ctx in stmts_ctx:
+                for item in stmts_ctx:
+                    # 支持两种格式: (stmt, ctx) 或 (stmt, ctx, type)
+                    if len(item) == 3:
+                        stmt, ctx, item_type = item
+                    else:
+                        stmt, ctx = item
+                        item_type = "assignment"
+                    
+                    # 如果是 invocation，暂不处理赋值
+                    if item_type == "invocation":
+                        # [NEW] 处理 task/function 调用
+                        self._handle_invocation(stmt, ctx, module, module_name, result)
+                        continue
+                    
                     lhs, rhs = self._parse_assign(stmt)
                     if lhs and rhs:
                         dst_node_id = f"{module_name}.{lhs}"
@@ -388,6 +407,111 @@ class DriverExtractor:
             return name.value if hasattr(name, 'value') else str(name)
         return 'new'  # 默认返回 new
     
+
+    def _handle_invocation(self, invocation, ctx, module, module_name, result):
+        """
+        处理 task/function 调用
+        建立参数映射并添加边
+        """
+        try:
+            # 获取调用名称
+            callee = getattr(invocation, 'left', None)
+            if not callee:
+                return
+            call_name = str(callee).strip()
+            
+            # 获取调用参数 (OrderedArgument 列表)
+            args_node = getattr(invocation, 'arguments', None)
+            if not args_node:
+                return
+            
+            call_args = []
+            params = getattr(args_node, 'parameters', [])
+            for arg in params:
+                arg_kind = str(getattr(arg, 'kind', ''))
+                # 跳过逗号等 token
+                if 'OrderedArgument' not in arg_kind:
+                    continue
+                expr = getattr(arg, 'expr', None)
+                if expr:
+                    # 提取参数名
+                    arg_name = self._get_signal(expr)
+                    if arg_name:
+                        call_args.append(arg_name.strip())
+            
+            # 查找 task 定义 - 在 module 中查找
+            task_def = None
+            for task in self.adapter.get_task_declarations(module):
+                if self.adapter.get_task_name(task) == call_name:
+                    task_def = task
+                    break
+            
+            if not task_def:
+                # 查找 function 定义
+                for func in self.adapter.get_function_declarations(module):
+                    if self.adapter.get_function_name(func) == call_name:
+                        task_def = func
+                        break
+            
+            if not task_def:
+                return
+            
+            # 获取定义参数
+            if 'Task' in str(getattr(task_def, 'kind', '')):
+                def_params = self.adapter.get_task_params(task_def)
+            else:
+                def_params = self.adapter.get_function_params(task_def)
+            
+            # 建立映射: call_args[i] -> def_params[i]
+            param_map = {}  # def_param_name -> call_arg_name
+            for i, (direction, param_name) in enumerate(def_params):
+                if i < len(call_args):
+                    param_map[param_name] = call_args[i]
+            
+            # 分析 task/function 内部的驱动关系
+            internal_drivers = self.adapter.analyze_task_internal_drivers(task_def)
+            
+            # 对于每个 output 参数，如果它被赋值，建立驱动边
+            for direction, param_name in def_params:
+                if direction == 'output' and param_name in internal_drivers:
+                    # output 参数被赋值
+                    rhs_sources = internal_drivers[param_name]
+                    for rhs_src in rhs_sources:
+                        # 跳过字面量（如数字常量），只处理信号
+                        # rhs_src 是内部变量，找到它映射到哪个调用参数
+                        rhs_call_arg = param_map.get(rhs_src)
+                        if not rhs_call_arg:
+                            continue
+                        # 跳过数字字面量（简单判断：如果 rhs_src 是纯数字）
+                        if rhs_src.isdigit():
+                            continue
+                        
+                        # 建立边: rhs_call_arg -> param_map[param_name] (output 参数)
+                        src_node_id = f"{module_name}.{rhs_call_arg}"
+                        dst_node_id = f"{module_name}.{param_map[param_name]}"
+                        
+                        # 确保节点存在
+                        if src_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(TraceNode(
+                                id=src_node_id, name=rhs_call_arg, module=module_name,
+                                kind=NodeKind.SIGNAL, width=(1, 0)
+                            ))
+                        if dst_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(TraceNode(
+                                id=dst_node_id, name=param_map[param_name], module=module_name,
+                                kind=NodeKind.REG, width=(1, 0)
+                            ))
+                        
+                        result.edges.append(TraceEdge(
+                            src=src_node_id, dst=dst_node_id,
+                            kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                            clock_domain=ctx.get("clock", ""),
+                            condition=ctx.get("condition", "")
+                        ))
+        except Exception as e:
+            # 忽略处理错误，继续
+            pass
+
     def _get_all_signals(self, signal) -> List[str]:
         """提取表达式中的所有信号名（三元、拼接等返回多个）"""
         if signal is None:
