@@ -68,3 +68,40 @@ endmodule'''
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestCrossModuleTracing(unittest.TestCase):
+    """跨模块驱动追踪"""
+
+    def test_simple_instance(self):
+        """[Golden] 简单模块实例化
+        RTL:
+            module child(input d, output q);
+                assign q = d;
+            endmodule
+            module top(input a, output b);
+                child inst(.d(a), .q(b));
+            endmodule
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | top |
+        说明: b 的最终驱动源是 a，跨模块追踪应返回 a
+        """
+        src = '''
+module child(input d, output q);
+    assign q = d;
+endmodule
+
+module top(input a, output b);
+    child inst(.d(a), .q(b));
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        
+        # 跨模块追踪应返回最终驱动源 a
+        driver_ids = [d.id for d in result.drivers]
+        print(f"Drivers for 'b': {driver_ids}")
+        self.assertIn('top.a', driver_ids,
+            f"b 的驱动源应为 top.a，实际: {driver_ids}")
