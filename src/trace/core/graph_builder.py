@@ -491,7 +491,9 @@ class DriverExtractor:
                     for rhs_src in rhs_sources:
                         # 跳过字面量（如数字常量），只处理信号
                         # rhs_src 是内部变量，找到它映射到哪个调用参数
-                        rhs_call_arg = param_map.get(rhs_src)
+                        # [NEW] 剥离位选择后缀：v[i] -> v, data[3] -> data
+                        base_signal = rhs_src.split('[')[0] if '[' in rhs_src else rhs_src
+                        rhs_call_arg = param_map.get(base_signal)
                         if not rhs_call_arg:
                             continue
                         # 跳过数字字面量（简单判断：如果 rhs_src 是纯数字）

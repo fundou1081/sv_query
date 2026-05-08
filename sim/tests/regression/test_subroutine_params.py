@@ -248,6 +248,35 @@ endmodule'''
         self.assertGreaterEqual(len(result.drivers), 1,
             "for 循环 b 应被 a 驱动")
 
+    def test_task_for_loop_bit_select(self):
+        """[Golden] task 内部 for 循环带位选择
+        RTL:
+            task t; input [2:0] v; output [7:0] r;
+                for (int i = 0; i < 1; i++) r = v[i];
+            endtask
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | task | (v[i] 映射到 a)
+        """
+        src = '''
+module top(input [2:0] a, output reg [7:0] b);
+    task automatic t;
+        input [2:0] v;
+        output [7:0] r;
+        for (int i = 0; i < 1; i++) begin
+            r = v[i];
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        # 位选择 v[i] 应映射到 a
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "位选择 v[i] 应被 a 驱动")
+
 
 class TestFunctionControlFlow(unittest.TestCase):
     """function 内部复杂控制流"""
