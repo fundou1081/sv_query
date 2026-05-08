@@ -146,16 +146,22 @@ class DriverExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据实际方向)
+            for port_decl in self.adapter.get_port_declarations(module):
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    is_output = 'output' in direction.lower()
+                    kind = NodeKind.PORT_OUT if is_output else NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
+                        kind=kind,
                         width=(1, 0)
                     ))
             
@@ -683,16 +689,22 @@ class LoadExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据实际方向)
+            for port_decl in self.adapter.get_port_declarations(module):
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    is_output = 'output' in direction.lower()
+                    kind = NodeKind.PORT_OUT if is_output else NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
+                        kind=kind,
                         width=(1, 0)
                     ))
             
@@ -790,7 +802,7 @@ class ConnectionExtractor:
             all_module_ports[module_name] = port_dirs
         
         for inst in instances:
-            inst_name = inst.decl.value if hasattr(inst.decl, 'value') else str(inst.decl)
+            inst_name = inst.decl.value.strip() if hasattr(inst.decl, 'value') else str(inst.decl).strip()
             
             # [P2] 推断子模块类型和端口定义
             module_ref = 'child'  # 默认
@@ -867,16 +879,22 @@ class ClockDomainExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据实际方向)
+            for port_decl in self.adapter.get_port_declarations(module):
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    is_output = 'output' in direction.lower()
+                    kind = NodeKind.PORT_OUT if is_output else NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
+                        kind=kind,
                         width=(1, 0)
                     ))
             
@@ -919,8 +937,89 @@ class GraphBuilder:
         self._extract_all_edges()
         self._mark_special_signals()
         self._create_hierarchical_bit_nodes()
+        
+        # [P2] 建立实例端口到模块端口的连接
+        self._connect_instance_ports_to_module()
 
         return self.graph
+
+    def _connect_instance_ports_to_module(self):
+        """[P2] 建立实例端口到模块端口的连接
+        
+        命名约定:
+        - 实例端口节点: top.inst.q (实例 output 端口)
+        - 子模块端口节点: child.q (子模块的 output 端口)
+        - 模块端口节点: top.b (父模块的端口)
+        
+        连接:
+        1. 实例 output 端口 -> 模块端口: top.inst.q -> top.b
+        2. 子模块 output 端口 -> 实例 output 端口: child.q -> top.inst.q
+        3. 实例 input 端口 -> 子模块 input 端口: top.inst.d -> child.d
+        """
+        all_nodes = set(self.graph.nodes())
+        
+        # 找到所有实例端口节点 (前缀为 top.inst 形式)
+        inst_prefixes = set()
+        for node in all_nodes:
+            parts = node.split('.')
+            if len(parts) >= 2 and parts[1] == 'inst':
+                inst_prefix = '.'.join(parts[:2])
+                inst_prefixes.add(inst_prefix)
+        
+        for inst_prefix in inst_prefixes:
+            inst_port_nodes = [n for n in all_nodes if n.startswith(inst_prefix + '.')]
+            
+            for inst_port_node in inst_port_nodes:
+                port_name = inst_port_node.rsplit('.', 1)[1]
+                parts = inst_prefix.split('.')
+                parent_module = parts[0]
+                
+                # 检查对应的模块端口节点 top.<port_name>
+                module_port_node = f"{parent_module}.{port_name}"
+                if module_port_node in all_nodes and module_port_node != inst_port_node:
+                    inst_node = self.graph.get_node(inst_port_node)
+                    if inst_node and inst_node.kind.name == 'PORT_OUT':
+                        # 实例 output -> 模块端口
+                        existing = any(
+                            e.src == inst_port_node and e.dst == module_port_node
+                            for e in self.graph._edge_data.values()
+                        )
+                        if not existing:
+                            self.graph.add_trace_edge(TraceEdge(
+                                src=inst_port_node,
+                                dst=module_port_node,
+                                kind=EdgeKind.CONNECTION
+                            ))
+                
+                # 检查子模块端口节点 child.<port_name>
+                child_port_node = f"child.{port_name}"
+                if child_port_node in all_nodes and child_port_node != inst_port_node:
+                    child_node = self.graph.get_node(child_port_node)
+                    if child_node:
+                        if child_node.kind.name == 'PORT_OUT':
+                            # child.q -> top.inst.q
+                            existing = any(
+                                e.src == child_port_node and e.dst == inst_port_node
+                                for e in self.graph._edge_data.values()
+                            )
+                            if not existing:
+                                self.graph.add_trace_edge(TraceEdge(
+                                    src=child_port_node,
+                                    dst=inst_port_node,
+                                    kind=EdgeKind.CONNECTION
+                                ))
+                        elif child_node.kind.name == 'PORT_IN':
+                            # top.inst.d -> child.d
+                            existing = any(
+                                e.src == inst_port_node and e.dst == child_port_node
+                                for e in self.graph._edge_data.values()
+                            )
+                            if not existing:
+                                self.graph.add_trace_edge(TraceEdge(
+                                    src=inst_port_node,
+                                    dst=child_port_node,
+                                    kind=EdgeKind.CONNECTION
+                                ))
     
     def _create_hierarchical_bit_nodes(self):
         """方案C: 为位选择节点创建父子关系
