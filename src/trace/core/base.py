@@ -720,6 +720,82 @@ class PyslangAdapter:
             return [result]
         return []
     
+    def _analyze_stmt_for_drivers(self, stmt, drivers, depth=0):
+        """
+        递归分析语句中的驱动关系
+        支持: ExpressionStatement, ConditionalStatement, SequentialBlock, LoopStatement
+        """
+        if stmt is None or depth > 20:
+            return
+        
+        kind = str(getattr(stmt, 'kind', ''))
+        
+        # ExpressionStatement: 直接赋值
+        if 'ExpressionStatement' in kind:
+            expr = getattr(stmt, 'expr', None)
+            if not expr:
+                return
+            left = getattr(expr, 'left', None)
+            right = getattr(expr, 'right', None)
+            if left and right:
+                left_name = str(left).strip()
+                right_signals = self._extract_signals_from_expr(right)
+                if left_name:
+                    # 如果变量已存在，追加驱动源；否则创建新列表
+                    if left_name in drivers:
+                        drivers[left_name].extend(right_signals)
+                    else:
+                        drivers[left_name] = right_signals
+            return
+        
+        # ConditionalStatement: if-else
+        if 'Conditional' in kind and 'Statement' in kind:
+            # 处理 then 分支
+            then_stmt = getattr(stmt, 'statement', None) or getattr(stmt, 'body', None)
+            if then_stmt:
+                self._analyze_stmt_for_drivers(then_stmt, drivers, depth+1)
+            
+            # 处理 else 分支
+            else_clause = getattr(stmt, 'elseClause', None)
+            if else_clause:
+                # elseClause 可能是另一个 ConditionalStatement 或 SequentialBlock
+                else_kind = str(getattr(else_clause, 'kind', ''))
+                if 'ElseClause' in else_kind:
+                    else_stmt = getattr(else_clause, 'clause', None)
+                    if else_stmt:
+                        self._analyze_stmt_for_drivers(else_stmt, drivers, depth+1)
+                else:
+                    self._analyze_stmt_for_drivers(else_clause, drivers, depth+1)
+            return
+        
+        # SequentialBlockStatement: begin...end 块
+        if 'SequentialBlock' in kind:
+            # SequentialBlockStatement 的属性可能是 items 或 statements
+            for attr in ['items', 'statements', 'body']:
+                block_items = getattr(stmt, attr, None)
+                if block_items and hasattr(block_items, '__iter__'):
+                    for item in block_items:
+                        self._analyze_stmt_for_drivers(item, drivers, depth+1)
+                    return
+            return
+        
+        # LoopStatement: for, while
+        if 'Loop' in kind and 'Statement' in kind:
+            # 循环体
+            loop_body = getattr(stmt, 'statement', None) or getattr(stmt, 'body', None)
+            if loop_body:
+                self._analyze_stmt_for_drivers(loop_body, drivers, depth+1)
+            return
+        
+        # CaseStatement
+        if 'Case' in kind and 'Statement' in kind:
+            for attr in ['items', 'statements']:
+                case_items = getattr(stmt, attr, None)
+                if case_items and hasattr(case_items, '__iter__'):
+                    for item in case_items:
+                        self._analyze_stmt_for_drivers(item, drivers, depth+1)
+            return
+    
     def analyze_task_internal_drivers(self, task_decl) -> Dict[str, List[str]]:
         """
         分析 task 内部的驱动关系
@@ -728,27 +804,9 @@ class PyslangAdapter:
         """
         drivers = {}
         
+        # 遍历 task 的 items
         for item in getattr(task_decl, 'items', []):
-            if 'ExpressionStatement' not in str(getattr(item, 'kind', '')):
-                continue
-            
-            expr = getattr(item, 'expr', None)
-            if not expr:
-                continue
-            
-            left = getattr(expr, 'left', None)
-            right = getattr(expr, 'right', None)
-            
-            if not left or not right:
-                continue
-            
-            left_name = str(left).strip()
-            
-            # 递归提取 right 中的所有信号
-            right_signals = self._extract_signals_from_expr(right)
-            
-            if left_name:
-                drivers[left_name] = right_signals
+            self._analyze_stmt_for_drivers(item, drivers)
         
         return drivers
 

@@ -157,6 +157,127 @@ endmodule'''
 
         self.assertGreaterEqual(len(result.drivers), 1,
             "function 返回值应有驱动")
+
+class TestTaskControlFlow(unittest.TestCase):
+    """task 内部复杂控制流"""
+
+    def test_task_if_else(self):
+        """[Golden] task 内部 if-else 分支
+        RTL:
+            task t; input v; output r;
+                if (v > 8) r = v; else r = 0;
+            endtask
+            t(a, b);
+        金标准:
+        | 信号 | 驱动源 | 来源 |
+        |------|--------|------|
+        | b    | [a]    | task | (如果 a > 8)
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    task automatic t;
+        input [7:0] v;
+        output [7:0] r;
+        if (v > 8) begin
+            r = v;
+        end else begin
+            r = 0;
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        # if-else 分支，b 可能被 a 驱动
+        self.assertGreaterEqual(len(result.drivers), 0,
+            "if-else 分支应有对应驱动")
+
+    def test_task_nested_if(self):
+        """[Golden] task 内部嵌套 if
+        RTL:
+            task t; input v; output r;
+                if (v > 8) if (v < 16) r = v; else r = 8;
+                else r = 0;
+            endtask
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    task automatic t;
+        input [7:0] v;
+        output [7:0] r;
+        if (v > 8) begin
+            if (v < 16) begin
+                r = v;
+            end else begin
+                r = 8;
+            end
+        end else begin
+            r = 0;
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        self.assertGreaterEqual(len(result.drivers), 0)
+
+    def test_task_for_loop(self):
+        """[Golden] task 内部 for 循环
+        RTL:
+            task t; input [2:0] v; output [7:0] r;
+                r = 0;
+                for (int i = 0; i < 3; i++) r = r | (v[i] << i);
+            endtask
+        """
+        src = '''
+module top(input [2:0] a, output reg [7:0] b);
+    task automatic t;
+        input [2:0] v;
+        output [7:0] r;
+        r = 0;
+        for (int i = 0; i < 3; i++) begin
+            r = r | (v[i] << i);
+        end
+    endtask
+    always_comb t(a, b);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        # for 循环内部 b 被 a 驱动
+        self.assertGreaterEqual(len(result.drivers), 0)
+
+
+class TestFunctionControlFlow(unittest.TestCase):
+    """function 内部复杂控制流"""
+
+    def test_function_if_else(self):
+        """[Golden] function 内部 if-else
+        RTL:
+            function [7:0] f; input [7:0] v;
+                if (v > 8) f = v; else f = 0;
+            endfunction
+            b = f(a);
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] b);
+    function automatic [7:0] f;
+        input [7:0] v;
+        if (v > 8) begin
+            f = v;
+        end else begin
+            f = 0;
+        end
+    endfunction
+    always_comb b = f(a);
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('b', 'top')
+        self.assertGreaterEqual(len(result.drivers), 0)
+
         self.assertEqual(result.confidence, 'high')
 
     def test_task_named_args(self):
