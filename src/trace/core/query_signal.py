@@ -66,15 +66,20 @@ class SignalTracer:
         # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
+                # [NEW] 跳过自环 (state <= state + 1)，但仍然记录为驱动
+                if src == dst:
+                    node = self.graph.get_node(src)
+                    if node and node.id not in seen_ids:
+                        drivers.append(node)
+                        seen_ids.add(node.id)
+                    continue
+                
                 node = self.graph.get_node(src)
                 if node and node.id not in seen_ids:
                     drivers.append(node)
                     seen_ids.add(node.id)
-                else:
-                    # [P2] 如果节点已存在但可能通过实例端口还有上游，继续追溯
-                    pass
                 
-                # [P2] 继续递归追溯这个 src 的驱动
+                # 继续递归追溯这个 src 的驱动
                 if src in self.graph.nodes():
                     self._trace_drivers_recursive(src, drivers, seen_ids)
     

@@ -17,6 +17,123 @@ class DriverExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
     
+
+    #==============================================================================
+    # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
+    #==============================================================================
+    
+    def _extract_clock_from_always(self, n) -> str:
+        """从 always_ff @(posedge clk) 提取时钟信号名"""
+        s = getattr(n, 'statement', None) or getattr(n, 'body', None)
+        if not s: return ""
+        tc = getattr(s, 'timingControl', None)
+        if tc: return self._extract_clock_from_event_ctrl(tc)
+        return ""
+
+    def _extract_clock_from_event_ctrl(self, n) -> str:
+        """从 TimingControl 提取时钟"""
+        e = getattr(n, 'expr', None)
+        if not e: return ""
+        i = getattr(e, 'expr', None) or e
+        se = i.left if hasattr(i, 'left') else i
+        ed = getattr(se, 'edge', None)
+        if ed and "posedge" in str(ed):
+            ce = getattr(se, 'expr', None)
+            if ce: return str(ce).strip()
+        return ""
+
+    def _extract_condition_str(self, n) -> str:
+        """从 if 语句提取条件表达式"""
+        p = getattr(n, "predicate", None)
+        if not p: return ""
+        cs = getattr(p, "conditions", None)
+        return str(cs).strip() if cs else str(p).strip()
+
+    def _collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
+        """递归收集语句，同时携带语义上下文 (clock_domain, condition)"""
+        if _s is None: _s = set()
+        if ctx is None: ctx = {"clock": "", "condition": ""}
+        nid = id(n)
+        if nid in _s: return []
+        _s.add(nid)
+        if n is None or d > 30: return []
+        k = getattr(n, "kind", None)
+        ks = str(k) if k else ""
+        if ".TokenKind." in ks or "Trivia" in ks:
+            return []
+        r = []
+        
+        # InitialBlock
+        if "InitialBlock" in ks:
+            stmt = getattr(n, "statement", None) or getattr(n, "body", None)
+            if stmt: r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
+            return r
+
+        if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]):
+            cl = ""
+            if "AlwaysFF" in ks: cl = self._extract_clock_from_always(n)
+            c2 = {**ctx, "clock": cl}
+            s = getattr(n, "statement", None) or getattr(n, "body", None)
+            if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
+            return r
+            
+        if "TimingControl" in ks:
+            tc = getattr(n, "timingControl", None)
+            cl = self._extract_clock_from_event_ctrl(tc) if tc else ""
+            c2 = {**ctx, "clock": cl}
+            s = getattr(n, "statement", None)
+            if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
+            return r
+            
+        if "Conditional" in ks and "Statement" in ks:
+            cond = self._extract_condition_str(n)
+            ts = getattr(n, "statement", None)
+            if ts:
+                c2 = cond
+                if ctx["condition"]: c2 = ctx["condition"] + " && " + cond
+                r.extend(self._collect_stmts_with_context(ts, {**ctx, "condition": c2}, d+1, _s))
+            ec = getattr(n, "elseClause", None)
+            if ec:
+                ae = getattr(ec, "clause", None) or ec
+                c2 = "!" + cond
+                if ctx["condition"]: c2 = ctx["condition"] + " && !" + cond
+                r.extend(self._collect_stmts_with_context(ae, {**ctx, "condition": c2}, d+1, _s))
+            return r
+            
+        if "ElseClause" in ks:
+            s = getattr(n, "clause", None)
+            if s: r.extend(self._collect_stmts_with_context(s, ctx, d+1, _s))
+            return r
+            
+        if "SequentialBlock" in ks:
+            for a in ["body", "statements", "items"]:
+                b = getattr(n, a, None)
+                if b and hasattr(b, "__iter__") and not isinstance(b, str):
+                    for i in b: r.extend(self._collect_stmts_with_context(i, ctx, d+1, _s))
+            return r
+            
+        if "ExpressionStatement" in ks:
+            e = getattr(n, "expr", None)
+            if e: r.extend(self._collect_stmts_with_context(e, ctx, d+1, _s))
+            return r
+            
+        if "Assignment" in ks:
+            r.append((n, ctx))
+            return r
+            
+        for a in dir(n):
+            if a.startswith("_") or a in ["parent", "sourceRange", "attributes", "kind", "keyword", "items"]: continue
+            if a in ["tokens", "trivia", "leadingTrivia", "trailingTrivia"]: continue
+            try:
+                ch = getattr(n, a)
+                if callable(ch): continue
+                if hasattr(ch, "__iter__") and not isinstance(ch, str):
+                    for c in ch:
+                        if hasattr(c, "kind"): r.extend(self._collect_stmts_with_context(c, ctx, d+1, _s))
+                elif hasattr(ch, "kind"): r.extend(self._collect_stmts_with_context(ch, ctx, d+1, _s))
+            except: pass
+        return r
+
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
 
@@ -70,12 +187,11 @@ class DriverExtractor:
                             kind=EdgeKind.DRIVER, assign_type="continuous"
                         ))
             
-            # always 块 - [铁律7金标准]
-            # 金标准: always_ff @(posedge clk) dout <= data;
+            # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
-                stmts = []
-                self._collect_assignments_from_stmt(always, stmts)
-                for stmt in stmts:
+                # 使用语义上下文方法收集语句
+                stmts_ctx = self._collect_stmts_with_context(always)
+                for stmt, ctx in stmts_ctx:
                     lhs, rhs = self._parse_assign(stmt)
                     if lhs and rhs:
                         dst_node_id = f"{module_name}.{lhs}"
@@ -102,9 +218,12 @@ class DriverExtractor:
                                     id=src_node_id, name=rhs_name, module=module_name,
                                     kind=NodeKind.SIGNAL, width=(1, 0)
                                 ))
+                            # [NEW] 添加语义上下文到 Edge
                             result.edges.append(TraceEdge(
                                 src=src_node_id, dst=dst_node_id,
-                                kind=EdgeKind.DRIVER, assign_type="nonblocking"
+                                kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                clock_domain=ctx.get("clock", ""),
+                                condition=ctx.get("condition", "")
                             ))
         
         return result
