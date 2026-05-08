@@ -420,24 +420,32 @@ class DriverExtractor:
                 return
             call_name = str(callee).strip()
             
-            # 获取调用参数 (OrderedArgument 列表)
+            # 获取调用参数 (OrderedArgument 或 NamedArgument 列表)
             args_node = getattr(invocation, 'arguments', None)
             if not args_node:
                 return
             
-            call_args = []
+            call_args = []  # 位置参数列表
+            named_args = {}  # 命名参数字典 {name: signal}
             params = getattr(args_node, 'parameters', [])
             for arg in params:
                 arg_kind = str(getattr(arg, 'kind', ''))
                 # 跳过逗号等 token
-                if 'OrderedArgument' not in arg_kind:
-                    continue
-                expr = getattr(arg, 'expr', None)
-                if expr:
-                    # 提取参数名
-                    arg_name = self._get_signal(expr)
-                    if arg_name:
-                        call_args.append(arg_name.strip())
+                if 'OrderedArgument' in arg_kind:
+                    expr = getattr(arg, 'expr', None)
+                    if expr:
+                        arg_name = self._get_signal(expr)
+                        if arg_name:
+                            call_args.append(arg_name.strip())
+                elif 'NamedArgument' in arg_kind:
+                    # 命名参数: .name(expr)
+                    name = getattr(arg, 'name', None)
+                    expr = getattr(arg, 'expr', None)
+                    if name and expr:
+                        name_str = str(name).strip()
+                        arg_name = self._get_signal(expr)
+                        if arg_name:
+                            named_args[name_str] = arg_name.strip()
             
             # 查找 task 定义 - 在 module 中查找
             task_def = None
@@ -462,10 +470,14 @@ class DriverExtractor:
             else:
                 def_params = self.adapter.get_function_params(task_def)
             
-            # 建立映射: call_args[i] -> def_params[i]
+            # 建立映射: def_params[i] -> call_args[i] 或 named_args[name]
             param_map = {}  # def_param_name -> call_arg_name
             for i, (direction, param_name) in enumerate(def_params):
-                if i < len(call_args):
+                # 首先尝试从命名参数获取
+                if param_name in named_args:
+                    param_map[param_name] = named_args[param_name]
+                # 否则从位置参数获取
+                elif i < len(call_args):
                     param_map[param_name] = call_args[i]
             
             # 分析 task/function 内部的驱动关系

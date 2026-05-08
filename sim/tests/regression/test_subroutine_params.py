@@ -44,6 +44,33 @@ endmodule'''
 
         self.assertGreaterEqual(len(result.drivers), 1,
             "task output 参数应有驱动")
+    
+    def test_task_named_args(self):
+        """[Golden] task 调用使用命名参数
+        RTL:
+            task do_work; input [7:0] in; output [7:0] out; out = in; endtask
+            always_comb do_work(.in(a), .out(y));
+        金标准:
+        | 信号 | 驱动源 | 来源        |
+        |------|--------|-------------|
+        | y    | [a]    | always_comb |
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] y);
+    task automatic do_work;
+        input [7:0] in;
+        output [7:0] out;
+        out = in;
+    endtask
+    always_comb do_work(.in(a), .out(y));
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('y', 'top')
+
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "命名参数调用应有驱动")
+
         self.assertEqual(result.confidence, 'high')
 
     def test_task_input_output(self):
@@ -131,6 +158,32 @@ endmodule'''
         self.assertGreaterEqual(len(result.drivers), 1,
             "function 返回值应有驱动")
         self.assertEqual(result.confidence, 'high')
+
+    def test_task_named_args(self):
+        """[Golden] task 调用使用命名参数
+        RTL:
+            task do_work; input [7:0] in; output [7:0] out; out = in; endtask
+            always_comb do_work(.in(a), .out(y));
+        金标准:
+        | 信号 | 驱动源 | 来源        |
+        |------|--------|-------------|
+        | y    | [a]    | always_comb |
+        """
+        src = '''
+module top(input [7:0] a, output reg [7:0] y);
+    task automatic do_work;
+        input [7:0] in;
+        output [7:0] out;
+        out = in;
+    endtask
+    always_comb do_work(.in(a), .out(y));
+endmodule'''
+        tree = pyslang.SyntaxTree.fromText(src)
+        tracer = UnifiedTracer(trees={'top': tree})
+        result = tracer.trace_signal('y', 'top')
+
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "命名参数调用应有驱动")
 
 
 class TestEnumSelfDrive(unittest.TestCase):
