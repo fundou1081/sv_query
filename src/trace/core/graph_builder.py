@@ -544,6 +544,21 @@ class DriverExtractor:
         kind = getattr(signal, 'kind', None)
         kind_str = str(kind) if kind else ''
         
+        # [P1] 处理 TimingControlExpression: #5 b 或 repeat(3) @(posedge clk) b
+        # 这种表达式的实际信号在 .expr 属性中
+        if 'TimingControl' in kind_str and hasattr(signal, 'expr'):
+            inner = signal.expr
+            if inner:
+                return self._get_all_signals(inner)
+            return []
+        
+        # [P1] 处理 DelayExpression: #5 b
+        if 'Delay' in kind_str and hasattr(signal, 'expr'):
+            inner = signal.expr
+            if inner:
+                return self._get_all_signals(inner)
+            return []
+        
         # 三元运算符: sel ? a : b → [sel, a, b]
         if 'ConditionalExpression' in kind_str:
             signals = []
@@ -587,22 +602,38 @@ class DriverExtractor:
         if signal is None:
             return None
         
+        # [P1] 处理 TimingControlExpression: #5 b 或 repeat(3) @(posedge clk) b
+        # 实际信号在 .expr 属性中，类型是 IdentifierNameSyntax
+        kind = getattr(signal, 'kind', None)
+        kind_str = str(kind) if kind else ''
+        if 'TimingControl' in kind_str:
+            if hasattr(signal, 'expr') and signal.expr:
+                return self._get_signal(signal.expr)
+            return None
+        
+        # [P1] 处理 DelayExpression: #5 b
+        if 'Delay' in kind_str:
+            if hasattr(signal, 'expr') and signal.expr:
+                return self._get_signal(signal.expr)
+            return None
+        
+        # [P1] 处理 IdentifierNameSyntax: 直接返回 identifier.value
+        if kind and 'IdentifierName' in kind_str:
+            if hasattr(signal, 'identifier') and hasattr(signal.identifier, 'value'):
+                return signal.identifier.value
+            return None
+        
         # [P2] 处理 MultipleConcatenationExpression: {N{signal}}
-        if hasattr(signal, 'kind') and 'MultipleConcatenation' in str(signal.kind):
-            # 结构: signal.concatenation.expressions
+        if 'MultipleConcatenation' in kind_str:
             if hasattr(signal, 'concatenation'):
                 concat = signal.concatenation
                 if hasattr(concat, 'expressions'):
-                    # 直接处理
                     result = self._get_signal(concat.expressions)
                     return result
             return None
         
         # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名 data[3]
-        # 位选择信息在 build() 中处理为父子节点
-        kind = getattr(signal, 'kind', None)
-        if kind and 'IdentifierSelect' in str(kind):
-            # 返回完整名 (含位选择), 如 data[3]
+        if 'IdentifierSelect' in kind_str:
             name = str(signal).strip()
             name = self.adapter.clean_name(name) if name else None
             if name:
@@ -745,6 +776,23 @@ class LoadExtractor:
     
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:
+            return None
+        
+        # [P1] 处理 TimingControlExpression: #5 b 或 repeat(3) @(posedge clk) b
+        # 实际信号在 .expr 属性中
+        kind = getattr(signal, 'kind', None)
+        kind_str = str(kind) if kind else ''
+        if 'TimingControl' in kind_str and hasattr(signal, 'expr'):
+            inner = signal.expr
+            if inner:
+                return self._get_signal(inner)
+            return None
+        
+        # [P1] 处理 DelayExpression: #5 b
+        if 'Delay' in kind_str and hasattr(signal, 'expr'):
+            inner = signal.expr
+            if inner:
+                return self._get_signal(inner)
             return None
         
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
