@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import NodeKind
+from trace.core.graph_models import NodeKind, EdgeKind
 from trace.core.query_module import ModuleTracer
 from trace.core.query_clock_domain import ClockDomainTracer
 
@@ -105,6 +105,56 @@ endmodule'''
         self.assertIsNotNone(clk_node, "clk 节点应该存在")
         self.assertNotEqual(clk_node.kind, NodeKind.REG, 
             f"clk 不应该是 REG，实际 kind={clk_node.kind}")
+    
+    def test_bit_select_reg_with_clock_and_comb(self):
+        """[金标准] 位选择端口的双边驱动
+        
+        RTL:
+        output reg [7:0] q;
+        always_ff @(posedge clk) q[7:4] <= d_in[7:4];
+        always_comb q[3:0] = d_in[3:0];
+        
+        期望:
+        - top.q[7:4]: kind=REG, has CLOCK edge from clk
+        - top.q[3:0]: kind=SIGNAL, no CLOCK edge
+        """
+        source = '''
+module top(input clk, input [7:0] d_in, output reg [7:0] q);
+    always_ff @(posedge clk) q[7:4] <= d_in[7:4];
+    always_comb q[3:0] = d_in[3:0];
+endmodule'''
+        
+        graph = self._build_graph(source)
+        
+        # 检查 q[7:4] 节点
+        q74_node = graph.get_node('top.q[7:4]')
+        self.assertIsNotNone(q74_node, "q[7:4] 节点应该存在")
+        self.assertEqual(q74_node.kind, NodeKind.REG, 
+            f"q[7:4] kind 应该是 REG，实际是 {q74_node.kind}")
+        
+        # 检查 q[3:0] 节点
+        q30_node = graph.get_node('top.q[3:0]')
+        self.assertIsNotNone(q30_node, "q[3:0] 节点应该存在")
+        self.assertEqual(q30_node.kind, NodeKind.SIGNAL,
+            f"q[3:0] kind 应该是 SIGNAL，实际是 {q30_node.kind}")
+        
+        # 检查 q[7:4] 有从 clk 来的 CLOCK 边
+        q74_clock_preds = []
+        for pred in graph.predecessors('top.q[7:4]'):
+            edge = graph.get_edge(pred, 'top.q[7:4]')
+            if edge and edge.kind == EdgeKind.CLOCK:
+                q74_clock_preds.append(pred)
+        self.assertIn('top.clk', q74_clock_preds,
+            f"q[7:4] 应该有 CLOCK 边从 clk，实际前驱是 {q74_clock_preds}")
+        
+        # 检查 q[3:0] 没有 CLOCK 边
+        q30_has_clock = False
+        for pred in graph.predecessors('top.q[3:0]'):
+            edge = graph.get_edge(pred, 'top.q[3:0]')
+            if edge and edge.kind == EdgeKind.CLOCK:
+                q30_has_clock = True
+                break
+        self.assertFalse(q30_has_clock, "q[3:0] 不应该有 CLOCK 边（always_comb）")
 
 
 if __name__ == '__main__':
