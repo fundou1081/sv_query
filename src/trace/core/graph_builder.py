@@ -162,7 +162,8 @@ class DriverExtractor:
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0)
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             # [铁律4] 为每个信号创建 TraceNode
@@ -250,6 +251,14 @@ class DriverExtractor:
                                 clock_domain=ctx.get("clock", ""),
                                 condition=ctx.get("condition", "")
                             ))
+                            
+                            # [铁律16] 处理 port + reg 双语义
+                            # 如果 dst 节点已存在且是端口，升级为 REG
+                            for existing_node in result.nodes:
+                                if existing_node.id == dst_node_id:
+                                    if existing_node.kind in [NodeKind.PORT_OUT, NodeKind.PORT_IN, NodeKind.PORT_INOUT]:
+                                        existing_node.kind = NodeKind.REG
+                                    break
                             
                             # [NEW] Phase 2: CLOCK 边 (方案B - 双边缘)
                             # always_ff 块内：如果有时钟上下文，创建 clk -> dst (CLOCK) 边
@@ -754,7 +763,8 @@ class LoadExtractor:
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0)
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             for assign in self.adapter.get_assignments(module):
@@ -961,7 +971,8 @@ class ClockDomainExtractor:
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0)
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             for port in self.adapter.get_port_names(module):
@@ -1139,10 +1150,22 @@ class GraphBuilder:
         return self._extractors.get(name)
     
     def _extract_all_nodes(self):
+        """提取节点并处理双语义：port + reg"""
         for name, extractor in self._extractors.items():
             result = extractor.extract()
             for node in result.nodes:
-                self.graph.add_trace_node(node)
+                existing = self.graph._node_data.get(node.id)
+                
+                if existing:
+                    # [铁律16] 处理 port + reg 双语义
+                    # 如果已存在的节点是端口 (PORT_OUT/PORT_IN)，且新节点是 REG
+                    # 升级 kind 为 REG，但保留 is_port=True
+                    if (existing.kind in [NodeKind.PORT_OUT, NodeKind.PORT_IN, NodeKind.PORT_INOUT]
+                        and node.kind == NodeKind.REG):
+                        existing.kind = NodeKind.REG
+                        existing.is_port = getattr(node, 'is_port', existing.is_port)
+                else:
+                    self.graph.add_trace_node(node)
     
     def _extract_all_edges(self):
         for name, extractor in self._extractors.items():

@@ -39,6 +39,7 @@ class TraceNode:
     is_clock: bool = False
     is_reset: bool = False
     is_enable: bool = False
+    is_port: bool = False
     parent: Optional[str] = None  # 方案C: 父节点ID (位选择→完整信号)
 
 @dataclass

@@ -33,9 +33,8 @@ class ModuleTracer:
         ports = {}
         
         for node_id, node in self.graph._node_data.items():
-            if node.module == module:
-                if node.kind in [NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.PORT_INOUT]:
-                    ports[node.name] = node
+            if node.module == module and getattr(node, 'is_port', False):
+                ports[node.name] = node
         
         return ports
     
