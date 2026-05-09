@@ -320,13 +320,128 @@ class PyslangAdapter:
                 direction = str(header.direction)
         
         return name, direction
+    def extract_port_width(self, port) -> tuple:
+        """从端口声明提取位宽 (MSB, LSB)
+        
+        端口结构: port.header.dataType.dimensions[0].specifier.selector.left/right
+        left/right 是 LiteralExpressionSyntax，其 .literal.valueText 包含数值字符串
+        """
+        if not port or not hasattr(port, 'header'):
+            return (0, 0)
+        
+        header = port.header
+        if not hasattr(header, 'dataType') or not header.dataType:
+            return (0, 0)
+        
+        dt = header.dataType
+        if not hasattr(dt, 'dimensions') or not dt.dimensions:
+            return (0, 0)
+        
+        dims = dt.dimensions
+        for dim in dims:
+            if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                spec = getattr(dim, 'specifier', None)
+                if spec:
+                    sel = getattr(spec, 'selector', None)
+                    if sel:
+                        # 使用 getattr 安全获取，避免访问不存在的属性导致 segfault
+                        left_expr = getattr(sel, 'left', None)
+                        right_expr = getattr(sel, 'right', None)
+                        if left_expr is not None or right_expr is not None:
+                            msb = self._extract_int_value(left_expr)
+                            lsb = self._extract_int_value(right_expr)
+                            return (msb, lsb)
+        
+        return (0, 0)
+    
+    def _extract_int_value(self, expr) -> int:
+        """从表达式提取整数值
+        
+        处理 LiteralExpressionSyntax，其 .literal.valueText 包含数值字符串
+        也处理直接的 int 值
+        """
+        if expr is None:
+            return 0
+        
+        # 直接是 int
+        if isinstance(expr, int):
+            return expr
+        
+        # 安全检查: 确保 expr 有 literal 属性
+        if not hasattr(expr, 'literal'):
+            # 尝试直接转 int
+            try:
+                return int(str(expr))
+            except (ValueError, TypeError):
+                return 0
+        
+        # LiteralExpressionSyntax - 获取 literal.token
+        try:
+            lit = expr.literal
+            if lit and hasattr(lit, 'valueText'):
+                return int(lit.valueText)
+        except (ValueError, AttributeError, TypeError):
+            pass
+        
+        # 尝试 str 转换作为最后的手段
+        try:
+            return int(str(expr))
+        except (ValueError, TypeError):
+            return 0
+
+    def extract_data_width(self, data_decl) -> tuple:
+        """从数据声明提取位宽 (MSB, LSB)
+        
+        数据声明结构: data_decl.type.dimensions[0].specifier.selector.left/right
+        """
+        if not data_decl:
+            return (0, 0)
+        
+        if not hasattr(data_decl, 'type') or not data_decl.type:
+            return (0, 0)
+        
+        dt = data_decl.type
+        if not hasattr(dt, 'dimensions') or not dt.dimensions:
+            return (0, 0)
+        
+        dims = dt.dimensions
+        for dim in dims:
+            if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                if hasattr(dim, 'specifier') and dim.specifier:
+                    spec = dim.specifier
+                    if hasattr(spec, 'selector'):
+                        sel = spec.selector
+                        msb = int(sel.left) if hasattr(sel, 'left') and sel.left else 0
+                        lsb = int(sel.right) if hasattr(sel, 'right') and sel.right else 0
+                        return (msb, lsb)
+        
+        return (0, 0)
+
     
     def _extract_bit_width(self, node) -> tuple:
-        """提取信号位宽 (MSB, LSB)"""
-        # 默认宽度
+        """提取信号位宽 (MSB, LSB)
+        
+        支持两种 API:
+        1. 新 API: node.dimensions[0].specifier.selector.left/right
+        2. 旧 API: node.dims[0].range.left/right
+        """
+        # 默认宽度 (scalar = 1 bit)
         msb, lsb = 0, 0
         
-        # 尝试从 dims 获取
+        # 尝试从 dimensions 获取 (新 API)
+        if hasattr(node, 'dimensions') and node.dimensions:
+            dims = node.dimensions
+            for dim in dims:
+                if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                    if hasattr(dim, 'specifier') and dim.specifier:
+                        spec = dim.specifier
+                        if hasattr(spec, 'selector'):
+                            sel = spec.selector
+                            msb = self._extract_int_value(sel.left)
+                            lsb = self._extract_int_value(sel.right)
+                            return (msb, lsb)
+        
+        # 尝试从 dims 获取 (旧 API / 兼容性)
         if hasattr(node, 'dims') and node.dims:
             dims = node.dims
             if hasattr(dims, '__iter__') and not isinstance(dims, str):
@@ -334,7 +449,6 @@ class PyslangAdapter:
                     if hasattr(dim, 'range'):
                         rng = dim.range
                         if rng:
-                            # 查看范围
                             if hasattr(rng, 'left'):
                                 left = rng.left
                                 msb = int(str(left.value)) if hasattr(left, 'value') else 0
@@ -342,6 +456,7 @@ class PyslangAdapter:
                                 right = rng.right
                                 lsb = int(str(right.value)) if hasattr(right, 'value') else 0
                             return (msb, lsb)
+        
         return (msb, lsb)
 
     
