@@ -952,34 +952,36 @@ class ConnectionExtractor:
                 # 边: 外部 -> 实例 (input) 或 实例 -> 外部 (output)
                 direction_clean = direction.strip()
                 if direction_clean == 'input':
+                    # CONNECTION 边: 外部信号 -> 实例端口 (top.a -> top.inst.d)
                     result.edges.append(TraceEdge(
                         src=f"top.{signal_name}",
                         dst=inst_port_id,
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
-                    # [FIX] 也连接 child module 内部信号到实例端口
-                    # child.d -> top.inst.d (DRIVER)
+                    # DRIVER 边: child 内部信号 <- 实例端口 <- 外部信号
+                    # 追溯需要: top.a -> child.d (DRIVER)
                     child_signal_id = f"{inst_module_name}.{port_name}"
                     result.edges.append(TraceEdge(
-                        src=child_signal_id,
-                        dst=inst_port_id,
+                        src=f"top.{signal_name}",
+                        dst=child_signal_id,
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
                 elif direction_clean == 'output':
+                    # CONNECTION 边: 实例端口 -> 外部信号 (top.inst.q -> top.b)
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
                         dst=f"top.{signal_name}",
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
-                    # [FIX] 也连接实例端口到 child module 内部信号
-                    # top.inst.q -> child.q (DRIVER)
+                    # DRIVER 边: child 内部信号 -> 实例端口 (child.q -> top.inst.q)
+                    # 这是追溯所需的 - 表示 child.q 驱动了 top.inst.q
                     child_signal_id = f"{inst_module_name}.{port_name}"
                     result.edges.append(TraceEdge(
-                        src=inst_port_id,
-                        dst=child_signal_id,
+                        src=child_signal_id,
+                        dst=inst_port_id,
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
