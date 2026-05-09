@@ -61,8 +61,15 @@ class SignalTracer:
     
     def _trace_drivers_recursive(self, signal_id: str, drivers: List[TraceNode], seen_ids: set):
         """递归追溯驱动"""
+        # [FIX] 环路检测：如果 signal_id 已在 seen_ids 中，说明有环路，停止追溯
+        if signal_id in seen_ids:
+            return
+        
         if signal_id not in self.graph.nodes():
             return
+        
+        # 标记当前节点已访问
+        seen_ids.add(signal_id)
         
         # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
@@ -72,15 +79,14 @@ class SignalTracer:
                     node = self.graph.get_node(src)
                     if node and node.id not in seen_ids:
                         drivers.append(node)
-                        seen_ids.add(node.id)
                     continue
                 
                 node = self.graph.get_node(src)
                 if node and node.id not in seen_ids:
                     drivers.append(node)
-                    seen_ids.add(node.id)
                 
                 # 继续递归追溯这个 src 的驱动
+                # seen_ids 检查在递归函数开头进行
                 if src in self.graph.nodes():
                     self._trace_drivers_recursive(src, drivers, seen_ids)
     
