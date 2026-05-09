@@ -31,16 +31,45 @@ class DriverExtractor:
         return ""
 
     def _extract_clock_from_event_ctrl(self, n) -> str:
-        """从 TimingControl 提取时钟"""
+        """从 TimingControl 提取时钟，处理 or 连接的多个事件"""
         e = getattr(n, 'expr', None)
         if not e: return ""
         i = getattr(e, 'expr', None) or e
-        se = i.left if hasattr(i, 'left') else i
-        ed = getattr(se, 'edge', None)
-        if ed and "posedge" in str(ed):
-            ce = getattr(se, 'expr', None)
-            if ce: return str(ce).strip()
-        return ""
+        def find_clock(expr):
+            if expr is None: return ""
+            if hasattr(expr, 'left') and hasattr(expr, 'right'):
+                l = find_clock(expr.left)
+                return l if l else find_clock(expr.right)
+            edge_str = str(getattr(expr, 'edge', ''))
+            if 'posedge' in edge_str:
+                ce = getattr(expr, 'expr', None)
+                return str(ce).strip() if ce else ""
+            return ""
+        return find_clock(i)
+
+    def _extract_reset_from_event_ctrl(self, n) -> str:
+        """从 TimingControl 提取复位信号（处理 or 连接的多个事件）"""
+        e = getattr(n, 'expr', None)
+        if not e: return ""
+        # Unwrap parenthesized expression
+        e = getattr(e, 'expr', None) or e
+        
+        def find_reset(expr):
+            if expr is None: return ""
+            if hasattr(expr, 'left') and hasattr(expr, 'right'):
+                left = find_reset(expr.left)
+                if left: return left
+                return find_reset(expr.right)
+            edge_str = str(getattr(expr, 'edge', ''))
+            if 'negedge' in edge_str or 'posedge' in edge_str:
+                ce = getattr(expr, 'expr', None)
+                if ce:
+                    name = str(ce).strip()
+                    if 'rst' in name.lower():
+                        return name
+            return ""
+        
+        return find_reset(e)
 
     def _extract_condition_str(self, n) -> str:
         """从 if 语句提取条件表达式"""
@@ -71,8 +100,15 @@ class DriverExtractor:
 
         if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]):
             cl = ""
-            if "AlwaysFF" in ks: cl = self._extract_clock_from_always(n)
-            c2 = {**ctx, "clock": cl}
+            rst = ""
+            if "AlwaysFF" in ks:
+                cl = self._extract_clock_from_always(n)
+                # Extract reset from timing control
+                s = getattr(n, 'statement', None) or getattr(n, 'body', None)
+                if s:
+                    tc = getattr(s, 'timingControl', None)
+                    if tc: rst = self._extract_reset_from_event_ctrl(tc)
+            c2 = {**ctx, "clock": cl, "reset": rst}
             s = getattr(n, "statement", None) or getattr(n, "body", None)
             if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
             return r
@@ -146,17 +182,29 @@ class DriverExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
+            port_decls = self.adapter.get_port_declarations(module)
+            for port_decl in port_decls:
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    if 'inout' in direction.lower():
+                        kind = NodeKind.PORT_INOUT
+                    elif 'output' in direction.lower():
+                        kind = NodeKind.PORT_OUT
+                    else:
+                        kind = NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
+                        kind=kind,
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             # [铁律4] 为每个信号创建 TraceNode
@@ -214,7 +262,14 @@ class DriverExtractor:
                     lhs, rhs = self._parse_assign(stmt)
                     if lhs and rhs:
                         dst_node_id = f"{module_name}.{lhs}"
-                        if dst_node_id not in [n.id for n in result.nodes]:
+                        existing = next((n for n in result.nodes if n.id == dst_node_id), None)
+                        if existing:
+                            # Upgrade PORT to REG for signals in always_ff LHS
+                            if existing.kind in (NodeKind.PORT_OUT, NodeKind.PORT_IN):
+                                was_port = existing.is_port
+                                existing.kind = NodeKind.REG
+                                existing.is_port = was_port
+                        else:
                             result.nodes.append(TraceNode(
                                 id=dst_node_id, name=lhs, module=module_name,
                                 kind=NodeKind.REG, width=(1, 0)
@@ -244,6 +299,38 @@ class DriverExtractor:
                                 clock_domain=ctx.get("clock", ""),
                                 condition=ctx.get("condition", "")
                             ))
+                            
+                            # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
+                            clock_signal = ctx.get("clock", "")
+                            if clock_signal:
+                                clock_node_id = f"{module_name}.{clock_signal}"
+                                if clock_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=clock_node_id, name=clock_signal, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=clock_node_id, dst=dst_node_id,
+                                    kind=EdgeKind.CLOCK, assign_type="nonblocking",
+                                    clock_domain=clock_signal,
+                                    condition=ctx.get("condition", "")
+                                ))
+                            
+                            # [NEW] RESET 边: always_ff 块内创建 rst -> dst (RESET) 边
+                            reset_signal = ctx.get("reset", "")
+                            if reset_signal:
+                                reset_node_id = f"{module_name}.{reset_signal}"
+                                if reset_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=reset_node_id, name=reset_signal, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=reset_node_id, dst=dst_node_id,
+                                    kind=EdgeKind.RESET, assign_type="nonblocking",
+                                    clock_domain=clock_signal,
+                                    condition=ctx.get("condition", "")
+                                ))
         
         return result
 
@@ -683,17 +770,29 @@ class LoadExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
+            port_decls = self.adapter.get_port_declarations(module)
+            for port_decl in port_decls:
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    if 'inout' in direction.lower():
+                        kind = NodeKind.PORT_INOUT
+                    elif 'output' in direction.lower():
+                        kind = NodeKind.PORT_OUT
+                    else:
+                        kind = NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
+                        kind=kind,
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             for assign in self.adapter.get_assignments(module):
@@ -832,12 +931,20 @@ class ConnectionExtractor:
                 
                 # 节点: 实例端口
                 inst_port_id = f"top.{inst_name}.{port_name}"
+                # 根据方向确定 kind
+                if 'inout' in direction.lower():
+                    kind = NodeKind.PORT_INOUT
+                elif 'output' in direction.lower():
+                    kind = NodeKind.PORT_OUT
+                else:
+                    kind = NodeKind.PORT_IN
                 result.nodes.append(TraceNode(
                     id=inst_port_id,
                     name=port_name,
                     module=f"top.{inst_name}",
-                    kind=NodeKind.PORT_IN if direction == 'input' else NodeKind.PORT_OUT,
-                    width=(1, 0)
+                    kind=kind,
+                    width=(1, 0),
+                    is_port=True
                 ))
                 
                 # 边: 外部 -> 实例 (input) 或 实例 -> 外部 (output)
@@ -867,17 +974,29 @@ class ClockDomainExtractor:
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
-            # [铁律4] 为端口创建 TraceNode (输入端口作为驱动源)
-            ports = self.adapter.get_port_names(module)
-            for port in ports:
-                port_id = f"{module_name}.{port}"
+            # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
+            port_decls = self.adapter.get_port_declarations(module)
+            for port_decl in port_decls:
+                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+                if not port_name:
+                    continue
+                port_name = self.adapter.clean_name(port_name)
+                port_id = f"{module_name}.{port_name}"
                 if port_id not in [n.id for n in result.nodes]:
+                    # 根据方向确定 kind
+                    if 'inout' in direction.lower():
+                        kind = NodeKind.PORT_INOUT
+                    elif 'output' in direction.lower():
+                        kind = NodeKind.PORT_OUT
+                    else:
+                        kind = NodeKind.PORT_IN
                     result.nodes.append(TraceNode(
                         id=port_id,
-                        name=port,
+                        name=port_name,
                         module=module_name,
-                        kind=NodeKind.PORT_IN,
-                        width=(1, 0)
+                        kind=kind,
+                        width=(1, 0),
+                        is_port=True
                     ))
             
             for port in self.adapter.get_port_names(module):
@@ -984,6 +1103,21 @@ class GraphBuilder:
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
+        
+        # [FIX] Post-process: upgrade nodes driven by CLOCK edges to REG
+        # This handles output reg q in always_ff that was initially created as PORT_OUT
+        self._upgrade_reg_nodes()
+    
+    def _upgrade_reg_nodes(self):
+        """Upgrade node kind to REG if it's driven by a CLOCK edge"""
+        for (src, dst), edge in self.graph._edge_data.items():
+            if edge.kind == EdgeKind.CLOCK:
+                node = self.graph._node_data.get(dst)
+                if node and node.kind != NodeKind.REG:
+                    was_port = getattr(node, 'is_port', False)
+                    node.kind = NodeKind.REG
+                    if was_port:
+                        node.is_port = True
     
     def _mark_special_signals(self):
         for node_id, node in self.graph._node_data.items():
@@ -1001,3 +1135,9 @@ class GraphBuilder:
             "edges": self.graph.number_of_edges(),
             **self.graph.stats()
         }
+
+#==============================================================================
+# [补丁] 修复多事件敏感信号列表的时钟提取 (2026-05-09)
+# 原因: 27690eb commit 删除了 _extract_reset_from_event_ctrl，导致
+#       @(posedge clk_a or negedge rst_a_n) 只能提取到 clk_a
+#==============================================================================
