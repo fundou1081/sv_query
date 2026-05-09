@@ -417,3 +417,24 @@ Phase 4:        完整 Visitor 架构
 ```
 
 ---
+
+## 2026-05-09 模块实例化追踪记录
+
+### 问题分析
+_connect_instance_ports_to_module 的问题：
+1. 代码硬编码检查 `parts[1] == 'inst'`（期望实例名叫 'inst'）
+2. 实际实例名叫 `u1`，所以匹配失败
+3. ConnectionExtractor 已经创建了实例端口节点 `top.u1.d`, `top.u1.q`
+4. 但没有建立连接边
+
+### 已有 API
+- `get_module_instances()` - 获取所有实例化
+- `get_instance_connection(inst)` - 返回 `[(port, external), ...]`
+
+### 修复方案
+在 `_connect_instance_ports_to_module` 中：
+1. 遍历所有实例节点（`top.u1.*` 格式）
+2. 提取实例名（`u1`）和端口名（`d`, `q`）
+3. 调用 `get_instance_connection` 获取映射
+4. 创建 CONNECTION 边
+
