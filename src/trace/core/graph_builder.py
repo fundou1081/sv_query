@@ -41,7 +41,7 @@ class DriverExtractor:
                 l = find_clock(expr.left)
                 return l if l else find_clock(expr.right)
             edge_str = str(getattr(expr, 'edge', ''))
-            if 'posedge' in edge_str:
+            if 'posedge' in edge_str or 'negedge' in edge_str:
                 ce = getattr(expr, 'expr', None)
                 return str(ce).strip() if ce else ""
             return ""
