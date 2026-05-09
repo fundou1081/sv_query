@@ -198,12 +198,14 @@ class DriverExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
+                    # 提取端口位宽
+                    port_width = self.adapter.extract_port_width(port_decl)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0),
+                        width=port_width,
                         is_port=True
                     ))
             
@@ -808,12 +810,14 @@ class LoadExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
+                    # 提取端口位宽
+                    port_width = self.adapter.extract_port_width(port_decl)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0),
+                        width=port_width,
                         is_port=True
                     ))
             
@@ -1038,12 +1042,14 @@ class ClockDomainExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
+                    # 提取端口位宽
+                    port_width = self.adapter.extract_port_width(port_decl)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
                         module=module_name,
                         kind=kind,
-                        width=(1, 0),
+                        width=port_width,
                         is_port=True
                     ))
             
