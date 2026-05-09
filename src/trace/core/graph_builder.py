@@ -655,6 +655,14 @@ class DriverExtractor:
                     return self._get_all_signals(child)
             return []
         
+        # TimingControlExpression: a = repeat(3) @(posedge clk) b;
+        # 实际 RHS 是 expr 属性
+        if 'TimingControlExpression' in kind_str:
+            tc_expr = getattr(signal, 'expr', None)
+            if tc_expr:
+                return self._get_all_signals(tc_expr)
+            return []
+        
         # 拼接: {a, b, c} → [a, b, c]
         if 'Concatenation' in kind_str and 'Multiple' not in kind_str:
             signals = []
@@ -671,6 +679,15 @@ class DriverExtractor:
     
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:
+            return None
+        
+        # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
+        # _get_signal 被直接调用时处理，否则 _get_all_signals 已处理
+        kind = getattr(signal, 'kind', None)
+        if kind and 'TimingControlExpression' in str(kind):
+            tc_expr = getattr(signal, 'expr', None)
+            if tc_expr:
+                return self._get_signal(tc_expr)
             return None
         
         # [P2] 处理 MultipleConcatenationExpression: {N{signal}}
@@ -837,6 +854,15 @@ class LoadExtractor:
     
     def _get_signal(self, signal) -> Optional[str]:
         if signal is None:
+            return None
+        
+        # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
+        # _get_signal 被直接调用时处理，否则 _get_all_signals 已处理
+        kind = getattr(signal, 'kind', None)
+        if kind and 'TimingControlExpression' in str(kind):
+            tc_expr = getattr(signal, 'expr', None)
+            if tc_expr:
+                return self._get_signal(tc_expr)
             return None
         
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
