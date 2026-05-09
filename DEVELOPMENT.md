@@ -438,3 +438,124 @@ _connect_instance_ports_to_module 的问题：
 3. 调用 `get_instance_connection` 获取映射
 4. 创建 CONNECTION 边
 
+
+## 测试标准补充说明
+
+### 铁律17: 强断言原则 [生效]
+
+**原则**：测试断言必须验证具体行为，不能只检查"不崩溃"
+
+**禁止**：
+```python
+# ❌ 弱断言 - 0 个结果也通过
+self.assertTrue(len(result) >= 0)
+self.assertIsNotNone(result)  # 只检查非空，不检查内容
+
+# ❌ 模糊断言 - 不知道期望什么
+self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+```
+
+**必须**：
+```python
+# ✅ 强断言 - 精确验证
+self.assertEqual(len(result.drivers), 2)
+self.assertIn('top.clk', [d.id for d in result.drivers])
+self.assertEqual(result.confidence, 'high')
+
+# ✅ 边界断言 - 验证极端情况
+self.assertEqual(len(result.registers), 1, "单寄存器设计应有 1 个寄存器")
+```
+
+---
+
+### 铁律18: 负面测试原则 [生效]
+
+**原则**：每个功能必须有对应的负面测试，验证不支持的语法或错误输入有合理行为
+
+**必须测试**：
+1. 空 module / 空 always_ff
+2. 不支持的语法（如 `fork...join_none` 在不支持时）
+3. 错误输入（语法正确但语义错误）
+4. 边界条件（0 个元素、巨型位宽、深层嵌套）
+
+**示例**：
+```python
+def test_empty_module_no_crash(self):
+    """空 module 不应崩溃"""
+    source = 'module top(); endmodule'
+    graph = self._build_graph(source)
+    self.assertEqual(len(graph.nodes()), 0)
+
+def test_unsupported_syntax_handled_gracefully(self):
+    """不支持的语法应被跳过而非崩溃"""
+    source = '''
+module top(input clk);
+    initial clk = 0;  # initial 不支持但不应崩溃
+endmodule'''
+    # 应该：不崩溃，但 initial 块被跳过
+    graph = self._build_graph(source)
+    self.assertEqual(len(graph.predecessors('top.clk')), 0)
+```
+
+---
+
+### 铁律19: 金标准测试的 RTL 来源 [生效]
+
+**原则**：金标准测试的 RTL 必须来自真实场景或芯片设计常见模式
+
+**优先级**：
+1. **真实开源项目片段**（ibex, cv32e40p 等）
+2. **芯片设计常见模式**（如多路复用、跨时钟域握手）
+3. **标准总线协议**（APB, AXI, AHB 子集）
+
+**禁止**：
+```python
+# ❌ 人为构造的简单 RTL，不反映真实场景
+source = '''
+module top(input clk, output q);
+    assign q = clk;
+endmodule'''
+```
+
+**必须**：
+```python
+# ✅ 真实场景模式
+source = '''
+module apb_mux #(
+    parameter ADDR_WIDTH = 32,
+    parameter DATA_WIDTH = 32
+) (
+    input  logic                psel,
+    input  logic [ADDR_WIDTH-1:0] paddr,
+    input  logic                penable,
+    input  logic [DATA_WIDTH-1:0] pwdata,
+    output logic [DATA_WIDTH-1:0] prdata,
+    // 多路复用逻辑...
+);'''
+```
+
+---
+
+### 铁律20: 全面性原则 [生效]
+
+**原则**：测试必须覆盖功能的所有使用路径
+
+**必须覆盖**：
+| 场景 | 测试内容 |
+|------|----------|
+| 基本路径 | 功能的核心使用场景 |
+| 边界条件 | 参数为 0、1、最大值时的行为 |
+| 组合路径 | 多个功能组合使用 |
+| 跨层级 | 从顶层到叶节点的完整路径 |
+| 多实例 | 同一模块被实例化多次 |
+
+**检查清单**：
+- [ ] 基本功能测试
+- [ ] 空输入测试
+- [ ] 单元素测试
+- [ ] 多元素测试
+- [ ] 错误输入测试
+- [ ] 边界值测试
+- [ ] 跨模块路径测试
+- [ ] 多实例独立追踪测试
+
