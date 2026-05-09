@@ -18,13 +18,15 @@ class NodeKind(Enum):
     CONST = auto()
 
 class EdgeKind(Enum):
-    DRIVER = auto()
-    DATA = auto()
-    CLOCK = auto()
-    RESET = auto()
-    ENABLE = auto()
-    CONNECTION = auto()
-    BIT_SELECT = auto()
+    DRIVER = auto()      # 数据驱动 (q <= d)
+    CLOCK = auto()       # 时钟触发 (clk -> q)
+    RESET = auto()       # 异步复位 (rst_n -> q)
+    CONNECTION = auto()  # 模块端口连接
+    BIT_SELECT = auto()   # 位选择聚合
+
+# [铁律16] 注意：ENABLE/DATA 不作为独立边类型
+# - ENABLE: 用 TraceEdge.condition 属性替代，语义更清晰
+# - DATA: 与 DRIVER 重复，保留 DRIVER 即可
 
 @dataclass
 class TraceNode:

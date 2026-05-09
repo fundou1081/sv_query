@@ -116,8 +116,10 @@ class TestGraphModels(unittest.TestCase):
     
     def test_edge_kind_enum(self):
         """EdgeKind 枚举"""
-        self.assertEqual(EdgeKind.DRIVER.value, 1)
-        self.assertEqual(EdgeKind.DATA.value, 2)
+        # DRIVER, CLOCK, RESET 存在，ENABLE/DATA 已移除
+        self.assertIsNotNone(EdgeKind.DRIVER)
+        self.assertIsNotNone(EdgeKind.CLOCK)
+        self.assertIsNotNone(EdgeKind.RESET)
 
 
 if __name__ == '__main__':
