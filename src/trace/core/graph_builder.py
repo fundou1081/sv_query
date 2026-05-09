@@ -250,6 +250,24 @@ class DriverExtractor:
                                 clock_domain=ctx.get("clock", ""),
                                 condition=ctx.get("condition", "")
                             ))
+                            
+                            # [NEW] Phase 2: CLOCK 边 (方案B - 双边缘)
+                            # always_ff 块内：如果有时钟上下文，创建 clk -> dst (CLOCK) 边
+                            clock_signal = ctx.get("clock", "")
+                            if clock_signal:
+                                clock_node_id = f"{module_name}.{clock_signal}"
+                                # 确保 clk 节点存在
+                                if clock_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=clock_node_id, name=clock_signal, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=clock_node_id, dst=dst_node_id,
+                                    kind=EdgeKind.CLOCK, assign_type="nonblocking",
+                                    clock_domain=clock_signal,
+                                    condition=ctx.get("condition", "")
+                                ))
         
         return result
 
