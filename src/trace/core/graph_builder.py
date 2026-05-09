@@ -262,17 +262,22 @@ class DriverExtractor:
                     lhs, rhs = self._parse_assign(stmt)
                     if lhs and rhs:
                         dst_node_id = f"{module_name}.{lhs}"
+                        # Only upgrade to REG if there's a clock context (always_ff)
+                        is_always_ff = bool(ctx.get('clock'))
                         existing = next((n for n in result.nodes if n.id == dst_node_id), None)
                         if existing:
-                            # Upgrade PORT to REG for signals in always_ff LHS
-                            if existing.kind in (NodeKind.PORT_OUT, NodeKind.PORT_IN):
-                                was_port = existing.is_port
-                                existing.kind = NodeKind.REG
-                                existing.is_port = was_port
+                            if is_always_ff:
+                                if existing.kind == NodeKind.SIGNAL:
+                                    existing.kind = NodeKind.REG
+                                elif existing.kind in (NodeKind.PORT_OUT, NodeKind.PORT_IN):
+                                    was_port = existing.is_port
+                                    existing.kind = NodeKind.REG
+                                    existing.is_port = was_port
                         else:
+                            kind = NodeKind.REG if is_always_ff else NodeKind.SIGNAL
                             result.nodes.append(TraceNode(
                                 id=dst_node_id, name=lhs, module=module_name,
-                                kind=NodeKind.REG, width=(1, 0)
+                                kind=kind, width=(1, 0)
                             ))
                         # [NEW] 使用 _get_all_signals 提取所有驱动源
                         stmt_expr = stmt
@@ -889,7 +894,7 @@ class ConnectionExtractor:
             all_module_ports[module_name] = port_dirs
         
         for inst in instances:
-            inst_name = inst.decl.value if hasattr(inst.decl, 'value') else str(inst.decl)
+            inst_name = str(inst).split('(')[0].strip()
             
             # [P2] 推断子模块类型和端口定义
             module_ref = 'child'  # 默认
@@ -1038,6 +1043,7 @@ class GraphBuilder:
         self._extract_all_edges()
         self._mark_special_signals()
         self._create_hierarchical_bit_nodes()
+        self._upgrade_reg_nodes()  # Must be after _create_hierarchical_bit_nodes
 
         return self.graph
     
@@ -1079,7 +1085,10 @@ class GraphBuilder:
             child_node = self.graph.get_node(child_id)
             if child_node:
                 child_node.parent = parent_id
-                child_node.kind = NodeKind.SIGNAL  # 子节点标记为 SIGNAL
+                # Don't change kind here - it was set during DriverExtractor based on always_ff assignment
+                # Just ensure it has a kind
+                if child_node.kind is None:
+                    child_node.kind = NodeKind.SIGNAL
             
             # 创建聚合边: child → parent (BIT_SELECT)
             agg_edge = TraceEdge(
@@ -1103,21 +1112,20 @@ class GraphBuilder:
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
-        
-        # [FIX] Post-process: upgrade nodes driven by CLOCK edges to REG
-        # This handles output reg q in always_ff that was initially created as PORT_OUT
-        self._upgrade_reg_nodes()
     
     def _upgrade_reg_nodes(self):
-        """Upgrade node kind to REG if it's driven by a CLOCK edge"""
+        """Upgrade node kind to REG if it's driven by a CLOCK edge.
+        Only upgrade the direct target, NOT bit-select parents."""
         for (src, dst), edge in self.graph._edge_data.items():
             if edge.kind == EdgeKind.CLOCK:
-                node = self.graph._node_data.get(dst)
-                if node and node.kind != NodeKind.REG:
-                    was_port = getattr(node, 'is_port', False)
-                    node.kind = NodeKind.REG
-                    if was_port:
-                        node.is_port = True
+                # Only upgrade the direct target
+                if '[' not in dst:  # Not a bit-select
+                    node = self.graph._node_data.get(dst)
+                    if node and node.kind != NodeKind.REG:
+                        was_port = getattr(node, 'is_port', False)
+                        node.kind = NodeKind.REG
+                        if was_port:
+                            node.is_port = True
     
     def _mark_special_signals(self):
         for node_id, node in self.graph._node_data.items():
