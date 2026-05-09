@@ -958,12 +958,30 @@ class ConnectionExtractor:
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
+                    # [FIX] 也连接 child module 内部信号到实例端口
+                    # child.d -> top.inst.d (DRIVER)
+                    child_signal_id = f"{inst_module_name}.{port_name}"
+                    result.edges.append(TraceEdge(
+                        src=child_signal_id,
+                        dst=inst_port_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="internal"
+                    ))
                 elif direction_clean == 'output':
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
                         dst=f"top.{signal_name}",
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
+                    ))
+                    # [FIX] 也连接实例端口到 child module 内部信号
+                    # top.inst.q -> child.q (DRIVER)
+                    child_signal_id = f"{inst_module_name}.{port_name}"
+                    result.edges.append(TraceEdge(
+                        src=inst_port_id,
+                        dst=child_signal_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="internal"
                     ))
         
         return result
