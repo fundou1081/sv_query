@@ -896,12 +896,9 @@ class ConnectionExtractor:
         for inst in instances:
             inst_name = str(inst).split('(')[0].strip()
             
-            # [P2] 推断子模块类型和端口定义
-            module_ref = 'child'  # 默认
-            if hasattr(inst, 'module') and hasattr(inst.module, 'value'):
-                module_ref = inst.module.value
-            
-            module_ports = all_module_ports.get(module_ref, {})
+            # 获取子模块名称
+            inst_module_name = str(inst.parent.type).strip()
+            module_ports = all_module_ports.get(inst_module_name, {})
             
             # 端口连接
             conns = self.adapter.get_instance_connection(inst)
@@ -953,18 +950,19 @@ class ConnectionExtractor:
                 ))
                 
                 # 边: 外部 -> 实例 (input) 或 实例 -> 外部 (output)
-                if direction == 'input':
+                direction_clean = direction.strip()
+                if direction_clean == 'input':
                     result.edges.append(TraceEdge(
                         src=f"top.{signal_name}",
                         dst=inst_port_id,
-                        kind=EdgeKind.DRIVER,
+                        kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
-                elif direction == 'output':
+                elif direction_clean == 'output':
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
                         dst=f"top.{signal_name}",
-                        kind=EdgeKind.DRIVER,
+                        kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
         
