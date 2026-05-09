@@ -252,11 +252,22 @@ class DriverExtractor:
                                 condition=ctx.get("condition", "")
                             ))
                             
-                            # [铁律16] 处理 port + reg 双语义
-                            # 如果 dst 节点已存在且是端口，升级为 REG
+                            # [铁律16] 处理 port + reg 双语义 + always_ff 位选择
+                            # 如果 dst 节点已存在，升级 kind
+                            # 优先级: REG > PORT > SIGNAL
                             for existing_node in result.nodes:
                                 if existing_node.id == dst_node_id:
-                                    if existing_node.kind in [NodeKind.PORT_OUT, NodeKind.PORT_IN, NodeKind.PORT_INOUT]:
+                                    current_kind = existing_node.kind
+                                    should_upgrade = False
+                                    
+                                    # always_ff 驱动的节点应该是 REG
+                                    if ctx.get("clock") and current_kind in [NodeKind.SIGNAL, NodeKind.WIRE]:
+                                        should_upgrade = True
+                                    # 端口升级为 REG
+                                    elif current_kind in [NodeKind.PORT_OUT, NodeKind.PORT_IN, NodeKind.PORT_INOUT]:
+                                        should_upgrade = True
+                                    
+                                    if should_upgrade:
                                         existing_node.kind = NodeKind.REG
                                     break
                             
@@ -1136,7 +1147,15 @@ class GraphBuilder:
             child_node = self.graph.get_node(child_id)
             if child_node:
                 child_node.parent = parent_id
-                child_node.kind = NodeKind.SIGNAL  # 子节点标记为 SIGNAL
+                # [铁律16] 如果子节点已经有 CLOCK 边，不要覆盖为 SIGNAL
+                # 这样 always_ff 驱动的位选择仍然是 REG
+                has_clock_edge = any(
+                    self.graph.get_edge(pred, child_id) and 
+                    self.graph.get_edge(pred, child_id).kind == EdgeKind.CLOCK
+                    for pred in self.graph.predecessors(child_id)
+                )
+                if not has_clock_edge:
+                    child_node.kind = NodeKind.SIGNAL
             
             # 创建聚合边: child → parent (BIT_SELECT)
             agg_edge = TraceEdge(
