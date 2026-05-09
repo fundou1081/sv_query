@@ -924,10 +924,10 @@ class ConnectionExtractor:
             all_module_ports[module_name] = port_dirs
         
         for inst in instances:
-            inst_name = str(inst).split('(')[0].strip()
+            inst_name = inst.instances[0].decl.name.value.strip() if hasattr(inst.instances[0], 'decl') and hasattr(inst.instances[0].decl, 'name') and inst.instances[0].decl.name.value else str(inst).split('(')[0].strip()
             
             # 获取子模块名称
-            inst_module_name = str(inst.parent.type).strip()
+            inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''; inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
             module_ports = all_module_ports.get(inst_module_name, {})
             
             # 端口连接

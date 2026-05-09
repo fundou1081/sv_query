@@ -70,7 +70,11 @@ class PyslangAdapter:
         self._cache = {}
     
     def get_module_name(self, module) -> str:
-        """获取模块名"""
+        """获取模块名
+        
+        优先使用 header.name.value/text
+        如果为空（参数化模块的 pyslang bug），从源码提取
+        """
         # 方式1: header.name
         if hasattr(module, 'header') and module.header:
             if hasattr(module.header, 'name'):
@@ -79,6 +83,12 @@ class PyslangAdapter:
                 result = name_str.strip() if name_str else None
                 if result:
                     return result
+                # name 为空时，尝试 valueText
+                name_text = getattr(name, 'valueText', None)
+                if name_text:
+                    result = name_text.strip()
+                    if result:
+                        return result
         
         # 方式2: 直接 module.name
         if hasattr(module, 'name'):
@@ -87,6 +97,31 @@ class PyslangAdapter:
             result = name_str.strip() if name_str else None
             if result:
                 return result
+        
+        # 方式3: 从 sourceRange 提取 (修复参数化模块的 pyslang bug)
+        try:
+            if hasattr(module, 'header') and module.header:
+                rng = getattr(module.header, 'sourceRange', None)
+                if rng and hasattr(self.parser, 'trees'):
+                    for fname, tree in self.parser.trees.items():
+                        if tree and hasattr(tree, 'sourceManager'):
+                            sm = tree.sourceManager
+                            # 获取 header 的位置 (起始位置包含 "module " 后面是名字)
+                            start_loc = rng.start
+                            # buffer offset 是从 0 开始的
+                            buf_id = start_loc.buffer
+                            src_text = sm.getSourceText(buf_id)
+                            # 从 start offset 开始，找到模块名
+                            offset = start_loc.offset
+                            if offset > 0 and src_text:
+                                # 跳过 "module " 找名字
+                                remaining = src_text[offset:]
+                                import re
+                                m = re.match(r'module\s+(\w+)', remaining)
+                                if m:
+                                    return m.group(1)
+        except Exception:
+            pass
         
         return "unknown"
     
@@ -468,12 +503,14 @@ class PyslangAdapter:
             if not tree or not hasattr(tree, 'root'):
                 continue
             
-            # 遍历找 HierarchicalInstance
+            # 遍历找 HierarchyInstantiation (模块实例化语法节点)
             def find_inst(node):
                 if node is None:
                     return
                 kind = getattr(node, 'kind', None)
-                if kind and 'Instance' in str(kind) and hasattr(node, 'decl'):
+                kind_str = str(kind) if kind else ''
+                # SyntaxKind.HierarchyInstantiation 包含 "HierarchyInstantiation"
+                if kind and 'HierarchyInstantiation' in kind_str:
                     instances.append(node)
                 for attr in dir(node):
                     if attr.startswith('_') or attr in ['parent', 'sourceRange']:
@@ -499,10 +536,16 @@ class PyslangAdapter:
         """获取实例的端口连接 [(port_name, signal_name), ...]"""
         connections = []
         
-        if not hasattr(instance, 'connections'):
-            return connections
+        # 获取 connections 属性
+        # HierarchyInstantiation 有 connections 在 instance.instances[0] 上
+        conn_attr = None
+        if hasattr(instance, 'connections'):
+            conn_attr = instance.connections
+        elif hasattr(instance, 'instances') and instance.instances:
+            conn_attr = instance.instances[0].connections
         
-        conn_attr = instance.connections
+        if not conn_attr:
+            return connections
         
         # 方式1: connections 是 SyntaxNode (pyslang 对象)
         if hasattr(conn_attr, 'kind'):
@@ -522,15 +565,20 @@ class PyslangAdapter:
                                 connections.append(('_pos_' + str(idx), signal_name))
                                 idx += 1
                     
-                    elif hasattr(item, 'kind') and 'NamedPort' in str(item.kind):
+                    elif hasattr(item, 'kind') and 'NamedPortConnection' in str(item.kind):
                         port_name = None
                         signal_name = None
                         if hasattr(item, 'name'):
                             n = item.name
                             port_name = n.value if hasattr(n, 'value') else str(n)
-                        if hasattr(item, 'expr'):
-                            e = item.expr
-                            signal_name = e.value if hasattr(e, 'value') else str(e)
+                        # Signal extraction: conn.expr is PropertyExpr with conn.expr.expr being SequenceExpr
+                        if hasattr(item, 'expr') and hasattr(item.expr, 'expr') and item.expr.expr:
+                            signal = item.expr.expr
+                            if hasattr(signal, 'expr') and signal.expr:  # IdentifierNameSyntax -> name attribute
+                                if hasattr(signal.expr, 'identifier') and hasattr(signal.expr.identifier, 'value'):
+                                    signal_name = signal.expr.identifier.value
+                            elif hasattr(signal, 'identifier') and hasattr(signal.identifier, 'value'):
+                                signal_name = signal.identifier.value
                         if port_name and signal_name:
                             connections.append((port_name, signal_name))
         
