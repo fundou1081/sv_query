@@ -22,13 +22,19 @@ class DriverExtractor:
     # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
     #==============================================================================
     
-    def _extract_clock_from_always(self, n) -> str:
-        """从 always_ff @(posedge clk) 提取时钟信号名"""
+    def _extract_clock_from_always(self, n) -> tuple:
+        """从 always_ff @(posedge clk or negedge rst_n) 提取时钟和复位信号
+        
+        返回: (clock_signal, reset_signal)
+        """
         s = getattr(n, 'statement', None) or getattr(n, 'body', None)
-        if not s: return ""
+        if not s: return "", ""
         tc = getattr(s, 'timingControl', None)
-        if tc: return self._extract_clock_from_event_ctrl(tc)
-        return ""
+        if tc:
+            clock = self._extract_clock_from_event_ctrl(tc)
+            reset = self._extract_reset_from_event_ctrl(tc)
+            return clock, reset
+        return "", ""
 
     def _extract_clock_from_event_ctrl(self, n) -> str:
         """从 TimingControl 提取时钟"""
@@ -40,6 +46,36 @@ class DriverExtractor:
         if ed and "posedge" in str(ed):
             ce = getattr(se, 'expr', None)
             if ce: return str(ce).strip()
+        return ""
+    
+    def _extract_reset_from_event_ctrl(self, n) -> str:
+        """从 TimingControl 提取复位信号（处理 or 连接的多个事件）"""
+        e = getattr(n, 'expr', None)
+        if not e: return ""
+        
+        # 处理 parenthesized 表达式
+        inner = e
+        if hasattr(e, 'expr'):
+            inner = e.expr
+        
+        # 检查是否是 binary expression (clk or rst)
+        if hasattr(inner, 'left') and hasattr(inner, 'right'):
+            # 遍历两边查找 reset
+            for side in [inner.left, inner.right]:
+                edge_str = str(getattr(side, 'edge', ''))
+                if 'negedge' in edge_str or 'posedge' in edge_str:
+                    expr = getattr(side, 'expr', None)
+                    if expr:
+                        name = str(expr).strip()
+                        if 'rst' in name.lower():
+                            return name
+        else:
+            # 单个事件
+            ed = getattr(inner, 'edge', None)
+            if ed and "negedge" in str(ed):
+                ce = getattr(inner, 'expr', None)
+                if ce: return str(ce).strip()
+        
         return ""
 
     def _extract_condition_str(self, n) -> str:
@@ -70,9 +106,9 @@ class DriverExtractor:
             return r
 
         if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]):
-            cl = ""
-            if "AlwaysFF" in ks: cl = self._extract_clock_from_always(n)
-            c2 = {**ctx, "clock": cl}
+            cl, rst = "", ""
+            if "AlwaysFF" in ks: cl, rst = self._extract_clock_from_always(n)
+            c2 = {**ctx, "clock": cl, "reset": rst}
             s = getattr(n, "statement", None) or getattr(n, "body", None)
             if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
             return r
@@ -80,7 +116,8 @@ class DriverExtractor:
         if "TimingControl" in ks:
             tc = getattr(n, "timingControl", None)
             cl = self._extract_clock_from_event_ctrl(tc) if tc else ""
-            c2 = {**ctx, "clock": cl}
+            rst = self._extract_reset_from_event_ctrl(tc) if tc else ""
+            c2 = {**ctx, "clock": cl, "reset": rst}
             s = getattr(n, "statement", None)
             if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
             return r
@@ -285,6 +322,24 @@ class DriverExtractor:
                                 result.edges.append(TraceEdge(
                                     src=clock_node_id, dst=dst_node_id,
                                     kind=EdgeKind.CLOCK, assign_type="nonblocking",
+                                    clock_domain=clock_signal,
+                                    condition=ctx.get("condition", "")
+                                ))
+                            
+                            # [NEW] Phase 2: RESET 边
+                            # always_ff 块内：如果有复位上下文，创建 rst -> dst (RESET) 边
+                            reset_signal = ctx.get("reset", "")
+                            if reset_signal:
+                                reset_node_id = f"{module_name}.{reset_signal}"
+                                # 确保 reset 节点存在
+                                if reset_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=reset_node_id, name=reset_signal, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=reset_node_id, dst=dst_node_id,
+                                    kind=EdgeKind.RESET, assign_type="nonblocking",
                                     clock_domain=clock_signal,
                                     condition=ctx.get("condition", "")
                                 ))
