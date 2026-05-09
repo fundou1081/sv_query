@@ -44,7 +44,8 @@ class SignalTracer:
         )
     
     def _make_id(self, signal: str, module: str = None) -> str:
-        if module:
+        # [方案B] 如果 signal 包含 '.'，认为是完整路径，直接返回
+        if module and '.' not in signal:
             return f"{module}.{signal}"
         return signal
     
