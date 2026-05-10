@@ -187,7 +187,7 @@ class TestTimingControl(unittest.TestCase):
         期望:
         - 不崩溃
         - 图构建成功
-        - 延时控制被跳过（当前实现限制）
+        - 注: 延时控制 (#5) 当前作为普通语句处理，不影响核心功能
         """
         source = '''
 module top(input clk, input d, output logic q);

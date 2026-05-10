@@ -195,12 +195,9 @@ endmodule
 '''
         graph = self._build_graph(source)
         
-        # [xfail] pyslang doesn't support parsing for loop instances in generate blocks
-        # The generate block with for loop creates HierarchyInstantiation nodes that aren't detected
+        # ✅ 已修复: generate 块节点现在可以正确创建
         self.assertIn('top.GEN', graph.nodes(),
             "generate 块节点 GEN 应该存在")
-        # Skip test since pyslang parser limitation
-        return  # Skip due to parser limitation
         
         # 强断言2: 至少一个实例节点存在 (GEN.g)
         gen_nodes = [n for n in graph.nodes() if 'GEN.g' in n]
