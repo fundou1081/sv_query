@@ -1046,6 +1046,21 @@ class ConnectionExtractor:
                     port_name = port_names[idx]
                     named_conns[port_name] = signal_name
             
+            # 如果在 generate block 中，创建 generate block 容器节点
+            if gen_block:
+                gen_path = inst_path.rsplit('.', 1)[0]  # e.g., top.GEN from top.GEN.g
+                gen_module = '.'.join(gen_path.rsplit('.', 1)[:-1]) or gen_path.rsplit('.', 1)[0]  # e.g., top from top.GEN
+                # 检查是否已经存在
+                if not any(n.id == gen_path for n in result.nodes):
+                    result.nodes.append(TraceNode(
+                        id=gen_path,
+                        name=gen_block,
+                        module=gen_module,
+                        kind=NodeKind.GENERATE_BLOCK if hasattr(NodeKind, 'GENERATE_BLOCK') else NodeKind.INSTANTIATED_MODULE,
+                        width=(1, 0),
+                        is_port=False
+                    ))
+            
             # 创建实例父节点
             result.nodes.append(TraceNode(
                 id=inst_path,
