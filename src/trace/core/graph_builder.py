@@ -903,6 +903,7 @@ class LoadExtractor:
 
 # New ConnectionExtractor to replace existing one
 
+
 class ConnectionExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
@@ -913,7 +914,7 @@ class ConnectionExtractor:
         trees = getattr(self.adapter.parser, 'trees', {})
         instances = self.adapter.get_module_instances(trees)
         
-        # [P2] 收集所有模块的端口定义 (用于推断方向)
+        # 收集所有模块的端口定义
         all_module_ports = {}
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
@@ -923,29 +924,65 @@ class ConnectionExtractor:
                 port_dirs[name] = direction.strip()
             all_module_ports[module_name] = port_dirs
         
+        # [FIX] 第一阶段：收集所有实例信息
+        instances_info = []  # [(inst_module_name, inst_name, parent_module)]
+        
         for inst in instances:
             inst_name = inst.instances[0].decl.name.value.strip() if hasattr(inst.instances[0], 'decl') and hasattr(inst.instances[0].decl, 'name') and inst.instances[0].decl.name.value else str(inst).split('(')[0].strip()
             
-            # 获取子模块名称
-            inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''; inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
-            module_ports = all_module_ports.get(inst_module_name, {})
+            inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''
+            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
+            parent_module = inst.parent.header.name.rawText.strip()
             
-            # 端口连接
+            instances_info.append({
+                'inst_module_name': inst_module_name,
+                'inst_name': inst_name,
+                'parent_module': parent_module
+            })
+        
+        # [FIX] 第二阶段：构建模块 -> 实例路径的映射
+        module_to_path = {}  # (inst_module_name, inst_name) -> full_path
+        
+        # 递归确定路径
+        def get_path(inst_module, inst_name, parent_mod):
+            """递归获取实例的完整路径"""
+            if parent_mod == 'top':
+                return f"top.{inst_name}"
+            else:
+                for info in instances_info:
+                    if info['inst_module_name'] == parent_mod:
+                        parent_path = get_path(info['inst_module_name'], info['inst_name'], info['parent_module'])
+                        return f"{parent_path}.{inst_name}"
+                return f"top.{inst_name}"
+        
+        for info in instances_info:
+            path = get_path(info['inst_module_name'], info['inst_name'], info['parent_module'])
+            key = (info['inst_module_name'], info['inst_name'])
+            module_to_path[key] = path
+        
+        # [FIX] 第三阶段：使用正确路径创建节点和边
+        for inst in instances:
+            inst_name = inst.instances[0].decl.name.value.strip() if hasattr(inst.instances[0], 'decl') and hasattr(inst.instances[0].decl, 'name') and inst.instances[0].decl.name.value else str(inst).split('(')[0].strip()
+            
+            inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''
+            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
+            
+            key = (inst_module_name, inst_name)
+            inst_path = module_to_path.get(key, f"top.{inst_name}")
+            
+            module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
             
-            # 处理位置端口 vs 命名端口
             named_conns = {}
             positional_conns = []
             
             for port_key, signal_name in conns:
                 if port_key.startswith('_pos_'):
-                    # 位置端口
                     idx = int(port_key.replace('_pos_', ''))
                     positional_conns.append((idx, signal_name))
                 else:
                     named_conns[port_key] = signal_name
             
-            # 位置端口按顺序匹配子模块端口定义
             positional_conns.sort(key=lambda x: x[0])
             port_names = list(module_ports.keys())
             
@@ -954,16 +991,24 @@ class ConnectionExtractor:
                     port_name = port_names[idx]
                     named_conns[port_name] = signal_name
             
-            # [铁律4] 为每个端口创建节点和边
+            # 创建实例父节点
+            result.nodes.append(TraceNode(
+                id=inst_path,
+                name=inst_name,
+                module=inst_path.rsplit('.', 1)[0] if '.' in inst_path else 'top',
+                kind=NodeKind.INSTANTIATED_MODULE,
+                width=(1, 0),
+                is_port=False
+            ))
+            
+            # 为每个端口创建节点和边
             for port_name, signal_name in named_conns.items():
                 port_name = self.adapter.clean_name(port_name)
                 signal_name = self.adapter.clean_name(signal_name)
                 
                 direction = module_ports.get(port_name, 'unknown').strip()
                 
-                # 节点: 实例端口
-                inst_port_id = f"top.{inst_name}.{port_name}"
-                # 根据方向确定 kind
+                inst_port_id = f"{inst_path}.{port_name}"
                 if 'inout' in direction.lower():
                     kind = NodeKind.PORT_INOUT
                 elif 'output' in direction.lower():
@@ -973,23 +1018,22 @@ class ConnectionExtractor:
                 result.nodes.append(TraceNode(
                     id=inst_port_id,
                     name=port_name,
-                    module=f"top.{inst_name}",
+                    module=inst_path,
                     kind=kind,
                     width=(1, 0),
                     is_port=True
                 ))
                 
-                # 边: 外部 -> 实例 (input) 或 实例 -> 外部 (output)
                 direction_clean = direction.strip()
+                parent_path = inst_path.rsplit('.', 1)[0] if '.' in inst_path else 'top'
+                
                 if direction_clean == 'input':
-                    # CONNECTION 边: 外部信号 -> 实例端口 (top.a -> top.inst.d)
                     result.edges.append(TraceEdge(
-                        src=f"top.{signal_name}",
+                        src=f"{parent_path}.{signal_name}",
                         dst=inst_port_id,
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
-                    # [FIX] CONNECTION 边: 实例端口 -> child 内部信号 (top.inst.d -> child.d)
                     child_signal_id = f"{inst_module_name}.{port_name}"
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
@@ -998,15 +1042,12 @@ class ConnectionExtractor:
                         assign_type="internal"
                     ))
                 elif direction_clean == 'output':
-                    # CONNECTION 边: 实例端口 -> 外部信号 (top.inst.q -> top.b)
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
-                        dst=f"top.{signal_name}",
+                        dst=f"{parent_path}.{signal_name}",
                         kind=EdgeKind.CONNECTION,
                         assign_type="connection"
                     ))
-                    # DRIVER 边: child 内部信号 -> 实例端口 (child.q -> top.inst.q)
-                    # 这是追溯所需的 - 表示 child.q 驱动了 top.inst.q
                     child_signal_id = f"{inst_module_name}.{port_name}"
                     result.edges.append(TraceEdge(
                         src=child_signal_id,
@@ -1016,6 +1057,8 @@ class ConnectionExtractor:
                     ))
         
         return result
+
+
 class ClockDomainExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter

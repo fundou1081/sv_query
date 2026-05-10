@@ -80,9 +80,9 @@ endmodule
         edges = list(graph.edges())
         conn_edges = [(s, d) for s, d in edges 
                      if graph.get_edge(s, d).kind == EdgeKind.CONNECTION]
-        self.assertIn(('top.a', 'top.inst.d'), driver_edges,
+        self.assertIn(('top.a', 'top.inst.d'), conn_edges,
             f"应有 CONNECTION 边: a -> inst.d，实际边: {conn_edges}")
-        self.assertIn(('top.inst.q', 'top.b'), driver_edges,
+        self.assertIn(('top.inst.q', 'top.b'), conn_edges,
             f"应有 CONNECTION 边: inst.q -> b")
     
     def test_multi_instance(self):
@@ -124,7 +124,7 @@ endmodule
         
         self.assertIn(('top.a', 'top.u1.d'), conn_edges,
             f"应有 CONNECTION 边: a -> u1.d")
-        self.assertIn(('top.b', 'top.u2.d'), driver_edges,
+        self.assertIn(('top.b', 'top.u2.d'), conn_edges,
             f"应有 CONNECTION 边: b -> u2.d")
     
     def test_parameterized_instance(self):
