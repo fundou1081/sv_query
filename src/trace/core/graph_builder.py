@@ -907,12 +907,40 @@ class LoadExtractor:
 class ConnectionExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
-    
+
+    def _get_parent_module_name(self, inst) -> str:
+        """Safely get parent module name from instance (handles generate blocks)."""
+        node = inst
+        for _ in range(5):
+            if not hasattr(node, 'parent') or node.parent is None:
+                break
+            node = node.parent
+            if type(node).__name__ == 'ModuleDeclarationSyntax':
+                if hasattr(node, 'header') and hasattr(node.header, 'name'):
+                    return node.header.name.rawText.strip()
+                elif hasattr(node, 'name'):
+                    return node.name.rawText.strip()
+        return 'unknown'
+
+    def _get_generate_block_name(self, inst) -> str:
+        """Get the generate block label if instance is inside a generate block."""
+        node = inst
+        for _ in range(5):
+            if not hasattr(node, 'parent') or node.parent is None:
+                break
+            node = node.parent
+            if type(node).__name__ == 'GenerateBlockSyntax':
+                if hasattr(node, 'beginName') and node.beginName:
+                    bn = node.beginName
+                    if hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                        return bn.name.value.strip()
+        return None
+
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
         
         trees = getattr(self.adapter.parser, 'trees', {})
-        instances = self.adapter.get_module_instances(trees)
+        instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
         
         # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
@@ -937,33 +965,49 @@ class ConnectionExtractor:
             inst_name = inst.instances[0].decl.name.value.strip() if hasattr(inst.instances[0], 'decl') and hasattr(inst.instances[0].decl, 'name') and inst.instances[0].decl.name.value else str(inst).split('(')[0].strip()
             
             inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''
-            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
-            parent_module = inst.parent.header.name.rawText.strip()
+            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else self._get_parent_module_name(inst)
+            parent_module = self._get_parent_module_name(inst)
             
+            gen_block = self._get_generate_block_name(inst)
             instances_info.append({
                 'inst_module_name': inst_module_name,
                 'inst_name': inst_name,
-                'parent_module': parent_module
+                'parent_module': parent_module,
+                'gen_block': gen_block
             })
         
         # [FIX] 第二阶段：构建模块 -> 实例路径的映射
         module_to_path = {}  # (inst_module_name, inst_name) -> full_path
         
         # 递归确定路径
-        def get_path(inst_module, inst_name, parent_mod):
+        def get_path(info, depth=0):
             """递归获取实例的完整路径"""
+            if depth > 20:
+                return f"top.{info['inst_name']}"
+            parent_mod = info['parent_module']
+            gen_block = info.get('gen_block')
             if parent_mod == 'top':
-                return f"top.{inst_name}"
+                if gen_block:
+                    return f"top.{gen_block}.{info['inst_name']}"
+                return f"top.{info['inst_name']}"
             else:
-                for info in instances_info:
-                    if info['inst_module_name'] == parent_mod:
-                        parent_path = get_path(info['inst_module_name'], info['inst_name'], info['parent_module'])
-                        return f"{parent_path}.{inst_name}"
-                return f"top.{inst_name}"
+                for other_info in instances_info:
+                    if other_info['inst_module_name'] == parent_mod:
+                        parent_path = get_path(other_info, depth+1)
+                        if gen_block:
+                            return f"{parent_path}.{gen_block}.{info['inst_name']}"
+                        return f"{parent_path}.{info['inst_name']}"
+                if gen_block:
+                    return f"top.{gen_block}.{info['inst_name']}"
+                return f"top.{info['inst_name']}"
         
         for info in instances_info:
-            path = get_path(info['inst_module_name'], info['inst_name'], info['parent_module'])
-            key = (info['inst_module_name'], info['inst_name'])
+            path = get_path(info)
+            gen_block = info.get('gen_block')
+            if gen_block:
+                key = (info['inst_module_name'], info['inst_name'], gen_block)
+            else:
+                key = (info['inst_module_name'], info['inst_name'])
             module_to_path[key] = path
         
         # [FIX] 第三阶段：使用正确路径创建节点和边
@@ -971,10 +1015,15 @@ class ConnectionExtractor:
             inst_name = inst.instances[0].decl.name.value.strip() if hasattr(inst.instances[0], 'decl') and hasattr(inst.instances[0].decl, 'name') and inst.instances[0].decl.name.value else str(inst).split('(')[0].strip()
             
             inst_type_value = inst.type.value.strip() if hasattr(inst.type, 'value') and inst.type.value else ''
-            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else inst.parent.header.name.rawText.strip()
+            inst_module_name = inst_type_value if inst_type_value and inst_type_value != inst_name else self._get_parent_module_name(inst)
             
-            key = (inst_module_name, inst_name)
-            inst_path = module_to_path.get(key, f"top.{inst_name}")
+            gen_block = self._get_generate_block_name(inst)
+            if gen_block:
+                key = (inst_module_name, inst_name, gen_block)
+                inst_path = module_to_path.get(key, f"top.{gen_block}.{inst_name}")
+            else:
+                key = (inst_module_name, inst_name)
+                inst_path = module_to_path.get(key, f"top.{inst_name}")
             
             module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
