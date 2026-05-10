@@ -16,6 +16,7 @@ class NodeKind(Enum):
     PORT_INOUT = auto()
     PARAM = auto()
     CONST = auto()
+    INSTANTIATED_MODULE = auto()  # 实例节点 (top.inst)
 
 class EdgeKind(Enum):
     DRIVER = auto()      # 数据驱动 (q <= d)
