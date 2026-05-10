@@ -914,15 +914,21 @@ class ConnectionExtractor:
         trees = getattr(self.adapter.parser, 'trees', {})
         instances = self.adapter.get_module_instances(trees)
         
-        # 收集所有模块的端口定义
+        # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
+        all_module_widths = {}
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             port_dirs = {}
+            port_widths = {}
             for port in self.adapter.get_port_declarations(module):
                 name, direction = self.adapter.get_port_name_and_direction(port)
                 port_dirs[name] = direction.strip()
+                # 获取位宽
+                width = self.adapter.extract_port_width(port)
+                port_widths[name] = width
             all_module_ports[module_name] = port_dirs
+            all_module_widths[module_name] = port_widths
         
         # [FIX] 第一阶段：收集所有实例信息
         instances_info = []  # [(inst_module_name, inst_name, parent_module)]
@@ -1015,12 +1021,16 @@ class ConnectionExtractor:
                     kind = NodeKind.PORT_OUT
                 else:
                     kind = NodeKind.PORT_IN
+                # 获取端口位宽
+                port_widths = all_module_widths.get(inst_module_name, {})
+                width = port_widths.get(port_name, (1, 0))
+                
                 result.nodes.append(TraceNode(
                     id=inst_port_id,
                     name=port_name,
                     module=inst_path,
                     kind=kind,
-                    width=(1, 0),
+                    width=width,
                     is_port=True
                 ))
                 
