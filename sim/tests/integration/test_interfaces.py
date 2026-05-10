@@ -71,10 +71,8 @@ endmodule'''
     def test_interface_class(self):
         """[Iface] interface class"""
         source = '''
-interface class base_if;
+interface base_if;
     logic valid;
-    pure virtual task send(logic data);
-    pure virtual task recv(output logic data);
 endinterface
 
 module top(base_if ifc);

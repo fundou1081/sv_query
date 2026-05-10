@@ -20,8 +20,10 @@ class TestForLoopExtraction(unittest.TestCase):
         source = '''
 module top(input clk, output [3:0] out);
     genvar i;
-    generate for (i=0; i<4; i=i+1) begin
-        assign out[i] = clk;
+    generate
+        for (i=0; i<4; i=i+1) begin : g
+            assign out[i] = clk;
+        end
     endgenerate
 endmodule'''
         
@@ -34,7 +36,7 @@ endmodule'''
     def test_for_loop_in_always(self):
         """always 中的 for"""
         source = '''
-module top(input clk, input [7:0] data, output reg [7:0] q);
+module top(input clk, input [7:0] data, output logic [7:0] q);
     integer i;
     always_ff @(posedge clk) begin
         for (i = 0; i < 8; i = i + 1) begin
@@ -70,7 +72,7 @@ endmodule'''
     def test_always_begin_end(self):
         """always begin end"""
         source = '''
-module top(input clk, input d, output reg q);
+module top(input clk, input d, output logic q);
     always @(posedge clk) begin
         q <= d;
     end

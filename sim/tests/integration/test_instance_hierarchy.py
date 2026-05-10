@@ -190,7 +190,7 @@ endmodule'''
         
         金标准:
         RTL:
-          reg #(.WIDTH(8)) u1(clk, d, q);
+          reg_mod #(.WIDTH(8)) u1(clk, d, q);
         
         期望:
           - top.u1.d 节点存在（实例端口）
@@ -198,7 +198,7 @@ endmodule'''
           - 端口连接到顶层信号
         """
         source = '''
-module reg #(
+module reg_mod #(
     parameter WIDTH = 8
 ) (
     input clk,
@@ -211,7 +211,7 @@ module reg #(
 endmodule
 
 module top(input clk, input [7:0] d, output [7:0] q);
-    reg #(.WIDTH(8)) u1(clk, d, q);
+    reg_mod #(.WIDTH(8)) u1(clk, d, q);
 endmodule'''
         
         graph = self._build_graph(source)

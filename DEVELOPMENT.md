@@ -559,3 +559,90 @@ module apb_mux #(
 - [ ] 跨模块路径测试
 - [ ] 多实例独立追踪测试
 
+
+---
+
+## 2026-05-10 SV 语法验证规则追加
+
+### 铁律21: SV 语法必须通过双重工具验证 [生效]
+
+**要求**：所有测试用例中的 RTL 源码必须同时通过 **Verilator** 和 **Verible** 验证
+
+**理由**：
+- Verilator 是工业级模拟器/linter，权威性高
+- Verible 是 Google 维护的 SV 工具，对语法规范更严格
+- 两者互补可发现更多语法问题
+- pyslang 可能接受但标准工具不接受的语法需要修正
+
+**验证方式** [生效]：
+```bash
+# 单文件验证（两者都需通过）
+verilator --lint-only -sv your_file.sv
+verible-verilog-lint your_file.sv
+
+# 或使用自动化脚本（项目根目录）
+./scripts/verify_sv_syntax.py sim/tests/integration/test_*.py
+```
+
+**校验脚本**：`scripts/verify_sv_syntax.py`
+- 自动提取测试文件中的 RTL 并双重验证
+- 输出通过/失败统计
+
+**已知限制**：
+- 参数化模块 `#()` 在某些临时文件场景可能仅 CLI 直接验证通过
+- 遇到此类情况时以 CLI 验证结果为准
+
+---
+
+## 2026-05-10 测试纪律追加
+
+### 铁律22: 测试断言必须验证具体行为 [生效]
+
+**禁止**：
+```python
+# ❌ 弱断言 - 只检查不崩溃
+self.assertIsNotNone(graph)
+self.assertTrue(len(result) >= 0)
+
+# ❌ 模糊断言 - 不知道期望什么
+self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+```
+
+**必须**：
+```python
+# ✅ 强断言 - 精确验证
+self.assertIn(('top.clk', 'top.q'), clock_edges,
+    "应有CLOCK边: clk -> q")
+self.assertEqual(len(result.drivers), 2,
+    "应有2个驱动源")
+
+# ✅ 边界断言 - 验证极端情况
+self.assertEqual(d_node.width, (7, 0),
+    f"[7:0] 应该是 (7, 0)，实际是 {d_node.width}")
+```
+
+---
+
+## 2026-05-10 工具安装记录
+
+### Verilator
+- 版本：5.048 (2026-04-26)
+- 安装：`brew install verilator`
+- 用途：SV 语法验证 (`verilator --lint-only -sv`)
+
+### Verible
+- 版本：v0.0-4053-g89d4d98a
+- 安装：GitHub release 下载 (macOS)
+- 路径：`~/my_daily_proj/verible-v0.0-4053-g89d4d98a-macOS/`
+- 用途：SV 语法验证（与 Verilator 双重验证）
+
+### 工具获取
+```bash
+# Verilator
+brew install verilator
+
+# Verible (需手动下载)
+curl -L "https://github.com/chipsalliance/verible/releases/download/v0.0-4053-g89d4d98a/verible-v0.0-4053-g89d4d98a-macOS.tar.gz" -o verible.tar.gz
+tar -xzf verible.tar.gz -C ~/
+```
+
