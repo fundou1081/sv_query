@@ -95,13 +95,25 @@ class SignalTracer:
                         node = self.graph.get_node(src)
                         if node:
                             parts = src.split('.')
-                            # 实例输出端口格式: path.inst.port (len >= 3) 且是 PORT_OUT
-                            # PORT_IN 是输入端口，不是驱动源
+                            # 实例输出端口 (PORT_OUT): 这是实例驱动外部信号的出口
                             if len(parts) >= 3 and node.kind.name == 'PORT_OUT':
                                 if node.id not in seen_ids:
                                     drivers.append(node)
                                     seen_ids.add(node.id)
-                                # 实例输出端口是边界，不继续递归
+                                # 查找驱动这个实例输入端口的信号
+                                # 例如: top.inst.q -> top.b, 需要找 top.inst.d 的驱动
+                                inst_name = parts[-2]  # e.g., 'inst'
+                                inst_path = '.'.join(parts[:-1])  # e.g., 'top.inst'
+                                # 查找实例的输入端口
+                                input_port_id = f"{inst_path}.d"  # 假设输入端口是 'd'
+                                # 找谁驱动这个输入端口
+                                for pred_src, pred_dst in self.graph.edges():
+                                    if pred_dst == input_port_id and pred_src.startswith(inst_path.rsplit('.', 1)[0]):
+                                        # 外部信号驱动实例输入，这个外部信号是真正的驱动源
+                                        ext_node = self.graph.get_node(pred_src)
+                                        if ext_node and ext_node.id not in seen_ids:
+                                            drivers.append(ext_node)
+                                            seen_ids.add(ext_node.id)
                                 continue
                     # 其他边类型继续递归追溯
                     if src in self.graph.nodes() and src not in seen_ids:
