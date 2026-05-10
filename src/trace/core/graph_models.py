@@ -17,6 +17,7 @@ class NodeKind(Enum):
     PARAM = auto()
     CONST = auto()
     INSTANTIATED_MODULE = auto()  # 实例节点 (top.inst)
+    GENERATE_BLOCK = auto()        # generate 块节点 (top.GEN)
 
 class EdgeKind(Enum):
     DRIVER = auto()      # 数据驱动 (q <= d)
