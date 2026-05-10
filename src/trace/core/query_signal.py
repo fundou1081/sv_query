@@ -95,12 +95,13 @@ class SignalTracer:
                         node = self.graph.get_node(src)
                         if node:
                             parts = src.split('.')
-                            # 实例端口格式: path.inst.port (len >= 3)
-                            if len(parts) >= 3 and node.kind.name.startswith('PORT_'):
+                            # 实例输出端口格式: path.inst.port (len >= 3) 且是 PORT_OUT
+                            # PORT_IN 是输入端口，不是驱动源
+                            if len(parts) >= 3 and node.kind.name == 'PORT_OUT':
                                 if node.id not in seen_ids:
                                     drivers.append(node)
                                     seen_ids.add(node.id)
-                                # 实例端口是边界，不继续递归
+                                # 实例输出端口是边界，不继续递归
                                 continue
                     # 其他边类型继续递归追溯
                     if src in self.graph.nodes() and src not in seen_ids:
