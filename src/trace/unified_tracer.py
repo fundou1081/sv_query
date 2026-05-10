@@ -11,6 +11,7 @@ from .core.graph_models import (
 )
 from .core.graph_builder import GraphBuilder
 from .core.query_signal import SignalTracer, SignalChain
+from .core.query_load import LoadTracer, LoadChain
 from .core.query_module import ModuleTracer, ModuleConnections
 from .core.query_clock_domain import ClockDomainTracer, ClockDomainTrace
 from .core.base import PyslangAdapter
@@ -26,6 +27,7 @@ class UnifiedTracer:
         self._signal_tracer: Optional[SignalTracer] = None
         self._module_tracer: Optional[ModuleTracer] = None
         self._clock_tracer: Optional[ClockDomainTracer] = None
+        self._load_tracer: Optional[LoadTracer] = None
     
     def _get_adapter(self) -> PyslangAdapter:
         """获取 PyslangAdapter (Syntax Layer)"""
@@ -58,6 +60,11 @@ class UnifiedTracer:
         print(f"trace_signal({signal}, {module}) called")
         print(f"  graph: {self._graph}")
         return self._signal_tracer.trace(signal, module)
+    
+    def trace_loads(self, signal: str, module: str = None) -> LoadChain:
+        """Trace signal fanout (loads)"""
+        self.build_graph()
+        return self._load_tracer.trace(signal, module)
     
     def trace_fanout(self, signal: str, module: str = None) -> list:
         self.build_graph()
@@ -115,3 +122,4 @@ class UnifiedTracer:
         self._signal_tracer = SignalTracer(self._graph)
         self._module_tracer = ModuleTracer(self._graph)
         self._clock_tracer = ClockDomainTracer(self._graph)
+        self._load_tracer = LoadTracer(self._graph)
