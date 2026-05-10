@@ -1,4 +1,4 @@
-# sv_query 测试计划 (v2.0)
+# sv_query 测试计划 (v3.0)
 # =======================
 
 ## 测试框架结构
@@ -7,110 +7,95 @@
 sv_query/
 ├── sim/
 │   ├── tests/
-│   │   ├── __init__.py           # 统一 runner
-│   │   ├── unit/                # 单元测试
-│   │   ├── integration/         # 集成测试
-│   │   └── regression/          # 回归测试
-│   ├── test_cases.sv            # SystemVerilog 测试用例
-│   ├── TEST_PLAN.md            # 本文档
+│   │   ├── unit/                    # 单元测试
+│   │   │   ├── test_pyslang_adapter.py
+│   │   │   ├── test_signal_tracer.py
+│   │   │   └── test_graph_models.py
+│   │   ├── integration/             # 集成测试
+│   │   │   ├── test_instance_connection.py
+│   │   │   ├── test_instance_hierarchy.py
+│   │   │   └── ...
+│   │   ├── regression/              # 回归测试
+│   │   │   └── ...
+│   │   ├── conftest.py             # pytest 配置 (自动生成报告)
+│   │   └── test_report.py          # 测试报告生成脚本
+│   ├── TEST_PLAN.md                # 本文件
+│   └── TEST_REPORT.md              # 自动生成的测试报告
 ```
 
-## 测试分层
+## 测试信息格式
 
-### 1. 单元测试 (Unit Tests)
+每个测试用例应包含以下元数据：
 
-**目的**: 验证每个工具/模块独立功能
+| 字段 | 格式 | 说明 |
+|------|------|------|
+| 测试目的 | `[目的描述]` | 标注在测试方法 docstring |
+| 当前结果 | `PASSED/FAILED/SKIPPED` | 自动从 pytest 获取 |
+| 测试时间 | `YYYY-MM-DD HH:MM` | 自动记录 |
+| 更新日期 | `YYYY-MM-DD` | 每次测试后更新 |
+| 备注 | `备注内容` | 可选 |
 
-| 测试文件 | 覆盖范围 | 状态 |
-|---------|----------|------|
-| test_graph_models.py | TraceNode/Edge 数据模型 | ✓ 完成 |
-| test_signal_tracer.py | trace_signal() API | ✓ 完成 |
-| test_pyslang_adapter.py | AST 适配器 | ✓ 完成 |
-| test_clock_domain.py | 时钟域识别 | ✓ 完成 |
-| **test_procedural_blocks.py** | always_ff/comb/latch | [待补充] |
-| **test_expression.py** | 表达式解析 | [待补充] |
+## 测试报告生成
 
-### 2. 集成测试 (Integration Tests)
+### 自动更新 (推荐)
 
-| 测试文件 | 覆盖范围 | 状态 |
-|---------|----------|------|
-| test_unified_tracer.py | 统一入口 | ✓ 完成 |
-| test_assign_chain.py | assign 链追踪 | ✓ 完成 |
-| **test_combo_chain.py** | always_comb 链 | [待补充] |
-| **test_seq_chain.py** | always_ff 链 | [待补充] |
-| **test_branch_chain.py** | if/else 多分支 | [待补充] |
-| **test_bit_select.py** | 位选择追踪 | [待补充] |
-| **test_module_instance.py** | 跨模块连接 | [待补充] |
-
-### 3. 回归测试 (Regression Tests)
-
-| 测试文件 | 覆盖范围 | 状态 |
-|---------|----------|------|
-| test_edge_creates_node.py | Edge 创建 Node | ✓ 完成 |
-| test_always_ff.py | always_ff 提取 | ✓ 完成 |
-| **test_boundary.py** | 边界条件 | [待补充] |
-
----
-
-## 功能覆盖矩阵
-
-| 功能点 | 单元 | 集成 | 回归 | 状态 |
-|--------|------|------|------|------|
-| assign 连续赋值 | ✓ | ✓ | - | ✓ |
-| always_ff 非阻塞 | ✓ | - | ✓ | △ |
-| always_comb 阻塞 | - | - | - | ✗ |
-| always_latch | - | - | - | ✗ |
-| if/else 分支 | - | - | - | ✗ |
-| 位选择 | - | - | - | ✗ |
-| 模块实例化 | - | - | - | ✗ |
-| 时钟域识别 | ✓ | - | - | △ |
-| CDC 检查 | - | - | - | ✗ |
-| 向量位宽 | - | - | - | ✗ |
-| 端口方向 | - | - | - | ✗ |
-
----
-
-## 测试运行
+测试报告在每次 `pytest` 运行后自动更新：
 
 ```bash
-# 全部测试
-PYTHONPATH=src:$PYTHONPATH python -m unittest discover -s sim/tests
+# 运行测试，自动生成报告
+python -m pytest sim/tests/ -v
 
-# 单独运行
-PYTHONPATH=src:$PYTHONPATH python -m unittest sim.tests.unit -v
-PYTHONPATH=src:$PYTHONPATH python -m unittest sim.tests.integration -v
-PYTHONPATH=src:$PYTHONPATH python -m unittest sim.tests.regression -v
+# 报告将保存到: sim/TEST_REPORT.md
 ```
 
----
+### 手动生成
 
-## 通过标准
+```bash
+# 仅生成报告
+python sim/tests/test_report.py --report-only
 
-- [ ] 单元测试: ≥90% 通过
-- [ ] 集成测试: ≥80% 通过
-- [ ] 回归测试: 100% 通过
+# 运行测试并生成报告
+python sim/tests/test_report.py --update
+```
 
----
+### 环境变量控制
 
-## 维护规则 (v2.0)
+```bash
+# 禁用自动报告生成
+SV_QUERY_GENERATE_REPORT=false python -m pytest sim/tests/
+```
 
-1. 每个新功能**必须**先有金标准测试 + 边界测试
-2. 每个 Bug 修复**必须**有回归测试
-3. 测试**必须**包含错误输入验证
-4. 每周**必须**更新覆盖矩阵
-5. CI **必须**运行全部测试
+## 测试统计
 
----
+| 类型 | 数量 | 状态 |
+|------|------|------|
+| **最后更新** | - | 自动更新 |
 
-## 优先级改进 (P0-P2)
+## pytest 配置
 
-| 优先级 | 功能 | 测试文件 | 状态 |
-|--------|------|---------|------|
-| **P0** | always_comb 阻塞赋值 | test_combo_chain.py | 待补充 |
-| **P0** | if/else 多分支 | test_branch_chain.py | 待补充 |
-| **P0** | 位选择追踪 | test_bit_select.py | 待补充 |
-| **P1** | 模块实例化 | test_module_instance.py | 待补充 |
-| **P1** | always_latch | test_latch.py | 待补充 |
-| **P1** | 向量位宽 | test_vector_width.py | 待补充 |
-| **P2** | CDC 检查 | test_cdc.py | 待补充 |
-| **P2** | 性能基准 | test_performance.py | 待补充 |
+`conftest.py` 包含以下钩子：
+
+- `pytest_configure`: 记录测试开始时间
+- `pytest_terminal_summary`: 测试结束后自动生成报告
+
+## 测试用例命名规范
+
+- 测试文件: `test_*.py`
+- 测试类: `Test*`
+- 测试方法: `test_*`
+
+测试方法的 docstring 应包含：
+1. 测试目的描述
+2. 可选的 `[limit]` 标记表示已知限制
+3. 可选的 `[金标准]` 标记表示基准测试
+
+## 自动更新流程
+
+```
+pytest 运行 → conftest.py 钩子 → 更新 TEST_REPORT.md → 更新元数据
+```
+
+报告包含：
+- 测试时间戳
+- 通过/失败/跳过统计
+- 每个测试的详细结果
