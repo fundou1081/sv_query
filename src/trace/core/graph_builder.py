@@ -1025,12 +1025,19 @@ class ConnectionExtractor:
                 port_widths = all_module_widths.get(inst_module_name, {})
                 width = port_widths.get(port_name, (1, 0))
                 
+                # [NEW] 如果位宽为 (0,0)，尝试从父模块的信号宽度推断
+                if width == (0, 0) and signal_name:
+                    parent_path = inst_path.rsplit('.', 1)[0] if '.' in inst_path else 'top'
+                    parent_widths = all_module_widths.get(parent_path, {})
+                    if signal_name in parent_widths:
+                        width = parent_widths[signal_name]
+                
                 result.nodes.append(TraceNode(
                     id=inst_port_id,
                     name=port_name,
                     module=inst_path,
                     kind=kind,
-                    width=width,
+                    width=width if width != (0, 0) else (1, 0),
                     is_port=True
                 ))
                 
@@ -1065,6 +1072,42 @@ class ConnectionExtractor:
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
+        
+        # [FIX] 后处理：修复实例端口的位宽
+        # 如果实例端口位宽为默认值(1,0)，尝试从连接推断实际位宽
+        for edge in result.edges:
+            if edge.kind != EdgeKind.CONNECTION:
+                continue
+            
+            # 找 src 是外部信号，dst 是实例端口的情况
+            src_node = None
+            dst_node = None
+            for node in result.nodes:
+                if node.id == edge.src:
+                    src_node = node
+                if node.id == edge.dst:
+                    dst_node = node
+            
+            if src_node and dst_node:
+                # dst 是实例端口吗？
+                # 实例端口格式: path.inst.port
+                parts = dst_node.id.split('.')
+                if len(parts) >= 3 and dst_node.kind.name.startswith('PORT_'):
+                    # 如果 dst 的位宽是默认值(1,0)且 src 有有效位宽，使用 src 的位宽
+                    if dst_node.width == (1, 0) and src_node.width != (0, 0):
+                        # 找到 dst_node 并更新
+                        for i, n in enumerate(result.nodes):
+                            if n.id == dst_node.id:
+                                # 创建新的 TraceNode with correct width
+                                result.nodes[i] = TraceNode(
+                                    id=n.id,
+                                    name=n.name,
+                                    module=n.module,
+                                    kind=n.kind,
+                                    width=src_node.width,
+                                    is_port=n.is_port
+                                )
+                                break
         
         return result
 
