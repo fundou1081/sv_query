@@ -90,7 +90,19 @@ class SignalTracer:
                 edge = self.graph.get_edge(src, dst)
                 # [FIX] 只接受 DRIVER 边作为驱动
                 if edge and edge.kind != EdgeKind.DRIVER:
-                    # CONNECTION/CLOCK/RESET 边不计入驱动，但继续递归追溯
+                    # CONNECTION 边：检查 src 是否是实例端口
+                    if edge.kind == EdgeKind.CONNECTION:
+                        node = self.graph.get_node(src)
+                        if node:
+                            parts = src.split('.')
+                            # 实例端口格式: path.inst.port (len >= 3)
+                            if len(parts) >= 3 and node.kind.name.startswith('PORT_'):
+                                if node.id not in seen_ids:
+                                    drivers.append(node)
+                                    seen_ids.add(node.id)
+                                # 实例端口是边界，不继续递归
+                                continue
+                    # 其他边类型继续递归追溯
                     if src in self.graph.nodes() and src not in seen_ids:
                         self._trace_drivers_recursive(src, drivers, seen_ids)
                     continue
