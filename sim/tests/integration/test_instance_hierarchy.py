@@ -186,9 +186,11 @@ endmodule
 
 module top(input [3:0] d, output [3:0] q);
     genvar i;
+generate
     for (i=0; i<4; i=i+1) begin : GEN
         inv g(.d(d[i]), .q(q[i]));
     end
+endgenerate
 endmodule
 '''
         graph = self._build_graph(source)
