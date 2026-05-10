@@ -97,10 +97,7 @@ class SignalTracer:
                             parts = src.split('.')
                             # 实例输出端口 (PORT_OUT): 这是实例驱动外部信号的出口
                             if len(parts) >= 3 and node.kind.name == 'PORT_OUT':
-                                if node.id not in seen_ids:
-                                    drivers.append(node)
-                                    seen_ids.add(node.id)
-                                # 查找驱动这个实例输入端口的信号
+                                # 不添加实例端口作为驱动，只追踪到真正的外部驱动源
                                 # 例如: top.inst.q -> top.b, 需要找 top.inst.d 的驱动
                                 inst_name = parts[-2]  # e.g., 'inst'
                                 inst_path = '.'.join(parts[:-1])  # e.g., 'top.inst'

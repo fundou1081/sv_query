@@ -265,7 +265,12 @@ module inv(input d, output q);
 endmodule
 
 module top(input d, output q);
-    inv buffers[3:0](.d(d), .q(q));
+    genvar i;
+generate
+    for (i=0; i<3; i=i+1) begin : buffers
+        inv u(.d(d), .q(q));
+    end
+endgenerate
 endmodule
 '''
         graph = self._build_graph(source)
