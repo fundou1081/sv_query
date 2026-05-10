@@ -21,10 +21,9 @@ class TestParameterExtraction(unittest.TestCase):
     
     def test_parameterized_width(self):
         """[Golden] 参数化宽度"""
-        source = '''
-module #(
+        source = '''module param_mod #(
     parameter WIDTH = 8
-) top(input [WIDTH-1:0] din, output [WIDTH-1:0] dout);
+) (input [WIDTH-1:0] din, output [WIDTH-1:0] dout);
     assign dout = din;
 endmodule'''
         
@@ -157,7 +156,7 @@ class TestCrossModuleExtraction(unittest.TestCase):
     def test_simple_instance(self):
         """[Golden] 简单实例"""
         source = '''
-module buf(input d, output q);
+module my_buf(input d, output q);
     assign q = d;
 endmodule
 module top(input a, output y);
@@ -173,7 +172,7 @@ endmodule'''
     def test_two_instance(self):
         """[Golden] 2级实例"""
         source = '''
-module buf(input d, output q);
+module my_buf(input d, output q);
     assign q = d;
 endmodule
 module top(input a, output y);

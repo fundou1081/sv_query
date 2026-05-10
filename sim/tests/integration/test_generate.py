@@ -27,10 +27,12 @@ module top(
 );
     genvar i;
     wire [3:0] tmp [0:3];
-    generate for (i = 0; i < 4; i = i + 1) begin : GEN
-        assign tmp[i] = clk;
+    generate
+        for (i = 0; i < 4; i = i + 1) begin : GEN
+            assign tmp[i] = clk;
+        end
     endgenerate
-    
+
     assign out = tmp[0];
 endmodule'''
         
@@ -73,9 +75,11 @@ endmodule'''
         source = '''
 module top(input clk, input [1:0] sel, output wire y);
     genvar i;
-    generate for (i = 0; i < 1; i = i + 1) begin : OUTER
-        if (sel[i]) begin : INNER
-            assign y = clk;
+    generate
+        for (i = 0; i < 1; i = i + 1) begin : OUTER
+            if (sel[i]) begin : INNER
+                assign y = clk;
+            end
         end
     endgenerate
 endmodule'''

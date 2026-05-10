@@ -70,15 +70,15 @@ module top(
     input wire clk,
     input wire [7:0] data
 );
-    task send_byte;
-        input [7:0] byte;
+    task send_byte_task;
+        input [7:0] byte_data;
         begin
             // send logic
         end
     endtask
     
     always @(posedge clk)
-        send_byte(data);
+        send_byte_task(data);
 endmodule'''
         
         tracer = self._make_tracer(source)

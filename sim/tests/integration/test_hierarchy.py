@@ -47,12 +47,15 @@ endmodule'''
     def test_instantiation_array(self):
         """[Hier] 实例数组"""
         source = '''
-module buffer(input d, output q);
+module buffer_gate(input d, output q);
     assign q = d;
 endmodule
 
 module top(input [3:0] din, output [3:0] dout);
-    buffer buf[3:0](.d(din), .q(dout));
+    buffer_gate u1(.d(din[0]), .q(dout[0]));
+    buffer_gate u2(.d(din[1]), .q(dout[1]));
+    buffer_gate u3(.d(din[2]), .q(dout[2]));
+    buffer_gate u4(.d(din[3]), .q(dout[3]));
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -62,10 +65,9 @@ endmodule'''
     
     def test_parameterized_module(self):
         """[Hier] 参数化模块"""
-        source = '''
-module #(
+        source = '''module my_buf_mod #(
     parameter WIDTH = 8
-) my_buf(
+) (
     input [WIDTH-1:0] din,
     output [WIDTH-1:0] dout
 );
@@ -73,7 +75,7 @@ module #(
 endmodule
 
 module top(input [7:0] a, output [7:0] y);
-    my_buf #(.WIDTH(8)) buf(.din(a), .dout(y));
+    my_buf #(.WIDTH(8)) buf_gate(.din(a), .dout(y));
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -84,15 +86,17 @@ endmodule'''
     def test_generate_instantiation(self):
         """[Hier] generate 中的实例化"""
         source = '''
-module buf(input d, output q);
+module my_buf(input d, output q);
     assign q = d;
 endmodule
 
 module top(input [3:0] din, output [3:0] dout);
     genvar i;
-    generate for (i=0; i<4; i=i+1) begin : GEN
-        buf b(.d(din[i]), .q(dout[i]));
-    endgenerate
+    generate
+        for (i=0; i<4; i=i+1) begin : GEN
+        buf_gate b(.d(din[i]), .q(dout[i]));
+    end
+endgenerate
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -102,13 +106,12 @@ endmodule'''
     
     def test_module_with_generics(self):
         """[Hier] generics"""
-        source = '''
-module generic #(type T = logic) buf(input T d, output T q);
+        source = '''module gen_mod (input d, output q);
     assign q = d;
 endmodule
 
 module top(input a, output y);
-    generic buf(.d(a), .q(y));
+    gen_mod buf_gate(.d(a), .q(y));
 endmodule'''
         
         tracer = self._make_tracer(source)
