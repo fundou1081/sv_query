@@ -91,31 +91,9 @@ class SignalTracer:
                 # [FIX] 只接受 DRIVER 边作为驱动
                 if edge and edge.kind != EdgeKind.DRIVER:
                     # CONNECTION/CLOCK/RESET 边不计入驱动，但继续递归追溯
-                    # [NEW] 但如果是 CONNECTION 边且 src 是实例端口（inst.port），应该计入驱动
-                    if edge.kind == EdgeKind.CONNECTION:
-                        node = self.graph.get_node(src)
-                        if node:
-                            parts = src.split('.')
-                            if len(parts) >= 3 and node.kind.name.startswith('PORT_'):
-                                # 实例端口直接驱动外部信号，计入驱动
-                                if node.id not in seen_ids:
-                                    drivers.append(node)
-                                    seen_ids.add(node.id)
                     if src in self.graph.nodes() and src not in seen_ids:
                         self._trace_drivers_recursive(src, drivers, seen_ids)
                     continue
-                
-                # [NEW] 对于 DRIVER 边，检查 src 是否是实例端口
-                # 如果是实例端口，也应该被记录（表示实例输出的驱动）
-                node = self.graph.get_node(src)
-                if node:
-                    # 检查是否是实例端口（kind 是 PORT_IN/PORT_OUT 且 id 包含实例名.端口名）
-                    # 例如: top.u1.q
-                    parts = src.split('.')
-                    if len(parts) >= 3 and node.kind.name.startswith('PORT_'):
-                        # 实例端口，应该被记录为驱动
-                        if node.id not in seen_ids:
-                            drivers.append(node)
                 
                 node = self.graph.get_node(src)
                 if node and node.id not in seen_ids:
