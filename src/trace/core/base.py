@@ -531,6 +531,56 @@ class PyslangAdapter:
         
         return instances
     
+    def get_generate_instances(self, trees: dict = None) -> List:
+        """Find HierarchyInstantiation nodes inside generate blocks.
+        
+        This is needed because pyslang's get_module_instances doesn't find
+        instances inside generate for/if/case blocks.
+        """
+        instances = []
+        
+        for fname, tree in (trees or {}).items():
+            if not tree or not hasattr(tree, 'root'):
+                continue
+            
+            def walk(node, depth=0, max_depth=30):
+                if depth > max_depth or node is None:
+                    return
+                kind = getattr(node, 'kind', None)
+                kind_str = str(kind) if kind else ''
+                
+                # Check for LoopGenerate
+                if kind == SyntaxKind.LoopGenerate:
+                    if hasattr(node, 'block'):
+                        block = node.block
+                        if hasattr(block, 'members'):
+                            for item in block.members:
+                                item_kind = getattr(item, 'kind', None)
+                                item_kind_str = str(item_kind) if item_kind else ''
+                                if 'HierarchyInstantiation' in item_kind_str:
+                                    instances.append(item)
+                
+                # Continue walking for other nodes
+                for attr in dir(node):
+                    if attr.startswith('_') or attr in ['parent', 'sourceRange']:
+                        continue
+                    try:
+                        child = getattr(node, attr)
+                        if callable(child):
+                            continue
+                        if hasattr(child, '__iter__') and not isinstance(child, str):
+                            for c in child:
+                                if hasattr(c, 'kind'):
+                                    walk(c, depth+1, max_depth)
+                        elif hasattr(child, 'kind'):
+                            walk(child, depth+1, max_depth)
+                    except:
+                        pass
+            
+            walk(tree.root)
+        
+        return instances
+    
 
     def get_instance_connection(self, instance) -> List:
         """获取实例的端口连接 [(port_name, signal_name), ...]"""
