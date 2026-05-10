@@ -80,11 +80,19 @@ class SignalTracer:
         # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
-                # [NEW] 跳过自环 (state <= state + 1)，但仍然记录为驱动
+                # [NEW] 自环 (state = state) 应该被记录为驱动
                 if src == dst:
                     node = self.graph.get_node(src)
-                    if node and node.id not in seen_ids:
+                    if node:
                         drivers.append(node)
+                    continue
+                
+                edge = self.graph.get_edge(src, dst)
+                # [FIX] 只接受 DRIVER 边作为驱动
+                if edge and edge.kind != EdgeKind.DRIVER:
+                    # CONNECTION/CLOCK/RESET 边不计入驱动，但继续递归追溯
+                    if src in self.graph.nodes() and src not in seen_ids:
+                        self._trace_drivers_recursive(src, drivers, seen_ids)
                     continue
                 
                 node = self.graph.get_node(src)
