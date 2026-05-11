@@ -45,6 +45,7 @@ class TraceNode:
     is_enable: bool = False
     is_port: bool = False
     parent: Optional[str] = None  # 方案C: 父节点ID (位选择→完整信号)
+    modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
 
 @dataclass
 class TraceEdge:
@@ -84,6 +85,11 @@ class SignalGraph(nx.DiGraph):
                 )
                 self._node_data[node_id] = placeholder
                 super().add_node(node_id)
+
+    def set_node_modport_dir(self, node_id: str, modport_dir: str):
+        """[P0-3] 设置已有节点的 modport_dir 属性"""
+        if node_id in self._node_data:
+            self._node_data[node_id].modport_dir = modport_dir
         
         key = (edge.src, edge.dst)
         
