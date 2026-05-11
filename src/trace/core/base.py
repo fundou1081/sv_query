@@ -297,6 +297,66 @@ class PyslangAdapter:
         
         return info
     
+
+    def get_interface_modport_signals(self, interface_name: str, modport_name: str) -> Dict[str, str]:
+        """[P0-3] 获取 interface 中指定 modport 的所有信号及其方向
+        
+        Args:
+            interface_name: 接口名称 (如 "bus_if")
+            modport_name: modport 名称 (如 "master")
+            
+        Returns:
+            Dict[signal_name, direction], 如 {"data": "output", "addr": "input"}
+        """
+        result = {}
+        
+        interfaces = self.get_interfaces()
+        for iface in interfaces:
+            # 获取 interface 名称
+            iface_def_name = None
+            if hasattr(iface, 'header') and hasattr(iface.header, 'name'):
+                iface_def_name = iface.header.name.value if hasattr(iface.header.name, 'value') else str(iface.header.name)
+            
+            if iface_def_name != interface_name:
+                continue
+            
+            # 在 interface members 中找 ModportDeclaration
+            if hasattr(iface, 'members'):
+                for member in iface.members:
+                    kind = str(getattr(member, 'kind', ''))
+                    if 'ModportDeclaration' not in kind:
+                        continue
+                    
+                    # 处理 items (通常只有一个 ModportItem)
+                    if hasattr(member, 'items'):
+                        items = list(member.items) if hasattr(member.items, '__iter__') else [member.items]
+                        for item in items:
+                            item_name = getattr(item, 'name', None)
+                            if not item_name:
+                                continue
+                            actual_name = item_name.value if hasattr(item_name, 'value') else str(item_name)
+                            if actual_name != modport_name:
+                                continue
+                            
+                            # 解析 ports (AnsiPortListSyntax)
+                            if hasattr(item, 'ports'):
+                                ports = item.ports
+                                if hasattr(ports, 'ports'):
+                                    actual_ports = ports.ports
+                                    if hasattr(actual_ports, '__iter__') and not isinstance(actual_ports, str):
+                                        for p in actual_ports:
+                                            if not hasattr(p, 'kind') or 'ModportSimplePortList' not in str(p.kind):
+                                                continue
+                                            direction = str(getattr(p, 'direction', '')).lower().strip()
+                                            ports_list = getattr(p, 'ports', '')
+                                            signal_names = str(ports_list).split(',')
+                                            for sig in signal_names:
+                                                sig = sig.strip()
+                                                if sig:
+                                                    result[sig] = direction
+        
+        return result
+
     # 现有的 get_port_declarations
     def get_port_declarations(self, module) -> List:
         """获取端口声明 - 从 header.ports 遍历"""

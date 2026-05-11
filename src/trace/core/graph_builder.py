@@ -5,6 +5,7 @@
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from .graph_models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
+import pyslang
 from .base import PyslangAdapter
 
 @dataclass
@@ -821,6 +822,39 @@ class LoadExtractor:
                         is_port=True
                     ))
             
+            # [P0-3] Build interface port map for this module
+            interface_ports = {}  # port_name -> (interface_name, modport_name)
+            try:
+                if hasattr(module, 'header') and module.header:
+                    header = module.header
+                    if hasattr(header, 'ports') and hasattr(header.ports, 'ports'):
+                        for item in header.ports.ports:
+                            if not hasattr(item, 'kind') or item.kind != pyslang.SyntaxKind.ImplicitAnsiPort:
+                                continue
+                            try:
+                                h = getattr(item, 'header', None)
+                                decl = getattr(item, 'declarator', None)
+                            except AttributeError:
+                                continue
+                            if h is None or decl is None:
+                                continue
+                            if hasattr(h, 'kind') and 'InterfacePortHeader' in str(h.kind):
+                                port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+                                interface_name = None
+                                if hasattr(h, 'nameOrKeyword'):
+                                    nk = h.nameOrKeyword
+                                    interface_name = nk.rawText if hasattr(nk, 'rawText') else str(nk)
+                                modport_name = None
+                                if hasattr(h, 'modport') and hasattr(h.modport, 'member'):
+                                    member_val = h.modport.member
+                                    modport_name = member_val.name if hasattr(member_val, 'name') else str(member_val)
+                                if port_name and interface_name:
+                                    interface_ports[port_name.strip()] = (interface_name, modport_name)
+                            elif hasattr(h, 'kind') and 'VariablePortHeader' in str(h.kind):
+                                port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+            except (ValueError, AttributeError, TypeError):
+                pass
+            
             for assign in self.adapter.get_assignments(module):
                 lhs, rhs = self._parse_assign(assign)
                 if lhs and rhs:
@@ -1342,6 +1376,66 @@ class GraphBuilder:
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
+        
+        # [P0-3] 设置 interface 信号的 modport_dir
+        self._set_interface_modport_dirs()
+    
+    def _set_interface_modport_dirs(self):
+        """设置 interface 信号的 modport_dir 属性"""
+        # Build interface_ports map for each module
+        for module in self.adapter.get_modules():
+            module_name = self.adapter.get_module_name(module)
+            
+            interface_ports = {}  # port_name -> (interface_name, modport_name)
+            try:
+                if hasattr(module, 'header') and module.header:
+                    header = module.header
+                    if hasattr(header, 'ports') and hasattr(header.ports, 'ports'):
+                        for item in header.ports.ports:
+                            if not hasattr(item, 'kind') or item.kind != pyslang.SyntaxKind.ImplicitAnsiPort:
+                                continue
+                            try:
+                                h = getattr(item, 'header', None)
+                                decl = getattr(item, 'declarator', None)
+                            except AttributeError:
+                                continue
+                            if h is None or decl is None:
+                                continue
+                            if hasattr(h, 'kind') and 'InterfacePortHeader' in str(h.kind):
+                                port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+                                interface_name = None
+                                if hasattr(h, 'nameOrKeyword'):
+                                    nk = h.nameOrKeyword
+                                    interface_name = nk.rawText if hasattr(nk, 'rawText') else str(nk)
+                                modport_name = None
+                                if hasattr(h, 'modport') and hasattr(h.modport, 'member'):
+                                    member_val = h.modport.member
+                                    modport_name = member_val.name if hasattr(member_val, 'name') else str(member_val)
+                                if port_name and interface_name:
+                                    interface_ports[port_name.strip()] = (interface_name, modport_name)
+            except (ValueError, AttributeError, TypeError):
+                pass
+            
+            # For each node in the graph that's in this module
+            for node_id, node in self.graph._node_data.items():
+                if node.module != module_name:
+                    continue
+                
+                # Check if node is an interface signal (e.g., "top.m.data")
+                # node_id format: module.port.signal
+                if '.' in node_id:
+                    parts = node_id.split('.')
+                    # port is the second part (index 1): e.g., 'm' from 'top.m.data'
+                    if len(parts) >= 2 and parts[1] in interface_ports:
+                        port_name = parts[1]
+                        # signal is the third part (index 2): e.g., 'data' from 'top.m.data'
+                        signal_name = parts[2] if len(parts) >= 3 else parts[1]
+                        interface_name, modport_name = interface_ports[port_name]
+                        
+                        # Get signal direction from interface
+                        signal_dir = self.adapter.get_interface_modport_signals(interface_name, modport_name).get(signal_name)
+                        if signal_dir:
+                            node.modport_dir = signal_dir
     
     def _upgrade_reg_nodes(self):
         """Upgrade node kind to REG if it's driven by a CLOCK edge.
