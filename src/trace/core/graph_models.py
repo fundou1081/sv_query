@@ -85,11 +85,6 @@ class SignalGraph(nx.DiGraph):
                 )
                 self._node_data[node_id] = placeholder
                 super().add_node(node_id)
-
-    def set_node_modport_dir(self, node_id: str, modport_dir: str):
-        """[P0-3] 设置已有节点的 modport_dir 属性"""
-        if node_id in self._node_data:
-            self._node_data[node_id].modport_dir = modport_dir
         
         key = (edge.src, edge.dst)
         
@@ -106,6 +101,11 @@ class SignalGraph(nx.DiGraph):
         # Add edge (allow self-loops for register self-update)
         self._edge_data[key] = edge
         super().add_edge(edge.src, edge.dst)
+    
+    def set_node_modport_dir(self, node_id: str, modport_dir: str):
+        """[P0-3] 设置已有节点的 modport_dir 属性"""
+        if node_id in self._node_data:
+            self._node_data[node_id].modport_dir = modport_dir
     
     def get_node(self, node_id: str) -> Optional[TraceNode]:
         return self._node_data.get(node_id)
