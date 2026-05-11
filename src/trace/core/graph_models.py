@@ -67,6 +67,23 @@ class SignalGraph(nx.DiGraph):
         super().add_node(node.id)
     
     def add_trace_edge(self, edge: TraceEdge):
+        # [铁律4] 不允许创建孤儿节点：如果目标节点不存在则创建 placeholder
+        for node_id in [edge.src, edge.dst]:
+            if node_id not in self._node_data:
+                parts = node_id.split('.', 1)
+                module = parts[0] if len(parts) > 0 else ''
+                name = parts[1] if len(parts) > 1 else node_id
+                
+                placeholder = TraceNode(
+                    id=node_id,
+                    name=name,
+                    module=module,
+                    kind=NodeKind.SIGNAL,
+                    width=(0, 0)
+                )
+                self._node_data[node_id] = placeholder
+                super().add_node(node_id)
+        
         key = (edge.src, edge.dst)
         
         existing = self._edge_data.get(key)
