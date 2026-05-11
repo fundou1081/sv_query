@@ -54,6 +54,7 @@ class TraceEdge:
     assign_type: str = ""
     condition: str = ""
     clock_domain: str = ""
+    modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
     confidence: str = "high"
 
 class SignalGraph(nx.DiGraph):
