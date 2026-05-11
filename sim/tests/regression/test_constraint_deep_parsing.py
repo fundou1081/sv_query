@@ -354,7 +354,7 @@ endclass'''
         self.assertEqual(len(classes), 2, "应有 2 个 class")
 
         # 按名称排序
-        class_names = sorted([c.name for c in classes])
+        class_names = sorted([c.name.value for c in classes])
         self.assertEqual(class_names, ['a', 'a2'], "class 名称应为 a, a2")
 
     def test_simple_extends(self):
