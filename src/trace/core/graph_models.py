@@ -19,12 +19,38 @@ class NodeKind(Enum):
     INSTANTIATED_MODULE = auto()  # 实例节点 (top.inst)
     GENERATE_BLOCK = auto()        # generate 块节点 (top.GEN)
 
+    # [Phase1a] Class & Constraint 节点类型
+    CLASS = auto()                  # class 定义节点 (packet)
+    CLASS_INSTANCE = auto()          # class 实例 (top.p = new())
+    CLASS_PROPERTY = auto()         # class 成员变量 (packet.addr, rand 变量)
+    CONSTRAINT_BLOCK = auto()       # constraint c { ... } 命名块
+    CONSTRAINT_EXPR = auto()        # 单条表达式约束
+    CONSTRAINT_IF = auto()          # if 分支
+    CONSTRAINT_ELSE = auto()         # else 分支
+    CONSTRAINT_IMPLIES = auto()     # implication 左部 (en -> ...)
+    CONSTRAINT_UNIQUE = auto()      # unique { ... }
+    CONSTRAINT_SOLVE = auto()       # solve A before B
+    CONSTRAINT_FOREACH = auto()     # foreach 循环
+    CONSTRAINT_RANGE = auto()       # inside {0,1,2} 的集合
+
 class EdgeKind(Enum):
     DRIVER = auto()      # 数据驱动 (q <= d)
     CLOCK = auto()       # 时钟触发 (clk -> q)
     RESET = auto()       # 异步复位 (rst_n -> q)
     CONNECTION = auto()  # 模块端口连接
     BIT_SELECT = auto()   # 位选择聚合
+
+    # [Phase1a] Class & Constraint 边类型
+    CONSTRAINS = auto()      # CLASS_PROPERTY ← 约束管控
+    HAS_CONDITION = auto()   # CONSTRAINT_IF → CLASS_PROPERTY (条件变量)
+    HAS_CONSEQUENT = auto()  # CONSTRAINT_IF → CONSTRAINT_EXPR (if 结果)
+    HAS_ALTERNATE = auto()   # CONSTRAINT_ELSE → CONSTRAINT_EXPR (else 结果)
+    HAS_LHS = auto()         # CONSTRAINT_EXPR → operand (左操作数)
+    HAS_RHS = auto()          # CONSTRAINT_EXPR → operand (右操作数)
+    HAS_MEMBER = auto()      # CONSTRAINT_UNIQUE → CLASS_PROPERTY (集合成员)
+    HAS_LOOP_VAR = auto()    # CONSTRAINT_FOREACH → CLASS_PROPERTY (循环变量)
+    HAS_BEFORE = auto()      # CONSTRAINT_SOLVE → CLASS_PROPERTY (before)
+    HAS_AFTER = auto()       # CONSTRAINT_SOLVE → CLASS_PROPERTY (after)
 
 # [铁律16] 注意：ENABLE/DATA 不作为独立边类型
 # - ENABLE: 用 TraceEdge.condition 属性替代，语义更清晰

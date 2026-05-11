@@ -10,6 +10,7 @@ from .core.graph_models import (
     SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 )
 from .core.graph_builder import GraphBuilder
+from .core.class_graph_builder import ClassGraphBuilder
 from .core.query_signal import SignalTracer, SignalChain
 from .core.query_load import LoadTracer, LoadChain
 from .core.query_module import ModuleTracer, ModuleConnections
@@ -44,6 +45,9 @@ class UnifiedTracer:
             adapter = self._get_adapter()
             builder = GraphBuilder(adapter)
             self._graph = builder.build()
+            # [Phase2] 追加 class 子图
+            class_builder = ClassGraphBuilder(adapter)
+            class_builder.build(self._graph)
             self._init_tracers()
         return self._graph
     
