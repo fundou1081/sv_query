@@ -560,6 +560,27 @@ class PyslangAdapter:
                                 if 'HierarchyInstantiation' in item_kind_str:
                                     instances.append(item)
                 
+                # Check for IfGenerate
+                if kind == SyntaxKind.IfGenerate:
+                    # Handle 'then' block
+                    if hasattr(node, 'block'):
+                        then_block = node.block
+                        if hasattr(then_block, 'members'):
+                            for item in then_block.members:
+                                item_kind = getattr(item, 'kind', None)
+                                item_kind_str = str(item_kind) if item_kind else ''
+                                if 'HierarchyInstantiation' in item_kind_str:
+                                    instances.append(item)
+                    # Handle 'else' block
+                    if hasattr(node, 'elseClause'):
+                        else_block = node.elseClause.clause
+                        if hasattr(else_block, 'members'):
+                            for item in else_block.members:
+                                item_kind = getattr(item, 'kind', None)
+                                item_kind_str = str(item_kind) if item_kind else ''
+                                if 'HierarchyInstantiation' in item_kind_str:
+                                    instances.append(item)
+                
                 # Continue walking for other nodes
                 for attr in dir(node):
                     if attr.startswith('_') or attr in ['parent', 'sourceRange']:
