@@ -869,6 +869,27 @@ class LoadExtractor:
                 return self._get_signal(tc_expr)
             return None
         
+        # [P0 Fix] 处理 MultipleConcatenationExpression: {N{signal}}
+        # MultipleConcatenationExpressionSyntax has 'concatenation' attribute, not 'values'
+        # This must be checked BEFORE the Replication/Concat block
+        if hasattr(signal, 'kind') and 'MultipleConcatenation' in str(signal.kind):
+            if hasattr(signal, 'concatenation'):
+                concat = signal.concatenation
+                if concat and hasattr(concat, 'expressions'):
+                    exprs = concat.expressions
+                    # exprs is the internal concatenation like {a}, need to iterate
+                    if hasattr(exprs, '__iter__') and not isinstance(exprs, str):
+                        for expr_item in exprs:
+                            if hasattr(expr_item, 'kind'):
+                                result = self._get_signal(expr_item)
+                                if result:
+                                    return result
+                    else:
+                        result = self._get_signal(exprs)
+                        if result:
+                            return result
+            return None
+
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
         if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
             if hasattr(signal, 'values'):
