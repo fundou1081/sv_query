@@ -224,6 +224,23 @@ class ClassGraphBuilder:
             elif 'ForeachConstraint' in kind_str:
                 self._build_foreach_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
             elif 'ExpressionConstraint' in kind_str:
+                # 检查是否是 super.<constraint_name> 调用（增量扩展）
+                item_str = str(item).strip()
+                if item_str.startswith('super.'):
+                    # 提取被调用的父类约束名
+                    # 格式: "super.c1;" → "c1"
+                    super_call_name = item_str.split('.')[1].rstrip(';').strip()
+                    # 在父类中查找同名约束
+                    parent = self.hierarchy.get_parent(cls_name)
+                    if parent:
+                        parent_constr_id = f"{parent}.{super_call_name}"
+                        graph.add_trace_edge(TraceEdge(
+                            src=f"{block_id}::expr_{idx}",
+                            dst=parent_constr_id,
+                            kind=EdgeKind.SUPER_CALL,
+                        ))
+                        # super.c1 不引用普通变量，跳过变量处理
+                        continue
                 self._build_expression_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
 
         # CONSTRAINT_BLOCK → 直接引用的 CLASS_PROPERTY 边（CONSTRAINS）
