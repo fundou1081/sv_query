@@ -12,6 +12,7 @@ from .core.graph_models import (
 from .core.graph_builder import GraphBuilder
 from .core.class_graph_builder import ClassGraphBuilder
 from .core.bit_select_handler import BitSelectHandler
+from .core.module_instance_graph import ModuleInstanceGraph, PathResolver
 from .core.query_signal import SignalTracer, SignalChain
 from .core.query_load import LoadTracer, LoadChain
 from .core.query_module import ModuleTracer, ModuleConnections
@@ -52,6 +53,11 @@ class UnifiedTracer:
             # [Phase3] 处理位选节点 (提取位宽、设置父子关系) - 在所有节点创建后
             bit_select_handler = BitSelectHandler(adapter, self._graph)
             bit_select_handler.process()
+            
+            # [Phase4] 构建模块实例图 (跨模块边界追踪)
+            self._module_graph = ModuleInstanceGraph(adapter)
+            self._module_graph.build(self.trees)
+            self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
         return self._graph
     
