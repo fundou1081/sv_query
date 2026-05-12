@@ -394,6 +394,11 @@ class PyslangAdapter:
                 ports.append(name)
         return ports
 
+    def get_port_name(self, port) -> Optional[str]:
+        """获取端口名称"""
+        name, _ = self.get_port_name_and_direction(port)
+        return name
+
     def get_port_name_and_direction(self, port) -> tuple:
         """获取端口名称和方向 (name, direction)"""
         if not port:
@@ -506,8 +511,8 @@ class PyslangAdapter:
                     spec = dim.specifier
                     if hasattr(spec, 'selector'):
                         sel = spec.selector
-                        msb = int(sel.left) if hasattr(sel, 'left') and sel.left else 0
-                        lsb = int(sel.right) if hasattr(sel, 'right') and sel.right else 0
+                        msb = self._extract_int_value(sel.left)
+                        lsb = self._extract_int_value(sel.right)
                         return (msb, lsb)
         
         return (0, 0)
