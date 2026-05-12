@@ -96,10 +96,12 @@ class ModuleInstanceGraph:
                     if 'ModuleDeclaration' in kind_str:
                         module_name = self._get_module_name(member)
                         if module_name:
+                            print(f"[DEBUG] Processing ModuleDeclaration: {module_name}")
                             self._extract_instances(member, module_name)
             else:
                 module_name = self._get_module_name(root)
                 if module_name:
+                    print(f"[DEBUG] Processing single module: {module_name}")
                     self._extract_instances(root, module_name)
     
     def _extract_instances(self, node, parent_path: str):
@@ -115,18 +117,18 @@ class ModuleInstanceGraph:
         
         kind_str = str(kind)
         
-        # ModuleDeclaration - 提取端口定义并递归
+        # ModuleDeclaration - 提取端口定义
         if 'ModuleDeclaration' in kind_str:
             module_name = self._get_module_name(node)
             if module_name:
                 # 存储模块端口定义 (用于后续实例化)
                 self._store_module_ports(module_name, node)
-                # 递归子节点 (查找实例化)
-                for child in self._iter_children(node):
-                    self._extract_instances(child, parent_path)
+            # 继续递归，但保持 parent_path 不变 (因为我们是同层级的模块定义)
+            for child in self._iter_children(node):
+                self._extract_instances(child, parent_path)
             return
         
-        # HierarchyInstantiation - 提取模块实例
+        # HierarchyInstantiation - 提取模块实例 (使用当前 parent_path)
         if 'HierarchyInstantiation' in kind_str:
             self._extract_module_instantiation(node, parent_path)
             return
@@ -165,46 +167,92 @@ class ModuleInstanceGraph:
             self._module_ports = {}
         
         ports = {}
-        # 遍历端口声明
-        for member in getattr(node, 'members', []):
-            kind_str = str(getattr(member, 'kind', ''))
-            if 'PortDeclaration' in kind_str:
-                # Get direction from header
+        # 遍历端口声明 (从 header.ports 或 members)
+        header = getattr(node, 'header', None)
+        
+        # 方法1: 从 header.ports 获取
+        if header and hasattr(header, 'ports') and header.ports:
+            for port in header.ports:
+                port_name = None
                 direction = 'unknown'
-                if hasattr(member, 'header') and member.header:
-                    direction = str(getattr(member.header, 'direction', 'unknown'))
+                width = (0, 0)
                 
-                # Get port names from declarators
-                declarators = getattr(member, 'declarators', None)
-                if declarators:
-                    for decl in declarators:
-                        # decl might be a simple identifier string
-                        name = str(decl).strip()
-                        if name and name != ',':
-                            # Get width from dataType
-                            width = (0, 0)
-                            if hasattr(member, 'header') and member.header and hasattr(member.header, 'dataType'):
-                                dt = member.header.dataType
-                                if dt and hasattr(dt, 'dimensions') and dt.dimensions:
-                                    for dim in dt.dimensions:
-                                        if hasattr(dim, 'kind') and 'VariableDimension' in str(dim.kind):
-                                            spec = getattr(dim, 'specifier', None)
-                                            if spec and hasattr(spec, 'selector'):
-                                                sel = spec.selector
-                                                left = getattr(sel, 'left', None)
-                                                right = getattr(sel, 'right', None)
-                                                msb = self._extract_int_value(left)
-                                                lsb = self._extract_int_value(right)
-                                                width = (msb, lsb)
-                                                break
-                            
-                            ports[name] = PortInfo(
-                                name=name,
-                                direction=direction,
-                                width=width,
-                                internal_signal=f"{module_name}.{name}",
-                                module_type=module_name
-                            )
+                # Get port name
+                if hasattr(port, 'name') and port.name:
+                    port_name = port.name.value if hasattr(port.name, 'value') else str(port.name)
+                elif hasattr(port, 'decl') and port.decl:
+                    decl = port.decl
+                    if hasattr(decl, 'name') and decl.name:
+                        port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+                
+                if not port_name:
+                    continue
+                
+                # Get direction
+                if hasattr(port, 'direction') and port.direction:
+                    direction = str(port.direction)
+                
+                # Get width
+                if hasattr(port, 'dataType') and port.dataType:
+                    dt = port.dataType
+                    if hasattr(dt, 'dimensions') and dt.dimensions:
+                        for dim in dt.dimensions:
+                            if hasattr(dim, 'kind') and 'VariableDimension' in str(dim.kind):
+                                spec = getattr(dim, 'specifier', None)
+                                if spec and hasattr(spec, 'selector'):
+                                    sel = spec.selector
+                                    left = getattr(sel, 'left', None)
+                                    right = getattr(sel, 'right', None)
+                                    msb = self._extract_int_value(left)
+                                    lsb = self._extract_int_value(right)
+                                    width = (msb, lsb)
+                                    break
+                
+                ports[port_name] = PortInfo(
+                    name=port_name,
+                    direction=direction,
+                    width=width,
+                    internal_signal=f"{module_name}.{port_name}",
+                    module_type=module_name
+                )
+        
+        # 方法2: 从 members 获取 (备用)
+        if not ports:
+            for member in getattr(node, 'members', []):
+                kind_str = str(getattr(member, 'kind', ''))
+                if 'PortDeclaration' in kind_str:
+                    direction = 'unknown'
+                    if hasattr(member, 'header') and member.header:
+                        direction = str(getattr(member.header, 'direction', 'unknown'))
+                    
+                    declarators = getattr(member, 'declarators', None)
+                    if declarators:
+                        for decl in declarators:
+                            name = str(decl).strip()
+                            if name and name != ',':
+                                width = (0, 0)
+                                if hasattr(member, 'header') and member.header and hasattr(member.header, 'dataType'):
+                                    dt = member.header.dataType
+                                    if dt and hasattr(dt, 'dimensions') and dt.dimensions:
+                                        for dim in dt.dimensions:
+                                            if hasattr(dim, 'kind') and 'VariableDimension' in str(dim.kind):
+                                                spec = getattr(dim, 'specifier', None)
+                                                if spec and hasattr(spec, 'selector'):
+                                                    sel = spec.selector
+                                                    left = getattr(sel, 'left', None)
+                                                    right = getattr(sel, 'right', None)
+                                                    msb = self._extract_int_value(left)
+                                                    lsb = self._extract_int_value(right)
+                                                    width = (msb, lsb)
+                                                    break
+                                
+                                ports[name] = PortInfo(
+                                    name=name,
+                                    direction=direction,
+                                    width=width,
+                                    internal_signal=f"{module_name}.{name}",
+                                    module_type=module_name
+                                )
         
         self._module_ports[module_name] = ports
     
@@ -293,23 +341,23 @@ class ModuleInstanceGraph:
                 if not instance_name:
                     continue
         
-        # 构造完整实例ID
-        if parent_path:
-            instance_id = f"{parent_path}.{instance_name}"
-        else:
-            instance_id = instance_name
+                # 构造完整实例ID
+                if parent_path:
+                    instance_id = f"{parent_path}.{instance_name}"
+                else:
+                    instance_id = instance_name
         
-        # 创建实例节点
-        if instance_id not in self.instances:
-            instance_node = ModuleInstanceNode(
-                id=instance_id,
-                module_type=module_type,
-                parent=parent_path or None
-            )
-            self.instances[instance_id] = instance_node
-            
-            # 添加端口映射
-            self._add_instance_ports(instance_id, module_type)
+                # 创建实例节点
+                if instance_id not in self.instances:
+                    instance_node = ModuleInstanceNode(
+                        id=instance_id,
+                        module_type=module_type,
+                        parent=parent_path or None
+                    )
+                    self.instances[instance_id] = instance_node
+                    
+                    # 添加端口映射
+                    self._add_instance_ports(instance_id, module_type)
     
     def _add_instance_ports(self, instance_id: str, module_type: str):
         """为实例添加端口映射"""
