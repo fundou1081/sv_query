@@ -167,92 +167,61 @@ class ModuleInstanceGraph:
             self._module_ports = {}
         
         ports = {}
-        # 遍历端口声明 (从 header.ports 或 members)
         header = getattr(node, 'header', None)
         
-        # 方法1: 从 header.ports 获取
+        # 从 header.ports 获取端口信息
         if header and hasattr(header, 'ports') and header.ports:
-            for port in header.ports:
-                port_name = None
-                direction = 'unknown'
-                width = (0, 0)
-                
-                # Get port name
-                if hasattr(port, 'name') and port.name:
-                    port_name = port.name.value if hasattr(port.name, 'value') else str(port.name)
-                elif hasattr(port, 'decl') and port.decl:
-                    decl = port.decl
-                    if hasattr(decl, 'name') and decl.name:
-                        port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
-                
-                if not port_name:
-                    continue
-                
-                # Get direction
-                if hasattr(port, 'direction') and port.direction:
-                    direction = str(port.direction)
-                
-                # Get width
-                if hasattr(port, 'dataType') and port.dataType:
-                    dt = port.dataType
-                    if hasattr(dt, 'dimensions') and dt.dimensions:
-                        for dim in dt.dimensions:
-                            if hasattr(dim, 'kind') and 'VariableDimension' in str(dim.kind):
-                                spec = getattr(dim, 'specifier', None)
-                                if spec and hasattr(spec, 'selector'):
-                                    sel = spec.selector
-                                    left = getattr(sel, 'left', None)
-                                    right = getattr(sel, 'right', None)
-                                    msb = self._extract_int_value(left)
-                                    lsb = self._extract_int_value(right)
-                                    width = (msb, lsb)
-                                    break
-                
-                ports[port_name] = PortInfo(
-                    name=port_name,
-                    direction=direction,
-                    width=width,
-                    internal_signal=f"{module_name}.{port_name}",
-                    module_type=module_name
-                )
-        
-        # 方法2: 从 members 获取 (备用)
-        if not ports:
-            for member in getattr(node, 'members', []):
-                kind_str = str(getattr(member, 'kind', ''))
-                if 'PortDeclaration' in kind_str:
-                    direction = 'unknown'
-                    if hasattr(member, 'header') and member.header:
-                        direction = str(getattr(member.header, 'direction', 'unknown'))
-                    
-                    declarators = getattr(member, 'declarators', None)
-                    if declarators:
-                        for decl in declarators:
-                            name = str(decl).strip()
-                            if name and name != ',':
-                                width = (0, 0)
-                                if hasattr(member, 'header') and member.header and hasattr(member.header, 'dataType'):
-                                    dt = member.header.dataType
-                                    if dt and hasattr(dt, 'dimensions') and dt.dimensions:
-                                        for dim in dt.dimensions:
-                                            if hasattr(dim, 'kind') and 'VariableDimension' in str(dim.kind):
-                                                spec = getattr(dim, 'specifier', None)
-                                                if spec and hasattr(spec, 'selector'):
-                                                    sel = spec.selector
-                                                    left = getattr(sel, 'left', None)
-                                                    right = getattr(sel, 'right', None)
-                                                    msb = self._extract_int_value(left)
-                                                    lsb = self._extract_int_value(right)
-                                                    width = (msb, lsb)
-                                                    break
-                                
-                                ports[name] = PortInfo(
-                                    name=name,
-                                    direction=direction,
-                                    width=width,
-                                    internal_signal=f"{module_name}.{name}",
-                                    module_type=module_name
-                                )
+            ansi_ports = header.ports
+            
+            # ports = ( OpenParen, SeparatedList, CloseParen )
+            # SeparatedList contains ImplicitAnsiPort nodes
+            if len(ansi_ports) > 1:
+                separated_list = ansi_ports[1]
+                if hasattr(separated_list, '__iter__'):
+                    for elem in separated_list:
+                        if not hasattr(elem, 'kind') or 'ImplicitAnsiPort' not in str(elem.kind):
+                            continue
+                        
+                        # Get port name from declarator
+                        port_name = None
+                        declarator = getattr(elem, 'declarator', None)
+                        if declarator and hasattr(declarator, 'name') and declarator.name:
+                            port_name = declarator.name.value if hasattr(declarator.name, 'value') else str(declarator.name)
+                        
+                        if not port_name:
+                            continue
+                        
+                        # Get direction from header
+                        direction = 'unknown'
+                        elem_header = getattr(elem, 'header', None)
+                        if elem_header and hasattr(elem_header, 'direction'):
+                            direction = str(elem_header.direction).strip()
+                        
+                        # Get width from header.dataType.dimensions
+                        width = (0, 0)
+                        if elem_header and hasattr(elem_header, 'dataType') and elem_header.dataType:
+                            dt = elem_header.dataType
+                            if hasattr(dt, 'dimensions') and dt.dimensions:
+                                for dim in dt.dimensions:
+                                    dim_kind = str(getattr(dim, 'kind', ''))
+                                    if 'VariableDimension' in dim_kind:
+                                        spec = getattr(dim, 'specifier', None)
+                                        if spec and hasattr(spec, 'selector'):
+                                            sel = spec.selector
+                                            left = getattr(sel, 'left', None)
+                                            right = getattr(sel, 'right', None)
+                                            msb = self._extract_int_value(left)
+                                            lsb = self._extract_int_value(right)
+                                            width = (msb, lsb)
+                                            break
+                        
+                        ports[port_name] = PortInfo(
+                            name=port_name,
+                            direction=direction,
+                            width=width,
+                            internal_signal=f"{module_name}.{port_name}",
+                            module_type=module_name
+                        )
         
         self._module_ports[module_name] = ports
     
