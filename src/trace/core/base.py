@@ -569,9 +569,16 @@ class PyslangAdapter:
                 continue
             
             # 遍历找 HierarchyInstantiation (模块实例化语法节点)
+            visited = set()
             def find_inst(node):
                 if node is None:
                     return
+                # 防止循环引用导致无限递归
+                node_id = id(node)
+                if node_id in visited:
+                    return
+                visited.add(node_id)
+                
                 kind = getattr(node, 'kind', None)
                 kind_str = str(kind) if kind else ''
                 # SyntaxKind.HierarchyInstantiation 包含 "HierarchyInstantiation"
