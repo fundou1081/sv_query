@@ -74,6 +74,8 @@ class TraceNode:
     is_enable: bool = False
     is_port: bool = False
     parent: Optional[str] = None  # 方案C: 父节点ID (位选择→完整信号)
+    parent_bit_start: Optional[int] = None  # 位选在父节点中的起始位
+    parent_bit_end: Optional[int] = None    # 位选在父节点中的结束位
     modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
 
 @dataclass
