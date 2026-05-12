@@ -61,10 +61,8 @@ class UnifiedTracer:
     # 场景A
     def trace_signal(self, signal: str, module: str = None) -> SignalChain:
         self.build_graph()
-        print(f"trace_signal({signal}, {module}) called")
-        print(f"  graph: {self._graph}")
         return self._signal_tracer.trace(signal, module)
-    
+
     def trace_loads(self, signal: str, module: str = None) -> LoadChain:
         """Trace signal fanout (loads)"""
         self.build_graph()

@@ -73,8 +73,12 @@ class ConstraintVisitor(BaseVisitor):
             return self.visit_uniqueness_constraint(node)
         if 'SolveBeforeConstraint' in kind_str:
             return self.visit_solve_before_constraint(node)
-        if 'ForeachConstraint' in kind_str:
+        if 'ExpressionOrDist' in kind_str:
+            return self.visit_dist_constraint(node)
+        if 'LoopConstraint' in kind_str:
             return self.visit_foreach_constraint(node)
+        if 'ElseConstraintClause' in kind_str:
+            return self.visit_else_constraint_clause(node)
 
         # 默认: 递归进入子节点
         self.generic_visit(node)
@@ -126,6 +130,19 @@ class ConstraintVisitor(BaseVisitor):
                 vars.extend(self._extract_vars_from_expr(right))
             return vars
 
+        # IdentifierSelectName (arr[i]): identifier + selectors
+        # 必须放在 'Identifier' 检查之前，因为 IdentifierSelectName 也包含 'Identifier'
+        if 'IdentifierSelectName' in kind_str:
+            ident = getattr(expr, 'identifier', None)
+            if ident and hasattr(ident, 'value'):
+                vars.append(str(ident.value).strip())
+            # 递归提取 selectors 中的索引表达式
+            selectors = getattr(expr, 'selectors', None)
+            if selectors and hasattr(selectors, '__iter__'):
+                for sel in selectors:
+                    vars.extend(self._extract_vars_from_expr(sel))
+            return vars
+
         # Identifier - 叶子节点
         # 支持多种 Identifier 语法：IdentifierName,IdentifierTiming,ScopedName 等
         if 'Identifier' in kind_str:
@@ -140,22 +157,79 @@ class ConstraintVisitor(BaseVisitor):
                 vars.append(name)
             return vars
 
+        # ElementSelect (arr[i] 中的索引选择器): selector 属性
+        if 'ElementSelect' in kind_str:
+            selector = getattr(expr, 'selector', None)
+            if selector:
+                vars.extend(self._extract_vars_from_expr(selector))
+            return vars
+
+        # BitSelect (arr[i] 中的索引): expr 属性
+        if 'BitSelect' in kind_str:
+            bit_expr = getattr(expr, 'expr', None)
+            if bit_expr:
+                vars.extend(self._extract_vars_from_expr(bit_expr))
+            return vars
+
+        # ConditionalPattern (三元表达式的条件部分: sel in sel ? a : b)
+        if 'ConditionalPattern' in kind_str:
+            pattern_expr = getattr(expr, 'expr', None)
+            if pattern_expr:
+                vars.extend(self._extract_vars_from_expr(pattern_expr))
+            return vars
+
+        # ConditionalPredicate (三元表达式条件的外层包装)
+        if 'ConditionalPredicate' in kind_str:
+            conditions = getattr(expr, 'conditions', None)
+            if conditions and hasattr(conditions, '__iter__'):
+                for c in conditions:
+                    vars.extend(self._extract_vars_from_expr(c))
+            return vars
+
+        # 条件表达式: predicate (不是 condition), left (then), right (else)
+        # pyslang ConditionalExpression 也有 left/right 属性，所以要优先检查
+        if 'ConditionalExpression' in kind_str:
+            vars.extend(self._extract_vars_from_expr(getattr(expr, 'predicate', None)))
+            vars.extend(self._extract_vars_from_expr(getattr(expr, 'left', None)))
+            vars.extend(self._extract_vars_from_expr(getattr(expr, 'right', None)))
+            return vars
+
         # 二元表达式: left, right
         if hasattr(expr, 'left') and hasattr(expr, 'right'):
             vars.extend(self._extract_vars_from_expr(expr.left))
             vars.extend(self._extract_vars_from_expr(expr.right))
             return vars
 
-        # 条件表达式: condition, left (then), right (else)
-        if 'ConditionalExpression' in kind_str:
-            vars.extend(self._extract_vars_from_expr(getattr(expr, 'condition', None)))
-            vars.extend(self._extract_vars_from_expr(getattr(expr, 'left', None)))
-            vars.extend(self._extract_vars_from_expr(getattr(expr, 'right', None)))
+        # ParenthesizedExpression: (expr) - 取 expression 属性
+        if 'ParenthesizedExpression' in kind_str:
+            vars.extend(self._extract_vars_from_expr(getattr(expr, 'expression', None)))
             return vars
 
-        # Inside 表达式: expr (left), ranges (right)
+        # 一元表达式: UnaryLogicalNotExpression (!a), NegationExpression (-a)
+        # 属性是 operand，不是 left/right
+        if hasattr(expr, 'operand'):
+            vars.extend(self._extract_vars_from_expr(expr.operand))
+            return vars
+
+        # Inside 表达式: x inside {[a:b]}
+        # 提取 expr (x) 和 ranges 中的变量
         if 'InsideExpression' in kind_str:
             vars.extend(self._extract_vars_from_expr(getattr(expr, 'expr', None)))
+            # 提取 ranges 中的变量
+            # ranges 是 RangeListSyntax: [OpenBrace, SeparatedList, CloseBrace]
+            # ValueRangeExpression 在 SeparatedList 中 (ranges[1])
+            ranges = getattr(expr, 'ranges', None)
+            if ranges and hasattr(ranges, '__iter__'):
+                # RangeListSyntax - extract the SeparatedList (index 1)
+                items = list(ranges) if hasattr(ranges, '__iter__') else [ranges]
+                for r in items:
+                    r_kind = getattr(r, 'kind', None)
+                    if r_kind and 'SeparatedList' in str(r_kind):
+                        # Found the list containing ValueRangeExpression
+                        for elem in r:
+                            if hasattr(elem, 'kind') and 'ValueRangeExpression' in str(elem.kind):
+                                vars.extend(self._extract_vars_from_expr(getattr(elem, 'left', None)))
+                                vars.extend(self._extract_vars_from_expr(getattr(elem, 'right', None)))
             return vars
 
         # 递归进入子节点
@@ -226,7 +300,9 @@ class ConstraintVisitor(BaseVisitor):
         self.visit(else_clause)
 
         # 结果变量是 if 和 else 分支的并集
+        # cond_vars 需要累积，因为递归调用只更新 self.variables 为结果变量
         all_vars = list(set(cond_vars + self.variables))
+        self.variables = all_vars
 
         return ConstraintNodeResult(
             nodes=[],
@@ -344,18 +420,31 @@ class ConstraintVisitor(BaseVisitor):
         """ForeachConstraint: foreach (arr[i]) arr[i] > 0
 
         RTL: constraint c { foreach (arr[i]) arr[i] > 0; }
+        pyslang kind: SyntaxKind.LoopConstraint
         创建:
           - CONSTRAINT_FOREACH 节点: c::foreach
           - HAS_LOOP_VAR 边: c::foreach → arr
         """
         self.reset()
 
+
         # 提取 foreach (arr[i]) 中的数组名
-        # array 属性的结构: ForLoopIteration 或类似
+        # pyslang: loopList 是 ForeachLoopListSyntax，包含:
+        #   [0] OpenParen
+        #   [1] IdentifierNameSyntax (arr)
+        #   [2] OpenBracket
+        #   [3] SeparatedList (索引变量 i)
+        #   [4] CloseBracket
+        #   [5] CloseParen
         vars = []
-        arr = getattr(node, 'array', None)
-        if arr:
-            vars.extend(self._extract_vars_from_expr(arr))
+        loop_list = getattr(node, 'loopList', None)
+        if loop_list and hasattr(loop_list, '__iter__'):
+            for elem in loop_list:
+                elem_kind = str(getattr(elem, 'kind', ''))
+                if 'IdentifierName' in elem_kind:
+                    ident = getattr(elem, 'identifier', None)
+                    if ident and hasattr(ident, 'value'):
+                        vars.append(str(ident.value).strip())
 
         self.variables = list(set(vars))
 
@@ -365,6 +454,69 @@ class ConstraintVisitor(BaseVisitor):
             direct_variables=self.variables,
         )
 
+
+    def visit_dist_constraint(self, node) -> ConstraintNodeResult:
+        """DistConstraint: b dist {3 := 1, 10 := 2}
+
+        RTL: constraint c { b dist {3 := 1, 10 := 2}; }
+        pyslang kind: SyntaxKind.ExpressionOrDist
+        创建:
+          - CONSTRAINT_DIST 节点: c::dist
+          - CONSTRAINS 边: c::dist → 变量 b
+        """
+        self.reset()
+
+        # ExpressionOrDist: expr=变量, distribution=DistConstraintList
+        expr = getattr(node, 'expr', None)
+        dist = getattr(node, 'distribution', None)
+
+
+        # 提取变量 b
+        if expr:
+            self.variables.extend(self._extract_vars_from_expr(expr))
+
+        # dist {3 := 1, 10 := 2} 中的 weight (:=) 不算变量
+        # 只收集 left-side 的值 (这里是常数，不影响变量提取)
+        # 如果 dist 中有变量引用，也需要提取
+        if dist and hasattr(dist, 'items'):
+            items = dist.items
+            if hasattr(items, '__iter__'):
+                for item in items:
+                    if hasattr(item, 'left'):
+                        self.variables.extend(self._extract_vars_from_expr(item.left))
+
+        self.variables = list(set(self.variables))
+
+
+        return ConstraintNodeResult(
+            nodes=[],
+            edges=[],
+            direct_variables=self.variables,
+        )
+
+    def visit_else_constraint_clause(self, node) -> ConstraintNodeResult:
+        """ElseConstraintClause: else { constraint_expr }
+
+        RTL: constraint c { if (a) x == 1; else y == 2; }
+        ElseConstraintClause.constraints 指向 else 分支的 ConstraintExpr
+        """
+        # 保存当前变量，因为 self.visit 会修改 self.variables
+        saved_vars = list(self.variables)
+
+        # 不 reset，直接进入 else 分支
+        else_constraints = getattr(node, 'constraints', None)
+        if else_constraints:
+            self.visit(else_constraints)
+
+        # 合并: 之前累积的变量 + else 分支的变量
+        all_vars = list(set(saved_vars + self.variables))
+        self.variables = all_vars
+
+        return ConstraintNodeResult(
+            nodes=[],
+            edges=[],
+            direct_variables=self.variables,
+        )
 
 # [铁律11] Agent 调用示例
 if __name__ == "__main__":

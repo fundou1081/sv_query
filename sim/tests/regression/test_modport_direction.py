@@ -7,7 +7,8 @@ test_modport_direction.py - P0-3 Modport 方向解析测试
 
 import unittest
 import sys
-sys.path.insert(0, 'src')
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
 from trace import UnifiedTracer

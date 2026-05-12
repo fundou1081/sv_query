@@ -145,14 +145,26 @@ class SignalTracer:
     def _find_loads(self, signal_id: str) -> List[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
-        
+
         loads = []
         seen_ids = set()
-        
+
         for succ in self.graph.successors(signal_id):
             node = self.graph.get_node(succ)
             if node and node.id not in seen_ids:
                 loads.append(node)
                 seen_ids.add(node.id)
-        
+
         return loads
+
+    def trace_fanout(self, signal: str, module: str = None) -> List[TraceNode]:
+        """Trace signal fanout (all loads driven by this signal)"""
+        signal_id = self._make_id(signal, module)
+        if signal_id not in self.graph.nodes():
+            return []
+        return self._find_loads(signal_id)
+
+    def trace_fanin(self, signal: str, module: str = None) -> List[TraceNode]:
+        """Trace signal fanin (all drivers of this signal)"""
+        signal_id = self._make_id(signal, module)
+        return self._collect_all_drivers(signal_id)
