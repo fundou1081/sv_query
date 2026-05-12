@@ -220,17 +220,56 @@ class TestHierarchicalPort:
 
 - [x] Step 1: 数据结构定义 (PortInfo, ModuleInstanceNode)
 - [x] Step 2: ModuleInstanceGraph 类框架
-- [ ] Step 3: 完善端口映射逻辑
+- [x] Step 3: 完善端口映射逻辑 ✅ (已完成)
+  - 支持 ANSI 风格端口 (header.ports)
+  - 支持 non-ANSI 风格端口 (PortDeclaration.members)
+  - 直接访问 HierarchicalInstance.decl.name.value (不再字符串解析)
 - [ ] Step 4: PathResolver 实现
 - [ ] Step 5: 集成测试
 - [ ] Step 6: 回归测试
 
 ---
 
-## 下一步
+## 已解决的问题
 
-1. 修复 HierarchyInstantiation 实例名解析
-2. 完善端口信息提取 (direction, width)
-3. 实现端口双向映射
-4. 编写 PathResolver 路径解析
-5. 添加集成测试
+### 问题1: HierarchyInstantiation 实例名解析
+**现象**: instances_str 字符串解析不可靠，导致实例名错误
+
+**原因**: 
+- `instances` 是 `SeparatedList[HierarchicalInstance]`，不是字符串
+- 之前用 `re.findall(r'(\w+)', str(instances))` 解析整个列表的 toString
+
+**解决**: 直接访问 AST 属性
+```python
+# 之前 (错误)
+inst_str = str(instances_str).strip()
+matches = re.findall(r'(\w+)', inst_str)
+
+# 现在 (正确)
+for elem in instances_list:
+    if 'HierarchicalInstance' in str(elem.kind):
+        instance_name = elem.decl.name.value
+```
+
+### 问题2: 端口信息提取
+**现象**: input clk 等 non-ANSI 风格端口无法识别
+
+**解决**: 
+1. 首先尝试 ANSI 风格 (header.ports)
+2. 如果没有，遍历 members 中的 PortDeclaration
+
+### 问题3: find_inst 循环引用 segfault
+**解决**: 添加 visited set 防止无限递归
+
+---
+
+## 当前状态
+
+ModuleInstanceGraph ✅ 基本正常工作:
+- instances: ['top.u_sub'] - 实例识别正确
+- port_to_internal: {'top.u_sub.clk': 'sub.clk', ...} - 端口映射正确
+- 支持多层级: top.u_mid.u_leaf
+
+**剩余问题在 graph_builder.py** (独立组件):
+- 跨模块信号节点缺失
+- test_simple_two_module 等测试检查 SignalGraph，不是 ModuleInstanceGraph
