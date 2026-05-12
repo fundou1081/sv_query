@@ -266,9 +266,47 @@ class ClassGraphBuilder:
             ))
             direct_vars.add(cond_prop_id)
 
-        # consequent: ExpressionConstraint
+        # consequent: ExpressionConstraint 或 ConstraintBlock（多语句）
         consequent = getattr(node, 'constraints', None)
-        if consequent and hasattr(consequent, 'kind') and 'ExpressionConstraint' in str(consequent.kind):
+        if consequent is None:
+            return
+
+        consequent_kind = str(getattr(consequent, 'kind', ''))
+
+        if 'ConstraintBlock' in consequent_kind:
+            # 多语句 if 块：展平为多个 CONSTRAINT_EXPR
+            if hasattr(consequent, 'items'):
+                for ci, cons_item in enumerate(consequent.items):
+                    cons_node_id = f"{if_node_id}::cons_{ci}"
+                    cons_node = TraceNode(
+                        id=cons_node_id,
+                        name=f"cons_{ci}",
+                        module=cls_name,
+                        kind=NodeKind.CONSTRAINT_EXPR,
+                        width=(0, 0),
+                    )
+                    graph.add_trace_node(cons_node)
+                    result.nodes.append(cons_node)
+                    graph.add_trace_edge(TraceEdge(
+                        src=if_node_id,
+                        dst=cons_node_id,
+                        kind=EdgeKind.HAS_CONSEQUENT,
+                    ))
+                    # 提取变量
+                    self._cv.reset()
+                    self._cv.visit(cons_item)
+                    for v in self._cv.variables:
+                        if v in ['this', 'super']:
+                            continue
+                        prop_id = f"{cls_name}.{v}"
+                        direct_vars.add(prop_id)
+                        graph.add_trace_edge(TraceEdge(
+                            src=cons_node_id,
+                            dst=prop_id,
+                            kind=EdgeKind.HAS_LHS,
+                        ))
+        elif 'ExpressionConstraint' in consequent_kind:
+            # 单语句
             cons_node_id = f"{if_node_id}::cons_0"
             cons_node = TraceNode(
                 id=cons_node_id,
@@ -316,9 +354,45 @@ class ClassGraphBuilder:
                 dst=alt_node_id,
                 kind=EdgeKind.HAS_ALTERNATE,
             ))
-            # else 中的 constraints
+            # else 中的 constraints（ConstraintBlock 多语句或单 ExpressionConstraint）
             alt_constraints = getattr(else_clause, 'constraints', None)
-            if alt_constraints and hasattr(alt_constraints, 'kind') and 'ExpressionConstraint' in str(alt_constraints.kind):
+            if alt_constraints is None:
+                pass  # No else constraints
+            else:
+                alt_kind = str(getattr(alt_constraints, 'kind', ''))
+
+            if 'ConstraintBlock' in alt_kind:
+                # 多语句 else 块：展平为多个 CONSTRAINT_EXPR
+                if hasattr(alt_constraints, 'items'):
+                    for ai, alt_item in enumerate(alt_constraints.items):
+                        alt_expr_id = f"{alt_node_id}::expr_{ai}"
+                        alt_expr_node = TraceNode(
+                            id=alt_expr_id,
+                            name=f"expr_{ai}",
+                            module=cls_name,
+                            kind=NodeKind.CONSTRAINT_EXPR,
+                            width=(0, 0),
+                        )
+                        graph.add_trace_node(alt_expr_node)
+                        result.nodes.append(alt_expr_node)
+                        graph.add_trace_edge(TraceEdge(
+                            src=alt_node_id,
+                            dst=alt_expr_id,
+                            kind=EdgeKind.HAS_CONSEQUENT,
+                        ))
+                        self._cv.reset()
+                        self._cv.visit(alt_item)
+                        for v in self._cv.variables:
+                            if v in ['this', 'super']:
+                                continue
+                            prop_id = f"{cls_name}.{v}"
+                            direct_vars.add(prop_id)
+                            graph.add_trace_edge(TraceEdge(
+                                src=alt_expr_id,
+                                dst=prop_id,
+                                kind=EdgeKind.HAS_LHS,
+                            ))
+            elif 'ExpressionConstraint' in alt_kind:
                 alt_expr_id = f"{alt_node_id}::expr_0"
                 alt_expr_node = TraceNode(
                     id=alt_expr_id,
@@ -348,16 +422,22 @@ class ClassGraphBuilder:
                     ))
 
     def _build_implication_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
-        """[铁律15] 处理 ImplicationConstraint → CONSTRAINT_EXPR
+        """"[铁律15] 处理 ImplicationConstraint → CONSTRAINT_IMPLIES + HAS_CONDITION/HAS_CONSEQUENT
 
         RTL: constraint c { b1 == 5 -> b2 == 10; }
+        创建:
+          - CONSTRAINT_IMPLIES 节点: block_id::impl_{idx}
+          - HAS_CONDITION 边 → 左部变量 (b1)
+          - CONSTRAINT_EXPR 节点: block_id::impl_{idx}::result (右部结果)
+          - HAS_CONSEQUENT 边 → result 节点
+          - HAS_LHS 边 → 右部变量 (b2)
         """
         implies_node_id = f"{block_id}::impl_{idx}"
         implies_node = TraceNode(
             id=implies_node_id,
             name=f"impl_{idx}",
             module=cls_name,
-            kind=NodeKind.CONSTRAINT_EXPR,
+            kind=NodeKind.CONSTRAINT_IMPLIES,
             width=(0, 0),
         )
         graph.add_trace_node(implies_node)
@@ -368,22 +448,90 @@ class ClassGraphBuilder:
             kind=EdgeKind.CONSTRAINS,
         ))
 
-        # 提取左部（条件）和右部（结果）变量
+        # 提取左部（条件）和右部（结果）
         left = getattr(node, 'left', None)
         right = getattr(node, 'constraints', None)
-        self._cv.reset()
-        self._cv.visit(node)  # 触发 _extract_vars_from_expr
 
-        for v in self._cv.variables:
-            if v in ['this', 'super']:
-                continue
-            prop_id = f"{cls_name}.{v}"
-            direct_vars.add(prop_id)
-            graph.add_trace_edge(TraceEdge(
-                src=implies_node_id,
-                dst=prop_id,
-                kind=EdgeKind.HAS_LHS,
-            ))
+        # 左部变量 → HAS_CONDITION 边
+        if left:
+            left_vars = self._cv._extract_vars_from_expr(left)
+            for v in left_vars:
+                if v in ['this', 'super']:
+                    continue
+                prop_id = f"{cls_name}.{v}"
+                graph.add_trace_edge(TraceEdge(
+                    src=implies_node_id,
+                    dst=prop_id,
+                    kind=EdgeKind.HAS_CONDITION,
+                ))
+                direct_vars.add(prop_id)
+
+        # 右部：ConstraintBlock（多语句）或单 ExpressionConstraint
+        if right:
+            right_kind = str(getattr(right, 'kind', ''))
+
+            if 'ConstraintBlock' in right_kind:
+                # 多语句 block：展平为多个 CONSTRAINT_EXPR
+                if hasattr(right, 'items'):
+                    for ri, right_item in enumerate(right.items):
+                        right_item_node_id = f"{implies_node_id}::result_{ri}"
+                        right_item_node = TraceNode(
+                            id=right_item_node_id,
+                            name=f"result_{ri}",
+                            module=cls_name,
+                            kind=NodeKind.CONSTRAINT_EXPR,
+                            width=(0, 0),
+                        )
+                        graph.add_trace_node(right_item_node)
+                        result.nodes.append(right_item_node)
+                        graph.add_trace_edge(TraceEdge(
+                            src=implies_node_id,
+                            dst=right_item_node_id,
+                            kind=EdgeKind.HAS_CONSEQUENT,
+                        ))
+                        # 提取变量
+                        self._cv.reset()
+                        self._cv.visit(right_item)
+                        for v in self._cv.variables:
+                            if v in ['this', 'super']:
+                                continue
+                            prop_id = f"{cls_name}.{v}"
+                            direct_vars.add(prop_id)
+                            graph.add_trace_edge(TraceEdge(
+                                src=right_item_node_id,
+                                dst=prop_id,
+                                kind=EdgeKind.HAS_LHS,
+                            ))
+            else:
+                # 单语句
+                result_node_id = f"{implies_node_id}::result"
+                result_node = TraceNode(
+                    id=result_node_id,
+                    name="result",
+                    module=cls_name,
+                    kind=NodeKind.CONSTRAINT_EXPR,
+                    width=(0, 0),
+                )
+                graph.add_trace_node(result_node)
+                result.nodes.append(result_node)
+                graph.add_trace_edge(TraceEdge(
+                    src=implies_node_id,
+                    dst=result_node_id,
+                    kind=EdgeKind.HAS_CONSEQUENT,
+                ))
+
+                # 右部变量 → HAS_LHS 边
+                right_vars = self._cv._extract_vars_from_expr(right)
+                for v in right_vars:
+                    if v in ['this', 'super']:
+                        continue
+                    prop_id = f"{cls_name}.{v}"
+                    direct_vars.add(prop_id)
+                    graph.add_trace_edge(TraceEdge(
+                        src=result_node_id,
+                        dst=prop_id,
+                        kind=EdgeKind.HAS_LHS,
+                    ))
 
     def _build_expression_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
         """[铁律15] 处理 ExpressionConstraint → CONSTRAINT_EXPR"""
