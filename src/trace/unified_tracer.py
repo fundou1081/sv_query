@@ -46,12 +46,12 @@ class UnifiedTracer:
             adapter = self._get_adapter()
             builder = GraphBuilder(adapter)
             self._graph = builder.build()
-            # [Phase3] 处理位选节点 (提取位宽、设置父子关系)
-            bit_select_handler = BitSelectHandler(adapter, self._graph)
-            bit_select_handler.process()
             # [Phase2] 追加 class 子图
             class_builder = ClassGraphBuilder(adapter)
             class_builder.build(self._graph)
+            # [Phase3] 处理位选节点 (提取位宽、设置父子关系) - 在所有节点创建后
+            bit_select_handler = BitSelectHandler(adapter, self._graph)
+            bit_select_handler.process()
             self._init_tracers()
         return self._graph
     

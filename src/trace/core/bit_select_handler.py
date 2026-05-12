@@ -39,9 +39,15 @@ class BitSelectHandler:
         
         # Phase 2: 处理位选节点
         self._create_hierarchical_bit_nodes()
+        
+        # Phase 3: 扫描 constraint 中的位选引用
+        self._scan_constraint_bit_selects()
     
     def _extract_all_widths(self):
-        """提取所有模块中所有信号声明的位宽"""
+        """提取所有模块和类中所有信号声明的位宽"""
+        from pyslang import SyntaxKind
+        
+        # === 处理 Module 中的信号 ===
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             
@@ -63,13 +69,11 @@ class BitSelectHandler:
                     
                     # 确保节点存在 (声明的信号都应该在图中)
                     if full_name not in self.graph.nodes():
-                        name = name  # 信号名
-                        module = module_name  # 模块名
                         from trace.core.graph_models import TraceNode, NodeKind
                         node = TraceNode(
                             id=full_name,
                             name=name,
-                            module=module,
+                            module=module_name,
                             kind=NodeKind.SIGNAL,
                             width=width,
                         )
@@ -79,7 +83,87 @@ class BitSelectHandler:
                         node = self.graph.get_node(full_name)
                         if node:
                             node.width = width
+        
+        # === 处理 Class 中的属性 ===
+        for cls in self.adapter.get_classes():
+            cls_name = getattr(cls, 'name', None)
+            if cls_name:
+                cls_name = cls_name.value if hasattr(cls_name, 'value') else str(cls_name).strip()
+            if not cls_name:
+                continue
+            
+            # 遍历 ClassPropertyDeclaration
+            for item in getattr(cls, 'items', []):
+                kind_str = str(getattr(item, 'kind', ''))
+                if 'ClassPropertyDeclaration' in kind_str:
+                    # 提取属性名和位宽
+                    decl = getattr(item, 'declaration', None)
+                    if decl:
+                        prop_name = getattr(decl, 'name', None)
+                        if prop_name:
+                            prop_name = prop_name.value if hasattr(prop_name, 'value') else str(prop_name).strip()
+                        
+                        # 提取位宽
+                        width = (0, 0)
+                        type_node = getattr(decl, 'type', None)
+                        if type_node:
+                            dims = getattr(type_node, 'dimensions', None)
+                            if dims:
+                                for dim in dims:
+                                    if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                                        spec = getattr(dim, 'specifier', None)
+                                        if spec and hasattr(spec, 'selector'):
+                                            sel = spec.selector
+                                            msb = self._extract_int_value(getattr(sel, 'left', None))
+                                            lsb = self._extract_int_value(getattr(sel, 'right', None))
+                                            width = (msb, lsb)
+                                            break
+                        
+                        if prop_name:
+                            full_name = f"{cls_name}.{prop_name}"
+                            self.signal_widths[full_name] = width
+                            
+                            # 确保节点存在
+                            if full_name not in self.graph.nodes():
+                                from trace.core.graph_models import TraceNode, NodeKind
+                                node = TraceNode(
+                                    id=full_name,
+                                    name=prop_name,
+                                    module=cls_name,
+                                    kind=NodeKind.CLASS_PROPERTY,
+                                    width=width,
+                                )
+                                self.graph.add_trace_node(node)
+                            else:
+                                node = self.graph.get_node(full_name)
+                                if node:
+                                    node.width = width
     
+    def _extract_int_value(self, expr) -> int:
+        """从表达式中提取整数值"""
+        if expr is None:
+            return 0
+        # LiteralExpressionSyntax: expr.literal.valueText
+        if hasattr(expr, 'literal'):
+            lit = expr.literal
+            if hasattr(lit, 'valueText'):
+                try:
+                    return int(lit.valueText)
+                except (ValueError, TypeError):
+                    pass
+        # 直接的值属性
+        if hasattr(expr, 'value'):
+            v = expr.value
+            if isinstance(v, (int, float)):
+                return int(v)
+        # text 属性
+        if hasattr(expr, 'text'):
+            try:
+                return int(expr.text)
+            except (ValueError, TypeError):
+                pass
+        return 0
+
     def _get_data_decl_names(self, data_decl) -> List[str]:
         """从 DataDeclaration 提取所有声明的信号名
         
@@ -114,6 +198,83 @@ class BitSelectHandler:
         
         return names
     
+    def _scan_constraint_bit_selects(self):
+        """扫描 constraint 表达式中的位选引用
+        
+        处理类似 constraint c1 { data[7:4] == 4'hF; } 中的位选
+        从 constraint 表达式字符串中提取 bit select 模式并创建节点
+        """
+        import re
+        from pyslang import SyntaxKind
+        
+        # 遍历所有类
+        for cls in self.adapter.get_classes():
+            cls_name = getattr(cls, 'name', None)
+            if cls_name:
+                cls_name = cls_name.value if hasattr(cls_name, 'value') else str(cls_name).strip()
+            if not cls_name:
+                continue
+            
+            # 遍历 constraint blocks
+            for item in getattr(cls, 'items', []):
+                kind_str = str(getattr(item, 'kind', ''))
+                if 'ConstraintDeclaration' not in kind_str:
+                    continue
+                
+                # 获取 constraint block 内容
+                block = getattr(item, 'block', None)
+                if not block or not hasattr(block, 'items') or not block.items:
+                    continue
+                
+                # 遍历 block 中的 constraint items
+                for block_item in block.items:
+                    item_str = str(block_item).strip()
+                    
+                    # 查找位选模式: identifier[msb:lsb]
+                    pattern = r'(\w+)\[(\d+):(\d+)\]'
+                    matches = re.findall(pattern, item_str)
+                    
+                    for base_name, msb_str, lsb_str in matches:
+                        msb = int(msb_str)
+                        lsb = int(lsb_str)
+                        
+                        # 构造 bit select 节点 ID
+                        bit_select_id = f"{cls_name}.{base_name}[{msb}:{lsb}]"
+                        parent_id = f"{cls_name}.{base_name}"
+                        
+                        # 检查父节点是否存在
+                        parent_node = self.graph.get_node(parent_id)
+                        if not parent_node:
+                            # 父节点不存在，跳过
+                            continue
+                        
+                        # 确保 bit select 节点存在
+                        if bit_select_id not in self.graph.nodes():
+                            from trace.core.graph_models import TraceNode, NodeKind
+                            node = TraceNode(
+                                id=bit_select_id,
+                                name=f"{base_name}[{msb}:{lsb}]",
+                                module=cls_name,
+                                kind=NodeKind.CONSTRAINT_EXPR,  # bit select in constraint context
+                                width=(max(msb, lsb), min(msb, lsb)),
+                                bit_range=f"[{msb}:{lsb}]",
+                                parent=parent_id,
+                                parent_bit_start=min(msb, lsb),
+                                parent_bit_end=max(msb, lsb),
+                            )
+                            self.graph.add_trace_node(node)
+                        
+                        # 创建 BIT_SELECT 边
+                        existing_edge = self.graph.get_edge(bit_select_id, parent_id)
+                        if not existing_edge:
+                            from trace.core.graph_models import TraceEdge, EdgeKind
+                            edge = TraceEdge(
+                                src=bit_select_id,
+                                dst=parent_id,
+                                kind=EdgeKind.BIT_SELECT,
+                            )
+                            self.graph.add_trace_edge(edge)
+
     def _create_hierarchical_bit_nodes(self):
         """为位选节点创建父子关系和属性
         
