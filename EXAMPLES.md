@@ -397,7 +397,7 @@ if tracer_obj:
 
 ### 8.1 跨模块路径追踪
 
-**场景**：追踪从 `tb.clk` 到 `dut.cpu.reg[31:0]` 的完整路径
+**场景**：追踪跨模块边界实例间的连接关系
 
 ```python
 source = '''
@@ -406,7 +406,7 @@ module tb;
 endmodule
 
 module dut;
-    logic clk;
+    input clk;
     logic [31:0] reg_data;
     
     always_ff @(posedge clk)
@@ -422,19 +422,93 @@ endmodule
 '''
 
 tree = pyslang.SyntaxTree.fromText(source)
-tracer = UnifiedTracer(trees={'top.sv': tree})
+tracer = UnifiedTracer(trees={'test.sv': tree})
 tracer.build_graph()
 graph = tracer.get_graph()
+mig = tracer._module_graph
 
-# Find path from tb.clk to dut.reg_data
-path = graph.find_path('top.u_tb.clk', 'top.u_dut.reg_data')
-print(f"Path: {' -> '.join(path)}")
+# 1. 查看模块实例
+print("=== Module Instances ===")
+for inst_id in mig.instances:
+    print(f"  {inst_id}")
+# Output:
+#   top.u_tb
+#   top.u_dut
+
+# 2. 查看端口映射 (实例端口 → 模块内部信号)
+print("\n=== Port Mapping ===")
+print(f"  port_to_internal: {mig.port_to_internal}")
+print(f"  get_internal_signal('top.u_dut.clk'): {mig.get_internal_signal('top.u_dut.clk')}")
+# Output:
+#   port_to_internal: {'top.u_dut.clk': 'dut.clk'}
+#   get_internal_signal('top.u_dut.clk'): dut.clk
+
+# 3. 查看所有信号节点
+print("\n=== Signal Nodes ===")
+for n in sorted(graph.nodes()):
+    print(f"  {n}")
+# Output:
+#   dut.0
+#   dut.clk
+#   dut.reg_data
+#   tb.clk
+#   top.u_dut
+#   top.u_dut.clk
+#   top.u_tb
+#   top.u_tb.clk
+
+# 4. 查看跨模块 Driver 边
+print("\n=== Cross-module Driver Edges ===")
+for src, dst in sorted(graph.edges()):
+    edge = graph.get_edge(src, dst)
+    if edge.kind.name == 'DRIVER' and ('u_tb' in src or 'u_dut' in dst):
+        print(f"  {src} --DRIVER--> {dst}")
+# Output:
+#   top.u_tb.clk --DRIVER--> top.u_dut.clk
+
+# 5. 查看时钟边
+print("\n=== Clock Edges ===")
+for src, dst in sorted(graph.edges()):
+    edge = graph.get_edge(src, dst)
+    if edge.kind.name == 'CLOCK':
+        print(f"  {src} --CLOCK--> {dst}")
+# Output:
+#   dut.clk --CLOCK--> dut.reg_data
 ```
 
 **预期结果**：
 ```
-Path: top.u_tb.clk -> top.u_dut.clk -> top.u_dut.reg_data
+=== Module Instances ===
+  top.u_tb
+  top.u_dut
+
+=== Port Mapping ===
+  port_to_internal: {'top.u_dut.clk': 'dut.clk'}
+  get_internal_signal('top.u_dut.clk'): dut.clk
+
+=== Signal Nodes ===
+  dut.clk
+  dut.reg_data
+  top.u_dut.clk
+  top.u_tb.clk
+  ...
+
+=== Cross-module Driver Edges ===
+  top.u_tb.clk --DRIVER--> top.u_dut.clk
+
+=== Clock Edges ===
+  dut.clk --CLOCK--> dut.reg_data
 ```
+
+**节点命名规则**：
+- 实例节点：`top.u_tb`, `top.u_dut`
+- 实例端口：`top.u_tb.clk`, `top.u_dut.clk` (带实例路径前缀)
+- 模块内部信号：`tb.clk`, `dut.clk`, `dut.reg_data` (模块名作为前缀)
+
+**端口映射机制**：
+- `ModuleInstanceGraph.port_to_internal` 存储映射关系
+- `top.u_dut.clk` (实例端口) → `dut.clk` (模块内部)
+- 使用 `mig.get_internal_signal('top.u_dut.clk')` 获取映射
 
 ---
 
