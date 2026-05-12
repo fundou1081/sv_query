@@ -170,7 +170,8 @@ class TestHierarchicalPort(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -283,7 +284,8 @@ class TestMultiLevelHierarchy(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -336,7 +338,8 @@ class TestArrayOfInstances(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -378,7 +381,8 @@ class TestPortWidthMapping(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -427,7 +431,8 @@ class TestBidirectionalPort(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -470,7 +475,8 @@ class TestCrossModuleClockPath(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -508,7 +514,8 @@ class TestMultipleConnections(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -557,7 +564,8 @@ class TestUnconnectedPort(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -603,7 +611,8 @@ class TestParameterOverride(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -648,7 +657,8 @@ class TestInterfaceModportCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -693,7 +703,8 @@ class TestGenerateInstanceCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -727,7 +738,8 @@ class TestFunctionPortCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -761,7 +773,8 @@ class TestClassInstanceCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -795,7 +808,8 @@ class TestClockDividerCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -834,7 +848,8 @@ class TestResetCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -868,7 +883,8 @@ class TestBusArbitrationCrossModule(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -906,7 +922,8 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -979,7 +996,8 @@ class TestCrossModuleSignalFlow(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -1020,7 +1038,8 @@ class TestCrossModulePortTypes(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -1073,7 +1092,8 @@ class TestCrossModulePathFinding(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
@@ -1107,7 +1127,8 @@ class TestCrossModuleNegativeCases(unittest.TestCase):
         import os
         
         # Write source to temp file to handle multi-module correctly
-        temp_path = '/tmp/test_cross_module.sv'
+        import uuid
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
         with open(temp_path, 'w') as f:
             # Handle both escaped and non-escaped newlines
             normalized = source.replace('\\n', '\n')
