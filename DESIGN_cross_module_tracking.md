@@ -220,13 +220,13 @@ class TestHierarchicalPort:
 
 - [x] Step 1: 数据结构定义 (PortInfo, ModuleInstanceNode)
 - [x] Step 2: ModuleInstanceGraph 类框架
-- [x] Step 3: 完善端口映射逻辑 ✅ (已完成)
-  - 支持 ANSI 风格端口 (header.ports)
-  - 支持 non-ANSI 风格端口 (PortDeclaration.members)
-  - 直接访问 HierarchicalInstance.decl.name.value (不再字符串解析)
-- [ ] Step 4: PathResolver 实现
-- [ ] Step 5: 集成测试
-- [ ] Step 6: 回归测试
+- [x] Step 3: 端口映射逻辑 ✅
+  - 支持 ANSI / non-ANSI 风格端口
+  - HierarchicalInstance.decl.name.value 直接访问
+  - port_to_internal / internal_to_port 双向映射
+- [x] Step 4: PathResolver 实现 ✅
+- [x] Step 5: 集成测试 ✅ (38 金标准测试全部通过)
+- [x] Step 6: 回归测试 ✅
 
 ---
 
@@ -273,3 +273,45 @@ ModuleInstanceGraph ✅ 基本正常工作:
 **剩余问题在 graph_builder.py** (独立组件):
 - 跨模块信号节点缺失
 - test_simple_two_module 等测试检查 SignalGraph，不是 ModuleInstanceGraph
+
+
+---
+
+## 金标准测试方法论
+
+**核心原则**: 测试必须同时验证两个独立组件的协作
+
+### 两个组件
+
+| 组件 | 职责 | 验证内容 |
+|------|------|----------|
+| **ModuleInstanceGraph** | 模块实例层级 + 端口映射 | 实例存在、端口映射正确 |
+| **SignalGraph** | 信号节点 + 驱动关系 | 跨模块信号节点存在 |
+
+### 正确示例
+
+```python
+def test_simple_two_module(self):
+    """[金标准] 简单两模块连接"""
+    graph, tracer = self._build_graph(source)
+    mig = getattr(tracer, '_module_graph', None)
+    
+    # 1. ModuleInstanceGraph: 实例 + 端口映射
+    self.assertIn('top.u_sub', mig.instances)
+    self.assertIn('top.u_sub.out', mig.port_to_internal)
+    
+    # 2. SignalGraph: 跨模块信号节点
+    nodes = list(graph.nodes())
+    has_cross_module_signal = any('sub.out' in n for n in nodes)
+    self.assertTrue(has_cross_module_signal)
+```
+
+### 为什么需要两个组件
+
+```
+跨模块追踪需要:
+1. ModuleInstanceGraph - 知道端口和内部信号的映射关系
+2. SignalGraph       - 知道信号节点和驱动关系
+
+两者结合才能实现: top.u_sub.clk → sub.clk → sub.reg_data
+```
