@@ -145,14 +145,8 @@ class PyslangAdapter:
     def _extract_modules(self, node) -> List:
         """提取模块"""
         modules = []
-        visited = set()
-        return self._extract_modules_impl(node, modules, visited)
-    
-    def _extract_modules_impl(self, node, modules, visited) -> List:
-        """提取模块实现 (带 visited 防止循环引用)"""
-        if node is None or id(node) in visited:
+        if node is None:
             return modules
-        visited.add(id(node))
             
         # 检查是否是 ModuleDeclaration
         if hasattr(node, 'kind'):
@@ -161,7 +155,7 @@ class PyslangAdapter:
         
         # 递归子节点
         for child in self.iter_children(node):
-            self._extract_modules_impl(child, modules, visited)
+            modules.extend(self._extract_modules(child))
         
         return modules
     
@@ -184,14 +178,8 @@ class PyslangAdapter:
     def _extract_classes(self, node) -> List:
         """提取类声明"""
         classes = []
-        visited = set()
-        return self._extract_classes_impl(node, classes, visited)
-    
-    def _extract_classes_impl(self, node, classes, visited) -> List:
-        """提取类声明实现"""
-        if node is None or id(node) in visited:
+        if node is None:
             return classes
-        visited.add(id(node))
         
         # 检查是否是 ClassDeclaration
         try:
@@ -199,12 +187,13 @@ class PyslangAdapter:
                 if node.kind == SyntaxKind.ClassDeclaration:
                     classes.append(node)
         except (ValueError, AttributeError):
+            # pyslang AST 节点可能被垃圾回收导致 kind 访问出错
             pass
         
         # 递归子节点
         try:
             for child in self.iter_children(node):
-                self._extract_classes_impl(child, classes, visited)
+                classes.extend(self._extract_classes(child))
         except (ValueError, AttributeError, TypeError):
             pass
         
@@ -213,14 +202,8 @@ class PyslangAdapter:
     def _extract_interfaces(self, node) -> List:
         """提取接口声明"""
         interfaces = []
-        visited = set()
-        return self._extract_interfaces_impl(node, interfaces, visited)
-    
-    def _extract_interfaces_impl(self, node, interfaces, visited) -> List:
-        """提取接口声明实现"""
-        if node is None or id(node) in visited:
+        if node is None:
             return interfaces
-        visited.add(id(node))
         
         # 检查是否是 InterfaceDeclaration
         try:
@@ -233,7 +216,7 @@ class PyslangAdapter:
         # 递归子节点
         try:
             for child in self.iter_children(node):
-                self._extract_interfaces_impl(child, interfaces, visited)
+                interfaces.extend(self._extract_interfaces(child))
         except (ValueError, AttributeError, TypeError):
             pass
         
