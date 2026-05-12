@@ -569,21 +569,24 @@ class PyslangAdapter:
                 continue
             
             # 遍历找 HierarchyInstantiation (模块实例化语法节点)
+            # 使用 (id, kind) 元组避免 pyslang Token 对象池化导致的 id 冲突
             visited = set()
-            def find_inst(node):
-                if node is None:
+            max_depth = 100
+            
+            def find_inst(node, depth=0):
+                if node is None or depth > max_depth:
                     return
-                # 防止循环引用导致无限递归
-                node_id = id(node)
-                if node_id in visited:
+                
+                node_key = (id(node), getattr(node, 'kind', None))
+                if node_key in visited:
                     return
-                visited.add(node_id)
+                visited.add(node_key)
                 
                 kind = getattr(node, 'kind', None)
                 kind_str = str(kind) if kind else ''
-                # SyntaxKind.HierarchyInstantiation 包含 "HierarchyInstantiation"
                 if kind and 'HierarchyInstantiation' in kind_str:
                     instances.append(node)
+                
                 for attr in dir(node):
                     if attr.startswith('_') or attr in ['parent', 'sourceRange']:
                         continue
@@ -593,9 +596,9 @@ class PyslangAdapter:
                             continue
                         if hasattr(child, '__iter__') and not isinstance(child, str):
                             for c in child:
-                                find_inst(c)
+                                find_inst(c, depth+1)
                         elif hasattr(child, 'kind'):
-                            find_inst(child)
+                            find_inst(child, depth+1)
                     except:
                         pass
             
