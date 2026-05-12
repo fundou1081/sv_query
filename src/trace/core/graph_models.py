@@ -51,6 +51,8 @@ class EdgeKind(Enum):
     HAS_LOOP_VAR = auto()    # CONSTRAINT_FOREACH → CLASS_PROPERTY (循环变量)
     HAS_BEFORE = auto()      # CONSTRAINT_SOLVE → CLASS_PROPERTY (before)
     HAS_AFTER = auto()       # CONSTRAINT_SOLVE → CLASS_PROPERTY (after)
+    CONTAINS_MEMBER = auto()  # CLASS → CLASS_PROPERTY (组合/成员变量)
+    IS_INSTANCE_OF = auto()   # CLASS_PROPERTY → CLASS (成员变量的类型引用)
 
 # [铁律16] 注意：ENABLE/DATA 不作为独立边类型
 # - ENABLE: 用 TraceEdge.condition 属性替代，语义更清晰

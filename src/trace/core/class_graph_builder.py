@@ -145,6 +145,19 @@ class ClassGraphBuilder:
                 kind=EdgeKind.CONSTRAINS,
             ))
 
+            # 如果是类引用 (NamedType)，添加 IS_INSTANCE_OF 边
+            type_node = getattr(decl, 'type', None)
+            if type_node and getattr(type_node, 'kind') == SyntaxKind.NamedType:
+                # NamedType.name 是 IdentifierNameSyntax，str() 获取类名
+                name_attr = getattr(type_node, 'name', None)
+                type_name = str(name_attr).strip() if name_attr else ''
+                if type_name:
+                    graph.add_trace_edge(TraceEdge(
+                        src=node_id,
+                        dst=type_name,
+                        kind=EdgeKind.IS_INSTANCE_OF,
+                    ))
+
     def _build_constraint_block(self, graph, constr, cls_name: str, result: ClassBuilderResult):
         """[铁律15] 处理 ConstraintDeclaration → CONSTRAINT_BLOCK
 
