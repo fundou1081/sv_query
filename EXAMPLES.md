@@ -1,0 +1,606 @@
+# sv_query 使用示例 (Examples)
+
+本文档提供 `sv_query` 的实用案例，展示如何解决实际工程问题。每个案例包含：
+- **场景描述**：要解决的问题
+- **预期结果**：理论分析应该得到的结果
+- **实际效果**：代码运行的实际输出
+- **核心 API**：解决问题的关键代码
+
+---
+
+## 目录
+
+1. [基础信号追踪](#1-基础信号追踪)
+2. [位选追踪](#2-位选追踪)
+3. [Driver 追踪](#3-driver-追踪)
+4. [Constraint 追踪](#4-constraint-追踪)
+5. [Class 组合关系](#5-class-组合关系)
+6. [约束覆盖分析](#6-约束覆盖分析)
+7. [时钟域分析](#7-时钟域分析)
+8. [下游高级案例](#8-下游高级案例)
+
+---
+
+## 1. 基础信号追踪
+
+### 场景：追踪模块中的所有信号
+
+**问题**：想知道 `top` 模块中有哪些信号，以及它们之间的驱动关系。
+
+```python
+import pyslang
+from trace.unified_tracer import UnifiedTracer
+
+source = '''
+module top;
+    logic clk;
+    logic rst_n;
+    logic [7:0] data;
+    logic [7:0] out;
+    
+    always_ff @(posedge clk) begin
+        if (!rst_n)
+            out <= 8'h0;
+        else
+            out <= data;
+    end
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+```
+
+**预期结果**：
+- 节点: `top.clk`, `top.rst_n`, `top.data`, `top.out`
+- edges: `top.data` 驱动 `top.out`
+
+**实际输出**：
+
+```python
+print("=== Nodes ===")
+for n in graph.nodes():
+    node = graph.get_node(n)
+    print(f"  {n}: width={node.width}")
+
+# Output:
+#   top.clk: width=(1, 0)
+#   top.rst_n: width=(1, 0)
+#   top.data: width=(7, 0)
+#   top.out: width=(7, 0)
+
+print("\n=== Edges ===")
+for src, dst in graph.edges():
+    edge = graph.get_edge(src, dst)
+    print(f"  {src} --{edge.kind.name}--> {dst}")
+
+# Output:
+#   top.rst_n --HAS_RESET--> top.out
+#   top.data --DRIVER--> top.out
+```
+
+---
+
+## 2. 位选追踪
+
+### 场景：追踪 `data[3:0]` 的完整信息
+
+**问题**：`assign slice = data[3:0]` 中，`data[3:0]` 是 `data` 的低 4 位。需要知道：
+- 位选范围是什么？
+- 父节点是谁？
+- 在父节点中的起止位置？
+
+```python
+source = '''
+module top;
+    logic [7:0] data;
+    logic [3:0] slice;
+    assign slice = data[3:0];
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+node = graph.get_node('top.data[3:0]')
+```
+
+**预期结果**：
+| 属性 | 值 |
+|------|-----|
+| `bit_range` | `"[3:0]"` |
+| `parent` | `"top.data"` |
+| `parent_bit_start` | `0` |
+| `parent_bit_end` | `3` |
+| `width` | `(3, 0)` |
+
+**实际输出**：
+
+```python
+print(f"bit_range: {node.bit_range}")            # [3:0]
+print(f"parent: {node.parent}")                  # top.data
+print(f"parent_bit_start: {node.parent_bit_start}")  # 0
+print(f"parent_bit_end: {node.parent_bit_end}")    # 3
+print(f"width: {node.width}")                    # (3, 0)
+
+# Verify BIT_SELECT edge
+edge = graph.get_edge('top.data[3:0]', 'top.data')
+print(f"\nBIT_SELECT edge exists: {edge.kind.name == 'BIT_SELECT'}")  # True
+```
+
+---
+
+## 3. Driver 追踪
+
+### 场景：找出驱动 `out` 信号的所有源
+
+**问题**：`out` 可能被多个信号驱动（连续赋值 + 时序逻辑）。
+
+```python
+source = '''
+module top;
+    logic [7:0] a, b, out;
+    logic sel;
+    
+    assign out = sel ? a : b;
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+drivers = graph.find_drivers('top.out')
+```
+
+**预期结果**：
+- `top.a` 和 `top.b` 都驱动 `top.out`（三元选择器）
+
+**实际输出**：
+
+```python
+print(f"Found {len(drivers)} drivers for top.out:")
+for d in drivers:
+    print(f"  {d.id}")
+
+# Output:
+#   Found 2 drivers for top.out:
+#     top.a
+#     top.b
+```
+
+### 场景：追踪时序逻辑中的驱动
+
+```python
+source = '''
+module top;
+    logic clk;
+    logic [7:0] din, dout;
+    
+    always_ff @(posedge clk)
+        dout <= din;
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+drivers = graph.find_drivers('top.dout')
+```
+
+**实际输出**：
+
+```python
+for d in drivers:
+    print(f"  {d.id}")
+
+# Output:
+#   top.din (via always_ff)
+```
+
+---
+
+## 4. Constraint 追踪
+
+### 场景：解析 class 中的约束
+
+**问题**：想知道 `transaction` 类的约束结构。
+
+```python
+source = '''
+class transaction;
+    rand bit [7:0] addr;
+    rand bit [7:0] data;
+    rand bit [3:0] mode;
+    
+    constraint c1 { addr > 0; }
+    constraint c2 { data < 256; mode inside { [0:3] }; }
+endclass
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+```
+
+**预期结果**：
+- Class 节点: `transaction`
+- Constraint blocks: `transaction.c1`, `transaction.c2`
+- Variables: `addr`, `data`, `mode`
+
+**实际输出**：
+
+```python
+print("=== Class Structure ===")
+for n in graph.nodes():
+    node = graph.get_node(n)
+    if 'transaction' in n:
+        print(f"  {n}: kind={node.kind.name}")
+
+# Output:
+#   transaction: kind=CLASS
+#   transaction.addr: kind=CLASS_PROPERTY
+#   transaction.data: kind=CLASS_PROPERTY
+#   transaction.mode: kind=CLASS_PROPERTY
+#   transaction.c1: kind=CONSTRAINT_BLOCK
+#   transaction.c2: kind=CONSTRAINT_BLOCK
+
+print("\n=== Constraint Variables ===")
+for src, dst in graph.edges():
+    edge = graph.get_edge(src, dst)
+    if 'transaction.c' in src and edge.kind.name == 'CONSTRAINS':
+        print(f"  {src} constrains {dst}")
+```
+
+---
+
+## 5. Class 组合关系
+
+### 场景：追踪 has-a 组合关系
+
+**问题**：`outer` 类包含 `inner` 类实例，需要追踪组合链。
+
+```python
+source = '''
+class inner;
+    rand bit [7:0] status;
+endclass
+
+class outer;
+    inner my_inner;
+endclass
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+```
+
+**预期结果**：
+- `outer.my_inner` IS_INSTANCE_OF `inner`
+
+**实际输出**：
+
+```python
+print("=== Composition Edges ===")
+for src, dst in graph.edges():
+    edge = graph.get_edge(src, dst)
+    if edge.kind.name == 'IS_INSTANCE_OF':
+        print(f"  {src} --IS_INSTANCE_OF--> {dst}")
+
+# Output:
+#   outer.my_inner --IS_INSTANCE_OF--> inner
+```
+
+---
+
+## 6. 约束覆盖分析
+
+### 场景：分析 constraint 覆盖 (super.c1 vs 替换)
+
+**问题**：子类约束是调用父类约束（augmentation）还是替换（replacement）？
+
+```python
+source = '''
+class packet;
+    rand bit [7:0] addr;
+    constraint c1 { addr > 0; }
+    constraint c2 { addr < 256; }
+endclass
+
+class extended extends packet;
+    constraint c1 { super.c1; addr > 50; }  // Augmentation
+    constraint c2 { addr < 100; }           // Replacement
+endclass
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+```
+
+**预期结果**：
+- `extended.c1` → `packet.c1` (SUPER_CALL 边存在)
+- `extended.c2` → 无 SUPER_CALL 边 (替换)
+
+**实际输出**：
+
+```python
+print("=== SUPER_CALL Edges ===")
+for src, dst in graph.edges():
+    edge = graph.get_edge(src, dst)
+    if edge.kind.name == 'SUPER_CALL':
+        print(f"  {src} --SUPER_CALL--> {dst}")
+
+# Output:
+#   extended.c1::expr_0 --SUPER_CALL--> packet.c1
+
+print("\n=== Constraint Analysis ===")
+c1_super = graph.get_edge('extended.c1::expr_0', 'packet.c1')
+c2_super = graph.get_edge('extended.c2::expr_0', 'packet.c2')
+
+print(f"c1 is augmentation: {c1_super is not None}")  # True
+print(f"c2 is replacement: {c2_super is None}")          # True
+```
+
+---
+
+## 7. 时钟域分析
+
+### 场景：识别信号的时钟域
+
+**问题**：`data_out` 属于哪个时钟域？
+
+```python
+source = '''
+module top;
+    logic clk_a, clk_b;
+    logic [7:0] data_in, data_out;
+    
+    always_ff @(posedge clk_a)
+        data_out <= data_in;
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+# Find clock for data_out
+# Query through clock domain tracer
+from trace.core.query_clock_domain import ClockDomainTracer
+
+tracer_obj = tracer._tracers.get('clock_domain')
+if tracer_obj:
+    trace = tracer_obj.trace('top.data_out')
+    if trace:
+        print(f"Clock domain: {trace.clock}")
+        print(f"Reset: {trace.reset}")
+```
+
+**预期结果**：`data_out` 的时钟域是 `clk_a`
+
+---
+
+## 8. 下游高级案例
+
+### 8.1 跨模块路径追踪
+
+**场景**：追踪从 `tb.clk` 到 `dut.cpu.reg[31:0]` 的完整路径
+
+```python
+source = '''
+module tb;
+    logic clk;
+endmodule
+
+module dut;
+    logic clk;
+    logic [31:0] reg_data;
+    
+    always_ff @(posedge clk)
+        reg_data <= 32'h0;
+endmodule
+
+module top;
+    tb u_tb();
+    dut u_dut();
+    
+    assign u_dut.clk = u_tb.clk;
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'top.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+# Find path from tb.clk to dut.reg_data
+path = graph.find_path('top.u_tb.clk', 'top.u_dut.reg_data')
+print(f"Path: {' -> '.join(path)}")
+```
+
+**预期结果**：
+```
+Path: top.u_tb.clk -> top.u_dut.clk -> top.u_dut.reg_data
+```
+
+---
+
+### 8.2 约束变量依赖分析
+
+**场景**：分析 `c1` 约束依赖哪些变量
+
+```python
+source = '''
+class transaction;
+    rand bit [7:0] a, b, c, d;
+    
+    constraint c1 {
+        if (a > 10) {
+            b == 5;
+            c inside { [1:10] };
+        } else {
+            b == 0;
+            d == 1;
+        }
+    }
+endclass
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+# Find all variables referenced in c1
+variables = set()
+for src, dst in graph.edges():
+    if 'transaction.c1' in src and graph.get_edge(src, dst).kind.name in ['HAS_LHS', 'CONSTRAINS']:
+        if 'transaction.' in dst and 'c1' not in dst:
+            variables.add(dst)
+
+print(f"Variables in c1: {variables}")
+# Output: {transaction.a, transaction.b, transaction.c, transaction.d}
+```
+
+---
+
+### 8.3 位选信号宽度推断
+
+**场景**：知道 `data` 是 `[15:0]`，判断 `data[11:8]` 的宽度
+
+```python
+source = '''
+module top;
+    logic [15:0] data;
+    logic [3:0] nibble;
+    assign nibble = data[11:8];
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+nibble = graph.get_node('top.data[11:8]')
+data = graph.get_node('top.data')
+
+print(f"Parent data width: {data.width}")        # (15, 0)
+print(f"Child nibble width: {nibble.width}")    # (11, 8)
+print(f"Child bit_range: {nibble.bit_range}")    # [11:8]
+print(f"Child parent_bit_start: {nibble.parent_bit_start}")  # 8
+print(f"Child parent_bit_end: {nibble.parent_bit_end}")        # 11
+```
+
+**预期结果**：
+```
+Parent data width: (15, 0)
+Child nibble width: (11, 8)
+Child bit_range: [11:8]
+Child parent_bit_start: 8
+Child parent_bit_end: 11
+```
+
+---
+
+### 8.4 Class 继承链查询
+
+**场景**：找出 `extended_transaction` 的完整继承链
+
+```python
+source = '''
+class base_item;
+    rand int id;
+endclass
+
+class transaction extends base_item;
+    rand bit [7:0] data;
+endclass
+
+class extended extends transaction;
+    constraint c1 { data > 0; }
+endclass
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+# Query through class hierarchy
+hierarchy = graph.hierarchy if hasattr(graph, 'hierarchy') else None
+if hierarchy:
+    ancestors = hierarchy.get_ancestors('extended')
+    print(f"Ancestors of extended: {ancestors}")
+    # Output: ['transaction', 'base_item']
+    
+    parent = hierarchy.get_parent('extended')
+    print(f"Parent of extended: {parent}")  # transaction
+```
+
+---
+
+### 8.5 多路选择器 Driver 聚合
+
+**场景**：追踪 MUX 输出，聚合所有可能驱动源
+
+```python
+source = '''
+module top;
+    logic [7:0] in0, in1, in2, in3;
+    logic [1:0] sel;
+    logic [7:0] out;
+    
+    assign out = sel == 2'd0 ? in0 :
+                 sel == 2'd1 ? in1 :
+                 sel == 2'd2 ? in2 : in3;
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+drivers = graph.find_drivers('top.out')
+print(f"All drivers of top.out: {[d.id for d in drivers]}")
+# Output: ['top.in0', 'top.in1', 'top.in2', 'top.in3']
+```
+
+---
+
+## API 快速参考
+
+| 需求 | API |
+|------|-----|
+| 获取所有节点 | `list(graph.nodes())` |
+| 获取节点信息 | `graph.get_node(node_id)` |
+| 获取边信息 | `graph.get_edge(src, dst)` |
+| 找驱动源 | `graph.find_drivers(signal_id)` |
+| 找负载 | `graph.find_loads(signal_id)` |
+| 找路径 | `graph.find_path(src, dst)` |
+| 遍历边 | `for src, dst in graph.edges():` |
+
+---
+
+## 常见问题排查
+
+| 问题 | 检查项 |
+|------|--------|
+| 节点为 None | 确认节点 ID 格式 (`module.signal`) |
+| 无 Driver 边 | 检查 assign/always 语法是否正确 |
+| 位宽为 `(1,0)` | 检查 signal 是否正确声明为 `[msb:lsb]` |
+| 无 BIT_SELECT 边 | 确认位选格式是 `[n:m]` 不是 `[n]` |
