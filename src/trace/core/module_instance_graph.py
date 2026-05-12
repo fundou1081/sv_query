@@ -16,6 +16,8 @@ module_instance_graph.py - 模块实例层级图
 
 from typing import Dict, List, Optional, Tuple
 from .graph_models import EdgeKind
+import networkx as nx
+
 from dataclasses import dataclass, field
 
 
@@ -220,6 +222,51 @@ class ModuleInstanceGraph:
                             direction=direction,
                             width=width,
                             internal_signal=f"{module_name}.{port_name}",
+                            module_type=module_name
+                        )
+        
+        # 如果 ANSI 风格没有找到端口，尝试从 members 的 PortDeclaration 获取
+        if not ports:
+            for member in getattr(node, 'members', []):
+                kind_str = str(getattr(member, 'kind', ''))
+                if 'PortDeclaration' not in kind_str:
+                    continue
+                
+                # Get direction from header
+                direction = 'unknown'
+                if hasattr(member, 'header') and member.header:
+                    direction = str(getattr(member.header, 'direction', 'unknown')).strip()
+                
+                # Get port names from declarators
+                declarators = getattr(member, 'declarators', None)
+                if declarators:
+                    # declarators might be a SeparatedList or simple list
+                    decl_list = []
+                    if hasattr(declarators, 'elements'):
+                        decl_list = list(declarators.elements)
+                    elif hasattr(declarators, '__iter__') and not isinstance(declarators, str):
+                        decl_list = list(declarators)
+                    else:
+                        decl_list = [declarators]
+                    
+                    for decl in decl_list:
+                        # decl is DeclaratorSyntax with .name
+                        name = None
+                        if hasattr(decl, 'name') and decl.name:
+                            name_val = decl.name
+                            if hasattr(name_val, 'value'):
+                                name = str(name_val.value)
+                            else:
+                                name = str(name_val)
+                        
+                        if not name or name == ',':
+                            continue
+                        
+                        ports[name] = PortInfo(
+                            name=name,
+                            direction=direction,
+                            width=(0, 0),
+                            internal_signal=f"{module_name}.{name}",
                             module_type=module_name
                         )
         
@@ -483,7 +530,7 @@ class PathResolver:
         return paths
     
     def _find_all_paths_impl(self, current: str, dst: str, path: List[str], visited: set, paths: List[List[str]]):
-        """递归查找所有路径的实现"""
+        """递归查找所有路径的实现 (使用 successors)"""
         if current in visited:
             return
         visited.add(current)
@@ -494,14 +541,13 @@ class PathResolver:
             return
         
         try:
-            drivers = list(self.signal_graph.predecessors(current))
+            successors = list(self.signal_graph.successors(current))
         except (KeyError, nx.NetworkXError):
-            drivers = []
+            successors = []
         
-        for driver_id in drivers:
-            path.append(driver_id)
-            self._find_all_paths_impl(driver_id, dst, path, visited, paths)
+        for driven_id in successors:
+            path.append(driven_id)
+            self._find_all_paths_impl(driven_id, dst, path, visited, paths)
             path.pop()
         
         visited.discard(current)
-import networkx as nx

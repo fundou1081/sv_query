@@ -33,6 +33,9 @@ class TestModuleInstanceGraph(unittest.TestCase):
     """模块实例图测试"""
     
     def _build_graph(self):
+        import tempfile
+        import os
+        
         source = '''module tb;
     logic clk;
 endmodule
@@ -50,9 +53,16 @@ module top;
     assign u_dut.clk = u_tb.clk;
 endmodule'''
         
-        tree = pyslang.SyntaxTree.fromText(source)
+        # Write to temp file for multi-module support
+        temp_path = f'/tmp/test_cross_module_{id(self)}.sv'
+        with open(temp_path, 'w') as f:
+            f.write(source)
+        
+        tree = pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(trees={'test.sv': tree})
         tracer.build_graph()
+        
+        os.unlink(temp_path)
         return tracer.get_graph(), tracer
     
     def test_instances_exist(self):
@@ -98,6 +108,10 @@ class TestCrossModulePath(unittest.TestCase):
     """跨模块路径追踪测试"""
     
     def _build_graph(self):
+        import tempfile
+        import os
+        import uuid
+        
         source = '''module tb;
     logic clk;
 endmodule
@@ -115,9 +129,16 @@ module top;
     assign u_dut.clk = u_tb.clk;
 endmodule'''
         
-        tree = pyslang.SyntaxTree.fromText(source)
+        # Write to temp file for multi-module support
+        temp_path = f'/tmp/test_cross_module_{uuid.uuid4().hex[:8]}.sv'
+        with open(temp_path, 'w') as f:
+            f.write(source)
+        
+        tree = pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(trees={'test.sv': tree})
         tracer.build_graph()
+        
+        os.unlink(temp_path)
         return tracer.get_graph(), tracer
     
     def test_internal_signal_clock_edge(self):
