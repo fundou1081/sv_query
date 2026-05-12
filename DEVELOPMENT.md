@@ -636,7 +636,112 @@ self.assertEqual(d_node.width, (7, 0),
 - 路径：`~/my_daily_proj/verible-v0.0-4053-g89d4d98a-macOS/`
 - 用途：SV 语法验证（与 Verilator 双重验证）
 
-### 工具获取
+## 2026-05-12 Class OOP 功能扩展
+
+### 铁律23: Class 组合关系 (Composition) [生效]
+
+**功能**：检测 ClassPropertyDeclaration 的类型是否为类引用 (NamedType)，创建 IS_INSTANCE_OF 边
+
+```python
+# NamedType 检测
+type_node = getattr(decl, 'type', None)
+if getattr(type_node, 'kind') == SyntaxKind.NamedType:
+    type_name = str(type_node.name).strip()  # 类名
+    graph.add_trace_edge(TraceEdge(
+        src=property_node_id,
+        dst=type_name,
+        kind=EdgeKind.IS_INSTANCE_OF,
+    ))
+```
+
+**示例**：
+```systemverilog
+class inner { rand int x; }
+class outer { inner my_inner; }  // my_inner 是 inner 的实例
+```
+
+**创建边**：
+```
+outer.my_inner --IS_INSTANCE_OF--> inner
+```
+
+### 铁律24: Constraint SUPER_CALL 边 [生效]
+
+**功能**：检测 constraint block 中的 `super.<constraint_name>` 调用，创建 SUPER_CALL 边
+
+```python
+# super.c1 检测
+item_str = str(item).strip()
+if item_str.startswith('super.'):
+    super_call_name = item_str.split('.')[1].rstrip(';').strip()
+    parent = self.hierarchy.get_parent(cls_name)
+    parent_constr_id = f"{parent}.{super_call_name}"
+    graph.add_trace_edge(TraceEdge(
+        src=f"{block_id}::expr_{idx}",
+        dst=parent_constr_id,
+        kind=EdgeKind.SUPER_CALL,
+    ))
+```
+
+**示例**：
+```systemverilog
+class packet;
+    constraint c1 { addr > 0; }
+endclass
+
+class extended extends packet;
+    constraint c1 { super.c1; addr > 100; }  // 增量扩展
+endclass
+```
+
+**创建边**：
+```
+extended.c1::expr_0 --SUPER_CALL--> packet.c1
+extended.c1::expr_1 --HAS_LHS--> extended.addr
+```
+
+### 铁律25: Constraint 多语句 Block 展开 [生效]
+
+**功能**：if/else/implication 中的多语句 `{ }` 块展平为多个 CONSTRAINT_EXPR 节点
+
+**示例**：
+```systemverilog
+constraint c1 { if (en) { a == 1; b == 2; } }
+constraint c2 { a == 5 -> { b == 10; d == 20; } }
+```
+
+**创建边**：
+```
+if_0 --HAS_CONSEQUENT--> cons_0
+if_0 --HAS_CONSEQUENT--> cons_1
+impl_0 --HAS_CONSEQUENT--> result_0
+impl_0 --HAS_CONSEQUENT--> result_1
+```
+
+---
+
+## 2026-05-12 新增 EdgeKind
+
+| 边类型 | 值 | 用途 |
+|--------|-----|------|
+| CONTAINS_MEMBER | 16 | CLASS → CLASS_PROPERTY (组合成员) |
+| IS_INSTANCE_OF | 17 | CLASS_PROPERTY → 被引用的类 |
+| SUPER_CALL | 18 | CONSTRAINT_EXPR → 父类约束 (增量扩展) |
+
+---
+
+## 2026-05-12 新增测试文件
+
+| 文件 | 测试数 | 场景 |
+|------|--------|------|
+| test_composition_chain.py | 19 | 组合关系 (IS_INSTANCE_OF) |
+| test_constraint_override.py | 7 | Constraint SUPER_CALL / 覆盖 |
+| test_complex_inheritance.py | 10 | 复杂继承场景综合测试 |
+| test_constraint_complete.py | 75 | Constraint 完整功能测试 |
+
+---
+
+## 工具获取
 ```bash
 # Verilator
 brew install verilator
