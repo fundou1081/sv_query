@@ -649,7 +649,14 @@ class DriverExtractor:
             if right:
                 signals.extend(self._get_all_signals(right))
             return [s for s in signals if s]
-        
+
+        # [FIX] 处理 ParenthesizedExpression: (expr) → 展开内部表达式
+        if 'ParenthesizedExpression' in kind_str:
+            expr = getattr(signal, 'expression', None)
+            if expr:
+                return self._get_all_signals(expr)
+            return []
+
         # ConditionalPredicate → 递归进入 conditions
         if 'ConditionalPredicate' in kind_str or 'ConditionalPattern' in kind_str:
             for attr in ['conditions', 'expr']:
@@ -924,6 +931,34 @@ class LoadExtractor:
                             return result
             return None
 
+        # [FIX] 处理 ParenthesizedExpression: (expr) → 展开内部表达式
+        kind = getattr(signal, 'kind', None)
+        if kind and 'ParenthesizedExpression' in str(kind):
+            expr = getattr(signal, 'expression', None)
+            if expr:
+                return self._get_signal(expr)
+            return None
+        
+        # [FIX] 处理 ConditionalExpression (三元运算符 sel ? a : b)
+        # 递归提取第一个操作数（与 _get_all_signals 互补）
+        if kind and 'ConditionalExpression' in str(kind):
+            pred = getattr(signal, 'predicate', None)
+            if pred:
+                result = self._get_signal(pred)
+                if result:
+                    return result
+            left = getattr(signal, 'left', None)
+            if left:
+                result = self._get_signal(left)
+                if result:
+                    return result
+            right = getattr(signal, 'right', None)
+            if right:
+                result = self._get_signal(right)
+                if result:
+                    return result
+            return None
+
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
         if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
             if hasattr(signal, 'values'):
@@ -939,6 +974,13 @@ class LoadExtractor:
         if kind and 'IdentifierSelect' in str(kind):
             name = str(signal).strip()
             return self.adapter.clean_name(name) if name else None
+        
+        # [FIX] 处理 ParenthesizedExpression: (expr) → 展开内部表达式
+        if kind and 'ParenthesizedExpression' in str(kind):
+            expr = getattr(signal, 'expression', None)
+            if expr:
+                return self._get_signal(expr)
+            return None
         
         name = None
         if hasattr(signal, 'name'):
