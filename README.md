@@ -3,7 +3,7 @@
 **Version**: 0.1.0  
 **Status**: Active Development  
 **License**: MIT  
-**Maintainer**: 方浩
+**Maintainer**: The sv_query team
 
 ---
 
@@ -315,5 +315,5 @@ for d in drivers:
 
 ## 联系方式
 
-- 维护者: 方浩
+- 维护者: The sv_query team
 - GitHub: https://github.com/fundou1081/sv_query
