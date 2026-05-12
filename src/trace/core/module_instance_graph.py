@@ -337,43 +337,62 @@ class ModuleInstanceGraph:
         return 0
     
     def _extract_module_instantiation(self, node, parent_path: str):
-        """提取模块实例化 (HierarchyInstantiation)"""
-        import re
+        """提取模块实例化 (HierarchyInstantiation)
         
-        # 获取模块类型 (来自 instantiation 的 type)
+        HierarchyInstantiation:
+          - type: 模块类型名
+          - instances: SeparatedList[HierarchicalInstance]
+          
+        HierarchicalInstance:
+          - decl: InstanceName (有 .name.value)
+          - connections: 端口连接列表
+        """
+        # 获取模块类型
         module_type = None
         inst_type = getattr(node, 'type', None)
         if inst_type:
             module_type = str(inst_type).strip()
         
-        # 获取实例名列表 (来自 instances)
-        instances_str = getattr(node, 'instances', None)
-        if instances_str:
-            inst_str = str(instances_str).strip()
-            # Parse: u_tb(), u_dut() -> ['u_tb', 'u_dut']
-            matches = re.findall(r'(\w+)\s*(?:\([^)]*\))?\s*,?\s*', inst_str)
+        # 获取实例列表 (SeparatedList)
+        instances_list = getattr(node, 'instances', None)
+        if not instances_list:
+            return
+        
+        # 遍历每个 HierarchicalInstance
+        for elem in instances_list:
+            if not hasattr(elem, 'kind') or 'HierarchicalInstance' not in str(elem.kind):
+                continue
             
-            for instance_name in matches:
-                if not instance_name:
-                    continue
-        
-                # 构造完整实例ID
-                if parent_path:
-                    instance_id = f"{parent_path}.{instance_name}"
-                else:
-                    instance_id = instance_name
-        
-                # 创建实例节点
-                if instance_id not in self.instances:
-                    instance_node = ModuleInstanceNode(
-                        id=instance_id,
-                        module_type=module_type,
-                        parent=parent_path or None
-                    )
-                    self.instances[instance_id] = instance_node
-                    
-                    # 添加端口映射
-                    self._add_instance_ports(instance_id, module_type)
+            # 获取实例名: elem.decl.name.value
+            decl = getattr(elem, 'decl', None)
+            if not decl:
+                continue
+            
+            instance_name = None
+            name_obj = getattr(decl, 'name', None)
+            if name_obj and hasattr(name_obj, 'value'):
+                instance_name = str(name_obj.value)
+            
+            if not instance_name:
+                continue
+            
+            # 构造完整实例ID
+            if parent_path:
+                instance_id = f"{parent_path}.{instance_name}"
+            else:
+                instance_id = instance_name
+            
+            # 创建实例节点
+            if instance_id not in self.instances:
+                instance_node = ModuleInstanceNode(
+                    id=instance_id,
+                    module_type=module_type,
+                    parent=parent_path or None
+                )
+                self.instances[instance_id] = instance_node
+                
+                # 添加端口映射
+                self._add_instance_ports(instance_id, module_type)
     
     def _add_instance_ports(self, instance_id: str, module_type: str):
         """为实例添加端口映射"""
