@@ -261,6 +261,8 @@ Total:          669 tests (all passing)
 
 ## 使用示例
 
+### 1. 基础信号追踪
+
 ```python
 import pyslang
 from trace.unified_tracer import UnifiedTracer
@@ -291,6 +293,66 @@ for d in drivers:
     print(f"Driver: {d.id}")  # "top.data[3:0]"
 ```
 
+### 2. 跨模块实例追踪 (MIG)
+
+```python
+import pyslang
+from trace.unified_tracer import UnifiedTracer
+
+source = '''
+module child(output [7:0] out);
+endmodule
+
+module parent;
+    wire [7:0] w;
+    child u_child(.out(w));
+endmodule
+
+module top;
+    parent u_parent();
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+mig = tracer._module_graph
+
+# 获取实例节点 (集中索引)
+inst = mig.get_instance('top.u_parent')
+print(f"id: {inst.id}")          # "top.u_parent"
+print(f"module_type: {inst.module_type}")  # "parent"
+print(f"parent: {inst.parent}")  # "top"
+
+# 父子关系查询
+children = mig.get_child_instances('top')
+print(f"top's children: {[c.id for c in children]}")  # ["top.u_parent"]
+
+# 获取所有实例
+all_insts = mig.get_all_instances()  # ["top.u_parent", "top.u_parent.u_child"]
+
+# 层级遍历
+def print_hierarchy(parent_id, indent=0):
+    for child in mig.get_child_instances(parent_id):
+        print("  " * indent + f"{child.id} ({child.module_type})")
+        print_hierarchy(child.id, indent + 1)
+
+print_hierarchy('top')
+# Output:
+#   top.u_parent (parent)
+#     top.u_parent.u_child (child)
+```
+
+**MIG 核心 API**：
+
+| API | 说明 |
+|-----|------|
+| `mig.get_instance(path)` | 获取实例节点 (`ModuleInstanceNode`) |
+| `mig.get_child_instances(parent_id)` | 获取子实例列表 |
+| `mig.get_all_instances()` | 获取所有实例 ID |
+| `node.ports[port_name]` | 获取端口信息 (`PortInfo`) |
+| `mig.get_internal_signal(port_path)` | 端口→内部信号 |
+
 ---
 
 ## 设计文档
@@ -299,6 +361,9 @@ for d in drivers:
 |------|------|
 | `DEVELOPMENT.md` | 开发规范、铁律、测试要求 |
 | `DESIGN_composition_chain.md` | 组合链 (has-a) 设计方案 |
+| `EXAMPLES.md` | 完整使用示例 (8 个场景 + MIG 高级 API) |
+| `docs/code_framework_analysis.md` | 模块实例图架构分析 |
+| `docs/CONNECTION_vs_MIG_analysis.md` | ConnectionExtractor vs MIG 对比分析 |
 
 ---
 
