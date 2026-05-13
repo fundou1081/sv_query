@@ -510,6 +510,103 @@ for src, dst in sorted(graph.edges()):
 - `top.u_dut.clk` (实例端口) → `dut.clk` (模块内部)
 - 使用 `mig.get_internal_signal('top.u_dut.clk')` 获取映射
 
+### 8.1.1 MIG 高级查询 API
+
+**场景**：使用 MIG 的结构化查询能力
+
+```python
+source = '''
+module child(output [7:0] out);
+endmodule
+
+module parent;
+    child u_child();
+endmodule
+
+module top;
+    parent u_parent();
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+mig = tracer._module_graph
+
+# 1. 获取实例节点 (集中索引)
+print("=== get_instance: 获取 ModuleInstanceNode ===")
+inst = mig.get_instance('top.u_parent')
+print(f"  id: {inst.id}")
+print(f"  module_type: {inst.module_type}")
+print(f"  parent: {inst.parent}")
+# Output:
+#   id: top.u_parent
+#   module_type: parent
+#   parent: top
+
+# 2. 查看实例的端口列表 (PortInfo)
+print("\n=== Instance Ports: 端口详细信息 ===")
+for pname, port in inst.ports.items():
+    print(f"  port {pname}:")
+    print(f"    direction: {port.direction}")
+    print(f"    width: {port.width}")
+    print(f"    internal_signal: {port.internal_signal}")
+# Output (假设 parent 有端口):
+#   port out:
+#     direction: output
+#     width: (7, 0)
+#     internal_signal: parent.out
+
+# 3. 父子关系查询
+print("\n=== Parent-Child: 父子实例关系 ===")
+children = mig.get_child_instances('top')
+print(f"  top's children: {[c.id for c in children]}")
+# Output:
+#   top's children: ['top.u_parent']
+
+children = mig.get_child_instances('top.u_parent')
+print(f"  top.u_parent's children: {[c.id for c in children]}")
+# Output:
+#   top.u_parent's children: ['top.u_parent.u_child']
+
+# 4. 获取所有实例
+print("\n=== All Instances: 所有实例列表 ===")
+all_insts = mig.get_all_instances()
+print(f"  {all_insts}")
+# Output:
+#   ['top.u_parent', 'top.u_parent.u_child']
+
+# 5. 嵌套层级展示
+print("\n=== Hierarchical View: 嵌套层级 ===")
+def print_hierarchy(parent_id, indent=0):
+    children = mig.get_child_instances(parent_id)
+    for child in children:
+        print("  " * indent + f"{child.id} ({child.module_type})")
+        print_hierarchy(child.id, indent + 1)
+
+print_hierarchy('top')
+# Output:
+#   top.u_parent (parent)
+#     top.u_parent.u_child (child)
+```
+
+**核心 API 总结**：
+
+| API | 说明 | 返回类型 |
+|-----|------|----------|
+| `mig.get_instance(path)` | 获取实例节点 | `ModuleInstanceNode` |
+| `mig.get_child_instances(parent_id)` | 获取子实例列表 | `List[ModuleInstanceNode]` |
+| `mig.get_all_instances()` | 获取所有实例 ID | `List[str]` |
+| `node.ports[port_name]` | 获取端口信息 | `PortInfo` |
+| `mig.get_internal_signal(port_path)` | 端口→内部信号 | `str` |
+
+**PortInfo 属性**：
+- `name`: 端口名
+- `direction`: input/output/inout
+- `width`: 位宽元组 (msb, lsb)
+- `internal_signal`: 内部信号名
+- `module_type`: 模块类型
+
 ---
 
 ### 8.2 约束变量依赖分析

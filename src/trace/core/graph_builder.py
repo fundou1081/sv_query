@@ -13,6 +13,7 @@ class ExtractorResult:
     nodes: List[TraceNode] = field(default_factory=list)
     edges: List[TraceEdge] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    port_to_internal: Dict[str, str] = field(default_factory=dict)  # {inst_port_id: child_signal_id}
 
 class DriverExtractor:
     def __init__(self, adapter: PyslangAdapter):
@@ -1219,6 +1220,8 @@ class ConnectionExtractor:
                         kind=EdgeKind.CONNECTION,
                         assign_type="internal"
                     ))
+                    # 同步构建 port_to_internal 映射
+                    result.port_to_internal[inst_port_id] = child_signal_id
                 elif direction_clean == 'output':
                     result.edges.append(TraceEdge(
                         src=inst_port_id,
@@ -1233,6 +1236,8 @@ class ConnectionExtractor:
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
+                    # 同步构建 port_to_internal 映射
+                    result.port_to_internal[inst_port_id] = child_signal_id
         
         # [FIX] 后处理：修复实例端口的位宽
         # 如果实例端口位宽为默认值(1,0)，尝试从连接推断实际位宽
@@ -1418,6 +1423,9 @@ class GraphBuilder:
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
+            # 收集 port_to_internal 映射
+            if hasattr(result, 'port_to_internal') and result.port_to_internal:
+                self.graph._port_to_internal.update(result.port_to_internal)
         
         # [P0-3] 设置 interface 信号的 modport_dir
         self._set_interface_modport_dirs()

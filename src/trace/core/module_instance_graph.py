@@ -54,11 +54,12 @@ class ModuleInstanceGraph:
     支持跨模块边界追踪
     """
     
-    def __init__(self, adapter):
+    def __init__(self, adapter, signal_graph=None):
         self.adapter = adapter
+        self.signal_graph = signal_graph  # 可选，用于从 SignalGraph 获取 port_to_internal
         self.instances: Dict[str, ModuleInstanceNode] = {}  # instance_id → Node
-        self.port_to_internal: Dict[str, str] = {}  # "top.u_dut.clk" → "dut.clk"
-        self.internal_to_port: Dict[str, str] = {}  # "dut.clk" → "top.u_dut.clk"
+        self.port_to_internal: Dict[str, str] = {}  # "top.u_dut.clk" → "dut.clk" (保留用于兼容，已废弃)
+        self.internal_to_port: Dict[str, str] = {}  # "dut.clk" → "top.u_dut.clk" (保留用于兼容，已废弃)
         
     def _get_parent_module_name(self, inst) -> str:
         """Safely get parent module name from instance (handles generate blocks)."""
@@ -837,13 +838,25 @@ class ModuleInstanceGraph:
     def get_internal_signal(self, port_path: str) -> Optional[str]:
         """端口路径 → 内部信号
         
+        MIG 维护自己的 port_to_internal 映射，基于模块端口定义（而非实际连接）。
+        CE 的 port_to_internal 来自实际连接，用于 SignalGraph 建边。
+        两者语义不同：
+          - MIG: 模块 Z 有端口 X，内部信号是 Z.X（结构定义）
+          - CE: 实例的端口 X 实际连接到信号 Y（实际连接）
+        
         Args:
             port_path: "top.u_dut.clk"
             
         Returns:
             "dut.clk" 或 None
         """
-        return self.port_to_internal.get(port_path)
+        # MIG 自己的映射（基于模块定义）
+        if self.port_to_internal:
+            return self.port_to_internal.get(port_path)
+        # 备用：从 SignalGraph 获取（CE 构建的连接映射）
+        if self.signal_graph is not None:
+            return self.signal_graph.get_internal_signal(port_path)
+        return None
     
     def get_port_path(self, internal_signal: str) -> Optional[str]:
         """内部信号 → 端口路径
@@ -854,7 +867,17 @@ class ModuleInstanceGraph:
         Returns:
             "top.u_dut.clk" 或 None
         """
-        return self.internal_to_port.get(internal_signal)
+        # MIG 自己的映射（基于模块定义）
+        if self.internal_to_port:
+            return self.internal_to_port.get(internal_signal)
+        # 备用：从 SignalGraph 获取（CE 构建的连接映射）
+        if self.signal_graph is not None:
+            port_to_internal = self.signal_graph.get_port_to_internal()
+            # 反向查找
+            for inst_port, internal in port_to_internal.items():
+                if internal == internal_signal:
+                    return inst_port
+        return None
     
     def get_instance(self, instance_id: str) -> Optional[ModuleInstanceNode]:
         """获取实例节点"""
