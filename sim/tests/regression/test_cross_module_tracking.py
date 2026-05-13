@@ -984,7 +984,7 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
     
     def test_instance_parent_relationship(self):
         """[金标准] 实例父子关系"""
-        source = "module child(output [7:0] out);\nendmodule\n\nmodule parent;\n    child u_child();\nendmodule\n\nmodule top;\n    parent u_parent();\nendmodule"
+        source = "module child(output [7:0] out);\nendmodule\n\nmodule parent;\n    wire [7:0] w;\n    child u_child(.out(w));\nendmodule\n\nmodule top;\n    parent u_parent();\nendmodule"
         
         graph, tracer = self._build_graph(source)
         mig = getattr(tracer, '_module_graph', None)
@@ -999,7 +999,8 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
 endmodule
 
 module parent;
-    child u_child();
+    wire [7:0] w;
+    child u_child(.out(w));
 endmodule
 
 module top;
@@ -1032,7 +1033,8 @@ endmodule'''
 endmodule
 
 module parent;
-    child u_child();
+    wire [7:0] w;
+    child u_child(.out(w));
 endmodule
 
 module top;
@@ -1062,7 +1064,8 @@ endmodule'''
 endmodule
 
 module parent;
-    child u_child();
+    wire [7:0] w;
+    child u_child(.out(w));
 endmodule
 
 module top;
@@ -1115,7 +1118,8 @@ endmodule'''
 endmodule
 
 module parent;
-    child u_child();
+    wire [7:0] w;
+    child u_child(.out(w));
 endmodule
 
 module top;
