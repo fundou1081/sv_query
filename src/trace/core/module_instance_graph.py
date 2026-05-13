@@ -169,10 +169,13 @@ class ModuleInstanceGraph:
                     if not module_name:
                         continue
                     print(f"[DEBUG] Processing ModuleDeclaration: {module_name}")
-                    # 如果是被其他模块实例化的模块，从已知的实例路径开始处理
+                    # 如果是被其他模块实例化的模块，不在这里处理
+                    # 这些模块只应该通过父模块的递归调用来处理
                     if module_name in module_to_paths:
-                        for inst_path in module_to_paths[module_name]:
-                            self._process_module_at_path(member, inst_path, module_to_paths)
+                        # 这些模块将在父模块处理 HierarchyInstantiation 时被递归处理
+                        # 例如: parent 模块实例化 child，父模块 top 处理 inner 的 HierarchyInstantiation 时
+                        # 会递归调用 _process_module_at_path(inner_ast, 'top.outer', ...)
+                        continue
                     else:
                         # 顶层模块，没有实例化路径（如 tb.top）
                         self._process_module_at_path(member, module_name, module_to_paths)

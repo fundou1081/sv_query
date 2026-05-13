@@ -328,11 +328,11 @@ class TestMultiLevelHierarchy(unittest.TestCase):
         
         # 检查实例 (扁平化)
         self.assertIn('top.u_mid', mig.instances, "应有 top.u_mid 实例")
-        self.assertIn('mid.u_leaf', mig.instances, "应有 mid.u_leaf 实例")
+        self.assertIn('top.u_mid.u_leaf', mig.instances, "应有 top.u_mid.u_leaf 实例")
         
         # 检查端口映射
-        clk_mapping = mig.get_internal_signal('mid.u_leaf.clk')
-        self.assertEqual(clk_mapping, 'leaf.clk', f"mid.u_leaf.clk 应映射到 leaf.clk，实际是 {clk_mapping}")
+        clk_mapping = mig.get_internal_signal('top.u_mid.u_leaf.clk')
+        self.assertEqual(clk_mapping, 'leaf.clk', f"top.u_mid.u_leaf.clk 应映射到 leaf.clk，实际是 {clk_mapping}")
 
     def test_four_level_hierarchy(self):
         """[金标准] 四层层级路径追踪"""
@@ -343,12 +343,12 @@ class TestMultiLevelHierarchy(unittest.TestCase):
         
         # 检查层级实例存在 (扁平化)
         self.assertIn('top.u_l3', mig.instances, "应有 top.u_l3 实例")
-        self.assertIn('l3.u_l2', mig.instances, "应有 l3.u_l2 实例")
-        self.assertIn('l2.u_l1', mig.instances, "应有 l2.u_l1 实例")
+        self.assertIn('top.u_l3.u_l2', mig.instances, "应有 top.u_l3.u_l2 实例")
+        self.assertIn('top.u_l3.u_l2.u_l1', mig.instances, "应有 top.u_l3.u_l2.u_l1 实例")
         
         # 检查端口映射
-        out_mapping = mig.get_internal_signal('l2.u_l1.out')
-        self.assertEqual(out_mapping, 'l1.out', "l2.u_l1.out 应映射到 l1.out")
+        out_mapping = mig.get_internal_signal('top.u_l3.u_l2.u_l1.out')
+        self.assertEqual(out_mapping, 'l1.out', "top.u_l3.u_l2.u_l1.out 应映射到 l1.out")
 
 class TestArrayOfInstances(unittest.TestCase):
     """模块数组实例化测试"""
@@ -989,9 +989,9 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
         graph, tracer = self._build_graph(source)
         mig = getattr(tracer, '_module_graph', None)
         
-        inst = mig.get_instance('parent.u_child')
+        inst = mig.get_instance('top.u_parent.u_child')
         self.assertIsNotNone(inst)
-        self.assertEqual(inst.parent, 'parent')
+        self.assertEqual(inst.parent, 'top.u_parent')
 
 
 class TestCrossModuleSignalFlow(unittest.TestCase):
