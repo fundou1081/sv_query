@@ -353,6 +353,93 @@ print_hierarchy('top')
 | `node.ports[port_name]` | 获取端口信息 (`PortInfo`) |
 | `mig.get_internal_signal(port_path)` | 端口→内部信号 |
 
+### 3. 跨模块 Driver/Load 追踪
+
+```python
+import pyslang
+from trace.unified_tracer import UnifiedTracer
+
+# 跨模块 driver 链: clk_gen.clk → top.u_gen.clk → top.clk → top.u_driver.clk → driver.clk
+source = '''
+module clk_gen(output logic clk);
+    assign clk = 1'b0;
+endmodule
+
+module driver(input logic clk, output logic [7:0] data);
+    always_comb data = 8'hA5;
+endmodule
+
+module load(input logic [7:0] data);
+    logic [7:0] reg_data;
+    logic clk;
+    always_ff @(posedge clk) reg_data <= data;
+endmodule
+
+module top;
+    logic clk;
+    logic [7:0] data;
+    
+    clk_gen u_gen(.clk(clk));
+    driver u_driver(.clk(clk), .data(data));
+    load u_load(.data(data));
+endmodule
+'''
+
+tree = pyslang.SyntaxTree.fromText(source)
+tracer = UnifiedTracer(trees={'test.sv': tree})
+tracer.build_graph()
+graph = tracer.get_graph()
+
+# 追踪 top.data 的 driver
+print("=== Drivers of top.data ===")
+drivers = graph.find_drivers('top.data')
+for d in drivers:
+    print(f"  {d.id}")  # top.u_driver.data
+
+# 追踪 top.clk 的 driver 链
+print("\n=== Drivers of top.clk ===")
+drivers = graph.find_drivers('top.clk')
+for d in drivers:
+    print(f"  {d.id}")  # top.u_gen.clk
+
+# 追踪 top.u_driver.clk 的 driver (跨模块边界)
+print("\n=== Drivers of top.u_driver.clk ===")
+drivers = graph.find_drivers('top.u_driver.clk')
+for d in drivers:
+    print(f"  {d.id}")  # driver.clk
+
+# 追踪 load 的 loads
+print("\n=== Loads of top.clk ===")
+loads = graph.find_loads('top.clk')
+for l in loads:
+    print(f"  {l.id}")  # top.u_driver.clk
+
+# 查看跨越模块边界的边
+print("\n=== Cross-module edges ===")
+for src, dst in graph.edges():
+    edge = graph.get_edge(src, dst)
+    # DRIVER 边跨越模块边界: 内部信号 → 实例端口 或 实例端口 → 实例端口
+    if edge.kind.name == 'DRIVER' and ('.' in src and '.' in dst):
+        src_parts = src.split('.')
+        dst_parts = dst.split('.')
+        # 内部信号到实例端口的跨越
+        if len(src_parts) == 2 and len(dst_parts) >= 3:
+            print(f"  {src} --DRIVER--> {dst} (internal → instance port)")
+        # 实例端口到实例端口的跨越
+        elif len(src_parts) >= 3 and len(dst_parts) >= 3 and src_parts[0] != dst_parts[0]:
+            print(f"  {src} --DRIVER--> {dst} (instance port → instance port)")
+```
+
+**跨模块 Driver/Load 追踪要点**：
+- 实例端口节点：`top.u_driver.clk` (顶层路径 + 实例名 + 端口名)
+- 模块内部信号：`driver.clk` (模块名 + 端口名)
+- DRIVER 边跨越模块边界：
+  - `driver.data --DRIVER--> top.u_driver.data` (内部信号 → 实例端口)
+  - `clk_gen.clk --DRIVER--> top.u_gen.clk` (内部信号 → 实例端口)
+- CONNECTION 边表示信号连接：`top.clk --CONNECTION--> top.u_driver.clk`
+- 使用 `graph.find_drivers(signal_id)` 追踪驱动源
+- 使用 `graph.find_loads(signal_id)` 追踪负载
+
 ---
 
 ## 设计文档
