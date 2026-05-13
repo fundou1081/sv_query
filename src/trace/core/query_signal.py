@@ -55,21 +55,33 @@ class SignalTracer:
             return f"{module}.{signal}"
         return signal
     
-    def _collect_all_drivers(self, signal_id: str) -> List[TraceNode]:
-        """[P2] 递归收集所有驱动，包括实例端口追溯"""
+    def _collect_all_drivers(self, signal_id: str, max_depth: int | None = None) -> List[TraceNode]:
+        """[P2] 递归收集所有驱动，包括实例端口追溯
+        
+        Args:
+            signal_id: signal ID
+            max_depth: None=无限递归, N=最多递归 N 层
+        """
         drivers = []
         seen_ids = set()
-        
-        # 递归追溯
-        self._trace_drivers_recursive(signal_id, drivers, seen_ids)
-        
+        self._trace_drivers_recursive(signal_id, drivers, seen_ids, current_depth=0, max_depth=max_depth)
         return drivers
     
-    def _trace_drivers_recursive(self, signal_id: str, drivers: List[TraceNode], seen_ids: set):
-        """递归追溯驱动"""
-        # [FIX] 环路检测：如果 signal_id 已在 seen_ids 中，说明有环路，停止追溯
-        if signal_id in seen_ids:
+    def _trace_drivers_recursive(self, signal_id: str, drivers: List[TraceNode], seen_ids: set,
+                                  current_depth: int = 0, max_depth: int | None = None):
+        """递归追溯驱动
+        
+        Args:
+            signal_id: 当前信号 ID
+            drivers: 结果列表（inout）
+            seen_ids: 已访问节点集合（inout）
+            current_depth: 当前递归深度
+            max_depth: None=无限递归, N=最多递归 N 层
+        """
+        # depth 限制检查
+        if max_depth is not None and current_depth >= max_depth:
             return
+
         
         if signal_id not in self.graph.nodes():
             return
@@ -117,17 +129,17 @@ class SignalTracer:
                                 continue
                     # 其他边类型继续递归追溯
                     if src in self.graph.nodes() and src not in seen_ids:
-                        self._trace_drivers_recursive(src, drivers, seen_ids)
+                        self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth)
                     continue
                 
                 node = self.graph.get_node(src)
                 if node and node.id not in seen_ids:
                     drivers.append(node)
                 
-                # 继续递归追溯这个 src 的驱动
-                # seen_ids 检查在递归函数开头进行
-                if src in self.graph.nodes():
-                    self._trace_drivers_recursive(src, drivers, seen_ids)
+                # 继续递归追溯这个 src 的驱动（DRIVER 边）
+                # seen_ids 检查在函数开头进行，防止环路
+                if src in self.graph.nodes() and src not in seen_ids:
+                    self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth)
     
     def _find_drivers(self, signal_id: str) -> List[TraceNode]:
         """[兼容] 直接驱动"""
@@ -157,14 +169,72 @@ class SignalTracer:
 
         return loads
 
-    def trace_fanout(self, signal: str, module: str = None) -> List[TraceNode]:
-        """Trace signal fanout (all loads driven by this signal)"""
+    def _collect_all_loads(self, signal_id: str, max_depth: int | None = None) -> List[TraceNode]:
+        """递归收集所有后继（被这个信号驱动的所有节点）
+        
+        Args:
+            signal_id: 信号 ID
+            max_depth: None=无限递归, N=最多递归 N 层
+        """
+        loads = []
+        seen_ids = set()
+        self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth)
+        return loads
+
+    def _trace_loads_recursive(self, signal_id: str, loads: List[TraceNode], seen_ids: set,
+                               current_depth: int = 0, max_depth: int | None = None):
+        """递归追溯负载（被 signal_id 驱动的节点）
+        
+        Args:
+            signal_id: 当前信号 ID
+            loads: 结果列表（inout）
+            seen_ids: 已访问节点集合（inout）
+            current_depth: 当前递归深度
+            max_depth: None=无限递归, N=最多递归 N 层
+        """
+        if max_depth is not None and current_depth >= max_depth:
+            return
+        if signal_id in seen_ids:
+            return
+        if signal_id not in self.graph.nodes():
+            return
+        seen_ids.add(signal_id)
+
+        for src, dst in list(self.graph.edges()):
+            if src == signal_id:
+                edge = self.graph.get_edge(src, dst)
+                if edge and edge.kind not in (EdgeKind.DRIVER, EdgeKind.CONNECTION):
+                    continue
+                node = self.graph.get_node(dst)
+                if node and node.id not in seen_ids:
+                    loads.append(node)
+                if dst in self.graph.nodes():
+                    self._trace_loads_recursive(dst, loads, seen_ids, current_depth + 1, max_depth)
+
+    def trace_fanout(self, signal: str, module: str = None, depth: int | None = None) -> List[TraceNode]:
+        """Trace signal fanout (loads driven by this signal)
+        
+        Args:
+            signal: signal name
+            module: module name (optional, for relative paths)
+            depth: 1=direct loads only, N=recursive N levels, None=recursive all
+        """
         signal_id = self._make_id(signal, module)
         if signal_id not in self.graph.nodes():
             return []
-        return self._find_loads(signal_id)
+        if depth == 1:
+            return self._find_loads(signal_id)
+        return self._collect_all_loads(signal_id, max_depth=depth)
 
-    def trace_fanin(self, signal: str, module: str = None) -> List[TraceNode]:
-        """Trace signal fanin (all drivers of this signal)"""
+    def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> List[TraceNode]:
+        """Trace signal fanin (drivers of this signal)
+        
+        Args:
+            signal: signal name
+            module: module name (optional, for relative paths)
+            depth: 1=direct drivers only, N=recursive N levels, None=recursive all
+        """
         signal_id = self._make_id(signal, module)
-        return self._collect_all_drivers(signal_id)
+        if depth == 1:
+            return self._find_drivers(signal_id)
+        return self._collect_all_drivers(signal_id, max_depth=depth)

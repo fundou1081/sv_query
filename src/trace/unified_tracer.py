@@ -78,13 +78,13 @@ class UnifiedTracer:
         self.build_graph()
         return self._load_tracer.trace(signal, module)
     
-    def trace_fanout(self, signal: str, module: str = None) -> list:
+    def trace_fanout(self, signal: str, module: str = None, depth: int | None = None) -> list:
         self.build_graph()
-        return self._signal_tracer.trace_fanout(signal, module)
-    
-    def trace_fanin(self, signal: str, module: str = None) -> list:
+        return self._signal_tracer.trace_fanout(signal, module, depth)
+
+    def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> list:
         self.build_graph()
-        return self._signal_tracer.trace_fanin(signal, module)
+        return self._signal_tracer.trace_fanin(signal, module, depth)
     
     # 场景B
     def trace_module(self, module: str) -> ModuleConnections:
