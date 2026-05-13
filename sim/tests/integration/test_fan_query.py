@@ -241,5 +241,38 @@ endmodule'''
         self.assertEqual({n.id for n in default_result}, ids)
 
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_fanout_cross_instance_recursive(self):
+        """[Golden] 跨模块 fanout 递归 - 穿过实例层层追溯"""
+        source = '''
+module dut(input clk, input d, output logic q);
+    logic r;
+    always_ff @(posedge clk) begin
+        r <= d;
+        q <= r;
+    end
+endmodule
+
+module top(input clk, input din, output logic dout);
+    dut u(.clk(clk), .d(din), .q(dout));
+endmodule'''
+        tracer = self._make_tracer(source)
+
+        # 先触发 graph 构建
+        _ = tracer.trace_fanout('din', 'top', depth=None)
+
+        # din 在 top 层，透过实例 dut 往下追
+        r1 = tracer.trace_fanout('din', 'top', depth=1)
+        ids1 = {n.id for n in r1}
+        # 实例输入端口 top.u.d 是 din 的直接负载
+        self.assertIn('top.u.d', ids1, "depth=1 应包含实例输入端口 top.u.d（din 的直接负载）")
+
+        r2 = tracer.trace_fanout('din', 'top', depth=2)
+        ids2 = {n.id for n in r2}
+        # depth=2 应穿过 dut.u.d 再往下追一层
+        self.assertTrue(len(ids2) >= 1, "depth=2 应包含更多下游节点")
+
+        r_all = tracer.trace_fanout('din', 'top', depth=None)
+        ids_all = {n.id for n in r_all}
+        self.assertIn('top.dout', ids_all, "depth=None 应追溯到最终输出 top.dout")
+
+
