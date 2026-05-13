@@ -234,16 +234,24 @@ class DriverExtractor:
                     for rhs_name in rhs_signals:
                         if not rhs_name:
                             continue
-                        src_node_id = f"{module_name}.{rhs_name}"
-                        if src_node_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(TraceNode(
-                                id=src_node_id, name=rhs_name, module=module_name,
-                                kind=NodeKind.SIGNAL, width=(1, 0)
+                        # [FIX] 字面量常量（如 "1"、"A5A5A5A5"）不拼接 top. 前缀，不创建节点，只创建边
+                        if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
+                            # 字面量：直接用作 edge src，不创建节点
+                            result.edges.append(TraceEdge(
+                                src=rhs_name, dst=dst_node_id,
+                                kind=EdgeKind.DRIVER, assign_type="continuous"
                             ))
-                        result.edges.append(TraceEdge(
-                            src=src_node_id, dst=dst_node_id,
-                            kind=EdgeKind.DRIVER, assign_type="continuous"
-                        ))
+                        else:
+                            src_node_id = f"{module_name}.{rhs_name}"
+                            if src_node_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=src_node_id, name=rhs_name, module=module_name,
+                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                                ))
+                            result.edges.append(TraceEdge(
+                                src=src_node_id, dst=dst_node_id,
+                                kind=EdgeKind.DRIVER, assign_type="continuous"
+                            ))
             
             # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
@@ -295,19 +303,28 @@ class DriverExtractor:
                         for rhs_name in rhs_signals:
                             if not rhs_name:
                                 continue
-                            src_node_id = f"{module_name}.{rhs_name}"
-                            if src_node_id not in [n.id for n in result.nodes]:
-                                result.nodes.append(TraceNode(
-                                    id=src_node_id, name=rhs_name, module=module_name,
-                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                            # [FIX] 字面量常量（如 "1"、"A5A5A5A5"）不拼接 top. 前缀，不创建节点，只创建边
+                            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
+                                # 字面量：直接用作 edge src，不创建节点
+                                result.edges.append(TraceEdge(
+                                    src=rhs_name, dst=dst_node_id,
+                                    kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                    clock_domain=ctx.get("clock", ""),
+                                    condition=ctx.get("condition", "")
                                 ))
-                            # [NEW] 添加语义上下文到 Edge
-                            result.edges.append(TraceEdge(
-                                src=src_node_id, dst=dst_node_id,
-                                kind=EdgeKind.DRIVER, assign_type="nonblocking",
-                                clock_domain=ctx.get("clock", ""),
-                                condition=ctx.get("condition", "")
-                            ))
+                            else:
+                                src_node_id = f"{module_name}.{rhs_name}"
+                                if src_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=src_node_id, name=rhs_name, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=src_node_id, dst=dst_node_id,
+                                    kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                    clock_domain=ctx.get("clock", ""),
+                                    condition=ctx.get("condition", "")
+                                ))
                             
                             # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
                             clock_signal = ctx.get("clock", "")
@@ -692,6 +709,14 @@ class DriverExtractor:
         if signal is None:
             return None
         
+        # [P0] 检测字面量常量: IntegerVectorExpression + IntegerLiteral Token
+        # → 返回字面量字符串（不拼接 top.），让边创建继续但节点跳过
+        if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
+            val = getattr(signal, 'value', None)
+            if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
+                # 返回字面量本身（如 "1"、"A5A5A5A5"），不返回 None
+                return str(val).strip()
+        
         # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
         # _get_signal 被直接调用时处理，否则 _get_all_signals 已处理
         kind = getattr(signal, 'kind', None)
@@ -959,7 +984,14 @@ class LoadExtractor:
                 if result:
                     return result
             return None
-
+        
+        # [P0] 检测字面量常量: IntegerVectorExpression + IntegerLiteral Token
+        # → 返回字面量字符串（不拼接 top.），让边创建继续但节点跳过
+        if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
+            val = getattr(signal, 'value', None)
+            if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
+                return str(val).strip()
+        
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
         if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
             if hasattr(signal, 'values'):
@@ -982,6 +1014,13 @@ class LoadExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
+        
+        # [P0] 检测字面量常量: IntegerVectorExpression + IntegerLiteral Token
+        # → 返回字面量字符串（不拼接 top.），让边创建继续但节点跳过
+        if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
+            val = getattr(signal, 'value', None)
+            if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
+                return str(val).strip()
         
         name = None
         if hasattr(signal, 'name'):
