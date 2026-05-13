@@ -1150,6 +1150,257 @@ endmodule'''
         self.assertIn('top.u_parent.u_child', depth1_ids, f"第二层应是 top.u_parent.u_child，实际: {depth1_ids}")
 
 
+
+    def test_driver_multi_hop(self):
+        """[金标准] Driver 多跳追踪
+        
+        场景: top.clk → u_gen.clk_out → u_driver.clk_in → u_driver.data_out → top.data → u_load.data_in
+        
+        预期 driver 链:
+          top.data ← top.u_driver.data (CONNECTION, not DRIVER)
+          top.data ← driver.data (DRIVER)
+          driver.data ← driver.A5 (DRIVER, literal)
+        """
+        source = '''module clk_gen(output logic clk);
+endmodule
+
+module driver(input logic clk, output logic [7:0] data);
+    assign data = 8'hA5;
+endmodule
+
+module load(input logic [7:0] data);
+    logic [7:0] reg_data;
+    logic clk;
+endmodule
+
+module top;
+    logic clk;
+    logic [7:0] data;
+    clk_gen u_gen(.clk(clk));
+    driver u_driver(.clk(clk), .data(data));
+    load u_load(.data(data));
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # 第1跳: top.data 的直接 driver
+        drivers = graph.find_drivers('top.data')
+        driver_ids = [d.id for d in drivers]
+        self.assertIn('top.u_driver.data', driver_ids, 
+            f"top.data 的直接 driver 应是 top.u_driver.data，实际: {driver_ids}")
+        
+        # 第2跳: top.u_driver.data 的直接 driver
+        drivers = graph.find_drivers('top.u_driver.data')
+        driver_ids = [d.id for d in drivers]
+        self.assertIn('driver.data', driver_ids,
+            f"top.u_driver.data 的直接 driver 应是 driver.data，实际: {driver_ids}")
+        
+        # 第3跳: driver.data 的直接 driver (literal)
+        drivers = graph.find_drivers('driver.data')
+        driver_ids = [d.id for d in drivers]
+        self.assertTrue(len(driver_ids) > 0,
+            f"driver.data 应有 driver (literal)，实际: {driver_ids}")
+
+    def test_driver_cross_module_boundary(self):
+        """[金标准] Driver 跨越模块边界追踪
+        
+        场景: 子模块输出端口被父模块信号驱动
+        
+        预期:
+          sub.out ← sub.internal (DRIVER via assign)
+          sub.internal ← sub.in (CONNECTION)
+        """
+        source = '''module sub(output logic out, input logic in);
+    logic internal;
+    assign internal = in;
+    assign out = internal;
+endmodule
+
+module top;
+    logic a, b;
+    sub u_sub(.out(a), .in(b));
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # top.u_sub.out 的 driver 是 sub.out (DRIVER, 跨越模块边界)
+        # sub.out 的 driver 是 sub.internal (DRIVER, 内部信号)
+        # sub.internal 的 driver 是 sub.in (DRIVER)
+        drivers = graph.find_drivers('top.u_sub.out')
+        driver_ids = [d.id for d in drivers]
+        self.assertIn('sub.out', driver_ids,
+            f"top.u_sub.out 的 driver 应是 sub.out，实际: {driver_ids}")
+        
+        # 验证 sub.out 的 driver
+        drivers = graph.find_drivers('sub.out')
+        driver_ids = [d.id for d in drivers]
+        self.assertIn('sub.internal', driver_ids,
+            f"sub.out 的 driver 应是 sub.internal，实际: {driver_ids}")
+
+    def test_load_multi_level(self):
+        """[金标准] Load 多级追踪
+        
+        场景: top.clk → u_driver.clk → driver.clk
+        
+        预期 load 链:
+          top.clk loads: top.u_driver.clk
+          top.u_driver.clk loads: driver.clk
+        """
+        source = '''module driver(input logic clk, output logic [7:0] data);
+    assign data = 8'hA5;
+endmodule
+
+module top;
+    logic clk;
+    logic [7:0] data;
+    driver u_driver(.clk(clk), .data(data));
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # 第1级: top.clk 的直接 load
+        loads = graph.find_loads('top.clk')
+        load_ids = [l.id for l in loads]
+        self.assertIn('top.u_driver.clk', load_ids,
+            f"top.clk 的直接 load 应是 top.u_driver.clk，实际: {load_ids}")
+        
+        # 第2级: top.u_driver.clk 的直接 load
+        loads = graph.find_loads('top.u_driver.clk')
+        load_ids = [l.id for l in loads]
+        self.assertIn('driver.clk', load_ids,
+            f"top.u_driver.clk 的直接 load 应是 driver.clk，实际: {load_ids}")
+
+    def test_load_cross_module_boundary(self):
+        """[金标准] Load 跨越模块边界追踪
+        
+        场景: 顶层信号驱动子模块端口，然后子模块内部负载继续追踪
+        
+        预期:
+          top.clk_i loads: top.u_dut.clk_i (跨模块边界)
+          top.u_dut.clk_i loads: uart_tx.clk_i (内部信号)
+        """
+        source = '''module uart_tx(
+    input logic clk_i,
+    output logic tx
+);
+    logic clk_q;
+    always_ff @(posedge clk_i) clk_q <= 1'b0;
+endmodule
+
+module top;
+    logic clk_i;
+    logic tx;
+    uart_tx u_dut(.clk_i(clk_i), .tx(tx));
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # top.clk_i loads: top.u_dut.clk_i (跨模块边界)
+        loads = graph.find_loads('top.clk_i')
+        load_ids = [l.id for l in loads]
+        self.assertIn('top.u_dut.clk_i', load_ids,
+            f"top.clk_i 的直接 load 应是 top.u_dut.clk_i，实际: {load_ids}")
+
+    def test_driver_chain_complete_path(self):
+        """[金标准] 完整 Driver 链路径验证
+        
+        场景: 多级跨模块 driver 链
+        top.a ← top.x ← top.u_b.x ← mid.x ← mid.y
+        
+        预期完整 driver 链:
+          top.a ← top.x (DRIVER: assign a = x)
+          top.x ← top.u_b.x (CONNECTION: wire x driven by instance port)
+          top.u_b.x ← mid.x (DRIVER: instance output driven by child internal signal)
+          mid.x ← mid.y (DRIVER: assign x = y)
+        """
+        source = '''module bot(output logic y);
+    assign y = 1'b0;
+endmodule
+
+module mid(output logic x);
+    wire y;
+    bot u_c(.y(y));
+    assign x = y;
+endmodule
+
+module top(output logic a);
+    wire x;
+    mid u_b(.x(x));
+    assign a = x;
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # 第1跳: top.a 的 driver (assign a = x → top.x 是 wire，直接连接)
+        drivers = graph.find_drivers('top.a')
+        self.assertTrue(len(drivers) > 0, f"top.a 应有 driver，实际: {[d.id for d in drivers]}")
+        self.assertEqual(drivers[0].id, 'top.x',
+            f"top.a 的 driver 应是 top.x，实际: {drivers[0].id}")
+        
+        # 第2跳: top.u_b.x 的 driver (跨模块边界，内部信号驱动实例输出)
+        drivers = graph.find_drivers('top.u_b.x')
+        self.assertTrue(len(drivers) > 0, f"top.u_b.x 应有 driver，实际: {[d.id for d in drivers]}")
+        self.assertEqual(drivers[0].id, 'mid.x',
+            f"top.u_b.x 的 driver 应是 mid.x，实际: {drivers[0].id}")
+        
+        # 第3跳: mid.x 的 driver (assign x = y)
+        drivers = graph.find_drivers('mid.x')
+        self.assertTrue(len(drivers) > 0, f"mid.x 应有 driver，实际: {[d.id for d in drivers]}")
+        self.assertEqual(drivers[0].id, 'mid.y',
+            f"mid.x 的 driver 应是 mid.y，实际: {drivers[0].id}")
+        
+        # 验证跨越模块边界的 DRIVER 边存在
+        driver_edges = [(src, dst) for src, dst in graph.edges() 
+                        if graph.get_edge(src, dst).kind.name == 'DRIVER']
+        
+        # 检查是否存在跨越模块的 DRIVER 边
+        cross_module_driver = [(src, dst) for src, dst in driver_edges 
+                               if src.startswith('mid.') and dst.startswith('top.')]
+        self.assertTrue(len(cross_module_driver) > 0,
+            f"应有跨越模块的 DRIVER 边，实际: {driver_edges}")
+
+    def test_load_chain_complete_path(self):
+        """[金标准] 完整 Load 链路径验证
+        
+        场景: 多级跨模块 load 链
+        top.a ← top.x ← top.u_b.tmp ← mid.tmp ← mid.u_c.y
+        
+        预期完整 load 链:
+          top.x loads: top.a (assign a = x)
+          top.u_b.x loads: top.tmp (instance connection)
+          mid.x loads: mid.y (assign x = y)
+        """
+        source = '''module bot(input logic y);
+endmodule
+
+module mid(output logic x);
+    wire y;
+    bot u_c(.y(y));
+    assign x = y;
+endmodule
+
+module top(logic a, output logic x);
+    wire tmp;
+    mid u_b(.x(tmp));
+    assign x = tmp;
+    assign a = x;
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        
+        # top.x loads: top.a (因为 assign a = x)
+        loads = graph.find_loads('top.x')
+        load_ids = [l.id for l in loads]
+        self.assertIn('top.a', load_ids,
+            f"top.x 的 load 应包含 top.a，实际: {load_ids}")
+        
+        # top.u_b.x loads: top.tmp (instance connection)
+        loads = graph.find_loads('top.u_b.x')
+        load_ids = [l.id for l in loads]
+        self.assertIn('top.tmp', load_ids,
+            f"top.u_b.x 的 load 应是 top.tmp，实际: {load_ids}")
+
+
 class TestCrossModuleSignalFlow(unittest.TestCase):
     """跨模块信号流测试"""
     
