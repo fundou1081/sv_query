@@ -94,6 +94,22 @@ class SignalGraph(nx.DiGraph):
         super().__init__()
         self._node_data: Dict[str, TraceNode] = {}
         self._edge_data: Dict[Tuple[str, str], TraceEdge] = {}
+        self._port_to_internal: Dict[str, str] = {}  # {inst_port_id: child_signal_id}
+
+    def get_port_to_internal(self) -> Dict[str, str]:
+        """获取端口到内部信号的映射"""
+        return self._port_to_internal
+
+    def get_internal_signal(self, inst_port_id: str) -> Optional[str]:
+        """查询实例端口对应的内部信号
+        
+        Args:
+            inst_port_id: 实例端口路径，如 'top.u_dut.clk'
+            
+        Returns:
+            内部信号路径，如 'dut.clk'，或 None
+        """
+        return self._port_to_internal.get(inst_port_id)
     
     def add_trace_node(self, node: TraceNode):
         self._node_data[node.id] = node

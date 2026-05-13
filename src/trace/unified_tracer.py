@@ -55,7 +55,7 @@ class UnifiedTracer:
             bit_select_handler.process()
             
             # [Phase4] 构建模块实例图 (跨模块边界追踪)
-            self._module_graph = ModuleInstanceGraph(adapter)
+            self._module_graph = ModuleInstanceGraph(adapter, self._graph)
             self._module_graph.build(self.trees)
             self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
