@@ -112,17 +112,17 @@ class ModuleInstanceGraph:
         return 'unknown'
 
     def build(self, trees: Dict[str, any]):
-        """构建模块实例图 (两遍: 1)存储模块端口 2)解析实例)"""
-        from pyslang import SyntaxKind
-
-        # 第一遍: 遍历所有模块，存储端口定义
+        """构建模块实例图 (三阶段:
+        Phase 0: 存储所有模块的端口定义
+        Phase 1: 收集所有实例化信息 (全树遍历)
+        Phase 2: 对每个实例路径递归处理模块内容)
+        """
+        # Phase 0: 遍历所有模块，存储端口定义，建立 module AST 缓存
+        self._module_ast_cache = {}  # module_name -> AST node
         for fname, tree in trees.items():
             if not tree or not hasattr(tree, 'root'):
                 continue
-
             root = tree.root
-
-            # 处理 CompilationUnit vs ModuleDeclaration
             if hasattr(root, 'kind') and 'CompilationUnit' in str(root.kind):
                 for member in getattr(root, 'members', []):
                     kind_str = str(getattr(member, 'kind', ''))
@@ -130,32 +130,319 @@ class ModuleInstanceGraph:
                         module_name = self._get_module_name(member)
                         if module_name:
                             self._store_module_ports(module_name, member)
+                            self._module_ast_cache[module_name] = member
             else:
-                # 直接是 ModuleDeclaration
                 module_name = self._get_module_name(root)
                 if module_name:
                     self._store_module_ports(module_name, root)
+                    self._module_ast_cache[module_name] = root
 
-        # 第二遍: 遍历所有模块，提取实例化并建立端口映射
+        # Phase 1: 收集所有实例化信息 (全树遍历)
+        # 每个条目: {module_type, inst_name, instance_path}
+        all_instance_info = []
         for fname, tree in trees.items():
             if not tree or not hasattr(tree, 'root'):
                 continue
+            self._find_all_hierarchy_instantiations(tree.root, all_instance_info, parent_path='')
 
+        # Phase 2: 建立 module_name -> [instance_paths] 映射
+        # 例如: 'inner' -> ['top.outer']
+        module_to_paths = {}
+        for info in all_instance_info:
+            inst_path = info['instance_path']
+            mod_type = info['module_type']
+            if mod_type not in module_to_paths:
+                module_to_paths[mod_type] = []
+            module_to_paths[mod_type].append(inst_path)
+
+        # Phase 3: 对每个顶层模块，在其所有实例路径上处理模块内容
+        for fname, tree in trees.items():
+            if not tree or not hasattr(tree, 'root'):
+                continue
             root = tree.root
-
             if hasattr(root, 'kind') and 'CompilationUnit' in str(root.kind):
                 for member in getattr(root, 'members', []):
                     kind_str = str(getattr(member, 'kind', ''))
-                    if 'ModuleDeclaration' in kind_str:
-                        module_name = self._get_module_name(member)
-                        if module_name:
-                            print(f"[DEBUG] Processing ModuleDeclaration: {module_name}")
-                            self._extract_instances(member, module_name)
-            else:
-                module_name = self._get_module_name(root)
-                if module_name:
-                    print(f"[DEBUG] Processing single module: {module_name}")
-                    self._extract_instances(root, module_name)
+                    if 'ModuleDeclaration' not in kind_str:
+                        continue
+                    module_name = self._get_module_name(member)
+                    if not module_name:
+                        continue
+                    print(f"[DEBUG] Processing ModuleDeclaration: {module_name}")
+                    # 如果是被其他模块实例化的模块，从已知的实例路径开始处理
+                    if module_name in module_to_paths:
+                        for inst_path in module_to_paths[module_name]:
+                            self._process_module_at_path(member, inst_path, module_to_paths)
+                    else:
+                        # 顶层模块，没有实例化路径（如 tb.top）
+                        self._process_module_at_path(member, module_name, module_to_paths)
+
+    def _find_all_hierarchy_instantiations(self, node, result_list, parent_path=''):
+        """全树遍历，找到所有 HierarchyInstantiation 并构建完整路径
+
+        Returns:
+            List of dicts: {module_type, inst_name, instance_path}
+        """
+        if node is None:
+            return
+
+        kind = getattr(node, 'kind', None)
+        kind_str = str(kind) if kind else ''
+
+        # LoopGenerate: 记录 generate block 标签，继续遍历
+        if 'LoopGenerate' in kind_str:
+            gen_label = None
+            if hasattr(node, 'block') and hasattr(node.block, 'beginName'):
+                bn = node.block.beginName
+                if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                    gen_label = bn.name.value.strip()
+            new_path = f"{parent_path}.{gen_label}" if gen_label and parent_path else (gen_label or parent_path)
+            if hasattr(node, 'block'):
+                for child in getattr(node.block, 'members', []):
+                    self._find_all_hierarchy_instantiations(child, result_list, new_path)
+            return
+
+        # IfGenerate
+        if 'IfGenerate' in kind_str:
+            gen_label = None
+            if hasattr(node, 'block') and hasattr(node.block, 'beginName'):
+                bn = node.block.beginName
+                if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                    gen_label = bn.name.value.strip()
+            new_path = f"{parent_path}.{gen_label}" if gen_label and parent_path else (gen_label or parent_path)
+            if hasattr(node, 'block'):
+                for child in getattr(node.block, 'members', []):
+                    self._find_all_hierarchy_instantiations(child, result_list, new_path)
+            if hasattr(node, 'elseClause') and node.elseClause:
+                else_node = getattr(node.elseClause, 'clause', None)
+                if else_node and hasattr(else_node, 'members'):
+                    for child in getattr(else_node, 'members', []):
+                        self._find_all_hierarchy_instantiations(child, result_list, new_path)
+            return
+
+        # CaseGenerate
+        if 'CaseGenerate' in kind_str:
+            if hasattr(node, 'items'):
+                for item in node.items:
+                    gen_label = None
+                    if hasattr(item, 'block') and hasattr(item.block, 'beginName'):
+                        bn = item.block.beginName
+                        if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                            gen_label = bn.name.value.strip()
+                    new_path = f"{parent_path}.{gen_label}" if gen_label and parent_path else (gen_label or parent_path)
+                    if hasattr(item, 'block'):
+                        for child in getattr(item.block, 'members', []):
+                            self._find_all_hierarchy_instantiations(child, result_list, new_path)
+            return
+
+        # HierarchyInstantiation: 找到模块实例化
+        if 'HierarchyInstantiation' in kind_str:
+            module_type = self._get_module_name_from_type(node)
+            instances_list = getattr(node, 'instances', None)
+            if instances_list and module_type:
+                for elem in instances_list:
+                    elem_kind = str(getattr(elem, 'kind', ''))
+                    if 'HierarchicalInstance' not in elem_kind:
+                        continue
+                    decl = getattr(elem, 'decl', None)
+                    if not decl:
+                        continue
+                    name_obj = getattr(decl, 'name', None)
+                    if not name_obj or not hasattr(name_obj, 'value'):
+                        continue
+                    inst_name = str(name_obj.value).strip()
+                    if inst_name:
+                        instance_path = f"{parent_path}.{inst_name}" if parent_path else inst_name
+                        result_list.append({
+                            'module_type': module_type,
+                            'inst_name': inst_name,
+                            'instance_path': instance_path,
+                        })
+            return
+
+        # 只有特定的父节点类型才需要递归遍历包含实例的子节点
+        # - CompilationUnit: 顶层容器，包含 ModuleDeclaration 列表
+        # - ModuleDeclaration: 模块定义容器，包含 generate region 和实例
+        # - GenerateRegion: generate 块容器，包含 LoopGenerate/IfGenerate/CaseGenerate
+        # - LoopGenerate/IfGenerate/CaseGenerate: 包含 HierarchyInstantiation 或嵌套 generate
+        # - HierarchyInstantiation: 记录后直接返回（无实例子节点）
+        should_recurse = ('CompilationUnit' in kind_str) or \
+                        ('ModuleDeclaration' in kind_str) or \
+                        ('GenerateRegion' in kind_str) or \
+                        'LoopGenerate' in kind_str or \
+                        'IfGenerate' in kind_str or \
+                        'CaseGenerate' in kind_str
+        if should_recurse:
+            for child in self._iter_children(node):
+                self._find_all_hierarchy_instantiations(child, result_list, parent_path)
+
+    def _process_module_at_path(self, module_node, base_path, module_to_paths):
+        """在给定的实例路径上处理模块内容
+
+        Args:
+            module_node: 模块的 ModuleDeclarationSyntax AST 节点
+            base_path: 当前实例路径 (如 'top.outer' 或 'top')
+            module_to_paths: module_name -> [instance_paths] 映射
+        """
+        if module_node is None:
+            return
+
+        # 遍历模块的成员
+        for child in self._iter_children(module_node):
+            if child is None:
+                continue
+            kind_str = str(getattr(child, 'kind', ''))
+
+            # LoopGenerate
+            if 'LoopGenerate' in kind_str:
+                gen_label = None
+                if hasattr(child, 'block') and hasattr(child.block, 'beginName'):
+                    bn = child.block.beginName
+                    if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                        gen_label = bn.name.value.strip()
+                new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+                if hasattr(child, 'block'):
+                    for gc in getattr(child.block, 'members', []):
+                        self._process_child_at_path(gc, new_path, module_to_paths)
+                continue
+
+            # IfGenerate
+            if 'IfGenerate' in kind_str:
+                gen_label = None
+                if hasattr(child, 'block') and hasattr(child.block, 'beginName'):
+                    bn = child.block.beginName
+                    if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                        gen_label = bn.name.value.strip()
+                new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+                if hasattr(child, 'block'):
+                    for gc in getattr(child.block, 'members', []):
+                        self._process_child_at_path(gc, new_path, module_to_paths)
+                if hasattr(child, 'elseClause') and child.elseClause:
+                    else_node = getattr(child.elseClause, 'clause', None)
+                    if else_node and hasattr(else_node, 'members'):
+                        for gc in getattr(else_node, 'members', []):
+                            self._process_child_at_path(gc, new_path, module_to_paths)
+                continue
+
+            # CaseGenerate
+            if 'CaseGenerate' in kind_str:
+                if hasattr(child, 'items'):
+                    for item in child.items:
+                        gen_label = None
+                        if hasattr(item, 'block') and hasattr(item.block, 'beginName'):
+                            bn = item.block.beginName
+                            if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                                gen_label = bn.name.value.strip()
+                        new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+                        if hasattr(item, 'block'):
+                            for gc in getattr(item.block, 'members', []):
+                                self._process_child_at_path(gc, new_path, module_to_paths)
+                continue
+
+            # GenerateRegion: generate ... endgenerate 块容器
+            if 'GenerateRegion' in kind_str:
+                if hasattr(child, 'members'):
+                    for gc in getattr(child, 'members', []):
+                        self._process_child_at_path(gc, base_path, module_to_paths)
+                continue
+
+            # HierarchyInstantiation: 创建实例
+            if 'HierarchyInstantiation' in kind_str:
+                module_type = self._get_module_name_from_type(child)
+                self._extract_module_instantiation(child, base_path)
+                # 如果被实例化的模块自身还有子实例，递归处理
+                if module_type and module_type in module_to_paths:
+                    instances_list = getattr(child, 'instances', None)
+                    if instances_list:
+                        for elem in instances_list:
+                            elem_kind = str(getattr(elem, 'kind', ''))
+                            if 'HierarchicalInstance' not in elem_kind:
+                                continue
+                            decl = getattr(elem, 'decl', None)
+                            if not decl:
+                                continue
+                            name_obj = getattr(decl, 'name', None)
+                            if not name_obj or not hasattr(name_obj, 'value'):
+                                continue
+                            inst_name = str(name_obj.value).strip()
+                            inst_path = f"{base_path}.{inst_name}"
+                            # 找到该模块的 AST 定义并递归
+                            if module_type in self._module_ast_cache:
+                                child_module_ast = self._module_ast_cache[module_type]
+                                self._process_module_at_path(child_module_ast, inst_path, module_to_paths)
+                continue
+
+    def _process_child_at_path(self, node, base_path, module_to_paths):
+        """处理 generate block 内的子节点"""
+        if node is None:
+            return
+        kind_str = str(getattr(node, 'kind', ''))
+
+        if 'HierarchyInstantiation' in kind_str:
+            module_type = self._get_module_name_from_type(node)
+            self._extract_module_instantiation(node, base_path)
+            if module_type and module_type in module_to_paths:
+                instances_list = getattr(node, 'instances', None)
+                if instances_list:
+                    for elem in instances_list:
+                        elem_kind = str(getattr(elem, 'kind', ''))
+                        if 'HierarchicalInstance' not in elem_kind:
+                            continue
+                        decl = getattr(elem, 'decl', None)
+                        if not decl:
+                            continue
+                        name_obj = getattr(decl, 'name', None)
+                        if not name_obj or not hasattr(name_obj, 'value'):
+                            continue
+                        inst_name = str(name_obj.value).strip()
+                        inst_path = f"{base_path}.{inst_name}"
+                        if module_type in self._module_ast_cache:
+                            child_module_ast = self._module_ast_cache[module_type]
+                            self._process_module_at_path(child_module_ast, inst_path, module_to_paths)
+            return
+
+        if 'LoopGenerate' in kind_str:
+            gen_label = None
+            if hasattr(node, 'block') and hasattr(node.block, 'beginName'):
+                bn = node.block.beginName
+                if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                    gen_label = bn.name.value.strip()
+            new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+            if hasattr(node, 'block'):
+                for gc in getattr(node.block, 'members', []):
+                    self._process_child_at_path(gc, new_path, module_to_paths)
+            return
+
+        if 'IfGenerate' in kind_str:
+            gen_label = None
+            if hasattr(node, 'block') and hasattr(node.block, 'beginName'):
+                bn = node.block.beginName
+                if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                    gen_label = bn.name.value.strip()
+            new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+            if hasattr(node, 'block'):
+                for gc in getattr(node.block, 'members', []):
+                    self._process_child_at_path(gc, new_path, module_to_paths)
+            if hasattr(node, 'elseClause') and node.elseClause:
+                else_node = getattr(node.elseClause, 'clause', None)
+                if else_node and hasattr(else_node, 'members'):
+                    for gc in getattr(else_node, 'members', []):
+                        self._process_child_at_path(gc, new_path, module_to_paths)
+            return
+
+        if 'CaseGenerate' in kind_str:
+            if hasattr(node, 'items'):
+                for item in node.items:
+                    gen_label = None
+                    if hasattr(item, 'block') and hasattr(item.block, 'beginName'):
+                        bn = item.block.beginName
+                        if bn and hasattr(bn, 'name') and hasattr(bn.name, 'value'):
+                            gen_label = bn.name.value.strip()
+                    new_path = f"{base_path}.{gen_label}" if gen_label else base_path
+                    if hasattr(item, 'block'):
+                        for gc in getattr(item.block, 'members', []):
+                            self._process_child_at_path(gc, new_path, module_to_paths)
+            return
 
     def _extract_instances(self, node, parent_path: str):
         """递归提取模块实例（支持 generate block）"""
