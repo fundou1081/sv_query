@@ -405,19 +405,17 @@ module tb;
     logic clk;
 endmodule
 
-module dut;
-    input clk;
-    logic [31:0] reg_data;
+module dut(input clk, output logic [31:0] reg_data);
     
     always_ff @(posedge clk)
         reg_data <= 32'h0;
 endmodule
 
 module top;
-    tb u_tb();
-    dut u_dut();
-    
-    assign u_dut.clk = u_tb.clk;
+    logic clk;
+    logic [31:0] reg_data;
+    tb u_tb(.clk(clk));
+    dut u_dut(.clk(clk), .reg_data(reg_data));
 endmodule
 '''
 
@@ -520,7 +518,8 @@ module child(output [7:0] out);
 endmodule
 
 module parent;
-    child u_child();
+    wire [7:0] w;
+    child u_child(.out(w));
 endmodule
 
 module top;
