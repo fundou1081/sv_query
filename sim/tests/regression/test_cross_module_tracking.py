@@ -993,6 +993,158 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
         self.assertIsNotNone(inst)
         self.assertEqual(inst.parent, 'top.u_parent')
 
+    def test_mig_get_instance(self):
+        """[金标准] MIG 集中索引 - get_instance()"""
+        source = '''module child(output [7:0] out);
+endmodule
+
+module parent;
+    child u_child();
+endmodule
+
+module top;
+    parent u_parent();
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        mig = getattr(tracer, '_module_graph', None)
+        
+        # 获取顶层实例
+        inst = mig.get_instance('top.u_parent')
+        self.assertIsNotNone(inst, "应能获取 top.u_parent")
+        self.assertEqual(inst.id, 'top.u_parent')
+        self.assertEqual(inst.module_type, 'parent')
+        self.assertEqual(inst.parent, 'top')
+        
+        # 获取嵌套实例
+        inst = mig.get_instance('top.u_parent.u_child')
+        self.assertIsNotNone(inst, "应能获取 top.u_parent.u_child")
+        self.assertEqual(inst.module_type, 'child')
+        self.assertEqual(inst.parent, 'top.u_parent')
+        
+        # 获取不存在的实例
+        inst = mig.get_instance('top.nonexistent')
+        self.assertIsNone(inst, "不存在的实例应返回 None")
+
+    def test_mig_child_instances(self):
+        """[金标准] MIG 父子关系查询 - get_child_instances()"""
+        source = '''module child(output [7:0] out);
+endmodule
+
+module parent;
+    child u_child();
+endmodule
+
+module top;
+    parent u_parent();
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        mig = getattr(tracer, '_module_graph', None)
+        
+        # 查询 top 的子实例
+        children = mig.get_child_instances('top')
+        child_ids = [c.id for c in children]
+        self.assertIn('top.u_parent', child_ids, f"top 的子实例应包含 top.u_parent，实际: {child_ids}")
+        
+        # 查询 parent 的子实例
+        children = mig.get_child_instances('top.u_parent')
+        child_ids = [c.id for c in children]
+        self.assertIn('top.u_parent.u_child', child_ids, f"top.u_parent 的子实例应包含 top.u_parent.u_child，实际: {child_ids}")
+        
+        # 查询叶子节点（无子实例）
+        children = mig.get_child_instances('top.u_parent.u_child')
+        self.assertEqual(len(children), 0, "叶子节点应无子实例")
+
+    def test_mig_all_instances(self):
+        """[金标准] MIG 获取所有实例 - get_all_instances()"""
+        source = '''module child(output [7:0] out);
+endmodule
+
+module parent;
+    child u_child();
+endmodule
+
+module top;
+    parent u_parent();
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        mig = getattr(tracer, '_module_graph', None)
+        
+        all_insts = mig.get_all_instances()
+        self.assertIn('top.u_parent', all_insts, f"应有 top.u_parent，实际: {all_insts}")
+        self.assertIn('top.u_parent.u_child', all_insts, f"应有 top.u_parent.u_child，实际: {all_insts}")
+
+    def test_mig_port_info(self):
+        """[金标准] MIG 端口信息 - PortInfo 对象"""
+        source = '''module dut(input clk, output [7:0] data);
+endmodule
+
+module top;
+    logic clk;
+    wire [7:0] data;
+    dut u_dut(.clk(clk), .data(data));
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        mig = getattr(tracer, '_module_graph', None)
+        
+        inst = mig.get_instance('top.u_dut')
+        self.assertIsNotNone(inst)
+        
+        # 检查端口信息
+        self.assertTrue(len(inst.ports) > 0, "实例应有端口列表")
+        
+        # 检查 clk 端口
+        if 'clk' in inst.ports:
+            port = inst.ports['clk']
+            self.assertEqual(port.direction, 'input', "clk 应为 input 端口")
+            self.assertEqual(port.internal_signal, 'dut.clk', "内部信号应为 dut.clk")
+            self.assertEqual(port.module_type, 'dut', "模块类型应为 dut")
+        
+        # 检查 data 端口
+        if 'data' in inst.ports:
+            port = inst.ports['data']
+            self.assertEqual(port.direction, 'output', "data 应为 output 端口")
+            self.assertEqual(port.internal_signal, 'dut.data', "内部信号应为 dut.data")
+
+    def test_mig_hierarchical_traversal(self):
+        """[金标准] MIG 层级遍历"""
+        source = '''module child(output [7:0] out);
+endmodule
+
+module parent;
+    child u_child();
+endmodule
+
+module top;
+    parent u_parent();
+endmodule'''
+        
+        graph, tracer = self._build_graph(source)
+        mig = getattr(tracer, '_module_graph', None)
+        
+        # 层级遍历函数
+        def collect_hierarchy(parent_id, depth=0):
+            result = []
+            children = mig.get_child_instances(parent_id)
+            for child in children:
+                result.append((depth, child.id, child.module_type))
+                result.extend(collect_hierarchy(child.id, depth + 1))
+            return result
+        
+        hierarchy = collect_hierarchy('top')
+        
+        # 验证层级结构
+        self.assertEqual(len(hierarchy), 2, f"应有 2 层实例，实际: {len(hierarchy)}")
+        
+        depth0_ids = [id_ for d, id_, _ in hierarchy if d == 0]
+        self.assertIn('top.u_parent', depth0_ids, f"顶层应是 top.u_parent，实际: {depth0_ids}")
+        
+        depth1_ids = [id_ for d, id_, _ in hierarchy if d == 1]
+        self.assertIn('top.u_parent.u_child', depth1_ids, f"第二层应是 top.u_parent.u_child，实际: {depth1_ids}")
+
 
 class TestCrossModuleSignalFlow(unittest.TestCase):
     """跨模块信号流测试"""
