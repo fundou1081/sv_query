@@ -12,7 +12,7 @@ import pyslang
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.diff import diff_graph, diff_reachability
+from trace.core.graph.diff import diff_graph, diff_reachability, diff_with_health
 
 diff_app = typer.Typer(help="Compare two versions of SystemVerilog code")
 
@@ -24,9 +24,18 @@ def output_json(data: dict, pretty: bool = False) -> None:
 
 def output_text(data: dict) -> None:
     """纯文本输出"""
-    graph_diff = data.get("result", {}).get("graph_diff", {})
-    reach_diff = data.get("result", {}).get("reachability_diff", {})
+    result = data.get("result", {})
 
+    # Check if we have full health analysis or just basic diff
+    graph_diff = result.get("graph_diff", {})
+    stable_core = result.get("stable_core", [])
+    health_old = result.get("health_score_old")
+    health_new = result.get("health_score_new")
+    health_delta = result.get("health_delta")
+    coupling = result.get("coupling_warning", {})
+    reach_diff = result.get("reachability_diff", {})
+
+    # === Graph Diff ===
     print("=== Graph Diff ===")
     added = graph_diff.get("added_nodes", [])
     removed = graph_diff.get("removed_nodes", [])
@@ -45,6 +54,29 @@ def output_text(data: dict) -> None:
         if removed_edges:
             print(f"  Removed edges ({len(removed_edges)})")
 
+    # === Health Score (if available) ===
+    if health_old is not None and health_new is not None:
+        print("\n=== Architecture Health ===")
+        print(f"  Old graph health: {health_old:.2%}")
+        print(f"  New graph health: {health_new:.2%}")
+        delta_str = f"{health_delta:+.2%}" if health_delta else "N/A"
+        print(f"  Health delta: {delta_str}")
+
+        if stable_core:
+            print(f"  Stable core ({len(stable_core)} nodes): {', '.join(stable_core[:5])}{'...' if len(stable_core) > 5 else ''}")
+
+        if coupling:
+            level = coupling.get('level', 'unknown')
+            if level == 'critical':
+                print(f"  Coupling warning: *** CRITICAL *** (small change, high instability)")
+            elif level == 'high':
+                print(f"  Coupling warning: ** HIGH ** (small change, elevated instability)")
+            elif level == 'medium':
+                print(f"  Coupling warning: * MEDIUM *")
+            else:
+                print(f"  Coupling level: {level.upper()}")
+
+    # === Reachability Diff ===
     if reach_diff.get("changed_nodes"):
         print("\n=== Reachability Diff ===")
         newly = reach_diff.get("newly_impacted", [])
@@ -74,9 +106,11 @@ def compare(
         graph_old = tracer_old.build_graph()
         graph_new = tracer_new.build_graph()
 
-        # Phase 1: Element-wise diff
-        diff_result = diff_graph(graph_old, graph_new)
+        # Phase 1: Full health analysis (方案一 + 方案四)
+        full_result = diff_with_health(graph_old, graph_new)
 
+        # Extract graph diff for compatibility
+        diff_result = full_result['graph_diff']
         result_data = {
             "added_nodes": diff_result.added_nodes,
             "removed_nodes": diff_result.removed_nodes,
@@ -97,6 +131,11 @@ def compare(
             "params": {"old": str(old), "new": str(new), "signal": signal},
             "result": {
                 "graph_diff": result_data,
+                "stable_core": full_result['stable_core'],
+                "health_score_old": full_result['health_score_old'],
+                "health_score_new": full_result['health_score_new'],
+                "health_delta": full_result['health_delta'],
+                "coupling_warning": full_result['coupling_warning'],
                 "reachability_diff": reach_diff_data,
             },
             "errors": []

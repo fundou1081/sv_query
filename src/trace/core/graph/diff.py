@@ -223,3 +223,185 @@ def _max_impact_depth(start_nodes: List[str], graph: SignalGraph) -> int:
         max_depth += 1
 
     return max_depth
+
+#==============================================================================
+# 方案一: 标识符严格匹配法 - 稳定核心 + 架构健康度
+# 参考: GRAPH_DIFF_DESIGN.md + MCS方案汇总文档
+#==============================================================================
+
+def compute_stable_core(G1: SignalGraph, G2: SignalGraph) -> List[str]:
+    """计算两个图的稳定核心（同名模块 + 所有出边和入边完全一致）
+    
+    金标准推导:
+    稳定核心 = {module_id | module_id in G1 and module_id in G2 
+                      and out_edges(G1, module_id) == out_edges(G2, module_id)
+                      and in_edges(G1, module_id) == in_edges(G2, module_id)}
+    
+    Args:
+        G1: 旧版本 Graph
+        G2: 新版本 Graph
+    
+    Returns:
+        List[str]: 稳定核心模块 ID 列表
+    
+    时间复杂度: O(|V| + |E|)
+    """
+    nodes1 = set(G1.nodes())
+    nodes2 = set(G2.nodes())
+    
+    # 同名节点集合
+    common_nodes = nodes1 & nodes2
+    
+    stable_core = []
+    
+    for node_id in common_nodes:
+        # 检查出边是否一致
+        out1 = set(G1.out_edges(node_id))
+        out2 = set(G2.out_edges(node_id))
+        if out1 != out2:
+            continue
+        
+        # 检查入边是否一致
+        in1 = set(G1.in_edges(node_id))
+        in2 = set(G2.in_edges(node_id))
+        if in1 != in2:
+            continue
+        
+        stable_core.append(node_id)
+    
+    return sorted(stable_core)
+
+
+def compute_health_score(G: SignalGraph, stable_core: List[str]) -> float:
+    """计算架构健康度
+    
+    金标准推导:
+    健康度 = 稳定核心模块数 / 图中最大模块数
+    
+    Args:
+        G: SignalGraph
+        stable_core: compute_stable_core() 返回的稳定核心列表
+    
+    Returns:
+        float: 健康度 (0.0 ~ 1.0)
+    """
+    total_nodes = len(list(G.nodes()))
+    if total_nodes == 0:
+        return 0.0
+    return len(stable_core) / total_nodes
+
+
+def compute_coupling_warning(
+    changed_nodes: List[str],
+    total_nodes: int,
+    unstable_ratio: float,
+    changed_ratio: float = 0.05,
+    unstable_threshold: float = 0.30
+) -> Dict:
+    """计算耦合预警
+    
+    金标准推导:
+    耦合预警条件:
+    - |C| / 总模块数 < 5% (改动很小)
+    - 不稳定模块比例 > 30% (轻微改动导致大范围不稳定)
+    
+    Args:
+        changed_nodes: 变更节点列表
+        total_nodes: 总节点数
+        unstable_ratio: 不稳定模块比例 (不稳定模块 = 总模块 - 稳定核心)
+        changed_ratio: 变更比例阈值 (默认 5%)
+        unstable_threshold: 不稳定比例阈值 (默认 30%)
+    
+    Returns:
+        Dict: {
+            'is_warning': bool,
+            'changed_count': int,
+            'changed_ratio': float,
+            'unstable_ratio': float,
+            'level': str,  # 'high' | 'medium' | 'low'
+        }
+    """
+    changed_count = len(changed_nodes)
+    changed_pct = changed_count / total_nodes if total_nodes > 0 else 0.0
+    
+    is_warning = (changed_pct < changed_ratio) and (unstable_ratio > unstable_threshold)
+    
+    # 计算预警级别
+    if is_warning:
+        if unstable_ratio > 0.5:
+            level = 'critical'
+        elif unstable_ratio > 0.3:
+            level = 'high'
+        else:
+            level = 'medium'
+    else:
+        level = 'low'
+    
+    return {
+        'is_warning': is_warning,
+        'changed_count': changed_count,
+        'changed_ratio': round(changed_pct, 4),
+        'unstable_ratio': round(unstable_ratio, 4),
+        'level': level,
+    }
+
+
+def diff_with_health(
+    G1: SignalGraph,
+    G2: SignalGraph
+) -> Dict:
+    """完整 Graph Diff，包含稳定核心和健康度（方案一）
+    
+    金标准输出格式:
+    {
+        "graph_diff": GraphDiff,
+        "stable_core": List[str],           # 稳定核心节点
+        "health_score_old": float,          # 旧图健康度
+        "health_score_new": float,          # 新图健康度
+        "health_delta": float,              # 健康度变化
+        "coupling_warning": Dict,            # 耦合预警
+    }
+    
+    Args:
+        G1: 旧版本 Graph
+        G2: 新版本 Graph
+    
+    Returns:
+        Dict: 包含所有 diff 信息及健康度指标
+    """
+    # Phase 1: Element-wise diff
+    diff_result = diff_graph(G1, G2)
+    
+    # Phase 2: 稳定核心计算
+    stable_core = compute_stable_core(G1, G2)
+    
+    # Phase 3: 健康度计算
+    health_old = compute_health_score(G1, stable_core)
+    health_new = compute_health_score(G2, stable_core)
+    health_delta = health_new - health_old
+    
+    # Phase 4: 耦合预警
+    total_nodes = max(len(list(G1.nodes())), len(list(G2.nodes())))
+    unstable_ratio = 1.0 - (len(stable_core) / total_nodes) if total_nodes > 0 else 0.0
+    
+    # 变更节点 = added_nodes + removed_nodes + modified_nodes
+    changed_nodes = (
+        diff_result.added_nodes + 
+        diff_result.removed_nodes + 
+        list(diff_result.modified_nodes.keys())
+    )
+    
+    coupling = compute_coupling_warning(
+        changed_nodes=changed_nodes,
+        total_nodes=total_nodes,
+        unstable_ratio=unstable_ratio
+    )
+    
+    return {
+        'graph_diff': diff_result,
+        'stable_core': stable_core,
+        'health_score_old': round(health_old, 4),
+        'health_score_new': round(health_new, 4),
+        'health_delta': round(health_delta, 4),
+        'coupling_warning': coupling,
+    }
