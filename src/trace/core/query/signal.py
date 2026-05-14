@@ -4,7 +4,7 @@
 
 from typing import List
 from dataclasses import dataclass
-from .graph_models import SignalGraph, TraceNode, EdgeKind
+from ..graph.models import SignalGraph, TraceNode, EdgeKind
 
 @dataclass
 class SignalChain:

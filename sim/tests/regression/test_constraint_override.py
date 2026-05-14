@@ -20,7 +20,7 @@ import sys
 sys.path.insert(0, 'src')
 
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import EdgeKind
+from trace.core.graph.models import EdgeKind
 import pyslang
 
 

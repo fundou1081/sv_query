@@ -6,17 +6,19 @@
 from typing import Optional
 import networkx as nx
 
-from .core.graph_models import (
+from .core.graph import (
     SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 )
 from .core.graph_builder import GraphBuilder
 from .core.class_graph_builder import ClassGraphBuilder
 from .core.bit_select_handler import BitSelectHandler
 from .core.module_instance_graph import ModuleInstanceGraph, PathResolver
-from .core.query_signal import SignalTracer, SignalChain
-from .core.query_load import LoadTracer, LoadChain
-from .core.query_module import ModuleTracer, ModuleConnections
-from .core.query_clock_domain import ClockDomainTracer, ClockDomainTrace
+from .core.query import (
+    SignalTracer, SignalChain,
+    LoadTracer, LoadChain,
+    ModuleTracer, ModuleConnections,
+    ClockDomainTracer, ClockDomainTrace,
+)
 from .core.base import PyslangAdapter
 
 class UnifiedTracer:

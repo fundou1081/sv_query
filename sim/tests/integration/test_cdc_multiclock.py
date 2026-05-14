@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import EdgeKind
-from trace.core.query_clock_domain import ClockDomainTracer
+from trace.core.graph.models import EdgeKind
+from trace.core.query.clock_domain import ClockDomainTracer
 
 
 class TestCDCMultiClock(unittest.TestCase):

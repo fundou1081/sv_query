@@ -18,7 +18,7 @@
 from typing import List, Set, Optional
 from dataclasses import dataclass, field
 
-from trace.core.graph_models import SignalGraph, EdgeKind, NodeKind
+from trace.core.graph.models import SignalGraph, EdgeKind, NodeKind
 
 
 @dataclass

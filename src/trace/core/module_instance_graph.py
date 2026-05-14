@@ -15,7 +15,7 @@ module_instance_graph.py - 模块实例层级图
 """
 
 from typing import Dict, List, Optional, Tuple
-from .graph_models import EdgeKind
+from .graph.models import EdgeKind
 import networkx as nx
 
 from dataclasses import dataclass, field

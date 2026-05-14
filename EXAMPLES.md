@@ -379,7 +379,7 @@ graph = tracer.get_graph()
 
 # Find clock for data_out
 # Query through clock domain tracer
-from trace.core.query_clock_domain import ClockDomainTracer
+from trace.core.query.clock_domain import ClockDomainTracer
 
 tracer_obj = tracer._tracers.get('clock_domain')
 if tracer_obj:

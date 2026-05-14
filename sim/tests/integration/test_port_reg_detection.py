@@ -19,9 +19,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import NodeKind, EdgeKind
-from trace.core.query_module import ModuleTracer
-from trace.core.query_clock_domain import ClockDomainTracer
+from trace.core.graph.models import NodeKind, EdgeKind
+from trace.core.query.module import ModuleTracer
+from trace.core.query.clock_domain import ClockDomainTracer
 
 
 class TestPortRegDetection(unittest.TestCase):
