@@ -17,6 +17,9 @@ module_instance_graph.py - 模块实例层级图
 from typing import Dict, List, Optional, Tuple
 from .graph.models import EdgeKind
 import networkx as nx
+import logging
+
+logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass, field
 
@@ -169,7 +172,7 @@ class ModuleInstanceGraph:
                     module_name = self._get_module_name(member)
                     if not module_name:
                         continue
-                    print(f"[DEBUG] Processing ModuleDeclaration: {module_name}")
+                    logger.debug(f"Processing ModuleDeclaration: {module_name}")
                     # 如果是被其他模块实例化的模块，不在这里处理
                     # 这些模块只应该通过父模块的递归调用来处理
                     if module_name in module_to_paths:
