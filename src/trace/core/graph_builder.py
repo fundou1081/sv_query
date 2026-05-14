@@ -216,6 +216,37 @@ class DriverExtractor:
             for assign in self.adapter.get_assignments(module):
                 lhs, rhs = self._parse_assign(assign)
                 if lhs and rhs:
+                    # [FIX BUG] ScopedName: tb.data → 创建父子节点和 BIT_SELECT 边
+                    # 支持嵌套 ScopedName: tb.data.sub → 创建 tb, tb.data, tb.data.sub
+                    # 所有层级都连接到其直接父节点 (BIT_SELECT 边)
+                    if '.' in lhs:
+                        lhs_parts = lhs.split('.')
+                        # 首先：确保所有中间父节点存在
+                        for i in range(1, len(lhs_parts)):
+                            parent_name = '.'.join(lhs_parts[:i])
+                            parent_id = f"{module_name}.{parent_name}"
+                            if parent_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=parent_id, name=parent_name, module=module_name,
+                                    kind=NodeKind.PORT_IN, width=(1, 0)
+                                ))
+                        # 其次：为每个层级创建 BIT_SELECT 边 (child → parent)
+                        # 即使父节点已存在，也要创建边
+                        for i in range(len(lhs_parts) - 1):
+                            child_name = '.'.join(lhs_parts[:i+2])  # ['p'] + ['sub', 'data'] = ['p','sub','data'], index 1 -> 'p.sub'
+                            parent_name = '.'.join(lhs_parts[:i+1])
+                            child_id = f"{module_name}.{child_name}"
+                            parent_id = f"{module_name}.{parent_name}"
+                            if child_id != parent_id:
+                                # 检查边是否已存在
+                                existing = next(((e.src, e.dst) for e in result.edges
+                                    if e.src == child_id and e.dst == parent_id), None)
+                                if not existing:
+                                    result.edges.append(TraceEdge(
+                                        src=child_id, dst=parent_id,
+                                        kind=EdgeKind.BIT_SELECT, assign_type="internal"
+                                    ))
+                    
                     # 创建 dst 节点
                     dst_node_id = f"{module_name}.{lhs}"
                     if dst_node_id not in [n.id for n in result.nodes]:
@@ -709,13 +740,40 @@ class DriverExtractor:
         if signal is None:
             return None
         
-        # [P0] 检测字面量常量: IntegerVectorExpression + IntegerLiteral Token
-        # → 返回字面量字符串（不拼接 top.），让边创建继续但节点跳过
+        # [FIX BUG] ScopedName: ifc.data → 提取 left.identifier.value + '.' + right.identifier.value
+        # 在 special_attrs 循环之前处理，防止误取 left.component 导致返回 'ifc' 而非 'ifc.data'
+        if hasattr(signal, 'kind') and str(signal.kind) == 'SyntaxKind.ScopedName':
+            left_node = getattr(signal, 'left', None)
+            right_node = getattr(signal, 'right', None)
+            if left_node and right_node:
+                left_ident = getattr(left_node, 'identifier', None)
+                right_ident = getattr(right_node, 'identifier', None)
+                if left_ident and right_ident:
+                    left_val = getattr(left_ident, 'value', None) or str(left_ident).strip()
+                    right_val = getattr(right_ident, 'value', None) or str(right_ident).strip()
+                    combined = f"{left_val}.{right_val}"
+                    combined = self.adapter.clean_name(combined)
+                    return combined
+        
+        # [FIX] IntegerVectorExpression 字面量: 8'hAA, 16'd123, etc.
+        # → 返回完整字面量字符串 (str(signal))，不拼接 top.
         if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
             val = getattr(signal, 'value', None)
             if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
-                # 返回字面量本身（如 "1"、"A5A5A5A5"），不返回 None
-                return str(val).strip()
+                # 关键修复: 使用 str(signal) 获取完整字面量 (如 "8'hAA")，
+                # 而不是 str(val) (只有 "AA")
+                return str(signal).strip()
+        
+        # [FIX] IntegerLiteralExpression 处理: 8b0, 4'b1000 等简单字面量
+        # SyntaxKind.IntegerLiteralExpression 直接返回 str(signal)
+        if hasattr(signal, 'kind') and 'IntegerLiteralExpression' in str(signal.kind):
+            return str(signal).strip()
+        
+        # [FIX] IntegerLiteral Token 直接处理: 8b0, 4'b1000 等
+        # 注意: 这些是 Token 类型，不是 SyntaxKind，所以用 isinstance 检查
+        if isinstance(signal, pyslang.Token) and signal.kind == pyslang.TokenKind.IntegerLiteral:
+            # 返回完整 token 字符串 (如 "8b0" 或 "4'b1000")
+            return str(signal).strip()
         
         # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
         # _get_signal 被直接调用时处理，否则 _get_all_signals 已处理
@@ -726,15 +784,24 @@ class DriverExtractor:
                 return self._get_signal(tc_expr)
             return None
         
-        # [P2] 处理 MultipleConcatenationExpression: {N{signal}}
+        # [FIX BUG] MultipleConcatenationExpression: {N{signal}} → 返回内部信号
+        # 结构: signal.concatenation.expressions，内部是 {signal} 拼接
         if hasattr(signal, 'kind') and 'MultipleConcatenation' in str(signal.kind):
-            # 结构: signal.concatenation.expressions
             if hasattr(signal, 'concatenation'):
                 concat = signal.concatenation
-                if hasattr(concat, 'expressions'):
-                    # 直接处理
-                    result = self._get_signal(concat.expressions)
-                    return result
+                if concat and hasattr(concat, 'expressions'):
+                    exprs = concat.expressions
+                    # exprs 是内部拼接表达式，迭代提取第一个信号
+                    if hasattr(exprs, '__iter__') and not isinstance(exprs, str):
+                        for expr_item in exprs:
+                            if hasattr(expr_item, 'kind'):
+                                result = self._get_signal(expr_item)
+                                if result:
+                                    return result
+                    else:
+                        result = self._get_signal(exprs)
+                        if result:
+                            return result
             return None
         
         # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名 data[3]

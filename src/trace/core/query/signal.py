@@ -86,6 +86,22 @@ class SignalTracer:
         if signal_id not in self.graph.nodes():
             return
         
+        # [方案B修正] 如果当前节点没有 incoming DRIVER 边, 检查 BIT_SELECT 子节点
+        # 例如查询 'm' (modport实例) 时, 如果 'm' 没有直接驱动, 查找 'm.*' 子节点
+        has_driver_edge = any(
+            edge.kind == EdgeKind.DRIVER and dst == signal_id
+            for src, dst, edge in [(e[0], e[1], self.graph.get_edge(e[0], e[1])) for e in self.graph.edges()]
+        )
+        if not has_driver_edge:
+            # 查找 BIT_SELECT 子节点 (child → this_node)
+            for src, dst in list(self.graph.edges()):
+                if dst == signal_id:
+                    edge = self.graph.get_edge(src, dst)
+                    if edge and edge.kind == EdgeKind.BIT_SELECT:
+                        # 子节点有驱动
+                        if src not in seen_ids:
+                            self._trace_drivers_recursive(src, drivers, seen_ids, current_depth, max_depth)
+        
         # 标记当前节点已访问
         seen_ids.add(signal_id)
         
