@@ -6,6 +6,7 @@ import typer
 
 from .commands.trace import trace_app
 from .commands.diff import diff_app
+from .commands.snapshot import snapshot_app
 
 app = typer.Typer(
     name="svq",
@@ -16,6 +17,7 @@ app = typer.Typer(
 # 注册子命令组
 app.add_typer(trace_app, name="trace")
 app.add_typer(diff_app, name="diff")
+app.add_typer(snapshot_app, name="snapshot")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖

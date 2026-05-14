@@ -189,3 +189,186 @@ class SignalGraph(nx.DiGraph):
             "nodes": self.number_of_nodes(),
             "edges": self.number_of_edges(),
         }
+
+
+#==============================================================================
+# Snapshot 序列化 - 支持完整 SignalGraph 持久化
+# [铁律13] 金标准测试优先
+#==============================================================================
+
+    def to_dict(self) -> Dict:
+        """[Golden] 完整序列化 SignalGraph 为可 JSON 化的字典
+        
+        金标准输出格式:
+        {
+            "version": "1.0",
+            "created_at": "ISO timestamp",
+            "node_count": int,
+            "edge_count": int,
+            "port_to_internal": Dict[str, str],
+            "nodes": [
+                {"id": str, "name": str, "module": str, "kind": str, ...},
+                ...
+            ],
+            "edges": [
+                {"src": str, "dst": str, "kind": str, ...},
+                ...
+            ]
+        }
+        """
+        nodes_data = []
+        for node_id in self.nodes():
+            node = self._node_data.get(node_id)
+            if node:
+                nodes_data.append({
+                    "id": node.id,
+                    "name": node.name,
+                    "module": node.module,
+                    "kind": node.kind.name if isinstance(node.kind, NodeKind) else str(node.kind),
+                    "width": list(node.width),
+                    "bit_range": node.bit_range,
+                    "file": node.file,
+                    "line": node.line,
+                    "is_clock": node.is_clock,
+                    "is_reset": node.is_reset,
+                    "is_enable": node.is_enable,
+                    "is_port": node.is_port,
+                    "parent": node.parent,
+                    "parent_bit_start": node.parent_bit_start,
+                    "parent_bit_end": node.parent_bit_end,
+                    "modport_dir": node.modport_dir,
+                })
+        
+        edges_data = []
+        for src, dst in self.edges():
+            edge = self._edge_data.get((src, dst))
+            if edge:
+                edges_data.append({
+                    "src": edge.src,
+                    "dst": edge.dst,
+                    "kind": edge.kind.name if isinstance(edge.kind, EdgeKind) else str(edge.kind),
+                    "assign_type": edge.assign_type,
+                    "condition": edge.condition,
+                    "clock_domain": edge.clock_domain,
+                    "modport_dir": edge.modport_dir,
+                    "confidence": edge.confidence,
+                })
+        
+        return {
+            "version": "1.0",
+            "created_at": "",  # 由调用方填充
+            "node_count": len(nodes_data),
+            "edge_count": len(edges_data),
+            "port_to_internal": dict(self._port_to_internal),
+            "nodes": nodes_data,
+            "edges": edges_data,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "SignalGraph":
+        """[Golden] 从字典反序列化重建 SignalGraph
+        
+        金标准:
+        - 遍历 nodes 重建 TraceNode
+        - 遍历 edges 重建 TraceEdge
+        - 恢复 port_to_internal 映射
+        """
+        graph = cls()
+        
+        # 恢复 port_to_internal
+        if "port_to_internal" in data:
+            graph._port_to_internal.update(data["port_to_internal"])
+        
+        # 恢复节点
+        for node_dict in data.get("nodes", []):
+            kind_str = node_dict.get("kind", "SIGNAL")
+            # 尝试解析 NodeKind 枚举
+            try:
+                kind = NodeKind[kind_str]
+            except (KeyError, TypeError):
+                kind = NodeKind.SIGNAL
+            
+            node = TraceNode(
+                id=node_dict["id"],
+                name=node_dict.get("name", ""),
+                module=node_dict.get("module", ""),
+                kind=kind,
+                width=tuple(node_dict.get("width", [0, 0])),
+                bit_range=node_dict.get("bit_range"),
+                file=node_dict.get("file", ""),
+                line=node_dict.get("line", 0),
+                is_clock=node_dict.get("is_clock", False),
+                is_reset=node_dict.get("is_reset", False),
+                is_enable=node_dict.get("is_enable", False),
+                is_port=node_dict.get("is_port", False),
+                parent=node_dict.get("parent"),
+                parent_bit_start=node_dict.get("parent_bit_start"),
+                parent_bit_end=node_dict.get("parent_bit_end"),
+                modport_dir=node_dict.get("modport_dir"),
+            )
+            graph.add_trace_node(node)
+        
+        # 恢复边
+        for edge_dict in data.get("edges", []):
+            kind_str = edge_dict.get("kind", "DRIVER")
+            # 尝试解析 EdgeKind 枚举
+            try:
+                kind = EdgeKind[kind_str]
+            except (KeyError, TypeError):
+                kind = EdgeKind.DRIVER
+            
+            edge = TraceEdge(
+                src=edge_dict["src"],
+                dst=edge_dict["dst"],
+                kind=kind,
+                assign_type=edge_dict.get("assign_type", ""),
+                condition=edge_dict.get("condition", ""),
+                clock_domain=edge_dict.get("clock_domain", ""),
+                modport_dir=edge_dict.get("modport_dir"),
+                confidence=edge_dict.get("confidence", "high"),
+            )
+            graph.add_trace_edge(edge)
+        
+        return graph
+    
+    def to_json(self, indent: int = 2) -> str:
+        """[Golden] 序列化为 JSON 字符串"""
+        import json
+        data = self.to_dict()
+        return json.dumps(data, indent=indent, ensure_ascii=False)
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> "SignalGraph":
+        """[Golden] 从 JSON 字符串反序列化"""
+        import json
+        data = json.loads(json_str)
+        return cls.from_dict(data)
+    
+    def save_snapshot(self, path: str, tag: str = "", git_commit: str = "", files: list = None):
+        """[Golden] 保存快照到文件
+        
+        Args:
+            path: 快照文件路径
+            tag: 快照标签（如 "v1.2.3" 或 "feature-x"）
+            git_commit: Git commit hash
+            files: 相关的源文件列表
+        """
+        import json
+        from datetime import datetime, timezone
+        
+        data = self.to_dict()
+        data["tag"] = tag
+        data["git_commit"] = git_commit
+        data["files"] = files or []
+        data["created_at"] = datetime.now(timezone.utc).isoformat()
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    
+    @classmethod
+    def load_snapshot(cls, path: str) -> "SignalGraph":
+        """[Golden] 从文件加载快照"""
+        import json
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return cls.from_dict(data)
