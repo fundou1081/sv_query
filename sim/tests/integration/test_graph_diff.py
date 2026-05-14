@@ -37,7 +37,7 @@ module top(output logic [7:0] q);
         b <= a;
     end
 endmodule'''
-        from trace.core.graph_diff import diff_graph, GraphDiff
+        from trace.core.graph.diff import diff_graph, GraphDiff
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
@@ -68,7 +68,7 @@ module top(output logic [7:0] q);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph_diff import diff_graph
+        from trace.core.graph.diff import diff_graph
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
@@ -96,7 +96,7 @@ module top(output logic [7:0] q);
         b <= a;
     end
 endmodule'''
-        from trace.core.graph_diff import diff_graph
+        from trace.core.graph.diff import diff_graph
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
@@ -117,7 +117,7 @@ module top(input clk, output logic q);
     logic a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph_diff import diff_graph
+        from trace.core.graph.diff import diff_graph
 
         tree = pyslang.SyntaxTree.fromText(source)
         tracer1 = UnifiedTracer(trees={'test.sv': tree})
@@ -149,7 +149,7 @@ module top(input clk, output logic [7:0] q);
         d <= c;
     end
 endmodule'''
-        from trace.core.graph_diff import forward_reachability
+        from trace.core.graph.diff import forward_reachability
 
         tracer = self._make_tracer(source)
         _ = tracer.trace_fanout('q', 'top')  # 触发 build_graph
@@ -176,7 +176,7 @@ module top(input clk, output logic [7:0] q);
         d <= c;
     end
 endmodule'''
-        from trace.core.graph_diff import forward_reachability
+        from trace.core.graph.diff import forward_reachability
 
         tracer = self._make_tracer(source)
         _ = tracer.trace_fanout('q', 'top')
@@ -206,7 +206,7 @@ module top(input clk, output logic [7:0] q);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
-        from trace.core.graph_diff import diff_graph, diff_reachability
+        from trace.core.graph.diff import diff_graph, diff_reachability
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)

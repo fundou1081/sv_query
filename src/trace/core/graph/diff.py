@@ -7,7 +7,7 @@
 from typing import List, Tuple, Set, Dict, Optional
 from dataclasses import dataclass, field
 
-from .graph_models import SignalGraph, EdgeKind
+from .models import SignalGraph, EdgeKind
 
 
 #==============================================================================

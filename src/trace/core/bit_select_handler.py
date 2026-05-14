@@ -69,7 +69,7 @@ class BitSelectHandler:
                     
                     # 确保节点存在 (声明的信号都应该在图中)
                     if full_name not in self.graph.nodes():
-                        from trace.core.graph_models import TraceNode, NodeKind
+                        from trace.core.graph.models import TraceNode, NodeKind
                         node = TraceNode(
                             id=full_name,
                             name=name,
@@ -125,7 +125,7 @@ class BitSelectHandler:
                             
                             # 确保节点存在
                             if full_name not in self.graph.nodes():
-                                from trace.core.graph_models import TraceNode, NodeKind
+                                from trace.core.graph.models import TraceNode, NodeKind
                                 node = TraceNode(
                                     id=full_name,
                                     name=prop_name,
@@ -250,7 +250,7 @@ class BitSelectHandler:
                         
                         # 确保 bit select 节点存在
                         if bit_select_id not in self.graph.nodes():
-                            from trace.core.graph_models import TraceNode, NodeKind
+                            from trace.core.graph.models import TraceNode, NodeKind
                             node = TraceNode(
                                 id=bit_select_id,
                                 name=f"{base_name}[{msb}:{lsb}]",
@@ -267,7 +267,7 @@ class BitSelectHandler:
                         # 创建 BIT_SELECT 边
                         existing_edge = self.graph.get_edge(bit_select_id, parent_id)
                         if not existing_edge:
-                            from trace.core.graph_models import TraceEdge, EdgeKind
+                            from trace.core.graph.models import TraceEdge, EdgeKind
                             edge = TraceEdge(
                                 src=bit_select_id,
                                 dst=parent_id,
@@ -310,7 +310,7 @@ class BitSelectHandler:
                 # 提取 module: parent_id = "top.data" → module = "top", name = "data"
                 module = parent_id.rsplit('.', 1)[0] if '.' in parent_id else ''
                 name = parent_id.rsplit('.', 1)[-1] if '.' in parent_id else parent_id
-                from trace.core.graph_models import TraceNode, NodeKind
+                from trace.core.graph.models import TraceNode, NodeKind
                 parent_node = TraceNode(
                     id=parent_id,
                     name=name,
@@ -343,7 +343,7 @@ class BitSelectHandler:
                     child_node.kind = NodeKind.SIGNAL
             
             # 创建 BIT_SELECT 边
-            from trace.core.graph_models import TraceEdge, EdgeKind
+            from trace.core.graph.models import TraceEdge, EdgeKind
             agg_edge = TraceEdge(
                 src=child_id,
                 dst=parent_id,

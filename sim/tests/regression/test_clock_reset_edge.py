@@ -159,7 +159,7 @@ endmodule'''
         graph = tracer.get_graph()
         
         # 检查边类型
-        from trace.core.graph_models import EdgeKind
+        from trace.core.graph.models import EdgeKind
         has_driver = False
         has_clock = False
         for (s, d), e in graph._edge_data.items():

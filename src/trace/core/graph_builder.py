@@ -4,7 +4,7 @@
 
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-from .graph_models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
+from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 import pyslang
 from .base import PyslangAdapter
 

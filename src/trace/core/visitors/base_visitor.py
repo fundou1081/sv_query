@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import List, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from trace.core.graph_models import TraceNode
+    from trace.core.graph.models import TraceNode
 
 class BaseVisitor(ABC):
     """AST Visitor 抽象基类"""

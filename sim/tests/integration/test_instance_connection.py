@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import EdgeKind
+from trace.core.graph.models import EdgeKind
 
 
 class TestInstanceConnection(unittest.TestCase):
@@ -85,7 +85,7 @@ endmodule'''
         graph = self._build_graph(source)
         
         # trace_signal 应该能找到 dout 的驱动
-        from trace.core.query_signal import SignalTracer
+        from trace.core.query.signal import SignalTracer
         st = SignalTracer(graph)
         result = st.trace('dout', 'top')
         

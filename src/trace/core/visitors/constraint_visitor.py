@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from .base_visitor import BaseVisitor
-from ..graph_models import NodeKind, EdgeKind, TraceNode, TraceEdge
+from ..graph.models import NodeKind, EdgeKind, TraceNode, TraceEdge
 
 
 @dataclass

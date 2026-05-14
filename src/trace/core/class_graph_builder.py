@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import pyslang
 from pyslang import SyntaxKind
 
-from .graph_models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
+from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 from .base import PyslangAdapter
 from .class_hierarchy import ClassHierarchy
 from .visitors.constraint_visitor import ConstraintVisitor

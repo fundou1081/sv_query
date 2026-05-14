@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Set
 import networkx as nx
 
-from .graph_models import (
+from ..graph.models import (
     SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
 )
 

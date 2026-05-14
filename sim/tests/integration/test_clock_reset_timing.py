@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph_models import EdgeKind, NodeKind
+from trace.core.graph.models import EdgeKind, NodeKind
 
 
 class TestClockEdge(unittest.TestCase):

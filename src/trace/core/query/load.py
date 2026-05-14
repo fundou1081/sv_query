@@ -19,7 +19,7 @@ from typing import List, Optional
 from dataclasses import dataclass, field
 
 from trace.core.graph_traversal import GraphTraversal, TraceResult
-from trace.core.graph_models import SignalGraph, EdgeKind, NodeKind
+from trace.core.graph.models import SignalGraph, EdgeKind, NodeKind
 
 
 @dataclass

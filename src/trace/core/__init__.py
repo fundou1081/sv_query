@@ -2,12 +2,16 @@
 # trace.core - 统一查询入口
 #==============================================================================
 
-from .graph_models import (
+from .graph import (
     SignalGraph,
     TraceNode,
     TraceEdge,
     NodeKind,
     EdgeKind,
+    GraphDiff,
+    diff_graph,
+    diff_reachability,
+    forward_reachability,
 )
 
 from .graph_builder import (
@@ -18,17 +22,13 @@ from .graph_builder import (
     ClockDomainExtractor,
 )
 
-from .query_signal import (
+from .query import (
     SignalTracer,
     SignalChain,
-)
-
-from .query_module import (
+    LoadTracer,
+    LoadChain,
     ModuleTracer,
     ModuleConnections,
-)
-
-from .query_clock_domain import (
     ClockDomainTracer,
     ClockDomainTrace,
     CrossingRisk,
@@ -40,10 +40,15 @@ from .base import PyslangAdapter, ASTWalker
 __all__ = [
     # Graph Models
     "SignalGraph",
-    "TraceNode", 
+    "TraceNode",
     "TraceEdge",
     "NodeKind",
     "EdgeKind",
+    # Graph Diff
+    "GraphDiff",
+    "diff_graph",
+    "diff_reachability",
+    "forward_reachability",
     # Builder
     "GraphBuilder",
     "DriverExtractor",
@@ -53,12 +58,15 @@ __all__ = [
     # Signal Query
     "SignalTracer",
     "SignalChain",
+    # Load Query
+    "LoadTracer",
+    "LoadChain",
     # Module Query
     "ModuleTracer",
     "ModuleConnections",
     # Clock Domain Query
     "ClockDomainTracer",
-    "ClockDomainTrace", 
+    "ClockDomainTrace",
     "CrossingRisk",
     # Syntax Layer
     "PyslangAdapter",
