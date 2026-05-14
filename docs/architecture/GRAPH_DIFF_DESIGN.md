@@ -127,25 +127,36 @@ def diff_reachability(changed_nodes: List[str],
 
 ---
 
-### Phase 3（选做）：MCS 稳定骨架识别
+### Phase 3（已实现：方案一替代）稳定核心识别
 
-**目标**：找出两个图中保留的稳定依赖核心（最大公共子图），MCS 以外的部分就是潜在的影响传播区域。
+**目标**：找出两个图中保留的稳定依赖核心（标识符严格匹配），MCS 以外的部分就是潜在的影响传播区域。
+
+> 与用户讨论后决定使用方案一（标识符严格匹配）+ 方案四（变更种子传播），而非 NP 完全的 Ullmann 算法。
 
 ```python
-def maximum_common_subgraph(G1: SignalGraph, G2: SignalGraph) -> Set[str]:
-    """识别两个图的最大公共有向子图节点集
+def compute_stable_core(G1: SignalGraph, G2: SignalGraph) -> List[str]:
+    """标识符严格匹配法 - O(|V|+|E|)
     
-    方法：Ullmann 算法（NP 完全，启发式近似）
-    用途：
-    - 识别未受改动影响的稳定架构组件
-    - 区分"核心依赖"和"易变依赖"
+    稳定核心 = {node_id | node_id 同名 in G1 & G2, 且出边和入边完全一致}
     """
+    ...
+
+def compute_health_score(G: SignalGraph, stable_core: List[str]) -> float:
+    """架构健康度 = 稳定核心比例"""
+    return len(stable_core) / len(list(G.nodes()))
+
+def compute_coupling_warning(changed_nodes, total_nodes, unstable_ratio) -> Dict:
+    """耦合预警：小改动(<5%) + 高不稳定(>30%) -> 高耦合警告"""
+    ...
+
+def diff_with_health(G1, G2) -> Dict:
+    """整合 Phase 1 + Phase 3 + Phase 4 (coupling warning)"""
     ...
 ```
 
 **应用**：
-- 架构健康度：MCS 占比越高，说明核心结构越稳定
-- 异常预警：若一个小改动导致大量 MCS 之外的节点变化 → 耦合度预警
+- 架构健康度：稳定核心比例越高 -> 核心结构越稳定
+- 异常预警：小改动导致大量不稳定区域 -> 耦合度预警
 
 ---
 
@@ -184,38 +195,29 @@ def maximum_common_subgraph(G1: SignalGraph, G2: SignalGraph) -> Set[str]:
 
 ---
 
-## 存储方案
+## 存储方案（已实现）
 
-**目标**：支持跨版本的 Graph Diff（git commit 级别 snapshot 对比）。
-
-**方案**：文件系统持久化
+**SnapshotManager** (src/trace/core/snapshot_manager.py)：
 
 ```
-snapshots/
-  2026-05-14_10-00-00_hash1/
-    graph.json       # 完整 Graph（节点+边+属性）
-    meta.json        # commit hash、source file、时间戳
-  2026-05-14_11-00-00_hash2/
-    graph.json
-    meta.json
+.svq/snapshots/
+  v1.2.3.json    # tag=版本号
+  abc1234.json   # tag=git commit hash
+  2026-05-14.json
+```
+
+**CLI 命令**：
+```bash
+svq snapshot save <file> -t <tag>   # 保存快照
+svq snapshot list                    # 列出所有快照
+svq snapshot show <tag>             # 查看详情
+svq snapshot delete <tag>           # 删除
+svq snapshot compare <tag1> <tag2> # 对比两个快照
 ```
 
 **触发时机**：
-1. 手动触发：`svq diff --save-snapshot`
-2. 可选：Git Hook 自动在每次 commit 后保存 snapshot
-
-**实现**：
-```python
-class GraphSnapshot:
-    def save(self, graph: SignalGraph, path: str):
-        """持久化 Graph 到 JSON"""
-        ...
-
-    @classmethod
-    def load(cls, path: str) -> SignalGraph:
-        """从 JSON 恢复 Graph"""
-        ...
-```
+1. 手动触发：`svq snapshot save <file> -t <tag>`
+2. 自动：`svq snapshot save <file> -t <tag> --git` (自动捕获 git commit hash)
 
 ---
 
@@ -223,5 +225,9 @@ class GraphSnapshot:
 
 1. **Reachability 方向**：只做正向（影响往下游传），还是也需要反向（回溯依赖源）？
 2. **深度限制**：是否需要对 Reachability 加 `max_depth` 参数防止爆炸？
-3. **Snapshot 粒度**：每个 commit 一个，还是每次 build 一个？（按需触发 vs 强制保存）
-4. **Phase 3 优先级**：MCS 稳定骨架分析是否必要？还是 Phase 1+2 已足够？
+
+## 已完成问题
+
+1. ~~Phase 3 优先级~~：**已跳过 True MCS**，使用方案一（标识符严格匹配）替代
+2. ~~Snapshot 粒度~~：**已实现 SnapshotManager**，支持 tag 标记任意版本
+3. ~~MCS 算法复杂度~~：**已选择方案一**，O(|V|+|E|) 替代 NP 完全 Ullmann
