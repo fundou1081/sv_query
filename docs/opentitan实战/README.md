@@ -80,3 +80,38 @@ sv_query(graph.find_drivers) → 实际结果
 | 复杂 | otbn | ~15K | 多驱动源、深层次模块追踪 |
 
 详细分析见 [RTL_COMPLEXITY_ANALYSIS.md](RTL_COMPLEXITY_ANALYSIS.md)
+
+---
+
+## 独立验证流程
+
+**重要**: 验证独立于项目测试框架，暂不参与回归测试。
+
+详细流程见 [verification/README.md](verification/README.md)
+
+### 核心原则
+
+1. **问题驱动** - 先提出具体验证问题
+2. **人工推导** - 不查看工具代码，仅阅读 RTL 源码
+3. **多次确认** - 复杂设计需要反复确认
+4. **独立记录** - Golden 结果与工具输出分开记录
+
+### 验证目录
+
+```
+docs/opentitan实战/verification/
+├── README.md           # 验证流程
+├── aes/
+│   ├── VERIFICATION_PLAN.md
+│   └── golden_*.md
+├── otbn/
+└── adc_ctrl/
+```
+
+### 当前进度
+
+| 模块 | 状态 | 验证问题数 |
+|------|------|-----------|
+| aes | 规划中 | 5 |
+| otbn | 待开始 | - |
+| adc_ctrl | 待开始 | - |
