@@ -740,20 +740,39 @@ class DriverExtractor:
         if signal is None:
             return None
         
-        # [FIX BUG] ScopedName: ifc.data → 提取 left.identifier.value + '.' + right.identifier.value
-        # 在 special_attrs 循环之前处理，防止误取 left.component 导致返回 'ifc' 而非 'ifc.data'
+        # [FIX BUG] ScopedName: Recursively handle nested ScopedNames (p.sub.data is ScopedName(ScopedName(p, sub), data))
+        # In special_attrs loop to extract left.identifier.value + '.' + right.identifier.value
         if hasattr(signal, 'kind') and str(signal.kind) == 'SyntaxKind.ScopedName':
-            left_node = getattr(signal, 'left', None)
-            right_node = getattr(signal, 'right', None)
-            if left_node and right_node:
-                left_ident = getattr(left_node, 'identifier', None)
-                right_ident = getattr(right_node, 'identifier', None)
-                if left_ident and right_ident:
-                    left_val = getattr(left_ident, 'value', None) or str(left_ident).strip()
-                    right_val = getattr(right_ident, 'value', None) or str(right_ident).strip()
-                    combined = f"{left_val}.{right_val}"
-                    combined = self.adapter.clean_name(combined)
-                    return combined
+            def _get_scoped_parts(node, parts=None):
+                if parts is None:
+                    parts = []
+                kind = getattr(node, 'kind', None)
+                if not kind:
+                    return parts
+                kind_str = str(kind)
+                if 'ScopedName' in kind_str:
+                    left = getattr(node, 'left', None)
+                    if left:
+                        _get_scoped_parts(left, parts)
+                    right = getattr(node, 'right', None)
+                    if right:
+                        ri = getattr(right, 'identifier', None)
+                        if ri:
+                            rv = getattr(ri, 'value', None)
+                            if rv:
+                                parts.append(str(rv).strip())
+                elif 'IdentifierName' in kind_str:
+                    ident = getattr(node, 'identifier', None)
+                    if ident:
+                        val = getattr(ident, 'value', None)
+                        if val:
+                            parts.append(str(val).strip())
+                return parts
+            
+            parts = _get_scoped_parts(signal)
+            if len(parts) >= 2:
+                combined = '.'.join(parts)
+                return self.adapter.clean_name(combined)
         
         # [FIX] IntegerVectorExpression 字面量: 8'hAA, 16'd123, etc.
         # → 返回完整字面量字符串 (str(signal))，不拼接 top.
