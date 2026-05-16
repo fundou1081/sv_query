@@ -4,8 +4,13 @@ from pyslang import SyntaxKind, TokenKind
 # 公共 AST 遍历基础设施
 #==============================================================================
 
+import logging
 from typing import Callable, Optional, List, Any, Dict
 from abc import ABC, abstractmethod
+
+# 配置日志
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 class ASTWalker:
     """公共AST遍历基类"""
@@ -124,6 +129,80 @@ class PyslangAdapter:
             pass
         
         return "unknown"
+    
+    def get_module_parameters(self, module) -> List[dict]:
+        """获取模块参数列表
+        
+        Returns:
+            List of dict: [{'name': str, 'value': str, 'type': str}, ...]
+        """
+        params = []
+        
+        if not module or not hasattr(module, 'header'):
+            return params
+        
+        header = module.header
+        if not header or not hasattr(header, 'parameters'):
+            return params
+        
+        param_list = header.parameters
+        if not param_list or not hasattr(param_list, 'declarations'):
+            return params
+        
+        # param_list.declarations 是 ParameterDeclarationSyntax (SeparatedList)
+        decls = param_list.declarations
+        
+        # 遍历参数声明 (可能有多个 DeclaratorSyntax 用逗号分隔)
+        # decls 是 ParameterDeclarationSyntax，里面有 declarators
+        for decl in decls:
+            if not hasattr(decl, 'declarators'):
+                continue
+            
+            declarators = decl.declarators
+            
+            # declarators 是 SyntaxNode (SeparatedList)，包含 DeclaratorSyntax 和 Comma
+            for item in declarators:
+                if not hasattr(item, 'kind') or 'Declarator' not in str(item.kind):
+                    continue
+                
+                param_info = {'name': '', 'value': '', 'type': 'parameter'}
+                
+                # 获取参数名称
+                if hasattr(item, 'name') and item.name:
+                    name = item.name
+                    param_info['name'] = name.value if hasattr(name, 'value') else str(name)
+                
+                # 获取参数值
+                if hasattr(item, 'initializer') and item.initializer:
+                    # initializer 是 EqualsValueClauseSyntax，有 equals 和 expr 属性
+                    init = item.initializer
+                    if hasattr(init, 'expr') and init.expr:
+                        # expr 是实际的值表达式
+                        if hasattr(init.expr, 'value'):
+                            # LiteralExpressionSyntax 有 value 属性 (带格式如 1'b1)
+                            val = init.expr.value
+                            # 使用 valueText 获取原始值 (如 "1")
+                            if hasattr(val, 'valueText'):
+                                param_info['value'] = str(val.valueText)
+                            else:
+                                param_info['value'] = str(val)
+                        elif hasattr(init.expr, 'literal'):
+                            # 备选方案
+                            lit = init.expr.literal
+                            if hasattr(lit, 'valueText'):
+                                param_info['value'] = str(lit.valueText)
+                            elif hasattr(lit, 'value'):
+                                param_info['value'] = str(lit.value)
+                            else:
+                                param_info['value'] = str(lit).strip()
+                        else:
+                            param_info['value'] = str(init.expr).strip()
+                    else:
+                        param_info['value'] = str(init).strip().lstrip('= ')
+                
+                params.append(param_info)
+        
+        return params
     
     def clean_name(self, name) -> str:
         """清理名称：去除前后空格和换行"""
@@ -400,7 +479,10 @@ class PyslangAdapter:
         return name
 
     def get_port_name_and_direction(self, port) -> tuple:
-        """获取端口名称和方向 (name, direction)"""
+        """获取端口名称和方向 (name, direction)
+        
+        从 AST TokenKind 获取方向，而非 str() (避免注释干扰)
+        """
         if not port:
             return None, 'unknown'
         
@@ -412,20 +494,166 @@ class PyslangAdapter:
                 n = decl.name
                 name = n.value if hasattr(n, 'value') else str(n)
         
-        # 方向: port.header.direction
+        # 方向: port.header.direction (从 TokenKind 获取，避免注释干扰)
         direction = 'unknown'
         if hasattr(port, 'header') and port.header:
             header = port.header
             if hasattr(header, 'direction'):
-                direction = str(header.direction)
+                dir_token = header.direction
+                # [FIX] 使用 TokenKind 判断方向，而非 str()
+                if hasattr(dir_token, 'kind'):
+                    kind = dir_token.kind
+                    if kind == TokenKind.InputKeyword:
+                        direction = 'input'
+                    elif kind == TokenKind.OutputKeyword:
+                        direction = 'output'
+                    elif kind == TokenKind.InOutKeyword:
+                        direction = 'inout'
+                    elif kind == TokenKind.RefKeyword:
+                        direction = 'ref'
+                else:
+                    # 后备: 极少情况下 direction 没有 kind 属性
+                    direction = str(dir_token).strip()
         
         return name, direction
-    def extract_port_width(self, port) -> tuple:
-        """从端口声明提取位宽 (MSB, LSB)
+    
+    def extract_port_width(self, port, scope=None) -> dict | tuple:
+        """提取位宽信息
         
-        端口结构: port.header.dataType.dimensions[0].specifier.selector.left/right
-        left/right 是 LiteralExpressionSyntax，其 .literal.valueText 包含数值字符串
+        [理想方案] 基于 AST SyntaxKind 的递归表达式求值器
+        
+        Args:
+            port: 端口声明 (ImplicitAnsiPortSyntax)
+            scope: 可选，Module 或 Class 上下文，自动从中提取参数进行求值
+        
+        Returns:
+            如果 scope 提供: dict with eval results
+                - msb_raw, msb_eval, msb_is_param
+                - lsb_raw, lsb_eval, lsb_is_param
+            如果 scope 为 None: tuple (msb, lsb) - 向后兼容
         """
+        param_map = {}
+        
+        # 从 scope (module/class) 中提取参数
+        if scope is not None:
+            kind = getattr(scope, 'kind', None)
+            if kind == SyntaxKind.ModuleDeclaration:
+                params = self.get_module_parameters(scope)
+                
+                # 第一遍: 收集所有参数值 (包括表达式)
+                # 构建 param_expr_map: {name: expression_node}
+                # 构建 param_raw_map: {name: raw_string}
+                param_expr_map = {}
+                param_raw_map = {}
+                
+                for p in params:
+                    name = p['name']
+                    raw_val = p['value']
+                    param_raw_map[name] = raw_val
+                    
+                    # 尝试解析为整数
+                    try:
+                        param_expr_map[name] = ('literal', int(raw_val))
+                    except ValueError:
+                        # 无法直接解析，存储表达式供后续递归求值
+                        param_expr_map[name] = ('expr', raw_val)
+                
+                # 第二遍: 预填充所有字面量参数
+                int_params = {}  # 已解析的整数参数
+                for name, expr_info in param_expr_map.items():
+                    if expr_info[0] == 'literal':
+                        int_params[name] = expr_info[1]
+                
+                # 第三遍: 迭代解析参数引用 (最多10层防止循环)
+                for _ in range(10):
+                    progress = False
+                    for name, expr_info in list(param_expr_map.items()):
+                        if expr_info[0] == 'expr':
+                            # 使用 _evaluate_raw_param 递归解析 (传入已解析的整数参数)
+                            result = self._evaluate_raw_param(name, int_params, scope)
+                            if result is not None:
+                                param_expr_map[name] = ('literal', result)
+                                int_params[name] = result
+                                progress = True
+                    if not progress:
+                        break
+                
+                # 最终 param_map 只包含已解析的数字
+                param_map = int_params
+            # 后续可扩展 Class support
+        
+        if scope is not None:
+            # 传入 scope 时总是返回 dict (即使 param_map 为空)
+            return self.extract_port_width_with_eval(port, param_map)
+        else:
+            # 向后兼容: 返回 tuple
+            return self._extract_width_tuple(port)
+    
+    def _resolve_parameter_expr(self, module, param_name: str):
+        """从 module AST 中解析参数表达式节点
+        
+        Args:
+            module: ModuleDeclaration AST 节点
+            param_name: 参数名称
+            
+        Returns:
+            Expression AST 节点 or None
+        """
+        if not module or not hasattr(module, 'header'):
+            return None
+        
+        header = module.header
+        if not header or not hasattr(header, 'parameters'):
+            return None
+        
+        param_list = header.parameters
+        if not param_list or not hasattr(param_list, 'declarations'):
+            return None
+        
+        decls = param_list.declarations
+        for decl in decls:
+            if not hasattr(decl, 'declarators'):
+                continue
+            
+            for item in decl.declarators:
+                if not hasattr(item, 'kind') or 'Declarator' not in str(item.kind):
+                    continue
+                
+                if hasattr(item, 'name') and item.name:
+                    name = item.name.value if hasattr(item.name, 'value') else str(item.name)
+                    if name == param_name and hasattr(item, 'initializer') and item.initializer:
+                        # 返回 EqualsValueClause 的 expr
+                        return item.initializer.expr
+        
+        return None
+    
+    def _evaluate_raw_param(self, param_name: str, resolved: dict, module=None) -> int | None:
+        """递归求值参数引用表达式
+        
+        Args:
+            param_name: 参数名称
+            resolved: 已解析的参数 {name: value}
+            module: ModuleDeclaration AST 节点 (用于获取参数表达式)
+            
+        Returns:
+            int or None
+        """
+        if module is None:
+            # 从 resolved 中找（如果之前已经解析过）
+            if param_name in resolved and isinstance(resolved[param_name], int):
+                return resolved[param_name]
+            return None
+        
+        expr_node = self._resolve_parameter_expr(module, param_name)
+        if expr_node is None:
+            return None
+        
+        # 使用 _evaluate_expression 递归求值
+        result = self._evaluate_expression(expr_node, resolved)
+        return result
+    
+    def _extract_width_tuple(self, port) -> tuple:
+        """提取位宽 (向后兼容版本，返回 tuple)"""
         if not port or not hasattr(port, 'header'):
             return (0, 0)
         
@@ -454,11 +682,212 @@ class PyslangAdapter:
         
         return (0, 0)
     
-    def _extract_int_value(self, expr) -> int:
-        """从表达式提取整数值
+    def extract_port_width_with_eval(self, port, param_map: dict = None) -> dict:
+        """提取位宽信息 (方案 C 增强版)
         
-        处理 LiteralExpressionSyntax，其 .literal.valueText 包含数值字符串
-        也处理直接的 int 值
+        [方案 C] 对参数化位宽进行表达式求值
+        
+        Args:
+            port: 端口声明 (ImplicitAnsiPortSyntax)
+            param_map: 可选，参数名->值的映射，如 {'W': 32, 'B': 8}
+        
+        Returns:
+            dict with keys:
+                - msb_raw: 原始 MSB 表达式字符串，或 None (字面量)
+                - msb_eval: 求值结果 int，或 None (无法求值)
+                - msb_is_param: 是否包含参数引用
+                - lsb_raw: 原始 LSB 表达式字符串，或 None (字面量)
+                - lsb_eval: 求值结果 int，或 None (无法求值)
+                - lsb_is_param: 是否包含参数引用
+        """
+        result = {
+            'msb_raw': None,
+            'msb_eval': None,
+            'msb_is_param': False,
+            'lsb_raw': None,
+            'lsb_eval': None,
+            'lsb_is_param': False
+        }
+        
+        if not port or not hasattr(port, 'header'):
+            return result
+        
+        header = port.header
+        if not hasattr(header, 'dataType') or not header.dataType:
+            return result
+        
+        dt = header.dataType
+        if not hasattr(dt, 'dimensions') or not dt.dimensions:
+            return result
+        
+        dims = dt.dimensions
+        for dim in dims:
+            if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                spec = getattr(dim, 'specifier', None)
+                if spec:
+                    sel = getattr(spec, 'selector', None)
+                    if sel:
+                        left_expr = getattr(sel, 'left', None)
+                        right_expr = getattr(sel, 'right', None)
+                        
+                        # 处理 MSB
+                        if left_expr is not None:
+                            msb_value = self._extract_value_for_eval(left_expr)
+                            if isinstance(msb_value, str):
+                                result['msb_raw'] = msb_value
+                                result['msb_is_param'] = True
+                                if param_map:
+                                    result['msb_eval'] = self._evaluate_expression(left_expr, param_map)
+                            else:
+                                result['msb_eval'] = msb_value
+                        
+                        # 处理 LSB
+                        if right_expr is not None:
+                            lsb_value = self._extract_value_for_eval(right_expr)
+                            if isinstance(lsb_value, str):
+                                result['lsb_raw'] = lsb_value
+                                result['lsb_is_param'] = True
+                                if param_map:
+                                    result['lsb_eval'] = self._evaluate_expression(right_expr, param_map)
+                            else:
+                                result['lsb_eval'] = lsb_value
+                        
+                        return result
+        
+        return result
+    
+    def _extract_value_for_eval(self, expr) -> int | str:
+        """从表达式提取值用于方案 C 求值
+        
+        与 _extract_int_value 类似，但返回 str 用于标识参数引用
+        """
+        if expr is None:
+            return 0
+        
+        if isinstance(expr, int):
+            return expr
+        
+        # 字面量
+        if hasattr(expr, 'literal') and expr.literal:
+            try:
+                return int(expr.literal.valueText)
+            except:
+                pass
+        
+        # Identifier (参数引用)
+        if hasattr(expr, 'identifier') and expr.identifier:
+            id_val = expr.identifier.value if hasattr(expr.identifier, 'value') else str(expr.identifier)
+            if id_val.strip():
+                return id_val.strip()
+        
+        # BinaryExpression 等复杂表达式
+        if hasattr(expr, 'left') and hasattr(expr, 'right'):
+            return str(expr).strip()
+        
+        # 最后的手段
+        try:
+            return int(str(expr))
+        except:
+            return 0
+    
+    def _evaluate_expression(self, expr, param_map: dict) -> int | None:
+        """递归求值表达式 [方案 C 核心]
+        
+        Args:
+            expr: pyslang 表达式节点
+            param_map: 参数名 -> 值 的映射
+        
+        Returns:
+            int: 求值结果
+            None: 无法求值 (缺少参数定义或未知表达式类型)
+        """
+        if expr is None:
+            return 0
+        
+        if isinstance(expr, int):
+            return expr
+        
+        kind = str(getattr(expr, 'kind', ''))
+        
+        # 字面量: IntegerLiteral, etc.
+        if hasattr(expr, 'literal') and expr.literal:
+            try:
+                return int(expr.literal.valueText)
+            except:
+                pass
+        
+        # 参数引用: IdentifierName
+        if hasattr(expr, 'identifier') and expr.identifier:
+            name = expr.identifier.value if hasattr(expr.identifier, 'value') else str(expr.identifier)
+            if name in param_map:
+                val = param_map[name]
+                # 如果是字符串，尝试转换为整数
+                if isinstance(val, str):
+                    try:
+                        return int(val)
+                    except ValueError:
+                        # 如果不是数字，返回 None (参数引用参数无法直接求值)
+                        return None
+                return val
+            return None  # 参数未定义
+        
+        # 括号表达式: ParenthesizedExpression -> 递归求值 expression
+        if kind == 'SyntaxKind.ParenthesizedExpression' and hasattr(expr, 'expression'):
+            return self._evaluate_expression(expr.expression, param_map)
+        
+        # 二元表达式
+        if hasattr(expr, 'left') and hasattr(expr, 'right'):
+            left_val = self._evaluate_expression(expr.left, param_map)
+            right_val = self._evaluate_expression(expr.right, param_map)
+            
+            if left_val is None or right_val is None:
+                return None
+            
+            # 操作符判断
+            if hasattr(expr, 'operatorToken'):
+                op = expr.operatorToken
+                op_kind = str(getattr(op, 'kind', ''))
+                
+                # 加法
+                if 'Plus' in op_kind:
+                    return left_val + right_val
+                # 减法
+                elif 'Minus' in op_kind:
+                    return left_val - right_val
+                # 乘法
+                elif 'Star' in op_kind:
+                    return left_val * right_val
+                # 除法
+                elif 'Slash' in op_kind:
+                    return left_val // right_val if right_val != 0 else 0
+                # 取模
+                elif 'Percent' in op_kind:
+                    return left_val % right_val if right_val != 0 else 0
+            
+            # 如果没有 operatorToken，尝试字符串匹配
+            expr_str = str(expr).strip()
+            # 简单处理: 已知模式
+            if '+' in expr_str:
+                return left_val + right_val
+            elif '-' in expr_str:
+                return left_val - right_val
+            elif '*' in expr_str or '×' in expr_str:
+                return left_val * right_val
+            elif '/' in expr_str or '÷' in expr_str:
+                return left_val // right_val if right_val != 0 else 0
+        
+        return None  # 无法处理的表达式类型
+    
+    def _extract_int_value(self, expr) -> int | str:
+        """从表达式提取整数值或参数名
+        
+        [A+ 方案] 返回 int (字面量) 或 str (参数引用)
+        这让调用方知道位宽是字面量还是参数引用
+        
+        未来扩展 [方案 C]:
+        - 可通过 module.params 缓存参数定义
+        - 实现表达式求值器支持 B-1, C/2+1 等
+        - 递归遍历 BinaryExpressionSyntax 等
         """
         if expr is None:
             return 0
@@ -467,21 +896,34 @@ class PyslangAdapter:
         if isinstance(expr, int):
             return expr
         
-        # 安全检查: 确保 expr 有 literal 属性
-        if not hasattr(expr, 'literal'):
-            # 尝试直接转 int
+        # 安全检查: 确保 expr 有 literal 属性 (字面量)
+        if hasattr(expr, 'literal') and expr.literal:
             try:
-                return int(str(expr))
-            except (ValueError, TypeError):
-                return 0
+                return int(expr.literal.valueText)
+            except (ValueError, AttributeError, TypeError):
+                pass
         
-        # LiteralExpressionSyntax - 获取 literal.token
-        try:
-            lit = expr.literal
-            if lit and hasattr(lit, 'valueText'):
-                return int(lit.valueText)
-        except (ValueError, AttributeError, TypeError):
-            pass
+        # 检查是否是参数引用 (Identifier)
+        # 例如 B-1 中的 B，指向模块参数
+        if hasattr(expr, 'name') and expr.name:
+            name_val = expr.name.value if hasattr(expr.name, 'value') else str(expr.name)
+            if name_val.strip():
+                return name_val.strip()  # 返回参数名而非 0
+        
+        # 检查 IdentifierNameSyntax 的 identifier 属性
+        if hasattr(expr, 'identifier') and expr.identifier:
+            id_val = expr.identifier.value if hasattr(expr.identifier, 'value') else str(expr.identifier)
+            if id_val.strip():
+                return id_val.strip()  # 返回参数名而非 0
+        
+        # 检查 BinaryExpressionSyntax (复杂表达式如 W/2-1)
+        # 返回字符串表示，标注为参数表达式
+        if hasattr(expr, 'left') and hasattr(expr, 'right'):
+            # 这是 BinaryExpression 或类似结构
+            # 返回完整的表达式字符串
+            expr_str = str(expr).strip()
+            if expr_str and expr_str != '0':
+                return expr_str  # 如 "W/2-1" 或 "B-1"
         
         # 尝试 str 转换作为最后的手段
         try:
@@ -584,6 +1026,34 @@ class PyslangAdapter:
                 
                 kind = getattr(node, 'kind', None)
                 kind_str = str(kind) if kind else ''
+                
+                # [FIX] 记录未知节点类型用于调试
+                if kind and kind not in (SyntaxKind.ModuleDeclaration, 
+                                         SyntaxKind.PortDeclaration,
+                                         SyntaxKind.HierarchyInstantiation,
+                                         SyntaxKind.InterfaceDeclaration,
+                                         SyntaxKind.ClassDeclaration,
+                                         SyntaxKind.DataDeclaration,
+                                         SyntaxKind.NetDeclaration,
+                                         SyntaxKind.ContinuousAssign,
+                                         SyntaxKind.AlwaysBlock,
+                                         SyntaxKind.GenerateBlock,
+                                         SyntaxKind.GenerateRegion,
+                                         SyntaxKind.LoopGenerate,
+                                         SyntaxKind.IfGenerate,
+                                         SyntaxKind.CaseGenerate,
+                                         SyntaxKind.NetPortHeader,
+                                         SyntaxKind.VariablePortHeader,
+                                         SyntaxKind.ImplicitAnsiPort,
+                                         SyntaxKind.AnsiPortList,
+                                         SyntaxKind.ModuleHeader):
+                    # 仅记录一次 (去重)
+                    if node_key not in getattr(find_inst, '_logged_kinds', set()):
+                        if not hasattr(find_inst, '_logged_kinds'):
+                            find_inst._logged_kinds = set()
+                        find_inst._logged_kinds.add(node_key)
+                        logger.warning(f"[UnknownNode] kind={kind_str} at depth={depth}")
+                
                 if kind and 'HierarchyInstantiation' in kind_str:
                     instances.append(node)
                 
@@ -599,8 +1069,9 @@ class PyslangAdapter:
                                 find_inst(c, depth+1)
                         elif hasattr(child, 'kind'):
                             find_inst(child, depth+1)
-                    except:
-                        pass
+                    except Exception as e:
+                        # [FIX] 不再静默跳过，记录错误便于调试
+                        logger.debug(f"[find_inst] attr={attr}: {e}")
             
             find_inst(tree.root)
         
@@ -706,7 +1177,11 @@ class PyslangAdapter:
                     if hasattr(item, 'kind') and 'OrderedPort' in str(item.kind):
                         if hasattr(item, 'expr'):
                             expr = item.expr
-                            signal_name = expr.value if hasattr(expr, 'value') else str(expr)
+                            # expr 是 SimplePropertyExprSyntax，有 identifier 属性
+                            if hasattr(expr, 'identifier') and hasattr(expr.identifier, 'value'):
+                                signal_name = expr.identifier.value
+                            else:
+                                signal_name = str(expr).strip()
                             if signal_name:
                                 connections.append(('_pos_' + str(idx), signal_name))
                                 idx += 1
