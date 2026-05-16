@@ -39,25 +39,27 @@ module bs_mult(clk, x, y, p, firstbit, lastbit);  // 非ANSI格式
 
 ---
 
-### Issue 8: 端口位宽提取
+### Issue 8: 端口位宽提取 ✅ 已支持
 
 **问题描述**:
-即使端口被识别，也无法提取位宽信息
+sv_query 的 `extract_port_width()` 已经支持端口位宽提取
 
-**示例**:
-```verilog
-output p;  // 应该是 30-bit
+**测试结果**:
+```
+wr_data_i: [DATA_WIDTH-1] -> [15:0] (input) ✅
+rd_data_o: [DATA_WIDTH-1] -> [15:0] (output) ✅
+clk: (1-bit) ✅
 ```
 
-**预期**: `[30:0]`
-**实际**: 未测试
+**功能**:
+- `extract_port_width(port, module)` 返回 dict
+- `msb_raw`: 原始表达式
+- `msb_eval`: 求值结果
+- `msb_is_param`: 是否参数化
 
-**相关功能**:
-- `extract_port_width()` - 需要传入 port 对象
+**优先级**: N/A - 功能已存在且正常
 
-**优先级**: P1
-
-**状态**: 待测试
+**状态**: ✅ 已验证
 
 ---
 
@@ -109,8 +111,8 @@ empty_o: output
 | 实例解析 | N/A | 无子模块 |
 | 位宽解析 | ⚠️ | DATA_WIDTH=16 参数未展开 |
 
-**新发现问题**:
-- Issue 9: 位宽参数未展开 (DATA_WIDTH=16 未解析为实际位宽)
+**观察**:
+- 参数引用求值正常 (DATA_WIDTH-1 → 15) ✅
 
 ---
 
@@ -406,6 +408,32 @@ NVDLA 使用非ANSI端口声明，且方向用注释表示 (`//|< i` = input, `/
 
 
 ---
+
+
+
+---
+
+## Issue 11: 逗号分隔的多个端口方向缺失
+
+**问题描述**:
+当多个端口用逗号分隔且共用一个方向关键字时 (`input clk, resetn`)，只有第一个端口有方向，后续端口方向为 unknown
+
+**示例**:
+```verilog
+input clk, resetn  // clk 有方向，resetn 没有
+```
+
+**原因分析**:
+- pyslang 将 `input clk, resetn` 解析为两个 ImplicitAnsiPort
+- 第一个有 direction header，第二个没有
+- 第二个应该继承第一个的方向，但当前代码未处理
+
+**影响**:
+- picorv32 的 resetn 端口方向显示为 unknown
+
+**优先级**: P2 (低优先级边缘情况)
+
+**状态**: 已知限制
 
 ## picorv32 测试结果
 
