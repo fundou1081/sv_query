@@ -3,33 +3,29 @@
 
 <!-- METADATA -->
 {
-  "generated": "2026-05-16 23:24:27",
-  "passed": 6,
-  "failed": 1,
+  "generated": "2026-05-17 00:18:02",
+  "passed": 3,
+  "failed": 0,
   "skipped": 0,
-  "total": 7
+  "total": 3
 }
 <!-- /METADATA -->
 
 ## 测试摘要
 
-- **通过**: 6
-- **失败**: 1
+- **通过**: 3
+- **失败**: 0
 - **跳过**: 0
-- **总计**: 7
-- **时间**: 2026-05-16 23:24:27
+- **总计**: 3
+- **时间**: 2026-05-17 00:18:02
 
 ## 测试结果详情
 
 | 状态 | 测试ID | 时长(秒) |
 |------|--------|----------|
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_ansi_still_works` | 0.000s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_comma_separated_direction_inheritance` | 0.000s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_basic` | 0.000s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_no_ports` | 0.000s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_param_width` | 0.001s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_with_direction` | 0.000s |
-| ❌ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_mixed_port_declaration` | 0.000s |
+| ✅ | `integration/test_instance_connection.py::TestInstanceConnection::test_instance_port_connection` | 0.016s |
+| ✅ | `integration/test_instance_connection.py::TestInstanceConnection::test_multiple_instances` | 0.021s |
+| ✅ | `integration/test_instance_connection.py::TestInstanceConnection::test_signal_trace_through_instance` | 0.015s |
 
 ---
 *此报告由 pytest 自动生成*
