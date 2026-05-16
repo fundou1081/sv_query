@@ -560,11 +560,12 @@ class PyslangAdapter:
                         n = decl.name
                         name = n.value if hasattr(n, 'value') else str(n)
                 # 方向: port.header.direction
+                # [FIX] Issue 11: 逗号分隔的端口继承方向
                 if hasattr(port, 'header') and port.header:
                     header = port.header
                     if hasattr(header, 'direction'):
                         dir_tok = header.direction
-                        if hasattr(dir_tok, 'kind'):
+                        if dir_tok and hasattr(dir_tok, 'kind') and dir_tok.kind != TokenKind.Unknown:
                             kind = dir_tok.kind
                             if kind == TokenKind.InputKeyword:
                                 direction = 'input'
@@ -574,6 +575,9 @@ class PyslangAdapter:
                                 direction = 'inout'
                             elif kind == TokenKind.RefKeyword:
                                 direction = 'ref'
+                        else:
+                            # 继承前一个端口的方向
+                            direction = self._inherit_direction_from_previous(port, module)
             
             elif port_kind == SyntaxKind.ImplicitNonAnsiPort:
                 # 非ANSI 格式: port.expr.name.value
@@ -588,6 +592,56 @@ class PyslangAdapter:
         
         return name, direction
     
+
+    def _inherit_direction_from_previous(self, port, module) -> str:
+        """Issue 11 fix: 从同组的前一个端口继承方向
+        
+        input clk, resetn 解析时 resetn 没有 direction，需要从 clk 继承
+        """
+        if not module or not hasattr(module, 'header') or not module.header:
+            return 'unknown'
+        
+        header = module.header
+        if not hasattr(header, 'ports') or not header.ports:
+            return 'unknown'
+        
+        port_list = header.ports
+        if len(port_list) < 2:
+            return 'unknown'
+        
+        actual_ports = port_list[1]  # SeparatedList
+        
+        # 找到当前端口的索引
+        current_idx = None
+        for idx, p in enumerate(actual_ports):
+            if hasattr(p, 'kind') and p.kind == SyntaxKind.ImplicitAnsiPort:
+                if p is port:
+                    current_idx = idx
+                    break
+        
+        if current_idx is None or current_idx == 0:
+            return 'unknown'
+        
+        # 向前查找最近的有方向的端口
+        for prev_idx in range(current_idx - 1, -1, -1):
+            prev_port = actual_ports[prev_idx]
+            if not hasattr(prev_port, 'kind') or prev_port.kind != SyntaxKind.ImplicitAnsiPort:
+                continue
+            if hasattr(prev_port, 'header') and prev_port.header:
+                dir_tok = prev_port.header.direction
+                if dir_tok and hasattr(dir_tok, 'kind') and dir_tok.kind != TokenKind.Unknown:
+                    kind = dir_tok.kind
+                    if kind == TokenKind.InputKeyword:
+                        return 'input'
+                    elif kind == TokenKind.OutputKeyword:
+                        return 'output'
+                    elif kind == TokenKind.InOutKeyword:
+                        return 'inout'
+                    elif kind == TokenKind.RefKeyword:
+                        return 'ref'
+        
+        return 'unknown'
+
     def extract_port_width(self, port, scope=None) -> dict | tuple:
         """提取位宽信息
         
