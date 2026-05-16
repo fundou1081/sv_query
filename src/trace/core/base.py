@@ -1250,6 +1250,82 @@ class PyslangAdapter:
         return instances
     
 
+
+    def get_instance_name(self, instance) -> str:
+        """获取实例名称
+        
+        Args:
+            instance: HierarchyInstantiation AST 节点
+        
+        Returns:
+            str: 实例名称 (如 'I0', 'inst1')
+            
+        注意: clacc 使用反格式 (instance_name module_type)，实例名在前
+              标准格式使用 (module_type instance_name)
+              
+        判断逻辑:
+        - clacc 反格式: node.type 是实例名 (如 I0, I1)，node.instances[0].decl.name 是模块类型
+        - 标准格式: node.type 是模块类型，node.instances[0].decl.name 是实例名
+        
+        通过 heuristics 判断：如果 node.type 以大写 I 开头加数字，很可能是 clacc 格式
+        """
+        if not instance:
+            return None
+        
+        # 获取两个可能的名称
+        type_val = None
+        decl_name = None
+        
+        if hasattr(instance, 'type') and instance.type:
+            type_val = instance.type.value if hasattr(instance.type, 'value') else str(instance.type).strip()
+        
+        if hasattr(instance, 'instances') and instance.instances:
+            inst0 = instance.instances[0]
+            if hasattr(inst0, 'decl') and inst0.decl and hasattr(inst0.decl, 'name'):
+                decl_name = inst0.decl.name.value if hasattr(inst0.decl.name, 'value') else str(inst0.decl.name).strip()
+        
+        # Heuristic: 如果 node.type 是 Ix 格式 (x是数字)，它是 clacc 实例名
+        if type_val and len(type_val) >= 2 and type_val[0] == 'I' and type_val[1:].isdigit():
+            return type_val
+        
+        # 否则返回 decl.name (标准格式的实例名，或 clacc 格式的模块类型)
+        return decl_name
+    
+    def get_instance_module_type(self, instance) -> str:
+        """获取实例化的模块类型
+        
+        Args:
+            instance: HierarchyInstantiation AST 节点
+        
+        Returns:
+            str: 模块类型 (如 'dual_clock_fifo', 'ifmap_spad', 'my_module')
+            
+        注意: clacc 反格式 (instance_name module_type)，模块类型在 decl.name
+              标准格式 (module_type instance_name)，模块类型在 node.type
+        """
+        if not instance:
+            return None
+        
+        # 获取 node.type (clacc 格式是实例名，标准格式是模块类型)
+        type_val = None
+        if hasattr(instance, 'type') and instance.type:
+            type_val = instance.type.value if hasattr(instance.type, 'value') else str(instance.type).strip()
+        
+        # 获取 decl.name (clacc 格式是模块类型，标准格式是实例名)
+        decl_name = None
+        if hasattr(instance, 'instances') and instance.instances:
+            inst0 = instance.instances[0]
+            if hasattr(inst0, 'decl') and inst0.decl and hasattr(inst0.decl, 'name'):
+                decl_name = inst0.decl.name.value if hasattr(inst0.decl.name, 'value') else str(inst0.decl.name).strip()
+        
+        # Heuristic: 如果 node.type 是 Ix 格式 (x是数字)，它是 clacc 格式
+        if type_val and len(type_val) >= 2 and type_val[0] == 'I' and type_val[1:].isdigit():
+            # clacc 格式: decl.name 是模块类型
+            return decl_name
+        
+        # 否则 node.type 就是模块类型 (标准格式)
+        return type_val
+
     def get_instance_connection(self, instance) -> List:
         """获取实例的端口连接 [(port_name, signal_name), ...]"""
         connections = []
