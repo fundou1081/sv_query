@@ -1209,7 +1209,8 @@ class PyslangAdapter:
                         find_inst._logged_kinds.add(node_key)
                         logger.warning(f"[UnknownNode] kind={kind_str} at depth={depth}")
                 
-                if kind and 'HierarchyInstantiation' in kind_str:
+                # [FIX] 同时支持 HierarchyInstantiation 和 HierarchicalInstance
+                if kind and ('HierarchyInstantiation' in kind_str or 'HierarchicalInstance' in kind_str):
                     instances.append(node)
                 
                 for attr in dir(node):
