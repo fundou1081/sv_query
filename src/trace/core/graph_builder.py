@@ -255,11 +255,22 @@ class DriverExtractor:
                             kind=NodeKind.SIGNAL, width=(1, 0)
                         ))
                     # [NEW] 使用 _get_all_signals 提取所有驱动源
-                    rhs_signals = self._get_all_signals(
-                        getattr(assign, 'assignments', [assign])[0].right
-                        if hasattr(assign, 'assignments') and assign.assignments
-                        else getattr(assign, 'right', None) or getattr(assign, 'rhs', None)
-                    ) if rhs else [rhs]
+                    # [FIX] 处理 ExpressionStatement: 需要先获取 assign.expr 才能访问 right
+                    assign_rhs = None
+                    if hasattr(assign, 'expr'):
+                        # ExpressionStatement: assign.expr.right
+                        assign_expr = assign.expr
+                        if hasattr(assign_expr, 'assignments') and assign_expr.assignments:
+                            assign_rhs = assign_expr.assignments[0].right
+                        else:
+                            assign_rhs = getattr(assign_expr, 'right', None) or getattr(assign_expr, 'rhs', None)
+                    else:
+                        # ContinuousAssign or other
+                        if hasattr(assign, 'assignments') and assign.assignments:
+                            assign_rhs = assign.assignments[0].right
+                        else:
+                            assign_rhs = getattr(assign, 'right', None) or getattr(assign, 'rhs', None)
+                    rhs_signals = self._get_all_signals(assign_rhs) if assign_rhs else [rhs]
                     if not rhs_signals:
                         rhs_signals = [rhs]
                     for rhs_name in rhs_signals:
@@ -730,6 +741,17 @@ class DriverExtractor:
                     expr_kind = getattr(expr, 'kind', None)
                     if expr_kind and 'Token' not in str(expr_kind):
                         signals.extend(self._get_all_signals(expr))
+            return [s for s in signals if s]
+        
+        # [NEW] 二元表达式: a + b, a ^ b, a[6:0] ^ a[7:1] 等 → 递归提取两边
+        if 'Binary' in kind_str:
+            signals = []
+            left = getattr(signal, 'left', None)
+            if left:
+                signals.extend(self._get_all_signals(left))
+            right = getattr(signal, 'right', None)
+            if right:
+                signals.extend(self._get_all_signals(right))
             return [s for s in signals if s]
         
         # 默认: 单个信号
