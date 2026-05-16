@@ -438,29 +438,88 @@ class PyslangAdapter:
 
     # 现有的 get_port_declarations
     def get_port_declarations(self, module) -> List:
-        """获取端口声明 - 从 header.ports 遍历"""
+        """"获取端口声明
+        
+        支持 ANSI 和非ANSI 两种端口声明格式:
+        - ANSI: module (...);
+        - 非ANSI: module (port_names); ... input/output declarations
+        """
         ports = []
         if not module:
             return ports
         
-        # pyslang: module.header.ports 是 AnsiPortListSyntax [paren, list, paren]
         if hasattr(module, 'header') and module.header:
             header = module.header
             if hasattr(header, 'ports'):
                 port_list = header.ports
-                # port_list[1] 是实际的端口列表
-            if port_list and len(port_list) > 1:
+                if port_list and len(port_list) > 1:
                     actual_ports = port_list[1]
-                    if hasattr(actual_ports, 'elements'):
-                        for port in actual_ports.elements:
-                            if hasattr(port, 'kind') and port.kind == SyntaxKind.ImplicitAnsiPort:
-                                ports.append(port)
-                    elif hasattr(actual_ports, '__iter__'):
-                        for port in actual_ports:
-                            if hasattr(port, 'kind') and port.kind == SyntaxKind.ImplicitAnsiPort:
-                                ports.append(port)
+                    if hasattr(actual_ports, 'kind'):
+                        port_kind = actual_ports.kind
+                        # ANSI 格式: ImplicitAnsiPort
+                        if port_kind == SyntaxKind.SeparatedList:
+                            # 判断是 ANSI 还是非ANSI
+                            for port in actual_ports:
+                                if hasattr(port, 'kind'):
+                                    if port.kind == SyntaxKind.ImplicitAnsiPort:
+                                        ports.append(port)
+                                    elif port.kind == SyntaxKind.ImplicitNonAnsiPort:
+                                        # 非ANSI: 收集为 pseudo-port 对象
+                                        ports.append(port)
         
         return ports
+
+    def _get_port_name_non_ansi(self, port) -> str:
+        """"获取非ANSI端口的名称"""
+        # ImplicitNonAnsiPort 有 name 属性
+        if hasattr(port, 'name'):
+            name = port.name
+            if hasattr(name, 'value'):
+                return name.value
+            elif hasattr(name, 'text'):
+                return name.text
+            return str(name)
+        return None
+
+    def _get_port_direction_non_ansi(self, module, port_name: str) -> str:
+        """"从模块体的 PortDeclaration 获取端口方向"""
+        if not module or not port_name:
+            return 'unknown'
+        
+        # 直接遍历 module 的子节点（不需要 parser）
+        target_name = port_name.strip()
+        
+        for node in module.members:
+            if hasattr(node, 'kind') and node.kind == SyntaxKind.PortDeclaration:
+                # 获取方向
+                direction = 'unknown'
+                if hasattr(node.header, 'direction'):
+                    dir_tok = node.header.direction
+                    if hasattr(dir_tok, 'kind'):
+                        kind = dir_tok.kind
+                        if kind == TokenKind.InputKeyword:
+                            direction = 'input'
+                        elif kind == TokenKind.OutputKeyword:
+                            direction = 'output'
+                        elif kind == TokenKind.InOutKeyword:
+                            direction = 'inout'
+                        elif kind == TokenKind.RefKeyword:
+                            direction = 'ref'
+                
+                # 检查所有 declarators
+                if hasattr(node, 'declarators') and node.declarators:
+                    for decl in node.declarators:
+                        if hasattr(decl, 'name'):
+                            name = decl.name
+                            decl_name = name.value if hasattr(name, 'value') else str(name)
+                            if decl_name and decl_name.strip() == target_name:
+                                return direction
+        
+        return 'unknown'
+
+    def _get_parser_for_module(self, module) -> Optional[Any]:
+        """"获取模块对应的 parser (未使用，保留为了兼容性)"""
+        return None
     
 
     def get_port_names(self, module) -> List[str]:
@@ -468,7 +527,7 @@ class PyslangAdapter:
         ports = []
         port_decls = self.get_port_declarations(module)
         for port in port_decls:
-            name, direction = self.get_port_name_and_direction(port)
+            name, direction = self.get_port_name_and_direction(port, module)
             if name:
                 ports.append(name)
         return ports
@@ -478,42 +537,54 @@ class PyslangAdapter:
         name, _ = self.get_port_name_and_direction(port)
         return name
 
-    def get_port_name_and_direction(self, port) -> tuple:
+    def get_port_name_and_direction(self, port, module=None) -> tuple:
         """获取端口名称和方向 (name, direction)
         
         从 AST TokenKind 获取方向，而非 str() (避免注释干扰)
+        支持 ANSI 和非ANSI 端口声明
         """
         if not port:
             return None, 'unknown'
         
-        # 名称: port.declarator.name
         name = None
-        if hasattr(port, 'declarator') and port.declarator:
-            decl = port.declarator
-            if hasattr(decl, 'name'):
-                n = decl.name
-                name = n.value if hasattr(n, 'value') else str(n)
-        
-        # 方向: port.header.direction (从 TokenKind 获取，避免注释干扰)
         direction = 'unknown'
-        if hasattr(port, 'header') and port.header:
-            header = port.header
-            if hasattr(header, 'direction'):
-                dir_token = header.direction
-                # [FIX] 使用 TokenKind 判断方向，而非 str()
-                if hasattr(dir_token, 'kind'):
-                    kind = dir_token.kind
-                    if kind == TokenKind.InputKeyword:
-                        direction = 'input'
-                    elif kind == TokenKind.OutputKeyword:
-                        direction = 'output'
-                    elif kind == TokenKind.InOutKeyword:
-                        direction = 'inout'
-                    elif kind == TokenKind.RefKeyword:
-                        direction = 'ref'
-                else:
-                    # 后备: 极少情况下 direction 没有 kind 属性
-                    direction = str(dir_token).strip()
+        
+        if hasattr(port, 'kind'):
+            port_kind = port.kind
+            
+            if port_kind == SyntaxKind.ImplicitAnsiPort:
+                # ANSI 格式: port.declarator.name
+                if hasattr(port, 'declarator') and port.declarator:
+                    decl = port.declarator
+                    if hasattr(decl, 'name'):
+                        n = decl.name
+                        name = n.value if hasattr(n, 'value') else str(n)
+                # 方向: port.header.direction
+                if hasattr(port, 'header') and port.header:
+                    header = port.header
+                    if hasattr(header, 'direction'):
+                        dir_tok = header.direction
+                        if hasattr(dir_tok, 'kind'):
+                            kind = dir_tok.kind
+                            if kind == TokenKind.InputKeyword:
+                                direction = 'input'
+                            elif kind == TokenKind.OutputKeyword:
+                                direction = 'output'
+                            elif kind == TokenKind.InOutKeyword:
+                                direction = 'inout'
+                            elif kind == TokenKind.RefKeyword:
+                                direction = 'ref'
+            
+            elif port_kind == SyntaxKind.ImplicitNonAnsiPort:
+                # 非ANSI 格式: port.expr.name.value
+                if hasattr(port, 'expr') and port.expr:
+                    expr = port.expr
+                    if hasattr(expr, 'name'):
+                        n = expr.name
+                        name = n.value if hasattr(n, 'value') else str(n)
+                # 方向需要从模块体的 PortDeclaration 查找
+                if module and name:
+                    direction = self._get_port_direction_non_ansi(module, name)
         
         return name, direction
     
