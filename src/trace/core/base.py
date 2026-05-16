@@ -655,7 +655,7 @@ class PyslangAdapter:
         
         if scope is not None:
             # 传入 scope 时总是返回 dict (即使 param_map 为空)
-            return self.extract_port_width_with_eval(port, param_map)
+            return self.extract_port_width_with_eval(port, param_map, scope)
         else:
             # 向后兼容: 返回 tuple
             return self._extract_width_tuple(port)
@@ -753,14 +753,15 @@ class PyslangAdapter:
         
         return (0, 0)
     
-    def extract_port_width_with_eval(self, port, param_map: dict = None) -> dict:
+    def extract_port_width_with_eval(self, port, param_map: dict = None, scope=None) -> dict:
         """提取位宽信息 (方案 C 增强版)
         
         [方案 C] 对参数化位宽进行表达式求值
         
         Args:
-            port: 端口声明 (ImplicitAnsiPortSyntax)
+            port: 端口声明 (ImplicitAnsiPortSyntax or ImplicitNonAnsiPort)
             param_map: 可选，参数名->值的映射，如 {'W': 32, 'B': 8}
+            scope: 可选，Module 上下文，用于非ANSI端口查找 PortDeclaration
         
         Returns:
             dict with keys:
@@ -780,7 +781,36 @@ class PyslangAdapter:
             'lsb_is_param': False
         }
         
-        if not port or not hasattr(port, 'header'):
+        if not port or not hasattr(port, 'kind'):
+            return result
+        
+        # 处理非ANSI端口: 从 body 的 PortDeclaration 提取位宽
+        if port.kind == SyntaxKind.ImplicitNonAnsiPort:
+            if scope and hasattr(scope, 'members'):
+                # 获取端口名
+                port_name = None
+                if hasattr(port, 'expr') and port.expr and hasattr(port.expr, 'name'):
+                    name_node = port.expr.name
+                    port_name = name_node.value if hasattr(name_node, 'value') else str(name_node)
+                
+                if port_name:
+                    # 在 scope.members 中查找匹配的 PortDeclaration
+                    for node in scope.members:
+                        if hasattr(node, 'kind') and node.kind == SyntaxKind.PortDeclaration:
+                            # 检查所有 declarators
+                            if hasattr(node, 'declarators') and node.declarators:
+                                for decl in node.declarators:
+                                    if hasattr(decl, 'name'):
+                                        decl_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+                                        if decl_name and decl_name.strip() == port_name.strip():
+                                            # 找到匹配的 PortDeclaration，递归提取其位宽信息
+                                            return self.extract_port_width_with_eval(node, param_map, scope=None)
+            
+            # 非ANSI但找不到对应的 PortDeclaration，返回空结果
+            return result
+        
+        # ANSI 端口处理
+        if not hasattr(port, 'header'):
             return result
         
         header = port.header

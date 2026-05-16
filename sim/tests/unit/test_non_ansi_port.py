@@ -104,6 +104,37 @@ endmodule'''
         # 应该识别3个端口
         self.assertGreaterEqual(len(ports), 3, f"Expected >=3 ports, got {len(ports)}")
     
+    def test_non_ansi_param_width(self):
+        """测试非ANSI端口的参数化位宽提取"""
+        source = '''
+module mult_pipe2 #(
+    parameter SIZE = 16
+)(
+    a, b, clk
+);
+    input [SIZE-1:0] a;
+    input [SIZE-1:0] b;
+    input clk;
+endmodule'''
+        
+        adapter = self._make_adapter(source)
+        modules = adapter.get_modules()
+        m = modules[0]
+        
+        ports = adapter.get_port_declarations(m)
+        
+        # 检查参数化位宽
+        for p in ports:
+            name, dir = adapter.get_port_name_and_direction(p, m)
+            width_info = adapter.extract_port_width(p, m)
+            
+            if name == 'a':
+                self.assertEqual(width_info['msb_raw'], 'SIZE-1')
+                self.assertEqual(width_info['msb_eval'], 15)
+                self.assertTrue(width_info['msb_is_param'])
+            elif name == 'clk':
+                self.assertIsNone(width_info['msb_raw'])
+    
     def test_ansi_still_works(self):
         """确保ANSI端口声明仍然正常工作"""
         source = '''
