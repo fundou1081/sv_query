@@ -406,6 +406,37 @@ NVDLA 使用非ANSI端口声明，且方向用注释表示 (`//|< i` = input, `/
 | 端口解析 | ❌ | 非ANSI+注释格式 |
 | 实例解析 | ✅ | |
 
+---
+
+## Issue 12: NVDLA 特殊注释格式 (不修复)
+
+**问题描述**:
+NVDLA 使用特殊注释格式来表示端口方向，不符合 SystemVerilog 标准
+
+**示例**:
+```verilog
+module NV_NVDLA_bdma (
+   bdma2cvif_rd_req_ready        //|< i
+  ,bdma2cvif_wr_req_ready        //|< i
+  ...
+  ,bdma2csb_resp_pd              //|> o
+);
+```
+
+**方向标识**:
+- `//|< i` = input (i = input)
+- `//|> o` = output (o = output)
+
+**分析**:
+- 这是 NVDLA 项目特有的非标准写法
+- 方向信息编码在注释中，而非 AST
+- 不符合 SystemVerilog 标准
+- sv_query 不支持这种格式是正确行为
+
+**决策**: 不修复，仅记录为特殊案例
+
+**优先级**: N/A (非标准用法，不符合 SV 规范)
+
 
 ---
 
