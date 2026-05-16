@@ -154,5 +154,20 @@ endmodule'''
         self.assertEqual(len(ports), 3, f"Expected 3 ports, got {len(ports)}")
 
 
+
+
+    def test_comma_separated_direction_inheritance(self):
+        """Issue 11: 测试逗号分隔端口的方向继承"""
+        source = 'module picorv32(input clk, resetn, output reg trap); endmodule'
+        adapter = self._make_adapter(source)
+        modules = adapter.get_modules()
+        m = modules[0]
+        ports = adapter.get_port_declarations(m)
+        port_dirs = {adapter.get_port_name_and_direction(p, m)[0]: adapter.get_port_name_and_direction(p, m)[1] for p in ports}
+        self.assertEqual(port_dirs.get("clk"), "input")
+        self.assertEqual(port_dirs.get("resetn"), "input")
+        self.assertEqual(port_dirs.get("trap"), "output")
+
+
 if __name__ == '__main__':
     unittest.main()
