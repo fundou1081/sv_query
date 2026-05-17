@@ -1037,15 +1037,6 @@ class LoadExtractor:
             except (ValueError, AttributeError, TypeError):
                 pass
 
-            for assign in self.adapter.get_assignments(module):
-                lhs, rhs = self._parse_assign(assign)
-                if lhs and rhs:
-                    result.edges.append(TraceEdge(
-                        src=f"{module_name}.{rhs}",
-                        dst=f"{module_name}.{lhs}",
-                        kind=EdgeKind.DRIVER
-                    ))
-
         return result
 
     def _parse_assign(self, assign) -> tuple:
