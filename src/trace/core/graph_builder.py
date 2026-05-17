@@ -812,6 +812,30 @@ class DriverExtractor:
                                     clock_domain=ctx.get("clock", ""),
                                     condition=ctx.get("condition", "")
                                 ))
+                        
+                        # [FIX] For function calls, also create edge from function return value to lhs_name
+                        # Function return value is the function name itself (implicit in SystemVerilog)
+                        # e.g., assign out = gray_conv(in); should have: gray_conv -> out
+                        if is_function and lhs_name:
+                            func_return_id = f"{module_name}.{func_name}"
+                            dst_id = f"{module_name}.{lhs_name}"
+                            if func_return_id != dst_id:  # Avoid self-loop
+                                if func_return_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=func_return_id, name=func_name, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                if dst_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(TraceNode(
+                                        id=dst_id, name=lhs_name, module=module_name,
+                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                                    ))
+                                result.edges.append(TraceEdge(
+                                    src=func_return_id, dst=dst_id,
+                                    kind=EdgeKind.DRIVER, assign_type="continuous",
+                                    clock_domain=ctx.get("clock", ""),
+                                    condition=ctx.get("condition", "")
+                                ))
                     else:
                         # 兜底: 使用字符串方式
                         rhs_exprs = internal_drivers[func_name]
