@@ -1178,6 +1178,7 @@ class LoadExtractor:
 class ConnectionExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
+        self.root_module_name = None
 
     def _get_parent_module_name(self, inst) -> str:
         """Safely get parent module name from instance (handles generate blocks)."""
@@ -1209,6 +1210,12 @@ class ConnectionExtractor:
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
+        
+        # [FIX Issue 19] 动态获取根模块名而非硬编码 "top"
+        if self.root_module_name is None:
+            for mod in self.adapter.get_modules():
+                self.root_module_name = self.adapter.get_module_name(mod)
+                break
         
         trees = getattr(self.adapter.parser, 'trees', {})
         instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
@@ -1267,13 +1274,13 @@ class ConnectionExtractor:
         def get_path(info, depth=0):
             """递归获取实例的完整路径"""
             if depth > 20:
-                return f"top.{info['inst_name']}"
+                return f"{self.root_module_name}.{info['inst_name']}"
             parent_mod = info['parent_module']
             gen_block = info.get('gen_block')
             if parent_mod == 'top':
                 if gen_block:
-                    return f"top.{gen_block}.{info['inst_name']}"
-                return f"top.{info['inst_name']}"
+                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
+                return f"{self.root_module_name}.{info['inst_name']}"
             else:
                 for other_info in instances_info:
                     if other_info['inst_module_name'] == parent_mod:
@@ -1282,8 +1289,8 @@ class ConnectionExtractor:
                             return f"{parent_path}.{gen_block}.{info['inst_name']}"
                         return f"{parent_path}.{info['inst_name']}"
                 if gen_block:
-                    return f"top.{gen_block}.{info['inst_name']}"
-                return f"top.{info['inst_name']}"
+                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
+                return f"{self.root_module_name}.{info['inst_name']}"
         
         for info in instances_info:
             path = get_path(info)
@@ -1304,10 +1311,10 @@ class ConnectionExtractor:
             gen_block = self._get_generate_block_name(inst)
             if gen_block:
                 key = (inst_module_name, inst_name, gen_block)
-                inst_path = module_to_path.get(key, f"top.{gen_block}.{inst_name}")
+                inst_path = module_to_path.get(key, f"{self.root_module_name}.{gen_block}.{inst_name}")
             else:
                 key = (inst_module_name, inst_name)
-                inst_path = module_to_path.get(key, f"top.{inst_name}")
+                inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
             
             module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
