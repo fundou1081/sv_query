@@ -200,8 +200,21 @@ class DriverExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
-                    # 提取端口位宽
-                    port_width = self.adapter.extract_port_width(port_decl)
+                    # 提取端口位宽 (传入 module 作为 scope 以解析参数)
+                    port_width = self.adapter.extract_port_width(port_decl, scope=module)
+                    # extract_port_width with scope returns dict, convert to tuple for compatibility
+                    if isinstance(port_width, dict):
+                        msb = port_width.get('msb_eval', port_width.get('msb_raw', 0))
+                        lsb = port_width.get('lsb_eval', port_width.get('lsb_raw', 0))
+                        try:
+                            msb = int(msb) if msb is not None else 0
+                        except (ValueError, TypeError):
+                            msb = 0
+                        try:
+                            lsb = int(lsb) if lsb is not None else 0
+                        except (ValueError, TypeError):
+                            lsb = 0
+                        port_width = (msb, lsb)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
@@ -952,8 +965,21 @@ class LoadExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
-                    # 提取端口位宽
-                    port_width = self.adapter.extract_port_width(port_decl)
+                    # 提取端口位宽 (传入 module 作为 scope 以解析参数)
+                    port_width = self.adapter.extract_port_width(port_decl, scope=module)
+                    # convert dict to tuple for compatibility
+                    if isinstance(port_width, dict):
+                        msb = port_width.get('msb_eval', port_width.get('msb_raw', 0))
+                        lsb = port_width.get('lsb_eval', port_width.get('lsb_raw', 0))
+                        try:
+                            msb = int(msb) if msb is not None else 0
+                        except (ValueError, TypeError):
+                            msb = 0
+                        try:
+                            lsb = int(lsb) if lsb is not None else 0
+                        except (ValueError, TypeError):
+                            lsb = 0
+                        port_width = (msb, lsb)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
@@ -1197,8 +1223,21 @@ class ConnectionExtractor:
             for port in self.adapter.get_port_declarations(module):
                 name, direction = self.adapter.get_port_name_and_direction(port)
                 port_dirs[name] = direction.strip()
-                # 获取位宽
-                width = self.adapter.extract_port_width(port)
+                # 获取位宽 (传入 module 作为 scope 以解析参数)
+                width = self.adapter.extract_port_width(port, scope=module)
+                # extract_port_width with scope returns dict, convert to tuple for compatibility
+                if isinstance(width, dict):
+                    msb = width.get('msb_eval', width.get('msb_raw', 0))
+                    lsb = width.get('lsb_eval', width.get('lsb_raw', 0))
+                    try:
+                        msb = int(msb) if msb is not None else 0
+                    except (ValueError, TypeError):
+                        msb = 0
+                    try:
+                        lsb = int(lsb) if lsb is not None else 0
+                    except (ValueError, TypeError):
+                        lsb = 0
+                    width = (msb, lsb)
                 port_widths[name] = width
             all_module_ports[module_name] = port_dirs
             all_module_widths[module_name] = port_widths
@@ -1451,8 +1490,21 @@ class ClockDomainExtractor:
                         kind = NodeKind.PORT_OUT
                     else:
                         kind = NodeKind.PORT_IN
-                    # 提取端口位宽
-                    port_width = self.adapter.extract_port_width(port_decl)
+                    # 提取端口位宽 (传入 module 作为 scope 以解析参数)
+                    port_width = self.adapter.extract_port_width(port_decl, scope=module)
+                    # convert dict to tuple for compatibility
+                    if isinstance(port_width, dict):
+                        msb = port_width.get('msb_eval', port_width.get('msb_raw', 0))
+                        lsb = port_width.get('lsb_eval', port_width.get('lsb_raw', 0))
+                        try:
+                            msb = int(msb) if msb is not None else 0
+                        except (ValueError, TypeError):
+                            msb = 0
+                        try:
+                            lsb = int(lsb) if lsb is not None else 0
+                        except (ValueError, TypeError):
+                            lsb = 0
+                        port_width = (msb, lsb)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,

@@ -3,28 +3,27 @@
 
 <!-- METADATA -->
 {
-  "generated": "2026-05-17 00:57:58",
+  "generated": "2026-05-17 08:18:10",
   "passed": 0,
-  "failed": 2,
+  "failed": 1,
   "skipped": 0,
-  "total": 2
+  "total": 1
 }
 <!-- /METADATA -->
 
 ## 测试摘要
 
 - **通过**: 0
-- **失败**: 2
+- **失败**: 1
 - **跳过**: 0
-- **总计**: 2
-- **时间**: 2026-05-17 00:57:58
+- **总计**: 1
+- **时间**: 2026-05-17 08:18:10
 
 ## 测试结果详情
 
 | 状态 | 测试ID | 时长(秒) |
 |------|--------|----------|
-| ❌ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_mixed_port_declaration` | 0.000s |
-| ❌ | `integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_parameterized_instance` | 0.023s |
+| ❌ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_mixed_port_declaration` | 0.001s |
 
 ---
 *此报告由 pytest 自动生成*

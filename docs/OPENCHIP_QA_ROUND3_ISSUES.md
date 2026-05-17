@@ -28,7 +28,7 @@ sv_query 工具
 | Req-3 | 日志级别控制 | P3 | 待实现 |
 | Req-4 | 实例去重 | P1 | ✅ 已实现 |
 | Req-5 | generate 内的实例支持 | P1 | ✅ 已实现 |
-| Req-6 | 函数内部逻辑提取 | P2 | ⚠️ 部分实现 |
+| Req-6 | 函数内部逻辑提取 | P2 | ✅ 已实现 |
 | Req-7 | always block 内部语句提取 | P1 | ✅ 已实现 |
 | Req-8 | SignalTracer 信号追踪 | P1 | ✅ 已实现 |
 
@@ -48,7 +48,7 @@ endgenerate
 
 **结果**: `top.GEN.u`, `top.GEN.u.q` 等节点正确创建
 
-### Req-6: 函数内部逻辑 ⚠️ 部分
+### Req-6: 函数内部逻辑 ✅ 已实现
 
 ```verilog
 function [7:0] gray_conv(input [7:0] a);
@@ -88,7 +88,7 @@ result = tracer.trace_signal('q', 'top')
 3. [x] Req-8: SignalTracer - 已实现
 
 ### 中优先级
-4. [ ] Req-6: 增强函数体内部表达式解析
+4. [x] Req-6: 增强函数体内部表达式解析
 5. [ ] 实现 Req-1: API 简化
 
 ### 低优先级
