@@ -68,6 +68,26 @@ class ASTWalker:
 
 #==============================================================================
 class PyslangAdapter:
+
+
+    class PseudoPort:
+        """统一端口信息包装器 - 避免 local class 闭包问题
+        
+        用于包装 PortDeclaration + Declarator，使每个端口独立可用。
+        """
+        def __init__(self, port_decl, decl):
+            self._port_decl = port_decl
+            self._decl = decl
+            self.kind = SyntaxKind.PortDeclaration
+        
+        @property
+        def header(self):
+            return self._port_decl.header
+        
+        @property
+        def declarators(self):
+            return [self._decl]
+
     """pyslang 适配器 - 将 pyslang AST 转换为内部表示"""
     
     def __init__(self, parser):
@@ -438,7 +458,7 @@ class PyslangAdapter:
 
     # 现有的 get_port_declarations
     def get_port_declarations(self, module) -> List:
-        """"获取端口声明
+        """获取端口声明
         
         支持 ANSI 和非ANSI 两种端口声明格式:
         - ANSI: module (...);
@@ -484,68 +504,41 @@ class PyslangAdapter:
             if hasattr(module, 'members'):
                 for member in module.members:
                     if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
-                        # 展开每个 declarator (跳过 Token 对象如逗号)
-                        if hasattr(member, 'declarators') and member.declarators:
-                            for decl in member.declarators:
-                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
-                                    # 创建一个伪 PortDeclaration 对象
-                                    class PseudoPort:
-                                        def __init__(self, port_decl, decl):
-                                            self._port_decl = port_decl
-                                            self._decl = decl
-                                            self.kind = SyntaxKind.PortDeclaration
-                                        @property
-                                        def header(self):
-                                            return self._port_decl.header
-                                        @property
-                                        def declarators(self):
-                                            return [self._decl]
-                                    ports.append(PseudoPort(member, decl))
+                        for decl in self._expand_declarators(member):
+                            ports.append(self.PseudoPort(member, decl))
         # 否则如果 header 有非ANSI 端口，解析 members 中的 PortDeclaration
         elif header_has_non_ansi:
             # 使用 members 中的 PortDeclaration (每个 Declarator 作为一个端口)
             if hasattr(module, 'members'):
                 for member in module.members:
                     if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
-                        # 展开每个 declarator (跳过 Token 对象如逗号)
-                        if hasattr(member, 'declarators') and member.declarators:
-                            for decl in member.declarators:
-                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
-                                    class PseudoPort:
-                                        def __init__(self, port_decl, decl):
-                                            self._port_decl = port_decl
-                                            self._decl = decl
-                                            self.kind = SyntaxKind.PortDeclaration
-                                        @property
-                                        def header(self):
-                                            return self._port_decl.header
-                                        @property
-                                        def declarators(self):
-                                            return [self._decl]
-                                    ports.append(PseudoPort(member, decl))
+                        for decl in self._expand_declarators(member):
+                            ports.append(self.PseudoPort(member, decl))
         # 如果 header 没有任何端口，尝试使用 members
         else:
             if hasattr(module, 'members'):
                 for member in module.members:
                     if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
-                        # 展开每个 declarator (跳过 Token 对象如逗号)
-                        if hasattr(member, 'declarators') and member.declarators:
-                            for decl in member.declarators:
-                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
-                                    class PseudoPort:
-                                        def __init__(self, port_decl, decl):
-                                            self._port_decl = port_decl
-                                            self._decl = decl
-                                            self.kind = SyntaxKind.PortDeclaration
-                                        @property
-                                        def header(self):
-                                            return self._port_decl.header
-                                        @property
-                                        def declarators(self):
-                                            return [self._decl]
-                                    ports.append(PseudoPort(member, decl))
+                        for decl in self._expand_declarators(member):
+                            ports.append(self.PseudoPort(member, decl))
         
         return ports
+
+    def _expand_declarators(self, port_decl) -> list:
+        """展开 PortDeclaration.declarators，跳过 Token 对象 (如逗号)
+        
+        Args:
+            port_decl: PortDeclaration 节点
+            
+        Returns:
+            DeclaratorSyntax 列表
+        """
+        results = []
+        if hasattr(port_decl, 'declarators') and port_decl.declarators:
+            for decl in port_decl.declarators:
+                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
+                    results.append(decl)
+        return results
 
 
 
