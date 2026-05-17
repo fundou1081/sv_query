@@ -1784,28 +1784,89 @@ class PyslangAdapter:
         返回: [(direction, name), ...]
         """
         params = []
-        items = getattr(func_decl, 'items', [])
         
-        for item in items:
-            kind = str(getattr(item, 'kind', ''))
-            if 'PortDeclaration' not in kind:
-                continue
+        def _extract_func_params(item, kind_str):
+            """递归提取 FunctionPort 参数"""
+            result = []
             
-            header = getattr(item, 'header', None)
-            direction = 'input'
-            if header:
-                direction_attr = getattr(header, 'direction', None)
-                if direction_attr:
-                    d = str(direction_attr).strip()
-                    if 'Output' in d:
-                        direction = 'output'
+            # 跳过 token
+            if 'Token' in kind_str:
+                return result
             
-            declarators = getattr(item, 'declarators', [])
-            for decl in declarators:
-                decl_kind = str(getattr(decl, 'kind', ''))
-                if 'Declarator' in decl_kind:
+            # 处理 SeparatedList: 展开内部元素
+            if 'SeparatedList' in kind_str:
+                for child in item:
+                    child_kind = str(getattr(child, 'kind', ''))
+                    result.extend(_extract_func_params(child, child_kind))
+                return result
+            
+            # 处理 FunctionPort (新式语法: input [7:0] a)
+            if 'FunctionPort' in kind_str:
+                direction = 'input'
+                dir_attr = getattr(item, 'direction', None)
+                if dir_attr and 'Output' in str(dir_attr):
+                    direction = 'output'
+                
+                # 获取 declarator (参数名)
+                decl = getattr(item, 'declarator', None)
+                if decl:
                     name = str(decl).strip()
-                    params.append((direction, name))
+                    result.append((direction, name))
+                
+                # 也检查 header (旧式语法)
+                header = getattr(item, 'header', None)
+                if header:
+                    dir_attr2 = getattr(header, 'direction', None)
+                    if dir_attr2 and 'Output' in str(dir_attr2):
+                        direction = 'output'
+                    decls = getattr(header, 'declarators', [])
+                    for d in decls:
+                        decl_kind = str(getattr(d, 'kind', ''))
+                        if 'Declarator' in decl_kind:
+                            name = str(d).strip()
+                            result.append((direction, name))
+                return result
+            
+            # 处理 IdentifierName (简单参数名)
+            if 'IdentifierName' in kind_str:
+                name = getattr(item, 'value', None) or str(item).strip()
+                if name and name not in ['input', 'output', 'inout']:
+                    result.append(('input', name))
+            
+            return result
+        
+        # [FIX] 首先尝试从 prototype.portList 获取 (新式语法)
+        proto = getattr(func_decl, 'prototype', None)
+        if proto:
+            port_list = getattr(proto, 'portList', None)
+            if port_list and hasattr(port_list, '__iter__'):
+                for item in port_list:
+                    kind = str(getattr(item, 'kind', ''))
+                    params.extend(_extract_func_params(item, kind))
+        
+        # 如果没找到，尝试从 items 获取 (旧式语法)
+        if not params:
+            items = getattr(func_decl, 'items', [])
+            for item in items:
+                kind = str(getattr(item, 'kind', ''))
+                if 'PortDeclaration' not in kind:
+                    continue
+                
+                header = getattr(item, 'header', None)
+                direction = 'input'
+                if header:
+                    direction_attr = getattr(header, 'direction', None)
+                    if direction_attr:
+                        d = str(direction_attr).strip()
+                        if 'Output' in d:
+                            direction = 'output'
+                
+                declarators = getattr(item, 'declarators', [])
+                for decl in declarators:
+                    decl_kind = str(getattr(decl, 'kind', ''))
+                    if 'Declarator' in decl_kind:
+                        name = str(decl).strip()
+                        params.append((direction, name))
         
         return params
 
