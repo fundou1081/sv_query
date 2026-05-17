@@ -443,10 +443,15 @@ class PyslangAdapter:
         支持 ANSI 和非ANSI 两种端口声明格式:
         - ANSI: module (...);
         - 非ANSI: module (port_names); ... input/output declarations
+        - 混合: module (port_names); input/output declarations (部分在members)
         """
         ports = []
         if not module:
             return ports
+        
+        # 先检查 header 是否有 ANSI 端口 (input [7:0] data 这种)
+        header_has_ansi = False
+        header_has_non_ansi = False
         
         if hasattr(module, 'header') and module.header:
             header = module.header
@@ -454,20 +459,95 @@ class PyslangAdapter:
                 port_list = header.ports
                 if port_list and len(port_list) > 1:
                     actual_ports = port_list[1]
-                    if hasattr(actual_ports, 'kind'):
-                        port_kind = actual_ports.kind
-                        # ANSI 格式: ImplicitAnsiPort
-                        if port_kind == SyntaxKind.SeparatedList:
-                            # 判断是 ANSI 还是非ANSI
+                    if hasattr(actual_ports, 'kind') and actual_ports.kind == SyntaxKind.SeparatedList:
+                        for port in actual_ports:
+                            if hasattr(port, 'kind'):
+                                if port.kind == SyntaxKind.ImplicitAnsiPort:
+                                    header_has_ansi = True
+                                    break
+                                elif port.kind == SyntaxKind.ImplicitNonAnsiPort:
+                                    header_has_non_ansi = True
+        
+        # 如果 header 有 ANSI 端口，使用 header 的端口 + members 的 PortDeclaration
+        if header_has_ansi:
+            if hasattr(module, 'header') and module.header:
+                header = module.header
+                if hasattr(header, 'ports'):
+                    port_list = header.ports
+                    if port_list and len(port_list) > 1:
+                        actual_ports = port_list[1]
+                        if hasattr(actual_ports, 'kind') and actual_ports.kind == SyntaxKind.SeparatedList:
                             for port in actual_ports:
-                                if hasattr(port, 'kind'):
-                                    if port.kind == SyntaxKind.ImplicitAnsiPort:
-                                        ports.append(port)
-                                    elif port.kind == SyntaxKind.ImplicitNonAnsiPort:
-                                        # 非ANSI: 收集为 pseudo-port 对象
-                                        ports.append(port)
+                                if hasattr(port, 'kind') and port.kind == SyntaxKind.ImplicitAnsiPort:
+                                    ports.append(port)
+            # 也添加 members 中的 PortDeclaration (每个 Declarator 作为一个端口)
+            if hasattr(module, 'members'):
+                for member in module.members:
+                    if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
+                        # 展开每个 declarator (跳过 Token 对象如逗号)
+                        if hasattr(member, 'declarators') and member.declarators:
+                            for decl in member.declarators:
+                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
+                                    # 创建一个伪 PortDeclaration 对象
+                                    class PseudoPort:
+                                        def __init__(self, port_decl, decl):
+                                            self._port_decl = port_decl
+                                            self._decl = decl
+                                            self.kind = SyntaxKind.PortDeclaration
+                                        @property
+                                        def header(self):
+                                            return self._port_decl.header
+                                        @property
+                                        def declarators(self):
+                                            return [self._decl]
+                                    ports.append(PseudoPort(member, decl))
+        # 否则如果 header 有非ANSI 端口，解析 members 中的 PortDeclaration
+        elif header_has_non_ansi:
+            # 使用 members 中的 PortDeclaration (每个 Declarator 作为一个端口)
+            if hasattr(module, 'members'):
+                for member in module.members:
+                    if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
+                        # 展开每个 declarator (跳过 Token 对象如逗号)
+                        if hasattr(member, 'declarators') and member.declarators:
+                            for decl in member.declarators:
+                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
+                                    class PseudoPort:
+                                        def __init__(self, port_decl, decl):
+                                            self._port_decl = port_decl
+                                            self._decl = decl
+                                            self.kind = SyntaxKind.PortDeclaration
+                                        @property
+                                        def header(self):
+                                            return self._port_decl.header
+                                        @property
+                                        def declarators(self):
+                                            return [self._decl]
+                                    ports.append(PseudoPort(member, decl))
+        # 如果 header 没有任何端口，尝试使用 members
+        else:
+            if hasattr(module, 'members'):
+                for member in module.members:
+                    if hasattr(member, 'kind') and member.kind == SyntaxKind.PortDeclaration:
+                        # 展开每个 declarator (跳过 Token 对象如逗号)
+                        if hasattr(member, 'declarators') and member.declarators:
+                            for decl in member.declarators:
+                                if hasattr(decl, 'kind') and decl.kind == SyntaxKind.Declarator:
+                                    class PseudoPort:
+                                        def __init__(self, port_decl, decl):
+                                            self._port_decl = port_decl
+                                            self._decl = decl
+                                            self.kind = SyntaxKind.PortDeclaration
+                                        @property
+                                        def header(self):
+                                            return self._port_decl.header
+                                        @property
+                                        def declarators(self):
+                                            return [self._decl]
+                                    ports.append(PseudoPort(member, decl))
         
         return ports
+
+
 
     def _get_port_name_non_ansi(self, port) -> str:
         """"获取非ANSI端口的名称"""
@@ -589,6 +669,30 @@ class PyslangAdapter:
                 # 方向需要从模块体的 PortDeclaration 查找
                 if module and name:
                     direction = self._get_port_direction_non_ansi(module, name)
+            
+            elif port_kind == SyntaxKind.PortDeclaration:
+                # 非ANSI 端口声明: output reg [7:0] out;
+                # 名称从 declarators[0].name 获取
+                if hasattr(port, 'declarators') and port.declarators:
+                    decl = port.declarators[0]
+                    if hasattr(decl, 'name'):
+                        n = decl.name
+                        name = n.value if hasattr(n, 'value') else str(n)
+                # 方向从 header.direction 获取
+                if hasattr(port, 'header') and port.header:
+                    header = port.header
+                    if hasattr(header, 'direction'):
+                        dir_tok = header.direction
+                        if dir_tok and hasattr(dir_tok, 'kind') and dir_tok.kind != TokenKind.Unknown:
+                            kind = dir_tok.kind
+                            if kind == TokenKind.InputKeyword:
+                                direction = 'input'
+                            elif kind == TokenKind.OutputKeyword:
+                                direction = 'output'
+                            elif kind == TokenKind.InOutKeyword:
+                                direction = 'inout'
+                            elif kind == TokenKind.RefKeyword:
+                                direction = 'ref'
         
         return name, direction
     
