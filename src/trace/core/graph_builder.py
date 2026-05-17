@@ -868,15 +868,30 @@ class DriverExtractor:
             if name:
                 return name
 
-        name = None
-        if hasattr(signal, 'name'):
-            name = signal.name.value if hasattr(signal.name, 'value') else str(signal.name)
-        elif hasattr(signal, 'value'):
-            name = signal.value
-        else:
-            name = str(signal)
+        # [FIX] IdentifierName: 必须提取 identifier.value，禁止 fallback
+        # IdentifierName 有 identifier 属性，value 在 identifier.value 中
+        # str(signal) 会包含 leading trivia (注释、换行)，所以必须显式提取
+        if kind and 'IdentifierName' in str(kind):
+            ident = getattr(signal, 'identifier', None)
+            if ident is None:
+                raise ValueError(
+                    f"[铁律3] IdentifierName missing 'identifier' attribute. "
+                    f"signal={signal}, kind={kind}"
+                )
+            val = getattr(ident, 'value', None)
+            if val is None:
+                raise ValueError(
+                    f"[铁律3] IdentifierName.identifier missing 'value' attribute. "
+                    f"signal={signal}, kind={kind}"
+                )
+            return self.adapter.clean_name(str(val).strip())
 
-        name = self.adapter.clean_name(name) if name else None
+        # [兜底] 如果走到这里，说明遇到了未处理的节点类型
+        # 根据铁律3，必须报错而非静默 fallback
+        raise ValueError(
+            f"[铁律3] Unsupported signal type in _get_signal: "
+            f"kind={kind}, signal={signal}"
+        )
 
         # [P2增强] 递归提取复合表达式的操作数
         # 处理三元、拼接、一元、移位等复杂运算符
@@ -1136,25 +1151,36 @@ class LoadExtractor:
                     return self._get_signal(first_val)
             return None
 
-        # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名
-        kind = getattr(signal, 'kind', None)
+        # [FIX] IdentifierSelectName: data[3] → 保留完整名
+        # 在 IdentifierName 之前处理，因为 IdentifierSelect 包含 IdentifierName
         if kind and 'IdentifierSelect' in str(kind):
             name = str(signal).strip()
             return self.adapter.clean_name(name) if name else None
 
-        # [FIX] 处理 ParenthesizedExpression: (expr) → 展开内部表达式
-        if kind and 'ParenthesizedExpression' in str(kind):
-            expr = getattr(signal, 'expression', None)
-            if expr:
-                return self._get_signal(expr)
-            return None
+        # [FIX] IdentifierName: 必须提取 identifier.value，禁止 fallback
+        # IdentifierName 有 identifier 属性，value 在 identifier.value 中
+        # str(signal) 会包含 leading trivia (注释、换行)，所以必须显式提取
+        if kind and 'IdentifierName' in str(kind):
+            ident = getattr(signal, 'identifier', None)
+            if ident is None:
+                raise ValueError(
+                    f"[铁律3] IdentifierName missing 'identifier' attribute. "
+                    f"signal={signal}, kind={kind}"
+                )
+            val = getattr(ident, 'value', None)
+            if val is None:
+                raise ValueError(
+                    f"[铁律3] IdentifierName.identifier missing 'value' attribute. "
+                    f"signal={signal}, kind={kind}"
+                )
+            return self.adapter.clean_name(str(val).strip())
 
-        # [P0] 检测字面量常量: IntegerVectorExpression + IntegerLiteral Token
-        # → 返回字面量字符串(不拼接 top.),让边创建继续但节点跳过
-        if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
-            val = getattr(signal, 'value', None)
-            if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
-                return str(val).strip()
+        # [兜底] 如果走到这里，说明遇到了未处理的节点类型
+        # 根据铁律3，必须报错而非静默 fallback
+        raise ValueError(
+            f"[铁律3] Unsupported signal type in _get_signal: "
+            f"kind={kind}, signal={signal}"
+        )
 
         name = None
         if hasattr(signal, 'name'):
