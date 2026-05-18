@@ -25,7 +25,7 @@
 | Issue 29 | CVA6Cfg 参数未展开 | cva6 | P2 | 设计约束 |
 | Issue 30 | 无 CONNECTION 边 | cva6 | P2 | 设计约束 |
 | Issue 31 | 位宽 (0,0) 问题 | cva6 | P2 | 设计约束 |
-| Issue 32 | 实例端口无连接边 | serv_top | P2 | 待调查 |
+| Issue 32 | 实例端口无连接边 | serv_top | P2 | 设计约束 |
 | Issue 33 | 字面量作为节点名 | serv_top | P3 | ✅ 已修复 |
 | Issue 34 | 数组索引变量出现在节点名 | gpu | P3 | 待讨论 |
 | Issue 35 | 嵌套层次实例 | gpu | P3 | 已观察 |
@@ -181,7 +181,7 @@ cva6.clk_i PORT_IN (0,0)
 
 ---
 
-### 5. 设计约束 (5个)
+### 5. 设计约束 (6个)
 
 | Issue | 说明 |
 |-------|------|
@@ -189,9 +189,10 @@ cva6.clk_i PORT_IN (0,0)
 | Issue 18 | 解析范围不完整 |
 | Issue 24 | 子模块未解析 |
 | Issue 26 | SPAD 模块未解析 |
+| Issue 29 | CVA6Cfg 结构体需要完整类型解析 |
 | Issue 30 | 子模块未解析 |
-
-**处理方式**: 保持现状，已有警告提示
+| Issue 31 | 位宽 (0,0) 对隐式 1-bit 端口语义正确 |
+| Issue 32 | 子模块未解析导致端口方向未知 |
 
 ---
 
