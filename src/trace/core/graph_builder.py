@@ -407,6 +407,7 @@ class DriverExtractor:
                             continue
                         # Only upgrade to REG if there's a clock context (always_ff)
                         is_always_ff = bool(ctx.get('clock'))
+                        dst_node_id = f"{module_name}.{lhs}"
                         existing = next((n for n in result.nodes if n.id == dst_node_id), None)
                         if existing:
                             if is_always_ff:
@@ -1387,6 +1388,22 @@ class DriverExtractor:
             expr = getattr(signal, 'expr', None)
             if expr:
                 return self._get_signal(expr)
+            return None
+        
+        # [FIX] InvocationExpression: 递归函数调用 factorial(x - 1)
+        # 结构: InvocationExpression.left = IdentifierName (函数名)
+        # 对于 _get_signal，只需要函数名，不需要参数
+        if kind and 'Invocation' in str(kind):
+            left = getattr(signal, 'left', None)
+            if left:
+                # left 是 IdentifierName，尝试 identifier.value
+                identifier = getattr(left, 'identifier', None)
+                if identifier:
+                    val = getattr(identifier, 'value', None)
+                    if val:
+                        return str(val).strip()
+                # 兜底: str(left).strip()
+                return str(left).strip()
             return None
         
         # 强制报错而非静默 fallback（铁律3）
