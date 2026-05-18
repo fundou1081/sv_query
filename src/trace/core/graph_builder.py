@@ -946,11 +946,20 @@ class DriverExtractor:
 
         # ConditionalPredicate → 递归进入 conditions
         if 'ConditionalPredicate' in kind_str or 'ConditionalPattern' in kind_str:
-            for attr in ['conditions', 'expr']:
-                child = getattr(signal, attr, None)
-                if child:
-                    return self._get_all_signals(child)
-            return []
+            signals = []
+            # conditions 是一个 SeparatedList，需要迭代提取
+            conditions = getattr(signal, 'conditions', None)
+            if conditions:
+                # SeparatedList 是容器，需要迭代
+                if hasattr(conditions, '__iter__') and not isinstance(conditions, str):
+                    for item in conditions:
+                        item_kind = getattr(item, 'kind', None)
+                        # 跳过 Token 和 SyntaxList
+                        if item_kind and 'Token' not in str(item_kind) and 'SyntaxList' not in str(item_kind):
+                            signals.extend(self._get_all_signals(item))
+                else:
+                    signals.extend(self._get_all_signals(conditions))
+            return [s for s in signals if s]
 
         # TimingControlExpression: a = repeat(3) @(posedge clk) b;
         # 实际 RHS 是 expr 属性
