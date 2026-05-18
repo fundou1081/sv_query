@@ -970,8 +970,10 @@ class DriverExtractor:
                         signals.extend(self._get_all_signals(expr))
             return [s for s in signals if s]
 
-        # [NEW] 二元表达式: a + b, a ^ b, a[6:0] ^ a[7:1] 等 → 递归提取两边
-        if 'Binary' in kind_str:
+        # 二元表达式: a + b, a ^ b, a == b, a < b 等 → 递归提取两边
+        # 使用 hasattr 检查而非 'Binary' in kind_str
+        # 因为 EqualityExpression, AddExpression 等不包含 "Binary" 关键词
+        if hasattr(signal, 'left') and hasattr(signal, 'right'):
             signals = []
             left = getattr(signal, 'left', None)
             if left:
@@ -1207,12 +1209,21 @@ class DriverExtractor:
                 )
             return self.adapter.clean_name(str(val).strip())
 
+        # [FIX] 处理 ParenthesizedExpression: (expr) → 递归提取内部表达式
+        if kind and 'ParenthesizedExpression' in str(kind):
+            expr = getattr(signal, 'expression', None)
+            if expr:
+                return self._get_signal(expr)
+            return None
+        
         # [兜底] 如果走到这里，说明遇到了未处理的节点类型
         # 递归处理复合表达式（与 _get_all_signals 互补）
         # 这样 _parse_assign 可以对 BinaryExpression 等调用 _get_signal
         
-        # 二元表达式: a + b, a & b, a ^ b 等 → 递归提取左边
-        if kind and 'Binary' in str(kind):
+        # 二元表达式: a + b, a & b, a == b, a < b 等 → 递归提取左边
+        # 使用 hasattr 检查而非 'Binary' 关键词
+        # 因为 EqualityExpression, AddExpression 等不包含 "Binary" 关键词
+        if hasattr(signal, 'left') and hasattr(signal, 'right'):
             left = getattr(signal, 'left', None)
             if left:
                 return self._get_signal(left)
@@ -1678,8 +1689,9 @@ class LoadExtractor:
         # [兜底] 如果走到这里，说明遇到了未处理的节点类型
         # 递归处理复合表达式（与 _get_all_signals 互补）
         
-        # 二元表达式: a + b, a & b, a ^ b 等 → 递归提取左边
-        if kind and 'Binary' in str(kind):
+        # 二元表达式: a + b, a & b, a == b, a < b 等 → 递归提取左边
+        # 使用 hasattr 检查而非 'Binary' 关键词
+        if hasattr(signal, 'left') and hasattr(signal, 'right'):
             left = getattr(signal, 'left', None)
             if left:
                 return self._get_signal(left)
