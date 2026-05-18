@@ -1042,7 +1042,71 @@ class PyslangAdapter:
         except:
             return 0
     
-    def _evaluate_expression(self, expr, param_map: dict) -> int | None:
+    def _preprocess_pkg_param(self, expr_str: str) -> int | None:
+        """预处理 package::param 表达式
+        
+        处理 pkg_params::ADDR_WIDTH 这类 package 作用域限定的参数引用
+        
+        Args:
+            expr_str: 表达式字符串，如 "pkg_params::ADDR_WIDTH"
+            
+        Returns:
+            int: 求值结果
+            None: 无法处理 (不是 package::param 格式或参数未找到)
+        """
+        import re
+        
+        # 检测 package::param 模式: pkg_name::param_name
+        match = re.match(r'^(\w+)::(\w+)$', expr_str)
+        if not match:
+            return None
+        
+        pkg_name, param_name = match.groups()
+        
+        # 查找 package 定义 - 需要从 tree 中搜索 PackageDeclaration
+        # 这是一个简化实现：假设 package 和 module 在同一个解析上下文中
+        # 对于 multi-file 场景，需要额外处理
+        
+        # 尝试从 self.trees 中查找 package 参数
+        # 由于 PyslangAdapter 主要处理 module，这里返回 None
+        # 未来可以扩展支持 multi-file 解析
+        
+        return None  # Package 参数需要 multi-file 解析支持
+    
+    def _resolve_param_chain(self, param_name: str, param_map: dict, module=None, max_depth: int = 5) -> int | None:
+        """迭代解析参数链直到得到字面量值
+        
+        处理 B = W - 1 这类参数引用参数的链式求值
+        
+        Args:
+            param_name: 参数名称
+            param_map: 当前已解析的参数 {name: value}
+            module: ModuleDeclaration AST 节点 (用于获取参数表达式)
+            max_depth: 最大迭代深度，防止循环引用
+            
+        Returns:
+            int: 求值结果
+            None: 无法求值 (超过深度或循环引用)
+        """
+        if param_name in param_map:
+            val = param_map[param_name]
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str):
+                # 尝试将字符串转换为整数
+                try:
+                    return int(val)
+                except ValueError:
+                    # 可能是参数引用，尝试进一步解析
+                    if module and val not in param_map.get('_resolving', set()):
+                        # 避免循环引用
+                        resolved = dict(param_map)
+                        resolved['_resolving'] = resolved.get('_resolving', set()) | {param_name}
+                        return self._evaluate_raw_param(val, resolved, module)
+                    return None
+        return None
+
+    def _evaluate_expression(self, expr, param_map: dict, module=None) -> int | None:
         """递归求值表达式 [方案 C 核心]
         
         Args:
@@ -1071,6 +1135,14 @@ class PyslangAdapter:
         # 参数引用: IdentifierName
         if hasattr(expr, 'identifier') and expr.identifier:
             name = expr.identifier.value if hasattr(expr.identifier, 'value') else str(expr.identifier)
+            
+            # 处理 package::param 格式 (如 "pkg_params::ADDR_WIDTH")
+            if '::' in name:
+                result = self._preprocess_pkg_param(name)
+                if result is not None:
+                    return result
+                return None  # Package 参数暂不支持 multi-file
+            
             if name in param_map:
                 val = param_map[name]
                 # 如果是字符串，尝试转换为整数
@@ -1078,7 +1150,9 @@ class PyslangAdapter:
                     try:
                         return int(val)
                     except ValueError:
-                        # 如果不是数字，返回 None (参数引用参数无法直接求值)
+                        # 如果不是数字，可能是参数引用参数，尝试链式解析
+                        if module:
+                            return self._resolve_param_chain(name, param_map, module)
                         return None
                 return val
             return None  # 参数未定义
