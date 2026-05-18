@@ -263,6 +263,43 @@ class DriverExtractor:
                     self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
                     continue
                 
+                # [FIX] 检测 BinaryExpression 包含 InvocationExpression 的情况
+                # assign result = a & my_func(b); → my_func(b) 在 binary 表达式中
+                if raw_rhs and hasattr(raw_rhs, 'kind') and 'Binary' in str(raw_rhs.kind):
+                    # 检查左右操作数是否包含 InvocationExpression
+                    def find_invocations(expr, invocations=None):
+                        if invocations is None:
+                            invocations = []
+                        if expr is None:
+                            return invocations
+                        kind = getattr(expr, 'kind', None)
+                        kind_str = str(kind) if kind else ''
+                        if kind and 'Invocation' in kind_str:
+                            invocations.append(expr)
+                            return invocations  # Don't recurse into children
+                        # If expr has __iter__, don't recurse into its attributes
+                        # because iteration already yields children
+                        if hasattr(expr, '__iter__') and not isinstance(expr, str):
+                            for c in expr:
+                                if hasattr(c, 'kind'):
+                                    find_invocations(c, invocations)
+                        else:
+                            for child_attr in ['left', 'right', 'predicate', 'condition']:
+                                child = getattr(expr, child_attr, None)
+                                if child:
+                                    find_invocations(child, invocations)
+                        return invocations
+                    
+                    invocations_found = find_invocations(raw_rhs)
+                    if invocations_found:
+                        raw_lhs = None
+                        if hasattr(assign, 'assignments') and assign.assignments:
+                            raw_lhs = assign.assignments[0].left
+                        lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
+                        for invocation in invocations_found:
+                            self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
+                        continue
+                
                 # 正常解析
                 lhs, rhs, rhs_expr = self._parse_assign(assign)
                 if lhs and rhs:
@@ -348,9 +385,26 @@ class DriverExtractor:
                         self._handle_invocation(stmt, ctx, module, module_name, result)
                         continue
 
+                    # [FIX] 检测 RHS 是否为函数调用InvocationExpression
+                    rhs_kind = str(getattr(stmt, 'kind', None)) if stmt else ''
+                    if 'Assignment' in rhs_kind:
+                        raw_rhs = getattr(stmt, 'right', None) or getattr(stmt, 'left', None)
+                        rhs_kind = str(getattr(raw_rhs, 'kind', None)) if raw_rhs else ''
+                        if 'Invocation' in rhs_kind:
+                            # 函数调用 RHS: 提取 lhs 并调用 _handle_invocation
+                            raw_lhs = getattr(stmt, 'left', None)
+                            lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
+                            self._handle_invocation(raw_rhs, ctx, module, module_name, result, lhs_name)
+                            continue
+
                     lhs, rhs, rhs_expr = self._parse_assign(stmt)
                     if lhs and rhs:
-                        dst_node_id = f"{module_name}.{lhs}"
+                        # [FIX] 检测 RHS 是否为函数调用
+                        rhs_kind = str(getattr(rhs, 'kind', None)) if rhs else ''
+                        if 'Invocation' in rhs_kind:
+                            # 函数调用: 调用 _handle_invocation 处理
+                            self._handle_invocation(rhs, ctx, module, module_name, result, lhs)
+                            continue
                         # Only upgrade to REG if there's a clock context (always_ff)
                         is_always_ff = bool(ctx.get('clock'))
                         existing = next((n for n in result.nodes if n.id == dst_node_id), None)
@@ -723,6 +777,24 @@ class DriverExtractor:
                         break
 
             if not task_def:
+                # [FIX] CU 级别函数: 在 parser.trees 中搜索 CompilationUnit 级别的函数
+                for fname, tree in self.adapter.parser.trees.items():
+                    if tree and hasattr(tree, 'root'):
+                        for member in tree.root.members:
+                            if hasattr(member, 'kind') and 'Function' in str(member.kind):
+                                proto = getattr(member, 'prototype', None)
+                                if proto:
+                                    name = getattr(proto, 'name', None)
+                                    if name:
+                                        # name 是 IdentifierNameSyntax，需要转成字符串再 strip
+                                        name_val = str(name).strip()
+                                        if name_val == call_name:
+                                            task_def = member
+                                            break
+                        if task_def:
+                            break
+
+            if not task_def:
                 return
 
             # 获取定义参数
@@ -782,6 +854,31 @@ class DriverExtractor:
                         if rhs_ast:
                             break
                     
+                    # [FIX] For function calls, also create edge from function return value to lhs_name
+                    # Function return value is the function name itself (implicit in SystemVerilog)
+                    # e.g., assign out = gray_conv(in); should have: gray_conv -> out
+                    # 注意：这段代码应该在 if rhs_ast: 块之外，这样才能处理 ReturnStatement 形式的函数
+                    if is_function and lhs_name:
+                        func_return_id = f"{module_name}.{func_name}"
+                        dst_id = f"{module_name}.{lhs_name}"
+                        if func_return_id != dst_id:  # Avoid self-loop
+                            if func_return_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=func_return_id, name=func_name, module=module_name,
+                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                                ))
+                            if dst_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=dst_id, name=lhs_name, module=module_name,
+                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                                ))
+                            result.edges.append(TraceEdge(
+                                src=func_return_id, dst=dst_id,
+                                kind=EdgeKind.DRIVER, assign_type="continuous",
+                                clock_domain=ctx.get("clock", ""),
+                                condition=ctx.get("condition", "")
+                            ))
+                    
                     if rhs_ast:
                         # 用 _get_all_signals 提取所有信号
                         all_signals = self._get_all_signals(rhs_ast)
@@ -808,30 +905,6 @@ class DriverExtractor:
                                 
                                 result.edges.append(TraceEdge(
                                     src=src_node_id, dst=dst_node_id,
-                                    kind=EdgeKind.DRIVER, assign_type="continuous",
-                                    clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", "")
-                                ))
-                        
-                        # [FIX] For function calls, also create edge from function return value to lhs_name
-                        # Function return value is the function name itself (implicit in SystemVerilog)
-                        # e.g., assign out = gray_conv(in); should have: gray_conv -> out
-                        if is_function and lhs_name:
-                            func_return_id = f"{module_name}.{func_name}"
-                            dst_id = f"{module_name}.{lhs_name}"
-                            if func_return_id != dst_id:  # Avoid self-loop
-                                if func_return_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(TraceNode(
-                                        id=func_return_id, name=func_name, module=module_name,
-                                        kind=NodeKind.SIGNAL, width=(1, 0)
-                                    ))
-                                if dst_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(TraceNode(
-                                        id=dst_id, name=lhs_name, module=module_name,
-                                        kind=NodeKind.SIGNAL, width=(1, 0)
-                                    ))
-                                result.edges.append(TraceEdge(
-                                    src=func_return_id, dst=dst_id,
                                     kind=EdgeKind.DRIVER, assign_type="continuous",
                                     clock_domain=ctx.get("clock", ""),
                                     condition=ctx.get("condition", "")
@@ -982,6 +1055,42 @@ class DriverExtractor:
         # 二元表达式: a + b, a ^ b, a == b, a < b 等 → 递归提取两边
         # 使用 hasattr 检查而非 'Binary' in kind_str
         # 因为 EqualityExpression, AddExpression 等不包含 "Binary" 关键词
+        # [FIX] ScopedName 处理: a.b.c 应该作为整体返回,而不是拆分
+        # ScopedName 有 left/right 但不是二元表达式,不应拆分
+        if hasattr(signal, 'kind') and str(signal.kind) == 'SyntaxKind.ScopedName':
+            def _get_scoped_parts(node, parts=None):
+                if parts is None:
+                    parts = []
+                kind = getattr(node, 'kind', None)
+                if not kind:
+                    return parts
+                kind_str = str(kind)
+                if 'ScopedName' in kind_str:
+                    left = getattr(node, 'left', None)
+                    if left:
+                        _get_scoped_parts(left, parts)
+                    right = getattr(node, 'right', None)
+                    if right:
+                        ri = getattr(right, 'identifier', None)
+                        if ri:
+                            rv = getattr(ri, 'value', None)
+                            if rv:
+                                parts.append(str(rv).strip())
+                elif 'IdentifierName' in kind_str:
+                    ident = getattr(node, 'identifier', None)
+                    if ident:
+                        val = getattr(ident, 'value', None)
+                        if val:
+                            parts.append(str(val).strip())
+                return parts
+            parts = _get_scoped_parts(signal)
+            if len(parts) >= 2:
+                combined = '.'.join(parts)
+                name = self.adapter.clean_name(combined)
+                return [name] if name else []
+            elif len(parts) == 1:
+                return [parts[0]] if parts[0] else []
+
         if hasattr(signal, 'left') and hasattr(signal, 'right'):
             signals = []
             left = getattr(signal, 'left', None)
@@ -1831,27 +1940,24 @@ class ConnectionExtractor:
                     self.root_module_name = tree_key
                 else:
                     # tree key 与实际模块名不匹配,查找包含实例的模块
-                    # 通过检查 get_module_instances 返回的实例来确定哪个模块包含实例
+                    # 找到没有被其他模块实例化的模块(顶层模块)
                     instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
-                    if instances:
-                        # 实例存在,说明某些模块包含实例
-                        # 找到第一个包含实例的模块
-                        for mod in self.adapter.get_modules():
-                            mod_name = self.adapter.get_module_name(mod)
-                            # 检查这个模块是否有 members (实例会在 members 中)
-                            members = getattr(mod, 'members', None)
-                            if members:
-                                for item in members:
-                                    if 'HierarchyInstantiation' in str(getattr(item, 'kind', '')):
-                                        self.root_module_name = mod_name
-                                        break
-                            if self.root_module_name == mod_name:
-                                break
-                        # 如果还没找到,使用第一个包含实例的模块
-                        if self.root_module_name not in actual_modules:
-                            self.root_module_name = actual_modules[0] if actual_modules else tree_key
-                    else:
-                        # 没有实例,使用第一个模块
+                    
+                    # 收集所有被实例化的模块名
+                    instantiated_modules = set()
+                    for inst in instances:
+                        if hasattr(inst, 'type') and hasattr(inst.type, 'value'):
+                            instantiated_modules.add(inst.type.value.strip())
+                    
+                    # 找到没有被实例化的模块(顶层模块)
+                    for mod in self.adapter.get_modules():
+                        mod_name = self.adapter.get_module_name(mod)
+                        if mod_name not in instantiated_modules:
+                            self.root_module_name = mod_name
+                            break
+                    
+                    # 如果没找到,使用第一个实际模块
+                    if self.root_module_name is None:
                         self.root_module_name = actual_modules[0] if actual_modules else tree_key
             else:
                 for mod in self.adapter.get_modules():
@@ -2062,23 +2168,26 @@ class ConnectionExtractor:
                     # 同步构建 port_to_internal 映射
                     result.port_to_internal[inst_port_id] = child_signal_id
                 elif direction_clean == 'output':
-                    # 输出端口: inst_port_id 接收来自 child_module.port 的驱动
-                    # 连接关系: child.y → parent_signal (DRIVER 边)
-                    # 同时 inst_port_id 是 child_signal_id 的别名
+                    # 输出端口: 子模块输出端口驱动实例端口
+                    # 连接关系: child.data (child output) -> top.u_driver.data (instance port) -> top.data (parent wire)
+                    # 边1: child output -> instance port (DRIVER)
+                    # 边2: instance port -> parent wire (CONNECTION)
+                    child_signal_id = f"{inst_module_name}.{port_name}"
                     parent_signal = f"{parent_path}.{signal_name}"
+                    # 边1: child output -> instance port (DRIVER)
                     result.edges.append(TraceEdge(
                         src=child_signal_id,
-                        dst=parent_signal,
-                        kind=EdgeKind.DRIVER,
-                        assign_type="connection"
-                    ))
-                    result.edges.append(TraceEdge(
-                        src=inst_port_id,
-                        dst=child_signal_id,
+                        dst=inst_port_id,
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
-                    # 同步构建 port_to_internal 映射
+                    # 边2: instance port -> parent wire (CONNECTION)
+                    result.edges.append(TraceEdge(
+                        src=inst_port_id,
+                        dst=parent_signal,
+                        kind=EdgeKind.CONNECTION,
+                        assign_type="connection"
+                    ))
                     result.port_to_internal[inst_port_id] = child_signal_id
 
         # [FIX] 后处理:修复实例端口的位宽
