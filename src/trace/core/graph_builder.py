@@ -1818,10 +1818,45 @@ class ConnectionExtractor:
         self._warnings = []
         
         # [FIX Issue 19] 动态获取根模块名而非硬编码 "top"
+        # 优先从 trees 的键中获取根模块名(trees 包含当前处理的文件),
+        # 如果没有则使用第一个模块
         if self.root_module_name is None:
-            for mod in self.adapter.get_modules():
-                self.root_module_name = self.adapter.get_module_name(mod)
-                break
+            trees = getattr(self.adapter.parser, 'trees', {})
+            if trees:
+                # trees 的键是 tree 文件的键,不一定等于实际模块名
+                # 需要验证该键是否对应实际模块,否则使用实际模块名
+                tree_key = list(trees.keys())[0]
+                actual_modules = [self.adapter.get_module_name(m) for m in self.adapter.get_modules()]
+                if tree_key in actual_modules:
+                    self.root_module_name = tree_key
+                else:
+                    # tree key 与实际模块名不匹配,查找包含实例的模块
+                    # 通过检查 get_module_instances 返回的实例来确定哪个模块包含实例
+                    instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
+                    if instances:
+                        # 实例存在,说明某些模块包含实例
+                        # 找到第一个包含实例的模块
+                        for mod in self.adapter.get_modules():
+                            mod_name = self.adapter.get_module_name(mod)
+                            # 检查这个模块是否有 members (实例会在 members 中)
+                            members = getattr(mod, 'members', None)
+                            if members:
+                                for item in members:
+                                    if 'HierarchyInstantiation' in str(getattr(item, 'kind', '')):
+                                        self.root_module_name = mod_name
+                                        break
+                            if self.root_module_name == mod_name:
+                                break
+                        # 如果还没找到,使用第一个包含实例的模块
+                        if self.root_module_name not in actual_modules:
+                            self.root_module_name = actual_modules[0] if actual_modules else tree_key
+                    else:
+                        # 没有实例,使用第一个模块
+                        self.root_module_name = actual_modules[0] if actual_modules else tree_key
+            else:
+                for mod in self.adapter.get_modules():
+                    self.root_module_name = self.adapter.get_module_name(mod)
+                    break
 
         trees = getattr(self.adapter.parser, 'trees', {})
         instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
@@ -2027,16 +2062,19 @@ class ConnectionExtractor:
                     # 同步构建 port_to_internal 映射
                     result.port_to_internal[inst_port_id] = child_signal_id
                 elif direction_clean == 'output':
-                    result.edges.append(TraceEdge(
-                        src=inst_port_id,
-                        dst=f"{parent_path}.{signal_name}",
-                        kind=EdgeKind.CONNECTION,
-                        assign_type="connection"
-                    ))
-                    child_signal_id = f"{inst_module_name}.{port_name}"
+                    # 输出端口: inst_port_id 接收来自 child_module.port 的驱动
+                    # 连接关系: child.y → parent_signal (DRIVER 边)
+                    # 同时 inst_port_id 是 child_signal_id 的别名
+                    parent_signal = f"{parent_path}.{signal_name}"
                     result.edges.append(TraceEdge(
                         src=child_signal_id,
-                        dst=inst_port_id,
+                        dst=parent_signal,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="connection"
+                    ))
+                    result.edges.append(TraceEdge(
+                        src=inst_port_id,
+                        dst=child_signal_id,
                         kind=EdgeKind.DRIVER,
                         assign_type="internal"
                     ))
