@@ -36,18 +36,20 @@
 | Issue 40 | 总边数为 0 | NV_nvdla | P2 | 设计约束 |
 | Issue 41 | 子模块未解析导致无连接 | NV_nvdla | P2 | 设计约束 |
 | Issue 42 | 大型 SoC 节点管理 | NV_nvdla | P3 | 已观察 |
+| Issue 43 | 参数链未展开 (B = W-1) | dual_clock_fifo | P2 | ✅ 已修复 |
 
 ---
 
 ## 按状态分类
 
-### ✅ 已修复 (3个)
+### ✅ 已修复 (4个)
 
 | Issue | 修复内容 | Commit |
 |-------|----------|--------|
 | Issue 19 | 动态获取根模块名替代硬编码 "top" | 94ad7fa |
 | Issue 20 | 添加可能缺少文件的警告提示 | f2b1647 |
 | Issue 25 | adapter 正确处理 clacc 反格式 | 已内置 |
+| Issue 43 | 参数链解析 (B=W-1, C=B+1 等) | ea9ef6d |
 
 ### ✅ 已确认/已记录 (5个)
 
