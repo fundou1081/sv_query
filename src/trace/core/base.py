@@ -2054,6 +2054,32 @@ class PyslangAdapter:
                     for item in case_items:
                         self._analyze_stmt_for_drivers(item, drivers, depth+1)
             return
+        
+        # ReturnStatement: return expr (function return value)
+        # For functions, the function name itself is the output variable
+        if 'Return' in kind and 'Statement' in kind:
+            return_value = getattr(stmt, 'returnValue', None)
+            if return_value:
+                # Get the function name as the output variable
+                # For FunctionDeclaration, we need to get the name from prototype
+                func_name = None
+                parent = getattr(stmt, 'parent', None)
+                if parent and hasattr(parent, 'prototype'):
+                    proto = getattr(parent, 'prototype', None)
+                    if proto:
+                        name = getattr(proto, 'name', None)
+                        if name:
+                            # name is IdentifierNameSyntax, use identifier.value
+                            identifier = getattr(name, 'identifier', None)
+                            if identifier:
+                                func_name = getattr(identifier, 'value', None)
+                if func_name:
+                    right_signals = self._extract_signals_from_expr(return_value)
+                    if func_name not in drivers:
+                        drivers[func_name] = right_signals
+                    else:
+                        drivers[func_name].extend(right_signals)
+            return
     
     def analyze_task_internal_drivers(self, task_decl) -> Dict[str, List[str]]:
         """
