@@ -342,7 +342,13 @@ class DriverExtractor:
                             kind=NodeKind.SIGNAL, width=(1, 0)
                         ))
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
-                    rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+                    # [FIX] EqualsValueClause (class 实例化: my_cls obj = new()) 不提取信号
+                    rhs_kind = str(getattr(rhs_expr, 'kind', '')) if rhs_expr else ''
+                    if 'EqualsValueClause' in rhs_kind:
+                        # DataDeclaration: = new(), 不提取信号
+                        rhs_signals = []
+                    else:
+                        rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
                     if not rhs_signals:
                         rhs_signals = [rhs]
                     for rhs_name in rhs_signals:
@@ -1162,6 +1168,10 @@ class DriverExtractor:
         # 注意: 这些是 Token 类型,不是 SyntaxKind,所以用 isinstance 检查
         if isinstance(signal, pyslang.Token) and signal.kind == pyslang.TokenKind.IntegerLiteral:
             # 返回完整 token 字符串 (如 "8b0" 或 "4'b1000")
+            return str(signal).strip()
+
+        # [FIX] TokenKind.Identifier: class 实例化 decl.name (my_class obj = new();)
+        if isinstance(signal, pyslang.Token) and signal.kind == pyslang.TokenKind.Identifier:
             return str(signal).strip()
 
         # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
