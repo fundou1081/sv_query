@@ -1,7 +1,7 @@
 # sv_query Issue 汇总
 
-**文档版本**: v1.0
-**更新时间**: 2026-05-17
+**文档版本**: v1.1
+**更新时间**: 2026-05-18
 **测试轮次**: Round 4 (OpenChip QA)
 
 ---
@@ -14,22 +14,22 @@
 | Issue 18 | LOAD 边统计为 0 | bs_mult | P2 | 已确认 |
 | Issue 19 | 实例节点前缀 "top" | bs_mult | P1 | ✅ 已修复 |
 | Issue 20 | 边数只有 3 | bs_mult | P1 | ✅ 已修复 |
-| Issue 21 | 参数表达式未展开 | dual_clock_fifo | P2 | 待讨论 |
-| Issue 22 | 函数节点被标记为 SIGNAL | dual_clock_fifo | P2 | 待讨论 |
+| Issue 21 | 参数表达式未展开 | dual_clock_fifo | P2 | ✅ 已修复 |
+| Issue 22 | 函数节点被标记为 SIGNAL | dual_clock_fifo | P2 | ✅ 已修复 |
 | Issue 23 | mem 存储访问缺少端口方向 | dual_clock_fifo | P3 | 待讨论 |
 | Issue 24 | pe 模块无连接边 | pe | P2 | 设计约束 |
 | Issue 25 | clacc 反格式实例名 | pe | P1 | ✅ 已解决 |
 | Issue 26 | SPAD 连接信息不完整 | pe | P3 | 设计约束 |
-| Issue 27 | 参数在节点名中未展开 | mult_pipe2 | P2 | 待讨论 |
-| Issue 28 | 注释混入节点名 | mult_pipe2 | P2 | 待讨论 |
+| Issue 27 | 参数在节点名中未展开 | mult_pipe2 | P2 | ✅ 已修复 |
+| Issue 28 | 注释混入节点名 | mult_pipe2 | P2 | ✅ 已修复 |
 | Issue 29 | CVA6Cfg 参数未展开 | cva6 | P2 | 待讨论 |
 | Issue 30 | 无 CONNECTION 边 | cva6 | P2 | 设计约束 |
-| Issue 31 | 位宽 (0,0) 问题 | cva6 | P2 | 待讨论 |
+| Issue 31 | 位宽 (0,0) 问题 | cva6 | P2 | 设计约束 |
 | Issue 32 | 实例端口无连接边 | serv_top | P2 | 待调查 |
-| Issue 33 | 字面量作为节点名 | serv_top | P3 | 待讨论 |
+| Issue 33 | 字面量作为节点名 | serv_top | P3 | ✅ 已修复 |
 | Issue 34 | 数组索引变量出现在节点名 | gpu | P3 | 待讨论 |
 | Issue 35 | 嵌套层次实例 | gpu | P3 | 已观察 |
-| Issue 36 | 参数表达式未计算 | eth_mac_10g | P2 | 待讨论 |
+| Issue 36 | 参数表达式未计算 | eth_mac_10g | P2 | ✅ 已修复 |
 | Issue 37 | 94 个端口复杂接口 | eth_mac_10g | P4 | 已观察 |
 | Issue 38 | 实例连接数为 0 | Vortex | P3 | 待调查 |
 | Issue 39 | 使用 define 宏而非参数 | Vortex | P2 | 已观察 |
