@@ -22,7 +22,7 @@
 | Issue 26 | SPAD 连接信息不完整 | pe | P3 | 设计约束 |
 | Issue 27 | 参数在节点名中未展开 | mult_pipe2 | P2 | ✅ 已修复 |
 | Issue 28 | 注释混入节点名 | mult_pipe2 | P2 | ✅ 已修复 |
-| Issue 29 | CVA6Cfg 参数未展开 | cva6 | P2 | 待讨论 |
+| Issue 29 | CVA6Cfg 参数未展开 | cva6 | P2 | 设计约束 |
 | Issue 30 | 无 CONNECTION 边 | cva6 | P2 | 设计约束 |
 | Issue 31 | 位宽 (0,0) 问题 | cva6 | P2 | 设计约束 |
 | Issue 32 | 实例端口无连接边 | serv_top | P2 | 待调查 |
