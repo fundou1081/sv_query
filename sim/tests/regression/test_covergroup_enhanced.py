@@ -21,12 +21,12 @@ class TestCovergroupEnhanced(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def _get_adapter(self, tree):
         class FP:
             def __init__(self, t): self.trees = t
-        return PyslangAdapter(FP({'test': tree}))
+        return PyslangAdapter(FP({'test.sv': source}))
     
     def test_illegal_bins(self):
         """[Golden] illegal_bins

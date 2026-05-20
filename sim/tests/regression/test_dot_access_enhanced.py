@@ -21,7 +21,7 @@ class TestDotAccessEnhanced(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_multiple_signals(self):
         """[Golden] interface 多信号访问

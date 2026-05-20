@@ -20,8 +20,7 @@ class TestFunctionExpression(unittest.TestCase):
     """函数内部表达式解析测试"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_function_call_drivers(self):
         """[金标准] 函数调用的驱动应包含函数参数

@@ -18,7 +18,7 @@ class TestGenerateIf(unittest.TestCase):
     
     def _make_tracer(self, source, module_name='top'):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={module_name: tree})
+        tracer = UnifiedTracer(sources={module_name: tree})
         tracer.build_graph()
         return tracer
     

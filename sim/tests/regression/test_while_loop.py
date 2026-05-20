@@ -13,7 +13,7 @@ class TestWhileLoop(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_while_basic(self):
         """[Golden] While 循环内非阻塞赋值

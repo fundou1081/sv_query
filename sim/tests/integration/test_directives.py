@@ -16,7 +16,7 @@ class TestDirectives(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_define(self):
         """[Dir] `define"""

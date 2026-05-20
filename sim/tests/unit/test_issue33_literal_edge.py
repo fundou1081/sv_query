@@ -77,7 +77,7 @@ endmodule
         - 边 src 应该是 "1'b0"（字面量直接作为 src）
         """
         tree = pyslang.SyntaxTree.fromText(serv_top_source)
-        tracer = UnifiedTracer(trees={'serv_top': tree}, log_level='ERROR')
+        tracer = UnifiedTracer(sources={'serv_top.sv': serv_top_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -117,7 +117,7 @@ endmodule
         - 节点名不应该是 "0" 或 "1'b0"
         """
         tree = pyslang.SyntaxTree.fromText(serv_top_source)
-        tracer = UnifiedTracer(trees={'serv_top': tree}, log_level='ERROR')
+        tracer = UnifiedTracer(sources={'serv_top.sv': serv_top_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
 

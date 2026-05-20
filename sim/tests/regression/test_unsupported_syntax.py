@@ -21,7 +21,7 @@ class TestModportDirection(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_modport_master_direction(self):
         """[Golden] modport master 方向为 output
@@ -59,7 +59,7 @@ class TestInterfaceSignal(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_dot_access(self):
         """[Golden] ifc.data 点号访问
@@ -97,7 +97,7 @@ class TestClockingBlock(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_clock_block(self):
         """[Golden] clocking block 提取
@@ -128,7 +128,7 @@ class TestCovergroup(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_covergroup(self):
         """[Golden] covergroup 提取
@@ -159,7 +159,7 @@ class TestPropertySequence(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_property(self):
         """[Golden] property / sequence 提取
@@ -193,7 +193,7 @@ class TestRandsequence(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_randsequence(self):
         """[Golden] randsequence 提取
@@ -220,7 +220,7 @@ class TestPackageImport(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_package(self):
         """[Golden] import pkg::symbol
@@ -251,7 +251,7 @@ class TestClassExtends(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_class(self):
         """[Golden] class extends
@@ -287,7 +287,7 @@ class TestVirtualInterface(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_virtual_if(self):
         """[Golden] virtual interface
@@ -324,7 +324,7 @@ class TestGenerateIf(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_generate(self):
         """[Golden] generate if/else

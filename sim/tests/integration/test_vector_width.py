@@ -18,7 +18,7 @@ class TestVectorWidth(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_vector_input(self):
         """[Golden] 向量输入"""

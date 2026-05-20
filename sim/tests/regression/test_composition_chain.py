@@ -33,7 +33,7 @@ class TestCompositionChainBasic(unittest.TestCase):
     
     def _build_graph(self, source: str):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -117,7 +117,7 @@ class TestCompositionChainNegative(unittest.TestCase):
     
     def _build_graph(self, source: str):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -148,7 +148,7 @@ class TestCompositionChainMultiLevel(unittest.TestCase):
     
     def _build_graph(self, source: str):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -189,7 +189,7 @@ class TestCompositionChainComplex(unittest.TestCase):
     
     def _build_graph(self, source: str):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -433,7 +433,7 @@ class TestCompositionChainEdgeCases(unittest.TestCase):
     
     def _build_graph(self, source: str):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     

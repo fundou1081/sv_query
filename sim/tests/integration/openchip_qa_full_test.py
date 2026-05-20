@@ -73,7 +73,7 @@ def analyze_file(filepath):
         # 创建 FakeParser 和 PyslangAdapter
         class FakeParser:
             def __init__(self, tree):
-                self.trees = {'test': tree}
+                self.trees = {'\1': source}
         
         parser = FakeParser(tree)
         adapter = PyslangAdapter(parser)

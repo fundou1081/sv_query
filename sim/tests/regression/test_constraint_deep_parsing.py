@@ -79,7 +79,7 @@ class TestConstraintIfElseDeepParsing(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -174,7 +174,7 @@ class TestConstraintImplicationDeepParsing(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -205,7 +205,7 @@ class TestConstraintInsideDistribution(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -256,7 +256,7 @@ class TestConstraintUniquenessSolveBefore(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -319,7 +319,7 @@ class TestClassExtendsHierarchy(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test': tree}))
+        adapter = PyslangAdapter(FP({'test.sv': source}))
         return adapter.get_classes()
 
     def test_extends_hierarchy(self):
@@ -372,7 +372,7 @@ class TestConstraintForeach(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -402,7 +402,7 @@ class TestConstraintNegativeCases(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -432,7 +432,7 @@ class TestConstraintOperators(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 

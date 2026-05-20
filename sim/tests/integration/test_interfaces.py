@@ -16,7 +16,7 @@ class TestInterfaces(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_simple(self):
         """[Iface] 基础接口"""
@@ -25,7 +25,7 @@ interface simple_if;
     logic data;
 endinterface
 
-module top(input simple_if ifc);
+module top(simple_if ifc);
     assign ifc.data = 1'b0;
 endmodule'''
         

@@ -21,7 +21,7 @@ class TestPortInout(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_tri_state_buffer(self):
         """[Golden] 三态缓冲

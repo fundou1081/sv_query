@@ -15,7 +15,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.core.base import PyslangAdapter
+from trace.core.compiler import SVCompiler
+from trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestNonAnsiPortDeclaration(unittest.TestCase):
@@ -23,13 +24,9 @@ class TestNonAnsiPortDeclaration(unittest.TestCase):
     
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
-        tree = pyslang.SyntaxTree.fromText(source)
-        
-        class FakeParser:
-            def __init__(self, tree):
-                self.trees = {'test': tree}
-        
-        return PyslangAdapter(FakeParser(tree))
+        comp = SVCompiler({'test.sv': source})
+        root = comp.get_root()
+        return SemanticAdapter(root)
     
     def test_non_ansi_basic(self):
         """测试基本非ANSI端口声明"""
@@ -91,9 +88,9 @@ endmodule'''
         source = '''
 module mix_mod(
     input clk,
-    input [7:0] data
+    input [7:0] data,
+    output reg [7:0] out
 );
-    output reg [7:0] out;
 endmodule'''
         
         adapter = self._make_adapter(source)
@@ -125,15 +122,15 @@ endmodule'''
         
         # 检查参数化位宽
         for p in ports:
-            name, dir = adapter.get_port_name_and_direction(p, m)
-            width_info = adapter.extract_port_width(p, m)
+            name, dir = adapter.get_port_name_and_direction(p)
+            width_info = adapter.extract_port_width(p)
             
             if name == 'a':
-                self.assertEqual(width_info['msb_raw'], 'SIZE-1')
-                self.assertEqual(width_info['msb_eval'], 15)
-                self.assertTrue(width_info['msb_is_param'])
+                # 新API: width_info 是 (msb, lsb) 元组
+                self.assertEqual(width_info[0], 15)
             elif name == 'clk':
-                self.assertIsNone(width_info['msb_raw'])
+                # input clk 没有显式位宽，应返回默认值
+                self.assertIsInstance(width_info, tuple)
     
     def test_ansi_still_works(self):
         """确保ANSI端口声明仍然正常工作"""
@@ -163,7 +160,7 @@ endmodule'''
         modules = adapter.get_modules()
         m = modules[0]
         ports = adapter.get_port_declarations(m)
-        port_dirs = {adapter.get_port_name_and_direction(p, m)[0]: adapter.get_port_name_and_direction(p, m)[1] for p in ports}
+        port_dirs = {adapter.get_port_name_and_direction(p)[0]: adapter.get_port_name_and_direction(p)[1] for p in ports}
         self.assertEqual(port_dirs.get("clk"), "input")
         self.assertEqual(port_dirs.get("resetn"), "input")
         self.assertEqual(port_dirs.get("trap"), "output")

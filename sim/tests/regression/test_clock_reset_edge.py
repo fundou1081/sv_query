@@ -21,7 +21,7 @@ class TestClockResetEdge(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_nested_always_ff(self):
         """[Golden] 嵌套 always_ff
@@ -135,7 +135,7 @@ class TestClockEdgeCreation(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_clock_edge_creation(self):
         """[Golden] CLOCK 边创建

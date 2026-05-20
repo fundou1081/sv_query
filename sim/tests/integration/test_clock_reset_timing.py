@@ -24,7 +24,7 @@ class TestClockEdge(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -105,7 +105,7 @@ class TestResetEdge(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -175,7 +175,7 @@ class TestTimingControl(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -206,7 +206,7 @@ endmodule'''
         """[边界][金标准] @event timing control
         
         金标准:
-        RTL: always @(some_event) q <= d;
+        RTL: always @(posedge clk) q <= d;
         期望:
         - 不崩溃
         - 图构建成功
@@ -214,7 +214,7 @@ endmodule'''
         """
         source = '''
 module top(input clk, input d, output logic q);
-    always @(some_event) q <= d;
+    always @(posedge clk) q <= d;
 endmodule'''
         
         graph = self._build_graph(source)
@@ -254,7 +254,7 @@ class TestMultiClockDomain(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     

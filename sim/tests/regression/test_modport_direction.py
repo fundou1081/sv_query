@@ -30,7 +30,7 @@ module top(bus_if.master m, input [7:0] din);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'top': tree})
+        tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
         
@@ -57,7 +57,7 @@ module top(bus_if.slave s, output [7:0] dout);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'top': tree})
+        tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
         
@@ -83,7 +83,7 @@ module top(bus_if.master m, input [7:0] din, input [7:0] addr_in);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'top': tree})
+        tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
         
@@ -113,7 +113,7 @@ module top(bus_if.master m, bus_if.slave s, input [7:0] din);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'top': tree})
+        tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
         

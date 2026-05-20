@@ -17,7 +17,7 @@ class TestLatch(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [金标准] latch 追踪
@@ -32,7 +32,7 @@ class TestLatch(unittest.TestCase):
 module top(
     input wire en,
     input wire d,
-    output wire q
+    output reg q
 );
     always_latch if (en) q = d;
 endmodule'''
@@ -49,7 +49,7 @@ module top(
     input wire en,
     input wire d,
     input wire a,
-    output wire q
+    output reg q
 );
     always_latch if (en) q = d;
     else       q = a;
@@ -70,7 +70,7 @@ endmodule'''
         source = '''
 module top(
     input wire d,
-    output wire q
+    output reg q
 );
     always_latch q = d;
 endmodule'''

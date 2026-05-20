@@ -28,7 +28,7 @@ module top(input clk, output [3:0] out);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('out', 'top')
         
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
@@ -46,7 +46,7 @@ module top(input clk, input [7:0] data, output logic [7:0] q);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('q', 'top')
         
         # for 循环可以提取到第一个驱动
@@ -64,7 +64,7 @@ module top(input req);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         # 能解析即可
         tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
@@ -79,7 +79,7 @@ module top(input clk, input d, output logic q);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('q', 'top')
         
         self.assertIn(result.confidence, ['high', 'medium'])
@@ -99,7 +99,7 @@ module top(input clk);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         # 能解析不崩溃
         tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
@@ -118,7 +118,7 @@ module top();
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         # 能解析不崩溃
         tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
@@ -133,7 +133,7 @@ module top();
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         self.assertIsNotNone(tracer.get_graph())
 

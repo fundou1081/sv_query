@@ -28,7 +28,7 @@ module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -48,7 +48,7 @@ module top(input [7:0] data, input [2:0] idx, output reg y);
     always_comb y = data[idx];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -68,7 +68,7 @@ module top(input [7:0] data, output reg [3:0] y);
     always_comb y = data[7:4];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -91,7 +91,7 @@ module top(input [7:0] data, input sel, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         # data[7] 和 data[0] 剥离位选择后都变成 data，去重后为1条边
@@ -118,7 +118,7 @@ module top(input [1:0] sel, input [7:0] a, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         # a[0], a[1], a[2] 剥离位选择后都变成 a，去重后为1条边
@@ -139,7 +139,7 @@ module top(input clk, input [7:0] data, output reg q);
     always_ff @(posedge clk) q <= data[3];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('q', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -163,7 +163,7 @@ module top(input a, b, sel, output y);
     assign y = sel ? a : b;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 2,
@@ -183,7 +183,7 @@ module top(input a, b, sel, output reg y);
     always_comb y = sel ? a : b;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 2,
@@ -203,7 +203,7 @@ module top(input a, b, c, sel1, sel2, output y);
     assign y = sel1 ? a : (sel2 ? b : c);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 3,
@@ -227,7 +227,7 @@ module top(input a, b, c, output [2:0] y);
     assign {y[2], y[1], y[0]} = {a, b, c};
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 3,

@@ -21,7 +21,7 @@ class TestInterfaceInstance(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_instantiation(self):
         """[Golden] interface 实例化

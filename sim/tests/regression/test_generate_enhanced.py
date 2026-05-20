@@ -21,7 +21,7 @@ class TestGenerateEnhanced(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_generate_if_else_signal_tracking(self):
         """[Golden] generate if/else 块内信号追踪

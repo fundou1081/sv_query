@@ -17,7 +17,7 @@ class TestComboChain(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [金标准] always_comb 基本功能
@@ -31,7 +31,7 @@ class TestComboChain(unittest.TestCase):
 module top(
     input wire a,
     input wire b,
-    output wire q
+    output reg q
 );
     always_comb begin
         q = a & b;
@@ -50,7 +50,7 @@ endmodule'''
         source = '''
 module top(
     input wire din,
-    output wire q
+    output reg q
 );
     always_comb q = din;
 endmodule'''
@@ -70,7 +70,7 @@ endmodule'''
         source = '''
 module top(
     input wire din,
-    output wire q
+    output reg q
 );
     always_comb begin
         // empty
@@ -89,8 +89,8 @@ endmodule'''
 module top(
     input wire a,
     input wire b,
-    output wire y,
-    output wire z
+    output reg y,
+    output reg z
 );
     always_comb begin
         y = a & b;
@@ -115,7 +115,7 @@ endmodule'''
         source = '''
 module top(
     input wire din,
-    output wire q
+    output reg q
 );
     always_comb q = din;
 endmodule'''
@@ -131,7 +131,7 @@ endmodule'''
         source = '''
 module top(
     input wire din,
-    output wire q
+    output reg q
 );
     always_comb q = din;
 endmodule'''

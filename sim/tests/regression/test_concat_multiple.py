@@ -25,7 +25,7 @@ module top(input a, input b, output [1:0] y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         # 已知限制: 只返回第一个，但至少能追踪到1个
@@ -40,7 +40,7 @@ module top(input a, input b, input c, input d, output [3:0] y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -57,7 +57,7 @@ module top(input a, output [3:0] y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertEqual(len(result.drivers), 1)

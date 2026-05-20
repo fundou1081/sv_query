@@ -20,7 +20,7 @@ class TestMultiClockDomain(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_dual_clock_registers(self):
         """[Golden] 双时钟寄存器
@@ -136,7 +136,7 @@ class TestAsyncCrossDomain(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_async_signals(self):
         """[Golden] 异步信号 (无时钟)

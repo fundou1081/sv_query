@@ -29,7 +29,7 @@ class TestBasicSyntaxGolden(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     # ========================================================================
     # 1. assign 连续赋值
@@ -100,7 +100,7 @@ endmodule'''
         - y 节点存在
         - y <- a 驱动边存在
         """
-        source = '''module top(input clk, a, output y);
+        source = '''module top(input clk, a, output reg y);
     always_ff @(posedge clk)
         y <= a;
 endmodule'''
@@ -128,7 +128,7 @@ endmodule'''
         - y 节点存在
         - y <- a 驱动边存在
         """
-        source = '''module top(input a, output y);
+        source = '''module top(input a, output reg y);
     always_comb
         y = a;
 endmodule'''
@@ -155,7 +155,7 @@ endmodule'''
         预期:
         - y 节点存在
         """
-        source = '''module top(input a, en, output y);
+        source = '''module top(input a, en, output reg y);
     always_latch
         if (en) y = a;
 endmodule'''
@@ -180,7 +180,7 @@ endmodule'''
         - y 节点存在
         - y <- a 或 y <- b 边存在 (条件分支)
         """
-        source = '''module top(input a, b, sel, output y);
+        source = '''module top(input a, b, sel, output reg y);
     always_comb begin
         if (sel)
             y = a;

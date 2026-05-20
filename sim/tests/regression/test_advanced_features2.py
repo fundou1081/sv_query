@@ -20,7 +20,7 @@ class TestTaskCall(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_task_drives_signal(self):
         """[Golden] task 内赋值驱动信号
@@ -64,7 +64,7 @@ class TestInterfaceDecl(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_port(self):
         """[Golden] interface 作为端口
@@ -105,7 +105,7 @@ class TestModport(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_modport_direction(self):
         """[Golden] modport 方向识别
@@ -147,7 +147,7 @@ class TestWhileLoop(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_while_loop_drives(self):
         """[Golden] while 循环内赋值驱动
@@ -192,7 +192,7 @@ class TestClassDecl(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_class_with_members(self):
         """[Golden] class 成员信号

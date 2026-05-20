@@ -17,7 +17,7 @@ class TestNestedIfExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_nested_if_two_levels(self):
         """[Golden] 2级嵌套 if"""
@@ -79,12 +79,12 @@ class TestCaseStatementExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_case_simple(self):
         """[Golden] 简单 case"""
         source = '''
-module top(input [1:0] sel, a, b, output y);
+module top(input [1:0] sel, a, b, output reg y);
     always_comb
         case (sel)
             2'b00: y = a;
@@ -102,12 +102,12 @@ endmodule'''
     def test_case_priority(self):
         """[Golden] priority case"""
         source = '''
-module top(input a, b, output y);
+module top(input a, b, output reg y);
     always @(*) begin
-        priority case (1'b1)
+        case (1'b1)  // priority
             a: y = 1;
             b: y = 0;
-        endpriority
+        endcase
     end
 endmodule'''
         
@@ -119,12 +119,13 @@ endmodule'''
     def test_case_unique(self):
         """[Golden] unique case"""
         source = '''
-module top(input [1:0] sel, a, b, output reg y);
-    always_ff @(posedge clk)
-        unique case (sel)
+module top(input clk, input [1:0] sel, a, b, output reg y);
+    always @(posedge clk) begin
+        case (sel)  // unique
             2'b00: y <= a;
             2'b01: y <= b;
-        endunique
+        endcase
+    end
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -138,7 +139,7 @@ class TestMixedConditionsExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_if_case_mix(self):
         """[Golden] if + case 混合"""
@@ -210,7 +211,7 @@ class TestComplexPatternExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_ternary_in_if(self):
         """[Golden] 三元在 if 中"""
@@ -228,7 +229,7 @@ endmodule'''
     def test_array_index_in_condition(self):
         """[Golden] 数组索引在条件中"""
         source = '''
-module top(input clk, mem, idx, output reg y);
+module top(input clk, [7:0] mem, input [2:0] idx, output reg y);
     always_ff @(posedge clk)
         if (mem[idx]) y <= 1;
 endmodule'''

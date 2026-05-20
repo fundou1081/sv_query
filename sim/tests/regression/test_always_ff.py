@@ -17,7 +17,7 @@ class TestAlwaysFFExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_simple_ff_chain(self):
         """[Limit] 简单 always_ff 追踪"""

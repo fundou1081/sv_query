@@ -20,7 +20,7 @@ class TestInterfaceBasic(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_port(self):
         """[Golden] interface 作为端口
@@ -68,7 +68,7 @@ class TestInterfaceArray(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_array(self):
         """[Golden] interface 数组端口
@@ -107,7 +107,7 @@ class TestInterfaceMultiple(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_multiple_signals(self):
         """[Golden] interface 多个信号
@@ -154,7 +154,7 @@ class TestInterfaceConnection(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_interface_module_connection(self):
         """[Golden] module 间的 interface 连接
@@ -204,7 +204,7 @@ class TestModportDirection(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_modport_master_output(self):
         """[Golden] modport master 方向为 output

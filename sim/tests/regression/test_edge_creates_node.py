@@ -18,7 +18,7 @@ class TestEdgeCreatesNode(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_assign_creates_node(self):
         """[BugFix] assign 边必须创建节点"""

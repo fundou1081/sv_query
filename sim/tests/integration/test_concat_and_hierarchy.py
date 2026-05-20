@@ -17,7 +17,7 @@ class TestConcatExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [金标准] 拼接 Driver 提取
@@ -75,7 +75,7 @@ class TestMultiLevelExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_two_level_chain(self):
         """[Golden] 2级级联"""
