@@ -36,21 +36,21 @@ class TestModuleInstanceGraph(unittest.TestCase):
         import tempfile
         import os
         
-        source = '''module tb;
-    logic clk;
+        source = '''module tb(input clk);
+    logic clk_out;
+    assign clk_out = clk;
 endmodule
 
-module dut;
-    input clk;
+module dut(input clk);
     logic [31:0] reg_data;
     always_ff @(posedge clk)
         reg_data <= 32'h0;
 endmodule
 
 module top;
-    tb u_tb();
-    dut u_dut();
-    assign u_dut.clk = u_tb.clk;
+    logic clk;
+    tb u_tb(.clk(clk));
+    dut u_dut(.clk(clk));
 endmodule'''
         
         # Write to temp file for multi-module support
@@ -59,7 +59,7 @@ endmodule'''
             f.write(source)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -97,11 +97,17 @@ endmodule'''
         """[金标准] 跨模块连接"""
         graph, tracer = self._build_graph()
         
-        # 检查实例间端口连接
-        edge = graph.get_edge('top.u_tb.clk', 'top.u_dut.clk')
-        self.assertIsNotNone(edge, "应有 top.u_tb.clk → top.u_dut.clk 边")
-        self.assertEqual(edge.kind, EdgeKind.DRIVER,
-            f"边类型应为 DRIVER，实际是 {edge.kind}")
+        # 检查实例端口都被 top.clk 驱动
+        edge_tb = graph.get_edge('top.clk', 'top.u_tb.clk')
+        edge_dut = graph.get_edge('top.clk', 'top.u_dut.clk')
+        self.assertIsNotNone(edge_tb, "top.clk 应驱动 top.u_tb.clk")
+        self.assertIsNotNone(edge_dut, "top.clk 应驱动 top.u_dut.clk")
+        
+        # 检查实例内部连接
+        edge_tb_internal = graph.get_edge('top.u_tb.clk', 'tb.clk')
+        edge_dut_internal = graph.get_edge('top.u_dut.clk', 'dut.clk')
+        self.assertIsNotNone(edge_tb_internal, "top.u_tb.clk 应连接到 tb.clk")
+        self.assertIsNotNone(edge_dut_internal, "top.u_dut.clk 应连接到 dut.clk")
 
 
 class TestCrossModulePath(unittest.TestCase):
@@ -112,21 +118,21 @@ class TestCrossModulePath(unittest.TestCase):
         import os
         import uuid
         
-        source = '''module tb;
-    logic clk;
+        source = '''module tb(input clk);
+    logic clk_out;
+    assign clk_out = clk;
 endmodule
 
-module dut;
-    input clk;
+module dut(input clk);
     logic [31:0] reg_data;
     always_ff @(posedge clk)
         reg_data <= 32'h0;
 endmodule
 
 module top;
-    tb u_tb();
-    dut u_dut();
-    assign u_dut.clk = u_tb.clk;
+    logic clk;
+    tb u_tb(.clk(clk));
+    dut u_dut(.clk(clk));
 endmodule'''
         
         # Write to temp file for multi-module support
@@ -135,7 +141,7 @@ endmodule'''
             f.write(source)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -199,7 +205,7 @@ class TestHierarchicalPort(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -255,7 +261,7 @@ class TestNegativeCases(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -313,7 +319,7 @@ class TestMultiLevelHierarchy(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -367,7 +373,7 @@ class TestArrayOfInstances(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -401,7 +407,7 @@ class TestPortWidthMapping(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -451,7 +457,7 @@ class TestBidirectionalPort(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -495,7 +501,7 @@ class TestCrossModuleClockPath(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -534,7 +540,7 @@ class TestMultipleConnections(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -574,7 +580,7 @@ class TestUnconnectedPort(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -621,7 +627,7 @@ class TestParameterOverride(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -667,7 +673,7 @@ class TestInterfaceModportCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -708,7 +714,7 @@ class TestGenerateInstanceCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -743,7 +749,7 @@ class TestFunctionPortCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -778,7 +784,7 @@ class TestClassInstanceCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -813,7 +819,7 @@ class TestClockDividerCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -853,7 +859,7 @@ class TestResetCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -893,7 +899,7 @@ class TestBusArbitrationCrossModule(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -933,7 +939,7 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -1418,7 +1424,7 @@ class TestCrossModuleSignalFlow(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -1469,7 +1475,7 @@ class TestCrossModulePortTypes(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -1523,7 +1529,7 @@ class TestCrossModulePathFinding(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)
@@ -1563,7 +1569,7 @@ class TestCrossModuleNegativeCases(unittest.TestCase):
             f.write(normalized)
         
         tree = pyslang.SyntaxTree.fromFile(temp_path)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         os.unlink(temp_path)

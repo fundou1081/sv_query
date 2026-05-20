@@ -77,7 +77,7 @@ endmodule
         """
         # 构建图
         tree = pyslang.SyntaxTree.fromText(mult_pipe2_source)
-        tracer = UnifiedTracer(trees={'mult_pipe2': tree}, log_level='ERROR')
+        tracer = UnifiedTracer(sources={'mult_pipe2.sv': mult_pipe2_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -111,7 +111,7 @@ endmodule
         - 不存在名为 "// comment..." 的节点
         """
         tree = pyslang.SyntaxTree.fromText(mult_pipe2_source)
-        tracer = UnifiedTracer(trees={'mult_pipe2': tree}, log_level='ERROR')
+        tracer = UnifiedTracer(sources={'mult_pipe2.sv': mult_pipe2_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
 

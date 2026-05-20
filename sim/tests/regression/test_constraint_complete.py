@@ -49,7 +49,7 @@ class TestConstraintClassPropertyNodes(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -156,7 +156,7 @@ class TestConstraintBlockNodes(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -219,7 +219,7 @@ class TestConstraintExprNodes(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -289,7 +289,7 @@ class TestConstraintIfNodes(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -363,7 +363,7 @@ class TestConstraintEdges(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 
@@ -961,7 +961,7 @@ class TestConstraintNegativeCases(unittest.TestCase):
 
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
 

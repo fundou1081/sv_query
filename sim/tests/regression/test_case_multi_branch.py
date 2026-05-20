@@ -38,7 +38,7 @@ module top(input [1:0] sel, input a, input b, input c, output y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         # 期望: 至少能提取到驱动
@@ -60,7 +60,7 @@ module top(input sel, input a, input b, output y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         # 期望: 提取到 a 和 b

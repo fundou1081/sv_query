@@ -31,7 +31,7 @@ module top(input [1:0] sel, input a, b, output y);
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         
         # 已知限制: 内部提取不完整，但基础功能可用

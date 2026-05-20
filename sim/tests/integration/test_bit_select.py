@@ -17,7 +17,7 @@ class TestBitSelect(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [金标准] 位选择追踪

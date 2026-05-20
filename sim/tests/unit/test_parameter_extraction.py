@@ -15,7 +15,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.core.base import PyslangAdapter
+from trace.core.compiler import SVCompiler
+from trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestParameterExtraction(unittest.TestCase):
@@ -23,13 +24,9 @@ class TestParameterExtraction(unittest.TestCase):
     
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
-        tree = pyslang.SyntaxTree.fromText(source)
-        
-        class FakeParser:
-            def __init__(self, tree):
-                self.trees = {'test': tree}
-        
-        return PyslangAdapter(FakeParser(tree))
+        comp = SVCompiler({'test.sv': source})
+        root = comp.get_root()
+        return SemanticAdapter(root)
     
     def _verify_rtl(self, source, name="RTL"):
         """验证 RTL 语法正确"""

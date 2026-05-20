@@ -16,7 +16,7 @@ class TestGraphDiff(unittest.TestCase):
 
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
 
     #==========================================================================
     # [金标准] Phase 1: Element-wise Diff
@@ -41,8 +41,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(trees={'test.sv': tree_old})
-        tracer_new = UnifiedTracer(trees={'test.sv': tree_new})
+        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -72,8 +72,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(trees={'test.sv': tree_old})
-        tracer_new = UnifiedTracer(trees={'test.sv': tree_new})
+        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -100,8 +100,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(trees={'test.sv': tree_old})
-        tracer_new = UnifiedTracer(trees={'test.sv': tree_new})
+        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -120,8 +120,8 @@ endmodule'''
         from trace.core.graph.diff import diff_graph
 
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer1 = UnifiedTracer(trees={'test.sv': tree})
-        tracer2 = UnifiedTracer(trees={'test.sv': tree})
+        tracer1 = UnifiedTracer(sources={'test.sv.sv': source})
+        tracer2 = UnifiedTracer(sources={'test.sv.sv': source})
         tracer1.build_graph()
         tracer2.build_graph()
 
@@ -210,8 +210,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(trees={'test.sv': tree_old})
-        tracer_new = UnifiedTracer(trees={'test.sv': tree_new})
+        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
         _ = tracer_old.trace_fanout('q', 'top')
         _ = tracer_new.trace_fanout('q', 'top')
         G_old = tracer_old.get_graph()

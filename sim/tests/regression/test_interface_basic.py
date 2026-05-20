@@ -10,7 +10,7 @@ from trace.unified_tracer import UnifiedTracer
 class TestInterfaceBasic(unittest.TestCase):
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_simple_interface(self):
         source = '''

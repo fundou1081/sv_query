@@ -14,7 +14,7 @@ class TestClassOOP(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_class_basic(self):
         """[Golden] Class 定义与实例化

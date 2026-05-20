@@ -25,12 +25,12 @@ class TestConstraintDerivative(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def _get_classes(self, tree):
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test': tree}))
+        adapter = PyslangAdapter(FP({'test.sv': source}))
         return adapter.get_classes()
     
     def test_constraint_inside(self):

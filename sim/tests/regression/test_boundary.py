@@ -17,7 +17,7 @@ class TestBoundary(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [边界条件]
@@ -181,7 +181,7 @@ class TestBoundaryExtensive(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_signal_without_module_prefix(self):
         """不带模块前缀"""

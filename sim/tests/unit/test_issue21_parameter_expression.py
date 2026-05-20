@@ -24,8 +24,7 @@ class TestIssue21ParameterExpression(unittest.TestCase):
 
     def _make_tracer(self, source):
         """辅助: 创建 tracer"""
-        tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree}, log_level='ERROR')
+        return UnifiedTracer(sources={'test.sv': source}, log_level='ERROR')
 
     #----------------------------------------------------------------------
     # 金标准测试

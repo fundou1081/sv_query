@@ -27,7 +27,7 @@ module top(input [7:0] a, output [7:0] y);
     assign y = add_one(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -44,7 +44,7 @@ module top(input a, output y);
     assign y = foo(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -60,7 +60,7 @@ module top(input a);
     my_task(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('a', 'top')
         
         self.assertEqual(len(result.drivers), 0)
@@ -80,7 +80,7 @@ module top(input a, output b);
     child u1(.a(a), .y(b));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('b', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -96,7 +96,7 @@ module top(input a, b, output y);
     child u1(.a(a), .b(b), .y(y));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -116,7 +116,7 @@ module top(input my_if.tb);
     assign tb.data = 8b0;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('tb', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -133,7 +133,7 @@ module top(my_if.mp m);
     assign m.data = 8b0;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('m', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -153,7 +153,7 @@ module top(input [7:0] data, output y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         # for 循环内部可能无法提取
@@ -170,7 +170,7 @@ module top(input a, output y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -190,7 +190,7 @@ module top();
     my_class obj;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('obj', 'top')
         
         self.assertEqual(len(result.drivers), 0)
@@ -208,7 +208,7 @@ module top(input a);
     obj.do_work(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('obj', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -225,7 +225,7 @@ module top(output y);
 endmodule'''
         # initial 只执行一次，通常用于初始化
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -244,7 +244,7 @@ module top(input a, b, output y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -263,7 +263,7 @@ module top(input a, b, c, output y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)

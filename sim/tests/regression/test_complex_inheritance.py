@@ -101,7 +101,7 @@ class extended_transaction extends transaction;
 endclass'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -202,7 +202,7 @@ endclass'''
     def test_class_hierarchy_extends(self):
         """ClassHierarchy extends 关系"""
         graph = self._build_graph()
-        tracer = UnifiedTracer(trees={'test.sv': pyslang.SyntaxTree.fromText('''class a; endclass''')})
+        tracer = UnifiedTracer(sources={'test.sv': pyslang.SyntaxTree.fromText('''class a; endclass''')})
         
         # 获取 hierarchy
         source = '''class base_item;
@@ -216,7 +216,7 @@ class extended_transaction extends transaction;
 endclass'''
         
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         
         hierarchy = tracer._graph.hierarchy if hasattr(tracer._graph, 'hierarchy') else None

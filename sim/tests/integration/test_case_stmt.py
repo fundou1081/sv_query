@@ -16,7 +16,7 @@ class TestCaseStmt(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_case_simple(self):
         """[Complex] 基础 case"""
@@ -25,9 +25,9 @@ module top(
     input wire [1:0] sel,
     input wire a,
     input wire b,
-    output wire q
+    output reg q
 );
-    case (sel)
+    always_comb case (sel)
         2'b00:   q = a;
         2'b01:   q = b;
     endcase
@@ -82,12 +82,12 @@ endmodule'''
 module top(
     input wire [2:0] sel,
     input wire a,
-    output wire q
+    output reg q
 );
-    priority case (1'b1)
+    always_comb priority case (1'b1)
         sel[2]: q = a;
         sel[1]: q = a;
-    endpriority
+    endcase
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -102,13 +102,13 @@ module top(
     input wire [1:0] sel,
     input wire a,
     input wire b,
-    output wire q
+    output reg q
 );
-    unique case (sel)
+    always_comb unique case (sel)
         2'b00:   q = a;
         2'b01:   q = b;
         default: q = 1'b0;
-    endunique
+    endcase
 endmodule'''
         
         tracer = self._make_tracer(source)

@@ -8,7 +8,7 @@ test_mig_generate_block.py - ModuleInstanceGraph generate block 支持金标准�
 场景设计 (RTL 来源: 芯片设计中常见的 generate 实例化模式):
   module dut (
       input clk,
-      output [7:0] out
+      output logic [7:0] out
   );
   always_ff @(posedge clk)
       out <= 8'hAB;
@@ -35,7 +35,7 @@ import unittest
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.unified_tracer import UnifiedTracer
 import pyslang
@@ -46,8 +46,7 @@ class TestMIGGenerateBlock(unittest.TestCase):
 
     def _build_mig(self, source):
         """构建 MIG"""
-        tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test.sv': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer._module_graph
 
@@ -58,7 +57,7 @@ class TestMIGGenerateBlock(unittest.TestCase):
         因为 genvar 是编译时信息不展开多个实例。
         MIG 识别的是 'top.GEN.u_dut' (模板实例)，这是正确行为。
         """
-        source = '''module dut(input clk, output [7:0] out);
+        source = '''module dut(input clk, output logic [7:0] out);
     always_ff @(posedge clk) out <= 8'hAB;
 endmodule
 
@@ -99,7 +98,7 @@ endmodule'''
     always clk = #5 ~clk;
 endmodule
 
-module dut(input clk, output [7:0] out);
+module dut(input clk, output logic [7:0] out);
     always_ff @(posedge clk) out <= 8'hAB;
 endmodule
 
@@ -139,11 +138,12 @@ endmodule'''
 
     def test_if_generate_instance(self):
         """[金标准] if 条件生成实例"""
-        source = '''module sub(output [7:0] out);
+        source = '''module sub(output logic [7:0] out);
     assign out = 8'hCD;
 endmodule
 
-module top(input [1:0] sel);
+module top;
+    localparam [1:0] sel = 2;
     generate
         if (sel > 0) begin : COND
             sub u_sub();
@@ -163,11 +163,11 @@ endmodule'''
 
     def test_nested_generate_block(self):
         """[金标准] 嵌套 generate block"""
-        source = '''module inner(output [7:0] out);
+        source = '''module inner(output logic [7:0] out);
     assign out = 8'hEF;
 endmodule
 
-module outer(output [7:0] out);
+module outer(output logic [7:0] out);
     inner u_inner();
 endmodule
 
@@ -199,7 +199,7 @@ endmodule'''
 
     def test_generate_block_no_crash(self):
         """[金标准] generate block 不崩溃"""
-        source = '''module dut(output [7:0] out);
+        source = '''module dut(output logic [7:0] out);
     assign out = 8'h00;
 endmodule
 
@@ -220,7 +220,7 @@ endmodule'''
 
     def test_get_instance_after_generate(self):
         """[金标准] 获取 generate 块内的实例"""
-        source = '''module sub(output [7:0] out);
+        source = '''module sub(output logic [7:0] out);
     assign out = 8'h12;
 endmodule
 
@@ -253,7 +253,7 @@ endmodule'''
 ) (
     input clk,
     input [WIDTH-1:0] data_in,
-    output [WIDTH-1:0] data_out
+    output logic [WIDTH-1:0] data_out
 );
     always_ff @(posedge clk) data_out <= data_in;
 endmodule

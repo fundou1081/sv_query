@@ -16,8 +16,7 @@ class TestClockDomain(unittest.TestCase):
     
     def _make_tracer(self, source):
         """辅助: 创建 tracer"""
-        tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_clock_detection(self):
         """时钟信号检测"""

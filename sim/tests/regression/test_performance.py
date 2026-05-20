@@ -18,7 +18,7 @@ class TestPerformance(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     #----------------------------------------------------------------------
     # [性能基准]
@@ -100,7 +100,7 @@ endmodule'''
         # 运行多次
         for _ in range(10):
             tree = pyslang.SyntaxTree.fromText(source)
-            tracer = UnifiedTracer(trees={'test': tree})
+            tracer = UnifiedTracer(sources={'test.sv': source})
             tracer.build_graph()
         
         gc.collect()

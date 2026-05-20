@@ -20,7 +20,7 @@ class TestOpenTitanI2C(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_i2c_basic_structure(self):
         """[Golden] I2C 基本结构

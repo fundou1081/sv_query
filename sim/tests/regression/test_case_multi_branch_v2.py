@@ -27,7 +27,7 @@ class TestCaseMultiBranch(unittest.TestCase):
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         # 期望: 2 drivers (a, b)
@@ -46,7 +46,7 @@ class TestCaseMultiBranch(unittest.TestCase):
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -64,7 +64,7 @@ class TestCaseMultiBranch(unittest.TestCase):
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -81,7 +81,7 @@ class TestCaseMultiBranch(unittest.TestCase):
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)

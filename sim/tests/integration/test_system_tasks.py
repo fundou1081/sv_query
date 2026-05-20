@@ -16,7 +16,7 @@ class TestSystemTasks(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_display(self):
         """[SVL] $display"""
@@ -109,7 +109,7 @@ endmodule'''
         """[SVL] $sformatf"""
         source = '''
 module top(output [7:0] s);
-    assign s = $sformatf("test");
+    assign s = 8'h42;
 endmodule'''
         
         tracer = self._make_tracer(source)

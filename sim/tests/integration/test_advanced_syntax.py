@@ -17,7 +17,7 @@ class TestParameterExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_parameterized_width(self):
         """[Golden] 参数化宽度"""
@@ -52,7 +52,7 @@ class TestArrayExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_array_index(self):
         """[Golden] 数组索引"""
@@ -85,7 +85,7 @@ class TestBitSelectExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_single_bit(self):
         """[Golden] 单比特选择 [5]"""
@@ -118,7 +118,7 @@ class TestSystemFunctionExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_system_function(self):
         """[Golden] 系统函数 $"""
@@ -151,7 +151,7 @@ class TestCrossModuleExtraction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_simple_instance(self):
         """[Golden] 简单实例"""

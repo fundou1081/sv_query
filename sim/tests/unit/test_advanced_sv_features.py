@@ -22,8 +22,7 @@ class TestAdvancedSVFeatures(unittest.TestCase):
     """高级 SystemVerilog 特性测试"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_typedef_struct_handling(self):
         """[金标准] typedef struct 应该被识别为有效节点类型

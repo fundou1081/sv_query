@@ -42,8 +42,8 @@ class TestStableCore(unittest.TestCase):
     assign b = a;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer1 = UnifiedTracer(trees={'t': tree})
-        tracer2 = UnifiedTracer(trees={'t': tree})
+        tracer1 = UnifiedTracer(sources={'t.sv': source})
+        tracer2 = UnifiedTracer(sources={'t.sv': source})
         G1 = tracer1.build_graph()
         G2 = tracer2.build_graph()
         
@@ -74,8 +74,8 @@ endmodule'''
         
         tree_old = pyslang.SyntaxTree.fromText(old_src)
         tree_new = pyslang.SyntaxTree.fromText(new_src)
-        tracer_old = UnifiedTracer(trees={'t': tree_old})
-        tracer_new = UnifiedTracer(trees={'t': tree_new})
+        tracer_old = UnifiedTracer(sources={'t.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'t.sv': tree_new.toString()})
         G_old = tracer_old.build_graph()
         G_new = tracer_new.build_graph()
         
@@ -106,8 +106,8 @@ endmodule'''
         
         tree_old = pyslang.SyntaxTree.fromText(old_src)
         tree_new = pyslang.SyntaxTree.fromText(new_src)
-        tracer_old = UnifiedTracer(trees={'t': tree_old})
-        tracer_new = UnifiedTracer(trees={'t': tree_new})
+        tracer_old = UnifiedTracer(sources={'t.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'t.sv': tree_new.toString()})
         G_old = tracer_old.build_graph()
         G_new = tracer_new.build_graph()
         
@@ -138,8 +138,8 @@ endmodule'''
         
         tree_old = pyslang.SyntaxTree.fromText(old_src)
         tree_new = pyslang.SyntaxTree.fromText(new_src)
-        tracer_old = UnifiedTracer(trees={'t': tree_old})
-        tracer_new = UnifiedTracer(trees={'t': tree_new})
+        tracer_old = UnifiedTracer(sources={'t.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'t.sv': tree_new.toString()})
         G_old = tracer_old.build_graph()
         G_new = tracer_new.build_graph()
         
@@ -163,7 +163,7 @@ class TestHealthScore(unittest.TestCase):
     assign b = a;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         G = tracer.build_graph()
         
         stable = compute_stable_core(G, G)
@@ -193,8 +193,8 @@ endmodule'''
         
         tree_old = pyslang.SyntaxTree.fromText(old_src)
         tree_new = pyslang.SyntaxTree.fromText(new_src)
-        tracer_old = UnifiedTracer(trees={'t': tree_old})
-        tracer_new = UnifiedTracer(trees={'t': tree_new})
+        tracer_old = UnifiedTracer(sources={'t.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'t.sv': tree_new.toString()})
         G_old = tracer_old.build_graph()
         G_new = tracer_new.build_graph()
         
@@ -276,8 +276,8 @@ endmodule'''
         
         tree_old = pyslang.SyntaxTree.fromText(old_src)
         tree_new = pyslang.SyntaxTree.fromText(new_src)
-        tracer_old = UnifiedTracer(trees={'t': tree_old})
-        tracer_new = UnifiedTracer(trees={'t': tree_new})
+        tracer_old = UnifiedTracer(sources={'t.sv': tree_old.toString()})
+        tracer_new = UnifiedTracer(sources={'t.sv': tree_new.toString()})
         G_old = tracer_old.build_graph()
         G_new = tracer_new.build_graph()
         

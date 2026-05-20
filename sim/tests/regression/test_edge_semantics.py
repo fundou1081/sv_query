@@ -35,7 +35,7 @@ module top(input clk, d, output reg q);
     always_ff @(posedge clk) q <= d;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -58,7 +58,7 @@ module top(input clk, rst, d, output reg q);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -76,7 +76,7 @@ module top(input a, b, output reg y);
     always_comb y = a & b;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -95,7 +95,7 @@ module top(input a, output y);
     assign y = a;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -124,7 +124,7 @@ module top(input a, b, sel, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -157,7 +157,7 @@ module top(input a, b, c, sel1, sel2, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -186,7 +186,7 @@ module top(input a, sel, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -213,7 +213,7 @@ module top(input clk, en, d, output reg q);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -239,7 +239,7 @@ module top(input clk, sel, a, b, output reg q);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(trees={'t': tree})
+        tracer = UnifiedTracer(sources={'t.sv': source})
         tracer.build_graph()
         graph = tracer.get_graph()
 

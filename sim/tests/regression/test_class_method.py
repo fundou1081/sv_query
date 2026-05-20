@@ -27,7 +27,7 @@ class TestClassMethod(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test': tree}))
+        adapter = PyslangAdapter(FP({'test.sv': source}))
         return adapter.get_classes()
     
     def _get_class_methods(self, cls):
@@ -160,7 +160,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(source)
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test': tree}))
+        adapter = PyslangAdapter(FP({'test.sv': source}))
         classes = adapter.get_classes()
         
         self.assertEqual(len(classes), 1)

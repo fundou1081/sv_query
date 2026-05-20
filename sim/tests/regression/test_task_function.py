@@ -20,7 +20,7 @@ class TestTaskCall(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_task_output_param(self):
         """[Golden] task output 参数驱动信号
@@ -62,7 +62,7 @@ class TestFunctionCall(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_function_return(self):
         """[Golden] function 返回值
@@ -107,7 +107,7 @@ class TestTaskMultiple(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_task_multiple_stmts(self):
         """[Golden] task 内多行赋值
@@ -150,7 +150,7 @@ class TestFunctionExpression(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_function_in_expression(self):
         """[Golden] function 在表达式中
@@ -194,7 +194,7 @@ class TestRecursiveFunction(unittest.TestCase):
     
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        return UnifiedTracer(trees={'test': tree})
+        return UnifiedTracer(sources={'test.sv': source})
     
     def test_recursive_function(self):
         """[Golden] 递归 function

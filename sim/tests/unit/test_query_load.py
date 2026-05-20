@@ -21,8 +21,7 @@ class TestLoadTracer(unittest.TestCase):
     """Load 追溯测试"""
     
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     
@@ -39,7 +38,7 @@ class TestLoadTracer(unittest.TestCase):
         - tmp 的 loads: [q]
         """
         source = '''
-module top(input clk, input d, output q);
+module top(input clk, input d, output logic q);
     logic tmp;
     always_ff @(posedge clk) begin
         tmp <= d;

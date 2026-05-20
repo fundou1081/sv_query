@@ -34,7 +34,7 @@ class TestInstanceConnection(unittest.TestCase):
     
     def _build_graph(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(trees={'test': tree})
+        tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
     

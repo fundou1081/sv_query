@@ -22,7 +22,7 @@ class TestAESSubBytes(unittest.TestCase):
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         # 使用 't' 作为 tree key (符合项目惯例)
-        return UnifiedTracer(trees={'t': tree})
+        return UnifiedTracer(sources={'t.sv': source})
     
     def test_sub_bytes_basic_assign(self):
         """[Golden] 基础赋值 (SubBytes 核心)
