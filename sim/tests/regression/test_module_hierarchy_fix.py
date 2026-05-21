@@ -27,7 +27,7 @@ module top(input a, output b);
     child u1(.a(a), .y(b));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -44,7 +44,7 @@ module top(input a, b, output y);
     child u1(.a(a), .b(b), .y(y));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -60,7 +60,7 @@ module top(input a, output b);
     child u1(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)
@@ -97,7 +97,7 @@ module top(input a, output b);
     child inst(.d(a), .q(b));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         
         # 跨模块追踪应返回最终驱动源 a

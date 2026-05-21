@@ -39,7 +39,7 @@ module top(input [7:0] a, output reg [7:0] y);
     always_comb do_work(a, y);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -65,7 +65,7 @@ module top(input [7:0] a, output reg [7:0] y);
     always_comb do_work(.in(a), .out(y));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -93,7 +93,7 @@ module top(input [7:0] a, output reg [7:0] c);
     always_comb do_work(a, c);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('c', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -120,7 +120,7 @@ module top(input [7:0] a);
     always_comb do_work(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('a', 'top')
 
         # a 是输入端口，不应被 task 内部改变
@@ -152,7 +152,7 @@ module top(input [7:0] a, output reg [7:0] y);
     always_comb y = calc(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -187,7 +187,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # if-else 分支，b 可能被 a 驱动
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -219,7 +219,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 0)
 
@@ -242,7 +242,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # for 循环内部 b 被 a 驱动
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -271,7 +271,7 @@ module top(input [2:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # 位选择 v[i] 应映射到 a
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -302,7 +302,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb b = f(a);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 0)
 
@@ -328,7 +328,7 @@ module top(input [7:0] a, output reg [7:0] y);
     always_comb do_work(.in(a), .out(y));
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -365,7 +365,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
             "while 循环 b 应被 a 驱动")
@@ -395,7 +395,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
             "fork-join b 应被 a 驱动")
@@ -429,7 +429,7 @@ module top(input [7:0] a, output reg [7:0] b);
     always_comb t(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
             "disable 语句 b 应被 a 驱动")
@@ -453,7 +453,7 @@ module top(input clk, output reg [1:0] state);
     always_ff @(posedge clk) state <= state + 1;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('state', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -475,7 +475,7 @@ module top(input clk, output reg [1:0] state);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'top.sv': source})
+        tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('state', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,

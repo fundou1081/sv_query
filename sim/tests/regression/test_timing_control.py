@@ -24,7 +24,7 @@ module test;
 endmodule
 '''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -50,7 +50,7 @@ module test;
 endmodule
 '''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -72,7 +72,7 @@ module test;
 endmodule
 '''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -97,7 +97,7 @@ module test;
 endmodule
 '''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 

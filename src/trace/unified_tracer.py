@@ -1,10 +1,10 @@
 #==============================================================================
 # unified_tracer.py - Query Layer
-# 使用 PyslangAdapter (Syntax Layer)
+# 使用 Semantic AST (Compilation + getRoot())
 #==============================================================================
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import logging
 import os
 import networkx as nx
@@ -22,7 +22,8 @@ from .core.query import (
     ModuleTracer, ModuleConnections,
     ClockDomainTracer, ClockDomainTrace,
 )
-from .core.base import PyslangAdapter
+from .core.compiler import SVCompiler
+from .core.semantic_adapter import SemanticAdapter
 
 #==============================================================================
 # 日志级别配置
@@ -70,18 +71,20 @@ class InstanceInfo:
 class UnifiedTracer:
     """统一追踪入口"""
     
-    def __init__(self, parser=None, trees: dict = None, log_level: str = None):
+    def __init__(self, sources: Dict[str, str] = None, log_level: str = None):
         """初始化 UnifiedTracer
         
         Args:
-            parser: 解析器 (可选)
-            trees: SyntaxTree 字典 {"filename": tree}
+            sources: 源文件字典 {"filename.sv": "source code"}
             log_level: 日志级别 (DEBUG/INFO/WARNING/ERROR)
                       默认为环境变量 SV_QUERY_LOG_LEVEL 的值
         """
-        self.parser = parser
-        self.trees = trees or {}
-        self._adapter: Optional[PyslangAdapter] = None
+        if sources is None:
+            sources = {}
+        self._sources = sources
+        self._log_level = log_level or os.environ.get('SV_QUERY_LOG_LEVEL', 'WARNING')
+        self._compiler: Optional[SVCompiler] = None
+        self._adapter = None
         self._graph: Optional[SignalGraph] = None
         self._signal_tracer: Optional[SignalTracer] = None
         self._module_tracer: Optional[ModuleTracer] = None
@@ -107,31 +110,50 @@ class UnifiedTracer:
         """获取当前日志级别名称"""
         return logging.getLevelName(_root_logger.level)
     
-    def _get_adapter(self) -> PyslangAdapter:
-        """获取 PyslangAdapter (Syntax Layer)"""
+    def _get_compiler(self) -> SVCompiler:
+        """获取 SVCompiler (Semantic AST 编译入口)"""
+        if self._compiler is None:
+            self._compiler = SVCompiler(self._sources, log_level=self._log_level)
+        return self._compiler
+    
+    def _get_adapter(self):
+        """获取 SemanticAdapter wrapping Semantic AST root (RootSymbol)"""
         if self._adapter is None:
-            # 构造适配器需要的 parser 结构
-            class TreeParser:
-                def __init__(self, trees):
-                    self.trees = trees
-            self._adapter = PyslangAdapter(TreeParser(self.trees))
+            self._adapter = SemanticAdapter(self._get_compiler().get_root())
         return self._adapter
+    
+    @property
+    def sources(self) -> Dict[str, str]:
+        """获取源文件字典"""
+        return self._sources.copy()
+    
+    @property
+    def compilation(self):
+        """获取 Compilation 对象"""
+        return self._get_compiler().get_compilation()
     
     def build_graph(self, force: bool = False) -> SignalGraph:
         if self._graph is None or force:
-            adapter = self._get_adapter()
-            builder = GraphBuilder(adapter)
+            root = self._get_compiler().get_root()
+            
+            # 创建 SemanticAdapter 供各组件使用
+            from .core.semantic_adapter import SemanticAdapter
+            compiler = self._get_compiler()
+            semantic_adapter = SemanticAdapter(root, compiler)
+            self._adapter = semantic_adapter  # Store for later access by _get_adapter()
+            
+            builder = GraphBuilder(semantic_adapter)
             self._graph = builder.build()
             # [Phase2] 追加 class 子图
-            class_builder = ClassGraphBuilder(adapter)
+            class_builder = ClassGraphBuilder(semantic_adapter)
             class_builder.build(self._graph)
             # [Phase3] 处理位选节点 (提取位宽、设置父子关系) - 在所有节点创建后
-            bit_select_handler = BitSelectHandler(adapter, self._graph)
+            bit_select_handler = BitSelectHandler(semantic_adapter, self._graph)
             bit_select_handler.process()
             
             # [Phase4] 构建模块实例图 (跨模块边界追踪)
-            self._module_graph = ModuleInstanceGraph(adapter, self._graph)
-            self._module_graph.build(self.trees)
+            self._module_graph = ModuleInstanceGraph(semantic_adapter, self._graph)
+            self._module_graph.build(semantic_adapter)  # 传入 SemanticAdapter 用于 generate 实例收集
             self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
         return self._graph
@@ -172,11 +194,12 @@ class UnifiedTracer:
             for inst in top_instances:
                 print(f"{inst.full_path} ({inst.module_type})")
         """
-        adapter = self._get_adapter()
+        adapter = self._get_adapter()  # SemanticAdapter
+        semantic_adapter = SemanticAdapter(adapter)
         
         # 获取 Module 和 Generate 中的实例
-        module_insts = adapter.get_module_instances(self.trees)
-        gen_insts = adapter.get_generate_instances(self.trees)
+        module_insts = semantic_adapter.get_module_instances()
+        gen_insts = []  # Semantic AST 暂不处理 generate 实例
         
         # 合并并去重
         seen = set()
@@ -194,16 +217,43 @@ class UnifiedTracer:
         return result
     
     def _parse_instance_node(self, node) -> Optional[InstanceInfo]:
-        """解析 HierarchyInstantiation 节点为 InstanceInfo
+        """解析模块实例节点为 InstanceInfo
+        
+        支持 Semantic AST (InstanceSymbol) 和 SyntaxTree (HierarchyInstantiationSyntax)
         
         Args:
-            node: HierarchyInstantiation AST 节点
+            node: InstanceSymbol 或 HierarchyInstantiationSyntax 节点
         
         Returns:
             InstanceInfo 或 None (解析失败)
         """
         try:
-            # 获取模块类型 (如 "dut") - type 是 Token，直接用 .value
+            # Semantic AST: InstanceSymbol
+            if hasattr(node, 'kind') and 'Instance' in str(node.kind):
+                name = getattr(node, 'name', None)
+                if not name:
+                    return None
+                
+                # 获取模块类型
+                module_type = None
+                if hasattr(node, 'definition'):
+                    defn = node.definition
+                    if hasattr(defn, 'name'):
+                        module_type = getattr(defn, 'name', None) or str(defn)
+                elif hasattr(node, 'body'):
+                    # InstanceBodySymbol
+                    if hasattr(node.body, 'definition'):
+                        defn = node.body.definition
+                        module_type = getattr(defn, 'name', None) or str(defn)
+                
+                return InstanceInfo(
+                    name=str(name),
+                    module_type=str(module_type) if module_type else 'unknown',
+                    full_path=str(name),
+                    parent=None
+                )
+            
+            # SyntaxTree: HierarchyInstantiationSyntax
             module_type = None
             if hasattr(node, 'type'):
                 if hasattr(node.type, 'value'):
@@ -214,17 +264,14 @@ class UnifiedTracer:
             if not module_type:
                 return None
             
-            # 获取实例列表 (每个 instance 有自己的 name 和 connection)
             if not hasattr(node, 'instances') or not node.instances:
                 return None
             
             instances = []
             for inst_item in node.instances:
-                # inst_item 可能是 HierarchicalInstanceSyntax 或 Token (逗号等)
                 if not hasattr(inst_item, 'kind') or str(inst_item.kind) != 'SyntaxKind.HierarchicalInstance':
                     continue
                 
-                # 从 decl 获取实例名称
                 name = None
                 if hasattr(inst_item, 'decl') and hasattr(inst_item.decl, 'name'):
                     name_val = getattr(inst_item.decl.name, 'value', None) or getattr(inst_item.decl.name, 'text', None)
@@ -233,12 +280,10 @@ class UnifiedTracer:
                 if not name:
                     continue
                 
-                # 简化处理：full_path 即实例名，parent 为 None
-                # 实际项目中 parent 应通过连接或上下文推导
                 instances.append(InstanceInfo(
                     name=name,
                     module_type=module_type,
-                    full_path=name,  # TODO: 推导完整路径
+                    full_path=name,
                     parent=None
                 ))
             

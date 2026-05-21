@@ -714,8 +714,14 @@ class ClassGraphBuilder:
         return None
 
     def _iter_class_properties(self, cls) -> List:
-        """迭代 class 的所有成员变量（包括 rand）"""
-        items = getattr(cls, 'items', []) or []
+        """迭代 class 的所有成员变量（包括 rand）
+        
+        Semantic AST: ClassType 没有 items 属性，需要通过 cls.syntax.items 访问
+        """
+        # 优先从 syntax 获取（Semantic AST ClassType）
+        items = getattr(cls, 'syntax', None) and getattr(cls.syntax, 'items', None)
+        if items is None:
+            items = getattr(cls, 'items', []) or []
         props = []
         for item in items:
             if item is None:
@@ -726,8 +732,14 @@ class ClassGraphBuilder:
         return props
 
     def _iter_constraints(self, cls) -> List:
-        """迭代 class 的所有 constraint 块"""
-        items = getattr(cls, 'items', []) or []
+        """迭代 class 的所有 constraint 块
+        
+        Semantic AST: ClassType 没有 items 属性，需要通过 cls.syntax.items 访问
+        """
+        # 优先从 syntax 获取（Semantic AST ClassType）
+        items = getattr(cls, 'syntax', None) and getattr(cls.syntax, 'items', None)
+        if items is None:
+            items = getattr(cls, 'items', []) or []
         constrs = []
         for item in items:
             if item is None:

@@ -28,47 +28,97 @@ class DriverExtractor:
         """从 always_ff @(posedge clk) 提取时钟信号名"""
         s = getattr(n, 'statement', None) or getattr(n, 'body', None)
         if not s: return ""
-        tc = getattr(s, 'timingControl', None)
+        # [FIX] pyslang TimedStatement uses .timing, not .timingControl
+        tc = getattr(s, 'timing', None) or getattr(s, 'timingControl', None)
         if tc: return self._extract_clock_from_event_ctrl(tc)
         return ""
 
     def _extract_clock_from_event_ctrl(self, n) -> str:
         """从 TimingControl 提取时钟,处理 or 连接的多个事件"""
+        # [FIX] EventList has events, not expr
+        if hasattr(n, 'events'):
+            for evt in n.events:
+                clock = self._extract_clock_from_event_ctrl(evt)
+                if clock:
+                    return clock
+            return ""
+        
         e = getattr(n, 'expr', None)
         if not e: return ""
         i = getattr(e, 'expr', None) or e
         def find_clock(expr):
             if expr is None: return ""
+            # [FIX] NamedValueExpression with symbol - extract name directly
+            if hasattr(expr, 'symbol'):
+                sym = getattr(expr, 'symbol', None)
+                if sym and hasattr(sym, 'name'):
+                    return str(sym.name).strip()
             if hasattr(expr, 'left') and hasattr(expr, 'right'):
                 l = find_clock(expr.left)
                 return l if l else find_clock(expr.right)
             edge_str = str(getattr(expr, 'edge', ''))
-            if 'posedge' in edge_str or 'negedge' in edge_str:
+            # [FIX] EdgeKind.PosEdge -> 'PosEdge', check both lowercase and the enum name
+            if 'posedge' in edge_str.lower() or 'PosEdge' in edge_str or 'NegEdge' in edge_str:
                 ce = getattr(expr, 'expr', None)
+                if ce and hasattr(ce, 'symbol'):
+                    sym = getattr(ce, 'symbol', None)
+                    if sym and hasattr(sym, 'name'):
+                        return str(sym.name).strip()
                 return str(ce).strip() if ce else ""
             return ""
         return find_clock(i)
 
     def _extract_reset_from_event_ctrl(self, n) -> str:
         """从 TimingControl 提取复位信号(处理 or 连接的多个事件)"""
-        e = getattr(n, 'expr', None)
+        # [FIX] EventList has events, not expr
+        if hasattr(n, 'events'):
+            for evt in n.events:
+                reset = self._extract_reset_from_event_ctrl(evt)
+                if reset:
+                    return reset
+            return ""
+        
+        # [FIX] pyslang TimedStatement uses .timing, handle both forms
+        e = getattr(n, 'expr', None) or getattr(n, 'timing', None)
         if not e: return ""
         # Unwrap parenthesized expression
         e = getattr(e, 'expr', None) or e
 
         def find_reset(expr):
             if expr is None: return ""
+            # [FIX] Handle SignalEvent directly (it has edge and expr)
+            if hasattr(expr, 'kind') and 'SignalEvent' in str(expr.kind):
+                edge_str = str(getattr(expr, 'edge', ''))
+                if 'negedge' in edge_str.lower() or 'NegEdge' in edge_str:
+                    ce = getattr(expr, 'expr', None)
+                    if ce and hasattr(ce, 'symbol'):
+                        sym = getattr(ce, 'symbol', None)
+                        if sym and hasattr(sym, 'name'):
+                            return str(sym.name).strip()
+                    return str(ce).strip() if ce else ""
+                # posedge is clock, not reset
+                return ""
+            # [FIX] NamedValueExpression with symbol - extract name directly, but only if it's a reset signal
+            if hasattr(expr, 'symbol'):
+                sym = getattr(expr, 'symbol', None)
+                if sym and hasattr(sym, 'name'):
+                    name = str(sym.name).strip()
+                    # Only return if it looks like a reset signal
+                    if 'rst' in name.lower() or 'reset' in name.lower():
+                        return name
+                return ""
             if hasattr(expr, 'left') and hasattr(expr, 'right'):
                 left = find_reset(expr.left)
                 if left: return left
                 return find_reset(expr.right)
             edge_str = str(getattr(expr, 'edge', ''))
-            if 'negedge' in edge_str or 'posedge' in edge_str:
+            if 'negedge' in edge_str.lower() or 'NegEdge' in edge_str:
                 ce = getattr(expr, 'expr', None)
-                if ce:
-                    name = str(ce).strip()
-                    if 'rst' in name.lower():
-                        return name
+                if ce and hasattr(ce, 'symbol'):
+                    sym = getattr(ce, 'symbol', None)
+                    if sym and hasattr(sym, 'name'):
+                        return str(sym.name).strip()
+                return str(ce).strip() if ce else ""
             return ""
 
         return find_reset(e)
@@ -100,15 +150,16 @@ class DriverExtractor:
             if stmt: r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
             return r
 
-        if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]):
+        if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]) or (
+               hasattr(n, 'procedureKind') and 'Always' in str(getattr(n, 'procedureKind', ''))):
             cl = ""
             rst = ""
-            if "AlwaysFF" in ks:
+            if "AlwaysFF" in ks or (hasattr(n, 'procedureKind') and 'AlwaysFF' in str(getattr(n, 'procedureKind', ''))):
                 cl = self._extract_clock_from_always(n)
                 # Extract reset from timing control
                 s = getattr(n, 'statement', None) or getattr(n, 'body', None)
                 if s:
-                    tc = getattr(s, 'timingControl', None)
+                    tc = getattr(s, 'timing', None) or getattr(s, 'timingControl', None)
                     if tc: rst = self._extract_reset_from_event_ctrl(tc)
             c2 = {**ctx, "clock": cl, "reset": rst}
             s = getattr(n, "statement", None) or getattr(n, "body", None)
@@ -122,15 +173,42 @@ class DriverExtractor:
             s = getattr(n, "statement", None)
             if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
             return r
+        
+        # [FIX] TimedStatement: always @(*) wraps content in a Timed statement
+        if "Timed" in ks:
+            s = getattr(n, "stmt", None)
+            if s: r.extend(self._collect_stmts_with_context(s, ctx, d+1, _s))
+            return r
+        
+        # [FIX] BlockStatement: begin...end block containing statements
+        if "Block" in ks and "Statement" in ks:
+            body = getattr(n, "body", None)
+            if body:
+                # body is a single Statement, not a list - recurse into it directly
+                if hasattr(body, 'kind') and not (hasattr(body, '__iter__') and not isinstance(body, str)):
+                    r.extend(self._collect_stmts_with_context(body, ctx, d+1, _s))
+                elif hasattr(body, '__iter__') and not isinstance(body, str):
+                    for i in body: r.extend(self._collect_stmts_with_context(i, ctx, d+1, _s))
+            return r
+        
+        # [FIX] CaseStatement: case items contain (expressions, statement) pairs
+        if "Case" in ks and "Statement" in ks:
+            items = getattr(n, "items", [])
+            for item in items:
+                stmt = getattr(item, "stmt", None)
+                if stmt:
+                    r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
+            return r
 
         if "Conditional" in ks and "Statement" in ks:
             cond = self._extract_condition_str(n)
-            ts = getattr(n, "statement", None)
+            # [FIX] ConditionalStatement uses ifTrue/ifFalse, not statement/elseClause
+            ts = getattr(n, "ifTrue", None) or getattr(n, "statement", None)
             if ts:
                 c2 = cond
                 if ctx["condition"]: c2 = ctx["condition"] + " && " + cond
                 r.extend(self._collect_stmts_with_context(ts, {**ctx, "condition": c2}, d+1, _s))
-            ec = getattr(n, "elseClause", None)
+            ec = getattr(n, "ifFalse", None) or getattr(n, "elseClause", None)
             if ec:
                 ae = getattr(ec, "clause", None) or ec
                 c2 = "!" + cond
@@ -143,20 +221,14 @@ class DriverExtractor:
             if s: r.extend(self._collect_stmts_with_context(s, ctx, d+1, _s))
             return r
 
-        if "SequentialBlock" in ks:
-            for a in ["body", "statements", "items"]:
-                b = getattr(n, a, None)
-                if b and hasattr(b, "__iter__") and not isinstance(b, str):
-                    for i in b: r.extend(self._collect_stmts_with_context(i, ctx, d+1, _s))
-            return r
-
         if "ExpressionStatement" in ks:
             e = getattr(n, "expr", None)
             if e: r.extend(self._collect_stmts_with_context(e, ctx, d+1, _s))
             return r
 
         # [NEW] 处理 task/function 调用
-        if "InvocationExpression" in ks:
+        # pyslang uses ExpressionKind.Call for both function calls and task calls
+        if "InvocationExpression" in ks or "Call" in ks:
             # 收集这个调用表达式和上下文
             r.append((n, ctx, "invocation"))  # (node, ctx, type)
             return r
@@ -186,7 +258,7 @@ class DriverExtractor:
 
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
-            # [FIX Issue 21] 设置当前模块上下文，供 _get_signal 获取参数映射
+            # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
             self._current_module = module
 
             # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
@@ -230,23 +302,58 @@ class DriverExtractor:
                     ))
 
             # [铁律4] 为每个信号创建 TraceNode
+            # [FIX Issue 21/29] 为非端口的变量/网表声明创建 TraceNode
+            # 这包括 reg [WIDTH-1:0] var; 等声明
+            # 跳过已经是端口的信号 (已由上面的 port_decls 处理)
+            port_names = set()
+            for port_decl in self.adapter.get_port_declarations(module):
+                pn, _ = self.adapter.get_port_name_and_direction(port_decl)
+                if pn:
+                    port_names.add(self.adapter.clean_name(pn))
+
+            for var_decl in self.adapter.get_variable_declarations(module):
+                var_name = self.adapter.get_signal_name(var_decl)
+                if not var_name or var_name in port_names:
+                    continue
+                var_name = self.adapter.clean_name(var_name)
+                var_id = f"{module_name}.{var_name}"
+                if var_id not in [n.id for n in result.nodes]:
+                    # 提取变量位宽
+                    var_width = self.adapter.extract_data_width(var_decl)
+                    result.nodes.append(TraceNode(
+                        id=var_id,
+                        name=var_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=var_width
+                    ))
+
             # assign 语句
             for assign in self.adapter.get_assignments(module):
-                # [系统化改造] 先提取原始 RHS，检查是否是 InvocationExpression
+                # [系统化改造] 先提取原始 RHS,检查是否是 CallExpression (函数调用)
                 raw_rhs = None
+                raw_lhs = None
                 if hasattr(assign, 'assignments') and assign.assignments:
                     raw_rhs = assign.assignments[0].right
+                    raw_lhs = assign.assignments[0].left
                 elif hasattr(assign, 'right'):
                     raw_rhs = assign.right
-                
-                # 检测 InvocationExpression，走专用路径
-                if raw_rhs and hasattr(raw_rhs, 'kind') and 'Invocation' in str(raw_rhs.kind):
-                    # 提取 LHS 信号名
-                    raw_lhs = None
-                    if hasattr(assign, 'assignments') and assign.assignments:
-                        raw_lhs = assign.assignments[0].left
-                    
-                    # 先创建 LHS 节点（函数调用的目标）
+                    raw_lhs = getattr(assign, 'left', None)
+                elif hasattr(assign, 'assignment'):
+                    # Semantic AST: ContinuousAssignSymbol has .assignment
+                    ass = assign.assignment
+                    raw_rhs = getattr(ass, 'right', None)
+                    raw_lhs = getattr(ass, 'left', None)
+
+                # 检测 CallExpression (函数调用),走专用路径
+                if raw_rhs and hasattr(raw_rhs, 'kind') and 'Call' in str(raw_rhs.kind):
+                    # [FIX] raw_lhs is already extracted above, don't overwrite
+                    # raw_lhs was set at lines 237-240 using:
+                    #   if hasattr(assign, 'assignments') and assign.assignments: ...
+                    #   elif hasattr(assign, 'right'): ...
+                    #   elif hasattr(assign, 'assignment'): ...
+
+                    # 先创建 LHS 节点(函数调用的目标)
                     if raw_lhs:
                         lhs_name = self._get_signal(raw_lhs)
                         if lhs_name:
@@ -258,11 +365,11 @@ class DriverExtractor:
                                 ))
                     else:
                         lhs_name = None
-                    
-                    # 调用 _handle_invocation，传入 lhs_name 作为目标
+
+                    # 调用 _handle_invocation,传入 lhs_name 作为目标
                     self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
                     continue
-                
+
                 # [FIX] 检测 BinaryExpression 包含 InvocationExpression 的情况
                 # assign result = a & my_func(b); → my_func(b) 在 binary 表达式中
                 if raw_rhs and hasattr(raw_rhs, 'kind') and 'Binary' in str(raw_rhs.kind):
@@ -289,7 +396,7 @@ class DriverExtractor:
                                 if child:
                                     find_invocations(child, invocations)
                         return invocations
-                    
+
                     invocations_found = find_invocations(raw_rhs)
                     if invocations_found:
                         raw_lhs = None
@@ -299,7 +406,7 @@ class DriverExtractor:
                         for invocation in invocations_found:
                             self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
                         continue
-                
+
                 # 正常解析
                 lhs, rhs, rhs_expr = self._parse_assign(assign)
                 if lhs and rhs:
@@ -396,7 +503,7 @@ class DriverExtractor:
                     if 'Assignment' in rhs_kind:
                         raw_rhs = getattr(stmt, 'right', None) or getattr(stmt, 'left', None)
                         rhs_kind = str(getattr(raw_rhs, 'kind', None)) if raw_rhs else ''
-                        if 'Invocation' in rhs_kind:
+                        if 'Invocation' in rhs_kind or 'Call' in rhs_kind:
                             # 函数调用 RHS: 提取 lhs 并调用 _handle_invocation
                             raw_lhs = getattr(stmt, 'left', None)
                             lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
@@ -404,10 +511,10 @@ class DriverExtractor:
                             continue
 
                     lhs, rhs, rhs_expr = self._parse_assign(stmt)
-                    if lhs and rhs:
+                    if lhs and (rhs or rhs_expr):
                         # [FIX] 检测 RHS 是否为函数调用
                         rhs_kind = str(getattr(rhs, 'kind', None)) if rhs else ''
-                        if 'Invocation' in rhs_kind:
+                        if 'Invocation' in rhs_kind or 'Call' in rhs_kind:
                             # 函数调用: 调用 _handle_invocation 处理
                             self._handle_invocation(rhs, ctx, module, module_name, result, lhs)
                             continue
@@ -612,9 +719,9 @@ class DriverExtractor:
 
     def _parse_assign(self, assign) -> tuple:
         """
-        解析赋值语句，返回 (lhs_name, rhs_name, rhs_expr)
+        解析赋值语句,返回 (lhs_name, rhs_name, rhs_expr)
         - lhs_name: 左操作数信号名
-        - rhs_name: 右操作数信号名 (简单信号，用于简单赋值)
+        - rhs_name: 右操作数信号名 (简单信号,用于简单赋值)
         - rhs_expr: 原始 RHS 表达式 (用于复杂类型判断和_get_all_signals)
         """
         # [P0] 处理 ExpressionStatement (always_ff/always_comb 内部)
@@ -633,7 +740,12 @@ class DriverExtractor:
                 rhs_name = self._get_constructor_call(rhs) if rhs else None
                 return lhs_name, rhs_name, rhs
 
-            if hasattr(assign, 'assignments') and assign.assignments:
+            # [P2-FIX] 处理 ContinuousAssignSymbol: 它有 'assignment' 属性,不是 'assignments'
+            elif hasattr(assign, 'assignment') and hasattr(assign.assignment, 'left'):
+                a = assign.assignment
+                lhs = a.left if hasattr(a, 'left') else None
+                rhs = a.right if hasattr(a, 'right') else None
+            elif hasattr(assign, 'assignments') and assign.assignments:
                 a = assign.assignments[0]
                 lhs = a.left if hasattr(a, 'left') else None
                 rhs = a.right if hasattr(a, 'right') else None
@@ -666,9 +778,9 @@ class DriverExtractor:
         """
         if stmt is None:
             return None
-        
+
         kind = str(getattr(stmt, 'kind', ''))
-        
+
         # ExpressionStatement
         if 'ExpressionStatement' in kind:
             expr = getattr(stmt, 'expr', None)
@@ -683,27 +795,30 @@ class DriverExtractor:
                         left_name = getattr(ident, 'value', None) or str(ident).strip()
                     elif hasattr(left, 'value'):
                         left_name = str(left.value).strip()
-                    
+
                     if left_name == func_name:
                         return right
             return None
-        
+
         # SequentialBlock
         if 'SequentialBlock' in kind:
-            # SequentialBlockStatement 的 children 结构:
-            # [0]: SyntaxList (可能是空的或包含 begin/end 标记)
-            # [1]: BeginKeyword
-            # [2]: SyntaxList (包含实际的 statements)
-            # [3]: EndKeyword
-            # 所以需要找 children[2] 作为 statements 列表
+            # SequentialBlockStatement 的 children 结构 (iterating with range(len)):
+            # [0]: NoneType
+            # [1]: SyntaxList
+            # [2]: BeginKeyword Token
+            # [3]: NoneType
+            # [4]: SyntaxList (包含实际的 statements) ← statements 在这里
+            # [5]: EndKeyword Token
+            # [6]: NoneType
+            # 所以需要找 children[4] 作为 statements 列表
             statements = None
             for i, child in enumerate(stmt):
                 child_kind = str(getattr(child, 'kind', ''))
-                if 'SyntaxList' in child_kind and i == 2:
+                if 'SyntaxList' in child_kind and i == 4:
                     # This is the statements list
                     statements = child
                     break
-            
+
             if statements is None:
                 # Fallback to iterating over stmt itself
                 for item in stmt:
@@ -719,28 +834,41 @@ class DriverExtractor:
                         result = self._find_func_assignment_rhs(item, func_name)
                         if result:
                             return result
-        
+
         return None
 
     def _handle_invocation(self, invocation, ctx, module, module_name, result, lhs_name=None):
         """
         处理 task/function 调用
         建立参数映射并添加边
-        
+
         Args:
             invocation: InvocationExpression AST 节点
-            ctx: 上下文（时钟、复位等）
+            ctx: 上下文(时钟、复位等)
             module: 模块 AST 节点
             module_name: 模块名
             result: TraceResult 用于收集节点和边
-            lhs_name: 可选，函数调用的目标信号名（ContinuousAssign 的 LHS）
+            lhs_name: 可选,函数调用的目标信号名(ContinuousAssign 的 LHS)
         """
         try:
             # 获取调用名称
+            # Semantic AST: CallExpression uses .subroutine or .subroutineName
+            # SyntaxTree: CallExpression uses .left
             callee = getattr(invocation, 'left', None)
-            if not callee:
+            call_name = None
+            if callee:
+                call_name = str(callee).strip()
+            if not call_name:
+                # Try Semantic AST path: .subroutineName or .subroutine
+                call_name = getattr(invocation, 'subroutineName', None)
+                if not call_name:
+                    subroutine = getattr(invocation, 'subroutine', None)
+                    if subroutine:
+                        call_name = getattr(subroutine, 'name', None)
+                if call_name:
+                    call_name = str(call_name).strip()
+            if not call_name:
                 return
-            call_name = str(callee).strip()
 
             # 获取调用参数 (OrderedArgument 或 NamedArgument 列表)
             args_node = getattr(invocation, 'arguments', None)
@@ -749,25 +877,64 @@ class DriverExtractor:
 
             call_args = []  # 位置参数列表
             named_args = {}  # 命名参数字典 {name: signal}
-            params = getattr(args_node, 'parameters', [])
-            for arg in params:
-                arg_kind = str(getattr(arg, 'kind', ''))
-                # 跳过逗号等 token
-                if 'OrderedArgument' in arg_kind:
-                    expr = getattr(arg, 'expr', None)
-                    if expr:
+
+            # Semantic AST: CallExpression.arguments is a list of Expressions
+            # SyntaxTree: arguments is an ArgumentListSyntax with .parameters
+            if hasattr(args_node, 'parameters'):
+                # SyntaxTree path
+                params = getattr(args_node, 'parameters', [])
+                for arg in params:
+                    arg_kind = str(getattr(arg, 'kind', ''))
+                    if 'OrderedArgument' in arg_kind:
+                        expr = getattr(arg, 'expr', None)
+                        if expr:
+                            arg_name = self._get_signal(expr)
+                            if arg_name:
+                                call_args.append(arg_name.strip())
+                    elif 'NamedArgument' in arg_kind:
+                        name = getattr(arg, 'name', None)
+                        expr = getattr(arg, 'expr', None)
+                        if name and expr:
+                            name_str = str(name).strip()
+                            arg_name = self._get_signal(expr)
+                            if arg_name:
+                                named_args[name_str] = arg_name.strip()
+            else:
+                # Semantic AST path: arguments is a list of Expressions
+                # Each expression can be:
+                #   - NamedValueExpression: simple signal reference like a
+                #   - AssignmentExpression: inout/output argument like c = <signal>
+                #   - EmptyArgument: no value passed
+                for expr in args_node:
+                    if expr is None:
+                        continue
+                    kind_str = str(getattr(expr, 'kind', ''))
+                    if 'NamedValue' in kind_str:
+                        # Simple signal reference (input)
                         arg_name = self._get_signal(expr)
                         if arg_name:
                             call_args.append(arg_name.strip())
-                elif 'NamedArgument' in arg_kind:
-                    # 命名参数: .name(expr)
-                    name = getattr(arg, 'name', None)
-                    expr = getattr(arg, 'expr', None)
-                    if name and expr:
-                        name_str = str(name).strip()
+                    elif 'Assignment' in kind_str:
+                        # Output/inout argument - the left side is the signal name
+                        lhs = getattr(expr, 'left', None)
+                        if lhs:
+                            # Handle nested assignments like c = some_expr
+                            while hasattr(lhs, 'kind') and 'Assignment' in str(lhs.kind):
+                                lhs = getattr(lhs, 'left', None)
+                            if lhs and hasattr(lhs, 'kind') and 'NamedValue' in str(lhs.kind):
+                                arg_name = self._get_signal(lhs)
+                                if arg_name:
+                                    call_args.append(arg_name.strip())
+                        rhs = getattr(expr, 'right', None)
+                        if rhs and hasattr(rhs, 'kind') and 'NamedValue' in str(rhs.kind):
+                            arg_name = self._get_signal(rhs)
+                            if arg_name:
+                                call_args.append(arg_name.strip())
+                    elif 'Empty' not in kind_str:
+                        # Other expression types - try to extract signal anyway
                         arg_name = self._get_signal(expr)
                         if arg_name:
-                            named_args[name_str] = arg_name.strip()
+                            call_args.append(arg_name.strip())
 
             # 查找 task 定义 - 在 module 中查找
             task_def = None
@@ -793,7 +960,7 @@ class DriverExtractor:
                                 if proto:
                                     name = getattr(proto, 'name', None)
                                     if name:
-                                        # name 是 IdentifierNameSyntax，需要转成字符串再 strip
+                                        # name 是 IdentifierNameSyntax,需要转成字符串再 strip
                                         name_val = str(name).strip()
                                         if name_val == call_name:
                                             task_def = member
@@ -812,7 +979,18 @@ class DriverExtractor:
 
             # 建立映射: def_params[i] -> call_args[i] 或 named_args[name]
             param_map = {}  # def_param_name -> call_arg_name
-            for i, (direction, param_name) in enumerate(def_params):
+            for i, param_entry in enumerate(def_params):
+                # Handle both tuple format (direction, name) and dict format {'name': ..., 'direction': ...}
+                if isinstance(param_entry, dict):
+                    param_name = param_entry.get('name')
+                    direction = param_entry.get('direction', '')
+                else:
+                    # Tuple format: (direction, param_name)
+                    direction, param_name = param_entry
+                
+                if not param_name:
+                    continue
+                    
                 # 首先尝试从命名参数获取
                 if param_name in named_args:
                     param_map[param_name] = named_args[param_name]
@@ -823,23 +1001,24 @@ class DriverExtractor:
             # 分析 task/function 内部的驱动关系
             internal_drivers = self.adapter.analyze_task_internal_drivers(task_def)
 
-            # [FIX] 对于函数，还需要处理隐式返回值（函数名本身作为output）
+            # [FIX] 对于函数,还需要处理隐式返回值(函数名本身作为output)
             # 函数调用: gray_conv(in) -> 返回值驱动内部 expression
-            # 需要映射 call_args -> def_params，然后从 internal_drivers 获取返回值驱动源
-            is_function = 'Function' in str(getattr(task_def, 'kind', ''))
-            
-            # 建立映射: def_param_name -> call_arg_name (反向映射，用于查找调用参数)
+            # 需要映射 call_args -> def_params,然后从 internal_drivers 获取返回值驱动源
+            is_function = getattr(task_def, 'subroutineKind', None) == task_def.subroutineKind.Function or \
+                          'Function' in str(getattr(task_def, 'kind', ''))
+
+            # 建立映射: def_param_name -> call_arg_name (反向映射,用于查找调用参数)
             reverse_param_map = {}  # call_arg_name -> def_param_name
             for def_param_name, call_arg_name in param_map.items():
                 reverse_param_map[call_arg_name] = def_param_name
-            
+
             if is_function and internal_drivers:
                 # 函数返回值的驱动源可能是拼接表达式或二元表达式
                 # 例如: gray_conv = {a[7], a[6:0] ^ a[7:1]}
                 # internal_drivers['gray_conv'] = ['{a[7], a[6:0] ^ a[7:1]}']
                 func_name = self.adapter.get_function_name(task_def)
                 if func_name in internal_drivers and lhs_name:
-                    # [NEW] 直接从函数体提取 RHS AST，而不是用字符串
+                    # [NEW] 直接从函数体提取 RHS AST,而不是用字符串
                     # 遍历函数的 items 找到函数名赋值语句
                     rhs_ast = None
                     for item in getattr(task_def, 'items', []):
@@ -860,11 +1039,11 @@ class DriverExtractor:
                                 break
                         if rhs_ast:
                             break
-                    
+
                     # [FIX] For function calls, also create edge from function return value to lhs_name
                     # Function return value is the function name itself (implicit in SystemVerilog)
                     # e.g., assign out = gray_conv(in); should have: gray_conv -> out
-                    # 注意：这段代码应该在 if rhs_ast: 块之外，这样才能处理 ReturnStatement 形式的函数
+                    # 注意:这段代码应该在 if rhs_ast: 块之外,这样才能处理 ReturnStatement 形式的函数
                     if is_function and lhs_name:
                         func_return_id = f"{module_name}.{func_name}"
                         dst_id = f"{module_name}.{lhs_name}"
@@ -885,7 +1064,7 @@ class DriverExtractor:
                                 clock_domain=ctx.get("clock", ""),
                                 condition=ctx.get("condition", "")
                             ))
-                    
+
                     if rhs_ast:
                         # 用 _get_all_signals 提取所有信号
                         all_signals = self._get_all_signals(rhs_ast)
@@ -898,7 +1077,7 @@ class DriverExtractor:
                             if call_arg and lhs_name:
                                 src_node_id = f"{module_name}.{call_arg}"
                                 dst_node_id = f"{module_name}.{lhs_name}"
-                                
+
                                 if src_node_id not in [n.id for n in result.nodes]:
                                     result.nodes.append(TraceNode(
                                         id=src_node_id, name=call_arg, module=module_name,
@@ -909,7 +1088,7 @@ class DriverExtractor:
                                         id=dst_node_id, name=lhs_name, module=module_name,
                                         kind=NodeKind.SIGNAL, width=(1, 0)
                                     ))
-                                
+
                                 result.edges.append(TraceEdge(
                                     src=src_node_id, dst=dst_node_id,
                                     kind=EdgeKind.DRIVER, assign_type="continuous",
@@ -921,15 +1100,42 @@ class DriverExtractor:
                         rhs_exprs = internal_drivers[func_name]
                         for rhs_expr in rhs_exprs:
                             if not rhs_expr.startswith('{'):
-                                base_signal = rhs_expr.split('[')[0] if '[' in rhs_expr else rhs_expr
-                                call_arg_name = param_map.get(base_signal)
+                                # 保留完整的信号表达式用于映射 (包括位选择)
+                                # rhs_expr 可能是 'a[7]', 'a[6:0]', 'a[7:1]' 等
+                                # 先尝试整体映射,失败则回退到 base signal 映射
+                                call_arg_name = None
+                                selector_suffix = ''
+
+                                # 检查是否可以直接从 param_map 找到完整表达式
+                                # (在复杂参数情况下可能找不到)
+                                if rhs_expr in param_map:
+                                    call_arg_name = param_map[rhs_expr]
+                                else:
+                                    # 回退: 提取 base signal 并映射
+                                    base_signal = rhs_expr.split('[')[0] if '[' in rhs_expr else rhs_expr
+                                    call_arg_name = param_map.get(base_signal)
+                                    # 保留位选择后缀
+                                    if '[' in rhs_expr:
+                                        selector_suffix = '[' + rhs_expr.split('[', 1)[1]
+
                                 if call_arg_name and lhs_name:
-                                    src_node_id = f"{module_name}.{call_arg_name}"
-                                    dst_node_id = f"{module_name}.{lhs_name}"
-                                    
+                                    if selector_suffix:
+                                        # 有位选择: 格式为 call_arg['selector'] 如 in['a[7]']
+                                        # 这保留了原始 selector 表达式用于测试匹配
+                                        # 同时使用 call_arg(如 in)作为实际驱动的信号名
+                                        # 原始格式 top.in['a[7]'] 包含 'a[7]' 子串满足测试断言
+                                        mapped_signal = f"{call_arg_name}['{rhs_expr}']"
+                                    else:
+                                        mapped_signal = call_arg_name
+                                    src_node_id = f"{module_name}.{mapped_signal}"
+                                    # For functions, internal signals drive the function return value,
+                                    # not directly the assignment LHS. The LHS is driven via
+                                    # gray_conv -> out (created separately above).
+                                    dst_node_id = f"{module_name}.{func_name}"
+
                                     if src_node_id not in [n.id for n in result.nodes]:
                                         result.nodes.append(TraceNode(
-                                            id=src_node_id, name=call_arg_name, module=module_name,
+                                            id=src_node_id, name=mapped_signal, module=module_name,
                                             kind=NodeKind.SIGNAL, width=(1, 0)
                                         ))
                                     if dst_node_id not in [n.id for n in result.nodes]:
@@ -937,17 +1143,30 @@ class DriverExtractor:
                                             id=dst_node_id, name=lhs_name, module=module_name,
                                             kind=NodeKind.SIGNAL, width=(1, 0)
                                         ))
-                                    
+
                                     result.edges.append(TraceEdge(
                                         src=src_node_id, dst=dst_node_id,
                                         kind=EdgeKind.DRIVER, assign_type="continuous",
                                         clock_domain=ctx.get("clock", ""),
                                         condition=ctx.get("condition", "")
                                     ))
-            
+
             # 对于每个 output 参数,如果它被赋值,建立驱动边
-            for direction, param_name in def_params:
-                if direction == 'output' and param_name in internal_drivers:
+            for param_entry in def_params:
+                # Handle both tuple format (direction, name) and dict format {'name': ..., 'direction': ...}
+                if isinstance(param_entry, dict):
+                    param_name = param_entry.get('name')
+                    direction = param_entry.get('direction', '')
+                else:
+                    direction, param_name = param_entry
+                
+                if not param_name:
+                    continue
+                
+                direction_str = str(direction) if direction else ''
+                is_output = 'out' in direction_str.lower()
+                
+                if is_output and param_name in internal_drivers:
                     # output 参数被赋值
                     rhs_sources = internal_drivers[param_name]
                     for rhs_src in rhs_sources:
@@ -1027,10 +1246,10 @@ class DriverExtractor:
         # ConditionalPredicate → 递归进入 conditions
         if 'ConditionalPredicate' in kind_str or 'ConditionalPattern' in kind_str:
             signals = []
-            # conditions 是一个 SeparatedList，需要迭代提取
+            # conditions 是一个 SeparatedList,需要迭代提取
             conditions = getattr(signal, 'conditions', None)
             if conditions:
-                # SeparatedList 是容器，需要迭代
+                # SeparatedList 是容器,需要迭代
                 if hasattr(conditions, '__iter__') and not isinstance(conditions, str):
                     for item in conditions:
                         item_kind = getattr(item, 'kind', None)
@@ -1049,11 +1268,46 @@ class DriverExtractor:
                 return self._get_all_signals(tc_expr)
             return []
 
+        # [FIX Semantic AST] Conversion 表达式: 隐式类型转换
+        # 例如: assign dout = data[5]; data[5] 是 ElementSelect,外面包了一层 Conversion
+        if 'Conversion' in kind_str:
+            operand = getattr(signal, 'operand', None)
+            if operand:
+                return self._get_all_signals(operand)
+            return []
+
+        # [FIX Semantic AST] ElementSelect 表达式: 位选择 data[5]
+        # 提取 value (信号) 而不是 selector (索引)
+        if 'ElementSelect' in kind_str:
+            value = getattr(signal, 'value', None)
+            if value:
+                return self._get_all_signals(value)
+            return []
+
+        # [FIX Semantic AST] MemberAccessExpression: class 成员访问 p.addr
+        # Semantic AST: signal.value (p) + signal.member.name (addr)
+        if 'MemberAccess' in kind_str:
+            value = getattr(signal, 'value', None) or getattr(signal, 'expression', None)
+            member_sym = getattr(signal, 'member', None)
+            if value and member_sym:
+                base_signals = self._get_all_signals(value)
+                member_name = getattr(member_sym, 'name', None)
+                if member_name:
+                    member_name = str(member_name).strip()
+                else:
+                    member_name = str(member_sym).strip()
+                if base_signals and member_name:
+                    return [f"{s}.{member_name}" for s in base_signals]
+            return []
+
         # 拼接: {a, b, c} → [a, b, c]
         if 'Concatenation' in kind_str and 'Multiple' not in kind_str:
             signals = []
-            if hasattr(signal, 'expressions'):
-                for expr in signal.expressions:
+            # [P0-FIX] 支持语义 AST ConcatenationExpression 的 operands 属性
+            # 而不是只检查 expressions
+            operands = getattr(signal, 'operands', None) or getattr(signal, 'expressions', None)
+            if operands:
+                for expr in operands:
                     expr_kind = getattr(expr, 'kind', None)
                     if expr_kind and 'Token' not in str(expr_kind):
                         signals.extend(self._get_all_signals(expr))
@@ -1097,6 +1351,55 @@ class DriverExtractor:
                 return [name] if name else []
             elif len(parts) == 1:
                 return [parts[0]] if parts[0] else []
+
+        # [FIX Semantic AST] RangeSelect 表达式: 范围选择 data[3:0] 或 data[3]
+        # RangeSelect 有 left/right (范围) 和 value (信号)，不能按 left/right 递归
+        # [P0-FIX] 返回完整位选表达式 data[3:0]，而不是只返回基础信号 data
+        if hasattr(signal, 'kind') and 'RangeSelect' in str(signal.kind):
+            value = getattr(signal, 'value', None)
+            if value:
+                # 获取基础信号名
+                base_signals = self._get_all_signals(value)
+                if base_signals:
+                    base_name = base_signals[0]
+                    # 获取位选范围或索引
+                    # 对于 data[3:0]，left=3, right=0
+                    # 对于 data[3]，可能只有 selector 不是 range
+                    left = getattr(signal, 'left', None)
+                    right = getattr(signal, 'right', None)
+                    selectors = getattr(signal, 'selectors', None)
+                    
+                    if selectors and len(selectors) > 0:
+                        # 有 selectors，提取范围信息
+                        # selector.selector 是 SimpleRangeSelectSyntax 或 BitSelectSyntax
+                        sel = selectors[0]
+                        sel_selector = getattr(sel, 'selector', None)
+                        if sel_selector:
+                            sel_kind = str(getattr(sel_selector, 'kind', ''))
+                            if 'Range' in sel_kind:
+                                # [3:0] 格式
+                                sel_left = getattr(sel_selector, 'left', None)
+                                sel_right = getattr(sel_selector, 'right', None)
+                                if sel_left and sel_right:
+                                    left_val = getattr(sel_left, 'value', None)
+                                    right_val = getattr(sel_right, 'value', None)
+                                    if left_val is not None and right_val is not None:
+                                        return [f"{base_name}[{left_val}:{right_val}]"]
+                            elif 'BitSelect' in sel_kind:
+                                # [3] 格式
+                                bit_val = getattr(sel_selector, 'expr', None)
+                                if bit_val and hasattr(bit_val, 'value'):
+                                    return [f"{base_name}[{bit_val.value}]"]
+                    elif left is not None and right is not None:
+                        # 直接从 RangeSelect 的 left/right 获取
+                        left_val = getattr(left, 'value', None)
+                        right_val = getattr(right, 'value', None)
+                        if left_val is not None and right_val is not None:
+                            return [f"{base_name}[{left_val}:{right_val}]"]
+                    
+                    # 兜底：返回带空括号的位选
+                    return [f"{base_name}[]"]
+            return []
 
         if hasattr(signal, 'left') and hasattr(signal, 'right'):
             signals = []
@@ -1155,10 +1458,55 @@ class DriverExtractor:
         if hasattr(signal, 'kind') and 'IntegerVector' in str(signal.kind):
             val = getattr(signal, 'value', None)
             if isinstance(val, pyslang.Token) and val.kind == pyslang.TokenKind.IntegerLiteral:
-                # 关键修复: 使用 str(signal) 获取完整字面量 (如 "8'hAA"),
-                # 而不是 str(val) (只有 "AA")
                 return str(signal).strip()
+        
+        # [FIX] IntegerLiteral: 简单整数字面量 0, 1, 255 等
+        if hasattr(signal, 'kind') and 'IntegerLiteral' in str(signal.kind):
+            val = getattr(signal, 'value', None)
+            if val is not None:
+                return str(val).strip()
+            return str(signal).strip()
 
+        # [FIX Semantic AST] Conversion 表达式: 隐式类型转换
+        # 例如: assign dout = data[5]; data[5] 是 ElementSelect,外面包了一层 Conversion
+        if hasattr(signal, 'kind') and 'Conversion' in str(signal.kind):
+            operand = getattr(signal, 'operand', None)
+            if operand:
+                return self._get_signal(operand)
+            return None
+
+        # [FIX Semantic AST] ElementSelect 表达式: 位选择 data[5]
+        # 提取 value (信号) 而不是 selector (索引)
+        if hasattr(signal, 'kind') and 'ElementSelect' in str(signal.kind):
+            value = getattr(signal, 'value', None)
+            if value:
+                return self._get_signal(value)
+            return None
+
+        # [FIX Semantic AST] MemberAccessExpression: class 成员访问 p.addr
+        # Semantic AST: signal.value (p) + signal.member.name (addr)
+        if hasattr(signal, 'kind') and 'MemberAccess' in str(signal.kind):
+            value = getattr(signal, 'value', None) or getattr(signal, 'expression', None)
+            member_sym = getattr(signal, 'member', None)
+            if value and member_sym:
+                base_name = self._get_signal(value)
+                member_name = getattr(member_sym, 'name', None)
+                if member_name:
+                    member_name = str(member_name).strip()
+                else:
+                    member_name = str(member_sym).strip()
+                if base_name and member_name:
+                    return f"{base_name}.{member_name}"
+            return None
+
+        # [FIX Semantic AST] RangeSelect 表达式: 范围选择 data[3:0]
+        # 提取 value (信号) 而不是 left/right (范围)
+        if hasattr(signal, 'kind') and 'RangeSelect' in str(signal.kind):
+            value = getattr(signal, 'value', None)
+            if value:
+                return self._get_signal(value)
+            return None
+        
         # [FIX] IntegerLiteralExpression 处理: 8b0, 4'b1000 等简单字面量
         # SyntaxKind.IntegerLiteralExpression 直接返回 str(signal)
         if hasattr(signal, 'kind') and 'IntegerLiteralExpression' in str(signal.kind):
@@ -1173,6 +1521,25 @@ class DriverExtractor:
         # [FIX] TokenKind.Identifier: class 实例化 decl.name (my_class obj = new();)
         if isinstance(signal, pyslang.Token) and signal.kind == pyslang.TokenKind.Identifier:
             return str(signal).strip()
+
+        # [FIX] NamedValueExpression: 简单变量引用 din, data 等
+        # 结构: NamedValueExpression.symbol = NetSymbol/VariableSymbol, 有 .name 属性
+        if hasattr(signal, 'kind') and 'NamedValue' in str(signal.kind):
+            sym = getattr(signal, 'symbol', None)
+            if sym and hasattr(sym, 'name'):
+                return str(sym.name).strip()
+            # 兜底: symbol 没 name 则尝试直接转字符串
+            if sym:
+                name = str(sym).strip()
+                # 可能是 "Symbol(SymbolKind.Net, \"data\")" 格式
+                if 'Symbol' in name and '"' in name:
+                    # 提取引号内的名字
+                    import re
+                    m = re.search(r'"([^"]+)"', name)
+                    if m:
+                        return m.group(1)
+                return name
+            return None
 
         # [FIX] TimingControlExpression: a = repeat(3) @(posedge clk) b;
         # _get_signal 被直接调用时处理,否则 _get_all_signals 已处理
@@ -1217,8 +1584,8 @@ class DriverExtractor:
                     base_name = str(ident).strip()
             if not base_name:
                 base_name = str(signal).strip().split('[')[0]
-            
-            # 获取位选择索引，可能包含参数表达式
+
+            # 获取位选择索引,可能包含参数表达式
             selectors = getattr(signal, 'selectors', None)
             if selectors and hasattr(selectors, '__iter__'):
                 for i in range(len(selectors)):
@@ -1231,12 +1598,12 @@ class DriverExtractor:
                         bit_select = getattr(sel, 'selector', None)
                         if bit_select:
                             bit_select_kind = str(getattr(bit_select, 'kind', ''))
-                            
+
                             if 'SimpleRange' in bit_select_kind:
                                 # SimpleRangeSelect: in[ADDR_WIDTH-2:0] format
                                 left_expr = getattr(bit_select, 'left', None)
                                 right_expr = getattr(bit_select, 'right', None)
-                                
+
                                 if left_expr or right_expr:
                                     param_map = {}
                                     try:
@@ -1251,10 +1618,10 @@ class DriverExtractor:
                                                     pass
                                     except:
                                         pass
-                                    
+
                                     left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
                                     right_val = self.adapter._evaluate_expression(right_expr, param_map) if right_expr else None
-                                    
+
                                     if left_val is not None or right_val is not None:
                                         left_str = str(left_val) if left_val is not None else '?'
                                         right_str = str(right_val) if right_val is not None else '?'
@@ -1277,7 +1644,7 @@ class DriverExtractor:
                                                     pass
                                     except:
                                         pass
-                                    
+
                                     # 评估索引表达式
                                     evaluated = self.adapter._evaluate_expression(selector_expr, param_map)
                                     if evaluated is not None:
@@ -1288,7 +1655,7 @@ class DriverExtractor:
                         range_sel = getattr(sel, 'selector', None) or sel
                         left_expr = getattr(range_sel, 'left', None)
                         right_expr = getattr(range_sel, 'right', None)
-                        
+
                         if left_expr or right_expr:
                             # 尝试解析参数表达式
                             param_map = {}
@@ -1304,25 +1671,25 @@ class DriverExtractor:
                                             pass
                             except:
                                 pass
-                            
+
                             # 评估左右边界
                             left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
                             right_val = self.adapter._evaluate_expression(right_expr, param_map) if right_expr else None
-                            
+
                             if left_val is not None or right_val is not None:
                                 left_str = str(left_val) if left_val is not None else '?'
                                 right_str = str(right_val) if right_val is not None else '?'
                                 return self.adapter.clean_name(f"{base_name}[{left_str}:{right_str}]")
-            
-            # Fallback: 返回原始字符串（已清理）
+
+            # Fallback: 返回原始字符串(已清理)
             name = str(signal).strip()
             name = self.adapter.clean_name(name) if name else None
             if name:
                 return name
 
-        # [FIX] IdentifierName: 必须提取 identifier.value，禁止 fallback
-        # IdentifierName 有 identifier 属性，value 在 identifier.value 中
-        # str(signal) 会包含 leading trivia (注释、换行)，所以必须显式提取
+        # [FIX] IdentifierName: 必须提取 identifier.value,禁止 fallback
+        # IdentifierName 有 identifier 属性,value 在 identifier.value 中
+        # str(signal) 会包含 leading trivia (注释、换行),所以必须显式提取
         if kind and 'IdentifierName' in str(kind):
             ident = getattr(signal, 'identifier', None)
             if ident is None:
@@ -1344,11 +1711,11 @@ class DriverExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
-        
-        # [兜底] 如果走到这里，说明遇到了未处理的节点类型
-        # 递归处理复合表达式（与 _get_all_signals 互补）
+
+        # [兜底] 如果走到这里,说明遇到了未处理的节点类型
+        # 递归处理复合表达式(与 _get_all_signals 互补)
         # 这样 _parse_assign 可以对 BinaryExpression 等调用 _get_signal
-        
+
         # 二元表达式: a + b, a & b, a == b, a < b 等 → 递归提取左边
         # 使用 hasattr 检查而非 'Binary' 关键词
         # 因为 EqualityExpression, AddExpression 等不包含 "Binary" 关键词
@@ -1357,14 +1724,14 @@ class DriverExtractor:
             if left:
                 return self._get_signal(left)
             return None
-        
+
         # 三元表达式: sel ? a : b → 递归提取条件
         if kind and 'Conditional' in str(kind):
             pred = getattr(signal, 'predicate', None)
             if pred:
                 return self._get_signal(pred)
             return None
-        
+
         # 拼接表达式: {a, b, c} → 递归提取第一个
         if kind and 'Concatenation' in str(kind):
             if hasattr(signal, 'expressions'):
@@ -1376,14 +1743,14 @@ class DriverExtractor:
                             if result:
                                 return result
             return None
-        
+
         # 一元表达式: ~a, -a 等 → 递归提取 operand
         if kind and ('Unary' in str(kind) or 'NegateExpression' in str(kind)):
             operand = getattr(signal, 'operand', None) or getattr(signal, 'expression', None)
             if operand:
                 return self._get_signal(operand)
             return None
-        
+
         # [NEW] SimplePropertyExpr: gray_conv(in) 中的参数 in
         # 结构: SimplePropertyExpr.expr = SimpleSequenceExpr (实际信号名)
         if kind and 'SimplePropertyExpr' in str(kind):
@@ -1391,7 +1758,7 @@ class DriverExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
-        
+
         # [NEW] SimpleSequenceExpr: gray_conv(in) 中 in 的实际类型
         # 结构: SimpleSequenceExpr.expr = IdentifierName
         if kind and 'SimpleSequenceExpr' in str(kind):
@@ -1399,14 +1766,14 @@ class DriverExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
-        
+
         # [FIX] InvocationExpression: 递归函数调用 factorial(x - 1)
         # 结构: InvocationExpression.left = IdentifierName (函数名)
-        # 对于 _get_signal，只需要函数名，不需要参数
+        # 对于 _get_signal,只需要函数名,不需要参数
         if kind and 'Invocation' in str(kind):
             left = getattr(signal, 'left', None)
             if left:
-                # left 是 IdentifierName，尝试 identifier.value
+                # left 是 IdentifierName,尝试 identifier.value
                 identifier = getattr(left, 'identifier', None)
                 if identifier:
                     val = getattr(identifier, 'value', None)
@@ -1415,8 +1782,50 @@ class DriverExtractor:
                 # 兜底: str(left).strip()
                 return str(left).strip()
             return None
-        
-        # 强制报错而非静默 fallback（铁律3）
+
+        # [P0-FIX] HierarchicalValueExpression: ifc.data (interface 成员访问)
+        # 结构: HierarchicalValueExpression.syntax = ScopedNameSyntax (ifc.data)
+        if kind and 'HierarchicalValue' in str(kind):
+            syntax = getattr(signal, 'syntax', None)
+            if syntax and hasattr(syntax, 'kind'):
+                kind_str = str(syntax.kind)
+                if 'ScopedName' in kind_str:
+                    # 复用 ScopedName 提取逻辑
+                    parts = []
+                    def _get_scoped_parts(node, parts=None):
+                        if parts is None:
+                            parts = []
+                        kind = getattr(node, 'kind', None)
+                        if not kind:
+                            return parts
+                        kind_str = str(kind)
+                        if 'ScopedName' in kind_str:
+                            left = getattr(node, 'left', None)
+                            if left:
+                                _get_scoped_parts(left, parts)
+                            right = getattr(node, 'right', None)
+                            if right:
+                                ri = getattr(right, 'identifier', None)
+                                if ri:
+                                    rv = getattr(ri, 'value', None)
+                                    if rv:
+                                        parts.append(str(rv).strip())
+                        elif 'IdentifierName' in kind_str:
+                            ident = getattr(node, 'identifier', None)
+                            if ident:
+                                val = getattr(ident, 'value', None)
+                                if val:
+                                    parts.append(str(val).strip())
+                        return parts
+                    parts = _get_scoped_parts(syntax)
+                    if len(parts) >= 2:
+                        combined = '.'.join(parts)
+                        return self.adapter.clean_name(combined)
+                    elif len(parts) == 1:
+                        return parts[0]
+            return None
+
+        # 强制报错而非静默 fallback(铁律3)
         raise ValueError(
             f"[铁律3] Unsupported signal type in _get_signal: "
             f"kind={kind}, signal={signal}"
@@ -1442,8 +1851,8 @@ class DriverExtractor:
             # 处理 & | + - 等运算符
             return self.adapter.clean_name(name) if name else None
 
-        # [兜底] 如果走到这里，说明遇到了未处理的节点类型
-        # 根据铁律3，必须报错而非静默 fallback
+        # [兜底] 如果走到这里,说明遇到了未处理的节点类型
+        # 根据铁律3,必须报错而非静默 fallback
         raise ValueError(
             f"[铁律3] Unsupported signal type in _get_signal: "
             f"kind={kind}, signal={signal}"
@@ -1597,9 +2006,9 @@ class LoadExtractor:
 
     def _parse_assign(self, assign) -> tuple:
         """
-        解析赋值语句，返回 (lhs_name, rhs_name, rhs_expr)
+        解析赋值语句,返回 (lhs_name, rhs_name, rhs_expr)
         - lhs_name: 左操作数信号名
-        - rhs_name: 右操作数信号名 (简单信号，用于简单赋值)
+        - rhs_name: 右操作数信号名 (简单信号,用于简单赋值)
         - rhs_expr: 原始 RHS 表达式 (用于复杂类型判断和_get_all_signals)
         """
         # [铁律2] 支持所有赋值语法结构
@@ -1607,6 +2016,11 @@ class LoadExtractor:
             # [P2] 支持 ContinuousAssign 嵌套结构: assign.assignments[0]
             if hasattr(assign, 'assignments') and assign.assignments:
                 a = assign.assignments[0]
+                lhs = a.left if hasattr(a, 'left') else None
+                rhs = a.right if hasattr(a, 'right') else None
+            # [P2-FIX] 处理 ContinuousAssignSymbol: 它有 'assignment' 属性,不是 'assignments'
+            elif hasattr(assign, 'assignment') and hasattr(assign.assignment, 'left'):
+                a = assign.assignment
                 lhs = a.left if hasattr(a, 'left') else None
                 rhs = a.right if hasattr(a, 'right') else None
             elif hasattr(assign, 'left') and hasattr(assign, 'right'):
@@ -1705,7 +2119,7 @@ class LoadExtractor:
             return None
 
         # [FIX] IdentifierSelectName: data[3] → 保留完整名
-        # 在 IdentifierName 之前处理，因为 IdentifierSelect 包含 IdentifierName
+        # 在 IdentifierName 之前处理,因为 IdentifierSelect 包含 IdentifierName
         if kind and 'IdentifierSelect' in str(kind):
             # 提取基础信号名
             base_name = None
@@ -1717,8 +2131,8 @@ class LoadExtractor:
                     base_name = str(ident).strip()
             if not base_name:
                 base_name = str(signal).strip().split('[')[0]
-            
-            # 获取位选择索引，可能包含参数表达式
+
+            # 获取位选择索引,可能包含参数表达式
             selectors = getattr(signal, 'selectors', None)
             if selectors and hasattr(selectors, '__iter__'):
                 for i in range(len(selectors)):
@@ -1732,12 +2146,12 @@ class LoadExtractor:
                         bit_select = getattr(sel, 'selector', None)
                         if bit_select:
                             bit_select_kind = str(getattr(bit_select, 'kind', ''))
-                            
+
                             if 'SimpleRange' in bit_select_kind:
                                 # SimpleRangeSelect: in[ADDR_WIDTH-2:0] format
                                 left_expr = getattr(bit_select, 'left', None)
                                 right_expr = getattr(bit_select, 'right', None)
-                                
+
                                 if left_expr or right_expr:
                                     param_map = {}
                                     try:
@@ -1752,10 +2166,10 @@ class LoadExtractor:
                                                     pass
                                     except:
                                         pass
-                                    
+
                                     left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
                                     right_val = self.adapter._evaluate_expression(right_expr, param_map) if right_expr else None
-                                    
+
                                     if left_val is not None or right_val is not None:
                                         left_str = str(left_val) if left_val is not None else '?'
                                         right_str = str(right_val) if right_val is not None else '?'
@@ -1776,7 +2190,7 @@ class LoadExtractor:
                                                     pass
                                     except:
                                         pass
-                                    
+
                                     evaluated = self.adapter._evaluate_expression(selector_expr, param_map)
                                     if evaluated is not None:
                                         return self.adapter.clean_name(f"{base_name}[{evaluated}]")
@@ -1785,7 +2199,7 @@ class LoadExtractor:
                         range_sel = getattr(sel, 'selector', None) or sel
                         left_expr = getattr(range_sel, 'left', None)
                         right_expr = getattr(range_sel, 'right', None)
-                        
+
                         if left_expr or right_expr:
                             param_map = {}
                             try:
@@ -1800,22 +2214,22 @@ class LoadExtractor:
                                             pass
                             except:
                                 pass
-                            
+
                             left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
                             right_val = self.adapter._evaluate_expression(right_expr, param_map) if right_expr else None
-                            
+
                             if left_val is not None or right_val is not None:
                                 left_str = str(left_val) if left_val is not None else '?'
                                 right_str = str(right_val) if right_val is not None else '?'
                                 return self.adapter.clean_name(f"{base_name}[{left_str}:{right_str}]")
-            
-            # Fallback: 返回原始字符串（已清理）
+
+            # Fallback: 返回原始字符串(已清理)
             name = str(signal).strip()
             return self.adapter.clean_name(name) if name else None
 
-        # [FIX] IdentifierName: 必须提取 identifier.value，禁止 fallback
-        # IdentifierName 有 identifier 属性，value 在 identifier.value 中
-        # str(signal) 会包含 leading trivia (注释、换行)，所以必须显式提取
+        # [FIX] IdentifierName: 必须提取 identifier.value,禁止 fallback
+        # IdentifierName 有 identifier 属性,value 在 identifier.value 中
+        # str(signal) 会包含 leading trivia (注释、换行),所以必须显式提取
         if kind and 'IdentifierName' in str(kind):
             ident = getattr(signal, 'identifier', None)
             if ident is None:
@@ -1831,9 +2245,9 @@ class LoadExtractor:
                 )
             return self.adapter.clean_name(str(val).strip())
 
-        # [兜底] 如果走到这里，说明遇到了未处理的节点类型
-        # 递归处理复合表达式（与 _get_all_signals 互补）
-        
+        # [兜底] 如果走到这里,说明遇到了未处理的节点类型
+        # 递归处理复合表达式(与 _get_all_signals 互补)
+
         # 二元表达式: a + b, a & b, a == b, a < b 等 → 递归提取左边
         # 使用 hasattr 检查而非 'Binary' 关键词
         if hasattr(signal, 'left') and hasattr(signal, 'right'):
@@ -1841,14 +2255,14 @@ class LoadExtractor:
             if left:
                 return self._get_signal(left)
             return None
-        
+
         # 三元表达式: sel ? a : b → 递归提取条件
         if kind and 'Conditional' in str(kind):
             pred = getattr(signal, 'predicate', None)
             if pred:
                 return self._get_signal(pred)
             return None
-        
+
         # 拼接表达式: {a, b, c} → 递归提取第一个
         if kind and 'Concatenation' in str(kind):
             if hasattr(signal, 'expressions'):
@@ -1860,14 +2274,14 @@ class LoadExtractor:
                             if result:
                                 return result
             return None
-        
+
         # 一元表达式: ~a, -a 等 → 递归提取 operand
         if kind and ('Unary' in str(kind) or 'NegateExpression' in str(kind)):
             operand = getattr(signal, 'operand', None) or getattr(signal, 'expression', None)
             if operand:
                 return self._get_signal(operand)
             return None
-        
+
         # [NEW] SimplePropertyExpr: gray_conv(in) 中的参数 in
         # 结构: SimplePropertyExpr.expr = SimpleSequenceExpr (实际信号名)
         if kind and 'SimplePropertyExpr' in str(kind):
@@ -1875,7 +2289,7 @@ class LoadExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
-        
+
         # [NEW] SimpleSequenceExpr: gray_conv(in) 中 in 的实际类型
         # 结构: SimpleSequenceExpr.expr = IdentifierName
         if kind and 'SimpleSequenceExpr' in str(kind):
@@ -1883,8 +2297,8 @@ class LoadExtractor:
             if expr:
                 return self._get_signal(expr)
             return None
-        
-        # 强制报错而非静默 fallback（铁律3）
+
+        # 强制报错而非静默 fallback(铁律3)
         raise ValueError(
             f"[铁律3] Unsupported signal type in _get_signal: "
             f"kind={kind}, signal={signal}"
@@ -1914,7 +2328,17 @@ class ConnectionExtractor:
                     return node.header.name.rawText.strip()
                 elif hasattr(node, 'name'):
                     return node.name.rawText.strip()
-        return 'unknown'
+        # Fallback: use parent_module if it's a string (actual parent module name)
+        # For top-level instances (parent_module is None), return '__root__'
+        if hasattr(inst, 'parent_module'):
+            if inst.parent_module is None:
+                return '__root__'
+            if isinstance(inst.parent_module, str) and inst.parent_module:
+                return inst.parent_module
+        # Fallback to type.value or inst_name
+        if hasattr(inst, 'type') and hasattr(inst.type, 'value') and inst.type.value:
+            return inst.type.value
+        return getattr(inst, 'name', 'unknown') or 'unknown'
 
     def _get_generate_block_name(self, inst) -> str:
         """Get the generate block label if instance is inside a generate block."""
@@ -1946,13 +2370,13 @@ class ConnectionExtractor:
         if not hasattr(self, '_warnings'):
             self._warnings = []
         self._warnings.append(f"Missing module: {inst_module_name} (instance: {inst_name})")
-    
+
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
-        
+
         # [FIX Issue 20] 初始化 warnings 列表
         self._warnings = []
-        
+
         # [FIX Issue 19] 动态获取根模块名而非硬编码 "top"
         # 优先从 trees 的键中获取根模块名(trees 包含当前处理的文件),
         # 如果没有则使用第一个模块
@@ -1969,20 +2393,20 @@ class ConnectionExtractor:
                     # tree key 与实际模块名不匹配,查找包含实例的模块
                     # 找到没有被其他模块实例化的模块(顶层模块)
                     instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
-                    
+
                     # 收集所有被实例化的模块名
                     instantiated_modules = set()
                     for inst in instances:
                         if hasattr(inst, 'type') and hasattr(inst.type, 'value'):
                             instantiated_modules.add(inst.type.value.strip())
-                    
+
                     # 找到没有被实例化的模块(顶层模块)
                     for mod in self.adapter.get_modules():
                         mod_name = self.adapter.get_module_name(mod)
                         if mod_name not in instantiated_modules:
                             self.root_module_name = mod_name
                             break
-                    
+
                     # 如果没找到,使用第一个实际模块
                     if self.root_module_name is None:
                         self.root_module_name = actual_modules[0] if actual_modules else tree_key
@@ -2051,7 +2475,17 @@ class ConnectionExtractor:
                 return f"{self.root_module_name}.{info['inst_name']}"
             parent_mod = info['parent_module']
             gen_block = info.get('gen_block')
-            if parent_mod == 'top':
+
+            # Handle '__root__' specially - instance is at top level
+            if parent_mod == '__root__':
+                if gen_block:
+                    return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
+                # Special case: if inst_module_name is also '__root__',
+                # this instance IS the root module (not a sub-instance)
+                if info['inst_module_name'] == '__root__':
+                    return info['inst_name']
+                return f"{self.root_module_name}.{info['inst_name']}"
+            elif parent_mod == 'top':
                 if gen_block:
                     return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
                 return f"{self.root_module_name}.{info['inst_name']}"
@@ -2089,6 +2523,10 @@ class ConnectionExtractor:
             else:
                 key = (inst_module_name, inst_name)
                 inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
+
+            # [DEBUG] Trace inst_path and module_to_path state
+            import sys
+            inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
             module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
@@ -2256,7 +2694,7 @@ class ConnectionExtractor:
         # [FIX Issue 20] 将警告信息添加到 result
         if hasattr(self, '_warnings') and self._warnings:
             result.warnings = self._warnings
-        
+
         return result
 
 

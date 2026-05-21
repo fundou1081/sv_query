@@ -63,6 +63,14 @@ class ASTWalker:
         elif hasattr(node, 'body'):
             return node.body
         
+        # [FIX] 支持通过 __iter__ 遍历的节点 (如 CompilationUnitSyntax)
+        try:
+            children = list(node)
+            if children:
+                return children
+        except (ValueError, AttributeError, TypeError):
+            pass
+        
         return []
 
 

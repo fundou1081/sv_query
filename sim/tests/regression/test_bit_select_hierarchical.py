@@ -40,7 +40,7 @@ module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -81,7 +81,7 @@ module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -110,7 +110,7 @@ module top(input [7:0] data, input sel, output reg y);
     end
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -137,7 +137,7 @@ module top(input [7:0] data, output y);
     assign y = data[3];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -157,7 +157,7 @@ module top(input [7:0] data, output reg [3:0] y);
     always_comb y = data[7:4];
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -177,7 +177,7 @@ module top(input [7:0] data, output [7:0] y);
     assign y = data;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
 
@@ -199,7 +199,7 @@ module top(input a, output y);
     assign y = a;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
         self.assertGreaterEqual(len(result.drivers), 1)
