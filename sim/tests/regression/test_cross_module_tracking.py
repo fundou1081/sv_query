@@ -213,8 +213,7 @@ class TestHierarchicalPort(unittest.TestCase):
     
     def test_simple_hierarchy(self):
         """[金标准] 简单层级"""
-        source = '''module sub;
-    output [7:0] data;
+        source = '''module sub(output logic [7:0] data);
 endmodule
 
 module top;
@@ -234,12 +233,10 @@ endmodule'''
     
     def test_multi_level_hierarchy(self):
         """[金标准] 多层级"""
-        source = '''module level1;
-    output [7:0] out;
+        source = '''module level1(output logic [7:0] out);
 endmodule
 
-module level2;
-    output [7:0] out;
+module level2(output logic [7:0] out);
     level1 u_l1();
 endmodule
 

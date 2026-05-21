@@ -33,7 +33,7 @@ class TestGenerateCase(unittest.TestCase):
         RTL:
         module top(input [1:0] sel, input a, b, c, output y);
             generate
-                case (sel)
+                case (1'b1)
                     2'b00: begin : gen_a
                         assign y = a;
                     end
@@ -51,9 +51,9 @@ class TestGenerateCase(unittest.TestCase):
         - GenerateRegion 存在
         - CaseGenerate 存在
         """
-        source = '''module top(input [1:0] sel, input a, b, c, output y);
+        source = '''module top(input [1:0] sel, input a, b, c, output logic y);
     generate
-        case (sel)
+        case (1'b1)
             2'b00: begin : gen_a
                 assign y = a;
             end
@@ -103,7 +103,7 @@ endmodule'''
         RTL:
         module top(input [1:0] sel, input a, b, c, output y);
             generate
-                case (sel)
+                case (1'b1)
                     2'b00: begin : gen_a
                         assign y = a;
                     end
@@ -122,9 +122,9 @@ endmodule'''
         - b -> y 驱动关系
         - c -> y 驱动关系
         """
-        source = '''module top(input [1:0] sel, input a, b, c, output y);
+        source = '''module top(input [1:0] sel, input a, b, c, output logic y);
     generate
-        case (sel)
+        case (1'b1)
             2'b00: begin : gen_a
                 assign y = a;
             end

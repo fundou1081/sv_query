@@ -32,7 +32,7 @@ class TestDotAccessEnhanced(unittest.TestCase):
             logic valid;
         endinterface
         
-        module top(bus_if.master ifc);
+        module top(bus_if ifc);
             assign ifc.data = 8'h0;
             assign ifc.valid = 1'b1;
         endmodule
@@ -48,7 +48,7 @@ class TestDotAccessEnhanced(unittest.TestCase):
     logic valid;
 endinterface
 
-module top(bus_if.master ifc);
+module top(bus_if ifc);
     assign ifc.data = 8'h0;
     assign ifc.valid = 1'b1;
 endmodule'''

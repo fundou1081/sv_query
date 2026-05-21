@@ -89,7 +89,7 @@ endmodule'''
     input           clk_i,
     input           rst_ni,
     input           rx_enable,
-    output [10:0]   sreg_q
+    output logic [10:0]   sreg_q
 );
     logic [10:0] sreg_d;
     

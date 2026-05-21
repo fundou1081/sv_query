@@ -98,7 +98,7 @@ class SemanticAdapter:
 
         return modules
 
-    def get_module_instances(self, trees=None) -> List:
+    def get_module_instances(self) -> List:
         """获取所有模块实例 (SemanticInstanceWrapper)
 
         递归遍历所有模块的 body,找出嵌套的实例
@@ -298,7 +298,7 @@ class SemanticAdapter:
         
         return info
 
-    def get_generate_instances(self, trees=None) -> List:
+    def get_generate_instances(self) -> List:
         """获取 generate 实例 (Semantic AST 暂不支持 generate 语法)
 
         Args:

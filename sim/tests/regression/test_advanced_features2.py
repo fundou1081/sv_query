@@ -35,8 +35,8 @@ class TestTaskCall(unittest.TestCase):
         - dout 的驱动: din (通过 task 传递)
         """
         source = '''
-module top(input [7:0] din, output [7:0] dout);
-    task set_data(input [7:0] d, output [7:0] q);
+module top(input [7:0] din, output logic [7:0] dout);
+    task set_data(input [7:0] d, output logic [7:0] q);
         q = d;
     endtask
     
@@ -82,8 +82,8 @@ interface my_if;
     logic [7:0] data;
 endinterface
 
-module top(input my_if.tb, input [7:0] din);
-    assign tb.data = din;
+module top(my_if ifc, input [7:0] din);
+    assign ifc.data = din;
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -121,7 +121,7 @@ class TestModport(unittest.TestCase):
         source = '''
 interface my_if;
     logic [7:0] data;
-    modport mp(input data);
+    modport mp(output data);
 endinterface
 
 module top(my_if.mp m, input [7:0] din);
@@ -162,8 +162,8 @@ class TestWhileLoop(unittest.TestCase):
         - q 的驱动: cnt (过程赋值)
         """
         source = '''
-module top(input clk, output [7:0] q);
-    reg [7:0] cnt = 8;
+module top(input clk, output logic [7:0] q);
+    logic [7:0] cnt = 8;
     
     always @(posedge clk) begin
         while (cnt > 0) begin

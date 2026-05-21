@@ -27,7 +27,7 @@ class TestCaseMultiBranch(unittest.TestCase):
         # 金标准: y 驱动 = [a, b, c] (多个)
         
         source = '''
-module top(input [1:0] sel, input a, input b, input c, output y);
+module top(input [1:0] sel, input a, input b, input c, output logic y);
     always_comb begin
         case (sel)
             2'b00: y = a;
@@ -50,7 +50,7 @@ endmodule'''
     def test_case_two_branch(self):
         """[Golden] 2分支 case"""
         source = '''
-module top(input sel, input a, input b, output y);
+module top(input sel, input a, input b, output logic y);
     always_comb begin
         case (sel)
             1'b0: y = a;

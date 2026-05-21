@@ -77,7 +77,7 @@ module top(input clk, input [1:0] sel, output wire y);
     genvar i;
     generate
         for (i = 0; i < 1; i = i + 1) begin : OUTER
-            if (sel[i]) begin : INNER
+            if (1'b1) begin : INNER
                 assign y = clk;
             end
         end

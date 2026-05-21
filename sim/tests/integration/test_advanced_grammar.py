@@ -93,8 +93,8 @@ class TestClockingBlockExtraction(unittest.TestCase):
         source = '''
 module top(input clk);
     clocking cb @(posedge clk);
-        input data;
-        output enable;
+        input logic data;
+        output logic enable;
     endclocking
 endmodule'''
         
@@ -111,7 +111,7 @@ class TestSequencePropertyExtraction(unittest.TestCase):
     def test_sequence(self):
         """sequence 定义"""
         source = '''
-module top();
+module top(logic req, logic ack);
     sequence s1;
         req |-> ##1 ack;
     endsequence
@@ -126,7 +126,7 @@ endmodule'''
     def test_property(self):
         """property 定义"""
         source = '''
-module top();
+module top(logic req, logic ack);
     property p1;
         req |-> ##1 ack;
     endproperty

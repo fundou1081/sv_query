@@ -240,7 +240,7 @@ endclass'''
         - CONSTRAINS: c → b
         """
         source = '''class a;
-    int b;
+    rand int b;
     constraint c { b dist {3 := 1, 10 := 2}; }
 endclass'''
 
@@ -270,8 +270,8 @@ class TestConstraintUniquenessSolveBefore(unittest.TestCase):
         - HAS_MEMBER 边连接到 b1, b2, b3
         """
         source = '''class a;
-    bit b1, b2, b3;
-    constraint c { unique {b1, b2, b3}; }
+    rand bit b1, b2, b3;
+    constraint c { unique { b1, b2, b3 }; }
 endclass'''
 
         graph = self._build_graph(source)
@@ -360,7 +360,9 @@ endclass'''
 
     def test_simple_extends(self):
         """[Golden] 简单 extends"""
-        source = '''class child extends parent;
+        source = '''class parent;
+endclass
+class child extends parent;
 endclass'''
         classes = self._get_classes(source)
         self.assertEqual(len(classes), 1)
