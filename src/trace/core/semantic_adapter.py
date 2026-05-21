@@ -129,7 +129,8 @@ class SemanticAdapter:
 
             # 直接的 InstanceSymbol
             if kind_str == 'SymbolKind.Instance':
-                parent_name = parent_path.split('.')[-1] if parent_path else None
+                # parent_name = parent_path (full hierarchical path) for proper parent tracking
+                parent_name = parent_path if parent_path else None
                 wrappers.append(SemanticInstanceWrapper(node, parent_module=parent_name))
                 # 递归检查 body 中的嵌套实例
                 body = getattr(node, 'body', None)
@@ -183,11 +184,15 @@ class SemanticAdapter:
     def get_classes(self) -> List:
         """获取所有类定义"""
         classes = []
-        for item in self._root:
-            if hasattr(item, 'kind'):
-                kind_str = str(item.kind)
-                if 'Class' in kind_str and 'Definition' in kind_str:
+        
+        # Semantic AST: RootSymbol[0] is CompilationUnitSymbol, iterate it for classes
+        comp_unit = self._root[0] if len(self._root) > 0 else None
+        if comp_unit:
+            for item in comp_unit:
+                kind_str = str(getattr(item, 'kind', ''))
+                if 'Class' in kind_str:
                     classes.append(item)
+        
         return classes
 
     def get_generate_instances(self, trees=None) -> List:
