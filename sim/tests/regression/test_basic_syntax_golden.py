@@ -71,7 +71,7 @@ endmodule'''
         - y 节点存在
         - y <- a 驱动边存在 (initial 块内)
         """
-        source = '''module top(input a, output y);
+        source = '''module top(input logic a, output logic y);
     initial begin
         y = a;
     end
@@ -297,7 +297,7 @@ endmodule'''
         - out 节点存在
         - out <- in 边存在
         """
-        source = '''module top(input clk, input [7:0] in, output [7:0] out);
+        source = '''module top(input clk, input [7:0] in, output logic [7:0] out);
     always @(posedge clk)
         for (int i=0; i<8; i=i+1)
             out[i] = in[i];
@@ -324,8 +324,8 @@ endmodule'''
         预期:
         - q 节点存在
         """
-        source = '''module top(input clk, output [7:0] q);
-    reg [7:0] cnt = 8;
+        source = '''module top(input clk, output logic [7:0] q);
+    logic [7:0] cnt = 8;
     always @(posedge clk)
         while (cnt > 0) begin
             q <= cnt;
@@ -353,7 +353,7 @@ endmodule'''
         - repeat 块可识别
         - data 节点存在
         """
-        source = '''module top(input clk, output [7:0] data);
+        source = '''module top(input clk, output logic [7:0] data);
     initial begin
         repeat (5) begin
             data = data + 1;

@@ -27,7 +27,7 @@ class TestConstraintDerivative(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
-    def _get_classes(self, tree):
+    def _get_classes(self, source):
         class FP:
             def __init__(self, t): self.trees = t
         adapter = PyslangAdapter(FP({'test.sv': source}))
@@ -48,8 +48,7 @@ class TestConstraintDerivative(unittest.TestCase):
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
         cls = classes[0]
@@ -72,8 +71,7 @@ endmodule'''
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
     
@@ -96,8 +94,7 @@ endmodule'''
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
     
@@ -110,13 +107,12 @@ endmodule'''
         - ConstraintDeclaration 存在
         """
         source = '''class packet;
-    bit [7:0] addr;
+    rand bit [7:0] addr;
     constraint c { addr dist {0:=1, 1:=2}; }
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
     
@@ -129,13 +125,12 @@ endmodule'''
         - ConstraintDeclaration 存在
         """
         source = '''class packet;
-    bit [7:0] addr, data;
+    rand bit [7:0] addr, data;
     constraint c { solve addr before data; }
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
     
@@ -148,13 +143,12 @@ endmodule'''
         - ConstraintDeclaration 存在
         """
         source = '''class packet;
-    bit a, b, c;
-    constraint c { unique {a, b, c}; }
+    rand bit a, b, c;
+    constraint unique_c { unique { a, b, c }; }
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
     
@@ -172,8 +166,7 @@ endmodule'''
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        classes = self._get_classes(tree)
+        classes = self._get_classes(source)
         
         self.assertEqual(len(classes), 1)
 

@@ -30,7 +30,7 @@ class TestForkJoin(unittest.TestCase):
         - data <- a 驱动边存在
         - data <- b 驱动边存在
         """
-        source = '''module top(input a, b, output [7:0] data);
+        source = '''module top(input a, b, output logic [7:0] data);
     initial fork
         data = a;
         data = b;

@@ -15,8 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 class TestInterfaceDotAccess(unittest.TestCase):
     
     def _make_tracer(self, source, module_name='top'):
-        tree = pyslang.SyntaxTree.fromText(source)
-        tracer = UnifiedTracer(sources={module_name: tree})
+        tracer = UnifiedTracer(sources={module_name: source})
         tracer.build_graph()
         return tracer
     
@@ -27,7 +26,7 @@ interface simple_if;
     logic [7:0] data;
 endinterface
 
-module top(input simple_if ifc, input [7:0] din);
+module top(simple_if ifc, input [7:0] din);
     assign ifc.data = din;
 endmodule'''
         
@@ -46,7 +45,7 @@ interface simple_if;
     logic [7:0] data;
 endinterface
 
-module top(input simple_if ifc, input [7:0] din);
+module top(simple_if ifc, input [7:0] din);
     assign ifc.data = din;
 endmodule'''
         
@@ -68,7 +67,7 @@ interface complex_if;
     logic [1:0] err;
 endinterface
 
-module top(input complex_if bus, input [7:0] din, input vld, input [1:0] err_in);
+module top(complex_if bus, input [7:0] din, input vld, input [1:0] err_in);
     assign bus.data = din;
     assign bus.valid = vld;
     assign bus.err = err_in;

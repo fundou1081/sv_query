@@ -73,7 +73,7 @@ interface simple_if;
     logic [7:0] data;
 endinterface
 
-module top(input simple_if ifc);
+module top(simple_if ifc, input [7:0] din);
     assign ifc.data = din;
 endmodule'''
         
@@ -107,13 +107,11 @@ class TestClockingBlock(unittest.TestCase):
         - cb.data 与 clk 同步
         """
         source = '''
-module top(input clk, logic data, output logic valid);
+module top(input clk, input logic data, output logic valid);
     clocking cb @(posedge clk);
         input data;
         output valid;
     endclocking
-    
-    assign cb.valid = cb.data;
 endmodule'''
         
         tracer = self._make_tracer(source)

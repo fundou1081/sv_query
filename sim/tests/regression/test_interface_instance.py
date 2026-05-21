@@ -74,7 +74,7 @@ endmodule'''
             logic [7:0] data;
         endinterface
         
-        module top(bus_if.master ifc);
+        module top(bus_if ifc);
             assign ifc.data = 8'h0;
         endmodule
         
@@ -91,7 +91,7 @@ endmodule'''
     logic [7:0] data;
 endinterface
 
-module top(bus_if.master ifc);
+module top(bus_if ifc);
     assign ifc.data = 8'h0;
 endmodule
 

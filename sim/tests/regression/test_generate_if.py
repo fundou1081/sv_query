@@ -30,7 +30,7 @@ class TestGenerateIf(unittest.TestCase):
         source = '''
 module top(input sel, input [7:0] a, b, output [7:0] y);
     generate
-        if (sel) begin : gen_block
+        if (1'b1) begin : gen_block
             assign y = a;
         end
     endgenerate
@@ -52,7 +52,7 @@ endmodule'''
         source = '''
 module top(input sel, input [7:0] a, b, output [7:0] y);
     generate
-        if (sel) begin : gen_true
+        if (1'b1) begin : gen_true
             assign y = a;
         end else begin : gen_false
             assign y = b;
@@ -84,7 +84,7 @@ endmodule
 
 module top(input sel, input [7:0] a, output [7:0] y);
     generate
-        if (sel) begin : gen_inst
+        if (1'b1) begin : gen_inst
             inv u1(.d(a), .q(y));
         end
     endgenerate

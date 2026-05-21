@@ -35,8 +35,8 @@ class TestTaskCall(unittest.TestCase):
         - dout 的驱动: din
         """
         source = '''
-module top(input [7:0] din, output [7:0] dout);
-    task my_task(input [7:0] a, output [7:0] b);
+module top(input [7:0] din, output logic [7:0] dout);
+    task my_task(input [7:0] a, output logic [7:0] b);
         b = a;
     endtask
     
@@ -124,7 +124,7 @@ class TestTaskMultiple(unittest.TestCase):
         - dout2 <- 8'h00
         """
         source = '''
-module top(output [7:0] dout1, dout2);
+module top(output logic [7:0] a, b);
     task my_task(output [7:0] a, b);
         a = 8'hFF;
         b = 8'h00;

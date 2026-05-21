@@ -75,7 +75,7 @@ endmodule'''
 endmodule
 
 module top(input [7:0] a, output [7:0] y);
-    my_buf #(.WIDTH(8)) buf_gate(.din(a), .dout(y));
+    my_buf_mod #(.WIDTH(8)) buf_gate(.din(a), .dout(y));
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -94,7 +94,7 @@ module top(input [3:0] din, output [3:0] dout);
     genvar i;
     generate
         for (i=0; i<4; i=i+1) begin : GEN
-        buf_gate b(.d(din[i]), .q(dout[i]));
+        my_buf b(.d(din[i]), .q(dout[i]));
     end
 endgenerate
 endmodule'''

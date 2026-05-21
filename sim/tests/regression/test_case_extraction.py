@@ -20,7 +20,7 @@ class TestCaseKnownLimitation(unittest.TestCase):
     def test_case_compiles(self):
         """验证 case 能够解析"""
         source = '''
-module top(input [1:0] sel, input a, b, output y);
+module top(input [1:0] sel, input a, b, output logic y);
     always_comb begin
         case (sel)
             2'b00: y = a;

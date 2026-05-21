@@ -160,7 +160,7 @@ module my_buf(input d, output q);
     assign q = d;
 endmodule
 module top(input a, output y);
-    buf u1(.d(a), .q(y));
+    my_buf u1(.d(a), .q(y));
 endmodule'''
         
         tracer = self._make_tracer(source)
@@ -177,8 +177,8 @@ module my_buf(input d, output q);
 endmodule
 module top(input a, output y);
     wire mid;
-    buf u1(.d(a), .q(mid));
-    buf u2(.d(mid), .q(y));
+    my_buf u1(.d(a), .q(mid));
+    my_buf u2(.d(mid), .q(y));
 endmodule'''
         
         tracer = self._make_tracer(source)

@@ -18,7 +18,7 @@ interface my_if;
     logic [7:0] data;
 endinterface
 
-module top(input my_if.tb, input [7:0] din);
+module top(my_if tb, input [7:0] din);
     assign tb.data = din;
 endmodule'''
         

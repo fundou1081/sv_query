@@ -79,7 +79,6 @@ endinterface
 
 module top(bus_if.master m, input [7:0] din, input [7:0] addr_in);
     assign m.data = din;
-    assign m.addr = addr_in;
 endmodule'''
         
         tree = pyslang.SyntaxTree.fromText(source)

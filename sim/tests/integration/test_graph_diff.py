@@ -25,12 +25,12 @@ class TestGraphDiff(unittest.TestCase):
     def test_added_nodes(self):
         """[Golden] 新增节点能被正确识别"""
         old_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
         new_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a, b;
     always_ff @(posedge clk) begin
         a <= q;
@@ -41,8 +41,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
-        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
+        tracer_old = UnifiedTracer(sources={'test.sv': old_source})
+        tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -56,7 +56,7 @@ endmodule'''
     def test_removed_nodes(self):
         """[Golden] 删除节点能被正确识别"""
         old_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a, b;
     always_ff @(posedge clk) begin
         a <= q;
@@ -64,7 +64,7 @@ module top(output logic [7:0] q);
     end
 endmodule'''
         new_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
@@ -72,8 +72,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
-        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
+        tracer_old = UnifiedTracer(sources={'test.sv': old_source})
+        tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -84,12 +84,12 @@ endmodule'''
     def test_added_edges(self):
         """[Golden] 新增边能被正确识别"""
         old_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule'''
         new_source = '''
-module top(output logic [7:0] q);
+module top(output logic [7:0] q, input clk);
     logic [7:0] a, b;
     always_ff @(posedge clk) begin
         a <= q;
@@ -100,8 +100,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
-        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
+        tracer_old = UnifiedTracer(sources={'test.sv': old_source})
+        tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
         tracer_new.build_graph()
 
@@ -210,8 +210,8 @@ endmodule'''
 
         tree_old = pyslang.SyntaxTree.fromText(old_source)
         tree_new = pyslang.SyntaxTree.fromText(new_source)
-        tracer_old = UnifiedTracer(sources={'test.sv.sv': tree_old.toString()})
-        tracer_new = UnifiedTracer(sources={'test.sv.sv': tree_new.toString()})
+        tracer_old = UnifiedTracer(sources={'test.sv': old_source})
+        tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         _ = tracer_old.trace_fanout('q', 'top')
         _ = tracer_new.trace_fanout('q', 'top')
         G_old = tracer_old.get_graph()

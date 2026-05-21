@@ -29,13 +29,13 @@ class TestWhileLoop(unittest.TestCase):
         - q 节点存在
         - q <- cnt 驱动边存在 (while 循环体内)
         """
-        source = '''module top(input clk, output [7:0] q);
-reg [7:0] cnt = 8;
-always @(posedge clk) begin
-    while (cnt > 0) begin
-        q <= cnt;
+        source = '''module top(input clk, output logic [7:0] q);
+    logic [7:0] cnt = 8;
+    always @(posedge clk) begin
+        while (cnt > 0) begin
+            q <= cnt;
+        end
     end
-end
 endmodule'''
         tracer = self._make_tracer(source)
         tracer.build_graph()
