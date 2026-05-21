@@ -115,12 +115,55 @@ class ModuleInstanceGraph:
             return '.'.join(parts)
         return 'unknown'
 
-    def build(self, trees: Dict[str, any]):
+    def build(self, trees: Dict[str, any] = None):
         """构建模块实例图 (三阶段:
         Phase 0: 存储所有模块的端口定义
         Phase 1: 收集所有实例化信息 (全树遍历)
         Phase 2: 对每个实例路径递归处理模块内容)
+        
+        Args:
+            trees: SyntaxTree 字典 (旧接口) 或 SemanticAdapter (新接口)
         """
+        # 支持 SemanticAdapter 作为参数
+        if hasattr(trees, 'get_module_instances'):
+            # SemanticAdapter path: 使用适配器获取实例
+            adapter = trees
+            instances = adapter.get_module_instances()
+            
+            # 创建实例节点并填充端口映射
+            for inst_wrapper in instances:
+                # 使用完整的 hierarchicalPath (如果实例在 generate 块中,路径会包含 generate 名称)
+                inst_symbol = inst_wrapper._symbol if hasattr(inst_wrapper, '_symbol') else None
+                if inst_symbol:
+                    hierarchical_path = getattr(inst_symbol, 'hierarchicalPath', None)
+                    instance_id = str(hierarchical_path) if hierarchical_path else inst_wrapper.name
+                else:
+                    instance_id = inst_wrapper.name
+                inst_type = adapter.get_module_name(inst_symbol) if inst_symbol else str(inst_wrapper.type)
+                parent = inst_wrapper.parent_module
+                self.instances[instance_id] = ModuleInstanceNode(
+                    id=instance_id,
+                    module_type=inst_type,
+                    parent=parent
+                )
+                
+                # 从 portConnections 填充端口映射
+                if inst_symbol:
+                    port_conns = getattr(inst_symbol, 'portConnections', [])
+                    for conn in port_conns:
+                        port_sym = getattr(conn, 'port', None)
+                        if port_sym:
+                            port_name = getattr(port_sym, 'name', None)
+                            if port_name:
+                                port_path = f"{instance_id}.{port_name}"
+                                internal = f"{inst_type}.{port_name}"
+                                self.port_to_internal[port_path] = internal
+                                self.internal_to_port[internal] = port_path
+            return  # Semantic AST 路径到此为止，generate 处理由 SemanticAdapter.get_module_instances 完成
+        
+        if trees is None:
+            trees = {}
+        
         # Phase 0: 遍历所有模块，存储端口定义，建立 module AST 缓存
         self._module_ast_cache = {}  # module_name -> AST node
         for fname, tree in trees.items():

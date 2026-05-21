@@ -25,7 +25,7 @@ module top(input a, output b);
     child u1(a, b);
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)

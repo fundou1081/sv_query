@@ -22,7 +22,7 @@ class TestInitialBlock(unittest.TestCase):
     initial y = 1b0;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
-        tracer = UnifiedTracer(sources={'t.sv': source})
+        tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
         
         self.assertGreaterEqual(len(result.drivers), 1)

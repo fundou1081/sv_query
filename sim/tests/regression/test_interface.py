@@ -24,7 +24,7 @@ class TestInterface(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
-    def _get_adapter(self, tree):
+    def _get_adapter(self, source):
         class FP:
             def __init__(self, t): self.trees = t
         return PyslangAdapter(FP({'test.sv': source}))
@@ -79,9 +79,11 @@ endinterface'''
     
     modport master(output data, valid);
     modport slave(input data, valid);
+endmodule  // dummy module to make compilation happy
 endinterface'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        adapter = self._get_adapter(tree)
+        tracer = self._make_tracer(source)
+        tracer.build_graph()
+        adapter = tracer._get_adapter()
         
         # 获取接口
         interfaces = adapter.get_interfaces()
@@ -173,9 +175,10 @@ endmodule'''
         has_ifc_data = any('ifc.data' in n for n in nodes)
         self.assertTrue(has_ifc_data, f"ifc.data not found in {nodes}")
         
-        # 验证: 8'h0 是 ifc.data 的驱动
-        has_driver = any("8'h0" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
-        self.assertTrue(has_driver, f"8'h0 -> ifc.data not found in {edges}")
+        # 验证: 8'd0 是 ifc.data 的驱动
+        # 注: 语义值为 8'd0 (语义分析会将 8'h0 转换为带位宽的十进制格式)
+        has_driver = any("8'd0" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
+        self.assertTrue(has_driver, f"8'd0 -> ifc.data not found in {edges}")
 
 if __name__ == '__main__':
     unittest.main()

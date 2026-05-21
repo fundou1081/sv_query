@@ -23,23 +23,35 @@
 
 ## 第一部分：技术路线铁律 (不可妥协)
 
-### 铁律1: AST唯一数据源 [生效]
+### 铁律1: AST唯一数据源（强制：必须使用 Semantic AST）
 
-**必须**：所有硬件语义提取必须且仅能通过 pyslang AST 遍历实现
+**必须**：所有硬件语义提取必须且仅能通过 **Semantic AST**（`Compilation` + `getRoot()`）遍历实现
 
-**严禁**：将源码转为字符串后用正则分析
+**严禁**：
+1. 将源码转为字符串后用正则分析
+2. 直接使用 `SyntaxTree.root` 作为 AST 数据源
 
-**原理**：正则无法正确处理拼接赋值、宏展开、位选择、注释中的代码
+**正确做法**：
+```python
+# ✅ 正确
+comp = pyslang.Compilation()
+comp.addSyntaxTree(tree)
+root = comp.getRoot()  # Semantic AST
 
-**违规后果**：
-- 时序路径分析跳过拼接赋值
-- 位选择信号被混淆为同一信号
+# ❌ 禁止
+tree = pyslang.SyntaxTree.fromText(code, fname)
+root = tree.root  # SyntaxTree root - 禁止使用
+```
 
-**校验方式** [生效]
+**原理**：
+- `SyntaxTree` 仅做语法解析，无语义上下文（符号表、类型信息）
+- `Semantic AST` 经过 elaboration，提供完整符号表和类型信息
+- 参数化位宽（如 `logic [W-1:0]`）在 Semantic AST 中为整数，而非字符串
+
+**校验方式**
 ```bash
-grep -rn "re\.(findall|match|search)" src/trace/core/
-# 允许: 日志格式化、CLI参数解析
-# 禁止: SV源码分析
+grep -rn "SyntaxTree.fromText\|SyntaxTree.fromFile\|tree\.root" src/trace/core/
+# 应返回空（仅 constraint_visitor.py 示例代码除外）
 ```
 
 ### 铁律2: 位精确性不可妥协 [生效]
@@ -206,7 +218,7 @@ chain = tracer.trace_signal("data", module="top")
 ## 第七部分：检查清单 (新功能提交流程)
 
 - [ ] 铁律13: 是否先推导金标准再验证？
-- [ ] 铁律1: 是否使用 pyslang AST 而非正则？
+- [ ] 铁律1: 是否使用 Semantic AST (`Compilation` + `getRoot()`) 而非 `SyntaxTree.root`？
 - [ ] 铁律2: 信号是否保留完整位级信息？
 - [ ] 铁律3: 无法解析时返回 uncertain？
 - [ ] 铁律4: 数据字段都有 AST 填充代码？

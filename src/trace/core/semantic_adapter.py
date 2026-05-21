@@ -29,12 +29,14 @@ class SemanticAdapter:
     - 节点是语义符号 (Symbol),不是语法节点 (SyntaxNode)
     """
 
-    def __init__(self, root):
+    def __init__(self, root, compiler=None):
         """
         Args:
             root: Semantic AST root (RootSymbol from comp.getRoot())
+            compiler: Optional SVCompiler for accessing getDefinitions()
         """
         self._root = root
+        self._compiler = compiler
 
     @property
     def root(self):
@@ -129,7 +131,24 @@ class SemanticAdapter:
 
             # 直接的 InstanceSymbol
             if kind_str == 'SymbolKind.Instance':
-                # parent_name = parent_path (full hierarchical path) for proper parent tracking
+                # 检查是否是 Definition (顶层模块定义) vs 嵌套实例
+                # InstanceSymbol 同时用于顶层定义和嵌套实例
+                # DefinitionSymbol 的 hierarchicalPath 是模块名本身 (如 "top", "unused")
+                # 嵌套实例的 hierarchicalPath 包含父路径 (如 "top.sub")
+                hierarchical_path = getattr(node, 'hierarchicalPath', None)
+                path_str = str(hierarchical_path) if hierarchical_path else ''
+                
+                # 如果是顶层定义 (路径中不包含 '.') 且 parent_path 为空
+                # 则认为是顶层模块定义,跳过不添加
+                # 但仍然递归检查其 body 是否包含嵌套实例
+                if not parent_path and '.' not in path_str and path_str:
+                    # 是顶层模块定义,递归检查其 body
+                    body = getattr(node, 'body', None)
+                    if isinstance(body, pyslang.InstanceBodySymbol):
+                        for child in body:
+                            find_instances(child, path_str)
+                    return
+                    
                 parent_name = parent_path if parent_path else None
                 wrappers.append(SemanticInstanceWrapper(node, parent_module=parent_name))
                 # 递归检查 body 中的嵌套实例
@@ -155,7 +174,7 @@ class SemanticAdapter:
             # GenerateBlock: 直接迭代获取实例
             elif kind_str == 'SymbolKind.GenerateBlock':
                 for child in node:
-                    find_instances(child, parent_path)
+                    find_instances(child, path_str)
 
         # 遍历 root 下的所有项
         for item in self._root:
@@ -194,6 +213,90 @@ class SemanticAdapter:
                     classes.append(item)
         
         return classes
+
+    def get_interfaces(self) -> List:
+        """获取所有接口定义 (Semantic AST)"""
+        interfaces = []
+        
+        # Use _compiler.get_compilation().getDefinitions() to get all definitions
+        if self._compiler:
+            compilation = self._compiler.get_compilation()
+            for defn in compilation.getDefinitions():
+                kind_str = str(defn.kind)
+                # Check if it's a Definition
+                if 'Definition' in kind_str and hasattr(defn, 'syntax'):
+                    # Check syntax.kind for InterfaceDeclaration
+                    syntax_kind = str(getattr(defn.syntax, 'kind', ''))
+                    if 'Interface' in syntax_kind:
+                        interfaces.append(defn)
+        
+        return interfaces
+
+    def get_modport_declarations(self, interface) -> List:
+        """获取 interface 的 modport 声明 (Semantic AST)"""
+        modports = []
+        if not interface:
+            return modports
+        
+        # Get modports from interface.syntax.members
+        if hasattr(interface, 'syntax'):
+            syntax = interface.syntax
+            if hasattr(syntax, 'members') and syntax.members:
+                for member in syntax.members:
+                    member_kind = str(getattr(member, 'kind', ''))
+                    if 'Modport' in member_kind:
+                        modports.append(member)
+        
+        return modports
+
+    def get_modport_info(self, modport) -> dict:
+        """获取 modport 详细信息 (名称、方向、端口列表) (Semantic AST)"""
+        info = {
+            'name': '',
+            'direction': '',
+            'ports': []
+        }
+        
+        if modport is None:
+            return info
+        
+        try:
+            # Get modport name from ModportItem list
+            if hasattr(modport, 'items') and modport.items:
+                for item in modport.items:
+                    item_name = getattr(item, 'name', None)
+                    if item_name:
+                        info['name'] = str(item_name).strip()
+                    
+                    # Get port directions from item.ports (AnsiPortListSyntax)
+                    if hasattr(item, 'ports') and item.ports:
+                        # ports is AnsiPortListSyntax containing: Token(open paren), SeparatedList, Token(close paren)
+                        # SeparatedList contains ModportSimplePortList items
+                        sep_list = item.ports[1] if len(item.ports) > 1 else None
+                        if sep_list and hasattr(sep_list, '__iter__'):
+                            for port_item in sep_list:
+                                port_kind = getattr(port_item, 'kind', None)
+                                port_kind_str = str(port_kind) if port_kind else ''
+                                
+                                if 'ModportSimplePortList' in port_kind_str:
+                                    # direction is on the ModportSimplePortList
+                                    direction = getattr(port_item, 'direction', None)
+                                    if direction:
+                                        info['direction'] = str(direction)
+                                    
+                                    # ports is AnsiPortListSyntax with ModportNamedPort items
+                                    port_names = getattr(port_item, 'ports', None)
+                                    if port_names and hasattr(port_names, '__iter__'):
+                                        for pn in port_names:
+                                            pn_kind = getattr(pn, 'kind', None)
+                                            if pn_kind and 'ModportNamedPort' in str(pn_kind):
+                                                pn_name = getattr(pn, 'name', None)
+                                                if pn_name:
+                                                    info['ports'].append(str(pn_name).strip())
+        except Exception as e:
+            pass
+        
+        return info
 
     def get_generate_instances(self, trees=None) -> List:
         """获取 generate 实例 (Semantic AST 暂不支持 generate 语法)
@@ -417,7 +520,13 @@ class SemanticAdapter:
         if hasattr(module, 'body') and module.body:
             for member in module.body:
                 kind = str(getattr(member, 'kind', ''))
-                if 'Task' in kind:
+                # Semantic AST: SubroutineSymbol has kind=SymbolKind.Subroutine
+                # Use subroutineKind to determine if it's a Task or Function
+                if 'Subroutine' in kind:
+                    sk = getattr(member, 'subroutineKind', None)
+                    if sk and 'Task' in str(sk):
+                        tasks.append(member)
+                elif 'Task' in kind:
                     tasks.append(member)
 
         return tasks
@@ -434,6 +543,8 @@ class SemanticAdapter:
                     sk = getattr(member, 'subroutineKind', None)
                     if sk and 'Function' in str(sk):
                         funcs.append(member)
+                elif 'Function' in kind:
+                    funcs.append(member)
 
         return funcs
 
@@ -523,16 +634,139 @@ class SemanticAdapter:
         return 'unknown'
 
     def get_task_params(self, task) -> List:
-        """获取 task 的参数列表 (Semantic AST 暂不支持)"""
-        return []
+        """获取 task 的参数列表
+        
+        Semantic AST: SubroutineSymbol.arguments is a list of FormalArgument symbols
+        Each FormalArgument has name, direction, and declaredType
+        """
+        params = []
+        
+        if hasattr(task, 'arguments'):
+            for arg in task.arguments:
+                param_info = {
+                    'name': getattr(arg, 'name', 'unknown'),
+                    'direction': str(getattr(arg, 'direction', 'None')),
+                    'width': (0, 0),  # TODO: extract from declaredType
+                }
+                params.append(param_info)
+        
+        return params
 
     def analyze_task_internal_drivers(self, task) -> Dict:
-        """分析 task 内部的驱动 (Semantic AST 暂不支持)"""
-        return {}
+        """分析 task 内部的驱动
+        
+        Semantic AST: SubroutineSymbol.body contains the task body statements
+        Find assignments to output parameters
+        
+        Returns:
+            Dict: {param_name: [rhs_signal_names]}
+        """
+        drivers = {}
+        
+        # Get task body
+        body = getattr(task, 'body', None)
+        if not body:
+            return drivers
+        
+        # Check if body is a Statement
+        stmt_kind = getattr(body, 'kind', None)
+        
+        # Handle ExpressionStatement wrapping an AssignmentExpression
+        # e.g., out = in + 1
+        if 'ExpressionStatement' in str(stmt_kind):
+            expr = getattr(body, 'expr', None)
+            if expr and 'Assignment' in str(expr.kind):
+                lhs = getattr(expr, 'left', None)
+                rhs = getattr(expr, 'right', None)
+                
+                if lhs and rhs:
+                    # Get the left-hand side symbol (should be a FormalArgument)
+                    lhs_sym = getattr(lhs, 'symbol', None)
+                    if lhs_sym:
+                        lhs_name = getattr(lhs_sym, 'name', None)
+                        if lhs_name:
+                            # Extract RHS signal names
+                            rhs_signals = self._extract_signals_from_expr(rhs)
+                            drivers[lhs_name] = rhs_signals
+        
+        return drivers
+
+    def _extract_signals_from_expr(self, expr) -> List[str]:
+        """从表达式中提取所有信号名称"""
+        signals = []
+        if expr is None:
+            return signals
+        
+        kind_str = str(getattr(expr, 'kind', ''))
+        
+        # NamedValue: direct signal reference
+        if 'NamedValue' in kind_str:
+            sym = getattr(expr, 'symbol', None)
+            if sym:
+                sig_name = getattr(sym, 'name', None)
+                if sig_name:
+                    signals.append(sig_name)
+        
+        # Binary/Unary expressions: recurse into left/right operands
+        elif 'Binary' in kind_str:
+            left = getattr(expr, 'left', None)
+            right = getattr(expr, 'right', None)
+            if left:
+                signals.extend(self._extract_signals_from_expr(left))
+            if right:
+                signals.extend(self._extract_signals_from_expr(right))
+        
+        elif 'Unary' in kind_str:
+            operand = getattr(expr, 'operand', None)
+            if operand:
+                signals.extend(self._extract_signals_from_expr(operand))
+        
+        elif 'Conversion' in kind_str:
+            operand = getattr(expr, 'operand', None)
+            if operand:
+                signals.extend(self._extract_signals_from_expr(operand))
+        
+        return signals
 
     def get_interface_modport_signals(self, interface, modport=None) -> List:
         """获取 interface 的 modport 信号 (Semantic AST 暂不支持)"""
         return []
+
+    def get_interface_members(self, interface_port_symbol) -> List[str]:
+        """获取 interface 端口的成员信号列表
+        
+        Args:
+            interface_port_symbol: InterfacePortSymbol (from body.lookupName('ifc'))
+            
+        Returns:
+            List[str]: 成员信号名称列表，如 ['data', 'valid']
+        """
+        members = []
+        
+        try:
+            # Get interface definition from InterfacePortSymbol
+            iface_def = getattr(interface_port_symbol, 'interfaceDef', None)
+            if not iface_def:
+                return members
+            
+            # Get members from syntax.members
+            if hasattr(iface_def, 'syntax'):
+                syntax = iface_def.syntax
+                if hasattr(syntax, 'members'):
+                    for m in syntax.members:
+                        # DataDeclarationSyntax has declarators
+                        if hasattr(m, 'declarators'):
+                            for decl in m.declarators:
+                                if hasattr(decl, 'name'):
+                                    name = decl.name
+                                    if hasattr(name, 'value'):
+                                        members.append(str(name.value).strip())
+                                    else:
+                                        members.append(str(name).strip())
+        except Exception as e:
+            pass
+        
+        return members
 
     def get_function_params(self, func) -> List:
         """获取 function 的参数列表
@@ -550,11 +784,14 @@ class SemanticAdapter:
 
     def analyze_task_internal_drivers(self, task_or_func) -> Dict:
         """分析 task/function 内部的驱动关系
-
-        Semantic AST 实现: 遍历函数体,找到 return_var = expr 形式的赋值,
-        返回 {func_name: [rhs_signals]}
-
-        Returns: Dict[str, List[str]] - {var_name: [signal_names]}
+        
+        Handles:
+        1. Functions: assignment to function name (implicit return)
+        2. Tasks with output parameters: assignment to parameter name
+        3. For loops, while loops, if-else inside tasks
+        
+        Returns:
+            Dict: {var_name: [rhs_signal_names]}
         """
         drivers = {}
         func_name = getattr(task_or_func, 'name', None)
@@ -566,27 +803,118 @@ class SemanticAdapter:
         if not body:
             return drivers
 
-        stmt = getattr(body, 'body', None) or body
-
-        expr = stmt.expr
-        if not expr or getattr(expr, 'kind', None) != expr.kind.Assignment:
-            return drivers
-
-        lhs = getattr(expr, 'left', None)
-        rhs = getattr(expr, 'right', None)
-
-        if not lhs or not rhs:
-            return drivers
-
-        # Check if lhs is the function name (implicit return)
-        lhs_symbol = getattr(lhs, 'symbol', None)
-        if lhs_symbol and getattr(lhs_symbol, 'name', None) == func_name:
-            # This is the function return assignment
-            # Extract signals from RHS
-            rhs_signals = self._extract_signals_from_expr(rhs)
-            drivers[func_name] = rhs_signals
+        # Recursively collect assignment statements from the body
+        self._collect_drivers_from_stmt(body, func_name, drivers)
 
         return drivers
+
+    def _collect_drivers_from_stmt(self, stmt, func_name, drivers):
+        """Recursively collect driver information from statements"""
+        if stmt is None:
+            return
+        
+        stmt_kind = str(getattr(stmt, 'kind', ''))
+        
+        # ExpressionStatement: assignment like out = in + 1
+        if 'ExpressionStatement' in stmt_kind:
+            expr = getattr(stmt, 'expr', None)
+            if expr and 'Assignment' in str(getattr(expr, 'kind', '')):
+                self._extract_assignment_drivers(expr, func_name, drivers)
+            return
+        
+        # BlockStatement: begin...end block containing multiple statements
+        if 'Block' in stmt_kind and 'Statement' in stmt_kind:
+            body = getattr(stmt, 'body', None)
+            if body:
+                # Handle StatementList
+                stmt_list = getattr(body, 'list', None) or list(body) if hasattr(body, '__iter__') else [body]
+                for s in stmt_list:
+                    self._collect_drivers_from_stmt(s, func_name, drivers)
+            return
+        
+        # ForLoopStatement: for (...) statement
+        if 'ForLoop' in stmt_kind:
+            for_body = getattr(stmt, 'body', None)
+            if for_body:
+                self._collect_drivers_from_stmt(for_body, func_name, drivers)
+            return
+        
+        # WhileLoopStatement: while (...) statement
+        if 'WhileLoop' in stmt_kind:
+            while_body = getattr(stmt, 'body', None)
+            if while_body:
+                self._collect_drivers_from_stmt(while_body, func_name, drivers)
+            return
+        
+        # ConditionalStatement: if (...) statement or if (...) ... else ...
+        if 'Conditional' in stmt_kind and 'Statement' in stmt_kind:
+            # Handle ifTrue (then branch)
+            if_true = getattr(stmt, 'ifTrue', None) or getattr(stmt, 'statement', None)
+            if if_true:
+                self._collect_drivers_from_stmt(if_true, func_name, drivers)
+            # Handle ifFalse (else branch)
+            if_false = getattr(stmt, 'ifFalse', None)
+            if if_false:
+                self._collect_drivers_from_stmt(if_false, func_name, drivers)
+            return
+        
+        # SequentialBlock: begin...end in procedural context
+        if 'SequentialBlock' in stmt_kind:
+            items = getattr(stmt, 'items', None)
+            if items:
+                for s in items:
+                    self._collect_drivers_from_stmt(s, func_name, drivers)
+            return
+        
+        # ForkStatement: fork...join for parallel statements
+        if 'Fork' in stmt_kind:
+            items = getattr(stmt, 'items', None)
+            if items:
+                for s in items:
+                    self._collect_drivers_from_stmt(s, func_name, drivers)
+            return
+        
+        # StatementList: list of statements inside a block (from pyslang)
+        if 'List' in stmt_kind and 'Statement' in stmt_kind:
+            stmt_list = getattr(stmt, 'list', None)
+            if stmt_list:
+                for s in stmt_list:
+                    self._collect_drivers_from_stmt(s, func_name, drivers)
+            return
+
+    def _extract_assignment_drivers(self, expr, func_name, drivers):
+        """Extract driver info from an AssignmentExpression"""
+        lhs = getattr(expr, 'left', None)
+        rhs = getattr(expr, 'right', None)
+        
+        if not lhs or not rhs:
+            return
+        
+        # Get the left-hand side symbol and name
+        # Handle both direct NamedValue and ElementSelect (signal[bit])
+        lhs_symbol = getattr(lhs, 'symbol', None)
+        lhs_name = None
+        
+        if lhs_symbol:
+            lhs_name = getattr(lhs_symbol, 'name', None)
+        else:
+            # Maybe it's an ElementSelect - check .value.symbol
+            lhs_value = getattr(lhs, 'value', None)
+            if lhs_value:
+                lhs_symbol = getattr(lhs_value, 'symbol', None)
+                if lhs_symbol:
+                    lhs_name = getattr(lhs_symbol, 'name', None)
+        
+        if not lhs_name:
+            return
+        
+        # Extract RHS signal names
+        rhs_signals = self._extract_signals_from_expr(rhs)
+        
+        # Only update if we have actual signal sources (not just literals)
+        # This prevents overwriting real drivers with empty results from literals
+        if rhs_signals:
+            drivers[lhs_name] = rhs_signals
 
     def _extract_signals_from_expr(self, expr) -> List[str]:
         """从表达式中提取所有信号名
@@ -633,6 +961,11 @@ class SemanticAdapter:
 
         # UnaryExpression
         if 'Unary' in kind_str:
+            signals.extend(self._extract_signals_from_expr(getattr(expr, 'operand', None)))
+            return signals
+
+        # ConversionExpression (type casting) - recurse into operand
+        if 'Conversion' in kind_str:
             signals.extend(self._extract_signals_from_expr(getattr(expr, 'operand', None)))
             return signals
 

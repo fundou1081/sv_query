@@ -79,7 +79,9 @@ SV Source Files
        ↓
   pyslang Parser
        ↓
-  SyntaxTree (AST)
+  Compilation (elaboration)
+       ↓
+  Semantic AST (唯一可信数据源)
        ↓
   ┌─────────────────────────────────────┐
   │           UnifiedTracer             │
@@ -111,7 +113,7 @@ SV Source Files
 
 | 铁律 | 说明 |
 |------|------|
-| AST唯一数据源 | 所有分析基于 pyslang AST，禁止字符串正则解析源码 |
+| **Semantic AST 强制** | 必须使用 `Compilation` + `getRoot()` 获取语义 AST，禁止直接使用 `SyntaxTree.root` |
 | 位精确性 | `data[7:4]` 和 `data[3:0]` 是不同的硬件信号 |
 | 原子化 | 每个语法节点类型对应独立的解析器/collector |
 | 不可信则不输出 | 无法解析时返回 `confidence: "uncertain"` |
