@@ -124,11 +124,54 @@ class DriverExtractor:
         return find_reset(e)
 
     def _extract_condition_str(self, n) -> str:
-        """从 if 语句提取条件表达式"""
+        """从 if 语句提取条件表达式
+        
+        Handles both syntax tree (ConditionalStatementSyntax with predicate.conditions)
+        and semantic AST (ConditionalStatement with conditions list).
+        """
+        # Try predicate.conditions first (syntax tree path)
         p = getattr(n, "predicate", None)
-        if not p: return ""
-        cs = getattr(p, "conditions", None)
-        return str(cs).strip() if cs else str(p).strip()
+        if p:
+            cs = getattr(p, "conditions", None)
+            if cs is not None:
+                # syntax tree: conditions is a single node
+                if isinstance(cs, (list, tuple)):
+                    exprs = []
+                    for cond in cs:
+                        expr = getattr(cond, 'expr', None)
+                        if expr:
+                            syn = getattr(expr, 'syntax', None)
+                            if syn:
+                                exprs.append(str(syn))
+                            else:
+                                sym_ref = expr.getSymbolReference() if hasattr(expr, 'getSymbolReference') else None
+                                if sym_ref:
+                                    exprs.append(getattr(sym_ref, 'name', str(expr)))
+                                else:
+                                    exprs.append(str(expr))
+                    return ' && '.join(exprs) if exprs else str(p).strip()
+                return str(cs).strip()
+            return str(p).strip()
+        
+        # Semantic AST: ConditionalStatement has conditions directly, not via predicate
+        cs = getattr(n, "conditions", None)
+        if cs:
+            exprs = []
+            for cond in cs:
+                expr = getattr(cond, 'expr', None)
+                if expr:
+                    syn = getattr(expr, 'syntax', None)
+                    if syn:
+                        exprs.append(str(syn))
+                    else:
+                        sym_ref = expr.getSymbolReference() if hasattr(expr, 'getSymbolReference') else None
+                        if sym_ref:
+                            exprs.append(getattr(sym_ref, 'name', str(expr)))
+                        else:
+                            exprs.append(str(expr))
+            return ' && '.join(exprs) if exprs else ""
+        
+        return ""
 
     def _collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
         """递归收集语句,同时携带语义上下文 (clock_domain, condition)"""
