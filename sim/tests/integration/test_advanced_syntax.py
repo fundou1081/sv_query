@@ -1,6 +1,8 @@
 #==============================================================================
 # test_advanced_syntax.py - 高级语法 Driver 提取
-# [P1] Parameter, 数组, 位选, 系统函数, 跨模块
+#==============================================================================
+# 铁律13: 金标准测试 - 先推导金标准再验证
+# 铁律22: 强断言原则 - 必须验证具体行为
 #==============================================================================
 
 import unittest
@@ -8,7 +10,6 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -16,11 +17,18 @@ class TestParameterExtraction(unittest.TestCase):
     """Parameter Driver 提取"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
+    def _driver_ids(self, result):
+        return [d.id for d in result.drivers]
+    
     def test_parameterized_width(self):
-        """[Golden] 参数化宽度"""
+        """[Param] 参数化宽度
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | dout | [din]  | high |
+        """
         source = '''module param_mod #(
     parameter WIDTH = 8
 ) (input [WIDTH-1:0] din, output [WIDTH-1:0] dout);
@@ -28,13 +36,21 @@ class TestParameterExtraction(unittest.TestCase):
 endmodule'''
         
         tracer = self._make_tracer(source)
-        result = tracer.trace_signal('dout', 'top')
+        result = tracer.trace_signal('dout', 'param_mod')
         
-        # 参数化模块应该也能追踪
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        self.assertEqual(len(result.drivers), 1,
+            "dout = din 应有 1 个驱动源 (din)")
+        self.assertIn('param_mod.din', self._driver_ids(result),
+            "dout 的驱动应包含 param_mod.din")
+        self.assertEqual(result.confidence, 'high')
     
     def test_localparam(self):
-        """[Golden] 本地参数"""
+        """[Param] 本地参数不影响追踪
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | dout | [din]  | high |
+        """
         source = '''
 module top(input din, output dout);
     localparam WIDTH = 8;
@@ -44,18 +60,29 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        self.assertEqual(len(result.drivers), 1,
+            "dout = din 应有 1 个驱动源 (din)")
+        self.assertIn('top.din', self._driver_ids(result),
+            "dout 的驱动应包含 top.din")
+        self.assertEqual(result.confidence, 'high')
 
 
 class TestArrayExtraction(unittest.TestCase):
     """数组 Driver 提取"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
+    def _driver_ids(self, result):
+        return [d.id for d in result.drivers]
+    
     def test_array_index(self):
-        """[Golden] 数组索引"""
+        """[Array] 数组索引
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | dout | [mem[0]] | high |
+        """
         source = '''
 module top(input [7:0] mem [0:3], output [7:0] dout);
     assign dout = mem[0];
@@ -64,10 +91,19 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        self.assertEqual(len(result.drivers), 1,
+            "dout = mem[0] 应有 1 个驱动源 (mem[0])")
+        self.assertIn('top.mem[0]', self._driver_ids(result),
+            "dout 的驱动应包含 top.mem[0]")
+        self.assertEqual(result.confidence, 'high')
     
     def test_array_assignment(self):
-        """[Golden] 数组赋值"""
+        """[Array] 数组赋值
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | clk  | []     | uncertain |
+        """
         source = '''
 module top(input clk, input [7:0] data);
     reg [7:0] mem [0:3];
@@ -77,18 +113,28 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('clk', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        # clk 是输入端口，作为 source 点无上游驱动
+        self.assertEqual(len(result.drivers), 0,
+            "clk 作为输入端口，无上游驱动")
+        self.assertEqual(result.confidence, 'uncertain')
 
 
 class TestBitSelectExtraction(unittest.TestCase):
     """位选 Driver 提取"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
+    def _driver_ids(self, result):
+        return [d.id for d in result.drivers]
+    
     def test_single_bit(self):
-        """[Golden] 单比特选择 [5]"""
+        """[Bit] 单比特选择
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | dout | [data[5]] | high |
+        """
         source = '''
 module top(input [7:0] data, output bit dout);
     assign dout = data[5];
@@ -97,11 +143,19 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
         
-        # 追踪到 data
+        self.assertEqual(len(result.drivers), 1,
+            "dout = data[5] 应有 1 个驱动源")
+        self.assertIn('top.data[5]', self._driver_ids(result),
+            "dout 的驱动应包含 top.data[5]")
         self.assertEqual(result.confidence, 'high')
     
     def test_range_select(self):
-        """[Golden] 范围选择 [3:0]"""
+        """[Bit] 范围选择
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | nibble | [data[3:0]] | high |
+        """
         source = '''
 module top(input [7:0] data, output [3:0] nibble);
     assign nibble = data[3:0];
@@ -110,18 +164,29 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('nibble', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium'])
+        self.assertEqual(len(result.drivers), 1,
+            "nibble = data[3:0] 应有 1 个驱动源")
+        self.assertIn('top.data[3:0]', self._driver_ids(result),
+            "nibble 的驱动应包含 top.data[3:0]")
+        self.assertEqual(result.confidence, 'high')
 
 
 class TestSystemFunctionExtraction(unittest.TestCase):
     """系统函数 Driver 提取"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
+    def _driver_ids(self, result):
+        return [d.id for d in result.drivers]
+    
     def test_system_function(self):
-        """[Golden] 系统函数 $"""
+        """[Sys] 系统函数 $random
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | rnd  | []     | uncertain |
+        """
         source = '''
 module top(output [31:0] rnd);
     assign rnd = $random;
@@ -130,11 +195,18 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('rnd', 'top')
         
-        # $random 是特殊函数
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        # $random 是系统函数，无外部输入
+        self.assertEqual(len(result.drivers), 0,
+            "$random 无外部驱动源")
+        self.assertEqual(result.confidence, 'uncertain')
     
     def test_time_function(self):
-        """[Golden] $time"""
+        """[Sys] $time
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | t    | []     | uncertain |
+        """
         source = '''
 module top(output [31:0] t);
     assign t = $time;
@@ -143,18 +215,28 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('t', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        # $time 是系统函数，无外部输入
+        self.assertEqual(len(result.drivers), 0,
+            "$time 无外部驱动源")
+        self.assertEqual(result.confidence, 'uncertain')
 
 
 class TestCrossModuleExtraction(unittest.TestCase):
     """跨模块 Driver 提取"""
     
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
     
+    def _driver_ids(self, result):
+        return [d.id for d in result.drivers]
+    
     def test_simple_instance(self):
-        """[Golden] 简单实例"""
+        """[Cross] 简单实例
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | y    | [a]    | high |
+        """
         source = '''
 module my_buf(input d, output q);
     assign q = d;
@@ -166,11 +248,19 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
         
-        # 应该追踪到 a
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        self.assertEqual(len(result.drivers), 2,
+            "y 追踪到 a，应有 2 个驱动源 (u1.q, a)")
+        self.assertIn('top.a', self._driver_ids(result),
+            "y 的驱动应包含 top.a")
+        self.assertEqual(result.confidence, 'high')
     
     def test_two_instance(self):
-        """[Golden] 2级实例"""
+        """[Cross] 2级实例
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | y    | [a]    | high |
+        """
         source = '''
 module my_buf(input d, output q);
     assign q = d;
@@ -184,7 +274,12 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
         
-        self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
+        # y <- u2.q <- mid，应追踪到 mid
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "y 追踪到 mid，应有至少 1 个驱动源")
+        self.assertIn('top.mid', self._driver_ids(result),
+            "y 的驱动应包含 top.mid")
+        self.assertEqual(result.confidence, 'high')
 
 
 if __name__ == '__main__':
