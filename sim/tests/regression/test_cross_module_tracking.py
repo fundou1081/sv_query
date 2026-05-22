@@ -382,7 +382,7 @@ class TestArrayOfInstances(unittest.TestCase):
         mig = getattr(tracer, '_module_graph', None)
         
         # 数组实例的处理是实现相关的 - 只需验证无错误完成
-        self.assertIn('top', getattr(mig, '_module_ports', {}), "top 模块应被解析")
+        self.assertIn('dut', getattr(mig, '_module_ports', {}), "dut 模块应被解析")
 
 
 class TestPortWidthMapping(unittest.TestCase):

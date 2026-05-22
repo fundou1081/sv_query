@@ -127,8 +127,11 @@ class SemanticAdapter:
             # 初始化为 parent_path，确保在所有分支都有定义
             path_str = parent_path
 
-            # 使用 (kind, name) 作为唯一标识
-            key = (kind_str, name_str)
+            # 使用 (kind, name, hierarchical_path) 作为唯一标识
+            # 对于数组实例元素 (如 u_duts[0]),name 相同但 hierarchical_path 不同
+            hp = getattr(node, 'hierarchicalPath', None)
+            hp_str = str(hp) if hp else ''
+            key = (kind_str, name_str, hp_str)
             if key in visited_names:
                 return
             visited_names.add(key)
@@ -171,14 +174,44 @@ class SemanticAdapter:
                         for child in entry:
                             child_kind = str(getattr(child, 'kind', ''))
                             if 'Instance' in child_kind:
-                                # 构建完整路径: parent.GEN.u_dut (或 parent.GEN[0].u_dut)
-                                child_path = f"{parent_path}.{gen_name}.{getattr(child, 'name', '_anon')}"
+                                # 使用 hierarchicalPath 构建完整路径
+                                hp = getattr(child, 'hierarchicalPath', None)
+                                if hp:
+                                    hp_str = str(hp)
+                                    # hp_str 是完整路径如 'top.gen[0].u_dut'
+                                    # 提取父路径: 去掉最后一个 '.' 及之后的实例名
+                                    last_dot = hp_str.rfind('.')
+                                    if last_dot > 0:
+                                        child_path = hp_str[:last_dot]
+                                    else:
+                                        child_path = hp_str
+                                else:
+                                    # 后备: 使用旧逻辑
+                                    child_path = f"{parent_path}.{gen_name}.{getattr(child, 'name', '_anon')}"
                                 find_instances(child, child_path)
             
             # GenerateBlock: 直接迭代获取实例
             elif kind_str == 'SymbolKind.GenerateBlock':
                 for child in node:
                     find_instances(child, path_str)
+
+            # InstanceArray: dut u_duts[0:3]; - 数组实例化
+            elif kind_str == 'SymbolKind.InstanceArray':
+                elements = getattr(node, 'elements', None)
+                if elements:
+                    for idx, elem in enumerate(elements):
+                        elem_kind = str(getattr(elem, 'kind', ''))
+                        if 'Instance' in elem_kind:
+                            # 使用 arrayName 和 arrayPath 构建完整名称
+                            arr_name = getattr(elem, 'arrayName', None) or name_str
+                            arr_path = getattr(elem, 'arrayPath', None)
+                            if arr_path and hasattr(arr_path, '__iter__') and not isinstance(arr_path, str):
+                                idx_str = f'[{arr_path[0]}]'
+                            else:
+                                idx_str = f'[{idx}]'
+                            full_name = f'{arr_name}{idx_str}'
+                            child_path = f"{parent_path}.{full_name}" if parent_path else full_name
+                            find_instances(elem, child_path)
 
         # 遍历 root 下的所有项
         for item in self._root:
@@ -533,7 +566,27 @@ class SemanticAdapter:
                 elif 'Task' in kind:
                     tasks.append(member)
 
+        # Also check CU-level tasks (top-level tasks outside any module)
+        if hasattr(module, 'body'):
+            cu_funcs = self.get_top_level_subroutines()
+            for f in cu_funcs:
+                sk = getattr(f, 'subroutineKind', None)
+                if sk and 'Task' in str(sk):
+                    tasks.append(f)
+
         return tasks
+
+    def get_top_level_subroutines(self) -> List:
+        """Get all function/task declarations at compilation unit level"""
+        subroutines = []
+        for cu in getattr(self._root, 'compilationUnits', []):
+            if hasattr(cu, '__iter__'):
+                for item in cu:
+                    kind = getattr(item, 'kind', None)
+                    kind_str = str(kind) if kind else ''
+                    if 'Subroutine' in kind_str:
+                        subroutines.append(item)
+        return subroutines
 
     def get_function_declarations(self, module) -> List:
         """获取模块的 function 声明"""
@@ -549,6 +602,14 @@ class SemanticAdapter:
                         funcs.append(member)
                 elif 'Function' in kind:
                     funcs.append(member)
+
+        # Also check CU-level functions (top-level functions outside any module)
+        if hasattr(module, 'body'):
+            cu_funcs = self.get_top_level_subroutines()
+            for f in cu_funcs:
+                sk = getattr(f, 'subroutineKind', None)
+                if sk and 'Function' in str(sk):
+                    funcs.append(f)
 
         return funcs
 
@@ -886,6 +947,15 @@ class SemanticAdapter:
                     self._collect_drivers_from_stmt(s, func_name, drivers)
             return
 
+        # ReturnStatement: return expr; (explicit return in function)
+        if 'Return' in stmt_kind:
+            ret_expr = getattr(stmt, 'expr', None)
+            if ret_expr:
+                rhs_signals = self._extract_signals_from_expr(ret_expr)
+                if rhs_signals:
+                    drivers[func_name] = rhs_signals
+            return
+
     def _extract_assignment_drivers(self, expr, func_name, drivers):
         """Extract driver info from an AssignmentExpression"""
         lhs = getattr(expr, 'left', None)
@@ -1127,7 +1197,18 @@ class SemanticInstanceWrapper:
 
     def __init__(self, instance_symbol, parent_module=None):
         self._symbol = instance_symbol
-        self.name = instance_symbol.name
+        # [FIX] 对于数组实例元素 (如 u_duts[0]), name='' 但有 arrayName
+        # 使用 arrayName + arrayPath 构建完整实例名
+        inst_name = instance_symbol.name
+        if not inst_name:
+            array_name = getattr(instance_symbol, 'arrayName', None) or ''
+            if array_name:
+                arr_path = getattr(instance_symbol, 'arrayPath', None)
+                if arr_path and hasattr(arr_path, '__iter__') and not isinstance(arr_path, str):
+                    inst_name = f'{array_name}[{arr_path[0]}]'
+                else:
+                    inst_name = array_name
+        self.name = inst_name
         self.type = type('TypeToken', (), {'value': self._get_module_type()})()
         self.parent_module = parent_module  # 父模块名
 
