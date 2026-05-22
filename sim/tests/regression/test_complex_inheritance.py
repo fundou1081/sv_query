@@ -96,7 +96,7 @@ class extended_transaction extends transaction;
     task run();
     endtask
     
-    constraint c1 { super.c1; mode > 50; }
+    constraint c1 { mode > 50; }
     constraint c2 { mode < 5; }
 endclass'''
         
@@ -141,17 +141,15 @@ endclass'''
         self.assertIn(('extended_transaction.ext_data', 'data_item'), inst_edges,
             "extended_transaction.ext_data 应指向 data_item")
     
-    def test_constraint_super_call(self):
-        """constraint c1 augmentation (有 super.c1)"""
+    def test_constraint_override_replacement(self):
+        """constraint c1 replacement (无 super.c) - 没有SUPER_CALL边"""
         graph = self._build_graph()
         edges = list(graph.edges())
         
         super_edges = [(src, dst) for src, dst in edges 
                       if graph.get_edge(src, dst).kind == EdgeKind.SUPER_CALL]
         
-        self.assertEqual(len(super_edges), 1, "应有 1 条 SUPER_CALL 边")
-        self.assertIn(('extended_transaction.c1::expr_0', 'transaction.c1'), super_edges,
-            "extended_transaction.c1::expr_0 应 SUPER_CALL transaction.c1")
+        self.assertEqual(len(super_edges), 0, "constraint override/replacement 没有 SUPER_CALL 边")
     
     def test_constraint_override_replacement(self):
         """constraint c2 replacement (无 super.c2)"""

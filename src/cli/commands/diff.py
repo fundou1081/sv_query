@@ -97,11 +97,13 @@ def compare(
 ) -> None:
     """Compare two versions of SystemVerilog code"""
     try:
-        tree_old = pyslang.SyntaxTree.fromFile(str(old))
-        tree_new = pyslang.SyntaxTree.fromFile(str(new))
+        with open(str(old)) as f:
+            source_old = f.read()
+        with open(str(new)) as f:
+            source_new = f.read()
 
-        tracer_old = UnifiedTracer(trees={str(old): tree_old})
-        tracer_new = UnifiedTracer(trees={str(new): tree_new})
+        tracer_old = UnifiedTracer(sources={str(old): source_old})
+        tracer_new = UnifiedTracer(sources={str(new): source_new})
 
         graph_old = tracer_old.build_graph()
         graph_new = tracer_new.build_graph()

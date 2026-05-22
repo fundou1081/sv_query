@@ -52,8 +52,9 @@ def stats(
 ) -> None:
     """Show graph statistics"""
     try:
-        tree = pyslang.SyntaxTree.fromFile(str(file))
-        tracer = UnifiedTracer(trees={str(file): tree})
+        with open(str(file)) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={str(file): source})
         graph = tracer.build_graph()
 
         # 转换 NodeKind/EdgeKind enum 为字符串

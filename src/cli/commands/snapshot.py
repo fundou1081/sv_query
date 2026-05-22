@@ -49,17 +49,17 @@ def _get_tracer_from_file(file_path: Path):
     if not sv_files:
         raise ValueError(f"No .sv files found in {file_path}")
     
-    # 构建 tracer
-    trees = {}
+    # 构建 sources 字典
+    sources = {}
     for f in sv_files:
         try:
-            tree = pyslang.SyntaxTree.fromFile(str(f))
-            trees[str(f)] = tree
+            with open(f) as fp:
+                sources[str(f)] = fp.read()
         except Exception as e:
-            logger.warning(f"Failed to parse {f}: {e}")
+            logger.warning(f"Failed to read {f}: {e}")
             continue
-    
-    tracer = UnifiedTracer(trees=trees)
+
+    tracer = UnifiedTracer(sources=sources)
     tracer.build_graph()
     return tracer, [str(f) for f in sv_files]
 

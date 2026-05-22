@@ -31,11 +31,11 @@ def stats_callback(
 ) -> None:
     """Show graph statistics"""
     if file:
-        import pyslang
         from trace.unified_tracer import UnifiedTracer
-        
-        tree = pyslang.SyntaxTree.fromFile(file)
-        tracer = UnifiedTracer(trees={file: tree})
+
+        with open(file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={file: source})
         graph = tracer.build_graph()
         
         nodes_count = {}

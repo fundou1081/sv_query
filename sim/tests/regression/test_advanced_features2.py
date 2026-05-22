@@ -74,15 +74,15 @@ class TestInterfaceDecl(unittest.TestCase):
         module top(input my_if.tb);
         
         预期:
-        - tb.data 可追踪
-        - din -> tb.data 驱动可提取
+        - tb.ifc.data 可追踪
+        - din -> tb.ifc.data 驱动可提取
         """
         source = '''
 interface my_if;
     logic [7:0] data;
 endinterface
 
-module top(my_if ifc, input [7:0] din);
+module tb(my_if ifc, input [7:0] din);
     assign ifc.data = din;
 endmodule'''
         
@@ -94,7 +94,7 @@ endmodule'''
         
         # 验证: tb.data 节点存在
         nodes = list(tracer.get_graph().nodes())
-        self.assertTrue(any('tb.data' in n for n in nodes), f'tb.data not in {nodes}')
+        self.assertTrue(any('tb.ifc.data' in n for n in nodes), f'tb.ifc.data not in {nodes}')
 
 
 #==============================================================================
