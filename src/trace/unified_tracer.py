@@ -71,11 +71,14 @@ class InstanceInfo:
 class UnifiedTracer:
     """统一追踪入口"""
     
-    def __init__(self, sources: Dict[str, str] = None, log_level: str = None):
+    def __init__(self, sources: Dict[str, str] = None, files: List[str] = None,
+                 filelist: str = None, log_level: str = None):
         """初始化 UnifiedTracer
         
         Args:
             sources: 源文件字典 {"filename.sv": "source code"}
+            files: SV 源文件路径列表
+            filelist: SV 文件列表 (.fl/.f/.filelist) 路径
             log_level: 日志级别 (DEBUG/INFO/WARNING/ERROR)
                       默认为环境变量 SV_QUERY_LOG_LEVEL 的值
         """
@@ -84,6 +87,8 @@ class UnifiedTracer:
         self._sources = sources
         self._log_level = log_level or os.environ.get('SV_QUERY_LOG_LEVEL', 'WARNING')
         self._compiler: Optional[SVCompiler] = None
+        self._files = files or []
+        self._filelist = filelist
         self._adapter = None
         self._graph: Optional[SignalGraph] = None
         self._signal_tracer: Optional[SignalTracer] = None
@@ -114,6 +119,10 @@ class UnifiedTracer:
         """获取 SVCompiler (Semantic AST 编译入口)"""
         if self._compiler is None:
             self._compiler = SVCompiler(self._sources, log_level=self._log_level)
+            if self._files:
+                self._compiler.add_files(self._files)
+            if self._filelist:
+                self._compiler.add_filelist(self._filelist)
         return self._compiler
     
     def _get_adapter(self):
