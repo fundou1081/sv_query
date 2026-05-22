@@ -388,6 +388,71 @@ class DriverExtractor:
                     raw_rhs = getattr(ass, 'right', None)
                     raw_lhs = getattr(ass, 'left', None)
 
+                # [FIX] 拼接赋值 LHS: assign {y[2], y[1], y[0]} = {a, b, c}
+                # 检测 LHS 是否为 Concatenation
+                if raw_lhs and hasattr(raw_lhs, 'kind') and 'Concatenation' in str(raw_lhs.kind):
+                    # 提取 LHS 拼接中的所有位选信号
+                    lhs_elements = []
+                    lhs_operands = getattr(raw_lhs, 'operands', None) or getattr(raw_lhs, 'expressions', None)
+                    if lhs_operands and hasattr(lhs_operands, '__iter__') and not isinstance(lhs_operands, str):
+                        for op in lhs_operands:
+                            op_kind = getattr(op, 'kind', None)
+                            if not op_kind or 'Token' in str(op_kind):
+                                continue
+                            # ElementSelect 或 RangeSelect
+                            if 'ElementSelect' in str(op_kind) or 'RangeSelect' in str(op_kind):
+                                name = self._get_signal(op)
+                                if name:
+                                    lhs_elements.append(name)
+                            elif 'Identifier' in str(op_kind) or 'NamedValue' in str(op_kind):
+                                name = self._get_signal(op)
+                                if name:
+                                    lhs_elements.append(name)
+
+                    # 提取 RHS 拼接中的所有信号
+                    if raw_rhs and hasattr(raw_rhs, 'kind') and 'Concatenation' in str(raw_rhs.kind):
+                        rhs_signals = []
+                        rhs_operands = getattr(raw_rhs, 'operands', None) or getattr(raw_rhs, 'expressions', None)
+                        if rhs_operands and hasattr(rhs_operands, '__iter__') and not isinstance(rhs_operands, str):
+                            for op in rhs_operands:
+                                op_kind = getattr(op, 'kind', None)
+                                if not op_kind or 'Token' in str(op_kind):
+                                    continue
+                                # 递归提取信号
+                                signals = self._get_all_signals(op)
+                                if signals:
+                                    rhs_signals.extend(signals)
+
+                        # 为 LHS 的每个元素创建节点和边
+                        for lhs_name in lhs_elements:
+                            dst_node_id = f"{module_name}.{lhs_name}"
+                            if dst_node_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(TraceNode(
+                                    id=dst_node_id, name=lhs_name, module=module_name,
+                                    kind=NodeKind.SIGNAL, width=(1, 0)
+                                ))
+
+                            # 对齐映射: rhs_signals[i] -> lhs_elements[i]
+                            for rhs_sig in rhs_signals:
+                                if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith('_'):
+                                    # 字面量
+                                    result.edges.append(TraceEdge(
+                                        src=rhs_sig, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="continuous"
+                                    ))
+                                else:
+                                    src_node_id = f"{module_name}.{rhs_sig}"
+                                    if src_node_id not in [n.id for n in result.nodes]:
+                                        result.nodes.append(TraceNode(
+                                            id=src_node_id, name=rhs_sig, module=module_name,
+                                            kind=NodeKind.SIGNAL, width=(1, 0)
+                                        ))
+                                    result.edges.append(TraceEdge(
+                                        src=src_node_id, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="continuous"
+                                    ))
+                        continue
+
                 # 检测 CallExpression (函数调用),走专用路径
                 if raw_rhs and hasattr(raw_rhs, 'kind') and 'Call' in str(raw_rhs.kind):
                     # [FIX] raw_lhs is already extracted above, don't overwrite
@@ -452,7 +517,9 @@ class DriverExtractor:
 
                 # 正常解析
                 lhs, rhs, rhs_expr = self._parse_assign(assign)
-                if lhs and rhs:
+                # [FIX] rhs may be None when rhs_expr is ConcatenationExpression/other complex type
+                # but _get_all_signals(rhs_expr) can still extract signals
+                if lhs and (rhs or rhs_expr is not None):
                     # [FIX BUG] ScopedName: tb.data → 创建父子节点和 BIT_SELECT 边
                     # 支持嵌套 ScopedName: tb.data.sub → 创建 tb, tb.data, tb.data.sub
                     # 所有层级都连接到其直接父节点 (BIT_SELECT 边)
@@ -1320,9 +1387,26 @@ class DriverExtractor:
             return []
 
         # [FIX Semantic AST] ElementSelect 表达式: 位选择 data[5]
-        # 提取 value (信号) 而不是 selector (索引)
+        # 构造完整位选表达式 data[5]，而不是只返回基础信号 data
         if 'ElementSelect' in kind_str:
             value = getattr(signal, 'value', None)
+            selector = getattr(signal, 'selector', None)
+            
+            if value and selector is not None:
+                # 获取基础信号名
+                base_name = None
+                if hasattr(value, 'symbol'):
+                    sym = value.symbol
+                    if hasattr(sym, 'name'):
+                        base_name = str(sym.name)
+                
+                if base_name:
+                    # 获取索引值
+                    selector_val = getattr(selector, 'value', None)
+                    if selector_val is not None:
+                        return [f"{base_name}[{selector_val}]"]
+            
+            # 兜底:递归获取基础信号
             if value:
                 return self._get_all_signals(value)
             return []
@@ -1519,9 +1603,26 @@ class DriverExtractor:
             return None
 
         # [FIX Semantic AST] ElementSelect 表达式: 位选择 data[5]
-        # 提取 value (信号) 而不是 selector (索引)
+        # 构造完整位选表达式 data[5]，而不是只返回基础信号 data
         if hasattr(signal, 'kind') and 'ElementSelect' in str(signal.kind):
             value = getattr(signal, 'value', None)
+            selector = getattr(signal, 'selector', None)
+            
+            if value and selector is not None:
+                # 获取基础信号名
+                base_name = None
+                if hasattr(value, 'symbol'):
+                    sym = value.symbol
+                    if hasattr(sym, 'name'):
+                        base_name = str(sym.name)
+                
+                if base_name:
+                    # 获取索引值
+                    selector_val = getattr(selector, 'value', None)
+                    if selector_val is not None:
+                        return f"{base_name}[{selector_val}]"
+            
+            # 兜底:返回基础信号名
             if value:
                 return self._get_signal(value)
             return None
@@ -1543,9 +1644,27 @@ class DriverExtractor:
             return None
 
         # [FIX Semantic AST] RangeSelect 表达式: 范围选择 data[3:0]
-        # 提取 value (信号) 而不是 left/right (范围)
+        # 构造完整位选表达式 data[3:0]，而不是只返回基础信号 data
         if hasattr(signal, 'kind') and 'RangeSelect' in str(signal.kind):
             value = getattr(signal, 'value', None)
+            left = getattr(signal, 'left', None)
+            right = getattr(signal, 'right', None)
+            
+            if value and left is not None and right is not None:
+                # 获取基础信号名
+                base_name = None
+                if hasattr(value, 'symbol'):
+                    sym = value.symbol
+                    if hasattr(sym, 'name'):
+                        base_name = str(sym.name)
+                
+                if base_name:
+                    left_val = getattr(left, 'value', None)
+                    right_val = getattr(right, 'value', None)
+                    if left_val is not None and right_val is not None:
+                        return f"{base_name}[{left_val}:{right_val}]"
+            
+            # 兜底:返回基础信号名
             if value:
                 return self._get_signal(value)
             return None
@@ -1611,6 +1730,24 @@ class DriverExtractor:
                         result = self._get_signal(exprs)
                         if result:
                             return result
+            return None
+
+        # [FIX Semantic AST] ReplicationExpression: {N{signal}} → 返回内部信号
+        # Semantic AST: ReplicationExpression.concat = ConcatenationExpression
+        if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
+            concat = getattr(signal, 'concat', None)
+            if concat and hasattr(concat, 'operands'):
+                operands = concat.operands
+                if hasattr(operands, '__iter__') and not isinstance(operands, str):
+                    for expr_item in operands:
+                        if hasattr(expr_item, 'kind'):
+                            result = self._get_signal(expr_item)
+                            if result:
+                                return result
+                else:
+                    result = self._get_signal(operands)
+                    if result:
+                        return result
             return None
 
         # [NEW] 处理 IdentifierSelectName: data[3] → 保留完整名 data[3]
@@ -1813,7 +1950,7 @@ class DriverExtractor:
         # [FIX] InvocationExpression: 递归函数调用 factorial(x - 1)
         # 结构: InvocationExpression.left = IdentifierName (函数名)
         # 对于 _get_signal,只需要函数名,不需要参数
-        if kind and 'Invocation' in str(kind):
+        if kind and ('Invocation' in str(kind) or 'Call' in str(kind)):
             left = getattr(signal, 'left', None)
             if left:
                 # left 是 IdentifierName,尝试 identifier.value
@@ -1939,6 +2076,11 @@ class DriverExtractor:
                     items = signal.expressions
                 elif hasattr(signal, 'values'):
                     items = signal.values
+                # [FIX] Semantic AST: ReplicationExpression uses .concat.operands
+                if items is None and hasattr(signal, 'concat'):
+                    concat = signal.concat
+                    if concat and hasattr(concat, 'operands'):
+                        items = concat.operands
                 if items:
                     all_names = []
                     for v in items:
@@ -2152,13 +2294,19 @@ class LoadExtractor:
                 return str(val).strip()
 
         # [P2] 处理 Replication: {N{signal}} -> 递归获取 values
+        # [FIX] Semantic AST uses .concat, not .values
         if hasattr(signal, 'kind') and 'Replication' in str(signal.kind):
-            if hasattr(signal, 'values'):
-                vals = signal.values
-                if vals and len(vals) > 0:
-                    first_val = vals[0]
-                    # 递归调用获取内部信号名
-                    return self._get_signal(first_val)
+            # Try values first (syntax tree path)
+            vals = getattr(signal, 'values', None)
+            if vals is None:
+                # Try concat (semantic AST path)
+                concat = getattr(signal, 'concat', None)
+                if concat:
+                    vals = getattr(concat, 'operands', None)
+            if vals and len(vals) > 0:
+                first_val = vals[0]
+                # 递归调用获取内部信号名
+                return self._get_signal(first_val)
             return None
 
         # [FIX] IdentifierSelectName: data[3] → 保留完整名
@@ -2922,42 +3070,59 @@ class GraphBuilder:
         self._set_interface_modport_dirs()
 
     def _set_interface_modport_dirs(self):
-        """设置 interface 信号的 modport_dir 属性"""
+        """设置 interface 信号的 modport_dir 属性
+        
+        [P2] 同时为未被驱动的 interface 信号创建 placeholder 节点
+        """
         # Build interface_ports map for each module
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
 
             interface_ports = {}  # port_name -> (interface_name, modport_name)
+            interface_signals = {}  # (port_name, signal_name) -> direction
+            
             try:
-                if hasattr(module, 'header') and module.header:
-                    header = module.header
-                    if hasattr(header, 'ports') and hasattr(header.ports, 'ports'):
-                        for item in header.ports.ports:
-                            if not hasattr(item, 'kind') or item.kind != pyslang.SyntaxKind.ImplicitAnsiPort:
-                                continue
-                            try:
-                                h = getattr(item, 'header', None)
-                                decl = getattr(item, 'declarator', None)
-                            except AttributeError:
-                                continue
-                            if h is None or decl is None:
-                                continue
-                            if hasattr(h, 'kind') and 'InterfacePortHeader' in str(h.kind):
-                                port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
-                                interface_name = None
-                                if hasattr(h, 'nameOrKeyword'):
-                                    nk = h.nameOrKeyword
-                                    interface_name = nk.rawText if hasattr(nk, 'rawText') else str(nk)
-                                modport_name = None
-                                if hasattr(h, 'modport') and hasattr(h.modport, 'member'):
-                                    member_val = h.modport.member
-                                    modport_name = member_val.name if hasattr(member_val, 'name') else str(member_val)
-                                if port_name and interface_name:
-                                    interface_ports[port_name.strip()] = (interface_name, modport_name)
+                # [FIX] Navigate through InstanceSymbol -> body -> definition -> syntax
+                # InstanceSymbol doesn't have direct 'header' attribute
+                module_header = None
+                if hasattr(module, 'body') and module.body:
+                    definition = getattr(module.body, 'definition', None)
+                    if definition and hasattr(definition, 'syntax') and definition.syntax:
+                        module_header = getattr(definition.syntax, 'header', None)
+                
+                if module_header and hasattr(module_header, 'ports') and hasattr(module_header.ports, 'ports'):
+                    for item in module_header.ports.ports:
+                        if not hasattr(item, 'kind') or item.kind != pyslang.SyntaxKind.ImplicitAnsiPort:
+                            continue
+                        try:
+                            h = getattr(item, 'header', None)
+                            decl = getattr(item, 'declarator', None)
+                        except AttributeError:
+                            continue
+                        if h is None or decl is None:
+                            continue
+                        if hasattr(h, 'kind') and 'InterfacePortHeader' in str(h.kind):
+                            port_name = decl.name.value if hasattr(decl.name, 'value') else str(decl.name)
+                            interface_name = None
+                            if hasattr(h, 'nameOrKeyword'):
+                                nk = h.nameOrKeyword
+                                interface_name = nk.rawText if hasattr(nk, 'rawText') else str(nk)
+                            modport_name = None
+                            if hasattr(h, 'modport') and hasattr(h.modport, 'member'):
+                                member_val = h.modport.member
+                                modport_name = member_val.name if hasattr(member_val, 'name') else str(member_val)
+                            if port_name and interface_name:
+                                interface_ports[port_name.strip()] = (interface_name, modport_name)
+                                
+                                # 获取该 modport 的所有信号及其方向
+                                modport_signals = self.adapter.get_interface_modport_signals(interface_name, modport_name)
+                                for sig_name, sig_dir in modport_signals.items():
+                                    interface_signals[(port_name.strip(), sig_name)] = sig_dir
             except (ValueError, AttributeError, TypeError):
                 pass
 
             # For each node in the graph that's in this module
+            existing_interface_signals = set()
             for node_id, node in self.graph._node_data.items():
                 if node.module != module_name:
                     continue
@@ -2977,6 +3142,28 @@ class GraphBuilder:
                         signal_dir = self.adapter.get_interface_modport_signals(interface_name, modport_name).get(signal_name)
                         if signal_dir:
                             node.modport_dir = signal_dir
+                            existing_interface_signals.add((port_name, signal_name))
+
+            # [P2] 为未被驱动的 interface 信号创建 placeholder 节点
+            for (port_name, signal_name), signal_dir in interface_signals.items():
+                if (port_name, signal_name) in existing_interface_signals:
+                    continue
+                    
+                node_id = f"{module_name}.{port_name}.{signal_name}"
+                if node_id in self.graph._node_data:
+                    continue
+                
+                # 创建 placeholder 节点
+                from trace.core.graph.models import TraceNode, NodeKind
+                placeholder = TraceNode(
+                    id=node_id,
+                    name=signal_name,
+                    module=module_name,
+                    kind=NodeKind.SIGNAL,
+                    width=(0, 0)
+                )
+                placeholder.modport_dir = signal_dir
+                self.graph.add_trace_node(placeholder)
 
     def _upgrade_reg_nodes(self):
         """Upgrade node kind to REG if it's driven by a CLOCK edge.

@@ -3,13 +3,11 @@
 # 铁律13: 先推导金标准再验证
 #==============================================================================
 
-import pyslang
 from src.trace.unified_tracer import UnifiedTracer
 
 def load_tracer(filename):
-    """加载测试文件"""
-    tree = pyslang.SyntaxTree.fromFile(filename)
-    return UnifiedTracer(trees={'test': tree})
+    """"加载测试文件"""
+    return UnifiedTracer(files=[filename])
 
 #==============================================================================
 # 金标准表格

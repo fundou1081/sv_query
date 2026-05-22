@@ -420,47 +420,111 @@ class PyslangAdapter:
         interfaces = self.get_interfaces()
         for iface in interfaces:
             # 获取 interface 名称
+            # [FIX] Semantic AST: DefinitionSymbol has syntax.header, not direct header
             iface_def_name = None
-            if hasattr(iface, 'header') and hasattr(iface.header, 'name'):
-                iface_def_name = iface.header.name.value if hasattr(iface.header.name, 'value') else str(iface.header.name)
+            header = None
+            members = None
+            
+            # Check if iface is a DefinitionSymbol (semantic adapter returns this)
+            if hasattr(iface, 'syntax'):
+                # Access via syntax for DefinitionSymbol
+                header = getattr(iface.syntax, 'header', None)
+                members = getattr(iface.syntax, 'members', None)
+            elif hasattr(iface, 'header'):
+                # Direct header/members for other cases
+                header = iface.header
+                members = iface.members
+            
+            if header and hasattr(header, 'name'):
+                iface_def_name = header.name.value if hasattr(header.name, 'value') else str(header.name)
             
             if iface_def_name != interface_name:
                 continue
             
             # 在 interface members 中找 ModportDeclaration
-            if hasattr(iface, 'members'):
-                for member in iface.members:
+            if members:
+                for member in members:
                     kind = str(getattr(member, 'kind', ''))
                     if 'ModportDeclaration' not in kind:
                         continue
                     
-                    # 处理 items (通常只有一个 ModportItem)
-                    if hasattr(member, 'items'):
-                        items = list(member.items) if hasattr(member.items, '__iter__') else [member.items]
-                        for item in items:
-                            item_name = getattr(item, 'name', None)
-                            if not item_name:
-                                continue
-                            actual_name = item_name.value if hasattr(item_name, 'value') else str(item_name)
-                            if actual_name != modport_name:
-                                continue
-                            
-                            # 解析 ports (AnsiPortListSyntax)
-                            if hasattr(item, 'ports'):
-                                ports = item.ports
-                                if hasattr(ports, 'ports'):
-                                    actual_ports = ports.ports
-                                    if hasattr(actual_ports, '__iter__') and not isinstance(actual_ports, str):
-                                        for p in actual_ports:
-                                            if not hasattr(p, 'kind') or 'ModportSimplePortList' not in str(p.kind):
-                                                continue
-                                            direction = str(getattr(p, 'direction', '')).lower().strip()
-                                            ports_list = getattr(p, 'ports', '')
-                                            signal_names = str(ports_list).split(',')
-                                            for sig in signal_names:
-                                                sig = sig.strip()
-                                                if sig:
-                                                    result[sig] = direction
+                    # 处理 items (可能是 SeparatedList 或单个 ModportItem)
+                    items_node = getattr(member, 'items', None)
+                    if not items_node:
+                        continue
+                    
+                    # SeparatedList is iterable, single ModportItem is not
+                    if hasattr(items_node, '__iter__') and not isinstance(items_node, str):
+                        if str(items_node.kind) == 'SyntaxKind.SeparatedList':
+                            # SeparatedList contains ModportItem nodes
+                            items_list = list(items_node)
+                        else:
+                            # It's a single iterable item
+                            items_list = [items_node]
+                    else:
+                        items_list = [items_node]
+                    
+                    for item in items_list:
+                        item_kind_str = str(getattr(item, 'kind', ''))
+                        if 'ModportItem' not in item_kind_str:
+                            continue
+                        
+                        item_name = getattr(item, 'name', None)
+                        if not item_name:
+                            continue
+                        actual_name = item_name.value if hasattr(item_name, 'value') else str(item_name)
+                        if actual_name != modport_name:
+                            continue
+                        
+                        # 解析 ports (AnsiPortListSyntax)
+                        if hasattr(item, 'ports'):
+                            ports = item.ports
+                            if hasattr(ports, 'ports'):
+                                actual_ports = ports.ports
+                                # actual_ports can be a SeparatedList of ModportSimplePortList
+                                if hasattr(actual_ports, '__iter__') and not isinstance(actual_ports, str):
+                                    # Check if it's a SeparatedList
+                                    if str(getattr(actual_ports, 'kind', '')) == 'SyntaxKind.SeparatedList':
+                                        ports_list = list(actual_ports)
+                                    else:
+                                        ports_list = [actual_ports]
+                                else:
+                                    ports_list = [actual_ports] if actual_ports else []
+                                
+                                for p in ports_list:
+                                    p_kind_str = str(getattr(p, 'kind', ''))
+                                    if 'ModportSimplePortList' not in p_kind_str:
+                                        continue
+                                    
+                                    direction = str(getattr(p, 'direction', '')).lower().strip()
+                                    ports_node = getattr(p, 'ports', None)
+                                    
+                                    # Extract signal names from ports_node
+                                    # ports_node can be SeparatedList of ModportNamedPort
+                                    if ports_node and hasattr(ports_node, '__iter__') and not isinstance(ports_node, str):
+                                        if str(getattr(ports_node, 'kind', '')) == 'SyntaxKind.SeparatedList':
+                                            sig_nodes = list(ports_node)
+                                        else:
+                                            sig_nodes = [ports_node]
+                                    else:
+                                        sig_nodes = [ports_node] if ports_node else []
+                                    
+                                    for sig_node in sig_nodes:
+                                        sig_kind_str = str(getattr(sig_node, 'kind', ''))
+                                        
+                                        # Handle ModportNamedPort: has .name attribute
+                                        if 'ModportNamedPort' in sig_kind_str:
+                                            sig_name_attr = getattr(sig_node, 'name', None)
+                                            if sig_name_attr:
+                                                sig_name = sig_name_attr.value if hasattr(sig_name_attr, 'value') else str(sig_name_attr)
+                                                if sig_name:
+                                                    result[sig_name] = direction
+                                        # Handle simple identifier strings
+                                        elif 'Identifier' in sig_kind_str or sig_kind_str == 'SyntaxKind.VariableDim':
+                                            sig_name = getattr(sig_node, 'value', None) or str(sig_node)
+                                            sig_name = sig_name.strip()
+                                            if sig_name:
+                                                result[sig_name] = direction
         
         return result
 
