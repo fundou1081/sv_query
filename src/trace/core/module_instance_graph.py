@@ -3,12 +3,12 @@ module_instance_graph.py - 模块实例层级图
 
 [铁律11] 单一职责 - 模块实例结构独立管理
 
-职责：
+职责:
 1. 管理模块实例层级 (top.u_tb, top.u_dut)
 2. 维护端口到内部信号的映射
 3. 支持跨模块路径查找
 
-使用方式：
+使用方式:
   mig = ModuleInstanceGraph(adapter)
   mig.build(trees)
   internal = mig.get_internal_signal('top.u_dut.clk')  # → 'dut.clk'
@@ -41,10 +41,10 @@ class ModuleInstanceNode:
     module_type: str            # 模块类型: "dut"
     parent: Optional[str]       # 父实例: "top" 或 None
     ports: Dict[str, PortInfo] = field(default_factory=dict)
-    
+
     def get_port(self, port_name: str) -> Optional[PortInfo]:
         return self.ports.get(port_name)
-    
+
     def get_internal_signal(self, port_name: str) -> Optional[str]:
         port = self.get_port(port_name)
         return port.internal_signal if port else None
@@ -52,18 +52,18 @@ class ModuleInstanceNode:
 
 class ModuleInstanceGraph:
     """模块实例层级图
-    
+
     管理模块实例及其端口映射关系
     支持跨模块边界追踪
     """
-    
+
     def __init__(self, adapter, signal_graph=None):
         self.adapter = adapter
-        self.signal_graph = signal_graph  # 可选，用于从 SignalGraph 获取 port_to_internal
+        self.signal_graph = signal_graph  # 可选,用于从 SignalGraph 获取 port_to_internal
         self.instances: Dict[str, ModuleInstanceNode] = {}  # instance_id → Node
-        self.port_to_internal: Dict[str, str] = {}  # "top.u_dut.clk" → "dut.clk" (保留用于兼容，已废弃)
-        self.internal_to_port: Dict[str, str] = {}  # "dut.clk" → "top.u_dut.clk" (保留用于兼容，已废弃)
-        
+        self.port_to_internal: Dict[str, str] = {}  # "top.u_dut.clk" → "dut.clk" (保留用于兼容,已废弃)
+        self.internal_to_port: Dict[str, str] = {}  # "dut.clk" → "top.u_dut.clk" (保留用于兼容,已废弃)
+
     def _get_parent_module_name(self, inst) -> str:
         """Safely get parent module name from instance (handles generate blocks)."""
         node = inst
@@ -120,7 +120,7 @@ class ModuleInstanceGraph:
         Phase 0: 存储所有模块的端口定义
         Phase 1: 收集所有实例化信息 (全树遍历)
         Phase 2: 对每个实例路径递归处理模块内容)
-        
+
         Args:
             trees: SyntaxTree 字典 (旧接口) 或 SemanticAdapter (新接口)
         """
@@ -129,7 +129,7 @@ class ModuleInstanceGraph:
             # SemanticAdapter path: 使用适配器获取实例
             adapter = trees
             instances = adapter.get_module_instances()
-            
+
             # 创建实例节点并填充端口映射
             for inst_wrapper in instances:
                 # 使用完整的 hierarchicalPath (如果实例在 generate 块中,路径会包含 generate 名称)
@@ -146,7 +146,7 @@ class ModuleInstanceGraph:
                     module_type=inst_type,
                     parent=parent
                 )
-                
+
                 # 从 portConnections 填充端口映射
                 if inst_symbol:
                     port_conns = getattr(inst_symbol, 'portConnections', [])
@@ -159,12 +159,71 @@ class ModuleInstanceGraph:
                                 internal = f"{inst_type}.{port_name}"
                                 self.port_to_internal[port_path] = internal
                                 self.internal_to_port[internal] = port_path
-            return  # Semantic AST 路径到此为止，generate 处理由 SemanticAdapter.get_module_instances 完成
-        
+                                
+                                # 填充 _module_ports (模块类型 -> 端口信息)
+                                if not hasattr(self, '_module_ports'):
+                                    self._module_ports = {}
+                                if inst_type not in self._module_ports:
+                                    self._module_ports[inst_type] = {}
+                                
+                                # 获取端口方向 (标准化为字符串: input/output/inout)
+                                direction = 'unknown'
+                                if hasattr(port_sym, 'direction'):
+                                    dir_str = str(port_sym.direction).strip()
+                                    # 移除 "ArgumentDirection." 前缀
+                                    if 'ArgumentDirection.' in dir_str:
+                                        dir_str = dir_str.split('.')[-1]
+                                    # 标准化方向字符串
+                                    if dir_str.lower() in ('in', 'input'):
+                                        direction = 'input'
+                                    elif dir_str.lower() in ('out', 'output'):
+                                        direction = 'output'
+                                    elif dir_str.lower() in ('inout', 'in_out'):
+                                        direction = 'inout'
+                                    else:
+                                        direction = dir_str.lower()
+                                
+                                # 获取端口位宽
+                                width = (0, 0)
+                                if hasattr(port_sym, 'type') and port_sym.type:
+                                    port_type = port_sym.type
+                                    # 尝试从 fixedRange 获取位宽
+                                    if hasattr(port_type, 'fixedRange') and port_type.fixedRange:
+                                        fr = port_type.fixedRange
+                                        left = getattr(fr, 'left', 0)
+                                        right = getattr(fr, 'right', 0)
+                                        # left/right 可能是 int 或 ConstantValue
+                                        if hasattr(left, 'value'):
+                                            left = left.value
+                                        if hasattr(right, 'value'):
+                                            right = right.value
+                                        width = (int(left), int(right))
+                                    # 备选: 从 bitWidth 获取
+                                    elif hasattr(port_type, 'bitWidth') and port_type.bitWidth:
+                                        width = (int(port_type.bitWidth) - 1, 0)
+                                
+                                self._module_ports[inst_type][port_name] = PortInfo(
+                                    name=port_name,
+                                    direction=direction,
+                                    width=width,
+                                    internal_signal=internal,
+                                    module_type=inst_type
+                                )
+                                
+                                # 同时填充实例节点的 ports
+                                self.instances[instance_id].ports[port_name] = PortInfo(
+                                    name=port_name,
+                                    direction=direction,
+                                    width=width,
+                                    internal_signal=internal,
+                                    module_type=inst_type
+                                )
+            return  # Semantic AST 路径到此为止,generate 处理由 SemanticAdapter.get_module_instances 完成
+
         if trees is None:
             trees = {}
-        
-        # Phase 0: 遍历所有模块，存储端口定义，建立 module AST 缓存
+
+        # Phase 0: 遍历所有模块,存储端口定义,建立 module AST 缓存
         self._module_ast_cache = {}  # module_name -> AST node
         for fname, tree in trees.items():
             if not tree or not hasattr(tree, 'root'):
@@ -202,7 +261,7 @@ class ModuleInstanceGraph:
                 module_to_paths[mod_type] = []
             module_to_paths[mod_type].append(inst_path)
 
-        # Phase 3: 对每个顶层模块，在其所有实例路径上处理模块内容
+        # Phase 3: 对每个顶层模块,在其所有实例路径上处理模块内容
         for fname, tree in trees.items():
             if not tree or not hasattr(tree, 'root'):
                 continue
@@ -216,19 +275,19 @@ class ModuleInstanceGraph:
                     if not module_name:
                         continue
                     logger.debug(f"Processing ModuleDeclaration: {module_name}")
-                    # 如果是被其他模块实例化的模块，不在这里处理
+                    # 如果是被其他模块实例化的模块,不在这里处理
                     # 这些模块只应该通过父模块的递归调用来处理
                     if module_name in module_to_paths:
                         # 这些模块将在父模块处理 HierarchyInstantiation 时被递归处理
-                        # 例如: parent 模块实例化 child，父模块 top 处理 inner 的 HierarchyInstantiation 时
+                        # 例如: parent 模块实例化 child,父模块 top 处理 inner 的 HierarchyInstantiation 时
                         # 会递归调用 _process_module_at_path(inner_ast, 'top.outer', ...)
                         continue
                     else:
-                        # 顶层模块，没有实例化路径（如 tb.top）
+                        # 顶层模块,没有实例化路径(如 tb.top)
                         self._process_module_at_path(member, module_name, module_to_paths)
 
     def _find_all_hierarchy_instantiations(self, node, result_list, parent_path=''):
-        """全树遍历，找到所有 HierarchyInstantiation 并构建完整路径
+        """全树遍历,找到所有 HierarchyInstantiation 并构建完整路径
 
         Returns:
             List of dicts: {module_type, inst_name, instance_path}
@@ -239,7 +298,7 @@ class ModuleInstanceGraph:
         kind = getattr(node, 'kind', None)
         kind_str = str(kind) if kind else ''
 
-        # LoopGenerate: 记录 generate block 标签，继续遍历
+        # LoopGenerate: 记录 generate block 标签,继续遍历
         if 'LoopGenerate' in kind_str:
             gen_label = None
             if hasattr(node, 'block') and hasattr(node.block, 'beginName'):
@@ -311,11 +370,11 @@ class ModuleInstanceGraph:
             return
 
         # 只有特定的父节点类型才需要递归遍历包含实例的子节点
-        # - CompilationUnit: 顶层容器，包含 ModuleDeclaration 列表
-        # - ModuleDeclaration: 模块定义容器，包含 generate region 和实例
-        # - GenerateRegion: generate 块容器，包含 LoopGenerate/IfGenerate/CaseGenerate
+        # - CompilationUnit: 顶层容器,包含 ModuleDeclaration 列表
+        # - ModuleDeclaration: 模块定义容器,包含 generate region 和实例
+        # - GenerateRegion: generate 块容器,包含 LoopGenerate/IfGenerate/CaseGenerate
         # - LoopGenerate/IfGenerate/CaseGenerate: 包含 HierarchyInstantiation 或嵌套 generate
-        # - HierarchyInstantiation: 记录后直接返回（无实例子节点）
+        # - HierarchyInstantiation: 记录后直接返回(无实例子节点)
         should_recurse = ('CompilationUnit' in kind_str) or \
                         ('ModuleDeclaration' in kind_str) or \
                         ('GenerateRegion' in kind_str) or \
@@ -400,7 +459,7 @@ class ModuleInstanceGraph:
             if 'HierarchyInstantiation' in kind_str:
                 module_type = self._get_module_name_from_type(child)
                 self._extract_module_instantiation(child, base_path)
-                # 如果被实例化的模块自身还有子实例，递归处理
+                # 如果被实例化的模块自身还有子实例,递归处理
                 if module_type and module_type in module_to_paths:
                     instances_list = getattr(child, 'instances', None)
                     if instances_list:
@@ -495,7 +554,7 @@ class ModuleInstanceGraph:
             return
 
     def _extract_instances(self, node, parent_path: str):
-        """递归提取模块实例（支持 generate block）"""
+        """递归提取模块实例(支持 generate block)"""
         from pyslang import SyntaxKind
 
         if node is None:
@@ -507,7 +566,7 @@ class ModuleInstanceGraph:
 
         kind_str = str(kind)
 
-        # ModuleDeclaration - 递归提取，不更新 parent_path（顶层模块）
+        # ModuleDeclaration - 递归提取,不更新 parent_path(顶层模块)
         if 'ModuleDeclaration' in kind_str:
             module_name = self._get_module_name(node)
             if module_name:
@@ -572,7 +631,7 @@ class ModuleInstanceGraph:
                             self._extract_instances(child, new_path)
             return
 
-        # HierarchyInstantiation - 提取模块实例（使用当前 parent_path）
+        # HierarchyInstantiation - 提取模块实例(使用当前 parent_path)
         if 'HierarchyInstantiation' in kind_str:
             self._extract_module_instantiation(node, parent_path)
             return
@@ -580,7 +639,7 @@ class ModuleInstanceGraph:
         # 递归子节点
         for child in self._iter_children(node):
             self._extract_instances(child, parent_path)
-    
+
     def _get_module_name(self, node) -> Optional[str]:
         """获取模块名"""
         if hasattr(node, 'header') and node.header:
@@ -592,19 +651,19 @@ class ModuleInstanceGraph:
                 if hasattr(name, 'text'):
                     return name.text
         return None
-    
+
     def _store_module_ports(self, module_name: str, node):
         """存储模块的端口定义"""
         if not hasattr(self, '_module_ports'):
             self._module_ports = {}
-        
+
         ports = {}
         header = getattr(node, 'header', None)
-        
+
         # 从 header.ports 获取端口信息
         if header and hasattr(header, 'ports') and header.ports:
             ansi_ports = header.ports
-            
+
             # ports = ( OpenParen, SeparatedList, CloseParen )
             # SeparatedList contains ImplicitAnsiPort nodes
             if len(ansi_ports) > 1:
@@ -613,22 +672,22 @@ class ModuleInstanceGraph:
                     for elem in separated_list:
                         if not hasattr(elem, 'kind') or 'ImplicitAnsiPort' not in str(elem.kind):
                             continue
-                        
+
                         # Get port name from declarator
                         port_name = None
                         declarator = getattr(elem, 'declarator', None)
                         if declarator and hasattr(declarator, 'name') and declarator.name:
                             port_name = declarator.name.value if hasattr(declarator.name, 'value') else str(declarator.name)
-                        
+
                         if not port_name:
                             continue
-                        
+
                         # Get direction from header
                         direction = 'unknown'
                         elem_header = getattr(elem, 'header', None)
                         if elem_header and hasattr(elem_header, 'direction'):
                             direction = str(elem_header.direction).strip()
-                        
+
                         # Get width from header.dataType.dimensions
                         width = (0, 0)
                         if elem_header and hasattr(elem_header, 'dataType') and elem_header.dataType:
@@ -646,7 +705,7 @@ class ModuleInstanceGraph:
                                             lsb = self._extract_int_value(right)
                                             width = (msb, lsb)
                                             break
-                        
+
                         ports[port_name] = PortInfo(
                             name=port_name,
                             direction=direction,
@@ -654,19 +713,19 @@ class ModuleInstanceGraph:
                             internal_signal=f"{module_name}.{port_name}",
                             module_type=module_name
                         )
-        
-        # 如果 ANSI 风格没有找到端口，尝试从 members 的 PortDeclaration 获取
+
+        # 如果 ANSI 风格没有找到端口,尝试从 members 的 PortDeclaration 获取
         if not ports:
             for member in getattr(node, 'members', []):
                 kind_str = str(getattr(member, 'kind', ''))
                 if 'PortDeclaration' not in kind_str:
                     continue
-                
+
                 # Get direction from header
                 direction = 'unknown'
                 if hasattr(member, 'header') and member.header:
                     direction = str(getattr(member.header, 'direction', 'unknown')).strip()
-                
+
                 # Get port names from declarators
                 declarators = getattr(member, 'declarators', None)
                 if declarators:
@@ -678,7 +737,7 @@ class ModuleInstanceGraph:
                         decl_list = list(declarators)
                     else:
                         decl_list = [declarators]
-                    
+
                     for decl in decl_list:
                         # decl is DeclaratorSyntax with .name
                         name = None
@@ -688,10 +747,10 @@ class ModuleInstanceGraph:
                                 name = str(name_val.value)
                             else:
                                 name = str(name_val)
-                        
+
                         if not name or name == ',':
                             continue
-                        
+
                         ports[name] = PortInfo(
                             name=name,
                             direction=direction,
@@ -699,9 +758,9 @@ class ModuleInstanceGraph:
                             internal_signal=f"{module_name}.{name}",
                             module_type=module_name
                         )
-        
+
         self._module_ports[module_name] = ports
-    
+
     def _extract_port_info(self, port_decl, module_name: str) -> Optional[PortInfo]:
         """提取端口信息 (PortDeclarationSyntax)"""
         # 获取端口名称
@@ -711,17 +770,17 @@ class ModuleInstanceGraph:
             name = getattr(decl, 'name', None)
             if name:
                 name = name.value if hasattr(name, 'value') else str(name)
-        
+
         if not name:
             return None
-        
+
         # 获取方向
         direction = 'unknown'
         if hasattr(port_decl, 'header') and port_decl.header:
             header = port_decl.header
             if hasattr(header, 'direction'):
                 direction = str(header.direction)
-        
+
         # 获取位宽 (从 dataType.dimensions)
         width = (0, 0)
         if hasattr(port_decl, 'header') and port_decl.header:
@@ -740,7 +799,7 @@ class ModuleInstanceGraph:
                                 lsb = self._extract_int_value(right)
                                 width = (msb, lsb)
                                 break
-        
+
         return PortInfo(
             name=name,
             direction=direction,
@@ -748,7 +807,7 @@ class ModuleInstanceGraph:
             internal_signal=f"{module_name}.{name}",
             module_type=module_name
         )
-    
+
     def _extract_int_value(self, expr) -> int:
         """从表达式提取整数值"""
         if expr is None:
@@ -765,16 +824,16 @@ class ModuleInstanceGraph:
             if isinstance(v, (int, float)):
                 return int(v)
         return 0
-    
+
     def _get_module_name_from_type(self, node) -> Optional[str]:
         """从 HierarchyInstantiation 的 type 属性获取模块类型名。"""
         inst_type = getattr(node, 'type', None)
         if inst_type is None:
             return None
-        # 使用 .value 属性（Token 对象），而非 str() 转换
+        # 使用 .value 属性(Token 对象),而非 str() 转换
         if hasattr(inst_type, 'value') and inst_type.value:
             return inst_type.value.strip()
-        # 备用：直接取 token text
+        # 备用:直接取 token text
         if hasattr(inst_type, 'rawText'):
             return inst_type.rawText.strip()
         return None
@@ -790,7 +849,7 @@ class ModuleInstanceGraph:
           - decl: InstanceName (有 .name.value)
           - connections: 端口连接列表
         """
-        # 获取模块类型 (使用 AST 属性，不做字符串转换)
+        # 获取模块类型 (使用 AST 属性,不做字符串转换)
         module_type = self._get_module_name_from_type(node)
         if not module_type:
             return
@@ -826,7 +885,7 @@ class ModuleInstanceGraph:
             else:
                 instance_id = instance_name
 
-            # 创建实例节点（避免重复）
+            # 创建实例节点(避免重复)
             if instance_id not in self.instances:
                 instance_node = ModuleInstanceNode(
                     id=instance_id,
@@ -837,22 +896,22 @@ class ModuleInstanceGraph:
 
                 # 添加端口映射
                 self._add_instance_ports(instance_id, module_type)
-    
+
     def _add_instance_ports(self, instance_id: str, module_type: str):
         """为实例添加端口映射"""
         if not hasattr(self, '_module_ports'):
             return
-        
+
         module_ports = self._module_ports.get(module_type, {})
         for port_name, port_info in module_ports.items():
             # 端口路径: top.u_dut.clk
             port_path = f"{instance_id}.{port_name}"
             # 内部信号: dut.clk
             internal = f"{module_type}.{port_name}"
-            
+
             self.port_to_internal[port_path] = internal
             self.internal_to_port[internal] = port_path
-            
+
             # 更新实例节点的端口
             if instance_id in self.instances:
                 self.instances[instance_id].ports[port_name] = PortInfo(
@@ -862,61 +921,61 @@ class ModuleInstanceGraph:
                     internal_signal=internal,
                     module_type=module_type
                 )
-    
+
     def _extract_port_connections(self, node, parent_path: str):
         """提取端口连接 (assign 语句)"""
         # assign u_dut.clk = u_tb.clk;
         # 提取左边的端口路径和右边的信号
         pass  # ConnectionExtractor 已处理
-    
+
     def _iter_children(self, node):
         """迭代子节点"""
         if node is None:
             return
-        
+
         # 常见的子节点属性
         for attr in ['members', 'items', 'body', 'statements', 'declarations']:
             children = getattr(node, attr, None)
             if children and hasattr(children, '__iter__') and not isinstance(children, str):
                 for child in children:
                     yield child
-    
+
     def get_internal_signal(self, port_path: str) -> Optional[str]:
         """端口路径 → 内部信号
-        
-        MIG 维护自己的 port_to_internal 映射，基于模块端口定义（而非实际连接）。
-        CE 的 port_to_internal 来自实际连接，用于 SignalGraph 建边。
-        两者语义不同：
-          - MIG: 模块 Z 有端口 X，内部信号是 Z.X（结构定义）
-          - CE: 实例的端口 X 实际连接到信号 Y（实际连接）
-        
+
+        MIG 维护自己的 port_to_internal 映射,基于模块端口定义(而非实际连接)。
+        CE 的 port_to_internal 来自实际连接,用于 SignalGraph 建边。
+        两者语义不同:
+          - MIG: 模块 Z 有端口 X,内部信号是 Z.X(结构定义)
+          - CE: 实例的端口 X 实际连接到信号 Y(实际连接)
+
         Args:
             port_path: "top.u_dut.clk"
-            
+
         Returns:
             "dut.clk" 或 None
         """
-        # MIG 自己的映射（基于模块定义）
+        # MIG 自己的映射(基于模块定义)
         if self.port_to_internal:
             return self.port_to_internal.get(port_path)
-        # 备用：从 SignalGraph 获取（CE 构建的连接映射）
+        # 备用:从 SignalGraph 获取(CE 构建的连接映射)
         if self.signal_graph is not None:
             return self.signal_graph.get_internal_signal(port_path)
         return None
-    
+
     def get_port_path(self, internal_signal: str) -> Optional[str]:
         """内部信号 → 端口路径
-        
+
         Args:
             internal_signal: "dut.clk"
-            
+
         Returns:
             "top.u_dut.clk" 或 None
         """
-        # MIG 自己的映射（基于模块定义）
+        # MIG 自己的映射(基于模块定义)
         if self.internal_to_port:
             return self.internal_to_port.get(internal_signal)
-        # 备用：从 SignalGraph 获取（CE 构建的连接映射）
+        # 备用:从 SignalGraph 获取(CE 构建的连接映射)
         if self.signal_graph is not None:
             port_to_internal = self.signal_graph.get_port_to_internal()
             # 反向查找
@@ -924,16 +983,16 @@ class ModuleInstanceGraph:
                 if internal == internal_signal:
                     return inst_port
         return None
-    
+
     def get_instance(self, instance_id: str) -> Optional[ModuleInstanceNode]:
         """获取实例节点"""
         return self.instances.get(instance_id)
-    
+
     def get_child_instances(self, parent_id: str) -> List[ModuleInstanceNode]:
         """获取子实例"""
-        return [inst for inst in self.instances.values() 
+        return [inst for inst in self.instances.values()
                 if inst.parent == parent_id]
-    
+
     def get_all_instances(self) -> List[str]:
         """获取所有实例ID"""
         return list(self.instances.keys())
@@ -941,98 +1000,99 @@ class ModuleInstanceGraph:
 
 class PathResolver:
     """跨模块路径解析器
-    
+
     协调 SignalGraph 和 ModuleInstanceGraph
     实现跨模块边界路径查找
     """
-    
+
     def __init__(self, signal_graph, module_graph: ModuleInstanceGraph):
         self.signal_graph = signal_graph
         self.module_graph = module_graph
-    
+
     def find_path(self, src: str, dst: str) -> Optional[List[str]]:
         """查找从 src 到 dst 的路径
         
-        跨模块时自动映射端口→内部信号
+        使用 BFS 追踪跨模块路径，自动处理:
+        - 跨模块边界的端口映射 (top.u_dut.clk → dut.clk)
+        - 双向扩展 (successors + predecessors)
+        - 通过端口映射跨越模块边界
         """
-        path = [src]
+        if src == dst:
+            return [src]
         
-        # 1. 如果 src 是端口，映射到内部信号
-        internal = self.module_graph.get_internal_signal(src)
-        if internal:
-            path.append(internal)
-            current = internal
-        else:
-            current = src
+        # 如果 dst 是端口，记录目标映射
+        dst_internal = self.module_graph.get_internal_signal(dst)
+        dst_target = dst_internal if dst_internal else dst
         
-        # 2. 递归追踪驱动源 (使用图的后继节点)
-        visited = set()
-        result = self._trace_drivers(current, dst, path, visited)
+        # BFS 队列: (current_node, path_from_src)
+        # 从原始 src 开始（不要映射），这样可以访问所有相邻节点
+        queue = [(src, [src])]
+        visited = {src}
         
-        return result if result else None
-    
-    def _trace_drivers(self, current: str, dst: str, path: List[str], visited: set) -> Optional[List[str]]:
-        """递归追踪驱动目标 (使用 successors，因为边是 driver --> driven)"""
-        if current in visited:
-            return None
-        visited.add(current)
-        
-        if current == dst:
-            return path
-        
-        # 使用 successors 找驱动目标
-        try:
-            successors = list(self.signal_graph.successors(current))
-        except (KeyError, nx.NetworkXError):
-            successors = []
-        
-        for driven_id in successors:
-            path_copy = path.copy()
-            path_copy.append(driven_id)
+        while queue:
+            current, path = queue.pop(0)
             
-            # 如果驱动目标是端口，映射到内部信号
-            internal = self.module_graph.get_internal_signal(driven_id)
-            if internal:
-                path_copy.append(internal)
-                next_signal = internal
-            else:
-                next_signal = driven_id
+            # 获取所有直接相连的节点 (successors + predecessors)
+            neighbors = set()
+            try:
+                neighbors.update(self.signal_graph.successors(current))
+            except (KeyError, nx.NetworkXError):
+                pass
+            try:
+                neighbors.update(self.signal_graph.predecessors(current))
+            except (KeyError, nx.NetworkXError):
+                pass
             
-            # 递归追踪
-            result = self._trace_drivers(next_signal, dst, path_copy, visited)
-            if result:
-                return result
+            for neighbor in neighbors:
+                if neighbor in visited:
+                    continue
+                
+                # 检查是否到达目标
+                if neighbor == dst_target:
+                    return path + [neighbor]
+                
+                visited.add(neighbor)
+                
+                # 如果 neighbor 是模块端口，映射到内部信号并加入队列
+                # 这样可以继续追踪模块内部信号
+                neighbor_internal = self.module_graph.get_internal_signal(neighbor)
+                if neighbor_internal:
+                    if neighbor_internal not in visited:
+                        visited.add(neighbor_internal)
+                        queue.append((neighbor_internal, path + [neighbor, neighbor_internal]))
+                else:
+                    queue.append((neighbor, path + [neighbor]))
         
         return None
-    
+
     def find_all_paths(self, src: str, dst: str) -> List[List[str]]:
         """查找所有路径"""
         paths = []
         path = [src]
         visited = set()
-        
+
         self._find_all_paths_impl(src, dst, path, visited, paths)
         return paths
-    
+
     def _find_all_paths_impl(self, current: str, dst: str, path: List[str], visited: set, paths: List[List[str]]):
         """递归查找所有路径的实现 (使用 successors)"""
         if current in visited:
             return
         visited.add(current)
-        
+
         if current == dst:
             paths.append(path.copy())
             visited.discard(current)
             return
-        
+
         try:
             successors = list(self.signal_graph.successors(current))
         except (KeyError, nx.NetworkXError):
             successors = []
-        
+
         for driven_id in successors:
             path.append(driven_id)
             self._find_all_paths_impl(driven_id, dst, path, visited, paths)
             path.pop()
-        
+
         visited.discard(current)

@@ -2342,6 +2342,7 @@ class ConnectionExtractor:
 
     def _get_generate_block_name(self, inst) -> str:
         """Get the generate block label if instance is inside a generate block."""
+        # First try parent chain (works for SyntaxTree)
         node = inst
         for _ in range(5):
             if not hasattr(node, 'parent') or node.parent is None:
@@ -2352,6 +2353,20 @@ class ConnectionExtractor:
                     bn = node.beginName
                     if hasattr(bn, 'name') and hasattr(bn.name, 'value'):
                         return bn.name.value.strip()
+        
+        # [FIX] Fallback: try to extract genblock name from hierarchicalPath
+        # For SemanticAdapter instances with hierarchicalPath like 'top.gen[0].u_dut'
+        if hasattr(inst, '_symbol'):
+            hp = getattr(inst._symbol, 'hierarchicalPath', None)
+            if hp:
+                hp_str = str(hp)
+                # Pattern: top.GEN[INDEX].instance -> extract GEN
+                # Look for pattern like .gen[ or .GEN[
+                import re
+                match = re.search(r'\.([a-zA-Z_][a-zA-Z0-9_]*)\[[0-9]+\]', hp_str)
+                if match:
+                    return match.group(1)
+        
         return None
 
     def _missing_module_warning(self, inst_module_name: str, inst_name: str):
@@ -2392,7 +2407,7 @@ class ConnectionExtractor:
                 else:
                     # tree key 与实际模块名不匹配,查找包含实例的模块
                     # 找到没有被其他模块实例化的模块(顶层模块)
-                    instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
+                    instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
 
                     # 收集所有被实例化的模块名
                     instantiated_modules = set()
@@ -2416,7 +2431,7 @@ class ConnectionExtractor:
                     break
 
         trees = getattr(self.adapter.parser, 'trees', {})
-        instances = self.adapter.get_module_instances(trees) + self.adapter.get_generate_instances(trees)
+        instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
 
         # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
