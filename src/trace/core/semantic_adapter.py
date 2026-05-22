@@ -123,6 +123,10 @@ class SemanticAdapter:
             name = getattr(node, 'name', None)
             name_str = str(name) if name else '_anon_'
 
+            # path_str 用于 GenerateBlock/GenerateBlockArray 的递归传递
+            # 初始化为 parent_path，确保在所有分支都有定义
+            path_str = parent_path
+
             # 使用 (kind, name) 作为唯一标识
             key = (kind_str, name_str)
             if key in visited_names:
