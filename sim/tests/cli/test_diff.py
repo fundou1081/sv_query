@@ -36,13 +36,13 @@ class TestDiffCLI(unittest.TestCase):
     def test_diff_added_node(self):
         """[Golden] diff detects added nodes"""
         old = self._write_sv('''
-module top(output logic [7:0] q);
+module top(input clk, output logic [7:0] q);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule
 ''')
         new = self._write_sv('''
-module top(output logic [7:0] q);
+module top(input clk, output logic [7:0] q);
     logic [7:0] a, b;
     always_ff @(posedge clk) begin
         a <= q;
@@ -62,7 +62,7 @@ endmodule
     def test_diff_removed_node(self):
         """[Golden] diff detects removed nodes"""
         old = self._write_sv('''
-module top(output logic [7:0] q);
+module top(input clk, output logic [7:0] q);
     logic [7:0] a, b;
     always_ff @(posedge clk) begin
         a <= q;
@@ -71,7 +71,7 @@ module top(output logic [7:0] q);
 endmodule
 ''')
         new = self._write_sv('''
-module top(output logic [7:0] q);
+module top(input clk, output logic [7:0] q);
     logic [7:0] a;
     always_ff @(posedge clk) a <= q;
 endmodule

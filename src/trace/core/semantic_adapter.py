@@ -669,16 +669,24 @@ class SemanticAdapter:
         return nets
 
     def get_variable_declarations(self, module) -> List:
-        """获取模块的变量声明"""
-        vars = []
+        """获取模块的变量声明
+        
+        返回 DataDeclaration 语法节点（用于位宽提取），而不是 VariableSymbol 对象。
+        遍历 module.body.definition.syntax.members 获取 DataDeclaration 节点。
+        """
+        decls = []
 
         if hasattr(module, 'body') and module.body:
-            for member in module.body:
-                kind = str(getattr(member, 'kind', ''))
-                if 'Variable' in kind or 'Net' in kind:
-                    vars.append(member)
+            definition = getattr(module.body, 'definition', None)
+            if definition and hasattr(definition, 'syntax'):
+                syntax = definition.syntax
+                if hasattr(syntax, 'members'):
+                    for member in syntax.members:
+                        kind = str(getattr(member, 'kind', ''))
+                        if 'DataDeclaration' in kind:
+                            decls.append(member)
 
-        return vars
+        return decls
 
     def get_data_declarations(self, module) -> List:
         """获取模块的数据声明 (wire, reg, logic 等)"""
@@ -693,7 +701,25 @@ class SemanticAdapter:
         return decls
 
     def get_signal_name(self, signal) -> str:
-        """获取信号名称"""
+        """获取信号名称
+        
+        DataDeclaration: signal.declarators[0].name.value
+        VariableSymbol: signal.name
+        """
+        # Handle DataDeclaration (syntax tree)
+        if hasattr(signal, 'declarators'):
+            decls = signal.declarators
+            if hasattr(decls, '__iter__') and not isinstance(decls, str):
+                decl_list = list(decls)
+                if decl_list:
+                    first_decl = decl_list[0]
+                    name = getattr(first_decl, 'name', None)
+                    if name:
+                        return str(name.value if hasattr(name, 'value') else name)
+            elif hasattr(decls, 'name'):
+                return str(decls.name.value if hasattr(decls.name, 'value') else decls.name)
+        
+        # Handle VariableSymbol (semantic AST)
         if hasattr(signal, 'name'):
             return str(signal.name)
         return 'unknown'
@@ -793,9 +819,128 @@ class SemanticAdapter:
         
         return signals
 
-    def get_interface_modport_signals(self, interface, modport=None) -> List:
-        """获取 interface 的 modport 信号 (Semantic AST 暂不支持)"""
-        return []
+    def get_interface_modport_signals(self, interface_name: str, modport_name: str) -> Dict[str, str]:
+        """[P0-3] 获取 interface 中指定 modport 的所有信号及其方向
+        
+        Args:
+            interface_name: 接口名称 (如 "bus_if")
+            modport_name: modport 名称 (如 "master")
+            
+        Returns:
+            Dict[signal_name, direction], 如 {"data": "output", "addr": "input"}
+        """
+        result = {}
+        
+        interfaces = self.get_interfaces()
+        for iface in interfaces:
+            # 获取 interface 名称
+            # [FIX] Semantic AST: DefinitionSymbol has syntax.header, not direct header
+            iface_def_name = None
+            header = None
+            members = None
+            
+            # Check if iface is a DefinitionSymbol (semantic adapter returns this)
+            if hasattr(iface, 'syntax'):
+                # Access via syntax for DefinitionSymbol
+                header = getattr(iface.syntax, 'header', None)
+                members = getattr(iface.syntax, 'members', None)
+            elif hasattr(iface, 'header'):
+                # Direct header/members for other cases
+                header = iface.header
+                members = iface.members
+            
+            if header and hasattr(header, 'name'):
+                iface_def_name = header.name.value if hasattr(header.name, 'value') else str(header.name)
+            
+            if iface_def_name != interface_name:
+                continue
+            
+            # 在 interface members 中找 ModportDeclaration
+            if members:
+                for member in members:
+                    kind = str(getattr(member, 'kind', ''))
+                    if 'ModportDeclaration' not in kind:
+                        continue
+                    
+                    # 处理 items (可能是 SeparatedList 或单个 ModportItem)
+                    items_node = getattr(member, 'items', None)
+                    if not items_node:
+                        continue
+                    
+                    # SeparatedList is iterable, single ModportItem is not
+                    if hasattr(items_node, '__iter__') and not isinstance(items_node, str):
+                        if str(items_node.kind) == 'SyntaxKind.SeparatedList':
+                            # SeparatedList contains ModportItem nodes
+                            items_list = list(items_node)
+                        else:
+                            # It's a single iterable item
+                            items_list = [items_node]
+                    else:
+                        items_list = [items_node]
+                    
+                    for item in items_list:
+                        item_kind_str = str(getattr(item, 'kind', ''))
+                        if 'ModportItem' not in item_kind_str:
+                            continue
+                        
+                        item_name = getattr(item, 'name', None)
+                        if not item_name:
+                            continue
+                        actual_name = item_name.value if hasattr(item_name, 'value') else str(item_name)
+                        if actual_name != modport_name:
+                            continue
+                        
+                        # 解析 ports (AnsiPortListSyntax)
+                        if hasattr(item, 'ports'):
+                            ports = item.ports
+                            if hasattr(ports, 'ports'):
+                                actual_ports = ports.ports
+                                # actual_ports can be a SeparatedList of ModportSimplePortList
+                                if hasattr(actual_ports, '__iter__') and not isinstance(actual_ports, str):
+                                    # Check if it's a SeparatedList
+                                    if str(getattr(actual_ports, 'kind', '')) == 'SyntaxKind.SeparatedList':
+                                        ports_list = list(actual_ports)
+                                    else:
+                                        ports_list = [actual_ports]
+                                else:
+                                    ports_list = [actual_ports] if actual_ports else []
+                                
+                                for p in ports_list:
+                                    p_kind_str = str(getattr(p, 'kind', ''))
+                                    if 'ModportSimplePortList' not in p_kind_str:
+                                        continue
+                                    
+                                    direction = str(getattr(p, 'direction', '')).lower().strip()
+                                    ports_node = getattr(p, 'ports', None)
+                                    
+                                    # Extract signal names from ports_node
+                                    # ports_node can be SeparatedList of ModportNamedPort
+                                    if ports_node and hasattr(ports_node, '__iter__') and not isinstance(ports_node, str):
+                                        if str(getattr(ports_node, 'kind', '')) == 'SyntaxKind.SeparatedList':
+                                            sig_nodes = list(ports_node)
+                                        else:
+                                            sig_nodes = [ports_node]
+                                    else:
+                                        sig_nodes = [ports_node] if ports_node else []
+                                    
+                                    for sig_node in sig_nodes:
+                                        sig_kind_str = str(getattr(sig_node, 'kind', ''))
+                                        
+                                        # Handle ModportNamedPort: has .name attribute
+                                        if 'ModportNamedPort' in sig_kind_str:
+                                            sig_name_attr = getattr(sig_node, 'name', None)
+                                            if sig_name_attr:
+                                                sig_name = sig_name_attr.value if hasattr(sig_name_attr, 'value') else str(sig_name_attr)
+                                                if sig_name:
+                                                    result[sig_name] = direction
+                                        # Handle simple identifier strings
+                                        elif 'Identifier' in sig_kind_str or sig_kind_str == 'SyntaxKind.VariableDim':
+                                            sig_name = getattr(sig_node, 'value', None) or str(sig_node)
+                                            sig_name = sig_name.strip()
+                                            if sig_name:
+                                                result[sig_name] = direction
+        
+        return result
 
     def get_interface_members(self, interface_port_symbol) -> List[str]:
         """获取 interface 端口的成员信号列表
@@ -1105,17 +1250,61 @@ class SemanticAdapter:
         return signals
 
     def extract_data_width(self, data_decl) -> tuple:
-        """提取数据声明的位宽 (wire, reg, logic 等)"""
+        """提取数据声明的位宽 (wire, reg, logic 等)
+        
+        支持两种方式:
+        1. Semantic AST: 尝试从 declaredType 获取位宽
+        2. Syntax Tree: 从 data_decl.type.dimensions[0].specifier.selector 获取位宽
+        """
         # Semantic AST: 尝试从 declaredType 获取位宽
         declared_type = getattr(data_decl, 'declaredType', None)
         if declared_type:
             if hasattr(declared_type, 'width'):
                 w = declared_type.width
                 if hasattr(w, 'value'):
-                    return (int(w.value), 0, int(w.value) - 1)
-
+                    return (int(w.value), 0)
+        
+        # Syntax Tree: 从 type.dimensions 获取位宽
+        # 数据声明结构: data_decl.type.dimensions[0].specifier.selector.left/right
+        if hasattr(data_decl, 'type') and data_decl.type:
+            dt = data_decl.type
+            if hasattr(dt, 'dimensions') and dt.dimensions:
+                dims = dt.dimensions
+                # Handle both iterable and single dimension
+                if hasattr(dims, '__iter__') and not isinstance(dims, str):
+                    dims_list = list(dims)
+                else:
+                    dims_list = [dims]
+                    
+                for dim in dims_list:
+                    if hasattr(dim, 'kind') and str(dim.kind) == 'SyntaxKind.VariableDimension':
+                        if hasattr(dim, 'specifier') and dim.specifier:
+                            spec = dim.specifier
+                            if hasattr(spec, 'selector'):
+                                sel = spec.selector
+                                left = getattr(sel, 'left', None)
+                                right = getattr(sel, 'right', None)
+                                
+                                # 从 LiteralExpressionSyntax.literal.valueText 获取整数值
+                                def get_int(node):
+                                    if node is None:
+                                        return 0
+                                    if hasattr(node, 'literal') and node.literal:
+                                        try:
+                                            return int(node.literal.valueText)
+                                        except:
+                                            pass
+                                    try:
+                                        return int(str(node))
+                                    except:
+                                        return 0
+                                
+                                msb = get_int(left)
+                                lsb = get_int(right)
+                                return (msb, lsb)
+        
         # 默认 1 位
-        return (1, 0, 0)
+        return (1, 0)
 
     # =========================================================================
     # 遍历

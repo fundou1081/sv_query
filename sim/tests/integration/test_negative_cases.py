@@ -44,13 +44,13 @@ class TestNegativeCases(unittest.TestCase):
         # 强断言 1: 不崩溃
         self.assertIsNotNone(graph, "空 module 不应崩溃")
         
-        # 强断言 2: top 节点存在（当前实现为模块创建节点）
-        self.assertIn('top', graph.nodes(),
-            "top节点应该存在")
+        # 强断言 2: 空 module 无端口所以 top 节点不应存在
+        self.assertNotIn('top', graph.nodes(),
+            "空 module 无端口, top节点不应该存在")
         
-        # 强断言 3: 至少 top 节点存在
-        self.assertGreaterEqual(len(graph.nodes()), 1,
-            f"空 module 至少有 top 节点，实际节点数: {len(graph.nodes())}")
+        # 强断言 3: 空 module 节点数为 0
+        self.assertEqual(len(graph.nodes()), 0,
+            f"空 module 节点数应为 0，实际节点数: {len(graph.nodes())}")
     
     def test_empty_always_ff_no_crash(self):
         """[负面][金标准] 空 always_ff 块不崩溃
