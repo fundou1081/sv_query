@@ -23,22 +23,31 @@
 
 ## 第一部分：技术路线铁律 (不可妥协)
 
-### 铁律1: AST唯一数据源（强制：必须使用 Semantic AST）
+### 铁律1: AST唯一数据源（强制：必须使用编译后 Semantic AST）
 
-**必须**：所有硬件语义提取必须且仅能通过 **Semantic AST**（`Compilation` + `getRoot()`）遍历实现
+**必须**：所有硬件语义提取必须且仅能通过 **编译后** 的 **Semantic AST**（`Compilation` + `getRoot()`）遍历实现
 
 **严禁**：
-1. 将源码转为字符串后用正则分析
-2. 直接使用 `SyntaxTree.root` 作为 AST 数据源
+1. 直接使用 `SyntaxTree.root`（编译前 AST，仅做语法解析，无语义上下文）
+2. 将源码转为字符串后用正则分析
+3. 使用 `SyntaxTree.fromText` / `SyntaxTree.fromFile` 作为数据源
+
+**编译前 vs 编译后 AST 的本质区别**：
+| | 编译前 AST (SyntaxTree) | 编译后 AST (Semantic AST) |
+|---|---|---|
+| 来源 | `SyntaxTree.fromText()` / `SyntaxTree.fromFile()` | `Compilation` + `comp.getRoot()` |
+| 语义信息 | 无（仅语法） | 完整符号表、类型、参数化位宽 |
+| 参数化位宽 | 字符串 `"W-1:0"` | 整数（elaboration 后） |
+| 用途 | ❌ 禁止使用 | ✅ 唯一可信数据源 |
 
 **正确做法**：
 ```python
-# ✅ 正确
-comp = pyslang.Compilation()
-comp.addSyntaxTree(tree)
-root = comp.getRoot()  # Semantic AST
+# ✅ 正确 - 使用编译后 Semantic AST
+from trace.core.compiler import SVCompiler
+compiler = SVCompiler(sources={"test.sv": source_code})
+root = compiler.get_root()  # Semantic AST root
 
-# ❌ 禁止
+# ❌ 禁止 - 编译前 AST
 tree = pyslang.SyntaxTree.fromText(code, fname)
 root = tree.root  # SyntaxTree root - 禁止使用
 ```
@@ -47,10 +56,11 @@ root = tree.root  # SyntaxTree root - 禁止使用
 - `SyntaxTree` 仅做语法解析，无语义上下文（符号表、类型信息）
 - `Semantic AST` 经过 elaboration，提供完整符号表和类型信息
 - 参数化位宽（如 `logic [W-1:0]`）在 Semantic AST 中为整数，而非字符串
+- `UnifiedTracer` 的 `sources=` 参数 → `SVCompiler` → 自动完成编译，使用 `getRoot()` 作为数据源
 
 **校验方式**
 ```bash
-grep -rn "SyntaxTree.fromText\|SyntaxTree.fromFile\|tree\.root" src/trace/core/
+grep -rn "SyntaxTree.fromText\|SyntaxTree.fromFile\|\.root" src/trace/core/
 # 应返回空（仅 constraint_visitor.py 示例代码除外）
 ```
 
@@ -218,7 +228,7 @@ chain = tracer.trace_signal("data", module="top")
 ## 第七部分：检查清单 (新功能提交流程)
 
 - [ ] 铁律13: 是否先推导金标准再验证？
-- [ ] 铁律1: 是否使用 Semantic AST (`Compilation` + `getRoot()`) 而非 `SyntaxTree.root`？
+- [ ] 铁律1: 是否使用编译后 Semantic AST（`SVCompiler.get_root()` / `Compilation.getRoot()`）而非 `SyntaxTree.fromText/fromFile` / `tree.root`？
 - [ ] 铁律2: 信号是否保留完整位级信息？
 - [ ] 铁律3: 无法解析时返回 uncertain？
 - [ ] 铁律4: 数据字段都有 AST 填充代码？

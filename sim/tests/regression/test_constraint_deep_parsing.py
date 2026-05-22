@@ -319,7 +319,7 @@ class TestClassExtendsHierarchy(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(source)
         class FP:
             def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test.sv': source}))
+        adapter = PyslangAdapter(FP({'test.sv': tree}))
         return adapter.get_classes()
 
     def test_extends_hierarchy(self):
@@ -365,8 +365,9 @@ endclass
 class child extends parent;
 endclass'''
         classes = self._get_classes(source)
-        self.assertEqual(len(classes), 1)
-        self.assertEqual(classes[0].name.value, 'child')
+        self.assertEqual(len(classes), 2, "应有 parent 和 child 两个 class")
+        class_names = sorted([c.name.value for c in classes])
+        self.assertEqual(class_names, ['child', 'parent'], "class 名称应为 child, parent")
 
 
 class TestConstraintForeach(unittest.TestCase):

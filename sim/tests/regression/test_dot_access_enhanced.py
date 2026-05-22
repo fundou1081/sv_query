@@ -69,9 +69,9 @@ endmodule'''
         has_ifc_valid = any('ifc.valid' in n for n in nodes)
         self.assertTrue(has_ifc_valid, f"ifc.valid not found in {nodes}")
         
-        # 验证: 8'h0 -> ifc.data
-        has_data_driver = any("8'h0" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
-        self.assertTrue(has_data_driver, f"8'h0 -> ifc.data not found in {edges}")
+        # 验证: 8'h0 (0 decimal) -> ifc.data
+        has_data_driver = any("8'd0" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
+        self.assertTrue(has_data_driver, f"8'h0 (8'd0) -> ifc.data not found in {edges}")
         
         # 验证: 1'b1 -> ifc.valid
         has_valid_driver = any("1'b1" in edge[0] and 'ifc.valid' in edge[1] for edge in edges)
@@ -123,13 +123,13 @@ endmodule'''
         has_pkt_data = any('pkt.data' in n for n in nodes)
         self.assertTrue(has_pkt_data, f"pkt.data not found in {nodes}")
         
-        # 验证: 8'h0 -> pkt.addr
-        has_addr_driver = any("8'h0" in edge[0] and 'pkt.addr' in edge[1] for edge in edges)
-        self.assertTrue(has_addr_driver, f"8'h0 -> pkt.addr not found in {edges}")
+        # 验证: 8'h0 (0 decimal) -> pkt.addr
+        has_addr_driver = any("8'd0" in edge[0] and 'pkt.addr' in edge[1] for edge in edges)
+        self.assertTrue(has_addr_driver, f"8'h0 (8'd0) -> pkt.addr not found in {edges}")
         
-        # 验证: 32'h0 -> pkt.data
-        has_data_driver = any("32'h0" in edge[0] and 'pkt.data' in edge[1] for edge in edges)
-        self.assertTrue(has_data_driver, f"32'h0 -> pkt.data not found in {edges}")
+        # 验证: 32'h0 (0 decimal) -> pkt.data
+        has_data_driver = any("32'd0" in edge[0] and 'pkt.data' in edge[1] for edge in edges)
+        self.assertTrue(has_data_driver, f"32'h0 (32'd0) -> pkt.data not found in {edges}")
     
     def test_array_element_access(self):
         """[Golden] 数组元素访问
@@ -163,13 +163,13 @@ endmodule'''
         has_mem = any('mem' in n for n in nodes)
         self.assertTrue(has_mem, f"mem not found in {nodes}")
         
-        # 验证: 8'hAA -> mem
-        has_aa_driver = any("8'hAA" in edge[0] and 'mem' in edge[1] for edge in edges)
-        self.assertTrue(has_aa_driver, f"8'hAA -> mem not found in {edges}")
+        # 验证: 8'hAA (170 decimal) -> mem[0]
+        has_aa_driver = any("8'd170" in edge[0] and 'mem[0]' in edge[1] for edge in edges)
+        self.assertTrue(has_aa_driver, f"8'hAA (8'd170) -> mem[0] not found in {edges}")
         
-        # 验证: 8'hBB -> mem
-        has_bb_driver = any("8'hBB" in edge[0] and 'mem' in edge[1] for edge in edges)
-        self.assertTrue(has_bb_driver, f"8'hBB -> mem not found in {edges}")
+        # 验证: 8'hBB (187 decimal) -> mem[1]
+        has_bb_driver = any("8'd187" in edge[0] and 'mem[1]' in edge[1] for edge in edges)
+        self.assertTrue(has_bb_driver, f"8'hBB (8'd187) -> mem[1] not found in {edges}")
 
 if __name__ == '__main__':
     unittest.main()

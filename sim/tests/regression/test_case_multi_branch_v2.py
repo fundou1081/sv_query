@@ -18,7 +18,7 @@ class TestCaseMultiBranch(unittest.TestCase):
     
     def test_case_simple(self):
         """[Golden] 简单 case - 2分支"""
-        src = '''module top(input sel, a, b, output y);
+        src = '''module top(input sel, a, b, output logic y);
             always_comb begin
                 case (sel)
                     1'b0: y = a;
@@ -36,7 +36,7 @@ class TestCaseMultiBranch(unittest.TestCase):
     
     def test_case_3branch(self):
         """[Golden] 3分支 case"""
-        src = '''module top(input [1:0] sel, a, b, c, output y);
+        src = '''module top(input [1:0] sel, a, b, c, output logic y);
             always_comb begin
                 case (sel)
                     2'b00: y = a;
@@ -54,13 +54,13 @@ class TestCaseMultiBranch(unittest.TestCase):
     
     def test_casez(self):
         """[Golden] casez - 支持 don't care"""
-        src = '''module top(input [2:0] sel, a, b, c, output y);
+        src = '''module top(input [2:0] sel, a, b, c, output logic y);
             always_comb begin
                 casez (sel)
                     3'b00?: y = a;
                     3'b01?: y = b;
                     default: y = c;
-                endcasez
+                endcase
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
@@ -71,13 +71,13 @@ class TestCaseMultiBranch(unittest.TestCase):
     
     def test_casex(self):
         """[Golden] casex - 支持 x"""
-        src = '''module top(input [2:0] sel, a, b, c, output y);
+        src = '''module top(input [2:0] sel, a, b, c, output logic y);
             always_comb begin
                 casex (sel)
                     3'b00x: y = a;
                     3'b01x: y = b;
                     default: y = c;
-                endcasex
+                endcase
             end
         endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)

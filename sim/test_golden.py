@@ -18,8 +18,8 @@ import pyslang
 from src.trace.unified_tracer import UnifiedTracer
 
 # 加载测试文件
-tree = pyslang.SyntaxTree.fromFile('sim/test_simple.sv')
-tracer = UnifiedTracer(trees={'test_simple.sv': tree})
+tree = open('sim/test_simple.sv').read()
+tracer = UnifiedTracer(sources={'test_simple.sv': tree})
 tracer.build_graph()
 
 # 金标准表格 (Golden Standard)

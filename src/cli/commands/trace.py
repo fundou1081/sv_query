@@ -62,9 +62,11 @@ def fanin(
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
-        tree = pyslang.SyntaxTree.fromFile(str(file))
-        tracer = UnifiedTracer(trees={str(file): tree})
+        with open(str(file)) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
+
 
         result = tracer.trace_fanin(signal, depth=depth)
 
@@ -115,9 +117,11 @@ def fanout(
 ) -> None:
     """Trace signal loads (fanout)"""
     try:
-        tree = pyslang.SyntaxTree.fromFile(str(file))
-        tracer = UnifiedTracer(trees={str(file): tree})
+        with open(str(file)) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
+
 
         result = tracer.trace_fanout(signal, depth=depth)
 

@@ -1336,153 +1336,50 @@ class PyslangAdapter:
         return (msb, lsb)
 
     
-    def get_module_instances(self, trees: dict = None) -> List:
-        """获取模块实例化"""
+    def get_module_instances(self) -> List:
+        """获取模块实例化 (基于 Semantic AST)"""
         instances = []
-        
-        for fname, tree in (trees or {}).items():
-            if not tree or not hasattr(tree, 'root'):
-                continue
-            
-            # 遍历找 HierarchyInstantiation (模块实例化语法节点)
-            # 使用 (id, kind) 元组避免 pyslang Token 对象池化导致的 id 冲突
-            visited = set()
-            max_depth = 100
-            
-            def find_inst(node, depth=0):
-                if node is None or depth > max_depth:
-                    return
-                
-                node_key = (id(node), getattr(node, 'kind', None))
-                if node_key in visited:
-                    return
-                visited.add(node_key)
-                
-                kind = getattr(node, 'kind', None)
-                kind_str = str(kind) if kind else ''
-                
-                # [FIX] 记录未知节点类型用于调试
-                if kind and kind not in (SyntaxKind.ModuleDeclaration, 
-                                         SyntaxKind.PortDeclaration,
-                                         SyntaxKind.HierarchyInstantiation,
-                                         SyntaxKind.InterfaceDeclaration,
-                                         SyntaxKind.ClassDeclaration,
-                                         SyntaxKind.DataDeclaration,
-                                         SyntaxKind.NetDeclaration,
-                                         SyntaxKind.ContinuousAssign,
-                                         SyntaxKind.AlwaysBlock,
-                                         SyntaxKind.GenerateBlock,
-                                         SyntaxKind.GenerateRegion,
-                                         SyntaxKind.LoopGenerate,
-                                         SyntaxKind.IfGenerate,
-                                         SyntaxKind.CaseGenerate,
-                                         SyntaxKind.NetPortHeader,
-                                         SyntaxKind.VariablePortHeader,
-                                         SyntaxKind.ImplicitAnsiPort,
-                                         SyntaxKind.AnsiPortList,
-                                         SyntaxKind.ModuleHeader):
-                    # 仅记录一次 (去重)
-                    if node_key not in getattr(find_inst, '_logged_kinds', set()):
-                        if not hasattr(find_inst, '_logged_kinds'):
-                            find_inst._logged_kinds = set()
-                        find_inst._logged_kinds.add(node_key)
-                        logger.warning(f"[UnknownNode] kind={kind_str} at depth={depth}")
-                
-                # [FIX] 只接受 HierarchyInstantiation，不接受 HierarchicalInstance
-                # HierarchicalInstance 是 HierarchyInstantiation 的子节点，会导致重复
-                if kind and 'HierarchyInstantiation' in kind_str and 'HierarchicalInstance' not in kind_str:
-                    instances.append(node)
-                
-                for attr in dir(node):
-                    if attr.startswith('_') or attr in ['parent', 'sourceRange']:
+        visited = set()
+        max_depth = 100
+
+        def find_inst(node, depth=0):
+            if node is None or depth > max_depth:
+                return
+            node_key = (id(node), getattr(node, 'kind', None))
+            if node_key in visited:
+                return
+            visited.add(node_key)
+            kind = getattr(node, 'kind', None)
+            kind_str = str(kind) if kind else ''
+            if kind and 'InstanceSymbol' in kind_str:
+                instances.append(node)
+            for attr in dir(node):
+                if attr.startswith('_') or attr in ['parent', 'sourceRange']:
+                    continue
+                try:
+                    child = getattr(node, attr)
+                    if callable(child):
                         continue
-                    try:
-                        child = getattr(node, attr)
-                        if callable(child):
-                            continue
-                        if hasattr(child, '__iter__') and not isinstance(child, str):
-                            for c in child:
-                                find_inst(c, depth+1)
-                        elif hasattr(child, 'kind'):
-                            find_inst(child, depth+1)
-                    except Exception as e:
-                        # [FIX] 不再静默跳过，记录错误便于调试
-                        logger.debug(f"[find_inst] attr={attr}: {e}")
-            
-            find_inst(tree.root)
-        
+                    if hasattr(child, '__iter__') and not isinstance(child, str):
+                        for c in child:
+                            find_inst(c, depth+1)
+                    elif hasattr(child, 'kind'):
+                        find_inst(child, depth+1)
+                except Exception:
+                    pass
+
+        root = self.get_root()
+        if root:
+            find_inst(root)
         return instances
     
-    def get_generate_instances(self, trees: dict = None) -> List:
+    def get_generate_instances(self) -> List:
         """Find HierarchyInstantiation nodes inside generate blocks.
-        
-        This is needed because pyslang's get_module_instances doesn't find
-        instances inside generate for/if/case blocks.
+
+        Semantic AST 不单独处理 generate，返回空列表。
+        generate 内的实例已由 get_module_instances 统一收集。
         """
-        instances = []
-        
-        for fname, tree in (trees or {}).items():
-            if not tree or not hasattr(tree, 'root'):
-                continue
-            
-            def walk(node, depth=0, max_depth=30):
-                if depth > max_depth or node is None:
-                    return
-                kind = getattr(node, 'kind', None)
-                kind_str = str(kind) if kind else ''
-                
-                # Check for LoopGenerate
-                if kind == SyntaxKind.LoopGenerate:
-                    if hasattr(node, 'block'):
-                        block = node.block
-                        if hasattr(block, 'members'):
-                            for item in block.members:
-                                item_kind = getattr(item, 'kind', None)
-                                item_kind_str = str(item_kind) if item_kind else ''
-                                if 'HierarchyInstantiation' in item_kind_str:
-                                    instances.append(item)
-                
-                # Check for IfGenerate
-                if kind == SyntaxKind.IfGenerate:
-                    # Handle 'then' block
-                    if hasattr(node, 'block'):
-                        then_block = node.block
-                        if hasattr(then_block, 'members'):
-                            for item in then_block.members:
-                                item_kind = getattr(item, 'kind', None)
-                                item_kind_str = str(item_kind) if item_kind else ''
-                                if 'HierarchyInstantiation' in item_kind_str:
-                                    instances.append(item)
-                    # Handle 'else' block
-                    if hasattr(node, 'elseClause'):
-                        else_block = node.elseClause.clause
-                        if hasattr(else_block, 'members'):
-                            for item in else_block.members:
-                                item_kind = getattr(item, 'kind', None)
-                                item_kind_str = str(item_kind) if item_kind else ''
-                                if 'HierarchyInstantiation' in item_kind_str:
-                                    instances.append(item)
-                
-                # Continue walking for other nodes
-                for attr in dir(node):
-                    if attr.startswith('_') or attr in ['parent', 'sourceRange']:
-                        continue
-                    try:
-                        child = getattr(node, attr)
-                        if callable(child):
-                            continue
-                        if hasattr(child, '__iter__') and not isinstance(child, str):
-                            for c in child:
-                                if hasattr(c, 'kind'):
-                                    walk(c, depth+1, max_depth)
-                        elif hasattr(child, 'kind'):
-                            walk(child, depth+1, max_depth)
-                    except:
-                        pass
-            
-            walk(tree.root)
-        
-        return instances
+        return []
     
 
 

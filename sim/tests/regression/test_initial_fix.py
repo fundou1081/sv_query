@@ -18,8 +18,8 @@ class TestInitialBlock(unittest.TestCase):
     
     def test_initial_simple(self):
         """[Golden] 简单 initial"""
-        src = '''module top(output y);
-    initial y = 1b0;
+        src = '''module top(output logic y);
+    initial y = 1'b0;
 endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})

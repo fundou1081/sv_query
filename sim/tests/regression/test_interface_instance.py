@@ -62,9 +62,9 @@ endmodule'''
         has_ifc_data = any('ifc.data' in n for n in nodes)
         self.assertTrue(has_ifc_data, f"ifc.data not found in {nodes}")
         
-        # 验证: 8'hAA -> ifc.data 驱动关系
-        has_driver = any("8'hAA" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
-        self.assertTrue(has_driver, f"8'hAA -> ifc.data not found in {edges}")
+        # 验证: 8'hAA (170 decimal) -> ifc.data 驱动关系
+        has_driver = any("8'd170" in edge[0] and 'ifc.data' in edge[1] for edge in edges)
+        self.assertTrue(has_driver, f"8'hAA (8'd170) -> ifc.data not found in {edges}")
     
     def test_interface_port_connection(self):
         """[Golden] interface 端口连接

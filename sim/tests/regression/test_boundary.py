@@ -143,9 +143,11 @@ endmodule'''
         source = 'module top('
         for i in range(100):
             source += f'input wire d{i},'
-        source = source.rstrip(',') + ');\\n'
+        source = source.rstrip(',') + ');\
+'
         for i in range(100):
-            source += f'wire w{i}; assign w{i} = d{i};\\n'
+            source += f'wire w{i}; assign w{i} = d{i};\
+'
         source += 'endmodule'
         
         tracer = self._make_tracer(source)
@@ -156,14 +158,18 @@ endmodule'''
     
     def test_deep_chain(self):
         """[Stress] 深链 (100 级)"""
-        source = 'module top(input wire d0, output wire q0);\\n'
+        source = 'module top(input wire d0, output wire q0);\
+'
         for i in range(100):
             source += f'wire w{i}; assign w{i} = '
             if i == 0:
-                source += 'd0;\\n'
+                source += 'd0;\
+'
             else:
-                source += f'w{i-1};\\n'
-        source += 'assign q0 = w99;\\nendmodule'
+                source += f'w{i-1};\
+'
+        source += 'assign q0 = w99;\
+endmodule'
         
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q0', 'top')
