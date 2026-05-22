@@ -5,8 +5,8 @@
 # 遵循铁律1: 必须使用 Semantic AST (Compilation + getRoot())
 #==============================================================================
 
-import sys
-from typing import Dict, Optional, Tuple
+import sys, os
+from typing import Dict, Optional, Tuple, List
 
 # pyslang  bindings 路径
 PYSLLANG_BINDINGS_PATH = '/Users/fundou/my_dv_proj/slang/build/bindings'
@@ -70,6 +70,44 @@ class SVCompiler:
     def add_sources(self, sources: Dict[str, str]):
         """批量添加源文件"""
         self._sources.update(sources)
+        self._comp = None
+    
+    def add_files(self, file_paths: List[str]):
+        """添加文件列表
+        
+        Args:
+            file_paths: SV 源文件路径列表
+        """
+        for path in file_paths:
+            with open(path, 'r', encoding='utf-8', errors='replace') as f:
+                self._sources[os.path.basename(path)] = f.read()
+        self._comp = None
+    
+    def add_filelist(self, filelist_path: str):
+        """从文件列表加载源文件
+        
+        支持两种格式:
+        - 每行一个文件路径 (相对或绝对)
+        - 每行格式: +incdir+$DIR 或 -f $FILELIST 或 +define+VAR=VAL (部分支持)
+        
+        Args:
+            filelist_path: .fl / .f / .filelist 文件路径
+        """
+        with open(filelist_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                # 跳过 +incdir+ 和 -f 以及 +define+ 行（简化处理）
+                if line.startswith('+') or line.startswith('-f'):
+                    continue
+                # 相对路径相对于 filelist 所在目录
+                if not os.path.isabs(line):
+                    dir_path = os.path.dirname(filelist_path)
+                    line = os.path.join(dir_path, line)
+                line = os.path.expanduser(line)
+                if os.path.isfile(line):
+                    self.add_files([line])
         self._comp = None
         
     def _do_compile(self):
