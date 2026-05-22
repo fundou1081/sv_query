@@ -125,13 +125,13 @@ class TestTaskMultiple(unittest.TestCase):
         """
         source = '''
 module top(output logic [7:0] a, b);
-    task my_task(output [7:0] a, b);
+    task my_task(output logic [7:0] a, b);
         a = 8'hFF;
         b = 8'h00;
     endtask
     
     initial begin
-        my_task(dout1, dutput2);
+        my_task(a, b);
     end
 endmodule'''
         
