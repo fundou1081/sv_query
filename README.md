@@ -240,15 +240,25 @@ sim/
 └── conftest.py         # pytest 配置
 ```
 
-### 测试统计
+### 测试统计 (2026-05-23)
 
 ```
-Unit tests:      30 tests
-Integration:    111 tests
-Regression:     528 tests
+Unit tests:       30 tests
+Integration:     111 tests
+Regression:      675 tests
 ─────────────────────────
-Total:          669 tests (all passing)
+Total:           816 tests (all passing)
+Skipped:           1 test
+Failed:            0 test
 ```
+
+**所有 816 个测试通过！**
+
+| 优先级 | 修复内容 |
+|--------|----------|
+| P1 | 三元运算符 ConditionalOp、函数调用 Call arguments、test_floor |
+| P2 | alias 语句、case statement items、参数化模块实例化 |
+| P3 | 大小写敏感信号、美元符信号名、不带模块名查询 |
 
 ### 验证工具
 
