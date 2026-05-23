@@ -110,6 +110,16 @@ class SignalExpressionVisitor(BaseVisitor):
                 if hasattr(self, method_name):
                     return getattr(self, method_name)(node)
             
+            # [FIX] _Name 后缀去除: IdentifierSelectName -> IdentifierSelect
+            # 对于 visit 方法分发，将 kind_name 的 '_Name' 后缀去掉后尝试
+            if kind_name.endswith('Name'):
+                alias = kind_name[:-4]  # 'IdentifierSelectName' -> 'IdentifierSelect'
+                import re
+                snake_alias = re.sub(r'(?<!^)(?=[A-Z])', '_', alias).lower()
+                method_name = f"visit_{snake_alias}"
+                if hasattr(self, method_name):
+                    return getattr(self, method_name)(node)
+            
             # [FIX] CamelCase kind_name 直接映射到 snake_case 方法
             # 例如: ConditionalOp -> get_all_conditional_op
             # 注意: 上面的 direct lookup already tried get_all_ConditionalOp (exact match)
