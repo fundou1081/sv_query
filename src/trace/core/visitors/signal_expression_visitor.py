@@ -160,6 +160,12 @@ class SignalExpressionVisitor(BaseVisitor):
             sym = getattr(node, 'symbol', None)
             if sym and hasattr(sym, 'name'):
                 return str(sym.name).strip()
+        
+        # [FIX] IntegerLiteralExpression: 直接返回字符串表示
+        kind = getattr(node, 'kind', None)
+        if kind and 'IntegerLiteral' in str(kind):
+            return str(node).strip()
+        
         return None
     
     def get_all_signals_fallback(self, node) -> List[str]:
