@@ -288,6 +288,70 @@ class SignalExpressionVisitor(BaseVisitor):
             signals.extend(self.get_all_signals(right))
         return [s for s in signals if s]
     
+    def get_all_multiple_concatenation(self, node) -> List[str]:
+        """MultipleConcatenationExpression: {{n{expr}}
+        
+        递归提取表达式中的信号
+        """
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.get_all_signals(expr)
+        return []
+    
+    def get_all_stream_expression(self, node) -> List[str]:
+        """StreamExpression: {>>[type]{expr}} or {<<[type]{expr}}
+        
+        递归提取表达式中的信号
+        """
+        expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
+        if expr:
+            return self.get_all_signals(expr)
+        return []
+    
+    def get_all_assignment_pattern(self, node) -> List[str]:
+        """AssignmentPatternExpression: '{a, b, c}
+        
+        递归提取所有模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    signals.extend(self.get_all_signals(p))
+        return [s for s in signals if s]
+    
+    def get_all_call(self, node) -> List[str]:
+        """Call: 函数调用参数
+        
+        返回: [arg1, arg2, ...]
+        """
+        signals = []
+        args = getattr(node, 'arguments', None)
+        
+        if args:
+            # Handle OrderedArgument vs NamedArgument
+            for arg in args:
+                if arg is None:
+                    continue
+                # NamedArgument has .name and .expr
+                expr = getattr(arg, 'expr', None) or getattr(arg, 'value', None)
+                if expr:
+                    signals.extend(self.get_all_signals(expr))
+                else:
+                    # Maybe it's just an expression directly
+                    signals.extend(self.get_all_signals(arg))
+        
+        return [s for s in signals if s]
+    
+    def get_all_element_select(self, node) -> List[str]:
+        """ElementSelect: 位选择
+        
+        返回: [base[index]]
+        """
+        result = self.visit(node)
+        return [result] if result else []
+    
     def get_all_signals_fallback(self, node) -> List[str]:
         """Fallback for get_all_signals when no specific method exists
         
@@ -808,6 +872,62 @@ class SignalExpressionVisitor(BaseVisitor):
                 if result:
                     return result
         return None
+    
+    def visit_cast_expression(self, node) -> Optional[str]:
+        """CastExpression: type'(expr) or signed'(expr)
+        
+        返回: expr 的信号
+        """
+        expr = getattr(node, 'expression', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.visit(expr)
+        return None
+    
+    def visit_tagged_union_expression(self, node) -> Optional[str]:
+        """TaggedUnionExpression: tag'(expr)
+        
+        返回: expr 的信号
+        """
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.visit(expr)
+        return None
+    
+    def visit_multiple_concatenation(self, node) -> Optional[str]:
+        """MultipleConcatenationExpression: {{n{expr}}
+        
+        返回: expr 的信号
+        """
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.visit(expr)
+        return None
+    
+    def visit_stream_expression(self, node) -> Optional[str]:
+        """StreamExpression: {>>[type]{expr}} or {<<[type]{expr}}
+        
+        返回: expr 的信号
+        """
+        expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
+        if expr:
+            return self.visit(expr)
+        return None
+    
+    def visit_assignment_pattern(self, node) -> Optional[str]:
+        """AssignmentPatternExpression: '{a, b, c}
+        
+        返回: 第一个信号的名称
+        """
+        signals = []
+        # AssignmentPattern may have 'patterns' or 'items'
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    sig = self.visit(p)
+                    if sig:
+                        signals.append(sig)
+        return signals[0] if signals else None
     
     # =========================================================================
     # 辅助方法
