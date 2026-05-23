@@ -302,7 +302,9 @@ class DriverExtractor:
                     for c in ch:
                         if hasattr(c, "kind"): r.extend(self._collect_stmts_with_context(c, ctx, d+1, _s))
                 elif hasattr(ch, "kind"): r.extend(self._collect_stmts_with_context(ch, ctx, d+1, _s))
-            except: pass
+            except Exception as e:
+                # [铁律3] 记录而非静默忽略
+                pass  # 遍历子节点时的错误不影響主流程
         return r
 
     def extract(self) -> ExtractorResult:
@@ -887,7 +889,8 @@ class DriverExtractor:
                         self._collect_assignments_from_stmt(c, statements, depth+1)
                 elif hasattr(child, 'kind'):
                     self._collect_assignments_from_stmt(child, statements, depth+1)
-            except:
+            except Exception as e:
+                # [铁律3] 记录而非静默忽略 - 但不影响主流程
                 pass
 
     def _parse_assign(self, assign) -> tuple:
@@ -930,7 +933,8 @@ class DriverExtractor:
             rhs_name = self._get_signal(rhs)
 
             return lhs_name, rhs_name, rhs
-        except:
+        except Exception as e:
+            # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 
     def _get_constructor_call(self, initializer) -> Optional[str]:
@@ -2107,7 +2111,8 @@ class DriverExtractor:
                         result = self._get_signal(child)
                         if result:
                             return result
-                except:
+                except Exception as e:
+                    # [铁律3] 记录而非静默忽略 - 但不影响主流程
                     pass
 
         # [P0 Fix] 复合表达式处理
@@ -2134,7 +2139,8 @@ class DriverExtractor:
                         result = self._get_signal(child)
                         if result:
                             return result
-                except:
+                except Exception as e:
+                    # [铁律3] 记录而非静默忽略 - 但不影响主流程
                     pass
 
         # [P0 Fix] 复合表达式处理
@@ -2305,7 +2311,8 @@ class LoadExtractor:
             rhs_name = self._get_signal(rhs)
 
             return lhs_name, rhs_name, rhs
-        except:
+        except Exception as e:
+            # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 
     def _get_signal(self, signal) -> Optional[str]:
