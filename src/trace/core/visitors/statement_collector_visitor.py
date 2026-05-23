@@ -12,12 +12,30 @@
 对应 graph_builder.py 中的:
 - _collect_stmts_with_context()
 """
+from enum import Enum, auto
 from typing import List, Tuple, Dict, Any, Optional, Set
 import logging
 
 from .base_visitor import BaseVisitor
 
 logger = logging.getLogger(__name__)
+
+
+class ItemType(Enum):
+    """语句类型枚举
+    
+    [铁律27] 使用枚举定义有限集合，禁止硬编码字符串
+    """
+    STATEMENT = auto()       # 默认语句
+    ASSIGNMENT = auto()      # 赋值语句 (=, <=)
+    INVOCATION = auto()      # 函数/任务调用
+    TIMING_CONTROL = auto()  # 时间控制 (@, #)
+    CONDITIONAL = auto()     # 条件语句 (if/else)
+    CASE = auto()            # case 语句
+    LOOP = auto()            # for/while 循环
+    BLOCK = auto()           # begin...end 块
+    JUMP = auto()            # return/break/continue
+    DISABLE = auto()         # disable
 
 
 class StatementCollectorVisitor(BaseVisitor):
@@ -51,7 +69,7 @@ class StatementCollectorVisitor(BaseVisitor):
         """获取当前上下文"""
         return self._ctx_stack[-1] if self._ctx_stack else {}
     
-    def collect(self, node, ctx: Dict[str, str] = None) -> List[Tuple[Any, Dict[str, str]]]:
+    def collect(self, node, ctx: Dict[str, str] = None) -> List[Tuple[Any, Dict[str, str], ItemType]]:
         """收集语句的入口方法
         
         Args:
@@ -59,7 +77,10 @@ class StatementCollectorVisitor(BaseVisitor):
             ctx: 初始上下文
             
         Returns:
-            [(node, ctx), ...] 语句和上下文元组列表
+            List[(node, ctx, item_type)] 语句和上下文元组列表
+            - node: AST 节点
+            - ctx: 上下文字典
+            - item_type: ItemType 枚举标记
         """
         self._statements = []
         self._ctx_stack = [ctx.copy() if ctx else {}]
@@ -112,14 +133,40 @@ class StatementCollectorVisitor(BaseVisitor):
             'Break': 'jump_statement',
             'Continue': 'jump_statement',
             'Disable': 'disable_statement',
+            'Call': 'invocation',  # CallExpression -> visit_invocation
         }
         
-        # 分发到对应方法
+        # [铁律26] 分发到对应方法 (PascalCase -> snake_case 转换)
         if kind_name:
-            method_name = f"visit_{kind_name}"
+            import re
+            # PascalCase -> snake_case: "Assignment" -> "visit_assignment"
+            # But "ExpressionStatement" -> "expression_statement" (insert underscore before capitals)
+            snake_name = re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
+            method_name = f"visit_{snake_name}"
             if hasattr(self, method_name):
                 getattr(self, method_name)(node)
                 return
+            
+            # [FIX] 处理 SyntaxKind.XXXExpression -> visit_XXX 的映射
+            # e.g., "NonblockingAssignmentExpression" -> "visit_nonblocking_assignment"
+            if kind_name.endswith('Expression'):
+                base_name = kind_name[:-10]  # Strip 'Expression'
+                base_snake = re.sub(r'(?<!^)(?=[A-Z])', '_', base_name).lower()
+                method_name = f"visit_{base_snake}"
+                if hasattr(self, method_name):
+                    getattr(self, method_name)(node)
+                    return
+            
+            # [FIX] SymbolKind 别名映射 (ProceduralBlock -> procedure_block)
+            symbol_alias_map = {
+                'ProceduralBlock': 'procedure_block',
+            }
+            if kind_name in symbol_alias_map:
+                alias = symbol_alias_map[kind_name]
+                method_name = f"visit_{alias}"
+                if hasattr(self, method_name):
+                    getattr(self, method_name)(node)
+                    return
             # 尝试别名映射
             if kind_name in semantic_alias_map:
                 alias = semantic_alias_map[kind_name]
@@ -138,7 +185,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         self.depth += 1
         
-        for attr in ['body', 'statement', 'statements', 'items', 'lhs', 'rhs']:
+        for attr in ['body', 'statement', 'statements', 'items', 'lhs', 'rhs', 'list']:
             if hasattr(node, attr):
                 child = getattr(node, attr)
                 if child and hasattr(child, '__iter__') and not isinstance(child, str):
@@ -150,13 +197,19 @@ class StatementCollectorVisitor(BaseVisitor):
         
         self.depth -= 1
     
-    def _add_statement(self, node, ctx: Dict[str, str] = None):
-        """添加语句到收集列表"""
+    def _add_statement(self, node, ctx: Dict[str, str] = None, item_type: ItemType = ItemType.STATEMENT):
+        """添加语句到收集列表
+        
+        Args:
+            node: AST 节点
+            ctx: 上下文字典 (默认使用 current_ctx)
+            item_type: 语句类型标记 (ItemType 枚举)
+        """
         if node is None:
             return
         
         effective_ctx = ctx.copy() if ctx else self.current_ctx.copy()
-        self._statements.append((node, effective_ctx))
+        self._statements.append((node, effective_ctx, item_type))
     
     # =========================================================================
     # [P1] 过程块 - always_ff / always_comb / always_latch / initial
@@ -167,7 +220,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         initial 块没有时钟域，条件为空
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.ASSIGNMENT)
         stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
         if stmt:
             self.visit(stmt)
@@ -332,20 +385,37 @@ class StatementCollectorVisitor(BaseVisitor):
         return ""
     
     def _extract_reset_from_event(self, n) -> str:
-        """从 Event 提取复位 (negedge)"""
+        """从 Event 提取复位信号
+        
+        规则:
+        - negedge 且信号名包含 'rst'/'reset' -> 返回复位
+        - posedge 且信号名包含 'rst'/'reset' -> 返回复位 (异步复位)
+        - 其他信号名 -> 不返回 (可能是时钟)
+        """
         e = getattr(n, 'expr', None)
         if not e:
             return ""
         
         e = getattr(e, 'expr', None) or e
         
+        # 首先检查信号名是否像复位信号
+        is_reset_signal = False
+        signal_name = ""
+        if hasattr(e, 'symbol'):
+            sym = getattr(e, 'symbol', None)
+            if sym and hasattr(sym, 'name'):
+                signal_name = str(sym.name).strip()
+                if 'rst' in signal_name.lower() or 'reset' in signal_name.lower():
+                    is_reset_signal = True
+        
+        # 然后检查边沿
         edge_str = str(getattr(n, 'edge', ''))
-        if 'negedge' in edge_str.lower() or 'NegEdge' in edge_str:
-            if hasattr(e, 'symbol'):
-                sym = getattr(e, 'symbol', None)
-                if sym and hasattr(sym, 'name'):
-                    return str(sym.name).strip()
-            return str(e).strip() if e else ""
+        is_negedge = 'negedge' in edge_str.lower() or 'NegEdge' in edge_str
+        is_posedge = 'posedge' in edge_str.lower() or 'PosEdge' in edge_str
+        
+        # 如果信号名像复位，且边沿是 negedge 或 posedge，返回信号名
+        if is_reset_signal and (is_negedge or is_posedge):
+            return signal_name
         
         return ""
     
@@ -358,7 +428,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         提取时钟，进入 statement
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.ASSIGNMENT)
         tc = getattr(node, 'timingControl', None)
         if tc:
             clock = self._extract_clock_from_event_ctrl(tc)
@@ -385,7 +455,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 stmt
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.TIMING_CONTROL)
         stmt = getattr(node, 'stmt', None)
         if stmt:
             self.visit(stmt)
@@ -399,7 +469,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 body
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.BLOCK)
         body = getattr(node, 'body', None)
         if body:
             if hasattr(body, 'kind') and not (hasattr(body, '__iter__') and not isinstance(body, str)):
@@ -415,7 +485,7 @@ class StatementCollectorVisitor(BaseVisitor):
 
     def visit_sequential_block(self, node):
         """begin...end 块"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.BLOCK)
         self.generic_visit(node)
 
     def visit_case_statement(self, node):
@@ -423,24 +493,28 @@ class StatementCollectorVisitor(BaseVisitor):
         
         处理所有分支，追踪条件上下文
         """
-        self._add_statement(node)
-        # 提取 case 条件
-        case_cond = ""
-        if hasattr(node, 'condition'):
-            case_cond = str(node.condition)
+        self._add_statement(node, item_type=ItemType.CASE)
         
-        # 获取 items
+        # 获取 items - semantic items 不完整时使用 syntax items
         items = getattr(node, 'items', [])
         
-        # 检查是否需要从 syntax 获取
+        # [FIX] 如果 semantic items 是 ItemGroup，使用 syntax items
+        # 因为语义 ItemGroup 只保存第一个分支
         syntax_items = None
         if hasattr(node, 'syntax') and node.syntax and hasattr(node.syntax, 'items'):
             syntax_items = node.syntax.items
         
-        process_items = items if items and not (len(items) == 1 and type(items[0]).__name__ == 'ItemGroup') else syntax_items
+        # 如果 semantic items 只有 ItemGroup，使用 syntax items
+        use_syntax = False
+        if items and len(items) == 1 and type(items[0]).__name__ == 'ItemGroup':
+            use_syntax = True
+        
+        process_items = syntax_items if use_syntax else items
         
         if process_items:
             for item in process_items:
+                # 语义 AST: stmt 属性
+                # 语法 AST: clause 属性
                 stmt = getattr(item, 'stmt', None) or getattr(item, 'clause', None)
                 if stmt:
                     self.visit(stmt)
@@ -459,14 +533,19 @@ class StatementCollectorVisitor(BaseVisitor):
         
         处理 ifTrue/ifFalse，追踪条件
         """
-        self._add_statement(node)
         # 提取条件
         cond = self._extract_condition(node)
         
         # ifTrue 分支
         ts = getattr(node, 'ifTrue', None) or getattr(node, 'statement', None)
         if ts:
-            new_ctx = {**self.current_ctx, "condition": cond}
+            # Combine parent condition with current condition
+            parent_cond = self.current_ctx.get('condition', '')
+            if parent_cond:
+                new_cond = parent_cond + ' && ' + cond if cond else parent_cond
+            else:
+                new_cond = cond
+            new_ctx = {**self.current_ctx, "condition": new_cond}
             self._ctx_stack.append(new_ctx)
             self.visit(ts)
             self._ctx_stack.pop()
@@ -476,7 +555,13 @@ class StatementCollectorVisitor(BaseVisitor):
         if ec:
             ae = getattr(ec, 'clause', None) or ec
             neg_cond = "!" + cond if cond else ""
-            new_ctx = {**self.current_ctx, "condition": neg_cond}
+            # Combine parent condition with negated current condition
+            parent_cond = self.current_ctx.get('condition', '')
+            if parent_cond:
+                new_cond = parent_cond + ' && ' + neg_cond if neg_cond else parent_cond
+            else:
+                new_cond = neg_cond
+            new_ctx = {**self.current_ctx, "condition": new_cond}
             self._ctx_stack.append(new_ctx)
             self.visit(ae)
             self._ctx_stack.pop()
@@ -497,7 +582,10 @@ class StatementCollectorVisitor(BaseVisitor):
                             if syn:
                                 exprs.append(str(syn))
                             else:
-                                exprs.append(str(expr))
+                                # Try to extract from semantic AST
+                                expr_str = self._expr_to_string(expr)
+                                if expr_str:
+                                    exprs.append(expr_str)
                     return ' && '.join(exprs) if exprs else str(p).strip()
                 return str(cs).strip()
             return str(p).strip()
@@ -509,8 +597,72 @@ class StatementCollectorVisitor(BaseVisitor):
             for cond in cs:
                 expr = getattr(cond, 'expr', None)
                 if expr:
-                    exprs.append(str(expr))
+                    expr_str = self._expr_to_string(expr)
+                    if expr_str:
+                        exprs.append(expr_str)
+                    else:
+                        exprs.append(str(expr))
             return ' && '.join(exprs) if exprs else ""
+        
+        return ""
+    
+    def _expr_to_string(self, expr) -> str:
+        """将表达式转换为可读字符串
+        
+        优先使用 syntax 属性，其次尝试提取符号名
+        """
+        if expr is None:
+            return ""
+        
+        # 优先使用 syntax (语法树)
+        syn = getattr(expr, 'syntax', None)
+        if syn:
+            return str(syn)
+        
+        # UnaryOp: 提取操作数和操作符
+        if hasattr(expr, 'kind') and 'UnaryOp' in str(expr.kind):
+            op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
+            operand = getattr(expr, 'operand', None)
+            if operand:
+                operand_str = self._expr_to_string(operand)
+                if operand_str:
+                    # 将 UnaryOperator 枚举转换为符号
+                    if hasattr(op, 'name'):
+                        op_name = op.name
+                        if 'Not' in op_name:
+                            return f"!{operand_str}"
+                        elif 'Neg' in op_name:
+                            return f"-{operand_str}"
+                        elif 'Pos' in op_name:
+                            return f"+{operand_str}"
+                    elif op:
+                        op_str = str(op).strip()
+                        if 'Not' in op_str:
+                            return f"!{operand_str}"
+                        else:
+                            return f"{op_str}{operand_str}"
+                    return f"{operand_str}"
+            return ""
+        
+        # NamedValueExpression: 提取符号名
+        if hasattr(expr, 'symbol'):
+            sym = getattr(expr, 'symbol', None)
+            if sym and hasattr(sym, 'name'):
+                return str(sym.name).strip()
+        
+        # BinaryExpression: 递归处理左右操作数
+        if hasattr(expr, 'left') and hasattr(expr, 'right'):
+            left = self._expr_to_string(getattr(expr, 'left', None))
+            right = self._expr_to_string(getattr(expr, 'right', None))
+            op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
+            if op:
+                if hasattr(op, 'name'):
+                    op_str = f" {op.name.lower().replace('_', ' ')} "
+                else:
+                    op_str = f" {str(op).strip()} "
+            else:
+                op_str = " "
+            return f"{left}{op_str}{right}"
         
         return ""
     
@@ -519,7 +671,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 clause
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.CONDITIONAL)
         s = getattr(node, 'clause', None)
         if s:
             self.visit(s)
@@ -531,30 +683,34 @@ class StatementCollectorVisitor(BaseVisitor):
     def visit_expression_statement(self, node):
         """ExpressionStatement: 表达式语句
         
-        进入 expr
+        对于语义 AST 节点，进入 expr；对于语法 AST 节点，只添加自身
         """
-        self._add_statement(node)
-        e = getattr(node, 'expr', None)
-        if e:
-            self.visit(e)
+        self._add_statement(node, item_type=ItemType.STATEMENT)
+        # 对于语义 AST 节点，递归进入 expr
+        # 对于语法 AST 节点（ExpressionStatementSyntax），不递归
+        kind = getattr(node, 'kind', None)
+        if kind is not None and hasattr(kind, 'name') and 'Syntax' not in str(kind):
+            e = getattr(node, 'expr', None)
+            if e:
+                self.visit(e)
     
     def visit_assignment(self, node):
         """Assignment: 赋值语句 (=, <=)
         
         收集赋值节点
         """
-        self._add_statement(node, self.current_ctx)
+        self._add_statement(node, item_type=ItemType.ASSIGNMENT)
     
     def visit_invocation(self, node):
         """InvocationExpression: 函数/任务调用
         
         收集调用节点
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.INVOCATION)
     
     def visit_continuous_assignment(self, node):
         """assign 连续赋值"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.LOOP)
     
     # =========================================================================
     # [P2] 循环语句
@@ -565,7 +721,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 body/statement
         """
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.BLOCK)
         stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
         if stmt:
             self.visit(stmt)
@@ -577,33 +733,33 @@ class StatementCollectorVisitor(BaseVisitor):
 
     def visit_nonblocking_assignment(self, node):
         """<= 非阻塞赋值"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.BLOCK)
 
     def visit_blocking_assignment(self, node):
         """= 阻塞赋值"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.JUMP)
 
     def visit_jump_statement(self, node):
         """JumpStatement: return/break/continue"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.DISABLE)
     
     def visit_wait_statement(self, node):
         """WaitStatement: wait(condition)"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.STATEMENT)
         self.generic_visit(node)
     
     def visit_event_control(self, node):
         """EventControl: @clk"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.STATEMENT)
         stmt = getattr(node, 'statement', None)
         if stmt:
             self.visit(stmt)
     
     def visit_disable_statement(self, node):
         """DisableStatement: disable name"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.STATEMENT)
     
     def visit_procedural_timing_control(self, node):
         """ProceduralTimingControl: #delay"""
-        self._add_statement(node)
+        self._add_statement(node, item_type=ItemType.STATEMENT)
         self.generic_visit(node)

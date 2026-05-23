@@ -8,6 +8,7 @@ from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 import pyslang
 from .base import PyslangAdapter
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
+from .visitors.statement_collector_visitor import StatementCollectorVisitor, ItemType
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class DriverExtractor:
         self.adapter = adapter
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
         self._signal_visitor = SignalExpressionVisitor(adapter)
+        self._stmt_visitor = StatementCollectorVisitor(adapter)
 
 
     def _get_all_signals(self, signal) -> List[str]:
@@ -689,18 +691,19 @@ class DriverExtractor:
 
             # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
-                # 使用语义上下文方法收集语句
-                stmts_ctx = self._collect_stmts_with_context(always)
+                # [铁律29] 使用 StatementCollectorVisitor 替代 _collect_stmts_with_context
+                # 过渡阶段保留 fallback + debug log
+                try:
+                    stmts_ctx = self._stmt_visitor.collect(always)
+                except Exception as e:
+                    logger.warning(f"[FALLBACK] StatementCollectorVisitor failed: {e}, using legacy method")
+                    stmts_ctx = self._collect_stmts_with_context(always)
                 for item in stmts_ctx:
-                    # 支持两种格式: (stmt, ctx) 或 (stmt, ctx, type)
-                    if len(item) == 3:
-                        stmt, ctx, item_type = item
-                    else:
-                        stmt, ctx = item
-                        item_type = "assignment"
+                    # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
+                    stmt, ctx, item_type = item
 
                     # 如果是 invocation,暂不处理赋值
-                    if item_type == "invocation":
+                    if item_type == ItemType.INVOCATION:
                         # [NEW] 处理 task/function 调用
                         self._handle_invocation(stmt, ctx, module, module_name, result)
                         continue
