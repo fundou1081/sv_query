@@ -2,7 +2,7 @@
 # graph_builder.py - Builder Layer
 #==============================================================================
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 import pyslang
@@ -207,8 +207,22 @@ class DriverExtractor:
         
         return ""
 
-    def _collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
-        """递归收集语句,同时携带语义上下文 (clock_domain, condition)"""
+    def _legacy_collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
+        """[DEPRECATED] 旧版递归收集方法
+        
+        [铁律29] 保留作为 StatementCollectorVisitor 的 fallback
+        """
+        if _s is None: _s = set()
+        if ctx is None: ctx = {"clock": "", "condition": ""}
+        nid = id(n)
+        if nid in _s: return []
+        _s.add(nid)
+        if n is None or d > 30: return []
+        k = getattr(n, "kind", None)
+        ks = str(k) if k else ""
+        if ".TokenKind." in ks or "Trivia" in ks:
+            return []
+        r = []
         if _s is None: _s = set()
         if ctx is None: ctx = {"clock": "", "condition": ""}
         nid = id(n)
@@ -224,7 +238,7 @@ class DriverExtractor:
         # InitialBlock
         if "InitialBlock" in ks:
             stmt = getattr(n, "statement", None) or getattr(n, "body", None)
-            if stmt: r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
+            if stmt: r.extend(self._legacy_collect_stmts_with_context(stmt, ctx, d+1, _s))
             return r
 
         if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]) or (
@@ -240,7 +254,7 @@ class DriverExtractor:
                     if tc: rst = self._extract_reset_from_event_ctrl(tc)
             c2 = {**ctx, "clock": cl, "reset": rst}
             s = getattr(n, "statement", None) or getattr(n, "body", None)
-            if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
+            if s: r.extend(self._legacy_collect_stmts_with_context(s, c2, d+1, _s))
             return r
 
         if "TimingControl" in ks:
@@ -248,13 +262,13 @@ class DriverExtractor:
             cl = self._extract_clock_from_event_ctrl(tc) if tc else ""
             c2 = {**ctx, "clock": cl}
             s = getattr(n, "statement", None)
-            if s: r.extend(self._collect_stmts_with_context(s, c2, d+1, _s))
+            if s: r.extend(self._legacy_collect_stmts_with_context(s, c2, d+1, _s))
             return r
         
         # [FIX] TimedStatement: always @(*) wraps content in a Timed statement
         if "Timed" in ks:
             s = getattr(n, "stmt", None)
-            if s: r.extend(self._collect_stmts_with_context(s, ctx, d+1, _s))
+            if s: r.extend(self._legacy_collect_stmts_with_context(s, ctx, d+1, _s))
             return r
         
         # [FIX] BlockStatement: begin...end block containing statements
@@ -263,9 +277,9 @@ class DriverExtractor:
             if body:
                 # body is a single Statement, not a list - recurse into it directly
                 if hasattr(body, 'kind') and not (hasattr(body, '__iter__') and not isinstance(body, str)):
-                    r.extend(self._collect_stmts_with_context(body, ctx, d+1, _s))
+                    r.extend(self._legacy_collect_stmts_with_context(body, ctx, d+1, _s))
                 elif hasattr(body, '__iter__') and not isinstance(body, str):
-                    for i in body: r.extend(self._collect_stmts_with_context(i, ctx, d+1, _s))
+                    for i in body: r.extend(self._legacy_collect_stmts_with_context(i, ctx, d+1, _s))
             return r
         
         # [FIX] CaseStatement: case items contain (expressions, statement) pairs
@@ -286,7 +300,7 @@ class DriverExtractor:
                     # Get stmt from syntax item (clause) or semantic item (stmt)
                     stmt = getattr(item, 'stmt', None) or getattr(item, 'clause', None)
                     if stmt:
-                        r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
+                        r.extend(self._legacy_collect_stmts_with_context(stmt, ctx, d+1, _s))
             return r
 
         if "Conditional" in ks and "Statement" in ks:
@@ -296,23 +310,23 @@ class DriverExtractor:
             if ts:
                 c2 = cond
                 if ctx["condition"]: c2 = ctx["condition"] + " && " + cond
-                r.extend(self._collect_stmts_with_context(ts, {**ctx, "condition": c2}, d+1, _s))
+                r.extend(self._legacy_collect_stmts_with_context(ts, {**ctx, "condition": c2}, d+1, _s))
             ec = getattr(n, "ifFalse", None) or getattr(n, "elseClause", None)
             if ec:
                 ae = getattr(ec, "clause", None) or ec
                 c2 = "!" + cond
                 if ctx["condition"]: c2 = ctx["condition"] + " && !" + cond
-                r.extend(self._collect_stmts_with_context(ae, {**ctx, "condition": c2}, d+1, _s))
+                r.extend(self._legacy_collect_stmts_with_context(ae, {**ctx, "condition": c2}, d+1, _s))
             return r
 
         if "ElseClause" in ks:
             s = getattr(n, "clause", None)
-            if s: r.extend(self._collect_stmts_with_context(s, ctx, d+1, _s))
+            if s: r.extend(self._legacy_collect_stmts_with_context(s, ctx, d+1, _s))
             return r
 
         if "ExpressionStatement" in ks:
             e = getattr(n, "expr", None)
-            if e: r.extend(self._collect_stmts_with_context(e, ctx, d+1, _s))
+            if e: r.extend(self._legacy_collect_stmts_with_context(e, ctx, d+1, _s))
             return r
 
         # [NEW] 处理 task/function 调用
@@ -334,13 +348,27 @@ class DriverExtractor:
                 if callable(ch): continue
                 if hasattr(ch, "__iter__") and not isinstance(ch, str):
                     for c in ch:
-                        if hasattr(c, "kind"): r.extend(self._collect_stmts_with_context(c, ctx, d+1, _s))
-                elif hasattr(ch, "kind"): r.extend(self._collect_stmts_with_context(ch, ctx, d+1, _s))
+                        if hasattr(c, "kind"): r.extend(self._legacy_collect_stmts_with_context(c, ctx, d+1, _s))
+                elif hasattr(ch, "kind"): r.extend(self._legacy_collect_stmts_with_context(ch, ctx, d+1, _s))
             except Exception as e:
                 # [铁律3] 记录而非静默忽略
                 pass  # 遍历子节点时的错误不影響主流程
         return r
 
+    def _collect_stmts_with_context(self, n, ctx=None) -> List[Tuple[Any, Dict[str, str], Any]]:
+        """收集语句的包装方法
+        
+        [铁律29] 优先使用 StatementCollectorVisitor，失败时使用 legacy 方法
+        """
+        # Try visitor first
+        try:
+            return self._stmt_visitor.collect(n, ctx)
+        except Exception as e:
+            logger.debug(f"[FALLBACK] _collect_stmts_with_context delegating to legacy: {e}")
+            # Convert legacy format to (node, ctx, type) tuple
+            legacy_result = self._legacy_collect_stmts_with_context(n, ctx)
+            return [(item, item[1] if len(item) > 1 else ctx, "STATEMENT") for item in legacy_result]
+    
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
 
@@ -691,13 +719,9 @@ class DriverExtractor:
 
             # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
-                # [铁律29] 使用 StatementCollectorVisitor 替代 _collect_stmts_with_context
-                # 过渡阶段保留 fallback + debug log
-                try:
-                    stmts_ctx = self._stmt_visitor.collect(always)
-                except Exception as e:
-                    logger.warning(f"[FALLBACK] StatementCollectorVisitor failed: {e}, using legacy method")
-                    stmts_ctx = self._collect_stmts_with_context(always)
+                # [铁律29] 使用 _collect_stmts_with_context 包装方法
+                # 内部会优先使用 StatementCollectorVisitor，失败时 fallback 到 legacy
+                stmts_ctx = self._collect_stmts_with_context(always)
                 for item in stmts_ctx:
                     # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
                     stmt, ctx, item_type = item
