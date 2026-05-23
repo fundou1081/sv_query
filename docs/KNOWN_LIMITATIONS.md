@@ -6,7 +6,7 @@
 
 ---
 
-## 一、失败测试（8 个 - 需要修复 tracer）
+## 一、失败测试（9 个 - 需要修复 tracer）
 
 这些测试当前失败，需要修复 tracer 代码后通过。
 
@@ -20,6 +20,7 @@
 | test_boundary.py | test_dollar_in_name | `$data` 美元符信号应支持 | 美元符信号名暂未支持 |
 | test_boundary.py | test_parameterized_module | 参数化模块 `dout = din` 应追踪到 din | 参数化模块暂未完全支持 |
 | test_boundary.py | test_signal_without_module_prefix | 不带模块名查询 `dout` 应找到 | 不带模块名查询暂不支持 |
+| test_complex_conditions.py | test_case_inside_if | `case (1'b1) a: y<=1; default: y<=0;` 应返回 2 驱动 | priority case default 分支暂未追踪 |
 
 ---
 
@@ -73,11 +74,24 @@ tracer.trace_signal('dout')  // 应自动查找 dout 信号
 ```
 当前返回 0 驱动，期望 1 个驱动 (top.din)
 
+### 2.8 priority case default 分支未追踪
+```systemverilog
+always_ff @(posedge clk)
+    if (sel)
+        case (1'b1)  // priority case
+            a: y <= 1;
+            default: y <= 0;
+        endcase
+```
+当前返回 1 驱动 (1)，期望 2 个驱动 (1, 0)
+
+注意: case (1'b1) 是 priority case，按顺序评估条件。default 分支可到达。
+
 ---
 
 ## 三、修复优先级
 
-### P1 - 高优先级（8 个失败测试）
+### P1 - 高优先级（9 个失败测试）
 | 测试 | 优先级 |
 |------|--------|
 | test_ternary (三元 sel) | P1 |
