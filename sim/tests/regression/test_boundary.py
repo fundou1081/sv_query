@@ -364,14 +364,19 @@ endmodule'''
         金标准:
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
-        | dout | []     | uncertain |
+        | top.dout | [top.din] | high |
         
         注意: 参数化模块 dout = din 应追踪到 din
         """
         source = '''
-module #(
+module testbench();
+    wire [7:0] din, dout;
+    top #(.WIDTH(8)) u_dut(.din(din), .dout(dout));
+endmodule
+
+module top #(
     parameter WIDTH = 8
-) top(input wire [WIDTH-1:0] din, output wire [WIDTH-1:0] dout);
+)(input wire [WIDTH-1:0] din, output wire [WIDTH-1:0] dout);
     assign dout = din;
 endmodule'''
         
@@ -384,6 +389,11 @@ endmodule'''
             "dout 的驱动应包含 top.din")
         self.assertEqual(result.confidence, 'high',
             "参数化模块置信度应为 high")
+        
+        # 检查没有外部驱动源 (din 是 top 的输入端口)
+        ids = self._driver_ids(result)
+        self.assertTrue(all('top.' in i for i in ids),
+            "所有驱动源应该在 top 模块内")
     
     def test_generate_for(self):
         """[Ext] generate for 块
