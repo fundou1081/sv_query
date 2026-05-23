@@ -93,12 +93,40 @@ class StatementCollectorVisitor(BaseVisitor):
         if ".TokenKind." in kind_str or "Trivia" in kind_str:
             return
         
+        # [FIX] StatementKind 别名映射 (Semantic AST naming -> visitor methods)
+        # Conditional -> conditional_statement, Timed -> timed_statement, etc.
+        semantic_alias_map = {
+            'Conditional': 'conditional_statement',
+            'Timed': 'timed_statement',
+            'Case': 'case_statement',
+            'Block': 'block_statement',
+            'ExpressionStatement': 'expression_statement',
+            'ForLoop': 'loop_statement',
+            'WhileLoop': 'loop_statement',
+            'RepeatLoop': 'loop_statement',
+            'ForeachLoop': 'loop_statement',
+            'DoWhileLoop': 'loop_statement',
+            'ForeverLoop': 'loop_statement',
+            'Wait': 'wait_statement',
+            'Return': 'jump_statement',
+            'Break': 'jump_statement',
+            'Continue': 'jump_statement',
+            'Disable': 'disable_statement',
+        }
+        
         # 分发到对应方法
         if kind_name:
             method_name = f"visit_{kind_name}"
             if hasattr(self, method_name):
                 getattr(self, method_name)(node)
                 return
+            # 尝试别名映射
+            if kind_name in semantic_alias_map:
+                alias = semantic_alias_map[kind_name]
+                method_name = f"visit_{alias}"
+                if hasattr(self, method_name):
+                    getattr(self, method_name)(node)
+                    return
         
         # 默认: 递归进入子节点
         self.generic_visit(node)
@@ -148,17 +176,19 @@ class StatementCollectorVisitor(BaseVisitor):
         
         根据 procedureKind 分发到具体方法
         """
-        kind = getattr(node, 'kind', None)
-        if not kind:
-            return
+        # [FIX] Semantic symbol 有 procedureKind 属性，不是 kind
+        # kind 是 SymbolKind.ProceduralBlock，procedureKind 是 ProceduralBlockKind.AlwaysFF
+        proc_kind = getattr(node, 'procedureKind', None)
+        if proc_kind:
+            proc_kind_str = str(proc_kind)
+        else:
+            proc_kind_str = ''
         
-        kind_str = str(kind)
-        
-        if 'AlwaysFF' in kind_str:
+        if 'AlwaysFF' in proc_kind_str:
             self.visit_always_ff(node)
-        elif 'AlwaysComb' in kind_str:
+        elif 'AlwaysComb' in proc_kind_str:
             self.visit_always_comb(node)
-        elif 'AlwaysLatch' in kind_str:
+        elif 'AlwaysLatch' in proc_kind_str:
             self.visit_always_latch(node)
         else:
             self.generic_visit(node)
@@ -339,6 +369,13 @@ class StatementCollectorVisitor(BaseVisitor):
         
         if tc:
             self._ctx_stack.pop()
+    
+    def visit_Timed(self, node):
+        """Timed: TimedStatement 的语义别名
+        
+        委托给 visit_timed_statement
+        """
+        self.visit_timed_statement(node)
     
     def visit_timed_statement(self, node):
         """TimedStatement: always @(*) wraps content
