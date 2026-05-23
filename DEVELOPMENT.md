@@ -947,25 +947,50 @@ def visit_range_select(self, node):
 
 ### 铁律29: Graph Builder 重构保留旧实现作为 fallback [生效]
 
-**必须**：重构过程中保留旧实现，标记为 deprecated
+**必须**：重构过程中保留旧实现，标记为 deprecated，并添加调试日志
 
 **原因**：
 1. 降低重构风险
 2. 渐进式迁移
 3. 快速回滚能力
+4. 验证过程中能及时发现是否走了 fallback 路径
 
 **示例**：
 ```python
 def _get_signal(self, signal) -> Optional[str]:
     # [DEPRECATED] 使用 Visitor 替代
     # 临时调用旧实现，确保功能不丢失
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug(f"[FALLBACK] _get_signal called for signal type: {type(signal).__name__}")
     return self._signal_visitor.visit(signal)
+```
+
+**调试日志要求**：
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# 必须记录：
+# 1. 当前使用的是 fallback 路径
+logger.debug(f"[FALLBACK] Using deprecated method: {method_name}")
+# 2. 信号/节点类型
+logger.debug(f"[FALLBACK] Signal type: {type(node).__name__}")
+# 3. 模块名 (如有)
+logger.debug(f"[FALLBACK] Module: {getattr(self, '_current_module', 'unknown')}")
 ```
 
 **标记方式**：
 ```python
 # [DEPRECATED in v0.2] - 将在 v0.3 中删除
 # 使用 SignalExpressionVisitor 替代
+```
+
+**验证方式**：
+```bash
+# 启用 DEBUG 日志查看 fallback 调用
+python -c "import logging; logging.basicConfig(level=logging.DEBUG)"
+# 应能看到 [FALLBACK] 日志输出
 ```
 
 ---
