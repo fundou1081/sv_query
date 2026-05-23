@@ -255,7 +255,12 @@ endmodule'''
     
     def test_case_inside_if(self):
         """[Mix] case 在 if 内部: if (sel) case (1'b1) a: y<=1; default: y<=0;
-        金标准: [已知限制] case 内部 only returns 1
+        金标准:
+        | 信号 | 驱动源 | 置信度 |
+        |------|--------|--------|
+        | y    | [1, 0] | high |
+        
+        注意: case (1'b1) 是 priority case，两个分支都可到达
         """
         source = '''
 module top(input clk, sel, a, b, output reg y);
@@ -270,11 +275,12 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
         
-        # [已知限制] case 内部返回 1
-        self.assertEqual(len(result.drivers), 1,
-            "[已知限制] case 内部暂返回 1 个驱动源")
-        self.assertIn('1', self._driver_ids(result),
-            "y 的驱动应包含 1")
+        self.assertEqual(len(result.drivers), 2,
+            "case (1'b1) priority case 应有 2 个驱动源 (1, 0)")
+        ids = self._driver_ids(result)
+        self.assertIn('1', ids, "y 的驱动应包含 1")
+        self.assertIn('0', ids, "y 的驱动应包含 0")
+        self.assertEqual(result.confidence, 'high')
     
     def test_multi_else_branch(self):
         """[If] 多个 else 分支: if (en1) q<=d1; else if (en2) q<=d2; else q<=0;
