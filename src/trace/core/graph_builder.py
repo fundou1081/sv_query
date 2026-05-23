@@ -235,12 +235,24 @@ class DriverExtractor:
             return r
         
         # [FIX] CaseStatement: case items contain (expressions, statement) pairs
+        # [FIX] For semantic AST, CaseStatement.items may be grouped (ItemGroup)
+        # [FIX] We need to check syntax.items for actual case items
         if "Case" in ks and "Statement" in ks:
+            # Try semantic items first
             items = getattr(n, "items", [])
-            for item in items:
-                stmt = getattr(item, "stmt", None)
-                if stmt:
-                    r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
+            # If semantic items is empty or has ItemGroup, try syntax.items
+            syntax_items = None
+            if hasattr(n, 'syntax') and n.syntax and hasattr(n.syntax, 'items'):
+                syntax_items = n.syntax.items
+            
+            # Process items from either source
+            process_items = items if items and not (len(items) == 1 and type(items[0]).__name__ == 'ItemGroup') else syntax_items
+            if process_items:
+                for item in process_items:
+                    # Get stmt from syntax item (clause) or semantic item (stmt)
+                    stmt = getattr(item, 'stmt', None) or getattr(item, 'clause', None)
+                    if stmt:
+                        r.extend(self._collect_stmts_with_context(stmt, ctx, d+1, _s))
             return r
 
         if "Conditional" in ks and "Statement" in ks:
@@ -370,6 +382,57 @@ class DriverExtractor:
                         kind=NodeKind.SIGNAL,
                         width=var_width
                     ))
+
+            # [FIX] alias 语句: alias b = a; -> b 驱动源为 a
+            # 处理 NetAlias,创建 DRIVER 边: a -> b
+            for alias in self.adapter.get_net_aliases(module):
+                refs = getattr(alias, 'netReferences', None)
+                if refs and len(refs) >= 2:
+                    # refs[0] = target (b), refs[1] = source (a)
+                    target_expr = refs[0]
+                    source_expr = refs[1]
+                    
+                    # 获取 target 信号名 (b)
+                    target_name = None
+                    if hasattr(target_expr, 'symbol') and hasattr(target_expr.symbol, 'name'):
+                        target_name = str(target_expr.symbol.name)
+                    
+                    # 获取 source 信号名 (a)
+                    source_name = None
+                    if hasattr(source_expr, 'symbol') and hasattr(source_expr.symbol, 'name'):
+                        source_name = str(source_expr.symbol.name)
+                    
+                    if target_name and source_name:
+                        target_id = f"{module_name}.{target_name}"
+                        source_id = f"{module_name}.{source_name}"
+                        
+                        # 确保 source 节点存在
+                        if source_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(TraceNode(
+                                id=source_id,
+                                name=source_name,
+                                module=module_name,
+                                kind=NodeKind.SIGNAL,
+                                width=(1, 0)
+                            ))
+                        
+                        # 确保 target 节点存在
+                        if target_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(TraceNode(
+                                id=target_id,
+                                name=target_name,
+                                module=module_name,
+                                kind=NodeKind.SIGNAL,
+                                width=(1, 0)
+                            ))
+                        
+                        # 创建 DRIVER 边: source -> target
+                        result.edges.append(TraceEdge(
+                            src=source_id,
+                            dst=target_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="alias"
+                        ))
 
             # assign 语句
             for assign in self.adapter.get_assignments(module):
