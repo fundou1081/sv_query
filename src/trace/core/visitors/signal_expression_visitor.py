@@ -216,6 +216,78 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.get_all_signals(operand)
         return []
     
+    def get_all_streaming(self, node) -> List[str]:
+        """StreamingExpression: {>>[a:b]} or {<<[a:b]}
+        
+        递归提取流操作符内的信号
+        """
+        # StreamingExpression has 'expression' or 'body' attribute
+        expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
+        if expr:
+            return self.get_all_signals(expr)
+        return []
+    
+    def get_all_inside(self, node) -> List[str]:
+        """InsideExpression: expr inside {a, b, c}
+        
+        递归提取左右操作数中的信号
+        """
+        signals = []
+        left = getattr(node, 'left', None) or getattr(node, 'condition', None)
+        right = getattr(node, 'right', None) or getattr(node, 'range', None)
+        if left:
+            signals.extend(self.get_all_signals(left))
+        if right:
+            signals.extend(self.get_all_signals(right))
+        return [s for s in signals if s]
+    
+    def get_all_min_typ_max(self, node) -> List[str]:
+        """MinTypMaxExpression: min:typ:max
+        
+        递归提取所有分支中的信号
+        """
+        signals = []
+        min_val = getattr(node, 'min', None) or getattr(node, 'left', None)
+        typ_val = getattr(node, 'typ', None) or getattr(node, 'value', None)
+        max_val = getattr(node, 'max', None) or getattr(node, 'right', None)
+        if min_val:
+            signals.extend(self.get_all_signals(min_val))
+        if typ_val:
+            signals.extend(self.get_all_signals(typ_val))
+        if max_val:
+            signals.extend(self.get_all_signals(max_val))
+        return [s for s in signals if s]
+    
+    def get_all_dist(self, node) -> List[str]:
+        """DistExpression: a dist {[/=]:1, [:=]:2}
+        
+        递归提取分布项中的信号
+        """
+        signals = []
+        # DistExpression may have 'items' or 'dist_items'
+        items = getattr(node, 'items', None) or getattr(node, 'dist_items', None)
+        if items:
+            for item in items:
+                # Each dist item may have 'value' and 'weight'
+                val = getattr(item, 'value', None) or getattr(item, 'expr', None)
+                if val:
+                    signals.extend(self.get_all_signals(val))
+        return [s for s in signals if s]
+    
+    def get_all_value_range(self, node) -> List[str]:
+        """ValueRangeExpression: [a:b] or [a..b]
+        
+        递归提取范围边界中的信号
+        """
+        signals = []
+        left = getattr(node, 'left', None) or getattr(node, 'low', None)
+        right = getattr(node, 'right', None) or getattr(node, 'high', None)
+        if left:
+            signals.extend(self.get_all_signals(left))
+        if right:
+            signals.extend(self.get_all_signals(right))
+        return [s for s in signals if s]
+    
     def get_all_signals_fallback(self, node) -> List[str]:
         """Fallback for get_all_signals when no specific method exists
         
@@ -573,14 +645,26 @@ class SignalExpressionVisitor(BaseVisitor):
     def get_all_call(self, node) -> List[str]:
         """Call: 函数调用参数
         
+        支持:
+        - 位置参数: func(a, b, c)
+        - 命名参数: func(.name(a), .value(b))
+        
         返回: [arg1, arg2, ...]
         """
         signals = []
         args = getattr(node, 'arguments', None)
         
         if args:
+            # Handle OrderedArgument vs NamedArgument
             for arg in args:
-                if arg:
+                if arg is None:
+                    continue
+                # NamedArgument has .name and .expr
+                expr = getattr(arg, 'expr', None) or getattr(arg, 'value', None)
+                if expr:
+                    signals.extend(self.get_all_signals(expr))
+                else:
+                    # Maybe it's just an expression directly
                     signals.extend(self.get_all_signals(arg))
         
         return [s for s in signals if s]
