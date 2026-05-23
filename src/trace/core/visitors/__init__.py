@@ -8,8 +8,10 @@ Visitor 模式模块
 
 from .base_visitor import BaseVisitor
 from .signal_expression_visitor import SignalExpressionVisitor
+from .statement_collector_visitor import StatementCollectorVisitor
 
 __all__ = [
     'BaseVisitor',
     'SignalExpressionVisitor',
+    'StatementCollectorVisitor',
 ]
