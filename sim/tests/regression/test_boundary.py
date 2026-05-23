@@ -256,7 +256,7 @@ class TestBoundaryExtensive(unittest.TestCase):
         |------|--------|--------|
         | dout | []     | uncertain |
         
-        注意: [已知限制] 当前实现要求必须指定模块名
+        注意: 查询时应能自动查找信号
         """
         source = '''
 module top(input wire din, output wire dout);
@@ -266,9 +266,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout')
         
-        # [已知限制] 当前实现要求必须指定模块名
-        self.assertEqual(len(result.drivers), 0,
-            "[已知限制] 不带模块名查询暂返回 uncertain")
+        self.assertEqual(len(result.drivers), 1,
+            "dout = din 应有 1 个驱动源 (din)")
+        self.assertIn('top.din', self._driver_ids(result),
+            "dout 的驱动应包含 top.din")
     
     def test_case_sensitive_signal(self):
         """[Ext] 大小写敏感
@@ -277,7 +278,7 @@ endmodule'''
         |------|--------|--------|
         | Din  | []     | uncertain |
         
-        注意: [已知限制] 大小写敏感暂未完全支持
+        注意: Din 和 din 是不同信号
         """
         source = '''
 module top(input wire Din, input wire din, output wire dout);
@@ -287,9 +288,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('Din', 'top')
         
-        # [已知限制] 大小写敏感暂未完全支持
-        self.assertEqual(len(result.drivers), 0,
-            "[已知限制] 大小写敏感暂未完全支持")
+        self.assertEqual(len(result.drivers), 1,
+            "Din 作为输入端口，应有 1 个驱动源")
+        self.assertIn('top.Din', self._driver_ids(result),
+            "Din 的驱动应包含 top.Din")
     
     def test_underscore_in_name(self):
         """[Ext] 下划线信号名
@@ -320,7 +322,7 @@ endmodule'''
         |------|--------|--------|
         | dout | []     | uncertain |
         
-        注意: [已知限制] $data 暂未支持
+        注意: $data 是合法信号名
         """
         source = '''
 module top(input wire $data, output wire dout);
@@ -330,9 +332,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
         
-        # [已知限制] 美元符信号名暂未支持
-        self.assertEqual(len(result.drivers), 0,
-            "[已知限制] 美元符信号名暂未支持")
+        self.assertEqual(len(result.drivers), 1,
+            "dout = $data 应有 1 个驱动源 ($data)")
+        self.assertIn('top.$data', self._driver_ids(result),
+            "dout 的驱动应包含 top.$data")
     
     def test_array_signal(self):
         """[Ext] 数组信号
@@ -363,7 +366,7 @@ endmodule'''
         |------|--------|--------|
         | dout | []     | uncertain |
         
-        注意: [已知限制] 参数化模块暂未完全支持
+        注意: 参数化模块 dout = din 应追踪到 din
         """
         source = '''
 module #(
@@ -375,11 +378,12 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
         
-        # [已知限制] 参数化模块暂未完全支持
-        self.assertEqual(len(result.drivers), 0,
-            "[已知限制] 参数化模块暂未完全支持")
-        self.assertEqual(result.confidence, 'uncertain',
-            "[已知限制] 参数化模块暂未完全支持，置信度为 uncertain")
+        self.assertEqual(len(result.drivers), 1,
+            "dout = din 参数化模块应有 1 个驱动源 (din)")
+        self.assertIn('top.din', self._driver_ids(result),
+            "dout 的驱动应包含 top.din")
+        self.assertEqual(result.confidence, 'high',
+            "参数化模块置信度应为 high")
     
     def test_generate_for(self):
         """[Ext] generate for 块
