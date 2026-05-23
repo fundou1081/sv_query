@@ -110,6 +110,17 @@ class SignalExpressionVisitor(BaseVisitor):
                 if hasattr(self, method_name):
                     return getattr(self, method_name)(node)
             
+            # [FIX] CamelCase kind_name 直接映射到 snake_case 方法
+            # 例如: ConditionalOp -> get_all_conditional_op
+            # 注意: 上面的 direct lookup already tried get_all_ConditionalOp (exact match)
+            # 这里处理 CamelCase kind_name 转换为 snake_case 的情况
+            import re
+            snake_kind = re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
+            if snake_kind != kind_name.lower():  # Only if actually different (has uppercase)
+                method_name = f"get_all_{snake_kind}"
+                if hasattr(self, method_name):
+                    return getattr(self, method_name)(node)
+            
             # [FIX] ConditionalPredicate/Pattern 处理 - 从 conditions 提取
             if kind_name in ('ConditionalPredicate', 'ConditionalPattern'):
                 # ConditionalPattern 有 expr 属性
@@ -141,6 +152,11 @@ class SignalExpressionVisitor(BaseVisitor):
             left = getattr(node, 'left', None)
             if left:
                 return self.visit(left)
+        # [FIX] NamedValue 等类型有 symbol 属性
+        if hasattr(node, 'symbol'):
+            sym = getattr(node, 'symbol', None)
+            if sym and hasattr(sym, 'name'):
+                return str(sym.name).strip()
         return None
     
     # =========================================================================
@@ -163,6 +179,26 @@ class SignalExpressionVisitor(BaseVisitor):
             return None
         
         return self.adapter.clean_name(str(val).strip())
+    
+    def visit_named_value(self, node) -> Optional[str]:
+        """NamedValue: 简单变量引用 din, data 等
+        
+        结构: NamedValueExpression.symbol = NetSymbol/VariableSymbol, 有 .name 属性
+        """
+        sym = getattr(node, 'symbol', None)
+        if sym and hasattr(sym, 'name'):
+            return str(sym.name).strip()
+        # 兜底: symbol 没 name 则尝试直接转字符串
+        if sym:
+            name = str(sym).strip()
+            # 可能是 "Symbol(SymbolKind.Net, \"data\")" 格式
+            if 'Symbol' in name and '"' in name:
+                import re
+                m = re.search(r'"([^"]+)"', name)
+                if m:
+                    return m.group(1)
+            return name
+        return None
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
