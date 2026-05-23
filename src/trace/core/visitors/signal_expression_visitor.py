@@ -60,14 +60,14 @@ class SignalExpressionVisitor(BaseVisitor):
         if kind is None:
             return None
         
-        # 根据 kind.name 动态查找方法
         kind_name = kind.name if hasattr(kind, 'name') else None
         if kind_name:
-            method_name = f"visit_{kind_name}"
+            # 转换 CamelCase -> snake_case: IdentifierName -> visit_identifier_name
+            import re
+            method_name = "visit_" + re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
             if hasattr(self, method_name):
                 return getattr(self, method_name)(node)
         
-        # 兜底: 尝试通用方法
         return self.generic_visit(node)
     
     def get_all_signals(self, node) -> List[str]:
@@ -95,6 +95,38 @@ class SignalExpressionVisitor(BaseVisitor):
             method_name = f"get_all_{kind_name}"
             if hasattr(self, method_name):
                 return getattr(self, method_name)(node)
+            
+            # 别名映射 (Syntax AST <-> Semantic AST 命名差异)
+            alias_map = {
+                'ConditionalExpression': 'ConditionalOp',
+                'ConcatenationExpression': 'Concatenation',
+            }
+            if kind_name in alias_map:
+                alias = alias_map[kind_name]
+                # [FIX] 方法名是 snake_case: ConditionalOp -> conditional_op
+                import re
+                snake_alias = re.sub(r'(?<!^)(?=[A-Z])', '_', alias).lower()
+                method_name = f"get_all_{snake_alias}"
+                if hasattr(self, method_name):
+                    return getattr(self, method_name)(node)
+            
+            # [FIX] ConditionalPredicate/Pattern 处理 - 从 conditions 提取
+            if kind_name in ('ConditionalPredicate', 'ConditionalPattern'):
+                # ConditionalPattern 有 expr 属性
+                if kind_name == 'ConditionalPattern':
+                    expr = getattr(node, 'expr', None)
+                    if expr:
+                        return self.get_all_signals(expr)
+                    return []
+                # ConditionalPredicate 有 conditions 属性
+                if kind_name == 'ConditionalPredicate':
+                    conditions = getattr(node, 'conditions', None)
+                    if conditions:
+                        signals = []
+                        for cond in conditions:
+                            signals.extend(self.get_all_signals(cond))
+                        return [s for s in signals if s]
+                    return []
         
         # 兜底: 单信号
         single = self.visit(node)

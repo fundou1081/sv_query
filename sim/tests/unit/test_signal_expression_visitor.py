@@ -85,8 +85,8 @@ endmodule'''
         
         mock = MockLiteral()
         result = visitor.visit(mock)
-        # 42 是 Python int，没有 value 属性所以会走 generic_visit
-        assert result == 42 or result is None  # 字面量可能返回 42
+        # value=42 是 Python int，visit_integer_literal 返回 str(42) = '42'
+        assert result == '42' or result == 42 or result is None
     
     def test_visit_scoped_name(self, visitor):
         """测试 ScopedName 提取"""
