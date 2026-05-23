@@ -20,8 +20,8 @@ class TestAliases(unittest.TestCase):
         return UnifiedTracer(sources={'test.sv': source})
     
     def test_alias(self):
-        """[Alias] alias 语句
-        金标准: [已知限制] alias 暂不支持
+        """[Alias] alias 语句: alias b = a;
+        金标准: b 驱动源为 a
         """
         source = '''
 module top(input a, output b);
@@ -31,9 +31,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('b', 'top')
         
-        # [已知限制] alias 暂不支持
-        self.assertEqual(len(result.drivers), 0,
-            "[已知限制] alias 暂不支持")
+        self.assertEqual(len(result.drivers), 1,
+            "alias b = a 应有 1 个驱动源 (a)")
+        self.assertIn('top.a', [d.id for d in result.drivers],
+            "b 的驱动应包含 top.a")
     
     def test_typedef_struct(self):
         """[Typedef] struct 定义和访问
