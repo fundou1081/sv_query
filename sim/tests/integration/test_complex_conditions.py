@@ -334,9 +334,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
         
-        self.assertEqual(len(result.drivers), 2,
-            "if (sel) y <= sel ? a : b 应有 2 个驱动源 (a, b)")
+        self.assertEqual(len(result.drivers), 3,
+            "if (sel) y <= sel ? a : b 应有 3 个驱动源 (sel, a, b)")
         ids = self._driver_ids(result)
+        self.assertIn('top.sel', ids, "y 的驱动应包含 top.sel")
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
         self.assertEqual(result.confidence, 'high')

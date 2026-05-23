@@ -1330,9 +1330,17 @@ class DriverExtractor:
         kind_str = str(kind) if kind else ''
 
         # 三元运算符: sel ? a : b → [sel, a, b]
-        if 'ConditionalExpression' in kind_str:
+        # [FIX] pyslang uses ConditionalOp, not ConditionalExpression
+        # [FIX] ConditionalOp uses conditions[0].expr for predicate, not .predicate
+        if 'ConditionalOp' in kind_str or 'ConditionalExpression' in kind_str:
             signals = []
-            # predicate (condition)
+            # predicate (condition) - ConditionalOp uses conditions[0].expr
+            conditions = getattr(signal, 'conditions', None)
+            if conditions and len(conditions) > 0:
+                cond_expr = getattr(conditions[0], 'expr', None)
+                if cond_expr:
+                    signals.extend(self._get_all_signals(cond_expr))
+            # Also try .predicate for compatibility
             pred = getattr(signal, 'predicate', None)
             if pred:
                 signals.extend(self._get_all_signals(pred))
@@ -1385,6 +1393,19 @@ class DriverExtractor:
             if operand:
                 return self._get_all_signals(operand)
             return []
+
+        # [FIX] Call/Invocation 表达式: 函数调用参数
+        # 例如: $floor(r) -> Call.arguments = [r]
+        # [FIX] pyslang uses Call, not Invocation
+        if 'Call' in kind_str or 'Invocation' in kind_str:
+            signals = []
+            # Extract arguments (the actual function arguments, not the function name)
+            args = getattr(signal, 'arguments', None)
+            if args:
+                for arg in args:
+                    if arg:
+                        signals.extend(self._get_all_signals(arg))
+            return [s for s in signals if s]
 
         # [FIX Semantic AST] ElementSelect 表达式: 位选择 data[5]
         # 构造完整位选表达式 data[5]，而不是只返回基础信号 data
@@ -2266,9 +2287,19 @@ class LoadExtractor:
                 return self._get_signal(expr)
             return None
 
-        # [FIX] 处理 ConditionalExpression (三元运算符 sel ? a : b)
-        # 递归提取第一个操作数(与 _get_all_signals 互补)
-        if kind and 'ConditionalExpression' in str(kind):
+        # [FIX] 处理 ConditionalOp (三元运算符 sel ? a : b)
+        # [FIX] pyslang uses ConditionalOp, not ConditionalExpression
+        # [FIX] ConditionalOp uses conditions[0].expr for predicate
+        if kind and ('ConditionalOp' in str(kind) or 'ConditionalExpression' in str(kind)):
+            # Try conditions[0].expr first (ConditionalOp)
+            conditions = getattr(signal, 'conditions', None)
+            if conditions and len(conditions) > 0:
+                cond_expr = getattr(conditions[0], 'expr', None)
+                if cond_expr:
+                    result = self._get_signal(cond_expr)
+                    if result:
+                        return result
+            # Try .predicate for compatibility
             pred = getattr(signal, 'predicate', None)
             if pred:
                 result = self._get_signal(pred)
