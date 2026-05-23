@@ -138,25 +138,80 @@ class SignalExpressionVisitor(BaseVisitor):
                         return [s for s in signals if s]
                     return []
         
-        # 兜底: 单信号
-        single = self.visit(node)
-        return [single] if single else []
+        # 兜底: 递归提取所有子节点信号 (用于二元、位选等表达式)
+        return self.get_all_signals_fallback(node)
     
     def generic_visit(self, node) -> Optional[str]:
         """默认递归进入子节点
         
         对于未实现的类型，尝试递归提取左操作数。
+        [铁律26] 禁止 if-elif 链，使用 hasattr 检查
         """
+        # [FIX] 二元表达式: left + right, left - right, etc.
+        # 对于 get_all_signals，generic_visit 不会被调用（由调用方处理）
+        # 对于 visit(单信号)，返回 left
         if hasattr(node, 'left') and hasattr(node, 'right'):
             left = getattr(node, 'left', None)
             if left:
                 return self.visit(left)
+        
         # [FIX] NamedValue 等类型有 symbol 属性
         if hasattr(node, 'symbol'):
             sym = getattr(node, 'symbol', None)
             if sym and hasattr(sym, 'name'):
                 return str(sym.name).strip()
         return None
+    
+    def get_all_signals_fallback(self, node) -> List[str]:
+        """Fallback for get_all_signals when no specific method exists
+        
+        递归提取所有子节点的信号（用于二元、位选等表达式）
+        """
+        if node is None:
+            return []
+        
+        signals = []
+        
+        # Binary expression: left + right
+        if hasattr(node, 'left') and hasattr(node, 'right'):
+            left = getattr(node, 'left', None)
+            right = getattr(node, 'right', None)
+            if left:
+                signals.extend(self.get_all_signals(left))
+            if right:
+                signals.extend(self.get_all_signals(right))
+            if signals:
+                return [s for s in signals if s]
+        
+        # ElementSelect: data[5] -> recursively get signals from value
+        if hasattr(node, 'value'):
+            value = getattr(node, 'value', None)
+            if value:
+                signals.extend(self.get_all_signals(value))
+                if signals:
+                    return [s for s in signals if s]
+        
+        # Unary expression: operand (e.g., |a, &b, ~c)
+        if hasattr(node, 'operand'):
+            operand = getattr(node, 'operand', None)
+            if operand:
+                signals.extend(self.get_all_signals(operand))
+                if signals:
+                    return [s for s in signals if s]
+        
+        # InvocationExpression/Call: $floor(a), func(b) -> get arguments
+        if hasattr(node, 'arguments'):
+            args = getattr(node, 'arguments', None)
+            if args:
+                for arg in args:
+                    if arg:
+                        signals.extend(self.get_all_signals(arg))
+                if signals:
+                    return [s for s in signals if s]
+        
+        # Single signal fallback
+        single = self.visit(node)
+        return [single] if single else []
     
     # =========================================================================
     # [P0] 基础标识符 - 最常用，必须实现
