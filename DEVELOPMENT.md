@@ -833,3 +833,238 @@ curl -L "https://github.com/chipsalliance/verible/releases/download/v0.0-4053-g8
 tar -xzf verible.tar.gz -C ~/
 ```
 
+
+---
+
+## 2026-05-23 Graph Builder 重构铁律
+
+### 铁律26: Visitor 模式必须用于 AST 遍历 [生效]
+
+**必须**：所有 AST 遍历必须使用 Visitor 模式，禁止使用 if-elif 链处理不同语法类型
+
+**原因**：
+- SystemVerilog 语法类型 200+，if-elif 不可维护
+- Visitor 模式符合开闭原则，新增语法不破坏现有代码
+- 每个语法类型独立方法，可单独测试
+
+**禁止**：
+```python
+# ❌ 禁止 - if-elif 链处理所有语法类型
+def process_node(self, node):
+    ks = str(getattr(node, 'kind', ''))
+    if 'Case' in ks:
+        ...
+    elif 'Conditional' in ks:
+        ...
+    elif 'AlwaysFF' in ks:
+        ...
+    # ... 30+ more branches
+```
+
+**必须**：
+```python
+# ✅ 正确 - 使用 Visitor 模式
+class StatementVisitor:
+    def visit_case_statement(self, node):
+        ...
+    
+    def visit_conditional_statement(self, node):
+        ...
+    
+    def visit_always_ff(self, node):
+        ...
+```
+
+**Visitor 方法命名规范**：
+- `visit_<SyntaxKind>` - 语法节点访问
+- 例如：`visit_case_statement`, `visit_conditional_statement`
+- 使用 `visit_` 前缀区分其他方法
+
+**校验方式**：
+```bash
+grep -n "if.*in.*ks\|elif.*in.*ks" src/trace/core/
+# 应返回空 (允许 filter 类的 if 分支)
+```
+
+---
+
+### 铁律27: 每个语法类型必须有对应 Visitor 方法 [生效]
+
+**必须**：每个 AST 语法类型必须有对应的 `visit_<type>` 方法
+
+**原则**：
+1. 新语法类型 → 必须添加对应的 `visit_<type>` 方法
+2. 无法处理 → 抛出 `NotImplementedError` 或记录到 `result.errors`
+3. 禁止静默跳过未实现的语法类型
+
+**示例**：
+```python
+# ✅ 正确 - 有对应方法
+def visit_range_select(self, node):
+    """RangeSelect: data[3:0]"""
+    ...
+
+# ❌ 错误 - 没有对应方法
+def visit(self, node):
+    kind = getattr(node, 'kind', None)
+    if kind == SyntaxKind.RangeSelect:
+        # 没有独立方法，违反铁律
+        ...
+```
+
+---
+
+### 铁律28: Visitor 实现必须包含单元测试 [生效]
+
+**必须**：每个新 Visitor 方法必须包含单元测试
+
+**测试要求**：
+```python
+def test_visit_identifier_name():
+    """测试 IdentifierName 提取"""
+    visitor = SignalVisitor()
+    node = create_identifier_node("clk")
+    result = visitor.visit(node)
+    assert result == "clk"
+
+def test_visit_scoped_name():
+    """测试 ScopedName 提取"""
+    visitor = SignalVisitor()
+    node = create_scoped_node("top.clk")
+    result = visitor.visit(node)
+    assert result == "top.clk"
+```
+
+**禁止**：
+```python
+# ❌ 禁止 - 没有测试
+def visit_range_select(self, node):
+    ...
+    # 没有任何测试覆盖
+```
+
+---
+
+### 铁律29: Graph Builder 重构保留旧实现作为 fallback [生效]
+
+**必须**：重构过程中保留旧实现，标记为 deprecated
+
+**原因**：
+1. 降低重构风险
+2. 渐进式迁移
+3. 快速回滚能力
+
+**示例**：
+```python
+def _get_signal(self, signal) -> Optional[str]:
+    # [DEPRECATED] 使用 Visitor 替代
+    # 临时调用旧实现，确保功能不丢失
+    return self._signal_visitor.visit(signal)
+```
+
+**标记方式**：
+```python
+# [DEPRECATED in v0.2] - 将在 v0.3 中删除
+# 使用 SignalExpressionVisitor 替代
+```
+
+---
+
+### 铁律30: 重构完成后必须通过完整测试套件 [生效]
+
+**必须**：每次重构完成后必须运行完整测试套件
+
+**验证命令**：
+```bash
+pytest sim/tests/ --tb=no -q
+# 必须: 816 passed, 0 failed
+```
+
+**禁止**：
+- 部分测试通过就提交
+- 跳过失败的测试
+- 忽略回归
+
+**回归处理**：
+1. 如果测试失败 → 停止重构，回滚更改
+2. 如果有 flaky test → 单独记录，不阻塞
+3. 如果有已知失败 → 记录到 KNOWN_LIMITATIONS.md
+
+---
+
+### 铁律31: 提取公共函数消除重复代码 [生效]
+
+**必须**：重复的代码模式必须提取为公共函数
+
+**当前问题**：
+- ScopedName 处理在 `graph_builder.py` 中出现 2 次
+- RangeSelect 处理在 `_get_signal` 和 `_get_all_signals` 中重复
+
+**示例**：
+```python
+# ✅ 正确 - 提取公共函数
+def _extract_scoped_name(syntax_node, adapter):
+    """从 ScopedNameSyntax 提取点分路径"""
+    parts = []
+    def walk(node):
+        ...
+    walk(syntax_node)
+    return '.'.join(parts) if parts else None
+
+# 复用
+class SignalVisitor:
+    def visit_scoped_name(self, node):
+        return _extract_scoped_name(node, self.adapter)
+
+class AnotherVisitor:
+    def visit_hierarchical_value(self, node):
+        syntax = getattr(node, 'syntax', None)
+        if syntax:
+            return _extract_scoped_name(syntax, self.adapter)
+```
+
+**校验方式**：
+```bash
+# 检测重复代码
+grep -n "def _get_scoped_parts" src/trace/core/
+# 应只出现 1 次
+```
+
+---
+
+### 铁律32: 重构分阶段实施，每阶段完成后验证 [生效]
+
+**必须**：重构必须分阶段实施，每阶段完成后验证
+
+**阶段要求**：
+| 阶段 | 完成标准 |
+|------|----------|
+| 阶段1 | SignalExpressionVisitor 单元测试通过 |
+| 阶段2 | StatementCollectorVisitor 单元测试通过 |
+| 阶段3 | _get_signal 替换通过集成测试 |
+| 阶段4 | _collect_stmts_with_context 替换通过集成测试 |
+| 阶段5 | 完整测试套件通过 (816 passed, 0 failed) |
+
+**禁止**：
+- 一次性完成所有重构
+- 跳过中间验证
+- 跳过阶段测试
+
+---
+
+## 2026-05-23 重构进度追踪
+
+| Task | 名称 | 状态 | 完成日期 |
+|------|------|------|----------|
+| Task 1 | SignalExpressionVisitor | ⏳ 待开始 | - |
+| Task 2 | StatementCollectorVisitor | ⏳ 待开始 | - |
+| Task 3 | _get_signal 替换 | ⏳ 待开始 | - |
+| Task 4 | _collect_stmts_with_context 替换 | ⏳ 待开始 | - |
+| Task 5 | 清理和验证 | ⏳ 待开始 | - |
+
+**当前状态**: 816 passed, 0 failed (重构前基准)
+
+---
+
+*最后更新: 2026-05-23 12:10 GMT+8*
+*Graph Builder 重构铁律 v1.0*
