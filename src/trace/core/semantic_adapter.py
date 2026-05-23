@@ -668,6 +668,18 @@ class SemanticAdapter:
 
         return nets
 
+    def get_net_aliases(self, module) -> List:
+        """获取模块的 NetAlias (alias 语句)"""
+        aliases = []
+
+        if hasattr(module, 'body') and module.body:
+            for member in module.body:
+                kind = str(getattr(member, 'kind', ''))
+                if 'NetAlias' in kind:
+                    aliases.append(member)
+
+        return aliases
+
     def get_variable_declarations(self, module) -> List:
         """获取模块的变量声明
         
