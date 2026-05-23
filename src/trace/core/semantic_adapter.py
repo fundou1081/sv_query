@@ -95,6 +95,47 @@ class SemanticAdapter:
         # 遍历 root.topInstances 获取顶级模块实例
         for inst in self._root.topInstances:
             collect_instances(inst)
+        
+        # [FIX] 如果 topInstances 为空(例如只有参数化模块定义但没有实例化),
+        # 从 compilationUnits 获取模块定义
+        if not modules and self._compiler:
+            comp = self._compiler.get_compilation()
+            root = self._compiler.get_root()
+            
+            # 尝试从 DefinitionSymbol 获取模块定义
+            for unit in self._root.compilationUnits:
+                def collect_from_compilation(comp_node):
+                    nonlocal modules
+                    if comp_node is None:
+                        return
+                    
+                    kind = getattr(comp_node, 'kind', None)
+                    kind_str = str(kind) if kind else 'None'
+                    name = getattr(comp_node, 'name', None)
+                    name_str = str(name) if name else '_anon_'
+                    
+                    key = (kind_str, name_str)
+                    if key in seen_ids:
+                        return
+                    seen_ids.add(key)
+                    
+                    # DefinitionSymbol - 表示模块定义(用于参数化模块)
+                    if kind_str == 'SymbolKind.Definition':
+                        # 尝试从 DefinitionSymbol 获取 InstanceSymbol
+                        def_result = comp.tryGetDefinition(name_str, root)
+                        if hasattr(def_result, 'definition') and def_result.definition:
+                            inst = def_result.definition
+                            # Wrap DefinitionSymbol in a pseudo-InstanceSymbol-like wrapper
+                            modules.append(inst)
+                    
+                    # 递归遍历 children
+                    if hasattr(comp_node, 'children'):
+                        for child in comp_node.children:
+                            collect_from_compilation(child)
+                
+                if hasattr(unit, 'members'):
+                    for member in unit.members:
+                        collect_from_compilation(member)
 
         return modules
 
