@@ -96,6 +96,66 @@ if not parsed:
     return SignalChain(drivers=[])  # 缺少 confidence
 ```
 
+### 铁律3.1: 错误处理禁止静默忽略 [生效]
+
+**必须**：所有异常必须被记录或重新抛出，禁止使用裸 `except: pass`
+
+**严禁**：
+```python
+# 所有这些都禁止
+try:
+    ...
+except:
+    pass
+
+try:
+    ...
+except Exception:
+    pass
+```
+
+**正确做法**：
+```python
+# 方案1: 记录到 result.errors
+try:
+    ...
+except Exception as e:
+    result.errors.append(f"处理失败: {type(e).__name__}: {e}")
+    # 继续处理
+
+# 方案2: 重新抛出 (当错误不可恢复时)
+try:
+    ...
+except ValueError as e:
+    raise ValueError(f"[铁律3] 无法处理: {e}") from e
+
+# 方案3: 记录到日志 (用于非关键错误)
+try:
+    ...
+except Exception as e:
+    logging.warning(f"跳过无效节点: {e}")
+    continue
+```
+
+**例外**：以下情况可使用空的 `except` (但必须有注释说明原因):
+1. 遍历子节点时的辅助错误不影响主流程
+2. 尝试性解析，失败不影响后续处理
+
+```python
+# 允许: 有明确注释说明为何忽略
+try:
+    child = getattr(n, attr)
+except:  # getattr 失败，属性不存在，跳过
+    pass
+```
+
+**校验方式**：
+```bash
+grep -rn "except:" src/trace/core/
+grep -rn "except Exception:" src/trace/core/
+# 应返回空或只在允许的场景出现
+```
+
 ---
 
 ## 第二部分：架构铁律
