@@ -1431,7 +1431,14 @@ class DriverExtractor:
         # ConditionalPredicate → 递归进入 conditions
         if 'ConditionalPredicate' in kind_str or 'ConditionalPattern' in kind_str:
             signals = []
-            # conditions 是一个 SeparatedList,需要迭代提取
+            # [FIX] ConditionalPattern 有 expr 属性，不是 conditions
+            if 'ConditionalPattern' in kind_str:
+                expr = getattr(signal, 'expr', None)
+                if expr:
+                    return self._get_all_signals(expr)
+                return []
+            
+            # ConditionalPredicate 有 conditions 属性
             conditions = getattr(signal, 'conditions', None)
             if conditions:
                 # SeparatedList 是容器,需要迭代
