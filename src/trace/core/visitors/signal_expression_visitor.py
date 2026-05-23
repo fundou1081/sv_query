@@ -62,11 +62,23 @@ class SignalExpressionVisitor(BaseVisitor):
         
         kind_name = kind.name if hasattr(kind, 'name') else None
         if kind_name:
-            # 转换 CamelCase -> snake_case: IdentifierName -> visit_identifier_name
             import re
+            # 首先尝试直接转换 (IdentifierName -> visit_identifier_name)
             method_name = "visit_" + re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
             if hasattr(self, method_name):
                 return getattr(self, method_name)(node)
+            
+            # 别名映射 (Syntax AST <-> Semantic AST 命名差异)
+            # BinaryOp -> binary_expression, UnaryOp -> unary
+            alias_map = {
+                'BinaryOp': 'binary_expression',
+                'UnaryOp': 'unary',
+                'ConditionalExpression': 'conditional_op',
+            }
+            if kind_name in alias_map:
+                method_name = "visit_" + alias_map[kind_name]
+                if hasattr(self, method_name):
+                    return getattr(self, method_name)(node)
         
         return self.generic_visit(node)
     
@@ -100,6 +112,8 @@ class SignalExpressionVisitor(BaseVisitor):
             alias_map = {
                 'ConditionalExpression': 'ConditionalOp',
                 'ConcatenationExpression': 'Concatenation',
+                'BinaryOp': 'binary_expression',
+                'UnaryOp': 'unary',
             }
             if kind_name in alias_map:
                 alias = alias_map[kind_name]
@@ -177,6 +191,30 @@ class SignalExpressionVisitor(BaseVisitor):
             return str(node).strip()
         
         return None
+    
+    def get_all_binary_expression(self, node) -> List[str]:
+        """BinaryExpression: a + b, a & b 等
+        
+        递归提取左右操作数中的所有信号
+        """
+        signals = []
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            signals.extend(self.get_all_signals(left))
+        if right:
+            signals.extend(self.get_all_signals(right))
+        return [s for s in signals if s]
+    
+    def get_all_unary(self, node) -> List[str]:
+        """UnaryExpression: ~a, -a, !a 等
+        
+        递归提取操作数中的所有信号
+        """
+        operand = getattr(node, 'operand', None) or getattr(node, 'expression', None)
+        if operand:
+            return self.get_all_signals(operand)
+        return []
     
     def get_all_signals_fallback(self, node) -> List[str]:
         """Fallback for get_all_signals when no specific method exists
