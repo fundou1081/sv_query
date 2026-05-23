@@ -116,10 +116,9 @@ class SignalExpressionVisitor(BaseVisitor):
             # 这里处理 CamelCase kind_name 转换为 snake_case 的情况
             import re
             snake_kind = re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
-            if snake_kind != kind_name.lower():  # Only if actually different (has uppercase)
-                method_name = f"get_all_{snake_kind}"
-                if hasattr(self, method_name):
-                    return getattr(self, method_name)(node)
+            method_name = f"get_all_{snake_kind}"
+            if hasattr(self, method_name):
+                return getattr(self, method_name)(node)
             
             # [FIX] ConditionalPredicate/Pattern 处理 - 从 conditions 提取
             if kind_name in ('ConditionalPredicate', 'ConditionalPattern'):
