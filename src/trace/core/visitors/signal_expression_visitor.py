@@ -203,9 +203,18 @@ class SignalExpressionVisitor(BaseVisitor):
         if hasattr(node, 'arguments'):
             args = getattr(node, 'arguments', None)
             if args:
-                for arg in args:
-                    if arg:
-                        signals.extend(self.get_all_signals(arg))
+                # ArgumentListSyntax has .parameters, not iterable directly
+                params = getattr(args, 'parameters', None)
+                if params is not None:
+                    # OrderedArgumentSyntax/ NamedArgumentSyntax
+                    for p in params if hasattr(params, '__iter__') else [params]:
+                        expr = getattr(p, 'expr', None)
+                        if expr:
+                            signals.extend(self.get_all_signals(expr))
+                else:
+                    for arg in args:
+                        if arg:
+                            signals.extend(self.get_all_signals(arg))
                 if signals:
                     return [s for s in signals if s]
         
