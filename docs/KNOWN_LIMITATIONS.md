@@ -33,14 +33,14 @@
 | 2 | test_complex_expression | `((a+b)&c)\|(sel?a:b)` | ✅ 通过 | 同上 |
 | 3 | test_floor | `$floor(r)` | ✅ 通过 | Call 表达式添加 arguments 参数提取 |
 
-### P2 - 中优先级（2 个完成，2 个待修复）
+### P2 - 中优先级（全部完成）✅
 **中等复杂度，需要一定的 AST 修改**
 
 | # | 测试 | RTL | 状态 | 修复内容 |
 |---|------|-----|------|----------|
 | 4 | test_alias | `alias b = a` | ✅ 通过 | 添加 get_net_aliases() + graph_builder alias 处理 |
 | 6 | test_case_inside_if | `case(1'b1) default: y<=0` | ✅ 通过 | CaseStatement items 从 semantic.items 改为 syntax.items |
-| 5 | test_parameterized_module | `parameter WIDTH = 8` | ❌ 待修 | 参数化模块 get_modules() 返回空，需要调试 |
+| 5 | test_parameterized_module | `parameter WIDTH = 8` | ✅ 通过 | 修正测试用例，添加 testbench 实例化 wrapper |
 | 7 | test_ternary_in_if | `if(sel) y<=sel?a:b` | ✅ 通过 | 已由 P1 三元修复覆盖 |
 
 ### P3 - 低优先级（3 个）
