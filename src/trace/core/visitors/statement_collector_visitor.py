@@ -167,6 +167,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         initial 块没有时钟域，条件为空
         """
+        self._add_statement(node)
         stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
         if stmt:
             self.visit(stmt)
@@ -357,6 +358,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         提取时钟，进入 statement
         """
+        self._add_statement(node)
         tc = getattr(node, 'timingControl', None)
         if tc:
             clock = self._extract_clock_from_event_ctrl(tc)
@@ -375,6 +377,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         委托给 visit_timed_statement
         """
+        # 不直接添加，而是委托给 timed_statement 处理
         self.visit_timed_statement(node)
     
     def visit_timed_statement(self, node):
@@ -382,6 +385,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 stmt
         """
+        self._add_statement(node)
         stmt = getattr(node, 'stmt', None)
         if stmt:
             self.visit(stmt)
@@ -395,6 +399,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 body
         """
+        self._add_statement(node)
         body = getattr(node, 'body', None)
         if body:
             if hasattr(body, 'kind') and not (hasattr(body, '__iter__') and not isinstance(body, str)):
@@ -407,11 +412,18 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 条件语句
     # =========================================================================
     
+
+    def visit_sequential_block(self, node):
+        """begin...end 块"""
+        self._add_statement(node)
+        self.generic_visit(node)
+
     def visit_case_statement(self, node):
         """CaseStatement: case/endcase
         
         处理所有分支，追踪条件上下文
         """
+        self._add_statement(node)
         # 提取 case 条件
         case_cond = ""
         if hasattr(node, 'condition'):
@@ -433,11 +445,21 @@ class StatementCollectorVisitor(BaseVisitor):
                 if stmt:
                     self.visit(stmt)
     
+
+    def visit_case(self, node):
+        """case / casex / casez"""
+        self.visit_case_statement(node)
+
+    def visit_if(self, node):
+        """if-else 语句"""
+        self.visit_conditional_statement(node)
+
     def visit_conditional_statement(self, node):
         """ConditionalStatement: if/else
         
         处理 ifTrue/ifFalse，追踪条件
         """
+        self._add_statement(node)
         # 提取条件
         cond = self._extract_condition(node)
         
@@ -497,6 +519,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 clause
         """
+        self._add_statement(node)
         s = getattr(node, 'clause', None)
         if s:
             self.visit(s)
@@ -510,6 +533,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 expr
         """
+        self._add_statement(node)
         e = getattr(node, 'expr', None)
         if e:
             self.visit(e)
@@ -526,7 +550,11 @@ class StatementCollectorVisitor(BaseVisitor):
         
         收集调用节点
         """
-        self._add_statement((node, self.current_ctx, "invocation"))
+        self._add_statement(node)
+    
+    def visit_continuous_assignment(self, node):
+        """assign 连续赋值"""
+        self._add_statement(node)
     
     # =========================================================================
     # [P2] 循环语句
@@ -537,6 +565,7 @@ class StatementCollectorVisitor(BaseVisitor):
         
         进入 body/statement
         """
+        self._add_statement(node)
         stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
         if stmt:
             self.visit(stmt)
@@ -545,24 +574,36 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P2] 其他语句类型
     # =========================================================================
     
+
+    def visit_nonblocking_assignment(self, node):
+        """<= 非阻塞赋值"""
+        self._add_statement(node)
+
+    def visit_blocking_assignment(self, node):
+        """= 阻塞赋值"""
+        self._add_statement(node)
+
     def visit_jump_statement(self, node):
         """JumpStatement: return/break/continue"""
-        pass
+        self._add_statement(node)
     
     def visit_wait_statement(self, node):
         """WaitStatement: wait(condition)"""
+        self._add_statement(node)
         self.generic_visit(node)
     
     def visit_event_control(self, node):
         """EventControl: @clk"""
+        self._add_statement(node)
         stmt = getattr(node, 'statement', None)
         if stmt:
             self.visit(stmt)
     
     def visit_disable_statement(self, node):
         """DisableStatement: disable name"""
-        pass
+        self._add_statement(node)
     
     def visit_procedural_timing_control(self, node):
         """ProceduralTimingControl: #delay"""
+        self._add_statement(node)
         self.generic_visit(node)
