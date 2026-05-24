@@ -8297,6 +8297,258 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Loop statements
+    @on('LoopStatement')
+    def extract_loop_statement(self, node) -> SignalResult:
+        """LoopStatement: loop statement (for, while, do-while, repeat, foreach)"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        vars_ = getattr(node, 'variables', None) or getattr(node, 'declarations', None)
+        if vars_ and hasattr(vars_, '__iter__'):
+            for v in vars_:
+                if v:
+                    result = result.merge(self.extract(v))
+        return result
+    
+    @on('ForVariableDeclaration')
+    def extract_for_variable_declaration(self, node) -> SignalResult:
+        """ForVariableDeclaration: for loop variable declaration"""
+        result = SignalResult()
+        var = getattr(node, 'variable', None) or getattr(node, 'var', None)
+        if var:
+            result = result.merge(self.extract(var))
+        init = getattr(node, 'init', None) or getattr(node, 'expr', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
+    @on('DoWhileStatement')
+    def extract_do_while_statement(self, node) -> SignalResult:
+        """DoWhileStatement: do-while statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('ForeverStatement')
+    def extract_forever_statement(self, node) -> SignalResult:
+        """ForeverStatement: forever statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('LoopConstraint')
+    def extract_loop_constraint_stmt(self, node) -> SignalResult:
+        """LoopConstraint: loop constraint"""
+        result = SignalResult()
+        vars_ = getattr(node, 'variables', None) or getattr(node, 'loop_vars', None)
+        if vars_ and hasattr(vars_, '__iter__'):
+            for v in vars_:
+                if v:
+                    result = result.merge(self.extract(v))
+        constraint = getattr(node, 'constraint', None) or getattr(node, 'body', None)
+        if constraint:
+            result = result.merge(self.extract(constraint))
+        return result
+    
+    # Jump statements
+    @on('JumpStatement')
+    def extract_jump_statement(self, node) -> SignalResult:
+        """JumpStatement: break, continue, return, disable statements"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Return statement
+    @on('ReturnStatement')
+    def extract_return_statement(self, node) -> SignalResult:
+        """ReturnStatement: return statement"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Disable fork statement
+    @on('DisableForkStatement')
+    def extract_disable_fork_statement(self, node) -> SignalResult:
+        """DisableForkStatement: disable fork statement"""
+        return SignalResult()
+    
+    # Wait statement
+    @on('WaitStatement')
+    def extract_wait_statement(self, node) -> SignalResult:
+        """WaitStatement: wait statement"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    # Procedural release statement
+    @on('ProceduralReleaseStatement')
+    def extract_procedural_release_statement(self, node) -> SignalResult:
+        """ProceduralReleaseStatement: procedural release statement"""
+        return SignalResult()
+    
+    # Event trigger statements
+    @on('NonblockingEventTriggerStatement')
+    def extract_nonblocking_event_trigger_statement(self, node) -> SignalResult:
+        """NonblockingEventTriggerStatement: nonblocking event trigger ->>"""
+        return SignalResult()
+    
+    # Property expressions
+    @on('ConditionalPropertyExpr')
+    def extract_conditional_property_expr(self, node) -> SignalResult:
+        """ConditionalPropertyExpr: conditional property expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        prop = getattr(node, 'property', None) or getattr(node, 'true_body', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'false_body', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
+    @on('SimplePropertyExpr')
+    def extract_simple_property_expr(self, node) -> SignalResult:
+        """SimplePropertyExpr: simple property expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return result
+    
+    @on('SimpleSequenceExpr')
+    def extract_simple_sequence_expr(self, node) -> SignalResult:
+        """SimpleSequenceExpr: simple sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            return self.extract(seq)
+        return result
+    
+    @on('IffPropertyExpr')
+    def extract_iff_property_expr(self, node) -> SignalResult:
+        """IffPropertyExpr: property iff expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        iff = getattr(node, 'iff', None) or getattr(node, 'event', None)
+        if iff:
+            result = result.merge(self.extract(iff))
+        return result
+    
+    @on('ImpliesPropertyExpr')
+    def extract_implies_property_expr_stmt(self, node) -> SignalResult:
+        """ImpliesPropertyExpr: implies property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('FollowedByPropertyExpr')
+    def extract_followed_by_property_expr(self, node) -> SignalResult:
+        """FollowedByPropertyExpr: followed_by property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SUntilPropertyExpr')
+    def extract_s_until_property_expr(self, node) -> SignalResult:
+        """SUntilPropertyExpr: s_until property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SUntilWithPropertyExpr')
+    def extract_s_until_with_property_expr(self, node) -> SignalResult:
+        """SUntilWithPropertyExpr: s_until_with property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('UntilPropertyExpr')
+    def extract_until_property_expr(self, node) -> SignalResult:
+        """UntilPropertyExpr: until property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('UntilWithPropertyExpr')
+    def extract_until_with_property_expr(self, node) -> SignalResult:
+        """UntilWithPropertyExpr: until_with property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('StrongWeakPropertyExpr')
+    def extract_strong_weak_property_expr(self, node) -> SignalResult:
+        """StrongWeakPropertyExpr: strong/weak property expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('AcceptOnPropertyExpr')
+    def extract_accept_on_property_expr(self, node) -> SignalResult:
+        """AcceptOnPropertyExpr: accept_on property expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        prop = getattr(node, 'property', None) or getattr(node, 'body', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
