@@ -9035,6 +9035,137 @@ class SignalExpressionVisitor(BaseVisitor):
         """RsWeightClause: randsequence weight clause"""
         return SignalResult()
     
+    # Expression patterns
+    @on('ExpressionPattern')
+    def extract_expression_pattern(self, node) -> SignalResult:
+        """ExpressionPattern: expression pattern"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'pattern', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('PatternCaseItem')
+    def extract_pattern_case_item(self, node) -> SignalResult:
+        """PatternCaseItem: pattern case item"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'patterns', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Streaming expressions
+    @on('StreamingConcatenationExpression')
+    def extract_streaming_concatenation_expression(self, node) -> SignalResult:
+        """StreamingConcatenationExpression: streaming concatenation expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'streams', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('StreamExpressionWithRange')
+    def extract_stream_expression_with_range(self, node) -> SignalResult:
+        """StreamExpressionWithRange: stream expression with range"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expr', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Expression with clauses
+    @on('ExpressionOrDist')
+    def extract_expression_or_dist(self, node) -> SignalResult:
+        """ExpressionOrDist: expression or dist expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        dist = getattr(node, 'dist', None)
+        if dist:
+            result = result.merge(self.extract(dist))
+        return result
+    
+    @on('WithClause')
+    def extract_with_clause(self, node) -> SignalResult:
+        """WithClause: with clause"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'function', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('WithFunctionClause')
+    def extract_with_function_clause(self, node) -> SignalResult:
+        """WithFunctionClause: with function clause"""
+        result = SignalResult()
+        func = getattr(node, 'function', None) or getattr(node, 'expr', None)
+        if func:
+            result = result.merge(self.extract(func))
+        return result
+    
+    @on('WithFunctionSample')
+    def extract_with_function_sample(self, node) -> SignalResult:
+        """WithFunctionSample: with function sample"""
+        return SignalResult()
+    
+    # Queue and literal expressions
+    @on('EmptyQueueExpression')
+    def extract_empty_queue_expression(self, node) -> SignalResult:
+        """EmptyQueueExpression: empty queue expression {}"""
+        return SignalResult()
+    
+    @on('WildcardLiteralExpression')
+    def extract_wildcard_literal_expression(self, node) -> SignalResult:
+        """WildcardLiteralExpression: wildcard literal expression"""
+        return SignalResult()
+    
+    @on('NullLiteralExpression')
+    def extract_null_literal_expression(self, node) -> SignalResult:
+        """NullLiteralExpression: null literal expression"""
+        return SignalResult()
+    
+    @on('StringLiteralExpression')
+    def extract_string_literal_expression_stmt(self, node) -> SignalResult:
+        """StringLiteralExpression: string literal expression"""
+        return SignalResult()
+    
+    @on('TimeLiteralExpression')
+    def extract_time_literal_expression_stmt(self, node) -> SignalResult:
+        """TimeLiteralExpression: time literal expression"""
+        return SignalResult()
+    
+    @on('RealLiteralExpression')
+    def extract_real_literal_expression_stmt(self, node) -> SignalResult:
+        """RealLiteralExpression: real literal expression"""
+        return SignalResult()
+    
+    @on('IntegerLiteralExpression')
+    def extract_integer_literal_expression_stmt(self, node) -> SignalResult:
+        """IntegerLiteralExpression: integer literal expression"""
+        return SignalResult()
+    
+    @on('UnbasedUnsizedLiteralExpression')
+    def extract_unbased_unsized_literal_expression_stmt(self, node) -> SignalResult:
+        """UnbasedUnsizedLiteralExpression: unbased unsized literal expression"""
+        return SignalResult()
+    
+    # Signed cast expression
+    @on('SignedCastExpression')
+    def extract_signed_cast_expression(self, node) -> SignalResult:
+        """SignedCastExpression: signed cast expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
