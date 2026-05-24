@@ -53,7 +53,7 @@ class SignalExpressionVisitor(BaseVisitor):
     _HANDLERS: ClassVar[Dict[str, Callable]] = {}
     
     # 双轨控制: True=新 handler, False=旧方法回退
-    _dispatch_enabled: bool = True
+    _dispatch_enabled: bool = False
     
     def __init__(self, adapter):
         """初始化
@@ -3024,6 +3024,26 @@ class SignalExpressionVisitor(BaseVisitor):
     def extract_typedef_declaration_stmt(self, node) -> SignalResult:
         """[NOT TESTED] TypedefDeclaration: typedef declaration"""
         return SignalResult()
+
+    @on('IdentifierName')
+    def extract_identifier_name(self, node) -> SignalResult:
+        """[MIGRATED] IdentifierName: 简单信号名
+        
+        从 visit_identifier_name 迁移而来
+        """
+        ident = getattr(node, 'identifier', None)
+        if ident is None:
+            logger.debug(f"[MIGRATED] IdentifierName missing 'identifier' attr")
+            return SignalResult()
+        
+        val = getattr(ident, 'value', None)
+        if val is None:
+            logger.debug(f"[MIGRATED] IdentifierName.identifier missing 'value' attr")
+            return SignalResult()
+        
+        signal_name = self.adapter.clean_name(str(val).strip())
+        return SignalResult(primary=signal_name)
+
     
     @on('ForwardTypedefDeclaration')
     def extract_forward_typedef_declaration(self, node) -> SignalResult:
