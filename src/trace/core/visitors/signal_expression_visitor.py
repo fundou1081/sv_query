@@ -6544,6 +6544,102 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(else_body))
         return result
     
+    # Clocking block expressions
+    @on('ClockingBlockEventExpr')
+    def extract_clocking_block_event_expr(self, node) -> SignalResult:
+        """ClockingBlockEventExpr: clocking block event expression"""
+        return SignalResult()
+    
+    @on('ClockingBlockPropertyExpr')
+    def extract_clocking_block_property_expr_stmt(self, node) -> SignalResult:
+        """ClockingBlockPropertyExpr: clocking block property expression"""
+        return SignalResult()
+    
+    @on('ClockingBlockSequenceExpr')
+    def extract_clocking_block_sequence_expr_stmt(self, node) -> SignalResult:
+        """ClockingBlockSequenceExpr: clocking block sequence expression"""
+        return SignalResult()
+    
+    # Data type expressions
+    @on('BitVectorExpr')
+    def extract_bit_vector_expr(self, node) -> SignalResult:
+        """BitVectorExpr: bit vector expression"""
+        return SignalResult()
+    
+    @on('StringLiteralExpr')
+    def extract_string_literal_expr(self, node) -> SignalResult:
+        """StringLiteralExpr: string literal expression"""
+        return SignalResult()
+    
+    @on('TimeLiteralExpr')
+    def extract_time_literal_expr(self, node) -> SignalResult:
+        """TimeLiteralExpr: time literal expression"""
+        return SignalResult()
+    
+    @on('RealLiteralExpr')
+    def extract_real_literal_expr(self, node) -> SignalResult:
+        """RealLiteralExpr: real literal expression"""
+        return SignalResult()
+    
+    @on('IntegerLiteralExpr')
+    def extract_integer_literal_expr(self, node) -> SignalResult:
+        """IntegerLiteralExpr: integer literal expression"""
+        return SignalResult()
+    
+    @on('UnbasedUnsizedLiteralExpr')
+    def extract_unbased_unsized_literal_expr(self, node) -> SignalResult:
+        """UnbasedUnsizedLiteralExpr: unbased unsized literal expression"""
+        return SignalResult()
+    
+    # Method call expressions
+    @on('MethodCallExpression')
+    def extract_method_call_expression_stmt(self, node) -> SignalResult:
+        """MethodCallExpression: method call expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('SystemMethodCallExpression')
+    def extract_system_method_call_expression(self, node) -> SignalResult:
+        """SystemMethodCallExpression: system method call expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # New expressions
+    @on('NewClassExpression')
+    def extract_new_class_expression_stmt(self, node) -> SignalResult:
+        """NewClassExpression: new class expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('NewArrayExpression')
+    def extract_new_array_expression_stmt(self, node) -> SignalResult:
+        """NewArrayExpression: new array expression"""
+        result = SignalResult()
+        size = getattr(node, 'size', None) or getattr(node, 'expr', None)
+        if size:
+            result = result.merge(self.extract(size))
+        return result
+    
+    @on('NewCovergroupExpression')
+    def extract_new_covergroup_expression_stmt(self, node) -> SignalResult:
+        """NewCovergroupExpression: new covergroup expression"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
