@@ -6239,6 +6239,151 @@ class SignalExpressionVisitor(BaseVisitor):
         """RandSequenceStatement: rand sequence statement"""
         return SignalResult()
     
+    # Immediate assertion statements
+    @on('ImmediateAssertStatement')
+    def extract_immediate_assert_statement(self, node) -> SignalResult:
+        """ImmediateAssertStatement: immediate assert statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('ImmediateAssumeStatement')
+    def extract_immediate_assume_statement(self, node) -> SignalResult:
+        """ImmediateAssumeStatement: immediate assume statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('ImmediateCoverStatement')
+    def extract_immediate_cover_statement(self, node) -> SignalResult:
+        """ImmediateCoverStatement: immediate cover statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    # Deferred assertion statements
+    @on('FinalDeferredAssertStatement')
+    def extract_final_deferred_assert_statement(self, node) -> SignalResult:
+        """FinalDeferredAssertStatement: final deferred assert statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('SimpleDeferredAssertStatement')
+    def extract_simple_deferred_assert_statement(self, node) -> SignalResult:
+        """SimpleDeferredAssertStatement: simple deferred assert statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    # Concurrent assertion statements
+    @on('ConcurrentAssertStatement')
+    def extract_concurrent_assert_statement(self, node) -> SignalResult:
+        """ConcurrentAssertStatement: concurrent assert statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('AssertStatement')
+    def extract_assert_statement_stmt(self, node) -> SignalResult:
+        """AssertStatement: assert statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('AssumeStatement')
+    def extract_assume_statement_stmt(self, node) -> SignalResult:
+        """AssumeStatement: assume statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('CoverStatement')
+    def extract_cover_statement_stmt(self, node) -> SignalResult:
+        """CoverStatement: cover statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    # Expect property statement
+    @on('ExpectPropertyStatement')
+    def extract_expect_property_statement_stmt(self, node) -> SignalResult:
+        """ExpectPropertyStatement: expect property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    # Checker instantiation statement
+    @on('CheckerInstantiationStatement')
+    def extract_checker_instantiation_statement(self, node) -> SignalResult:
+        """CheckerInstantiationStatement: checker instantiation statement"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # Final statement
+    @on('FinalStatement')
+    def extract_final_statement(self, node) -> SignalResult:
+        """FinalStatement: final statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    # Initial statement
+    @on('InitialStatement')
+    def extract_initial_statement(self, node) -> SignalResult:
+        """InitialStatement: initial statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
