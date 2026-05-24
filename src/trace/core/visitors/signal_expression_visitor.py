@@ -899,18 +899,6 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(expr))
         return result
     
-    @on('IdentifierName')
-    def extract_identifier_name(self, node) -> SignalResult:
-        """IdentifierName: 简单信号名"""
-        ident = getattr(node, 'identifier', None)
-        if ident is None:
-            return SignalResult()
-        val = getattr(ident, 'value', None)
-        if val is None:
-            return SignalResult()
-        name = self.adapter.clean_name(str(val).strip())
-        return SignalResult.single(name)
-    
     @on('ScopedName')
     def extract_scoped_name(self, node) -> SignalResult:
         """ScopedName: 点分路径 p.sub.data"""
@@ -1137,17 +1125,6 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(body))
         return result
     
-    @on('AssignmentPatternExpression')
-    def extract_assignment_pattern_expr(self, node) -> SignalResult:
-        """AssignmentPatternExpression: pattern expression"""
-        result = SignalResult()
-        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
-        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
-            for p in patterns:
-                if p:
-                    result = result.merge(self.extract(p))
-        return result
-    
     @on('ProceduralAssignStatement')
     def extract_procedural_assign_stmt(self, node) -> SignalResult:
         """ProceduralAssignStatement: procedural assign"""
@@ -1176,22 +1153,6 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(expr)
         return SignalResult()
     
-    @on('DelayControl')
-    def extract_delay_control(self, node) -> SignalResult:
-        """DelayControl: #1 delay"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'delay', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
-    
-    @on('EventControl')
-    def extract_event_control_stmt(self, node) -> SignalResult:
-        """EventControl: @event"""
-        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
-        if event:
-            return self.extract(event)
-        return SignalResult()
-    
     @on('ImplicitEventControl')
     def extract_implicit_event_control(self, node) -> SignalResult:
         """ImplicitEventControl: @@"""
@@ -1211,18 +1172,6 @@ class SignalExpressionVisitor(BaseVisitor):
             for item in items:
                 if item:
                     result = result.merge(self.extract(item))
-        return result
-    
-    @on('ProceduralAssignStatement')
-    def extract_procedural_assign_statement(self, node) -> SignalResult:
-        """ProceduralAssignStatement: procedural assign"""
-        result = SignalResult()
-        lvalue = getattr(node, 'lvalue', None)
-        if lvalue:
-            result = result.merge(self.extract(lvalue))
-        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
-        if rvalue:
-            result = result.merge(self.extract(rvalue))
         return result
     
     @on('ProceduralDeassignStatement')
@@ -1886,64 +1835,6 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
     
     # Sequence and property expression kinds
-    @on('CasePropertyExpr')
-    def extract_case_property_expr(self, node) -> SignalResult:
-        """CasePropertyExpr: case property expression"""
-        result = SignalResult()
-        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
-        if expr:
-            result = result.merge(self.extract(expr))
-        items = getattr(node, 'items', None)
-        if items and hasattr(items, '__iter__'):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-    
-    @on('ClockingPropertyExpr')
-    def extract_clocking_property_expr_stmt(self, node) -> SignalResult:
-        """ClockingPropertyExpr: clocking property expression"""
-        result = SignalResult()
-        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
-        if prop:
-            result = result.merge(self.extract(prop))
-        clock = getattr(node, 'clock', None)
-        if clock:
-            result = result.merge(self.extract(clock))
-        return result
-    
-    @on('OrSequenceExpr')
-    def extract_or_sequence_expr_stmt(self, node) -> SignalResult:
-        """OrSequenceExpr: or sequence expression"""
-        result = SignalResult()
-        left = getattr(node, 'left', None)
-        right = getattr(node, 'right', None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-    
-    @on('AndSequenceExpr')
-    def extract_and_sequence_expr_stmt(self, node) -> SignalResult:
-        """AndSequenceExpr: and sequence expression"""
-        result = SignalResult()
-        left = getattr(node, 'left', None)
-        right = getattr(node, 'right', None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-    
-    @on('UnaryPropertyExpr')
-    def extract_unary_property_expr_stmt(self, node) -> SignalResult:
-        """UnaryPropertyExpr: unary property expression"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'property', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
-    
     @on('WithinSequenceExpr')
     def extract_within_sequence_expr(self, node) -> SignalResult:
         """WithinSequenceExpr: within sequence expression"""
@@ -2029,18 +1920,6 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(select))
         return result
     
-    @on('BinaryBinsSelectExpr')
-    def extract_binary_bins_select_expr_stmt(self, node) -> SignalResult:
-        """BinaryBinsSelectExpr: binary bins select expression"""
-        result = SignalResult()
-        left = getattr(node, 'left', None)
-        right = getattr(node, 'right', None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-    
     @on('BinsSelectConditionExpr')
     def extract_bins_select_condition_expr(self, node) -> SignalResult:
         """BinsSelectConditionExpr: bins select condition expression"""
@@ -2101,16 +1980,6 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
     
     # Class expressions
-    @on('CopyClassExpression')
-    def extract_copy_class_expression(self, node) -> SignalResult:
-        """CopyClassExpression: copy class expression"""
-        result = SignalResult()
-        source = getattr(node, 'source', None) or getattr(node, 'expr', None)
-        if source:
-            result = result.merge(self.extract(source))
-        return result
-    
-    # Constraint expressions
     @on('ConditionalConstraint')
     def extract_conditional_constraint(self, node) -> SignalResult:
         """ConditionalConstraint: conditional constraint"""
@@ -2125,22 +1994,6 @@ class SignalExpressionVisitor(BaseVisitor):
         if false_body:
             result = result.merge(self.extract(false_body))
         return result
-    
-    @on('ExpressionConstraint')
-    def extract_expression_constraint_stmt(self, node) -> SignalResult:
-        """ExpressionConstraint: expression constraint"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
-    
-    @on('DisableConstraint')
-    def extract_disable_constraint_stmt(self, node) -> SignalResult:
-        """DisableConstraint: disable constraint"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'constraint', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
     
     @on('DistConstraintList')
     def extract_dist_constraint_list(self, node) -> SignalResult:
@@ -2480,19 +2333,6 @@ class SignalExpressionVisitor(BaseVisitor):
         return SignalResult()
     
     # Conditional pattern
-    @on('ConditionalPattern')
-    def extract_conditional_pattern_stmt(self, node) -> SignalResult:
-        """ConditionalPattern: conditional pattern"""
-        result = SignalResult()
-        pattern = getattr(node, 'pattern', None)
-        if pattern:
-            result = result.merge(self.extract(pattern))
-        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
-        if cond:
-            result = result.merge(self.extract(cond))
-        return result
-    
-    # Assignment pattern items
     @on('AssignmentPatternItem')
     def extract_assignment_pattern_item(self, node) -> SignalResult:
         """AssignmentPatternItem: assignment pattern item"""
@@ -2738,83 +2578,12 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(cond)
         return SignalResult()
     
-    @on('WaitOrderStatement')
-    def extract_wait_order_statement_stmt(self, node) -> SignalResult:
-        """WaitOrderStatement: wait order statement"""
-        result = SignalResult()
-        items = getattr(node, 'items', None)
-        if items and hasattr(items, '__iter__'):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-    
-    # Fork/join statements
-    @on('EmptyStatement')
-    def extract_empty_statement_stmt(self, node) -> SignalResult:
-        """EmptyStatement: empty statement"""
-        return SignalResult()
-    
-    # Expression statement
-    @on('ExpressionStatement')
-    def extract_expression_statement_stmt(self, node) -> SignalResult:
-        """ExpressionStatement: expression statement"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
-    
-    # Variable declaration statement
     @on('ParameterDeclaration')
     def extract_parameter_declaration(self, node) -> SignalResult:
         """ParameterDeclaration: parameter declaration"""
         return SignalResult()
     
     # Non-blocking assignment statement
-    @on('ProceduralAssignStatement')
-    def extract_procedural_assign_statement_stmt(self, node) -> SignalResult:
-        """ProceduralAssignStatement: procedural assign statement"""
-        result = SignalResult()
-        lvalue = getattr(node, 'lvalue', None)
-        if lvalue:
-            result = result.merge(self.extract(lvalue))
-        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
-        if rvalue:
-            result = result.merge(self.extract(rvalue))
-        return result
-    
-    @on('ProceduralDeassignStatement')
-    def extract_procedural_deassign_statement_stmt(self, node) -> SignalResult:
-        """ProceduralDeassignStatement: procedural deassign statement"""
-        lvalue = getattr(node, 'lvalue', None)
-        if lvalue:
-            return self.extract(lvalue)
-        return SignalResult()
-    
-    # Rand statement
-    @on('RandCaseStatement')
-    def extract_rand_case_statement_stmt(self, node) -> SignalResult:
-        """RandCaseStatement: rand case statement"""
-        result = SignalResult()
-        items = getattr(node, 'items', None)
-        if items and hasattr(items, '__iter__'):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-    
-    @on('RandCaseItem')
-    def extract_rand_case_item_stmt(self, node) -> SignalResult:
-        """RandCaseItem: rand case item"""
-        result = SignalResult()
-        weight = getattr(node, 'weight', None) or getattr(node, 'condition', None)
-        if weight:
-            result = result.merge(self.extract(weight))
-        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
-        if body:
-            result = result.merge(self.extract(body))
-        return result
-    
     @on('RandSequenceStatement')
     def extract_rand_sequence_statement(self, node) -> SignalResult:
         """RandSequenceStatement: rand sequence statement"""
@@ -2852,39 +2621,6 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
     
     # Deferred assertion statements
-    @on('ExpectPropertyStatement')
-    def extract_expect_property_statement_stmt(self, node) -> SignalResult:
-        """ExpectPropertyStatement: expect property statement"""
-        result = SignalResult()
-        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
-        if prop:
-            result = result.merge(self.extract(prop))
-        action = getattr(node, 'action', None)
-        if action:
-            result = result.merge(self.extract(action))
-        return result
-    
-    # Checker instantiation statement
-    @on('NewClassExpression')
-    def extract_new_class_expression_stmt(self, node) -> SignalResult:
-        """NewClassExpression: new class expression"""
-        result = SignalResult()
-        args = getattr(node, 'arguments', None)
-        if args and hasattr(args, '__iter__'):
-            for arg in args:
-                if arg:
-                    result = result.merge(self.extract(arg))
-        return result
-    
-    @on('NewArrayExpression')
-    def extract_new_array_expression_stmt(self, node) -> SignalResult:
-        """NewArrayExpression: new array expression"""
-        result = SignalResult()
-        size = getattr(node, 'size', None) or getattr(node, 'expr', None)
-        if size:
-            result = result.merge(self.extract(size))
-        return result
-    
     @on('DistWeight')
     def extract_dist_weight(self, node) -> SignalResult:
         """DistWeight: dist weight"""
@@ -2898,18 +2634,6 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
     
     # Let expression
-    @on('StreamExpression')
-    def extract_stream_expression_stmt(self, node) -> SignalResult:
-        """StreamExpression: stream expression"""
-        result = SignalResult()
-        items = getattr(node, 'items', None) or getattr(node, 'expr', None)
-        if items and hasattr(items, '__iter__'):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-    
-    # Concatenation expressions
     @on('ModExpression')
     def extract_mod_expression_stmt(self, node) -> SignalResult:
         """ModExpression: mod expression %"""
@@ -2922,15 +2646,6 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
-    @on('ExpressionStatement')
-    def extract_expression_statement_stmt(self, node) -> SignalResult:
-        """ExpressionStatement: expression statement"""
-        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
-        if expr:
-            return self.extract(expr)
-        return SignalResult()
-    
-    # Void expression
     @on('LoopStatement')
     def extract_loop_statement(self, node) -> SignalResult:
         """LoopStatement: loop statement (for, while, do-while, repeat, foreach)"""
@@ -3003,35 +2718,12 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
     
     # Return statement
-    @on('ReturnStatement')
-    def extract_return_statement(self, node) -> SignalResult:
-        """ReturnStatement: return statement"""
-        result = SignalResult()
-        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
-        if expr:
-            result = result.merge(self.extract(expr))
-        return result
-    
-    # Disable fork statement
     @on('DisableForkStatement')
     def extract_disable_fork_statement(self, node) -> SignalResult:
         """DisableForkStatement: disable fork statement"""
         return SignalResult()
     
     # Wait statement
-    @on('WaitStatement')
-    def extract_wait_statement(self, node) -> SignalResult:
-        """WaitStatement: wait statement"""
-        result = SignalResult()
-        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
-        if cond:
-            result = result.merge(self.extract(cond))
-        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
-        if body:
-            result = result.merge(self.extract(body))
-        return result
-    
-    # Procedural release statement
     @on('ProceduralReleaseStatement')
     def extract_procedural_release_statement(self, node) -> SignalResult:
         """ProceduralReleaseStatement: procedural release statement"""
