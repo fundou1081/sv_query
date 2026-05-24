@@ -815,6 +815,312 @@ class SignalExpressionVisitor(BaseVisitor):
         # 合并结果
         return left_result.merge(right_result)
     
+    # =========================================================================
+    # 单 dispatch handlers (Phase 3)
+    # =========================================================================
+    
+    @on('UnaryExpression')
+    def extract_unary(self, node) -> SignalResult:
+        """UnaryExpression: ~a, -a, !a 等"""
+        operand = getattr(node, 'operand', None) or getattr(node, 'expression', None)
+        if operand:
+            return self.extract(operand)
+        return SignalResult()
+    
+    @on('NullLiteral')
+    def extract_null_literal(self, node) -> SignalResult:
+        """NullLiteralExpression: null"""
+        return SignalResult()
+    
+    @on('StringLiteral')
+    def extract_string_literal(self, node) -> SignalResult:
+        """StringLiteralExpression: \"string\""""
+        return SignalResult()
+    
+    @on('EmptyArgument')
+    def extract_empty_argument(self, node) -> SignalResult:
+        """EmptyArgument: 函数参数占位"""
+        return SignalResult()
+    
+    @on('TimeLiteral')
+    def extract_time_literal(self, node) -> SignalResult:
+        """TimeLiteralExpression: 时间字面量"""
+        return SignalResult()
+    
+    @on('RealLiteral')
+    def extract_real_literal(self, node) -> SignalResult:
+        """RealLiteralExpression: 实数字面量"""
+        return SignalResult()
+    
+    @on('UnbasedUnsizedLiteral')
+    def extract_unbased_unsized_literal(self, node) -> SignalResult:
+        """UnbasedUnsizedLiteralExpression: '0, '1, 'x, 'z"""
+        return SignalResult()
+    
+    @on('UnboundedLiteral')
+    def extract_unbounded_literal(self, node) -> SignalResult:
+        """UnboundedLiteralExpression: $"""
+        return SignalResult()
+    
+    @on('InsideExpression')
+    def extract_inside(self, node) -> SignalResult:
+        """InsideExpression: expr inside {a, b, c}"""
+        left = getattr(node, 'left', None) or getattr(node, 'condition', None)
+        right = getattr(node, 'right', None) or getattr(node, 'range', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('MinTypMaxExpression')
+    def extract_min_typ_max(self, node) -> SignalResult:
+        """MinTypMaxExpression: min:typ:max"""
+        signals = []
+        min_val = getattr(node, 'min', None) or getattr(node, 'left', None)
+        typ_val = getattr(node, 'typ', None) or getattr(node, 'value', None)
+        max_val = getattr(node, 'max', None) or getattr(node, 'right', None)
+        result = SignalResult()
+        if min_val:
+            result = result.merge(self.extract(min_val))
+        if typ_val:
+            result = result.merge(self.extract(typ_val))
+        if max_val:
+            result = result.merge(self.extract(max_val))
+        return result
+    
+    @on('DistExpression')
+    def extract_dist(self, node) -> SignalResult:
+        """DistExpression: a dist {[/=]:1, [:=]:2}"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'dist_items', None)
+        if items:
+            for item in items:
+                val = getattr(item, 'value', None) or getattr(item, 'expr', None)
+                if val:
+                    result = result.merge(self.extract(val))
+        return result
+    
+    @on('ValueRangeExpression')
+    def extract_value_range(self, node) -> SignalResult:
+        """ValueRangeExpression: [a:b] or [a..b]"""
+        left = getattr(node, 'left', None) or getattr(node, 'low', None)
+        right = getattr(node, 'right', None) or getattr(node, 'high', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('StreamingExpression')
+    def extract_streaming(self, node) -> SignalResult:
+        """StreamingExpression: {>>[a:b]} or {<<[a:b]}"""
+        expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('MultipleConcatenationExpression')
+    def extract_multiple_concatenation(self, node) -> SignalResult:
+        """MultipleConcatenationExpression: {{n{expr}}"""
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('StreamExpression')
+    def extract_stream_expression(self, node) -> SignalResult:
+        """StreamExpression: {>>[type]{expr}} or {<<[type]{expr}}"""
+        expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('AssignmentPatternExpression')
+    def extract_assignment_pattern(self, node) -> SignalResult:
+        """AssignmentPatternExpression: '{a, b, c}"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('CallExpression')
+    def extract_call(self, node) -> SignalResult:
+        """CallExpression: 函数调用参数"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args:
+            for arg in args:
+                if arg is None:
+                    continue
+                expr = getattr(arg, 'expr', None) or getattr(arg, 'value', None)
+                if expr:
+                    result = result.merge(self.extract(expr))
+                else:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('ElementSelectExpression')
+    def extract_element_select(self, node) -> SignalResult:
+        """ElementSelectExpression: base[index]"""
+        base = getattr(node, 'left', None) or getattr(node, 'base', None)
+        if base:
+            return self.extract(base)
+        return SignalResult()
+    
+    @on('ClockingEvent')
+    def extract_clock_event(self, node) -> SignalResult:
+        """ClockingEvent: @clk, @(posedge clk)"""
+        result = SignalResult()
+        event = getattr(node, 'event', None) or getattr(node, 'clock', None)
+        if event:
+            result = result.merge(self.extract(event))
+        expr = getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('DataType')
+    def extract_data_type(self, node) -> SignalResult:
+        """DataType: 数据类型"""
+        return SignalResult()
+    
+    @on('TypeReference')
+    def extract_type_reference(self, node) -> SignalResult:
+        """TypeReference: 类型引用"""
+        return SignalResult()
+    
+    @on('UnaryOperator')
+    def extract_unary_operator(self, node) -> SignalResult:
+        """UnaryOperator: 一元运算符"""
+        operand = getattr(node, 'operand', None) or getattr(node, 'expression', None)
+        if operand:
+            return self.extract(operand)
+        return SignalResult()
+    
+    @on('BinaryOperator')
+    def extract_binary_operator(self, node) -> SignalResult:
+        """BinaryOperator: 二元运算符"""
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('AssignmentExpression')
+    def extract_assignment_expression(self, node) -> SignalResult:
+        """AssignmentExpression: a = b"""
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('NewClassExpression')
+    def extract_new_class(self, node) -> SignalResult:
+        """NewClassExpression: new()"""
+        return SignalResult()
+    
+    @on('NewArrayExpression')
+    def extract_new_array(self, node) -> SignalResult:
+        """NewArrayExpression: new[size]"""
+        size = getattr(node, 'size', None) or getattr(node, 'expression', None)
+        if size:
+            return self.extract(size)
+        return SignalResult()
+    
+    @on('NewCovergroupExpression')
+    def extract_new_covergroup(self, node) -> SignalResult:
+        """NewCovergroupExpression: covergroup"""
+        return SignalResult()
+    
+    @on('CopyClassExpression')
+    def extract_copy_class(self, node) -> SignalResult:
+        """CopyClassExpression: class.copy()"""
+        return SignalResult()
+    
+    @on('ArbitrarySymbol')
+    def extract_arbitrary_symbol(self, node) -> SignalResult:
+        """ArbitrarySymbol: 未解析的符号"""
+        return SignalResult()
+    
+    @on('LValueReference')
+    def extract_l_value_reference(self, node) -> SignalResult:
+        """LValueReference: 左值引用"""
+        value = getattr(node, 'value', None)
+        if value:
+            return self.extract(value)
+        return SignalResult()
+    
+    @on('AssertionInstance')
+    def extract_assertion_instance(self, node) -> SignalResult:
+        """AssertionInstance: assert property"""
+        return SignalResult()
+    
+    @on('Invalid')
+    def extract_invalid(self, node) -> SignalResult:
+        """Invalid: 无效节点"""
+        return SignalResult()
+    
+    @on('ConditionalOp')
+    def extract_conditional_op(self, node) -> SignalResult:
+        """ConditionalOp: 三元运算符 sel ? a : b"""
+        result = SignalResult()
+        
+        # predicate (condition)
+        conditions = getattr(node, 'conditions', None)
+        if conditions and len(conditions) > 0:
+            cond_expr = getattr(conditions[0], 'expr', None)
+            if cond_expr:
+                result = result.merge(self.extract(cond_expr))
+        
+        pred = getattr(node, 'predicate', None)
+        if pred:
+            result = result.merge(self.extract(pred))
+        
+        left = getattr(node, 'left', None)
+        if left:
+            result = result.merge(self.extract(left))
+        
+        right = getattr(node, 'right', None)
+        if right:
+            result = result.merge(self.extract(right))
+        
+        return result
+    
+    @on('ConcatenationExpression')
+    def extract_concatenation(self, node) -> SignalResult:
+        """ConcatenationExpression: {a, b, c}"""
+        result = SignalResult()
+        operands = getattr(node, 'operands', None) or getattr(node, 'expressions', None)
+        if operands:
+            for expr in operands:
+                expr_kind = getattr(expr, 'kind', None)
+                if expr_kind and 'Token' not in str(expr_kind):
+                    result = result.merge(self.extract(expr))
+        return result
+    
+    @on('IdentifierName')
+    def extract_identifier_name(self, node) -> SignalResult:
+        """IdentifierName: 简单信号名"""
+        ident = getattr(node, 'identifier', None)
+        if ident is None:
+            return SignalResult()
+        val = getattr(ident, 'value', None)
+        if val is None:
+            return SignalResult()
+        name = self.adapter.clean_name(str(val).strip())
+        return SignalResult.single(name)
+    
+    @on('ScopedName')
+    def extract_scoped_name(self, node) -> SignalResult:
+        """ScopedName: 点分路径 p.sub.data"""
+        parts = self._extract_scoped_parts(node)
+        if parts:
+            combined = '.'.join(parts)
+            name = self.adapter.clean_name(combined)
+            return SignalResult.single(name)
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
