@@ -50,19 +50,22 @@
 #### [ ] DataFlow 数据流分析架构
 - **类型**: 新功能
 - **描述**: 实现信号间数据流分析 (from → to)
-- **架构**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+- **架构**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`, `docs/FINAL_SCHEMA_DECISION.md`
+- **核心发现**:
+  - SignalGraph 已包含 TraceEdge (condition, clock_domain)
+  - DataFlow 可基于 SignalGraph 构建，无需重构
 - **核心组件**:
   - `DataFlowSegment`: 单步驱动 (from → to)
   - `DataFlowPath`: 完整路径
   - `DataFlowResult`: 分析结果封装
   - `DataFlowAnalyzer`: 主分析器
-  - `TimingAnalysisResult`: 时序分析 (寄存器级数、延迟周期)
-- **算法**:
-  - 路径搜索 (networkx.all_simple_paths)
-  - 上下文丰富 (condition, timing)
+- **实现方式**:
+  - SignalGraph (已有) 提供 edges 和 TraceEdge
+  - nx.all_simple_paths() 提供路径搜索
+  - StatementCollectorVisitor 提供 driver 信息
 - **状态**: 提案阶段
-- **优先级**: P2 单 dispatch 重构完成后开始
-- **参考文档**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+- **优先级**: 可立即开始 (不依赖其他任务)
+- **参考文档**: `docs/FINAL_SCHEMA_DECISION.md`
 
 #### [ ] ControlFlow 控制流分析架构
 - **类型**: 新功能
