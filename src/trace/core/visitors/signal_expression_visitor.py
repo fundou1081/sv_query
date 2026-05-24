@@ -8672,6 +8672,114 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(call))
         return result
     
+    # Declaration-related expressions
+    @on('DataDeclaration')
+    def extract_data_declaration(self, node) -> SignalResult:
+        """DataDeclaration: data declaration (variables, nets)"""
+        result = SignalResult()
+        items = getattr(node, 'declarators', None) or getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('NetDeclaration')
+    def extract_net_declaration(self, node) -> SignalResult:
+        """NetDeclaration: net declaration"""
+        result = SignalResult()
+        items = getattr(node, 'declarators', None) or getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('TypedefDeclaration')
+    def extract_typedef_declaration_stmt(self, node) -> SignalResult:
+        """TypedefDeclaration: typedef declaration"""
+        return SignalResult()
+    
+    @on('ForwardTypedefDeclaration')
+    def extract_forward_typedef_declaration(self, node) -> SignalResult:
+        """ForwardTypedefDeclaration: forward typedef declaration"""
+        return SignalResult()
+    
+    @on('ParameterDeclarationStatement')
+    def extract_parameter_declaration_statement(self, node) -> SignalResult:
+        """ParameterDeclarationStatement: parameter declaration statement"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'parameters', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('TypeParameterDeclaration')
+    def extract_type_parameter_declaration(self, node) -> SignalResult:
+        """TypeParameterDeclaration: type parameter declaration"""
+        return SignalResult()
+    
+    @on('FunctionPort')
+    def extract_function_port(self, node) -> SignalResult:
+        """FunctionPort: function port"""
+        result = SignalResult()
+        var = getattr(node, 'variable', None) or getattr(node, 'var', None)
+        if var:
+            result = result.merge(self.extract(var))
+        return result
+    
+    @on('FunctionPortList')
+    def extract_function_port_list(self, node) -> SignalResult:
+        """FunctionPortList: function port list"""
+        result = SignalResult()
+        ports = getattr(node, 'ports', None)
+        if ports and hasattr(ports, '__iter__'):
+            for port in ports:
+                if port:
+                    result = result.merge(self.extract(port))
+        return result
+    
+    @on('LocalVariableDeclaration')
+    def extract_local_variable_declaration(self, node) -> SignalResult:
+        """LocalVariableDeclaration: local variable declaration"""
+        result = SignalResult()
+        var = getattr(node, 'variable', None) or getattr(node, 'var', None)
+        if var:
+            result = result.merge(self.extract(var))
+        return result
+    
+    @on('GenvarDeclaration')
+    def extract_genvar_declaration(self, node) -> SignalResult:
+        """GenvarDeclaration: genvar declaration"""
+        return SignalResult()
+    
+    @on('NetTypeDeclaration')
+    def extract_net_type_declaration(self, node) -> SignalResult:
+        """NetTypeDeclaration: net type declaration"""
+        return SignalResult()
+    
+    @on('PackageImportDeclaration')
+    def extract_package_import_declaration(self, node) -> SignalResult:
+        """PackageImportDeclaration: package import declaration"""
+        return SignalResult()
+    
+    @on('PackageImportItem')
+    def extract_package_import_item(self, node) -> SignalResult:
+        """PackageImportItem: package import item"""
+        return SignalResult()
+    
+    @on('PackageExportDeclaration')
+    def extract_package_export_declaration(self, node) -> SignalResult:
+        """PackageExportDeclaration: package export declaration"""
+        return SignalResult()
+    
+    @on('PackageExportAllDeclaration')
+    def extract_package_export_all_declaration(self, node) -> SignalResult:
+        """PackageExportAllDeclaration: package export all declaration"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
