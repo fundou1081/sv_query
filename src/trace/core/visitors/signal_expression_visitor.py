@@ -9419,6 +9419,125 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(item))
         return result
     
+    # Event control expressions
+    @on('EventControlWithExpression')
+    def extract_event_control_with_expression(self, node) -> SignalResult:
+        """EventControlWithExpression: event control with expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('TimingControlWithExpression')
+    def extract_timing_control_with_expression(self, node) -> SignalResult:
+        """TimingControlWithExpression: timing control with expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('RepeatedEventControl')
+    def extract_repeated_event_control(self, node) -> SignalResult:
+        """RepeatedEventControl: repeated event control"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'events', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('SignalEventExpression')
+    def extract_signal_event_expression(self, node) -> SignalResult:
+        """SignalEventExpression: signal event expression"""
+        result = SignalResult()
+        signal = getattr(node, 'signal', None) or getattr(node, 'expr', None)
+        if signal:
+            result = result.merge(self.extract(signal))
+        return result
+    
+    @on('PrimaryBlockEventExpression')
+    def extract_primary_block_event_expression(self, node) -> SignalResult:
+        """PrimaryBlockEventExpression: primary block event expression"""
+        return SignalResult()
+    
+    # Case items
+    @on('StandardCaseItem')
+    def extract_standard_case_item(self, node) -> SignalResult:
+        """StandardCaseItem: standard case item"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('StandardPropertyCaseItem')
+    def extract_standard_property_case_item(self, node) -> SignalResult:
+        """StandardPropertyCaseItem: standard property case item"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('DefaultRsCaseItem')
+    def extract_default_rs_case_item(self, node) -> SignalResult:
+        """DefaultRsCaseItem: default randsequence case item"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'block', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('StandardRsCaseItem')
+    def extract_standard_rs_case_item(self, node) -> SignalResult:
+        """StandardRsCaseItem: standard randsequence case item"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Clause expressions
+    @on('IntersectClause')
+    def extract_intersect_clause(self, node) -> SignalResult:
+        """IntersectClause: intersect clause"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('EqualsTypeClause')
+    def extract_equals_type_clause(self, node) -> SignalResult:
+        """EqualsTypeClause: equals type clause"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'type', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('EqualsValueClause')
+    def extract_equals_value_clause(self, node) -> SignalResult:
+        """EqualsValueClause: equals value clause"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
