@@ -1271,6 +1271,177 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(item))
         return result
     
+    @on('DelayControl')
+    def extract_delay_control(self, node) -> SignalResult:
+        """DelayControl: #1delay"""
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('EventControl')
+    def extract_event_control(self, node) -> SignalResult:
+        """EventControl: @event"""
+        event = getattr(node, 'event', None)
+        if event:
+            return self.extract(event)
+        return SignalResult()
+    
+    @on('DelayOrEventControl')
+    def extract_delay_or_event_control(self, node) -> SignalResult:
+        """DelayOrEventControl: #1 or @event"""
+        result = SignalResult()
+        delay = getattr(node, 'delay', None) or getattr(node, 'expression', None)
+        if delay:
+            result = result.merge(self.extract(delay))
+        event = getattr(node, 'event', None)
+        if event:
+            result = result.merge(self.extract(event))
+        return result
+    
+    @on('SequenceConjunction')
+    def extract_sequence_conjunction(self, node) -> SignalResult:
+        """SequenceConjunction: seq1 and seq2"""
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('SequenceDelay')
+    def extract_sequence_delay(self, node) -> SignalResult:
+        """SequenceDelay: ##1 seq"""
+        seq = getattr(node, 'sequence', None) or getattr(node, 'operand', None)
+        if seq:
+            return self.extract(seq)
+        return SignalResult()
+    
+    @on('Sequence Repetition')
+    def extract_sequence_repetition(self, node) -> SignalResult:
+        """SequenceRepetition: seq[*1:3]"""
+        seq = getattr(node, 'sequence', None) or getattr(node, 'operand', None)
+        if seq:
+            return self.extract(seq)
+        return SignalResult()
+    
+    @on('PropertySequence')
+    def extract_property_sequence(self, node) -> SignalResult:
+        """PropertySequence: sequence expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None) or getattr(node, 'operand', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('PropertyActualArgument')
+    def extract_property_actual_argument(self, node) -> SignalResult:
+        """PropertyActualArgument: property argument"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('AssertPropertyExpression')
+    def extract_assert_property_expression(self, node) -> SignalResult:
+        """AssertPropertyExpression: assert property"""
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return SignalResult()
+    
+    @on('AssumePropertyExpression')
+    def extract_assume_property_expression(self, node) -> SignalResult:
+        """AssumePropertyExpression: assume property"""
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return SignalResult()
+    
+    @on('CoverPropertyExpression')
+    def extract_cover_property_expression(self, node) -> SignalResult:
+        """CoverPropertyExpression: cover property"""
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return SignalResult()
+    
+    @on('SequenceActualArgument')
+    def extract_sequence_actual_argument(self, node) -> SignalResult:
+        """SequenceActualArgument: sequence argument"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('SequenceInstance')
+    def extract_sequence_instance(self, node) -> SignalResult:
+        """SequenceInstance: sequence call"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('PropertyInstance')
+    def extract_property_instance(self, node) -> SignalResult:
+        """PropertyInstance: property call"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('ClockingBlock')
+    def extract_clocking_block(self, node) -> SignalResult:
+        """ClockingBlock: clocking block"""
+        return SignalResult()
+    
+    @on('ClockingDrive')
+    def extract_clocking_drive(self, node) -> SignalResult:
+        """ClockingDrive: clocking drive"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('ClockingPropertyExpr')
+    def extract_clocking_property_expr(self, node) -> SignalResult:
+        """ClockingPropertyExpr: property with clock"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        clock = getattr(node, 'clock', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
+    @on('SequencePropertyExpr')
+    def extract_sequence_property_expr(self, node) -> SignalResult:
+        """SequencePropertyExpr: sequence with clock"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        clock = getattr(node, 'clock', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
