@@ -5566,6 +5566,155 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(init))
         return result
     
+    # Anonymous program
+    @on('AnonymousProgram')
+    def extract_anonymous_program(self, node) -> SignalResult:
+        """AnonymousProgram: anonymous program"""
+        return SignalResult()
+    
+    # Extern interface method
+    @on('ExternInterfaceMethod')
+    def extract_extern_interface_method(self, node) -> SignalResult:
+        """ExternInterfaceMethod: extern interface method"""
+        return SignalResult()
+    
+    # More expression types
+    @on('EmptyExpression')
+    def extract_empty_expression(self, node) -> SignalResult:
+        """EmptyExpression: empty expression"""
+        return SignalResult()
+    
+    @on('InvalidExpression')
+    def extract_invalid_expression(self, node) -> SignalResult:
+        """InvalidExpression: invalid expression"""
+        return SignalResult()
+    
+    @on('OpenRangeExpression')
+    def extract_open_range_expression(self, node) -> SignalResult:
+        """OpenRangeExpression: open range expression"""
+        return SignalResult()
+    
+    @on('ParenthesizedExpression')
+    def extract_parenthesized_expression(self, node) -> SignalResult:
+        """ParenthesizedExpression: parenthesized expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Conditional directive expressions
+    @on('BinaryConditionalDirectiveExpression')
+    def extract_binary_conditional_directive_expr(self, node) -> SignalResult:
+        """BinaryConditionalDirectiveExpression: binary conditional directive expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ConditionalDirectiveExpression')
+    def extract_conditional_directive_expression(self, node) -> SignalResult:
+        """ConditionalDirectiveExpression: conditional directive expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_expr = getattr(node, 'true_expr', None) or getattr(node, 'expr', None)
+        if true_expr:
+            result = result.merge(self.extract(true_expr))
+        false_expr = getattr(node, 'false_expr', None) or getattr(node, 'expr2', None)
+        if false_expr:
+            result = result.merge(self.extract(false_expr))
+        return result
+    
+    # Default pattern key expression
+    @on('DefaultPatternKeyExpression')
+    def extract_default_pattern_key_expression(self, node) -> SignalResult:
+        """DefaultPatternKeyExpression: default pattern key expression"""
+        return SignalResult()
+    
+    # Function return type
+    @on('FunctionReturnType')
+    def extract_function_return_type(self, node) -> SignalResult:
+        """FunctionReturnType: function return type"""
+        return SignalResult()
+    
+    # Import package declaration
+    @on('ImportPackageDeclaration')
+    def extract_import_package_declaration(self, node) -> SignalResult:
+        """ImportPackageDeclaration: import package declaration"""
+        return SignalResult()
+    
+    # Interface instantiation
+    @on('InterfaceInstantiation')
+    def extract_interface_instantiation(self, node) -> SignalResult:
+        """InterfaceInstantiation: interface instantiation"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # Modport declaration
+    @on('ModportDeclaration')
+    def extract_modport_declaration(self, node) -> SignalResult:
+        """ModportDeclaration: modport declaration"""
+        return SignalResult()
+    
+    @on('ModportItem')
+    def extract_modport_item(self, node) -> SignalResult:
+        """ModportItem: modport item"""
+        result = SignalResult()
+        signal = getattr(node, 'signal', None) or getattr(node, 'expr', None)
+        if signal:
+            result = result.merge(self.extract(signal))
+        return result
+    
+    @on('ModportClockingItem')
+    def extract_modport_clocking_item(self, node) -> SignalResult:
+        """ModportClockingItem: modport clocking item"""
+        return SignalResult()
+    
+    @on('ModportSimplePortDecl')
+    def extract_modport_simple_port_decl(self, node) -> SignalResult:
+        """ModportSimplePortDecl: modport simple port declaration"""
+        return SignalResult()
+    
+    @on('ModportSubroutinePortDecl')
+    def extract_modport_subroutine_port_decl(self, node) -> SignalResult:
+        """ModportSubroutinePortDecl: modport subroutine port declaration"""
+        return SignalResult()
+    
+    # Program instantiation
+    @on('ProgramInstantiation')
+    def extract_program_instantiation(self, node) -> SignalResult:
+        """ProgramInstantiation: program instantiation"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # Variable declaration patterns
+    @on('VariablePatternBinding')
+    def extract_variable_pattern_binding(self, node) -> SignalResult:
+        """VariablePatternBinding: variable pattern binding"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
