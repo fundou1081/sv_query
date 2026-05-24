@@ -23,7 +23,7 @@ def on(kind_name: str):
     """注册 handler 的装饰器
     
     用法:
-        @on('BinaryOp')
+        @on('IdentifierName')
         def handle_binary_op(self, node):
             ...
     """
@@ -39,7 +39,7 @@ class SignalExpressionVisitor(BaseVisitor):
     使用 Visitor 模式，每个语法类型对应独立的 visit 方法。
     
     单 dispatch 重构:
-        使用 @on('KindName') 装饰器注册 handler，
+        使用 @on 装饰器注册 handler，
         extract() 统一入口分派到对应的 handler。
     
     使用方式:
