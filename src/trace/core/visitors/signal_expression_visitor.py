@@ -9279,6 +9279,146 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(expr)
         return SignalResult()
     
+    # Comparison expressions (missing)
+    @on('LessThanEqualExpression')
+    def extract_less_than_equal_expression(self, node) -> SignalResult:
+        """LessThanEqualExpression: <= expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('GreaterThanEqualExpression')
+    def extract_greater_than_equal_expression(self, node) -> SignalResult:
+        """GreaterThanEqualExpression: >= expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Logical expressions
+    @on('LogicalAndExpression')
+    def extract_logical_and_expression_stmt(self, node) -> SignalResult:
+        """LogicalAndExpression: && expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalOrExpression')
+    def extract_logical_or_expression_stmt(self, node) -> SignalResult:
+        """LogicalOrExpression: || expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalEquivalenceExpression')
+    def extract_logical_equivalence_expression(self, node) -> SignalResult:
+        """LogicalEquivalenceExpression: <-> expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalImplicationExpression')
+    def extract_logical_implication_expression(self, node) -> SignalResult:
+        """LogicalImplicationExpression: -> expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Logical shift expressions
+    @on('LogicalShiftLeftExpression')
+    def extract_logical_shift_left_expression(self, node) -> SignalResult:
+        """LogicalShiftLeftExpression: << expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalShiftRightExpression')
+    def extract_logical_shift_right_expression(self, node) -> SignalResult:
+        """LogicalShiftRightExpression: >> expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Pragma expressions
+    @on('SimplePragmaExpression')
+    def extract_simple_pragma_expression(self, node) -> SignalResult:
+        """SimplePragmaExpression: simple pragma expression"""
+        return SignalResult()
+    
+    @on('NumberPragmaExpression')
+    def extract_number_pragma_expression(self, node) -> SignalResult:
+        """NumberPragmaExpression: number pragma expression"""
+        return SignalResult()
+    
+    @on('NameValuePragmaExpression')
+    def extract_name_value_pragma_expression(self, node) -> SignalResult:
+        """NameValuePragmaExpression: name value pragma expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ParenPragmaExpression')
+    def extract_paren_pragma_expression(self, node) -> SignalResult:
+        """ParenPragmaExpression: parenthesized pragma expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Paren expression list
+    @on('ParenExpressionList')
+    def extract_paren_expression_list(self, node) -> SignalResult:
+        """ParenExpressionList: parenthesized expression list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
