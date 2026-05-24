@@ -2348,6 +2348,272 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    @on('ExpressionOrStatement')
+    def extract_expression_or_statement(self, node) -> SignalResult:
+        """ExpressionOrStatement: expression or statement"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None) or getattr(node, 'statement', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('StatementOrExpression')
+    def extract_statement_or_expression(self, node) -> SignalResult:
+        """StatementOrExpression: statement or expression"""
+        stmt = getattr(node, 'statement', None) or getattr(node, 'expr', None)
+        if stmt:
+            return self.extract(stmt)
+        return SignalResult()
+    
+    @on('LoopStatementExpression')
+    def extract_loop_statement_expression(self, node) -> SignalResult:
+        """LoopStatementExpression: loop statement expression"""
+        result = SignalResult()
+        init = getattr(node, 'init', None) or getattr(node, 'expr', None)
+        if init:
+            result = result.merge(self.extract(init))
+        cond = getattr(node, 'cond', None) or getattr(node, 'condition', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        step = getattr(node, 'step', None) or getattr(node, 'expr2', None)
+        if step:
+            result = result.merge(self.extract(step))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('JumpStatementExpression')
+    def extract_jump_statement_expression(self, node) -> SignalResult:
+        """JumpStatementExpression: jump statement"""
+        return SignalResult()
+    
+    @on('WaitStatementExpression')
+    def extract_wait_statement_expression(self, node) -> SignalResult:
+        """WaitStatementExpression: wait statement"""
+        cond = getattr(node, 'cond', None) or getattr(node, 'expression', None)
+        if cond:
+            return self.extract(cond)
+        return SignalResult()
+    
+    @on('WaitForkStatementExpression')
+    def extract_wait_fork_expression(self, node) -> SignalResult:
+        """WaitForkStatementExpression: wait fork"""
+        return SignalResult()
+    
+    @on('EventStatementExpression')
+    def extract_event_statement_expression(self, node) -> SignalResult:
+        """EventStatementExpression: event statement"""
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            return self.extract(event)
+        return SignalResult()
+    
+    @on('AssertionStatementExpression')
+    def extract_assertion_statement_expression(self, node) -> SignalResult:
+        """AssertionStatementExpression: assert statement expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('BlockingAssignmentStatement')
+    def extract_blocking_assignment_stmt(self, node) -> SignalResult:
+        """BlockingAssignmentStatement: blocking assignment"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('NonBlockingAssignmentStatement')
+    def extract_nonblocking_assignment_stmt(self, node) -> SignalResult:
+        """NonBlockingAssignmentStatement: non-blocking assignment"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('ProceduralAssignStatement')
+    def extract_procedural_assign_stmt(self, node) -> SignalResult:
+        """ProceduralAssignStatement: procedural assign"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('ProceduralForceStatement')
+    def extract_procedural_force_stmt(self, node) -> SignalResult:
+        """ProceduralForceStatement: procedural force"""
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            return self.extract(lvalue)
+        return SignalResult()
+    
+    @on('DeassignStatement')
+    def extract_deassign_stmt(self, node) -> SignalResult:
+        """DeassignStatement: deassign"""
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            return self.extract(lvalue)
+        return SignalResult()
+    
+    @on('ReleaseStatement')
+    def extract_release_stmt(self, node) -> SignalResult:
+        """ReleaseStatement: release"""
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            return self.extract(lvalue)
+        return SignalResult()
+    
+    @on('VariableDeclarationStatement')
+    def extract_variable_declaration_stmt(self, node) -> SignalResult:
+        """VariableDeclarationStatement: variable declaration"""
+        result = SignalResult()
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
+    @on('ForLoopStatementExpression')
+    def extract_for_loop_expression(self, node) -> SignalResult:
+        """ForLoopStatementExpression: for loop expression"""
+        result = SignalResult()
+        init = getattr(node, 'init', None)
+        if init:
+            result = result.merge(self.extract(init))
+        cond = getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        step = getattr(node, 'step', None)
+        if step:
+            result = result.merge(self.extract(step))
+        body = getattr(node, 'body', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('ForeachLoopStatementExpression')
+    def extract_foreach_loop_expression(self, node) -> SignalResult:
+        """ForeachLoopStatementExpression: foreach loop"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('DoWhileStatementExpression')
+    def extract_do_while_expression(self, node) -> SignalResult:
+        """DoWhileStatementExpression: do while expression"""
+        result = SignalResult()
+        cond = getattr(node, 'cond', None) or getattr(node, 'expression', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('WhileLoopStatementExpression')
+    def extract_while_loop_expression(self, node) -> SignalResult:
+        """WhileLoopStatementExpression: while loop expression"""
+        result = SignalResult()
+        cond = getattr(node, 'cond', None) or getattr(node, 'expression', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('ReturnStatementExpression')
+    def extract_return_stmt_expression(self, node) -> SignalResult:
+        """ReturnStatementExpression: return expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('BreakStatementExpression')
+    def extract_break_stmt_expression(self, node) -> SignalResult:
+        """BreakStatementExpression: break"""
+        return SignalResult()
+    
+    @on('ContinueStatementExpression')
+    def extract_continue_stmt_expression(self, node) -> SignalResult:
+        """ContinueStatementExpression: continue"""
+        return SignalResult()
+    
+    @on('DisableStatementExpression')
+    def extract_disable_stmt_expression(self, node) -> SignalResult:
+        """DisableStatementExpression: disable statement"""
+        return SignalResult()
+    
+    @on('DisableForkStatementExpression')
+    def extract_disable_fork_expression(self, node) -> SignalResult:
+        """DisableForkStatementExpression: disable fork"""
+        return SignalResult()
+    
+    @on('BeginStatementExpression')
+    def extract_begin_stmt_expression(self, node) -> SignalResult:
+        """BeginStatementExpression: begin end block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('ForkStatementExpression')
+    def extract_fork_stmt_expression(self, node) -> SignalResult:
+        """ForkStatementExpression: fork join"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('JoinAnyStatementExpression')
+    def extract_join_any_expression(self, node) -> SignalResult:
+        """JoinAnyStatementExpression: join any"""
+        return SignalResult()
+    
+    @on('JoinNoneStatementExpression')
+    def extract_join_none_expression(self, node) -> SignalResult:
+        """JoinNoneStatementExpression: join none"""
+        return SignalResult()
+    
+    @on('ParallelStatementExpression')
+    def extract_parallel_stmt_expression(self, node) -> SignalResult:
+        """ParallelStatementExpression: parallel statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
