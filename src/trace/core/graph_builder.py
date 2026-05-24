@@ -3,6 +3,7 @@
 #==============================================================================
 
 from typing import Dict, List, Optional, Tuple, Any
+import warnings
 from dataclasses import dataclass, field
 from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 import pyslang
@@ -204,7 +205,16 @@ class DriverExtractor:
         
         [铁律29] 此方法已废弃，如果被调用说明 Visitor 实现有遗漏
         请勿调用此方法，应使用 StatementCollectorVisitor
+        
+        Raises:
+            NotImplementedError: Always, this method is deprecated
         """
+        warnings.warn(
+            "DEPRECATED: _legacy_collect_stmts_with_context is deprecated. "
+            "Use StatementCollectorVisitor.collect() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         raise NotImplementedError(
             "LEGACY METHOD CALLED: _legacy_collect_stmts_with_context is deprecated. "
             "Use StatementCollectorVisitor instead. If this error appears, "
