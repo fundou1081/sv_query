@@ -8005,6 +8005,89 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(seq))
         return result
     
+    # More expression types
+    @on('EventControlExpression')
+    def extract_event_control_expression(self, node) -> SignalResult:
+        """EventControlExpression: event control expression"""
+        return SignalResult()
+    
+    @on('DelayControlExpression')
+    def extract_delay_control_expression(self, node) -> SignalResult:
+        """DelayControlExpression: delay control expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'delay', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CycleDelayExpression')
+    def extract_cycle_delay_expression(self, node) -> SignalResult:
+        """CycleDelayExpression: cycle delay expression ##"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        return result
+    
+    @on('RejectStatement')
+    def extract_reject_statement(self, node) -> SignalResult:
+        """RejectStatement: reject statement"""
+        return SignalResult()
+    
+    @on('AcceptStatement')
+    def extract_accept_statement(self, node) -> SignalResult:
+        """AcceptStatement: accept statement"""
+        return SignalResult()
+    
+    @on('RejectConditionExpression')
+    def extract_reject_condition_expression(self, node) -> SignalResult:
+        """RejectConditionExpression: reject condition expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('AcceptConditionExpression')
+    def extract_accept_condition_expression(self, node) -> SignalResult:
+        """AcceptConditionExpression: accept condition expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('ImplicationExpression')
+    def extract_implication_expression(self, node) -> SignalResult:
+        """ImplicationExpression: implication expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyListExpression')
+    def extract_property_list_expression(self, node) -> SignalResult:
+        """PropertyListExpression: property list expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('PropertySpecExpression')
+    def extract_property_spec_expression(self, node) -> SignalResult:
+        """PropertySpecExpression: property spec expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
