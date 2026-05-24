@@ -8901,6 +8901,140 @@ class SignalExpressionVisitor(BaseVisitor):
         """ProgramHeader: program header"""
         return SignalResult()
     
+    # Block statements
+    @on('AlwaysBlock')
+    def extract_always_block(self, node) -> SignalResult:
+        """AlwaysBlock: always block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysCombBlock')
+    def extract_always_comb_block(self, node) -> SignalResult:
+        """AlwaysCombBlock: always_comb block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysFFBlock')
+    def extract_always_ff_block(self, node) -> SignalResult:
+        """AlwaysFFBlock: always_ff block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysLatchBlock')
+    def extract_always_latch_block(self, node) -> SignalResult:
+        """AlwaysLatchBlock: always_latch block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('InitialBlock')
+    def extract_initial_block(self, node) -> SignalResult:
+        """InitialBlock: initial block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('FinalBlock')
+    def extract_final_block(self, node) -> SignalResult:
+        """FinalBlock: final block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('SequentialBlockStatement')
+    def extract_sequential_block_statement(self, node) -> SignalResult:
+        """SequentialBlockStatement: sequential block statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('ParallelBlockStatement')
+    def extract_parallel_block_statement(self, node) -> SignalResult:
+        """ParallelBlockStatement: parallel block statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('ActionBlock')
+    def extract_action_block(self, node) -> SignalResult:
+        """ActionBlock: action block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('RsCodeBlock')
+    def extract_rs_code_block(self, node) -> SignalResult:
+        """RsCodeBlock: randsequence code block"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RsCase')
+    def extract_rs_case(self, node) -> SignalResult:
+        """RsCase: randsequence case"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RsElseClause')
+    def extract_rs_else_clause(self, node) -> SignalResult:
+        """RsElseClause: randsequence else clause"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'block', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('RsWeightClause')
+    def extract_rs_weight_clause(self, node) -> SignalResult:
+        """RsWeightClause: randsequence weight clause"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
