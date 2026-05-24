@@ -4783,6 +4783,251 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(action))
         return result
     
+    # Sequence and property expression kinds
+    @on('CasePropertyExpr')
+    def extract_case_property_expr(self, node) -> SignalResult:
+        """CasePropertyExpr: case property expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ClockingPropertyExpr')
+    def extract_clocking_property_expr_stmt(self, node) -> SignalResult:
+        """ClockingPropertyExpr: clocking property expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        clock = getattr(node, 'clock', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
+    @on('NotPropertyExpr')
+    def extract_not_property_expr(self, node) -> SignalResult:
+        """NotPropertyExpr: not property expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'property', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('OrSequenceExpr')
+    def extract_or_sequence_expr_stmt(self, node) -> SignalResult:
+        """OrSequenceExpr: or sequence expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AndSequenceExpr')
+    def extract_and_sequence_expr_stmt(self, node) -> SignalResult:
+        """AndSequenceExpr: and sequence expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceMatchExpr')
+    def extract_sequence_match_expr(self, node) -> SignalResult:
+        """SequenceMatchExpr: sequence match expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        match = getattr(node, 'match', None) or getattr(node, 'expr2', None)
+        if match:
+            result = result.merge(self.extract(match))
+        return result
+    
+    @on('BinaryPropertyExpr')
+    def extract_binary_property_expr(self, node) -> SignalResult:
+        """BinaryPropertyExpr: binary property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('UnaryPropertyExpr')
+    def extract_unary_property_expr_stmt(self, node) -> SignalResult:
+        """UnaryPropertyExpr: unary property expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'property', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('IfPropertyExpr')
+    def extract_if_property_expr_stmt(self, node) -> SignalResult:
+        """IfPropertyExpr: if property expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'expr2', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
+    @on('CaseSequenceExpr')
+    def extract_case_sequence_expr(self, node) -> SignalResult:
+        """CaseSequenceExpr: case sequence expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('SequenceAbortExpr')
+    def extract_sequence_abort_expr(self, node) -> SignalResult:
+        """SequenceAbortExpr: sequence abort expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        abort = getattr(node, 'abort', None) or getattr(node, 'expr2', None)
+        if abort:
+            result = result.merge(self.extract(abort))
+        return result
+    
+    @on('SequenceDelayExpr')
+    def extract_sequence_delay_expr(self, node) -> SignalResult:
+        """SequenceDelayExpr: sequence delay expression ##"""
+        result = SignalResult()
+        delay = getattr(node, 'delay', None) or getattr(node, 'expr', None)
+        if delay:
+            result = result.merge(self.extract(delay))
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr2', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    # More binary operators
+    @on('ImplicationSequenceExpr')
+    def extract_implication_sequence_expr(self, node) -> SignalResult:
+        """ImplicationSequenceExpr: implication sequence => or ->"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('FollowedBySequenceExpr')
+    def extract_followed_by_sequence_expr(self, node) -> SignalResult:
+        """FollowedBySequenceExpr: followed by #=#"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('NonOverlappingFollowedBySequenceExpr')
+    def extract_non_overlapping_followed_by_seq(self, node) -> SignalResult:
+        """NonOverlappingFollowedBySequenceExpr: non-overlapping followed by #>#"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('OverlappingFollowedBySequenceExpr')
+    def extract_overlapping_followed_by_seq(self, node) -> SignalResult:
+        """OverlappingFollowedBySequenceExpr: overlapping followed by #=#"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('WithinSequenceExpr')
+    def extract_within_sequence_expr(self, node) -> SignalResult:
+        """WithinSequenceExpr: within sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        within = getattr(node, 'within', None) or getattr(node, 'expr2', None)
+        if within:
+            result = result.merge(self.extract(within))
+        return result
+    
+    @on('ThroughoutSequenceExpr')
+    def extract_throughout_sequence_expr(self, node) -> SignalResult:
+        """ThroughoutSequenceExpr: throughout sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        throughout = getattr(node, 'throughout', None) or getattr(node, 'expr2', None)
+        if throughout:
+            result = result.merge(self.extract(throughout))
+        return result
+    
+    @on('WithinFirstMatchSequenceExpr')
+    def extract_within_first_match_seq_expr(self, node) -> SignalResult:
+        """WithinFirstMatchSequenceExpr: within first_match sequence"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('ThroughoutFirstMatchSequenceExpr')
+    def extract_throughout_first_match_seq_expr(self, node) -> SignalResult:
+        """ThroughoutFirstMatchSequenceExpr: throughout first_match sequence"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('ClockingBlockPropertyExpr')
+    def extract_clocking_block_property_expr(self, node) -> SignalResult:
+        """ClockingBlockPropertyExpr: clocking block property expression"""
+        return SignalResult()
+    
+    @on('ClockingBlockSequenceExpr')
+    def extract_clocking_block_sequence_expr(self, node) -> SignalResult:
+        """ClockingBlockSequenceExpr: clocking block sequence expression"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
