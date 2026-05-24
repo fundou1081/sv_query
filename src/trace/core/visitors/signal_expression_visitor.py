@@ -3517,6 +3517,85 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(base)
         return SignalResult()
     
+    # Bins select expression kinds
+    @on('InvalidBinsSelectExpr')
+    def extract_invalid_bins_select_expr(self, node) -> SignalResult:
+        """InvalidBinsSelectExpr: invalid bins select expression"""
+        return SignalResult()
+    
+    @on('ConditionBinsSelectExpr')
+    def extract_condition_bins_select_expr(self, node) -> SignalResult:
+        """ConditionBinsSelectExpr: condition bins select expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('UnaryBinsSelectExpr')
+    def extract_unary_bins_select_expr(self, node) -> SignalResult:
+        """UnaryBinsSelectExpr: unary bins select expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('BinaryBinsSelectExpr')
+    def extract_binary_bins_select_expr(self, node) -> SignalResult:
+        """BinaryBinsSelectExpr: binary bins select expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SetBinsSelectExpr')
+    def extract_set_bins_select_expr(self, node) -> SignalResult:
+        """SetBinsSelectExpr: set bins select expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'set', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('WithFilterBinsSelectExpr')
+    def extract_with_filter_bins_select_expr(self, node) -> SignalResult:
+        """WithFilterBinsSelectExpr: with filter bins select expression"""
+        result = SignalResult()
+        with_expr = getattr(node, 'with', None) or getattr(node, 'expr', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        filter_expr = getattr(node, 'filter', None) or getattr(node, 'expr2', None)
+        if filter_expr:
+            result = result.merge(self.extract(filter_expr))
+        return result
+    
+    @on('CrossIdBinsSelectExpr')
+    def extract_cross_id_bins_select_expr(self, node) -> SignalResult:
+        """CrossIdBinsSelectExpr: cross id bins select expression"""
+        return SignalResult()
+    
+    # Definition kinds
+    @on('ModuleDefinition')
+    def extract_module_definition(self, node) -> SignalResult:
+        """ModuleDefinition: module definition"""
+        return SignalResult()
+    
+    @on('InterfaceDefinition')
+    def extract_interface_definition(self, node) -> SignalResult:
+        """InterfaceDefinition: interface definition"""
+        return SignalResult()
+    
+    @on('ProgramDefinition')
+    def extract_program_definition(self, node) -> SignalResult:
+        """ProgramDefinition: program definition"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
