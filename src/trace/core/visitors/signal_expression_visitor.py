@@ -1998,6 +1998,174 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(disable))
         return result
     
+    @on('CaseExpression')
+    def extract_case_expression(self, node) -> SignalResult:
+        """CaseExpression: case expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('CaseItemExpression')
+    def extract_case_item_expression(self, node) -> SignalResult:
+        """CaseItemExpression: case item"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ConditionalExpression')
+    def extract_conditional_expression(self, node) -> SignalResult:
+        """ConditionalExpression: cond ? expr1 : expr2"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_expr = getattr(node, 'true_expr', None) or getattr(node, 'expr1', None)
+        if true_expr:
+            result = result.merge(self.extract(true_expr))
+        false_expr = getattr(node, 'false_expr', None) or getattr(node, 'expr2', None)
+        if false_expr:
+            result = result.merge(self.extract(false_expr))
+        return result
+    
+    @on('VariableDeclarationExpression')
+    def extract_variable_declaration_expression(self, node) -> SignalResult:
+        """VariableDeclarationExpression: variable declaration"""
+        result = SignalResult()
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
+    @on('LetDeclaration')
+    def extract_let_declaration(self, node) -> SignalResult:
+        """LetDeclaration: let declaration"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        body = getattr(node, 'body', None) or getattr(node, 'expr', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('LetExpression')
+    def extract_let_expression(self, node) -> SignalResult:
+        """LetExpression: let expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('CallableExpression')
+    def extract_callable_expression(self, node) -> SignalResult:
+        """CallableExpression: callable expression"""
+        result = SignalResult()
+        func = getattr(node, 'func', None) or getattr(node, 'callee', None)
+        if func:
+            result = result.merge(self.extract(func))
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('ReturnStatementExpression')
+    def extract_return_expression(self, node) -> SignalResult:
+        """ReturnStatementExpression: return expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('YieldStatementExpression')
+    def extract_yield_expression(self, node) -> SignalResult:
+        """YieldStatementExpression: yield expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('EventTriggerExpression')
+    def extract_event_trigger(self, node) -> SignalResult:
+        """EventTriggerExpression: ->event"""
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            return self.extract(event)
+        return SignalResult()
+    
+    @on('NullCheckExpression')
+    def extract_null_check(self, node) -> SignalResult:
+        """NullCheckExpression: null check"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('TypeOptionExpression')
+    def extract_type_option(self, node) -> SignalResult:
+        """TypeOptionExpression: type_option expression"""
+        result = SignalResult()
+        type_expr = getattr(node, 'type', None) or getattr(node, 'expr', None)
+        if type_expr:
+            result = result.merge(self.extract(type_expr))
+        return result
+    
+    @on('RefVariableExpression')
+    def extract_ref_variable(self, node) -> SignalResult:
+        """RefVariableExpression: ref variable"""
+        var = getattr(node, 'var', None) or getattr(node, 'expr', None)
+        if var:
+            return self.extract(var)
+        return SignalResult()
+    
+    @on('AssignmentPatternExpression')
+    def extract_assignment_pattern_expr(self, node) -> SignalResult:
+        """AssignmentPatternExpression: pattern expression"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('DefaultPatternExpression')
+    def extract_default_pattern_expr(self, node) -> SignalResult:
+        """DefaultPatternExpression: default pattern"""
+        return SignalResult()
+    
+    @on('DefaultPattern')
+    def extract_default_pattern(self, node) -> SignalResult:
+        """DefaultPattern: default pattern"""
+        return SignalResult()
+    
+    @on('PatternBinding')
+    def extract_pattern_binding(self, node) -> SignalResult:
+        """PatternBinding: pattern binding"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
