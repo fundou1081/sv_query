@@ -7681,6 +7681,135 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(item))
         return result
     
+    # Simple expressions
+    @on('SimpleExpression')
+    def extract_simple_expression(self, node) -> SignalResult:
+        """SimpleExpression: simple expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Bit select expressions
+    @on('BitSelectExpr')
+    def extract_bit_select_expr(self, node) -> SignalResult:
+        """BitSelectExpr: bit select expression"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        index = getattr(node, 'index', None) or getattr(node, 'expr2', None)
+        if index:
+            result = result.merge(self.extract(index))
+        return result
+    
+    @on('PlusBitSelectExpr')
+    def extract_plus_bit_select_expr(self, node) -> SignalResult:
+        """PlusBitSelectExpr: plus bit select expression"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        index = getattr(node, 'index', None)
+        if index:
+            result = result.merge(self.extract(index))
+        return result
+    
+    @on('MinusBitSelectExpr')
+    def extract_minus_bit_select_expr(self, node) -> SignalResult:
+        """MinusBitSelectExpr: minus bit select expression"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        index = getattr(node, 'index', None)
+        if index:
+            result = result.merge(self.extract(index))
+        return result
+    
+    # Range select expressions
+    @on('AscendingRangeSelectExpr')
+    def extract_ascending_range_select_expr(self, node) -> SignalResult:
+        """AscendingRangeSelectExpr: ascending range select [a:b]"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        left = getattr(node, 'left', None) or getattr(node, 'expr2', None)
+        if left:
+            result = result.merge(self.extract(left))
+        right = getattr(node, 'right', None) or getattr(node, 'expr3', None)
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DescendingRangeSelectExpr')
+    def extract_descending_range_select_expr(self, node) -> SignalResult:
+        """DescendingRangeSelectExpr: descending range select [a:b]"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        left = getattr(node, 'left', None) or getattr(node, 'expr2', None)
+        if left:
+            result = result.merge(self.extract(left))
+        right = getattr(node, 'right', None) or getattr(node, 'expr3', None)
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PlusRangeSelectExpr')
+    def extract_plus_range_select_expr(self, node) -> SignalResult:
+        """PlusRangeSelectExpr: plus range select [a+:b]"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        width = getattr(node, 'width', None) or getattr(node, 'expr2', None)
+        if width:
+            result = result.merge(self.extract(width))
+        return result
+    
+    @on('MinusRangeSelectExpr')
+    def extract_minus_range_select_expr(self, node) -> SignalResult:
+        """MinusRangeSelectExpr: minus range select [a-:b]"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        width = getattr(node, 'width', None) or getattr(node, 'expr2', None)
+        if width:
+            result = result.merge(self.extract(width))
+        return result
+    
+    # Increment assignment expressions
+    @on('IncrementAssignmentExpr')
+    def extract_increment_assignment_expr(self, node) -> SignalResult:
+        """IncrementAssignmentExpr: increment assignment expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DecrementAssignmentExpr')
+    def extract_decrement_assignment_expr(self, node) -> SignalResult:
+        """DecrementAssignmentExpr: decrement assignment expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
