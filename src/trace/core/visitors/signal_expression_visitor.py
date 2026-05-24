@@ -2166,6 +2166,188 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(pattern))
         return result
     
+    @on('OpenRangeExpression')
+    def extract_open_range(self, node) -> SignalResult:
+        """OpenRangeExpression: open range"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('MultiPattern')
+    def extract_multi_pattern(self, node) -> SignalResult:
+        """MultiPattern: multiple patterns"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('ParameterizedPropertyExpression')
+    def extract_parameterized_property(self, node) -> SignalResult:
+        """ParameterizedPropertyExpression: parameterized property"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        args = getattr(node, 'arguments', None) or getattr(node, 'params', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('RepeatedPattern')
+    def extract_repeated_pattern(self, node) -> SignalResult:
+        """RepeatedPattern: repeated pattern"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    @on('WildcardPatternExpression')
+    def extract_wildcard_pattern_expr(self, node) -> SignalResult:
+        """WildcardPatternExpression: wildcard pattern expression"""
+        return SignalResult()
+    
+    @on('TaggedPatternExpression')
+    def extract_tagged_pattern_expr(self, node) -> SignalResult:
+        """TaggedPatternExpression: tagged pattern expression"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    @on('WildcardPatternExpression')
+    def extract_wildcard_pattern_expr(self, node) -> SignalResult:
+        """WildcardPatternExpression: wildcard"""
+        return SignalResult()
+    
+    @on('RandomizeSequence')
+    def extract_randomize_sequence(self, node) -> SignalResult:
+        """RandomizeSequence: randomize with sequence"""
+        result = SignalResult()
+        with_expr = getattr(node, 'with', None) or getattr(node, 'expr', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        return result
+    
+    @on('VoidMethodCallSequence')
+    def extract_void_method_call_seq(self, node) -> SignalResult:
+        """VoidMethodCallSequence: void method call"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('ReturnMethodCallSequence')
+    def extract_return_method_call_seq(self, node) -> SignalResult:
+        """ReturnMethodCallSequence: return method call sequence"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('NonNullMethodCallSequence')
+    def extract_non_null_method_call_seq(self, node) -> SignalResult:
+        """NonNullMethodCallSequence: non null method call"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('SequenceAbbrevMaybe')
+    def extract_sequence_abbrev_maybe(self, node) -> SignalResult:
+        """SequenceAbbrevMaybe: maybe ##?"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceAbbrevPlus')
+    def extract_sequence_abbrev_plus(self, node) -> SignalResult:
+        """SequenceAbbrevPlus: plus ##+"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceAbbrevStar')
+    def extract_sequence_abbrev_star(self, node) -> SignalResult:
+        """SequenceAbbrevStar: star ##*"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('ImplicationWindow')
+    def extract_implication_window(self, node) -> SignalResult:
+        """ImplicationWindow: implication window"""
+        result = SignalResult()
+        antecedent = getattr(node, 'antecedent', None)
+        consequent = getattr(node, 'consequent', None)
+        if antecedent:
+            result = result.merge(self.extract(antecedent))
+        if consequent:
+            result = result.merge(self.extract(consequent))
+        return result
+    
+    @on('SequenceWindow')
+    def extract_sequence_window(self, node) -> SignalResult:
+        """SequenceWindow: sequence window"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyOrSequence')
+    def extract_property_or_sequence(self, node) -> SignalResult:
+        """PropertyOrSequence: property or sequence"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyAndSequence')
+    def extract_property_and_sequence(self, node) -> SignalResult:
+        """PropertyAndSequence: property and sequence"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
