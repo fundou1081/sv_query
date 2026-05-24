@@ -6237,6 +6237,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         结构: p.sub.data -> ScopedName(ScopedName(p, sub), data)
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         parts = self._extract_scoped_parts(node)
         if len(parts) >= 2:
             combined = '.'.join(parts)
@@ -6314,6 +6315,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         结构: ElementSelect.value = data, selector = 5
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         value = getattr(node, 'value', None)
         selector = getattr(node, 'selector', None)
         
@@ -6378,6 +6380,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         结构: member = p, member_sym = addr
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         value = getattr(node, 'value', None) or getattr(node, 'expression', None)
         member_sym = getattr(node, 'member', None)
         
@@ -6657,6 +6660,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         返回: expr 的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         expr = getattr(node, 'expression', None) or getattr(node, 'operand', None)
         if expr:
             return self.visit(expr)
@@ -6667,6 +6671,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         返回: expr 的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         expr = getattr(node, 'expression', None)
         if expr:
             return self.visit(expr)
@@ -6687,6 +6692,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         返回: expr 的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
         if expr:
             return self.visit(expr)
@@ -6697,6 +6703,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         返回: 第一个信号的名称
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         signals = []
         # AssignmentPattern may have 'patterns' or 'items'
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
@@ -6812,6 +6819,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         默认返回左操作数
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         left = getattr(node, 'left', None)
         if left:
             return self.visit(left)
@@ -6880,6 +6888,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         提取模式中的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         signals = []
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -6908,6 +6917,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         提取模式中的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         signals = []
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -6936,6 +6946,7 @@ class SignalExpressionVisitor(BaseVisitor):
         
         提取模式中的信号
         """
+        # DEAD CODE: migrated to @on handler - kept for reference only
         signals = []
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
