@@ -7294,6 +7294,170 @@ class SignalExpressionVisitor(BaseVisitor):
         """WildcardExpression: wildcard expression"""
         return SignalResult()
     
+    # Assignment operators
+    @on('AssignmentOperatorExpr')
+    def extract_assignment_operator_expr(self, node) -> SignalResult:
+        """AssignmentOperatorExpr: assignment operator expression"""
+        return SignalResult()
+    
+    # Binary operators
+    @on('BinaryAndExpr')
+    def extract_binary_and_expr(self, node) -> SignalResult:
+        """BinaryAndExpr: binary and expression &"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryOrExpr')
+    def extract_binary_or_expr(self, node) -> SignalResult:
+        """BinaryOrExpr: binary or expression |"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryXorExpr')
+    def extract_binary_xor_expr(self, node) -> SignalResult:
+        """BinaryXorExpr: binary xor expression ^"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryNandExpr')
+    def extract_binary_nand_expr(self, node) -> SignalResult:
+        """BinaryNandExpr: binary nand expression ~&"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryNorExpr')
+    def extract_binary_nor_expr(self, node) -> SignalResult:
+        """BinaryNorExpr: binary nor expression ~|"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryXnorExpr')
+    def extract_binary_xnor_expr_stmt(self, node) -> SignalResult:
+        """BinaryXnorExpr: binary xnor expression ^~"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Arithmetic operators
+    @on('AddExpr')
+    def extract_add_expr_stmt(self, node) -> SignalResult:
+        """AddExpr: add expression +"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SubtractExpr')
+    def extract_subtract_expr_stmt(self, node) -> SignalResult:
+        """SubtractExpr: subtract expression -"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('MultiplyExpr')
+    def extract_multiply_expr_stmt(self, node) -> SignalResult:
+        """MultiplyExpr: multiply expression *"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DivideExpr')
+    def extract_divide_expr_stmt(self, node) -> SignalResult:
+        """DivideExpr: divide expression /"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ModExpression')
+    def extract_mod_expression_stmt(self, node) -> SignalResult:
+        """ModExpression: mod expression %"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('EqualityExpr')
+    def extract_equality_expr(self, node) -> SignalResult:
+        """EqualityExpr: equality expression =="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('InequalityExpr')
+    def extract_inequality_expr(self, node) -> SignalResult:
+        """InequalityExpr: inequality expression !="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
