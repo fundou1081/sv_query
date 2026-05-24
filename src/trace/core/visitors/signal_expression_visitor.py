@@ -3402,6 +3402,121 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(disable))
         return result
     
+    # Timing control kinds
+    @on('InvalidTimingControl')
+    def extract_invalid_timing_control(self, node) -> SignalResult:
+        """InvalidTimingControl: invalid timing control"""
+        return SignalResult()
+    
+    @on('DelayTimingControl')
+    def extract_delay_timing_control(self, node) -> SignalResult:
+        """DelayTimingControl: #delay timing control"""
+        result = SignalResult()
+        delay = getattr(node, 'delay', None) or getattr(node, 'expr', None)
+        if delay:
+            result = result.merge(self.extract(delay))
+        return result
+    
+    @on('SignalEventTimingControl')
+    def extract_signal_event_timing_control(self, node) -> SignalResult:
+        """SignalEventTimingControl: signal event timing control"""
+        result = SignalResult()
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            result = result.merge(self.extract(event))
+        return result
+    
+    @on('EventListTimingControl')
+    def extract_event_list_timing_control(self, node) -> SignalResult:
+        """EventListTimingControl: event list timing control"""
+        result = SignalResult()
+        events = getattr(node, 'events', None) or getattr(node, 'items', None)
+        if events and hasattr(events, '__iter__'):
+            for ev in events:
+                if ev:
+                    result = result.merge(self.extract(ev))
+        return result
+    
+    @on('ImplicitEventTimingControl')
+    def extract_implicit_event_timing_control(self, node) -> SignalResult:
+        """ImplicitEventTimingControl: implicit event timing control"""
+        return SignalResult()
+    
+    @on('RepeatedEventTimingControl')
+    def extract_repeated_event_timing_control(self, node) -> SignalResult:
+        """RepeatedEventTimingControl: repeated event timing control"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        event = getattr(node, 'event', None) or getattr(node, 'expr2', None)
+        if event:
+            result = result.merge(self.extract(event))
+        return result
+    
+    @on('Delay3TimingControl')
+    def extract_delay3_timing_control(self, node) -> SignalResult:
+        """Delay3TimingControl: delay3 timing control"""
+        result = SignalResult()
+        delay = getattr(node, 'delay', None) or getattr(node, 'expr', None)
+        if delay:
+            result = result.merge(self.extract(delay))
+        return result
+    
+    @on('OneStepDelayTimingControl')
+    def extract_one_step_delay_timing_control(self, node) -> SignalResult:
+        """OneStepDelayTimingControl: one step delay"""
+        return SignalResult()
+    
+    @on('CycleDelayTimingControl')
+    def extract_cycle_delay_timing_control(self, node) -> SignalResult:
+        """CycleDelayTimingControl: cycle delay ##N"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        return result
+    
+    @on('BlockEventListTimingControl')
+    def extract_block_event_list_timing_control(self, node) -> SignalResult:
+        """BlockEventListTimingControl: block event list timing control"""
+        result = SignalResult()
+        events = getattr(node, 'events', None) or getattr(node, 'items', None)
+        if events and hasattr(events, '__iter__'):
+            for ev in events:
+                if ev:
+                    result = result.merge(self.extract(ev))
+        return result
+    
+    # Range selection kinds
+    @on('SimpleRangeSelection')
+    def extract_simple_range_selection(self, node) -> SignalResult:
+        """SimpleRangeSelection: simple range selection"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('IndexedUpRangeSelection')
+    def extract_indexed_up_range_selection(self, node) -> SignalResult:
+        """IndexedUpRangeSelection: indexed up range selection"""
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            return self.extract(base)
+        return SignalResult()
+    
+    @on('IndexedDownRangeSelection')
+    def extract_indexed_down_range_selection(self, node) -> SignalResult:
+        """IndexedDownRangeSelection: indexed down range selection"""
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            return self.extract(base)
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
