@@ -1078,7 +1078,7 @@ class SignalExpressionVisitor(BaseVisitor):
         """EmptyStatement: empty statement"""
         return SignalResult()
     
-    @on('CasePropertyExpression')
+    @on('CasePropertyExpr')
     def extract_case_property_expression(self, node) -> SignalResult:
         """CasePropertyExpression: case property expression"""
         result = SignalResult()
@@ -1092,7 +1092,7 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(item))
         return result
     
-    @on('UnaryPropertyExpression')
+    @on('UnaryPropertyExpr')
     def extract_unary_property_expression(self, node) -> SignalResult:
         """UnaryPropertyExpression: unary property"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
