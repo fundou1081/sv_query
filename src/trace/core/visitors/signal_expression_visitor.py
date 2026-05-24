@@ -5070,6 +5070,77 @@ class SignalExpressionVisitor(BaseVisitor):
         return result
 
     @on('IdentifierSelectName')
+    def extract_identifier_select_name(self, node) -> SignalResult:
+        """[MIGRATED] IdentifierSelectName: data[3] etc with bit/range select
+        
+        From visit_identifier_select - handles complex selectors
+        """
+        base_name = None
+        
+        # Get base identifier name
+        if hasattr(node, 'identifier'):
+            ident = node.identifier
+            if hasattr(ident, 'value'):
+                base_name = str(ident.value).strip()
+            else:
+                base_name = str(ident).strip()
+        
+        if not base_name:
+            base_name = str(node).strip().split('[')[0]
+        
+        # Get selectors (bit/range selects)
+        selectors = getattr(node, 'selectors', None)
+        if selectors and hasattr(selectors, '__iter__') and not isinstance(selectors, str):
+            for i in range(len(selectors)):
+                sel = selectors[i]
+                sel_kind = str(getattr(sel, 'kind', ''))
+                
+                if 'ElementSelect' in sel_kind:
+                    bit_select = getattr(sel, 'selector', None)
+                    if bit_select:
+                        bit_select_kind = str(getattr(bit_select, 'kind', ''))
+                        
+                        if 'SimpleRange' in bit_select_kind:
+                            left_expr = getattr(bit_select, 'left', None)
+                            right_expr = getattr(bit_select, 'right', None)
+                            
+                            param_map = self._get_param_map()
+                            left_val = self._evaluate_expr(left_expr, param_map) if left_expr else None
+                            right_val = self._evaluate_expr(right_expr, param_map) if right_expr else None
+                            
+                            if left_val is not None or right_val is not None:
+                                left_str = str(left_val) if left_val is not None else '?'
+                                right_str = str(right_val) if right_val is not None else '?'
+                                base_name = f"{base_name}[{left_str}:{right_str}]"
+                                break
+                        else:
+                            selector_expr = getattr(bit_select, 'expr', None)
+                            if selector_expr:
+                                param_map = self._get_param_map()
+                                evaluated = self._evaluate_expr(selector_expr, param_map)
+                                if evaluated is not None:
+                                    base_name = f"{base_name}[{evaluated}]"
+                                    break
+                
+                elif 'SimpleRangeSelect' in sel_kind:
+                    range_sel = getattr(sel, 'selector', None) or sel
+                    left_expr = getattr(range_sel, 'left', None)
+                    right_expr = getattr(range_sel, 'right', None)
+                    
+                    if left_expr or right_expr:
+                        param_map = self._get_param_map()
+                        left_val = self._evaluate_expr(left_expr, param_map) if left_expr else None
+                        right_val = self._evaluate_expr(right_expr, param_map) if right_expr else None
+                        
+                        if left_val is not None or right_val is not None:
+                            left_str = str(left_val) if left_val is not None else '?'
+                            right_str = str(right_val) if right_val is not None else '?'
+                            base_name = f"{base_name}[{left_str}:{right_str}]"
+                            break
+        
+        clean_name = self.adapter.clean_name(base_name) if base_name else None
+        return SignalResult(primary=clean_name) if clean_name else SignalResult()
+
     def extract_identifierselectname(self, node) -> SignalResult:
         """[NOT TESTED] IdentifierSelectName: Identifierselectname"""
         result = SignalResult()
