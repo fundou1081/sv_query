@@ -6055,6 +6055,190 @@ class SignalExpressionVisitor(BaseVisitor):
         """JoinNoneStatement: join none statement"""
         return SignalResult()
     
+    # Force/release statements
+    @on('ForceStatement')
+    def extract_force_statement(self, node) -> SignalResult:
+        """ForceStatement: force statement"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('ReleaseStatement')
+    def extract_release_statement(self, node) -> SignalResult:
+        """ReleaseStatement: release statement"""
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            return self.extract(lvalue)
+        return SignalResult()
+    
+    # Procedural timing control
+    @on('ProceduralTimingControlStatement')
+    def extract_procedural_timing_control_stmt(self, node) -> SignalResult:
+        """ProceduralTimingControlStatement: procedural timing control statement"""
+        result = SignalResult()
+        timing = getattr(node, 'timing', None) or getattr(node, 'control', None)
+        if timing:
+            result = result.merge(self.extract(timing))
+        stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+        if stmt:
+            result = result.merge(self.extract(stmt))
+        return result
+    
+    # Delay control
+    @on('DelayControlStatement')
+    def extract_delay_control_statement(self, node) -> SignalResult:
+        """DelayControlStatement: delay control statement"""
+        result = SignalResult()
+        delay = getattr(node, 'delay', None) or getattr(node, 'expr', None)
+        if delay:
+            result = result.merge(self.extract(delay))
+        stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+        if stmt:
+            result = result.merge(self.extract(stmt))
+        return result
+    
+    # Event control
+    @on('EventControlStatement')
+    def extract_event_control_statement(self, node) -> SignalResult:
+        """EventControlStatement: event control statement"""
+        result = SignalResult()
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            result = result.merge(self.extract(event))
+        stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+        if stmt:
+            result = result.merge(self.extract(stmt))
+        return result
+    
+    # Cycle delay control
+    @on('CycleDelayControlStatement')
+    def extract_cycle_delay_control_statement(self, node) -> SignalResult:
+        """CycleDelayControlStatement: cycle delay control statement"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+        if stmt:
+            result = result.merge(self.extract(stmt))
+        return result
+    
+    # Empty statement
+    @on('EmptyStatement')
+    def extract_empty_statement_stmt(self, node) -> SignalResult:
+        """EmptyStatement: empty statement"""
+        return SignalResult()
+    
+    # Expression statement
+    @on('ExpressionStatement')
+    def extract_expression_statement_stmt(self, node) -> SignalResult:
+        """ExpressionStatement: expression statement"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Variable declaration statement
+    @on('VariableDeclarationStatement')
+    def extract_variable_declaration_statement(self, node) -> SignalResult:
+        """VariableDeclarationStatement: variable declaration statement"""
+        result = SignalResult()
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
+    # Local parameter declaration
+    @on('LocalParameterDeclaration')
+    def extract_local_parameter_declaration(self, node) -> SignalResult:
+        """LocalParameterDeclaration: local parameter declaration"""
+        return SignalResult()
+    
+    @on('ParameterDeclaration')
+    def extract_parameter_declaration(self, node) -> SignalResult:
+        """ParameterDeclaration: parameter declaration"""
+        return SignalResult()
+    
+    # Non-blocking assignment statement
+    @on('NonBlockingAssignmentStatement')
+    def extract_non_blocking_assignment_stmt(self, node) -> SignalResult:
+        """NonBlockingAssignmentStatement: non-blocking assignment statement"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('BlockingAssignmentStatement')
+    def extract_blocking_assignment_stmt_stmt(self, node) -> SignalResult:
+        """BlockingAssignmentStatement: blocking assignment statement"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    # Procedural assign/deassign
+    @on('ProceduralAssignStatement')
+    def extract_procedural_assign_statement_stmt(self, node) -> SignalResult:
+        """ProceduralAssignStatement: procedural assign statement"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('ProceduralDeassignStatement')
+    def extract_procedural_deassign_statement_stmt(self, node) -> SignalResult:
+        """ProceduralDeassignStatement: procedural deassign statement"""
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            return self.extract(lvalue)
+        return SignalResult()
+    
+    # Rand statement
+    @on('RandCaseStatement')
+    def extract_rand_case_statement_stmt(self, node) -> SignalResult:
+        """RandCaseStatement: rand case statement"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RandCaseItem')
+    def extract_rand_case_item_stmt(self, node) -> SignalResult:
+        """RandCaseItem: rand case item"""
+        result = SignalResult()
+        weight = getattr(node, 'weight', None) or getattr(node, 'condition', None)
+        if weight:
+            result = result.merge(self.extract(weight))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('RandSequenceStatement')
+    def extract_rand_sequence_statement(self, node) -> SignalResult:
+        """RandSequenceStatement: rand sequence statement"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
