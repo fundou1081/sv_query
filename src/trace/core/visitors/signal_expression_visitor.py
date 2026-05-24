@@ -352,6 +352,190 @@ class SignalExpressionVisitor(BaseVisitor):
         result = self.visit(node)
         return [result] if result else []
     
+
+    def get_all_null_literal(self, node) -> List[str]:
+        """NullLiteralExpression: null
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_string_literal(self, node) -> List[str]:
+        """StringLiteralExpression: "string"
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_clock_event(self, node) -> List[str]:
+        """ClockingEvent: @clk, @(posedge clk)
+        
+        提取事件控制中的所有信号
+        """
+        signals = []
+        event = getattr(node, 'event', None) or getattr(node, 'clock', None)
+        if event:
+            signals.extend(self.get_all_signals(event))
+        
+        expr = getattr(node, 'expression', None)
+        if expr:
+            signals.extend(self.get_all_signals(expr))
+        
+        return [s for s in signals if s]
+    
+    def get_all_empty_argument(self, node) -> List[str]:
+        """EmptyArgument: 函数参数占位
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_data_type(self, node) -> List[str]:
+        """DataType: bit, logic, int
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_type_reference(self, node) -> List[str]:
+        """TypeReference: 类型引用
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_time_literal(self, node) -> List[str]:
+        """TimeLiteralExpression: 1ns, 1us
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_real_literal(self, node) -> List[str]:
+        """RealLiteralExpression: 1.5, 3.14
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_unbased_unsized_integer_literal(self, node) -> List[str]:
+        """UnbasedUnsizedIntegerLiteral: '0, '1, 'x, 'z
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_unbounded_literal(self, node) -> List[str]:
+        """UnboundedLiteral: $
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_unary_operator(self, node) -> List[str]:
+        """UnaryOperator: 一元运算符
+        
+        递归提取操作数
+        """
+        operand = getattr(node, 'operand', None) or getattr(node, 'expression', None)
+        if operand:
+            return self.get_all_signals(operand)
+        return []
+    
+    def get_all_binary_operator(self, node) -> List[str]:
+        """BinaryOperator: 二元运算符
+        
+        递归提取左右操作数
+        """
+        signals = []
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            signals.extend(self.get_all_signals(left))
+        if right:
+            signals.extend(self.get_all_signals(right))
+        return [s for s in signals if s]
+    
+    def get_all_assignment_expression(self, node) -> List[str]:
+        """AssignmentExpression: a = b
+        
+        递归提取左右操作数
+        """
+        signals = []
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            signals.extend(self.get_all_signals(left))
+        if right:
+            signals.extend(self.get_all_signals(right))
+        return [s for s in signals if s]
+    
+    def get_all_new_class(self, node) -> List[str]:
+        """NewClassExpression: new()
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_new_array(self, node) -> List[str]:
+        """NewArrayExpression: new[size]
+        
+        返回 size 中的信号
+        """
+        signals = []
+        size = getattr(node, 'size', None) or getattr(node, 'expression', None)
+        if size:
+            signals.extend(self.get_all_signals(size))
+        return [s for s in signals if s]
+    
+    def get_all_new_covergroup(self, node) -> List[str]:
+        """NewCovergroupExpression: covergroup
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_copy_class(self, node) -> List[str]:
+        """CopyClassExpression: class.copy()
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_arbitrary_symbol(self, node) -> List[str]:
+        """ArbitrarySymbol: 未解析的符号
+        
+        返回符号名
+        """
+        name = getattr(node, 'name', None)
+        if name:
+            return [str(name).strip()]
+        return []
+    
+    def get_all_l_value_reference(self, node) -> List[str]:
+        """LValueReference: 左值引用
+        
+        递归提取引用的信号
+        """
+        value = getattr(node, 'value', None)
+        if value:
+            return self.get_all_signals(value)
+        return []
+    
+    def get_all_assertion_instance(self, node) -> List[str]:
+        """AssertionInstance: assert property
+        
+        返回: []
+        """
+        return []
+    
+    def get_all_invalid(self, node) -> List[str]:
+        """Invalid: 无效节点
+        
+        返回: []
+        """
+        return []
+
     def get_all_signals_fallback(self, node) -> List[str]:
         """Fallback for get_all_signals when no specific method exists
         
@@ -929,6 +1113,173 @@ class SignalExpressionVisitor(BaseVisitor):
                         signals.append(sig)
         return signals[0] if signals else None
     
+    def visit_null_literal(self, node) -> Optional[str]:
+        """NullLiteralExpression: null
+        
+        返回: None (null 没有信号名)
+        """
+        return None
+    
+    def visit_string_literal(self, node) -> Optional[str]:
+        """StringLiteralExpression: "string"
+        
+        返回: None (字符串没有信号名)
+        """
+        return None
+    
+    def visit_clock_event(self, node) -> Optional[str]:
+        """ClockingEvent: @clk, @(posedge clk)
+        
+        提取事件控制中的信号名
+        """
+        # ClockingEvent may have 'clock' or 'event'
+        event = getattr(node, 'event', None) or getattr(node, 'clock', None)
+        if event:
+            return self.visit(event)
+        
+        # Try expression for event control
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.visit(expr)
+        return None
+    
+    def visit_empty_argument(self, node) -> Optional[str]:
+        """EmptyArgument: 函数参数占位 ,,
+        
+        返回: None
+        """
+        return None
+    
+    def visit_data_type(self, node) -> Optional[str]:
+        """DataType: bit, logic, int 等类型声明
+        
+        返回: None (类型没有信号)
+        """
+        return None
+    
+    def visit_type_reference(self, node) -> Optional[str]:
+        """TypeReference: 类型引用
+        
+        返回: None
+        """
+        return None
+    
+    def visit_time_literal(self, node) -> Optional[str]:
+        """TimeLiteralExpression: 1ns, 1us 等
+        
+        返回: None (时间字面量没有信号)
+        """
+        return None
+    
+    def visit_real_literal(self, node) -> Optional[str]:
+        """RealLiteralExpression: 1.5, 3.14 等
+        
+        返回: None (实数没有信号)
+        """
+        return None
+    
+    def visit_unbased_unsized_integer_literal(self, node) -> Optional[str]:
+        """UnbasedUnsizedIntegerLiteral: '0, '1, 'x, 'z
+        
+        返回: None
+        """
+        return None
+    
+    def visit_unbounded_literal(self, node) -> Optional[str]:
+        """UnboundedLiteral: $
+        
+        返回: None
+        """
+        return None
+    
+    def visit_unary_operator(self, node) -> Optional[str]:
+        """UnaryOperator: 一元运算符表达式
+        
+        与 UnaryOp 相同处理
+        """
+        operand = getattr(node, 'operand', None) or getattr(node, 'expression', None)
+        if operand:
+            return self.visit(operand)
+        return None
+    
+    def visit_binary_operator(self, node) -> Optional[str]:
+        """BinaryOperator: 二元运算符表达式
+        
+        与 BinaryOp 相同处理
+        """
+        left = getattr(node, 'left', None)
+        if left:
+            return self.visit(left)
+        return None
+    
+    def visit_assignment_expression(self, node) -> Optional[str]:
+        """AssignmentExpression: 赋值表达式 a = b
+        
+        默认返回左操作数
+        """
+        left = getattr(node, 'left', None)
+        if left:
+            return self.visit(left)
+        return None
+    
+    def visit_new_class(self, node) -> Optional[str]:
+        """NewClassExpression: new() 或 new(expr)
+        
+        返回: None (构造函数没有信号)
+        """
+        return None
+    
+    def visit_new_array(self, node) -> Optional[str]:
+        """NewArrayExpression: new[size]
+        
+        返回: size 中的信号
+        """
+        size = getattr(node, 'size', None) or getattr(node, 'expression', None)
+        if size:
+            return self.visit(size)
+        return None
+    
+    def visit_new_covergroup(self, node) -> Optional[str]:
+        """NewCovergroupExpression: covergroup
+        
+        返回: None
+        """
+        return None
+    
+    def visit_copy_class(self, node) -> Optional[str]:
+        """CopyClassExpression: class.copy()
+        
+        返回: None
+        """
+        return None
+    
+    def visit_arbitrary_symbol(self, node) -> Optional[str]:
+        """ArbitrarySymbol: 未解析的符号
+        
+        返回符号名
+        """
+        name = getattr(node, 'name', None)
+        if name:
+            return str(name).strip()
+        return None
+    
+    def visit_l_value_reference(self, node) -> Optional[str]:
+        """LValueReference: 左值引用
+        
+        返回引用的信号
+        """
+        value = getattr(node, 'value', None)
+        if value:
+            return self.visit(value)
+        return None
+    
+    def visit_assertion_instance(self, node) -> Optional[str]:
+        """AssertionInstance: assert property 等
+        
+        返回: None
+        """
+        return None
+
     # =========================================================================
     # 辅助方法
     # =========================================================================

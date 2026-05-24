@@ -37,6 +37,18 @@ class ItemType(Enum):
     JUMP = auto()            # return/break/continue
     DISABLE = auto()         # disable
 
+    WAIT_FORK = auto()              # wait fork
+    WAIT_ORDER = auto()              # wait order
+    RAND_CASE = auto()               # rand case
+    RAND_SEQUENCE = auto()           # rand sequence
+    VARIABLE_DECLARATION = auto()    # 变量声明
+    EVENT_TRIGGER = auto()           # 事件触发
+    IMMEDIATE_ASSERTION = auto()      # 即时断言
+    CONCURRENT_ASSERTION = auto()    # 并发断言
+    PROCEDURAL_ASSIGN = auto()        # force 语句
+    PROCEDURAL_DEASSIGN = auto()      # release 语句
+    DISABLE_FORK = auto()            # disable fork
+
 
 class StatementCollectorVisitor(BaseVisitor):
     """语句收集 Visitor - 携带语义上下文
@@ -211,6 +223,112 @@ class StatementCollectorVisitor(BaseVisitor):
         effective_ctx = ctx.copy() if ctx else self.current_ctx.copy()
         self._statements.append((node, effective_ctx, item_type))
     
+    def visit_empty_statement(self, node):
+        """EmptyStatement: 空语句 ; 或 begin end
+        
+        不产生任何节点
+        """
+        pass
+    
+    def visit_variable_declaration(self, node):
+        """VariableDeclaration: 变量声明 logic [7:0] data;
+        
+        记录变量声明
+        """
+        self._add_statement(node, item_type=ItemType.VARIABLE_DECLARATION)
+    
+    def visit_event_trigger(self, node):
+        """EventTrigger: -> event_name
+        
+        记录事件触发
+        """
+        self._add_statement(node, item_type=ItemType.EVENT_TRIGGER)
+    
+    def visit_immediate_assertion(self, node):
+        """ImmediateAssertion: assert 表达式
+        
+        记录断言语句
+        """
+        self._add_statement(node, item_type=ItemType.IMMEDIATE_ASSERTION)
+    
+    def visit_concurrent_assertion(self, node):
+        """ConcurrentAssertion: assert property(...), assume property(...)
+        
+        记录并发断言
+        """
+        self._add_statement(node, item_type=ItemType.CONCURRENT_ASSERTION)
+    
+    def visit_procedural_assign(self, node):
+        """ProceduralAssign: force assignment
+        
+        记录 force 语句
+        """
+        self._add_statement(node, item_type=ItemType.PROCEDURAL_ASSIGN)
+    
+    def visit_procedural_deassign(self, node):
+        """ProceduralDeassign: release assignment
+        
+        记录 release 语句
+        """
+        self._add_statement(node, item_type=ItemType.PROCEDURAL_DEASSIGN)
+    
+    def visit_procedural_checker(self, node):
+        """ProceduralChecker: checker declaration
+        
+        记录 checker
+        """
+        pass  # 通常在块外定义
+    
+    def visit_disable_fork(self, node):
+        """DisableFork: disable fork
+        
+        记录 disable fork
+        """
+        self._add_statement(node, item_type=ItemType.DISABLE_FORK)
+    
+    def visit_wait_fork(self, node):
+        """WaitFork: wait fork
+        
+        记录 wait fork
+        """
+        self._add_statement(node, item_type=ItemType.WAIT_FORK)
+    
+    def visit_wait_order(self, node):
+        """WaitOrder: wait order(...)
+
+        记录 wait order
+        """
+        self._add_statement(node, item_type=ItemType.WAIT_ORDER)
+    
+    def visit_rand_case(self, node):
+        """RandCase: rand case
+        
+        记录 rand case
+        """
+        self._add_statement(node, item_type=ItemType.RAND_CASE)
+    
+    def visit_rand_sequence(self, node):
+        """RandSequence: rand sequence
+        
+        记录 rand sequence
+        """
+        self._add_statement(node, item_type=ItemType.RAND_SEQUENCE)
+    
+    def visit_pattern_case(self, node):
+        """PatternCase: pattern case item
+        
+        使用通用的 case 处理
+        """
+        self.generic_visit(node)
+    
+    def visit_list(self, node):
+        """List: 语句列表
+        
+        递归处理
+        """
+        self.generic_visit(node)
+
+
     # =========================================================================
     # [P1] 过程块 - always_ff / always_comb / always_latch / initial
     # =========================================================================
