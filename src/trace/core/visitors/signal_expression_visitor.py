@@ -9538,6 +9538,182 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(expr))
         return result
     
+    # More clauses and expressions
+    @on('ElseClause')
+    def extract_else_clause(self, node) -> SignalResult:
+        """ElseClause: else clause"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('ElseConstraintClause')
+    def extract_else_constraint_clause(self, node) -> SignalResult:
+        """ElseConstraintClause: else constraint clause"""
+        result = SignalResult()
+        constraint = getattr(node, 'constraint', None) or getattr(node, 'body', None)
+        if constraint:
+            result = result.merge(self.extract(constraint))
+        return result
+    
+    @on('ElsePropertyClause')
+    def extract_else_property_clause(self, node) -> SignalResult:
+        """ElsePropertyClause: else property clause"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'body', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('ImplementsClause')
+    def extract_implements_clause(self, node) -> SignalResult:
+        """ImplementsClause: implements clause"""
+        return SignalResult()
+    
+    @on('ExtendsClause')
+    def extract_extends_clause(self, node) -> SignalResult:
+        """ExtendsClause: extends clause"""
+        return SignalResult()
+    
+    @on('IfNonePathDeclaration')
+    def extract_if_none_path_declaration(self, node) -> SignalResult:
+        """IfNonePathDeclaration: ifnone path declaration"""
+        return SignalResult()
+    
+    @on('ConditionalPathDeclaration')
+    def extract_conditional_path_declaration(self, node) -> SignalResult:
+        """ConditionalPathDeclaration: conditional path declaration"""
+        return SignalResult()
+    
+    @on('PathDeclaration')
+    def extract_path_declaration(self, node) -> SignalResult:
+        """PathDeclaration: path declaration"""
+        return SignalResult()
+    
+    @on('PulseStyleDeclaration')
+    def extract_pulse_style_declaration(self, node) -> SignalResult:
+        """PulseStyleDeclaration: pulse style declaration"""
+        return SignalResult()
+    
+    @on('SimpleBinsSelectExpr')
+    def extract_simple_bins_select_expr(self, node) -> SignalResult:
+        """SimpleBinsSelectExpr: simple bins select expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ParenthesizedBinsSelectExpr')
+    def extract_parenthesized_bins_select_expr(self, node) -> SignalResult:
+        """ParenthesizedBinsSelectExpr: parenthesized bins select expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'bins', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('MatchesClause')
+    def extract_matches_clause(self, node) -> SignalResult:
+        """MatchesClause: matches clause"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ColonExpressionClause')
+    def extract_colon_expression_clause(self, node) -> SignalResult:
+        """ColonExpressionClause: colon expression clause"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('DotMemberClause')
+    def extract_dot_member_clause(self, node) -> SignalResult:
+        """DotMemberClause: dot member clause"""
+        return SignalResult()
+    
+    @on('EqualsAssertionArgClause')
+    def extract_equals_assertion_arg_clause(self, node) -> SignalResult:
+        """EqualsAssertionArgClause: equals assertion arg clause"""
+        return SignalResult()
+    
+    @on('IffEventClause')
+    def extract_iff_event_clause(self, node) -> SignalResult:
+        """IffEventClause: iff event clause"""
+        return SignalResult()
+    
+    @on('NamedBlockClause')
+    def extract_named_block_clause(self, node) -> SignalResult:
+        """NamedBlockClause: named block clause"""
+        return SignalResult()
+    
+    @on('DividerClause')
+    def extract_divider_clause(self, node) -> SignalResult:
+        """DividerClause: divider clause"""
+        return SignalResult()
+    
+    @on('RandJoinClause')
+    def extract_rand_join_clause(self, node) -> SignalResult:
+        """RandJoinClause: rand join clause"""
+        return SignalResult()
+    
+    @on('DefaultExtendsClauseArg')
+    def extract_default_extends_clause_arg(self, node) -> SignalResult:
+        """DefaultExtendsClauseArg: default extends clause arg"""
+        return SignalResult()
+    
+    @on('TimingCheckEventArg')
+    def extract_timing_check_event_arg(self, node) -> SignalResult:
+        """TimingCheckEventArg: timing check event arg"""
+        return SignalResult()
+    
+    @on('TimingCheckEventCondition')
+    def extract_timing_check_event_condition(self, node) -> SignalResult:
+        """TimingCheckEventCondition: timing check event condition"""
+        return SignalResult()
+    
+    @on('ExpressionTimingCheckArg')
+    def extract_expression_timing_check_arg(self, node) -> SignalResult:
+        """ExpressionTimingCheckArg: expression timing check arg"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ModAssignmentExpression')
+    def extract_mod_assignment_expression(self, node) -> SignalResult:
+        """ModAssignmentExpression: mod assignment expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('NonblockingAssignmentExpression')
+    def extract_nonblocking_assignment_expression(self, node) -> SignalResult:
+        """NonblockingAssignmentExpression: nonblocking assignment expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
