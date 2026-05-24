@@ -4173,6 +4173,1842 @@ class SignalExpressionVisitor(BaseVisitor):
         """VirtualInterfaceType: virtual interface type"""
         return SignalResult()
 
+    @on('UdpSimpleField')
+    def extract_udpsimplefield(self, node) -> SignalResult:
+        """UdpSimpleField: Udpsimplefield"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UnconnectedDriveDirective')
+    def extract_unconnecteddrivedirective(self, node) -> SignalResult:
+        """UnconnectedDriveDirective: Unconnecteddrivedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UndefDirective')
+    def extract_undefdirective(self, node) -> SignalResult:
+        """UndefDirective: Undefdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UndefineAllDirective')
+    def extract_undefinealldirective(self, node) -> SignalResult:
+        """UndefineAllDirective: Undefinealldirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UnionType')
+    def extract_uniontype(self, node) -> SignalResult:
+        """UnionType: Uniontype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UnitScope')
+    def extract_unitscope(self, node) -> SignalResult:
+        """UnitScope: Unitscope"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('Unknown')
+    def extract_unknown(self, node) -> SignalResult:
+        """Unknown: Unknown"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('Untyped')
+    def extract_untyped(self, node) -> SignalResult:
+        """Untyped: Untyped"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('VariablePortHeader')
+    def extract_variableportheader(self, node) -> SignalResult:
+        """VariablePortHeader: Variableportheader"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('WildcardDimensionSpecifier')
+    def extract_wildcarddimensionspecifier(self, node) -> SignalResult:
+        """WildcardDimensionSpecifier: Wildcarddimensionspecifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('WildcardPortConnection')
+    def extract_wildcardportconnection(self, node) -> SignalResult:
+        """WildcardPortConnection: Wildcardportconnection"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('WildcardPortList')
+    def extract_wildcardportlist(self, node) -> SignalResult:
+        """WildcardPortList: Wildcardportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('WildcardUdpPortList')
+    def extract_wildcardudpportlist(self, node) -> SignalResult:
+        """WildcardUdpPortList: Wildcardudpportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('StructType')
+    def extract_structtype(self, node) -> SignalResult:
+        """StructType: Structtype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('StructUnionMember')
+    def extract_structunionmember(self, node) -> SignalResult:
+        """StructUnionMember: Structunionmember"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SuperHandle')
+    def extract_superhandle(self, node) -> SignalResult:
+        """SuperHandle: Superhandle"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SystemName')
+    def extract_systemname(self, node) -> SignalResult:
+        """SystemName: Systemname"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SystemTimingCheck')
+    def extract_systemtimingcheck(self, node) -> SignalResult:
+        """SystemTimingCheck: Systemtimingcheck"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ThisHandle')
+    def extract_thishandle(self, node) -> SignalResult:
+        """ThisHandle: Thishandle"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TimeScaleDirective')
+    def extract_timescaledirective(self, node) -> SignalResult:
+        """TimeScaleDirective: Timescaledirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TimeType')
+    def extract_timetype(self, node) -> SignalResult:
+        """TimeType: Timetype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TokenList')
+    def extract_tokenlist(self, node) -> SignalResult:
+        """TokenList: Tokenlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TransListCoverageBinInitializer')
+    def extract_translistcoveragebininitializer(self, node) -> SignalResult:
+        """TransListCoverageBinInitializer: Translistcoveragebininitializer"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TransRange')
+    def extract_transrange(self, node) -> SignalResult:
+        """TransRange: Transrange"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TransRepeatRange')
+    def extract_transrepeatrange(self, node) -> SignalResult:
+        """TransRepeatRange: Transrepeatrange"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TransSet')
+    def extract_transset(self, node) -> SignalResult:
+        """TransSet: Transset"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('TypeAssignment')
+    def extract_typeassignment(self, node) -> SignalResult:
+        """TypeAssignment: Typeassignment"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpBody')
+    def extract_udpbody(self, node) -> SignalResult:
+        """UdpBody: Udpbody"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpEdgeField')
+    def extract_udpedgefield(self, node) -> SignalResult:
+        """UdpEdgeField: Udpedgefield"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpEntry')
+    def extract_udpentry(self, node) -> SignalResult:
+        """UdpEntry: Udpentry"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpInitialStmt')
+    def extract_udpinitialstmt(self, node) -> SignalResult:
+        """UdpInitialStmt: Udpinitialstmt"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpInputPortDecl')
+    def extract_udpinputportdecl(self, node) -> SignalResult:
+        """UdpInputPortDecl: Udpinputportdecl"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('UdpOutputPortDecl')
+    def extract_udpoutputportdecl(self, node) -> SignalResult:
+        """UdpOutputPortDecl: Udpoutputportdecl"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PragmaDirective')
+    def extract_pragmadirective(self, node) -> SignalResult:
+        """PragmaDirective: Pragmadirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PrimitiveInstantiation')
+    def extract_primitiveinstantiation(self, node) -> SignalResult:
+        """PrimitiveInstantiation: Primitiveinstantiation"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('Production')
+    def extract_production(self, node) -> SignalResult:
+        """Production: Production"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ProtectDirective')
+    def extract_protectdirective(self, node) -> SignalResult:
+        """ProtectDirective: Protectdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ProtectedDirective')
+    def extract_protecteddirective(self, node) -> SignalResult:
+        """ProtectedDirective: Protecteddirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PullStrength')
+    def extract_pullstrength(self, node) -> SignalResult:
+        """PullStrength: Pullstrength"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('QueueDimensionSpecifier')
+    def extract_queuedimensionspecifier(self, node) -> SignalResult:
+        """QueueDimensionSpecifier: Queuedimensionspecifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RangeCoverageBinInitializer')
+    def extract_rangecoveragebininitializer(self, node) -> SignalResult:
+        """RangeCoverageBinInitializer: Rangecoveragebininitializer"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RangeDimensionSpecifier')
+    def extract_rangedimensionspecifier(self, node) -> SignalResult:
+        """RangeDimensionSpecifier: Rangedimensionspecifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RangeList')
+    def extract_rangelist(self, node) -> SignalResult:
+        """RangeList: Rangelist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RealTimeType')
+    def extract_realtimetype(self, node) -> SignalResult:
+        """RealTimeType: Realtimetype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ResetAllDirective')
+    def extract_resetalldirective(self, node) -> SignalResult:
+        """ResetAllDirective: Resetalldirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RootScope')
+    def extract_rootscope(self, node) -> SignalResult:
+        """RootScope: Rootscope"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RsIfElse')
+    def extract_rsifelse(self, node) -> SignalResult:
+        """RsIfElse: Rsifelse"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RsProdItem')
+    def extract_rsproditem(self, node) -> SignalResult:
+        """RsProdItem: Rsproditem"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RsRepeat')
+    def extract_rsrepeat(self, node) -> SignalResult:
+        """RsRepeat: Rsrepeat"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('RsRule')
+    def extract_rsrule(self, node) -> SignalResult:
+        """RsRule: Rsrule"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SimplePathSuffix')
+    def extract_simplepathsuffix(self, node) -> SignalResult:
+        """SimplePathSuffix: Simplepathsuffix"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SimpleRangeSelect')
+    def extract_simplerangeselect(self, node) -> SignalResult:
+        """SimpleRangeSelect: Simplerangeselect"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('SpecparamDeclarator')
+    def extract_specparamdeclarator(self, node) -> SignalResult:
+        """SpecparamDeclarator: Specparamdeclarator"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedLabel')
+    def extract_namedlabel(self, node) -> SignalResult:
+        """NamedLabel: Namedlabel"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedParamAssignment')
+    def extract_namedparamassignment(self, node) -> SignalResult:
+        """NamedParamAssignment: Namedparamassignment"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedPortConnection')
+    def extract_namedportconnection(self, node) -> SignalResult:
+        """NamedPortConnection: Namedportconnection"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedStructurePatternMember')
+    def extract_namedstructurepatternmember(self, node) -> SignalResult:
+        """NamedStructurePatternMember: Namedstructurepatternmember"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NetAlias')
+    def extract_netalias(self, node) -> SignalResult:
+        """NetAlias: Netalias"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NetPortHeader')
+    def extract_netportheader(self, node) -> SignalResult:
+        """NetPortHeader: Netportheader"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NoUnconnectedDriveDirective')
+    def extract_nounconnecteddrivedirective(self, node) -> SignalResult:
+        """NoUnconnectedDriveDirective: Nounconnecteddrivedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NonAnsiPortList')
+    def extract_nonansiportlist(self, node) -> SignalResult:
+        """NonAnsiPortList: Nonansiportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NonAnsiUdpPortList')
+    def extract_nonansiudpportlist(self, node) -> SignalResult:
+        """NonAnsiUdpPortList: Nonansiudpportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('OneStepDelay')
+    def extract_onestepdelay(self, node) -> SignalResult:
+        """OneStepDelay: Onestepdelay"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('OrderedArgument')
+    def extract_orderedargument(self, node) -> SignalResult:
+        """OrderedArgument: Orderedargument"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('OrderedParamAssignment')
+    def extract_orderedparamassignment(self, node) -> SignalResult:
+        """OrderedParamAssignment: Orderedparamassignment"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('OrderedPortConnection')
+    def extract_orderedportconnection(self, node) -> SignalResult:
+        """OrderedPortConnection: Orderedportconnection"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('OrderedStructurePatternMember')
+    def extract_orderedstructurepatternmember(self, node) -> SignalResult:
+        """OrderedStructurePatternMember: Orderedstructurepatternmember"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ParameterPortList')
+    def extract_parameterportlist(self, node) -> SignalResult:
+        """ParameterPortList: Parameterportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ParameterValueAssignment')
+    def extract_parametervalueassignment(self, node) -> SignalResult:
+        """ParameterValueAssignment: Parametervalueassignment"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ParenthesizedPattern')
+    def extract_parenthesizedpattern(self, node) -> SignalResult:
+        """ParenthesizedPattern: Parenthesizedpattern"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PathDescription')
+    def extract_pathdescription(self, node) -> SignalResult:
+        """PathDescription: Pathdescription"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PortConcatenation')
+    def extract_portconcatenation(self, node) -> SignalResult:
+        """PortConcatenation: Portconcatenation"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('PortReference')
+    def extract_portreference(self, node) -> SignalResult:
+        """PortReference: Portreference"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('IdentifierSelectName')
+    def extract_identifierselectname(self, node) -> SignalResult:
+        """IdentifierSelectName: Identifierselectname"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('IfDefDirective')
+    def extract_ifdefdirective(self, node) -> SignalResult:
+        """IfDefDirective: Ifdefdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('IfNDefDirective')
+    def extract_ifndefdirective(self, node) -> SignalResult:
+        """IfNDefDirective: Ifndefdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ImmediateAssertionMember')
+    def extract_immediateassertionmember(self, node) -> SignalResult:
+        """ImmediateAssertionMember: Immediateassertionmember"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ImplicitType')
+    def extract_implicittype(self, node) -> SignalResult:
+        """ImplicitType: Implicittype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('IncludeDirective')
+    def extract_includedirective(self, node) -> SignalResult:
+        """IncludeDirective: Includedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('InstanceConfigRule')
+    def extract_instanceconfigrule(self, node) -> SignalResult:
+        """InstanceConfigRule: Instanceconfigrule"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('InstanceName')
+    def extract_instancename(self, node) -> SignalResult:
+        """InstanceName: Instancename"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('LibraryIncludeStatement')
+    def extract_libraryincludestatement(self, node) -> SignalResult:
+        """LibraryIncludeStatement: Libraryincludestatement"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('LibraryMap')
+    def extract_librarymap(self, node) -> SignalResult:
+        """LibraryMap: Librarymap"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('LineDirective')
+    def extract_linedirective(self, node) -> SignalResult:
+        """LineDirective: Linedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('LocalScope')
+    def extract_localscope(self, node) -> SignalResult:
+        """LocalScope: Localscope"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroActualArgument')
+    def extract_macroactualargument(self, node) -> SignalResult:
+        """MacroActualArgument: Macroactualargument"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroActualArgumentList')
+    def extract_macroactualargumentlist(self, node) -> SignalResult:
+        """MacroActualArgumentList: Macroactualargumentlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroArgumentDefault')
+    def extract_macroargumentdefault(self, node) -> SignalResult:
+        """MacroArgumentDefault: Macroargumentdefault"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroFormalArgument')
+    def extract_macroformalargument(self, node) -> SignalResult:
+        """MacroFormalArgument: Macroformalargument"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroFormalArgumentList')
+    def extract_macroformalargumentlist(self, node) -> SignalResult:
+        """MacroFormalArgumentList: Macroformalargumentlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('MacroUsage')
+    def extract_macrousage(self, node) -> SignalResult:
+        """MacroUsage: Macrousage"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedArgument')
+    def extract_namedargument(self, node) -> SignalResult:
+        """NamedArgument: Namedargument"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('NamedConditionalDirectiveExpression')
+    def extract_namedconditionaldirectiveexpression(self, node) -> SignalResult:
+        """NamedConditionalDirectiveExpression: Namedconditionaldirectiveexpression"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ElsIfDirective')
+    def extract_elsifdirective(self, node) -> SignalResult:
+        """ElsIfDirective: Elsifdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ElseDirective')
+    def extract_elsedirective(self, node) -> SignalResult:
+        """ElseDirective: Elsedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EmptyIdentifierName')
+    def extract_emptyidentifiername(self, node) -> SignalResult:
+        """EmptyIdentifierName: Emptyidentifiername"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EmptyMember')
+    def extract_emptymember(self, node) -> SignalResult:
+        """EmptyMember: Emptymember"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EmptyNonAnsiPort')
+    def extract_emptynonansiport(self, node) -> SignalResult:
+        """EmptyNonAnsiPort: Emptynonansiport"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EmptyPortConnection')
+    def extract_emptyportconnection(self, node) -> SignalResult:
+        """EmptyPortConnection: Emptyportconnection"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EmptyTimingCheckArg')
+    def extract_emptytimingcheckarg(self, node) -> SignalResult:
+        """EmptyTimingCheckArg: Emptytimingcheckarg"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EndCellDefineDirective')
+    def extract_endcelldefinedirective(self, node) -> SignalResult:
+        """EndCellDefineDirective: Endcelldefinedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EndIfDirective')
+    def extract_endifdirective(self, node) -> SignalResult:
+        """EndIfDirective: Endifdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EndKeywordsDirective')
+    def extract_endkeywordsdirective(self, node) -> SignalResult:
+        """EndKeywordsDirective: Endkeywordsdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EndProtectDirective')
+    def extract_endprotectdirective(self, node) -> SignalResult:
+        """EndProtectDirective: Endprotectdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EndProtectedDirective')
+    def extract_endprotecteddirective(self, node) -> SignalResult:
+        """EndProtectedDirective: Endprotecteddirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EnumType')
+    def extract_enumtype(self, node) -> SignalResult:
+        """EnumType: Enumtype"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ExplicitAnsiPort')
+    def extract_explicitansiport(self, node) -> SignalResult:
+        """ExplicitAnsiPort: Explicitansiport"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ExplicitNonAnsiPort')
+    def extract_explicitnonansiport(self, node) -> SignalResult:
+        """ExplicitNonAnsiPort: Explicitnonansiport"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ExternUdpDecl')
+    def extract_externudpdecl(self, node) -> SignalResult:
+        """ExternUdpDecl: Externudpdecl"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('FilePathSpec')
+    def extract_filepathspec(self, node) -> SignalResult:
+        """FilePathSpec: Filepathspec"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ForeachLoopList')
+    def extract_foreachlooplist(self, node) -> SignalResult:
+        """ForeachLoopList: Foreachlooplist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ForwardTypeRestriction')
+    def extract_forwardtyperestriction(self, node) -> SignalResult:
+        """ForwardTypeRestriction: Forwardtyperestriction"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('HierarchyInstantiation')
+    def extract_hierarchyinstantiation(self, node) -> SignalResult:
+        """HierarchyInstantiation: Hierarchyinstantiation"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultConfigRule')
+    def extract_defaultconfigrule(self, node) -> SignalResult:
+        """DefaultConfigRule: Defaultconfigrule"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultDecayTimeDirective')
+    def extract_defaultdecaytimedirective(self, node) -> SignalResult:
+        """DefaultDecayTimeDirective: Defaultdecaytimedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultDistItem')
+    def extract_defaultdistitem(self, node) -> SignalResult:
+        """DefaultDistItem: Defaultdistitem"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultNetTypeDirective')
+    def extract_defaultnettypedirective(self, node) -> SignalResult:
+        """DefaultNetTypeDirective: Defaultnettypedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultSkewItem')
+    def extract_defaultskewitem(self, node) -> SignalResult:
+        """DefaultSkewItem: Defaultskewitem"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefaultTriregStrengthDirective')
+    def extract_defaulttriregstrengthdirective(self, node) -> SignalResult:
+        """DefaultTriregStrengthDirective: Defaulttriregstrengthdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DeferredAssertion')
+    def extract_deferredassertion(self, node) -> SignalResult:
+        """DeferredAssertion: Deferredassertion"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefineDirective')
+    def extract_definedirective(self, node) -> SignalResult:
+        """DefineDirective: Definedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('Delay3')
+    def extract_delay3(self, node) -> SignalResult:
+        """Delay3: Delay3"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DelayModeDistributedDirective')
+    def extract_delaymodedistributeddirective(self, node) -> SignalResult:
+        """DelayModeDistributedDirective: Delaymodedistributeddirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DelayModePathDirective')
+    def extract_delaymodepathdirective(self, node) -> SignalResult:
+        """DelayModePathDirective: Delaymodepathdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DelayModeUnitDirective')
+    def extract_delaymodeunitdirective(self, node) -> SignalResult:
+        """DelayModeUnitDirective: Delaymodeunitdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DelayModeZeroDirective')
+    def extract_delaymodezerodirective(self, node) -> SignalResult:
+        """DelayModeZeroDirective: Delaymodezerodirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DisableIff')
+    def extract_disableiff(self, node) -> SignalResult:
+        """DisableIff: Disableiff"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DistItem')
+    def extract_distitem(self, node) -> SignalResult:
+        """DistItem: Distitem"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DriveStrength')
+    def extract_drivestrength(self, node) -> SignalResult:
+        """DriveStrength: Drivestrength"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EdgeControlSpecifier')
+    def extract_edgecontrolspecifier(self, node) -> SignalResult:
+        """EdgeControlSpecifier: Edgecontrolspecifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EdgeDescriptor')
+    def extract_edgedescriptor(self, node) -> SignalResult:
+        """EdgeDescriptor: Edgedescriptor"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('EdgeSensitivePathSuffix')
+    def extract_edgesensitivepathsuffix(self, node) -> SignalResult:
+        """EdgeSensitivePathSuffix: Edgesensitivepathsuffix"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ElementSelect')
+    def extract_elementselect(self, node) -> SignalResult:
+        """ElementSelect: Elementselect"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('AnsiPortList')
+    def extract_ansiportlist(self, node) -> SignalResult:
+        """AnsiPortList: Ansiportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('AnsiUdpPortList')
+    def extract_ansiudpportlist(self, node) -> SignalResult:
+        """AnsiUdpPortList: Ansiudpportlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ArgumentList')
+    def extract_argumentlist(self, node) -> SignalResult:
+        """ArgumentList: Argumentlist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('AttributeInstance')
+    def extract_attributeinstance(self, node) -> SignalResult:
+        """AttributeInstance: Attributeinstance"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('AttributeSpec')
+    def extract_attributespec(self, node) -> SignalResult:
+        """AttributeSpec: Attributespec"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('BeginKeywordsDirective')
+    def extract_beginkeywordsdirective(self, node) -> SignalResult:
+        """BeginKeywordsDirective: Beginkeywordsdirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('CellConfigRule')
+    def extract_cellconfigrule(self, node) -> SignalResult:
+        """CellConfigRule: Cellconfigrule"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('CellDefineDirective')
+    def extract_celldefinedirective(self, node) -> SignalResult:
+        """CellDefineDirective: Celldefinedirective"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ChargeStrength')
+    def extract_chargestrength(self, node) -> SignalResult:
+        """ChargeStrength: Chargestrength"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('CompilationUnit')
+    def extract_compilationunit(self, node) -> SignalResult:
+        """CompilationUnit: Compilationunit"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ConditionalPredicate')
+    def extract_conditionalpredicate(self, node) -> SignalResult:
+        """ConditionalPredicate: Conditionalpredicate"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ConfigCellIdentifier')
+    def extract_configcellidentifier(self, node) -> SignalResult:
+        """ConfigCellIdentifier: Configcellidentifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ConfigInstanceIdentifier')
+    def extract_configinstanceidentifier(self, node) -> SignalResult:
+        """ConfigInstanceIdentifier: Configinstanceidentifier"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ConfigLiblist')
+    def extract_configliblist(self, node) -> SignalResult:
+        """ConfigLiblist: Configliblist"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('ConstructorName')
+    def extract_constructorname(self, node) -> SignalResult:
+        """ConstructorName: Constructorname"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('CycleDelay')
+    def extract_cycledelay(self, node) -> SignalResult:
+        """CycleDelay: Cycledelay"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DPIExport')
+    def extract_dpiexport(self, node) -> SignalResult:
+        """DPIExport: Dpiexport"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DPIImport')
+    def extract_dpiimport(self, node) -> SignalResult:
+        """DPIImport: Dpiimport"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefParam')
+    def extract_defparam(self, node) -> SignalResult:
+        """DefParam: Defparam"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
+    @on('DefParamAssignment')
+    def extract_defparamassignment(self, node) -> SignalResult:
+        """DefParamAssignment: Defparamassignment"""
+        result = SignalResult()
+        # Extract signals from children
+        children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
+        if children:
+            for child in children:
+                if child:
+                    result = result.merge(self.extract(child))
+        return result
+
     
     @on('Declarator')
     def extract_declarator(self, node) -> SignalResult:
