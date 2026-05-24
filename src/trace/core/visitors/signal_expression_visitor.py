@@ -7902,6 +7902,109 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(expr)
         return SignalResult()
     
+    # Event expressions
+    @on('EventExpression')
+    def extract_event_expression(self, node) -> SignalResult:
+        """EventExpression: event expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('BinaryBlockEventExpr')
+    def extract_binary_block_event_expr(self, node) -> SignalResult:
+        """BinaryBlockEventExpr: binary block event expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Clocking block expressions
+    @on('ClockingBlockExpr')
+    def extract_clocking_block_expr_stmt(self, node) -> SignalResult:
+        """ClockingBlockExpr: clocking block expression"""
+        return SignalResult()
+    
+    # Sequence matching expressions
+    @on('MatchedExpr')
+    def extract_matched_expr_stmt(self, node) -> SignalResult:
+        """MatchedExpr: matched expression"""
+        result = SignalResult()
+        match = getattr(node, 'match', None) or getattr(node, 'expr', None)
+        if match:
+            result = result.merge(self.extract(match))
+        return result
+    
+    @on('SyncAcceptSequenceExpr')
+    def extract_sync_accept_sequence_expr(self, node) -> SignalResult:
+        """SyncAcceptSequenceExpr: sync accept sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('SyncRejectSequenceExpr')
+    def extract_sync_reject_sequence_expr(self, node) -> SignalResult:
+        """SyncRejectSequenceExpr: sync reject sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('SyncRejectWeakSequenceExpr')
+    def extract_sync_reject_weak_sequence_expr(self, node) -> SignalResult:
+        """SyncRejectWeakSequenceExpr: sync reject weak sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('SyncSequenceExpr')
+    def extract_sync_sequence_expr(self, node) -> SignalResult:
+        """SyncSequenceExpr: sync sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('AsyncAcceptSequenceExpr')
+    def extract_async_accept_sequence_expr(self, node) -> SignalResult:
+        """AsyncAcceptSequenceExpr: async accept sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('AsyncRejectSequenceExpr')
+    def extract_async_reject_sequence_expr(self, node) -> SignalResult:
+        """AsyncRejectSequenceExpr: async reject sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('AsyncRejectWeakSequenceExpr')
+    def extract_async_reject_weak_sequence_expr(self, node) -> SignalResult:
+        """AsyncRejectWeakSequenceExpr: async reject weak sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
