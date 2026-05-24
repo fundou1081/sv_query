@@ -11,7 +11,7 @@
 - _get_signal()
 - _get_all_signals()
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable, ClassVar
 import logging
 
 from .base_visitor import BaseVisitor
@@ -20,17 +20,42 @@ from .signal_result import SignalResult
 logger = logging.getLogger(__name__)
 
 
+def on(kind_name: str):
+    """注册 handler 的装饰器
+    
+    用法:
+        @on('BinaryOp')
+        def handle_binary_op(self, node):
+            ...
+    """
+    def decorator(func):
+        func._kind_name = kind_name
+        return func
+    return decorator
+
+
 class SignalExpressionVisitor(BaseVisitor):
     """信号/表达式提取 Visitor
     
     负责将 AST 节点转换为信号名或信号列表。
     使用 Visitor 模式，每个语法类型对应独立的 visit 方法。
     
+    单 dispatch 重构:
+        使用 @on('KindName') 装饰器注册 handler，
+        extract() 统一入口分派到对应的 handler。
+    
     使用方式:
         visitor = SignalExpressionVisitor(adapter)
         signal_name = visitor.visit(node)
         all_signals = visitor.get_all_signals(node)
+        result = visitor.extract(node)  # 统一入口 (推荐)
     """
+    
+    # 单 dispatch: handler 注册表
+    _HANDLERS: ClassVar[Dict[str, Callable]] = {}
+    
+    # 双轨控制: True=新 handler, False=旧方法回退
+    _dispatch_enabled: bool = False
     
     def __init__(self, adapter):
         """初始化
@@ -40,6 +65,29 @@ class SignalExpressionVisitor(BaseVisitor):
         """
         super().__init__()
         self.adapter = adapter
+        
+        # 收集 @on 装饰的 handler
+        self._collect_handlers()
+    
+    def _collect_handlers(self):
+        """收集所有 @on 装饰的 handler 到 _HANDLERS"""
+        for name in dir(self):
+            if name.startswith('_'):
+                continue
+            method = getattr(self, name, None)
+            if callable(method) and hasattr(method, '_kind_name'):
+                kind_name = method._kind_name
+                self._HANDLERS[kind_name] = method
+                logger.debug(f"Registered handler: {kind_name} -> {name}")
+    
+    def _get_kind_name(self, node) -> Optional[str]:
+        """获取节点的 kind 名称"""
+        if node is None:
+            return None
+        kind = getattr(node, 'kind', None)
+        if kind and hasattr(kind, 'name'):
+            return kind.name
+        return None
     
     # =========================================================================
     # 主入口方法
@@ -89,6 +137,10 @@ class SignalExpressionVisitor(BaseVisitor):
         替代 visit() + get_all_signals() 的双接口。
         返回 SignalResult，包含丰富信息。
         
+        单 dispatch 架构:
+            1. 如果 _dispatch_enabled=True 且存在 handler，从 _HANDLERS 分派
+            2. 否则使用旧的 visit() + get_all_signals() fallback
+        
         Args:
             node: AST 节点
             
@@ -100,14 +152,15 @@ class SignalExpressionVisitor(BaseVisitor):
         if node is None:
             return SignalResult.empty()
         
-        kind = getattr(node, 'kind', None)
-        if kind is None:
-            return SignalResult.empty()
-        
-        kind_name = kind.name if hasattr(kind, 'name') else None
+        kind_name = self._get_kind_name(node)
         if not kind_name:
             return SignalResult.empty()
         
+        # === 新路径: 使用 _HANDLERS 单 dispatch ===
+        if self._dispatch_enabled and kind_name in self._HANDLERS:
+            return self._HANDLERS[kind_name](self, node)
+        
+        # === 旧路径 fallback: visit() + get_all_signals() ===
         import re
         
         # === Step 1: Try to find explicit extract_ method ===
@@ -738,6 +791,7 @@ class SignalExpressionVisitor(BaseVisitor):
             return name
         return None
     
+    @on('NamedValue')
     def extract_named_value(self, node) -> SignalResult:
         """NamedValue: 单一信号引用
         
@@ -745,6 +799,21 @@ class SignalExpressionVisitor(BaseVisitor):
         """
         signal_name = self.visit_named_value(node)
         return SignalResult.single(signal_name, kind_name='NamedValue')
+    
+    @on('BinaryExpression')
+    def extract_binary_expression(self, node) -> SignalResult:
+        """BinaryExpression: a + b, a & b 等二元表达式
+        
+        递归提取左右操作数中的所有信号
+        """
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        
+        # 合并结果
+        return left_result.merge(right_result)
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
