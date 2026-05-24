@@ -7810,6 +7810,98 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Package expressions
+    @on('PackageExpression')
+    def extract_package_expression(self, node) -> SignalResult:
+        """PackageExpression: package expression"""
+        return SignalResult()
+    
+    # Class scope expressions
+    @on('ClassScopeExpr')
+    def extract_class_scope_expr(self, node) -> SignalResult:
+        """ClassScopeExpr: class scope expression"""
+        result = SignalResult()
+        class_name = getattr(node, 'class_name', None) or getattr(node, 'type', None)
+        if class_name:
+            result = result.merge(self.extract(class_name))
+        return result
+    
+    # Interface handle expressions
+    @on('InterfaceHandleExpr')
+    def extract_interface_handle_expr(self, node) -> SignalResult:
+        """InterfaceHandleExpr: interface handle expression"""
+        return SignalResult()
+    
+    # Bit stream casting expressions
+    @on('BitStreamCastExpr')
+    def extract_bit_stream_cast_expr(self, node) -> SignalResult:
+        """BitStreamCastExpr: bit stream cast expression"""
+        result = SignalResult()
+        cast = getattr(node, 'cast', None) or getattr(node, 'type', None)
+        if cast:
+            result = result.merge(self.extract(cast))
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Cast expressions with hierarchy
+    @on('CastToBitBaseExpr')
+    def extract_cast_to_bit_base_expr(self, node) -> SignalResult:
+        """CastToBitBaseExpr: cast to bit base expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToShortIntExpr')
+    def extract_cast_to_short_int_expr(self, node) -> SignalResult:
+        """CastToShortIntExpr: cast to short int expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToIntExpr')
+    def extract_cast_to_int_expr(self, node) -> SignalResult:
+        """CastToIntExpr: cast to int expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToLongIntExpr')
+    def extract_cast_to_long_int_expr(self, node) -> SignalResult:
+        """CastToLongIntExpr: cast to long int expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToByteExpr')
+    def extract_cast_to_byte_expr(self, node) -> SignalResult:
+        """CastToByteExpr: cast to byte expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToBitExpr')
+    def extract_cast_to_bit_expr(self, node) -> SignalResult:
+        """CastToBitExpr: cast to bit expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CastToRealExpr')
+    def extract_cast_to_real_expr(self, node) -> SignalResult:
+        """CastToRealExpr: cast to real expression"""
+        expr = getattr(node, 'expr', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
