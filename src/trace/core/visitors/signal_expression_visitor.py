@@ -8780,6 +8780,127 @@ class SignalExpressionVisitor(BaseVisitor):
         """PackageExportAllDeclaration: package export all declaration"""
         return SignalResult()
     
+    # Clocking block declarations
+    @on('ClockingDeclaration')
+    def extract_clocking_declaration(self, node) -> SignalResult:
+        """ClockingDeclaration: clocking block declaration"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ClockingDirection')
+    def extract_clocking_direction(self, node) -> SignalResult:
+        """ClockingDirection: clocking direction"""
+        return SignalResult()
+    
+    @on('ClockingItem')
+    def extract_clocking_item(self, node) -> SignalResult:
+        """ClockingItem: clocking item"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'body', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ClockingSkew')
+    def extract_clocking_skew(self, node) -> SignalResult:
+        """ClockingSkew: clocking skew"""
+        return SignalResult()
+    
+    @on('DefaultClockingReference')
+    def extract_default_clocking_reference(self, node) -> SignalResult:
+        """DefaultClockingReference: default clocking reference"""
+        return SignalResult()
+    
+    @on('TimeUnitsDeclaration')
+    def extract_time_units_declaration(self, node) -> SignalResult:
+        """TimeUnitsDeclaration: time units declaration"""
+        return SignalResult()
+    
+    # Modport declarations
+    @on('ModportSimplePortList')
+    def extract_modport_simple_port_list(self, node) -> SignalResult:
+        """ModportSimplePortList: modport simple port list"""
+        result = SignalResult()
+        ports = getattr(node, 'ports', None)
+        if ports and hasattr(ports, '__iter__'):
+            for port in ports:
+                if port:
+                    result = result.merge(self.extract(port))
+        return result
+    
+    @on('ModportSubroutinePortList')
+    def extract_modport_subroutine_port_list(self, node) -> SignalResult:
+        """ModportSubroutinePortList: modport subroutine port list"""
+        result = SignalResult()
+        ports = getattr(node, 'ports', None)
+        if ports and hasattr(ports, '__iter__'):
+            for port in ports:
+                if port:
+                    result = result.merge(self.extract(port))
+        return result
+    
+    @on('ModportClockingPort')
+    def extract_modport_clocking_port(self, node) -> SignalResult:
+        """ModportClockingPort: modport clocking port"""
+        return SignalResult()
+    
+    @on('ModportExplicitPort')
+    def extract_modport_explicit_port(self, node) -> SignalResult:
+        """ModportExplicitPort: modport explicit port"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ModportNamedPort')
+    def extract_modport_named_port(self, node) -> SignalResult:
+        """ModportNamedPort: modport named port"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Interface port header
+    @on('InterfacePortHeader')
+    def extract_interface_port_header(self, node) -> SignalResult:
+        """InterfacePortHeader: interface port header"""
+        return SignalResult()
+    
+    @on('InterfaceHeader')
+    def extract_interface_header_stmt(self, node) -> SignalResult:
+        """InterfaceHeader: interface header"""
+        return SignalResult()
+    
+    @on('ModuleHeader')
+    def extract_module_header(self, node) -> SignalResult:
+        """ModuleHeader: module header"""
+        result = SignalResult()
+        params = getattr(node, 'parameters', None)
+        if params and hasattr(params, '__iter__'):
+            for p in params:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('PackageHeader')
+    def extract_package_header(self, node) -> SignalResult:
+        """PackageHeader: package header"""
+        return SignalResult()
+    
+    @on('ProgramHeader')
+    def extract_program_header(self, node) -> SignalResult:
+        """ProgramHeader: program header"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
