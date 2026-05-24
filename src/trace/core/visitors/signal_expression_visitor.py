@@ -6799,6 +6799,175 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(array))
         return result
     
+    # Delay control expressions
+    @on('DelayControlExpr')
+    def extract_delay_control_expr(self, node) -> SignalResult:
+        """DelayControlExpr: delay control expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'delay', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('EventControlExpr')
+    def extract_event_control_expr(self, node) -> SignalResult:
+        """EventControlExpr: event control expression"""
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            return self.extract(event)
+        return SignalResult()
+    
+    @on('CycleDelayExpr')
+    def extract_cycle_delay_expr(self, node) -> SignalResult:
+        """CycleDelayExpr: cycle delay expression ##"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        return result
+    
+    # Queue expressions
+    @on('QueueExpression')
+    def extract_queue_expression(self, node) -> SignalResult:
+        """QueueExpression: queue expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Associative array expressions
+    @on('AssociativeArrayExpression')
+    def extract_associative_array_expression(self, node) -> SignalResult:
+        """AssociativeArrayExpression: associative array expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Streaming expressions
+    @on('StreamingConcatenationExpr')
+    def extract_streaming_concatenation_expr(self, node) -> SignalResult:
+        """StreamingConcatenationExpr: streaming concatenation expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'streams', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('StreamExpression')
+    def extract_stream_expression_stmt(self, node) -> SignalResult:
+        """StreamExpression: stream expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expr', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Concatenation expressions
+    @on('ConcatenationExpr')
+    def extract_concatenation_expr(self, node) -> SignalResult:
+        """ConcatenationExpr: concatenation expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ReplicationExpr')
+    def extract_replication_expr(self, node) -> SignalResult:
+        """ReplicationExpr: replication expression {N{expr}}"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # MinTypMax expression
+    @on('MinTypMaxExpr')
+    def extract_min_typ_max_expr_stmt(self, node) -> SignalResult:
+        """MinTypMaxExpr: min typ max expression"""
+        result = SignalResult()
+        min = getattr(node, 'min', None) or getattr(node, 'expr', None)
+        if min:
+            result = result.merge(self.extract(min))
+        typ = getattr(node, 'typ', None) or getattr(node, 'expr2', None)
+        if typ:
+            result = result.merge(self.extract(typ))
+        max = getattr(node, 'max', None) or getattr(node, 'expr3', None)
+        if max:
+            result = result.merge(self.extract(max))
+        return result
+    
+    # Inside expression
+    @on('InsideExpr')
+    def extract_inside_expr(self, node) -> SignalResult:
+        """InsideExpr: inside expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        range_expr = getattr(node, 'range', None) or getattr(node, 'expr2', None)
+        if range_expr:
+            result = result.merge(self.extract(range_expr))
+        return result
+    
+    # Matched expressions
+    @on('MatchedExpr')
+    def extract_matched_expr(self, node) -> SignalResult:
+        """MatchedExpr: matched expression"""
+        result = SignalResult()
+        match = getattr(node, 'match', None) or getattr(node, 'expr', None)
+        if match:
+            result = result.merge(self.extract(match))
+        return result
+    
+    # Unary operators
+    @on('UnaryPlusExpr')
+    def extract_unary_plus_expr(self, node) -> SignalResult:
+        """UnaryPlusExpr: unary plus expression +"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryMinusExpr')
+    def extract_unary_minus_expr(self, node) -> SignalResult:
+        """UnaryMinusExpr: unary minus expression -"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryNotExpr')
+    def extract_unary_not_expr(self, node) -> SignalResult:
+        """UnaryNotExpr: unary not expression !"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryTildeExpr')
+    def extract_unary_tilde_expr(self, node) -> SignalResult:
+        """UnaryTildeExpr: unary tilde expression ~"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
