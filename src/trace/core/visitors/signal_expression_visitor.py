@@ -4041,6 +4041,600 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(stmt))
         return result
     
+    # Additional SyntaxKind expression handlers
+    @on('AddExpression')
+    def extract_add_expression(self, node) -> SignalResult:
+        """AddExpression: addition expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SubtractExpression')
+    def extract_subtract_expression(self, node) -> SignalResult:
+        """SubtractExpression: subtraction expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('MultiplyExpression')
+    def extract_multiply_expression(self, node) -> SignalResult:
+        """MultiplyExpression: multiplication expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DivideExpression')
+    def extract_divide_expression(self, node) -> SignalResult:
+        """DivideExpression: division expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ModuloExpression')
+    def extract_modulo_expression(self, node) -> SignalResult:
+        """ModuloExpression: modulo expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryAndExpression')
+    def extract_binary_and_expression(self, node) -> SignalResult:
+        """BinaryAndExpression: binary and expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryOrExpression')
+    def extract_binary_or_expression(self, node) -> SignalResult:
+        """BinaryOrExpression: binary or expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryXorExpression')
+    def extract_binary_xor_expression(self, node) -> SignalResult:
+        """BinaryXorExpression: binary xor expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinaryXnorExpression')
+    def extract_binary_xnor_expression(self, node) -> SignalResult:
+        """BinaryXnorExpression: binary xnor expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('EqualityExpression')
+    def extract_equality_expression(self, node) -> SignalResult:
+        """EqualityExpression: equality expression =="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('InequalityExpression')
+    def extract_inequality_expression(self, node) -> SignalResult:
+        """InequalityExpression: inequality expression !="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('CaseEqualityExpression')
+    def extract_case_equality_expression(self, node) -> SignalResult:
+        """CaseEqualityExpression: case equality expression ==="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('CaseInequalityExpression')
+    def extract_case_inequality_expression(self, node) -> SignalResult:
+        """CaseInequalityExpression: case inequality expression !=="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LessThanExpression')
+    def extract_less_than_expression(self, node) -> SignalResult:
+        """LessThanExpression: less than expression <"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LessThanOrEqualExpression')
+    def extract_less_than_or_equal_expression(self, node) -> SignalResult:
+        """LessThanOrEqualExpression: less than or equal expression <="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('GreaterThanExpression')
+    def extract_greater_than_expression(self, node) -> SignalResult:
+        """GreaterThanExpression: greater than expression >"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('GreaterThanOrEqualExpression')
+    def extract_greater_than_or_equal_expression(self, node) -> SignalResult:
+        """GreaterThanOrEqualExpression: greater than or equal expression >="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('WildcardEqualityExpression')
+    def extract_wildcard_equality_expression(self, node) -> SignalResult:
+        """WildcardEqualityExpression: wildcard equality expression ==?"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('WildcardInequalityExpression')
+    def extract_wildcard_inequality_expression(self, node) -> SignalResult:
+        """WildcardInequalityExpression: wildcard inequality expression !=?"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AndPropertyExpr')
+    def extract_and_property_expr(self, node) -> SignalResult:
+        """AndPropertyExpr: and property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('OrPropertyExpr')
+    def extract_or_property_expr(self, node) -> SignalResult:
+        """OrPropertyExpr: or property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ImplicationPropertyExpr')
+    def extract_implication_property_expr(self, node) -> SignalResult:
+        """ImplicationPropertyExpr: implication property expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AndSequenceExpr')
+    def extract_and_sequence_expr(self, node) -> SignalResult:
+        """AndSequenceExpr: and sequence expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('OrSequenceExpr')
+    def extract_or_sequence_expr(self, node) -> SignalResult:
+        """OrSequenceExpr: or sequence expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('FirstMatchSequenceExpr')
+    def extract_first_match_sequence_expr(self, node) -> SignalResult:
+        """FirstMatchSequenceExpr: first_match sequence expression"""
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            return self.extract(seq)
+        return SignalResult()
+    
+    @on('ClockingSequenceExpr')
+    def extract_clocking_sequence_expr(self, node) -> SignalResult:
+        """ClockingSequenceExpr: clocking sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        clock = getattr(node, 'clock', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
+    # More SyntaxKind expression handlers
+    @on('ArithmeticShiftLeftExpression')
+    def extract_arithmetic_shift_left_expression(self, node) -> SignalResult:
+        """ArithmeticShiftLeftExpression: arithmetic shift left <<<"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ArithmeticShiftRightExpression')
+    def extract_arithmetic_shift_right_expression(self, node) -> SignalResult:
+        """ArithmeticShiftRightExpression: arithmetic shift right >>>"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalLeftShiftExpression')
+    def extract_logical_left_shift_expression(self, node) -> SignalResult:
+        """LogicalLeftShiftExpression: logical left shift <<"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalRightShiftExpression')
+    def extract_logical_right_shift_expression(self, node) -> SignalResult:
+        """LogicalRightShiftExpression: logical right shift >>"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PowerExpression')
+    def extract_power_expression(self, node) -> SignalResult:
+        """PowerExpression: power expression **"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('UnaryAndExpression')
+    def extract_unary_and_expression(self, node) -> SignalResult:
+        """UnaryAndExpression: unary and expression &"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryOrExpression')
+    def extract_unary_or_expression(self, node) -> SignalResult:
+        """UnaryOrExpression: unary or expression |"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryXorExpression')
+    def extract_unary_xor_expression(self, node) -> SignalResult:
+        """UnaryXorExpression: unary xor expression ^"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryNandExpression')
+    def extract_unary_nand_expression(self, node) -> SignalResult:
+        """UnaryNandExpression: unary nand expression ~&"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryNorExpression')
+    def extract_unary_nor_expression(self, node) -> SignalResult:
+        """UnaryNorExpression: unary nor expression ~|"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryXnorExpression')
+    def extract_unary_xnor_expression(self, node) -> SignalResult:
+        """UnaryXnorExpression: unary xnor expression ^~"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostIncrementExpression')
+    def extract_post_increment_expression(self, node) -> SignalResult:
+        """PostIncrementExpression: post increment expression i++"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostDecrementExpression')
+    def extract_post_decrement_expression(self, node) -> SignalResult:
+        """PostDecrementExpression: post decrement expression i--"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PreIncrementExpression')
+    def extract_pre_increment_expression(self, node) -> SignalResult:
+        """PreIncrementExpression: pre increment expression ++i"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PreDecrementExpression')
+    def extract_pre_decrement_expression(self, node) -> SignalResult:
+        """PreDecrementExpression: pre decrement expression --i"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('AddAssignmentExpression')
+    def extract_add_assignment_expression(self, node) -> SignalResult:
+        """AddAssignmentExpression: add assignment +="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SubtractAssignmentExpression')
+    def extract_subtract_assignment_expression(self, node) -> SignalResult:
+        """SubtractAssignmentExpression: subtract assignment -="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AndAssignmentExpression')
+    def extract_and_assignment_expression(self, node) -> SignalResult:
+        """AndAssignmentExpression: and assignment &="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('OrAssignmentExpression')
+    def extract_or_assignment_expression(self, node) -> SignalResult:
+        """OrAssignmentExpression: or assignment |="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('XorAssignmentExpression')
+    def extract_xor_assignment_expression(self, node) -> SignalResult:
+        """XorAssignmentExpression: xor assignment ^="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ArithmeticLeftShiftAssignmentExpression')
+    def extract_arithmetic_left_shift_assignment(self, node) -> SignalResult:
+        """ArithmeticLeftShiftAssignmentExpression: <<<="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ArithmeticRightShiftAssignmentExpression')
+    def extract_arithmetic_right_shift_assignment(self, node) -> SignalResult:
+        """ArithmeticRightShiftAssignmentExpression: >>>="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalLeftShiftAssignmentExpression')
+    def extract_logical_left_shift_assignment(self, node) -> SignalResult:
+        """LogicalLeftShiftAssignmentExpression: <<="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalRightShiftAssignmentExpression')
+    def extract_logical_right_shift_assignment(self, node) -> SignalResult:
+        """LogicalRightShiftAssignmentExpression: >>="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('MultiplyAssignmentExpression')
+    def extract_multiply_assignment_expression(self, node) -> SignalResult:
+        """MultiplyAssignmentExpression: *="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DivideAssignmentExpression')
+    def extract_divide_assignment_expression(self, node) -> SignalResult:
+        """DivideAssignmentExpression: /="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ModuloAssignmentExpression')
+    def extract_modulo_assignment_expression(self, node) -> SignalResult:
+        """ModuloAssignmentExpression: %="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
