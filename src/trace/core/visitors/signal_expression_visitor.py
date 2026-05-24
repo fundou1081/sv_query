@@ -5028,6 +5028,219 @@ class SignalExpressionVisitor(BaseVisitor):
         """ClockingBlockSequenceExpr: clocking block sequence expression"""
         return SignalResult()
     
+    # Array and method expressions
+    @on('ArrayAndMethod')
+    def extract_array_and_method(self, node) -> SignalResult:
+        """ArrayAndMethod: array.and() method"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayOrMethod')
+    def extract_array_or_method(self, node) -> SignalResult:
+        """ArrayOrMethod: array.or() method"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayUniqueMethod')
+    def extract_array_unique_method(self, node) -> SignalResult:
+        """ArrayUniqueMethod: array.unique() method"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayXorMethod')
+    def extract_array_xor_method(self, node) -> SignalResult:
+        """ArrayXorMethod: array.xor() method"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayOrRandomizeMethodExpression')
+    def extract_array_randomize_method_expr(self, node) -> SignalResult:
+        """ArrayOrRandomizeMethodExpression: array.randomize() with method"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        with_expr = getattr(node, 'with', None) or getattr(node, 'expr2', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        return result
+    
+    # Bins selection
+    @on('BinsSelection')
+    def extract_bins_selection(self, node) -> SignalResult:
+        """BinsSelection: bins selection"""
+        result = SignalResult()
+        bins = getattr(node, 'bins', None) or getattr(node, 'expr', None)
+        if bins:
+            result = result.merge(self.extract(bins))
+        select = getattr(node, 'select', None) or getattr(node, 'expr2', None)
+        if select:
+            result = result.merge(self.extract(select))
+        return result
+    
+    @on('BinaryBinsSelectExpr')
+    def extract_binary_bins_select_expr_stmt(self, node) -> SignalResult:
+        """BinaryBinsSelectExpr: binary bins select expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('BinsSelectConditionExpr')
+    def extract_bins_select_condition_expr(self, node) -> SignalResult:
+        """BinsSelectConditionExpr: bins select condition expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('BinSelectWithFilterExpr')
+    def extract_bin_select_with_filter_expr(self, node) -> SignalResult:
+        """BinSelectWithFilterExpr: bin select with filter expression"""
+        result = SignalResult()
+        bins = getattr(node, 'bins', None) or getattr(node, 'expr', None)
+        if bins:
+            result = result.merge(self.extract(bins))
+        filter_expr = getattr(node, 'filter', None) or getattr(node, 'expr2', None)
+        if filter_expr:
+            result = result.merge(self.extract(filter_expr))
+        return result
+    
+    # Bit select
+    @on('BitSelect')
+    def extract_bit_select(self, node) -> SignalResult:
+        """BitSelect: bit select"""
+        result = SignalResult()
+        base = getattr(node, 'base', None) or getattr(node, 'expr', None)
+        if base:
+            result = result.merge(self.extract(base))
+        index = getattr(node, 'index', None) or getattr(node, 'expr2', None)
+        if index:
+            result = result.merge(self.extract(index))
+        return result
+    
+    # Range select
+    @on('AscendingRangeSelect')
+    def extract_ascending_range_select(self, node) -> SignalResult:
+        """AscendingRangeSelect: ascending range select"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('DescendingRangeSelect')
+    def extract_descending_range_select(self, node) -> SignalResult:
+        """DescendingRangeSelect: descending range select"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Class expressions
+    @on('CopyClassExpression')
+    def extract_copy_class_expression(self, node) -> SignalResult:
+        """CopyClassExpression: copy class expression"""
+        result = SignalResult()
+        source = getattr(node, 'source', None) or getattr(node, 'expr', None)
+        if source:
+            result = result.merge(self.extract(source))
+        return result
+    
+    # Constraint expressions
+    @on('ConditionalConstraint')
+    def extract_conditional_constraint(self, node) -> SignalResult:
+        """ConditionalConstraint: conditional constraint"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_body = getattr(node, 'true_body', None) or getattr(node, 'constraint', None)
+        if true_body:
+            result = result.merge(self.extract(true_body))
+        false_body = getattr(node, 'false_body', None)
+        if false_body:
+            result = result.merge(self.extract(false_body))
+        return result
+    
+    @on('ExpressionConstraint')
+    def extract_expression_constraint_stmt(self, node) -> SignalResult:
+        """ExpressionConstraint: expression constraint"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('DisableConstraint')
+    def extract_disable_constraint_stmt(self, node) -> SignalResult:
+        """DisableConstraint: disable constraint"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'constraint', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('DistConstraintList')
+    def extract_dist_constraint_list(self, node) -> SignalResult:
+        """DistConstraintList: dist constraint list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ConstraintBlock')
+    def extract_constraint_block(self, node) -> SignalResult:
+        """ConstraintBlock: constraint block"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'constraints', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ConstraintDeclaration')
+    def extract_constraint_declaration(self, node) -> SignalResult:
+        """ConstraintDeclaration: constraint declaration"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'constraints', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ConstraintPrototype')
+    def extract_constraint_prototype(self, node) -> SignalResult:
+        """ConstraintPrototype: constraint prototype"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
