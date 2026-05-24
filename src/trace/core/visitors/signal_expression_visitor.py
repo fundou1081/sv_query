@@ -7099,6 +7099,130 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Binary logical operators
+    @on('LogicalAndExpr')
+    def extract_logical_and_expr(self, node) -> SignalResult:
+        """LogicalAndExpr: logical and expression &&"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalOrExpr')
+    def extract_logical_or_expr(self, node) -> SignalResult:
+        """LogicalOrExpr: logical or expression ||"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalXorExpr')
+    def extract_logical_xor_expr(self, node) -> SignalResult:
+        """LogicalXorExpr: logical xor expression ^"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LogicalXnorExpr')
+    def extract_logical_xnor_expr(self, node) -> SignalResult:
+        """LogicalXnorExpr: logical xnor expression ^~"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Shift operators
+    @on('LeftShiftExpr')
+    def extract_left_shift_expr(self, node) -> SignalResult:
+        """LeftShiftExpr: left shift expression <<"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('RightShiftExpr')
+    def extract_right_shift_expr(self, node) -> SignalResult:
+        """RightShiftExpr: right shift expression >>"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ArithmeticLeftShiftExpr')
+    def extract_arithmetic_left_shift_expr(self, node) -> SignalResult:
+        """ArithmeticLeftShiftExpr: arithmetic left shift <<<"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ArithmeticRightShiftExpr')
+    def extract_arithmetic_right_shift_expr(self, node) -> SignalResult:
+        """ArithmeticRightShiftExpr: arithmetic right shift >>>"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Power expression
+    @on('PowerExpr')
+    def extract_power_expr(self, node) -> SignalResult:
+        """PowerExpr: power expression **"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Modulo expression
+    @on('ModuloExpr')
+    def extract_modulo_expr(self, node) -> SignalResult:
+        """ModuloExpr: modulo expression %"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
