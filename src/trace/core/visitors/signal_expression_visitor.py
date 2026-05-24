@@ -53,7 +53,7 @@ class SignalExpressionVisitor(BaseVisitor):
     _HANDLERS: ClassVar[Dict[str, Callable]] = {}
     
     # 双轨控制: True=新 handler, False=旧方法回退
-    _dispatch_enabled: bool = False
+    _dispatch_enabled: bool = True
     
     def __init__(self, adapter):
         """初始化
