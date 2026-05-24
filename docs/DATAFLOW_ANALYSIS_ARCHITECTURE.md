@@ -108,6 +108,29 @@ class DataFlowPath:
     distance: int                      # 跳数
     has_conditional: bool
 
+class TimingAnalysisResult:
+    """路径时序分析结果"""
+    
+    # 时钟域信息
+    path_clock_domains: List[str] = field(default_factory=list)  # 路径经过的时钟域
+    dominant_clock_domain: Optional[str] = None  # 主时钟域
+    cross_clock_domain: bool = False  # 是否跨时钟域
+    
+    # 寄存器信息
+    register_stages: int = 0  # 寄存器级数
+    registers_in_path: List[str] = field(default_factory=list)  # 路径中的寄存器
+    
+    # 时序路径
+    timing_paths: List[List[str]] = field(default_factory=list)  # 寄存器→寄存器路径
+    estimated_latency_cycles: int = 0  # 估计延迟（周期数）
+    
+    # 关键路径
+    critical_path: Optional[List[str]] = None  # 关键路径（最长路径）
+    
+    # 风险评估
+    path_timing_risk: str = "safe"  # 路径风险级别: safe/low/medium/high/critical
+
+
 @dataclass
 class DataFlowResult:
     """数据流分析完整结果"""
@@ -115,13 +138,37 @@ class DataFlowResult:
     from_signal: str
     to_signal: str
     
-    paths: List[DataFlowPath]           # 所有路径
-    is_reachable: bool
-    paths_count: int
+    # 数据流
+    paths: List[DataFlowPath] = field(default_factory=list)
+    is_reachable: bool = False
+    paths_count: int = 0
     
-    intermediate_signals: Set[str]     # 所有中间信号（去重）
-    all_conditions: List[ConditionInfo]
-    all_timings: List[str]
+    # 中间信号
+    intermediate_signals: Set[str] = field(default_factory=set)
+    
+    # 条件信息
+    all_conditions: List[ConditionInfo] = field(default_factory=list)
+    
+    # 时序分析 (融合时序分析结果)
+    timing_analysis: Optional[TimingAnalysisResult] = None
+    clock_domain: Optional[str] = None
+    path_timing_risk: str = "safe"
+    
+    # 便捷属性
+    @property
+    def cross_clock_domain(self) -> bool:
+        """是否跨时钟域"""
+        return self.timing_analysis.cross_clock_domain if self.timing_analysis else False
+    
+    @property
+    def register_stages(self) -> int:
+        """路径寄存器级数"""
+        return self.timing_analysis.register_stages if self.timing_analysis else 0
+    
+    @property
+    def latency_cycles(self) -> int:
+        """路径延迟周期数"""
+        return self.timing_analysis.estimated_latency_cycles if self.timing_analysis else 0
 ```
 
 ---
@@ -284,11 +331,13 @@ result = analyzer.analyze('data_in', 'data_out')
 
 ### 输出
 
-```
+```python
 DataFlowResult:
   from_signal: 'data_in'
   to_signal: 'data_out'
   paths_count: 1
+  
+  # 数据流
   paths: [
     DataFlowPath:
       path_id: 0
@@ -300,5 +349,27 @@ DataFlowResult:
       ]
   ]
   intermediate_signals: {'stage1', 'stage2'}
-  all_timings: ['@posedge clk']
+  
+  # 时序分析 (新增)
+  timing_analysis:
+    path_clock_domains: ['clk']
+    dominant_clock_domain: 'clk'
+    cross_clock_domain: False
+    register_stages: 2
+    registers_in_path: ['stage1', 'stage2']
+    estimated_latency_cycles: 2
+    critical_path: ['data_in', 'stage1', 'stage2', 'data_out']
+    path_timing_risk: 'safe'
+  
+  clock_domain: 'clk'
+  path_timing_risk: 'safe'
 ```
+
+## 与现有组件的关系
+
+| 组件 | 关系 |
+|------|------|
+| ClockDomainTracer | 被 DataFlowAnalyzer 复用，复用其 _build_timing_chain 等逻辑 |
+| SignalTracer | SignalTracer 是单信号查询，DataFlow 是信号对查询 |
+| EdgeKind.CLOCK | 被用于识别时钟驱动的边 |
+| NodeKind.REG | 被用于识别路径中的寄存器 |
