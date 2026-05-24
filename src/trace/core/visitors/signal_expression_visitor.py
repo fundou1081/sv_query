@@ -791,12 +791,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EmptyArgument')
     def extract_empty_argument(self, node) -> SignalResult:
-        """EmptyArgument: 函数参数占位"""
+        """[NOT TESTED] EmptyArgument: 函数参数占位"""
         return SignalResult()
     
     @on('InsideExpression')
     def extract_inside(self, node) -> SignalResult:
-        """InsideExpression: expr inside {a, b, c}"""
+        """[NOT TESTED] InsideExpression: expr inside {a, b, c}"""
         left = getattr(node, 'left', None) or getattr(node, 'condition', None)
         right = getattr(node, 'right', None) or getattr(node, 'range', None)
         left_result = self.extract(left) if left else SignalResult()
@@ -805,7 +805,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MinTypMaxExpression')
     def extract_min_typ_max(self, node) -> SignalResult:
-        """MinTypMaxExpression: min:typ:max"""
+        """[NOT TESTED] MinTypMaxExpression: min:typ:max"""
         signals = []
         min_val = getattr(node, 'min', None) or getattr(node, 'left', None)
         typ_val = getattr(node, 'typ', None) or getattr(node, 'value', None)
@@ -821,7 +821,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ValueRangeExpression')
     def extract_value_range(self, node) -> SignalResult:
-        """ValueRangeExpression: [a:b] or [a..b]"""
+        """[NOT TESTED] ValueRangeExpression: [a:b] or [a..b]"""
         left = getattr(node, 'left', None) or getattr(node, 'low', None)
         right = getattr(node, 'right', None) or getattr(node, 'high', None)
         left_result = self.extract(left) if left else SignalResult()
@@ -830,7 +830,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MultipleConcatenationExpression')
     def extract_multiple_concatenation(self, node) -> SignalResult:
-        """MultipleConcatenationExpression: {{n{expr}}"""
+        """[NOT TESTED] MultipleConcatenationExpression: {{n{expr}}"""
         expr = getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -838,7 +838,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StreamExpression')
     def extract_stream_expression(self, node) -> SignalResult:
-        """StreamExpression: {>>[type]{expr}} or {<<[type]{expr}}"""
+        """[NOT TESTED] StreamExpression: {>>[type]{expr}} or {<<[type]{expr}}"""
         expr = getattr(node, 'expression', None) or getattr(node, 'body', None)
         if expr:
             return self.extract(expr)
@@ -846,7 +846,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AssignmentPatternExpression')
     def extract_assignment_pattern(self, node) -> SignalResult:
-        """AssignmentPatternExpression: '{a, b, c}"""
+        """[NOT TESTED] AssignmentPatternExpression: '{a, b, c}"""
         result = SignalResult()
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -857,12 +857,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('TypeReference')
     def extract_type_reference(self, node) -> SignalResult:
-        """TypeReference: 类型引用"""
+        """[NOT TESTED] TypeReference: 类型引用"""
         return SignalResult()
     
     @on('AssignmentExpression')
     def extract_assignment_expression(self, node) -> SignalResult:
-        """AssignmentExpression: a = b"""
+        """[NOT TESTED] AssignmentExpression: a = b"""
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
         left_result = self.extract(left) if left else SignalResult()
@@ -871,12 +871,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('NewClassExpression')
     def extract_new_class(self, node) -> SignalResult:
-        """NewClassExpression: new()"""
+        """[NOT TESTED] NewClassExpression: new()"""
         return SignalResult()
     
     @on('NewArrayExpression')
     def extract_new_array(self, node) -> SignalResult:
-        """NewArrayExpression: new[size]"""
+        """[NOT TESTED] NewArrayExpression: new[size]"""
         size = getattr(node, 'size', None) or getattr(node, 'expression', None)
         if size:
             return self.extract(size)
@@ -884,12 +884,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CopyClassExpression')
     def extract_copy_class(self, node) -> SignalResult:
-        """CopyClassExpression: class.copy()"""
+        """[NOT TESTED] CopyClassExpression: class.copy()"""
         return SignalResult()
     
     @on('ConcatenationExpression')
     def extract_concatenation(self, node) -> SignalResult:
-        """ConcatenationExpression: {a, b, c}"""
+        """[NOT TESTED] ConcatenationExpression: {a, b, c}"""
         result = SignalResult()
         operands = getattr(node, 'operands', None) or getattr(node, 'expressions', None)
         if operands:
@@ -901,7 +901,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ScopedName')
     def extract_scoped_name(self, node) -> SignalResult:
-        """ScopedName: 点分路径 p.sub.data"""
+        """[NOT TESTED] ScopedName: 点分路径 p.sub.data"""
         parts = self._extract_scoped_parts(node)
         if parts:
             combined = '.'.join(parts)
@@ -911,7 +911,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ElementSelectExpression')
     def extract_element_select(self, node) -> SignalResult:
-        """ElementSelectExpression: data[5]"""
+        """[NOT TESTED] ElementSelectExpression: data[5]"""
         base = getattr(node, 'left', None) or getattr(node, 'base', None) or getattr(node, 'value', None)
         if base:
             return self.extract(base)
@@ -919,7 +919,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CastExpression')
     def extract_cast_expression(self, node) -> SignalResult:
-        """CastExpression: type'(expr)"""
+        """[NOT TESTED] CastExpression: type'(expr)"""
         expr = getattr(node, 'expression', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -927,7 +927,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('TaggedUnionExpression')
     def extract_tagged_union_expression(self, node) -> SignalResult:
-        """TaggedUnionExpression: tag'(expr)"""
+        """[NOT TESTED] TaggedUnionExpression: tag'(expr)"""
         expr = getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -935,12 +935,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('IntegerVectorExpression')
     def extract_integer_vector(self, node) -> SignalResult:
-        """IntegerVectorExpression: 带位宽的字面量"""
+        """[NOT TESTED] IntegerVectorExpression: 带位宽的字面量"""
         return SignalResult()
     
     @on('ReplicatedAssignmentPattern')
     def extract_replicated_assignment_pattern(self, node) -> SignalResult:
-        """ReplicatedAssignmentPattern: '{n{a, b, c}}"""
+        """[NOT TESTED] ReplicatedAssignmentPattern: '{n{a, b, c}}"""
         result = SignalResult()
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -951,7 +951,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SimpleAssignmentPattern')
     def extract_simple_assignment_pattern(self, node) -> SignalResult:
-        """SimpleAssignmentPattern: 简单赋值模式"""
+        """[NOT TESTED] SimpleAssignmentPattern: 简单赋值模式"""
         result = SignalResult()
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -962,7 +962,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StructuredAssignmentPattern')
     def extract_structured_assignment_pattern(self, node) -> SignalResult:
-        """StructuredAssignmentPattern: 结构化赋值模式"""
+        """[NOT TESTED] StructuredAssignmentPattern: 结构化赋值模式"""
         result = SignalResult()
         patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
         if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
@@ -973,7 +973,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MemberAccessExpression')
     def extract_member_access(self, node) -> SignalResult:
-        """MemberAccessExpression: obj.member"""
+        """[NOT TESTED] MemberAccessExpression: obj.member"""
         obj = getattr(node, 'left', None) or getattr(node, 'expression', None)
         if obj:
             return self.extract(obj)
@@ -981,7 +981,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DelayControl')
     def extract_delay_control(self, node) -> SignalResult:
-        """DelayControl: #1delay"""
+        """[NOT TESTED] DelayControl: #1delay"""
         expr = getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -989,7 +989,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EventControl')
     def extract_event_control(self, node) -> SignalResult:
-        """EventControl: @event"""
+        """[NOT TESTED] EventControl: @event"""
         event = getattr(node, 'event', None)
         if event:
             return self.extract(event)
@@ -997,7 +997,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClockingPropertyExpr')
     def extract_clocking_property_expr(self, node) -> SignalResult:
-        """ClockingPropertyExpr: property with clock"""
+        """[NOT TESTED] ClockingPropertyExpr: property with clock"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -1009,7 +1009,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DisableConstraint')
     def extract_disable_constraint(self, node) -> SignalResult:
-        """DisableConstraint: disable constraint"""
+        """[NOT TESTED] DisableConstraint: disable constraint"""
         expr = getattr(node, 'expr', None) or getattr(node, 'constraint', None)
         if expr:
             return self.extract(expr)
@@ -1017,7 +1017,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SolveBeforeConstraint')
     def extract_solve_before_constraint(self, node) -> SignalResult:
-        """SolveBeforeConstraint: solve before constraint"""
+        """[NOT TESTED] SolveBeforeConstraint: solve before constraint"""
         result = SignalResult()
         before = getattr(node, 'before', None)
         after = getattr(node, 'after', None)
@@ -1029,7 +1029,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ExpressionConstraint')
     def extract_expression_constraint(self, node) -> SignalResult:
-        """ExpressionConstraint: expression constraint"""
+        """[NOT TESTED] ExpressionConstraint: expression constraint"""
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -1037,7 +1037,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConditionalPattern')
     def extract_conditional_pattern(self, node) -> SignalResult:
-        """ConditionalPattern: pattern if cond"""
+        """[NOT TESTED] ConditionalPattern: pattern if cond"""
         result = SignalResult()
         pattern = getattr(node, 'pattern', None)
         if pattern:
@@ -1049,12 +1049,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WildcardPattern')
     def extract_wildcard_pattern(self, node) -> SignalResult:
-        """WildcardPattern: wildcard pattern"""
+        """[NOT TESTED] WildcardPattern: wildcard pattern"""
         return SignalResult()
     
     @on('TaggedPattern')
     def extract_tagged_pattern(self, node) -> SignalResult:
-        """TaggedPattern: tagged pattern"""
+        """[NOT TESTED] TaggedPattern: tagged pattern"""
         result = SignalResult()
         pattern = getattr(node, 'pattern', None)
         if pattern:
@@ -1063,12 +1063,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EmptyStatement')
     def extract_empty_statement(self, node) -> SignalResult:
-        """EmptyStatement: empty statement"""
+        """[NOT TESTED] EmptyStatement: empty statement"""
         return SignalResult()
     
     @on('CasePropertyExpr')
     def extract_case_property_expression(self, node) -> SignalResult:
-        """CasePropertyExpression: case property expression"""
+        """[NOT TESTED] CasePropertyExpression: case property expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -1082,7 +1082,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryPropertyExpr')
     def extract_unary_property_expression(self, node) -> SignalResult:
-        """UnaryPropertyExpression: unary property"""
+        """[NOT TESTED] UnaryPropertyExpression: unary property"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -1090,7 +1090,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SequenceRepetition')
     def extract_sequence_repetition(self, node) -> SignalResult:
-        """SequenceRepetition: seq[*1:3]"""
+        """[NOT TESTED] SequenceRepetition: seq[*1:3]"""
         seq = getattr(node, 'sequence', None) or getattr(node, 'operand', None)
         if seq:
             return self.extract(seq)
@@ -1098,7 +1098,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConditionalExpression')
     def extract_conditional_expression(self, node) -> SignalResult:
-        """ConditionalExpression: cond ? expr1 : expr2"""
+        """[NOT TESTED] ConditionalExpression: cond ? expr1 : expr2"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
         if cond:
@@ -1113,7 +1113,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LetDeclaration')
     def extract_let_declaration(self, node) -> SignalResult:
-        """LetDeclaration: let declaration"""
+        """[NOT TESTED] LetDeclaration: let declaration"""
         result = SignalResult()
         args = getattr(node, 'arguments', None)
         if args and hasattr(args, '__iter__'):
@@ -1127,7 +1127,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ProceduralAssignStatement')
     def extract_procedural_assign_stmt(self, node) -> SignalResult:
-        """ProceduralAssignStatement: procedural assign"""
+        """[NOT TESTED] ProceduralAssignStatement: procedural assign"""
         result = SignalResult()
         lvalue = getattr(node, 'lvalue', None)
         if lvalue:
@@ -1139,7 +1139,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ProceduralForceStatement')
     def extract_procedural_force_stmt(self, node) -> SignalResult:
-        """ProceduralForceStatement: procedural force"""
+        """[NOT TESTED] ProceduralForceStatement: procedural force"""
         lvalue = getattr(node, 'lvalue', None)
         if lvalue:
             return self.extract(lvalue)
@@ -1147,7 +1147,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ExpressionStatement')
     def extract_expression_stmt(self, node) -> SignalResult:
-        """ExpressionStatement: expression statement"""
+        """[NOT TESTED] ExpressionStatement: expression statement"""
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -1155,17 +1155,17 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplicitEventControl')
     def extract_implicit_event_control(self, node) -> SignalResult:
-        """ImplicitEventControl: @@"""
+        """[NOT TESTED] ImplicitEventControl: @@"""
         return SignalResult()
     
     @on('WaitForkStatement')
     def extract_wait_fork_statement(self, node) -> SignalResult:
-        """WaitForkStatement: wait fork"""
+        """[NOT TESTED] WaitForkStatement: wait fork"""
         return SignalResult()
     
     @on('WaitOrderStatement')
     def extract_wait_order_statement(self, node) -> SignalResult:
-        """WaitOrderStatement: wait order"""
+        """[NOT TESTED] WaitOrderStatement: wait order"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -1176,7 +1176,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ProceduralDeassignStatement')
     def extract_procedural_deassign_statement(self, node) -> SignalResult:
-        """ProceduralDeassignStatement: procedural deassign"""
+        """[NOT TESTED] ProceduralDeassignStatement: procedural deassign"""
         lvalue = getattr(node, 'lvalue', None)
         if lvalue:
             return self.extract(lvalue)
@@ -1184,7 +1184,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RandCaseStatement')
     def extract_rand_case_statement(self, node) -> SignalResult:
-        """RandCaseStatement: rand case"""
+        """[NOT TESTED] RandCaseStatement: rand case"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -1195,7 +1195,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RandCaseItem')
     def extract_rand_case_item(self, node) -> SignalResult:
-        """RandCaseItem: rand case item"""
+        """[NOT TESTED] RandCaseItem: rand case item"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'weight', None)
         if cond:
@@ -1207,7 +1207,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConditionalStatement')
     def extract_conditional_statement(self, node) -> SignalResult:
-        """ConditionalStatement: conditional statement"""
+        """[NOT TESTED] ConditionalStatement: conditional statement"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
         if cond:
@@ -1223,7 +1223,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Constraint kinds
     @on('VariablePattern')
     def extract_variable_pattern(self, node) -> SignalResult:
-        """VariablePattern: variable pattern"""
+        """[NOT TESTED] VariablePattern: variable pattern"""
         var = getattr(node, 'var', None) or getattr(node, 'expr', None)
         if var:
             return self.extract(var)
@@ -1231,7 +1231,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StructurePattern')
     def extract_structure_pattern(self, node) -> SignalResult:
-        """StructurePattern: structure pattern"""
+        """[NOT TESTED] StructurePattern: structure pattern"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'patterns', None)
         if items and hasattr(items, '__iter__'):
@@ -1243,7 +1243,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Assertion expr kinds
     @on('UnaryBinsSelectExpr')
     def extract_unary_bins_select_expr(self, node) -> SignalResult:
-        """UnaryBinsSelectExpr: unary bins select expression"""
+        """[NOT TESTED] UnaryBinsSelectExpr: unary bins select expression"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -1251,7 +1251,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinaryBinsSelectExpr')
     def extract_binary_bins_select_expr(self, node) -> SignalResult:
-        """BinaryBinsSelectExpr: binary bins select expression"""
+        """[NOT TESTED] BinaryBinsSelectExpr: binary bins select expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1263,7 +1263,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AddExpression')
     def extract_add_expression(self, node) -> SignalResult:
-        """AddExpression: addition expression"""
+        """[NOT TESTED] AddExpression: addition expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1275,7 +1275,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SubtractExpression')
     def extract_subtract_expression(self, node) -> SignalResult:
-        """SubtractExpression: subtraction expression"""
+        """[NOT TESTED] SubtractExpression: subtraction expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1287,7 +1287,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MultiplyExpression')
     def extract_multiply_expression(self, node) -> SignalResult:
-        """MultiplyExpression: multiplication expression"""
+        """[NOT TESTED] MultiplyExpression: multiplication expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1299,7 +1299,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DivideExpression')
     def extract_divide_expression(self, node) -> SignalResult:
-        """DivideExpression: division expression"""
+        """[NOT TESTED] DivideExpression: division expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1311,7 +1311,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinaryAndExpression')
     def extract_binary_and_expression(self, node) -> SignalResult:
-        """BinaryAndExpression: binary and expression"""
+        """[NOT TESTED] BinaryAndExpression: binary and expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1323,7 +1323,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinaryOrExpression')
     def extract_binary_or_expression(self, node) -> SignalResult:
-        """BinaryOrExpression: binary or expression"""
+        """[NOT TESTED] BinaryOrExpression: binary or expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1335,7 +1335,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinaryXorExpression')
     def extract_binary_xor_expression(self, node) -> SignalResult:
-        """BinaryXorExpression: binary xor expression"""
+        """[NOT TESTED] BinaryXorExpression: binary xor expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1347,7 +1347,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinaryXnorExpression')
     def extract_binary_xnor_expression(self, node) -> SignalResult:
-        """BinaryXnorExpression: binary xnor expression"""
+        """[NOT TESTED] BinaryXnorExpression: binary xnor expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1359,7 +1359,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EqualityExpression')
     def extract_equality_expression(self, node) -> SignalResult:
-        """EqualityExpression: equality expression =="""
+        """[NOT TESTED] EqualityExpression: equality expression =="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1371,7 +1371,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('InequalityExpression')
     def extract_inequality_expression(self, node) -> SignalResult:
-        """InequalityExpression: inequality expression !="""
+        """[NOT TESTED] InequalityExpression: inequality expression !="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1383,7 +1383,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CaseEqualityExpression')
     def extract_case_equality_expression(self, node) -> SignalResult:
-        """CaseEqualityExpression: case equality expression ==="""
+        """[NOT TESTED] CaseEqualityExpression: case equality expression ==="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1395,7 +1395,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CaseInequalityExpression')
     def extract_case_inequality_expression(self, node) -> SignalResult:
-        """CaseInequalityExpression: case inequality expression !=="""
+        """[NOT TESTED] CaseInequalityExpression: case inequality expression !=="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1407,7 +1407,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LessThanExpression')
     def extract_less_than_expression(self, node) -> SignalResult:
-        """LessThanExpression: less than expression <"""
+        """[NOT TESTED] LessThanExpression: less than expression <"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1419,7 +1419,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('GreaterThanExpression')
     def extract_greater_than_expression(self, node) -> SignalResult:
-        """GreaterThanExpression: greater than expression >"""
+        """[NOT TESTED] GreaterThanExpression: greater than expression >"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1431,7 +1431,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WildcardEqualityExpression')
     def extract_wildcard_equality_expression(self, node) -> SignalResult:
-        """WildcardEqualityExpression: wildcard equality expression ==?"""
+        """[NOT TESTED] WildcardEqualityExpression: wildcard equality expression ==?"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1443,7 +1443,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WildcardInequalityExpression')
     def extract_wildcard_inequality_expression(self, node) -> SignalResult:
-        """WildcardInequalityExpression: wildcard inequality expression !=?"""
+        """[NOT TESTED] WildcardInequalityExpression: wildcard inequality expression !=?"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1455,7 +1455,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AndPropertyExpr')
     def extract_and_property_expr(self, node) -> SignalResult:
-        """AndPropertyExpr: and property expression"""
+        """[NOT TESTED] AndPropertyExpr: and property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1467,7 +1467,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('OrPropertyExpr')
     def extract_or_property_expr(self, node) -> SignalResult:
-        """OrPropertyExpr: or property expression"""
+        """[NOT TESTED] OrPropertyExpr: or property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1479,7 +1479,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplicationPropertyExpr')
     def extract_implication_property_expr(self, node) -> SignalResult:
-        """ImplicationPropertyExpr: implication property expression"""
+        """[NOT TESTED] ImplicationPropertyExpr: implication property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
         right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
@@ -1491,7 +1491,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AndSequenceExpr')
     def extract_and_sequence_expr(self, node) -> SignalResult:
-        """AndSequenceExpr: and sequence expression"""
+        """[NOT TESTED] AndSequenceExpr: and sequence expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1503,7 +1503,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('OrSequenceExpr')
     def extract_or_sequence_expr(self, node) -> SignalResult:
-        """OrSequenceExpr: or sequence expression"""
+        """[NOT TESTED] OrSequenceExpr: or sequence expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1515,7 +1515,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FirstMatchSequenceExpr')
     def extract_first_match_sequence_expr(self, node) -> SignalResult:
-        """FirstMatchSequenceExpr: first_match sequence expression"""
+        """[NOT TESTED] FirstMatchSequenceExpr: first_match sequence expression"""
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
             return self.extract(seq)
@@ -1523,7 +1523,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClockingSequenceExpr')
     def extract_clocking_sequence_expr(self, node) -> SignalResult:
-        """ClockingSequenceExpr: clocking sequence expression"""
+        """[NOT TESTED] ClockingSequenceExpr: clocking sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -1536,7 +1536,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # More SyntaxKind expression handlers
     @on('ArithmeticShiftLeftExpression')
     def extract_arithmetic_shift_left_expression(self, node) -> SignalResult:
-        """ArithmeticShiftLeftExpression: arithmetic shift left <<<"""
+        """[NOT TESTED] ArithmeticShiftLeftExpression: arithmetic shift left <<<"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1548,7 +1548,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArithmeticShiftRightExpression')
     def extract_arithmetic_shift_right_expression(self, node) -> SignalResult:
-        """ArithmeticShiftRightExpression: arithmetic shift right >>>"""
+        """[NOT TESTED] ArithmeticShiftRightExpression: arithmetic shift right >>>"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1560,7 +1560,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PowerExpression')
     def extract_power_expression(self, node) -> SignalResult:
-        """PowerExpression: power expression **"""
+        """[NOT TESTED] PowerExpression: power expression **"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1572,7 +1572,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AddAssignmentExpression')
     def extract_add_assignment_expression(self, node) -> SignalResult:
-        """AddAssignmentExpression: add assignment +="""
+        """[NOT TESTED] AddAssignmentExpression: add assignment +="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1584,7 +1584,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SubtractAssignmentExpression')
     def extract_subtract_assignment_expression(self, node) -> SignalResult:
-        """SubtractAssignmentExpression: subtract assignment -="""
+        """[NOT TESTED] SubtractAssignmentExpression: subtract assignment -="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1596,7 +1596,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AndAssignmentExpression')
     def extract_and_assignment_expression(self, node) -> SignalResult:
-        """AndAssignmentExpression: and assignment &="""
+        """[NOT TESTED] AndAssignmentExpression: and assignment &="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1608,7 +1608,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('OrAssignmentExpression')
     def extract_or_assignment_expression(self, node) -> SignalResult:
-        """OrAssignmentExpression: or assignment |="""
+        """[NOT TESTED] OrAssignmentExpression: or assignment |="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1620,7 +1620,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('XorAssignmentExpression')
     def extract_xor_assignment_expression(self, node) -> SignalResult:
-        """XorAssignmentExpression: xor assignment ^="""
+        """[NOT TESTED] XorAssignmentExpression: xor assignment ^="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1632,7 +1632,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArithmeticLeftShiftAssignmentExpression')
     def extract_arithmetic_left_shift_assignment(self, node) -> SignalResult:
-        """ArithmeticLeftShiftAssignmentExpression: <<<="""
+        """[NOT TESTED] ArithmeticLeftShiftAssignmentExpression: <<<="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1644,7 +1644,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArithmeticRightShiftAssignmentExpression')
     def extract_arithmetic_right_shift_assignment(self, node) -> SignalResult:
-        """ArithmeticRightShiftAssignmentExpression: >>>="""
+        """[NOT TESTED] ArithmeticRightShiftAssignmentExpression: >>>="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1656,7 +1656,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalLeftShiftAssignmentExpression')
     def extract_logical_left_shift_assignment(self, node) -> SignalResult:
-        """LogicalLeftShiftAssignmentExpression: <<="""
+        """[NOT TESTED] LogicalLeftShiftAssignmentExpression: <<="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1668,7 +1668,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalRightShiftAssignmentExpression')
     def extract_logical_right_shift_assignment(self, node) -> SignalResult:
-        """LogicalRightShiftAssignmentExpression: >>="""
+        """[NOT TESTED] LogicalRightShiftAssignmentExpression: >>="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1680,7 +1680,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MultiplyAssignmentExpression')
     def extract_multiply_assignment_expression(self, node) -> SignalResult:
-        """MultiplyAssignmentExpression: *="""
+        """[NOT TESTED] MultiplyAssignmentExpression: *="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1692,7 +1692,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DivideAssignmentExpression')
     def extract_divide_assignment_expression(self, node) -> SignalResult:
-        """DivideAssignmentExpression: /="""
+        """[NOT TESTED] DivideAssignmentExpression: /="""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1704,88 +1704,88 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BitType')
     def extract_bit_type(self, node) -> SignalResult:
-        """BitType: bit type"""
+        """[NOT TESTED] BitType: bit type"""
         return SignalResult()
     
     @on('ByteType')
     def extract_byte_type(self, node) -> SignalResult:
-        """ByteType: byte type"""
+        """[NOT TESTED] ByteType: byte type"""
         return SignalResult()
     
     @on('CHandleType')
     def extract_chandle_type(self, node) -> SignalResult:
-        """CHandleType: chandle type"""
+        """[NOT TESTED] CHandleType: chandle type"""
         return SignalResult()
     
     @on('IntType')
     def extract_int_type(self, node) -> SignalResult:
-        """IntType: int type"""
+        """[NOT TESTED] IntType: int type"""
         return SignalResult()
     
     @on('LongIntType')
     def extract_long_int_type(self, node) -> SignalResult:
-        """LongIntType: longint type"""
+        """[NOT TESTED] LongIntType: longint type"""
         return SignalResult()
     
     @on('ShortIntType')
     def extract_short_int_type(self, node) -> SignalResult:
-        """ShortIntType: shortint type"""
+        """[NOT TESTED] ShortIntType: shortint type"""
         return SignalResult()
     
     @on('IntegerType')
     def extract_integer_type(self, node) -> SignalResult:
-        """IntegerType: integer type"""
+        """[NOT TESTED] IntegerType: integer type"""
         return SignalResult()
     
     @on('LogicType')
     def extract_logic_type(self, node) -> SignalResult:
-        """LogicType: logic type"""
+        """[NOT TESTED] LogicType: logic type"""
         return SignalResult()
     
     @on('RegType')
     def extract_reg_type(self, node) -> SignalResult:
-        """RegType: reg type"""
+        """[NOT TESTED] RegType: reg type"""
         return SignalResult()
     
     @on('StringType')
     def extract_string_type(self, node) -> SignalResult:
-        """StringType: string type"""
+        """[NOT TESTED] StringType: string type"""
         return SignalResult()
     
     @on('EventType')
     def extract_event_type(self, node) -> SignalResult:
-        """EventType: event type"""
+        """[NOT TESTED] EventType: event type"""
         return SignalResult()
     
     @on('VoidType')
     def extract_void_type(self, node) -> SignalResult:
-        """VoidType: void type"""
+        """[NOT TESTED] VoidType: void type"""
         return SignalResult()
     
     @on('RealType')
     def extract_real_type(self, node) -> SignalResult:
-        """RealType: real type"""
+        """[NOT TESTED] RealType: real type"""
         return SignalResult()
     
     @on('ShortRealType')
     def extract_short_real_type(self, node) -> SignalResult:
-        """ShortRealType: shortreal type"""
+        """[NOT TESTED] ShortRealType: shortreal type"""
         return SignalResult()
     
     @on('PropertyType')
     def extract_property_type(self, node) -> SignalResult:
-        """PropertyType: property type"""
+        """[NOT TESTED] PropertyType: property type"""
         return SignalResult()
     
     @on('SequenceType')
     def extract_sequence_type(self, node) -> SignalResult:
-        """SequenceType: sequence type"""
+        """[NOT TESTED] SequenceType: sequence type"""
         return SignalResult()
     
     # Statement-related
     @on('AssertPropertyStatement')
     def extract_assert_property_statement(self, node) -> SignalResult:
-        """AssertPropertyStatement: assert property statement"""
+        """[NOT TESTED] AssertPropertyStatement: assert property statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -1797,7 +1797,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AssumePropertyStatement')
     def extract_assume_property_statement(self, node) -> SignalResult:
-        """AssumePropertyStatement: assume property statement"""
+        """[NOT TESTED] AssumePropertyStatement: assume property statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -1806,7 +1806,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CoverPropertyStatement')
     def extract_cover_property_statement(self, node) -> SignalResult:
-        """CoverPropertyStatement: cover property statement"""
+        """[NOT TESTED] CoverPropertyStatement: cover property statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -1815,7 +1815,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CoverSequenceStatement')
     def extract_cover_sequence_statement(self, node) -> SignalResult:
-        """CoverSequenceStatement: cover sequence statement"""
+        """[NOT TESTED] CoverSequenceStatement: cover sequence statement"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -1824,7 +1824,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ExpectPropertyStatement')
     def extract_expect_property_statement(self, node) -> SignalResult:
-        """ExpectPropertyStatement: expect property statement"""
+        """[NOT TESTED] ExpectPropertyStatement: expect property statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -1837,7 +1837,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Sequence and property expression kinds
     @on('WithinSequenceExpr')
     def extract_within_sequence_expr(self, node) -> SignalResult:
-        """WithinSequenceExpr: within sequence expression"""
+        """[NOT TESTED] WithinSequenceExpr: within sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -1849,7 +1849,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ThroughoutSequenceExpr')
     def extract_throughout_sequence_expr(self, node) -> SignalResult:
-        """ThroughoutSequenceExpr: throughout sequence expression"""
+        """[NOT TESTED] ThroughoutSequenceExpr: throughout sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -1861,7 +1861,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArrayAndMethod')
     def extract_array_and_method(self, node) -> SignalResult:
-        """ArrayAndMethod: array.and() method"""
+        """[NOT TESTED] ArrayAndMethod: array.and() method"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -1870,7 +1870,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArrayOrMethod')
     def extract_array_or_method(self, node) -> SignalResult:
-        """ArrayOrMethod: array.or() method"""
+        """[NOT TESTED] ArrayOrMethod: array.or() method"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -1879,7 +1879,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArrayUniqueMethod')
     def extract_array_unique_method(self, node) -> SignalResult:
-        """ArrayUniqueMethod: array.unique() method"""
+        """[NOT TESTED] ArrayUniqueMethod: array.unique() method"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -1888,7 +1888,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArrayXorMethod')
     def extract_array_xor_method(self, node) -> SignalResult:
-        """ArrayXorMethod: array.xor() method"""
+        """[NOT TESTED] ArrayXorMethod: array.xor() method"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -1897,7 +1897,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ArrayOrRandomizeMethodExpression')
     def extract_array_randomize_method_expr(self, node) -> SignalResult:
-        """ArrayOrRandomizeMethodExpression: array.randomize() with method"""
+        """[NOT TESTED] ArrayOrRandomizeMethodExpression: array.randomize() with method"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -1910,7 +1910,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Bins selection
     @on('BinsSelection')
     def extract_bins_selection(self, node) -> SignalResult:
-        """BinsSelection: bins selection"""
+        """[NOT TESTED] BinsSelection: bins selection"""
         result = SignalResult()
         bins = getattr(node, 'bins', None) or getattr(node, 'expr', None)
         if bins:
@@ -1922,7 +1922,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinsSelectConditionExpr')
     def extract_bins_select_condition_expr(self, node) -> SignalResult:
-        """BinsSelectConditionExpr: bins select condition expression"""
+        """[NOT TESTED] BinsSelectConditionExpr: bins select condition expression"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
         if cond:
@@ -1931,7 +1931,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BinSelectWithFilterExpr')
     def extract_bin_select_with_filter_expr(self, node) -> SignalResult:
-        """BinSelectWithFilterExpr: bin select with filter expression"""
+        """[NOT TESTED] BinSelectWithFilterExpr: bin select with filter expression"""
         result = SignalResult()
         bins = getattr(node, 'bins', None) or getattr(node, 'expr', None)
         if bins:
@@ -1944,7 +1944,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Bit select
     @on('BitSelect')
     def extract_bit_select(self, node) -> SignalResult:
-        """BitSelect: bit select"""
+        """[NOT TESTED] BitSelect: bit select"""
         result = SignalResult()
         base = getattr(node, 'base', None) or getattr(node, 'expr', None)
         if base:
@@ -1957,7 +1957,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Range select
     @on('AscendingRangeSelect')
     def extract_ascending_range_select(self, node) -> SignalResult:
-        """AscendingRangeSelect: ascending range select"""
+        """[NOT TESTED] AscendingRangeSelect: ascending range select"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1969,7 +1969,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DescendingRangeSelect')
     def extract_descending_range_select(self, node) -> SignalResult:
-        """DescendingRangeSelect: descending range select"""
+        """[NOT TESTED] DescendingRangeSelect: descending range select"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -1982,7 +1982,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Class expressions
     @on('ConditionalConstraint')
     def extract_conditional_constraint(self, node) -> SignalResult:
-        """ConditionalConstraint: conditional constraint"""
+        """[NOT TESTED] ConditionalConstraint: conditional constraint"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
         if cond:
@@ -1997,7 +1997,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DistConstraintList')
     def extract_dist_constraint_list(self, node) -> SignalResult:
-        """DistConstraintList: dist constraint list"""
+        """[NOT TESTED] DistConstraintList: dist constraint list"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -2008,7 +2008,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConstraintBlock')
     def extract_constraint_block(self, node) -> SignalResult:
-        """ConstraintBlock: constraint block"""
+        """[NOT TESTED] ConstraintBlock: constraint block"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'constraints', None)
         if items and hasattr(items, '__iter__'):
@@ -2019,7 +2019,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConstraintDeclaration')
     def extract_constraint_declaration(self, node) -> SignalResult:
-        """ConstraintDeclaration: constraint declaration"""
+        """[NOT TESTED] ConstraintDeclaration: constraint declaration"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'constraints', None)
         if items and hasattr(items, '__iter__'):
@@ -2030,18 +2030,18 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConstraintPrototype')
     def extract_constraint_prototype(self, node) -> SignalResult:
-        """ConstraintPrototype: constraint prototype"""
+        """[NOT TESTED] ConstraintPrototype: constraint prototype"""
         return SignalResult()
     
     # Class-related expressions
     @on('ClassDeclaration')
     def extract_class_declaration(self, node) -> SignalResult:
-        """ClassDeclaration: class declaration"""
+        """[NOT TESTED] ClassDeclaration: class declaration"""
         return SignalResult()
     
     @on('ClassMethodDeclaration')
     def extract_class_method_declaration(self, node) -> SignalResult:
-        """ClassMethodDeclaration: class method declaration"""
+        """[NOT TESTED] ClassMethodDeclaration: class method declaration"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -2052,12 +2052,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClassMethodPrototype')
     def extract_class_method_prototype(self, node) -> SignalResult:
-        """ClassMethodPrototype: class method prototype"""
+        """[NOT TESTED] ClassMethodPrototype: class method prototype"""
         return SignalResult()
     
     @on('ClassPropertyDeclaration')
     def extract_class_property_declaration(self, node) -> SignalResult:
-        """ClassPropertyDeclaration: class property declaration"""
+        """[NOT TESTED] ClassPropertyDeclaration: class property declaration"""
         result = SignalResult()
         init = getattr(node, 'init', None) or getattr(node, 'value', None)
         if init:
@@ -2066,18 +2066,18 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClassSpecifier')
     def extract_class_specifier(self, node) -> SignalResult:
-        """ClassSpecifier: class specifier"""
+        """[NOT TESTED] ClassSpecifier: class specifier"""
         return SignalResult()
     
     @on('ClassName')
     def extract_class_name(self, node) -> SignalResult:
-        """ClassName: class name"""
+        """[NOT TESTED] ClassName: class name"""
         return SignalResult()
     
     # Checker-related
     @on('CheckerDeclaration')
     def extract_checker_declaration(self, node) -> SignalResult:
-        """CheckerDeclaration: checker declaration"""
+        """[NOT TESTED] CheckerDeclaration: checker declaration"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -2088,7 +2088,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CheckerInstanceStatement')
     def extract_checker_instance_statement(self, node) -> SignalResult:
-        """CheckerInstanceStatement: checker instance statement"""
+        """[NOT TESTED] CheckerInstanceStatement: checker instance statement"""
         result = SignalResult()
         args = getattr(node, 'arguments', None)
         if args and hasattr(args, '__iter__'):
@@ -2099,7 +2099,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CheckerInstantiation')
     def extract_checker_instantiation(self, node) -> SignalResult:
-        """CheckerInstantiation: checker instantiation"""
+        """[NOT TESTED] CheckerInstantiation: checker instantiation"""
         result = SignalResult()
         args = getattr(node, 'arguments', None)
         if args and hasattr(args, '__iter__'):
@@ -2110,13 +2110,13 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CheckerDataDeclaration')
     def extract_checker_data_declaration(self, node) -> SignalResult:
-        """CheckerDataDeclaration: checker data declaration"""
+        """[NOT TESTED] CheckerDataDeclaration: checker data declaration"""
         return SignalResult()
     
     # Coverage-related
     @on('CoverageBins')
     def extract_coverage_bins(self, node) -> SignalResult:
-        """CoverageBins: coverage bins"""
+        """[NOT TESTED] CoverageBins: coverage bins"""
         result = SignalResult()
         value = getattr(node, 'value', None) or getattr(node, 'expr', None)
         if value:
@@ -2125,7 +2125,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CoverageBinsArraySize')
     def extract_coverage_bins_array_size(self, node) -> SignalResult:
-        """CoverageBinsArraySize: coverage bins array size"""
+        """[NOT TESTED] CoverageBinsArraySize: coverage bins array size"""
         result = SignalResult()
         size = getattr(node, 'size', None) or getattr(node, 'expr', None)
         if size:
@@ -2134,12 +2134,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DefaultCoverageBinInitializer')
     def extract_default_coverage_bin_initializer(self, node) -> SignalResult:
-        """DefaultCoverageBinInitializer: default coverage bin initializer"""
+        """[NOT TESTED] DefaultCoverageBinInitializer: default coverage bin initializer"""
         return SignalResult()
     
     @on('ExpressionCoverageBinInitializer')
     def extract_expression_coverage_bin_initializer(self, node) -> SignalResult:
-        """ExpressionCoverageBinInitializer: expression coverage bin initializer"""
+        """[NOT TESTED] ExpressionCoverageBinInitializer: expression coverage bin initializer"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -2149,7 +2149,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # ElabSystemTask
     @on('ElabSystemTask')
     def extract_elab_system_task(self, node) -> SignalResult:
-        """ElabSystemTask: elaboration system task"""
+        """[NOT TESTED] ElabSystemTask: elaboration system task"""
         result = SignalResult()
         args = getattr(node, 'arguments', None)
         if args and hasattr(args, '__iter__'):
@@ -2161,7 +2161,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Bind directive
     @on('BindDirective')
     def extract_bind_directive(self, node) -> SignalResult:
-        """BindDirective: bind directive"""
+        """[NOT TESTED] BindDirective: bind directive"""
         result = SignalResult()
         target = getattr(node, 'target', None) or getattr(node, 'expr', None)
         if target:
@@ -2170,7 +2170,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BindTargetList')
     def extract_bind_target_list(self, node) -> SignalResult:
-        """BindTargetList: bind target list"""
+        """[NOT TESTED] BindTargetList: bind target list"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -2182,13 +2182,13 @@ class SignalExpressionVisitor(BaseVisitor):
     # Default function port
     @on('DefaultFunctionPort')
     def extract_default_function_port(self, node) -> SignalResult:
-        """DefaultFunctionPort: default function port"""
+        """[NOT TESTED] DefaultFunctionPort: default function port"""
         return SignalResult()
     
     # Case and generate constructs
     @on('CaseStatement')
     def extract_case_statement_stmt(self, node) -> SignalResult:
-        """CaseStatement: case statement"""
+        """[NOT TESTED] CaseStatement: case statement"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
         if expr:
@@ -2202,7 +2202,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CaseGenerate')
     def extract_case_generate(self, node) -> SignalResult:
-        """CaseGenerate: case generate construct"""
+        """[NOT TESTED] CaseGenerate: case generate construct"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
         if expr:
@@ -2216,7 +2216,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DefaultCaseItem')
     def extract_default_case_item(self, node) -> SignalResult:
-        """DefaultCaseItem: default case item"""
+        """[NOT TESTED] DefaultCaseItem: default case item"""
         result = SignalResult()
         stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
         if stmts and hasattr(stmts, '__iter__'):
@@ -2227,29 +2227,29 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DefaultPropertyCaseItem')
     def extract_default_property_case_item(self, node) -> SignalResult:
-        """DefaultPropertyCaseItem: default property case item"""
+        """[NOT TESTED] DefaultPropertyCaseItem: default property case item"""
         return SignalResult()
     
     # Assertion item ports
     @on('AssertionItemPort')
     def extract_assertion_item_port(self, node) -> SignalResult:
-        """AssertionItemPort: assertion item port"""
+        """[NOT TESTED] AssertionItemPort: assertion item port"""
         return SignalResult()
     
     @on('AssertionItemPortList')
     def extract_assertion_item_port_list(self, node) -> SignalResult:
-        """AssertionItemPortList: assertion item port list"""
+        """[NOT TESTED] AssertionItemPortList: assertion item port list"""
         return SignalResult()
     
     @on('ConcurrentAssertionMember')
     def extract_concurrent_assertion_member(self, node) -> SignalResult:
-        """ConcurrentAssertionMember: concurrent assertion member"""
+        """[NOT TESTED] ConcurrentAssertionMember: concurrent assertion member"""
         return SignalResult()
     
     # Coverage constructs
     @on('CovergroupDeclaration')
     def extract_covergroup_declaration(self, node) -> SignalResult:
-        """CovergroupDeclaration: covergroup declaration"""
+        """[NOT TESTED] CovergroupDeclaration: covergroup declaration"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'coverpoints', None)
         if items and hasattr(items, '__iter__'):
@@ -2260,7 +2260,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('Coverpoint')
     def extract_coverpoint(self, node) -> SignalResult:
-        """Coverpoint: coverpoint"""
+        """[NOT TESTED] Coverpoint: coverpoint"""
         result = SignalResult()
         transition = getattr(node, 'transition', None) or getattr(node, 'expr', None)
         if transition:
@@ -2269,17 +2269,17 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('CoverCross')
     def extract_cover_cross(self, node) -> SignalResult:
-        """CoverCross: cover cross"""
+        """[NOT TESTED] CoverCross: cover cross"""
         return SignalResult()
     
     @on('CoverageOption')
     def extract_coverage_option(self, node) -> SignalResult:
-        """CoverageOption: coverage option"""
+        """[NOT TESTED] CoverageOption: coverage option"""
         return SignalResult()
     
     @on('CoverageIffClause')
     def extract_coverage_iff_clause(self, node) -> SignalResult:
-        """CoverageIffClause: coverage iff clause"""
+        """[NOT TESTED] CoverageIffClause: coverage iff clause"""
         expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
         if expr:
             return self.extract(expr)
@@ -2287,24 +2287,24 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('BlockCoverageEvent')
     def extract_block_coverage_event(self, node) -> SignalResult:
-        """BlockCoverageEvent: block coverage event"""
+        """[NOT TESTED] BlockCoverageEvent: block coverage event"""
         return SignalResult()
     
     # Bad and invalid expressions
     @on('BadExpression')
     def extract_bad_expression(self, node) -> SignalResult:
-        """BadExpression: bad expression"""
+        """[NOT TESTED] BadExpression: bad expression"""
         return SignalResult()
     
     # Binary block event expression
     @on('BinaryBlockEventExpression')
     def extract_binary_block_event_expression(self, node) -> SignalResult:
-        """BinaryBlockEventExpression: binary block event expression"""
+        """[NOT TESTED] BinaryBlockEventExpression: binary block event expression"""
         return SignalResult()
     
     @on('BinaryEventExpression')
     def extract_binary_event_expression(self, node) -> SignalResult:
-        """BinaryEventExpression: binary event expression"""
+        """[NOT TESTED] BinaryEventExpression: binary event expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2317,7 +2317,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Blocking event trigger
     @on('BlockingEventTriggerStatement')
     def extract_blocking_event_trigger_statement(self, node) -> SignalResult:
-        """BlockingEventTriggerStatement: blocking event trigger"""
+        """[NOT TESTED] BlockingEventTriggerStatement: blocking event trigger"""
         event = getattr(node, 'event', None) or getattr(node, 'expr', None)
         if event:
             return self.extract(event)
@@ -2326,7 +2326,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Default disable declaration
     @on('DefaultDisableDeclaration')
     def extract_default_disable_declaration(self, node) -> SignalResult:
-        """DefaultDisableDeclaration: default disable declaration"""
+        """[NOT TESTED] DefaultDisableDeclaration: default disable declaration"""
         expr = getattr(node, 'expr', None) or getattr(node, 'disable', None)
         if expr:
             return self.extract(expr)
@@ -2335,7 +2335,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Conditional pattern
     @on('AssignmentPatternItem')
     def extract_assignment_pattern_item(self, node) -> SignalResult:
-        """AssignmentPatternItem: assignment pattern item"""
+        """[NOT TESTED] AssignmentPatternItem: assignment pattern item"""
         result = SignalResult()
         pattern = getattr(node, 'pattern', None)
         if pattern:
@@ -2348,19 +2348,19 @@ class SignalExpressionVisitor(BaseVisitor):
     # Anonymous program
     @on('AnonymousProgram')
     def extract_anonymous_program(self, node) -> SignalResult:
-        """AnonymousProgram: anonymous program"""
+        """[NOT TESTED] AnonymousProgram: anonymous program"""
         return SignalResult()
     
     # Extern interface method
     @on('ExternInterfaceMethod')
     def extract_extern_interface_method(self, node) -> SignalResult:
-        """ExternInterfaceMethod: extern interface method"""
+        """[NOT TESTED] ExternInterfaceMethod: extern interface method"""
         return SignalResult()
     
     # More expression types
     @on('ParenthesizedExpression')
     def extract_parenthesized_expression(self, node) -> SignalResult:
-        """ParenthesizedExpression: parenthesized expression"""
+        """[NOT TESTED] ParenthesizedExpression: parenthesized expression"""
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -2369,7 +2369,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Conditional directive expressions
     @on('BinaryConditionalDirectiveExpression')
     def extract_binary_conditional_directive_expr(self, node) -> SignalResult:
-        """BinaryConditionalDirectiveExpression: binary conditional directive expression"""
+        """[NOT TESTED] BinaryConditionalDirectiveExpression: binary conditional directive expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2381,18 +2381,18 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DefaultPatternKeyExpression')
     def extract_default_pattern_key_expression(self, node) -> SignalResult:
-        """DefaultPatternKeyExpression: default pattern key expression"""
+        """[NOT TESTED] DefaultPatternKeyExpression: default pattern key expression"""
         return SignalResult()
     
     # Function return type
     @on('ModportDeclaration')
     def extract_modport_declaration(self, node) -> SignalResult:
-        """ModportDeclaration: modport declaration"""
+        """[NOT TESTED] ModportDeclaration: modport declaration"""
         return SignalResult()
     
     @on('ModportItem')
     def extract_modport_item(self, node) -> SignalResult:
-        """ModportItem: modport item"""
+        """[NOT TESTED] ModportItem: modport item"""
         result = SignalResult()
         signal = getattr(node, 'signal', None) or getattr(node, 'expr', None)
         if signal:
@@ -2401,7 +2401,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FunctionDeclaration')
     def extract_function_declaration(self, node) -> SignalResult:
-        """FunctionDeclaration: function declaration"""
+        """[NOT TESTED] FunctionDeclaration: function declaration"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -2412,7 +2412,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('TaskDeclaration')
     def extract_task_declaration(self, node) -> SignalResult:
-        """TaskDeclaration: task declaration"""
+        """[NOT TESTED] TaskDeclaration: task declaration"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -2423,33 +2423,33 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FunctionPrototype')
     def extract_function_prototype(self, node) -> SignalResult:
-        """FunctionPrototype: function prototype"""
+        """[NOT TESTED] FunctionPrototype: function prototype"""
         return SignalResult()
     
     @on('PackageDeclaration')
     def extract_package_declaration(self, node) -> SignalResult:
-        """PackageDeclaration: package declaration"""
+        """[NOT TESTED] PackageDeclaration: package declaration"""
         return SignalResult()
     
     @on('ModuleDeclaration')
     def extract_module_declaration(self, node) -> SignalResult:
-        """ModuleDeclaration: module declaration"""
+        """[NOT TESTED] ModuleDeclaration: module declaration"""
         return SignalResult()
     
     @on('InterfaceDeclaration')
     def extract_interface_declaration(self, node) -> SignalResult:
-        """InterfaceDeclaration: interface declaration"""
+        """[NOT TESTED] InterfaceDeclaration: interface declaration"""
         return SignalResult()
     
     @on('ProgramDeclaration')
     def extract_program_declaration_stmt(self, node) -> SignalResult:
-        """ProgramDeclaration: program declaration"""
+        """[NOT TESTED] ProgramDeclaration: program declaration"""
         return SignalResult()
     
     # Generate constructs
     @on('IfGenerate')
     def extract_if_generate(self, node) -> SignalResult:
-        """IfGenerate: if generate construct"""
+        """[NOT TESTED] IfGenerate: if generate construct"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
         if cond:
@@ -2464,7 +2464,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LoopGenerate')
     def extract_loop_generate(self, node) -> SignalResult:
-        """LoopGenerate: loop generate construct"""
+        """[NOT TESTED] LoopGenerate: loop generate construct"""
         result = SignalResult()
         init = getattr(node, 'init', None)
         if init:
@@ -2484,7 +2484,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('GenerateBlock')
     def extract_generate_block(self, node) -> SignalResult:
-        """GenerateBlock: generate block"""
+        """[NOT TESTED] GenerateBlock: generate block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -2495,7 +2495,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('GenerateRegion')
     def extract_generate_region(self, node) -> SignalResult:
-        """GenerateRegion: generate region"""
+        """[NOT TESTED] GenerateRegion: generate region"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'statements', None)
         if items and hasattr(items, '__iter__'):
@@ -2507,7 +2507,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Continuous assignment
     @on('ContinuousAssign')
     def extract_continuous_assign(self, node) -> SignalResult:
-        """ContinuousAssign: continuous assignment"""
+        """[NOT TESTED] ContinuousAssign: continuous assignment"""
         result = SignalResult()
         lvalue = getattr(node, 'lvalue', None)
         if lvalue:
@@ -2519,7 +2519,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PortDeclaration')
     def extract_port_declaration(self, node) -> SignalResult:
-        """PortDeclaration: port declaration"""
+        """[NOT TESTED] PortDeclaration: port declaration"""
         result = SignalResult()
         init = getattr(node, 'init', None) or getattr(node, 'value', None)
         if init:
@@ -2528,7 +2528,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ForLoopStatement')
     def extract_for_loop_statement(self, node) -> SignalResult:
-        """ForLoopStatement: for loop statement"""
+        """[NOT TESTED] ForLoopStatement: for loop statement"""
         result = SignalResult()
         init = getattr(node, 'init', None)
         if init:
@@ -2546,7 +2546,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ForeachLoopStatement')
     def extract_foreach_loop_statement(self, node) -> SignalResult:
-        """ForeachLoopStatement: foreach loop statement"""
+        """[NOT TESTED] ForeachLoopStatement: foreach loop statement"""
         result = SignalResult()
         array = getattr(node, 'array', None) or getattr(node, 'expr', None)
         if array:
@@ -2558,7 +2558,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ReturnStatement')
     def extract_return_statement(self, node) -> SignalResult:
-        """ReturnStatement: return statement"""
+        """[NOT TESTED] ReturnStatement: return statement"""
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
             return self.extract(expr)
@@ -2566,13 +2566,13 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DisableStatement')
     def extract_disable_statement(self, node) -> SignalResult:
-        """DisableStatement: disable statement"""
+        """[NOT TESTED] DisableStatement: disable statement"""
         return SignalResult()
     
     # Wait statements
     @on('WaitStatement')
     def extract_wait_statement_stmt(self, node) -> SignalResult:
-        """WaitStatement: wait statement"""
+        """[NOT TESTED] WaitStatement: wait statement"""
         cond = getattr(node, 'cond', None) or getattr(node, 'expression', None)
         if cond:
             return self.extract(cond)
@@ -2580,19 +2580,19 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParameterDeclaration')
     def extract_parameter_declaration(self, node) -> SignalResult:
-        """ParameterDeclaration: parameter declaration"""
+        """[NOT TESTED] ParameterDeclaration: parameter declaration"""
         return SignalResult()
     
     # Non-blocking assignment statement
     @on('RandSequenceStatement')
     def extract_rand_sequence_statement(self, node) -> SignalResult:
-        """RandSequenceStatement: rand sequence statement"""
+        """[NOT TESTED] RandSequenceStatement: rand sequence statement"""
         return SignalResult()
     
     # Immediate assertion statements
     @on('ImmediateAssertStatement')
     def extract_immediate_assert_statement(self, node) -> SignalResult:
-        """ImmediateAssertStatement: immediate assert statement"""
+        """[NOT TESTED] ImmediateAssertStatement: immediate assert statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2604,7 +2604,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImmediateAssumeStatement')
     def extract_immediate_assume_statement(self, node) -> SignalResult:
-        """ImmediateAssumeStatement: immediate assume statement"""
+        """[NOT TESTED] ImmediateAssumeStatement: immediate assume statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2613,7 +2613,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImmediateCoverStatement')
     def extract_immediate_cover_statement(self, node) -> SignalResult:
-        """ImmediateCoverStatement: immediate cover statement"""
+        """[NOT TESTED] ImmediateCoverStatement: immediate cover statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2623,7 +2623,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Deferred assertion statements
     @on('DistWeight')
     def extract_dist_weight(self, node) -> SignalResult:
-        """DistWeight: dist weight"""
+        """[NOT TESTED] DistWeight: dist weight"""
         result = SignalResult()
         weight = getattr(node, 'weight', None) or getattr(node, 'expr', None)
         if weight:
@@ -2636,7 +2636,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Let expression
     @on('ModExpression')
     def extract_mod_expression_stmt(self, node) -> SignalResult:
-        """ModExpression: mod expression %"""
+        """[NOT TESTED] ModExpression: mod expression %"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2648,7 +2648,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LoopStatement')
     def extract_loop_statement(self, node) -> SignalResult:
-        """LoopStatement: loop statement (for, while, do-while, repeat, foreach)"""
+        """[NOT TESTED] LoopStatement: loop statement (for, while, do-while, repeat, foreach)"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statement', None)
         if body:
@@ -2662,7 +2662,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ForVariableDeclaration')
     def extract_for_variable_declaration(self, node) -> SignalResult:
-        """ForVariableDeclaration: for loop variable declaration"""
+        """[NOT TESTED] ForVariableDeclaration: for loop variable declaration"""
         result = SignalResult()
         var = getattr(node, 'variable', None) or getattr(node, 'var', None)
         if var:
@@ -2674,7 +2674,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DoWhileStatement')
     def extract_do_while_statement(self, node) -> SignalResult:
-        """DoWhileStatement: do-while statement"""
+        """[NOT TESTED] DoWhileStatement: do-while statement"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statement', None)
         if body:
@@ -2686,7 +2686,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ForeverStatement')
     def extract_forever_statement(self, node) -> SignalResult:
-        """ForeverStatement: forever statement"""
+        """[NOT TESTED] ForeverStatement: forever statement"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statement', None)
         if body:
@@ -2695,7 +2695,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LoopConstraint')
     def extract_loop_constraint_stmt(self, node) -> SignalResult:
-        """LoopConstraint: loop constraint"""
+        """[NOT TESTED] LoopConstraint: loop constraint"""
         result = SignalResult()
         vars_ = getattr(node, 'variables', None) or getattr(node, 'loop_vars', None)
         if vars_ and hasattr(vars_, '__iter__'):
@@ -2710,7 +2710,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Jump statements
     @on('JumpStatement')
     def extract_jump_statement(self, node) -> SignalResult:
-        """JumpStatement: break, continue, return, disable statements"""
+        """[NOT TESTED] JumpStatement: break, continue, return, disable statements"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
         if expr:
@@ -2720,25 +2720,25 @@ class SignalExpressionVisitor(BaseVisitor):
     # Return statement
     @on('DisableForkStatement')
     def extract_disable_fork_statement(self, node) -> SignalResult:
-        """DisableForkStatement: disable fork statement"""
+        """[NOT TESTED] DisableForkStatement: disable fork statement"""
         return SignalResult()
     
     # Wait statement
     @on('ProceduralReleaseStatement')
     def extract_procedural_release_statement(self, node) -> SignalResult:
-        """ProceduralReleaseStatement: procedural release statement"""
+        """[NOT TESTED] ProceduralReleaseStatement: procedural release statement"""
         return SignalResult()
     
     # Event trigger statements
     @on('NonblockingEventTriggerStatement')
     def extract_nonblocking_event_trigger_statement(self, node) -> SignalResult:
-        """NonblockingEventTriggerStatement: nonblocking event trigger ->>"""
+        """[NOT TESTED] NonblockingEventTriggerStatement: nonblocking event trigger ->>"""
         return SignalResult()
     
     # Property expressions
     @on('ConditionalPropertyExpr')
     def extract_conditional_property_expr(self, node) -> SignalResult:
-        """ConditionalPropertyExpr: conditional property expression"""
+        """[NOT TESTED] ConditionalPropertyExpr: conditional property expression"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
         if cond:
@@ -2753,7 +2753,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SimplePropertyExpr')
     def extract_simple_property_expr(self, node) -> SignalResult:
-        """SimplePropertyExpr: simple property expression"""
+        """[NOT TESTED] SimplePropertyExpr: simple property expression"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2762,7 +2762,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SimpleSequenceExpr')
     def extract_simple_sequence_expr(self, node) -> SignalResult:
-        """SimpleSequenceExpr: simple sequence expression"""
+        """[NOT TESTED] SimpleSequenceExpr: simple sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -2771,7 +2771,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('IffPropertyExpr')
     def extract_iff_property_expr(self, node) -> SignalResult:
-        """IffPropertyExpr: property iff expression"""
+        """[NOT TESTED] IffPropertyExpr: property iff expression"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2783,7 +2783,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImpliesPropertyExpr')
     def extract_implies_property_expr_stmt(self, node) -> SignalResult:
-        """ImpliesPropertyExpr: implies property expression"""
+        """[NOT TESTED] ImpliesPropertyExpr: implies property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
         right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
@@ -2795,7 +2795,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FollowedByPropertyExpr')
     def extract_followed_by_property_expr(self, node) -> SignalResult:
-        """FollowedByPropertyExpr: followed_by property expression"""
+        """[NOT TESTED] FollowedByPropertyExpr: followed_by property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
         right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
@@ -2807,7 +2807,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SUntilPropertyExpr')
     def extract_s_until_property_expr(self, node) -> SignalResult:
-        """SUntilPropertyExpr: s_until property expression"""
+        """[NOT TESTED] SUntilPropertyExpr: s_until property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2819,7 +2819,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SUntilWithPropertyExpr')
     def extract_s_until_with_property_expr(self, node) -> SignalResult:
-        """SUntilWithPropertyExpr: s_until_with property expression"""
+        """[NOT TESTED] SUntilWithPropertyExpr: s_until_with property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2831,7 +2831,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UntilPropertyExpr')
     def extract_until_property_expr(self, node) -> SignalResult:
-        """UntilPropertyExpr: until property expression"""
+        """[NOT TESTED] UntilPropertyExpr: until property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2843,7 +2843,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UntilWithPropertyExpr')
     def extract_until_with_property_expr(self, node) -> SignalResult:
-        """UntilWithPropertyExpr: until_with property expression"""
+        """[NOT TESTED] UntilWithPropertyExpr: until_with property expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2855,7 +2855,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StrongWeakPropertyExpr')
     def extract_strong_weak_property_expr(self, node) -> SignalResult:
-        """StrongWeakPropertyExpr: strong/weak property expression"""
+        """[NOT TESTED] StrongWeakPropertyExpr: strong/weak property expression"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2864,7 +2864,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AcceptOnPropertyExpr')
     def extract_accept_on_property_expr(self, node) -> SignalResult:
-        """AcceptOnPropertyExpr: accept_on property expression"""
+        """[NOT TESTED] AcceptOnPropertyExpr: accept_on property expression"""
         result = SignalResult()
         cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
         if cond:
@@ -2877,7 +2877,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Sequence expressions
     @on('DelayedSequenceExpr')
     def extract_delayed_sequence_expr(self, node) -> SignalResult:
-        """DelayedSequenceExpr: delayed sequence expression"""
+        """[NOT TESTED] DelayedSequenceExpr: delayed sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -2886,7 +2886,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DelayedSequenceElement')
     def extract_delayed_sequence_element(self, node) -> SignalResult:
-        """DelayedSequenceElement: delayed sequence element"""
+        """[NOT TESTED] DelayedSequenceElement: delayed sequence element"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -2897,7 +2897,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SequenceMatchList')
     def extract_sequence_match_list(self, node) -> SignalResult:
-        """SequenceMatchList: sequence match list"""
+        """[NOT TESTED] SequenceMatchList: sequence match list"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -2908,7 +2908,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('IntersectSequenceExpr')
     def extract_intersect_sequence_expr(self, node) -> SignalResult:
-        """IntersectSequenceExpr: intersect sequence expression"""
+        """[NOT TESTED] IntersectSequenceExpr: intersect sequence expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -2920,7 +2920,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParenthesizedSequenceExpr')
     def extract_parenthesized_sequence_expr(self, node) -> SignalResult:
-        """ParenthesizedSequenceExpr: parenthesized sequence expression"""
+        """[NOT TESTED] ParenthesizedSequenceExpr: parenthesized sequence expression"""
         result = SignalResult()
         seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
         if seq:
@@ -2929,7 +2929,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParenthesizedPropertyExpr')
     def extract_parenthesized_property_expr(self, node) -> SignalResult:
-        """ParenthesizedPropertyExpr: parenthesized property expression"""
+        """[NOT TESTED] ParenthesizedPropertyExpr: parenthesized property expression"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2938,7 +2938,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnarySelectPropertyExpr')
     def extract_unary_select_property_expr(self, node) -> SignalResult:
-        """UnarySelectPropertyExpr: unary select property expression"""
+        """[NOT TESTED] UnarySelectPropertyExpr: unary select property expression"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2947,7 +2947,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PropertyDeclaration')
     def extract_property_declaration_stmt(self, node) -> SignalResult:
-        """PropertyDeclaration: property declaration"""
+        """[NOT TESTED] PropertyDeclaration: property declaration"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'body', None)
         if items and hasattr(items, '__iter__'):
@@ -2958,7 +2958,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SequenceDeclaration')
     def extract_sequence_declaration_stmt(self, node) -> SignalResult:
-        """SequenceDeclaration: sequence declaration"""
+        """[NOT TESTED] SequenceDeclaration: sequence declaration"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'body', None)
         if items and hasattr(items, '__iter__'):
@@ -2969,7 +2969,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RestrictPropertyStatement')
     def extract_restrict_property_statement(self, node) -> SignalResult:
-        """RestrictPropertyStatement: restrict property statement"""
+        """[NOT TESTED] RestrictPropertyStatement: restrict property statement"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -2979,7 +2979,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Invocations and calls
     @on('InvocationExpression')
     def extract_invocation_expression(self, node) -> SignalResult:
-        """InvocationExpression: invocation expression"""
+        """[NOT TESTED] InvocationExpression: invocation expression"""
         result = SignalResult()
         args = getattr(node, 'arguments', None)
         if args and hasattr(args, '__iter__'):
@@ -2990,7 +2990,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('VoidCastedCallStatement')
     def extract_void_casted_call_statement(self, node) -> SignalResult:
-        """VoidCastedCallStatement: void casted call statement"""
+        """[NOT TESTED] VoidCastedCallStatement: void casted call statement"""
         result = SignalResult()
         call = getattr(node, 'call', None) or getattr(node, 'expr', None)
         if call:
@@ -3000,7 +3000,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Declaration-related expressions
     @on('DataDeclaration')
     def extract_data_declaration(self, node) -> SignalResult:
-        """DataDeclaration: data declaration (variables, nets)"""
+        """[NOT TESTED] DataDeclaration: data declaration (variables, nets)"""
         result = SignalResult()
         items = getattr(node, 'declarators', None) or getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3011,7 +3011,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('NetDeclaration')
     def extract_net_declaration(self, node) -> SignalResult:
-        """NetDeclaration: net declaration"""
+        """[NOT TESTED] NetDeclaration: net declaration"""
         result = SignalResult()
         items = getattr(node, 'declarators', None) or getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3022,17 +3022,17 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('TypedefDeclaration')
     def extract_typedef_declaration_stmt(self, node) -> SignalResult:
-        """TypedefDeclaration: typedef declaration"""
+        """[NOT TESTED] TypedefDeclaration: typedef declaration"""
         return SignalResult()
     
     @on('ForwardTypedefDeclaration')
     def extract_forward_typedef_declaration(self, node) -> SignalResult:
-        """ForwardTypedefDeclaration: forward typedef declaration"""
+        """[NOT TESTED] ForwardTypedefDeclaration: forward typedef declaration"""
         return SignalResult()
     
     @on('ParameterDeclarationStatement')
     def extract_parameter_declaration_statement(self, node) -> SignalResult:
-        """ParameterDeclarationStatement: parameter declaration statement"""
+        """[NOT TESTED] ParameterDeclarationStatement: parameter declaration statement"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'parameters', None)
         if items and hasattr(items, '__iter__'):
@@ -3043,12 +3043,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('TypeParameterDeclaration')
     def extract_type_parameter_declaration(self, node) -> SignalResult:
-        """TypeParameterDeclaration: type parameter declaration"""
+        """[NOT TESTED] TypeParameterDeclaration: type parameter declaration"""
         return SignalResult()
     
     @on('FunctionPort')
     def extract_function_port(self, node) -> SignalResult:
-        """FunctionPort: function port"""
+        """[NOT TESTED] FunctionPort: function port"""
         result = SignalResult()
         var = getattr(node, 'variable', None) or getattr(node, 'var', None)
         if var:
@@ -3057,7 +3057,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FunctionPortList')
     def extract_function_port_list(self, node) -> SignalResult:
-        """FunctionPortList: function port list"""
+        """[NOT TESTED] FunctionPortList: function port list"""
         result = SignalResult()
         ports = getattr(node, 'ports', None)
         if ports and hasattr(ports, '__iter__'):
@@ -3068,7 +3068,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LocalVariableDeclaration')
     def extract_local_variable_declaration(self, node) -> SignalResult:
-        """LocalVariableDeclaration: local variable declaration"""
+        """[NOT TESTED] LocalVariableDeclaration: local variable declaration"""
         result = SignalResult()
         var = getattr(node, 'variable', None) or getattr(node, 'var', None)
         if var:
@@ -3077,38 +3077,38 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('GenvarDeclaration')
     def extract_genvar_declaration(self, node) -> SignalResult:
-        """GenvarDeclaration: genvar declaration"""
+        """[NOT TESTED] GenvarDeclaration: genvar declaration"""
         return SignalResult()
     
     @on('NetTypeDeclaration')
     def extract_net_type_declaration(self, node) -> SignalResult:
-        """NetTypeDeclaration: net type declaration"""
+        """[NOT TESTED] NetTypeDeclaration: net type declaration"""
         return SignalResult()
     
     @on('PackageImportDeclaration')
     def extract_package_import_declaration(self, node) -> SignalResult:
-        """PackageImportDeclaration: package import declaration"""
+        """[NOT TESTED] PackageImportDeclaration: package import declaration"""
         return SignalResult()
     
     @on('PackageImportItem')
     def extract_package_import_item(self, node) -> SignalResult:
-        """PackageImportItem: package import item"""
+        """[NOT TESTED] PackageImportItem: package import item"""
         return SignalResult()
     
     @on('PackageExportDeclaration')
     def extract_package_export_declaration(self, node) -> SignalResult:
-        """PackageExportDeclaration: package export declaration"""
+        """[NOT TESTED] PackageExportDeclaration: package export declaration"""
         return SignalResult()
     
     @on('PackageExportAllDeclaration')
     def extract_package_export_all_declaration(self, node) -> SignalResult:
-        """PackageExportAllDeclaration: package export all declaration"""
+        """[NOT TESTED] PackageExportAllDeclaration: package export all declaration"""
         return SignalResult()
     
     # Clocking block declarations
     @on('ClockingDeclaration')
     def extract_clocking_declaration(self, node) -> SignalResult:
-        """ClockingDeclaration: clocking block declaration"""
+        """[NOT TESTED] ClockingDeclaration: clocking block declaration"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3119,12 +3119,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClockingDirection')
     def extract_clocking_direction(self, node) -> SignalResult:
-        """ClockingDirection: clocking direction"""
+        """[NOT TESTED] ClockingDirection: clocking direction"""
         return SignalResult()
     
     @on('ClockingItem')
     def extract_clocking_item(self, node) -> SignalResult:
-        """ClockingItem: clocking item"""
+        """[NOT TESTED] ClockingItem: clocking item"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'body', None)
         if items and hasattr(items, '__iter__'):
@@ -3135,23 +3135,23 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ClockingSkew')
     def extract_clocking_skew(self, node) -> SignalResult:
-        """ClockingSkew: clocking skew"""
+        """[NOT TESTED] ClockingSkew: clocking skew"""
         return SignalResult()
     
     @on('DefaultClockingReference')
     def extract_default_clocking_reference(self, node) -> SignalResult:
-        """DefaultClockingReference: default clocking reference"""
+        """[NOT TESTED] DefaultClockingReference: default clocking reference"""
         return SignalResult()
     
     @on('TimeUnitsDeclaration')
     def extract_time_units_declaration(self, node) -> SignalResult:
-        """TimeUnitsDeclaration: time units declaration"""
+        """[NOT TESTED] TimeUnitsDeclaration: time units declaration"""
         return SignalResult()
     
     # Modport declarations
     @on('ModportSimplePortList')
     def extract_modport_simple_port_list(self, node) -> SignalResult:
-        """ModportSimplePortList: modport simple port list"""
+        """[NOT TESTED] ModportSimplePortList: modport simple port list"""
         result = SignalResult()
         ports = getattr(node, 'ports', None)
         if ports and hasattr(ports, '__iter__'):
@@ -3162,7 +3162,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ModportSubroutinePortList')
     def extract_modport_subroutine_port_list(self, node) -> SignalResult:
-        """ModportSubroutinePortList: modport subroutine port list"""
+        """[NOT TESTED] ModportSubroutinePortList: modport subroutine port list"""
         result = SignalResult()
         ports = getattr(node, 'ports', None)
         if ports and hasattr(ports, '__iter__'):
@@ -3173,12 +3173,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ModportClockingPort')
     def extract_modport_clocking_port(self, node) -> SignalResult:
-        """ModportClockingPort: modport clocking port"""
+        """[NOT TESTED] ModportClockingPort: modport clocking port"""
         return SignalResult()
     
     @on('ModportExplicitPort')
     def extract_modport_explicit_port(self, node) -> SignalResult:
-        """ModportExplicitPort: modport explicit port"""
+        """[NOT TESTED] ModportExplicitPort: modport explicit port"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
         if expr:
@@ -3187,7 +3187,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ModportNamedPort')
     def extract_modport_named_port(self, node) -> SignalResult:
-        """ModportNamedPort: modport named port"""
+        """[NOT TESTED] ModportNamedPort: modport named port"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
         if expr:
@@ -3197,17 +3197,17 @@ class SignalExpressionVisitor(BaseVisitor):
     # Interface port header
     @on('InterfacePortHeader')
     def extract_interface_port_header(self, node) -> SignalResult:
-        """InterfacePortHeader: interface port header"""
+        """[NOT TESTED] InterfacePortHeader: interface port header"""
         return SignalResult()
     
     @on('InterfaceHeader')
     def extract_interface_header_stmt(self, node) -> SignalResult:
-        """InterfaceHeader: interface header"""
+        """[NOT TESTED] InterfaceHeader: interface header"""
         return SignalResult()
     
     @on('ModuleHeader')
     def extract_module_header(self, node) -> SignalResult:
-        """ModuleHeader: module header"""
+        """[NOT TESTED] ModuleHeader: module header"""
         result = SignalResult()
         params = getattr(node, 'parameters', None)
         if params and hasattr(params, '__iter__'):
@@ -3218,18 +3218,18 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PackageHeader')
     def extract_package_header(self, node) -> SignalResult:
-        """PackageHeader: package header"""
+        """[NOT TESTED] PackageHeader: package header"""
         return SignalResult()
     
     @on('ProgramHeader')
     def extract_program_header(self, node) -> SignalResult:
-        """ProgramHeader: program header"""
+        """[NOT TESTED] ProgramHeader: program header"""
         return SignalResult()
     
     # Block statements
     @on('AlwaysBlock')
     def extract_always_block(self, node) -> SignalResult:
-        """AlwaysBlock: always block"""
+        """[NOT TESTED] AlwaysBlock: always block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3240,7 +3240,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AlwaysCombBlock')
     def extract_always_comb_block(self, node) -> SignalResult:
-        """AlwaysCombBlock: always_comb block"""
+        """[NOT TESTED] AlwaysCombBlock: always_comb block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3251,7 +3251,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AlwaysFFBlock')
     def extract_always_ff_block(self, node) -> SignalResult:
-        """AlwaysFFBlock: always_ff block"""
+        """[NOT TESTED] AlwaysFFBlock: always_ff block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3262,7 +3262,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('AlwaysLatchBlock')
     def extract_always_latch_block(self, node) -> SignalResult:
-        """AlwaysLatchBlock: always_latch block"""
+        """[NOT TESTED] AlwaysLatchBlock: always_latch block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3273,7 +3273,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('InitialBlock')
     def extract_initial_block(self, node) -> SignalResult:
-        """InitialBlock: initial block"""
+        """[NOT TESTED] InitialBlock: initial block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3284,7 +3284,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('FinalBlock')
     def extract_final_block(self, node) -> SignalResult:
-        """FinalBlock: final block"""
+        """[NOT TESTED] FinalBlock: final block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3295,7 +3295,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SequentialBlockStatement')
     def extract_sequential_block_statement(self, node) -> SignalResult:
-        """SequentialBlockStatement: sequential block statement"""
+        """[NOT TESTED] SequentialBlockStatement: sequential block statement"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3306,7 +3306,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParallelBlockStatement')
     def extract_parallel_block_statement(self, node) -> SignalResult:
-        """ParallelBlockStatement: parallel block statement"""
+        """[NOT TESTED] ParallelBlockStatement: parallel block statement"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statements', None)
         if body and hasattr(body, '__iter__'):
@@ -3317,7 +3317,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ActionBlock')
     def extract_action_block(self, node) -> SignalResult:
-        """ActionBlock: action block"""
+        """[NOT TESTED] ActionBlock: action block"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statement', None)
         if body:
@@ -3326,7 +3326,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RsCodeBlock')
     def extract_rs_code_block(self, node) -> SignalResult:
-        """RsCodeBlock: randsequence code block"""
+        """[NOT TESTED] RsCodeBlock: randsequence code block"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3337,7 +3337,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RsCase')
     def extract_rs_case(self, node) -> SignalResult:
-        """RsCase: randsequence case"""
+        """[NOT TESTED] RsCase: randsequence case"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3348,7 +3348,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RsElseClause')
     def extract_rs_else_clause(self, node) -> SignalResult:
-        """RsElseClause: randsequence else clause"""
+        """[NOT TESTED] RsElseClause: randsequence else clause"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'block', None)
         if body:
@@ -3357,13 +3357,13 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RsWeightClause')
     def extract_rs_weight_clause(self, node) -> SignalResult:
-        """RsWeightClause: randsequence weight clause"""
+        """[NOT TESTED] RsWeightClause: randsequence weight clause"""
         return SignalResult()
     
     # Expression patterns
     @on('ExpressionPattern')
     def extract_expression_pattern(self, node) -> SignalResult:
-        """ExpressionPattern: expression pattern"""
+        """[NOT TESTED] ExpressionPattern: expression pattern"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'pattern', None)
         if expr:
@@ -3372,7 +3372,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PatternCaseItem')
     def extract_pattern_case_item(self, node) -> SignalResult:
-        """PatternCaseItem: pattern case item"""
+        """[NOT TESTED] PatternCaseItem: pattern case item"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'patterns', None)
         if items and hasattr(items, '__iter__'):
@@ -3384,7 +3384,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Streaming expressions
     @on('StreamingConcatenationExpression')
     def extract_streaming_concatenation_expression(self, node) -> SignalResult:
-        """StreamingConcatenationExpression: streaming concatenation expression"""
+        """[NOT TESTED] StreamingConcatenationExpression: streaming concatenation expression"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'streams', None)
         if items and hasattr(items, '__iter__'):
@@ -3395,7 +3395,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StreamExpressionWithRange')
     def extract_stream_expression_with_range(self, node) -> SignalResult:
-        """StreamExpressionWithRange: stream expression with range"""
+        """[NOT TESTED] StreamExpressionWithRange: stream expression with range"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'expr', None)
         if items and hasattr(items, '__iter__'):
@@ -3407,7 +3407,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Expression with clauses
     @on('ExpressionOrDist')
     def extract_expression_or_dist(self, node) -> SignalResult:
-        """ExpressionOrDist: expression or dist expression"""
+        """[NOT TESTED] ExpressionOrDist: expression or dist expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -3419,7 +3419,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WithClause')
     def extract_with_clause(self, node) -> SignalResult:
-        """WithClause: with clause"""
+        """[NOT TESTED] WithClause: with clause"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'function', None)
         if expr:
@@ -3428,7 +3428,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WithFunctionClause')
     def extract_with_function_clause(self, node) -> SignalResult:
-        """WithFunctionClause: with function clause"""
+        """[NOT TESTED] WithFunctionClause: with function clause"""
         result = SignalResult()
         func = getattr(node, 'function', None) or getattr(node, 'expr', None)
         if func:
@@ -3437,54 +3437,54 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('WithFunctionSample')
     def extract_with_function_sample(self, node) -> SignalResult:
-        """WithFunctionSample: with function sample"""
+        """[NOT TESTED] WithFunctionSample: with function sample"""
         return SignalResult()
     
     # Queue and literal expressions
     @on('EmptyQueueExpression')
     def extract_empty_queue_expression(self, node) -> SignalResult:
-        """EmptyQueueExpression: empty queue expression {}"""
+        """[NOT TESTED] EmptyQueueExpression: empty queue expression {}"""
         return SignalResult()
     
     @on('WildcardLiteralExpression')
     def extract_wildcard_literal_expression(self, node) -> SignalResult:
-        """WildcardLiteralExpression: wildcard literal expression"""
+        """[NOT TESTED] WildcardLiteralExpression: wildcard literal expression"""
         return SignalResult()
     
     @on('NullLiteralExpression')
     def extract_null_literal_expression(self, node) -> SignalResult:
-        """NullLiteralExpression: null literal expression"""
+        """[NOT TESTED] NullLiteralExpression: null literal expression"""
         return SignalResult()
     
     @on('StringLiteralExpression')
     def extract_string_literal_expression_stmt(self, node) -> SignalResult:
-        """StringLiteralExpression: string literal expression"""
+        """[NOT TESTED] StringLiteralExpression: string literal expression"""
         return SignalResult()
     
     @on('TimeLiteralExpression')
     def extract_time_literal_expression_stmt(self, node) -> SignalResult:
-        """TimeLiteralExpression: time literal expression"""
+        """[NOT TESTED] TimeLiteralExpression: time literal expression"""
         return SignalResult()
     
     @on('RealLiteralExpression')
     def extract_real_literal_expression_stmt(self, node) -> SignalResult:
-        """RealLiteralExpression: real literal expression"""
+        """[NOT TESTED] RealLiteralExpression: real literal expression"""
         return SignalResult()
     
     @on('IntegerLiteralExpression')
     def extract_integer_literal_expression_stmt(self, node) -> SignalResult:
-        """IntegerLiteralExpression: integer literal expression"""
+        """[NOT TESTED] IntegerLiteralExpression: integer literal expression"""
         return SignalResult()
     
     @on('UnbasedUnsizedLiteralExpression')
     def extract_unbased_unsized_literal_expression_stmt(self, node) -> SignalResult:
-        """UnbasedUnsizedLiteralExpression: unbased unsized literal expression"""
+        """[NOT TESTED] UnbasedUnsizedLiteralExpression: unbased unsized literal expression"""
         return SignalResult()
     
     # Signed cast expression
     @on('SignedCastExpression')
     def extract_signed_cast_expression(self, node) -> SignalResult:
-        """SignedCastExpression: signed cast expression"""
+        """[NOT TESTED] SignedCastExpression: signed cast expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None)
         if expr:
@@ -3494,7 +3494,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Unary operators
     @on('UnaryPlusExpression')
     def extract_unary_plus_expression_stmt(self, node) -> SignalResult:
-        """UnaryPlusExpression: unary plus expression +"""
+        """[NOT TESTED] UnaryPlusExpression: unary plus expression +"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3502,7 +3502,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryMinusExpression')
     def extract_unary_minus_expression_stmt(self, node) -> SignalResult:
-        """UnaryMinusExpression: unary minus expression -"""
+        """[NOT TESTED] UnaryMinusExpression: unary minus expression -"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3510,7 +3510,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseNotExpression')
     def extract_unary_bitwise_not_expression(self, node) -> SignalResult:
-        """UnaryBitwiseNotExpression: unary bitwise not expression ~"""
+        """[NOT TESTED] UnaryBitwiseNotExpression: unary bitwise not expression ~"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3518,7 +3518,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryLogicalNotExpression')
     def extract_unary_logical_not_expression(self, node) -> SignalResult:
-        """UnaryLogicalNotExpression: unary logical not expression !"""
+        """[NOT TESTED] UnaryLogicalNotExpression: unary logical not expression !"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3526,7 +3526,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseAndExpression')
     def extract_unary_bitwise_and_expression(self, node) -> SignalResult:
-        """UnaryBitwiseAndExpression: unary bitwise and expression &"""
+        """[NOT TESTED] UnaryBitwiseAndExpression: unary bitwise and expression &"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3534,7 +3534,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseOrExpression')
     def extract_unary_bitwise_or_expression(self, node) -> SignalResult:
-        """UnaryBitwiseOrExpression: unary bitwise or expression |"""
+        """[NOT TESTED] UnaryBitwiseOrExpression: unary bitwise or expression |"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3542,7 +3542,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseXorExpression')
     def extract_unary_bitwise_xor_expression(self, node) -> SignalResult:
-        """UnaryBitwiseXorExpression: unary bitwise xor expression ^"""
+        """[NOT TESTED] UnaryBitwiseXorExpression: unary bitwise xor expression ^"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3550,7 +3550,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseNandExpression')
     def extract_unary_bitwise_nand_expression(self, node) -> SignalResult:
-        """UnaryBitwiseNandExpression: unary bitwise nand expression ~&"""
+        """[NOT TESTED] UnaryBitwiseNandExpression: unary bitwise nand expression ~&"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3558,7 +3558,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseNorExpression')
     def extract_unary_bitwise_nor_expression(self, node) -> SignalResult:
-        """UnaryBitwiseNorExpression: unary bitwise nor expression ~|"""
+        """[NOT TESTED] UnaryBitwiseNorExpression: unary bitwise nor expression ~|"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3566,7 +3566,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryBitwiseXnorExpression')
     def extract_unary_bitwise_xnor_expression(self, node) -> SignalResult:
-        """UnaryBitwiseXnorExpression: unary bitwise xnor expression ^~"""
+        """[NOT TESTED] UnaryBitwiseXnorExpression: unary bitwise xnor expression ^~"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3574,7 +3574,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryPreincrementExpression')
     def extract_unary_preincrement_expression(self, node) -> SignalResult:
-        """UnaryPreincrementExpression: pre-increment expression ++expr"""
+        """[NOT TESTED] UnaryPreincrementExpression: pre-increment expression ++expr"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3582,7 +3582,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UnaryPredecrementExpression')
     def extract_unary_predecrement_expression(self, node) -> SignalResult:
-        """UnaryPredecrementExpression: pre-decrement expression --expr"""
+        """[NOT TESTED] UnaryPredecrementExpression: pre-decrement expression --expr"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3590,7 +3590,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PostincrementExpression')
     def extract_postincrement_expression_stmt(self, node) -> SignalResult:
-        """PostincrementExpression: post-increment expression expr++"""
+        """[NOT TESTED] PostincrementExpression: post-increment expression expr++"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3598,7 +3598,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PostdecrementExpression')
     def extract_postdecrement_expression_stmt(self, node) -> SignalResult:
-        """PostdecrementExpression: post-decrement expression expr--"""
+        """[NOT TESTED] PostdecrementExpression: post-decrement expression expr--"""
         expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
         if expr:
             return self.extract(expr)
@@ -3607,7 +3607,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Comparison expressions (missing)
     @on('LessThanEqualExpression')
     def extract_less_than_equal_expression(self, node) -> SignalResult:
-        """LessThanEqualExpression: <= expression"""
+        """[NOT TESTED] LessThanEqualExpression: <= expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3619,7 +3619,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('GreaterThanEqualExpression')
     def extract_greater_than_equal_expression(self, node) -> SignalResult:
-        """GreaterThanEqualExpression: >= expression"""
+        """[NOT TESTED] GreaterThanEqualExpression: >= expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3632,7 +3632,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Logical expressions
     @on('LogicalAndExpression')
     def extract_logical_and_expression_stmt(self, node) -> SignalResult:
-        """LogicalAndExpression: && expression"""
+        """[NOT TESTED] LogicalAndExpression: && expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3644,7 +3644,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalOrExpression')
     def extract_logical_or_expression_stmt(self, node) -> SignalResult:
-        """LogicalOrExpression: || expression"""
+        """[NOT TESTED] LogicalOrExpression: || expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3656,7 +3656,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalEquivalenceExpression')
     def extract_logical_equivalence_expression(self, node) -> SignalResult:
-        """LogicalEquivalenceExpression: <-> expression"""
+        """[NOT TESTED] LogicalEquivalenceExpression: <-> expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3668,7 +3668,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalImplicationExpression')
     def extract_logical_implication_expression(self, node) -> SignalResult:
-        """LogicalImplicationExpression: -> expression"""
+        """[NOT TESTED] LogicalImplicationExpression: -> expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3681,7 +3681,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Logical shift expressions
     @on('LogicalShiftLeftExpression')
     def extract_logical_shift_left_expression(self, node) -> SignalResult:
-        """LogicalShiftLeftExpression: << expression"""
+        """[NOT TESTED] LogicalShiftLeftExpression: << expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3693,7 +3693,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LogicalShiftRightExpression')
     def extract_logical_shift_right_expression(self, node) -> SignalResult:
-        """LogicalShiftRightExpression: >> expression"""
+        """[NOT TESTED] LogicalShiftRightExpression: >> expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -3706,17 +3706,17 @@ class SignalExpressionVisitor(BaseVisitor):
     # Pragma expressions
     @on('SimplePragmaExpression')
     def extract_simple_pragma_expression(self, node) -> SignalResult:
-        """SimplePragmaExpression: simple pragma expression"""
+        """[NOT TESTED] SimplePragmaExpression: simple pragma expression"""
         return SignalResult()
     
     @on('NumberPragmaExpression')
     def extract_number_pragma_expression(self, node) -> SignalResult:
-        """NumberPragmaExpression: number pragma expression"""
+        """[NOT TESTED] NumberPragmaExpression: number pragma expression"""
         return SignalResult()
     
     @on('NameValuePragmaExpression')
     def extract_name_value_pragma_expression(self, node) -> SignalResult:
-        """NameValuePragmaExpression: name value pragma expression"""
+        """[NOT TESTED] NameValuePragmaExpression: name value pragma expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
         if expr:
@@ -3725,7 +3725,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParenPragmaExpression')
     def extract_paren_pragma_expression(self, node) -> SignalResult:
-        """ParenPragmaExpression: parenthesized pragma expression"""
+        """[NOT TESTED] ParenPragmaExpression: parenthesized pragma expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None)
         if expr:
@@ -3735,7 +3735,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Paren expression list
     @on('ParenExpressionList')
     def extract_paren_expression_list(self, node) -> SignalResult:
-        """ParenExpressionList: parenthesized expression list"""
+        """[NOT TESTED] ParenExpressionList: parenthesized expression list"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3747,7 +3747,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Event control expressions
     @on('EventControlWithExpression')
     def extract_event_control_with_expression(self, node) -> SignalResult:
-        """EventControlWithExpression: event control with expression"""
+        """[NOT TESTED] EventControlWithExpression: event control with expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
         if expr:
@@ -3756,7 +3756,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('RepeatedEventControl')
     def extract_repeated_event_control(self, node) -> SignalResult:
-        """RepeatedEventControl: repeated event control"""
+        """[NOT TESTED] RepeatedEventControl: repeated event control"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'events', None)
         if items and hasattr(items, '__iter__'):
@@ -3767,7 +3767,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SignalEventExpression')
     def extract_signal_event_expression(self, node) -> SignalResult:
-        """SignalEventExpression: signal event expression"""
+        """[NOT TESTED] SignalEventExpression: signal event expression"""
         result = SignalResult()
         signal = getattr(node, 'signal', None) or getattr(node, 'expr', None)
         if signal:
@@ -3776,13 +3776,13 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PrimaryBlockEventExpression')
     def extract_primary_block_event_expression(self, node) -> SignalResult:
-        """PrimaryBlockEventExpression: primary block event expression"""
+        """[NOT TESTED] PrimaryBlockEventExpression: primary block event expression"""
         return SignalResult()
     
     # Case items
     @on('StandardCaseItem')
     def extract_standard_case_item(self, node) -> SignalResult:
-        """StandardCaseItem: standard case item"""
+        """[NOT TESTED] StandardCaseItem: standard case item"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3793,7 +3793,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StandardPropertyCaseItem')
     def extract_standard_property_case_item(self, node) -> SignalResult:
-        """StandardPropertyCaseItem: standard property case item"""
+        """[NOT TESTED] StandardPropertyCaseItem: standard property case item"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3804,7 +3804,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DefaultRsCaseItem')
     def extract_default_rs_case_item(self, node) -> SignalResult:
-        """DefaultRsCaseItem: default randsequence case item"""
+        """[NOT TESTED] DefaultRsCaseItem: default randsequence case item"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'block', None)
         if body:
@@ -3813,7 +3813,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('StandardRsCaseItem')
     def extract_standard_rs_case_item(self, node) -> SignalResult:
-        """StandardRsCaseItem: standard randsequence case item"""
+        """[NOT TESTED] StandardRsCaseItem: standard randsequence case item"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3825,7 +3825,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # Clause expressions
     @on('IntersectClause')
     def extract_intersect_clause(self, node) -> SignalResult:
-        """IntersectClause: intersect clause"""
+        """[NOT TESTED] IntersectClause: intersect clause"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3836,7 +3836,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EqualsTypeClause')
     def extract_equals_type_clause(self, node) -> SignalResult:
-        """EqualsTypeClause: equals type clause"""
+        """[NOT TESTED] EqualsTypeClause: equals type clause"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'type', None)
         if items and hasattr(items, '__iter__'):
@@ -3847,7 +3847,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('EqualsValueClause')
     def extract_equals_value_clause(self, node) -> SignalResult:
-        """EqualsValueClause: equals value clause"""
+        """[NOT TESTED] EqualsValueClause: equals value clause"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
         if expr:
@@ -3857,7 +3857,7 @@ class SignalExpressionVisitor(BaseVisitor):
     # More clauses and expressions
     @on('ElseClause')
     def extract_else_clause(self, node) -> SignalResult:
-        """ElseClause: else clause"""
+        """[NOT TESTED] ElseClause: else clause"""
         result = SignalResult()
         body = getattr(node, 'body', None) or getattr(node, 'statement', None)
         if body:
@@ -3866,7 +3866,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ElseConstraintClause')
     def extract_else_constraint_clause(self, node) -> SignalResult:
-        """ElseConstraintClause: else constraint clause"""
+        """[NOT TESTED] ElseConstraintClause: else constraint clause"""
         result = SignalResult()
         constraint = getattr(node, 'constraint', None) or getattr(node, 'body', None)
         if constraint:
@@ -3875,7 +3875,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ElsePropertyClause')
     def extract_else_property_clause(self, node) -> SignalResult:
-        """ElsePropertyClause: else property clause"""
+        """[NOT TESTED] ElsePropertyClause: else property clause"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'body', None)
         if prop:
@@ -3884,37 +3884,37 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplementsClause')
     def extract_implements_clause(self, node) -> SignalResult:
-        """ImplementsClause: implements clause"""
+        """[NOT TESTED] ImplementsClause: implements clause"""
         return SignalResult()
     
     @on('ExtendsClause')
     def extract_extends_clause(self, node) -> SignalResult:
-        """ExtendsClause: extends clause"""
+        """[NOT TESTED] ExtendsClause: extends clause"""
         return SignalResult()
     
     @on('IfNonePathDeclaration')
     def extract_if_none_path_declaration(self, node) -> SignalResult:
-        """IfNonePathDeclaration: ifnone path declaration"""
+        """[NOT TESTED] IfNonePathDeclaration: ifnone path declaration"""
         return SignalResult()
     
     @on('ConditionalPathDeclaration')
     def extract_conditional_path_declaration(self, node) -> SignalResult:
-        """ConditionalPathDeclaration: conditional path declaration"""
+        """[NOT TESTED] ConditionalPathDeclaration: conditional path declaration"""
         return SignalResult()
     
     @on('PathDeclaration')
     def extract_path_declaration(self, node) -> SignalResult:
-        """PathDeclaration: path declaration"""
+        """[NOT TESTED] PathDeclaration: path declaration"""
         return SignalResult()
     
     @on('PulseStyleDeclaration')
     def extract_pulse_style_declaration(self, node) -> SignalResult:
-        """PulseStyleDeclaration: pulse style declaration"""
+        """[NOT TESTED] PulseStyleDeclaration: pulse style declaration"""
         return SignalResult()
     
     @on('SimpleBinsSelectExpr')
     def extract_simple_bins_select_expr(self, node) -> SignalResult:
-        """SimpleBinsSelectExpr: simple bins select expression"""
+        """[NOT TESTED] SimpleBinsSelectExpr: simple bins select expression"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3925,7 +3925,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParenthesizedBinsSelectExpr')
     def extract_parenthesized_bins_select_expr(self, node) -> SignalResult:
-        """ParenthesizedBinsSelectExpr: parenthesized bins select expression"""
+        """[NOT TESTED] ParenthesizedBinsSelectExpr: parenthesized bins select expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'bins', None)
         if expr:
@@ -3934,7 +3934,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MatchesClause')
     def extract_matches_clause(self, node) -> SignalResult:
-        """MatchesClause: matches clause"""
+        """[NOT TESTED] MatchesClause: matches clause"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -3945,7 +3945,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ColonExpressionClause')
     def extract_colon_expression_clause(self, node) -> SignalResult:
-        """ColonExpressionClause: colon expression clause"""
+        """[NOT TESTED] ColonExpressionClause: colon expression clause"""
         result = SignalResult()
         expr = getattr(node, 'expr', None)
         if expr:
@@ -3954,52 +3954,52 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('DotMemberClause')
     def extract_dot_member_clause(self, node) -> SignalResult:
-        """DotMemberClause: dot member clause"""
+        """[NOT TESTED] DotMemberClause: dot member clause"""
         return SignalResult()
     
     @on('EqualsAssertionArgClause')
     def extract_equals_assertion_arg_clause(self, node) -> SignalResult:
-        """EqualsAssertionArgClause: equals assertion arg clause"""
+        """[NOT TESTED] EqualsAssertionArgClause: equals assertion arg clause"""
         return SignalResult()
     
     @on('IffEventClause')
     def extract_iff_event_clause(self, node) -> SignalResult:
-        """IffEventClause: iff event clause"""
+        """[NOT TESTED] IffEventClause: iff event clause"""
         return SignalResult()
     
     @on('NamedBlockClause')
     def extract_named_block_clause(self, node) -> SignalResult:
-        """NamedBlockClause: named block clause"""
+        """[NOT TESTED] NamedBlockClause: named block clause"""
         return SignalResult()
     
     @on('DividerClause')
     def extract_divider_clause(self, node) -> SignalResult:
-        """DividerClause: divider clause"""
+        """[NOT TESTED] DividerClause: divider clause"""
         return SignalResult()
     
     @on('RandJoinClause')
     def extract_rand_join_clause(self, node) -> SignalResult:
-        """RandJoinClause: rand join clause"""
+        """[NOT TESTED] RandJoinClause: rand join clause"""
         return SignalResult()
     
     @on('DefaultExtendsClauseArg')
     def extract_default_extends_clause_arg(self, node) -> SignalResult:
-        """DefaultExtendsClauseArg: default extends clause arg"""
+        """[NOT TESTED] DefaultExtendsClauseArg: default extends clause arg"""
         return SignalResult()
     
     @on('TimingCheckEventArg')
     def extract_timing_check_event_arg(self, node) -> SignalResult:
-        """TimingCheckEventArg: timing check event arg"""
+        """[NOT TESTED] TimingCheckEventArg: timing check event arg"""
         return SignalResult()
     
     @on('TimingCheckEventCondition')
     def extract_timing_check_event_condition(self, node) -> SignalResult:
-        """TimingCheckEventCondition: timing check event condition"""
+        """[NOT TESTED] TimingCheckEventCondition: timing check event condition"""
         return SignalResult()
     
     @on('ExpressionTimingCheckArg')
     def extract_expression_timing_check_arg(self, node) -> SignalResult:
-        """ExpressionTimingCheckArg: expression timing check arg"""
+        """[NOT TESTED] ExpressionTimingCheckArg: expression timing check arg"""
         result = SignalResult()
         expr = getattr(node, 'expr', None)
         if expr:
@@ -4008,7 +4008,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ModAssignmentExpression')
     def extract_mod_assignment_expression(self, node) -> SignalResult:
-        """ModAssignmentExpression: mod assignment expression"""
+        """[NOT TESTED] ModAssignmentExpression: mod assignment expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -4020,7 +4020,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('NonblockingAssignmentExpression')
     def extract_nonblocking_assignment_expression(self, node) -> SignalResult:
-        """NonblockingAssignmentExpression: nonblocking assignment expression"""
+        """[NOT TESTED] NonblockingAssignmentExpression: nonblocking assignment expression"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
@@ -4033,22 +4033,22 @@ class SignalExpressionVisitor(BaseVisitor):
     # Last 21 missing handlers
     @on('ConfigDeclaration')
     def extract_config_declaration(self, node) -> SignalResult:
-        """ConfigDeclaration: config declaration"""
+        """[NOT TESTED] ConfigDeclaration: config declaration"""
         return SignalResult()
     
     @on('ConfigUseClause')
     def extract_config_use_clause(self, node) -> SignalResult:
-        """ConfigUseClause: config use clause"""
+        """[NOT TESTED] ConfigUseClause: config use clause"""
         return SignalResult()
     
     @on('ExternModuleDecl')
     def extract_extern_module_decl(self, node) -> SignalResult:
-        """ExternModuleDecl: extern module declaration"""
+        """[NOT TESTED] ExternModuleDecl: extern module declaration"""
         return SignalResult()
     
     @on('IdWithExprCoverageBinInitializer')
     def extract_id_with_expr_coverage_bin_initializer(self, node) -> SignalResult:
-        """IdWithExprCoverageBinInitializer: id with expr coverage bin initializer"""
+        """[NOT TESTED] IdWithExprCoverageBinInitializer: id with expr coverage bin initializer"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -4057,7 +4057,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplicationConstraint')
     def extract_implication_constraint(self, node) -> SignalResult:
-        """ImplicationConstraint: implication constraint"""
+        """[NOT TESTED] ImplicationConstraint: implication constraint"""
         result = SignalResult()
         left = getattr(node, 'left', None) or getattr(node, 'condition', None)
         right = getattr(node, 'right', None) or getattr(node, 'constraint', None)
@@ -4069,22 +4069,22 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('LibraryDeclaration')
     def extract_library_declaration(self, node) -> SignalResult:
-        """LibraryDeclaration: library declaration"""
+        """[NOT TESTED] LibraryDeclaration: library declaration"""
         return SignalResult()
     
     @on('LibraryIncDirClause')
     def extract_library_inc_dir_clause(self, node) -> SignalResult:
-        """LibraryIncDirClause: library include directory clause"""
+        """[NOT TESTED] LibraryIncDirClause: library include directory clause"""
         return SignalResult()
     
     @on('ModportSubroutinePort')
     def extract_modport_subroutine_port(self, node) -> SignalResult:
-        """ModportSubroutinePort: modport subroutine port"""
+        """[NOT TESTED] ModportSubroutinePort: modport subroutine port"""
         return SignalResult()
     
     @on('ParenthesizedConditionalDirectiveExpression')
     def extract_parenthesized_conditional_directive_expression(self, node) -> SignalResult:
-        """ParenthesizedConditionalDirectiveExpression: parenthesized conditional directive expression"""
+        """[NOT TESTED] ParenthesizedConditionalDirectiveExpression: parenthesized conditional directive expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -4093,7 +4093,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ParenthesizedEventExpression')
     def extract_parenthesized_event_expression(self, node) -> SignalResult:
-        """ParenthesizedEventExpression: parenthesized event expression"""
+        """[NOT TESTED] ParenthesizedEventExpression: parenthesized event expression"""
         result = SignalResult()
         event = getattr(node, 'event', None) or getattr(node, 'expr', None)
         if event:
@@ -4102,7 +4102,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('PropertySpec')
     def extract_property_spec(self, node) -> SignalResult:
-        """PropertySpec: property spec"""
+        """[NOT TESTED] PropertySpec: property spec"""
         result = SignalResult()
         prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
         if prop:
@@ -4111,12 +4111,12 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SpecifyBlock')
     def extract_specify_block(self, node) -> SignalResult:
-        """SpecifyBlock: specify block"""
+        """[NOT TESTED] SpecifyBlock: specify block"""
         return SignalResult()
     
     @on('SpecparamDeclaration')
     def extract_specparam_declaration(self, node) -> SignalResult:
-        """SpecparamDeclaration: specparam declaration"""
+        """[NOT TESTED] SpecparamDeclaration: specparam declaration"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
         if expr:
@@ -4125,27 +4125,27 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SuperNewDefaultedArgsExpression')
     def extract_super_new_defaulted_args_expression(self, node) -> SignalResult:
-        """SuperNewDefaultedArgsExpression: super.new with defaulted args expression"""
+        """[NOT TESTED] SuperNewDefaultedArgsExpression: super.new with defaulted args expression"""
         return SignalResult()
     
     @on('TimingControlExpression')
     def extract_timing_control_expression(self, node) -> SignalResult:
-        """TimingControlExpression: timing control expression"""
+        """[NOT TESTED] TimingControlExpression: timing control expression"""
         return SignalResult()
     
     @on('TimingControlStatement')
     def extract_timing_control_statement(self, node) -> SignalResult:
-        """TimingControlStatement: timing control statement"""
+        """[NOT TESTED] TimingControlStatement: timing control statement"""
         return SignalResult()
     
     @on('UdpDeclaration')
     def extract_udp_declaration(self, node) -> SignalResult:
-        """UdpDeclaration: UDP declaration (Verilog primitive)"""
+        """[NOT TESTED] UdpDeclaration: UDP declaration (Verilog primitive)"""
         return SignalResult()
     
     @on('UnaryConditionalDirectiveExpression')
     def extract_unary_conditional_directive_expression(self, node) -> SignalResult:
-        """UnaryConditionalDirectiveExpression: unary conditional directive expression"""
+        """[NOT TESTED] UnaryConditionalDirectiveExpression: unary conditional directive expression"""
         result = SignalResult()
         expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
         if expr:
@@ -4154,7 +4154,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UniquenessConstraint')
     def extract_uniqueness_constraint(self, node) -> SignalResult:
-        """UniquenessConstraint: uniqueness constraint"""
+        """[NOT TESTED] UniquenessConstraint: uniqueness constraint"""
         result = SignalResult()
         items = getattr(node, 'items', None)
         if items and hasattr(items, '__iter__'):
@@ -4165,17 +4165,17 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('UserDefinedNetDeclaration')
     def extract_user_defined_net_declaration(self, node) -> SignalResult:
-        """UserDefinedNetDeclaration: user defined net declaration"""
+        """[NOT TESTED] UserDefinedNetDeclaration: user defined net declaration"""
         return SignalResult()
     
     @on('VirtualInterfaceType')
     def extract_virtual_interface_type(self, node) -> SignalResult:
-        """VirtualInterfaceType: virtual interface type"""
+        """[NOT TESTED] VirtualInterfaceType: virtual interface type"""
         return SignalResult()
 
     @on('UdpSimpleField')
     def extract_udpsimplefield(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpSimpleField: Udpsimplefield"""
+        """[NOT TESTED] UdpSimpleField: Udpsimplefield"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4187,7 +4187,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UnconnectedDriveDirective')
     def extract_unconnecteddrivedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UnconnectedDriveDirective: Unconnecteddrivedirective"""
+        """[NOT TESTED] UnconnectedDriveDirective: Unconnecteddrivedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4199,7 +4199,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UndefDirective')
     def extract_undefdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UndefDirective: Undefdirective"""
+        """[NOT TESTED] UndefDirective: Undefdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4211,7 +4211,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UndefineAllDirective')
     def extract_undefinealldirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UndefineAllDirective: Undefinealldirective"""
+        """[NOT TESTED] UndefineAllDirective: Undefinealldirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4223,7 +4223,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UnionType')
     def extract_uniontype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UnionType: Uniontype"""
+        """[NOT TESTED] UnionType: Uniontype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4235,7 +4235,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UnitScope')
     def extract_unitscope(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UnitScope: Unitscope"""
+        """[NOT TESTED] UnitScope: Unitscope"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4247,7 +4247,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('Unknown')
     def extract_unknown(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] Unknown: Unknown"""
+        """[NOT TESTED] Unknown: Unknown"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4259,7 +4259,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('Untyped')
     def extract_untyped(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] Untyped: Untyped"""
+        """[NOT TESTED] Untyped: Untyped"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4271,7 +4271,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('VariablePortHeader')
     def extract_variableportheader(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] VariablePortHeader: Variableportheader"""
+        """[NOT TESTED] VariablePortHeader: Variableportheader"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4283,7 +4283,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('WildcardDimensionSpecifier')
     def extract_wildcarddimensionspecifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] WildcardDimensionSpecifier: Wildcarddimensionspecifier"""
+        """[NOT TESTED] WildcardDimensionSpecifier: Wildcarddimensionspecifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4295,7 +4295,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('WildcardPortConnection')
     def extract_wildcardportconnection(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] WildcardPortConnection: Wildcardportconnection"""
+        """[NOT TESTED] WildcardPortConnection: Wildcardportconnection"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4307,7 +4307,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('WildcardPortList')
     def extract_wildcardportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] WildcardPortList: Wildcardportlist"""
+        """[NOT TESTED] WildcardPortList: Wildcardportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4319,7 +4319,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('WildcardUdpPortList')
     def extract_wildcardudpportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] WildcardUdpPortList: Wildcardudpportlist"""
+        """[NOT TESTED] WildcardUdpPortList: Wildcardudpportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4331,7 +4331,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('StructType')
     def extract_structtype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] StructType: Structtype"""
+        """[NOT TESTED] StructType: Structtype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4343,7 +4343,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('StructUnionMember')
     def extract_structunionmember(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] StructUnionMember: Structunionmember"""
+        """[NOT TESTED] StructUnionMember: Structunionmember"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4355,7 +4355,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SuperHandle')
     def extract_superhandle(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SuperHandle: Superhandle"""
+        """[NOT TESTED] SuperHandle: Superhandle"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4367,7 +4367,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SystemName')
     def extract_systemname(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SystemName: Systemname"""
+        """[NOT TESTED] SystemName: Systemname"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4379,7 +4379,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SystemTimingCheck')
     def extract_systemtimingcheck(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SystemTimingCheck: Systemtimingcheck"""
+        """[NOT TESTED] SystemTimingCheck: Systemtimingcheck"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4391,7 +4391,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ThisHandle')
     def extract_thishandle(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ThisHandle: Thishandle"""
+        """[NOT TESTED] ThisHandle: Thishandle"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4403,7 +4403,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TimeScaleDirective')
     def extract_timescaledirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TimeScaleDirective: Timescaledirective"""
+        """[NOT TESTED] TimeScaleDirective: Timescaledirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4415,7 +4415,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TimeType')
     def extract_timetype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TimeType: Timetype"""
+        """[NOT TESTED] TimeType: Timetype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4427,7 +4427,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TokenList')
     def extract_tokenlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TokenList: Tokenlist"""
+        """[NOT TESTED] TokenList: Tokenlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4439,7 +4439,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TransListCoverageBinInitializer')
     def extract_translistcoveragebininitializer(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TransListCoverageBinInitializer: Translistcoveragebininitializer"""
+        """[NOT TESTED] TransListCoverageBinInitializer: Translistcoveragebininitializer"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4451,7 +4451,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TransRange')
     def extract_transrange(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TransRange: Transrange"""
+        """[NOT TESTED] TransRange: Transrange"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4463,7 +4463,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TransRepeatRange')
     def extract_transrepeatrange(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TransRepeatRange: Transrepeatrange"""
+        """[NOT TESTED] TransRepeatRange: Transrepeatrange"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4475,7 +4475,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TransSet')
     def extract_transset(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TransSet: Transset"""
+        """[NOT TESTED] TransSet: Transset"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4487,7 +4487,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('TypeAssignment')
     def extract_typeassignment(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] TypeAssignment: Typeassignment"""
+        """[NOT TESTED] TypeAssignment: Typeassignment"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4499,7 +4499,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpBody')
     def extract_udpbody(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpBody: Udpbody"""
+        """[NOT TESTED] UdpBody: Udpbody"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4511,7 +4511,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpEdgeField')
     def extract_udpedgefield(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpEdgeField: Udpedgefield"""
+        """[NOT TESTED] UdpEdgeField: Udpedgefield"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4523,7 +4523,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpEntry')
     def extract_udpentry(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpEntry: Udpentry"""
+        """[NOT TESTED] UdpEntry: Udpentry"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4535,7 +4535,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpInitialStmt')
     def extract_udpinitialstmt(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpInitialStmt: Udpinitialstmt"""
+        """[NOT TESTED] UdpInitialStmt: Udpinitialstmt"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4547,7 +4547,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpInputPortDecl')
     def extract_udpinputportdecl(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpInputPortDecl: Udpinputportdecl"""
+        """[NOT TESTED] UdpInputPortDecl: Udpinputportdecl"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4559,7 +4559,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('UdpOutputPortDecl')
     def extract_udpoutputportdecl(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] UdpOutputPortDecl: Udpoutputportdecl"""
+        """[NOT TESTED] UdpOutputPortDecl: Udpoutputportdecl"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4571,7 +4571,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PragmaDirective')
     def extract_pragmadirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PragmaDirective: Pragmadirective"""
+        """[NOT TESTED] PragmaDirective: Pragmadirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4583,7 +4583,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PrimitiveInstantiation')
     def extract_primitiveinstantiation(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PrimitiveInstantiation: Primitiveinstantiation"""
+        """[NOT TESTED] PrimitiveInstantiation: Primitiveinstantiation"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4595,7 +4595,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('Production')
     def extract_production(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] Production: Production"""
+        """[NOT TESTED] Production: Production"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4607,7 +4607,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ProtectDirective')
     def extract_protectdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ProtectDirective: Protectdirective"""
+        """[NOT TESTED] ProtectDirective: Protectdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4619,7 +4619,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ProtectedDirective')
     def extract_protecteddirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ProtectedDirective: Protecteddirective"""
+        """[NOT TESTED] ProtectedDirective: Protecteddirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4631,7 +4631,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PullStrength')
     def extract_pullstrength(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PullStrength: Pullstrength"""
+        """[NOT TESTED] PullStrength: Pullstrength"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4643,7 +4643,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('QueueDimensionSpecifier')
     def extract_queuedimensionspecifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] QueueDimensionSpecifier: Queuedimensionspecifier"""
+        """[NOT TESTED] QueueDimensionSpecifier: Queuedimensionspecifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4655,7 +4655,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RangeCoverageBinInitializer')
     def extract_rangecoveragebininitializer(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RangeCoverageBinInitializer: Rangecoveragebininitializer"""
+        """[NOT TESTED] RangeCoverageBinInitializer: Rangecoveragebininitializer"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4667,7 +4667,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RangeDimensionSpecifier')
     def extract_rangedimensionspecifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RangeDimensionSpecifier: Rangedimensionspecifier"""
+        """[NOT TESTED] RangeDimensionSpecifier: Rangedimensionspecifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4679,7 +4679,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RangeList')
     def extract_rangelist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RangeList: Rangelist"""
+        """[NOT TESTED] RangeList: Rangelist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4691,7 +4691,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RealTimeType')
     def extract_realtimetype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RealTimeType: Realtimetype"""
+        """[NOT TESTED] RealTimeType: Realtimetype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4703,7 +4703,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ResetAllDirective')
     def extract_resetalldirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ResetAllDirective: Resetalldirective"""
+        """[NOT TESTED] ResetAllDirective: Resetalldirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4715,7 +4715,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RootScope')
     def extract_rootscope(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RootScope: Rootscope"""
+        """[NOT TESTED] RootScope: Rootscope"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4727,7 +4727,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RsIfElse')
     def extract_rsifelse(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RsIfElse: Rsifelse"""
+        """[NOT TESTED] RsIfElse: Rsifelse"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4739,7 +4739,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RsProdItem')
     def extract_rsproditem(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RsProdItem: Rsproditem"""
+        """[NOT TESTED] RsProdItem: Rsproditem"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4751,7 +4751,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RsRepeat')
     def extract_rsrepeat(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RsRepeat: Rsrepeat"""
+        """[NOT TESTED] RsRepeat: Rsrepeat"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4763,7 +4763,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('RsRule')
     def extract_rsrule(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] RsRule: Rsrule"""
+        """[NOT TESTED] RsRule: Rsrule"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4775,7 +4775,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SimplePathSuffix')
     def extract_simplepathsuffix(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SimplePathSuffix: Simplepathsuffix"""
+        """[NOT TESTED] SimplePathSuffix: Simplepathsuffix"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4787,7 +4787,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SimpleRangeSelect')
     def extract_simplerangeselect(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SimpleRangeSelect: Simplerangeselect"""
+        """[NOT TESTED] SimpleRangeSelect: Simplerangeselect"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4799,7 +4799,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('SpecparamDeclarator')
     def extract_specparamdeclarator(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SpecparamDeclarator: Specparamdeclarator"""
+        """[NOT TESTED] SpecparamDeclarator: Specparamdeclarator"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4811,7 +4811,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedLabel')
     def extract_namedlabel(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedLabel: Namedlabel"""
+        """[NOT TESTED] NamedLabel: Namedlabel"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4823,7 +4823,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedParamAssignment')
     def extract_namedparamassignment(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedParamAssignment: Namedparamassignment"""
+        """[NOT TESTED] NamedParamAssignment: Namedparamassignment"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4835,7 +4835,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedPortConnection')
     def extract_namedportconnection(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedPortConnection: Namedportconnection"""
+        """[NOT TESTED] NamedPortConnection: Namedportconnection"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4847,7 +4847,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedStructurePatternMember')
     def extract_namedstructurepatternmember(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedStructurePatternMember: Namedstructurepatternmember"""
+        """[NOT TESTED] NamedStructurePatternMember: Namedstructurepatternmember"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4859,7 +4859,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NetAlias')
     def extract_netalias(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NetAlias: Netalias"""
+        """[NOT TESTED] NetAlias: Netalias"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4871,7 +4871,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NetPortHeader')
     def extract_netportheader(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NetPortHeader: Netportheader"""
+        """[NOT TESTED] NetPortHeader: Netportheader"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4883,7 +4883,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NoUnconnectedDriveDirective')
     def extract_nounconnecteddrivedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NoUnconnectedDriveDirective: Nounconnecteddrivedirective"""
+        """[NOT TESTED] NoUnconnectedDriveDirective: Nounconnecteddrivedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4895,7 +4895,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NonAnsiPortList')
     def extract_nonansiportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NonAnsiPortList: Nonansiportlist"""
+        """[NOT TESTED] NonAnsiPortList: Nonansiportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4907,7 +4907,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NonAnsiUdpPortList')
     def extract_nonansiudpportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NonAnsiUdpPortList: Nonansiudpportlist"""
+        """[NOT TESTED] NonAnsiUdpPortList: Nonansiudpportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4919,7 +4919,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('OneStepDelay')
     def extract_onestepdelay(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] OneStepDelay: Onestepdelay"""
+        """[NOT TESTED] OneStepDelay: Onestepdelay"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4931,7 +4931,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('OrderedArgument')
     def extract_orderedargument(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] OrderedArgument: Orderedargument"""
+        """[NOT TESTED] OrderedArgument: Orderedargument"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4943,7 +4943,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('OrderedParamAssignment')
     def extract_orderedparamassignment(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] OrderedParamAssignment: Orderedparamassignment"""
+        """[NOT TESTED] OrderedParamAssignment: Orderedparamassignment"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4955,7 +4955,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('OrderedPortConnection')
     def extract_orderedportconnection(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] OrderedPortConnection: Orderedportconnection"""
+        """[NOT TESTED] OrderedPortConnection: Orderedportconnection"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4967,7 +4967,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('OrderedStructurePatternMember')
     def extract_orderedstructurepatternmember(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] OrderedStructurePatternMember: Orderedstructurepatternmember"""
+        """[NOT TESTED] OrderedStructurePatternMember: Orderedstructurepatternmember"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4979,7 +4979,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ParameterPortList')
     def extract_parameterportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ParameterPortList: Parameterportlist"""
+        """[NOT TESTED] ParameterPortList: Parameterportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -4991,7 +4991,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ParameterValueAssignment')
     def extract_parametervalueassignment(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ParameterValueAssignment: Parametervalueassignment"""
+        """[NOT TESTED] ParameterValueAssignment: Parametervalueassignment"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5003,7 +5003,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ParenthesizedPattern')
     def extract_parenthesizedpattern(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ParenthesizedPattern: Parenthesizedpattern"""
+        """[NOT TESTED] ParenthesizedPattern: Parenthesizedpattern"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5015,7 +5015,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PathDescription')
     def extract_pathdescription(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PathDescription: Pathdescription"""
+        """[NOT TESTED] PathDescription: Pathdescription"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5027,7 +5027,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PortConcatenation')
     def extract_portconcatenation(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PortConcatenation: Portconcatenation"""
+        """[NOT TESTED] PortConcatenation: Portconcatenation"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5039,7 +5039,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('PortReference')
     def extract_portreference(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] PortReference: Portreference"""
+        """[NOT TESTED] PortReference: Portreference"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5051,7 +5051,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('IdentifierSelectName')
     def extract_identifierselectname(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] IdentifierSelectName: Identifierselectname"""
+        """[NOT TESTED] IdentifierSelectName: Identifierselectname"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5063,7 +5063,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('IfDefDirective')
     def extract_ifdefdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] IfDefDirective: Ifdefdirective"""
+        """[NOT TESTED] IfDefDirective: Ifdefdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5075,7 +5075,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('IfNDefDirective')
     def extract_ifndefdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] IfNDefDirective: Ifndefdirective"""
+        """[NOT TESTED] IfNDefDirective: Ifndefdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5087,7 +5087,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ImmediateAssertionMember')
     def extract_immediateassertionmember(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ImmediateAssertionMember: Immediateassertionmember"""
+        """[NOT TESTED] ImmediateAssertionMember: Immediateassertionmember"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5099,7 +5099,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ImplicitType')
     def extract_implicittype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ImplicitType: Implicittype"""
+        """[NOT TESTED] ImplicitType: Implicittype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5111,7 +5111,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('IncludeDirective')
     def extract_includedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] IncludeDirective: Includedirective"""
+        """[NOT TESTED] IncludeDirective: Includedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5123,7 +5123,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('InstanceConfigRule')
     def extract_instanceconfigrule(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] InstanceConfigRule: Instanceconfigrule"""
+        """[NOT TESTED] InstanceConfigRule: Instanceconfigrule"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5135,7 +5135,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('InstanceName')
     def extract_instancename(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] InstanceName: Instancename"""
+        """[NOT TESTED] InstanceName: Instancename"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5147,7 +5147,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('LibraryIncludeStatement')
     def extract_libraryincludestatement(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] LibraryIncludeStatement: Libraryincludestatement"""
+        """[NOT TESTED] LibraryIncludeStatement: Libraryincludestatement"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5159,7 +5159,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('LibraryMap')
     def extract_librarymap(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] LibraryMap: Librarymap"""
+        """[NOT TESTED] LibraryMap: Librarymap"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5171,7 +5171,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('LineDirective')
     def extract_linedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] LineDirective: Linedirective"""
+        """[NOT TESTED] LineDirective: Linedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5183,7 +5183,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('LocalScope')
     def extract_localscope(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] LocalScope: Localscope"""
+        """[NOT TESTED] LocalScope: Localscope"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5195,7 +5195,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroActualArgument')
     def extract_macroactualargument(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroActualArgument: Macroactualargument"""
+        """[NOT TESTED] MacroActualArgument: Macroactualargument"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5207,7 +5207,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroActualArgumentList')
     def extract_macroactualargumentlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroActualArgumentList: Macroactualargumentlist"""
+        """[NOT TESTED] MacroActualArgumentList: Macroactualargumentlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5219,7 +5219,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroArgumentDefault')
     def extract_macroargumentdefault(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroArgumentDefault: Macroargumentdefault"""
+        """[NOT TESTED] MacroArgumentDefault: Macroargumentdefault"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5231,7 +5231,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroFormalArgument')
     def extract_macroformalargument(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroFormalArgument: Macroformalargument"""
+        """[NOT TESTED] MacroFormalArgument: Macroformalargument"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5243,7 +5243,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroFormalArgumentList')
     def extract_macroformalargumentlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroFormalArgumentList: Macroformalargumentlist"""
+        """[NOT TESTED] MacroFormalArgumentList: Macroformalargumentlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5255,7 +5255,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('MacroUsage')
     def extract_macrousage(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] MacroUsage: Macrousage"""
+        """[NOT TESTED] MacroUsage: Macrousage"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5267,7 +5267,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedArgument')
     def extract_namedargument(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedArgument: Namedargument"""
+        """[NOT TESTED] NamedArgument: Namedargument"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5279,7 +5279,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('NamedConditionalDirectiveExpression')
     def extract_namedconditionaldirectiveexpression(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedConditionalDirectiveExpression: Namedconditionaldirectiveexpression"""
+        """[NOT TESTED] NamedConditionalDirectiveExpression: Namedconditionaldirectiveexpression"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5291,7 +5291,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ElsIfDirective')
     def extract_elsifdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ElsIfDirective: Elsifdirective"""
+        """[NOT TESTED] ElsIfDirective: Elsifdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5303,7 +5303,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ElseDirective')
     def extract_elsedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ElseDirective: Elsedirective"""
+        """[NOT TESTED] ElseDirective: Elsedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5315,7 +5315,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EmptyIdentifierName')
     def extract_emptyidentifiername(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EmptyIdentifierName: Emptyidentifiername"""
+        """[NOT TESTED] EmptyIdentifierName: Emptyidentifiername"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5327,7 +5327,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EmptyMember')
     def extract_emptymember(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EmptyMember: Emptymember"""
+        """[NOT TESTED] EmptyMember: Emptymember"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5339,7 +5339,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EmptyNonAnsiPort')
     def extract_emptynonansiport(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EmptyNonAnsiPort: Emptynonansiport"""
+        """[NOT TESTED] EmptyNonAnsiPort: Emptynonansiport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5351,7 +5351,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EmptyPortConnection')
     def extract_emptyportconnection(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EmptyPortConnection: Emptyportconnection"""
+        """[NOT TESTED] EmptyPortConnection: Emptyportconnection"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5363,7 +5363,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EmptyTimingCheckArg')
     def extract_emptytimingcheckarg(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EmptyTimingCheckArg: Emptytimingcheckarg"""
+        """[NOT TESTED] EmptyTimingCheckArg: Emptytimingcheckarg"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5375,7 +5375,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EndCellDefineDirective')
     def extract_endcelldefinedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EndCellDefineDirective: Endcelldefinedirective"""
+        """[NOT TESTED] EndCellDefineDirective: Endcelldefinedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5387,7 +5387,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EndIfDirective')
     def extract_endifdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EndIfDirective: Endifdirective"""
+        """[NOT TESTED] EndIfDirective: Endifdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5399,7 +5399,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EndKeywordsDirective')
     def extract_endkeywordsdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EndKeywordsDirective: Endkeywordsdirective"""
+        """[NOT TESTED] EndKeywordsDirective: Endkeywordsdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5411,7 +5411,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EndProtectDirective')
     def extract_endprotectdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EndProtectDirective: Endprotectdirective"""
+        """[NOT TESTED] EndProtectDirective: Endprotectdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5423,7 +5423,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EndProtectedDirective')
     def extract_endprotecteddirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EndProtectedDirective: Endprotecteddirective"""
+        """[NOT TESTED] EndProtectedDirective: Endprotecteddirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5435,7 +5435,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EnumType')
     def extract_enumtype(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EnumType: Enumtype"""
+        """[NOT TESTED] EnumType: Enumtype"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5447,7 +5447,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ExplicitAnsiPort')
     def extract_explicitansiport(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ExplicitAnsiPort: Explicitansiport"""
+        """[NOT TESTED] ExplicitAnsiPort: Explicitansiport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5459,7 +5459,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ExplicitNonAnsiPort')
     def extract_explicitnonansiport(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ExplicitNonAnsiPort: Explicitnonansiport"""
+        """[NOT TESTED] ExplicitNonAnsiPort: Explicitnonansiport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5471,7 +5471,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ExternUdpDecl')
     def extract_externudpdecl(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ExternUdpDecl: Externudpdecl"""
+        """[NOT TESTED] ExternUdpDecl: Externudpdecl"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5483,7 +5483,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('FilePathSpec')
     def extract_filepathspec(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] FilePathSpec: Filepathspec"""
+        """[NOT TESTED] FilePathSpec: Filepathspec"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5495,7 +5495,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ForeachLoopList')
     def extract_foreachlooplist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ForeachLoopList: Foreachlooplist"""
+        """[NOT TESTED] ForeachLoopList: Foreachlooplist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5507,7 +5507,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ForwardTypeRestriction')
     def extract_forwardtyperestriction(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ForwardTypeRestriction: Forwardtyperestriction"""
+        """[NOT TESTED] ForwardTypeRestriction: Forwardtyperestriction"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5519,7 +5519,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('HierarchyInstantiation')
     def extract_hierarchyinstantiation(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] HierarchyInstantiation: Hierarchyinstantiation"""
+        """[NOT TESTED] HierarchyInstantiation: Hierarchyinstantiation"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5531,7 +5531,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultConfigRule')
     def extract_defaultconfigrule(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultConfigRule: Defaultconfigrule"""
+        """[NOT TESTED] DefaultConfigRule: Defaultconfigrule"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5543,7 +5543,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultDecayTimeDirective')
     def extract_defaultdecaytimedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultDecayTimeDirective: Defaultdecaytimedirective"""
+        """[NOT TESTED] DefaultDecayTimeDirective: Defaultdecaytimedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5555,7 +5555,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultDistItem')
     def extract_defaultdistitem(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultDistItem: Defaultdistitem"""
+        """[NOT TESTED] DefaultDistItem: Defaultdistitem"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5567,7 +5567,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultNetTypeDirective')
     def extract_defaultnettypedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultNetTypeDirective: Defaultnettypedirective"""
+        """[NOT TESTED] DefaultNetTypeDirective: Defaultnettypedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5579,7 +5579,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultSkewItem')
     def extract_defaultskewitem(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultSkewItem: Defaultskewitem"""
+        """[NOT TESTED] DefaultSkewItem: Defaultskewitem"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5591,7 +5591,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefaultTriregStrengthDirective')
     def extract_defaulttriregstrengthdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefaultTriregStrengthDirective: Defaulttriregstrengthdirective"""
+        """[NOT TESTED] DefaultTriregStrengthDirective: Defaulttriregstrengthdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5603,7 +5603,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DeferredAssertion')
     def extract_deferredassertion(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DeferredAssertion: Deferredassertion"""
+        """[NOT TESTED] DeferredAssertion: Deferredassertion"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5615,7 +5615,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefineDirective')
     def extract_definedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefineDirective: Definedirective"""
+        """[NOT TESTED] DefineDirective: Definedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5627,7 +5627,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('Delay3')
     def extract_delay3(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] Delay3: Delay3"""
+        """[NOT TESTED] Delay3: Delay3"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5639,7 +5639,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DelayModeDistributedDirective')
     def extract_delaymodedistributeddirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DelayModeDistributedDirective: Delaymodedistributeddirective"""
+        """[NOT TESTED] DelayModeDistributedDirective: Delaymodedistributeddirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5651,7 +5651,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DelayModePathDirective')
     def extract_delaymodepathdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DelayModePathDirective: Delaymodepathdirective"""
+        """[NOT TESTED] DelayModePathDirective: Delaymodepathdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5663,7 +5663,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DelayModeUnitDirective')
     def extract_delaymodeunitdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DelayModeUnitDirective: Delaymodeunitdirective"""
+        """[NOT TESTED] DelayModeUnitDirective: Delaymodeunitdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5675,7 +5675,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DelayModeZeroDirective')
     def extract_delaymodezerodirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DelayModeZeroDirective: Delaymodezerodirective"""
+        """[NOT TESTED] DelayModeZeroDirective: Delaymodezerodirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5687,7 +5687,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DisableIff')
     def extract_disableiff(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DisableIff: Disableiff"""
+        """[NOT TESTED] DisableIff: Disableiff"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5699,7 +5699,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DistItem')
     def extract_distitem(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DistItem: Distitem"""
+        """[NOT TESTED] DistItem: Distitem"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5711,7 +5711,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DriveStrength')
     def extract_drivestrength(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DriveStrength: Drivestrength"""
+        """[NOT TESTED] DriveStrength: Drivestrength"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5723,7 +5723,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EdgeControlSpecifier')
     def extract_edgecontrolspecifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EdgeControlSpecifier: Edgecontrolspecifier"""
+        """[NOT TESTED] EdgeControlSpecifier: Edgecontrolspecifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5735,7 +5735,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EdgeDescriptor')
     def extract_edgedescriptor(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EdgeDescriptor: Edgedescriptor"""
+        """[NOT TESTED] EdgeDescriptor: Edgedescriptor"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5747,7 +5747,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('EdgeSensitivePathSuffix')
     def extract_edgesensitivepathsuffix(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] EdgeSensitivePathSuffix: Edgesensitivepathsuffix"""
+        """[NOT TESTED] EdgeSensitivePathSuffix: Edgesensitivepathsuffix"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5759,7 +5759,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ElementSelect')
     def extract_elementselect(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ElementSelect: Elementselect"""
+        """[NOT TESTED] ElementSelect: Elementselect"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5771,7 +5771,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('AnsiPortList')
     def extract_ansiportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] AnsiPortList: Ansiportlist"""
+        """[NOT TESTED] AnsiPortList: Ansiportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5783,7 +5783,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('AnsiUdpPortList')
     def extract_ansiudpportlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] AnsiUdpPortList: Ansiudpportlist"""
+        """[NOT TESTED] AnsiUdpPortList: Ansiudpportlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5795,7 +5795,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ArgumentList')
     def extract_argumentlist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ArgumentList: Argumentlist"""
+        """[NOT TESTED] ArgumentList: Argumentlist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5807,7 +5807,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('AttributeInstance')
     def extract_attributeinstance(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] AttributeInstance: Attributeinstance"""
+        """[NOT TESTED] AttributeInstance: Attributeinstance"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5819,7 +5819,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('AttributeSpec')
     def extract_attributespec(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] AttributeSpec: Attributespec"""
+        """[NOT TESTED] AttributeSpec: Attributespec"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5831,7 +5831,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('BeginKeywordsDirective')
     def extract_beginkeywordsdirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] BeginKeywordsDirective: Beginkeywordsdirective"""
+        """[NOT TESTED] BeginKeywordsDirective: Beginkeywordsdirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5843,7 +5843,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('CellConfigRule')
     def extract_cellconfigrule(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] CellConfigRule: Cellconfigrule"""
+        """[NOT TESTED] CellConfigRule: Cellconfigrule"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5855,7 +5855,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('CellDefineDirective')
     def extract_celldefinedirective(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] CellDefineDirective: Celldefinedirective"""
+        """[NOT TESTED] CellDefineDirective: Celldefinedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5867,7 +5867,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ChargeStrength')
     def extract_chargestrength(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ChargeStrength: Chargestrength"""
+        """[NOT TESTED] ChargeStrength: Chargestrength"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5879,7 +5879,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('CompilationUnit')
     def extract_compilationunit(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] CompilationUnit: Compilationunit"""
+        """[NOT TESTED] CompilationUnit: Compilationunit"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5891,7 +5891,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ConditionalPredicate')
     def extract_conditionalpredicate(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ConditionalPredicate: Conditionalpredicate"""
+        """[NOT TESTED] ConditionalPredicate: Conditionalpredicate"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5903,7 +5903,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ConfigCellIdentifier')
     def extract_configcellidentifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ConfigCellIdentifier: Configcellidentifier"""
+        """[NOT TESTED] ConfigCellIdentifier: Configcellidentifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5915,7 +5915,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ConfigInstanceIdentifier')
     def extract_configinstanceidentifier(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ConfigInstanceIdentifier: Configinstanceidentifier"""
+        """[NOT TESTED] ConfigInstanceIdentifier: Configinstanceidentifier"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5927,7 +5927,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ConfigLiblist')
     def extract_configliblist(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ConfigLiblist: Configliblist"""
+        """[NOT TESTED] ConfigLiblist: Configliblist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5939,7 +5939,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('ConstructorName')
     def extract_constructorname(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ConstructorName: Constructorname"""
+        """[NOT TESTED] ConstructorName: Constructorname"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5951,7 +5951,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('CycleDelay')
     def extract_cycledelay(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] CycleDelay: Cycledelay"""
+        """[NOT TESTED] CycleDelay: Cycledelay"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5963,7 +5963,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DPIExport')
     def extract_dpiexport(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DPIExport: Dpiexport"""
+        """[NOT TESTED] DPIExport: Dpiexport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5975,7 +5975,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DPIImport')
     def extract_dpiimport(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DPIImport: Dpiimport"""
+        """[NOT TESTED] DPIImport: Dpiimport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5987,7 +5987,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefParam')
     def extract_defparam(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefParam: Defparam"""
+        """[NOT TESTED] DefParam: Defparam"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -5999,7 +5999,7 @@ class SignalExpressionVisitor(BaseVisitor):
 
     @on('DefParamAssignment')
     def extract_defparamassignment(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] DefParamAssignment: Defparamassignment"""
+        """[NOT TESTED] DefParamAssignment: Defparamassignment"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, 'items', None) or getattr(node, 'elements', None) or getattr(node, 'members', None)
@@ -6012,7 +6012,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('Declarator')
     def extract_declarator(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] Declarator: variable declarator"""
+        """[NOT TESTED] Declarator: variable declarator"""
         result = SignalResult()
         name = getattr(node, 'name', None) or getattr(node, 'symbol', None)
         if name:
@@ -6024,7 +6024,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('HierarchicalInstance')
     def extract_hierarchical_instance(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] HierarchicalInstance: module instance"""
+        """[NOT TESTED] HierarchicalInstance: module instance"""
         result = SignalResult()
         name = getattr(node, 'name', None)
         if name:
@@ -6033,7 +6033,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplicitAnsiPort')
     def extract_implicit_ansi_port(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ImplicitAnsiPort: implicit ansi port"""
+        """[NOT TESTED] ImplicitAnsiPort: implicit ansi port"""
         result = SignalResult()
         name = getattr(node, 'name', None)
         if name:
@@ -6042,7 +6042,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ImplicitNonAnsiPort')
     def extract_implicit_non_ansi_port(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] ImplicitNonAnsiPort: implicit non-ansi port"""
+        """[NOT TESTED] ImplicitNonAnsiPort: implicit non-ansi port"""
         result = SignalResult()
         name = getattr(node, 'name', None)
         if name:
@@ -6051,7 +6051,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('NamedType')
     def extract_named_type(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] NamedType: named type"""
+        """[NOT TESTED] NamedType: named type"""
         result = SignalResult()
         name = getattr(node, 'name', None)
         if name:
@@ -6060,7 +6060,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SeparatedList')
     def extract_separated_list(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SeparatedList: separated list"""
+        """[NOT TESTED] SeparatedList: separated list"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'elements', None)
         if items:
@@ -6071,7 +6071,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('SyntaxList')
     def extract_syntax_list(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] SyntaxList: syntax list"""
+        """[NOT TESTED] SyntaxList: syntax list"""
         result = SignalResult()
         items = getattr(node, 'items', None) or getattr(node, 'elements', None)
         if items:
@@ -6082,7 +6082,7 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('VariableDimension')
     def extract_variable_dimension(self, node) -> SignalResult:
-        """[NOT IMPLEMENTED] VariableDimension: variable dimension"""
+        """[NOT TESTED] VariableDimension: variable dimension"""
         result = SignalResult()
         left = getattr(node, 'left', None)
         right = getattr(node, 'right', None)
