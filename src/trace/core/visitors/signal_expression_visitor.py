@@ -8088,6 +8088,131 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(prop))
         return result
     
+    # Constraint expressions
+    @on('ConstraintExpression')
+    def extract_constraint_expression(self, node) -> SignalResult:
+        """ConstraintExpression: constraint expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'constraints', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('UniquenessConstraintExpr')
+    def extract_uniqueness_constraint_expr(self, node) -> SignalResult:
+        """UniquenessConstraintExpr: uniqueness constraint expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ImplicationConstraintExpr')
+    def extract_implication_constraint_expr(self, node) -> SignalResult:
+        """ImplicationConstraintExpr: implication constraint expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'condition', None)
+        right = getattr(node, 'right', None) or getattr(node, 'constraint', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('IfElseConstraintExpr')
+    def extract_if_else_constraint_expr(self, node) -> SignalResult:
+        """IfElseConstraintExpr: if-else constraint expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        constraint = getattr(node, 'constraint', None) or getattr(node, 'body', None)
+        if constraint:
+            result = result.merge(self.extract(constraint))
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'else', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
+    @on('ForeachConstraintExpr')
+    def extract_foreach_constraint_expr(self, node) -> SignalResult:
+        """ForeachConstraintExpr: foreach constraint expression"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        constraint = getattr(node, 'constraint', None) or getattr(node, 'body', None)
+        if constraint:
+            result = result.merge(self.extract(constraint))
+        return result
+    
+    @on('SolveBeforeConstraintExpr')
+    def extract_solve_before_constraint_expr(self, node) -> SignalResult:
+        """SolveBeforeConstraintExpr: solve_before constraint expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Rand sequence expressions
+    @on('RandSequenceExpression')
+    def extract_rand_sequence_expression(self, node) -> SignalResult:
+        """RandSequenceExpression: rand sequence expression"""
+        return SignalResult()
+    
+    @on('RandSequenceBodyExpr')
+    def extract_rand_sequence_body_expr(self, node) -> SignalResult:
+        """RandSequenceBodyExpr: rand sequence body expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RandSequenceItemExpr')
+    def extract_rand_sequence_item_expr(self, node) -> SignalResult:
+        """RandSequenceItemExpr: rand sequence item expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RandSequenceRepeatExpr')
+    def extract_rand_sequence_repeat_expr(self, node) -> SignalResult:
+        """RandSequenceRepeatExpr: rand sequence repeat expression"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('RandSequenceWhenExpr')
+    def extract_rand_sequence_when_expr(self, node) -> SignalResult:
+        """RandSequenceWhenExpr: rand sequence when expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'expr', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        body = getattr(node, 'body', None) or getattr(node, 'sequence', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
