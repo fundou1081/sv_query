@@ -5241,6 +5241,158 @@ class SignalExpressionVisitor(BaseVisitor):
         """ConstraintPrototype: constraint prototype"""
         return SignalResult()
     
+    # Class-related expressions
+    @on('ClassDeclaration')
+    def extract_class_declaration(self, node) -> SignalResult:
+        """ClassDeclaration: class declaration"""
+        return SignalResult()
+    
+    @on('ClassMethodDeclaration')
+    def extract_class_method_declaration(self, node) -> SignalResult:
+        """ClassMethodDeclaration: class method declaration"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('ClassMethodPrototype')
+    def extract_class_method_prototype(self, node) -> SignalResult:
+        """ClassMethodPrototype: class method prototype"""
+        return SignalResult()
+    
+    @on('ClassPropertyDeclaration')
+    def extract_class_property_declaration(self, node) -> SignalResult:
+        """ClassPropertyDeclaration: class property declaration"""
+        result = SignalResult()
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
+    @on('ClassSpecifier')
+    def extract_class_specifier(self, node) -> SignalResult:
+        """ClassSpecifier: class specifier"""
+        return SignalResult()
+    
+    @on('ClassName')
+    def extract_class_name(self, node) -> SignalResult:
+        """ClassName: class name"""
+        return SignalResult()
+    
+    # Checker-related
+    @on('CheckerDeclaration')
+    def extract_checker_declaration(self, node) -> SignalResult:
+        """CheckerDeclaration: checker declaration"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('CheckerInstanceStatement')
+    def extract_checker_instance_statement(self, node) -> SignalResult:
+        """CheckerInstanceStatement: checker instance statement"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('CheckerInstantiation')
+    def extract_checker_instantiation(self, node) -> SignalResult:
+        """CheckerInstantiation: checker instantiation"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('CheckerDataDeclaration')
+    def extract_checker_data_declaration(self, node) -> SignalResult:
+        """CheckerDataDeclaration: checker data declaration"""
+        return SignalResult()
+    
+    # Coverage-related
+    @on('CoverageBins')
+    def extract_coverage_bins(self, node) -> SignalResult:
+        """CoverageBins: coverage bins"""
+        result = SignalResult()
+        value = getattr(node, 'value', None) or getattr(node, 'expr', None)
+        if value:
+            result = result.merge(self.extract(value))
+        return result
+    
+    @on('CoverageBinsArraySize')
+    def extract_coverage_bins_array_size(self, node) -> SignalResult:
+        """CoverageBinsArraySize: coverage bins array size"""
+        result = SignalResult()
+        size = getattr(node, 'size', None) or getattr(node, 'expr', None)
+        if size:
+            result = result.merge(self.extract(size))
+        return result
+    
+    @on('DefaultCoverageBinInitializer')
+    def extract_default_coverage_bin_initializer(self, node) -> SignalResult:
+        """DefaultCoverageBinInitializer: default coverage bin initializer"""
+        return SignalResult()
+    
+    @on('ExpressionCoverageBinInitializer')
+    def extract_expression_coverage_bin_initializer(self, node) -> SignalResult:
+        """ExpressionCoverageBinInitializer: expression coverage bin initializer"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # ElabSystemTask
+    @on('ElabSystemTask')
+    def extract_elab_system_task(self, node) -> SignalResult:
+        """ElabSystemTask: elaboration system task"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # Bind directive
+    @on('BindDirective')
+    def extract_bind_directive(self, node) -> SignalResult:
+        """BindDirective: bind directive"""
+        result = SignalResult()
+        target = getattr(node, 'target', None) or getattr(node, 'expr', None)
+        if target:
+            result = result.merge(self.extract(target))
+        return result
+    
+    @on('BindTargetList')
+    def extract_bind_target_list(self, node) -> SignalResult:
+        """BindTargetList: bind target list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Default function port
+    @on('DefaultFunctionPort')
+    def extract_default_function_port(self, node) -> SignalResult:
+        """DefaultFunctionPort: default function port"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
