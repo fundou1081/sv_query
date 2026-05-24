@@ -236,6 +236,14 @@ class StatementCollectorVisitor(BaseVisitor):
         记录变量声明
         """
         self._add_statement(node, item_type=ItemType.VARIABLE_DECLARATION)
+
+    def visit_invalid_statement(self, node):
+        """Invalid: 无效/错误的 AST 节点
+        
+        跳过不处理
+        """
+        pass
+
     
     def visit_event_trigger(self, node):
         """EventTrigger: -> event_name

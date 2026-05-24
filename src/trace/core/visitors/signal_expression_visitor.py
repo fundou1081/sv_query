@@ -1280,6 +1280,90 @@ class SignalExpressionVisitor(BaseVisitor):
         """
         return None
 
+    def visit_replicated_assignment_pattern(self, node) -> Optional[str]:
+        """ReplicatedAssignmentPattern: '{n{a, b, c}}
+        
+        提取模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    sig = self.visit(p)
+                    if sig:
+                        signals.append(sig)
+        return signals[0] if signals else None
+    
+    def get_all_replicated_assignment_pattern(self, node) -> List[str]:
+        """ReplicatedAssignmentPattern: '{n{a, b, c}}
+        
+        递归提取所有模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    signals.extend(self.get_all_signals(p))
+        return [s for s in signals if s]
+    
+    def visit_simple_assignment_pattern(self, node) -> Optional[str]:
+        """SimpleAssignmentPattern: '{a, b, c}
+        
+        提取模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    sig = self.visit(p)
+                    if sig:
+                        signals.append(sig)
+        return signals[0] if signals else None
+    
+    def get_all_simple_assignment_pattern(self, node) -> List[str]:
+        """SimpleAssignmentPattern: '{a, b, c}
+        
+        递归提取所有模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    signals.extend(self.get_all_signals(p))
+        return [s for s in signals if s]
+    
+    def visit_structured_assignment_pattern(self, node) -> Optional[str]:
+        """StructuredAssignmentPattern: '{a: x, b: y}
+        
+        提取模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    sig = self.visit(p)
+                    if sig:
+                        signals.append(sig)
+        return signals[0] if signals else None
+    
+    def get_all_structured_assignment_pattern(self, node) -> List[str]:
+        """StructuredAssignmentPattern: '{a: x, b: y}
+        
+        递归提取所有模式中的信号
+        """
+        signals = []
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    signals.extend(self.get_all_signals(p))
+        return [s for s in signals if s]
+
     # =========================================================================
     # 辅助方法
     # =========================================================================
