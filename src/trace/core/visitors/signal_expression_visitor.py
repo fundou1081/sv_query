@@ -3924,6 +3924,78 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(range_expr))
         return result
     
+    # ElabSystemTaskKind
+    @on('FatalElabSystemTask')
+    def extract_fatal_elab_system_task(self, node) -> SignalResult:
+        """FatalElabSystemTask: fatal elaboration system task"""
+        return SignalResult()
+    
+    @on('ErrorElabSystemTask')
+    def extract_error_elab_system_task(self, node) -> SignalResult:
+        """ErrorElabSystemTask: error elaboration system task"""
+        return SignalResult()
+    
+    @on('WarningElabSystemTask')
+    def extract_warning_elab_system_task(self, node) -> SignalResult:
+        """WarningElabSystemTask: warning elaboration system task"""
+        return SignalResult()
+    
+    @on('InfoElabSystemTask')
+    def extract_info_elab_system_task(self, node) -> SignalResult:
+        """InfoElabSystemTask: info elaboration system task"""
+        return SignalResult()
+    
+    @on('StaticAssertElabSystemTask')
+    def extract_static_assert_elab_system_task(self, node) -> SignalResult:
+        """StaticAssertElabSystemTask: static assert elaboration system task"""
+        return SignalResult()
+    
+    # Trivia kinds
+    @on('UnknownTrivia')
+    def extract_unknown_trivia(self, node) -> SignalResult:
+        """UnknownTrivia: unknown trivia"""
+        return SignalResult()
+    
+    @on('WhitespaceTrivia')
+    def extract_whitespace_trivia(self, node) -> SignalResult:
+        """WhitespaceTrivia: whitespace trivia"""
+        return SignalResult()
+    
+    @on('EndOfLineTrivia')
+    def extract_end_of_line_trivia(self, node) -> SignalResult:
+        """EndOfLineTrivia: end of line trivia"""
+        return SignalResult()
+    
+    @on('LineCommentTrivia')
+    def extract_line_comment_trivia(self, node) -> SignalResult:
+        """LineCommentTrivia: line comment trivia"""
+        return SignalResult()
+    
+    @on('BlockCommentTrivia')
+    def extract_block_comment_trivia(self, node) -> SignalResult:
+        """BlockCommentTrivia: block comment trivia"""
+        return SignalResult()
+    
+    @on('DisabledTextTrivia')
+    def extract_disabled_text_trivia(self, node) -> SignalResult:
+        """DisabledTextTrivia: disabled text trivia"""
+        return SignalResult()
+    
+    @on('SkippedTokensTrivia')
+    def extract_skipped_tokens_trivia(self, node) -> SignalResult:
+        """SkippedTokensTrivia: skipped tokens trivia"""
+        return SignalResult()
+    
+    @on('SkippedSyntaxTrivia')
+    def extract_skipped_syntax_trivia(self, node) -> SignalResult:
+        """SkippedSyntaxTrivia: skipped syntax trivia"""
+        return SignalResult()
+    
+    @on('DirectiveTrivia')
+    def extract_directive_trivia(self, node) -> SignalResult:
+        """DirectiveTrivia: directive trivia"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
