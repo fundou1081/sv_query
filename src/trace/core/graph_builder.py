@@ -358,16 +358,10 @@ class DriverExtractor:
     def _collect_stmts_with_context(self, n, ctx=None) -> List[Tuple[Any, Dict[str, str], Any]]:
         """收集语句的包装方法
         
-        [铁律29] 优先使用 StatementCollectorVisitor，失败时使用 legacy 方法
+        [铁律29] 优先使用 StatementCollectorVisitor，不再使用 legacy fallback
         """
-        # Try visitor first
-        try:
-            return self._stmt_visitor.collect(n, ctx)
-        except Exception as e:
-            logger.debug(f"[FALLBACK] _collect_stmts_with_context delegating to legacy: {e}")
-            # Convert legacy format to (node, ctx, type) tuple
-            legacy_result = self._legacy_collect_stmts_with_context(n, ctx)
-            return [(item, item[1] if len(item) > 1 else ctx, "STATEMENT") for item in legacy_result]
+        # [铁律29] 强制使用 Visitor，不使用 fallback
+        return self._stmt_visitor.collect(n, ctx)
     
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
