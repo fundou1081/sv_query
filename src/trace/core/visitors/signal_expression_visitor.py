@@ -959,14 +959,6 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(arg))
         return result
     
-    @on('ElementSelectExpression')
-    def extract_element_select(self, node) -> SignalResult:
-        """ElementSelectExpression: base[index]"""
-        base = getattr(node, 'left', None) or getattr(node, 'base', None)
-        if base:
-            return self.extract(base)
-        return SignalResult()
-    
     @on('ClockingEvent')
     def extract_clock_event(self, node) -> SignalResult:
         """ClockingEvent: @clk, @(posedge clk)"""
@@ -1120,6 +1112,164 @@ class SignalExpressionVisitor(BaseVisitor):
             name = self.adapter.clean_name(combined)
             return SignalResult.single(name)
         return SignalResult()
+    
+    @on('ElementSelectExpression')
+    def extract_element_select(self, node) -> SignalResult:
+        """ElementSelectExpression: data[5]"""
+        base = getattr(node, 'left', None) or getattr(node, 'base', None) or getattr(node, 'value', None)
+        if base:
+            return self.extract(base)
+        return SignalResult()
+    
+    @on('RangeSelectExpression')
+    def extract_range_select(self, node) -> SignalResult:
+        """RangeSelectExpression: data[3:0]"""
+        base = getattr(node, 'value', None)
+        if base:
+            return self.extract(base)
+        return SignalResult()
+    
+    @on('IdentifierSelect')
+    def extract_identifier_select(self, node) -> SignalResult:
+        """IdentifierSelect: data[3] 等带位选的标识符"""
+        base_name = None
+        if hasattr(node, 'identifier'):
+            ident = node.identifier
+            if hasattr(ident, 'value'):
+                base_name = str(ident.value).strip()
+            else:
+                base_name = str(ident).strip()
+        if not base_name:
+            base_name = str(node).strip().split('[')[0]
+        return SignalResult.single(self.adapter.clean_name(base_name) if base_name else '')
+    
+    @on('HierarchicalValueExpression')
+    def extract_hierarchical_value(self, node) -> SignalResult:
+        """HierarchicalValueExpression: ifc.data"""
+        syntax = getattr(node, 'syntax', None)
+        if syntax and hasattr(syntax, 'kind'):
+            kind_str = str(syntax.kind)
+            if 'ScopedName' in kind_str:
+                return self.extract(syntax)
+        return SignalResult()
+    
+    @on('ReplicationExpression')
+    def extract_replication(self, node) -> SignalResult:
+        """ReplicationExpression: {N{signal}}"""
+        concat = getattr(node, 'concat', None)
+        if concat and hasattr(concat, 'operands'):
+            operands = concat.operands
+            if hasattr(operands, '__iter__') and not isinstance(operands, str):
+                result = SignalResult()
+                for expr_item in operands:
+                    if hasattr(expr_item, 'kind'):
+                        result = result.merge(self.extract(expr_item))
+                return result
+            else:
+                return self.extract(operands)
+        return SignalResult()
+    
+    @on('CastExpression')
+    def extract_cast_expression(self, node) -> SignalResult:
+        """CastExpression: type'(expr)"""
+        expr = getattr(node, 'expression', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('TaggedUnionExpression')
+    def extract_tagged_union_expression(self, node) -> SignalResult:
+        """TaggedUnionExpression: tag'(expr)"""
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('IntegerLiteral')
+    def extract_integer_literal(self, node) -> SignalResult:
+        """IntegerLiteral: 整数字面量"""
+        return SignalResult()
+    
+    @on('IntegerVectorExpression')
+    def extract_integer_vector(self, node) -> SignalResult:
+        """IntegerVectorExpression: 带位宽的字面量"""
+        return SignalResult()
+    
+    @on('ReplicatedAssignmentPattern')
+    def extract_replicated_assignment_pattern(self, node) -> SignalResult:
+        """ReplicatedAssignmentPattern: '{n{a, b, c}}"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('SimpleAssignmentPattern')
+    def extract_simple_assignment_pattern(self, node) -> SignalResult:
+        """SimpleAssignmentPattern: 简单赋值模式"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('StructuredAssignmentPattern')
+    def extract_structured_assignment_pattern(self, node) -> SignalResult:
+        """StructuredAssignmentPattern: 结构化赋值模式"""
+        result = SignalResult()
+        patterns = getattr(node, 'patterns', None) or getattr(node, 'items', None)
+        if patterns and hasattr(patterns, '__iter__') and not isinstance(patterns, str):
+            for p in patterns:
+                if p:
+                    result = result.merge(self.extract(p))
+        return result
+    
+    @on('MemberAccessExpression')
+    def extract_member_access(self, node) -> SignalResult:
+        """MemberAccessExpression: obj.member"""
+        obj = getattr(node, 'left', None) or getattr(node, 'expression', None)
+        if obj:
+            return self.extract(obj)
+        return SignalResult()
+    
+    @on('ParenthesisExpression')
+    def extract_parenthesis_expression(self, node) -> SignalResult:
+        """ParenthesisExpression: (expr)"""
+        expr = getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('WildcardLiteral')
+    def extract_wildcard_literal(self, node) -> SignalResult:
+        """WildcardLiteral: *"""
+        return SignalResult()
+    
+    @on('QueueLiteral')
+    def extract_queue_literal(self, node) -> SignalResult:
+        """QueueLiteral: '{...}"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__') and not isinstance(items, str):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('AssociativeArrayLiteral')
+    def extract_associative_array_literal(self, node) -> SignalResult:
+        """AssociativeArrayLiteral: '{key: value, ...}"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__') and not isinstance(items, str):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
