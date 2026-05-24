@@ -200,152 +200,16 @@ class DriverExtractor:
         return ""
 
     def _legacy_collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
-        """[DEPRECATED] 旧版递归收集方法
+        """[DEPRECATED] 旧版递归收集方法 - 已废弃
         
-        [铁律29] 保留作为 StatementCollectorVisitor 的 fallback
+        [铁律29] 此方法已废弃，如果被调用说明 Visitor 实现有遗漏
+        请勿调用此方法，应使用 StatementCollectorVisitor
         """
-        if _s is None: _s = set()
-        if ctx is None: ctx = {"clock": "", "condition": ""}
-        nid = id(n)
-        if nid in _s: return []
-        _s.add(nid)
-        if n is None or d > 30: return []
-        k = getattr(n, "kind", None)
-        ks = str(k) if k else ""
-        if ".TokenKind." in ks or "Trivia" in ks:
-            return []
-        r = []
-        if _s is None: _s = set()
-        if ctx is None: ctx = {"clock": "", "condition": ""}
-        nid = id(n)
-        if nid in _s: return []
-        _s.add(nid)
-        if n is None or d > 30: return []
-        k = getattr(n, "kind", None)
-        ks = str(k) if k else ""
-        if ".TokenKind." in ks or "Trivia" in ks:
-            return []
-        r = []
-
-        # InitialBlock
-        if "InitialBlock" in ks:
-            stmt = getattr(n, "statement", None) or getattr(n, "body", None)
-            if stmt: r.extend(self._legacy_collect_stmts_with_context(stmt, ctx, d+1, _s))
-            return r
-
-        if any(x in ks for x in ["AlwaysFF", "AlwaysComb", "AlwaysLatch"]) or (
-               hasattr(n, 'procedureKind') and 'Always' in str(getattr(n, 'procedureKind', ''))):
-            cl = ""
-            rst = ""
-            if "AlwaysFF" in ks or (hasattr(n, 'procedureKind') and 'AlwaysFF' in str(getattr(n, 'procedureKind', ''))):
-                cl = self._extract_clock_from_always(n)
-                # Extract reset from timing control
-                s = getattr(n, 'statement', None) or getattr(n, 'body', None)
-                if s:
-                    tc = getattr(s, 'timing', None) or getattr(s, 'timingControl', None)
-                    if tc: rst = self._extract_reset_from_event_ctrl(tc)
-            c2 = {**ctx, "clock": cl, "reset": rst}
-            s = getattr(n, "statement", None) or getattr(n, "body", None)
-            if s: r.extend(self._legacy_collect_stmts_with_context(s, c2, d+1, _s))
-            return r
-
-        if "TimingControl" in ks:
-            tc = getattr(n, "timingControl", None)
-            cl = self._extract_clock_from_event_ctrl(tc) if tc else ""
-            c2 = {**ctx, "clock": cl}
-            s = getattr(n, "statement", None)
-            if s: r.extend(self._legacy_collect_stmts_with_context(s, c2, d+1, _s))
-            return r
-        
-        # [FIX] TimedStatement: always @(*) wraps content in a Timed statement
-        if "Timed" in ks:
-            s = getattr(n, "stmt", None)
-            if s: r.extend(self._legacy_collect_stmts_with_context(s, ctx, d+1, _s))
-            return r
-        
-        # [FIX] BlockStatement: begin...end block containing statements
-        if "Block" in ks and "Statement" in ks:
-            body = getattr(n, "body", None)
-            if body:
-                # body is a single Statement, not a list - recurse into it directly
-                if hasattr(body, 'kind') and not (hasattr(body, '__iter__') and not isinstance(body, str)):
-                    r.extend(self._legacy_collect_stmts_with_context(body, ctx, d+1, _s))
-                elif hasattr(body, '__iter__') and not isinstance(body, str):
-                    for i in body: r.extend(self._legacy_collect_stmts_with_context(i, ctx, d+1, _s))
-            return r
-        
-        # [FIX] CaseStatement: case items contain (expressions, statement) pairs
-        # [FIX] For semantic AST, CaseStatement.items may be grouped (ItemGroup)
-        # [FIX] We need to check syntax.items for actual case items
-        if "Case" in ks and "Statement" in ks:
-            # Try semantic items first
-            items = getattr(n, "items", [])
-            # If semantic items is empty or has ItemGroup, try syntax.items
-            syntax_items = None
-            if hasattr(n, 'syntax') and n.syntax and hasattr(n.syntax, 'items'):
-                syntax_items = n.syntax.items
-            
-            # Process items from either source
-            process_items = items if items and not (len(items) == 1 and type(items[0]).__name__ == 'ItemGroup') else syntax_items
-            if process_items:
-                for item in process_items:
-                    # Get stmt from syntax item (clause) or semantic item (stmt)
-                    stmt = getattr(item, 'stmt', None) or getattr(item, 'clause', None)
-                    if stmt:
-                        r.extend(self._legacy_collect_stmts_with_context(stmt, ctx, d+1, _s))
-            return r
-
-        if "Conditional" in ks and "Statement" in ks:
-            cond = self._extract_condition_str(n)
-            # [FIX] ConditionalStatement uses ifTrue/ifFalse, not statement/elseClause
-            ts = getattr(n, "ifTrue", None) or getattr(n, "statement", None)
-            if ts:
-                c2 = cond
-                if ctx["condition"]: c2 = ctx["condition"] + " && " + cond
-                r.extend(self._legacy_collect_stmts_with_context(ts, {**ctx, "condition": c2}, d+1, _s))
-            ec = getattr(n, "ifFalse", None) or getattr(n, "elseClause", None)
-            if ec:
-                ae = getattr(ec, "clause", None) or ec
-                c2 = "!" + cond
-                if ctx["condition"]: c2 = ctx["condition"] + " && !" + cond
-                r.extend(self._legacy_collect_stmts_with_context(ae, {**ctx, "condition": c2}, d+1, _s))
-            return r
-
-        if "ElseClause" in ks:
-            s = getattr(n, "clause", None)
-            if s: r.extend(self._legacy_collect_stmts_with_context(s, ctx, d+1, _s))
-            return r
-
-        if "ExpressionStatement" in ks:
-            e = getattr(n, "expr", None)
-            if e: r.extend(self._legacy_collect_stmts_with_context(e, ctx, d+1, _s))
-            return r
-
-        # [NEW] 处理 task/function 调用
-        # pyslang uses ExpressionKind.Call for both function calls and task calls
-        if "InvocationExpression" in ks or "Call" in ks:
-            # 收集这个调用表达式和上下文
-            r.append((n, ctx, "invocation"))  # (node, ctx, type)
-            return r
-
-        if "Assignment" in ks:
-            r.append((n, ctx))
-            return r
-
-        for a in dir(n):
-            if a.startswith("_") or a in ["parent", "sourceRange", "attributes", "kind", "keyword", "items"]: continue
-            if a in ["tokens", "trivia", "leadingTrivia", "trailingTrivia"]: continue
-            try:
-                ch = getattr(n, a)
-                if callable(ch): continue
-                if hasattr(ch, "__iter__") and not isinstance(ch, str):
-                    for c in ch:
-                        if hasattr(c, "kind"): r.extend(self._legacy_collect_stmts_with_context(c, ctx, d+1, _s))
-                elif hasattr(ch, "kind"): r.extend(self._legacy_collect_stmts_with_context(ch, ctx, d+1, _s))
-            except Exception as e:
-                # [铁律3] 记录而非静默忽略
-                pass  # 遍历子节点时的错误不影響主流程
-        return r
+        raise NotImplementedError(
+            "LEGACY METHOD CALLED: _legacy_collect_stmts_with_context is deprecated. "
+            "Use StatementCollectorVisitor instead. If this error appears, "
+            "the Visitor implementation needs to be extended."
+        )
 
     def _collect_stmts_with_context(self, n, ctx=None) -> List[Tuple[Any, Dict[str, str], Any]]:
         """收集语句的包装方法
