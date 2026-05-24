@@ -8213,6 +8213,90 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(body))
         return result
     
+    # Coverage expressions
+    @on('CoverpointExpr')
+    def extract_coverpoint_expr(self, node) -> SignalResult:
+        """CoverpointExpr: coverpoint expression"""
+        return SignalResult()
+    
+    @on('CoverCrossExpr')
+    def extract_cover_cross_expr(self, node) -> SignalResult:
+        """CoverCrossExpr: cover cross expression"""
+        return SignalResult()
+    
+    @on('CoverCrossItemExpr')
+    def extract_cover_cross_item_expr(self, node) -> SignalResult:
+        """CoverCrossItemExpr: cover cross item expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('CoverpointBinExpr')
+    def extract_coverpoint_bin_expr(self, node) -> SignalResult:
+        """CoverpointBinExpr: coverpoint bin expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'bins', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('CoverpointWildcardBinExpr')
+    def extract_coverpoint_wildcard_bin_expr(self, node) -> SignalResult:
+        """CoverpointWildcardBinExpr: coverpoint wildcard bin expression"""
+        return SignalResult()
+    
+    @on('CoverpointValueBinExpr')
+    def extract_coverpoint_value_bin_expr(self, node) -> SignalResult:
+        """CoverpointValueBinExpr: coverpoint value bin expression"""
+        result = SignalResult()
+        value = getattr(node, 'value', None) or getattr(node, 'expr', None)
+        if value:
+            result = result.merge(self.extract(value))
+        return result
+    
+    # Sequence expressions
+    @on('SequenceConcatExpr')
+    def extract_sequence_concat_expr_stmt(self, node) -> SignalResult:
+        """SequenceConcatExpr: sequence concat expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceMultiplicationExpr')
+    def extract_sequence_multiplication_expr(self, node) -> SignalResult:
+        """SequenceMultiplicationExpr: sequence multiplication expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceUnionExpr')
+    def extract_sequence_union_expr(self, node) -> SignalResult:
+        """SequenceUnionExpr: sequence union expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
