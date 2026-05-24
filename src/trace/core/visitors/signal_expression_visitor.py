@@ -8549,6 +8549,129 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(prop))
         return result
     
+    # Sequence expressions
+    @on('DelayedSequenceExpr')
+    def extract_delayed_sequence_expr(self, node) -> SignalResult:
+        """DelayedSequenceExpr: delayed sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('DelayedSequenceElement')
+    def extract_delayed_sequence_element(self, node) -> SignalResult:
+        """DelayedSequenceElement: delayed sequence element"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('SequenceMatchList')
+    def extract_sequence_match_list(self, node) -> SignalResult:
+        """SequenceMatchList: sequence match list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('IntersectSequenceExpr')
+    def extract_intersect_sequence_expr(self, node) -> SignalResult:
+        """IntersectSequenceExpr: intersect sequence expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('ParenthesizedSequenceExpr')
+    def extract_parenthesized_sequence_expr(self, node) -> SignalResult:
+        """ParenthesizedSequenceExpr: parenthesized sequence expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            return self.extract(seq)
+        return result
+    
+    @on('ParenthesizedPropertyExpr')
+    def extract_parenthesized_property_expr(self, node) -> SignalResult:
+        """ParenthesizedPropertyExpr: parenthesized property expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return result
+    
+    @on('UnarySelectPropertyExpr')
+    def extract_unary_select_property_expr(self, node) -> SignalResult:
+        """UnarySelectPropertyExpr: unary select property expression"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('PropertyDeclaration')
+    def extract_property_declaration_stmt(self, node) -> SignalResult:
+        """PropertyDeclaration: property declaration"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'body', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('SequenceDeclaration')
+    def extract_sequence_declaration_stmt(self, node) -> SignalResult:
+        """SequenceDeclaration: sequence declaration"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'body', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('RestrictPropertyStatement')
+    def extract_restrict_property_statement(self, node) -> SignalResult:
+        """RestrictPropertyStatement: restrict property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    # Invocations and calls
+    @on('InvocationExpression')
+    def extract_invocation_expression(self, node) -> SignalResult:
+        """InvocationExpression: invocation expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('VoidCastedCallStatement')
+    def extract_void_casted_call_statement(self, node) -> SignalResult:
+        """VoidCastedCallStatement: void casted call statement"""
+        result = SignalResult()
+        call = getattr(node, 'call', None) or getattr(node, 'expr', None)
+        if call:
+            result = result.merge(self.extract(call))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
