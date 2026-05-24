@@ -2614,6 +2614,211 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(stmt))
         return result
     
+    @on('CaseStatementExpression')
+    def extract_case_stmt_expression(self, node) -> SignalResult:
+        """CaseStatementExpression: case statement expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('CaseItemStatementExpression')
+    def extract_case_item_stmt_expression(self, node) -> SignalResult:
+        """CaseItemStatementExpression: case item statement"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        body = getattr(node, 'body', None) or getattr(node, 'statement', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('IfStatementExpression')
+    def extract_if_stmt_expression(self, node) -> SignalResult:
+        """IfStatementExpression: if statement expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_body = getattr(node, 'true_body', None) or getattr(node, 'body', None)
+        if true_body:
+            result = result.merge(self.extract(true_body))
+        false_body = getattr(node, 'false_body', None) or getattr(node, 'else_body', None)
+        if false_body:
+            result = result.merge(self.extract(false_body))
+        return result
+    
+    @on('IfElseStatementExpression')
+    def extract_if_else_stmt_expression(self, node) -> SignalResult:
+        """IfElseStatementExpression: if else statement"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_body = getattr(node, 'true_body', None)
+        if true_body:
+            result = result.merge(self.extract(true_body))
+        false_body = getattr(node, 'false_body', None)
+        if false_body:
+            result = result.merge(self.extract(false_body))
+        return result
+    
+    @on('EmptyStatementExpression')
+    def extract_empty_stmt_expression(self, node) -> SignalResult:
+        """EmptyStatementExpression: empty statement"""
+        return SignalResult()
+    
+    @on('ExpressionStatement')
+    def extract_expression_stmt(self, node) -> SignalResult:
+        """ExpressionStatement: expression statement"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('CompoundStatementExpression')
+    def extract_compound_stmt_expression(self, node) -> SignalResult:
+        """CompoundStatementExpression: compound statement"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('TimingControlStatementExpression')
+    def extract_timing_control_stmt_expression(self, node) -> SignalResult:
+        """TimingControlStatementExpression: timing control statement"""
+        result = SignalResult()
+        timing = getattr(node, 'timing', None) or getattr(node, 'control', None)
+        if timing:
+            result = result.merge(self.extract(timing))
+        stmt = getattr(node, 'statement', None) or getattr(node, 'body', None)
+        if stmt:
+            result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('TimingDeclarationStatement')
+    def extract_timing_decl_stmt(self, node) -> SignalResult:
+        """TimingDeclarationStatement: timing declaration"""
+        result = SignalResult()
+        clock = getattr(node, 'clock', None) or getattr(node, 'event', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
+    @on('ExpectStatementExpression')
+    def extract_expect_stmt_expression(self, node) -> SignalResult:
+        """ExpectStatementExpression: expect statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('CoverageStatementExpression')
+    def extract_coverage_stmt_expression(self, node) -> SignalResult:
+        """CoverageStatementExpression: coverage statement"""
+        result = SignalResult()
+        cover = getattr(node, 'cover', None) or getattr(node, 'expr', None)
+        if cover:
+            result = result.merge(self.extract(cover))
+        return result
+    
+    @on('LetStatementExpression')
+    def extract_let_stmt_expression(self, node) -> SignalResult:
+        """LetStatementExpression: let statement"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        body = getattr(node, 'body', None) or getattr(node, 'expr', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('PatternStatementExpression')
+    def extract_pattern_stmt_expression(self, node) -> SignalResult:
+        """PatternStatementExpression: pattern statement"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    @on('ImmediateAssertStatementExpression')
+    def extract_immediate_assert_stmt_expr(self, node) -> SignalResult:
+        """ImmediateAssertStatementExpression: immediate assert"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('ImmediateAssumeStatementExpression')
+    def extract_immediate_assume_stmt_expr(self, node) -> SignalResult:
+        """ImmediateAssumeStatementExpression: immediate assume"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('ImmediateCoverStatementExpression')
+    def extract_immediate_cover_stmt_expr(self, node) -> SignalResult:
+        """ImmediateCoverStatementExpression: immediate cover"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('DeferredAssertStatementExpression')
+    def extract_deferred_assert_stmt_expr(self, node) -> SignalResult:
+        """DeferredAssertStatementExpression: deferred assert"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('DeferredAssumeStatementExpression')
+    def extract_deferred_assume_stmt_expr(self, node) -> SignalResult:
+        """DeferredAssumeStatementExpression: deferred assume"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('DeferredCoverStatementExpression')
+    def extract_deferred_cover_stmt_expr(self, node) -> SignalResult:
+        """DeferredCoverStatementExpression: deferred cover"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
