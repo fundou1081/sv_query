@@ -56,11 +56,34 @@
   - `DataFlowPath`: 完整路径
   - `DataFlowResult`: 分析结果封装
   - `DataFlowAnalyzer`: 主分析器
+  - `TimingAnalysisResult`: 时序分析 (寄存器级数、延迟周期)
 - **算法**:
   - 路径搜索 (networkx.all_simple_paths)
   - 上下文丰富 (condition, timing)
+- **状态**: 提案阶段
 - **优先级**: P2 单 dispatch 重构完成后开始
 - **参考文档**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+
+#### [ ] ControlFlow 控制流分析架构
+- **类型**: 新功能
+- **描述**: 实现信号间控制流分析 (条件、分支、状态机)
+- **架构**: `docs/CONTROL_FLOW_ANALYSIS.md`
+- **核心组件**:
+  - `ConditionInfo`: 条件信息 (kind, expr, signals, branches)
+  - `ControlFlowResult`: 控制流结果封装
+  - `StateTransition`: 状态机转换
+  - `ControlFlowAnalyzer`: 主分析器
+- **功能**:
+  - 条件使能分析 (en 为真/假时数据是否流动)
+  - 分支覆盖分析 (if/else/case 是否完整)
+  - 状态机状态转换图
+  - 控制依赖链传播
+- **与 DataFlow 融合**:
+  - `DataFlowResult.control_flow`: 融合控制流
+  - `data_flow_when`: 数据流成立条件
+- **状态**: 提案阶段
+- **优先级**: DataFlow 实现完成后
+- **参考文档**: `docs/CONTROL_FLOW_ANALYSIS.md`
 
 #### [ ] Visitor 组合模式
 - **类型**: 架构探索
@@ -83,6 +106,16 @@
 | SignalExpressionVisitor 增强 | 覆盖 38/41 ExpressionKind (93%) |
 | StatementCollectorVisitor 增强 | 覆盖 30/32 StatementKind (94%) |
 | 架构改善提案 | `docs/ARCHITECTURE_IMPROVEMENT.md` |
+
+### ✅ DataFlow/控制流架构设计 (2026-05-24)
+| 文档 | 描述 |
+|------|------|
+| `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md` | DataFlow 三层架构 + TimingAnalysisResult |
+| `docs/CONTROL_FLOW_ANALYSIS.md` | 控制流分析架构 + ConditionInfo + StateTransition |
+| `docs/ARCHITECTURE_COMPARISON.md` | 现有架构 vs DataFlow 提案对照 |
+| `docs/SCHEMA_COMPARISON.md` | data_models.py vs DataFlow Schema 对照 |
+| SignalResult POC | SignalExpressionVisitor.extract() 单 dispatch POC |
+| 方案选择建议 | 渐进式迁移: 保持 data_models.py，新增 dataflow_models.py |
 
 ---
 
