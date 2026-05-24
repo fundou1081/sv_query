@@ -58,6 +58,15 @@
 ### 铁律15: Visitor 模式必须使用
 **规则**: AST 遍历必须使用 Visitor 模式，禁止 if-elif 链
 
+### 铁律30: Handler 名称必须与 pyslang SyntaxKind 完全一致
+**规则**: Handler 装饰器参数必须是 pyslang 实际存在的 SyntaxKind 名称，禁止自创或别名匹配
+
+### 铁律31: 创建 Handler 前必须验证 pyslang 中存在对应类型
+**规则**: 使用 `hasattr(SyntaxKind, 'HandlerName')` 确认后再创建
+
+### 铁律32: 同一个 Handler 只允许定义一次
+**规则**: 禁止重复定义相同的 @on 装饰器，添加前先搜索文件确认是否已存在
+
 ---
 
 ## 三、逐文件 Review
