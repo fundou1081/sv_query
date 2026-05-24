@@ -29,29 +29,21 @@ class DriverExtractor:
 
 
     def _get_all_signals(self, signal) -> List[str]:
-        """提取表达式中的所有信号名(三元、拼接等返回多个)
+        """提取表达式中的所有信号名
         
-        [DEPRECATED in v0.2] 使用 SignalExpressionVisitor 替代
-        [铁律29] 保留 fallback 并添加调试日志
+        [铁律29] 直接使用 SignalExpressionVisitor
         """
         if signal is None:
             return []
-        
-        # [铁律29] 使用 Visitor
-        logger.debug(f"[FALLBACK] _get_all_signals called for signal type: {type(signal).__name__}")
         return self._signal_visitor.get_all_signals(signal)
 
     def _get_signal(self, signal) -> Optional[str]:
         """获取信号名
         
-        [DEPRECATED in v0.2] 使用 SignalExpressionVisitor 替代
-        [铁律29] 保留 fallback 并添加调试日志
+        [铁律29] 直接使用 SignalExpressionVisitor
         """
         if signal is None:
             return None
-        
-        # [铁律29] 使用 Visitor
-        logger.debug(f"[FALLBACK] _get_signal called for signal type: {type(signal).__name__}")
         return self._signal_visitor.visit(signal)
 
     #==============================================================================
@@ -714,7 +706,7 @@ class DriverExtractor:
             # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
                 # [铁律29] 使用 _collect_stmts_with_context 包装方法
-                # 内部会优先使用 StatementCollectorVisitor，失败时 fallback 到 legacy
+                # 内部使用 StatementCollectorVisitor
                 stmts_ctx = self._collect_stmts_with_context(always)
                 for item in stmts_ctx:
                     # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
