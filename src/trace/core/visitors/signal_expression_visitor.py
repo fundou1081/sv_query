@@ -911,6 +911,32 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ElementSelectExpression')
     def extract_element_select(self, node) -> SignalResult:
+        """[MIGRATED] ElementSelectExpression: data[5] bit select
+        
+        From visit_element_select - handles symbol-based selectors
+        """
+        value = getattr(node, 'value', None) or getattr(node, 'base', None) or getattr(node, 'left', None)
+        selector = getattr(node, 'selector', None)
+        
+        if value and selector is not None:
+            base_name = None
+            # Try to get name from symbol
+            if hasattr(value, 'symbol'):
+                sym = value.symbol
+                if hasattr(sym, 'name'):
+                    base_name = str(sym.name)
+            
+            if base_name:
+                selector_val = getattr(selector, 'value', None)
+                if selector_val is not None:
+                    return SignalResult(primary=f"{base_name}[{selector_val}]")
+        
+        # Fall back to extracting from base
+        if value:
+            return self.extract(value)
+        return SignalResult()
+
+    def extract_element_select(self, node) -> SignalResult:
         """[NOT TESTED] ElementSelectExpression: data[5]"""
         base = getattr(node, 'left', None) or getattr(node, 'base', None) or getattr(node, 'value', None)
         if base:
