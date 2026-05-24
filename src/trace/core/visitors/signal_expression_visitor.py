@@ -5715,6 +5715,173 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(init))
         return result
     
+    # Function and task declarations
+    @on('FunctionDeclaration')
+    def extract_function_declaration(self, node) -> SignalResult:
+        """FunctionDeclaration: function declaration"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('TaskDeclaration')
+    def extract_task_declaration(self, node) -> SignalResult:
+        """TaskDeclaration: task declaration"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('ExternFunctionDeclaration')
+    def extract_extern_function_declaration(self, node) -> SignalResult:
+        """ExternFunctionDeclaration: extern function declaration"""
+        return SignalResult()
+    
+    @on('ExternTaskDeclaration')
+    def extract_extern_task_declaration(self, node) -> SignalResult:
+        """ExternTaskDeclaration: extern task declaration"""
+        return SignalResult()
+    
+    @on('FunctionPrototype')
+    def extract_function_prototype(self, node) -> SignalResult:
+        """FunctionPrototype: function prototype"""
+        return SignalResult()
+    
+    @on('TaskPrototype')
+    def extract_task_prototype(self, node) -> SignalResult:
+        """TaskPrototype: task prototype"""
+        return SignalResult()
+    
+    # Package and module declarations
+    @on('PackageDeclaration')
+    def extract_package_declaration(self, node) -> SignalResult:
+        """PackageDeclaration: package declaration"""
+        return SignalResult()
+    
+    @on('ModuleDeclaration')
+    def extract_module_declaration(self, node) -> SignalResult:
+        """ModuleDeclaration: module declaration"""
+        return SignalResult()
+    
+    @on('InterfaceDeclaration')
+    def extract_interface_declaration(self, node) -> SignalResult:
+        """InterfaceDeclaration: interface declaration"""
+        return SignalResult()
+    
+    @on('ProgramDeclaration')
+    def extract_program_declaration_stmt(self, node) -> SignalResult:
+        """ProgramDeclaration: program declaration"""
+        return SignalResult()
+    
+    # Generate constructs
+    @on('ForGenerate')
+    def extract_for_generate(self, node) -> SignalResult:
+        """ForGenerate: for generate construct"""
+        result = SignalResult()
+        init = getattr(node, 'init', None)
+        if init:
+            result = result.merge(self.extract(init))
+        cond = getattr(node, 'cond', None) or getattr(node, 'condition', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        step = getattr(node, 'step', None)
+        if step:
+            result = result.merge(self.extract(step))
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('IfGenerate')
+    def extract_if_generate(self, node) -> SignalResult:
+        """IfGenerate: if generate construct"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_body = getattr(node, 'true_body', None) or getattr(node, 'body', None)
+        if true_body:
+            result = result.merge(self.extract(true_body))
+        false_body = getattr(node, 'false_body', None) or getattr(node, 'else_body', None)
+        if false_body:
+            result = result.merge(self.extract(false_body))
+        return result
+    
+    @on('LoopGenerate')
+    def extract_loop_generate(self, node) -> SignalResult:
+        """LoopGenerate: loop generate construct"""
+        result = SignalResult()
+        init = getattr(node, 'init', None)
+        if init:
+            result = result.merge(self.extract(init))
+        cond = getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        step = getattr(node, 'step', None)
+        if step:
+            result = result.merge(self.extract(step))
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('GenerateBlock')
+    def extract_generate_block(self, node) -> SignalResult:
+        """GenerateBlock: generate block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('GenerateRegion')
+    def extract_generate_region(self, node) -> SignalResult:
+        """GenerateRegion: generate region"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'statements', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Continuous assignment
+    @on('ContinuousAssign')
+    def extract_continuous_assign(self, node) -> SignalResult:
+        """ContinuousAssign: continuous assignment"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        rvalue = getattr(node, 'rvalue', None) or getattr(node, 'expr', None)
+        if rvalue:
+            result = result.merge(self.extract(rvalue))
+        return result
+    
+    @on('AliasStatement')
+    def extract_alias_statement(self, node) -> SignalResult:
+        """AliasStatement: alias statement"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
