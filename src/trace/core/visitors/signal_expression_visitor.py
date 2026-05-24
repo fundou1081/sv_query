@@ -87,13 +87,13 @@ class SignalExpressionVisitor(BaseVisitor):
         """统一提取信号
         
         替代 visit() + get_all_signals() 的双接口。
-        返回 SignalResult，同时包含单信号和多信号。
+        返回 SignalResult，包含丰富信息。
         
         Args:
             node: AST 节点
             
         Returns:
-            SignalResult(primary=信号名, all_signals=[信号列表])
+            SignalResult(primary=信号名, all_signals=[信号列表], kind_name=..., op_name=..., source_range=...)
         """
         from typing import List
         
@@ -111,27 +111,39 @@ class SignalExpressionVisitor(BaseVisitor):
         import re
         
         # === Step 1: Try to find explicit extract_ method ===
-        # First try: extract_NamedValue
         method_name = "extract_" + re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
         if hasattr(self, method_name):
             return getattr(self, method_name)(node)
         
-        # === Step 2: Extract primary signal (like visit()) ===
+        # === Step 2: Extract rich metadata ===
+        op_name = None
+        if hasattr(node, 'op') and node.op:
+            op_name = getattr(node.op, 'name', None) or str(node.op)
+        
+        source_range = None
+        if hasattr(node, 'sourceRange') and node.sourceRange:
+            sr = node.sourceRange
+            try:
+                source_range = ((sr.start.line, sr.start.column), (sr.end.line, sr.end.column))
+            except:
+                pass
+        
+        # === Step 3: Extract primary signal (like visit()) ===
         primary = self.visit(node)
         
-        # === Step 3: Extract all signals (like get_all_signals()) ===
-        # Try get_all_ method first
+        # === Step 4: Extract all signals (like get_all_signals()) ===
         all_signals = self.get_all_signals(node)
         
-        # If get_all returned something useful, use it
-        if all_signals:
-            return SignalResult(primary=primary, all_signals=all_signals)
+        if not all_signals:
+            all_signals = self._extract_all_signals_fallback(node)
         
-        # Fallback: if get_all didn't work, try to recursively collect
-        # This handles cases where visit works but get_all doesn't have explicit handler
-        all_signals = self._extract_all_signals_fallback(node)
-        
-        return SignalResult(primary=primary, all_signals=all_signals)
+        return SignalResult(
+            primary=primary,
+            all_signals=all_signals,
+            kind_name=kind_name,
+            op_name=op_name,
+            source_range=source_range
+        )
     
     def _extract_all_signals_fallback(self, node) -> List[str]:
         """Fallback for extracting all signals when no explicit handler exists"""
@@ -729,10 +741,10 @@ class SignalExpressionVisitor(BaseVisitor):
     def extract_named_value(self, node) -> SignalResult:
         """NamedValue: 单一信号引用
         
-        SignalResult 返回: primary=all_signals=[信号名]
+        SignalResult 返回: primary=all_signals=[信号名], kind_name='NamedValue'
         """
         signal_name = self.visit_named_value(node)
-        return SignalResult.single(signal_name)
+        return SignalResult.single(signal_name, kind_name='NamedValue')
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
