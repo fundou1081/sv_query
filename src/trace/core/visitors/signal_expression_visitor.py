@@ -6384,6 +6384,166 @@ class SignalExpressionVisitor(BaseVisitor):
                     result = result.merge(self.extract(stmt))
         return result
     
+    # Sequence/Property expressions
+    @on('SequenceAbbrevMaybeExpr')
+    def extract_sequence_abbrev_maybe_expr(self, node) -> SignalResult:
+        """SequenceAbbrevMaybeExpr: sequence abbreviation maybe ##?"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceAbbrevPlusExpr')
+    def extract_sequence_abbrev_plus_expr(self, node) -> SignalResult:
+        """SequenceAbbrevPlusExpr: sequence abbreviation plus ##+"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceAbbrevStarExpr')
+    def extract_sequence_abbrev_star_expr(self, node) -> SignalResult:
+        """SequenceAbbrevStarExpr: sequence abbreviation star ##*"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceConcatExpr')
+    def extract_sequence_concat_expr(self, node) -> SignalResult:
+        """SequenceConcatExpr: sequence concatenation expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceIntersectExpr')
+    def extract_sequence_intersect_expr(self, node) -> SignalResult:
+        """SequenceIntersectExpr: sequence intersect expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceOrExpr')
+    def extract_sequence_or_expr_stmt(self, node) -> SignalResult:
+        """SequenceOrExpr: sequence or expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceAndExpr')
+    def extract_sequence_and_expr_stmt(self, node) -> SignalResult:
+        """SequenceAndExpr: sequence and expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('SequenceFirstMatchExpr')
+    def extract_sequence_first_match_expr_stmt(self, node) -> SignalResult:
+        """SequenceFirstMatchExpr: sequence first_match expression"""
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            return self.extract(seq)
+        return SignalResult()
+    
+    @on('SequenceClockingExpr')
+    def extract_sequence_clocking_expr_stmt(self, node) -> SignalResult:
+        """SequenceClockingExpr: sequence clocking expression"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        clock = getattr(node, 'clock', None)
+        if clock:
+            result = result.merge(self.extract(clock))
+        return result
+    
+    @on('SequenceNotExpr')
+    def extract_sequence_not_expr(self, node) -> SignalResult:
+        """SequenceNotExpr: sequence not expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'sequence', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PropertyNotExpr')
+    def extract_property_not_expr_stmt(self, node) -> SignalResult:
+        """PropertyNotExpr: property not expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'property', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PropertyOrExpr')
+    def extract_property_or_expr_stmt(self, node) -> SignalResult:
+        """PropertyOrExpr: property or expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyAndExpr')
+    def extract_property_and_expr_stmt(self, node) -> SignalResult:
+        """PropertyAndExpr: property and expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyImplicationExpr')
+    def extract_property_implication_expr(self, node) -> SignalResult:
+        """PropertyImplicationExpr: property implication expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('PropertyIfExpr')
+    def extract_property_if_expr(self, node) -> SignalResult:
+        """PropertyIfExpr: property if expression"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'expr2', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
