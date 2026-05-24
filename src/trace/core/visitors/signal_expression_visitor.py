@@ -6640,6 +6640,165 @@ class SignalExpressionVisitor(BaseVisitor):
         """NewCovergroupExpression: new covergroup expression"""
         return SignalResult()
     
+    # Pattern expressions
+    @on('WildcardPatternExpr')
+    def extract_wildcard_pattern_expr(self, node) -> SignalResult:
+        """WildcardPatternExpr: wildcard pattern expression"""
+        return SignalResult()
+    
+    @on('ConstantPatternExpr')
+    def extract_constant_pattern_expr(self, node) -> SignalResult:
+        """ConstantPatternExpr: constant pattern expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('VariablePatternExpr')
+    def extract_variable_pattern_expr(self, node) -> SignalResult:
+        """VariablePatternExpr: variable pattern expression"""
+        var = getattr(node, 'var', None) or getattr(node, 'expr', None)
+        if var:
+            return self.extract(var)
+        return SignalResult()
+    
+    @on('TaggedPatternExpr')
+    def extract_tagged_pattern_expr(self, node) -> SignalResult:
+        """TaggedPatternExpr: tagged pattern expression"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    @on('StructurePatternExpr')
+    def extract_structure_pattern_expr(self, node) -> SignalResult:
+        """StructurePatternExpr: structure pattern expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'patterns', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ReplicatedPatternExpr')
+    def extract_replicated_pattern_expr(self, node) -> SignalResult:
+        """ReplicatedPatternExpr: replicated pattern expression"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    # Constraint block expressions
+    @on('ConstraintListExpr')
+    def extract_constraint_list_expr(self, node) -> SignalResult:
+        """ConstraintListExpr: constraint list expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    # Dist constraint
+    @on('DistConstraintExpr')
+    def extract_dist_constraint_expr(self, node) -> SignalResult:
+        """DistConstraintExpr: dist constraint expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('DistWeight')
+    def extract_dist_weight(self, node) -> SignalResult:
+        """DistWeight: dist weight"""
+        result = SignalResult()
+        weight = getattr(node, 'weight', None) or getattr(node, 'expr', None)
+        if weight:
+            result = result.merge(self.extract(weight))
+        value = getattr(node, 'value', None) or getattr(node, 'expr2', None)
+        if value:
+            result = result.merge(self.extract(value))
+        return result
+    
+    # Let expression
+    @on('LetExpression')
+    def extract_let_expression_stmt(self, node) -> SignalResult:
+        """LetExpression: let expression"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        body = getattr(node, 'body', None) or getattr(node, 'expr', None)
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    # Randomize with expression
+    @on('RandomizeWithExpression')
+    def extract_randomize_with_expression(self, node) -> SignalResult:
+        """RandomizeWithExpression: randomize with expression"""
+        result = SignalResult()
+        with_expr = getattr(node, 'with', None) or getattr(node, 'expr', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        return result
+    
+    # Wait fork expression
+    @on('WaitForkExpression')
+    def extract_wait_fork_expression(self, node) -> SignalResult:
+        """WaitForkExpression: wait fork expression"""
+        return SignalResult()
+    
+    # Method expressions
+    @on('ArrayAndMethodExpr')
+    def extract_array_and_method_expr(self, node) -> SignalResult:
+        """ArrayAndMethodExpr: array.and() method expression"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayOrMethodExpr')
+    def extract_array_or_method_expr(self, node) -> SignalResult:
+        """ArrayOrMethodExpr: array.or() method expression"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayUniqueMethodExpr')
+    def extract_array_unique_method_expr(self, node) -> SignalResult:
+        """ArrayUniqueMethodExpr: array.unique() method expression"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
+    @on('ArrayXorMethodExpr')
+    def extract_array_xor_method_expr(self, node) -> SignalResult:
+        """ArrayXorMethodExpr: array.xor() method expression"""
+        result = SignalResult()
+        array = getattr(node, 'array', None) or getattr(node, 'expr', None)
+        if array:
+            result = result.merge(self.extract(array))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
