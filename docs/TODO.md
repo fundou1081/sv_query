@@ -47,6 +47,21 @@
 
 ### P3 - 长期改进
 
+#### [ ] DataFlow 数据流分析架构
+- **类型**: 新功能
+- **描述**: 实现信号间数据流分析 (from → to)
+- **架构**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+- **核心组件**:
+  - `DataFlowSegment`: 单步驱动 (from → to)
+  - `DataFlowPath`: 完整路径
+  - `DataFlowResult`: 分析结果封装
+  - `DataFlowAnalyzer`: 主分析器
+- **算法**:
+  - 路径搜索 (networkx.all_simple_paths)
+  - 上下文丰富 (condition, timing)
+- **优先级**: P2 单 dispatch 重构完成后开始
+- **参考文档**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+
 #### [ ] Visitor 组合模式
 - **类型**: 架构探索
 - **描述**: 将 Visitor 拆分为可组合的组件 (SignalExtractor / ContextExtractor)
