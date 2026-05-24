@@ -15,6 +15,7 @@ from typing import List, Optional, Dict, Any
 import logging
 
 from .base_visitor import BaseVisitor
+from .signal_result import SignalResult
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,94 @@ class SignalExpressionVisitor(BaseVisitor):
                     return getattr(self, method_name)(node)
         
         return self.generic_visit(node)
+    
+    def extract(self, node) -> SignalResult:
+        """统一提取信号
+        
+        替代 visit() + get_all_signals() 的双接口。
+        返回 SignalResult，同时包含单信号和多信号。
+        
+        Args:
+            node: AST 节点
+            
+        Returns:
+            SignalResult(primary=信号名, all_signals=[信号列表])
+        """
+        from typing import List
+        
+        if node is None:
+            return SignalResult.empty()
+        
+        kind = getattr(node, 'kind', None)
+        if kind is None:
+            return SignalResult.empty()
+        
+        kind_name = kind.name if hasattr(kind, 'name') else None
+        if not kind_name:
+            return SignalResult.empty()
+        
+        import re
+        
+        # === Step 1: Try to find explicit extract_ method ===
+        # First try: extract_NamedValue
+        method_name = "extract_" + re.sub(r'(?<!^)(?=[A-Z])', '_', kind_name).lower()
+        if hasattr(self, method_name):
+            return getattr(self, method_name)(node)
+        
+        # === Step 2: Extract primary signal (like visit()) ===
+        primary = self.visit(node)
+        
+        # === Step 3: Extract all signals (like get_all_signals()) ===
+        # Try get_all_ method first
+        all_signals = self.get_all_signals(node)
+        
+        # If get_all returned something useful, use it
+        if all_signals:
+            return SignalResult(primary=primary, all_signals=all_signals)
+        
+        # Fallback: if get_all didn't work, try to recursively collect
+        # This handles cases where visit works but get_all doesn't have explicit handler
+        all_signals = self._extract_all_signals_fallback(node)
+        
+        return SignalResult(primary=primary, all_signals=all_signals)
+    
+    def _extract_all_signals_fallback(self, node) -> List[str]:
+        """Fallback for extracting all signals when no explicit handler exists"""
+        if node is None:
+            return []
+        
+        signals = []
+        
+        # Binary expression: left + right
+        if hasattr(node, 'left') and hasattr(node, 'right'):
+            left = getattr(node, 'left', None)
+            right = getattr(node, 'right', None)
+            if left:
+                signals.extend(self.get_all_signals(left))
+            if right:
+                signals.extend(self.get_all_signals(right))
+            return [s for s in signals if s]
+        
+        # General recursive fallback: try all child attributes
+        for attr_name in dir(node):
+            if attr_name.startswith('_'):
+                continue
+            try:
+                attr = getattr(node, attr_name, None)
+                if attr is None:
+                    continue
+                if callable(attr):
+                    continue
+                if isinstance(attr, list):
+                    for item in attr:
+                        if hasattr(item, 'kind'):
+                            signals.extend(self.get_all_signals(item))
+                elif hasattr(attr, 'kind'):
+                    signals.extend(self.get_all_signals(attr))
+            except:
+                pass
+        
+        return [s for s in signals if s]
     
     def get_all_signals(self, node) -> List[str]:
         """提取表达式中的所有信号名
@@ -636,6 +725,14 @@ class SignalExpressionVisitor(BaseVisitor):
                     return m.group(1)
             return name
         return None
+    
+    def extract_named_value(self, node) -> SignalResult:
+        """NamedValue: 单一信号引用
+        
+        SignalResult 返回: primary=all_signals=[信号名]
+        """
+        signal_name = self.visit_named_value(node)
+        return SignalResult.single(signal_name)
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
