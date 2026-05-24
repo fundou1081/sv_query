@@ -4635,6 +4635,154 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Type-related expressions
+    @on('BitType')
+    def extract_bit_type(self, node) -> SignalResult:
+        """BitType: bit type"""
+        return SignalResult()
+    
+    @on('ByteType')
+    def extract_byte_type(self, node) -> SignalResult:
+        """ByteType: byte type"""
+        return SignalResult()
+    
+    @on('CHandleType')
+    def extract_chandle_type(self, node) -> SignalResult:
+        """CHandleType: chandle type"""
+        return SignalResult()
+    
+    @on('IntType')
+    def extract_int_type(self, node) -> SignalResult:
+        """IntType: int type"""
+        return SignalResult()
+    
+    @on('LongIntType')
+    def extract_long_int_type(self, node) -> SignalResult:
+        """LongIntType: longint type"""
+        return SignalResult()
+    
+    @on('ShortIntType')
+    def extract_short_int_type(self, node) -> SignalResult:
+        """ShortIntType: shortint type"""
+        return SignalResult()
+    
+    @on('IntegerType')
+    def extract_integer_type(self, node) -> SignalResult:
+        """IntegerType: integer type"""
+        return SignalResult()
+    
+    @on('LogicType')
+    def extract_logic_type(self, node) -> SignalResult:
+        """LogicType: logic type"""
+        return SignalResult()
+    
+    @on('RegType')
+    def extract_reg_type(self, node) -> SignalResult:
+        """RegType: reg type"""
+        return SignalResult()
+    
+    @on('BitVectorType')
+    def extract_bit_vector_type(self, node) -> SignalResult:
+        """BitVectorType: bit vector type"""
+        return SignalResult()
+    
+    @on('StringType')
+    def extract_string_type(self, node) -> SignalResult:
+        """StringType: string type"""
+        return SignalResult()
+    
+    @on('EventType')
+    def extract_event_type(self, node) -> SignalResult:
+        """EventType: event type"""
+        return SignalResult()
+    
+    @on('VoidType')
+    def extract_void_type(self, node) -> SignalResult:
+        """VoidType: void type"""
+        return SignalResult()
+    
+    @on('RealType')
+    def extract_real_type(self, node) -> SignalResult:
+        """RealType: real type"""
+        return SignalResult()
+    
+    @on('ShortRealType')
+    def extract_short_real_type(self, node) -> SignalResult:
+        """ShortRealType: shortreal type"""
+        return SignalResult()
+    
+    @on('TypeType')
+    def extract_type_type(self, node) -> SignalResult:
+        """TypeType: type type"""
+        return SignalResult()
+    
+    @on('UntypedType')
+    def extract_untyped_type(self, node) -> SignalResult:
+        """UntypedType: untyped type"""
+        return SignalResult()
+    
+    @on('PropertyType')
+    def extract_property_type(self, node) -> SignalResult:
+        """PropertyType: property type"""
+        return SignalResult()
+    
+    @on('SequenceType')
+    def extract_sequence_type(self, node) -> SignalResult:
+        """SequenceType: sequence type"""
+        return SignalResult()
+    
+    # Statement-related
+    @on('AssertPropertyStatement')
+    def extract_assert_property_statement(self, node) -> SignalResult:
+        """AssertPropertyStatement: assert property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
+    @on('AssumePropertyStatement')
+    def extract_assume_property_statement(self, node) -> SignalResult:
+        """AssumePropertyStatement: assume property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('CoverPropertyStatement')
+    def extract_cover_property_statement(self, node) -> SignalResult:
+        """CoverPropertyStatement: cover property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('CoverSequenceStatement')
+    def extract_cover_sequence_statement(self, node) -> SignalResult:
+        """CoverSequenceStatement: cover sequence statement"""
+        result = SignalResult()
+        seq = getattr(node, 'sequence', None) or getattr(node, 'expr', None)
+        if seq:
+            result = result.merge(self.extract(seq))
+        return result
+    
+    @on('ExpectPropertyStatement')
+    def extract_expect_property_statement(self, node) -> SignalResult:
+        """ExpectPropertyStatement: expect property statement"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        action = getattr(node, 'action', None)
+        if action:
+            result = result.merge(self.extract(action))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
