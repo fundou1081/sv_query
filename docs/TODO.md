@@ -5,80 +5,74 @@
 
 ---
 
+## 当前状态
+
+### ✅ 已完成: Visitor 架构迁移
+- **834 测试通过**，系统稳定运行
+- Legacy fallback 已移除 (`_legacy_collect_stmts_with_context` 抛出 NotImplementedError)
+- SignalExpressionVisitor: 61 visit methods + 41 get_all methods
+- StatementCollectorVisitor: 51 visit methods
+
+---
+
 ## 当前任务
 
-### P1 - 高优先级
-
-_(无)_
-
----
-
-### P2 - 中优先级
+### P2 - 中优先级 (可选优化)
 
 #### [ ] SignalExpressionVisitor 单 dispatch 重构
-- **类型**: 重构 (优化，非必需)
-- **描述**: 将双接口 (visit + get_all_signals) 重构为单 dispatch + SignalResult
+- **类型**: 代码优化 (非功能改进)
+- **现状**: 当前是**双接口**设计
+  - `visit()` → `Optional[str]` (单信号)
+  - `get_all_signals()` → `List[str]` (多信号)
+  - 每种节点类型需要两个 handler (如 `visit_binary_expression` + `get_all_binary_expression`)
+- **目标**: 改为**单接口**设计
+  - `extract()` → `SignalResult(primary, all_signals, all_signals_unique)`
+  - 每种节点类型只需一个 handler
+  - 通过注册式分派 (@SignalVisitor.on)
 - **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md`
-- **预期收益**: 
+- **收益**:
   - -50% handler 代码量
-  - 消除别名映射重复
-  - 提升可测试性
-- **风险**: 中等 (需迁移 40+ handlers)
-- **状态**: 当前系统已使用 Visitor 模式，无 Legacy fallback
-- **前置条件**: 可选重构，当前系统稳定
+  - 消除 visit/get_all 之间别名映射重复
+  - 更清晰的 API
+- **风险**: 中等 (需迁移 40+ handlers，建议分步进行)
+- **触发条件**: 有明确扩展需求时
 
 #### [ ] StatementCollectorVisitor 架构对齐 (可选)
-- **类型**: 重构
-- **描述**: 参照 SignalExpressionVisitor 重构方案进行类似改进
-- **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md`
-- **前置条件**: 可选，当前系统工作正常
+- **类型**: 代码优化
+- **现状**: 同样是双接口 (statement collecting + context) 混合设计
+- **目标**: 参照 SignalExpressionVisitor 改进方案进行对齐
+- **前置条件**: SignalExpressionVisitor 重构完成后再评估
 
 ---
 
-### P3 - 低优先级 / 长期
+### P3 - 长期改进
 
-#### [ ] Visitor 组合模式实现
-- **类型**: 架构改进
-- **描述**: 将 Visitor 拆分为 SignalExtractor / ContextExtractor 等可组合组件
-- **前置条件**: 单 dispatch 重构完成
+#### [ ] Visitor 组合模式
+- **类型**: 架构探索
+- **描述**: 将 Visitor 拆分为可组合的组件 (SignalExtractor / ContextExtractor)
+- **前置条件**: P2 重构完成
 
 #### [ ] 类型安全增强
-- **类型**: 改进
-- **描述**: 使用 Protocol 定义节点类型，提升 IDE 自动补全和类型检查
-- **前置条件**: Python 3.8+ (runtime checkable)
+- **类型**: 工具提升
+- **描述**: 使用 Protocol 定义节点类型，提升 IDE 自动补全
+- **前置条件**: Python 3.8+
 
 ---
 
 ## 已完成
 
-### ✅ P1 - 高优先级
-
-#### [x] Visitor 替代 Legacy Fallback
-- **完成时间**: 2026-05-23
-- **描述**: [铁律29] 移除 fallback，Legacy 方法抛出 NotImplementedError
-- **验证**: 834 测试通过，无 fallback 触发
-
-#### [x] SignalExpressionVisitor 覆盖率增强
-- **完成时间**: 2026-05-23
-- **描述**: 从初始覆盖率增强到 38/41 ExpressionKind (93%)
-- **新增方法**: 20+ visit methods, 20+ get_all methods
-
-#### [x] StatementCollectorVisitor 覆盖率增强
-- **完成时间**: 2026-05-23
-- **描述**: 从初始覆盖率增强到 30/32 StatementKind (94%)
-- **新增方法**: 14 visit methods
-
-### ✅ P2 - 中优先级
-
-#### [x] 架构改善提案文档
-- **完成时间**: 2026-05-24
-- **描述**: 创建 `docs/ARCHITECTURE_IMPROVEMENT.md`，详细记录问题、方案、迁移路径
-- **提交**: `1d55e4c`
+### ✅ 架构迁移 (2026-05-23)
+| 任务 | 描述 |
+|------|------|
+| Visitor 替代 Legacy | [铁律29] 移除 fallback，Legacy 抛出 NotImplementedError |
+| SignalExpressionVisitor 增强 | 覆盖 38/41 ExpressionKind (93%) |
+| StatementCollectorVisitor 增强 | 覆盖 30/32 StatementKind (94%) |
+| 架构改善提案 | `docs/ARCHITECTURE_IMPROVEMENT.md` |
 
 ---
 
 ## 备注
 
-- P2 重构任务建议在有明确需求时进行（如需要支持更多 SV 类型）
-- 当前系统稳定，可作为后续改进的基准
-- 每次提交前确保 834 测试通过
+1. **当前系统已可正常工作**，P2 任务为可选优化
+2. P2 任务建议在有明确需求时进行 (如支持更多 SV 类型、发现扩展困难)
+3. 每次提交前确保 834 测试通过
