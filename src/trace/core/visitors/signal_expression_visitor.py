@@ -999,6 +999,29 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('MemberAccessExpression')
     def extract_member_access(self, node) -> SignalResult:
+        """[MIGRATED] MemberAccessExpression: p.addr class member access
+        
+        From visit_member_access - extracts compound signal name
+        """
+        value = getattr(node, 'value', None) or getattr(node, 'expression', None)
+        member_sym = getattr(node, 'member', None)
+        
+        if value and member_sym:
+            base_result = self.extract(value)
+            base_name = base_result.primary
+            
+            member_name = getattr(member_sym, 'name', None)
+            if member_name:
+                member_name = str(member_name).strip()
+            else:
+                member_name = str(member_sym).strip()
+            
+            if base_name and member_name:
+                return SignalResult(primary=f"{base_name}.{member_name}")
+        
+        return SignalResult()
+
+    def extract_member_access(self, node) -> SignalResult:
         """[NOT TESTED] MemberAccessExpression: obj.member"""
         obj = getattr(node, 'left', None) or getattr(node, 'expression', None)
         if obj:
