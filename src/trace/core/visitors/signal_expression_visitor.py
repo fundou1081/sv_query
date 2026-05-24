@@ -7223,6 +7223,77 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Multicast/Replication expressions
+    @on('MulticastExpression')
+    def extract_multicast_expression(self, node) -> SignalResult:
+        """MulticastExpression: multicast expression"""
+        result = SignalResult()
+        lvalue = getattr(node, 'lvalue', None) or getattr(node, 'expr', None)
+        if lvalue:
+            result = result.merge(self.extract(lvalue))
+        return result
+    
+    @on('StreamingReplicationExpr')
+    def extract_streaming_replication_expr(self, node) -> SignalResult:
+        """StreamingReplicationExpr: streaming replication expression"""
+        result = SignalResult()
+        count = getattr(node, 'count', None) or getattr(node, 'expr', None)
+        if count:
+            result = result.merge(self.extract(count))
+        return result
+    
+    # Clocking block expressions
+    @on('ClockingBlockExpr')
+    def extract_clocking_block_expr(self, node) -> SignalResult:
+        """ClockingBlockExpr: clocking block expression"""
+        return SignalResult()
+    
+    @on('ClockingBlockEventExpr')
+    def extract_clocking_block_event_expr_stmt(self, node) -> SignalResult:
+        """ClockingBlockEventExpr: clocking block event expression"""
+        return SignalResult()
+    
+    # Import/Export expressions
+    @on('ImportExportExpr')
+    def extract_import_export_expr(self, node) -> SignalResult:
+        """ImportExportExpr: import export expression"""
+        return SignalResult()
+    
+    # Typedef expressions
+    @on('TypedefExpression')
+    def extract_typedef_expression(self, node) -> SignalResult:
+        """TypedefExpression: typedef expression"""
+        return SignalResult()
+    
+    # Null/Unknown expressions
+    @on('NullExpression')
+    def extract_null_expression(self, node) -> SignalResult:
+        """NullExpression: null expression"""
+        return SignalResult()
+    
+    @on('UnboundedExpression')
+    def extract_unbounded_expression(self, node) -> SignalResult:
+        """UnboundedExpression: unbounded expression $"""
+        return SignalResult()
+    
+    # This expression
+    @on('ThisExpression')
+    def extract_this_expression(self, node) -> SignalResult:
+        """ThisExpression: this expression"""
+        return SignalResult()
+    
+    # Super expression
+    @on('SuperExpression')
+    def extract_super_expression(self, node) -> SignalResult:
+        """SuperExpression: super expression"""
+        return SignalResult()
+    
+    # Wildcard expression
+    @on('WildcardExpression')
+    def extract_wildcard_expression(self, node) -> SignalResult:
+        """WildcardExpression: wildcard expression"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
