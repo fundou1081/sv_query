@@ -3596,6 +3596,334 @@ class SignalExpressionVisitor(BaseVisitor):
         """ProgramDefinition: program definition"""
         return SignalResult()
     
+    # Conversion kinds
+    @on('ImplicitConversion')
+    def extract_implicit_conversion(self, node) -> SignalResult:
+        """ImplicitConversion: implicit conversion"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PropagatedConversion')
+    def extract_propagated_conversion(self, node) -> SignalResult:
+        """PropagatedConversion: propagated conversion"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('StreamingConcatConversion')
+    def extract_streaming_concat_conversion(self, node) -> SignalResult:
+        """StreamingConcatConversion: streaming concat conversion"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expr', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ExplicitConversion')
+    def extract_explicit_conversion(self, node) -> SignalResult:
+        """ExplicitConversion: explicit conversion"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('BitstreamCastConversion')
+    def extract_bitstream_cast_conversion(self, node) -> SignalResult:
+        """BitstreamCastConversion: bitstream cast conversion"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Subroutine kinds
+    @on('FunctionSubroutine')
+    def extract_function_subroutine(self, node) -> SignalResult:
+        """FunctionSubroutine: function subroutine"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    @on('TaskSubroutine')
+    def extract_task_subroutine(self, node) -> SignalResult:
+        """TaskSubroutine: task subroutine"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
+    # Procedural block kinds
+    @on('InitialProceduralBlock')
+    def extract_initial_procedural_block(self, node) -> SignalResult:
+        """InitialProceduralBlock: initial block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None) or getattr(node, 'statements', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('FinalProceduralBlock')
+    def extract_final_procedural_block(self, node) -> SignalResult:
+        """FinalProceduralBlock: final block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysProceduralBlock')
+    def extract_always_procedural_block(self, node) -> SignalResult:
+        """AlwaysProceduralBlock: always block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysCombProceduralBlock')
+    def extract_always_comb_procedural_block(self, node) -> SignalResult:
+        """AlwaysCombProceduralBlock: always_comb block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysLatchProceduralBlock')
+    def extract_always_latch_procedural_block(self, node) -> SignalResult:
+        """AlwaysLatchProceduralBlock: always_latch block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('AlwaysFFProceduralBlock')
+    def extract_always_ff_procedural_block(self, node) -> SignalResult:
+        """AlwaysFFProceduralBlock: always_ff block"""
+        result = SignalResult()
+        body = getattr(node, 'body', None)
+        if body and hasattr(body, '__iter__'):
+            for stmt in body:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    # System timing check kinds
+    @on('SetupTimingCheck')
+    def extract_setup_timing_check(self, node) -> SignalResult:
+        """SetupTimingCheck: setup timing check"""
+        return SignalResult()
+    
+    @on('HoldTimingCheck')
+    def extract_hold_timing_check(self, node) -> SignalResult:
+        """HoldTimingCheck: hold timing check"""
+        return SignalResult()
+    
+    @on('SetupHoldTimingCheck')
+    def extract_setup_hold_timing_check(self, node) -> SignalResult:
+        """SetupHoldTimingCheck: setup hold timing check"""
+        return SignalResult()
+    
+    @on('RecoveryTimingCheck')
+    def extract_recovery_timing_check(self, node) -> SignalResult:
+        """RecoveryTimingCheck: recovery timing check"""
+        return SignalResult()
+    
+    @on('RemovalTimingCheck')
+    def extract_removal_timing_check(self, node) -> SignalResult:
+        """RemovalTimingCheck: removal timing check"""
+        return SignalResult()
+    
+    @on('RecRemTimingCheck')
+    def extract_rec_rem_timing_check(self, node) -> SignalResult:
+        """RecRemTimingCheck: recrem timing check"""
+        return SignalResult()
+    
+    @on('SkewTimingCheck')
+    def extract_skew_timing_check(self, node) -> SignalResult:
+        """SkewTimingCheck: skew timing check"""
+        return SignalResult()
+    
+    @on('TimeSkewTimingCheck')
+    def extract_time_skew_timing_check(self, node) -> SignalResult:
+        """TimeSkewTimingCheck: time skew timing check"""
+        return SignalResult()
+    
+    @on('FullSkewTimingCheck')
+    def extract_full_skew_timing_check(self, node) -> SignalResult:
+        """FullSkewTimingCheck: full skew timing check"""
+        return SignalResult()
+    
+    @on('PeriodTimingCheck')
+    def extract_period_timing_check(self, node) -> SignalResult:
+        """PeriodTimingCheck: period timing check"""
+        return SignalResult()
+    
+    @on('WidthTimingCheck')
+    def extract_width_timing_check(self, node) -> SignalResult:
+        """WidthTimingCheck: width timing check"""
+        return SignalResult()
+    
+    @on('NoChangeTimingCheck')
+    def extract_no_change_timing_check(self, node) -> SignalResult:
+        """NoChangeTimingCheck: nochange timing check"""
+        return SignalResult()
+    
+    # Pulse style kinds
+    @on('OnEventPulseStyle')
+    def extract_on_event_pulse_style(self, node) -> SignalResult:
+        """OnEventPulseStyle: on_event pulse style"""
+        return SignalResult()
+    
+    @on('OnDetectPulseStyle')
+    def extract_on_detect_pulse_style(self, node) -> SignalResult:
+        """OnDetectPulseStyle: on_detect pulse style"""
+        return SignalResult()
+    
+    @on('ShowCancelledPulseStyle')
+    def extract_show_cancelled_pulse_style(self, node) -> SignalResult:
+        """ShowCancelledPulseStyle: show_cancelled pulse style"""
+        return SignalResult()
+    
+    @on('NoShowCancelledPulseStyle')
+    def extract_no_show_cancelled_pulse_style(self, node) -> SignalResult:
+        """NoShowCancelledPulseStyle: no_show_cancelled pulse style"""
+        return SignalResult()
+    
+    # Edge kinds
+    @on('NoEdge')
+    def extract_no_edge(self, node) -> SignalResult:
+        """NoEdge: no edge"""
+        return SignalResult()
+    
+    @on('PosEdge')
+    def extract_pos_edge(self, node) -> SignalResult:
+        """PosEdge: positive edge"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('NegEdge')
+    def extract_neg_edge(self, node) -> SignalResult:
+        """NegEdge: negative edge"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('BothEdges')
+    def extract_both_edges(self, node) -> SignalResult:
+        """BothEdges: both edges"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'signal', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Dimension kinds
+    @on('UnknownDimension')
+    def extract_unknown_dimension(self, node) -> SignalResult:
+        """UnknownDimension: unknown dimension"""
+        return SignalResult()
+    
+    @on('RangeDimension')
+    def extract_range_dimension(self, node) -> SignalResult:
+        """RangeDimension: range dimension"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AbbreviatedRangeDimension')
+    def extract_abbreviated_range_dimension(self, node) -> SignalResult:
+        """AbbreviatedRangeDimension: abbreviated range dimension"""
+        return SignalResult()
+    
+    @on('DynamicDimension')
+    def extract_dynamic_dimension(self, node) -> SignalResult:
+        """DynamicDimension: dynamic dimension"""
+        return SignalResult()
+    
+    @on('AssociativeDimension')
+    def extract_associative_dimension(self, node) -> SignalResult:
+        """AssociativeDimension: associative dimension"""
+        result = SignalResult()
+        index = getattr(node, 'index', None) or getattr(node, 'expr', None)
+        if index:
+            result = result.merge(self.extract(index))
+        return result
+    
+    @on('QueueDimension')
+    def extract_queue_dimension(self, node) -> SignalResult:
+        """QueueDimension: queue dimension"""
+        result = SignalResult()
+        size = getattr(node, 'size', None) or getattr(node, 'expr', None)
+        if size:
+            result = result.merge(self.extract(size))
+        return result
+    
+    @on('DPIOpenArrayDimension')
+    def extract_dpi_open_array_dimension(self, node) -> SignalResult:
+        """DPIOpenArrayDimension: DPI open array dimension"""
+        return SignalResult()
+    
+    # Value range kinds
+    @on('SimpleValueRange')
+    def extract_simple_value_range(self, node) -> SignalResult:
+        """SimpleValueRange: simple value range"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('AbsoluteToleranceValueRange')
+    def extract_absolute_tolerance_value_range(self, node) -> SignalResult:
+        """AbsoluteToleranceValueRange: absolute tolerance value range"""
+        result = SignalResult()
+        range_expr = getattr(node, 'range', None)
+        if range_expr:
+            result = result.merge(self.extract(range_expr))
+        return result
+    
+    @on('RelativeToleranceValueRange')
+    def extract_relative_tolerance_value_range(self, node) -> SignalResult:
+        """RelativeToleranceValueRange: relative tolerance value range"""
+        result = SignalResult()
+        range_expr = getattr(node, 'range', None)
+        if range_expr:
+            result = result.merge(self.extract(range_expr))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
