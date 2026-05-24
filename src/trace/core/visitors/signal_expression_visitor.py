@@ -9714,6 +9714,149 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Last 21 missing handlers
+    @on('ConfigDeclaration')
+    def extract_config_declaration(self, node) -> SignalResult:
+        """ConfigDeclaration: config declaration"""
+        return SignalResult()
+    
+    @on('ConfigUseClause')
+    def extract_config_use_clause(self, node) -> SignalResult:
+        """ConfigUseClause: config use clause"""
+        return SignalResult()
+    
+    @on('ExternModuleDecl')
+    def extract_extern_module_decl(self, node) -> SignalResult:
+        """ExternModuleDecl: extern module declaration"""
+        return SignalResult()
+    
+    @on('IdWithExprCoverageBinInitializer')
+    def extract_id_with_expr_coverage_bin_initializer(self, node) -> SignalResult:
+        """IdWithExprCoverageBinInitializer: id with expr coverage bin initializer"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ImplicationConstraint')
+    def extract_implication_constraint(self, node) -> SignalResult:
+        """ImplicationConstraint: implication constraint"""
+        result = SignalResult()
+        left = getattr(node, 'left', None) or getattr(node, 'condition', None)
+        right = getattr(node, 'right', None) or getattr(node, 'constraint', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LibraryDeclaration')
+    def extract_library_declaration(self, node) -> SignalResult:
+        """LibraryDeclaration: library declaration"""
+        return SignalResult()
+    
+    @on('LibraryIncDirClause')
+    def extract_library_inc_dir_clause(self, node) -> SignalResult:
+        """LibraryIncDirClause: library include directory clause"""
+        return SignalResult()
+    
+    @on('ModportSubroutinePort')
+    def extract_modport_subroutine_port(self, node) -> SignalResult:
+        """ModportSubroutinePort: modport subroutine port"""
+        return SignalResult()
+    
+    @on('ParenthesizedConditionalDirectiveExpression')
+    def extract_parenthesized_conditional_directive_expression(self, node) -> SignalResult:
+        """ParenthesizedConditionalDirectiveExpression: parenthesized conditional directive expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ParenthesizedEventExpression')
+    def extract_parenthesized_event_expression(self, node) -> SignalResult:
+        """ParenthesizedEventExpression: parenthesized event expression"""
+        result = SignalResult()
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            result = result.merge(self.extract(event))
+        return result
+    
+    @on('PropertySpec')
+    def extract_property_spec(self, node) -> SignalResult:
+        """PropertySpec: property spec"""
+        result = SignalResult()
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        return result
+    
+    @on('SpecifyBlock')
+    def extract_specify_block(self, node) -> SignalResult:
+        """SpecifyBlock: specify block"""
+        return SignalResult()
+    
+    @on('SpecparamDeclaration')
+    def extract_specparam_declaration(self, node) -> SignalResult:
+        """SpecparamDeclaration: specparam declaration"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('SuperNewDefaultedArgsExpression')
+    def extract_super_new_defaulted_args_expression(self, node) -> SignalResult:
+        """SuperNewDefaultedArgsExpression: super.new with defaulted args expression"""
+        return SignalResult()
+    
+    @on('TimingControlExpression')
+    def extract_timing_control_expression(self, node) -> SignalResult:
+        """TimingControlExpression: timing control expression"""
+        return SignalResult()
+    
+    @on('TimingControlStatement')
+    def extract_timing_control_statement(self, node) -> SignalResult:
+        """TimingControlStatement: timing control statement"""
+        return SignalResult()
+    
+    @on('UdpDeclaration')
+    def extract_udp_declaration(self, node) -> SignalResult:
+        """UdpDeclaration: UDP declaration (Verilog primitive)"""
+        return SignalResult()
+    
+    @on('UnaryConditionalDirectiveExpression')
+    def extract_unary_conditional_directive_expression(self, node) -> SignalResult:
+        """UnaryConditionalDirectiveExpression: unary conditional directive expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('UniquenessConstraint')
+    def extract_uniqueness_constraint(self, node) -> SignalResult:
+        """UniquenessConstraint: uniqueness constraint"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('UserDefinedNetDeclaration')
+    def extract_user_defined_net_declaration(self, node) -> SignalResult:
+        """UserDefinedNetDeclaration: user defined net declaration"""
+        return SignalResult()
+    
+    @on('VirtualInterfaceType')
+    def extract_virtual_interface_type(self, node) -> SignalResult:
+        """VirtualInterfaceType: virtual interface type"""
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
