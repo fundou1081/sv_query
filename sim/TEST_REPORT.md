@@ -3,7 +3,7 @@
 
 <!-- METADATA -->
 {
-  "generated": "2026-05-24 12:54:28",
+  "generated": "2026-05-24 12:55:22",
   "passed": 834,
   "failed": 0,
   "skipped": 1,
@@ -17,34 +17,34 @@
 - **失败**: 0
 - **跳过**: 1
 - **总计**: 835
-- **时间**: 2026-05-24 12:54:28
+- **时间**: 2026-05-24 12:55:22
 
 ## 测试结果详情
 
 | 状态 | 测试ID | 时长(秒) |
 |------|--------|----------|
-| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_added_node` | 0.166s |
-| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_identical` | 0.155s |
-| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_json` | 0.157s |
-| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_removed_node` | 0.159s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_basic` | 0.150s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_json` | 0.147s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_not_found` | 0.145s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanout_basic` | 0.151s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanout_json` | 0.150s |
-| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_trace_help` | 0.206s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project0]` | 0.149s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project1]` | 0.289s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project2]` | 0.157s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project3]` | 1.021s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project4]` | 0.375s |
+| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_added_node` | 0.161s |
+| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_identical` | 0.157s |
+| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_json` | 0.158s |
+| ✅ | `tests/cli/test_diff.py::TestDiffCLI::test_diff_removed_node` | 0.158s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_basic` | 0.153s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_json` | 0.152s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanin_not_found` | 0.146s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanout_basic` | 0.152s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_fanout_json` | 0.152s |
+| ✅ | `tests/cli/test_trace.py::TestTraceCLI::test_trace_help` | 0.207s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project0]` | 0.148s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project1]` | 0.286s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project2]` | 0.156s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project3]` | 1.010s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project4]` | 0.372s |
 | ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project5]` | 0.039s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project6]` | 3.188s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project7]` | 0.406s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project9]` | 1.998s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project10]` | 0.071s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project11]` | 0.527s |
-| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project12]` | 0.688s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project6]` | 3.164s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project7]` | 0.414s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project9]` | 1.980s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project10]` | 0.070s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project11]` | 0.519s |
+| ✅ | `tests/integration/openchip_qa_full_test.py::test_project[project12]` | 0.682s |
 | ✅ | `tests/integration/test_advanced_grammar.py::TestForLoopExtraction::test_for_loop_in_always` | 0.008s |
 | ✅ | `tests/integration/test_advanced_grammar.py::TestForLoopExtraction::test_generate_for` | 0.009s |
 | ✅ | `tests/integration/test_advanced_grammar.py::TestProceduralTimingExtraction::test_always_begin_end` | 0.009s |
@@ -63,11 +63,11 @@
 | ✅ | `tests/integration/test_advanced_syntax.py::TestCrossModuleExtraction::test_simple_instance` | 0.013s |
 | ✅ | `tests/integration/test_advanced_syntax.py::TestCrossModuleExtraction::test_two_instance` | 0.020s |
 | ✅ | `tests/integration/test_aliases.py::TestAliases::test_alias` | 0.007s |
-| ✅ | `tests/integration/test_aliases.py::TestAliases::test_covergroup` | 0.012s |
+| ✅ | `tests/integration/test_aliases.py::TestAliases::test_covergroup` | 0.011s |
 | ✅ | `tests/integration/test_aliases.py::TestAliases::test_typedef_enum` | 0.010s |
 | ✅ | `tests/integration/test_aliases.py::TestAliases::test_typedef_struct` | 0.007s |
-| ✅ | `tests/integration/test_assign_chain.py::TestAssignChain::test_assign_to_assign_chain` | 0.010s |
-| ✅ | `tests/integration/test_assign_chain.py::TestAssignChain::test_fanout_chain` | 0.013s |
+| ✅ | `tests/integration/test_assign_chain.py::TestAssignChain::test_assign_to_assign_chain` | 0.011s |
+| ✅ | `tests/integration/test_assign_chain.py::TestAssignChain::test_fanout_chain` | 0.012s |
 | ✅ | `tests/integration/test_assign_chain.py::TestAssignChain::test_three_stage_chain` | 0.011s |
 | ✅ | `tests/integration/test_bit_select.py::TestBitSelect::test_negative_index` | 0.006s |
 | ✅ | `tests/integration/test_bit_select.py::TestBitSelect::test_out_of_bounds` | 0.006s |
@@ -78,7 +78,7 @@
 | ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_else_chain` | 0.015s |
 | ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_nested` | 0.013s |
 | ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_no_else` | 0.010s |
-| ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_only_constant` | 0.009s |
+| ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_only_constant` | 0.008s |
 | ✅ | `tests/integration/test_branch_chain.py::TestBranchChain::test_if_single_branch` | 0.012s |
 | ✅ | `tests/integration/test_case_stmt.py::TestCaseStmt::test_case_simple` | 0.010s |
 | ✅ | `tests/integration/test_case_stmt.py::TestCaseStmt::test_casex` | 0.008s |
@@ -91,7 +91,7 @@
 | ✅ | `tests/integration/test_cdc.py::TestCDC::test_single_clock_domain` | 0.009s |
 | ✅ | `tests/integration/test_cdc_multiclock.py::TestCDCMultiClock::test_clock_domain_traces_all_domains` | 0.019s |
 | ✅ | `tests/integration/test_cdc_multiclock.py::TestCDCMultiClock::test_single_register_no_cdc_violation` | 0.011s |
-| ✅ | `tests/integration/test_cdc_multiclock.py::TestCDCMultiClock::test_two_independent_clock_domains` | 0.020s |
+| ✅ | `tests/integration/test_cdc_multiclock.py::TestCDCMultiClock::test_two_independent_clock_domains` | 0.019s |
 | ✅ | `tests/integration/test_clock_edge.py::TestClockEdge::test_always_comb_no_clock_edge` | 0.009s |
 | ✅ | `tests/integration/test_clock_edge.py::TestClockEdge::test_always_ff_clock_edge` | 0.009s |
 | ✅ | `tests/integration/test_clock_edge.py::TestClockEdge::test_multiple_clock_domains` | 0.015s |
@@ -99,8 +99,8 @@
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestClockEdge::test_clock_edge_negedge` | 0.009s |
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestClockEdge::test_clock_edge_posedge` | 0.009s |
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestResetEdge::test_async_reset_negedge` | 0.009s |
-| ✅ | `tests/integration/test_clock_reset_timing.py::TestResetEdge::test_async_reset_posedge` | 0.009s |
-| ✅ | `tests/integration/test_clock_reset_timing.py::TestTimingControl::test_delay_control` | 0.009s |
+| ✅ | `tests/integration/test_clock_reset_timing.py::TestResetEdge::test_async_reset_posedge` | 0.008s |
+| ✅ | `tests/integration/test_clock_reset_timing.py::TestTimingControl::test_delay_control` | 0.008s |
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestTimingControl::test_event_control` | 0.009s |
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestTimingControl::test_wait_control` | 0.008s |
 | ✅ | `tests/integration/test_clock_reset_timing.py::TestMultiClockDomain::test_clock_domain_cdc` | 0.012s |
@@ -111,9 +111,9 @@
 | ✅ | `tests/integration/test_combo_chain.py::TestComboChain::test_combo_invalid_signal` | 0.007s |
 | ✅ | `tests/integration/test_combo_chain.py::TestComboChain::test_combo_multiple_stmts` | 0.011s |
 | ✅ | `tests/integration/test_combo_chain.py::TestComboChain::test_combo_simple_assign` | 0.007s |
-| ✅ | `tests/integration/test_complex_conditions.py::TestNestedIfExtraction::test_if_with_else_if` | 0.015s |
+| ✅ | `tests/integration/test_complex_conditions.py::TestNestedIfExtraction::test_if_with_else_if` | 0.014s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestNestedIfExtraction::test_nested_if_three_levels` | 0.014s |
-| ✅ | `tests/integration/test_complex_conditions.py::TestNestedIfExtraction::test_nested_if_two_levels` | 0.013s |
+| ✅ | `tests/integration/test_complex_conditions.py::TestNestedIfExtraction::test_nested_if_two_levels` | 0.012s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestCaseStatementExtraction::test_case_priority` | 0.009s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestCaseStatementExtraction::test_case_simple` | 0.009s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestCaseStatementExtraction::test_case_unique` | 0.010s |
@@ -123,11 +123,11 @@
 | ✅ | `tests/integration/test_complex_conditions.py::TestMixedConditionsExtraction::test_operator_in_condition` | 0.012s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestComplexPatternExtraction::test_array_index_in_condition` | 0.009s |
 | ✅ | `tests/integration/test_complex_conditions.py::TestComplexPatternExtraction::test_shift_in_condition` | 0.010s |
-| ✅ | `tests/integration/test_complex_conditions.py::TestComplexPatternExtraction::test_ternary_in_if` | 0.013s |
+| ✅ | `tests/integration/test_complex_conditions.py::TestComplexPatternExtraction::test_ternary_in_if` | 0.012s |
 | ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_case` | 0.016s |
-| ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_disable` | 0.009s |
+| ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_disable` | 0.008s |
 | ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_forloop` | 0.008s |
-| ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_nested_if` | 0.017s |
+| ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_nested_if` | 0.016s |
 | ✅ | `tests/integration/test_complex_sequential.py::TestComplexSequential::test_ff_with_while` | 0.010s |
 | ✅ | `tests/integration/test_concat_and_hierarchy.py::TestConcatExtraction::test_concat_four_signals` | 0.012s |
 | ✅ | `tests/integration/test_concat_and_hierarchy.py::TestConcatExtraction::test_concat_two_signals` | 0.008s |
@@ -154,45 +154,45 @@
 | ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_depth_zero_or_none` | 0.008s |
 | ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_instance_connection` | 0.013s |
 | ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_no_loads` | 0.006s |
-| ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_reg_q` | 0.009s |
+| ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_reg_q` | 0.008s |
 | ✅ | `tests/integration/test_fan_query.py::TestFanQuery::test_fanout_single_driver` | 0.009s |
 | ✅ | `tests/integration/test_functions.py::TestFunctions::test_function_recursive` | 0.007s |
 | ✅ | `tests/integration/test_functions.py::TestFunctions::test_function_simple` | 0.008s |
 | ✅ | `tests/integration/test_functions.py::TestFunctions::test_function_with_extends` | 0.007s |
 | ✅ | `tests/integration/test_functions.py::TestFunctions::test_static_function` | 0.007s |
 | ✅ | `tests/integration/test_functions.py::TestFunctions::test_task_simple` | 0.007s |
-| ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_case` | 0.012s |
+| ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_case` | 0.011s |
 | ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_for` | 0.011s |
 | ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_if` | 0.009s |
-| ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_nested` | 0.009s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_added_edges` | 0.014s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_added_nodes` | 0.014s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_diff_reachability` | 0.014s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_forward_reachability` | 0.008s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_forward_reachability_with_depth` | 0.008s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_identical_graphs` | 0.014s |
-| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_removed_nodes` | 0.014s |
-| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_added_node` | 0.010s |
-| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_edge_changed` | 0.009s |
-| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_identical_graphs` | 0.008s |
+| ✅ | `tests/integration/test_generate.py::TestGenerate::test_generate_nested` | 0.011s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_added_edges` | 0.019s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_added_nodes` | 0.018s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_diff_reachability` | 0.021s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_forward_reachability` | 0.012s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_forward_reachability_with_depth` | 0.012s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_identical_graphs` | 0.021s |
+| ✅ | `tests/integration/test_graph_diff.py::TestGraphDiff::test_removed_nodes` | 0.021s |
+| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_added_node` | 0.013s |
+| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_edge_changed` | 0.010s |
+| ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_identical_graphs` | 0.009s |
 | ✅ | `tests/integration/test_graph_diff_health.py::TestStableCore::test_stable_core_removed_node` | 0.011s |
-| ✅ | `tests/integration/test_graph_diff_health.py::TestHealthScore::test_health_score_changed` | 0.013s |
+| ✅ | `tests/integration/test_graph_diff_health.py::TestHealthScore::test_health_score_changed` | 0.012s |
 | ✅ | `tests/integration/test_graph_diff_health.py::TestHealthScore::test_health_score_identical` | 0.004s |
 | ✅ | `tests/integration/test_graph_diff_health.py::TestCouplingWarning::test_coupling_high` | 0.000s |
 | ✅ | `tests/integration/test_graph_diff_health.py::TestCouplingWarning::test_coupling_low` | 0.000s |
 | ✅ | `tests/integration/test_graph_diff_health.py::TestDiffWithHealth::test_complete_health_analysis` | 0.010s |
 | ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_deep_hierarchy` | 0.059s |
-| ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_generate_instantiation` | 0.014s |
+| ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_generate_instantiation` | 0.013s |
 | ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_instantiation_array` | 0.031s |
 | ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_module_with_generics` | 0.013s |
 | ✅ | `tests/integration/test_hierarchy.py::TestHierarchy::test_parameterized_module` | 0.011s |
 | ✅ | `tests/integration/test_instance_connection.py::TestInstanceConnection::test_instance_port_connection` | 0.014s |
-| ✅ | `tests/integration/test_instance_connection.py::TestInstanceConnection::test_multiple_instances` | 0.024s |
+| ✅ | `tests/integration/test_instance_connection.py::TestInstanceConnection::test_multiple_instances` | 0.023s |
 | ✅ | `tests/integration/test_instance_connection.py::TestInstanceConnection::test_signal_trace_through_instance` | 0.013s |
 | ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_array_of_instances` | 0.013s |
 | ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_generate_instance` | 0.013s |
-| ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_multi_instance` | 0.019s |
-| ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_nested_instance` | 0.020s |
+| ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_multi_instance` | 0.018s |
+| ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_nested_instance` | 0.019s |
 | ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_parameterized_instance` | 0.011s |
 | ✅ | `tests/integration/test_instance_hierarchy.py::TestInstanceHierarchy::test_single_instance` | 0.013s |
 | ✅ | `tests/integration/test_interfaces.py::TestInterfaces::test_interface_array` | 0.005s |
@@ -205,8 +205,8 @@
 | ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_chained_instances` | 0.020s |
 | ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_empty_instance` | 0.003s |
 | ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_module_with_ff` | 0.017s |
-| ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_multiple_instances_same_module` | 0.024s |
-| ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_single_instance` | 0.014s |
+| ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_multiple_instances_same_module` | 0.023s |
+| ✅ | `tests/integration/test_module_instance.py::TestModuleInstance::test_single_instance` | 0.013s |
 | ✅ | `tests/integration/test_module_tracer.py::TestModuleTracer::test_find_connected_modules` | 0.013s |
 | ✅ | `tests/integration/test_module_tracer.py::TestModuleTracer::test_trace_module` | 0.013s |
 | ✅ | `tests/integration/test_module_tracer.py::TestModuleTracer::test_trace_port` | 0.007s |
@@ -221,7 +221,7 @@
 | ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_multi_stage_pipeline` | 0.012s |
 | ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_negative_bit_index` | 0.006s |
 | ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_out_of_bounds_index` | 0.006s |
-| ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_single_bit_vector` | 0.007s |
+| ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_single_bit_vector` | 0.006s |
 | ✅ | `tests/integration/test_negative_cases.py::TestBoundaryConditions::test_zero_width_vector` | 0.006s |
 | ✅ | `tests/integration/test_negative_cases.py::TestErrorInputs::test_constant_drive` | 0.007s |
 | ✅ | `tests/integration/test_negative_cases.py::TestErrorInputs::test_self_assign` | 0.007s |
@@ -241,8 +241,8 @@
 | ✅ | `tests/integration/test_operators.py::TestOperators::test_ternary` | 0.011s |
 | ✅ | `tests/integration/test_port_inout.py::TestPortInout::test_inout_and_other_ports_coexist` | 0.007s |
 | ✅ | `tests/integration/test_port_inout.py::TestPortInout::test_inout_port_has_is_port_marker` | 0.012s |
-| ✅ | `tests/integration/test_port_inout.py::TestPortInout::test_inout_port_is_recognized` | 0.014s |
-| ✅ | `tests/integration/test_port_reg_detection.py::TestPortRegDetection::test_bit_select_reg_with_clock_and_comb` | 0.008s |
+| ✅ | `tests/integration/test_port_inout.py::TestPortInout::test_inout_port_is_recognized` | 0.013s |
+| ✅ | `tests/integration/test_port_reg_detection.py::TestPortRegDetection::test_bit_select_reg_with_clock_and_comb` | 0.009s |
 | ✅ | `tests/integration/test_port_reg_detection.py::TestPortRegDetection::test_clock_domain_finds_register` | 0.009s |
 | ✅ | `tests/integration/test_port_reg_detection.py::TestPortRegDetection::test_input_port_is_not_reg` | 0.009s |
 | ✅ | `tests/integration/test_port_reg_detection.py::TestPortRegDetection::test_output_reg_is_port_and_reg` | 0.009s |
@@ -253,7 +253,7 @@
 | ✅ | `tests/integration/test_snapshot.py::TestSignalGraphSerialization::test_roundtrip_simple` | 0.000s |
 | ✅ | `tests/integration/test_snapshot.py::TestSignalGraphSerialization::test_roundtrip_with_modport` | 0.000s |
 | ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_compare` | 0.001s |
-| ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_delete` | 0.000s |
+| ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_delete` | 0.001s |
 | ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_list` | 0.091s |
 | ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_save_and_load` | 0.000s |
 | ✅ | `tests/integration/test_snapshot.py::TestSnapshotManager::test_save_overwrite` | 0.001s |
@@ -261,7 +261,7 @@
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_display` | 0.004s |
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_finish` | 0.004s |
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_floor` | 0.009s |
-| ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_random` | 0.005s |
+| ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_random` | 0.006s |
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_sformatf` | 0.005s |
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_strobe` | 0.007s |
 | ✅ | `tests/integration/test_system_tasks.py::TestSystemTasks::test_time` | 0.005s |
@@ -273,12 +273,12 @@
 | ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_single_bit_vector` | 0.006s |
 | ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_unsized_vector` | 0.006s |
 | ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_vector_input` | 0.006s |
-| ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_vector_internal` | 0.008s |
+| ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_vector_internal` | 0.007s |
 | ✅ | `tests/integration/test_vector_width.py::TestVectorWidth::test_vector_output` | 0.006s |
 | ✅ | `tests/regression/test_advanced_features.py::TestFunctionTask::test_function_call` | 0.007s |
 | ✅ | `tests/regression/test_advanced_features.py::TestFunctionTask::test_function_return` | 0.008s |
 | ✅ | `tests/regression/test_advanced_features.py::TestFunctionTask::test_task_call` | 0.005s |
-| ✅ | `tests/regression/test_advanced_features.py::TestModuleHierarchy::test_module_instantiation` | 0.014s |
+| ✅ | `tests/regression/test_advanced_features.py::TestModuleHierarchy::test_module_instantiation` | 0.013s |
 | ✅ | `tests/regression/test_advanced_features.py::TestModuleHierarchy::test_port_connection` | 0.017s |
 | ✅ | `tests/regression/test_advanced_features.py::TestInterface::test_interface_decl` | 0.007s |
 | ✅ | `tests/regression/test_advanced_features.py::TestInterface::test_modport` | 0.008s |
@@ -288,7 +288,7 @@
 | ✅ | `tests/regression/test_advanced_features.py::TestClass::test_class_method` | 0.009s |
 | ✅ | `tests/regression/test_advanced_features.py::TestInitialBlock::test_initial` | 0.005s |
 | ✅ | `tests/regression/test_advanced_features.py::TestSequenceBlock::test_begin_end` | 0.009s |
-| ✅ | `tests/regression/test_advanced_features.py::TestSequenceBlock::test_nested_begin_end` | 0.011s |
+| ✅ | `tests/regression/test_advanced_features.py::TestSequenceBlock::test_nested_begin_end` | 0.010s |
 | ✅ | `tests/regression/test_advanced_features2.py::TestTaskCall::test_task_drives_signal` | 0.006s |
 | ✅ | `tests/regression/test_advanced_features2.py::TestInterfaceDecl::test_interface_port` | 0.006s |
 | ✅ | `tests/regression/test_advanced_features2.py::TestModport::test_modport_direction` | 0.006s |
@@ -333,13 +333,13 @@
 | ✅ | `tests/regression/test_bit_select_in_always.py::TestBitSelectInAlways::test_if_else_bit_select` | 0.008s |
 | ✅ | `tests/regression/test_bit_select_in_always.py::TestTernaryOperator::test_always_comb_ternary` | 0.011s |
 | ✅ | `tests/regression/test_bit_select_in_always.py::TestTernaryOperator::test_assign_ternary` | 0.011s |
-| ✅ | `tests/regression/test_bit_select_in_always.py::TestTernaryOperator::test_assign_ternary_complex` | 0.015s |
+| ✅ | `tests/regression/test_bit_select_in_always.py::TestTernaryOperator::test_assign_ternary_complex` | 0.014s |
 | ✅ | `tests/regression/test_bit_select_in_always.py::TestConcatLHS::test_assign_concat_lhs` | 0.010s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundary::test_deep_chain` | 0.200s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundary::test_deep_chain` | 0.197s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_empty_module` | 0.001s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_empty_signal_name` | 0.007s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_invalid_signal_name` | 0.007s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundary::test_many_signals` | 0.371s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundary::test_many_signals` | 0.367s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_multi_bit_single` | 0.006s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_orphan_signal` | 0.006s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundary::test_signal_in_invalid_module` | 0.007s |
@@ -349,10 +349,10 @@
 | ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_dollar_in_name` | 0.006s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_function` | 0.008s |
 | ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_generate_for` | 0.008s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_parameterized_module` | 0.010s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_signal_without_module_prefix` | 0.007s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_task` | 0.004s |
-| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_underscore_in_name` | 0.007s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_parameterized_module` | 0.011s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_signal_without_module_prefix` | 0.008s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_task` | 0.005s |
+| ✅ | `tests/regression/test_boundary.py::TestBoundaryExtensive::test_underscore_in_name` | 0.008s |
 | ✅ | `tests/regression/test_case_extraction.py::TestCaseKnownLimitation::test_case_compiles` | 0.010s |
 | ✅ | `tests/regression/test_case_multi_branch.py::TestCaseMultiBranch::test_case_simple` | 0.012s |
 | ✅ | `tests/regression/test_case_multi_branch.py::TestCaseMultiBranch::test_case_two_branch` | 0.010s |
@@ -370,16 +370,16 @@
 | ✅ | `tests/regression/test_clock_reset_edge.py::TestClockResetEdge::test_async_reset_combination` | 0.011s |
 | ✅ | `tests/regression/test_clock_reset_edge.py::TestClockResetEdge::test_nested_always_ff` | 0.015s |
 | ✅ | `tests/regression/test_clock_reset_edge.py::TestClockResetEdge::test_sync_reset` | 0.010s |
-| ✅ | `tests/regression/test_clock_reset_edge.py::TestClockEdgeCreation::test_clock_edge_creation` | 0.008s |
+| ✅ | `tests/regression/test_clock_reset_edge.py::TestClockEdgeCreation::test_clock_edge_creation` | 0.009s |
 | ✅ | `tests/regression/test_clocking.py::TestClocking::test_clocking_declaration` | 0.000s |
 | ✅ | `tests/regression/test_clocking.py::TestClocking::test_clocking_direction` | 0.000s |
 | ✅ | `tests/regression/test_clocking.py::TestClocking::test_clocking_signal_tracking` | 0.011s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_all_classes_exist` | 0.005s |
-| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_all_constraint_expression_nodes` | 0.005s |
+| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_all_constraint_expression_nodes` | 0.004s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_class_hierarchy_extends` | 0.007s |
-| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_composition_edges` | 0.005s |
+| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_composition_edges` | 0.004s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_constraint_blocks_exist` | 0.005s |
-| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_constraint_override_replacement` | 0.005s |
+| ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_constraint_override_replacement` | 0.004s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestComplexInheritance::test_property_nodes` | 0.005s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestMethodOverride::test_method_override_detection` | 0.000s |
 | ✅ | `tests/regression/test_complex_inheritance.py::TestMethodOverride::test_virtual_methods_detected` | 0.000s |
@@ -395,7 +395,7 @@
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_composition_with_inheritance` | 0.003s |
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_composition_with_member_instance` | 0.002s |
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_composition_with_queue` | 0.002s |
-| ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_different_types_composition` | 0.004s |
+| ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_different_types_composition` | 0.003s |
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_multi_declarator_with_composition` | 0.002s |
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_multiple_composition_same_level` | 0.002s |
 | ✅ | `tests/regression/test_composition_chain.py::TestCompositionChainComplex::test_three_level_composition` | 0.004s |
@@ -415,7 +415,7 @@
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintBlockNodes::test_constraint_block_node` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintBlockNodes::test_multiple_constraint_blocks` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintExprNodes::test_expression_constraint_node` | 0.001s |
-| ✅ | `tests/regression/test_constraint_complete.py::TestConstraintExprNodes::test_implication_constraint_node` | 0.002s |
+| ✅ | `tests/regression/test_constraint_complete.py::TestConstraintExprNodes::test_implication_constraint_node` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintIfNodes::test_if_constraint_node` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintIfNodes::test_nested_if_constraint_nodes` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintEdges::test_class_to_property_edges` | 0.001s |
@@ -483,12 +483,12 @@
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintNegativeCases::test_empty_constraint_block_no_crash` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintNegativeCases::test_multiple_empty_constraints` | 0.001s |
 | ✅ | `tests/regression/test_constraint_complete.py::TestConstraintNegativeCases::test_no_constraint_class_no_crash` | 0.001s |
-| ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintIfElseDeepParsing::test_nested_if_else_constraint` | 0.001s |
+| ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintIfElseDeepParsing::test_nested_if_else_constraint` | 0.002s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintIfElseDeepParsing::test_simple_if_else_constraint` | 0.001s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintImplicationDeepParsing::test_simple_implication` | 0.001s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintInsideDistribution::test_dist_constraint` | 0.001s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintInsideDistribution::test_inside_constraint` | 0.001s |
-| ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintUniquenessSolveBefore::test_solve_before_constraint` | 0.001s |
+| ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintUniquenessSolveBefore::test_solve_before_constraint` | 0.002s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestConstraintUniquenessSolveBefore::test_unique_constraint` | 0.001s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestClassExtendsHierarchy::test_extends_hierarchy` | 0.001s |
 | ✅ | `tests/regression/test_constraint_deep_parsing.py::TestClassExtendsHierarchy::test_simple_extends` | 0.000s |
@@ -545,12 +545,12 @@
 | ✅ | `tests/regression/test_covergroup_enhanced.py::TestCovergroupEnhanced::test_cross_coverage` | 0.000s |
 | ✅ | `tests/regression/test_covergroup_enhanced.py::TestCovergroupEnhanced::test_ignore_bins` | 0.000s |
 | ✅ | `tests/regression/test_covergroup_enhanced.py::TestCovergroupEnhanced::test_illegal_bins` | 0.000s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_cross_module_connection` | 0.016s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_instances_exist` | 0.015s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_port_mapping` | 0.015s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePath::test_internal_signal_clock_edge` | 0.015s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_cross_module_connection` | 0.015s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_instances_exist` | 0.014s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestModuleInstanceGraph::test_port_mapping` | 0.014s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePath::test_internal_signal_clock_edge` | 0.014s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePath::test_path_resolution` | 0.015s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestHierarchicalPort::test_multi_level_hierarchy` | 0.011s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestHierarchicalPort::test_multi_level_hierarchy` | 0.010s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestHierarchicalPort::test_simple_hierarchy` | 0.007s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestNegativeCases::test_no_unconnected_modules` | 0.004s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestNegativeCases::test_parameterized_module` | 0.008s |
@@ -575,7 +575,7 @@
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_driver_cross_module_boundary` | 0.013s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_driver_multi_hop` | 0.018s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_instance_parent_relationship` | 0.008s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_load_chain_complete_path` | 0.019s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_load_chain_complete_path` | 0.020s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_load_cross_module_boundary` | 0.011s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_load_multi_level` | 0.010s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_mig_all_instances` | 0.008s |
@@ -585,18 +585,18 @@
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_mig_port_info` | 0.008s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_multiple_instances` | 0.013s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_port_to_internal_mapping` | 0.008s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_simple_two_module` | 0.008s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleBasicFunctions::test_simple_two_module` | 0.007s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleSignalFlow::test_signal_driver_tracking` | 0.011s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleSignalFlow::test_wire_connection` | 0.007s |
-| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePortTypes::test_clock_port` | 0.007s |
+| ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePortTypes::test_clock_port` | 0.006s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePortTypes::test_input_port` | 0.007s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePortTypes::test_output_port` | 0.006s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModulePathFinding::test_find_path_simple` | 0.015s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleNegativeCases::test_empty_module` | 0.003s |
 | ✅ | `tests/regression/test_cross_module_tracking.py::TestCrossModuleNegativeCases::test_uninstantiated_module` | 0.006s |
-| ✅ | `tests/regression/test_dot_access_enhanced.py::TestDotAccessEnhanced::test_array_element_access` | 0.006s |
+| ✅ | `tests/regression/test_dot_access_enhanced.py::TestDotAccessEnhanced::test_array_element_access` | 0.005s |
 | ✅ | `tests/regression/test_dot_access_enhanced.py::TestDotAccessEnhanced::test_interface_multiple_signals` | 0.006s |
-| ✅ | `tests/regression/test_dot_access_enhanced.py::TestDotAccessEnhanced::test_struct_member_access` | 0.009s |
+| ✅ | `tests/regression/test_dot_access_enhanced.py::TestDotAccessEnhanced::test_struct_member_access` | 0.008s |
 | ✅ | `tests/regression/test_dpi.py::TestDPI::test_dpi_function_import` | 0.000s |
 | ✅ | `tests/regression/test_dpi.py::TestDPI::test_dpi_signal_tracking` | 0.005s |
 | ✅ | `tests/regression/test_dpi.py::TestDPI::test_dpi_task_import` | 0.000s |
@@ -608,7 +608,7 @@
 | ✅ | `tests/regression/test_edge_semantics.py::TestClockDomainOnEdge::test_always_ff_clock_on_edge` | 0.009s |
 | ✅ | `tests/regression/test_edge_semantics.py::TestClockDomainOnEdge::test_assign_no_clock` | 0.007s |
 | ✅ | `tests/regression/test_edge_semantics.py::TestConditionOnEdge::test_if_else_condition` | 0.011s |
-| ✅ | `tests/regression/test_edge_semantics.py::TestConditionOnEdge::test_nested_if_condition` | 0.014s |
+| ✅ | `tests/regression/test_edge_semantics.py::TestConditionOnEdge::test_nested_if_condition` | 0.015s |
 | ✅ | `tests/regression/test_edge_semantics.py::TestConditionOnEdge::test_partial_if_no_else` | 0.009s |
 | ✅ | `tests/regression/test_edge_semantics.py::TestCombinedClockAndCondition::test_ff_if_else` | 0.013s |
 | ✅ | `tests/regression/test_edge_semantics.py::TestCombinedClockAndCondition::test_ff_with_if` | 0.011s |
@@ -616,7 +616,7 @@
 | ✅ | `tests/regression/test_generate.py::TestGenerate::test_generate_for` | 0.010s |
 | ✅ | `tests/regression/test_generate.py::TestGenerate::test_generate_if` | 0.007s |
 | ✅ | `tests/regression/test_generate_case.py::TestGenerateCase::test_generate_case_declaration` | 0.000s |
-| ✅ | `tests/regression/test_generate_case.py::TestGenerateCase::test_generate_case_signal_tracking` | 0.014s |
+| ✅ | `tests/regression/test_generate_case.py::TestGenerateCase::test_generate_case_signal_tracking` | 0.015s |
 | ✅ | `tests/regression/test_generate_enhanced.py::TestGenerateEnhanced::test_generate_for_signal_tracking` | 0.011s |
 | ✅ | `tests/regression/test_generate_enhanced.py::TestGenerateEnhanced::test_generate_if_else_signal_tracking` | 0.010s |
 | ✅ | `tests/regression/test_generate_if.py::TestGenerateIf::test_generate_if_else_assign` | 0.010s |
@@ -624,11 +624,11 @@
 | ✅ | `tests/regression/test_generate_if.py::TestGenerateIf::test_simple_generate_if_assign` | 0.008s |
 | ✅ | `tests/regression/test_initial_fix.py::TestInitialBlock::test_initial_simple` | 0.005s |
 | ✅ | `tests/regression/test_interface.py::TestInterface::test_interface_declaration` | 0.000s |
-| ✅ | `tests/regression/test_interface.py::TestInterface::test_interface_dot_access` | 0.004s |
+| ✅ | `tests/regression/test_interface.py::TestInterface::test_interface_dot_access` | 0.005s |
 | ✅ | `tests/regression/test_interface.py::TestInterface::test_interface_port_in_module` | 0.000s |
 | ✅ | `tests/regression/test_interface.py::TestInterface::test_modport_direction` | 0.002s |
 | ✅ | `tests/regression/test_interface_advanced.py::TestInterfaceArray::test_interface_array` | 0.006s |
-| ✅ | `tests/regression/test_interface_advanced.py::TestModportDirection::test_modport_master_output` | 0.006s |
+| ✅ | `tests/regression/test_interface_advanced.py::TestModportDirection::test_modport_master_output` | 0.007s |
 | ✅ | `tests/regression/test_interface_advanced.py::TestModportDirection::test_modport_slave_input` | 0.006s |
 | ✅ | `tests/regression/test_interface_basic.py::TestInterfaceBasic::test_simple_interface` | 0.006s |
 | ✅ | `tests/regression/test_interface_dot_access.py::TestInterfaceDotAccess::test_interface_signal_assignment` | 0.006s |
@@ -644,14 +644,14 @@
 | ✅ | `tests/regression/test_module_hierarchy_fix.py::TestModuleHierarchy::test_port_connection_named` | 0.017s |
 | ✅ | `tests/regression/test_module_hierarchy_fix.py::TestModuleHierarchy::test_port_connection_positional` | 0.013s |
 | ✅ | `tests/regression/test_module_hierarchy_fix.py::TestCrossModuleTracing::test_simple_instance` | 0.013s |
-| ✅ | `tests/regression/test_multi_clock_domain.py::TestMultiClockDomain::test_clock_mux` | 0.015s |
+| ✅ | `tests/regression/test_multi_clock_domain.py::TestMultiClockDomain::test_clock_mux` | 0.016s |
 | ✅ | `tests/regression/test_multi_clock_domain.py::TestMultiClockDomain::test_different_clock_domains` | 0.015s |
 | ✅ | `tests/regression/test_multi_clock_domain.py::TestMultiClockDomain::test_dual_clock_registers` | 0.015s |
 | ✅ | `tests/regression/test_multi_clock_domain.py::TestAsyncCrossDomain::test_async_signals` | 0.009s |
-| ✅ | `tests/regression/test_opentitan_aes.py::TestOpenTitanAES::test_aes_basic_structure` | 0.021s |
-| ✅ | `tests/regression/test_opentitan_aes.py::TestOpenTitanAES::test_aes_signal_chain` | 0.013s |
+| ✅ | `tests/regression/test_opentitan_aes.py::TestOpenTitanAES::test_aes_basic_structure` | 0.020s |
+| ✅ | `tests/regression/test_opentitan_aes.py::TestOpenTitanAES::test_aes_signal_chain` | 0.012s |
 | ✅ | `tests/regression/test_opentitan_aes_sub_bytes.py::TestAESSubBytes::test_sub_bytes_basic_assign` | 0.006s |
-| ✅ | `tests/regression/test_opentitan_aes_sub_bytes.py::TestAESSubBytes::test_sub_bytes_genvar_iteration` | 0.013s |
+| ✅ | `tests/regression/test_opentitan_aes_sub_bytes.py::TestAESSubBytes::test_sub_bytes_genvar_iteration` | 0.012s |
 | ✅ | `tests/regression/test_opentitan_aes_sub_bytes.py::TestAESSubBytes::test_sub_bytes_multi_array` | 0.006s |
 | ✅ | `tests/regression/test_opentitan_aes_sub_bytes.py::TestAESSubBytes::test_sub_bytes_prd_masking` | 0.009s |
 | ✅ | `tests/regression/test_opentitan_i2c.py::TestOpenTitanI2C::test_i2c_basic_structure` | 0.033s |
@@ -755,7 +755,7 @@
 | ✅ | `tests/regression/test_unsupported_syntax.py::TestVirtualInterface::test_virtual_if` | 0.006s |
 | ✅ | `tests/regression/test_unsupported_syntax.py::TestGenerateIf::test_generate` | 0.010s |
 | ✅ | `tests/regression/test_while_loop.py::TestWhileLoop::test_while_basic` | 0.007s |
-| ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_complex_parameter_expression` | 0.009s |
+| ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_complex_parameter_expression` | 0.008s |
 | ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_nested_parameter_reference` | 0.005s |
 | ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_package_parameter` | 0.006s |
 | ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_package_with_functions` | 0.008s |
@@ -764,11 +764,11 @@
 | ✅ | `tests/unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_typedef_struct_handling` | 0.013s |
 | ✅ | `tests/unit/test_clock_domain.py::TestClockDomain::test_clock_detection` | 0.009s |
 | ✅ | `tests/unit/test_clock_domain.py::TestClockDomain::test_single_clock_domain` | 0.009s |
-| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_block_comment` | 0.063s |
+| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_block_comment` | 0.087s |
 | ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_dangle_comment` | 0.048s |
-| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_psum_comment` | 0.050s |
+| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_psum_comment` | 0.049s |
 | ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_single_line_comment` | 0.049s |
-| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_multiple_instances_mixed_comments` | 0.050s |
+| ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_multiple_instances_mixed_comments` | 0.049s |
 | ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_port_direction_with_leading_comment` | 0.048s |
 | ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_port_direction_with_multiline_comment` | 0.048s |
 | ✅ | `tests/unit/test_comment_handling.py::TestCommentHandling::test_port_direction_with_trailing_comment` | 0.048s |
@@ -808,18 +808,18 @@
 | ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_complex_expr` | 0.048s |
 | ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_divide` | 0.048s |
 | ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_in_width` | 0.048s |
-| ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_param_simple` | 0.049s |
+| ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_param_simple` | 0.048s |
 | ✅ | `tests/unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_subtract` | 0.048s |
 | ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_cva6_parameter` | 0.048s |
 | ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_localparam` | 0.048s |
 | ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_multiple_parameters` | 0.049s |
 | ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_no_parameters` | 0.048s |
-| ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_simple_parameter` | 0.048s |
-| ✅ | `tests/unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_comb` | 0.001s |
+| ✅ | `tests/unit/test_parameter_extraction.py::TestParameterExtraction::test_simple_parameter` | 0.049s |
+| ✅ | `tests/unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_comb` | 0.000s |
 | ✅ | `tests/unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_ff` | 0.000s |
 | ✅ | `tests/unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_latch` | 0.000s |
 | ✅ | `tests/unit/test_query_load.py::TestLoadTracer::test_get_loads_api` | 0.009s |
-| ✅ | `tests/unit/test_query_load.py::TestLoadTracer::test_multi_load` | 0.014s |
+| ✅ | `tests/unit/test_query_load.py::TestLoadTracer::test_multi_load` | 0.013s |
 | ✅ | `tests/unit/test_query_load.py::TestLoadTracer::test_no_load` | 0.009s |
 | ✅ | `tests/unit/test_query_load.py::TestLoadTracer::test_simple_chain` | 0.009s |
 | ✅ | `tests/unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_always_blocks` | 0.000s |
@@ -835,7 +835,7 @@
 | ✅ | `tests/unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_concatenation` | 0.000s |
 | ✅ | `tests/unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_conditional` | 0.000s |
 | ✅ | `tests/unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_generic_visit` | 0.000s |
-| ✅ | `tests/unit/test_signal_tracer.py::TestSignalTracer::test_assign_continous_drivers` | 0.008s |
+| ✅ | `tests/unit/test_signal_tracer.py::TestSignalTracer::test_assign_continous_drivers` | 0.007s |
 | ✅ | `tests/unit/test_signal_tracer.py::TestSignalTracer::test_assign_continous_loads` | 0.007s |
 | ✅ | `tests/unit/test_signal_tracer.py::TestSignalTracer::test_confidence_high_when_drivers_found` | 0.007s |
 | ✅ | `tests/unit/test_signal_tracer.py::TestSignalTracer::test_confidence_uncertain_when_no_drivers` | 0.007s |
@@ -852,11 +852,11 @@
 | ✅ | `tests/unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_generic_visit_none` | 0.000s |
 | ✅ | `tests/unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_collect_empty` | 0.000s |
 | ✅ | `tests/unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_always_comb` | 0.000s |
-| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_complex_param_expression` | 0.050s |
+| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_complex_param_expression` | 0.049s |
 | ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_literal_width` | 0.049s |
-| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_multiple_widths` | 0.048s |
+| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_multiple_widths` | 0.049s |
 | ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_parameterized_width` | 0.048s |
-| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_simple_param_width` | 0.048s |
+| ✅ | `tests/unit/test_width_extraction.py::TestWidthExtraction::test_simple_param_width` | 0.049s |
 | ⏭️ | `tests/integration/openchip_qa_full_test.py::test_project[project8]` | - |
 
 ---

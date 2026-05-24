@@ -3996,6 +3996,51 @@ class SignalExpressionVisitor(BaseVisitor):
         """DirectiveTrivia: directive trivia"""
         return SignalResult()
     
+    # Statement block kinds
+    @on('SequentialStatementBlock')
+    def extract_sequential_statement_block(self, node) -> SignalResult:
+        """SequentialStatementBlock: sequential statement block"""
+        result = SignalResult()
+        stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
+        if stmts and hasattr(stmts, '__iter__'):
+            for stmt in stmts:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('JoinAllStatementBlock')
+    def extract_join_all_statement_block(self, node) -> SignalResult:
+        """JoinAllStatementBlock: join all statement block"""
+        result = SignalResult()
+        stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
+        if stmts and hasattr(stmts, '__iter__'):
+            for stmt in stmts:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('JoinAnyStatementBlock')
+    def extract_join_any_statement_block(self, node) -> SignalResult:
+        """JoinAnyStatementBlock: join any statement block"""
+        result = SignalResult()
+        stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
+        if stmts and hasattr(stmts, '__iter__'):
+            for stmt in stmts:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('JoinNoneStatementBlock')
+    def extract_join_none_statement_block(self, node) -> SignalResult:
+        """JoinNoneStatementBlock: join none statement block"""
+        result = SignalResult()
+        stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
+        if stmts and hasattr(stmts, '__iter__'):
+            for stmt in stmts:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
