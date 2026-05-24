@@ -15,8 +15,8 @@ _(无)_
 
 ### P2 - 中优先级
 
-#### [ ] SignalExpressionVisitor 架构重构
-- **类型**: 重构
+#### [ ] SignalExpressionVisitor 单 dispatch 重构
+- **类型**: 重构 (优化，非必需)
 - **描述**: 将双接口 (visit + get_all_signals) 重构为单 dispatch + SignalResult
 - **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md`
 - **预期收益**: 
@@ -24,13 +24,14 @@ _(无)_
   - 消除别名映射重复
   - 提升可测试性
 - **风险**: 中等 (需迁移 40+ handlers)
-- **前置条件**: 当前系统稳定，834 测试通过
+- **状态**: 当前系统已使用 Visitor 模式，无 Legacy fallback
+- **前置条件**: 可选重构，当前系统稳定
 
-#### [ ] StatementCollectorVisitor 架构对齐
+#### [ ] StatementCollectorVisitor 架构对齐 (可选)
 - **类型**: 重构
-- **描述**: 参照 SignalExpressionVisitor 重构方案，对 StatementCollectorVisitor 进行类似改进
+- **描述**: 参照 SignalExpressionVisitor 重构方案进行类似改进
 - **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md`
-- **前置条件**: SignalExpressionVisitor 重构完成
+- **前置条件**: 可选，当前系统工作正常
 
 ---
 
