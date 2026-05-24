@@ -9166,6 +9166,119 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(expr))
         return result
     
+    # Unary operators
+    @on('UnaryPlusExpression')
+    def extract_unary_plus_expression_stmt(self, node) -> SignalResult:
+        """UnaryPlusExpression: unary plus expression +"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryMinusExpression')
+    def extract_unary_minus_expression_stmt(self, node) -> SignalResult:
+        """UnaryMinusExpression: unary minus expression -"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseNotExpression')
+    def extract_unary_bitwise_not_expression(self, node) -> SignalResult:
+        """UnaryBitwiseNotExpression: unary bitwise not expression ~"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryLogicalNotExpression')
+    def extract_unary_logical_not_expression(self, node) -> SignalResult:
+        """UnaryLogicalNotExpression: unary logical not expression !"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseAndExpression')
+    def extract_unary_bitwise_and_expression(self, node) -> SignalResult:
+        """UnaryBitwiseAndExpression: unary bitwise and expression &"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseOrExpression')
+    def extract_unary_bitwise_or_expression(self, node) -> SignalResult:
+        """UnaryBitwiseOrExpression: unary bitwise or expression |"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseXorExpression')
+    def extract_unary_bitwise_xor_expression(self, node) -> SignalResult:
+        """UnaryBitwiseXorExpression: unary bitwise xor expression ^"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseNandExpression')
+    def extract_unary_bitwise_nand_expression(self, node) -> SignalResult:
+        """UnaryBitwiseNandExpression: unary bitwise nand expression ~&"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseNorExpression')
+    def extract_unary_bitwise_nor_expression(self, node) -> SignalResult:
+        """UnaryBitwiseNorExpression: unary bitwise nor expression ~|"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryBitwiseXnorExpression')
+    def extract_unary_bitwise_xnor_expression(self, node) -> SignalResult:
+        """UnaryBitwiseXnorExpression: unary bitwise xnor expression ^~"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryPreincrementExpression')
+    def extract_unary_preincrement_expression(self, node) -> SignalResult:
+        """UnaryPreincrementExpression: pre-increment expression ++expr"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryPredecrementExpression')
+    def extract_unary_predecrement_expression(self, node) -> SignalResult:
+        """UnaryPredecrementExpression: pre-decrement expression --expr"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostincrementExpression')
+    def extract_postincrement_expression_stmt(self, node) -> SignalResult:
+        """PostincrementExpression: post-increment expression expr++"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostdecrementExpression')
+    def extract_postdecrement_expression_stmt(self, node) -> SignalResult:
+        """PostdecrementExpression: post-decrement expression expr--"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
