@@ -182,3 +182,91 @@ def extract_assignment_expression(self, node) -> SignalResult:
 - 最符合 visitor 模式原意
 - Handler 职责最单一
 - 长期维护成本最低
+---
+
+## 附录：pyslang 原生 visitor API
+
+### pyslang.SyntaxNode.visit()
+
+pyslang 内置的 AST 遍历方法：
+
+```python
+node.visit(callback) -> None
+```
+
+**参数**：
+- `callback(node)`: 回调函数，接收当前节点
+
+**返回值（VisitAction）**：
+| Action | 行为 |
+|--------|------|
+| `Advance` | 继续遍历（默认） |
+| `Skip` | 跳过当前节点的子节点 |
+| `Interrupt` | 中断遍历 |
+
+### 示例
+
+```python
+import pyslang
+
+tree = pyslang.SyntaxTree.fromText(sv_code)
+root = tree.root
+
+# 基本遍历
+def visitor(node):
+    print(f'{node.kind.name}')
+    return pyslang.VisitAction.Advance
+
+root.visit(visitor)
+
+# 选择性遍历 - 只处理特定类型
+def visitor(node):
+    if 'Expression' in node.kind.name:
+        # 处理表达式
+        return pyslang.VisitAction.Advance
+    return pyslang.VisitAction.Skip  # 跳过无关节点
+
+# 中断遍历
+def visitor(node):
+    if node.kind.name == 'TargetModule':
+        return pyslang.VisitAction.Interrupt  # 找到目标后停止
+    return pyslang.VisitAction.Advance
+```
+
+### 与 @on handler 的关系
+
+| pyslang.visit() | @on handler |
+|-----------------|-------------|
+| 回调函数 | handler 方法 |
+| 手动 switch case | 自动分派 |
+| 返回 VisitAction | 不需要返回值 |
+
+### 新方案：基于 pyslang.visit() 的 handler
+
+```python
+class SignalVisitor:
+    def visit(self, node):
+        """主入口 - 对应 pyslang.visit()"""
+        kind_name = node.kind.name
+        handler = self._get_handler(kind_name)
+        if handler:
+            handler(node)
+        return pyslang.VisitAction.Advance
+    
+    def _get_handler(self, kind_name):
+        """获取对应的 handler"""
+        method_name = f'handle_{kind_name}'
+        return getattr(self, method_name, None)
+    
+    @handle('IdentifierName')
+    def handle_identifier_name(self, node):
+        """只处理当前节点，框架自动遍历"""
+        # 处理逻辑
+        pass
+```
+
+### 优势
+
+1. **利用 pyslang 原生 API** - 不需要自己实现遍历
+2. **VisitAction 控制** - 可以 Skip/Interrupt
+3. **一致性** - 与 pyslang 设计一致
