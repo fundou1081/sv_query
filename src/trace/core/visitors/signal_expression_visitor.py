@@ -7458,6 +7458,125 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(right))
         return result
     
+    # Case equality operators
+    @on('CaseEqualityExpr')
+    def extract_case_equality_expr(self, node) -> SignalResult:
+        """CaseEqualityExpr: case equality expression ==="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('CaseInequalityExpr')
+    def extract_case_inequality_expr(self, node) -> SignalResult:
+        """CaseInequalityExpr: case inequality expression !=="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Ternary/Conditional expression
+    @on('ConditionalExpr')
+    def extract_conditional_expr(self, node) -> SignalResult:
+        """ConditionalExpr: conditional expression cond ? expr1 : expr2"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        left = getattr(node, 'left', None) or getattr(node, 'true', None)
+        if left:
+            result = result.merge(self.extract(left))
+        right = getattr(node, 'right', None) or getattr(node, 'false', None)
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Cast expressions
+    @on('CastExpr')
+    def extract_cast_expr_stmt(self, node) -> SignalResult:
+        """CastExpr: cast expression"""
+        result = SignalResult()
+        cast = getattr(node, 'cast', None) or getattr(node, 'type', None)
+        if cast:
+            result = result.merge(self.extract(cast))
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ConstantCastExpr')
+    def extract_constant_cast_expr(self, node) -> SignalResult:
+        """ConstantCastExpr: constant cast expression"""
+        result = SignalResult()
+        cast = getattr(node, 'cast', None) or getattr(node, 'type', None)
+        if cast:
+            result = result.merge(self.extract(cast))
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('DynamicArrayCastExpr')
+    def extract_dynamic_array_cast_expr(self, node) -> SignalResult:
+        """DynamicArrayCastExpr: dynamic array cast expression"""
+        result = SignalResult()
+        cast = getattr(node, 'cast', None) or getattr(node, 'type', None)
+        if cast:
+            result = result.merge(self.extract(cast))
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('StaticCastExpr')
+    def extract_static_cast_expr(self, node) -> SignalResult:
+        """StaticCastExpr: static cast expression"""
+        result = SignalResult()
+        cast = getattr(node, 'cast', None) or getattr(node, 'type', None)
+        if cast:
+            result = result.merge(self.extract(cast))
+        expr = getattr(node, 'expr', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # Signature expression
+    @on('SignatureExpression')
+    def extract_signature_expression(self, node) -> SignalResult:
+        """SignatureExpression: signature expression"""
+        return SignalResult()
+    
+    # Tagged union expression
+    @on('TaggedUnionExpr')
+    def extract_tagged_union_expr(self, node) -> SignalResult:
+        """TaggedUnionExpr: tagged union expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'value', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    # With expression
+    @on('WithExpression')
+    def extract_with_expression_stmt(self, node) -> SignalResult:
+        """WithExpression: with expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        with_clause = getattr(node, 'with', None) or getattr(node, 'clause', None)
+        if with_clause:
+            result = result.merge(self.extract(with_clause))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
