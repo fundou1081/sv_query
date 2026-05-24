@@ -4172,6 +4172,89 @@ class SignalExpressionVisitor(BaseVisitor):
     def extract_virtual_interface_type(self, node) -> SignalResult:
         """VirtualInterfaceType: virtual interface type"""
         return SignalResult()
+
+    
+    @on('Declarator')
+    def extract_declarator(self, node) -> SignalResult:
+        """Declarator: variable declarator"""
+        result = SignalResult()
+        name = getattr(node, 'name', None) or getattr(node, 'symbol', None)
+        if name:
+            if hasattr(name, 'name'):
+                result.add_signal(str(name.name))
+            else:
+                result.add_signal(str(name))
+        return result
+    
+    @on('HierarchicalInstance')
+    def extract_hierarchical_instance(self, node) -> SignalResult:
+        """HierarchicalInstance: module instance"""
+        result = SignalResult()
+        name = getattr(node, 'name', None)
+        if name:
+            result.add_signal(str(name))
+        return result
+    
+    @on('ImplicitAnsiPort')
+    def extract_implicit_ansi_port(self, node) -> SignalResult:
+        """ImplicitAnsiPort: implicit ansi port"""
+        result = SignalResult()
+        name = getattr(node, 'name', None)
+        if name:
+            result.add_signal(str(name))
+        return result
+    
+    @on('ImplicitNonAnsiPort')
+    def extract_implicit_non_ansi_port(self, node) -> SignalResult:
+        """ImplicitNonAnsiPort: implicit non-ansi port"""
+        result = SignalResult()
+        name = getattr(node, 'name', None)
+        if name:
+            result.add_signal(str(name))
+        return result
+    
+    @on('NamedType')
+    def extract_named_type(self, node) -> SignalResult:
+        """NamedType: named type"""
+        result = SignalResult()
+        name = getattr(node, 'name', None)
+        if name:
+            result.add_signal(str(name))
+        return result
+    
+    @on('SeparatedList')
+    def extract_separated_list(self, node) -> SignalResult:
+        """SeparatedList: separated list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'elements', None)
+        if items:
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('SyntaxList')
+    def extract_syntax_list(self, node) -> SignalResult:
+        """SyntaxList: syntax list"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'elements', None)
+        if items:
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('VariableDimension')
+    def extract_variable_dimension(self, node) -> SignalResult:
+        """VariableDimension: variable dimension"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
     
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
