@@ -5393,6 +5393,179 @@ class SignalExpressionVisitor(BaseVisitor):
         """DefaultFunctionPort: default function port"""
         return SignalResult()
     
+    # Case and generate constructs
+    @on('CaseStatement')
+    def extract_case_statement_stmt(self, node) -> SignalResult:
+        """CaseStatement: case statement"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('CaseGenerate')
+    def extract_case_generate(self, node) -> SignalResult:
+        """CaseGenerate: case generate construct"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('DefaultCaseItem')
+    def extract_default_case_item(self, node) -> SignalResult:
+        """DefaultCaseItem: default case item"""
+        result = SignalResult()
+        stmts = getattr(node, 'statements', None) or getattr(node, 'body', None)
+        if stmts and hasattr(stmts, '__iter__'):
+            for stmt in stmts:
+                if stmt:
+                    result = result.merge(self.extract(stmt))
+        return result
+    
+    @on('DefaultPropertyCaseItem')
+    def extract_default_property_case_item(self, node) -> SignalResult:
+        """DefaultPropertyCaseItem: default property case item"""
+        return SignalResult()
+    
+    # Assertion item ports
+    @on('AssertionItemPort')
+    def extract_assertion_item_port(self, node) -> SignalResult:
+        """AssertionItemPort: assertion item port"""
+        return SignalResult()
+    
+    @on('AssertionItemPortList')
+    def extract_assertion_item_port_list(self, node) -> SignalResult:
+        """AssertionItemPortList: assertion item port list"""
+        return SignalResult()
+    
+    @on('ConcurrentAssertionMember')
+    def extract_concurrent_assertion_member(self, node) -> SignalResult:
+        """ConcurrentAssertionMember: concurrent assertion member"""
+        return SignalResult()
+    
+    # Coverage constructs
+    @on('CovergroupDeclaration')
+    def extract_covergroup_declaration(self, node) -> SignalResult:
+        """CovergroupDeclaration: covergroup declaration"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'coverpoints', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('Coverpoint')
+    def extract_coverpoint(self, node) -> SignalResult:
+        """Coverpoint: coverpoint"""
+        result = SignalResult()
+        transition = getattr(node, 'transition', None) or getattr(node, 'expr', None)
+        if transition:
+            result = result.merge(self.extract(transition))
+        return result
+    
+    @on('CoverCross')
+    def extract_cover_cross(self, node) -> SignalResult:
+        """CoverCross: cover cross"""
+        return SignalResult()
+    
+    @on('CoverageOption')
+    def extract_coverage_option(self, node) -> SignalResult:
+        """CoverageOption: coverage option"""
+        return SignalResult()
+    
+    @on('CoverageIffClause')
+    def extract_coverage_iff_clause(self, node) -> SignalResult:
+        """CoverageIffClause: coverage iff clause"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'condition', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('BlockCoverageEvent')
+    def extract_block_coverage_event(self, node) -> SignalResult:
+        """BlockCoverageEvent: block coverage event"""
+        return SignalResult()
+    
+    # Bad and invalid expressions
+    @on('BadExpression')
+    def extract_bad_expression(self, node) -> SignalResult:
+        """BadExpression: bad expression"""
+        return SignalResult()
+    
+    # Binary block event expression
+    @on('BinaryBlockEventExpression')
+    def extract_binary_block_event_expression(self, node) -> SignalResult:
+        """BinaryBlockEventExpression: binary block event expression"""
+        return SignalResult()
+    
+    @on('BinaryEventExpression')
+    def extract_binary_event_expression(self, node) -> SignalResult:
+        """BinaryEventExpression: binary event expression"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    # Blocking event trigger
+    @on('BlockingEventTriggerStatement')
+    def extract_blocking_event_trigger_statement(self, node) -> SignalResult:
+        """BlockingEventTriggerStatement: blocking event trigger"""
+        event = getattr(node, 'event', None) or getattr(node, 'expr', None)
+        if event:
+            return self.extract(event)
+        return SignalResult()
+    
+    # Default disable declaration
+    @on('DefaultDisableDeclaration')
+    def extract_default_disable_declaration(self, node) -> SignalResult:
+        """DefaultDisableDeclaration: default disable declaration"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'disable', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Conditional pattern
+    @on('ConditionalPattern')
+    def extract_conditional_pattern_stmt(self, node) -> SignalResult:
+        """ConditionalPattern: conditional pattern"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    # Assignment pattern items
+    @on('AssignmentPatternItem')
+    def extract_assignment_pattern_item(self, node) -> SignalResult:
+        """AssignmentPatternItem: assignment pattern item"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        init = getattr(node, 'init', None) or getattr(node, 'value', None)
+        if init:
+            result = result.merge(self.extract(init))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
