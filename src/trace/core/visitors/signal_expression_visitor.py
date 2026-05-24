@@ -7577,6 +7577,110 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(with_clause))
         return result
     
+    # Randomize method expressions
+    @on('RandomizeMethodExpr')
+    def extract_randomize_method_expr(self, node) -> SignalResult:
+        """RandomizeMethodExpr: randomize() method expression"""
+        result = SignalResult()
+        with_expr = getattr(node, 'with', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        return result
+    
+    @on('PrerandomizeMethodExpr')
+    def extract_prerandomize_method_expr(self, node) -> SignalResult:
+        """PrerandomizeMethodExpr: pre_randomize() method expression"""
+        return SignalResult()
+    
+    @on('PostrandomizeMethodExpr')
+    def extract_postrandomize_method_expr(self, node) -> SignalResult:
+        """PostrandomizeMethodExpr: post_randomize() method expression"""
+        return SignalResult()
+    
+    # Array method expressions
+    @on('ArrayMethodExpr')
+    def extract_array_method_expr(self, node) -> SignalResult:
+        """ArrayMethodExpr: array method expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        with_expr = getattr(node, 'with', None)
+        if with_expr:
+            result = result.merge(self.extract(with_expr))
+        return result
+    
+    @on('ArrayAndMethodExpr')
+    def extract_array_and_method_expr_stmt(self, node) -> SignalResult:
+        """ArrayAndMethodExpr: array.and() method expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ArrayOrMethodExpr')
+    def extract_array_or_method_expr_stmt(self, node) -> SignalResult:
+        """ArrayOrMethodExpr: array.or() method expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ArrayUniqueMethodExpr')
+    def extract_array_unique_method_expr_stmt(self, node) -> SignalResult:
+        """ArrayUniqueMethodExpr: array.unique() method expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ArrayXorMethodExpr')
+    def extract_array_xor_method_expr_stmt(self, node) -> SignalResult:
+        """ArrayXorMethodExpr: array.xor() method expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'array', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('ArrayOrRandomizeMethodExpr')
+    def extract_array_or_randomize_method_expr(self, node) -> SignalResult:
+        """ArrayOrRandomizeMethodExpr: array.or_randomize() method expression"""
+        return SignalResult()
+    
+    # Expression statements
+    @on('ExpressionStatement')
+    def extract_expression_statement_stmt(self, node) -> SignalResult:
+        """ExpressionStatement: expression statement"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Void expression
+    @on('VoidExpression')
+    def extract_void_expression(self, node) -> SignalResult:
+        """VoidExpression: void expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Primary expressions
+    @on('PrimaryExpression')
+    def extract_primary_expression_stmt(self, node) -> SignalResult:
+        """PrimaryExpression: primary expression"""
+        result = SignalResult()
+        items = getattr(node, 'items', None) or getattr(node, 'expressions', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
