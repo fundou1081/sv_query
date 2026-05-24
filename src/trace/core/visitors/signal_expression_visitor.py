@@ -1442,6 +1442,305 @@ class SignalExpressionVisitor(BaseVisitor):
             result = result.merge(self.extract(clock))
         return result
     
+    @on(' ImpSeq')
+    def extract_implication_seq(self, node) -> SignalResult:
+        """ImplicationSeq: seq |=> or |->"""
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('IfConstraint')
+    def extract_if_constraint(self, node) -> SignalResult:
+        """IfConstraint: if (cond) constraint"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        true_body = getattr(node, 'true_body', None) or getattr(node, 'constraint', None)
+        if true_body:
+            result = result.merge(self.extract(true_body))
+        return result
+    
+    @on('ElseConstraint')
+    def extract_else_constraint(self, node) -> SignalResult:
+        """ElseConstraint: else constraint"""
+        result = SignalResult()
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'constraint', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
+    @on('DisableConstraint')
+    def extract_disable_constraint(self, node) -> SignalResult:
+        """DisableConstraint: disable constraint"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'constraint', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SolveBeforeConstraint')
+    def extract_solve_before_constraint(self, node) -> SignalResult:
+        """SolveBeforeConstraint: solve before constraint"""
+        result = SignalResult()
+        before = getattr(node, 'before', None)
+        after = getattr(node, 'after', None)
+        if before:
+            result = result.merge(self.extract(before))
+        if after:
+            result = result.merge(self.extract(after))
+        return result
+    
+    @on('ExpressionConstraint')
+    def extract_expression_constraint(self, node) -> SignalResult:
+        """ExpressionConstraint: expression constraint"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('RangeConstraint')
+    def extract_range_constraint(self, node) -> SignalResult:
+        """RangeConstraint: range constraint"""
+        result = SignalResult()
+        range_node = getattr(node, 'range', None)
+        if range_node:
+            result = result.merge(self.extract(range_node))
+        return result
+    
+    @on('DistributionConstraint')
+    def extract_distribution_constraint(self, node) -> SignalResult:
+        """DistributionConstraint: dist constraint"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('UniqueConstraint')
+    def extract_unique_constraint(self, node) -> SignalResult:
+        """UniqueConstraint: unique constraint"""
+        result = SignalResult()
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('ForeachConstraint')
+    def extract_foreach_constraint(self, node) -> SignalResult:
+        """ForeachConstraint: foreach constraint"""
+        result = SignalResult()
+        array = getattr(node, 'array', None)
+        body = getattr(node, 'body', None) or getattr(node, 'constraint', None)
+        if array:
+            result = result.merge(self.extract(array))
+        if body:
+            result = result.merge(self.extract(body))
+        return result
+    
+    @on('ConditionalPattern')
+    def extract_conditional_pattern(self, node) -> SignalResult:
+        """ConditionalPattern: pattern if cond"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        return result
+    
+    @on('WildcardPattern')
+    def extract_wildcard_pattern(self, node) -> SignalResult:
+        """WildcardPattern: wildcard pattern"""
+        return SignalResult()
+    
+    @on('TaggedPattern')
+    def extract_tagged_pattern(self, node) -> SignalResult:
+        """TaggedPattern: tagged pattern"""
+        result = SignalResult()
+        pattern = getattr(node, 'pattern', None)
+        if pattern:
+            result = result.merge(self.extract(pattern))
+        return result
+    
+    @on('ConstantExpression')
+    def extract_constant_expression(self, node) -> SignalResult:
+        """ConstantExpression: constant expression"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('ParenConstantExpression')
+    def extract_paren_constant_expression(self, node) -> SignalResult:
+        """ParenConstantExpression: (constant)"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('VoidCastedVarianceExpression')
+    def extract_void_casted_variance(self, node) -> SignalResult:
+        """VoidCastedVarianceExpression: variance cast"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('EmptyStatement')
+    def extract_empty_statement(self, node) -> SignalResult:
+        """EmptyStatement: empty statement"""
+        return SignalResult()
+    
+    @on('EmptySequence')
+    def extract_empty_sequence(self, node) -> SignalResult:
+        """EmptySequence: empty sequence"""
+        return SignalResult()
+    
+    @on('EmptyProperty')
+    def extract_empty_property(self, node) -> SignalResult:
+        """EmptyProperty: empty property"""
+        return SignalResult()
+    
+    @on('MatchedMultipleSequences')
+    def extract_matched_multiple_sequences(self, node) -> SignalResult:
+        """MatchedMultipleSequences: matched sequences"""
+        return SignalResult()
+    
+    @on('MatchedSequence')
+    def extract_matched_sequence(self, node) -> SignalResult:
+        """MatchedSequence: matched sequence"""
+        return SignalResult()
+    
+    @on('MatchedProperty')
+    def extract_matched_property(self, node) -> SignalResult:
+        """MatchedProperty: matched property"""
+        return SignalResult()
+    
+    @on('SyncQuickBell')
+    def extract_sync_quick_bell(self, node) -> SignalResult:
+        """SyncQuickBell: sync @bell"""
+        return SignalResult()
+    
+    @on('SyncSharpBell')
+    def extract_sync_sharp_bell(self, node) -> SignalResult:
+        """SyncSharpBell: sync ##bell"""
+        return SignalResult()
+    
+    @on('Implication')
+    def extract_implication(self, node) -> SignalResult:
+        """Implication: sequence implication"""
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('PropertyImplication')
+    def extract_property_implication(self, node) -> SignalResult:
+        """PropertyImplication: property implication"""
+        left = getattr(node, 'left', None) or getattr(node, 'antecedent', None)
+        right = getattr(node, 'right', None) or getattr(node, 'consequent', None)
+        left_result = self.extract(left) if left else SignalResult()
+        right_result = self.extract(right) if right else SignalResult()
+        return left_result.merge(right_result)
+    
+    @on('IfPropertyExpression')
+    def extract_if_property_expression(self, node) -> SignalResult:
+        """IfPropertyExpression: if property"""
+        result = SignalResult()
+        cond = getattr(node, 'condition', None) or getattr(node, 'cond', None)
+        if cond:
+            result = result.merge(self.extract(cond))
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            result = result.merge(self.extract(prop))
+        else_body = getattr(node, 'else_body', None) or getattr(node, 'else_property', None)
+        if else_body:
+            result = result.merge(self.extract(else_body))
+        return result
+    
+    @on('CasePropertyExpression')
+    def extract_case_property_expression(self, node) -> SignalResult:
+        """CasePropertyExpression: case property expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        items = getattr(node, 'items', None)
+        if items and hasattr(items, '__iter__'):
+            for item in items:
+                if item:
+                    result = result.merge(self.extract(item))
+        return result
+    
+    @on('PropertyExpr')
+    def extract_property_expr(self, node) -> SignalResult:
+        """PropertyExpr: property expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('SequenceExpr')
+    def extract_sequence_expr(self, node) -> SignalResult:
+        """SequenceExpr: sequence expression"""
+        result = SignalResult()
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            result = result.merge(self.extract(expr))
+        return result
+    
+    @on('UnaryPropertyExpression')
+    def extract_unary_property_expression(self, node) -> SignalResult:
+        """UnaryPropertyExpression: unary property"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('StrongParenthesizedProperty')
+    def extract_strong_parenthesized_property(self, node) -> SignalResult:
+        """StrongParenthesizedProperty: strong(property)"""
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return SignalResult()
+    
+    @on('WeakParenthesizedProperty')
+    def extract_weak_parenthesized_property(self, node) -> SignalResult:
+        """WeakParenthesizedProperty: property"""
+        prop = getattr(node, 'property', None) or getattr(node, 'expr', None)
+        if prop:
+            return self.extract(prop)
+        return SignalResult()
+    
+    @on('SequenceMatchItem')
+    def extract_sequence_match_item(self, node) -> SignalResult:
+        """SequenceMatchItem: sequence match item"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'expression', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('SequenceMatchFunction')
+    def extract_sequence_match_function(self, node) -> SignalResult:
+        """SequenceMatchFunction: match function"""
+        result = SignalResult()
+        args = getattr(node, 'arguments', None)
+        if args and hasattr(args, '__iter__'):
+            for arg in args:
+                if arg:
+                    result = result.merge(self.extract(arg))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
