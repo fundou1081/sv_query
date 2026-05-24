@@ -6968,6 +6968,137 @@ class SignalExpressionVisitor(BaseVisitor):
             return self.extract(expr)
         return SignalResult()
     
+    # More unary operators
+    @on('UnaryAndExpr')
+    def extract_unary_and_expr(self, node) -> SignalResult:
+        """UnaryAndExpr: unary and expression &"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryOrExpr')
+    def extract_unary_or_expr(self, node) -> SignalResult:
+        """UnaryOrExpr: unary or expression |"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryXorExpr')
+    def extract_unary_xor_expr(self, node) -> SignalResult:
+        """UnaryXorExpr: unary xor expression ^"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryNandExpr')
+    def extract_unary_nand_expr(self, node) -> SignalResult:
+        """UnaryNandExpr: unary nand expression ~&"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryNorExpr')
+    def extract_unary_nor_expr(self, node) -> SignalResult:
+        """UnaryNorExpr: unary nor expression ~|"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('UnaryXnorExpr')
+    def extract_unary_xnor_expr(self, node) -> SignalResult:
+        """UnaryXnorExpr: unary xnor expression ^~"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Increment/Decrement expressions
+    @on('PreIncrementExpr')
+    def extract_pre_increment_expr(self, node) -> SignalResult:
+        """PreIncrementExpr: pre increment expression ++expr"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PreDecrementExpr')
+    def extract_pre_decrement_expr(self, node) -> SignalResult:
+        """PreDecrementExpr: pre decrement expression --expr"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostIncrementExpr')
+    def extract_post_increment_expr_stmt(self, node) -> SignalResult:
+        """PostIncrementExpr: post increment expression expr++"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    @on('PostDecrementExpr')
+    def extract_post_decrement_expr_stmt(self, node) -> SignalResult:
+        """PostDecrementExpr: post decrement expression expr--"""
+        expr = getattr(node, 'expr', None) or getattr(node, 'operand', None)
+        if expr:
+            return self.extract(expr)
+        return SignalResult()
+    
+    # Comparison operators
+    @on('LessThanExpr')
+    def extract_less_than_expr_stmt(self, node) -> SignalResult:
+        """LessThanExpr: less than expression <"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('GreaterThanExpr')
+    def extract_greater_than_expr_stmt(self, node) -> SignalResult:
+        """GreaterThanExpr: greater than expression >"""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('LessThanOrEqualExpr')
+    def extract_less_than_or_equal_expr_stmt(self, node) -> SignalResult:
+        """LessThanOrEqualExpr: less than or equal expression <="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
+    @on('GreaterThanOrEqualExpr')
+    def extract_greater_than_or_equal_expr_stmt(self, node) -> SignalResult:
+        """GreaterThanOrEqualExpr: greater than or equal expression >="""
+        result = SignalResult()
+        left = getattr(node, 'left', None)
+        right = getattr(node, 'right', None)
+        if left:
+            result = result.merge(self.extract(left))
+        if right:
+            result = result.merge(self.extract(right))
+        return result
+    
     def visit_scoped_name(self, node) -> Optional[str]:
         """ScopedName: 点分路径
         
