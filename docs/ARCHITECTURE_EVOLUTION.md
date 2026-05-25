@@ -54,7 +54,7 @@ df024f6 - docs: mark all 536 handlers as [NOT TESTED]
 ```
 - **问题**: 新旧架构并存，需要启用新架构
 - **方案**: `_dispatch_enabled=True`
-- **结果**: 834 测试通过
+- **结果**: 839 测试通过
 
 ### 阶段 6：handler 迁移
 ```

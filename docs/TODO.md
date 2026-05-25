@@ -8,7 +8,7 @@
 ## 当前状态
 
 ### ✅ 已完成: Visitor 架构迁移
-- **834 测试通过**，系统稳定运行
+- **839 测试通过**，系统稳定运行
 - Legacy fallback 已移除 (`_legacy_collect_stmts_with_context` 抛出 NotImplementedError)
 - SignalExpressionVisitor: 61 visit methods + 41 get_all methods
 - StatementCollectorVisitor: 51 visit methods
@@ -126,4 +126,4 @@
 
 1. **当前系统已可正常工作**，P2 任务为可选优化
 2. P2 任务建议在有明确需求时进行 (如支持更多 SV 类型、发现扩展困难)
-3. 每次提交前确保 834 测试通过
+3. 每次提交前确保 839 测试通过

@@ -603,7 +603,7 @@ def expand_function(self, func_name: str) -> List[TraceEdge]:
 | 2026-05-29 | P3.4 CallExpression | 测试通过 |
 | 2026-05-30 | P4 GraphBuilder 集成 | 3 测试通过 |
 | 2026-05-30 | P5 expand_function | 2 测试通过 |
-| 2026-05-31 | 回归测试 | 确保 834 测试通过 |
+| 2026-05-31 | 回归测试 | 确保 839 测试通过 |
 
 ---
 
