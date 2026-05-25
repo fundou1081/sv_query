@@ -268,6 +268,8 @@ class DataFlowGraph:
             children = []
             # BIT_SELECT 边的方向是: child → parent (如 byte_data[3:0] → byte_data)
             # 所以我们需要找 signal 的前驱中有 BIT_SELECT 边的
+            if signal not in nx_graph.nodes():
+                return children
             for pred in nx_graph.predecessors(signal):
                 edge = nx_graph.get_edge(pred, signal)
                 if edge and edge.kind.name == 'BIT_SELECT':
@@ -278,6 +280,8 @@ class DataFlowGraph:
         def _get_bit_select_parents(signal):
             """获取信号的所有 BIT_SELECT 父节点 (这些节点指向 signal)"""
             parents = []
+            if signal not in nx_graph.nodes():
+                return parents
             for succ in nx_graph.successors(signal):
                 edge = nx_graph.get_edge(signal, succ)
                 if edge and edge.kind.name == 'BIT_SELECT':
