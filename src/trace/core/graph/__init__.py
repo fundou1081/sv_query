@@ -17,6 +17,13 @@ from .diff import (
     forward_reachability,
 )
 
+from .dataflow import (
+    DataFlowGraph,
+    DataFlowSegment,
+    DataFlowPath,
+    DataFlowResult,
+)
+
 __all__ = [
     # Models
     "SignalGraph",
@@ -29,4 +36,9 @@ __all__ = [
     "diff_graph",
     "diff_reachability",
     "forward_reachability",
+    # DataFlow
+    "DataFlowGraph",
+    "DataFlowSegment",
+    "DataFlowPath",
+    "DataFlowResult",
 ]
