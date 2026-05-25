@@ -211,9 +211,11 @@ SV Source Files
 - SUPER_CALL 边支持约束增量扩展
 - 多层继承场景验证
 
-### 提交记录 (9 commits ahead of main)
+### 提交记录 (11 commits ahead of main)
 
 ```
+797c67c refactor(dataflow cli): unify command name and remove unused segment command
+64bfbdf docs: update README and DATAFLOW_IMPLEMENTATION_PLAN with struct support
 c3d492c feat: expand struct assignments to member assignments
 c0340f5 fix: struct member path handling with node existence guards
 e67647a fix: add node existence check in _get_bit_select_children
@@ -285,7 +287,7 @@ Skipped:           1 test
 Failed:            0 test
 ```
 
-**所有 816 个测试通过！**
+**所有 839 个测试通过！**
 
 | 优先级 | 修复内容 |
 |--------|----------|
@@ -481,6 +483,34 @@ for src, dst in graph.edges():
 - CONNECTION 边表示信号连接：`top.clk --CONNECTION--> top.u_driver.clk`
 - 使用 `graph.find_drivers(signal_id)` 追踪驱动源
 - 使用 `graph.find_loads(signal_id)` 追踪负载
+
+---
+
+## CLI 命令行工具
+
+```bash
+# 查看帮助
+python run_cli.py --help
+
+# 1. stats - 图统计
+python run_cli.py stats -f test.sv
+
+# 2. trace - 信号追踪（最核心）
+python run_cli.py trace fanin top.clk -f test.sv
+python run_cli.py trace fanout top.data -f test.sv
+
+# 3. diff - 代码对比
+python run_cli.py diff old.sv new.sv
+
+# 4. snapshot - 快照管理
+python run_cli.py snapshot --help
+
+# 5. dataflow - 数据流路径分析
+python run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
+
+# 全局选项: -j/--json (JSON输出), -p/--pretty (格式化JSON)
+python run_cli.py trace fanin top.clk -f test.sv -j -p
+```
 
 ---
 
