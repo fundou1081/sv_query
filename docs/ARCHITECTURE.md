@@ -692,6 +692,80 @@ class SignalResult:
 
 ---
 
+### 4.9 ExtractorResult vs SignalResult 深度对比
+
+#### 定义对比
+
+| 属性 | ExtractorResult | SignalResult |
+|------|-----------------|--------------|
+| **文件** | `graph_builder.py` | `visitors/signal_result.py` |
+| **职责** | Graph 构建结果 | 表达式解析结果 |
+| **创建者** | DriverExtractor, LoadExtractor | SignalExpressionVisitor |
+| **使用者** | GraphBuilder | GraphBuilder (调用 Visitor) |
+
+#### 字段对比
+
+ExtractorResult:
+```python
+nodes: List[TraceNode]           # 图节点
+edges: List[TraceEdge]          # 图边
+errors: List[str]                # 错误信息
+port_to_internal: Dict[str, str]  # 端口映射
+```
+
+SignalResult:
+```python
+primary: Optional[str]           # 单信号名 (LHS)
+all_signals: List[str]           # 所有信号 (RHS)
+kind_name: Optional[str]         # 表达式类型名
+op_name: Optional[str]           # 操作符名
+signal_info: Dict[str, Any]      # 详细信息
+source_range: Optional[tuple]    # 源码位置
+```
+
+#### 字段对比表
+
+| 维度 | ExtractorResult | SignalResult |
+|------|-----------------|--------------|
+| **节点/边** | ✅ nodes, edges | ❌ 无 |
+| **错误处理** | ✅ errors | ❌ 无 |
+| **端口映射** | ✅ port_to_internal | ❌ 无 |
+| **单信号** | ❌ 无 | ✅ primary |
+| **多信号** | ❌ 无 | ✅ all_signals |
+| **表达式类型** | ❌ 无 | ✅ kind_name |
+| **操作符名** | ❌ 无 | ✅ op_name |
+| **源码位置** | ❌ 无 | ✅ source_range |
+
+#### 问题分析
+
+| 问题 | 说明 |
+|------|------|
+| **功能重复** | 两个结果容器，但数据不共享 |
+| **双接口冗余** | visit() + get_all_signals() + extract() |
+| **推广受阻** | extract() 未被 GraphBuilder 使用 |
+
+#### 重构建议
+
+**方案 A: 扩展 ExtractorResult (推荐)**
+
+```python
+class ExtractorResult:
+    # 图数据 (已有)
+    nodes: List[TraceNode] = field(default_factory=list)
+    edges: List[TraceEdge] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    port_to_internal: Dict[str, str] = field(default_factory=dict)
+    
+    # 信号数据 (新增)
+    expression_result: SignalResult = None
+```
+
+**理由**:
+1. ExtractorResult 是 GraphBuilder 的输出格式，已被广泛使用
+2. SignalResult 作为 ExtractorResult 的字段嵌入
+3. 保持 GraphBuilder 输出格式不变，易于迁移
+
+
 ## 五、查询 API
 
 ### 3.1 SignalTracer - 信号追踪
