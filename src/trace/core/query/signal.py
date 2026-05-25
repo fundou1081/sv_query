@@ -123,25 +123,32 @@ class SignalTracer:
                         node = self.graph.get_node(src)
                         if node:
                             parts = src.split('.')
-                            # 实例输出端口 (PORT_OUT): 这是实例驱动外部信号的出口
+                            # 实例输出端口 (PORT_OUT): 透明驱动映射点
                             if len(parts) >= 3 and node.kind.name == 'PORT_OUT':
-                                # 添加实例端口作为驱动
                                 if node.id not in seen_ids:
                                     drivers.append(node)
                                     seen_ids.add(node.id)
-                                # 继续追踪到真正的外部驱动源
-                                inst_name = parts[-2]  # e.g., 'inst'
-                                inst_path = '.'.join(parts[:-1])  # e.g., 'top.inst'
-                                # 查找实例的输入端口
-                                input_port_id = f"{inst_path}.d"  # 假设输入端口是 'd'
-                                # 找谁驱动这个输入端口
-                                for pred_src, pred_dst in self.graph.edges():
-                                    if pred_dst == input_port_id and pred_src.startswith(inst_path.rsplit('.', 1)[0]):
-                                        # 外部信号驱动实例输入，这个外部信号是真正的驱动源
-                                        ext_node = self.graph.get_node(pred_src)
-                                        if ext_node and ext_node.id not in seen_ids:
-                                            drivers.append(ext_node)
-                                            seen_ids.add(ext_node.id)
+                                # 追溯到外部驱动: 找到实例输入端口并递归追溯
+                                inst_path = '.'.join(parts[:-1])
+                                port_name = parts[-1]
+                                input_port_id = f"{inst_path}.d" if port_name == 'q' else f"{inst_path}.q" if port_name == 'd' else None
+                                if input_port_id and input_port_id in self.graph.nodes():
+                                    if input_port_id not in seen_ids:
+                                        self._trace_drivers_recursive(input_port_id, drivers, seen_ids, current_depth + 1, max_depth)
+                                continue
+                            # PORT_IN via CONNECTION: 只有外部输入端口(无predecessors)才添加
+                            if node.kind.name == 'PORT_IN':
+                                preds = list(self.graph.predecessors(node.id))
+                                if not preds:  # 外部输入端口,无前驱
+                                    if node.id not in seen_ids:
+                                        drivers.append(node)
+                                        seen_ids.add(node.id)
+                                continue
+                            # SIGNAL via CONNECTION: 中间线网,添加为驱动
+                            if node.kind.name == 'SIGNAL':
+                                if node.id not in seen_ids:
+                                    drivers.append(node)
+                                    seen_ids.add(node.id)
                                 continue
                     # 其他边类型继续递归追溯
                     if src in self.graph.nodes() and src not in seen_ids:
