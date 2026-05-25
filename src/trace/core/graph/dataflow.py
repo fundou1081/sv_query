@@ -238,7 +238,7 @@ class DataFlowGraph:
         
         return best_match
     
-    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 20) -> List[List[str]]:
+    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> List[List[str]]:
         """查找所有路径（允许循环）
         
         使用 networkx.all_simple_paths 查找路径。
