@@ -252,9 +252,45 @@ class DataFlowGraph:
         Returns:
             路径列表，每条路径是信号 ID 列表
         """
+        import re
+        
+        # [FIX] 处理位选择信号，如 byte_data[3:0] → byte_data
+        def _expand_bit_select(signal):
+            """将位选择信号展开为其父信号"""
+            match = re.match(r'^(.+)\[([^\]]+)\]$', signal)
+            if match:
+                return match.group(1), match.group(2)
+            return signal, None
+        
+        # 获取所有 BIT_SELECT 子节点（如 top.byte_data → top.byte_data[3:0]）
+        def _get_bit_select_children(signal):
+            """获取信号的所有 BIT_SELECT 子节点 (signal 指向这些节点的反向边)"""
+            children = []
+            # BIT_SELECT 边的方向是: child → parent (如 byte_data[3:0] → byte_data)
+            # 所以我们需要找 signal 的前驱中有 BIT_SELECT 边的
+            for pred in nx_graph.predecessors(signal):
+                edge = nx_graph.get_edge(pred, signal)
+                if edge and edge.kind.name == 'BIT_SELECT':
+                    children.append(pred)
+            return children
+        
+        # 获取所有 BIT_SELECT 父节点（如 top.byte_data 是 top.byte_data[3:0] 的父）
+        def _get_bit_select_parents(signal):
+            """获取信号的所有 BIT_SELECT 父节点 (这些节点指向 signal)"""
+            parents = []
+            for succ in nx_graph.successors(signal):
+                edge = nx_graph.get_edge(signal, succ)
+                if edge and edge.kind.name == 'BIT_SELECT':
+                    parents.append(succ)
+            return parents
+        
         # 解析跨模块信号
         resolved_from = self._resolve_cross_module(from_signal)
         resolved_to = self._resolve_cross_module(to_signal)
+        
+        # 展开位选择
+        expanded_from, slice_from = _expand_bit_select(resolved_from)
+        expanded_to, slice_to = _expand_bit_select(resolved_to)
         
         # 获取 networkx 图
         try:
@@ -263,18 +299,40 @@ class DataFlowGraph:
             logger.warning("SignalGraph does not support networkx conversion")
             return []
         
-        # 检查节点是否存在
-        if resolved_from not in nx_graph.nodes():
-            # 尝试原始信号
-            if from_signal not in nx_graph.nodes():
-                return []
+        # 构建候选起始点列表（包括 BIT_SELECT 子节点）
+        candidates_from = [resolved_from]
+        if expanded_from != resolved_from:
+            candidates_from.append(expanded_from)
+        # 添加 expanded_from 的 BIT_SELECT 子节点
+        for child in _get_bit_select_children(expanded_from):
+            if child not in candidates_from:
+                candidates_from.append(child)
         
-        # 查找所有简单路径
-        try:
-            paths = list(nx.all_simple_paths(nx_graph, resolved_from, resolved_to, cutoff=cutoff))
-            return paths
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            return []
+        # 构建候选目标点列表（包括 BIT_SELECT 父节点）
+        candidates_to = [resolved_to]
+        if expanded_to != resolved_to:
+            candidates_to.append(expanded_to)
+        # 添加 expanded_to 的 BIT_SELECT 父节点
+        for parent in _get_bit_select_parents(expanded_to):
+            if parent not in candidates_to:
+                candidates_to.append(parent)
+        
+        # 尝试所有候选组合
+        for from_candidate in candidates_from:
+            for to_candidate in candidates_to:
+                if from_candidate not in nx_graph.nodes():
+                    continue
+                if to_candidate not in nx_graph.nodes():
+                    continue
+                
+                try:
+                    paths = list(nx.all_simple_paths(nx_graph, from_candidate, to_candidate, cutoff=cutoff))
+                    if paths:
+                        return paths
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                    continue
+        
+        return []
     
     def analyze(self, from_signal: str, to_signal: str, max_paths: int = 100) -> DataFlowResult:
         """分析 from → to 的完整数据流路径
