@@ -47,25 +47,18 @@
 
 ### P3 - 长期改进
 
-#### [ ] DataFlow 数据流分析架构
-- **类型**: 新功能
-- **描述**: 实现信号间数据流分析 (from → to)
-- **架构**: `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`, `docs/FINAL_SCHEMA_DECISION.md`
-- **核心发现**:
-  - SignalGraph 已包含 TraceEdge (condition, clock_domain)
-  - DataFlow 可基于 SignalGraph 构建，无需重构
-- **核心组件**:
-  - `DataFlowSegment`: 单步驱动 (from → to)
-  - `DataFlowPath`: 完整路径
-  - `DataFlowResult`: 分析结果封装
-  - `DataFlowAnalyzer`: 主分析器
-- **实现方式**:
-  - SignalGraph (已有) 提供 edges 和 TraceEdge
-  - nx.all_simple_paths() 提供路径搜索
-  - StatementCollectorVisitor 提供 driver 信息
-- **状态**: 提案阶段
-- **优先级**: 可立即开始 (不依赖其他任务)
-- **参考文档**: `docs/FINAL_SCHEMA_DECISION.md`
+### ✅ DataFlow 数据流分析 (已完成)
+- **状态**: ✅ 已实现 (2026-05-26)
+- **文件**: `src/trace/core/graph/dataflow.py`
+- **CLI**: `src/cli/commands/dataflow.py`
+- **功能**:
+  - 路径搜索 (nx.all_simple_paths)
+  - BIT_SELECT 边处理 (byte_data[3:0] → byte_data)
+  - Struct 成员展开 (pkt1.data → pkt2.data)
+  - 时钟域分析
+  - 条件判断提取
+  - 中间信号收集
+- **参考文档**: `docs/DATAFLOW_IMPLEMENTATION_PLAN.md`
 
 #### [ ] ControlFlow 控制流分析架构
 - **类型**: 新功能

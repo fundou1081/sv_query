@@ -1,7 +1,7 @@
 # DataFlow 分析架构方案
 
 > 创建时间: 2026-05-24
-> 状态: 提案阶段
+> 状态: ✅ 已实现 (见 DATAFLOW_IMPLEMENTATION_PLAN.md)
 
 ---
 
