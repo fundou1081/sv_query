@@ -248,6 +248,37 @@ class PyslangAdapter:
             if tree and hasattr(tree, 'root'):
                 modules.extend(self._extract_modules(tree.root))
         return modules
+
+    def get_source_location(self, node) -> tuple:
+        """获取节点的源码位置
+        
+        Returns:
+            tuple: (filename, line, column, offset)
+        """
+        if node is None:
+            return ("", 0, 0, 0)
+        
+        filename = ""
+        offset = 0
+        
+        # 找到 node 所在的 tree 以确定 filename
+        for fname, tree in self.parser.trees.items():
+            if tree and hasattr(tree, 'root'):
+                # 检查 node 是否在这个 tree 中 (简单检查)
+                if hasattr(node, 'sourceRange') and node.sourceRange:
+                    # sourceRange 存在，offset 可以直接获取
+                    offset = node.sourceRange.start.offset
+                    filename = fname
+                    break
+        
+        # 计算行号
+        source_content = getattr(self.parser, '_sources', {}).get(filename, "")
+        if source_content and offset > 0:
+            line = source_content[:offset].count('\n') + 1
+        else:
+            line = 0
+        
+        return (filename, line, 0, offset)
     
     def _extract_modules(self, node) -> List:
         """提取模块"""

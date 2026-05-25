@@ -5,6 +5,7 @@
 from .signal import (
     SignalTracer,
     SignalChain,
+    DriverChain,
 )
 
 from .load import (
@@ -27,6 +28,7 @@ __all__ = [
     # Signal Query
     "SignalTracer",
     "SignalChain",
+    "DriverChain",
     # Load Query
     "LoadTracer",
     "LoadChain",
