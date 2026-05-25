@@ -2255,15 +2255,157 @@ class GraphBuilder:
             'connection': ConnectionExtractor(adapter),
             'clock': ClockDomainExtractor(adapter),
         }
+        # [FIX] Track struct members for expansion
+        # Key: struct variable id (e.g., "module.pkt2")
+        # Value: set of member names (e.g., {"addr", "data", "valid"})
+        self._struct_members: Dict[str, Set[str]] = {}
 
     def build(self) -> SignalGraph:
         self._extract_all_nodes()
         self._extract_all_edges()
         self._mark_special_signals()
         self._create_hierarchical_bit_nodes()
+        self._collect_struct_members()  # [NEW] Collect struct member information
+        self._expand_struct_assignments()  # [NEW] Expand struct assignments to member assignments
         self._upgrade_reg_nodes()  # Must be after _create_hierarchical_bit_nodes
 
         return self.graph
+    
+    def _collect_struct_members(self):
+        """收集所有 struct 变量的成员信息
+        
+        通过分析节点名模式 xxx.member 来识别 struct 类型变量的成员。
+        例如: test_interface.pkt1.addr, test_interface.pkt1.data 等。
+        
+        启发式: 如果一个路径如 test_interface.pkt1 存在，且有子节点如
+        test_interface.pkt1.addr/test_interface.pkt1.data，则 test_interface.pkt1 是 struct。
+        """
+        import re
+        
+        # 先收集所有可能的 (parent, member) 对
+        potential_members = []
+        for node_id in list(self.graph.nodes()):
+            # 匹配 xxx.member 模式
+            match = re.match(r'^(.+)\.([^.]+)$', node_id)
+            if match:
+                parent_path = match.group(1)  # e.g., test_interface.pkt1
+                member_name = match.group(2)  # e.g., addr, data, valid
+                potential_members.append((parent_path, member_name))
+        
+        # 找所有可能是 struct 变量的路径
+        # 条件: parent_path 本身也是一个节点，且有多个成员
+        parent_counts = {}
+        for parent_path, member_name in potential_members:
+            if parent_path not in parent_counts:
+                parent_counts[parent_path] = set()
+            parent_counts[parent_path].add(member_name)
+        
+        # 只有当 parent_path 本身也是一个节点时，才认为它是 struct
+        for parent_path, members in parent_counts.items():
+            if parent_path in self.graph.nodes() and len(members) > 1:
+                # parent_path 是一个节点，且有多个成员，它可能是 struct
+                self._struct_members[parent_path] = members
+        
+        # [DEBUG]
+        # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
+    
+    def _expand_struct_assignments(self):
+        """展开 struct 整体赋值为成员赋值
+        
+        当检测到 assign dst = src 时（src 是已知的 struct 类型，dst 也应该是同类型的 struct），
+        自动展开为: assign dst.member = src.member (对每个成员)
+        
+        这确保了 dataflow 可以追踪: data_in → pkt1.data → pkt2.data → data_out
+        """
+        import re
+        
+        # 找出需要展开的 struct 整体赋值
+        # 边类型是 DRIVER，且 src 是已知的 struct 变量
+        edges_to_expand = []
+        
+        for src_id, dst_id in list(self.graph.edges()):
+            edge = self.graph.get_edge(src_id, dst_id)
+            if not edge or edge.kind != EdgeKind.DRIVER:
+                continue
+            
+            # 检查 src 是否是 struct 变量
+            src_is_struct = src_id in self._struct_members and len(self._struct_members.get(src_id, set())) > 1
+            
+            if src_is_struct:
+                # src 是 struct，检查 dst 是否也是 struct
+                # 如果 dst 不是 struct，我们仍需要展开（dst 通过赋值继承了 src 的类型）
+                dst_is_struct = dst_id in self._struct_members and len(self._struct_members.get(dst_id, set())) > 1
+                members = self._struct_members[src_id]
+                
+                # 如果 dst 不是 struct，注册它
+                if not dst_is_struct:
+                    self._struct_members[dst_id] = set(members)
+                
+                edges_to_expand.append((src_id, dst_id, members))
+        
+        # 为每个 struct 整体赋值，展开为成员赋值
+        for src_struct, dst_struct, members in edges_to_expand:
+            for member in members:
+                src_member_id = f"{src_struct}.{member}"
+                dst_member_id = f"{dst_struct}.{member}"
+                
+                # 确保成员节点存在
+                if src_member_id not in self.graph.nodes():
+                    src_node = self.graph.get_node(src_struct)
+                    if src_node:
+                        self.graph.add_trace_node(TraceNode(
+                            id=src_member_id,
+                            name=member,
+                            module=src_node.module,
+                            kind=NodeKind.SIGNAL,
+                            width=src_node.width,
+                        ))
+                
+                if dst_member_id not in self.graph.nodes():
+                    dst_node = self.graph.get_node(dst_struct)
+                    if dst_node:
+                        self.graph.add_trace_node(TraceNode(
+                            id=dst_member_id,
+                            name=member,
+                            module=dst_node.module,
+                            kind=NodeKind.SIGNAL,
+                            width=dst_node.width,
+                        ))
+                
+                # 创建成员赋值边: src.member → dst.member
+                # 检查边是否已存在
+                existing = self.graph.get_edge(src_member_id, dst_member_id)
+                if not existing:
+                    edge = TraceEdge(
+                        src=src_member_id,
+                        dst=dst_member_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type=edge.assign_type,
+                        expression=f"{src_struct}.{member}",
+                    )
+                    self.graph.add_trace_edge(edge)
+        
+        # [NEW] 为所有 struct 变量创建 MEMBER_SELECT 边
+        # 类似 BIT_SELECT: data_out.data → data_out
+        # 这允许从成员追溯到父 struct
+        for struct_id, members in self._struct_members.items():
+            if struct_id not in self.graph.nodes():
+                continue
+            
+            for member in members:
+                member_id = f"{struct_id}.{member}"
+                if member_id in self.graph.nodes():
+                    # 检查 MEMBER_SELECT 边是否已存在
+                    existing = self.graph.get_edge(member_id, struct_id)
+                    if not existing:
+                        member_edge = TraceEdge(
+                            src=member_id,
+                            dst=struct_id,
+                            kind=EdgeKind.BIT_SELECT,  # 复用 BIT_SELECT 类型
+                            assign_type="internal",
+                            expression=member,
+                        )
+                        self.graph.add_trace_edge(member_edge)
 
     def _create_hierarchical_bit_nodes(self):
         """方案C: 为位选择节点创建父子关系
