@@ -57,6 +57,17 @@ class SemanticAdapter:
         """兼容方法: 返回空迭代器 (Semantic AST 不使用 SyntaxTree)"""
         return iter([])
 
+    def get_source_location(self, node) -> tuple:
+        """获取节点的源码位置
+        
+        Semantic AST 不直接存储源码位置，返回空值。
+        实际位置信息需要从 SyntaxTree 获取。
+        
+        Returns:
+            tuple: (filename, line, column, offset)
+        """
+        return ("", 0, 0, 0)
+
     # =========================================================================
     # 模块和实例相关
     # =========================================================================

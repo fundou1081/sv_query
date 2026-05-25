@@ -121,6 +121,9 @@ class SignalExpressionVisitor(BaseVisitor):
                 'BinaryOp': 'binary_expression',
                 'UnaryOp': 'unary',
                 'ConditionalExpression': 'conditional_op',
+                # [FIX] Semantic ExpressionKind vs SyntaxKind 命名差异
+                'Concatenation': 'concatenation_expression',
+                'Replication': 'multiple_concatenation',
             }
             if kind_name in alias_map:
                 method_name = "visit_" + alias_map[kind_name]
@@ -889,15 +892,46 @@ class SignalExpressionVisitor(BaseVisitor):
     
     @on('ConcatenationExpression')
     def extract_concatenation(self, node) -> SignalResult:
-        """[NOT TESTED] ConcatenationExpression: {a, b, c}"""
-        result = SignalResult()
+        """ConcatenationExpression: {a, b, c}
+        
+        返回完整的拼接表达式字符串
+        """
+        # 使用 str(node) 获取完整的拼接表达式 {a, b, c}
+        # [FIX] Semantic 层的 ConcatenationExpression str() 返回 'Expression(ExpressionKind.Concatenation)'
+        # 需要通过 operands 构建实际表达式
+        expr_str = str(node).strip()
+        if expr_str and not expr_str.startswith('Expression('):
+            return SignalResult.single(expr_str)
+        
+        # [FIX] Semantic 节点: 通过 operands 构建表达式
         operands = getattr(node, 'operands', None) or getattr(node, 'expressions', None)
+        if operands:
+            parts = []
+            for expr in operands:
+                expr_kind = getattr(expr, 'kind', None)
+                if expr_kind and 'Token' not in str(expr_kind):
+                    part = self.visit(expr)
+                    if part:
+                        parts.append(part)
+            if parts:
+                return SignalResult.single('{' + ', '.join(parts) + '}')
+        
+        # Fallback: 提取操作数
+        result = SignalResult()
         if operands:
             for expr in operands:
                 expr_kind = getattr(expr, 'kind', None)
                 if expr_kind and 'Token' not in str(expr_kind):
                     result = result.merge(self.extract(expr))
         return result
+
+    def visit_concatenation_expression(self, node) -> Optional[str]:
+        """visit 方法: ConcatenationExpression -> 完整拼接表达式字符串"""
+        result = self.extract_concatenation(node)
+        return result.primary if result else None
+    
+    # 别名: Semantic 层 ExpressionKind.Concatenation 也使用同一方法
+    visit_concatenation = visit_concatenation_expression
     
     @on('ScopedName')
     def extract_scoped_name(self, node) -> SignalResult:

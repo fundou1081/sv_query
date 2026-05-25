@@ -22,6 +22,7 @@ from .core.query import (
     ModuleTracer, ModuleConnections,
     ClockDomainTracer, ClockDomainTrace,
 )
+from .core.query.signal import DriverChain
 from .core.compiler import SVCompiler
 from .core.semantic_adapter import SemanticAdapter
 
@@ -322,7 +323,36 @@ class UnifiedTracer:
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> list:
         self.build_graph()
         return self._signal_tracer.trace_fanin(signal, module, depth)
-    
+
+    def trace_detailed(self, signal: str, module: str = None) -> DriverChain:
+        """[方案C] Trace signal with detailed driver information
+        
+        返回包含 condition, clock_domain 等详细信息的驱动链
+        
+        Args:
+            signal: signal name
+            module: module name (optional)
+            
+        Returns:
+            DriverChain - 包含 DriverInfo 列表
+        """
+        self.build_graph()
+        return self._signal_tracer.trace_detailed(signal, module)
+
+    def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None) -> list:
+        """[方案C] Trace signal fanin with detailed driver information
+        
+        Args:
+            signal: signal name
+            module: module name (optional)
+            depth: 1=direct drivers only, N=recursive N levels, None=recursive all
+            
+        Returns:
+            List[DriverInfo] - 驱动信息列表
+        """
+        self.build_graph()
+        return self._signal_tracer.trace_fanin_detailed(signal, module, depth)
+
     # =========================================================================
     # 模块追踪 API
     # =========================================================================
