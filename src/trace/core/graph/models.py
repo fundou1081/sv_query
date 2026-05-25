@@ -57,9 +57,9 @@ class EdgeKind(Enum):
     IS_INSTANCE_OF = auto()   # CLASS_PROPERTY → CLASS (成员变量的类型引用)
     SUPER_CALL = auto()       # CONSTRAINT_EXPR → 被调用的父类约束 (增量扩展 super.c1)
 
-# [铁律16] 注意：ENABLE/DATA 不作为独立边类型
-# - ENABLE: 用 TraceEdge.condition 属性替代，语义更清晰
-# - DATA: 与 DRIVER 重复，保留 DRIVER 即可
+# [铁律16] 注意:ENABLE/DATA 不作为独立边类型
+# - ENABLE: 用 TraceEdge.condition 属性替代,语义更清晰
+# - DATA: 与 DRIVER 重复,保留 DRIVER 即可
 
 @dataclass
 class TraceNode:
@@ -90,6 +90,63 @@ class TraceEdge:
     clock_domain: str = ""
     modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
     confidence: str = "high"
+    expression: str = ""    # 驱动表达式 (如 "sreg_d", "a + b")
+    bit_slice: str = ""    # 位选择 (如 "[8:1]")
+
+@dataclass
+class DriverInfo:
+    """驱动信息 - 包含驱动节点及其驱动条件
+
+    [方案C] 从 TraceNode 分离出来,因为 condition 是边的属性而非节点属性
+    """
+    node: TraceNode           # 驱动节点
+    condition: str = ""       # 驱动条件 (来自 if 语句)
+    reset_condition: str = "" # 复位条件 (来自 if (!rst_ni))
+    clock_domain: str = ""    # 时钟域
+    assign_type: str = ""     # always_ff / always_comb / continuous / blocking / nonblocking
+    distance: int = 1         # 驱动距离 (层级深度)
+    expression: str = ""      # 驱动表达式 (如 sreg_d)
+    bit_slice: str = ""       # 位选择 (如 [8:1])
+    target_signal: str = ""  # 目标信号 (被驱动的信号)
+    
+    @property
+    def id(self) -> str:
+        return self.node.id
+    
+    @property
+    def full_statement(self) -> str:
+        """组装完整的驱动语句 (debug 用)
+        
+        例如: if (cond) sreg_d <= {rx, sreg_q[10:1]};
+        """
+        # 获取 LHS (目标信号)
+        lhs = self.target_signal if self.target_signal else (self.node.id if hasattr(self, 'node') else '?')
+        
+        # 组装条件
+        cond = self.condition if self.condition else self.reset_condition
+        if cond:
+            stmt = f"if ({cond}) {lhs} "
+        else:
+            stmt = f"{lhs} "
+        
+        # 添加 assign_type
+        assign_map = {
+            'nonblocking': '<=',
+            'blocking': '=' ,
+            'continuous': '=',
+        }
+        assign_op = assign_map.get(self.assign_type, self.assign_type or '=')
+        stmt += f"{assign_op} "
+        
+        # 添加表达式
+        expr = self.expression if self.expression else '?'
+        stmt += f"{expr};"
+        
+        # 添加时钟域注释
+        if self.clock_domain:
+            stmt += f" // @{self.clock_domain}"
+        
+        return stmt
 
 class SignalGraph(nx.DiGraph):
     def __init__(self):
@@ -104,41 +161,65 @@ class SignalGraph(nx.DiGraph):
 
     def get_internal_signal(self, inst_port_id: str) -> Optional[str]:
         """查询实例端口对应的内部信号
-        
+
         Args:
-            inst_port_id: 实例端口路径，如 'top.u_dut.clk'
-            
+            inst_port_id: 实例端口路径,如 'top.u_dut.clk'
+
         Returns:
-            内部信号路径，如 'dut.clk'，或 None
+            内部信号路径,如 'dut.clk',或 None
         """
         return self._port_to_internal.get(inst_port_id)
-    
+
     def add_trace_node(self, node: TraceNode):
         self._node_data[node.id] = node
         super().add_node(node.id)
-    
+
     def add_trace_edge(self, edge: TraceEdge):
-        # [铁律4] 不允许创建孤儿节点：如果目标节点不存在则创建 placeholder
+        # [铁律4] 不允许创建孤儿节点:如果目标节点不存在则创建 placeholder
+        # [FIX] 字面量节点(如 4'b1011, 8'h42)创建为 CONST 类型节点
+        def _is_literal(node_id: str) -> bool:
+            """检查是否为字面量常量"""
+            if node_id and len(node_id) >= 3:
+                # 匹配 4'b0, 1'b1, 4'b1011, 8'hFF, 11'd0 等
+                if "'" in node_id and node_id[0].isdigit():
+                    return True
+            return False
+
         for node_id in [edge.src, edge.dst]:
             if node_id not in self._node_data:
-                parts = node_id.split('.', 1)
-                module = parts[0] if len(parts) > 0 else ''
-                name = parts[1] if len(parts) > 1 else node_id
-                
-                placeholder = TraceNode(
-                    id=node_id,
-                    name=name,
-                    module=module,
-                    kind=NodeKind.SIGNAL,
-                    width=(0, 0)
-                )
-                self._node_data[node_id] = placeholder
-                super().add_node(node_id)
-        
+                if _is_literal(node_id):
+                    # 字面量创建为 CONST 类型节点
+                    parts = node_id.split('.', 1)
+                    module = parts[0] if len(parts) > 1 else ''
+                    name = parts[1] if len(parts) > 1 else node_id
+                    literal_node = TraceNode(
+                        id=node_id,
+                        name=name,
+                        module=module,
+                        kind=NodeKind.CONST,
+                        width=(0, 0)
+                    )
+                    self._node_data[node_id] = literal_node
+                    super().add_node(node_id)
+                else:
+                    parts = node_id.split('.', 1)
+                    module = parts[0] if len(parts) > 0 else ''
+                    name = parts[1] if len(parts) > 1 else node_id
+
+                    placeholder = TraceNode(
+                        id=node_id,
+                        name=name,
+                        module=module,
+                        kind=NodeKind.SIGNAL,
+                        width=(0, 0)
+                    )
+                    self._node_data[node_id] = placeholder
+                    super().add_node(node_id)
+
         key = (edge.src, edge.dst)
-        
+
         existing = self._edge_data.get(key)
-        
+
         # Skip duplicate if same type AND existing has same or better semantic context
         if existing and existing.kind == edge.kind:
             # [NEW] If new edge has semantic context but existing doesn't, prefer new edge
@@ -146,46 +227,46 @@ class SignalGraph(nx.DiGraph):
                 self._edge_data[key] = edge
                 super().add_edge(edge.src, edge.dst)
             return
-        
+
         # Add edge (allow self-loops for register self-update)
         self._edge_data[key] = edge
         super().add_edge(edge.src, edge.dst)
-    
+
     def set_node_modport_dir(self, node_id: str, modport_dir: str):
         """[P0-3] 设置已有节点的 modport_dir 属性"""
         if node_id in self._node_data:
             self._node_data[node_id].modport_dir = modport_dir
-    
+
     def get_node(self, node_id: str) -> Optional[TraceNode]:
         return self._node_data.get(node_id)
-    
+
     def get_edge(self, src: str, dst: str) -> Optional[TraceEdge]:
         return self._edge_data.get((src, dst))
-    
+
     def find_drivers(self, signal_id: str) -> List[TraceNode]:
         return [self.get_node(n) for n in self.predecessors(signal_id)]
-    
+
     def find_loads(self, signal_id: str) -> List[TraceNode]:
         return [self.get_node(n) for n in self.successors(signal_id)]
-    
+
     def find_path(self, src_id: str, dst_id: str) -> List[str]:
         try:
             return nx.shortest_path(self, src_id, dst_id)
         except nx.NetworkXNoPath:
             return []
-    
+
     def find_all_paths(self, src_id: str, dst_id: str, max_depth: int = 10) -> List[List[str]]:
         try:
             return list(nx.all_simple_paths(self, src_id, dst_id, cutoff=max_depth))
         except:
             return []
-    
+
     def detect_cycles(self) -> List[List[str]]:
         try:
             return list(nx.simple_cycles(self))
         except:
             return []
-    
+
     def stats(self) -> Dict:
         return {
             "nodes": self.number_of_nodes(),
@@ -200,7 +281,7 @@ class SignalGraph(nx.DiGraph):
 
     def to_dict(self) -> Dict:
         """[Golden] 完整序列化 SignalGraph 为可 JSON 化的字典
-        
+
         金标准输出格式:
         {
             "version": "1.0",
@@ -240,7 +321,7 @@ class SignalGraph(nx.DiGraph):
                     "parent_bit_end": node.parent_bit_end,
                     "modport_dir": node.modport_dir,
                 })
-        
+
         edges_data = []
         for src, dst in self.edges():
             edge = self._edge_data.get((src, dst))
@@ -255,7 +336,7 @@ class SignalGraph(nx.DiGraph):
                     "modport_dir": edge.modport_dir,
                     "confidence": edge.confidence,
                 })
-        
+
         return {
             "version": "1.0",
             "created_at": "",  # 由调用方填充
@@ -265,22 +346,22 @@ class SignalGraph(nx.DiGraph):
             "nodes": nodes_data,
             "edges": edges_data,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> "SignalGraph":
         """[Golden] 从字典反序列化重建 SignalGraph
-        
+
         金标准:
         - 遍历 nodes 重建 TraceNode
         - 遍历 edges 重建 TraceEdge
         - 恢复 port_to_internal 映射
         """
         graph = cls()
-        
+
         # 恢复 port_to_internal
         if "port_to_internal" in data:
             graph._port_to_internal.update(data["port_to_internal"])
-        
+
         # 恢复节点
         for node_dict in data.get("nodes", []):
             kind_str = node_dict.get("kind", "SIGNAL")
@@ -289,7 +370,7 @@ class SignalGraph(nx.DiGraph):
                 kind = NodeKind[kind_str]
             except (KeyError, TypeError):
                 kind = NodeKind.SIGNAL
-            
+
             node = TraceNode(
                 id=node_dict["id"],
                 name=node_dict.get("name", ""),
@@ -309,7 +390,7 @@ class SignalGraph(nx.DiGraph):
                 modport_dir=node_dict.get("modport_dir"),
             )
             graph.add_trace_node(node)
-        
+
         # 恢复边
         for edge_dict in data.get("edges", []):
             kind_str = edge_dict.get("kind", "DRIVER")
@@ -318,7 +399,7 @@ class SignalGraph(nx.DiGraph):
                 kind = EdgeKind[kind_str]
             except (KeyError, TypeError):
                 kind = EdgeKind.DRIVER
-            
+
             edge = TraceEdge(
                 src=edge_dict["src"],
                 dst=edge_dict["dst"],
@@ -330,43 +411,43 @@ class SignalGraph(nx.DiGraph):
                 confidence=edge_dict.get("confidence", "high"),
             )
             graph.add_trace_edge(edge)
-        
+
         return graph
-    
+
     def to_json(self, indent: int = 2) -> str:
         """[Golden] 序列化为 JSON 字符串"""
         import json
         data = self.to_dict()
         return json.dumps(data, indent=indent, ensure_ascii=False)
-    
+
     @classmethod
     def from_json(cls, json_str: str) -> "SignalGraph":
         """[Golden] 从 JSON 字符串反序列化"""
         import json
         data = json.loads(json_str)
         return cls.from_dict(data)
-    
+
     def save_snapshot(self, path: str, tag: str = "", git_commit: str = "", files: list = None):
         """[Golden] 保存快照到文件
-        
+
         Args:
             path: 快照文件路径
-            tag: 快照标签（如 "v1.2.3" 或 "feature-x"）
+            tag: 快照标签(如 "v1.2.3" 或 "feature-x")
             git_commit: Git commit hash
             files: 相关的源文件列表
         """
         import json
         from datetime import datetime, timezone
-        
+
         data = self.to_dict()
         data["tag"] = tag
         data["git_commit"] = git_commit
         data["files"] = files or []
         data["created_at"] = datetime.now(timezone.utc).isoformat()
-        
+
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-    
+
     @classmethod
     def load_snapshot(cls, path: str) -> "SignalGraph":
         """[Golden] 从文件加载快照"""

@@ -4,7 +4,7 @@
 
 from typing import List
 from dataclasses import dataclass
-from ..graph.models import SignalGraph, TraceNode, EdgeKind
+from ..graph.models import SignalGraph, TraceNode, EdgeKind, DriverInfo, NodeKind
 
 @dataclass
 class SignalChain:
@@ -13,14 +13,22 @@ class SignalChain:
     loads: List[TraceNode]
     confidence: str
 
+@dataclass
+class DriverChain:
+    """带详细信息的驱动链"""
+    root: str
+    drivers: List[DriverInfo]  # [方案C] 使用 DriverInfo 替代 TraceNode
+    loads: List[TraceNode]
+    confidence: str
+
 class SignalTracer:
     def __init__(self, graph: SignalGraph):
         self.graph = graph
-    
+
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
         signal_id = self._make_id(signal, module)
-        
+
         # [铁律3] 不可信则不输出 - 节点不存在时返回 uncertain
         if signal_id not in self.graph.nodes():
             return SignalChain(
@@ -29,24 +37,24 @@ class SignalTracer:
                 loads=[],
                 confidence="uncertain"
             )
-        
+
         drivers = self._collect_all_drivers(signal_id)
         loads = self._find_loads(signal_id)
-        
+
         # [铁律3] 无驱动时返回 uncertain
         confidence = "high" if drivers else "uncertain"
-        
+
         return SignalChain(
             root=signal_id,
             drivers=drivers,
             loads=loads,
             confidence=confidence
         )
-    
+
     def _make_id(self, signal: str, module: str = None) -> str:
-        # [方案B修正] 如果 signal 包含 '.'，检查是否以 module. 开头
+        # [方案B修正] 如果 signal 包含 '.',检查是否以 module. 开头
         if module and '.' in signal:
-            # 如果已经以 module. 开头，认为是完整路径
+            # 如果已经以 module. 开头,认为是完整路径
             if signal.startswith(f"{module}."):
                 return signal
             # 否则添加 module 前缀 (相对路径)
@@ -54,10 +62,10 @@ class SignalTracer:
         if module:
             return f"{module}.{signal}"
         return signal
-    
+
     def _collect_all_drivers(self, signal_id: str, max_depth: int | None = None) -> List[TraceNode]:
-        """[P2] 递归收集所有驱动，包括实例端口追溯
-        
+        """[P2] 递归收集所有驱动,包括实例端口追溯
+
         Args:
             signal_id: signal ID
             max_depth: None=无限递归, N=最多递归 N 层
@@ -66,15 +74,15 @@ class SignalTracer:
         seen_ids = set()
         self._trace_drivers_recursive(signal_id, drivers, seen_ids, current_depth=0, max_depth=max_depth)
         return drivers
-    
+
     def _trace_drivers_recursive(self, signal_id: str, drivers: List[TraceNode], seen_ids: set,
                                   current_depth: int = 0, max_depth: int | None = None):
         """递归追溯驱动
-        
+
         Args:
             signal_id: 当前信号 ID
-            drivers: 结果列表（inout）
-            seen_ids: 已访问节点集合（inout）
+            drivers: 结果列表(inout)
+            seen_ids: 已访问节点集合(inout)
             current_depth: 当前递归深度
             max_depth: None=无限递归, N=最多递归 N 层
         """
@@ -82,10 +90,10 @@ class SignalTracer:
         if max_depth is not None and current_depth >= max_depth:
             return
 
-        
+
         if signal_id not in self.graph.nodes():
             return
-        
+
         # [方案B修正] 如果当前节点没有 incoming DRIVER 边, 检查 BIT_SELECT 子节点
         # 例如查询 'm' (modport实例) 时, 如果 'm' 没有直接驱动, 查找 'm.*' 子节点
         has_driver_edge = any(
@@ -101,10 +109,10 @@ class SignalTracer:
                         # 子节点有驱动
                         if src not in seen_ids:
                             self._trace_drivers_recursive(src, drivers, seen_ids, current_depth, max_depth)
-        
+
         # 标记当前节点已访问
         seen_ids.add(signal_id)
-        
+
         # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
@@ -114,11 +122,11 @@ class SignalTracer:
                     if node:
                         drivers.append(node)
                     continue
-                
+
                 edge = self.graph.get_edge(src, dst)
                 # [FIX] 只接受 DRIVER 边作为驱动
                 if edge and edge.kind != EdgeKind.DRIVER:
-                    # CONNECTION 边：检查 src 是否是实例端口
+                    # CONNECTION 边:检查 src 是否是实例端口
                     if edge.kind == EdgeKind.CONNECTION:
                         node = self.graph.get_node(src)
                         if node:
@@ -154,21 +162,29 @@ class SignalTracer:
                     if src in self.graph.nodes() and src not in seen_ids:
                         self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth)
                     continue
-                
+
                 node = self.graph.get_node(src)
+                # [FIX] 字面量节点(CONST)不继续追溯(它是叶子节点)
+                # 但如果它还没有被添加为驱动,则添加到结果
+                if node and node.kind == NodeKind.CONST:
+                    if node.id not in seen_ids:
+                        drivers.append(node)
+                        seen_ids.add(node.id)
+                    continue
+
                 if node and node.id not in seen_ids:
                     drivers.append(node)
-                
-                # 继续递归追溯这个 src 的驱动（DRIVER 边）
-                # seen_ids 检查在函数开头进行，防止环路
+
+                # 继续递归追溯这个 src 的驱动(DRIVER 边)
+                # seen_ids 检查在函数开头进行,防止环路
                 if src in self.graph.nodes() and src not in seen_ids:
                     self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth)
-    
+
     def _find_drivers(self, signal_id: str) -> List[TraceNode]:
         """[兼容] 直接驱动"""
         if signal_id not in self.graph.nodes():
             return []
-        
+
         drivers = []
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
@@ -176,7 +192,7 @@ class SignalTracer:
                 if node:
                     drivers.append(node)
         return drivers
-    
+
     def _find_loads(self, signal_id: str) -> List[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
@@ -193,8 +209,8 @@ class SignalTracer:
         return loads
 
     def _collect_all_loads(self, signal_id: str, max_depth: int | None = None) -> List[TraceNode]:
-        """递归收集所有后继（被这个信号驱动的所有节点）
-        
+        """递归收集所有后继(被这个信号驱动的所有节点)
+
         Args:
             signal_id: 信号 ID
             max_depth: None=无限递归, N=最多递归 N 层
@@ -206,12 +222,12 @@ class SignalTracer:
 
     def _trace_loads_recursive(self, signal_id: str, loads: List[TraceNode], seen_ids: set,
                                current_depth: int = 0, max_depth: int | None = None):
-        """递归追溯负载（被 signal_id 驱动的节点）
-        
+        """递归追溯负载(被 signal_id 驱动的节点)
+
         Args:
             signal_id: 当前信号 ID
-            loads: 结果列表（inout）
-            seen_ids: 已访问节点集合（inout）
+            loads: 结果列表(inout)
+            seen_ids: 已访问节点集合(inout)
             current_depth: 当前递归深度
             max_depth: None=无限递归, N=最多递归 N 层
         """
@@ -236,7 +252,7 @@ class SignalTracer:
 
     def trace_fanout(self, signal: str, module: str = None, depth: int | None = None) -> List[TraceNode]:
         """Trace signal fanout (loads driven by this signal)
-        
+
         Args:
             signal: signal name
             module: module name (optional, for relative paths)
@@ -251,7 +267,7 @@ class SignalTracer:
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> List[TraceNode]:
         """Trace signal fanin (drivers of this signal)
-        
+
         Args:
             signal: signal name
             module: module name (optional, for relative paths)
@@ -261,3 +277,211 @@ class SignalTracer:
         if depth == 1:
             return self._find_drivers(signal_id)
         return self._collect_all_drivers(signal_id, max_depth=depth)
+
+    def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None) -> List[DriverInfo]:
+        """[方案C] Trace signal fanin with detailed driver information
+
+        返回 DriverInfo 列表,包含 condition, clock_domain 等详细信息
+
+        Args:
+            signal: signal name
+            module: module name (optional, for relative paths)
+            depth: 1=direct drivers only, N=recursive N levels, None=recursive all
+
+        Returns:
+            List[DriverInfo] - 驱动信息列表
+        """
+        signal_id = self._make_id(signal, module)
+
+        # 获取所有驱动节点
+        driver_nodes = self.trace_fanin(signal_id, depth=depth)
+
+        # 构建 driver_id -> DriverInfo 的映射
+        driver_infos = []
+        seen_ids = set()
+
+        for node in driver_nodes:
+            if node.id in seen_ids:
+                continue
+            seen_ids.add(node.id)
+
+            # 获取边的信息
+            edge = self.graph.get_edge(node.id, signal_id)
+            
+            # [P3-6-FIX] 当 edge 不存在时，说明 node 不是直接驱动 signal_id
+            # 需要尝试从 node 追溯到 signal_id 的完整路径获取表达式
+            expression = ""
+            condition = ""
+            clock_domain = ""
+            assign_type = ""
+            
+            if edge:
+                expression = edge.expression
+                condition = edge.condition
+                clock_domain = edge.clock_domain
+                assign_type = edge.assign_type
+                
+                # [P1-3 完整表达式] 如果 expression 等于驱动节点 ID 本身,
+                # 递归查找该节点的驱动源作为完整表达式
+                if expression == node.id or expression.startswith(node.id + '['):
+                    full_expr = self._resolve_full_expression(node.id)
+                    if full_expr:
+                        expression = full_expr
+            else:
+                # [FIX] edge 不存在时的处理
+                # 情况1: node 是字面量，尝试解析其完整表达式
+                # 情况2: node 是中间节点，尝试从其到 signal_id 的路径获取信息
+                
+                # 首先尝试 _resolve_full_expression
+                full_expr = self._resolve_full_expression(node.id)
+                if full_expr:
+                    expression = full_expr
+                elif node.id.startswith("4'b") or node.id.startswith("1'b"):
+                    # 字面量节点直接用自己作为表达式
+                    expression = node.id
+                
+                # 尝试从 node 的驱动边获取 condition
+                # 遍历 node 的入边，找到 DRIVER 边
+                for src, dst in self.graph.edges():
+                    if dst == node.id:
+                        node_edge = self.graph.get_edge(src, dst)
+                        if node_edge and node_edge.kind.name == 'DRIVER':
+                            if node_edge.condition:
+                                condition = node_edge.condition
+                            if node_edge.clock_domain:
+                                clock_domain = node_edge.clock_domain
+                            if node_edge.assign_type:
+                                assign_type = node_edge.assign_type
+                            break
+
+            driver_info = DriverInfo(
+                node=node,
+                condition=condition,
+                clock_domain=clock_domain,
+                assign_type=assign_type,
+                distance=1,  # TODO: 计算实际距离
+                expression=expression,
+                bit_slice=edge.bit_slice if edge else "",
+                target_signal=signal_id  # [P3-6] 目标信号用于组装完整语句
+            )
+            driver_infos.append(driver_info)
+        
+        # [P3-3] 补全缺失的 clock_domain：通过后继节点的 CLOCK 边反推
+        self._infer_clock_reset_for_drivers(signal_id, driver_infos)
+        
+        return driver_infos
+    
+    def _infer_clock_reset_for_drivers(self, signal_id: str, driver_infos: List[DriverInfo]):
+        """"通过后继节点的 CLOCK/RESET 边反推时钟和复位信息
+        
+        如果 DriverInfo 的 clock_domain 为空，通过检查 signal_id 的后继节点
+        的 CLOCK/RESET 边来推断时钟域信息。
+        
+        Args:
+            signal_id: 信号 ID
+            driver_infos: DriverInfo 列表 (inout，会被修改)
+        """
+        # 查找 signal_id 的后继节点的时钟
+        inferred_clock = None
+        inferred_reset = None
+        
+        for succ in self.graph.successors(signal_id):
+            for src, dst in self.graph.edges():
+                if dst == succ:
+                    edge = self.graph.get_edge(src, dst)
+                    if edge:
+                        if edge.kind.name == 'CLOCK' and not inferred_clock:
+                            inferred_clock = edge.clock_domain
+                        elif edge.kind.name == 'RESET' and not inferred_reset:
+                            inferred_reset = edge.condition
+                    if inferred_clock and inferred_reset:
+                        break
+            if inferred_clock and inferred_reset:
+                break
+        
+        # 更新所有 clock_domain 为空的 DriverInfo
+        for di in driver_infos:
+            if not di.clock_domain and inferred_clock:
+                di.clock_domain = inferred_clock
+            if not di.reset_condition and inferred_reset:
+                di.reset_condition = inferred_reset
+    
+    def _resolve_full_expression(self, signal_id: str) -> str:
+        """递归解析完整表达式
+
+        如果 signal_id 被另一个信号驱动,查找该信号的完整表达式。
+        例如: sreg_q 驱动源是 sreg_d,sreg_d 的完整表达式是 {rx, sreg_q[10:1]}
+
+        Args:
+            signal_id: 信号 ID
+
+        Returns:
+            完整表达式字符串,如果找不到则返回空
+        """
+        # 避免递归循环
+        visited = set()
+        return self._resolve_expr_recursive(signal_id, visited)
+
+    def _resolve_expr_recursive(self, signal_id: str, visited: set) -> str:
+        """递归解析表达式 (内部方法)"""
+        if signal_id in visited or signal_id.startswith(tuple('0123456789')):
+            return ""
+        visited.add(signal_id)
+
+        # 查找驱动这个信号的边
+        for src, dst in self.graph.edges():
+            if dst == signal_id:
+                edge = self.graph.get_edge(src, dst)
+                if edge and edge.kind.name == 'DRIVER':
+                    expr = edge.expression if edge else ""
+
+                    # 如果是占位符表达式 (来自 graph_builder 的 str(rhs_expr))
+                    # 尝试递归查找更完整的表达式
+                    if 'Expression(' in expr or expr == src:
+                        if expr == src:
+                            # expression 等于 src,继续递归查找更完整的表达式
+                            recursive_expr = self._resolve_expr_recursive(src, visited)
+                            if recursive_expr and 'Expression(' not in recursive_expr:
+                                return recursive_expr
+                        # 如果找不到更好的,返回原 expression
+                        return expr
+
+                    # 如果 expression 不是字面量,直接返回
+                    if expr and not expr.startswith(tuple('0123456789"\'')):
+                        return expr
+                    return expr
+        return ""
+
+    def trace_detailed(self, signal: str, module: str = None) -> DriverChain:
+        """[方案C] Trace signal with detailed driver information
+
+        返回带详细驱动信息的 SignalChain
+
+        Args:
+            signal: signal name
+            module: module name (optional, for relative paths)
+
+        Returns:
+            DriverChain - 包含 DriverInfo 列表
+        """
+        signal_id = self._make_id(signal, module)
+
+        if signal_id not in self.graph.nodes():
+            return DriverChain(
+                root=signal_id,
+                drivers=[],
+                loads=[],
+                confidence="uncertain"
+            )
+
+        driver_infos = self.trace_fanin_detailed(signal_id)
+        loads = self._find_loads(signal_id)
+
+        confidence = "high" if driver_infos else "uncertain"
+
+        return DriverChain(
+            root=signal_id,
+            drivers=driver_infos,
+            loads=loads,
+            confidence=confidence
+        )
