@@ -615,6 +615,80 @@ pyslang AST → GraphBuilder → SignalExpressionVisitor
 | BIT_SELECT 复用 (位选+struct.member) | 考虑拆分 |
 | SignalResult 未被广泛使用 | 推动 extract() 统一入口 |
 
+### 4.8 SignalResult 使用分析
+
+#### 三接口设计
+
+SignalExpressionVisitor 提供三个接口：
+
+| 接口 | 返回类型 | 状态 |
+|------|----------|------|
+| `visit(node)` | `Optional[str]` | 旧接口，单信号 |
+| `get_all_signals(node)` | `List[str]` | 旧接口，多信号 |
+| `extract(node)` | `SignalResult` | **推荐** 统一入口 |
+
+#### 实际使用情况
+
+| 使用位置 | 接口 | 说明 |
+|---------|------|------|
+| SignalExpressionVisitor 内部 | `extract()` | ✅ 递归合并到父节点 |
+| CLI expression 命令 | `extract()` | ✅ 使用 SignalResult |
+| GraphBuilder | `visit()` / `get_all_signals()` | ❌ 未迁移到 extract() |
+
+#### SignalResult 数据流
+
+```
+SignalExpressionVisitor.extract(node)
+    ↓
+┌─────────────────────────────────────┐
+│ SignalResult                         │
+│  - primary: 第一个信号名            │
+│  - all_signals: [所有信号]           │
+│  - kind_name: 'BinaryOp'             │
+│  - op_name: 'Add'                    │
+└─────────────────────────────────────┘
+    ├─→ CLI expression 命令 ✅
+    ├─→ 递归合并 (inside/min_typ_max 等) ✅
+    └─→ GraphBuilder ❌ (仍用 visit/get_all)
+```
+
+#### 问题分析
+
+| 问题 | 说明 |
+|------|------|
+| **GraphBuilder 未使用 extract()** | 仍调用旧接口 visit()/get_all_signals() |
+| **ExtractorResult 与 SignalResult 重复** | 两个结果容器，设计冗余 |
+| **extract() 推广受阻** | CLI expression 使用，但 GraphBuilder 未迁移 |
+
+#### ExtractorResult vs SignalResult
+
+```python
+# graph_builder.py - ExtractorResult
+class ExtractorResult:
+    nodes: List[TraceNode]
+    edges: List[TraceEdge]
+    errors: List[str]
+    port_to_internal: Dict[str, str]
+
+# signal_result.py - SignalResult
+class SignalResult:
+    primary: Optional[str]
+    all_signals: List[str]
+    kind_name: Optional[str]
+    op_name: Optional[str]
+```
+
+**建议统一为 SignalResult**：
+```python
+class SignalResult:
+    nodes: List[TraceNode] = field(default_factory=list)
+    edges: List[TraceEdge] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    primary: Optional[str]
+    all_signals: List[str]
+    kind_name: Optional[str]
+    op_name: Optional[str]
+```
 
 ---
 
