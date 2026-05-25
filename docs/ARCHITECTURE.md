@@ -294,7 +294,190 @@ class ConstraintVisitor:
 
 ---
 
-## 三、查询 API
+## 三、Visitor 模式详解
+
+### 3.1 Visitor 概览
+
+| Visitor | 文件 | Handler 数 | 主要职责 |
+|---------|------|------------|----------|
+| `SignalExpressionVisitor` | `visitors/signal_expression_visitor.py` | 538 @on | AST → 信号名 |
+| `StatementCollectorVisitor` | `visitors/statement_collector_visitor.py` | ~50 | 语句 + 语义上下文 |
+| `ConstraintVisitor` | `visitors/constraint_visitor.py` | - | 约束表达式解析 |
+| `BaseVisitor` | `visitors/base_visitor.py` | - | 基类 |
+
+### 3.2 使用模式
+
+#### 模式 1: 在 GraphBuilder 中委托调用
+
+```python
+# graph_builder.py
+class DriverExtractor:
+    def __init__(self, adapter):
+        self._signal_visitor = SignalExpressionVisitor(adapter)
+        self._stmt_visitor = StatementCollectorVisitor(adapter)
+
+    def _get_signal(self, signal) -> Optional[str]:
+        # 委托给 Visitor，不直接解析
+        return self._signal_visitor.visit(signal)
+
+    def _get_all_signals(self, signal) -> List[str]:
+        return self._signal_visitor.get_all_signals(signal)
+```
+
+**职责分离**:
+- **GraphBuilder**: 遍历 AST，创建 TraceNode/TraceEdge
+- **Visitor**: 解析表达式中的信号名
+
+#### 模式 2: 在 ClassGraphBuilder 中解析约束变量
+
+```python
+# class_graph_builder.py
+class ClassGraphBuilder:
+    def __init__(self, adapter):
+        self._cv = ConstraintVisitor()
+
+
+    def _build_constraint(self, item, ...):
+        self._cv.reset()
+        self._cv.visit(item)          # 解析约束
+        vars = self._cv.variables     # 提取变量
+```
+
+### 3.3 SignalExpressionVisitor 工作原理
+
+#### 双接口设计
+
+```python
+class SignalExpressionVisitor:
+    def visit(self, node) -> Optional[str]:
+        """单信号接口 - 返回第一个信号名"""
+        ...
+
+    def get_all_signals(self, node) -> List[str]:
+        """多信号接口 - 返回所有信号名"""
+        ...
+
+    def extract(self, node) -> SignalResult:
+        """统一接口 (推荐) - 返回完整结果"""
+        return SignalResult(primary=..., all_signals=..., ...)
+```
+
+#### @on 装饰器注册机制
+
+```python
+@on('IdentifierName')
+def visit_identifier_name(self, node):
+    """处理信号引用"""
+    return self._clean_name(node.symbol.name)
+
+@on('BinaryOp')
+def handle_binary_op(self, node):
+    """处理二元表达式 a + b"""
+    left = self.visit(node.left)
+    right = self.visit(node.right)
+    return f"{left} {node.op} {right}" if left and right else None
+```
+
+**注册表**: `_HANDLERS` 字典，通过 `@on('KindName')` 装饰器自动注册。
+
+#### 示例流程
+
+```systemverilog
+assign data = a + b;
+```
+
+```python
+# GraphBuilder 调用
+expr_str = self._signal_visitor.visit(rhs_expr)  # → "a + b"
+
+# 内部流程
+visitor.visit(binary_op_node)
+  → 获取 kind.name = 'BinaryOp'
+  → 查找 _HANDLERS['BinaryOp']
+  → 调用 handle_binary_op(self, node)
+  → 返回 "a + b"
+```
+
+### 3.4 StatementCollectorVisitor 工作原理
+
+#### 语义上下文收集
+
+```python
+class StatementCollectorVisitor:
+    def collect(self, node, ctx=None) -> List[Tuple[Any, Dict, ItemType]]:
+        """收集语句并携带语义上下文"""
+        # ctx = {clock: 'clk_i', condition: 'en', reset: 'rst_n'}
+```
+
+#### 上下文栈机制
+
+```python
+# 进入 always_ff @(posedge clk)
+self._ctx_stack.append({clock: 'clk_i', ...})
+
+
+# 进入 if (en) 块
+self._ctx_stack.append({condition: 'en', ...})
+
+
+# 收集当前语句，使用合并后的上下文
+current_ctx = self.current_ctx  # {clock: 'clk_i', condition: 'en', ...}
+```
+
+
+### 3.5 Visitor 与 GraphBuilder 的关系
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    GraphBuilder                          │
+│  - 遍历 AST (Module/Interface/Program)                   │
+│  - 创建 TraceNode / TraceEdge                            │
+│  - 调用 Visitor 解析表达式                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+         ┌─────────────────────────────────┐
+         │     SignalExpressionVisitor      │
+         │  - visit() → 单信号名             │
+         │  - get_all_signals() → 多信号    │
+         │  - 538 个 @on handler             │
+         └─────────────────────────────────┘
+                              │
+                              ▼
+         ┌─────────────────────────────────┐
+         │   StatementCollectorVisitor     │
+         │  - collect() → 语句+上下文       │
+         │  - 携带 clock/condition/reset    │
+         └─────────────────────────────────┘
+```
+
+### 3.6 当前架构问题
+
+| 问题 | 说明 |
+|------|------|
+| **双接口冗余** | visit() 和 get_all_signals() 有重复逻辑 |
+| **Handler 未全利用** | 538 个 handler，但 GraphBuilder 只调用了少量 |
+| **ExpressionBuilder 独立** | `expression_builder.py` 未接入 Visitor |
+
+### 3.7 建议改进
+
+```python
+# 建议: 统一为单接口
+class SignalExpressionVisitor:
+    def extract(self, node) -> SignalResult:
+        """唯一入口，返回完整结果"""
+        return SignalResult(
+            primary=self.visit(node),
+            all_signals=self.get_all_signals(node),
+            all_signals_unique=set(...),
+            kind_name=kind_name,
+            ...
+        )
+```
+
+---
+
+## 四、查询 API
 
 ### 3.1 SignalTracer - 信号追踪
 
@@ -327,7 +510,7 @@ class DataFlowGraph:
 
 ---
 
-## 四、CLI 命令行工具
+## 五、CLI 命令行工具
 
 **文件**: `src/cli/main.py`
 
