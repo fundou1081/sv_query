@@ -1,12 +1,30 @@
 #==============================================================================
 # main.py - CLI entry point
-#============================================================================
+#==============================================================================
+"""
+Usage:
+  python -m cli.main dataflow --help
+  python src/cli/main.py dataflow --help
+"""
+
+import sys
+from pathlib import Path
+
+# 设置 sys.path - 允许直接运行或作为模块运行
+# 找到 src/ 目录的父目录并添加到 path
+_current_file = Path(__file__).resolve()
+_src_dir = _current_file.parent  # src/cli/
+_project_root = _src_dir.parent.parent  # 项目根目录
+
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 import typer
 
-from .commands.trace import trace_app
-from .commands.diff import diff_app
-from .commands.snapshot import snapshot_app
+from src.cli.commands.trace import trace_app
+from src.cli.commands.diff import diff_app
+from src.cli.commands.snapshot import snapshot_app
+from src.cli.commands.dataflow import dataflow_app
 
 app = typer.Typer(
     name="svq",
@@ -18,10 +36,11 @@ app = typer.Typer(
 app.add_typer(trace_app, name="trace")
 app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
+app.add_typer(dataflow_app, name="dataflow")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖
-from .commands.stats import stats as stats_cmd
+from src.cli.commands.stats import stats as stats_cmd
 
 
 def stats_callback(
