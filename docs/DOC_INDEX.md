@@ -10,16 +10,16 @@
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ **已完成** | 5 | 架构设计完成，待实现 |
+| ✅ **已完成** | 6 | DataFlow 已实现，ControlFlow 架构设计完成 |
 | 🔄 **讨论中** | 2 | 正在讨论/评估中 |
-| 📋 **待执行** | 4 | 已设计方案，待开始实现 |
-| 📦 **归档** | 18 | 已在 `docs/archive/`，仅供参考 |
+| 📋 **待执行** | 4 | ControlFlow 等待实现 |
+| 📦 **归档** | 19 | 已在 `docs/archive/`，仅供参考 |
 
 ---
 
 ## 一、架构设计文档 (已完成) ✅
 
-这些文档已完成设计，待实现或正在实现中。
+这些文档已完成，其中 DataFlow 已实现，ControlFlow 仍为设计阶段。
 
 ### DataFlow 数据流分析
 | 文档 | 状态 | 说明 |
@@ -27,6 +27,7 @@
 | `FINAL_SCHEMA_DECISION.md` | ✅ 完成 | **核心架构决定** - DataFlow 基于 SignalGraph 构建 |
 | `DATAFLOW_ANALYSIS_ARCHITECTURE.md` | ✅ 完成 | DataFlow 三层架构设计 |
 | `IMPLEMENTATION_RELATION.md` | ✅ 完成 | DataFlow 与源代码关系 |
+| **`DATAFLOW_IMPLEMENTATION_PLAN.md`** | ✅ 已实现 | **DataFlow 实现完成** (2026-05-26) |
 
 ### ControlFlow 控制流分析
 | 文档 | 状态 | 说明 |
@@ -59,17 +60,13 @@
 
 ## 三、待执行 📋
 
-已确定要执行的任务，尚未开始实现。
-
-### DataFlow 实现
-| 任务 | 优先级 | 说明 |
-|------|--------|------|
-| 实现 DataFlowSegment | P1 | 单步驱动 (from → to) |
-| 实现 DataFlowPath | P1 | 完整路径 |
-| 实现 DataFlowResult | P1 | 分析结果封装 |
-| 实现 DataFlowAnalyzer | P1 | 主分析器 (基于 nx.all_simple_paths) |
-
-**参考文档:** `docs/FINAL_SCHEMA_DECISION.md`, `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md`
+### DataFlow 实现 ✅ 已完成
+| 任务 | 优先级 | 状态 | 说明 |
+|------|--------|------|------|
+| DataFlowSegment 实现 | P1 | ✅ 已完成 | 单步驱动 (from → to) |
+| DataFlowPath 实现 | P1 | ✅ 已完成 | 完整路径 |
+| DataFlowResult 实现 | P1 | ✅ 已完成 | 分析结果封装 |
+| DataFlowAnalyzer 实现 | P1 | ✅ 已完成 | 主分析器 (基于 nx.all_simple_paths) |
 
 ### ControlFlow 实现
 | 任务 | 优先级 | 说明 |
@@ -80,11 +77,6 @@
 | 实现 ControlFlowAnalyzer | P2 | 主分析器 |
 
 **参考文档:** `docs/CONTROL_FLOW_ANALYSIS.md`
-
-### 其他
-| 任务 | 优先级 | 说明 |
-|------|--------|------|
-| StatementCollectorVisitor 架构对齐 | P3 | 参照 SignalExpressionVisitor 改进 |
 
 ---
 
@@ -199,14 +191,14 @@
 
 ## 六、任务追踪看板
 
-### DataFlow 数据流分析
+### DataFlow 数据流分析 ✅ 已完成
 
 | 任务 | 优先级 | 状态 | 说明 |
 |------|--------|------|------|
-| DataFlowSegment 实现 | P1 | 📋 待执行 | 单步驱动 |
-| DataFlowPath 实现 | P1 | 📋 待执行 | 完整路径 |
-| DataFlowResult 实现 | P1 | 📋 待执行 | 结果封装 |
-| DataFlowAnalyzer 实现 | P1 | 📋 待执行 | 路径搜索 |
+| DataFlowSegment 实现 | P1 | ✅ 已完成 | 单步驱动 |
+| DataFlowPath 实现 | P1 | ✅ 已完成 | 完整路径 |
+| DataFlowResult 实现 | P1 | ✅ 已完成 | 结果封装 |
+| DataFlowAnalyzer 实现 | P1 | ✅ 已完成 | 路径搜索 (BIT_SELECT + Struct 支持) |
 
 ### ControlFlow 控制流分析
 
@@ -216,13 +208,6 @@
 | StateTransition 实现 | P2 | 📋 待执行 | 状态转换 |
 | ControlFlowResult 实现 | P2 | 📋 待执行 | 结果封装 |
 | ControlFlowAnalyzer 实现 | P2 | 📋 待执行 | 分支覆盖分析 |
-
-### 架构优化
-
-| 任务 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| SignalExpressionVisitor 单 dispatch | P2 | 🔄 讨论中 | 等待明确需求 |
-| StatementCollectorVisitor 架构对齐 | P3 | 🔄 讨论中 | P2 完成后评估 |
 
 ---
 
