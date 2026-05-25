@@ -32,6 +32,8 @@ class NodeKind(Enum):
     CONSTRAINT_SOLVE = auto()       # solve A before B
     CONSTRAINT_FOREACH = auto()     # foreach 循环
     CONSTRAINT_RANGE = auto()       # inside {0,1,2} 的集合
+    EXPRESSION = auto()             # 表达式节点 (a + b, a & b)
+    FUNCTION_CALL = auto()          # 函数调用节点
 
 class EdgeKind(Enum):
     DRIVER = auto()      # 数据驱动 (q <= d)
