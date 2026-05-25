@@ -1,7 +1,7 @@
 # 控制流分析架构提案
 
 > 创建时间: 2026-05-24
-> 状态: 提案阶段
+> 状态: 提案阶段 (DataFlow 已实现，ControlFlow 待实现)
 > 相关文档: `DATAFLOW_ANALYSIS_ARCHITECTURE.md`, `ARCHITECTURE_COMPARISON.md`
 
 ---
