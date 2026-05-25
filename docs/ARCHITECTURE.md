@@ -477,7 +477,148 @@ class SignalExpressionVisitor:
 
 ---
 
-## 四、查询 API
+## 四、数据抽象详解
+
+### 4.1 数据模型总览
+
+| 模型 | 文件 | 类型 | 用途 |
+|------|------|------|------|
+| `TraceNode` | graph/models.py | @dataclass | 图节点 |
+| `TraceEdge` | graph/models.py | @dataclass | 图边 |
+| `DriverInfo` | graph/models.py | @dataclass | 驱动信息 |
+| `SignalGraph` | graph/models.py | nx.DiGraph | 有向图容器 |
+| `PortInfo` | module_instance_graph.py | @dataclass | 端口信息 |
+| `ModuleInstanceNode` | module_instance_graph.py | @dataclass | 实例节点 |
+| `ModuleInstanceGraph` | module_instance_graph.py | nx.DiGraph | 实例图 |
+| `SignalResult` | signal_result.py | @dataclass | 表达式解析结果 |
+| `DataFlowSegment` | dataflow.py | @dataclass | 数据流段 |
+| `DataFlowPath` | dataflow.py | @dataclass | 数据流路径 |
+| `DataFlowResult` | dataflow.py | @dataclass | 数据流结果 |
+
+### 4.2 NodeKind 枚举 (25个)
+
+```python
+class NodeKind(Enum):
+    # 信号节点 (11个)
+    SIGNAL, WIRE, REG, PORT_IN, PORT_OUT, PORT_INOUT, PARAM, CONST
+    INSTANTIATED_MODULE, GENERATE_BLOCK
+    
+    # Class 节点 (12个)
+    CLASS, CLASS_INSTANCE, CLASS_PROPERTY
+    CONSTRAINT_BLOCK, CONSTRAINT_EXPR, CONSTRAINT_IF, CONSTRAINT_ELSE
+    CONSTRAINT_IMPLIES, CONSTRAINT_UNIQUE, CONSTRAINT_SOLVE
+    CONSTRAINT_FOREACH, CONSTRAINT_RANGE
+    
+    # 表达式节点 (2个)
+    EXPRESSION, FUNCTION_CALL
+```
+
+### 4.3 EdgeKind 枚举 (18个)
+
+
+```python
+class EdgeKind(Enum):
+    # 核心边 (5个)
+    DRIVER, CLOCK, RESET, CONNECTION, BIT_SELECT
+    
+    # Class 边 (13个)
+    CONSTRAINS, HAS_CONDITION, HAS_CONSEQUENT, HAS_ALTERNATE
+    HAS_LHS, HAS_RHS, HAS_MEMBER, HAS_LOOP_VAR
+    HAS_BEFORE, HAS_AFTER, CONTAINS_MEMBER, IS_INSTANCE_OF, SUPER_CALL
+```
+
+### 4.4 核心 dataclass
+
+#### TraceNode
+
+```python
+@dataclass
+class TraceNode:
+    id: str                    # "top.clk_i"
+    name: str                  # "clk_i"
+    module: str                 # "top"
+    kind: NodeKind
+    width: Tuple[int, int]     # (31, 0)
+    bit_range: Optional[str]    # "[3:0]"
+    parent: Optional[str]       # "top.data"
+    parent_bit_start/end: int  # 位选范围
+    is_clock/is_reset: bool    # 语义标记
+```
+
+#### TraceEdge
+
+```python
+@dataclass
+class TraceEdge:
+    src: str
+    dst: str
+    kind: EdgeKind
+    assign_type: str = ""       # always_ff/always_comb/continuous
+    condition: str = ""        # if (en)
+    clock_domain: str = ""     # "clk_i"
+    expression: str = ""       # "sreg_d"
+```
+
+#### DriverInfo
+
+```python
+@dataclass
+class DriverInfo:
+    node: TraceNode
+    condition: str = ""
+    clock_domain: str = ""
+    assign_type: str = ""
+    distance: int = 1
+    
+    @property
+    def full_statement(self) -> str:
+        """组装完整驱动语句"""
+```
+
+#### SignalResult
+
+```python
+@dataclass
+class SignalResult:
+    primary: Optional[str]       # 单信号名 (LHS)
+    all_signals: List[str]       # 所有信号 (RHS)
+    kind_name: Optional[str]      # 'BinaryOp'
+    op_name: Optional[str]        # 'Add'
+```
+
+### 4.5 设计模式
+
+| 模式 | 说明 |
+|------|------|
+| **dataclass** | 简化数据类定义 |
+| **Enum + auto()** | 自动分配枚举值 |
+| **Optional 默认值** | 避免 None 检查 |
+| **field(default_factory=list)** | 避免可变默认值共享 |
+| **@property 派生** | 计算属性 (如 full_statement) |
+| **@classmethod 工厂** | SignalResult.single/multi/empty |
+
+
+### 4.6 数据流
+
+```
+pyslang AST → GraphBuilder → SignalExpressionVisitor
+  → StatementCollectorVisitor → TraceNode/TraceEdge
+  → SignalGraph → DataFlowGraph.analyze()
+```
+
+### 4.7 设计问题
+
+| 问题 | 建议 |
+|------|------|
+| TraceNode 过载 | 考虑继承或泛型 |
+| DriverInfo 与 TraceEdge 重复 | 考虑合并 |
+| BIT_SELECT 复用 (位选+struct.member) | 考虑拆分 |
+| SignalResult 未被广泛使用 | 推动 extract() 统一入口 |
+
+
+---
+
+## 五、查询 API
 
 ### 3.1 SignalTracer - 信号追踪
 
@@ -510,7 +651,7 @@ class DataFlowGraph:
 
 ---
 
-## 五、CLI 命令行工具
+## 六、CLI 命令行工具
 
 **文件**: `src/cli/main.py`
 
@@ -534,7 +675,7 @@ run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
 
 ---
 
-## 五、技术栈
+## 七、技术栈
 
 | 组件 | 技术 | 说明 |
 |------|------|------|
@@ -547,7 +688,7 @@ run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
 
 ---
 
-## 六、关键设计原则
+## 八、关键设计原则
 
 | 铁律 | 说明 |
 |------|------|
@@ -560,7 +701,7 @@ run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
 
 ---
 
-## 七、文件结构
+## 九、文件结构
 
 ```
 src/trace/
@@ -598,7 +739,7 @@ src/trace/
 
 ---
 
-## 八、测试统计 (2026-05-26)
+## 十、测试统计 (2026-05-26)
 
 ```
 Unit tests:       30 tests
@@ -612,7 +753,7 @@ Failed:            0 test
 
 ---
 
-## 九、版本历史
+## 十一、版本历史
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
@@ -621,7 +762,7 @@ Failed:            0 test
 
 ---
 
-## 十、相关文档
+## 十二、相关文档
 
 | 文档 | 说明 |
 |------|------|
