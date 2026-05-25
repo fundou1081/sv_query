@@ -234,11 +234,15 @@ class DriverExtractor:
 
         # [FIX Issue 21] 初始化当前模块上下文
         self._current_module = None
+        self._current_source_file = ""
 
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
             self._current_module = module
+            # [P1-3] 获取当前模块的源文件位置
+            src_file, src_line, _, _ = self.adapter.get_source_location(module)
+            self._current_source_file = src_file
 
             # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
             port_decls = self.adapter.get_port_declarations(module)
@@ -271,13 +275,17 @@ class DriverExtractor:
                         except (ValueError, TypeError):
                             lsb = 0
                         port_width = (msb, lsb)
+                    # [P1-3] 获取端口的源码位置
+                    port_file, port_line, _, _ = self.adapter.get_source_location(port_decl)
                     result.nodes.append(TraceNode(
                         id=port_id,
                         name=port_name,
                         module=module_name,
                         kind=kind,
                         width=port_width,
-                        is_port=True
+                        is_port=True,
+                        file=port_file,
+                        line=port_line
                     ))
 
             # [铁律4] 为每个信号创建 TraceNode
@@ -299,12 +307,16 @@ class DriverExtractor:
                 if var_id not in [n.id for n in result.nodes]:
                     # 提取变量位宽
                     var_width = self.adapter.extract_data_width(var_decl)
+                    # [P1-3] 获取变量的源码位置
+                    var_file, var_line, _, _ = self.adapter.get_source_location(var_decl)
                     result.nodes.append(TraceNode(
                         id=var_id,
                         name=var_name,
                         module=module_name,
                         kind=NodeKind.SIGNAL,
-                        width=var_width
+                        width=var_width,
+                        file=var_file,
+                        line=var_line
                     ))
 
             # [FIX] alias 语句: alias b = a; -> b 驱动源为 a
@@ -555,15 +567,28 @@ class DriverExtractor:
                         rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
                     if not rhs_signals:
                         rhs_signals = [rhs]
+                    # [P0-2] 计算完整表达式字符串
+                    # 使用 SignalExpressionVisitor 获取可读的表达式字符串
+                    if rhs_expr:
+                        expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                    else:
+                        expr_str = rhs or ''
                     for rhs_name in rhs_signals:
                         if not rhs_name:
                             continue
+                        # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
+                        bit_slice = ''
+                        if '[' in rhs_name and ']' in rhs_name:
+                            start = rhs_name.index('[')
+                            bit_slice = rhs_name[start:]
                         # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
+                        # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
                         if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
-                            # 字面量:直接用作 edge src,不创建节点
+                            # 字面量:直接用作 edge src,用自己作为 expression
                             result.edges.append(TraceEdge(
                                 src=rhs_name, dst=dst_node_id,
-                                kind=EdgeKind.DRIVER, assign_type="continuous"
+                                kind=EdgeKind.DRIVER, assign_type="continuous",
+                                expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
                             ))
                         else:
                             src_node_id = f"{module_name}.{rhs_name}"
@@ -574,7 +599,8 @@ class DriverExtractor:
                                 ))
                             result.edges.append(TraceEdge(
                                 src=src_node_id, dst=dst_node_id,
-                                kind=EdgeKind.DRIVER, assign_type="continuous"
+                                kind=EdgeKind.DRIVER, assign_type="continuous",
+                                expression=expr_str, bit_slice=bit_slice
                             ))
 
             # always 块 - [铁律7金标准] + 语义上下文
@@ -634,17 +660,30 @@ class DriverExtractor:
                         rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
                         if not rhs_signals:
                             rhs_signals = [rhs]
+                        # [P0-2] 计算完整表达式字符串
+                        # 使用 SignalExpressionVisitor 获取可读的表达式字符串
+                        if rhs_expr:
+                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                        else:
+                            expr_str = rhs or ''
                         for rhs_name in rhs_signals:
                             if not rhs_name:
                                 continue
+                            # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
+                            bit_slice = ''
+                            if '[' in rhs_name and ']' in rhs_name:
+                                start = rhs_name.index('[')
+                                bit_slice = rhs_name[start:]
                             # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
+                            # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
                             if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
-                                # 字面量:直接用作 edge src,不创建节点
+                                # 字面量:只用边连接,不做为独立节点
                                 result.edges.append(TraceEdge(
                                     src=rhs_name, dst=dst_node_id,
                                     kind=EdgeKind.DRIVER, assign_type="nonblocking",
                                     clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", "")
+                                    condition=ctx.get("condition", ""),
+                                    expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
                                 ))
                             else:
                                 src_node_id = f"{module_name}.{rhs_name}"
@@ -657,7 +696,8 @@ class DriverExtractor:
                                     src=src_node_id, dst=dst_node_id,
                                     kind=EdgeKind.DRIVER, assign_type="nonblocking",
                                     clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", "")
+                                    condition=ctx.get("condition", ""),
+                                    expression=expr_str, bit_slice=bit_slice
                                 ))
 
                             # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
