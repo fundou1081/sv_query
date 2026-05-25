@@ -119,3 +119,18 @@ class DataFlowAnalyzer:
 - [x] 路径风险评估 (_evaluate_timing_risk)
 - [x] 缓存统计 (get_cache_stats)
 - [x] 集成到 graph/__init__.py
+- [x] BIT_SELECT 节点处理 (byte_data[3:0] → byte_data 路径扩展)
+- [x] Struct 成员展开 (pkt1.data → pkt2.data 成员赋值展开)
+- [x] MEMBER_SELECT 边 (struct.member → struct 父节点追踪)
+
+## 测试结果 (2026-05-26)
+
+| 测试用例 | 结果 |
+|---------|------|
+| `byte_data → byte_low` (位选择) | ✅ |
+| `byte_data → byte_high` (位选择) | ✅ |
+| `pkt1.data → pkt2.data` (struct 赋值) | ✅ |
+| `data_in → data_out` (完整 struct 路径) | ✅ (6条路径) |
+| 循环检测 (组合逻辑环) | ✅ |
+| 循环检测 (寄存器环) | ✅ |
+| 839 tests passed | ✅ |
