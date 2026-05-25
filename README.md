@@ -18,6 +18,8 @@
 - **位选追踪**：精确追踪 `data[7:4]` 等位选择信号的父子关系和位范围
 - **Class OOP 支持**：支持 SystemVerilog 面向对象编程的类、继承、组合、约束追踪
 - **Constraint 追踪**：支持随机约束的解析、SUPER_CALL 边追踪、约束覆盖分析
+- **数据流路径分析**：追踪信号 A 到信号 B 的完整数据流路径，支持多路径、条件判断、时钟域分析
+- **Struct 成员追踪**：自动展开 struct 整体赋值，支持 `pkt1.data → pkt2.data` 成员传播
 
 ### 技术栈
 
@@ -63,6 +65,9 @@ src/trace/
 ├── unified_tracer.py        # 统一入口，协调各组件
 ├── core/
 │   ├── graph_builder.py      # 模块/信号图构建 (DriverExtractor, LoadExtractor)
+│   ├── graph/
+│   │   ├── models.py          # 数据模型 (TraceNode, TraceEdge, EdgeKind, SignalGraph)
+│   │   └── dataflow.py        # DataFlowGraph - 数据流路径分析
 │   ├── graph_models.py       # 数据模型 (TraceNode, TraceEdge, EdgeKind)
 │   ├── base.py               # PyslangAdapter - AST 操作封装
 │   ├── class_graph_builder.py # Class OOP 图构建 (约束、继承、组合)
@@ -101,6 +106,13 @@ SV Source Files
   │  │  - constraint parsing        │   │
   │  │  - inheritance (extends)     │   │
   │  │  - composition (has-a)      │   │
+  │  └──────────────────────────────┘   │
+  │  ┌──────────────────────────────┐   │
+  │  │      DataFlowGraph           │   │
+  │  │  - path search (nx.all_simple_paths)
+  │  │  - struct member expansion   │   │
+  │  │  - BIT_SELECT edge handling  │   │
+  │  │  - clock domain analysis     │   │
   │  └──────────────────────────────┘   │
   └─────────────────────────────────────┘
        ↓
@@ -152,6 +164,27 @@ SV Source Files
 | Constraint 覆盖 (augmentation/replacement) | ✅ |
 | Virtual function/task 检测 | ✅ |
 
+### 数据流路径分析 (DataFlow)
+
+| 功能 | 状态 |
+|------|------|
+| 路径搜索 | ✅ nx.all_simple_paths |
+| 多路径支持 | ✅ |
+| BIT_SELECT 边处理 | ✅ |
+| Struct 成员展开 | ✅ |
+| 时钟域分析 | ✅ |
+| 条件判断提取 | ✅ |
+| 中间信号收集 | ✅ |
+
+### Struct 成员追踪
+
+| 功能 | 状态 |
+|------|------|
+| Struct 成员识别 | ✅ 通过 `xxx.member` 模式 |
+| 整体赋值展开 | ✅ `pkt2 = pkt1` → `pkt2.data = pkt1.data` |
+| MEMBER_SELECT 边 | ✅ (复用 BIT_SELECT 类型) |
+| 成员传播路径 | ✅ `data_in → pkt1.data → pkt2.data → data_out` |
+
 ### Constraint 追踪
 
 - [x] ExpressionConstraint 解析
@@ -178,18 +211,18 @@ SV Source Files
 - SUPER_CALL 边支持约束增量扩展
 - 多层继承场景验证
 
-### 提交记录 (17 commits ahead of main)
+### 提交记录 (9 commits ahead of main)
 
 ```
-4f3c4fd feat(bit_select): support constraint bit select tracking
-34f66ba feat(bit_select): add BitSelectHandler for bit range tracking
-7022bfd docs: update DEVELOPMENT.md with new features
-8b64ff9 test: add complex inheritance gold standard test
-9fc1b3c fix(test): remove invalid syntax test
-fb2fb6b feat(constraint): support SUPER_CALL edge
-19c6da8 test(composition): add 13 complex test cases
-dd33c14 feat(composition): support IS_INSTANCE_OF edge
-...
+c3d492c feat: expand struct assignments to member assignments
+c0340f5 fix: struct member path handling with node existence guards
+e67647a fix: add node existence check in _get_bit_select_children
+53a95c2 fix: handle BIT_SELECT nodes in dataflow path finding
+8b6cf29 chore: update CLI main.py imports and add dataflow command
+7bea6c0 fix: increase default cutoff in _find_paths from 20 to 50
+9e61d75 feat: add dataflow CLI command for signal-to-signal path analysis
+9376989 feat: add DataFlowGraph for signal-to-signal dataflow analysis
+b2828a2 fix: improve literal node handling and expression resolution
 ```
 
 ---
@@ -240,14 +273,14 @@ sim/
 └── conftest.py         # pytest 配置
 ```
 
-### 测试统计 (2026-05-23)
+### 测试统计 (2026-05-26)
 
 ```
 Unit tests:       30 tests
 Integration:     111 tests
-Regression:      675 tests
+Regression:      698 tests
 ─────────────────────────
-Total:           816 tests (all passing)
+Total:           839 tests (all passing)
 Skipped:           1 test
 Failed:            0 test
 ```
