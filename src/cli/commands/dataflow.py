@@ -9,24 +9,23 @@ from typing import Optional
 
 import typer
 
-# 添加 src 到 path 以便 import trace
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.dataflow import DataFlowGraph
 
-# JSON 输出格式化函数
+
 def output_json(data: dict, pretty: bool = False) -> None:
     indent = 2 if pretty else None
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
 def output_text(data: dict) -> None:
-    """纯文本输出"""
+    """纯文本输出 - 与 trace.py 保持一致格式"""
     command = data.get("command", "")
     result = data.get("result", {})
 
-    if command == "analyze":
+    if command == "dataflow":
         from_sig = result.get("from_signal", "")
         to_sig = result.get("to_signal", "")
         is_reachable = result.get("is_reachable", False)
@@ -86,7 +85,7 @@ def output_text(data: dict) -> None:
 dataflow_app = typer.Typer(help="Analyze dataflow paths between signals")
 
 
-@dataflow_app.command()
+@dataflow_app.command("analyze")
 def analyze(
     from_signal: str = typer.Argument(..., help="Source signal (e.g., top.clk)"),
     to_signal: str = typer.Argument(..., help="Target signal (e.g., top.data_out)"),
@@ -102,13 +101,9 @@ def analyze(
         tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
-        # 创建 DataFlowGraph
         dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
-
-        # 分析数据流
         result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
 
-        # 转换结果为可序列化格式
         paths_data = []
         for path in result.paths:
             segments_data = []
@@ -131,7 +126,7 @@ def analyze(
 
         data = {
             "ok": True,
-            "command": "analyze",
+            "command": "dataflow",
             "params": {
                 "from_signal": from_signal,
                 "to_signal": to_signal,
@@ -158,10 +153,9 @@ def analyze(
             output_text(data)
 
     except Exception as e:
-        import traceback
         data = {
             "ok": False,
-            "command": "analyze",
+            "command": "dataflow",
             "error": str(e),
             "errors": [str(e)]
         }
@@ -169,76 +163,6 @@ def analyze(
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
+            import traceback
             traceback.print_exc()
-        raise typer.Exit(code=1)
-
-
-@dataflow_app.command()
-def segment(
-    from_signal: str = typer.Argument(..., help="Source signal"),
-    to_signal: str = typer.Argument(..., help="Target signal"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
-    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
-) -> None:
-    """Get single segment information (from → to)"""
-    try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
-        _ = tracer.build_graph()
-
-        dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
-        seg = dfg.get_segment(from_signal, to_signal)
-
-        if seg is None:
-            data = {
-                "ok": True,
-                "command": "segment",
-                "result": {
-                    "exists": False,
-                    "from_signal": from_signal,
-                    "to_signal": to_signal
-                }
-            }
-        else:
-            data = {
-                "ok": True,
-                "command": "segment",
-                "result": {
-                    "exists": True,
-                    "from_signal": seg.from_signal,
-                    "to_signal": seg.to_signal,
-                    "driver": seg.driver,
-                    "condition": seg.condition,
-                    "timing": seg.timing,
-                    "assign_type": seg.assign_type,
-                    "distance": seg.distance
-                }
-            }
-
-        if json_output:
-            output_json(data, pretty)
-        else:
-            if data["result"]["exists"]:
-                print(f"Segment: {seg.from_signal} → {seg.to_signal}")
-                print(f"  Driver: {seg.driver or '(none)'}")
-                print(f"  Condition: {seg.condition or '(none)'}")
-                print(f"  Timing: {seg.timing or '(none)'}")
-                print(f"  Assign Type: {seg.assign_type}")
-                print(f"  Distance: {seg.distance}")
-            else:
-                print(f"No segment found: {from_signal} → {to_signal}")
-
-    except Exception as e:
-        data = {
-            "ok": False,
-            "command": "segment",
-            "error": str(e),
-            "errors": [str(e)]
-        }
-        if json_output:
-            output_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1)
