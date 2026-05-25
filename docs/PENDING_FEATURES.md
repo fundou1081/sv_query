@@ -105,9 +105,42 @@
 
 ---
 
+#### 6. Class 内容深度提取与追踪
+
+| 项目 | 内容 |
+|------|------|
+| **类型** | 功能增强 |
+| **优先级** | 🟡 Phase 3 |
+| **描述** | 完善 Class 内部属性、方法、继承关系的深度提取和追踪 |
+| **参考文档** | `README.md` - Class OOP 支持 |
+
+**现状**: 已有基础支持，需增强以下方面：
+
+| 功能 | 当前状态 | 目标状态 |
+|------|----------|----------|
+| Class 属性类型解析 | 部分支持 | 支持完整类型推断 |
+| 方法覆盖追踪 | 基础支持 | 支持 override 检测 |
+| 静态属性追踪 | 未支持 | 支持 static member 追踪 |
+| rand/randc 变量追踪 | 未支持 | 支持随机变量标注 |
+| constraint 覆盖增强 | 基础 | 支持多重 augmented constraint 展开 |
+| 深度继承链追踪 | 浅层 | 支持多层 extends 完整路径 |
+| 反射/参数化 Class | 未支持 | 支持 `class #(...)` 参数化类型 |
+
+**核心组件**:
+- [ ] `ClassPropertyDeclaration` - 完善属性类型解析
+- [ ] `FunctionDeclaration` / `TaskDeclaration` - 方法体展开
+- [ ] `VariableDeclarations` - 静态变量支持
+- [ ] `RandDeclaration` - rand/randc 变量标注
+- [ ] `ConstraintBlock` - 多重 constraint 展开
+- [ ] `ExtendsChain` - 继承链完整追踪
+
+**现状**: 待实现
+
+---
+
 ### 🟢 Phase 4 - 可视化 & CI
 
-#### 6. Graphviz 可视化导出
+#### 7. Graphviz 可视化导出
 
 | 项目 | 内容 |
 |------|------|
@@ -119,7 +152,7 @@
 
 ---
 
-#### 7. HTML 报告生成
+#### 8. HTML 报告生成
 
 | 项目 | 内容 |
 |------|------|
@@ -131,7 +164,7 @@
 
 ---
 
-#### 8. GitHub Actions CI
+#### 9. GitHub Actions CI
 
 | 项目 | 内容 |
 |------|------|
@@ -143,7 +176,7 @@
 
 ---
 
-#### 9. 覆盖率分析集成
+#### 10. 覆盖率分析集成
 
 | 项目 | 内容 |
 |------|------|
@@ -157,7 +190,7 @@
 
 ### 🟠 可选优化 (P2/P3)
 
-#### 10. SignalExpressionVisitor 单 dispatch 重构
+#### 11. SignalExpressionVisitor 单 dispatch 重构
 
 | 项目 | 内容 |
 |------|------|
@@ -190,7 +223,7 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 
 ---
 
-#### 11. Visitor 组合模式
+#### 12. Visitor 组合模式
 
 | 项目 | 内容 |
 |------|------|
@@ -205,7 +238,7 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 
 ---
 
-#### 12. StatementCollectorVisitor 架构对齐
+#### 13. StatementCollectorVisitor 架构对齐
 
 | 项目 | 内容 |
 |------|------|
@@ -220,7 +253,7 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 
 ---
 
-#### 13. 类型安全增强
+#### 14. 类型安全增强
 
 | 项目 | 内容 |
 |------|------|
@@ -244,7 +277,8 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 | 3 | Function/Task 内联展开 | 🟡 Phase 3 | 提升追踪精度 |
 | 4 | Generate block 追踪 | 🟡 Phase 3 | 提升追踪精度 |
 | 5 | 跨时钟域路径分析 | 🟡 Phase 3 | 已有基础，完善即可 |
-| 6-9 | Phase 4 可视化 & CI | 🟢 Phase 4 | 非核心功能 |
+| 6 | Class 内容深度提取与追踪 | 🟡 Phase 3 | OOP 验证核心需求 |
+| 7-10 | Phase 4 可视化 & CI | 🟢 Phase 4 | 非核心功能 |
 
 ---
 
