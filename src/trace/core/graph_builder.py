@@ -10,6 +10,7 @@ import pyslang
 from .base import PyslangAdapter
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import StatementCollectorVisitor, ItemType
+from .builder.subroutine_expander import SubroutineExpander, CallSiteInfo
 
 import logging
 logger = logging.getLogger(__name__)
@@ -2433,6 +2434,8 @@ class GraphBuilder:
             'connection': ConnectionExtractor(adapter),
             'clock': ClockDomainExtractor(adapter),
         }
+        # SubroutineExpander for function/task call expansion
+        self._subroutine_expander = SubroutineExpander(adapter)
         # [FIX] Track struct members for expansion
         # Key: struct variable id (e.g., "module.pkt2")
         # Value: set of member names (e.g., {"addr", "data", "valid"})
