@@ -1,5 +1,15 @@
 # ControlFlow Analyzer Module
 
-from .controlflow_analyzer import ControlFlowAnalyzer
+from .controlflow_analyzer import (
+    ControlFlowAnalyzer,
+    ControlFlowAnalysis,
+    ConditionedDriver,
+    ConditionInfo,
+)
 
-__all__ = ['ControlFlowAnalyzer']
+__all__ = [
+    'ControlFlowAnalyzer',
+    'ControlFlowAnalysis',
+    'ConditionedDriver',
+    'ConditionInfo',
+]
