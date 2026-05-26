@@ -621,29 +621,99 @@ class StatementCollectorVisitor(BaseVisitor):
         """
         self._add_statement(node, item_type=ItemType.CASE)
         
-        # 获取 items - semantic items 不完整时使用 syntax items
+        # 获取 case selector (条件表达式)
+        selector = self._get_case_selector(node)
+        
+        # 获取 items
         items = getattr(node, 'items', [])
         
-        # [FIX] 如果 semantic items 是 ItemGroup，使用 syntax items
-        # 因为语义 ItemGroup 只保存第一个分支
+        # [FIX] 始终优先使用 syntax items 获取 case item 条件
+        # 语义 ItemGroup 没有 case item 条件信息 (0:, 1:, default:)
+        # syntax items 有 StandardCaseItemSyntax.expressions 存储条件值
         syntax_items = None
         if hasattr(node, 'syntax') and node.syntax and hasattr(node.syntax, 'items'):
             syntax_items = node.syntax.items
         
-        # 如果 semantic items 只有 ItemGroup，使用 syntax items
-        use_syntax = False
-        if items and len(items) == 1 and type(items[0]).__name__ == 'ItemGroup':
-            use_syntax = True
+        # 优先使用 syntax items（因为包含条件信息）
+        use_syntax = syntax_items is not None and len(syntax_items) > 0
         
         process_items = syntax_items if use_syntax else items
         
         if process_items:
             for item in process_items:
+                # 提取 case item 的条件值
+                item_cond = self._get_case_item_condition(item, selector)
+                
+                # 推入新的上下文，包含 case item 条件
+                new_ctx = {**self.current_ctx, "condition": item_cond}
+                self._ctx_stack.append(new_ctx)
+                
                 # 语义 AST: stmt 属性
                 # 语法 AST: clause 属性
                 stmt = getattr(item, 'stmt', None) or getattr(item, 'clause', None)
                 if stmt:
                     self.visit(stmt)
+                
+                # 弹出上下文
+                self._ctx_stack.pop()
+    
+    def _get_case_selector(self, node) -> str:
+        """提取 case 语句的 selector 表达式字符串
+        
+        Returns:
+            selector 字符串，如 "sel"
+        """
+        # 尝试语义 AST: stmt.expr
+        expr = getattr(node, 'expr', None)
+        if expr:
+            sel_str = self._expr_to_string(expr)
+            if sel_str:
+                return sel_str
+        
+        # 尝试语法 AST: syntax.expr
+        syntax = getattr(node, 'syntax', None)
+        if syntax:
+            expr = getattr(syntax, 'expr', None)
+            if expr:
+                return str(expr).strip()
+        
+        return "?"
+    
+    def _get_case_item_condition(self, item, selector: str) -> str:
+        """提取 case item 的条件值
+        
+        Args:
+            item: case item 节点
+            selector: case selector 表达式字符串
+        
+        Returns:
+            条件字符串，如 "sel == 0" 或 "sel == default"
+        """
+        # 检查是否是 default case
+        item_kind = getattr(item, 'kind', None)
+        item_kind_name = item_kind.name if hasattr(item_kind, 'name') else str(item_kind)
+        
+        if 'Default' in item_kind_name:
+            return f"{selector} == default"
+        
+        # StandardCaseItem: 从 expressions 获取条件值
+        expressions = getattr(item, 'expressions', None)
+        if expressions:
+            # expressions 可能是一个列表，提取值
+            if hasattr(expressions, '__iter__') and not isinstance(expressions, str):
+                expr_parts = []
+                for expr in expressions:
+                    expr_str = self._expr_to_string(expr)
+                    if expr_str:
+                        expr_parts.append(expr_str)
+                if expr_parts:
+                    return f"{selector} == {' || '.join(expr_parts)}"
+            else:
+                expr_str = self._expr_to_string(expressions)
+                if expr_str:
+                    return f"{selector} == {expr_str}"
+        
+        return f"{selector} == ?"
     
 
     def visit_case(self, node):
@@ -742,8 +812,43 @@ class StatementCollectorVisitor(BaseVisitor):
         
         # 优先使用 syntax (语法树)
         syn = getattr(expr, 'syntax', None)
-        if syn:
-            return str(syn)
+        if syn and str(syn).strip():
+            return str(syn).strip()
+        
+        # LiteralExpressionSyntax: 提取字面量值
+        # 例如 case (sel) 0: 中的 0, 1
+        if hasattr(expr, 'kind'):
+            kind_name = expr.kind.name if hasattr(expr.kind, 'name') else str(expr.kind)
+            if 'Literal' in kind_name:
+                # 直接返回 expr 本身（LiteralExpressionSyntax 重载了 __str__）
+                result = str(expr).strip()
+                if result:
+                    return result
+                # 尝试 literal 属性
+                literal = getattr(expr, 'literal', None)
+                if literal:
+                    return str(literal).strip()
+                return ""
+        
+        # IntegerVectorExpressionSyntax: 提取进制数字如 2'b00
+        # case (sel) 2'b00: 中的 2'b00
+        if hasattr(expr, 'kind'):
+            kind_name = expr.kind.name if hasattr(expr.kind, 'name') else str(expr.kind)
+            if 'IntegerVector' in kind_name:
+                # 提取 size, base, value (都是 Token)
+                size_tok = getattr(expr, 'size', None)
+                base_tok = getattr(expr, 'base', None)
+                value_tok = getattr(expr, 'value', None)
+                # 格式: size'bvalue, 例如 2'b00
+                if size_tok is not None and base_tok is not None and value_tok is not None:
+                    size_str = str(size_tok).strip()
+                    base_str = str(base_tok).strip()
+                    value_str = str(value_tok).strip()
+                    return f"{size_str}{base_str}{value_str}"
+                # 直接返回 expr 本身
+                result = str(expr).strip()
+                if result:
+                    return result
         
         # UnaryOp: 提取操作数和操作符
         if hasattr(expr, 'kind') and 'UnaryOp' in str(expr.kind):
