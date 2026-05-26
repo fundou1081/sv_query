@@ -24,6 +24,27 @@ from .dataflow import (
     DataFlowResult,
 )
 
+# ControlFlow
+from .controlflow_models import (
+    ControlFlowNodeKind,
+    ControlFlowEdgeKind,
+    BranchKind,
+    Location,
+    Branch,
+    ControlBlock,
+    ControlFlowNode,
+    ControlFlowEdge,
+    BranchResult,
+    Contradiction,
+    LintWarning,
+    StateTransition,
+    StateMachineAnalysis,
+    Z3Result,
+    ControlFlowResult,
+)
+
+from .controlflow import ControlFlowGraph
+
 __all__ = [
     # Models
     "SignalGraph",
@@ -41,4 +62,21 @@ __all__ = [
     "DataFlowSegment",
     "DataFlowPath",
     "DataFlowResult",
+    # ControlFlow
+    "ControlFlowNodeKind",
+    "ControlFlowEdgeKind",
+    "BranchKind",
+    "Location",
+    "Branch",
+    "ControlBlock",
+    "ControlFlowNode",
+    "ControlFlowEdge",
+    "BranchResult",
+    "Contradiction",
+    "LintWarning",
+    "StateTransition",
+    "StateMachineAnalysis",
+    "Z3Result",
+    "ControlFlowResult",
+    "ControlFlowGraph",
 ]
