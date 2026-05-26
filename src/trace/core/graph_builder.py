@@ -775,6 +775,24 @@ class DriverExtractor:
                             ))
                         # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
                         rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+                        
+                        # [BUG-FIX] 检查是否为嵌套三元表达式 (同连续赋值逻辑)
+                        has_conditional = False
+                        check_expr = rhs_expr
+                        for _ in range(5):  # 解包多层包装
+                            if check_expr is None:
+                                break
+                            rhs_kind_name = getattr(check_expr, 'kind', None)
+                            rhs_kind_str = rhs_kind_name.name if hasattr(rhs_kind_name, 'name') else str(rhs_kind_name) if rhs_kind_name else ''
+                            if 'ConditionalOp' in rhs_kind_str:
+                                has_conditional = True
+                                break
+                            # 解包一层 (ConversionExpression / Conversion)
+                            operand = getattr(check_expr, 'operand', None)
+                            if operand is None or operand is check_expr:
+                                break
+                            check_expr = operand
+                        
                         if not rhs_signals:
                             rhs_signals = [rhs]
                         # [P0-2] 计算完整表达式字符串
@@ -783,39 +801,74 @@ class DriverExtractor:
                             expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
                         else:
                             expr_str = rhs or ''
-                        for rhs_name in rhs_signals:
-                            if not rhs_name:
-                                continue
-                            # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
-                            bit_slice = ''
-                            if '[' in rhs_name and ']' in rhs_name:
-                                start = rhs_name.index('[')
-                                bit_slice = rhs_name[start:]
-                            # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
-                            # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
-                            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
-                                # 字面量:只用边连接,不做为独立节点
-                                result.edges.append(TraceEdge(
-                                    src=rhs_name, dst=dst_node_id,
-                                    kind=EdgeKind.DRIVER, assign_type="nonblocking",
-                                    clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", ""),
-                                    expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
-                                ))
-                            else:
-                                src_node_id = f"{module_name}.{rhs_name}"
-                                if src_node_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(TraceNode(
-                                        id=src_node_id, name=rhs_name, module=module_name,
-                                        kind=NodeKind.SIGNAL, width=(1, 0)
+                        
+                        # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
+                        if has_conditional:
+                            signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+                            for sig_rhs_name, sig_cond in signal_conditions:
+                                if not sig_rhs_name:
+                                    continue
+                                bit_slice = ''
+                                if '[' in sig_rhs_name and ']' in sig_rhs_name:
+                                    start = sig_rhs_name.index('[')
+                                    bit_slice = sig_rhs_name[start:]
+                                
+                                if sig_rhs_name and not sig_rhs_name[0].isalpha() and not sig_rhs_name.startswith('_'):
+                                    result.edges.append(TraceEdge(
+                                        src=sig_rhs_name, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                        clock_domain=ctx.get("clock", ""),
+                                        condition=sig_cond,
+                                        expression=sig_rhs_name, bit_slice=bit_slice
                                     ))
-                                result.edges.append(TraceEdge(
-                                    src=src_node_id, dst=dst_node_id,
-                                    kind=EdgeKind.DRIVER, assign_type="nonblocking",
-                                    clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", ""),
-                                    expression=expr_str, bit_slice=bit_slice
-                                ))
+                                else:
+                                    src_node_id = f"{module_name}.{sig_rhs_name}"
+                                    if src_node_id not in [n.id for n in result.nodes]:
+                                        result.nodes.append(TraceNode(
+                                            id=src_node_id, name=sig_rhs_name, module=module_name,
+                                            kind=NodeKind.SIGNAL, width=(1, 0)
+                                        ))
+                                    result.edges.append(TraceEdge(
+                                        src=src_node_id, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                        clock_domain=ctx.get("clock", ""),
+                                        condition=sig_cond,
+                                        expression=expr_str, bit_slice=bit_slice
+                                    ))
+                        else:
+                            for rhs_name in rhs_signals:
+                                if not rhs_name:
+                                    continue
+                                # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
+                                bit_slice = ''
+                                if '[' in rhs_name and ']' in rhs_name:
+                                    start = rhs_name.index('[')
+                                    bit_slice = rhs_name[start:]
+                                # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
+                                # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
+                                if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith('_'):
+                                    # 字面量:只用边连接,不做为独立节点
+                                    result.edges.append(TraceEdge(
+                                        src=rhs_name, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                        clock_domain=ctx.get("clock", ""),
+                                        condition=ctx.get("condition", ""),
+                                        expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
+                                    ))
+                                else:
+                                    src_node_id = f"{module_name}.{rhs_name}"
+                                    if src_node_id not in [n.id for n in result.nodes]:
+                                        result.nodes.append(TraceNode(
+                                            id=src_node_id, name=rhs_name, module=module_name,
+                                            kind=NodeKind.SIGNAL, width=(1, 0)
+                                        ))
+                                    result.edges.append(TraceEdge(
+                                        src=src_node_id, dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER, assign_type="nonblocking",
+                                        clock_domain=ctx.get("clock", ""),
+                                        condition=ctx.get("condition", ""),
+                                        expression=expr_str, bit_slice=bit_slice
+                                    ))
 
                             # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
                             clock_signal = ctx.get("clock", "")
