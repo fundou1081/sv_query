@@ -81,6 +81,47 @@ class StatementCollectorVisitor(BaseVisitor):
         """获取当前上下文"""
         return self._ctx_stack[-1] if self._ctx_stack else {}
     
+    def _is_simple_expr_for_negation(self, expr) -> bool:
+        """判断表达式是否为简单条件（可以直接求反，不需要括号）
+        
+        简单条件：
+        - 简单标识符 (NamedValue/Identifier/Reference)
+        - 简单取反 (!identifier)
+        
+        复杂条件（需要括号）：
+        - 二元运算 (valid && sel)
+        - 嵌套取反 (!(!rst_n))
+        - 其他复杂表达式
+        """
+        if expr is None:
+            return True  # 无条件默认为简单
+        
+        kind = getattr(expr, 'kind', None)
+        if not kind:
+            return True
+        kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+        
+        # 简单标识符
+        if kind_name in ('NamedValue', 'Identifier', 'Reference'):
+            return True
+        
+        # UnaryOp: 检查是否简单取反 !identifier
+        if 'UnaryOp' in kind_name:
+            op = getattr(expr, 'op', None)
+            if not op or 'Not' not in (op.name if hasattr(op, 'name') else str(op)):
+                return False  # 不是 ! 运算符
+            operand = getattr(expr, 'operand', None)
+            if operand:
+                operand_kind = getattr(operand, 'kind', None)
+                if operand_kind:
+                    operand_name = operand_kind.name if hasattr(operand_kind, 'name') else str(operand_kind)
+                    # 只有 !identifier 是简单的
+                    return operand_name in ('NamedValue', 'Identifier', 'Reference')
+            return False
+        
+        # BinaryOp 等复杂表达式
+        return False
+    
     def collect(self, node, ctx: Dict[str, str] = None) -> List[Tuple[Any, Dict[str, str], ItemType]]:
         """收集语句的入口方法
         
@@ -731,6 +772,16 @@ class StatementCollectorVisitor(BaseVisitor):
         """
         # 提取条件
         cond = self._extract_condition(node)
+        # 条件表达式：Semantic AST 有 conditions，Syntax AST 需要特殊处理
+        cond_expr = None
+        if hasattr(node, 'conditions') and node.conditions:
+            # Semantic AST: ConditionalStatement
+            cond_expr = node.conditions[0].expr if len(node.conditions) > 0 else None
+        elif hasattr(node, 'predicate') and node.predicate:
+            # Syntax AST: ConditionalStatementSyntax - 从 predicate 提取
+            pred = node.predicate
+            if hasattr(pred, 'conditions'):
+                cond_expr = pred.conditions[0].expr if len(pred.conditions) > 0 else None
         
         # ifTrue 分支
         ts = getattr(node, 'ifTrue', None) or getattr(node, 'statement', None)
@@ -741,7 +792,8 @@ class StatementCollectorVisitor(BaseVisitor):
                 new_cond = parent_cond + ' && ' + cond if cond else parent_cond
             else:
                 new_cond = cond
-            new_ctx = {**self.current_ctx, "condition": new_cond}
+            # 保存当前条件表达式，供下一层else-if使用
+            new_ctx = {**self.current_ctx, "condition": new_cond, "_parent_cond_expr": cond_expr}
             self._ctx_stack.append(new_ctx)
             self.visit(ts)
             self._ctx_stack.pop()
@@ -750,14 +802,87 @@ class StatementCollectorVisitor(BaseVisitor):
         ec = getattr(node, 'ifFalse', None) or getattr(node, 'elseClause', None)
         if ec:
             ae = getattr(ec, 'clause', None) or ec
-            neg_cond = "!" + cond if cond else ""
-            # Combine parent condition with negated current condition
+            # [BUG-FIX] else-if chain: properly negate condition at semantic AST level
+            # For "if (A) ... else if (B) ...": condition is (!A && B)
+            # For "if (A) ... else ...": condition is (!A)
+            # We use semantic AST to determine if parentheses are needed.
+            
+            def _is_simple_identifier(expr) -> bool:
+                """判断表达式是否为简单标识符"""
+                if expr is None:
+                    return False
+                kind = getattr(expr, 'kind', None)
+                if not kind:
+                    return False
+                kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+                return kind_name in ('NamedValue', 'Identifier', 'Reference')
+            
+            def _is_simple_negation(expr) -> bool:
+                """判断表达式是否为简单取反 (!identifier)
+                
+                简单取反：UnaryOp 且 operand 是 NamedValue/Identifier，不嵌套 UnaryOp
+                """
+                if expr is None:
+                    return False
+                kind = getattr(expr, 'kind', None)
+                if not kind:
+                    return False
+                kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+                
+                if 'UnaryOp' in kind_name:
+                    op = getattr(expr, 'op', None)
+                    if not op or 'Not' not in (op.name if hasattr(op, 'name') else str(op)):
+                        return False
+                    operand = getattr(expr, 'operand', None)
+                    if operand:
+                        operand_kind = getattr(operand, 'kind', None)
+                        if operand_kind:
+                            operand_name = operand_kind.name if hasattr(operand_kind, 'name') else str(operand_kind)
+                            return operand_name in ('NamedValue', 'Identifier', 'Reference')
+                    return False
+                return False
+            
+            # 获取条件表达式 (语义AST)
+            cond_expr = None
+            if hasattr(node, 'conditions') and node.conditions:
+                cond_expr = node.conditions[0].expr if len(node.conditions) > 0 else None
+            elif hasattr(node, 'predicate') and node.predicate:
+                pred = node.predicate
+                if hasattr(pred, 'conditions'):
+                    cond_expr = pred.conditions[0].expr if len(pred.conditions) > 0 else None
+            
+            if cond:
+                if _is_simple_identifier(cond_expr):
+                    # 简单标识符: sel -> !sel
+                    neg_cond = "!" + cond
+                elif _is_simple_negation(cond_expr):
+                    # 简单取反: !rst_n -> !!rst_n
+                    neg_cond = "!" + cond
+                else:
+                    # 复杂表达式需要括号: valid && sel -> !(valid && sel)
+                    neg_cond = "!(" + cond + ")"
+            else:
+                neg_cond = ""
+            
             parent_cond = self.current_ctx.get('condition', '')
+            parent_cond_expr = self.current_ctx.get('_parent_cond_expr', None)
             if parent_cond:
-                new_cond = parent_cond + ' && ' + neg_cond if neg_cond else parent_cond
+                # 根据parent条件的语义结构决定是否需要括号
+                # 简单条件（标识符、简单取反）直接加!，复杂条件需要括号
+                if parent_cond_expr and self._is_simple_expr_for_negation(parent_cond_expr):
+                    neg_parent = "!" + parent_cond
+                else:
+                    neg_parent = "!(" + parent_cond + ")"
+                if neg_parent and neg_cond:
+                    new_cond = neg_parent + ' && ' + neg_cond
+                elif neg_parent:
+                    new_cond = neg_parent
+                else:
+                    new_cond = neg_cond
             else:
                 new_cond = neg_cond
-            new_ctx = {**self.current_ctx, "condition": new_cond}
+            # 将当前条件的表达式对象存入context，供下一层else-if使用
+            new_ctx = {**self.current_ctx, "condition": new_cond, "_parent_cond_expr": cond_expr}
             self._ctx_stack.append(new_ctx)
             self.visit(ae)
             self._ctx_stack.pop()

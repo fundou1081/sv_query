@@ -6555,10 +6555,10 @@ class SignalExpressionVisitor(BaseVisitor):
                 cond_expr = getattr(conditions[0], 'expr', None)
                 if cond_expr:
                     current_cond = self._expr_to_string(cond_expr)
-                    # [FIX] 条件信号本身也应该作为驱动源返回（如 sel ? a : b 中的 sel）
+                    # 条件信号本身也应作为驱动源返回（条件总是被检查的）
                     cond_signals = self.get_all_signals(cond_expr)
                     for sig in cond_signals:
-                        if sig:
+                        if sig and not self._is_literal(sig):
                             result.append((sig, ''))
             
             if not current_cond:
@@ -6568,7 +6568,7 @@ class SignalExpressionVisitor(BaseVisitor):
                     current_cond = self._expr_to_string(pred)
                     cond_signals = self.get_all_signals(pred)
                     for sig in cond_signals:
-                        if sig:
+                        if sig and not self._is_literal(sig):
                             result.append((sig, ''))
             
             # True 分支 (left)
@@ -7287,3 +7287,10 @@ class SignalExpressionVisitor(BaseVisitor):
             return None
         except Exception:
             return None
+    
+    def _is_literal(self, sig: str) -> bool:
+        """检查信号名是否为字面量常量"""
+        if not sig:
+            return False
+        # 字面量以非字母开头，如 1'b0, 4'h0, 'hA5A5A5A5, 123
+        return not sig[0].isalpha() and not sig.startswith('_')

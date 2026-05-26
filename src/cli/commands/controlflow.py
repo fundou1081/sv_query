@@ -25,6 +25,13 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
+def _is_constant(src: str) -> bool:
+    """检查是否为常量（字面量）"""
+    if not src:
+        return False
+    return not src[0].isalpha() and not src.startswith('_')
+
+
 def output_text(data: dict) -> None:
     """纯文本输出"""
     command = data.get("command", "")
@@ -47,6 +54,9 @@ def output_text(data: dict) -> None:
                     edge = cond.get("edge", {})
                     src = edge.get("src", "")
                     to = edge.get("dst", "")
+                    # 标注常量
+                    if _is_constant(src):
+                        src = f"CONST {src}"
                     print(f"    when {expr}: {src} → {to}")
 
         if warnings:
