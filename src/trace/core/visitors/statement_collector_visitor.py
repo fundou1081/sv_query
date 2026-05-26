@@ -685,8 +685,16 @@ class StatementCollectorVisitor(BaseVisitor):
                 # 提取 case item 的条件值
                 item_cond = self._get_case_item_condition(item, selector)
                 
-                # 推入新的上下文，包含 case item 条件
-                new_ctx = {**self.current_ctx, "condition": item_cond}
+                # [BUG-FIX] 合并外层条件和 case item 条件
+                # 外层条件 (如 !!rst_n) AND case item 条件 (如 state == REQ)
+                parent_cond = self.current_ctx.get('condition', '')
+                if parent_cond:
+                    # 组合条件: parent_cond && item_cond
+                    combined_cond = f"{parent_cond} && {item_cond}"
+                    new_ctx = {**self.current_ctx, "condition": combined_cond}
+                else:
+                    new_ctx = {**self.current_ctx, "condition": item_cond}
+                
                 self._ctx_stack.append(new_ctx)
                 
                 # 语义 AST: stmt 属性
