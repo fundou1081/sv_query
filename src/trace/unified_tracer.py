@@ -126,37 +126,41 @@ class StateMachineAnalyzer:
         transitions = []
         reset_state = None
         
+        # [FIX] 遍历所有边而不是只检查 get_edge(src, dst)
         for src_node in self.graph.nodes:
-            edge = self.graph.get_edge(src_node, state_node)
-            if not edge:
-                continue
-            if 'DRIVER' not in str(edge.kind):
-                continue
-            
-            condition = edge.condition or ""
-            
-            # src_node 是状态值常量 (如 fsm3.IDLE)
-            to_state = self._extract_state_value(src_node)
-            if not to_state:
+            # [FIX] 使用 get_edges 获取所有边（可能有多个不同 condition）
+            edges = self.graph.get_edges(src_node, state_node)
+            if not edges:
                 continue
             
-            # 从 condition 中提取"当前状态"
-            from_state = self._extract_current_state(condition, state_signal)
-            
-            states.add(to_state)
-            if from_state:
-                states.add(from_state)
-            
-            # 检查是否是复位转换
-            if self._is_reset_condition(condition):
-                reset_state = from_state or to_state
-            elif from_state:
-                extra_cond = self._strip_state_condition(condition, state_signal)
-                transitions.append(StateTransition(
-                    from_state=from_state,
-                    to_state=to_state,
-                    condition=extra_cond if extra_cond else '1'
-                ))
+            for edge in edges:
+                if 'DRIVER' not in str(edge.kind):
+                    continue
+                
+                condition = edge.condition or ""
+                
+                # src_node 是状态值常量 (如 fsm3.IDLE)
+                to_state = self._extract_state_value(src_node)
+                if not to_state:
+                    continue
+                
+                # 从 condition 中提取"当前状态"
+                from_state = self._extract_current_state(condition, state_signal)
+                
+                states.add(to_state)
+                if from_state:
+                    states.add(from_state)
+                
+                # 检查是否是复位转换
+                if self._is_reset_condition(condition):
+                    reset_state = from_state or to_state
+                elif from_state:
+                    extra_cond = self._strip_state_condition(condition, state_signal)
+                    transitions.append(StateTransition(
+                        from_state=from_state,
+                        to_state=to_state,
+                        condition=extra_cond if extra_cond else '1'
+                    ))
         
         if not states:
             return None

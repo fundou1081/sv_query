@@ -87,6 +87,7 @@ class TraceEdge:
     kind: EdgeKind
     assign_type: str = ""
     condition: str = ""
+    effective_condition: str = ""  # 判断清除后的条件（只保留直接相关的条件）
     clock_domain: str = ""
     modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
     confidence: str = "high"
@@ -152,7 +153,8 @@ class SignalGraph(nx.DiGraph):
     def __init__(self):
         super().__init__()
         self._node_data: Dict[str, TraceNode] = {}
-        self._edge_data: Dict[Tuple[str, str], TraceEdge] = {}
+        # [FIX] 支持同一 (src, dst) 的多条边 (不同 condition)
+        self._edge_data: Dict[Tuple[str, str], List[TraceEdge]] = {}
         self._port_to_internal: Dict[str, str] = {}  # {inst_port_id: child_signal_id}
 
     def get_port_to_internal(self) -> Dict[str, str]:
@@ -216,21 +218,28 @@ class SignalGraph(nx.DiGraph):
                     self._node_data[node_id] = placeholder
                     super().add_node(node_id)
 
+        # [FIX] 支持同一 (src, dst) 多条边：append 到列表，不去重
+        # 只要 (src, dst, kind, condition) 完全相同才去重
         key = (edge.src, edge.dst)
 
-        existing = self._edge_data.get(key)
+        if key not in self._edge_data:
+            self._edge_data[key] = []
 
-        # Skip duplicate if same type AND existing has same or better semantic context
-        if existing and existing.kind == edge.kind:
-            # [NEW] If new edge has semantic context but existing doesn't, prefer new edge
-            if (edge.clock_domain or edge.condition) and not (existing.clock_domain or existing.condition):
-                self._edge_data[key] = edge
-                super().add_edge(edge.src, edge.dst)
-            return
+        # 检查是否完全重复（所有属性都相同）
+        for existing_edge in self._edge_data[key]:
+            if (existing_edge.kind == edge.kind and
+                existing_edge.condition == edge.condition and
+                existing_edge.assign_type == edge.assign_type and
+                existing_edge.expression == edge.expression):
+                return  # 完全重复，跳过
 
-        # Add edge (allow self-loops for register self-update)
-        self._edge_data[key] = edge
+        # 添加新边到列表
+        self._edge_data[key].append(edge)
         super().add_edge(edge.src, edge.dst)
+        
+        # 自动计算 effective_condition
+        if edge.condition and not edge.effective_condition:
+            edge.effective_condition = SignalGraph.compute_effective_condition(edge.condition)
 
     def set_node_modport_dir(self, node_id: str, modport_dir: str):
         """[P0-3] 设置已有节点的 modport_dir 属性"""
@@ -241,7 +250,98 @@ class SignalGraph(nx.DiGraph):
         return self._node_data.get(node_id)
 
     def get_edge(self, src: str, dst: str) -> Optional[TraceEdge]:
-        return self._edge_data.get((src, dst))
+        """获取 (src, dst) 的第一条边（向后兼容，按优先级排序）"""
+        edges = self._edge_data.get((src, dst), [])
+        if not edges:
+            return None
+        # 返回排序后的第一条（优先级最高）
+        return self._sort_edges(edges)[0]
+
+    def get_edges(self, src: str, dst: str) -> List[TraceEdge]:
+        """获取 (src, dst) 的所有边（按优先级排序）"""
+        edges = self._edge_data.get((src, dst), [])
+        return self._sort_edges(edges)
+
+    @staticmethod
+    def compute_effective_condition(condition: str) -> str:
+        """计算判断清除后的条件
+        
+        从嵌套条件中提取直接相关的条件。
+        例如:
+            - '!!rst_n && state == DONE' -> 'state == DONE'
+            - 'en && a' -> 'a'
+            - 'state == IDLE' -> 'state == IDLE'
+        
+        规则:
+            1. 如果 condition 中包含 '&&' 或 '||'
+            2. 提取最后一个逻辑单元（通常是状态判断或信号本身）
+            3. 忽略简单的 reset 条件（如 '!rst_n'）
+        """
+        if not condition or '&&' not in condition:
+            return condition
+        
+        import re
+        # 移除空格
+        stripped = condition.replace(' ', '')
+        
+        # 分割 && 部分
+        parts = stripped.split('&&')
+        
+        # 找最后一个包含 == 或 =~ 或信号引用的部分
+        for part in reversed(parts):
+            part = part.strip()
+            # 跳过 reset 条件
+            if re.match(r'^(!|~~|~)rst', part, re.IGNORECASE):
+                continue
+            if re.match(r'^(!|~~|~)reset', part, re.IGNORECASE):
+                continue
+            # 保留其他部分
+            return part
+        
+        return condition
+
+    def set_lifo_order(self, state_values: List[str]):
+        """设置 LIFO 顺序的状态值列表，用于边排序
+        
+        Args:
+            state_values: 状态值列表，按语义优先级升序排列
+                         后面的状态优先级更高 (LIFO)
+                         例如: ['REQ', 'DONE', 'IDLE'] 表示 IDLE 优先级最高
+        """
+        self._lifo_priority = {sv: i for i, sv in enumerate(state_values)}
+
+    def _sort_edges(self, edges: List[TraceEdge]) -> List[TraceEdge]:
+        """边排序：reset 条件优先，然后按 LIFO 顺序（from_state 优先级）"""
+        lifo_priority = getattr(self, '_lifo_priority', {})
+        
+        def edge_priority(e: TraceEdge) -> tuple:
+            # reset 条件 = 不包含 && 或 || 且包含 rst/reset
+            is_reset = False
+            if e.condition:
+                stripped = e.condition.replace(' ', '')
+                has_logical = '&&' in stripped or '||' in stripped
+                has_reset = 'rst' in stripped.lower() or 'reset' in stripped.lower()
+                is_reset = has_reset and not has_logical
+            
+            # 提取 from_state (从 condition 中找 state == X)
+            from_state = None
+            if e.condition and not is_reset:
+                import re
+                m = re.search(r'state\s*(?:==|===)\s*(\w+)', e.condition)
+                if m:
+                    from_state = m.group(1)
+            
+            # LIFO 优先级：from_state 在预定义列表中的位置
+            # 列表后面的状态优先级更高 (LIFO)
+            state_priority = len(lifo_priority)  # 默认最低（不在列表中）
+            if from_state in lifo_priority:
+                pos = lifo_priority[from_state]
+                state_priority = len(lifo_priority) - pos  # 逆序：后面的优先级高
+            
+            # (是否是 reset, LIFO 优先级, condition 长度, condition 字符串)
+            return (not is_reset, state_priority, len(e.condition or ''), e.condition or '')
+        
+        return sorted(edges, key=edge_priority)
 
     def find_drivers(self, signal_id: str) -> List[TraceNode]:
         return [self.get_node(n) for n in self.predecessors(signal_id)]
@@ -324,8 +424,8 @@ class SignalGraph(nx.DiGraph):
 
         edges_data = []
         for src, dst in self.edges():
-            edge = self._edge_data.get((src, dst))
-            if edge:
+            edges = self._edge_data.get((src, dst), [])
+            for edge in edges:
                 edges_data.append({
                     "src": edge.src,
                     "dst": edge.dst,

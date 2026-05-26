@@ -853,6 +853,7 @@ class DriverExtractor:
                                         kind=EdgeKind.DRIVER, assign_type="nonblocking",
                                         clock_domain=ctx.get("clock", ""),
                                         condition=ctx.get("condition", ""),
+                                        effective_condition=ctx.get("effective_condition", ""),
                                         expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
                                     ))
                                 else:
@@ -867,6 +868,7 @@ class DriverExtractor:
                                         kind=EdgeKind.DRIVER, assign_type="nonblocking",
                                         clock_domain=ctx.get("clock", ""),
                                         condition=ctx.get("condition", ""),
+                                        effective_condition=ctx.get("effective_condition", ""),
                                         expression=expr_str, bit_slice=bit_slice
                                     ))
 
@@ -883,7 +885,8 @@ class DriverExtractor:
                                     src=clock_node_id, dst=dst_node_id,
                                     kind=EdgeKind.CLOCK, assign_type="nonblocking",
                                     clock_domain=clock_signal,
-                                    condition=ctx.get("condition", "")
+                                    condition=ctx.get("condition", ""),
+                                    effective_condition=ctx.get("effective_condition", "")
                                 ))
 
                             # [NEW] RESET 边: always_ff 块内创建 rst -> dst (RESET) 边
@@ -899,7 +902,8 @@ class DriverExtractor:
                                     src=reset_node_id, dst=dst_node_id,
                                     kind=EdgeKind.RESET, assign_type="nonblocking",
                                     clock_domain=clock_signal,
-                                    condition=ctx.get("condition", "")
+                                    condition=ctx.get("condition", ""),
+                                    effective_condition=ctx.get("effective_condition", "")
                                 ))
 
         return result
@@ -1368,7 +1372,8 @@ class DriverExtractor:
                                 src=func_return_id, dst=dst_id,
                                 kind=EdgeKind.DRIVER, assign_type="continuous",
                                 clock_domain=ctx.get("clock", ""),
-                                condition=ctx.get("condition", "")
+                                condition=ctx.get("condition", ""),
+                                effective_condition=ctx.get("effective_condition", "")
                             ))
 
                     if rhs_ast:
@@ -1399,7 +1404,8 @@ class DriverExtractor:
                                     src=src_node_id, dst=dst_node_id,
                                     kind=EdgeKind.DRIVER, assign_type="continuous",
                                     clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", "")
+                                    condition=ctx.get("condition", ""),
+                                    effective_condition=ctx.get("effective_condition", "")
                                 ))
                     else:
                         # 兜底: 使用字符串方式
@@ -1454,7 +1460,8 @@ class DriverExtractor:
                                         src=src_node_id, dst=dst_node_id,
                                         kind=EdgeKind.DRIVER, assign_type="continuous",
                                         clock_domain=ctx.get("clock", ""),
-                                        condition=ctx.get("condition", "")
+                                        condition=ctx.get("condition", ""),
+                                        effective_condition=ctx.get("effective_condition", "")
                                     ))
 
             # 对于每个 output 参数,如果它被赋值,建立驱动边
@@ -1511,7 +1518,8 @@ class DriverExtractor:
                             src=src_node_id, dst=dst_node_id,
                             kind=EdgeKind.DRIVER, assign_type="nonblocking",
                             clock_domain=ctx.get("clock", ""),
-                            condition=ctx.get("condition", "")
+                            condition=ctx.get("condition", ""),
+                            effective_condition=ctx.get("effective_condition", "")
                         ))
         except Exception as e:
             # 忽略处理错误,继续
@@ -2748,16 +2756,18 @@ class GraphBuilder:
     def _upgrade_reg_nodes(self):
         """Upgrade node kind to REG if it's driven by a CLOCK edge.
         Only upgrade the direct target, NOT bit-select parents."""
-        for (src, dst), edge in self.graph._edge_data.items():
-            if edge.kind == EdgeKind.CLOCK:
-                # Only upgrade the direct target
-                if '[' not in dst:  # Not a bit-select
-                    node = self.graph._node_data.get(dst)
-                    if node and node.kind != NodeKind.REG:
-                        was_port = getattr(node, 'is_port', False)
-                        node.kind = NodeKind.REG
-                        if was_port:
-                            node.is_port = True
+        for (src, dst), edges in self.graph._edge_data.items():
+            # [FIX] edges 是 List[TraceEdge]，需要遍历
+            for edge in edges:
+                if edge.kind == EdgeKind.CLOCK:
+                    # Only upgrade the direct target
+                    if '[' not in dst:  # Not a bit-select
+                        node = self.graph._node_data.get(dst)
+                        if node and node.kind != NodeKind.REG:
+                            was_port = getattr(node, 'is_port', False)
+                            node.kind = NodeKind.REG
+                            if was_port:
+                                node.is_port = True
 
     def _mark_special_signals(self):
         for node_id, node in self.graph._node_data.items():

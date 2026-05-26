@@ -167,11 +167,12 @@ class ControlFlowAnalyzer:
         conditioned_signals = set()
         
         # 遍历所有边，找有 condition 的边
-        # 注意: graph.get_edge() 返回 TraceEdge 对象，edges(data=True) 返回 dict
+        # [FIX] 使用 get_edges 获取所有边（可能有多个不同 condition）
         for u, v in graph.edges():
-            edge = graph.get_edge(u, v)
-            if edge and hasattr(edge, 'condition') and edge.condition:
-                conditioned_signals.add(v)
+            edges = graph.get_edges(u, v)
+            for edge in edges:
+                if edge and hasattr(edge, 'condition') and edge.condition:
+                    conditioned_signals.add(v)
         
         return sorted(conditioned_signals)
     
@@ -192,11 +193,13 @@ class ControlFlowAnalyzer:
         conditions = []
         
         # 找所有指向该信号的边
+        # [FIX] 使用 get_edges 获取所有边
         for u, v in graph.edges():
             if v == signal:
-                edge = graph.get_edge(u, v)
-                if edge and hasattr(edge, 'condition') and edge.condition:
-                    conditions.append(edge.condition)
+                edges = graph.get_edges(u, v)
+                for edge in edges:
+                    if edge and hasattr(edge, 'condition') and edge.condition:
+                        conditions.append(edge.condition)
         
         return conditions
     
@@ -205,9 +208,10 @@ class ControlFlowAnalyzer:
         edges = []
         for u, v in graph.edges():
             if v == signal:
-                edge = graph.get_edge(u, v)
-                if edge:
-                    edges.append(edge)
+                # [FIX] 使用 get_edges 获取所有边
+                edge_list = graph.get_edges(u, v)
+                if edge_list:
+                    edges.extend(edge_list)
         return edges
     
     def _check_warnings(self, result: ControlFlowAnalysis):

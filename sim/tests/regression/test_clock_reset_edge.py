@@ -162,11 +162,12 @@ endmodule'''
         from trace.core.graph.models import EdgeKind
         has_driver = False
         has_clock = False
-        for (s, d), e in graph._edge_data.items():
-            if 'd' in s and 'q' in d and e.kind == EdgeKind.DRIVER:
-                has_driver = True
-            if 'clk' in s and 'q' in d and e.kind == EdgeKind.CLOCK:
-                has_clock = True
+        for (s, d), edge_list in graph._edge_data.items():
+            for e in edge_list:
+                if 'd' in s and 'q' in d and e.kind == EdgeKind.DRIVER:
+                    has_driver = True
+                if 'clk' in s and 'q' in d and e.kind == EdgeKind.CLOCK:
+                    has_clock = True
         
         self.assertTrue(has_driver, f"d -> q DRIVER 边应存在")
         self.assertTrue(has_clock, f"clk -> q CLOCK 边应存在")

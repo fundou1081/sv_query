@@ -38,7 +38,8 @@ class DataFlowSegment:
         from_signal: 起点信号 (完整 hierarchy path)
         to_signal: 终点信号 (完整 hierarchy path)
         driver: 驱动表达式 (如 'sreg_d', '4'b1011')
-        condition: 驱动条件 (来自 if 语句)
+        condition: 原始驱动条件（包含所有嵌套条件）
+        effective_condition: 判断清除后的条件（只保留直接相关的条件）
         timing: 时钟域 (如 'clk_i')
         assign_type: 赋值类型 (continuous/always_ff/always_comb/blocking)
         distance: 驱动距离 (1 = 直接驱动)
@@ -47,6 +48,7 @@ class DataFlowSegment:
     to_signal: str
     driver: Optional[str] = None
     condition: Optional[str] = None
+    effective_condition: Optional[str] = None
     timing: Optional[str] = None
     assign_type: str = "continuous"
     distance: int = 1
@@ -152,7 +154,7 @@ class DataFlowGraph:
                             self._internal_to_port[port_info.internal_signal] = full_port
 
     def get_segment(self, from_signal: str, to_signal: str) -> Optional[DataFlowSegment]:
-        """获取单步驱动信息(带缓存)
+        """获取单步驱动信息(带缓存) - 返回优先级最高的边
 
         Args:
             from_signal: 起点信号
@@ -170,8 +172,20 @@ class DataFlowGraph:
             self._segment_cache[cache_key] = segment
         return segment
 
+    def get_segments(self, from_signal: str, to_signal: str) -> List[DataFlowSegment]:
+        """获取所有驱动信息 - 返回所有边对应的 segments
+
+        Args:
+            from_signal: 起点信号
+            to_signal: 终点信号
+
+        Returns:
+            List[DataFlowSegment] (可能有多条边对应同一个驱动关系)
+        """
+        return self._build_segments(from_signal, to_signal)
+
     def _build_segment(self, from_signal: str, to_signal: str) -> Optional[DataFlowSegment]:
-        """构建段信息
+        """构建段信息 - 返回优先级最高的边
 
         从 SignalGraph 获取边的驱动信息。
 
@@ -186,7 +200,7 @@ class DataFlowGraph:
         resolved_from = self._resolve_cross_module(from_signal)
         resolved_to = self._resolve_cross_module(to_signal)
 
-        # 2. 尝试从 SignalGraph 获取边信息
+        # 2. 获取所有边（可能有多个不同 condition 的边），取第一条（优先级最高）
         edge = self.signal_graph.get_edge(resolved_from, resolved_to)
 
         if not edge:
@@ -202,10 +216,53 @@ class DataFlowGraph:
             to_signal=to_signal,
             driver=edge.expression if hasattr(edge, 'expression') else None,
             condition=edge.condition if hasattr(edge, 'condition') else None,
+            effective_condition=edge.effective_condition if hasattr(edge, 'effective_condition') else None,
             timing=edge.clock_domain if hasattr(edge, 'clock_domain') else None,
             assign_type=edge.assign_type if hasattr(edge, 'assign_type') else 'continuous',
             distance=1
         )
+
+    def _build_segments(self, from_signal: str, to_signal: str) -> List[DataFlowSegment]:
+        """构建所有段信息 - 返回所有边对应的 segments
+
+        从 SignalGraph 获取所有边的驱动信息。
+
+        Args:
+            from_signal: 起点信号
+            to_signal: 终点信号
+
+        Returns:
+            List[DataFlowSegment]
+        """
+        # 1. 解析跨模块信号
+        resolved_from = self._resolve_cross_module(from_signal)
+        resolved_to = self._resolve_cross_module(to_signal)
+
+        # 2. 获取所有边
+        edges = self.signal_graph.get_edges(resolved_from, resolved_to)
+
+        if not edges:
+            # 尝试原始信号(未解析)
+            edges = self.signal_graph.get_edges(from_signal, to_signal)
+
+        if not edges:
+            return []
+
+        # 3. 为每条边构建 DataFlowSegment
+        segments = []
+        for edge in edges:
+            segments.append(DataFlowSegment(
+                from_signal=from_signal,
+                to_signal=to_signal,
+                driver=edge.expression if hasattr(edge, 'expression') else None,
+                condition=edge.condition if hasattr(edge, 'condition') else None,
+                effective_condition=edge.effective_condition if hasattr(edge, 'effective_condition') else None,
+                timing=edge.clock_domain if hasattr(edge, 'clock_domain') else None,
+                assign_type=edge.assign_type if hasattr(edge, 'assign_type') else 'continuous',
+                distance=1
+            ))
+
+        return segments
 
     def _resolve_cross_module(self, signal: str) -> str:
         """解析跨模块信号,返回内部信号
