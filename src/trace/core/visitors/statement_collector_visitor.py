@@ -881,6 +881,14 @@ class StatementCollectorVisitor(BaseVisitor):
             if sym and hasattr(sym, 'name'):
                 return str(sym.name).strip()
         
+        # IdentifierNameSyntax: 语法树节点 (嵌套 case 中的 selector)
+        # 例如: case(valid) 中 valid 是 IdentifierNameSyntax，不是 NamedValueExpression
+        kind = getattr(expr, 'kind', None)
+        if kind:
+            kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+            if 'IdentifierName' in kind_name:
+                return str(expr).strip()
+        
         # BinaryExpression: 递归处理左右操作数
         if hasattr(expr, 'left') and hasattr(expr, 'right'):
             left = self._expr_to_string(getattr(expr, 'left', None))

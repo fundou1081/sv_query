@@ -11,7 +11,7 @@
 - _get_signal()
 - _get_all_signals()
 """
-from typing import List, Optional, Dict, Any, Callable, ClassVar
+from typing import List, Optional, Dict, Any, Callable, ClassVar, Tuple
 import logging
 
 from .base_visitor import BaseVisitor
@@ -6505,6 +6505,230 @@ class SignalExpressionVisitor(BaseVisitor):
             signals.extend(self.get_all_signals(right))
         
         return [s for s in signals if s]
+
+    def get_signals_with_conditions(self, node, parent_conditions: List[str] = None) -> List[Tuple[str, str]]:
+        """提取三元运算符中的信号及其对应条件
+        
+        对于嵌套三元 `sel ? a : b ? c : d`:
+        - sel 为真时: a 的条件是 sel
+        - sel 为假且 b 为真时: c 的条件是 !sel && b
+        - sel 为假且 b 为假时: d 的条件是 !sel && !b
+        
+        Args:
+            node: AST 节点（可能是 ConditionalOp 或其他表达式）
+            parent_conditions: 父级条件列表（用于组合嵌套条件）
+            
+        Returns:
+            List[Tuple[str, str]]: [(signal_name, condition_str), ...]
+        """
+        if parent_conditions is None:
+            parent_conditions = []
+        
+        if node is None:
+            return []
+        
+        kind = getattr(node, 'kind', None)
+        if kind is None:
+            return []
+        
+        kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+        
+        # [FIX] 别名处理: ConditionalExpression (Syntax AST) = ConditionalOp (Semantic AST)
+        check_kind = kind_name
+        if 'ConditionalExpression' in kind_name and 'ConditionalOp' not in kind_name:
+            check_kind = 'ConditionalOp'  # Treat ConditionalExpression as ConditionalOp
+        
+        # [FIX] 解包 ConversionExpression / Conversion
+        if 'Conversion' in kind_name:
+            operand = getattr(node, 'operand', None)
+            if operand:
+                return self.get_signals_with_conditions(operand, parent_conditions)
+        
+        # ConditionalOp: 三元运算符
+        if 'ConditionalOp' in check_kind:
+            result = []
+            
+            # 提取当前层级的条件
+            conditions = getattr(node, 'conditions', None)
+            current_cond = None
+            if conditions and len(conditions) > 0:
+                cond_expr = getattr(conditions[0], 'expr', None)
+                if cond_expr:
+                    current_cond = self._expr_to_string(cond_expr)
+                    # [FIX] 条件信号本身也应该作为驱动源返回（如 sel ? a : b 中的 sel）
+                    cond_signals = self.get_all_signals(cond_expr)
+                    for sig in cond_signals:
+                        if sig:
+                            result.append((sig, ''))
+            
+            if not current_cond:
+                # 尝试 predicate
+                pred = getattr(node, 'predicate', None)
+                if pred:
+                    current_cond = self._expr_to_string(pred)
+                    cond_signals = self.get_all_signals(pred)
+                    for sig in cond_signals:
+                        if sig:
+                            result.append((sig, ''))
+            
+            # True 分支 (left)
+            left = getattr(node, 'left', None)
+            if left:
+                # 检查 left 是否也是 ConditionalOp（嵌套情况）
+                left_kind = getattr(left, 'kind', None)
+                left_kind_name = left_kind.name if hasattr(left_kind, 'name') else str(left_kind) if left_kind else ''
+                # [FIX] 使用与 kind_name 相同的别名处理
+                if 'ConditionalExpression' in left_kind_name and 'ConditionalOp' not in left_kind_name:
+                    left_kind_name = 'ConditionalOp'  # Treat ConditionalExpression as ConditionalOp
+                
+                if 'ConditionalOp' in left_kind_name:
+                    # 嵌套三元: 传递当前条件作为父条件
+                    true_conds = parent_conditions + [current_cond] if current_cond else parent_conditions
+                    result.extend(self.get_signals_with_conditions(left, true_conds))
+                else:
+                    # 叶子节点: 提取信号并组合条件
+                    left_signals = self.get_all_signals(left)
+                    for sig in left_signals:
+                        cond_str = ' && '.join(parent_conditions + [current_cond]) if current_cond else ' && '.join(parent_conditions)
+                        result.append((sig, cond_str))
+            
+            # False 分支 (right)
+            right = getattr(node, 'right', None)
+            if right:
+                right_kind = getattr(right, 'kind', None)
+                right_kind_name = right_kind.name if hasattr(right_kind, 'name') else str(right_kind) if right_kind else ''
+                # [FIX] 使用与 kind_name 相同的别名处理
+                if 'ConditionalExpression' in right_kind_name and 'ConditionalOp' not in right_kind_name:
+                    right_kind_name = 'ConditionalOp'  # Treat ConditionalExpression as ConditionalOp
+                
+                if 'ConditionalOp' in right_kind_name:
+                    # 嵌套三元: 条件取反后传递
+                    if current_cond:
+                        negated_cond = f'!({current_cond})'
+                    else:
+                        negated_cond = None
+                    false_conds = parent_conditions + [negated_cond] if negated_cond else parent_conditions
+                    result.extend(self.get_signals_with_conditions(right, false_conds))
+                else:
+                    # 叶子节点
+                    right_signals = self.get_all_signals(right)
+                    for sig in right_signals:
+                        if current_cond:
+                            negated_cond = f'!({current_cond})'
+                            cond_str = ' && '.join(parent_conditions + [negated_cond])
+                        else:
+                            cond_str = ' && '.join(parent_conditions)
+                        result.append((sig, cond_str))
+            
+            return result
+        
+        # 非三元表达式: 直接提取信号（条件为空）
+        signals = self.get_all_signals(node)
+        return [(sig, '') for sig in signals]
+    
+    def _expr_to_string(self, expr) -> str:
+        """将表达式转换为可读字符串（用于条件显示）"""
+        if expr is None:
+            return ''
+        
+        kind = getattr(expr, 'kind', None)
+        if kind:
+            kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+            
+            # BinaryExpression: a == b, a + b, etc.
+            if 'BinaryOp' in kind_name or 'Binary' in kind_name:
+                left = self._expr_to_string(getattr(expr, 'left', None))
+                right = self._expr_to_string(getattr(expr, 'right', None))
+                op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
+                if op:
+                    if hasattr(op, 'name'):
+                        op_str = f' {op.name.lower()} '
+                    else:
+                        op_str = f' {str(op).strip()} '
+                else:
+                    op_str = ' '
+                return f'{left}{op_str}{right}'
+            
+            # [FIX] ConversionExpression: 递归解包获取底层表达式
+            # 例如 2'b00 可能是 ConversionExpression，需要解包
+            if 'Conversion' in kind_name:
+                operand = getattr(expr, 'operand', None)
+                if operand:
+                    return self._expr_to_string(operand)
+            
+            # [FIX] ParenthesizedExpression: 递归解包获取内部表达式
+            if 'Parenthesized' in kind_name:
+                inner = getattr(expr, 'expression', None)
+                if inner:
+                    return f'({self._expr_to_string(inner)})'
+            
+            # [FIX] RangeSelect (Syntax AST): addr[5], wdata[7:0] 等位选/范围选择
+            # Semantic AST RangeSelectExpression: .value = base signal, .left/.right = bounds
+            # 也支持 .syntax (原始语法节点)
+            if 'Range' in kind_name or 'ElementSelect' in kind_name:
+                # Try value (Semantic AST)
+                value = getattr(expr, 'value', None)
+                if value:
+                    base_str = self._expr_to_string(value)
+                else:
+                    # Try syntax for base
+                    syntax_node = getattr(expr, 'syntax', None)
+                    if syntax_node:
+                        base_str = str(syntax_node).strip()
+                    else:
+                        base_str = str(expr).strip()
+                
+                # Get range/selection if present
+                left = getattr(expr, 'left', None)
+                right = getattr(expr, 'right', None)
+                selector = getattr(expr, 'selector', None) or getattr(expr, 'select', None)
+                
+                if selector:
+                    selector_str = self._expr_to_string(selector)
+                    return f'{base_str}[{selector_str}]'
+                elif left is not None and right is not None:
+                    left_str = self._expr_to_string(left)
+                    right_str = self._expr_to_string(right)
+                    return f'{base_str}[{left_str}:{right_str}]'
+                return base_str
+            
+            # [FIX] EqualityExpression / SimpleBinaryExpression (syntax): a == b, a + b
+            if 'Equality' in kind_name or 'Binary' in kind_name:
+                left = self._expr_to_string(getattr(expr, 'left', None))
+                right = self._expr_to_string(getattr(expr, 'right', None))
+                op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
+                if op:
+                    if hasattr(op, 'name'):
+                        op_str = f' {op.name.lower()} '
+                    else:
+                        op_str = f' {str(op).strip()} '
+                else:
+                    op_str = ' '
+                return f'{left}{op_str}{right}'
+            
+            # NamedValueExpression
+            if hasattr(expr, 'symbol'):
+                sym = getattr(expr, 'symbol', None)
+                if sym and hasattr(sym, 'name'):
+                    return str(sym.name).strip()
+            
+            # IdentifierNameSyntax
+            if 'IdentifierName' in kind_name:
+                return str(expr).strip()
+            
+            # IntegerLiteralExpression (Semantic AST)
+            if kind_name == 'IntegerLiteral':
+                # IntegerLiteral has .value attribute with the actual value like "2'b0"
+                if hasattr(expr, 'value'):
+                    return str(expr.value)
+                return str(expr).strip()
+            
+            # IntegerLiteralExpression (syntax)
+            if 'IntegerLiteral' in kind_name or 'IntegerVector' in kind_name:
+                return str(expr).strip()
+        
+        # 通用字符串转换
+        return str(expr).strip()
     
     def get_all_concatenation(self, node) -> List[str]:
         """ConcatenationExpression: {a, b, c}
