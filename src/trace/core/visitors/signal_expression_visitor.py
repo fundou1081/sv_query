@@ -6642,7 +6642,28 @@ class SignalExpressionVisitor(BaseVisitor):
                 op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
                 if op:
                     if hasattr(op, 'name'):
-                        op_str = f' {op.name.lower()} '
+                        op_name = op.name
+                        # [FIX] 将操作符名称转换为标准符号
+                        op_map = {
+                            'Equality': '==',
+                            'Inequality': '!=',
+                            'LessThan': '<',
+                            'LessEqual': '<=',
+                            'GreaterThan': '>',
+                            'GreaterEqual': '>=',
+                            'LogicalAnd': '&&',
+                            'LogicalOr': '||',
+                            'BinaryAnd': '&',
+                            'BinaryOr': '|',
+                            'BinaryXor': '^',
+                            'BinaryXnor': '~^',
+                            'Add': '+',
+                            'Subtract': '-',
+                            'Multiply': '*',
+                            'Divide': '/',
+                            'Mod': '%',
+                        }
+                        op_str = op_map.get(op_name, f' {op_name.lower()} ')
                     else:
                         op_str = f' {str(op).strip()} '
                 else:

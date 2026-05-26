@@ -121,6 +121,80 @@ class StatementCollectorVisitor(BaseVisitor):
         
         # BinaryOp 等复杂表达式
         return False
+
+    def _is_reset_condition(self, expr) -> bool:
+        """判断表达式是否为 reset 条件
+
+        Reset 条件：UnaryOp(!rst_n) 且 operand 是 NamedValue/Identifier 且名称包含 rst/reset
+        """
+        if expr is None:
+            return False
+
+        kind = getattr(expr, 'kind', None)
+        if not kind:
+            return False
+        kind_name = kind.name if hasattr(kind, 'name') else str(kind)
+
+        # UnaryOp: 检查是否 !rst 或 !reset
+        if 'UnaryOp' in kind_name:
+            op = getattr(expr, 'op', None)
+            if not op or 'Not' not in (op.name if hasattr(op, 'name') else str(op)):
+                return False
+            operand = getattr(expr, 'operand', None)
+            if operand:
+                # 获取 operand 的名称
+                if hasattr(operand, 'name'):
+                    name = operand.name
+                elif hasattr(operand, 'text'):
+                    name = operand.text
+                else:
+                    name = str(operand)
+                # 检查名称是否包含 rst/reset
+                name_lower = name.lower() if isinstance(name, str) else ''
+                return 'rst' in name_lower or 'reset' in name_lower
+        return False
+
+    def _compute_effective_condition(self, cond_exprs: list) -> str:
+        """从条件 AST 列表中提取 effective_condition
+
+        规则：跳过 reset 条件（如 !rst_n），返回最后一个非 reset 条件的完整表达式
+        
+        对于 case item，会返回 case item 值（如 REQ），需要构造完整的比较表达式
+        """
+        # 找到最后一个非 reset 的表达式
+        last_expr = None
+        for expr in reversed(cond_exprs):
+            if not self._is_reset_condition(expr):
+                last_expr = expr
+                break
+        
+        if last_expr is None:
+            return ""
+        
+        # 获取 last_expr 的 kind
+        kind = getattr(last_expr, 'kind', None)
+        kind_name = kind.name if hasattr(kind, 'name') else str(kind) if kind else ''
+        
+        # 如果 last_expr 是一个 case item 值（如 NamedValue REQ），
+        # 构造完整的比较表达式：selector == value
+        if kind_name in ('NamedValue', 'Identifier', 'Reference', 'IdentifierName'):
+            # 获取 case selector（从当前上下文）
+            selector = self.current_ctx.get('_case_selector', '')
+            if selector:
+                # 从 case item 条件值构造比较表达式
+                # last_expr 的名称就是 case item 的值
+                value_name = ''
+                if hasattr(last_expr, 'name'):
+                    value_name = str(last_expr.name).strip()
+                elif hasattr(last_expr, 'text'):
+                    value_name = str(last_expr.text).strip()
+                else:
+                    value_name = str(last_expr).strip()
+                
+                if value_name and value_name not in ('0', '1', 'true', 'false'):
+                    return f"{selector} == {value_name}"
+        
+        return self._expr_to_string(last_expr)
     
     def collect(self, node, ctx: Dict[str, str] = None) -> List[Tuple[Any, Dict[str, str], ItemType]]:
         """收集语句的入口方法
@@ -665,6 +739,11 @@ class StatementCollectorVisitor(BaseVisitor):
         # 获取 case selector (条件表达式)
         selector = self._get_case_selector(node)
         
+        # [FIX] 保存 case selector 到上下文，供 _compute_effective_condition 使用
+        # 先保留旧的 selector，退出时恢复
+        old_selector = self.current_ctx.get('_case_selector', '')
+        self.current_ctx['_case_selector'] = selector
+        
         # 获取 items
         items = getattr(node, 'items', [])
         
@@ -688,12 +767,28 @@ class StatementCollectorVisitor(BaseVisitor):
                 # [BUG-FIX] 合并外层条件和 case item 条件
                 # 外层条件 (如 !!rst_n) AND case item 条件 (如 state == REQ)
                 parent_cond = self.current_ctx.get('condition', '')
+                # [NEW] 从 parent_cond_exprs 中获取外层条件 AST 列表
+                cond_exprs = list(self.current_ctx.get('_cond_exprs', []))
+                # 获取 case item 的条件表达式 AST
+                item_cond_expr = self._get_case_item_condition_ast(item)
+                if item_cond_expr:
+                    cond_exprs.append(item_cond_expr)
                 if parent_cond:
                     # 组合条件: parent_cond && item_cond
                     combined_cond = f"{parent_cond} && {item_cond}"
-                    new_ctx = {**self.current_ctx, "condition": combined_cond}
+                    new_ctx = {
+                        **self.current_ctx,
+                        "condition": combined_cond,
+                        "_cond_exprs": cond_exprs,
+                        "effective_condition": self._compute_effective_condition(cond_exprs)
+                    }
                 else:
-                    new_ctx = {**self.current_ctx, "condition": item_cond}
+                    new_ctx = {
+                        **self.current_ctx,
+                        "condition": item_cond,
+                        "_cond_exprs": cond_exprs,
+                        "effective_condition": self._compute_effective_condition(cond_exprs)
+                    }
                 
                 self._ctx_stack.append(new_ctx)
                 
@@ -763,6 +858,36 @@ class StatementCollectorVisitor(BaseVisitor):
                     return f"{selector} == {expr_str}"
         
         return f"{selector} == ?"
+
+    def _get_case_item_condition_ast(self, item) -> Optional[Any]:
+        """提取 case item 的条件表达式 AST
+
+        用于构建 _cond_exprs 列表
+
+        Args:
+            item: case item 节点
+
+        Returns:
+            条件表达式 AST 对象或 None
+        """
+        # 检查是否是 default case
+        item_kind = getattr(item, 'kind', None)
+        item_kind_name = item_kind.name if hasattr(item_kind, 'name') else str(item_kind)
+
+
+        if 'Default' in item_kind_name:
+            return None  # default 不加入条件列表
+
+        # StandardCaseItem: 从 expressions 获取条件 AST
+        expressions = getattr(item, 'expressions', None)
+        if expressions:
+            if hasattr(expressions, '__iter__') and not isinstance(expressions, str):
+                # 多个条件值，返回第一个（通常 case 只有一个）
+                for expr in expressions:
+                    return expr
+            else:
+                return expressions
+        return None
     
 
     def visit_case(self, node):
@@ -800,8 +925,19 @@ class StatementCollectorVisitor(BaseVisitor):
                 new_cond = parent_cond + ' && ' + cond if cond else parent_cond
             else:
                 new_cond = cond
-            # 保存当前条件表达式，供下一层else-if使用
-            new_ctx = {**self.current_ctx, "condition": new_cond, "_parent_cond_expr": cond_expr}
+            # [NEW] 保存条件 AST 到 _cond_exprs 列表
+            cond_exprs = list(self.current_ctx.get('_cond_exprs', []))
+            if cond_expr:
+                cond_exprs.append(cond_expr)
+            # [NEW] 计算 effective_condition（最后一个非 reset 条件）
+            effective_cond = self._compute_effective_condition(cond_exprs)
+            new_ctx = {
+                **self.current_ctx,
+                "condition": new_cond,
+                "_parent_cond_expr": cond_expr,
+                "_cond_exprs": cond_exprs,
+                "effective_condition": effective_cond
+            }
             self._ctx_stack.append(new_ctx)
             self.visit(ts)
             self._ctx_stack.pop()
@@ -889,8 +1025,13 @@ class StatementCollectorVisitor(BaseVisitor):
                     new_cond = neg_cond
             else:
                 new_cond = neg_cond
-            # 将当前条件的表达式对象存入context，供下一层else-if使用
-            new_ctx = {**self.current_ctx, "condition": new_cond, "_parent_cond_expr": cond_expr}
+            # [NEW] else 分支的条件是取反的，不加入 _cond_exprs（只记录 TRUE 路径的条件）
+            new_ctx = {
+                **self.current_ctx,
+                "condition": new_cond,
+                "_parent_cond_expr": cond_expr,
+                # _cond_exprs 保持不变（else 分支是取反后的条件）
+            }
             self._ctx_stack.append(new_ctx)
             self.visit(ae)
             self._ctx_stack.pop()
@@ -990,7 +1131,7 @@ class StatementCollectorVisitor(BaseVisitor):
             if operand:
                 operand_str = self._expr_to_string(operand)
                 if operand_str:
-                    # 将 UnaryOperator 枚举转换为符号
+                    # 将 UnaryOperator 枚举转换为标准符号
                     if hasattr(op, 'name'):
                         op_name = op.name
                         if 'Not' in op_name:
@@ -1029,7 +1170,31 @@ class StatementCollectorVisitor(BaseVisitor):
             op = getattr(expr, 'op', None) or getattr(expr, 'operator', None)
             if op:
                 if hasattr(op, 'name'):
-                    op_str = f" {op.name.lower().replace('_', ' ')} "
+                    op_name = op.name
+                    # [FIX] 将操作符名称转换为标准符号
+                    op_map = {
+                        'Equality': '==',
+                        'Inequality': '!=',
+                        'LessThan': '<',
+                        'LessEqual': '<=',
+                        'GreaterThan': '>',
+                        'GreaterEqual': '>=',
+                        'LogicalAnd': '&&',
+                        'LogicalOr': '||',
+                        'BinaryAnd': '&',
+                        'BinaryOr': '|',
+                        'BinaryXor': '^',
+                        'BinaryXnor': '~^',
+                        'Add': '+',
+                        'Subtract': '-',
+                        'Multiply': '*',
+                        'Divide': '/',
+                        'Mod': '%',
+                        'LogicalNot': '!',
+                        'BitwiseNot': '~',
+                        'Concat': '{}',
+                    }
+                    op_str = op_map.get(op_name, f" {op_name.lower().replace('_', ' ')} ")
                 else:
                     op_str = f" {str(op).strip()} "
             else:

@@ -76,13 +76,14 @@ class ModuleTracer:
         """获取内部信号连接"""
         edges = []
         
-        for (src, dst), edge in self.graph._edge_data.items():
-            src_node = self.graph.get_node(src)
-            dst_node = self.graph.get_node(dst)
-            
-            if src_node and dst_node:
-                if src_node.module == module and dst_node.module == module:
-                    edges.append(edge)
+        for (src, dst), edge_list in self.graph._edge_data.items():
+            for edge in edge_list:
+                src_node = self.graph.get_node(src)
+                dst_node = self.graph.get_node(dst)
+                
+                if src_node and dst_node:
+                    if src_node.module == module and dst_node.module == module:
+                        edges.append(edge)
         
         return edges
     
@@ -90,15 +91,16 @@ class ModuleTracer:
         """获取跨模块连接"""
         edges = []
         
-        for (src, dst), edge in self.graph._edge_data.items():
-            src_node = self.graph.get_node(src)
-            dst_node = self.graph.get_node(dst)
-            
-            if src_node and dst_node:
-                if src_node.module == module and dst_node.module != module:
-                    edges.append(edge)
-                elif src_node.module != module and dst_node.module == module:
-                    edges.append(edge)
+        for (src, dst), edge_list in self.graph._edge_data.items():
+            for edge in edge_list:
+                src_node = self.graph.get_node(src)
+                dst_node = self.graph.get_node(dst)
+                
+                if src_node and dst_node:
+                    if src_node.module == module and dst_node.module != module:
+                        edges.append(edge)
+                    elif src_node.module != module and dst_node.module == module:
+                        edges.append(edge)
         
         return edges
     
