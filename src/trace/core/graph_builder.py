@@ -200,6 +200,61 @@ class DriverExtractor:
         
         return ""
 
+    def _extract_ternary_condition(self, expr) -> str:
+        """从三元运算符表达式提取条件字符串
+        
+        例如: assign y = en ? d : 0;
+        返回 "en"
+        
+        Args:
+            expr: RHS 表达式，可能包含 ConditionalOp
+            
+        Returns:
+            条件表达式字符串，如果非三元则返回空字符串
+        """
+        if expr is None:
+            return ""
+        
+        # 递归查找 ConditionalOp (可能被 ConversionExpression 包装)
+        current = expr
+        for _ in range(3):  # 最多解包3层
+            if current is None:
+                return ""
+            
+            kind = getattr(current, 'kind', None)
+            kind_str = str(kind) if kind else ""
+            
+            # 检测 ConditionalOp
+            if 'ConditionalOp' in kind_str:
+                # 提取条件
+                conditions = getattr(current, 'conditions', None)
+                if conditions and len(conditions) > 0:
+                    cond = conditions[0]
+                    cond_expr = getattr(cond, 'expr', None)
+                    if cond_expr:
+                        # 尝试从 syntax 获取可读字符串
+                        syntax = getattr(cond_expr, 'syntax', None)
+                        if syntax:
+                            return str(syntax).strip()
+                        # 尝试获取符号名
+                        if hasattr(cond_expr, 'symbol'):
+                            sym = getattr(cond_expr, 'symbol', None)
+                            if sym and hasattr(sym, 'name'):
+                                return str(sym.name).strip()
+                        return str(cond_expr).strip()
+                return ""
+            
+            # 解包 ConversionExpression 或其他包装
+            operand = getattr(current, 'operand', None)
+            if operand is None:
+                # 尝试其他属性
+                operand = getattr(current, 'expr', None)
+            if operand is current:  # 防止无限循环
+                return ""
+            current = operand
+        
+        return ""
+
     def _legacy_collect_stmts_with_context(self, n, ctx=None, d=0, _s=None):
         """[DEPRECATED] 旧版递归收集方法 - 已废弃
         
@@ -565,6 +620,11 @@ class DriverExtractor:
                         rhs_signals = []
                     else:
                         rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+                    
+                    # [FIX] 提取三元运算符条件: assign y = en ? d : 0;
+                    # 检测 ConditionalOp 并提取条件表达式
+                    ternary_condition = self._extract_ternary_condition(rhs_expr)
+                    
                     if not rhs_signals:
                         rhs_signals = [rhs]
                     # [P0-2] 计算完整表达式字符串
@@ -588,7 +648,8 @@ class DriverExtractor:
                             result.edges.append(TraceEdge(
                                 src=rhs_name, dst=dst_node_id,
                                 kind=EdgeKind.DRIVER, assign_type="continuous",
-                                expression=rhs_name, bit_slice=bit_slice  # 字面量用自己
+                                expression=rhs_name, bit_slice=bit_slice,  # 字面量用自己
+                                condition=ternary_condition
                             ))
                         else:
                             src_node_id = f"{module_name}.{rhs_name}"
@@ -600,7 +661,8 @@ class DriverExtractor:
                             result.edges.append(TraceEdge(
                                 src=src_node_id, dst=dst_node_id,
                                 kind=EdgeKind.DRIVER, assign_type="continuous",
-                                expression=expr_str, bit_slice=bit_slice
+                                expression=expr_str, bit_slice=bit_slice,
+                                condition=ternary_condition
                             ))
 
             # always 块 - [铁律7金标准] + 语义上下文

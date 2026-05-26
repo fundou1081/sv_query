@@ -118,7 +118,9 @@ class TestCaseStatementExtraction(unittest.TestCase):
         金标准:
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
-        | y    | [a, b] | high |
+        | y    | [a, b, 0] | high |
+        
+        注: 修复后现在正确提取 default case 的字面量 0 作为驱动源
         """
         source = '''
 module top(input [1:0] sel, a, b, output reg y);
@@ -133,11 +135,14 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
         
-        self.assertEqual(len(result.drivers), 2,
-            "case 应有 2 个驱动源 (a, b)")
+        # [FIX] 现在正确提取 case 条件，default case 的 0 也被提取
+        self.assertEqual(len(result.drivers), 3,
+            "case 应有 3 个驱动源 (a, b, 0)")
         ids = self._driver_ids(result)
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
+        # default case 的字面量 0 也被提取
+        self.assertIn('0', ids, "y 的驱动应包含 default case 的 0")
         self.assertEqual(result.confidence, 'high')
     
     def test_case_priority(self):
