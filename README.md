@@ -1,543 +1,268 @@
 # sv_query - SystemVerilog 信号追踪查询引擎
 
-**Version**: 0.1.0  
-**Status**: Active Development  
-**License**: MIT  
-**Maintainer**: The sv_query team
+**让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
 ---
 
-## 项目简介
+## 🚀 5 分钟快速上手
 
-`sv_query` 是一个基于 **pyslang AST** 的 SystemVerilog 信号追踪查询引擎，旨在为 IC 验证工程师提供精确、可靠的硬件信号分析和可视化能力。
-
-### 核心能力
-
-- **Driver 追踪**：从任意信号出发，追踪其所有驱动源（连续赋值、时序逻辑、组合逻辑）
-- **Load 追踪**：从信号出发，追踪其所有负载（被驱动的信号）
-- **位选追踪**：精确追踪 `data[7:4]` 等位选择信号的父子关系和位范围
-- **Class OOP 支持**：支持 SystemVerilog 面向对象编程的类、继承、组合、约束追踪
-- **Constraint 追踪**：支持随机约束的解析、SUPER_CALL 边追踪、约束覆盖分析
-- **数据流路径分析**：追踪信号 A 到信号 B 的完整数据流路径，支持多路径、条件判断、时钟域分析
-- **Struct 成员追踪**：自动展开 struct 整体赋值，支持 `pkt1.data → pkt2.data` 成员传播
-
-### 技术栈
-
-| 组件 | 技术 |
-|------|------|
-| AST 解析 | [pyslang](https://github.com/MikePopoloski/pyslang) |
-| 图结构 | NetworkX |
-| 验证工具 | Verilator, Verible |
-| 测试框架 | pytest |
-
----
-
-## 开发背景
-
-### 问题
-
-在 IC 验证环境中，经常需要回答以下问题：
-- `top.u_cpu.data_out[31:16]` 信号由什么驱动？
-- `tb.dut.u_axi.write_enable` 的时钟域是什么？
-- `transaction.c1` 约束调用了父类的哪个约束？
-- `outer.my_inner.status` 信号的完整路径是什么？
-
-传统方法依赖：
-- 人工阅读源码
-- grep/sed 等文本工具（无法处理嵌套、宏、位选）
-- 商业可视化工具（昂贵、不可扩展）
-
-### 解决方案
-
-`sv_query` 通过 pyslang 精确解析 SystemVerilog AST，构建信号图，实现：
-- **AST 唯一数据源**：所有分析基于语法树，不依赖字符串解析
-- **位精确性**：保留 `data[7:4]` 和 `data[3:0]` 的完整区分
-- **语义完整性**：理解 always_ff、assign、constraint 等语义上下文
-
----
-
-## 架构设计
-
-### 核心组件
-
-```
-src/trace/
-├── unified_tracer.py        # 统一入口，协调各组件
-├── core/
-│   ├── graph_builder.py      # 模块/信号图构建 (DriverExtractor, LoadExtractor)
-│   ├── graph/
-│   │   ├── models.py          # 数据模型 (TraceNode, TraceEdge, EdgeKind, SignalGraph)
-│   │   └── dataflow.py        # DataFlowGraph - 数据流路径分析
-│   ├── graph_models.py       # 数据模型 (TraceNode, TraceEdge, EdgeKind)
-│   ├── base.py               # PyslangAdapter - AST 操作封装
-│   ├── class_graph_builder.py # Class OOP 图构建 (约束、继承、组合)
-│   ├── bit_select_handler.py  # 位选节点处理 (追踪父子关系)
-│   └── query_*.py            # 查询接口 (signal, load, clock_domain, module)
-└── visitors/
-    └── constraint_visitor.py # 约束表达式解析器
-```
-
-### 数据流
-
-```
-SV Source Files
-       ↓
-  pyslang Parser
-       ↓
-  Compilation (elaboration)
-       ↓
-  Semantic AST (唯一可信数据源)
-       ↓
-  ┌─────────────────────────────────────┐
-  │           UnifiedTracer             │
-  │  ┌──────────────────────────────┐   │
-  │  │       GraphBuilder           │   │
-  │  │  - DriverExtractor           │   │
-  │  │  - LoadExtractor             │   │
-  │  │  - ConnectionExtractor       │   │
-  │  └──────────────────────────────┘   │
-  │  ┌──────────────────────────────┐   │
-  │  │     BitSelectHandler          │   │
-  │  │  - signal_widths extraction   │   │
-  │  │  - bit range tracking        │   │
-  │  └──────────────────────────────┘   │
-  │  ┌──────────────────────────────┐   │
-  │  │    ClassGraphBuilder          │   │
-  │  │  - constraint parsing        │   │
-  │  │  - inheritance (extends)     │   │
-  │  │  - composition (has-a)      │   │
-  │  └──────────────────────────────┘   │
-  │  ┌──────────────────────────────┐   │
-  │  │      DataFlowGraph           │   │
-  │  │  - path search (nx.all_simple_paths)
-  │  │  - struct member expansion   │   │
-  │  │  - BIT_SELECT edge handling  │   │
-  │  │  - clock domain analysis     │   │
-  │  └──────────────────────────────┘   │
-  └─────────────────────────────────────┘
-       ↓
-   SignalGraph (NetworkX)
-       ↓
-  Query APIs (SignalTracer, LoadTracer, ...)
-```
-
-### 关键设计原则
-
-| 铁律 | 说明 |
-|------|------|
-| **Semantic AST 强制** | 必须使用 `Compilation` + `getRoot()` 获取语义 AST，禁止直接使用 `SyntaxTree.root` |
-| 位精确性 | `data[7:4]` 和 `data[3:0]` 是不同的硬件信号 |
-| 原子化 | 每个语法节点类型对应独立的解析器/collector |
-| 不可信则不输出 | 无法解析时返回 `confidence: "uncertain"` |
-
----
-
-## 已实现功能
-
-### 模块级追踪
-
-- [x] Port 声明解析 (`input [7:0] d`)
-- [x] 连续赋值 (`assign a = b`)
-- [x] always_ff/always_comb/always_latch 块
-- [x] 实例化连接 (`u_inst.port`)
-- [x] 时钟域识别
-
-### 位选追踪
-
-- [x] 位选节点创建 (`data[3:0]` → node)
-- [x] 父子关系建立 (`data[3:0]` → `data`)
-- [x] BIT_SELECT 边
-- [x] bit_range 属性 (`"[3:0]"`)
-- [x] parent_bit_start/end (`0`, `3`)
-- [x] Port/Internal Signal 位宽提取
-
-### Class OOP 支持
-
-| 功能 | 状态 |
-|------|------|
-| Class 节点 | ✅ |
-| ClassPropertyDeclaration | ✅ |
-| extends 继承关系 | ✅ |
-| IS_INSTANCE_OF 边 (组合) | ✅ |
-| Constraint 解析 | ✅ |
-| SUPER_CALL 边 | ✅ |
-| Constraint 覆盖 (augmentation/replacement) | ✅ |
-| Virtual function/task 检测 | ✅ |
-
-### 数据流路径分析 (DataFlow)
-
-| 功能 | 状态 |
-|------|------|
-| 路径搜索 | ✅ nx.all_simple_paths |
-| 多路径支持 | ✅ |
-| BIT_SELECT 边处理 | ✅ |
-| Struct 成员展开 | ✅ |
-| 时钟域分析 | ✅ |
-| 条件判断提取 | ✅ |
-| 中间信号收集 | ✅ |
-
-### Struct 成员追踪
-
-| 功能 | 状态 |
-|------|------|
-| Struct 成员识别 | ✅ 通过 `xxx.member` 模式 |
-| 整体赋值展开 | ✅ `pkt2 = pkt1` → `pkt2.data = pkt1.data` |
-| MEMBER_SELECT 边 | ✅ (复用 BIT_SELECT 类型) |
-| 成员传播路径 | ✅ `data_in → pkt1.data → pkt2.data → data_out` |
-
-### Constraint 追踪
-
-- [x] ExpressionConstraint 解析
-- [x] ConditionalConstraint (if/else)
-- [x] ImplicationConstraint (`a -> b`)
-- [x] UniquenessConstraint (`unique {a, b}`)
-- [x] SolveBeforeConstraint
-- [x] ForeachConstraint
-- [x] 多语句 block 展开
-- [x] Variable 提取
-
----
-
-## 开发进度
-
-### 2026-05-12 更新
-
-**Bit Select Handler**
-- 新增 `_scan_constraint_bit_selects()` 支持约束中的位选追踪
-- 支持 `constraint c1 { data[7:4] == 4'hF; }` 中的位选解析
-
-**Class OOP 扩展**
-- IS_INSTANCE_OF 边支持组合关系
-- SUPER_CALL 边支持约束增量扩展
-- 多层继承场景验证
-
-### 提交记录 (11 commits ahead of main)
-
-```
-797c67c refactor(dataflow cli): unify command name and remove unused segment command
-64bfbdf docs: update README and DATAFLOW_IMPLEMENTATION_PLAN with struct support
-c3d492c feat: expand struct assignments to member assignments
-c0340f5 fix: struct member path handling with node existence guards
-e67647a fix: add node existence check in _get_bit_select_children
-53a95c2 fix: handle BIT_SELECT nodes in dataflow path finding
-8b6cf29 chore: update CLI main.py imports and add dataflow command
-7bea6c0 fix: increase default cutoff in _find_paths from 20 to 50
-9e61d75 feat: add dataflow CLI command for signal-to-signal path analysis
-9376989 feat: add DataFlowGraph for signal-to-signal dataflow analysis
-b2828a2 fix: improve literal node handling and expression resolution
-```
-
----
-
-## 长期计划
-
-### Phase 1: 基础功能 ✅
-
-- [x] 模块级信号追踪 (Driver/Load)
-- [x] Port/Internal Signal 位宽
-- [x] always_ff/always_comb/always_latch
-
-### Phase 2: Class OOP ✅
-
-- [x] ClassDeclaration 节点
-- [x] ConstraintDeclaration 解析
-- [x] extends 继承关系
-- [x] has-a 组合关系 (IS_INSTANCE_OF)
-- [x] SUPER_CALL 约束调用
-
-### Phase 3: 高级追踪
-
-- [ ] Generate block 追踪
-- [ ] Function/Task 内联展开
-- [ ] Interface/modport 追踪
-- [ ] 跨时钟域路径分析
-
-### Phase 4: 可视化 & CI
-
-- [ ] Graphviz 可视化导出
-- [ ] HTML 报告生成
-- [ ] GitHub Actions CI
-- [ ] 覆盖率分析集成
-
----
-
-## 测试框架
-
-### 测试结构
-
-```
-sim/
-├── tests/
-│   ├── unit/           # 单元测试 (graph_models, base, etc.)
-│   ├── integration/    # 集成测试 (模块、类、约束)
-│   └── regression/     # 回归测试 (边界条件、复杂场景)
-├── TEST_REPORT.md      # 测试报告
-└── conftest.py         # pytest 配置
-```
-
-### 测试统计 (2026-05-26)
-
-```
-Unit tests:       30 tests
-Integration:     111 tests
-Regression:      698 tests
-─────────────────────────
-Total:           839 tests (all passing)
-Skipped:           1 test
-Failed:            0 test
-```
-
-**所有 839 个测试通过！**
-
-| 优先级 | 修复内容 |
-|--------|----------|
-| P1 | 三元运算符 ConditionalOp、函数调用 Call arguments、test_floor |
-| P2 | alias 语句、case statement items、参数化模块实例化 |
-| P3 | 大小写敏感信号、美元符信号名、不带模块名查询 |
-
-### 验证工具
-
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| Verilator | 5.048 | SV 语法验证 |
-| Verible | v0.0-4053 | SV 语法验证 (双重验证) |
-
-所有 RTL 测试通过 Verilator + Verible 双重验证。
-
----
-
-## 使用示例
-
-### 1. 基础信号追踪
-
-```python
-import pyslang
-from trace.unified_tracer import UnifiedTracer
-
-source = '''
-module top;
-    logic [7:0] data;
-    logic [3:0] slice;
-    assign slice = data[3:0];
-endmodule
-'''
-
-tracer = UnifiedTracer(sources={'test.sv': source})
-tracer.build_graph()
-graph = tracer.get_graph()
-
-# 查询 data[3:0] 的父节点
-data_slice = graph.get_node('top.data[3:0]')
-print(f"bit_range: {data_slice.bit_range}")      # "[3:0]"
-print(f"parent: {data_slice.parent}")            # "top.data"
-print(f"parent_bit_start: {data_slice.parent_bit_start}")  # 0
-print(f"parent_bit_end: {data_slice.parent_bit_end}")      # 3
-
-# 查询 drivers
-drivers = graph.find_drivers('top.slice')
-for d in drivers:
-    print(f"Driver: {d.id}")  # "top.data[3:0]"
-```
-
-### 2. 跨模块实例追踪 (MIG)
-
-```python
-import pyslang
-from trace.unified_tracer import UnifiedTracer
-
-source = '''
-module child(output [7:0] out);
-endmodule
-
-module parent;
-    wire [7:0] w;
-    child u_child(.out(w));
-endmodule
-
-module top;
-    parent u_parent();
-endmodule
-'''
-
-tracer = UnifiedTracer(sources={'test.sv': source})
-tracer.build_graph()
-mig = tracer._module_graph
-
-# 获取实例节点 (集中索引)
-inst = mig.get_instance('top.u_parent')
-print(f"id: {inst.id}")          # "top.u_parent"
-print(f"module_type: {inst.module_type}")  # "parent"
-print(f"parent: {inst.parent}")  # "top"
-
-# 父子关系查询
-children = mig.get_child_instances('top')
-print(f"top's children: {[c.id for c in children]}")  # ["top.u_parent"]
-
-# 获取所有实例
-all_insts = mig.get_all_instances()  # ["top.u_parent", "top.u_parent.u_child"]
-
-# 层级遍历
-def print_hierarchy(parent_id, indent=0):
-    for child in mig.get_child_instances(parent_id):
-        print("  " * indent + f"{child.id} ({child.module_type})")
-        print_hierarchy(child.id, indent + 1)
-
-print_hierarchy('top')
-# Output:
-#   top.u_parent (parent)
-#     top.u_parent.u_child (child)
-```
-
-**MIG 核心 API**：
-
-| API | 说明 |
-|-----|------|
-| `mig.get_instance(path)` | 获取实例节点 (`ModuleInstanceNode`) |
-| `mig.get_child_instances(parent_id)` | 获取子实例列表 |
-| `mig.get_all_instances()` | 获取所有实例 ID |
-| `node.ports[port_name]` | 获取端口信息 (`PortInfo`) |
-| `mig.get_internal_signal(port_path)` | 端口→内部信号 |
-
-### 3. 跨模块 Driver/Load 追踪
-
-```python
-import pyslang
-from trace.unified_tracer import UnifiedTracer
-
-# 跨模块 driver 链: clk_gen.clk → top.u_gen.clk → top.clk → top.u_driver.clk → driver.clk
-source = '''
-module clk_gen(output logic clk);
-    assign clk = 1'b0;
-endmodule
-
-module driver(input logic clk, output logic [7:0] data);
-    always_comb data = 8'hA5;
-endmodule
-
-module load(input logic [7:0] data);
-    logic [7:0] reg_data;
-    logic clk;
-    always_ff @(posedge clk) reg_data <= data;
-endmodule
-
-module top;
-    logic clk;
-    logic [7:0] data;
-    
-    clk_gen u_gen(.clk(clk));
-    driver u_driver(.clk(clk), .data(data));
-    load u_load(.data(data));
-endmodule
-'''
-
-tracer = UnifiedTracer(sources={'test.sv': source})
-tracer.build_graph()
-graph = tracer.get_graph()
-
-# 追踪 top.data 的 driver
-print("=== Drivers of top.data ===")
-drivers = graph.find_drivers('top.data')
-for d in drivers:
-    print(f"  {d.id}")  # top.u_driver.data
-
-# 追踪 top.clk 的 driver 链
-print("\n=== Drivers of top.clk ===")
-drivers = graph.find_drivers('top.clk')
-for d in drivers:
-    print(f"  {d.id}")  # top.u_gen.clk
-
-# 追踪 top.u_driver.clk 的 driver (跨模块边界)
-print("\n=== Drivers of top.u_driver.clk ===")
-drivers = graph.find_drivers('top.u_driver.clk')
-for d in drivers:
-    print(f"  {d.id}")  # driver.clk
-
-# 追踪 load 的 loads
-print("\n=== Loads of top.clk ===")
-loads = graph.find_loads('top.clk')
-for l in loads:
-    print(f"  {l.id}")  # top.u_driver.clk
-
-# 查看跨越模块边界的边
-print("\n=== Cross-module edges ===")
-for src, dst in graph.edges():
-    edge = graph.get_edge(src, dst)
-    # DRIVER 边跨越模块边界: 内部信号 → 实例端口 或 实例端口 → 实例端口
-    if edge.kind.name == 'DRIVER' and ('.' in src and '.' in dst):
-        src_parts = src.split('.')
-        dst_parts = dst.split('.')
-        # 内部信号到实例端口的跨越
-        if len(src_parts) == 2 and len(dst_parts) >= 3:
-            print(f"  {src} --DRIVER--> {dst} (internal → instance port)")
-        # 实例端口到实例端口的跨越
-        elif len(src_parts) >= 3 and len(dst_parts) >= 3 and src_parts[0] != dst_parts[0]:
-            print(f"  {src} --DRIVER--> {dst} (instance port → instance port)")
-```
-
-**跨模块 Driver/Load 追踪要点**：
-- 实例端口节点：`top.u_driver.clk` (顶层路径 + 实例名 + 端口名)
-- 模块内部信号：`driver.clk` (模块名 + 端口名)
-- DRIVER 边跨越模块边界：
-  - `driver.data --DRIVER--> top.u_driver.data` (内部信号 → 实例端口)
-  - `clk_gen.clk --DRIVER--> top.u_gen.clk` (内部信号 → 实例端口)
-- CONNECTION 边表示信号连接：`top.clk --CONNECTION--> top.u_driver.clk`
-- 使用 `graph.find_drivers(signal_id)` 追踪驱动源
-- 使用 `graph.find_loads(signal_id)` 追踪负载
-
----
-
-## CLI 命令行工具
+### 1. 安装
 
 ```bash
-# 查看帮助
-python run_cli.py --help
+pip install -e .
+```
 
-# 1. stats - 图统计
-python run_cli.py stats -f test.sv
+### 2. 准备一个 SV 文件
 
-# 2. trace - 信号追踪（最核心）
-python run_cli.py trace fanin top.clk -f test.sv
-python run_cli.py trace fanout top.data -f test.sv
+```systemverilog
+// top.sv
+module top(input clk, rst_n, input [7:0] data, output [7:0] result);
+    logic [7:0] temp;
+    always_ff @(posedge clk) begin
+        if (!rst_n)
+            temp <= 8'h0;
+        else
+            temp <= data;
+    end
+    assign result = temp;
+endmodule
+```
 
-# 3. diff - 代码对比
-python run_cli.py diff old.sv new.sv
+### 3. 查询信号驱动
 
-# 4. snapshot - 快照管理
-python run_cli.py snapshot --help
+```bash
+sv_query trace-driver top.result --files top.sv
+```
 
-# 5. dataflow - 数据流路径分析
-python run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
+**输出示例：**
 
-# 全局选项: -j/--json (JSON输出), -p/--pretty (格式化JSON)
-python run_cli.py trace fanin top.clk -f test.sv -j -p
+```
+=== Drivers for top.result ===
+Source Signal | Condition | Source File
+--------------+-----------+------------
+top.temp | Always | top.sv:8
+        ↓ (via always_ff)
+top.clk | Rising Edge | top.sv:1
+top.rst_n | Active Low | top.sv:1
+
+Confidence: Certain
 ```
 
 ---
 
-## 设计文档
+## 用户场景
 
-| 文档 | 说明 |
+你是验证工程师，带着问题来，不是来学习架构的。
+
+### 🔍 场景 1：我找不到这个信号是谁驱动的
+
+```bash
+sv_query trace-driver top.result --files "**/*.sv"
+```
+
+### 📦 场景 2：我改了这个信号，会影响下游哪些逻辑？
+
+```bash
+sv_query trace-load top.data --files "**/*.sv"
+```
+
+### 🛤️ 场景 3：这个数据从 A 到 B 经过哪些路径？
+
+```bash
+sv_query find-path --from top.data_in --to top.fifo.wr_data --files "**/*.sv"
+```
+
+输出示例：
+
+```
+=== Dataflow Path ===
+1. top.data_in [always_comb] → @ adapter.sv:20
+ └─> 2. top.adapter.data_out [assign] → @ adapter.sv:15
+      └─> 3. top.fifo.wr_data [assign] → @ fifo.sv:8
+
+Path Length: 3 hops
+Confidence: Certain
+```
+
+### 🎯 场景 4：这个约束到底调用了哪个父类约束？
+
+```bash
+sv_query trace-constraint transaction::c_data --files "**/*.sv"
+```
+
+---
+
+## 核心优势
+
+### 🔬 底层使用 pyslang，数据可信
+
+`sv_query` 基于 [pyslang](https://github.com/MikePopoloski/pyslang)（业界标准的 SystemVerilog 解析器）构建 AST，保证分析结果的可信度：
+
+- **语义优先于语法**：使用 `Compilation.getRoot()` 获取语义 AST，而非原始语法树
+- **精确的硬件语义理解**：区分 `always_ff`、`always_comb`、`assign` 的赋值语义
+- **条件上下文保留**：完整提取 if/case/三元运算符的条件分支
+
+### 🎯 位精确追踪
+
+```systemverilog
+assign y[7:4] = a;
+assign y[3:0] = b;
+// y[7:4] 和 y[3:0] 是不同的驱动节点，不会混淆
+```
+
+### 🔗 完整数据流路径
+
+追踪信号从 A 到 B 的完整路径，支持：
+- 多路径分支
+- 条件判断提取
+- 时钟域分析
+
+---
+
+## CLI 命令参考
+
+| 命令 | 说明 |
 |------|------|
-| `DEVELOPMENT.md` | 开发规范、铁律、测试要求 |
-| `DESIGN_composition_chain.md` | 组合链 (has-a) 设计方案 |
-| `EXAMPLES.md` | 完整使用示例 (8 个场景 + MIG 高级 API) |
-| `docs/code_framework_analysis.md` | 模块实例图架构分析 |
-| `docs/CONNECTION_vs_MIG_analysis.md` | ConnectionExtractor vs MIG 对比分析 |
+| `sv_query trace-driver <signal>` | 查询信号的驱动源 |
+| `sv_query trace-load <signal>` | 查询信号的所有负载 |
+| `sv_query find-path --from <A> --to <B>` | 查询 A 到 B 的数据流路径 |
+| `sv_query trace-constraint <class>::<constraint>` | 查询约束的父类调用链 |
+| `sv_query controlflow <signal>` | 分析信号的条件驱动逻辑 |
+| `sv_query list-signals --module <name>` | 列出模块内所有信号 |
+
+### 全局参数
+
+| 参数 | 说明 |
+|------|------|
+| `--files` | SV 文件列表或 glob 模式 |
+| `--format json` | JSON 格式输出（默认是表格） |
+| `--verbose` | 显示详细分析过程 |
+
+---
+
+## Python API
+
+```python
+from sv_query import SVQuery
+
+# 初始化项目
+proj = SVQuery.from_files(["top.sv", "tb.sv"])
+
+# 查询驱动
+drivers = proj.get_drivers("top.result")
+for d in drivers:
+    print(f"{d.source_signal} → condition: {d.condition}")
+
+# 查询负载
+loads = proj.get_loads("top.data")
+
+# 查询路径
+paths = proj.find_path("top.data_in", "top.fifo.wr_data")
+```
+
+返回的 `DriverInfo` 对象是干净的业务数据，已过滤：
+- 字面量常量（`1'b0`、`4'hF`）单独归类
+- 位选拼接的中间边已合并
+
+---
+
+## 支持的 SV 特性
+
+### ✅ 完全支持
+
+| 特性 | 说明 |
+|------|------|
+| `assign` 连续赋值 | 组合逻辑驱动 |
+| `always_ff` | 时序逻辑，含时钟和复位 |
+| `always_comb` | 组合逻辑，含 case/if 条件 |
+| `always_latch` | 锁存逻辑 |
+| 位选 `data[7:4]` | 精确位范围追踪 |
+| 位拼接 `{a, b}` | 自动展开为多条边 |
+| Port/Interface 连接 | 实例化信号连接 |
+| Class OOP | 继承、约束、虚函数 |
+
+### ⚠️ 部分支持
+
+| 特性 | 说明 |
+|------|------|
+| 拼接运算 `{...}` | 可能存在冗余边 |
+| 条件运算符 `? :` | 嵌套三元条件提取已实现 |
+| Struct 成员 | 整体赋值展开为成员赋值 |
+
+### ❌ 暂不支持
+
+| 特性 | 替代方案 |
+|------|----------|
+| `generate` 块内数据流 | 手动实例化后追踪 |
+| `function/task` 内部数据流 | 语义限制，仅分析过程间参数传递 |
+| 复杂宏替换 | 预处理后分析 |
+| `bind` 语句 | 计划中 |
+
+---
+
+## 输出格式
+
+### 表格输出（默认）
+
+```
+=== Drivers for top.result ===
+Source Signal | Condition | Confidence
+--------------+-----------+----------
+top.temp | Always | Certain
+top.clk | Rising Edge | Certain
+```
+
+### JSON 输出（程序调用）
+
+```bash
+sv_query trace-driver top.result --format json
+```
+
+```json
+{
+  "signal": "top.result",
+  "drivers": [
+    {
+      "source_signal": "top.temp",
+      "condition": "Always",
+      "clock_domain": "clk",
+      "confidence": "certain",
+      "source_location": "top.sv:8"
+    }
+  ]
+}
+```
+
+---
+
+## 项目结构
+
+```
+sv_query/
+├── src/trace/
+│   ├── unified_tracer.py     # 统一入口
+│   ├── core/
+│   │   ├── graph_builder.py  # 信号图构建
+│   │   ├── dataflow.py       # 数据流路径分析
+│   │   └── base.py           # pyslang 封装
+│   └── visitors/
+│       ├── signal_expression_visitor.py  # 表达式解析
+│       └── statement_collector_visitor.py # 语句收集
+├── sim/tests/                # 845 个测试
+└── docs/                     # 详细设计文档
+```
 
 ---
 
 ## 参与贡献
 
-1. Fork 项目
-2. 创建 Feature Branch (`git checkout -b feature/xxx`)
-3. 遵循铁律开发 (见 DEVELOPMENT.md)
-4. 添加测试 (金标准测试 + 负面测试)
-5. 验证 (Verilator + Verible + pytest)
-6. 提交 Pull Request
+1. Fork 并克隆仓库
+2. 安装开发依赖：`pip install -e ".[dev]"`
+3. 运行测试：`pytest sim/tests/ -v`
+4. 提交前确保所有测试通过
 
 ---
 
-## 联系方式
+## 许可
 
-- 维护者: The sv_query team
-- GitHub: https://github.com/fundou1081/sv_query
+MIT License
