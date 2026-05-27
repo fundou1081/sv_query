@@ -1185,7 +1185,7 @@ class DriverExtractor:
 
             # 获取调用参数 (OrderedArgument 或 NamedArgument 列表)
             args_node = getattr(invocation, 'arguments', None)
-            if not args_node:
+            if args_node is None:
                 return
 
             call_args = []  # 位置参数列表
@@ -1325,11 +1325,27 @@ class DriverExtractor:
             for def_param_name, call_arg_name in param_map.items():
                 reverse_param_map[call_arg_name] = def_param_name
 
-            if is_function and internal_drivers:
+            # [FIX] 对于函数,还需要处理隐式返回值(函数名本身作为output)
+            # 函数调用: gray_conv(in) -> 返回值驱动内部 expression
+            # 需要映射 call_args -> def_params,然后从 internal_drivers 获取返回值驱动源
+            is_function = getattr(task_def, 'subroutineKind', None) == task_def.subroutineKind.Function or \
+                          'Function' in str(getattr(task_def, 'kind', ''))
+
+            # 建立映射: def_param_name -> call_arg_name (反向映射,用于查找调用参数)
+            reverse_param_map = {}  # call_arg_name -> def_param_name
+            for def_param_name, call_arg_name in param_map.items():
+                reverse_param_map[call_arg_name] = def_param_name
+
+            if is_function:
                 func_name = self.adapter.get_function_name(task_def)
-                
-                # [NEW] 使用 SubroutineExpander 展开函数(仅对有条件分支的函数)
-                if task_def and lhs_name and self._subroutine_expander.has_conditional_branches(task_def):
+
+                # [NEW] 使用 SubroutineExpander 展开函数
+                # 条件: 有条件分支的函数 OR 无内部驱动的简单函数(常量赋值)
+                should_expand = task_def and lhs_name and (
+                    self._subroutine_expander.has_conditional_branches(task_def) or
+                    not internal_drivers  # 简单函数/常量函数
+                )
+                if should_expand:
                     call_site = CallSiteInfo(
                         invocation=invocation,
                         call_name=call_name,
@@ -1348,7 +1364,8 @@ class DriverExtractor:
                             result.nodes.append(node)
                     for edge in expansion.edges:
                         result.edges.append(edge)
-                
+
+                # Only process internal_drivers if it has content
                 if func_name in internal_drivers and lhs_name:
                     rhs_ast = None
                     for item in getattr(task_def, 'items', []):
