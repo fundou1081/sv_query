@@ -28,6 +28,8 @@ class DriverExtractor:
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
         self._signal_visitor = SignalExpressionVisitor(adapter)
         self._stmt_visitor = StatementCollectorVisitor(adapter)
+        # SubroutineExpander for function/task call expansion
+        self._subroutine_expander = SubroutineExpander(adapter)
 
 
     def _get_all_signals(self, signal) -> List[str]:
@@ -544,7 +546,7 @@ class DriverExtractor:
                             return invocations
                         kind = getattr(expr, 'kind', None)
                         kind_str = str(kind) if kind else ''
-                        if kind and 'Invocation' in kind_str:
+                        if kind and ('Invocation' in kind_str or 'Call' in kind_str):
                             invocations.append(expr)
                             return invocations  # Don't recurse into children
                         # If expr has __iter__, don't recurse into its attributes
@@ -1324,13 +1326,30 @@ class DriverExtractor:
                 reverse_param_map[call_arg_name] = def_param_name
 
             if is_function and internal_drivers:
-                # 函数返回值的驱动源可能是拼接表达式或二元表达式
-                # 例如: gray_conv = {a[7], a[6:0] ^ a[7:1]}
-                # internal_drivers['gray_conv'] = ['{a[7], a[6:0] ^ a[7:1]}']
                 func_name = self.adapter.get_function_name(task_def)
+                
+                # [NEW] 使用 SubroutineExpander 展开函数(仅对有条件分支的函数)
+                if task_def and lhs_name and self._subroutine_expander.has_conditional_branches(task_def):
+                    call_site = CallSiteInfo(
+                        invocation=invocation,
+                        call_name=call_name,
+                        call_args=call_args,
+                        named_args=named_args,
+                        func_def=task_def,
+                        def_params=def_params,
+                        param_map=param_map,
+                        reverse_param_map=reverse_param_map,
+                        lhs_name=f"{module_name}.{lhs_name}",
+                        is_function=True
+                    )
+                    expansion = self._subroutine_expander.expand(call_site, ctx)
+                    for node in expansion.nodes:
+                        if node.id not in [n.id for n in result.nodes]:
+                            result.nodes.append(node)
+                    for edge in expansion.edges:
+                        result.edges.append(edge)
+                
                 if func_name in internal_drivers and lhs_name:
-                    # [NEW] 直接从函数体提取 RHS AST,而不是用字符串
-                    # 遍历函数的 items 找到函数名赋值语句
                     rhs_ast = None
                     for item in getattr(task_def, 'items', []):
                         kind = str(getattr(item, 'kind', ''))

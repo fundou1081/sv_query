@@ -166,6 +166,25 @@ class SubroutineExpander:
             return None
         return getattr(func_def, 'body', None)
 
+    def has_conditional_branches(self, func_def: Any) -> bool:
+        """检查函数是否包含条件分支 (if/else/case)
+        
+        Args:
+            func_def: 函数定义 AST
+            
+        Returns:
+            bool: True if function has conditional branches
+        """
+        if func_def is None:
+            return False
+        body = getattr(func_def, 'body', None)
+        if body is None:
+            return False
+        body_kind = str(getattr(body, 'kind', ''))
+        # ConditionalStatement: if/else
+        # CaseStatement: case/covergroup
+        return 'Conditional' in body_kind or 'Case' in body_kind
+
     def _extract_branches(self, body: Any, func_def: Any) -> List[BranchInfo]:
         """提取函数体中的条件分支
 
