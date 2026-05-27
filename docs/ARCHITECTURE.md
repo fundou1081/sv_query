@@ -56,8 +56,8 @@ class UnifiedTracer:
     """统一追踪入口"""
     
     def build_graph(self, ...) -> SignalGraph
-    def trace_fanin(self, signal, depth=None) -> List[DriverChain]
-    def trace_fanout(self, signal, depth=None) -> List[LoadChain]
+    def trace_drivers(self, signal, depth=None) -> SignalChain
+    def trace_loads(self, signal, depth=None) -> SignalChain
     def trace_clock_domain(self, signal) -> ClockDomainTrace
     def get_module(self, module_name) -> ModuleTracer
     def analyze_dataflow(self, from_signal, to_signal) -> DataFlowResult
@@ -68,11 +68,9 @@ class UnifiedTracer:
 - 封装 Query API
 - 管理编译和图构建生命周期
 
----
-
 ### 2.2 构建层 - GraphBuilder
 
-**文件**: `src/trace/core/graph_builder.py` (2613 行)
+**文件**: `src/trace/core/graph_builder.py` (2675 行)
 
 ```python
 class GraphBuilder:
@@ -83,8 +81,8 @@ class GraphBuilder:
 class DriverExtractor:
     """驱动关系提取"""
     
-class LoadExtractor:
-    """负载关系提取"""
+class SubroutineExpander:
+    """函数/任务内联展开"""
 ```
 
 **职责**:
@@ -93,10 +91,34 @@ class LoadExtractor:
 - 提取驱动边 (DRIVER, CLOCK, RESET, CONNECTION)
 - 处理连续赋值、时序逻辑、组合逻辑
 - 处理实例化连接
+- **展开函数/任务内的条件分支 (if/else/case/return/三元)**
 
 **核心 Visitor**:
 - `SignalExpressionVisitor` - 表达式 → 信号名提取
 - `StatementCollectorVisitor` - 语句 → 上下文提取
+
+### 2.3 SubroutineExpander - 函数内联展开
+
+**文件**: `src/trace/core/builder/subroutine_expander.py` (750+ 行)
+
+```python
+class SubroutineExpander:
+    """函数/任务内联展开器"""
+    
+    def expand(call_site, ctx) -> ExpansionResult
+    def has_conditional_branches(func_def) -> bool
+    def _collect_branches(body, func_name, branches)
+```
+
+**展开支持**:
+- `if/else` 条件分支
+- `case/endcase` 多路分支
+- `return` 语句
+- 三元运算符 `cond ? if_true : if_false`
+
+**参数映射**:
+- 实参名 → 形参名 替换
+- 条件字符串构造使用映射后的参数名
 
 ---
 
@@ -859,13 +881,15 @@ src/trace/
 │   │   ├── models.py         # TraceNode, TraceEdge, NodeKind, EdgeKind
 │   │   ├── dataflow.py       # DataFlowGraph
 │   │   └── diff.py           # 图差异分析
-│   ├── graph_builder.py      # Module 图构建 (2613行)
+│   ├── graph_builder.py      # Module 图构建 (2675行)
 │   ├── class_graph_builder.py # Class 图构建 (738行)
 │   ├── module_instance_graph.py # MIG (1039行)
 │   ├── bit_select_handler.py # 位选处理
 │   ├── base.py               # PyslangAdapter
 │   ├── compiler.py            # 编译管理
 │   ├── semantic_adapter.py    # 语义适配器
+│   ├── builder/
+│   │   └── subroutine_expander.py  # 函数/任务内联展开 (750+行)
 │   ├── visitors/
 │   │   ├── signal_expression_visitor.py  # 7064行
 │   │   ├── statement_collector_visitor.py
@@ -887,15 +911,15 @@ src/trace/
 
 ---
 
-## 十、测试统计 (2026-05-26)
+## 十、测试统计 (2026-05-27)
 
 ```
 Unit tests:       30 tests
-Integration:     111 tests
-Regression:      698 tests
+Integration:     125 tests
+Regression:      703 tests
 ─────────────────────────
-Total:           839 tests
-Skipped:           1 test
+Total:           858 tests
+Skipped:           0 test
 Failed:            0 test
 ```
 

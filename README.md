@@ -180,13 +180,13 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 | 位拼接 `{a, b}` | 自动展开为多条边 |
 | Port/Interface 连接 | 实例化信号连接 |
 | Class OOP | 继承、约束、虚函数 |
+| **函数/任务内联展开** | if/else/case/return/三元运算符展开 |
 
 ### ⚠️ 部分支持
 
 | 特性 | 说明 |
 |------|------|
 | 拼接运算 `{...}` | 可能存在冗余边 |
-| 条件运算符 `? :` | 嵌套三元条件提取已实现 |
 | Struct 成员 | 整体赋值展开为成员赋值 |
 
 ### ❌ 暂不支持
@@ -194,7 +194,6 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 | 特性 | 替代方案 |
 |------|----------|
 | `generate` 块内数据流 | 手动实例化后追踪 |
-| `function/task` 内部数据流 | 语义限制，仅分析过程间参数传递 |
 | 复杂宏替换 | 预处理后分析 |
 | `bind` 语句 | 计划中 |
 
@@ -244,11 +243,13 @@ sv_query/
 │   ├── core/
 │   │   ├── graph_builder.py  # 信号图构建
 │   │   ├── dataflow.py       # 数据流路径分析
-│   │   └── base.py           # pyslang 封装
+│   │   ├── base.py           # pyslang 封装
+│   │   └── builder/
+│   │       └── subroutine_expander.py  # 函数/任务内联展开
 │   └── visitors/
 │       ├── signal_expression_visitor.py  # 表达式解析
 │       └── statement_collector_visitor.py # 语句收集
-├── sim/tests/                # 845 个测试
+├── sim/tests/                # 858 个测试
 └── docs/                     # 详细设计文档
 ```
 

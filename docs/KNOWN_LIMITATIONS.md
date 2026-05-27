@@ -14,13 +14,23 @@
 | P2 中优先级 | 4 个 | ✅ 全部通过 |
 | P3 边缘用例 | 3 个 | ✅ 全部通过 |
 
-**当前测试状态: 839 passed, 1 skipped**
+**当前测试状态: 858 passed, 0 skipped, 0 failed**
 
 ---
 
 ## 二、失败测试（0 个）✅
 
 所有 9 个失败测试已全部修复完成！
+
+---
+
+## 四、修复记录
+
+### 2026-05-27 (830d8ab) - SubroutineExpander 函数内联展开
+- 添加 `sim/tests/integration/test_subroutine_expander_tdd.py` - 13 个 TDD 测试
+- `src/trace/core/builder/subroutine_expander.py` - 函数展开器
+- `src/trace/core/graph_builder.py` - 修复 args_node 空列表检查 bug
+- 支持 if/else, case, ternary, return 语句的函数内联展开
 
 ---
 
