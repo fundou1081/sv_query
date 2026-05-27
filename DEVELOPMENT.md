@@ -1002,7 +1002,7 @@ python -c "import logging; logging.basicConfig(level=logging.DEBUG)"
 **验证命令**：
 ```bash
 pytest sim/tests/ --tb=no -q
-# 必须: 858 passed, 0 failed
+# 必须: 894 passed, 0 failed
 ```
 
 **禁止**：
@@ -1068,7 +1068,7 @@ grep -n "def _get_scoped_parts" src/trace/core/
 | 阶段2 | StatementCollectorVisitor 单元测试通过 |
 | 阶段3 | _get_signal 替换通过集成测试 |
 | 阶段4 | _collect_stmts_with_context 替换通过集成测试 |
-| 阶段5 | 完整测试套件通过 (858 passed, 0 failed) |
+| 阶段5 | 完整测试套件通过 (894 passed, 0 failed) |
 
 **禁止**：
 - 一次性完成所有重构
@@ -1087,7 +1087,7 @@ grep -n "def _get_scoped_parts" src/trace/core/
 | Task 4 | _collect_stmts_with_context 替换 | ⏳ 待开始 | - |
 | Task 5 | 清理和验证 | ⏳ 待开始 | - |
 
-**当前状态**: 858 passed, 0 failed (重构前基准)
+**当前状态**: 894 passed, 0 failed (重构前基准)
 
 ---
 

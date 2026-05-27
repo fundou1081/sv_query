@@ -14,7 +14,7 @@
 | P2 中优先级 | 4 个 | ✅ 全部通过 |
 | P3 边缘用例 | 3 个 | ✅ 全部通过 |
 
-**当前测试状态: 858 passed, 0 skipped, 0 failed**
+**当前测试状态: 894 passed, 0 skipped, 0 failed**
 
 ---
 

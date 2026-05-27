@@ -277,7 +277,7 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 | 3 | ~~Function/Task 内联展开~~ | ✅ 已完成 | 81 个测试通过 |
 | 4 | ~~Generate block 追踪~~ | ✅ 已完成 | 26 个测试通过 |
 | 5 | ~~跨时钟域路径分析~~ | ✅ 已完成 | DataFlow 已支持 |
-| 6 | Class 实例化成员追踪 (p.addr) | 🟡 待实现 | Phase 3 计划 |
+| 6 | ~~Class 实例化成员追踪 (p.addr)~~ | ✅ 已完成 | MEMBER_SELECT + 组合追踪 |
 | 7 | bind 语句支持 | 🟡 待实现 | 计划中 |
 | 8 | 复杂宏替换 | 🟠 待实现 | 暂不支持 |
 | 9-10 | 可视化 & CI | 🟢 Phase 4 | 非核心功能 |

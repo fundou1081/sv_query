@@ -281,8 +281,9 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 | 位选 `data[7:4]` | 精确位范围追踪 |
 | 位拼接 `{a, b}` | 自动展开为多条边 |
 | Port/Interface 连接 | 实例化信号连接 |
-| Class OOP | 继承、约束、虚函数 |
+| Class OOP | 继承、约束、虚函数、实例化、成员访问、组合关系、约束继承传播 |
 | **函数/任务内联展开** | if/else/case/return/三元运算符展开 |
+| **约束详情查询** | 条件链追踪、if/else 上下文、foreach/solve before |
 
 ### ⚠️ 部分支持
 
@@ -297,7 +298,6 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 |------|----------|
 | 复杂宏替换 | 预处理后分析 |
 | `bind` 语句 | 计划中 |
-| Class 实例化成员追踪 (p.addr) | 计划中 |
 | Graphviz 可视化导出 | 计划中 |
 | Package 多文件支持 | 计划中 |
 
@@ -349,13 +349,16 @@ sv_query/
 │   │   ├── dataflow.py       # 数据流路径分析
 │   │   ├── controlflow.py    # 控制流条件分析
 │   │   ├── base.py           # pyslang 封装
+│   │   ├── class_graph_builder.py  # Class OOP 图构建
+│   │   ├── class_hierarchy.py      # 继承链管理
 │   │   └── builder/
 │   │       ├── subroutine_expander.py  # 函数/任务内联展开
 │   │       └── expression_builder.py   # 表达式构建
 │   └── visitors/
 │       ├── signal_expression_visitor.py  # 表达式解析
-│       └── statement_collector_visitor.py # 语句收集
-├── sim/tests/                # 858 个测试
+│       ├── statement_collector_visitor.py # 语句收集
+│       └── constraint_visitor.py         # 约束表达式解析
+├── sim/tests/                # 894 个测试
 └── docs/                     # 详细设计文档
 ```
 
