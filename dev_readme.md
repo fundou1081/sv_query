@@ -196,6 +196,54 @@ SV Source Files
 - [x] 多语句 block 展开
 - [x] Variable 提取
 
+### 函数/任务内联展开 (SubroutineExpander)
+
+| 功能 | 状态 |
+|------|------|
+| 简单函数展开 | ✅ |
+| 条件分支展开 (if/else/case) | ✅ |
+| 参数替换 (formal → actual) | ✅ |
+| 命名参数 | ✅ |
+| 递归函数 | ✅ |
+| task 展开 (含 output 参数) | ✅ |
+| 跨模块函数调用 | ✅ |
+| DPI function/task import | ✅ |
+
+### Generate 块追踪
+
+| 功能 | 状态 |
+|------|------|
+| generate for | ✅ |
+| generate if | ✅ |
+| generate case | ✅ |
+| 嵌套 generate | ✅ |
+| generate 内实例化 | ✅ |
+| 参数化模块 (generate 内) | ✅ |
+
+### 控制流分析 (ControlFlowGraph)
+
+| 功能 | 状态 |
+|------|------|
+| 条件赋值分析 | ✅ |
+| if/else/latch 分支 | ✅ |
+| case 多分支 | ✅ |
+| 嵌套 if | ✅ |
+| 状态机条件分析 | ✅ |
+| 矛盾检测 | ✅ |
+| 复位控制 | ✅ |
+| 缺失 else/default 检查 | ✅ |
+
+### Diff / Snapshot / 健康度分析
+
+| 功能 | 状态 |
+|------|------|
+| 图对比 (GraphDiff) | ✅ |
+| 可达性分析 | ✅ |
+| 健康度评分 | ✅ |
+| 耦合预警 | ✅ |
+| Snapshot 序列化/反序列化 | ✅ |
+| SnapshotManager (保存/加载/对比/删除) | ✅ |
+
 ---
 
 ## 开发进度
@@ -245,19 +293,27 @@ b2828a2 fix: improve literal node handling and expression resolution
 - [x] has-a 组合关系 (IS_INSTANCE_OF)
 - [x] SUPER_CALL 约束调用
 
-### Phase 3: 高级追踪
+### Phase 3: 高级追踪 ✅
 
-- [ ] Generate block 追踪
-- [ ] Function/Task 内联展开
-- [ ] Interface/modport 追踪
-- [ ] 跨时钟域路径分析
+- [x] Generate block 追踪 (for/if/case/nested)
+- [x] Function/Task 内联展开 (SubroutineExpander)
+- [x] Interface/modport 追踪
+- [x] 跨时钟域路径分析
+- [x] 控制流分析 (ControlFlowGraph)
+- [x] 数据流路径分析 (DataFlowGraph)
+- [x] Diff 对比 + 健康度分析 + 耦合预警
+- [x] Snapshot 序列化/快照管理
 
-### Phase 4: 可视化 & CI
+### Phase 4: 待实现
 
+- [ ] Class 实例化成员追踪 (p.addr)
+- [ ] bind 语句支持
+- [ ] 复杂宏替换
 - [ ] Graphviz 可视化导出
 - [ ] HTML 报告生成
 - [ ] GitHub Actions CI
 - [ ] 覆盖率分析集成
+- [ ] Package 多文件支持
 
 ---
 
@@ -275,14 +331,14 @@ sim/
 └── conftest.py         # pytest 配置
 ```
 
-### 测试统计 (2026-05-26)
+### 测试统计 (2026-05-27)
 
 ```
 Unit tests:       30 tests
 Integration:     111 tests
 Regression:      698 tests
 ─────────────────────────
-Total:           839 tests (all passing)
+Total:           858 tests (all passing)
 Skipped:           1 test
 Failed:            0 test
 ```

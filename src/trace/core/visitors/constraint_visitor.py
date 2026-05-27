@@ -123,11 +123,30 @@ class ConstraintVisitor(BaseVisitor):
 
         kind_str = str(kind)
 
-        # ScopedName (this.addr) - 取 right 部分
+        # ScopedName (this.addr, range.min_addr)
+        # 如果 left 是 this/super，只取 right；否则保留完整 dotted name
         if 'ScopedName' in kind_str:
+            left = getattr(expr, 'left', None)
             right = getattr(expr, 'right', None)
-            if right:
-                vars.extend(self._extract_vars_from_expr(right))
+            
+            # 检查 left 是否是 this/super 关键字
+            left_name = ''
+            if left:
+                left_ident = getattr(left, 'identifier', None)
+                if left_ident:
+                    left_name = str(getattr(left_ident, 'value', '')).strip()
+                else:
+                    left_name = str(getattr(left, 'name', '') or '').strip()
+            
+            if left_name in ('this', 'super', ''):
+                # this.addr -> addr, 或无法解析 left -> 只取 right
+                if right:
+                    vars.extend(self._extract_vars_from_expr(right))
+            else:
+                # range.min_addr -> range.min_addr (保留完整路径)
+                right_vars = self._extract_vars_from_expr(right) if right else []
+                for rv in right_vars:
+                    vars.append(f"{left_name}.{rv}")
             return vars
 
         # IdentifierSelectName (arr[i]): identifier + selectors

@@ -691,6 +691,31 @@ class SignalExpressionVisitor(BaseVisitor):
         """
         return []
 
+    def get_all_member_access(self, node) -> List[str]:
+        """MemberAccessExpression: p.addr -> 返回完整复合名 [p.addr]
+        
+        与 visit_member_access 保持一致，返回 base.member 格式。
+        """
+        value = getattr(node, 'value', None) or getattr(node, 'expression', None)
+        member_sym = getattr(node, 'member', None)
+        
+        if value and member_sym:
+            base_signals = self.get_all_signals(value)
+            base_name = base_signals[0] if base_signals else self.visit(value)
+            
+            member_name = getattr(member_sym, 'name', None)
+            if member_name:
+                member_name = str(member_name).strip()
+            else:
+                member_name = str(member_sym).strip()
+            
+            if base_name and member_name:
+                return [f"{base_name}.{member_name}"]
+        
+        if value:
+            return self.get_all_signals(value)
+        return []
+
     def get_all_signals_fallback(self, node) -> List[str]:
         """Fallback for get_all_signals when no specific method exists
         

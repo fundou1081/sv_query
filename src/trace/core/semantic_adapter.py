@@ -290,16 +290,21 @@ class SemanticAdapter:
         return 'unknown'
 
     def get_classes(self) -> List:
-        """获取所有类定义"""
+        """获取所有类定义（包括 package 内的 class）"""
         classes = []
         
-        # Semantic AST: RootSymbol[0] is CompilationUnitSymbol, iterate it for classes
         comp_unit = self._root[0] if len(self._root) > 0 else None
         if comp_unit:
             for item in comp_unit:
                 kind_str = str(getattr(item, 'kind', ''))
                 if 'Class' in kind_str:
                     classes.append(item)
+                # 进入 Package 查找 class
+                elif 'Package' in kind_str:
+                    for child in item:
+                        ck = str(getattr(child, 'kind', ''))
+                        if 'Class' in ck:
+                            classes.append(child)
         
         return classes
 

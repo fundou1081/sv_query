@@ -359,6 +359,8 @@ class UnifiedTracer:
             # [Phase2] 追加 class 子图
             class_builder = ClassGraphBuilder(semantic_adapter)
             class_builder.build(self._graph)
+            # [Phase2.5] 解析 class 实例成员访问 (p.addr -> MEMBER_SELECT 边)
+            self._resolve_class_member_access(semantic_adapter, self._graph)
             # [Phase3] 处理位选节点 (提取位宽、设置父子关系) - 在所有节点创建后
             bit_select_handler = BitSelectHandler(semantic_adapter, self._graph)
             bit_select_handler.process()
@@ -376,6 +378,127 @@ class UnifiedTracer:
     
     def get_graph(self) -> Optional[SignalGraph]:
         return self._graph
+    
+    def _resolve_class_member_access(self, adapter, graph):
+        """为 class 实例成员访问创建 MEMBER_SELECT 边
+        
+        P0: top.p.addr --MEMBER_SELECT--> top.p, top.p.addr --MEMBER_SELECT--> packet.addr
+        P1: top.p (SIGNAL -> CLASS_INSTANCE), top.p --IS_INSTANCE_OF--> packet
+        P2: packet.range (CLASS_PROPERTY -> CLASS_INSTANCE, 组合成员)
+        P3: packet.range.min_addr (多层成员访问)
+        """
+        import re
+        from trace.core.graph.models import NodeKind, EdgeKind, TraceEdge
+        
+        classes = adapter.get_classes()
+        class_names = set()
+        for cls in classes:
+            name = getattr(cls, 'name', None)
+            if name:
+                class_names.add(str(name).strip())
+        
+        if not class_names:
+            return
+        
+        # [P1] 识别模块级 class 实例 (p = new())，升级为 CLASS_INSTANCE
+        instance_to_class = {}  # {instance_path: class_name}
+        for module in adapter.get_modules():
+            module_name = adapter.get_module_name(module)
+            for decl in adapter.get_data_declarations(module):
+                type_node = getattr(decl, 'type', None)
+                if type_node is None:
+                    continue
+                type_kind = str(getattr(type_node, 'kind', ''))
+                if 'ClassType' not in type_kind:
+                    continue
+                cls_name = getattr(type_node, 'name', None)
+                if cls_name is None:
+                    continue
+                cls_name = str(cls_name).strip()
+                sig_name = adapter.get_signal_name(decl)
+                instance_path = f"{module_name}.{sig_name}"
+                instance_to_class[instance_path] = cls_name
+        
+        # 升级模块级实例节点 + 创建 IS_INSTANCE_OF 边
+        for inst_path, cls_name in instance_to_class.items():
+            inst_node = graph.get_node(inst_path)
+            if inst_node is None:
+                continue
+            inst_node.kind = NodeKind.CLASS_INSTANCE
+            existing = graph.get_edge(inst_path, cls_name)
+            if existing is None:
+                graph.add_trace_edge(TraceEdge(
+                    src=inst_path, dst=cls_name,
+                    kind=EdgeKind.IS_INSTANCE_OF,
+                ))
+        
+        # [P2] 升级组合成员: CLASS_PROPERTY + IS_INSTANCE_OF -> CLASS_INSTANCE
+        for node_id in list(graph.nodes()):
+            node = graph.get_node(node_id)
+            if node is None or node.kind != NodeKind.CLASS_PROPERTY:
+                continue
+            # 检查是否有 IS_INSTANCE_OF 边
+            for src, dst in graph.edges():
+                if src == node_id:
+                    edge = graph.get_edge(src, dst)
+                    if edge.kind == EdgeKind.IS_INSTANCE_OF:
+                        node.kind = NodeKind.CLASS_INSTANCE
+                        instance_to_class[node_id] = dst
+                        break
+        
+        # [P0/P3] 解析成员访问 (p.addr, range.min_addr)
+        for node_id in list(graph.nodes()):
+            match = re.match(r'^(.+)\.([^.]+)$', node_id)
+            if not match:
+                continue
+            
+            base_path = match.group(1)
+            member_name = match.group(2)
+            
+            base_node = graph.get_node(base_path)
+            if base_node is None:
+                continue
+            
+            # 只处理 SIGNAL 类型节点
+            node = graph.get_node(node_id)
+            if node is None:
+                continue
+            if node.kind != NodeKind.SIGNAL:
+                continue
+            
+            # 只有 base 是 CLASS_INSTANCE 时才升级（排除 struct 等）
+            if base_node.kind != NodeKind.CLASS_INSTANCE:
+                continue
+            
+            # 检查是否有对应的 class property
+            class_prop_id = None
+            for cls_name in class_names:
+                candidate = f"{cls_name}.{member_name}"
+                if graph.get_node(candidate) is not None:
+                    class_prop_id = candidate
+                    break
+            
+            if class_prop_id is None:
+                continue
+            
+            # 升级节点类型
+            node.kind = NodeKind.CLASS_INSTANCE_PROPERTY
+            
+            # MEMBER_SELECT: p.addr -> p
+            existing = graph.get_edge(node_id, base_path)
+            if existing is None:
+                graph.add_trace_edge(TraceEdge(
+                    src=node_id, dst=base_path,
+                    kind=EdgeKind.MEMBER_SELECT,
+                ))
+            
+            # MEMBER_SELECT: p.addr -> packet.addr
+            existing2 = graph.get_edge(node_id, class_prop_id)
+            if existing2 is None:
+                graph.add_trace_edge(TraceEdge(
+                    src=node_id, dst=class_prop_id,
+                    kind=EdgeKind.MEMBER_SELECT,
+                ))
     
     # =========================================================================
     # 实例提取 API (Req-1: API 简化)
