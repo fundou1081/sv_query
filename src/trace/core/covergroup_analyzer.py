@@ -123,10 +123,13 @@ class CovergroupAnalyzer:
 
         pairs = set()
 
-        # 找所有 CONSTRAINT_IF 节点
+        # 找所有 CONSTRAINT_IF 和 CONSTRAINT_IMPLIES 节点
         for node_id in self._graph.nodes():
             node = self._graph.get_node(node_id)
-            if node is None or 'CONSTRAINT_IF' not in str(node.kind):
+            if node is None:
+                continue
+            node_kind_str = str(node.kind)
+            if 'CONSTRAINT_IF' not in node_kind_str and 'CONSTRAINT_IMPLIES' not in node_kind_str:
                 continue
 
             # 找条件变量 (HAS_CONDITION 边)
