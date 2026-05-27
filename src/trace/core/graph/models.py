@@ -22,6 +22,7 @@ class NodeKind(Enum):
     # [Phase1a] Class & Constraint 节点类型
     CLASS = auto()                  # class 定义节点 (packet)
     CLASS_INSTANCE = auto()          # class 实例 (top.p = new())
+    CLASS_INSTANCE_PROPERTY = auto() # class 实例成员 (top.p.addr, 通过实例访问的成员)
     CLASS_PROPERTY = auto()         # class 成员变量 (packet.addr, rand 变量)
     CONSTRAINT_BLOCK = auto()       # constraint c { ... } 命名块
     CONSTRAINT_EXPR = auto()        # 单条表达式约束
@@ -56,6 +57,7 @@ class EdgeKind(Enum):
     CONTAINS_MEMBER = auto()  # CLASS → CLASS_PROPERTY (组合/成员变量)
     IS_INSTANCE_OF = auto()   # CLASS_PROPERTY → CLASS (成员变量的类型引用)
     SUPER_CALL = auto()       # CONSTRAINT_EXPR → 被调用的父类约束 (增量扩展 super.c1)
+    MEMBER_SELECT = auto()    # 实例成员访问: top.p.addr → top.p (p.addr 的 MEMBER_SELECT 边)
 
 # [铁律16] 注意:ENABLE/DATA 不作为独立边类型
 # - ENABLE: 用 TraceEdge.condition 属性替代,语义更清晰

@@ -79,7 +79,74 @@ class ClassGraphBuilder:
             cls_name = self._class_name(cls)
             self._build_class_nodes(graph, cls, cls_name, result)
 
+        # 4. 继承传播：将父类的约束复制到子类
+        self._propagate_inherited_constraints(graph, result)
+
         return result
+
+    def _propagate_inherited_constraints(self, graph: SignalGraph, result: ClassBuilderResult):
+        """继承传播：子类继承父类的 CLASS_PROPERTY 和 CONSTRAINT_BLOCK
+        
+        规则:
+        - 子类继承父类的 CLASS_PROPERTY (复制为 child.prop)
+        - 子类继承父类的 CONSTRAINT_BLOCK (复制为 child.constraint_name)
+        - 约束内部的边 (HAS_LHS, HAS_CONDITION 等) 也复制
+        - 同名属性/约束不覆盖（子类优先）
+        """
+        for cls_name in list(self.hierarchy._parent_map.keys()):
+            ancestors = self.hierarchy.get_ancestors(cls_name)
+            if not ancestors:
+                continue
+            
+            for ancestor in ancestors:
+                # 复制父类的 CLASS_PROPERTY
+                for node_id in list(graph.nodes()):
+                    node = graph.get_node(node_id)
+                    if node is None:
+                        continue
+                    
+                    # 匹配 ancestor.xxx 格式的 CLASS_PROPERTY
+                    if node.kind == NodeKind.CLASS_PROPERTY and node_id.startswith(f"{ancestor}."):
+                        prop_name = node_id[len(ancestor) + 1:]
+                        child_prop_id = f"{cls_name}.{prop_name}"
+                        
+                        # 跳过：子类已有同名属性
+                        if graph.get_node(child_prop_id) is not None:
+                            continue
+                        
+                        # 跳过：如果属性名含 :: 说明是约束子节点，不复制
+                        if '::' in prop_name:
+                            continue
+                        
+                        # 创建子类的继承属性节点
+                        child_prop = TraceNode(
+                            id=child_prop_id,
+                            name=prop_name,
+                            module=cls_name,
+                            kind=NodeKind.CLASS_PROPERTY,
+                            width=node.width,
+                        )
+                        graph.add_trace_node(child_prop)
+                        result.nodes.append(child_prop)
+                        
+                        # CLASS -> CLASS_PROPERTY 边
+                        graph.add_trace_edge(TraceEdge(
+                            src=cls_name,
+                            dst=child_prop_id,
+                            kind=EdgeKind.CONSTRAINS,
+                        ))
+                    
+                    # 匹配 ancestor.constraint_name 格式的 CONSTRAINT_BLOCK
+                    elif node.kind == NodeKind.CONSTRAINT_BLOCK and node_id.startswith(f"{ancestor}."):
+                        constr_name = node_id[len(ancestor) + 1:]
+                        child_constr_id = f"{cls_name}.{constr_name}"
+                        
+                        # 跳过：子类已有同名约束
+                        if graph.get_node(child_constr_id) is not None:
+                            continue
+                        
+                        # 复制约束块及其子树
+                        self._copy_constraint_subtree(graph, node_id, ancestor, cls_name, result)
 
     # =========================================================================
     # [铁律15] 每个语法节点类型 → 独立方法
@@ -221,7 +288,7 @@ class ClassGraphBuilder:
                 self._build_uniqueness_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
             elif 'SolveBeforeConstraint' in kind_str:
                 self._build_solve_before_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif 'ForeachConstraint' in kind_str:
+            elif 'ForeachConstraint' in kind_str or 'LoopConstraint' in kind_str:
                 self._build_foreach_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
             elif 'ExpressionConstraint' in kind_str:
                 # 检查是否是 super.<constraint_name> 调用（增量扩展）
@@ -657,7 +724,13 @@ class ClassGraphBuilder:
             ))
 
     def _build_foreach_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
-        """[铁律15] 处理 ForeachConstraint → CONSTRAINT_FOREACH"""
+        """[铁律15] 处理 ForeachConstraint → CONSTRAINT_FOREACH
+        
+        结构: foreach (arr[i]) { ... }
+        node.constraints 是 foreach body:
+          - ExpressionConstraintSyntax: 单表达式
+          - ConstraintBlockSyntax: 多语句块 (含 if/else 等)
+        """
         foreach_node_id = f"{block_id}::foreach_{idx}"
         foreach_node = TraceNode(
             id=foreach_node_id,
@@ -674,10 +747,35 @@ class ClassGraphBuilder:
             kind=EdgeKind.CONSTRAINS,
         ))
 
+        # 提取循环变量（数组名）和循环索引变量
+        loop_index_vars = set()  # 循环索引变量 (i, j 等)，不应创建为 CLASS_PROPERTY
         self._cv.reset()
         self._cv.visit(node)
+        
+        # 从 loopList 提取索引变量名
+        loop_list = getattr(node, 'loopList', None)
+        if loop_list and hasattr(loop_list, '__iter__'):
+            in_bracket = False
+            for elem in loop_list:
+                elem_kind = str(getattr(elem, 'kind', ''))
+                if 'OpenBracket' in elem_kind:
+                    in_bracket = True
+                elif 'CloseBracket' in elem_kind:
+                    in_bracket = False
+                elif in_bracket:
+                    # 索引变量：IdentifierName 或 SeparatedList (包含简单标识符)
+                    if 'Identifier' in elem_kind or 'Name' in elem_kind:
+                        ident = getattr(elem, 'identifier', None)
+                        if ident and hasattr(ident, 'value'):
+                            loop_index_vars.add(str(ident.value).strip())
+                    elif 'SeparatedList' in elem_kind:
+                        # SeparatedList 包含索引变量名
+                        text = str(elem).strip()
+                        if text and text.isidentifier():
+                            loop_index_vars.add(text)
+        
         for v in self._cv.variables:
-            if v in ['this', 'super']:
+            if v in ['this', 'super'] or v in loop_index_vars:
                 continue
             prop_id = f"{cls_name}.{v}"
             direct_vars.add(prop_id)
@@ -686,11 +784,337 @@ class ClassGraphBuilder:
                 dst=prop_id,
                 kind=EdgeKind.HAS_LOOP_VAR,
             ))
+        
+        # 处理 foreach body
+        body = getattr(node, 'constraints', None)
+        if body is None:
+            return
+        
+        body_kind = str(getattr(body, 'kind', ''))
+        
+        if 'ConstraintBlock' in body_kind:
+            body_items = getattr(body, 'items', None)
+            if body_items:
+                for bi_idx, body_item in enumerate(body_items):
+                    self._build_constraint_item(
+                        graph, body_item, foreach_node_id, cls_name,
+                        f"body_{bi_idx}", direct_vars, result, loop_index_vars
+                    )
+        elif 'ExpressionConstraint' in body_kind:
+            self._build_constraint_item(
+                graph, body, foreach_node_id, cls_name,
+                "body_0", direct_vars, result, loop_index_vars
+            )
+        elif 'ConditionalConstraint' in body_kind:
+            self._build_constraint_item(
+                graph, body, foreach_node_id, cls_name,
+                "body_0", direct_vars, result, loop_index_vars
+            )
+    
+    def _build_constraint_item(self, graph, item, parent_id, cls_name, suffix, direct_vars, result, loop_index_vars=None):
+        """通用约束项处理：根据 kind 分发到对应的 _build 方法
+        
+        用于 foreach body、嵌套约束等需要递归处理的场景。
+        
+        Args:
+            loop_index_vars: 循环索引变量集合 (如 {'i', 'j'})，不创建为 CLASS_PROPERTY
+        """
+        if loop_index_vars is None:
+            loop_index_vars = set()
+        kind = str(getattr(item, 'kind', ''))
+        
+        if 'ConditionalConstraint' in kind:
+            # if/else 约束
+            if_node_id = f"{parent_id}::{suffix}_if"
+            if_node = TraceNode(
+                id=if_node_id,
+                name=suffix,
+                module=cls_name,
+                kind=NodeKind.CONSTRAINT_IF,
+                width=(0, 0),
+            )
+            graph.add_trace_node(if_node)
+            result.nodes.append(if_node)
+            graph.add_trace_edge(TraceEdge(
+                src=parent_id,
+                dst=if_node_id,
+                kind=EdgeKind.CONSTRAINS,
+            ))
+            
+            # 提取条件变量
+            condition = getattr(item, 'condition', None)
+            if condition:
+                cond_vars = self._cv._extract_vars_from_expr(condition)
+                for v in cond_vars:
+                    if v in ['this', 'super'] or v in loop_index_vars:
+                        continue
+                    cond_prop_id = f"{cls_name}.{v}"
+                    graph.add_trace_edge(TraceEdge(
+                        src=if_node_id,
+                        dst=cond_prop_id,
+                        kind=EdgeKind.HAS_CONDITION,
+                    ))
+                    if v not in loop_index_vars: direct_vars.add(cond_prop_id)
+            
+            # consequent
+            consequent = getattr(item, 'constraints', None)
+            if consequent:
+                cons_kind = str(getattr(consequent, 'kind', ''))
+                if 'ConstraintBlock' in cons_kind:
+                    if hasattr(consequent, 'items'):
+                        for ci, cons_item in enumerate(consequent.items):
+                            cons_node_id = f"{if_node_id}::cons_{ci}"
+                            cons_node = TraceNode(
+                                id=cons_node_id,
+                                name=f"cons_{ci}",
+                                module=cls_name,
+                                kind=NodeKind.CONSTRAINT_EXPR,
+                                width=(0, 0),
+                            )
+                            graph.add_trace_node(cons_node)
+                            result.nodes.append(cons_node)
+                            graph.add_trace_edge(TraceEdge(
+                                src=if_node_id,
+                                dst=cons_node_id,
+                                kind=EdgeKind.HAS_CONSEQUENT,
+                            ))
+                            self._cv.reset()
+                            self._cv.visit(cons_item)
+                            for v in self._cv.variables:
+                                if v in ['this', 'super'] or v in loop_index_vars:
+                                    continue
+                                prop_id = f"{cls_name}.{v}"
+                                if v not in loop_index_vars: direct_vars.add(prop_id)
+                                graph.add_trace_edge(TraceEdge(
+                                    src=cons_node_id,
+                                    dst=prop_id,
+                                    kind=EdgeKind.HAS_LHS,
+                                ))
+                elif 'ExpressionConstraint' in cons_kind:
+                    cons_node_id = f"{if_node_id}::cons_0"
+                    cons_node = TraceNode(
+                        id=cons_node_id,
+                        name="cons_0",
+                        module=cls_name,
+                        kind=NodeKind.CONSTRAINT_EXPR,
+                        width=(0, 0),
+                    )
+                    graph.add_trace_node(cons_node)
+                    result.nodes.append(cons_node)
+                    graph.add_trace_edge(TraceEdge(
+                        src=if_node_id,
+                        dst=cons_node_id,
+                        kind=EdgeKind.HAS_CONSEQUENT,
+                    ))
+                    self._cv.reset()
+                    self._cv.visit(consequent)
+                    for v in self._cv.variables:
+                        if v in ['this', 'super'] or v in loop_index_vars:
+                            continue
+                        prop_id = f"{cls_name}.{v}"
+                        if v not in loop_index_vars: direct_vars.add(prop_id)
+                        graph.add_trace_edge(TraceEdge(
+                            src=cons_node_id,
+                            dst=prop_id,
+                            kind=EdgeKind.HAS_LHS,
+                        ))
+            
+            # alternate (else)
+            else_clause = getattr(item, 'elseClause', None)
+            if else_clause:
+                alt_constraints = getattr(else_clause, 'constraints', None)
+                alt_node_id = f"{if_node_id}::alt_0"
+                alt_node = TraceNode(
+                    id=alt_node_id,
+                    name="alt_0",
+                    module=cls_name,
+                    kind=NodeKind.CONSTRAINT_ELSE,
+                    width=(0, 0),
+                )
+                graph.add_trace_node(alt_node)
+                result.nodes.append(alt_node)
+                graph.add_trace_edge(TraceEdge(
+                    src=if_node_id,
+                    dst=alt_node_id,
+                    kind=EdgeKind.HAS_ALTERNATE,
+                ))
+                
+                alt_constraints = getattr(else_clause, 'constraints', None)
+                if alt_constraints:
+                    ac_kind = str(getattr(alt_constraints, 'kind', ''))
+                    if 'ConstraintBlock' in ac_kind and hasattr(alt_constraints, 'items'):
+                        for ai, alt_item in enumerate(alt_constraints.items):
+                            a_node_id = f"{alt_node_id}::expr_{ai}"
+                            a_node = TraceNode(
+                                id=a_node_id,
+                                name=f"expr_{ai}",
+                                module=cls_name,
+                                kind=NodeKind.CONSTRAINT_EXPR,
+                                width=(0, 0),
+                            )
+                            graph.add_trace_node(a_node)
+                            result.nodes.append(a_node)
+                            graph.add_trace_edge(TraceEdge(
+                                src=alt_node_id,
+                                dst=a_node_id,
+                                kind=EdgeKind.HAS_CONSEQUENT,
+                            ))
+                            self._cv.reset()
+                            self._cv.visit(alt_item)
+                            for v in self._cv.variables:
+                                if v in ['this', 'super'] or v in loop_index_vars:
+                                    continue
+                                prop_id = f"{cls_name}.{v}"
+                                if v not in loop_index_vars: direct_vars.add(prop_id)
+                                graph.add_trace_edge(TraceEdge(
+                                    src=a_node_id,
+                                    dst=prop_id,
+                                    kind=EdgeKind.HAS_LHS,
+                                ))
+                    elif 'ExpressionConstraint' in ac_kind:
+                        a_node_id = f"{alt_node_id}::expr_0"
+                        a_node = TraceNode(
+                            id=a_node_id,
+                            name="expr_0",
+                            module=cls_name,
+                            kind=NodeKind.CONSTRAINT_EXPR,
+                            width=(0, 0),
+                        )
+                        graph.add_trace_node(a_node)
+                        result.nodes.append(a_node)
+                        graph.add_trace_edge(TraceEdge(
+                            src=alt_node_id,
+                            dst=a_node_id,
+                            kind=EdgeKind.HAS_CONSEQUENT,
+                        ))
+                        self._cv.reset()
+                        self._cv.visit(alt_constraints)
+                        for v in self._cv.variables:
+                            if v in ['this', 'super'] or v in loop_index_vars:
+                                continue
+                            prop_id = f"{cls_name}.{v}"
+                            if v not in loop_index_vars: direct_vars.add(prop_id)
+                            graph.add_trace_edge(TraceEdge(
+                                src=a_node_id,
+                                dst=prop_id,
+                                kind=EdgeKind.HAS_LHS,
+                            ))
+        
+        elif 'ExpressionConstraint' in kind:
+            # 单表达式
+            expr_node_id = f"{parent_id}::{suffix}_expr"
+            expr_node = TraceNode(
+                id=expr_node_id,
+                name=f"{suffix}_expr",
+                module=cls_name,
+                kind=NodeKind.CONSTRAINT_EXPR,
+                width=(0, 0),
+            )
+            graph.add_trace_node(expr_node)
+            result.nodes.append(expr_node)
+            graph.add_trace_edge(TraceEdge(
+                src=parent_id,
+                dst=expr_node_id,
+                kind=EdgeKind.CONSTRAINS,
+            ))
+            self._cv.reset()
+            self._cv.visit(item)
+            for v in self._cv.variables:
+                if v in ['this', 'super'] or v in loop_index_vars:
+                    continue
+                prop_id = f"{cls_name}.{v}"
+                if v not in loop_index_vars: direct_vars.add(prop_id)
+                graph.add_trace_edge(TraceEdge(
+                    src=expr_node_id,
+                    dst=prop_id,
+                    kind=EdgeKind.HAS_LHS,
+                ))
 
     # =========================================================================
     # 辅助方法
     # =========================================================================
 
+    def _copy_constraint_subtree(self, graph, src_id, src_cls, dst_cls, result):
+        """复制约束子树：从 src_cls.constraint 复制到 dst_cls.constraint
+        
+        递归复制 CONSTRAINT_BLOCK 及其所有子节点和边。
+        将节点 ID 中的 src_cls 前缀替换为 dst_cls。
+        """
+        src_node = graph.get_node(src_id)
+        if src_node is None:
+            return
+        
+        suffix = src_id[len(src_cls) + 1:]  # e.g., "c_base" or "c_base::expr_0"
+        dst_id = f"{dst_cls}.{suffix}"
+        
+        # 跳过：目标已存在
+        if graph.get_node(dst_id) is not None:
+            return
+        
+        # 创建目标节点
+        dst_node = TraceNode(
+            id=dst_id,
+            name=src_node.name,
+            module=dst_cls,
+            kind=src_node.kind,
+            width=src_node.width,
+        )
+        graph.add_trace_node(dst_node)
+        result.nodes.append(dst_node)
+        
+        # 复制从父类到此节点的归属边
+        # e.g., base_packet --CONSTRAINS--> base_packet.c_base
+        # 变为: dst_cls --CONSTRAINS--> dst_cls.c_base
+        graph.add_trace_edge(TraceEdge(
+            src=dst_cls,
+            dst=dst_id,
+            kind=EdgeKind.CONSTRAINS,
+        ))
+        
+        # 遍历源节点的所有出边，复制并替换前缀
+        for src2, dst2 in list(graph.edges()):
+            if src2 != src_id:
+                continue
+            edge = graph.get_edge(src2, dst2)
+            if edge is None:
+                continue
+            
+            # 替换目标节点的前缀
+            if dst2.startswith(f"{src_cls}."):
+                dst2_suffix = dst2[len(src_cls) + 1:]
+                new_dst = f"{dst_cls}.{dst2_suffix}"
+                
+                # 递归复制目标子树
+                dst2_node = graph.get_node(dst2)
+                if dst2_node is not None:
+                    self._copy_constraint_subtree(graph, dst2, src_cls, dst_cls, result)
+                
+                # 复制边
+                existing = graph.get_edge(dst_id, new_dst)
+                if existing is None:
+                    graph.add_trace_edge(TraceEdge(
+                        src=dst_id,
+                        dst=new_dst,
+                        kind=edge.kind,
+                        condition=edge.condition,
+                        effective_condition=edge.effective_condition,
+                    ))
+            elif dst2.startswith(f"{src_cls}.") is False:
+                # 指向父类属性的边，如 HAS_LHS --> base_packet.id
+                # 替换为子类属性
+                if dst2.startswith(f"{src_cls}."):
+                    prop_suffix = dst2[len(src_cls) + 1:]
+                    new_dst = f"{dst_cls}.{prop_suffix}"
+                    existing = graph.get_edge(dst_id, new_dst)
+                    if existing is None:
+                        graph.add_trace_edge(TraceEdge(
+                            src=dst_id,
+                            dst=new_dst,
+                            kind=edge.kind,
+                            condition=edge.condition,
+                            effective_condition=edge.effective_condition,
+                        ))
+    
     def _class_name(self, cls) -> str:
         """提取 class 名称"""
         name = getattr(cls, 'name', None)
@@ -703,7 +1127,20 @@ class ClassGraphBuilder:
 
     def _class_extends(self, cls) -> Optional[str]:
         """提取 extends 子句"""
+        # 方法1: 语义 AST (ClassType.baseClass)
+        base_class = getattr(cls, 'baseClass', None)
+        if base_class is not None:
+            name = getattr(base_class, 'name', None)
+            if name:
+                return str(name).strip()
+        
+        # 方法2: 语法 AST (ClassDeclaration.extendsClause)
         extends_clause = getattr(cls, 'extendsClause', None)
+        if extends_clause is None:
+            # 尝试 syntax 节点
+            syntax = getattr(cls, 'syntax', None)
+            if syntax:
+                extends_clause = getattr(syntax, 'extendsClause', None)
         if extends_clause is None:
             return None
         # extends 子句格式: "extends ParentName"

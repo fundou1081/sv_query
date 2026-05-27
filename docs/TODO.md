@@ -77,8 +77,7 @@
 - **与 DataFlow 融合**:
   - `DataFlowResult.control_flow`: 融合控制流
   - `data_flow_when`: 数据流成立条件
-- **状态**: 提案阶段
-- **优先级**: DataFlow 实现完成后
+- **状态**: 已实现 (17 个测试通过，499 行代码)
 - **参考文档**: `docs/CONTROL_FLOW_ANALYSIS.md`
 
 #### [ ] Visitor 组合模式

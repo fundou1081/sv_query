@@ -295,9 +295,11 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 
 | 特性 | 替代方案 |
 |------|----------|
-| `generate` 块内数据流 | 手动实例化后追踪 |
 | 复杂宏替换 | 预处理后分析 |
 | `bind` 语句 | 计划中 |
+| Class 实例化成员追踪 (p.addr) | 计划中 |
+| Graphviz 可视化导出 | 计划中 |
+| Package 多文件支持 | 计划中 |
 
 ---
 
@@ -345,9 +347,11 @@ sv_query/
 │   ├── core/
 │   │   ├── graph_builder.py  # 信号图构建
 │   │   ├── dataflow.py       # 数据流路径分析
+│   │   ├── controlflow.py    # 控制流条件分析
 │   │   ├── base.py           # pyslang 封装
 │   │   └── builder/
-│   │       └── subroutine_expander.py  # 函数/任务内联展开
+│   │       ├── subroutine_expander.py  # 函数/任务内联展开
+│   │       └── expression_builder.py   # 表达式构建
 │   └── visitors/
 │       ├── signal_expression_visitor.py  # 表达式解析
 │       └── statement_collector_visitor.py # 语句收集

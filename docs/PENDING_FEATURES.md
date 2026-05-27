@@ -272,13 +272,15 @@ extract() → SignalResult(primary, all_signals, all_signals_unique)
 
 | 顺序 | 功能 | 优先级 | 理由 |
 |------|------|--------|------|
-| 1 | ControlFlow 控制流分析 | 🔴 高 | 与 DataFlow 配合使用 |
-| 2 | Interface/modport 追踪 | 🟡 Phase 3 | 常见 SV 特性 |
-| 3 | Function/Task 内联展开 | 🟡 Phase 3 | 提升追踪精度 |
-| 4 | Generate block 追踪 | 🟡 Phase 3 | 提升追踪精度 |
-| 5 | 跨时钟域路径分析 | 🟡 Phase 3 | 已有基础，完善即可 |
-| 6 | Class 内容深度提取与追踪 | 🟡 Phase 3 | OOP 验证核心需求 |
-| 7-10 | Phase 4 可视化 & CI | 🟢 Phase 4 | 非核心功能 |
+| 1 | ~~ControlFlow 控制流分析~~ | ✅ 已完成 | 17 个测试通过 |
+| 2 | Interface/modport 追踪 | ✅ 已完成 | 跨模块追踪已支持 |
+| 3 | ~~Function/Task 内联展开~~ | ✅ 已完成 | 81 个测试通过 |
+| 4 | ~~Generate block 追踪~~ | ✅ 已完成 | 26 个测试通过 |
+| 5 | ~~跨时钟域路径分析~~ | ✅ 已完成 | DataFlow 已支持 |
+| 6 | Class 实例化成员追踪 (p.addr) | 🟡 待实现 | Phase 3 计划 |
+| 7 | bind 语句支持 | 🟡 待实现 | 计划中 |
+| 8 | 复杂宏替换 | 🟠 待实现 | 暂不支持 |
+| 9-10 | 可视化 & CI | 🟢 Phase 4 | 非核心功能 |
 
 ---
 
