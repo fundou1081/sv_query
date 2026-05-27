@@ -121,14 +121,116 @@ assign y[3:0] = b;
 
 ## CLI 命令参考
 
+### controlflow - 控制流分析
+
+分析信号的条件驱动逻辑，显示所有条件分支路径。
+
+```bash
+# 分析信号的条件驱动
+python run_cli.py controlflow analyze demo.out -f demo.sv
+```
+
+**输出示例：**
+
+```
+ControlFlow Analysis: demo.out
+
+  Conditional Drivers:
+    when sel == 2'b00: demo.a → demo.out
+
+  Conditional Drivers:
+    when sel == 2'b01: demo.b → demo.out
+
+  Conditional Drivers:
+    when sel == 2'b10: demo.c → demo.out
+
+  Conditional Drivers:
+    when default: demo.d → demo.out
+```
+
+对应的 SystemVerilog 代码：
+
+```systemverilog
+module demo(input logic [1:0] sel, input [7:0] a, b, c, d, output [7:0] out);
+    always_comb begin
+        case (sel)
+            2'b00: out = a;
+            2'b01: out = b;
+            2'b10: out = c;
+            default: out = d;
+        endcase
+    end
+endmodule
+```
+
+### dataflow - 数据流路径分析
+
+分析信号从源到目标的完整数据流路径。
+
+```bash
+# 分析数据流路径
+python run_cli.py dataflow analyze dataflow_demo.data_in dataflow_demo.data_out -f demo.sv
+```
+
+**输出示例：**
+
+```
+DataFlow: dataflow_demo.data_in → dataflow_demo.data_out
+  Reachable: True
+  Paths: 1
+  Clock Domain: clk
+  Timing Risk: safe
+  Intermediate Signals (2):
+    - dataflow_demo.stage1
+    - dataflow_demo.stage2
+
+  Path Details:
+
+    Path 0: distance=3 [conditional]
+      dataflow_demo.data_in → dataflow_demo.stage1
+        driver: data_in
+        condition: !!rst_n && enable
+        timing: clk
+        assign: nonblocking
+      dataflow_demo.stage1 → dataflow_demo.stage2
+        driver: stage1
+        condition: !!rst_n
+        timing: clk
+        assign: nonblocking
+      dataflow_demo.stage2 → dataflow_demo.data_out
+        driver: stage2
+        timing: (none)
+        assign: continuous
+```
+
+对应的 SystemVerilog 代码：
+
+```systemverilog
+module dataflow_demo(input clk, rst_n, enable, input [7:0] data_in, output [7:0] data_out);
+    logic [7:0] stage1, stage2;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) stage1 <= 8'h00;
+        else if (enable) stage1 <= data_in;
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) stage2 <= 8'h00;
+        else stage2 <= stage1 + 8'h01;
+    end
+
+    assign data_out = stage2;
+endmodule
+```
+
 | 命令 | 说明 |
 |------|------|
 | `sv_query trace-driver <signal>` | 查询信号的驱动源 |
 | `sv_query trace-load <signal>` | 查询信号的所有负载 |
 | `sv_query find-path --from <A> --to <B>` | 查询 A 到 B 的数据流路径 |
 | `sv_query trace-constraint <class>::<constraint>` | 查询约束的父类调用链 |
-| `sv_query controlflow <signal>` | 分析信号的条件驱动逻辑 |
-| `sv_query list-signals --module <name>` | 列出模块内所有信号 |
+| `sv_query controlflow analyze <signal>` | 分析信号的条件驱动逻辑 |
+| `sv_query dataflow analyze <from> <to>` | 分析 A 到 B 的数据流路径 |
 
 ### 全局参数
 
