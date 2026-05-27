@@ -163,6 +163,14 @@ SV Source Files
 | SUPER_CALL 边 | ✅ |
 | Constraint 覆盖 (augmentation/replacement) | ✅ |
 | Virtual function/task 检测 | ✅ |
+| CLASS_INSTANCE 节点 (p = new()) | ✅ |
+| CLASS_INSTANCE_PROPERTY 节点 (p.addr) | ✅ |
+| MEMBER_SELECT 边 (p.addr -> p) | ✅ |
+| 组合成员追踪 (range.min_addr) | ✅ |
+| 约束继承传播 (多层继承) | ✅ |
+| package 内 class 发现 | ✅ |
+| foreach 约束内部表达式解析 | ✅ |
+| 约束详情查询 (条件链追踪) | ✅ |
 
 ### 数据流路径分析 (DataFlow)
 
@@ -192,7 +200,9 @@ SV Source Files
 - [x] ImplicationConstraint (`a -> b`)
 - [x] UniquenessConstraint (`unique {a, b}`)
 - [x] SolveBeforeConstraint
-- [x] ForeachConstraint
+- [x] ForeachConstraint (含内部表达式和 if/else 解析)
+- [x] 循环索引变量过滤
+- [x] 约束详情查询 (条件链 + 条件变量)
 - [x] 多语句 block 展开
 - [x] Variable 提取
 
@@ -306,7 +316,6 @@ b2828a2 fix: improve literal node handling and expression resolution
 
 ### Phase 4: 待实现
 
-- [ ] Class 实例化成员追踪 (p.addr)
 - [ ] bind 语句支持
 - [ ] 复杂宏替换
 - [ ] Graphviz 可视化导出
@@ -331,19 +340,19 @@ sim/
 └── conftest.py         # pytest 配置
 ```
 
-### 测试统计 (2026-05-27)
+### 测试统计 (2026-05-28)
 
 ```
 Unit tests:       30 tests
 Integration:     111 tests
-Regression:      698 tests
+Regression:      753 tests
 ─────────────────────────
-Total:           858 tests (all passing)
+Total:           894 tests (all passing)
 Skipped:           1 test
 Failed:            0 test
 ```
 
-**所有 839 个测试通过！**
+**所有 894 个测试通过！**
 
 | 优先级 | 修复内容 |
 |--------|----------|
