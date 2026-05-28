@@ -43,3 +43,4 @@ class CovergroupInfo:
     in_class: str = ""           # 所在 class 名称 (如有)
     source_file: str = ""        # 源文件名
     source_line: int = 0         # 源码行号
+    errors: List[str] = field(default_factory=list)  # 解析错误

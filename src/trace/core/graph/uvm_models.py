@@ -59,6 +59,7 @@ class UVMTestbench:
     overrides: List[FactoryOverride] = field(default_factory=list)
     config_entries: List[ConfigDBEntry] = field(default_factory=list)
     class_hierarchy: Dict[str, str] = field(default_factory=dict)  # 类名 → 父类名
+    errors: List[str] = field(default_factory=list)  # 解析错误
 
     def get_component(self, name: str) -> Optional[UVMComponent]:
         """按实例名获取组件"""
