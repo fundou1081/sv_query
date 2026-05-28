@@ -37,6 +37,7 @@ class SemanticAdapter:
         """
         self._root = root
         self._compiler = compiler
+        self._fixed_names = {}  # id(cls) -> name (pyslang Unicode bug workaround)
 
     @property
     def root(self):
@@ -293,20 +294,123 @@ class SemanticAdapter:
         """获取所有类定义（包括 package 内的 class）"""
         classes = []
         
-        comp_unit = self._root[0] if len(self._root) > 0 else None
-        if comp_unit:
-            for item in comp_unit:
-                kind_str = str(getattr(item, 'kind', ''))
-                if 'Class' in kind_str:
-                    classes.append(item)
-                # 进入 Package 查找 class
-                elif 'Package' in kind_str:
-                    for child in item:
-                        ck = str(getattr(child, 'kind', ''))
-                        if 'Class' in ck:
-                            classes.append(child)
+        # 遍历所有 CompilationUnit [铁律1]
+        for comp_unit in self._root:
+            kind = str(getattr(comp_unit, 'kind', ''))
+            # Instance 需要用 body 遍历
+            if 'Instance' in kind:
+                if hasattr(comp_unit, 'body'):
+                    for item in comp_unit.body:
+                        kind_str = str(getattr(item, 'kind', ''))
+                        if 'Class' in kind_str:
+                            classes.append(item)
+                continue
+            if 'CompilationUnit' not in kind:
+                continue
+            try:
+                for item in comp_unit:
+                    try:
+                        kind_str = str(getattr(item, 'kind', ''))
+                    except UnicodeDecodeError:
+                        continue
+                    if 'Class' in kind_str:
+                        classes.append(item)
+                    # 进入 Package 查找 class
+                    elif 'Package' in kind_str:
+                        try:
+                            for child in item:
+                                try:
+                                    ck = str(getattr(child, 'kind', ''))
+                                except UnicodeDecodeError:
+                                    continue
+                                if 'Class' in ck:
+                                    classes.append(child)
+                        except (TypeError, UnicodeDecodeError):
+                            pass
+            except (TypeError, UnicodeDecodeError):
+                pass
         
-        return classes
+        # 去重（Semantic AST 和 SyntaxTree 可能都找到了同一个 class）
+        seen = set()
+        unique_classes = []
+        for c in classes:
+            try:
+                name = str(getattr(c, 'name', '')).strip()
+            except UnicodeDecodeError:
+                unique_classes.append(c)
+                continue
+            if name not in seen:
+                seen.add(name)
+                unique_classes.append(c)
+        classes = unique_classes
+        
+        # pyslang Unicode bug 兜底：用 sourceRange 从源码提取类名
+        self._fix_unicode_class_names(classes)
+        
+        # 去重
+        seen = set()
+        unique_classes = []
+        for c in classes:
+            name = self.get_class_name(c)
+            if name and name not in seen:
+                seen.add(name)
+                unique_classes.append(c)
+            elif not name:
+                unique_classes.append(c)
+        
+        return unique_classes
+    
+    def get_class_name(self, cls) -> str:
+        """获取 class 名称（处理 Unicode bug）"""
+        fixed = self._fixed_names.get(id(cls))
+        if fixed:
+            return fixed
+        try:
+            return str(getattr(cls, 'name', '')).strip()
+        except UnicodeDecodeError:
+            return ''
+
+    def _fix_unicode_class_names(self, classes: List):
+        """修复 pyslang Unicode bug 导致的类名损坏
+        
+        通过 syntax.sourceRange.offset 从 compiler._sources 提取类名。
+        存储到 self._fixed_names 字典（pyslang 对象不允许设置属性）。
+        """
+        if not self._compiler:
+            return
+        
+        sources = getattr(self._compiler, '_sources', {})
+        if not sources:
+            return
+        
+        import re
+        
+        for cls in classes:
+            try:
+                str(getattr(cls, 'name', ''))
+                continue
+            except UnicodeDecodeError:
+                pass
+            
+            syntax = getattr(cls, 'syntax', None)
+            if not syntax:
+                continue
+            sr = getattr(syntax, 'sourceRange', None)
+            if not sr:
+                continue
+            start = getattr(sr, 'start', None)
+            if not start:
+                continue
+            offset = getattr(start, 'offset', 0)
+            
+            for fname, src in sources.items():
+                if offset < len(src):
+                    snippet = src[offset:offset+100]
+                    match = re.match(r'class\s+(\w+)', snippet)
+                    if match:
+                        self._fixed_names[id(cls)] = match.group(1)
+                        break
+    
 
     def get_interfaces(self) -> List:
         """获取所有接口定义 (Semantic AST)"""

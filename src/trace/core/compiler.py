@@ -49,7 +49,7 @@ class SVCompiler:
         
         Args:
             sources: {filename: source_code} 字典
-            log_level: 诊断输出级别 (DEBUG/INFO/WARNING/ERROR)
+            log_level: 诊断输出级别 (DEBUG/INFO/WARNING/ERROR/NONE)
         """
         self._sources = sources or {}
         self._comp: Optional[pyslang.Compilation] = None
@@ -65,6 +65,7 @@ class SVCompiler:
             'INFO': 20,
             'WARNING': 30,
             'ERROR': 40,
+            'NONE': 100,
         }
         return level_map.get(level.upper(), 30)
     
