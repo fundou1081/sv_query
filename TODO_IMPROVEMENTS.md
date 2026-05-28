@@ -136,7 +136,7 @@
 
 ## 📊 测试状态
 
-- 894 passed, 1 skipped ✅
+- 968 passed, 1 skipped ✅
 
 ## 📁 相关文件
 
