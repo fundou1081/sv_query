@@ -1,19 +1,26 @@
 # 纪律违反记录
 
 > 审查日期: 2026-05-28
-> 更新日期: 2026-05-28 (下午)
+> 最终更新: 2026-05-28 (晚间)
 
 ---
 
 ## 铁律1: SyntaxTree → Semantic AST 修复状态
 
-| 文件 | 状态 | 说明 |
+| 文件 | 方式 | 原因 |
 |------|------|------|
-| `covergroup_extractor.py` | ✅ 已修复 | 使用 SVCompiler Semantic AST |
-| `call_graph_builder.py` | ✅ 已修复 | 优先 Semantic AST，无 fallback |
-| `uvm_testbench_extractor.py` | ✅ 已修复 | 优先 Semantic AST，UVM 源码 fallback 到 SyntaxTree (pyslang 无法编译 uvm_pkg) |
-| `constraint_visitor.py:551` | ✅ 合规 | `if __name__ == "__main__"` 示例代码，非运行时 |
-| `pyslang_adapter.py:144,148` | ⚠️ 死代码 | `trace_signal_from_file/code` 未被调用，待清理 |
+| `covergroup_extractor.py` | ✅ Semantic AST | 不依赖 UVM |
+| `call_graph_builder.py` | ✅ Semantic AST | 不依赖 UVM |
+| `uvm_testbench_extractor.py` | ⚠️ SyntaxTree | UVM 宏 (type_id::create, uvm_component_utils) 需要 uvm_pkg 宏展开，Semantic AST 无法解析 |
+| `constraint_visitor.py:551` | ✅ 合规 | `if __name__ == "__main__"` 示例代码 |
+| `pyslang_adapter.py:144,148` | ⚠️ 死代码 | `trace_signal_from_file/code` 未被调用 |
+
+### 技术说明
+
+- pyslang SVCompiler 可以编译 `import uvm_pkg::*` + UVM 宏的代码（需加入 uvm_pkg.sv 源码）
+- 但 UVM 测试源码使用 `type_id::create` 等简化写法，未包含完整 UVM 宏定义
+- UVM 提取器只需语法结构（类定义、create 调用、connect 调用），不需要语义信息
+- 未来如需 UVM 语义分析，可通过 SVCompiler + uvm_pkg.sv 预处理实现
 
 ---
 
@@ -35,18 +42,10 @@
 
 ---
 
-## 已知技术限制
-
-| 限制 | 说明 |
-|------|------|
-| pyslang 无法编译 UVM 源码 | UVM 1.2 使用 pyslang 不支持的语法，SVCompiler 编译失败 |
-| 测试源码不依赖 UVM | 测试用自定义 create/start_item/finish_item 替代 UVM 函数 |
-
----
-
 ## 状态
 
-- [x] P0: covergroup/call_graph/uvm_tb SyntaxTree → Semantic AST
+- [x] P0: covergroup/call_graph SyntaxTree → Semantic AST
+- [x] P0: compiler 支持 UVM include 路径
 - [ ] P0: 数据模型加 errors (CovergroupInfo, UVMTestbench)
 - [ ] P2: except 加注释
 - [ ] P2: 清理 pyslang_adapter.py 死代码
