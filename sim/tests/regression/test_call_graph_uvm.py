@@ -36,9 +36,16 @@ class TestSequencePattern(unittest.TestCase):
             → randomize (addr)
             → finish_item
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req = create("req");
+        create("req");
         start_item(req);
         req.randomize() with { addr inside {[0:63]}; };
         finish_item(req);
@@ -70,10 +77,17 @@ module top; endmodule'''
             end
         endtask
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
         repeat(10) begin
-            req = create("req");
+            create("req");
             start_item(req);
             req.randomize();
             finish_item(req);
@@ -101,13 +115,21 @@ module top; endmodule'''
             finish_item(req_b);
         endtask
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req_a;
+    req_cls req_b;
+    task create(string s); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req_a = create("req_a");
+        create("req_a");
         start_item(req_a);
         req_a.randomize();
         finish_item(req_a);
-        req_b = create("req_b");
+        create("req_b");
         start_item(req_b);
         req_b.randomize();
         finish_item(req_b);
@@ -140,7 +162,13 @@ class TestDriverPattern(unittest.TestCase):
             → drive
             → item_done
         """
-        source = '''class my_driver;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_driver;
+    req_cls req;
+    task get_next_item(output req_cls r); r = new(); endtask
+    task item_done(); endtask
     task run_phase();
         forever begin
             get_next_item(req);
@@ -148,7 +176,7 @@ class TestDriverPattern(unittest.TestCase):
             item_done();
         end
     endtask
-    task drive(req); endtask
+    task drive(req_cls c); endtask
 endclass
 module top; endmodule'''
         cg = _build_call_graph(source, 'my_driver', 'run_phase')
@@ -166,9 +194,16 @@ class TestPatternDetection(unittest.TestCase):
 
     def test_auto_detect_sequence(self):
         """[金标准] 自动检测 sequence 模式 (无需指定)"""
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req = create("req");
+        create("req");
         start_item(req);
         req.randomize();
         finish_item(req);
@@ -182,7 +217,13 @@ module top; endmodule'''
 
     def test_auto_detect_driver(self):
         """[金标准] 自动检测 driver 模式"""
-        source = '''class my_driver;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_driver;
+    req_cls req;
+    task get_next_item(output req_cls r); r = new(); endtask
+    task item_done(); endtask
     task run_phase();
         forever begin
             get_next_item(req);
@@ -190,7 +231,7 @@ module top; endmodule'''
             item_done();
         end
     endtask
-    task drive(req); endtask
+    task drive(req_cls c); endtask
 endclass
 module top; endmodule'''
         builder = CallGraphBuilder({'test.sv': source})
@@ -231,9 +272,16 @@ class TestSequenceDriverIntegration(unittest.TestCase):
                 ├── drive
                 └── item_done
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req = create("req");
+        create("req");
         start_item(req);
         req.randomize() with { addr inside {[0:63]}; };
         finish_item(req);
@@ -241,6 +289,9 @@ class TestSequenceDriverIntegration(unittest.TestCase):
 endclass
 
 class my_driver;
+    req_cls req;
+    task get_next_item(output req_cls r); r = new(); endtask
+    task item_done(); endtask
     task run_phase();
         forever begin
             get_next_item(req);
@@ -248,7 +299,7 @@ class my_driver;
             item_done();
         end
     endtask
-    task drive(req); endtask
+    task drive(req_cls c); endtask
 endclass
 module top; endmodule'''
         builder = CallGraphBuilder({'test.sv': source})

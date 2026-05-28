@@ -66,7 +66,11 @@ module top; endmodule'''
 
     def test_randomize_mermaid(self):
         """[金标准] randomize → Mermaid"""
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
     task body();
         req.randomize() with { addr inside {[0:63]}; };
     endtask
@@ -119,9 +123,16 @@ module top; endmodule'''
 
     def test_uvm_sequence_dot(self):
         """[金标准] UVM sequence 完整流程 → DOT"""
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req = create("req");
+        create("req");
         start_item(req);
         req.randomize() with { addr inside {[0:63]}; };
         finish_item(req);

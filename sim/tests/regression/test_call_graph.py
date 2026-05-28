@@ -264,7 +264,11 @@ class TestRandomizeDetection(unittest.TestCase):
           body
           └── [RANDOMIZE] req.randomize
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
     task body();
         req.randomize();
     endtask
@@ -288,8 +292,11 @@ module top; endmodule'''
           └── [RANDOMIZE] req.randomize
               inline: addr inside {[0:63]}
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
     rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
     task body();
         req.randomize() with { addr inside {[0:63]}; };
     endtask
@@ -324,9 +331,16 @@ class TestIntegration(unittest.TestCase):
           │   inline: addr < 64
           └── finish_item
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req;
+    task create(string s); req = new(); endtask
+    task start_item(req_cls r); endtask
+    task finish_item(req_cls r); endtask
     task body();
-        req = create("req");
+        create("req");
         start_item(req);
         req.randomize() with { addr inside {[0:63]}; };
         finish_item(req);
@@ -357,7 +371,12 @@ module top; endmodule'''
               ├── [RANDOMIZE] req_a.randomize
               └── [RANDOMIZE] req_b.randomize
         """
-        source = '''class my_seq;
+        source = '''class req_cls;
+    rand bit [7:0] addr;
+endclass
+class my_seq;
+    req_cls req_a;
+    req_cls req_b;
     task body();
         fork
             req_a.randomize();
