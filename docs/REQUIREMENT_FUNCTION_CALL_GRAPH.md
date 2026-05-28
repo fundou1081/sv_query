@@ -1,7 +1,7 @@
 # 函数调用图需求
 
 > 创建时间: 2026-05-28
-> 状态: 需求收集
+> 状态: 已实现
 > 关联: sv_query Class OOP + SubroutineExpander
 
 ---

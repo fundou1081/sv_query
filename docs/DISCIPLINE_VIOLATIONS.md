@@ -49,3 +49,12 @@
 - [x] P0: Unicode bug 修复 (_fix_unicode_class_names)
 - [ ] P0: 数据模型加 errors (CovergroupInfo, UVMTestbench)
 - [ ] P2: except 加注释
+
+---
+
+## 死代码清理
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `pyslang_adapter.py` (144-148行) | ✅ 已删除 | `trace_signal_from_file/code` 无调用方，违反铁律1 |
+| `docs/archive/pyslang_adapter_legacy.py` | ✅ 已归档 | 保留原始代码供参考 |
