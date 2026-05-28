@@ -13,6 +13,17 @@ PYSLLANG_BINDINGS_PATH = '/Users/fundou/my_dv_proj/slang/build/bindings'
 if PYSLLANG_BINDINGS_PATH not in sys.path:
     sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
+# UVM 源码路径 (自动检测)
+DEFAULT_UVM_SRC = None
+for candidate in [
+    os.path.expanduser('~/my_dv_proj/uvm-1.2/src'),
+    os.path.expanduser('~/uvm-1.2/src'),
+    '/usr/local/uvm-1.2/src',
+]:
+    if os.path.isfile(os.path.join(candidate, 'uvm_pkg.sv')):
+        DEFAULT_UVM_SRC = candidate
+        break
+
 import pyslang
 from pyslang import DiagnosticEngine
 
@@ -45,6 +56,7 @@ class SVCompiler:
         self._root = None
         self._diagnostics = []
         self._log_level = self._parse_log_level(log_level)
+        self._include_dirs: List[str] = []  # [铁律1] include 搜索路径
     
     def _parse_log_level(self, level: str) -> int:
         """将日志级别字符串转换为 logging 常量"""
@@ -71,6 +83,17 @@ class SVCompiler:
         """批量添加源文件"""
         self._sources.update(sources)
         self._comp = None
+
+    def add_include_dir(self, dir_path: str):
+        """添加 include 搜索路径 [铁律1]"""
+        if dir_path not in self._include_dirs:
+            self._include_dirs.append(dir_path)
+            self._comp = None
+
+    def add_include_dirs(self, dir_paths: List[str]):
+        """批量添加 include 搜索路径"""
+        for d in dir_paths:
+            self.add_include_dir(d)
     
     def add_files(self, file_paths: List[str]):
         """添加文件列表
@@ -111,15 +134,37 @@ class SVCompiler:
         self._comp = None
         
     def _do_compile(self):
-        """执行编译"""
+        """执行编译 [铁律1] 使用 Semantic AST"""
         if self._comp is not None:
             return
             
         self._comp = pyslang.Compilation()
         
+        # 设置 include 搜索路径
+        sm = None
+        include_dirs = list(self._include_dirs)
+        
+        # 检测是否需要 UVM (源码中有 uvm_pkg 或 uvm_ 相关引用)
+        needs_uvm = False
+        for source in self._sources.values():
+            if 'uvm_pkg' in source or 'uvm_sequence' in source or 'uvm_driver' in source:
+                needs_uvm = True
+                break
+        
+        if needs_uvm and DEFAULT_UVM_SRC and DEFAULT_UVM_SRC not in include_dirs:
+            include_dirs.append(DEFAULT_UVM_SRC)
+        
+        if include_dirs:
+            sm = pyslang.SourceManager()
+            for d in include_dirs:
+                sm.addUserDirectories(d)
+        
         for fname, source in self._sources.items():
             try:
-                tree = pyslang.SyntaxTree.fromText(source, fname)
+                if sm:
+                    tree = pyslang.SyntaxTree.fromText(source, sourceManager=sm, name=fname)
+                else:
+                    tree = pyslang.SyntaxTree.fromText(source, fname)
                 self._comp.addSyntaxTree(tree)
             except Exception as e:
                 raise CompilationError(f"Failed to parse {fname}: {e}")

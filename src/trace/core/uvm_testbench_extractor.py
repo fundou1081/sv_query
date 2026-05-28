@@ -57,29 +57,19 @@ class UVMTestbenchExtractor:
     def extract(self) -> UVMTestbench:
         """提取 UVM testbench 结构
         
-        [铁律1] 优先使用 Semantic AST。
-        pyslang 无法编译 UVM 源码（缺少 uvm_pkg），fallback 到 SyntaxTree。
+        [铁律1] UVM 提取使用 SyntaxTree。
+        原因: UVM 宏 (type_id::create, uvm_component_utils) 依赖 uvm_pkg，
+        pyslang 的 Semantic AST 无法完整解析 UVM 宏展开。
+        UVM 提取只需要语法结构（类定义、create 调用、connect 调用），
+        不需要语义信息（符号表、类型推断）。
         """
-        # 尝试 Semantic AST
-        semantic_ok = False
-        try:
-            compiler = SVCompiler(sources=self._sources)
-            root = compiler.get_root()
-            self._collect_class_defs(root)
-            self._extract_components(root)
-            semantic_ok = True
-        except Exception as e:
-            logger.warning(f"Semantic AST 编译失败，使用 SyntaxTree: {e}")
-
-        # Fallback: SyntaxTree（UVM 源码无法通过 SVCompiler 编译）
-        if not semantic_ok:
-            for fname, source in self._sources.items():
-                try:
-                    tree = pyslang.SyntaxTree.fromText(source)
-                    self._collect_class_defs(tree.root)
-                    self._extract_components(tree.root)
-                except Exception as e:
-                    logger.warning(f"解析 {fname} 失败: {e}")
+        for fname, source in self._sources.items():
+            try:
+                tree = pyslang.SyntaxTree.fromText(source)
+                self._collect_class_defs(tree.root)
+                self._extract_components(tree.root)
+            except Exception as e:
+                logger.warning(f"解析 {fname} 失败: {e}")
 
         return UVMTestbench(
             components=self._components,
