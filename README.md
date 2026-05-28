@@ -90,6 +90,103 @@ Confidence: Certain
 sv_query trace-constraint transaction::c_data --files "**/*.sv"
 ```
 
+### 🐛 场景 5：RTL 信号报错，快速定位影响范围
+
+RTL 仿真失败，定位到 `data_reg` 信号行为异常。需要快速回答：
+- 哪些 input port 影响它？
+- 它影响哪些 output port？
+
+```python
+from sv_query import trace_signal_debug
+
+result = trace_signal_debug(graph, 'pipeline.data_reg')
+print(f"影响它的 input port: {result['affecting_ports']}")
+print(f"它影响的 output port: {result['affected_ports']}")
+# 影响它的 input port: ['pipeline.data_in', 'pipeline.en']
+# 它影响的 output port: ['pipeline.data_out']
+```
+
+支持多跳追踪：`a → b → c → d`，追踪 `c` 能找到 `a` 和 `d`。
+
+### 🔗 场景 6：约束的条件变量，自动转为 Coverage Cross
+
+约束中 `if (mode == 0) { addr < 100; }`，`mode` 是条件变量，
+应该和 `addr` 做 cross coverage，但手写容易遗漏。
+
+```python
+from sv_query import extract_true_conditions, conditions_to_coverage_suggestions
+
+conditions = extract_true_conditions(graph, 'packet.addr')
+# → [{"condition_vars": ["packet.mode"], "branch": "consequent"}]
+
+suggestions = conditions_to_coverage_suggestions(conditions, 'addr')
+# → [{"type": "cross", "suggested_bins": "cross addr, mode"}]
+```
+
+支持：if/else、嵌套 if、implication（`->`）。
+
+### 📊 场景 7：RTL 层次自动生成 Coverage 建议
+
+给定 RTL 模块，自动识别 control/data 信号，生成 coverage bins 建议：
+
+```python
+from sv_query import generate_coverage_report
+
+report = generate_coverage_report(graph)
+
+print("Control Path:")  
+for cp in report['control_path']:
+    print(f"  {cp['signal']}: {[b['name'] for b in cp['bins']]}")
+# valid: [valid_idle, valid_active]
+# ready: [ready_idle, ready_active]
+
+print("Data Path:")
+for dp in report['data_path']:
+    print(f"  {dp['signal']}: {[b['name'] for b in dp['bins']]}")
+# data_in: [data_in_zero, data_in_low, data_in_mid, data_in_max]
+```
+
+### 🔍 场景 8：Covergroup ↔ Constraint 一致性检查
+
+covergroup 的 bins 是否覆盖了 constraint 的合法空间？
+条件约束是否有对应的 illegal_bins？
+
+```python
+from sv_query import CovergroupAnalyzer
+
+analyzer = CovergroupAnalyzer(graph, covergroups)
+gaps = analyzer.analyze()
+
+for gap in gaps:
+    print(f"[{gap.kind}] {gap.description}")
+# [missing_cross] 条件约束引用了 mode 和 addr，但 covergroup 缺少 cross
+# [missing_illegal_bins] 条件约束 + cross 存在但缺少 illegal_bins
+```
+
+### 🏗️ 场景 9：UVM Testbench 静态结构提取
+
+从 UVM 验证环境源码中提取组件层次、TLM 连接、factory override：
+
+```python
+from sv_query import UVMTestbenchExtractor
+
+extractor = UVMTestbenchExtractor({'my_env.sv': source})
+tb = extractor.extract()
+
+# 组件层次
+for name, comp in tb.components.items():
+    print(f"  {name}: {comp.class_name} (parent={comp.parent})")
+
+# TLM 连接
+for conn in tb.connections:
+    print(f"  {conn.source_port} → {conn.target_port}")
+
+# 输出 DOT 图
+print(tb.to_dot())
+```
+
+已通过 OpenTitan 10 个模块实测验证（lc_ctrl、dma、i2c 等）。
+
 ---
 
 ## 核心优势
