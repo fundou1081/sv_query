@@ -48,6 +48,7 @@ my_env
 
 **识别规则**：
 - `xxx::type_id::create("name", this)` → 建立 parent-child 关系
+- `new()` 创建的组件也要识别
 - `this` 表示当前组件是 parent
 - 第二个参数可以是 `null` (不建立层次) 或其他组件
 
