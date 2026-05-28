@@ -12,7 +12,8 @@ from typing import Dict, List, Optional, Tuple
 import pyslang
 
 from .graph.uvm_models import (
-    UVMComponent, TLMConnection, SequenceBinding, UVMTestbench
+    UVMComponent, TLMConnection, SequenceBinding, UVMTestbench,
+    FactoryOverride, ConfigDBEntry
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ class UVMTestbenchExtractor:
         self._components: Dict[str, UVMComponent] = {}
         self._connections: List[TLMConnection] = []
         self._sequence_bindings: List[SequenceBinding] = []
+        self._overrides: List[FactoryOverride] = []
+        self._config_entries: List[ConfigDBEntry] = []
         self._class_hierarchy: Dict[str, str] = {}
         self._class_defs: Dict[str, object] = {}  # class_name → syntax node
 
@@ -66,6 +69,8 @@ class UVMTestbenchExtractor:
             components=self._components,
             connections=self._connections,
             sequence_bindings=self._sequence_bindings,
+            overrides=self._overrides,
+            config_entries=self._config_entries,
             class_hierarchy=self._class_hierarchy,
         )
 
@@ -201,8 +206,14 @@ class UVMTestbenchExtractor:
         # InvocationExpression: uvm_config_db#(...)::set(...)
         if 'Invocation' in kind:
             node_str = str(node)
-            if 'uvm_config_db' in node_str and 'default_sequence' in node_str:
-                self._process_sequence_config(node, class_name)
+            if 'set_type_override' in node_str:
+                self._process_factory_override(node, class_name, 'type')
+                return
+            if 'set_inst_override' in node_str:
+                self._process_factory_override(node, class_name, 'inst')
+                return
+            if 'uvm_config_db' in node_str:
+                self._process_config_db(node, class_name)
                 return
 
         if 'Token' not in kind:
@@ -213,7 +224,7 @@ class UVMTestbenchExtractor:
                 pass
 
     def _process_assignment(self, node, class_name: str):
-        """处理赋值语句中的 create/new"""
+        """处理赋值语句中的 create/new/override/config_db"""
         node_str = str(node)
 
         # 检查 type_id::create
@@ -222,9 +233,14 @@ class UVMTestbenchExtractor:
         # 检查 new(...)
         elif '.new(' in node_str or '= new(' in node_str:
             self._process_new_creation(node, class_name)
-        # 检查 uvm_config_db::set with default_sequence
-        elif 'uvm_config_db' in node_str and 'default_sequence' in node_str:
-            self._process_sequence_config(node, class_name)
+        # 检查 factory override
+        elif 'set_type_override' in node_str:
+            self._process_factory_override(node, class_name, 'type')
+        elif 'set_inst_override' in node_str:
+            self._process_factory_override(node, class_name, 'inst')
+        # 检查 uvm_config_db::set
+        elif 'uvm_config_db' in node_str:
+            self._process_config_db(node, class_name)
 
     def _process_type_id_create(self, node, class_name: str):
         """处理 type_id::create 调用"""
@@ -333,6 +349,68 @@ class UVMTestbenchExtractor:
             sequencer_path=sequencer_path,
             sequence_class=sequence_class,
         ))
+
+    def _process_factory_override(self, node, class_name: str, override_type: str):
+        """处理 factory override
+
+        type: xxx::type_id::set_type_override(yyy::get_type())
+        inst: xxx::type_id::set_inst_override(yyy::get_type(), "scope")
+        """
+        node_str = str(node)
+
+        # 提取原始类型: xxx::type_id::set_type_override
+        orig_match = re.search(r'(\w+)::type_id::set_(?:type|inst)_override', node_str)
+        if not orig_match:
+            return
+        original = orig_match.group(1)
+
+        # 提取覆盖类型: yyy::get_type()
+        override_match = re.search(r'(\w+)::get_type\s*\(', node_str)
+        if not override_match:
+            return
+        override_cls = override_match.group(1)
+
+        # 提取 scope (inst override)
+        scope = ''
+        if override_type == 'inst':
+            scope_match = re.search(r'"([^"]+)"\s*\)', node_str)
+            if scope_match:
+                scope = scope_match.group(1)
+
+        self._overrides.append(FactoryOverride(
+            original=original,
+            override_type=override_cls,
+            scope=scope,
+        ))
+
+    def _process_config_db(self, node, class_name: str):
+        """处理 uvm_config_db#(...)::set(...) 条目"""
+        node_str = str(node)
+
+        # 提取值类型: uvm_config_db#(T)
+        type_match = re.search(r'uvm_config_db#\(([^)]+)\)', node_str)
+        value_type = type_match.group(1).strip() if type_match else ''
+
+        # 提取 target path: set(this, "path", ...)
+        path_match = re.search(r'set\s*\([^,]+,\s*"([^"]+)"', node_str)
+        target_path = path_match.group(1) if path_match else ''
+
+        # 提取 field name: set(this, "path", "field", ...)
+        field_match = re.search(r'set\s*\([^,]+,\s*"[^"]+",\s*"([^"]+)"', node_str)
+        field_name = field_match.group(1) if field_match else ''
+
+        # 检查是否是 default_sequence (已有专门处理)
+        if field_name == 'default_sequence':
+            self._process_sequence_config(node, class_name)
+            return
+
+        if field_name:
+            self._config_entries.append(ConfigDBEntry(
+                context=class_name,
+                target_path=target_path,
+                field_name=field_name,
+                value_type=value_type,
+            ))
 
     def _find_connects(self, node, class_name: str):
         """递归查找 .connect() 调用"""
