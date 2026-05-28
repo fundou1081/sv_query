@@ -359,6 +359,9 @@ b2828a2 fix: improve literal node handling and expression resolution
 | Factory override | ✅ |
 | DOT/Mermaid 输出 | ✅ |
 
+**OpenTitan 实测**: 10 个模块验证，20 组件、50 连接、21 config_db 全部正确提取。
+lc_ctrl/dma/i2c/spi_device/rv_dm/otbn/entropy_src/uart 全部正确，hmac/kmac 因继承模式不同未提取到组件。
+
 ---
 
 ## 测试框架
