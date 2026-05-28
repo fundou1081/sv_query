@@ -255,3 +255,45 @@ graph TD
 2. **TLM 端口类型**：需要区分 analysis/put/get/master/slave 吗？还是只记录连接关系？
 3. **跨层引用**：`agent.monitor.ap` 这种跨层引用需要解析到完整路径吗？
 4. **Phase 识别**：需要区分 build_phase/connect_phase/run_phase 吗？
+
+## 八、已知限制 (Phase 1)
+
+| 限制 | 说明 | 计划 |
+|------|------|------|
+| parent 使用类名 | `my_agent::build_phase` 中 create 的组件 parent 设为 `my_agent` 而非实例名 `agent` | Phase 2 优化 |
+| 只处理 build_phase/connect_phase | run_phase 等其他 phase 未处理 | Phase 2 |
+| 不处理 uvm_create/uvm_do | sequence 中的 `uvm_create`/`uvm_do` 等宏未识别 | Phase 2 |
+| 不处理 factory override | `set_type_override`/`set_inst_override` 未提取 | Phase 2 |
+| 不处理 config_db get | 只处理 set，未处理 get 端 | Phase 2 |
+| 虚接口传递 | `uvm_config_db#(virtual if)::set` 未特殊处理 | Phase 2 |
+| 参数化类 | `uvm_driver#(my_transaction)` 的参数未提取 | 后续 |
+
+## 九、Plusargs 追踪 (Phase 3)
+
+### 需求
+
+识别 UVM testbench 中的 plusargs（`+uvm_set_*`、`+UVM_VERBOSITY`、自定义 `+xxx`），
+标注它们影响的组件/字段位置在图中。
+
+### 典型 plusargs
+
+| plusargs | 影响 |
+|----------|------|
+| `+uvm_set_type_override=my_transaction,my_special` | factory override |
+| `+uvm_set_config_int=*,max_len,256` | config_db 设置 |
+| `+UVM_VERBOSITY=UVM_HIGH` | 全局日志级别 |
+| `+test_timeout=10000` | 自定义测试参数 |
+
+### 识别方式
+
+1. `+uvm_set_type_override` → 映射为 FactoryOverride
+2. `+uvm_set_config_int` / `+uvm_set_config_string` → 映射为 ConfigDBEntry
+3. 其他 plusargs → 标记为 TestParameter，关联到使用 `uvm_config_db::get` 或 `$value$plusargs` 的位置
+
+### 输出
+
+在 DOT/Mermaid 图中用特殊颜色/形状标注 plusargs 影响的节点。
+
+### 状态
+
+记录需求，待实现。
