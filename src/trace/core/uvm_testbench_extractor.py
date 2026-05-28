@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pyslang
 
+from .compiler import SVCompiler
 from .graph.uvm_models import (
     UVMComponent, TLMConnection, SequenceBinding, UVMTestbench,
     FactoryOverride, ConfigDBEntry
@@ -54,16 +55,31 @@ class UVMTestbenchExtractor:
         self._class_defs: Dict[str, object] = {}  # class_name → syntax node
 
     def extract(self) -> UVMTestbench:
-        """提取 UVM testbench 结构"""
-        for fname, source in self._sources.items():
-            try:
-                tree = pyslang.SyntaxTree.fromText(source)
-                # Pass 1: 收集 class 定义和继承关系
-                self._collect_class_defs(tree.root)
-                # Pass 2: 提取组件创建和 TLM 连接
-                self._extract_components(tree.root)
-            except Exception as e:
-                logger.warning(f"解析 {fname} 失败: {e}")
+        """提取 UVM testbench 结构
+        
+        [铁律1] 优先使用 Semantic AST。
+        pyslang 无法编译 UVM 源码（缺少 uvm_pkg），fallback 到 SyntaxTree。
+        """
+        # 尝试 Semantic AST
+        semantic_ok = False
+        try:
+            compiler = SVCompiler(sources=self._sources)
+            root = compiler.get_root()
+            self._collect_class_defs(root)
+            self._extract_components(root)
+            semantic_ok = True
+        except Exception as e:
+            logger.warning(f"Semantic AST 编译失败，使用 SyntaxTree: {e}")
+
+        # Fallback: SyntaxTree（UVM 源码无法通过 SVCompiler 编译）
+        if not semantic_ok:
+            for fname, source in self._sources.items():
+                try:
+                    tree = pyslang.SyntaxTree.fromText(source)
+                    self._collect_class_defs(tree.root)
+                    self._extract_components(tree.root)
+                except Exception as e:
+                    logger.warning(f"解析 {fname} 失败: {e}")
 
         return UVMTestbench(
             components=self._components,
