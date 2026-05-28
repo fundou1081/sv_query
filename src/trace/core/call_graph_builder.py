@@ -11,6 +11,7 @@ from typing import Dict, Optional, List
 
 import pyslang
 
+from .compiler import SVCompiler
 from .graph.call_graph_models import CallNode, CallGraph
 
 logger = logging.getLogger(__name__)
@@ -44,13 +45,20 @@ class CallGraphBuilder:
         Returns:
             CallGraph
         """
-        # 1. 解析所有源码，收集函数/任务定义
-        for fname, source in self._sources.items():
-            try:
-                tree = pyslang.SyntaxTree.fromText(source)
-                self._collect_definitions(tree.root, fname)
-            except Exception as e:
-                logger.warning(f"解析 {fname} 失败: {e}")
+        # 1. 使用 Semantic AST 收集函数/任务定义 [铁律1]
+        # 如果编译失败（如缺少 UVM 库），fallback 到 SyntaxTree
+        try:
+            compiler = SVCompiler(sources=self._sources)
+            root = compiler.get_root()
+            self._collect_definitions_semantic(root)
+        except Exception as e:
+            logger.warning(f"Semantic AST 编译失败，使用 SyntaxTree fallback: {e}")
+            for fname, source in self._sources.items():
+                try:
+                    tree = pyslang.SyntaxTree.fromText(source)
+                    self._collect_definitions(tree.root, fname)
+                except Exception as e2:
+                    logger.warning(f"SyntaxTree 解析 {fname} 失败: {e2}")
 
         # 2. 找到入口
         entry_key = f"{entry_class}.{entry_method}"
@@ -112,7 +120,33 @@ class CallGraphBuilder:
             self._collect_all_calls(child, names)
 
     # =========================================================================
-    # 收集定义
+    # 收集定义 (Semantic AST)
+    # =========================================================================
+
+    def _collect_definitions_semantic(self, node, class_name: str = ''):
+        """使用 Semantic AST 递归收集函数/任务定义 [铁律1]"""
+        kind = str(getattr(node, 'kind', ''))
+
+        if 'ClassType' in kind:
+            class_name = str(getattr(node, 'name', '')).strip()
+
+        if 'Subroutine' in kind:
+            name = str(getattr(node, 'name', '')).strip()
+            if name:
+                syntax = getattr(node, 'syntax', None)
+                key = f"{class_name}.{name}" if class_name else name
+                if syntax:
+                    self._task_defs[key] = syntax
+            return
+
+        try:
+            for child in node:
+                self._collect_definitions_semantic(child, class_name)
+        except TypeError:
+            pass
+
+    # =========================================================================
+    # 收集定义 (Syntax Tree - legacy)
     # =========================================================================
 
     def _collect_definitions(self, node, fname: str):

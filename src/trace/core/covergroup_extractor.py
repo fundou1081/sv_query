@@ -1,16 +1,14 @@
 # covergroup_extractor.py - Covergroup 结构化提取器
 #
-# 直接遍历 pyslang 语法树，提取 covergroup 信息。
-# 不修改 SignalGraph，独立输出。
+# 使用 Semantic AST (SVCompiler) 提取 covergroup 信息。
 #
-# [铁律15] Visitor 模式
-# [铁律4] 模型即契约
+# [铁律1] 必须使用编译后 Semantic AST
+# [铁律3] 不可信则不输出
 
 import logging
 from typing import List, Dict, Optional
 
-import pyslang
-
+from .compiler import SVCompiler
 from .graph.covergroup_models import (
     CovergroupInfo, CoverpointInfo, CoverCrossInfo, BinsInfo
 )
@@ -21,171 +19,137 @@ logger = logging.getLogger(__name__)
 class CovergroupExtractor:
     """Covergroup 结构化提取器
 
-    直接遍历 pyslang 语法树，提取 covergroup/coverpoint/bins/cross 信息。
-    不经过 GraphBuilder，独立输出 CovergroupInfo 列表。
-
-    支持:
-    - module 内的 covergroup
-    - class 内的 covergroup
-    - bins / illegal_bins / ignore_bins
-    - cross coverage
-    - 采样时钟提取
+    使用 Semantic AST 提取 covergroup/coverpoint/bins/cross 信息。
+    [铁律1] 通过 SVCompiler 获取编译后 AST，不使用 SyntaxTree.fromText。
     """
 
     def __init__(self, sources: Dict[str, str]):
-        """
-        Args:
-            sources: {filename: source_code} 字典
-        """
         self._sources = sources
 
     def extract(self) -> List[CovergroupInfo]:
         """提取所有 covergroup"""
         results = []
-        for fname, source in self._sources.items():
-            try:
-                tree = pyslang.SyntaxTree.fromText(source)
-                self._walk(tree.root, fname, results)
-            except Exception as e:
-                logger.warning(f"解析 {fname} 失败: {e}")
+        try:
+            compiler = SVCompiler(sources=self._sources)
+            root = compiler.get_root()
+            self._find_covergroups(root, results)
+        except Exception as e:
+            logger.warning(f"编译失败: {e}")
         return results
 
     # =========================================================================
-    # 递归遍历
+    # 遍历
     # =========================================================================
 
-    def _walk(self, node, fname: str, results: List[CovergroupInfo]):
-        """递归查找 CovergroupDeclaration"""
+    def _find_covergroups(self, node, results: List[CovergroupInfo]):
+        """递归查找 CovergroupType"""
         kind = str(getattr(node, 'kind', ''))
 
-        if 'CovergroupDeclaration' in kind:
-            cg = self._parse_covergroup(node, fname)
+        if 'CovergroupType' in kind:
+            cg = self._parse_covergroup(node)
             if cg:
                 results.append(cg)
-            return  # 不递归进入 covergroup 内部
+            # 继续遍历 body (可能有嵌套)
 
-        # 递归子节点（跳过 Token）
-        if hasattr(node, '__iter__'):
+        # 遍历 Instance body 或 CompilationUnit
+        if hasattr(node, 'body'):
             try:
-                for child in node:
-                    ck = str(getattr(child, 'kind', ''))
-                    if 'Token' in ck:
-                        continue
-                    self._walk(child, fname, results)
+                for child in node.body:
+                    self._find_covergroups(child, results)
             except TypeError:
                 pass
+
+        # 遍历 root 的子节点
+        try:
+            for child in node:
+                self._find_covergroups(child, results)
+        except TypeError:
+            pass
 
     # =========================================================================
     # Covergroup 解析
     # =========================================================================
 
-    def _parse_covergroup(self, node, fname: str) -> Optional[CovergroupInfo]:
-        """解析单个 CovergroupDeclaration"""
+    def _parse_covergroup(self, node) -> Optional[CovergroupInfo]:
+        """解析 CovergroupType"""
         name = str(getattr(node, 'name', '')).strip()
-
-        # 找成员列表 (SyntaxList)
-        members_list = self._find_members_list(node)
-        if members_list is None:
-            return None
+        # class 内的 covergroup name 可能为空，从 syntax 获取
+        if not name:
+            syntax = getattr(node, 'syntax', None)
+            if syntax:
+                syntax_name = getattr(syntax, 'name', None)
+                if syntax_name:
+                    name = str(syntax_name).strip()
 
         # 提取采样时钟
-        clock = self._extract_clock(node)
+        clock = ''
+        syntax = getattr(node, 'syntax', None)
+        if syntax:
+            # CovergroupDeclarationSyntax 有 event 属性
+            event = getattr(syntax, 'event', None)
+            if event:
+                clock = str(event).strip()
+        if not clock:
+            coverage_event = getattr(node, 'coverageEvent', None)
+            if coverage_event:
+                clock = str(coverage_event).strip()
 
-        # 解析成员
+        # 获取 body
+        body = getattr(node, 'body', None)
+        if body is None:
+            return CovergroupInfo(name=name, clock=clock)
+
         coverpoints = []
         crosses = []
 
-        for member in members_list:
-            mk = str(getattr(member, 'kind', ''))
-            if 'Token' in mk:
+        for child in body:
+            ck = str(getattr(child, 'kind', ''))
+            if 'Token' in ck:
                 continue
-            if 'CoverCross' in mk:
-                cross = self._parse_cover_cross(member)
-                if cross:
-                    crosses.append(cross)
-            elif 'Coverpoint' in mk:
-                cp = self._parse_coverpoint(member)
+            if 'Coverpoint' in ck and 'Cross' not in ck:
+                cp = self._parse_coverpoint(child)
                 if cp:
                     coverpoints.append(cp)
-
-        # 提取源码位置
-        source_line = 0
-        source_range = getattr(node, 'sourceRange', None)
-        if source_range:
-            try:
-                source_line = source_range.start.line
-            except Exception:
-                pass
+            elif 'CoverCross' in ck:
+                cross = self._parse_cover_cross(child)
+                if cross:
+                    crosses.append(cross)
 
         return CovergroupInfo(
             name=name,
             clock=clock,
             coverpoints=coverpoints,
             crosses=crosses,
-            source_file=fname,
-            source_line=source_line,
         )
-
-    def _find_members_list(self, node):
-        """找到 CovergroupDeclaration 的成员 SyntaxList
-
-        结构: [attributes, keyword, name, clock, semicolon, MEMBERS, endgroup]
-        members 在 SyntaxList 中，跳过前几个 token 找到包含 Coverpoint/CoverCross 的列表。
-        """
-        children = list(node)
-        # 从后往前找第一个包含 Coverpoint/CoverCross 的 SyntaxList
-        for child in reversed(children):
-            ck = str(getattr(child, 'kind', ''))
-            if 'SyntaxList' not in ck:
-                continue
-            # 检查是否包含 Coverpoint 或 CoverCross
-            for sub in child:
-                sk = str(getattr(sub, 'kind', ''))
-                if 'Coverpoint' in sk or 'CoverCross' in sk or 'Bins' in sk:
-                    return child
-        return None
-
-    def _extract_clock(self, node) -> str:
-        """提取采样时钟 @(posedge clk)"""
-        for child in node:
-            ck = str(getattr(child, 'kind', ''))
-            if 'EventControl' in ck:
-                return str(child).strip()
-        return ''
 
     # =========================================================================
     # Coverpoint 解析
     # =========================================================================
 
     def _parse_coverpoint(self, node) -> Optional[CoverpointInfo]:
-        """解析单个 Coverpoint"""
-        signal = ''
-        bins_list = []
+        """解析 CoverpointSymbol"""
+        name = str(getattr(node, 'name', '')).strip()
 
+        # 提取采样信号（从 syntax 获取）
+        signal = name  # 默认用 coverpoint 名作为信号名
+        syntax = getattr(node, 'syntax', None)
+        if syntax:
+            expr = getattr(syntax, 'expr', None)
+            if expr:
+                signal = str(expr).strip()
+
+        bins_list = []
         for child in node:
             ck = str(getattr(child, 'kind', ''))
             if 'Token' in ck:
                 continue
-
-            # 信号名: IdentifierName
-            if 'IdentifierName' in ck:
-                ident = getattr(child, 'identifier', None)
-                if ident and hasattr(ident, 'value'):
-                    signal = str(ident.value).strip()
-                else:
-                    signal = str(child).strip()
-
-            # bins 列表: SyntaxList 包含 CoverageBins
-            if 'SyntaxList' in ck:
-                for sub in child:
-                    sk = str(getattr(sub, 'kind', ''))
-                    if 'CoverageBins' in sk or 'Bins' in sk:
-                        b = self._parse_bins(sub)
-                        if b:
-                            bins_list.append(b)
+            if 'CoverageBin' in ck or 'Bins' in ck:
+                b = self._parse_bins(child)
+                if b:
+                    bins_list.append(b)
 
         return CoverpointInfo(
-            name=signal,  # 使用信号名作为 coverpoint 名称
+            name=name,
             signal=signal,
             bins=bins_list,
         )
@@ -195,40 +159,42 @@ class CovergroupExtractor:
     # =========================================================================
 
     def _parse_bins(self, node) -> Optional[BinsInfo]:
-        """解析单个 CoverageBins"""
+        """解析 CoverageBin"""
         name = str(getattr(node, 'name', '')).strip()
 
-        # 判断 bins 类型
-        keyword = getattr(node, 'keyword', None)
-        keyword_str = str(keyword).strip() if keyword else 'bins'
-        if 'illegal' in keyword_str:
-            kind = 'illegal_bins'
-        elif 'ignore' in keyword_str:
-            kind = 'ignore_bins'
-        else:
-            kind = 'bins'
+        # 判断 bins 类型（从 syntax 获取 keyword）
+        kind = 'bins'
+        syntax = getattr(node, 'syntax', None)
+        if syntax:
+            keyword = getattr(syntax, 'keyword', None)
+            if keyword:
+                keyword_str = str(keyword).strip()
+                if 'illegal' in keyword_str:
+                    kind = 'illegal_bins'
+                elif 'ignore' in keyword_str:
+                    kind = 'ignore_bins'
 
         # 提取值
-        values = self._extract_bins_values(node)
+        values = ''
+        if syntax:
+            initializer = getattr(syntax, 'initializer', None)
+            if initializer:
+                values = str(initializer).strip()
+            else:
+                for child in syntax:
+                    ck = str(getattr(child, 'kind', ''))
+                    if 'Initializer' in ck or 'Range' in ck:
+                        values = str(child).strip()
+                        break
+
+        if not values:
+            values = str(node).strip()
 
         return BinsInfo(
             name=name,
             kind=kind,
             values=values,
         )
-
-    def _extract_bins_values(self, node) -> str:
-        """提取 bins 的值描述"""
-        # 查找 Initializer 或 Expression 子节点
-        for child in node:
-            ck = str(getattr(child, 'kind', ''))
-            if 'Token' in ck:
-                continue
-            if 'Initializer' in ck or 'Expression' in ck or 'Range' in ck:
-                return str(child).strip()
-
-        # fallback: 整个节点的字符串表示
-        return str(node).strip()
 
     # =========================================================================
     # Cross 解析
@@ -237,22 +203,14 @@ class CovergroupExtractor:
     def _parse_cover_cross(self, node) -> Optional[CoverCrossInfo]:
         """解析 CoverCross"""
         name = str(getattr(node, 'name', '')).strip()
-        items = []
 
-        for child in node:
-            ck = str(getattr(child, 'kind', ''))
-            if 'Token' in ck:
-                continue
-            # SeparatedList 包含 cross 的 coverpoint 列表
-            if 'SeparatedList' in ck:
-                for item in child:
-                    ik = str(getattr(item, 'kind', ''))
-                    if 'Token' in ik:
-                        continue
-                    items.append(str(item).strip())
-            # IdentifierName (单个 cross 项)
-            elif 'IdentifierName' in ck:
-                items.append(str(child).strip())
+        items = []
+        targets = getattr(node, 'targets', None)
+        if targets:
+            for t in targets:
+                t_name = str(getattr(t, 'name', '')).strip()
+                if t_name:
+                    items.append(t_name)
 
         return CoverCrossInfo(
             name=name,
