@@ -66,12 +66,50 @@ class CallGraphBuilder:
         self._fork_points = []
         root = self._build_call_node(entry_node, entry_class, entry_method)
 
+        # 4. 检测 UVM 行为模式
+        root.pattern = self._detect_pattern(root, entry_method)
+
         return CallGraph(
             entry_point=entry_key,
             root=root,
             randomize_calls=self._randomize_calls,
             fork_points=self._fork_points,
         )
+
+    def _detect_pattern(self, root: CallNode, entry_method: str) -> str:
+        """检测 UVM 行为模式
+
+        规则:
+        - sequence: body 方法 + 包含 create/start_item/finish_item 中的至少两个
+        - driver: run_phase 方法 + 包含 get_next_item/item_done 中的至少一个
+        - generic: 其他
+        """
+        call_names = set()
+        self._collect_all_calls(root, call_names)
+
+        # sequence 模式
+        seq_indicators = {'create', 'start_item', 'finish_item'}
+        seq_matches = call_names & seq_indicators
+        if entry_method == 'body' and len(seq_matches) >= 2:
+            return 'sequence'
+        if len(seq_matches) >= 3:
+            return 'sequence'
+
+        # driver 模式
+        drv_indicators = {'get_next_item', 'item_done'}
+        drv_matches = call_names & drv_indicators
+        if 'run_phase' in entry_method and len(drv_matches) >= 1:
+            return 'driver'
+        if len(drv_matches) >= 2:
+            return 'driver'
+
+        return 'generic'
+
+    def _collect_all_calls(self, node: CallNode, names: set):
+        """递归收集所有调用名"""
+        names.add(node.callee)
+        for child in node.children:
+            self._collect_all_calls(child, names)
 
     # =========================================================================
     # 收集定义
