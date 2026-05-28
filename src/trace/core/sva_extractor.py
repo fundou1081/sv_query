@@ -366,7 +366,6 @@ class SVAExtractor:
         if '|=>' in node_str:
             operators.append('|=>')
         if '[*' in node_str:
-            # 重复操作符
             ops = re.findall(r'\[\*\d+\]', node_str)
             operators.extend(ops)
 
@@ -378,6 +377,11 @@ class SVAExtractor:
                 if name and name not in ('clk', 'clk_i'):
                     signals.append(name)
             elif 'PropertyExpr' in ck or 'SequenceExpr' in ck or 'SimpleProperty' in ck:
+                s, o = self._extract_property_expr(child)
+                signals.extend(s)
+                operators.extend(o)
+            elif 'Expression' in ck or 'Parenthesized' in ck or 'Logical' in ck:
+                # 递归提取表达式中的信号
                 s, o = self._extract_property_expr(child)
                 signals.extend(s)
                 operators.extend(o)
