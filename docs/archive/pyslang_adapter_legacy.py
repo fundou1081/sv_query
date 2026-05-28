@@ -138,3 +138,11 @@ class PyslangAdapter:
         return new_signal_chain(full, drivers=drivers, loads=loads, data_path=path,
                             via_assign=via_assign, via_seq=via_seq, via_comb=via_comb,
                             confidence="high" if drivers else "medium")
+
+def trace_signal_from_file(f, sig):
+    import pyslang
+    return PyslangAdapter(pyslang.SyntaxTree.fromFile(f)).parse().trace_signal(sig)
+
+def trace_signal_from_code(c, sig):
+    import pyslang
+    return PyslangAdapter(pyslang.SyntaxTree.fromText(c)).parse().trace_signal(sig)
