@@ -417,11 +417,11 @@ class UVMTestbenchExtractor:
         kind = str(getattr(node, 'kind', ''))
 
         # ExpressionStatement 包含 .connect()
-        if 'ExpressionStatement' in kind or 'Statement' in kind:
+        if 'ExpressionStatement' in kind:
             node_str = str(node)
             if '.connect(' in node_str:
                 self._process_connect_call(node, class_name)
-                return
+                return  # ExpressionStatement 是叶子，处理完就返回
 
         if 'Token' not in kind:
             try:
