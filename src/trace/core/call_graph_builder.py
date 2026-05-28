@@ -46,19 +46,12 @@ class CallGraphBuilder:
             CallGraph
         """
         # 1. 使用 Semantic AST 收集函数/任务定义 [铁律1]
-        # 如果编译失败（如缺少 UVM 库），fallback 到 SyntaxTree
         try:
             compiler = SVCompiler(sources=self._sources)
             root = compiler.get_root()
             self._collect_definitions_semantic(root)
         except Exception as e:
-            logger.warning(f"Semantic AST 编译失败，使用 SyntaxTree fallback: {e}")
-            for fname, source in self._sources.items():
-                try:
-                    tree = pyslang.SyntaxTree.fromText(source)
-                    self._collect_definitions(tree.root, fname)
-                except Exception as e2:
-                    logger.warning(f"SyntaxTree 解析 {fname} 失败: {e2}")
+            logger.warning(f"Semantic AST 编译失败: {e}")
 
         # 2. 找到入口
         entry_key = f"{entry_class}.{entry_method}"
