@@ -115,7 +115,7 @@ class UVMTestbenchExtractor:
             try:
                 for child in node:
                     self._collect_class_defs(child)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _get_extends(self, node) -> str:
@@ -151,7 +151,7 @@ class UVMTestbenchExtractor:
             try:
                 for child in node:
                     self._extract_components(child)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _process_class(self, node, class_name: str):
@@ -175,7 +175,7 @@ class UVMTestbenchExtractor:
             try:
                 for child in node:
                     self._find_methods(child, class_name)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _get_method_name(self, node) -> str:
@@ -226,7 +226,7 @@ class UVMTestbenchExtractor:
             try:
                 for child in node:
                     self._find_creates(child, class_name)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _process_assignment(self, node, class_name: str):
@@ -363,7 +363,7 @@ class UVMTestbenchExtractor:
                     result = self._search_var_type(child, var_name)
                     if result:
                         return result
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
         return ''
@@ -474,7 +474,7 @@ class UVMTestbenchExtractor:
             try:
                 for child in node:
                     self._find_connects(child, class_name)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _process_connect_call(self, node, class_name: str):

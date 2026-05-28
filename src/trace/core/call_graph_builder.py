@@ -135,7 +135,7 @@ class CallGraphBuilder:
         try:
             for child in node:
                 self._collect_definitions_semantic(child, class_name)
-        except TypeError:
+        except TypeError:  # pyslang Token 对象不可迭代，跳过
             pass
 
     # =========================================================================
@@ -154,7 +154,7 @@ class CallGraphBuilder:
             try:
                 for child in node:
                     self._collect_definitions(child, fname)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _collect_subroutine(self, node):
@@ -254,7 +254,7 @@ class CallGraphBuilder:
             try:
                 for child in node:
                     self._extract_calls(child, parent_node, class_name)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
     def _build_fork_node(self, node, caller: str, class_name: str) -> Optional[CallNode]:
@@ -306,7 +306,7 @@ class CallGraphBuilder:
                     result = self._find_node(child, kind_keyword)
                     if result:
                         return result
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
         return None
 

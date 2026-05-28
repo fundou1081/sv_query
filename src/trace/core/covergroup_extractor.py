@@ -56,14 +56,14 @@ class CovergroupExtractor:
             try:
                 for child in node.body:
                     self._find_covergroups(child, results)
-            except TypeError:
+            except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
         # 遍历 root 的子节点
         try:
             for child in node:
                 self._find_covergroups(child, results)
-        except TypeError:
+        except TypeError:  # pyslang Token 对象不可迭代，跳过
             pass
 
     # =========================================================================
