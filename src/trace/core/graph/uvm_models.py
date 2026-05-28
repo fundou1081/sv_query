@@ -33,11 +33,31 @@ class SequenceBinding:
 
 
 @dataclass
+class FactoryOverride:
+    """Factory Override"""
+    original: str                 # 原始类型
+    override_type: str            # 覆盖类型
+    scope: str = ""               # 覆盖范围 (inst override)
+
+
+@dataclass
+class ConfigDBEntry:
+    """Config DB 条目"""
+    context: str                  # 上下文 (this)
+    target_path: str              # 目标路径
+    field_name: str               # 字段名
+    value_type: str               # 值类型
+    value: str = ""               # 值描述
+
+
+@dataclass
 class UVMTestbench:
     """UVM Testbench 完整结构"""
     components: Dict[str, UVMComponent] = field(default_factory=dict)
     connections: List[TLMConnection] = field(default_factory=list)
     sequence_bindings: List[SequenceBinding] = field(default_factory=list)
+    overrides: List[FactoryOverride] = field(default_factory=list)
+    config_entries: List[ConfigDBEntry] = field(default_factory=list)
     class_hierarchy: Dict[str, str] = field(default_factory=dict)  # 类名 → 父类名
 
     def get_component(self, name: str) -> Optional[UVMComponent]:
