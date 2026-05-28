@@ -159,9 +159,9 @@ class UVMTestbenchExtractor:
 
         if 'ClassMethod' in kind or 'FunctionDeclaration' in kind or 'TaskDeclaration' in kind:
             method_name = self._get_method_name(node)
-            if method_name == 'build_phase':
+            if method_name in ('build_phase', 'new'):
                 self._process_build_phase(node, class_name)
-            elif method_name == 'connect_phase':
+            if method_name in ('connect_phase', 'new'):
                 self._process_connect_phase(node, class_name)
             return
 
@@ -300,26 +300,67 @@ class UVMTestbenchExtractor:
         if 'this' in node_str:
             parent = class_name
 
-        # 提取赋值左侧的变量名，找到对应的类
+        # 提取赋值左侧变量名
         left_match = re.match(r'\s*(\w+)\s*=', node_str)
-        var_name = left_match.group(1) if left_match else instance_name
+        var_name = left_match.group(1).strip() if left_match else instance_name
 
-        # 如果组件已存在（通过 class 定义），更新 parent
+        # 从 class 定义中查找变量的声明类型
+        var_type = self._find_var_type(class_name, var_name)
+
+        # 创建或更新组件
         if instance_name in self._components:
             self._components[instance_name].parent = parent
+            if var_type:
+                self._components[instance_name].class_name = var_type
         else:
-            # 创建新组件
             self._components[instance_name] = UVMComponent(
                 name=instance_name,
-                class_name=var_name,
+                class_name=var_type or var_name,
                 base_class='',
-                component_type='',
+                component_type=self._infer_type(var_type) if var_type else '',
                 parent=parent,
             )
 
         if parent and parent in self._components:
             if instance_name not in self._components[parent].children:
                 self._components[parent].children.append(instance_name)
+
+    def _find_var_type(self, class_name: str, var_name: str) -> str:
+        """从 class 定义中查找变量的声明类型
+
+        例如: class top { producer #(packet) p1; } → p1 的类型是 producer
+        """
+        cls_node = self._class_defs.get(class_name)
+        if cls_node is None:
+            return ''
+
+        # 递归查找 ClassPropertyDeclaration
+        return self._search_var_type(cls_node, var_name)
+
+    def _search_var_type(self, node, var_name: str) -> str:
+        """递归搜索变量的声明类型"""
+        kind = str(getattr(node, 'kind', ''))
+
+        if 'ClassProperty' in kind or 'PropertyDeclaration' in kind:
+            decl_str = str(node)
+            # 模式: type varname;
+            type_match = re.search(r'(\w+(?:\s*#\s*\([^)]+\))?)\s+(\w+)', decl_str)
+            if type_match:
+                vtype = type_match.group(1).strip().split()[0]
+                vname = type_match.group(2).strip()
+                if vname == var_name:
+                    return vtype
+
+        if 'Token' not in kind:
+            try:
+                for child in node:
+                    result = self._search_var_type(child, var_name)
+                    if result:
+                        return result
+            except TypeError:
+                pass
+
+        return ''
 
     # =========================================================================
     # connect_phase 处理
