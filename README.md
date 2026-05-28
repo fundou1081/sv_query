@@ -455,7 +455,7 @@ sv_query/
 │       ├── signal_expression_visitor.py  # 表达式解析
 │       ├── statement_collector_visitor.py # 语句收集
 │       └── constraint_visitor.py         # 约束表达式解析
-├── sim/tests/                # 968 个测试
+├── sim/tests/                # 996 个测试
 └── docs/                     # 详细设计文档
 ```
 

@@ -300,7 +300,7 @@ end
 
 ```bash
 $ pytest sim/tests -q
-968 passed, 1 skipped, 1 warning in 18.03s
+996 passed, 1 skipped, 1 warning in 18.03s
 ```
 
 ### 输出示例
@@ -350,7 +350,7 @@ $ pytest sim/tests -q
 
 ```bash
 $ pytest sim/tests -q
-968 passed, 1 skipped, 1 warning in 18.35s
+996 passed, 1 skipped, 1 warning in 18.35s
 ```
 
 ### 输出示例

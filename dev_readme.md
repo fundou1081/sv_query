@@ -331,7 +331,7 @@ b2828a2 fix: improve literal node handling and expression resolution
 
 | 功能 | 状态 |
 |------|------|
-| Covergroup 结构化提取 | ✅ |
+| Covergroup 结构化提取 (Semantic AST) | ✅ |
 | Covergroup ↔ Constraint 一致性检查 | ✅ |
 | RTL Coverage 合理性分析 | ✅ |
 | 反向测试 (发现不合理写法) | ✅ |
@@ -360,7 +360,38 @@ b2828a2 fix: improve literal node handling and expression resolution
 | DOT/Mermaid 输出 | ✅ |
 
 **OpenTitan 实测**: 10 个模块验证，20 组件、50 连接、21 config_db 全部正确提取。
-lc_ctrl/dma/i2c/spi_device/rv_dm/otbn/entropy_src/uart 全部正确，hmac/kmac 因继承模式不同未提取到组件。
+
+### Class OOP 完整追踪
+
+| 功能 | 状态 |
+|------|------|
+| MEMBER_SELECT 边 (p.addr) | ✅ |
+| CLASS_INSTANCE 节点 (p = new()) | ✅ |
+| 组合成员追踪 (range.min_addr) | ✅ |
+| 约束继承传播 (多层继承) | ✅ |
+| 约束详情查询 (条件链追踪) | ✅ |
+| foreach 约束内部表达式解析 | ✅ |
+
+### 端到端实战场景
+
+| 场景 | 能力 | 状态 |
+|------|------|------|
+| 场景 5 | RTL 信号 Debug 追踪 (fanin/fanout 到 port) | ✅ |
+| 场景 6 | 约束条件变量 → Coverage Cross 建议 | ✅ |
+| 场景 7 | RTL 自动生成 Coverage (control/data path) | ✅ |
+| 场景 8 | Covergroup ↔ Constraint 一致性检查 | ✅ |
+| 场景 9 | UVM Testbench 静态结构提取 | ✅ |
+
+### UVM 双方案
+
+| 组件 | AST 方式 | 说明 |
+|------|---------|------|
+| SignalGraph | Semantic AST | 需要符号表、类型推断 |
+| Covergroup | Semantic AST | 不依赖 UVM |
+| CallGraph | Semantic AST | 不依赖 UVM |
+| UVM TB | SyntaxTree | UVM 宏展开依赖 uvm_pkg |
+
+**compiler.py** 支持自动检测 UVM 源码路径，加入 include 目录。
 
 ---
 
@@ -385,12 +416,12 @@ Unit tests:       30 tests
 Integration:     111 tests
 Regression:      753 tests
 ─────────────────────────
-Total:           968 tests (all passing)
+Total:           996 tests (all passing)
 Skipped:           1 test
 Failed:            0 test
 ```
 
-**所有 968 个测试通过！**
+**所有 996 个测试通过！**
 
 | 优先级 | 修复内容 |
 |--------|----------|
