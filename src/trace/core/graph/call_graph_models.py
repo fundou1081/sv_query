@@ -17,6 +17,7 @@ class CallNode:
     join_type: str = ""      # "join" | "join_none" | "join_any" (仅 fork)
     randomize_vars: List[str] = field(default_factory=list)  # randomize 的变量
     inline_constraint: str = ""  # inline constraint 文本
+    pattern: str = "generic"    # "sequence" | "driver" | "generic"
 
 
 @dataclass
