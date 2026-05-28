@@ -318,11 +318,46 @@ b2828a2 fix: improve literal node handling and expression resolution
 
 - [ ] bind 语句支持
 - [ ] 复杂宏替换
-- [ ] Graphviz 可视化导出
 - [ ] HTML 报告生成
 - [ ] GitHub Actions CI
-- [ ] 覆盖率分析集成
 - [ ] Package 多文件支持
+- [ ] Plusargs 追踪
+
+---
+
+## 新增功能 (2026-05-28)
+
+### Covergroup 分析
+
+| 功能 | 状态 |
+|------|------|
+| Covergroup 结构化提取 | ✅ |
+| Covergroup ↔ Constraint 一致性检查 | ✅ |
+| RTL Coverage 合理性分析 | ✅ |
+| 反向测试 (发现不合理写法) | ✅ |
+
+### 函数调用图
+
+| 功能 | 状态 |
+|------|------|
+| 串行调用递归展开 | ✅ |
+| fork/join/join_none/join_any | ✅ |
+| randomize 标记 | ✅ |
+| inline constraint 提取 | ✅ |
+| UVM sequence/driver 模式识别 | ✅ |
+| DOT/Mermaid 输出 | ✅ |
+
+### UVM Testbench 静态骨架
+
+| 功能 | 状态 |
+|------|------|
+| 组件层次 (type_id::create + new) | ✅ |
+| TLM 连接 (.connect) | ✅ |
+| Sequence 绑定 (default_sequence) | ✅ |
+| 继承关系 | ✅ |
+| config_db 条目提取 | ✅ |
+| Factory override | ✅ |
+| DOT/Mermaid 输出 | ✅ |
 
 ---
 
@@ -347,12 +382,12 @@ Unit tests:       30 tests
 Integration:     111 tests
 Regression:      753 tests
 ─────────────────────────
-Total:           894 tests (all passing)
+Total:           968 tests (all passing)
 Skipped:           1 test
 Failed:            0 test
 ```
 
-**所有 894 个测试通过！**
+**所有 968 个测试通过！**
 
 | 优先级 | 修复内容 |
 |--------|----------|

@@ -918,7 +918,7 @@ Unit tests:       30 tests
 Integration:     125 tests
 Regression:      703 tests
 ─────────────────────────
-Total:           894 tests
+Total:           968 tests
 Skipped:           0 test
 Failed:            0 test
 ```
