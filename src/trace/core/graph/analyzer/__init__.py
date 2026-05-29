@@ -7,9 +7,19 @@ from .controlflow_analyzer import (
     ConditionInfo,
 )
 
+from .timing_analyzer import (
+    TimingAnalyzer,
+)
+
+from .cdc_analyzer import (
+    CDCAnalyzer,
+)
+
 __all__ = [
     'ControlFlowAnalyzer',
     'ControlFlowAnalysis',
     'ConditionedDriver',
     'ConditionInfo',
+    'TimingAnalyzer',
+    'CDCAnalyzer',
 ]
