@@ -216,6 +216,86 @@ assign y[3:0] = b;
 
 ---
 
+---
+
+## 🚀 杀手级功能：信号图可视化 + 验证缺口检测
+
+**sv_query 提供业界独特的可视化分析能力**：将信号间的数据流关系、风险等级、验证覆盖状态融为一体，生成可直接用于 code review 的报告图。
+
+### 核心特性
+
+| 特性 | 说明 |
+|------|------|
+| **数据流边** | 显示驱动/负载关系（而非简单连接线） |
+| **风险热力图** | 🔴🔴🔴 → 🟢🟢🟢 按功能复杂度×时序复杂度评分 |
+| **覆盖状态标记** | ✓ SVA / 🟡 Coverage / ✓🟡 两者 / 🚨 缺口 |
+| **边颜色编码** | 黑色=数据流，蓝色=时钟，红色=复位 |
+
+### 一键生成可视化报告
+
+```bash
+# 生成信号图（含数据流关系）
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot --html /tmp/graph.html
+
+# 生成验证缺口分析图（高亮无覆盖的高风险信号）
+python run_cli.py verify gap -f top.sv --dot /tmp/gap.dot --mmd /tmp/gap.mmd
+
+# DOT 渲染为 PNG（需安装 graphviz）
+dot -Tpng /tmp/graph.dot -o graph.png
+```
+
+### 案例：test_data_path.sv
+
+```bash
+python run_cli.py visualize graph -f sim/tests/regression/test_data_path.sv --dot /tmp/data_path.dot
+dot -Tpng /tmp/data_path.dot -o data_path.png
+```
+
+**生成的图效果**：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 信号图可视化 (test_data_path.sv)                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   [din] ──→ [stage1_data] ──→ [stage2_data] ──→ [result]    │
+│     │              │                  │               │     │
+│     ↓              ↓                  ↓               ↓     │
+│  [din_valid]   [stage1_valid]   [stage2_valid]   [result_valid] │
+│   ✓🟡 🟢       🚨🔴            ✓🔵              🚨🔴      │
+│                                                             │
+│   图例: ✓🟡=两者都有  ✓=SVA覆盖  🟡=Coverage  🚨=高风险缺口 │
+│   边框: 🟢绿色=SVA+Coverage  🔵蓝色=SVA  🔴红色=无覆盖     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**关键发现**：
+
+| 信号 | 风险 | 覆盖状态 | 建议 |
+|------|------|----------|------|
+| `stage1_valid` | 🔴 CRITICAL | 无覆盖 | **优先补充 SVA** |
+| `result` | 🔴 CRITICAL | 无覆盖 | **优先补充 SVA** |
+| `din_valid` | 🟢 LOW | ✓🟡 SVA+Coverage | 已覆盖 |
+| `stage2_valid` | 🟠 HIGH | ✓ SVA | 已覆盖 |
+
+### 覆盖状态快速识别
+
+| 状态 | 边框颜色 | 示例 |
+|------|----------|------|
+| SVA + Coverage 都有 | 🟢 绿色 | `din_valid`, `din_ready`, `mode` |
+| 只有 SVA | 🔵 蓝色 | `stage2_valid`, `pipeline_stall` |
+| 只有 Coverage | 🟠 橙色 | （本例无） |
+| 无覆盖（高风险） | 🔴 红色 | `stage1_valid`, `result`, `result_valid` |
+
+### 应用场景
+
+1. **Code Review**：生成图给 design engineer，一眼看出哪些信号没验证
+2. **验证计划**：按风险优先级排序需要补充的 assertion
+3. **项目管理**：导出给 PM 查看验证覆盖率
+4. **交接文档**：图片比表格更直观，便于团队沟通
+
+---
+
 ## CLI 命令参考
 
 ### controlflow - 控制流分析
