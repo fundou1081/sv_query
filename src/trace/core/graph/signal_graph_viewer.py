@@ -100,7 +100,8 @@ class SignalGraphViewer:
             'cluster_by': None,       # 'module', 'risk_level', 'cover_status', None
             'highlight_gaps': True,   # 高亮高风险无覆盖信号
             'min_risk_for_highlight': 20.0,
-            'edge_labels': False,     # 显示边类型标签
+            'edge_labels': False,     # 显示边类型标签 (CLOCK/RESET/DRIVER)
+            'edge_conditions': False, # 显示驱动条件 (如 if (cond) 才驱动)
             'rank_separation': 0.5,  # 层级间距
             'node_spacing': 0.3,      # 节点间距
         }
@@ -310,7 +311,22 @@ class SignalGraphViewer:
                     style = 'solid'
                     color = self.EDGE_COLORS.get(ek, '#666666')
 
-                label_attr = f' label="{ek_short}"' if self.config['edge_labels'] else ''
+                # 边标签
+                label_parts = []
+                if self.config['edge_labels']:
+                    label_parts.append(ek_short)
+                if self.config['edge_conditions'] and edge.condition:
+                    # 简化条件：去掉 !! 前缀，缩短显示
+                    cond = edge.condition.replace('!!', '').replace('&&', '&')
+                    if len(cond) > 30:
+                        cond = cond[:30] + '...'
+                    label_parts.append(cond)
+                
+                if label_parts:
+                    # 边用 xlabel 而非 label（ortho 模式不支持 edge labels）
+                    label_attr = f' xlabel="{chr(10).join(label_parts)}"'
+                else:
+                    label_attr = ''
 
                 dot_lines.append(f'  {src_name} -> {dst_name}[color="{color}" style={style}{label_attr}];')
 
@@ -394,8 +410,18 @@ class SignalGraphViewer:
                 else:
                     arrow = '-->'
 
-                label = f'"{ek_short}"' if self.config['edge_labels'] else ''
-                if label:
+                # 边标签
+                label_parts = []
+                if self.config['edge_labels']:
+                    label_parts.append(ek_short)
+                if self.config['edge_conditions'] and edge.condition:
+                    cond = edge.condition.replace('!!', '').replace('&&', '&')
+                    if len(cond) > 25:
+                        cond = cond[:25] + '...'
+                    label_parts.append(cond)
+                
+                if label_parts:
+                    label = '|'.join(label_parts)
                     mmd_lines.append(f'    N_{src_name} {arrow}|{label}| N_{dst_name}')
                 else:
                     mmd_lines.append(f'    N_{src_name} {arrow} N_{dst_name}')

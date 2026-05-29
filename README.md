@@ -253,21 +253,36 @@ dot -Tpng /tmp/data_path.dot -o data_path.png
 
 **生成的图效果**：
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 信号图可视化 (test_data_path.sv)                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   [din] ──→ [stage1_data] ──→ [stage2_data] ──→ [result]    │
-│     │              │                  │               │     │
-│     ↓              ↓                  ↓               ↓     │
-│  [din_valid]   [stage1_valid]   [stage2_valid]   [result_valid] │
-│   ✓🟡 🟢       🚨🔴            ✓🔵              🚨🔴      │
-│                                                             │
-│   图例: ✓🟡=两者都有  ✓=SVA覆盖  🟡=Coverage  🚨=高风险缺口 │
-│   边框: 🟢绿色=SVA+Coverage  🔵蓝色=SVA  🔴红色=无覆盖     │
-└─────────────────────────────────────────────────────────────┘
-```
+![信号图 - test_data_path.sv](docs/images/data_path_graph.png)
+
+| 图例说明 | |
+|----------|------|
+| 🟢 绿色边框 | SVA + Coverage 两者都有 |
+| 🔵 蓝色边框 | 只有 SVA 覆盖 |
+| 🟠 橙色边框 | 只有 Coverage 覆盖 |
+| 🔴 红色边框 | 无覆盖（高风险） |
+| 红色填充 | CRITICAL 风险 |
+| 橙色填充 | HIGH 风险 |
+| 绿色填充 | LOW 风险 |
+
+**节点间的连线 = 数据流驱动关系**，可清晰看到：
+- `din` → `stage1_data` → `stage2_data` → `result` 主数据路径
+- `stage1_valid` / `result` 等高风险信号缺少覆盖（红色边框）
+
+### 更多示例
+
+**axi_ram.v** — AXI 接口模块（无 SVA/Coverage）
+
+![信号图 - axi_ram.v](docs/images/axi_ram_graph.png)
+
+| 统计 | 值 |
+|------|-----|
+| 总信号 | 83 |
+| 高风险缺口 | 32 |
+| SVA 覆盖 | 0 |
+| Coverage 覆盖 | 0 |
+
+图中大量红色边框节点 = 高风险但无验证覆盖，需要优先补充 SVA。
 
 **关键发现**：
 
