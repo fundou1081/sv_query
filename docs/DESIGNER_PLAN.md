@@ -69,10 +69,11 @@ python run_cli.py trace impact -f top.sv --signal MY_CHANGED_SIGNAL
 💡 建议: 在改 stage1_valid 前,检查 stall_req 逻辑
 ```
 
-**待开发**:
-- [ ] `trace impact` 命令
-- [ ] 影响路径自动聚类(按模块、按风险)
-- [ ] 高风险路径自动标注(SVA/Coverage 缺口)
+**状态**: ✅ 已完成 (2026-05-30)
+
+- [x] `trace impact` 命令
+- [x] 影响路径自动聚类(按模块、按风险)
+- [x] 高风险路径自动标注(SVA/Coverage 缺口)
 
 #### 1.2.3 条件驱动增强
 
@@ -158,10 +159,10 @@ python run_cli.py stats -f top.sv --fanout-rank
   rst_n: 89 个负载(建议分模块复位)
 ```
 
-**待开发**:
-- [ ] `stats --fanout-rank` 参数
-- [ ] 扇出 > 50 自动建议
-- [ ] 负载分布可视化
+**状态**: ✅ 已完成 (2026-05-30)
+- [x] `stats --fanout-rank` 参数
+- [x] 扇出 > 50 自动建议
+- [x] 时钟/复位网络统计
 
 ---
 

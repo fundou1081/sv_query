@@ -73,8 +73,30 @@ sv_query trace-driver top.result --files "**/*.sv"
 ### 📦 场景 2：我改了这个信号，会影响下游哪些逻辑？
 
 ```bash
-sv_query trace-load top.data --files "**/*.sv"
+sv_query trace impact top.data --files "**/*.sv"
 ```
+
+**输出示例：**
+
+```
+=== Impact Summary ===
+Signal: top.data
+Paths: 3 total, 1 high-risk
+
+  1. 🔴 HIGH - clocked
+     Path: top.data → top.buffer
+     Fanout: 2 downstream loads
+     ⚠️  No coverage (SVA: none, Covergroup: none)
+     Condition: !!enable
+     💡 Add SVA or coverage for this critical path
+
+  2. ✅ LOW - combinational
+     Path: top.data → top.result
+     Fanout: 1 downstream loads
+     ✓ SVA covered
+```
+
+**应用场景**：改信号前的安全检查，评估改动影响范围和风险
 
 ### 🛤️ 场景 3：这个数据从 A 到 B 经过哪些路径？
 
@@ -526,11 +548,12 @@ endmodule
 |------|------|
 | `sv_query trace-driver <signal>` | 查询信号的驱动源 |
 | `sv_query trace-load <signal>` | 查询信号的所有负载 |
+| `sv_query trace impact <signal>` | **信号影响分析**：改信号前评估下游影响范围和风险 |
 | `sv_query find-path --from <A> --to <B>` | 查询 A 到 B 的数据流路径 |
 | `sv_query trace-constraint <class>::<constraint>` | 查询约束的父类调用链 |
 | `sv_query controlflow analyze <signal>` | 分析信号的条件驱动逻辑 |
 | `sv_query dataflow analyze <from> <to>` | 分析 A 到 B 的数据流路径 |
-
+| `sv_query stats -f <file> --fanout-rank` | **扇出排行榜**：高扇出信号排行，支持优化建议 |
 | `sv_query risk analyze -f <file>` | 风险分析：双维度评分（功能复杂度×时序复杂度） |
 | `sv_query sva extract -f <file>` | 提取 SVA 结构：sequence、property、assertion |
 | `sv_query sva coverage -f <file>` | 分析 SVA 覆盖缺口 |
@@ -800,6 +823,38 @@ python run_cli.py stats -f rtl/uart_core.sv \
 **独立模块**：如 `prim_xor2.sv` 等不依赖外部 package 的模块可直接分析。
 
 **推荐**：使用项目自己的 build system 生成文件清单，配合 `run_cli.py --files` 分析。
+
+### stats - 图统计与扇出排行榜
+
+```bash
+# 基本统计
+python run_cli.py stats -f top.sv
+
+# 扇出排行榜
+python run_cli.py stats -f top.sv --fanout-rank -n 10
+```
+
+**输出示例：**
+
+```
+=== Fanout Statistics ===
+  Clock fanout: 3 (建议 > 50 考虑 clock gating)
+  Reset fanout: 5 (建议 > 50 考虑分时复位)
+
+  High Fanout Signals (TOP 10):
+  Rank   Fanout   Signal                                   Kind         Suggestion
+  ------ -------- ---------------------------------------- ------------ --------------------
+  1      83       picorv32.0                             SIGNAL       🟠 高扇出信号，检查是否需要拆分
+  2      34       picorv32.1                             SIGNAL
+  3      29       picorv32.mem_rdata_q[14:12]            SIGNAL
+```
+
+| 参数 | 说明 |
+|------|------|
+| `--fanout-rank` | 显示扇出排行榜 |
+| `-n, --top N` | 显示前 N 个（默认 20） |
+
+
 
 ---
 
