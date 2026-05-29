@@ -344,8 +344,27 @@ class UnifiedTracer:
         """获取 Compilation 对象"""
         return self._get_compiler().get_compilation()
     
-    def build_graph(self, force: bool = False) -> SignalGraph:
+    def build_graph(self, force: bool = False, use_cache: bool = False) -> SignalGraph:
+        """构建信号流图
+        
+        Args:
+            force: 强制重新构建（忽略缓存）
+            use_cache: 使用缓存加速（基于内容 hash）
+        """
         if self._graph is None or force:
+            # 尝试从缓存加载
+            if use_cache and self._sources:
+                from trace.core.cache import get_cache
+                cache = get_cache()
+                # 计算内容的 hash 作为缓存 key
+                cache_key = cache.compute_sources_hash(self._sources)
+                cached = cache.get_by_key(cache_key, force=force)
+                if cached and 'graph_data' in cached:
+                    logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
+                    self._graph = SignalGraph.from_dict(cached['graph_data'])
+                    self._init_tracers()
+                    return self._graph
+            
             root = self._get_compiler().get_root()
             
             # 创建 SemanticAdapter 供各组件使用
@@ -370,6 +389,16 @@ class UnifiedTracer:
             self._module_graph.build(semantic_adapter)  # 传入 SemanticAdapter 用于 generate 实例收集
             self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
+            
+            # 保存到缓存
+            if use_cache and self._sources:
+                from trace.core.cache import get_cache
+                cache = get_cache()
+                cache_key = cache.compute_sources_hash(self._sources)
+                cache_data = {
+                    'graph_data': self._graph.to_dict(),
+                }
+                cache.put_by_key(cache_key, cache_data)
         return self._graph
     
     def load_graph(self, graph: SignalGraph):

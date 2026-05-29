@@ -44,9 +44,10 @@ def graph(
     max_edges: int = typer.Option(200, "--max-edges", help="Max edges to display"),
     exclude_clock: bool = typer.Option(False, "--exclude-clock", help="Exclude clock edges"),
     exclude_reset: bool = typer.Option(False, "--exclude-reset", help="Exclude reset edges"),
+    cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
-    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset)
+    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cache)
 
 
 @vis_app.command(name="gap")
@@ -55,17 +56,23 @@ def gap(
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
     min_risk: float = typer.Option(20.0, "--min-risk", "-r", help="Minimum risk threshold"),
+    cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading"),
 ) -> None:
     """可视化验证缺口（高亮无覆盖的高风险信号及其数据流关系）"""
-    _run_gap_visualization(file, dot_output, html_output, min_risk)
+    _run_gap_visualization(file, dot_output, html_output, min_risk, cache)
 
 
-def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset):
+def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cache=False):
+    """可视化信号图（包含数据流关系）
+    
+    Args:
+        cache: 使用缓存加速（基于文件 hash）
+    """
     with open(file) as f:
         source = f.read()
 
     tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
+    graph = tracer.build_graph(use_cache=cache)
     sva = SVAExtractor({file: source}).extract()
     cov_list = CovergroupExtractor({file: source}).extract()
 
@@ -112,12 +119,12 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
         print("No output specified. Use --dot, --mmd, or --html")
 
 
-def _run_gap_visualization(file, dot_output, html_output, min_risk):
+def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False):
     with open(file) as f:
         source = f.read()
 
-    tracer = UnifiedTracer(sources={file: file})
-    graph = tracer.build_graph()
+    tracer = UnifiedTracer(sources={file: source})
+    graph = tracer.build_graph(use_cache=cache)
     sva = SVAExtractor({file: source}).extract()
     cov_list = CovergroupExtractor({file: source}).extract()
 
