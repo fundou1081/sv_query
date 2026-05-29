@@ -26,6 +26,8 @@ from src.cli.commands.diff import diff_app
 from src.cli.commands.snapshot import snapshot_app
 from src.cli.commands.dataflow import dataflow_app
 from src.cli.commands.controlflow import controlflow_app
+from src.cli.commands.risk import risk_app
+from src.cli.commands.sva import sva_app
 
 app = typer.Typer(
     name="svq",
@@ -39,6 +41,8 @@ app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")
 app.add_typer(controlflow_app, name="controlflow")
+app.add_typer(risk_app, name="risk")
+app.add_typer(sva_app, name="sva")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖
