@@ -514,6 +514,46 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 
 ---
 
+## 综合分析案例
+
+`examples/comprehensive_analysis.py` 提供**信号图 + SVA + Coverage 一体化**分析和可视化：
+
+```bash
+# 运行综合分析
+python examples/comprehensive_analysis.py sim/tests/regression/test_data_path.sv /tmp/analysis
+
+# 输出：
+#   /tmp/analysis.json   - 完整分析结果（节点、边、SVA、Coverage）
+#   /tmp/analysis.dot    - Graphviz DOT 格式（可渲染为 PNG/SVG）
+#   /tmp/analysis.mmd    - Mermaid 格式（可嵌入 Markdown）
+```
+
+**包含**：
+- 双维度风险评分（功能复杂度 × 时序复杂度）
+- SVA 结构提取（sequence、property、assertion）
+- Coverage 结构提取（covergroup、coverpoint、bins）
+- 信号分类（时钟/复位/数据）
+- 覆盖缺口报告
+
+---
+
+## OpenTitan 项目注意事项
+
+OpenTitan 等大型项目依赖复杂的 package、import 和 prim 库。
+
+**单文件分析**：需要提供完整的 include 路径：
+```bash
+python run_cli.py stats -f rtl/uart_core.sv \
+    -I hw/ip/prim/rtl \
+    -I hw/ip/uart/pkg
+```
+
+**独立模块**：如 `prim_xor2.sv` 等不依赖外部 package 的模块可直接分析。
+
+**推荐**：使用项目自己的 build system 生成文件清单，配合 `run_cli.py --files` 分析。
+
+---
+
 ## 支持的 SV 特性
 
 ### ✅ 完全支持
@@ -544,8 +584,8 @@ paths = proj.find_path("top.data_in", "top.fifo.wr_data")
 |------|----------|
 | 复杂宏替换 | 预处理后分析 |
 | `bind` 语句 | 计划中 |
-| Graphviz 可视化导出 | 计划中 |
-| Package 多文件支持 | 计划中 |
+| 多时钟域处理 | 手动配置时钟信号 |
+| 异步复位边过滤 | 计划中 |
 
 ---
 
@@ -592,20 +632,26 @@ sv_query/
 │   ├── unified_tracer.py     # 统一入口
 │   ├── core/
 │   │   ├── graph_builder.py  # 信号图构建
+│   │   ├── sva_extractor.py  # SVA 提取（Phase 1-4）
+│   │   ├── covergroup_extractor.py  # Coverage 提取
 │   │   ├── dataflow.py       # 数据流路径分析
 │   │   ├── controlflow.py    # 控制流条件分析
-│   │   ├── base.py           # pyslang 封装
-│   │   ├── class_graph_builder.py  # Class OOP 图构建
-│   │   ├── class_hierarchy.py      # 继承链管理
-│   │   └── builder/
-│   │       ├── subroutine_expander.py  # 函数/任务内联展开
-│   │       └── expression_builder.py   # 表达式构建
+│   │   └── graph/
+│   │       └── analyzer/
+│   │           ├── timing_analyzer.py  # 关键路径分析
+│   │           ├── cdc_analyzer.py     # CDC 检测
+│   │           └── controlflow_analyzer.py
+│   ├── cli/commands/         # CLI 命令
+│   │   ├── risk.py, sva.py, timing.py, cdc.py, ...
 │   └── visitors/
-│       ├── signal_expression_visitor.py  # 表达式解析
-│       ├── statement_collector_visitor.py # 语句收集
-│       └── constraint_visitor.py         # 约束表达式解析
-├── sim/tests/                # 996 个测试
+│       └── statement_collector_visitor.py  # 语句收集（金律29）
+├── sim/tests/                # 1071 个测试
+├── examples/                 # 综合案例脚本
 └── docs/                     # 详细设计文档
+    ├── RISK_ANALYSIS.md
+    ├── SVA_ANALYSIS.md
+    ├── TIMING_ANALYSIS.md
+    └── CDC_ANALYSIS.md
 ```
 
 ---
