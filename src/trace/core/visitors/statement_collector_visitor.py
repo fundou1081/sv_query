@@ -485,6 +485,9 @@ class StatementCollectorVisitor(BaseVisitor):
             self.visit_always_comb(node)
         elif 'AlwaysLatch' in proc_kind_str:
             self.visit_always_latch(node)
+        elif 'Always' in proc_kind_str:
+            # Verilog always @(posedge clk) - 同 always_ff 处理
+            self.visit_always_ff(node)
         else:
             self.generic_visit(node)
     
