@@ -144,3 +144,81 @@ dot -Tpng /tmp/gap.dot -o gap.png
 ```
 
 这会高亮显示所有高风险但无 SVA/Coverage 的信号，便于优先补充验证。
+
+---
+
+## AST 缓存功能
+
+### 功能说明
+
+AST 缓存用于避免重复解析未变化的源文件。基于源文件内容的 **SHA256 hash** 判断是否需要重新解析。
+
+### 缓存机制
+
+| 组件 | 是否缓存 | 说明 |
+|------|----------|------|
+| Graph Building (UnifiedTracer) | ✅ 支持 | `--cache` 参数启用 |
+| SVAExtractor | ❌ 每次解析 | 暂未缓存 |
+| CovergroupExtractor | ❌ 每次解析 | 暂未缓存 |
+
+
+### CLI 用法
+
+```bash
+# 第一次运行（无缓存）
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
+
+# 第二次运行（使用缓存）
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot --cache
+
+# 强制重建缓存
+python run_cli.py visualize graph -f top.sv --cache --rebuild
+```
+
+### Python API 用法
+
+```python
+from trace.unified_tracer import UnifiedTracer
+from trace.core.cache import get_cache
+
+# 方式1：build_graph 参数
+tracer = UnifiedTracer(sources={'file.sv': source})
+graph = tracer.build_graph(use_cache=True)  # 自动检查/更新缓存
+
+# 方式2：管理缓存
+cache = get_cache()
+cache.cache_stats()   # 查看统计
+cache.list_cache()     # 列出所有缓存
+cache.invalidate()     # 清除所有缓存
+```
+
+### 缓存存储位置
+
+```
+~/.svq/cache/<hash>.json
+```
+
+缓存文件包含：
+- 版本信息 (`version`)
+- 源文件 hash (`sources_hash`)
+- 完整 Graph 数据（节点、边、驱动关系）
+
+
+### 性能说明
+
+| 场景 | 效果 | 说明 |
+|------|------|------|
+| 单次运行 | 无明显提升 | 缓存主要用于重复查询 |
+| pytest 测试套件 | ~1% 提升 | 多测试共享缓存 |
+| 大文件 (PicoRV32) | 约 700ms | 缓存命中/重新解析耗时相近 |
+
+> ⚠️ 当前实现中，缓存命中与重新解析耗时相近。对于超大模块（500+ 节点），缓存效果更明显。
+
+### 适用场景
+
+| 场景 | 推荐 |
+|------|------|
+| 多次重复查询同一模块 | ✅ 使用 `--cache` |
+| pytest 批量测试 | ✅ 使用 `--cache` |
+| 单次分析 | ❌ 不需要 `--cache` |
+| 大模块重复可视化 | ✅ 使用 `--cache` |
