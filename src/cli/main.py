@@ -31,6 +31,7 @@ from src.cli.commands.sva import sva_app
 from src.cli.commands.timing import timing_app
 from src.cli.commands.cdc import cdc_app
 from src.cli.commands.verify import verify_app
+from src.cli.commands.visualize import vis_app
 
 app = typer.Typer(
     name="svq",
@@ -49,6 +50,7 @@ app.add_typer(sva_app, name="sva")
 app.add_typer(timing_app, name="timing")
 app.add_typer(cdc_app, name="cdc")
 app.add_typer(verify_app, name="verify")
+app.add_typer(vis_app, name="visualize")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖
