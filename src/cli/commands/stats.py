@@ -12,6 +12,7 @@ import pyslang
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from trace.unified_tracer import UnifiedTracer
+from trace.core.graph.models import NodeKind, EdgeKind
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -45,10 +46,42 @@ def output_text(data: dict) -> None:
         print(f"    ... and {len(modules) - 10} more")
 
 
+def output_fanout_rank(data: dict, top_n: int = 20) -> None:
+    """扇出排行榜输出"""
+    result = data.get("result", {})
+    fanout_list = result.get("fanout_rank", [])
+    clock_fanout = result.get("clock_fanout", 0)
+    reset_fanout = result.get("reset_fanout", 0)
+
+    print("=== Fanout Statistics ===")
+    print(f"  Clock fanout: {clock_fanout} (建议 > 50 考虑 clock gating)")
+    print(f"  Reset fanout: {reset_fanout} (建议 > 50 考虑分时复位)")
+
+    print(f"\n  High Fanout Signals (TOP {top_n}):")
+    print(f"  {'Rank':<6} {'Fanout':<8} {'Signal':<40} {'Kind':<12} {'Suggestion'}")
+    print(f"  {'-'*6} {'-'*8} {'-'*40} {'-'*12} {'-'*20}")
+
+    for i, entry in enumerate(fanout_list[:top_n], 1):
+        signal = entry.get("signal", "")
+        fanout = entry.get("fanout", 0)
+        kind = entry.get("kind", "")
+        suggestion = entry.get("suggestion", "")
+
+        # 截断过长的信号名
+        if len(signal) > 38:
+            signal = signal[:35] + "..."
+
+        print(f"  {i:<6} {fanout:<8} {signal:<40} {kind:<12} {suggestion}")
+
+    print(f"\n  总计 {len(fanout_list)} 个信号有下游负载")
+
+
 def stats(
     file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    fanout_rank: bool = typer.Option(False, "--fanout-rank", help="Show fanout ranking"),
+    top_n: int = typer.Option(20, "--top", "-n", help="Number of top signals to show"),
 ) -> None:
     """Show graph statistics"""
     try:
@@ -78,7 +111,7 @@ def stats(
         data = {
             "ok": True,
             "command": "stats",
-            "params": {"file": str(file)},
+            "params": {"file": str(file), "fanout_rank": fanout_rank, "top_n": top_n},
             "result": {
                 "total_nodes": len(graph.nodes()),
                 "total_edges": len(graph.edges()),
@@ -89,10 +122,18 @@ def stats(
             "errors": []
         }
 
+        # 扇出排行榜计算
+        if fanout_rank:
+            fanout_data = _compute_fanout_rank(graph)
+            data["result"].update(fanout_data)
+
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            if fanout_rank:
+                output_fanout_rank(data, top_n)
+            else:
+                output_text(data)
 
     except Exception as e:
         data = {
@@ -106,3 +147,95 @@ def stats(
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1)
+
+
+def _compute_fanout_rank(graph) -> dict:
+    """计算扇出排行榜
+
+    Returns:
+        dict: 包含 fanout_rank 列表, clock_fanout, reset_fanout
+    """
+    # 计算每个信号的扇出（下游负载数）
+    fanout_map = {}  # signal_id -> fanout_count
+
+    for src, dst in graph.edges():
+        # 只计算 DRIVER 边作为有效扇出
+        edge = graph.get_edge(src, dst)
+        if edge and edge.kind == EdgeKind.DRIVER:
+            if src not in fanout_map:
+                fanout_map[src] = {"count": 0, "kind": "", "loads": []}
+            fanout_map[src]["count"] += 1
+            fanout_map[src]["loads"].append(dst)
+
+    # 获取节点类型信息
+    for signal_id in fanout_map:
+        node = graph.get_node(signal_id)
+        if node:
+            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, 'name') else str(node.kind)
+            fanout_map[signal_id]["is_clock"] = getattr(node, 'is_clock', False)
+            fanout_map[signal_id]["is_reset"] = getattr(node, 'is_reset', False)
+
+    # 生成排行榜
+    fanout_list = []
+    clock_fanout = 0
+    reset_fanout = 0
+
+    for signal_id, info in fanout_map.items():
+        fanout = info["count"]
+        kind = info["kind"]
+
+        # 统计时钟/复位扇出
+        if info.get("is_clock", False):
+            clock_fanout = max(clock_fanout, fanout)
+        if info.get("is_reset", False):
+            reset_fanout = max(reset_fanout, fanout)
+
+        # 生成建议
+        suggestion = _generate_suggestion(signal_id, fanout, kind, info)
+
+        fanout_list.append({
+            "signal": signal_id,
+            "fanout": fanout,
+            "kind": kind,
+            "suggestion": suggestion,
+            "loads": info["loads"],
+        })
+
+    # 按扇出数排序
+    fanout_list.sort(key=lambda x: x["fanout"], reverse=True)
+
+    return {
+        "fanout_rank": fanout_list,
+        "clock_fanout": clock_fanout,
+        "reset_fanout": reset_fanout,
+    }
+
+
+def _generate_suggestion(signal_id: str, fanout: int, kind: str, info: dict) -> str:
+    """生成扇出建议"""
+    signal_name = signal_id.split(".")[-1] if "." in signal_id else signal_id
+
+    # 时钟信号
+    if info.get("is_clock", False) or "clk" in signal_name.lower():
+        if fanout > 100:
+            return "🔴 时钟网络过重，建议 clock gating"
+        elif fanout > 50:
+            return "🟠 时钟扇出较大，考虑优化"
+
+    # 复位信号
+    if info.get("is_reset", False) or "rst" in signal_name.lower() or "reset" in signal_name.lower():
+        if fanout > 100:
+            return "🔴 复位网络过重，建议分模块复位"
+        elif fanout > 50:
+            return "🟠 复位扇出较大，考虑分时复位"
+
+    # 高扇出数据信号
+    if fanout > 50:
+        return "🟠 高扇出信号，检查是否需要拆分"
+
+    # 使能/有效信号
+    if "en" in signal_name.lower() or "valid" in signal_name.lower() or "ready" in signal_name.lower():
+        if fanout > 20:
+            return "🟡 使能信号扇出较大"
+
+    return ""
