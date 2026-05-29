@@ -333,7 +333,9 @@ endmodule
 | `sv_query sva extract -f <file>` | 提取 SVA 结构：sequence、property、assertion |
 | `sv_query sva coverage -f <file>` | 分析 SVA 覆盖缺口 |
 | `sv_query sva timing -f <file>` | SVA 时序与信号图推断比对 |
-### risk - 信号风险分析
+
+| `sv_query timing analyze -f <file>` | 关键路径分析：寄存器深度 + DAG 最长路径 |
+| `sv_query cdc analyze -f <file>` | CDC 检测：跨时钟域路径识别 |### risk - 信号风险分析
 
 基于信号图的双维度风险评分：**功能逻辑复杂度** × **时序复杂度**。
 
@@ -375,6 +377,71 @@ python run_cli.py risk analyze -f top.sv --max-comb-depth 5
 ```
 功能逻辑复杂度 = fan_in×3 + fan_out×2 + width×0.3 + 15(汇聚) + 10(发散) + 12(无SVA) + 8(无Cov)
 时序复杂度     = 15(寄存器) + fan_in×2 + 12(无SVA) + pipeline_depth×5
+```
+
+
+### timing - 关键路径分析
+
+基于寄存器级图的**关键路径识别**：SCC 缩点 + DAG 最长路径。
+
+```bash
+# 关键路径分析
+python run_cli.py timing analyze -f top.sv
+
+# JSON 输出
+python run_cli.py timing analyze -f top.sv --json
+
+# 最大路径数
+python run_cli.py timing analyze -f top.sv --max-paths 10
+```
+
+**输出示例：**
+
+```
+关键路径分析: data_path.sv
+======================================================================
+
+  节点统计: 总=20 | 寄存器=6
+
+  关键路径 (按深度排序):
+  排名   深度    得分     寄存器路径
+     1     3      6 stage1_data → stage2_data → result
+     2     2      3 stage1_data → stage2_data
+
+  [1] 深度=3, 得分=6
+      din → stage1_data → stage2_data → result
+```
+
+### cdc - CDC 检测
+
+**Clock Domain Crossing** 检测：识别跨时钟域的信号路径。
+
+```bash
+# CDC 检测
+python run_cli.py cdc analyze -f top.sv
+
+# 只显示高风险
+python run_cli.py cdc analyze -f top.sv --high-only
+```
+
+**输出示例：**
+
+```
+CDC 检测报告: cross_clock.sv
+======================================================================
+
+  时钟域 (2):
+    - top.clk_a
+    - top.clk_b
+
+  CDC 路径统计:
+    总计: 3
+    🔴 高风险: 1
+    🟢 低风险: 2
+
+  [1] 🔴 top.data_a → top.data_sync
+      域: top.clk_a → top.clk_b
+      边: DATA | 同步器: ✗
 ```
 
 ### sva - SVA 分析
