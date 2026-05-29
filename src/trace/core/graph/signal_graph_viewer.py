@@ -208,11 +208,13 @@ class SignalGraphViewer:
         dot_lines = [
             f'digraph signal_graph {{',
             f'  rankdir={self.config["layout"]};',
-            '  node [shape=box style="rounded,filled" fontname="Helvetica"];',
+            '  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10];',
             f'  label="{title}";',
-            '  splines=ortho;',
-            '  nodesep=0.3;',
-            '  ranksep=0.5;',
+            '  splines=spline;',  # spline比ortho更灵活
+            '  nodesep=0.4;',
+            '  ranksep=0.6;',
+            '  concentrate=true;',  # 合并同类边
+            '  compound=true;',  # 支持子图簇
             '',
         ]
 
@@ -266,13 +268,13 @@ class SignalGraphViewer:
                 subgraph = 'cluster_main'
 
             # 处理特殊字符 - node ID 中有单引号等必须用引号包裹
-            name_escaped = name.replace('"', '\"').replace('[', '_').replace(']', '_').replace('-', '_')
+            name_escaped = name.replace('"', '\\"').replace('[', '_').replace(']', '_').replace('-', '_').replace(':', '_')
             # 如果名字包含单引号或点号，用引号包裹 node ID
             if "'" in name or '.' in name:
                 node_id = f'"{name_escaped}"'
             else:
                 node_id = name_escaped
-            dot_lines.append(f'  {subgraph}_{node_id}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];')
+            dot_lines.append(f'    {node_id}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];')
 
         dot_lines.append('')
 
@@ -304,12 +306,15 @@ class SignalGraphViewer:
                 if ek in ('CLOCK', 'PosEdge'):
                     style = 'dashed'
                     color = self.EDGE_COLORS['CLOCK']
+                    penwidth = '1'
                 elif ek in ('RESET', 'NegEdge'):
                     style = 'dashed'
                     color = self.EDGE_COLORS['RESET']
+                    penwidth = '1'
                 else:
                     style = 'solid'
                     color = self.EDGE_COLORS.get(ek, '#666666')
+                    penwidth = '2'  # 数据流边更粗
 
                 # 边标签
                 label_parts = []
@@ -328,7 +333,7 @@ class SignalGraphViewer:
                 else:
                     label_attr = ''
 
-                dot_lines.append(f'  {src_name} -> {dst_name}[color="{color}" style={style}{label_attr}];')
+                dot_lines.append(f'    {src_name} -> {dst_name}[color="{color}" style={style} penwidth={penwidth}{label_attr}];')
 
         dot_lines.append('}')
 
