@@ -39,13 +39,14 @@ def graph(
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
     layout: str = typer.Option("TB", "--layout", "-l", help="Layout: TB (top-bottom) or LR (left-right)"),
     no_edges: bool = typer.Option(False, "--no-edges", help="Hide edges"),
-    show_labels: bool = typer.Option(False, "--show-labels", help="Show edge labels"),
+    show_labels: bool = typer.Option(False, "--show-labels", help="Show edge labels (type)"),
+    show_conditions: bool = typer.Option(False, "--show-conditions", help="Show driver conditions on edges"),
     max_edges: int = typer.Option(200, "--max-edges", help="Max edges to display"),
     exclude_clock: bool = typer.Option(False, "--exclude-clock", help="Exclude clock edges"),
     exclude_reset: bool = typer.Option(False, "--exclude-reset", help="Exclude reset edges"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
-    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, max_edges, exclude_clock, exclude_reset)
+    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset)
 
 
 @vis_app.command(name="gap")
@@ -59,7 +60,7 @@ def gap(
     _run_gap_visualization(file, dot_output, html_output, min_risk)
 
 
-def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, max_edges, exclude_clock, exclude_reset):
+def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset):
     with open(file) as f:
         source = f.read()
 
@@ -89,6 +90,7 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
         layout=layout,
         show_edges=not no_edges,
         edge_labels=show_labels,
+        edge_conditions=show_conditions,
         max_edges=max_edges,
         edge_filter=edge_filter,
         node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True, 'show_type': True},
