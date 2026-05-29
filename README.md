@@ -48,6 +48,16 @@ top.rst_n | Active Low | top.sv:1
 Confidence: Certain
 ```
 
+### 4. 加速重复查询（可选）
+
+```bash
+# 第一次运行（解析 AST）
+sv_query trace-driver top.result --files top.sv
+
+# 第二次运行（使用缓存，跳过重复解析）
+sv_query trace-driver top.result --files top.sv --cache
+```
+
 ---
 
 ## 用户场景
@@ -348,6 +358,21 @@ dot -Tpng /tmp/graph.dot -o graph.png
 - **实线加粗**（`penwidth=2`）：数据流驱动边
 - **虚线细线**（`penwidth=1`）：时钟/复位边
 - **xlabel**：显示驱动条件
+
+### 启用 AST 缓存
+
+使用 `--cache` 参数跳过重复的 AST 解析（适用于多次运行同一查询）：
+
+```bash
+# 第一次运行
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
+
+# 第二次运行（使用缓存）
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot --cache
+
+# 查看缓存统计
+PYTHONPATH=src python3 -c "from trace.core.cache import get_cache; print(get_cache().cache_stats())"
+```
 
 ---
 
