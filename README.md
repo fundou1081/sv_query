@@ -332,6 +332,8 @@ endmodule
 | `sv_query risk analyze -f <file>` | 风险分析：双维度评分（功能复杂度×时序复杂度） |
 | `sv_query sva extract -f <file>` | 提取 SVA 结构：sequence、property、assertion |
 | `sv_query sva coverage -f <file>` | 分析 SVA 覆盖缺口 |
+
+| `sv_query verify gap -f <file>` | 验证缺口检测：高风险无覆盖信号优先清单 |
 | `sv_query sva timing -f <file>` | SVA 时序与信号图推断比对 |
 
 | `sv_query timing analyze -f <file>` | 关键路径分析：寄存器深度 + DAG 最长路径 |
@@ -442,6 +444,51 @@ CDC 检测报告: cross_clock.sv
   [1] 🔴 top.data_a → top.data_sync
       域: top.clk_a → top.clk_b
       边: DATA | 同步器: ✗
+```
+
+### verify - 验证缺口检测
+
+**杀手级功能**：找出高风险但无 SVA/Coverage 的信号，自动生成验证优先级清单。
+
+```bash
+# 验证缺口检测
+python run_cli.py verify gap -f top.sv
+
+# 显示 top 30 高风险
+python run_cli.py verify gap -f top.sv --top 30
+
+# 只显示风险≥30 的信号
+python run_cli.py verify gap -f top.sv --min-risk 30
+
+# JSON 输出
+python run_cli.py verify gap -f top.sv --json
+```
+
+**输出示例：**
+
+```
+验证缺口分析: data_path.sv
+================================================================================
+
+  📊 信号统计:
+     总数据信号: 16
+     SVA 覆盖: 5 (31.2%)
+     Coverage 覆盖: 3 (18.8%)
+     两者都有: 3
+     完全没有: 11 (68.8%)
+
+  🚨 高风险缺口 (风险≥20.0 且无覆盖): 5
+
+  【需要优先补充验证的信号】
+  排名   信号                        类型     功能分     时序分     覆盖
+  ──── ───────────────────────── ────── ─────── ─────── ──────
+     1 stage1_valid              REG     🔴 29.3  23.0 ✗
+     2 result                    REG     🔴 29.3  23.0 ✗
+
+  【Coverage bins 详情】
+    mode: pass, inc, shift, invert
+    din_ready: 
+    din_valid: 
 ```
 
 ### sva - SVA 分析
