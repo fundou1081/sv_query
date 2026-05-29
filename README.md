@@ -230,6 +230,29 @@ assign y[3:0] = b;
 | **风险热力图** | 🔴🔴🔴 → 🟢🟢🟢 按功能复杂度×时序复杂度评分 |
 | **覆盖状态标记** | ✓ SVA / 🟡 Coverage / ✓🟡 两者 / 🚨 缺口 |
 | **边颜色编码** | 黑色=数据流，蓝色=时钟，红色=复位 |
+| **分层布局** | INPUT 在上（rank=source），OUTPUT 在下（rank=sink） |
+| **驱动条件** | `--show-conditions` 在边上显示 if (cond) 才驱动的条件 |
+| **曲线边** | `splines=spline` 曲线边，更清晰美观 |
+| **边粗细区分** | 数据流边加粗（penwidth=2），时钟/复位边细虚线 |
+
+### 命令行参数
+
+```bash
+python run_cli.py visualize graph [OPTIONS]
+
+选项：
+  -f, --file PATH          输入 SystemVerilog 文件
+  -d, --dot PATH           输出 DOT 文件
+  -m, --mmd PATH           输出 Mermaid 文件
+  --html PATH              输出 HTML 文件
+  -l, --layout TEXT        布局方向：TB（上下）或 LR（左右），默认 TB
+  --max-edges INTEGER      最大边数，默认 200
+  --exclude-clock          排除时钟边
+  --exclude-reset          排除复位边
+  --show-labels            在边上显示边类型标签（CLOCK/RESET/DRIVER）
+  --show-conditions        在边上显示驱动条件（如 if (cond) 才驱动）
+  --no-edges               隐藏边，只显示节点
+```
 
 ### 一键生成可视化报告
 
@@ -268,6 +291,65 @@ dot -Tpng /tmp/data_path.dot -o data_path.png
 **节点间的连线 = 数据流驱动关系**，可清晰看到：
 - `din` → `stage1_data` → `stage2_data` → `result` 主数据路径
 - `stage1_valid` / `result` 等高风险信号缺少覆盖（红色边框）
+
+### 分层布局：INPUT 上 / OUTPUT 下
+
+信号图自动按类型分层布局，INPUT 端口在最上层，OUTPUT 端口在最下层，寄存器流水线在中间：
+
+```bash
+python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
+```
+
+**分层效果**：
+
+```
+┌─────────────────────────────────────────────────────┐
+│  [din] [din_valid] [din_ready] [mode]              │  ← rank=source (INPUT)
+│          ↘         ↓         ↙                      │
+│      [stage1_data] [stage1_valid]                   │  ← REG 层
+│              ↓           ↓                         │
+│      [stage2_data] [stage2_valid]                  │  ← REG 层
+│              ↓           ↓                         │
+│      [result]    [result_valid]                    │  ← REG 层
+│                     ↓                               │
+│            [dout] [dout_valid]                      │  ← rank=sink (OUTPUT)
+└─────────────────────────────────────────────────────┘
+```
+
+**test_data_path.sv 分层布局**：
+
+![分层布局 - test_data_path](docs/images/data_path_layout.png)
+
+---
+
+### 边显示驱动条件
+
+使用 `--show-conditions` 参数，在边上显示信号被驱动时必须满足的条件：
+
+```bash
+python run_cli.py visualize graph -f top.sv --show-conditions --dot /tmp/graph.dot
+dot -Tpng /tmp/graph.dot -o graph.png
+```
+
+**条件显示示例**：
+
+| 驱动路径 | 条件 | 含义 |
+|----------|------|------|
+| `din → stage1_data` | `rst_n & din_valid & din_ready` | 复位无效且握手成功才接收数据 |
+| `stage1 → stage2` | `rst_n & !pipeline_stall` | 复位无效且无流水线停顿才传递 |
+| `result_valid → ...` | `!rst_n` | 复位时清零 |
+| `mem → s_axi_rdata` | `mem_rd_en` | 读使能时输出数据 |
+
+**AXI-RAM 带条件的信号图**：
+
+![AXI-RAM 带条件](docs/images/axi_ram_conditions.png)
+
+**边条件编码**：
+- **实线加粗**（`penwidth=2`）：数据流驱动边
+- **虚线细线**（`penwidth=1`）：时钟/复位边
+- **xlabel**：显示驱动条件
+
+---
 
 ### 更多示例
 
