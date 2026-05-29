@@ -329,6 +329,88 @@ endmodule
 | `sv_query controlflow analyze <signal>` | 分析信号的条件驱动逻辑 |
 | `sv_query dataflow analyze <from> <to>` | 分析 A 到 B 的数据流路径 |
 
+| `sv_query risk analyze -f <file>` | 风险分析：双维度评分（功能复杂度×时序复杂度） |
+| `sv_query sva extract -f <file>` | 提取 SVA 结构：sequence、property、assertion |
+| `sv_query sva coverage -f <file>` | 分析 SVA 覆盖缺口 |
+| `sv_query sva timing -f <file>` | SVA 时序与信号图推断比对 |
+### risk - 信号风险分析
+
+基于信号图的双维度风险评分：**功能逻辑复杂度** × **时序复杂度**。
+
+```bash
+# 风险分析（文本输出）
+python run_cli.py risk analyze -f top.sv
+
+# JSON 输出
+python run_cli.py risk analyze -f top.sv --json
+
+# 配置组合逻辑深度阈值
+python run_cli.py risk analyze -f top.sv --max-comb-depth 5
+```
+
+**输出示例：**
+
+```
+风险分析: top.sv
+================================================================================
+
+  ⏰ 时钟信号 (1): clk
+  🔄 复位信号 (1): rst_n
+
+  数据信号风险排名:
+  排名   信号                        类型     fan_in fan_out 功能分    时序分   
+  ──── ───────────────────────── ────── ────── ─────── ────── ──────
+     1 stage1_valid              REG          4       1 🔴  49.3 ⏱🟠  38.0  SVA:✗ Cov:✗
+     2 result                    REG          4       1 🔴  49.3 ⏱🟠  38.0  SVA:✗ Cov:✗
+
+  风险分布:
+    🔴 CRITICAL   5 ( 27.8%) █████████
+    🟠 HIGH       2 ( 11.1%) ███
+    🟡 MEDIUM     8 ( 44.4%) ██████████████
+    🟢 LOW        3 ( 16.7%) █████
+```
+
+**风险评分公式：**
+
+```
+功能逻辑复杂度 = fan_in×3 + fan_out×2 + width×0.3 + 15(汇聚) + 10(发散) + 12(无SVA) + 8(无Cov)
+时序复杂度     = 15(寄存器) + fan_in×2 + 12(无SVA) + pipeline_depth×5
+```
+
+### sva - SVA 分析
+
+SystemVerilog Assertions 结构化提取、覆盖分析、时序比对。
+
+```bash
+# 提取 SVA 结构（sequence、property、assertion）
+python run_cli.py sva extract -f top.sv
+
+# 分析覆盖缺口（哪些信号没有 assertion 保护）
+python run_cli.py sva coverage -f top.sv
+
+# 时序关系比对（SVA 声明 vs 信号图推断）
+python run_cli.py sva timing -f top.sv
+```
+
+**输出示例（覆盖分析）：**
+
+```
+SVA 覆盖分析: top.sv
+================================================================================
+
+  覆盖率: 5/16 (31.2%)
+
+  ⚠ 未覆盖信号 (11):
+    - result
+    - stage1_data
+    ...
+
+  已覆盖信号 (5):
+    ✓ din_valid
+    ✓ din_ready
+    ✓ mode
+```
+
 ### 全局参数
 
 | 参数 | 说明 |
