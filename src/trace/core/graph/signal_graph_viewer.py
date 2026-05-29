@@ -276,6 +276,35 @@ class SignalGraphViewer:
                 node_id = name_escaped
             dot_lines.append(f'    {node_id}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];')
 
+        # 按类型排列层级：PORT_IN 在上方，PORT_OUT 在下方
+        in_nodes = []
+        out_nodes = []
+        reg_nodes = []
+        other_nodes = []
+        for node_id in self.graph.nodes():
+            node = self.graph.get_node(node_id)
+            if node is None:
+                continue
+            name = node_id.split('.')[-1]
+            name_escaped = name.replace('"', '\\"').replace('[', '_').replace(']', '_').replace('-', '_').replace(':', '_')
+            if "'" in name or '.' in name:
+                safe_name = f'"{name_escaped}"'
+            else:
+                safe_name = name_escaped
+            if 'PORT_IN' in str(node.kind):
+                in_nodes.append(safe_name)
+            elif 'PORT_OUT' in str(node.kind):
+                out_nodes.append(safe_name)
+            elif 'REG' in str(node.kind):
+                reg_nodes.append(safe_name)
+            else:
+                other_nodes.append(safe_name)
+
+        if in_nodes:
+            dot_lines.append(f'    {{ rank=source; {" ".join(in_nodes)}; }}')
+        if out_nodes:
+            dot_lines.append(f'    {{ rank=sink; {" ".join(out_nodes)}; }}')
+
         dot_lines.append('')
 
         # 边
