@@ -241,7 +241,18 @@ class SignalGraphViewer:
             if self.config['node_style']['show_type']:
                 labels.append(str(node.kind).split('.')[-1])
             if self.config['node_style']['show_fan']:
-                labels.append(f'In:{self.graph.in_degree(node_id)} Out:{self.graph.out_degree(node_id)}')
+                # 计算实际的 DRIVER 扇入/扇出（只统计数据流驱动边）
+                fan_in_count = 0
+                fan_out_count = 0
+                for pred in self.graph.predecessors(node_id):
+                    edge = self.graph.get_edge(pred, node_id)
+                    if edge and edge.kind.name == 'DRIVER':
+                        fan_in_count += 1
+                for succ in self.graph.successors(node_id):
+                    edge = self.graph.get_edge(node_id, succ)
+                    if edge and edge.kind.name == 'DRIVER':
+                        fan_out_count += 1
+                labels.append(f'In:{fan_in_count} Out:{fan_out_count}')
 
             # 覆盖标记
             if self.config['node_style']['cover_marker']:
