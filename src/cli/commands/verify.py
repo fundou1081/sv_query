@@ -8,6 +8,7 @@ Usage:
   python run_cli.py verify gap -f top.sv
   python run_cli.py verify gap -f top.sv --json
   python run_cli.py verify gap -f top.sv --top 20
+  python run_cli.py verify gap -f top.sv --dot /tmp/gap.dot --mmd /tmp/gap.mmd
 """
 import sys
 from pathlib import Path
@@ -37,12 +38,15 @@ def gap(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     top_n: int = typer.Option(20, "--top", "-n", help="Show top N high-risk signals"),
     min_risk: float = typer.Option(20.0, "--min-risk", "-r", help="Minimum risk score threshold"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file path"),
+    mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file path"),
 ) -> None:
     """
     验证缺口检测：
     1. 基于信号图计算双维度风险
     2. 合并 SVA 覆盖和 Coverage 覆盖
     3. 输出高风险但无验证的信号清单
+    4. 可选输出 DOT/Mermaid 图
     """
     with open(file) as f:
         source = f.read()
@@ -53,7 +57,6 @@ def gap(
     cov_list = CovergroupExtractor({file: source}).extract()
 
     # ===== 1. 收集覆盖信息 =====
-    # SVA 覆盖的信号
     sva_signals = set()
     for prop in sva.properties.values():
         sva_signals.update(prop.signals)
@@ -62,9 +65,8 @@ def gap(
     for a in sva.assertions:
         sva_signals.update(a.signals)
 
-    # Coverage 覆盖的信号（coverpoint 关联的信号）
     cov_signals = set()
-    cov_detail = {}  # signal -> list of bins
+    cov_detail = {}
     for cg in cov_list:
         for cp in cg.coverpoints:
             sig = cp.signal
@@ -73,21 +75,19 @@ def gap(
                 cov_detail[sig] = []
             cov_detail[sig].extend([b.name for b in cp.bins])
 
-    # 时钟信号
     clock_signals = set()
     for prop in sva.properties.values():
         if prop.clock:
             clock_signals.add(prop.clock)
 
     # ===== 2. 分类所有数据信号 =====
-    data_signals = {}  # node_id -> info
+    data_signals = {}
     for node_id in graph.nodes():
         node = graph.get_node(node_id)
         if node is None:
             continue
         name = node_id.split('.')[-1]
 
-        # 排除时钟/复位
         if name in ('clk', 'clock', 'clk_i', 'rst_n', 'rst', 'reset', 'resetn'):
             continue
         if node.is_clock or node.is_reset:
@@ -126,7 +126,6 @@ def gap(
         has_sva = name in sva_signals
         has_cov = name in cov_signals
 
-        # 覆盖状态
         if has_sva and has_cov:
             cover_status = 'BOTH'
         elif has_sva:
@@ -151,14 +150,12 @@ def gap(
             'cov_bins': cov_detail.get(name, []),
         })
 
-    # 按 total_risk 排序
     results.sort(key=lambda x: x['total_risk'], reverse=True)
 
-    # 过滤高风险但无覆盖的
     gap_signals = [r for r in results if r['total_risk'] >= min_risk and r['cover_status'] == 'NONE']
     all_signals = results[:top_n]
 
-    # ===== 4. 输出 =====
+    # ===== 4. JSON 输出 =====
     if json_output:
         import json
         print(json.dumps({
@@ -177,12 +174,15 @@ def gap(
         }, indent=2, ensure_ascii=False))
         return
 
-    # 文本输出
+    # ===== 5. 生成图输出 =====
+    if dot_output or mmd_output:
+        _generate_gap_graph(results, gap_signals, cov_detail, dot_output, mmd_output)
+
+    # ===== 6. 文本输出 =====
     print(f"{'='*80}")
     print(f"验证缺口分析: {file}")
     print(f"{'='*80}")
 
-    # 摘要
     total = len(results)
     sva_cnt = len([r for r in results if r['has_sva']])
     cov_cnt = len([r for r in results if r['has_cov']])
@@ -198,11 +198,8 @@ def gap(
     print(f"     完全没有: {none_cnt} ({none_cnt/total*100:.1f}%)")
 
     print(f"\n  🚨 高风险缺口 (风险≥{min_risk} 且无覆盖): {gap_cnt}")
-
-    # 状态图例
     print(f"\n  图例: ✓=SVA覆盖  🟡=Coverage覆盖  ✓🟡=两者都有  ✗=无覆盖")
 
-    # 高风险缺口详情
     if gap_signals:
         print(f"\n  【需要优先补充验证的信号】")
         print(f"  {'排名':4s} {'信号':25s} {'类型':6s} {'功能分':7s} {'时序分':7s} {'覆盖'}")
@@ -215,7 +212,6 @@ def gap(
         if len(gap_signals) > 10:
             print(f"  ... 还有 {len(gap_signals) - 10} 个高风险信号")
 
-    # 完整 top N 列表
     print(f"\n  【Top {min(top_n, len(all_signals))} 高风险信号详情】")
     print(f"  {'排名':4s} {'信号':25s} {'类型':6s} {'fan_in':6s} {'fan_out':7s} {'功能分':6s} {'时序分':6s} {'覆盖'}")
     print(f"  {'─'*4} {'─'*25} {'─'*6} {'─'*6} {'─'*7} {'─'*6} {'─'*6} {'─'*6}")
@@ -235,11 +231,132 @@ def gap(
         level_t = '🔴' if r['timing_score'] >= 40 else ('🟠' if r['timing_score'] >= 25 else ('🟡' if r['timing_score'] >= 15 else '🟢'))
         print(f"  {i:4d} {r['name']:25s} {kind_short:6s} {r['fan_in']:6d} {r['fan_out']:7d} {level_f}{r['func_score']:5.1f} {level_t}{r['timing_score']:5.1f} {status_icon}")
 
-    # Coverage 详情
     if cov_detail:
         print(f"\n  【Coverage bins 详情】")
         for sig, bins in sorted(cov_detail.items()):
             print(f"    {sig}: {', '.join(bins)}")
+
+    if dot_output:
+        print(f"\n  ✓ DOT 图已输出: {dot_output}")
+        print(f"    渲染: dot -Tpng {dot_output} -o output.png")
+    if mmd_output:
+        print(f"\n  ✓ Mermaid 图已输出: {mmd_output}")
+
+
+def _generate_gap_graph(results, gap_signals, cov_detail, dot_output, mmd_output):
+    """生成验证缺口的 DOT 和 Mermaid 图"""
+    import re
+
+    risk_colors = {'CRITICAL': '#ff0000', 'HIGH': '#ff8800', 'MEDIUM': '#ffcc00', 'LOW': '#00cc00'}
+    cover_colors = {'BOTH': '#00aa00', 'SVA': '#0088ff', 'COV': '#ffaa00', 'NONE': '#ff0000'}
+
+    # DOT 输出
+    if dot_output:
+        dot_lines = [
+            'digraph verification_gap {',
+            '  rankdir=TB;',
+            '  node [shape=box style="rounded,filled" fontname="Helvetica"];',
+            '  label="Verification Gap Analysis\\nRed=Uncovered, Green=Covered";',
+            '',
+            '  subgraph cluster_summary {',
+            '    style=dashed; color=gray; label="Summary";',
+        ]
+
+        total = len(results)
+        gap_cnt = len(gap_signals)
+        sva_cnt = len([r for r in results if r['has_sva']])
+        cov_cnt = len([r for r in results if r['has_cov']])
+
+        dot_lines.append(f'    total[label="Total: {total}" shape=ellipse];')
+        dot_lines.append(f'    gap_count[label="Gap: {gap_cnt}" shape=ellipse color=red];')
+        dot_lines.append(f'    sva_cov[label="SVA: {sva_cnt} Coverage: {cov_cnt}" shape=ellipse color=blue];')
+        dot_lines.append('  }')
+        dot_lines.append('')
+
+        dot_lines.append('  subgraph cluster_high_risk {')
+        dot_lines.append('    style=filled; color="#ffeeee"; label="High Risk Gaps"; fontname="Helvetica";')
+        for r in gap_signals[:15]:
+            name_safe = re.sub(r'[^a-zA-Z0-9_]', '_', r['name'])
+            func_s = r['func_score']
+            timing_s = r['timing_score']
+            risk_lvl = 'CRITICAL' if func_s >= 40 else ('HIGH' if func_s >= 25 else 'MEDIUM')
+            color = risk_colors.get(risk_lvl, '#888888')
+            cov_color = cover_colors.get(r['cover_status'], '#888888')
+            label = f"{r['name']}\\nF={func_s:.0f} T={timing_s:.0f}\\n{r['cover_status']}"
+            dot_lines.append(f'    gap_{name_safe}[label="{label}" color="{cov_color}" fillcolor="{color}22"];')
+        dot_lines.append('  }')
+        dot_lines.append('')
+
+        covered = [r for r in results if r['cover_status'] != 'NONE'][:20]
+        if covered:
+            dot_lines.append('  subgraph cluster_covered {')
+            dot_lines.append('    style=filled; color="#eeffee"; label="Covered Signals"; fontname="Helvetica";')
+            for r in covered:
+                name_safe = re.sub(r'[^a-zA-Z0-9_]', '_', r['name'])
+                func_s = r['func_score']
+                timing_s = r['timing_score']
+                cov_color = cover_colors.get(r['cover_status'], '#888888')
+                label = f"{r['name']}\\nF={func_s:.0f} T={timing_s:.0f}\\n{r['cover_status']}"
+                dot_lines.append(f'    cov_{name_safe}[label="{label}" color="{cov_color}" fillcolor="#ccffcc"];')
+            dot_lines.append('  }')
+
+        dot_lines.append('}')
+
+        with open(dot_output, 'w') as f:
+            f.write('\n'.join(dot_lines))
+
+    # Mermaid 输出
+    if mmd_output:
+        sva_count = len([r for r in results if r['has_sva']])
+        cov_count = len([r for r in results if r['has_cov']])
+        mmd_lines = [
+            'flowchart TB',
+            '    direction TB',
+            '    subgraph Summary["📊 统计"]',
+            f'    S1["总信号: {len(results)}"]',
+            f'    S2["🚨 缺口: {len(gap_signals)}"]',
+            f'    S3["SVA覆盖: {sva_count}  Cov覆盖: {cov_count}"]',
+            '    end',
+            '',
+            '    subgraph HighRisk["🚨 高风险缺口 (Top 15)"]',
+        ]
+
+        for r in gap_signals[:15]:
+            name_safe = re.sub(r'[^a-zA-Z0-9_]', '_', r['name'])
+            func_s = r['func_score']
+            timing_s = r['timing_score']
+            risk_lvl = 'CRITICAL' if func_s >= 40 else ('HIGH' if func_s >= 25 else 'MEDIUM')
+            icon = '🔴' if risk_lvl == 'CRITICAL' else ('🟠' if risk_lvl == 'HIGH' else '🟡')
+            mmd_lines.append(f'    G_{name_safe}["{icon} {r["name"]}\\nF={func_s:.0f} T={timing_s:.0f} ✗"]')
+
+        mmd_lines.append('    end')
+        mmd_lines.append('')
+        mmd_lines.append('    subgraph Covered["✓ 已覆盖信号 (Top 20)"]')
+
+        covered = [r for r in results if r['cover_status'] != 'NONE'][:20]
+        if not covered:
+            mmd_lines.append('    CN["(无已覆盖信号)"]')
+        else:
+            for r in covered:
+                name_safe = re.sub(r'[^a-zA-Z0-9_]', '_', r['name'])
+                func_s = r['func_score']
+                status_icon = '✓🟡' if r['cover_status'] == 'BOTH' else ('✓' if r['cover_status'] == 'SVA' else '🟡')
+                mmd_lines.append(f'    C_{name_safe}["{status_icon} {r["name"]}\\nF={func_s:.0f} {r["cover_status"]}"]')
+
+        mmd_lines.append('    end')
+        mmd_lines.append('')
+        mmd_lines.append('    subgraph Legend["📖 图例"]')
+        mmd_lines.append('    L1["🔴 CRITICAL ≥40"]')
+        mmd_lines.append('    L2["🟠 HIGH ≥25"]')
+        mmd_lines.append('    L3["🟡 MEDIUM ≥15"]')
+        mmd_lines.append('    L4["🟢 LOW <15"]')
+        mmd_lines.append('    L5["✓ SVA覆盖"]')
+        mmd_lines.append('    L6["🟡 Coverage覆盖"]')
+        mmd_lines.append('    L7["✗ 无覆盖"]')
+        mmd_lines.append('    end')
+
+        with open(mmd_output, 'w') as f:
+            f.write('\n'.join(mmd_lines))
 
 
 if __name__ == "__main__":
