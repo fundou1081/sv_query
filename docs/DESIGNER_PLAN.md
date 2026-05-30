@@ -41,12 +41,17 @@
 
 #### 1.2.1 跨模块追踪完善
 
-**现状**:ModuleInstanceGraph + PathResolver 设计已完成,但 graph_builder.py 跨模块信号节点缺失
+**状态**: ✅ 已完成 (2026-05-30)
 
-**待完成**:
-- [ ] graph_builder.py 支持跨模块信号节点
+**已实现功能**:
+- [x] `trace_fanout/fanin` 支持递归深度控制（depth=1/direct, depth=None/穿透）
+- [x] 模块实例连接跨模块信号追踪（test_instance_connection.py 3/3 passed）
+- [x] `ModuleInstanceGraph` + `PathResolver` 设计完成
+- [x] graph_builder.py 跨模块信号节点支持
+
+**剩余增强项**（移至 4.1 可视化增强）:
 - [ ] 跨模块路径用不同颜色/层级区分
-- [ ] 跨模块路径的边界标注(模块端口)
+- [ ] 跨模块路径的边界标注（模块端口）
 
 #### 1.2.2 新增 `trace impact` 命令
 
@@ -225,6 +230,8 @@ python run_cli.py visualize graph -f top.sv \
 
 **后续增强方向** (单独迭代):
 - [ ] neato 力导向布局（适合中等规模图）
+- [ ] 跨模块路径用不同颜色/层级区分
+- [ ] 跨模块路径的边界标注（模块端口）
 - [ ] 高风险区域聚焦模式 (`--focus-risk-threshold`)
 - [ ] 分层切图（大模块按子模块拆分输出多图）
 - [ ] SVG/HTML 交互式缩放
