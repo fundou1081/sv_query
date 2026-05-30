@@ -207,9 +207,28 @@ python run_cli.py sva skeleton -f top.sv --gap
 
 ### 4.1 大模块布局优化
 
-**现状**:600+ 节点布局混乱
+**状态**: ✅ 部分完成 (2026-05-30)
 
-**目标**:改善大模块可视化效果
+**已实现功能**:
+- [x] 模块聚类 (`cluster_modules`)
+- [x] 跨模块边用虚线区分 (`style=dashed`)
+- [x] rank 约束智能处理（聚类时自动禁用）
+- [x] 完整节点路径作为节点名（避免同名冲突）
+- [x] 新增 CLI 参数: `--cluster-modules`, `--layout-engine`
+
+**使用示例**:
+```bash
+python run_cli.py visualize graph -f top.sv \
+  --dot /tmp/graph.dot \
+  --cluster-modules
+```
+
+**后续增强方向** (单独迭代):
+- [ ] neato 力导向布局（适合中等规模图）
+- [ ] 高风险区域聚焦模式 (`--focus-risk-threshold`)
+- [ ] 分层切图（大模块按子模块拆分输出多图）
+- [ ] SVG/HTML 交互式缩放
+- [ ] 与波形查看器联动（点击节点显示时序）
 
 **方案**:
 - [ ] 分层切图(大模块按模块拆分)
