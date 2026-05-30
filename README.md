@@ -693,13 +693,28 @@ python run_cli.py timing analyze -f top.sv --max-paths 10
   节点统计: 总=20 | 寄存器=6
 
   关键路径 (按深度排序):
-  排名   深度    得分     寄存器路径
-     1     3      6 stage1_data → stage2_data → result
-     2     2      3 stage1_data → stage2_data
+  排名   深度    周期   风险      寄存器路径
+     1     3    3 cycles 🔴 CRITICAL  stage1_data → stage2_data → result
+     2     2    2 cycles 🟠 HIGH      stage1_data → stage2_data
 
-  [1] 深度=3, 得分=6
+  [1] 深度=3, 周期=3, 风险=CRITICAL
       din → stage1_data → stage2_data → result
 ```
+
+**新增字段：**
+
+| 字段 | 说明 |
+|------|------|
+| `cycle_estimate` | 预估时钟周期数（基于寄存器深度） |
+| `risk_level` | CRITICAL / HIGH / MEDIUM / LOW |
+| `violation_risk` | 时序违例风险 |
+| `combo_delay_estimate` | 组合逻辑延迟级数 |
+
+**风险阈值：**
+- 🔴 CRITICAL: score ≥ 60（5+ 级流水线）
+- 🟠 HIGH: score ≥ 40（3-4 级流水线）
+- 🟡 MEDIUM: score ≥ 20（2 级流水线）
+- 🟢 LOW: score < 20（单级）
 
 ### cdc - CDC 检测
 
@@ -730,7 +745,7 @@ CDC 检测报告: cross_clock.sv
 
   [1] 🔴 top.data_a → top.data_sync
       域: top.clk_a → top.clk_b
-      边: DATA | 同步器: ✗
+      边: DATA | 同步器: NONE (无同步器)
 ```
 
 ### verify - 验证缺口检测
