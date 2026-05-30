@@ -296,6 +296,7 @@ assign y[3:0] = b;
 | **覆盖状态标记** | ✓ SVA / 🟡 Coverage / ✓🟡 两者 / 🚨 缺口 |
 | **边颜色编码** | 黑色=数据流，蓝色=时钟，红色=复位 |
 | **分层布局** | INPUT 在上（rank=source），OUTPUT 在下（rank=sink） |
+| **模块聚类** | `--cluster-modules` 按子模块分组显示，跨模块边用虚线 |
 | **驱动条件** | `--show-conditions` 在边上显示 if (cond) 才驱动的条件 |
 | **曲线边** | `splines=spline` 曲线边，更清晰美观 |
 | **边粗细区分** | 数据流边加粗（penwidth=2），时钟/复位边细虚线 |
@@ -317,6 +318,8 @@ python run_cli.py visualize graph [OPTIONS]
   --show-labels            在边上显示边类型标签（CLOCK/RESET/DRIVER）
   --show-conditions        在边上显示驱动条件（如 if (cond) 才驱动）
   --no-edges               隐藏边，只显示节点
+  --cluster-modules        按子模块聚类显示（大型设计推荐）
+  --layout-engine TEXT     布局引擎：dot（层次）、neato（力导向）、fdp（分组）
 ```
 
 ### 一键生成可视化报告
@@ -384,6 +387,32 @@ python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
 **test_data_path.sv 分层布局**：
 
 ![分层布局 - test_data_path](docs/images/data_path_layout.png)
+
+### 模块聚类：大模块分层显示
+
+使用 `--cluster-modules` 参数，将大型设计按子模块分组显示，跨模块边用虚线区分：
+
+```bash
+# 模块聚类可视化
+python run_cli.py visualize graph -f system.sv --dot /tmp/system.dot --cluster-modules
+dot -Tpng /tmp/system.dot -o system.png
+```
+
+**示例：system → inst_a → inst_b → inst_c 4 级模块链**
+
+![模块聚类 - system](docs/images/cluster_graph.png)
+
+| 功能 | 说明 |
+|------|------|
+| **subgraph cluster** | 每个子模块（inst_a, inst_b, inst_c, system）独立分组 |
+| **跨模块边虚线** | 模块间连接用灰色虚线（如 `inst_a_dout → system_a`） |
+| **完整节点路径** | 避免同名信号冲突（如 `inst_a.s1` vs `inst_b.s1`） |
+| **rank 约束智能禁用** | 聚类时自动关闭 rank=source/sink 约束，避免冲突 |
+
+**适用场景**：
+- 复杂 SOC 设计（多个子模块实例化）
+- 需要按模块分析数据流
+- 避免同名信号在图中冲突
 
 ---
 
