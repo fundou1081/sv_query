@@ -44,10 +44,12 @@ def graph(
     max_edges: int = typer.Option(200, "--max-edges", help="Max edges to display"),
     exclude_clock: bool = typer.Option(False, "--exclude-clock", help="Exclude clock edges"),
     exclude_reset: bool = typer.Option(False, "--exclude-reset", help="Exclude reset edges"),
+    cluster_modules: bool = typer.Option(False, "--cluster-modules", help="Cluster nodes by module"),
+    layout_engine: str = typer.Option("dot", "--layout-engine", help="Layout engine: dot, neato, fdp"),
     cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
-    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cache)
+    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules, layout_engine, cache)
 
 
 @vis_app.command(name="gap")
@@ -62,7 +64,7 @@ def gap(
     _run_gap_visualization(file, dot_output, html_output, min_risk, cache)
 
 
-def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cache=False):
+def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules=False, layout_engine='dot', cache=False):
     """可视化信号图（包含数据流关系）
     
     Args:
@@ -100,6 +102,8 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
         edge_conditions=show_conditions,
         max_edges=max_edges,
         edge_filter=edge_filter,
+        cluster_modules=cluster_modules,
+        layout_engine=layout_engine,
         node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True, 'show_type': True},
     )
 
