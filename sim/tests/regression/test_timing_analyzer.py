@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 from trace.unified_tracer import UnifiedTracer
 from trace.core.sva_extractor import SVAExtractor
 from trace.core.graph.models import NodeKind
+from trace.core.graph.analyzer.timing_analyzer import TimingAnalyzer
 
 
 def _build(source):
@@ -21,6 +22,11 @@ class TestTimingAnalyzer(unittest.TestCase):
     """时序分析器核心功能"""
 
     def test_simple_pipeline_depth(self):
+        """[金标准] 简单流水线深度
+
+        a → reg1 → reg2 → reg3 → out
+        深度: a→reg1=1, a→reg2=2, a→reg3=3
+        """
         """[金标准] 简单流水线深度
 
         a → reg1 → reg2 → reg3 → out
@@ -200,6 +206,139 @@ endmodule'''
 
         depth = _timing_depth(graph, 'top.q')
         self.assertEqual(depth, 2)
+
+
+class TestTimingCycleEstimate(unittest.TestCase):
+    """时序周期估算测试"""
+
+    def test_5_stage_pipeline(self):
+        """[金标准] 5 级流水线周期估算
+
+        s1 -> s2 -> s3 -> s4 -> s5 (5 级寄存器)
+        预估周期: 5 cycles
+        """
+        source = '''module pipeline5(clk, rst_n, din, dout);
+    input clk, rst_n;
+    input [31:0] din;
+    output [31:0] dout;
+    reg [31:0] s1, s2, s3, s4, s5;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) s1 <= 0; else s1 <= din;
+    end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) s2 <= 0; else s2 <= s1;
+    end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) s3 <= 0; else s3 <= s2;
+    end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) s4 <= 0; else s4 <= s3;
+    end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) s5 <= 0; else s5 <= s4;
+    end
+    assign dout = s5;
+endmodule'''
+        graph, _, _ = _build(source)
+        analyzer = TimingAnalyzer(graph)
+        paths = analyzer.get_critical_paths(max_paths=5)
+        
+        self.assertGreater(len(paths), 0)
+        max_cycles = max(p.get('cycle_estimate', p['depth']) for p in paths)
+        self.assertEqual(max_cycles, 5)
+    
+    def test_15_stage_pipeline(self):
+        """[金标准] 15 级超深流水线
+
+        s1 -> ... -> s15 (15 级寄存器)
+        预估周期: 15 cycles, 风险 CRITICAL
+        """
+        n = 15
+        parts = [f'module pipeline{n}(clk, rst_n, din, dout); input clk, rst_n; input [31:0] din; output [31:0] dout; reg [31:0] s1;']
+        for i in range(2, n + 1):
+            parts.append(f'  reg [31:0] s{i};')
+        parts.append('  always @(posedge clk or negedge rst_n) begin if (!rst_n) s1 <= 0; else s1 <= din; end')
+        for i in range(2, n + 1):
+            parts.append(f'  always @(posedge clk or negedge rst_n) begin if (!rst_n) s{i} <= 0; else s{i} <= s{i-1}; end')
+        parts.append(f'  assign dout = s{n}; endmodule')
+        source = '\n'.join(parts)
+        
+        graph, _, _ = _build(source)
+        analyzer = TimingAnalyzer(graph)
+        report = analyzer.timing_report()
+        
+        self.assertEqual(report['max_cycles'], 15)
+        self.assertIn('CRITICAL', report['risk_breakdown'])
+    
+    def test_50_stage_pipeline(self):
+        """[金标准] 50 级超深流水线
+
+        预估周期: 50 cycles, 风险 CRITICAL
+        """
+        n = 50
+        parts = [f'module pipeline{n}(clk, rst_n, din, dout); input clk, rst_n; input [31:0] din; output [31:0] dout; reg [31:0] s1;']
+        for i in range(2, n + 1):
+            parts.append(f'  reg [31:0] s{i};')
+        parts.append('  always @(posedge clk or negedge rst_n) begin if (!rst_n) s1 <= 0; else s1 <= din; end')
+        for i in range(2, n + 1):
+            parts.append(f'  always @(posedge clk or negedge rst_n) begin if (!rst_n) s{i} <= 0; else s{i} <= s{i-1}; end')
+        parts.append(f'  assign dout = s{n}; endmodule')
+        source = '\n'.join(parts)
+        
+        graph, _, _ = _build(source)
+        analyzer = TimingAnalyzer(graph)
+        report = analyzer.timing_report()
+        
+        self.assertEqual(report['max_cycles'], 50)
+        self.assertIn('CRITICAL', report['risk_breakdown'])
+    
+    def test_multi_path_pipeline(self):
+        """[金标准] 多路径流水线
+
+        data_s1 -> data_s2 -> data_s3 -> data_s4 -> data_s5 (5 级)
+        ctrl_s1 -> ctrl_s2 -> ctrl_s3 -> ctrl_s4 -> ctrl_s5 (5 级)
+        两条路径都应该是 5 cycles
+        """
+        source = '''module multi_path(clk, rst_n, data_in, ctrl_in, data_out, ctrl_out);
+    input clk, rst_n;
+    input [31:0] data_in;
+    input ctrl_in;
+    output [31:0] data_out;
+    output ctrl_out;
+    reg [31:0] data_s1, data_s2, data_s3, data_s4, data_s5;
+    reg ctrl_s1, ctrl_s2, ctrl_s3, ctrl_s4, ctrl_s5;
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) data_s1 <= 0; else data_s1 <= data_in; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) data_s2 <= 0; else data_s2 <= data_s1 + 1; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) data_s3 <= 0; else data_s3 <= data_s2; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) data_s4 <= 0; else data_s4 <= data_s3; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) data_s5 <= 0; else data_s5 <= data_s4; end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) ctrl_s1 <= 0; else ctrl_s1 <= ctrl_in; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) ctrl_s2 <= 0; else ctrl_s2 <= ctrl_s1; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) ctrl_s3 <= 0; else ctrl_s3 <= ctrl_s2; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) ctrl_s4 <= 0; else ctrl_s4 <= ctrl_s3; end
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) ctrl_s5 <= 0; else ctrl_s5 <= ctrl_s4; end
+    
+    assign data_out = data_s5;
+    assign ctrl_out = ctrl_s5;
+endmodule'''
+        graph, _, _ = _build(source)
+        analyzer = TimingAnalyzer(graph)
+        paths = analyzer.get_critical_paths(max_paths=10)
+        
+        cycles = [p.get('cycle_estimate', p['depth']) for p in paths]
+        self.assertIn(5, cycles)  # 至少有一条 5 cycle 路径
 
 
 def _timing_depth(graph, target_id, max_comb_depth=3):

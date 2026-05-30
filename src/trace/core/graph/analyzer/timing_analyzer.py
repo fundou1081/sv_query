@@ -7,10 +7,18 @@
 2. 对图进行拓扑排序（SCC 缩点）
 3. 在 DAG 上找最长路径
 4. 输出关键路径（按深度排序）
+5. 估算时钟周期数和时序风险
+
+增强功能 (2026-05-30):
+- cycle_estimate: 预估时钟周期数（基于寄存器深度）
+- combo_delay_estimate: 组合逻辑延迟估计
+- risk_level: 超长路径风险
+- violation_risk: 时序违例风险
 """
 import sys
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Set
+from collections import defaultdict
 
 _current_file = Path(__file__).resolve()
 _project_root = _current_file.parent.parent.parent  # src/trace/core/graph/analyzer/
@@ -242,11 +250,53 @@ class TimingAnalyzer:
             path = self._reconstruct_path(primary_inputs, target, reg_nodes)
             if path and len(path) >= 2:
                 score = sum(self._reg_depth.get(n, 0) for n in path)
+                
+                # 增强：计算组合逻辑延迟和时序风险
+                reg_chain = [n for n in path if n in reg_nodes]
+                combo_nodes = []
+                
+                # 计算寄存器间的组合逻辑节点
+                for j in range(len(path) - 1):
+                    src, dst = path[j], path[j + 1]
+                    if src not in reg_nodes and dst not in reg_nodes:
+                        node = self.graph.get_node(src)
+                        if node and node.kind not in (NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.SIGNAL):
+                            combo_nodes.append(src.split('.')[-1])
+                
+                # cycle_estimate: 寄存器数 = 预估周期数
+                cycle_estimate = len(reg_chain)
+                
+                # combo_delay_estimate: 组合逻辑延迟（简化计数）
+                combo_delay = len(combo_nodes)
+                
+                # risk_level: 时序风险
+                if cycle_estimate >= 5:
+                    risk_level = 'CRITICAL'
+                elif cycle_estimate >= 3:
+                    risk_level = 'HIGH'
+                elif cycle_estimate >= 2:
+                    risk_level = 'MEDIUM'
+                else:
+                    risk_level = 'LOW'
+                
+                # violation_risk: 违例风险（组合逻辑过多或路径过长）
+                if combo_delay > cycle_estimate or cycle_estimate >= 5:
+                    violation_risk = 'HIGH'
+                elif combo_delay > 0 and cycle_estimate >= 3:
+                    violation_risk = 'MEDIUM'
+                else:
+                    violation_risk = 'LOW'
+                
                 paths.append({
                     'depth': d,
                     'score': score,
                     'path': path,
-                    'registers': [n for n in path if n in reg_nodes],
+                    'registers': reg_chain,
+                    'cycle_estimate': cycle_estimate,
+                    'combo_delay_estimate': combo_delay,
+                    'combo_nodes': combo_nodes,
+                    'risk_level': risk_level,
+                    'violation_risk': violation_risk,
                 })
             if len(paths) >= max_paths:
                 break
@@ -309,6 +359,40 @@ class TimingAnalyzer:
         else:
             return 'LOW'
 
+    def timing_report(self) -> Dict:
+        """生成时序分析量化报告"""
+        paths = self.get_critical_paths(max_paths=10)
+        
+        # 统计
+        total_paths = len(paths)
+        critical_paths = [p for p in paths if p.get('risk_level') == 'CRITICAL']
+        high_risk_paths = [p for p in paths if p.get('risk_level') == 'HIGH']
+        medium_risk_paths = [p for p in paths if p.get('risk_level') == 'MEDIUM']
+        low_risk_paths = [p for p in paths if p.get('risk_level') == 'LOW']
+        
+        # 最大周期数
+        max_cycles = max(p.get('cycle_estimate', 0) for p in paths) if paths else 0
+        
+        # 平均周期数
+        avg_cycles = sum(p.get('cycle_estimate', 0) for p in paths) / total_paths if total_paths > 0 else 0
+        
+        # 风险路径排行
+        risk_ranking = sorted(paths, key=lambda x: x.get('violation_risk', 'LOW') == 'HIGH', reverse=True)[:5]
+        
+        return {
+            'total_paths': total_paths,
+            'max_cycles': max_cycles,
+            'avg_cycles': round(avg_cycles, 1),
+            'risk_breakdown': {
+                'CRITICAL': len(critical_paths),
+                'HIGH': len(high_risk_paths),
+                'MEDIUM': len(medium_risk_paths),
+                'LOW': len(low_risk_paths),
+            },
+            'paths': paths,
+            'risk_ranking': risk_ranking,
+        }
+
 
 # === CLI 接口 ===
 def run_cli():
@@ -339,6 +423,10 @@ def run_cli():
                 'score': p['score'],
                 'path': p['path'],
                 'registers': p['registers'],
+                'cycle_estimate': p.get('cycle_estimate', 0),
+                'combo_delay_estimate': p.get('combo_delay_estimate', 0),
+                'risk_level': p.get('risk_level', 'LOW'),
+                'violation_risk': p.get('violation_risk', 'LOW'),
             } for p in paths],
             'node_count': len(graph.nodes()),
             'reg_count': sum(1 for n in graph.nodes() if graph.get_node(n) and graph.get_node(n).kind == NodeKind.REG),
@@ -350,9 +438,18 @@ def run_cli():
         print(f"{'='*70}")
 
         for i, p in enumerate(paths, 1):
-            print(f"\n路径 {i} (深度={p['depth']}, 得分={p['score']}):")
-            print(f"  寄存器: {' → '.join(n.split('.')[-1] for n in p['registers'])}")
-            print(f"  完整路径: {' → '.join(n.split('.')[-1] for n in p['path'])}")
+            risk = p.get('risk_level', 'LOW')
+            risk_icon = {'CRITICAL': '🔴', 'HIGH': '🟠', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(risk, '')
+            cycles = p.get('cycle_estimate', p['depth'])
+            combo = p.get('combo_delay_estimate', 0)
+            
+            print(f"\n路径 {i} {risk_icon}")
+            regs = ' -> '.join([n.split('.')[-1] for n in p['registers']])
+            print(f"  寄存器链: {regs}")
+            print(f"  预估周期: {cycles} cycles")
+            print(f"  组合逻辑延迟: {combo} 级")
+            print(f"  风险等级: {risk}")
+            print(f"  违例风险: {p.get('violation_risk', 'LOW')}")
 
 
 if __name__ == "__main__":
