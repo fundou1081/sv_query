@@ -212,7 +212,7 @@ python run_cli.py sva skeleton -f top.sv --gap
 
 ### 4.1 大模块布局优化
 
-**状态**: ✅ 部分完成 (2026-05-30)
+**状态**: ✅ 已完成 (2026-05-30)
 
 **已实现功能**:
 - [x] 模块聚类 (`cluster_modules`)
