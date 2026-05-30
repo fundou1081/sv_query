@@ -17,6 +17,7 @@ CDC 检测：识别跨时钟域的信号路径
 import sys
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional
+from collections import defaultdict
 
 _current_file = Path(__file__).resolve()
 _project_root = _current_file.parent.parent.parent
@@ -67,14 +68,13 @@ class CDCAnalyzer:
             self.identify_clock_domains()
 
         self._node_domains = {}
-        clock_names = {'clk', 'clock', 'clk_i'}
 
         # 初始化：时钟信号属于自己的域
         for domain, nodes in self._domain_nodes.items():
             for n in nodes:
                 self._node_domains[n] = domain
 
-        # BFS 传播：从时钟信号出发，通过数据边传播域
+        # BFS 传播：从时钟信号出发，通过所有边传播域
         visited = set(self._node_domains.keys())
         queue = list(self._node_domains.keys())
 
@@ -84,7 +84,6 @@ class CDCAnalyzer:
             if cur_domain is None:
                 continue
 
-            # 从 cur 驱动哪些节点（通过非时钟/非复位边）
             for succ in self.graph.successors(cur):
                 if succ in visited:
                     continue
@@ -92,13 +91,18 @@ class CDCAnalyzer:
                 if edge is None:
                     continue
                 ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
-                # 跳过时钟/复位边
-                if ek in ('CLOCK', 'RESET', 'PosEdge', 'NegEdge'):
-                    continue
                 # 跳过常量
                 if succ.startswith("1'b") or succ in ('0', '1', "'0", "'1"):
                     continue
 
+                # CLOCK/RESET 边：目标节点属于该时钟域
+                if ek in ('CLOCK', 'RESET', 'PosEdge', 'NegEdge'):
+                    self._node_domains[succ] = cur_domain
+                    visited.add(succ)
+                    queue.append(succ)
+                    continue
+
+                # 其他边（DRIVER/CONNECTION 等）：同样传播域
                 self._node_domains[succ] = cur_domain
                 visited.add(succ)
                 queue.append(succ)
@@ -125,7 +129,7 @@ class CDCAnalyzer:
             ek = edge.kind.name if hasattr(edge.kind, 'kind') else str(edge.kind)
 
             # 检查是否有同步器
-            has_sync = self._check_sync_path(src, dst)
+            sync_info = self._analyze_sync_for_path(dst)
 
             src_node = self.graph.get_node(src)
             dst_node = self.graph.get_node(dst)
@@ -135,41 +139,113 @@ class CDCAnalyzer:
                 'target': dst,
                 'source_domain': src_domain,
                 'target_domain': dst_domain,
+                'source_domain_short': src_domain.split('.')[-1],
+                'target_domain_short': dst_domain.split('.')[-1],
                 'edge_kind': ek,
-                'has_synchronizer': has_sync,
-                'risk': 'HIGH' if not has_sync else 'LOW',
+                'has_synchronizer': sync_info['has_sync'],
+                'sync_type': sync_info['type'],
+                'sync_flops': sync_info['flops'],
+                'risk': 'HIGH' if not sync_info['has_sync'] else 'LOW',
             }
             cdc_paths.append(path_info)
 
         return cdc_paths
 
+    def _analyze_sync_for_path(self, cdc_target: str) -> Dict:
+        """分析 CDC 目标的同步器类型
+        
+        Returns:
+            {'has_sync': bool, 'type': str, 'flops': int, 'chain': list}
+        """
+        dst_domain = self._node_domains.get(cdc_target)
+        if dst_domain is None:
+            return {'has_sync': False, 'type': 'NONE', 'flops': 0, 'chain': []}
+        
+        # BFS 追溯目标时钟域内的寄存器链
+        visited = {cdc_target}
+        queue = [cdc_target]
+        flop_count = 1  # CDC 目标本身
+        sync_chain = [cdc_target]
+        
+        while queue:
+            cur = queue.pop(0)
+            
+            for succ in self.graph.successors(cur):
+                if succ in visited:
+                    continue
+                succ_domain = self._node_domains.get(succ)
+                if succ_domain != dst_domain:
+                    continue
+                    
+                edge = self.graph.get_edge(cur, succ)
+                ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
+                
+                if ek in ('CLOCK', 'RESET', 'PosEdge', 'NegEdge'):
+                    continue
+                
+                visited.add(succ)
+                
+                # 只数寄存器节点
+                node = self.graph.get_node(succ)
+                if node and node.kind == NodeKind.REG:
+                    flop_count += 1
+                    sync_chain.append(succ)
+                    queue.append(succ)
+                else:
+                    # 遇到非寄存器，停止追溯
+                    break
+        
+        # 判断同步器类型
+        if flop_count == 1:
+            return {'has_sync': False, 'type': 'NONE', 'flops': 1, 'chain': sync_chain}
+        elif flop_count == 2:
+            return {'has_sync': True, 'type': '2-FLOP', 'flops': 2, 'chain': sync_chain}
+        elif flop_count >= 3:
+            return {'has_sync': True, 'type': f'{flop_count}-FLOP', 'flops': flop_count, 'chain': sync_chain}
+        else:
+            return {'has_sync': False, 'type': 'UNKNOWN', 'flops': flop_count, 'chain': sync_chain}
+
     def _check_sync_path(self, src: str, dst: str) -> bool:
         """检查 src → dst 之间是否有同步器（2-flop 结构）"""
-        # 简化：检查 dst 是否被同一域的某个信号（可能作为同步器）驱动
-        # 更准确的做法是识别 sync module 或特定命名模式
-        src_name = src.split('.')[-1].lower()
-        dst_name = dst.split('.')[-1].lower()
-        # 带 sync 关键字的信号
-        if 'sync' in dst_name or 'synced' in dst_name:
-            return True
-        # 两级寄存器结构通常表示同步器
-        return False
+        sync_info = self._analyze_sync_for_path(dst)
+        return sync_info['has_sync']
 
     def cdc_report(self) -> Dict:
-        """生成 CDC 报告"""
+        """生成 CDC 量化报告"""
         paths = self.find_cdc_paths()
 
         high_risk = [p for p in paths if p['risk'] == 'HIGH']
         low_risk = [p for p in paths if p['risk'] == 'LOW']
 
         domains = list(self._domain_nodes.keys())
-
+        
+        # 按时钟域对统计
+        domain_pair_stats = defaultdict(lambda: {'count': 0, 'high_risk': 0, 'paths': []})
+        for p in paths:
+            key = (p['source_domain_short'], p['target_domain_short'])
+            domain_pair_stats[key]['count'] += 1
+            domain_pair_stats[key]['paths'].append(p)
+            if p['risk'] == 'HIGH':
+                domain_pair_stats[key]['high_risk'] += 1
+        
+        # 高风险 CDC 排行
+        high_risk_paths = sorted(high_risk, key=lambda x: x['target'])
+        
+        # 同步器类型统计
+        sync_type_stats = defaultdict(int)
+        for p in paths:
+            sync_type_stats[p['sync_type']] += 1
+        
         return {
             'domains': domains,
+            'domain_count': len(domains),
             'total_cdc': len(paths),
             'high_risk': len(high_risk),
             'low_risk': len(low_risk),
             'paths': paths,
+            'domain_pairs': dict(domain_pair_stats),
+            'high_risk_paths': high_risk_paths,
+            'sync_type_stats': dict(sync_type_stats),
         }
 
 
@@ -195,33 +271,48 @@ def run_cli():
 
     if args.json:
         import json
-        print(json.dumps(report, indent=2))
+        print(json.dumps(report, indent=2, default=str))
+        return
+
+    print(f"{'='*70}")
+    print(f"CDC 检测报告: {args.file}")
+    print(f"{'='*70}")
+
+    print(f"\n  时钟域 ({report['domain_count']}):")
+    for d in report['domains']:
+        print(f"    - {d}")
+
+    print(f"\n  CDC 路径统计:")
+    print(f"    总计: {report['total_cdc']}")
+    print(f"    🔴 高风险: {report['high_risk']}")
+    print(f"    🟢 低风险: {report['low_risk']}")
+    
+    if report['sync_type_stats']:
+        print(f"\n  同步器类型分布:")
+        for stype, count in sorted(report['sync_type_stats'].items()):
+            print(f"    {stype}: {count} 条")
+
+    if report['domain_pairs']:
+        print(f"\n  跨时钟域路径统计:")
+        for (src_clk, dst_clk), stats in sorted(report['domain_pairs'].items()):
+            high = stats['high_risk']
+            icon = '🔴' if high > 0 else '🟢'
+            print(f"    {src_clk} → {dst_clk}: {stats['count']} 条 {icon}")
+
+    paths = report['paths']
+    if args.high_only:
+        paths = [p for p in paths if p['risk'] == 'HIGH']
+
+    if paths:
+        print(f"\n  CDC 路径详情:")
+        for i, p in enumerate(paths, 1):
+            risk_icon = '🔴' if p['risk'] == 'HIGH' else '🟢'
+            sync_info = f"{p['sync_type']}" if p['sync_type'] != 'NONE' else "无同步器"
+            print(f"\n  [{i}] {risk_icon} {p['source']} → {p['target']}")
+            print(f"      域: {p['source_domain_short']} → {p['target_domain_short']}")
+            print(f"      同步器: {sync_info}")
     else:
-        print(f"{'='*70}")
-        print(f"CDC 检测报告: {args.file}")
-        print(f"{'='*70}")
-
-        print(f"\n  时钟域 ({len(report['domains'])}):")
-        for d in report['domains']:
-            print(f"    - {d}")
-
-        print(f"\n  CDC 路径统计:")
-        print(f"    总计: {report['total_cdc']}")
-        print(f"    🔴 高风险: {report['high_risk']}")
-        print(f"    🟢 低风险: {report['low_risk']}")
-
-        paths = report['paths']
-        if args.high_only:
-            paths = [p for p in paths if p['risk'] == 'HIGH']
-
-        if paths:
-            print(f"\n  CDC 路径详情:")
-            for i, p in enumerate(paths, 1):
-                risk_icon = '🔴' if p['risk'] == 'HIGH' else '🟢'
-                sync_icon = '✓' if p['has_synchronizer'] else '✗'
-                print(f"\n  [{i}] {risk_icon} {p['source']} → {p['target']}")
-                print(f"      域: {p['source_domain']} → {p['target_domain']}")
-                print(f"      边: {p['edge_kind']} | 同步器: {sync_icon}")
+        print(f"\n  未发现 CDC 路径")
 
 
 if __name__ == "__main__":

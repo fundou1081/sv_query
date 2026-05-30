@@ -98,6 +98,39 @@ Paths: 3 total, 1 high-risk
 
 **应用场景**：改信号前的安全检查，评估改动影响范围和风险
 
+
+### 📦 场景 2.1：跨模块影响分析（穿透子模块）
+
+**问题**：改信号时想知道它如何穿透子模块影响最终输出
+
+```python
+from trace.unified_tracer import UnifiedTracer
+
+tracer = UnifiedTracer(sources={'top.sv': rtl})
+
+# depth=1: 只看直接负载（不递归）
+loads = tracer.trace_fanout('top.din', depth=1)
+# → ['top.inter', 'top.u_dff.d']
+
+# depth=None: 穿透所有子模块（无限递归）
+loads = tracer.trace_fanout('top.din', depth=None)
+# → ['top.inter', 'top.u_dff.d', 'dff.d', 'dff.q', 'top.u_dff.q', 'top.dout']
+```
+
+**参数说明：**
+
+| 参数 | 行为 |
+|------|------|
+| `depth=1` | 只看直接负载（不递归） |
+| `depth=N` | 递归 N 层 |
+| `depth=None` (默认) | 穿透所有子模块 |
+
+**实战案例 - CDC 多重驱动检测：**
+```python
+tracer = UnifiedTracer(sources={'cdc.sv': rtl})
+fanin = tracer.trace_fanin('cdc_bug.q')
+print(f"驱动源数量: {len(fanin)}")  # 3 个驱动源 = CDC bug!
+```
 ### 🛤️ 场景 3：这个数据从 A 到 B 经过哪些路径？
 
 ```bash
