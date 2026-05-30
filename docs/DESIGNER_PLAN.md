@@ -112,19 +112,26 @@ python run_cli.py trace impact -f top.sv --signal MY_CHANGED_SIGNAL
 - [ ] 握手协议同步器识别
 
 ---
-
 ### 2.2 Timing 路径周期估算
 
-**现状**:能找关键路径(寄存器深度),但没有时钟周期估算
+**状态**: ✅ 已完成 (2026-05-30)
 
-**目标**:增加"预估时钟周期"字段
+**已实现功能**:
+- [x] cycle_estimate: 预估时钟周期数（基于寄存器深度）
+- [x] combo_delay_estimate: 组合逻辑延迟估计
+- [x] risk_level: 超长路径风险 (CRITICAL/HIGH/MEDIUM/LOW)
+- [x] violation_risk: 时序违例风险
+- [x] timing_report(): 量化报告（最大周期数、平均周期数、风险分布）
 
-**待开发**:
-- [ ] 基于时钟频率的路径延迟估算
-- [ ] 组合逻辑级数 → 预估延迟(以时钟周期为单位)
-- [ ] 超长路径自动标记(> 1 时钟周期)
+**报告新增字段**:
+- `cycle_estimate`: 预估周期数
+- `combo_delay_estimate`: 组合逻辑延迟（级数）
+- `combo_nodes`: 组合逻辑节点列表
+- `risk_level`: 时序风险等级
+- `violation_risk`: 违例风险
 
----
+**待实现**:
+- [ ] 基于时钟频率的实际延迟估算（需 cell library 数据）
 
 ### 2.3 扇出/负载量化报告
 
