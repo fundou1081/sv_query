@@ -90,37 +90,26 @@ python run_cli.py trace impact -f top.sv --signal MY_CHANGED_SIGNAL
 
 ### 2.1 CDC 路径量化表
 
-**现状**:能识别跨时钟域路径,但只给拓扑图
+**状态**: ✅ 已完成 (2026-05-30)
 
-**目标**:增加量化摘要
+**已实现功能**:
+- [x] 域传播 BFS 逻辑修复（CLOCK 边应传播域给目标节点）
+- [x] 同步器类型自动识别 (NONE / 2-FLOP / 3-FLOP)
+- [x] 同步器链长度计算（寄存器链深度）
+- [x] 同步器类型分布统计
+- [x] 跨时钟域路径统计（按 src_clk → dst_clk 分组）
+- [x] 高风险/低风险分类
 
-```bash
-# 理想输出
-python run_cli.py cdc analyze -f top.sv
+**报告新增字段**:
+- `sync_type`: 同步器类型 (NONE, 2-FLOP, 3-FLOP 等)
+- `sync_flops`: 寄存器链长度
+- `sync_type_stats`: 各类型路径数量统计
+- `domain_pairs`: 跨时钟域路径分组统计
+- `high_risk_paths`: 高风险 CDC 路径列表
 
-=== CDC 检测报告 ===
-时钟域: 3 个
-  clk_a (100MHz), clk_b (50MHz), clk_c (sys_clk)
-
-跨时钟域路径: 12 条
-  高风险(无同步器): 3 条
-    - path_A: reg1.clk → reg2.clk (直接跨时钟)
-    - path_B: data_in.clk_a → mem.clk_b (组合逻辑跨时钟)
-  低风险(有二级同步器): 9 条
-
-量化统计:
-  平均路径深度: 4.2 级
-  最长路径: 8 级 (reg_a → ... → reg_b via clk_a→clk_b)
-  跨时钟域负载排行: TOP 3
-    1. clk_en: 扇出 23
-    2. valid: 扇出 18
-    3. data: 扇出 12
-```
-
-**待开发**:
-- [ ] CDC 量化统计表
-- [ ] 同步器类型自动识别(一级/两级/握手)
-- [ ] 高风险 CDC 路径自动标注
+**待实现**:
+- [ ] 时钟频率信息提取
+- [ ] 握手协议同步器识别
 
 ---
 
