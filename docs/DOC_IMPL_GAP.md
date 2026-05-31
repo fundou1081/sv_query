@@ -737,6 +737,44 @@ class TimingAnalyzer:
 | 12 | TODO.md | ⚠️ 部分过时 | ✅ 已更新差异 |
 | 13 | KNOWN_LIMITATIONS.md | ✅ 准确 | 无需操作 |
 | 14 | TIMING_ANALYSIS.md | ✅ 基本准确 | 无需操作 |
+| 15 | DATAFLOW_IMPLEMENTATION_PLAN.md | ✅ 基本准确 | 无需操作 |
+
+---
+
+## 新增差异条目 (2026-05-31 下午)
+
+### 差异 #16: CONTROL_FLOW_IMPROVEMENTS.md vs 实际实现
+
+| 问题 | 文档描述 | 实际状态 |
+|------|----------|----------|
+| 嵌套三元条件 | 方案 A/B 提案 | ✅ `get_signals_with_conditions` 已实现 (line 6534) |
+| Case selector 为空 | 方案 A/B 提案 | ✅ `_get_case_selector` 已支持 IdentifierNameSyntax (line 1161) |
+
+### 差异 #17: CODE_DISCIPLINE_REVIEW.md vs 实际状态
+
+| 项目 | 状态 | 说明 |
+|------|------|------|
+| 铁律遵守率 | ✅ 95%+ | 无重大违反 |
+| graph_builder.py if-elif | ✅ 已优化 | StatementVisitor 处理 |
+
+### 差异 #18: GRAPH_CATALOG.md vs 实际实现
+
+| 图类型 | 文档描述 | 实际状态 |
+|--------|----------|----------|
+| SignalGraph | ✅ | ✅ |
+| ClassGraph | ✅ | ✅ |
+| CovergroupGraph | ✅ | ✅ |
+| CallGraph | ✅ | ✅ |
+| UVMTestbenchGraph | ✅ | ✅ |
+| SVA 图 | 待实现 | ✅ 已实现 (sva_models.py) |
+
+### 新增组件 (文档未明确标注)
+
+| 组件 | 实际实现 | 说明 |
+|------|----------|------|
+| ControlFlowGraph | ✅ | 控制流图 |
+| DataFlowGraph | ✅ | 数据流分析图 |
+| Analyzer 子包 | ✅ | cdc_analyzer, timing_analyzer |
 
 ---
 
@@ -744,21 +782,6 @@ class TimingAnalyzer:
 
 | 日期 | 操作 |
 |------|------|
-| 2026-05-31 | 创建差异记录文档 |
-| 2026-05-31 | 添加 CONTROL_FLOW_ANALYSIS.md 差异 |
-| 2026-05-31 | 添加 ARCHITECTURE_DEEP_REVIEW.md 差异 |
-| 2026-05-31 | 添加 DATAFLOW_ANALYSIS_ARCHITECTURE.md 差异 |
-| 2026-05-31 | 添加 DESIGNER_PLAN.md 差异 |
-| 2026-05-31 | 添加 ARCHITECTURE_IMPROVEMENT.md 差异 |
-| 2026-05-31 | 添加 CONTROL_FLOW_DESIGN.md 差异 |
-| 2026-05-31 | 添加 PENDING_FEATURES.md 差异 |
-| 2026-05-31 | 添加 CDC_ANALYSIS.md 差异 |
-| 2026-05-31 | 添加 ARCHITECTURE.md 差异 |
-| 2026-05-31 | 添加 TODO.md 差异 |
-| 2026-05-31 | 添加 KNOWN_LIMITATIONS.md 差异 |
-| 2026-05-31 | 添加 TIMING_ANALYSIS.md 差异 |
-| 2026-05-31 | ✅ 更新 ARCHITECTURE_DEEP_REVIEW.md - P0/P1 标记为 deprecated |
-| 2026-05-31 | ✅ 更新 DATAFLOW_ANALYSIS_ARCHITECTURE.md - 反映实际 str 类型 |
-| 2026-05-31 | ✅ 更新 DESIGNER_PLAN.md - SVA/Coverage 移至 future roadmap |
-| 2026-05-31 | ✅ 更新 ARCHITECTURE_IMPROVEMENT.md - 标记为暂停实施 |
-| 2026-05-31 | ✅ 更新 CDC_ANALYSIS.md - 反映 CDCAnalyzer 实际功能 | | | | |
+| 2026-05-31 | ... (前17个文档分析) ... |
+| 2026-05-31 下午 | 添加 18 个文档的差异分析 |
+| 2026-05-31 | ✅ 已更新 ARCHITECTURE_DEEP_REVIEW.md, DATAFLOW_ANALYSIS_ARCHITECTURE.md, DESIGNER_PLAN.md, ARCHITECTURE_IMPROVEMENT.md, CDC_ANALYSIS.md | | | | | |
