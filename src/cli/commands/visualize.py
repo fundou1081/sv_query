@@ -184,8 +184,8 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
         png_output = dot_output.replace('.dot', '.png')
         import subprocess
         try:
-            # 使用 -G 指定图形属性，确保正方形输出
-            subprocess.run(['dot', '-Tpng', '-Gsize="7.5,7.5!"', '-Gratio=fill',
+            # 使用 -G 指定图形属性，确保正方形输出（不裁剪）
+            subprocess.run(['dot', '-Tpng', '-Gsize=10', '-Gratio=compress',
                            dot_output, '-o', png_output], check=True, capture_output=True)
             print(f"✓ PNG: {png_output}")
         except Exception as e:

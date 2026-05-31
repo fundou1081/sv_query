@@ -260,8 +260,8 @@ class SignalGraphViewer:
             '  ranksep=0.6;',
             '  concentrate=true;',
             '  compound=true;',
-            '  size="7.5,7.5!";',
-            '  ratio=fill;',
+            '  size="10";',
+            '  ratio=compress;',
         ]
 
         # 模块聚类
