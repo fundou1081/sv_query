@@ -132,6 +132,32 @@ sv_query/docs/
 
 ---
 
+## 可视化命令
+
+### 信号图可视化
+
+```bash
+# 生成 DOT 文件（用于 Graphviz 渲染）
+python run_cli.py visualize graph -f <file.sv> --dot output.dot
+
+# 生成 PNG 图片（正方形比例）
+dot -Tpng -Gsize=10 -Gratio=compress output.dot -o output.png
+
+# 生成 HTML 交互式图
+python run_cli.py visualize graph -f <file.sv> --html output.html
+```
+
+**图片比例**：默认生成正方形图片 (10 英寸，ratio=compress)，不裁剪超出内容。
+
+### 验证缺口可视化
+
+```bash
+# 可视化高风险但无 SVA/Coverage 的信号
+python run_cli.py visualize gap -f <file.sv> --dot gap.dot --png --min-risk 25
+```
+
+---
+
 ## 使用方法
 
 1. **选择项目**：确定要学习的开源项目
@@ -152,5 +178,5 @@ sv_query/docs/
 
 ---
 
-**最后更新**: 2026-05-15
+**最后更新**: 2026-05-31
 **项目总数**: 13 个开源 RTL 项目
