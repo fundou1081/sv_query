@@ -226,11 +226,15 @@ TraversalStrategy (遍历) + NodeAccessor (访问) + Handler (业务)
 | 启用新架构 | 新旧架构并存 |
 | Handler 迁移 | Handler 逻辑不完整 |
 
-### 仍需解决的问题
+### 仍需解决的问题 (实际状态)
 
-1. **遍历策略单一** - 只有 DFS，需要 BFS/Selective
-2. **遍历逻辑混在 handler** - Handler 不够简洁
-3. **NodeAccessor 缺失** - 直接访问 pyslang，耦合高
+| 问题 | 规划 | 实际状态 |
+|------|------|----------|
+| 遍历策略单一 | 需要 BFS/Selective | ❌ 未实现，仍只有 DFS |
+| 遍历逻辑混在 handler | Handler 应只处理业务 | ❌ 未实现 |
+| NodeAccessor 缺失 | 封装 pyslang API | ❌ 未实现 |
+
+**当前架构**: Handler 仍混遍历逻辑，但系统运行正常，无紧急需求推动改进。
 
 ### 正确的抽象保持不变
 
@@ -238,7 +242,9 @@ TraversalStrategy (遍历) + NodeAccessor (访问) + Handler (业务)
 - **SignalGraph** ✓
 - **SignalResult** ✓
 
-### 下一步
+### 下一步 (未实施)
+
+> 📝 注 (2026-05-31): 以下改进方向为规划中功能，当前未实施。
 
 1. **TraverseStrategy 抽象** - 支持 DFS/BFS/Selective
 2. **NodeAccessor 抽象** - 封装 pyslang API
