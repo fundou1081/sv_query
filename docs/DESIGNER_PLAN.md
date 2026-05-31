@@ -169,6 +169,11 @@ python run_cli.py stats -f top.sv --fanout-rank
 
 ## P2:SVA / Coverage 代码生成
 
+### ⚠️ 已暂停 - 移至 Future Roadmap (2026-05-31)
+
+**决策**: 暂停 SVA/Covergroup skeleton 生成开发
+**原因**: 优先级调整，当前聚焦核心功能
+
 ### 3.1 SVA 骨架代码生成
 
 **现状**:能提取 SVA 结构,能指出缺口,但只能给文本建议
@@ -188,7 +193,9 @@ python run_cli.py sva skeleton -f top.sv --gap
 生成的 SVA 文件: /tmp/top_sva_skeleton.sv
 ```
 
-**待开发**:
+**状态**: ⏸️ Future Roadmap
+
+**待开发** (将来):
 - [ ] `sva skeleton` 命令
 - [ ] 基于缺口自动生成 SVA 骨架
 - [ ] 协议类断言模板(握手、FIFO、AXI)
@@ -201,7 +208,9 @@ python run_cli.py sva skeleton -f top.sv --gap
 
 **目标**:生成可编译的 covergroup 骨架
 
-**待开发**:
+**状态**: ⏸️ Future Roadmap
+
+**待开发** (将来):
 - [ ] `covergroup skeleton` 命令
 - [ ] 约束 → cross coverage 代码生成
 - [ ] 缺 bins 的自动建议

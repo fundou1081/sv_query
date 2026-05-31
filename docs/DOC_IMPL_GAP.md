@@ -8,13 +8,16 @@
 
 ## 📋 差异概览
 
-| # | 类别 | 文档状态 | 实现状态 | 需确认 |
-|---|------|----------|----------|--------|
-| 1 | DataFlowSegment.effective_condition | ❌ 未提到 | ✅ 已有 | 待定 |
-| 2 | SignalChain.control_dependencies | ❌ 未提到 | ✅ 已有 | 待定 |
-| 3 | SignalChain.state_transitions | ❌ 未提到 | ✅ 已有 | 待定 |
-| 4 | DataFlowGraph vs data_models.py | 分散 | 分散 | 待合并? |
-| 5 | | | | |
+| # | 类别 | 文档状态 | 实现状态 | 用户决策 |
+|---|------|----------|----------|----------|
+| 1 | DataFlowSegment.effective_condition | ❌ 未提到 | ✅ 已有 | ✅ 更新文档 (反映实现) |
+| 2 | SignalChain.control_dependencies | ❌ 未提到 | ✅ 已有 | 无需操作 |
+| 3 | SignalChain.state_transitions | ❌ 未提到 | ✅ 已有 | 无需操作 |
+| 4 | DataFlowGraph vs data_models.py | 分散 | 分散 | 无需操作 |
+| 5 | base.py 拆分 P0/P1 | 建议拆分 | 未实施 | ✅ 更新文档 (暂停) |
+| 6 | SVA/Coverage 生成 | 规划中 | 未实现 | ✅ 更新文档 (暂停) |
+| 7 | 单dispatch架构 | 提案 | 未实施 | ✅ 更新文档 (暂停) |
+| 8 | DataFlowSegment.driver 类型 | SignalResult | str | ✅ 更新文档 (反映实现) |
 
 ---
 
@@ -241,27 +244,18 @@ class ConditionInfo:
 | 行动 | 状态 | 说明 |
 |------|------|------|
 | signal_expression_visitor 测试 | ✅ 部分完成 | 187 个单元测试已添加，仍有 534 个 [NOT TESTED] |
-| 拆分 base.py PyslangAdapter | ❌ 未开始 | 2050 行，仍是单一文件 |
-| 理清 semantic_adapter vs base.py | ❌ 未开始 | 两个文件职责仍有重叠 |
+| 拆分 base.py PyslangAdapter | ❌ 不实施 | 决策: 暂停架构重构，当前系统运行稳定 |
+| 理清 semantic_adapter vs base.py | ❌ 不实施 | 决策: 暂停架构重构 |
 
-### 文档 vs 实现的关键差异
+### ✅ 用户决策 (2026-05-31)
 
-1. **signal_expression_visitor.py 仍有过多 [NOT TESTED]**
-   - 文档: "50+ 个 [NOT TESTED] 表达式类型是隐患"
-   - 实际: 现在有 534 个 [NOT TESTED]，测试覆盖率仅 ~9% (52/586 methods)
+**选项 [C]**: 更新文档 - 将 base.py 拆分标记为 deprecated/low priority
 
-2. **base.py PyslangAdapter 仍未拆分**
-   - 文档: "2050 行太大，职责多"
-   - 实际: 仍是单一文件，2050+ 行
+**原因**: 当前系统运行稳定 (1080+ 测试通过)，架构问题不影响运行时正确性。
 
-3. **semantic_adapter.py vs base.py 仍未理清**
-   - 文档: "两个文件职责边界不清晰"
-   - 实际: 仍是各自处理相似的语义问题
+### 更新后的文档
 
-### 选项
-- [A] 继续按文档建议推进 - 拆分 base.py，理清 semantic_adapter
-- [B] 暂停架构重构 - 当前系统运行稳定，优先功能开发
-- [C] 更新文档 - 文档已过时，调整优先级
+ARCHITECTURE_DEEP_REVIEW.md 已更新，标记 P0/P1 项为 deprecated/not planned。
 
 ---
 
@@ -337,10 +331,16 @@ segment.condition = 'en'    # 只有字符串，无法知道条件结构
 
 **影响**: 调用者无法知道驱动表达式的结构（是加法还是乘法？），只能得到原始字符串。
 
-### 选项
-- [A] 保持现状 - str 足够用，SignalResult/conditionInfo 过设计
-- [B] 增强实现 - 将 driver 改为 SignalResult，condition 改为 ConditionInfo
-- [C] 更新文档 - 文档已过时，说明实际使用 str 类型
+### ✅ 用户决策 (2026-05-31)
+
+**选项 [C]**: 更新文档 - 说明实际使用 str 类型
+
+### 更新内容
+
+DATAFLOW_ANALYSIS_ARCHITECTURE.md 已更新：
+- `DataFlowSegment.driver` 类型注明为 `str`
+- `DataFlowSegment.condition` 类型注明为 `str`
+- 新增字段 `effective_condition`、`assign_type`、`distance` 已记录
 
 ---
 
@@ -394,14 +394,16 @@ segment.condition = 'en'    # 只有字符串，无法知道条件结构
 | CI 集成模板 | 待开发 | ❌ 未实现 |
 | 设计工程师文档 | 待开发 | ❌ 未实现 |
 
-### 关键差异: SVA/Coverage 生成未实现
+### ✅ 用户决策 (2026-05-31)
 
-文档中 P2 规划的 SVA skeleton 生成和 Covergroup skeleton 生成功能尚未实现。这是一个明确的未完成项。
+**选项 [B]**: 暂停开发，更新文档
 
-### 选项
-- [A] 继续按计划开发 SVA skeleton 生成
-- [B] 暂停此项，优先其他功能
-- [C] 更新文档，将这些功能移到 future roadmap
+### 更新内容
+
+DESIGNER_PLAN.md 已更新：
+- SVA skeleton 生成 → 移至 Future Roadmap
+- Covergroup skeleton 生成 → 移至 Future Roadmap
+- 其他未实现项 → 标记为 deferred
 
 ---
 
@@ -447,20 +449,16 @@ class SignalResult:
     # 单一类型替代双接口
 ```
 
-**实际**: SignalResult 未实现，仍使用原有双接口模式。
+### ✅ 用户决策 (2026-05-31)
 
-### 铁律29 回顾 (文档描述)
+**选项 [C]**: 更新文档 - 将重构提案标记为 deprecated/low priority
 
-| 版本 | 状态 |
-|------|------|
-| v1-v4 | ✅ 已实施 |
-| v5 废弃 Legacy | ✅ 已在 2026-05-28 前完成 |
-| v6 单dispatch架构 | ❌ 未实施 |
+### 更新内容
 
-### 选项
-- [A] 实施 ARCHITECTURE_IMPROVEMENT.md 提案 - 迁移到单dispatch架构
-- [B] 保持现状 - 当前架构已足够使用
-- [C] 更新文档 - 将重构提案标记为 deprecated/low priority
+ARCHITECTURE_IMPROVEMENT.md 已更新：
+- 状态改为 "暂停实施"
+- 原因: 当前架构已足够使用，双接口模式工作正常
+- v6 单dispatch架构 → 标记为 future consideration
 
 ---
 
@@ -547,16 +545,16 @@ class ControlFlowGraph:
 
 ## 📋 已完成的文档差异分析
 
-| # | 文档 | 关键差异 |
-|---|------|----------|
-| 1 | FINAL_SCHEMA_DECISION.md | Schema 结构已完成 |
-| 2 | SCHEMA_COMPARISON_V2.md | DataFlowSegment driver 是 str 不是 SignalResult |
-| 3 | CONTROL_FLOW_ANALYSIS.md | ConditionInfo 在 data_models.py 分散 |
-| 4 | ARCHITECTURE_DEEP_REVIEW.md | base.py PyslangAdapter 未拆分 |
-| 5 | DATAFLOW_ANALYSIS_ARCHITECTURE.md | DataFlowGraph vs DataFlowAnalyzer 命名差异 |
-| 6 | DESIGNER_PLAN.md | SVA/Coverage 生成未实现 |
-| 7 | ARCHITECTURE_IMPROVEMENT.md | 单dispatch架构未实施 |
-| 8 | CONTROL_FLOW_DESIGN.md | ControlFlowAnalyzer/Z3 未实现 |
+| # | 文档 | 状态 | 行动 |
+|---|------|------|------|
+| 1 | FINAL_SCHEMA_DECISION.md | ✅ 已实现 | 无需操作 |
+| 2 | SCHEMA_COMPARISON_V2.md | ✅ 已分析 | 无需操作 |
+| 3 | CONTROL_FLOW_ANALYSIS.md | ✅ 已实现 | 无需操作 |
+| 4 | ARCHITECTURE_DEEP_REVIEW.md | ❌ 不实施 | ✅ 已更新文档 |
+| 5 | DATAFLOW_ANALYSIS_ARCHITECTURE.md | ✅ 已实现 | ✅ 已更新文档 |
+| 6 | DESIGNER_PLAN.md | ⚠️ 部分完成 | ✅ 已更新文档 |
+| 7 | ARCHITECTURE_IMPROVEMENT.md | ❌ 暂停 | ✅ 已更新文档 |
+| 8 | CONTROL_FLOW_DESIGN.md | ⚠️ 部分实现 | 无需操作 |
 
 ---
 
@@ -571,3 +569,7 @@ class ControlFlowGraph:
 | 2026-05-31 | 添加 DESIGNER_PLAN.md 差异 |
 | 2026-05-31 | 添加 ARCHITECTURE_IMPROVEMENT.md 差异 |
 | 2026-05-31 | 添加 CONTROL_FLOW_DESIGN.md 差异 |
+| 2026-05-31 | ✅ 更新 ARCHITECTURE_DEEP_REVIEW.md - P0/P1 标记为 deprecated |
+| 2026-05-31 | ✅ 更新 DATAFLOW_ANALYSIS_ARCHITECTURE.md - 反映实际 str 类型 |
+| 2026-05-31 | ✅ 更新 DESIGNER_PLAN.md - SVA/Coverage 移至 future roadmap |
+| 2026-05-31 | ✅ 更新 ARCHITECTURE_IMPROVEMENT.md - 标记为暂停实施 |
