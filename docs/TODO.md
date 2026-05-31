@@ -19,29 +19,15 @@
 
 ### P2 - 中优先级 (可选优化)
 
-#### [ ] SignalExpressionVisitor 单 dispatch 重构
-- **类型**: 代码优化 (非功能改进)
-- **现状**: 当前是**双接口**设计
-  - `visit()` → `Optional[str]` (单信号)
-  - `get_all_signals()` → `List[str]` (多信号)
-  - 每种节点类型需要两个 handler (如 `visit_binary_expression` + `get_all_binary_expression`)
-- **目标**: 改为**单接口**设计
-  - `extract()` → `SignalResult(primary, all_signals, all_signals_unique)`
-  - 每种节点类型只需一个 handler
-  - 通过注册式分派 (@SignalVisitor.on)
-- **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md`
-- **收益**:
-  - -50% handler 代码量
-  - 消除 visit/get_all 之间别名映射重复
-  - 更清晰的 API
-- **风险**: 中等 (需迁移 40+ handlers，建议分步进行)
-- **触发条件**: 有明确扩展需求时
+#### [P2 - 已暂停] SignalExpressionVisitor 单 dispatch 重构
+- **状态**: ⏸️ **暂停实施** (2026-05-31 决策)
+- **原因**: 当前双接口模式工作正常，重构收益不明显
+- **参考文档**: `docs/ARCHITECTURE_IMPROVEMENT.md` (已标记为 deprecated)
+- **如有扩展需求**: 可重新评估
 
-#### [ ] StatementCollectorVisitor 架构对齐 (可选)
-- **类型**: 代码优化
-- **现状**: 同样是双接口 (statement collecting + context) 混合设计
-- **目标**: 参照 SignalExpressionVisitor 改进方案进行对齐
-- **前置条件**: SignalExpressionVisitor 重构完成后再评估
+#### [P3 - 已暂停] StatementCollectorVisitor 架构对齐 (可选)
+- **状态**: ⏸️ **暂停实施**
+- **前置条件**: SignalExpressionVisitor 重构完成后再评估 (现已暂停)
 
 ---
 

@@ -25,30 +25,31 @@
 
 #### 1. ControlFlow 控制流分析
 
-| 项目 | 内容 |
-|------|------|
-| **类型** | 新功能 |
-| **描述** | 实现信号间控制流分析 (条件、分支、状态机) |
-| **参考文档** | `docs/CONTROL_FLOW_ANALYSIS.md` |
+| 项目 | 内容 | 实际状态 |
+|------|------|----------|
+| **类型** | 新功能 | ⚠️ 部分实现 |
+| **描述** | 实现信号间控制流分析 (条件、分支、状态机) | ControlFlowGraph 已实现 |
+| **参考文档** | `docs/CONTROL_FLOW_ANALYSIS.md` | |
 
-**核心组件**:
+**实际实现**:
 
-| 组件 | 说明 |
-|------|------|
-| `ConditionInfo` | 条件信息 (kind, expr, signals, branches) |
-| `StateTransition` | 状态机转换 |
-| `ControlFlowResult` | 控制流结果封装 |
-| `ControlFlowAnalyzer` | 主分析器 |
+| 组件 | 说明 | 实际状态 |
+|------|------|----------|
+| `ConditionInfo` | 条件信息 (kind, expr, signals, branches) | ✅ 已有 (data_models.py:104) |
+| `StateTransition` | 状态机转换 | ✅ 已有 (controlflow_models.py:209) |
+| `ControlFlowResult` | 控制流结果封装 | ✅ 已有 (controlflow_models.py:258) |
+| `ControlFlowGraph` | 控制流图 | ✅ 已实现 |
+| `ControlFlowAnalyzer` | 主分析器 | ❌ 未实现 |
 
-**功能目标**:
-- [ ] 条件使能分析 (en 为真/假时数据是否流动)
-- [ ] 分支覆盖分析 (if/else/case 是否完整)
-- [ ] 状态机状态转换图
-- [ ] 控制依赖链传播
+**功能目标** (更新状态):
+- [~] 条件使能分析 - ⚠️ ControlFlowGraph 有基础，ControlFlowAnalyzer 无
+- [~] 分支覆盖分析 - ⚠️ 同上
+- [~] 状态机状态转换图 - ⚠️ 同上
+- [~] 控制依赖链传播 - ⚠️ 同上
 
 **与 DataFlow 融合**:
-- [ ] `DataFlowResult.control_flow`: 融合控制流
-- [ ] `data_flow_when`: 数据流成立条件
+- [~] `DataFlowResult.control_flow`: 部分融合
+- [ ] `data_flow_when`: 未实现
 
 ---
 
@@ -68,40 +69,37 @@
 
 #### 3. Function/Task 内联展开
 
-| 项目 | 内容 |
-|------|------|
-| **类型** | 新功能 |
-| **描述** | 展开函数体为实际逻辑，替换 FUNCTION_CALL 节点 |
-| **参考文档** | `README.md` Phase 3 |
+| 项目 | 内容 | 实际状态 |
+|------|------|----------|
+| **类型** | 新功能 | ✅ **已完成** |
+| **描述** | 展开函数体为实际逻辑，替换 FUNCTION_CALL 节点 | SubroutineExpander 已实现 |
+| **测试** | 81 tests 通过 | |
 
-**相关**:
-- `docs/archive/P1_EXPRESSION_NODE_TASKS.md` 中 `expand_function()` 设计
-
-**现状**: 未实现
+**实现文件**: `src/trace/core/builder/subroutine_expander.py`
 
 ---
 
 #### 4. Interface/modport 追踪
 
-| 项目 | 内容 |
-|------|------|
-| **类型** | 新功能 |
-| **描述** | 支持 SystemVerilog interface 和 modport 的信号追踪 |
-| **参考文档** | `README.md` Phase 3 |
+| 项目 | 内容 | 实际状态 |
+|------|------|----------|
+| **类型** | 新功能 | ✅ **已完成** |
+| **描述** | 支持 SystemVerilog interface 和 modport 的信号追踪 | 已实现 |
+| **测试** | 已有测试覆盖 | |
 
-**现状**: 未实现
+**实现文件**: `graph_builder.py` - ConnectionExtractor 处理 interface/modport
 
 ---
 
 #### 5. 跨时钟域路径分析
 
-| 项目 | 内容 |
-|------|------|
-| **类型** | 新功能 |
-| **描述** | 分析信号在不同 clock domain 之间的传播路径 |
-| **参考文档** | `README.md` Phase 3 |
+| 项目 | 内容 | 实际状态 |
+|------|------|----------|
+| **类型** | 新功能 | ✅ **已完成** |
+| **描述** | 分析信号在不同 clock domain 之间的传播路径 | CDCAnalyzer 已实现 |
+| **测试** | 已有测试覆盖 | |
 
-**现状**: 部分实现 (DataFlow 中有时钟域分析)，需完善
+**实现文件**: `src/trace/core/graph/analyzer/cdc_analyzer.py`
 
 ---
 

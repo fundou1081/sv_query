@@ -832,20 +832,165 @@ INDEX.md 是入口文档，分类正确。实际文档都已存在。
 
 ---
 
-## 📋 已完成的文档差异分析 (共23个)
+### 差异 #24: REQ5_6_7_8_DRIVER_LOAD_ANALYSIS.md vs 实际状态
+
+### 文档状态: ⚠️ 部分过时
+
+| Req | 文档描述 | 实际状态 |
+|------|----------|----------|
+| Req-5 generate 内实例 | 需增强 | ✅ `get_generate_instances()` 已实现 |
+| Req-6 函数内部逻辑 | 需新增 FunctionExtractor | ✅ `SubroutineExpander` 已实现 |
+| Req-7 always block 语句 | 需增强 | ✅ DriverExtractor 已处理 |
+| Req-8 SignalTracer | 依赖上述 | ✅ 已实现 |
+
+### 关键实现
+
+- `SubroutineExpander` (line 2474) - 函数展开器
+- `get_generate_instances()` (line 2084, 2108) - generate 实例支持
+- `_get_generate_block_name()` (line 2017-2018) - generate block 命名
+
+---
+
+### 差异 #25: REFACTOR_GUIDE_v2.md vs 实际状态
+
+### 文档状态: ⚠️ 部分过时
+
+| 变化点 | 文档描述 (v2.0) | 实际状态 |
+|--------|-----------------|----------|
+| RTL 数据源 | slang-netlist NetlistGraph | ❌ 未使用，仍用 pyslang |
+| 图结构位精确化 | Phase 2 | ⚠️ 简化实现 |
+| Visitor 目录 | 删 statement+assignment | ⚠️ 都保留了 |
+| DFA 能力 | 等待 slang-netlist bug 修复 | ❌ 未使用 slang-netlist |
+
+### 实际实现
+
+- 使用 pyslang Semantic AST (Compilation + getRoot())
+- 不使用 slang-netlist
+- GraphBuilder 整合多个 extractor
+
+---
+
+### 差异 #26: SIGNAL_EXPRESSION_VISITOR_TEST_STATUS.md vs 实际状态
+
+### 文档状态: ✅ 准确 (今天更新)
+
+本文档是我今天创建的状态报告，反映实际测试情况：
+- 187 tests 新增
+- 534 个 [NOT TESTED] 方法
+- 5 个测试文件
+
+---
+
+### 差异 #27: ISSUES_SUMMARY.md vs 实际状态
+
+### 文档状态: ⚠️ 部分过时 (2026-05-18)
+
+大部分 Issue 已修复或标记为 design constraint：
+- Issue 21 ✅ 已修复
+- Issue 22 ✅ 已修复
+- Issue 27 ✅ 已修复
+- Issue 28 ✅ 已修复
+- Issue 33 ✅ 已修复
+- Issue 36 ✅ 已修复
+- Issue 43 ✅ 已修复
+
+| Issue | 状态 |
+|-------|------|
+| Issue 17-43 | 大部分已处理 |
+| 新 Issue 44+ | 需查看 OPENCHIP_QA_ROUND4_REPORT |
+
+---
+
+### 差异 #28: README.md vs 实际状态
+
+### 文档状态: ✅ 基本准确
+
+README.md 与 PROJECT_PLAN.md 内容类似，都描述项目总览。当前测试数 1267，项目列表基本准确。
+
+---
+
+### 差异 #29: OPENCHIP_QA_ROUND4_REPORT.md + ROUND4_ISSUES.md vs 实际状态
+
+### 文档状态: ✅ 已处理
+
+Round 4 报告和 Issue 汇总中的问题已在 ISSUES_SUMMARY.md 中跟踪：
+- Issue 17-20 ✅ 已处理
+- 新问题 21-43 ✅ 大部分已修复或标记为 design constraint
+
+---
+
+### 差异 #30: HANDLER_WRITING_GUIDE.md + DESIGN_BOUNDARY_CONTROL.md
+
+### 文档状态: ⚠️ 描述提案，未实施
+
+| 文档 | 描述 | 实际状态 |
+|------|------|----------|
+| HANDLER_WRITING_GUIDE.md | 单dispatch + @on() 装饰器 | ❌ 未实施 (仍用双接口) |
+| DESIGN_BOUNDARY_CONTROL.md | VisitAction.Skip 边界控制 | ❌ 未实施 |
+
+与 ARCHITECTURE_IMPROVEMENT.md 的单dispatch提案相同 - 已标记为暂停。
+
+---
+
+### 差异 #31: REFACTOR_DETAILED_PLAN.md + PROPOSAL_REFLECTION_BASED_HANDLER.md + SIGNAL_GRAPH_ANALYSIS_REQUIREMENTS.md
+
+### 文档状态: ⚠️ 都是提案，未实施
+
+| 文档 | 描述 | 实际状态 |
+|------|------|----------|
+| SIGNAL_GRAPH_ANALYSIS_REQUIREMENTS.md | 需求讨论，基于 pyslang.visit() + VisitAction.Skip | ❌ 未实施 |
+| REFACTOR_DETAILED_PLAN.md | 单dispatch重构细化方案 | ❌ 未实施 |
+| PROPOSAL_REFLECTION_BASED_HANDLER.md | 反射 @on Handler 提案 | ❌ 未实施 |
+
+这些都涉及 SignalExpressionVisitor 的重构，已在 ARCHITECTURE_IMPROVEMENT.md 中标记为暂停。
+
+---
+
+## 📋 已完成的文档差异分析 (共31个)
 
 | # | 文档 | 状态 |
 |---|------|------|
-| 1-22 | (之前分析) | 略 |
-| 23 | REQUIREMENT_SVA_ANALYSIS.md | ✅ 已实现 |
+| 1-30 | (之前) | 略 |
+| 31 | REFACTOR + PROPOSAL + SIGNAL_GRAPH_ANALYSIS requirements | ⚠️ 提案未实施 |
 
-### 统计
+---
 
-| 状态 | 数量 |
-|------|------|
-| ✅ 已实现/基本准确 | 15 |
-| ⚠️ 部分过时/需更新 | 6 |
-| ❌ 未实施/暂停 | 2 |
+### 差异 #32: RISK_ANALYSIS.md vs signal_graph_viewer.py
+
+### 文档状态: ⚠️ 部分过时
+
+| 公式 | 文档描述 | 实际状态 |
+|------|----------|----------|
+| 功能逻辑复杂度 | 完整公式含 width×0.3, 无SVA/无Cov 惩罚 | 简化: fan_in×3 + fan_out×2 + 15(汇聚) + 10(发散) |
+| 时序复杂度 | 含 pipeline_depth×5, 无SVA 惩罚 | 简化: 15(寄存器) + fan_in×2 |
+
+**实际实现** (signal_graph_viewer.py line 158-188): 简化版风险评分
+
+---
+
+## 📋 已完成的文档差异分析 (共32个)
+
+| # | 文档 | 状态 |
+|---|------|------|
+| 1-31 | (之前) | 略 |
+| 32 | RISK_ANALYSIS.md | ⚠️ 公式过于复杂，实际简化实现 |
+
+---
+
+### 差异 #33: SIGNAL_QUERY_IMPROVEMENT_PLAN.md vs 实际状态
+
+### 文档状态: ✅ 基本准确
+
+P0-1 (Condition 提取) 和 P0-2 (Driver Expression 提取) 已完成，文档准确。
+
+---
+
+## 📋 已完成的文档差异分析 (共33个)
+
+| # | 文档 | 状态 |
+|---|------|------|
+| 1-32 | (之前) | 略 |
+| 33 | SIGNAL_QUERY_IMPROVEMENT_PLAN.md | ✅ 基本准确 (P0-1/P0-2 已完成) |
 
 ---
 
@@ -853,6 +998,65 @@ INDEX.md 是入口文档，分类正确。实际文档都已存在。
 
 | 日期 | 操作 |
 |------|------|
-| 2026-05-31 | ... (前22个文档) ... |
-| 2026-05-31 | 添加 23 号文档差异 (REQUIREMENT_SVA_ANALYSIS.md) |
-| 2026-05-31 | 已分析 23 个文档，还有约 44 个待分析 | | | | | |
+| 2026-05-31 | ... (前32个文档) ... |
+| 2026-05-31 | 添加 33 号文档差异 (SIGNAL_QUERY_IMPROVEMENT_PLAN) |
+| 2026-05-31 | 已分析 33 个文档，还有约 34 个待分析 |
+### 差异 #34: DISCIPLINE_VIOLATIONS.md vs 实际状态
+
+### 文档状态: ✅ 已修复
+
+| 问题 | 文档描述 | 实际状态 |
+|------|----------|----------|
+| CovergroupInfo.errors 字段 | 待补充 | ✅ 已添加 (covergroup_models.py:46) |
+| UVMTestbench.errors 字段 | 待补充 | ✅ 已添加 (uvm_models.py:62) |
+
+---
+
+## 📋 已完成的文档差异分析 (共34个)
+
+| # | 文档 | 状态 |
+|---|------|------|
+| 1-33 | (之前) | 略 |
+| 34 | DISCIPLINE_VIOLATIONS.md | ✅ 已修复 |
+
+---
+
+## 更新日志
+
+| 日期 | 操作 |
+|------|------|
+| 2026-05-31 | ... (前33个文档) ... |
+| 2026-05-31 | 添加 34 号文档差异 (DISCIPLINE_VIOLATIONS.md) |
+| 2026-05-31 | 已分析 34 个文档 |
+
+### 差异 #35: GRAPH_BUILDER_REVIEW.md vs 实际状态
+
+### 文档状态: ✅ 准确
+
+| Class | 文档描述 | 实际行数 |
+|-------|----------|----------|
+| DriverExtractor | 🔴 1554行，真正的巨无霸 | ✅ 1554行 (line 25开始) |
+| GraphBuilder | 🟢 370行，正常 | ✅ 370行 |
+| LoadExtractor | 🟡 409行，可接受 | ✅ 409行 (line 1579) |
+| ConnectionExtractor | 🟡 402行，可接受 | ✅ 402行 (line 1988) |
+
+文档准确。结论：不需要拆分 GraphBuilder。
+
+---
+
+## 📋 已完成的文档差异分析 (共35个)
+
+| # | 文档 | 状态 |
+|---|------|------|
+| 1-34 | (之前) | 略 |
+| 35 | GRAPH_BUILDER_REVIEW.md | ✅ 准确 |
+
+---
+
+## 更新日志
+
+| 日期 | 操作 |
+|------|------|
+| 2026-05-31 | ... (前34个文档) ... |
+| 2026-05-31 | 添加 35 号文档差异 (GRAPH_BUILDER_REVIEW.md) |
+| 2026-05-31 | 已分析 35 个文档 |

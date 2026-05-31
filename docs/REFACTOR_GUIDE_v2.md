@@ -34,14 +34,16 @@ root = tree.root  # 直接使用 SyntaxTree root
 
 ## 核心变化 vs v1.4
 
-| 变化点 | v1.4 | v2.0 |
-|--------|------|------|
-| RTL 数据源 | `am.getDrivers()` (Layer 3) | slang-netlist NetlistGraph |
-| 图结构位精确化 | Step 6 优先级高 | 降级为 Phase 2 |
-| visitors/ 目录 | "整个目录删除" | 只删 statement + assignment，constraint 保留 |
-| Step 2 visit API | `root.visit(lookup_table)` | 修正为 `root.visit(callback)` |
-| TB Class+Constraint | 未明确 | **禁区，不动** |
-| DFA 能力 | Step 3 包含 | 等待 slang-netlist SIGSEGV bug 修复 |
+| 变化点 | v1.4 | v2.0 | 实际状态 |
+|--------|------|------|----------|
+| RTL 数据源 | `am.getDrivers()` (Layer 3) | slang-netlist NetlistGraph | ❌ 仍用 pyslang Semantic AST |
+| 图结构位精确化 | Step 6 优先级高 | 降级为 Phase 2 | ⚠️ 简化实现 |
+| visitors/ 目录 | "整个目录删除" | 只删 statement + assignment，constraint 保留 | ⚠️ 都保留了 |
+| Step 2 visit API | `root.visit(lookup_table)` | 修正为 `root.visit(callback)` | ✅ 已修正 |
+| TB Class+Constraint | 未明确 | **禁区，不动** | ✅ 已遵守 |
+| DFA 能力 | Step 3 包含 | 等待 slang-netlist SIGSEGV bug 修复 | ❌ 未使用 slang-netlist |
+
+> 📝 注 (2026-05-31): slang-netlist 方案未实施。当前使用 pyslang Semantic AST。
 
 ---
 

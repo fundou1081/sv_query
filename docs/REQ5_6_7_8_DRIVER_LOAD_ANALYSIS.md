@@ -190,12 +190,19 @@ SignalTracer.trace(signal)
 
 ### 修改点
 
-| Req | 修改组件 | 修改内容 |
-|-----|---------|----------|
-| Req-5 | ConnectionExtractor | 进入 GenerateBlock 遍历实例 |
-| Req-6 | 新增 FunctionExtractor | 提取函数内部赋值关系 |
-| Req-7 | DriverExtractor | 增强 always block 内部语句提取 |
-| Req-8 | GraphBuilder | 协调新增的 Extractor |
+| Req | 修改组件 | 修改内容 | 实际状态 |
+|-----|---------|----------|----------|
+| Req-5 | ConnectionExtractor | 进入 GenerateBlock 遍历实例 | ✅ 已实现 |
+| Req-6 | SubroutineExpander | 提取函数内部赋值关系 | ✅ 已实现 |
+| Req-7 | DriverExtractor | 增强 always block 内部语句提取 | ✅ 已实现 |
+| Req-8 | GraphBuilder | 协调新增的 Extractor | ✅ 已实现 |
+
+### 实际实现 (2026-05-31)
+
+- `get_generate_instances()` (graph_builder.py:2084, 2108) - generate 实例支持
+- `SubroutineExpander` (graph_builder.py:2474) - 函数/任务内联展开
+- `_get_generate_block_name()` (line 2017-2018) - generate block 命名
+- DriverExtractor 已处理 always block 内部语句
 
 ### 数据流修正
 
@@ -209,9 +216,9 @@ SignalTracer.trace(signal)
          │                  │                  │
          ▼                  ▼                  ▼
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   Driver    │  │  Connection  │  │  Function   │
-│  Extractor  │  │  Extractor   │  │  Extractor   │
-│  (Req-7增强)│  │  (Req-5增强) │  │  (Req-6新增) │
+│   Driver    │  │  Connection  │  │  Subroutine  │
+│  Extractor  │  │  Extractor   │  │  Expander    │
+│  (已增强)    │  │  (已增强)     │  │  (已实现)    │
 └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
        │                 │                 │
        ▼                 ▼                 ▼
