@@ -1,6 +1,44 @@
 # CDC 检测
 
+> 更新: 2026-05-31 (反映实际 CDCAnalyzer 实现)
+
 **Clock Domain Crossing (CDC)** 检测：识别跨时钟域的信号路径，发现潜在的亚稳态风险。
+
+---
+
+## 一、实际实现
+
+**类**: `CDCAnalyzer` (位于 `src/trace/core/graph/analyzer/cdc_analyzer.py`)
+
+### 核心方法
+
+```python
+class CDCAnalyzer:
+    def identify_clock_domains(self) -> Dict[str, Set[str]]
+        """识别所有时钟域（按 module 分组）"""
+    
+    def assign_domains(self) -> Dict[str, str]
+        """为每个节点分配时钟域（基于驱动关系传播）"""
+    
+    def analyze_cdc(self) -> CDCReport
+        """分析 CDC 并返回报告"""
+    
+    def timing_report(self) -> str
+        """生成详细时序报告"""
+```
+
+### CDCReport 结构
+
+```python
+{
+    'sync_type': str,           # 同步器类型 (NONE, 2-FLOP, 3-FLOP 等)
+    'sync_flops': int,          # 寄存器链长度
+    'sync_type_stats': dict,    # 各类型路径数量统计
+    'domain_pairs': dict,       # 跨时钟域路径分组统计 {(src_clk, dst_clk): stats}
+    'high_risk_paths': list,    # 高风险 CDC 路径列表
+    'risk_level': str,          # safe/low/medium/high
+}
+```
 
 ## 问题背景
 

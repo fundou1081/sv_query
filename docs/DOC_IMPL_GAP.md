@@ -543,6 +543,182 @@ class ControlFlowGraph:
 
 ---
 
+## 差异 #8: PENDING_FEATURES.md vs 实际实现
+
+### 文档状态: 需更新 (2026-05-26)
+
+### 关键功能状态对比
+
+| 功能 | 文档描述 | 实际状态 | 需更新 |
+|------|----------|----------|--------|
+| ControlFlow 控制流分析 | ✅ 已完成 | ⚠️ 部分 - ControlFlowGraph 有, ControlFlowAnalyzer 无 | ✅ |
+| Interface/modport 追踪 | ✅ 已完成 | ✅ 已实现 | 无需 |
+| Function/Task 内联展开 | ✅ 已完成 | ✅ 81 tests | 无需 |
+| Generate block 追踪 | ✅ 已完成 | ✅ 26 tests | 无需 |
+| 跨时钟域路径分析 | ✅ 已完成 | ✅ DataFlow 已支持 | 无需 |
+| Class 实例化成员追踪 | ✅ 已完成 | ✅ MEMBER_SELECT | 无需 |
+| SignalExpressionVisitor 单 dispatch | 讨论中 | ⏸️ 暂停 | ✅ |
+| Visitor 组合模式 | P3 | 未开始 | 无需 |
+| StatementCollectorVisitor 对齐 | P3 | 未开始 | 无需 |
+
+### ControlFlow 详细差异
+
+| 组件 | 文档描述 | 实际状态 |
+|------|----------|----------|
+| ControlFlowGraph | 需要实现 | ✅ 已实现 |
+| ControlFlowAnalyzer | 需要实现 | ❌ 未实现 |
+| Z3 Solver | 需要实现 | ❌ 未实现 |
+| 条件使能分析 | 目标功能 | ❌ 未实现 |
+| 分支覆盖分析 | 目标功能 | ❌ 未实现 |
+
+### SignalExpressionVisitor 单 dispatch
+
+| 状态 | 说明 |
+|------|------|
+| 原文档 | 讨论中，建议在有明确扩展需求时进行 |
+| 实际状态 | ⏸️ 暂停实施 (2026-05-31 决策) |
+
+---
+
+## 差异 #9: CDC_ANALYSIS.md vs cdc_analyzer.py
+
+### 文档状态: 部分过时
+
+### 文档描述 vs 实际实现
+
+| 功能 | 文档描述 | 实际实现 |
+|------|----------|----------|
+| 时钟域识别 | 简化方法 | ✅ 完整实现 |
+| 域传播 BFS | 简化方法 | ✅ 完整实现 (CLOCK 边传播) |
+| CDC 路径检测 | 简单检测 | ✅ 完整实现 |
+| 同步器识别 | 简化 (信号名含 sync) | ✅ 升级 - 2-FLOP/3-FLOP 结构识别 |
+| sync_type | ❌ 未提到 | ✅ 已实现 (NONE, 2-FLOP, 3-FLOP 等) |
+| sync_flops | ❌ 未提到 | ✅ 已实现 |
+| domain_pairs | ❌ 未提到 | ✅ 已实现 |
+| high_risk_paths | ❌ 未提到 | ✅ 已实现 |
+| timing_report | ❌ 未提到 | ✅ 已实现 |
+
+### 实际实现的功能 (CDCAnalyzer)
+
+```python
+class CDCAnalyzer:
+    def identify_clock_domains(self) -> Dict[str, Set[str]]
+    def assign_domains(self) -> Dict[str, str]
+    def analyze_cdc(self) -> CDCReport
+    def timing_report(self) -> str  # 新增
+```
+
+**CDCReport 包含**:
+- `sync_type`: 同步器类型 (NONE, 2-FLOP, 3-FLOP)
+- `sync_flops`: 寄存器链长度
+- `sync_type_stats`: 各类型路径数量统计
+- `domain_pairs`: 跨时钟域路径分组统计
+- `high_risk_paths`: 高风险 CDC 路径列表
+
+### ✅ 用户决策
+
+**选项**: 更新 CDC_ANALYSIS.md 反映实际实现
+
+---
+
+## 差异 #10: ARCHITECTURE.md (核心架构文档)
+
+### 文档状态: 基本准确
+
+### 核心组件对照
+
+| 组件 | 文档描述 | 实际状态 |
+|------|----------|----------|
+| UnifiedTracer | 统一入口 | ✅ 已实现 |
+| GraphBuilder | Module 级构建 | ✅ 已实现 |
+| ClassGraphBuilder | Class 级构建 | ✅ 已实现 |
+| SignalGraph | NetworkX 图 | ✅ 已实现 |
+| DataFlowGraph | 数据流分析 | ✅ 已实现 |
+| SignalExpressionVisitor | 表达式→信号 | ✅ 已实现 (7341行) |
+| StatementCollectorVisitor | 语句收集 | ✅ 已实现 |
+| SubroutineExpander | 函数内联展开 | ✅ 已实现 |
+
+### 新增组件 (文档未覆盖)
+
+| 组件 | 实际实现 | 说明 |
+|------|----------|------|
+| ControlFlowGraph | ✅ | 控制流图 |
+| ModuleInstanceGraph | ✅ | 模块实例图 |
+| CovergroupExtractor | ✅ | Covergroup 提取 |
+| SVAExtractor | ✅ | SVA 提取 |
+
+### ⚠️ 可能需要更新
+
+ARCHITECTURE.md 的分层架构图可能需要更新以反映新增的组件。
+
+---
+
+## 差异 #11: TODO.md vs 实际状态
+
+### 文档状态: 部分过时
+
+### SignalExpressionVisitor 单 dispatch 重构
+
+| 状态 | 说明 |
+|------|------|
+| 原文档 | 描述为 P2 可选优化，建议有明确扩展需求时进行 |
+| 实际状态 | ⏸️ 暂停实施 (2026-05-31 决策) |
+| 参考 | ARCHITECTURE_IMPROVEMENT.md 状态已更新 |
+
+### ControlFlow 控制流分析
+
+| 状态 | 说明 |
+|------|------|
+| 原文档 | 描述为"待实现"，功能目标包含条件使能、分支覆盖、状态机 |
+| 实际状态 | ✅ 部分完成 - ControlFlowGraph 已实现 (17 测试通过) |
+| 未完成 | ControlFlowAnalyzer、Z3 Solver 未实现 |
+
+---
+
+## 差异 #12: KNOWN_LIMITATIONS.md vs 实际状态
+
+### 文档状态: 基本准确
+
+所有失败测试已修复，996+ 测试通过。无需更新。
+
+---
+
+## 差异 #13: TIMING_ANALYSIS.md vs timing_analyzer.py
+
+### 文档状态: ✅ 基本准确
+
+### 文档描述 vs 实际实现
+
+| 功能 | 文档描述 | 实际实现 |
+|------|----------|----------|
+| 寄存器级图构建 | ✅ | ✅ |
+| 寄存器深度估计 | ✅ | ✅ |
+| SCC 缩点 | ✅ | ✅ |
+| DAG 最长路径 | ✅ | ✅ |
+| 关键路径输出 | ✅ | ✅ |
+| cycle_estimate | ❌ 未提到 | ✅ 已实现 |
+| combo_delay_estimate | ❌ 未提到 | ✅ 已实现 |
+| risk_level | ❌ 未提到 | ✅ 已实现 (CRITICAL/HIGH/MEDIUM/LOW) |
+| violation_risk | ❌ 未提到 | ✅ 已实现 |
+
+### TimingAnalyzer 增强功能 (2026-05-30)
+
+```python
+class TimingAnalyzer:
+    def analyze(self) -> Dict:
+        # 包含:
+        # - cycle_estimate: 预估时钟周期数
+        # - combo_delay_estimate: 组合逻辑延迟
+        # - risk_level: 时序风险 (CRITICAL/HIGH/MEDIUM/LOW)
+        # - violation_risk: 时序违例风险
+```
+
+### ✅ 用户决策
+
+**选项**: 可选更新 - 添加增强功能说明到 TIMING_ANALYSIS.md
+
+---
+
 ## 📋 已完成的文档差异分析
 
 | # | 文档 | 状态 | 行动 |
@@ -555,6 +731,12 @@ class ControlFlowGraph:
 | 6 | DESIGNER_PLAN.md | ⚠️ 部分完成 | ✅ 已更新文档 |
 | 7 | ARCHITECTURE_IMPROVEMENT.md | ❌ 暂停 | ✅ 已更新文档 |
 | 8 | CONTROL_FLOW_DESIGN.md | ⚠️ 部分实现 | 无需操作 |
+| 9 | PENDING_FEATURES.md | ⚠️ 需更新 | 待处理 |
+| 10 | CDC_ANALYSIS.md | ⚠️ 部分过时 | ✅ 已更新 |
+| 11 | ARCHITECTURE.md | ✅ 基本准确 | 无需操作 |
+| 12 | TODO.md | ⚠️ 部分过时 | ✅ 已更新差异 |
+| 13 | KNOWN_LIMITATIONS.md | ✅ 准确 | 无需操作 |
+| 14 | TIMING_ANALYSIS.md | ✅ 基本准确 | 无需操作 |
 
 ---
 
@@ -569,7 +751,14 @@ class ControlFlowGraph:
 | 2026-05-31 | 添加 DESIGNER_PLAN.md 差异 |
 | 2026-05-31 | 添加 ARCHITECTURE_IMPROVEMENT.md 差异 |
 | 2026-05-31 | 添加 CONTROL_FLOW_DESIGN.md 差异 |
+| 2026-05-31 | 添加 PENDING_FEATURES.md 差异 |
+| 2026-05-31 | 添加 CDC_ANALYSIS.md 差异 |
+| 2026-05-31 | 添加 ARCHITECTURE.md 差异 |
+| 2026-05-31 | 添加 TODO.md 差异 |
+| 2026-05-31 | 添加 KNOWN_LIMITATIONS.md 差异 |
+| 2026-05-31 | 添加 TIMING_ANALYSIS.md 差异 |
 | 2026-05-31 | ✅ 更新 ARCHITECTURE_DEEP_REVIEW.md - P0/P1 标记为 deprecated |
 | 2026-05-31 | ✅ 更新 DATAFLOW_ANALYSIS_ARCHITECTURE.md - 反映实际 str 类型 |
 | 2026-05-31 | ✅ 更新 DESIGNER_PLAN.md - SVA/Coverage 移至 future roadmap |
 | 2026-05-31 | ✅ 更新 ARCHITECTURE_IMPROVEMENT.md - 标记为暂停实施 |
+| 2026-05-31 | ✅ 更新 CDC_ANALYSIS.md - 反映 CDCAnalyzer 实际功能 | | | | |
