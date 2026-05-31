@@ -1,7 +1,23 @@
 # DataFlow 分析架构方案
 
 > 创建时间: 2026-05-24
-> 状态: ✅ 已实现 (见 DATAFLOW_IMPLEMENTATION_PLAN.md)
+> 更新: 2026-05-31
+> 状态: ✅ 已实现 (反映实际实现)
+
+---
+
+## 📝 实现说明 (2026-05-31 更新)
+
+实际实现的 `DataFlowSegment` 与原设计有以下差异：
+
+| 字段 | 原设计 | 实际实现 |
+|------|--------|----------|
+| driver | `SignalResult` 对象 | `Optional[str]` 字符串 |
+| condition | `ConditionInfo` 对象 | `Optional[str]` 字符串 |
+| is_blocking | ✅ 有 | ❌ 用 `assign_type` 替代 |
+| effective_condition | ❌ 无 | ✅ 有 |
+| assign_type | ❌ 无 | ✅ 有 |
+| distance | ❌ 无 | ✅ 有 |
 
 ---
 

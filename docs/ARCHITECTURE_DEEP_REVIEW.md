@@ -174,18 +174,24 @@ def extract_xxx(self, node): ...    # extract_*
 |--------|------|
 | graph_builder.py 需要拆分？ | **❌ 不需要** |
 | DriverExtractor 需要拆分？ | **⚠️ 可考虑，但非紧急** |
-| base.py PyslangAdapter 需要拆分？ | **🟡 建议关注** |
-| signal_expression_visitor.py 测试需加强？ | **🔴 建议优先** |
-| semantic_adapter.py 职责需理清？ | **🟡 建议理清** |
+| base.py PyslangAdapter 需要拆分？ | **⏸️ 暂停 - 当前不实施** |
+| signal_expression_visitor.py 测试需加强？ | **✅ 已部分完成** (187 tests added) |
+| semantic_adapter.py 职责需理清？ | **⏸️ 暂停 - 当前不实施** |
 
 ### 5.2 实际推荐的行动
 
-| 优先级 | 行动 | 理由 |
-|--------|------|------|
-| 🔴 P0 | **加强 signal_expression_visitor 测试** | 50+ [NOT TESTED] 是隐患 |
-| 🟠 P1 | **拆分 base.py PyslangAdapter** | 2050 行太大，职责多 |
-| 🟡 P2 | **理清 semantic_adapter vs base.py** | 减少重复职责 |
-| 🟢 P3 | GraphBuilder 相关 | 暂不需要 |
+| 优先级 | 行动 | 状态 | 说明 |
+|--------|------|------|------|
+| 🔴 P0 | **加强 signal_expression_visitor 测试** | ✅ 已完成部分 | 187 个单元测试已添加 |
+| 🟠 P1 | **拆分 base.py PyslangAdapter** | ❌ 不实施 | 暂停架构重构 |
+| 🟡 P2 | **理清 semantic_adapter vs base.py** | ❌ 不实施 | 暂停架构重构 |
+| 🟢 P3 | GraphBuilder 相关 | ✅ 暂不需要 | 无需操作 |
+
+### 5.2.1 用户决策 (2026-05-31)
+
+- ✅ P0: signal_expression_visitor 测试 - 已部分完成
+- ❌ P1: base.py 拆分 - 不实施，原因：系统运行稳定，架构问题不影响正确性
+- ❌ P2: semantic_adapter 理清 - 不实施，原因同上
 
 ### 5.3 为什么不推荐拆分 graph_builder.py
 
