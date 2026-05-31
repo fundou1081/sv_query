@@ -180,14 +180,22 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
         viewer.render_dot(dot_output, f"Verification Gap: {file}")
         print(f"✓ DOT: {dot_output}")
 
-        # 渲染为 PNG
+        # 渲染为 PNG (正方形比例)
         png_output = dot_output.replace('.dot', '.png')
         import subprocess
         try:
-            subprocess.run(['dot', '-Tpng', dot_output, '-o', png_output], check=True, capture_output=True)
+            # 使用 -G 指定图形属性，确保正方形输出
+            subprocess.run(['dot', '-Tpng', '-Gsize="7.5,7.5!"', '-Gratio=fill',
+                           dot_output, '-o', png_output], check=True, capture_output=True)
             print(f"✓ PNG: {png_output}")
         except Exception as e:
-            print(f"  (PNG渲染失败: {e})")
+            # fallback: 不带额外参数
+            try:
+                subprocess.run(['dot', '-Tpng', dot_output, '-o', png_output],
+                             check=True, capture_output=True)
+                print(f"✓ PNG: {png_output}")
+            except Exception as e2:
+                print(f"  (PNG渲染失败: {e2})")
 
     if html_output:
         viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
