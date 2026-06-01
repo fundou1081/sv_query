@@ -77,14 +77,27 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
         filelist: 文件列表路径
         sources: 源代码字典（如果提供 filelist 则设为 None）
     """
-    if sources is None:
+    if sources is None and file:
+        # 没提供 filelist 时读 file
         with open(file) as f:
             sources = {file: f.read()}
 
     tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist)
     graph = tracer.build_graph(use_cache=cache)
-    sva = SVAExtractor(sources).extract()
-    cov_list = CovergroupExtractor(sources).extract()
+
+    # SVA/Covergroup 提取需要源码
+    # 使用 filelist 时，源码已在 tracer 的 compiler 里，重复编译会导致 redefinition
+    if sources is None and filelist:
+        # 从 tracer 的 compiler 复用已加载的 sources
+        sources_for_extractors = tracer._get_compiler()._sources
+        sva = SVAExtractor(sources_for_extractors).extract()
+        cov_list = CovergroupExtractor(sources_for_extractors).extract()
+    elif sources:
+        sva = SVAExtractor(sources).extract()
+        cov_list = CovergroupExtractor(sources).extract()
+    else:
+        sva = None
+        cov_list = []
 
     sva_signals = set()
     for prop in sva.properties.values():
