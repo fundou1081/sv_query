@@ -23,7 +23,7 @@ class ASTWalker:
         if not self.parser or not hasattr(self.parser, "trees"):
             return
 
-        for fname, tree in self.parser.trees.items():
+        for _fname, tree in self.parser.trees.items():
             if not tree or not tree.root:
                 continue
             self._visit_node(tree.root, callback)
@@ -135,7 +135,7 @@ class PyslangAdapter:
             if hasattr(module, "header") and module.header:
                 rng = getattr(module.header, "sourceRange", None)
                 if rng and hasattr(self.parser, "trees"):
-                    for fname, tree in self.parser.trees.items():
+                    for _fname, tree in self.parser.trees.items():
                         if tree and hasattr(tree, "sourceManager"):
                             sm = tree.sourceManager
                             # 获取 header 的位置 (起始位置包含 "module " 后面是名字)
@@ -244,7 +244,7 @@ class PyslangAdapter:
     def get_modules(self) -> list:
         """获取所有模块"""
         modules = []
-        for fname, tree in self.parser.trees.items():
+        for _fname, tree in self.parser.trees.items():
             if tree and hasattr(tree, "root"):
                 modules.extend(self._extract_modules(tree.root))
         return modules
@@ -300,7 +300,7 @@ class PyslangAdapter:
     def get_classes(self) -> list:
         """获取所有类声明"""
         classes = []
-        for fname, tree in self.parser.trees.items():
+        for _fname, tree in self.parser.trees.items():
             if tree and hasattr(tree, "root"):
                 classes.extend(self._extract_classes(tree.root))
         return classes
@@ -308,7 +308,7 @@ class PyslangAdapter:
     def get_interfaces(self) -> list:
         """获取所有接口声明"""
         interfaces = []
-        for fname, tree in self.parser.trees.items():
+        for _fname, tree in self.parser.trees.items():
             if tree and hasattr(tree, "root"):
                 interfaces.extend(self._extract_interfaces(tree.root))
         return interfaces
@@ -1964,10 +1964,10 @@ class PyslangAdapter:
         # 二元表达式 (a + b, a & b, etc.)
         if any(x in kind_str for x in ["Binary", "And", "Or", "Xor", "Add", "Sub"]):
             signals = []
-            l = getattr(expr, "left", None)
+            load = getattr(expr, "left", None)
             r = getattr(expr, "right", None)
-            if l:
-                signals.extend(self._extract_signals_from_expr(l))
+            if load:
+                signals.extend(self._extract_signals_from_expr(load))
             if r:
                 signals.extend(self._extract_signals_from_expr(r))
             return signals

@@ -237,7 +237,7 @@ class SignalChain:
         return {
             "root": self.root.path,
             "drivers": [{"src": d.source, "type": d.edge_type} for d in self.drivers],
-            "loads": [{"dst": l.sink, "type": l.edge_type} for l in self.loads],
+            "loads": [{"dst": load.sink, "type": load.edge_type} for load in self.loads],
             "data_path": self.data_path,
             "via": {
                 "assign": self.via_assignment,

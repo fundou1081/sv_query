@@ -245,7 +245,7 @@ class SemanticAdapter:
                 entries = getattr(node, "entries", None)
                 gen_name = name_str
                 if entries:
-                    for idx, entry in enumerate(entries):
+                    for _idx, entry in enumerate(entries):
                         # entry 是 GenerateBlock,迭代它获取实例
                         for child in entry:
                             child_kind = str(getattr(child, "kind", ""))
@@ -440,7 +440,7 @@ class SemanticAdapter:
                 continue
             offset = getattr(start, "offset", 0)
 
-            for fname, src in sources.items():
+            for _fname, src in sources.items():
                 if offset < len(src):
                     snippet = src[offset : offset + 100]
                     match = re.match(r"class\s+(\w+)", snippet)
@@ -947,46 +947,6 @@ class SemanticAdapter:
                 params.append(param_info)
 
         return params
-
-    def analyze_task_internal_drivers(self, task) -> dict:
-        """分析 task 内部的驱动
-
-        Semantic AST: SubroutineSymbol.body contains the task body statements
-        Find assignments to output parameters
-
-        Returns:
-            Dict: {param_name: [rhs_signal_names]}
-        """
-        drivers = {}
-
-        # Get task body
-        body = getattr(task, "body", None)
-        if not body:
-            return drivers
-
-        # Check if body is a Statement
-        stmt_kind = getattr(body, "kind", None)
-
-        # Handle ExpressionStatement wrapping an AssignmentExpression
-        # e.g., out = in + 1
-        if "ExpressionStatement" in str(stmt_kind):
-            expr = getattr(body, "expr", None)
-            if expr and "Assignment" in str(expr.kind):
-                lhs = getattr(expr, "left", None)
-                rhs = getattr(expr, "right", None)
-
-                if lhs and rhs:
-                    # Get the left-hand side symbol (should be a FormalArgument)
-                    lhs_sym = getattr(lhs, "symbol", None)
-                    if lhs_sym:
-                        lhs_name = getattr(lhs_sym, "name", None)
-                        if lhs_name:
-                            # Extract RHS signal names
-                            rhs_signals = self._extract_signals_from_expr(rhs)
-                            drivers[lhs_name] = rhs_signals
-
-        return drivers
-
     def _extract_signals_from_expr(self, expr) -> list[str]:
         """从表达式中提取所有信号名称"""
         signals = []

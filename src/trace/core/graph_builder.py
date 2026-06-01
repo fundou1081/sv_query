@@ -2,27 +2,28 @@
 # graph_builder.py - Builder Layer
 # ==============================================================================
 
-from typing import Dict, List, Optional, Set, Tuple, Any
+import logging
 import warnings
 from dataclasses import dataclass, field
-from .graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
-import pyslang
-from .base import PyslangAdapter
-from .visitors.signal_expression_visitor import SignalExpressionVisitor
-from .visitors.statement_collector_visitor import StatementCollectorVisitor, ItemType
-from .builder.subroutine_expander import SubroutineExpander, CallSiteInfo
+from typing import Any
 
-import logging
+import pyslang
+
+from .base import PyslangAdapter
+from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
+from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+from .visitors.signal_expression_visitor import SignalExpressionVisitor
+from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class ExtractorResult:
-    nodes: List[TraceNode] = field(default_factory=list)
-    edges: List[TraceEdge] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    port_to_internal: Dict[str, str] = field(default_factory=dict)  # {inst_port_id: child_signal_id}
+    nodes: list[TraceNode] = field(default_factory=list)
+    edges: list[TraceEdge] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    port_to_internal: dict[str, str] = field(default_factory=dict)  # {inst_port_id: child_signal_id}
 
 
 class DriverExtractor:
@@ -34,7 +35,7 @@ class DriverExtractor:
         # SubroutineExpander for function/task call expansion
         self._subroutine_expander = SubroutineExpander(adapter)
 
-    def _get_all_signals(self, signal) -> List[str]:
+    def _get_all_signals(self, signal) -> list[str]:
         """提取表达式中的所有信号名
 
         [铁律29] 直接使用 SignalExpressionVisitor
@@ -43,7 +44,7 @@ class DriverExtractor:
             return []
         return self._signal_visitor.get_all_signals(signal)
 
-    def _get_signal(self, signal) -> Optional[str]:
+    def _get_signal(self, signal) -> str | None:
         """获取信号名
 
         [铁律29] 直接使用 SignalExpressionVisitor
@@ -91,8 +92,8 @@ class DriverExtractor:
                 if sym and hasattr(sym, "name"):
                     return str(sym.name).strip()
             if hasattr(expr, "left") and hasattr(expr, "right"):
-                l = find_clock(expr.left)
-                return l if l else find_clock(expr.right)
+                left_res = find_clock(expr.left)
+                return left_res if left_res else find_clock(expr.right)
             edge_str = str(getattr(expr, "edge", ""))
             # [FIX] EdgeKind.PosEdge -> 'PosEdge', check both lowercase and the enum name
             if "posedge" in edge_str.lower() or "PosEdge" in edge_str or "NegEdge" in edge_str:
@@ -290,7 +291,7 @@ class DriverExtractor:
             "the Visitor implementation needs to be extended."
         )
 
-    def _collect_stmts_with_context(self, n, ctx=None) -> List[Tuple[Any, Dict[str, str], Any]]:
+    def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
         [铁律29] 优先使用 StatementCollectorVisitor，不再使用 legacy fallback
@@ -1209,7 +1210,7 @@ class DriverExtractor:
             # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 
-    def _get_constructor_call(self, initializer) -> Optional[str]:
+    def _get_constructor_call(self, initializer) -> str | None:
         """提取构造函数调用名 (new())"""
         if initializer is None:
             return None
@@ -1401,7 +1402,7 @@ class DriverExtractor:
 
             if not task_def:
                 # [FIX] CU 级别函数: 在 parser.trees 中搜索 CompilationUnit 级别的函数
-                for fname, tree in self.adapter.parser.trees.items():
+                for _fname, tree in self.adapter.parser.trees.items():
                     if tree and hasattr(tree, "root"):
                         for member in tree.root.members:
                             if hasattr(member, "kind") and "Function" in str(member.kind):
@@ -1756,14 +1757,14 @@ class DriverExtractor:
             # 忽略处理错误,继续
             pass
 
-    def _get_all_signals(self, signal) -> List[str]:
+    def _get_all_signals(self, signal) -> list[str]:
         """提取表达式中的所有信号名(三元、拼接等返回多个)
 
         [铁律29] 委托给 SignalExpressionVisitor
         """
         return self._signal_visitor.get_all_signals(signal)
 
-    def _get_signal(self, signal) -> Optional[str]:
+    def _get_signal(self, signal) -> str | None:
         """获取信号名
 
         [铁律29] 委托给 SignalExpressionVisitor
@@ -1889,7 +1890,7 @@ class LoadExtractor:
             # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 
-    def _get_signal(self, signal) -> Optional[str]:
+    def _get_signal(self, signal) -> str | None:
         if signal is None:
             return None
 
@@ -2030,7 +2031,7 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError):
                                                     pass
-                                    except:
+                                    except Exception:
                                         pass
 
                                     left_val = (
@@ -2058,7 +2059,7 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError):
                                                     pass
-                                    except:
+                                    except Exception:
                                         pass
 
                                     evaluated = self.adapter._evaluate_expression(selector_expr, param_map)
@@ -2082,7 +2083,7 @@ class LoadExtractor:
                                             param_map[name] = int(value)
                                         except (ValueError, TypeError):
                                             pass
-                            except:
+                            except Exception:
                                 pass
 
                             left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
@@ -2427,7 +2428,6 @@ class ConnectionExtractor:
                 inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
             # [DEBUG] Trace inst_path and module_to_path state
-            import sys
 
             inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
@@ -2696,7 +2696,7 @@ class GraphBuilder:
         # [FIX] Track struct members for expansion
         # Key: struct variable id (e.g., "module.pkt2")
         # Value: set of member names (e.g., {"addr", "data", "valid"})
-        self._struct_members: Dict[str, Set[str]] = {}
+        self._struct_members: dict[str, set[str]] = {}
 
     def build(self) -> SignalGraph:
         self._extract_all_nodes()
@@ -2755,7 +2755,6 @@ class GraphBuilder:
 
         这确保了 dataflow 可以追踪: data_in → pkt1.data → pkt2.data → data_out
         """
-        import re
 
         # 找出需要展开的 struct 整体赋值
         # 边类型是 DRIVER，且 src 是已知的 struct 变量
@@ -2904,13 +2903,13 @@ class GraphBuilder:
         return self._extractors.get(name)
 
     def _extract_all_nodes(self):
-        for name, extractor in self._extractors.items():
+        for _name, extractor in self._extractors.items():
             result = extractor.extract()
             for node in result.nodes:
                 self.graph.add_trace_node(node)
 
     def _extract_all_edges(self):
-        for name, extractor in self._extractors.items():
+        for _name, extractor in self._extractors.items():
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
@@ -3010,7 +3009,7 @@ class GraphBuilder:
                     continue
 
                 # 创建 placeholder 节点
-                from trace.core.graph.models import TraceNode, NodeKind
+                from trace.core.graph.models import NodeKind, TraceNode
 
                 placeholder = TraceNode(
                     id=node_id, name=signal_name, module=module_name, kind=NodeKind.SIGNAL, width=(0, 0)
@@ -3021,7 +3020,7 @@ class GraphBuilder:
     def _upgrade_reg_nodes(self):
         """Upgrade node kind to REG if it's driven by a CLOCK edge.
         Only upgrade the direct target, NOT bit-select parents."""
-        for (src, dst), edges in self.graph._edge_data.items():
+        for (_src, dst), edges in self.graph._edge_data.items():
             # [FIX] edges 是 List[TraceEdge]，需要遍历
             for edge in edges:
                 if edge.kind == EdgeKind.CLOCK:
@@ -3035,7 +3034,7 @@ class GraphBuilder:
                                 node.is_port = True
 
     def _mark_special_signals(self):
-        for node_id, node in self.graph._node_data.items():
+        for _node_id, node in self.graph._node_data.items():
             name_lower = node.name.lower()
 
             if "clk" in name_lower or "clock" in name_lower:
@@ -3044,7 +3043,7 @@ class GraphBuilder:
             if "rst" in name_lower or "reset" in name_lower:
                 node.is_reset = True
 
-    def stats(self) -> Dict:
+    def stats(self) -> dict:
         return {"nodes": self.graph.number_of_nodes(), "edges": self.graph.number_of_edges(), **self.graph.stats()}
 
 

@@ -223,7 +223,7 @@ class ClockDomainTracer:
         synchronizers = []
 
         # 查找 sync 相关节点
-        for node_id, node in self.graph._node_data.items():
+        for node_id, _node in self.graph._node_data.items():
             if "sync" in node_id.lower():
                 synchronizers.append(node_id)
 

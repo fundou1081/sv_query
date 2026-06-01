@@ -138,12 +138,12 @@ class PyslangAdapter:
         path, visited = [], {signal}
         queue = list(loads)
         while queue and len(path) < 20:
-            l = queue.pop(0)
-            if l.source in visited:
+            item = queue.pop(0)
+            if item.source in visited:
                 continue
-            visited.add(l.source)
-            path.append(l.source)
-            queue.extend(self.get_loads(l.source))
+            visited.add(item.source)
+            path.append(item.source)
+            queue.extend(self.get_loads(item.source))
 
         return new_signal_chain(
             full,

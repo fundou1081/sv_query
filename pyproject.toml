@@ -142,6 +142,10 @@ ignore = [
 "src/cli/main.py" = [
     "E402",  # module-import-not-at-top-of-file
 ]
+# BaseVisitor 是抽象基类，空方法是设计意图
+"src/trace/core/visitors/base_visitor.py" = [
+    "B027",  # empty-method-without-abstract-decorator
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["trace", "cli"]

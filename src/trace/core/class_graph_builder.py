@@ -1331,9 +1331,9 @@ class ClassGraphBuilder:
                         sel = spec.selector
                         if hasattr(sel, "left") and hasattr(sel, "right"):
                             try:
-                                l = int(str(sel.left.literal))
-                                r = int(str(sel.right.literal))
-                                return (l, r)
+                                left_val = int(str(sel.left.literal))
+                                right_val = int(str(sel.right.literal))
+                                return (left_val, right_val)
                             except (ValueError, AttributeError):
                                 pass
         return (0, 0)

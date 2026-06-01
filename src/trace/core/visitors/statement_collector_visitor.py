@@ -581,8 +581,8 @@ class StatementCollectorVisitor(BaseVisitor):
                     return str(sym.name).strip()
 
             if hasattr(expr, "left") and hasattr(expr, "right"):
-                l = find_clock(expr.left)
-                return l if l else find_clock(expr.right)
+                left_res = find_clock(expr.left)
+                return left_res if left_res else find_clock(expr.right)
 
             edge_str = str(getattr(expr, "edge", ""))
             if "posedge" in edge_str.lower() or "PosEdge" in edge_str:

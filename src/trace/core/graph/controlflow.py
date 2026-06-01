@@ -74,7 +74,7 @@ class ControlFlowGraph:
     def get_edges_from(self, node_id: str) -> list[ControlFlowEdge]:
         """获取从某节点发出的所有边"""
         result = []
-        for edge_id, edge in self.edges.items():
+        for _edge_id, edge in self.edges.items():
             if edge.from_node == node_id:
                 result.append(edge)
         return result
@@ -82,7 +82,7 @@ class ControlFlowGraph:
     def get_edges_to(self, node_id: str) -> list[ControlFlowEdge]:
         """获取指向某节点的所有边"""
         result = []
-        for edge_id, edge in self.edges.items():
+        for _edge_id, edge in self.edges.items():
             if edge.to_node == node_id:
                 result.append(edge)
         return result

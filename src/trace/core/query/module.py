@@ -31,7 +31,7 @@ class ModuleTracer:
         """获取模块所有端口"""
         ports = {}
 
-        for node_id, node in self.graph._node_data.items():
+        for _node_id, node in self.graph._node_data.items():
             if node.module == module and getattr(node, "is_port", False):
                 ports[node.name] = node
 
@@ -42,7 +42,7 @@ class ModuleTracer:
         inputs = []
         outputs = []
 
-        for name, node in ports.items():
+        for _name, node in ports.items():
             if node.kind == NodeKind.PORT_IN:
                 inputs.append(node)
             elif node.kind == NodeKind.PORT_OUT:

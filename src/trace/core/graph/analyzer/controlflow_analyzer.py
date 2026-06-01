@@ -110,7 +110,7 @@ class ControlFlowAnalyzer:
             by_source[edge.src].append(edge)
 
         # 3. 构建 ConditionedDriver
-        for to_node, edges in by_source.items():
+        for _to_node, edges in by_source.items():
             # 检查是否有条件
             conditional_edges = [e for e in edges if e.condition]
             if conditional_edges:
