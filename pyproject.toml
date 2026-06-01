@@ -1,0 +1,140 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sv_query"
+version = "0.3.0"
+description = "SystemVerilog 信号追踪查询引擎 - 让验证工程师直接问'这个信号谁驱动的'"
+readme = "README.md"
+license = {text = "MIT OR Apache-2.0"}
+authors = [
+    {name = "sv_query contributors"},
+]
+keywords = [
+    "systemverilog",
+    "rtl",
+    "verification",
+    "signal-tracing",
+    "static-analysis",
+    "dataflow",
+    "cdc",
+    "sva",
+    "tcl",
+    "eda",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "networkx>=3.0",
+    "typer>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1.0",
+]
+all = [
+    "scipy>=1.10",
+]
+
+[project.scripts]
+# 顶层 CLI 入口
+sv_query = "run_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/fundou1081/sv_query"
+Repository = "https://github.com/fundou1081/sv_query.git"
+Issues = "https://github.com/fundou1081/sv_query/issues"
+
+# -----------------------------------------------------------------------------
+# 配置工具
+# -----------------------------------------------------------------------------
+
+[tool.setuptools]
+packages = ["trace", "cli"]
+package_dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+trace = ["py.typed"]
+
+# -----------------------------------------------------------------------------
+# 测试
+# -----------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["sim/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# -----------------------------------------------------------------------------
+# 代码质量
+# -----------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# 选一个合理的默认集合
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+]
+ignore = [
+    "E501",  # line too long (we have long URLs/strings)
+    "B008",  # function call in default argument
+    "N802",  # function name should be lowercase (we have domain methods)
+    "N803",  # argument name should be lowercase
+    "N806",  # variable in function should be lowercase
+    "N815",  # mixedCase variable in class scope
+    "N818",  # exception name should end in Error
+    "UP007", # use X | Y for type union (Python 3.10+ syntax)
+    "UP035", # deprecated imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "B011",  # do not call assert False
+    "N802",  # function name should be lowercase
+    "N806",  # variable should be lowercase
+]
+"scripts/*" = ["N802", "N806"]
+"docs/*" = ["N802", "N806"]
+"examples/*" = ["N802", "N806"]
+"sim/tests/*" = ["B011", "N802", "N806"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["trace", "cli"]
