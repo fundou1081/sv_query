@@ -51,10 +51,10 @@ def output_text(data: dict) -> None:
         print(f"Fanout of '{signal}':")
         if not loads:
             print("  (no loads)")
-        for l in loads:
-            dist = l.get("distance", "")
-            kind = l.get("kind", "")
-            print(f"  [{dist}] {l['id']} ({kind})")
+        for load in loads:
+            dist = load.get("distance", "")
+            kind = load.get("kind", "")
+            print(f"  [{dist}] {load['id']} ({kind})")
 
     elif command == "trace_impact":
         _output_impact_text(data)
@@ -191,13 +191,13 @@ def fanout(
 
         # 转换结果为可序列化格式
         loads = []
-        for l in result if hasattr(result, "__iter__") else []:
-            if hasattr(l, "id"):
+        for load in result if hasattr(result, "__iter__") else []:
+            if hasattr(load, "id"):
                 loads.append(
                     {
-                        "id": l.id,
-                        "kind": getattr(l, "kind", "UNKNOWN").name if hasattr(l, "kind") else "UNKNOWN",
-                        "distance": getattr(l, "distance", 1) if hasattr(l, "distance") else 1,
+                        "id": load.id,
+                        "kind": getattr(load, "kind", "UNKNOWN").name if hasattr(load, "kind") else "UNKNOWN",
+                        "distance": getattr(load, "distance", 1) if hasattr(load, "distance") else 1,
                     }
                 )
 

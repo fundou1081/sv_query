@@ -542,8 +542,7 @@ class SVAExtractor:
     def _iter_children(self, node):
         """安全遍历子节点"""
         try:
-            for child in node:
-                yield child
+            yield from node
         except TypeError:
             pass
 

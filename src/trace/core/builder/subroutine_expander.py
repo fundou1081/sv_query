@@ -115,7 +115,7 @@ class SubroutineExpander:
             effective_cond = cond_str
 
             # 生成边:使用映射后的信号名
-            for orig_name, mapped_name in signal_mapping:
+            for _orig_name, mapped_name in signal_mapping:
                 edge = TraceEdge(
                     src=f"{call_site.lhs_name.split('.')[0] if '.' in call_site.lhs_name else 'top'}.{mapped_name}",
                     dst=call_site.lhs_name,
@@ -174,7 +174,7 @@ class SubroutineExpander:
             # [FIX] 使用 _extract_signals_with_mapping 获取映射后的信号名
             signal_mapping = self._extract_signals_with_mapping(rhs, call_site.param_map)
 
-            for orig_name, mapped_name in signal_mapping:
+            for _orig_name, mapped_name in signal_mapping:
                 edge = TraceEdge(
                     src=f"{call_site.lhs_name.split('.')[0] if '.' in call_site.lhs_name else 'top'}.{mapped_name}",
                     dst=call_site.lhs_name,

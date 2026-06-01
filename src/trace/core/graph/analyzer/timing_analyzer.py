@@ -202,10 +202,10 @@ class TimingAnalyzer:
         max_len, max_path = 0, []
         for n in end_nodes:
             if n in dist:
-                l, p = dist[n]
-                if l > max_len:
-                    max_len = l
-                    max_path = p + [n]
+                length_val, prev = dist[n]
+                if length_val > max_len:
+                    max_len = length_val
+                    max_path = prev + [n]
 
         return max_len, [scc_list[n][0] for n in max_path] if len(scc_list) > 1 else max_path
 

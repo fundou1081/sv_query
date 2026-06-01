@@ -997,14 +997,6 @@ class SignalExpressionVisitor(BaseVisitor):
         if value:
             return self.extract(value)
         return SignalResult()
-
-    def extract_element_select(self, node) -> SignalResult:
-        """[NOT TESTED] ElementSelectExpression: data[5]"""
-        base = getattr(node, "left", None) or getattr(node, "base", None) or getattr(node, "value", None)
-        if base:
-            return self.extract(base)
-        return SignalResult()
-
     @on("CastExpression")
     def extract_cast_expression(self, node) -> SignalResult:
         """[NOT TESTED] CastExpression: type'(expr)"""
@@ -1082,14 +1074,6 @@ class SignalExpressionVisitor(BaseVisitor):
                 return SignalResult(primary=f"{base_name}.{member_name}")
 
         return SignalResult()
-
-    def extract_member_access(self, node) -> SignalResult:
-        """[NOT TESTED] MemberAccessExpression: obj.member"""
-        obj = getattr(node, "left", None) or getattr(node, "expression", None)
-        if obj:
-            return self.extract(obj)
-        return SignalResult()
-
     @on("DelayControl")
     def extract_delay_control(self, node) -> SignalResult:
         """[NOT TESTED] DelayControl: #1delay"""
@@ -6795,42 +6779,6 @@ class SignalExpressionVisitor(BaseVisitor):
                     signals.extend(self.get_all_signals(expr))
 
         return [s for s in signals if s]
-
-    def get_all_call(self, node) -> list[str]:
-        """Call: 函数调用参数
-
-        支持:
-        - 位置参数: func(a, b, c)
-        - 命名参数: func(.name(a), .value(b))
-
-        返回: [arg1, arg2, ...]
-        """
-        signals = []
-        args = getattr(node, "arguments", None)
-
-        if args:
-            # Handle OrderedArgument vs NamedArgument
-            for arg in args:
-                if arg is None:
-                    continue
-                # NamedArgument has .name and .expr
-                expr = getattr(arg, "expr", None) or getattr(arg, "value", None)
-                if expr:
-                    signals.extend(self.get_all_signals(expr))
-                else:
-                    # Maybe it's just an expression directly
-                    signals.extend(self.get_all_signals(arg))
-
-        return [s for s in signals if s]
-
-    def get_all_element_select(self, node) -> list[str]:
-        """ElementSelect: 位选择
-
-        返回: [base[index]]
-        """
-        result = self.visit(node)
-        return [result] if result else []
-
     def get_all_range_select(self, node) -> list[str]:
         """RangeSelect: 范围选择
 
@@ -6920,27 +6868,6 @@ class SignalExpressionVisitor(BaseVisitor):
             kind_str = str(syntax.kind)
             if "ScopedName" in kind_str:
                 return self.visit_scoped_name(syntax)
-        return None
-
-    def visit_multiple_concatenation(self, node) -> str | None:
-        """MultipleConcatenationExpression: {N{signal}}
-
-        结构: signal.concatenation.expressions
-        """
-        if hasattr(node, "concatenation"):
-            concat = node.concatenation
-            if concat and hasattr(concat, "expressions"):
-                exprs = concat.expressions
-                if hasattr(exprs, "__iter__") and not isinstance(exprs, str):
-                    for expr_item in exprs:
-                        if hasattr(expr_item, "kind"):
-                            result = self.visit(expr_item)
-                            if result:
-                                return result
-                else:
-                    result = self.visit(exprs)
-                    if result:
-                        return result
         return None
 
     def visit_replication(self, node) -> str | None:

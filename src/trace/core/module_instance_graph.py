@@ -222,7 +222,7 @@ class ModuleInstanceGraph:
 
         # Phase 0: 遍历所有模块,存储端口定义,建立 module AST 缓存
         self._module_ast_cache = {}  # module_name -> AST node
-        for fname, tree in trees.items():
+        for _fname, tree in trees.items():
             if not tree or not hasattr(tree, "root"):
                 continue
             root = tree.root
@@ -243,7 +243,7 @@ class ModuleInstanceGraph:
         # Phase 1: 收集所有实例化信息 (全树遍历)
         # 每个条目: {module_type, inst_name, instance_path}
         all_instance_info = []
-        for fname, tree in trees.items():
+        for _fname, tree in trees.items():
             if not tree or not hasattr(tree, "root"):
                 continue
             self._find_all_hierarchy_instantiations(tree.root, all_instance_info, parent_path="")
@@ -259,7 +259,7 @@ class ModuleInstanceGraph:
             module_to_paths[mod_type].append(inst_path)
 
         # Phase 3: 对每个顶层模块,在其所有实例路径上处理模块内容
-        for fname, tree in trees.items():
+        for _fname, tree in trees.items():
             if not tree or not hasattr(tree, "root"):
                 continue
             root = tree.root
@@ -935,8 +935,7 @@ class ModuleInstanceGraph:
         for attr in ["members", "items", "body", "statements", "declarations"]:
             children = getattr(node, attr, None)
             if children and hasattr(children, "__iter__") and not isinstance(children, str):
-                for child in children:
-                    yield child
+                yield from children
 
     def get_internal_signal(self, port_path: str) -> str | None:
         """端口路径 → 内部信号

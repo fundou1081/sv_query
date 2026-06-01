@@ -4,7 +4,6 @@
 处理: assign / <= / = 等赋值语句提取
 """
 
-from typing import List
 
 from .statement_visitor import StatementVisitor
 
@@ -14,7 +13,7 @@ class AssignmentVisitor(StatementVisitor):
 
     def __init__(self):
         super().__init__()
-        self.assignments: List = []  # 收集到的赋值
+        self.assignments: list = []  # 收集到的赋值
 
     def visit_nonblocking_assignment(self, node):
         """<= 非阻塞赋值"""
