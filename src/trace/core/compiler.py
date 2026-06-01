@@ -107,33 +107,115 @@ class SVCompiler:
                 self._sources[os.path.basename(path)] = f.read()
         self._comp = None
     
-    def add_filelist(self, filelist_path: str):
+    def add_filelist(self, filelist_path: str, env: Optional[Dict[str, str]] = None,
+                     already_loaded: Optional[set] = None):
         """从文件列表加载源文件
-        
-        支持两种格式:
-        - 每行一个文件路径 (相对或绝对)
-        - 每行格式: +incdir+$DIR 或 -f $FILELIST 或 +define+VAR=VAL (部分支持)
-        
+
+        支持以下语法（Verilator/Modelsim 风格）:
+        - 每行一个文件路径
+        - +incdir+DIR        添加 include 搜索路径
+        - -F FILELIST         嵌套加载另一个 filelist
+        - -f FILELIST         同上 (小写)
+        - +define+VAR=VAL     添加宏定义（部分支持：仅记入环境变量）
+        - +libext+EXT         库扩展名（未使用，跳过）
+        - ${VAR} 或 $VAR      环境变量展开
+        - // 或 # 开头       注释行
+        - 空行                跳过
+
         Args:
             filelist_path: .fl / .f / .filelist 文件路径
+            env: 额外环境变量字典（会与 os.environ 合并）
+            already_loaded: 已加载的 filelist 路径集合（防止循环引用）
         """
+        if already_loaded is None:
+            already_loaded = set()
+        if env is None:
+            env = {}
+
+        filelist_path = os.path.abspath(filelist_path)
+        if filelist_path in already_loaded:
+            return  # 防止循环引用
+        already_loaded.add(filelist_path)
+
+        # 合并环境变量 (用户 env 覆盖系统 env)
+        full_env = dict(os.environ)
+        full_env.update(env)
+
         with open(filelist_path, 'r', encoding='utf-8') as f:
             for line in f:
+                # 去除行尾注释 (// 之后到行尾的内容)
+                # 但不要在 // 是路径一部分时切割
+                # 简单处理：只在 // 前有空格时认为是注释
                 line = line.strip()
-                if not line or line.startswith('#'):
+
+                if not line:
                     continue
-                # 跳过 +incdir+ 和 -f 以及 +define+ 行（简化处理）
-                if line.startswith('+') or line.startswith('-f'):
+                if line.startswith('//') or line.startswith('#'):
                     continue
-                # 先展开 ~ (不论是绝对还是相对路径)
+
+                # 展开环境变量 ${VAR} 或 $VAR
+                line = self._expand_env(line, full_env)
+                # 展开用户主目录
                 line = os.path.expanduser(line)
-                # 相对路径相对于 filelist 所在目录
+
+                # +incdir+DIR - 添加 include 搜索路径
+                if line.startswith('+incdir+'):
+                    inc_dir = line[len('+incdir+'):].strip()
+                    if os.path.isdir(inc_dir):
+                        self.add_include_dir(inc_dir)
+                    continue
+
+                # +define+VAR=VAL - 宏定义（仅记入环境）
+                if line.startswith('+define+'):
+                    define = line[len('+define+'):].strip()
+                    if '=' in define:
+                        k, v = define.split('=', 1)
+                        full_env[k.strip()] = v.strip()
+                    else:
+                        full_env[define] = '1'
+                    continue
+
+                # +libext+EXT - 库扩展名（占位，跳过）
+                if line.startswith('+libext+'):
+                    continue
+
+                # -F FILELIST 或 -f FILELIST - 嵌套 filelist
+                if line.startswith('-F') or line.startswith('-f'):
+                    parts = line.split(None, 1)
+                    if len(parts) < 2:
+                        continue
+                    sub_filelist = parts[1].strip()
+                    if os.path.isfile(sub_filelist):
+                        self.add_filelist(sub_filelist, env=full_env, already_loaded=already_loaded)
+                    continue
+
+                # 其他以 + 或 - 开头的行：跳过
+                if line.startswith('+') or line.startswith('-'):
+                    continue
+
+                # 现在 line 应该是一个文件路径
                 if not os.path.isabs(line):
                     dir_path = os.path.dirname(filelist_path)
                     line = os.path.join(dir_path, line)
                 if os.path.isfile(line):
                     self.add_files([line])
+
         self._comp = None
+
+    def _expand_env(self, text: str, env: Dict[str, str]) -> str:
+        """展开 ${VAR} 或 $VAR 形式的环境变量"""
+        import re
+        # 先展开 ${VAR} 形式
+        def replace_braced(match):
+            var = match.group(1)
+            return env.get(var, match.group(0))
+        text = re.sub(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}', replace_braced, text)
+        # 再展开 $VAR 形式（避免匹配 $xxxx 中的 $xxxx 是普通字符）
+        def replace_simple(match):
+            var = match.group(1)
+            return env.get(var, match.group(0))
+        text = re.sub(r'\$([A-Za-z_][A-Za-z0-9_]*)', replace_simple, text)
+        return text
         
     def _do_compile(self):
         """执行编译 [铁律1] 使用 Semantic AST"""
