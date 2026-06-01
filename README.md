@@ -2,6 +2,22 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
+[![Tests](https://img.shields.io/badge/tests-1265_passing-brightgreen)]()
+[![Python](https://img.shields.io/badge/python-3.11+-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE_MIT)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
+
+---
+
+## 💡 为什么用 sv_query？
+
+- ✅ **位精确**: 知道信号 [3:0] 从哪里来，到哪里去
+- ✅ **跨模块**: 穿透子模块实例，追踪真实的物理连接
+- ✅ **全场景**: 验证问题、CDC、时序、风险、缺口检测
+- ✅ **可视化**: 自动生成 Graphviz 交互图
+- ✅ **多文件**: Verilator 风格 filelist 支持 (CVA6 级别)
+- ✅ **1265+ 测试**: 稳定可靠，覆盖核心功能
+
 ---
 
 ## 🚀 5 分钟快速上手
@@ -57,6 +73,19 @@ sv_query trace-driver top.result --files top.sv
 # 第二次运行（使用缓存，跳过重复解析）
 sv_query trace-driver top.result --files top.sv --cache
 ```
+
+---
+
+## 🆕 最近更新 (2026-06)
+
+- ✨ **多文件 filelist 支持**: Verilator 风格的 `+incdir+`, `-F`, `${VAR}` 完整支持
+- ✨ **CVA6 适配**: 工业级 RISC-V CPU 解析（macro_decoder 等模块）
+- ✨ **CLI 新选项**: `--include`, `--filelist` 处理大型项目
+- ✨ **正方形可视化**: ratio=compress 避免裁剪，size=10 英寸
+- ✨ **Unicode 容错**: 防护 pyslang 在 CVA6 上的 UnicodeDecodeError
+- 📚 **新文档**: `docs/FILELIST.md` 完整 filelist 文档
+
+详见 [CHANGELOG](docs/DOC_IMPL_GAP.md#更新日志)
 
 ---
 
@@ -1044,8 +1073,25 @@ sv_query/
 3. 运行测试：`pytest sim/tests/ -v`
 4. 提交前确保所有测试通过
 
----
-
 ## 许可
 
-MIT License
+本项目采用 **双许可**:
+
+- **MIT License** ([LICENSE_MIT](LICENSE_MIT)) - 推荐用于个人/商业项目
+- **Apache License 2.0** ([LICENSE](LICENSE)) - 适合需要专利授权的项目
+
+你可以选择任一许可来使用本项目。详见两个许可文件。
+
+## 致谢
+
+- **pyslang**: 底层 SV 解析器
+- **NetworkX**: 图算法
+- **Graphviz**: 可视化
+- **pytest**: 测试框架
+
+## 链接
+
+- 📚 [文档中心](docs/INDEX.md)
+- 🐛 [问题追踪](https://github.com/fundou1081/sv_query/issues)
+- 💻 [GitHub 仓库](https://github.com/fundou1081/sv_query)
+- 📋 [更新日志](docs/DOC_IMPL_GAP.md#更新日志)

@@ -5,6 +5,17 @@
 > **核心方法**: 通过阅读实际 RTL 源代码，为每个模块生成 16-22 道验证问题
 >
 > **目标**: 训练对 RTL 内部信号路径的追踪能力，涵盖协议解析、数据转换、路由、真实场景四大维度
+>
+> **主项目文档**: 请查看根目录 [README.md](../README.md) 获取完整使用指南
+
+---
+
+## 🆕 最近更新 (2026-06)
+
+- ✅ OpenTitan 10 个模块完成 (176 题)
+- ✅ CVA6 适配工作进展中
+- ✨ 新增 `docs/FILELIST.md` - Verilator 风格 filelist 完整文档
+- ✨ 新增 `docs/DOC_IMPL_GAP.md` - 代码与文档同步状态
 
 ---
 
@@ -224,3 +235,4 @@ python run_cli.py visualize graph -f $CVA6_REPO_DIR/core/cva6.sv --filelist $CVA
 **最后更新**: 2026-06-01
 **项目总数**: 13 个开源 RTL 项目
 **测试通过**: 1265 (2026-06-01 刷新)
+**许可**: MIT / Apache 2.0 (双许可)
