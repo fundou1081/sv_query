@@ -27,6 +27,8 @@
 | **项目计划** | [PROJECT_PLAN.md](./PROJECT_PLAN.md) |
 | **架构决定** | [FINAL_SCHEMA_DECISION.md](./FINAL_SCHEMA_DECISION.md) |
 | **Visitor 测试** | [SIGNAL_EXPRESSION_VISITOR_TEST_STATUS.md](./SIGNAL_EXPRESSION_VISITOR_TEST_STATUS.md) |
+| **Filelist 格式** | [FILELIST.md](./FILELIST.md) |
+| **同步状态** | [DOC_IMPL_GAP.md](./DOC_IMPL_GAP.md) |
 
 ---
 
@@ -241,6 +243,9 @@ UVM/SVA Skeleton 自动生成规则（如果存在）
 
 | 日期 | 操作 |
 |------|------|
+| 2026-06-01 | 添加 FILELIST.md, 完整 filelist 格式文档 |
+| 2026-06-01 | 添加 DOC_IMPL_GAP.md 入口 |
+| 2026-06-01 | 更新 USER_GUIDE.md (v2.0) |
 | 2026-05-31 | 创建完整文档索引 |
 | 2026-05-24 | 首次文档梳理 (DOCS_INVENTORY.md) |
 

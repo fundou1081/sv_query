@@ -145,9 +145,39 @@ dot -Tpng -Gsize=10 -Gratio=compress output.dot -o output.png
 
 # 生成 HTML 交互式图
 python run_cli.py visualize graph -f <file.sv> --html output.html
+
+# 多文件项目 - 使用 include 路径
+python run_cli.py visualize graph -f <file.sv> -I /path/include
+
+# 多文件项目 - 使用 filelist (Verilator/Modelsim 风格)
+python run_cli.py visualize graph -f top.sv --filelist project.fl
 ```
 
 **图片比例**：默认生成正方形图片 (10 英寸，ratio=compress)，不裁剪超出内容。
+
+### Filelist 支持
+
+支持 Verilator / Modelsim 风格的 filelist 格式:
+
+```filelist
+// 注释
+# 也可以用 # 开头
+
+// include 搜索路径
++incdir+${CVA6_REPO_DIR}/core/include
+
+// 环境变量展开
+${CVA6_REPO_DIR}/core/cva6.sv
+$HOME/my_project/module.sv
+
+// 嵌套加载
+-F vendor/hpdcache.Flist
+
+// 宏定义
++define+DEBUG=1
+```
+
+详细语法: 参考 `docs/FILELIST.md`
 
 ### 验证缺口可视化
 
@@ -166,6 +196,19 @@ python run_cli.py visualize gap -f <file.sv> --dot gap.dot --png --min-risk 25
 4. **对照答案**：`results/ANSWERS.md` 检验
 5. **追踪信号路径**：使用 `grep -n` 在 RTL 目录中定位关键信号
 
+### 多文件项目
+
+对于大型 SV 项目（如 CVA6, OpenTitan），使用 filelist:
+
+```bash
+export CVA6_REPO_DIR=/path/to/cva6
+export TARGET_CFG=cv64a6_imafdc_sv39
+
+python run_cli.py visualize graph -f $CVA6_REPO_DIR/core/cva6.sv --filelist $CVA6_REPO_DIR/core/Flist.cva6
+```
+
+详细示例: 参考 `docs/FILELIST.md` 的"实际案例：CVA6"章节。
+
 ---
 
 ## 下一步扩展计划
@@ -178,5 +221,6 @@ python run_cli.py visualize gap -f <file.sv> --dot gap.dot --png --min-risk 25
 
 ---
 
-**最后更新**: 2026-05-31
+**最后更新**: 2026-06-01
 **项目总数**: 13 个开源 RTL 项目
+**测试通过**: 1265 (2026-06-01 刷新)
