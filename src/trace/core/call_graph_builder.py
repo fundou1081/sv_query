@@ -157,12 +157,11 @@ class CallGraphBuilder:
 
         # 获取名称
         name = ""
-        keyword = ""
         for child in node:
             ck = str(getattr(child, "kind", ""))
             if "FunctionPrototype" in ck:
                 name = str(getattr(child, "name", "")).strip()
-                keyword = str(getattr(child, "keyword", "")).strip()
+                str(getattr(child, "keyword", "")).strip()
 
         if not name:
             return

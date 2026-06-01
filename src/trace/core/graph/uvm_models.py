@@ -114,7 +114,6 @@ class UVMTestbench:
 
         # TLM 连接
         for conn in self.connections:
-            style = " [style=dashed, color=blue]"
             label = f' [label="{conn.source_port.split(".")[-1]} → {conn.target_port.split(".")[-1]}", style=dashed, color=blue]'
             src = conn.source_port.split(".")[0]
             tgt = conn.target_port.split(".")[0]

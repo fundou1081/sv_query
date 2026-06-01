@@ -248,7 +248,7 @@ class SignalGraphViewer:
         - 高风险区域聚焦模式（focus_risk_threshold）
         """
         # 布局引擎选择
-        layout_engine = self.config.get("layout_engine", "dot")
+        self.config.get("layout_engine", "dot")
 
         dot_lines = [
             "digraph signal_graph {",
@@ -582,7 +582,7 @@ class SignalGraphViewer:
     def render_html(self, output_path: str) -> str:
         """渲染为交互式 HTML"""
         # 先获取 DOT 和 Mermaid
-        dot_content = self.render_dot(None)
+        self.render_dot(None)
 
         html_template = """<!DOCTYPE html>
 <html>
@@ -667,8 +667,8 @@ Cover Status:
 
         # 模块聚类统计
         modules = self._extract_modules() if self.config.get("cluster_modules", False) else {}
-        total_modules = len(modules)
-        critical_nodes = sum(1 for n in self.graph.nodes() if self._compute_risk(n)[0] >= 40)
+        len(modules)
+        sum(1 for n in self.graph.nodes() if self._compute_risk(n)[0] >= 40)
 
         # 渲染 Mermaid
         mermaid_content = self.render_mermaid(None)
@@ -696,7 +696,7 @@ def create_gap_viewer(graph, sva_signals, cov_signals, gap_signals, output_prefi
         gap_signals: 高风险缺口信号列表
         output_prefix: 输出文件前缀
     """
-    gap_names = {g["name"] for g in gap_signals}
+    {g["name"] for g in gap_signals}
 
     viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
     viewer.configure(
@@ -711,11 +711,11 @@ def create_gap_viewer(graph, sva_signals, cov_signals, gap_signals, output_prefi
 
     # 渲染 DOT
     dot_path = f"{output_prefix}_gap.dot"
-    dot_content = viewer.render_dot(dot_path, "Verification Gap Analysis")
+    viewer.render_dot(dot_path, "Verification Gap Analysis")
 
     # 渲染 HTML
     html_path = f"{output_prefix}_gap.html"
-    html_content = viewer.render_html(html_path)
+    viewer.render_html(html_path)
 
     return dot_path, html_path
 

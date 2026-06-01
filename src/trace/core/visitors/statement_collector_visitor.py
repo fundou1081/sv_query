@@ -732,7 +732,7 @@ class StatementCollectorVisitor(BaseVisitor):
 
         # [FIX] 保存 case selector 到上下文，供 _compute_effective_condition 使用
         # 先保留旧的 selector，退出时恢复
-        old_selector = self.current_ctx.get("_case_selector", "")
+        self.current_ctx.get("_case_selector", "")
         self.current_ctx["_case_selector"] = selector
 
         # 获取 items

@@ -109,7 +109,7 @@ def gap(
         fan_out = graph.out_degree(node_id)
         width_bits = max(1, node.width[1] - node.width[0] + 1) if node.width else 1
         is_reg = node.kind == NodeKind.REG
-        name = info["name"]
+        info["name"]
 
         func = fan_in * 3 + fan_out * 2 + width_bits * 0.3
         func += 15 if fan_in >= 3 else 0

@@ -221,7 +221,6 @@ class ClockDomainTracer:
     def find_synchronizers(self, clock: str) -> list[str]:
         """查找同步器链"""
         synchronizers = []
-        clock_node_id = clock if "." in clock else f"top.{clock}"
 
         # 查找 sync 相关节点
         for node_id, node in self.graph._node_data.items():

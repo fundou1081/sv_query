@@ -131,8 +131,8 @@ class CDCAnalyzer:
             # 检查是否有同步器
             sync_info = self._analyze_sync_for_path(dst)
 
-            src_node = self.graph.get_node(src)
-            dst_node = self.graph.get_node(dst)
+            self.graph.get_node(src)
+            self.graph.get_node(dst)
 
             path_info = {
                 "source": src,
