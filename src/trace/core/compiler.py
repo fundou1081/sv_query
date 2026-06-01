@@ -125,11 +125,12 @@ class SVCompiler:
                 # 跳过 +incdir+ 和 -f 以及 +define+ 行（简化处理）
                 if line.startswith('+') or line.startswith('-f'):
                     continue
+                # 先展开 ~ (不论是绝对还是相对路径)
+                line = os.path.expanduser(line)
                 # 相对路径相对于 filelist 所在目录
                 if not os.path.isabs(line):
                     dir_path = os.path.dirname(filelist_path)
                     line = os.path.join(dir_path, line)
-                line = os.path.expanduser(line)
                 if os.path.isfile(line):
                     self.add_files([line])
         self._comp = None
