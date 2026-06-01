@@ -838,7 +838,6 @@ class SignalExpressionVisitor(BaseVisitor):
     @on("MinTypMaxExpression")
     def extract_min_typ_max(self, node) -> SignalResult:
         """[NOT TESTED] MinTypMaxExpression: min:typ:max"""
-        signals = []
         min_val = getattr(node, "min", None) or getattr(node, "left", None)
         typ_val = getattr(node, "typ", None) or getattr(node, "value", None)
         max_val = getattr(node, "max", None) or getattr(node, "right", None)

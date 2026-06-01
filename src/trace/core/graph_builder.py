@@ -1161,7 +1161,7 @@ class DriverExtractor:
                         self._collect_assignments_from_stmt(c, statements, depth + 1)
                 elif hasattr(child, "kind"):
                     self._collect_assignments_from_stmt(child, statements, depth + 1)
-            except Exception as e:
+            except Exception:
                 # [铁律3] 记录而非静默忽略 - 但不影响主流程
                 pass
 
@@ -1205,7 +1205,7 @@ class DriverExtractor:
             rhs_name = self._get_signal(rhs)
 
             return lhs_name, rhs_name, rhs
-        except Exception as e:
+        except Exception:
             # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 
@@ -1752,7 +1752,7 @@ class DriverExtractor:
                                 effective_condition=ctx.get("effective_condition", ""),
                             )
                         )
-        except Exception as e:
+        except Exception:
             # 忽略处理错误,继续
             pass
 
@@ -1885,7 +1885,7 @@ class LoadExtractor:
             rhs_name = self._get_signal(rhs)
 
             return lhs_name, rhs_name, rhs
-        except Exception as e:
+        except Exception:
             # [铁律3] 解析失败时返回空值,但记录错误上下文
             return None, None, None
 

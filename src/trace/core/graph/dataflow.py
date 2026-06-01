@@ -550,7 +550,7 @@ class DataFlowGraph:
                 # 解析表达式中的 .member 模式
                 match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)$", edge.expression)
                 if match:
-                    dst_member_name = match.group(1)
+                    match.group(1)
                     dst_struct_path = edge.expression[: match.start()]
                     # dst_struct_path 可能是相对路径如 pkt2,需要解析为完整路径
                     # 尝试解析 dst_struct_path

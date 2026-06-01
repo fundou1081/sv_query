@@ -218,7 +218,7 @@ class SVAExtractor:
 
     def _parse_assertion(self, node, graph: SVAGraph, prefix: str = ""):
         """解析 ConcurrentAssertionMember"""
-        kind_str = str(getattr(node, "kind", ""))
+        str(getattr(node, "kind", ""))
 
         # 找 assert/assume/cover statement
         assertion_kind = ""
