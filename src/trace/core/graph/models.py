@@ -1,11 +1,13 @@
-#==============================================================================
+# ==============================================================================
 # graph_models.py - 信号关系图模型
-#==============================================================================
+# ==============================================================================
+
+from dataclasses import dataclass
+from datetime import UTC
+from enum import Enum, auto
 
 import networkx as nx
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import List, Set, Dict, Optional, Tuple
+
 
 class NodeKind(Enum):
     SIGNAL = auto()
@@ -17,51 +19,54 @@ class NodeKind(Enum):
     PARAM = auto()
     CONST = auto()
     INSTANTIATED_MODULE = auto()  # 实例节点 (top.inst)
-    GENERATE_BLOCK = auto()        # generate 块节点 (top.GEN)
+    GENERATE_BLOCK = auto()  # generate 块节点 (top.GEN)
 
     # [Phase1a] Class & Constraint 节点类型
-    CLASS = auto()                  # class 定义节点 (packet)
-    CLASS_INSTANCE = auto()          # class 实例 (top.p = new())
-    CLASS_INSTANCE_PROPERTY = auto() # class 实例成员 (top.p.addr, 通过实例访问的成员)
-    CLASS_PROPERTY = auto()         # class 成员变量 (packet.addr, rand 变量)
-    CONSTRAINT_BLOCK = auto()       # constraint c { ... } 命名块
-    CONSTRAINT_EXPR = auto()        # 单条表达式约束
-    CONSTRAINT_IF = auto()          # if 分支
-    CONSTRAINT_ELSE = auto()         # else 分支
-    CONSTRAINT_IMPLIES = auto()     # implication 左部 (en -> ...)
-    CONSTRAINT_UNIQUE = auto()      # unique { ... }
-    CONSTRAINT_SOLVE = auto()       # solve A before B
-    CONSTRAINT_FOREACH = auto()     # foreach 循环
-    CONSTRAINT_RANGE = auto()       # inside {0,1,2} 的集合
-    EXPRESSION = auto()             # 表达式节点 (a + b, a & b)
-    FUNCTION_CALL = auto()          # 函数调用节点
+    CLASS = auto()  # class 定义节点 (packet)
+    CLASS_INSTANCE = auto()  # class 实例 (top.p = new())
+    CLASS_INSTANCE_PROPERTY = auto()  # class 实例成员 (top.p.addr, 通过实例访问的成员)
+    CLASS_PROPERTY = auto()  # class 成员变量 (packet.addr, rand 变量)
+    CONSTRAINT_BLOCK = auto()  # constraint c { ... } 命名块
+    CONSTRAINT_EXPR = auto()  # 单条表达式约束
+    CONSTRAINT_IF = auto()  # if 分支
+    CONSTRAINT_ELSE = auto()  # else 分支
+    CONSTRAINT_IMPLIES = auto()  # implication 左部 (en -> ...)
+    CONSTRAINT_UNIQUE = auto()  # unique { ... }
+    CONSTRAINT_SOLVE = auto()  # solve A before B
+    CONSTRAINT_FOREACH = auto()  # foreach 循环
+    CONSTRAINT_RANGE = auto()  # inside {0,1,2} 的集合
+    EXPRESSION = auto()  # 表达式节点 (a + b, a & b)
+    FUNCTION_CALL = auto()  # 函数调用节点
+
 
 class EdgeKind(Enum):
-    DRIVER = auto()      # 数据驱动 (q <= d)
-    CLOCK = auto()       # 时钟触发 (clk -> q)
-    RESET = auto()       # 异步复位 (rst_n -> q)
+    DRIVER = auto()  # 数据驱动 (q <= d)
+    CLOCK = auto()  # 时钟触发 (clk -> q)
+    RESET = auto()  # 异步复位 (rst_n -> q)
     CONNECTION = auto()  # 模块端口连接
-    BIT_SELECT = auto()   # 位选择聚合
+    BIT_SELECT = auto()  # 位选择聚合
 
     # [Phase1a] Class & Constraint 边类型
-    CONSTRAINS = auto()      # CLASS_PROPERTY ← 约束管控
-    HAS_CONDITION = auto()   # CONSTRAINT_IF → CLASS_PROPERTY (条件变量)
+    CONSTRAINS = auto()  # CLASS_PROPERTY ← 约束管控
+    HAS_CONDITION = auto()  # CONSTRAINT_IF → CLASS_PROPERTY (条件变量)
     HAS_CONSEQUENT = auto()  # CONSTRAINT_IF → CONSTRAINT_EXPR (if 结果)
-    HAS_ALTERNATE = auto()   # CONSTRAINT_ELSE → CONSTRAINT_EXPR (else 结果)
-    HAS_LHS = auto()         # CONSTRAINT_EXPR → operand (左操作数)
-    HAS_RHS = auto()          # CONSTRAINT_EXPR → operand (右操作数)
-    HAS_MEMBER = auto()      # CONSTRAINT_UNIQUE → CLASS_PROPERTY (集合成员)
-    HAS_LOOP_VAR = auto()    # CONSTRAINT_FOREACH → CLASS_PROPERTY (循环变量)
-    HAS_BEFORE = auto()      # CONSTRAINT_SOLVE → CLASS_PROPERTY (before)
-    HAS_AFTER = auto()       # CONSTRAINT_SOLVE → CLASS_PROPERTY (after)
+    HAS_ALTERNATE = auto()  # CONSTRAINT_ELSE → CONSTRAINT_EXPR (else 结果)
+    HAS_LHS = auto()  # CONSTRAINT_EXPR → operand (左操作数)
+    HAS_RHS = auto()  # CONSTRAINT_EXPR → operand (右操作数)
+    HAS_MEMBER = auto()  # CONSTRAINT_UNIQUE → CLASS_PROPERTY (集合成员)
+    HAS_LOOP_VAR = auto()  # CONSTRAINT_FOREACH → CLASS_PROPERTY (循环变量)
+    HAS_BEFORE = auto()  # CONSTRAINT_SOLVE → CLASS_PROPERTY (before)
+    HAS_AFTER = auto()  # CONSTRAINT_SOLVE → CLASS_PROPERTY (after)
     CONTAINS_MEMBER = auto()  # CLASS → CLASS_PROPERTY (组合/成员变量)
-    IS_INSTANCE_OF = auto()   # CLASS_PROPERTY → CLASS (成员变量的类型引用)
-    SUPER_CALL = auto()       # CONSTRAINT_EXPR → 被调用的父类约束 (增量扩展 super.c1)
-    MEMBER_SELECT = auto()    # 实例成员访问: top.p.addr → top.p (p.addr 的 MEMBER_SELECT 边)
+    IS_INSTANCE_OF = auto()  # CLASS_PROPERTY → CLASS (成员变量的类型引用)
+    SUPER_CALL = auto()  # CONSTRAINT_EXPR → 被调用的父类约束 (增量扩展 super.c1)
+    MEMBER_SELECT = auto()  # 实例成员访问: top.p.addr → top.p (p.addr 的 MEMBER_SELECT 边)
+
 
 # [铁律16] 注意:ENABLE/DATA 不作为独立边类型
 # - ENABLE: 用 TraceEdge.condition 属性替代,语义更清晰
 # - DATA: 与 DRIVER 重复,保留 DRIVER 即可
+
 
 @dataclass
 class TraceNode:
@@ -69,18 +74,19 @@ class TraceNode:
     name: str
     module: str
     kind: NodeKind
-    width: Tuple[int, int]
-    bit_range: Optional[str] = None
+    width: tuple[int, int]
+    bit_range: str | None = None
     file: str = ""
     line: int = 0
     is_clock: bool = False
     is_reset: bool = False
     is_enable: bool = False
     is_port: bool = False
-    parent: Optional[str] = None  # 方案C: 父节点ID (位选择→完整信号)
-    parent_bit_start: Optional[int] = None  # 位选在父节点中的起始位
-    parent_bit_end: Optional[int] = None    # 位选在父节点中的结束位
-    modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
+    parent: str | None = None  # 方案C: 父节点ID (位选择→完整信号)
+    parent_bit_start: int | None = None  # 位选在父节点中的起始位
+    parent_bit_end: int | None = None  # 位选在父节点中的结束位
+    modport_dir: str | None = None  # P0-3: modport direction (input/output/inout)
+
 
 @dataclass
 class TraceEdge:
@@ -91,10 +97,11 @@ class TraceEdge:
     condition: str = ""
     effective_condition: str = ""  # 判断清除后的条件（只保留直接相关的条件）
     clock_domain: str = ""
-    modport_dir: Optional[str] = None  # P0-3: modport direction (input/output/inout)
+    modport_dir: str | None = None  # P0-3: modport direction (input/output/inout)
     confidence: str = "high"
-    expression: str = ""    # 驱动表达式 (如 "sreg_d", "a + b")
-    bit_slice: str = ""    # 位选择 (如 "[8:1]")
+    expression: str = ""  # 驱动表达式 (如 "sreg_d", "a + b")
+    bit_slice: str = ""  # 位选择 (如 "[8:1]")
+
 
 @dataclass
 class DriverInfo:
@@ -102,68 +109,70 @@ class DriverInfo:
 
     [方案C] 从 TraceNode 分离出来,因为 condition 是边的属性而非节点属性
     """
-    node: TraceNode           # 驱动节点
-    condition: str = ""       # 驱动条件 (来自 if 语句)
-    reset_condition: str = "" # 复位条件 (来自 if (!rst_ni))
-    clock_domain: str = ""    # 时钟域
-    assign_type: str = ""     # always_ff / always_comb / continuous / blocking / nonblocking
-    distance: int = 1         # 驱动距离 (层级深度)
-    expression: str = ""      # 驱动表达式 (如 sreg_d)
-    bit_slice: str = ""       # 位选择 (如 [8:1])
+
+    node: TraceNode  # 驱动节点
+    condition: str = ""  # 驱动条件 (来自 if 语句)
+    reset_condition: str = ""  # 复位条件 (来自 if (!rst_ni))
+    clock_domain: str = ""  # 时钟域
+    assign_type: str = ""  # always_ff / always_comb / continuous / blocking / nonblocking
+    distance: int = 1  # 驱动距离 (层级深度)
+    expression: str = ""  # 驱动表达式 (如 sreg_d)
+    bit_slice: str = ""  # 位选择 (如 [8:1])
     target_signal: str = ""  # 目标信号 (被驱动的信号)
-    
+
     @property
     def id(self) -> str:
         return self.node.id
-    
+
     @property
     def full_statement(self) -> str:
         """组装完整的驱动语句 (debug 用)
-        
+
         例如: if (cond) sreg_d <= {rx, sreg_q[10:1]};
         """
         # 获取 LHS (目标信号)
-        lhs = self.target_signal if self.target_signal else (self.node.id if hasattr(self, 'node') else '?')
-        
+        lhs = self.target_signal if self.target_signal else (self.node.id if hasattr(self, "node") else "?")
+
         # 组装条件
         cond = self.condition if self.condition else self.reset_condition
         if cond:
             stmt = f"if ({cond}) {lhs} "
         else:
             stmt = f"{lhs} "
-        
+
         # 添加 assign_type
         assign_map = {
-            'nonblocking': '<=',
-            'blocking': '=' ,
-            'continuous': '=',
+            "nonblocking": "<=",
+            "blocking": "=",
+            "continuous": "=",
         }
-        assign_op = assign_map.get(self.assign_type, self.assign_type or '=')
+        assign_op = assign_map.get(self.assign_type, self.assign_type or "=")
         stmt += f"{assign_op} "
-        
+
         # 添加表达式
-        expr = self.expression if self.expression else '?'
+        expr = self.expression if self.expression else "?"
         stmt += f"{expr};"
-        
+
         # 添加时钟域注释
         if self.clock_domain:
             stmt += f" // @{self.clock_domain}"
-        
+
         return stmt
+
 
 class SignalGraph(nx.DiGraph):
     def __init__(self):
         super().__init__()
-        self._node_data: Dict[str, TraceNode] = {}
+        self._node_data: dict[str, TraceNode] = {}
         # [FIX] 支持同一 (src, dst) 的多条边 (不同 condition)
-        self._edge_data: Dict[Tuple[str, str], List[TraceEdge]] = {}
-        self._port_to_internal: Dict[str, str] = {}  # {inst_port_id: child_signal_id}
+        self._edge_data: dict[tuple[str, str], list[TraceEdge]] = {}
+        self._port_to_internal: dict[str, str] = {}  # {inst_port_id: child_signal_id}
 
-    def get_port_to_internal(self) -> Dict[str, str]:
+    def get_port_to_internal(self) -> dict[str, str]:
         """获取端口到内部信号的映射"""
         return self._port_to_internal
 
-    def get_internal_signal(self, inst_port_id: str) -> Optional[str]:
+    def get_internal_signal(self, inst_port_id: str) -> str | None:
         """查询实例端口对应的内部信号
 
         Args:
@@ -193,30 +202,18 @@ class SignalGraph(nx.DiGraph):
             if node_id not in self._node_data:
                 if _is_literal(node_id):
                     # 字面量创建为 CONST 类型节点
-                    parts = node_id.split('.', 1)
-                    module = parts[0] if len(parts) > 1 else ''
+                    parts = node_id.split(".", 1)
+                    module = parts[0] if len(parts) > 1 else ""
                     name = parts[1] if len(parts) > 1 else node_id
-                    literal_node = TraceNode(
-                        id=node_id,
-                        name=name,
-                        module=module,
-                        kind=NodeKind.CONST,
-                        width=(0, 0)
-                    )
+                    literal_node = TraceNode(id=node_id, name=name, module=module, kind=NodeKind.CONST, width=(0, 0))
                     self._node_data[node_id] = literal_node
                     super().add_node(node_id)
                 else:
-                    parts = node_id.split('.', 1)
-                    module = parts[0] if len(parts) > 0 else ''
+                    parts = node_id.split(".", 1)
+                    module = parts[0] if len(parts) > 0 else ""
                     name = parts[1] if len(parts) > 1 else node_id
 
-                    placeholder = TraceNode(
-                        id=node_id,
-                        name=name,
-                        module=module,
-                        kind=NodeKind.SIGNAL,
-                        width=(0, 0)
-                    )
+                    placeholder = TraceNode(id=node_id, name=name, module=module, kind=NodeKind.SIGNAL, width=(0, 0))
                     self._node_data[node_id] = placeholder
                     super().add_node(node_id)
 
@@ -229,16 +226,18 @@ class SignalGraph(nx.DiGraph):
 
         # 检查是否完全重复（所有属性都相同）
         for existing_edge in self._edge_data[key]:
-            if (existing_edge.kind == edge.kind and
-                existing_edge.condition == edge.condition and
-                existing_edge.assign_type == edge.assign_type and
-                existing_edge.expression == edge.expression):
+            if (
+                existing_edge.kind == edge.kind
+                and existing_edge.condition == edge.condition
+                and existing_edge.assign_type == edge.assign_type
+                and existing_edge.expression == edge.expression
+            ):
                 return  # 完全重复，跳过
 
         # 添加新边到列表
         self._edge_data[key].append(edge)
         super().add_edge(edge.src, edge.dst)
-        
+
         # 自动计算 effective_condition
         if edge.condition and not edge.effective_condition:
             edge.effective_condition = SignalGraph.compute_effective_condition(edge.condition)
@@ -248,10 +247,10 @@ class SignalGraph(nx.DiGraph):
         if node_id in self._node_data:
             self._node_data[node_id].modport_dir = modport_dir
 
-    def get_node(self, node_id: str) -> Optional[TraceNode]:
+    def get_node(self, node_id: str) -> TraceNode | None:
         return self._node_data.get(node_id)
 
-    def get_edge(self, src: str, dst: str) -> Optional[TraceEdge]:
+    def get_edge(self, src: str, dst: str) -> TraceEdge | None:
         """获取 (src, dst) 的第一条边（向后兼容，按优先级排序）"""
         edges = self._edge_data.get((src, dst), [])
         if not edges:
@@ -259,7 +258,7 @@ class SignalGraph(nx.DiGraph):
         # 返回排序后的第一条（优先级最高）
         return self._sort_edges(edges)[0]
 
-    def get_edges(self, src: str, dst: str) -> List[TraceEdge]:
+    def get_edges(self, src: str, dst: str) -> list[TraceEdge]:
         """获取 (src, dst) 的所有边（按优先级排序）"""
         edges = self._edge_data.get((src, dst), [])
         return self._sort_edges(edges)
@@ -267,44 +266,45 @@ class SignalGraph(nx.DiGraph):
     @staticmethod
     def compute_effective_condition(condition: str) -> str:
         """计算判断清除后的条件
-        
+
         从嵌套条件中提取直接相关的条件。
         例如:
             - '!!rst_n && state == DONE' -> 'state == DONE'
             - 'en && a' -> 'a'
             - 'state == IDLE' -> 'state == IDLE'
-        
+
         规则:
             1. 如果 condition 中包含 '&&' 或 '||'
             2. 提取最后一个逻辑单元（通常是状态判断或信号本身）
             3. 忽略简单的 reset 条件（如 '!rst_n'）
         """
-        if not condition or '&&' not in condition:
+        if not condition or "&&" not in condition:
             return condition
-        
+
         import re
+
         # 移除空格
-        stripped = condition.replace(' ', '')
-        
+        stripped = condition.replace(" ", "")
+
         # 分割 && 部分
-        parts = stripped.split('&&')
-        
+        parts = stripped.split("&&")
+
         # 找最后一个包含 == 或 =~ 或信号引用的部分
         for part in reversed(parts):
             part = part.strip()
             # 跳过 reset 条件
-            if re.match(r'^(!|~~|~)rst', part, re.IGNORECASE):
+            if re.match(r"^(!|~~|~)rst", part, re.IGNORECASE):
                 continue
-            if re.match(r'^(!|~~|~)reset', part, re.IGNORECASE):
+            if re.match(r"^(!|~~|~)reset", part, re.IGNORECASE):
                 continue
             # 保留其他部分
             return part
-        
+
         return condition
 
-    def set_lifo_order(self, state_values: List[str]):
+    def set_lifo_order(self, state_values: list[str]):
         """设置 LIFO 顺序的状态值列表，用于边排序
-        
+
         Args:
             state_values: 状态值列表，按语义优先级升序排列
                          后面的状态优先级更高 (LIFO)
@@ -312,76 +312,76 @@ class SignalGraph(nx.DiGraph):
         """
         self._lifo_priority = {sv: i for i, sv in enumerate(state_values)}
 
-    def _sort_edges(self, edges: List[TraceEdge]) -> List[TraceEdge]:
+    def _sort_edges(self, edges: list[TraceEdge]) -> list[TraceEdge]:
         """边排序：reset 条件优先，然后按 LIFO 顺序（from_state 优先级）"""
-        lifo_priority = getattr(self, '_lifo_priority', {})
-        
+        lifo_priority = getattr(self, "_lifo_priority", {})
+
         def edge_priority(e: TraceEdge) -> tuple:
             # reset 条件 = 不包含 && 或 || 且包含 rst/reset
             is_reset = False
             if e.condition:
-                stripped = e.condition.replace(' ', '')
-                has_logical = '&&' in stripped or '||' in stripped
-                has_reset = 'rst' in stripped.lower() or 'reset' in stripped.lower()
+                stripped = e.condition.replace(" ", "")
+                has_logical = "&&" in stripped or "||" in stripped
+                has_reset = "rst" in stripped.lower() or "reset" in stripped.lower()
                 is_reset = has_reset and not has_logical
-            
+
             # 提取 from_state (从 condition 中找 state == X)
             from_state = None
             if e.condition and not is_reset:
                 import re
-                m = re.search(r'state\s*(?:==|===)\s*(\w+)', e.condition)
+
+                m = re.search(r"state\s*(?:==|===)\s*(\w+)", e.condition)
                 if m:
                     from_state = m.group(1)
-            
+
             # LIFO 优先级：from_state 在预定义列表中的位置
             # 列表后面的状态优先级更高 (LIFO)
             state_priority = len(lifo_priority)  # 默认最低（不在列表中）
             if from_state in lifo_priority:
                 pos = lifo_priority[from_state]
                 state_priority = len(lifo_priority) - pos  # 逆序：后面的优先级高
-            
+
             # (是否是 reset, LIFO 优先级, condition 长度, condition 字符串)
-            return (not is_reset, state_priority, len(e.condition or ''), e.condition or '')
-        
+            return (not is_reset, state_priority, len(e.condition or ""), e.condition or "")
+
         return sorted(edges, key=edge_priority)
 
-    def find_drivers(self, signal_id: str) -> List[TraceNode]:
+    def find_drivers(self, signal_id: str) -> list[TraceNode]:
         return [self.get_node(n) for n in self.predecessors(signal_id)]
 
-    def find_loads(self, signal_id: str) -> List[TraceNode]:
+    def find_loads(self, signal_id: str) -> list[TraceNode]:
         return [self.get_node(n) for n in self.successors(signal_id)]
 
-    def find_path(self, src_id: str, dst_id: str) -> List[str]:
+    def find_path(self, src_id: str, dst_id: str) -> list[str]:
         try:
             return nx.shortest_path(self, src_id, dst_id)
         except nx.NetworkXNoPath:
             return []
 
-    def find_all_paths(self, src_id: str, dst_id: str, max_depth: int = 10) -> List[List[str]]:
+    def find_all_paths(self, src_id: str, dst_id: str, max_depth: int = 10) -> list[list[str]]:
         try:
             return list(nx.all_simple_paths(self, src_id, dst_id, cutoff=max_depth))
-        except:
+        except Exception:
             return []
 
-    def detect_cycles(self) -> List[List[str]]:
+    def detect_cycles(self) -> list[list[str]]:
         try:
             return list(nx.simple_cycles(self))
-        except:
+        except Exception:
             return []
 
-    def stats(self) -> Dict:
+    def stats(self) -> dict:
         return {
             "nodes": self.number_of_nodes(),
             "edges": self.number_of_edges(),
         }
 
+    # ==============================================================================
+    # Snapshot 序列化 - 支持完整 SignalGraph 持久化
+    # [铁律13] 金标准测试优先
+    # ==============================================================================
 
-#==============================================================================
-# Snapshot 序列化 - 支持完整 SignalGraph 持久化
-# [铁律13] 金标准测试优先
-#==============================================================================
-
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """[Golden] 完整序列化 SignalGraph 为可 JSON 化的字典
 
         金标准输出格式:
@@ -405,39 +405,43 @@ class SignalGraph(nx.DiGraph):
         for node_id in self.nodes():
             node = self._node_data.get(node_id)
             if node:
-                nodes_data.append({
-                    "id": node.id,
-                    "name": node.name,
-                    "module": node.module,
-                    "kind": node.kind.name if isinstance(node.kind, NodeKind) else str(node.kind),
-                    "width": list(node.width),
-                    "bit_range": node.bit_range,
-                    "file": node.file,
-                    "line": node.line,
-                    "is_clock": node.is_clock,
-                    "is_reset": node.is_reset,
-                    "is_enable": node.is_enable,
-                    "is_port": node.is_port,
-                    "parent": node.parent,
-                    "parent_bit_start": node.parent_bit_start,
-                    "parent_bit_end": node.parent_bit_end,
-                    "modport_dir": node.modport_dir,
-                })
+                nodes_data.append(
+                    {
+                        "id": node.id,
+                        "name": node.name,
+                        "module": node.module,
+                        "kind": node.kind.name if isinstance(node.kind, NodeKind) else str(node.kind),
+                        "width": list(node.width),
+                        "bit_range": node.bit_range,
+                        "file": node.file,
+                        "line": node.line,
+                        "is_clock": node.is_clock,
+                        "is_reset": node.is_reset,
+                        "is_enable": node.is_enable,
+                        "is_port": node.is_port,
+                        "parent": node.parent,
+                        "parent_bit_start": node.parent_bit_start,
+                        "parent_bit_end": node.parent_bit_end,
+                        "modport_dir": node.modport_dir,
+                    }
+                )
 
         edges_data = []
         for src, dst in self.edges():
             edges = self._edge_data.get((src, dst), [])
             for edge in edges:
-                edges_data.append({
-                    "src": edge.src,
-                    "dst": edge.dst,
-                    "kind": edge.kind.name if isinstance(edge.kind, EdgeKind) else str(edge.kind),
-                    "assign_type": edge.assign_type,
-                    "condition": edge.condition,
-                    "clock_domain": edge.clock_domain,
-                    "modport_dir": edge.modport_dir,
-                    "confidence": edge.confidence,
-                })
+                edges_data.append(
+                    {
+                        "src": edge.src,
+                        "dst": edge.dst,
+                        "kind": edge.kind.name if isinstance(edge.kind, EdgeKind) else str(edge.kind),
+                        "assign_type": edge.assign_type,
+                        "condition": edge.condition,
+                        "clock_domain": edge.clock_domain,
+                        "modport_dir": edge.modport_dir,
+                        "confidence": edge.confidence,
+                    }
+                )
 
         return {
             "version": "1.0",
@@ -450,7 +454,7 @@ class SignalGraph(nx.DiGraph):
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "SignalGraph":
+    def from_dict(cls, data: dict) -> "SignalGraph":
         """[Golden] 从字典反序列化重建 SignalGraph
 
         金标准:
@@ -519,6 +523,7 @@ class SignalGraph(nx.DiGraph):
     def to_json(self, indent: int = 2) -> str:
         """[Golden] 序列化为 JSON 字符串"""
         import json
+
         data = self.to_dict()
         return json.dumps(data, indent=indent, ensure_ascii=False)
 
@@ -526,6 +531,7 @@ class SignalGraph(nx.DiGraph):
     def from_json(cls, json_str: str) -> "SignalGraph":
         """[Golden] 从 JSON 字符串反序列化"""
         import json
+
         data = json.loads(json_str)
         return cls.from_dict(data)
 
@@ -539,21 +545,22 @@ class SignalGraph(nx.DiGraph):
             files: 相关的源文件列表
         """
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         data = self.to_dict()
         data["tag"] = tag
         data["git_commit"] = git_commit
         data["files"] = files or []
-        data["created_at"] = datetime.now(timezone.utc).isoformat()
+        data["created_at"] = datetime.now(UTC).isoformat()
 
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     @classmethod
     def load_snapshot(cls, path: str) -> "SignalGraph":
         """[Golden] 从文件加载快照"""
         import json
-        with open(path, 'r', encoding='utf-8') as f:
+
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return cls.from_dict(data)

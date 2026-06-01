@@ -1,27 +1,27 @@
-#==============================================================================
+# ==============================================================================
 # graph_diff.py - Graph Diff 查询
 # Phase 1: Element-wise Diff（节点/边集合差集）
 # Phase 2: Reachability 分析（正向 BFS 可达性 + 可达性差异对比）
-#==============================================================================
+# ==============================================================================
 
-from typing import List, Tuple, Set, Dict, Optional
 from dataclasses import dataclass, field
 
-from .models import SignalGraph, EdgeKind
+from .models import EdgeKind, SignalGraph
 
-
-#==============================================================================
+# ==============================================================================
 # Phase 1: Element-wise Diff
-#==============================================================================
+# ==============================================================================
+
 
 @dataclass
 class GraphDiff:
     """两个图的差异结构"""
-    added_nodes: List[str] = field(default_factory=list)
-    removed_nodes: List[str] = field(default_factory=list)
-    added_edges: List[Tuple[str, str]] = field(default_factory=list)
-    removed_edges: List[Tuple[str, str]] = field(default_factory=list)
-    modified_nodes: Dict[str, Dict] = field(default_factory=dict)
+
+    added_nodes: list[str] = field(default_factory=list)
+    removed_nodes: list[str] = field(default_factory=list)
+    added_edges: list[tuple[str, str]] = field(default_factory=list)
+    removed_edges: list[tuple[str, str]] = field(default_factory=list)
+    modified_nodes: dict[str, dict] = field(default_factory=dict)
     identical: bool = True
 
 
@@ -57,8 +57,8 @@ def diff_graph(G1: SignalGraph, G2: SignalGraph) -> GraphDiff:
         n2 = G2.get_node(node_id)
         if n1 and n2 and not _nodes_equal(n1, n2):
             modified[node_id] = {
-                'old': {'kind': n1.kind.name, 'width': n1.width},
-                'new': {'kind': n2.kind.name, 'width': n2.width},
+                "old": {"kind": n1.kind.name, "width": n1.width},
+                "new": {"kind": n2.kind.name, "width": n2.width},
             }
     modified_nodes = modified
 
@@ -82,22 +82,19 @@ def diff_graph(G1: SignalGraph, G2: SignalGraph) -> GraphDiff:
 
 def _nodes_equal(n1, n2) -> bool:
     """比较两个 TraceNode 是否完全相等"""
-    return (
-        n1.kind == n2.kind
-        and n1.width == n2.width
-        and n1.module == n2.module
-    )
+    return n1.kind == n2.kind and n1.width == n2.width and n1.module == n2.module
 
 
-#==============================================================================
+# ==============================================================================
 # Phase 2: Reachability 分析
-#==============================================================================
+# ==============================================================================
+
 
 def forward_reachability(
-    start_nodes: List[str],
+    start_nodes: list[str],
     graph: SignalGraph,
-    max_depth: Optional[int] = None,
-) -> Set[str]:
+    max_depth: int | None = None,
+) -> set[str]:
     """BFS 正向可达性分析
 
     沿 DRIVER/CONNECTION 边正向传播，收集所有可达节点。
@@ -110,7 +107,7 @@ def forward_reachability(
     Returns:
         Set[str]: 所有可达节点 ID（不含起点本身）
     """
-    impacted: Set[str] = set()
+    impacted: set[str] = set()
     # 过滤掉不在图中的起始节点
     queue = [n for n in start_nodes if n in graph.nodes()]
     depth = 0
@@ -136,10 +133,10 @@ def forward_reachability(
 
 
 def diff_reachability(
-    changed_nodes: List[str],
+    changed_nodes: list[str],
     G_old: SignalGraph,
     G_new: SignalGraph,
-) -> Dict:
+) -> dict:
     """对比两个图上同一组变更点的可达性差异
 
     Args:
@@ -158,11 +155,11 @@ def diff_reachability(
     """
     if not changed_nodes:
         return {
-            'newly_impacted': [],
-            'no_longer_impacted': [],
-            'still_impacted': [],
-            'max_impact_depth_new': 0,
-            'max_impact_depth_old': 0,
+            "newly_impacted": [],
+            "no_longer_impacted": [],
+            "still_impacted": [],
+            "max_impact_depth_new": 0,
+            "max_impact_depth_old": 0,
         }
 
     # 在旧图上的可达集（无限深度）
@@ -180,15 +177,15 @@ def diff_reachability(
     max_depth_old = _max_impact_depth(changed_nodes, G_old)
 
     return {
-        'newly_impacted': newly_impacted,
-        'no_longer_impacted': no_longer_impacted,
-        'still_impacted': still_impacted,
-        'max_impact_depth_new': max_depth_new,
-        'max_impact_depth_old': max_depth_old,
+        "newly_impacted": newly_impacted,
+        "no_longer_impacted": no_longer_impacted,
+        "still_impacted": still_impacted,
+        "max_impact_depth_new": max_depth_new,
+        "max_impact_depth_old": max_depth_old,
     }
 
 
-def _max_impact_depth(start_nodes: List[str], graph: SignalGraph) -> int:
+def _max_impact_depth(start_nodes: list[str], graph: SignalGraph) -> int:
     """计算从 start_nodes 出发的最大影响传播深度
 
     通过逐层 BFS 测量，每扩散一层 depth+1。
@@ -201,7 +198,7 @@ def _max_impact_depth(start_nodes: List[str], graph: SignalGraph) -> int:
     if not valid_starts:
         return 0
 
-    impacted: Set[str] = set()
+    impacted: set[str] = set()
     queue = list(valid_starts)
     max_depth = 0
 
@@ -224,64 +221,66 @@ def _max_impact_depth(start_nodes: List[str], graph: SignalGraph) -> int:
 
     return max_depth
 
-#==============================================================================
+
+# ==============================================================================
 # 方案一: 标识符严格匹配法 - 稳定核心 + 架构健康度
 # 参考: GRAPH_DIFF_DESIGN.md + MCS方案汇总文档
-#==============================================================================
+# ==============================================================================
 
-def compute_stable_core(G1: SignalGraph, G2: SignalGraph) -> List[str]:
+
+def compute_stable_core(G1: SignalGraph, G2: SignalGraph) -> list[str]:
     """计算两个图的稳定核心（同名模块 + 所有出边和入边完全一致）
-    
+
     金标准推导:
-    稳定核心 = {module_id | module_id in G1 and module_id in G2 
+    稳定核心 = {module_id | module_id in G1 and module_id in G2
                       and out_edges(G1, module_id) == out_edges(G2, module_id)
                       and in_edges(G1, module_id) == in_edges(G2, module_id)}
-    
+
     Args:
         G1: 旧版本 Graph
         G2: 新版本 Graph
-    
+
     Returns:
         List[str]: 稳定核心模块 ID 列表
-    
+
     时间复杂度: O(|V| + |E|)
     """
     nodes1 = set(G1.nodes())
     nodes2 = set(G2.nodes())
-    
+
     # 同名节点集合
     common_nodes = nodes1 & nodes2
-    
+
     stable_core = []
-    
+
     for node_id in common_nodes:
         # 检查出边是否一致
         out1 = set(G1.out_edges(node_id))
         out2 = set(G2.out_edges(node_id))
         if out1 != out2:
             continue
-        
+
         # 检查入边是否一致
         in1 = set(G1.in_edges(node_id))
         in2 = set(G2.in_edges(node_id))
         if in1 != in2:
             continue
-        
+
         stable_core.append(node_id)
-    
+
     return sorted(stable_core)
 
 
-def compute_health_score(G: SignalGraph, stable_core: List[str]) -> float:
+def compute_health_score(G: SignalGraph, stable_core: list[str]) -> float:
     """计算架构健康度
-    
+
     金标准推导:
     健康度 = 稳定核心模块数 / 图中最大模块数
-    
+
     Args:
         G: SignalGraph
         stable_core: compute_stable_core() 返回的稳定核心列表
-    
+
     Returns:
         float: 健康度 (0.0 ~ 1.0)
     """
@@ -292,26 +291,26 @@ def compute_health_score(G: SignalGraph, stable_core: List[str]) -> float:
 
 
 def compute_coupling_warning(
-    changed_nodes: List[str],
+    changed_nodes: list[str],
     total_nodes: int,
     unstable_ratio: float,
     changed_ratio: float = 0.05,
-    unstable_threshold: float = 0.30
-) -> Dict:
+    unstable_threshold: float = 0.30,
+) -> dict:
     """计算耦合预警
-    
+
     金标准推导:
     耦合预警条件:
     - |C| / 总模块数 < 5% (改动很小)
     - 不稳定模块比例 > 30% (轻微改动导致大范围不稳定)
-    
+
     Args:
         changed_nodes: 变更节点列表
         total_nodes: 总节点数
         unstable_ratio: 不稳定模块比例 (不稳定模块 = 总模块 - 稳定核心)
         changed_ratio: 变更比例阈值 (默认 5%)
         unstable_threshold: 不稳定比例阈值 (默认 30%)
-    
+
     Returns:
         Dict: {
             'is_warning': bool,
@@ -323,35 +322,32 @@ def compute_coupling_warning(
     """
     changed_count = len(changed_nodes)
     changed_pct = changed_count / total_nodes if total_nodes > 0 else 0.0
-    
+
     is_warning = (changed_pct < changed_ratio) and (unstable_ratio > unstable_threshold)
-    
+
     # 计算预警级别
     if is_warning:
         if unstable_ratio > 0.5:
-            level = 'critical'
+            level = "critical"
         elif unstable_ratio > 0.3:
-            level = 'high'
+            level = "high"
         else:
-            level = 'medium'
+            level = "medium"
     else:
-        level = 'low'
-    
+        level = "low"
+
     return {
-        'is_warning': is_warning,
-        'changed_count': changed_count,
-        'changed_ratio': round(changed_pct, 4),
-        'unstable_ratio': round(unstable_ratio, 4),
-        'level': level,
+        "is_warning": is_warning,
+        "changed_count": changed_count,
+        "changed_ratio": round(changed_pct, 4),
+        "unstable_ratio": round(unstable_ratio, 4),
+        "level": level,
     }
 
 
-def diff_with_health(
-    G1: SignalGraph,
-    G2: SignalGraph
-) -> Dict:
+def diff_with_health(G1: SignalGraph, G2: SignalGraph) -> dict:
     """完整 Graph Diff，包含稳定核心和健康度（方案一）
-    
+
     金标准输出格式:
     {
         "graph_diff": GraphDiff,
@@ -361,47 +357,41 @@ def diff_with_health(
         "health_delta": float,              # 健康度变化
         "coupling_warning": Dict,            # 耦合预警
     }
-    
+
     Args:
         G1: 旧版本 Graph
         G2: 新版本 Graph
-    
+
     Returns:
         Dict: 包含所有 diff 信息及健康度指标
     """
     # Phase 1: Element-wise diff
     diff_result = diff_graph(G1, G2)
-    
+
     # Phase 2: 稳定核心计算
     stable_core = compute_stable_core(G1, G2)
-    
+
     # Phase 3: 健康度计算
     health_old = compute_health_score(G1, stable_core)
     health_new = compute_health_score(G2, stable_core)
     health_delta = health_new - health_old
-    
+
     # Phase 4: 耦合预警
     total_nodes = max(len(list(G1.nodes())), len(list(G2.nodes())))
     unstable_ratio = 1.0 - (len(stable_core) / total_nodes) if total_nodes > 0 else 0.0
-    
+
     # 变更节点 = added_nodes + removed_nodes + modified_nodes
-    changed_nodes = (
-        diff_result.added_nodes + 
-        diff_result.removed_nodes + 
-        list(diff_result.modified_nodes.keys())
-    )
-    
+    changed_nodes = diff_result.added_nodes + diff_result.removed_nodes + list(diff_result.modified_nodes.keys())
+
     coupling = compute_coupling_warning(
-        changed_nodes=changed_nodes,
-        total_nodes=total_nodes,
-        unstable_ratio=unstable_ratio
+        changed_nodes=changed_nodes, total_nodes=total_nodes, unstable_ratio=unstable_ratio
     )
-    
+
     return {
-        'graph_diff': diff_result,
-        'stable_core': stable_core,
-        'health_score_old': round(health_old, 4),
-        'health_score_new': round(health_new, 4),
-        'health_delta': round(health_delta, 4),
-        'coupling_warning': coupling,
+        "graph_diff": diff_result,
+        "stable_core": stable_core,
+        "health_score_old": round(health_old, 4),
+        "health_score_new": round(health_new, 4),
+        "health_delta": round(health_delta, 4),
+        "coupling_warning": coupling,
     }

@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # timing_analyzer.py - 关键路径分析（SCC + DAG 最长路径）
-#==============================================================================
+# ==============================================================================
 """
 关键路径分析：
 1. 构建寄存器级图（排除时钟/复位边）
@@ -15,10 +15,9 @@
 - risk_level: 超长路径风险
 - violation_risk: 时序违例风险
 """
+
 import sys
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional, Set
-from collections import defaultdict
 
 _current_file = Path(__file__).resolve()
 _project_root = _current_file.parent.parent.parent  # src/trace/core/graph/analyzer/
@@ -44,8 +43,8 @@ class TimingAnalyzer:
 
         G = nx.DiGraph()
 
-        clock_names = {'clk', 'clock', 'clk_i', 'clk_p', 'clk_n'}
-        reset_names = {'rst', 'rst_n', 'reset', 'resetn', 'reset_n'}
+        clock_names = {"clk", "clock", "clk_i", "clk_p", "clk_n"}
+        reset_names = {"rst", "rst_n", "reset", "resetn", "reset_n"}
 
         # 所有寄存器节点
         reg_nodes = set()
@@ -59,7 +58,7 @@ class TimingAnalyzer:
         for nid in self.graph.nodes():
             node = self.graph.get_node(nid)
             if node and node.kind == NodeKind.PORT_IN:
-                name = nid.split('.')[-1].lower()
+                name = nid.split(".")[-1].lower()
                 if name not in clock_names and name not in reset_names:
                     primary_inputs.add(nid)
 
@@ -70,9 +69,9 @@ class TimingAnalyzer:
         # 边：排除时钟/复位边，重建数据流图
         for src, dst in self.graph.edges():
             edge = self.graph.get_edge(src, dst)
-            ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
+            ek = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
             # 排除时钟/复位边
-            if ek in ('CLOCK', 'RESET', 'PosEdge', 'NegEdge'):
+            if ek in ("CLOCK", "RESET", "PosEdge", "NegEdge"):
                 continue
             # 只保留涉及 REG 的路径（简化）
             if src in reg_nodes or dst in reg_nodes or src in primary_inputs:
@@ -91,6 +90,7 @@ class TimingAnalyzer:
     def _find_scc(self):
         """找强连通分量（SCC）"""
         import networkx as nx
+
         if self._scc is not None:
             return self._scc
         G = self.reg_graph
@@ -100,6 +100,7 @@ class TimingAnalyzer:
     def _condensation_graph(self):
         """构建 SCC 缩点后的 DAG"""
         import networkx as nx
+
         G = self.reg_graph
         scc_list = self._find_scc()
         scc_map = {}
@@ -117,19 +118,18 @@ class TimingAnalyzer:
 
     def estimate_reg_depth(self, target_id: str) -> int:
         """估计从主输入到目标节点的寄存器深度（路径上最大寄存器数）"""
-        import networkx as nx
 
         G = self.reg_graph
         if target_id not in G:
             return 0
 
-        clock_names = {'clk', 'clock', 'clk_i'}
-        reset_names = {'rst', 'rst_n', 'reset', 'resetn'}
+        clock_names = {"clk", "clock", "clk_i"}
+        reset_names = {"rst", "rst_n", "reset", "resetn"}
         primary_inputs = set()
         for nid in self.graph.nodes():
             node = self.graph.get_node(nid)
             if node and node.kind == NodeKind.PORT_IN:
-                name = nid.split('.')[-1].lower()
+                name = nid.split(".")[-1].lower()
                 if name not in clock_names and name not in reset_names:
                     primary_inputs.add(nid)
 
@@ -163,7 +163,7 @@ class TimingAnalyzer:
 
         return max_depth if found else 0
 
-    def longest_path_in_dag(self, start_nodes: List[int], end_nodes: List[int]) -> Tuple[int, List[str]]:
+    def longest_path_in_dag(self, start_nodes: list[int], end_nodes: list[int]) -> tuple[int, list[str]]:
         """在 DAG 上找最长路径"""
         import networkx as nx
 
@@ -209,23 +209,22 @@ class TimingAnalyzer:
 
         return max_len, [scc_list[n][0] for n in max_path] if len(scc_list) > 1 else max_path
 
-    def get_critical_paths(self, max_paths: int = 5) -> List[Dict]:
+    def get_critical_paths(self, max_paths: int = 5) -> list[dict]:
         """获取最关键的多条路径"""
-        import networkx as nx
 
         G = self.reg_graph
         if not G.nodes():
             return []
 
-        clock_names = {'clk', 'clock', 'clk_i'}
-        reset_names = {'rst', 'rst_n', 'reset', 'resetn'}
+        clock_names = {"clk", "clock", "clk_i"}
+        reset_names = {"rst", "rst_n", "reset", "resetn"}
         primary_inputs = set()
         reg_nodes = set()
 
         for nid in self.graph.nodes():
             node = self.graph.get_node(nid)
             if node:
-                name = nid.split('.')[-1].lower()
+                name = nid.split(".")[-1].lower()
                 if node.kind == NodeKind.PORT_IN and name not in clock_names and name not in reset_names:
                     primary_inputs.add(nid)
                 if node.kind == NodeKind.REG:
@@ -243,71 +242,72 @@ class TimingAnalyzer:
         sorted_regs = sorted(reg_nodes, key=lambda x: self._reg_depth.get(x, 0), reverse=True)
 
         paths = []
-        for target in sorted_regs[:max_paths * 2]:
+        for target in sorted_regs[: max_paths * 2]:
             d = self._reg_depth.get(target, 0)
             if d == 0:
                 continue
             path = self._reconstruct_path(primary_inputs, target, reg_nodes)
             if path and len(path) >= 2:
                 score = sum(self._reg_depth.get(n, 0) for n in path)
-                
+
                 # 增强：计算组合逻辑延迟和时序风险
                 reg_chain = [n for n in path if n in reg_nodes]
                 combo_nodes = []
-                
+
                 # 计算寄存器间的组合逻辑节点
                 for j in range(len(path) - 1):
                     src, dst = path[j], path[j + 1]
                     if src not in reg_nodes and dst not in reg_nodes:
                         node = self.graph.get_node(src)
                         if node and node.kind not in (NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.SIGNAL):
-                            combo_nodes.append(src.split('.')[-1])
-                
+                            combo_nodes.append(src.split(".")[-1])
+
                 # cycle_estimate: 寄存器数 = 预估周期数
                 cycle_estimate = len(reg_chain)
-                
+
                 # combo_delay_estimate: 组合逻辑延迟（简化计数）
                 combo_delay = len(combo_nodes)
-                
+
                 # risk_level: 时序风险
                 if cycle_estimate >= 5:
-                    risk_level = 'CRITICAL'
+                    risk_level = "CRITICAL"
                 elif cycle_estimate >= 3:
-                    risk_level = 'HIGH'
+                    risk_level = "HIGH"
                 elif cycle_estimate >= 2:
-                    risk_level = 'MEDIUM'
+                    risk_level = "MEDIUM"
                 else:
-                    risk_level = 'LOW'
-                
+                    risk_level = "LOW"
+
                 # violation_risk: 违例风险（组合逻辑过多或路径过长）
                 if combo_delay > cycle_estimate or cycle_estimate >= 5:
-                    violation_risk = 'HIGH'
+                    violation_risk = "HIGH"
                 elif combo_delay > 0 and cycle_estimate >= 3:
-                    violation_risk = 'MEDIUM'
+                    violation_risk = "MEDIUM"
                 else:
-                    violation_risk = 'LOW'
-                
-                paths.append({
-                    'depth': d,
-                    'score': score,
-                    'path': path,
-                    'registers': reg_chain,
-                    'cycle_estimate': cycle_estimate,
-                    'combo_delay_estimate': combo_delay,
-                    'combo_nodes': combo_nodes,
-                    'risk_level': risk_level,
-                    'violation_risk': violation_risk,
-                })
+                    violation_risk = "LOW"
+
+                paths.append(
+                    {
+                        "depth": d,
+                        "score": score,
+                        "path": path,
+                        "registers": reg_chain,
+                        "cycle_estimate": cycle_estimate,
+                        "combo_delay_estimate": combo_delay,
+                        "combo_nodes": combo_nodes,
+                        "risk_level": risk_level,
+                        "violation_risk": violation_risk,
+                    }
+                )
             if len(paths) >= max_paths:
                 break
 
         # 按 score 排序
-        paths.sort(key=lambda x: x['score'], reverse=True)
+        paths.sort(key=lambda x: x["score"], reverse=True)
         return paths[:max_paths]
 
-    def _reconstruct_path(self, start_set: Set[str], end: str, reg_nodes: Set[str]) -> List[str]:
+    def _reconstruct_path(self, start_set: set[str], end: str, reg_nodes: set[str]) -> list[str]:
         """重建从 start_set 到 end 的路径"""
-        import networkx as nx
 
         G = self.reg_graph
         if end not in G:
@@ -351,56 +351,57 @@ class TimingAnalyzer:
         score = depth * 10 + (15 if is_reg else 0)
 
         if score >= 60:
-            return 'CRITICAL'
+            return "CRITICAL"
         elif score >= 40:
-            return 'HIGH'
+            return "HIGH"
         elif score >= 20:
-            return 'MEDIUM'
+            return "MEDIUM"
         else:
-            return 'LOW'
+            return "LOW"
 
-    def timing_report(self) -> Dict:
+    def timing_report(self) -> dict:
         """生成时序分析量化报告"""
         paths = self.get_critical_paths(max_paths=10)
-        
+
         # 统计
         total_paths = len(paths)
-        critical_paths = [p for p in paths if p.get('risk_level') == 'CRITICAL']
-        high_risk_paths = [p for p in paths if p.get('risk_level') == 'HIGH']
-        medium_risk_paths = [p for p in paths if p.get('risk_level') == 'MEDIUM']
-        low_risk_paths = [p for p in paths if p.get('risk_level') == 'LOW']
-        
+        critical_paths = [p for p in paths if p.get("risk_level") == "CRITICAL"]
+        high_risk_paths = [p for p in paths if p.get("risk_level") == "HIGH"]
+        medium_risk_paths = [p for p in paths if p.get("risk_level") == "MEDIUM"]
+        low_risk_paths = [p for p in paths if p.get("risk_level") == "LOW"]
+
         # 最大周期数
-        max_cycles = max(p.get('cycle_estimate', 0) for p in paths) if paths else 0
-        
+        max_cycles = max(p.get("cycle_estimate", 0) for p in paths) if paths else 0
+
         # 平均周期数
-        avg_cycles = sum(p.get('cycle_estimate', 0) for p in paths) / total_paths if total_paths > 0 else 0
-        
+        avg_cycles = sum(p.get("cycle_estimate", 0) for p in paths) / total_paths if total_paths > 0 else 0
+
         # 风险路径排行
-        risk_ranking = sorted(paths, key=lambda x: x.get('violation_risk', 'LOW') == 'HIGH', reverse=True)[:5]
-        
+        risk_ranking = sorted(paths, key=lambda x: x.get("violation_risk", "LOW") == "HIGH", reverse=True)[:5]
+
         return {
-            'total_paths': total_paths,
-            'max_cycles': max_cycles,
-            'avg_cycles': round(avg_cycles, 1),
-            'risk_breakdown': {
-                'CRITICAL': len(critical_paths),
-                'HIGH': len(high_risk_paths),
-                'MEDIUM': len(medium_risk_paths),
-                'LOW': len(low_risk_paths),
+            "total_paths": total_paths,
+            "max_cycles": max_cycles,
+            "avg_cycles": round(avg_cycles, 1),
+            "risk_breakdown": {
+                "CRITICAL": len(critical_paths),
+                "HIGH": len(high_risk_paths),
+                "MEDIUM": len(medium_risk_paths),
+                "LOW": len(low_risk_paths),
             },
-            'paths': paths,
-            'risk_ranking': risk_ranking,
+            "paths": paths,
+            "risk_ranking": risk_ranking,
         }
 
 
 # === CLI 接口 ===
 def run_cli():
     import argparse
-    parser = argparse.ArgumentParser(description='关键路径分析')
-    parser.add_argument('-f', '--file', required=True, help='SystemVerilog 文件')
-    parser.add_argument('--max-paths', type=int, default=5, help='最大路径数')
-    parser.add_argument('--json', action='store_true', help='JSON 输出')
+
+    parser = argparse.ArgumentParser(description="关键路径分析")
+    parser.add_argument("-f", "--file", required=True, help="SystemVerilog 文件")
+    parser.add_argument("--max-paths", type=int, default=5, help="最大路径数")
+    parser.add_argument("--json", action="store_true", help="JSON 输出")
     args = parser.parse_args()
 
     from trace.unified_tracer import UnifiedTracer
@@ -416,35 +417,39 @@ def run_cli():
 
     if args.json:
         import json
+
         result = {
-            'file': args.file,
-            'paths': [{
-                'depth': p['depth'],
-                'score': p['score'],
-                'path': p['path'],
-                'registers': p['registers'],
-                'cycle_estimate': p.get('cycle_estimate', 0),
-                'combo_delay_estimate': p.get('combo_delay_estimate', 0),
-                'risk_level': p.get('risk_level', 'LOW'),
-                'violation_risk': p.get('violation_risk', 'LOW'),
-            } for p in paths],
-            'node_count': len(graph.nodes()),
-            'reg_count': sum(1 for n in graph.nodes() if graph.get_node(n) and graph.get_node(n).kind == NodeKind.REG),
+            "file": args.file,
+            "paths": [
+                {
+                    "depth": p["depth"],
+                    "score": p["score"],
+                    "path": p["path"],
+                    "registers": p["registers"],
+                    "cycle_estimate": p.get("cycle_estimate", 0),
+                    "combo_delay_estimate": p.get("combo_delay_estimate", 0),
+                    "risk_level": p.get("risk_level", "LOW"),
+                    "violation_risk": p.get("violation_risk", "LOW"),
+                }
+                for p in paths
+            ],
+            "node_count": len(graph.nodes()),
+            "reg_count": sum(1 for n in graph.nodes() if graph.get_node(n) and graph.get_node(n).kind == NodeKind.REG),
         }
         print(json.dumps(result, indent=2))
     else:
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"关键路径分析: {args.file}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         for i, p in enumerate(paths, 1):
-            risk = p.get('risk_level', 'LOW')
-            risk_icon = {'CRITICAL': '🔴', 'HIGH': '🟠', 'MEDIUM': '🟡', 'LOW': '🟢'}.get(risk, '')
-            cycles = p.get('cycle_estimate', p['depth'])
-            combo = p.get('combo_delay_estimate', 0)
-            
+            risk = p.get("risk_level", "LOW")
+            risk_icon = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(risk, "")
+            cycles = p.get("cycle_estimate", p["depth"])
+            combo = p.get("combo_delay_estimate", 0)
+
             print(f"\n路径 {i} {risk_icon}")
-            regs = ' -> '.join([n.split('.')[-1] for n in p['registers']])
+            regs = " -> ".join([n.split(".")[-1] for n in p["registers"]])
             print(f"  寄存器链: {regs}")
             print(f"  预估周期: {cycles} cycles")
             print(f"  组合逻辑延迟: {combo} 级")

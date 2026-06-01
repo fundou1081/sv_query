@@ -1,49 +1,46 @@
-#==============================================================================
+# ==============================================================================
 # trace.core.graph - Graph 数据模型 + 图操作
-#==============================================================================
+# ==============================================================================
 
-from .models import (
-    SignalGraph,
-    TraceNode,
-    TraceEdge,
-    NodeKind,
-    EdgeKind,
+from .controlflow import ControlFlowGraph
+
+# ControlFlow
+from .controlflow_models import (
+    Branch,
+    BranchKind,
+    BranchResult,
+    Contradiction,
+    ControlBlock,
+    ControlFlowEdge,
+    ControlFlowEdgeKind,
+    ControlFlowNode,
+    ControlFlowNodeKind,
+    ControlFlowResult,
+    LintWarning,
+    Location,
+    StateMachineAnalysis,
+    StateTransition,
+    Z3Result,
 )
-
+from .dataflow import (
+    DataFlowGraph,
+    DataFlowPath,
+    DataFlowResult,
+    DataFlowSegment,
+)
 from .diff import (
     GraphDiff,
     diff_graph,
     diff_reachability,
     forward_reachability,
 )
-
-from .dataflow import (
-    DataFlowGraph,
-    DataFlowSegment,
-    DataFlowPath,
-    DataFlowResult,
+from .models import (
+    EdgeKind,
+    NodeKind,
+    SignalGraph,
+    TraceEdge,
+    TraceNode,
 )
-
-# ControlFlow
-from .controlflow_models import (
-    ControlFlowNodeKind,
-    ControlFlowEdgeKind,
-    BranchKind,
-    Location,
-    Branch,
-    ControlBlock,
-    ControlFlowNode,
-    ControlFlowEdge,
-    BranchResult,
-    Contradiction,
-    LintWarning,
-    StateTransition,
-    StateMachineAnalysis,
-    Z3Result,
-    ControlFlowResult,
-)
-
-from .controlflow import ControlFlowGraph
 
 __all__ = [
     # Models

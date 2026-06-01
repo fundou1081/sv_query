@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # signal_graph_viewer.py - 信号图可视化器
-#==============================================================================
+# ==============================================================================
 """
 强大的信号图可视化功能：
 - 支持分层布局、风险热力图、覆盖状态标记
@@ -8,9 +8,9 @@
 - 可配置过滤、聚类、样式
 - 输出 DOT / Mermaid / HTML
 """
+
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Any
 
 _current_file = Path(__file__).resolve()
 _project_root = _current_file.parent.parent.parent
@@ -41,35 +41,35 @@ class SignalGraphViewer:
 
     # 颜色常量
     RISK_COLORS = {
-        'CRITICAL': '#ff0000',
-        'HIGH': '#ff8800',
-        'MEDIUM': '#ffcc00',
-        'LOW': '#00cc00',
+        "CRITICAL": "#ff0000",
+        "HIGH": "#ff8800",
+        "MEDIUM": "#ffcc00",
+        "LOW": "#00cc00",
     }
 
     COVER_COLORS = {
-        'BOTH': '#00aa00',
-        'SVA': '#0088ff',
-        'COV': '#ffaa00',
-        'NONE': '#ff6666',
+        "BOTH": "#00aa00",
+        "SVA": "#0088ff",
+        "COV": "#ffaa00",
+        "NONE": "#ff6666",
     }
 
     NODE_KIND_SHAPES = {
-        'REG': 'box',
-        'PORT_IN': 'ellipse',
-        'PORT_OUT': 'ellipse',
-        'SIGNAL': 'diamond',
-        'CONST': 'parallelogram',
-        'INSTANTIATED_MODULE': 'folder',
+        "REG": "box",
+        "PORT_IN": "ellipse",
+        "PORT_OUT": "ellipse",
+        "SIGNAL": "diamond",
+        "CONST": "parallelogram",
+        "INSTANTIATED_MODULE": "folder",
     }
 
     EDGE_COLORS = {
-        'DRIVER': '#333333',
-        'CLOCK': '#8888ff',
-        'RESET': '#ff8888',
-        'CONNECTION': '#aaaaaa',
-        'BIT_SELECT': '#aaaaaa',
-        'DATA': '#666666',
+        "DRIVER": "#333333",
+        "CLOCK": "#8888ff",
+        "RESET": "#ff8888",
+        "CONNECTION": "#aaaaaa",
+        "BIT_SELECT": "#aaaaaa",
+        "DATA": "#666666",
     }
 
     def __init__(self, graph, sva_signals=None, cov_signals=None):
@@ -87,39 +87,39 @@ class SignalGraphViewer:
 
         # 默认配置
         self.config = {
-            'layout': 'TB',           # TB (top-bottom) / LR (left-right)
-            'show_edges': True,       # 是否显示边
-            'edge_filter': set(),     # 'exclude_clock', 'exclude_reset', 'exclude_constant'
-            'max_edges': 500,         # 边的最大数量（防止过于密集）
-            'node_style': {
-                'risk_color': True,   # 风险等级着色
-                'cover_marker': True, # 覆盖状态标记
-                'show_type': True,    # 显示节点类型
-                'show_fan': True,     # 显示 fan-in/fan-out
+            "layout": "TB",  # TB (top-bottom) / LR (left-right)
+            "show_edges": True,  # 是否显示边
+            "edge_filter": set(),  # 'exclude_clock', 'exclude_reset', 'exclude_constant'
+            "max_edges": 500,  # 边的最大数量（防止过于密集）
+            "node_style": {
+                "risk_color": True,  # 风险等级着色
+                "cover_marker": True,  # 覆盖状态标记
+                "show_type": True,  # 显示节点类型
+                "show_fan": True,  # 显示 fan-in/fan-out
             },
-            'cluster_by': None,       # 'module', 'risk_level', 'cover_status', None
-            'cluster_modules': True,  # 按模块聚类（跨模块边用虚线）
-            'highlight_gaps': True,   # 高亮高风险无覆盖信号
-            'min_risk_for_highlight': 20.0,
-            'edge_labels': False,     # 显示边类型标签 (CLOCK/RESET/DRIVER)
-            'edge_conditions': False, # 显示驱动条件 (如 if (cond) 才驱动)
-            'rank_separation': 0.5,  # 层级间距
-            'node_spacing': 0.3,      # 节点间距
-            'focus_risk_threshold': 40.0,  # 高风险阈值，触发聚焦模式
-            'layout_engine': 'dot',   # 'dot' (层次布局) / 'neato' (力导向) / 'fdp' (分组布局)
+            "cluster_by": None,  # 'module', 'risk_level', 'cover_status', None
+            "cluster_modules": True,  # 按模块聚类（跨模块边用虚线）
+            "highlight_gaps": True,  # 高亮高风险无覆盖信号
+            "min_risk_for_highlight": 20.0,
+            "edge_labels": False,  # 显示边类型标签 (CLOCK/RESET/DRIVER)
+            "edge_conditions": False,  # 显示驱动条件 (如 if (cond) 才驱动)
+            "rank_separation": 0.5,  # 层级间距
+            "node_spacing": 0.3,  # 节点间距
+            "focus_risk_threshold": 40.0,  # 高风险阈值，触发聚焦模式
+            "layout_engine": "dot",  # 'dot' (层次布局) / 'neato' (力导向) / 'fdp' (分组布局)
         }
 
         self._risk_cache = {}
 
-    def _extract_modules(self) -> Dict[str, List[str]]:
+    def _extract_modules(self) -> dict[str, list[str]]:
         """从节点 ID 中提取模块层级信息
-        
+
         Returns:
             Dict[str, List[str]]: 模块名 -> 节点 ID 列表
         """
         modules = {}
         for node_id in self.graph.nodes():
-            parts = node_id.split('.')
+            parts = node_id.split(".")
             if len(parts) >= 2:
                 # 模块路径：module.instance.signal 或 module.signal
                 module = parts[0]
@@ -128,17 +128,17 @@ class SignalGraphViewer:
                 modules[module].append(node_id)
             else:
                 # 顶层信号
-                if '__top__' not in modules:
-                    modules['__top__'] = []
-                modules['__top__'].append(node_id)
+                if "__top__" not in modules:
+                    modules["__top__"] = []
+                modules["__top__"].append(node_id)
         return modules
 
     def _get_module_name(self, node_id: str) -> str:
         """获取节点所属的模块名"""
-        parts = node_id.split('.')
+        parts = node_id.split(".")
         if len(parts) >= 2:
             return parts[0]
-        return '__top__'
+        return "__top__"
 
     def _is_cross_module(self, src: str, dst: str) -> bool:
         """判断是否为跨模块边"""
@@ -149,20 +149,20 @@ class SignalGraphViewer:
         for key, value in kwargs.items():
             if key in self.config:
                 self.config[key] = value
-            elif key == 'node_style' and isinstance(value, dict):
-                self.config['node_style'].update(value)
-            elif key == 'edge_filter' and isinstance(value, (set, list)):
-                self.config['edge_filter'] = set(value)
+            elif key == "node_style" and isinstance(value, dict):
+                self.config["node_style"].update(value)
+            elif key == "edge_filter" and isinstance(value, (set, list)):
+                self.config["edge_filter"] = set(value)
         return self
 
-    def _compute_risk(self, node_id: str) -> Tuple[float, str]:
+    def _compute_risk(self, node_id: str) -> tuple[float, str]:
         """计算节点风险分数和等级"""
         if node_id in self._risk_cache:
             return self._risk_cache[node_id]
 
         node = self.graph.get_node(node_id)
         if node is None:
-            return 0.0, 'LOW'
+            return 0.0, "LOW"
 
         fan_in = self.graph.in_degree(node_id)
         fan_out = self.graph.out_degree(node_id)
@@ -171,18 +171,18 @@ class SignalGraphViewer:
         func += 15 if fan_in >= 3 else 0
         func += 10 if fan_out >= 3 else 0
 
-        timing = 15 if node.kind.name == 'REG' else 0
+        timing = 15 if node.kind.name == "REG" else 0
         timing += fan_in * 2
 
         total = func + timing
         if total >= 40:
-            level = 'CRITICAL'
+            level = "CRITICAL"
         elif total >= 25:
-            level = 'HIGH'
+            level = "HIGH"
         elif total >= 15:
-            level = 'MEDIUM'
+            level = "MEDIUM"
         else:
-            level = 'LOW'
+            level = "LOW"
 
         self._risk_cache[node_id] = (total, level)
         return total, level
@@ -192,28 +192,28 @@ class SignalGraphViewer:
         has_sva = name in self.sva_signals
         has_cov = name in self.cov_signals
         if has_sva and has_cov:
-            return 'BOTH'
+            return "BOTH"
         elif has_sva:
-            return 'SVA'
+            return "SVA"
         elif has_cov:
-            return 'COV'
-        return 'NONE'
+            return "COV"
+        return "NONE"
 
     def _should_show_edge(self, src: str, dst: str, edge) -> bool:
         """判断边是否应该显示"""
-        ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
+        ek = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
 
-        if 'exclude_clock' in self.config['edge_filter'] and ek in ('CLOCK', 'PosEdge'):
+        if "exclude_clock" in self.config["edge_filter"] and ek in ("CLOCK", "PosEdge"):
             return False
-        if 'exclude_reset' in self.config['edge_filter'] and ek in ('RESET', 'NegEdge'):
+        if "exclude_reset" in self.config["edge_filter"] and ek in ("RESET", "NegEdge"):
             return False
-        if 'exclude_constant' in self.config['edge_filter']:
+        if "exclude_constant" in self.config["edge_filter"]:
             if src.startswith("1'b") or dst.startswith("1'"):
                 return False
 
         return True
 
-    def _filter_edges(self, edges: List[Tuple]) -> List[Tuple]:
+    def _filter_edges(self, edges: list[tuple]) -> list[tuple]:
         """过滤边，防止过于密集"""
         result = []
         for src, dst in edges:
@@ -225,7 +225,7 @@ class SignalGraphViewer:
             result.append((src, dst, edge))
 
         # 如果边太多，按风险排序，只保留高风险路径的边
-        if len(result) > self.config['max_edges']:
+        if len(result) > self.config["max_edges"]:
             # 计算每条边的风险分（两端节点的风险分之和）
             edge_risks = []
             for src, dst, edge in result:
@@ -235,118 +235,126 @@ class SignalGraphViewer:
 
             # 按风险排序，保留最高的
             edge_risks.sort(key=lambda x: x[3], reverse=True)
-            result = [(s, d, e) for s, d, e, _ in edge_risks[:self.config['max_edges']]]
+            result = [(s, d, e) for s, d, e, _ in edge_risks[: self.config["max_edges"]]]
 
         return result
 
     def render_dot(self, output_path: str, title: str = "Signal Graph") -> str:
         """渲染为 DOT 格式
-        
+
         增强功能：
         - 模块聚类（cluster_modules）
         - 跨模块边用虚线区分
         - 高风险区域聚焦模式（focus_risk_threshold）
         """
         # 布局引擎选择
-        layout_engine = self.config.get('layout_engine', 'dot')
-        
+        layout_engine = self.config.get("layout_engine", "dot")
+
         dot_lines = [
-            f'digraph signal_graph {{',
-            f'  rankdir={self.config["layout"]};',
+            "digraph signal_graph {",
+            f"  rankdir={self.config['layout']};",
             '  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10];',
             f'  label="{title}";',
-            '  splines=spline;',
-            '  nodesep=0.4;',
-            '  ranksep=0.6;',
-            '  concentrate=true;',
-            '  compound=true;',
+            "  splines=spline;",
+            "  nodesep=0.4;",
+            "  ranksep=0.6;",
+            "  concentrate=true;",
+            "  compound=true;",
             '  size="10";',
-            '  ratio=compress;',
+            "  ratio=compress;",
         ]
 
         # 模块聚类
-        modules = self._extract_modules() if self.config.get('cluster_modules', False) else {}
-        
+        modules = self._extract_modules() if self.config.get("cluster_modules", False) else {}
+
         # 收集所有节点（用于后续边处理）
         node_name_map = {}  # full_node_id -> safe_name
-        
+
         # 生成节点声明
         for node_id in self.graph.nodes():
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
 
-            name = node_id.split('.')[-1]
+            name = node_id.split(".")[-1]
             risk_score, risk_level = self._compute_risk(node_id)
             cover_status = self._get_cover_status(name)
 
             # 颜色
-            if self.config['node_style']['risk_color']:
-                fillcolor = self.RISK_COLORS.get(risk_level, '#cccccc') + '22'
+            if self.config["node_style"]["risk_color"]:
+                fillcolor = self.RISK_COLORS.get(risk_level, "#cccccc") + "22"
             else:
-                fillcolor = '#f0f0f0'
+                fillcolor = "#f0f0f0"
 
-            shape = self.NODE_KIND_SHAPES.get(str(node.kind), 'box')
+            shape = self.NODE_KIND_SHAPES.get(str(node.kind), "box")
 
             # 标签
             labels = [name]
-            if self.config['node_style']['show_type']:
-                labels.append(str(node.kind).split('.')[-1])
-            if self.config['node_style']['show_fan']:
+            if self.config["node_style"]["show_type"]:
+                labels.append(str(node.kind).split(".")[-1])
+            if self.config["node_style"]["show_fan"]:
                 fan_in_count = 0
                 fan_out_count = 0
                 for pred in self.graph.predecessors(node_id):
                     edge = self.graph.get_edge(pred, node_id)
-                    if edge and edge.kind.name == 'DRIVER':
+                    if edge and edge.kind.name == "DRIVER":
                         fan_in_count += 1
                 for succ in self.graph.successors(node_id):
                     edge = self.graph.get_edge(node_id, succ)
-                    if edge and edge.kind.name == 'DRIVER':
+                    if edge and edge.kind.name == "DRIVER":
                         fan_out_count += 1
-                labels.append(f'In:{fan_in_count} Out:{fan_out_count}')
+                labels.append(f"In:{fan_in_count} Out:{fan_out_count}")
 
             # 覆盖标记
-            if self.config['node_style']['cover_marker']:
-                if cover_status == 'BOTH':
-                    labels.append('✓🟡')
-                elif cover_status == 'SVA':
-                    labels.append('✓')
-                elif cover_status == 'COV':
-                    labels.append('🟡')
-                elif risk_score >= self.config['min_risk_for_highlight']:
-                    labels.append('🚨')
+            if self.config["node_style"]["cover_marker"]:
+                if cover_status == "BOTH":
+                    labels.append("✓🟡")
+                elif cover_status == "SVA":
+                    labels.append("✓")
+                elif cover_status == "COV":
+                    labels.append("🟡")
+                elif risk_score >= self.config["min_risk_for_highlight"]:
+                    labels.append("🚨")
 
-            label_str = '\\n'.join(labels)
-            color = self.COVER_COLORS.get(cover_status, '#888888') if self.config['node_style']['cover_marker'] else self.RISK_COLORS.get(risk_level, '#888888')
+            label_str = "\\n".join(labels)
+            color = (
+                self.COVER_COLORS.get(cover_status, "#888888")
+                if self.config["node_style"]["cover_marker"]
+                else self.RISK_COLORS.get(risk_level, "#888888")
+            )
 
             # 处理特殊字符
-            name_escaped = name.replace('"', '\\"').replace('[', '_').replace(']', '_').replace('-', '_').replace(':', '_')
+            name_escaped = (
+                name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
+            )
             if "'" in name:
                 safe_name = f'"{name_escaped}"'
             else:
                 # 当启用模块聚类时，使用完整层级路径作为节点名，避免同名信号冲突
-                if self.config.get('cluster_modules', False):
+                if self.config.get("cluster_modules", False):
                     # 用下划线替换点号，保留完整路径信息
-                    safe_name = node_id.replace('.', '_').replace('[', '_').replace(']', '_')
+                    safe_name = node_id.replace(".", "_").replace("[", "_").replace("]", "_")
                 else:
                     safe_name = name_escaped
             node_name_map[node_id] = safe_name
-            
-            dot_lines.append(f'    {safe_name}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];')
 
-        dot_lines.append('')
+            dot_lines.append(
+                f'    {safe_name}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];'
+            )
+
+        dot_lines.append("")
 
         # 模块聚类 subgraph
-        if modules and self.config.get('cluster_modules', False):
+        if modules and self.config.get("cluster_modules", False):
             for module_name, node_ids in sorted(modules.items()):
                 dot_lines.append(f'    subgraph "cluster_{module_name}" {{')
                 dot_lines.append(f'        label="{module_name}";')
-                dot_lines.append(f'        style=filled; fillcolor="#f0f0f044";')
+                dot_lines.append('        style=filled; fillcolor="#f0f0f044";')
                 for nid in sorted(node_ids):
                     if nid in node_name_map:
-                        dot_lines.append(f'        {node_name_map[nid]};')
-                dot_lines.append('    }')
-                dot_lines.append('')
+                        dot_lines.append(f"        {node_name_map[nid]};")
+                dot_lines.append("    }")
+                dot_lines.append("")
 
         # 按类型排列层级：PORT_IN 在上方，PORT_OUT 在下方
         in_nodes = []
@@ -357,31 +365,33 @@ class SignalGraphViewer:
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
-            name = node_id.split('.')[-1]
-            name_escaped = name.replace('"', '\\"').replace('[', '_').replace(']', '_').replace('-', '_').replace(':', '_')
-            if "'" in name or '.' in name:
+            name = node_id.split(".")[-1]
+            name_escaped = (
+                name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
+            )
+            if "'" in name or "." in name:
                 safe_name = f'"{name_escaped}"'
             else:
                 safe_name = name_escaped
-            if 'PORT_IN' in str(node.kind):
+            if "PORT_IN" in str(node.kind):
                 in_nodes.append(safe_name)
-            elif 'PORT_OUT' in str(node.kind):
+            elif "PORT_OUT" in str(node.kind):
                 out_nodes.append(safe_name)
-            elif 'REG' in str(node.kind):
+            elif "REG" in str(node.kind):
                 reg_nodes.append(safe_name)
             else:
                 other_nodes.append(safe_name)
 
         if in_nodes:
-            dot_lines.append(f'    {{ rank=source; {" ".join(in_nodes)}; }}')
+            dot_lines.append(f"    {{ rank=source; {' '.join(in_nodes)}; }}")
         if out_nodes:
-            dot_lines.append(f'    {{ rank=sink; {" ".join(out_nodes)}; }}')
+            dot_lines.append(f"    {{ rank=sink; {' '.join(out_nodes)}; }}")
 
-        dot_lines.append('')
+        dot_lines.append("")
 
         # 按类型排列层级：PORT_IN 在上方，PORT_OUT 在下方
         # 注意：当启用模块聚类时，不使用 rank 约束（与 subgraph 冲突）
-        if not self.config.get('cluster_modules', False):
+        if not self.config.get("cluster_modules", False):
             in_nodes = []
             out_nodes = []
             reg_nodes = []
@@ -390,83 +400,87 @@ class SignalGraphViewer:
                 node = self.graph.get_node(node_id)
                 if node is None:
                     continue
-                name = node_id.split('.')[-1]
-                name_escaped = name.replace('"', '\\"').replace('[', '_').replace(']', '_').replace('-', '_').replace(':', '_')
-                if "'" in name or '.' in name:
+                name = node_id.split(".")[-1]
+                name_escaped = (
+                    name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
+                )
+                if "'" in name or "." in name:
                     safe_name = f'"{name_escaped}"'
                 else:
                     safe_name = name_escaped
-                if 'PORT_IN' in str(node.kind):
+                if "PORT_IN" in str(node.kind):
                     in_nodes.append(safe_name)
-                elif 'PORT_OUT' in str(node.kind):
+                elif "PORT_OUT" in str(node.kind):
                     out_nodes.append(safe_name)
-                elif 'REG' in str(node.kind):
+                elif "REG" in str(node.kind):
                     reg_nodes.append(safe_name)
                 else:
                     other_nodes.append(safe_name)
 
             if in_nodes:
-                dot_lines.append(f'    {{ rank=source; {" ".join(in_nodes)}; }}')
+                dot_lines.append(f"    {{ rank=source; {' '.join(in_nodes)}; }}")
             if out_nodes:
-                dot_lines.append(f'    {{ rank=sink; {" ".join(out_nodes)}; }}')
+                dot_lines.append(f"    {{ rank=sink; {' '.join(out_nodes)}; }}")
 
-            dot_lines.append('')
+            dot_lines.append("")
 
         # 边
-        if self.config['show_edges']:
+        if self.config["show_edges"]:
             edges = list(self.graph.edges())
             filtered_edges = self._filter_edges(edges)
 
             for src, dst, edge in filtered_edges:
-                ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
-                ek_short = ek.replace('EdgeKind.', '').replace('"', '\\"')
+                ek = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
+                ek_short = ek.replace("EdgeKind.", "").replace('"', '\\"')
 
                 # 获取安全节点名
-                src_safe = node_name_map.get(src, src.split('.')[-1])
-                dst_safe = node_name_map.get(dst, dst.split('.')[-1])
+                src_safe = node_name_map.get(src, src.split(".")[-1])
+                dst_safe = node_name_map.get(dst, dst.split(".")[-1])
 
                 # 边样式
-                if ek in ('CLOCK', 'PosEdge'):
-                    style = 'dashed'
-                    color = self.EDGE_COLORS['CLOCK']
-                    penwidth = '1'
-                elif ek in ('RESET', 'NegEdge'):
-                    style = 'dashed'
-                    color = self.EDGE_COLORS['RESET']
-                    penwidth = '1'
-                elif self.config.get('cluster_modules') and self._is_cross_module(src, dst):
+                if ek in ("CLOCK", "PosEdge"):
+                    style = "dashed"
+                    color = self.EDGE_COLORS["CLOCK"]
+                    penwidth = "1"
+                elif ek in ("RESET", "NegEdge"):
+                    style = "dashed"
+                    color = self.EDGE_COLORS["RESET"]
+                    penwidth = "1"
+                elif self.config.get("cluster_modules") and self._is_cross_module(src, dst):
                     # 跨模块边用虚线
-                    style = 'dashed'
-                    color = '#888888'
-                    penwidth = '1'
+                    style = "dashed"
+                    color = "#888888"
+                    penwidth = "1"
                 else:
-                    style = 'solid'
-                    color = self.EDGE_COLORS.get(ek, '#666666')
-                    penwidth = '2'
+                    style = "solid"
+                    color = self.EDGE_COLORS.get(ek, "#666666")
+                    penwidth = "2"
 
                 # 边标签
                 label_parts = []
-                if self.config['edge_labels']:
+                if self.config["edge_labels"]:
                     label_parts.append(ek_short)
-                if self.config['edge_conditions'] and edge.condition:
-                    cond = edge.condition.replace('!!', '').replace('&&', '&')
+                if self.config["edge_conditions"] and edge.condition:
+                    cond = edge.condition.replace("!!", "").replace("&&", "&")
                     if len(cond) > 30:
-                        cond = cond[:30] + '...'
+                        cond = cond[:30] + "..."
                     label_parts.append(cond)
-                
+
                 if label_parts:
                     label_attr = f' xlabel="{chr(10).join(label_parts)}"'
                 else:
-                    label_attr = ''
+                    label_attr = ""
 
-                dot_lines.append(f'    {src_safe} -> {dst_safe}[color="{color}" style={style} penwidth={penwidth}{label_attr}];')
+                dot_lines.append(
+                    f'    {src_safe} -> {dst_safe}[color="{color}" style={style} penwidth={penwidth}{label_attr}];'
+                )
 
-        dot_lines.append('}')
+        dot_lines.append("}")
 
-        dot_content = '\n'.join(dot_lines)
+        dot_content = "\n".join(dot_lines)
 
         if output_path:
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 f.write(dot_content)
 
         return dot_content
@@ -474,12 +488,12 @@ class SignalGraphViewer:
     def render_mermaid(self, output_path: str = None) -> str:
         """渲染为 Mermaid 格式"""
         mmd_lines = [
-            'flowchart ' + self.config['layout'],
+            "flowchart " + self.config["layout"],
         ]
 
         # 统计信息
         total = len(list(self.graph.nodes()))
-        mmd_lines.append(f'    %% Total nodes: {total}')
+        mmd_lines.append(f"    %% Total nodes: {total}")
 
         # 节点
         for node_id in self.graph.nodes():
@@ -487,81 +501,81 @@ class SignalGraphViewer:
             if node is None:
                 continue
 
-            name = node_id.split('.')[-1]
+            name = node_id.split(".")[-1]
             risk_score, risk_level = self._compute_risk(node_id)
             cover_status = self._get_cover_status(name)
 
-            safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
             # 图标
-            if risk_level == 'CRITICAL':
-                icon = '🔴'
-            elif risk_level == 'HIGH':
-                icon = '🟠'
-            elif risk_level == 'MEDIUM':
-                icon = '🟡'
+            if risk_level == "CRITICAL":
+                icon = "🔴"
+            elif risk_level == "HIGH":
+                icon = "🟠"
+            elif risk_level == "MEDIUM":
+                icon = "🟡"
             else:
-                icon = '🟢'
+                icon = "🟢"
 
             # 覆盖标记
-            if cover_status == 'BOTH':
-                cover_icon = ' ✓🟡'
-            elif cover_status == 'SVA':
-                cover_icon = ' ✓'
-            elif cover_status == 'COV':
-                cover_icon = ' 🟡'
-            elif risk_score >= self.config['min_risk_for_highlight']:
-                cover_icon = ' 🚨'
+            if cover_status == "BOTH":
+                cover_icon = " ✓🟡"
+            elif cover_status == "SVA":
+                cover_icon = " ✓"
+            elif cover_status == "COV":
+                cover_icon = " 🟡"
+            elif risk_score >= self.config["min_risk_for_highlight"]:
+                cover_icon = " 🚨"
             else:
-                cover_icon = ''
+                cover_icon = ""
 
-            kind_short = str(node.kind).split('.')[-1][:3]
+            kind_short = str(node.kind).split(".")[-1][:3]
 
             mmd_lines.append(f'    N_{safe_name}["{icon} {name} ({kind_short}){cover_icon}"]')
 
-        mmd_lines.append('')
+        mmd_lines.append("")
 
         # 边
-        if self.config['show_edges']:
+        if self.config["show_edges"]:
             edges = list(self.graph.edges())
             filtered_edges = self._filter_edges(edges)
 
             for src, dst, edge in filtered_edges:
-                ek = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
-                ek_short = ek.replace('EdgeKind.', '')
+                ek = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
+                ek_short = ek.replace("EdgeKind.", "")
 
-                src_name = re.sub(r'[^a-zA-Z0-9_]', '_', src.split('.')[-1])
-                dst_name = re.sub(r'[^a-zA-Z0-9_]', '_', dst.split('.')[-1])
+                src_name = re.sub(r"[^a-zA-Z0-9_]", "_", src.split(".")[-1])
+                dst_name = re.sub(r"[^a-zA-Z0-9_]", "_", dst.split(".")[-1])
 
                 # 边样式
-                if ek in ('CLOCK', 'PosEdge'):
-                    arrow = '-->'  # 虚线用 --
-                elif ek in ('RESET', 'NegEdge'):
-                    arrow = '-->'
+                if ek in ("CLOCK", "PosEdge"):
+                    arrow = "-->"  # 虚线用 --
+                elif ek in ("RESET", "NegEdge"):
+                    arrow = "-->"
                 else:
-                    arrow = '-->'
+                    arrow = "-->"
 
                 # 边标签
                 label_parts = []
-                if self.config['edge_labels']:
+                if self.config["edge_labels"]:
                     label_parts.append(ek_short)
-                if self.config['edge_conditions'] and edge.condition:
-                    cond = edge.condition.replace('!!', '').replace('&&', '&')
+                if self.config["edge_conditions"] and edge.condition:
+                    cond = edge.condition.replace("!!", "").replace("&&", "&")
                     if len(cond) > 25:
-                        cond = cond[:25] + '...'
+                        cond = cond[:25] + "..."
                     label_parts.append(cond)
-                
-                if label_parts:
-                    label = '|'.join(label_parts)
-                    mmd_lines.append(f'    N_{src_name} {arrow}|{label}| N_{dst_name}')
-                else:
-                    mmd_lines.append(f'    N_{src_name} {arrow} N_{dst_name}')
 
-        mmd_content = '\n'.join(mmd_lines)
+                if label_parts:
+                    label = "|".join(label_parts)
+                    mmd_lines.append(f"    N_{src_name} {arrow}|{label}| N_{dst_name}")
+                else:
+                    mmd_lines.append(f"    N_{src_name} {arrow} N_{dst_name}")
+
+        mmd_content = "\n".join(mmd_lines)
 
         if output_path:
-            with open(output_path, 'w') as f:
-                f.write(mermaid_content)
+            with open(output_path, "w") as f:
+                f.write(mmd_content)
 
         return mmd_content
 
@@ -570,7 +584,7 @@ class SignalGraphViewer:
         # 先获取 DOT 和 Mermaid
         dot_content = self.render_dot(None)
 
-        html_template = '''<!DOCTYPE html>
+        html_template = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -644,15 +658,15 @@ Cover Status:
         });
     </script>
 </body>
-</html>'''
+</html>"""
 
         # 计算统计
         total_nodes = len(list(self.graph.nodes()))
         total_edges = len(list(self.graph.edges()))
         high_risk = sum(1 for n in self.graph.nodes() if self._compute_risk(n)[0] >= 25)
-        
+
         # 模块聚类统计
-        modules = self._extract_modules() if self.config.get('cluster_modules', False) else {}
+        modules = self._extract_modules() if self.config.get("cluster_modules", False) else {}
         total_modules = len(modules)
         critical_nodes = sum(1 for n in self.graph.nodes() if self._compute_risk(n)[0] >= 40)
 
@@ -660,12 +674,12 @@ Cover Status:
         mermaid_content = self.render_mermaid(None)
 
         # 替换占位符
-        html = html_template.replace('{{TOTAL_NODES}}', str(total_nodes))
-        html = html.replace('{{TOTAL_EDGES}}', str(total_edges))
-        html = html.replace('{{HIGH_RISK}}', str(high_risk))
-        html = html.replace('{{MERMAID_CONTENT}}', mermaid_content)
+        html = html_template.replace("{{TOTAL_NODES}}", str(total_nodes))
+        html = html.replace("{{TOTAL_EDGES}}", str(total_edges))
+        html = html.replace("{{HIGH_RISK}}", str(high_risk))
+        html = html.replace("{{MERMAID_CONTENT}}", mermaid_content)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(html)
 
         return html
@@ -682,15 +696,15 @@ def create_gap_viewer(graph, sva_signals, cov_signals, gap_signals, output_prefi
         gap_signals: 高风险缺口信号列表
         output_prefix: 输出文件前缀
     """
-    gap_names = {g['name'] for g in gap_signals}
+    gap_names = {g["name"] for g in gap_signals}
 
     viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
     viewer.configure(
-        layout='TB',
+        layout="TB",
         show_edges=True,
-        edge_filter={'exclude_clock', 'exclude_reset'},
+        edge_filter={"exclude_clock", "exclude_reset"},
         max_edges=200,
-        node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True},
+        node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
         highlight_gaps=True,
         min_risk_for_highlight=20.0,
     )
@@ -708,19 +722,20 @@ def create_gap_viewer(graph, sva_signals, cov_signals, gap_signals, output_prefi
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Signal Graph Visualization')
-    parser.add_argument('-f', '--file', required=True, help='SystemVerilog file')
-    parser.add_argument('--dot', help='Output DOT file')
-    parser.add_argument('--mmd', help='Output Mermaid file')
-    parser.add_argument('--html', help='Output HTML file')
-    parser.add_argument('--no-edges', action='store_true', help='Hide edges')
-    parser.add_argument('--layout', default='TB', choices=['TB', 'LR'], help='Layout direction')
-    parser.add_argument('--show-labels', action='store_true', help='Show edge labels')
+
+    parser = argparse.ArgumentParser(description="Signal Graph Visualization")
+    parser.add_argument("-f", "--file", required=True, help="SystemVerilog file")
+    parser.add_argument("--dot", help="Output DOT file")
+    parser.add_argument("--mmd", help="Output Mermaid file")
+    parser.add_argument("--html", help="Output HTML file")
+    parser.add_argument("--no-edges", action="store_true", help="Hide edges")
+    parser.add_argument("--layout", default="TB", choices=["TB", "LR"], help="Layout direction")
+    parser.add_argument("--show-labels", action="store_true", help="Show edge labels")
     args = parser.parse_args()
 
-    from trace.unified_tracer import UnifiedTracer
-    from trace.core.sva_extractor import SVAExtractor
     from trace.core.covergroup_extractor import CovergroupExtractor
+    from trace.core.sva_extractor import SVAExtractor
+    from trace.unified_tracer import UnifiedTracer
 
     with open(args.file) as f:
         source = f.read()
@@ -744,7 +759,7 @@ if __name__ == "__main__":
         layout=args.layout,
         show_edges=not args.no_edges,
         edge_labels=args.show_labels,
-        node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True},
+        node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
     )
 
     if args.dot:

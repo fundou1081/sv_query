@@ -1,18 +1,17 @@
-#==============================================================================
+# ==============================================================================
 # stats.py - graph statistics command
-#============================================================================
+# ============================================================================
 
-import sys
 import json
+import sys
 from pathlib import Path
 
 import typer
-import pyslang
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -31,11 +30,11 @@ def output_text(data: dict) -> None:
     print(f"  Total nodes: {result.get('total_nodes', 0)}")
     print(f"  Total edges: {result.get('total_edges', 0)}")
 
-    print(f"\n  Node kinds:")
+    print("\n  Node kinds:")
     for kind, count in nodes.items():
         print(f"    {kind}: {count}")
 
-    print(f"\n  Edge kinds:")
+    print("\n  Edge kinds:")
     for kind, count in edges.items():
         print(f"    {kind}: {count}")
 
@@ -59,7 +58,7 @@ def output_fanout_rank(data: dict, top_n: int = 20) -> None:
 
     print(f"\n  High Fanout Signals (TOP {top_n}):")
     print(f"  {'Rank':<6} {'Fanout':<8} {'Signal':<40} {'Kind':<12} {'Suggestion'}")
-    print(f"  {'-'*6} {'-'*8} {'-'*40} {'-'*12} {'-'*20}")
+    print(f"  {'-' * 6} {'-' * 8} {'-' * 40} {'-' * 12} {'-' * 20}")
 
     for i, entry in enumerate(fanout_list[:top_n], 1):
         signal = entry.get("signal", "")
@@ -95,18 +94,18 @@ def stats(
         for n in graph.nodes():
             node = graph.get_node(n)
             if node:
-                kind = node.kind.name if hasattr(node.kind, 'name') else str(node.kind)
+                kind = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
                 nodes[kind] = nodes.get(kind, 0) + 1
 
         edges = {}
         for src, dst in graph.edges():
             edge = graph.get_edge(src, dst)
             if edge:
-                kind = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
+                kind = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
                 edges[kind] = edges.get(kind, 0) + 1
 
         # 获取模块列表
-        modules = list(graph.modules) if hasattr(graph, 'modules') else []
+        modules = list(graph.modules) if hasattr(graph, "modules") else []
 
         data = {
             "ok": True,
@@ -119,7 +118,7 @@ def stats(
                 "edges": edges,
                 "modules": modules,
             },
-            "errors": []
+            "errors": [],
         }
 
         # 扇出排行榜计算
@@ -136,17 +135,12 @@ def stats(
                 output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "stats",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 def _compute_fanout_rank(graph) -> dict:
@@ -171,9 +165,9 @@ def _compute_fanout_rank(graph) -> dict:
     for signal_id in fanout_map:
         node = graph.get_node(signal_id)
         if node:
-            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, 'name') else str(node.kind)
-            fanout_map[signal_id]["is_clock"] = getattr(node, 'is_clock', False)
-            fanout_map[signal_id]["is_reset"] = getattr(node, 'is_reset', False)
+            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
+            fanout_map[signal_id]["is_clock"] = getattr(node, "is_clock", False)
+            fanout_map[signal_id]["is_reset"] = getattr(node, "is_reset", False)
 
     # 生成排行榜
     fanout_list = []
@@ -193,13 +187,15 @@ def _compute_fanout_rank(graph) -> dict:
         # 生成建议
         suggestion = _generate_suggestion(signal_id, fanout, kind, info)
 
-        fanout_list.append({
-            "signal": signal_id,
-            "fanout": fanout,
-            "kind": kind,
-            "suggestion": suggestion,
-            "loads": info["loads"],
-        })
+        fanout_list.append(
+            {
+                "signal": signal_id,
+                "fanout": fanout,
+                "kind": kind,
+                "suggestion": suggestion,
+                "loads": info["loads"],
+            }
+        )
 
     # 按扇出数排序
     fanout_list.sort(key=lambda x: x["fanout"], reverse=True)

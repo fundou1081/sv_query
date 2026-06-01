@@ -1,41 +1,38 @@
-#==============================================================================
+# ==============================================================================
 # trace.core - 统一查询入口
-#==============================================================================
+# ==============================================================================
 
+# 也导出 base 模块
+from .base import ASTWalker, PyslangAdapter
 from .graph import (
-    SignalGraph,
-    TraceNode,
-    TraceEdge,
-    NodeKind,
     EdgeKind,
     GraphDiff,
+    NodeKind,
+    SignalGraph,
+    TraceEdge,
+    TraceNode,
     diff_graph,
     diff_reachability,
     forward_reachability,
 )
-
 from .graph_builder import (
-    GraphBuilder,
-    DriverExtractor,
-    LoadExtractor,
-    ConnectionExtractor,
     ClockDomainExtractor,
+    ConnectionExtractor,
+    DriverExtractor,
+    GraphBuilder,
+    LoadExtractor,
 )
-
 from .query import (
-    SignalTracer,
-    SignalChain,
-    LoadTracer,
-    LoadChain,
-    ModuleTracer,
-    ModuleConnections,
-    ClockDomainTracer,
     ClockDomainTrace,
+    ClockDomainTracer,
     CrossingRisk,
+    LoadChain,
+    LoadTracer,
+    ModuleConnections,
+    ModuleTracer,
+    SignalChain,
+    SignalTracer,
 )
-
-# 也导出 base 模块
-from .base import PyslangAdapter, ASTWalker
 
 __all__ = [
     # Graph Models

@@ -1,12 +1,13 @@
-#==============================================================================
+# ==============================================================================
 # sva.py - SVA 分析命令
-#==============================================================================
+# ==============================================================================
 """
 Usage:
   python run_cli.py sva extract top.sv
   python run_cli.py sva extract top.sv --json
   python run_cli.py sva coverage top.sv
 """
+
 import sys
 from pathlib import Path
 
@@ -16,15 +17,16 @@ _project_root = _src_dir.parent.parent
 
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
+import warnings
 
 import typer
-import warnings
+
 warnings.filterwarnings("ignore")
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.sva_extractor import SVAExtractor
 from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.graph.models import NodeKind
+from trace.core.sva_extractor import SVAExtractor
+from trace.unified_tracer import UnifiedTracer
 
 sva_app = typer.Typer(help="SVA (SystemVerilog Assertions) analysis: extract properties, assertions, coverage gaps")
 
@@ -42,33 +44,51 @@ def extract(
 
     if json_output:
         import json
-        print(json.dumps({
-            'ok': True, 'command': 'sva extract',
-            'result': {
-                'sequences': {pid: {
-                    'signals': p.signals,
-                    'timing_ops': p.timing_ops,
-                    'clock': p.clock,
-                } for pid, p in sva.sequences.items()},
-                'properties': {pid: {
-                    'signals': p.signals,
-                    'operators': p.operators,
-                    'clock': p.clock,
-                    'disable_iff': p.disable_iff,
-                } for pid, p in sva.properties.items()},
-                'assertions': [{
-                    'id': a.id, 'kind': a.kind,
-                    'property_ref': a.property_ref,
-                    'signals': a.signals,
-                } for a in sva.assertions],
-                'signal_refs': dict(sva.signal_refs),
-            }
-        }, indent=2, ensure_ascii=False))
+
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "command": "sva extract",
+                    "result": {
+                        "sequences": {
+                            pid: {
+                                "signals": p.signals,
+                                "timing_ops": p.timing_ops,
+                                "clock": p.clock,
+                            }
+                            for pid, p in sva.sequences.items()
+                        },
+                        "properties": {
+                            pid: {
+                                "signals": p.signals,
+                                "operators": p.operators,
+                                "clock": p.clock,
+                                "disable_iff": p.disable_iff,
+                            }
+                            for pid, p in sva.properties.items()
+                        },
+                        "assertions": [
+                            {
+                                "id": a.id,
+                                "kind": a.kind,
+                                "property_ref": a.property_ref,
+                                "signals": a.signals,
+                            }
+                            for a in sva.assertions
+                        ],
+                        "signal_refs": dict(sva.signal_refs),
+                    },
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"SVA 提取: {file}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     print(f"\n  序列 (Sequences): {len(sva.sequences)}")
     for sid, seq in sva.sequences.items():
@@ -92,7 +112,7 @@ def extract(
         print(f"      引用: {a.property_ref}")
         print(f"      信号: {a.signals}")
 
-    print(f"\n  信号关联索引:")
+    print("\n  信号关联索引:")
     for sig, refs in sva.signal_refs.items():
         print(f"    {sig}: {refs}")
 
@@ -134,8 +154,8 @@ def coverage(
     for node_id in graph.nodes():
         node = graph.get_node(node_id)
         if node and node.kind in (NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.REG, NodeKind.SIGNAL):
-            sn = node_id.split('.')[-1]
-            if sn not in clock_signals and sn not in ('clk', 'clk_i', 'rst_n', 'rst'):
+            sn = node_id.split(".")[-1]
+            if sn not in clock_signals and sn not in ("clk", "clk_i", "rst_n", "rst"):
                 data_signals.append(sn)
 
     covered = sva_signals & set(data_signals)
@@ -143,24 +163,32 @@ def coverage(
 
     if json_output:
         import json
-        print(json.dumps({
-            'ok': True, 'command': 'sva coverage',
-            'result': {
-                'total_signals': len(data_signals),
-                'sva_covered': len(covered),
-                'cov_covered': len(cov_signals),
-                'uncovered_signals': sorted(uncovered),
-                'coverage_ratio': len(covered) / len(data_signals) if data_signals else 0,
-            }
-        }, indent=2, ensure_ascii=False))
+
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "command": "sva coverage",
+                    "result": {
+                        "total_signals": len(data_signals),
+                        "sva_covered": len(covered),
+                        "cov_covered": len(cov_signals),
+                        "uncovered_signals": sorted(uncovered),
+                        "coverage_ratio": len(covered) / len(data_signals) if data_signals else 0,
+                    },
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"SVA 覆盖分析: {file}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     ratio = len(covered) / len(data_signals) if data_signals else 0
-    print(f"\n  覆盖率: {len(covered)}/{len(data_signals)} ({ratio*100:.1f}%)")
+    print(f"\n  覆盖率: {len(covered)}/{len(data_signals)} ({ratio * 100:.1f}%)")
 
     if uncovered:
         print(f"\n  ⚠ 未覆盖信号 ({len(uncovered)}):")
@@ -187,6 +215,7 @@ def timing(
 
     def timing_depth(graph, target_id, max_comb_depth=3):
         from collections import deque
+
         node = graph.get_node(target_id)
         if node is None:
             return -1
@@ -200,8 +229,8 @@ def timing(
             n = graph.get_node(nid)
             if n and n.kind == NodeKind.PORT_IN:
                 if not n.is_clock and not n.is_reset:
-                    sn = nid.split('.')[-1]
-                    if sn not in ('clk', 'clk_i', 'rst_n', 'rst'):
+                    sn = nid.split(".")[-1]
+                    if sn not in ("clk", "clk_i", "rst_n", "rst"):
                         primary_inputs.add(nid)
         if target_id in primary_inputs:
             return 0
@@ -236,39 +265,44 @@ def timing(
 
     results = []
     for pid, prop in sva.properties.items():
-        op = '|=>' if '|=>' in prop.operators else '|->'
-        inferred_depth = 1 if op == '|=>' else 0
-        results.append({
-            'property': pid,
-            'signals': prop.signals,
-            'operator': op,
-            'sva_declared_depth': inferred_depth,
-            'signal_depths': {}
-        })
+        op = "|=>" if "|=>" in prop.operators else "|->"
+        inferred_depth = 1 if op == "|=>" else 0
+        results.append(
+            {
+                "property": pid,
+                "signals": prop.signals,
+                "operator": op,
+                "sva_declared_depth": inferred_depth,
+                "signal_depths": {},
+            }
+        )
         for sig in prop.signals:
-            matches = [n for n in graph.nodes() if n.endswith(f'.{sig}')]
+            matches = [n for n in graph.nodes() if n.endswith(f".{sig}")]
             if matches:
                 depth = timing_depth(graph, matches[0])
-                results[-1]['signal_depths'][sig] = depth
+                results[-1]["signal_depths"][sig] = depth
 
     if json_output:
         import json
-        print(json.dumps({'ok': True, 'command': 'sva timing', 'result': results}, indent=2))
+
+        print(json.dumps({"ok": True, "command": "sva timing", "result": results}, indent=2))
         return
 
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"SVA 时序比对: {file}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
-    print(f"""
+    print("""
   ┌──────────────────────────────┬────────────┬────────────┬───────────────────────┐
   │ Property                    │ SVA 声明   │ 推断深度   │ 信号实际深度          │
   ├──────────────────────────────┼────────────┼────────────┼───────────────────────┤""")
 
     for r in results:
-        print(f"  │ {r['property']:28s} │ {r['operator']:10s} │ {r['sva_declared_depth']:10d} │ {str(r['signal_depths']):25s} │")
+        print(
+            f"  │ {r['property']:28s} │ {r['operator']:10s} │ {r['sva_declared_depth']:10d} │ {str(r['signal_depths']):25s} │"
+        )
 
-    print(f"  └──────────────────────────────┴────────────┴────────────┴───────────────────────┘")
+    print("  └──────────────────────────────┴────────────┴────────────┴───────────────────────┘")
 
 
 if __name__ == "__main__":

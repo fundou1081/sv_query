@@ -1,18 +1,17 @@
-#==============================================================================
+# ==============================================================================
 # dataflow.py - dataflow path analysis subcommand
-#==============================================================================
+# ==============================================================================
 
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.dataflow import DataFlowGraph
+from trace.unified_tracer import UnifiedTracer
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -49,7 +48,7 @@ def output_text(data: dict) -> None:
 
         paths = result.get("paths", [])
         if paths:
-            print(f"\n  Path Details:")
+            print("\n  Path Details:")
             for path in paths[:5]:
                 path_id = path.get("path_id", 0)
                 distance = path.get("distance", 0)
@@ -108,31 +107,30 @@ def analyze(
         for path in result.paths:
             segments_data = []
             for seg in path.segments:
-                segments_data.append({
-                    "from_signal": seg.from_signal,
-                    "to_signal": seg.to_signal,
-                    "driver": seg.driver,
-                    "condition": seg.condition,
-                    "timing": seg.timing,
-                    "assign_type": seg.assign_type,
-                    "distance": seg.distance
-                })
-            paths_data.append({
-                "path_id": path.path_id,
-                "segments": segments_data,
-                "distance": path.distance,
-                "has_conditional": path.has_conditional
-            })
+                segments_data.append(
+                    {
+                        "from_signal": seg.from_signal,
+                        "to_signal": seg.to_signal,
+                        "driver": seg.driver,
+                        "condition": seg.condition,
+                        "timing": seg.timing,
+                        "assign_type": seg.assign_type,
+                        "distance": seg.distance,
+                    }
+                )
+            paths_data.append(
+                {
+                    "path_id": path.path_id,
+                    "segments": segments_data,
+                    "distance": path.distance,
+                    "has_conditional": path.has_conditional,
+                }
+            )
 
         data = {
             "ok": True,
             "command": "dataflow",
-            "params": {
-                "from_signal": from_signal,
-                "to_signal": to_signal,
-                "file": str(file),
-                "max_paths": max_paths
-            },
+            "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths},
             "result": {
                 "from_signal": result.from_signal,
                 "to_signal": result.to_signal,
@@ -142,9 +140,9 @@ def analyze(
                 "all_conditions": result.all_conditions,
                 "clock_domain": result.clock_domain,
                 "timing_risk": result.timing_risk,
-                "paths": paths_data
+                "paths": paths_data,
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -153,16 +151,12 @@ def analyze(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "dataflow",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "dataflow", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc()
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
