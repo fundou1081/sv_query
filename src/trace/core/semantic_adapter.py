@@ -86,10 +86,26 @@ class SemanticAdapter:
             if node is None:
                 return
 
-            kind = getattr(node, 'kind', None)
-            kind_str = str(kind) if kind else 'None'
-            name = getattr(node, 'name', None)
-            name_str = str(name) if name else '_anon_'
+            try:
+                kind = getattr(node, 'kind', None)
+                kind_str = str(kind) if kind else 'None'
+            except (UnicodeDecodeError, Exception):
+                kind_str = 'None'
+
+            try:
+                name = getattr(node, 'name', None)
+            except (UnicodeDecodeError, Exception):
+                name = None
+            # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
+            if isinstance(name, bytes):
+                try:
+                    name = name.decode('utf-8', errors='replace')
+                except Exception:
+                    name = '_bin_'
+            try:
+                name_str = str(name) if name else '_anon_'
+            except (UnicodeDecodeError, Exception):
+                name_str = '_bad_'
 
             key = (kind_str, name_str)
             if key in seen_ids:
@@ -120,10 +136,16 @@ class SemanticAdapter:
                     nonlocal modules
                     if comp_node is None:
                         return
-                    
+
                     kind = getattr(comp_node, 'kind', None)
                     kind_str = str(kind) if kind else 'None'
                     name = getattr(comp_node, 'name', None)
+                    # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
+                    if isinstance(name, bytes):
+                        try:
+                            name = name.decode('utf-8', errors='replace')
+                        except Exception:
+                            name = '_bin_'
                     name_str = str(name) if name else '_anon_'
                     
                     key = (kind_str, name_str)
@@ -278,16 +300,30 @@ class SemanticAdapter:
         Semantic AST: 对于 InstanceSymbol,返回 definition.name;
                       对于 DefinitionSymbol,返回 name
         """
-        kind_str = str(getattr(module, 'kind', ''))
+        try:
+            kind_str = str(getattr(module, 'kind', ''))
+        except (UnicodeDecodeError, Exception):
+            return '_unknown_'
 
         if 'Instance' in kind_str:
             # InstanceSymbol: definition.name 是模块类型
-            defn = getattr(module, 'definition', None)
-            if defn and hasattr(defn, 'name'):
-                return str(defn.name)
+            # 注意: pyslang 在某些 CVA6 类型上访问 .name 会触发 UnicodeDecodeError
+            try:
+                defn = getattr(module, 'definition', None)
+                if defn is not None:
+                    # 不用 hasattr - 直接尝试 get
+                    name = getattr(defn, 'name', None)
+                    if name is not None:
+                        return str(name)
+            except (UnicodeDecodeError, Exception):
+                return '_inst_'
 
-        if hasattr(module, 'name'):
-            return str(module.name)
+        try:
+            name = getattr(module, 'name', None)
+            if name is not None:
+                return str(name)
+        except (UnicodeDecodeError, Exception):
+            return '_bad_'
         return 'unknown'
 
     def get_classes(self) -> List:
@@ -598,8 +634,11 @@ class SemanticAdapter:
         name = None
         direction = 'input'  # 默认
 
-        if hasattr(port_decl, 'name'):
-            name = str(port_decl.name)
+        try:
+            if hasattr(port_decl, 'name'):
+                name = str(port_decl.name)
+        except (UnicodeDecodeError, Exception):
+            name = None
 
         # 检查端口方向
         if hasattr(port_decl, 'direction'):
