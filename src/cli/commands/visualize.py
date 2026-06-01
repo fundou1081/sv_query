@@ -47,9 +47,13 @@ def graph(
     cluster_modules: bool = typer.Option(False, "--cluster-modules", help="Cluster nodes by module"),
     layout_engine: str = typer.Option("dot", "--layout-engine", help="Layout engine: dot, neato, fdp"),
     cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
-    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules, layout_engine, cache)
+    include_dirs = include.split(',') if include else None
+    sources = None if filelist else {file: open(file).read()}
+    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules, layout_engine, cache, include_dirs, filelist, sources)
 
 
 @vis_app.command(name="gap")
@@ -64,19 +68,23 @@ def gap(
     _run_gap_visualization(file, dot_output, html_output, min_risk, cache)
 
 
-def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules=False, layout_engine='dot', cache=False):
+def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules=False, layout_engine='dot', cache=False, include_dirs=None, filelist=None, sources=None):
     """可视化信号图（包含数据流关系）
-    
+
     Args:
         cache: 使用缓存加速（基于文件 hash）
+        include_dirs: include 搜索路径列表
+        filelist: 文件列表路径
+        sources: 源代码字典（如果提供 filelist 则设为 None）
     """
-    with open(file) as f:
-        source = f.read()
+    if sources is None:
+        with open(file) as f:
+            sources = {file: f.read()}
 
-    tracer = UnifiedTracer(sources={file: source})
+    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist)
     graph = tracer.build_graph(use_cache=cache)
-    sva = SVAExtractor({file: source}).extract()
-    cov_list = CovergroupExtractor({file: source}).extract()
+    sva = SVAExtractor(sources).extract()
+    cov_list = CovergroupExtractor(sources).extract()
 
     sva_signals = set()
     for prop in sva.properties.values():
