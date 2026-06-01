@@ -135,6 +135,13 @@ ignore = [
 "docs/*" = ["N802", "N806"]
 "examples/*" = ["N802", "N806"]
 "sim/tests/*" = ["B011", "N802", "N806"]
+# CLI 命令文件需要 sys.path 调整后才能 import 业务代码
+"src/cli/commands/*.py" = [
+    "E402",  # module-import-not-at-top-of-file
+]
+"src/cli/main.py" = [
+    "E402",  # module-import-not-at-top-of-file
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["trace", "cli"]

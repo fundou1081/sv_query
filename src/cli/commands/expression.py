@@ -1,20 +1,19 @@
-#==============================================================================
+# ==============================================================================
 # expression.py - expression node subcommands
-#============================================================================
+# ============================================================================
 # [Expression Node] CLI commands for building expression nodes
 
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Optional, List
 
 import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.graph_builder import DriverExtractor
 from trace.core.semantic_adapter import SemanticAdapter
+from trace.unified_tracer import UnifiedTracer
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -31,14 +30,14 @@ def output_text(data: dict) -> None:
         expr_id = result.get("expression_id", "")
         operands = result.get("operands", [])
         expression = result.get("expression", "")
-        print(f"Expression node created:")
+        print("Expression node created:")
         print(f"  ID: {expr_id}")
         print(f"  Expression: {expression}")
         print(f"  Operands: {operands}")
-        
+
         edges = result.get("edges", [])
         if edges:
-            print(f"  Edges:")
+            print("  Edges:")
             for edge in edges:
                 print(f"    {edge['src']} → {edge['dst']} ({edge['kind']})")
 
@@ -46,7 +45,7 @@ def output_text(data: dict) -> None:
         func_id = result.get("function_id", "")
         func_name = result.get("function_name", "")
         arguments = result.get("arguments", [])
-        print(f"Function call node created:")
+        print("Function call node created:")
         print(f"  ID: {func_id}")
         print(f"  Function: {func_name}")
         print(f"  Arguments: {arguments}")
@@ -56,7 +55,7 @@ def output_text(data: dict) -> None:
         condition = result.get("condition", "")
         true_branch = result.get("true_branch", "")
         false_branch = result.get("false_branch", "")
-        print(f"Conditional expression node created:")
+        print("Conditional expression node created:")
         print(f"  ID: {cond_id}")
         print(f"  Condition: {condition}")
         print(f"  True: {true_branch}")
@@ -78,51 +77,37 @@ def build(
 ) -> None:
     """Build an expression node"""
     try:
-        operands_list = [op.strip() for op in operands.split(',')]
-        
+        operands_list = [op.strip() for op in operands.split(",")]
+
         # 如果提供了文件，使用 DriverExtractor
         if file:
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source})
             _ = tracer.build_graph()
-            
+
             adapter = SemanticAdapter(tracer._comp.getRoot())
             extractor = DriverExtractor(adapter, tracer.graph)
             expr_id = extractor.build_expression(
-                operands=operands_list,
-                expression=expression,
-                result=result,
-                module=module
+                operands=operands_list, expression=expression, result=result, module=module
             )
         else:
             # 无文件模式：直接使用 ExpressionBuilder
             from trace.core.builder.expression_builder import ExpressionBuilder
             from trace.core.graph.models import SignalGraph
-            
+
             graph = SignalGraph()
             builder = ExpressionBuilder(graph)
             expr_id = builder.build_expression(
-                operands=operands_list,
-                expression=expression,
-                result=result,
-                module=module
+                operands=operands_list, expression=expression, result=result, module=module
             )
-        
+
         # 构建边信息
         edges = []
         for op in operands_list:
-            edges.append({
-                "src": op,
-                "dst": expr_id,
-                "kind": "DRIVER"
-            })
-        edges.append({
-            "src": expr_id,
-            "dst": result,
-            "kind": "DRIVER"
-        })
-        
+            edges.append({"src": op, "dst": expr_id, "kind": "DRIVER"})
+        edges.append({"src": expr_id, "dst": result, "kind": "DRIVER"})
+
         data = {
             "ok": True,
             "command": "build_expression",
@@ -132,28 +117,23 @@ def build(
                 "operands": operands_list,
                 "expression": expression,
                 "result": result,
-                "edges": edges
+                "edges": edges,
             },
-            "errors": []
+            "errors": [],
         }
-        
+
         if json_output:
             output_json(data, pretty)
         else:
             output_text(data)
-            
+
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "build_expression",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "build_expression", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @expression_app.command("func")
@@ -168,35 +148,29 @@ def function_call(
 ) -> None:
     """Build a function call node"""
     try:
-        args_list = [arg.strip() for arg in arguments.split(',')]
-        
+        args_list = [arg.strip() for arg in arguments.split(",")]
+
         if file:
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source})
             _ = tracer.build_graph()
-            
+
             adapter = SemanticAdapter(tracer._comp.getRoot())
             extractor = DriverExtractor(adapter, tracer.graph)
             func_id = extractor.build_function_call(
-                function_name=function_name,
-                arguments=args_list,
-                result=result,
-                module=module
+                function_name=function_name, arguments=args_list, result=result, module=module
             )
         else:
             from trace.core.builder.expression_builder import ExpressionBuilder
             from trace.core.graph.models import SignalGraph
-            
+
             graph = SignalGraph()
             builder = ExpressionBuilder(graph)
             func_id = builder.build_function_call(
-                function_name=function_name,
-                arguments=args_list,
-                result=result,
-                module=module
+                function_name=function_name, arguments=args_list, result=result, module=module
             )
-        
+
         data = {
             "ok": True,
             "command": "build_function_call",
@@ -205,28 +179,23 @@ def function_call(
                 "function_id": func_id,
                 "function_name": function_name,
                 "arguments": args_list,
-                "result": result
+                "result": result,
             },
-            "errors": []
+            "errors": [],
         }
-        
+
         if json_output:
             output_json(data, pretty)
         else:
             output_text(data)
-            
+
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "build_function_call",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "build_function_call", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @expression_app.command("cond")
@@ -247,58 +216,50 @@ def conditional(
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source})
             _ = tracer.build_graph()
-            
+
             adapter = SemanticAdapter(tracer._comp.getRoot())
             extractor = DriverExtractor(adapter, tracer.graph)
             cond_id = extractor.build_conditional(
-                condition=condition,
-                true_branch=true_branch,
-                false_branch=false_branch,
-                result=result,
-                module=module
+                condition=condition, true_branch=true_branch, false_branch=false_branch, result=result, module=module
             )
         else:
             from trace.core.builder.expression_builder import ExpressionBuilder
             from trace.core.graph.models import SignalGraph
-            
+
             graph = SignalGraph()
             builder = ExpressionBuilder(graph)
             cond_id = builder.build_conditional(
-                condition=condition,
-                true_branch=true_branch,
-                false_branch=false_branch,
-                result=result,
-                module=module
+                condition=condition, true_branch=true_branch, false_branch=false_branch, result=result, module=module
             )
-        
+
         data = {
             "ok": True,
             "command": "build_conditional",
-            "params": {"condition": condition, "true_branch": true_branch, "false_branch": false_branch, "result": result},
+            "params": {
+                "condition": condition,
+                "true_branch": true_branch,
+                "false_branch": false_branch,
+                "result": result,
+            },
             "result": {
                 "condition_id": cond_id,
                 "condition": condition,
                 "true_branch": true_branch,
                 "false_branch": false_branch,
-                "result": result
+                "result": result,
             },
-            "errors": []
+            "errors": [],
         }
-        
+
         if json_output:
             output_json(data, pretty)
         else:
             output_text(data)
-            
+
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "build_conditional",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "build_conditional", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None

@@ -15,15 +15,17 @@ Usage:
     result.op_name      # 操作符名 (如有)
     result.signal_info  # 信号详细信息
 """
+
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 
 @dataclass
 class SignalResult:
     """信号提取结果（增强版）
-    
+
     包含丰富信息，支持未来的任务需求。
-    
+
     Attributes:
         primary: 单个信号名（用于需要主信号的场景，如赋值 LHS）
         all_signals: 所有信号列表（去重，用于需要所有信号的场景）
@@ -32,48 +34,49 @@ class SignalResult:
         op_name: 操作符名 (如 'Add', 'Subtract', 'And')
         source_range: 源码位置 ((line, col), (line, col))
     """
+
     # 核心结果
-    primary: Optional[str] = None
-    all_signals: List[str] = field(default_factory=list)
-    
+    primary: str | None = None
+    all_signals: list[str] = field(default_factory=list)
+
     # 表达式元信息
-    kind_name: Optional[str] = None
-    op_name: Optional[str] = None
-    
+    kind_name: str | None = None
+    op_name: str | None = None
+
     # 信号详细信息（未来扩展用）
-    signal_info: Dict[str, Any] = field(default_factory=dict)
-    
+    signal_info: dict[str, Any] = field(default_factory=dict)
+
     # 位置信息
-    source_range: Optional[tuple] = None
-    
+    source_range: tuple | None = None
+
     def __post_init__(self):
         """去重 all_signals"""
         if self.all_signals:
             seen = set()
             self.all_signals = [x for x in self.all_signals if not (x in seen or seen.add(x))]
-    
+
     @property
     def is_multisignal(self) -> bool:
         """是否多信号表达式"""
         return len(self.all_signals) > 1
-    
+
     @property
     def signal_count(self) -> int:
         """信号数量"""
         return len(self.all_signals)
-    
+
     @classmethod
-    def single(cls, name: str, **kwargs) -> 'SignalResult':
+    def single(cls, name: str, **kwargs) -> "SignalResult":
         """创建单信号结果"""
         return cls(primary=name, all_signals=[name] if name else [], **kwargs)
-    
+
     @classmethod
-    def multi(cls, signals: List[str], **kwargs) -> 'SignalResult':
+    def multi(cls, signals: list[str], **kwargs) -> "SignalResult":
         """创建多信号结果"""
         signals = [s for s in signals if s]
         return cls(primary=signals[0] if signals else None, all_signals=signals, **kwargs)
-    
+
     @classmethod
-    def empty(cls) -> 'SignalResult':
+    def empty(cls) -> "SignalResult":
         """创建空结果"""
         return cls()

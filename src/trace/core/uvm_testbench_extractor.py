@@ -5,32 +5,27 @@
 # [铁律15] Visitor 模式
 # [铁律3] 不可信则不输出
 
-import re
 import logging
-from typing import Dict, List, Optional, Tuple
+import re
 
 import pyslang
 
-from .compiler import SVCompiler
-from .graph.uvm_models import (
-    UVMComponent, TLMConnection, SequenceBinding, UVMTestbench,
-    FactoryOverride, ConfigDBEntry
-)
+from .graph.uvm_models import ConfigDBEntry, FactoryOverride, SequenceBinding, TLMConnection, UVMComponent, UVMTestbench
 
 logger = logging.getLogger(__name__)
 
 # UVM 基类 → 组件类型映射
 UVM_BASE_TYPE_MAP = {
-    'uvm_driver': 'driver',
-    'uvm_monitor': 'monitor',
-    'uvm_sequencer': 'sequencer',
-    'uvm_agent': 'agent',
-    'uvm_env': 'env',
-    'uvm_test': 'test',
-    'uvm_scoreboard': 'scoreboard',
-    'uvm_subscriber': 'subscriber',
-    'uvm_sequence': 'sequence',
-    'uvm_sequence_item': 'sequence_item',
+    "uvm_driver": "driver",
+    "uvm_monitor": "monitor",
+    "uvm_sequencer": "sequencer",
+    "uvm_agent": "agent",
+    "uvm_env": "env",
+    "uvm_test": "test",
+    "uvm_scoreboard": "scoreboard",
+    "uvm_subscriber": "subscriber",
+    "uvm_sequence": "sequence",
+    "uvm_sequence_item": "sequence_item",
 }
 
 
@@ -44,19 +39,19 @@ class UVMTestbenchExtractor:
     - 继承关系
     """
 
-    def __init__(self, sources: Dict[str, str]):
+    def __init__(self, sources: dict[str, str]):
         self._sources = sources
-        self._components: Dict[str, UVMComponent] = {}
-        self._connections: List[TLMConnection] = []
-        self._sequence_bindings: List[SequenceBinding] = []
-        self._overrides: List[FactoryOverride] = []
-        self._config_entries: List[ConfigDBEntry] = []
-        self._class_hierarchy: Dict[str, str] = {}
-        self._class_defs: Dict[str, object] = {}  # class_name → syntax node
+        self._components: dict[str, UVMComponent] = {}
+        self._connections: list[TLMConnection] = []
+        self._sequence_bindings: list[SequenceBinding] = []
+        self._overrides: list[FactoryOverride] = []
+        self._config_entries: list[ConfigDBEntry] = []
+        self._class_hierarchy: dict[str, str] = {}
+        self._class_defs: dict[str, object] = {}  # class_name → syntax node
 
     def extract(self) -> UVMTestbench:
         """提取 UVM testbench 结构
-        
+
         [铁律1] UVM 提取使用 SyntaxTree。
         原因: UVM 宏 (type_id::create, uvm_component_utils) 依赖 uvm_pkg，
         pyslang 的 Semantic AST 无法完整解析 UVM 宏展开。
@@ -86,10 +81,10 @@ class UVMTestbenchExtractor:
 
     def _collect_class_defs(self, node):
         """收集 class 定义和继承关系"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
-        if 'ClassDeclaration' in kind:
-            class_name = str(getattr(node, 'name', '')).strip()
+        if "ClassDeclaration" in kind:
+            class_name = str(getattr(node, "name", "")).strip()
             if class_name:
                 self._class_defs[class_name] = node
                 # 提取 extends
@@ -98,11 +93,11 @@ class UVMTestbenchExtractor:
                     self._class_hierarchy[class_name] = extends
 
                 # 推断组件类型
-                base_class = extends or ''
+                base_class = extends or ""
                 comp_type = self._infer_type(base_class)
 
                 # 如果是 UVM 组件类型，创建一个"定义级"组件记录
-                if comp_type and comp_type not in ('sequence', 'sequence_item'):
+                if comp_type and comp_type not in ("sequence", "sequence_item"):
                     self._components[class_name] = UVMComponent(
                         name=class_name,
                         class_name=class_name,
@@ -111,7 +106,7 @@ class UVMTestbenchExtractor:
                     )
             return
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     self._collect_class_defs(child)
@@ -120,19 +115,19 @@ class UVMTestbenchExtractor:
 
     def _get_extends(self, node) -> str:
         """提取 extends 父类名"""
-        extends_clause = getattr(node, 'extendsClause', None)
+        extends_clause = getattr(node, "extendsClause", None)
         if extends_clause:
             text = str(extends_clause).strip()
-            if text.startswith('extends'):
-                parent = text[len('extends'):].strip().split()[0]
+            if text.startswith("extends"):
+                parent = text[len("extends") :].strip().split()[0]
                 return parent
-        return ''
+        return ""
 
     def _infer_type(self, base_class: str) -> str:
         """从基类推断组件类型"""
         # 去掉参数化部分 uvm_driver#(xxx) → uvm_driver
-        base = base_class.split('#')[0].strip() if base_class else ''
-        return UVM_BASE_TYPE_MAP.get(base, '')
+        base = base_class.split("#")[0].strip() if base_class else ""
+        return UVM_BASE_TYPE_MAP.get(base, "")
 
     # =========================================================================
     # Pass 2: 提取组件创建和 TLM 连接
@@ -140,14 +135,14 @@ class UVMTestbenchExtractor:
 
     def _extract_components(self, node):
         """提取组件创建和 TLM 连接"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
-        if 'ClassDeclaration' in kind:
-            class_name = str(getattr(node, 'name', '')).strip()
+        if "ClassDeclaration" in kind:
+            class_name = str(getattr(node, "name", "")).strip()
             self._process_class(node, class_name)
             return
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     self._extract_components(child)
@@ -161,17 +156,17 @@ class UVMTestbenchExtractor:
 
     def _find_methods(self, node, class_name: str):
         """递归查找 function/task 定义"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
-        if 'ClassMethod' in kind or 'FunctionDeclaration' in kind or 'TaskDeclaration' in kind:
+        if "ClassMethod" in kind or "FunctionDeclaration" in kind or "TaskDeclaration" in kind:
             method_name = self._get_method_name(node)
-            if method_name in ('build_phase', 'new'):
+            if method_name in ("build_phase", "new"):
                 self._process_build_phase(node, class_name)
-            if method_name in ('connect_phase', 'new'):
+            if method_name in ("connect_phase", "new"):
                 self._process_connect_phase(node, class_name)
             return
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     self._find_methods(child, class_name)
@@ -181,15 +176,15 @@ class UVMTestbenchExtractor:
     def _get_method_name(self, node) -> str:
         """获取方法名"""
         for child in node:
-            ck = str(getattr(child, 'kind', ''))
-            if 'FunctionPrototype' in ck:
-                return str(getattr(child, 'name', '')).strip()
+            ck = str(getattr(child, "kind", ""))
+            if "FunctionPrototype" in ck:
+                return str(getattr(child, "name", "")).strip()
             # FunctionDeclaration 包含 FunctionPrototype
-            if 'Function' in ck or 'Task' in ck:
+            if "Function" in ck or "Task" in ck:
                 name = self._get_method_name(child)
                 if name:
                     return name
-        return ''
+        return ""
 
     # =========================================================================
     # build_phase 处理
@@ -202,27 +197,27 @@ class UVMTestbenchExtractor:
 
     def _find_creates(self, node, class_name: str):
         """递归查找 create/new/uvm_config_db 调用"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
         # AssignmentExpression: xxx = yyy::type_id::create("name", this)
-        if 'Assignment' in kind:
+        if "Assignment" in kind:
             self._process_assignment(node, class_name)
             return
 
         # InvocationExpression: uvm_config_db#(...)::set(...)
-        if 'Invocation' in kind:
+        if "Invocation" in kind:
             node_str = str(node)
-            if 'set_type_override' in node_str:
-                self._process_factory_override(node, class_name, 'type')
+            if "set_type_override" in node_str:
+                self._process_factory_override(node, class_name, "type")
                 return
-            if 'set_inst_override' in node_str:
-                self._process_factory_override(node, class_name, 'inst')
+            if "set_inst_override" in node_str:
+                self._process_factory_override(node, class_name, "inst")
                 return
-            if 'uvm_config_db' in node_str:
+            if "uvm_config_db" in node_str:
                 self._process_config_db(node, class_name)
                 return
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     self._find_creates(child, class_name)
@@ -234,18 +229,18 @@ class UVMTestbenchExtractor:
         node_str = str(node)
 
         # 检查 type_id::create
-        if 'type_id::create' in node_str:
+        if "type_id::create" in node_str:
             self._process_type_id_create(node, class_name)
         # 检查 new(...)
-        elif '.new(' in node_str or '= new(' in node_str:
+        elif ".new(" in node_str or "= new(" in node_str:
             self._process_new_creation(node, class_name)
         # 检查 factory override
-        elif 'set_type_override' in node_str:
-            self._process_factory_override(node, class_name, 'type')
-        elif 'set_inst_override' in node_str:
-            self._process_factory_override(node, class_name, 'inst')
+        elif "set_type_override" in node_str:
+            self._process_factory_override(node, class_name, "type")
+        elif "set_inst_override" in node_str:
+            self._process_factory_override(node, class_name, "inst")
         # 检查 uvm_config_db::set
-        elif 'uvm_config_db' in node_str:
+        elif "uvm_config_db" in node_str:
             self._process_config_db(node, class_name)
 
     def _process_type_id_create(self, node, class_name: str):
@@ -253,7 +248,7 @@ class UVMTestbenchExtractor:
         node_str = str(node)
 
         # 提取类名: xxx::type_id::create
-        match = re.search(r'(\w+)::type_id::create\s*\(', node_str)
+        match = re.search(r"(\w+)::type_id::create\s*\(", node_str)
         if not match:
             return
         created_class = match.group(1)
@@ -265,12 +260,12 @@ class UVMTestbenchExtractor:
         instance_name = name_match.group(1)
 
         # 检查 parent 参数: create("name", this)
-        parent = ''
-        if 'this' in node_str:
+        parent = ""
+        if "this" in node_str:
             parent = class_name
 
         # 推断组件类型
-        base_class = self._class_hierarchy.get(created_class, '')
+        base_class = self._class_hierarchy.get(created_class, "")
         comp_type = self._infer_type(base_class) or self._infer_type(created_class)
 
         # 创建或更新组件
@@ -302,12 +297,12 @@ class UVMTestbenchExtractor:
         instance_name = match.group(1)
 
         # 检查 parent 参数
-        parent = ''
-        if 'this' in node_str:
+        parent = ""
+        if "this" in node_str:
             parent = class_name
 
         # 提取赋值左侧变量名
-        left_match = re.match(r'\s*(\w+)\s*=', node_str)
+        left_match = re.match(r"\s*(\w+)\s*=", node_str)
         var_name = left_match.group(1).strip() if left_match else instance_name
 
         # 从 class 定义中查找变量的声明类型
@@ -322,8 +317,8 @@ class UVMTestbenchExtractor:
             self._components[instance_name] = UVMComponent(
                 name=instance_name,
                 class_name=var_type or var_name,
-                base_class='',
-                component_type=self._infer_type(var_type) if var_type else '',
+                base_class="",
+                component_type=self._infer_type(var_type) if var_type else "",
                 parent=parent,
             )
 
@@ -338,26 +333,26 @@ class UVMTestbenchExtractor:
         """
         cls_node = self._class_defs.get(class_name)
         if cls_node is None:
-            return ''
+            return ""
 
         # 递归查找 ClassPropertyDeclaration
         return self._search_var_type(cls_node, var_name)
 
     def _search_var_type(self, node, var_name: str) -> str:
         """递归搜索变量的声明类型"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
-        if 'ClassProperty' in kind or 'PropertyDeclaration' in kind:
+        if "ClassProperty" in kind or "PropertyDeclaration" in kind:
             decl_str = str(node)
             # 模式: type varname;
-            type_match = re.search(r'(\w+(?:\s*#\s*\([^)]+\))?)\s+(\w+)', decl_str)
+            type_match = re.search(r"(\w+(?:\s*#\s*\([^)]+\))?)\s+(\w+)", decl_str)
             if type_match:
                 vtype = type_match.group(1).strip().split()[0]
                 vname = type_match.group(2).strip()
                 if vname == var_name:
                     return vtype
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     result = self._search_var_type(child, var_name)
@@ -366,7 +361,7 @@ class UVMTestbenchExtractor:
             except TypeError:  # pyslang Token 对象不可迭代，跳过
                 pass
 
-        return ''
+        return ""
 
     # =========================================================================
     # connect_phase 处理
@@ -387,15 +382,17 @@ class UVMTestbenchExtractor:
         sequencer_path = path_match.group(1)
 
         # 提取 sequence 类名: xxx::get_type()
-        seq_match = re.search(r'(\w+)::get_type\s*\(', node_str)
+        seq_match = re.search(r"(\w+)::get_type\s*\(", node_str)
         if not seq_match:
             return
         sequence_class = seq_match.group(1)
 
-        self._sequence_bindings.append(SequenceBinding(
-            sequencer_path=sequencer_path,
-            sequence_class=sequence_class,
-        ))
+        self._sequence_bindings.append(
+            SequenceBinding(
+                sequencer_path=sequencer_path,
+                sequence_class=sequence_class,
+            )
+        )
 
     def _process_factory_override(self, node, class_name: str, override_type: str):
         """处理 factory override
@@ -406,71 +403,75 @@ class UVMTestbenchExtractor:
         node_str = str(node)
 
         # 提取原始类型: xxx::type_id::set_type_override
-        orig_match = re.search(r'(\w+)::type_id::set_(?:type|inst)_override', node_str)
+        orig_match = re.search(r"(\w+)::type_id::set_(?:type|inst)_override", node_str)
         if not orig_match:
             return
         original = orig_match.group(1)
 
         # 提取覆盖类型: yyy::get_type()
-        override_match = re.search(r'(\w+)::get_type\s*\(', node_str)
+        override_match = re.search(r"(\w+)::get_type\s*\(", node_str)
         if not override_match:
             return
         override_cls = override_match.group(1)
 
         # 提取 scope (inst override)
-        scope = ''
-        if override_type == 'inst':
+        scope = ""
+        if override_type == "inst":
             scope_match = re.search(r'"([^"]+)"\s*\)', node_str)
             if scope_match:
                 scope = scope_match.group(1)
 
-        self._overrides.append(FactoryOverride(
-            original=original,
-            override_type=override_cls,
-            scope=scope,
-        ))
+        self._overrides.append(
+            FactoryOverride(
+                original=original,
+                override_type=override_cls,
+                scope=scope,
+            )
+        )
 
     def _process_config_db(self, node, class_name: str):
         """处理 uvm_config_db#(...)::set(...) 条目"""
         node_str = str(node)
 
         # 提取值类型: uvm_config_db#(T)
-        type_match = re.search(r'uvm_config_db#\(([^)]+)\)', node_str)
-        value_type = type_match.group(1).strip() if type_match else ''
+        type_match = re.search(r"uvm_config_db#\(([^)]+)\)", node_str)
+        value_type = type_match.group(1).strip() if type_match else ""
 
         # 提取 target path: set(this, "path", ...)
         path_match = re.search(r'set\s*\([^,]+,\s*"([^"]+)"', node_str)
-        target_path = path_match.group(1) if path_match else ''
+        target_path = path_match.group(1) if path_match else ""
 
         # 提取 field name: set(this, "path", "field", ...)
         field_match = re.search(r'set\s*\([^,]+,\s*"[^"]+",\s*"([^"]+)"', node_str)
-        field_name = field_match.group(1) if field_match else ''
+        field_name = field_match.group(1) if field_match else ""
 
         # 检查是否是 default_sequence (已有专门处理)
-        if field_name == 'default_sequence':
+        if field_name == "default_sequence":
             self._process_sequence_config(node, class_name)
             return
 
         if field_name:
-            self._config_entries.append(ConfigDBEntry(
-                context=class_name,
-                target_path=target_path,
-                field_name=field_name,
-                value_type=value_type,
-            ))
+            self._config_entries.append(
+                ConfigDBEntry(
+                    context=class_name,
+                    target_path=target_path,
+                    field_name=field_name,
+                    value_type=value_type,
+                )
+            )
 
     def _find_connects(self, node, class_name: str):
         """递归查找 .connect() 调用"""
-        kind = str(getattr(node, 'kind', ''))
+        kind = str(getattr(node, "kind", ""))
 
         # ExpressionStatement 包含 .connect()
-        if 'ExpressionStatement' in kind:
+        if "ExpressionStatement" in kind:
             node_str = str(node)
-            if '.connect(' in node_str:
+            if ".connect(" in node_str:
                 self._process_connect_call(node, class_name)
                 return  # ExpressionStatement 是叶子，处理完就返回
 
-        if 'Token' not in kind:
+        if "Token" not in kind:
             try:
                 for child in node:
                     self._find_connects(child, class_name)
@@ -482,7 +483,7 @@ class UVMTestbenchExtractor:
         node_str = str(node)
 
         # 提取 source.connect(target)
-        match = re.search(r'(\w+(?:\.\w+)*)\.connect\s*\(\s*(\w+(?:\.\w+)*)', node_str)
+        match = re.search(r"(\w+(?:\.\w+)*)\.connect\s*\(\s*(\w+(?:\.\w+)*)", node_str)
         if not match:
             return
 
@@ -496,11 +497,13 @@ class UVMTestbenchExtractor:
         # 推断端口类型
         port_type = self._infer_port_type(source_path, target_path)
 
-        self._connections.append(TLMConnection(
-            source_port=source_path,
-            target_port=target_path,
-            port_type=port_type,
-        ))
+        self._connections.append(
+            TLMConnection(
+                source_port=source_path,
+                target_port=target_path,
+                port_type=port_type,
+            )
+        )
 
     def _resolve_path(self, path: str, class_name: str) -> str:
         """解析端口完整路径
@@ -516,15 +519,15 @@ class UVMTestbenchExtractor:
         source_lower = source.lower()
         target_lower = target.lower()
 
-        if 'analysis' in source_lower or 'analysis' in target_lower:
-            return 'analysis'
-        if 'put' in source_lower or 'put' in target_lower:
-            return 'put'
-        if 'get' in source_lower or 'get' in target_lower:
-            return 'get'
-        if 'master' in source_lower or 'master' in target_lower:
-            return 'master'
-        if 'slave' in source_lower or 'slave' in target_lower:
-            return 'slave'
+        if "analysis" in source_lower or "analysis" in target_lower:
+            return "analysis"
+        if "put" in source_lower or "put" in target_lower:
+            return "put"
+        if "get" in source_lower or "get" in target_lower:
+            return "get"
+        if "master" in source_lower or "master" in target_lower:
+            return "master"
+        if "slave" in source_lower or "slave" in target_lower:
+            return "slave"
 
-        return ''
+        return ""

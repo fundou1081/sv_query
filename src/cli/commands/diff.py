@@ -1,18 +1,17 @@
-#==============================================================================
+# ==============================================================================
 # diff.py - graph diff command
-#============================================================================
+# ============================================================================
 
-import sys
 import json
+import sys
 from pathlib import Path
 
 import typer
-import pyslang
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from trace.core.graph.diff import diff_reachability, diff_with_health
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.diff import diff_graph, diff_reachability, diff_with_health
 
 diff_app = typer.Typer(help="Compare two versions of SystemVerilog code")
 
@@ -63,16 +62,18 @@ def output_text(data: dict) -> None:
         print(f"  Health delta: {delta_str}")
 
         if stable_core:
-            print(f"  Stable core ({len(stable_core)} nodes): {', '.join(stable_core[:5])}{'...' if len(stable_core) > 5 else ''}")
+            print(
+                f"  Stable core ({len(stable_core)} nodes): {', '.join(stable_core[:5])}{'...' if len(stable_core) > 5 else ''}"
+            )
 
         if coupling:
-            level = coupling.get('level', 'unknown')
-            if level == 'critical':
-                print(f"  Coupling warning: *** CRITICAL *** (small change, high instability)")
-            elif level == 'high':
-                print(f"  Coupling warning: ** HIGH ** (small change, elevated instability)")
-            elif level == 'medium':
-                print(f"  Coupling warning: * MEDIUM *")
+            level = coupling.get("level", "unknown")
+            if level == "critical":
+                print("  Coupling warning: *** CRITICAL *** (small change, high instability)")
+            elif level == "high":
+                print("  Coupling warning: ** HIGH ** (small change, elevated instability)")
+            elif level == "medium":
+                print("  Coupling warning: * MEDIUM *")
             else:
                 print(f"  Coupling level: {level.upper()}")
 
@@ -112,7 +113,7 @@ def compare(
         full_result = diff_with_health(graph_old, graph_new)
 
         # Extract graph diff for compatibility
-        diff_result = full_result['graph_diff']
+        diff_result = full_result["graph_diff"]
         result_data = {
             "added_nodes": diff_result.added_nodes,
             "removed_nodes": diff_result.removed_nodes,
@@ -124,7 +125,9 @@ def compare(
 
         reach_diff_data = {}
         if signal and not diff_result.identical:
-            changed_nodes = diff_result.added_nodes + diff_result.removed_nodes + list(diff_result.modified_nodes.keys())
+            changed_nodes = (
+                diff_result.added_nodes + diff_result.removed_nodes + list(diff_result.modified_nodes.keys())
+            )
             reach_diff_data = diff_reachability(changed_nodes, graph_old, graph_new)
 
         data = {
@@ -133,14 +136,14 @@ def compare(
             "params": {"old": str(old), "new": str(new), "signal": signal},
             "result": {
                 "graph_diff": result_data,
-                "stable_core": full_result['stable_core'],
-                "health_score_old": full_result['health_score_old'],
-                "health_score_new": full_result['health_score_new'],
-                "health_delta": full_result['health_delta'],
-                "coupling_warning": full_result['coupling_warning'],
+                "stable_core": full_result["stable_core"],
+                "health_score_old": full_result["health_score_old"],
+                "health_score_new": full_result["health_score_new"],
+                "health_delta": full_result["health_delta"],
+                "coupling_warning": full_result["coupling_warning"],
                 "reachability_diff": reach_diff_data,
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -149,14 +152,9 @@ def compare(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "diff_compare",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "diff_compare", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None

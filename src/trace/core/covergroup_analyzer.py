@@ -4,14 +4,10 @@
 #
 # [铁律3] 不可信则不输出
 
-import re
 import logging
-from typing import List, Dict, Set, Optional, Tuple
 from dataclasses import dataclass
 
-from .graph.covergroup_models import (
-    CovergroupInfo, CoverpointInfo, BinsInfo, CoverCrossInfo
-)
+from .graph.covergroup_models import CovergroupInfo
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +15,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CoverageGap:
     """coverage 缺失报告"""
-    kind: str                    # "missing_bins" | "missing_illegal_bins" | "missing_cross"
-    variable: str                # 相关变量
-    description: str             # 描述
-    constraint_block: str = ""   # 相关约束块
-    severity: str = "warning"    # "warning" | "error"
+
+    kind: str  # "missing_bins" | "missing_illegal_bins" | "missing_cross"
+    variable: str  # 相关变量
+    description: str  # 描述
+    constraint_block: str = ""  # 相关约束块
+    severity: str = "warning"  # "warning" | "error"
 
 
 class CovergroupAnalyzer:
@@ -37,7 +34,7 @@ class CovergroupAnalyzer:
     - CoverageGap 列表
     """
 
-    def __init__(self, graph, cgs: List[CovergroupInfo]):
+    def __init__(self, graph, cgs: list[CovergroupInfo]):
         """
         Args:
             graph: SignalGraph (包含 constraint 结构)
@@ -46,7 +43,7 @@ class CovergroupAnalyzer:
         self._graph = graph
         self._cgs = cgs
 
-    def analyze(self, class_name: str = None) -> List[CoverageGap]:
+    def analyze(self, class_name: str = None) -> list[CoverageGap]:
         """执行完整分析
 
         Args:
@@ -73,7 +70,7 @@ class CovergroupAnalyzer:
     # 检查 1: 缺失的 cross coverage
     # =========================================================================
 
-    def _check_missing_cross(self, cg: CovergroupInfo) -> List[CoverageGap]:
+    def _check_missing_cross(self, cg: CovergroupInfo) -> list[CoverageGap]:
         """检查条件约束的变量是否在 cross 中
 
         逻辑: 如果 constraint 中有 if (a) { b ... } 形式的条件约束，
@@ -102,16 +99,18 @@ class CovergroupAnalyzer:
 
             pair = tuple(sorted([cond_var, target_var]))
             if pair not in cross_pairs:
-                gaps.append(CoverageGap(
-                    kind="missing_cross",
-                    variable=f"{cond_var} x {target_var}",
-                    description=f"条件约束引用了 {cond_var} 和 {target_var}，但 covergroup 缺少 cross",
-                    severity="warning",
-                ))
+                gaps.append(
+                    CoverageGap(
+                        kind="missing_cross",
+                        variable=f"{cond_var} x {target_var}",
+                        description=f"条件约束引用了 {cond_var} 和 {target_var}，但 covergroup 缺少 cross",
+                        severity="warning",
+                    )
+                )
 
         return gaps
 
-    def _find_condition_constraint_pairs(self) -> Set[Tuple[str, str]]:
+    def _find_condition_constraint_pairs(self) -> set[tuple[str, str]]:
         """从图中找条件约束的变量对
 
         通过 HAS_CONDITION 边找到条件变量，
@@ -129,7 +128,7 @@ class CovergroupAnalyzer:
             if node is None:
                 continue
             node_kind_str = str(node.kind)
-            if 'CONSTRAINT_IF' not in node_kind_str and 'CONSTRAINT_IMPLIES' not in node_kind_str:
+            if "CONSTRAINT_IF" not in node_kind_str and "CONSTRAINT_IMPLIES" not in node_kind_str:
                 continue
 
             # 找条件变量 (HAS_CONDITION 边)
@@ -139,7 +138,7 @@ class CovergroupAnalyzer:
                 if edge.kind == EdgeKind.HAS_CONDITION and src == node_id:
                     # dst 是条件变量的 class property
                     # 提取变量名: packet.mode -> mode
-                    var_name = dst.split('.')[-1] if '.' in dst else dst
+                    var_name = dst.split(".")[-1] if "." in dst else dst
                     cond_vars.add(var_name)
 
             # 找被约束变量 (HAS_CONSEQUENT -> HAS_LHS)
@@ -151,7 +150,7 @@ class CovergroupAnalyzer:
                     for s2, d2 in self._graph.edges():
                         e2 = self._graph.get_edge(s2, d2)
                         if e2.kind == EdgeKind.HAS_LHS and s2 == dst:
-                            var_name = d2.split('.')[-1] if '.' in d2 else d2
+                            var_name = d2.split(".")[-1] if "." in d2 else d2
                             target_vars.add(var_name)
 
             # 生成配对
@@ -166,7 +165,7 @@ class CovergroupAnalyzer:
     # 检查 2: 缺失的 illegal_bins
     # =========================================================================
 
-    def _check_missing_illegal_bins(self, cg: CovergroupInfo) -> List[CoverageGap]:
+    def _check_missing_illegal_bins(self, cg: CovergroupInfo) -> list[CoverageGap]:
         """检查条件约束是否有对应的 illegal_bins
 
         逻辑: 对于 if (mode == 0) { addr < 64 } else { addr >= 64 }
@@ -183,7 +182,7 @@ class CovergroupAnalyzer:
         signals_with_illegal = set()
         for cp in cg.coverpoints:
             for b in cp.bins:
-                if b.kind == 'illegal_bins':
+                if b.kind == "illegal_bins":
                     signals_with_illegal.add(cp.signal)
                     break
 
@@ -205,15 +204,16 @@ class CovergroupAnalyzer:
                 if target_var not in signals_with_illegal:
                     # 检查条件变量是否有 illegal_bins
                     if cond_var not in signals_with_illegal:
-                        gaps.append(CoverageGap(
-                            kind="missing_illegal_bins",
-                            variable=target_var,
-                            description=(
-                                f"条件约束 ({cond_var} -> {target_var}) 存在，"
-                                f"cross 也已定义，但缺少 illegal_bins 标记非法组合"
-                            ),
-                            severity="warning",
-                        ))
+                        gaps.append(
+                            CoverageGap(
+                                kind="missing_illegal_bins",
+                                variable=target_var,
+                                description=(
+                                    f"条件约束 ({cond_var} -> {target_var}) 存在，"
+                                    f"cross 也已定义，但缺少 illegal_bins 标记非法组合"
+                                ),
+                                severity="warning",
+                            )
+                        )
 
         return gaps
-

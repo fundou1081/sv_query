@@ -12,8 +12,8 @@ from .signal_result import SignalResult
 from .statement_collector_visitor import StatementCollectorVisitor
 
 __all__ = [
-    'BaseVisitor',
-    'SignalExpressionVisitor',
-    'SignalResult',
-    'StatementCollectorVisitor',
+    "BaseVisitor",
+    "SignalExpressionVisitor",
+    "SignalResult",
+    "StatementCollectorVisitor",
 ]

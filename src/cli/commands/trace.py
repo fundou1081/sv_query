@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # trace.py - trace fanin / fanout / impact subcommands
-#============================================================================
+# ============================================================================
 """
 Usage:
   python run_cli.py trace fanin top.clk -f top.sv
@@ -8,21 +8,20 @@ Usage:
   python run_cli.py trace impact top.changed_signal -f top.sv
 """
 
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
-import pyslang
 
 # 添加 src 到 path 以便 import trace
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.sva_extractor import SVAExtractor
 from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.graph.models import EdgeKind
+from trace.core.sva_extractor import SVAExtractor
+from trace.unified_tracer import UnifiedTracer
+
 
 # JSON 输出格式化函数
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -70,7 +69,7 @@ def _output_impact_text(data: dict) -> None:
     high_risk = result.get("high_risk_count", 0)
     total_paths = result.get("total_paths", 0)
 
-    print(f"=== Impact Summary ===")
+    print("=== Impact Summary ===")
     print(f"Signal: {signal}")
     print(f"Paths: {total_paths} total, {high_risk} high-risk")
 
@@ -80,7 +79,7 @@ def _output_impact_text(data: dict) -> None:
 
     print(f"\nModules: {', '.join(modules) if modules else 'N/A'}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
 
     for i, path in enumerate(paths, 1):
         risk = path.get("risk", "")
@@ -96,8 +95,8 @@ def _output_impact_text(data: dict) -> None:
         cov_status = coverage.get("covergroup", "NONE")
 
         if sva_status == "covered" or cov_status == "covered":
-            print(f"     Coverage: ✓ SVA covered" if sva_status == "covered" else "")
-            print(f"     Coverage: ✓ Covergroup covered" if cov_status == "covered" else "")
+            print("     Coverage: ✓ SVA covered" if sva_status == "covered" else "")
+            print("     Coverage: ✓ Covergroup covered" if cov_status == "covered" else "")
         else:
             print(f"     ⚠️  No coverage (SVA: {sva_status}, Covergroup: {cov_status})")
 
@@ -114,9 +113,9 @@ def _output_impact_text(data: dict) -> None:
 
     # 总结建议
     if high_risk > 0:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"⚠️  High-risk: {high_risk} paths lack coverage")
-        print(f"💡  Review these paths before making changes")
+        print("💡  Review these paths before making changes")
 
 
 trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or impact analysis")
@@ -126,7 +125,7 @@ trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or i
 def fanin(
     signal: str = typer.Argument(..., help="Signal to trace (e.g., top.clk)"),
     file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
-    depth: Optional[int] = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
+    depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
@@ -137,25 +136,26 @@ def fanin(
         tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
-
         result = tracer.trace_fanin(signal, depth=depth)
 
         # 转换结果为可序列化格式
         drivers = []
-        for d in result if hasattr(result, '__iter__') else []:
-            if hasattr(d, 'id'):
-                drivers.append({
-                    "id": d.id,
-                    "kind": getattr(d, 'kind', 'UNKNOWN').name if hasattr(d, 'kind') else 'UNKNOWN',
-                    "distance": getattr(d, 'distance', 1) if hasattr(d, 'distance') else 1
-                })
+        for d in result if hasattr(result, "__iter__") else []:
+            if hasattr(d, "id"):
+                drivers.append(
+                    {
+                        "id": d.id,
+                        "kind": getattr(d, "kind", "UNKNOWN").name if hasattr(d, "kind") else "UNKNOWN",
+                        "distance": getattr(d, "distance", 1) if hasattr(d, "distance") else 1,
+                    }
+                )
 
         data = {
             "ok": True,
             "command": "trace_fanin",
             "params": {"signal": signal, "file": str(file), "depth": depth},
             "result": {"drivers": drivers},
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -164,24 +164,19 @@ def fanin(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "trace_fanin",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "trace_fanin", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @trace_app.command()
 def fanout(
     signal: str = typer.Argument(..., help="Signal to trace (e.g., top.data)"),
     file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
-    depth: Optional[int] = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
+    depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
@@ -192,25 +187,26 @@ def fanout(
         tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
-
         result = tracer.trace_fanout(signal, depth=depth)
 
         # 转换结果为可序列化格式
         loads = []
-        for l in result if hasattr(result, '__iter__') else []:
-            if hasattr(l, 'id'):
-                loads.append({
-                    "id": l.id,
-                    "kind": getattr(l, 'kind', 'UNKNOWN').name if hasattr(l, 'kind') else 'UNKNOWN',
-                    "distance": getattr(l, 'distance', 1) if hasattr(l, 'distance') else 1
-                })
+        for l in result if hasattr(result, "__iter__") else []:
+            if hasattr(l, "id"):
+                loads.append(
+                    {
+                        "id": l.id,
+                        "kind": getattr(l, "kind", "UNKNOWN").name if hasattr(l, "kind") else "UNKNOWN",
+                        "distance": getattr(l, "distance", 1) if hasattr(l, "distance") else 1,
+                    }
+                )
 
         data = {
             "ok": True,
             "command": "trace_fanout",
             "params": {"signal": signal, "file": str(file), "depth": depth},
             "result": {"loads": loads},
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -219,17 +215,12 @@ def fanout(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "trace_fanout",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "trace_fanout", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @trace_app.command()
@@ -296,7 +287,7 @@ def impact(
                 "modules": modules,
                 "paths": paths,
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -305,20 +296,17 @@ def impact(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "trace_impact",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "trace_impact", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
-def _build_impact_paths(signal: str, load_nodes: list, graph, sva_signals: set, cov_signals: set, min_risk: float) -> list:
+def _build_impact_paths(
+    signal: str, load_nodes: list, graph, sva_signals: set, cov_signals: set, min_risk: float
+) -> list:
     """构建影响路径列表（从信号向下游追溯）
 
     Args:
@@ -336,7 +324,7 @@ def _build_impact_paths(signal: str, load_nodes: list, graph, sva_signals: set, 
     seen_paths = set()
 
     for node in load_nodes:
-        node_id = node.id if hasattr(node, 'id') else str(node)
+        node_id = node.id if hasattr(node, "id") else str(node)
 
         # 构建路径字符串
         path_nodes = [signal, node_id]
@@ -352,8 +340,13 @@ def _build_impact_paths(signal: str, load_nodes: list, graph, sva_signals: set, 
         seen_paths.add(path_key)
 
         # 计算扇出
-        downstream_fanout = len([d for d in graph.successors(node_id)
-                                if graph.get_edge(node_id, d) and graph.get_edge(node_id, d).kind == EdgeKind.DRIVER])
+        downstream_fanout = len(
+            [
+                d
+                for d in graph.successors(node_id)
+                if graph.get_edge(node_id, d) and graph.get_edge(node_id, d).kind == EdgeKind.DRIVER
+            ]
+        )
 
         # 获取边的条件信息
         edge = graph.get_edge(signal, node_id)
@@ -362,8 +355,9 @@ def _build_impact_paths(signal: str, load_nodes: list, graph, sva_signals: set, 
         assign_type = edge.assign_type if edge and edge.assign_type else ""
 
         # 计算风险分数
-        risk_score = _calculate_risk(path_nodes, downstream_fanout, condition, clock_domain,
-                                     sva_signals, cov_signals, signal)
+        risk_score = _calculate_risk(
+            path_nodes, downstream_fanout, condition, clock_domain, sva_signals, cov_signals, signal
+        )
         risk_level = _risk_to_level(risk_score, min_risk)
 
         # 检查覆盖状态
@@ -385,17 +379,19 @@ def _build_impact_paths(signal: str, load_nodes: list, graph, sva_signals: set, 
         if assign_type == "nonblocking":
             path_type = "clocked"
 
-        paths.append({
-            "path": path_nodes,
-            "path_type": path_type,
-            "risk": risk_level,
-            "risk_score": risk_score,
-            "fanout": downstream_fanout,
-            "coverage": coverage,
-            "condition": condition,
-            "clock_domain": clock_domain,
-            "suggestion": suggestion,
-        })
+        paths.append(
+            {
+                "path": path_nodes,
+                "path_type": path_type,
+                "risk": risk_level,
+                "risk_score": risk_score,
+                "fanout": downstream_fanout,
+                "coverage": coverage,
+                "condition": condition,
+                "clock_domain": clock_domain,
+                "suggestion": suggestion,
+            }
+        )
 
     return paths
 
@@ -430,8 +426,9 @@ def _get_full_load_path(signal_id: str, graph, visited: set) -> list:
     return result
 
 
-def _calculate_risk(path_nodes: list, fanout: int, condition: str, clock_domain: str,
-                    sva_signals: set, cov_signals: set, signal: str) -> float:
+def _calculate_risk(
+    path_nodes: list, fanout: int, condition: str, clock_domain: str, sva_signals: set, cov_signals: set, signal: str
+) -> float:
     """计算路径风险分数
 
     Args:

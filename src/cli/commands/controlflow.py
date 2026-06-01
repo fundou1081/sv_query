@@ -1,23 +1,20 @@
-#==============================================================================
+# ==============================================================================
 # controlflow.py - controlflow analysis subcommand
-#==============================================================================
+# ==============================================================================
 
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Optional, List
 
 import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.analyzer.controlflow_analyzer import (
     ControlFlowAnalyzer,
-    ControlFlowAnalysis,
-    ConditionedDriver,
 )
 from trace.core.graph_builder import GraphBuilder
+from trace.unified_tracer import UnifiedTracer
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -29,7 +26,7 @@ def _is_constant(src: str) -> bool:
     """检查是否为常量（字面量）"""
     if not src:
         return False
-    return not src[0].isalpha() and not src.startswith('_')
+    return not src[0].isalpha() and not src.startswith("_")
 
 
 def output_text(data: dict) -> None:
@@ -45,10 +42,10 @@ def output_text(data: dict) -> None:
         print(f"ControlFlow Analysis: {signal}")
 
         if not conditioned_drivers:
-            print(f"  (no conditional drivers found)")
+            print("  (no conditional drivers found)")
         else:
             for cd in conditioned_drivers:
-                print(f"\n  Conditional Drivers:")
+                print("\n  Conditional Drivers:")
                 for cond in cd.get("conditions", []):
                     expr = cond.get("expr", "")
                     edge = cond.get("edge", {})
@@ -60,7 +57,7 @@ def output_text(data: dict) -> None:
                     print(f"    when {expr}: {src} → {to}")
 
         if warnings:
-            print(f"\n  Warnings:")
+            print("\n  Warnings:")
             for w in warnings:
                 print(f"    ⚠️  {w}")
 
@@ -83,8 +80,9 @@ def analyze(
         graph = tracer.build_graph()
 
         # Build GraphBuilder for analyzer
-        from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+
         compiler = SVCompiler({str(file): source})
         semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
@@ -100,19 +98,23 @@ def analyze(
         for cd in result.conditioned_drivers:
             conds_data = []
             for cond in cd.conditions:
-                conds_data.append({
-                    "expr": cond.expr,
-                    "edge": {
-                        "src": cond.edge.src,
-                        "dst": cond.edge.dst,
-                        "kind": cond.edge.kind.name if hasattr(cond.edge.kind, 'name') else str(cond.edge.kind),
-                        "condition": cond.edge.condition,
+                conds_data.append(
+                    {
+                        "expr": cond.expr,
+                        "edge": {
+                            "src": cond.edge.src,
+                            "dst": cond.edge.dst,
+                            "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
+                            "condition": cond.edge.condition,
+                        },
                     }
-                })
-            drivers_data.append({
-                "to_node": cd.to_node,
-                "conditions": conds_data,
-            })
+                )
+            drivers_data.append(
+                {
+                    "to_node": cd.to_node,
+                    "conditions": conds_data,
+                }
+            )
 
         data = {
             "ok": True,
@@ -126,7 +128,7 @@ def analyze(
                 "conditioned_drivers": drivers_data,
                 "warnings": result.warnings,
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -135,19 +137,15 @@ def analyze(
             output_text(data)
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "controlflow",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "controlflow", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc()
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @controlflow_app.command("list-conditioned")
@@ -163,8 +161,9 @@ def list_conditioned(
         tracer = UnifiedTracer(sources={str(file): source})
         graph = tracer.build_graph()
 
-        from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+
         compiler = SVCompiler({str(file): source})
         semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
@@ -184,7 +183,7 @@ def list_conditioned(
                 "signals": signals,
                 "count": len(signals),
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -200,15 +199,16 @@ def list_conditioned(
             "command": "controlflow",
             "subcommand": "list-conditioned",
             "error": str(e),
-            "errors": [str(e)]
+            "errors": [str(e)],
         }
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc()
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @controlflow_app.command("conditions")
@@ -225,8 +225,9 @@ def get_conditions(
         tracer = UnifiedTracer(sources={str(file): source})
         graph = tracer.build_graph()
 
-        from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+
         compiler = SVCompiler({str(file): source})
         semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
@@ -250,7 +251,7 @@ def get_conditions(
                 "conditions": conditions,
                 "count": len(conditions),
             },
-            "errors": []
+            "errors": [],
         }
 
         if json_output:
@@ -261,17 +262,12 @@ def get_conditions(
                 print(f"  - {cond}")
 
     except Exception as e:
-        data = {
-            "ok": False,
-            "command": "controlflow",
-            "subcommand": "conditions",
-            "error": str(e),
-            "errors": [str(e)]
-        }
+        data = {"ok": False, "command": "controlflow", "subcommand": "conditions", "error": str(e), "errors": [str(e)]}
         if json_output:
             output_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc()
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None

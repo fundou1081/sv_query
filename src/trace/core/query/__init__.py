@@ -1,27 +1,24 @@
-#==============================================================================
+# ==============================================================================
 # trace.core.query - 查询接口
-#==============================================================================
-
-from .signal import (
-    SignalTracer,
-    SignalChain,
-    DriverChain,
-)
-
-from .load import (
-    LoadTracer,
-    LoadChain,
-)
-
-from .module import (
-    ModuleTracer,
-    ModuleConnections,
-)
+# ==============================================================================
 
 from .clock_domain import (
-    ClockDomainTracer,
     ClockDomainTrace,
+    ClockDomainTracer,
     CrossingRisk,
+)
+from .load import (
+    LoadChain,
+    LoadTracer,
+)
+from .module import (
+    ModuleConnections,
+    ModuleTracer,
+)
+from .signal import (
+    DriverChain,
+    SignalChain,
+    SignalTracer,
 )
 
 __all__ = [

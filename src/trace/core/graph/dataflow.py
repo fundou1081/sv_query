@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # dataflow.py - DataFlow 分析图
-#==============================================================================
+# ==============================================================================
 """
 基于 SignalGraph + MIG 的数据流分析图
 
@@ -15,20 +15,25 @@
   result = dfg.analyze('top.u_dut.data_in', 'top.u_dut.data_out')
 """
 
-from typing import Dict, List, Optional, Set, Tuple
-from dataclasses import dataclass, field
-import re
-import networkx as nx
 import logging
+import re
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from .models import SignalGraph, EdgeKind
+import networkx as nx
+
+from .models import SignalGraph
+
+if TYPE_CHECKING:
+    from ..module_instance_graph import ModuleInstanceGraph
 
 logger = logging.getLogger(__name__)
 
 
-#==============================================================================
+# ==============================================================================
 # Data Structures
-#==============================================================================
+# ==============================================================================
+
 
 @dataclass
 class DataFlowSegment:
@@ -44,12 +49,13 @@ class DataFlowSegment:
         assign_type: 赋值类型 (continuous/always_ff/always_comb/blocking)
         distance: 驱动距离 (1 = 直接驱动)
     """
+
     from_signal: str
     to_signal: str
-    driver: Optional[str] = None
-    condition: Optional[str] = None
-    effective_condition: Optional[str] = None
-    timing: Optional[str] = None
+    driver: str | None = None
+    condition: str | None = None
+    effective_condition: str | None = None
+    timing: str | None = None
     assign_type: str = "continuous"
     distance: int = 1
 
@@ -64,8 +70,9 @@ class DataFlowPath:
         distance: 总跳数
         has_conditional: 是否包含条件分支
     """
+
     path_id: int
-    segments: List[DataFlowSegment] = field(default_factory=list)
+    segments: list[DataFlowSegment] = field(default_factory=list)
     distance: int = 0
     has_conditional: bool = False
 
@@ -85,20 +92,22 @@ class DataFlowResult:
         clock_domain: 主时钟域
         timing_risk: 路径风险级别 (safe/low/medium/high/critical)
     """
+
     from_signal: str
     to_signal: str
-    paths: List[DataFlowPath] = field(default_factory=list)
+    paths: list[DataFlowPath] = field(default_factory=list)
     is_reachable: bool = False
     paths_count: int = 0
-    intermediate_signals: Set[str] = field(default_factory=set)
-    all_conditions: List[str] = field(default_factory=list)
-    clock_domain: Optional[str] = None
+    intermediate_signals: set[str] = field(default_factory=set)
+    all_conditions: list[str] = field(default_factory=list)
+    clock_domain: str | None = None
     timing_risk: str = "safe"
 
 
-#==============================================================================
+# ==============================================================================
 # DataFlowGraph
-#==============================================================================
+# ==============================================================================
+
 
 class DataFlowGraph:
     """数据流图 - 基于 SignalGraph + MIG
@@ -111,7 +120,7 @@ class DataFlowGraph:
     - 跨模块: 使用 MIG 映射解析实例端口信号
     """
 
-    def __init__(self, signal_graph: SignalGraph, mig: 'ModuleInstanceGraph'):
+    def __init__(self, signal_graph: SignalGraph, mig: "ModuleInstanceGraph"):
         """初始化 DataFlowGraph
 
         Args:
@@ -122,11 +131,11 @@ class DataFlowGraph:
         self.mig = mig
 
         # 段缓存: (from, to) → DataFlowSegment
-        self._segment_cache: Dict[Tuple[str, str], DataFlowSegment] = {}
+        self._segment_cache: dict[tuple[str, str], DataFlowSegment] = {}
 
         # MIG 的 port_to_internal 映射缓存
-        self._port_to_internal: Dict[str, str] = {}
-        self._internal_to_port: Dict[str, str] = {}
+        self._port_to_internal: dict[str, str] = {}
+        self._internal_to_port: dict[str, str] = {}
 
         # 构建 MIG 映射缓存
         self._build_mig_cache()
@@ -137,23 +146,23 @@ class DataFlowGraph:
             return
 
         # 从 MIG 获取 port_to_internal 映射
-        if hasattr(self.mig, 'port_to_internal'):
+        if hasattr(self.mig, "port_to_internal"):
             self._port_to_internal = self.mig.port_to_internal.copy()
 
-        if hasattr(self.mig, 'internal_to_port'):
+        if hasattr(self.mig, "internal_to_port"):
             self._internal_to_port = self.mig.internal_to_port.copy()
 
         # 同时从 MIG.instances 构建
-        if hasattr(self.mig, 'instances'):
+        if hasattr(self.mig, "instances"):
             for inst_id, inst_node in self.mig.instances.items():
-                if hasattr(inst_node, 'ports'):
+                if hasattr(inst_node, "ports"):
                     for port_name, port_info in inst_node.ports.items():
-                        if hasattr(port_info, 'internal_signal'):
+                        if hasattr(port_info, "internal_signal"):
                             full_port = f"{inst_id}.{port_name}"
                             self._port_to_internal[full_port] = port_info.internal_signal
                             self._internal_to_port[port_info.internal_signal] = full_port
 
-    def get_segment(self, from_signal: str, to_signal: str) -> Optional[DataFlowSegment]:
+    def get_segment(self, from_signal: str, to_signal: str) -> DataFlowSegment | None:
         """获取单步驱动信息(带缓存) - 返回优先级最高的边
 
         Args:
@@ -172,7 +181,7 @@ class DataFlowGraph:
             self._segment_cache[cache_key] = segment
         return segment
 
-    def get_segments(self, from_signal: str, to_signal: str) -> List[DataFlowSegment]:
+    def get_segments(self, from_signal: str, to_signal: str) -> list[DataFlowSegment]:
         """获取所有驱动信息 - 返回所有边对应的 segments
 
         Args:
@@ -184,7 +193,7 @@ class DataFlowGraph:
         """
         return self._build_segments(from_signal, to_signal)
 
-    def _build_segment(self, from_signal: str, to_signal: str) -> Optional[DataFlowSegment]:
+    def _build_segment(self, from_signal: str, to_signal: str) -> DataFlowSegment | None:
         """构建段信息 - 返回优先级最高的边
 
         从 SignalGraph 获取边的驱动信息。
@@ -214,15 +223,15 @@ class DataFlowGraph:
         return DataFlowSegment(
             from_signal=from_signal,  # 保持原始 hierarchy path
             to_signal=to_signal,
-            driver=edge.expression if hasattr(edge, 'expression') else None,
-            condition=edge.condition if hasattr(edge, 'condition') else None,
-            effective_condition=edge.effective_condition if hasattr(edge, 'effective_condition') else None,
-            timing=edge.clock_domain if hasattr(edge, 'clock_domain') else None,
-            assign_type=edge.assign_type if hasattr(edge, 'assign_type') else 'continuous',
-            distance=1
+            driver=edge.expression if hasattr(edge, "expression") else None,
+            condition=edge.condition if hasattr(edge, "condition") else None,
+            effective_condition=edge.effective_condition if hasattr(edge, "effective_condition") else None,
+            timing=edge.clock_domain if hasattr(edge, "clock_domain") else None,
+            assign_type=edge.assign_type if hasattr(edge, "assign_type") else "continuous",
+            distance=1,
         )
 
-    def _build_segments(self, from_signal: str, to_signal: str) -> List[DataFlowSegment]:
+    def _build_segments(self, from_signal: str, to_signal: str) -> list[DataFlowSegment]:
         """构建所有段信息 - 返回所有边对应的 segments
 
         从 SignalGraph 获取所有边的驱动信息。
@@ -251,16 +260,18 @@ class DataFlowGraph:
         # 3. 为每条边构建 DataFlowSegment
         segments = []
         for edge in edges:
-            segments.append(DataFlowSegment(
-                from_signal=from_signal,
-                to_signal=to_signal,
-                driver=edge.expression if hasattr(edge, 'expression') else None,
-                condition=edge.condition if hasattr(edge, 'condition') else None,
-                effective_condition=edge.effective_condition if hasattr(edge, 'effective_condition') else None,
-                timing=edge.clock_domain if hasattr(edge, 'clock_domain') else None,
-                assign_type=edge.assign_type if hasattr(edge, 'assign_type') else 'continuous',
-                distance=1
-            ))
+            segments.append(
+                DataFlowSegment(
+                    from_signal=from_signal,
+                    to_signal=to_signal,
+                    driver=edge.expression if hasattr(edge, "expression") else None,
+                    condition=edge.condition if hasattr(edge, "condition") else None,
+                    effective_condition=edge.effective_condition if hasattr(edge, "effective_condition") else None,
+                    timing=edge.clock_domain if hasattr(edge, "clock_domain") else None,
+                    assign_type=edge.assign_type if hasattr(edge, "assign_type") else "continuous",
+                    distance=1,
+                )
+            )
 
         return segments
 
@@ -288,15 +299,15 @@ class DataFlowGraph:
         # 3. 查找最长前缀匹配
         best_match = signal
         for port_path, internal in self._port_to_internal.items():
-            if signal.endswith('.' + port_path) or signal == port_path:
+            if signal.endswith("." + port_path) or signal == port_path:
                 # 找到了匹配的端口路径
-                suffix = signal[len(port_path):]
+                suffix = signal[len(port_path) :]
                 best_match = internal + suffix
                 break
 
         return best_match
 
-    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> List[List[str]]:
+    def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> list[list[str]]:
         """查找所有路径(允许循环)
 
         使用 networkx.all_simple_paths 查找路径。
@@ -310,12 +321,11 @@ class DataFlowGraph:
         Returns:
             路径列表,每条路径是信号 ID 列表
         """
-        import re
 
         # [FIX] 处理位选择信号,如 byte_data[3:0] → byte_data
         def _expand_bit_select(signal):
             """将位选择信号展开为其父信号"""
-            match = re.match(r'^(.+)\[([^\]]+)\]$', signal)
+            match = re.match(r"^(.+)\[([^\]]+)\]$", signal)
             if match:
                 return match.group(1), match.group(2)
             return signal, None
@@ -330,7 +340,7 @@ class DataFlowGraph:
                 return children
             for pred in nx_graph.predecessors(signal):
                 edge = nx_graph.get_edge(pred, signal)
-                if edge and edge.kind.name == 'BIT_SELECT':
+                if edge and edge.kind.name == "BIT_SELECT":
                     children.append(pred)
             return children
 
@@ -342,7 +352,7 @@ class DataFlowGraph:
                 return parents
             for succ in nx_graph.successors(signal):
                 edge = nx_graph.get_edge(signal, succ)
-                if edge and edge.kind.name == 'BIT_SELECT':
+                if edge and edge.kind.name == "BIT_SELECT":
                     parents.append(succ)
             return parents
 
@@ -356,7 +366,7 @@ class DataFlowGraph:
                 - test_interface.data_out → (None, None) 因为 data_out 是模块端口
             """
             # 匹配 xxx.member 形式
-            match = re.match(r'^(.+)\.([^.]+)$', signal)
+            match = re.match(r"^(.+)\.([^.]+)$", signal)
             if match:
                 parent = match.group(1)
                 member = match.group(2)
@@ -370,9 +380,9 @@ class DataFlowGraph:
                         has_struct_children = False
                         for succ in nx_graph.successors(parent):
                             succ_edge = nx_graph.get_edge(parent, succ)
-                            if succ_edge and succ_edge.kind.name == 'DRIVER':
+                            if succ_edge and succ_edge.kind.name == "DRIVER":
                                 # 检查 succ 是否是 parent.member 形式
-                                if succ.startswith(parent + '.'):
+                                if succ.startswith(parent + "."):
                                     has_struct_children = True
                                     break
                         if has_struct_children:
@@ -418,7 +428,7 @@ class DataFlowGraph:
             # 也检查反向: 如果 to_signal 是成员,但 dst_parent 被 from_signal 驱动
             # 比如: pkt1 → pkt2, 然后查询 pkt1.data → pkt2.data
             edge = nx_graph.get_edge(src_parent, dst_parent)
-            if edge and edge.kind.name == 'DRIVER':
+            if edge and edge.kind.name == "DRIVER":
                 # 构造路径
                 return [[from_signal, src_parent, dst_parent, to_signal]]
 
@@ -486,7 +496,7 @@ class DataFlowGraph:
             # 检查 from_signal 的父 struct 是否有 DRIVER 边到其他 struct
             for succ in nx_graph.successors(src_parent):
                 edge = nx_graph.get_edge(src_parent, succ)
-                if edge and edge.kind.name == 'DRIVER':
+                if edge and edge.kind.name == "DRIVER":
                     # 找到了 struct 赋值: src_parent → succ
                     # 检查 succ 是否是 to_signal 的父或者能否继续传播
                     succ_parent, succ_member = _get_struct_parent_and_member(succ)
@@ -515,7 +525,7 @@ class DataFlowGraph:
             # 检查是否有 struct 赋值到 dst_parent
             for pred in nx_graph.predecessors(dst_parent):
                 edge = nx_graph.get_edge(pred, dst_parent)
-                if edge and edge.kind.name == 'DRIVER':
+                if edge and edge.kind.name == "DRIVER":
                     # 找到了 struct 赋值: pred → dst_parent
                     # 检查 from_signal 能否到达 pred
                     for from_candidate in candidates_from:
@@ -538,10 +548,10 @@ class DataFlowGraph:
             edge = nx_graph.get_edge(pred, to_signal)
             if edge and edge.expression:
                 # 解析表达式中的 .member 模式
-                match = re.search(r'\.([a-zA-Z_][a-zA-Z0-9_]*)$', edge.expression)
+                match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)$", edge.expression)
                 if match:
                     dst_member_name = match.group(1)
-                    dst_struct_path = edge.expression[:match.start()]
+                    dst_struct_path = edge.expression[: match.start()]
                     # dst_struct_path 可能是相对路径如 pkt2,需要解析为完整路径
                     # 尝试解析 dst_struct_path
                     try:
@@ -552,8 +562,8 @@ class DataFlowGraph:
                     # 确保 dst_struct_resolved 在图中
                     if dst_struct_resolved not in nx_graph.nodes():
                         # 尝试添加模块前缀
-                        if pred.endswith(f'.{dst_struct_path}'):
-                            dst_struct_resolved = pred.rsplit('.', 1)[0] + '.' + dst_struct_path
+                        if pred.endswith(f".{dst_struct_path}"):
+                            dst_struct_resolved = pred.rsplit(".", 1)[0] + "." + dst_struct_path
 
                     if dst_struct_resolved not in nx_graph.nodes():
                         continue
@@ -569,12 +579,14 @@ class DataFlowGraph:
                     # 检查 dst_struct_resolved 的前驱(struct 赋值)
                     for struct_pred in nx_graph.predecessors(dst_struct_resolved):
                         struct_edge = nx_graph.get_edge(struct_pred, dst_struct_resolved)
-                        if struct_edge and struct_edge.kind.name == 'DRIVER':
+                        if struct_edge and struct_edge.kind.name == "DRIVER":
                             # 找到了 struct_pred → dst_struct_resolved
                             # 现在检查 from_signal 能否到达 struct_pred
                             if nx.has_path(nx_graph, from_signal, struct_pred):
                                 try:
-                                    sub_paths = list(nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff))
+                                    sub_paths = list(
+                                        nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff)
+                                    )
                                     for sp in sub_paths:
                                         if sp:
                                             # 找到了! 路径: from → ... → struct_pred → dst_struct_resolved → to_signal
@@ -589,7 +601,9 @@ class DataFlowGraph:
                                 # 检查 from_signal 能否到达 struct_pred
                                 if nx.has_path(nx_graph, from_signal, struct_pred):
                                     try:
-                                        sub_paths = list(nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff))
+                                        sub_paths = list(
+                                            nx.all_simple_paths(nx_graph, from_signal, struct_pred, cutoff=cutoff)
+                                        )
                                         for sp in sub_paths:
                                             if sp:
                                                 return [sp + [dst_struct_resolved, to_signal]]
@@ -600,7 +614,15 @@ class DataFlowGraph:
                                 if src_parent_candidate in nx_graph.nodes():
                                     if nx.has_path(nx_graph, src_parent_candidate, struct_pred):
                                         # 路径: from_signal → src_parent_candidate → ... → struct_pred → dst_struct_resolved → to_signal
-                                        return [[from_signal, src_parent_candidate, struct_pred, dst_struct_resolved, to_signal]]
+                                        return [
+                                            [
+                                                from_signal,
+                                                src_parent_candidate,
+                                                struct_pred,
+                                                dst_struct_resolved,
+                                                to_signal,
+                                            ]
+                                        ]
 
         # 情况3: 直接的 struct 成员路径查找 (pkt1.data → pkt2.data)
         struct_paths = _find_struct_member_paths(from_signal, to_signal)
@@ -608,9 +630,15 @@ class DataFlowGraph:
             return struct_paths
 
         # 情况4: 成员名相同的情况 (如 src.member → dst.member)
-        if src_member and dst_member and src_member == dst_member and src_parent in nx_graph.nodes() and dst_parent in nx_graph.nodes():
+        if (
+            src_member
+            and dst_member
+            and src_member == dst_member
+            and src_parent in nx_graph.nodes()
+            and dst_parent in nx_graph.nodes()
+        ):
             edge = nx_graph.get_edge(src_parent, dst_parent)
-            if edge and edge.kind.name == 'DRIVER':
+            if edge and edge.kind.name == "DRIVER":
                 return [[from_signal, src_parent, dst_parent, to_signal]]
 
         return []
@@ -632,20 +660,15 @@ class DataFlowGraph:
         paths = self._find_paths(from_signal, to_signal)
 
         if not paths:
-            return DataFlowResult(
-                from_signal=from_signal,
-                to_signal=to_signal,
-                is_reachable=False,
-                paths_count=0
-            )
+            return DataFlowResult(from_signal=from_signal, to_signal=to_signal, is_reachable=False, paths_count=0)
 
         # 2. 限制路径数量
         paths = paths[:max_paths]
 
         # 3. 构建 DataFlowPath
         dataflow_paths = []
-        all_intermediate: Set[str] = set()
-        all_conditions: List[str] = []
+        all_intermediate: set[str] = set()
+        all_conditions: list[str] = []
         has_conditional = False
 
         for path_id, path in enumerate(paths):
@@ -673,10 +696,7 @@ class DataFlowGraph:
 
             # 5. 创建 DataFlowPath
             df_path = DataFlowPath(
-                path_id=path_id,
-                segments=segments,
-                distance=len(path) - 1,
-                has_conditional=has_conditional
+                path_id=path_id, segments=segments, distance=len(path) - 1, has_conditional=has_conditional
             )
             dataflow_paths.append(df_path)
 
@@ -695,10 +715,10 @@ class DataFlowGraph:
             intermediate_signals=all_intermediate,
             all_conditions=all_conditions,
             clock_domain=clock_domain,
-            timing_risk=timing_risk
+            timing_risk=timing_risk,
         )
 
-    def _extract_clock_domain(self, paths: List[DataFlowPath]) -> Optional[str]:
+    def _extract_clock_domain(self, paths: list[DataFlowPath]) -> str | None:
         """提取主时钟域
 
         Args:
@@ -707,7 +727,7 @@ class DataFlowGraph:
         Returns:
             主时钟域字符串或 None
         """
-        clock_domains: Dict[str, int] = {}
+        clock_domains: dict[str, int] = {}
 
         for path in paths:
             for segment in path.segments:
@@ -720,7 +740,7 @@ class DataFlowGraph:
         # 返回出现最多的时钟域
         return max(clock_domains, key=clock_domains.get)
 
-    def _evaluate_timing_risk(self, paths: List[DataFlowPath], clock_domain: Optional[str]) -> str:
+    def _evaluate_timing_risk(self, paths: list[DataFlowPath], clock_domain: str | None) -> str:
         """评估路径时序风险
 
         Args:
@@ -757,9 +777,6 @@ class DataFlowGraph:
         """清除段缓存"""
         self._segment_cache.clear()
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> dict[str, int]:
         """获取缓存统计"""
-        return {
-            "segment_cache_size": len(self._segment_cache),
-            "mig_mapping_size": len(self._port_to_internal)
-        }
+        return {"segment_cache_size": len(self._segment_cache), "mig_mapping_size": len(self._port_to_internal)}

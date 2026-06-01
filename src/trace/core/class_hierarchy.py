@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # class_hierarchy.py - Class extends 继承链管理
-#==============================================================================
+# ==============================================================================
 # [铁律13] 金标准测试: 每个方法独立测试
 # [铁律15] Visitor 模式不适用: ClassHierarchy 是纯数据层，不走 AST 遍历
 #
@@ -8,8 +8,6 @@
 # - ClassHierarchy 独立实现，不进 SignalGraph
 # - 只维护 extends 关系映射，给下游提供查询 API
 # - 不涉及任何 AST 解析，纯数据结构
-
-from typing import Dict, List, Optional
 
 
 class ClassHierarchy:
@@ -33,11 +31,11 @@ class ClassHierarchy:
 
     def __init__(self):
         # class_name → parent_class_name
-        self._parent_map: Dict[str, Optional[str]] = {}
+        self._parent_map: dict[str, str | None] = {}
         # class_name → [direct_subclass_names]
-        self._subclass_map: Dict[str, List[str]] = {}
+        self._subclass_map: dict[str, list[str]] = {}
 
-    def add_class(self, name: str, extends: Optional[str] = None) -> None:
+    def add_class(self, name: str, extends: str | None = None) -> None:
         """注册一个 class 及其父类
 
         Args:
@@ -52,7 +50,7 @@ class ClassHierarchy:
             if name not in self._subclass_map[extends]:
                 self._subclass_map[extends].append(name)
 
-    def get_parent(self, class_name: str) -> Optional[str]:
+    def get_parent(self, class_name: str) -> str | None:
         """获取直接父类
 
         Args:
@@ -63,7 +61,7 @@ class ClassHierarchy:
         """
         return self._parent_map.get(class_name)
 
-    def get_ancestors(self, class_name: str) -> List[str]:
+    def get_ancestors(self, class_name: str) -> list[str]:
         """递归获取所有祖先类（向上追溯）
 
         Args:
@@ -80,7 +78,7 @@ class ClassHierarchy:
             current = self._parent_map.get(current)
         return ancestors
 
-    def get_subclasses(self, class_name: str) -> List[str]:
+    def get_subclasses(self, class_name: str) -> list[str]:
         """获取所有子类（向下追溯，直接子类）
 
         Args:
@@ -91,7 +89,7 @@ class ClassHierarchy:
         """
         return list(self._subclass_map.get(class_name, []))
 
-    def get_all_descendants(self, class_name: str) -> List[str]:
+    def get_all_descendants(self, class_name: str) -> list[str]:
         """递归获取所有后代类（向下追溯）
 
         Args:
@@ -148,7 +146,7 @@ class ClassHierarchy:
             current = self._parent_map.get(current)
         return depth
 
-    def get_root(self, class_name: str) -> Optional[str]:
+    def get_root(self, class_name: str) -> str | None:
         """获取类的根类（无父类的祖先）
 
         Args:

@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # main.py - CLI entry point
-#==============================================================================
+# ==============================================================================
 """
 Usage:
   python -m cli.main dataflow --help
@@ -21,15 +21,15 @@ if str(_project_root) not in sys.path:
 
 import typer
 
-from src.cli.commands.trace import trace_app
-from src.cli.commands.diff import diff_app
-from src.cli.commands.snapshot import snapshot_app
-from src.cli.commands.dataflow import dataflow_app
+from src.cli.commands.cdc import cdc_app
 from src.cli.commands.controlflow import controlflow_app
+from src.cli.commands.dataflow import dataflow_app
+from src.cli.commands.diff import diff_app
 from src.cli.commands.risk import risk_app
+from src.cli.commands.snapshot import snapshot_app
 from src.cli.commands.sva import sva_app
 from src.cli.commands.timing import timing_app
-from src.cli.commands.cdc import cdc_app
+from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
 
@@ -54,7 +54,6 @@ app.add_typer(vis_app, name="visualize")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖
-from src.cli.commands.stats import stats as stats_cmd
 
 
 def stats_callback(
@@ -67,29 +66,28 @@ def stats_callback(
     """Show graph statistics"""
     if file:
         from trace.unified_tracer import UnifiedTracer
-        from trace.core.graph.models import EdgeKind
 
         with open(file) as f:
             source = f.read()
         tracer = UnifiedTracer(sources={file: source})
         graph = tracer.build_graph()
-        
+
         nodes_count = {}
         for n in graph.nodes():
             node = graph.get_node(n)
             if node:
-                kind = node.kind.name if hasattr(node.kind, 'name') else str(node.kind)
+                kind = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
                 nodes_count[kind] = nodes_count.get(kind, 0) + 1
-        
+
         edges_count = {}
         for src, dst in graph.edges():
             edge = graph.get_edge(src, dst)
             if edge:
-                kind = edge.kind.name if hasattr(edge.kind, 'name') else str(edge.kind)
+                kind = edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind)
                 edges_count[kind] = edges_count.get(kind, 0) + 1
-        
-        modules = list(graph.modules) if hasattr(graph, 'modules') else []
-        
+
+        modules = list(graph.modules) if hasattr(graph, "modules") else []
+
         data = {
             "ok": True,
             "command": "stats",
@@ -101,16 +99,17 @@ def stats_callback(
                 "edges": edges_count,
                 "modules": modules,
             },
-            "errors": []
+            "errors": [],
         }
-        
+
         # 扇出排行榜计算
         if fanout_rank:
             fanout_data = _compute_fanout_rank(graph)
             data["result"].update(fanout_data)
-        
+
         if json_output:
             import json as json_mod
+
             indent = 2 if pretty else None
             print(json_mod.dumps(data, indent=indent, ensure_ascii=False))
         else:
@@ -120,10 +119,10 @@ def stats_callback(
                 print("=== Graph Statistics ===")
                 print(f"  Total nodes: {len(graph.nodes())}")
                 print(f"  Total edges: {len(graph.edges())}")
-                print(f"\n  Node kinds:")
+                print("\n  Node kinds:")
                 for kind, count in nodes_count.items():
                     print(f"    {kind}: {count}")
-                print(f"\n  Edge kinds:")
+                print("\n  Edge kinds:")
                 for kind, count in edges_count.items():
                     print(f"    {kind}: {count}")
                 print(f"\n  Modules ({len(modules)}):")
@@ -136,14 +135,13 @@ def stats_callback(
 
 def _compute_fanout_rank(graph) -> dict:
     """计算扇出排行榜
-    
+
     注意：过滤掉 CONST 节点（字面量），因为它们不是真正的驱动源
     """
     from trace.core.graph.models import EdgeKind, NodeKind
-    
+
     # 计算每个信号的扇出（下游 DRIVER 负载数）
     fanout_map = {}  # signal_id -> {"count": int, "kind": str, "loads": []}
-
 
     for src, dst in graph.edges():
         edge = graph.get_edge(src, dst)
@@ -152,7 +150,7 @@ def _compute_fanout_rank(graph) -> dict:
             node = graph.get_node(src)
             if node and node.kind == NodeKind.CONST:
                 continue
-            
+
             if src not in fanout_map:
                 fanout_map[src] = {"count": 0, "kind": "", "loads": [], "is_clock": False, "is_reset": False}
             fanout_map[src]["count"] += 1
@@ -162,9 +160,9 @@ def _compute_fanout_rank(graph) -> dict:
     for signal_id in fanout_map:
         node = graph.get_node(signal_id)
         if node:
-            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, 'name') else str(node.kind)
-            fanout_map[signal_id]["is_clock"] = getattr(node, 'is_clock', False)
-            fanout_map[signal_id]["is_reset"] = getattr(node, 'is_reset', False)
+            fanout_map[signal_id]["kind"] = node.kind.name if hasattr(node.kind, "name") else str(node.kind)
+            fanout_map[signal_id]["is_clock"] = getattr(node, "is_clock", False)
+            fanout_map[signal_id]["is_reset"] = getattr(node, "is_reset", False)
 
     # 生成排行榜
     fanout_list = []
@@ -184,13 +182,15 @@ def _compute_fanout_rank(graph) -> dict:
         # 生成建议
         suggestion = _generate_suggestion(signal_id, fanout, kind, info)
 
-        fanout_list.append({
-            "signal": signal_id,
-            "fanout": fanout,
-            "kind": kind,
-            "suggestion": suggestion,
-            "loads": info["loads"],
-        })
+        fanout_list.append(
+            {
+                "signal": signal_id,
+                "fanout": fanout,
+                "kind": kind,
+                "suggestion": suggestion,
+                "loads": info["loads"],
+            }
+        )
 
     # 按扇出数排序
     fanout_list.sort(key=lambda x: x["fanout"], reverse=True)
@@ -245,7 +245,7 @@ def _output_fanout_rank(data: dict, top_n: int = 20) -> None:
 
     print(f"\n  High Fanout Signals (TOP {top_n}):")
     print(f"  {'Rank':<6} {'Fanout':<8} {'Signal':<40} {'Kind':<12} {'Suggestion'}")
-    print(f"  {'-'*6} {'-'*8} {'-'*40} {'-'*12} {'-'*20}")
+    print(f"  {'-' * 6} {'-' * 8} {'-' * 40} {'-' * 12} {'-' * 20}")
 
     for i, entry in enumerate(fanout_list[:top_n], 1):
         signal = entry.get("signal", "")

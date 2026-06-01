@@ -1,6 +1,6 @@
-#==============================================================================
+# ==============================================================================
 # visualize.py - 信号图可视化命令
-#==============================================================================
+# ==============================================================================
 """
 强大的信号图可视化功能
 
@@ -9,6 +9,7 @@ Usage:
   python run_cli.py visualize gap -f top.sv --html /tmp/gap.html
   python run_cli.py visualize graph -f top.sv --layout LR --no-edges
 """
+
 import sys
 from pathlib import Path
 
@@ -18,15 +19,16 @@ _project_root = _src_dir.parent.parent
 
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
+import warnings
 
 import typer
-import warnings
+
 warnings.filterwarnings("ignore")
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.sva_extractor import SVAExtractor
 from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.signal_graph_viewer import SignalGraphViewer, create_gap_viewer
+from trace.core.graph.signal_graph_viewer import SignalGraphViewer
+from trace.core.sva_extractor import SVAExtractor
+from trace.unified_tracer import UnifiedTracer
 
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
@@ -46,14 +48,34 @@ def graph(
     exclude_reset: bool = typer.Option(False, "--exclude-reset", help="Exclude reset edges"),
     cluster_modules: bool = typer.Option(False, "--cluster-modules", help="Cluster nodes by module"),
     layout_engine: str = typer.Option("dot", "--layout-engine", help="Layout engine: dot, neato, fdp"),
-    cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"),
+    cache: bool = typer.Option(
+        False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"
+    ),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
-    include_dirs = include.split(',') if include else None
+    include_dirs = include.split(",") if include else None
     sources = None if filelist else {file: open(file).read()}
-    _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules, layout_engine, cache, include_dirs, filelist, sources)
+    _run_graph_visualization(
+        file,
+        dot_output,
+        mmd_output,
+        html_output,
+        layout,
+        no_edges,
+        show_labels,
+        show_conditions,
+        max_edges,
+        exclude_clock,
+        exclude_reset,
+        cluster_modules,
+        layout_engine,
+        cache,
+        include_dirs,
+        filelist,
+        sources,
+    )
 
 
 @vis_app.command(name="gap")
@@ -68,7 +90,25 @@ def gap(
     _run_gap_visualization(file, dot_output, html_output, min_risk, cache)
 
 
-def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, no_edges, show_labels, show_conditions, max_edges, exclude_clock, exclude_reset, cluster_modules=False, layout_engine='dot', cache=False, include_dirs=None, filelist=None, sources=None):
+def _run_graph_visualization(
+    file,
+    dot_output,
+    mmd_output,
+    html_output,
+    layout,
+    no_edges,
+    show_labels,
+    show_conditions,
+    max_edges,
+    exclude_clock,
+    exclude_reset,
+    cluster_modules=False,
+    layout_engine="dot",
+    cache=False,
+    include_dirs=None,
+    filelist=None,
+    sources=None,
+):
     """可视化信号图（包含数据流关系）
 
     Args:
@@ -112,9 +152,9 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
 
     edge_filter = set()
     if exclude_clock:
-        edge_filter.add('exclude_clock')
+        edge_filter.add("exclude_clock")
     if exclude_reset:
-        edge_filter.add('exclude_reset')
+        edge_filter.add("exclude_reset")
 
     viewer.configure(
         layout=layout,
@@ -125,7 +165,7 @@ def _run_graph_visualization(file, dot_output, mmd_output, html_output, layout, 
         edge_filter=edge_filter,
         cluster_modules=cluster_modules,
         layout_engine=layout_engine,
-        node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True, 'show_type': True},
+        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True},
     )
 
     if dot_output:
@@ -175,26 +215,28 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
         func += 15 if fan_in >= 3 else 0
 
         if func >= min_risk:
-            name = node_id.split('.')[-1]
+            name = node_id.split(".")[-1]
             has_sva = name in sva_signals
             has_cov = name in cov_signals
             if not (has_sva or has_cov):
-                gap_signals.append({
-                    'name': name,
-                    'node_id': node_id,
-                    'risk_score': func,
-                })
+                gap_signals.append(
+                    {
+                        "name": name,
+                        "node_id": node_id,
+                        "risk_score": func,
+                    }
+                )
 
-    gap_signals.sort(key=lambda x: x['risk_score'], reverse=True)
+    gap_signals.sort(key=lambda x: x["risk_score"], reverse=True)
 
     if dot_output:
         viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
         viewer.configure(
-            layout='TB',
+            layout="TB",
             show_edges=True,
-            edge_filter={'exclude_clock', 'exclude_reset'},
+            edge_filter={"exclude_clock", "exclude_reset"},
             max_edges=200,
-            node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True},
+            node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
             highlight_gaps=True,
             min_risk_for_highlight=min_risk,
         )
@@ -202,18 +244,21 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
         print(f"✓ DOT: {dot_output}")
 
         # 渲染为 PNG (正方形比例)
-        png_output = dot_output.replace('.dot', '.png')
+        png_output = dot_output.replace(".dot", ".png")
         import subprocess
+
         try:
             # 使用 -G 指定图形属性，确保正方形输出（不裁剪）
-            subprocess.run(['dot', '-Tpng', '-Gsize=10', '-Gratio=compress',
-                           dot_output, '-o', png_output], check=True, capture_output=True)
+            subprocess.run(
+                ["dot", "-Tpng", "-Gsize=10", "-Gratio=compress", dot_output, "-o", png_output],
+                check=True,
+                capture_output=True,
+            )
             print(f"✓ PNG: {png_output}")
-        except Exception as e:
+        except Exception:
             # fallback: 不带额外参数
             try:
-                subprocess.run(['dot', '-Tpng', dot_output, '-o', png_output],
-                             check=True, capture_output=True)
+                subprocess.run(["dot", "-Tpng", dot_output, "-o", png_output], check=True, capture_output=True)
                 print(f"✓ PNG: {png_output}")
             except Exception as e2:
                 print(f"  (PNG渲染失败: {e2})")
@@ -221,11 +266,11 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
     if html_output:
         viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
         viewer.configure(
-            layout='TB',
+            layout="TB",
             show_edges=True,
-            edge_filter={'exclude_clock', 'exclude_reset'},
+            edge_filter={"exclude_clock", "exclude_reset"},
             max_edges=200,
-            node_style={'risk_color': True, 'cover_marker': True, 'show_fan': True},
+            node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
             highlight_gaps=True,
             min_risk_for_highlight=min_risk,
         )
