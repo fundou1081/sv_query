@@ -1,7 +1,7 @@
 # Control Coverage Generator V2 实施计划
 
 > 创建时间: 2026-06-02
-> 状态: V2.A 基础完成 (cycle 11), V2.C 启动中
+> 状态: V2.A 基础完成 (cycle 11), V2.C 完成 (cycles 12-13), V2.B 计划中
 > 目标版本: V2
 
 ---
@@ -18,7 +18,7 @@ V1 (cycles 1-10) 已完成核心能力,遗留 5 个限制列在
 | # | 候选 | 状态 | Cycle |
 |---|------|------|-------|
 | A | AST 集成增强 (condition_ast) | ✅ 基础完成 (cycle 11) | 11 |
-| C | JSON 输出 | 🟡 计划中 | 12-13 |
+| C | JSON 输出 | ✅ 完成 (cycles 12-13) | 12-13 |
 | B | 多信号同时 decompose | ⏳ V2.C 之后 | 14-15 |
 | A.2 | AST 完整利用 (替换默认路径) | ⏳ V2.B 之后 | 16+ |
 | D | ControlFlowGraph 集成 | ❌ 走 P1 重构 | - |
@@ -311,4 +311,72 @@ V1 实现里 `result.control_blocks` 实际存的是 `TraceEdge` 列表
 ---
 
 **创建**: 2026-06-02
-**状态**: 规划完成, 启动 cycle 12
+**更新**: 2026-06-02 (cycle 12-13 完成)
+**状态**: V2.C 完成, V2.B 计划中
+
+---
+
+## 12. 实施结果 (V2.C)
+
+### Cycle 12 - 数据模型序列化
+- `SourceLocation.to_dict()`: 4 字段
+- `EvidenceStep.to_dict()`: 跳过 SourceSnippet 懒加载 (避免 IO)
+- `AtomicSignal.to_dict()`: bit_range tuple → list
+- `DecompositionResult.to_dict()`: 递归 + control_blocks 异构兼容
+- `DecompositionResult.to_json(indent=2)`: ensure_ascii=False
+- `_control_block_to_dict`: TraceEdge / ControlBlock / repr fallback
+
+### Cycle 13 - CLI `--json` 实际输出
+- 替换 TODO 降级为真实 `result.to_json(indent=2)`
+- `--json` 模式下 `UnifiedTracer(log_level="ERROR")` 避免 WARNING 污染 stdout
+- help 文本移除 'TODO'
+
+### 测试 & 质量
+- 总测试: 1350 (+28 from V1 1322)
+- coverage_generator: 103 (V1 75 + cycle 11 7 + cycle 12 21)
+- ruff: 干净
+
+### Commits
+- `243e5d8` docs: V2.C plan
+- `8144c79` feat: cycle 12 data models
+- `a3ed5da` feat: cycle 13 CLI --json
+
+### V2.C 使用示例
+
+```bash
+# JSON 输出 (取代默认 Markdown)
+python run_cli.py coverage suggest -f top.sv --signal top.x --json
+
+# 紧凑模式
+python run_cli.py coverage suggest -f top.sv --signal top.x --json | jq .
+
+# 提取原子信号名
+python run_cli.py coverage suggest -f top.sv --signal top.x --json | \
+  jq -r '.atomic_signals[].name'
+```
+
+### JSON 字段参考
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `original_signal` | string | 用户输入 |
+| `atomic_signals[]` | array | 原子信号列表 |
+| `atomic_signals[].name` | string | "a" 或 "a[3:0]" |
+| `atomic_signals[].base_name` | string | "a" |
+| `atomic_signals[].bit_range` | array\|null | [3, 0] 或 null |
+| `atomic_signals[].source` | object | 源码位置 |
+| `atomic_signals[].evidence[]` | array | 推导链步骤 |
+| `control_blocks[]` | array | 涉及的 if/case 块 (异构) |
+| `depth_reached` | int | 实际分解深度 |
+| `signal_count` | int | 原子信号数量 |
+| `truncated` | bool | 是否截断 |
+| `error` | string\|null | 错误信息 |
+
+### 经验教训 (V2.C 新增)
+6. **placeholder 兑现**: V1 留的 `--json (TODO)` 是个明确的兑现目标
+7. **stdout/stderr 分隔**: `--json` 模式必须静音编译器的 WARNING
+8. **异构兼容**: control_blocks 类型未来会变, 提前 3 路兼容
+9. **bit_range tuple → list**: JSON spec 不支持 tuple, 必须显式转换
+
+### 下一步
+V2.B (多信号同时 decompose), 预计 cycle 14-15

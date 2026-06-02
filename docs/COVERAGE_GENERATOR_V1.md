@@ -103,14 +103,14 @@ python run_cli.py coverage suggest \
 
 ## V1 限制 (V2 候选)
 
-| 限制 | 原因 | V2 计划 |
-|------|------|---------|
-| 跨模块信号 | RTL 通常不会这么设计 | 提示用户用顶层信号 |
-| 多信号同时 decompose | V1 只处理第一个 | 扩展支持 |
-| JSON 输出 | CLI 占位符 | 复用 dataclass.asdict |
-| AST 自动提取 | graph_builder 暂存条件字符串 | 添加 condition_ast 字段 |
-| 关键值 bin 自动生成 | 需 Z3 求解 | V3 集成 Z3 |
-| ControlFlowGraph 集成 | control_vars 字段未填充 | 修复 graph_builder |
+| 限制 | 原因 | V2 计划 | 状态 |
+|------|------|---------|------|
+| 跨模块信号 | RTL 通常不会这么设计 | 提示用户用顶层信号 | ✅ cycle 9 |
+| 多信号同时 decompose | V1 只处理第一个 | 扩展支持 | ⏳ V2.B (cycle 14-15) |
+| JSON 输出 | CLI 占位符 | 复用 dataclass.asdict | ✅ V2.C (cycle 12-13) |
+| AST 自动提取 | graph_builder 暂存条件字符串 | 添加 condition_ast 字段 | ✅ cycle 11 (基础) |
+| 关键值 bin 自动生成 | 需 Z3 求解 | V3 集成 Z3 | ❌ V3 |
+| ControlFlowGraph 集成 | control_vars 字段未填充 | 修复 graph_builder | ❌ P1 重构 |
 
 ---
 
@@ -124,4 +124,4 @@ python run_cli.py coverage suggest \
 
 ---
 
-**下一步**: 等待 V2 需求 (AST 集成 / Z3 / 多信号) 或进入其他项目
+**下一步**: V2.B (多信号同时 decompose) - 预计 cycle 14-15
