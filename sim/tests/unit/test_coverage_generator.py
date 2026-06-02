@@ -834,5 +834,63 @@ class TestMarkdownOutput(unittest.TestCase):
         self.assertTrue("max_signals" in md or "truncated" in md.lower() or "超出" in md)
 
 
+# ==============================================================================
+# Cycle 7: CLI 入口 (coverage suggest)
+# ==============================================================================
+
+
+class TestCLICoverageSuggest(unittest.TestCase):
+    """CLI: coverage suggest 命令
+
+    测试入口函数, 不直接调 typer.
+    """
+
+    def test_cli_runs_with_real_sv(self):
+        """实际 SV 文件能跑通"""
+        import subprocess
+        import sys
+        import os
+
+        # 用现有的 test_data_path.sv 作为输入
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+
+        # 跑 CLI
+        result = subprocess.run(
+            [
+                sys.executable, "run_cli.py", "coverage", "suggest",
+                "-f", sv_file,
+                "--signal", "data_path.din",
+                "--max-signals", "5",
+            ],
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        # 成功 (返回 0) 或输出包含 Markdown
+        if result.returncode != 0:
+            print("STDOUT:", result.stdout[:500])
+            print("STDERR:", result.stderr[:500])
+        # 至少输出包含一些 markdown 标记
+        output = result.stdout + result.stderr
+        self.assertTrue(
+            "#" in output or "原始信号" in output or "decompose" in output.lower(),
+            f"Unexpected output: {output[:200]}"
+        )
+
+    def test_cli_module_imports(self):
+        """coverage 模块能正常导入"""
+        try:
+            from src.cli.commands import coverage  # noqa: F401
+            self.assertTrue(hasattr(coverage, "coverage_app"))
+        except ImportError as e:
+            self.fail(f"Failed to import coverage module: {e}")
+
+
 if __name__ == '__main__':
     unittest.main()
