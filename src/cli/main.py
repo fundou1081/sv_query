@@ -23,6 +23,7 @@ import typer
 
 from src.cli.commands.cdc import cdc_app
 from src.cli.commands.controlflow import controlflow_app
+from src.cli.commands.coverage import coverage_app
 from src.cli.commands.dataflow import dataflow_app
 from src.cli.commands.diff import diff_app
 from src.cli.commands.risk import risk_app
@@ -49,6 +50,7 @@ app.add_typer(risk_app, name="risk")
 app.add_typer(sva_app, name="sva")
 app.add_typer(timing_app, name="timing")
 app.add_typer(cdc_app, name="cdc")
+app.add_typer(coverage_app, name="coverage")
 app.add_typer(verify_app, name="verify")
 app.add_typer(vis_app, name="visualize")
 
