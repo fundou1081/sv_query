@@ -2466,5 +2466,74 @@ class TestTraceEdgeFactoryP1Cycle2(unittest.TestCase):
         self.assertEqual(edge.condition, "if_en")
 
 
+class TestControlFlowGraphP1(unittest.TestCase):
+    """P1 cycle 4: ControlFlowGraph add_control_block + find_control_blocks 联通
+
+    现状: ControlBlock 类存在, ControlFlowGraph 有 add_control_block 方法,
+    但**没有调用者**, self._blocks 永远是空.
+    修: 加 add_control_block 单元测试, 验证 find_control_blocks 能返回已添加的块.
+    """
+
+    def test_controlflowgraph_add_block_returns_in_find(self):
+        """add_control_block 后, find_control_blocks 能找到该块"""
+        from trace.core.graph.controlflow import ControlFlowGraph
+        from trace.core.graph.controlflow_models import ControlBlock
+
+        cfg = ControlFlowGraph()
+        # 构造一个 ControlBlock (mock ast_node 用字符串)
+        block = ControlBlock(
+            file="test.sv",
+            line=10,
+            end_line=15,
+            condition_expr="en && valid",
+            control_vars=["en", "valid"],
+            data_vars=["q"],
+            ast_node="fake_ast_node_1",  # 用于 dict key
+        )
+        cfg.add_control_block(block)
+
+        # 关键断言: find_control_blocks 能找到
+        found = cfg.find_control_blocks(
+            control_vars=["en", "valid"],
+            data_vars=["q"],
+        )
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0], block)
+        self.assertEqual(found[0].control_vars, ["en", "valid"])
+
+    def test_controlflowgraph_find_block_filters_by_data_vars(self):
+        """find_control_blocks 只返回 data_vars 匹配的块"""
+        from trace.core.graph.controlflow import ControlFlowGraph
+        from trace.core.graph.controlflow_models import ControlBlock
+
+        cfg = ControlFlowGraph()
+        # 块 1: 包含 q
+        b1 = ControlBlock(
+            file="t.sv", line=1, end_line=5,
+            condition_expr="en", control_vars=["en"], data_vars=["q"],
+            ast_node="ast_1",
+        )
+        # 块 2: 包含 p (不匹配)
+        b2 = ControlBlock(
+            file="t.sv", line=10, end_line=15,
+            condition_expr="valid", control_vars=["valid"], data_vars=["p"],
+            ast_node="ast_2",
+        )
+        cfg.add_control_block(b1)
+        cfg.add_control_block(b2)
+
+        # 查找 en + q → 只有 b1
+        found = cfg.find_control_blocks(control_vars=["en"], data_vars=["q"])
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0].control_vars, ["en"])
+
+    def test_controlflowgraph_empty_initially(self):
+        """刚初始化的 ControlFlowGraph 没有 block"""
+        from trace.core.graph.controlflow import ControlFlowGraph
+        cfg = ControlFlowGraph()
+        found = cfg.find_control_blocks(control_vars=["any"], data_vars=["any"])
+        self.assertEqual(found, [])
+
+
 if __name__ == '__main__':
     unittest.main()
