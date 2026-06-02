@@ -2261,5 +2261,162 @@ class TestCLIAstUtilizationV2A2(unittest.TestCase):
         self.fail("No ast_extract evidence with kind= found in CLI output")
 
 
+class TestTraceEdgeFactoryP1(unittest.TestCase):
+    """P1 cycle 1: TraceEdgeFactory 单元测试
+
+    目标: 统一 TraceEdge 创建, 消除 8+ ctx.get + 7+ sig_cond 模板重复。
+    支持两种入口: ctx dict  或  sig_cond 字符串 (如 future V2.A.2 17e+)。
+    """
+
+    # --- ctx-based 入口 (V2.A.2 17b/17d 现状) ---
+
+    def test_factory_with_ctx_dict(self):
+        """传 ctx dict 时, 读 condition/effective_condition/condition_ast"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        ctx = {
+            "clock": "clk",
+            "condition": "en",
+            "effective_condition": "en",
+            "condition_ast": "fake_ast_object",
+        }
+        edge = factory.make_edge(
+            src="top.c", dst="top.x",
+            expression="c & d",
+            kind=EdgeKind.DRIVER,
+            assign_type="nonblocking",
+            bit_slice="",
+            ctx=ctx,
+        )
+        self.assertEqual(edge.src, "top.c")
+        self.assertEqual(edge.dst, "top.x")
+        self.assertEqual(edge.kind, EdgeKind.DRIVER)
+        self.assertEqual(edge.assign_type, "nonblocking")
+        self.assertEqual(edge.clock_domain, "clk")
+        self.assertEqual(edge.condition, "en")
+        self.assertEqual(edge.effective_condition, "en")
+        self.assertEqual(edge.condition_ast, "fake_ast_object")
+        self.assertEqual(edge.expression, "c & d")
+        self.assertEqual(edge.bit_slice, "")
+
+    def test_factory_with_empty_ctx(self):
+        """ctx 是空 dict, 所有 ctx 字段默认空字符串"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            ctx={},
+        )
+        self.assertEqual(edge.condition, "")
+        self.assertEqual(effective_condition_str(edge), "")
+        self.assertIsNone(edge.condition_ast)
+        self.assertEqual(edge.clock_domain, "")
+
+    def test_factory_with_none_ctx(self):
+        """ctx=None, 全部默认空"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertEqual(edge.condition, "")
+        self.assertEqual(edge.effective_condition, "")
+        self.assertIsNone(edge.condition_ast)
+        self.assertEqual(edge.clock_domain, "")
+
+    def test_factory_ctx_priority_over_sig_cond(self):
+        """ctx 优先于 sig_cond (两者都给时, ctx 胜)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            ctx={"condition": "ctx_wins"},
+            sig_cond="loses",
+        )
+        self.assertEqual(edge.condition, "ctx_wins")
+
+    # --- sig_cond-based 入口 (V2.A.2 17e+ 准备) ---
+
+    def test_factory_with_sig_cond_string(self):
+        """只传 sig_cond (字符串), 用于 V2.A.2 17e+ 的 sig_cond-based 点"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b",
+            expression="a",
+            kind=EdgeKind.DRIVER,
+            assign_type="continuous",
+            sig_cond="if_en",
+            sig_cond_ast="fake_ast_for_sig_cond",
+        )
+        self.assertEqual(edge.condition, "if_en")
+        self.assertEqual(edge.condition_ast, "fake_ast_for_sig_cond")
+        # 其他 ctx-only 字段默认空
+        self.assertEqual(edge.effective_condition, "")
+        self.assertEqual(edge.clock_domain, "")
+
+    def test_factory_with_sig_cond_no_ast(self):
+        """只传 sig_cond 不传 sig_cond_ast, condition_ast 仍为 None"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            sig_cond="if_en",
+        )
+        self.assertEqual(edge.condition, "if_en")
+        self.assertIsNone(edge.condition_ast)
+
+    # --- 透传测试 ---
+
+    def test_factory_passes_all_fields(self):
+        """所有可选字段都被正确传递"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="top.c", dst="top.x",
+            expression="c & d",
+            kind=EdgeKind.DRIVER,
+            assign_type="nonblocking",
+            bit_slice="[7:0]",
+            ctx={"clock": "clk", "condition": "en",
+                 "effective_condition": "en", "condition_ast": "ast_obj"},
+        )
+        # 验证所有字段
+        self.assertEqual(edge.src, "top.c")
+        self.assertEqual(edge.dst, "top.x")
+        self.assertEqual(edge.expression, "c & d")
+        self.assertEqual(edge.bit_slice, "[7:0]")
+        self.assertEqual(edge.kind, EdgeKind.DRIVER)
+        self.assertEqual(edge.assign_type, "nonblocking")
+        self.assertEqual(edge.clock_domain, "clk")
+        self.assertEqual(edge.condition, "en")
+        self.assertEqual(edge.effective_condition, "en")
+        self.assertEqual(edge.condition_ast, "ast_obj")
+
+    def test_factory_default_kind_and_assign_type(self):
+        """不传 kind/assign_type 时有默认值"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertEqual(edge.kind, EdgeKind.DRIVER)
+        # assign_type 默认 ""
+
+    def test_factory_returns_trace_edge(self):
+        """返回值是 TraceEdge 实例"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import TraceEdge
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertIsInstance(edge, TraceEdge)
+
+
+def effective_condition_str(edge):
+    """helper: 读取 effective_condition (避免 Pyright warning)"""
+    return edge.effective_condition
+
+
 if __name__ == '__main__':
     unittest.main()
