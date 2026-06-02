@@ -80,3 +80,28 @@ class SignalResult:
     def empty(cls) -> "SignalResult":
         """创建空结果"""
         return cls()
+
+    def merge(self, other: "SignalResult | None") -> "SignalResult":
+        """合并另一个 SignalResult 到当前实例 (in-place)
+
+        Args:
+            other: 另一个 SignalResult, None 则不处理
+
+        Returns:
+            self (便于链式调用)
+        """
+        if other is None:
+            return self
+        # 合并 all_signals (去重)
+        for sig in (other.all_signals or []):
+            if sig and sig not in self.all_signals:
+                self.all_signals.append(sig)
+        # 保留非空 primary
+        if not self.primary and other.primary:
+            self.primary = other.primary
+        # 保留 kind/op 元信息 (取较详细的)
+        if other.kind_name and not self.kind_name:
+            self.kind_name = other.kind_name
+        if other.op_name and not self.op_name:
+            self.op_name = other.op_name
+        return self

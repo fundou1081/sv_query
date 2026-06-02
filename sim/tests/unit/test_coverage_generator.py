@@ -943,5 +943,87 @@ class TestCrossModuleDetection(unittest.TestCase):
         self.assertIn("跨模块", result.error or "")
 
 
+# ==============================================================================
+# Cycle 8: AST 解析集成 (SignalExpressionVisitor)
+# ==============================================================================
+
+
+class TestASTParsing(unittest.TestCase):
+    """AST 路径解析
+
+    复用 SignalExpressionVisitor 处理更准确的表达式提取.
+    """
+
+    def test_parse_via_string_still_works(self):
+        """字符串路径 (现有) 仍正常工作"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        # 旧 API 仍然工作
+        result = gen._parse_expression_to_atomics("a & b")
+        names = [s.name for s in result]
+        self.assertIn("a", names)
+        self.assertIn("b", names)
+
+    def test_parse_via_real_pyslang_ast(self):
+        """真实 pyslang AST 解析 (集成测试)"""
+        import pyslang
+        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+        from trace.core.semantic_adapter import SemanticAdapter
+
+        # 用简单 SV 创建一个 expression AST
+        source = """
+        module test(input a, b, output [3:0] c);
+            assign c = a & b;
+        endmodule
+        """
+        tree = pyslang.SyntaxTree.fromText(source)
+        root = tree.root
+
+        # 递归找 ContinuousAssign
+        assign_node = None
+
+        def find(node):
+            s = str(node.kind)
+            if "ContinuousAssign" in s:
+                return node
+            if hasattr(node, "__iter__") and not isinstance(node, str):
+                try:
+                    for c in node:
+                        r = find(c)
+                        if r is not None:
+                            return r
+                except Exception:
+                    pass
+            return None
+
+        assign_node = find(root)
+        if assign_node is None:
+            self.fail("Could not find ContinuousAssign")
+
+        # Get the assignment expression (a & b)
+        # ContinuousAssignSyntax has 'assignments' (list of AssignmentExpression)
+        assignments = assign_node.assignments
+        if not assignments:
+            self.fail("ContinuousAssign has no assignments")
+
+        assign_expr = assignments[0]  # AssignmentExpression
+        if "AssignmentExpression" not in str(assign_expr.kind):
+            self.fail(f"Expected AssignmentExpression, got {assign_expr.kind}")
+
+        rhs = assign_expr.right  # BinaryExpression (a & b)
+
+        # 测试解析
+        comp = pyslang.Compilation()
+        comp.addSyntaxTree(tree)
+        adapter = SemanticAdapter(root, comp)
+        visitor = SignalExpressionVisitor(adapter)
+        result = visitor.extract(rhs)
+        self.assertIsNotNone(result)
+        # 应该有 a 和 b
+        self.assertIn("a", result.all_signals)
+        self.assertIn("b", result.all_signals)
+
+
 if __name__ == '__main__':
     unittest.main()
