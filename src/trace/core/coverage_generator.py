@@ -138,13 +138,15 @@ class ControlCoverageGenerator:
             # Step 2: 从 condition + driver 表达式提取原子
             primary_atomics: list[AtomicSignal] = []
             for edge in cond_edges:
-                # 1. 从 condition 提取
-                cond = edge.effective_condition or edge.condition or ""
-                for a in self._parse_expression_to_atomics(cond):
+                # 1. 从 condition 提取 (V2.A.2 cycle 16: 优先 AST, fallback 字符串)
+                # 使用 _extract_condition_atomic 而不是直接 _parse_expression_to_atomics,
+                # 让 condition_ast 被优先使用。  当 condition_ast=None 时, 内部
+                # 自动回退到 effective_condition/condition 字符串解析 (行为与 V2.B 完全一致)。
+                for a in self._extract_condition_atomic(edge, primary):
                     if a.name not in seen_atomics:
                         seen_atomics.add(a.name)
                         primary_atomics.append(a)
-                # 2. 从 driver 表达式提取
+                # 2. 从 driver 表达式提取 (保持字符串, AST 暂不覆盖)
                 expr = getattr(edge, "expression", "") or ""
                 for a in self._parse_expression_to_atomics(expr):
                     if a.name not in seen_atomics:
@@ -534,6 +536,8 @@ class ControlCoverageGenerator:
         """从 TraceEdge 提取条件中的原子信号
 
         [V2] 优先用 condition_ast, 回退到字符串解析.
+        [V2.A.2 cycle 16] 增加: AST 提取返回空时也回退到字符串,
+        避免 AST 本身的异常/坏节点导致数据丢失.
 
         Args:
             edge: TraceEdge 实例
@@ -545,10 +549,12 @@ class ControlCoverageGenerator:
         if edge is None:
             return []
 
-        # 优先: 用 AST
         ast_node = getattr(edge, "condition_ast", None)
         if ast_node is not None:
-            return self._extract_atomics_from_ast(ast_node)
+            atoms = self._extract_atomics_from_ast(ast_node)
+            if atoms:
+                return atoms
+            # AST 提取返回空 - 回退到字符串 (防止 AST 坏节点丢数据)
 
         # Fallback: 用字符串 (effective_condition 优先, 然后 condition)
         cond = getattr(edge, "effective_condition", "") or ""
