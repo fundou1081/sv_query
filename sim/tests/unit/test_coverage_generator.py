@@ -892,5 +892,56 @@ class TestCLICoverageSuggest(unittest.TestCase):
             self.fail(f"Failed to import coverage module: {e}")
 
 
+# ==============================================================================
+# Cycle 9: 跨模块检测
+# ==============================================================================
+
+
+class TestCrossModuleDetection(unittest.TestCase):
+    """跨模块检测
+
+    用户要求: rtl 不会跨模块设计, 如有, 报错不支持.
+    """
+
+    def test_simple_signal_no_cross_module(self):
+        """简单信号名 (top.x) 不算跨模块"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.x"))
+        gen = ControlCoverageGenerator(graph=g)
+        self.assertFalse(gen._is_cross_module("top.x"))
+
+    def test_dot_separated_simple(self):
+        """单点分隔 (如 a.b) -> False (不是跨模块)"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        self.assertFalse(gen._is_cross_module("a.b"))
+
+    def test_double_dot_cross_module(self):
+        """双点分隔 (如 top.sub.x) -> True (跨模块)"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        self.assertTrue(gen._is_cross_module("top.sub.x"))
+
+    def test_triple_dot_cross_module(self):
+        """三点分隔 (如 top.a.b.c) -> True"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        self.assertTrue(gen._is_cross_module("top.a.b.c"))
+
+    def test_decompose_with_cross_module_sets_error(self):
+        """跨模块分解 -> error 非空"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.sub.x"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.sub.x"])
+        self.assertIsNotNone(result.error)
+        self.assertIn("跨模块", result.error or "")
+
+
 if __name__ == '__main__':
     unittest.main()

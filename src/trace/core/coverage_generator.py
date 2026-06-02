@@ -112,6 +112,14 @@ class ControlCoverageGenerator:
         # V1: 只处理第一个信号 (后续可扩展为多信号)
         primary = signals[0]
 
+        # 跨模块检测
+        if self._is_cross_module(primary):
+            result.error = (
+                f"信号 {primary} 跨模块, 当前版本不支持. "
+                f"请指定顶层模块信号 (如 top.x)."
+            )
+            return result
+
         # Step 1: 收集带 condition 的 incoming edges
         cond_edges = self._collect_condition_edges(primary)
         result.control_blocks = cond_edges  # 临时: 把 edges 作为 control_blocks 返回
@@ -407,6 +415,27 @@ class ControlCoverageGenerator:
             prefix = context_id.rsplit(".", 1)[0]
             return f"{prefix}.{name}"
         return name
+
+    def _is_cross_module(self, signal_id: str) -> bool:
+        """检测信号 ID 是否跨模块
+
+        信号 ID 格式:
+        - "a" -> 单点, 不跨模块
+        - "top.x" -> 双点 (模块.信号), 不跨模块
+        - "top.sub.x" -> 三点, 跨模块
+
+        Args:
+            signal_id: 完整信号 ID
+
+        Returns:
+            True 如果是跨模块引用
+        """
+        if not signal_id:
+            return False
+        # 双点以下 (1个点分隔) 不算跨模块
+        # 三点以上算跨模块
+        parts = signal_id.split(".")
+        return len(parts) > 2
 
     def generate_coverage_markdown(self, result) -> str:
         """生成 Markdown 格式的分解报告
