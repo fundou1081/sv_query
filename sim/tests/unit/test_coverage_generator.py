@@ -2418,5 +2418,53 @@ def effective_condition_str(edge):
     return edge.effective_condition
 
 
+class TestTraceEdgeFactoryP1Cycle2(unittest.TestCase):
+    """P1 cycle 2/3: TraceEdgeFactory 扩展 (clock_domain + sig_cond 混合)"""
+
+    def test_factory_clock_domain_explicit_overrides_ctx(self):
+        """clock_domain 显式参数覆盖 ctx.get('clock') (用于 CLOCK 边)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="clk", dst="x", expression="clk",
+            kind=EdgeKind.CLOCK,
+            ctx={"clock": "ctx_clk", "condition": ""},
+            clock_domain="explicit_clk",
+        )
+        self.assertEqual(edge.clock_domain, "explicit_clk")
+
+    def test_factory_sig_cond_with_explicit_clock(self):
+        """P1 cycle 3: sig_cond + clock_domain 显式 (sites C/D 混合)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="expr",
+            kind=EdgeKind.DRIVER,
+            assign_type="nonblocking",
+            sig_cond="if_en",
+            clock_domain="clk",
+        )
+        self.assertEqual(edge.condition, "if_en")
+        self.assertEqual(edge.clock_domain, "clk")
+        self.assertEqual(edge.effective_condition, "")
+        self.assertIsNone(edge.condition_ast)
+
+    def test_factory_no_expression_uses_default(self):
+        """P1 cycle 2: expression 不传时默认空字符串 (sites 5-8 用)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b",
+            kind=EdgeKind.DRIVER,
+            assign_type="continuous",
+            sig_cond="if_en",
+        )
+        self.assertEqual(edge.expression, "")
+        self.assertEqual(edge.condition, "if_en")
+
+
 if __name__ == '__main__':
     unittest.main()

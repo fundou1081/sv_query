@@ -730,14 +730,14 @@ class DriverExtractor:
                             if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
                                 # 字面量
                                 result.edges.append(
-                                    TraceEdge(
+                                    self._edge_factory.make_edge(
                                         src=rhs_name,
                                         dst=dst_node_id,
                                         kind=EdgeKind.DRIVER,
                                         assign_type="continuous",
                                         expression=rhs_name,
                                         bit_slice=bit_slice,
-                                        condition=sig_cond,
+                                        sig_cond=sig_cond,
                                     )
                                 )
                             else:
@@ -753,14 +753,14 @@ class DriverExtractor:
                                         )
                                     )
                                 result.edges.append(
-                                    TraceEdge(
+                                    self._edge_factory.make_edge(
                                         src=src_node_id,
                                         dst=dst_node_id,
                                         kind=EdgeKind.DRIVER,
                                         assign_type="continuous",
                                         expression=expr_str,
                                         bit_slice=bit_slice,
-                                        condition=sig_cond,
+                                        sig_cond=sig_cond,
                                     )
                                 )
                     else:
@@ -911,15 +911,17 @@ class DriverExtractor:
 
                                 if sig_rhs_name and not sig_rhs_name[0].isalpha() and not sig_rhs_name.startswith("_"):
                                     result.edges.append(
-                                        TraceEdge(
+                                        self._edge_factory.make_edge(
                                             src=sig_rhs_name,
                                             dst=dst_node_id,
                                             kind=EdgeKind.DRIVER,
                                             assign_type="nonblocking",
-                                            clock_domain=ctx.get("clock", ""),
-                                            condition=sig_cond,
                                             expression=sig_rhs_name,
                                             bit_slice=bit_slice,
+                                            # [P1 cycle 3] sig_cond + clock_domain 混合:
+                                            # clock 从 ctx 读, condition 来自 sig_cond
+                                            clock_domain=ctx.get("clock", ""),
+                                            sig_cond=sig_cond,
                                         )
                                     )
                                 else:
@@ -935,15 +937,17 @@ class DriverExtractor:
                                             )
                                         )
                                     result.edges.append(
-                                        TraceEdge(
+                                        self._edge_factory.make_edge(
                                             src=src_node_id,
                                             dst=dst_node_id,
                                             kind=EdgeKind.DRIVER,
                                             assign_type="nonblocking",
-                                            clock_domain=ctx.get("clock", ""),
-                                            condition=sig_cond,
                                             expression=expr_str,
                                             bit_slice=bit_slice,
+                                            # [P1 cycle 3] sig_cond + clock_domain 混合:
+                                            # clock 从 ctx 读, condition 来自 sig_cond
+                                            clock_domain=ctx.get("clock", ""),
+                                            sig_cond=sig_cond,
                                         )
                                     )
                         else:
