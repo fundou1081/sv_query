@@ -20,7 +20,9 @@ from typing import Callable
 from .coverage_models import (
     AtomicSignal,
     DecompositionResult,
+    EvidenceStep,
 )
+from .graph.models import NodeKind
 
 
 class ControlCoverageGenerator:
@@ -171,3 +173,117 @@ class ControlCoverageGenerator:
         high = int(m.group(3))
         low = int(m.group(4)) if m.group(4) else high
         return (base, (high, low))
+
+    def _is_module_port(self, node) -> bool:
+        """检测信号节点是否为模块端口
+
+        端口是 driver 链的停止边界 - 不再向上追踪。
+
+        Args:
+            node: TraceNode 实例
+
+        Returns:
+            True 如果是模块端口 (PORT_IN/OUT/INOUT)
+        """
+        if node is None:
+            return False
+        if getattr(node, "is_port", False):
+            return True
+        # 双重保险: 检查 kind
+        kind = getattr(node, "kind", None)
+        if kind in (NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.PORT_INOUT):
+            return True
+        return False
+
+    def _trace_drivers(
+        self,
+        signal: str,
+        bit_range: tuple[int, int] | None,
+        depth: int,
+        max_depth: int,
+        visited: set,
+    ) -> list[AtomicSignal]:
+        """沿 driver 链递归追踪
+
+        Args:
+            signal: 起点信号 ID
+            bit_range: 起点信号的位选 (透传给 driver)
+            depth: 当前深度
+            max_depth: 最大深度
+            visited: 已访问集合 (避免循环)
+
+        Returns:
+            追踪到的原子信号列表
+        """
+        # 1. 终止条件: 已访问
+        if signal in visited:
+            return []
+        # 2. 终止条件: 超过最大深度
+        if depth >= max_depth:
+            return []
+        # 3. 终止条件: 节点不存在
+        node = self._graph.get_node(signal) if self._graph else None
+        if node is None:
+            return []
+        # 4. 终止条件: 端口
+        if self._is_module_port(node):
+            return []
+
+        visited.add(signal)
+        result = []
+
+        # 5. 找所有 driver
+        drivers = self._graph.find_drivers(signal)
+        if not drivers:
+            return []
+
+        for driver_node in drivers:
+            driver_id = driver_node.id
+            # 找对应的边
+            edge = self._graph.get_edge(driver_id, signal)
+            if edge is None:
+                continue
+
+            # 获取 driver 表达式
+            expr = getattr(edge, "expression", "") or ""
+
+            # 解析表达式 -> 原子信号
+            atomics = self._parse_expression_to_atomics(expr)
+
+            # 记录 evidence (为每个原子附加 driver 链证据)
+            step = EvidenceStep(
+                step_type="driver_chain",
+                description=f"{driver_id} -> {signal}: {expr}",
+                from_signal=signal,
+                to_signals=[a.name for a in atomics],
+            )
+            for atomic in atomics:
+                atomic.evidence.append(step)
+            result.extend(atomics)
+
+            # 递归追踪每个 driver 的源
+            for atomic in atomics:
+                sub_atomics = self._trace_drivers(
+                    atomic.base_name,
+                    atomic.bit_range,
+                    depth + 1,
+                    max_depth,
+                    visited.copy(),
+                )
+                # 为子原子添加 evidence
+                for sub in sub_atomics:
+                    sub.evidence.append(EvidenceStep(
+                        step_type="recursive",
+                        description=f"tracing driver of {atomic.base_name}",
+                        from_signal=atomic.base_name,
+                        to_signals=[a.name for a in sub_atomics],
+                    ))
+                result.extend(sub_atomics)
+
+        return result
+
+
+# ==============================================================================
+# Cycle 3: Driver 链追踪 + 端口检测
+# ==============================================================================
+

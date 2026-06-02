@@ -3,21 +3,21 @@
 
 <!-- METADATA -->
 {
-  "generated": "2026-06-02 08:50:27",
-  "passed": 34,
+  "generated": "2026-06-02 08:58:48",
+  "passed": 43,
   "failed": 0,
   "skipped": 0,
-  "total": 34
+  "total": 43
 }
 <!-- /METADATA -->
 
 ## 测试摘要
 
-- **通过**: 34
+- **通过**: 43
 - **失败**: 0
 - **跳过**: 0
-- **总计**: 34
-- **时间**: 2026-06-02 08:50:27
+- **总计**: 43
+- **时间**: 2026-06-02 08:58:48
 
 ## 测试结果详情
 
@@ -57,6 +57,15 @@
 | ✅ | `unit/test_coverage_generator.py::TestExpressionParser::test_parse_ternary` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestExpressionParser::test_parse_underscore_name` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestExpressionParser::test_parse_with_bit_range` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestIsModulePort::test_port_in_node` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestIsModulePort::test_reg_node` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestIsModulePort::test_signal_node` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_at_port` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_avoids_cycle` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_leaf_port` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_no_driver` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_respects_max_depth` | 0.000s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceDrivers::test_trace_drivers_simple` | 0.000s |
 
 ---
 *此报告由 pytest 自动生成*

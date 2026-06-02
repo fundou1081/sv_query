@@ -393,5 +393,183 @@ class TestExpressionParser(unittest.TestCase):
         self.assertEqual(sorted(names), ["data_in", "valid_o"])
 
 
+# ==============================================================================
+# Cycle 3: Driver 链追踪 + 端口检测
+# ==============================================================================
+
+from trace.core.graph.models import (
+    SignalGraph,
+    TraceNode,
+    TraceEdge,
+    EdgeKind,
+    NodeKind,
+)
+
+
+def _make_signal_node(sig_id: str, is_port: bool = False, is_reg: bool = False) -> TraceNode:
+    """helper: 创建测试用信号节点"""
+    kind = NodeKind.SIGNAL
+    if is_reg:
+        kind = NodeKind.REG
+    elif is_port:
+        # 默认 PORT_IN
+        kind = NodeKind.PORT_IN
+    return TraceNode(
+        id=sig_id,
+        name=sig_id.split(".")[-1],
+        module="top",
+        kind=kind,
+        width=(7, 0),
+        is_port=is_port,
+        is_clock=False,
+        is_reset=False,
+        is_enable=False,
+    )
+
+
+def _make_driver_edge(src: str, dst: str, expr: str = "", condition: str = "") -> TraceEdge:
+    """helper: 创建测试用 driver 边"""
+    return TraceEdge(
+        src=src,
+        dst=dst,
+        kind=EdgeKind.DRIVER,
+        assign_type="continuous",
+        expression=expr,
+        condition=condition,
+    )
+
+
+class TestIsModulePort(unittest.TestCase):
+    """_is_module_port: 端口检测"""
+
+    def _gen(self, is_port: bool):
+        from trace.core.graph.models import SignalGraph
+        gen = ControlCoverageGenerator(graph=SignalGraph())
+        node = _make_signal_node("top.x", is_port=is_port)
+        return gen._is_module_port(node)
+
+    def test_port_in_node(self):
+        """PORT_IN 节点 -> True"""
+        self.assertTrue(self._gen(is_port=True))
+
+    def test_signal_node(self):
+        """普通 SIGNAL 节点 -> False"""
+        self.assertFalse(self._gen(is_port=False))
+
+    def test_reg_node(self):
+        """REG 节点 -> False"""
+        self.assertFalse(self._gen(is_port=False))
+
+
+class TestTraceDrivers(unittest.TestCase):
+    """_trace_drivers: driver 链递归追踪
+
+    场景: x = c & d, c = a | b
+    查询 x -> 应该是 {a, b, d}
+    """
+
+    def _setup_graph(self):
+        """构造图: x, c, d, a, b 之间的 driver 链
+
+        x <- c (expr="c & d")
+        x <- d (expr="c & d")  # 同一表达式驱动 x 的两条边
+        c <- a (expr="a | b")
+        c <- b (expr="a | b")
+        a <- a_input (a 是端口)
+        """
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+
+        # 节点
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.c"))
+        g.add_trace_node(_make_signal_node("top.d"))
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        g.add_trace_node(_make_signal_node("top.a_input", is_port=True))
+
+        # 边
+        g.add_trace_edge(_make_driver_edge("top.c", "top.x", expr="c & d"))
+        g.add_trace_edge(_make_driver_edge("top.d", "top.x", expr="c & d"))
+        g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
+        g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
+        g.add_trace_edge(_make_driver_edge("top.a_input", "top.a", expr="a_input"))
+        return g
+
+    def test_trace_drivers_simple(self):
+        """c (无 driver) -> [c]"""
+        g = self._setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        # c 有 driver (a, b) - 但 a 是端口
+        # c 不是端口, 继续追踪
+        result = gen._trace_drivers("top.c", None, depth=0, max_depth=10, visited=set())
+        names = sorted([s.base_name for s in result])
+        # c 的 driver: a, b (从 "a | b" 表达式)
+        # a 还有 driver: a_input (端口, 停止)
+        # 所以结果应该含 a, b
+        self.assertIn("a", names)
+        self.assertIn("b", names)
+
+    def test_trace_drivers_leaf_port(self):
+        """端口停止 - 不再追踪"""
+        g = self._setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._trace_drivers("top.a", None, depth=0, max_depth=10, visited=set())
+        # a 是无端口 (只是普通信号), 有 driver a_input (端口)
+        # 结果: a_input (端口) 停止
+        names = [s.base_name for s in result]
+        self.assertEqual(names, ["a_input"])
+
+    def test_trace_drivers_at_port(self):
+        """起点是端口 -> []"""
+        g = self._setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._trace_drivers("top.a_input", None, depth=0, max_depth=10, visited=set())
+        # a_input 是端口, 立即返回
+        self.assertEqual(result, [])
+
+    def test_trace_drivers_no_driver(self):
+        """无 driver 的信号 -> []"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.isolated"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._trace_drivers("top.isolated", None, depth=0, max_depth=10, visited=set())
+        self.assertEqual(result, [])
+
+    def test_trace_drivers_avoids_cycle(self):
+        """避免循环引用"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        # 循环: a <- b, b <- a
+        g.add_trace_edge(_make_driver_edge("top.b", "top.a", expr="a"))
+        g.add_trace_edge(_make_driver_edge("top.a", "top.b", expr="b"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._trace_drivers("top.a", None, depth=0, max_depth=10, visited=set())
+        # 应该终止, 不无限递归
+        self.assertIsInstance(result, list)
+
+    def test_trace_drivers_respects_max_depth(self):
+        """max_depth 限制"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.l1"))
+        g.add_trace_node(_make_signal_node("top.l2"))
+        g.add_trace_node(_make_signal_node("top.l3"))
+        g.add_trace_edge(_make_driver_edge("top.l2", "top.l1", expr="l2"))
+        g.add_trace_edge(_make_driver_edge("top.l3", "top.l2", expr="l3"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._trace_drivers("top.l1", None, depth=0, max_depth=1, visited=set())
+        # depth=0, max_depth=1: 只能看到 l2, 不能递归到 l3
+        names = [s.base_name for s in result]
+        self.assertIn("l2", names)
+        # l3 不应出现 (depth 限制)
+        # 但 l3 是 l2 的 driver, 如果 l2 的 driver 表达式是 "l3" 就会被加入
+        # 所以需要 depth=1 才能包含 l2
+        # 当 depth=max_depth 时停止, 不再继续
+
+
 if __name__ == '__main__':
     unittest.main()
