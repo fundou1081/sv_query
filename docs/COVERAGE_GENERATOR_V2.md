@@ -641,3 +641,121 @@ python run_cli.py coverage suggest -f top.sv \
 ### 下一步
 V2.A.2 (AST 完整利用) - 默认走 AST 路径,预计 cycle 16-19
 
+---
+
+## 附录 C. V2.A.2 计划 (AST 完整利用)
+
+### C.1 起点诊断
+
+Cycle 11 添加了 AST 入口但**未接入**:
+- `TraceEdge.condition_ast: Any | None = None` 字段已加
+- `coverage_generator._extract_condition_atomic(edge, src)` 已实现 (优先 AST, fallback 字符串)
+- `coverage_generator._extract_atomics_from_ast(ast_node)` 已实现 (用 SignalExpressionVisitor)
+- `_convert_signal_result_to_atomics(sr, ast)` 已实现
+- `_is_simple_literal(name)` 已实现
+
+**问题发现**:
+- `coverage_generator.decompose()` **未调用** `_extract_condition_atomic`, 仍用 `_parse_expression_to_atomics` 直接解析
+- `graph_builder.py` 17+ 处创建 `TraceEdge(condition=...)` 但**全部不填 `condition_ast`**
+
+**结论**: cycle 11 留下了 AST 入口但路径未贯通, V2.A.2 要贯通。
+
+### C.2 目标
+
+让 AST 成为 decompose() 条件提取的**默认路径**。当 `condition_ast` 被填上时走 AST, 当为 None 时回退字符串。
+
+### C.3 风险评估 (用户明确要求小心)
+
+| 阶段 | 改的文件 | 风险 | 保护措施 |
+|------|---------|------|----------|
+| Cycle 16 | `coverage_generator.py` 仅改 `decompose()` 走 `_extract_condition_atomic` | 🟢 低 | 1322 V1 回归 + 7 个 AST 单元测试 |
+| Cycle 17 | `graph_builder.py` 改 if 条件赋值, 加 `condition_ast=` | 🟡 中 | 单点修改 + git diff 逐行核对 + 1367 V2.B 回归 |
+| Cycle 18 | 跑 test_data_path.sv 端到端验证 | 🟢 低 | 真实文件回归 + 对比 V2.B 输出一致 |
+
+**关键保护原则**:
+1. 每个 cycle 独立 commit, 可独立 `git revert`
+2. **Cycle 16 只改 generator.py**, 不会动 graph_builder.py, 如果出问只损失 ~30 行
+3. Cycle 16 完成后 **STOP** 给用户看 diff, 经确认才开 cycle 17
+4. 始终保留字符串 fallback: 即使 cycle 17 填了 AST, 如果 AST 解析失败, 还走字符串
+
+### C.4 系统设计 (不变 `TraceEdge` 模型)
+
+**Cycle 16 改动** (`coverage_generator.py:decompose`):
+```python
+# 改前 (现状)
+for edge in cond_edges:
+    cond = edge.effective_condition or edge.condition or ""
+    for a in self._parse_expression_to_atomics(cond):
+        ...
+    expr = getattr(edge, "expression", "") or ""
+    for a in self._parse_expression_to_atomics(expr):
+        ...
+
+# 改后
+for edge in cond_edges:
+    # 1. 条件 - 优先 AST, fallback 字符串
+    for a in self._extract_condition_atomic(edge, primary):
+        if a.name not in seen_atomics:
+            seen_atomics.add(a.name)
+            primary_atomics.append(a)
+    # 2. driver 表达式 - 保持字符串 (暂未支持 AST)
+    expr = getattr(edge, "expression", "") or ""
+    for a in self._parse_expression_to_atomics(expr):
+        if a.name not in seen_atomics:
+            seen_atomics.add(a.name)
+            primary_atomics.append(a)
+```
+
+**关键不变性**:
+- 当 `condition_ast=None` (当前默认): `_extract_condition_atomic` 内部回退到 `_parse_expression_to_atomics(effective_condition or condition)`
+- 输出与现状**完全一致** (回归保护)
+- driver 表达式保持字符串解析 (暂不改, 减少风险)
+
+**Cycle 17 改动** (`graph_builder.py` 一处):
+```python
+# 改前 (示例)
+TraceEdge(
+    src=source, dst=target,
+    condition=sig_cond,
+    ...
+)
+# 改后
+TraceEdge(
+    src=source, dst=target,
+    condition=sig_cond,
+    condition_ast=<AST_node>,  # 新增: 如果能取到
+    ...
+)
+```
+
+只动 if-condition 场景, 不动 case/ternary 等其他场景, 减少风险面。
+
+### C.5 Cycle 拆分
+
+| Cycle | 内容 | 估计行数 | 估计测试 |
+|-------|------|----------|----------|
+| 16 | `decompose()` 改走 `_extract_condition_atomic` | ~10 | +6 (AST 路径集成) |
+| 17 | `graph_builder.py` 给 1 类 if 条件填 `condition_ast` | ~30 | +3 (集成测试) |
+| 18 | 跑 test_data_path.sv 验证 | ~5 | +2 (CLI 验证) |
+| **合计** | | **~45 行** | **+11** |
+
+### C.6 验收标准
+
+- [ ] `decompose()` 在 `condition_ast=None` 时与 V2.B 输出完全一致
+- [ ] `decompose()` 在 `condition_ast=mock_node` 时走 AST 路径
+- [ ] 1322 (V1) + 28 (V2.C) + 17 (V2.B) = 1367 测试全过
+- [ ] cycle 17 后 1367 + 11 = 1378 测试全过
+- [ ] 跑 test_data_path.sv, JSON 输出含 `condition_ast_used: true` (新增 evidence 字段)
+- [ ] ruff 干净 (V2.A.2 新增代码)
+
+### C.7 经验教训 (预设)
+
+- 死代码 (`_extract_condition_atomic` cycle 11 加了没接) 是 cycle 11 的遗憾
+- 用户对误删的担忧提示: 改动小一点, review 多一点
+- 默认走 AST 但保留 fallback 是兼容性最稳的模式
+- 真实数据测试是发现"代码加了没接入"的唯一可靠手段
+
+### C.8 下一步
+
+Cycle 16 → STOP 给用户看 diff → Cycle 17 → Cycle 18
+
