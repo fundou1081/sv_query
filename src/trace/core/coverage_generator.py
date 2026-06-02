@@ -15,7 +15,7 @@
 # ==============================================================================
 
 import re
-from typing import Callable
+from typing import Any, Callable
 
 from .coverage_models import (
     AtomicSignal,
@@ -86,82 +86,101 @@ class ControlCoverageGenerator:
         max_signals: int = 5,
         max_depth: int = 10,
     ) -> DecompositionResult:
-        """分解信号到原子
+        """分解信号到原子 (V2.B 支持多信号)
 
-        主入口. 对于每个信号:
-        1. 收集带 condition 的 incoming edges (复用 _collect_condition_edges)
-        2. 从 condition 提取原子信号 (复用 _parse_expression_to_atomics)
-        3. 沿 driver 链追踪每个原子 (复用 _trace_drivers)
-        4. 合并去重所有原子信号
-        5. 检查是否超 max_signals (报错/truncated)
+        主入口. 对于输入的每个信号:
+        1. 跨模块检测 (任一信号跨模块则报错)
+        2. 收集带 condition 的 incoming edges
+        3. 从 condition 和 driver 表达式提取原子信号
+        4. 沿 driver 链追踪每个原子
+        5. 跨信号合并去重 (atomic.name 唯一)
+        6. control_blocks 按 (src, dst) 去重
+        7. 检查合并后是否超 max_signals
 
         Args:
             signals: 用户输入的信号列表
-            max_signals: 信号树最大数量 (默认 5)
+            max_signals: 合并后信号树最大数量 (默认 5)
             max_depth: driver 链最大深度
 
         Returns:
             DecompositionResult
+            - original_signal: ", ".join(signals) (向后兼容)
+            - original_signals: 原始输入列表 (V2.B)
+            - atomic_signals: 合并去重后的原子信号
+            - control_blocks: 合并去重后的控制块
         """
-        result = DecompositionResult(original_signal=", ".join(signals))
+        result = DecompositionResult(
+            original_signal=", ".join(signals),
+            original_signals=list(signals),
+        )
 
         if not signals:
             result.error = "No signals provided"
             return result
 
-        # V1: 只处理第一个信号 (后续可扩展为多信号)
-        primary = signals[0]
-
-        # 跨模块检测
-        if self._is_cross_module(primary):
-            result.error = (
-                f"信号 {primary} 跨模块, 当前版本不支持. "
-                f"请指定顶层模块信号 (如 top.x)."
-            )
-            return result
-
-        # Step 1: 收集带 condition 的 incoming edges
-        cond_edges = self._collect_condition_edges(primary)
-        result.control_blocks = cond_edges  # 临时: 把 edges 作为 control_blocks 返回
-
-        # Step 2: 收集所有原子信号 (从 condition + driver 表达式)
         all_atomics: list[AtomicSignal] = []
-        seen: set[str] = set()  # 去重
+        all_blocks: list[Any] = []
+        seen_atomics: set[str] = set()  # 按 name 去重
+        seen_blocks: set[tuple[str, str]] = set()  # 按 (src, dst) 去重
 
-        for edge in cond_edges:
-            # 1. 从 condition 提取原子 (如 "en")
-            cond = edge.effective_condition or edge.condition or ""
-            cond_atomics = self._parse_expression_to_atomics(cond)
-            for a in cond_atomics:
-                if a.name not in seen:
-                    seen.add(a.name)
-                    all_atomics.append(a)
+        for primary in signals:
+            # 跨模块检测 (任一信号跨模块 -> 快速失败)
+            if self._is_cross_module(primary):
+                result.error = (
+                    f"信号 {primary} 跨模块, 当前版本不支持. "
+                    f"请指定顶层模块信号 (如 top.x)."
+                )
+                return result
 
-            # 2. 从 driver 表达式提取原子 (如 "c & d")
-            expr = getattr(edge, "expression", "") or ""
-            expr_atomics = self._parse_expression_to_atomics(expr)
-            for a in expr_atomics:
-                if a.name not in seen:
-                    seen.add(a.name)
-                    all_atomics.append(a)
+            # Step 1: 收集该信号的 cond_edges
+            cond_edges = self._collect_condition_edges(primary)
 
-        # 3. 沿 driver 链追踪所有原子
-        # 用 primary 作为 context 推导完整 ID
-        for atomic in list(all_atomics):
-            recurse_id = self._resolve_signal_id(atomic.base_name, primary)
-            sub_atomics = self._trace_drivers(
-                recurse_id,
-                atomic.bit_range,
-                depth=1,
-                max_depth=max_depth,
-                visited=set(),
-            )
-            for sa in sub_atomics:
-                if sa.name not in seen:
-                    seen.add(sa.name)
-                    all_atomics.append(sa)
+            # Step 2: 从 condition + driver 表达式提取原子
+            primary_atomics: list[AtomicSignal] = []
+            for edge in cond_edges:
+                # 1. 从 condition 提取
+                cond = edge.effective_condition or edge.condition or ""
+                for a in self._parse_expression_to_atomics(cond):
+                    if a.name not in seen_atomics:
+                        seen_atomics.add(a.name)
+                        primary_atomics.append(a)
+                # 2. 从 driver 表达式提取
+                expr = getattr(edge, "expression", "") or ""
+                for a in self._parse_expression_to_atomics(expr):
+                    if a.name not in seen_atomics:
+                        seen_atomics.add(a.name)
+                        primary_atomics.append(a)
 
-        # Step 3: 限制 max_signals
+            # Step 3: 沿 driver 链追踪
+            for atomic in list(primary_atomics):
+                recurse_id = self._resolve_signal_id(atomic.base_name, primary)
+                sub_atomics = self._trace_drivers(
+                    recurse_id,
+                    atomic.bit_range,
+                    depth=1,
+                    max_depth=max_depth,
+                    visited=set(),
+                )
+                for sa in sub_atomics:
+                    if sa.name not in seen_atomics:
+                        seen_atomics.add(sa.name)
+                        primary_atomics.append(sa)
+
+            all_atomics.extend(primary_atomics)
+
+            # Step 4: control_blocks 合并去重 (按 src, dst)
+            for edge in cond_edges:
+                key = (getattr(edge, "src", ""), getattr(edge, "dst", ""))
+                if key not in seen_blocks:
+                    seen_blocks.add(key)
+                    all_blocks.append(edge)
+
+        result.atomic_signals = all_atomics
+        result.control_blocks = all_blocks
+        result.signal_count = len(all_atomics)
+        result.depth_reached = max_depth
+
+        # Step 5: 合并后 max_signals 检查
         if len(all_atomics) > max_signals:
             result.atomic_signals = all_atomics[:max_signals]
             result.signal_count = len(all_atomics)
@@ -170,11 +189,7 @@ class ControlCoverageGenerator:
                 f"Decomposition exceeds max_signals ({max_signals}): "
                 f"found {len(all_atomics)} signals"
             )
-        else:
-            result.atomic_signals = all_atomics
-            result.signal_count = len(all_atomics)
 
-        result.depth_reached = max_depth
         return result
 
     def _parse_expression_to_atomics(self, expr: str) -> list[AtomicSignal]:

@@ -1609,5 +1609,179 @@ class TestCLICoverageSuggestJSONV2C(unittest.TestCase):
         self.assertIn("跨模块", parsed["error"])
 
 
+class TestMultiSignalDecomposeV2B(unittest.TestCase):
+    """V2 cycle 14: decompose() 多信号合并
+
+    场景: x 和 y 都有独立 driver, 一起分解应合并去重。
+    """
+
+    def _make_multi_signal_graph(self):
+        """top.x, top.y, c, d, a, b (其中 a/b 共享驱动)
+
+        if (en) x <= c & d;
+        if (mode) y <= a | b;
+        assign c = c_in;  // c 是 driver
+        assign d = d_in;  // d 是 driver
+        """
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        # 节点
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.y"))
+        g.add_trace_node(_make_signal_node("top.c"))
+        g.add_trace_node(_make_signal_node("top.d"))
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        g.add_trace_node(_make_signal_node("top.mode_input", is_port=True))
+        g.add_trace_node(_make_signal_node("top.en_input", is_port=True))
+        # 边
+        g.add_trace_edge(_make_conditional_edge(
+            "top.c", "top.x", expr="c & d",
+            condition="en",
+            effective_condition="en",
+        ))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.d", "top.x", expr="c & d",
+            condition="en",
+            effective_condition="en",
+        ))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.a", "top.y", expr="a | b",
+            condition="mode",
+            effective_condition="mode",
+        ))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.b", "top.y", expr="a | b",
+            condition="mode",
+            effective_condition="mode",
+        ))
+        return g
+
+    # --- original_signals 字段 ---
+
+    def test_decomposition_result_has_original_signals_field(self):
+        """DecompositionResult 包含 original_signals 列表字段"""
+        result = DecompositionResult(
+            original_signal="a, b",
+            original_signals=["a", "b"],
+        )
+        self.assertEqual(result.original_signals, ["a", "b"])
+
+    def test_decomposition_result_to_dict_includes_original_signals(self):
+        """to_dict() 包含 original_signals"""
+        result = DecompositionResult(
+            original_signal="a, b",
+            original_signals=["a", "b"],
+        )
+        d = result.to_dict()
+        self.assertIn("original_signals", d)
+        self.assertEqual(d["original_signals"], ["a", "b"])
+
+    def test_decomposition_result_to_json_includes_original_signals(self):
+        """to_json() 序列化 original_signals 列表"""
+        import json
+        result = DecompositionResult(
+            original_signal="a, b",
+            original_signals=["a", "b"],
+        )
+        parsed = json.loads(result.to_json())
+        self.assertEqual(parsed["original_signals"], ["a", "b"])
+
+    def test_decomposition_result_default_original_signals_empty(self):
+        """默认 original_signals 为空列表 (向后兼容)"""
+        result = DecompositionResult(original_signal="top.x")
+        self.assertEqual(result.original_signals, [])
+
+    # --- decompose() 多信号 ---
+
+    def test_decompose_multi_signals_returns_merged_atomics(self):
+        """2 个信号输入返回合并原子集合"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        # max_signals=10 避免默认 5 截断
+        result = gen.decompose(["top.x", "top.y"], max_signals=10)
+        names = {s.base_name for s in result.atomic_signals}
+        # 期望: en, mode (条件), c, d, a, b (driver)
+        for expected in ("en", "mode", "c", "d", "a", "b"):
+            self.assertIn(expected, names, f"Missing {expected} in {names}")
+
+    def test_decompose_multi_signals_populates_original_signals(self):
+        """decompose() 设置 original_signals 字段"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x", "top.y"])
+        self.assertEqual(result.original_signals, ["top.x", "top.y"])
+        # original_signal 仍为拼接 (向后兼容)
+        self.assertEqual(result.original_signal, "top.x, top.y")
+
+    def test_decompose_single_signal_still_works_regression(self):
+        """单信号输入与 V1 行为一致 (回归测试)"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        self.assertEqual(result.original_signals, ["top.x"])
+        self.assertEqual(result.original_signal, "top.x")
+        names = {s.base_name for s in result.atomic_signals}
+        for expected in ("en", "c", "d"):
+            self.assertIn(expected, names)
+        # mode 是 y 的条件, x 不应含
+        self.assertNotIn("mode", names)
+
+    def test_decompose_duplicate_signals_deduped(self):
+        """同信号重复 (a, a) 在合并时去重"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x", "top.x"], max_signals=10)
+        # original_signals 保留重复 (输入)
+        self.assertEqual(result.original_signals, ["top.x", "top.x"])
+        # 但原子信号去重 (不应有 2 份 c)
+        names = [s.name for s in result.atomic_signals]
+        # 假设 c 的 full_name 形如 "c", 应只出现 1 次
+        c_count = sum(1 for n in names if n == "c")
+        self.assertEqual(c_count, 1, f"Expected 1 'c', got {c_count}: {names}")
+
+    def test_decompose_control_blocks_deduped_by_src_dst(self):
+        """control_blocks 按 (src, dst) 去重"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x", "top.y"], max_signals=10)
+        # 提取所有 (src, dst) pair
+        keys = [(getattr(b, "src", ""), getattr(b, "dst", "")) for b in result.control_blocks]
+        self.assertEqual(len(keys), len(set(keys)), f"Duplicate control blocks: {keys}")
+
+    def test_decompose_multi_signals_truncates_at_max(self):
+        """合并后超过 max_signals 报错"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x", "top.y"], max_signals=2)
+        self.assertTrue(result.truncated)
+        self.assertIsNotNone(result.error)
+        self.assertIn("max_signals", result.error)
+
+    def test_decompose_preserves_signal_order(self):
+        """原子信号顺序保持输入顺序"""
+        g = self._make_multi_signal_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x", "top.y"], max_signals=10)
+        # 期望顺序: x 的原子先出现, y 的后出现
+        # 第一个原子应该来自 x 的 condition (en) 或 driver (c, d)
+        first_base = result.atomic_signals[0].base_name if result.atomic_signals else ""
+        # 实际上: 由于 cond_edges 先加, x 的 en 会在 y 的 mode 之前
+        # 但要小心 evidence 顺序不影响这个保证
+        # 仅检查 en 在 mode 之前
+        names = [s.base_name for s in result.atomic_signals]
+        if "en" in names and "mode" in names:
+            self.assertLess(names.index("en"), names.index("mode"))
+
+    def test_decompose_empty_signals_returns_error(self):
+        """空信号列表仍返回错误 (与 V1 一致)"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose([])
+        self.assertEqual(result.atomic_signals, [])
+        self.assertIsNotNone(result.error)
+
+
 if __name__ == '__main__':
     unittest.main()
