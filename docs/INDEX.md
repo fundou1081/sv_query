@@ -29,6 +29,7 @@
 | **Visitor 测试** | [SIGNAL_EXPRESSION_VISITOR_TEST_STATUS.md](./SIGNAL_EXPRESSION_VISITOR_TEST_STATUS.md) |
 | **Filelist 格式** | [FILELIST.md](./FILELIST.md) |
 | **同步状态** | [DOC_IMPL_GAP.md](./DOC_IMPL_GAP.md) |
+| **Coverage Generator** | [COVERAGE_GENERATOR.md](./COVERAGE_GENERATOR.md) |
 
 ---
 
@@ -243,6 +244,7 @@ UVM/SVA Skeleton 自动生成规则（如果存在）
 
 | 日期 | 操作 |
 |------|------|
+| 2026-06-02 | 添加 COVERAGE_GENERATOR.md (V1 文档) |
 | 2026-06-01 | 添加 FILELIST.md, 完整 filelist 格式文档 |
 | 2026-06-01 | 添加 DOC_IMPL_GAP.md 入口 |
 | 2026-06-01 | 更新 USER_GUIDE.md (v2.0) |
