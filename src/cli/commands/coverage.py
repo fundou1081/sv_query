@@ -44,7 +44,7 @@ def suggest(
     signals: str = typer.Option(None, "--signals", help="Comma-separated signals"),
     max_signals: int = typer.Option(5, "--max-signals", help="Max signal tree size"),
     max_depth: int = typer.Option(10, "--max-depth", help="Max driver chain depth"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (TODO)"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (programmatic)"),
 ) -> None:
     """分解信号到原子信号, 生成控制覆盖度建议"""
     from trace.unified_tracer import UnifiedTracer
@@ -62,7 +62,9 @@ def suggest(
         with open(file) as f:
             source = f.read()
 
-        tracer = UnifiedTracer(sources={file: source})
+        # --json 模式下只报 ERROR, 避免 WARNING 污染 stdout
+        tracer_log_level = "ERROR" if json_output else None
+        tracer = UnifiedTracer(sources={file: source}, log_level=tracer_log_level)
         graph = tracer.build_graph()
 
         gen = ControlCoverageGenerator(graph=graph)
@@ -72,12 +74,11 @@ def suggest(
             max_depth=max_depth,
         )
 
-        # 输出 Markdown 报告
+        # 输出报告 (JSON 或 Markdown, 互斥)
         if json_output:
-            # TODO: JSON 输出
-            print("JSON output not implemented yet, falling back to markdown")
-        md = gen.generate_coverage_markdown(result)
-        print(md)
+            print(result.to_json(indent=2))
+        else:
+            print(gen.generate_coverage_markdown(result))
 
         if result.truncated or result.error:
             raise typer.Exit(code=1)

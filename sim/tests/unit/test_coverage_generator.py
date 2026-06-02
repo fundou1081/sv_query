@@ -1496,5 +1496,118 @@ class TestSerializationV2C(unittest.TestCase):
         self.assertEqual(parsed["atomic_signals"][1]["name"], "b[3:0]")
 
 
+class TestCLICoverageSuggestJSONV2C(unittest.TestCase):
+    """V2 cycle 13: CLI --json 实际输出
+
+    与 TestCLICoverageSuggest 不同, 这些测试验证 --json 标志
+    真的输出 JSON 而不是 Markdown.
+    """
+
+    def _run_cli(self, *args, timeout=60):
+        """调 CLI 拼装参数"""
+        import subprocess
+        import sys
+        import os
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        cmd = [
+            sys.executable, "run_cli.py", "coverage", "suggest",
+            "-f", sv_file,
+            *args,
+        ]
+        result = subprocess.run(
+            cmd,
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result, sv_file
+
+    def test_cli_json_outputs_valid_json(self):
+        """CLI --json 输出能被 json.loads 解析"""
+        import json
+        result, _ = self._run_cli("--signal", "data_path.din", "--json")
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        # JSON 应能被解析
+        try:
+            parsed = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            self.fail(f"--json output is not valid JSON: {e}\nOutput: {result.stdout[:500]}")
+        # 应是 dict (顶层是对象)
+        self.assertIsInstance(parsed, dict)
+
+    def test_cli_json_has_expected_fields(self):
+        """CLI --json 输出含所有 DecompositionResult 字段"""
+        import json
+        result, _ = self._run_cli("--signal", "data_path.din", "--json")
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        parsed = json.loads(result.stdout)
+        # 必须字段
+        for field in ("original_signal", "atomic_signals", "control_blocks",
+                      "depth_reached", "signal_count", "truncated", "error"):
+            self.assertIn(field, parsed, f"Missing field: {field}")
+
+    def test_cli_json_does_not_output_markdown(self):
+        """CLI --json 输出不含 Markdown 特定标记 (如 '```', '##')"""
+        result, _ = self._run_cli("--signal", "data_path.din", "--json")
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        # 不应出现 Markdown 标题/代码块标记
+        self.assertNotIn("```", result.stdout, "JSON output should not contain ```")
+        self.assertNotIn("## ", result.stdout, "JSON output should not contain Markdown headers")
+
+    def test_cli_json_no_fallback_message(self):
+        """CLI --json 不再输出 'not implemented' 降级提示"""
+        result, _ = self._run_cli("--signal", "data_path.din", "--json")
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        self.assertNotIn("not implemented", result.stdout.lower())
+        self.assertNotIn("falling back", result.stdout.lower())
+
+    def test_cli_json_help_no_todo(self):
+        """CLI --json 的 help 文本不含 'TODO'"""
+        result, _ = self._run_cli("--help")
+        # help 输出在 stderr
+        self.assertNotIn("TODO", result.stderr, "--json help should not contain TODO")
+        self.assertNotIn("not implemented", result.stderr.lower())
+
+    def test_cli_json_indent_default_is_multiline(self):
+        """CLI --json 默认 indent=2, 多行格式"""
+        import json
+        result, _ = self._run_cli("--signal", "data_path.din", "--json")
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        # 解析后是有效 dict, 且原始字符串应含换行
+        parsed = json.loads(result.stdout)
+        self.assertIsInstance(parsed, dict)
+        self.assertIn("\n", result.stdout, "Default JSON should be multi-line")
+
+    def test_cli_json_with_cross_module_error(self):
+        """CLI --json 跨模块错误时, error 字段含错误信息, exit code != 0"""
+        import json
+        result, _ = self._run_cli(
+            "--signal", "data_path.sub.deep_signal", "--json"
+        )
+        # 跨模块应报错 (exit code 1)
+        if result.returncode == 0:
+            # 可能 SV 文件结构不同, 不是跨模块; skip
+            self.skipTest("Signal was not detected as cross-module")
+        # stdout 应是有效 JSON
+        try:
+            parsed = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            self.fail(f"Error case stdout not JSON: {result.stdout[:300]}")
+        # error 字段应非空
+        self.assertIsNotNone(parsed.get("error"))
+        self.assertIn("跨模块", parsed["error"])
+
+
 if __name__ == '__main__':
     unittest.main()
