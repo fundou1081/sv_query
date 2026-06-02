@@ -27,7 +27,7 @@ class TraceEdgeFactory:
         self,
         src: str,
         dst: str,
-        expression: str,
+        expression: str = "",
         kind: EdgeKind = EdgeKind.DRIVER,
         assign_type: str = "",
         bit_slice: str = "",

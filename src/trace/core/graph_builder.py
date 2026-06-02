@@ -1556,16 +1556,12 @@ class DriverExtractor:
                                     )
                                 )
                             result.edges.append(
-                                TraceEdge(
+                                self._edge_factory.make_edge(
                                     src=func_return_id,
                                     dst=dst_id,
                                     kind=EdgeKind.DRIVER,
                                     assign_type="continuous",
-                                    clock_domain=ctx.get("clock", ""),
-                                    condition=ctx.get("condition", ""),
-                                    effective_condition=ctx.get("effective_condition", ""),
-                                    # [V2.A.2 cycle 17d] ctx-based 创建点 5/8
-                                    condition_ast=ctx.get("condition_ast"),
+                                    ctx=ctx,
                                 )
                             )
 
@@ -1604,16 +1600,12 @@ class DriverExtractor:
                                     )
 
                                 result.edges.append(
-                                    TraceEdge(
+                                    self._edge_factory.make_edge(
                                         src=src_node_id,
                                         dst=dst_node_id,
                                         kind=EdgeKind.DRIVER,
                                         assign_type="continuous",
-                                        clock_domain=ctx.get("clock", ""),
-                                        condition=ctx.get("condition", ""),
-                                        effective_condition=ctx.get("effective_condition", ""),
-                                        # [V2.A.2 cycle 17d] ctx-based 创建点 6/8
-                                        condition_ast=ctx.get("condition_ast"),
+                                        ctx=ctx,
                                     )
                                 )
                     else:
@@ -1676,16 +1668,12 @@ class DriverExtractor:
                                         )
 
                                     result.edges.append(
-                                        TraceEdge(
+                                        self._edge_factory.make_edge(
                                             src=src_node_id,
                                             dst=dst_node_id,
                                             kind=EdgeKind.DRIVER,
                                             assign_type="continuous",
-                                            clock_domain=ctx.get("clock", ""),
-                                            condition=ctx.get("condition", ""),
-                                            effective_condition=ctx.get("effective_condition", ""),
-                                            # [V2.A.2 cycle 17d] ctx-based 创建点 7/8
-                                            condition_ast=ctx.get("condition_ast"),
+                                            ctx=ctx,
                                         )
                                     )
 
@@ -1750,16 +1738,12 @@ class DriverExtractor:
                             )
 
                         result.edges.append(
-                            TraceEdge(
+                            self._edge_factory.make_edge(
                                 src=src_node_id,
                                 dst=dst_node_id,
                                 kind=EdgeKind.DRIVER,
                                 assign_type="nonblocking",
-                                clock_domain=ctx.get("clock", ""),
-                                condition=ctx.get("condition", ""),
-                                effective_condition=ctx.get("effective_condition", ""),
-                                # [V2.A.2 cycle 17d] ctx-based 创建点 8/8
-                                condition_ast=ctx.get("condition_ast"),
+                                ctx=ctx,
                             )
                         )
         except Exception:
