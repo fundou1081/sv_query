@@ -960,18 +960,14 @@ class DriverExtractor:
                                 if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
                                     # 字面量:只用边连接,不做为独立节点
                                     result.edges.append(
-                                        TraceEdge(
+                                        self._edge_factory.make_edge(
                                             src=rhs_name,
                                             dst=dst_node_id,
                                             kind=EdgeKind.DRIVER,
                                             assign_type="nonblocking",
-                                            clock_domain=ctx.get("clock", ""),
-                                            condition=ctx.get("condition", ""),
-                                            effective_condition=ctx.get("effective_condition", ""),
-                                            # [V2.A.2 cycle 17b] 从 ctx 读 condition_ast (semantic AST)
-                                            condition_ast=ctx.get("condition_ast"),
-                                            expression=rhs_name,
                                             bit_slice=bit_slice,  # 字面量用自己
+                                            expression=rhs_name,
+                                            ctx=ctx,
                                         )
                                     )
                                 else:
