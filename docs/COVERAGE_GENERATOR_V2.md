@@ -507,11 +507,6 @@ def decompose(self, signals, max_signals=5, max_depth=10):
 - coverage_generator: 103 (V1 75 + cycle 11 7 + cycle 12 21)
 - ruff: 干净
 
-### Commits
-- `243e5d8` docs: V2.C plan
-- `8144c79` feat: cycle 12 data models
-- `a3ed5da` feat: cycle 13 CLI --json
-
 ### V2.C 使用示例
 
 ```bash
@@ -526,11 +521,12 @@ python run_cli.py coverage suggest -f top.sv --signal top.x --json | \
   jq -r '.atomic_signals[].name'
 ```
 
-### JSON 字段参考
+### JSON 字段参考 (V2.B 增列)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `original_signal` | string | 用户输入 |
+| `original_signal` | string | 用户输入拼接 (V1 兼容) |
+| **`original_signals`** | **array** | **V2.B: 原始信号列表 (结构化)** |
 | `atomic_signals[]` | array | 原子信号列表 |
 | `atomic_signals[].name` | string | "a" 或 "a[3:0]" |
 | `atomic_signals[].base_name` | string | "a" |
@@ -543,11 +539,105 @@ python run_cli.py coverage suggest -f top.sv --signal top.x --json | \
 | `truncated` | bool | 是否截断 |
 | `error` | string\|null | 错误信息 |
 
-### 经验教训 (V2.C 新增)
+### 经验教训 (V2.C + V2.B 新增)
 6. **placeholder 兑现**: V1 留的 `--json (TODO)` 是个明确的兑现目标
 7. **stdout/stderr 分隔**: `--json` 模式必须静音编译器的 WARNING
 8. **异构兼容**: control_blocks 类型未来会变, 提前 3 路兼容
 9. **bit_range tuple → list**: JSON spec 不支持 tuple, 必须显式转换
+10. **测试考虑 max_signals 默认值**: 多信号场景下默认 5 容易截断丢失原子, 测试要显式传 max_signals
 
 ### 下一步
-V2.B (多信号同时 decompose), 预计 cycle 14-15
+V2.B (多信号同时 decompose) → cycle 14-15, 预计 +13 测试
+
+---
+
+## 14. 实施结果 (V2.B)
+
+**状态**: ✅ 完成 (cycles 14-15)
+**总提交**: 3 个 commit (cycle 0 + 2 feat)
+
+### Cycle 14 - 多信号 decompose + 数据模型字段
+
+**`coverage_models.py`**:
+- `DecompositionResult`: 新增 `original_signals: list[str] = field(default_factory=list)` 字段
+- `to_dict()`: 包含 `original_signals` (list 序列化)
+- 向后兼容: 默认空 list, 不影响 V1 单信号调用
+
+**`coverage_generator.py`**:
+- `decompose()` 重构为主循环: 处理 `signals` 中每个信号
+- **跨模块检测**: 任一信号跨模块 → 快速失败 (明确错误语义)
+- **atomics 去重键**: `atomic.name` (含位选)
+- **control_blocks 去重键**: `(src, dst)` pair
+- **max_signals 位置**: 合并后判断 (跟 V1 语义一致)
+- 新 import: `typing.Any` (用于 `list[Any]` 注释)
+
+### Cycle 15 - CLI `--signals` 集成
+
+**零逻辑改动!** CLI V1 已正确解析 `--signals` 为 list 传入 `decompose()`。
+V2.B 内部多信号支持后自动工作。
+
+仅调整:
+- `--signals` help 文本提及 V2.B 多信号能力 + 合并去重语义
+
+### 测试结果
+
+- **总测试**: 1367 (+17 from V2.C 1350)
+  - cycle 14: +12 (TestMultiSignalDecomposeV2B)
+  - cycle 15: +5 (TestCLIMultiSignalsV2B)
+- **coverage_generator**: 120 (103 + 12 + 5)
+- **ruff**: 干净 (V2.B 新增代码 0 错误)
+
+### Commits
+- `4b44e8e` docs: V2.B plan (cycle 0)
+- `df9cc33` feat: cycle 14 多信号 decompose
+- `df734a0` feat: cycle 15 CLI 集成
+
+### V2.B 使用示例
+
+```bash
+# 多信号同时分解 (V2.B 新能力)
+python run_cli.py coverage suggest -f top.sv \
+  --signals "top.x, top.y" --max-signals 10
+
+# 提取原始信号列表
+python run_cli.py coverage suggest -f top.sv \
+  --signals "top.x, top.y" --json | jq '.original_signals'
+# → ["top.x", "top.y"]
+
+# 同信号重复 (a, a) - 输入保留, 结果去重
+python run_cli.py coverage suggest -f top.sv \
+  --signals "top.x, top.x" --json | jq '.original_signals, (.atomic_signals | length)'
+# → ["top.x", "top.x"]
+# → 5   (不是 10)
+```
+
+### 关键设计决策
+
+1. **`original_signals: list[str]` 新字段** (而非改 `original_signal: str`):
+   - 向后兼容 V2.C 测试
+   - 程序化消费可以区分 1 信号 vs 2 信号
+
+2. **跨模块快速失败**:
+   - 任一信号跨模块 → 整个 `decompose()` 报错返回
+   - 避免半成品结果混淆用户
+
+3. **去重键选择**:
+   - atomics: `atomic.name` (含位选) — `a[3:0]` 和 `a` 视为不同原子
+   - control_blocks: `(src, dst)` — 同一驱动边不重复
+
+4. **测试陷阱**: `max_signals=5` 默认在多信号场景下容易截断
+   - 测试要显式传 `max_signals=10` 或更高
+   - 这是 cycle 14 真实 bug 调试中发现的(感谢 TDD!)
+
+### 经验教训 (V2.B 新增)
+
+11. **max_signals 是合并后总限制**: 跟 V1 语义一致, 用户需预期
+12. **TDD 救场**: cycle 14 调试时用临时 print 发现是 max_signals 截断
+    - 假设 bug 在合并逻辑, 实际在截断
+    - TDD 强制显式测试每个 case 反而暴露了截断边界
+13. **零 CLI 改动不丢人**: V1 留的 `--signals` 解析已正确, V2.B 内部能力够了自动工作
+14. **list[Any] 注释要 import Any**: ruff 严格, type annotation 必须 import 完整
+
+### 下一步
+V2.A.2 (AST 完整利用) - 默认走 AST 路径,预计 cycle 16-19
+
