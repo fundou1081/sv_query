@@ -41,7 +41,7 @@ coverage_app = typer.Typer(
 def suggest(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
     signal: str = typer.Option(None, "--signal", "-s", help="Single signal to decompose (e.g., top.x)"),
-    signals: str = typer.Option(None, "--signals", help="Comma-separated signals"),
+    signals: str = typer.Option(None, "--signals", help="Comma-separated signals (V2.B: multi-signal decomposition, merged with dedup)"),
     max_signals: int = typer.Option(5, "--max-signals", help="Max signal tree size"),
     max_depth: int = typer.Option(10, "--max-depth", help="Max driver chain depth"),
     json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (programmatic)"),
