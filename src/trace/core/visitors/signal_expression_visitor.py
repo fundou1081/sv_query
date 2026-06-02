@@ -164,7 +164,8 @@ class SignalExpressionVisitor(BaseVisitor):
 
         # === 新路径: 使用 _HANDLERS 单 dispatch ===
         if self._dispatch_enabled and kind_name in self._HANDLERS:
-            return self._HANDLERS[kind_name](self, node)
+            # method 是已绑定的实例方法, 不再传 self
+            return self._HANDLERS[kind_name](node)
 
         # === 旧路径 fallback: visit() + get_all_signals() ===
         import re
@@ -3137,7 +3138,7 @@ class SignalExpressionVisitor(BaseVisitor):
             return SignalResult()
 
         signal_name = self.adapter.clean_name(str(val).strip())
-        return SignalResult(primary=signal_name)
+        return SignalResult(primary=signal_name, all_signals=[signal_name])
 
     @on("ForwardTypedefDeclaration")
     def extract_forward_typedef_declaration(self, node) -> SignalResult:
