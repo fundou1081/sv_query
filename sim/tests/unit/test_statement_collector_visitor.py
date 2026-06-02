@@ -205,3 +205,47 @@ endmodule'''
         
         # 验证编译器正常工作
         assert comp is not None
+
+class TestCaseStatementConditionAstP1:
+    """P1 cycle 5: case 语句 ctx 含 condition_ast (补 V2.A.2 cycle 17a 遗漏)
+
+    V2.A.2 cycle 17a 在 ifTrue 路径加了 'condition_ast': cond_expr,
+    但 case 路径 (visit_case_statement) 漏了。
+    修复后 case 边也能用真 AST 路径。
+    """
+
+    def test_case_statement_ctx_has_condition_ast(self):
+        """case 语句 ctx 含 condition_ast (item_cond_expr 节点)"""
+        source = '''
+module test(input clk, input [1:0] sel, input a, input b, input c, output logic q);
+    always_ff @(posedge clk) begin
+        case (sel)
+            2'b00: q <= a;
+            2'b01: q <= b;
+            default: q <= c;
+        endcase
+    end
+endmodule'''
+        comp = SVCompiler({'test.sv': source})
+        root = comp.get_root()
+        sem = SemanticAdapter(root)
+
+        # 拿 case 所在 always
+        modules = list(sem.get_modules())
+        for module in modules:
+            always_blocks = sem.get_always_blocks(module)
+            for always in always_blocks:
+                v = StatementCollectorVisitor(sem)
+                stmts = v.collect(always)
+                # 找出 case item ctx (有 condition 且 condition 不是 'sel')
+                for _stmt, ctx, _itype in stmts:
+                    cond = ctx.get("condition", "")
+                    # case item 条件格式: "sel == 2'b00" 之类
+                    if cond and ("==" in cond or "default" in cond):
+                        # 关键断言: condition_ast 字段存在且非 None
+                        assert "condition_ast" in ctx, \
+                            f"case ctx missing condition_ast: keys={list(ctx.keys())}"
+                        assert ctx["condition_ast"] is not None, \
+                            f"case ctx condition_ast is None for condition={cond!r}"
+                        return  # 找到 1 个就够了
+        assert False, "No case item with condition found in test source"
