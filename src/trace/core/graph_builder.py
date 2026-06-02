@@ -965,6 +965,8 @@ class DriverExtractor:
                                             clock_domain=ctx.get("clock", ""),
                                             condition=ctx.get("condition", ""),
                                             effective_condition=ctx.get("effective_condition", ""),
+                                            # [V2.A.2 cycle 17b] 从 ctx 读 condition_ast (semantic AST)
+                                            condition_ast=ctx.get("condition_ast"),
                                             expression=rhs_name,
                                             bit_slice=bit_slice,  # 字面量用自己
                                         )
