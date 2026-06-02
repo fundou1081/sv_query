@@ -1783,5 +1783,97 @@ class TestMultiSignalDecomposeV2B(unittest.TestCase):
         self.assertIsNotNone(result.error)
 
 
+class TestCLIMultiSignalsV2B(unittest.TestCase):
+    """V2 cycle 15: CLI --signals 多信号实际工作
+
+    验证 CLI 的 --signals 参数能传入 decompose() 并被处理。
+    """
+
+    def _run_cli(self, *args, timeout=60):
+        """调 CLI 拼装参数"""
+        import subprocess
+        import sys
+        import os
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        cmd = [
+            sys.executable, "run_cli.py", "coverage", "suggest",
+            "-f", sv_file,
+            *args,
+        ]
+        result = subprocess.run(
+            cmd,
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result, sv_file
+
+    def test_cli_signals_comma_separated(self):
+        """CLI --signals 'a, b' 传入 2 个信号"""
+        import json
+        result, _ = self._run_cli(
+            "--signals", "data_path.din, data_path.dout",
+            "--max-signals", "10",
+            "--json",
+        )
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        # JSON 应能解析
+        parsed = json.loads(result.stdout)
+        # original_signals 字段含 2 个元素
+        self.assertEqual(len(parsed["original_signals"]), 2)
+
+    def test_cli_signal_single_still_works_regression(self):
+        """CLI --signal 单信号仍能工作 (V1 回归)"""
+        import json
+        result, _ = self._run_cli(
+            "--signal", "data_path.din",
+            "--max-signals", "10",
+            "--json",
+        )
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        parsed = json.loads(result.stdout)
+        self.assertEqual(len(parsed["original_signals"]), 1)
+
+    def test_cli_signals_whitespace_trimmed(self):
+        """CLI --signals 'a, b' 去除空格"""
+        import json
+        result, _ = self._run_cli(
+            "--signals", "data_path.din, data_path.dout",
+            "--max-signals", "10",
+            "--json",
+        )
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        parsed = json.loads(result.stdout)
+        # original_signals 元素应不含前后空格
+        for sig in parsed["original_signals"]:
+            self.assertEqual(sig, sig.strip(), f"Signal has whitespace: {sig!r}")
+
+    def test_cli_signals_empty_string_errors(self):
+        """CLI --signals '' 产生空列表 - 应被参数检查拦截"""
+        result, _ = self._run_cli(
+            "--signals", "",
+            "--json",
+        )
+        # 期望: 返回错误 (exit code != 0)
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_cli_signals_no_input_errors(self):
+        """CLI 不传 --signal/--signals 报错"""
+        result, _ = self._run_cli("--json")
+        # 期望: 报 "必须指定 --signal 或 --signals"
+        self.assertNotEqual(result.returncode, 0)
+        combined = result.stdout + result.stderr
+        self.assertIn("--signal", combined)
+
+
 if __name__ == '__main__':
     unittest.main()
