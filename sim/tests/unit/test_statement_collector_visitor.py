@@ -81,6 +81,42 @@ endmodule'''
         # 验证编译器正常工作
         assert comp is not None
     
+    def test_conditional_statement_ctx_has_condition_ast(self, visitor, adapter):
+        """V2.A.2 cycle 17a: ifTrue 分支 ctx 含 condition_ast 字段 (semantic AST node)
+
+        这是 graph_builder 拿到 condition_ast 的唯一传递点。
+        """
+        source = '''
+module test(input clk, input sel, input a, input b, output logic q);
+    always_ff @(posedge clk) begin
+        if (sel) q <= a;
+        else q <= b;
+    end
+endmodule'''
+        comp = SVCompiler({'test.sv': source})
+        root = comp.get_root()
+        sem = SemanticAdapter(root)
+
+        # 拿 always 块
+        modules = list(sem.get_modules())
+        for module in modules:
+            always_blocks = sem.get_always_blocks(module)
+            for always in always_blocks:
+                # 跑 visitor
+                v = StatementCollectorVisitor(sem)
+                stmts = v.collect(always)
+                # 找出有 condition 的 ctx
+                for _stmt, ctx, _itype in stmts:
+                    if ctx.get("condition"):
+                        # 关键断言: condition_ast 字段存在且非 None
+                        assert "condition_ast" in ctx, \
+                            f"ctx missing condition_ast: keys={list(ctx.keys())}"
+                        assert ctx["condition_ast"] is not None, \
+                            "condition_ast is None despite condition being set"
+                        return  # 找到 1 个就够了
+        # 如果走完都没找到,失败
+        assert False, "No statement with condition found in test source"
+
     def test_conditional_statement(self, visitor, adapter):
         """测试 if/else 条件追踪"""
         source = '''
