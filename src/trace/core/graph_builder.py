@@ -983,18 +983,14 @@ class DriverExtractor:
                                             )
                                         )
                                     result.edges.append(
-                                        TraceEdge(
+                                        self._edge_factory.make_edge(
                                             src=src_node_id,
                                             dst=dst_node_id,
                                             kind=EdgeKind.DRIVER,
                                             assign_type="nonblocking",
-                                            clock_domain=ctx.get("clock", ""),
-                                            condition=ctx.get("condition", ""),
-                                            effective_condition=ctx.get("effective_condition", ""),
-                                            # [V2.A.2 cycle 17d] ctx-based 创建点 2/8
-                                            condition_ast=ctx.get("condition_ast"),
-                                            expression=expr_str,
                                             bit_slice=bit_slice,
+                                            expression=expr_str,
+                                            ctx=ctx,
                                         )
                                     )
 
@@ -1013,16 +1009,15 @@ class DriverExtractor:
                                         )
                                     )
                                 result.edges.append(
-                                    TraceEdge(
+                                    self._edge_factory.make_edge(
                                         src=clock_node_id,
                                         dst=dst_node_id,
+                                        expression="",  # CLOCK 边无 expression
                                         kind=EdgeKind.CLOCK,
                                         assign_type="nonblocking",
+                                        # [P1 cycle 2] 显式传 clock_domain
                                         clock_domain=clock_signal,
-                                        condition=ctx.get("condition", ""),
-                                        effective_condition=ctx.get("effective_condition", ""),
-                                        # [V2.A.2 cycle 17d] ctx-based 创建点 3/8
-                                        condition_ast=ctx.get("condition_ast"),
+                                        ctx=ctx,
                                     )
                                 )
 
@@ -1041,16 +1036,15 @@ class DriverExtractor:
                                         )
                                     )
                                 result.edges.append(
-                                    TraceEdge(
+                                    self._edge_factory.make_edge(
                                         src=reset_node_id,
                                         dst=dst_node_id,
+                                        expression="",  # RESET 边无 expression
                                         kind=EdgeKind.RESET,
                                         assign_type="nonblocking",
+                                        # [P1 cycle 2] 显式传 clock_domain
                                         clock_domain=clock_signal,
-                                        condition=ctx.get("condition", ""),
-                                        effective_condition=ctx.get("effective_condition", ""),
-                                        # [V2.A.2 cycle 17d] ctx-based 创建点 4/8
-                                        condition_ast=ctx.get("condition_ast"),
+                                        ctx=ctx,
                                     )
                                 )
 
