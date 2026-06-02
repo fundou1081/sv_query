@@ -992,6 +992,8 @@ class DriverExtractor:
                                             clock_domain=ctx.get("clock", ""),
                                             condition=ctx.get("condition", ""),
                                             effective_condition=ctx.get("effective_condition", ""),
+                                            # [V2.A.2 cycle 17d] ctx-based 创建点 2/8
+                                            condition_ast=ctx.get("condition_ast"),
                                             expression=expr_str,
                                             bit_slice=bit_slice,
                                         )
@@ -1020,6 +1022,8 @@ class DriverExtractor:
                                         clock_domain=clock_signal,
                                         condition=ctx.get("condition", ""),
                                         effective_condition=ctx.get("effective_condition", ""),
+                                        # [V2.A.2 cycle 17d] ctx-based 创建点 3/8
+                                        condition_ast=ctx.get("condition_ast"),
                                     )
                                 )
 
@@ -1046,6 +1050,8 @@ class DriverExtractor:
                                         clock_domain=clock_signal,
                                         condition=ctx.get("condition", ""),
                                         effective_condition=ctx.get("effective_condition", ""),
+                                        # [V2.A.2 cycle 17d] ctx-based 创建点 4/8
+                                        condition_ast=ctx.get("condition_ast"),
                                     )
                                 )
 
@@ -1565,6 +1571,8 @@ class DriverExtractor:
                                     clock_domain=ctx.get("clock", ""),
                                     condition=ctx.get("condition", ""),
                                     effective_condition=ctx.get("effective_condition", ""),
+                                    # [V2.A.2 cycle 17d] ctx-based 创建点 5/8
+                                    condition_ast=ctx.get("condition_ast"),
                                 )
                             )
 
@@ -1611,6 +1619,8 @@ class DriverExtractor:
                                         clock_domain=ctx.get("clock", ""),
                                         condition=ctx.get("condition", ""),
                                         effective_condition=ctx.get("effective_condition", ""),
+                                        # [V2.A.2 cycle 17d] ctx-based 创建点 6/8
+                                        condition_ast=ctx.get("condition_ast"),
                                     )
                                 )
                     else:
@@ -1681,6 +1691,8 @@ class DriverExtractor:
                                             clock_domain=ctx.get("clock", ""),
                                             condition=ctx.get("condition", ""),
                                             effective_condition=ctx.get("effective_condition", ""),
+                                            # [V2.A.2 cycle 17d] ctx-based 创建点 7/8
+                                            condition_ast=ctx.get("condition_ast"),
                                         )
                                     )
 
@@ -1753,6 +1765,8 @@ class DriverExtractor:
                                 clock_domain=ctx.get("clock", ""),
                                 condition=ctx.get("condition", ""),
                                 effective_condition=ctx.get("effective_condition", ""),
+                                # [V2.A.2 cycle 17d] ctx-based 创建点 8/8
+                                condition_ast=ctx.get("condition_ast"),
                             )
                         )
         except Exception:
