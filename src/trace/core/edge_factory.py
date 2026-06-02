@@ -34,6 +34,7 @@ class TraceEdgeFactory:
         ctx: dict | None = None,
         sig_cond: str = "",
         sig_cond_ast: Any | None = None,
+        clock_domain: str = "",
     ) -> TraceEdge:
         """从 ctx dict 或 sig_cond 字符串创建 TraceEdge
 
@@ -47,14 +48,19 @@ class TraceEdgeFactory:
                  读 keys: clock, condition, effective_condition, condition_ast
             sig_cond: 局部条件字符串 (sig_cond-based 创建点用)
             sig_cond_ast: sig_cond 对应的 AST 节点
+            clock_domain: 显式指定 (覆盖 ctx.get('clock', ''), 用于 CLOCK 边)
 
         Returns:
             TraceEdge 实例
 
-        优先级: ctx 优先于 sig_cond (ctx 存在时 sig_cond 被忽略)
+        优先级:
+        - clock_domain 显式 > ctx.get('clock', '')
+        - ctx 优先于 sig_cond (ctx 存在时 sig_cond 被忽略)
         """
         c = ctx or {}
         use_ctx = ctx is not None
+        # clock_domain 显式参数优先, 否则从 ctx 读
+        effective_clock = clock_domain if clock_domain else (c.get("clock", "") if use_ctx else "")
         return TraceEdge(
             src=src,
             dst=dst,
@@ -62,7 +68,7 @@ class TraceEdgeFactory:
             assign_type=assign_type,
             bit_slice=bit_slice,
             expression=expression,
-            clock_domain=c.get("clock", "") if use_ctx else "",
+            clock_domain=effective_clock,
             condition=c.get("condition", "") if use_ctx else sig_cond,
             effective_condition=c.get("effective_condition", "") if use_ctx else "",
             condition_ast=(
