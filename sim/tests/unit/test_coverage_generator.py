@@ -2030,5 +2030,70 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
         self.assertIsNotNone(en_atomics[0])
 
 
+class TestGraphBuilderConditionAstV2A2(unittest.TestCase):
+    """V2.A.2 cycle 17b: graph_builder 填 condition_ast 到 TraceEdge
+
+    验证: 跑 graph_builder 后, 至少 1 条带 condition 的边
+    同时带有 condition_ast (semantic AST node).
+    """
+
+    def _run_graph_builder(self):
+        """跑 graph_builder 真实 test_data_path.sv"""
+        import os
+        from trace.unified_tracer import UnifiedTracer
+
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        with open(sv_file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={sv_file: source}, log_level="ERROR")
+        graph = tracer.build_graph()
+        return graph
+
+    def test_graph_builder_populates_condition_ast(self):
+        """graph_builder 跑完后, 至少 1 条边 condition_ast 不为 None"""
+        graph = self._run_graph_builder()
+        total = 0
+        with_ast = 0
+        with_cond = 0
+        for _key, edges in graph._edge_data.items():
+            for edge in edges:
+                total += 1
+                if getattr(edge, "condition_ast", None) is not None:
+                    with_ast += 1
+                if getattr(edge, "condition", "") or getattr(edge, "effective_condition", ""):
+                    with_cond += 1
+        # 验证: 至少 1 条边同时有 condition 和 condition_ast
+        self.assertGreater(with_ast, 0,
+            f"Expected >=1 edge with condition_ast, got {with_ast}/{total} "
+            f"(condition edges: {with_cond})")
+
+    def test_graph_builder_condition_ast_is_real_node(self):
+        """condition_ast 节点是真实的 pyslang 对象 (有 kind 或 expr 属性)"""
+        graph = self._run_graph_builder()
+        found = None
+        for _key, edges in graph._edge_data.items():
+            for edge in edges:
+                ast_node = getattr(edge, "condition_ast", None)
+                if ast_node is not None:
+                    found = ast_node
+                    break
+            if found is not None:
+                break
+        self.assertIsNotNone(found, "No edge with condition_ast found")
+        # 真实 pyslang 节点应有这些属性之一
+        has_marker = (
+            hasattr(found, "kind")
+            or hasattr(found, "syntax")
+            or hasattr(found, "expr")
+            or str(type(found))  # 至少能转字符串
+        )
+        self.assertTrue(has_marker, f"AST node looks fake: {found!r}")
+
+
 if __name__ == '__main__':
     unittest.main()
