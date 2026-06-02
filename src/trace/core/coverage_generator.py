@@ -88,6 +88,13 @@ class ControlCoverageGenerator:
     ) -> DecompositionResult:
         """分解信号到原子
 
+        主入口. 对于每个信号:
+        1. 收集带 condition 的 incoming edges (复用 _collect_condition_edges)
+        2. 从 condition 提取原子信号 (复用 _parse_expression_to_atomics)
+        3. 沿 driver 链追踪每个原子 (复用 _trace_drivers)
+        4. 合并去重所有原子信号
+        5. 检查是否超 max_signals (报错/truncated)
+
         Args:
             signals: 用户输入的信号列表
             max_signals: 信号树最大数量 (默认 5)
@@ -96,7 +103,71 @@ class ControlCoverageGenerator:
         Returns:
             DecompositionResult
         """
-        raise NotImplementedError("decompose() 将在后续 cycle 实现")
+        result = DecompositionResult(original_signal=", ".join(signals))
+
+        if not signals:
+            result.error = "No signals provided"
+            return result
+
+        # V1: 只处理第一个信号 (后续可扩展为多信号)
+        primary = signals[0]
+
+        # Step 1: 收集带 condition 的 incoming edges
+        cond_edges = self._collect_condition_edges(primary)
+        result.control_blocks = cond_edges  # 临时: 把 edges 作为 control_blocks 返回
+
+        # Step 2: 收集所有原子信号 (从 condition + driver 表达式)
+        all_atomics: list[AtomicSignal] = []
+        seen: set[str] = set()  # 去重
+
+        for edge in cond_edges:
+            # 1. 从 condition 提取原子 (如 "en")
+            cond = edge.effective_condition or edge.condition or ""
+            cond_atomics = self._parse_expression_to_atomics(cond)
+            for a in cond_atomics:
+                if a.name not in seen:
+                    seen.add(a.name)
+                    all_atomics.append(a)
+
+            # 2. 从 driver 表达式提取原子 (如 "c & d")
+            expr = getattr(edge, "expression", "") or ""
+            expr_atomics = self._parse_expression_to_atomics(expr)
+            for a in expr_atomics:
+                if a.name not in seen:
+                    seen.add(a.name)
+                    all_atomics.append(a)
+
+        # 3. 沿 driver 链追踪所有原子
+        # 用 primary 作为 context 推导完整 ID
+        for atomic in list(all_atomics):
+            recurse_id = self._resolve_signal_id(atomic.base_name, primary)
+            sub_atomics = self._trace_drivers(
+                recurse_id,
+                atomic.bit_range,
+                depth=1,
+                max_depth=max_depth,
+                visited=set(),
+            )
+            for sa in sub_atomics:
+                if sa.name not in seen:
+                    seen.add(sa.name)
+                    all_atomics.append(sa)
+
+        # Step 3: 限制 max_signals
+        if len(all_atomics) > max_signals:
+            result.atomic_signals = all_atomics[:max_signals]
+            result.signal_count = len(all_atomics)
+            result.truncated = True
+            result.error = (
+                f"Decomposition exceeds max_signals ({max_signals}): "
+                f"found {len(all_atomics)} signals"
+            )
+        else:
+            result.atomic_signals = all_atomics
+            result.signal_count = len(all_atomics)
+
+        result.depth_reached = max_depth
+        return result
 
     def _parse_expression_to_atomics(self, expr: str) -> list[AtomicSignal]:
         """解析表达式字符串为原子信号列表
@@ -195,6 +266,37 @@ class ControlCoverageGenerator:
             return True
         return False
 
+    def _collect_condition_edges(self, signal: str) -> list:
+        """收集驱动该信号的所有带 condition 的边
+
+        复用: graph.predecessors() 找所有 incoming edges
+
+        Args:
+            signal: 目标信号 ID
+
+        Returns:
+            TraceEdge 列表, 每条都有 effective_condition
+        """
+        if self._graph is None:
+            return []
+
+        result = []
+        # SignalGraph 是 NetworkX DiGraph, predecessors 返回所有前驱节点 ID
+        try:
+            for src in self._graph.predecessors(signal):
+                edge = self._graph.get_edge(src, signal)
+                if edge is None:
+                    continue
+                # 优先用 effective_condition (去 reset), 回退到 raw condition
+                cond = getattr(edge, "effective_condition", "") or ""
+                if not cond:
+                    cond = getattr(edge, "condition", "") or ""
+                if cond:
+                    result.append(edge)
+        except Exception:
+            return []
+        return result
+
     def _trace_drivers(
         self,
         signal: str,
@@ -206,7 +308,7 @@ class ControlCoverageGenerator:
         """沿 driver 链递归追踪
 
         Args:
-            signal: 起点信号 ID
+            signal: 起点信号完整 ID (如 "top.a")
             bit_range: 起点信号的位选 (透传给 driver)
             depth: 当前深度
             max_depth: 最大深度
@@ -262,9 +364,12 @@ class ControlCoverageGenerator:
             result.extend(atomics)
 
             # 递归追踪每个 driver 的源
+            # 注意: 用 driver_id (完整 ID) 而非 atomic.base_name (可能已去模块前缀)
             for atomic in atomics:
+                # 构造完整 ID: 如果 base_name 已含模块前缀, 直接用
+                recurse_id = self._resolve_signal_id(atomic.base_name, driver_id)
                 sub_atomics = self._trace_drivers(
-                    atomic.base_name,
+                    recurse_id,
                     atomic.bit_range,
                     depth + 1,
                     max_depth,
@@ -274,13 +379,34 @@ class ControlCoverageGenerator:
                 for sub in sub_atomics:
                     sub.evidence.append(EvidenceStep(
                         step_type="recursive",
-                        description=f"tracing driver of {atomic.base_name}",
-                        from_signal=atomic.base_name,
+                        description=f"tracing driver of {recurse_id}",
+                        from_signal=recurse_id,
                         to_signals=[a.name for a in sub_atomics],
                     ))
                 result.extend(sub_atomics)
 
         return result
+
+    def _resolve_signal_id(self, name: str, context_id: str) -> str:
+        """解析信号名为完整 ID
+
+        如果 name 已含模块前缀 (含 '.') 则直接返回,
+        否则用 context_id 的模块前缀构造.
+
+        Args:
+            name: 简单名 (如 "a") 或完整 ID (如 "top.a")
+            context_id: 上下文信号 ID (用于推导模块前缀)
+
+        Returns:
+            完整信号 ID
+        """
+        if "." in name:
+            return name
+        # 提取 context_id 的模块前缀
+        if "." in context_id:
+            prefix = context_id.rsplit(".", 1)[0]
+            return f"{prefix}.{name}"
+        return name
 
 
 # ==============================================================================

@@ -571,5 +571,177 @@ class TestTraceDrivers(unittest.TestCase):
         # 当 depth=max_depth 时停止, 不再继续
 
 
+# ==============================================================================
+# Cycle 4: decompose() 主入口 + 条件边收集
+# ==============================================================================
+
+
+def _make_conditional_edge(
+    src: str,
+    dst: str,
+    expr: str = "",
+    condition: str = "",
+    effective_condition: str = "",
+) -> TraceEdge:
+    """helper: 创建带条件的边"""
+    e = _make_driver_edge(src, dst, expr=expr)
+    e.condition = condition
+    e.effective_condition = effective_condition or condition
+    return e
+
+
+class TestCollectConditionEdges(unittest.TestCase):
+    """_collect_condition_edges: 收集带 condition 的 incoming edges
+
+    场景: x 在 if (en) 块内被驱动
+    """
+
+    def test_collect_empty_when_no_condition(self):
+        """无 condition 边 -> 空"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.y"))
+        g.add_trace_edge(_make_driver_edge("top.y", "top.x", expr="y"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._collect_condition_edges("top.x")
+        self.assertEqual(result, [])
+
+    def test_collect_single_condition(self):
+        """单条带 condition 边 -> 1 条"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.y"))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.y", "top.x", expr="y", condition="rst_n && en"
+        ))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._collect_condition_edges("top.x")
+        self.assertEqual(len(result), 1)
+        edge = result[0]
+        self.assertEqual(edge.src, "top.y")
+        self.assertIn("en", edge.effective_condition)
+
+    def test_collect_uses_effective_condition(self):
+        """有效条件去除 reset"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.y"))
+        # effective_condition 已去除 rst_n
+        g.add_trace_edge(_make_conditional_edge(
+            "top.y", "top.x", expr="y",
+            condition="!rst_n && en",
+            effective_condition="en",
+        ))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._collect_condition_edges("top.x")
+        # 用 effective_condition, 不用 raw condition
+        self.assertEqual(result[0].effective_condition, "en")
+
+    def test_collect_multiple_edges(self):
+        """多条带 condition 边 -> 多条"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        g.add_trace_edge(_make_conditional_edge("top.a", "top.x", expr="a", condition="en"))
+        g.add_trace_edge(_make_conditional_edge("top.b", "top.x", expr="b", condition="valid"))
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen._collect_condition_edges("top.x")
+        self.assertEqual(len(result), 2)
+
+
+class TestDecompose(unittest.TestCase):
+    """decompose(): 主入口
+
+    场景: if (en) x <= c & d;  assign c = a | b;
+    期望: x 的 coverage 信号集为 {en, a, b, c, d}
+    """
+
+    def _make_setup_graph(self):
+        """x, c, d, a, b, en_input (端口)"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        # 节点
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.c"))
+        g.add_trace_node(_make_signal_node("top.d"))
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        g.add_trace_node(_make_signal_node("top.en_input", is_port=True))
+        # 边
+        # if (rst_n && en) x <= c & d;
+        g.add_trace_edge(_make_conditional_edge(
+            "top.c", "top.x", expr="c & d",
+            condition="rst_n && en",
+            effective_condition="en",
+        ))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.d", "top.x", expr="c & d",
+            condition="rst_n && en",
+            effective_condition="en",
+        ))
+        # assign c = a | b;
+        g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
+        g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
+        # a, b 都有 driver (端口)
+        g.add_trace_edge(_make_driver_edge("top.en_input", "top.en_signal"))
+        return g
+
+    def test_decompose_returns_decomposition_result(self):
+        """返回 DecompositionResult"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        self.assertIsInstance(result, DecompositionResult)
+        self.assertEqual(result.original_signal, "top.x")
+
+    def test_decompose_finds_atomic_signals(self):
+        """x 分解后应包含: en, c, d, a, b"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        names = {s.base_name for s in result.atomic_signals}
+        # 期望: en (条件), c/d (driver 表达式), a/b (c 的 driver)
+        for expected in ("en", "a", "b", "c", "d"):
+            self.assertIn(expected, names, f"Missing {expected} in {names}")
+
+    def test_decompose_collects_control_blocks(self):
+        """control_blocks 应包含带条件的边"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        # 应该有至少一个 control block (来自条件边)
+        self.assertGreater(len(result.control_blocks), 0)
+
+    def test_decompose_returns_empty_for_unknown_signal(self):
+        """不存在的信号 -> 错误结果 (empty + error)"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.unknown"])
+        # 不报错, 但 atomic_signals 为空
+        self.assertEqual(result.atomic_signals, [])
+
+    def test_decompose_truncates_at_max_signals(self):
+        """超过 max_signals 报错 (truncated=True + error)"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        # max_signals=2 强制截断
+        result = gen.decompose(["top.x"], max_signals=2)
+        self.assertTrue(result.truncated)
+        self.assertIsNotNone(result.error)
+
+    def test_decompose_signal_count(self):
+        """signal_count 字段准确"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        self.assertEqual(result.signal_count, len(result.atomic_signals))
+
+
 if __name__ == '__main__':
     unittest.main()
