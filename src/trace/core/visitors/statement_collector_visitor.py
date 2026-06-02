@@ -772,6 +772,8 @@ class StatementCollectorVisitor(BaseVisitor):
                         "condition": combined_cond,
                         "_cond_exprs": cond_exprs,
                         "effective_condition": self._compute_effective_condition(cond_exprs),
+                        # [P1 cycle 5] case 路径也存 condition_ast (V2.A.2 17a 遗漏)
+                        "condition_ast": item_cond_expr,
                     }
                 else:
                     new_ctx = {
@@ -779,6 +781,8 @@ class StatementCollectorVisitor(BaseVisitor):
                         "condition": item_cond,
                         "_cond_exprs": cond_exprs,
                         "effective_condition": self._compute_effective_condition(cond_exprs),
+                        # [P1 cycle 5] case 路径也存 condition_ast
+                        "condition_ast": item_cond_expr,
                     }
 
                 self._ctx_stack.append(new_ctx)
