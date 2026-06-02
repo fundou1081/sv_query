@@ -164,7 +164,8 @@ class DecompositionResult:
     """信号分解结果
 
     Attributes:
-        original_signal: 用户输入的原始信号
+        original_signal: 用户输入的原始信号 (V1 拼接字符串)
+        original_signals: 用户输入信号列表 (V2.B 新增, 结构化)
         atomic_signals: 分解后的原子信号列表
         control_blocks: 涉及的 if/case blocks
         depth_reached: 实际分解深度
@@ -174,6 +175,7 @@ class DecompositionResult:
     """
 
     original_signal: str = ""
+    original_signals: list[str] = field(default_factory=list)  # V2.B 新增
     atomic_signals: list[AtomicSignal] = field(default_factory=list)
     control_blocks: list[Any] = field(default_factory=list)  # list[ControlBlock|TraceEdge]
     depth_reached: int = 0
@@ -191,6 +193,7 @@ class DecompositionResult:
         """
         return {
             "original_signal": self.original_signal,
+            "original_signals": list(self.original_signals),  # V2.B
             "atomic_signals": [a.to_dict() for a in self.atomic_signals],
             "control_blocks": [self._control_block_to_dict(b) for b in self.control_blocks],
             "depth_reached": self.depth_reached,
