@@ -289,18 +289,189 @@ V1 实现里 `result.control_blocks` 实际存的是 `TraceEdge` 列表
 
 ---
 
-## 10. 未来工作（不在 V2.C 范围）
+## 10. V2.B 计划 (多信号同时 decompose)
 
-1. **V2.B 多信号** - 改 `decompose()` 接受多个信号
-2. **V2.A.2 AST 完整利用** - 默认走 AST 路径,字符串解析为 fallback
-3. **V2.D** - ControlFlowGraph 集成 (走 P1 单独重构)
-4. **V3 Z3** - 关键值 bin 求解
-5. **from_dict()** - 反序列化(V3+ 评估)
-6. **JSON Schema** - 官方 schema 文件(V3+ 评估)
+### 10.1 目标
+
+V1 `decompose()` 只处理 `signals[0]`, 其他信号被默默忽略。V2.B 改为处理所有信号,
+合并去重原子信号,union 控制块。
+
+### 10.2 用户场景
+
+```sv
+// RTL
+if (en) x <= c & d;
+if (mode) y <= a | b;
+```
+
+```bash
+# V1: 只分解 x, 忽略 y
+$ python run_cli.py coverage suggest -f top.sv --signals "top.x, top.y"
+# 只看 x 的覆盖度
+
+# V2.B: 一起分解
+$ python run_cli.py coverage suggest -f top.sv --signals "top.x, top.y"
+# 同时看 x 和 y 的覆盖度, 合并去重 (如 a 出现两次会合并 evidence)
+```
+
+### 10.3 需求决策
+
+| # | 决策点 | 决策 | 理由 |
+|---|--------|------|------|
+| 1 | 合并去重键 | atomic.name (含位选) | 同名同位选 = 同一原子 |
+| 2 | evidence 合并 | 同名原子证据链追加 | 多信号分解到同一原子时丰富证据 |
+| 3 | control_blocks 合并 | 按 (src, dst) 去重 | 同一驱动边不重复 |
+| 4 | 跨模块 | 任一信号跨模块 = 错误 | 避免部分结果,简单明确 |
+| 5 | original_signal 字段 | 仍为 `", ".join(signals)` | 向后兼容 V2.C 测试 |
+| 6 | **新增** original_signals | `list[str]` 字段 | 结构化原始输入 |
+| 7 | max_signals 限制 | 对合并后总原子数限制 | 跟 V1 语义一致 |
+| 8 | 同信号重复 ("a, a") | 不去重输入,合并时去重 | 零开销,语义清晰 |
+| 9 | 空信号列表 | 错误 (跟 V1 一致) | 无明确意义 |
+| 10 | 顺序 | 保持输入顺序 | 用户期望可预测 |
+
+### 10.4 系统设计
+
+```python
+# coverage_models.py 新增字段
+@dataclass
+class DecompositionResult:
+    original_signal: str = ""           # 保留: ", ".join 输入
+    original_signals: list[str] = field(default_factory=list)  # 新增: 结构化
+    # ... 其他字段 ...
+```
+
+```python
+# coverage_generator.py 重构 decompose()
+def decompose(self, signals, max_signals=5, max_depth=10):
+    result = DecompositionResult(
+        original_signal=", ".join(signals),
+        original_signals=list(signals),
+    )
+    if not signals:
+        result.error = "No signals provided"
+        return result
+
+    all_atomics: list[AtomicSignal] = []
+    all_blocks: list[Any] = []
+    seen_atomics: set[str] = set()
+    seen_blocks: set[tuple] = set()
+
+    for primary in signals:
+        # 跨模块检测 - 任一信号跨模块就报错
+        if self._is_cross_module(primary):
+            result.error = (
+                f"信号 {primary} 跨模块, 当前版本不支持. "
+                f"请指定顶层模块信号 (如 top.x)."
+            )
+            return result
+
+        # 复用 V1 逻辑: 收集 cond_edges + atomics
+        cond_edges = self._collect_condition_edges(primary)
+        primary_atomics: list[AtomicSignal] = []
+
+        for edge in cond_edges:
+            cond = edge.effective_condition or edge.condition or ""
+            for a in self._parse_expression_to_atomics(cond):
+                if a.name not in seen_atomics:
+                    seen_atomics.add(a.name)
+                    primary_atomics.append(a)
+            expr = getattr(edge, "expression", "") or ""
+            for a in self._parse_expression_to_atomics(expr):
+                if a.name not in seen_atomics:
+                    seen_atomics.add(a.name)
+                    primary_atomics.append(a)
+
+        # driver 链追踪
+        for atomic in list(primary_atomics):
+            recurse_id = self._resolve_signal_id(atomic.base_name, primary)
+            sub_atomics = self._trace_drivers(
+                recurse_id, atomic.bit_range,
+                depth=1, max_depth=max_depth, visited=set(),
+            )
+            for sa in sub_atomics:
+                if sa.name not in seen_atomics:
+                    seen_atomics.add(sa.name)
+                    primary_atomics.append(sa)
+
+        all_atomics.extend(primary_atomics)
+
+        # 合并 control_blocks (按 (src, dst) 去重)
+        for edge in cond_edges:
+            key = (getattr(edge, "src", ""), getattr(edge, "dst", ""))
+            if key not in seen_blocks:
+                seen_blocks.add(key)
+                all_blocks.append(edge)
+
+    result.atomic_signals = all_atomics
+    result.control_blocks = all_blocks
+    result.signal_count = len(all_atomics)
+    result.depth_reached = max_depth
+
+    # 截断检查
+    if len(all_atomics) > max_signals:
+        result.atomic_signals = all_atomics[:max_signals]
+        result.truncated = True
+        result.error = (
+            f"Decomposition exceeds max_signals ({max_signals}): "
+            f"found {len(all_atomics)} signals"
+        )
+
+    return result
+```
+
+### 10.5 文件改动
+
+| 文件 | 类型 | 行数估计 |
+|------|------|----------|
+| `coverage_models.py` | 修改 | +3 (original_signals 字段) |
+| `coverage_generator.py` | 修改 | ~50 (重写 decompose 主循环) |
+| `test_coverage_generator.py` | 修改 | +120 (cycle 14 8 tests + cycle 15 5 tests) |
+| `coverage.py` (CLI) | 修改 | +5 (help 文本 + 验证) |
+| **总计** | | **~180 行** |
+
+### 10.6 验收标准
+
+- [ ] 单信号输入与 V1 行为一致 (回归测试不挂)
+- [ ] 2+ 信号输入返回所有合并原子 (无丢失)
+- [ ] 同名原子 (a) 出现多次, evidence 合并, 总数正确去重
+- [ ] control_blocks 按 (src, dst) 去重, 不重复
+- [ ] 跨模块信号 → 错误, 其他信号不被处理
+- [ ] 同信号重复 ("a, a") 输入不重复, 总数正确
+- [ ] 合并后超过 max_signals → truncated + error
+- [ ] original_signals 字段存在, 元素顺序匹配输入
+- [ ] JSON 输出含 original_signals list
+- [ ] CLI `--signals "a, b, c"` 实际分解 3 个
+- [ ] 1322 (V1) + 28 (V2.C) + 13 (V2.B) = 1363 测试通过
+- [ ] V2.B 新增代码 ruff 干净
+
+### 10.7 Cycle 拆分
+
+| Cycle | 内容 | 估计行数 | 估计测试 |
+|-------|------|----------|----------|
+| 14 | `decompose()` 多信号合并 + original_signals 字段 | +55 | +8 |
+| 15 | CLI `--signals` 验证 + help 文本 | +10 | +5 |
+| **合计** | | **~65 行** | **+13** |
+
+### 10.8 经验教训 (预设)
+
+- 合并逻辑要明确去重键,否则 evidence 会重复追加
+- original_signals 字段加在末尾保持向后兼容
+- 跨模块快速失败,避免半成品结果
+- max_signals 在合并后判断,语义跟 V1 一致
 
 ---
 
-## 11. 经验教训 (从 V1)
+## 11. 未来工作（不在 V2.C/B 范围） — 移至附录 B
+
+1. **V2.A.2 AST 完整利用** - 默认走 AST 路径,字符串解析为 fallback
+2. **V2.D** - ControlFlowGraph 集成 (走 P1 单独重构)
+3. **V3 Z3** - 关键值 bin 求解
+4. **from_dict()** - 反序列化(V3+ 评估)
+5. **JSON Schema** - 官方 schema 文件(V3+ 评估)
+
+---
+
+## 12. 经验教训 (从 V1)
 
 1. **小步快跑**: C 只有 2 个 cycle,容易回滚
 2. **优先复用**: 用 `dataclasses.asdict` 思想,显式 `to_dict()` 而非黑魔法
@@ -316,7 +487,7 @@ V1 实现里 `result.control_blocks` 实际存的是 `TraceEdge` 列表
 
 ---
 
-## 12. 实施结果 (V2.C)
+## 13. 实施结果 (V2.C)
 
 ### Cycle 12 - 数据模型序列化
 - `SourceLocation.to_dict()`: 4 字段
