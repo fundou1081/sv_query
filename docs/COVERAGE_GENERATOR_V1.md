@@ -108,7 +108,7 @@ python run_cli.py coverage suggest \
 | 跨模块信号 | RTL 通常不会这么设计 | 提示用户用顶层信号 | ✅ cycle 9 |
 | 多信号同时 decompose | V1 只处理第一个 | 扩展支持 | ✅ V2.B (cycle 14-15) |
 | JSON 输出 | CLI 占位符 | 复用 dataclass.asdict | ✅ V2.C (cycle 12-13) |
-| AST 自动提取 | graph_builder 暂存条件字符串 | 添加 condition_ast 字段 | ✅ cycle 11 (基础) |
+| AST 自动提取 | graph_builder 暂存条件字符串 | 添加 condition_ast 字段 | ✅ V2.A.2 (cycles 16-18) |
 | 关键值 bin 自动生成 | 需 Z3 求解 | V3 集成 Z3 | ❌ V3 |
 | ControlFlowGraph 集成 | control_vars 字段未填充 | 修复 graph_builder | ❌ P1 重构 |
 
@@ -124,4 +124,4 @@ python run_cli.py coverage suggest \
 
 ---
 
-**下一步**: V2.A.2 (AST 完整利用) - 预计 cycle 16-19
+**下一步**: P1 启动 (graph_builder 拆分) 或 V2 收尾文档

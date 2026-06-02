@@ -759,3 +759,87 @@ TraceEdge(
 
 Cycle 16 → STOP 给用户看 diff → Cycle 17 → Cycle 18
 
+
+---
+
+## 附录 D. V2.A.2 实施结果 (cycles 16-18)
+
+**状态**: ✅ 完成
+**总 commits**: 6 (cycle 0 plan + 5 实施)
+**V2.A.2 净代码改动**: 11 行(全部新增, 0 行删除)
+
+### Cycle 16 - 接线 (coverage_generator.py 1 行)
+- `decompose()` 改走 `_extract_condition_atomic(edge, primary)`
+- `_extract_condition_atomic` 加 1 行: AST 失败时也试字符串
+- 6 个集成测试
+
+### Cycle 17a - visitor 存 AST (statement_collector_visitor.py 1 行)
+- `visit_conditional_statement` ifTrue 分支的 `new_ctx` 加 `"condition_ast": cond_expr`
+- `cond_expr` 已经是 pyslang semantic AST node (line 901/906 拿到)
+- 1 个测试: 验证 ctx 含 condition_ast
+
+### Cycle 17b - graph_builder 第 1 个点 (graph_builder.py 1 行)
+- line 968 TraceEdge 加 `condition_ast=ctx.get("condition_ast")`
+- 2 个测试: AST 填充率 > 0 + 节点是真实 pyslang
+
+### Cycle 17c - graph 挂 adapter (unified_tracer.py 1 行)
+- `self._graph._adapter = semantic_adapter`
+- 让 SignalExpressionVisitor 在真实数据上能工作
+- 2 个测试: graph 含 adapter + 真 SV 文件 ast_extract 出现
+
+### Cycle 17d - 剩余 7 个 ctx-based 点 (graph_builder.py 7 行)
+- lines 991, 1019, 1045, 1564, 1610, 1680, 1752 都加 `condition_ast=ctx.get("condition_ast")`
+- AST 填充率: 14.9% → 100% (47/47)
+
+### Cycle 18 - CLI 端到端验证
+- 2 个 CLI 集成测试
+- 跑 `run_cli.py coverage suggest --json` 验证用户能看到 `ast_extract` 证据
+
+### 真实数据最终状态 (test_data_path.sv)
+
+```
+$ python run_cli.py coverage suggest -f test_data_path.sv \
+    --signal data_path.result --max-signals 10 --json | jq '.atomic_signals[].evidence[].description' | head
+
+"AST extract: rst_n (kind=UnaryOp)"
+"AST extract: pipeline_stall (kind=UnaryOp)"
+```
+
+→ **V2.A.2 完整利用 AST, 落到用户可见输出**
+
+### 测试 & 质量
+- 总测试: **1380** (cycle 0 起点 1373, V2.A.2 净 +7)
+- V2.A.2 新增: 12 个测试 (6 + 1 + 2 + 2 + 0 + 2)
+- ruff 干净
+- 11 行代码, 0 行删除
+
+### 经验教训 (V2.A.2 新增)
+
+15. **code path 就位 ≠ 真实使用**: cycle 11/16 装的代码 100% 正确, 但喂入数据 None
+    → 必须验证 data path, 不能只验 code path
+16. **adapter 传递**: 真 AST 路径需要 `SignalExpressionVisitor`, 它的入口需要 adapter
+    → `_graph._adapter = semantic_adapter` 是联通 code 和 data 的关键
+17. **小步可独立回滚**: 4 个文件各 1 行改动, 任何一步出问题都只损失 1 行
+    → 之前担心的"小心, 避免误删"通过 5 个 commit 守住
+18. **TDD 红→绿 真实暴露问题**: 17c 写测试才发现 graph 缺 adapter, 之前没意识到
+    → 端到端测试是发现 wiring 问题的唯一手段
+19. **CLI 端到端是最终验证**: 单元测试通过 ≠ 用户能用
+    → cycle 18 的 CLI 测试才是 V2.A.2 完整闭环
+
+### 剩余工作 (P1 范围, 不阻塞 V2.A.2 完成)
+
+1. **sig_cond-based 创建点** (7+ 处, graph_builder line 737, 760, 784, 807, 917, 941)
+   - 用局部变量 `sig_cond`, 不是 ctx
+   - 需 refactor 跟踪 `sig_cond_ast`
+   - 估计 1 cycle, ~20 行 (需要新 ctx-style 数据流)
+2. **case 语句的 cond_expr 透传** (visitor line 760-781)
+   - 当前 case path 的 ctx 也没存 cond_expr
+   - 需 visitor 配合改
+   - 估计 1 cycle, ~10 行
+
+### 下一步候选
+
+1. **完成 sig_cond + case**: 推到 AST 填充率 100% 包括所有场景 (cycle 17e+, 估计 +30 行)
+2. **V2 整体收尾文档**: 写 V2 总结 (V2.A + V2.B + V2.C + V2.A.2)
+3. **P1 启动**: graph_builder.py 3054 行拆分 (跟 V2 解耦)
+
