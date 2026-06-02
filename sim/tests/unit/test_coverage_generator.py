@@ -265,5 +265,133 @@ class TestDataModelIntegration(unittest.TestCase):
                          "assign c = a | b;")
 
 
+# ==============================================================================
+# Cycle 2: 表达式解析器
+# ==============================================================================
+
+from trace.core.coverage_generator import ControlCoverageGenerator
+
+
+class TestExpressionParser(unittest.TestCase):
+    """ControlCoverageGenerator._parse_expression_to_atomics
+
+    将 driver/condition 表达式字符串解析为原子信号列表。
+    位选保留为区间表示。
+    """
+
+    def _parse(self, expr: str):
+        """helper: 用空 graph 构造 generator 并解析"""
+        from trace.core.graph.models import SignalGraph
+        gen = ControlCoverageGenerator(graph=SignalGraph())
+        return gen._parse_expression_to_atomics(expr)
+
+    def test_parse_simple_and(self):
+        """a & b -> [{a}, {b}]"""
+        result = self._parse("a & b")
+        names = [s.name for s in result]
+        self.assertEqual(names, ["a", "b"])
+        for s in result:
+            self.assertIsNone(s.bit_range)
+
+    def test_parse_simple_or(self):
+        """a | b -> [{a}, {b}]"""
+        result = self._parse("a | b")
+        names = [s.name for s in result]
+        self.assertEqual(names, ["a", "b"])
+
+    def test_parse_with_bit_range(self):
+        """a[3:0] -> [{a[3:0]}] 含位选"""
+        result = self._parse("a[3:0]")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "a[3:0]")
+        self.assertEqual(result[0].base_name, "a")
+        self.assertEqual(result[0].bit_range, (3, 0))
+
+    def test_parse_multiple_bit_ranges(self):
+        """a[3:0] | b[7:4] -> 两个含位选"""
+        result = self._parse("a[3:0] | b[7:4]")
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].name, "a[3:0]")
+        self.assertEqual(result[0].bit_range, (3, 0))
+        self.assertEqual(result[1].name, "b[7:4]")
+        self.assertEqual(result[1].bit_range, (7, 4))
+
+    def test_parse_filters_literals(self):
+        """a + 1 -> [{a}] 过滤字面量"""
+        result = self._parse("a + 1")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "a")
+
+    def test_parse_filters_decimal_literals(self):
+        """a + 32'd100 -> [{a}]"""
+        result = self._parse("a + 32'd100")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "a")
+
+    def test_parse_filters_binary_literals(self):
+        """a | 4'b1011 -> [{a}]"""
+        result = self._parse("a | 4'b1011")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "a")
+
+    def test_parse_comparison(self):
+        """g < f -> [{g}, {f}] 比较表达式拆出所有信号"""
+        result = self._parse("g < f")
+        names = [s.name for s in result]
+        self.assertIn("g", names)
+        self.assertIn("f", names)
+        self.assertEqual(len(result), 2)
+
+    def test_parse_not_operator(self):
+        """!a -> [{a}] 否定只包含底层信号"""
+        result = self._parse("!a")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "a")
+
+    def test_parse_compound(self):
+        """c & d -> [{c}, {d}]"""
+        result = self._parse("c & d")
+        names = [s.name for s in result]
+        self.assertEqual(names, ["c", "d"])
+
+    def test_parse_ternary(self):
+        """en ? d : 0 -> [{en}, {d}] 三元运算"""
+        result = self._parse("en ? d : 0")
+        names = [s.name for s in result]
+        self.assertIn("en", names)
+        self.assertIn("d", names)
+        self.assertEqual(len(result), 2)
+
+    def test_parse_parenthesized(self):
+        """(a & b) | c -> [{a}, {b}, {c}]"""
+        result = self._parse("(a & b) | c")
+        names = [s.name for s in result]
+        self.assertEqual(sorted(names), ["a", "b", "c"])
+
+    def test_parse_nested_bit(self):
+        """data[3:0][1:0] -> [{data[3:0][1:0]}] 嵌套位选"""
+        result = self._parse("data[3:0][1:0]")
+        # 允许不同实现: 保留完整或只保留外层
+        self.assertGreaterEqual(len(result), 1)
+        # 至少第一个是 data
+        self.assertTrue(any(s.base_name == "data" for s in result))
+
+    def test_parse_empty_string(self):
+        """空字符串 -> []"""
+        result = self._parse("")
+        self.assertEqual(result, [])
+
+    def test_parse_only_literal(self):
+        """只字面量 -> []"""
+        result = self._parse("8'hFF")
+        self.assertEqual(result, [])
+
+    def test_parse_underscore_name(self):
+        """data_in -> [{data_in}] 下划线名"""
+        result = self._parse("data_in & valid_o")
+        names = [s.name for s in result]
+        self.assertEqual(sorted(names), ["data_in", "valid_o"])
+
+
 if __name__ == '__main__':
     unittest.main()
