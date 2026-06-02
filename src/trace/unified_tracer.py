@@ -387,6 +387,10 @@ class UnifiedTracer:
 
             builder = GraphBuilder(semantic_adapter)
             self._graph = builder.build()
+            # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
+            # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast
+            # 走字符串 fallback, 真实 AST 路径不生效)
+            self._graph._adapter = semantic_adapter
             # [Phase2] 追加 class 子图
             class_builder = ClassGraphBuilder(semantic_adapter)
             class_builder.build(self._graph)
