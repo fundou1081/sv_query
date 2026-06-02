@@ -926,6 +926,9 @@ class StatementCollectorVisitor(BaseVisitor):
                 "_parent_cond_expr": cond_expr,
                 "_cond_exprs": cond_exprs,
                 "effective_condition": effective_cond,
+                # [V2.A.2 cycle 17a] 把当前条件 AST 节点存入 ctx,
+                # 供 graph_builder 填充到 TraceEdge.condition_ast
+                "condition_ast": cond_expr,
             }
             self._ctx_stack.append(new_ctx)
             self.visit(ts)
