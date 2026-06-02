@@ -1204,5 +1204,297 @@ class TestASTConditionExtraction(unittest.TestCase):
         self.assertIn("b", names)
 
 
+class TestSerializationV2C(unittest.TestCase):
+    """V2 cycle 12: DecompositionResult JSON 序列化"""
+
+    # --- SourceLocation.to_dict() ---
+
+    def test_source_location_to_dict_minimal(self):
+        """SourceLocation 空实例 to_dict() 返回完整字段(默认空值)"""
+        loc = SourceLocation()
+        d = loc.to_dict()
+        self.assertEqual(d, {
+            "file": "",
+            "line_start": 0,
+            "line_end": 0,
+            "column": 0,
+        })
+
+    def test_source_location_to_dict_full(self):
+        """SourceLocation 完整实例 to_dict() 保留所有字段"""
+        loc = SourceLocation(file="top.sv", line_start=5, line_end=8, column=4)
+        d = loc.to_dict()
+        self.assertEqual(d, {
+            "file": "top.sv",
+            "line_start": 5,
+            "line_end": 8,
+            "column": 4,
+        })
+
+    # --- EvidenceStep.to_dict() ---
+
+    def test_evidence_step_to_dict_minimal(self):
+        """EvidenceStep 空实例 to_dict() 不报错"""
+        step = EvidenceStep()
+        d = step.to_dict()
+        self.assertEqual(d["step_type"], "")
+        self.assertEqual(d["description"], "")
+        self.assertEqual(d["from_signal"], "")
+        self.assertEqual(d["to_signals"], [])
+        self.assertIsNone(d["source"])
+
+    def test_evidence_step_to_dict_with_to_signals(self):
+        """EvidenceStep.to_dict() 把 to_signals 转为 list"""
+        step = EvidenceStep(
+            step_type="driver_chain",
+            description="a -> b",
+            from_signal="a",
+            to_signals=["b", "c"],
+        )
+        d = step.to_dict()
+        self.assertEqual(d["to_signals"], ["b", "c"])
+
+    def test_evidence_step_to_dict_with_snippet_no_text(self):
+        """EvidenceStep 带 SourceSnippet 但 text_provider 未触发时不返回源码"""
+        # 构造 SourceSnippet 不带 text_provider, 保证不 IO
+        loc = SourceLocation(file="top.sv", line_start=5)
+        snippet = SourceSnippet(location=loc, text="")  # text_provider=None
+        step = EvidenceStep(
+            step_type="bit_select",
+            description="a[3:0]",
+            from_signal="a",
+            to_signals=["a[3:0]"],
+            source=snippet,
+        )
+        d = step.to_dict()
+        # source 字段应存在但 text 为空 (不触发 IO)
+        self.assertIsNotNone(d["source"])
+        self.assertEqual(d["source"], "")
+
+    # --- AtomicSignal.to_dict() ---
+
+    def test_atomic_signal_to_dict_minimal(self):
+        """AtomicSignal 空实例 to_dict() 完整结构"""
+        sig = AtomicSignal()
+        d = sig.to_dict()
+        self.assertEqual(d["name"], "")
+        self.assertEqual(d["base_name"], "")
+        self.assertIsNone(d["bit_range"])  # None 保持 None,不是 []
+        self.assertEqual(d["source"], {
+            "file": "", "line_start": 0, "line_end": 0, "column": 0
+        })
+        self.assertEqual(d["evidence"], [])
+
+    def test_atomic_signal_to_dict_with_bit_range(self):
+        """bit_range tuple 序列化为 list"""
+        sig = AtomicSignal(
+            name="a[3:0]",
+            base_name="a",
+            bit_range=(3, 0),
+        )
+        d = sig.to_dict()
+        self.assertEqual(d["bit_range"], [3, 0])  # tuple -> list
+        self.assertIsInstance(d["bit_range"], list)
+
+    def test_atomic_signal_to_dict_with_source(self):
+        """AtomicSignal 带 source 位置信息完整序列化"""
+        sig = AtomicSignal(
+            name="a",
+            base_name="a",
+            source=SourceLocation(file="top.sv", line_start=10),
+        )
+        d = sig.to_dict()
+        self.assertEqual(d["source"]["file"], "top.sv")
+        self.assertEqual(d["source"]["line_start"], 10)
+
+    def test_atomic_signal_to_dict_with_evidence(self):
+        """AtomicSignal.evidence 列表递归 to_dict()"""
+        sig = AtomicSignal(name="a", base_name="a")
+        sig.evidence.append(EvidenceStep(
+            step_type="driver_chain",
+            description="c -> a",
+            from_signal="c",
+            to_signals=["a"],
+        ))
+        d = sig.to_dict()
+        self.assertEqual(len(d["evidence"]), 1)
+        self.assertEqual(d["evidence"][0]["step_type"], "driver_chain")
+        self.assertEqual(d["evidence"][0]["from_signal"], "c")
+
+    # --- DecompositionResult.to_dict() ---
+
+    def test_decomposition_result_to_dict_minimal(self):
+        """DecompositionResult 空实例 to_dict() 完整结构"""
+        result = DecompositionResult()
+        d = result.to_dict()
+        self.assertEqual(d["original_signal"], "")
+        self.assertEqual(d["atomic_signals"], [])
+        self.assertEqual(d["control_blocks"], [])
+        self.assertEqual(d["depth_reached"], 0)
+        self.assertEqual(d["signal_count"], 0)
+        self.assertFalse(d["truncated"])
+        self.assertIsNone(d["error"])
+
+    def test_decomposition_result_to_dict_with_error(self):
+        """error 字段为 None 当无错,字符串当有错"""
+        result = DecompositionResult(
+            original_signal="top.x",
+            error="Cross-module detected",
+        )
+        d = result.to_dict()
+        self.assertEqual(d["error"], "Cross-module detected")
+        # 验证 None 和字符串两种情况
+        result2 = DecompositionResult(original_signal="top.y")
+        self.assertIsNone(result2.to_dict()["error"])
+
+    def test_decomposition_result_to_dict_with_atomics(self):
+        """atomic_signals 列表递归 to_dict()"""
+        result = DecompositionResult(
+            original_signal="top.x",
+            atomic_signals=[
+                AtomicSignal(name="a", base_name="a"),
+                AtomicSignal(name="b[3:0]", base_name="b", bit_range=(3, 0)),
+            ],
+            signal_count=2,
+        )
+        d = result.to_dict()
+        self.assertEqual(len(d["atomic_signals"]), 2)
+        self.assertEqual(d["atomic_signals"][0]["name"], "a")
+        self.assertEqual(d["atomic_signuals"][1]["bit_range"], [3, 0]) if False else \
+            self.assertEqual(d["atomic_signals"][1]["bit_range"], [3, 0])
+
+    def test_decomposition_result_to_dict_with_truncated(self):
+        """truncated 字段正确序列化"""
+        result = DecompositionResult(
+            original_signal="top.x",
+            signal_count=10,
+            truncated=True,
+            error="Exceeds max_signals",
+        )
+        d = result.to_dict()
+        self.assertTrue(d["truncated"])
+        self.assertEqual(d["signal_count"], 10)
+        self.assertEqual(d["error"], "Exceeds max_signals")
+
+    def test_decomposition_result_to_dict_with_trace_edge_block(self):
+        """control_blocks 含 TraceEdge 时正确序列化"""
+        # 构造一个 minimal TraceEdge-like 对象 (mock 不引入更多 import)
+        from types import SimpleNamespace
+        edge = SimpleNamespace(
+            effective_condition="en",
+            condition="en",
+            expression="a & b",
+            src="top.a",
+            dst="top.x",
+        )
+        result = DecompositionResult(
+            original_signal="top.x",
+            control_blocks=[edge],
+        )
+        d = result.to_dict()
+        self.assertEqual(len(d["control_blocks"]), 1)
+        block = d["control_blocks"][0]
+        self.assertEqual(block["type"], "TraceEdge")
+        self.assertEqual(block["condition"], "en")
+        self.assertEqual(block["expression"], "a & b")
+        self.assertEqual(block["src"], "top.a")
+        self.assertEqual(block["dst"], "top.x")
+
+    def test_decomposition_result_to_dict_with_control_block_object(self):
+        """control_blocks 含 ControlBlock (带 to_dict) 时正确序列化"""
+        from types import SimpleNamespace
+        # 模拟未来 ControlBlock (有 to_dict 方法)
+        class FakeControlBlock:
+            def to_dict(self):
+                return {
+                    "type": "IfBlock",
+                    "condition_vars": ["en"],
+                    "body_signal": "top.x",
+                }
+        result = DecompositionResult(
+            original_signal="top.x",
+            control_blocks=[FakeControlBlock()],
+        )
+        d = result.to_dict()
+        self.assertEqual(d["control_blocks"][0]["type"], "IfBlock")
+        self.assertEqual(d["control_blocks"][0]["condition_vars"], ["en"])
+
+    def test_decomposition_result_to_dict_with_string_block_fallback(self):
+        """control_blocks 含未知类型时用 repr 字符串兜底"""
+        result = DecompositionResult(
+            original_signal="top.x",
+            control_blocks=[42],  # 既不是 TraceEdge 也没有 to_dict
+        )
+        d = result.to_dict()
+        # 不报错,降级为 repr
+        self.assertEqual(d["control_blocks"][0], {"repr": "42"})
+
+    # --- DecompositionResult.to_json() ---
+
+    def test_to_json_returns_valid_json(self):
+        """to_json() 返回可被 json.loads 解析的字符串"""
+        import json
+        result = DecompositionResult(
+            original_signal="top.x",
+            atomic_signals=[AtomicSignal(name="a", base_name="a")],
+            signal_count=1,
+        )
+        json_str = result.to_json()
+        parsed = json.loads(json_str)  # 不抛异常 = 有效
+        self.assertEqual(parsed["original_signal"], "top.x")
+        self.assertEqual(len(parsed["atomic_signals"]), 1)
+
+    def test_to_json_indent_default(self):
+        """to_json() 默认 indent=2 (多行)"""
+        result = DecompositionResult(original_signal="top.x")
+        json_str = result.to_json()
+        # 多行 JSON 应含换行
+        self.assertIn("\n", json_str)
+        self.assertIn('  "original_signal"', json_str)  # 2 空格缩进
+
+    def test_to_json_indent_compact(self):
+        """to_json(indent=None) 紧凑模式 (单行)"""
+        import json
+        result = DecompositionResult(
+            original_signal="top.x",
+            atomic_signals=[AtomicSignal(name="a", base_name="a")],
+        )
+        json_str = result.to_json(indent=None)
+        self.assertNotIn("\n", json_str)
+        # 仍能解析
+        parsed = json.loads(json_str)
+        self.assertEqual(parsed["original_signal"], "top.x")
+
+    def test_to_json_unicode_safe(self):
+        """to_json() 支持中文/特殊字符 (ensure_ascii=False)"""
+        result = DecompositionResult(
+            original_signal="中文信号",
+            error="错误: 跨模块",
+        )
+        json_str = result.to_json()
+        # ensure_ascii=False 时中文不会被转义
+        self.assertIn("中文信号", json_str)
+        self.assertIn("错误", json_str)
+
+    def test_to_json_round_trip_minimal(self):
+        """to_json() + json.loads() 往返一致"""
+        import json
+        result = DecompositionResult(
+            original_signal="top.x",
+            atomic_signals=[
+                AtomicSignal(name="a", base_name="a"),
+                AtomicSignal(name="b[3:0]", base_name="b", bit_range=(3, 0)),
+            ],
+            signal_count=2,
+            depth_reached=3,
+        )
+        parsed = json.loads(result.to_json())
+        self.assertEqual(parsed["original_signal"], "top.x")
+        self.assertEqual(parsed["signal_count"], 2)
+        self.assertEqual(parsed["depth_reached"], 3)
+        self.assertEqual(parsed["atomic_signals"][1]["bit_range"], [3, 0])
+        self.assertEqual(parsed["atomic_signals"][1]["name"], "b[3:0]")
+
+
 if __name__ == '__main__':
     unittest.main()

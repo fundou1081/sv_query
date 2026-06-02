@@ -9,6 +9,7 @@
 # - DecompositionResult: 分解结果
 # ==============================================================================
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -32,6 +33,19 @@ class SourceLocation:
     def is_empty(self) -> bool:
         """是否没有位置信息"""
         return not self.file or self.line_start == 0
+
+    def to_dict(self) -> dict:
+        """序列化为 dict (V2.C 周期 12)
+
+        Returns:
+            包含所有字段的普通 dict
+        """
+        return {
+            "file": self.file,
+            "line_start": self.line_start,
+            "line_end": self.line_end,
+            "column": self.column,
+        }
 
     def __str__(self) -> str:
         if self.is_empty():
@@ -90,6 +104,20 @@ class EvidenceStep:
     to_signals: list[str] = field(default_factory=list)
     source: SourceSnippet | None = None
 
+    def to_dict(self) -> dict:
+        """序列化为 dict (V2.C 周期 12)
+
+        注意: 不调用 SourceSnippet.load_text() 以避免在 JSON 输出时
+        意外触发文件 IO。SourceSnippet 对象的 text 为空时序列化为 ""。
+        """
+        return {
+            "step_type": self.step_type,
+            "description": self.description,
+            "from_signal": self.from_signal,
+            "to_signals": list(self.to_signals),
+            "source": (self.source.text if self.source else None),
+        }
+
     def __str__(self) -> str:
         if self.description:
             return self.description
@@ -114,6 +142,19 @@ class AtomicSignal:
     source: SourceLocation = field(default_factory=SourceLocation)
     evidence: list[EvidenceStep] = field(default_factory=list)
 
+    def to_dict(self) -> dict:
+        """序列化为 dict (V2.C 周期 12)
+
+        bit_range 序列化为 list (JSON spec 不支持 tuple).
+        """
+        return {
+            "name": self.name,
+            "base_name": self.base_name,
+            "bit_range": list(self.bit_range) if self.bit_range is not None else None,
+            "source": self.source.to_dict() if self.source is not None else None,
+            "evidence": [e.to_dict() for e in self.evidence],
+        }
+
     def __str__(self) -> str:
         return self.name
 
@@ -134,11 +175,68 @@ class DecompositionResult:
 
     original_signal: str = ""
     atomic_signals: list[AtomicSignal] = field(default_factory=list)
-    control_blocks: list[Any] = field(default_factory=list)  # list[ControlBlock]
+    control_blocks: list[Any] = field(default_factory=list)  # list[ControlBlock|TraceEdge]
     depth_reached: int = 0
     signal_count: int = 0
     truncated: bool = False
     error: str | None = None
+
+    def to_dict(self) -> dict:
+        """序列化为 dict (V2.C 周期 12)
+
+        Returns:
+            包含所有字段的普通 dict, 所有嵌套 dataclass 递归展开.
+            control_blocks 异构: TraceEdge / ControlBlock (带 to_dict) / 其他
+            三种情况都兼容。
+        """
+        return {
+            "original_signal": self.original_signal,
+            "atomic_signals": [a.to_dict() for a in self.atomic_signals],
+            "control_blocks": [self._control_block_to_dict(b) for b in self.control_blocks],
+            "depth_reached": self.depth_reached,
+            "signal_count": self.signal_count,
+            "truncated": self.truncated,
+            "error": self.error,
+        }
+
+    def to_json(self, indent: int | None = 2) -> str:
+        """序列化为 JSON 字符串 (V2.C 周期 12)
+
+        Args:
+            indent: JSON 缩进, 默认 2. 传 None 紧凑模式 (单行).
+
+        Returns:
+            有效的 JSON 字符串 (ensure_ascii=False 支持中文)
+        """
+        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
+
+    @staticmethod
+    def _control_block_to_dict(block: Any) -> dict:
+        """控制块可能是 TraceEdge 或 ControlBlock, 兼容两种类型
+
+        优先级:
+        1. 带 effective_condition 属性的对象 (TraceEdge) -> 详细字段
+        2. 带 to_dict() 方法的对象 (未来 ControlBlock) -> 调用 to_dict()
+        3. 其他 (int, str, None) -> 降级为 repr 字符串
+        """
+        if hasattr(block, "effective_condition"):
+            return {
+                "type": "TraceEdge",
+                "src": getattr(block, "src", ""),
+                "dst": getattr(block, "dst", ""),
+                "condition": (
+                    getattr(block, "effective_condition", "")
+                    or getattr(block, "condition", "")
+                ),
+                "expression": getattr(block, "expression", ""),
+            }
+        if hasattr(block, "to_dict") and callable(block.to_dict):
+            try:
+                return block.to_dict()
+            except Exception:
+                pass
+        # Fallback: repr 字符串
+        return {"repr": str(block)}
 
     def __str__(self) -> str:
         if self.error:
