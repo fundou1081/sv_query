@@ -2176,5 +2176,90 @@ class TestGraphBuilderAdapterV2A2(unittest.TestCase):
             self.assertIsNotNone(graph._adapter)
 
 
+class TestCLIAstUtilizationV2A2(unittest.TestCase):
+    """V2.A.2 cycle 18: CLI 端到端输出含 ast_extract 证据
+
+    证明 V2.A.2 "完整利用 AST" 落实到用户可见的 JSON 输出。
+    """
+
+    def _run_cli(self, *args, timeout=60):
+        """调 CLI 拼装参数"""
+        import subprocess
+        import sys
+        import os
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        cmd = [
+            sys.executable, "run_cli.py", "coverage", "suggest",
+            "-f", sv_file,
+            *args,
+        ]
+        result = subprocess.run(
+            cmd,
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result
+
+    def test_cli_json_contains_ast_extract_evidence(self):
+        """CLI --json 输出含 ast_extract 证据 (真 AST 被使用)"""
+        import json
+        result = self._run_cli(
+            "--signal", "data_path.result",
+            "--max-signals", "10",
+            "--json",
+        )
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        parsed = json.loads(result.stdout)
+        # 扫所有原子的 evidence, 找 ast_extract
+        ast_evidence = []
+        for a in parsed["atomic_signals"]:
+            for e in a.get("evidence", []):
+                if e.get("step_type") == "ast_extract":
+                    ast_evidence.append((a["name"], e.get("description", "")))
+        self.assertGreater(
+            len(ast_evidence), 0,
+            "CLI JSON should contain ast_extract evidence for V2.A.2 utilization"
+        )
+
+    def test_cli_json_ast_extract_mentions_pyslang_kind(self):
+        """CLI --json 输出 ast_extract 证据含 pyslang kind (UnaryOp/BinaryOp 等)"""
+        import json
+        import re
+        result = self._run_cli(
+            "--signal", "data_path.result",
+            "--max-signals", "10",
+            "--json",
+        )
+        if result.returncode != 0 and "ERROR" in result.stderr:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        parsed = json.loads(result.stdout)
+        # 找 kind= 开头的描述 (证明真 AST 被识别出语法类型)
+        kind_pattern = re.compile(r"kind=(\w+)")
+        for a in parsed["atomic_signals"]:
+            for e in a.get("evidence", []):
+                if e.get("step_type") == "ast_extract":
+                    desc = e.get("description", "")
+                    m = kind_pattern.search(desc)
+                    if m:
+                        kind = m.group(1)
+                        # 验证是已知 pyslang kind
+                        self.assertIn(
+                            kind, ("UnaryOp", "BinaryOp", "NamedValue",
+                                   "Identifier", "Reference", "ConditionalOp"),
+                            f"Unexpected pyslang kind: {kind} in {desc}"
+                        )
+                        return  # 找到 1 个就够了
+        # 如果走完都没找到 kind=, 失败
+        self.fail("No ast_extract evidence with kind= found in CLI output")
+
+
 if __name__ == '__main__':
     unittest.main()
