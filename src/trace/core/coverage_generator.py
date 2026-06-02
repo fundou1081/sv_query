@@ -437,6 +437,110 @@ class ControlCoverageGenerator:
         parts = signal_id.split(".")
         return len(parts) > 2
 
+    def _extract_atomics_from_ast(self, ast_node) -> list:
+        """从 AST 节点提取原子信号
+
+        [V2] 使用 SignalExpressionVisitor 解析 AST 节点,
+        比字符串解析更准确 (支持复杂宏, typedef, 嵌套表达式).
+
+        Args:
+            ast_node: pyslang 表达式节点 (或类似可调用 extract() 的对象)
+
+        Returns:
+            AtomicSignal 列表
+        """
+        if ast_node is None:
+            return []
+
+        # 优先用 SignalExpressionVisitor (如果有 pyslang adapter)
+        adapter = getattr(self._graph, "_adapter", None)
+        if adapter is not None:
+            try:
+                from .visitors.signal_expression_visitor import SignalExpressionVisitor
+                visitor = SignalExpressionVisitor(adapter)
+                sr = visitor.extract(ast_node)
+                if sr and sr.all_signals:
+                    return self._convert_signal_result_to_atomics(sr, ast_node)
+            except Exception:
+                pass  # Fallback to string parsing
+
+        # Fallback: 转为字符串
+        try:
+            text = str(ast_node).strip()
+            return self._parse_expression_to_atomics(text)
+        except Exception:
+            return []
+
+    def _convert_signal_result_to_atomics(self, sr, ast_node) -> list:
+        """将 SignalResult 转为 AtomicSignal 列表
+
+        Args:
+            sr: SignalResult 实例
+            ast_node: 原始 AST 节点 (用于 evidence)
+
+        Returns:
+            AtomicSignal 列表 (按出现顺序, 自动去重)
+        """
+        if not sr or not sr.all_signals:
+            return []
+
+        seen = set()
+        result = []
+        for name in sr.all_signals:
+            if not name or name in seen:
+                continue
+            # 跳过字面量
+            if name.isdigit() or self._is_simple_literal(name):
+                continue
+            seen.add(name)
+
+            base_name, bit_range = self._split_identifier(name)
+            atomic = AtomicSignal(
+                name=name,
+                base_name=base_name,
+                bit_range=bit_range,
+            )
+            # 添加 evidence
+            atomic.evidence.append(EvidenceStep(
+                step_type="ast_extract",
+                description=f"AST extract: {name} (kind={sr.kind_name or '?'})",
+                from_signal=str(ast_node)[:50] if ast_node else "",
+                to_signals=[name],
+            ))
+            result.append(atomic)
+        return result
+
+    def _is_simple_literal(self, name: str) -> bool:
+        """检测是否为简单字面量 (4'b1011, 8'hFF)"""
+        import re
+        return bool(re.match(r"^\d+'(s?[dhbHoO])[0-9a-fA-FxXzZ?]+$", name))
+
+    def _extract_condition_atomic(self, edge, src_signal: str) -> list:
+        """从 TraceEdge 提取条件中的原子信号
+
+        [V2] 优先用 condition_ast, 回退到字符串解析.
+
+        Args:
+            edge: TraceEdge 实例
+            src_signal: 起点信号 (作为 context)
+
+        Returns:
+            AtomicSignal 列表
+        """
+        if edge is None:
+            return []
+
+        # 优先: 用 AST
+        ast_node = getattr(edge, "condition_ast", None)
+        if ast_node is not None:
+            return self._extract_atomics_from_ast(ast_node)
+
+        # Fallback: 用字符串 (effective_condition 优先, 然后 condition)
+        cond = getattr(edge, "effective_condition", "") or ""
+        if not cond:
+            cond = getattr(edge, "condition", "") or ""
+        return self._parse_expression_to_atomics(cond)
+
     def generate_coverage_markdown(self, result) -> str:
         """生成 Markdown 格式的分解报告
 
