@@ -11,6 +11,7 @@ import pyslang
 
 from .base import PyslangAdapter
 from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
+from .edge_factory import TraceEdgeFactory  # [P1 cycle 2] 消除 8+ ctx.get 模板
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
@@ -34,6 +35,8 @@ class DriverExtractor:
         self._stmt_visitor = StatementCollectorVisitor(adapter)
         # SubroutineExpander for function/task call expansion
         self._subroutine_expander = SubroutineExpander(adapter)
+        # [P1 cycle 2] TraceEdge 工厂, 消除 8+ ctx.get + 7+ sig_cond 模板
+        self._edge_factory = TraceEdgeFactory()
 
     def _get_all_signals(self, signal) -> list[str]:
         """提取表达式中的所有信号名
