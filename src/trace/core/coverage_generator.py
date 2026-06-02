@@ -408,6 +408,111 @@ class ControlCoverageGenerator:
             return f"{prefix}.{name}"
         return name
 
+    def generate_coverage_markdown(self, result) -> str:
+        """生成 Markdown 格式的分解报告
+
+        Args:
+            result: DecompositionResult 实例
+
+        Returns:
+            Markdown 文本
+        """
+        lines: list[str] = []
+
+        # 标题
+        lines.append("# 控制覆盖度分解报告")
+        lines.append("")
+
+        # 概要
+        lines.append("## 概要")
+        lines.append("")
+        lines.append(f"- **原始信号**: `{result.original_signal}`")
+        lines.append(
+            f"- **原子信号数**: {result.signal_count} "
+            f"({'超出限制' if result.truncated else 'OK'})"
+        )
+        lines.append(f"- **分解深度**: {result.depth_reached}")
+        lines.append(f"- **控制块数**: {len(result.control_blocks)}")
+        lines.append("")
+
+        # 错误信息
+        if result.error:
+            lines.append("## ⚠️ 错误")
+            lines.append("")
+            lines.append(f"```\n{result.error}\n```")
+            lines.append("")
+
+        # 原子信号清单
+        lines.append("## 原子信号清单")
+        lines.append("")
+        if not result.atomic_signals:
+            lines.append("(无)")
+        else:
+            for i, sig in enumerate(result.atomic_signals, 1):
+                lines.append(f"### {i}. `{sig.name}`")
+                lines.append("")
+                # 位选
+                if sig.bit_range is not None:
+                    high, low = sig.bit_range
+                    if high == low:
+                        lines.append(f"- **位选**: [{high}]")
+                    else:
+                        lines.append(f"- **位选**: [{high}:{low}]")
+                else:
+                    lines.append("- **位选**: 完整")
+                # 源位置
+                if sig.source and not sig.source.is_empty():
+                    lines.append(f"- **源位置**: `{sig.source}`")
+                # 证据链
+                if sig.evidence:
+                    lines.append("- **证据链**:")
+                    for step in sig.evidence:
+                        lines.append(f"  - ({step.step_type}) {step.description}")
+                lines.append("")
+
+        # 控制块详情
+        if result.control_blocks:
+            lines.append("## 控制块详情")
+            lines.append("")
+            for i, block in enumerate(result.control_blocks, 1):
+                lines.append(f"### 控制块 #{i}")
+                lines.append("")
+                # block 可能是 TraceEdge 或 ControlBlock
+                if hasattr(block, "effective_condition"):
+                    cond = block.effective_condition or block.condition or ""
+                    expr = getattr(block, "expression", "") or ""
+                    lines.append(f"- **条件**: `{cond}`")
+                    lines.append(f"- **驱动表达式**: `{expr}`")
+                    src = getattr(block, "src", "")
+                    dst = getattr(block, "dst", "")
+                    if src and dst:
+                        lines.append(f"- **边**: `{src}` → `{dst}`")
+                else:
+                    lines.append(f"- {block}")
+                lines.append("")
+
+        # 提示
+        lines.append("---")
+        lines.append("")
+        lines.append("> 💡 **下一步**:")
+        if result.atomic_signals:
+            lines.append("> ")
+            lines.append(f"> 将 {len(result.atomic_signals)} 个原子信号添加到 covergroup:")
+            lines.append("> ")
+            lines.append("> ```systemverilog")
+            lines.append(f"> covergroup cg_{result.original_signal.replace('.', '_')} @ (posedge clk);")
+            lines.append(">     // 自动生成的 cross 覆盖")
+            names_str = ", ".join(s.name for s in result.atomic_signals)
+            lines.append(f">     cross {names_str} {{")
+            lines.append(">         // bins 由工具根据关键值生成")
+            lines.append(">     }")
+            lines.append("> endgroup")
+        else:
+            lines.append("> 无原子信号可生成")
+        lines.append("")
+
+        return "\n".join(lines)
+
 
 # ==============================================================================
 # Cycle 3: Driver 链追踪 + 端口检测

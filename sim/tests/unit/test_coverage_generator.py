@@ -743,5 +743,96 @@ class TestDecompose(unittest.TestCase):
         self.assertEqual(result.signal_count, len(result.atomic_signals))
 
 
+# ==============================================================================
+# Cycle 5: Markdown 输出
+# ==============================================================================
+
+
+class TestMarkdownOutput(unittest.TestCase):
+    """generate_coverage_markdown() - Markdown 报告生成"""
+
+    def _make_setup_graph(self):
+        """复用 TestDecompose 的图"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        # 节点
+        g.add_trace_node(_make_signal_node("top.x"))
+        g.add_trace_node(_make_signal_node("top.c"))
+        g.add_trace_node(_make_signal_node("top.d"))
+        g.add_trace_node(_make_signal_node("top.a"))
+        g.add_trace_node(_make_signal_node("top.b"))
+        g.add_trace_node(_make_signal_node("top.en_input", is_port=True))
+        # 边
+        g.add_trace_edge(_make_conditional_edge(
+            "top.c", "top.x", expr="c & d",
+            condition="rst_n && en",
+            effective_condition="en",
+        ))
+        g.add_trace_edge(_make_conditional_edge(
+            "top.d", "top.x", expr="c & d",
+            condition="rst_n && en",
+            effective_condition="en",
+        ))
+        g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
+        g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
+        g.add_trace_edge(_make_driver_edge("top.en_input", "top.a", expr="a_input"))
+        return g
+
+    def test_markdown_returns_string(self):
+        """返回字符串"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        md = gen.generate_coverage_markdown(result)
+        self.assertIsInstance(md, str)
+        self.assertGreater(len(md), 0)
+
+    def test_markdown_contains_title(self):
+        """包含标题"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        md = gen.generate_coverage_markdown(result)
+        self.assertIn("#", md)
+
+    def test_markdown_contains_atomic_signals(self):
+        """包含原子信号名"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        md = gen.generate_coverage_markdown(result)
+        # 至少包含 en, c, d, a, b 之一
+        self.assertTrue(any(s in md for s in ["en", "c", "d", "a", "b"]))
+
+    def test_markdown_contains_summary(self):
+        """包含概要信息 (原始信号、原子数等)"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"])
+        md = gen.generate_coverage_markdown(result)
+        # 原始信号名
+        self.assertIn("top.x", md)
+        # 原子信号数
+        self.assertIn("5", md)  # 我们有 5 个原子信号
+
+    def test_markdown_with_no_signals(self):
+        """空结果也有合理输出"""
+        from trace.core.graph.models import SignalGraph
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.unknown"])
+        md = gen.generate_coverage_markdown(result)
+        self.assertIsInstance(md, str)
+
+    def test_markdown_with_truncated(self):
+        """截断时显示错误信息"""
+        g = self._make_setup_graph()
+        gen = ControlCoverageGenerator(graph=g)
+        result = gen.decompose(["top.x"], max_signals=2)
+        md = gen.generate_coverage_markdown(result)
+        # 截断时应有警告
+        self.assertTrue("max_signals" in md or "truncated" in md.lower() or "超出" in md)
+
+
 if __name__ == '__main__':
     unittest.main()
