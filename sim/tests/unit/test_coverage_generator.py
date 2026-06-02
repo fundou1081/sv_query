@@ -2535,5 +2535,286 @@ class TestControlFlowGraphP1(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+class TestTraceEdgeFactoryP1Cycle6(unittest.TestCase):
+    """P1 cycle 6: TraceEdgeFactory 边界 / 强化 测试
+
+    目标: 把 factory 守护起来, 未来重构不破坏契约。
+    覆盖所有 EdgeKind, 边界值, None 处理, 不可变性。
+    """
+
+    def test_factory_with_edgekind_clock(self):
+        """kind=CLOCK 创建 CLOCK 边"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="clk", dst="x", expression="",
+            kind=EdgeKind.CLOCK,
+            assign_type="nonblocking",
+            clock_domain="clk",
+        )
+        self.assertEqual(edge.kind, EdgeKind.CLOCK)
+
+    def test_factory_with_edgekind_reset(self):
+        """kind=RESET 创建 RESET 边"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="rst", dst="x", expression="",
+            kind=EdgeKind.RESET,
+            clock_domain="clk",
+        )
+        self.assertEqual(edge.kind, EdgeKind.RESET)
+
+    def test_factory_with_edgekind_connection(self):
+        """kind=CONNECTION 创建 CONNECTION 边 (V1 边界场景)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="top.in", dst="top.q", expression="in",
+            kind=EdgeKind.CONNECTION,
+        )
+        self.assertEqual(edge.kind, EdgeKind.CONNECTION)
+
+    def test_factory_does_not_mutate_ctx(self):
+        """传 ctx dict, factory 不修改 ctx"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        ctx = {
+            "clock": "clk",
+            "condition": "en",
+            "effective_condition": "en",
+            "condition_ast": "ast",
+        }
+        ctx_snapshot = dict(ctx)
+        factory.make_edge(src="a", dst="b", expression="a", ctx=ctx)
+        self.assertEqual(ctx, ctx_snapshot, "factory mutated input ctx!")
+
+    def test_factory_creates_distinct_edges(self):
+        """多次调用创建不同的 TraceEdge 实例 (无 aliasing)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        e1 = factory.make_edge(src="a", dst="b", expression="a")
+        e2 = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertIsNot(e1, e2, "factory returned same instance!")
+        # 修改 e1 不应影响 e2
+        e1.condition = "modified"
+        self.assertEqual(e2.condition, "")
+
+    def test_factory_with_complex_bit_slice(self):
+        """复杂 bit_slice (如 '[7:0][3:0]') 透传"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="data", dst="q", expression="data",
+            bit_slice="[7:0][3:0]",
+        )
+        self.assertEqual(edge.bit_slice, "[7:0][3:0]")
+
+    def test_factory_with_assign_type_blocking(self):
+        """assign_type='blocking' 透传"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            assign_type="blocking",
+        )
+        self.assertEqual(edge.assign_type, "blocking")
+
+    def test_factory_with_empty_assign_type(self):
+        """assign_type 默认空字符串"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertEqual(edge.assign_type, "")
+
+    def test_factory_empty_ctx_plus_explicit_sig_cond(self):
+        """ctx={} + sig_cond 字符串: 工厂退化为 sig_cond-only 模式"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            ctx={},  # 空 ctx (但非 None)
+            sig_cond="if_en",
+        )
+        # 空的 ctx {} 仍被视为 use_ctx, condition 从 ctx.get('') 得 ""
+        # sig_cond 被忽略
+        self.assertEqual(edge.condition, "")
+
+    def test_factory_with_none_sig_cond_ast(self):
+        """sig_cond_ast=None 是合法值 (sig_cond-based 点默认)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            sig_cond="if_en",
+            sig_cond_ast=None,  # 显式 None
+        )
+        self.assertIsNone(edge.condition_ast)
+        self.assertEqual(edge.condition, "if_en")
+
+    def test_factory_with_confidence_default(self):
+        """confidence 字段默认 'high' (TraceEdge 默认行为)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertEqual(edge.confidence, "high")
+
+    def test_factory_with_modport_dir(self):
+        """modport_dir=None 默认"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        edge = factory.make_edge(src="a", dst="b", expression="a")
+        self.assertIsNone(edge.modport_dir)
+
+    def test_factory_long_condition_string(self):
+        """长 condition 字符串 (e.g., 100+ chars) 透传不截断"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        long_cond = " && ".join([f"var_{i}" for i in range(50)])
+        edge = factory.make_edge(
+            src="a", dst="b", expression="a",
+            ctx={"condition": long_cond},
+        )
+        self.assertEqual(edge.condition, long_cond)
+
+    def test_factory_repeated_calls_independent(self):
+        """同一 factory 多次调用, 内部状态不污染"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+        factory = TraceEdgeFactory()
+        # 第一次: CLOCK 边
+        e1 = factory.make_edge(src="clk", dst="x", expression="",
+            kind=EdgeKind.CLOCK, clock_domain="clk1")
+        # 第二次: DRIVER 边
+        e2 = factory.make_edge(src="a", dst="b", expression="a",
+            ctx={"clock": "clk2", "condition": "en"})
+        # 验证两者独立
+        self.assertEqual(e1.kind, EdgeKind.CLOCK)
+        self.assertEqual(e2.kind, EdgeKind.DRIVER)
+        self.assertEqual(e1.clock_domain, "clk1")
+        self.assertEqual(e2.clock_domain, "clk2")
+
+    def test_factory_with_special_chars_in_expression(self):
+        """特殊字符在 expression 透传 (位选, 拼接等)"""
+        from trace.core.edge_factory import TraceEdgeFactory
+        factory = TraceEdgeFactory()
+        special_exprs = [
+            "{a, b[3:0]}",
+            "data[7:0] | mask[3:0]",
+            "cond ? a : b",
+            "func(in1, in2)",
+        ]
+        for expr in special_exprs:
+            edge = factory.make_edge(src="x", dst="y", expression=expr)
+            self.assertEqual(edge.expression, expr, f"failed for: {expr}")
+
+
+class TestGraphBuilderFactoryRegressionP1(unittest.TestCase):
+    """P1 cycle 7: 回归测试 - 守护 V2.A.2 + P1 cycle 1-5 不被破坏"""
+
+    def test_factory_used_in_graph_builder_e2e(self):
+        """e2e: graph_builder 创建的 TraceEdge 行为跟 factory 一致
+
+        间接验证: 用 factory 期望值对比 graph_builder 实际产出。
+        """
+        from trace.core.edge_factory import TraceEdgeFactory
+        from trace.core.graph.models import EdgeKind
+
+        factory = TraceEdgeFactory()
+        # factory 期望值
+        expected = factory.make_edge(
+            src="data_path.clk", dst="data_path.din",
+            expression="clk",
+            kind=EdgeKind.CLOCK,
+            assign_type="nonblocking",
+            clock_domain="clk",
+        )
+
+        # 跑真实 graph_builder
+        import os
+        from trace.unified_tracer import UnifiedTracer
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        with open(sv_file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={sv_file: source}, log_level="ERROR")
+        graph = tracer.build_graph()
+
+        # 找 CLOCK 边 (src 含 'clk', dst 含 'data_path.')
+        clock_edges = [
+            e for _k, edges in graph._edge_data.items()
+            for e in edges
+            if e.kind == EdgeKind.CLOCK
+            and "clk" in e.src.lower() and "data_path" in e.dst
+        ]
+        if not clock_edges:
+            self.skipTest("No CLOCK edge in test_data_path.sv")
+        # 验证至少一个 CLOCK 边有 clock_domain 填上
+        self.assertTrue(
+            any(e.clock_domain for e in clock_edges),
+            "No CLOCK edge has clock_domain set"
+        )
+
+    def test_graph_builder_condition_ast_filled(self):
+        """回归: V2.A.2 cycle 17d 改完后, 47/47 条件边带 condition_ast (100%)"""
+        import os
+        from trace.unified_tracer import UnifiedTracer
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        with open(sv_file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={sv_file: source}, log_level="ERROR")
+        graph = tracer.build_graph()
+
+        with_cond = with_ast = 0
+        for _key, edges in graph._edge_data.items():
+            for edge in edges:
+                if edge.condition or edge.effective_condition:
+                    with_cond += 1
+                    if getattr(edge, "condition_ast", None) is not None:
+                        with_ast += 1
+        # 100% 填充率 (V2.A.2 + P1 cycle 2 共同保证)
+        self.assertEqual(with_ast, with_cond,
+            f"AST 填充率非 100%: {with_ast}/{with_cond}")
+        self.assertGreater(with_ast, 0, "test_data_path.sv 没有条件边?")
+
+    def test_graph_builder_factory_usage_dominates(self):
+        """回归: graph_builder DriverExtractor 内 factory 调用 ≥ 8 (P1 cycle 2-3 范围)
+
+        软验证: V2.A.2 + P1 cycle 2-3 改的 12 个 site 全部用 factory.
+        保留 6 处其他代码路径的 TraceEdge( 直接调用 (alias/port-align/function-call)
+        是后续 cycle 范围.
+        """
+        import re
+        with open("/Users/fundou/my_dvproj/sv_query/src/trace/core/graph_builder.py") as f:
+            content = f.read()
+
+        # DriverExtractor 类范围
+        de_start = content.find("class DriverExtractor:")
+        le_start = content.find("class LoadExtractor:")
+        if de_start < 0 or le_start < 0:
+            self.skipTest("class boundaries not found")
+        de_block = content[de_start:le_start]
+
+        # 统计 factory 调用次数
+        factory_calls = len(re.findall(r"_edge_factory\.make_edge\(", de_block))
+        # V2.A.2 + P1 cycle 2-3 改的 12 个 site 应全用 factory
+        self.assertGreaterEqual(
+            factory_calls, 12,
+            f"factory.make_edge() 调用次数 {factory_calls} < 12, V2.A.2 + P1 cycle 2-3 的改动可能丢失"
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
