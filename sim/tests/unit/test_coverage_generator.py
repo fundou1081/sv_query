@@ -1025,5 +1025,184 @@ class TestASTParsing(unittest.TestCase):
         self.assertIn("b", result.all_signals)
 
 
+# ==============================================================================
+# V2 Cycle 11: AST 集成 - TraceEdge.condition_ast 字段
+# ==============================================================================
+
+
+class TestTraceEdgeConditionAST(unittest.TestCase):
+    """TraceEdge.condition_ast 字段存在
+
+    需求: graph_builder 填充 condition 时同时存 AST, 让 coverage_generator
+    走 AST 路径 (而不是字符串解析).
+    """
+
+    def test_condition_ast_field_exists(self):
+        """TraceEdge 应该有 condition_ast 字段 (默认 None)"""
+        from trace.core.graph.models import TraceEdge, EdgeKind
+        edge = TraceEdge(
+            src="top.a",
+            dst="top.b",
+            kind=EdgeKind.DRIVER,
+            condition="en",
+        )
+        self.assertTrue(hasattr(edge, "condition_ast"))
+        # 默认 None
+        self.assertIsNone(edge.condition_ast)
+
+    def test_condition_ast_can_be_set(self):
+        """condition_ast 可以被设置"""
+        from trace.core.graph.models import TraceEdge, EdgeKind
+        sentinel = object()
+        edge = TraceEdge(
+            src="top.a",
+            dst="top.b",
+            kind=EdgeKind.DRIVER,
+            condition="en",
+            condition_ast=sentinel,
+        )
+        self.assertIs(edge.condition_ast, sentinel)
+
+    def test_condition_ast_optional_in_construction(self):
+        """不传 condition_ast 也能正常构造 (向后兼容)"""
+        from trace.core.graph.models import TraceEdge, EdgeKind
+        # 只传必要参数
+        edge = TraceEdge(src="top.a", dst="top.b", kind=EdgeKind.DRIVER)
+        self.assertIsNone(edge.condition_ast)
+        self.assertEqual(edge.condition, "")  # 默认值
+
+
+class TestASTConditionExtraction(unittest.TestCase):
+    """_extract_atomics_from_ast() - 从 AST 节点提取原子信号
+
+    V1 已有 _parse_expression_to_atomics() (字符串).
+    V2 新增 _extract_atomics_from_ast() (AST 节点), 更准确.
+    """
+
+    def _make_gen(self):
+        from trace.core.graph.models import SignalGraph
+        return ControlCoverageGenerator(graph=SignalGraph())
+
+    def test_extract_with_none(self):
+        """None 输入 -> 空列表"""
+        gen = self._make_gen()
+        result = gen._extract_atomics_from_ast(None)
+        self.assertEqual(result, [])
+
+    def test_extract_via_real_pyslang_ast(self):
+        """真实 pyslang AST 解析"""
+        import pyslang
+        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+        from trace.core.semantic_adapter import SemanticAdapter
+
+        source = """
+        module test(input a, b, c, output [3:0] d);
+            assign d = a & b | c;
+        endmodule
+        """
+        tree = pyslang.SyntaxTree.fromText(source)
+        root = tree.root
+
+        # 找 BinaryExpression (a & b | c, 从左到右解析为 ((a & b) | c))
+        def find_binary(node):
+            s = str(node.kind)
+            if "Binary" in s and "Expression" in s:
+                return node
+            if hasattr(node, "__iter__") and not isinstance(node, str):
+                try:
+                    for c in node:
+                        r = find_binary(c)
+                        if r is not None:
+                            return r
+                except Exception:
+                    pass
+            return None
+
+        binary = find_binary(root)
+        self.assertIsNotNone(binary, "Should find a Binary expression")
+
+        comp = pyslang.Compilation()
+        comp.addSyntaxTree(tree)
+        adapter = SemanticAdapter(root, comp)
+        visitor = SignalExpressionVisitor(adapter)
+        sr = visitor.extract(binary)
+
+        gen = self._make_gen()
+        atomics = gen._extract_atomics_from_ast(binary)
+        names = {s.name for s in atomics}
+
+        # 字符串解析 (_parse_expression_to_atomics) 已经能处理
+        # 但 AST 路径应该返回相同结果
+        for expected in ("a", "b", "c"):
+            self.assertIn(expected, names)
+
+    def test_extract_ast_path_preferred(self):
+        """当 AST 可用时, _extract_condition_atomic 优先用 AST"""
+        import pyslang
+        from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
+        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+        from trace.core.semantic_adapter import SemanticAdapter
+
+        # 构造一个 TraceEdge, 带 AST
+        source = """
+        module test(input a, b, output [3:0] c);
+            assign c = a & b;
+        endmodule
+        """
+        tree = pyslang.SyntaxTree.fromText(source)
+        root = tree.root
+
+        def find_binary(node):
+            s = str(node.kind)
+            if "Binary" in s and "Expression" in s:
+                return node
+            if hasattr(node, "__iter__") and not isinstance(node, str):
+                try:
+                    for c in node:
+                        r = find_binary(c)
+                        if r is not None:
+                            return r
+                except Exception:
+                    pass
+            return None
+
+        ast_node = find_binary(root)
+        self.assertIsNotNone(ast_node)
+
+        # 模拟一个 "被错误字符串表示" 的 edge (但 AST 是正确的)
+        edge = TraceEdge(
+            src="top.a",
+            dst="top.c",
+            kind=EdgeKind.DRIVER,
+            condition="BROKEN_STRING",  # 故意错的字符串
+            condition_ast=ast_node,     # AST 是对的
+        )
+
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        # 优先用 AST, 应该能正确解析出 a, b
+        atomics = gen._extract_condition_atomic(edge, "top.c")
+        names = {s.base_name for s in atomics}
+        self.assertIn("a", names)
+        self.assertIn("b", names)
+
+    def test_extract_fallback_to_string(self):
+        """当 AST 不可用 (None) 时, 回退到字符串解析"""
+        from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
+        g = SignalGraph()
+        gen = ControlCoverageGenerator(graph=g)
+        edge = TraceEdge(
+            src="top.a",
+            dst="top.c",
+            kind=EdgeKind.DRIVER,
+            condition="a & b",  # 只用字符串
+            condition_ast=None,
+        )
+        atomics = gen._extract_condition_atomic(edge, "top.c")
+        names = {s.base_name for s in atomics}
+        self.assertIn("a", names)
+        self.assertIn("b", names)
+
+
 if __name__ == '__main__':
     unittest.main()
