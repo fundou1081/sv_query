@@ -33,6 +33,7 @@ from src.cli.commands.timing import timing_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
+from src.cli.commands.search import search
 
 app = typer.Typer(
     name="svq",
@@ -266,6 +267,7 @@ def _output_fanout_rank(data: dict, top_n: int = 20) -> None:
 
 # 注册 stats 为独立命令
 app.command(name="stats", help="Show graph statistics")(stats_callback)
+app.command(name="search", help="Grep-like keyword search across .sv/.v files")(search)
 
 
 @app.callback(invoke_without_command=True)
