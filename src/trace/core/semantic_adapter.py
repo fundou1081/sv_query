@@ -109,6 +109,31 @@ class SemanticAdapter:
 
         return (filename, line, col, sr.end.offset)
 
+    def get_source_text(self, node) -> str:
+        """[Stage 2] 获取节点所在文件的完整源码
+
+        Args:
+            node: semantic AST node (或 syntax node, 有 .sourceRange 即可)
+
+        Returns:
+            str: 文件完整源码, 失败返回空字符串
+
+        使用 pyslang SourceManager.getSourceText (避免自己读文件)
+        """
+        if node is None:
+            return ""
+        syn = getattr(node, "syntax", None) or node
+        sr = getattr(syn, "sourceRange", None)
+        if sr is None:
+            return ""
+        try:
+            sm = self._compiler.get_compilation().sourceManager
+            buf = sr.start.buffer
+            if buf is None: return ""
+            return sm.getSourceText(buf)
+        except Exception:
+            return ""
+
     # =========================================================================
     # 模块和实例相关
     # =========================================================================
