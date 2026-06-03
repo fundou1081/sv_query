@@ -517,3 +517,151 @@ def _extract_modules(paths: list) -> list:
             if len(parts) > 1:
                 modules.add(parts[0])
     return sorted(list(modules))
+
+
+# ==============================================================================
+# Stage 3A: evidence 命令 - 召回 always/if 块完整源码
+# ==============================================================================
+
+@trace_app.command()
+def evidence(
+    signal: str = typer.Argument(..., help="Signal to query (e.g., top.q)"),
+    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    chain: bool = typer.Option(False, "--chain", "-c", help="Show evidence for entire driver chain"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+) -> None:
+    """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
+    try:
+        from trace.core.trace_evidence import TraceEvidenceResolver
+
+        with open(str(file)) as f:
+            source = f.read()
+        # [Stage 3A] --json 模式静音编译器 WARNING (跟 V2.A.2 cycle 13 一致)
+        tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR")
+        graph = tracer.build_graph()
+        sem = tracer._get_adapter()
+
+        resolver = TraceEvidenceResolver(graph=graph, adapter=sem)
+
+        if chain:
+            evidences = resolver.resolve_chain(signal)
+            ev_dicts = [_evidence_to_dict(e) for e in evidences]
+            data = {
+                "ok": True,
+                "command": "trace_evidence",
+                "params": {"signal": signal, "file": str(file), "chain": True},
+                "signal": signal,
+                "evidence_chain": ev_dicts,
+                "errors": [],
+            }
+        else:
+            ev = resolver.resolve(signal)
+            data = {
+                "ok": True,
+                "command": "trace_evidence",
+                "params": {"signal": signal, "file": str(file), "chain": False},
+                "signal": signal,
+                "evidence": _evidence_to_dict(ev),
+                "errors": [],
+            }
+
+        if json_output:
+            output_json(data, pretty)
+        else:
+            _output_evidence_text(data)
+
+    except Exception as e:
+        data = {"ok": False, "command": "trace_evidence", "error": str(e), "errors": [str(e)]}
+        if json_output:
+            output_json(data)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+        raise typer.Exit(code=1) from None
+
+
+def _snippet_to_dict(snippet) -> dict | None:
+    """SourceSnippet → dict"""
+    if snippet is None:
+        return None
+    return {
+        "file": snippet.location.file,
+        "line_start": snippet.location.line_start,
+        "line_end": snippet.location.line_end,
+        "column": snippet.location.column,
+        "text": snippet.text,
+    }
+
+
+def _evidence_to_dict(ev) -> dict:
+    """Evidence → dict"""
+    return {
+        "signal": ev.signal,
+        "source_location": (
+            {
+                "file": ev.source_location.file,
+                "line_start": ev.source_location.line_start,
+                "line_end": ev.source_location.line_end,
+                "column": ev.source_location.column,
+            }
+            if ev.source_location is not None
+            else None
+        ),
+        "source_text": ev.source_text,
+        "enclosing_always": _snippet_to_dict(ev.enclosing_always),
+        "enclosing_if": _snippet_to_dict(ev.enclosing_if),
+        "enclosing_chain": [_snippet_to_dict(s) for s in ev.enclosing_chain],
+    }
+
+
+def _output_evidence_text(data: dict) -> None:
+    """人友好文本输出"""
+    signal = data.get("signal", "")
+    print(f"Signal: {signal}")
+    print("=" * 60)
+
+    chain = data.get("evidence_chain")
+    if chain is not None:
+        # driver chain mode
+        if not chain:
+            print("  (no evidence found)")
+            return
+        for i, ev in enumerate(chain):
+            print(f"\n[Step {i}] {ev.get('signal', '?')}")
+            if ev.get("source_text"):
+                print(f"  Source: {ev['source_text']!r}")
+            if ev.get("enclosing_if"):
+                loc = ev["enclosing_if"]
+                print(f"\n  >>> Enclosing IF @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+                for line in loc["text"].split("\n"):
+                    print(f"  {line}")
+            if ev.get("enclosing_always"):
+                loc = ev["enclosing_always"]
+                print(f"\n  >>> Enclosing ALWAYS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+                for line in loc["text"].split("\n"):
+                    print(f"  {line}")
+        return
+
+    ev = data.get("evidence", {})
+    if not ev:
+        print("  (no evidence found)")
+        return
+    if ev.get("source_text"):
+        print(f"Source: {ev['source_text']!r}")
+    if ev.get("enclosing_if"):
+        loc = ev["enclosing_if"]
+        print(f"\n>>> Enclosing IF @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+        for line in loc["text"].split("\n"):
+            print(line)
+    if ev.get("enclosing_always"):
+        loc = ev["enclosing_always"]
+        print(f"\n>>> Enclosing ALWAYS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+        for line in loc["text"].split("\n"):
+            print(line)
+    chain_inner = ev.get("enclosing_chain", [])
+    if chain_inner:
+        print(f"\nFull chain ({len(chain_inner)} levels):")
+        for i, snip in enumerate(chain_inner):
+            if snip:
+                preview = snip["text"][:60].replace("\n", "\\n")
+                print(f"  [{i}] {snip['file']}:{snip['line_start']}-{snip['line_end']}  {preview!r}")
