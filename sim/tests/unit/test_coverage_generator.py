@@ -2790,30 +2790,118 @@ class TestGraphBuilderFactoryRegressionP1(unittest.TestCase):
         self.assertGreater(with_ast, 0, "test_data_path.sv 没有条件边?")
 
     def test_graph_builder_factory_usage_dominates(self):
-        """回归: graph_builder DriverExtractor 内 factory 调用 ≥ 8 (P1 cycle 2-3 范围)
+        """回归: driver_extractor.py 内 factory 调用 ≥ 8 (P1 cycle 2-3 范围)
 
         软验证: V2.A.2 + P1 cycle 2-3 改的 12 个 site 全部用 factory.
         保留 6 处其他代码路径的 TraceEdge( 直接调用 (alias/port-align/function-call)
         是后续 cycle 范围.
         """
         import re
-        with open("/Users/fundou/my_dvproj/sv_query/src/trace/core/graph_builder.py") as f:
+        with open("/Users/fundou/my_dvproj/sv_query/src/trace/core/driver_extractor.py") as f:
             content = f.read()
 
-        # DriverExtractor 类范围
-        de_start = content.find("class DriverExtractor:")
-        le_start = content.find("class LoadExtractor:")
-        if de_start < 0 or le_start < 0:
-            self.skipTest("class boundaries not found")
-        de_block = content[de_start:le_start]
-
         # 统计 factory 调用次数
-        factory_calls = len(re.findall(r"_edge_factory\.make_edge\(", de_block))
+        factory_calls = len(re.findall(r"_edge_factory\.make_edge\(", content))
         # V2.A.2 + P1 cycle 2-3 改的 12 个 site 应全用 factory
         self.assertGreaterEqual(
             factory_calls, 12,
             f"factory.make_edge() 调用次数 {factory_calls} < 12, V2.A.2 + P1 cycle 2-3 的改动可能丢失"
         )
+
+
+class TestTraceEdgeSourceLocationEvidence(unittest.TestCase):
+    """Stage 1: TraceEdge 加 source_location + semantic_adapter 修复
+
+    为后续 evidence 功能准备: edge 知道自身来自哪一行源码。
+    """
+
+    def test_trace_edge_has_source_location_field(self):
+        """TraceEdge 有 source_location 字段 (默认 None)"""
+        from trace.core.graph.models import TraceEdge, EdgeKind
+        e = TraceEdge(src="a", dst="b", kind=EdgeKind.DRIVER)
+        self.assertTrue(hasattr(e, "source_location"))
+        # 默认 None
+        self.assertIsNone(e.source_location)
+
+    def test_trace_edge_source_location_can_be_set(self):
+        """TraceEdge source_location 可设值"""
+        from trace.core.graph.models import TraceEdge, EdgeKind
+        from trace.core.coverage_models import SourceLocation
+        e = TraceEdge(src="a", dst="b", kind=EdgeKind.DRIVER)
+        e.source_location = SourceLocation(
+            file="top.sv", line_start=5, line_end=5, column=4
+        )
+        self.assertEqual(e.source_location.file, "top.sv")
+        self.assertEqual(e.source_location.line_start, 5)
+
+    def test_semantic_adapter_get_source_location_returns_real_data(self):
+        """semantic_adapter.get_source_location 不再返回空 (走 semantic_node.syntax)"""
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+        from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+
+        source = '''
+module top(input clk, input [7:0] a, output reg [7:0] q);
+    always_ff @(posedge clk) begin
+        if (a > 8'd100) begin
+            q <= 8'hFF;
+        end
+    end
+endmodule'''
+        comp = SVCompiler({'test.sv': source})
+        root = comp.get_root()
+        sem = SemanticAdapter(root, comp.get_compilation())
+
+        # 拿 always block
+        for module in list(sem.get_modules()):
+            for ab in sem.get_always_blocks(module):
+                loc = sem.get_source_location(ab)
+                # 期望: file 非空, line > 0
+                self.assertNotEqual(loc[0], "", f"file should not be empty, got {loc}")
+                self.assertGreater(loc[1], 0, f"line should be > 0, got {loc}")
+                # 我们的 always_ff 块在第 3 行
+                self.assertEqual(loc[1], 3, f"expected line 3, got {loc[1]}")
+
+    def test_graph_builder_populates_source_location_on_edges(self):
+        """graph_builder 创建 edge 时填 source_location (从 condition_ast 拿)
+
+        实际数据验证: test_data_path.sv 上的边有 source_location
+        """
+        import os
+        sys_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')
+        import sys
+        sys.path.insert(0, sys_path)
+        from trace.unified_tracer import UnifiedTracer
+
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        with open(sv_file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={sv_file: source}, log_level="ERROR")
+        graph = tracer.build_graph()
+
+        # 找带 condition 的边
+        with_loc = 0
+        total_with_cond = 0
+        for _key, edges in graph._edge_data.items():
+            for edge in edges:
+                if getattr(edge, "condition_ast", None) is not None:
+                    total_with_cond += 1
+                    if getattr(edge, "source_location", None) is not None:
+                        with_loc += 1
+        # 期望: 至少 1 条边带 source_location
+        self.assertGreater(with_loc, 0,
+            f"Expected at least 1 edge with source_location, got {with_loc}/{total_with_cond}")
+        # 期望: source_location 填充率与 condition_ast 接近 (10% 以上)
+        if total_with_cond > 0:
+            ratio = with_loc / total_with_cond
+            self.assertGreater(ratio, 0.1,
+                f"source_location fill rate {ratio:.1%} too low ({with_loc}/{total_with_cond})")
 
 
 if __name__ == '__main__':

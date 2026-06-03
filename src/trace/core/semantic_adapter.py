@@ -61,13 +61,53 @@ class SemanticAdapter:
     def get_source_location(self, node) -> tuple:
         """获取节点的源码位置
 
-        Semantic AST 不直接存储源码位置，返回空值。
-        实际位置信息需要从 SyntaxTree 获取。
+        [Stage 1] 从 semantic_node.syntax.sourceRange + SourceManager 拿真实位置
+        之前返回空值 (注释说"需要从 SyntaxTree 获取"), 现已修复.
 
         Returns:
             tuple: (filename, line, column, offset)
+            - filename: str, 源文件路径 (如 "test.sv")
+            - line: int, 1-indexed 起始行
+            - column: int, 0-indexed 起始列
+            - offset: int, 结束 offset (备用)
+
+        如果节点无 syntax 信息 (e.g., 虚拟节点), 返回空位置
         """
-        return ("", 0, 0, 0)
+        if node is None:
+            return ("", 0, 0, 0)
+        # 拿 syntax 节点
+        syn = getattr(node, "syntax", None)
+        if syn is None:
+            return ("", 0, 0, 0)
+        sr = getattr(syn, "sourceRange", None)
+        if sr is None:
+            return ("", 0, 0, 0)
+
+        # 拿 SourceManager
+        # 兼容传 SVCompiler 或 Compilation 两种情况
+        try:
+            compiler_or_comp = self._compiler
+            if hasattr(compiler_or_comp, "get_compilation"):
+                sm = compiler_or_comp.get_compilation().sourceManager
+            else:
+                sm = compiler_or_comp.sourceManager
+        except AttributeError:
+            return ("", 0, 0, 0)
+
+        # 拿文件路径
+        try:
+            filename = sm.getFileName(sr.start)
+        except Exception:
+            filename = ""
+
+        # 拿 line/column
+        try:
+            line = sm.getLineNumber(sr.start)
+            col = sm.getColumnNumber(sr.start)
+        except Exception:
+            line, col = 0, 0
+
+        return (filename, line, col, sr.end.offset)
 
     # =========================================================================
     # 模块和实例相关

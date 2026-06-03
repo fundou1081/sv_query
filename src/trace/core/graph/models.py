@@ -9,6 +9,10 @@ from typing import Any
 
 import networkx as nx
 
+# [Stage 1] TraceEdge.source_location 字段用 SourceLocation
+# coverage_models 不反向依赖 graph.models, 无循环 import 风险
+from ..coverage_models import SourceLocation
+
 
 class NodeKind(Enum):
     SIGNAL = auto()
@@ -103,6 +107,8 @@ class TraceEdge:
     confidence: str = "high"
     expression: str = ""  # 驱动表达式 (如 "sreg_d", "a + b")
     bit_slice: str = ""  # 位选择 (如 "[8:1]")
+    # [Stage 1] 源码位置 (条件表达式位置, 后续 stage 扩展为 assignment + enclosing scope)
+    source_location: SourceLocation | None = None  # noqa: F821 -- forward ref
 
 
 @dataclass
