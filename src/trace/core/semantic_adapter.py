@@ -76,7 +76,12 @@ class SemanticAdapter:
         if node is None:
             return ("", 0, 0, 0)
         # 拿 syntax 节点
+        # 兼容两种情况: 1) node 是 semantic node (有 .syntax 属性)
+        #               2) node 本身是 syntax node (直接有 .sourceRange)
         syn = getattr(node, "syntax", None)
+        if syn is None:
+            # 可能是 syntax node 直接 (如 IntegerVectorExpressionSyntax)
+            syn = node if getattr(node, "sourceRange", None) is not None else None
         if syn is None:
             return ("", 0, 0, 0)
         sr = getattr(syn, "sourceRange", None)
@@ -129,7 +134,8 @@ class SemanticAdapter:
         try:
             sm = self._compiler.get_compilation().sourceManager
             buf = sr.start.buffer
-            if buf is None: return ""
+            if buf is None:
+                return ""
             return sm.getSourceText(buf)
         except Exception:
             return ""
