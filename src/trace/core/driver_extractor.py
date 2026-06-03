@@ -1062,6 +1062,24 @@ class DriverExtractor:
                                     )
                                 )
 
+        # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
+        # 一次性后处理比每个创建点都填更简洁
+        for edge in result.edges:
+            ast_node = getattr(edge, "condition_ast", None)
+            if ast_node is None:
+                continue
+            if edge.source_location is not None:
+                continue  # 已有
+            try:
+                loc = self.adapter.get_source_location(ast_node)
+                if loc[0]:  # file 非空
+                    from .graph.models import SourceLocation
+                    edge.source_location = SourceLocation(
+                        file=loc[0], line_start=loc[1], line_end=loc[1], column=loc[2]
+                    )
+            except Exception:
+                pass  # source_location 失败不影响 edge
+
         return result
 
     def _collect_assignments_from_stmt(self, node, statements: list, depth=0):
