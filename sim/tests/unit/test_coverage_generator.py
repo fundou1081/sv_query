@@ -3043,3 +3043,76 @@ endmodule'''
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestTraceEvidenceCLIV2(unittest.TestCase):
+    """Stage 3A: CLI 集成 - run_cli.py trace evidence"""
+
+    def test_evidence_command_exists(self):
+        """evidence CLI 命令存在 (在 trace_app 下)"""
+        from src.cli.commands.trace import trace_app
+        # typer 的 registered_commands 是 list of CommandInfo
+        # name 属性可能是 None, 用 callback.__name__ 拿
+        names = [c.callback.__name__ for c in trace_app.registered_commands if c.callback]
+        self.assertIn("evidence", names, f"evidence not found, available: {names}")
+
+    def test_evidence_text_output(self):
+        """CLI evidence 文本输出含 'always_ff' 关键字"""
+        import os
+        import subprocess
+        import sys
+
+        sv_file = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "regression", "test_data_path.sv"
+        ))
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+
+        result = subprocess.run(
+            [sys.executable, "run_cli.py", "trace", "evidence", "data_path.stage1_data",
+             "-f", sv_file],
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        output = result.stdout
+        # 应含 always_ff (说明 enclosing always 召回)
+        self.assertIn("always_ff", output, f"text output missing 'always_ff': {output[:300]}")
+        # 应含 if (说明 enclosing if 召回)
+        self.assertIn("if", output)
+
+    def test_evidence_json_output(self):
+        """CLI evidence --json 输出含 evidence 字段"""
+        import os
+        import subprocess
+        import sys
+        import json
+
+        sv_file = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "regression", "test_data_path.sv"
+        ))
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+
+        result = subprocess.run(
+            [sys.executable, "run_cli.py", "trace", "evidence", "data_path.stage1_data",
+             "-f", sv_file, "--json"],
+            cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            self.skipTest(f"CLI error: {result.stderr[:200]}")
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            self.fail(f"Invalid JSON: {result.stdout[:300]}")
+        # 关键字段
+        self.assertEqual(data.get("command"), "trace_evidence")
+        self.assertEqual(data.get("signal"), "data_path.stage1_data")
+        ev = data.get("evidence", {})
+        self.assertIn("source_location", ev)
+        self.assertIn("enclosing_always", ev)
+        if ev["enclosing_always"]:
+            self.assertIn("text", ev["enclosing_always"])
+            self.assertIn("always_ff", ev["enclosing_always"]["text"])
