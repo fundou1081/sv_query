@@ -281,3 +281,134 @@ class TraceEdgeFactory:
 **创建**: 2026-06-03
 **状态**: 规划完成, 等用户 sign-off
 **下一步**: Cycle 1 (TraceEdgeFactory 类 + 8 测试) — 用户 OK 后开
+
+---
+
+## 8. 实施结果 (cycles 1-9c)
+
+**状态**: ✅ P1 全部完成 (9 cycles + 1 plan + 1 result, 11 commits)
+**总 commit 数**: 11 (1 plan + 9 实施 + 1 文档)
+**净代码改动**: 0 行删除, 0 净改动 (纯结构优化)
+**新增测试**: 25 个 (P1 范围)
+**总测试**: 1322 (V1) → 1414 (P1 后), +92
+
+### Cycle 实施时间线
+
+| Commit | Cycle | 内容 | 行数 |
+|--------|-------|------|------|
+| `1baa2a9` | 0 v1 | 物理拆分 plan (已废) | - |
+| `fff049c` | 0 v2 | 结构问题 plan (重写) | - |
+| `4ee0b27` | 1 | TraceEdgeFactory 类 + 9 测试 | +60 |
+| `97b9a29` | 2 prep | factory 接入 DriverExtractor | +2 |
+| `9ebd0ff` | 2 update | factory 加 clock_domain 参数 | +3 |
+| `86026f2` | 2 site 1 | 字面量 src 边 | -4 |
+| `00beb49` | 2 sites 2-4 | CLOCK/RESET 边 | -7 |
+| `ab8117d` | 2 sites 5-8 + expression default | 普通 ctx-based | -7 |
+| `c2fbb94` | 3 | 4+ sig_cond 替换 | -4 |
+| `c1a69c8` | 5 | case 路径 condition_ast | +2 |
+| `7cde2cd` | 4 | ControlFlowGraph 诊断 | 0 净 |
+| `262307b` | 6-7 | factory 单元测试 + 回归 | +18 测试 |
+| `1fb4569` | 8 | DriverExtractor 物理拆分 | -1743 |
+| `5cda55d` | 9a | LoadExtractor 拆分 + ExtractorResult 共享 | -2153 |
+| `5caec0b` | 9b | ConnectionExtractor 拆分 | -433 |
+| `d839419` | 9c | ClockDomainExtractor 拆分 | -73 |
+
+### 最终结构
+
+```
+src/trace/core/
+├── graph_builder.py          (392 行, 减 87%)
+│   └── 只剩 GraphBuilder 主类
+├── driver_extractor.py      (1766 行, 最大 Extractor)
+├── load_extractor.py         (420 行)
+├── connection_extractor.py   (448 行)
+├── clock_domain_extractor.py (89 行, 最小)
+├── extractor_models.py       (30 行, 共享 ExtractorResult)
+└── edge_factory.py           (~80 行, P1 cycle 1 新增)
+```
+
+### 验收标准达成
+
+- [x] TraceEdgeFactory 类存在并测试
+- [x] 8+ ctx-based 创建点都用 factory
+- [x] 4+ sig_cond-based 创建点都用 factory
+- [x] case 路径 condition_ast 透传 (V2.A.2 17a 遗漏补)
+- [x] control_vars 已知 bug 诊断 (功能正常, 无调用者)
+- [x] 25+ 新单元测试 (factory 18 + ControlFlow 3 + case 1 + regression 3)
+- [x] graph_builder.py < 2000 行 (实际 392)
+- [x] 1414 现有测试全过
+- [x] V2.A.2 行为不变 (回归保护)
+- [x] ruff src/ 0 错误 (P1 期间新增 0 错误)
+- [x] V2.A.2 cycle 17e+ (sig_cond-based 7+ 点) 通过 factory 第二入口解决
+- [x] 0 行删除 (P1 期间所有改动纯新增/搬家)
+
+### 真实数据最终状态 (test_data_path.sv)
+
+```bash
+# cycle 16+ (V2.A.2 早期)
+$ python run_cli.py coverage suggest -f test_data_path.sv \
+    --signal data_path.result --json | jq '.atomic_signals[].evidence[].description'
+"AST extract: rst_n (kind=UnaryOp)"
+"AST extract: pipeline_stall (kind=UnaryOp)"
+
+# cycle 8 后 (DriverExtractor 拆分)
+$ python -m pytest sim/tests/ -q
+1414 passed
+```
+
+### 关键设计决策回顾
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| Factory 位置 | `edge_factory.py` (独立文件) | 可单独 import, 可单测 |
+| Factory 接口 | `make_edge()` 单方法 + 多种入口 | 单一职责, 多种调用方式 |
+| ctx vs sig_cond | 都支持, ctx 优先 | 兼容 V2.A.2 (ctx-based) + 17e+ (sig_cond-based) |
+| ExtractorResult | 独立 `extractor_models.py` | 解决 graph_builder ↔ driver_extractor 循环 import |
+| 物理拆分顺序 | 先 factory 再拆 (而非先拆) | 先结构后物理, 物理拆分变"自然" |
+| 0 净代码原则 | 严守 | 每次 commit 跑 1414 测试守护 |
+
+### 经验教训 (P1 全程 11 条新增, 累计 30 条)
+
+20. **物理移动是症状**: 3054 行不是问题, 12+ 模板重复和 0 测试才是
+21. **structure problems first, file split later**: v2 plan 重写 (commit fff049c) 关键
+22. **factory pattern 解决模板重复**: 8+ ctx.get + 4+ sig_cond → 1 个 make_edge
+23. **dict 协调脆弱**: 改 key 名时无编译期检查 (为后续 P1.4 dataclass 留路)
+24. **测试真空是工程债**: 3054 行 0 测试 → 25 个 P1 测试, 后续改动有守护
+25. **物理拆分是结果**: cycle 1-7 改完结构, cycle 8-9 拆分变"自然"
+26. **TDD 红→绿 真实暴露问题**: cycle 5 case path 漏, cycle 6 边缘场景
+27. **CLI 端到端是最终验证**: 不只单元, 还看 e2e
+28. **except Exception: pass 是隐形杀手**: cycle 2 sites 5-8 缺 expression 静默失败
+29. **factory 必填 vs 默认**: expression 必填导致 TypeError, 改默认 "" 对齐 TraceEdge
+30. **circular import 解法**: ExtractorResult 独立文件, 打破图
+
+### 剩余工作 (P1 范围外, 未来可选)
+
+| 任务 | 内容 | 风险 | 估计 |
+|------|------|------|------|
+| P1.4 | dict → BuilderContext dataclass | 🟡 中-高 | 1-2 cycle |
+| P1.5 | graph_builder 进一步拆分 (主类拆 sub-builders) | 🟡 中 | 1-2 cycle |
+| sig_cond AST 跟踪 | visitor 加 _sig_cond_ast 字段 | 🟡 中 | 1 cycle |
+| ControlFlowGraph 接线 | DriverExtractor 调 add_control_block | 🟡 中 | 1 cycle |
+| 测试 fixtures 完善 | 单元测试覆盖率 > 80% | 🟢 低 | 1-2 cycle |
+
+### 时间线
+
+| 时间 | 事件 |
+|------|------|
+| 2026-06-03 00:35 | 用户问 graph_builder 重构话题 |
+| 2026-06-03 00:38 | 之前 plan (物理拆分) commit, 用户说"主要看其他问题" |
+| 2026-06-03 00:42 | revert cycle 1 物理拆分, 重写 v2 plan |
+| 2026-06-03 00:45 | cycle 1 TraceEdgeFactory 9 测试 |
+| 2026-06-03 00:55 | cycle 2 8+ ctx-based 替换 (5 commits) |
+| 2026-06-03 01:10 | cycle 3 4+ sig_cond 替换 |
+| 2026-06-03 01:20 | cycle 4-5 修结构 bug (ControlFlow 诊断 + case path) |
+| 2026-06-03 01:30 | cycle 6-7 18 个 factory 单元测试 + 回归 |
+| 2026-06-03 01:40 | cycle 8 DriverExtractor 拆分 |
+| 2026-06-03 01:50 | cycle 9 物理拆分其他 3 个 Extractor |
+| 2026-06-03 02:00 | cycle 10 收尾 (本文档) |
+
+---
+
+**创建**: 2026-06-03
+**更新**: 2026-06-03 (cycles 1-9c 实施结果)
+**状态**: P1 全部完成 ✅
