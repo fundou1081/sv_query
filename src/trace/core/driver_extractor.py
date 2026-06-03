@@ -19,12 +19,12 @@
 
 import logging
 import warnings
-from dataclasses import dataclass, field
 from typing import Any
 
 from .base import PyslangAdapter
 from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
 from .edge_factory import TraceEdgeFactory
+from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
@@ -32,16 +32,9 @@ from .visitors.statement_collector_visitor import ItemType, StatementCollectorVi
 logger = logging.getLogger(__name__)
 
 
-# [P1 cycle 8] ExtractorResult 7 行 data class, 从 graph_builder 复制
-# 原因: DriverExtractor.extract() 返回 ExtractorResult, 必须能找到该类
-# graph_builder.py 仍保留一个 ExtractorResult 定义用于向后兼容
-# 后续 P1.5 (cycle 9 cleanup) 可统一引用
-@dataclass
-class ExtractorResult:
-    nodes: list[TraceNode] = field(default_factory=list)
-    edges: list[TraceEdge] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
-    port_to_internal: dict[str, str] = field(default_factory=dict)  # {inst_port_id: child_signal_id}
+# [P1 cycle 8/9] ExtractorResult 移到了 extractor_models.py (避免循环 import)
+# 这里 re-export 保持向后兼容 (from trace.core.driver_extractor import ExtractorResult)
+__all__ = ["DriverExtractor", "ExtractorResult"]
 
 
 class DriverExtractor:
