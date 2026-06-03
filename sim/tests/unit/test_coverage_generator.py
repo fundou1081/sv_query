@@ -2809,6 +2809,40 @@ class TestGraphBuilderFactoryRegressionP1(unittest.TestCase):
         )
 
 
+class TestTraceEdgeSourceLocation100Pct(unittest.TestCase):
+    """Stage 3: 补全 30% 缺失的 source_location (CLOCK/RESET 边 with combined conditions)"""
+
+    def test_combined_condition_ast_fills_source_location(self):
+        """CLOCK/RESET 边的 condition_ast 是纯 syntax node, 也能拿 source_location"""
+        import os
+        sys_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')
+        import sys
+        sys.path.insert(0, sys_path)
+        from trace.unified_tracer import UnifiedTracer
+
+        sv_file = os.path.join(
+            os.path.dirname(__file__),
+            "..", "regression", "test_data_path.sv"
+        )
+        if not os.path.exists(sv_file):
+            self.skipTest(f"SV file not found: {sv_file}")
+        with open(sv_file) as f:
+            source = f.read()
+        tracer = UnifiedTracer(sources={sv_file: source}, log_level="ERROR")
+        graph = tracer.build_graph()
+
+        with_loc = with_ast = 0
+        for _key, edges in graph._edge_data.items():
+            for edge in edges:
+                if getattr(edge, "condition_ast", None) is not None:
+                    with_ast += 1
+                    if getattr(edge, "source_location", None) is not None:
+                        with_loc += 1
+        # Stage 3 后: 100% 填充率
+        self.assertEqual(with_loc, with_ast,
+            f"Stage 3 后应 100% 填充, got {with_loc}/{with_ast}")
+
+
 class TestTraceEdgeSourceLocationEvidence(unittest.TestCase):
     """Stage 1: TraceEdge 加 source_location + semantic_adapter 修复
 
