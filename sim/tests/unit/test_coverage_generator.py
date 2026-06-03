@@ -2797,7 +2797,9 @@ class TestGraphBuilderFactoryRegressionP1(unittest.TestCase):
         是后续 cycle 范围.
         """
         import re
-        with open("/Users/fundou/my_dvproj/sv_query/src/trace/core/driver_extractor.py") as f:
+        from pathlib import Path
+        _project_root = Path(__file__).resolve().parents[3]
+        with open(_project_root / "src/trace/core/driver_extractor.py") as f:
             content = f.read()
 
         # 统计 factory 调用次数
