@@ -609,7 +609,11 @@ def _evidence_to_dict(ev) -> dict:
         ),
         "source_text": ev.source_text,
         "enclosing_always": _snippet_to_dict(ev.enclosing_always),
+        "enclosing_always_comb": _snippet_to_dict(ev.enclosing_always_comb),
         "enclosing_if": _snippet_to_dict(ev.enclosing_if),
+        "enclosing_assign": _snippet_to_dict(ev.enclosing_assign),
+        "enclosing_class": _snippet_to_dict(ev.enclosing_class),
+        "enclosing_constraint": _snippet_to_dict(ev.enclosing_constraint),
         "enclosing_chain": [_snippet_to_dict(s) for s in ev.enclosing_chain],
     }
 
@@ -640,6 +644,16 @@ def _output_evidence_text(data: dict) -> None:
                 print(f"\n  >>> Enclosing ALWAYS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
                 for line in loc["text"].split("\n"):
                     print(f"  {line}")
+            if ev.get("enclosing_class"):
+                loc = ev["enclosing_class"]
+                print(f"\n  >>> Enclosing CLASS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+                for line in loc["text"].split("\n"):
+                    print(f"  {line}")
+            if ev.get("enclosing_constraint"):
+                loc = ev["enclosing_constraint"]
+                print(f"\n  >>> Enclosing CONSTRAINT @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+                for line in loc["text"].split("\n"):
+                    print(f"  {line}")
         return
 
     ev = data.get("evidence", {})
@@ -656,6 +670,16 @@ def _output_evidence_text(data: dict) -> None:
     if ev.get("enclosing_always"):
         loc = ev["enclosing_always"]
         print(f"\n>>> Enclosing ALWAYS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+        for line in loc["text"].split("\n"):
+            print(line)
+    if ev.get("enclosing_class"):
+        loc = ev["enclosing_class"]
+        print(f"\n>>> Enclosing CLASS @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
+        for line in loc["text"].split("\n"):
+            print(line)
+    if ev.get("enclosing_constraint"):
+        loc = ev["enclosing_constraint"]
+        print(f"\n>>> Enclosing CONSTRAINT @ {loc['file']}:{loc['line_start']}-{loc['line_end']}:")
         for line in loc["text"].split("\n"):
             print(line)
     chain_inner = ev.get("enclosing_chain", [])
