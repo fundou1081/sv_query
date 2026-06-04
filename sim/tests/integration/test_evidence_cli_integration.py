@@ -258,3 +258,66 @@ class TestControlflowEvidence:
         rc, out, err = _run_cli("controlflow", "analyze", "top.dout", "-f", TEST_FILE, "--evidence")
         assert rc == 0, f"CLI failed: {err}"
         assert "└─" in out
+
+
+# ----------------------------------------------------------------------------
+# cdc analyze
+# ----------------------------------------------------------------------------
+
+# [Stage 5] CDC 需要跨时钟域场景, sim/test_cdc.sv 是专用的 minimal CDC fixture
+CDC_TEST_FILE = str(REPO_ROOT / "sim" / "test_cdc.sv")
+
+
+class TestCdcEvidence:
+    """cdc analyze --evidence flag"""
+
+    def test_default_no_evidence(self):
+        """默认: paths[].source_evidence / target_evidence 字段不存在"""
+        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        for p in data["result"]["paths"]:
+            assert "source_evidence" not in p
+            assert "target_evidence" not in p
+
+    def test_with_flag_evidence_in_json(self):
+        """--evidence: 每条 CDC 路径的 source/target 都有 evidence"""
+        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        paths = data["result"]["paths"]
+        assert len(paths) >= 1, "test_cdc.sv should have at least 1 CDC path"
+        for p in paths:
+            assert "source_evidence" in p
+            assert "target_evidence" in p
+            assert p["source_evidence"] is not None
+            assert p["target_evidence"] is not None
+            assert "source_text" in p["source_evidence"]
+            assert "credibility_score" in p["source_evidence"]
+
+    def test_with_flag_evidence_in_text(self):
+        """--evidence: 文本输出含 source/target summary"""
+        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence")
+        assert rc == 0, f"CLI failed: {err}"
+        assert "source:" in out
+        assert "target:" in out
+        assert "test_cdc.sv" in out
+
+    def test_high_risk_path_evidence_works(self):
+        """高风险路径的 source/target evidence 都应有效 (包含 enclosing 上下文)"""
+        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        high_risk = [p for p in data["result"]["paths"] if p["risk"] == "HIGH"]
+        assert len(high_risk) >= 1
+        for p in high_risk:
+            # 同步器缺失 → 高风险, evidence 应指向 always_ff 内的 if 块
+            assert p["source_evidence"]["source_text"]
+            assert p["target_evidence"]["source_text"]
+
+    def test_json_no_tuple_key_error(self):
+        """[Stage 5] domain_pairs 以前用 tuple key 报错, 现在应能正常 JSON 序列化"""
+        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
+        assert rc == 0, f"cdc --json should not crash: {err}"
+        data = json.loads(out)
+        assert data["ok"] is True
