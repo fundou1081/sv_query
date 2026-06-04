@@ -28,6 +28,13 @@ from trace.core.graph.models import NodeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
+# [Stage 5] evidence helper (可选 --evidence flag)
+from cli._evidence_helpers import (  # noqa: E402
+    make_resolver as _make_evidence_resolver,
+    evidence_to_dict,
+    evidence_summary_indented,
+)
+
 risk_app = typer.Typer(help="Signal risk analysis: classify nodes by clock/reset/data, compute risk scores")
 
 
@@ -36,6 +43,7 @@ def analyze(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_comb_depth: int = typer.Option(3, "--max-comb-depth", help="Max combinational depth threshold"),
+    evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each data signal (optional)"),
 ) -> None:
     """Analyze signal risk: clock/reset/data classification + risk scoring"""
 
@@ -99,6 +107,7 @@ def analyze(
         timing_level = "CRITICAL" if timing >= 40 else "HIGH" if timing >= 25 else "MEDIUM" if timing >= 15 else "LOW"
 
         return {
+            "node_id": node_id,
             "name": name,
             "kind": str(node.kind),
             "fan_in": fan_in,
@@ -122,6 +131,13 @@ def analyze(
             data_risks.append(r)
 
     data_risks.sort(key=lambda x: x["func_score"] + x["timing_score"], reverse=True)
+
+    # [Stage 5] (可选) evidence 召回
+    evidence_resolver = None
+    if evidence:
+        evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+        for r in data_risks:
+            r["evidence"] = evidence_to_dict(evidence_resolver.resolve(r["node_id"]))
 
     if json_output:
         import json
@@ -175,6 +191,11 @@ def analyze(
         print(
             f"  {i:4d} {r['name']:25s} {kind_short:6s} {r['fan_in']:6d} {r['fan_out']:7d} {fi} {r['func_score']:5.1f} {ti} {r['timing_score']:5.1f}  SVA:{sva_m} Cov:{cov_m}"
         )
+        # [Stage 5] 可选 evidence 1 行摘要
+        if evidence and r.get("evidence"):
+            summary = evidence_summary_indented(r["evidence"])
+            if summary:
+                print(summary)
 
     func_summary = {}
     for r in data_risks:
