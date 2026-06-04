@@ -44,6 +44,14 @@ def build_resolver(file: Path, log_level: str = "ERROR") -> Tuple[TraceEvidenceR
     return resolver, graph, adapter
 
 
+def make_resolver(graph, adapter) -> TraceEvidenceResolver:
+    """用已有 graph + adapter 构造 resolver (避免重复 build)
+
+    场景: 命令本身已 build 了 graph (如 verify/risk),直接复用避免再 build 一次
+    """
+    return TraceEvidenceResolver(graph=graph, adapter=adapter)
+
+
 # ----------------------------------------------------------------------------
 # 2. 序列化: Evidence / SourceSnippet → JSON-friendly dict
 # ----------------------------------------------------------------------------
@@ -103,17 +111,39 @@ def evidence_to_dict(ev) -> Optional[dict]:
 # 3. 文本输出: 一行 summary (text 模式 --evidence 用)
 # ----------------------------------------------------------------------------
 
+def _ev_to_inputs(ev) -> Optional[Tuple[Optional[dict], str]]:
+    """抽取 evidence summary 需要的两个字段: (source_location_dict, source_text)
+
+    同时支持 Evidence 对象 (刚 resolve 出来的) 和 dict (已经 evidence_to_dict 过)
+    """
+    if ev is None:
+        return None
+    if isinstance(ev, dict):
+        return (ev.get("source_location"), ev.get("source_text") or "")
+    # Evidence 对象: 取属性
+    loc = ev.source_location
+    text = ev.source_text or ""
+    if loc is None:
+        return (None, text)
+    return ({"file": loc.file, "line_start": loc.line_start}, text)
+
+
 def evidence_summary_line(ev) -> Optional[str]:
     """生成 1 行 evidence 摘要: 'file:line: source_text_first_line'
 
     返回 None 时表示没有 evidence 可显示 (resolve 失败 / 不在源文件里)
+
+    同时接受 Evidence 对象和 dict (Stage 5: 命令层经常先 evidence_to_dict
+    再传给 summary,避免再次访问 Evidence 对象)
     """
-    if ev is None or ev.source_location is None:
+    inputs = _ev_to_inputs(ev)
+    if inputs is None:
         return None
-    loc = ev.source_location
-    text = ev.source_text or ""
+    loc, text = inputs
+    if loc is None:
+        return None
     first_line = text.split("\n", 1)[0] if text else ""
-    return f"{loc.file}:{loc.line_start}: {first_line}".rstrip()
+    return f"{loc['file']}:{loc['line_start']}: {first_line}".rstrip()
 
 
 def evidence_summary_indented(ev, indent: str = "  └─ ") -> Optional[str]:

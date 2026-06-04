@@ -31,6 +31,13 @@ from trace.core.graph.models import NodeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
+# [Stage 5] evidence helper (可选 --evidence flag)
+from cli._evidence_helpers import (  # noqa: E402
+    make_resolver as _make_evidence_resolver,
+    evidence_to_dict,
+    evidence_summary_indented,
+)
+
 verify_app = typer.Typer(help="Verification gap detection: find high-risk signals without SVA/Coverage")
 
 
@@ -42,6 +49,7 @@ def gap(
     min_risk: float = typer.Option(20.0, "--min-risk", "-r", help="Minimum risk score threshold"),
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file path"),
     mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file path"),
+    evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each signal (optional)"),
 ) -> None:
     """
     验证缺口检测：
@@ -159,6 +167,16 @@ def gap(
     gap_signals = [r for r in results if r["total_risk"] >= min_risk and r["cover_status"] == "NONE"]
     all_signals = results[:top_n]
 
+    # ===== 3.5. (可选) evidence 召回 =====
+    evidence_resolver = None
+    if evidence:
+        evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+        # [Stage 5] 批量给 top_signals + gap_signals 补 evidence 字段
+        for r in all_signals:
+            r["evidence"] = evidence_to_dict(evidence_resolver.resolve(r["node_id"]))
+        for r in gap_signals:
+            r["evidence"] = evidence_to_dict(evidence_resolver.resolve(r["node_id"]))
+
     # ===== 4. JSON 输出 =====
     if json_output:
         import json
@@ -223,6 +241,11 @@ def gap(
             print(
                 f"  {i:4d} {r['name']:25s} {kind_short:6s} {level}{r['func_score']:5.1f} {r['timing_score']:5.1f} {status_icon}"
             )
+            # [Stage 5] 可选 evidence 1 行摘要
+            if evidence and r.get("evidence"):
+                summary = evidence_summary_indented(r["evidence"])
+                if summary:
+                    print(summary)
         if len(gap_signals) > 10:
             print(f"  ... 还有 {len(gap_signals) - 10} 个高风险信号")
 
@@ -254,6 +277,11 @@ def gap(
         print(
             f"  {i:4d} {r['name']:25s} {kind_short:6s} {r['fan_in']:6d} {r['fan_out']:7d} {level_f}{r['func_score']:5.1f} {level_t}{r['timing_score']:5.1f} {status_icon}"
         )
+        # [Stage 5] 可选 evidence 1 行摘要
+        if evidence and r.get("evidence"):
+            summary = evidence_summary_indented(r["evidence"])
+            if summary:
+                print(summary)
 
     if cov_detail:
         print("\n  【Coverage bins 详情】")
