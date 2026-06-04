@@ -234,3 +234,110 @@ V2/P1 是"做得更好",Evidence 是"做用户想要的新能力"。三者在代
 ## 10. 一句话总结
 
 **Evidence 功能用 4 stages / 10 测试 / 4 commits,把 trace 从"看 driver 链"升级到"看 source line + 完整 always/if 块",100% 填充率, CLI 端到端可用,完整回应用户"把赋值语句对应的 always 或者 if block 完整召回"的核心需求。**
+
+---
+
+## Stage 5: 多命令 evidence 扩展 (2026-06-04)
+
+> 状态: ✅ 完成
+> 范围: trace / cdc / verify / risk / dataflow / controlflow 6 个命令
+> 提交: 5 commits (1 refactor + 4 feat)
+
+### 起点问题
+
+Evidence 最初只在 `trace evidence` 命令上可用。用户问:
+
+> "其他的功能还缺少 evidence 的输出，考虑如何实现。"
+
+即: cdc / verify / risk / dataflow / controlflow 等命令的结果也应该能告诉用户"这个信号在源码的哪一行 / 哪个 always 块"。
+
+### 设计原则
+
+1. **可选项 (--evidence flag)**: 默认关闭,不破坏现有输出
+2. **共享 graph**: 命令入口 `make_resolver(graph, adapter)` 一次,后续 evidence 解析共享同一 graph,避免重复 build
+3. **JSON + text 双格式**: JSON 加 `evidence` 字段,text 模式贴 1 行 summary (└─ file:line: source)
+4. **公共 helper**: `src/cli/_evidence_helpers.py` 集中 build_resolver / evidence_to_dict / summary_line,避免复制
+
+### 命令集成
+
+| 命令 | evidence 位置 | 用户场景 |
+|------|-------------|---------|
+| `trace evidence` | (已有) | 一个信号的完整 always/if 块 |
+| `trace fanin/fanout/impact` | 同模块扩展 (未做) | 路径上每个 hop 的来源 |
+| `cdc analyze` | `paths[].source_evidence` / `target_evidence` | 跨域点 source/target 的 always_ff 块 |
+| `verify gap` | `top_signals[].evidence` / `gap_signals[].evidence` | "dout 风险高缺 SVA, 它在哪个 always 块?" |
+| `risk analyze` | `data_signals[].evidence` | 数据信号排名前 20 的驱动代码位置 |
+| `dataflow analyze` | `paths[].segments[].evidence` | "从 din 到 dout 的中间 hop 都在哪?" |
+| `controlflow analyze` | `conditions[].evidence` | "dout 的每个条件驱动 (if / else / reset) 都在哪?" |
+
+### 实施变更
+
+**1. 抽公共 helper** (`src/cli/_evidence_helpers.py`, 124 行)
+
+```python
+def build_resolver(file, log_level="ERROR") -> tuple: ...  # 统一 build graph + adapter + resolver
+def make_resolver(graph, adapter) -> TraceEvidenceResolver: ...  # 复用已有 graph
+def evidence_to_dict(ev) -> dict: ...  # Evidence → JSON
+def snippet_to_dict(snippet) -> dict: ...  # SourceSnippet → JSON
+def evidence_summary_line(ev) -> str: ...  # 1 行文本摘要
+def evidence_summary_indented(ev, indent="  └─ ") -> str: ...  # 缩进版本
+```
+
+**2. trace.py 切到公共 helper**
+
+`_snippet_to_dict` / `_evidence_to_dict` 从 trace.py 移到 helper 文件,行为完全等价,1458 测试全过。**副作用**: JSON 多暴露 `is_verified` + `credibility_score` 字段 (Stage 4 后已有,现在外部可见)。
+
+**3. 5 个命令加 --evidence flag**
+
+每个命令:
+- 加 `evidence: bool = typer.Option(False, "--evidence", "-e", ...)` 参数
+- 入口 build 一次 resolver: `evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())`
+- JSON 模式: 在 result dict 里给每条信号结果加 `evidence` 字段 (完整 dict)
+- text 模式: 在每条结果下方贴 1 行 summary (└─ file:line: source)
+
+**4. cdc 命令修了一个旧 bug**
+
+`cdc_report` 返回的 `domain_pairs` 用 tuple 当 key (类似 `(clk_a, clk_b)`),`json.dumps` 之前会 crash。新加 `_json_safe()` 转换函数,递归把 dict 的非 str key 转 str,`cdc --json` 现在能正常用。
+
+### 验收
+
+- ✅ 5 命令支持 `--evidence` flag (默认 off, 向后兼容)
+- ✅ 公共 helper 抽完,trace.py 切完,等价 refactor
+- ✅ 23 个新测试 (TestVerifyGapEvidence / TestRiskAnalyzeEvidence / TestDataflowEvidence / TestControlflowEvidence / TestCdcEvidence / TestEvidenceSummaryInputs)
+- ✅ 全量 1481 测试通过 (Stage 4 后 1458, +23 新增)
+- ✅ cdc --json 旧 bug 一并修
+
+### 真实效果示例
+
+**`risk analyze --evidence` 输出**:
+```
+风险分析: sim/test_simple.sv
+================================================================================
+  ⏰ 时钟信号 (1): clk
+  🔄 复位信号 (1): rst_n
+
+  数据信号风险排名:
+  排名   信号                        类型     fan_in fan_out 功能分    时序分
+  ──── ───────────────────────── ────── ────── ─────── ────── ──────
+     1 dout                      ?           4       0 🔴  47.3 ⏱🟠  38.0  SVA:✗ Cov:✗
+  └─ sim/test_simple.sv:16: if (!rst_n)
+     2 data                      ?           1       1 🟠  25.3 ⏱🟡  17.0  SVA:✗ Cov:✗
+  └─ sim/test_simple.sv:12: data = din;
+```
+
+**`cdc analyze --evidence` 输出**:
+```
+[1] 🔴 top.reg_a → top.dout_b
+    域: top.clk_a → top.clk_b
+    边: EdgeKind.DRIVER | 同步器: ✗
+        source: sim/test_cdc.sv:23: if (!rst_n)
+        target: sim/test_cdc.sv:31: if (!rst_n)
+```
+
+### 未来可选 (未做)
+
+- `trace fanin/fanout/impact` 加 evidence (同模块扩展, helper 已就绪, 估计 1 commit)
+- `coverage suggest` 加 evidence (把覆盖度建议跟 atomic 信号源码位置关联)
+- `sva analyze` 加 evidence (SVA 绑定位置)
+- evidence 嵌入 coverage decompose (Stage 3 留的 TODO)
+- LRU 缓存跨命令共享 (现在每次命令 build 一次, 单命令内已共享)

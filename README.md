@@ -84,6 +84,10 @@ python run_cli.py trace fanin top.result -f top.sv --cache
 - ✨ **正方形可视化**: ratio=compress 避免裁剪，size=10 英寸
 - ✨ **Unicode 容错**: 防护 pyslang 在 CVA6 上的 UnicodeDecodeError
 - 📚 **新文档**: `docs/FILELIST.md` 完整 filelist 文档
+- ✨ **Evidence 召回从 trace 扩展到 5 个命令** (2026-06-04): cdc / verify / risk /
+  dataflow / controlflow 现在都支持 `--evidence` 可选 flag
+  (默认 off, `--evidence` 时在每条结果下方贴 1 行源码摘要)
+  详见 [docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展](docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展-2026-06-04)
 
 详见 [CHANGELOG](docs/DOC_IMPL_GAP.md#更新日志)
 
