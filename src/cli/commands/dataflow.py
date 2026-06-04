@@ -13,6 +13,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from trace.core.graph.dataflow import DataFlowGraph
 from trace.unified_tracer import UnifiedTracer
 
+# [Stage 5] evidence helper (可选 --evidence flag)
+from cli._evidence_helpers import (  # noqa: E402
+    make_resolver as _make_evidence_resolver,
+    evidence_to_dict,
+    evidence_summary_indented,
+)
+
 
 def output_json(data: dict, pretty: bool = False) -> None:
     indent = 2 if pretty else None
@@ -73,6 +80,11 @@ def output_text(data: dict) -> None:
                         print(f"        condition: {cond_short}")
                     print(f"        timing: {timing}")
                     print(f"        assign: {assign_type}")
+                    # [Stage 5] 可选 evidence 1 行摘要 (贴在 assign 下方)
+                    if data.get("params", {}).get("evidence"):
+                        summary = evidence_summary_indented(seg.get("evidence"))
+                        if summary:
+                            print(summary)
 
                 if len(segments) > 5:
                     print(f"      ... and {len(segments) - 5} more segments")
@@ -92,6 +104,7 @@ def analyze(
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum number of paths to return"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each segment (optional)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     try:
@@ -103,21 +116,27 @@ def analyze(
         dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
         result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
 
+        # [Stage 5] (可选) evidence 召回 - 每个 segment 的 to_signal 独立解析
+        evidence_resolver = None
+        if evidence:
+            evidence_resolver = _make_evidence_resolver(tracer._graph, tracer._get_adapter())
+
         paths_data = []
         for path in result.paths:
             segments_data = []
             for seg in path.segments:
-                segments_data.append(
-                    {
-                        "from_signal": seg.from_signal,
-                        "to_signal": seg.to_signal,
-                        "driver": seg.driver,
-                        "condition": seg.condition,
-                        "timing": seg.timing,
-                        "assign_type": seg.assign_type,
-                        "distance": seg.distance,
-                    }
-                )
+                seg_dict = {
+                    "from_signal": seg.from_signal,
+                    "to_signal": seg.to_signal,
+                    "driver": seg.driver,
+                    "condition": seg.condition,
+                    "timing": seg.timing,
+                    "assign_type": seg.assign_type,
+                    "distance": seg.distance,
+                }
+                if evidence_resolver is not None:
+                    seg_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(seg.to_signal))
+                segments_data.append(seg_dict)
             paths_data.append(
                 {
                     "path_id": path.path_id,
@@ -130,7 +149,7 @@ def analyze(
         data = {
             "ok": True,
             "command": "dataflow",
-            "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths},
+            "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths, "evidence": evidence},
             "result": {
                 "from_signal": result.from_signal,
                 "to_signal": result.to_signal,

@@ -182,3 +182,79 @@ class TestEvidenceSummaryInputs:
         """source_location=None 的 dict: 返回 None"""
         from cli._evidence_helpers import evidence_summary_line
         assert evidence_summary_line({"source_location": None, "source_text": ""}) is None
+
+
+# ----------------------------------------------------------------------------
+# dataflow analyze
+# ----------------------------------------------------------------------------
+
+class TestDataflowEvidence:
+    """dataflow analyze --evidence flag"""
+
+    def test_default_no_evidence(self):
+        """默认: paths[].segments[].evidence 字段不存在"""
+        rc, out, err = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        for path in data["result"]["paths"]:
+            for seg in path["segments"]:
+                assert "evidence" not in seg
+
+    def test_with_flag_evidence_per_segment(self):
+        """--evidence: 每个 segment 加 evidence 字段 (to_signal 独立解析)"""
+        rc, out, err = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        segments = data["result"]["paths"][0]["segments"]
+        assert len(segments) >= 1
+        for seg in segments:
+            assert "evidence" in seg, f"Missing evidence in segment {seg.get('to_signal')}"
+            ev = seg["evidence"]
+            assert ev is not None
+            assert "source_text" in ev
+            assert 0.0 <= ev["credibility_score"] <= 1.0
+
+    def test_with_flag_evidence_in_text(self):
+        """--evidence: 文本输出含 '└─' summary"""
+        rc, out, err = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--evidence")
+        assert rc == 0, f"CLI failed: {err}"
+        assert "└─" in out
+
+
+# ----------------------------------------------------------------------------
+# controlflow analyze
+# ----------------------------------------------------------------------------
+
+class TestControlflowEvidence:
+    """controlflow analyze --evidence flag"""
+
+    def test_default_no_evidence(self):
+        """默认: conditions[].evidence 字段不存在"""
+        rc, out, err = _run_cli("controlflow", "analyze", "top.dout", "-f", TEST_FILE, "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        for cd in data["result"]["conditioned_drivers"]:
+            for cond in cd["conditions"]:
+                assert "evidence" not in cond
+
+    def test_with_flag_evidence_per_condition(self):
+        """--evidence: 每个 condition 加 evidence 字段 (to_node 独立解析)"""
+        rc, out, err = _run_cli("controlflow", "analyze", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
+        assert rc == 0, f"CLI failed: {err}"
+        data = json.loads(out)
+        with_ev = []
+        for cd in data["result"]["conditioned_drivers"]:
+            for cond in cd["conditions"]:
+                if cond.get("evidence"):
+                    with_ev.append(cond)
+        assert len(with_ev) >= 1
+        for cond in with_ev:
+            ev = cond["evidence"]
+            assert "source_text" in ev
+            assert "credibility_score" in ev
+
+    def test_with_flag_evidence_in_text(self):
+        """--evidence: 文本输出含 '└─' summary"""
+        rc, out, err = _run_cli("controlflow", "analyze", "top.dout", "-f", TEST_FILE, "--evidence")
+        assert rc == 0, f"CLI failed: {err}"
+        assert "└─" in out
