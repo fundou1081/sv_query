@@ -14,7 +14,7 @@ from data_models import (
     new_signal_chain,
     new_signal_node,
 )
-from pyslang import SyntaxKind, SyntaxTree
+from trace.core._pyslang_compat import SyntaxKind, SyntaxTree  # [Stage 6] v10/v11 兼容
 
 
 class PyslangAdapter:

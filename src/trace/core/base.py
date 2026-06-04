@@ -5,7 +5,7 @@
 import logging
 from typing import Any, Callable
 
-from pyslang import SyntaxKind, TokenKind
+from trace.core._pyslang_compat import SyntaxKind, TokenKind  # [Stage 6] v10/v11 兼容
 
 # 配置日志
 logger = logging.getLogger(__name__)

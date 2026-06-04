@@ -537,7 +537,7 @@ class ConstraintVisitor(BaseVisitor):
 # [铁律11] Agent 调用示例
 if __name__ == "__main__":
     import pyslang
-    from pyslang import SyntaxKind
+    from trace.core._pyslang_compat import SyntaxKind  # [Stage 6] v10/v11 兼容
 
     # === 示例 ===
     source = """class packet;
