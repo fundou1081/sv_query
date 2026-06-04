@@ -16,6 +16,13 @@ from trace.core.graph.analyzer.controlflow_analyzer import (
 from trace.core.graph_builder import GraphBuilder
 from trace.unified_tracer import UnifiedTracer
 
+# [Stage 5] evidence helper (可选 --evidence flag)
+from cli._evidence_helpers import (  # noqa: E402
+    make_resolver as _make_evidence_resolver,
+    evidence_to_dict,
+    evidence_summary_indented,
+)
+
 
 def output_json(data: dict, pretty: bool = False) -> None:
     indent = 2 if pretty else None
@@ -55,6 +62,11 @@ def output_text(data: dict) -> None:
                     if _is_constant(src):
                         src = f"CONST {src}"
                     print(f"    when {expr}: {src} → {to}")
+                    # [Stage 5] 可选 evidence 1 行摘要 (条件后缩进显示)
+                    if data.get("params", {}).get("evidence"):
+                        summary = evidence_summary_indented(cond.get("evidence"))
+                        if summary:
+                            print(f"      {summary.lstrip()}")
 
         if warnings:
             print("\n  Warnings:")
@@ -71,6 +83,7 @@ def analyze(
     file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
 ) -> None:
     """Analyze control flow conditions for a signal"""
     try:
@@ -93,22 +106,28 @@ def analyze(
         analyzer = ControlFlowAnalyzer(graph_builder)
         result = analyzer.analyze(signal)
 
+        # [Stage 5] (可选) evidence 召回 - 每个 condition 的 to_node 独立解析
+        evidence_resolver = None
+        if evidence:
+            evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+
         # Build output data
         drivers_data = []
         for cd in result.conditioned_drivers:
             conds_data = []
             for cond in cd.conditions:
-                conds_data.append(
-                    {
-                        "expr": cond.expr,
-                        "edge": {
-                            "src": cond.edge.src,
-                            "dst": cond.edge.dst,
-                            "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
-                            "condition": cond.edge.condition,
-                        },
-                    }
-                )
+                cond_dict = {
+                    "expr": cond.expr,
+                    "edge": {
+                        "src": cond.edge.src,
+                        "dst": cond.edge.dst,
+                        "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
+                        "condition": cond.edge.condition,
+                    },
+                }
+                if evidence_resolver is not None:
+                    cond_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(cond.edge.dst))
+                conds_data.append(cond_dict)
             drivers_data.append(
                 {
                     "to_node": cd.to_node,
@@ -122,6 +141,7 @@ def analyze(
             "params": {
                 "signal": signal,
                 "file": str(file),
+                "evidence": evidence,
             },
             "result": {
                 "signal": result.signal,
