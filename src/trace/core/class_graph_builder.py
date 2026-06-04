@@ -12,7 +12,7 @@
 
 from dataclasses import dataclass, field
 
-from pyslang import SyntaxKind
+from trace.core._pyslang_compat import SyntaxKind  # [Stage 6] v10/v11 兼容
 
 from .base import PyslangAdapter
 from .class_hierarchy import ClassHierarchy
