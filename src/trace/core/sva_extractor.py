@@ -346,8 +346,8 @@ class SVAExtractor:
                 signals.extend(s)
                 timing_ops.extend(t)
 
-            elif "SyntaxList" in ck:
-                # SyntaxList 包含子表达式
+            elif "SyntaxList" in ck or isinstance(child, list):
+                # v10: SyntaxList 包装, v11: 已是 plain list
                 s, t = self._extract_sequence_expr(child)
                 signals.extend(s)
                 timing_ops.extend(t)
@@ -526,7 +526,7 @@ class SVAExtractor:
             elif "ConcurrentAssertion" in ck or "ImmediateAssertion" in ck:
                 self._parse_assertion_syntax(child, graph, prefix)
 
-            elif "SyntaxList" in ck:
+            elif "SyntaxList" in ck or isinstance(child, list):
                 self._walk_class_syntax(child, graph, prefix)
 
     def _get_syntax_name(self, node) -> str:

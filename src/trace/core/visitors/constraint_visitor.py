@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 
 from ..graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
 from .base_visitor import BaseVisitor
+from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
 
 
 @dataclass
@@ -239,16 +240,23 @@ class ConstraintVisitor(BaseVisitor):
             # ValueRangeExpression 在 SeparatedList 中 (ranges[1])
             ranges = getattr(expr, "ranges", None)
             if ranges and hasattr(ranges, "__iter__"):
-                # RangeListSyntax - extract the SeparatedList (index 1)
-                items = list(ranges) if hasattr(ranges, "__iter__") else [ranges]
-                for r in items:
+                # v10: ranges = RangeListSyntax [OpenBrace, SeparatedList, CloseBrace]
+                #         ValueRangeExpression 嵌在 SeparatedList 里
+                # v11: ranges = RangeListSyntax [OpenBrace, ValueRangeExpression, CloseBrace]
+                #         ValueRangeExpression 直接是 ranges[1]
+                for r in iter_syntax_list(ranges) if is_syntax_list(ranges) else list(ranges):
                     r_kind = getattr(r, "kind", None)
-                    if r_kind and "SeparatedList" in str(r_kind):
-                        # Found the list containing ValueRangeExpression
+                    r_kind_str = str(r_kind) if r_kind else ""
+                    if is_syntax_list(r):
+                        # v10: SeparatedList 包装, 里面是 ValueRangeExpression
                         for elem in r:
                             if hasattr(elem, "kind") and "ValueRangeExpression" in str(elem.kind):
                                 vars.extend(self._extract_vars_from_expr(getattr(elem, "left", None)))
                                 vars.extend(self._extract_vars_from_expr(getattr(elem, "right", None)))
+                    elif "ValueRangeExpression" in r_kind_str:
+                        # v11: ValueRangeExpression 直接在 ranges 列表里
+                        vars.extend(self._extract_vars_from_expr(getattr(r, "left", None)))
+                        vars.extend(self._extract_vars_from_expr(getattr(r, "right", None)))
             return vars
 
         # 递归进入子节点
@@ -368,23 +376,26 @@ class ConstraintVisitor(BaseVisitor):
         self.reset()
 
         # 收集 unique { ... } 中的变量
-        # ranges[1] 是 SeparatedList 包含 {a, b, c} + commas
+        # v10: ranges[1] 是 SeparatedList 包含 Identifier + Comma 交替
+        # v11: ranges 是 plain list, 直接是 Identifier
         vars = []
         ranges = getattr(node, "ranges", None)
         if ranges:
-            for r in ranges:
-                if hasattr(r, "kind"):
-                    kind_str = str(r.kind)
-                    # SeparatedList 包含 Identifier + Comma 交替
-                    if "SeparatedList" in kind_str:
-                        if hasattr(r, "__iter__"):
-                            for elem in r:
-                                if hasattr(elem, "kind"):
-                                    elem_kind = str(elem.kind)
-                                    if "Identifier" in elem_kind:
-                                        ident = getattr(elem, "identifier", None)
-                                        if ident and hasattr(ident, "value"):
-                                            vars.append(str(ident.value).strip())
+            for r in iter_syntax_list(ranges) if is_syntax_list(ranges) else list(ranges):
+                if is_syntax_list(r):
+                    # 包含 Identifier + Comma 交替
+                    for elem in r:
+                        if hasattr(elem, "kind"):
+                            elem_kind = str(elem.kind)
+                            if "Identifier" in elem_kind:
+                                ident = getattr(elem, "identifier", None)
+                                if ident and hasattr(ident, "value"):
+                                    vars.append(str(ident.value).strip())
+                elif hasattr(r, "kind") and "Identifier" in str(r.kind):
+                    # v11: 直接是 Identifier
+                    ident = getattr(r, "identifier", None)
+                    if ident and hasattr(ident, "value"):
+                        vars.append(str(ident.value).strip())
 
         self.variables = list(set(vars))
 
@@ -447,22 +458,27 @@ class ConstraintVisitor(BaseVisitor):
         self.reset()
 
         # 提取 foreach (arr[i]) 中的数组名
-        # pyslang: loopList 是 ForeachLoopListSyntax，包含:
-        #   [0] OpenParen
-        #   [1] IdentifierNameSyntax (arr)
-        #   [2] OpenBracket
-        #   [3] SeparatedList (索引变量 i)
-        #   [4] CloseBracket
-        #   [5] CloseParen
+        # v10: loopList = [OpenParen, IdentifierName(arr), OpenBracket, SeparatedList, CloseBracket, CloseParen]
+        # v11: loopList = [OpenParen, IdentifierName(arr), OpenBracket, IdentifierName(i), CloseBracket, CloseParen]
+        # 两种都能 iter (v11 直接是 plain list), 只取第一个 IdentifierName
+        # 作为 array name (位置在 OpenParen 之后, OpenBracket 之前)
         vars = []
         loop_list = getattr(node, "loopList", None)
         if loop_list and hasattr(loop_list, "__iter__"):
+            seen_open_paren = False
             for elem in loop_list:
                 elem_kind = str(getattr(elem, "kind", ""))
-                if "IdentifierName" in elem_kind:
+                if "OpenParen" in elem_kind:
+                    seen_open_paren = True
+                    continue
+                if "OpenBracket" in elem_kind:
+                    # 已跨过 array name 区域, 不再收
+                    break
+                if seen_open_paren and "IdentifierName" in elem_kind:
                     ident = getattr(elem, "identifier", None)
                     if ident and hasattr(ident, "value"):
                         vars.append(str(ident.value).strip())
+                    break  # 只取 array name 之后跳出
 
         self.variables = list(set(vars))
 

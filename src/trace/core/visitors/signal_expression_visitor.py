@@ -87,6 +87,9 @@ class SignalExpressionVisitor(BaseVisitor):
         """获取节点的 kind 名称"""
         if node is None:
             return None
+        # [Stage 6] v11: SyntaxList 包装拆开变为 plain list, 统一走 SyntaxList handler
+        if isinstance(node, list):
+            return "SyntaxList"
         kind = getattr(node, "kind", None)
         if kind and hasattr(kind, "name"):
             return kind.name

@@ -5,7 +5,7 @@
 import logging
 from typing import Any, Callable
 
-from trace.core._pyslang_compat import SyntaxKind, TokenKind  # [Stage 6] v10/v11 兼容
+from trace.core._pyslang_compat import SyntaxKind, TokenKind, is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -479,14 +479,8 @@ class PyslangAdapter:
                     if not items_node:
                         continue
 
-                    # SeparatedList is iterable, single ModportItem is not
-                    if hasattr(items_node, "__iter__") and not isinstance(items_node, str):
-                        if str(items_node.kind) == "SyntaxKind.SeparatedList":
-                            # SeparatedList contains ModportItem nodes
-                            items_list = list(items_node)
-                        else:
-                            # It's a single iterable item
-                            items_list = [items_node]
+                    if is_syntax_list(items_node):
+                        items_list = iter_syntax_list(items_node)
                     else:
                         items_list = [items_node]
 
@@ -1723,8 +1717,8 @@ class PyslangAdapter:
 
         # [P2] 特殊处理 Fork/Join - TokenKind.ForkKeyword 后面是 SyntaxList
         # 需要手动遍历来检测 ForkKeyword
-        if kind == SyntaxKind.SyntaxList:
-            # 检查是否在 fork 块内
+        # v10/v11: SyntaxList 在 v11 已拆为 plain list
+        if kind == SyntaxKind.SyntaxList or isinstance(node, list):
             items = list(node) if hasattr(node, "__iter__") else []
 
             for idx, item in enumerate(items):
@@ -1737,8 +1731,8 @@ class PyslangAdapter:
                         next_item = items[idx + 1]
                         next_kind = getattr(next_item, "kind", None)
 
-                        if next_kind == SyntaxKind.SyntaxList:
-                            # 递归处理 fork 内语句
+                        # v10: SyntaxList, v11: items 本身是 list, next_item 就是内容
+                        if next_kind == SyntaxKind.SyntaxList or isinstance(next_item, list):
                             for fork_stmt in next_item:
                                 self._collect_assignments_recursive(fork_stmt, stmts)
                     return

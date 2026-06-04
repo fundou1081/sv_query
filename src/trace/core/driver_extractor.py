@@ -1285,20 +1285,12 @@ class DriverExtractor:
 
         # SequentialBlock
         if "SequentialBlock" in kind:
-            # SequentialBlockStatement 的 children 结构 (iterating with range(len)):
-            # [0]: NoneType
-            # [1]: SyntaxList
-            # [2]: BeginKeyword Token
-            # [3]: NoneType
-            # [4]: SyntaxList (包含实际的 statements) ← statements 在这里
-            # [5]: EndKeyword Token
-            # [6]: NoneType
-            # 所以需要找 children[4] 作为 statements 列表
+            # [Stage 6] v10: SequentialBlockStatement children 含 [SyntaxList(...)]
+            #         v11: children 直接是 plain list (SyntaxList 已展开)
             statements = None
             for i, child in enumerate(stmt):
                 child_kind = str(getattr(child, "kind", ""))
-                if "SyntaxList" in child_kind and i == 4:
-                    # This is the statements list
+                if ("SyntaxList" in child_kind or isinstance(child, list)) and i == 4:
                     statements = child
                     break
 
