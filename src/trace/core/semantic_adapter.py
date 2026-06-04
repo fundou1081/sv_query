@@ -14,6 +14,7 @@ if PYSLLANG_BINDINGS_PATH not in sys.path:
     sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
 import pyslang
+from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
 
 
 class SemanticAdapter:
@@ -571,11 +572,16 @@ class SemanticAdapter:
 
                     # Get port directions from item.ports (AnsiPortListSyntax)
                     if hasattr(item, "ports") and item.ports:
-                        # ports is AnsiPortListSyntax containing: Token(open paren), SeparatedList, Token(close paren)
-                        # SeparatedList contains ModportSimplePortList items
+                        # ports is AnsiPortListSyntax containing:
+                        #   v10: [Token(open paren), SeparatedList, Token(close paren)]
+                        #        SeparatedList 内部是 ModportSimplePortList + Comma 交替
+                        #   v11: [Token(open paren), ModportSimplePortList, Token(close paren)]
+                        #        ports[1] 直接是 ModportSimplePortList
                         sep_list = item.ports[1] if len(item.ports) > 1 else None
                         if sep_list and hasattr(sep_list, "__iter__"):
-                            for port_item in sep_list:
+                            # v10: 是 SeparatedList, 里面是 ModportSimplePortListSyntax
+                            # v11: 本身是 ModportSimplePortListSyntax
+                            for port_item in (iter_syntax_list(sep_list) if is_syntax_list(sep_list) else [sep_list]):
                                 port_kind = getattr(port_item, "kind", None)
                                 port_kind_str = str(port_kind) if port_kind else ""
 
@@ -588,7 +594,9 @@ class SemanticAdapter:
                                     # ports is AnsiPortListSyntax with ModportNamedPort items
                                     port_names = getattr(port_item, "ports", None)
                                     if port_names and hasattr(port_names, "__iter__"):
-                                        for pn in port_names:
+                                        # v10: ports_names 是 SeparatedList (ModportNamedPort + Comma)
+                                        # v11: ports_names 直接是 ModportNamedPort
+                                        for pn in (iter_syntax_list(port_names) if is_syntax_list(port_names) else [port_names]):
                                             pn_kind = getattr(pn, "kind", None)
                                             if pn_kind and "ModportNamedPort" in str(pn_kind):
                                                 pn_name = getattr(pn, "name", None)
@@ -1098,20 +1106,17 @@ class SemanticAdapter:
                     if "ModportDeclaration" not in kind:
                         continue
 
-                    # 处理 items (可能是 SeparatedList 或单个 ModportItem)
+                    # 处理 items (v10: SeparatedList SyntaxNode, v11: plain list,
+                    # 或者是单个 ModportItem 节点)
                     items_node = getattr(member, "items", None)
                     if not items_node:
                         continue
 
-                    # SeparatedList is iterable, single ModportItem is not
-                    if hasattr(items_node, "__iter__") and not isinstance(items_node, str):
-                        if str(items_node.kind) == "SyntaxKind.SeparatedList":
-                            # SeparatedList contains ModportItem nodes
-                            items_list = list(items_node)
-                        else:
-                            # It's a single iterable item
-                            items_list = [items_node]
+                    if is_syntax_list(items_node):
+                        # v10 SeparatedList / v11 plain list
+                        items_list = iter_syntax_list(items_node)
                     else:
+                        # 单个 ModportItem 节点
                         items_list = [items_node]
 
                     for item in items_list:
@@ -1133,9 +1138,8 @@ class SemanticAdapter:
                                 actual_ports = ports.ports
                                 # actual_ports can be a SeparatedList of ModportSimplePortList
                                 if hasattr(actual_ports, "__iter__") and not isinstance(actual_ports, str):
-                                    # Check if it's a SeparatedList
-                                    if str(getattr(actual_ports, "kind", "")) == "SyntaxKind.SeparatedList":
-                                        ports_list = list(actual_ports)
+                                    if is_syntax_list(actual_ports):
+                                        ports_list = iter_syntax_list(actual_ports)
                                     else:
                                         ports_list = [actual_ports]
                                 else:
@@ -1156,8 +1160,8 @@ class SemanticAdapter:
                                         and hasattr(ports_node, "__iter__")
                                         and not isinstance(ports_node, str)
                                     ):
-                                        if str(getattr(ports_node, "kind", "")) == "SyntaxKind.SeparatedList":
-                                            sig_nodes = list(ports_node)
+                                        if is_syntax_list(ports_node):
+                                            sig_nodes = iter_syntax_list(ports_node)
                                         else:
                                             sig_nodes = [ports_node]
                                     else:

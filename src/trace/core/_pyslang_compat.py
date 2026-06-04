@@ -109,15 +109,18 @@ except ImportError:
 # 5. ValueDriver (v10: pyslang.ast, v11: pyslang.analysis)
 # ----------------------------------------------------------------------------
 try:
-    from pyslang.ast import ValueDriver  # v10
+    from pyslang import ValueDriver  # v10 (top-level, 不在 pyslang.ast)
 except ImportError:
     from pyslang.analysis import ValueDriver  # v11
 
 
 # ----------------------------------------------------------------------------
-# 6. NamedValueExpression (v10 + v11 都在 pyslang.ast, 稳定)
+# 6. NamedValueExpression (v10: top-level, v11: pyslang.ast)
 # ----------------------------------------------------------------------------
-from pyslang.ast import NamedValueExpression
+try:
+    from pyslang import NamedValueExpression  # v10
+except ImportError:
+    from pyslang.ast import NamedValueExpression  # v11
 
 
 # ----------------------------------------------------------------------------
@@ -138,7 +141,48 @@ __all__ = [
     "ValueDriver",
     "NamedValueExpression",
     "_detect_version",
+    "iter_syntax_list",
+    "is_syntax_list",
 ]
+
+
+# ----------------------------------------------------------------------------
+# 8. SyntaxList / SeparatedList 遍历兼容
+#    v10: m.items 是 SyntaxNode (kind=SeparatedList), 要 `list(m.items)` 拿元素
+#    v11: m.items 直接是 plain Python list
+# ----------------------------------------------------------------------------
+
+def is_syntax_list(node) -> bool:
+    """判断节点是否是 syntax list (v10: SyntaxNode kind=SeparatedList/SyntaxList;
+    v11: plain list)
+
+    返回 True 表示节点表示一个 “可迭代且可能包含 syntax 节点的列表”。
+    """
+    if isinstance(node, list):
+        return True
+    if node is None:
+        return False
+    kind = getattr(node, "kind", None)
+    if kind is None:
+        return False
+    kind_str = str(kind)
+    return ("SeparatedList" in kind_str) or ("SyntaxList" in kind_str)
+
+
+def iter_syntax_list(node):
+    """统一处理 v10 / v11 的 syntax list 遍历
+
+    v10 上 `node` 是 SyntaxNode (kind=SeparatedList), 迭代产出 syntax 节点
+    v11 上 `node` 是 plain Python list
+
+    返回一个 Python list, 含所有 underlying syntax 节点
+    """
+    if node is None:
+        return []
+    if isinstance(node, list):
+        return list(node)
+    # v10: SyntaxNode, 需 list() 展开 SeparatedList
+    return list(node)
 
 
 # ----------------------------------------------------------------------------

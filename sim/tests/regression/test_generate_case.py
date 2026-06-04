@@ -82,14 +82,26 @@ endmodule'''
         self.assertIsNotNone(gen_region, "GenerateRegion not found")
         
         # 查找 CaseGenerate
+        # v10: gen_region children 是 [SyntaxList(CaseGenerate, ...)]
+        # v11: gen_region children 直接是 CaseGenerate
         case_generate = None
         for child in gen_region:
             kind = getattr(child, 'kind', None)
-            if kind == pyslang.SyntaxKind.SyntaxList:
+            kind_str = str(kind) if kind else ''
+            # v11: 直接是 CaseGenerate
+            if 'CaseGenerate' in kind_str:
+                case_generate = child
+                break
+            # v10: SyntaxList 包装, 里面是 CaseGenerate
+            is_list = (isinstance(child, list) or
+                       ('SyntaxList' in kind_str or 'SeparatedList' in kind_str))
+            if is_list:
                 for item in child:
-                    if item.kind == pyslang.SyntaxKind.CaseGenerate:
+                    if str(getattr(item, 'kind', '')) == str(pyslang.SyntaxKind.CaseGenerate):
                         case_generate = item
                         break
+                if case_generate:
+                    break
         
         self.assertIsNotNone(case_generate, "CaseGenerate not found")
         
