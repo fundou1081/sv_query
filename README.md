@@ -86,8 +86,11 @@ python run_cli.py trace fanin top.result -f top.sv --cache
 - 📚 **新文档**: `docs/FILELIST.md` 完整 filelist 文档
 - ✨ **Evidence 召回从 trace 扩展到 5 个命令** (2026-06-04): cdc / verify / risk /
   dataflow / controlflow 现在都支持 `--evidence` 可选 flag
-  (默认 off, `--evidence` 时在每条结果下方贴 1 行源码摘要)
+  (默认 off, `--evidence` 时在每条结果下方贴 1 行源码摘要, JSON
+  返回完整 evidence 字段含 credibility_score)
   详见 [docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展](docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展-2026-06-04)
+- 🐛 **Bugfix**: `cdc --json` 修复 tuple key 序列化 crash
+  (Stage 1 以来隐藏, evidence 路径触发发现)
 
 详见 [CHANGELOG](docs/DOC_IMPL_GAP.md#更新日志)
 
@@ -284,6 +287,62 @@ print(tb.to_dot())
 ```
 
 已通过 OpenTitan 10 个模块实测验证（lc_ctrl、dma、i2c 等）。
+
+### 🔎 场景 10：每条结果都贴源码位置 (--evidence)
+
+验证过程中总会在多跳追踪 / 路径分析 / 风险排名里遇到一个信号——
+**“它到底在源码的哪一行？被哪个 always_ff / if 块包住？”**
+
+5 个命令都支持 `--evidence` 可选 flag (默认 off)，
+在每条结果下方贴 1 行源码摘要，或者在 JSON 里返回完整 `evidence` 字段
+(包含 `source_text` / `source_location` / enclosing `always` / `if` / `assign` / `class` / `constraint` 块 / `credibility_score`)。
+
+```bash
+# 查看风险排名前 N 的数据信号, 同时显示每个信号所在的 always/if 块
+python run_cli.py risk analyze -f top.sv --evidence
+
+# 查看跨时钟域路径, 同时显示 source/target 的 always_ff 块
+python run_cli.py cdc analyze -f top.sv --evidence
+
+# 查看数据流中间跳, 每个 hop 都贴驱动代码
+python run_cli.py dataflow analyze top.din top.dout -f top.sv --evidence
+
+# 查看验证缺口信号, 同时显示信号所在 always_ff (告诉用户“该补 SVA 了”)
+python run_cli.py verify gap -f top.sv --evidence
+
+# 查看条件驱动的所有 if/else 表达式, 同时贴源码
+python run_cli.py controlflow analyze top.dout -f top.sv --evidence
+```
+
+**风险排名 --evidence 输出示例**：
+
+```
+数据信号风险排名:
+  1 dout  ?  4  0  🔴 47.3  ⏱🟠 38.0  SVA:✗ Cov:✗
+  └─ top.sv:16: if (!rst_n)
+  2 data  ?  1  1  🟠 25.3  ⏱🟡 17.0  SVA:✗ Cov:✗
+  └─ top.sv:12: data = din;
+```
+
+**JSON 模式** 会在每条信号下加完整 evidence 字段：
+
+```json
+{
+  "name": "dout",
+  "total_risk": 50.3,
+  "evidence": {
+    "source_text": "if (!rst_n)",
+    "source_location": {"file": "top.sv", "line_start": 16, "column": 5},
+    "enclosing_always": {"file": "top.sv", "line_start": 15, "line_end": 19, "text": "always_ff @(posedge clk ...) { ... }"},
+    "enclosing_if":    {"file": "top.sv", "line_start": 16, "line_end": 18, "text": "if (!rst_n)\n    ...\nelse if (en)\n    ..."},
+    "is_verified": true,
+    "credibility_score": 1.0
+  }
+}
+```
+
+设计原则：共享 graph, 一次 build 多次解析, 额外开销 ≈ 一次 resolve 调度。
+**默认 off，不破坏现有输出。** 详见 [docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展](docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展-2026-06-04)。
 
 ---
 
@@ -544,6 +603,9 @@ PYTHONPATH=src python3 -c "from trace.core.cache import get_cache; print(get_cac
 ```bash
 # 分析信号的条件驱动
 python run_cli.py controlflow analyze demo.out -f demo.sv
+
+# 可选: 在每个 condition 下方贴源码位置
+python run_cli.py controlflow analyze demo.out -f demo.sv --evidence
 ```
 
 **输出示例：**
@@ -553,15 +615,19 @@ ControlFlow Analysis: demo.out
 
   Conditional Drivers:
     when sel == 2'b00: demo.a → demo.out
+      └─ demo.sv:9: out = a;
 
   Conditional Drivers:
     when sel == 2'b01: demo.b → demo.out
+      └─ demo.sv:10: out = b;
 
   Conditional Drivers:
     when sel == 2'b10: demo.c → demo.out
+      └─ demo.sv:11: out = c;
 
   Conditional Drivers:
     when default: demo.d → demo.out
+      └─ demo.sv:12: out = d;
 ```
 
 对应的 SystemVerilog 代码：
@@ -586,6 +652,9 @@ endmodule
 ```bash
 # 分析数据流路径
 python run_cli.py dataflow analyze dataflow_demo.data_in dataflow_demo.data_out -f demo.sv
+
+# 可选: 在每个 hop 下方贴源码位置
+python run_cli.py dataflow analyze dataflow_demo.data_in dataflow_demo.data_out -f demo.sv --evidence
 ```
 
 **输出示例：**
@@ -759,6 +828,9 @@ python run_cli.py cdc analyze -f top.sv
 
 # 只显示高风险
 python run_cli.py cdc analyze -f top.sv --high-only
+
+# 可选: 在每条 CDC 路径下方贴 source/target 的源码位置
+python run_cli.py cdc analyze -f top.sv --evidence
 ```
 
 **输出示例：**
@@ -779,6 +851,8 @@ CDC 检测报告: cross_clock.sv
   [1] 🔴 top.data_a → top.data_sync
       域: top.clk_a → top.clk_b
       边: DATA | 同步器: NONE (无同步器)
+        source: cross_clock.sv:23: if (!rst_n)
+        target: cross_clock.sv:31: dout_b <= reg_a;
 ```
 
 ### verify - 验证缺口检测
@@ -797,6 +871,9 @@ python run_cli.py verify gap -f top.sv --min-risk 30
 
 # JSON 输出
 python run_cli.py verify gap -f top.sv --json
+
+# 可选: 在排名下方贴 1 行源码位置 (告诉用户每个信号在哪个 always 块)
+python run_cli.py verify gap -f top.sv --evidence
 ```
 
 **输出示例：**
@@ -818,7 +895,9 @@ python run_cli.py verify gap -f top.sv --json
   排名   信号                        类型     功能分     时序分     覆盖
   ──── ───────────────────────── ────── ─────── ─────── ──────
      1 stage1_valid              REG     🔴 29.3  23.0 ✗
+  └─ data_path.sv:42: if (!rst_n)
      2 result                    REG     🔴 29.3  23.0 ✗
+  └─ data_path.sv:55: result <= temp;
 
   【Coverage bins 详情】
     mode: pass, inc, shift, invert
