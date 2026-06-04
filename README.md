@@ -91,6 +91,11 @@ python run_cli.py trace fanin top.result -f top.sv --cache
   详见 [docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展](docs/EVIDENCE_FEATURE.md#stage-5-多命令-evidence-扩展-2026-06-04)
 - 🐛 **Bugfix**: `cdc --json` 修复 tuple key 序列化 crash
   (Stage 1 以来隐藏, evidence 路径触发发现)
+- ✨ **pyslang 10 + 11 双版本完整支持** (2026-06-04): 现在在 pyslang
+  10.0.0 和 11.0.0 上都是 1501/1501 全过。v11 拆了 submodule + 改了
+  4 个语义点 (SyntaxList 包装 / foreach loop var / class composition /
+  ranges 内部), 都有 compat shim + 业务代码适配。
+  详见 [docs/PYSLANG_COMPAT.md](docs/PYSLANG_COMPAT.md)
 
 详见 [CHANGELOG](docs/DOC_IMPL_GAP.md#更新日志)
 
