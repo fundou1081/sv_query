@@ -22,6 +22,14 @@ from trace.core.graph.models import EdgeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
+# [Stage 5] evidence helper (cdc/verify/risk/dataflow/controlflow 复用)
+from cli._evidence_helpers import (  # noqa: E402
+    build_resolver as _build_evidence_resolver,
+    evidence_to_dict as _evidence_to_dict,
+    snippet_to_dict as _snippet_to_dict,
+    evidence_summary_line as _evidence_summary_line,
+)
+
 
 # JSON 输出格式化函数
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -533,16 +541,8 @@ def evidence(
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
     try:
-        from trace.core.trace_evidence import TraceEvidenceResolver
-
-        with open(str(file)) as f:
-            source = f.read()
-        # [Stage 3A] --json 模式静音编译器 WARNING (跟 V2.A.2 cycle 13 一致)
-        tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR")
-        graph = tracer.build_graph()
-        sem = tracer._get_adapter()
-
-        resolver = TraceEvidenceResolver(graph=graph, adapter=sem)
+        # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
+        resolver, _graph, _sem = _build_evidence_resolver(file)
 
         if chain:
             evidences = resolver.resolve_chain(signal)
@@ -580,42 +580,7 @@ def evidence(
         raise typer.Exit(code=1) from None
 
 
-def _snippet_to_dict(snippet) -> dict | None:
-    """SourceSnippet → dict"""
-    if snippet is None:
-        return None
-    return {
-        "file": snippet.location.file,
-        "line_start": snippet.location.line_start,
-        "line_end": snippet.location.line_end,
-        "column": snippet.location.column,
-        "text": snippet.text,
-    }
-
-
-def _evidence_to_dict(ev) -> dict:
-    """Evidence → dict"""
-    return {
-        "signal": ev.signal,
-        "source_location": (
-            {
-                "file": ev.source_location.file,
-                "line_start": ev.source_location.line_start,
-                "line_end": ev.source_location.line_end,
-                "column": ev.source_location.column,
-            }
-            if ev.source_location is not None
-            else None
-        ),
-        "source_text": ev.source_text,
-        "enclosing_always": _snippet_to_dict(ev.enclosing_always),
-        "enclosing_always_comb": _snippet_to_dict(ev.enclosing_always_comb),
-        "enclosing_if": _snippet_to_dict(ev.enclosing_if),
-        "enclosing_assign": _snippet_to_dict(ev.enclosing_assign),
-        "enclosing_class": _snippet_to_dict(ev.enclosing_class),
-        "enclosing_constraint": _snippet_to_dict(ev.enclosing_constraint),
-        "enclosing_chain": [_snippet_to_dict(s) for s in ev.enclosing_chain],
-    }
+# [Stage 5] 移到 cli/_evidence_helpers.py,5 个命令共用
 
 
 def _output_evidence_text(data: dict) -> None:
