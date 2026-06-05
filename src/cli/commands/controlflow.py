@@ -21,6 +21,7 @@ from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
     evidence_to_dict,
     evidence_summary_indented,
+    format_controlflow_human as _format_controlflow_human,
 )
 
 
@@ -36,12 +37,23 @@ def _is_constant(src: str) -> bool:
     return not src[0].isalpha() and not src.startswith("_")
 
 
-def output_text(data: dict) -> None:
-    """纯文本输出"""
+def output_text(data: dict, human: bool = False) -> None:
+    """纯文本输出
+
+    Args:
+        data: 命令返回的 dict
+        human: True 时用人类友好箭头格式 (--human flag)
+    """
     command = data.get("command", "")
     result = data.get("result", {})
 
     if command == "controlflow":
+        if human:
+            print(_format_controlflow_human(
+                result.get("signal", ""),
+                result.get("conditioned_drivers", []),
+            ))
+            return
         signal = result.get("signal", "")
         conditioned_drivers = result.get("conditioned_drivers", [])
         warnings = result.get("warnings", [])
@@ -84,6 +96,7 @@ def analyze(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Analyze control flow conditions for a signal"""
     try:
@@ -154,7 +167,7 @@ def analyze(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            output_text(data, human=human)
 
     except Exception as e:
         data = {"ok": False, "command": "controlflow", "error": str(e), "errors": [str(e)]}

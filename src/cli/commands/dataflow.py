@@ -18,6 +18,7 @@ from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
     evidence_to_dict,
     evidence_summary_indented,
+    format_dataflow_human as _format_dataflow_human,
 )
 
 
@@ -26,12 +27,24 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
-def output_text(data: dict) -> None:
-    """纯文本输出 - 与 trace.py 保持一致格式"""
+def output_text(data: dict, human: bool = False) -> None:
+    """纯文本输出 - 与 trace.py 保持一致格式
+
+    Args:
+        data: 命令返回的 dict
+        human: True 时用人类友好箭头格式 (--human flag)
+    """
     command = data.get("command", "")
     result = data.get("result", {})
 
     if command == "dataflow":
+        if human:
+            print(_format_dataflow_human(
+                result.get("from_signal", ""),
+                result.get("to_signal", ""),
+                result.get("paths", []),
+            ))
+            return
         from_sig = result.get("from_signal", "")
         to_sig = result.get("to_signal", "")
         is_reachable = result.get("is_reachable", False)
@@ -105,6 +118,7 @@ def analyze(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each segment (optional)"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     try:
@@ -167,7 +181,7 @@ def analyze(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            output_text(data, human=human)
 
     except Exception as e:
         data = {"ok": False, "command": "dataflow", "error": str(e), "errors": [str(e)]}

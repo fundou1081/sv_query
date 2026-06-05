@@ -28,6 +28,8 @@ from cli._evidence_helpers import (  # noqa: E402
     evidence_to_dict as _evidence_to_dict,
     snippet_to_dict as _snippet_to_dict,
     evidence_summary_line as _evidence_summary_line,
+    format_fanin_human as _format_fanin_human,
+    format_fanout_human as _format_fanout_human,
 )
 
 
@@ -37,35 +39,51 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
-def output_text(data: dict) -> None:
-    """纯文本输出"""
+def output_text(data: dict, human: bool = False) -> None:
+    """纯文本输出
+
+    Args:
+        data: 命令返回的 dict
+        human: True 时用人类友好箭头格式 (--human flag)
+    """
     command = data.get("command", "")
     result = data.get("result", {})
 
     if command == "trace_fanin":
         signal = data.get("params", {}).get("signal", "")
         drivers = result.get("drivers", [])
-        print(f"Fanin of '{signal}':")
-        if not drivers:
-            print("  (no drivers)")
-        for d in drivers:
-            dist = d.get("distance", "")
-            kind = d.get("kind", "")
-            print(f"  [{dist}] {d['id']} ({kind})")
+        if human:
+            ev = result.get("evidence")
+            print(_format_fanin_human(signal, drivers, evidence_map={signal: ev} if ev else None))
+        else:
+            print(f"Fanin of '{signal}':")
+            if not drivers:
+                print("  (no drivers)")
+            for d in drivers:
+                dist = d.get("distance", "")
+                kind = d.get("kind", "")
+                print(f"  [{dist}] {d['id']} ({kind})")
 
     elif command == "trace_fanout":
         signal = data.get("params", {}).get("signal", "")
         loads = result.get("loads", [])
-        print(f"Fanout of '{signal}':")
-        if not loads:
-            print("  (no loads)")
-        for load in loads:
-            dist = load.get("distance", "")
-            kind = load.get("kind", "")
-            print(f"  [{dist}] {load['id']} ({kind})")
+        if human:
+            ev = result.get("evidence")
+            print(_format_fanout_human(signal, loads, evidence_map={signal: ev} if ev else None))
+        else:
+            print(f"Fanout of '{signal}':")
+            if not loads:
+                print("  (no loads)")
+            for load in loads:
+                dist = load.get("distance", "")
+                kind = load.get("kind", "")
+                print(f"  [{dist}] {load['id']} ({kind})")
 
     elif command == "trace_impact":
-        _output_impact_text(data)
+        if human:
+            _output_impact_human(data)
+        else:
+            _output_impact_text(data)
 
 
 def _output_impact_text(data: dict) -> None:
@@ -108,6 +126,60 @@ def _output_impact_text(data: dict) -> None:
         else:
             print(f"     ⚠️  No coverage (SVA: {sva_status}, Covergroup: {cov_status})")
 
+
+def _output_impact_human(data: dict) -> None:
+    """[Stage 6] impact 人类友好输出: 箭头链 + 风险 / 覆盖 tag"""
+    result = data.get("result", {})
+    signal = data.get("params", {}).get("signal", "")
+    paths = result.get("paths", [])
+    modules = result.get("modules", [])
+    high_risk = result.get("high_risk_count", 0)
+    total_paths = result.get("total_paths", 0)
+
+    # ANSI color re-import in this scope (避免乱动模块顶部 import)
+    from cli._evidence_helpers import (
+        _color, _ANSI_BOLD, _ANSI_DIM, _ANSI_CYAN, _ANSI_RED, _ANSI_YELLOW, _ANSI_GREEN, _ARROW
+    )
+
+    print(f"Impact of {_color(signal, _ANSI_BOLD)}")
+    print(f"  {total_paths} paths, {high_risk} high-risk, {len(modules)} modules")
+    if modules:
+        print(f"  modules: {_color(', '.join(modules), _ANSI_DIM)}")
+    print()
+
+    if not paths:
+        print(f"  {_color('(no impact paths)', _ANSI_DIM)}")
+        return
+
+    for i, path in enumerate(paths, 1):
+        risk = (path.get("risk", "") or "").upper()
+        if risk == "HIGH":
+            risk_str = _color("HIGH", _ANSI_RED)
+        elif risk == "MEDIUM":
+            risk_str = _color("MEDIUM", _ANSI_YELLOW)
+        else:
+            risk_str = _color(risk or "LOW", _ANSI_GREEN)
+
+        chain = path.get("path", [])
+        if chain:
+            chain_str = " ".join(
+                [_color(chain[0], _ANSI_BOLD)] + [_ARROW] + [_color(s, _ANSI_CYAN) for s in chain[1:]]
+            )
+        else:
+            chain_str = "(empty)"
+
+        print(f"  {i}. {chain_str}  [{risk_str}]")
+        cov = path.get("coverage", {})
+        sva = cov.get("sva", "none")
+        cg = cov.get("covergroup", "none")
+        cond = path.get("condition", "")
+        cov_str = f"sva={sva}, covergroup={cg}"
+        cond_str = f"  when {_color(cond, _ANSI_DIM)}" if cond else ""
+        print(f"     {cov_str}  fanout={path.get('fanout', 0)}{cond_str}")
+        sug = path.get("suggestion", "")
+        if sug:
+            print(f"     {_color('└─ ' + sug, _ANSI_DIM)}")
+
         # 条件/时钟信息
         if path.get("condition"):
             print(f"     Condition: {path['condition']}")
@@ -136,6 +208,7 @@ def fanin(
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
@@ -169,7 +242,7 @@ def fanin(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            output_text(data, human=human)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_fanin", "error": str(e), "errors": [str(e)]}
@@ -187,6 +260,7 @@ def fanout(
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Trace signal loads (fanout)"""
     try:
@@ -220,7 +294,7 @@ def fanout(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            output_text(data, human=human)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_fanout", "error": str(e), "errors": [str(e)]}
@@ -238,6 +312,7 @@ def impact(
     min_risk: float = typer.Option(30.0, "--min-risk", "-r", help="Minimum risk score for high-risk"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -301,7 +376,7 @@ def impact(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data)
+            output_text(data, human=human)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_impact", "error": str(e), "errors": [str(e)]}
