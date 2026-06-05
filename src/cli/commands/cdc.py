@@ -30,6 +30,7 @@ from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
     evidence_to_dict,
     evidence_summary_indented,
+    format_cdc_human as _format_cdc_human,
 )
 
 cdc_app = typer.Typer(help="CDC (Clock Domain Crossing) detection: identify cross-clock domain paths")
@@ -41,6 +42,7 @@ def analyze(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     high_only: bool = typer.Option(False, "--high-only", help="Show only high-risk CDC paths"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for source/target of each CDC path (optional)"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
 ) -> None:
     """Detect clock domain crossing issues"""
     from trace.unified_tracer import UnifiedTracer
@@ -88,6 +90,25 @@ def analyze(
                 ensure_ascii=False,
             )
         )
+        return
+
+    # [Stage 6] --human 友好输出: 短路到箭头格式
+    if human:
+        # 拿 evidence (跟 text 模式一样)
+        evidence_resolver = None
+        if evidence:
+            evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+            for p in report.get("paths", []):
+                p["source_evidence"] = evidence_to_dict(evidence_resolver.resolve(p["source"]))
+                p["target_evidence"] = evidence_to_dict(evidence_resolver.resolve(p["target"]))
+        paths_to_show = report["paths"]
+        if high_only:
+            paths_to_show = [p for p in paths_to_show if p["risk"] == "HIGH"]
+        print(f"CDC 检测报告: {file}")
+        print(f"  时钟域: {len(report['domains'])}, 总计: {report['total_cdc']}, "
+              f"高风险: {report['high_risk']}, 低风险: {report['low_risk']}")
+        print()
+        print(_format_cdc_human(paths_to_show))
         return
 
     print(f"{'=' * 70}")
