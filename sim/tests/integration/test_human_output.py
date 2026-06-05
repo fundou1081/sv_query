@@ -75,7 +75,8 @@ class TestHumanOutput:
             "--human",
         )
         assert rc == 0
-        assert "→" in out
+        # 应有箭头 (→) 或 tree 字符 (+--, |--)
+        assert any(s in out for s in ("→", "+--", "|--")), f"No arrow/tree in: {out!r}"
         assert "top.dout" in out
         # 应有 when 条件
         assert "when" in out

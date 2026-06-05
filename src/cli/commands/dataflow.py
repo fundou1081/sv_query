@@ -27,7 +27,7 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
-def output_text(data: dict, human: bool = False) -> None:
+def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出 - 与 trace.py 保持一致格式
 
     Args:
@@ -43,6 +43,7 @@ def output_text(data: dict, human: bool = False) -> None:
                 result.get("from_signal", ""),
                 result.get("to_signal", ""),
                 result.get("paths", []),
+                tree=tree,
             ))
             return
         from_sig = result.get("from_signal", "")
@@ -119,6 +120,7 @@ def analyze(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each segment (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     try:
@@ -181,7 +183,7 @@ def analyze(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data, human=human)
+            output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "dataflow", "error": str(e), "errors": [str(e)]}

@@ -39,12 +39,13 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
-def output_text(data: dict, human: bool = False) -> None:
+def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
 
     Args:
         data: 命令返回的 dict
         human: True 时用人类友好箭头格式 (--human flag)
+        tree: True 强制竖向 tree 输出 (--tree flag, 链 > 6 自动)
     """
     command = data.get("command", "")
     result = data.get("result", {})
@@ -54,7 +55,7 @@ def output_text(data: dict, human: bool = False) -> None:
         drivers = result.get("drivers", [])
         if human:
             ev = result.get("evidence")
-            print(_format_fanin_human(signal, drivers, evidence_map={signal: ev} if ev else None))
+            print(_format_fanin_human(signal, drivers, evidence_map={signal: ev} if ev else None, tree=tree))
         else:
             print(f"Fanin of '{signal}':")
             if not drivers:
@@ -69,7 +70,7 @@ def output_text(data: dict, human: bool = False) -> None:
         loads = result.get("loads", [])
         if human:
             ev = result.get("evidence")
-            print(_format_fanout_human(signal, loads, evidence_map={signal: ev} if ev else None))
+            print(_format_fanout_human(signal, loads, evidence_map={signal: ev} if ev else None, tree=tree))
         else:
             print(f"Fanout of '{signal}':")
             if not loads:
@@ -81,7 +82,7 @@ def output_text(data: dict, human: bool = False) -> None:
 
     elif command == "trace_impact":
         if human:
-            _output_impact_human(data)
+            _output_impact_human(data, tree=tree)
         else:
             _output_impact_text(data)
 
@@ -127,8 +128,11 @@ def _output_impact_text(data: dict) -> None:
             print(f"     ⚠️  No coverage (SVA: {sva_status}, Covergroup: {cov_status})")
 
 
-def _output_impact_human(data: dict) -> None:
-    """[Stage 6] impact 人类友好输出: 箭头链 + 风险 / 覆盖 tag"""
+def _output_impact_human(data: dict, tree: bool = False) -> None:
+    """[Stage 6] impact 人类友好输出: 箭头链 + 风险 / 覆盖 tag
+
+    tree: True 强制竖向 tree 输出 (--tree flag)
+    """
     result = data.get("result", {})
     signal = data.get("params", {}).get("signal", "")
     paths = result.get("paths", [])
@@ -151,6 +155,8 @@ def _output_impact_human(data: dict) -> None:
         print(f"  {_color('(no impact paths)', _ANSI_DIM)}")
         return
 
+    from cli._evidence_helpers import should_use_tree, render_signal_tree
+
     for i, path in enumerate(paths, 1):
         risk = (path.get("risk", "") or "").upper()
         if risk == "HIGH":
@@ -161,22 +167,35 @@ def _output_impact_human(data: dict) -> None:
             risk_str = _color(risk or "LOW", _ANSI_GREEN)
 
         chain = path.get("path", [])
-        if chain:
-            chain_str = " ".join(
-                [_color(chain[0], _ANSI_BOLD)] + [_ARROW] + [_color(s, _ANSI_CYAN) for s in chain[1:]]
-            )
-        else:
-            chain_str = "(empty)"
-
-        print(f"  {i}. {chain_str}  [{risk_str}]")
+        cond = path.get("condition", "")
         cov = path.get("coverage", {})
         sva = cov.get("sva", "none")
         cg = cov.get("covergroup", "none")
-        cond = path.get("condition", "")
+        sug = path.get("suggestion", "")
+
+        # tree 模式 / 自动转 tree
+        if should_use_tree(len(chain), tree):
+            print(f"  {i}. (tree)")
+            tree_out = render_signal_tree(
+                chain,
+                title=None,
+                risk_marker=risk if risk in ("HIGH", "MEDIUM") else None,
+                terminal_meta=f"when {cond}" if cond else None,
+            )
+            for ln in tree_out.split("\n"):
+                print(f"     {ln}")
+        else:
+            if chain:
+                chain_str = " ".join(
+                    [_color(chain[0], _ANSI_BOLD)] + [_ARROW] + [_color(s, _ANSI_CYAN) for s in chain[1:]]
+                )
+            else:
+                chain_str = "(empty)"
+            print(f"  {i}. {chain_str}  [{risk_str}]")
+
         cov_str = f"sva={sva}, covergroup={cg}"
         cond_str = f"  when {_color(cond, _ANSI_DIM)}" if cond else ""
         print(f"     {cov_str}  fanout={path.get('fanout', 0)}{cond_str}")
-        sug = path.get("suggestion", "")
         if sug:
             print(f"     {_color('└─ ' + sug, _ANSI_DIM)}")
 
@@ -209,6 +228,7 @@ def fanin(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
@@ -242,7 +262,7 @@ def fanin(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data, human=human)
+            output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_fanin", "error": str(e), "errors": [str(e)]}
@@ -261,6 +281,7 @@ def fanout(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Trace signal loads (fanout)"""
     try:
@@ -294,7 +315,7 @@ def fanout(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data, human=human)
+            output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_fanout", "error": str(e), "errors": [str(e)]}
@@ -313,6 +334,7 @@ def impact(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -376,7 +398,7 @@ def impact(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data, human=human)
+            output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_impact", "error": str(e), "errors": [str(e)]}
@@ -613,6 +635,8 @@ def evidence(
     chain: bool = typer.Option(False, "--chain", "-c", help="Show evidence for entire driver chain"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
+    human: bool = typer.Option(False, "--human", "-H", help="Human-friendly tree output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
     try:
@@ -644,7 +668,26 @@ def evidence(
         if json_output:
             output_json(data, pretty)
         else:
-            _output_evidence_text(data)
+            if human and chain and isinstance(data.get("evidence_chain"), list):
+                # [Stage 6 part 4] --human --tree: tree 模式渲染 chain
+                from cli._evidence_helpers import render_signal_tree
+                # chain list: [target, driver1, driver2, ...] (target 在前)
+                chain_signals = [ev.get("signal", "?") for ev in data["evidence_chain"]]
+                # 删掉开头的 target (因为我们要 append signal 在末尾, 避免重复)
+                if chain_signals and chain_signals[0] == signal:
+                    chain_signals = chain_signals[1:]
+                # 倒序: source (最早 driver) 在前, signal (终点) 在最后
+                chain_signals = list(reversed(chain_signals))
+                chain_signals.append(signal)
+                # 如果 source 在 chain_signals[0] 还是 signal (eg chain 只有 target 自己), 去重
+                if len(chain_signals) > 1 and chain_signals[0] == chain_signals[-1]:
+                    chain_signals = chain_signals[:-1]
+                print(render_signal_tree(
+                    chain_signals,
+                    title=f"Evidence chain: {signal}",
+                ))
+            else:
+                _output_evidence_text(data)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_evidence", "error": str(e), "errors": [str(e)]}
