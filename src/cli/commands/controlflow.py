@@ -37,7 +37,7 @@ def _is_constant(src: str) -> bool:
     return not src[0].isalpha() and not src.startswith("_")
 
 
-def output_text(data: dict, human: bool = False) -> None:
+def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
 
     Args:
@@ -52,6 +52,7 @@ def output_text(data: dict, human: bool = False) -> None:
             print(_format_controlflow_human(
                 result.get("signal", ""),
                 result.get("conditioned_drivers", []),
+                tree=tree,
             ))
             return
         signal = result.get("signal", "")
@@ -97,6 +98,7 @@ def analyze(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze control flow conditions for a signal"""
     try:
@@ -167,7 +169,7 @@ def analyze(
         if json_output:
             output_json(data, pretty)
         else:
-            output_text(data, human=human)
+            output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "controlflow", "error": str(e), "errors": [str(e)]}

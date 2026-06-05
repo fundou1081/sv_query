@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 CLI 公共 evidence helpers
 =========================
@@ -26,7 +27,7 @@ from trace.unified_tracer import UnifiedTracer
 # ----------------------------------------------------------------------------
 
 def build_resolver(file: Path, log_level: str = "ERROR") -> Tuple[TraceEvidenceResolver, Any, Any]:
-    """读取 SV 源文件 → build graph + adapter + resolver
+    """读取 SV 源文件 -> build graph + adapter + resolver
 
     Args:
         file: SystemVerilog 源文件路径
@@ -53,11 +54,11 @@ def make_resolver(graph, adapter) -> TraceEvidenceResolver:
 
 
 # ----------------------------------------------------------------------------
-# 2. 序列化: Evidence / SourceSnippet → JSON-friendly dict
+# 2. 序列化: Evidence / SourceSnippet -> JSON-friendly dict
 # ----------------------------------------------------------------------------
 
 def snippet_to_dict(snippet) -> Optional[dict]:
-    """SourceSnippet → dict (Stage 4 offset-based slicing 输出)"""
+    """SourceSnippet -> dict (Stage 4 offset-based slicing 输出)"""
     if snippet is None:
         return None
     return {
@@ -70,7 +71,7 @@ def snippet_to_dict(snippet) -> Optional[dict]:
 
 
 def evidence_to_dict(ev) -> Optional[dict]:
-    """Evidence → dict (含 enclosing_* snippets + credibility)
+    """Evidence -> dict (含 enclosing_* snippets + credibility)
 
     字段集对齐 trace evidence 命令 Stage 4 形态:
     - signal: 哪个信号
@@ -159,7 +160,7 @@ def evidence_summary_indented(ev, indent: str = "  └─ ") -> Optional[str]:
 # ----------------------------------------------------------------------------
 #
 # 设计原则:
-# - 一行 = 一条信号链,用 → 箭头连接
+# - 一行 = 一条信号链,用 -> 箭头连接
 # - 条件用 [when ...] 包裹
 # - 风险用 [RISK] / [NO SYNC] 标
 # - evidence 可选 (--human + --evidence 同时给)
@@ -205,12 +206,12 @@ def format_signal_arrow_chain(
     arrows: str = "default",
     risk_marker: str = None,
 ) -> str:
-    """格式化信号链: ['A', 'B', 'C'] → 'A → B → C'
+    """格式化信号链: ['A', 'B', 'C'] -> 'A -> B -> C'
 
     Args:
         signals: 信号名列表 (in order)
         conditions: 可选, 与 signals 等长或 None
-        arrows: 'default' (→) / 'cond' (⇢) / 'branch' (⤷)
+        arrows: 'default' (->) / 'cond' (=>) / 'branch' (>>)
         risk_marker: 可选, 在链尾加 [RISK=HIGH] 之类
     """
     if not signals:
@@ -229,7 +230,7 @@ def format_signal_arrow_chain(
 
     if conditions:
         # 在每对信号之间插条件: A [when X] B
-        # conditions[i] 是 A→B 的条件
+        # conditions[i] 是 A->B 的条件
         if len(conditions) == len(signals) - 1:
             for i, cond in enumerate(conditions):
                 if cond:
@@ -253,11 +254,13 @@ def format_fanin_human(
     signal: str,
     drivers: list,
     evidence_map: dict = None,
+    tree: bool = False,
 ) -> str:
     """trace fanin human 输出: 反向链, 从 source 到 signal
 
     drivers: [{id, kind, distance, evidence?}, ...]
     evidence_map: {signal_id: evidence_dict} 可选
+    tree: True 强制竖向 tree, 链 > 6 自动转 tree
     """
     if not drivers:
         return f"{_color(signal, _ANSI_BOLD)} ← (no drivers)"
@@ -268,6 +271,24 @@ def format_fanin_human(
     chain = [str(signal)]
     chain.extend([d["id"] for d in sorted_drvs])
     chain.reverse()  # 现在是 [源头, ..., signal]
+
+    # Auto tree: 链 > 6 自动转
+    if should_use_tree(len(chain), tree):
+        ev_text = ""
+        if evidence_map:
+            sig_ev = evidence_map.get(signal)
+            if sig_ev:
+                loc = sig_ev.get("source_location", {})
+                text = sig_ev.get("source_text", "")
+                if loc and text:
+                    first = text.split("\n", 1)[0]
+                    ev_text = f"{loc['file']}:{loc['line_start']}: {first}"
+        out = render_signal_tree(
+            chain,
+            title=f"Fanin of {signal}",
+            terminal_meta=ev_text if ev_text else None,
+        )
+        return out
 
     # 拼主体
     parts = []
@@ -291,7 +312,7 @@ def format_fanin_human(
             if loc and text:
                 first = text.split("\n", 1)[0]
                 lines.append(
-                    f"  {_color('└─', _ANSI_DIM)} "
+                    f"  {_color('+-', _ANSI_DIM)} "
                     f"{loc['file']}:{loc['line_start']}: "
                     f"{_color(first, _ANSI_DIM)}"
                 )
@@ -303,15 +324,34 @@ def format_fanout_human(
     signal: str,
     loads: list,
     evidence_map: dict = None,
+    tree: bool = False,
 ) -> str:
     """trace fanout human 输出: 正向链, 从 signal 到 leaves"""
     if not loads:
-        return f"{_color(signal, _ANSI_BOLD)} → (no loads)"
+        return f"{_color(signal, _ANSI_BOLD)} -> (no loads)"
 
     sorted_loads = sorted(loads, key=lambda d: d.get("distance", 0), reverse=True)
 
     chain = [str(signal)]
     chain.extend([d["id"] for d in sorted_loads])
+
+    # Auto tree
+    if should_use_tree(len(chain), tree):
+        ev_text = ""
+        if evidence_map:
+            sig_ev = evidence_map.get(signal)
+            if sig_ev:
+                loc = sig_ev.get("source_location", {})
+                text = sig_ev.get("source_text", "")
+                if loc and text:
+                    first = text.split("\n", 1)[0]
+                    ev_text = f"{loc['file']}:{loc['line_start']}: {first}"
+        out = render_signal_tree(
+            chain,
+            title=f"Fanout of {signal}",
+            terminal_meta=ev_text if ev_text else None,
+        )
+        return out
 
     parts = []
     for i, s in enumerate(chain):
@@ -333,7 +373,7 @@ def format_fanout_human(
             if loc and text:
                 first = text.split("\n", 1)[0]
                 lines.append(
-                    f"  {_color('└─', _ANSI_DIM)} "
+                    f"  {_color('+-', _ANSI_DIM)} "
                     f"{loc['file']}:{loc['line_start']}: "
                     f"{_color(first, _ANSI_DIM)}"
                 )
@@ -345,10 +385,13 @@ def format_dataflow_human(
     from_signal: str,
     to_signal: str,
     paths: list,
+    tree: bool = False,
 ) -> str:
-    """dataflow analyze human 输出: from → ... → to, 多 path 竖排
+    """dataflow analyze human 输出: from -> ... -> to, 多 path 竖排
 
     paths: [{segments: [{from_signal, to_signal, assign_type, condition?, evidence?}], ...}, ...]
+
+    tree: True 强制 tree, 链 > 6 自动转 tree (per path 独立判断)
     """
     if not paths:
         return (
@@ -367,24 +410,36 @@ def format_dataflow_human(
         segs = path.get("segments", [])
         if not segs:
             continue
+        # 构造信号链 + 条件
+        chain = [from_signal] + [seg["to_signal"] for seg in segs]
+        conditions = [seg.get("condition", "").strip() for seg in segs]
+
+        # Auto tree: 链 > 6 自动转
+        if should_use_tree(len(chain), tree):
+            lines.append(f"  Path {pi} (tree):")
+            lines.append("    " + render_signal_tree(
+                chain, conditions=conditions,
+                title=None,
+            ).replace("\n", "\n    "))
+            lines.append("")
+            continue
+
+        # inline 模式
         lines.append(f"  Path {pi}:")
-        # 主链: from → [when cond] s1.to → [when cond] s2.to → ... → to_signal
-        chain = [_color(from_signal, _ANSI_BOLD)]
+        chain_parts = [_color(from_signal, _ANSI_BOLD)]
         for seg in segs:
             cond = seg.get("condition", "").strip()
-            chain.append(_ARROW)
+            chain_parts.append(_ARROW)
             if cond:
-                chain.append(f"[{_color('when ' + cond, _ANSI_MAGENTA)}]")
-            chain.append(_color(seg["to_signal"], _ANSI_CYAN))
-        # 末尾如果不是真正的 to_signal, 补上
+                chain_parts.append(f"[{_color('when ' + cond, _ANSI_MAGENTA)}]")
+            chain_parts.append(_color(seg["to_signal"], _ANSI_CYAN))
         if (
             from_signal != to_signal
-            and chain[-1] != _color(to_signal, _ANSI_BOLD)
             and segs[-1].get("to_signal") != to_signal
         ):
-            chain.append(_ARROW)
-            chain.append(_color(to_signal, _ANSI_BOLD))
-        lines.append("    " + " ".join(chain))
+            chain_parts.append(_ARROW)
+            chain_parts.append(_color(to_signal, _ANSI_BOLD))
+        lines.append("    " + " ".join(chain_parts))
         # 段 metadata (assign_type + line + score) 贴下面
         for j, seg in enumerate(segs):
             atype = seg.get("assign_type", "")
@@ -405,14 +460,14 @@ def format_dataflow_human(
     return "\n".join(lines)
 
 
-def format_controlflow_human(signal: str, conditioned_drivers: list) -> str:
+def format_controlflow_human(signal: str, conditioned_drivers: list, tree: bool = False) -> str:
     """controlflow analyze human 输出: 条件 + 箭头
 
     支持两种数据格式 (兼容):
     - v1: [{condition, drivers: [signals], evidence?}, ...]
     - v2: [{to_node, conditions: [{expr, edge: {src, dst, kind, condition?}}]}, ...]
 
-    输出统一: 'when EXPR: src → dst'
+    输出统一: 'when EXPR: src -> dst'
     """
     if not conditioned_drivers:
         return f"{_color(signal, _ANSI_BOLD)}: {_color('no conditional drivers', _ANSI_DIM)}"
@@ -438,6 +493,30 @@ def format_controlflow_human(signal: str, conditioned_drivers: list) -> str:
     if not flat:
         return f"{_color(signal, _ANSI_BOLD)}: {_color('no conditional drivers', _ANSI_DIM)}"
 
+    # Auto tree: 条件多 +6 条自动转 tree
+    if should_use_tree(len(flat) + 1, tree):
+        # 用 tree 渲染: 根 = signal, 子 = 每个条件 (带 [when X] 前缀)
+        # 构造 children_by_node: {signal: [src1, src2, ...]}
+        # 每个 src 节点染 magenta
+        # children_dict: {signal: flat 中所有 src (去重保持顺序)}
+        # 但条件标签需附在 src 节点后面, 不能用纯 tree
+        # 所以这里用手工连线
+        for f in flat:
+            cond = f["cond"]
+            src = f["src"]
+            dst = f["dst"]
+            # 用单链树 (含 when 在 terminal meta)
+            chain = [src, dst]
+            out = render_signal_tree(
+                chain,
+                title=None,
+                terminal_meta=f"when {cond}",
+            )
+            # 缩进 + 缩进块
+            for ln in out.split("\n"):
+                lines.append("  " + ln)
+        return "\n".join(lines)
+
     for f in flat:
         cond = f["cond"]
         src = f["src"]
@@ -448,8 +527,11 @@ def format_controlflow_human(signal: str, conditioned_drivers: list) -> str:
     return "\n".join(lines)
 
 
-def format_cdc_human(cdc_paths: list) -> str:
-    """cdc analyze human 输出: clk_a: A → B (NO SYNC, HIGH risk)"""
+def format_cdc_human(cdc_paths: list, tree: bool = False) -> str:
+    """cdc analyze human 输出: clk_a: A -> B (NO SYNC, HIGH risk)
+
+    CDC 路径是 2-节点, 不会变长, tree 参数只作为一致接口 (保留扩展性)
+    """
     if not cdc_paths:
         return _color("no CDC paths found", _ANSI_GREEN)
 
@@ -484,6 +566,194 @@ def format_cdc_human(cdc_paths: list) -> str:
                     f"{loc.get('file', '?')}:{loc.get('line_start', '?')}"
                 )
     return "\n".join(lines)
+
+
+# ----------------------------------------------------------------------------
+# 5. Tree output (--tree flag, Stage 6 part 4: 横向太长自动转竖向 tree)
+# ----------------------------------------------------------------------------
+#
+# Tree 字符 (类 Unix 'tree' 命令):
+#   |--  中间节点, 有兄弟
+#   +--  未节点
+#   |   纵向连接中间节点的缩进
+#       (4 spaces) 未节点之后占位
+#
+# 示例输入: root + children = [a, b, c] (b 有子节点 [b1, b2])
+#   root
+#   |-- a
+#   |-- b
+#   |   |-- b1
+#   |   +-- b2
+#   +-- c
+
+_TREE_BRANCH = "|-- "
+_TREE_LAST = "+-- "
+_TREE_VERTICAL = "|   "
+_TREE_BLANK = "    "
+
+
+def _colorize_label(label: str, kind: str = "default") -> str:
+    """根据节点 role 染颜色"""
+    if kind == "root":
+        return _color(label, _ANSI_BOLD)
+    if kind == "end":
+        return _color(label, _ANSI_BOLD)
+    if kind == "leaf":
+        return _color(label, _ANSI_DIM)
+    if kind == "middle":
+        return _color(label, _ANSI_CYAN)
+    if kind == "cond":
+        return _color(label, _ANSI_MAGENTA)
+    return label
+
+
+def format_tree(
+    root: str,
+    children_by_node: dict = None,
+    root_meta: str = None,
+    leaf_meta: dict = None,
+    root_kind: str = "default",
+    use_color: bool = True,
+) -> str:
+    """渲染 tree
+
+    Args:
+        root: 根节点名
+        children_by_node: {node_name: [child_names]} - 如果是单链, 可不传
+        root_meta: 根节点后面的 metadata (如 '[HIGH]')
+        leaf_meta: {node_name: 'meta string'} - 节点后的 metadata
+        root_kind: root color hint
+        use_color: False 强制关颜色 (NO_COLOR)
+
+    Returns:
+        多行 tree 字符串
+
+    单链模式 (children_by_node=None):  root + [c1, c2, ...] 走单链
+    多链模式 (children_by_node={root: [c1, c2, ...]}):  走 tree
+    """
+    # 单链 vs 多链 判断
+    if children_by_node is None:
+        # 默认单链模式:  4 个參数在调用方应该传进来, 这里只处理 root + 隐含链
+        # (实测: 这个函数主要被 _render_chain 包装调用, 本身不常用)
+        if root_meta:
+            return f"{_colorize_label(root, root_kind)} {root_meta}"
+        return _colorize_label(root, root_kind)
+
+    def _render(node: str, prefix: str, is_last: bool, depth: int = 0, lines: list = None) -> list:
+        if lines is None:
+            lines = []
+        connector = _TREE_LAST if is_last else _TREE_BRANCH
+        # 节点 + meta
+        meta_str = ""
+        if depth == 0 and root_meta:
+            meta_str = f"  {root_meta}"
+        elif leaf_meta and node in leaf_meta and leaf_meta[node]:
+            meta_str = f"  {leaf_meta[node]}"
+        if depth == 0:
+            kind = root_kind
+        elif is_last and (node not in children_by_node or not children_by_node[node]):
+            kind = "leaf"
+        else:
+            kind = "middle"
+        label = _colorize_label(node, kind) if use_color else node
+        lines.append(f"{prefix}{connector}{label}{meta_str}")
+        # 子节点
+        kids = children_by_node.get(node, [])
+        for i, kid in enumerate(kids):
+            is_last_kid = (i == len(kids) - 1)
+            if is_last:
+                new_prefix = prefix + _TREE_BLANK
+            else:
+                new_prefix = prefix + _TREE_VERTICAL
+            _render(kid, new_prefix, is_last_kid, depth + 1, lines)
+        return lines
+
+    # 起始: root
+    out = []
+    if root_meta:
+        out.append(f"{_colorize_label(root, root_kind)}  {root_meta}")
+    else:
+        out.append(_colorize_label(root, root_kind))
+    # 渲染子节点 (不画 connector)
+    kids = children_by_node.get(root, [])
+    for i, kid in enumerate(kids):
+        is_last = (i == len(kids) - 1)
+        prefix = ""  # root 不画缩进
+        # 但 connector 还是要画
+        sub_lines = _render(kid, prefix, is_last, depth=1)
+        out.extend(sub_lines)
+    return "\n".join(out)
+
+
+def render_signal_tree(
+    chain: list,
+    conditions: list = None,
+    risk_marker: str = None,
+    terminal_meta: str = None,
+    title: str = None,
+    use_color: bool = None,
+) -> str:
+    """渲染单链 tree: chain = [A, B, C] ->
+
+    A
+    |-- B
+    +-- C  [HIGH]
+
+    Args:
+        chain: 信号名列表
+        conditions: 可选, 与 chain-1 等长, 在 transition 处插 [when X]
+        risk_marker: 尾部 risk tag (e.g. '[HIGH]')
+        terminal_meta: 末尾其他 meta
+        title: 可选标题 (e.g. 'Fanin of top.dout')
+    """
+    if not chain:
+        return ""
+    if use_color is None:
+        use_color = _USE_COLOR
+
+    lines = []
+    if title:
+        lines.append(_color(title, _ANSI_BOLD))
+
+    # 画根 (chain[0])
+    root = chain[0]
+    lines.append(_colorize_label(root, "root") if use_color else root)
+
+    # 中间 / 末尾节点
+    for i, node in enumerate(chain[1:], start=1):
+        is_last = (i == len(chain) - 1)
+        connector = _TREE_LAST if is_last else _TREE_BRANCH
+        kind = "leaf" if is_last else "middle"
+        label = _colorize_label(node, kind) if use_color else node
+        # meta 拼接
+        meta_parts = []
+        # 条件 (上一个过渡)
+        if conditions and i - 1 < len(conditions) and conditions[i - 1]:
+            meta_parts.append(f"[when {_color(conditions[i-1], _ANSI_MAGENTA) if use_color else conditions[i-1]}]")
+        # risk / terminal meta
+        if is_last and risk_marker:
+            meta_parts.append(f"[{_color(risk_marker, _ANSI_RED) if use_color else risk_marker}]")
+        if is_last and terminal_meta:
+            meta_parts.append(terminal_meta)
+        meta_str = ("  " + " ".join(meta_parts)) if meta_parts else ""
+        lines.append(f"{connector}{label}{meta_str}")
+    return "\n".join(lines)
+
+
+# 阈值: 链 > N 节点自动转 tree
+_AUTO_TREE_THRESHOLD = 6
+
+
+def should_use_tree(chain_len: int, tree_flag: bool = False) -> bool:
+    """是否使用 tree 格式
+
+    Args:
+        chain_len: 链节点数
+        tree_flag: --tree 强制开
+    """
+    if tree_flag:
+        return True
+    return chain_len > _AUTO_TREE_THRESHOLD
 
 
 # 环境变量: NO_COLOR / SV_QUERY_NO_COLOR 关闭颜色

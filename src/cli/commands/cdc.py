@@ -43,6 +43,7 @@ def analyze(
     high_only: bool = typer.Option(False, "--high-only", help="Show only high-risk CDC paths"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for source/target of each CDC path (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
+    tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Detect clock domain crossing issues"""
     from trace.unified_tracer import UnifiedTracer
@@ -108,7 +109,7 @@ def analyze(
         print(f"  时钟域: {len(report['domains'])}, 总计: {report['total_cdc']}, "
               f"高风险: {report['high_risk']}, 低风险: {report['low_risk']}")
         print()
-        print(_format_cdc_human(paths_to_show))
+        print(_format_cdc_human(paths_to_show, tree=tree))
         return
 
     print(f"{'=' * 70}")
