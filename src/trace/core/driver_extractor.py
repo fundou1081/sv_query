@@ -458,6 +458,39 @@ class DriverExtractor:
                             TraceEdge(src=source_id, dst=target_id, kind=EdgeKind.DRIVER, assign_type="alias")
                         )
 
+            # [FIX Issue 9] 处理带初始化器的 Net 声明: wire X = expr;
+            # 这些不是 ContinuousAssign, 但语义上等价于 assign X = expr
+            # verilog-axi 的 axi_interconnect.v 在 line 429/450 大量使用这种语法
+            for net_decl in self.adapter.get_net_declarations(module):
+                # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
+                lhs_name = self.adapter.clean_name(getattr(net_decl, "name", "") or "")
+                if not lhs_name or lhs_name in port_names:
+                    continue
+                init = getattr(net_decl, "initializer", None)
+                if init is None:
+                    continue
+                lhs_id = f"{module_name}.{lhs_name}"
+                # 确保 LHS 节点存在
+                if lhs_id not in [n.id for n in result.nodes]:
+                    result.nodes.append(
+                        TraceNode(id=lhs_id, name=lhs_name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
+                    )
+                # 获取原始表达式字符串供 DriverInfo 使用
+                rhs_expr_str = self._get_signal(init) or ""
+                # 提取 RHS 中的所有信号, 为每个创建 DRIVER 边
+                rhs_signals = self._get_all_signals(init) if init else []
+                for src_name in rhs_signals:
+                    src_id = f"{module_name}.{src_name}"
+                    if src_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(
+                            TraceNode(id=src_id, name=src_name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
+                        )
+                    if src_id != lhs_id:
+                        result.edges.append(
+                            TraceEdge(src=src_id, dst=lhs_id, kind=EdgeKind.DRIVER,
+                                     assign_type="continuous", expression=rhs_expr_str)
+                        )
+
             # assign 语句
             for assign in self.adapter.get_assignments(module):
                 # [系统化改造] 先提取原始 RHS,检查是否是 CallExpression (函数调用)

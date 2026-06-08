@@ -331,8 +331,62 @@ def detect_protocol(graph, module):
   - 修复: 补充 `m_rc_valid`/`m_wc_valid` 到 classifier 的 AW/AR 映射
   - 优先级: 低 (仅限 axi_crossbar 家族使用)
 - 🟡 Issue 9 (新发现): `current_m_axi_wready`/`s_axi_rready` 被标 UNUSED (3个)
-  - 可能是 scan 把多模块同名信号误看为同一节点
-  - 待调查: 不同模块同名信号是否被正确区分
+  - 调查后发现: **2 个是 driver_extractor bug**，1 个是 graph_builder ghost signal
+  - **真实 bug**: `wire X = expr;` (NetDeclarationSyntax) 语法未被 driver_extractor 处理
+    - verilog-axi axi_interconnect.v line 429/450/450+: `wire current_s_axi_rready = s_axi_rready[s_select];` 等
+    - verilog-axi axi_crossbar_addr.v 也用同语法
+    - 这些 inline `wire =` 语法实际上等价于 `assign X = Y;`，但被 driver_extractor 漏掉
+    - 修复: 在 driver_extractor.py 中处理 NetSymbol 带 initializer 的情况
+  - **Ghost signal**: `axi_dp_ram.s_axi_rready` (SIGNAL kind, 无 file/line)
+    - axi_dp_ram 模块中实际只有 `s_axi_a_*` / `s_axi_b_*`端口，没有 `s_axi_rready` 端口
+    - 这是 graph_builder 命名空间泄漏问题，不是 driver_extractor 问题
+    - 优先级: 低，不影响主要功能
+  - TDD 测试: `test_driver_extractor_net_decl.py` (2个新测试)
+  - 修复后: UNUSED 从 3 → 1 (仅剩 ghost signal)
+
+### D9. (2026-06-09) Issue 9 深入调查 + 修复
+
+**调查过程**:
+1. 识别 3 个 UNUSED 信号: `current_m_axi_wready`, `current_s_axi_rready`, `s_axi_rready`
+2. 在 verilog-axi 源码中查找信号源位置
+3. 发现 `current_m_axi_wready` / `current_s_axi_rready` 是 inline `wire X = expr;` 语法
+4. `s_axi_rready` 是 ghost signal (axi_dp_ram 里不存在)
+
+**根因分析**:
+- Semantic AST 上 NetSymbol 有 `.name` 和 `.initializer` 属性
+- driver_extractor 中调用的 `get_variable_declarations` 只匹配 DataDeclaration
+- `get_net_declarations` 返回 NetSymbol但未被使用
+- NetSymbol 的 initializer 未被提取为 DRIVER 边
+
+**修复** (driver_extractor.py):
+- 在 alias 处理和 assign 处理之间增加 NetSymbol 初始化器处理
+- 检查 lhs_name 不在 port_names 中（避免重复）
+- 为每个 RHS 信号创建 DRIVER 边，assign_type="continuous"
+- 保留原始表达式字符串在 edge.expression 中供 DriverInfo 使用
+
+**修复后验证 (verilog-axi 200 pairs 扫描)**:
+| 类型 | 修复前 | 修复后 |
+|------|------|------|
+| ❌ UNUSED | 3 | 1 |
+| ⚙️ CONDITIONAL_CTRL | 5 | 10 |
+| 其他不变 | ... | ... |
+
+**剩余 1 个 UNUSED (axi_dp_ram.s_axi_rready)**:
+- 类型: SIGNAL (不是 PORT_IN)
+- file/line: 空 (ghost node)
+- 原因: graph_builder 命名空间泄漏，子模块的 port 名被错误归到父模块
+- 修复优先级: 低 (不影响主要 handshake 分析)
+- 后续可考虑: 在 graph_builder 中严格校验 port 名属于子模块还是父模块
+
+**TDD 教训 (D9 补充)**:
+- 源码是真理: 调查 signal 是否被 unused 必须看 `wire X = Y;` 原文，不能只看 graph
+- 多种不同的 driver 表达 (ContinuousAssign, NetDecl, always_ff <＝) 需要分别处理
+- 净表语义 (NetDeclarationSyntax) 和赋值语义 (ContinuousAssignSyntax) 在 driver 提取上等价
+- Pyslang 的 `SyntaxTree` 和 `Compilation.getRoot()` 走的是不同代码路径：
+  - SyntaxTree 返回语法树节点（有 `declarators`）
+  - Semantic AST 返回语义符号 (有 `initializer`)
+  - driver_extractor 走的是后者
+
 
 
 ---
