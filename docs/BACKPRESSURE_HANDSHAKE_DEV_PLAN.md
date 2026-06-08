@@ -292,6 +292,49 @@ def detect_protocol(graph, module):
 - 根本原因：误用了 `picorv32_axi.*` 信号名，实际信号是 `picorv32.*`
 - **教训**：写 TDD 测试前必须先验证 bug 能复现
 
+### D8. (2026-06-09) verilog-axi 模块级深入验证 (1.13 继续)
+
+**模块覆盖**:
+- axi_crossbar: 5 port-level AXI handshakes (AW/W/B/AR/R), 5/5 正确分类为 WIRE_PASSTHROUGH/PORT_PASSTHROUGH
+- axi_dp_ram: 2 port-level AW/W pairs，2/2 正确
+- axi_fifo: 5 port-level pairs (AW/W/B/AR/R)，5/5 正确
+- axi_cdma: Stream IF (s_axis_desc_*, m_axis_desc_*) - 7 CONDITIONAL_CTRL/2 PORT_PASSTHROUGH，6 STANDARD_AXI 内部握手
+- m_rc_valid / m_wc_valid: axi_crossbar_addr 内部 AW/AR 通道指示信号，未被 _classify_by_name 识别 (UNKNOW N channel)
+
+**全量扫描 (200 pairs)**:
+| 类型 | 数量 |
+|------|------|
+| WIRE_PASSTHROUGH | 98 |
+| PORT_PASSTHROUGH | 81 |
+| STANDARD_AXI | 13 |
+| CONDITIONAL_CTRL | 5 |
+| UNUSED | 3 |
+
+**Issue 7 - handshake scan 漏 AXI 通道** (已修复)
+- 现象: `s_axi_awvalid` / `m_axi_wready` / `awready` 全部未被 `_is_ready_or_valid` 识别
+- 原因: `READY_VALID_PATTERNS` 只含 `aw_valid` (带下划线)，不含 `awvalid` (无下划线)
+- 后果: 全量 scan 输出里 **AW/AR 通道完全空缺**，只能看到 W/R/A/D/UNKNOWN 五个通道
+- TDD 复现: `test_handshake_scan_axsi_patterns.py` 验证 `s_axi_awvalid` 识别
+- 修复: 补充无下划线变体 `awvalid`/`awready`/`wvalid`/...
+- 验证: 修复后 scan 多了 5 个 AW/AR 对 (30+5=35 新增)
+
+**backpressure analyze W 通道拓扑**:
+- 4 个 layer: SLAVE → ADAPTER → CROSSBAR → MASTER
+- 拓扑边示例: `axi_cdma_m_axi_wvalid_int → axi_interconnect_m_axi_wvalid_int → axi_adapter_wr_m_axi_wvalid_int → axi_adapter_wr_s_axi_awready_next`
+- 反映出 AXI 写通道从 master 穿过 crossbar 到 slave 的反压链路
+
+**D8 总结**:
+- ✅ 1.13 验证: 6 个 verilog-axi 关键模块 port-level handshake 100% 正确
+- ✅ Issue 7 已修: scan 现在能看到所有 5 个 AXI 通道
+- 🟡 Issue 8 (未修): `m_rc_valid` / `m_wc_valid` (axi_crossbar_addr 内部 AW/AR 指示) 被归为 UNKNOWN
+  - 后果: 7 个标准 AXI backpressure 信号被扫描器误放到 UNKNOWN 分组
+  - 修复: 补充 `m_rc_valid`/`m_wc_valid` 到 classifier 的 AW/AR 映射
+  - 优先级: 低 (仅限 axi_crossbar 家族使用)
+- 🟡 Issue 9 (新发现): `current_m_axi_wready`/`s_axi_rready` 被标 UNUSED (3个)
+  - 可能是 scan 把多模块同名信号误看为同一节点
+  - 待调查: 不同模块同名信号是否被正确区分
+
+
 ---
 
 ## 6. 风险 + 缓解

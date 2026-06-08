@@ -65,6 +65,11 @@ def _split_condition(cond: str) -> list[str]:
 def _classify_by_name(signal: str) -> ChannelType:
     """根据信号名判断 AXI 通道类型（轻量 heuristics）"""
     s = signal.lower()
+    # axi_crossbar_addr 内部 AW/AR 指示信号
+    if "m_wc_valid" in s or "m_wc_ready" in s or "m_wc_select" in s or "m_wc_decerr" in s:
+        return "AW"
+    if "m_rc_valid" in s or "m_rc_ready" in s or "m_rc_decerr" in s:
+        return "AR"
     if "awvalid" in s or "awready" in s or "aw_addr" in s:
         return "AW"
     if "wvalid" in s or "wready" in s or "w_data" in s:

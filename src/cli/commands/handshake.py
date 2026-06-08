@@ -39,11 +39,17 @@ handshake_app = typer.Typer(help="Bus handshake semantic analysis: AXI/TL-UL rea
 # ==============================================================================
 
 READY_VALID_PATTERNS = [
+    # Standard AXI: must match both 'awvalid' (no underscore) and '_valid' (with underscore)
+    # Bug fixed 2026-06-09: added bare 'awvalid' / 'awready' patterns
+    "awvalid", "awready", "wvalid", "wready", "bvalid", "bready",
+    "arvalid", "arready", "rvalid", "rready",
+    # Also keep underscore variants for safety
+    "aw_valid", "aw_ready", "w_valid", "w_ready",
+    "b_valid", "b_ready", "ar_valid", "ar_ready", "r_valid", "r_ready",
+    # Stream / custom handshakes
     "_ready", "_valid", "_full", "_empty",
     "_grant", "_stall", "_pause", "_wait",
     "ready_next", "ready_int", "valid_next", "valid_int",
-    "aw_ready", "w_ready", "b_ready", "ar_ready", "r_ready",
-    "aw_valid", "w_valid", "b_valid", "ar_valid", "r_valid",
     "m_ready", "s_ready", "m_valid", "s_valid",
     "tready", "tvalid", "tlast", "tkeep", "tdata",
     "resp_ready", "resp_valid", "cmd_ready", "cmd_valid",
