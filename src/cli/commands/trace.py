@@ -223,18 +223,24 @@ trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or i
 @trace_app.command()
 def fanin(
     signal: str = typer.Argument(..., help="Signal to trace (e.g., top.clk)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        if filelist:
+            tracer = UnifiedTracer(filelist=filelist)
+        else:
+            if file is None:
+                raise ValueError("Either --file or --filelist must be provided")
+            with open(str(file)) as f:
+                source = f.read()
+            tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
         result = tracer.trace_fanin(signal, depth=depth)
@@ -276,18 +282,24 @@ def fanin(
 @trace_app.command()
 def fanout(
     signal: str = typer.Argument(..., help="Signal to trace (e.g., top.data)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """Trace signal loads (fanout)"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        if filelist:
+            tracer = UnifiedTracer(filelist=filelist)
+        else:
+            if file is None:
+                raise ValueError("Either --file or --filelist must be provided")
+            with open(str(file)) as f:
+                source = f.read()
+            tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
         result = tracer.trace_fanout(signal, depth=depth)
@@ -329,12 +341,13 @@ def fanout(
 @trace_app.command()
 def impact(
     signal: str = typer.Argument(..., help="Signal to analyze impact (e.g., top.rst_ni)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     min_risk: float = typer.Option(30.0, "--min-risk", "-r", help="Minimum risk score for high-risk"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -344,16 +357,25 @@ def impact(
     - Suggestions for safe modification
     """
     try:
-        with open(str(file)) as f:
-            source = f.read()
-
-        tracer = UnifiedTracer(sources={str(file): source})
+        if filelist:
+            tracer = UnifiedTracer(filelist=filelist)
+        else:
+            if file is None:
+                raise ValueError("Either --file or --filelist must be provided")
+            with open(str(file)) as f:
+                source = f.read()
+            tracer = UnifiedTracer(sources={str(file): source})
         graph = tracer.build_graph()
 
         # 提取 SVA 和 Coverage 信息
-        sva_extractor = SVAExtractor({str(file): source})
+        # 当使用 filelist 时，从 tracer 的 compiler 获取已加载的源码
+        if filelist:
+            sources_for_extractors = tracer._get_compiler().sources()
+        else:
+            sources_for_extractors = {str(file): source}
+        sva_extractor = SVAExtractor(sources_for_extractors)
         sva_data = sva_extractor.extract()
-        cov_extractor = CovergroupExtractor({str(file): source})
+        cov_extractor = CovergroupExtractor(sources_for_extractors)
         cov_data = cov_extractor.extract()
 
         sva_signals = set()
@@ -631,17 +653,18 @@ def _extract_modules(paths: list) -> list:
 @trace_app.command()
 def evidence(
     signal: str = typer.Argument(..., help="Signal to query (e.g., top.q)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     chain: bool = typer.Option(False, "--chain", "-c", help="Show evidence for entire driver chain"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly tree output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
     try:
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
-        resolver, _graph, _sem = _build_evidence_resolver(file)
+        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist)
 
         if chain:
             evidences = resolver.resolve_chain(signal)

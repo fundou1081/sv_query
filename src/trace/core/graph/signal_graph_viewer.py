@@ -99,6 +99,7 @@ class SignalGraphViewer:
             },
             "cluster_by": None,  # 'module', 'risk_level', 'cover_status', None
             "cluster_modules": True,  # 按模块聚类（跨模块边用虚线）
+            "module_only": False,  # 只显示顶层模块信号（跳过子模块内部信号）
             "highlight_gaps": True,  # 高亮高风险无覆盖信号
             "min_risk_for_highlight": 20.0,
             "edge_labels": False,  # 显示边类型标签 (CLOCK/RESET/DRIVER)
@@ -213,10 +214,27 @@ class SignalGraphViewer:
 
         return True
 
+    def _is_top_module_signal(self, node_id: str) -> bool:
+        """判断是否为顶层模块信号（而非子模块内部信号）
+
+        显示: module.signal (深度<=2, 即顶层模块的端口/内部信号)
+        隐藏: module.inst.signal (深度>=3, 即子模块实例的内部信号)
+        """
+        parts = node_id.split(".")
+        # 深度 1: signal (顶层无模块前缀)
+        # 深度 2: module.signal (顶层模块的信号)
+        # 深度 >=3: module.inst.signal (子模块实例内部)
+        return len(parts) <= 2
+
     def _filter_edges(self, edges: list[tuple]) -> list[tuple]:
         """过滤边，防止过于密集"""
         result = []
+        module_only = self.config.get("module_only", False)
         for src, dst in edges:
+            # module_only 模式: 跳过连接隐藏节点的边
+            if module_only:
+                if not self._is_top_module_signal(src) or not self._is_top_module_signal(dst):
+                    continue
             edge = self.graph.get_edge(src, dst)
             if edge is None:
                 continue
@@ -272,6 +290,9 @@ class SignalGraphViewer:
 
         # 生成节点声明
         for node_id in self.graph.nodes():
+            # module_only 模式: 跳过子模块内部信号
+            if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
+                continue
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
@@ -316,24 +337,31 @@ class SignalGraphViewer:
                 elif risk_score >= self.config["min_risk_for_highlight"]:
                     labels.append("🚨")
 
-            label_str = "\\n".join(labels)
+            # Escape DOT-special chars in label strings (handles ), \\n, quotes, etc.)
+            def _dot_label_escape(s):
+                return (s.replace("\\", "\\\\").replace('"', '\\"')
+                        .replace("\n", "\\n").replace("(", "\\(").replace(")", "\\)"))
+
+            label_str = "\\n".join(_dot_label_escape(l) for l in labels)
             color = (
                 self.COVER_COLORS.get(cover_status, "#888888")
                 if self.config["node_style"]["cover_marker"]
                 else self.RISK_COLORS.get(risk_level, "#888888")
             )
 
-            # 处理特殊字符
-            name_escaped = (
-                name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
-            )
+            # 处理特殊字符 — 转义 DOT special chars: \", (, ), [, ], -, :, \
+            def _dot_escape(s):
+                return s.replace("\\", "\\\\").replace('"', '\\"').replace("(", "_").replace(")", "_").replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
+
+            name_escaped = _dot_escape(name)
+
             if "'" in name:
                 safe_name = f'"{name_escaped}"'
             else:
                 # 当启用模块聚类时，使用完整层级路径作为节点名，避免同名信号冲突
                 if self.config.get("cluster_modules", False):
                     # 用下划线替换点号，保留完整路径信息
-                    safe_name = node_id.replace(".", "_").replace("[", "_").replace("]", "_")
+                    safe_name = node_id.replace(".", "_").replace("[", "_").replace("]", "_").replace("(", "_").replace(")", "_")
                 else:
                     safe_name = name_escaped
             node_name_map[node_id] = safe_name
@@ -361,18 +389,21 @@ class SignalGraphViewer:
         out_nodes = []
         reg_nodes = []
         other_nodes = []
+        def _rank_safe_name(name):
+            esc = name.replace("\\", "\\\\").replace('"', '\\"').replace("(", "_").replace(")", "_")
+            esc = esc.replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
+            if "'" in name or "." in name:
+                return f'"{esc}"'
+            return esc
+
         for node_id in self.graph.nodes():
+            if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
+                continue
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
             name = node_id.split(".")[-1]
-            name_escaped = (
-                name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
-            )
-            if "'" in name or "." in name:
-                safe_name = f'"{name_escaped}"'
-            else:
-                safe_name = name_escaped
+            safe_name = _rank_safe_name(name)
             if "PORT_IN" in str(node.kind):
                 in_nodes.append(safe_name)
             elif "PORT_OUT" in str(node.kind):
@@ -396,18 +427,15 @@ class SignalGraphViewer:
             out_nodes = []
             reg_nodes = []
             other_nodes = []
+
             for node_id in self.graph.nodes():
+                if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
+                    continue
                 node = self.graph.get_node(node_id)
                 if node is None:
                     continue
                 name = node_id.split(".")[-1]
-                name_escaped = (
-                    name.replace('"', '\\"').replace("[", "_").replace("]", "_").replace("-", "_").replace(":", "_")
-                )
-                if "'" in name or "." in name:
-                    safe_name = f'"{name_escaped}"'
-                else:
-                    safe_name = name_escaped
+                safe_name = _rank_safe_name(name)
                 if "PORT_IN" in str(node.kind):
                     in_nodes.append(safe_name)
                 elif "PORT_OUT" in str(node.kind):
@@ -497,6 +525,9 @@ class SignalGraphViewer:
 
         # 节点
         for node_id in self.graph.nodes():
+            # module_only 模式: 跳过子模块内部信号
+            if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
+                continue
             node = self.graph.get_node(node_id)
             if node is None:
                 continue

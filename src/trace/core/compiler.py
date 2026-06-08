@@ -25,6 +25,7 @@ for candidate in [
         break
 
 import pyslang
+from pyslang import DiagnosticEngine
 
 
 class CompilationError(Exception):
