@@ -262,15 +262,17 @@ def detect_protocol(graph, module):
 - 原因：这些是真正没有驱动的信号（从 graph 看 in_edges=0）
 - 不动：真实存在的代码问题，不是 handshake_detector 误判
 
-**Issue 4 - PicoRV32 valid 信号也被标 UNUSED** ❌ 预存限制
+**Issue 4 - PicoRV32 valid 信号也被标 UNUSED** ✅ 误报（信号名不匹配）
 - 现象：`picorv32_axi.mem_valid` 是 SIGNAL 但 0 driver_infos
-- 原因：graph_builder 的 driver_extractor 未捕获 always-block 驱动
-- 不动：是 graph_builder 预存问题，需要另作任务修复
+- 原因：实际信号名是 `picorv32.mem_valid`（无 `_axi` 后缀）。`picorv32_axi` 是不同模块、其内部不包含 `mem_valid`。
+- 验证：`picorv32.mem_valid` 实际有 4 in-edges 和 3 drivers，状态机条件正确提取
+- **结论**：Issue 4/5 不是 graph_builder bug，是 scan/手误
 
-**Issue 5 - 57% 节点无驱动** ❌ 预存限制
+**Issue 5 - 57% 节点无驱动** ✅ 误报（信号名不匹配）
 - 现象：PicoRV32 676 个信号中 383 个 (57%) 无驱动信息
-- 原因：同上，driver_extractor 覆盖度不足
-- 后续：需要在 graph_builder 侧增强 always-block 驱动提取
+- 原因：同上，信号名不匹配 (`picorv32_axi.*` vs `picorv32.*`)
+- 验证：`picorv32.mem_state` 有 7 in-edges 和 10 drivers，driver 提取完全正常
+- **结论**：graph_builder 驱动提取器没有实质问题
 
 **Issue 6 - UNUSED vs PORT_PASSTHROUGH vs 真无驱动** ✅ 已修复 (Issue 1 同一根因)
 - 三种"没驱动"情况应区分：
@@ -281,8 +283,14 @@ def detect_protocol(graph, module):
 
 ### D6. (2026-06-09) 验证结论
 - verilog-axi: handshake 分类准确率 ~80% (50 pairs 中 41 正确)
-- PicoRV32: 覆盖率受限 (57% 信号无驱动)，主要验证 PORT_IN 处理
-- 主要待解决问题：graph_builder 驱动提取覆盖度 (不是 handshake_detector 范围)
+- PicoRV32: 实际验证 driver 提取器完全正常，Issue 4/5 来自信号名不匹配 (picorv32_axi.* vs picorv32.*)
+- graph_builder driver 提取器无实质问题
+- **不需修复 graph_builder**
+
+### D7. (2026-06-09) TDD 调查失败教训
+- 尝试为 Issue 4/5 写 TDD 测试，但最小化复现全都能 work
+- 根本原因：误用了 `picorv32_axi.*` 信号名，实际信号是 `picorv32.*`
+- **教训**：写 TDD 测试前必须先验证 bug 能复现
 
 ---
 
