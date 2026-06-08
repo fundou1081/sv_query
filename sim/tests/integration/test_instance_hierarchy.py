@@ -224,9 +224,9 @@ endmodule
         self.assertIn('top.outer', graph.nodes(),
             "外层实例节点 outer 应该存在")
         
-        # 强断言2: 内层实例节点存在 (当前实现在顶层)
-        self.assertIn('top.u', graph.nodes(),
-            "内层实例节点 u 应该存在")
+        # 强断言2: 内层实例节点存在 (正确嵌套路径: top.outer.u)
+        self.assertIn('top.outer.u', graph.nodes(),
+            "内层实例节点 u 应该存在于正确的嵌套路径 top.outer.u")
         
         # 强断言3: CONNECTION 边存在
         edges = list(graph.edges())

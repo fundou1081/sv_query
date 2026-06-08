@@ -53,6 +53,7 @@ def graph(
     ),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
 ) -> None:
     """可视化信号图（包含数据流关系）"""
     include_dirs = include.split(",") if include else None
@@ -75,6 +76,7 @@ def graph(
         include_dirs,
         filelist,
         sources,
+        module_only,
     )
 
 
@@ -108,6 +110,7 @@ def _run_graph_visualization(
     include_dirs=None,
     filelist=None,
     sources=None,
+    module_only=False,
 ):
     """可视化信号图（包含数据流关系）
 
@@ -116,6 +119,7 @@ def _run_graph_visualization(
         include_dirs: include 搜索路径列表
         filelist: 文件列表路径
         sources: 源代码字典（如果提供 filelist 则设为 None）
+        module_only: 只显示顶层模块信号（跳过子模块内部信号）
     """
     if sources is None and file:
         # 没提供 filelist 时读 file
@@ -165,6 +169,7 @@ def _run_graph_visualization(
         edge_filter=edge_filter,
         cluster_modules=cluster_modules,
         layout_engine=layout_engine,
+        module_only=module_only,
         node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True},
     )
 

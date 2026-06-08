@@ -221,12 +221,30 @@ class ConnectionExtractor:
                     return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
                 return f"{self.root_module_name}.{info['inst_name']}"
             else:
+                # parent_mod is not in instances_info
+                # Determine if it's a top-level module (use parent_mod as prefix)
+                # or a submodule of root (use root_module_name as prefix)
+                #
+                # Heuristic: if parent_mod appears as inst_module_name in instances_info,
+                # then it's a submodule (instances of it exist elsewhere), use root_module_name.
+                # Otherwise, it's a top-level module, use parent_mod as prefix.
+                parent_is_submodule_of_root = any(
+                    info["inst_module_name"] == parent_mod for info in instances_info
+                )
+                if not parent_is_submodule_of_root:
+                    # parent_mod is a top-level module, not in instances_info
+                    # Use parent_mod as the path prefix (this fixes wrong root_module_name fallback)
+                    if gen_block:
+                        return f"{parent_mod}.{gen_block}.{info['inst_name']}"
+                    return f"{parent_mod}.{info['inst_name']}"
+                # parent_mod is a submodule of root, use root_module_name fallback
                 for other_info in instances_info:
                     if other_info["inst_module_name"] == parent_mod:
                         parent_path = get_path(other_info, depth + 1)
                         if gen_block:
                             return f"{parent_path}.{gen_block}.{info['inst_name']}"
                         return f"{parent_path}.{info['inst_name']}"
+                # Fallback (should not reach here if parent_is_submodule_of_root check works)
                 if gen_block:
                     return f"{self.root_module_name}.{gen_block}.{info['inst_name']}"
                 return f"{self.root_module_name}.{info['inst_name']}"
