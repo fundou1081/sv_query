@@ -33,6 +33,16 @@ BP_PATTERNS = [
     "m_ready", "s_ready", "m_valid", "s_valid",
 ]
 
+
+# Channel filter patterns
+CHANNEL_PATTERNS = {
+    "AW": ["awvalid", "awready", "aw_addr", "awvalid_next", "awready_next", "awvalid_reg", "awready_reg"],
+    "W":  ["wvalid", "wready", "w_data", "wvalid_next", "wready_next", "wvalid_reg", "wready_reg"],
+    "B":  ["bvalid", "bready", "bresp", "bvalid_next", "bready_next", "bvalid_reg", "bready_reg"],
+    "AR": ["arvalid", "arready", "ar_addr", "arvalid_next", "arready_next", "arvalid_reg", "arready_reg"],
+    "R":  ["rvalid", "rready", "r_data", "rvalid_next", "rready_next", "rvalid_reg", "rready_reg"],
+}
+
 # Layer classification
 LAYER_KEYWORDS = {
     "SLAVE": ["s_axi", "s_axil", "s_axis", "slave", "upstream"],
@@ -68,6 +78,20 @@ def _is_backpressure_signal(signal_name: str) -> bool:
     return False
 
 
+def _matches_channel(signal_name: str, channels: list) -> bool:
+    """Check if signal matches the given AXI channel(s)."""
+    if not channels:
+        return True
+    name_lower = signal_name.lower()
+    for ch in channels:
+        ch_upper = ch.upper()
+        if ch_upper in CHANNEL_PATTERNS:
+            for pattern in CHANNEL_PATTERNS[ch_upper]:
+                if pattern in name_lower:
+                    return True
+    return False
+
+
 def _safe_name(name: str) -> str:
     """Make signal name safe for Mermaid node ID."""
     safe = re.sub(r'[^a-zA-Z0-9_]', '_', name)
@@ -84,6 +108,7 @@ def analyze(
     max_depth: int = typer.Option(3, "--max-depth", "-d", help="Maximum chain depth for tracing"),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     max_signals: int = typer.Option(40, "--max-signals", "-n", help="Max backpressure signals to show per layer"),
+    channel: str = typer.Option(None, "--channel", "-c", help="Filter by AXI channel: AW|W|B|AR|R (comma-separated for multiple)"),
 ) -> None:
     """Analyze bus backpressure topology and generate Mermaid diagram"""
     if not file and not filelist:
@@ -109,13 +134,15 @@ def analyze(
     all_nodes = list(graph.nodes())
     bp_nodes = {}  # name -> (layer, kind)
 
+    filter_channels = [c.strip().upper() for c in channel.split(",")] if channel else []
+
     for node_id in all_nodes:
         # Skip sub-module internal signals (depth >= 3 in path)
         parts = node_id.split(".")
         if len(parts) > 2:
             continue  # Skip sub-module internals
 
-        if _is_backpressure_signal(node_id):
+        if _is_backpressure_signal(node_id) and _matches_channel(node_id, filter_channels):
             layer = _classify_signal_layer(node_id)
             node = graph.get_node(node_id)
             kind = str(node.kind) if node else "SIG"
@@ -137,9 +164,15 @@ def analyze(
 
     for src, dst in all_edges:
         if src in bp_nodes or dst in bp_nodes:
-            # Only include edges between backpressure signals
-            if src in bp_nodes and dst in bp_nodes:
+            # Include edges between two backpressure signals, OR from/to POR nodes
+            src_is_bp = src in bp_nodes
+            dst_is_bp = dst in bp_nodes
+            if src_is_bp and dst_is_bp:
                 bp_edge_set.add((src, dst))
+            elif src_is_bp:
+                bp_edge_set.add((src, dst))  # src=bp, dst=non-bp (e.g. intermediate driver)
+            elif dst_is_bp:
+                bp_edge_set.add((src, dst))  # src=non-bp (e.g. POR), dst=bp
 
     # Generate Mermaid
     lines = ["flowchart TB"]
