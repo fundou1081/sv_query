@@ -4,29 +4,24 @@
 """
 Usage:
   python run_cli.py backpressure analyze --filelist <filelist> [--output <mmd>]
-  python run_cli.py backpressure analyze --filelist <filelist> --protocol-confirm
-  python run_cli.py backpressure analyze -f <top.sv> --channel AW --protocol-confirm
+  python run_cli.py backpressure analyze -f <top.sv> --channel AW
 
-Analyzes AXI/TL-UL bus backpressure topology.
-  --protocol-confirm: use handshake_detector to confirm handshake semantics
-  Default: generate Mermaid topology diagram
+Analyzes AXI/TL-UL bus backpressure topology and generates Mermaid diagram.
+
+For signal-level handshake classification, use:
+  sv_query handshake scan --filelist xxx
+  sv_query handshake analyze --filelist xxx --signal yyy
+  sv_query handshake pair --filelist xxx --ready yyy
 """
 
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.core.handshake_detector import (
-    classify_signal_channel,
-    detect_handshake_type,
-    detect_from_signal_pair,
-)
-from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
 
 backpressure_app = typer.Typer(help="Bus backpressure topology analysis: AXI/TL-UL ready/valid chain visualization")
@@ -104,155 +99,6 @@ def _safe_name(name: str) -> str:
 
 
 # ==============================================================================
-# Protocol Confirm Mode (Phase B)
-# ==============================================================================
-
-def _run_protocol_confirm(tracer: UnifiedTracer, filter_channels: list, max_signals: int):
-    """使用 handshake_detector 分析所有 ready/valid 信号的握手类型"""
-    graph = tracer.build_graph()
-    signal_tracer = SignalTracer(graph)
-
-    all_nodes = list(graph.nodes())
-    bp_nodes = {}  # name -> (layer, channel)
-
-    for node_id in all_nodes:
-        parts = node_id.split(".")
-        if len(parts) > 2:
-            continue
-        if _is_backpressure_signal(node_id) and _matches_channel(node_id, filter_channels):
-            layer = _classify_signal_layer(node_id)
-            channel = classify_signal_channel(node_id)
-            bp_nodes[node_id] = (layer, channel)
-
-    # 分类为 valid 信号 和 ready 信号
-    valid_signals = [n for n in bp_nodes if "valid" in n.lower()]
-    ready_signals = [n for n in bp_nodes if "ready" in n.lower()]
-
-    valid_signals.sort()
-    ready_signals.sort()
-
-
-    # 建立 (valid, ready) 配对：按通道+前缀匹配
-    # 例如: axi_adapter.s_axi_awvalid <-> axi_adapter.s_axi_awready
-    #       axi_adapter.m_axi_awvalid <-> axi_adapter.m_axi_awready
-    def _strip_suffix(sig):
-        """去掉 _next/_reg/_int/_early/_valid/_ready 后缀，统一配对前缀"""
-        s = sig.lower()
-        for suf in ['next', 'reg', 'int', 'early']:
-            if s.endswith('_' + suf):
-                s = s[:-len('_' + suf)]
-            elif s.endswith(suf):
-                s = s[:-len(suf)]
-        for suf in ['valid', 'ready']:
-            if s.endswith('_' + suf):
-                s = s[:-len('_' + suf)]
-            elif s.endswith(suf):
-                s = s[:-len(suf)]
-        return s
-
-    pairs = []
-    paired_valid = set()
-    for r in ready_signals:
-        r_base = _strip_suffix(r)
-        best_v = None
-        for v in valid_signals:
-            if v in paired_valid:
-                continue
-            v_base = _strip_suffix(v)
-            if v_base == r_base and v_base:
-                pairs.append((v, r))
-                paired_valid.add(v)
-                best_v = v
-                break
-
-    results = []
-    for valid, ready in pairs[:max_signals]:
-        try:
-            hi = detect_from_signal_pair(signal_tracer, valid, ready)
-            results.append(hi)
-        except Exception:
-            pass
-
-    return results
-
-
-def _print_protocol_confirm_table(results, filter_channels: list):
-    """打印握手分析结果表格"""
-    if not results:
-        print("No handshake pairs found.")
-        return
-
-    # 按通道分组
-    by_channel = {}
-    for hi in results:
-        by_channel.setdefault(hi.channel, []).append(hi)
-
-    print("")
-    print("=" * 100)
-    print("  AXI Bus Handshake Analysis (Phase B: handshake_detector)")
-    print("=" * 100)
-
-    type_emoji = {
-        "STANDARD_AXI": "✅",
-        "COMBINATIONAL_BP": "🔄",
-        "REGISTERED_BP": "⏱️",
-        "LATCHED_BP": "🔒",
-        "WIRE_PASSTHROUGH": "🔌",
-        "PORT_PASSTHROUGH": "🔗",
-        "CONDITIONAL_CTRL": "⚙️",
-        "UNUSED": "❌",
-        "UNKNOWN": "❓",
-        "COMPLEX_ARB": "🔀",
-    }
-
-    type_desc = {
-        "STANDARD_AXI": "if (v && r) 标准AXI握手",
-        "COMBINATIONAL_BP": "assign r = !fifo_full (组合FIFO反压)",
-        "REGISTERED_BP": "always_ff r <= next (寄存器延迟)",
-        "LATCHED_BP": "latch 锁存器反压",
-        "WIRE_PASSTHROUGH": "assign r = other (透传线)",
-        "PORT_PASSTHROUGH": "port connection (跨模块透传)",
-        "CONDITIONAL_CTRL": "条件驱动 (非握手)",
-        "UNUSED": "无驱动/悬空",
-        "UNKNOWN": "条件不明确",
-        "COMPLEX_ARB": "复杂仲裁条件",
-    }
-
-    for ch in ["AW", "W", "B", "AR", "R", "A", "D", "UNKNOWN"]:
-        if ch not in by_channel:
-            continue
-        if filter_channels and ch not in filter_channels and "UNKNOWN" not in filter_channels:
-            continue
-        print(f"\n  ── {ch} Channel ──")
-        print(f"  {'Ready Signal':<45} {'Valid':<25} {'Type':<20} {'Condition'[:30]}")
-        print(f"  {'-'*45} {'-'*25} {'-'*20} {'-'*30}")
-
-        for hi in by_channel[ch]:
-            if not hi.ready:
-                continue
-            emoji = type_emoji.get(hi.handshake_type, "❓")
-            desc = type_desc.get(hi.handshake_type, "")
-            ready_short = hi.ready.split(".")[-1] if "." in hi.ready else hi.ready
-            valid_short = (hi.valid.split(".")[-1] if "." in hi.valid else hi.valid) if hi.valid else "-"
-            cond_short = (hi.condition[:28] + "..") if len(hi.condition) > 30 else hi.condition
-            clock_str = f" @{hi.clock_domain}" if hi.clock_domain else ""
-            extra_str = ""
-            if hi.extra.get("fifo_name"):
-                extra_str = f" [fifo={hi.extra['fifo_name']}]"
-            print(f"  {emoji} {ready_short:<43} {valid_short:<25} {hi.handshake_type:<20} {cond_short}{clock_str}{extra_str}")
-
-    print("")
-    #统计
-    stats = {}
-    for hi in results:
-        t = hi.handshake_type
-        stats[t] = stats.get(t, 0) + 1
-    print(f"  Summary:")
-    for t, cnt in sorted(stats.items(), key=lambda x: -x[1]):
-        print(f"    {type_emoji.get(t,'❓')} {t}: {cnt}")
-
-
-# ==============================================================================
 # analyze command
 # ==============================================================================
 
@@ -264,9 +110,14 @@ def analyze(
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     max_signals: int = typer.Option(40, "--max-signals", "-n", help="Max backpressure signals to show per layer"),
     channel: str = typer.Option(None, "--channel", "-c", help="Filter by AXI channel: AW|W|B|AR|R (comma-separated)"),
-    protocol_confirm: bool = typer.Option(False, "--protocol-confirm", "-p", help="Phase B: confirm handshake semantics with handshake_detector"),
 ) -> None:
-    """Analyze bus backpressure topology"""
+    """Analyze bus backpressure topology and generate Mermaid diagram.
+
+    For signal-level handshake classification, use `sv_query handshake`:
+      sv_query handshake scan --filelist xxx
+      sv_query handshake analyze --filelist xxx --signal yyy
+      sv_query handshake pair --filelist xxx --ready yyy
+    """
     if not file and not filelist:
         print("Error: Either --file or --filelist must be provided", file=sys.stderr)
         raise typer.Exit(code=1)
@@ -285,13 +136,7 @@ def analyze(
         print(f"Error building tracer: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
 
-    # ── Phase B: Protocol Confirm Mode ──────────────────────────────────────
-    if protocol_confirm:
-        results = _run_protocol_confirm(tracer, filter_channels, max_signals * 10)
-        _print_protocol_confirm_table(results, filter_channels)
-        return
-
-    # ── Default: Mermaid Topology Mode ────────────────────────────────────────
+    # ── Mermaid Topology Mode ────────────────────────────────────────
     try:
         graph = tracer.build_graph()
     except Exception as e:
