@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from trace.core.handshake_detector import (
     HandshakeInfo,
     detect_handshake_type,
+    detect_handshake_type_with_node,
 )
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
@@ -139,17 +140,15 @@ def _classify_handshakes(graph, signal_names: list) -> dict[str, HandshakeInfo]:
     for sig in signal_names:
         try:
             dis = st.trace_fanin_detailed(sig)
+            node = graph.get_node(sig)
+            node_kind = str(node.kind) if node else None
             if dis:
-                hi = detect_handshake_type(sig, dis)
+                hi = detect_handshake_type_with_node(sig, dis, node_kind=node_kind)
                 results[sig] = hi
             else:
-                results[sig] = HandshakeInfo(
-                    valid="", ready=sig,
-                    handshake_type="UNUSED",
-                    channel="UNKNOWN",
-                    condition="", effective_condition="",
-                    assign_type="", clock_domain="", extra={}
-                )
+                # 使用带节点信息的版本以区分 PORT_IN
+                hi = detect_handshake_type_with_node(sig, dis or [], node_kind=node_kind)
+                results[sig] = hi
         except Exception:
             results[sig] = HandshakeInfo(
                 valid="", ready=sig,

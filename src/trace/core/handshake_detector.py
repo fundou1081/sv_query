@@ -239,7 +239,45 @@ def detect_handshake_type(
     Returns:
         HandshakeInfo
     """
+    return detect_handshake_type_with_node(signal, driver_infos, node_kind=None, counterpart_hint=counterpart_hint)
+
+
+def detect_handshake_type_with_node(
+    signal: str,
+    driver_infos: list[DriverInfo],
+    node_kind: str | None = None,
+    counterpart_hint: str = None,
+) -> HandshakeInfo:
+    """带节点类型信息的握手分析
+
+    额外参数 node_kind 用于区分：
+    - PORT_IN  (输入端口) + 无驱动 → PORT_PASSTHROUGH (从外部连接进入)
+    - SIGNAL   (内部信号) + 无驱动 → UNUSED (真正未使用)
+
+    Args:
+        signal: 要分析的信号名
+        driver_infos: trace_fanin_detailed(signal) 返回的 DriverInfo 列表
+        node_kind: 节点类型 (e.g. "PORT_IN", "PORT_OUT", "SIGNAL")
+        counterpart_hint: 可选，候选对应信号
+    """
     if not driver_infos:
+        # 无驱动 — 区分端口 vs 内部信号
+        # NodeKind.PORT_IN 的 str() 是 "NodeKind.PORT_IN" 或者是它的 name
+        is_port_in = (
+            node_kind is not None and (
+                "PORT_IN" in str(node_kind) or
+                "InputPort" in str(node_kind) or
+                str(node_kind).lower() == "input"
+            )
+        )
+        if is_port_in:
+            return HandshakeInfo(
+                valid="", ready=signal,
+                handshake_type="PORT_PASSTHROUGH",
+                channel=_classify_by_name(signal),
+                condition="", effective_condition="",
+                assign_type="port", clock_domain="", extra={"note": "input port, driven externally"}
+            )
         return HandshakeInfo(
             valid="", ready=signal,
             handshake_type="UNUSED",
@@ -304,7 +342,13 @@ def detect_from_signal_pair(
     """
     # 分析 ready 的驱动
     driver_infos = tracer.trace_fanin_detailed(ready)
-    hi = detect_handshake_type(ready, driver_infos, counterpart_hint=valid)
+    # 获取 ready 的 node_kind 以区分 PORT_IN
+    node_kind = None
+    if hasattr(tracer, 'graph') and tracer.graph is not None:
+        node = tracer.graph.get_node(ready)
+        if node is not None:
+            node_kind = str(node.kind)
+    hi = detect_handshake_type_with_node(ready, driver_infos, node_kind=node_kind, counterpart_hint=valid)
     # 如果没找到 counterpart，尝试从 condition 中提取
     if not hi.valid and hi.condition:
         counterpart = find_counterpart_in_condition(hi.condition, ready)
