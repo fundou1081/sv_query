@@ -24,6 +24,8 @@ HandshakeType = Literal[
     "COMBINATIONAL_BP",  # assign ready = !fifo_full — FIFO组合反压
     "REGISTERED_BP",     # always_ff ready <= next_ready — 寄存器延迟
     "LATCHED_BP",        # latch逻辑产生的反压
+    "WIRE_PASSTHROUGH",  # assign ready = some_other_signal — 透传连线
+    "PORT_PASSTHROUGH",  # port connection / multi-level connection — 端口透传
     "UNUSED",            # 信号未被使用（无驱动）
     "UNKNOWN",           #条件不明确
 ]
@@ -65,17 +67,21 @@ def _classify_by_name(signal: str) -> ChannelType:
     s = signal.lower()
     if "awvalid" in s or "awready" in s or "aw_addr" in s:
         return "AW"
-    if "wvalid" in s or "wready" in s or "_w_" in s:
+    if "wvalid" in s or "wready" in s or "w_data" in s:
         return "W"
-    if "bvalid" in s or "bready" in s or "_b_" in s:
+    if "bvalid" in s or "bready" in s or "bresp" in s:
         return "B"
     if "arvalid" in s or "arready" in s or "ar_addr" in s:
         return "AR"
-    if "rvalid" in s or "rready" in s or "_r_" in s:
+    if "rvalid" in s or "rready" in s or "r_data" in s:
         return "R"
-    if "a_valid" in s or "a_ready" in s or "_a_" in s:
+    # TileLink / AXI-Stream A 通道
+    if "a_valid" in s or "a_ready" in s or "a_opcode" in s or "a_data" in s or "a_rd_resp" in s:
         return "A"
-    if "d_valid" in s or "d_ready" in s or "_d_" in s:
+    # TileLink D 通道 / AXI-Stream (含 tvalid/tready)
+    if "d_valid" in s or "d_ready" in s or "d_opcode" in s or "d_data" in s:
+        return "D"
+    if "tvalid" in s or "tready" in s or "t_data" in s or "tlast" in s:
         return "D"
     return "UNKNOWN"
 
@@ -84,12 +90,146 @@ def _classify_by_name(signal: str) -> ChannelType:
 # 核心检测函数
 # ==============================================================================
 
+def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
+    """根据单个 DriverInfo 判定握手类型，返回 None 表示无法判定"""
+    cond = (di.condition or "").strip()
+    assign_type = di.assign_type or ""
+    expr = (di.expression or "").strip()
+    clock = di.clock_domain or ""
+
+    # ---- Case 0: continuous assign / port connection，无条件 → 透传 ----
+    if not cond and not expr and assign_type in ("connection", ""):
+        channel = _classify_by_name(signal)
+        return HandshakeInfo(
+            valid="", ready=signal,
+            handshake_type="PORT_PASSTHROUGH",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock,
+            extra={"note": "port/multi-level connection, no local handshake logic"}
+        )
+    if not cond and expr and assign_type == "continuous":
+        channel = _classify_by_name(signal)
+        return HandshakeInfo(
+            valid="", ready=signal,
+            handshake_type="WIRE_PASSTHROUGH",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock,
+            extra={"note": f"assign {signal.split('.')[-1]} = {expr} (wire passthrough)", "source_signal": expr}
+        )
+
+    # ---- Case 1: 条件包含 valid && ready → 标准 AXI 握手 ----
+    if cond:
+        sigs = _split_condition(cond)
+        if len(sigs) >= 2:
+            if "&&" in cond and any("valid" in s.lower() for s in sigs) and any("ready" in s.lower() for s in sigs):
+                valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
+                ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
+                channel = _classify_by_name(valid_sig or ready_sig)
+                return HandshakeInfo(
+                    valid=valid_sig, ready=ready_sig,
+                    handshake_type="STANDARD_AXI",
+                    channel=channel,
+                    condition=cond, effective_condition=cond,
+                    assign_type=assign_type, clock_domain=clock, extra={}
+                )
+            if "||" in cond:
+                valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
+                ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
+                channel = _classify_by_name(valid_sig or ready_sig)
+                return HandshakeInfo(
+                    valid=valid_sig, ready=ready_sig,
+                    handshake_type="COMPLEX_ARB",
+                    channel=channel,
+                    condition=cond, effective_condition=cond,
+                    assign_type=assign_type, clock_domain=clock,
+                    extra={"note": "OR-based condition, may be TL-UL or multi-master arbiter"}
+                )
+
+        # ---- Case 1b: 单信号条件含 !full / !empty → FIFO 组合反压 ----
+        if re.search(r"!\s*(\w+_)?full", cond) or re.search(r"!\s*(\w+_)?empty", cond):
+            fifo_match = re.search(r"!\s*(\w+)", cond)
+            fifo_name = fifo_match.group(1) if fifo_match else "unknown"
+            channel = _classify_by_name(signal)
+            sigs = _split_condition(cond)
+            valid_sig = next((s for s in sigs if "valid" in s.lower() and "ready" not in s.lower()), "")
+            return HandshakeInfo(
+                valid=valid_sig, ready=signal,
+                handshake_type="COMBINATIONAL_BP",
+                channel=channel,
+                condition=cond, effective_condition=cond,
+                assign_type=assign_type, clock_domain=clock,
+                extra={"fifo_name": fifo_name}
+            )
+
+    # ---- Case 2: 表达式包含 !full / !empty → FIFO 组合反压 ----
+    if expr and (re.search(r"!\s*(\w+_)?full\b", expr) or re.search(r"!\s*(\w+_)?empty\b", expr)):
+        fifo_match = re.search(r"!\s*(\w+)", expr)
+        fifo_name = fifo_match.group(1) if fifo_match else "unknown"
+        channel = _classify_by_name(signal)
+        sigs = _split_condition(expr)
+        valid_sig = next((s for s in sigs if "valid" in s.lower() and "ready" not in s.lower()), "")
+        return HandshakeInfo(
+            valid=valid_sig, ready=signal,
+            handshake_type="COMBINATIONAL_BP",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock,
+            extra={"fifo_name": fifo_name}
+        )
+
+    # ---- Case 3: always_ff 寄存器延迟（无 cond）----
+    if assign_type == "always_ff" and not cond:
+        channel = _classify_by_name(signal)
+        return HandshakeInfo(
+            valid="", ready=signal,
+            handshake_type="REGISTERED_BP",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock, extra={}
+        )
+
+    # ---- Case 4: 有 cond 但不符合上面任何模式 → 条件控制 ----
+    if cond:
+        channel = _classify_by_name(signal)
+        sigs = _split_condition(cond)
+        valid_sig = next((s for s in sigs if "valid" in s.lower() and "ready" not in s.lower()), "")
+        return HandshakeInfo(
+            valid=valid_sig, ready=signal,
+            handshake_type="CONDITIONAL_CTRL",
+            channel=channel,
+            condition=cond, effective_condition=cond,
+            assign_type=assign_type, clock_domain=clock, extra={}
+        )
+
+    return None
+
+
+# 握手类型优先级（高分 = 更确定的判定，优先采用）
+_TYPE_PRIORITY = {
+    "STANDARD_AXI":       10,
+    "COMPLEX_ARB":         9,
+    "COMBINATIONAL_BP":    8,
+    "REGISTERED_BP":       7,
+    "CONDITIONAL_CTRL":    6,
+    "WIRE_PASSTHROUGH":    3,
+    "PORT_PASSTHROUGH":    2,
+    "UNUSED":              0,
+    "UNKNOWN":             0,
+}
+
+
 def detect_handshake_type(
     signal: str,
     driver_infos: list[DriverInfo],
     counterpart_hint: str = None,
 ) -> HandshakeInfo:
     """分析一个 ready（或 valid）信号的握手类型
+
+    遍历所有 driver_infos，按优先级选择最佳判定结果：
+    STANDARD_AXI > COMPLEX_ARB > COMBINATIONAL_BP > REGISTERED_BP >
+    CONDITIONAL_CTRL > WIRE_PASSTHROUGH > PORT_PASSTHROUGH > UNKNOWN
 
     Args:
         signal: 要分析的信号名（通常指 ready 信号）
@@ -108,123 +248,30 @@ def detect_handshake_type(
             assign_type="", clock_domain="", extra={}
         )
 
-    extra = {}
-
+    candidates: list[HandshakeInfo] = []
     for di in driver_infos:
-        cond = (di.condition or "").strip()
-        assign_type = di.assign_type or ""
-        expr = (di.expression or "").strip()
-        clock = di.clock_domain or ""
+        hi = _classify_one_driver(signal, di)
+        if hi is not None:
+            candidates.append(hi)
 
-        # ---- Case 1: 条件包含 valid && ready → 标准 AXI 握手 ----
-        if cond:
-            sigs = _split_condition(cond)
-            if len(sigs) >= 2:
-                # valid && ready 同时出现在条件中 → 标准握手
-                if "&&" in cond and any("valid" in s.lower() for s in sigs) and any("ready" in s.lower() for s in sigs):
-                    valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
-                    ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
-                    channel = _classify_by_name(valid_sig or ready_sig)
-                    return HandshakeInfo(
-                        valid=valid_sig, ready=ready_sig,
-                        handshake_type="STANDARD_AXI",
-                        channel=channel,
-                        condition=cond,
-                        effective_condition=cond,
-                        assign_type=assign_type,
-                        clock_domain=clock,
-                        extra=extra
-                    )
+    if not candidates:
+        di0 = driver_infos[0]
+        return HandshakeInfo(
+            valid="", ready=signal,
+            handshake_type="UNKNOWN",
+            channel=_classify_by_name(signal),
+            condition=di0.condition or "", effective_condition=di0.expression or "",
+            assign_type=di0.assign_type or "", clock_domain=di0.clock_domain or "", extra={}
+        )
 
-                # ||分离的条件 →可能是 TL-UL 或复杂仲裁
-                if "||" in cond:
-                    valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
-                    ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
-                    channel = _classify_by_name(valid_sig or ready_sig)
-                    return HandshakeInfo(
-                        valid=valid_sig, ready=ready_sig,
-                        handshake_type="COMPLEX_ARB",
-                        channel=channel,
-                        condition=cond,
-                        effective_condition=cond,
-                        assign_type=assign_type,
-                        clock_domain=clock,
-                        extra={"note": "OR-based condition, may be TL-UL or multi-master arbiter"}
-                    )
-
-            # 单信号条件，无 && / ||
-            # 检查表达式是否有 !full / !empty模式
-            if re.search(r"!\s*(\w+_)?full", cond) or re.search(r"!\s*(\w+_)?empty", cond):
-                fifo_match = re.search(r"!\s*(\w+)", cond)
-                fifo_name = fifo_match.group(1) if fifo_match else "unknown"
-                channel = _classify_by_name(signal)
-                return HandshakeInfo(
-                    valid="", ready=signal,
-                    handshake_type="COMBINATIONAL_BP",
-                    channel=channel,
-                    condition=cond,
-                    effective_condition=cond,
-                    assign_type=assign_type,
-                    clock_domain=clock,
-                    extra={"fifo_name": fifo_name}
-                )
-
-        # ---- Case 2:表达式包含 !full / !empty → FIFO 组合反压 ----
-        if re.search(r"!\s*(\w+_)?full\b", expr) or re.search(r"!\s*(\w+_)?empty\b", expr):
-            fifo_match = re.search(r"!\s*(\w+)", expr)
-            fifo_name = fifo_match.group(1) if fifo_match else "unknown"
-            channel = _classify_by_name(signal)
-            return HandshakeInfo(
-                valid="", ready=signal,
-                handshake_type="COMBINATIONAL_BP",
-                channel=channel,
-                condition=cond,
-                effective_condition=expr,
-                assign_type=assign_type,
-                clock_domain=clock,
-                extra={"fifo_name": fifo_name}
-            )
-
-        # ---- Case 3: always_ff 寄存器延迟 ----
-        if assign_type == "always_ff" and not cond:
-            channel = _classify_by_name(signal)
-            return HandshakeInfo(
-                valid="", ready=signal,
-                handshake_type="REGISTERED_BP",
-                channel=channel,
-                condition=cond,
-                effective_condition=expr,
-                assign_type=assign_type,
-                clock_domain=clock,
-                extra={}
-            )
-
-        # ---- Case 4: 有条件但无 valid/ready 关键字 → 其他控制 ----
-        if cond:
-            channel = _classify_by_name(signal)
-            return HandshakeInfo(
-                valid="", ready=signal,
-                handshake_type="CONDITIONAL_CTRL",
-                channel=channel,
-                condition=cond,
-                effective_condition=cond,
-                assign_type=assign_type,
-                clock_domain=clock,
-                extra={}
-            )
-
-    # Fallback
-    channel = _classify_by_name(signal)
-    return HandshakeInfo(
-        valid="", ready=signal,
-        handshake_type="UNKNOWN",
-        channel=channel,
-        condition=driver_infos[0].condition or "",
-        effective_condition=driver_infos[0].expression or "",
-        assign_type=driver_infos[0].assign_type or "",
-        clock_domain=driver_infos[0].clock_domain or "",
-        extra={}
-    )
+    # 按优先级排序，同优先级选 cond 最长（信息量最丰富）的
+    def _rank(hi: HandshakeInfo):
+        return (
+            _TYPE_PRIORITY.get(hi.handshake_type, 0),
+            len(hi.condition or "") + len(hi.effective_condition or ""),
+        )
+    candidates.sort(key=_rank, reverse=True)
+    return candidates[0]
 
 
 def find_counterpart_in_condition(condition: str, target: str) -> str | None:
