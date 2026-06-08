@@ -26,6 +26,7 @@ from trace.core.handshake_detector import (
     classify_signal_channel,
     detect_from_signal_pair,
     detect_handshake_type,
+    detect_handshake_type_with_node,
 )
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
@@ -266,10 +267,16 @@ def analyze(
     # 指定 signal → 单个分析
     dis = st.trace_fanin_detailed(signal)
     if not dis:
-        print(f"  ❌ Signal not found or no driver info: {signal}")
-        return
+        node = graph.get_node(signal)
+        if node is None:
+            print(f"  ❌ Signal not found: {signal}")
+            return
+        # 有 node 但没驱动 — 仍可以分析 (可能是 PORT_IN)
+        dis = []
 
-    hi = detect_handshake_type(signal, dis)
+    node = graph.get_node(signal)
+    node_kind = str(node.kind) if node else None
+    hi = detect_handshake_type_with_node(signal, dis, node_kind=node_kind)
     print("")
     print("=" * 80)
     print(f"  Handshake Analysis: {signal}")

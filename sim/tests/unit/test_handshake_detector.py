@@ -101,6 +101,27 @@ class TestDetectHandshakeType:
         assert hi.handshake_type == "UNUSED"
         assert hi.ready == "s_axi_awready"
 
+    def test_port_in_no_driver_becomes_passthrough(self):
+        """PORT_IN 无驱动 → PORT_PASSTHROUGH (issue 1 fix)"""
+        from trace.core.handshake_detector import detect_handshake_type_with_node
+        # 无 driver, 但 node_kind = PORT_IN
+        hi = detect_handshake_type_with_node("s_axi_awready", [], node_kind="NodeKind.PORT_IN")
+        assert hi.handshake_type == "PORT_PASSTHROUGH"
+        assert hi.assign_type == "port"
+        assert "input port" in hi.extra.get("note", "").lower()
+
+    def test_signal_no_driver_remains_unused(self):
+        """内部信号无驱动 → 保持 UNUSED"""
+        from trace.core.handshake_detector import detect_handshake_type_with_node
+        hi = detect_handshake_type_with_node("internal_wire", [], node_kind="NodeKind.SIGNAL")
+        assert hi.handshake_type == "UNUSED"
+
+    def test_no_node_kind_still_unused(self):
+        """不传 node_kind → 保持 UNUSED (向后兼容)"""
+        from trace.core.handshake_detector import detect_handshake_type_with_node
+        hi = detect_handshake_type_with_node("s_axi_awready", [], node_kind=None)
+        assert hi.handshake_type == "UNUSED"
+
     def test_standard_axi(self):
         """if (valid && ready) → STANDARD_AXI"""
         dis = [make_di(condition="awvalid && awready", assign_type="always_ff")]
