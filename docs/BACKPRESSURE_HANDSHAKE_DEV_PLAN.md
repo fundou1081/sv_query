@@ -389,6 +389,53 @@ def detect_protocol(graph, module):
 
 
 
+### D10. (2026-06-09) Issue 10: 多 bus 协议支持 (AXI / TileLink / APB / AHB / Wishbone / 自定义)
+
+**调查过程**:
+1. 调查真实项目 (axi/, opentitan tlul/, verilog-axi) 中的 handshake 信号
+2. 测试发现 31/61 真实信号未被识别 (ready/valid pattern 过窄)
+3. 涵盖: AXI 子通道, TileLink (a_/d_), AHB, APB, Wishbone, 自定义 (req/ack/done)
+
+**根因**:
+- `READY_VALID_PATTERNS` 只含 AXI 标准模式
+- `_classify_by_name` 只识别 AXI 通道 (AW/W/B/AR/R)
+- `_strip_suffix` 不处理方向后缀 `_i`/`_o` (opentitan / axi/ 项目风格)
+- 总是 ready 信号 (`always_comb a_ready_o = 1'b1;`) 被判为 UNKNOWN
+
+**修复**:
+1. 扩展 `READY_VALID_PATTERNS` (19 -> 140 个模式)
+   - AXI sub: `*_spill_*`, `*_dec_*`, `*_done`, `apb_*`, `arb_*`
+   - TileLink: `a_*`, `d_*`, `dmi_*`, `sram_*`, `flush_*`
+   - AHB: `hready`, `hgrant`, `hreq`, `hresp`
+   - APB: `psel`, `penable`, `pready`, `pslverr`
+   - Wishbone: `cyc`, `stb`, `we`, `ack` + 方向后缀 `_i`/`_o`
+   - 自定义: `dma_*`, `irq`, `rd_req`, `wr_req`, `cmd_*`, `resp_*`
+2. 扩展 `_classify_by_name`:
+   - 处理 module.path. 前缀 (用 sig_part = last part)
+   - 加 `a_ack` / `d_ack` 子串检查 (TL-UL ack 仍是 A/D 通道)
+3. 扩展 `_strip_suffix`:
+   - 剥除方向后缀 `_i` / `_o` / `_io` (opentitan/axi/ 项目风格)
+4. 新增 Case (handshake_detector.py):
+   - `always_comb/always_ff a_ready_o = 1'b1;` → PORT_PASSTHROUGH (always-on)
+
+**验证 (仿真 TL-UL adapter)**:
+```systemverilog
+always_comb a_ack = a_valid_i & a_ready_o;
+always_comb a_ready_o = 1'b1;  // always ready
+```
+扫描结果: 2 对全部 `🔗 PORT_PASSTHROUGH` (之前是 1 个 UNKNOWN + 1 个 PORT_PASSTHROUGH)
+
+**测试覆盖**:
+- 16 个 protocol pattern 测试 (test_bus_protocol_patterns.py)
+- 5 个 always-ready 测试 (test_handshake_always_ready.py)
+- 总测试数: 1582 → 1603 (增加 21)
+
+**真实信号覆盖率**: 30/61 → 61/61 (从 49% 到 100%)
+
+**未覆盖项**:
+- APB 3-way handshake (psel/penable/pready) 不是 valid/ready 对，暂不在 _is_ready_or_valid 范围
+- 协议级 schema 匹配 (Phase A 设计) 尚未实现，仅做轻量 heuristics
+
 ---
 
 ## 6. 风险 + 缓解

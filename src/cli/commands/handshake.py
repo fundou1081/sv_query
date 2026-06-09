@@ -40,19 +40,57 @@ handshake_app = typer.Typer(help="Bus handshake semantic analysis: AXI/TL-UL rea
 
 READY_VALID_PATTERNS = [
     # Standard AXI: must match both 'awvalid' (no underscore) and '_valid' (with underscore)
-    # Bug fixed 2026-06-09: added bare 'awvalid' / 'awready' patterns
     "awvalid", "awready", "wvalid", "wready", "bvalid", "bready",
     "arvalid", "arready", "rvalid", "rready",
     # Also keep underscore variants for safety
     "aw_valid", "aw_ready", "w_valid", "w_ready",
     "b_valid", "b_ready", "ar_valid", "ar_ready", "r_valid", "r_ready",
+    # AXI sub-channels (apb_*, arb_*, *_spill_*, *_dec_*, *_done)
+    "spill_valid", "spill_ready", "dec_valid", "dec_ready",
+    "apb_req_valid", "apb_req_ready",
+    "apb_rresp_valid", "apb_rresp_ready", "apb_wresp_valid", "apb_wresp_ready",
+    "arb_valid", "arb_ready", "arb_req_valid", "arb_req_ready",
+    "aw_done", "ar_done", "w_done", "b_done", "r_done",
+    # AXI-Lite
+    "axi_lite_req", "axi_lite_mst_req", "axi_lite_slv_req",
+    "axi_bresp_valid", "axi_bresp_ready", "axi_rresp_valid", "axi_rresp_ready",
+    # TileLink UL (a_valid, a_ready, a_ack; d_valid, d_ready, d_ack)
+    "a_valid", "a_ready", "a_ack",
+    "d_valid", "d_ready", "d_ack",
+    # DMI (JTAG)
+    "dmi_req_valid", "dmi_req_ready", "dmi_resp_valid", "dmi_resp_ready",
+    # SRAM adapter
+    "sram_ack", "sram_a_ack", "sram_d_ack",
+    # Flush
+    "flush_req", "flush_ack",
+    # AHB (AMBA High-performance Bus)
+    "hready", "hready_out", "hready_in",
+    "hgrant", "hreq", "hresp", "hburst", "hwrite",
+    # APB (AMBA Peripheral Bus)
+    "psel", "penable", "pready", "pslverr",
+    "apb_psel", "apb_penable", "apb_pready", "apb_pslverr",
+    # Wishbone (bare and directional)
+    "cyc", "stb", "we", "ack",  # bare
+    "cyc_i", "cyc_o", "stb_i", "stb_o", "we_i", "we_o", "ack_i", "ack_o",
+    "wb_cyc", "wb_stb", "wb_we", "wb_ack",
     # Stream / custom handshakes
     "_ready", "_valid", "_full", "_empty",
     "_grant", "_stall", "_pause", "_wait",
+    "_ack", "_req", "_done", "_busy",
     "ready_next", "ready_int", "valid_next", "valid_int",
     "m_ready", "s_ready", "m_valid", "s_valid",
     "tready", "tvalid", "tlast", "tkeep", "tdata",
     "resp_ready", "resp_valid", "cmd_ready", "cmd_valid",
+    # DMA / IRQ / custom
+    "dma_req", "dma_ack", "dma_done",
+    "irq", "irq_ack",
+    "rd_req", "wr_req", "rd_wait",
+    "pend_req", "pending_req",
+    "data_valid", "data_ready",
+    "req_valid", "req_ready",
+    "done", "busy",
+    # _req / _ack generic
+    "req", "ack",
 ]
 
 
@@ -72,8 +110,17 @@ def _matches_channel(signal_name: str, channels: list) -> bool:
 
 
 def _strip_suffix(sig: str) -> str:
-    """去掉 _next/_reg/_int/_early/_valid/_ready 后缀，统一配对前缀"""
+    """去掉 _next/_reg/_int/_early/_valid/_ready/_i/_o 后缀，统一配对前缀
+
+    - _next/_reg/_int/_early: 内部版本信号
+    - _i/_o: 方向后缀 (opentitan / axi/ 项目风格, 如 a_valid_i / a_ready_o)
+    """
     s = sig.lower()
+    # 先处理方向后缀 _i / _o
+    for suf in ['_i', '_o', '_io']:
+        if s.endswith(suf):
+            s = s[:-len(suf)]
+            break
     for suf in ['next', 'reg', 'int', 'early']:
         if s.endswith('_' + suf):
             s = s[:-len('_' + suf)]

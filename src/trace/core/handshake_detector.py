@@ -63,8 +63,14 @@ def _split_condition(cond: str) -> list[str]:
 
 
 def _classify_by_name(signal: str) -> ChannelType:
-    """根据信号名判断 AXI 通道类型（轻量 heuristics）"""
+    """根据信号名判断 AXI 通道类型（轻量 heuristics）
+
+    支持模块路径前缀 (e.g. "tlul_synth.a_valid_i")。
+    拿最后一段作为信号名, 在它以及完整路径上同时检查。
+    """
     s = signal.lower()
+    # 拿最后一段 (去掉 module.path. 前缀)
+    sig_part = s.rsplit(".", 1)[-1] if "." in s else s
     # axi_crossbar_addr 内部 AW/AR 指示信号
     if "m_wc_valid" in s or "m_wc_ready" in s or "m_wc_select" in s or "m_wc_decerr" in s:
         return "AW"
@@ -80,13 +86,21 @@ def _classify_by_name(signal: str) -> ChannelType:
         return "AR"
     if "rvalid" in s or "rready" in s or "r_data" in s:
         return "R"
-    # TileLink / AXI-Stream A 通道
-    if "a_valid" in s or "a_ready" in s or "a_opcode" in s or "a_data" in s or "a_rd_resp" in s:
+    # TileLink A 通道 (含 a_valid/a_ready/a_ack/a_opcode/a_data)
+    # 同时检查子串 (例如 ram_a_rd_resp_valid 中含 a_rd_resp)
+    if ("a_valid" in s or "a_ready" in s or "a_ack" in s
+        or "a_opcode" in s or "a_data" in s or "a_rd_resp" in s
+        or "a_param" in s or "a_size" in s or "a_source" in s
+        or "a_mask" in s):
         return "A"
-    # TileLink D 通道 / AXI-Stream (含 tvalid/tready)
-    if "d_valid" in s or "d_ready" in s or "d_opcode" in s or "d_data" in s:
+    # TileLink D 通道 (含 d_valid/d_ready/d_ack/d_opcode/d_data)
+    if ("d_valid" in s or "d_ready" in s or "d_ack" in s
+        or "d_opcode" in s or "d_data" in s or "d_param" in s
+        or "d_size" in s or "d_source" in s or "d_error" in s
+        or "d_sink" in s):
         return "D"
-    if "tvalid" in s or "tready" in s or "t_data" in s or "tlast" in s:
+    # AXI-Stream (tvalid/tready/tlast/tkeep/tdata)
+    if "tvalid" in sig_part or "tready" in sig_part or "t_data" in sig_part or "tlast" in sig_part:
         return "D"
     return "UNKNOWN"
 
@@ -122,6 +136,24 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
             condition=cond, effective_condition=expr,
             assign_type=assign_type, clock_domain=clock,
             extra={"note": f"assign {signal.split('.')[-1]} = {expr} (wire passthrough)", "source_signal": expr}
+        )
+    # [TL/AXI] always_comb/always_ff 赋值给常量 (如 a_ready_o = 1'b1) → ALWAYS_READY
+    # 本质是 "始终 ready" 表达。 仅在 expr 是常量时 (避免覆盖 FIFO BP 检测)
+    _CONST_EXPR_ON = ("1'b1", "1", "'1", "1'h1", "true")
+    _CONST_EXPR_OFF = ("1'b0", "0", "'0", "1'h0", "false")
+    _CONST_EXPR = _CONST_EXPR_ON + _CONST_EXPR_OFF
+    if (not cond and expr and expr in _CONST_EXPR
+        and assign_type in ("nonblocking", "blocking", "always_comb", "always_ff")):
+        is_on = expr in _CONST_EXPR_ON
+        channel = _classify_by_name(signal)
+        note = "always-on" if is_on else "always-off"
+        return HandshakeInfo(
+            valid="", ready=signal,
+            handshake_type="PORT_PASSTHROUGH",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock,
+            extra={"note": f"{note}: {expr}", "always_ready": is_on}
         )
 
     # ---- Case 1: 条件包含 valid && ready → 标准 AXI 握手 ----
