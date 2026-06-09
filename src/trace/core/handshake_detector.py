@@ -62,6 +62,27 @@ def _split_condition(cond: str) -> list[str]:
     return signals
 
 
+def _extract_signal_names(cond: str) -> list[str]:
+    """从条件中提取信号名 (去除比较值、表达式等)
+
+    用于判断条件里是否含握手信号名 (valid/ready/ack/req/...)。
+    例: \`state == READY\`  → \`[state]\` (不是 state + ready)
+    例: \`awvalid && awready\`  → \`[awvalid, awready]\`
+    """
+    if not cond:
+        return []
+    sigs = _split_condition(cond)
+    names = []
+    for s in sigs:
+        # 拿每个 \`&&\` 分隔段的第一个 token 作为信号名
+        # 处理 \`awvalid && awready\` → 'awvalid', 'awready'
+        # 处理 \`state == IDLE\` → 'state'
+        first = re.split(r"\s*(==|!=|<=|>=|<|>|\+|-|\*|/|\(|\)|\[|\])\s*", s, maxsplit=1)[0].strip()
+        if first and first not in names:
+            names.append(first)
+    return names
+
+
 def _classify_by_name(signal: str) -> ChannelType:
     """根据信号名判断 AXI 通道类型（轻量 heuristics）
 
@@ -193,19 +214,13 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
     # ---- Case 3: 条件包含 valid && ready → 标准 AXI 握手 ----
     if cond:
         sigs = _split_condition(cond)
+        sig_names = _extract_signal_names(cond)
         if len(sigs) >= 2:
-            if "&&" in cond and any("valid" in s.lower() for s in sigs) and any("ready" in s.lower() for s in sigs):
-                valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
-                ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
-                channel = _classify_by_name(valid_sig or ready_sig)
-                return HandshakeInfo(
-                    valid=valid_sig, ready=ready_sig,
-                    handshake_type="STANDARD_AXI",
-                    channel=channel,
-                    condition=cond, effective_condition=cond,
-                    assign_type=assign_type, clock_domain=clock, extra={}
-                )
-            if "||" in cond:
+            # [重要] 先检查 OR (多源仲裁, 更具体), 再检查 AND (标准 AXI)
+            # OR 含 valid/ready/ack/req 等握手信号 → 多源仲裁 / 多个源竞争
+            _HANDSHAKE_TOKENS = ("valid", "ready", "ack", "req", "stall", "wait", "grant")
+            if ("||" in cond
+                and any(any(tok in s.lower() for tok in _HANDSHAKE_TOKENS) for s in sig_names)):
                 valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
                 ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
                 channel = _classify_by_name(valid_sig or ready_sig)
@@ -216,6 +231,17 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
                     condition=cond, effective_condition=cond,
                     assign_type=assign_type, clock_domain=clock,
                     extra={"note": "OR-based condition, may be TL-UL or multi-master arbiter"}
+                )
+            if "&&" in cond and any("valid" in s.lower() for s in sigs) and any("ready" in s.lower() for s in sigs):
+                valid_sig = next((s for s in sigs if "valid" in s.lower()), "")
+                ready_sig = next((s for s in sigs if "ready" in s.lower()), signal)
+                channel = _classify_by_name(valid_sig or ready_sig)
+                return HandshakeInfo(
+                    valid=valid_sig, ready=ready_sig,
+                    handshake_type="STANDARD_AXI",
+                    channel=channel,
+                    condition=cond, effective_condition=cond,
+                    assign_type=assign_type, clock_domain=clock, extra={}
                 )
 
         # ---- Case 3b: 单信号条件含 !full / !empty → FIFO 组合反压 ----
