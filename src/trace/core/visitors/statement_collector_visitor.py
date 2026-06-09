@@ -1155,9 +1155,9 @@ class StatementCollectorVisitor(BaseVisitor):
                 value_tok = getattr(expr, "value", None)
                 # 格式: size'bvalue, 例如 2'b00
                 if size_tok is not None and base_tok is not None and value_tok is not None:
-                    size_str = str(size_tok).strip()
-                    base_str = str(base_tok).strip()
-                    value_str = str(value_tok).strip()
+                    size_str = self._safe_str(size_tok).strip()
+                    base_str = self._safe_str(base_tok).strip()
+                    value_str = self._safe_str(value_tok).strip()
                     return f"{size_str}{base_str}{value_str}"
                 # 直接返回 expr 本身
                 result = self._safe_str(expr).strip()

@@ -67,6 +67,7 @@ def _classify_by_name(signal: str) -> ChannelType:
 
     支持模块路径前缀 (e.g. "tlul_synth.a_valid_i")。
     拿最后一段作为信号名, 在它以及完整路径上同时检查。
+    同时处理 AXI 规范的两种风格: 无下划线 (awvalid) 和 下划线 (aw_valid)。
     """
     s = signal.lower()
     # 拿最后一段 (去掉 module.path. 前缀)
@@ -76,15 +77,29 @@ def _classify_by_name(signal: str) -> ChannelType:
         return "AW"
     if "m_rc_valid" in s or "m_rc_ready" in s or "m_rc_decerr" in s:
         return "AR"
-    if "awvalid" in s or "awready" in s or "aw_addr" in s:
+    # AXI 通道 — 同时匹配两种风格 (awvalid / aw_valid)
+    # AW
+    if ("awvalid" in s or "aw_valid" in s or "awready" in s or "aw_ready" in s
+        or "awaddr" in s or "aw_addr" in s or "awlen" in s or "aw_len" in s
+        or "awsize" in s or "aw_size" in s or "awburst" in s or "aw_burst" in s):
         return "AW"
-    if "wvalid" in s or "wready" in s or "w_data" in s:
+    # W
+    if ("wvalid" in s or "w_valid" in s or "wready" in s or "w_ready" in s
+        or "wdata" in s or "w_data" in s or "wstrb" in s or "w_strb" in s
+        or "wlast" in s or "w_last" in s):
         return "W"
-    if "bvalid" in s or "bready" in s or "bresp" in s:
+    # B
+    if ("bvalid" in s or "b_valid" in s or "bready" in s or "b_ready" in s
+        or "bresp" in s or "b_resp" in s):
         return "B"
-    if "arvalid" in s or "arready" in s or "ar_addr" in s:
+    # AR
+    if ("arvalid" in s or "ar_valid" in s or "arready" in s or "ar_ready" in s
+        or "araddr" in s or "ar_addr" in s or "arlen" in s or "ar_len" in s):
         return "AR"
-    if "rvalid" in s or "rready" in s or "r_data" in s:
+    # R
+    if ("rvalid" in s or "r_valid" in s or "rready" in s or "r_ready" in s
+        or "rdata" in s or "r_data" in s or "rlast" in s or "r_last" in s
+        or "rresp" in s or "r_resp" in s):
         return "R"
     # TileLink A 通道 (含 a_valid/a_ready/a_ack/a_opcode/a_data)
     # 同时检查子串 (例如 ram_a_rd_resp_valid 中含 a_rd_resp)
@@ -127,6 +142,25 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
             assign_type=assign_type, clock_domain=clock,
             extra={"note": "port/multi-level connection, no local handshake logic"}
         )
+
+    # ---- Case 1: 表达式包含 !full / !empty → FIFO 组合反压 (BEFORE Case 2 wire passthrough) ----
+    # 这必须在 wire passthrough 之前判断, 否则 `assign ready = !fifo_full || ...` 会被误判为透传
+    if expr and (re.search(r"!\s*(\w+_)?full\b", expr) or re.search(r"!\s*(\w+_)?empty\b", expr)):
+        fifo_match = re.search(r"!\s*(\w+)", expr)
+        fifo_name = fifo_match.group(1) if fifo_match else "unknown"
+        channel = _classify_by_name(signal)
+        sigs = _split_condition(expr)
+        valid_sig = next((s for s in sigs if "valid" in s.lower() and "ready" not in s.lower()), "")
+        return HandshakeInfo(
+            valid=valid_sig, ready=signal,
+            handshake_type="COMBINATIONAL_BP",
+            channel=channel,
+            condition=cond, effective_condition=expr,
+            assign_type=assign_type, clock_domain=clock,
+            extra={"fifo_name": fifo_name}
+        )
+
+    # ---- Case 2: continuous assign 无条件 → 透传 ----
     if not cond and expr and assign_type == "continuous":
         channel = _classify_by_name(signal)
         return HandshakeInfo(
@@ -156,7 +190,7 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
             extra={"note": f"{note}: {expr}", "always_ready": is_on}
         )
 
-    # ---- Case 1: 条件包含 valid && ready → 标准 AXI 握手 ----
+    # ---- Case 3: 条件包含 valid && ready → 标准 AXI 握手 ----
     if cond:
         sigs = _split_condition(cond)
         if len(sigs) >= 2:
@@ -184,7 +218,7 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
                     extra={"note": "OR-based condition, may be TL-UL or multi-master arbiter"}
                 )
 
-        # ---- Case 1b: 单信号条件含 !full / !empty → FIFO 组合反压 ----
+        # ---- Case 3b: 单信号条件含 !full / !empty → FIFO 组合反压 ----
         if re.search(r"!\s*(\w+_)?full", cond) or re.search(r"!\s*(\w+_)?empty", cond):
             fifo_match = re.search(r"!\s*(\w+)", cond)
             fifo_name = fifo_match.group(1) if fifo_match else "unknown"
@@ -200,23 +234,7 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
                 extra={"fifo_name": fifo_name}
             )
 
-    # ---- Case 2: 表达式包含 !full / !empty → FIFO 组合反压 ----
-    if expr and (re.search(r"!\s*(\w+_)?full\b", expr) or re.search(r"!\s*(\w+_)?empty\b", expr)):
-        fifo_match = re.search(r"!\s*(\w+)", expr)
-        fifo_name = fifo_match.group(1) if fifo_match else "unknown"
-        channel = _classify_by_name(signal)
-        sigs = _split_condition(expr)
-        valid_sig = next((s for s in sigs if "valid" in s.lower() and "ready" not in s.lower()), "")
-        return HandshakeInfo(
-            valid=valid_sig, ready=signal,
-            handshake_type="COMBINATIONAL_BP",
-            channel=channel,
-            condition=cond, effective_condition=expr,
-            assign_type=assign_type, clock_domain=clock,
-            extra={"fifo_name": fifo_name}
-        )
-
-    # ---- Case 3: always_ff 寄存器延迟（无 cond）----
+    # ---- Case 4: always_ff 寄存器延迟（无 cond）----
     if assign_type == "always_ff" and not cond:
         channel = _classify_by_name(signal)
         return HandshakeInfo(
@@ -227,7 +245,7 @@ def _classify_one_driver(signal: str, di: DriverInfo) -> HandshakeInfo | None:
             assign_type=assign_type, clock_domain=clock, extra={}
         )
 
-    # ---- Case 4: 有 cond 但不符合上面任何模式 → 条件控制 ----
+    # ---- Case 5: 有 cond 但不符合上面任何模式 → 条件控制 ----
     if cond:
         channel = _classify_by_name(signal)
         sigs = _split_condition(cond)
