@@ -263,13 +263,29 @@ class DriverExtractor:
                         # 尝试从 syntax 获取可读字符串
                         syntax = getattr(cond_expr, "syntax", None)
                         if syntax:
-                            return str(syntax).strip()
+                            try:
+                                s = str(syntax).strip()
+                                if s:
+                                    return s
+                            except (UnicodeDecodeError, TypeError):
+                                pass
                         # 尝试获取符号名
                         if hasattr(cond_expr, "symbol"):
                             sym = getattr(cond_expr, "symbol", None)
-                            if sym and hasattr(sym, "name"):
-                                return str(sym.name).strip()
-                        return str(cond_expr).strip()
+                            if sym:
+                                try:
+                                    name = sym.name
+                                except (UnicodeDecodeError, TypeError, Exception):
+                                    name = None
+                                if name:
+                                    try:
+                                        return str(name).strip()
+                                    except (UnicodeDecodeError, TypeError):
+                                        return "<id:non-utf8>"
+                        try:
+                            return str(cond_expr).strip()
+                        except (UnicodeDecodeError, TypeError):
+                            return "<id:non-utf8>"
                 return ""
 
             # 解包 ConversionExpression 或其他包装
@@ -463,10 +479,18 @@ class DriverExtractor:
             # verilog-axi 的 axi_interconnect.v 在 line 429/450 大量使用这种语法
             for net_decl in self.adapter.get_net_declarations(module):
                 # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
-                lhs_name = self.adapter.clean_name(getattr(net_decl, "name", "") or "")
+                # 访问 .name 时可能触发 utf-8 转换 (escape 序列), 需要 try/except
+                try:
+                    raw_name = getattr(net_decl, "name", "")
+                    lhs_name = self.adapter.clean_name(raw_name or "")
+                except (UnicodeDecodeError, TypeError):
+                    lhs_name = "<id:non-utf8>"
                 if not lhs_name or lhs_name in port_names:
                     continue
-                init = getattr(net_decl, "initializer", None)
+                try:
+                    init = getattr(net_decl, "initializer", None)
+                except (UnicodeDecodeError, TypeError):
+                    init = None
                 if init is None:
                     continue
                 lhs_id = f"{module_name}.{lhs_name}"
@@ -753,7 +777,10 @@ class DriverExtractor:
                     # [P0-2] 计算完整表达式字符串
                     # 使用 SignalExpressionVisitor 获取可读的表达式字符串
                     if rhs_expr:
-                        expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                        try:
+                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                        except (UnicodeDecodeError, TypeError):
+                            expr_str = "<expr:non-utf8>"
                     else:
                         expr_str = rhs or ""
 
@@ -937,7 +964,10 @@ class DriverExtractor:
                         # [P0-2] 计算完整表达式字符串
                         # 使用 SignalExpressionVisitor 获取可读的表达式字符串
                         if rhs_expr:
-                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                            try:
+                                expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                            except (UnicodeDecodeError, TypeError):
+                                expr_str = "<expr:non-utf8>"
                         else:
                             expr_str = rhs or ""
 

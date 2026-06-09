@@ -6,6 +6,7 @@
 # ==============================================================================
 
 import sys
+from .._safe import _safe_attr, _safe_str
 from typing import Callable, Iterator
 
 # 确保 pyslang bindings 在 path 中
@@ -165,7 +166,7 @@ class SemanticAdapter:
                 kind_str = "None"
 
             try:
-                name = getattr(node, "name", None)
+                name = _safe_attr(node, "name", None)
             except (UnicodeDecodeError, Exception):
                 name = None
             # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
@@ -175,7 +176,7 @@ class SemanticAdapter:
                 except Exception:
                     name = "_bin_"
             try:
-                name_str = str(name) if name else "_anon_"
+                name_str = self._safe_str(name) if name else "_anon_"
             except (UnicodeDecodeError, Exception):
                 name_str = "_bad_"
 
@@ -212,14 +213,14 @@ class SemanticAdapter:
 
                     kind = getattr(comp_node, "kind", None)
                     kind_str = str(kind) if kind else "None"
-                    name = getattr(comp_node, "name", None)
+                    name = _safe_attr(comp_node, "name", None)
                     # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
                     if isinstance(name, bytes):
                         try:
                             name = name.decode("utf-8", errors="replace")
                         except Exception:
                             name = "_bin_"
-                    name_str = str(name) if name else "_anon_"
+                    name_str = self._safe_str(name) if name else "_anon_"
 
                     key = (kind_str, name_str)
                     if key in seen_ids:
@@ -268,8 +269,11 @@ class SemanticAdapter:
 
             kind = getattr(node, "kind", None)
             kind_str = str(kind) if kind else "None"
-            name = getattr(node, "name", None)
-            name_str = str(name) if name else "_anon_"
+            try:
+                name = node.name
+            except (UnicodeDecodeError, TypeError, Exception):
+                name = None
+            name_str = self._safe_str(name) if name else "_anon_"
 
             # path_str 用于 GenerateBlock/GenerateBlockArray 的递归传递
             # 初始化为 parent_path，确保在所有分支都有定义
@@ -277,8 +281,11 @@ class SemanticAdapter:
 
             # 使用 (kind, name, hierarchical_path) 作为唯一标识
             # 对于数组实例元素 (如 u_duts[0]),name 相同但 hierarchical_path 不同
-            hp = getattr(node, "hierarchicalPath", None)
-            hp_str = str(hp) if hp else ""
+            try:
+                hp = node.hierarchicalPath
+            except (UnicodeDecodeError, TypeError, Exception):
+                hp = None
+            hp_str = self._safe_str(hp) if hp else ""
             key = (kind_str, name_str, hp_str)
             if key in visited_names:
                 return
@@ -290,7 +297,7 @@ class SemanticAdapter:
                 # InstanceSymbol 同时用于顶层定义和嵌套实例
                 # DefinitionSymbol 的 hierarchicalPath 是模块名本身 (如 "top", "unused")
                 # 嵌套实例的 hierarchicalPath 包含父路径 (如 "top.sub")
-                hierarchical_path = getattr(node, "hierarchicalPath", None)
+                hierarchical_path = _safe_attr(node, "hierarchicalPath", None)
                 path_str = str(hierarchical_path) if hierarchical_path else ""
 
                 # 如果是顶层定义 (路径中不包含 '.') 且 parent_path 为空
@@ -323,7 +330,7 @@ class SemanticAdapter:
                             child_kind = str(getattr(child, "kind", ""))
                             if "Instance" in child_kind:
                                 # 使用 hierarchicalPath 构建完整路径
-                                hp = getattr(child, "hierarchicalPath", None)
+                                hp = _safe_attr(child, "hierarchicalPath", None)
                                 if hp:
                                     hp_str = str(hp)
                                     # hp_str 是完整路径如 'top.gen[0].u_dut'
@@ -385,14 +392,14 @@ class SemanticAdapter:
                 defn = getattr(module, "definition", None)
                 if defn is not None:
                     # 不用 hasattr - 直接尝试 get
-                    name = getattr(defn, "name", None)
+                    name = _safe_attr(defn, "name", None)
                     if name is not None:
                         return str(name)
             except (UnicodeDecodeError, Exception):
                 return "_inst_"
 
         try:
-            name = getattr(module, "name", None)
+            name = _safe_attr(module, "name", None)
             if name is not None:
                 return str(name)
         except (UnicodeDecodeError, Exception):
@@ -444,7 +451,7 @@ class SemanticAdapter:
         unique_classes = []
         for c in classes:
             try:
-                name = str(getattr(c, "name", "")).strip()
+                name = str(_safe_attr(c, "name", "")).strip()
             except UnicodeDecodeError:
                 unique_classes.append(c)
                 continue
@@ -475,7 +482,7 @@ class SemanticAdapter:
         if fixed:
             return fixed
         try:
-            return str(getattr(cls, "name", "")).strip()
+            return str(_safe_attr(cls, "name", "")).strip()
         except UnicodeDecodeError:
             return ""
 
@@ -496,7 +503,7 @@ class SemanticAdapter:
 
         for cls in classes:
             try:
-                str(getattr(cls, "name", ""))
+                str(_safe_attr(cls, "name", ""))
                 continue
             except UnicodeDecodeError:
                 pass
@@ -566,7 +573,7 @@ class SemanticAdapter:
             # Get modport name from ModportItem list
             if hasattr(modport, "items") and modport.items:
                 for item in modport.items:
-                    item_name = getattr(item, "name", None)
+                    item_name = _safe_attr(item, "name", None)
                     if item_name:
                         info["name"] = str(item_name).strip()
 
@@ -599,7 +606,7 @@ class SemanticAdapter:
                                         for pn in (iter_syntax_list(port_names) if is_syntax_list(port_names) else [port_names]):
                                             pn_kind = getattr(pn, "kind", None)
                                             if pn_kind and "ModportNamedPort" in str(pn_kind):
-                                                pn_name = getattr(pn, "name", None)
+                                                pn_name = _safe_attr(pn, "name", None)
                                                 if pn_name:
                                                     info["ports"].append(str(pn_name).strip())
         except Exception:
@@ -638,15 +645,21 @@ class SemanticAdapter:
             for conn in inst_sym.portConnections:
                 # port 属性有 name
                 port_name = "?"
-                if hasattr(conn, "port") and hasattr(conn.port, "name"):
-                    port_name = str(conn.port.name)
+                if hasattr(conn, "port"):
+                    try:
+                        port_name = str(conn.port.name)
+                    except (UnicodeDecodeError, TypeError, Exception):
+                        port_name = "<id:non-utf8>"
 
                 # expression 是 NamedValue,其 symbol 是信号
                 # 也可能是 Assignment 表达式 (用于 output 端口连接，如 .q(signal))
                 signal_name = "?"
                 if hasattr(conn, "expression") and hasattr(conn.expression, "symbol"):
                     # NamedValue expression
-                    signal_name = str(conn.expression.symbol.name)
+                    try:
+                        signal_name = str(conn.expression.symbol.name)
+                    except (UnicodeDecodeError, TypeError, Exception):
+                        signal_name = "<id:non-utf8>"
                 elif hasattr(conn, "expression"):
                     expr = conn.expression
                     # Check if it's an Assignment expression (output port connection)
@@ -655,7 +668,10 @@ class SemanticAdapter:
                         # For Assignment expression (.q(signal)), signal is in left side
                         left = getattr(expr, "left", None)
                         if left and hasattr(left, "symbol"):
-                            signal_name = str(left.symbol.name)
+                            try:
+                                signal_name = str(left.symbol.name)
+                            except (UnicodeDecodeError, TypeError, Exception):
+                                signal_name = "<id:non-utf8>"
 
                 if port_name != "?" and signal_name != "?":
                     connections.append((port_name, signal_name))
@@ -688,14 +704,14 @@ class SemanticAdapter:
         ports = self.get_port_declarations(module)
         names = []
         for port in ports:
-            name = getattr(port, "name", None)
+            name = _safe_attr(port, "name", None)
             if name:
                 names.append(str(name))
         return names
 
     def get_port_name(self, port_decl) -> str:
         """获取单个端口声明的名称"""
-        name = getattr(port_decl, "name", None)
+        name = _safe_attr(port_decl, "name", None)
         if name:
             return str(name)
         return "unknown"
@@ -788,13 +804,26 @@ class SemanticAdapter:
             # ContinuousAssign 语法
             if "ContinuousAssign" in kind:
                 assignments.append(node)
+                return  # 不递归到子节点
             # AssignmentExpression (procedural)
             elif "AssignmentExpression" in kind:
                 assignments.append(node)
+                return  # 不递归到子节点
 
-            # 递归遍历子节点
-            for child in self._iter_children(node):
-                find_assignments(child)
+            # [FIX Ghost-Signal] 递归只能进入"作用域"节点。
+            # 之前的实现递归了 PortSymbol/NetSymbol 这些顶层成员, PortSymbol 的
+            # __iter__ 会产生该 port 在子模块内部的相关节点 (包括其内部的
+            # ContinuousAssign)。这会错误地将子模块的 assigns 加入到父模块。
+            # 修正: 只递归 user code scope 节点 (always/generate), 不递归 Port/Net 等符号。
+            #
+            # 合法 scope 节点:
+            #   - ProceduralBlock  (always_ff / always_comb / always 等)
+            #   - GenerateBlock    (generate for / generate if 内的代码块)
+            #   - GenerateBlockArray (generate for 展开的数组入口)
+            if ("ProceduralBlock" in kind
+                or "GenerateBlock" in kind):
+                for child in self._iter_children(node):
+                    find_assignments(child)
 
         if hasattr(module, "body") and module.body:
             for member in module.body:
@@ -909,8 +938,8 @@ class SemanticAdapter:
                 kind = str(getattr(member, "kind", ""))
                 if "Parameter" in kind:
                     # 返回 dict 格式以兼容现有代码
-                    param_name = getattr(member, "name", None)
-                    param_value = getattr(member, "value", None)
+                    param_name = _safe_attr(member, "name", None)
+                    param_value = _safe_attr(member, "value", None)
                     if param_name:
                         params.append({"name": str(param_name), "value": str(param_value) if param_value else ""})
 
@@ -997,15 +1026,28 @@ class SemanticAdapter:
                 decl_list = list(decls)
                 if decl_list:
                     first_decl = decl_list[0]
-                    name = getattr(first_decl, "name", None)
+                    name = _safe_attr(first_decl, "name", None)
                     if name:
-                        return str(name.value if hasattr(name, "value") else name)
+                        try:
+                            return str(name)
+                        except (UnicodeDecodeError, TypeError):
+                            # 非 utf-8 identifier (e.g. escape 序列), 退回 location
+                            loc = getattr(name, "location", None)
+                            if loc is not None:
+                                return f"<id@{getattr(loc, 'line', '?')}:{getattr(loc, 'column', '?')}>"
+                            return "<id:non-utf8>"
             elif hasattr(decls, "name"):
-                return str(decls.name.value if hasattr(decls.name, "value") else decls.name)
+                try:
+                    return str(decls.name)
+                except (UnicodeDecodeError, TypeError):
+                    return "<id:non-utf8>"
 
         # Handle VariableSymbol (semantic AST)
         if hasattr(signal, "name"):
-            return str(signal.name)
+            try:
+                return str(signal.name)
+            except (UnicodeDecodeError, TypeError):
+                return "<id:non-utf8>"
         return "unknown"
 
     def get_task_params(self, task) -> list:
@@ -1038,7 +1080,7 @@ class SemanticAdapter:
         if "NamedValue" in kind_str:
             sym = getattr(expr, "symbol", None)
             if sym:
-                sig_name = getattr(sym, "name", None)
+                sig_name = _safe_attr(sym, "name", None)
                 if sig_name:
                     signals.append(sig_name)
 
@@ -1124,7 +1166,7 @@ class SemanticAdapter:
                         if "ModportItem" not in item_kind_str:
                             continue
 
-                        item_name = getattr(item, "name", None)
+                        item_name = _safe_attr(item, "name", None)
                         if not item_name:
                             continue
                         actual_name = item_name.value if hasattr(item_name, "value") else str(item_name)
@@ -1172,7 +1214,7 @@ class SemanticAdapter:
 
                                         # Handle ModportNamedPort: has .name attribute
                                         if "ModportNamedPort" in sig_kind_str:
-                                            sig_name_attr = getattr(sig_node, "name", None)
+                                            sig_name_attr = _safe_attr(sig_node, "name", None)
                                             if sig_name_attr:
                                                 sig_name = (
                                                     sig_name_attr.value
@@ -1183,7 +1225,7 @@ class SemanticAdapter:
                                                     result[sig_name] = direction
                                         # Handle simple identifier strings
                                         elif "Identifier" in sig_kind_str or sig_kind_str == "SyntaxKind.VariableDim":
-                                            sig_name = getattr(sig_node, "value", None) or str(sig_node)
+                                            sig_name = _safe_attr(sig_node, "value", None) or str(sig_node)
                                             sig_name = sig_name.strip()
                                             if sig_name:
                                                 result[sig_name] = direction
@@ -1252,7 +1294,7 @@ class SemanticAdapter:
             Dict: {var_name: [rhs_signal_names]}
         """
         drivers = {}
-        func_name = getattr(task_or_func, "name", None)
+        func_name = _safe_attr(task_or_func, "name", None)
         if not func_name:
             return drivers
         func_name = str(func_name)
@@ -1363,14 +1405,14 @@ class SemanticAdapter:
         lhs_name = None
 
         if lhs_symbol:
-            lhs_name = getattr(lhs_symbol, "name", None)
+            lhs_name = _safe_attr(lhs_symbol, "name", None)
         else:
             # Maybe it's an ElementSelect - check .value.symbol
-            lhs_value = getattr(lhs, "value", None)
+            lhs_value = _safe_attr(lhs, "value", None)
             if lhs_value:
                 lhs_symbol = getattr(lhs_value, "symbol", None)
                 if lhs_symbol:
-                    lhs_name = getattr(lhs_symbol, "name", None)
+                    lhs_name = _safe_attr(lhs_symbol, "name", None)
 
         if not lhs_name:
             return
@@ -1409,7 +1451,7 @@ class SemanticAdapter:
         if "NamedValue" in kind_str:
             sym = getattr(expr, "symbol", None)
             if sym:
-                name = getattr(sym, "name", None)
+                name = _safe_attr(sym, "name", None)
                 if name:
                     signals.append(str(name))
             return signals
@@ -1439,7 +1481,7 @@ class SemanticAdapter:
         # ElementSelect: signal[bit] - extract full name signal[bit]
         if "ElementSelect" in kind_str:
             # Get the base signal
-            base_signals = self._extract_signals_from_expr(getattr(expr, "value", None))
+            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None))
             # Get the selector (bit index)
             selector = getattr(expr, "selector", None)
             if selector and base_signals:
@@ -1449,7 +1491,7 @@ class SemanticAdapter:
                     sel_kind_str = str(sel_kind)
                     if "IntegerLiteral" in sel_kind_str:
                         # Get the integer value
-                        sel_val = getattr(selector, "value", None)
+                        sel_val = _safe_attr(selector, "value", None)
                         if sel_val is not None:
                             for base in base_signals:
                                 signals.append(f"{base}[{sel_val}]")
@@ -1459,7 +1501,7 @@ class SemanticAdapter:
                         try:
                             sel_val = str(selector)  # Fallback to string representation
                         except Exception:
-                            sel_val = getattr(selector, "name", None) or str(selector)
+                            sel_val = _safe_attr(selector, "name", None) or str(selector)
                         for base in base_signals:
                             signals.append(f"{base}[{sel_val}]")
                         return signals
@@ -1469,7 +1511,7 @@ class SemanticAdapter:
         # RangeSelect: signal[msb:lsb] - extract full name signal[msb:lsb]
         if "RangeSelect" in kind_str:
             # Get the base signal
-            base_signals = self._extract_signals_from_expr(getattr(expr, "value", None))
+            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None))
             # Get the range (left/right or selector with left/right)
             left = getattr(expr, "left", None)
             right = getattr(expr, "right", None)
@@ -1480,8 +1522,8 @@ class SemanticAdapter:
                     left = getattr(selector, "left", None)
                     right = getattr(selector, "right", None)
             if left and right:
-                left_val = getattr(left, "value", None)
-                right_val = getattr(right, "value", None)
+                left_val = _safe_attr(left, "value", None)
+                right_val = _safe_attr(right, "value", None)
                 for base in base_signals:
                     if left_val is not None and right_val is not None:
                         signals.append(f"{base}[{left_val}:{right_val}]")
@@ -1608,11 +1650,43 @@ class SemanticAdapter:
     # 工具方法
     # =========================================================================
 
-    def clean_name(self, name: str) -> str:
-        """清理信号名称 (移除多余空白等)"""
+    def clean_name(self, name) -> str:
+        """清理信号名称 (移除多余空白等)
+
+        容忍非 utf-8 字节的 identifier (e.g. escape 序列)。
+        如果转换失败,返回 hex 形式以保证唯一性。
+        """
         if not name:
             return ""
-        return " ".join(name.split()).strip()
+        try:
+            s = str(name)
+        except (UnicodeDecodeError, TypeError):
+            # Token 内部 buffer 是非 utf-8 字节, 用 hex 表达
+            try:
+                raw = bytes(name) if hasattr(name, '__bytes__') else b''
+                return f"<id:0x{raw.hex()[:16]}>"
+            except Exception:
+                return "<id:non-utf8>"
+        return " ".join(s.split()).strip()
+
+    @staticmethod
+    def _safe_str(obj) -> str:
+        """安全的 str() 调用,容忍非 utf-8 字节 (e.g. escape 序列)"""
+        if obj is None:
+            return ""
+        try:
+            return str(obj)
+        except (UnicodeDecodeError, TypeError):
+            try:
+                if hasattr(obj, 'rawText'):
+                    raw = bytes(obj.rawText) if hasattr(obj.rawText, '__bytes__') else b''
+                elif hasattr(obj, '__bytes__'):
+                    raw = bytes(obj)
+                else:
+                    raw = b''
+                return f"<id:0x{raw.hex()[:16]}>"
+            except Exception:
+                return "<id:non-utf8>"
 
     def iter_modules(self) -> Iterator:
         """迭代模块 (InstanceSymbol)"""
@@ -1647,11 +1721,20 @@ class SemanticInstanceWrapper:
         self._symbol = instance_symbol
         # [FIX] 对于数组实例元素 (如 u_duts[0]), name='' 但有 arrayName
         # 使用 arrayName + arrayPath 构建完整实例名
-        inst_name = instance_symbol.name
+        try:
+            inst_name = instance_symbol.name
+        except (UnicodeDecodeError, TypeError, Exception):
+            inst_name = None
         if not inst_name:
-            array_name = getattr(instance_symbol, "arrayName", None) or ""
+            try:
+                array_name = instance_symbol.arrayName
+            except (UnicodeDecodeError, TypeError, Exception):
+                array_name = None
             if array_name:
-                arr_path = getattr(instance_symbol, "arrayPath", None)
+                try:
+                    arr_path = instance_symbol.arrayPath
+                except (UnicodeDecodeError, TypeError, Exception):
+                    arr_path = None
                 if arr_path and hasattr(arr_path, "__iter__") and not isinstance(arr_path, str):
                     inst_name = f"{array_name}[{arr_path[0]}]"
                 else:
@@ -1673,9 +1756,16 @@ class SemanticInstanceWrapper:
         """获取模块类型名"""
         if hasattr(self._symbol, "definition"):
             defn = self._symbol.definition
-            if hasattr(defn, "name"):
-                return str(defn.name)
-        return str(self.name)
+            try:
+                name_str = str(defn.name)
+            except (UnicodeDecodeError, TypeError, Exception):
+                name_str = None
+            if name_str:
+                return name_str
+        try:
+            return str(self.name)
+        except (UnicodeDecodeError, TypeError):
+            return "<id:non-utf8>"
 
     def get_parent_module(self) -> str:
         """获取父模块名,供 GraphBuilder._get_parent_module_name 使用"""

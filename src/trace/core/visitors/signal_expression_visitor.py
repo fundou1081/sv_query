@@ -72,6 +72,25 @@ class SignalExpressionVisitor(BaseVisitor):
         # 收集 @on 装饰的 handler
         self._collect_handlers()
 
+    @staticmethod
+    def _safe_str(obj) -> str:
+        """安全的 str() 调用,容忍非 utf-8 字节 (e.g. escape 序列)"""
+        if obj is None:
+            return ""
+        try:
+            return str(obj)
+        except (UnicodeDecodeError, TypeError):
+            try:
+                if hasattr(obj, 'rawText'):
+                    raw = bytes(obj.rawText) if hasattr(obj.rawText, '__bytes__') else b''
+                elif hasattr(obj, '__bytes__'):
+                    raw = bytes(obj)
+                else:
+                    raw = b''
+                return f"<id:0x{raw.hex()[:16]}>"
+            except Exception:
+                return "<id:non-utf8>"
+
     def _collect_handlers(self):
         """收集所有 @on 装饰的 handler 到 _HANDLERS"""
         for name in dir(self):
@@ -345,8 +364,13 @@ class SignalExpressionVisitor(BaseVisitor):
         # [FIX] NamedValue 等类型有 symbol 属性
         if hasattr(node, "symbol"):
             sym = getattr(node, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                return str(sym.name).strip()
+            if sym:
+                try:
+                    _name = sym.name
+                except (UnicodeDecodeError, TypeError, Exception):
+                    _name = None
+                if _name:
+                    return self._safe_str(_name).strip()
 
         # [FIX] IntegerLiteralExpression: 直接返回字符串表示
         kind = getattr(node, "kind", None)
@@ -810,11 +834,19 @@ class SignalExpressionVisitor(BaseVisitor):
         结构: NamedValueExpression.symbol = NetSymbol/VariableSymbol, 有 .name 属性
         """
         sym = getattr(node, "symbol", None)
-        if sym and hasattr(sym, "name"):
-            return str(sym.name).strip()
+        if sym:
+            try:
+                _name = sym.name
+            except (UnicodeDecodeError, TypeError, Exception):
+                _name = None
+            if _name:
+                return self._safe_str(_name).strip()
         # 兜底: symbol 没 name 则尝试直接转字符串
         if sym:
-            name = str(sym).strip()
+            try:
+                name = str(sym).strip()
+            except (UnicodeDecodeError, TypeError):
+                return "<id:non-utf8>"
             # 可能是 "Symbol(SymbolKind.Net, \"data\")" 格式
             if "Symbol" in name and '"' in name:
                 import re
@@ -990,7 +1022,7 @@ class SignalExpressionVisitor(BaseVisitor):
             if hasattr(value, "symbol"):
                 sym = value.symbol
                 if hasattr(sym, "name"):
-                    base_name = str(sym.name)
+                    base_name = self._safe_str(sym.name)
 
             if base_name:
                 selector_val = getattr(selector, "value", None)
@@ -6371,7 +6403,7 @@ class SignalExpressionVisitor(BaseVisitor):
             if hasattr(value, "symbol"):
                 sym = value.symbol
                 if hasattr(sym, "name"):
-                    base_name = str(sym.name)
+                    base_name = self._safe_str(sym.name)
 
             if base_name:
                 selector_val = getattr(selector, "value", None)
@@ -6747,8 +6779,13 @@ class SignalExpressionVisitor(BaseVisitor):
             # NamedValueExpression
             if hasattr(expr, "symbol"):
                 sym = getattr(expr, "symbol", None)
-                if sym and hasattr(sym, "name"):
-                    return str(sym.name).strip()
+                if sym:
+                    try:
+                        _name = sym.name
+                    except (UnicodeDecodeError, TypeError, Exception):
+                        _name = None
+                    if _name:
+                        return self._safe_str(_name).strip()
 
             # IdentifierNameSyntax
             if "IdentifierName" in kind_name:
@@ -7243,8 +7280,13 @@ class SignalExpressionVisitor(BaseVisitor):
                 # 检查是否是参数引用
                 if hasattr(expr, "symbol"):
                     sym = expr.symbol
-                    if sym and hasattr(sym, "name"):
-                        name = str(sym.name)
+                    if sym:
+                        try:
+                            _name = sym.name
+                        except (UnicodeDecodeError, TypeError, Exception):
+                            _name = None
+                        if _name:
+                            name = self._safe_str(_name)
                         if name in param_map:
                             return param_map[name]
                 return int(val) if isinstance(val, (int, float)) else val

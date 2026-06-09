@@ -15,6 +15,7 @@ module_instance_graph.py - 模块实例层级图
 """
 
 import logging
+from .._safe import _safe_attr, _safe_str
 
 import networkx as nx
 
@@ -136,7 +137,7 @@ class ModuleInstanceGraph:
                 # 使用完整的 hierarchicalPath (如果实例在 generate 块中,路径会包含 generate 名称)
                 inst_symbol = inst_wrapper._symbol if hasattr(inst_wrapper, "_symbol") else None
                 if inst_symbol:
-                    hierarchical_path = getattr(inst_symbol, "hierarchicalPath", None)
+                    hierarchical_path = _safe_attr(inst_symbol, "hierarchicalPath", None)
                     instance_id = str(hierarchical_path) if hierarchical_path else inst_wrapper.name
                 else:
                     instance_id = inst_wrapper.name
@@ -150,7 +151,7 @@ class ModuleInstanceGraph:
                     for conn in port_conns:
                         port_sym = getattr(conn, "port", None)
                         if port_sym:
-                            port_name = getattr(port_sym, "name", None)
+                            port_name = _safe_attr(port_sym, "name", None)
                             if port_name:
                                 port_path = f"{instance_id}.{port_name}"
                                 internal = f"{inst_type}.{port_name}"
@@ -353,7 +354,7 @@ class ModuleInstanceGraph:
                     decl = getattr(elem, "decl", None)
                     if not decl:
                         continue
-                    name_obj = getattr(decl, "name", None)
+                    name_obj = _safe_attr(decl, "name", None)
                     if not name_obj or not hasattr(name_obj, "value"):
                         continue
                     inst_name = str(name_obj.value).strip()
@@ -471,7 +472,7 @@ class ModuleInstanceGraph:
                             decl = getattr(elem, "decl", None)
                             if not decl:
                                 continue
-                            name_obj = getattr(decl, "name", None)
+                            name_obj = _safe_attr(decl, "name", None)
                             if not name_obj or not hasattr(name_obj, "value"):
                                 continue
                             inst_name = str(name_obj.value).strip()
@@ -501,7 +502,7 @@ class ModuleInstanceGraph:
                         decl = getattr(elem, "decl", None)
                         if not decl:
                             continue
-                        name_obj = getattr(decl, "name", None)
+                        name_obj = _safe_attr(decl, "name", None)
                         if not name_obj or not hasattr(name_obj, "value"):
                             continue
                         inst_name = str(name_obj.value).strip()
@@ -769,7 +770,7 @@ class ModuleInstanceGraph:
         name = None
         if hasattr(port_decl, "declarator") and port_decl.declarator:
             decl = port_decl.declarator
-            name = getattr(decl, "name", None)
+            name = _safe_attr(decl, "name", None)
             if name:
                 name = name.value if hasattr(name, "value") else str(name)
 
@@ -873,7 +874,7 @@ class ModuleInstanceGraph:
             if not decl:
                 continue
 
-            name_obj = getattr(decl, "name", None)
+            name_obj = _safe_attr(decl, "name", None)
             if not name_obj or not hasattr(name_obj, "value"):
                 continue
 

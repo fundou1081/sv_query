@@ -4,6 +4,7 @@
 # [Subroutine Expansion] 专门处理函数/任务调用的展开
 
 from dataclasses import dataclass, field
+from ..._safe import _safe_attr, _safe_str
 from typing import Any
 
 from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
@@ -263,7 +264,7 @@ class SubroutineExpander:
             List[BranchInfo]: 条件分支列表
         """
         branches = []
-        func_name = getattr(func_def, "name", None)
+        func_name = _safe_attr(func_def, "name", None)
         if func_name:
             func_name = str(func_name)
 
@@ -392,7 +393,7 @@ class SubroutineExpander:
         # ReturnStatement: return x;
         if "Return" in stmt_kind and "Statement" in stmt_kind:
             # Semantic AST: ReturnStatement.expr, Syntax AST: ReturnStatement.value
-            return_expr = getattr(stmt, "expr", None) or getattr(stmt, "value", None)
+            return_expr = getattr(stmt, "expr", None) or _safe_attr(stmt, "value", None)
             if return_expr:
                 # 构建条件字符串
                 if parent_condition is not None:
@@ -575,7 +576,7 @@ class SubroutineExpander:
         # Literal values
         if "Literal" in kind or "Integer" in kind:
             try:
-                val = getattr(expr, "value", None)
+                val = _safe_attr(expr, "value", None)
                 if val is not None:
                     return str(val)
             except Exception:
@@ -603,7 +604,7 @@ class SubroutineExpander:
             try:
                 sym = getattr(expr, "symbol", None)
                 if sym:
-                    name = getattr(sym, "name", None)
+                    name = _safe_attr(sym, "name", None)
                     if name:
                         return str(name)
             except Exception:
@@ -669,9 +670,9 @@ class SubroutineExpander:
         if "NamedValue" in kind or "Identifier" in kind:
             sym = getattr(node, "symbol", None)
             if sym:
-                return getattr(sym, "name", None) or str(getattr(sym, "def", ""))
+                return _safe_attr(sym, "name", None) or str(getattr(sym, "def", ""))
             # 尝试直接获取 name
-            name = getattr(node, "name", None)
+            name = _safe_attr(node, "name", None)
             if name:
                 return str(name)
 
@@ -846,7 +847,7 @@ class ParameterReplacer:
         if "NamedValue" in kind:
             sym = getattr(node, "symbol", None)
             if sym:
-                name = getattr(sym, "name", None)
+                name = _safe_attr(sym, "name", None)
                 if name and name in self.param_map:
                     # 替换为实参
                     replacement = self._create_named_value(self.param_map[name], node)
