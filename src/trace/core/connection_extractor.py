@@ -59,9 +59,15 @@ class ConnectionExtractor:
         # [FIX] Fallback: try to extract genblock name from hierarchicalPath
         # For SemanticAdapter instances with hierarchicalPath like 'top.gen[0].u_dut'
         if hasattr(inst, "_symbol"):
-            hp = getattr(inst._symbol, "hierarchicalPath", None)
+            try:
+                hp = inst._symbol.hierarchicalPath
+            except (UnicodeDecodeError, TypeError, Exception):
+                hp = None
             if hp:
-                hp_str = str(hp)
+                try:
+                    hp_str = str(hp)
+                except (UnicodeDecodeError, TypeError):
+                    hp_str = ""
                 # Pattern: top.GEN[INDEX].instance -> extract GEN
                 # Look for pattern like .gen[ or .GEN[
                 import re

@@ -78,6 +78,30 @@ class StatementCollectorVisitor(BaseVisitor):
         self._ctx_stack: list[dict[str, str]] = [{}]
         self._visited: set[int] = set()
 
+    @staticmethod
+    def _safe_str(obj) -> str:
+        """安全的 str() 调用，容忍非 utf-8 字节 (e.g. escape 序列)
+
+        pyslang 的 Token/Syntax 节点在 str() 时会尝试 utf-8 解码,
+        对于包含非 ASCII 字节的 escape 序列 (e.g. \\x80) 会抛 UnicodeDecodeError。
+        这里捕获后返回 hex 表达, 避免中断整个 trace 流程。
+        """
+        if obj is None:
+            return ""
+        try:
+            return str(obj)
+        except (UnicodeDecodeError, TypeError):
+            try:
+                if hasattr(obj, 'rawText'):
+                    raw = bytes(obj.rawText) if hasattr(obj.rawText, '__bytes__') else b''
+                elif hasattr(obj, '__bytes__'):
+                    raw = bytes(obj)
+                else:
+                    raw = b''
+                return f"<id:0x{raw.hex()[:16]}>"
+            except Exception:
+                return "<id:non-utf8>"
+
     @property
     def current_ctx(self) -> dict[str, str]:
         """获取当前上下文"""
@@ -189,9 +213,9 @@ class StatementCollectorVisitor(BaseVisitor):
                 if hasattr(last_expr, "name"):
                     value_name = str(last_expr.name).strip()
                 elif hasattr(last_expr, "text"):
-                    value_name = str(last_expr.text).strip()
+                    value_name = self._safe_str(last_expr.text).strip()
                 else:
-                    value_name = str(last_expr).strip()
+                    value_name = self._safe_str(last_expr).strip()
 
                 if value_name and value_name not in ("0", "1", "true", "false"):
                     return f"{selector} == {value_name}"
@@ -577,8 +601,13 @@ class StatementCollectorVisitor(BaseVisitor):
             # NamedValueExpression with symbol
             if hasattr(expr, "symbol"):
                 sym = getattr(expr, "symbol", None)
-                if sym and hasattr(sym, "name"):
-                    return str(sym.name).strip()
+                if sym:
+                    try:
+                        _name = sym.name
+                    except (UnicodeDecodeError, TypeError, Exception):
+                        _name = None
+                    if _name:
+                        return self._safe_str(_name).strip()
 
             if hasattr(expr, "left") and hasattr(expr, "right"):
                 left_res = find_clock(expr.left)
@@ -589,9 +618,14 @@ class StatementCollectorVisitor(BaseVisitor):
                 ce = getattr(expr, "expr", None)
                 if ce and hasattr(ce, "symbol"):
                     sym = getattr(ce, "symbol", None)
-                    if sym and hasattr(sym, "name"):
-                        return str(sym.name).strip()
-                return str(ce).strip() if ce else ""
+                    if sym:
+                        try:
+                            _name = sym.name
+                        except (UnicodeDecodeError, TypeError, Exception):
+                            _name = None
+                        if _name:
+                            return self._safe_str(_name).strip()
+                return self._safe_str(ce).strip() if ce else ""
 
             return ""
 
@@ -636,8 +670,13 @@ class StatementCollectorVisitor(BaseVisitor):
         signal_name = ""
         if hasattr(e, "symbol"):
             sym = getattr(e, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                signal_name = str(sym.name).strip()
+            if sym:
+                try:
+                    _name = sym.name
+                except (UnicodeDecodeError, TypeError, Exception):
+                    _name = None
+                if _name:
+                    signal_name = self._safe_str(_name).strip()
                 if "rst" in signal_name.lower() or "reset" in signal_name.lower():
                     is_reset_signal = True
 
@@ -814,7 +853,7 @@ class StatementCollectorVisitor(BaseVisitor):
         if syntax:
             expr = getattr(syntax, "expr", None)
             if expr:
-                return str(expr).strip()
+                return self._safe_str(expr).strip()
 
         return "?"
 
@@ -1046,7 +1085,7 @@ class StatementCollectorVisitor(BaseVisitor):
                         if expr:
                             syn = getattr(expr, "syntax", None)
                             if syn:
-                                exprs.append(str(syn))
+                                exprs.append(self._safe_str(syn))
                             else:
                                 # Try to extract from semantic AST
                                 expr_str = self._expr_to_string(expr)
@@ -1067,7 +1106,7 @@ class StatementCollectorVisitor(BaseVisitor):
                     if expr_str:
                         exprs.append(expr_str)
                     else:
-                        exprs.append(str(expr))
+                        exprs.append(self._safe_str(expr))
             return " && ".join(exprs) if exprs else ""
 
         return ""
@@ -1082,8 +1121,13 @@ class StatementCollectorVisitor(BaseVisitor):
 
         # 优先使用 syntax (语法树)
         syn = getattr(expr, "syntax", None)
-        if syn and str(syn).strip():
-            return str(syn).strip()
+        if syn:
+            try:
+                s = self._safe_str(syn).strip()
+                if s:
+                    return s
+            except (UnicodeDecodeError, TypeError):
+                pass
 
         # LiteralExpressionSyntax: 提取字面量值
         # 例如 case (sel) 0: 中的 0, 1
@@ -1091,7 +1135,7 @@ class StatementCollectorVisitor(BaseVisitor):
             kind_name = expr.kind.name if hasattr(expr.kind, "name") else str(expr.kind)
             if "Literal" in kind_name:
                 # 直接返回 expr 本身（LiteralExpressionSyntax 重载了 __str__）
-                result = str(expr).strip()
+                result = self._safe_str(expr).strip()
                 if result:
                     return result
                 # 尝试 literal 属性
@@ -1116,7 +1160,7 @@ class StatementCollectorVisitor(BaseVisitor):
                     value_str = str(value_tok).strip()
                     return f"{size_str}{base_str}{value_str}"
                 # 直接返回 expr 本身
-                result = str(expr).strip()
+                result = self._safe_str(expr).strip()
                 if result:
                     return result
 
@@ -1148,8 +1192,17 @@ class StatementCollectorVisitor(BaseVisitor):
         # NamedValueExpression: 提取符号名
         if hasattr(expr, "symbol"):
             sym = getattr(expr, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                return str(sym.name).strip()
+            if sym:
+                # 安全访问 .name (pyslang property 访问会触发 utf-8 解码)
+                try:
+                    name = sym.name
+                except (UnicodeDecodeError, TypeError, Exception):
+                    return "<id:non-utf8>"
+                if name:
+                    try:
+                        return self._safe_str(name).strip()
+                    except (UnicodeDecodeError, TypeError):
+                        return "<id:non-utf8>"
 
         # IdentifierNameSyntax: 语法树节点 (嵌套 case 中的 selector)
         # 例如: case(valid) 中 valid 是 IdentifierNameSyntax，不是 NamedValueExpression
@@ -1157,7 +1210,7 @@ class StatementCollectorVisitor(BaseVisitor):
         if kind:
             kind_name = kind.name if hasattr(kind, "name") else str(kind)
             if "IdentifierName" in kind_name:
-                return str(expr).strip()
+                return self._safe_str(expr).strip()
 
         # BinaryExpression: 递归处理左右操作数
         if hasattr(expr, "left") and hasattr(expr, "right"):
