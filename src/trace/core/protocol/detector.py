@@ -175,6 +175,8 @@ class ProtocolDetector:
     CONFIDENCE_THRESHOLD = 0.5
     # 低于此阈值判为 UNKNOWN (避免误报)
     UNKNOWN_THRESHOLD = 0.3
+    # name_score 门控: 低于此值协议被判为 0 (避免仅靠结构/pattern 误报)
+    NAME_SCORE_GATE = 0.2
 
     def __init__(
         self,
@@ -274,6 +276,10 @@ class ProtocolDetector:
             + self.WEIGHT_PATTERN * pattern_score
             + self.WEIGHT_HANDSHAKE * handshake_score
         )
+
+        # 门控: name_score 太低, 协议不应被选中 (避免仅靠结构/pattern 误报)
+        if name_score < self.NAME_SCORE_GATE:
+            confidence = 0.0
 
         # 变体检测
         variant = self._detect_variant(schema, signals)

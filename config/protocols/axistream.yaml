@@ -1,0 +1,95 @@
+# ==============================================================================
+# config/protocols/axistream.yaml
+# ==============================================================================
+# Phase A v2+: ARM AMBA AXI4-Stream protocol
+#
+# 参考: AMBA 4 AXI4-Stream Protocol Specification (ARM IHI 0051)
+# 单通道数据流, 无地址, 无响应
+# 适合 DMA / video / DSP / interconnect 数据流
+# ==============================================================================
+
+protocol: AXI4-Stream
+description: ARM AMBA AXI4-Stream (Full / Lite / Packet)
+
+# ---- 通道定义 ----
+# AXI-Stream 实际只有 1 个 channel (data + control 共用)
+# 拆成多个 role group 便于分析
+channels:
+  HANDSHAKE:  # 握手对 (master → slave)
+    required:
+      - name: tvalid
+        role: valid
+      - name: tready
+        role: ready
+    optional: []
+  DATA:  # 数据载荷
+    required:
+      - name: tdata
+        role: data
+    optional: []
+  PACKET:  # 包边界 (可选)
+    required: []
+    optional:
+      - name: tlast
+        role: last
+        width: 1
+  STROBE:  # 字节使能 (可选)
+    required: []
+    optional:
+      - name: tkeep
+        role: strb
+      - name: tstrb
+        role: strb
+  META:  # 元数据 (可选)
+    required: []
+    optional:
+      - name: tid
+        role: ctrl
+      - name: tdest
+        role: ctrl
+      - name: tid_width
+        role: ctrl
+      - name: tdest_width
+        role: ctrl
+
+# ---- 信号角色速查 (canonical name → channel/role) ----
+signal_roles:
+  tvalid:      {channel: HANDSHAKE, role: valid}
+  tready:      {channel: HANDSHAKE, role: ready}
+  tdata:       {channel: DATA, role: data}
+  tlast:       {channel: PACKET, role: last}
+  tkeep:       {channel: STROBE, role: strb}
+  tstrb:       {channel: STROBE, role: strb}
+  tid:         {channel: META, role: ctrl}
+  tdest:       {channel: META, role: ctrl}
+  tuser:       {channel: META, role: ctrl}
+  twakeup:     {channel: META, role: ctrl}
+
+# ---- 变体定义 ----
+variants:
+  - name: AXI4_STREAM
+    description: Full AXI4-Stream (tvalid + tready + tdata + 可选 tlast/tkeep/tstrb/tid/tdest/tuser)
+    needs_signals:
+      - tvalid
+      - tready
+      - tdata
+  - name: AXI4_STREAM_LITE
+    description: Minimal AXI4-Stream (仅 tvalid/tready/tdata, 无包边界和元数据)
+    needs_signals:
+      - tvalid
+      - tready
+      - tdata
+    needs_absent_signals:
+      - tlast
+      - tkeep
+      - tstrb
+      - tid
+      - tdest
+      - tuser
+  - name: AXI4_STREAM_PACKET
+    description: AXI4-Stream with packet boundaries (tlast 必有)
+    needs_signals:
+      - tvalid
+      - tready
+      - tdata
+      - tlast
