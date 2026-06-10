@@ -32,6 +32,7 @@ from src.cli.commands.sva import sva_app
 from src.cli.commands.timing import timing_app
 from src.cli.commands.backpressure import backpressure_app
 from src.cli.commands.handshake import handshake_app
+from src.cli.commands.protocol import protocol_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
@@ -57,6 +58,7 @@ app.add_typer(coverage_app, name="coverage")
 app.add_typer(verify_app, name="verify")
 app.add_typer(backpressure_app, name="backpressure")
 app.add_typer(handshake_app, name="handshake")
+app.add_typer(protocol_app, name="protocol")
 app.add_typer(vis_app, name="visualize")
 
 # stats 是单独命令，不需要子 Typer
