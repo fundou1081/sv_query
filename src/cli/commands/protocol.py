@@ -24,20 +24,20 @@ import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.core.protocol.schema import (
+from applications.bus.schema import (
     ProtocolSchemaRegistry,
     load_protocols,
 )
-from trace.core.protocol.detector import (
+from applications.bus.detector import (
     ProtocolDetector,
     ProtocolMatch,
 )
-from trace.core.protocol.sv_extractor import SVSignalExtractor
-from trace.core.protocol.handshake_provider_trace import (
+from applications.bus.sv_extractor import SVSignalExtractor
+from applications.bus.handshake_provider_trace import (
     TraceBasedHandshakeProvider,
     make_trace_based_provider,
 )
-from trace.core.protocol.structural import SignalContext
+from applications.bus.structural import SignalContext
 
 
 protocol_app = typer.Typer(help="Bus protocol detection (Phase A)")
@@ -122,7 +122,7 @@ def detect(
                 if signal_tracer is not None:
                     handshake_provider = make_trace_based_provider(signal_tracer, graph)
                 else:
-                    from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+                    from applications.bus.handshake_provider import NameBasedHandshakeProvider
                     handshake_provider = NameBasedHandshakeProvider()
 
                 detector = ProtocolDetector(
@@ -169,10 +169,10 @@ def detect(
             signal_tracer = SignalTracer(graph)
             handshake_provider = make_trace_based_provider(signal_tracer, graph)
         except Exception:
-            from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+            from applications.bus.handshake_provider import NameBasedHandshakeProvider
             handshake_provider = NameBasedHandshakeProvider()
     else:
-        from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+        from applications.bus.handshake_provider import NameBasedHandshakeProvider
         handshake_provider = NameBasedHandshakeProvider()
 
     detector = ProtocolDetector(

@@ -1,5 +1,5 @@
 """
-trace.core.protocol.sv_extractor - SystemVerilog 信号提取
+applications.bus.sv_extractor - SystemVerilog 信号提取
 
 Phase A v3: 真实 SV 集成 (Option 1)
 
@@ -18,7 +18,7 @@ Phase A v3: 真实 SV 集成 (Option 1)
 使用
 ====
 
-    from trace.core.protocol.sv_extractor import SVSignalExtractor
+    from applications.bus.sv_extractor import SVSignalExtractor
 
     extractor = SVSignalExtractor(filelist="/path/to/file.f")
     modules = extractor.extract_all_modules()

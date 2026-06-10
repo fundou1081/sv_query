@@ -19,22 +19,22 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.protocol.schema import (
+from applications.bus.schema import (
     ProtocolSchemaRegistry,
     load_protocols,
 )
-from trace.core.protocol.detector import (
+from applications.bus.detector import (
     ProtocolDetector,
     ProtocolMatch,
     ChannelMatch,
     SignalMapping,
 )
-from trace.core.protocol.structural import (
+from applications.bus.structural import (
     SignalContext,
     StructuralRoleDetector,
 )
-from trace.core.protocol.normalize import SignalNormalizer, NormalizeConfig
-from trace.core.protocol.pattern_learner import PatternLearner
+from applications.bus.normalize import SignalNormalizer, NormalizeConfig
+from applications.bus.pattern_learner import PatternLearner
 
 
 # ---------------------------------------------------------------------------

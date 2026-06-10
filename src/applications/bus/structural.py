@@ -1,5 +1,5 @@
 """
-trace.core.protocol.structural - 结构性角色提示
+applications.bus.structural - 结构性角色提示
 
 Phase A Session 2: StructuralHints
 
@@ -29,7 +29,7 @@ Phase A Session 2: StructuralHints
 使用
 ====
 
-    from trace.core.protocol.structural import (
+    from applications.bus.structural import (
         SignalContext, StructuralRoleDetector,
     )
 

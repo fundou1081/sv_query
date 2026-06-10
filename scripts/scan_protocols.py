@@ -40,9 +40,9 @@ class ScanResult:
 
 
 def _build_detector():
-    from trace.core.protocol.detector import ProtocolDetector
-    from trace.core.protocol.schema import ProtocolSchemaRegistry
-    from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+    from applications.bus.detector import ProtocolDetector
+    from applications.bus.schema import ProtocolSchemaRegistry
+    from applications.bus.handshake_provider import NameBasedHandshakeProvider
     reg = ProtocolSchemaRegistry.from_directory(
         str(_project_root / "config" / "protocols")
     )
@@ -122,7 +122,7 @@ def scan_files(
     include_dirs: Optional[List[str]] = None,
 ) -> List[ScanResult]:
     """逐个文件扫描 (每个文件单独编译)."""
-    from trace.core.protocol.sv_extractor import SVSignalExtractor
+    from applications.bus.sv_extractor import SVSignalExtractor
 
     detector = _build_detector()
     results = []
@@ -146,7 +146,7 @@ def scan_filelist(
 
     返回 [(module_name, ScanResult), ...] — 多个 module per file.
     """
-    from trace.core.protocol.sv_extractor import SVSignalExtractor
+    from applications.bus.sv_extractor import SVSignalExtractor
 
     detector = _build_detector()
     ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs)
@@ -181,7 +181,7 @@ def scan_directory(
     include_dirs: Optional[List[str]] = None,
 ) -> List[ScanResult]:
     """扫描目录下所有匹配文件 (单文件模式)."""
-    from trace.core.protocol.sv_extractor import SVSignalExtractor
+    from applications.bus.sv_extractor import SVSignalExtractor
 
     detector = _build_detector()
     dir_path = Path(directory).expanduser()

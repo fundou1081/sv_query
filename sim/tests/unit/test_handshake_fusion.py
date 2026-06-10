@@ -26,21 +26,21 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.protocol.schema import (
+from applications.bus.schema import (
     ProtocolSchemaRegistry,
     load_protocols,
 )
-from trace.core.protocol.detector import (
+from applications.bus.detector import (
     ProtocolDetector,
     ProtocolMatch,
 )
-from trace.core.protocol.handshake_provider import (
+from applications.bus.handshake_provider import (
     HandshakeProvider,
     NameBasedHandshakeProvider,
     HandshakeInfoLite,  # 轻量版 HandshakeInfo (无 DriverInfo 依赖)
     handshake_type_score,
 )
-from trace.core.protocol.structural import SignalContext
+from applications.bus.structural import SignalContext
 
 
 # ---------------------------------------------------------------------------

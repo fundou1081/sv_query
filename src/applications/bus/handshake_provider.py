@@ -1,5 +1,5 @@
 """
-trace.core.protocol.handshake_provider - Phase B handshake 桥接
+applications.bus.handshake_provider - Phase B handshake 桥接
 
 Phase A + Phase B 集成: handshake_score 融合
 
@@ -33,10 +33,10 @@ Phase A + Phase B 集成: handshake_score 融合
 使用
 ====
 
-    from trace.core.protocol.handshake_provider import (
+    from applications.bus.handshake_provider import (
         NameBasedHandshakeProvider, handshake_type_score,
     )
-    from trace.core.protocol.detector import ProtocolDetector
+    from applications.bus.detector import ProtocolDetector
 
     # 默认 name-based (MVP)
     provider = NameBasedHandshakeProvider()
