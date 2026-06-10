@@ -1,0 +1,92 @@
+# ==============================================================================
+# config/protocols/wishbone.yaml
+# ==============================================================================
+# Phase A v2: Wishbone B4 协议定义
+#
+# 参考: Wishbone B4 Specification (OpenCores)
+# Classic / Pipelined / Registered Feedback 等变体
+# ==============================================================================
+
+protocol: Wishbone
+description: Wishbone B4 (Classic / Pipelined)
+
+# ---- 通道定义 ----
+channels:
+  CTRL:  # 控制信号 (master → slave)
+    required:
+      - name: cyc
+        role: valid
+      - name: stb
+        role: valid
+      - name: we
+        role: ctrl
+    optional:
+      - name: sel
+        role: strb
+        width: 4
+      - name: tag
+        role: ctrl
+  ADDR:  # 地址
+    required:
+      - name: adr
+        role: addr
+    optional: []
+  DATA_WRITE:  # 写数据 (master → slave)
+    required:
+      - name: dat_o
+        role: data
+    optional: []
+  RESP:  # 响应 (slave → master)
+    required:
+      - name: ack
+        role: ready
+    optional:
+      - name: err
+        role: resp
+        width: 1
+      - name: rty
+        role: resp
+        width: 1
+  DATA_READ:  # 读数据 (slave → master)
+    required:
+      - name: dat_i
+        role: data
+    optional: []
+
+# ---- 信号角色速查 ----
+signal_roles:
+  cyc:   {channel: CTRL, role: valid}
+  stb:   {channel: CTRL, role: valid}
+  we:    {channel: CTRL, role: ctrl}
+  sel:   {channel: CTRL, role: strb, width: 4}
+  tag:   {channel: CTRL, role: ctrl}
+  adr:   {channel: ADDR, role: addr}
+  dat_o: {channel: DATA_WRITE, role: data}
+  ack:   {channel: RESP, role: ready}
+  err:   {channel: RESP, role: resp, width: 1}
+  rty:   {channel: RESP, role: resp, width: 1}
+  dat_i: {channel: DATA_READ, role: data}
+
+# ---- 变体定义 ----
+variants:
+  - name: WISHBONE_CLASSIC
+    description: Classic Wishbone (无流水线)
+    needs_signals:
+      - cyc
+      - stb
+      - we
+      - adr
+      - dat_o
+      - dat_i
+      - ack
+  - name: WISHBONE_PIPELINED
+    description: Pipelined Wishbone (支持流水线)
+    needs_signals:
+      - cyc
+      - stb
+      - we
+      - adr
+      - dat_o
+      - dat_i
+      - ack
+      - tag

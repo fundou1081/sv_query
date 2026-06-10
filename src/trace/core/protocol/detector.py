@@ -302,6 +302,10 @@ class ProtocolDetector:
             norm = sig_norms[s.name]
             sig_by_norm.setdefault(norm, []).append(s)
 
+        # 也标准化 schema 的 required/optional 名字, 避免 YAML 写 a_valid 匹配不到 avalid
+        def _norm(s: str) -> str:
+            return self.norm.normalize(s).normalized
+
         matched_req: List[str] = []
         matched_opt: List[str] = []
         missing_req: List[str] = []
@@ -309,26 +313,27 @@ class ProtocolDetector:
 
         # 检查 required
         for req_sig in ch_spec.required:
-            if req_sig in sig_by_norm:
+            req_norm = _norm(req_sig)
+            if req_norm in sig_by_norm:
                 matched_req.append(req_sig)
-                # 找对应的原始信号
-                for s in sig_by_norm[req_sig]:
+                for s in sig_by_norm[req_norm]:
                     mappings.append(SignalMapping(
                         original=s.name,
                         canonical=req_sig,
                         channel=ch_name,
                         role=schema.signal_roles[req_sig].role if req_sig in schema.signal_roles else "unknown",
-                        match_type="exact" if req_sig in sig_norms.values() else "normalized",
+                        match_type="normalized",
                         score=1.0,
                     ))
             else:
                 missing_req.append(req_sig)
 
-        # 检查 optional (加分, 不影响 required)
+        # 检查 optional
         for opt_sig in ch_spec.optional:
-            if opt_sig in sig_by_norm:
+            opt_norm = _norm(opt_sig)
+            if opt_norm in sig_by_norm:
                 matched_opt.append(opt_sig)
-                for s in sig_by_norm[opt_sig]:
+                for s in sig_by_norm[opt_norm]:
                     mappings.append(SignalMapping(
                         original=s.name,
                         canonical=opt_sig,
@@ -341,24 +346,20 @@ class ProtocolDetector:
         # 通道完整性
         present = len(missing_req) == 0
 
-        # 通道分数: name + structural + pattern
-        # name 分数: required 全部匹配 = 1.0, 否则按比例
+        # 通道分数
         if ch_spec.required_count() > 0:
             name_score = len(matched_req) / ch_spec.required_count()
         else:
             name_score = 1.0 if matched_opt else 0.0
 
-        # structural 分数: required 信号的结构特征是否一致
         structural_score = self._channel_structural_score(
             ch_spec, schema, sig_by_norm,
         )
 
-        # pattern 分数: 是否有一个 PatternLearner group 对应这个 channel
         pattern_score = self._channel_pattern_score(
             ch_name, ch_spec, groups,
         )
 
-        # 通道总分 (3 项加权, 内部)
         score = 0.4 * name_score + 0.3 * structural_score + 0.3 * pattern_score
 
         ch_match = ChannelMatch(
@@ -384,15 +385,19 @@ class ProtocolDetector:
         if not ch_spec.required:
             return 1.0
 
+        def _norm(s: str) -> str:
+            return self.norm.normalize(s).normalized
+
         correct = 0
         for req_sig in ch_spec.required:
-            if req_sig not in sig_by_norm:
+            req_norm = _norm(req_sig)
+            if req_norm not in sig_by_norm:
                 continue  # required 但不存在, 不算分
             role_spec = schema.signal_roles.get(req_sig)
             if not role_spec:
                 correct += 0.5
                 continue
-            for sig in sig_by_norm[req_sig]:
+            for sig in sig_by_norm[req_norm]:
                 hints = self.struct_det.detect(sig)
                 if hints.is_valid_like >= 0.3 and role_spec.role == "valid":
                     correct += 1
@@ -411,7 +416,7 @@ class ProtocolDetector:
                 elif hints.is_last_like >= 0.3 and role_spec.role == "last":
                     correct += 1
                 else:
-                    correct += 0.3  # 角色不匹配但有结构
+                    correct += 0.3
 
         return correct / len(ch_spec.required)
 
@@ -422,29 +427,24 @@ class ProtocolDetector:
         groups: List[ChannelGroup],
     ) -> float:
         """通道是否被 PatternLearner 识别为独立 group."""
-        # 找 ch_name 对应的 group
+        def _norm(s: str) -> str:
+            return self.norm.normalize(s).normalized
+
         for g in groups:
-            # ch_name "AW" → group.name "AW" (uppercase)
             if g.name.upper() == ch_name.upper():
-                # 检查这个 group 是否包含 ch_spec 的 required 信号
-                sig_norms = {
-                    self.norm.normalize(s).normalized for s in g.signals
-                }
-                req_matched = sum(1 for r in ch_spec.required if r in sig_norms)
+                sig_norms = {_norm(s) for s in g.signals}
+                req_norms = [_norm(r) for r in ch_spec.required]
+                req_matched = sum(1 for r in req_norms if r in sig_norms)
                 if ch_spec.required_count() > 0:
                     return req_matched / ch_spec.required_count()
                 return 1.0 if g.signals else 0.0
 
-        # 如果 schema 通道名 = "AW", 但 group 叫 "W" (无前缀冲突)
-        # 也接受: group 包含 ch_spec.required
         for g in groups:
-            sig_norms = {
-                self.norm.normalize(s).normalized for s in g.signals
-            }
-            if all(req in sig_norms for req in ch_spec.required):
-                return 0.8  # 部分匹配, 没明确 channel 名字
+            sig_norms = {_norm(s) for s in g.signals}
+            if all(_norm(req) in sig_norms for req in ch_spec.required):
+                return 0.8
 
-        return 0.5  # 没找到对应 group, 中性分数
+        return 0.5
 
     def _aggregate_name_score(
         self,
@@ -476,26 +476,33 @@ class ProtocolDetector:
         schema: ProtocolSchema,
         signals: List[SignalContext],
     ) -> Optional[str]:
-        """检测协议变体."""
-        sig_norms = {self.norm.normalize(s.name).normalized for s in signals}
+        """检测协议变体. 偏好最具体的变体 (需要检查更多约束的)."""
+        def _norm(s: str) -> str:
+            return self.norm.normalize(s).normalized
 
-        # 选第一个完全匹配的变体
+        sig_norms = {_norm(s.name) for s in signals}
+
+        # 找出所有完全匹配的变体, 选需要最多检查的 (最具体)
+        matching = []
         for variant in schema.variants:
             ok = True
             for needed in variant.needs_signals:
-                if needed not in sig_norms:
+                if _norm(needed) not in sig_norms:
                     ok = False
                     break
             if not ok:
                 continue
             for absent in variant.needs_absent_signals:
-                if absent in sig_norms:
+                if _norm(absent) in sig_norms:
                     ok = False
                     break
             if ok:
-                return variant.name
+                matching.append(variant)
 
-        return None
+        if not matching:
+            return None
+        # 偏好最具体的 (需要检查最多的信号 = 最多约束)
+        return max(matching, key=lambda v: len(v.needs_signals) + len(v.needs_absent_signals)).name
 
     def _handshake_score(
         self,
@@ -503,13 +510,12 @@ class ProtocolDetector:
         schema: ProtocolSchema,
         signals: List[SignalContext],
     ) -> float:
-        """4 项融合: handshake_score.
-
-        遍历 anchors, 调 provider, 累加 HandshakeType 分数.
-        通道匹配的 anchor 权重更高 (因为确认属于该协议).
-        """
+        """4 项融合: handshake_score."""
         if not anchors or not self.handshake_provider:
             return 0.0
+
+        def _norm(s: str) -> str:
+            return self.norm.normalize(s).normalized
 
         total = 0.0
         count = 0
@@ -519,8 +525,9 @@ class ProtocolDetector:
                 continue
 
             base_score = handshake_type_score(info.handshake_type)
-            # 通道匹配 bonus: 如果 provider 判断的通道 = schema 中存在的通道
-            if info.channel in schema.channels:
+            # 通道匹配 bonus: provider 判断的通道 normalized 后匹配 schema
+            schema_channels_norm = {_norm(c) for c in schema.channels}
+            if _norm(info.channel) in schema_channels_norm:
                 base_score = min(1.0, base_score + 0.05)
 
             total += base_score

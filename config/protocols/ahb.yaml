@@ -1,0 +1,109 @@
+# ==============================================================================
+# config/protocols/ahb.yaml
+# ==============================================================================
+# Phase A v2: AMBA AHB (Advanced High-performance Bus) 协议定义
+#
+# 参考: AMBA AHB v3 (ARM IHI 0011)
+# 多 master 仲裁 + 流水线地址/数据
+# HREADY/HRESP 反压 (类似 AXI 但更简单)
+# ==============================================================================
+
+protocol: AHB
+description: AMBA AHB v3 (Advanced High-performance Bus)
+
+# ---- 通道定义 ----
+channels:
+  ADDR_CTRL:  # 地址 + 控制 (master → slave)
+    required:
+      - name: haddr
+        role: addr
+      - name: htrans
+        role: ctrl
+        width: 2
+      - name: hwrite
+        role: ctrl
+        width: 1
+      - name: hsize
+        role: ctrl
+        width: 3
+      - name: hburst
+        role: ctrl
+        width: 3
+    optional:
+      - name: hprot
+        role: ctrl
+        width: 4
+      - name: hmastlock
+        role: ctrl
+        width: 1
+  DATA_WRITE:  # 写数据 (master → slave)
+    required:
+      - name: hwdata
+        role: data
+    optional: []
+  DATA_READ:  # 读数据 (slave → master)
+    required:
+      - name: hrdata
+        role: data
+    optional: []
+  RESP:  # 响应 (slave → master)
+    required:
+      - name: hready
+        role: ready
+      - name: hresp
+        role: resp
+        width: 1
+    optional: []
+  ARB:  # 总线仲裁 (master ↔ arbiter)
+    required:
+      - name: hbusreq
+        role: valid
+      - name: hgrant
+        role: ready
+    optional:
+      - name: hlock
+        role: ctrl
+        width: 1
+
+# ---- 信号角色速查 ----
+signal_roles:
+  haddr:      {channel: ADDR_CTRL, role: addr}
+  htrans:     {channel: ADDR_CTRL, role: ctrl, width: 2}
+  hwrite:     {channel: ADDR_CTRL, role: ctrl, width: 1}
+  hsize:      {channel: ADDR_CTRL, role: ctrl, width: 3}
+  hburst:     {channel: ADDR_CTRL, role: ctrl, width: 3}
+  hprot:      {channel: ADDR_CTRL, role: ctrl, width: 4}
+  hmastlock:  {channel: ADDR_CTRL, role: ctrl, width: 1}
+  hwdata:     {channel: DATA_WRITE, role: data}
+  hrdata:     {channel: DATA_READ, role: data}
+  hready:     {channel: RESP, role: ready}
+  hresp:      {channel: RESP, role: resp, width: 1}
+  hbusreq:    {channel: ARB, role: valid}
+  hgrant:     {channel: ARB, role: ready}
+  hlock:      {channel: ARB, role: ctrl, width: 1}
+
+# ---- 变体定义 ----
+variants:
+  - name: AHB
+    description: AMBA AHB v3 (标准)
+    needs_signals:
+      - haddr
+      - htrans
+      - hwrite
+      - hwdata
+      - hrdata
+      - hready
+      - hresp
+  - name: AHB_LITE
+    description: AHB-Lite (单 master, 无仲裁)
+    needs_signals:
+      - haddr
+      - htrans
+      - hwrite
+      - hwdata
+      - hrdata
+      - hready
+      - hresp
+    needs_absent_signals:
+      - hbusreq
+      - hgrant
