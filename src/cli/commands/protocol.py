@@ -32,6 +32,7 @@ from trace.core.protocol.detector import (
     ProtocolDetector,
     ProtocolMatch,
 )
+from trace.core.protocol.sv_extractor import SVSignalExtractor
 from trace.core.protocol.structural import SignalContext
 
 
@@ -46,6 +47,7 @@ protocol_app = typer.Typer(help="Bus protocol detection (Phase A)")
 def detect(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module: str = typer.Option(None, "--module", "-m", help="Specific module to analyze"),
     schemas: str = typer.Option(
         "config/protocols",
@@ -55,11 +57,13 @@ def detect(
     json_output: bool = typer.Option(
         False, "--json", help="Output as JSON instead of text"
     ),
+    mock: bool = typer.Option(
+        False, "--mock", help="Use mock signals (skip SV compilation)"
+    ),
 ):
     """检测模块的 bus 协议.
 
-    默认用本地 mock SignalContext (避免 SV 编译依赖).
-    完整 SV 集成等 Phase B 完成.
+    默认从 SV 文件提取真实信号. 用 --mock 跳过编译, 用 demo 数据.
     """
     if not file and not filelist:
         typer.echo("Error: need --file or --filelist", err=True)
@@ -76,13 +80,51 @@ def detect(
         typer.echo(f"Error: no protocol schemas found in {schemas}", err=True)
         raise typer.Exit(1)
 
-    # Mock signals (真实集成需要 SV 编译)
-    sigs = _mock_extract_signals(target, module)
+    # 提取信号
+    sigs = None
+    if not mock:
+        include_dirs = include.split(",") if include else None
+        try:
+            if filelist:
+                ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs)
+            else:
+                ext = SVSignalExtractor.from_file(file, include_dirs=include_dirs)
+            mods = ext.extract_all_modules()
+            if module:
+                mod = mods.get(module)
+                if mod:
+                    sigs = mod.signals
+                else:
+                    typer.echo(f"Module '{module}' not found. Available: {list(mods.keys())}", err=True)
+            else:
+                # 全部模块, 选 top-1
+                detector = ProtocolDetector(registry=reg)
+                best_match = None
+                best_conf = -1
+                for mod_name, mod in mods.items():
+                    if not mod.signals:
+                        continue
+                    m = detector.detect(mod.signals)
+                    if m.confidence > best_conf:
+                        best_conf = m.confidence
+                        best_match = (mod_name, m)
+                if best_match:
+                    typer.echo(f"  Module: {best_match[0]} (auto-selected)")
+                    _print_text_result(best_match[1])
+                    return
+                else:
+                    typer.echo("No modules with signals found", err=True)
+        except Exception as e:
+            typer.echo(f"SV extraction failed: {e}", err=True)
+            typer.echo("Falling back to mock data...", err=True)
+            mock = True
 
-    if not sigs:
-        typer.echo("No signals extracted (Phase B SV integration not yet wired)", err=True)
-        typer.echo("Falling back to mock test data for protocol detector demo...")
-        sigs = _get_demo_signals(target)
+    if sigs is None:
+        if mock:
+            sigs = _get_demo_signals(target)
+        else:
+            typer.echo("No signals extracted", err=True)
+            raise typer.Exit(1)
 
     if not sigs:
         typer.echo("No signals to analyze", err=True)
@@ -211,13 +253,8 @@ def _print_text_result(match: ProtocolMatch):
 
 
 # ---------------------------------------------------------------------------
-# Mock 数据 (Phase B 集成后移除)
+# Mock 数据 (--mock 标志, 用于 demo)
 # ---------------------------------------------------------------------------
-
-def _mock_extract_signals(target: str, module: Optional[str]) -> List[SignalContext]:
-    """Mock: 暂时不接 SV 编译, 返回空. Phase B 集成."""
-    return []
-
 
 def _get_demo_signals(target: str) -> List[SignalContext]:
     """Demo 数据: 用于在没有 SV 编译时演示检测器."""
