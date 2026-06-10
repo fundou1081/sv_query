@@ -51,6 +51,12 @@ from .schema import ProtocolSchema, SignalRoleSpec, ChannelSpec, VariantSpec
 from .normalize import SignalNormalizer, NormalizeConfig
 from .structural import SignalContext, StructuralRoleDetector, StructuralHints
 from .pattern_learner import PatternLearner, ChannelGroup
+from .handshake_provider import (
+    HandshakeProvider,
+    NameBasedHandshakeProvider,
+    HandshakeInfoLite,
+    handshake_type_score,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +181,7 @@ class ProtocolDetector:
         normalizer: Optional[SignalNormalizer] = None,
         structural_detector: Optional[StructuralRoleDetector] = None,
         pattern_learner: Optional[PatternLearner] = None,
+        handshake_provider: Optional[HandshakeProvider] = None,
     ):
         # 接受 schemas dict 或 registry
         if registry is not None:
@@ -187,6 +194,8 @@ class ProtocolDetector:
         self.norm = normalizer or SignalNormalizer(NormalizeConfig.default())
         self.struct_det = structural_detector or StructuralRoleDetector()
         self.pattern_learner = pattern_learner or PatternLearner(self.norm)
+        # 默认 NameBasedHandshakeProvider, 用户可注入
+        self.handshake_provider = handshake_provider or NameBasedHandshakeProvider(self.norm)
 
     def detect(self, signals: List[SignalContext]) -> ProtocolMatch:
         """检测协议, 返回 top-1 ProtocolMatch."""
@@ -207,7 +216,7 @@ class ProtocolDetector:
         # 2) 对每个 schema 协议评分
         candidates: List[ProtocolMatch] = []
         for protocol_name, schema in self.schemas.items():
-            match = self._score_protocol(schema, signals, groups)
+            match = self._score_protocol(schema, signals, groups, anchors)
             candidates.append(match)
 
         # 3) 选 top-1
@@ -228,6 +237,7 @@ class ProtocolDetector:
         schema: ProtocolSchema,
         signals: List[SignalContext],
         groups: List[ChannelGroup],
+        anchors: List[Tuple[str, str]],
     ) -> ProtocolMatch:
         """对单个协议评分."""
         channel_matches: Dict[str, ChannelMatch] = {}
@@ -244,7 +254,7 @@ class ProtocolDetector:
         name_score = self._aggregate_name_score(channel_matches, schema)
         structural_score = self._aggregate_structural_score(channel_matches, schema)
         pattern_score = self._aggregate_pattern_score(channel_matches, groups, schema)
-        handshake_score = 0.0  # TODO: 集成 Phase B
+        handshake_score = self._handshake_score(anchors, schema, signals)
 
         confidence = (
             self.WEIGHT_NAME * name_score
@@ -487,25 +497,87 @@ class ProtocolDetector:
 
         return None
 
+    def _handshake_score(
+        self,
+        anchors: List[Tuple[str, str]],
+        schema: ProtocolSchema,
+        signals: List[SignalContext],
+    ) -> float:
+        """4 项融合: handshake_score.
+
+        遍历 anchors, 调 provider, 累加 HandshakeType 分数.
+        通道匹配的 anchor 权重更高 (因为确认属于该协议).
+        """
+        if not anchors or not self.handshake_provider:
+            return 0.0
+
+        total = 0.0
+        count = 0
+        for valid_name, ready_name in anchors:
+            info = self.handshake_provider.get_handshake(valid_name, ready_name)
+            if info is None:
+                continue
+
+            base_score = handshake_type_score(info.handshake_type)
+            # 通道匹配 bonus: 如果 provider 判断的通道 = schema 中存在的通道
+            if info.channel in schema.channels:
+                base_score = min(1.0, base_score + 0.05)
+
+            total += base_score
+            count += 1
+
+        return total / count if count > 0 else 0.0
+
     def _find_anchors(
         self,
         signals: List[SignalContext],
     ) -> List[Tuple[str, str]]:
-        """从信号中找 valid+ready 锚点对.
+        """从信号中找 valid+ready 锡点对.
 
-        规则: 1-bit output register + 1-bit input, 名字共享前缀.
+        规则: 1-bit output (以 valid 结尾) + 1-bit input (以 ready 结尾),
+        名字共享通道前缀.
         """
+        def _is_valid_like(norm: str) -> bool:
+            return any(norm.endswith(s) for s in ("valid", "vld", "req"))
+
+        def _is_ready_like(norm: str) -> bool:
+            return any(norm.endswith(s) for s in ("ready", "rdy", "ack"))
+
         anchors: List[Tuple[str, str]] = []
-        outputs = [s for s in signals if s.direction == "output" and s.width == 1]
-        inputs = [s for s in signals if s.direction == "input" and s.width == 1]
+        outputs = [
+            s for s in signals
+            if s.direction == "output" and s.width == 1
+            and _is_valid_like(self.norm.normalize(s.name).normalized)
+        ]
+        inputs = [
+            s for s in signals
+            if s.direction == "input" and s.width == 1
+            and _is_ready_like(self.norm.normalize(s.name).normalized)
+        ]
 
         for out_sig in outputs:
             out_norm = self.norm.normalize(out_sig.name).normalized
+            best_match = None
+            best_overlap = 0
             for in_sig in inputs:
                 in_norm = self.norm.normalize(in_sig.name).normalized
-                # 找共享前缀 (去掉 valid/ready 后缀)
-                # 简化: 只要 out_norm 是 in_norm 子串或反之
-                if out_norm in in_norm or in_norm in out_norm:
-                    anchors.append((out_sig.name, in_sig.name))
-                    break
+                # 找最长公共前缀 (取掉 valid/ready 后缀)
+                out_base = out_norm
+                for s in ("valid", "vld", "req"):
+                    if out_norm.endswith(s) and len(out_norm) > len(s):
+                        out_base = out_norm[: -len(s)]
+                        break
+                in_base = in_norm
+                for s in ("ready", "rdy", "ack"):
+                    if in_norm.endswith(s) and len(in_norm) > len(s):
+                        in_base = in_norm[: -len(s)]
+                        break
+                # base 必须相同 (如 "aw")
+                if out_base and out_base == in_base:
+                    overlap = len(out_base)
+                    if overlap > best_overlap:
+                        best_overlap = overlap
+                        best_match = in_sig
+            if best_match is not None:
+                anchors.append((out_sig.name, best_match.name))
         return anchors

@@ -39,6 +39,12 @@ from .detector import (
     ProtocolMatch,
     SignalMapping,
 )
+from .handshake_provider import (
+    HandshakeInfoLite,
+    HandshakeProvider,
+    NameBasedHandshakeProvider,
+    handshake_type_score,
+)
 
 __all__ = [
     "NormalizeConfig",
@@ -61,4 +67,8 @@ __all__ = [
     "ProtocolDetector",
     "ProtocolMatch",
     "SignalMapping",
+    "HandshakeInfoLite",
+    "HandshakeProvider",
+    "NameBasedHandshakeProvider",
+    "handshake_type_score",
 ]
