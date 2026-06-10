@@ -1,0 +1,215 @@
+# ==============================================================================
+# config/protocols/axi4.yaml
+# ==============================================================================
+# Phase A: AXI4 / AXI4-Lite / AXI4-Stream 协议定义
+#
+# 信号名是**标准化后**的 canonical name (如 "awvalid" 而不是 "io_aw_valid")
+# Session 1 的 SignalNormalizer 会处理命名变体 (Chisel / SpinalHDL / verilog-axi)
+# ==============================================================================
+
+protocol: AXI4
+description: ARM AMBA AXI4 (Full / Lite / Stream)
+
+# ---- 通道定义 ----
+# 每个通道列出:
+#   required: 必选信号 (少了就判定该通道不完整)
+#   optional: 可选信号 (有则加分)
+channels:
+  AW:  # Write Address Channel
+    required:
+      - name: awvalid
+        role: valid
+      - name: awready
+        role: ready
+      - name: awaddr
+        role: addr
+    optional:
+      - name: awlen
+        role: ctrl
+        width: 8
+      - name: awsize
+        role: ctrl
+        width: 3
+      - name: awburst
+        role: ctrl
+        width: 2
+      - name: awid
+        role: ctrl
+      - name: awlock
+        role: ctrl
+        width: 1
+      - name: awcache
+        role: ctrl
+        width: 4
+      - name: awprot
+        role: ctrl
+        width: 3
+      - name: awqos
+        role: ctrl
+        width: 4
+      - name: awregion
+        role: ctrl
+        width: 4
+      - name: awuser
+        role: ctrl
+  W:  # Write Data Channel
+    required:
+      - name: wvalid
+        role: valid
+      - name: wready
+        role: ready
+      - name: wdata
+        role: data
+    optional:
+      - name: wstrb
+        role: strb
+        width: 4
+      - name: wlast
+        role: last
+      - name: wuser
+        role: ctrl
+  B:  # Write Response Channel
+    required:
+      - name: bvalid
+        role: valid
+      - name: bready
+        role: ready
+      - name: bresp
+        role: resp
+    optional:
+      - name: bid
+        role: ctrl
+      - name: buser
+        role: ctrl
+  AR:  # Read Address Channel
+    required:
+      - name: arvalid
+        role: valid
+      - name: arready
+        role: ready
+      - name: araddr
+        role: addr
+    optional:
+      - name: arlen
+        role: ctrl
+        width: 8
+      - name: arsize
+        role: ctrl
+        width: 3
+      - name: arburst
+        role: ctrl
+        width: 2
+      - name: arid
+        role: ctrl
+      - name: arlock
+        role: ctrl
+        width: 1
+      - name: arcache
+        role: ctrl
+        width: 4
+      - name: arprot
+        role: ctrl
+        width: 3
+      - name: arqos
+        role: ctrl
+        width: 4
+      - name: arregion
+        role: ctrl
+        width: 4
+      - name: aruser
+        role: ctrl
+  R:  # Read Data Channel
+    required:
+      - name: rvalid
+        role: valid
+      - name: rready
+        role: ready
+      - name: rdata
+        role: data
+    optional:
+      - name: rresp
+        role: resp
+        width: 2
+      - name: rid
+        role: ctrl
+      - name: rlast
+        role: last
+      - name: ruser
+        role: ctrl
+
+# ---- 信号角色速查 (canonical name → channel/role) ----
+# 用于快速匹配: 标准化后名字直接查表
+signal_roles:
+  awvalid:  {channel: AW, role: valid}
+  awready:  {channel: AW, role: ready}
+  awaddr:   {channel: AW, role: addr}
+  awlen:    {channel: AW, role: ctrl, width: 8}
+  awsize:   {channel: AW, role: ctrl, width: 3}
+  awburst:  {channel: AW, role: ctrl, width: 2}
+  awid:     {channel: AW, role: ctrl}
+  awlock:   {channel: AW, role: ctrl}
+  awcache:  {channel: AW, role: ctrl}
+  awprot:   {channel: AW, role: ctrl}
+  awqos:    {channel: AW, role: ctrl}
+  awregion: {channel: AW, role: ctrl}
+  awuser:   {channel: AW, role: ctrl}
+  wvalid:   {channel: W, role: valid}
+  wready:   {channel: W, role: ready}
+  wdata:    {channel: W, role: data}
+  wstrb:    {channel: W, role: strb}
+  wlast:    {channel: W, role: last}
+  wuser:    {channel: W, role: ctrl}
+  bvalid:   {channel: B, role: valid}
+  bready:   {channel: B, role: ready}
+  bresp:    {channel: B, role: resp}
+  bid:      {channel: B, role: ctrl}
+  buser:    {channel: B, role: ctrl}
+  arvalid:  {channel: AR, role: valid}
+  arready:  {channel: AR, role: ready}
+  araddr:   {channel: AR, role: addr}
+  arlen:    {channel: AR, role: ctrl, width: 8}
+  arsize:   {channel: AR, role: ctrl, width: 3}
+  arburst:  {channel: AR, role: ctrl, width: 2}
+  arid:     {channel: AR, role: ctrl}
+  arlock:   {channel: AR, role: ctrl}
+  arcache:  {channel: AR, role: ctrl}
+  arprot:   {channel: AR, role: ctrl}
+  arqos:    {channel: AR, role: ctrl}
+  arregion: {channel: AR, role: ctrl}
+  aruser:   {channel: AR, role: ctrl}
+  rvalid:   {channel: R, role: valid}
+  rready:   {channel: R, role: ready}
+  rdata:    {channel: R, role: data}
+  rresp:    {channel: R, role: resp}
+  rid:      {channel: R, role: ctrl}
+  rlast:    {channel: R, role: last}
+  ruser:    {channel: R, role: ctrl}
+
+# ---- 变体定义 ----
+# 通过特定信号存在/缺失来区分变体
+variants:
+  - name: AXI4_FULL
+    description: 完整 AXI4 (支持 burst / strb / last)
+    needs_signals:
+      - awlen
+      - awsize
+      - awburst
+      - wstrb
+      - wlast
+  - name: AXI4_LITE
+    description: AXI4-Lite (无 burst, 单次传输)
+    needs_absent_signals:
+      - awlen
+      - awsize
+      - awburst
+      - wstrb
+      - wlast
+  - name: AXI4_STREAM
+    description: AXI4-Stream (仅 W 通道, 无地址)
+    needs_signals:
+      - wdata
+      - wvalid
+      - wready
+    needs_absent_signals:
+      - awaddr
+      - awvalid
