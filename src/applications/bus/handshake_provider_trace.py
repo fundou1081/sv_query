@@ -1,5 +1,5 @@
 """
-trace.core.protocol.handshake_provider_trace - Phase B 真实 handshake 集成
+applications.bus.handshake_provider_trace - Phase B 真实 handshake 集成
 
 Phase A v4: TraceBasedHandshakeProvider
 
@@ -17,10 +17,10 @@ Phase A v4: TraceBasedHandshakeProvider
 使用
 ====
 
-    from trace.core.protocol.handshake_provider_trace import (
+    from applications.bus.handshake_provider_trace import (
         TraceBasedHandshakeProvider, make_trace_based_provider,
     )
-    from trace.core.protocol.sv_extractor import SVSignalExtractor
+    from applications.bus.sv_extractor import SVSignalExtractor
     from trace.core.query.signal import SignalTracer
 
     ext = SVSignalExtractor.from_file("axi_dp_ram.sv")

@@ -1,5 +1,5 @@
 """
-trace.core.protocol.schema - YAML 协议 schema 加载器
+applications.bus.schema - YAML 协议 schema 加载器
 
 Phase A Session 4: 协议 schema 声明式定义
 
@@ -22,7 +22,7 @@ Phase A Session 4: 协议 schema 声明式定义
 使用
 ====
 
-    from trace.core.protocol.schema import (
+    from applications.bus.schema import (
         load_protocols, ProtocolSchemaRegistry, ProtocolSchema,
     )
 

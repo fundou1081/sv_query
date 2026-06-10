@@ -1,5 +1,5 @@
 """
-trace.core.protocol.pattern_learner - Anchor-based 模式学习
+applications.bus.pattern_learner - Anchor-based 模式学习
 
 Phase A Session 3: PatternLearner
 
@@ -38,8 +38,8 @@ Phase A Session 3: PatternLearner
 使用
 ====
 
-    from trace.core.protocol.pattern_learner import PatternLearner
-    from trace.core.protocol.normalize import SignalNormalizer, NormalizeConfig
+    from applications.bus.pattern_learner import PatternLearner
+    from applications.bus.normalize import SignalNormalizer, NormalizeConfig
 
     norm = SignalNormalizer(NormalizeConfig.default())
     learner = PatternLearner(norm)

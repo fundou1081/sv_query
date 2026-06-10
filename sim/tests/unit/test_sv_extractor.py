@@ -18,11 +18,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.protocol.sv_extractor import SVSignalExtractor, ExtractedModule
-from trace.core.protocol.structural import SignalContext
-from trace.core.protocol.detector import ProtocolDetector
-from trace.core.protocol.schema import ProtocolSchemaRegistry
-from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+from applications.bus.sv_extractor import SVSignalExtractor, ExtractedModule
+from applications.bus.structural import SignalContext
+from applications.bus.detector import ProtocolDetector
+from applications.bus.schema import ProtocolSchemaRegistry
+from applications.bus.handshake_provider import NameBasedHandshakeProvider
 
 
 # ---------------------------------------------------------------------------

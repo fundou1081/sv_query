@@ -1,5 +1,5 @@
 """
-trace.core.protocol - Protocol schema 框架 (Phase A)
+applications.bus - Protocol schema 框架 (Phase A)
 
 子模块:
   - normalize:       SignalNormalizer 名字标准化 (Session 1)

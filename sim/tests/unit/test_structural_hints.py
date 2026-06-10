@@ -23,7 +23,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.protocol.structural import (
+from applications.bus.structural import (
     SignalContext,
     StructuralHints,
     StructuralRoleDetector,

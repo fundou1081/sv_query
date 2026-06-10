@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.core.protocol.schema import (
+from applications.bus.schema import (
     ProtocolSchema,
     ProtocolSchemaRegistry,
     ChannelSpec,

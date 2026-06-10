@@ -1,5 +1,5 @@
 """
-trace.core.protocol.normalize - 信号名标准化
+applications.bus.normalize - 信号名标准化
 
 Phase A Session 1: 名字标准化层
 
@@ -22,7 +22,7 @@ Phase A Session 1: 名字标准化层
 使用
 ====
 
-    from trace.core.protocol.normalize import SignalNormalizer, NormalizeConfig
+    from applications.bus.normalize import SignalNormalizer, NormalizeConfig
 
     norm = SignalNormalizer(NormalizeConfig.default())
     result = norm.normalize("io_aw_valid")

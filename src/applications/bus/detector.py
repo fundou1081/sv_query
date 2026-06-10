@@ -1,5 +1,5 @@
 """
-trace.core.protocol.detector - 协议检测评分引擎
+applications.bus.detector - 协议检测评分引擎
 
 Phase A Session 4: 协议检测主框架
 
@@ -26,9 +26,9 @@ Phase A Session 4: 协议检测主框架
 使用
 ====
 
-    from trace.core.protocol.schema import load_protocols
-    from trace.core.protocol.detector import ProtocolDetector
-    from trace.core.protocol.structural import SignalContext
+    from applications.bus.schema import load_protocols
+    from applications.bus.detector import ProtocolDetector
+    from applications.bus.structural import SignalContext
 
     sigs = [
         SignalContext("awvalid", 1, "output", "register", ["awready"]),
