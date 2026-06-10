@@ -75,6 +75,7 @@ class NormalizeConfig:
                 "s_axi_", "m_axi_",
                 "s_axil_", "m_axil_",
                 "s_axis_", "m_axis_",
+                "io_axis_", "axis_",
                 "s_", "m_",
                 # 方向 + 类型
                 "slave_", "master_",

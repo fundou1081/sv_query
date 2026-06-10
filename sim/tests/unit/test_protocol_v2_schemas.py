@@ -57,22 +57,23 @@ def make_anchor_pair(name: str):
 # ---------------------------------------------------------------------------
 
 class TestAllSchemasLoad:
-    def test_load_5_protocols(self, registry):
-        """应该加载 5 个协议."""
-        assert registry.count == 5
+    def test_load_6_protocols(self, registry):
+        """应该加载 6 个协议 (v3+: 加 AXI4-Stream)."""
+        assert registry.count == 6
         assert "AXI4" in registry.protocols
+        assert "AXI4-Stream" in registry.protocols
         assert "TL-UL" in registry.protocols
         assert "APB" in registry.protocols
         assert "AHB" in registry.protocols
         assert "Wishbone" in registry.protocols
 
     def test_each_protocol_has_channels(self, registry):
-        for proto in ["AXI4", "TL-UL", "APB", "AHB", "Wishbone"]:
+        for proto in ["AXI4", "AXI4-Stream", "TL-UL", "APB", "AHB", "Wishbone"]:
             schema = registry.get(proto)
             assert len(schema.channels) > 0, f"{proto} has no channels"
 
     def test_each_protocol_has_variants(self, registry):
-        for proto in ["AXI4", "TL-UL", "APB", "AHB", "Wishbone"]:
+        for proto in ["AXI4", "AXI4-Stream", "TL-UL", "APB", "AHB", "Wishbone"]:
             schema = registry.get(proto)
             assert len(schema.variants) > 0, f"{proto} has no variants"
 
