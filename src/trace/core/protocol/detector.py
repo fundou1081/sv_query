@@ -173,6 +173,8 @@ class ProtocolDetector:
 
     # 置信度阈值
     CONFIDENCE_THRESHOLD = 0.5
+    # 低于此阈值判为 UNKNOWN (避免误报)
+    UNKNOWN_THRESHOLD = 0.3
 
     def __init__(
         self,
@@ -228,6 +230,16 @@ class ProtocolDetector:
             )
 
         best = max(candidates, key=lambda m: m.confidence)
+        # 如果最高 confidence 仍低于阈值, 报 UNKNOWN (不跳误报)
+        if best.confidence < self.UNKNOWN_THRESHOLD:
+            return ProtocolMatch(
+                protocol="UNKNOWN",
+                confidence=best.confidence,
+                warnings=[
+                    f"all protocols scored below threshold ({self.UNKNOWN_THRESHOLD}); "
+                    f"top candidate was {best.protocol} ({best.confidence:.3f})"
+                ],
+            )
         return best
 
     # ----- 协议评分 -----
@@ -426,9 +438,15 @@ class ProtocolDetector:
         ch_spec: ChannelSpec,
         groups: List[ChannelGroup],
     ) -> float:
-        """通道是否被 PatternLearner 识别为独立 group."""
+        """通道是否被 PatternLearner 识别为独立 group.
+
+        如果完全没找到 anchor (groups 为空), 返 0.0 而不是 0.5, 避免给无关模块偏误报置信度.
+        """
         def _norm(s: str) -> str:
             return self.norm.normalize(s).normalized
+
+        if not groups:
+            return 0.0
 
         for g in groups:
             if g.name.upper() == ch_name.upper():
@@ -444,7 +462,7 @@ class ProtocolDetector:
             if all(_norm(req) in sig_norms for req in ch_spec.required):
                 return 0.8
 
-        return 0.5
+        return 0.0  # 没找到对应 group → 0.0 (不是 0.5, 避免误报)
 
     def _aggregate_name_score(
         self,
@@ -469,6 +487,9 @@ class ProtocolDetector:
         groups: List[ChannelGroup],
         schema: ProtocolSchema,
     ) -> float:
+        if not groups:
+            # 无 anchor → pattern 应该是 0, 不是中性 0.5
+            return 0.0
         return sum(cm.pattern_score for cm in channel_matches.values()) / max(1, len(channel_matches))
 
     def _detect_variant(

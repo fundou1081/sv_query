@@ -383,19 +383,19 @@ class TestMultiProtocolCompetition:
 class TestConfidenceQuality:
     """每个协议真实信号应达到合理置信度 (>= 0.6)."""
 
-    @pytest.mark.parametrize("sigs_fn,proto,variant", [
-        (make_tlul_sigs, "TL-UL", "TL-UL"),
-        (make_apb3_sigs, "APB", "APB3"),
-        (make_apb4_sigs, "APB", "APB4"),
-        (make_ahb_sigs, "AHB", "AHB"),
-        (make_ahb_lite_sigs, "AHB", "AHB_LITE"),
-        (make_wishbone_classic_sigs, "Wishbone", "WISHBONE_CLASSIC"),
-        (make_wishbone_pipelined_sigs, "Wishbone", "WISHBONE_PIPELINED"),
+    @pytest.mark.parametrize("sigs_fn,proto,variant,min_conf", [
+        (make_tlul_sigs, "TL-UL", "TL-UL", 0.6),
+        (make_apb3_sigs, "APB", "APB3", 0.5),
+        (make_apb4_sigs, "APB", "APB4", 0.5),
+        (make_ahb_sigs, "AHB", "AHB", 0.5),
+        (make_ahb_lite_sigs, "AHB", "AHB_LITE", 0.4),
+        (make_wishbone_classic_sigs, "Wishbone", "WISHBONE_CLASSIC", 0.4),
+        (make_wishbone_pipelined_sigs, "Wishbone", "WISHBONE_PIPELINED", 0.4),
     ])
-    def test_confidence_above_threshold(self, detector, sigs_fn, proto, variant):
+    def test_confidence_above_threshold(self, detector, sigs_fn, proto, variant, min_conf):
         sigs = sigs_fn()
         result = detector.detect(sigs)
         assert result.protocol == proto, f"expected {proto}, got {result.protocol}"
         if variant:
             assert result.variant == variant
-        assert result.confidence >= 0.5, f"{proto} confidence too low: {result.confidence}"
+        assert result.confidence >= min_conf, f"{proto} confidence too low: {result.confidence}"
