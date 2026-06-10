@@ -1,0 +1,114 @@
+# ==============================================================================
+# config/protocols/tlul.yaml
+# ==============================================================================
+# Phase A v2: OpenTitan TileLink Uncached Lightweight (TL-UL) 协议定义
+#
+# 参考: https://docs.opentitan.org/hw/ip/tlul/index.html
+# 2 通道: A (request, host → device) / D (response, device → host)
+# ==============================================================================
+
+protocol: TL-UL
+description: OpenTitan TileLink Uncached Lightweight (host ↔ device)
+
+# ---- 通道定义 ----
+channels:
+  A:  # Request channel (host → device)
+    required:
+      - name: a_valid
+        role: valid
+      - name: a_ready
+        role: ready
+      - name: a_opcode
+        role: ctrl
+        width: 3
+    optional:
+      - name: a_param
+        role: ctrl
+        width: 3
+      - name: a_size
+        role: ctrl
+        width: 2
+      - name: a_source
+        role: ctrl
+        width: 32
+      - name: a_address
+        role: addr
+        width: 32
+      - name: a_mask
+        role: strb
+        width: 4
+      - name: a_data
+        role: data
+        width: 32
+      - name: a_user
+        role: ctrl
+  D:  # Response channel (device → host)
+    required:
+      - name: d_valid
+        role: valid
+      - name: d_ready
+        role: ready
+      - name: d_opcode
+        role: ctrl
+        width: 3
+    optional:
+      - name: d_param
+        role: ctrl
+        width: 3
+      - name: d_size
+        role: ctrl
+        width: 2
+      - name: d_source
+        role: ctrl
+        width: 32
+      - name: d_sink
+        role: ctrl
+      - name: d_data
+        role: data
+        width: 32
+      - name: d_user
+        role: ctrl
+      - name: d_error
+        role: resp
+        width: 1
+
+# ---- 信号角色速查 (canonical name → channel/role) ----
+signal_roles:
+  a_valid:   {channel: A, role: valid}
+  a_ready:   {channel: A, role: ready}
+  a_opcode:  {channel: A, role: ctrl, width: 3}
+  a_param:   {channel: A, role: ctrl, width: 3}
+  a_size:    {channel: A, role: ctrl, width: 2}
+  a_source:  {channel: A, role: ctrl, width: 32}
+  a_address: {channel: A, role: addr, width: 32}
+  a_mask:    {channel: A, role: strb, width: 4}
+  a_data:    {channel: A, role: data, width: 32}
+  a_user:    {channel: A, role: ctrl}
+  d_valid:   {channel: D, role: valid}
+  d_ready:   {channel: D, role: ready}
+  d_opcode:  {channel: D, role: ctrl, width: 3}
+  d_param:   {channel: D, role: ctrl, width: 3}
+  d_size:    {channel: D, role: ctrl, width: 2}
+  d_source:  {channel: D, role: ctrl, width: 32}
+  d_sink:    {channel: D, role: ctrl}
+  d_data:    {channel: D, role: data, width: 32}
+  d_user:    {channel: D, role: ctrl}
+  d_error:   {channel: D, role: resp, width: 1}
+
+# ---- 变体定义 ----
+variants:
+  - name: TL-UL
+    description: TileLink Uncached Lightweight (OpenTitan 标准)
+    needs_signals:
+      - a_valid
+      - a_ready
+      - d_valid
+      - d_ready
+  - name: TL-UL_H2D_ONLY
+    description: 仅 host→device (request-only, 无 response)
+    needs_signals:
+      - a_valid
+      - a_ready
+    needs_absent_signals:
+      - d_valid
+      - d_ready

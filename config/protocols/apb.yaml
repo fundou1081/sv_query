@@ -1,0 +1,96 @@
+# ==============================================================================
+# config/protocols/apb.yaml
+# ==============================================================================
+# Phase A v2: AMBA APB (Advanced Peripheral Bus) 协议定义
+#
+# 参考: AMBA APB v3/v4 (ARM IHI 0024)
+# 单通道, 3-way handshake (psel + penable + pready)
+# 适合低带宽外设 (UART / GPIO / I2C / SPI 等)
+# ==============================================================================
+
+protocol: APB
+description: AMBA APB v3/v4 (Advanced Peripheral Bus)
+
+# ---- 通道定义 ----
+# APB 实际只有 1 个 channel (Setup + Access phase 共用)
+# 但拆分成多个 role group 便于分析
+channels:
+  CTRL:  # 控制信号 (master → slave)
+    required:
+      - name: psel
+        role: valid
+      - name: penable
+        role: ready
+      - name: pwrite
+        role: ctrl
+    optional:
+      - name: pprot
+        role: ctrl
+        width: 3
+      - name: pstrb
+        role: strb
+        width: 4
+  ADDR:  # 地址
+    required:
+      - name: paddr
+        role: addr
+    optional: []
+  DATA_WRITE:  # 写数据 (master → slave)
+    required:
+      - name: pwdata
+        role: data
+    optional: []
+  RESP:  # 响应 (slave → master)
+    required:
+      - name: pready
+        role: ready
+    optional:
+      - name: pslverr
+        role: resp
+        width: 1
+  DATA_READ:  # 读数据 (slave → master)
+    required:
+      - name: prdata
+        role: data
+    optional: []
+
+# ---- 信号角色速查 ----
+signal_roles:
+  psel:    {channel: CTRL, role: valid}
+  penable: {channel: CTRL, role: ready}
+  pwrite:  {channel: CTRL, role: ctrl}
+  pprot:   {channel: CTRL, role: ctrl, width: 3}
+  pstrb:   {channel: CTRL, role: strb, width: 4}
+  paddr:   {channel: ADDR, role: addr}
+  pwdata:  {channel: DATA_WRITE, role: data}
+  pready:  {channel: RESP, role: ready}
+  pslverr: {channel: RESP, role: resp, width: 1}
+  prdata:  {channel: DATA_READ, role: data}
+
+# ---- 变体定义 ----
+variants:
+  - name: APB3
+    description: APB v3 (无 pprot / pstrb)
+    needs_signals:
+      - psel
+      - penable
+      - pwrite
+      - paddr
+      - pwdata
+      - pready
+      - prdata
+    needs_absent_signals:
+      - pprot
+      - pstrb
+  - name: APB4
+    description: APB v4 (有 pprot / pstrb, 支持 secure / byte strobe)
+    needs_signals:
+      - psel
+      - penable
+      - pwrite
+      - paddr
+      - pwdata
+      - pready
+      - prdata
+      - pprot
+      - pstrb
