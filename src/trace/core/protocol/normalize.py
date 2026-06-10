@@ -64,13 +64,19 @@ class NormalizeConfig:
 
     @classmethod
     def default(cls) -> "NormalizeConfig":
-        """内置默认配置 — 覆盖常见生成代码 / 手写代码命名风格."""
+        """内置默认配置 — 覆盖常见生成代码 / 手写代码命名风格.
+
+        与 config/protocols/normalize/default.yaml 保持同步.
+        任何一方修改, 必须同步另一方.
+        """
         return cls(
             strip_prefix=[
                 # 多层复合 (长 prefix 优先)
                 "io_s_axi_", "io_m_axi_",
                 "io_s_axil_", "io_m_axil_",
                 "io_s_", "io_m_", "io_",
+                # verilog-axi dual-port (s_axi_<port>_<channel>_<sig>)
+                "s_axi_a_", "s_axi_w_", "s_axi_b_", "s_axi_ar_", "s_axi_r_",
                 # verilog-axi / verilog-axis 风格
                 "s_axi_", "m_axi_",
                 "s_axil_", "m_axil_",

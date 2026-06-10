@@ -17,7 +17,12 @@ strip_prefix:
   - "io_s_"
   - "io_m_"
   - "io_"
-  # verilog-axi 风格
+  # verilog-axi 风格 (slave channel prefix: s_axi_<ch>_<sig>)
+  - "s_axi_a_"
+  - "s_axi_w_"
+  - "s_axi_b_"
+  - "s_axi_ar_"
+  - "s_axi_r_"
   - "s_axi_"
   - "m_axi_"
   - "s_axil_"
