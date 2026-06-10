@@ -33,6 +33,10 @@ from trace.core.protocol.detector import (
     ProtocolMatch,
 )
 from trace.core.protocol.sv_extractor import SVSignalExtractor
+from trace.core.protocol.handshake_provider_trace import (
+    TraceBasedHandshakeProvider,
+    make_trace_based_provider,
+)
 from trace.core.protocol.structural import SignalContext
 
 
@@ -60,10 +64,14 @@ def detect(
     mock: bool = typer.Option(
         False, "--mock", help="Use mock signals (skip SV compilation)"
     ),
+    no_trace: bool = typer.Option(
+        False, "--no-trace", help="Skip Phase B trace (use name-based only)"
+    ),
 ):
     """检测模块的 bus 协议.
 
-    默认从 SV 文件提取真实信号. 用 --mock 跳过编译, 用 demo 数据.
+    默认从 SV 文件提取真实信号 + 跑 Phase B trace (真实握手分数).
+    用 --mock 跳过编译, 用 --no-trace 只用名字启发式.
     """
     if not file and not filelist:
         typer.echo("Error: need --file or --filelist", err=True)
@@ -82,6 +90,7 @@ def detect(
 
     # 提取信号
     sigs = None
+    ext = None  # 保存 extractor 以供 trace 使用
     if not mock:
         include_dirs = include.split(",") if include else None
         try:
@@ -98,7 +107,27 @@ def detect(
                     typer.echo(f"Module '{module}' not found. Available: {list(mods.keys())}", err=True)
             else:
                 # 全部模块, 选 top-1
-                detector = ProtocolDetector(registry=reg)
+                # 准备 trace-based provider (如果有 graph)
+                graph = None
+                signal_tracer = None
+                if not no_trace and ext is not None:
+                    try:
+                        tracer = ext._get_tracer()
+                        graph = tracer.build_graph()
+                        from trace.core.query.signal import SignalTracer
+                        signal_tracer = SignalTracer(graph)
+                    except Exception as e:
+                        typer.echo(f"  (trace build failed: {e}, using name-based)", err=True)
+
+                if signal_tracer is not None:
+                    handshake_provider = make_trace_based_provider(signal_tracer, graph)
+                else:
+                    from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+                    handshake_provider = NameBasedHandshakeProvider()
+
+                detector = ProtocolDetector(
+                    registry=reg, handshake_provider=handshake_provider,
+                )
                 best_match = None
                 best_conf = -1
                 for mod_name, mod in mods.items():
@@ -130,8 +159,25 @@ def detect(
         typer.echo("No signals to analyze", err=True)
         raise typer.Exit(1)
 
-    # 检测
-    detector = ProtocolDetector(registry=reg)
+    # 检测 (单 module)
+    if ext is not None and not no_trace:
+        # 用 trace-based provider
+        try:
+            tracer = ext._get_tracer()
+            graph = tracer.build_graph()
+            from trace.core.query.signal import SignalTracer
+            signal_tracer = SignalTracer(graph)
+            handshake_provider = make_trace_based_provider(signal_tracer, graph)
+        except Exception:
+            from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+            handshake_provider = NameBasedHandshakeProvider()
+    else:
+        from trace.core.protocol.handshake_provider import NameBasedHandshakeProvider
+        handshake_provider = NameBasedHandshakeProvider()
+
+    detector = ProtocolDetector(
+        registry=reg, handshake_provider=handshake_provider,
+    )
     match = detector.detect(sigs)
 
     # 输出

@@ -45,6 +45,10 @@ from .handshake_provider import (
     NameBasedHandshakeProvider,
     handshake_type_score,
 )
+from .handshake_provider_trace import (
+    TraceBasedHandshakeProvider,
+    make_trace_based_provider,
+)
 
 __all__ = [
     "NormalizeConfig",
@@ -71,4 +75,6 @@ __all__ = [
     "HandshakeProvider",
     "NameBasedHandshakeProvider",
     "handshake_type_score",
+    "TraceBasedHandshakeProvider",
+    "make_trace_based_provider",
 ]
