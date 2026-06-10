@@ -122,19 +122,29 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
                 _logger.debug(f"Cannot resolve ready node: {ready}")
                 return self._fallback_unknown(valid, ready)
 
-            # 2) 跑 trace_fanin_detailed
-            dis = self._tracer.trace_fanin_detailed(ready_node, module=self._module)
+            # 2) 跑 trace_fanin_detailed (可能报 UnicodeDecodeError 等)
+            try:
+                dis = self._tracer.trace_fanin_detailed(ready_node, module=self._module)
+            except (UnicodeDecodeError, Exception) as e:
+                # Unicode / 其他解析错 → fallback
+                _logger.debug(f"trace_fanin failed for {ready_node}: {e}")
+                return self._fallback_unknown(valid, ready)
+
             if dis is None:
                 return self._fallback_unknown(valid, ready)
 
             # 3) 调 detect_handshake_type_with_node
-            from trace.core.handshake_detector import detect_handshake_type_with_node
-            hi = detect_handshake_type_with_node(
-                signal=ready_node,
-                driver_infos=dis,
-                node_kind=None,  # 暂不传, 让 Phase B 自己判断
-                counterpart_hint=valid,
-            )
+            try:
+                from trace.core.handshake_detector import detect_handshake_type_with_node
+                hi = detect_handshake_type_with_node(
+                    signal=ready_node,
+                    driver_infos=dis,
+                    node_kind=None,
+                    counterpart_hint=valid,
+                )
+            except (UnicodeDecodeError, Exception) as e:
+                _logger.debug(f"detect_handshake_type failed for {ready_node}: {e}")
+                return self._fallback_unknown(valid, ready)
 
             # 4) 转换成 HandshakeInfoLite
             return HandshakeInfoLite(
@@ -150,28 +160,38 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
     def _resolve_node(self, name: str) -> Optional[str]:
         """解析信号名为 graph 节点 ID.
 
-        策略:
-        1. 如果是 hierarchical (含 .), 直接用
-        2. 如果是 bare name, 尝试 (a) module.name (b) bare name in graph
+        pyslang 总是返 hierarchical name (如 axi_dp_ram.s_axi_a_awvalid),
+        即使是单文件模式. 所以优先查 hierarchical.
+
+        策略 (优先级高→低):
+        1. 如果 name 已含 ., 直接查 (用户传 hierarchical)
+        2. 如果有 module, 查 module.name
+        3. 任何 node 以 .name 结尾 (longest match, 避免 false positive)
+        4. bare name 完整匹配 (fallback)
         """
         if not self._graph:
             return None
 
-        # 1. 已 hierarchical
+        # 1. 已 hierarchical — 直接查
         if "." in name and name in self._graph.nodes():
             return name
 
-        # 2. 尝试 module.name
+        # 2. 优先查 module.name (filelist 场景的主路径)
         if self._module:
             mod_name = f"{self._module}.{name}"
             if mod_name in self._graph.nodes():
                 return mod_name
 
-        # 3. bare name (可能多个, 取第一个)
-        for node in self._graph.nodes():
-            # 匹配: node.endswith(name) 且中间是 . (不是 [ 这种 array access)
-            if node == name or node.endswith(f".{name}"):
-                return node
+        # 3. 任何 .name 结尾的节点 (单文件/任意场景 fallback)
+        suffix = f".{name}"
+        candidates = [n for n in self._graph.nodes() if n.endswith(suffix)]
+        if candidates:
+            # 如果有多个, 取最长的 (e.g. axi_dp_ram.x over x)
+            return max(candidates, key=len)
+
+        # 4. bare name 完整匹配 (最后 fallback)
+        if name in self._graph.nodes():
+            return name
 
         return None
 
