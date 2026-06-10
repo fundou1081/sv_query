@@ -51,6 +51,9 @@ READY_VALID_PATTERNS = [
     "apb_rresp_valid", "apb_rresp_ready", "apb_wresp_valid", "apb_wresp_ready",
     "arb_valid", "arb_ready", "arb_req_valid", "arb_req_ready",
     "aw_done", "ar_done", "w_done", "b_done", "r_done",
+    # axi_crossbar_addr internal: m_wc (write command) / m_rc (read command) indicators
+    "m_wc_valid", "m_wc_ready", "m_wc_select", "m_wc_decerr",
+    "m_rc_valid", "m_rc_ready", "m_rc_decerr",
     # AXI-Lite
     "axi_lite_req", "axi_lite_mst_req", "axi_lite_slv_req",
     "axi_bresp_valid", "axi_bresp_ready", "axi_rresp_valid", "axi_rresp_ready",
