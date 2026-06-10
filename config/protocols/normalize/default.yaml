@@ -1,0 +1,73 @@
+# ==============================================================================
+# config/protocols/normalize/default.yaml
+# ==============================================================================
+# Phase A: 信号名标准化默认配置
+#
+# 用户可复制此文件 + 增删 prefix/suffix/infix, 然后用 from_yaml() 加载
+# 优先级: 长 prefix > 短 prefix (例如 `io_s_axi_` 在 `io_` 之前)
+# 顺序: 越长越靠前 (内部按 length desc 排序, 这里顺序仅作参考)
+# ==============================================================================
+
+strip_prefix:
+  # 多层复合 (Chisel / SpinalHDL 输出 + 总线类型)
+  - "io_s_axi_"
+  - "io_m_axi_"
+  - "io_s_axil_"
+  - "io_m_axil_"
+  - "io_s_"
+  - "io_m_"
+  - "io_"
+  # verilog-axi 风格
+  - "s_axi_"
+  - "m_axi_"
+  - "s_axil_"
+  - "m_axil_"
+  - "s_axis_"
+  - "m_axis_"
+  - "s_"
+  - "m_"
+  # 方向 + 类型
+  - "slave_"
+  - "master_"
+  # 总线类型
+  - "axi_"
+  - "axil_"
+  - "axi4_"
+  - "axi3_"
+  - "axilite_"
+  - "ahb_"
+  - "apb_"
+  # 工具生成
+  - "gen_"
+  - "my_"
+
+strip_suffix:
+  # 方向后缀 (OpenTitan / 自研风格)
+  - "_o"
+  - "_i"
+  - "_io"
+  # FIFO 端口
+  - "_r"
+  - "_w"
+  # 时序后缀
+  - "_next"
+  - "_reg"
+  - "_q"
+  # 内部 / 外部
+  - "_int"
+  - "_ext"
+  # 差分
+  - "_n"
+  - "_p"
+
+remove_infix:
+  # 中缀: `_<word>_` 替换为 `_` (保持单词边界)
+  - "_bits_"
+  - "_chan_"
+  - "_payload_"
+  - "_data_"
+
+# 步骤开关
+remove_underscore: true   # 最终去下划线 (Chisel vs SpinalHDL 统一)
+take_last_dot: true       # 取 `.` 后的最后一段 (层次化信号)
+strip_array_index: true   # 去 `[...]` 数组下标
