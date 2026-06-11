@@ -277,8 +277,10 @@ class SVCompiler:
             # 供 UnifiedTracer / snapshot 读取, 标记哪些文件失败
             self._elaboration_errors = self._format_elaboration_errors(errors)
             if not self._strict:
+                # [FIX 2026-06-11 Req-10] 改成不重复提示 — 错误明细已走 [ERROR] 行输出
+                # stats 等 CLI 会另外接 result.elaboration_errors 输出 partial 提示
                 import sys as _sys
-                print(f"[sv_query] Compilation has {len(errors)} error(s), continuing in non-strict mode", file=_sys.stderr)
+                print(f"[sv_query] {len(errors)} error(s), continuing in non-strict mode (partial AST)", file=_sys.stderr)
             else:
                 raise CompilationError(f"Elaboration errors:\n{report}") from None
         else:
@@ -370,8 +372,11 @@ class SVCompiler:
         return out
 
     def _format_diagnostic(self, diag) -> str:
-        """格式化单个诊断信息"""
-        # diag.args 包含 [line, column]
+        """格式化单个诊断信息
+
+        输出格式: <file>:<line>:<col>: [<code>] <message>
+        其中 file/line/col 从 diag.location 抽, code 从 diag.code 抽, message 走 DiagCode.formatted.
+        """
         args = getattr(diag, "args", [])
         code = getattr(diag, "code", None)
         code_str = str(code) if code else "unknown"
@@ -381,10 +386,24 @@ class SVCompiler:
         else:
             code_name = code_str
 
-        if len(args) >= 2:
-            line, column = args[0], args[1]
-            return f"{line}:{column}: [{code_name}]"
-        return f"[{code_name}]"
+        # [FIX 2026-06-11 Req-10] 从 diag.location 抽 file:line:col
+        loc = getattr(diag, "location", None)
+        loc_str = ""
+        if loc is not None and self._comp is not None:
+            try:
+                sm = self._comp.sourceManager
+                fname = sm.getFileName(loc) or sm.getRawFileName(loc) or ""
+                line = sm.getLineNumber(loc) or 0
+                col = sm.getColumnNumber(loc) or 0
+                if fname:
+                    loc_str = f"{fname}:{line}:{col}: "
+            except Exception:
+                pass
+        if not loc_str and len(args) >= 2:
+            # 回退: 从 args 拿 line/col
+            loc_str = f"{args[0]}:{args[1]}: "
+
+        return f"{loc_str}[{code_name}]"
 
     def get_diagnostic_report(self) -> str:
         """获取格式化的完整诊断报告"""

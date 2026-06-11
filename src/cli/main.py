@@ -131,6 +131,8 @@ def stats_callback(
                 "nodes": nodes_count,
                 "edges": edges_count,
                 "modules": modules,
+                # [ADD 2026-06-11 Req-14] elaboration errors 让用户知道是 partial result
+                "elaboration_errors": tracer.get_elaboration_errors(),
             },
             "errors": [],
         }
@@ -152,6 +154,17 @@ def stats_callback(
                 print("=== Graph Statistics ===")
                 print(f"  Total nodes: {len(graph.nodes())}")
                 print(f"  Total edges: {len(graph.edges())}")
+                # [ADD 2026-06-11 Req-14] elaboration error 计数 + partial result 提示
+                elaboration_errors = data["result"].get("elaboration_errors", [])
+                if elaboration_errors:
+                    print(f"\n  [WARNING] {len(elaboration_errors)} elaboration error(s), partial graph shown")
+                    for e in elaboration_errors[:5]:
+                        file_short = e.get("file", "?")
+                        if "/" in file_short:
+                            file_short = file_short.split("/")[-1]
+                        print(f"    - {file_short}:{e.get('line', '?')}: {e.get('code', '?')}")
+                    if len(elaboration_errors) > 5:
+                        print(f"    ... and {len(elaboration_errors) - 5} more")
                 print("\n  Node kinds:")
                 for kind, count in nodes_count.items():
                     print(f"    {kind}: {count}")
