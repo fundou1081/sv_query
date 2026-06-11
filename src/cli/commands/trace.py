@@ -289,8 +289,15 @@ def fanout(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    include_clock: bool = typer.Option(False, "--include-clock", help="[Req-12] Include CLOCK edges (sensitivity list)"),
+    include_reset: bool = typer.Option(False, "--include-reset", help="[Req-12] Include RESET edges"),
+    include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
 ) -> None:
-    """Trace signal loads (fanout)"""
+    """Trace signal loads (fanout)
+
+    [ADD 2026-06-11 Req-12 Issue 19] 默认只走 DRIVER+CONNECTION 边, 不含 CLOCK/RESET/CONTROL.
+    用 --include-clock/reset/control flag 可加入. 完整视图请用 'visualize graph'.
+    """
     try:
         if filelist:
             tracer = UnifiedTracer(filelist=filelist)
@@ -302,7 +309,12 @@ def fanout(
             tracer = UnifiedTracer(sources={str(file): source})
         _ = tracer.build_graph()
 
-        result = tracer.trace_fanout(signal, depth=depth)
+        result = tracer.trace_fanout(
+            signal, depth=depth,
+            include_clock=include_clock,
+            include_reset=include_reset,
+            include_control=include_control,
+        )
 
         # 转换结果为可序列化格式
         loads = []
