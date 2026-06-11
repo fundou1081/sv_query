@@ -202,7 +202,11 @@ class ProtocolDetector:
         self.handshake_provider = handshake_provider or NameBasedHandshakeProvider(self.norm)
 
     def detect(self, signals: List[SignalContext]) -> ProtocolMatch:
-        """检测协议, 返回 top-1 ProtocolMatch."""
+        """检测协议, 返回 top-1 ProtocolMatch.
+
+        多协议竞争模式: 加载所有 schema, 选 top-1.
+        推荐使用 detect_single(protocol_name) — 工程师指定协议类型, 避免误识.
+        """
         if not signals:
             return ProtocolMatch(
                 protocol="UNKNOWN",
@@ -244,6 +248,50 @@ class ProtocolDetector:
             )
         return best
 
+    def detect_single(
+        self,
+        protocol_name: str,
+        signals: List[SignalContext],
+    ) -> ProtocolMatch:
+        """单协议评分模式: 工程师指定协议名, 只对该 schema 评分.
+
+        设计动机 (2026-06-11): 工程师看到模块名/端口名就知道大概协议类型 (TL-UL/AHB/...)
+        不需要也不该让 sv_query 跳 AXI vs TL-UL 的 5-通道 0.944 vs 0.5 误识别问题.
+        避免多协议竞争, 直接验证: "这个模块是 TL-UL 吗? 匹配程度 0.35".
+
+        Args:
+            protocol_name: 协议名 (e.g. "TL-UL", "AXI4", "AHB")
+            signals: 提取的信号列表
+
+        Returns:
+            ProtocolMatch with protocol=protocol_name (即使 confidence=0 也返指定名)
+            不走 UNKNOWN 阈值 (可以验证 "这确实不是 TL-UL" = conf=0).
+        """
+        if not signals:
+            return ProtocolMatch(
+                protocol=protocol_name,
+                confidence=0.0,
+                warnings=["no signals provided"],
+            )
+        if protocol_name not in self.schemas:
+            return ProtocolMatch(
+                protocol="UNKNOWN",
+                confidence=0.0,
+                warnings=[
+                    f"protocol '{protocol_name}' not in registry; "
+                    f"available: {list(self.schemas.keys())}"
+                ],
+            )
+
+        schema = self.schemas[protocol_name]
+        anchors = self._find_anchors(signals)
+        groups = self.pattern_learner.learn(
+            anchors=[(a[0], a[1]) for a in anchors],
+            all_signals=[s.name for s in signals],
+        )
+        match = self._score_protocol(schema, signals, groups, anchors)
+        return match
+
     # ----- 协议评分 -----
 
     def _score_protocol(
@@ -257,10 +305,39 @@ class ProtocolDetector:
         channel_matches: Dict[str, ChannelMatch] = {}
         all_mappings: List[SignalMapping] = []
 
+        # [FIX 2026-06-11] 预检测 variant, 后续变体特定评分时使用
+        variant = self._detect_variant(schema, signals)
+
         for ch_name, ch_spec in schema.channels.items():
             ch_match, mappings = self._score_channel(
                 ch_name, ch_spec, schema, signals, groups,
             )
+            # [FIX 2026-06-11 + v2 2026-06-11] STRUCT_WRAPPER 变体: tlul 接口是 62-bit
+            # packed struct (tl_h2d_t / tl_d2h_t), sv_query 看不到 struct 内部, 找不到
+            # a_valid/d_valid. 但匹配上 tl_h/tl_d wrapper 端口说明该接口是 TL-UL.
+            #
+            # v1 只把 ch_match.score 提到 0.5, 但 name_score 还是 0 (matched_req/required_count),
+            # 被 NAME_SCORE_GATE=0.2 卡住 → confidence=0.
+            # v2: 同时把 name_score 也提到 0.5 (wrapper 命中 = 名字 schema 正确, 只是形式不同).
+            # v3: 把 pattern_score 也提到 0.5 (wrapper 端口本身是 valid+ready 配对 = anchor,
+            #     但不是 1-bit, _find_anchors 跳过 → pattern_score 仍是 0).
+            if variant and "STRUCT_WRAPPER" in variant:
+                # 查 wrapper port 标准化名是否在 sig_by_norm (复用 _score_channel 逻辑)
+                wrapper_names = {
+                    "tlh": "A", "tld": "D",
+                }
+                for norm_name, ch in wrapper_names.items():
+                    if ch == ch_name and any(
+                        self.norm.normalize(s.name).normalized == norm_name
+                        for s in signals
+                    ):
+                        ch_match.present = True
+                        ch_match.missing_required = []
+                        ch_match.score = max(ch_match.score, 0.5)
+                        # v2 fix: name_score 也提到 0.5, 避免被 NAME_SCORE_GATE 卡死
+                        ch_match.name_score = max(ch_match.name_score, 0.5)
+                        # v3 fix: pattern_score 也提到 0.5 (wrapper 端口本身是 anchor)
+                        ch_match.pattern_score = max(ch_match.pattern_score, 0.5)
             channel_matches[ch_name] = ch_match
             all_mappings.extend(mappings)
 
@@ -494,7 +571,12 @@ class ProtocolDetector:
         schema: ProtocolSchema,
     ) -> float:
         if not groups:
-            # 无 anchor → pattern 应该是 0, 不是中性 0.5
+            # 无 anchor → pattern 应该是 0, 不是中性 0.5.
+            # 例外: STRUCT_WRAPPER 变体下, channel 本身可能已设过 pattern_score
+            # (wrapper 端口本身就是 anchor, 但不是 1-bit, _find_anchors 跳过).
+            # 这种情况用 channel 自身的 pattern_score 覆盖, 不要被全局 not groups 压平.
+            if any(cm.pattern_score > 0.0 for cm in channel_matches.values()):
+                return sum(cm.pattern_score for cm in channel_matches.values()) / max(1, len(channel_matches))
             return 0.0
         return sum(cm.pattern_score for cm in channel_matches.values()) / max(1, len(channel_matches))
 
@@ -538,7 +620,15 @@ class ProtocolDetector:
         signals: List[SignalContext],
     ) -> float:
         """4 项融合: handshake_score."""
+        # [FIX 2026-06-11] STRUCT_WRAPPER 变体下没有 1-bit anchor, 但 wrapper port
+        # 本身 (如 tl_h_i / tl_h_o) 就是 valid+ready pair (62-bit struct).
+        # 这种情况给个 base 0.5, 避免 1-bit anchor 条件逼死 wrapper 协议.
         if not anchors or not self.handshake_provider:
+            # 例外: STRUCT_WRAPPER 变体命中 + wrapper port 出现 → 0.5
+            if any("STRUCT_WRAPPER" in v.name for v in schema.variants):
+                sig_norms = {self.norm.normalize(s.name).normalized for s in signals}
+                if {"tlh", "tld"} & sig_norms:
+                    return 0.5
             return 0.0
 
         def _norm(s: str) -> str:
