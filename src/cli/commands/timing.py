@@ -19,6 +19,9 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+
 
 warnings.filterwarnings("ignore")
 
@@ -29,7 +32,10 @@ timing_app = typer.Typer(help="Timing critical path analysis: register depth, DA
 
 @timing_app.command(name="analyze")
 def analyze(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_paths: int = typer.Option(5, "--max-paths", help="Max number of paths to report"),
 ) -> None:
@@ -37,11 +43,21 @@ def analyze(
     from trace.core.graph.models import NodeKind
     from trace.unified_tracer import UnifiedTracer
 
-    with open(file) as f:
-        source = f.read()
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
 
-    tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
     analyzer = TimingAnalyzer(graph)
 
     paths = analyzer.get_critical_paths(max_paths=max_paths)
