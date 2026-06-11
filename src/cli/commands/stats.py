@@ -10,6 +10,15 @@ import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+from cli._common import (
+    FILE_OPTION,
+    FILELIST_OPTION,
+    LOG_LEVEL_OPTION,
+    STRICT_OPTION,
+    _build_tracer,
+    handle_compilation_error,
+)
+from trace.core.compiler import CompilationError
 from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
 
@@ -76,17 +85,26 @@ def output_fanout_rank(data: dict, top_n: int = 20) -> None:
 
 
 def stats(
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    strict: bool = STRICT_OPTION,
+    log_level: str = LOG_LEVEL_OPTION,
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     fanout_rank: bool = typer.Option(False, "--fanout-rank", help="Show fanout ranking"),
     top_n: int = typer.Option(20, "--top", "-n", help="Number of top signals to show"),
 ) -> None:
-    """Show graph statistics"""
+    """Show graph statistics
+
+    [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
+    [ADD 2026-06-11 任务3] elaboration error 统一 catch, 错误信息干净.
+    """
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        if not file and not filelist:
+            raise ValueError("Either --file or --filelist must be provided")
+        tracer = _build_tracer(
+            file=file, filelist=filelist, strict=strict, log_level=log_level
+        )
         graph = tracer.build_graph()
 
         # 转换 NodeKind/EdgeKind enum 为字符串
@@ -110,7 +128,12 @@ def stats(
         data = {
             "ok": True,
             "command": "stats",
-            "params": {"file": str(file), "fanout_rank": fanout_rank, "top_n": top_n},
+            "params": {
+                "file": str(file) if file else None,
+                "filelist": filelist,
+                "fanout_rank": fanout_rank,
+                "top_n": top_n,
+            },
             "result": {
                 "total_nodes": len(graph.nodes()),
                 "total_edges": len(graph.edges()),
@@ -134,6 +157,9 @@ def stats(
             else:
                 output_text(data)
 
+    except CompilationError as e:
+        # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
+        handle_compilation_error(e, strict=strict)
     except Exception as e:
         data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:

@@ -28,8 +28,15 @@ snapshot_app = typer.Typer(help="Snapshot management for graph diff")
 logger = logging.getLogger(__name__)
 
 
-def _get_tracer_from_file(file_path: Path):
-    """从文件构建 UnifiedTracer"""
+def _get_tracer_from_file(file_path: Path, strict: bool = False):
+    """从文件构建 UnifiedTracer
+
+    Args:
+        file_path: .sv / .svh 文件或目录
+        strict: True = elaboration error 立即 raise (默认 False, 允许部分图)
+
+    [FIX 2026-06-11 Issue 17] 默认 strict=False 让 snapshot save 能存部分图
+    """
     import os
 
     # 收集所有 .sv 文件
@@ -59,7 +66,7 @@ def _get_tracer_from_file(file_path: Path):
             logger.warning(f"Failed to read {f}: {e}")
             continue
 
-    tracer = UnifiedTracer(sources=sources)
+    tracer = UnifiedTracer(sources=sources, strict=strict)
     tracer.build_graph()
     return tracer, [str(f) for f in sv_files]
 
@@ -69,8 +76,16 @@ def save(
     path: Path = typer.Argument(..., help="File or directory to snapshot"),
     tag: str = typer.Option("", "--tag", "-t", help="Snapshot tag (e.g., v1.2.3)"),
     git: bool = typer.Option(False, "--git", "-g", help="Auto-capture git commit hash"),
+    strict: bool = typer.Option(
+        False, "--strict", help="Strict mode: elaboration error 时不存快照直接报错 (默认: non-strict, 存部分图并标记失败文件)"
+    ),
 ):
-    """Save current code state as a snapshot"""
+    """Save current code state as a snapshot
+
+    [FIX 2026-06-11 Issue 17] 默认 non-strict: 即使有 elaboration error
+    (MissingTimeScale / UndeclaredIdentifier / \$clog2 等) 仍存部分图,
+    错误信息存到 snapshot metadata 供后续查询。 加上 --strict 才严格检查.
+    """
     try:
         # 获取 git commit
         git_commit = ""
@@ -87,8 +102,12 @@ def save(
                 pass
 
         # 构建 tracer
-        tracer, files = _get_tracer_from_file(path)
+        tracer, files = _get_tracer_from_file(path, strict=strict)
         graph = tracer.get_graph()
+
+        # 获取 elaboration 错误 (即使 strict 模式也可拿到, 因为 build_graph 可能会跳过)
+        elaboration_errors = tracer.get_elaboration_errors()
+        failed_files = sorted({e["file"] for e in elaboration_errors if e.get("file")})
 
         # 获取 tag
         if not tag:
@@ -102,6 +121,10 @@ def save(
         # 保存快照
         manager = SnapshotManager()
         graph_data = graph.to_dict()
+        # [FIX 2026-06-11 Issue 17] 把 elaboration 错误存到 snapshot metadata
+        graph_data["elaboration_errors"] = elaboration_errors
+        graph_data["failed_files"] = failed_files
+        graph_data["strict_mode"] = strict
         saved_path = manager.save(tag, graph_data, git_commit=git_commit, files=files)
 
         print(f"✅ Snapshot saved: {tag}")
@@ -109,6 +132,22 @@ def save(
         print(f"   Files: {len(files)}")
         print(f"   Nodes: {graph_data['node_count']}")
         print(f"   Edges: {graph_data['edge_count']}")
+        if elaboration_errors:
+            # 按失败文件汇总
+            n_errors = len(elaboration_errors)
+            n_files = len(failed_files)
+            print(f"   ⚠️  Elaboration: {n_errors} error(s) in {n_files} file(s) (non-strict, 存了部分图)")
+            # 按错误码统计
+            from collections import Counter
+            code_counts = Counter(e["code"] for e in elaboration_errors)
+            for code, cnt in code_counts.most_common(5):
+                print(f"      {code}: {cnt}")
+            if len(code_counts) > 5:
+                print(f"      ... and {len(code_counts) - 5} more error types")
+            if failed_files:
+                shown = ", ".join(Path(f).name for f in failed_files[:5])
+                more = f", ... +{len(failed_files) - 5}" if len(failed_files) > 5 else ""
+                print(f"      Failed files: {shown}{more}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
