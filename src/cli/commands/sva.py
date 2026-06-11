@@ -54,7 +54,7 @@ def extract(
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
 
-    sva = SVAExtractor(sources).extract()
+    sva = SVAExtractor(sources, strict=strict).extract()
 
     if json_output:
         import json
@@ -158,8 +158,8 @@ def coverage(
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
-    sva = SVAExtractor(sources).extract()
-    cov_list = CovergroupExtractor(sources).extract()
+    sva = SVAExtractor(sources, strict=strict).extract()
+    cov_list = CovergroupExtractor(sources, strict=strict).extract()
 
     # SVA 覆盖信号
     sva_signals = set()
@@ -307,7 +307,7 @@ def timing(
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
-    sva = SVAExtractor(sources).extract()
+    sva = SVAExtractor(sources, strict=strict).extract()
 
     results = []
     for pid, prop in sva.properties.items():

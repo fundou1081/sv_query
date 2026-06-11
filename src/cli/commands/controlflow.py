@@ -122,7 +122,8 @@ def analyze(
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources)
+    # [FIX 2026-06-12 Req-15] 跟 caller 的 strict 一致, 避免 non-strict 仍报 CompilationError
+    compiler = SVCompiler(sources, strict=strict)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -214,7 +215,7 @@ def list_conditioned(
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources)
+    compiler = SVCompiler(sources, strict=strict)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -276,7 +277,7 @@ def get_conditions(
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources)
+    compiler = SVCompiler(sources, strict=strict)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
