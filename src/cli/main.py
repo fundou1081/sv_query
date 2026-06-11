@@ -21,6 +21,10 @@ if str(_project_root) not in sys.path:
 
 import typer
 
+from src.cli._common import (
+    _build_tracer,
+    handle_compilation_error,
+)
 from src.cli.commands.cdc import cdc_app
 from src.cli.commands.controlflow import controlflow_app
 from src.cli.commands.coverage import coverage_app
@@ -66,19 +70,34 @@ app.add_typer(vis_app, name="visualize")
 
 
 def stats_callback(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict, 存部分图)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     fanout_rank: bool = typer.Option(False, "--fanout-rank", help="Show fanout ranking"),
     top_n: int = typer.Option(20, "--top", "-n", help="Number of top signals to show"),
 ) -> None:
-    """Show graph statistics"""
-    if file:
-        from trace.unified_tracer import UnifiedTracer
+    """Show graph statistics
 
-        with open(file) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={file: source})
+    [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
+    [ADD 2026-06-11 任务3] elaboration error 统一 catch, 错误信息干净.
+    """
+    from trace.core.compiler import CompilationError
+    from trace.unified_tracer import UnifiedTracer
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
         graph = tracer.build_graph()
 
         nodes_count = {}
@@ -100,7 +119,12 @@ def stats_callback(
         data = {
             "ok": True,
             "command": "stats",
-            "params": {"file": file, "fanout_rank": fanout_rank, "top_n": top_n},
+            "params": {
+                "file": file,
+                "filelist": filelist,
+                "fanout_rank": fanout_rank,
+                "top_n": top_n,
+            },
             "result": {
                 "total_nodes": len(graph.nodes()),
                 "total_edges": len(graph.edges()),
@@ -137,9 +161,9 @@ def stats_callback(
                 print(f"\n  Modules ({len(modules)}):")
                 for m in modules[:10]:
                     print(f"    - {m}")
-    else:
-        typer.echo("Error: --file is required", err=True)
-        raise typer.Exit(code=1)
+    except CompilationError as e:
+        # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
+        handle_compilation_error(e, strict=strict)
 
 
 def _compute_fanout_rank(graph) -> dict:

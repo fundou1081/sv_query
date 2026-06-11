@@ -44,20 +44,24 @@ class SVCompiler:
         comp = compiler.get_compilation()  # Compilation 对象
     """
 
-    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING"):
+    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING", strict: bool = True):
         """
         初始化编译器
 
         Args:
             sources: {filename: source_code} 字典
             log_level: 诊断输出级别 (DEBUG/INFO/WARNING/ERROR/NONE)
+            strict: True (默认) 时 elaboration error 会 raise;
+                    False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
         """
         self._sources = sources or {}
         self._comp: pyslang.Compilation | None = None
         self._root = None
         self._diagnostics = []
+        self._elaboration_errors = []  # [FIX 2026-06-11 Issue 17] 存解析出的错误, 非 strict 模式可被 snapshot 读取
         self._log_level = self._parse_log_level(log_level)
         self._include_dirs: list[str] = []  # [铁律1] include 搜索路径
+        self._strict = strict  # [FIX 2026-06-11] False 时不对 elaboration error raise
 
     def _parse_log_level(self, level: str) -> int:
         """将日志级别字符串转换为 logging 常量"""
@@ -267,7 +271,18 @@ class SVCompiler:
         errors = [d for d in self._diagnostics if d.isError()]
         if errors:
             report = DiagnosticEngine.reportAll(self._comp.sourceManager, errors)
-            raise CompilationError(f"Elaboration errors:\n{report}") from None
+            # [FIX 2026-06-11] strict=False 时优雅降级: 输出错误但仍返回 partial AST
+            # 让 visualize / protocol detect 在缺依赖的 opentitan 等项目仍能 work
+            # [FIX 2026-06-11 Issue 17] 把 elaboration 错误存到 self._elaboration_errors
+            # 供 UnifiedTracer / snapshot 读取, 标记哪些文件失败
+            self._elaboration_errors = self._format_elaboration_errors(errors)
+            if not self._strict:
+                import sys as _sys
+                print(f"[sv_query] Compilation has {len(errors)} error(s), continuing in non-strict mode", file=_sys.stderr)
+            else:
+                raise CompilationError(f"Elaboration errors:\n{report}") from None
+        else:
+            self._elaboration_errors = []
 
         # 获取 Semantic AST root
         self._root = self._comp.getRoot()
@@ -290,6 +305,69 @@ class SVCompiler:
             self._log("WARNING", f"{len(others)} warning(s)/note(s) found")
             for d in others:
                 self._log("WARNING", self._format_diagnostic(d))
+
+    def get_elaboration_errors(self) -> list[dict]:
+        """[FIX 2026-06-11 Issue 17] 公开 API: 返回 elaboration 错误列表
+
+        Returns:
+            list of dict: [
+                {
+                    "file": "src/foo.sv",  # 源文件相对名
+                    "line": 42,
+                    "column": 8,
+                    "code": "UndeclaredIdentifier",
+                    "message": "use of undeclared identifier 'foo'",
+                },
+                ...
+            ]
+        """
+        return list(self._elaboration_errors)
+
+    def _format_elaboration_errors(self, errors: list) -> list[dict]:
+        """[FIX 2026-06-11 Issue 17] 把 pyslang 诊断转结构化 dict
+
+        pyslang v3 API: loc 是 SourceLocation, .buffer (BufferID) + .offset.
+        文件名走 sm.getFileName(loc), 行/列走 sm.getLineNumber(loc)/getColumnNumber(loc).
+        """
+        out = []
+        sm = getattr(self._comp, "sourceManager", None)
+        for d in errors:
+            loc = getattr(d, "location", None)
+            line = col = 0
+            fname = ""
+            if loc is not None and sm is not None:
+                # pyslang v3 getFileName 接受 SourceLocation, 不是 BufferID
+                try:
+                    fname = sm.getFileName(loc) or ""
+                except Exception:
+                    pass
+                if not fname:
+                    try:
+                        fname = sm.getRawFileName(loc) or ""
+                    except Exception:
+                        pass
+                # 行号 / 列号
+                try:
+                    line = sm.getLineNumber(loc) or 0
+                except Exception:
+                    pass
+                try:
+                    col = sm.getColumnNumber(loc) or 0
+                except Exception:
+                    pass
+            code = getattr(d, "code", None)
+            code_str = str(code) if code else "unknown"
+            # 提取代码名: "DiagCode(UndeclaredIdentifier)" -> "UndeclaredIdentifier"
+            if "(" in code_str and code_str.endswith(")"):
+                code_str = code_str.split("(", 1)[1].rstrip(")")
+            out.append({
+                "file": fname,
+                "line": line,
+                "column": col,
+                "code": code_str,
+                "message": self._format_diagnostic(d).strip(),
+            })
+        return out
 
     def _format_diagnostic(self, diag) -> str:
         """格式化单个诊断信息"""

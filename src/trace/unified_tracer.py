@@ -281,6 +281,7 @@ class UnifiedTracer:
         filelist: str = None,
         log_level: str = None,
         include_dirs: list[str] = None,
+        strict: bool = True,
     ):
         """初始化 UnifiedTracer
 
@@ -291,6 +292,8 @@ class UnifiedTracer:
             log_level: 日志级别 (DEBUG/INFO/WARNING/ERROR)
                       默认为环境变量 SV_QUERY_LOG_LEVEL 的值
             include_dirs: include 搜索路径列表
+            strict: True (默认) 时 elaboration error 会 raise;
+                    False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
         """
         if sources is None:
             sources = {}
@@ -306,6 +309,7 @@ class UnifiedTracer:
         self._clock_tracer: ClockDomainTracer | None = None
         self._load_tracer: LoadTracer | None = None
         self._include_dirs = include_dirs or []
+        self._strict = strict  # [FIX 2026-06-11] False = 优雅降级
 
         # 日志级别控制
         if log_level is not None:
@@ -329,7 +333,7 @@ class UnifiedTracer:
     def _get_compiler(self) -> SVCompiler:
         """获取 SVCompiler (Semantic AST 编译入口)"""
         if self._compiler is None:
-            self._compiler = SVCompiler(self._sources, log_level=self._log_level)
+            self._compiler = SVCompiler(self._sources, log_level=self._log_level, strict=self._strict)
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)
             if self._files:
@@ -424,6 +428,25 @@ class UnifiedTracer:
 
     def get_graph(self) -> SignalGraph | None:
         return self._graph
+
+    def get_elaboration_errors(self) -> list[dict]:
+        """[FIX 2026-06-11 Issue 17] 公开 API: 返回 elaboration 错误列表
+
+        需先调用 build_graph() (即使内部报错也安全, 内部已 try/except).
+
+        Returns:
+            list of dict: [{"file", "line", "column", "code", "message"}, ...]
+            空 list 表示没有 elaboration 错误.
+        """
+        if self._compiler is None:
+            # 触发编译
+            try:
+                self._get_compiler()
+            except Exception:
+                pass
+        if self._compiler is None:
+            return []
+        return self._compiler.get_elaboration_errors()
 
     def _resolve_class_member_access(self, adapter, graph):
         """为 class 实例成员访问创建 MEMBER_SELECT 边
