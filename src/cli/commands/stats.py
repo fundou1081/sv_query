@@ -39,6 +39,19 @@ def output_text(data: dict) -> None:
     print(f"  Total nodes: {result.get('total_nodes', 0)}")
     print(f"  Total edges: {result.get('total_edges', 0)}")
 
+    # [ADD 2026-06-11 Req-14] elaboration error 计数 + partial result 提示
+    elaboration_errors = result.get("elaboration_errors", [])
+    if elaboration_errors:
+        print(f"\n  [WARNING] {len(elaboration_errors)} elaboration error(s), partial graph shown")
+        # 列出前 5 个错误 (file:line: code)
+        for e in elaboration_errors[:5]:
+            file_short = e.get("file", "?")
+            if "/" in file_short:
+                file_short = file_short.split("/")[-1]
+            print(f"    - {file_short}:{e.get('line', '?')}: {e.get('code', '?')}")
+        if len(elaboration_errors) > 5:
+            print(f"    ... and {len(elaboration_errors) - 5} more")
+
     print("\n  Node kinds:")
     for kind, count in nodes.items():
         print(f"    {kind}: {count}")
@@ -140,6 +153,8 @@ def stats(
                 "nodes": nodes,
                 "edges": edges,
                 "modules": modules,
+                # [ADD 2026-06-11 Req-14] 带上 elaboration errors 让用户知道是 partial result
+                "elaboration_errors": tracer.get_elaboration_errors(),
             },
             "errors": [],
         }
