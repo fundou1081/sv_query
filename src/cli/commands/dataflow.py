@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 
 import typer
+from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
@@ -114,7 +117,10 @@ dataflow_app = typer.Typer(help="Analyze dataflow paths between signals")
 def analyze(
     from_signal: str = typer.Argument(..., help="Source signal (e.g., top.clk)"),
     to_signal: str = typer.Argument(..., help="Target signal (e.g., top.data_out)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum number of paths to return"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
@@ -123,75 +129,75 @@ def analyze(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
         _ = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
 
-        dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
-        result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
+    dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
+    result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
 
-        # [Stage 5] (可选) evidence 召回 - 每个 segment 的 to_signal 独立解析
-        evidence_resolver = None
-        if evidence:
-            evidence_resolver = _make_evidence_resolver(tracer._graph, tracer._get_adapter())
+    # [Stage 5] (可选) evidence 召回 - 每个 segment 的 to_signal 独立解析
+    evidence_resolver = None
+    if evidence:
+        evidence_resolver = _make_evidence_resolver(tracer._graph, tracer._get_adapter())
 
-        paths_data = []
-        for path in result.paths:
-            segments_data = []
-            for seg in path.segments:
-                seg_dict = {
-                    "from_signal": seg.from_signal,
-                    "to_signal": seg.to_signal,
-                    "driver": seg.driver,
-                    "condition": seg.condition,
-                    "timing": seg.timing,
-                    "assign_type": seg.assign_type,
-                    "distance": seg.distance,
-                }
-                if evidence_resolver is not None:
-                    seg_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(seg.to_signal))
-                segments_data.append(seg_dict)
-            paths_data.append(
-                {
-                    "path_id": path.path_id,
-                    "segments": segments_data,
-                    "distance": path.distance,
-                    "has_conditional": path.has_conditional,
-                }
-            )
+    paths_data = []
+    for path in result.paths:
+        segments_data = []
+        for seg in path.segments:
+            seg_dict = {
+                "from_signal": seg.from_signal,
+                "to_signal": seg.to_signal,
+                "driver": seg.driver,
+                "condition": seg.condition,
+                "timing": seg.timing,
+                "assign_type": seg.assign_type,
+                "distance": seg.distance,
+            }
+            if evidence_resolver is not None:
+                seg_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(seg.to_signal))
+            segments_data.append(seg_dict)
+        paths_data.append(
+            {
+                "path_id": path.path_id,
+                "segments": segments_data,
+                "distance": path.distance,
+                "has_conditional": path.has_conditional,
+            }
+        )
 
-        data = {
-            "ok": True,
-            "command": "dataflow",
-            "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths, "evidence": evidence},
-            "result": {
-                "from_signal": result.from_signal,
-                "to_signal": result.to_signal,
-                "is_reachable": result.is_reachable,
-                "paths_count": result.paths_count,
-                "intermediate_signals": sorted(result.intermediate_signals),
-                "all_conditions": result.all_conditions,
-                "clock_domain": result.clock_domain,
-                "timing_risk": result.timing_risk,
-                "paths": paths_data,
-            },
-            "errors": [],
-        }
+    data = {
+        "ok": True,
+        "command": "dataflow",
+        "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths, "evidence": evidence},
+        "result": {
+            "from_signal": result.from_signal,
+            "to_signal": result.to_signal,
+            "is_reachable": result.is_reachable,
+            "paths_count": result.paths_count,
+            "intermediate_signals": sorted(result.intermediate_signals),
+            "all_conditions": result.all_conditions,
+            "clock_domain": result.clock_domain,
+            "timing_risk": result.timing_risk,
+            "paths": paths_data,
+        },
+        "errors": [],
+    }
 
-        if json_output:
-            output_json(data, pretty)
-        else:
-            output_text(data, human=human, tree=tree)
+    if json_output:
+        output_json(data, pretty)
+    else:
+        output_text(data, human=human, tree=tree)
 
-    except Exception as e:
-        data = {"ok": False, "command": "dataflow", "error": str(e), "errors": [str(e)]}
-        if json_output:
-            output_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-        raise typer.Exit(code=1) from None
