@@ -226,8 +226,10 @@ def gap(
         _generate_gap_graph(results, gap_signals, cov_detail, dot_output, mmd_output)
 
     # ===== 6. 文本输出 =====
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
+    display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
     print(f"{'=' * 80}")
-    print(f"验证缺口分析: {file}")
+    print(f"验证缺口分析: {display_file}")
     print(f"{'=' * 80}")
 
     total = len(results)

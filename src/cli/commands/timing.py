@@ -94,8 +94,10 @@ def analyze(
         )
         return
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
+    display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
     print(f"{'=' * 70}")
-    print(f"关键路径分析: {file}")
+    print(f"关键路径分析: {display_file}")
     print(f"{'=' * 70}")
 
     print(f"\n  节点统计: 总={total_nodes} | 寄存器={reg_count}")

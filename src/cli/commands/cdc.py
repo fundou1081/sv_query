@@ -123,15 +123,17 @@ def analyze(
         paths_to_show = report["paths"]
         if high_only:
             paths_to_show = [p for p in paths_to_show if p["risk"] == "HIGH"]
-        print(f"CDC 检测报告: {file}")
+        display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
+        print(f"CDC 检测报告: {display_file}")
         print(f"  时钟域: {len(report['domains'])}, 总计: {report['total_cdc']}, "
               f"高风险: {report['high_risk']}, 低风险: {report['low_risk']}")
         print()
         print(_format_cdc_human(paths_to_show, tree=tree))
         return
 
+    display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
     print(f"{'=' * 70}")
-    print(f"CDC 检测报告: {file}")
+    print(f"CDC 检测报告: {display_file}")
     print(f"{'=' * 70}")
 
     print(f"\n  时钟域 ({len(report['domains'])}):")

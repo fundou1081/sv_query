@@ -161,12 +161,14 @@ def analyze(
             }
         )
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
+    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
     data = {
         "ok": True,
         "command": "controlflow",
         "params": {
             "signal": signal,
-            "file": str(file),
+            "file": str(params_file),
             "evidence": evidence,
         },
         "result": {
@@ -222,11 +224,13 @@ def list_conditioned(
     analyzer = ControlFlowAnalyzer(graph_builder)
     signals = analyzer.find_conditioned_signals()
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
+    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
     data = {
         "ok": True,
         "command": "controlflow",
         "subcommand": "list-conditioned",
-        "params": {"file": str(file)},
+        "params": {"file": str(params_file)},
         "result": {
             "signals": signals,
             "count": len(signals),
@@ -282,13 +286,15 @@ def get_conditions(
     analyzer = ControlFlowAnalyzer(graph_builder)
     conditions = analyzer.get_conditions_for_signal(signal)
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
+    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
     data = {
         "ok": True,
         "command": "controlflow",
         "subcommand": "conditions",
         "params": {
             "signal": signal,
-            "file": str(file),
+            "file": str(params_file),
         },
         "result": {
             "signal": signal,
