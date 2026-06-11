@@ -94,6 +94,14 @@ signal_roles:
   d_data:    {channel: D, role: data, width: 32}
   d_user:    {channel: D, role: ctrl}
   d_error:   {channel: D, role: resp, width: 1}
+  # [FIX 2026-06-11] OpenTitan tlul wrapper 端口: 实际 62-bit packed struct
+  # tl_h2d_t (host→device) / tl_d2h_t (device→host). sv_query 看不到 struct
+  # 内部, 但能从端口名字 (tl_h_i/o + tl_d_i/o) 识别这是 TL-UL wrapper 接口.
+  # remove_underscore 默认 true 会把 tl_h 标准化为 tlh, 两个都要加.
+  tl_h:      {channel: A, role: valid, width: 62}
+  tl_d:      {channel: D, role: valid, width: 62}
+  tlh:       {channel: A, role: valid, width: 62}
+  tld:       {channel: D, role: valid, width: 62}
 
 # ---- 变体定义 ----
 variants:
@@ -112,3 +120,12 @@ variants:
     needs_absent_signals:
       - d_valid
       - d_ready
+  - name: TL-UL_STRUCT_WRAPPER
+    description: 'TileLink via tl_h2d_t/tl_d2h_t struct wrapper (OpenTitan tlul 常见).
+      接口是 62-bit packed struct (a_valid/a_ready/a_opcode/a_data 等打包),
+      sv_query 看不到 struct 内部, 只能从 wrapper 名字识别.
+      匹配 tl_h_i/tl_h_o/tl_d_i/tl_d_o 端口名 (标准化后 tlh/tld).'
+    needs_signals:
+      - tlh
+      - tld
+    needs_absent_signals: []

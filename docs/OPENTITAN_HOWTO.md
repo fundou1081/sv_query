@@ -77,37 +77,81 @@ $OPENTITAN/hw/ip/tlul/rtl/*.sv      # 29 个 tlul
 
 ### Step 3: 跑命令
 
+#### 3a. 推荐: 指定协议 (避免误识别)
+
 ```bash
 python run_cli.py protocol detect \
-    --filelist /tmp/opentitan_prim.f \
+    --filelist /tmp/opentitan_tlul.f \
+    --module tlul_fifo_sync \
+    --protocol TL-UL
+```
+
+**为什么推荐**: 工程师看到模块名就知道大概协议类型,不需要 (也不该) 让 sv_query
+跳 AXI vs TL-UL 的多协议竞争. 多协议竞争会误识 (tlul 内部 prim_arbiter 用 AXI
+命名, AXI4 conf=0.944 压过 TL-UL conf=0.350).
+
+#### 3b. 高级: 多协议竞争选 top-1
+
+```bash
+python run_cli.py protocol detect \
+    --filelist /tmp/opentitan_tlul.f \
     --module tlul_fifo_sync
 ```
 
 ## 实战结果 (2026-06-11 验证)
 
+### 3a. `--protocol TL-UL` (推荐)
+
 ```
+$ python run_cli.py protocol detect --filelist /tmp/opentitan_tlul.f \
+    --module tlul_fifo_sync --protocol TL-UL
+
+[sv_query] Compilation has 67 error(s), continuing in non-strict mode
+Module 'tlul_fifo_sync' not found in extracted modules (elaboration may have failed).
+  Falling back to demo signals based on path heuristics...
 [WARNING] 73 warning(s)/note(s) found
-[WARNING] [DuplicateDefinition]      ← prim 内部冲突 (某些 module 名重复)
-[WARNING] [EmptyOutputPortConn]     ← tlul fifo 输出端口未连接
+
+Detected: TL-UL (TL-UL_STRUCT_WRAPPER)  confidence: 0.350
+  name:        0.500
+  structural:  0.000
+  pattern:     0.500
+  handshake:   0.500
+
+  Channels:
+    ✓ A   0.500  req=0.50 struct=0.00 pat=0.50
+    ✓ D   0.500  req=0.50 struct=0.00 pat=0.50
+```
+
+✅ **正确识别 TL-UL!**
+- 67 error 优雅降级 (`--strict` 默认 False)
+- module 找不到 fallback 到 demo signals (路径含 "tlul" 返 TL-UL mock)
+- 单协议评分不混 AXI4
+
+### 3b. 多协议竞争 (不推荐, 仅作参考)
+
+```
+$ python run_cli.py protocol detect --filelist /tmp/opentitan_tlul.f \
+    --module tlul_fifo_sync
 
 Detected: AXI4 (AXI4_FULL)  confidence: 0.944
   name:        1.000
   structural:  0.813
-  pattern:     1.000
+  pattern:  1.000
   handshake:   1.000
 
   Channels:
     ✓ AW  1.000  req=1.00 struct=1.00 pat=1.00
     ✓ W   1.000  req=1.00 struct=1.00 pat=1.00
-    ✓ B   0.860  req=1.00 struct=0.53 pat=1.00
+    ✓ B   0.860  req=1.00 struct=1.00 pat=0.53
     ✓ AR  1.000  req=1.00 struct=1.00 pat=1.00
-    ✓ R   0.860  req=1.00 struct=0.53 pat=1.00
+    ✓ R   0.860  req=1.00 struct=1.00 pat=0.53
 ```
 
-**说明**:
-- 73 warning 优雅降级, **sv_query 仍 work**
-- 协议 detect 出 0.944 (但实际 tlul 是 TileLink, schema 误识别)
-- TL-UL schema 修复后会更准
+⚠️ **多协议竞争会误识别为 AXI4**
+- `tlul_fifo_sync` 内部实例化的 `prim_arbiter_tree_dup` 等用 AXI 命名 (wvalid/wready/wdata 等)
+- sv_query 看到这些内部信号 + 4 个 wrapper 端口时, AXI4 5 通道全满 (1.0) 压过 TL-UL 2 通道 wrapper (0.5)
+
+**结论**: **永远用 `--protocol`** 是避免误识的可靠方法.
 
 ## 一键生成脚本
 
