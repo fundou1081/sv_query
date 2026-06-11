@@ -213,15 +213,57 @@ class ControlFlowAnalyzer:
         return edges
 
     def _check_warnings(self, result: ControlFlowAnalysis):
-        """检查警告"""
+        """检查警告
+
+        [ADD 2026-06-11 Req-13 Issue 21] if/else 互斥分支是合法设计, 不能报"矛盾".
+        区分两种情况:
+        1. if/else mutex: 两个 negation 且都是简单标识符 (a vs !a) → 标记 [Mutex] 不报警
+        2. 真正矛盾: 多个同向条件互斥 (a vs !a 但还有 b vs !b) → 报警
+
+        启发式: 如果该 signal 只有 2 个条件且互为 negation, 当作 mutex
+                否则当作真矛盾报灖
+        """
         for cd in result.conditioned_drivers:
             conds = cd.conditions
-
-            # 检查是否有矛盾条件
-            for i, c1 in enumerate(conds):
-                for c2 in conds[i + 1 :]:
+            if len(conds) != 2:
+                # 不止 2 个条件, 全部都检查 negation
+                for i, c1 in enumerate(conds):
+                    for c2 in conds[i + 1 :]:
+                        if self._is_negation(c1.expr, c2.expr):
+                            result.warnings.append(f"矛盾条件检测: {c1.expr} vs {c2.expr}")
+            else:
+                # 正好 2 个条件且互为 negation → if/else mutex, 不是矛盾
+                c1, c2 = conds
+                if self._is_negation(c1.expr, c2.expr) and self._is_simple_identifier_pair(c1.expr, c2.expr):
+                    result.warnings.append(
+                        f"[Mutex] if/else 互斥分支: {c1.expr} vs {c2.expr} (合法设计, 非矛盾)"
+                    )
+                else:
+                    # 2 个条件但不互为 negation, 或不是简单标识符对
+                    # 走原始检查
                     if self._is_negation(c1.expr, c2.expr):
                         result.warnings.append(f"矛盾条件检测: {c1.expr} vs {c2.expr}")
+
+    def _is_simple_identifier_pair(self, expr1: str, expr2: str) -> bool:
+        """检查两个表达式是否都是简单标识符 (a vs !a 形式)
+
+        过滤 'a && b' vs '!a' 这种不是 if/else mutex 的情况.
+        """
+        def extract_identifier(expr: str) -> str | None:
+            expr = expr.strip()
+            # !a → a
+            if expr.startswith("!"):
+                expr = expr[1:]
+            # 必须是单个标识符 (字母数字下划线, 不含 &&, ||, ==, != 等)
+            if "&&" in expr or "||" in expr or "==" in expr or "!=" in expr or "+" in expr or "-" in expr:
+                return None
+            if expr.isidentifier() or (expr.replace("_", "").replace("0", "").replace("1", "").replace("2", "").replace("3", "").replace("4", "").replace("5", "").replace("6", "").replace("7", "").replace("8", "").replace("9", "").isalnum()):
+                return expr
+            return None
+
+        id1 = extract_identifier(expr1)
+        id2 = extract_identifier(expr2)
+        return id1 is not None and id2 is not None and id1 == id2
 
     def _is_negation(self, expr1: str, expr2: str) -> bool:
         """检查两个表达式是否互为否定"""
