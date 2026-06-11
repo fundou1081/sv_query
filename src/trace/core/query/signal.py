@@ -109,6 +109,24 @@ class SignalTracer:
                         if src not in seen_ids:
                             self._trace_drivers_recursive(src, drivers, seen_ids, current_depth, max_depth)
 
+        # [FIX 2026-06-11] 跨 module boundary: 当 target 是 module def PORT_OUT
+        # 且 0 driver 时, wrapper module 实际是 port mapping, 没内部 assign.
+        # 查 port_to_internal 反向找所有 instance port, 递归追它们的 driver.
+        # 例: axi_ram_wr_rd_if.s_axi_awready (wrapper) ← axi_dp_ram.a_if.s_axi_awready (instance)
+        #                                 ← axi_dp_ram.b_if.s_axi_awready (另一个 instance)
+        if not has_driver_edge and hasattr(self.graph, "_port_to_internal"):
+            current_node = self.graph.get_node(signal_id)
+            if current_node and current_node.kind.name == "PORT_OUT":
+                pti = self.graph._port_to_internal
+                # 反向查: 找所有 instance port 映射到当前 module def port
+                instance_ports = [k for k, v in pti.items() if v == signal_id]
+                for inst_port_id in instance_ports:
+                    if inst_port_id in self.graph.nodes() and inst_port_id not in seen_ids:
+                        # 递归到 instance port, 让它的 DRIVER 边起作用
+                        self._trace_drivers_recursive(
+                            inst_port_id, drivers, seen_ids, current_depth + 1, max_depth
+                        )
+
         # 标记当前节点已访问
         seen_ids.add(signal_id)
 
@@ -123,6 +141,14 @@ class SignalTracer:
                     continue
 
                 edge = self.graph.get_edge(src, dst)
+                # [FIX 2026-06-11] get_edge 只返第 1 条, 可能是 CONNECTION (优先级高).
+                # 但 trace 查 driver 优先看 DRIVER 边. 如果同 (src, dst) 有 DRIVER 边,
+                # 用 DRIVER (e.g. wrapper_passthrough 跟 CONNECTION 同时存在).
+                if edge and edge.kind != EdgeKind.DRIVER:
+                    all_edges = self.graph.get_edges(src, dst)
+                    driver_edge = next((e for e in all_edges if e.kind == EdgeKind.DRIVER), None)
+                    if driver_edge:
+                        edge = driver_edge
                 # [FIX] 只接受 DRIVER 边作为驱动
                 if edge and edge.kind != EdgeKind.DRIVER:
                     # CONNECTION 边:检查 src 是否是实例端口
@@ -150,6 +176,33 @@ class SignalTracer:
                                         self._trace_drivers_recursive(
                                             input_port_id, drivers, seen_ids, current_depth + 1, max_depth
                                         )
+                                # [FIX 2026-06-11] wrapper-aware 跨 instance:
+                                # 如果 src 是 wrapper module 的 instance port, 跨到 wrapper
+                                # 其他 instance port, 让它们的 deep driver 链起作用.
+                                # 例: src=axi_dp_ram.a_if.s_axi_awready (axi_ram_wr_rd_if instance)
+                                #   跨到 axi_dp_ram.b_if.s_axi_awready (另一个 axi_ram_wr_rd_if instance)
+                                #   axi_ram_wr_rd_if 是 wrapper (0 internal driver), b_if 内部有 deep
+                                #   axi_ram_wr_if_inst.s_axi_awready (通过 _elaborate_wrapper_passthroughs 加边).
+                                # 避免乱跨: 只跨到 kind=PORT_OUT (output 端口, backpressure 关键)
+                                if (
+                                    current_node_check := self.graph.get_node(src)
+                                ) and current_node_check.kind.name == "PORT_OUT" and hasattr(self.graph, "_port_to_internal"):
+                                    def_port = self.graph._port_to_internal.get(src)
+                                    if def_port:
+                                        # 找 def_port 0 driver (wrapper 标识)
+                                        def_has_driver = any(
+                                            e.kind == EdgeKind.DRIVER
+                                            for u in self.graph.predecessors(def_port)
+                                            for e in self.graph._edge_data.get((u, def_port), [])
+                                        )
+                                        if not def_has_driver:
+                                            # 跨到 def_port 的其他 instance ports
+                                            for k, v in self.graph._port_to_internal.items():
+                                                if v == def_port and k != src:
+                                                    if k in self.graph.nodes() and k not in seen_ids:
+                                                        self._trace_drivers_recursive(
+                                                            k, drivers, seen_ids, current_depth + 1, max_depth
+                                                        )
                                 continue
                             # PORT_IN via CONNECTION: 只有外部输入端口(无predecessors)才添加
                             if node.kind.name == "PORT_IN":

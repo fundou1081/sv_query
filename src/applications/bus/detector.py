@@ -577,41 +577,67 @@ class ProtocolDetector:
         def _is_ready_like(norm: str) -> bool:
             return any(norm.endswith(s) for s in ("ready", "rdy", "ack"))
 
+        # [FIX 2026-06-11] slave 模块方向反 (valid 是 input, ready 是 output).
+        # 原来只找 (output valid + input ready) — 适用 master 模块.
+        # slave 模式需要 (output ready + input valid). 同时找两种.
         anchors: List[Tuple[str, str]] = []
-        outputs = [
+        out_valid = [
             s for s in signals
             if s.direction == "output" and s.width == 1
             and _is_valid_like(self.norm.normalize(s.name).normalized)
         ]
-        inputs = [
+        in_ready = [
             s for s in signals
             if s.direction == "input" and s.width == 1
             and _is_ready_like(self.norm.normalize(s.name).normalized)
         ]
+        out_ready = [
+            s for s in signals
+            if s.direction == "output" and s.width == 1
+            and _is_ready_like(self.norm.normalize(s.name).normalized)
+        ]
+        in_valid = [
+            s for s in signals
+            if s.direction == "input" and s.width == 1
+            and _is_valid_like(self.norm.normalize(s.name).normalized)
+        ]
 
-        for out_sig in outputs:
-            out_norm = self.norm.normalize(out_sig.name).normalized
-            best_match = None
-            best_overlap = 0
-            for in_sig in inputs:
-                in_norm = self.norm.normalize(in_sig.name).normalized
-                # 找最长公共前缀 (取掉 valid/ready 后缀)
-                out_base = out_norm
-                for s in ("valid", "vld", "req"):
-                    if out_norm.endswith(s) and len(out_norm) > len(s):
-                        out_base = out_norm[: -len(s)]
-                        break
-                in_base = in_norm
-                for s in ("ready", "rdy", "ack"):
-                    if in_norm.endswith(s) and len(in_norm) > len(s):
-                        in_base = in_norm[: -len(s)]
-                        break
-                # base 必须相同 (如 "aw")
-                if out_base and out_base == in_base:
-                    overlap = len(out_base)
-                    if overlap > best_overlap:
-                        best_overlap = overlap
-                        best_match = in_sig
-            if best_match is not None:
-                anchors.append((out_sig.name, best_match.name))
+        def _strip_valid(norm: str) -> str:
+            for s in ("valid", "vld", "req"):
+                if norm.endswith(s) and len(norm) > len(s):
+                    return norm[: -len(s)]
+            return ""
+
+        def _strip_ready(norm: str) -> str:
+            for s in ("ready", "rdy", "ack"):
+                if norm.endswith(s) and len(norm) > len(s):
+                    return norm[: -len(s)]
+            return ""
+
+        def _find_pairs(outputs, inputs, out_strip, in_strip, swap_order=False):
+            for out_sig in outputs:
+                out_norm = self.norm.normalize(out_sig.name).normalized
+                best_match = None
+                best_overlap = 0
+                for in_sig in inputs:
+                    in_norm = self.norm.normalize(in_sig.name).normalized
+                    out_base = out_strip(out_norm)
+                    in_base = in_strip(in_norm)
+                    if out_base and out_base == in_base:
+                        overlap = len(out_base)
+                        if overlap > best_overlap:
+                            best_overlap = overlap
+                            best_match = in_sig
+                if best_match is not None:
+                    # [FIX 2026-06-11] swap_order: slave 模式 (out_ready + in_valid) 需
+                    # 交换顺序, 让 provider.get_handshake(valid, ready) 拿到正确的 trace target.
+                    if swap_order:
+                        anchors.append((best_match.name, out_sig.name))
+                    else:
+                        anchors.append((out_sig.name, best_match.name))
+
+        # master 模式: (output valid + input ready) — 直接作为 (valid, ready) pair
+        _find_pairs(out_valid, in_ready, _strip_valid, _strip_ready, swap_order=False)
+        # slave 模式: (output ready + input valid) — 交换顺序, 让 provider trace ready (output)
+        _find_pairs(out_ready, in_valid, _strip_ready, _strip_valid, swap_order=True)
         return anchors

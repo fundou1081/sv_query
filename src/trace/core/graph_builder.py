@@ -53,6 +53,11 @@ class GraphBuilder:
         self._collect_struct_members()  # [NEW] Collect struct member information
         self._expand_struct_assignments()  # [NEW] Expand struct assignments to member assignments
         self._upgrade_reg_nodes()  # Must be after _create_hierarchical_bit_nodes
+        # [FIX 2026-06-11] Wrapper module port mapping pass:
+        # wrapper module (e.g. axi_ram_wr_rd_if) 内部 instance 的 port (e.g. axi_ram_wr_if)
+        # 通过 .s_axi_awready(s_axi_awready) port mapping 接到 wrapper 自己的 port.
+        # graph builder 只跑了顶层 elaboration, 缺这层. 加 post-process pass 补上.
+        self._elaborate_wrapper_passthroughs()
 
         return self.graph
 
@@ -379,6 +384,113 @@ class GraphBuilder:
                             node.kind = NodeKind.REG
                             if was_port:
                                 node.is_port = True
+
+    def _elaborate_wrapper_passthroughs(self):
+        """[FIX 2026-06-11] 补充 wrapper module 内部 port mapping 边.
+
+        问题: graph builder 只 elaboration 顶层 (top module 跟直接子 instance).
+        wrapper module (e.g. axi_ram_wr_rd_if) 内部 instance 的 port (e.g. axi_ram_wr_if_inst.s_axi_awready)
+        通过 .s_axi_awready(s_axi_awready) 接到 wrapper 自己的 port (axi_ram_wr_rd_if.s_axi_awready).
+        这条边没建, 导致 trace 跨 wrapper 边界时找不到 leaf driver.
+
+        修复 heuristic: 对每个 module def 的 PORT_OUT node:
+        1. 找所有 instance 化它的 parent instance (pti 反向)
+        2. 在每个 instance 内部 (path = parent_inst_path), 找跟 wrapper port 同名 port 的 deep instance port
+        3. 加 DRIVER 边: deep_port → wrapper_def_port (在 parent_inst scope)
+
+        实际生成: DRIVER 边 from "axi_dp_ram.b_if.axi_ram_wr_if_inst.s_axi_awready"
+        to "axi_ram_wr_rd_if.s_axi_awready"
+        """
+        from collections import defaultdict
+
+        if not hasattr(self.graph, "_port_to_internal"):
+            return
+
+        pti = self.graph._port_to_internal
+
+        # 1. 对每个 module def port, 找 instance 化它的所有 instance paths
+        #    reverse_pti[def_port] = [instance_port_1, instance_port_2, ...]
+        reverse_pti = defaultdict(list)
+        for inst_port, def_port in pti.items():
+            reverse_pti[def_port].append(inst_port)
+
+        added_edges = 0
+        # 2. 对每个 module def port
+        for def_port, inst_ports in reverse_pti.items():
+            # 只处理 module def port (PORT_OUT, kind.name='PORT_OUT')
+            def_node = self.graph._node_data.get(def_port)
+            if not def_node or def_node.kind.name != "PORT_OUT":
+                continue
+
+            # 检查 def_port 是否已经有 driver (避免重复加)
+            has_driver = any(
+                edge.kind == EdgeKind.DRIVER
+                for edges in self.graph._edge_data.values()
+                for edge in edges
+                if edge.dst == def_port or (isinstance(edges, list) and any(e.dst == def_port for e in edges))
+            )
+            # 上面的检查比较脆弱, 用 predecessors 更稳
+            if def_port in self.graph._node_data:
+                preds = list(self.graph.predecessors(def_port))
+                if any(
+                    self.graph._edge_data.get((p, def_port), [None])[0]
+                    and self.graph._edge_data[(p, def_port)][0].kind == EdgeKind.DRIVER
+                    for p in preds if (p, def_port) in self.graph._edge_data
+                ):
+                    continue
+
+            # def_port 格式: "module_name.port_name"
+            if "." not in def_port:
+                continue
+            def_module, port_name = def_port.rsplit(".", 1)
+
+            # 3. 对每个 instance 化 wrapper 的 instance, 找 wrapper 内部 deep port
+            for inst_port in inst_ports:
+                # inst_port 格式: "parent.inst_name.port_name"
+                if "." not in inst_port:
+                    continue
+                # instance 路径 (parent.inst_name)
+                inst_path = inst_port.rsplit(".", 1)[0]
+                # 在 inst_path 内部, 找跟 port_name 同名的 deep port
+                # 即: f"{inst_path}.{sub_inst}.{port_name}" 或更深
+                # 用 graph 节点前缀搜索
+                prefix = f"{inst_path}."
+                for node_id in self.graph._node_data:
+                    if not node_id.startswith(prefix):
+                        continue
+                    if node_id == inst_port:
+                        continue
+                    # 检查末尾是否是 port_name
+                    if not node_id.endswith(f".{port_name}"):
+                        continue
+                    # 是 deep port: inst_path.sub_inst.port_name
+                    # 检是不是 instance port (kind=PORT_OUT/IN) — wrapper 内部 sub_inst 的 port
+                    deep_node = self.graph._node_data[node_id]
+                    if deep_node.kind.name not in ("PORT_OUT", "PORT_IN"):
+                        continue
+                    # 加 DRIVER 边: deep_port → def_port
+                    # 在 graph 上加边: deep_port 是实际 driver, def_port 是 wrapper module def
+                    # 但 trace 时, def_port 还需要追到 instance_port (via pti reverse)
+                    # 所以 trace 看到 def_port 时追到 inst_port (实际 signal = deep_port 的 inst scope)
+                    # 加边: deep_port → inst_port (在 inst 内部)
+                    # 这样 trace: top → inst_port → wrapper_def_port (DRIVER 边) → deep_port (DRIVER 边) → leaf
+                    # 注意: ConnectionExtractor 可能已加 CONNECTION 边 (assign_type=connection) for 同一 (src,dst).
+                    # 这里加 DRIVER 边 (assign_type=wrapper_passthrough). 二者不冲突.
+                    from .graph.models import TraceEdge
+                    already_has_driver = any(
+                        e.kind == EdgeKind.DRIVER
+                        for e in self.graph._edge_data.get((deep_node.id, inst_port), [])
+                    )
+                    if not already_has_driver:
+                        self.graph.add_trace_edge(TraceEdge(
+                            src=deep_node.id,
+                            dst=inst_port,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="wrapper_passthrough",
+                        ))
+                        added_edges += 1
+
+        logger.debug(f"_elaborate_wrapper_passthroughs: added {added_edges} passthrough edges")
 
     def _mark_special_signals(self):
         for _node_id, node in self.graph._node_data.items():

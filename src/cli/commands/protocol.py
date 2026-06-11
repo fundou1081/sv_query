@@ -167,7 +167,9 @@ def detect(
             graph = tracer.build_graph()
             from trace.core.query.signal import SignalTracer
             signal_tracer = SignalTracer(graph)
-            handshake_provider = make_trace_based_provider(signal_tracer, graph)
+            # [FIX 2026-06-11] 把 --module 传给 provider, 让 trace 知道 scope
+            # (e.g. axi_dp_ram.s_axi_a_awready vs bare s_axi_a_awready)
+            handshake_provider = make_trace_based_provider(signal_tracer, graph, module=module)
         except Exception:
             from applications.bus.handshake_provider import NameBasedHandshakeProvider
             handshake_provider = NameBasedHandshakeProvider()
