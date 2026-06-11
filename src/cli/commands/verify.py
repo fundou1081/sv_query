@@ -80,8 +80,8 @@ def gap(
         handle_compilation_error(e, strict=strict)
         return
     sources = tracer._sources
-    sva = SVAExtractor(sources).extract()
-    cov_list = CovergroupExtractor(sources).extract()
+    sva = SVAExtractor(sources, strict=strict).extract()
+    cov_list = CovergroupExtractor(sources, strict=strict).extract()
 
     # ===== 1. 收集覆盖信息 =====
     sva_signals = set()

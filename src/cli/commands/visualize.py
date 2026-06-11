@@ -54,7 +54,7 @@ def graph(
     ),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode: raise on elaboration error. --no-strict returns partial AST (use for incomplete projects like OpenTitan with missing primitives)"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode: raise on elaboration error. Default non-strict (--no-strict) returns partial AST (use for incomplete projects like NaplesPU/OpenTitan with missing primitives)"),
 ) -> None:
     """可视化信号图（包含数据流关系）
 
@@ -185,8 +185,8 @@ def _run_graph_visualization(
         sva = SVAExtractor(sources_for_extractors).extract()
         cov_list = CovergroupExtractor(sources_for_extractors).extract()
     elif sources:
-        sva = SVAExtractor(sources).extract()
-        cov_list = CovergroupExtractor(sources).extract()
+        sva = SVAExtractor(sources, strict=strict).extract()
+        cov_list = CovergroupExtractor(sources, strict=strict).extract()
     else:
         sva = None
         cov_list = []

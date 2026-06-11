@@ -21,15 +21,18 @@ class SVAExtractor:
     [铁律1] 通过 SVCompiler 获取编译后 AST。
     """
 
-    def __init__(self, sources: dict[str, str]):
+    def __init__(self, sources: dict[str, str], strict: bool = True):
+        # [FIX 2026-06-12 Req-15] strict 默认 True 跟原语义一致, 但 CLI caller 可传 False
         self._sources = sources
+        self._strict = strict
 
     def extract(self) -> SVAGraph:
         """提取所有 SVA 结构"""
         graph = SVAGraph()
 
         try:
-            compiler = SVCompiler(sources=self._sources, log_level="NONE")
+            # [FIX 2026-06-12 Req-15] 传 strict=跟 caller 一致, 避免 non-strict CLI 仍报"编译失败"
+            compiler = SVCompiler(sources=self._sources, log_level="NONE", strict=self._strict)
             root = compiler.get_root()
             self._walk(root, graph)
         except Exception as e:

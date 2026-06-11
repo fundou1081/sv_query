@@ -20,14 +20,16 @@ class CovergroupExtractor:
     [铁律1] 通过 SVCompiler 获取编译后 AST，不使用 SyntaxTree.fromText。
     """
 
-    def __init__(self, sources: dict[str, str]):
+    def __init__(self, sources: dict[str, str], strict: bool = True):
+        # [FIX 2026-06-12 Req-15] strict 参数跟 caller 一致 (默认 True, CLI 可传 False)
         self._sources = sources
+        self._strict = strict
 
     def extract(self) -> list[CovergroupInfo]:
         """提取所有 covergroup"""
         results = []
         try:
-            compiler = SVCompiler(sources=self._sources)
+            compiler = SVCompiler(sources=self._sources, strict=self._strict)
             root = compiler.get_root()
             self._find_covergroups(root, results)
         except Exception as e:
