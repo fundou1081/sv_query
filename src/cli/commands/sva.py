@@ -100,8 +100,10 @@ def extract(
         )
         return
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
+    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
     print(f"{'=' * 80}")
-    print(f"SVA 提取: {file}")
+    print(f"SVA 提取: {display_file}")
     print(f"{'=' * 80}")
 
     print(f"\n  序列 (Sequences): {len(sva.sequences)}")
@@ -211,8 +213,10 @@ def coverage(
         )
         return
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
+    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
     print(f"{'=' * 80}")
-    print(f"SVA 覆盖分析: {file}")
+    print(f"SVA 覆盖分析: {display_file}")
     print(f"{'=' * 80}")
 
     ratio = len(covered) / len(data_signals) if data_signals else 0
@@ -330,8 +334,10 @@ def timing(
         print(json.dumps({"ok": True, "command": "sva timing", "result": results}, indent=2))
         return
 
+    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
+    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
     print(f"{'=' * 80}")
-    print(f"SVA 时序比对: {file}")
+    print(f"SVA 时序比对: {display_file}")
     print(f"{'=' * 80}")
 
     print("""

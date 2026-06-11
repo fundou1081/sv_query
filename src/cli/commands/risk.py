@@ -187,8 +187,10 @@ def analyze(
         return
 
     # 文本输出
+    # [ADD 2026-06-11 Req-9] file/filelist 模式都显示实际被分析的文件名, 行为一致
+    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
     print(f"{'=' * 80}")
-    print(f"风险分析: {file}")
+    print(f"风险分析: {display_file}")
     print(f"{'=' * 80}")
 
     print(f"\n  ⏰ 时钟信号 ({len(clocks)}): {', '.join(c['name'] for c in clocks)}")
