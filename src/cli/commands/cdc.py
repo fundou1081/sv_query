@@ -38,21 +38,39 @@ cdc_app = typer.Typer(help="CDC (Clock Domain Crossing) detection: identify cros
 
 @cdc_app.command(name="analyze")
 def analyze(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     high_only: bool = typer.Option(False, "--high-only", help="Show only high-risk CDC paths"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for source/target of each CDC path (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
-    """Detect clock domain crossing issues"""
-    from trace.unified_tracer import UnifiedTracer
+    """Detect clock domain crossing issues
 
-    with open(file) as f:
-        source = f.read()
+    [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
+    [ADD 2026-06-11 任务3] elaboration error 统一 catch.
+    """
+    from cli._common import _build_tracer, handle_compilation_error
+    from trace.core.compiler import CompilationError
 
-    tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
     cdc = CDCAnalyzer(graph)
     cdc.identify_clock_domains()
     cdc.assign_domains()
