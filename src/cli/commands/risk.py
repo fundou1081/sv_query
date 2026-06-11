@@ -40,20 +40,39 @@ risk_app = typer.Typer(help="Signal risk analysis: classify nodes by clock/reset
 
 @risk_app.command(name="analyze")
 def analyze(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_comb_depth: int = typer.Option(3, "--max-comb-depth", help="Max combinational depth threshold"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each data signal (optional)"),
 ) -> None:
-    """Analyze signal risk: clock/reset/data classification + risk scoring"""
+    """Analyze signal risk: clock/reset/data classification + risk scoring
 
-    with open(file) as f:
-        source = f.read()
+    [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
+    [ADD 2026-06-11 任务3] elaboration error 统一 catch.
+    """
+    from cli._common import _build_tracer, handle_compilation_error
+    from trace.core.compiler import CompilationError
 
-    tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
-    sva = SVAExtractor({file: source}).extract()
-    cov_list = CovergroupExtractor({file: source}).extract()
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+        sources = tracer._sources
+        sva = SVAExtractor(sources).extract()
+        cov_list = CovergroupExtractor(sources).extract()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
 
     # 覆盖信号
     sva_signals = set()
