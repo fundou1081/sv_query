@@ -253,14 +253,21 @@ class SignalTracer:
                     drivers.append(node)
         return drivers
 
-    def _find_loads(self, signal_id: str) -> list[TraceNode]:
+    def _find_loads(self, signal_id: str, allowed_kinds: set | None = None) -> list[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
 
         loads = []
         seen_ids = set()
 
+        # [ADD 2026-06-11 Req-12] 默认 None 走 DRIVER+CONNECTION; 指定 allowed_kinds 则照走
+        if allowed_kinds is None:
+            allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
+
         for succ in self.graph.successors(signal_id):
+            edge = self.graph.get_edge(signal_id, succ)
+            if edge and edge.kind not in allowed_kinds:
+                continue
             node = self.graph.get_node(succ)
             if node and node.id not in seen_ids:
                 loads.append(node)
@@ -268,16 +275,19 @@ class SignalTracer:
 
         return loads
 
-    def _collect_all_loads(self, signal_id: str, max_depth: int | None = None) -> list[TraceNode]:
+    def _collect_all_loads(self, signal_id: str, max_depth: int | None = None, allowed_kinds: set | None = None) -> list[TraceNode]:
         """递归收集所有后继(被这个信号驱动的所有节点)
 
         Args:
             signal_id: 信号 ID
             max_depth: None=无限递归, N=最多递归 N 层
+            allowed_kinds: [Req-12] 允许的边类型集合, None=默认 DRIVER+CONNECTION
         """
         loads = []
         seen_ids = set()
-        self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth)
+        if allowed_kinds is None:
+            allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
+        self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth, allowed_kinds=allowed_kinds)
         return loads
 
     def _trace_loads_recursive(
@@ -287,6 +297,7 @@ class SignalTracer:
         seen_ids: set,
         current_depth: int = 0,
         max_depth: int | None = None,
+        allowed_kinds: set | None = None,
     ):
         """递归追溯负载(被 signal_id 驱动的节点)
 
@@ -296,6 +307,7 @@ class SignalTracer:
             seen_ids: 已访问节点集合(inout)
             current_depth: 当前递归深度
             max_depth: None=无限递归, N=最多递归 N 层
+            allowed_kinds: [Req-12] 允许的边类型集合, None=默认 DRIVER+CONNECTION
         """
         if max_depth is not None and current_depth >= max_depth:
             return
@@ -305,10 +317,13 @@ class SignalTracer:
             return
         seen_ids.add(signal_id)
 
+        if allowed_kinds is None:
+            allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
+
         for src, dst in list(self.graph.edges()):
             if src == signal_id:
                 edge = self.graph.get_edge(src, dst)
-                if edge and edge.kind not in (EdgeKind.DRIVER, EdgeKind.CONNECTION):
+                if edge and edge.kind not in allowed_kinds:
                     continue
                 node = self.graph.get_node(dst)
                 if node and node.id not in seen_ids:
@@ -316,20 +331,42 @@ class SignalTracer:
                 if dst in self.graph.nodes():
                     self._trace_loads_recursive(dst, loads, seen_ids, current_depth + 1, max_depth)
 
-    def trace_fanout(self, signal: str, module: str = None, depth: int | None = None) -> list[TraceNode]:
+    def trace_fanout(
+        self,
+        signal: str,
+        module: str = None,
+        depth: int | None = None,
+        include_clock: bool = False,
+        include_reset: bool = False,
+        include_control: bool = False,
+    ) -> list[TraceNode]:
         """Trace signal fanout (loads driven by this signal)
 
         Args:
             signal: signal name
             module: module name (optional, for relative paths)
             depth: 1=direct loads only, N=recursive N levels, None=recursive all
+            include_clock: [Req-12 Issue 19] True 时包含 CLOCK 边 (sensitivity list)
+            include_reset: [Req-12 Issue 19] True 时包含 RESET 边
+            include_control: [Req-12 Issue 19] True 时包含 CONTROL 边 (always 块引用)
+
+        默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
         signal_id = self._make_id(signal, module)
         if signal_id not in self.graph.nodes():
             return []
+        # [ADD 2026-06-11 Req-12] 计算要包含的边类型
+        allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
+        if include_clock:
+            allowed_kinds.add(EdgeKind.CLOCK)
+        if include_reset:
+            allowed_kinds.add(EdgeKind.RESET)
+        if include_control:
+            allowed_kinds.add(EdgeKind.CONTROL)
+        # depth=1 用 _find_loads 过滤
         if depth == 1:
-            return self._find_loads(signal_id)
-        return self._collect_all_loads(signal_id, max_depth=depth)
+            return self._find_loads(signal_id, allowed_kinds=allowed_kinds)
+        return self._collect_all_loads(signal_id, max_depth=depth, allowed_kinds=allowed_kinds)
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> list[TraceNode]:
         """Trace signal fanin (drivers of this signal)
