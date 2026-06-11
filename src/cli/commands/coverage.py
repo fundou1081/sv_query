@@ -27,6 +27,9 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+
 
 warnings.filterwarnings("ignore")
 
@@ -39,7 +42,10 @@ coverage_app = typer.Typer(
 
 @coverage_app.command(name="suggest")
 def suggest(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     signal: str = typer.Option(None, "--signal", "-s", help="Single signal to decompose (e.g., top.x)"),
     signals: str = typer.Option(None, "--signals", help="Comma-separated signals (V2.B: multi-signal decomposition, merged with dedup)"),
     max_signals: int = typer.Option(5, "--max-signals", help="Max signal tree size"),
@@ -59,12 +65,13 @@ def suggest(
         raise typer.Exit(code=1)
 
     try:
-        with open(file) as f:
-            source = f.read()
-
-        # --json 模式下只报 ERROR, 避免 WARNING 污染 stdout
         tracer_log_level = "ERROR" if json_output else None
-        tracer = UnifiedTracer(sources={file: source}, log_level=tracer_log_level)
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=tracer_log_level,
+        )
         graph = tracer.build_graph()
 
         gen = ControlCoverageGenerator(graph=graph)
