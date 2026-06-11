@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 
 import typer
+from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
@@ -24,18 +26,15 @@ from cli._evidence_helpers import (  # noqa: E402
     format_controlflow_human as _format_controlflow_human,
 )
 
-
 def output_json(data: dict, pretty: bool = False) -> None:
     indent = 2 if pretty else None
     print(json.dumps(data, indent=indent, ensure_ascii=False))
-
 
 def _is_constant(src: str) -> bool:
     """检查是否为常量（字面量）"""
     if not src:
         return False
     return not src[0].isalpha() and not src.startswith("_")
-
 
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
@@ -86,14 +85,15 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
             for w in warnings:
                 print(f"    ⚠️  {w}")
 
-
 controlflow_app = typer.Typer(help="Analyze control flow conditions for signals")
-
 
 @controlflow_app.command("analyze")
 def analyze(
     signal: str = typer.Argument(..., help="Signal to analyze (e.g., top.q)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
@@ -101,208 +101,207 @@ def analyze(
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
     """Analyze control flow conditions for a signal"""
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
         graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
 
-        # Build GraphBuilder for analyzer
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+    # Build GraphBuilder for analyzer
+    from trace.core.compiler import SVCompiler
+    from trace.core.semantic_adapter import SemanticAdapter
 
-        compiler = SVCompiler({str(file): source})
-        semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
+    compiler = SVCompiler(sources)
+    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
-        graph_builder = GraphBuilder(semantic_adapter)
-        graph_builder.graph = graph
-        graph_builder._module_graph = tracer._module_graph
+    graph_builder = GraphBuilder(semantic_adapter)
+    graph_builder.graph = graph
+    graph_builder._module_graph = tracer._module_graph
 
-        analyzer = ControlFlowAnalyzer(graph_builder)
-        result = analyzer.analyze(signal)
+    analyzer = ControlFlowAnalyzer(graph_builder)
+    result = analyzer.analyze(signal)
 
-        # [Stage 5] (可选) evidence 召回 - 每个 condition 的 to_node 独立解析
-        evidence_resolver = None
-        if evidence:
-            evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
+    # [Stage 5] (可选) evidence 召回 - 每个 condition 的 to_node 独立解析
+    evidence_resolver = None
+    if evidence:
+        evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
 
-        # Build output data
-        drivers_data = []
-        for cd in result.conditioned_drivers:
-            conds_data = []
-            for cond in cd.conditions:
-                cond_dict = {
-                    "expr": cond.expr,
-                    "edge": {
-                        "src": cond.edge.src,
-                        "dst": cond.edge.dst,
-                        "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
-                        "condition": cond.edge.condition,
-                    },
-                }
-                if evidence_resolver is not None:
-                    cond_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(cond.edge.dst))
-                conds_data.append(cond_dict)
-            drivers_data.append(
-                {
-                    "to_node": cd.to_node,
-                    "conditions": conds_data,
-                }
-            )
+    # Build output data
+    drivers_data = []
+    for cd in result.conditioned_drivers:
+        conds_data = []
+        for cond in cd.conditions:
+            cond_dict = {
+                "expr": cond.expr,
+                "edge": {
+                    "src": cond.edge.src,
+                    "dst": cond.edge.dst,
+                    "kind": cond.edge.kind.name if hasattr(cond.edge.kind, "name") else str(cond.edge.kind),
+                    "condition": cond.edge.condition,
+                },
+            }
+            if evidence_resolver is not None:
+                cond_dict["evidence"] = evidence_to_dict(evidence_resolver.resolve(cond.edge.dst))
+            conds_data.append(cond_dict)
+        drivers_data.append(
+            {
+                "to_node": cd.to_node,
+                "conditions": conds_data,
+            }
+        )
 
-        data = {
-            "ok": True,
-            "command": "controlflow",
-            "params": {
-                "signal": signal,
-                "file": str(file),
-                "evidence": evidence,
-            },
-            "result": {
-                "signal": result.signal,
-                "conditioned_drivers": drivers_data,
-                "warnings": result.warnings,
-            },
-            "errors": [],
-        }
+    data = {
+        "ok": True,
+        "command": "controlflow",
+        "params": {
+            "signal": signal,
+            "file": str(file),
+            "evidence": evidence,
+        },
+        "result": {
+            "signal": result.signal,
+            "conditioned_drivers": drivers_data,
+            "warnings": result.warnings,
+        },
+        "errors": [],
+    }
 
-        if json_output:
-            output_json(data, pretty)
-        else:
-            output_text(data, human=human, tree=tree)
-
-    except Exception as e:
-        data = {"ok": False, "command": "controlflow", "error": str(e), "errors": [str(e)]}
-        if json_output:
-            output_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-        raise typer.Exit(code=1) from None
-
+    if json_output:
+        output_json(data, pretty)
+    else:
+        output_text(data, human=human, tree=tree)
 
 @controlflow_app.command("list-conditioned")
 def list_conditioned(
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
     """List all signals with conditional drivers"""
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
         graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
 
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+    from trace.core.compiler import SVCompiler
+    from trace.core.semantic_adapter import SemanticAdapter
 
-        compiler = SVCompiler({str(file): source})
-        semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
+    compiler = SVCompiler(sources)
+    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
-        graph_builder = GraphBuilder(semantic_adapter)
-        graph_builder.graph = graph
-        graph_builder._module_graph = tracer._module_graph
+    graph_builder = GraphBuilder(semantic_adapter)
+    graph_builder.graph = graph
+    graph_builder._module_graph = tracer._module_graph
 
-        analyzer = ControlFlowAnalyzer(graph_builder)
-        signals = analyzer.find_conditioned_signals()
+    analyzer = ControlFlowAnalyzer(graph_builder)
+    signals = analyzer.find_conditioned_signals()
 
-        data = {
-            "ok": True,
-            "command": "controlflow",
-            "subcommand": "list-conditioned",
-            "params": {"file": str(file)},
-            "result": {
-                "signals": signals,
-                "count": len(signals),
-            },
-            "errors": [],
-        }
+    data = {
+        "ok": True,
+        "command": "controlflow",
+        "subcommand": "list-conditioned",
+        "params": {"file": str(file)},
+        "result": {
+            "signals": signals,
+            "count": len(signals),
+        },
+        "errors": [],
+    }
 
-        if json_output:
-            output_json(data, pretty)
-        else:
-            print(f"Signals with conditional drivers ({len(signals)}):")
-            for sig in signals:
-                print(f"  - {sig}")
-
-    except Exception as e:
-        data = {
-            "ok": False,
-            "command": "controlflow",
-            "subcommand": "list-conditioned",
-            "error": str(e),
-            "errors": [str(e)],
-        }
-        if json_output:
-            output_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-        raise typer.Exit(code=1) from None
-
+    if json_output:
+        output_json(data, pretty)
+    else:
+        print(f"Signals with conditional drivers ({len(signals)}):")
+        for sig in signals:
+            print(f"  - {sig}")
 
 @controlflow_app.command("conditions")
 def get_conditions(
     signal: str = typer.Argument(..., help="Signal to get conditions for"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
     """Get all conditions for a signal"""
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(
+            file=file,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
         graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
 
-        from trace.core.compiler import SVCompiler
-        from trace.core.semantic_adapter import SemanticAdapter
+    from trace.core.compiler import SVCompiler
+    from trace.core.semantic_adapter import SemanticAdapter
 
-        compiler = SVCompiler({str(file): source})
-        semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
+    compiler = SVCompiler(sources)
+    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
-        graph_builder = GraphBuilder(semantic_adapter)
-        graph_builder.graph = graph
-        graph_builder._module_graph = tracer._module_graph
+    graph_builder = GraphBuilder(semantic_adapter)
+    graph_builder.graph = graph
+    graph_builder._module_graph = tracer._module_graph
 
-        analyzer = ControlFlowAnalyzer(graph_builder)
-        conditions = analyzer.get_conditions_for_signal(signal)
+    analyzer = ControlFlowAnalyzer(graph_builder)
+    conditions = analyzer.get_conditions_for_signal(signal)
 
-        data = {
-            "ok": True,
-            "command": "controlflow",
-            "subcommand": "conditions",
-            "params": {
-                "signal": signal,
-                "file": str(file),
-            },
-            "result": {
-                "signal": signal,
-                "conditions": conditions,
-                "count": len(conditions),
-            },
-            "errors": [],
-        }
+    data = {
+        "ok": True,
+        "command": "controlflow",
+        "subcommand": "conditions",
+        "params": {
+            "signal": signal,
+            "file": str(file),
+        },
+        "result": {
+            "signal": signal,
+            "conditions": conditions,
+            "count": len(conditions),
+        },
+        "errors": [],
+    }
 
-        if json_output:
-            output_json(data, pretty)
-        else:
-            print(f"Conditions for {signal} ({len(conditions)}):")
-            for cond in conditions:
-                print(f"  - {cond}")
+    if json_output:
+        output_json(data, pretty)
+    else:
+        print(f"Conditions for {signal} ({len(conditions)}):")
+        for cond in conditions:
+            print(f"  - {cond}")
 
-    except Exception as e:
-        data = {"ok": False, "command": "controlflow", "subcommand": "conditions", "error": str(e), "errors": [str(e)]}
-        if json_output:
-            output_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-        raise typer.Exit(code=1) from None
