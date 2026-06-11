@@ -146,7 +146,13 @@ def analyze(
         return
 
     dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
-    result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
+    try:
+        result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
+    except ValueError as e:
+        # [ADD 2026-06-11 Req-11] 信号名不存在的友好错误 (Issue 20)
+        # ValueError 已含 hint 和 available signals, 不暴露 traceback
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1) from None
 
     # [Stage 5] (可选) evidence 召回 - 每个 segment 的 to_signal 独立解析
     evidence_resolver = None

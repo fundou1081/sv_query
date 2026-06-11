@@ -655,7 +655,32 @@ class DataFlowGraph:
 
         Returns:
             DataFlowResult: 包含所有路径及分析结果
+
+        Raises:
+            ValueError: 信号在图中不存在, 错误信息包含 hint (要求 hierarchical name)
+                        和前 10 个可用信号名
         """
+        # [ADD 2026-06-11 Req-11] 验证信号在图中存在, 友好错误提示
+        # 修复 Issue 20: 裸信号名报错 "not in digraph" 不告诉用户需 hierarchical name
+        # SignalGraph 本身是 nx.DiGraph, 直接用 .nodes()
+        for sig in (from_signal, to_signal):
+            if sig not in self.signal_graph.nodes():
+                available = sorted([n for n in self.signal_graph.nodes() if isinstance(n, str)])[:10]
+                # 检测信号是否带 hierarchy, 给 hint
+                hint = ""
+                if "." not in sig:
+                    # 尝试提供一个带 module 名的 hint
+                    for n in self.signal_graph.nodes():
+                        if isinstance(n, str) and "." in n:
+                            module_name = n.split(".")[0]
+                            hint = f"\nHint: signal name should be hierarchical, e.g. '{module_name}.{sig}'"
+                            break
+                raise ValueError(
+                    f"Signal '{sig}' not found in graph."
+                    f"{hint}\n"
+                    f"Available signals (first 10): {available}"
+                )
+
         # 1. 查找所有路径
         paths = self._find_paths(from_signal, to_signal)
 
