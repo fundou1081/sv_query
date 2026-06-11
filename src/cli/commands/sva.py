@@ -20,6 +20,9 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
+
 
 warnings.filterwarnings("ignore")
 
@@ -33,14 +36,25 @@ sva_app = typer.Typer(help="SVA (SystemVerilog Assertions) analysis: extract pro
 
 @sva_app.command(name="extract")
 def extract(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
     """Extract SVA structures: sequences, properties, assertions"""
-    with open(file) as f:
-        source = f.read()
+    # [ADD 2026-06-11 Req-9] 读 source: --filelist 走 _read_filelist, --file 走 open
+    from cli._common import _read_filelist
+    if filelist:
+        sources = _read_filelist(filelist, base_dir=Path.cwd())
+    elif file:
+        with open(file) as f:
+            sources = {file: f.read()}
+    else:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
 
-    sva = SVAExtractor({file: source}).extract()
+    sva = SVAExtractor(sources).extract()
 
     if json_output:
         import json
@@ -119,17 +133,31 @@ def extract(
 
 @sva_app.command(name="coverage")
 def coverage(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
     """Analyze SVA coverage: which signals have assertions, which don't"""
-    with open(file) as f:
-        source = f.read()
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
 
-    tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
-    sva = SVAExtractor({file: source}).extract()
-    cov_list = CovergroupExtractor({file: source}).extract()
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+    sva = SVAExtractor(sources).extract()
+    cov_list = CovergroupExtractor(sources).extract()
 
     # SVA 覆盖信号
     sva_signals = set()
@@ -207,7 +235,10 @@ def coverage(
 
 @sva_app.command(name="timing")
 def timing(
-    file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
     """Compare SVA timing declarations with signal graph timing depth"""
@@ -256,12 +287,23 @@ def timing(
                 queue.append((succ, nd))
         return max_d if found else 0
 
-    with open(file) as f:
-        source = f.read()
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
 
-    tracer = UnifiedTracer(sources={file: source})
-    graph = tracer.build_graph()
-    sva = SVAExtractor({file: source}).extract()
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=log_level,
+        )
+        graph = tracer.build_graph()
+        sources = tracer._sources
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+    sva = SVAExtractor(sources).extract()
 
     results = []
     for pid, prop in sva.properties.items():
