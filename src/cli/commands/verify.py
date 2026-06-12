@@ -48,7 +48,7 @@ verify_app = typer.Typer(help="Verification gap detection: find high-risk signal
 def gap(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(False, "--strict", help="Strict mode: elaboration error 立即 raise (默认 non-strict)"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     top_n: int = typer.Option(20, "--top", "-n", help="Show top N high-risk signals"),

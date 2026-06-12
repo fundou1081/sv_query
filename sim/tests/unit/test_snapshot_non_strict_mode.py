@@ -122,7 +122,7 @@ def test_snapshot_save_non_strict_does_not_crash():
         # 写一个故意有错的 sv
         sv_path = Path(tmpdir) / "bad.sv"
         sv_path.write_text(BAD_SV_UNDECLARED)
-        # 跑 snapshot save (无 --strict)
+        # 跑 snapshot save --no-strict (默认 strict 模式下会 exit 1)
         r = subprocess.run(
             [
                 "python3",
@@ -132,6 +132,7 @@ def test_snapshot_save_non_strict_does_not_crash():
                 str(sv_path),
                 "--tag",
                 "test-issue17",
+                "--no-strict",
             ],
             capture_output=True,
             text=True,

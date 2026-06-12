@@ -54,7 +54,7 @@ def graph(
     ),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode: raise on elaboration error. Default non-strict (--no-strict) returns partial AST (use for incomplete projects like NaplesPU/OpenTitan with missing primitives)"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): raise on elaboration error. Use --no-strict 优雅降级存部分图 (供分析不完整项目如 NaplesPU/OpenTitan)"),
 ) -> None:
     """可视化信号图（包含数据流关系）
 

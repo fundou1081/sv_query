@@ -33,7 +33,7 @@ from trace.unified_tracer import UnifiedTracer
 def _build_tracer(
     file: Optional[Path] = None,
     filelist: Optional[str] = None,
-    strict: bool = False,
+    strict: bool = True,
     log_level: str = "WARNING",
     include_dirs: Optional[list] = None,
 ) -> UnifiedTracer:
@@ -159,6 +159,9 @@ def _read_filelist_recursive(
 def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
     """[ADD 2026-06-11 任务3] 统一处理 CompilationError, 不暴露 Python traceback
 
+    [ADD 2026-06-12 Req-15 后续] 加 hint: 提示用户先修 filelist (正解),
+    不到万不得已不用 --no-strict (bypass).
+
     Args:
         e: 抛出的 CompilationError
         strict: 是否严格模式 (strict 模式才 exit 1; non-strict 应被调用方自己处理)
@@ -176,6 +179,16 @@ def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
             print("\n".join(detail_lines), file=sys.stderr)
             if len(lines) > 11:
                 print(f"  ... ({len(lines) - 11} more lines, see logs)", file=sys.stderr)
+        # 推荐先检查 filelist
+        # (错误代码在上面的 [ERROR] 行里, user 可以自己看)
+        print(
+            "\nHint: First check your filelist is complete (missing modules? missing includes?).",
+            file=sys.stderr,
+        )
+        print(
+            "      Use --no-strict to analyze the partial AST only as a last resort.",
+            file=sys.stderr,
+        )
     raise typer.Exit(code=1) from None
 
 
@@ -191,9 +204,10 @@ FILELIST_OPTION = typer.Option(
     None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"
 )
 STRICT_OPTION = typer.Option(
-    False,
-    "--strict",
-    help="Strict mode: elaboration error 立即 raise (默认 non-strict, 存部分图)",
+    True,
+    "--strict/--no-strict",
+    help="Strict mode (default): elaboration error 立即 raise, exit 1. "
+         "Use --no-strict 优雅降级存部分图 (供分析不完整项目用, e.g. OpenTitan/NaplesPU)",
 )
 LOG_LEVEL_OPTION = typer.Option(
     "WARNING", "--log-level", help="编译器日志级别 (DEBUG/INFO/WARNING/ERROR)"

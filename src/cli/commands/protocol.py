@@ -73,7 +73,7 @@ def detect(
         False, "--no-trace", help="Skip Phase B trace (use name-based only)"
     ),
     strict: bool = typer.Option(
-        False, "--strict", help="Strict 模式: 编译出错时 raise (默认 False = 优雅降级)"
+        True, "--strict/--no-strict", help="Strict mode (default): 编译出错时 raise. Use --no-strict 优雅降级存部分图"
     ),
 ):
     """检测模块的 bus 协议.
