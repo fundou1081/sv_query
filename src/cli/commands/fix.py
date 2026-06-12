@@ -27,6 +27,8 @@ import typer
 
 # [ADD 2026-06-12] 复用 _common
 from cli._common import _build_tracer
+# [ADD 2026-06-12] fix imports 子命令
+from cli.commands.fix_imports import fix_imports_cmd
 
 fix_app = typer.Typer(help="自动修复 elaboration 问题 (MissingTimeScale 等)")
 
@@ -351,6 +353,10 @@ def fix_report(
     if auto_fixable > 0:
         typer.echo(f"\nNext step: 跑 'fix timescale --apply' 修 auto-fixable 部分")
     raise typer.Exit(code=0)
+
+
+# [ADD 2026-06-12] 复用 fix_app 注册 fix imports 子命令
+fix_app.command(name="imports")(fix_imports_cmd)
 
 
 if __name__ == "__main__":
