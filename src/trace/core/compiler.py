@@ -362,12 +362,19 @@ class SVCompiler:
             # 提取代码名: "DiagCode(UndeclaredIdentifier)" -> "UndeclaredIdentifier"
             if "(" in code_str and code_str.endswith(")"):
                 code_str = code_str.split("(", 1)[1].rstrip(")")
+            # [ADD 2026-06-12 Req-18] 从 diag.args 抽未定义名 (e.g. ['undefined_typedef'])
+            # 让 fix imports 等工具能精准定位该补哪个 typedef/module
+            args = getattr(d, "args", []) or []
+            identifier = None
+            if args and isinstance(args[0], str):
+                identifier = args[0]
             out.append({
                 "file": fname,
                 "line": line,
                 "column": col,
                 "code": code_str,
                 "message": self._format_diagnostic(d).strip(),
+                "identifier": identifier,  # 未定义的标识符名 (e.g. 'service_message_t')
             })
         return out
 
