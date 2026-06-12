@@ -36,6 +36,7 @@ def _build_tracer(
     strict: bool = True,
     log_level: str = "WARNING",
     include_dirs: Optional[list] = None,
+    preprocess_macros: bool = True,
 ) -> UnifiedTracer:
     """[ADD 2026-06-11 Req-9] 统一构建 UnifiedTracer, 支持 --file / --filelist
 
@@ -45,6 +46,8 @@ def _build_tracer(
         strict: True = elaboration error 立即 raise; False = 优雅降级存部分图
         log_level: 编译器日志级别, 默认 WARNING (可设 ERROR 静音)
         include_dirs: include 搜索路径列表
+        preprocess_macros: True (默认) = 跨文件宏展开 (Req-20);
+                          False = 信任 pyslang 内置 (退回旧行为)
 
     Returns:
         UnifiedTracer 实例 (未 build_graph, 调用方自己调)
@@ -65,6 +68,7 @@ def _build_tracer(
             log_level=log_level,
             include_dirs=include_dirs or [],
             strict=strict,
+            preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     elif file is not None:
         if not file.exists():
@@ -76,6 +80,7 @@ def _build_tracer(
             log_level=log_level,
             include_dirs=include_dirs or [],
             strict=strict,
+            preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     else:
         raise ValueError("Either --file or --filelist must be provided")
@@ -211,4 +216,10 @@ STRICT_OPTION = typer.Option(
 )
 LOG_LEVEL_OPTION = typer.Option(
     "WARNING", "--log-level", help="编译器日志级别 (DEBUG/INFO/WARNING/ERROR)"
+)
+PREPROCESS_OPTION = typer.Option(
+    True,
+    "--preprocess/--no-preprocess",
+    help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. "
+         "Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)",
 )

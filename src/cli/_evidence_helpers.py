@@ -26,23 +26,25 @@ from trace.unified_tracer import UnifiedTracer
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter
 # ----------------------------------------------------------------------------
 
-def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None) -> Tuple[TraceEvidenceResolver, Any, Any]:
+def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True) -> Tuple[TraceEvidenceResolver, Any, Any]:
     """读取 SV 源文件 -> build graph + adapter + resolver
 
     Args:
         file: SystemVerilog 源文件路径 (与 filelist 二选一)
         filelist: filelist 路径,用于多文件项目
         log_level: 编译器日志级别,CLI 默认 ERROR 静音 WARNING
+        strict: True = elaboration error 立即 raise; False = 优雅降级 (默认 False, 供 evidence 走部分图)
+        preprocess_macros: [Req-20 2026-06-12] 跨文件 `MACRO 展开, 避免 TooFewArguments
 
     Returns:
         (resolver, graph, adapter) - adapter 暴露 semantic API 给 resolver 内部用
     """
     if filelist:
-        tracer = UnifiedTracer(filelist=filelist, log_level=log_level)
+        tracer = UnifiedTracer(filelist=filelist, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros)
     elif file:
         with open(str(file)) as f:
             source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source}, log_level=log_level)
+        tracer = UnifiedTracer(sources={str(file): source}, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros)
     else:
         raise ValueError("Either file or filelist must be provided")
     graph = tracer.build_graph()

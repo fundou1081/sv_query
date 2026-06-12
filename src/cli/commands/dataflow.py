@@ -120,6 +120,8 @@ def analyze(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
+
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum number of paths to return"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -139,6 +141,7 @@ def analyze(
             filelist=filelist,
             strict=strict,
             log_level=log_level,
+            preprocess_macros=preprocess_macros,
         )
         _ = tracer.build_graph()
     except CompilationError as e:

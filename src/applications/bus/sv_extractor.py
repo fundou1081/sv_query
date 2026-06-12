@@ -70,6 +70,7 @@ class SVSignalExtractor:
         filelist: Optional[str] = None,
         include_dirs: Optional[List[str]] = None,
         log_level: str = "WARNING",
+        strict: bool = True,
     ):
         self._sources = sources
         self._files = files or []
@@ -78,26 +79,29 @@ class SVSignalExtractor:
         self._log_level = log_level
         self._tracer = None
         self._extracted: Dict[str, ExtractedModule] = {}
+        self._strict = strict  # [FIX 2026-06-11] 传到 tracer
 
     @classmethod
     def from_file(
         cls,
         file: str,
         include_dirs: Optional[List[str]] = None,
+        strict: bool = True,
     ) -> "SVSignalExtractor":
         """从单文件构造."""
         with open(file) as f:
             sources = {file: f.read()}
-        return cls(sources=sources, include_dirs=include_dirs)
+        return cls(sources=sources, include_dirs=include_dirs, strict=strict)
 
     @classmethod
     def from_filelist(
         cls,
         filelist: str,
         include_dirs: Optional[List[str]] = None,
+        strict: bool = True,
     ) -> "SVSignalExtractor":
         """从 filelist (.f/.fl) 构造."""
-        return cls(filelist=filelist, include_dirs=include_dirs)
+        return cls(filelist=filelist, include_dirs=include_dirs, strict=strict)
 
     # ----- 提取 -----
 
@@ -151,6 +155,7 @@ class SVSignalExtractor:
             kwargs = {
                 "log_level": self._log_level,
                 "include_dirs": self._include_dirs,
+                "strict": self._strict,
             }
             if self._sources is not None:
                 kwargs["sources"] = self._sources

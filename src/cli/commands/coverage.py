@@ -45,6 +45,8 @@ def suggest(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
+
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     signal: str = typer.Option(None, "--signal", "-s", help="Single signal to decompose (e.g., top.x)"),
     signals: str = typer.Option(None, "--signals", help="Comma-separated signals (V2.B: multi-signal decomposition, merged with dedup)"),
@@ -71,6 +73,8 @@ def suggest(
             filelist=filelist,
             strict=strict,
             log_level=tracer_log_level,
+        
+            preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
 
