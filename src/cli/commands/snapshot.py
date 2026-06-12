@@ -227,8 +227,15 @@ def compare(
     tag1: str = typer.Argument(..., help="First snapshot tag"),
     tag2: str = typer.Argument(..., help="Second snapshot tag"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print (indent=2)"),
+    top: int = typer.Option(10, "--top", "-n", help="[Text] Show top N added/removed nodes/edges (默认 10)"),
+    show_edges: bool = typer.Option(False, "--show-edges", help="[Text] 列出 added/removed edges 的具体内容 (e.g. 'top.clk → top.dout')"),
 ):
-    """Compare two snapshots"""
+    """Compare two snapshots
+
+    输出顺序: 重大变化优先 (added/removed nodes 详情 > added/removed edges count).
+    --show-edges 可看具体边 (e.g. 'top.clk → top.dout'), 适合代码 review 场景.
+    """
     manager = SnapshotManager()
     result = manager.compare(tag1, tag2)
 
@@ -237,7 +244,9 @@ def compare(
         raise typer.Exit(code=1)
 
     if json_output:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        # [ADD 2026-06-12 Req-17] --pretty 支持 indent=2
+        indent = 2 if pretty else None
+        print(json.dumps(result, indent=indent, ensure_ascii=False))
     else:
         print(f"=== Comparing: {tag1} vs {tag2} ===\n")
 
@@ -246,25 +255,39 @@ def compare(
             print("  Graphs are identical")
         else:
             if result["added_nodes"]:
-                print(
-                    f"  Added nodes ({len(result['added_nodes'])}): {', '.join(result['added_nodes'][:5])}{'...' if len(result['added_nodes']) > 5 else ''}"
-                )
+                nodes_list = result["added_nodes"][:top]
+                suffix = f"... ({len(result['added_nodes']) - top} more)" if len(result['added_nodes']) > top else ""
+                print(f"  Added nodes ({len(result['added_nodes'])}): {', '.join(nodes_list)}{suffix}")
             if result["removed_nodes"]:
-                print(
-                    f"  Removed nodes ({len(result['removed_nodes'])}): {', '.join(result['removed_nodes'][:5])}{'...' if len(result['removed_nodes']) > 5 else ''}"
-                )
+                nodes_list = result["removed_nodes"][:top]
+                suffix = f"... ({len(result['removed_nodes']) - top} more)" if len(result['removed_nodes']) > top else ""
+                print(f"  Removed nodes ({len(result['removed_nodes'])}): {', '.join(nodes_list)}{suffix}")
             if result["added_edges"]:
                 print(f"  Added edges: {len(result['added_edges'])}")
+                if show_edges:
+                    for edge in result["added_edges"][:top]:
+                        if len(edge) >= 2:
+                            print(f"    + {edge[0]} → {edge[1]}")
+                    if len(result["added_edges"]) > top:
+                        print(f"    ... ({len(result['added_edges']) - top} more)")
             if result["removed_edges"]:
                 print(f"  Removed edges: {len(result['removed_edges'])}")
+                if show_edges:
+                    for edge in result["removed_edges"][:top]:
+                        if len(edge) >= 2:
+                            print(f"    - {edge[0]} → {edge[1]}")
+                    if len(result["removed_edges"]) > top:
+                        print(f"    ... ({len(result['removed_edges']) - top} more)")
 
         print("\n=== Architecture Health ===")
         print(f"  {tag1} health: {result['health_score_old']:.2%}")
         print(f"  {tag2} health: {result['health_score_new']:.2%}")
         print(f"  Delta: {result['health_delta']:+.2%}")
 
+        stable = result["stable_core"][:top]
+        suffix = f"... ({len(result['stable_core']) - top} more)" if len(result['stable_core']) > top else ""
         print(
-            f"\n  Stable core ({len(result['stable_core'])} nodes): {', '.join(result['stable_core'][:5])}{'...' if len(result['stable_core']) > 5 else ''}"
+            f"\n  Stable core ({len(result['stable_core'])} nodes): {', '.join(stable)}{suffix}"
         )
 
         coupling = result.get("coupling_warning", {})
