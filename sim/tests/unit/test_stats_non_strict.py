@@ -77,11 +77,11 @@ def _write_sv(content):
 def test_stats_non_strict_returns_partial_result():
     """broken SV 在 non-strict 模式 (默认) 应该返回 partial graph"""
     tmpdir, sv = _write_sv(BROKEN_SV)
-    r = _run("stats", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    assert r.returncode == 0, f"应 exit 0 (non-strict), 实际 {r.returncode}, stderr={r.stderr[:300]}"
+    r = _run("stats", "--no-strict", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    assert r.returncode == 0, f"应 exit 0 (--no-strict), 实际 {r.returncode}, stderr={r.stderr[:300]}"
     assert "Total nodes:" in r.stdout, f"应输出 stats, stdout={r.stdout[:300]}"
     assert "elaboration error(s)" in r.stdout, f"应提示 elaboration error 数量, stdout={r.stdout[:500]}"
-    print("✅ stats non-strict: 跑通 partial result + error count")
+    print("✅ stats --no-strict: 跑通 partial result + error count")
 
 
 def test_stats_strict_fails_cleanly():
@@ -97,7 +97,7 @@ def test_stats_strict_fails_cleanly():
 def test_stats_non_strict_json_has_elaboration_errors():
     """JSON 模式应输出 elaboration_errors 字段 (含 file/line/code/message)"""
     tmpdir, sv = _write_sv(BROKEN_SV)
-    r = _run("stats", "-f", sv, "--log-level", "ERROR", "--json", cwd=tmpdir)
+    r = _run("stats", "--no-strict", "-f", sv, "--log-level", "ERROR", "--json", cwd=tmpdir)
     assert r.returncode == 0
     data = json.loads(r.stdout)
     elab = data["result"].get("elaboration_errors", [])
@@ -106,11 +106,11 @@ def test_stats_non_strict_json_has_elaboration_errors():
         assert "file" in e, f"elab err 应有 file: {e}"
         assert "line" in e, f"elab err 应有 line: {e}"
         assert "code" in e, f"elab err 应有 code: {e}"
-    print(f"✅ stats JSON: {len(elab)} elaboration_errors 含 file/line/code")
+    print(f"✅ stats JSON --no-strict: {len(elab)} elaboration_errors 含 file/line/code")
 
 
 def test_stats_good_sv_no_elaboration_errors():
-    """完整 SV 在 non-strict 模式 elaboration_errors 应为空"""
+    """完整 SV 在 --no-strict 模式 elaboration_errors 应为空"""
     tmpdir, sv = _write_sv(GOOD_SV)
     r = _run("stats", "-f", sv, "--log-level", "ERROR", "--json", cwd=tmpdir)
     assert r.returncode == 0
@@ -128,12 +128,12 @@ def test_other_commands_non_strict_partial():
     """9 个命令在 non-strict 模式 broken SV 跑通 (除 strict 强制要求的命令)"""
     tmpdir, sv = _write_sv(BROKEN_SV)
     commands = [
-        ("risk", "analyze"),
-        ("cdc", "analyze"),
-        ("dataflow", "analyze", "broken_top.clk", "broken_top.q"),
-        ("sva", "coverage"),
-        ("timing", "analyze"),
-        ("verify", "gap"),
+        ("risk", "analyze", "--no-strict"),
+        ("cdc", "analyze", "--no-strict"),
+        ("dataflow", "analyze", "--no-strict", "broken_top.clk", "broken_top.q"),
+        ("sva", "coverage", "--no-strict"),
+        ("timing", "analyze", "--no-strict"),
+        ("verify", "gap", "--no-strict"),
         # controlflow/visualize 可能不输出 stats 类报告, 只测不 crash
     ]
     for cmd in commands:
@@ -151,7 +151,7 @@ def test_stats_help_mentions_strict_mode():
     r = _run("stats", "--help")
     assert r.returncode == 0
     assert "--strict" in r.stdout, f"help 应有 --strict flag, stdout={r.stdout[:500]}"
-    assert "non-strict" in r.stdout.lower() or "partial" in r.stdout.lower(), f"help 应说明 non-strict 是默认, stdout={r.stdout[:500]}"
+    assert "non-strict" in r.stdout.lower() or "--no-strict" in r.stdout or "partial" in r.stdout.lower(), f"help 应说明 non-strict 是默认, stdout={r.stdout[:500]}"
     print("✅ stats --help 文档化 strict mode")
 
 

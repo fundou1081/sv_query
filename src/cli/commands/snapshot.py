@@ -77,7 +77,7 @@ def save(
     tag: str = typer.Option("", "--tag", "-t", help="Snapshot tag (e.g., v1.2.3)"),
     git: bool = typer.Option(False, "--git", "-g", help="Auto-capture git commit hash"),
     strict: bool = typer.Option(
-        False, "--strict", help="Strict mode: elaboration error 时不存快照直接报错 (默认: non-strict, 存部分图并标记失败文件)"
+        True, "--strict/--no-strict", help="Strict mode (default): elaboration error 时不存快照直接报错. Use --no-strict 存部分图并标记失败文件 (供分析不完整项目用)"
     ),
 ):
     """Save current code state as a snapshot
