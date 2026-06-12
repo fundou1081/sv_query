@@ -282,6 +282,7 @@ class UnifiedTracer:
         log_level: str = None,
         include_dirs: list[str] = None,
         strict: bool = True,
+        preprocess_macros: bool = True,
     ):
         """初始化 UnifiedTracer
 
@@ -294,6 +295,8 @@ class UnifiedTracer:
             include_dirs: include 搜索路径列表
             strict: True (默认) 时 elaboration error 会 raise;
                     False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
+            preprocess_macros: True (默认) 时跑 sv_preprocessor.preprocess_macros
+                              跨文件展开 `MACRO 引用. False 则跳过 (信任 pyslang 内置).
         """
         if sources is None:
             sources = {}
@@ -310,6 +313,8 @@ class UnifiedTracer:
         self._load_tracer: LoadTracer | None = None
         self._include_dirs = include_dirs or []
         self._strict = strict  # [FIX 2026-06-11] False = 优雅降级
+        self._preprocess_macros = preprocess_macros  # [Req-20 2026-06-12] 默认跨文件宏展开
+        self._preprocessed = False  # 标记是否已 preprocess
 
         # 日志级别控制
         if log_level is not None:
@@ -330,9 +335,30 @@ class UnifiedTracer:
         """获取当前日志级别名称"""
         return logging.getLevelName(_root_logger.level)
 
+    def _ensure_preprocessed(self):
+        """[Req-20 2026-06-12] 跨文件宏展开 (默认开启)
+
+        在第一次 _get_compiler() 之前调用, 把 `MACRO 引用在源文件里替换成字面值
+        这样 pyslang 不再报 TooFewArguments (因为 `MACRO 已被展开成具体数字)
+
+        解决 NaplesPU 12 个 TooFewArguments:
+          - coherence:49 $clog2(`DCACHE_WAY)  →  $clog2(4)
+          - coherence:103 $clog2(`L2_CACHE_WAY)  →  $clog2(8)
+          - npu_defines:100 typedef enum 展开成 64
+        """
+        if self._preprocessed or not self._preprocess_macros or not self._sources:
+            return
+        from .core.sv_preprocessor import preprocess_macros
+        _main_logger.info(
+            f"[preprocess] 跨文件宏展开: {len(self._sources)} files"
+        )
+        self._sources = preprocess_macros(self._sources)
+        self._preprocessed = True
+
     def _get_compiler(self) -> SVCompiler:
         """获取 SVCompiler (Semantic AST 编译入口)"""
         if self._compiler is None:
+            self._ensure_preprocessed()  # [Req-20 2026-06-12] 宏展开在 compiler 前
             self._compiler = SVCompiler(self._sources, log_level=self._log_level, strict=self._strict)
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)

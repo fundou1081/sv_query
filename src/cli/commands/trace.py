@@ -230,17 +230,19 @@ def fanin(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
         if filelist:
-            tracer = UnifiedTracer(filelist=filelist)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file or --filelist must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph()
 
         result = tracer.trace_fanin(signal, depth=depth)
@@ -292,6 +294,8 @@ def fanout(
     include_clock: bool = typer.Option(False, "--include-clock", help="[Req-12] Include CLOCK edges (sensitivity list)"),
     include_reset: bool = typer.Option(False, "--include-reset", help="[Req-12] Include RESET edges"),
     include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -300,13 +304,13 @@ def fanout(
     """
     try:
         if filelist:
-            tracer = UnifiedTracer(filelist=filelist)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file or --filelist must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph()
 
         result = tracer.trace_fanout(
@@ -360,6 +364,8 @@ def impact(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -370,13 +376,13 @@ def impact(
     """
     try:
         if filelist:
-            tracer = UnifiedTracer(filelist=filelist)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file or --filelist must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
 
         # 提取 SVA 和 Coverage 信息
@@ -672,11 +678,13 @@ def evidence(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly tree output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
     try:
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
-        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist)
+        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros)
 
         if chain:
             evidences = resolver.resolve_chain(signal)

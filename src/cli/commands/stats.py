@@ -15,6 +15,7 @@ from cli._common import (
     FILELIST_OPTION,
     LOG_LEVEL_OPTION,
     STRICT_OPTION,
+    PREPROCESS_OPTION,
     _build_tracer,
     handle_compilation_error,
 )
@@ -102,6 +103,7 @@ def stats(
     filelist: str = FILELIST_OPTION,
     strict: bool = STRICT_OPTION,
     log_level: str = LOG_LEVEL_OPTION,
+    preprocess_macros: bool = PREPROCESS_OPTION,
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     fanout_rank: bool = typer.Option(False, "--fanout-rank", help="Show fanout ranking"),
@@ -116,7 +118,7 @@ def stats(
         if not file and not filelist:
             raise ValueError("Either --file or --filelist must be provided")
         tracer = _build_tracer(
-            file=file, filelist=filelist, strict=strict, log_level=log_level
+            file=file, filelist=filelist, strict=strict, log_level=log_level, preprocess_macros=preprocess_macros
         )
         graph = tracer.build_graph()
 
