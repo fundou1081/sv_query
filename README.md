@@ -2,7 +2,7 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
-[![Tests](https://img.shields.io/badge/tests-1265_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-2000+_passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE_MIT)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
@@ -16,7 +16,10 @@
 - ✅ **全场景**: 验证问题、CDC、时序、风险、缺口检测
 - ✅ **可视化**: 自动生成 Graphviz 交互图
 - ✅ **多文件**: Verilator 风格 filelist 支持 (CVA6 级别)
-- ✅ **1265+ 测试**: 稳定可靠，覆盖核心功能
+- ✅ **协议检测**: 自动识别 AXI4/TL-UL/AHB/APB/Wishbone,4 项置信度融合
+- ✅ **Dataflow/Pipeline 可视化**: 基于 SignalGraph 自动分类 control/data,检测 pipeline stages
+- ✅ **Fix 修复子系统**: 一键修 timescale/imports/widths,按错误类别分组报告
+- ✅ **2000+ 测试**: 稳定可靠，覆盖核心功能
 
 ---
 
@@ -77,6 +80,23 @@ python run_cli.py trace fanin top.result -f top.sv --cache
 ---
 
 ## 🆕 最近更新 (2026-06)
+
+- ✨ **协议检测 (Phase A)**: `protocol detect` 自动识别 AXI4/TL-UL/AHB/APB/Wishbone/Stream
+  协议, 4 项置信度融合 (name+structural+pattern+handshake)。
+  `--protocol TL-UL` 单协议模式避免多协议竞争误识别。
+  详见 [docs/OPENTITAN_HOWTO.md](docs/OPENTITAN_HOWTO.md)
+- ✨ **Dataflow 可视化**: `visualize dataflow` 自动分类 clock/reset/control/data,
+  显示运算表达式 (a+b) + MUX 选择 + 关键控制边。POC: uart/synchronizer/sync_fifo
+- ✨ **Pipeline 可视化**: `visualize pipeline` 自动检测 pipeline registers
+  (排除 FSM state regs),按 stage 分组,左→右时间流布局。7 stages for uart
+- ✨ **fix 修复子系统**: `fix timescale` 自动补 `\`timescale; `fix report`
+  按错误类别分组; `fix imports` 找 UndeclaredIdentifier 来源; `fix widths`
+  用 pyslang.clog2 解析 typedef 真实位宽
+- ✨ **SV Preprocessor**: 跨文件 `\`MACRO 展开, 解决 NaplesPU 12 个 TooFewArguments
+- ✨ **NaplesPU 适配**: 完整跑通 RISC-V manycore (125 文件, strict pass with stubs),
+  配套 HOWTO 文档
+- ✨ **OpenTitan TL-UL 适配**: TileLink Uncached Lightweight 协议检测,
+  TOP_PKG stub + filelist 排序方案
 
 - ✨ **多文件 filelist 支持**: Verilator 风格的 `+incdir+`, `-F`, `${VAR}` 完整支持
 - ✨ **CVA6 适配**: 工业级 RISC-V CPU 解析（macro_decoder 等模块）
@@ -351,6 +371,69 @@ python run_cli.py controlflow analyze top.dout -f top.sv --evidence
 
 ---
 
+## 🚌 场景 11：这个模块是什么 Bus 协议？(Protocol Detection)
+
+**问题**：看到一个模块端口 (awvalid/awready/awaddr...), 想知道它是 AXI4 / AHB / TL-UL / APB?
+
+```bash
+# 推荐：指定协议 (工程师知道大概类型)
+python run_cli.py protocol detect --filelist project.f -m axi_ram --protocol AXI4
+
+# 高级：多协议竞争选 top-1
+python run_cli.py protocol detect --filelist project.f -m axi_ram
+```
+
+**输出示例**：
+
+```
+Detected: AXI4 (AXI4_FULL)  confidence: 0.944
+
+  Score breakdown:
+    name:        1.000      (标准化后名 vs schema)
+    structural:  0.813      (宽度+方向 vs 角色)
+    pattern:     1.000      (锚点分组)
+    handshake:   1.000      (Phase B 握手分类)
+
+  Channels:
+    ✓ AW  1.000  awvalid, awready, awaddr
+    ✓ W   1.000  wvalid, wready, wdata
+    ✓ B   0.860  bvalid, bready, bresp
+    ✓ AR  1.000  arvalid, arready, araddr
+    ✓ R   0.860  rvalid, rready, rdata
+```
+
+**支持协议**: AXI4 (Full/Lite/Stream), TL-UL, AHB, APB, Wishbone
+
+**实测项目**:
+- OpenTitan tlul_fifo_sync → TL-UL 0.350 ✓
+- verilog-axi axi_ram → AXI4 0.944 ✓
+- NaplesPU npu_core → UNKNOWN 0.000 (custom 协议,正确)
+
+详见 [docs/OPENTITAN_HOWTO.md](docs/OPENTITAN_HOWTO.md)
+
+### 🛠️ 场景 12：自动修复 elaboration 错误 (Fix Subsystem)
+
+```bash
+# 1. 报告有哪些错 (按类别分组)
+python run_cli.py fix report --filelist project.f
+# → 66 UndeclaredIdentifier, 0 auto-fixable
+
+# 2. 自动修 MissingTimeScale
+python run_cli.py fix timescale --filelist project.f --apply
+
+# 3. 找 UndeclaredIdentifier 的 fix 来源
+python run_cli.py fix imports --filelist project.f
+# → address_t: Found in npu_defines.sv
+
+# 4. 看 typedef 真实位宽 (pyslang.clog2)
+python run_cli.py fix widths --filelist project.f
+# → $clog2(128) → real width = 7 bits
+```
+
+**4 个子命令**: `timescale`, `report`, `imports`, `widths`
+
+---
+
 ## 核心优势
 
 ### 🔬 底层使用 pyslang，数据可信
@@ -596,6 +679,48 @@ PYTHONPATH=src python3 -c "from trace.core.cache import get_cache; print(get_cac
 2. **验证计划**：按风险优先级排序需要补充的 assertion
 3. **项目管理**：导出给 PM 查看验证覆盖率
 4. **交接文档**：图片比表格更直观，便于团队沟通
+
+---
+
+## 🔬 Dataflow 与 Pipeline 可视化 (🆕 v2)
+
+基于 SignalGraph 自动分类 clock/reset/control/data,生成架构 review 级图。
+
+### Dataflow 图 (数据流)
+
+```bash
+python run_cli.py visualize dataflow --filelist project.f --dot out.dot
+dot -Tpng out.dot -o out.png
+```
+
+**着色规则**:
+| 颜色 | 含义 | 边样式 |
+|------|------|--------|
+| 🔵 蓝色 | Data 信号 (多-bit) | 实线,标注运算表达式 (a+b, mux sel) |
+| 🟠 橙色 | Control 信号 (1-bit, valid/ready) | 虚线,关键控制边 |
+| ⬛ 粗框 | 寄存器 (REG) | penwidth=2 |
+| ⬛ 粗蓝线 | MUX 目标 (多源汇聚) | penwidth=2.5 |
+
+**分类依据**: width + name (valid/ready/data/addr) + EdgeKind + is_clock/reset/enable
+
+### Pipeline 图 (流水线)
+
+```bash
+python run_cli.py visualize pipeline --filelist project.f --dot out.dot
+```
+
+**特性**:
+- 自动检测 pipeline registers (排除 clock/reset/state-machine regs)
+- 每 stage 一个 subgraph cluster: 含 registers + 组合逻辑
+- 控制信号跨 stage 虚线标注
+- 左→右布局 = 时间流方向
+
+**实测**:
+| 模块 | 文件 | Pipeline Regs | Stages | 输出 |
+|------|------|---------------|--------|------|
+| uart (NaplesPU) | 5 文件 | 7 | 7 | 230KB PNG |
+| synchronizer | 1 文件 | 2 | 2 | 27KB PNG |
+| sync_fifo | 1 文件 | 2 | 1 | 29KB PNG |
 
 ---
 
@@ -1130,6 +1255,7 @@ sv_query/
 │   ├── unified_tracer.py     # 统一入口
 │   ├── core/
 │   │   ├── graph_builder.py  # 信号图构建
+│   │   ├── sv_preprocessor.py # 跨文件 `MACRO 展开 (Req-20)
 │   │   ├── sva_extractor.py  # SVA 提取（Phase 1-4）
 │   │   ├── covergroup_extractor.py  # Coverage 提取
 │   │   ├── dataflow.py       # 数据流路径分析
@@ -1138,14 +1264,31 @@ sv_query/
 │   │       └── analyzer/
 │   │           ├── timing_analyzer.py  # 关键路径分析
 │   │           ├── cdc_analyzer.py     # CDC 检测
-│   │           └── controlflow_analyzer.py
+│   │           ├── controlflow_analyzer.py
+│   │           ├── signal_classifier.py  # 🆕 Control/Data 自动分类
+│   │           ├── dataflow_viz.py       # 🆕 数据流图 DOT 生成
+│   │           └── pipeline_viz.py       # 🆕 Pipeline stage 检测 + DOT
+│   ├── _safe.py              # 🆕 Null byte filter (pyslang 容错)
 │   ├── cli/commands/         # CLI 命令
 │   │   ├── risk.py, sva.py, timing.py, cdc.py, ...
+│   │   ├── fix.py            # 🆕 fix 修复子系统
+│   │   ├── fix_timescale.py  # 🆕 自动补 timescale
+│   │   ├── fix_imports.py    # 🆕 自动找 include 来源
+│   │   ├── fix_widths.py     # 🆕 解析 typedef 真实位宽
+│   │   └── protocol.py       # 🆕 Bus 协议检测
 │   └── visitors/
 │       └── statement_collector_visitor.py  # 语句收集（金律29）
-├── sim/tests/                # 1071 个测试
+├── config/
+│   └── protocols/            # 🆕 协议 YAML schema
+│       ├── axi4.yaml, tlul.yaml, ahb.yaml, apb.yaml, ...
+├── tools/                    # 🆕 独立工具脚本
+│   ├── fix_timescale.py
+│   └── README.md
+├── sim/tests/                # 2000+ 个测试
 ├── examples/                 # 综合案例脚本
 └── docs/                     # 详细设计文档
+    ├── OPENTITAN_HOWTO.md    # 🆕 OpenTitan 跑通
+    ├── NAPLESPU_HOWTO.md     # 🆕 NaplesPU 跑通
     ├── RISK_ANALYSIS.md
     ├── SVA_ANALYSIS.md
     ├── TIMING_ANALYSIS.md
