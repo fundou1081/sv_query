@@ -101,6 +101,24 @@ class ChannelSpec:
 
 
 @dataclass
+class ChannelOverride:
+    """变体对某通道的评分调整.
+
+    Attributes:
+        channel: 通道名 (e.g., "A", "D")
+        required: 额外需匹配的信号名 (canonical 或 normalized) — 命中后该通道视为 present
+        score: 命中后 channel.score 的下界 (max(current, score))
+        name_score: 命中后 channel.name_score 的下界
+        pattern_score: 命中后 channel.pattern_score 的下界
+    """
+    channel: str
+    required: List[str] = field(default_factory=list)
+    score: float = 0.5
+    name_score: float = 0.5
+    pattern_score: float = 0.5
+
+
+@dataclass
 class VariantSpec:
     """协议变体.
 
@@ -109,17 +127,27 @@ class VariantSpec:
         description: 变体描述
         needs_signals: 必须存在的信号列表 (canonical)
         needs_absent_signals: 必须不存在的信号列表
+        channel_overrides: 变体命中后对各通道评分的调整 (默认空 = 不调整)
     """
 
     name: str
     description: str = ""
     needs_signals: List[str] = field(default_factory=list)
     needs_absent_signals: List[str] = field(default_factory=list)
+    channel_overrides: List["ChannelOverride"] = field(default_factory=list)
+
+    def override_for(self, channel: str) -> Optional["ChannelOverride"]:
+        """查找此变体对该通道的 override (无则 None)."""
+        for ov in self.channel_overrides:
+            if ov.channel == channel:
+                return ov
+        return None
 
     def __repr__(self) -> str:
         return (
             f"VariantSpec({self.name}, needs={len(self.needs_signals)}, "
-            f"absent={len(self.needs_absent_signals)})"
+            f"absent={len(self.needs_absent_signals)}, "
+            f"overrides={len(self.channel_overrides)})"
         )
 
 
@@ -184,11 +212,22 @@ class ProtocolSchema:
         # variants
         variants: List[VariantSpec] = []
         for v_data in (data.get("variants") or []):
+            # 加载 channel_overrides (默认空)
+            overrides: List[ChannelOverride] = []
+            for ov_data in (v_data.get("channel_overrides") or []):
+                overrides.append(ChannelOverride(
+                    channel=ov_data.get("channel", ""),
+                    required=list(ov_data.get("required", [])),
+                    score=float(ov_data.get("score", 0.5)),
+                    name_score=float(ov_data.get("name_score", 0.5)),
+                    pattern_score=float(ov_data.get("pattern_score", 0.5)),
+                ))
             variants.append(VariantSpec(
                 name=v_data.get("name", ""),
                 description=v_data.get("description", ""),
                 needs_signals=list(v_data.get("needs_signals", [])),
                 needs_absent_signals=list(v_data.get("needs_absent_signals", [])),
+                channel_overrides=overrides,
             ))
 
         return cls(

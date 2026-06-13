@@ -306,38 +306,20 @@ class ProtocolDetector:
         all_mappings: List[SignalMapping] = []
 
         # [FIX 2026-06-11] 预检测 variant, 后续变体特定评分时使用
-        variant = self._detect_variant(schema, signals)
+        variant_name = self._detect_variant(schema, signals)
+        variant = self._find_variant_spec(schema, variant_name) if variant_name else None
 
         for ch_name, ch_spec in schema.channels.items():
             ch_match, mappings = self._score_channel(
                 ch_name, ch_spec, schema, signals, groups,
             )
-            # [FIX 2026-06-11 + v2 2026-06-11] STRUCT_WRAPPER 变体: tlul 接口是 62-bit
-            # packed struct (tl_h2d_t / tl_d2h_t), sv_query 看不到 struct 内部, 找不到
-            # a_valid/d_valid. 但匹配上 tl_h/tl_d wrapper 端口说明该接口是 TL-UL.
-            #
-            # v1 只把 ch_match.score 提到 0.5, 但 name_score 还是 0 (matched_req/required_count),
-            # 被 NAME_SCORE_GATE=0.2 卡住 → confidence=0.
-            # v2: 同时把 name_score 也提到 0.5 (wrapper 命中 = 名字 schema 正确, 只是形式不同).
-            # v3: 把 pattern_score 也提到 0.5 (wrapper 端口本身是 valid+ready 配对 = anchor,
-            #     但不是 1-bit, _find_anchors 跳过 → pattern_score 仍是 0).
-            if variant and "STRUCT_WRAPPER" in variant:
-                # 查 wrapper port 标准化名是否在 sig_by_norm (复用 _score_channel 逻辑)
-                wrapper_names = {
-                    "tlh": "A", "tld": "D",
-                }
-                for norm_name, ch in wrapper_names.items():
-                    if ch == ch_name and any(
-                        self.norm.normalize(s.name).normalized == norm_name
-                        for s in signals
-                    ):
-                        ch_match.present = True
-                        ch_match.missing_required = []
-                        ch_match.score = max(ch_match.score, 0.5)
-                        # v2 fix: name_score 也提到 0.5, 避免被 NAME_SCORE_GATE 卡死
-                        ch_match.name_score = max(ch_match.name_score, 0.5)
-                        # v3 fix: pattern_score 也提到 0.5 (wrapper 端口本身是 anchor)
-                        ch_match.pattern_score = max(ch_match.pattern_score, 0.5)
+            # [P0-3 2026-06-13] 变体级 channel override (从硬编码迁移到 schema 声明)
+            # 例: TL-UL_STRUCT_WRAPPER 的 A 通道命中 tlh wrapper 名字时, 提升
+            # score/name_score/pattern_score 到 0.5, 避免被 NAME_SCORE_GATE=0.2 卡死.
+            if variant is not None:
+                self._apply_channel_override(
+                    variant, ch_name, ch_match, signals,
+                )
             channel_matches[ch_name] = ch_match
             all_mappings.extend(mappings)
 
@@ -612,6 +594,49 @@ class ProtocolDetector:
             return None
         # 偏好最具体的 (需要检查最多的信号 = 最多约束)
         return max(matching, key=lambda v: len(v.needs_signals) + len(v.needs_absent_signals)).name
+
+    def _find_variant_spec(
+        self,
+        schema: ProtocolSchema,
+        variant_name: Optional[str],
+    ):
+        """根据变体名找到 VariantSpec (无则 None)。"""
+        if not variant_name:
+            return None
+        for v in schema.variants:
+            if v.name == variant_name:
+                return v
+        return None
+
+    def _apply_channel_override(
+        self,
+        variant,
+        ch_name: str,
+        ch_match,
+        signals: List[SignalContext],
+    ) -> None:
+        """应用变体级 channel override (从 schema.channel_overrides 读)。
+
+        override.required 中的信号名 (canonical 或 normalized) 命中 signals
+        时, 提升 ch_match 的 score/name_score/pattern_score 到下界值, 并
+        标记通道为 present (missing_required 清空)。
+
+        [P0-3 2026-06-13] 代替以前的硬编码 "STRUCT_WRAPPER" 分支。
+        """
+        ov = variant.override_for(ch_name)
+        if ov is None:
+            return
+        # 检查是否所有 required 信号都在 signals 里 (任意标准化形式)
+        sig_norms = {self.norm.normalize(s.name).normalized for s in signals}
+        for needed in ov.required:
+            if self.norm.normalize(needed).normalized not in sig_norms:
+                return  # required 未完全命中, 不应用 override
+        # 应用 override: 标记 present + 提升分数下界
+        ch_match.present = True
+        ch_match.missing_required = []
+        ch_match.score = max(ch_match.score, ov.score)
+        ch_match.name_score = max(ch_match.name_score, ov.name_score)
+        ch_match.pattern_score = max(ch_match.pattern_score, ov.pattern_score)
 
     def _handshake_score(
         self,
