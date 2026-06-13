@@ -1,0 +1,89 @@
+# ==============================================================================
+# config/protocols/semantics/tlul.yaml
+# ==============================================================================
+# OpenTitan TileLink Uncached Lightweight (TL-UL) 协议语义
+#
+# [2026-06-13] 用于 bus semantics / bus deadlock 命令
+# 参考: https://docs.opentitan.org/hw/ip/tlul/index.html
+# ==============================================================================
+
+protocol: TL-UL
+description: |
+  OpenTitan TileLink Uncached Lightweight.
+  2 通道: A (request, host → device) / D (response, device → host).
+  每个通道都是独立 ready/valid 握手, 无 outstanding (一次一个 transaction).
+
+transfer: "(a_valid && a_ready) || (d_valid && d_ready)"
+
+# 通道规则
+channels:
+  - name: A
+    direction: request
+    valid: a_valid
+    ready: a_ready
+    data: a_data
+    depends_on: []
+
+  - name: D
+    direction: response
+    valid: d_valid
+    ready: d_ready
+    data: d_data
+    depends_on: [A]   # D 一定在 A 之后
+
+# 死锁候选规则
+deadlock_rules:
+  - id: TL-UL-A-VALID-INDEP-OF-READY
+    description: |
+      A.valid 不能组合依赖 A.ready (避免 combinational loop → deadlock).
+      即: assign a_valid = ... a_ready ... ❌
+    severity: error
+    kind: no_combinational_loop
+    channels: [A]
+    expression: "¬(a_valid → a_ready)"
+
+  - id: TL-UL-D-VALID-INDEP-OF-READY
+    description: |
+      D.valid 不能组合依赖 D.ready.
+    severity: error
+    kind: no_combinational_loop
+    channels: [D]
+    expression: "¬(d_valid → d_ready)"
+
+  - id: TL-UL-A-READY-DEP-ON-FIFO-FULL
+    description: |
+      A.ready 来自 FIFO/buffer 满信号时, 该 FIFO 必须能被消费, 否则 ready 永低.
+    severity: warning
+    kind: fifo_no_full_deadlock
+    channels: [A]
+    expression: "a_ready ← fifo_full → fifo.consumer.stall"
+
+  - id: TL-UL-A-AND-D-MUTUAL-DEPENDENCY
+    description: |
+      A.ready 和 D.ready 不能互相依赖 (e.g. A 满等 D, D 满等 A → 死锁).
+    severity: error
+    kind: no_cross_channel_loop
+    channels: [A, D]
+    expression: "¬(a_ready ↔ d_ready)"
+
+  - id: TL-UL-D-AFTER-A
+    description: |
+      D.valid 必须在 A.valid 之后 (a_data 被消费后才发 d_valid).
+      检查: d_valid 的 driver 链中, 是否能追溯到 a_valid.
+    severity: info
+    kind: response_after_request
+    channels: [D]
+    expression: "d_valid ⟹ a_valid (history)"
+
+# 禁止的组合逻辑环
+forbidden_combinational_loops:
+  - "a_valid → a_ready"     # a_valid 不能组合驱动 a_ready
+  - "a_ready → a_valid"     # a_ready 也不能组合驱动 a_valid (反方向也要查)
+  - "d_valid → d_ready"
+  - "d_ready → d_valid"
+  - "a_ready ↔ d_ready"     # 跨通道互锁
+  - "a_valid ↔ d_valid"     # 跨通道互锁
+
+notes: |
+  TL-UL 没有 outstanding, 一次一个 transaction.
+  死锁常见于 cross-coupled FIFO 满载 + 互等。

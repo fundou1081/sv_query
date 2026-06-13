@@ -1091,9 +1091,9 @@ class StatementCollectorVisitor(BaseVisitor):
                                 expr_str = self._expr_to_string(expr)
                                 if expr_str:
                                     exprs.append(expr_str)
-                    return " && ".join(exprs) if exprs else str(p).strip()
-                return str(cs).strip()
-            return str(p).strip()
+                    return " && ".join(exprs) if exprs else self._safe_str(p)
+                return self._safe_str(cs)
+            return self._safe_str(p)
 
         # Semantic AST: conditions directly
         cs = getattr(n, "conditions", None)

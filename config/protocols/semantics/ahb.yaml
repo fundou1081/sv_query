@@ -1,0 +1,55 @@
+# ==============================================================================
+# config/protocols/semantics/ahb.yaml
+# ==============================================================================
+# AMBA AHB (Advanced High-performance Bus) 协议语义
+#
+# [2026-06-13] 用于 bus semantics / bus deadlock 命令
+# ==============================================================================
+
+protocol: AHB
+description: |
+  AMBA AHB. 单地址/数据总线 + hready 控制. 支持 burst + split + retry.
+  简化版: 1 通道 (HADDR/HDATA + HREADY/HRESP).
+
+transfer: |
+  Transfer: hready && (hready_out || hresp == OKAY)
+
+# 通道规则 (AHB 简化模型: 单总线)
+channels:
+  - name: H
+    direction: data
+    valid: htrans      # htrans != IDLE/BUSY 表示有效传输
+    ready: hready      # hready LOW = 等待
+    data: haddr
+    depends_on: []
+
+# 死锁候选规则
+deadlock_rules:
+  - id: AHB-HREADY-CONTROL-LOOP
+    description: |
+      hready 通常由 slave 驱动, master 不应组合依赖 hready 来决定 haddr/htrans.
+      如果 master 用 hready 立即更新 haddr, 可能形成 combinatorial loop.
+    severity: error
+    kind: no_combinational_loop
+    channels: [H]
+    expression: "¬(haddr → hready)"
+
+  - id: AHB-SPLIT-AND-RETRY-DEADLOCK
+    description: |
+      slave 用 SPLIT/RETRY 释放总线, master 必须在收到 SPLIT 后重新仲裁.
+      如果 master 不重试, 总线空转.
+    severity: warning
+    kind: no_cross_channel_loop
+    channels: [H]
+    expression: "split ⟹ retry (next cycle)"
+
+# 禁止的组合逻辑环
+forbidden_combinational_loops:
+  - "haddr → hready"
+  - "hready → haddr"
+  - "htrans → hready"
+  - "hready → htrans"
+
+notes: |
+  AHB 单总线架构, 比 AXI 简单.
+  死锁常见: split/retry 状态机错误, 或 master 误用 hready 反馈.

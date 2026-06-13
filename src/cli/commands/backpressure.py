@@ -318,3 +318,108 @@ def analyze(
 
 if __name__ == "__main__":
     backpressure_app()
+
+
+# ==============================================================================
+# [B 2026-06-13] deadlock 子命令 — 静态死锁候选检测
+# ==============================================================================
+
+@backpressure_app.command(name="deadlock")
+def deadlock(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    protocol: str = typer.Option(
+        "TL-UL", "--protocol", "-p",
+        help="Protocol name (TL-UL/AXI4/AHB/APB) — drives semantics rules",
+    ),
+    semantics_dir: str = typer.Option(
+        "config/protocols/semantics", "--semantics-dir",
+        help="Path to semantics YAML directory",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default non-strict: 优雅降级)"),
+) -> None:
+    """[B 2026-06-13] Static deadlock candidate detection.
+
+    从 SignalGraph + ProtocolSemantics 检测:
+      - combinational loop (valid ↔ ready 环)
+      - cross-channel loop (跨通道 ready 链环)
+      - response_after_request (响应不到达请求 driver 链)
+    """
+    from trace.unified_tracer import UnifiedTracer
+    from applications.bus.semantics import load_semantics
+    from applications.bus.deadlock import detect_deadlock_candidates
+
+    # 1. 加载语义
+    try:
+        sem = load_semantics(protocol, dir_path=semantics_dir)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    # 2. 构造 graph
+    if not file and not filelist:
+        typer.echo("Error: need --file or --filelist", err=True)
+        raise typer.Exit(1)
+    include_dirs = include.split(",") if include else None
+    try:
+        if filelist:
+            tracer = UnifiedTracer(filelist=filelist, include_dirs=include_dirs, strict=strict)
+        else:
+            with open(file) as f:
+                sources = {file: f.read()}
+            tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=strict)
+    except Exception as e:
+        typer.echo(f"Error building tracer: {e}", err=True)
+        raise typer.Exit(1)
+
+    # 3. 抑制 stdout 噪声, 在 --json 模式下 progress 走 stderr
+    if json_output:
+        _info = lambda msg: typer.echo(msg, err=True)
+    else:
+        _info = typer.echo
+    _info(f"Protocol: {sem.protocol}")
+    _info(f"Rules: {len(sem.deadlock_rules)}")
+
+    graph = tracer.build_graph()
+    _info(f"Graph: {graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges")
+
+    # 4. 检测
+    findings = detect_deadlock_candidates(sem, graph)
+
+    # 5. 输出
+    if json_output:
+        import json
+        from dataclasses import asdict
+        result = {
+            "protocol": sem.protocol,
+            "graph_nodes": graph.number_of_nodes(),
+            "graph_edges": graph.number_of_edges(),
+            "findings": [asdict(f) for f in findings],
+            "summary": {
+                "total": len(findings),
+                "errors": sum(1 for f in findings if f.severity == "error"),
+                "warnings": sum(1 for f in findings if f.severity == "warning"),
+                "info": sum(1 for f in findings if f.severity == "info"),
+            },
+        }
+        typer.echo(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        if not findings:
+            _info("✓ No deadlock candidates found")
+        else:
+            _info(f"\n=== {len(findings)} deadlock candidate(s) ===")
+            for f in findings:
+                icon = {"error": "🔴", "warning": "🟡", "info": "ℹ️"}.get(f.severity, "•")
+                _info(f"\n  {icon} [{f.severity}] {f.rule_id} ({f.kind})")
+                _info(f"      {f.description}")
+                if f.node_ids:
+                    _info(f"      nodes: {', '.join(f.node_ids[:3])}{'...' if len(f.node_ids) > 3 else ''}")
+                if f.evidence:
+                    _info(f"      evidence: {f.evidence}")
+            # summary
+            n_err = sum(1 for f in findings if f.severity == "error")
+            n_warn = sum(1 for f in findings if f.severity == "warning")
+            n_info = sum(1 for f in findings if f.severity == "info")
+            _info(f"\nSummary: {n_err} error(s), {n_warn} warning(s), {n_info} info")

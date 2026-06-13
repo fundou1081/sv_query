@@ -1,0 +1,143 @@
+# ==============================================================================
+# config/protocols/semantics/axi4.yaml
+# ==============================================================================
+# AMBA AXI4 协议语义
+#
+# [2026-06-13] 用于 bus semantics / bus deadlock 命令
+# 参考: AMBA AXI and ACE Protocol Specification (ARM IHI 0022)
+# ==============================================================================
+
+protocol: AXI4
+description: |
+  AMBA AXI4. 5 个独立通道: AW (write addr) / W (write data) / B (write resp) /
+  AR (read addr) / R (read data). 支持 outstanding transactions.
+
+transfer: |
+  Write: (aw_valid && aw_ready) && (w_valid && w_ready) && (b_valid && b_ready)
+  Read:  (ar_valid && ar_ready) && (r_valid && r_ready)
+
+# 通道规则
+channels:
+  - name: AW
+    direction: address
+    valid: awvalid
+    ready: awready
+    data: null  # 通道负载是 awaddr/awlen/awsize 等, 不在 valid/ready 之外
+    depends_on: []
+
+  - name: W
+    direction: write_data
+    valid: wvalid
+    ready: wready
+    data: wdata
+    depends_on: []  # W 可独立于 AW 提前
+
+  - name: B
+    direction: write_resp
+    valid: bvalid
+    ready: bready
+    data: bresp
+    depends_on: [AW, W]  # B 必须在 AW + W 之后
+
+  - name: AR
+    direction: address
+    valid: arvalid
+    ready: arready
+    data: null
+    depends_on: []
+
+  - name: R
+    direction: read_data
+    valid: rvalid
+    ready: rready
+    data: rdata
+    depends_on: [AR]  # R 必须在 AR 之后
+
+# 死锁候选规则
+deadlock_rules:
+  - id: AXI4-AW-VALID-INDEP-OF-READY
+    description: |
+      AW.valid (awvalid) 不能组合依赖 AW.ready (awready).
+      这会导致 master 看到自己的 ready 决定 valid → combinatorial loop.
+    severity: error
+    kind: no_combinational_loop
+    channels: [AW]
+    expression: "¬(awvalid → awready)"
+
+  - id: AXI4-W-VALID-INDEP-OF-READY
+    description: |
+      W.valid (wvalid) 不能组合依赖 W.ready (wready).
+    severity: error
+    kind: no_combinational_loop
+    channels: [W]
+    expression: "¬(wvalid → wready)"
+
+  - id: AXI4-B-VALID-INDEP-OF-READY
+    description: |
+      B.valid (bvalid) 不能组合依赖 B.ready (bready).
+    severity: error
+    kind: no_combinational_loop
+    channels: [B]
+    expression: "¬(bvalid → bready)"
+
+  - id: AXI4-AR-VALID-INDEP-OF-READY
+    description: |
+      AR.valid (arvalid) 不能组合依赖 AR.ready (arready).
+    severity: error
+    kind: no_combinational_loop
+    channels: [AR]
+    expression: "¬(arvalid → arready)"
+
+  - id: AXI4-R-VALID-INDEP-OF-READY
+    description: |
+      R.valid (rvalid) 不能组合依赖 R.ready (rready).
+    severity: error
+    kind: no_combinational_loop
+    channels: [R]
+    expression: "¬(rvalid → rready)"
+
+  - id: AXI4-AW-W-MUST-PRECEDE-B
+    description: |
+      B.valid 必须在 AW.valid + W.valid 之后 (B 响应必须先有 AW + W).
+    severity: info
+    kind: response_after_request
+    channels: [B]
+    expression: "bvalid ⟹ (awvalid && wvalid)"
+
+  - id: AXI4-AR-MUST-PRECEDE-R
+    description: |
+      R.valid 必须在 AR.valid 之后.
+    severity: info
+    kind: response_after_request
+    channels: [R]
+    expression: "rvalid ⟹ arvalid"
+
+  - id: AXI4-NO-CROSS-CHANNEL-LOOP
+    description: |
+      写通道 (AW/W/B) 和读通道 (AR/R) 通常独立.
+      但 master 共享资源 (e.g. 单一 cmd FIFO) 时, 可能成环:
+        AW.ready ← cmd_fifo_full ← B.valid ← AW.valid (circular)
+    severity: warning
+    kind: no_cross_channel_loop
+    channels: [AW, W, B, AR, R]
+    expression: "¬(any ready chain forms a cycle through write+read)"
+
+# 禁止的组合逻辑环
+forbidden_combinational_loops:
+  - "awvalid → awready"
+  - "awready → awvalid"
+  - "wvalid → wready"
+  - "wready → wvalid"
+  - "bvalid → bready"
+  - "bready → bvalid"
+  - "arvalid → arready"
+  - "arready → arvalid"
+  - "rvalid → rready"
+  - "rready → rvalid"
+
+notes: |
+  AXI4 outstanding: master 可以连续发 AW (直到 awready LOW), 不等 B.
+  死锁常见场景:
+    1. W.ready 依赖 B.valid 错误, master 卡死
+    2. 单一 cmd FIFO 满, AW/W 都等, 但 B 永远不发 (consumer 停)
+    3. master 同时写读, slave 不平衡

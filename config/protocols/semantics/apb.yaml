@@ -1,0 +1,61 @@
+# ==============================================================================
+# config/protocols/semantics/apb.yaml
+# ==============================================================================
+# AMBA APB (Advanced Peripheral Bus) 协议语义
+#
+# [2026-06-13] 用于 bus semantics / bus deadlock 命令
+# ==============================================================================
+
+protocol: APB
+description: |
+  AMBA APB. 极简单总线: paddr/pwdata/prdata + psel/penable/pready.
+  3-phase 协议: SETUP → ACCESS (wait for pready) → 完成.
+
+transfer: |
+  ACCESS phase: penable && pready (transfer completes)
+
+# 通道规则
+channels:
+  - name: P
+    direction: data
+    valid: penable
+    ready: pready
+    data: pwdata  # 写数据
+    depends_on: [SETUP]
+
+# 死锁候选规则
+deadlock_rules:
+  - id: APB-PENABLE-INDEP-OF-PREADY
+    description: |
+      penable 不应组合依赖 pready. master 决定何时进 ACCESS phase.
+    severity: error
+    kind: no_combinational_loop
+    channels: [P]
+    expression: "¬(penable → pready)"
+
+  - id: APB-PSEL-MUST-PRECEDE-PENABLE
+    description: |
+      SETUP phase (psel=1, penable=0) 必须在 ACCESS (psel=1, penable=1) 之前.
+    severity: info
+    kind: response_after_request
+    channels: [P]
+    expression: "penable ⟹ psel"
+
+  - id: APB-NO-SLAVE-READY
+    description: |
+      如果 slave 永远不拉高 pready, 总线卡死.
+    severity: warning
+    kind: fifo_no_full_deadlock
+    channels: [P]
+    expression: "pready must toggle in finite time"
+
+# 禁止的组合逻辑环
+forbidden_combinational_loops:
+  - "penable → pready"
+  - "pready → penable"
+  - "psel → pready"
+  - "pready → psel"
+
+notes: |
+  APB 极简, 主要风险是 slave 永远不拉 pready (死锁).
+  另外: psel 永远置高但 penable 永远 0 也是 deadlock.
