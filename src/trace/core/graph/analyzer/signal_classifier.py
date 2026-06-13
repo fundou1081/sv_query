@@ -316,7 +316,14 @@ def _classify_node(node: TraceNode, node_id: str) -> tuple[SignalClass, float]:
             return SignalClass.DATA, 0.7
 
     # 规则 5: 宽度启发式
-    w_msb, w_lsb = node.width
+    # [Bug-fix 2026-06-13] node.width 可能是 3-tuple (1, 0, 0) — pyslang 返错位
+    # 加上 valueError 防御, 只取前 2 个值。
+    try:
+        w_tuple = tuple(node.width)
+        w_msb = w_tuple[0] if len(w_tuple) > 0 else 0
+        w_lsb = w_tuple[1] if len(w_tuple) > 1 else 0
+    except (TypeError, ValueError, IndexError):
+        w_msb, w_lsb = 0, 0
     w = abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
     if w == 1:
         # 1-bit: 可能是 control 或 flag
