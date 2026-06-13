@@ -1136,7 +1136,11 @@ class SemanticAdapter:
                 members = iface.members
 
             if header and hasattr(header, "name"):
-                iface_def_name = header.name.value if hasattr(header.name, "value") else str(header.name)
+                # [Bug-fix 2026-06-13] header.name.value / str() 都可能返 binary garbage
+                if hasattr(header.name, "value"):
+                    iface_def_name = _safe_str(header.name.value)
+                else:
+                    iface_def_name = _safe_str(header.name)
 
             if iface_def_name != interface_name:
                 continue
@@ -1169,7 +1173,11 @@ class SemanticAdapter:
                         item_name = _safe_attr(item, "name", None)
                         if not item_name:
                             continue
-                        actual_name = item_name.value if hasattr(item_name, "value") else str(item_name)
+                        # [Bug-fix 2026-06-13] 防御 binary garbage
+                        if hasattr(item_name, "value"):
+                            actual_name = _safe_str(item_name.value)
+                        else:
+                            actual_name = _safe_str(item_name)
                         if actual_name != modport_name:
                             continue
 
@@ -1216,11 +1224,11 @@ class SemanticAdapter:
                                         if "ModportNamedPort" in sig_kind_str:
                                             sig_name_attr = _safe_attr(sig_node, "name", None)
                                             if sig_name_attr:
-                                                sig_name = (
-                                                    sig_name_attr.value
-                                                    if hasattr(sig_name_attr, "value")
-                                                    else str(sig_name_attr)
-                                                )
+                                                # [Bug-fix 2026-06-13] .value / str() 都可能返 binary garbage
+                                                if hasattr(sig_name_attr, "value"):
+                                                    sig_name = _safe_str(sig_name_attr.value)
+                                                else:
+                                                    sig_name = _safe_str(sig_name_attr)
                                                 if sig_name:
                                                     result[sig_name] = direction
                                         # Handle simple identifier strings
