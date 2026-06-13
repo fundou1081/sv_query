@@ -127,6 +127,117 @@ def graph(
         typer.echo(viewer.render_dot(output_path=None))
 
 
+@vis_app.command(name="dataflow")
+def dataflow(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    module: str = typer.Option(None, "--module", "-m", help="Focus on specific module (filter edges to this module's signals)"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
+    include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
+) -> None:
+    """数据流图: 显示 data path (运算表达式) + 关键 control 边 (enable/valid/mux sel)
+
+    基于 SignalGraph 自动分类 clock/reset/control/data, 生成 DOT 图:
+    - 数据边: 蓝色实线,标注运算表达式 (a+b, {rx, sreg[10:1]})
+    - 控制边: 橙色虚线 (valid/ready/enable → 数据目标)
+    - MUX 目标: 加粗边 (多源数据汇聚)
+    - 寄存器: 粗边框
+    """
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
+    from trace.core.compiler import CompilationError
+    from cli._common import _build_tracer, handle_compilation_error
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    include_dirs = include.split(",") if include else None
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            include_dirs=include_dirs,
+        )
+        graph = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    classification = classify_graph(graph)
+    typer.echo(f"  Data nodes: {len(classification.data_nodes)}", err=True)
+    typer.echo(f"  Control nodes: {len(classification.control_nodes)}", err=True)
+    typer.echo(f"  Clock nodes: {len(classification.clock_nodes)}", err=True)
+
+    dot = generate_dataflow_dot(graph, module or file or filelist or "", classification, include_clk_rst=include_clk_rst)
+
+    if dot_output:
+        Path(dot_output).write_text(dot)
+        typer.echo(f"✓ DOT: {dot_output}")
+    else:
+        typer.echo(dot)
+
+
+@vis_app.command(name="pipeline")
+def pipeline(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
+) -> None:
+    """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
+
+    从 SignalGraph 自动检测 pipeline 结构:
+    - 识别 pipeline registers (排除 clock/reset/state-machine regs)
+    - 每个 stage 一个 subgraph: 含 registers + 组合逻辑
+    - 控制信号 (valid/stall) 标记为跨 stage 虚线
+    - 左→右布局 = 时间流方向
+    """
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot
+    from trace.core.compiler import CompilationError
+    from cli._common import _build_tracer, handle_compilation_error
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    include_dirs = include.split(",") if include else None
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            include_dirs=include_dirs,
+        )
+        graph = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    classification = classify_graph(graph)
+    info = detect_pipeline(graph, classification)
+    info.module_name = module or file or filelist or ""
+
+    typer.echo(f"  Pipeline regs: {len(info.pipeline_regs)}", err=True)
+    typer.echo(f"  Control regs: {len(info.control_regs)}", err=True)
+    typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
+    typer.echo(f"  Stages: {info.total_latency}", err=True)
+
+    dot = generate_pipeline_dot(graph, info, classification)
+
+    if dot_output:
+        Path(dot_output).write_text(dot)
+        typer.echo(f"✓ DOT: {dot_output}")
+    else:
+        typer.echo(dot)
+
+
 @vis_app.command(name="gap")
 def gap(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
