@@ -19,18 +19,17 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .signal_classifier import (
     SignalClassification,
-    classify_graph,
     SignalClass,
+)
+from ._dot_common import (
+    sanitize_dot_id,
+    safe_classify,
+    node_width as _node_width,
 )
 from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
 
 
-def _sanitize_dot_id(node_id: str) -> str:
-    """清理 DOT node ID (移除 non-ASCII / 控制字符)"""
-    if not isinstance(node_id, str):
-        return str(node_id)
-    safe = ''.join(c for c in node_id if 32 <= ord(c) < 127)
-    return safe if safe else f"_node_{hash(node_id) & 0xFFFF:04x}"
+# [P1-5 2026-06-13] 委托给 _dot_common.sanitize_dot_id (与 dataflow_viz 统一)
 
 
 @dataclass
@@ -70,9 +69,8 @@ def detect_pipeline(
         PipelineInfo with stages (empty if classification failed)
     """
     if classification is None:
-        try:
-            classification = classify_graph(graph)
-        except (UnicodeDecodeError, ValueError, TypeError):
+        classification = safe_classify(graph)
+        if classification is None:
             # [P0-2 2026-06-13] 修正: 返回空 PipelineInfo，不再返回 str (与签名不符)
             return PipelineInfo(module_name="")
 
@@ -229,7 +227,7 @@ def generate_pipeline_dot(
     pipeline_info: PipelineInfo,
     classification: Optional[SignalClassification] = None,
 ) -> str:
-    _sid = _sanitize_dot_id
+    _sid = sanitize_dot_id
     """生成 pipeline flow DOT 图
 
     Args:
@@ -241,11 +239,10 @@ def generate_pipeline_dot(
         DOT 格式字符串
     """
     if classification is None:
-        try:
-            classification = classify_graph(graph)
-        except (UnicodeDecodeError, ValueError, TypeError) as e:
+        classification = safe_classify(graph)
+        if classification is None:
             # [P0-2 2026-06-13] 修正: 用 pipeline_info.module_name (未定义变量 module_name → NameError)
-            return f'// ERROR: failed to classify graph: {e}\\ndigraph pipeline {{ label="Error: {pipeline_info.module_name}"; }}'
+            return f'// ERROR: failed to classify graph\ndigraph pipeline {{ label="Error: {pipeline_info.module_name}"; }}'
 
 
     lines = ['digraph pipeline {']
@@ -273,7 +270,7 @@ def generate_pipeline_dot(
         # Pipeline registers
         for reg_id in stage.reg_nodes:
             cn = classification.nodes.get(reg_id)
-            name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"  if cn and cn.node.name else reg_id
+            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"  if cn and cn.node.name else reg_id
             w = _node_width(cn)
             lines.append(f'    "{_sid(reg_id)}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
             all_nodes_in_stages.add(reg_id)
@@ -284,7 +281,7 @@ def generate_pipeline_dot(
             cn = classification.nodes.get(comb_id)
             if cn is None:
                 continue
-            name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
+            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
             w = _node_width(cn)
             lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
@@ -301,7 +298,7 @@ def generate_pipeline_dot(
         cn = classification.nodes.get(cid)
         if cn is None:
             continue
-        name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
+        name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
         lines.append(f'  "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
 
     lines.append('')
@@ -331,8 +328,4 @@ def generate_pipeline_dot(
     return "\n".join(lines)
 
 
-def _node_width(cn) -> int:
-    if cn is None:
-        return 0
-    w_msb, w_lsb = cn.node.width
-    return abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
+# _node_width 委托给 _dot_common.node_width (上面已 import)
