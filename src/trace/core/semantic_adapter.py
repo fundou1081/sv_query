@@ -1655,19 +1655,25 @@ class SemanticAdapter:
 
         容忍非 utf-8 字节的 identifier (e.g. escape 序列)。
         如果转换失败,返回 hex 形式以保证唯一性。
+
+        [FIX 2026-06-13] pyslang elaboration 失败时可能返回含 null bytes / control chars
+        的 str (内存垃圾). 过滤后返回纯可打印名.
         """
         if not name:
             return ""
         try:
             s = str(name)
         except (UnicodeDecodeError, TypeError):
-            # Token 内部 buffer 是非 utf-8 字节, 用 hex 表达
             try:
                 raw = bytes(name) if hasattr(name, '__bytes__') else b''
                 return f"<id:0x{raw.hex()[:16]}>"
             except Exception:
                 return "<id:non-utf8>"
-        return " ".join(s.split()).strip()
+        # 过滤 null bytes + control chars
+        if s and any(ord(c) < 0x20 for c in s):
+            s = ''.join(c for c in s if 0x20 <= ord(c) < 0x7F)
+        s = " ".join(s.split()).strip()
+        return s if s else "<id:empty>"
 
     @staticmethod
     def _safe_str(obj) -> str:

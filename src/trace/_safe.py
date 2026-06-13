@@ -10,11 +10,15 @@ from __future__ import annotations
 
 
 def _safe_str(obj) -> str:
-    """Safe str() that tolerates non-UTF-8 bytes in pyslang Tokens/Syntax."""
+    """Safe str() that tolerates non-UTF-8 bytes in pyslang Tokens/Syntax.
+
+    [FIX 2026-06-13] pyslang elaboration failure 可能返回含 null bytes / control chars
+    的 str (内存垃圾). 过滤后返回纯可打印名或 <id:binary>.
+    """
     if obj is None:
         return ""
     try:
-        return str(obj)
+        s = str(obj)
     except (UnicodeDecodeError, TypeError):
         try:
             if hasattr(obj, "rawText"):
@@ -26,6 +30,12 @@ def _safe_str(obj) -> str:
             return f"<id:0x{raw.hex()[:16]}>"
         except Exception:
             return "<id:non-utf8>"
+    # 过滤 null bytes + control chars (单文件模式 elaboration 失败时)
+    if s and any(ord(c) < 0x20 for c in s):
+        s = ''.join(c for c in s if 0x20 <= ord(c) < 0x7F)
+        if not s.strip():
+            return "<id:binary>"
+    return s
 
 
 def _safe_attr(obj, name: str, default=None):
