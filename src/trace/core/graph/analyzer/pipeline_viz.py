@@ -12,6 +12,7 @@ Algorithm:
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
@@ -22,6 +23,14 @@ from .signal_classifier import (
     SignalClass,
 )
 from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
+
+
+def _sanitize_dot_id(node_id: str) -> str:
+    """清理 DOT node ID (移除 non-ASCII / 控制字符)"""
+    if not isinstance(node_id, str):
+        return str(node_id)
+    safe = ''.join(c for c in node_id if 32 <= ord(c) < 127)
+    return safe if safe else f"_node_{hash(node_id) & 0xFFFF:04x}"
 
 
 @dataclass
@@ -61,7 +70,12 @@ def detect_pipeline(
         PipelineInfo with stages
     """
     if classification is None:
-        classification = classify_graph(graph)
+        try:
+            classification = classify_graph(graph)
+        except (UnicodeDecodeError, ValueError, TypeError) as e:
+            # graph has binary-corrupted nodes, return minimal DOT
+            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
+
 
     info = PipelineInfo(module_name="")
 
@@ -216,6 +230,7 @@ def generate_pipeline_dot(
     pipeline_info: PipelineInfo,
     classification: Optional[SignalClassification] = None,
 ) -> str:
+    _sid = _sanitize_dot_id
     """生成 pipeline flow DOT 图
 
     Args:
@@ -227,7 +242,12 @@ def generate_pipeline_dot(
         DOT 格式字符串
     """
     if classification is None:
-        classification = classify_graph(graph)
+        try:
+            classification = classify_graph(graph)
+        except (UnicodeDecodeError, ValueError, TypeError) as e:
+            # graph has binary-corrupted nodes, return minimal DOT
+            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
+
 
     lines = ['digraph pipeline {']
     lines.append('  rankdir=LR;')  # 左→右 = 时间流
@@ -254,9 +274,9 @@ def generate_pipeline_dot(
         # Pipeline registers
         for reg_id in stage.reg_nodes:
             cn = classification.nodes.get(reg_id)
-            name = cn.node.name if cn else reg_id
+            name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"  if cn and cn.node.name else reg_id
             w = _node_width(cn)
-            lines.append(f'    "{reg_id}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
+            lines.append(f'    "{_sid(reg_id)}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
             all_nodes_in_stages.add(reg_id)
 
         # 组合逻辑
@@ -265,9 +285,9 @@ def generate_pipeline_dot(
             cn = classification.nodes.get(comb_id)
             if cn is None:
                 continue
-            name = cn.node.name
+            name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
             w = _node_width(cn)
-            lines.append(f'    "{comb_id}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
+            lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
         if len(stage.comb_nodes) > 8:
             lines.append(f'    // +{len(stage.comb_nodes)-8} more comb nodes')
@@ -282,8 +302,8 @@ def generate_pipeline_dot(
         cn = classification.nodes.get(cid)
         if cn is None:
             continue
-        name = cn.node.name
-        lines.append(f'  "{cid}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
+        name = _sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
+        lines.append(f'  "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
 
     lines.append('')
 
@@ -296,7 +316,7 @@ def generate_pipeline_dot(
                 for e in edges:
                     if e.kind == EdgeKind.DRIVER:
                         label = e.expression[:20] if e.expression and e.expression != "?" else ""
-                        lines.append(f'  "{reg_id}" -> "{succ}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
+                        lines.append(f'  "{_sid(reg_id)}" -> "{_sid(succ)}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
 
     lines.append('')
     lines.append('  // === Control edges (dashed) ===')
@@ -306,7 +326,7 @@ def generate_pipeline_dot(
                 edges = graph.get_edges(cid, succ)
                 for e in edges:
                     if e.kind == EdgeKind.DRIVER:
-                        lines.append(f'  "{cid}" -> "{succ}" [color="#CC6600" style=dashed penwidth=1.2];')
+                        lines.append(f'  "{_sid(cid)}" -> "{_sid(succ)}" [color="#CC6600" style=dashed penwidth=1.2];')
 
     lines.append('}')
     return "\n".join(lines)
