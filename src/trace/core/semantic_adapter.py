@@ -379,6 +379,8 @@ class SemanticAdapter:
 
         Semantic AST: 对于 InstanceSymbol,返回 definition.name;
                       对于 DefinitionSymbol,返回 name
+
+        [Bug-fix 2026-06-13] 防御 binary garbage: 用 safe_str() 代替 str()
         """
         try:
             kind_str = str(getattr(module, "kind", ""))
@@ -394,14 +396,14 @@ class SemanticAdapter:
                     # 不用 hasattr - 直接尝试 get
                     name = _safe_attr(defn, "name", None)
                     if name is not None:
-                        return str(name)
+                        return _safe_str(name)
             except (UnicodeDecodeError, Exception):
                 return "_inst_"
 
         try:
             name = _safe_attr(module, "name", None)
             if name is not None:
-                return str(name)
+                return _safe_str(name)
         except (UnicodeDecodeError, Exception):
             return "_bad_"
         return "unknown"
@@ -713,7 +715,8 @@ class SemanticAdapter:
         """获取单个端口声明的名称"""
         name = _safe_attr(port_decl, "name", None)
         if name:
-            return str(name)
+            # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
+            return _safe_str(name)
         return "unknown"
 
     def get_port_name_and_direction(self, port_decl) -> tuple:
@@ -727,7 +730,8 @@ class SemanticAdapter:
 
         try:
             if hasattr(port_decl, "name"):
-                name = str(port_decl.name)
+                # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
+                name = _safe_str(port_decl.name)
         except (UnicodeDecodeError, Exception):
             name = None
 
@@ -735,7 +739,8 @@ class SemanticAdapter:
         if hasattr(port_decl, "direction"):
             dir_val = port_decl.direction
             if hasattr(dir_val, "name"):
-                dir_str = str(dir_val.name).lower()
+                # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
+                dir_str = _safe_str(dir_val.name).lower()
                 # [FIX] Check inout BEFORE output, since 'inout' contains 'out'
                 if "inout" in dir_str:
                     direction = "inout"
@@ -1028,14 +1033,13 @@ class SemanticAdapter:
                     first_decl = decl_list[0]
                     name = _safe_attr(first_decl, "name", None)
                     if name:
-                        try:
-                            return str(name)
-                        except (UnicodeDecodeError, TypeError):
-                            # 非 utf-8 identifier (e.g. escape 序列), 退回 location
-                            loc = getattr(name, "location", None)
-                            if loc is not None:
-                                return f"<id@{getattr(loc, 'line', '?')}:{getattr(loc, 'column', '?')}>"
-                            return "<id:non-utf8>"
+                        # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
+                        return _safe_str(name)
+                if name is None:
+                    loc = getattr(name, "location", None)
+                    if loc is not None:
+                        return f"<id@{getattr(loc, 'line', '?')}:{getattr(loc, 'column', '?')}>"
+                    return "<id:non-utf8>"
             elif hasattr(decls, "name"):
                 try:
                     return str(decls.name)
@@ -1137,10 +1141,14 @@ class SemanticAdapter:
 
             if header and hasattr(header, "name"):
                 # [Bug-fix 2026-06-13] header.name.value / str() 都可能返 binary garbage
-                if hasattr(header.name, "value"):
-                    iface_def_name = _safe_str(header.name.value)
-                else:
-                    iface_def_name = _safe_str(header.name)
+                # 还要防 .value 访问本身 raise UnicodeDecodeError
+                try:
+                    if hasattr(header.name, "value"):
+                        iface_def_name = _safe_str(header.name.value)
+                    else:
+                        iface_def_name = _safe_str(header.name)
+                except (UnicodeDecodeError, TypeError):
+                    iface_def_name = None
 
             if iface_def_name != interface_name:
                 continue
@@ -1225,10 +1233,14 @@ class SemanticAdapter:
                                             sig_name_attr = _safe_attr(sig_node, "name", None)
                                             if sig_name_attr:
                                                 # [Bug-fix 2026-06-13] .value / str() 都可能返 binary garbage
-                                                if hasattr(sig_name_attr, "value"):
-                                                    sig_name = _safe_str(sig_name_attr.value)
-                                                else:
-                                                    sig_name = _safe_str(sig_name_attr)
+                                                # 还要防 .value 访问本身 raise UnicodeDecodeError
+                                                try:
+                                                    if hasattr(sig_name_attr, "value"):
+                                                        sig_name = _safe_str(sig_name_attr.value)
+                                                    else:
+                                                        sig_name = _safe_str(sig_name_attr)
+                                                except (UnicodeDecodeError, TypeError):
+                                                    sig_name = None
                                                 if sig_name:
                                                     result[sig_name] = direction
                                         # Handle simple identifier strings

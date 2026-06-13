@@ -444,5 +444,137 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
     print(f"\n  📊 Gap signals: {len(gap_signals)} (risk >= {min_risk})")
 
 
+# ==============================================================================
+# [PR1 2026-06-13] visualize module — 1 box = 1 sub-module instance
+# ==============================================================================
+
+@vis_app.command(name="module")
+def module(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    target: str = typer.Option(
+        "top", "--target", "-t",
+        help="Target module name to visualize (e.g. axi_xbar_intf)",
+    ),
+    depth: int = typer.Option(
+        1, "--depth", "-d",
+        help="Instance hierarchy depth to include (1 = direct children only)",
+    ),
+    output_json: str = typer.Option(
+        None, "--output-json", "-j",
+        help="Write module extraction to JSON (for golden diff)",
+    ),
+    dot_output: str = typer.Option(
+        None, "--dot", help="Write DOT graph to file",
+    ),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default non-strict)"),
+) -> None:
+    """[PR1 2026-06-13] L1 module-level visualization. 1 box = 1 sub-module instance.
+
+    从 SignalGraph 提取所有 INSTANTIATED_MODULE 节点, 按 instance hierarchy
+    截断名字, 折叠 array instance. 用于项目架构 review.
+    """
+    from trace.core.module_extractor import extract_module_from_graph
+
+    if not file and not filelist:
+        typer.echo("Error: need --file or --filelist", err=True)
+        raise typer.Exit(1)
+
+    include_dirs = include.split(",") if include else None
+    try:
+        if filelist:
+            tracer = UnifiedTracer(
+                filelist=filelist, include_dirs=include_dirs, strict=strict,
+            )
+        else:
+            with open(file) as f:
+                sources = {file: f.read()}
+            tracer = UnifiedTracer(
+                sources=sources, include_dirs=include_dirs, strict=strict,
+            )
+    except Exception as e:
+        typer.echo(f"Error building tracer: {e}", err=True)
+        raise typer.Exit(1)
+
+    graph = tracer.build_graph()
+    result = extract_module_from_graph(
+        graph, target_module=target, max_depth=depth,
+    )
+
+    typer.echo(f"Target: {result.top_module}")
+    typer.echo(f"Depth: {depth}")
+    typer.echo(f"Instances: {len(result.instances)}")
+    for inst in result.instances:
+        depth_mark = "  " * (inst.depth - 1) + "└─"
+        typer.echo(f"  {depth_mark} {inst.name}  (def={inst.def_name}, depth={inst.depth})")
+
+    if output_json:
+        import json
+        from dataclasses import asdict
+        out = {
+            "module": result.top_module,
+            "view": "module",
+            "level": 1,
+            "depth": depth,
+            "nodes": [
+                {
+                    "id": inst.id,
+                    "name": inst.name,
+                    "def_name": inst.def_name,
+                    "depth": inst.depth,
+                    "array_name": inst.array_name,
+                    "array_index": inst.array_index,
+                }
+                for inst in result.instances
+            ],
+            "edges": [],  # L1 不画内部边
+        }
+        with open(output_json, "w") as f:
+            json.dump(out, f, indent=2, ensure_ascii=False)
+        typer.echo(f"\n✓ Wrote JSON: {output_json}")
+
+    if dot_output:
+        _write_module_dot(result, dot_output)
+        typer.echo(f"✓ Wrote DOT: {dot_output}")
+
+
+def _write_module_dot(result, path: str) -> None:
+    """[PR1] 写 module-level DOT 图. 1 box = 1 instance."""
+    lines = ["digraph module {"]
+    lines.append('  rankdir=TB;')
+    lines.append('  splines=polyline;')
+    lines.append('  nodesep=0.4;')
+    lines.append('  ranksep=0.6;')
+    lines.append('')
+
+    # Group by depth
+    from collections import defaultdict
+    by_depth = defaultdict(list)
+    for inst in result.instances:
+        by_depth[inst.depth].append(inst)
+
+    for depth in sorted(by_depth.keys()):
+        lines.append(f'  // Depth {depth}')
+        for inst in by_depth[depth]:
+            label = f"{inst.name}\\n({inst.def_name})"
+            color = "#4488cc" if depth == 1 else "#88bbdd"
+            lines.append(
+                f'  "{inst.id}" [label="{label}" shape=box '
+                f'style="rounded,filled" fillcolor="{color}" fontcolor="white" penwidth=1.5];'
+            )
+        lines.append('')
+
+    # Add invisible edges for same-depth ordering
+    for depth in sorted(by_depth.keys()):
+        items = by_depth[depth]
+        for i in range(len(items) - 1):
+            lines.append(f'  "{items[i].id}" -> "{items[i+1].id}" [style=invis];')
+
+    lines.append('}')
+    with open(path, "w") as f:
+        f.write("\n".join(lines))
+
+
 if __name__ == "__main__":
     typer.run(vis_app)
