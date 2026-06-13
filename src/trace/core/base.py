@@ -233,12 +233,18 @@ class PyslangAdapter:
         return params
 
     def clean_name(self, name) -> str:
-        """清理名称：去除前后空格和换行"""
+        """清理名称：去除 null bytes / control chars / 前后空格"""
         if not name:
             return ""
-        s = str(name).strip()
+        s = str(name)
+        # [FIX 2026-06-13] 过滤 null bytes + control chars (单文件模式 elaboration 失败时
+        # pyslang 返回未初始化内存 → node name 变成二进制垃圾)
+        s = ''.join(c for c in s if 0x20 <= ord(c) < 0x7F or c in '\n\t')
+        s = s.strip()
         # 去除多余空白
         s = " ".join(s.split())
+        if not s:
+            return ""
         return s
 
     def get_modules(self) -> list:
