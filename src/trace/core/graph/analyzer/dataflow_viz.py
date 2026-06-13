@@ -10,6 +10,7 @@ dataflow_viz — 基于 SignalGraph + signal_classifier 生成数据流可视化
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -23,6 +24,16 @@ from .signal_classifier import (
 from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
 
 
+def _sanitize_dot_id(node_id: str) -> str:
+    """清理 DOT node ID/label (移除 non-ASCII / 控制字符)"""
+    if not isinstance(node_id, str):
+        return str(node_id)
+    safe = ''.join(c for c in node_id if 0x20 <= ord(c) < 0x7F)
+    safe = safe.replace('"', '').replace('{', '').replace('}', '')
+    safe = safe.replace('\\', '').strip()
+    return safe if safe else f'node_{(hash(node_id) & 0xFFFF):04x}' 
+
+
 def generate_dataflow_dot(
     graph: SignalGraph,
     module_name: str = "",
@@ -30,6 +41,7 @@ def generate_dataflow_dot(
     include_ports: bool = True,
     include_clk_rst: bool = False,
 ) -> str:
+    _sid = _sanitize_dot_id  # alias for cleaner code
     """生成数据流 DOT 图
 
     Args:
@@ -43,7 +55,12 @@ def generate_dataflow_dot(
         DOT 格式字符串
     """
     if classification is None:
-        classification = classify_graph(graph)
+        try:
+            classification = classify_graph(graph)
+        except (UnicodeDecodeError, ValueError, TypeError) as e:
+            # graph has binary-corrupted nodes, return minimal DOT
+            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
+
 
     lines = ['digraph dataflow {']
     lines.append('  rankdir=TB;')
@@ -103,7 +120,10 @@ def generate_dataflow_dot(
         w_msb, w_lsb = node.width
         w = abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
         width_str = f"[{w_msb}:{w_lsb}]" if w_msb != w_lsb else f"[{w_msb}]"
-        label_parts = [node.name]
+        safe_name = _sanitize_dot_id(node.name)
+        if safe_name and safe_name.startswith('node_'):
+            safe_name = ''  # auto-generated name, skip
+        label_parts = [safe_name] if safe_name else []
         if node.kind != NodeKind.SIGNAL:
             label_parts.append(node.kind.name)
         if w > 0:
@@ -123,7 +143,7 @@ def generate_dataflow_dot(
         penwidth = 2 if node.kind == NodeKind.REG else 1
 
         lines.append(
-            f'  "{node_id}" [label="{label}" shape=box '
+            f'  "{_sid(node_id)}" [label="{label}" shape=box '
             f'style="rounded,filled" fillcolor="{fill}" color="{border}" '
             f'fontcolor="{font}" penwidth={penwidth}];'
         )
@@ -142,7 +162,7 @@ def generate_dataflow_dot(
     for ce in data_edges:
         attrs = ['color="#226699"', 'style=solid', 'penwidth=1.5']
         # 表达式标注
-        expr = ce.edge.expression or ""
+        expr = _sanitize_dot_id(ce.edge.expression or "")
         if expr and expr not in ("?", "unknown"):
             # 截断长表达式
             label = expr[:30] + ("..." if len(expr) > 30 else "")
@@ -150,14 +170,14 @@ def generate_dataflow_dot(
             attrs.append('fontsize=9')
         # 有条件 → 虚线标注
         if ce.edge.condition:
-            cond_short = ce.edge.condition[:25]
+            cond_short = _sanitize_dot_id(ce.edge.condition or "")[:25]
             attrs.append(f'xlabel="{cond_short}"')
             attrs.append('fontsize=7')
         # MUX 目标 → 加粗
         if ce.dst_id in mux_targets:
             attrs.append('penwidth=2.5')
             attrs.append('color="#224488"')
-        lines.append(f'  "{ce.src_id}" -> "{ce.dst_id}" [{", ".join(attrs)}];')
+        lines.append(f'  "{_sid(ce.src_id)}" -> "{_sid(ce.dst_id)}" [{", ".join(attrs)}];')
 
     lines.append('')
 
@@ -166,10 +186,10 @@ def generate_dataflow_dot(
     for ce in control_edges:
         attrs = ['color="#CC6600"', 'style=dashed', 'penwidth=1.2']
         if ce.edge.condition:
-            cond_short = ce.edge.condition[:25]
+            cond_short = _sanitize_dot_id(ce.edge.condition or "")[:25]
             attrs.append(f'xlabel="{cond_short}"')
             attrs.append('fontsize=7')
-        lines.append(f'  "{ce.src_id}" -> "{ce.dst_id}" [{", ".join(attrs)}];')
+        lines.append(f'  "{_sid(ce.src_id)}" -> "{_sid(ce.dst_id)}" [{", ".join(attrs)}];')
 
     lines.append('')
     lines.append('  // === Legend ===')
