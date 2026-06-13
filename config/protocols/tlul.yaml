@@ -129,3 +129,17 @@ variants:
       - tlh
       - tld
     needs_absent_signals: []
+    # [P0-3 2026-06-13] 从 detector.py 硬编码迁移到 schema 声明.
+    # wrapper 端口名字命中时, A/D 通道提升 score/name_score/pattern_score
+    # 到 0.5 — 避免被 NAME_SCORE_GATE=0.2 卡死, 避免 confidence=0.
+    channel_overrides:
+      - channel: A
+        required: [tlh]
+        score: 0.5
+        name_score: 0.5
+        pattern_score: 0.5
+      - channel: D
+        required: [tld]
+        score: 0.5
+        name_score: 0.5
+        pattern_score: 0.5
