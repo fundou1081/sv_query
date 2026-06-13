@@ -116,7 +116,13 @@ def generate_dataflow_dot(
             continue
 
         # 标签: name + kind + width
-        w_msb, w_lsb = node.width
+        # [Bug-fix 2026-06-13] 防御 width 是 3-tuple 的情况
+        try:
+            w_tuple = tuple(node.width)
+            w_msb = w_tuple[0] if len(w_tuple) > 0 else 0
+            w_lsb = w_tuple[1] if len(w_tuple) > 1 else 0
+        except (TypeError, ValueError, IndexError):
+            w_msb, w_lsb = 0, 0
         w = abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
         width_str = f"[{w_msb}:{w_lsb}]" if w_msb != w_lsb else f"[{w_msb}]"
         safe_name = sanitize_dot_id(node.name)
