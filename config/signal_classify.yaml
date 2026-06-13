@@ -1,0 +1,64 @@
+# ==============================================================================
+# config/signal_classify.yaml
+# ==============================================================================
+# Signal classification rules for visualization (dataflow + pipeline).
+#
+# [P1-4 2026-06-13] Moved from hardcoded lists in signal_classifier.py
+# to external YAML so users can add/remove patterns without touching Python.
+#
+# Match semantics: substring match on lowercased signal name (e.g. "data_valid"
+# matches both "data" (data) and "valid" (control) — order in rules determines
+# precedence, first match wins).
+#
+# Each rule has:
+#   - class: SIGNAL_CLASS (clock|reset|control|data)
+#   - patterns: list of substrings to match
+#   - confidence: 0.0-1.0 score returned by the classifier
+#   - description: human-readable purpose
+# ==============================================================================
+
+rules:
+  # ---- CONTROL patterns (checked first if data patterns also match) ----
+  - class: control
+    patterns: [valid, ready, stall, ack, req, grant, enable, en,
+               sel, select, we, re, cs, ce,
+               state, next_state, nxt_state,
+               done, busy, idle, error, fault,
+               start, stop, flush]
+    confidence: 0.7
+    description: handshake / FSM / enable signals
+
+  # ---- DATA patterns (overrides control if name has both) ----
+  - class: data
+    patterns: [data, addr, address, wdata, rdata, mem, pc,
+               opcode, operand, result, alu,
+               fifo_wdata, fifo_rdata,
+               shift, count, counter, timer]
+    confidence: 0.7
+    description: payload / address / counter signals
+
+  # ---- 1-bit control fallback (width-based) ----
+  - class: control
+    patterns: []  # special: empty patterns means "width-based default"
+    width_filter:
+      max_bits: 1
+    confidence: 0.5
+    description: 1-bit signals (default to control, not data)
+
+  # ---- multi-bit data fallback (width-based) ----
+  - class: data
+    patterns: []
+    width_filter:
+      min_bits: 2
+    confidence: 0.6
+    description: multi-bit signals (default to data)
+
+# ---- Reserved: explicit "always control" overrides (for tricky names) ----
+# Use sparingly. Pattern must be exact match (case-insensitive).
+overrides:
+  # data_valid → control (despite having "data" in name)
+  # 备注: 当前代码逻辑是 data 在前, 所以 data_valid 会被判为 data, 加 override 可改
+  - pattern: data_valid
+    class: data
+    confidence: 0.9
+    description: "data_valid is data, not control"
