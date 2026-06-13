@@ -67,15 +67,14 @@ def detect_pipeline(
         classification: 预计算的信号分类
 
     Returns:
-        PipelineInfo with stages
+        PipelineInfo with stages (empty if classification failed)
     """
     if classification is None:
         try:
             classification = classify_graph(graph)
-        except (UnicodeDecodeError, ValueError, TypeError) as e:
-            # graph has binary-corrupted nodes, return minimal DOT
-            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
-
+        except (UnicodeDecodeError, ValueError, TypeError):
+            # [P0-2 2026-06-13] 修正: 返回空 PipelineInfo，不再返回 str (与签名不符)
+            return PipelineInfo(module_name="")
 
     info = PipelineInfo(module_name="")
 
@@ -245,8 +244,8 @@ def generate_pipeline_dot(
         try:
             classification = classify_graph(graph)
         except (UnicodeDecodeError, ValueError, TypeError) as e:
-            # graph has binary-corrupted nodes, return minimal DOT
-            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
+            # [P0-2 2026-06-13] 修正: 用 pipeline_info.module_name (未定义变量 module_name → NameError)
+            return f'// ERROR: failed to classify graph: {e}\\ndigraph pipeline {{ label="Error: {pipeline_info.module_name}"; }}'
 
 
     lines = ['digraph pipeline {']
