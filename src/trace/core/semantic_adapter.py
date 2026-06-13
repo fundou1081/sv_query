@@ -6,7 +6,7 @@
 # ==============================================================================
 
 import sys
-from .._safe import _safe_attr, _safe_str
+from .._safe import _safe_attr, _safe_str, safe_str, clean_name as _clean_name_fn
 from typing import Callable, Iterator
 
 # 确保 pyslang bindings 在 path 中
@@ -1656,43 +1656,15 @@ class SemanticAdapter:
         容忍非 utf-8 字节的 identifier (e.g. escape 序列)。
         如果转换失败,返回 hex 形式以保证唯一性。
 
-        [FIX 2026-06-13] pyslang elaboration 失败时可能返回含 null bytes / control chars
-        的 str (内存垃圾). 过滤后返回纯可打印名.
+        [P0-1 2026-06-13] 收口: 委托给 _safe.clean_name (单一规范实现),
+        不再重复过滤逻辑。参见 _safe.py 文档。
         """
-        if not name:
-            return ""
-        try:
-            s = str(name)
-        except (UnicodeDecodeError, TypeError):
-            try:
-                raw = bytes(name) if hasattr(name, '__bytes__') else b''
-                return f"<id:0x{raw.hex()[:16]}>"
-            except Exception:
-                return "<id:non-utf8>"
-        # 过滤 null bytes + control chars
-        if s and any(ord(c) < 0x20 for c in s):
-            s = ''.join(c for c in s if 0x20 <= ord(c) < 0x7F)
-        s = " ".join(s.split()).strip()
-        return s if s else "<id:empty>"
+        return _clean_name_fn(name)
 
     @staticmethod
     def _safe_str(obj) -> str:
-        """安全的 str() 调用,容忍非 utf-8 字节 (e.g. escape 序列)"""
-        if obj is None:
-            return ""
-        try:
-            return str(obj)
-        except (UnicodeDecodeError, TypeError):
-            try:
-                if hasattr(obj, 'rawText'):
-                    raw = bytes(obj.rawText) if hasattr(obj.rawText, '__bytes__') else b''
-                elif hasattr(obj, '__bytes__'):
-                    raw = bytes(obj)
-                else:
-                    raw = b''
-                return f"<id:0x{raw.hex()[:16]}>"
-            except Exception:
-                return "<id:non-utf8>"
+        """DEPRECATED: 委托给 _safe.safe_str (单一规范实现)。"""
+        return safe_str(obj)
 
     def iter_modules(self) -> Iterator:
         """迭代模块 (InstanceSymbol)"""
