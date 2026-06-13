@@ -521,7 +521,10 @@ def module(
                 {
                     "id": inst.id,
                     "name": inst.name,
+                    "kind": "module",
                     "def_name": inst.def_name,
+                    "module_path": inst.id,  # alias for golden compat
+                    "cluster": "default",  # L1 不分 cluster, 给个默认值
                     "depth": inst.depth,
                     "array_name": inst.array_name,
                     "array_index": inst.array_index,
