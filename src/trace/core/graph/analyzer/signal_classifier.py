@@ -19,8 +19,10 @@ signal_classifier — 基于现有图元数据区分 control 信号 vs data 信�
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
@@ -34,8 +36,9 @@ class SignalClass(Enum):
     UNKNOWN = auto()
 
 
-# 名字启发式: 控制信号常见后缀/前缀
-CONTROL_NAME_PATTERNS = [
+# [P1-4 2026-06-13] 默认 control/data name patterns — fallback when YAML
+# config not found. Custom configs can override via set_patterns().
+_DEFAULT_CONTROL_PATTERNS = [
     "valid", "ready", "stall", "ack", "req", "grant", "enable", "en",
     "sel", "select", "we", "re", "cs", "ce",
     "state", "next_state", "nxt_state",
@@ -43,13 +46,170 @@ CONTROL_NAME_PATTERNS = [
     "start", "stop", "flush",
 ]
 
-# 数据信号常见后缀/前缀
-DATA_NAME_PATTERNS = [
+_DEFAULT_DATA_PATTERNS = [
     "data", "addr", "address", "wdata", "rdata", "mem", "pc",
     "opcode", "operand", "result", "alu",
     "fifo_wdata", "fifo_rdata",
     "shift", "count", "counter", "timer",
 ]
+
+
+@dataclass
+class ClassifyConfig:
+    """[P1-4] 从 YAML 加载的分类规则, 可被 set_config() 覆盖。
+
+    Attributes:
+        control_patterns: 控制信号名子串
+        data_patterns: 数据信号名子串
+        source: 加载来源 ('builtin' | 'yaml:path/to/file.yaml')
+    """
+    control_patterns: List[str] = field(default_factory=lambda: list(_DEFAULT_CONTROL_PATTERNS))
+    data_patterns: List[str] = field(default_factory=lambda: list(_DEFAULT_DATA_PATTERNS))
+    source: str = "builtin"
+
+    def with_overrides(self, control=None, data=None) -> "ClassifyConfig":
+        """返一个新 config, 覆盖部分 pattern 列表。"""
+        return ClassifyConfig(
+            control_patterns=list(control) if control is not None else list(self.control_patterns),
+            data_patterns=list(data) if data is not None else list(self.data_patterns),
+            source=f"{self.source}+override",
+        )
+
+
+# 活跃配置 (默认 = builtin, 可以被 set_config() / load_config() 替换)
+_ACTIVE_CONFIG: ClassifyConfig = ClassifyConfig()
+
+
+def get_config() -> ClassifyConfig:
+    """获取当前活跃的分类配置 (用于 inspection / 测试)."""
+    return _ACTIVE_CONFIG
+
+
+def set_config(cfg: ClassifyConfig) -> None:
+    """全局设置分类配置 (慎用 — 会影响后续所有 classify_graph() 调用)."""
+    global _ACTIVE_CONFIG
+    _ACTIVE_CONFIG = cfg
+
+
+def reset_config() -> None:
+    """重置为默认 builtin 配置。"""
+    global _ACTIVE_CONFIG
+    _ACTIVE_CONFIG = ClassifyConfig()
+
+
+def _auto_load_default_config() -> None:
+    """[P1-4] 在 classify_graph() 首次调用时静默加载默认 YAML。
+
+    路径探测顺序:
+      1. sv_query/config/signal_classify.yaml
+      2. CWD/config/signal_classify.yaml
+      3. 不存在 → 不动, 用 builtin fallback
+    """
+    # sv_query/ 包根目录 (本文件所在位置的爷爷级别)
+    # signal_classifier.py 位于 src/trace/core/graph/analyzer/
+    _here = Path(__file__).resolve()
+    # 1. sv_query/config/ 路径
+    sv_query_root = _here.parents[4] if len(_here.parents) >= 5 else None
+    candidates = []
+    if sv_query_root:
+        candidates.append(sv_query_root / "config" / "signal_classify.yaml")
+    candidates.append(Path.cwd() / "config" / "signal_classify.yaml")
+    for path in candidates:
+        if path.exists():
+            try:
+                load_config(path)
+            except Exception:
+                # 静默降级到 builtin (避免背景 noise)
+                pass
+            return
+
+
+def load_config(yaml_path) -> ClassifyConfig:
+    """[P1-4] 从 YAML 文件加载分类配置并设置为活跃配置。
+
+    详见 config/signal_classify.yaml schema。
+
+    Args:
+        yaml_path: YAML 文件路径 (str 或 Path)。
+
+    Returns:
+        加载后的 ClassifyConfig (同时被设为活跃配置)。
+
+    Raises:
+        FileNotFoundError: YAML 不存在
+        ValueError: YAML 格式错
+    """
+    yaml_path = Path(yaml_path)
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"signal_classify YAML not found: {yaml_path}")
+    text = yaml_path.read_text()
+    try:
+        import yaml  # type: ignore
+        data = yaml.safe_load(text) or {}
+    except ImportError:
+        data = _mini_yaml_load(text)
+    if not isinstance(data, dict):
+        raise ValueError(f"YAML root must be dict, got {type(data).__name__}")
+    rules = data.get("rules") or []
+    control_patterns: List[str] = []
+    data_patterns: List[str] = []
+    for rule in rules:
+        cls = rule.get("class")
+        pats = rule.get("patterns") or []
+        if cls == "control":
+            control_patterns.extend(pats)
+        elif cls == "data":
+            data_patterns.extend(pats)
+        # width_filter 类规则 (空 patterns) 不加入 name 模式列表
+    cfg = ClassifyConfig(
+        control_patterns=control_patterns or list(_DEFAULT_CONTROL_PATTERNS),
+        data_patterns=data_patterns or list(_DEFAULT_DATA_PATTERNS),
+        source=f"yaml:{yaml_path}",
+    )
+    set_config(cfg)
+    return cfg
+
+
+def _mini_yaml_load(text: str) -> dict:
+    """极简 YAML parser: 只支持本文件 schema (rules: list of {class, patterns: list[str]})."""
+    out: Dict = {"rules": []}
+    current: Optional[Dict] = None
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        if not line or line.lstrip().startswith("#"):
+            continue
+        stripped = line.lstrip()
+        if stripped == "rules:":
+            current = None
+            continue
+        if stripped.startswith("- "):
+            if current is None:
+                # start of a new rule in the rules: section
+                item: Dict = {}
+                key_val = stripped[2:].split(":", 1)
+                if len(key_val) == 2:
+                    item[key_val[0].strip()] = key_val[1].strip()
+                out["rules"].append(item)
+                current = item
+            else:
+                # this shouldn't normally happen for our schema
+                pass
+        elif current is not None and ":" in stripped:
+            key, _, val = stripped.partition(":")
+            val = val.strip()
+            if val.startswith("[") and val.endswith("]"):
+                inner = val[1:-1].strip()
+                if not inner:
+                    current[key.strip()] = []
+                else:
+                    current[key.strip()] = [
+                        x.strip().strip('"').strip("'")
+                        for x in inner.split(",")
+                        if x.strip()
+                    ]
+            else:
+                current[key.strip()] = val
+    return out
 
 
 @dataclass
@@ -85,6 +245,10 @@ class SignalClassification:
 
 def classify_graph(graph: SignalGraph) -> SignalClassification:
     """对 SignalGraph 中的所有节点和边进行分类"""
+    # [P1-4 2026-06-13] 首次调用时自动加载默认 YAML 配置 (如果存在)
+    # — 避免每个调用方手动 load_config()
+    if _ACTIVE_CONFIG.source == "builtin":
+        _auto_load_default_config()
     result = SignalClassification()
 
     # 1. 先分类所有节点
@@ -138,15 +302,16 @@ def _classify_node(node: TraceNode, node_id: str) -> tuple[SignalClass, float]:
     if node.is_enable:
         return SignalClass.CONTROL, 0.8
 
-    # 规则 4: 名字启发式
+    # 规则 4: 名字启发式 (从 _ACTIVE_CONFIG 读, 可被 YAML 覆盖)
     name_lower = node.name.lower()
-    for pattern in CONTROL_NAME_PATTERNS:
+    cfg = _ACTIVE_CONFIG
+    for pattern in cfg.control_patterns:
         if pattern in name_lower:
             # 排除 data_ready 这类名字 / valid_data 等
-            if any(dp in name_lower for dp in DATA_NAME_PATTERNS):
+            if any(dp in name_lower for dp in cfg.data_patterns):
                 return SignalClass.DATA, 0.6
             return SignalClass.CONTROL, 0.7
-    for pattern in DATA_NAME_PATTERNS:
+    for pattern in cfg.data_patterns:
         if pattern in name_lower:
             return SignalClass.DATA, 0.7
 
