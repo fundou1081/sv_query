@@ -16,22 +16,22 @@ from typing import Dict, List, Optional
 
 from .signal_classifier import (
     SignalClassification,
-    classify_graph,
     SignalClass,
     ClassifiedNode,
     ClassifiedEdge,
 )
+from ._dot_common import (
+    sanitize_dot_id,
+    safe_classify,
+    node_width,
+    signal_class_color,
+    COMMON_DOT_DEFAULTS,
+)
 from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
 
 
-def _sanitize_dot_id(node_id: str) -> str:
-    """清理 DOT node ID/label (移除 non-ASCII / 控制字符)"""
-    if not isinstance(node_id, str):
-        return str(node_id)
-    safe = ''.join(c for c in node_id if 0x20 <= ord(c) < 0x7F)
-    safe = safe.replace('"', '').replace('{', '').replace('}', '')
-    safe = safe.replace('\\', '').strip()
-    return safe if safe else f'node_{(hash(node_id) & 0xFFFF):04x}' 
+# [P1-5 2026-06-13] 委托给 _dot_common.sanitize_dot_id
+_sanitize_dot_id = sanitize_dot_id
 
 
 def generate_dataflow_dot(
@@ -41,7 +41,7 @@ def generate_dataflow_dot(
     include_ports: bool = True,
     include_clk_rst: bool = False,
 ) -> str:
-    _sid = _sanitize_dot_id  # alias for cleaner code
+    _sid = sanitize_dot_id  # [P1-5] 用共享实现
     """生成数据流 DOT 图
 
     Args:
@@ -55,11 +55,10 @@ def generate_dataflow_dot(
         DOT 格式字符串
     """
     if classification is None:
-        try:
-            classification = classify_graph(graph)
-        except (UnicodeDecodeError, ValueError, TypeError) as e:
+        classification = safe_classify(graph)
+        if classification is None:
             # graph has binary-corrupted nodes, return minimal DOT
-            return f'// ERROR: failed to classify graph: {e}\\ndigraph dataflow {{ label="Error: {module_name}"; }}'
+            return f'// ERROR: failed to classify graph\ndigraph dataflow {{ label="Error: {module_name}"; }}'
 
 
     lines = ['digraph dataflow {']
@@ -120,8 +119,8 @@ def generate_dataflow_dot(
         w_msb, w_lsb = node.width
         w = abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
         width_str = f"[{w_msb}:{w_lsb}]" if w_msb != w_lsb else f"[{w_msb}]"
-        safe_name = _sanitize_dot_id(node.name)
-        if safe_name and safe_name.startswith('node_'):
+        safe_name = sanitize_dot_id(node.name)
+        if safe_name and safe_name.startswith('_node_'):
             safe_name = ''  # auto-generated name, skip
         label_parts = [safe_name] if safe_name else []
         if node.kind != NodeKind.SIGNAL:
@@ -130,15 +129,8 @@ def generate_dataflow_dot(
             label_parts.append(f"{w}bit")
         label = "\\n".join(label_parts)
 
-        # 颜色
-        color_map = {
-            SignalClass.DATA: ("#4488cc", "#226699", "white"),
-            SignalClass.CONTROL: ("#cc8844", "#996622", "white"),
-            SignalClass.CLOCK: ("#888888", "#666666", "white"),
-            SignalClass.RESET: ("#cc4444", "#992222", "white"),
-            SignalClass.UNKNOWN: ("#aaaaaa", "#888888", "black"),
-        }
-        fill, border, font = color_map.get(sc, ("#aaaaaa", "#888888", "black"))
+        # 颜色 (用共享映射)
+        fill, border, font = signal_class_color(sc)
         # REG 加粗边框
         penwidth = 2 if node.kind == NodeKind.REG else 1
 
