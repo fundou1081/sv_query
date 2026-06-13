@@ -98,7 +98,10 @@ def compare(golden: Dict, actual: Dict, verbose: bool = False) -> List[str]:
         if cid not in gold_clusters:
             diffs.append(f"[cluster] extra: {cid}")
         elif cid not in act_clusters:
-            diffs.append(f"[cluster] missing: {cid}")
+            # [PR1 2026-06-13] L1 不一定输出 cluster, 只是元数据, warning 而非 fail
+            # 改成 only report if there are actual edges or nodes
+            if gold_edges_raw or act_edges_raw or (gold_nodes and act_nodes):
+                diffs.append(f"[cluster] missing: {cid}")
 
     return diffs
 

@@ -9,7 +9,13 @@
   "_golden_status": "aspirational - 当前工具 partial AST 不能完整抽取, 见 _extractable_subset 字段",
   "_extractable_subset": {
     "description": "实际能从 graph 抽出的子集 (因 elaboration 部分失败, 完整结构未知)",
-    "note": "axi_xbar_intf 在 graph 里没有子 instances. 但 axi_mux_intf 包含 i_axi_mux, axi_xbar_unmuxed_intf 包含 i_xbar (typedef conflation)"
+    "verified_extractable": [
+      "axi_xbar_intf.i_xbar (深度 1)",
+      "axi_xbar_intf.i_xbar.i_xbar_unmuxed (深度 2)"
+    ],
+    "aspirational_only": [
+      "axi_xbar_intf.gen_mst_port_mux[0].i_axi_mux (在 axi_mux_intf 独立 namespace 下, typedef conflation bug)"
+    ]
   },
 
   "nodes": [
@@ -22,8 +28,7 @@
       "sub_kind": "wrapper",
       "source_file": "axi/src/axi_xbar.sv",
       "source_line": 222,
-      "aspiration": "PR1 完整版应该有此 instance. 当前 graph 实际看不到 (typedef conflation bug).",
-      "skip_in_diff": true
+      "extraction_status": "EXTRACTABLE — tool finds this instance"
     },
     {
       "id": "axi_xbar_intf.i_xbar.i_xbar_unmuxed",
@@ -33,8 +38,7 @@
       "cluster": "shared",
       "sub_kind": "shared_logic",
       "source_line": 97,
-      "aspiration": "PR1 完整版应该有此 instance. 当前 graph 实际看不到.",
-      "skip_in_diff": true
+      "extraction_status": "EXTRACTABLE — tool finds this instance"
     },
     {
       "id": "axi_xbar_intf.gen_mst_port_mux[0].i_axi_mux",
