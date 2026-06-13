@@ -93,9 +93,15 @@ def detect(
         raise typer.Exit(1)
 
     target = file or filelist
-    typer.echo(f"Analyzing: {target}")
+    # [P1-6 2026-06-13] --json 模式时, progress info 走 stderr (不污染 stdout JSON)
+    if json_output:
+        def _info(msg: str) -> None:
+            typer.echo(msg, err=True)
+    else:
+        _info = typer.echo
+    _info(f"Analyzing: {target}")
     if module:
-        typer.echo(f"  Module: {module}")
+        _info(f"  Module: {module}")
 
     # 加载 schema
     reg = ProtocolSchemaRegistry.from_directory(schemas)
@@ -160,8 +166,17 @@ def detect(
                         if not mod.signals:
                             continue
                         m = detector.detect_single(protocol, mod.signals)
-                        typer.echo(f"  Module: {mod_name}")
-                        _print_text_result(m)
+                        # [P1-6] --json 时 progress 走 stderr
+                        if not json_output:
+                            typer.echo(f"  Module: {mod_name}")
+                            _print_text_result(m)
+                        else:
+                            # json 模式: 输出每个 module 的检测结果
+                            import json as _json
+                            typer.echo(_json.dumps({
+                                "module": mod_name,
+                                **_result_to_dict(m),
+                            }, indent=2, ensure_ascii=False))
                     return
                 # 不指定 → 多协议竞争选 top-1
                 best_match = None
@@ -174,8 +189,16 @@ def detect(
                         best_conf = m.confidence
                         best_match = (mod_name, m)
                 if best_match:
-                    typer.echo(f"  Module: {best_match[0]} (auto-selected)")
-                    _print_text_result(best_match[1])
+                    # [P1-6] --json 时 progress 走 stderr
+                    if not json_output:
+                        typer.echo(f"  Module: {best_match[0]} (auto-selected)")
+                        _print_text_result(best_match[1])
+                    else:
+                        import json as _json
+                        typer.echo(_json.dumps({
+                            "module": best_match[0],
+                            **_result_to_dict(best_match[1]),
+                        }, indent=2, ensure_ascii=False))
                     return
                 else:
                     typer.echo("No modules with signals found", err=True)
@@ -225,31 +248,38 @@ def detect(
     # 输出
     if json_output:
         import json
-        result = {
-            "protocol": match.protocol,
-            "variant": match.variant,
-            "confidence": match.confidence,
-            "scores": {
-                "name": match.name_score,
-                "structural": match.structural_score,
-                "pattern": match.pattern_score,
-                "handshake": match.handshake_score,
-            },
-            "channels": {
-                ch_name: {
-                    "present": ch.present,
-                    "score": ch.score,
-                    "matched_required": ch.matched_required,
-                    "matched_optional": ch.matched_optional,
-                    "missing_required": ch.missing_required,
-                }
-                for ch_name, ch in match.channels.items()
-            },
-            "warnings": match.warnings,
-        }
-        typer.echo(json.dumps(result, indent=2, ensure_ascii=False))
+        typer.echo(json.dumps(_result_to_dict(match), indent=2, ensure_ascii=False))
     else:
         _print_text_result(match)
+
+
+def _result_to_dict(match) -> dict:
+    """[P1-6 2026-06-13] 将 ProtocolMatch 转为 JSON-serializable dict。
+
+    提取为 helper 避免 detect/detect_single 两个输出路径重复。
+    """
+    return {
+        "protocol": match.protocol,
+        "variant": match.variant,
+        "confidence": match.confidence,
+        "scores": {
+            "name": match.name_score,
+            "structural": match.structural_score,
+            "pattern": match.pattern_score,
+            "handshake": match.handshake_score,
+        },
+        "channels": {
+            ch_name: {
+                "present": ch.present,
+                "score": ch.score,
+                "matched_required": ch.matched_required,
+                "matched_optional": ch.matched_optional,
+                "missing_required": ch.missing_required,
+            }
+            for ch_name, ch in match.channels.items()
+        },
+        "warnings": match.warnings,
+    }
 
 
 @protocol_app.command(name="show")
