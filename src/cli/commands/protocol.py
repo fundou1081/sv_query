@@ -330,6 +330,79 @@ def list_protocols(
         typer.echo(f"  {name}: {schema.description}")
 
 
+@protocol_app.command(name="semantics")
+def semantics(
+    protocol: str = typer.Argument(
+        ...,
+        help="Protocol name (e.g., TL-UL, AXI4)",
+    ),
+    dir: str = typer.Option(
+        "config/protocols/semantics",
+        "--semantics-dir",
+        help="Path to protocol semantics YAML directory",
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Output as JSON"
+    ),
+):
+    """[A 2026-06-13] 显示协议语义: transfer 条件、通道、禁止的组合逻辑环、死锁规则.
+
+    用于 bus deadlock 命令的输入, 供死锁候选检测查表.
+    """
+    from applications.bus.semantics import load_semantics
+
+    if json_output:
+        def _info(msg: str) -> None:
+            typer.echo(msg, err=True)
+    else:
+        _info = typer.echo
+
+    try:
+        sem = load_semantics(protocol, dir_path=dir)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    if json_output:
+        import json
+        from dataclasses import asdict
+        result = {
+            "protocol": sem.protocol,
+            "description": sem.description.strip(),
+            "transfer": sem.transfer,
+            "channels": [asdict(ch) for ch in sem.channels],
+            "deadlock_rules": [asdict(r) for r in sem.deadlock_rules],
+            "forbidden_combinational_loops": sem.forbidden_combinational_loops,
+            "notes": sem.notes.strip(),
+        }
+        typer.echo(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        _info(f"Protocol: {sem.protocol}")
+        _info(f"Description: {sem.description.strip()}")
+        _info(f"\nTransfer condition:\n  {sem.transfer}")
+
+        _info(f"\nChannels ({len(sem.channels)}):")
+        for ch in sem.channels:
+            deps = f" (depends on: {', '.join(ch.depends_on)})" if ch.depends_on else ""
+            _info(f"  {ch.name} [{ch.direction}]: valid={ch.valid} ready={ch.ready}{deps}")
+
+        _info(f"\nForbidden combinational loops ({len(sem.forbidden_combinational_loops)}):")
+        for loop in sem.forbidden_combinational_loops:
+            _info(f"  ✗ {loop}")
+
+        _info(f"\nDeadlock rules ({len(sem.deadlock_rules)}):")
+        for r in sem.deadlock_rules:
+            icon = {"error": "🔴", "warning": "🟡", "info": "ℹ️"}.get(r.severity, "•")
+            channels = f" [{','.join(r.channels)}]" if r.channels else ""
+            _info(f"  {icon} [{r.severity}]{channels} {r.id}")
+            _info(f"      {r.description.strip()}")
+            if r.expression:
+                _info(f"      expression: {r.expression}")
+
+        if sem.notes:
+            _info(f"\nNotes:\n  {sem.notes.strip()}")
+
+
 # ---------------------------------------------------------------------------
 # 输出
 # ---------------------------------------------------------------------------

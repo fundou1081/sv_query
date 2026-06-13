@@ -91,6 +91,15 @@ class SignalExpressionVisitor(BaseVisitor):
             except Exception:
                 return "<id:non-utf8>"
 
+
+    def _safe_get_name(self, sym, default=None):
+        """[Bug-fix 2026-06-13] 防御 sym.name 访问触发 UnicodeDecodeError."""
+        if sym is None:
+            return default
+        try:
+            return getattr(sym, "name", default)
+        except (UnicodeDecodeError, TypeError, Exception):
+            return default
     def _collect_handlers(self):
         """收集所有 @on 装饰的 handler 到 _HANDLERS"""
         for name in dir(self):
@@ -734,11 +743,11 @@ class SignalExpressionVisitor(BaseVisitor):
             base_signals = self.get_all_signals(value)
             base_name = base_signals[0] if base_signals else self.visit(value)
 
-            member_name = getattr(member_sym, "name", None)
+            member_name = self._safe_get_name(member_sym, None)
             if member_name:
-                member_name = str(member_name).strip()
+                member_name = self._safe_str(member_name).strip()
             else:
-                member_name = str(member_sym).strip()
+                member_name = self._safe_str(member_sym).strip()
 
             if base_name and member_name:
                 return [f"{base_name}.{member_name}"]
@@ -1021,8 +1030,12 @@ class SignalExpressionVisitor(BaseVisitor):
             # Try to get name from symbol
             if hasattr(value, "symbol"):
                 sym = value.symbol
-                if hasattr(sym, "name"):
-                    base_name = self._safe_str(sym.name)
+                # [Bug-fix 2026-06-13] 同上, try/except 防 UnicodeDecodeError
+                try:
+                    if hasattr(sym, "name"):
+                        base_name = self._safe_str(sym.name)
+                except (UnicodeDecodeError, TypeError):
+                    base_name = None
 
             if base_name:
                 selector_val = getattr(selector, "value", None)
@@ -1100,11 +1113,11 @@ class SignalExpressionVisitor(BaseVisitor):
             base_result = self.extract(value)
             base_name = base_result.primary
 
-            member_name = getattr(member_sym, "name", None)
+            member_name = self._safe_get_name(member_sym, None)
             if member_name:
-                member_name = str(member_name).strip()
+                member_name = self._safe_str(member_name).strip()
             else:
-                member_name = str(member_sym).strip()
+                member_name = self._safe_str(member_sym).strip()
 
             if base_name and member_name:
                 return SignalResult(primary=f"{base_name}.{member_name}")
@@ -6402,8 +6415,13 @@ class SignalExpressionVisitor(BaseVisitor):
             base_name = None
             if hasattr(value, "symbol"):
                 sym = value.symbol
-                if hasattr(sym, "name"):
-                    base_name = self._safe_str(sym.name)
+                # [Bug-fix 2026-06-13] sym.name 访问可能 raise UnicodeDecodeError
+                # (pyslang elaboration 失败时), 整体 try/except 降级
+                try:
+                    if hasattr(sym, "name"):
+                        base_name = self._safe_str(sym.name)
+                except (UnicodeDecodeError, TypeError):
+                    base_name = None
 
             if base_name:
                 selector_val = getattr(selector, "value", None)
@@ -6465,11 +6483,11 @@ class SignalExpressionVisitor(BaseVisitor):
 
         if value and member_sym:
             base_name = self.visit(value)
-            member_name = getattr(member_sym, "name", None)
+            member_name = self._safe_get_name(member_sym, None)
             if member_name:
-                member_name = str(member_name).strip()
+                member_name = self._safe_str(member_name).strip()
             else:
-                member_name = str(member_sym).strip()
+                member_name = self._safe_str(member_sym).strip()
 
             if base_name and member_name:
                 return f"{base_name}.{member_name}"
