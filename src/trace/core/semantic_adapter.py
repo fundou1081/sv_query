@@ -317,12 +317,14 @@ class SemanticAdapter:
                 body = getattr(node, "body", None)
                 if isinstance(body, pyslang.InstanceBodySymbol):
                     for child in body:
-                        find_instances(child, f"{parent_path}.{name_str}" if parent_path else name_str)
+                        # [PR1 2026-06-14] parent_path 可能含 binary garbage, 用 safe
+                        _p = _safe_str(parent_path) if parent_path else ""
+                        find_instances(child, f"{_p}.{name_str}" if _p else name_str)
 
             # GenerateBlockArray: 遍历 entries 找到其中的实例
             elif kind_str == "SymbolKind.GenerateBlockArray":
                 entries = getattr(node, "entries", None)
-                gen_name = name_str
+                gen_name = _safe_str(name_str)
                 if entries:
                     for _idx, entry in enumerate(entries):
                         # entry 是 GenerateBlock,迭代它获取实例
@@ -342,7 +344,7 @@ class SemanticAdapter:
                                         child_path = hp_str
                                 else:
                                     # 后备: 使用旧逻辑
-                                    child_path = f"{parent_path}.{gen_name}.{getattr(child, 'name', '_anon')}"
+                                    child_path = f"{parent_path}.{gen_name}.{_safe_str(getattr(child, 'name', '_anon'))}"
                                 find_instances(child, child_path)
 
             # GenerateBlock: 直接迭代获取实例
