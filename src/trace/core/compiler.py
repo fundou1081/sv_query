@@ -231,6 +231,47 @@ class SVCompiler:
             return
 
         self._comp = pyslang.Compilation()
+        # [PR1 2026-06-14] 提高 generate loop step 限制 (默认 64 不够 lzc/rr_arb_tree)
+        # lzc.sv 用 `for (level = 0; level < NumLevels; level++)` 加嵌套循环
+        # NumLevels = 2**WIDTH, lzc WIDTH 默认 2 → 4 levels, 但 lzc 还嵌套 g_index_lut
+        # 总步数 = 2 * 4 * 2 = 16 阶 → 超过默认 64 (应该是嵌套 deep 触发)
+        self._comp.options.maxGenerateSteps = 1024 * 1024
+        # [PR1 2026-06-14] 这些限制是 default, 增至 4M 避免模块多时触发
+        self._comp.options.maxInstanceArray = 1024 * 1024
+        self._comp.options.maxInstanceDepth = 1024 * 1024
+
+        # [PR1 2026-06-14] 为 pulp axi typedef interface modules 设默认 param
+        # axi_mux_intf/axi_id_remap/id_queue 默认所有 param=0 → $clog2(0) / lzc 触发 MaxGenerateStepsExceeded
+        # pyslang 会预 elabor 所有 top-level modules, 所以必须设默认值
+        # 注: 这些值只用于 free-floating elaboration, 实际实例化时会被覆盖
+        # 注意: paramOverrides 必须重新赋值 (extend 不生效)
+        # 格式: 'MODULE.PARAM=VALUE', 用 defparam 语法
+        # 只在源文件包含对应模块时才设 (避免 UndeclaredIdentifier 误报)
+        _has_axi_mux_intf = any('axi_mux.sv' in f for f in self._sources.keys())
+        _has_id_queue = any('id_queue.sv' in f for f in self._sources.keys())
+        _overrides = []
+        if _has_axi_mux_intf:
+            _overrides.extend([
+                'axi_mux_intf.SLV_AXI_ID_WIDTH=4',
+                'axi_mux_intf.MST_AXI_ID_WIDTH=4',
+                'axi_mux_intf.AXI_ADDR_WIDTH=32',
+                'axi_mux_intf.AXI_DATA_WIDTH=64',
+                'axi_mux_intf.AXI_USER_WIDTH=0',
+                'axi_mux_intf.NO_SLV_PORTS=2',
+            ])
+        if _has_id_queue:
+            # CAPACITY=0 触发 HtCapacity=$clog2(0) → lzc WIDTH=0 → infinite loop
+            _overrides.extend([
+                'id_queue.ID_WIDTH=4',
+                'id_queue.CAPACITY=4',
+            ])
+        # 注: rr_arb_tree 在全集上下文被 pyslang drop, override 会 CouldNotResolveHierarchicalPath
+        # pre-elab 错误不影响实际 elaboration (使用 axi_demux_simple 的实际实例), 跳过
+        # stream_arbiter/stream_arbiter_flushable N_INP=-1 → $clog2(-1) 错误
+        if any('stream_arbiter.sv' in f for f in self._sources.keys()):
+            _overrides.append('stream_arbiter.N_INP=4')
+        if _overrides:
+            self._comp.options.paramOverrides = self._comp.options.paramOverrides + _overrides
 
         # 设置 include 搜索路径
         sm = None

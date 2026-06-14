@@ -278,8 +278,18 @@ def _collect_instances_from_stmt(adapter, stmt) -> List[Tuple]:
         if name or def_name:
             results.append((stmt, name, def_name))
     elif "Generate" in kind_str or "Block" in kind_str:
-        for child in getattr(stmt, "body", []):
-            results.extend(_collect_instances_from_stmt(adapter, child))
+        # 尝试多种方式获取 body (可能是 list / BlockStatement / Scope)
+        body = _safe_attr(stmt, "body", None)
+        if body is None:
+            return results
+        # 如果 body 是 list/Iterable 但不是 string/bytes
+        if hasattr(body, "__iter__") and not isinstance(body, (str, bytes)):
+            try:
+                for child in body:
+                    results.extend(_collect_instances_from_stmt(adapter, child))
+            except TypeError:
+                # body 不可迭代, 尝试 child 属性
+                pass
     return results
 
 

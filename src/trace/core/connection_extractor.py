@@ -9,6 +9,7 @@ import logging
 from .base import PyslangAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+from .._safe import _safe_str
 
 logger = logging.getLogger(__name__)
 
@@ -185,11 +186,20 @@ class ConnectionExtractor:
             )
 
             inst_type_value = inst.type.value.strip() if hasattr(inst.type, "value") and inst.type.value else ""
-            inst_module_name = (
-                inst_type_value
-                if inst_type_value and inst_type_value != inst_name
-                else self._get_parent_module_name(inst)
-            )
+            # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
+            _def_name = ""
+            try:
+                _def = getattr(inst, "definition", None)
+                if _def is not None:
+                    _def_name = _safe_str(getattr(_def, "name", ""))
+            except Exception:
+                pass
+            if _def_name and _def_name != inst_name:
+                inst_module_name = _def_name
+            elif inst_type_value and inst_type_value != inst_name:
+                inst_module_name = inst_type_value
+            else:
+                inst_module_name = self._get_parent_module_name(inst)
             parent_module = self._get_parent_module_name(inst)
 
             gen_block = self._get_generate_block_name(inst)
@@ -275,11 +285,20 @@ class ConnectionExtractor:
             )
 
             inst_type_value = inst.type.value.strip() if hasattr(inst.type, "value") and inst.type.value else ""
-            inst_module_name = (
-                inst_type_value
-                if inst_type_value and inst_type_value != inst_name
-                else self._get_parent_module_name(inst)
-            )
+            # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
+            _def_name = ""
+            try:
+                _def = getattr(inst, "definition", None)
+                if _def is not None:
+                    _def_name = _safe_str(getattr(_def, "name", ""))
+            except Exception:
+                pass
+            if _def_name and _def_name != inst_name:
+                inst_module_name = _def_name
+            elif inst_type_value and inst_type_value != inst_name:
+                inst_module_name = inst_type_value
+            else:
+                inst_module_name = self._get_parent_module_name(inst)
 
             gen_block = self._get_generate_block_name(inst)
             if gen_block:
@@ -345,7 +364,7 @@ class ConnectionExtractor:
                 TraceNode(
                     id=inst_path,
                     name=inst_name,
-                    module=inst_path.rsplit(".", 1)[0] if "." in inst_path else "top",
+                    module=inst_module_name,  # [PR1 2026-06-14] fix: was inst_path.rsplit — use actual def_name
                     kind=NodeKind.INSTANTIATED_MODULE,
                     width=(1, 0),
                     is_port=False,
