@@ -240,6 +240,22 @@ class SVCompiler:
         self._comp.options.maxInstanceArray = 1024 * 1024
         self._comp.options.maxInstanceDepth = 1024 * 1024
 
+        # [PR1 2026-06-14] 显式设置 topModules: 实验性, 不启用 (反而增加不稳)
+        # Pyslang elaboration 本身就 flaky, topModules 不能修复.
+        if False:  # disabled
+            import re
+            _module_names = set()
+            for src_path, src_code in self._sources.items():
+                if '_pkg.sv' in src_path or '_intf' in src_path:
+                    continue
+                for m in re.finditer(r'\bmodule\s+(\w+)\s*[#(;]', src_code):
+                    name = m.group(1)
+                    if not name.endswith('_intf') and not name.endswith('_pkg'):
+                        _module_names.add(name)
+            if _module_names:
+                self._comp.options.topModules = _module_names
+        self._comp.options.maxGenerateSteps = 1024 * 1024  # re-set after topModules
+
         # [PR1 2026-06-14] 为 pulp axi typedef interface modules 设默认 param
         # axi_mux_intf/axi_id_remap/id_queue 默认所有 param=0 → $clog2(0) / lzc 触发 MaxGenerateStepsExceeded
         # pyslang 会预 elabor 所有 top-level modules, 所以必须设默认值

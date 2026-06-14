@@ -375,8 +375,8 @@ class SemanticAdapter:
                         elem_kind = str(getattr(elem, "kind", ""))
                         if "Instance" in elem_kind:
                             # 使用 arrayName 和 arrayPath 构建完整名称
-                            arr_name = getattr(elem, "arrayName", None) or name_str
-                            arr_path = getattr(elem, "arrayPath", None)
+                            arr_name = _safe_str(_safe_attr(elem, "arrayName", None)) or name_str
+                            arr_path = _safe_attr(elem, "arrayPath", None)
                             if arr_path and hasattr(arr_path, "__iter__") and not isinstance(arr_path, str):
                                 idx_str = f"[{arr_path[0]}]"
                             else:
