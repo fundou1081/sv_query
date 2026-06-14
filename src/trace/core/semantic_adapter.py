@@ -153,6 +153,8 @@ class SemanticAdapter:
         我们从 root 遍历获取所有 InstanceSymbol,包括嵌套的。
         """
         modules = []
+        # [PR1 2026-06-14] 用 id(node) 替代 name_str 做 dedup key.
+        # name_str 依赖 pybind11 decode, 随机成功/失败 → 不稳定.
         seen_ids = set()
 
         def collect_instances(node):
@@ -165,11 +167,11 @@ class SemanticAdapter:
             except (UnicodeDecodeError, Exception):
                 kind_str = "None"
 
+            # 仍然需要 name 用于显示/列表 (有 name 更好, 没 name 用 placeholder)
             try:
                 name = _safe_attr(node, "name", None)
             except (UnicodeDecodeError, Exception):
                 name = None
-            # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
             if isinstance(name, bytes):
                 try:
                     name = name.decode("utf-8", errors="replace")
@@ -180,12 +182,27 @@ class SemanticAdapter:
             except (UnicodeDecodeError, Exception):
                 name_str = "_bad_"
 
-            key = (kind_str, name_str)
+            # [PR1 2026-06-14] 混合去重: 干净 name 用 name_str 去重 (避免重复),
+            # binary name 用 id(node) 去重 (避免 name decode 随机性).
+            _bin_patterns = ('', '<id:binary>', '_anon_', '_bad_', '_bin_')
+            if name_str in _bin_patterns:
+                key = (kind_str, 'BIN', id(node))
+            else:
+                key = (kind_str, name_str)
             if key in seen_ids:
                 return
             seen_ids.add(key)
 
             if kind_str == "SymbolKind.Instance":
+                # [PR1 2026-06-14] Filter binary garbage modules
+                # elaboration 失败的 module 有 kind=Instance 但无实质内容.
+                # 检测: name 是 binary, 且无 definition → 跳过
+                _name_is_binary = name_str in ('', '<id:binary>', '_anon_', '_bad_', '_bin_')
+                if _name_is_binary:
+                    # 有 def 的可能是真实 module (如 AXI_BUS stubs)
+                    _defn = _safe_attr(node, "definition", None)
+                    if _defn is None:
+                        return  # 纯 binary garbage
                 modules.append(node)
                 # 递归收集嵌套实例
                 body = getattr(node, "body", None)
@@ -197,26 +214,14 @@ class SemanticAdapter:
         for inst in self._root.topInstances:
             collect_instances(inst)
 
-        # [FIX 2026-06-14] 总是从 compilationUnits 也获取定义 (topInstances
-        # 在复杂项目上不稳定, 某些 run 会漏掉 wrapper)
-        # 注: self._compiler 可以是 SVCompiler (有 get_compilation/get_root)
-        # 或 pyslang.Compilation (有 getRoot)
-        if self._compiler:
-            comp = None
-            root = self._root
-            if hasattr(self._compiler, 'get_compilation'):
-                comp = self._compiler.get_compilation()
-                root = self._compiler.get_root()
-            elif hasattr(self._compiler, 'getRoot'):
-                # 本身就是 Compilation
-                comp = self._compiler
-                root = self._compiler.getRoot() if hasattr(self._compiler, 'getRoot') else self._compiler
-            elif hasattr(self._compiler, 'tryGetDefinition'):
-                # 是 Compilation
-                comp = self._compiler
-            if comp is not None and hasattr(comp, 'tryGetDefinition'):
-                # 尝试从 DefinitionSymbol 获取模块定义
-                for unit in self._root.compilationUnits:
+        # [FIX] 如果 topInstances 为空(例如只有参数化模块定义但没有实例化),
+        # 从 compilationUnits 获取模块定义
+        if not modules and self._compiler:
+            comp = self._compiler.get_compilation() if hasattr(self._compiler, 'get_compilation') else self._compiler
+            root = self._compiler.get_root() if hasattr(self._compiler, 'get_root') else self._root
+
+            # 尝试从 DefinitionSymbol 获取模块定义
+            for unit in self._root.compilationUnits:
 
                     def collect_from_compilation(comp_node):
                         nonlocal modules
@@ -225,8 +230,9 @@ class SemanticAdapter:
 
                         kind = getattr(comp_node, "kind", None)
                         kind_str = str(kind) if kind else "None"
-                        name = _safe_attr(comp_node, "name", None)
+
                         # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
+                        name = _safe_attr(comp_node, "name", None)
                         if isinstance(name, bytes):
                             try:
                                 name = name.decode("utf-8", errors="replace")
@@ -271,8 +277,6 @@ class SemanticAdapter:
             SemanticInstanceWrapper 列表,包装 InstanceSymbol
         """
         wrappers = []
-        # 使用 (kind, name) 作为唯一标识,而非 hash
-        # pyslang 对象池会导致不同对象共享 hash,id() 也不稳定
         visited_names = set()
 
         def find_instances(node, parent_path=""):
@@ -287,12 +291,8 @@ class SemanticAdapter:
                 name = None
             name_str = self._safe_str(name) if name else "_anon_"
 
-            # path_str 用于 GenerateBlock/GenerateBlockArray 的递归传递
-            # 初始化为 parent_path，确保在所有分支都有定义
             path_str = parent_path
 
-            # 使用 (kind, name, hierarchical_path) 作为唯一标识
-            # 对于数组实例元素 (如 u_duts[0]),name 相同但 hierarchical_path 不同
             try:
                 hp = node.hierarchicalPath
             except (UnicodeDecodeError, TypeError, Exception):
@@ -305,18 +305,10 @@ class SemanticAdapter:
 
             # 直接的 InstanceSymbol
             if kind_str == "SymbolKind.Instance":
-                # 检查是否是 Definition (顶层模块定义) vs 嵌套实例
-                # InstanceSymbol 同时用于顶层定义和嵌套实例
-                # DefinitionSymbol 的 hierarchicalPath 是模块名本身 (如 "top", "unused")
-                # 嵌套实例的 hierarchicalPath 包含父路径 (如 "top.sub")
                 hierarchical_path = _safe_attr(node, "hierarchicalPath", None)
                 path_str = _safe_str(hierarchical_path) if hierarchical_path else ""
 
-                # 如果是顶层定义 (路径中不包含 '.') 且 parent_path 为空
-                # 则认为是顶层模块定义,跳过不添加
-                # 但仍然递归检查其 body 是否包含嵌套实例
                 if not parent_path and "." not in path_str and path_str:
-                    # 是顶层模块定义,递归检查其 body
                     body = getattr(node, "body", None)
                     if isinstance(body, pyslang.InstanceBodySymbol):
                         for child in body:
@@ -325,7 +317,6 @@ class SemanticAdapter:
 
                 parent_name = parent_path if parent_path else None
                 wrappers.append(SemanticInstanceWrapper(node, parent_module=parent_name))
-                # 递归检查 body 中的嵌套实例
                 body = getattr(node, "body", None)
                 if isinstance(body, pyslang.InstanceBodySymbol):
                     for child in body:

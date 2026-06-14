@@ -34,6 +34,52 @@ class CompilationError(Exception):
     pass
 
 
+# ---------------------------------------------------------------------------
+# 内存检测
+# ---------------------------------------------------------------------------
+
+def _check_memory_pressure():
+    """检测系统内存压力, 如果不足输出告警.
+
+    pyslang elaboration 在内存不足时静默失败:
+      - 不报错, 不抛异常
+      - 返回部分 AST (缺 module, 缺 port)
+      - 部分对象 name 变为 binary garbage
+
+    这个函数检测 swap 使用情况, 如果超过阈值就 warn.
+    """
+    import sys as _sys
+    try:
+        import subprocess, re
+        # macOS: 从 sysctl 获取 swap
+        result = subprocess.run(
+            ["sysctl", "vm.swapusage"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            m = re.search(r'used = (\d+[,.]?\d*)M', result.stdout)
+            if m:
+                swap_used = float(m.group(1).replace(',', '.'))
+                if swap_used > 2000:  # > 2GB swap used
+                    print(
+                        f"[sv_query] ⚠️  SWAP 使用量 {swap_used:.0f}MB (可能内存不足)",
+                        file=_sys.stderr,
+                    )
+                    print(
+                        "[sv_query] → pyslang 在内存不足时**不会报错**, 但 elaboration",
+                        file=_sys.stderr,
+                    )
+                    print(
+                        "           可能不完整 (缺 module, binary 名字)。",
+                        file=_sys.stderr,
+                    )
+                    print(
+                        "           建议: 关闭浏览器/IDE 释放内存, 再重新运行。",
+                        file=_sys.stderr,
+                    )
+    except Exception:
+        pass  # 检测失败不影响正常编译
+
+
 class SVCompiler:
     """
     SystemVerilog 编译器 - 提供 Semantic AST 访问
@@ -240,22 +286,6 @@ class SVCompiler:
         self._comp.options.maxInstanceArray = 1024 * 1024
         self._comp.options.maxInstanceDepth = 1024 * 1024
 
-        # [PR1 2026-06-14] 显式设置 topModules: 实验性, 不启用 (反而增加不稳)
-        # Pyslang elaboration 本身就 flaky, topModules 不能修复.
-        if False:  # disabled
-            import re
-            _module_names = set()
-            for src_path, src_code in self._sources.items():
-                if '_pkg.sv' in src_path or '_intf' in src_path:
-                    continue
-                for m in re.finditer(r'\bmodule\s+(\w+)\s*[#(;]', src_code):
-                    name = m.group(1)
-                    if not name.endswith('_intf') and not name.endswith('_pkg'):
-                        _module_names.add(name)
-            if _module_names:
-                self._comp.options.topModules = _module_names
-        self._comp.options.maxGenerateSteps = 1024 * 1024  # re-set after topModules
-
         # [PR1 2026-06-14] 为 pulp axi typedef interface modules 设默认 param
         # axi_mux_intf/axi_id_remap/id_queue 默认所有 param=0 → $clog2(0) / lzc 触发 MaxGenerateStepsExceeded
         # pyslang 会预 elabor 所有 top-level modules, 所以必须设默认值
@@ -345,6 +375,11 @@ class SVCompiler:
 
         # 获取 Semantic AST root
         self._root = self._comp.getRoot()
+
+        # [PR1 2026-06-14] 内存不足检测: 8GB 机器上 pyslang elaboration 会因
+        # swap 压力静默失败 (返回不完整 AST, 但无报错).
+        # 在发现这种情况时输出告警, 提示用户关闭内存占用大的程序.
+        _check_memory_pressure()
 
     def _report_diagnostics(self):
         """输出所有诊断信息（按级别）"""
