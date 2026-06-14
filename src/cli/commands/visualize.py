@@ -502,33 +502,20 @@ def module(
         graph, target_module=target, max_depth=depth,
     )
 
-    # [PR1 2026-06-14] AST 优先: graph builder 在复杂项目上不稳定 (pyslang
-    # 预 elabor 会 drop module, 导致 graph 不完整). AST 路径是 ground truth.
-    # 如果 graph 抽取为空, 走 AST. 优先用 AST.
-    # 注: pyslang 顶 elabor 也 flaky (topInstances 偶发为空), 最多重试 3 次.
+    # [PR1 2026-06-14] AST 优先: AST 路径比 graph 更准确 (直接走 pyslang
+    # Semantic AST, 不经过 graph builder 的中间层).
     ast_result = None
-    ast_attempts = 0
-    while ast_attempts < 3:
-        ast_attempts += 1
-        try:
-            from trace.core.module_extractor import extract_module
-            from trace.core.semantic_adapter import SemanticAdapter
-            semantic_adapter = SemanticAdapter(tracer._get_compiler().get_root())
-            ast_result = extract_module(semantic_adapter, target, max_depth=depth)
-            if len(ast_result.instances) > 0:
-                break
-            # AST 空, 重试 (重设 compiler)
-            tracer._compiler = None
-            tracer._graph = None
-            tracer._adapter = None
-            tracer.build_graph(force=True)
-        except Exception as e:
-            break
+    try:
+        from trace.core.module_extractor import extract_module
+        from trace.core.semantic_adapter import SemanticAdapter
+        semantic_adapter = SemanticAdapter(tracer._get_compiler().get_root())
+        ast_result = extract_module(semantic_adapter, target, max_depth=depth)
+    except Exception:
+        pass
 
-    # 如果 AST 路径有结果, 优先用 AST. 否则用 graph.
+    # 如果 AST 有结果, 优先用 AST. 否则用 graph.
     if ast_result and len(ast_result.instances) > 0:
         result = ast_result
-    # 如果 graph 有结果且 AST 为空, 用 graph (回退)
 
     typer.echo(f"Target: {result.top_module}")
     typer.echo(f"Depth: {depth}")
