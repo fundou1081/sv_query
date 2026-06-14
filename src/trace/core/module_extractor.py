@@ -272,9 +272,21 @@ def _collect_instances_from_stmt(adapter, stmt) -> List[Tuple]:
     results = []
     kind_str = _safe_str(_safe_attr(stmt, "kind", ""))
     if "Instance" in kind_str:
+        # 跳过 InstanceBody (是 module 自己的 body, 不是 child instance)
+        if "InstanceBody" in kind_str:
+            return results
         name = _safe_str(_safe_attr(stmt, "name", ""))
         defn = _safe_attr(stmt, "definition", None)
         def_name = _safe_str(_safe_attr(defn, "name", "")) if defn else ""
+        # [PR1 2026-06-14] 如果没 def (InstanceArray), 尝试从 elements[0].definition 获取
+        if not def_name:
+            elements = _safe_attr(stmt, "elements", None)
+            if elements and len(elements) > 0:
+                first = elements[0]
+                if first is not None:
+                    defn2 = _safe_attr(first, "definition", None)
+                    if defn2 is not None:
+                        def_name = _safe_str(_safe_attr(defn2, "name", ""))
         if name or def_name:
             results.append((stmt, name, def_name))
     elif "Generate" in kind_str or "Block" in kind_str:

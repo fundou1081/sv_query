@@ -197,53 +197,65 @@ class SemanticAdapter:
         for inst in self._root.topInstances:
             collect_instances(inst)
 
-        # [FIX] 如果 topInstances 为空(例如只有参数化模块定义但没有实例化),
-        # 从 compilationUnits 获取模块定义
-        if not modules and self._compiler:
-            comp = self._compiler.get_compilation()
-            root = self._compiler.get_root()
+        # [FIX 2026-06-14] 总是从 compilationUnits 也获取定义 (topInstances
+        # 在复杂项目上不稳定, 某些 run 会漏掉 wrapper)
+        # 注: self._compiler 可以是 SVCompiler (有 get_compilation/get_root)
+        # 或 pyslang.Compilation (有 getRoot)
+        if self._compiler:
+            comp = None
+            root = self._root
+            if hasattr(self._compiler, 'get_compilation'):
+                comp = self._compiler.get_compilation()
+                root = self._compiler.get_root()
+            elif hasattr(self._compiler, 'getRoot'):
+                # 本身就是 Compilation
+                comp = self._compiler
+                root = self._compiler.getRoot() if hasattr(self._compiler, 'getRoot') else self._compiler
+            elif hasattr(self._compiler, 'tryGetDefinition'):
+                # 是 Compilation
+                comp = self._compiler
+            if comp is not None and hasattr(comp, 'tryGetDefinition'):
+                # 尝试从 DefinitionSymbol 获取模块定义
+                for unit in self._root.compilationUnits:
 
-            # 尝试从 DefinitionSymbol 获取模块定义
-            for unit in self._root.compilationUnits:
+                    def collect_from_compilation(comp_node):
+                        nonlocal modules
+                        if comp_node is None:
+                            return
 
-                def collect_from_compilation(comp_node):
-                    nonlocal modules
-                    if comp_node is None:
-                        return
+                        kind = getattr(comp_node, "kind", None)
+                        kind_str = str(kind) if kind else "None"
+                        name = _safe_attr(comp_node, "name", None)
+                        # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
+                        if isinstance(name, bytes):
+                            try:
+                                name = name.decode("utf-8", errors="replace")
+                            except Exception:
+                                name = "_bin_"
+                        name_str = self._safe_str(name) if name else "_anon_"
 
-                    kind = getattr(comp_node, "kind", None)
-                    kind_str = str(kind) if kind else "None"
-                    name = _safe_attr(comp_node, "name", None)
-                    # 工作绕过: pyslang 某些情况下 name 会返回二进制乱码
-                    if isinstance(name, bytes):
-                        try:
-                            name = name.decode("utf-8", errors="replace")
-                        except Exception:
-                            name = "_bin_"
-                    name_str = self._safe_str(name) if name else "_anon_"
+                        key = (kind_str, name_str)
+                        if key in seen_ids:
+                            return
+                        seen_ids.add(key)
 
-                    key = (kind_str, name_str)
-                    if key in seen_ids:
-                        return
-                    seen_ids.add(key)
+                        # DefinitionSymbol - 表示模块定义(用于参数化模块)
+                        if kind_str == "SymbolKind.Definition":
+                            # 尝试从 DefinitionSymbol 获取 InstanceSymbol
+                            def_result = comp.tryGetDefinition(name_str, root)
+                            if hasattr(def_result, "definition") and def_result.definition:
+                                inst = def_result.definition
+                                # Wrap DefinitionSymbol in a pseudo-InstanceSymbol-like wrapper
+                                modules.append(inst)
 
-                    # DefinitionSymbol - 表示模块定义(用于参数化模块)
-                    if kind_str == "SymbolKind.Definition":
-                        # 尝试从 DefinitionSymbol 获取 InstanceSymbol
-                        def_result = comp.tryGetDefinition(name_str, root)
-                        if hasattr(def_result, "definition") and def_result.definition:
-                            inst = def_result.definition
-                            # Wrap DefinitionSymbol in a pseudo-InstanceSymbol-like wrapper
-                            modules.append(inst)
+                        # 递归遍历 children
+                        if hasattr(comp_node, "children"):
+                            for child in comp_node.children:
+                                collect_from_compilation(child)
 
-                    # 递归遍历 children
-                    if hasattr(comp_node, "children"):
-                        for child in comp_node.children:
-                            collect_from_compilation(child)
-
-                if hasattr(unit, "members"):
-                    for member in unit.members:
-                        collect_from_compilation(member)
+                    if hasattr(unit, "members"):
+                        for member in unit.members:
+                            collect_from_compilation(member)
 
         return modules
 
@@ -298,7 +310,7 @@ class SemanticAdapter:
                 # DefinitionSymbol 的 hierarchicalPath 是模块名本身 (如 "top", "unused")
                 # 嵌套实例的 hierarchicalPath 包含父路径 (如 "top.sub")
                 hierarchical_path = _safe_attr(node, "hierarchicalPath", None)
-                path_str = str(hierarchical_path) if hierarchical_path else ""
+                path_str = _safe_str(hierarchical_path) if hierarchical_path else ""
 
                 # 如果是顶层定义 (路径中不包含 '.') 且 parent_path 为空
                 # 则认为是顶层模块定义,跳过不添加
@@ -344,7 +356,10 @@ class SemanticAdapter:
                                         child_path = hp_str
                                 else:
                                     # 后备: 使用旧逻辑
-                                    child_path = f"{parent_path}.{gen_name}.{_safe_str(getattr(child, 'name', '_anon'))}"
+                                    _pp = _safe_str(parent_path) if parent_path else ""
+                                    _gn = _safe_str(gen_name) if gen_name else ""
+                                    _cn = _safe_str(_safe_attr(child, 'name', '_anon'))
+                                    child_path = f"{_pp}.{_gn}.{_cn}"
                                 find_instances(child, child_path)
 
             # GenerateBlock: 直接迭代获取实例

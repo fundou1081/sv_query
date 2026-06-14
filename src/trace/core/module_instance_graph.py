@@ -138,10 +138,10 @@ class ModuleInstanceGraph:
                 inst_symbol = inst_wrapper._symbol if hasattr(inst_wrapper, "_symbol") else None
                 if inst_symbol:
                     hierarchical_path = _safe_attr(inst_symbol, "hierarchicalPath", None)
-                    instance_id = str(hierarchical_path) if hierarchical_path else inst_wrapper.name
+                    instance_id = _safe_str(hierarchical_path) if hierarchical_path else inst_wrapper.name
                 else:
                     instance_id = inst_wrapper.name
-                inst_type = adapter.get_module_name(inst_symbol) if inst_symbol else str(inst_wrapper.type)
+                inst_type = adapter.get_module_name(inst_symbol) if inst_symbol else _safe_str(inst_wrapper.type)
                 parent = inst_wrapper.parent_module
                 self.instances[instance_id] = ModuleInstanceNode(id=instance_id, module_type=inst_type, parent=parent)
 
