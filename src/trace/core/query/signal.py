@@ -26,8 +26,21 @@ class DriverChain:
 
 
 class SignalTracer:
-    def __init__(self, graph: SignalGraph):
+    def __init__(self, graph: SignalGraph, mig: object | None = None, use_mig: bool = True):
+        """[PR3 2026-06-15] Init SignalTracer.
+
+        Args:
+            graph: SignalGraph
+            mig: ModuleInstanceGraph (optional) - 跨模块 port 映射.
+                 设 None 时走纯 graph 路径 (兼容旧调用).
+                 设非 None 时, _collect_all_* 会在 0 results 时 fallback 走 MIG.
+            use_mig: 启戆4 MIG fallback. 默认 True. 设 False 走纯 graph 路径.
+        """
         self.graph = graph
+        # [PR3 2026-06-15] ModuleInstanceGraph 是跨模块 port 映射.
+        # 接受了 2569 个 clean port_to_internal 映射 (pulp axi_xbar_dp_ram).
+        self.mig = mig
+        self.use_mig = use_mig
 
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
@@ -67,6 +80,15 @@ class SignalTracer:
         drivers = []
         seen_ids = set()
         self._trace_drivers_recursive(signal_id, drivers, seen_ids, current_depth=0, max_depth=max_depth)
+        # [PR3 2026-06-15] MIG fallback: graph 0 drivers 时走 MIG port 映射.
+        # 场景: signal 是 wrapper PORT_OUT, graph 里无内部 driver 边,
+        # 但 MIG 知道该 port 实际连到哪个 instance port (跨 module 边界).
+        if not drivers and self.use_mig and self.mig:
+            mig_drivers = self._find_drivers_via_mig(signal_id)
+            for d in mig_drivers:
+                if d.id not in seen_ids:
+                    drivers.append(d)
+                    seen_ids.add(d.id)
         return drivers
 
     def _trace_drivers_recursive(
@@ -253,6 +275,102 @@ class SignalTracer:
                     drivers.append(node)
         return drivers
 
+    # [PR3 2026-06-15] Binary garbage filter — 跟 L1 一致, 防止 MIG 返回 binary
+    # names 污染 trace 结果.
+    _BINARY_PATTERNS = ('', '<id:binary>', '_anon_', '_bad_', '_bin_')
+
+    def _is_binary_name(self, name: str | None) -> bool:
+        """检查是否是 binary garbage name (pyslang pybind11 decode 随机失败产物)."""
+        if not name:
+            return True
+        n = str(name).strip()
+        return n in self._BINARY_PATTERNS
+
+    def _find_loads_via_mig(self, signal_id: str) -> list[TraceNode]:
+        """[PR3 2026-06-15] 用 MIG 跨模块 port 映射找 loads.
+
+        当 signal_id 是 module def port 或 instance port 时, MIG 可能知道
+        对应的 internal signal (例如 'top.u_dut.clk' → 'dut.clk') 或反之.
+        返回 graph 中存在的对应 node.
+
+        Returns:
+            list of TraceNode, 可能为空 (如果 MIG 不知道该信号或 mapping 不在 graph)
+        """
+        if not self.mig:
+            return []
+        loads: list[TraceNode] = []
+        seen = set()
+
+        # 1. 前向: signal_id → internal signal (例如 wrapper port → module def port)
+        try:
+            internal = self.mig.get_internal_signal(signal_id)
+        except Exception:
+            internal = None
+
+        if internal and not self._is_binary_name(internal) and internal != signal_id:
+            if internal in self.graph.nodes() and internal not in seen:
+                node = self.graph.get_node(internal)
+                if node:
+                    loads.append(node)
+                    seen.add(internal)
+
+        # 2. 反向: 找所有 mapping 到 signal_id 的 instance ports
+        #    (例如 'top.u_dut.clk' → 'dut.clk', 反向 'dut.clk' → 'top.u_dut.clk')
+        try:
+            pti = getattr(self.mig, "port_to_internal", {})
+            for inst_port, int_sig in pti.items():
+                if int_sig == signal_id and not self._is_binary_name(inst_port):
+                    if inst_port in self.graph.nodes() and inst_port not in seen:
+                        node = self.graph.get_node(inst_port)
+                        if node:
+                            loads.append(node)
+                            seen.add(inst_port)
+        except Exception:
+            pass
+
+        return loads
+
+    def _find_drivers_via_mig(self, signal_id: str) -> list[TraceNode]:
+        """[PR3 2026-06-15] 用 MIG 跨模块 port 映射找 drivers (反向).
+
+        Returns:
+            list of TraceNode, 可能为空
+        """
+        if not self.mig:
+            return []
+        drivers: list[TraceNode] = []
+        seen = set()
+
+        # 反向: signal_id 是 instance port 时, 找它被谁驱动
+        # signal_id 例如 'top.u_dut.clk' (instance port)
+        # MIG 知道 internal 是 'dut.clk' (module def port)
+        try:
+            internal = self.mig.get_internal_signal(signal_id)
+        except Exception:
+            internal = None
+
+        if internal and not self._is_binary_name(internal) and internal != signal_id:
+            # internal 是 module def port, 找它的 driver (in graph)
+            if internal in self.graph.nodes() and internal not in seen:
+                node = self.graph.get_node(internal)
+                if node:
+                    drivers.append(node)
+                    seen.add(internal)
+            # 同时反向查所有 instance port mapping 到该 internal (其他 instance 可能驱动同一 internal)
+            try:
+                pti = getattr(self.mig, "port_to_internal", {})
+                for inst_port, int_sig in pti.items():
+                    if int_sig == internal and not self._is_binary_name(inst_port):
+                        if inst_port in self.graph.nodes() and inst_port not in seen:
+                            node = self.graph.get_node(inst_port)
+                            if node:
+                                drivers.append(node)
+                                seen.add(inst_port)
+            except Exception:
+                pass
+
+        return drivers
+
     def _find_loads(self, signal_id: str, allowed_kinds: set | None = None) -> list[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
@@ -288,6 +406,15 @@ class SignalTracer:
         if allowed_kinds is None:
             allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
         self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth, allowed_kinds=allowed_kinds)
+        # [PR3 2026-06-15] MIG fallback: graph 0 loads 时走 MIG port 映射.
+        # 场景: signal 是 wrapper PORT_IN, graph 里没出边,
+        # 但 MIG 知道它被哪个 instance port 驱动.
+        if not loads and self.use_mig and self.mig:
+            mig_loads = self._find_loads_via_mig(signal_id)
+            for l in mig_loads:
+                if l.id not in seen_ids:
+                    loads.append(l)
+                    seen_ids.add(l.id)
         return loads
 
     def _trace_loads_recursive(
