@@ -73,7 +73,15 @@ def _check_memory_pressure():
                         file=_sys.stderr,
                     )
                     print(
-                        "           建议: 关闭浏览器/IDE 释放内存, 再重新运行。",
+                        "           建议: (1) 关闭浏览器/IDE 释放内存。",
+                        file=_sys.stderr,
+                    )
+                    print(
+                        "                 (2) 或运行: python3 -c 'import time; a=bytearray(4*1024**3); time.sleep(3); del a'",
+                        file=_sys.stderr,
+                    )
+                    print(
+                        "                 强制系统回收 inactive pages, 再重试。",
                         file=_sys.stderr,
                     )
     except Exception:
