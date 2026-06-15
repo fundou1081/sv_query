@@ -842,7 +842,9 @@ class UnifiedTracer:
         return {}
 
     def _init_tracers(self):
-        self._signal_tracer = SignalTracer(self._graph)
+        # [PR3 2026-06-15] 传 mig 给 SignalTracer, 启用跨模块 port 映射 fallback.
+        # mig 在 build_graph() 里已经创建 (unified_tracer.py:434).
+        self._signal_tracer = SignalTracer(self._graph, mig=getattr(self, "_module_graph", None))
         self._module_tracer = ModuleTracer(self._graph)
         self._clock_tracer = ClockDomainTracer(self._graph)
         self._load_tracer = LoadTracer(self._graph)
