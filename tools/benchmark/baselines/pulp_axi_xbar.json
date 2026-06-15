@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "tool": "sv_query benchmark",
+    "version": "PR5+PR7 2026-06-15",
+    "input_type": "filelist",
+    "project_input": "/tmp/pulp_axi_xbar_pr2.f",
+    "filelist": "/tmp/pulp_axi_xbar_pr2.f",
+    "target": "axi_xbar_dp_ram",
+    "depth": 4,
+    "include_dirs": null,
+    "timestamp": "2026-06-15T20:36:34.621717",
+    "build_time_seconds": 4.76
+  },
+  "L1_module_extraction": {
+    "target": "axi_xbar_dp_ram",
+    "depth": 4,
+    "instance_count": 0,
+    "instances": []
+  },
+  "L2_graph_topology": {
+    "nodes": 4071,
+    "edges": 4607,
+    "instantiated_modules": 59,
+    "port_in": 628,
+    "port_out": 213,
+    "signal": 3086,
+    "depth_distribution": {
+      "0": 100,
+      "1": 1318,
+      "2": 1770,
+      "3": 731,
+      "4": 32,
+      "5": 6,
+      "22": 28,
+      "23": 78,
+      "42": 2,
+      "43": 2,
+      "44": 4
+    }
+  },
+  "L3_signal_traces": {
+    "axi_xbar_dp_ram.s_axi_awvalid": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_xbar_dp_ram.m_axi_awvalid": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_xbar_dp_ram.s_axi_awready": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_xbar_dp_ram.m_axi_awready": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_xbar_dp_ram.clk_i": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    }
+  },
+  "L4_cross_instance_edges": {
+    "target": "axi_xbar_dp_ram",
+    "depth": 4,
+    "edge_count": 0,
+    "in_scope_count": 0,
+    "top_ports": {}
+  },
+  "flakiness": {
+    "runs": 3,
+    "node_counts": [
+      4262,
+      4653,
+      4643
+    ],
+    "im_counts": [
+      204,
+      204,
+      204
+    ],
+    "node_min": 4262,
+    "node_max": 4653,
+    "node_stdev": 222.9132865787352,
+    "im_min": 204,
+    "im_max": 204,
+    "im_stdev": 0.0,
+    "deterministic_ratio_im": 1.0
+  },
+  "_note": "This baseline was generated under memory pressure. L1/L4 may show 0 due to pyslang elaboration partial failure. PR6 check_regression should focus on L2 (most reliable)."
+}
