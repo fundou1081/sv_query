@@ -13,13 +13,14 @@
 
 - ✅ **位精确**: 知道信号 [3:0] 从哪里来，到哪里去
 - ✅ **跨模块**: 穿透子模块实例，追踪真实的物理连接
+- ✅ **4 维分析**: module 抽取 (L1) + 端口连接 (L2) + 内部信号 (L3) + 可视化 (L4)
 - ✅ **全场景**: 验证问题、CDC、时序、风险、缺口检测
 - ✅ **可视化**: 自动生成 Graphviz 交互图
 - ✅ **多文件**: Verilator 风格 filelist 支持 (CVA6 级别)
 - ✅ **协议检测**: 自动识别 AXI4/TL-UL/AHB/APB/Wishbone,4 项置信度融合
 - ✅ **Dataflow/Pipeline 可视化**: 基于 SignalGraph 自动分类 control/data,检测 pipeline stages
 - ✅ **Fix 修复子系统**: 一键修 timescale/imports/widths,按错误类别分组报告
-- ✅ **2000+ 测试**: 稳定可靠，覆盖核心功能
+- ✅ **2280 测试**: 稳定可靠，覆盖核心功能
 
 ---
 
@@ -77,6 +78,23 @@ python run_cli.py trace fanin top.result -f top.sv
 python run_cli.py trace fanin top.result -f top.sv --cache
 ```
 
+### 5. 查看模块架构 (L1)
+
+```bash
+# 抽取 target module 的 sub-instance 树 (L1 + L4 边)
+python run_cli.py visualize module --filelist filelist.f \
+  --target axi_xbar_intf --depth 3
+```
+
+```text
+Target: axi_xbar_intf
+Depth: 3
+Instances: 3
+  └─ i_xbar        (def=axi_xbar, depth=1)
+    └─ i_xbar_unmuxed (def=axi_xbar_unmuxed, depth=2)
+      └─ i_axi_demux  (def=axi_demux, depth=3)
+```
+
 ---
 
 ## 🆕 最近更新 (2026-06)
@@ -116,6 +134,33 @@ python run_cli.py trace fanin top.result -f top.sv --cache
   4 个语义点 (SyntaxList 包装 / foreach loop var / class composition /
   ranges 内部), 都有 compat shim + 业务代码适配。
   详见 [docs/PYSLANG_COMPAT.md](docs/PYSLANG_COMPAT.md)
+
+### 2026-06-13 ~ 2026-06-15 4 维能力 (L1-L4) 闭环
+
+(7 PR 阶段。以下仅列点，不重复详细说明。)
+
+- L1 module 抽取 + strict mode: `visualize module` 抽取 target module
+  的 sub-instance hierarchy (axi_xbar_intf → i_xbar → i_xbar_unmuxed)。
+  [PR1 `0ddd63d`]
+- L2 跨模块 trace: wrapper port passthrough + port_to_internal 映射,
+  跨过模块边界追到 leaf driver。 [PR2 `cc82cf2`]
+- L3 内部信号追踪: `SignalTracer` 0 改 graph_builder, 复用已有
+  `ModuleInstanceGraph` (MIG) 的 2569 个 port 映射, graph 0 results
+  时 fallback MIG。 [PR3 `92e60c1`]
+- L4 可视化增强: `visualize module` 加 cluster (按 wrapper 分组) +
+  instance-to-instance 边 (port 名称 label) + `--mig/--no-mig`
+  `--edges/--no-edges` flag。 [PR4 `16b3b97`]
+- 端到端 benchmark: `tools/benchmark/run_benchmark.py` 跑真实项目,
+  收集 L1+L2+L3+L4 数据, 输出 JSON + Markdown 报告。
+  [PR5 `bba4491`]
+- CI 集成 + regression check: `.github/workflows/benchmark.yml`
+  + `tools/benchmark/check_regression.py` (L2 30% / L1-L4 50% / flakiness
+  0.7 阈值)。 [PR6 `bf872e3`]
+- picorv32 第二个项目: 单文件模式 (--files) + baselines 目录
+  (picorv32.json, pulp_axi_xbar.json)。 [PR7 `275a43f`]
+
+完整 4 维能力报告见 `docs/PYSLANG_MEMORY_ISSUE.md` (内存不足根因) +
+`tools/benchmark/README.md` (benchmark 用法)。
 
 详见 [CHANGELOG](docs/DOC_IMPL_GAP.md#更新日志)
 
@@ -431,6 +476,20 @@ python run_cli.py fix widths --filelist project.f
 ```
 
 **4 个子命令**: `timescale`, `report`, `imports`, `widths`
+
+### 🏛️ 场景 13：看模块架构 (L1 + L4)
+
+```bash
+# 抽取 target module 的 sub-instance 树 (走 AST 优先于 graph)
+python run_cli.py visualize module --filelist project.f \
+  --target axi_xbar_intf --depth 3 --output-json arch.json
+
+# 另出 DOT 画架构图 (cluster 按 wrapper 分组 + 跨 instance 边)
+python run_cli.py visualize module --filelist project.f \
+  --target axi_xbar_intf --depth 3 --dot arch.dot
+```
+
+适用场景：项目架构 review、新人 onboarding、定位 wrapper 边界。
 
 ---
 
@@ -1281,12 +1340,14 @@ sv_query/
 ├── config/
 │   └── protocols/            # 🆕 协议 YAML schema
 │       ├── axi4.yaml, tlul.yaml, ahb.yaml, apb.yaml, ...
-├── tools/                    # 🆕 独立工具脚本
+├── tools/                    # 独立工具脚本
+│   ├── benchmark/             # 端到端 benchmark + CI regression check
 │   ├── fix_timescale.py
 │   └── README.md
-├── sim/tests/                # 2000+ 个测试
+├── sim/tests/                # 2280 个测试
 ├── examples/                 # 综合案例脚本
 └── docs/                     # 详细设计文档
+    ├── PYSLANG_MEMORY_ISSUE.md # 8GB MBA 内存不足根因 + 一键回收法
     ├── OPENTITAN_HOWTO.md    # 🆕 OpenTitan 跑通
     ├── NAPLESPU_HOWTO.md     # 🆕 NaplesPU 跑通
     ├── RISK_ANALYSIS.md
