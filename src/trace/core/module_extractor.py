@@ -323,6 +323,127 @@ def _iter_generate_body(adapter, gen_block) -> List[Tuple]:
 # Truncate instance names for display
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# [PR4 2026-06-15] L2 cross-instance port connections from MIG
+# ---------------------------------------------------------------------------
+
+# 跟 L1/L3 一样, 过滤 binary garbage
+_PORT_BIN_PATTERNS = ('', '<id:binary>', '_anon_', '_bad_', '_bin_')
+
+
+def _is_clean_id(s: str | None) -> bool:
+    """[PR4] 检查 id 是否不含 binary garbage."""
+    if not s:
+        return False
+    n = str(s).strip()
+    if not n:
+        return False
+    if n in _PORT_BIN_PATTERNS:
+        return False
+    # 带 \x00 或控制字符的也是 garbage
+    if any(ord(c) < 0x20 and c not in '\n\t' for c in n):
+        return False
+    return True
+
+
+def extract_module_edges_from_mig(
+    mig,
+    instances: List[ModuleInstance],
+    max_edges: int = 500,
+) -> List[Dict]:
+    """[PR4 2026-06-15] 从 MIG 提取 instance-to-instance 的 port 连接.
+
+    MIG 的 port_to_internal 映射是 (instance_path.port_name) → (module_def.port_name).
+    如果两个 instance port 映射到同一个 internal, 它们被同一条 wire 连接.
+    返回 [{src, dst, internal, port, width}] 列表.
+
+    Args:
+        mig: ModuleInstanceGraph (可 None, 返 [] 优雅降级)
+        instances: 已抽取的 instance 列表 (用于过滤 in-scope)
+        max_edges: 最大返回边数 (防止 graph 爆炸)
+
+    Returns:
+        list of edge dicts: {src, dst, internal, port_src, port_dst, width}
+    """
+    if mig is None:
+        return []
+
+    pti = getattr(mig, "port_to_internal", {})
+    if not pti:
+        return []
+
+    # 反向: internal -> [instance ports]
+    from collections import defaultdict
+    int_to_ports = defaultdict(list)
+    for inst_port, int_sig in pti.items():
+        if not _is_clean_id(inst_port) or not _is_clean_id(int_sig):
+            continue
+        int_to_ports[int_sig].append(inst_port)
+
+    # 跟 instances 取交集 (只保留 in-scope 的连接)
+    inst_ids = {inst.id for inst in instances}
+    # 同时建一个 set: instance 的 port (instance.port_name) -> instance
+    # 因为 MIG 的 port_to_internal 是 instance-level + port suffix
+    inst_port_to_inst: Dict[str, str] = {}
+    for inst in instances:
+        # 这个 instance 本身可能不在 pti 里, 但它的 port 在
+        # 通过 pti 找: 任何 'startswith(inst.id).' 的 port
+        for inst_port in pti.keys():
+            if inst_port.startswith(inst.id + "."):
+                inst_port_to_inst[inst_port] = inst.id
+
+    edges: List[Dict] = []
+
+    for int_sig, ports in int_to_ports.items():
+        if len(ports) < 2:
+            continue
+        # 两个 instance 都应该在 instances 里
+        in_scope_pairs = []
+        for i in range(len(ports) - 1):
+            for j in range(i + 1, len(ports)):
+                a, b = ports[i], ports[j]
+                # a, b 是 'instance.port_name'. 提取 instance 部分
+                a_inst = inst_port_to_inst.get(a)
+                b_inst = inst_port_to_inst.get(b)
+                if a_inst and b_inst and a_inst in inst_ids and b_inst in inst_ids and a_inst != b_inst:
+                    in_scope_pairs.append((a, b, a_inst, b_inst))
+
+        if not in_scope_pairs:
+            continue
+        # 限制每组最多 4 对, 防止 N×N 爆炸
+        if len(in_scope_pairs) > 4:
+            in_scope_pairs = in_scope_pairs[:4]
+
+        for a, b, a_inst, b_inst in in_scope_pairs:
+            a_port = a.rsplit(".", 1)[-1] if "." in a else ""
+            b_port = b.rsplit(".", 1)[-1] if "." in b else ""
+
+            # 从 MIG 查 width
+            width = None
+            try:
+                int_info = mig._module_ports.get(int_sig.split(".")[0], {}).get(a_port)
+                if int_info and hasattr(int_info, "width"):
+                    w = int_info.width
+                    if isinstance(w, tuple) and len(w) == 2:
+                        width = abs(int(w[0]) - int(w[1])) + 1
+            except Exception:
+                pass
+
+            edges.append({
+                "src": a_inst,  # [PR4 fix] instance, not instance.port
+                "dst": b_inst,
+                "internal": int_sig,
+                "port_src": a_port,
+                "port_dst": b_port,
+                "width": width,
+            })
+
+            if len(edges) >= max_edges:
+                return edges
+
+    return edges
+
+
 def truncate_instance_id(full_id: str, depth: int = 1) -> str:
     """[PR1] instance 边界截断: 取最后 `depth` 层 instance path.
 

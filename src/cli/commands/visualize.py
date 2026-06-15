@@ -468,14 +468,30 @@ def module(
     dot_output: str = typer.Option(
         None, "--dot", help="Write DOT graph to file",
     ),
+    use_mig: bool = typer.Option(
+        True, "--mig/--no-mig",
+        help="[PR4] Use ModuleInstanceGraph for cross-instance port edges (default ON). "
+             "Disable for PR1 L1-only behavior.",
+    ),
+    show_edges: bool = typer.Option(
+        True, "--edges/--no-edges",
+        help="[PR4] Show instance-to-instance port connections (default ON)",
+    ),
+    max_edges: int = typer.Option(
+        500, "--max-edges",
+        help="[PR4] Maximum cross-instance edges to show",
+    ),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default non-strict)"),
 ) -> None:
-    """[PR1 2026-06-13] L1 module-level visualization. 1 box = 1 sub-module instance.
+    """[PR1+PR4 2026-06-15] L1 module-level + L2 cross-instance port visualization.
 
-    从 SignalGraph 提取所有 INSTANTIATED_MODULE 节点, 按 instance hierarchy
-    截断名字, 折叠 array instance. 用于项目架构 review.
+    1 box = 1 sub-module instance. PR4 加 instance-to-instance port 边 (MIG).
+    用于项目架构 review.
     """
-    from trace.core.module_extractor import extract_module_from_graph
+    from trace.core.module_extractor import (
+        extract_module_from_graph,
+        extract_module_edges_from_mig,
+    )
 
     if not file and not filelist:
         typer.echo("Error: need --file or --filelist", err=True)
@@ -517,20 +533,30 @@ def module(
     if ast_result and len(ast_result.instances) > 0:
         result = ast_result
 
+    # [PR4 2026-06-15] L2 边: 从 MIG 抽 instance-to-instance port 连接.
+    # 0 改动 graph_builder, 复用 PR3 已用 MIG fallback 的架构.
+    edges: list[dict] = []
+    if show_edges and use_mig:
+        mig = getattr(tracer, "_module_graph", None)
+        if mig is not None:
+            edges = extract_module_edges_from_mig(
+                mig, result.instances, max_edges=max_edges,
+            )
+
     typer.echo(f"Target: {result.top_module}")
     typer.echo(f"Depth: {depth}")
     typer.echo(f"Instances: {len(result.instances)}")
+    typer.echo(f"Edges: {len(edges)}")
     for inst in result.instances:
         depth_mark = "  " * (inst.depth - 1) + "└─"
         typer.echo(f"  {depth_mark} {inst.name}  (def={inst.def_name}, depth={inst.depth})")
 
     if output_json:
         import json
-        from dataclasses import asdict
         out = {
             "module": result.top_module,
             "view": "module",
-            "level": 1,
+            "level": 2 if edges else 1,  # [PR4] L2 if has edges
             "depth": depth,
             "nodes": [
                 {
@@ -539,31 +565,62 @@ def module(
                     "kind": "module",
                     "def_name": inst.def_name,
                     "module_path": inst.id,  # alias for golden compat
-                    "cluster": "default",  # L1 不分 cluster, 给个默认值
+                    "cluster": _module_def_cluster(inst.id, result.top_module),  # [PR4] cluster by module_type
                     "depth": inst.depth,
                     "array_name": inst.array_name,
                     "array_index": inst.array_index,
                 }
                 for inst in result.instances
             ],
-            "edges": [],  # L1 不画内部边
+            # [PR4] L2 edges: instance-to-instance port connections
+            "edges": [
+                {
+                    "src": e["src"],
+                    "dst": e["dst"],
+                    "internal": e["internal"],
+                    "port_src": e["port_src"],
+                    "port_dst": e["port_dst"],
+                    "width": e["width"],
+                }
+                for e in edges
+            ],
         }
         with open(output_json, "w") as f:
             json.dump(out, f, indent=2, ensure_ascii=False)
         typer.echo(f"\n✓ Wrote JSON: {output_json}")
 
     if dot_output:
-        _write_module_dot(result, dot_output)
+        _write_module_dot(result, edges, dot_output)
         typer.echo(f"✓ Wrote DOT: {dot_output}")
 
 
-def _write_module_dot(result, path: str) -> None:
-    """[PR1] 写 module-level DOT 图. 1 box = 1 instance."""
+def _module_def_cluster(instance_id: str, top_module: str) -> str:
+    """[PR4] 按 instance 所在模块类型划分 cluster.
+
+    例子:
+      'axi_xbar_dp_ram.i_xbar_intf' → 'axi_xbar_intf'
+      'axi_xbar_dp_ram.i_xbar_intf.i_xbar' → 'axi_xbar'
+    """
+    parts = instance_id.split(".")
+    # 去掉 top_module 部分 (cluster 跟它平级)
+    if parts[0] == top_module and len(parts) >= 2:
+        # 顶级 wrapper: cluster 是第二部分 (i_xbar_intf 等)
+        # 子 instance: cluster 是对应 def_name (这里用 path 第二段近似)
+        return parts[1] if len(parts) >= 2 else "default"
+    return parts[0] if parts else "default"
+
+
+def _write_module_dot(result, edges: list[dict], path: str) -> None:
+    """[PR1+PR4] 写 module-level DOT 图. 1 box = 1 instance, cluster 按 instance path 分组, 边走 MIG.
+
+    [PR4] 加 L2 边: instance-to-instance port connection (边标 port 名).
+    """
     lines = ["digraph module {"]
     lines.append('  rankdir=TB;')
     lines.append('  splines=polyline;')
     lines.append('  nodesep=0.4;')
     lines.append('  ranksep=0.6;')
+    lines.append('  compound=true;  // [PR4] 允许 cluster 之间的边')
     lines.append('')
 
     # Group by depth
@@ -572,9 +629,24 @@ def _write_module_dot(result, path: str) -> None:
     for inst in result.instances:
         by_depth[inst.depth].append(inst)
 
+    # [PR4] 按 instance 所在 wrapper 划分 cluster.
+    # 例: 'axi_xbar_dp_ram.i_xbar_intf' 和 'axi_xbar_dp_ram.i_xbar_intf.i_xbar'
+    #     都在 'i_xbar_intf' 这个 cluster 里.
+    def _cluster_of(inst_id: str) -> str:
+        parts = inst_id.split(".")
+        if len(parts) >= 3:
+            return parts[1]  # wrapper 下的子 instance: 顶级 wrapper 名字
+        return parts[1] if len(parts) >= 2 else "top"
+
+    inst_ids = {inst.id for inst in result.instances}
+
+    # 渲染 nodes (按 cluster 分组)
+    clusters_used = set()
     for depth in sorted(by_depth.keys()):
         lines.append(f'  // Depth {depth}')
         for inst in by_depth[depth]:
+            cluster = _cluster_of(inst.id)
+            clusters_used.add(cluster)
             label = f"{inst.name}\\n({inst.def_name})"
             color = "#4488cc" if depth == 1 else "#88bbdd"
             lines.append(
@@ -583,11 +655,40 @@ def _write_module_dot(result, path: str) -> None:
             )
         lines.append('')
 
-    # Add invisible edges for same-depth ordering
-    for depth in sorted(by_depth.keys()):
-        items = by_depth[depth]
-        for i in range(len(items) - 1):
-            lines.append(f'  "{items[i].id}" -> "{items[i+1].id}" [style=invis];')
+    # [PR4] 渲染 cluster 块 (DOT subgraph cluster_X 语法)
+    if clusters_used:
+        for cluster in sorted(clusters_used):
+            lines.append(f'  subgraph "cluster_{cluster}" {{')
+            lines.append(f'    label="{cluster}";')
+            lines.append(f'    style="dashed,rounded";')
+            lines.append(f'    color="#999999";')
+            lines.append(f'    fontcolor="#666666";')
+            lines.append(f'    fontsize=10;')
+            # 加上该 cluster 里的所有 instances
+            cluster_insts = [iid for iid in inst_ids if _cluster_of(iid) == cluster]
+            for iid in cluster_insts:
+                lines.append(f'    "{iid}";')
+            lines.append('  }')
+            lines.append('')
+
+    # 边
+    if edges:
+        lines.append('  // [PR4] L2 instance-to-instance port connections')
+        for e in edges:
+            src, dst = e["src"], e["dst"]
+            if src not in inst_ids or dst not in inst_ids:
+                continue
+            label = e.get("port_src", "") or ""
+            if e.get("port_src") and e.get("port_src") != e.get("port_dst"):
+                label = f"{e['port_src']}~{e['port_dst']}"
+            width = e.get("width")
+            if width and width > 1:
+                label = f"{label}\\n[{width}b]"
+            lines.append(
+                f'  "{src}" -> "{dst}" [label="{label}" fontsize=8 color="#888888" '
+                f'arrowhead=none penwidth=0.7];'
+            )
+        lines.append('')
 
     lines.append('}')
     with open(path, "w") as f:
