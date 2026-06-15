@@ -1,0 +1,68 @@
+name: Benchmark
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Benchmark regression check
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install git+https://github.com/MikePopoloski/pyslang.git
+
+      - name: Cache benchmark results
+        uses: actions/cache@v4
+        with:
+          path: bench_results/
+          key: ${{ runner.os }}-benchmark-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-benchmark-
+
+      - name: Clone picorv32 (if not present)
+        run: |
+          if [ ! -f /tmp/picorv32/picorv32.v ]; then
+            git clone --depth 1 https://github.com/YosysHQ/picorv32.git /tmp/picorv32
+          fi
+          ls -la /tmp/picorv32/picorv32.v
+
+      - name: Run picorv32 benchmark
+        run: |
+          mkdir -p bench_results
+          # picorv32 (single file) — quick sanity check
+          python tools/benchmark/run_benchmark.py \
+            --files /tmp/picorv32/picorv32.v \
+            --target picorv32 \
+            --depth 2 \
+            --runs 1 \
+            --output bench_results/picorv32.json
+
+      - name: Run regression check vs baseline
+        run: |
+          python tools/benchmark/check_regression.py \
+            --current bench_results/picorv32.json \
+            --baseline-dir tools/benchmark/baselines/
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: bench_results/
+          retention-days: 30
