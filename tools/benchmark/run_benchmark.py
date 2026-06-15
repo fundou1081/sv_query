@@ -172,11 +172,17 @@ def collect_l4(tracer, target: str, depth: int) -> dict:
 
 
 def measure_flakiness(
-    filelist: str, include_dirs: list, strict: bool, runs: int = 5
+    filelist: str = None, files: list = None, include_dirs: list = None, strict: bool = True, runs: int = 5
 ) -> dict:
-    """[PR5] 跑 N 次 build_graph, 算总节点数变异."""
+    """[PR5+PR7] 跑 N 次 build_graph, 算总节点数变异."""
     counts = []
     im_counts = []
+    # PR7: 生成 tracer init 代码 (filelist 或 files 二选一)
+    if filelist:
+        init_code = f"t = UnifiedTracer(filelist='{filelist}',"
+    else:
+        files_repr = repr(files)
+        init_code = f"t = UnifiedTracer(files={files_repr},"
     for i in range(runs):
         # Each run is a fresh process to avoid heap accumulation
         result = subprocess.run(
@@ -188,8 +194,7 @@ sys.path.insert(0, '{PROJECT_ROOT}/src')
 os.environ['SV_QUERY_LOG_LEVEL'] = 'ERROR'
 from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.models import NodeKind
-t = UnifiedTracer(
-    filelist='{filelist}',
+{init_code}
     include_dirs={include_dirs!r},
     strict={strict},
     log_level='ERROR',
@@ -234,7 +239,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="[PR5 2026-06-15] sv_query 端到端 benchmark — 4 维能力 (L1/L2/L3/L4) 在真实项目上."
     )
-    parser.add_argument("--filelist", required=True, help="Path to filelist (.f)")
+    # [PR7 2026-06-15] --files 跟 --filelist 二选一 (单文件 vs 复杂项目)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--filelist", help="Path to filelist (.f) for multi-file projects")
+    input_group.add_argument("--files", nargs="+", help="[PR7] Single file or list of files (simple projects)")
     parser.add_argument("--target", required=True, help="Top-level module name")
     parser.add_argument("--depth", type=int, default=4, help="Max instance depth")
     parser.add_argument("--include", "-I", help="Comma-separated include dirs")
@@ -265,12 +273,22 @@ def main():
     include_dirs = args.include.split(",") if args.include else None
     print("Building tracer...")
     t0 = time.time()
-    t = UnifiedTracer(
-        filelist=args.filelist,
-        include_dirs=include_dirs,
-        strict=args.strict,
-        log_level="ERROR",
-    )
+    if args.filelist:
+        t = UnifiedTracer(
+            filelist=args.filelist,
+            include_dirs=include_dirs,
+            strict=args.strict,
+            log_level="ERROR",
+        )
+        project_input = args.filelist
+    else:  # args.files (PR7)
+        t = UnifiedTracer(
+            files=args.files,
+            include_dirs=include_dirs,
+            strict=args.strict,
+            log_level="ERROR",
+        )
+        project_input = " ".join(args.files)
     t.build_graph()
     build_time = time.time() - t0
     print(f"  Build time: {build_time:.2f}s")
@@ -310,7 +328,11 @@ def main():
     if not args.skip_flakiness:
         print(f"\n[Flakiness] {args.runs} independent runs...")
         flakiness = measure_flakiness(
-            args.filelist, include_dirs or [], args.strict, runs=args.runs
+            filelist=args.filelist,
+            files=args.files,
+            include_dirs=include_dirs or [],
+            strict=args.strict,
+            runs=args.runs,
         )
         if "error" not in flakiness:
             print(f"  Node range: {flakiness['node_min']}-{flakiness['node_max']} (stdev={flakiness['node_stdev']:.1f})")
@@ -321,8 +343,10 @@ def main():
     report = {
         "metadata": {
             "tool": "sv_query benchmark",
-            "version": "PR5 2026-06-15",
-            "filelist": args.filelist,
+            "version": "PR5+PR7 2026-06-15",
+            "input_type": "filelist" if args.filelist else "files",
+            "project_input": project_input,
+            "filelist": args.filelist,  # deprecated alias for project_input
             "target": args.target,
             "depth": args.depth,
             "include_dirs": include_dirs,

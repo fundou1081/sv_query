@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "tool": "sv_query benchmark",
+    "version": "PR5+PR7 2026-06-15",
+    "input_type": "files",
+    "project_input": "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+    "filelist": null,
+    "target": "picorv32",
+    "depth": 2,
+    "include_dirs": null,
+    "timestamp": "2026-06-15T20:33:27.708569",
+    "build_time_seconds": 0.63
+  },
+  "L1_module_extraction": {
+    "target": "picorv32",
+    "depth": 2,
+    "instance_count": 0,
+    "instances": []
+  },
+  "L2_graph_topology": {
+    "nodes": 527,
+    "edges": 1199,
+    "instantiated_modules": 2,
+    "port_in": 72,
+    "port_out": 77,
+    "signal": 149,
+    "depth_distribution": {
+      "0": 54,
+      "1": 421,
+      "2": 52
+    }
+  },
+  "L3_signal_traces": {
+    "picorv32.clk": {
+      "fanout": 1,
+      "fanin": 0,
+      "fanout_samples": [
+        "picorv32_wb.picorv32_core.clk"
+      ],
+      "fanin_samples": []
+    },
+    "picorv32.resetn": {
+      "fanout": 11,
+      "fanin": 0,
+      "fanout_samples": [
+        "picorv32.mem_done",
+        "picorv32.decoder_trigger",
+        "picorv32.launch_next_insn"
+      ],
+      "fanin_samples": []
+    },
+    "picorv32.mem_busy": {
+      "fanout": 0,
+      "fanin": 10,
+      "fanout_samples": [],
+      "fanin_samples": [
+        "picorv32.mem_do_prefetch",
+        "picorv32.mem_do_rinst",
+        "picorv32.decoder_trigger"
+      ]
+    }
+  },
+  "L4_cross_instance_edges": {
+    "target": "picorv32",
+    "depth": 2,
+    "edge_count": 0,
+    "in_scope_count": 0,
+    "top_ports": {}
+  },
+  "flakiness": {
+    "runs": 3,
+    "node_counts": [
+      526,
+      531,
+      535
+    ],
+    "im_counts": [
+      2,
+      2,
+      2
+    ],
+    "node_min": 526,
+    "node_max": 535,
+    "node_stdev": 4.509249752822894,
+    "im_min": 2,
+    "im_max": 2,
+    "im_stdev": 0.0,
+    "deterministic_ratio_im": 1.0
+  }
+}
