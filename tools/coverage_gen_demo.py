@@ -30,8 +30,16 @@ coverage_gen_demo.py — Phase 1 POC
 
   # 多 module 文件限定到具体 module
   python tools/coverage_gen_demo.py sim/test_comprehensive.sv q d --no-strict --module=seq_basic
+
+  # 多文件 + +incdir+ (Verilator 风格, 从 filelist 自动提)
+  # 依赖 sv_query 0.6+ (risk analyze 支持 --include/-I flag)
+  python tools/coverage_gen_demo.py --filelist=project.f top.sv data_o enable_i
+
+  # 手动加 include path (逗号分隔, 跟其他 sv_query CLI 一致)
+  python tools/coverage_gen_demo.py sim/logger.sv events_counter --include=/path/inc1,/path/inc2
 """
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -46,27 +54,32 @@ except ImportError:
     _HAS_FILELIST = False
 
 
-def read_all_sources(file: str | None = None, filelist: str | None = None) -> tuple[dict[str, str], list[str]]:
+def read_all_sources(
+    file: str | None = None,
+    filelist: str | None = None,
+) -> tuple[dict[str, str], list[str], list[str]]:
     """
-    读所有源文件返回 (sources, paths).
+    读所有源文件返回 (sources, paths, include_dirs).
     - file + filelist 都没给 → raise
     - file 给, filelist 没给 → sources = {file: content}, paths = [file]
     - filelist 给 → 用 _read_filelist 读多文件, file 作为主 RTL 解析文件
     Returns:
         sources: {绝对路径: 文件内容}
         paths: 用于 RTL regex 解析的路径列表 (file + filelist 内所有文件)
+        include_dirs: 从 filelist +incdir+ 解析的 include 路径
     """
     if not file and not filelist:
         raise ValueError("Either --file or --filelist is required")
+    include_dirs = []
     if filelist:
         if not _HAS_FILELIST:
             raise RuntimeError("filelist support requires src/cli/_common.py (run from project root)")
         base = Path.cwd()
+        # 解析 filelist 拿 +incdir+ (sv_query._read_filelist 不解析这些)
+        include_dirs = _parse_filelist_incdirs(filelist, base)
         sources = _read_filelist(filelist, base_dir=base)
-        # paths 包含 filelist 内所有文件 + file (file 用于 width/typedef 解析)
         paths = list(sources.keys())
         if file and file not in paths:
-            # user-provided file 优先 (可能 filelist 漏了)
             try:
                 sources[file] = Path(file).read_text(encoding="utf-8", errors="replace")
             except FileNotFoundError:
@@ -75,7 +88,35 @@ def read_all_sources(file: str | None = None, filelist: str | None = None) -> tu
     else:
         sources = {file: Path(file).read_text(encoding="utf-8", errors="replace")}
         paths = [file]
-    return sources, paths
+    return sources, paths, include_dirs
+
+
+def _parse_filelist_incdirs(filelist_path: str, base_dir: Path) -> list[str]:
+    """从 filelist 里提取 +incdir+DIR 路径 (sv_query._read_filelist 不解析这些).
+    返回绝对路径列表.
+    """
+    incdirs = []
+    try:
+        with open(filelist_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("//") or line.startswith("#"):
+                    continue
+                if line.startswith("+incdir+"):
+                    raw = line[len("+incdir+"):].strip()
+                    # 解析环境变量
+                    raw = os.path.expandvars(raw)
+                    # 转绝对路径 (相对 base_dir)
+                    p = Path(raw)
+                    if not p.is_absolute():
+                        p = (base_dir / p).resolve()
+                    else:
+                        p = p.resolve()
+                    if p.exists() and p.is_dir():
+                        incdirs.append(str(p))
+    except (FileNotFoundError, OSError):
+        pass
+    return incdirs
 
 
 # =============================================================================
@@ -84,14 +125,19 @@ def read_all_sources(file: str | None = None, filelist: str | None = None) -> tu
 def query_risk_json(
     file: str | None = None,
     filelist: str | None = None,
+    include_dirs: list[str] | None = None,
     strict: bool = True,
 ) -> dict:
     import subprocess
     args = ["python", "run_cli.py", "risk", "analyze", "--json"]
-    if file:
-        args += ["-f", file]
+    # filelist 模式下不传 -f (避免 sv_query 重复加载 source 冲突)
+    # file 只用于 RTL regex 解析 (width/typedef/param)
     if filelist:
         args += ["--filelist", filelist]
+    elif file:
+        args += ["-f", file]
+    if include_dirs:
+        args += ["--include", ",".join(include_dirs)]
     if not strict:
         args.append("--no-strict")
     out = subprocess.run(
@@ -493,10 +539,12 @@ def generate_covergroup(
         raise ValueError("target_signal is required")
 
     # 读所有源文件 (file + filelist)
-    sources, paths = read_all_sources(file=file, filelist=filelist)
+    sources, paths, include_dirs = read_all_sources(file=file, filelist=filelist)
 
     # sv_query risk analyze: 用 filelist (如果给) 否则用 file
-    risk = query_risk_json(file=file, filelist=filelist, strict=strict)
+    risk = query_risk_json(
+        file=file, filelist=filelist, include_dirs=include_dirs, strict=strict,
+    )
     # 多 module 文件: 只看指定 module (或第一个 module)
     if module_name:
         sig_info = find_signal_in_module(target_signal, risk["data_signals"], module_name)
@@ -589,7 +637,7 @@ def generate_covergroup(
 def main():
     # 解析 flags
     args = sys.argv[1:]
-    strict = True  # default: strict mode
+    strict = False  # default: relaxed mode (工业多文件项目常见 UnknownModule)
     module_name = None
     filelist = None
     file = None
