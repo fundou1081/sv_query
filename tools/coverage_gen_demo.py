@@ -25,11 +25,13 @@ from pathlib import Path
 # =============================================================================
 # Step 1: 用 sv_query risk --json 拿信号元信息
 # =============================================================================
-def query_risk_json(file: str) -> dict:
+def query_risk_json(file: str, strict: bool = True) -> dict:
     import subprocess
+    args = ["python", "run_cli.py", "risk", "analyze", "-f", file, "--json"]
+    if not strict:
+        args.append("--no-strict")
     out = subprocess.run(
-        ["python", "run_cli.py", "risk", "analyze", "-f", file, "--json"],
-        capture_output=True, text=True, cwd=Path(__file__).parent.parent,
+        args, capture_output=True, text=True, cwd=Path(__file__).parent.parent,
     )
     start = out.stdout.find("{")
     if start < 0:
@@ -43,6 +45,18 @@ def find_signal(sig_name: str, data_signals: list) -> dict | None:
         bare = re.sub(r"\[.*?\]", "", s["name"])
         if bare == sig_name:
             return s
+    return None
+
+
+def find_signal_in_module(sig_name: str, data_signals: list, module_name: str) -> dict | None:
+    """从指定 module 里找 signal (通过 node_id 前缀匹配)"""
+    for s in data_signals:
+        node_id = s.get("node_id", "")
+        # node_id 格式: "module.signal" (e.g. "seq_basic.q")
+        if node_id.startswith(f"{module_name}."):
+            bare = re.sub(r"\[.*?\]", "", s["name"])
+            if bare == sig_name:
+                return s
     return None
 
 
@@ -380,11 +394,17 @@ def generate_covergroup(
     file: str,
     target_signal: str,
     related_signals: list[str] = None,
+    module_name: str | None = None,
+    strict: bool = False,
 ) -> str:
     related_signals = related_signals or []
 
-    risk = query_risk_json(file)
-    sig_info = find_signal(target_signal, risk["data_signals"])
+    risk = query_risk_json(file, strict=strict)
+    # 多 module 文件: 只看指定 module (或第一个 module)
+    if module_name:
+        sig_info = find_signal_in_module(target_signal, risk["data_signals"], module_name)
+    else:
+        sig_info = find_signal(target_signal, risk["data_signals"])
     width, hi, lo = parse_width_from_rtl(target_signal, file)
     clk, rst = parse_clock_reset(file)
     enums = parse_enums(file)
@@ -470,13 +490,27 @@ def generate_covergroup(
 # Main
 # =============================================================================
 def main():
-    if len(sys.argv) < 3:
+    # 解析 flags
+    args = sys.argv[1:]
+    strict = True  # default: strict mode
+    module_name = None
+    filtered = []
+    for a in args:
+        if a == "--no-strict":
+            strict = False  # --no-strict means NOT strict (relaxed mode)
+        elif a.startswith("--module="):
+            module_name = a.split("=", 1)[1]
+        elif a == "--strict":
+            pass
+        else:
+            filtered.append(a)
+    if len(filtered) < 2:
         print(__doc__)
         sys.exit(1)
-    file = sys.argv[1]
-    target = sys.argv[2]
-    related = sys.argv[3:]
-    cg = generate_covergroup(file, target, related)
+    file = filtered[0]
+    target = filtered[1]
+    related = filtered[2:]
+    cg = generate_covergroup(file, target, related, module_name=module_name, strict=strict)
     print(cg)
 
 
