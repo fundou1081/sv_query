@@ -49,49 +49,97 @@ def find_signal(sig_name: str, data_signals: list) -> dict | None:
 # =============================================================================
 # Step 2: 从 RTL 拿精确 width (sv_query 简化成 1, 这里补回真实 width)
 # =============================================================================
+def parse_parameters(file: str) -> dict[str, int]:
+    """解析 module 的 parameter 声明 (例如 parameter WIDTH = 8)"""
+    src = Path(file).read_text()
+    params = {}
+    # 匹配 `parameter [type] NAME = VALUE` 或 `localparam NAME = VALUE`
+    for m in re.finditer(r"(?:parameter|localparam)\s+(?:\w+\s+)?(\w+)\s*=\s*(\d+)", src):
+        params[m.group(1)] = int(m.group(2))
+    return params
+
+
+def _resolve_width_expr(expr: str, params: dict[str, int]) -> str:
+    """把 [WIDTH-1:0] 这种表达式中的参数替换为字面量"""
+    for name, val in params.items():
+        expr = re.sub(rf"\b{name}\b", str(val), expr)
+    return expr
+
+
+def _eval_simple_expr(expr: str) -> int | None:
+    """评估 '8-1' / 'WIDTH' / '7' 这种简单表达式 (仅整数运算)"""
+    expr = expr.strip()
+    if expr.isdigit():
+        return int(expr)
+    try:
+        # 允许 +, -, *, /
+        return int(eval(expr, {"__builtins__": {}}, {}))
+    except Exception:
+        return None
+
+
 def parse_width_from_rtl(sig_name: str, file: str) -> tuple[int, int, int]:
     """返回 (width, hi, lo)"""
     src = Path(file).read_text()
-    # 匹配多种位宽声明: logic [N:M] / reg [N:M] / wire [N:M] / input/output [N:M] / input/output logic [N:M]
+    params = parse_parameters(file)
+    # 匹配多种位宽声明: logic [N:M] / reg [N:M] / wire [N:M] / input/output [N:M] / 参数化 [WIDTH-1:0]
     patterns = [
         # 1) [N:M] 在 type 关键字之前 (port 方向)
-        rf"(?:input|output|inout)\s+(?:logic\s+)?\[(\d+):(\d+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
+        rf"(?:input|output|inout)\s+(?:logic\s+)?\[([^\]]+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
         # 2) [N:M] 在 type 关键字之后
-        rf"(?:logic|reg|wire)\s*\[(\d+):(\d+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
+        rf"(?:logic|reg|wire)\s*\[([^\]]+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
         # 3) 无 [N:M] 1-bit
         rf"(?:logic|reg|wire|input|output)\s+(?:logic\s+)?(?:\w+\s+){0,2}{re.escape(sig_name)}\b",
     ]
-    for i, p in enumerate(patterns[:2]):
+    for p in patterns[:2]:
         m = re.search(p, src)
         if m:
-            return int(m.group(1)) - int(m.group(2)) + 1, int(m.group(1)), int(m.group(2))
+            range_expr = m.group(1)
+            # 可能是 "N:M" 或 "PARAM-N:0" 或 "WIDTH-1:0"
+            parts = range_expr.split(":")
+            if len(parts) == 2:
+                hi_expr = _resolve_width_expr(parts[0], params)
+                lo_expr = _resolve_width_expr(parts[1], params)
+                hi = _eval_simple_expr(hi_expr)
+                lo = _eval_simple_expr(lo_expr)
+                if hi is not None and lo is not None:
+                    return hi - lo + 1, hi, lo
     if re.search(patterns[2], src):
         return 1, 0, 0
     return 1, 0, 0  # default 1-bit
 
 
 def parse_is_input_port(sig_name: str, file: str) -> bool:
-    """检查信号是否是 module input port"""
+    """检查信号是否是 module input port (不包括 output reg)."""
     src = Path(file).read_text()
-    return bool(re.search(rf"input\s+(?:logic\s+)?(?:\w+\s+)?(?:\w+\s+)?{re.escape(sig_name)}\b", src)) or \
-           bool(re.search(rf"input\s+(?:logic\s+)?\[(\d+):(\d+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", src))
+    # 检查 output 声明 (output reg xxx 或 output logic xxx) — 排除
+    if re.search(rf"output\s+(?:reg|logic|wire)\s+(?:\w+\s+)*(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+        return False
+    if re.search(rf"output\s+(?:reg|logic|wire)\s*\[", src) and re.search(rf"output\s+(?:reg|logic|wire)\s*\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+        return False
+    # 检查 input 声明
+    if re.search(rf"input\s+(?:logic\s+)?(?:\w+\s+)?(?:\w+\s+)?{re.escape(sig_name)}\b", src):
+        return True
+    if re.search(rf"input\s+(?:logic\s+)?\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+        return True
+    return False
 
 
 def parse_clock_reset(file: str) -> tuple[str | None, str | None]:
     src = Path(file).read_text()
-    clk_m = re.search(r"input\s+(?:logic\s+)?(\w+)\s+(\w+_i|_i)\s*[,;]", src)
-    # 简化: 找 "clk_i" / "clk" / 第一个 clock-like input
     clk = None
     rst = None
-    for pat in [r"input\s+(?:logic\s+)?\w*\s*clk\w*", r"input\s+(?:logic\s+)?\w+\s+clk\w*"]:
+    # 找 clock: 优先 clk_i / clk_x, 退回 clk
+    for pat in [r"\b(clk\w*_i)\b", r"\b(clk)\b"]:
         m = re.search(pat, src)
         if m:
-            clk = re.search(r"clk\w+", m.group(0)).group(0)
+            clk = m.group(1) or m.group(2)
             break
-    for pat in [r"input\s+(?:logic\s+)?\w*\s*rst\w*", r"input\s+(?:logic\s+)?\w+\s+rst\w*"]:
+    # 找 reset: rst_n_i / rstn / rst_n / resetn
+    for pat in [r"\b(rst\w*_n\w*)\b", r"\b(rst_n\w*)\b", r"\b(rstn)\b", r"\b(rst)\b", r"\b(resetn)\b"]:
         m = re.search(pat, src)
         if m:
-            rst = re.search(r"rst\w+", m.group(0)).group(0)
+            rst = next((g for g in m.groups() if g), None)
             break
     return clk, rst
 
@@ -142,12 +190,17 @@ _CONTROL_PATTERNS = [
 
 
 def classify(name: str, width: int) -> str:
+    """判定信号是 DATA 还是 CONTROL.
+    - DATA: width >= 8 (多 bit 通常是 data)
+    - CONTROL: width < 8 + 名字含 control patterns (valid/state/mode/...)
+    边界: 用 word boundary + 下划线边界, 避免 "re" 误匹配 "result"
+    """
     nl = name.lower()
-    for p in _CONTROL_PATTERNS:
-        if p in nl:
-            return "CONTROL"
     if width >= 8:
         return "DATA"
+    for p in _CONTROL_PATTERNS:
+        if re.search(rf"(?:^|[_\W]){re.escape(p)}(?:$|[_\W])", nl):
+            return "CONTROL"
     return "CONTROL"  # 1-bit default to control
 
 
@@ -249,6 +302,8 @@ def infer_sample_condition(
     width: int,
     sig_class: str,
     related_signals: list[str],
+    clk: str = "clk",
+    rst: str | None = "rst_n",
     is_input_port: bool = False,
 ) -> tuple[str, str]:
     """
@@ -260,35 +315,35 @@ def infer_sample_condition(
       - 能确认 stable 条件 → 写 iff <cond>
       - 不能确认 → 只写 @posedge clk (不加 iff), 让用户填
     """
-    clk = "clk_i"
-    rst = "rst_ni"
     base = f"@(posedge {clk}"
+    rst_clause = f" && !{rst}" if rst else ""
 
     # 启发 1: VLD 信号 — 需要 enable/valid 配对
     if is_vld_signal(target):
         for r in related_signals:
             bare = re.sub(r"\[.*?\]", "", r)
-            if bare in ("enable_i", "valid_i", "valid_o"):
-                return f"{base} iff {bare} && !{rst})", f"VLD-style signal — stable when {bare}=1"
-        return f"{base} iff !{rst})", "VLD-style signal — no enable pair found; sample every cycle (may be too eager)"
+            if bare in ("enable_i", "valid_i", "valid_o", "din_valid", "din_ready"):
+                return f"{base} iff {bare}{rst_clause})", f"VLD-style signal — stable when {bare}=1"
+        return f"{base} iff !{rst})" if rst else f"{base})", "VLD-style signal — no enable pair found; sample every cycle (may be too eager)"
 
     # 启发 2: Input port — 总是 stable (testbench 给, 每个 cycle 都有效)
     if is_input_port:
         if sig_class == "DATA":
             return f"{base})", "Input port — stable every cycle (testbench-driven)"
-        return f"{base} iff !{rst})", "Input port control — always stable when not in reset"
+        return f"{base} iff !{rst})" if rst else f"{base})", "Input port control — always stable when not in reset"
 
-    # 启发 3: Data reg (_q/_d) — 找 valid
-    if _FF_SUFFIX.search(target) and sig_class == "DATA":
+    # 启发 3: Data reg (内部信号 + DATA) — 找 valid/ready/enable 配对
+    if not is_input_port and sig_class == "DATA":
+        # 优先找 valid/enable 单独配对
         for r in related_signals:
             bare = re.sub(r"\[.*?\]", "", r)
-            if "valid" in bare.lower() or "enable" in bare.lower():
-                return f"{base} iff {bare} && !{rst})", f"Data reg — stable after upstream {bare}"
-        return f"{base} iff !{rst})", "Data reg — no valid/enable gating found; sample every cycle (may be too eager)"
+            if re.search(r"(_valid$|_enable$|^valid$|^enable$|valid$|enable$)", bare):
+                return f"{base} iff {bare}{rst_clause})", f"Data reg — stable after upstream {bare}"
+        return f"{base} iff !{rst})" if rst else f"{base})", "Data reg — no valid/enable gating found; sample every cycle (may be too eager)"
 
     # 启发 4: Control signal (FSM/enum) — 总是 sample
     if sig_class == "CONTROL":
-        return f"{base} iff !{rst})", "Control signal (FSM/enum/flag) — always stable when not in reset"
+        return f"{base} iff !{rst})" if rst else f"{base})", "Control signal (FSM/enum/flag) — always stable when not in reset"
 
     # 启发 5: default — 无法确认, 只写基础 clk
     return f"{base})", "Unknown — sample condition NOT inferred; please review and add 'iff ...' manually"
@@ -300,7 +355,7 @@ def infer_sample_condition(
 _CONTROL_FOR_CROSS = {"mode_i", "valid_i", "valid_o", "enable_i", "trigger_i", "ready_i", "ready_o"}
 
 
-def pick_cross_relations(main_sig: str, related: list[str], all_data_sigs: list[dict]) -> list[str]:
+def pick_cross_relations(main_sig: str, related: list[str], file: str) -> list[str]:
     """从 related 参数里挑出真正 control 的信号"""
     picked = []
     for r in related:
@@ -309,14 +364,13 @@ def pick_cross_relations(main_sig: str, related: list[str], all_data_sigs: list[
             picked.append(bare)
         else:
             # 用 classify 判断
-            width, _, _ = parse_width_from_rtl(bare, _file_global)
+            try:
+                width, _, _ = parse_width_from_rtl(bare, file)
+            except Exception:
+                continue
             if classify(bare, width) == "CONTROL":
                 picked.append(bare)
     return picked
-
-
-# Globals for cross picker (since we need file path)
-_file_global: str = ""
 
 
 # =============================================================================
@@ -328,8 +382,6 @@ def generate_covergroup(
     related_signals: list[str] = None,
 ) -> str:
     related_signals = related_signals or []
-    global _file_global
-    _file_global = file
 
     risk = query_risk_json(file)
     sig_info = find_signal(target_signal, risk["data_signals"])
@@ -350,7 +402,7 @@ def generate_covergroup(
             break
 
     # 找 cross 候选
-    cross_sigs = pick_cross_relations(target_signal, related_signals, risk["data_signals"])
+    cross_sigs = pick_cross_relations(target_signal, related_signals, file)
 
     # ---- 拼 covergroup ----
     sample_clk = clk or "clk"
@@ -359,7 +411,7 @@ def generate_covergroup(
     is_input_port = parse_is_input_port(target_signal, file)
     # ★ Sample 条件推断 (保守策略: 能确认才写 iff, 不能确认留空)
     sample_evt, sample_caveat = infer_sample_condition(
-        target_signal, width, sig_class, related_signals, is_input_port
+        target_signal, width, sig_class, related_signals, sample_clk, sample_rst, is_input_port
     )
 
     risk_score = sig_info["func_score"] if sig_info else 0
