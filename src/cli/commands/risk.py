@@ -42,6 +42,7 @@ risk_app = typer.Typer(help="Signal risk analysis: classify nodes by clock/reset
 def analyze(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directories (comma-separated, e.g. /path/inc1,/path/inc2). 对齐 backpressure/handshake/protocol/visualize 已有 -I flag"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
@@ -54,6 +55,8 @@ def analyze(
 
     [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
     [ADD 2026-06-11 任务3] elaboration error 统一 catch.
+    [ADD 2026-06-24] 加 --include/-I flag 让 risk analyze 能找到 `\include` 头文件
+    (跟 backpressure/handshake/protocol/visualize 一致).
     """
     from cli._common import _build_tracer, handle_compilation_error
     from trace.core.compiler import CompilationError
@@ -62,12 +65,15 @@ def analyze(
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
 
+    include_dirs = include.split(",") if include else None
+
     try:
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
             strict=strict,
             log_level=log_level,
+            include_dirs=include_dirs,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
