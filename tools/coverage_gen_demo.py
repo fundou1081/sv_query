@@ -4,30 +4,94 @@ coverage_gen_demo.py — Phase 1 POC
 
 用 sv_query 现有信息 (risk --json) 自动生成 SystemVerilog covergroup。
 
-输入: RTL 源文件 + 目标信号名
+输入: RTL 源文件 + 目标信号名 (+ 可选 filelist, related signals, module name)
 输出: 完整 covergroup (含 sample 条件, bins, cross)
 
 策略:
   - DATA 信号 (width >= 8): 范围分 bin (zero/low/mid/high/max)
   - CONTROL 信号 (width < 8 或名字含 valid/ready/state/...): 离散 bin
   - cross: 主信号 x 相关 control 信号 (mode, valid 等)
+  - sample 条件: 保守推断 (VLD/control/data reg 启发式; 推断不到不加 iff)
 
 用法:
-  python tools/coverage_gen_demo.py <file> <signal> [<related_signal> ...]
+  # 单文件模式
+  python tools/coverage_gen_demo.py <file.sv> <signal> [<related> ...]
   例: python tools/coverage_gen_demo.py sim/openTitan_validation.sv state_q mode_i valid_i
+
+  # 多文件 filelist 模式 (Verilator/Modelsim 风格, 复用 sv_query _read_filelist)
+  python tools/coverage_gen_demo.py --filelist=<project.f> <top.sv> <signal> [<related> ...]
+  例: python tools/coverage_gen_demo.py --filelist=project.f top.sv data_o valid_i
+
+  # filelist 也能用 .f/.fl 作第一个 positional (auto-detect)
+  python tools/coverage_gen_demo.py <project.f> <top.sv> <signal> [<related> ...]
+
+  # RTL 错误时用 --no-strict (sv_query graceful degradation)
+  python tools/coverage_gen_demo.py sim/test_comprehensive.sv q d --no-strict
+
+  # 多 module 文件限定到具体 module
+  python tools/coverage_gen_demo.py sim/test_comprehensive.sv q d --no-strict --module=seq_basic
 """
 import json
 import re
 import sys
 from pathlib import Path
 
+# 复用 sv_query 的 filelist 解析器 (Verilator/Modelsim 风格)
+# 支持 -F 嵌套, +incdir+, ${VAR} 展开等
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+try:
+    from cli._common import _read_filelist
+    _HAS_FILELIST = True
+except ImportError:
+    _HAS_FILELIST = False
+
+
+def read_all_sources(file: str | None = None, filelist: str | None = None) -> tuple[dict[str, str], list[str]]:
+    """
+    读所有源文件返回 (sources, paths).
+    - file + filelist 都没给 → raise
+    - file 给, filelist 没给 → sources = {file: content}, paths = [file]
+    - filelist 给 → 用 _read_filelist 读多文件, file 作为主 RTL 解析文件
+    Returns:
+        sources: {绝对路径: 文件内容}
+        paths: 用于 RTL regex 解析的路径列表 (file + filelist 内所有文件)
+    """
+    if not file and not filelist:
+        raise ValueError("Either --file or --filelist is required")
+    if filelist:
+        if not _HAS_FILELIST:
+            raise RuntimeError("filelist support requires src/cli/_common.py (run from project root)")
+        base = Path.cwd()
+        sources = _read_filelist(filelist, base_dir=base)
+        # paths 包含 filelist 内所有文件 + file (file 用于 width/typedef 解析)
+        paths = list(sources.keys())
+        if file and file not in paths:
+            # user-provided file 优先 (可能 filelist 漏了)
+            try:
+                sources[file] = Path(file).read_text(encoding="utf-8", errors="replace")
+            except FileNotFoundError:
+                pass
+            paths.insert(0, file)
+    else:
+        sources = {file: Path(file).read_text(encoding="utf-8", errors="replace")}
+        paths = [file]
+    return sources, paths
+
 
 # =============================================================================
 # Step 1: 用 sv_query risk --json 拿信号元信息
 # =============================================================================
-def query_risk_json(file: str, strict: bool = True) -> dict:
+def query_risk_json(
+    file: str | None = None,
+    filelist: str | None = None,
+    strict: bool = True,
+) -> dict:
     import subprocess
-    args = ["python", "run_cli.py", "risk", "analyze", "-f", file, "--json"]
+    args = ["python", "run_cli.py", "risk", "analyze", "--json"]
+    if file:
+        args += ["-f", file]
+    if filelist:
+        args += ["--filelist", filelist]
     if not strict:
         args.append("--no-strict")
     out = subprocess.run(
@@ -63,13 +127,21 @@ def find_signal_in_module(sig_name: str, data_signals: list, module_name: str) -
 # =============================================================================
 # Step 2: 从 RTL 拿精确 width (sv_query 简化成 1, 这里补回真实 width)
 # =============================================================================
-def parse_parameters(file: str) -> dict[str, int]:
-    """解析 module 的 parameter 声明 (例如 parameter WIDTH = 8)"""
-    src = Path(file).read_text()
+def parse_parameters(file_or_paths) -> dict[str, int]:
+    """解析 module 的 parameter 声明 (例如 parameter WIDTH = 8).
+    file_or_paths 可以是 str (单文件) 或 list[str] (多文件, 合并 parameters).
+    """
+    paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
     params = {}
-    # 匹配 `parameter [type] NAME = VALUE` 或 `localparam NAME = VALUE`
-    for m in re.finditer(r"(?:parameter|localparam)\s+(?:\w+\s+)?(\w+)\s*=\s*(\d+)", src):
-        params[m.group(1)] = int(m.group(2))
+    for f in paths:
+        try:
+            src = Path(f).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
+        for m in re.finditer(r"(?:parameter|localparam)\s+(?:\w+\s+)?(\w+)\s*=\s*(\d+)", src):
+            name, val = m.group(1), int(m.group(2))
+            if name not in params:  # first-wins (避免后续 header override)
+                params[name] = val
     return params
 
 
@@ -86,30 +158,32 @@ def _eval_simple_expr(expr: str) -> int | None:
     if expr.isdigit():
         return int(expr)
     try:
-        # 允许 +, -, *, /
         return int(eval(expr, {"__builtins__": {}}, {}))
     except Exception:
         return None
 
 
-def parse_width_from_rtl(sig_name: str, file: str) -> tuple[int, int, int]:
-    """返回 (width, hi, lo)"""
-    src = Path(file).read_text()
-    params = parse_parameters(file)
+def parse_width_from_rtl(sig_name: str, file_or_paths) -> tuple[int, int, int]:
+    """返回 (width, hi, lo). file_or_paths 可以是 str 或 list[str]."""
+    paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
+    params = parse_parameters(paths)
+    # 合并所有文件内容
+    combined_src = ""
+    for f in paths:
+        try:
+            combined_src += "\n" + Path(f).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
     # 匹配多种位宽声明: logic [N:M] / reg [N:M] / wire [N:M] / input/output [N:M] / 参数化 [WIDTH-1:0]
     patterns = [
-        # 1) [N:M] 在 type 关键字之前 (port 方向)
         rf"(?:input|output|inout)\s+(?:logic\s+)?\[([^\]]+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
-        # 2) [N:M] 在 type 关键字之后
         rf"(?:logic|reg|wire)\s*\[([^\]]+)\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b",
-        # 3) 无 [N:M] 1-bit
         rf"(?:logic|reg|wire|input|output)\s+(?:logic\s+)?(?:\w+\s+){0,2}{re.escape(sig_name)}\b",
     ]
     for p in patterns[:2]:
-        m = re.search(p, src)
+        m = re.search(p, combined_src)
         if m:
             range_expr = m.group(1)
-            # 可能是 "N:M" 或 "PARAM-N:0" 或 "WIDTH-1:0"
             parts = range_expr.split(":")
             if len(parts) == 2:
                 hi_expr = _resolve_width_expr(parts[0], params)
@@ -118,75 +192,92 @@ def parse_width_from_rtl(sig_name: str, file: str) -> tuple[int, int, int]:
                 lo = _eval_simple_expr(lo_expr)
                 if hi is not None and lo is not None:
                     return hi - lo + 1, hi, lo
-    if re.search(patterns[2], src):
+    if re.search(patterns[2], combined_src):
         return 1, 0, 0
     return 1, 0, 0  # default 1-bit
 
 
-def parse_is_input_port(sig_name: str, file: str) -> bool:
+def parse_is_input_port(sig_name: str, file_or_paths) -> bool:
     """检查信号是否是 module input port (不包括 output reg)."""
-    src = Path(file).read_text()
+    paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
+    combined_src = ""
+    for f in paths:
+        try:
+            combined_src += "\n" + Path(f).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
     # 检查 output 声明 (output reg xxx 或 output logic xxx) — 排除
-    if re.search(rf"output\s+(?:reg|logic|wire)\s+(?:\w+\s+)*(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+    if re.search(rf"output\s+(?:reg|logic|wire)\s+(?:\w+\s+)*(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
         return False
-    if re.search(rf"output\s+(?:reg|logic|wire)\s*\[", src) and re.search(rf"output\s+(?:reg|logic|wire)\s*\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+    if re.search(rf"output\s+(?:reg|logic|wire)\s*\[", combined_src) and re.search(rf"output\s+(?:reg|logic|wire)\s*\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
         return False
     # 检查 input 声明
-    if re.search(rf"input\s+(?:logic\s+)?(?:\w+\s+)?(?:\w+\s+)?{re.escape(sig_name)}\b", src):
+    if re.search(rf"input\s+(?:logic\s+)?(?:\w+\s+)?(?:\w+\s+)?{re.escape(sig_name)}\b", combined_src):
         return True
-    if re.search(rf"input\s+(?:logic\s+)?\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", src):
+    if re.search(rf"input\s+(?:logic\s+)?\[[^\]]+\]\s+(?:\w+\s+)*{re.escape(sig_name)}\b", combined_src):
         return True
     return False
 
 
-def parse_clock_reset(file: str) -> tuple[str | None, str | None]:
-    src = Path(file).read_text()
+def parse_clock_reset(file_or_paths) -> tuple[str | None, str | None]:
+    paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
+    combined_src = ""
+    for f in paths:
+        try:
+            combined_src += "\n" + Path(f).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
     clk = None
     rst = None
     # 找 clock: 优先 clk_i / clk_x, 退回 clk
     for pat in [r"\b(clk\w*_i)\b", r"\b(clk)\b"]:
-        m = re.search(pat, src)
+        m = re.search(pat, combined_src)
         if m:
             clk = m.group(1) or m.group(2)
             break
     # 找 reset: rst_n_i / rstn / rst_n / resetn
     for pat in [r"\b(rst\w*_n\w*)\b", r"\b(rst_n\w*)\b", r"\b(rstn)\b", r"\b(rst)\b", r"\b(resetn)\b"]:
-        m = re.search(pat, src)
+        m = re.search(pat, combined_src)
         if m:
             rst = next((g for g in m.groups() if g), None)
             break
     return clk, rst
 
 
-def parse_enums(file: str) -> dict[str, list[tuple[str, int]]]:
-    """粗略提取 typedef enum 里的 enum 名 + 值 (用于 FSM state bin 命名)"""
-    src = Path(file).read_text()
+def parse_enums(file_or_paths) -> dict[str, list[tuple[str, int]]]:
+    """粗略提取 typedef enum 里的 enum 名 + 值 (用于 FSM state bin 命名)."""
+    paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
     result = {}
-    for m in re.finditer(r"typedef\s+enum[^{]*\{([^}]+)\}\s*(\w+)\s*;", src):
-        body = m.group(1)
-        ty_name = m.group(2)
-        items = []
-        next_val = 0
-        for line in body.split("\n"):
-            line = line.strip().rstrip(",").rstrip(";").strip()
-            if not line or line.startswith("//"):
+    for f in paths:
+        try:
+            src = Path(f).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
+        for m in re.finditer(r"typedef\s+enum[^{]*\{([^}]+)\}\s*(\w+)\s*;", src):
+            body = m.group(1)
+            ty_name = m.group(2)
+            if ty_name in result:  # first-wins
                 continue
-            # 名字 (可选 = 值)
-            mm = re.match(r"(\w+)(?:\s*=\s*(\d+)'?d?(\d+)|\s*=\s*(\d+))?", line)
-            if not mm:
-                continue
-            n = mm.group(1)
-            # 拿 value
-            if mm.group(4):
-                v = int(mm.group(4))
-            elif mm.group(2) and mm.group(3):
-                v = int(mm.group(3))  # 忽略 bit-width
-            else:
-                v = next_val
-            items.append((n, v))
-            next_val = v + 1
-        if items:
-            result[ty_name] = items
+            items = []
+            next_val = 0
+            for line in body.split("\n"):
+                line = line.strip().rstrip(",").rstrip(";").strip()
+                if not line or line.startswith("//"):
+                    continue
+                mm = re.match(r"(\w+)(?:\s*=\s*(\d+)'?d?(\d+)|\s*=\s*(\d+))?", line)
+                if not mm:
+                    continue
+                n = mm.group(1)
+                if mm.group(4):
+                    v = int(mm.group(4))
+                elif mm.group(2) and mm.group(3):
+                    v = int(mm.group(3))
+                else:
+                    v = next_val
+                items.append((n, v))
+                next_val = v + 1
+            if items:
+                result[ty_name] = items
     return result
 
 
@@ -369,17 +460,16 @@ def infer_sample_condition(
 _CONTROL_FOR_CROSS = {"mode_i", "valid_i", "valid_o", "enable_i", "trigger_i", "ready_i", "ready_o"}
 
 
-def pick_cross_relations(main_sig: str, related: list[str], file: str) -> list[str]:
-    """从 related 参数里挑出真正 control 的信号"""
+def pick_cross_relations(main_sig: str, related: list[str], paths) -> list[str]:
+    """从 related 参数里挑出真正 control 的信号. paths 是 list[str]."""
     picked = []
     for r in related:
         bare = re.sub(r"\[.*?\]", "", r)
         if bare in _CONTROL_FOR_CROSS:
             picked.append(bare)
         else:
-            # 用 classify 判断
             try:
-                width, _, _ = parse_width_from_rtl(bare, file)
+                width, _, _ = parse_width_from_rtl(bare, paths)
             except Exception:
                 continue
             if classify(bare, width) == "CONTROL":
@@ -391,23 +481,30 @@ def pick_cross_relations(main_sig: str, related: list[str], file: str) -> list[s
 # Step 7: 主生成函数
 # =============================================================================
 def generate_covergroup(
-    file: str,
-    target_signal: str,
+    file: str | None = None,
+    target_signal: str = None,
     related_signals: list[str] = None,
+    filelist: str | None = None,
     module_name: str | None = None,
     strict: bool = False,
 ) -> str:
     related_signals = related_signals or []
+    if not target_signal:
+        raise ValueError("target_signal is required")
 
-    risk = query_risk_json(file, strict=strict)
+    # 读所有源文件 (file + filelist)
+    sources, paths = read_all_sources(file=file, filelist=filelist)
+
+    # sv_query risk analyze: 用 filelist (如果给) 否则用 file
+    risk = query_risk_json(file=file, filelist=filelist, strict=strict)
     # 多 module 文件: 只看指定 module (或第一个 module)
     if module_name:
         sig_info = find_signal_in_module(target_signal, risk["data_signals"], module_name)
     else:
         sig_info = find_signal(target_signal, risk["data_signals"])
-    width, hi, lo = parse_width_from_rtl(target_signal, file)
-    clk, rst = parse_clock_reset(file)
-    enums = parse_enums(file)
+    width, hi, lo = parse_width_from_rtl(target_signal, paths)
+    clk, rst = parse_clock_reset(paths)
+    enums = parse_enums(paths)
     sig_class = classify(target_signal, width)
 
     # 找 enum 名 (用于 CONTROL bin 命名)
@@ -422,13 +519,13 @@ def generate_covergroup(
             break
 
     # 找 cross 候选
-    cross_sigs = pick_cross_relations(target_signal, related_signals, file)
+    cross_sigs = pick_cross_relations(target_signal, related_signals, paths)
 
     # ---- 拼 covergroup ----
     sample_clk = clk or "clk"
     sample_rst = rst or "rst_n"
     # 判定是 input port 还是 internal
-    is_input_port = parse_is_input_port(target_signal, file)
+    is_input_port = parse_is_input_port(target_signal, paths)
     # ★ Sample 条件推断 (保守策略: 能确认才写 iff, 不能确认留空)
     sample_evt, sample_caveat = infer_sample_condition(
         target_signal, width, sig_class, related_signals, sample_clk, sample_rst, is_input_port
@@ -463,7 +560,7 @@ def generate_covergroup(
     if cross_sigs:
         lines.append(f"  // ---- Cross coverpoints (related control signals) ----")
         for i, cs in enumerate(cross_sigs):
-            cs_width, cs_hi, cs_lo = parse_width_from_rtl(cs, file)
+            cs_width, cs_hi, cs_lo = parse_width_from_rtl(cs, paths)
             cs_class = classify(cs, cs_width)
             lines.append(f"  cp_{cs}_for_{target_signal}: coverpoint {cs} {{")
             if cs_class == "CONTROL":
@@ -494,23 +591,53 @@ def main():
     args = sys.argv[1:]
     strict = True  # default: strict mode
     module_name = None
-    filtered = []
+    filelist = None
+    file = None
+    positional = []
     for a in args:
         if a == "--no-strict":
-            strict = False  # --no-strict means NOT strict (relaxed mode)
+            strict = False
         elif a.startswith("--module="):
             module_name = a.split("=", 1)[1]
+        elif a.startswith("--filelist="):
+            filelist = a.split("=", 1)[1]
         elif a == "--strict":
             pass
         else:
-            filtered.append(a)
-    if len(filtered) < 2:
+            positional.append(a)
+    if len(positional) < 2:
         print(__doc__)
         sys.exit(1)
-    file = filtered[0]
-    target = filtered[1]
-    related = filtered[2:]
-    cg = generate_covergroup(file, target, related, module_name=module_name, strict=strict)
+    # 智能解析 positional:
+    #   - filelist 没给 + 第 1 个是 .f/.fl/.filelist → 当 filelist, 第 2 个是 file, 第 3 个是 target
+    #   - filelist 已给 (via --filelist=) → 第 1 个是 file, 第 2 个是 target
+    #   - 都没给 → 第 1 个是 file, 第 2 个是 target
+    if filelist is None and len(positional) >= 1:
+        first = positional[0]
+        if first.endswith((".f", ".fl", ".filelist")) and Path(first).exists():
+            filelist = first
+            positional = positional[1:]
+    if filelist is not None and len(positional) >= 2:
+        # filelist 模式: positional[0] = file, positional[1] = target
+        file = positional[0]
+        target = positional[1]
+        related = positional[2:]
+    elif len(positional) >= 2:
+        # 单文件模式: positional[0] = file, positional[1] = target
+        file = positional[0]
+        target = positional[1]
+        related = positional[2:]
+    else:
+        print(__doc__)
+        sys.exit(1)
+    cg = generate_covergroup(
+        file=file,
+        target_signal=target,
+        related_signals=related,
+        filelist=filelist,
+        module_name=module_name,
+        strict=strict,
+    )
     print(cg)
 
 
