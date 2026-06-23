@@ -99,6 +99,11 @@ Instances: 3
 
 ## 🆕 最近更新 (2026-06)
 
+- ✨ **Coverage gap 检测** (2026-06-23): 新增 `coverage gap` 子命令,
+  自动检测 covergroup ↔ constraint 一致性缺口 (missing_cross /
+  missing_illegal_bins / missing_bins)。支持 `--class` 过滤、
+  `--json` 输出、`--fail-on-gap` CI 集成。修 CovergroupAnalyzer
+  cross.items NAME vs SIGNAL 错位 bug (永真 mismatch)。
 - ✨ **协议检测 (Phase A)**: `protocol detect` 自动识别 AXI4/TL-UL/AHB/APB/Wishbone/Stream
   协议, 4 项置信度融合 (name+structural+pattern+handshake)。
   `--protocol TL-UL` 单协议模式避免多协议竞争误识别。
