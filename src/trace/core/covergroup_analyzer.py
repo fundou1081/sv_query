@@ -83,11 +83,23 @@ class CovergroupAnalyzer:
 
         # 收集已有 cross 的变量对
         cross_pairs = set()
+        # [FIX 2026-06-23 coverage gap CLI TDD] cross.items 含 coverpoint NAME
+        # (e.g. "cp_mode") 而 cp_signals 用 coverpoint SIGNAL (e.g. "mode").
+        # 两边不同 → 永真 mismatch. 修复: 建立 name→signal 映射, cross.items
+        # 用 name 时通过映射比对 signal.
+        cp_names = {cp.name for cp in cg.coverpoints if cp.name}
+        name_to_signal = {cp.name: cp.signal for cp in cg.coverpoints if cp.name and cp.signal}
         for cross in cg.crosses:
-            items = [i for i in cross.items if i in cp_signals]
-            for i in range(len(items)):
-                for j in range(i + 1, len(items)):
-                    cross_pairs.add((items[i], items[j]))
+            # 先按 name 查, 查不到再当 signal 用
+            normalized = []
+            for item in cross.items:
+                if item in cp_signals:
+                    normalized.append(item)
+                elif item in name_to_signal:
+                    normalized.append(name_to_signal[item])
+            for i in range(len(normalized)):
+                for j in range(i + 1, len(normalized)):
+                    cross_pairs.add(tuple(sorted([normalized[i], normalized[j]])))
 
         # 从图中找条件约束关系
         condition_pairs = self._find_condition_constraint_pairs()

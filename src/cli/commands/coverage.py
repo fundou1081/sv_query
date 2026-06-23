@@ -33,6 +33,8 @@ from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 warnings.filterwarnings("ignore")
 
+from trace.core.covergroup_analyzer import CovergroupAnalyzer, CoverageGap
+from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.coverage_generator import ControlCoverageGenerator
 
 coverage_app = typer.Typer(
@@ -97,6 +99,107 @@ def suggest(
         print(f"ERROR: {e}", file=sys.stderr)
         import traceback
 
+        traceback.print_exc()
+        raise typer.Exit(code=1) from e
+
+
+@coverage_app.command(name="gap")
+def gap(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
+    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
+    class_filter: str = typer.Option(None, "--class", "-c", help="Filter analysis to a specific class (e.g. packet)"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (programmatic)"),
+    fail_on_gap: bool = typer.Option(False, "--fail-on-gap", help="Exit code 1 if any gap is detected (CI-friendly)"),
+) -> None:
+    """检测 covergroup ↔ constraint 一致性缺口.
+
+    自动检测 3 类覆盖缺口:
+      - missing_cross         条件约束引用变量对, 但 covergroup 缺少 cross
+      - missing_illegal_bins  cross 已定义但缺少 illegal_bins 标记非法组合
+      - missing_bins          (预留)
+
+    Examples:
+      python run_cli.py coverage gap -f top.sv
+      python run_cli.py coverage gap -f top.sv --class packet
+      python run_cli.py coverage gap -f top.sv --json --fail-on-gap
+    """
+    import json as _json
+
+    try:
+        tracer_log_level = "ERROR" if json_output else None
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            log_level=tracer_log_level,
+            preprocess_macros=preprocess_macros,
+        )
+        graph = tracer.build_graph()
+
+        # 1. 提取 covergroups (使用 tracer 的 sources, 跟 graph 保持一致)
+        sources = tracer.sources if hasattr(tracer, "sources") else {}
+        extractor = CovergroupExtractor(sources=sources, strict=strict)
+        covergroups = extractor.extract()
+
+        # 2. 一致性分析
+        analyzer = CovergroupAnalyzer(graph=graph, cgs=covergroups)
+        gaps = analyzer.analyze(class_name=class_filter)
+
+        # 3. 输出
+        if json_output:
+            payload = {
+                "summary": {
+                    "total_gaps": len(gaps),
+                    "by_kind": {
+                        k: sum(1 for g in gaps if g.kind == k)
+                        for k in {"missing_bins", "missing_cross", "missing_illegal_bins"}
+                    },
+                    "covergroup_count": len(covergroups),
+                    "class_filter": class_filter,
+                },
+                "gaps": [
+                    {
+                        "kind": g.kind,
+                        "variable": g.variable,
+                        "description": g.description,
+                        "constraint_block": g.constraint_block,
+                        "severity": g.severity,
+                    }
+                    for g in gaps
+                ],
+            }
+            print(_json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            # Markdown 输出
+            print(f"=== Covergroup ↔ Constraint Coverage Gaps ===")
+            print(f"Covergroups found: {len(covergroups)}")
+            if class_filter:
+                print(f"Class filter: {class_filter}")
+            print(f"Total gaps: {len(gaps)}")
+            print()
+            if not gaps:
+                print("✅ No coverage gaps detected.")
+            else:
+                # 按 kind 分组
+                by_kind: dict[str, list[CoverageGap]] = {}
+                for g in gaps:
+                    by_kind.setdefault(g.kind, []).append(g)
+                for kind, gs in by_kind.items():
+                    print(f"### {kind} ({len(gs)})")
+                    for g in gs:
+                        print(f"  - [{g.severity}] {g.variable}: {g.description}")
+                        if g.constraint_block:
+                            print(f"      ↳ constraint: {g.constraint_block}")
+                    print()
+
+        if gaps and fail_on_gap:
+            raise typer.Exit(code=1)
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        import traceback
         traceback.print_exc()
         raise typer.Exit(code=1) from e
 
