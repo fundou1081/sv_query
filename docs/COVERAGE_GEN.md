@@ -161,7 +161,7 @@ endgroup: cg_<SIGNAL>
 | Typed package `pkg::type_t` (ascon 那种) | ✅ **支持** (Phase 2 #5) — 包括 3 层 typedef 链 + `import pkg::*` 模式 |
 | 144-file NaplesPU 完整跑 | ❌ 需更完整 filelist + 工业 include |
 | 跨 module signal (子模块 instance) | ✅ **支持** (Phase 2 #4) — `u_middle.u_sub.data_o` 形式 |
-| Nested packed struct 字段 deep names | ❌ sum 整个 struct width |
+| Nested packed struct 字段 deep names | ✅ **支持** (Phase 2 #6) — 每字段 `bins name = signal[hi:lo]` |
 
 ---
 
@@ -284,6 +284,7 @@ endgroup: cg_max_idx_o
 | 2026-06-24 | 默认 `--no-strict` | 工业多文件项目常见 UnknownModule, 友好降级 |
 | 2026-06-24 | 加 hierarchical signal lookup | 跨 module: `u_middle.u_sub.data_o` 形式 (Phase 2 #4) |
 | 2026-06-24 | **发现 typed package 已支持** | `pkg::type_t` + 3 层 typedef 链 + `import pkg::*` 都能解析 (Phase 2 #5) — 之前说"工具边界"是误判 |
+| 2026-06-24 | 加 packed struct field bins | 每字段生成 `bins name = signal[hi:lo]`, union 跳过 (避免重叠) (Phase 2 #6) |
 
 ---
 

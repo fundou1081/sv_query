@@ -416,3 +416,72 @@ class TestMultiPackageTypedefChain:
         """混合 parameterized 1D + typedef: data_in (logic[WIDTH-1:0] with WIDTH=32)."""
         r = parse_pyslang_width("data_in", filelist=multi_pkg_filelist)
         assert r is not None and r == (32, 31, 0), f"got {r}"
+
+
+# ============================================================================
+# 测试 8: Packed struct field extraction (Phase 2 #6)
+# ============================================================================
+class TestPackedStructFieldExtraction:
+    """[Phase 2 #6 2026-06-24] 测 packed struct 字段提取.
+
+    测试 _parse_packed_struct_fields() helper 函数.
+    应该返回 [(name, width, hi, lo), ...] 列表, 字段按 LSB-first 累加 bit offset.
+    """
+
+    def test_simple_2_field_struct(self):
+        """2 字段 packed struct: opcode[7:0] + addr[23:0] → 32-bit total.
+        Expected:
+          opcode: width=8, hi=7, lo=0
+          addr:   width=24, hi=31, lo=8
+        """
+        ct = "struct packed{logic[7:0] opcode;logic[23:0] addr;}pkg.s$1"
+        from coverage_gen_demo import _parse_packed_struct_fields
+        fields = _parse_packed_struct_fields(ct)
+        assert fields is not None
+        assert len(fields) == 2
+        assert fields[0] == ("opcode", 8, 7, 0), f"got {fields[0]}"
+        assert fields[1] == ("addr", 24, 31, 8), f"got {fields[1]}"
+
+    def test_4_field_struct_4bytes(self):
+        """4 字段 packed struct: 4 bytes (each 8-bit).
+        Expected: byte0 [7:0], byte1 [15:8], byte2 [23:16], byte3 [31:24]
+        """
+        ct = "struct packed{logic[7:0] byte0;logic[7:0] byte1;logic[7:0] byte2;logic[7:0] byte3;}pkg.s$2"
+        from coverage_gen_demo import _parse_packed_struct_fields
+        fields = _parse_packed_struct_fields(ct)
+        assert fields is not None
+        assert len(fields) == 4
+        assert fields[0] == ("byte0", 8, 7, 0)
+        assert fields[1] == ("byte1", 8, 15, 8)
+        assert fields[2] == ("byte2", 8, 23, 16)
+        assert fields[3] == ("byte3", 8, 31, 24)
+
+    def test_non_uniform_widths(self):
+        """非均匀字段宽度: header[4:0] + payload[31:0] → 36-bit.
+        Expected: header [4:0] (5-bit), payload [36:5] (32-bit).
+        """
+        ct = "struct packed{logic[4:0] header;logic[31:0] payload;}pkg.s$3"
+        from coverage_gen_demo import _parse_packed_struct_fields
+        fields = _parse_packed_struct_fields(ct)
+        assert fields is not None
+        assert len(fields) == 2
+        assert fields[0] == ("header", 5, 4, 0)
+        assert fields[1] == ("payload", 32, 36, 5)
+
+    def test_non_struct_returns_none(self):
+        """非 packed struct → 返回 None."""
+        from coverage_gen_demo import _parse_packed_struct_fields
+        # logic vector
+        assert _parse_packed_struct_fields("logic[31:0]") is None
+        # empty
+        assert _parse_packed_struct_fields("") is None
+        # 不含 struct packed 关键字
+        assert _parse_packed_struct_fields("union packed{...}") is None
+
+    def test_real_instr_t_struct(self, parse_pyslang_width):
+        """真实 type_taxonomy.sv 的 instr_t (packed struct).
+        之前测过 width=32, 现在测 struct 字段提取.
+        """
+        from pathlib import Path as P
+        r = parse_pyslang_width("instr_i", file=str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")))
+        assert r is not None and r == (32, 31, 0), f"width: {r}"

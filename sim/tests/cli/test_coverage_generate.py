@@ -313,3 +313,49 @@ class TestCoverageGenerateCrossModule:
         assert rc == 0
         # fallback 1-bit CONTROL
         assert "covergroup cg_u_nonexistent_signal" in out
+
+
+# ============================================================================
+# Phase 2 #6: Packed struct field bins in covergroup output
+# ============================================================================
+class TestPackedStructFieldBins:
+    """[Phase 2 #6 2026-06-24] 验证 packed struct 的字段 bins 出现在 covergroup body.
+
+    Fixture: type_taxonomy.sv 的 instr_t 是 packed struct { logic[7:0] opcode; logic[23:0] addr; }
+    期望 covergroup body 包含:
+      bins opcode = instr_i[7:0];
+      bins addr   = instr_i[31:8];
+    """
+
+    def test_packed_struct_field_bins_present(self):
+        """packed struct 字段 bins 出现在 covergroup body."""
+        from pathlib import Path as P
+        rc, out, err = _run_cli(
+            "coverage", "generate",
+            "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/type_taxonomy.f",
+            "-f", str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")),
+            "-s", "instr_i",
+        )
+        assert rc == 0, f"CLI fail: {err[:300]}"
+        # 验证 packed struct 字段 bins 出现在 covergroup
+        assert "bins opcode = instr_i[7:0];" in out, f"missing opcode bin in:\n{out[:500]}"
+        assert "bins addr = instr_i[31:8];" in out, f"missing addr bin in:\n{out[:500]}"
+        # 验证 Phase 2 #6 注释
+        assert "Packed struct fields (Phase 2 #6)" in out
+
+    def test_packed_union_skips_field_bins(self):
+        """packed union 字段重叠, 跳过字段 bins (避免 SV 编译错).
+
+        Fixture: word_u_t 是 packed union { logic[31:0] raw; struct { 4 bytes } bytes; }
+        字段重叠, 不应输出字段 bins.
+        """
+        from pathlib import Path as P
+        rc, out, err = _run_cli(
+            "coverage", "generate",
+            "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/type_taxonomy.f",
+            "-f", str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")),
+            "-s", "word_u_i",
+        )
+        assert rc == 0, f"CLI fail: {err[:300]}"
+        # union 不应有 packed struct fields 注释
+        assert "Packed struct fields (Phase 2 #6)" not in out, "union should skip struct fields"
