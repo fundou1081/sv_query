@@ -171,6 +171,11 @@ Instances: 3
   4 job 专门验证 coverage_gen_demo: unit+CLI test、golden regression、
   覆盖度门禁 (`--cov-fail-under=25`)、ruff lint。3 工业项目 baseline
   (picorv32, OpenTitan, NaplesPU)。
+- **SV 编译验证** (Phase 3 #C): `tools/coverage_gen_sv_compile.py`
+  用 pyslang (SystemVerilog compiler) 实际编译生成的 covergroup,
+  发现 2 个真 bug (bins 关键字 + wrapper clk/rst 命名), 修完后
+  5/5 工业信号 (picorv32, OpenTitan, NaplesPU, openTitan_validation)
+  实际 SV 编译通过。详见 `docs/COVERAGE_GEN.md#12-sv-编译验证-phase-3-c`。
 
 完整 4 维能力报告见 `docs/PYSLANG_MEMORY_ISSUE.md` (内存不足根因) +
 `tools/benchmark/README.md` (benchmark 用法)。
