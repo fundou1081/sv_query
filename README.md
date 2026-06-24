@@ -2,6 +2,8 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
+> 🆕 **新成员入门**? 从 [CONTRIBUTING.md](CONTRIBUTING.md) 开始 — 5 分钟跑起来 + 30 分钟懂架构 + 加第一个 feature。
+
 [![Tests](https://img.shields.io/badge/tests-2000+_passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE_MIT)
