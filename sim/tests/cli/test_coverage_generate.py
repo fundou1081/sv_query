@@ -242,3 +242,74 @@ class TestCoverageGenerateErrors:
         )
         assert rc != 0
         assert "--file" in err or "filelist" in err or "required" in err.lower()
+
+
+# ============================================================================
+# Test 7: 跨 module signal (Phase 2 #4)
+# ============================================================================
+class TestCoverageGenerateCrossModule:
+    """[Phase 2 2026-06-24] 测 hierarchical signal lookup (e.g. u_sub.data_o)."""
+
+    def test_submodule_1level(self):
+        """1 层 submodule: u_middle.pipe_q (32-bit)."""
+        rc, out, _ = _run_cli(
+            "coverage", "generate",
+            "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
+            "-s", "u_middle.pipe_q",
+        )
+        assert rc == 0
+        assert "covergroup cg_u_middle_pipe_q" in out
+        assert "32-bit" in out
+        # coverpoint 内部用 hierarchical ref
+        assert "coverpoint u_middle.pipe_q" in out
+
+    def test_submodule_2level_nested(self):
+        """2 层 nested submodule: u_middle.u_sub.data_o."""
+        rc, out, _ = _run_cli(
+            "coverage", "generate",
+            "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
+            "-s", "u_middle.u_sub.data_o",
+        )
+        assert rc == 0
+        assert "covergroup cg_u_middle_u_sub_data_o" in out
+        assert "32-bit" in out
+        assert "coverpoint u_middle.u_sub.data_o" in out
+
+    def test_submodule_clog2_across_modules(self):
+        """2 层 nested + $clog2(4)=2-bit: u_middle.u_sub.depth_idx_o."""
+        rc, out, _ = _run_cli(
+            "coverage", "generate",
+            "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
+            "-s", "u_middle.u_sub.depth_idx_o",
+        )
+        assert rc == 0
+        assert "covergroup cg_u_middle_u_sub_depth_idx_o" in out
+        assert "2-bit" in out
+        # CONTROL signal
+        assert "CONTROL" in out.split("option.comment")[1].split("\n")[0]
+
+    def test_submodule_with_related_filters_data(self):
+        """Cross 跨 module: related 含 DATA (din 32-bit) 应被过滤, 只留 CONTROL (enable_i)."""
+        rc, out, _ = _run_cli(
+            "coverage", "generate",
+            "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
+            "-s", "u_middle.u_sub.depth_idx_o",
+            "-r", "enable_i",  # CONTROL 1-bit
+            "-r", "din",       # DATA 32-bit → 应被过滤
+        )
+        assert rc == 0
+        # 只有 enable_i 在 cross, din 被过滤
+        assert "cp_enable_i" in out
+        assert "cp_din" not in out
+
+    def test_nonexistent_submodule_prints_error(self):
+        """不存在的 submodule path → 工具 graceful (返回 None width, 1-bit fallback)."""
+        rc, out, _ = _run_cli(
+            "coverage", "generate",
+            "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
+            "-s", "u_nonexistent.signal",
+        )
+        # 工具会 fallback (1-bit width), 输出 covergroup 但 width 不对
+        assert rc == 0
+        # fallback 1-bit CONTROL
+        assert "covergroup cg_u_nonexistent_signal" in out

@@ -304,3 +304,64 @@ class TestPicoRV32:
         """mem_ready: 1-bit input."""
         r = width_results["mem_ready"]
         assert r is not None and r == (1, 0, 0), f"got {r}"
+
+
+# ============================================================================
+# 测试 6: 跨 module hierarchical lookup (Phase 2 #4)
+# ============================================================================
+class TestCrossModuleHierarchical:
+    """[Phase 2 2026-06-24] 测 _hierarchical_find + parse_width_from_pyslang 跨 module.
+
+    Fixture: sim/tests/pyslang_type_fixtures/cross_module_hier.sv
+      - top_hier (top)
+        └─ middle (u_middle)
+             └─ sub (u_sub) — 2 层嵌套
+    """
+
+    def test_top_level_signal(self, parse_pyslang_width, type_taxonomy_sv):
+        """顶层 port: din (32-bit DATA_WIDTH=32)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("din", file=f)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_top_level_1bit(self, parse_pyslang_width):
+        """顶层 1-bit port: clk."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("clk", file=f)
+        assert r is not None and r == (1, 0, 0), f"got {r}"
+
+    def test_top_level_internal_state(self, parse_pyslang_width):
+        """顶层 internal FSM: state_q (typedef enum, 2-bit)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("state_q", file=f)
+        assert r is not None and r == (2, 1, 0), f"got {r}"
+
+    def test_submodule_1level(self, parse_pyslang_width):
+        """1 层 submodule: u_middle.pipe_q (32-bit via parameter)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("u_middle.pipe_q", file=f)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_submodule_2level_data(self, parse_pyslang_width):
+        """2 层 nested submodule: u_middle.u_sub.data_o (32-bit)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("u_middle.u_sub.data_o", file=f)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_submodule_2level_clog2(self, parse_pyslang_width):
+        """2 层 nested + $clog2 derived: u_middle.u_sub.depth_idx_o (2-bit)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("u_middle.u_sub.depth_idx_o", file=f)
+        assert r is not None and r == (2, 1, 0), f"got {r}"
+
+    def test_nonexistent_submodule_returns_none(self, parse_pyslang_width):
+        """不存在的 submodule path → None (不 crash)."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("u_nonexistent.signal", file=f)
+        assert r is None, f"expected None, got {r}"
+
+    def test_submodule_signal_nonexistent(self, parse_pyslang_width):
+        """Submodule 存在但 signal 不存在 → None."""
+        f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
+        r = parse_pyslang_width("u_middle.nonexistent_signal", file=f)
+        assert r is None, f"expected None, got {r}"
