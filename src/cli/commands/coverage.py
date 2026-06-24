@@ -204,5 +204,75 @@ def gap(
         raise typer.Exit(code=1) from e
 
 
+
+# ==============================================================================
+# [Phase 2 2026-06-24] coverage generate - 自动生成 SystemVerilog covergroup
+# ==============================================================================
+# 复用 tools/coverage_gen_demo.py 的核心函数 (sys.path 加 tools/).
+# 目标信号 + related signals + source file → 完整 covergroup (含 sample 条件, bins, cross).
+# 策略: data (范围分 bin) vs control (离散/enum bin), sample 条件保守推断.
+@coverage_app.command(name="generate")
+def generate(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    signal: str = typer.Option(..., "--signal", "-s", help="Target signal to generate covergroup for (e.g. top.data_o)"),
+    related: list[str] = typer.Option(None, "--related", "-r", help="Related signals for cross coverpoint (repeatable, e.g. --related mode_i --related valid_i)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directories (comma-separated)"),
+    module: str = typer.Option(None, "--module", help="限定 multi-module 文件里具体 module name"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict, 适合工业多文件项目)"),
+    output: str = typer.Option(None, "--output", "-o", help="Write covergroup to .sv file (default: stdout)"),
+    no_header: bool = typer.Option(False, "--no-header", help="Skip 元信息 header (for golden image diff)"),
+) -> None:
+    """[Phase 2] 自动生成 SystemVerilog covergroup (含 sample 条件, bins, cross).
+
+    用 sv_query 拿 signal metadata + 走 pyslang API 拿真实 width (包括  派生 +
+    package typedef), 生成 covergroup.
+
+    Examples:
+        svq coverage generate -f sim/openTitan_validation.sv -s state_q -r mode_i -r valid_i
+        svq coverage generate --filelist=project.f -f top.sv -s data_o -I /path/inc
+        svq coverage generate -f sim/openTitan_validation.sv -s state_q -o cg_state.sv
+    """
+    _tools_dir = Path(__file__).resolve().parents[3] / "tools"
+    if str(_tools_dir) not in sys.path:
+        sys.path.insert(0, str(_tools_dir))
+    from coverage_gen_demo import generate_covergroup
+
+    related = related or []
+
+    try:
+        cg = generate_covergroup(
+            file=file,
+            target_signal=signal,
+            related_signals=related,
+            filelist=filelist,
+            module_name=module,
+            strict=strict,
+        )
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        raise typer.Exit(code=1) from e
+
+    if no_header:
+        lines = cg.split(chr(10))
+        out_lines = []
+        for line in lines:
+            if any(k in line for k in [
+                "Auto-generated", "class:     ", "width:     ", "risk:      ",
+                "fan_in=", "fan_out=", "generator:",
+            ]):
+                continue
+            if line.startswith("// ===="):
+                continue
+            out_lines.append(line)
+        cg = chr(10).join(out_lines).strip() + chr(10)
+
+    if output:
+        Path(output).write_text(cg)
+        print(f"Written {len(cg)} bytes to {output}", file=sys.stderr)
+    else:
+        print(cg)
+
+
 if __name__ == "__main__":
     typer.run(coverage_app)
