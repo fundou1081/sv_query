@@ -51,22 +51,16 @@ def _arch_default(
     format: str = typer.Option("dot", "--format"),
     output: Optional[str] = typer.Option(None, "--output", "-o"),
     summary: bool = typer.Option(False, "--summary"),
+    cluster_by_type: bool = typer.Option(False, "--cluster-by-type"),
+    max_nodes: int = typer.Option(100, "--max-nodes"),
 ):
-    """[arch v1 2026-06-24] Default: 直接当 show 跑.
+    """[arch v1 2026-06-24, v2 2026-06-25] Default: 直接当 show 跑.
 
     如果传 --summary, 调用 summary 逻辑; 否则按 --format 输出.
     """
     if ctx.invoked_subcommand is not None:
         # subcommand was given, let it run
         return
-    # 没有 subcommand, 把参数转发给 show
-    show_args = {
-        "file": file, "filelist": filelist, "target": target,
-        "depth": depth, "output_format": "summary" if summary else format,
-        "output": output, "with_ports": True, "strict": False, "include": None,
-    }
-    # typer 不允许 callback 调 subcommand, 用 sys.argv hack 不优雅;
-    # 优雅方案: 如果没 subcommand, 调 _build + render 直接.
     if not file and not filelist:
         typer.echo(ctx.get_help())
         raise typer.Exit()
@@ -76,21 +70,31 @@ def _arch_default(
         file=file, filelist=filelist, target=target, depth=depth,
         include_dirs=include_dirs, strict=False,
     )
-    if show_args["output_format"] == "summary":
+    output_format = "summary" if summary else format
+    if output_format == "summary":
         _print_summary(instances, edges, target, file, filelist)
         return
-    if show_args["output_format"] == "dot":
-        content = _render_dot(instances, edges, target, True)
-    elif show_args["output_format"] == "mermaid":
+    if output_format == "dot":
+        content = _render_dot(instances, edges, target, True,
+                              cluster_by_type=cluster_by_type, max_nodes=max_nodes)
+    elif output_format == "mermaid":
         content = _render_mermaid(instances, edges, target, True)
-    elif show_args["output_format"] == "html":
+    elif output_format == "html":
         content = _render_html(instances, edges, target, True)
+    elif output_format == "svg":
+        dot_text = _render_dot(instances, edges, target, True,
+                               cluster_by_type=cluster_by_type, max_nodes=max_nodes)
+        try:
+            content = _render_svg(dot_text, target, output)
+        except RuntimeError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1)
     else:
-        typer.echo(f"Error: unknown format '{show_args['output_format']}'", err=True)
+        typer.echo(f"Error: unknown format '{output_format}'", err=True)
         raise typer.Exit(1)
     if output:
         Path(output).write_text(content)
-        typer.echo(f"✓ Wrote {show_args['output_format']} ({len(content)} bytes): {output}")
+        typer.echo(f"✓ Wrote {output_format} ({len(content)} bytes): {output}")
     else:
         typer.echo(content)
 
@@ -149,11 +153,84 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
     return instances, edges, mig, tracer
 
 
-def _render_dot(instances, edges, target_module: str, with_ports: bool) -> str:
+def _hash_color(name: str) -> str:
+    """[v2 2026-06-25] Hash-based color for module type name.
+
+    相同 type 同色 → 同一 type 的 instance 一眼可见.
+    Returns: hex color string like "#4488cc".
+    """
+    import hashlib
+    h = hashlib.md5(name.encode()).hexdigest()
+    # 用 hash 前 6 位作为颜色 (限制亮度避免太暗/太亮)
+    r = int(h[0:2], 16)
+    g = int(h[2:4], 16)
+    b = int(h[4:6], 16)
+    # 限制亮度: 任一分量 < 80 时 +50 提亮 (避免太暗看不清字)
+    r = max(r, 80) if r + g + b < 350 else r
+    g = max(g, 80) if r + g + b < 350 else g
+    b = max(b, 80) if r + g + b < 350 else b
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _collapse_instances(instances, max_nodes: int) -> tuple[list, str | None]:
+    """[v2 2026-06-25] 限制 nodes 数. 超出折叠成 <N more ...> placeholder.
+
+    Returns: (visible_instances, placeholder_note) 或 (instances, None).
+    Strategy: 按 type 计数, 保留最常见的 max_nodes 个 type 的第一个 instance,
+              其他折叠成 note.
+    """
+    if len(instances) <= max_nodes:
+        return instances, None
+    from collections import Counter, defaultdict
+    type_counts = Counter(t for _, t, _ in instances)
+    # 保留 top-K types (K = max_nodes)
+    top_types = set(t for t, _ in type_counts.most_common(max_nodes))
+    visible = []
+    collapsed = []
+    for inst_id, inst_type, depth in instances:
+        if inst_type in top_types and not any(v[1] == inst_type for v in visible):
+            # 保留 top type 的第一个 instance
+            visible.append((inst_id, inst_type, depth))
+        else:
+            collapsed.append((inst_id, inst_type, depth))
+    if not collapsed:
+        return visible, None
+    collapsed_counts = Counter(t for _, t, _ in collapsed)
+    note = (
+        f"<FONT POINT-SIZE=\"11\" COLOR=\"#888888\"><I>"
+        f"Showing {len(visible)} of {len(instances)} instances "
+        f"(use --max-nodes to adjust, {len(collapsed_counts)} types collapsed: "
+        f"{', '.join(t for t, _ in collapsed_counts.most_common(3))}"
+        f"{'...' if len(collapsed_counts) > 3 else ''})"
+        f"</I></FONT>"
+    )
+    return visible, note
+
+
+def _safe_cluster_name(name: str) -> str:
+    """[v2 2026-06-25] 安全 cluster 名 (DOT id 不能含 -).
+
+    'axi_master_xbar' → 'cluster_axi_master_xbar'
+    """
+    return "cluster_" + name.replace("-", "_").replace(".", "_")
+
+
+def _render_dot(
+    instances, edges, target_module: str, with_ports: bool,
+    cluster_by_type: bool = False, max_nodes: int = 100,
+) -> str:
     """生成 DOT 格式 (Graphviz).
+
+    v1: depth palette + flat nodes.
+    v2 (--cluster-by-type): same-type instances 合并到 cluster + 同色.
+    v2 (--max-nodes N): 超出折叠 + note.
 
     跟 visualize module 输出兼容, 但简化 (不画 internal signals, 只画 module 框).
     """
+    # 应用 max_nodes 限制
+    visible_instances, collapse_note = _collapse_instances(instances, max_nodes)
+    n_hidden = len(instances) - len(visible_instances)
+
     lines = [
         f"digraph arch_{target_module} {{",
         f"  rankdir=TB;",
@@ -162,32 +239,66 @@ def _render_dot(instances, edges, target_module: str, with_ports: bool) -> str:
         f"  ranksep=0.6;",
         f"  compound=true;",
         f"  labelloc=t;",
-        f'  label="Architecture of {target_module} ({len(instances)} instances)";',
-        f"",
-        f"  // ---- Instances (L1) ----",
     ]
+    # 标题
+    title = f"Architecture of {target_module} ({len(instances)} instances"
+    if n_hidden > 0:
+        title += f", showing {len(visible_instances)}"
+    title += ")"
+    lines.append(f'  label="{title}";')
+    lines.append(f"")
+    lines.append(f"  // ---- Instances (L1) ----")
 
-    # 节点
-    for inst_id, inst_type, depth in instances:
-        # 颜色按 depth 渐变
-        color_palette = ["#4488cc", "#22aa55", "#dd8822", "#cc4466", "#7755aa"]
-        color = color_palette[min(depth, len(color_palette) - 1)]
-        # instance_id 可能含 . (层级), 取最后一段当 label
-        short = inst_id.split(".")[-1] if "." in inst_id else inst_id
-        lines.append(
-            f'  "{inst_id}" [label="{short}\\n({inst_type})" '
-            f'shape=box style="rounded,filled" fillcolor="{color}" '
-            f'fontcolor="white" penwidth=1.5];'
-        )
+    # 按 cluster_by_type 决定是否分组
+    if cluster_by_type:
+        from collections import defaultdict
+        type_to_instances = defaultdict(list)
+        for inst_id, inst_type, depth in visible_instances:
+            type_to_instances[inst_type].append((inst_id, depth))
+
+        # 每个 type 一个 cluster
+        for inst_type, members in sorted(type_to_instances.items()):
+            color = _hash_color(inst_type)
+            safe_name = _safe_cluster_name(inst_type)
+            lines.append(f'  subgraph "{safe_name}" {{')
+            lines.append(f'    label="{inst_type}";')
+            lines.append(f'    style="rounded,filled";')
+            lines.append(f'    fillcolor="{color}33";')  # alpha (low opacity)
+            lines.append(f'    color="{color}";')
+            lines.append(f'    penwidth=2;')
+            lines.append(f'    fontcolor="{color}";')
+            lines.append(f'    fontsize=11;')
+            for inst_id, depth in members:
+                short = inst_id.split(".")[-1] if "." in inst_id else inst_id
+                # node fill 用同色 (不透明), 让 cluster bg 透出来
+                lines.append(
+                    f'    "{inst_id}" [label="{short}" '
+                    f'shape=box style="rounded,filled" fillcolor="{color}" '
+                    f'fontcolor="white" penwidth=1];'
+                )
+            lines.append(f"  }}")
+    else:
+        # v1 behavior: depth palette, flat
+        for inst_id, inst_type, depth in visible_instances:
+            color_palette = ["#4488cc", "#22aa55", "#dd8822", "#cc4466", "#7755aa"]
+            color = color_palette[min(depth, len(color_palette) - 1)]
+            short = inst_id.split(".")[-1] if "." in inst_id else inst_id
+            lines.append(
+                f'  "{inst_id}" [label="{short}\\n({inst_type})" '
+                f'shape=box style="rounded,filled" fillcolor="{color}" '
+                f'fontcolor="white" penwidth=1.5];'
+            )
 
     # 父子边 (hierarchy)
     lines.append("")
     lines.append("  // ---- Hierarchy edges ----")
-    for inst_id, _, _ in instances:
-        # 父 = "." 前缀去掉最后一段
+    visible_ids = set(inst_id for inst_id, _, _ in visible_instances)
+    for inst_id, _, _ in visible_instances:
         if "." in inst_id:
             parent = ".".join(inst_id.split(".")[:-1])
-            lines.append(f'  "{parent}" -> "{inst_id}" [style=dashed color="#999999"];')
+            # parent 必须在 visible 或当前处理 (top 自身)
+            if parent in visible_ids or parent == target_module:
+                lines.append(f'  "{parent}" -> "{inst_id}" [style=dashed color="#999999"];')
 
     # 端口连接边 (L2)
     if with_ports and edges:
@@ -197,10 +308,16 @@ def _render_dot(instances, edges, target_module: str, with_ports: bool) -> str:
             src = e.get("src_instance", "")
             dst = e.get("dst_instance", "")
             port = e.get("port", "")
-            if src and dst:
+            if src and dst and src in visible_ids and dst in visible_ids:
                 lines.append(
                     f'  "{src}" -> "{dst}" [label="{port}" fontsize=9 color="#2266aa"];'
                 )
+
+    # 添加 collapse note (用 labelloc=t 的扩展)
+    if collapse_note:
+        lines.append("")
+        lines.append(f"  // ---- Collapse note ----")
+        lines.append(f'  note [label=<{collapse_note}> shape=plaintext];')
 
     lines.append("}")
     return "\n".join(lines) + "\n"
@@ -250,6 +367,42 @@ def _render_mermaid(instances, edges, target_module: str, with_ports: bool) -> s
 
     lines.append("```")
     return "\n".join(lines) + "\n"
+
+
+def _render_svg(dot_text: str, target_module: str, output: Optional[str]) -> str:
+    """[v2 2026-06-25] 调用 graphviz `dot -Tsvg` 生成 SVG.
+
+    Returns SVG text. 如果 graphviz 没装, raise RuntimeError.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    dot_bin = shutil.which("dot")
+    if dot_bin is None:
+        raise RuntimeError(
+            "graphviz 'dot' not found. Install with: brew install graphviz"
+        )
+
+    # 写临时 DOT 文件 (graphviz 需要 file path, 也能 stdin)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.dot', delete=False) as f:
+        f.write(dot_text)
+        tmp_dot = f.name
+
+    try:
+        # 调 dot -Tsvg
+        result = subprocess.run(
+            [dot_bin, "-Tsvg", tmp_dot],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"graphviz failed: {result.stderr[:300]}")
+        return result.stdout
+    finally:
+        try:
+            Path(tmp_dot).unlink()
+        except Exception:
+            pass
 
 
 def _render_html(instances, edges, target_module: str, with_ports: bool) -> str:
@@ -417,8 +570,10 @@ def show(
     target: str = typer.Option("top", "--target", "-t", help="Target module name (default: top)"),
     depth: int = typer.Option(2, "--depth", "-d", help="Hierarchy depth (default: 2)"),
     with_ports: bool = typer.Option(True, "--with-ports/--no-ports", help="Show cross-module port connections (default ON)"),
-    output_format: str = typer.Option("dot", "--format", help="Output format: dot / mermaid / html / summary"),
+    output_format: str = typer.Option("dot", "--format", help="Output format: dot / mermaid / html / svg / summary"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Write to file (default: stdout)"),
+    cluster_by_type: bool = typer.Option(False, "--cluster-by-type", help="[v2] Group same-type instances into clusters + hash-colored"),
+    max_nodes: int = typer.Option(100, "--max-nodes", help="[v2] Maximum nodes to render (default: 100). Excess collapsed with note."),
     strict: bool = typer.Option(False, "--strict/--no-strict"),
 ):
     """[arch v1 2026-06-24] 项目架构可视化 (L1 hierarchy + L2 cross-module port edges).
@@ -456,13 +611,23 @@ def show(
         return
 
     if output_format == "dot":
-        content = _render_dot(instances, edges, target, with_ports)
+        content = _render_dot(instances, edges, target, with_ports,
+                              cluster_by_type=cluster_by_type, max_nodes=max_nodes)
     elif output_format == "mermaid":
         content = _render_mermaid(instances, edges, target, with_ports)
     elif output_format == "html":
         content = _render_html(instances, edges, target, with_ports)
+    elif output_format == "svg":
+        # SVG: 先 render DOT (with cluster/max-nodes), 再调 graphviz
+        dot_text = _render_dot(instances, edges, target, with_ports,
+                               cluster_by_type=cluster_by_type, max_nodes=max_nodes)
+        try:
+            content = _render_svg(dot_text, target, output)
+        except RuntimeError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(1)
     else:
-        typer.echo(f"Error: unknown format '{output_format}' (use: dot/mermaid/html/summary)", err=True)
+        typer.echo(f"Error: unknown format '{output_format}' (use: dot/mermaid/html/svg/summary)", err=True)
         raise typer.Exit(1)
 
     # Step 3: 输出

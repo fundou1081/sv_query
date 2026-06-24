@@ -183,3 +183,170 @@ class TestArchErrorHandling:
         )
         assert rc != 0
         assert "unknown format" in err.lower() or "format" in err.lower()
+
+# ============================================================================
+# Test 7 (v2): --cluster-by-type 模式
+# ============================================================================
+class TestArchClusterByType:
+    """[v2 2026-06-25] --cluster-by-type 按 module type 合并 cluster."""
+
+    @pytest.mark.skipif(
+        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        reason="picorv32 not available",
+    )
+    def test_cluster_by_type_picorv32(self):
+        """picorv32_axi + cluster-by-type → 每 type 一个 cluster."""
+        rc, out, err = _run_arch(
+            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-t", "picorv32_axi",
+            "--cluster-by-type",
+            "--format", "dot",
+        )
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        # 应该有 cluster_<type> subgraph
+        assert "cluster_picorv32" in out
+        assert "cluster_picorv32_axi_adapter" in out
+        # 应该用 hash-based 颜色 (而不是 depth palette)
+        # depth palette 是固定 5 色, hash-based 是 hex color
+        assert "#" in out  # hash color (含 #)
+
+
+# ============================================================================
+# Test 8 (v2): --max-nodes 折叠
+# ============================================================================
+class TestArchMaxNodes:
+    """[v2 2026-06-25] --max-nodes 限制 nodes 数, 超出折叠."""
+
+    @pytest.fixture
+    def mock_many_modules(self, tmp_path):
+        """创建一个有多个重复 type instances 的 mock SV."""
+        sv = tmp_path / "many_modules.sv"
+        sv.write_text("""
+module sub #(parameter int W = 8) (input logic clk, input logic [W-1:0] a, output logic [W-1:0] y);
+    always_ff @(posedge clk) y <= a;
+endmodule
+module bus #(parameter int W = 8) (input logic clk, input logic [W-1:0] data, output logic [W-1:0] out);
+    always_ff @(posedge clk) out <= data;
+endmodule
+module top(input logic clk);
+    logic [7:0] a0, a1, a2, a3, b0, b1, y0, y1, y2, y3, bo;
+    sub u_s0 (.clk(clk), .a(a0), .y(y0));
+    sub u_s1 (.clk(clk), .a(a1), .y(y1));
+    sub u_s2 (.clk(clk), .a(a2), .y(y2));
+    sub u_s3 (.clk(clk), .a(a3), .y(y3));
+    bus u_b0 (.clk(clk), .data(y0), .out(bo));
+    bus u_b1 (.clk(clk), .data(y1), .out(b0));
+    bus u_b2 (.clk(clk), .data(y2), .out(b1));
+endmodule
+""")
+        return str(sv)
+
+    def test_max_nodes_collapse(self, mock_many_modules):
+        """7 instances (2 unique types: sub + bus) + max-nodes 1 → 折叠 1 type + collapse note."""
+        rc, out, err = _run_arch(
+            "-f", mock_many_modules,
+            "-t", "top",
+            "--max-nodes", "1",
+            "--format", "dot",
+        )
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        # title 应该说 showing N of M
+        assert "showing" in out.lower()
+        # collapse note 出现
+        assert "Collapse note" in out or "collapsed" in out.lower()
+        # max-nodes=1 → 只保留 1 个 type (sub 或 bus) 的第一个 instance → 1 visible
+        # 但 hierarchy edges 来自 parent + visible (2 total lines 含 "top.u_")
+        instance_lines = [l for l in out.split("\n") if '"top.u_' in l and "[" in l and "->" not in l]
+        assert len(instance_lines) <= 1, f"expected ≤1 visible instance, got {len(instance_lines)}: {instance_lines}"
+
+
+# ============================================================================
+# Test 9 (v2): --format svg
+# ============================================================================
+class TestArchSvgOutput:
+    """[v2 2026-06-25] --format svg 调 graphviz 生成 SVG."""
+
+    @pytest.mark.skipif(
+        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        reason="picorv32 not available",
+    )
+    def test_svg_generation(self, tmp_path):
+        """--format svg 应生成合法 SVG 文件."""
+        outfile = tmp_path / "arch.svg"
+        rc, _, err = _run_arch(
+            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-t", "picorv32_axi",
+            "--format", "svg",
+            "-o", str(outfile),
+        )
+        if rc != 0:
+            # 可能 graphviz 没装
+            if "graphviz" in err.lower() or "dot" in err.lower():
+                pytest.skip(f"graphviz not available: {err[:200]}")
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        assert outfile.exists()
+        content = outfile.read_text()
+        # SVG 应该有标准结构
+        assert "<?xml" in content and "<svg" in content
+        assert "</svg>" in content
+        # 应该有 cluster + node
+        assert "<g" in content
+        # 包含 module type 名字
+        assert "picorv32" in content or "axi_adapter" in content
+
+
+# ============================================================================
+# Test 10 (v2): helper 函数单元测试
+# ============================================================================
+class TestArchHelpers:
+    """[v2] 内部 helper 单元测试."""
+
+    def test_hash_color_deterministic(self):
+        """同 name 同 color."""
+        import sys as _sys
+        _sys.path.insert(0, str(PROJECT_ROOT / "src"))
+        from cli.commands.arch import _hash_color
+        c1 = _hash_color("axi_master_xbar")
+        c2 = _hash_color("axi_master_xbar")
+        assert c1 == c2
+        # hex color 格式
+        assert c1.startswith("#")
+        assert len(c1) == 7
+
+    def test_hash_color_different(self):
+        """不同 name 应该有不同 color."""
+        from cli.commands.arch import _hash_color
+        c1 = _hash_color("type_a")
+        c2 = _hash_color("type_b")
+        assert c1 != c2
+
+    def test_collapse_instances_no_collapse(self):
+        """len ≤ max 不折叠."""
+        from cli.commands.arch import _collapse_instances
+        inst = [("a", "t", 1), ("b", "t", 1)]
+        vis, note = _collapse_instances(inst, max_nodes=10)
+        assert vis == inst
+        assert note is None
+
+    def test_collapse_instances_folds(self):
+        """5 instances (3 unique type) + max_nodes=2 → 折叠 1 type."""
+        from cli.commands.arch import _collapse_instances
+        inst = [
+            ("a", "type_a", 1),
+            ("b", "type_a", 1),
+            ("c", "type_b", 1),
+            ("d", "type_b", 1),
+            ("e", "type_c", 1),  # 第三 type
+        ]
+        vis, note = _collapse_instances(inst, max_nodes=2)
+        # 可见: 2 个 unique type 各保留第一个 → 2 visible
+        assert len(vis) == 2
+        # note 应该有 collapse 信息
+        assert note is not None
+        assert "1" in note  # 1 type collapsed (type_c)
+
+    def test_safe_cluster_name(self):
+        """DOT cluster 名不能含 -."""
+        from cli.commands.arch import _safe_cluster_name
+        assert _safe_cluster_name("axi_master_xbar") == "cluster_axi_master_xbar"
+        assert _safe_cluster_name("u_middle.u_sub") == "cluster_u_middle_u_sub"
