@@ -24,10 +24,13 @@ import sys
 from pathlib import Path
 
 # 让 test 找得到 conftest 里的 helper
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures"))
 
 import pytest
+
+# multi_pkg test 用的 fixture 路径 (a_pkg.f)
+A_PKG_FILELIST = Path(__file__).resolve().parents[3] / "sim" / "tests" / "pyslang_type_fixtures" / "a_pkg.f"
 
 
 # ============================================================================
@@ -365,3 +368,51 @@ class TestCrossModuleHierarchical:
         f = "sim/tests/pyslang_type_fixtures/cross_module_hier.sv"
         r = parse_pyslang_width("u_middle.nonexistent_signal", file=f)
         assert r is None, f"expected None, got {r}"
+
+
+# ============================================================================
+# 测试 7: Multi-package typedef chain + import * pattern (Phase 2 #5)
+# ============================================================================
+class TestMultiPackageTypedefChain:
+    """[Phase 2 2026-06-24] 测 pkg::type_t + typedef 链 + import pkg::*
+
+    Fixture: sim/tests/pyslang_type_fixtures/a_pkg.f (3 packages)
+      - types_a_pkg::word_t (logic[31:0])
+      - types_b_pkg::b_word_t → types_a_pkg::word_t (跨包链 1 层)
+      - types_c_pkg::c_word_t → types_b_pkg::b_word_t → types_a_pkg::word_t (3 层)
+    Module top_import_pattern 用 `import pkg::*;` 把 typedef 注入 namespace.
+    """
+
+    @pytest.fixture(scope="class")
+    def multi_pkg_filelist(self):
+        """a_pkg.f 路径 (Pytest 跳过如果不存在)."""
+        p = Path(PROJECT_ROOT) / "sim/tests/pyslang_type_fixtures/a_pkg.f"
+        if not p.exists():
+            pytest.skip(f"Multi-package fixture not found: {p}")
+        return str(p)
+
+    def test_1level_typedef(self, multi_pkg_filelist, parse_pyslang_width):
+        """1 层 typedef: types_a_pkg::word_t → 32-bit."""
+        r = parse_pyslang_width("in_a", filelist=multi_pkg_filelist)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_2level_typedef_chain(self, multi_pkg_filelist, parse_pyslang_width):
+        """2 层 typedef 链: types_b_pkg::b_word_t → types_a_pkg::word_t → 32-bit."""
+        r = parse_pyslang_width("in_b", filelist=multi_pkg_filelist)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_3level_typedef_chain(self, multi_pkg_filelist, parse_pyslang_width):
+        """3 层 typedef 链: types_c_pkg::c_word_t → types_b_pkg → types_a_pkg → 32-bit."""
+        r = parse_pyslang_width("in_c", filelist=multi_pkg_filelist)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_import_star_pattern(self, multi_pkg_filelist, parse_pyslang_width):
+        """`import pkg::*;` 把 typedef 注入 namespace, 裸用 word_t → 32-bit."""
+        # top_import_pattern 用 `import types_a_pkg::*;` 后裸用 word_t
+        r = parse_pyslang_width("out_a", filelist=multi_pkg_filelist)
+        assert r is not None and r == (32, 31, 0), f"got {r}"
+
+    def test_mixed_with_parameter(self, multi_pkg_filelist, parse_pyslang_width):
+        """混合 parameterized 1D + typedef: data_in (logic[WIDTH-1:0] with WIDTH=32)."""
+        r = parse_pyslang_width("data_in", filelist=multi_pkg_filelist)
+        assert r is not None and r == (32, 31, 0), f"got {r}"

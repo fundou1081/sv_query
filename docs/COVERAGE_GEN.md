@@ -158,9 +158,9 @@ endgroup: cg_<SIGNAL>
 
 | 限制 | 状态 |
 |------|------|
-| Typed package `pkg::type_t` (ascon 那种) | ❌ 工具边界 |
+| Typed package `pkg::type_t` (ascon 那种) | ✅ **支持** (Phase 2 #5) — 包括 3 层 typedef 链 + `import pkg::*` 模式 |
 | 144-file NaplesPU 完整跑 | ❌ 需更完整 filelist + 工业 include |
-| 跨 module signal (子模块 instance) | ❌ 现在只 top-level |
+| 跨 module signal (子模块 instance) | ✅ **支持** (Phase 2 #4) — `u_middle.u_sub.data_o` 形式 |
 | Nested packed struct 字段 deep names | ❌ sum 整个 struct width |
 
 ---
@@ -282,6 +282,8 @@ endgroup: cg_max_idx_o
 | 2026-06-24 | 走 pyslang API 拿 width | regex 拿不到 `$clog2` / typedef, pyslang 100% 准确 |
 | 2026-06-24 | 加 typedef lookup | package typedef → underlying type, 解 90% 工业 case |
 | 2026-06-24 | 默认 `--no-strict` | 工业多文件项目常见 UnknownModule, 友好降级 |
+| 2026-06-24 | 加 hierarchical signal lookup | 跨 module: `u_middle.u_sub.data_o` 形式 (Phase 2 #4) |
+| 2026-06-24 | **发现 typed package 已支持** | `pkg::type_t` + 3 层 typedef 链 + `import pkg::*` 都能解析 (Phase 2 #5) — 之前说"工具边界"是误判 |
 
 ---
 
