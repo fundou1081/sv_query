@@ -1,0 +1,17 @@
+// ======================================================================
+// ======================================================================
+covergroup cg_events_counter @(posedge clk iff !rst_n);
+  option.per_instance = 1;
+  option.comment = "events_counter (DATA, 32-bit, risk=68.3)";
+  // ---- Primary coverpoint ----
+  cp_events_counter: coverpoint events_counter {
+    // DATA bins: 32-bit range partition
+    bins zero  = {32'h0};
+    bins byte  = {[32'h1:32'hFF]};          // 1-byte values
+    bins word  = {[32'h100:32'hFFFF]};       // 2-byte values
+    bins dword = {[32'h10000:32'hFFFFFF]};   // 3-byte values
+    bins max   = {32'hFFFF_FFFF};
+  }
+  // ---- Sample event: @(posedge clk iff !rst_n) ----
+  //   Data reg — no valid/enable gating found; sample every cycle (may be too eager)
+endgroup: cg_events_counter
