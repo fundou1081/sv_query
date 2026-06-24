@@ -40,6 +40,7 @@ from src.cli.commands.protocol import protocol_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
+from src.cli.commands.arch import arch_app
 from src.cli.commands.fix import fix_app
 from src.cli.commands.search import search
 
@@ -65,6 +66,7 @@ app.add_typer(backpressure_app, name="backpressure")
 app.add_typer(handshake_app, name="handshake")
 app.add_typer(protocol_app, name="protocol")
 app.add_typer(vis_app, name="visualize")
+app.add_typer(arch_app, name="arch")
 app.add_typer(fix_app, name="fix")
 
 # stats 是单独命令，不需要子 Typer
