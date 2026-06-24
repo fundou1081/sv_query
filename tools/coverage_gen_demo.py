@@ -265,6 +265,52 @@ def _resolve_typedef(name: str, compilation, module_body=None) -> str | None:
     return None
 
 
+def _hierarchical_find(top_body, sig_name: str):
+    """Hierarchical lookup: 'instance.path.signal' 或 'signal' (top-level).
+    返回 (sym, owning_body) 或 (None, None).
+    """
+    if not sig_name or not top_body:
+        return None, None
+    if "." not in sig_name:
+        # top-level: 先查 port, 再查 body
+        if hasattr(top_body, "portList") and top_body.portList:
+            for p in top_body.portList:
+                if p.name == sig_name:
+                    return p, top_body
+        try:
+            sym = top_body.find(sig_name)
+        except Exception:
+            sym = None
+        if sym is not None:
+            return sym, top_body
+        return None, None
+    # hierarchical: split into [instance.path, signal_name]
+    parts = sig_name.split(".")
+    sig = parts[-1]
+    instance_path = parts[:-1]
+    cur = top_body
+    for inst_name in instance_path:
+        try:
+            sub = cur.find(inst_name)
+        except Exception:
+            return None, None
+        if sub is None or not hasattr(sub, "body"):
+            return None, None
+        cur = sub.body
+    # 在最终的 body 找 sig
+    if hasattr(cur, "portList") and cur.portList:
+        for p in cur.portList:
+            if p.name == sig:
+                return p, cur
+    try:
+        sym = cur.find(sig)
+    except Exception:
+        sym = None
+    if sym is not None:
+        return sym, cur
+    return None, None
+
+
 def parse_width_from_pyslang(
     sig_name: str,
     file: str | None = None,
@@ -272,8 +318,13 @@ def parse_width_from_pyslang(
     module_name: str | None = None,
     include_dirs: list[str] | None = None,
 ) -> tuple[int, int, int] | None:
-    """用 sv_query + pyslang 拿 signal 的真实 width (包括 $clog2 / package typedef).
-    返回 (width, hi, lo) 或 None (拿不到 / 跨 module / packed struct).
+    """用 sv_query + pyslang 拿 signal 的真实 width (包括 $clog2 / typedef / 跨 module).
+    返回 (width, hi, lo) 或 None (拿不到 / packed struct).
+
+    sig_name 支持 hierarchical path:
+      - "data_o" → top-level
+      - "u_middle.pipe_q" → top.u_middle.pipe_q
+      - "u_middle.u_sub.data_o" → nested
     """
     try:
         from cli._common import _build_tracer
@@ -297,20 +348,8 @@ def parse_width_from_pyslang(
         if module_name and inst.name != module_name:
             continue
         body = inst.body
-        # 拿 sym (port 或 internal)
-        sym = None
-        # 1) 顶层 portList
-        if hasattr(body, "portList") and body.portList:
-            for p in body.portList:
-                if p.name == sig_name:
-                    sym = p
-                    break
-        # 2) 内部 signals
-        if sym is None:
-            try:
-                sym = body.find(sig_name)
-            except Exception:
-                sym = None
+        # Hierarchical lookup (sig_name 可以是 'sub_inst.signal' 形式)
+        sym, owning_body = _hierarchical_find(body, sig_name)
         if sym is None:
             continue
         # 拿 type 字符串
@@ -323,7 +362,7 @@ def parse_width_from_pyslang(
             return hi - lo + 1, hi, lo
         # typedef (package scope) — 'pkg::foo' 或 'module::foo' 或 'module_name.type_name'
         if "::" in type_str or "." in type_str:
-            resolved = _resolve_typedef(type_str, compilation, module_body=body)
+            resolved = _resolve_typedef(type_str, compilation, module_body=owning_body)
             if resolved:
                 # 处理 enum / struct / logic
                 r2 = _parse_logic_type_str(resolved)
@@ -652,20 +691,39 @@ def infer_sample_condition(
 _CONTROL_FOR_CROSS = {"mode_i", "valid_i", "valid_o", "enable_i", "trigger_i", "ready_i", "ready_o"}
 
 
-def pick_cross_relations(main_sig: str, related: list[str], paths) -> list[str]:
-    """从 related 参数里挑出真正 control 的信号. paths 是 list[str]."""
+def pick_cross_relations(main_sig: str, related: list[str], paths,
+                          file: str = None, filelist: str = None,
+                          include_dirs: list[str] = None) -> list[str]:
+    """从 related 参数里挑出真正 control 的信号. paths 是 list[str].
+    优先用 parse_width_from_pyslang (能拿 hierarchical + 真实 width),
+    fallback 到 parse_width_from_rtl.
+    """
     picked = []
     for r in related:
         bare = re.sub(r"\[.*?\]", "", r)
         if bare in _CONTROL_FOR_CROSS:
             picked.append(bare)
-        else:
+            continue
+        # 优先用 pyslang API (支持 hierarchical + 真实 width)
+        width = None
+        if file or filelist:
             try:
-                width, _, _ = parse_width_from_rtl(bare, paths)
+                r_pys = parse_width_from_pyslang(
+                    bare, file=file, filelist=filelist, include_dirs=include_dirs
+                )
+                if r_pys is not None:
+                    width = r_pys[0]
+            except Exception:
+                pass
+        if width is None:
+            # fallback: regex
+            try:
+                w, _, _ = parse_width_from_rtl(bare, paths)
+                width = w
             except Exception:
                 continue
-            if classify(bare, width) == "CONTROL":
-                picked.append(bare)
+        if classify(bare, width) == "CONTROL":
+            picked.append(bare)
     return picked
 
 
@@ -722,7 +780,10 @@ def generate_covergroup(
             break
 
     # 找 cross 候选
-    cross_sigs = pick_cross_relations(target_signal, related_signals, paths)
+    cross_sigs = pick_cross_relations(
+        target_signal, related_signals, paths,
+        file=file, filelist=filelist, include_dirs=include_dirs,
+    )
 
     # ---- 拼 covergroup ----
     sample_clk = clk or "clk"
@@ -745,12 +806,13 @@ def generate_covergroup(
     lines.append(f"//   risk:      {risk_score:.1f} ({risk_level})  fan_in={sig_info['fan_in'] if sig_info else '?'} fan_out={sig_info['fan_out'] if sig_info else '?'}")
     lines.append(f"//   generator: tools/coverage_gen_demo.py (Phase 1 POC)")
     lines.append(f"// ======================================================================")
-    lines.append(f"covergroup cg_{target_signal} {sample_evt};")
+    _sig_id = target_signal.replace(".", "_")
+    lines.append(f"covergroup cg_{_sig_id} {sample_evt};")
     lines.append(f"  option.per_instance = 1;")
     lines.append(f"  option.comment = \"{target_signal} ({sig_class}, {width}-bit, risk={risk_score:.1f})\";")
     lines.append(f"")
     lines.append(f"  // ---- Primary coverpoint ----")
-    lines.append(f"  cp_{target_signal}: coverpoint {target_signal} {{")
+    lines.append(f"  cp_{_sig_id}: coverpoint {target_signal} {{")
 
     if sig_class == "DATA":
         lines.append(gen_bins_data(target_signal, width))
@@ -774,14 +836,14 @@ def generate_covergroup(
         lines.append(f"")
         lines.append(f"  // ---- Cross combinations ----")
         for cs in cross_sigs:
-            lines.append(f"  cx_{target_signal}_x_{cs}: cross cp_{target_signal}, cp_{cs}_for_{target_signal};")
+            lines.append(f"  cx_{_sig_id}_x_{cs}: cross cp_{_sig_id}, cp_{cs}_for_{_sig_id};")
         lines.append(f"")
 
     # ---- Sample 条件注解 ----
     lines.append(f"  // ---- Sample event: {sample_evt} ----")
     lines.append(f"  //   {sample_caveat}")
 
-    lines.append(f"endgroup: cg_{target_signal}")
+    lines.append(f"endgroup: cg_{_sig_id}")
 
     return "\n".join(lines)
 
