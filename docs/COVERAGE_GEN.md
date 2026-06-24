@@ -162,6 +162,7 @@ endgroup: cg_<SIGNAL>
 | 144-file NaplesPU 完整跑 | ❌ 需更完整 filelist + 工业 include |
 | 跨 module signal (子模块 instance) | ✅ **支持** (Phase 2 #4) — `u_middle.u_sub.data_o` 形式 |
 | Nested packed struct 字段 deep names | ✅ **支持** (Phase 2 #6) — 每字段 `bins name = signal[hi:lo]` |
+| CI 集成 | ✅ **支持** (Phase 2 #7) — `.github/workflows/coverage-gen.yml` |
 
 ---
 
@@ -294,3 +295,67 @@ endgroup: cg_max_idx_o
 - 跨 module signal — 现在只搜 `topInstance.body`, 需要支持 `inst.body.find('sub_instance.signal')`
 - nested packed struct deep fields — 现在只 sum total width, 需要展开 coverpoint 字段名
 - CI 集成 — `sim/tests/cli/test_coverage_gen_demo_golden.py` 已经验证了 golden pattern, 可接入 GitHub Actions
+
+## 11. CI 集成 (Phase 2 #7)
+
+### Workflow: `.github/workflows/coverage-gen.yml`
+
+**设计**: 跟现有 `benchmark.yml` 风格一致, 不动 `tests.yml` (已跑全 `sim/tests/`).
+
+**4 个 Job**:
+
+| Job | 作用 | 依赖 |
+|-----|------|------|
+| `test` | 单元 + CLI 测试 (Phase 2 #1-6), 覆盖度门禁 | — |
+| `golden-regression` | 3 工业项目 golden baseline 回归检查 | test |
+| `lint` | ruff lint (warning 级别, 跟 tests.yml 一致) | — |
+| `ci-summary` | 汇总状态 (block PR if test/golden fail) | test, golden-regression |
+
+### 触发条件
+- push to `main` / `develop`
+- pull_request to `main` / `develop`
+- manual `workflow_dispatch`
+
+### Fail-under Gate
+- `tools/coverage_gen_demo.py` 覆盖率 ≥ 25% (起步阈值, 后续提升)
+- 当前 baseline: 26.38% (114/114 tests pass)
+
+### 工业项目 Golden
+- picorv32 (`/tmp/picorv32/picorv32.v`) — `mem_addr` golden
+- OpenTitan (`/tmp/opentitan/hw/ip/prim/rtl/prim_max_tree.sv`) — `max_idx_o` golden
+- NaplesPU (`/tmp/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv`) — `events_counter` golden
+
+### Lint
+- 预先存在 23 个 ruff warnings (N817 CamelCase + F541 f-string 无 placeholder)
+- **不 block CI** (跟 `tests.yml` 一致), 只 report 出来
+
+### Artifacts (上传保留 30 天)
+- `coverage-gen-coverage-3.12`: coverage.xml (覆盖度报告)
+- `golden-regression-failure`: golden diff (失败时)
+
+### 本地复现 CI
+```bash
+# 1. 跑 unit + CLI tests
+python -m pytest \
+    sim/tests/unit/test_pyslang_type_extraction.py \
+    sim/tests/cli/test_coverage_generate.py \
+    sim/tests/cli/test_coverage_gen_demo.py \
+    -v --tb=short
+
+# 2. 跑 golden regression (需要工业项目)
+python -m pytest \
+    sim/tests/cli/test_coverage_gen_demo_golden.py \
+    -v --tb=long
+
+# 3. 覆盖度门禁
+python -m pytest \
+    sim/tests/unit/test_pyslang_type_extraction.py \
+    sim/tests/cli/test_coverage_generate.py \
+    sim/tests/cli/test_coverage_gen_demo.py \
+    --cov=coverage_gen_demo \
+    --cov-report=term-missing \
+    --cov-fail-under=25
+
+# 4. Lint (warning 级别)
+ruff check tools/coverage_gen_demo.py || echo "(lint issues)"
+```

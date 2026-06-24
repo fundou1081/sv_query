@@ -163,6 +163,14 @@ Instances: 3
   0.7 阈值)。 [PR6 `bf872e3`]
 - picorv32 第二个项目: 单文件模式 (--files) + baselines 目录
   (picorv32.json, pulp_axi_xbar.json)。 [PR7 `275a43f`]
+- **Coverage Generator 工具** (Phase 1+2): `tools/coverage_gen_demo.py`
+  自动从 RTL 信号生成 SystemVerilog covergroup。6/7 Phase 2 任务完成:
+  CLI 集成 (`coverage generate`)、跨 module signal、typed package
+  `pkg::type_t`、nested packed struct field bins。详见 `docs/COVERAGE_GEN.md`。
+- **Coverage Gen CI** (Phase 2 #7): `.github/workflows/coverage-gen.yml`
+  4 job 专门验证 coverage_gen_demo: unit+CLI test、golden regression、
+  覆盖度门禁 (`--cov-fail-under=25`)、ruff lint。3 工业项目 baseline
+  (picorv32, OpenTitan, NaplesPU)。
 
 完整 4 维能力报告见 `docs/PYSLANG_MEMORY_ISSUE.md` (内存不足根因) +
 `tools/benchmark/README.md` (benchmark 用法)。
