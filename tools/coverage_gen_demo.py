@@ -233,6 +233,29 @@ def _parse_logic_type_str(type_str: str) -> tuple[int, int] | None:
     return None
 
 
+def _parse_packed_struct_fields(canonicalType: str) -> list[tuple[str, int, int, int]] | None:
+    """从 packed struct canonicalType 字符串拿 (name, width, hi, lo) 列表.
+    返回 None (不是 packed struct 或没匹配到字段).
+
+    Example: 'struct packed{logic[7:0] opcode;logic[23:0] addr;}pkg.s$1'
+       → [('opcode', 8, 7, 0), ('addr', 24, 31, 8)]
+    """
+    if not canonicalType or "struct packed" not in canonicalType:
+        return None
+    # 匹配 [hi:lo] name 形式
+    fields = []
+    lo = 0
+    for m in re.finditer(r"\[(\d+):(\d+)\]\s+(\w+)", canonicalType):
+        hi, lsb, name = int(m.group(1)), int(m.group(2)), m.group(3)
+        width = hi - lsb + 1
+        # struct packed 字段是 LSB-first 累加
+        actual_hi = lo + width - 1
+        actual_lo = lo
+        fields.append((name, width, actual_hi, actual_lo))
+        lo += width
+    return fields if fields else None
+
+
 def _resolve_typedef(name: str, compilation, module_body=None) -> str | None:
     """递归解析 typedef (package + module scope). 返回 underlying type 字符串.
     name 格式: 'pkg::foo' 或 'module::foo' 或 'foo'.
@@ -262,6 +285,55 @@ def _resolve_typedef(name: str, compilation, module_body=None) -> str | None:
             ct = getattr(sym, "canonicalType", None)
             if ct is not None:
                 return str(ct)
+    return None
+
+
+def _resolve_to_canonical_type(
+    sig_name: str,
+    file: str | None = None,
+    filelist: str | None = None,
+    module_name: str | None = None,
+    include_dirs: list[str] | None = None,
+) -> str | None:
+    """拿 signal 的 canonical type 字符串 (e.g. 'logic[31:0]' 或 'struct packed{...}...').
+
+    用于 packed struct/union 字段提取. 返回 None 如果拿不到.
+    """
+    try:
+        from cli._common import _build_tracer
+    except ImportError:
+        return None
+    try:
+        from pathlib import Path as P
+        tracer = _build_tracer(
+            file=P(file) if file else None,
+            filelist=filelist,
+            strict=False,
+            include_dirs=include_dirs,
+            log_level="NONE",  # 不重复输出 WARNING 到 stdout (避免重复 warnings)
+        )
+        tracer.build_graph()
+    except Exception:
+        return None
+    root = tracer._compiler.get_root()
+    compilation = tracer._compiler.get_compilation()
+    for inst in root.topInstances if hasattr(root, "topInstances") else []:
+        if module_name and inst.name != module_name:
+            continue
+        body = inst.body
+        sym, owning_body = _hierarchical_find(body, sig_name)
+        if sym is None:
+            continue
+        t = getattr(sym, "type", None) or getattr(sym, "declaredType", None)
+        type_str = str(t) if t else ""
+        if not type_str:
+            continue
+        # 如果是 typedef (pkg::foo), lookup underlying
+        if "::" in type_str or "." in type_str:
+            resolved = _resolve_typedef(type_str, compilation, module_body=owning_body)
+            if resolved:
+                return resolved
+        return type_str
     return None
 
 
@@ -818,6 +890,18 @@ def generate_covergroup(
         lines.append(gen_bins_data(target_signal, width))
     else:
         lines.append(gen_bins_control(target_signal, width, enums, signal_enum))
+    # [Phase 2 #6] 如果是 packed struct, 加每个字段的 bin (deep fields)
+    canonical = _resolve_to_canonical_type(
+        target_signal, file=file, filelist=filelist,
+        module_name=module_name, include_dirs=include_dirs,
+    )
+    if canonical and "struct packed" in canonical and "union packed" not in canonical:
+        struct_fields = _parse_packed_struct_fields(canonical)
+        if struct_fields:
+            lines.append(f"    // ---- Packed struct fields (Phase 2 #6) ----")
+            for f_name, f_w, f_hi, f_lo in struct_fields:
+                # SV bins 范围引用: signal[hi:lo]
+                lines.append(f"    bins {f_name} = {target_signal}[{f_hi}:{f_lo}];")
     lines.append(f"  }}")
     lines.append(f"")
 
