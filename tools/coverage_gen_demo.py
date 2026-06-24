@@ -209,6 +209,80 @@ def _eval_simple_expr(expr: str) -> int | None:
         return None
 
 
+def _parse_logic_type_str(type_str: str) -> tuple[int, int] | None:
+    """从 pyslang type 字符串 'logic[15:0]' / 'logic[4:0]' / 'logic' 拿 (hi, lo).
+    返回 None 表示解析不了 (e.g. 嵌套数组 'logic[31:0][7:0]', typed package 'pkg::type_t').
+    """
+    if not type_str:
+        return None
+    s = type_str.strip()
+    if s == "logic" or s == "bit" or s == "reg":
+        return (0, 0)  # 1-bit
+    # 匹配 logic[hi:lo] 或 logic[lo:hi]  (sv 语法固定 hi:lo)
+    m = re.match(r"^(?:logic|bit|reg)\s*\[(\d+):(\d+)\]$", s)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    return None
+
+
+def parse_width_from_pyslang(
+    sig_name: str,
+    file: str | None = None,
+    filelist: str | None = None,
+    module_name: str | None = None,
+    include_dirs: list[str] | None = None,
+) -> tuple[int, int, int] | None:
+    """用 sv_query + pyslang 拿 signal 的真实 width (包括 $clog2 等派生参数)。
+    返回 (width, hi, lo) 或 None (拿不到 / 跨 module / 嵌套数组).
+    """
+    try:
+        from cli._common import _build_tracer
+    except ImportError:
+        return None
+    try:
+        from pathlib import Path as P
+        tracer = _build_tracer(
+            file=P(file) if file else None,
+            filelist=filelist,
+            strict=False,
+            include_dirs=include_dirs,
+        )
+        tracer.build_graph()
+    except Exception:
+        return None
+    root = tracer._compiler.get_root()
+    # 找 module instance
+    for inst in root.topInstances if hasattr(root, "topInstances") else []:
+        if module_name and inst.name != module_name:
+            continue
+        body = inst.body
+        # 1) 顶层 portList (ANSI/NonANSI 都覆盖)
+        if hasattr(body, "portList") and body.portList:
+            for p in body.portList:
+                if p.name == sig_name:
+                    t = getattr(p, "type", None) or getattr(p, "declaredType", None)
+                    type_str = str(t) if t else ""
+                    r = _parse_logic_type_str(type_str)
+                    if r is None:
+                        return None
+                    hi, lo = r
+                    return hi - lo + 1, hi, lo
+        # 2) 内部 signals (logic/reg 声明)
+        try:
+            sym = body.find(sig_name)
+        except Exception:
+            sym = None
+        if sym is not None:
+            t = getattr(sym, "type", None) or getattr(sym, "declaredType", None)
+            type_str = str(t) if t else ""
+            r = _parse_logic_type_str(type_str)
+            if r is None:
+                return None
+            hi, lo = r
+            return hi - lo + 1, hi, lo
+    return None
+
+
 def parse_width_from_rtl(sig_name: str, file_or_paths) -> tuple[int, int, int]:
     """返回 (width, hi, lo). file_or_paths 可以是 str 或 list[str]."""
     paths = [file_or_paths] if isinstance(file_or_paths, str) else file_or_paths
@@ -550,7 +624,16 @@ def generate_covergroup(
         sig_info = find_signal_in_module(target_signal, risk["data_signals"], module_name)
     else:
         sig_info = find_signal(target_signal, risk["data_signals"])
-    width, hi, lo = parse_width_from_rtl(target_signal, paths)
+    # ★ 优先用 pyslang 拿真实 width (包括 $clog2 等派生参数)
+    pyslang_w = parse_width_from_pyslang(
+        target_signal, file=file, filelist=filelist,
+        module_name=module_name, include_dirs=include_dirs,
+    )
+    if pyslang_w is not None:
+        width, hi, lo = pyslang_w
+    else:
+        # fallback: regex 解析 RTL (拿不到派生参数)
+        width, hi, lo = parse_width_from_rtl(target_signal, paths)
     clk, rst = parse_clock_reset(paths)
     enums = parse_enums(paths)
     sig_class = classify(target_signal, width)
