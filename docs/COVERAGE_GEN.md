@@ -359,3 +359,77 @@ python -m pytest \
 # 4. Lint (warning 级别)
 ruff check tools/coverage_gen_demo.py || echo "(lint issues)"
 ```
+
+## 12. SV 编译验证 (Phase 3 #C)
+
+### 工具: `tools/coverage_gen_sv_compile.py`
+
+用 **pyslang (SystemVerilog compiler)** 实际编译生成的 covergroup, 验证 SV 语法正确.
+
+**用法**:
+```bash
+python tools/coverage_gen_sv_compile.py \
+    -f sim/openTitan_validation.sv \
+    -s data_o -m simple_pipe -r valid_i
+```
+
+**输出**:
+```
+=== Generating covergroup for signal: data_o ===
+  signal decl: logic [31:0] data_o; (width from cg option.comment)
+  signal decl: logic valid_i; (width from regex fallback)
+=== Compiling with pyslang ===
+✅ PASS: covergroup SV is syntactically valid (0 errors, 0 warnings)
+```
+
+### 设计要点
+
+1. **复用 pyslang**: 不需要装 slang CLI, 直接用 Python binding `pyslang.driver.Driver`.
+2. **Wrapper module**: 把生成的 covergroup 包装成完整 SV 文件
+   (含正确的 clk/rst decls, signal decls from generated covergroup).
+3. **诊断信息**: 解析 pyslang `getAllDiagnostics()`, 用 `formatMessage(d)` 拿 formatted text,
+   加 line:col 信息.
+4. **Width 优先用 cg option.comment**: 更可靠 (覆盖到 $clog2 派生参数).
+
+### 发现的 Bug (修复在 coverage_gen_demo.py)
+
+**Bug 1: bins 名字用了 SV 系统类型关键字** ❌ → ✅
+
+```systemverilog
+// 之前 (broken)
+bins byte  = {[32'h1:32'hFF]};      // slang 拒绝: "expected identifier"
+bins word  = {[32'h100:32'hFFFF]};   // slang 把它当 type modifier
+bins dword = {[32'h10000:32'hFFFFFF]};
+
+// 现在 (fixed)
+bins b1    = {[32'h1:32'hFF]};      // 1-byte values
+bins b2    = {[32'h100:32'hFFFF]};   // 2-byte values
+bins b3    = {[32'h10000:32'hFFFFFF]}; // 3-byte values
+```
+
+slang 把 `byte`/`word`/`dword` 解析成 type modifier (类似 `logic byte`/`logic word`),
+后续 bins 解析失败.
+
+**Bug 2: wrapper clk/rst name 错配** ❌ → ✅
+
+之前 wrapper 用 `logic clk; logic rst_n;`, 但 generated CG 用 `clk_i/rst_ni`.
+现在 wrapper **从 CG 文本里 parse** `@(posedge <CLK> iff !<RST>)` 拿真实名字.
+
+### 测试 (10 cases)
+
+- **TestSingleFileDataCompile** (2): simple_pipe.data_o + state_q
+- **TestIndustrialProjectCompile** (3): picorv32, OpenTitan, NaplesPU
+- **TestInternalHelpers** (4): _extract_width_from_cg + build_wrapper
+- **TestBugfixRegression** (1): bin names 不含 SV 关键字
+
+### 验证结果
+
+| Project | Signal | Compile | Test |
+|---------|--------|---------|------|
+| sim/openTitan_validation | data_o | ✅ PASS | ✅ |
+| sim/openTitan_validation | state_q | ✅ PASS | ✅ |
+| picorv32 | mem_addr | ✅ PASS | ✅ |
+| OpenTitan prim_max_tree | max_idx_o | ✅ PASS | ✅ |
+| NaplesPU logger | events_counter | ✅ PASS | ✅ |
+
+**5/5 工业信号 SV 编译全部通过**, 0 regression.

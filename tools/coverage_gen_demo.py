@@ -616,13 +616,18 @@ def classify(name: str, width: int) -> str:
 # Step 4: bin 生成 (data vs control 策略不同)
 # =============================================================================
 def gen_bins_data(name: str, width: int) -> str:
-    """DATA 信号: 范围分 bin (按 2^N 边界)"""
+    """DATA 信号: 范围分 bin (按 2^N 边界).
+
+    [Phase 3 #C 2026-06-24] 修复: bins 名字不能用 SV 系统类型关键字
+    (byte / word / dword / shortint / longint / int / logic / bit / reg).
+    slang 把这些关键字解析成 type modifier, 后续 bins 失败.
+    """
     if width == 32:
         return f"""    // DATA bins: 32-bit range partition
     bins zero  = {{32'h0}};
-    bins byte  = {{[32'h1:32'hFF]}};          // 1-byte values
-    bins word  = {{[32'h100:32'hFFFF]}};       // 2-byte values
-    bins dword = {{[32'h10000:32'hFFFFFF]}};   // 3-byte values
+    bins b1    = {{[32'h1:32'hFF]}};          // 1-byte values
+    bins b2    = {{[32'h100:32'hFFFF]}};       // 2-byte values
+    bins b3    = {{[32'h10000:32'hFFFFFF]}};   // 3-byte values
     bins max   = {{32'hFFFF_FFFF}};"""
     if width == 16:
         return f"""    // DATA bins: 16-bit range partition

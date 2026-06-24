@@ -6,7 +6,7 @@
 // ======================================================================
 covergroup cg_max_idx_o @(posedge clk_i iff !rst_ni);
   option.per_instance = 1;
-  option.comment = "max_idx_o (CONTROL, 5-bit, risk=0.0)";
+  option.comment = "max_idx_o (CONTROL, 5-bit)";
   // ---- Primary coverpoint ----
   cp_max_idx_o: coverpoint max_idx_o {
     // CONTROL bins: width=5 (1-of-N)
