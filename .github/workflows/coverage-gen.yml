@@ -1,0 +1,207 @@
+# Coverage Gen CI — Phase 2 #7
+#
+# 专门验证 coverage_gen_demo 工具的 workflow:
+#   - Unit tests (pyslang type extraction)
+#   - CLI tests (run_cli.py coverage generate)
+#   - Golden regression (3 industrial project baselines)
+#   - Coverage of coverage_gen_demo.py itself (fail-under gate)
+#   - Lint coverage_gen_demo.py (ruff)
+#
+# 跟 benchmark.yml 风格一致. 不动 tests.yml (已跑全 sim/tests/).
+
+name: Coverage Gen CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  # ==========================================================================
+  # Job 1: 单元测试 + CLI 测试 + 覆盖度门禁
+  # ==========================================================================
+  test:
+    name: Unit + CLI tests (Phase 2 #1-6)
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Cache pyslang
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-pyslang-${{ matrix.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-pyslang-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install git+https://github.com/MikePopoloski/pyslang.git
+
+      - name: Run coverage_gen_demo tests (unit + CLI)
+        # 跟 tests.yml 区别: 这里只跑跟 coverage_gen_demo 相关的测试,
+        # 跟 sv_query 自身 tests 隔离, 出问题更快定位
+        run: |
+          python -m pytest \
+            sim/tests/unit/test_pyslang_type_extraction.py \
+            sim/tests/cli/test_coverage_generate.py \
+            sim/tests/cli/test_coverage_gen_demo.py \
+            -v --tb=short \
+            --maxfail=20
+
+      - name: Coverage of coverage_gen_demo.py (fail-under gate)
+        if: matrix.python-version == '3.12'
+        run: |
+          # 单元测试 conftest 把 tools/ 加到 sys.path, 所以 import 用 'coverage_gen_demo'
+          # (不是 'tools.coverage_gen_demo'). coverage 工具看 module 名.
+          python -m pytest \
+            sim/tests/unit/test_pyslang_type_extraction.py \
+            sim/tests/cli/test_coverage_generate.py \
+            sim/tests/cli/test_coverage_gen_demo.py \
+            --cov=coverage_gen_demo \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-gen.xml \
+            --cov-fail-under=25
+
+      - name: Upload coverage artifact
+        if: matrix.python-version == '3.12' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-gen-coverage-${{ matrix.python-version }}
+          path: coverage-gen.xml
+          retention-days: 30
+
+  # ==========================================================================
+  # Job 2: Golden baseline regression (3 industrial projects)
+  # ==========================================================================
+  golden-regression:
+    name: Golden regression (industrial baselines)
+    runs-on: macos-latest
+    # 依赖 test job pass, 避免 test fail 时跑 golden (浪费时间)
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache pyslang
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-pyslang-3.12
+          restore-keys: |
+            ${{ runner.os }}-pip-pyslang-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install git+https://github.com/MikePopoloski/pyslang.git
+
+      - name: Clone picorv32 (industrial project #1)
+        run: |
+          if [ ! -f /tmp/picorv32/picorv32.v ]; then
+            git clone --depth 1 https://github.com/YosysHQ/picorv32.git /tmp/picorv32
+          fi
+          ls -la /tmp/picorv32/picorv32.v
+
+      - name: Clone OpenTitan (industrial project #2)
+        run: |
+          if [ ! -d /tmp/opentitan ]; then
+            git clone --depth 1 https://github.com/lowRISC/opentitan.git /tmp/opentitan
+          fi
+          ls -la /tmp/opentitan/hw/ip/prim/rtl/prim_max_tree.sv
+
+      - name: Clone NaplesPU (industrial project #3)
+        run: |
+          if [ ! -d /tmp/NaplesPU ]; then
+            git clone --depth 1 https://github.com/PrincetonUniversity/NaplesPU.git /tmp/NaplesPU
+          fi
+          ls -la /tmp/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv
+
+      - name: Run golden regression
+        run: |
+          python -m pytest \
+            sim/tests/cli/test_coverage_gen_demo_golden.py \
+            -v --tb=long \
+            --maxfail=10 \
+            2>&1 | tee golden-regression.log
+
+      - name: Upload golden diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-regression-failure
+          path: |
+            golden-regression.log
+            sim/tests/golden/coverage_gen_demo/
+          retention-days: 14
+
+  # ==========================================================================
+  # Job 3: Lint coverage_gen_demo.py
+  # ==========================================================================
+  lint:
+    name: Lint coverage_gen_demo.py
+    runs-on: macos-latest
+    # 警告级别 (跟 tests.yml 一致). CI 当前有 23 个 pre-existing ruff 警告,
+    # 主要是 N817 (CamelCase 导入) + F541 (f-string 无 placeholder),
+    # 不应该 block PR. 但仍 report 出来让 maintainer 看到.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint coverage_gen_demo.py (warning level)
+        run: |
+          echo "=== ruff check (informational, 不会 fail CI) ==="
+          ruff check tools/coverage_gen_demo.py || echo "(ruff issues above, see CI logs)"
+      - name: Check import order
+        run: |
+          echo "=== import order check ==="
+          ruff check tools/coverage_gen_demo.py --select I || echo "(import order issues above)"
+
+  # ==========================================================================
+  # Job 4: 总结 status (给 PR 看的 badge / comment)
+  # ==========================================================================
+  ci-summary:
+    name: CI Summary
+    runs-on: macos-latest
+    # lint 是 continue-on-error, 不应 block summary
+    needs: [test, golden-regression]
+    if: always()
+    steps:
+      - name: Check status
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.golden-regression.result }}" != "success" ]; then
+            echo "❌ One or more CI jobs failed"
+            echo "test: ${{ needs.test.result }}"
+            echo "golden-regression: ${{ needs.golden-regression.result }}"
+            exit 1
+          fi
+          echo "✅ All CI jobs passed"
