@@ -210,18 +210,58 @@ def _eval_simple_expr(expr: str) -> int | None:
 
 
 def _parse_logic_type_str(type_str: str) -> tuple[int, int] | None:
-    """从 pyslang type 字符串 'logic[15:0]' / 'logic[4:0]' / 'logic' 拿 (hi, lo).
-    返回 None 表示解析不了 (e.g. 嵌套数组 'logic[31:0][7:0]', typed package 'pkg::type_t').
+    """从 pyslang type 字符串拿 (hi, lo) width.
+    支持:
+      - 'logic' / 'bit' / 'reg' → 1-bit
+      - 'logic[N:M]' (1D vector)
+      - 'logic[N:M][K:L]' (2D nested, 取外层 bit 范围)
+      - 'logic[N:M]$[0:X]' (unpacked array, 取 packed 维度)
+    不支持 (返回 None):
+      - 'types_pkg::foo' (package typedef, 需要 lookup 包装)
+      - packed struct/union (无 bit range)
     """
     if not type_str:
         return None
     s = type_str.strip()
-    if s == "logic" or s == "bit" or s == "reg":
+    if s in ("logic", "bit", "reg"):
         return (0, 0)  # 1-bit
-    # 匹配 logic[hi:lo] 或 logic[lo:hi]  (sv 语法固定 hi:lo)
-    m = re.match(r"^(?:logic|bit|reg)\s*\[(\d+):(\d+)\]$", s)
+    # 嵌套: 'logic[N:M][K:L]' (packed) or 'logic[N:M]$[0:X]' (unpacked 后缀)
+    # 匹配第一个 [N:M]
+    m = re.search(r"^(?:logic|bit|reg)\s*\[(\d+):(\d+)\]", s)
     if m:
         return int(m.group(1)), int(m.group(2))
+    return None
+
+
+def _resolve_typedef(name: str, compilation, module_body=None) -> str | None:
+    """递归解析 typedef (package + module scope). 返回 underlying type 字符串.
+    name 格式: 'pkg::foo' 或 'module::foo' 或 'foo'.
+    module_body: 如果给, 同时查 module-scope typedef (e.g. 'pyslang_types.local_word_t').
+    """
+    if "::" in name:
+        pkg_name, type_name = name.split("::", 1)
+        try:
+            pkg = compilation.getPackage(pkg_name)
+        except Exception:
+            pkg = None
+        if pkg is not None:
+            sym = pkg.find(type_name)
+            if sym is not None:
+                ct = getattr(sym, "canonicalType", None)
+                if ct is not None:
+                    return str(ct)
+    # module-scope typedef: 名称格式 'module_name.type_name' 或裸 'type_name'
+    if module_body is not None:
+        # type_name 是 name 最后一段 (after :: 或 .)
+        type_name = re.split(r"::|\.", name)[-1]
+        try:
+            sym = module_body.find(type_name)
+        except Exception:
+            sym = None
+        if sym is not None:
+            ct = getattr(sym, "canonicalType", None)
+            if ct is not None:
+                return str(ct)
     return None
 
 
@@ -232,8 +272,8 @@ def parse_width_from_pyslang(
     module_name: str | None = None,
     include_dirs: list[str] | None = None,
 ) -> tuple[int, int, int] | None:
-    """用 sv_query + pyslang 拿 signal 的真实 width (包括 $clog2 等派生参数)。
-    返回 (width, hi, lo) 或 None (拿不到 / 跨 module / 嵌套数组).
+    """用 sv_query + pyslang 拿 signal 的真实 width (包括 $clog2 / package typedef).
+    返回 (width, hi, lo) 或 None (拿不到 / 跨 module / packed struct).
     """
     try:
         from cli._common import _build_tracer
@@ -251,35 +291,67 @@ def parse_width_from_pyslang(
     except Exception:
         return None
     root = tracer._compiler.get_root()
+    compilation = tracer._compiler.get_compilation()
     # 找 module instance
     for inst in root.topInstances if hasattr(root, "topInstances") else []:
         if module_name and inst.name != module_name:
             continue
         body = inst.body
-        # 1) 顶层 portList (ANSI/NonANSI 都覆盖)
+        # 拿 sym (port 或 internal)
+        sym = None
+        # 1) 顶层 portList
         if hasattr(body, "portList") and body.portList:
             for p in body.portList:
                 if p.name == sig_name:
-                    t = getattr(p, "type", None) or getattr(p, "declaredType", None)
-                    type_str = str(t) if t else ""
-                    r = _parse_logic_type_str(type_str)
-                    if r is None:
-                        return None
-                    hi, lo = r
-                    return hi - lo + 1, hi, lo
-        # 2) 内部 signals (logic/reg 声明)
-        try:
-            sym = body.find(sig_name)
-        except Exception:
-            sym = None
-        if sym is not None:
-            t = getattr(sym, "type", None) or getattr(sym, "declaredType", None)
-            type_str = str(t) if t else ""
-            r = _parse_logic_type_str(type_str)
-            if r is None:
-                return None
+                    sym = p
+                    break
+        # 2) 内部 signals
+        if sym is None:
+            try:
+                sym = body.find(sig_name)
+            except Exception:
+                sym = None
+        if sym is None:
+            continue
+        # 拿 type 字符串
+        t = getattr(sym, "type", None) or getattr(sym, "declaredType", None)
+        type_str = str(t) if t else ""
+        # 直接 1D logic
+        r = _parse_logic_type_str(type_str)
+        if r is not None:
             hi, lo = r
             return hi - lo + 1, hi, lo
+        # typedef (package scope) — 'pkg::foo' 或 'module::foo' 或 'module_name.type_name'
+        if "::" in type_str or "." in type_str:
+            resolved = _resolve_typedef(type_str, compilation, module_body=body)
+            if resolved:
+                # 处理 enum / struct / logic
+                r2 = _parse_logic_type_str(resolved)
+                if r2 is not None:
+                    hi, lo = r2
+                    return hi - lo + 1, hi, lo
+                # enum: 用 'enum{' 开头 → 找所有 enum value 拿 max
+                if resolved.startswith("enum{"):
+                    import math
+                    all_vals = re.findall(r"=\s*\d+'[dbh](\d+)", resolved)
+                    if all_vals:
+                        max_val = max(int(v) for v in all_vals)
+                        w = max(1, math.ceil(math.log2(max_val + 1)))
+                        return w, w - 1, 0
+                    return 2, 1, 0  # fallback
+                # packed union 先匹配 (可能含 nested struct packed)
+                if "union packed" in resolved:
+                    bit_widths = [int(b) + 1 for b in re.findall(r"\[(\d+):0\]", resolved)]
+                    if bit_widths:
+                        m = max(bit_widths)
+                        return m, m - 1, 0
+                # packed struct: 'struct packed{logic[7:0] opcode;logic[23:0] addr;}...'
+                if "struct packed" in resolved:
+                    # 累加所有 logic[K:0] 字段
+                    bit_widths = [int(b) + 1 for b in re.findall(r"\[(\d+):0\]", resolved)]
+                    if bit_widths:
+                        total = sum(bit_widths)
+                        return total, total - 1, 0
     return None
 
 
