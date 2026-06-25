@@ -1043,11 +1043,15 @@ class SemanticAdapter:
                     if name:
                         # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
                         return _safe_str(name)
-                if name is None:
-                    loc = getattr(name, "location", None)
+                    # [Bug-fix 2026-06-25] name is None (declarator name 解析失败),
+                    # 返 f-string 避免 'cannot access local variable' UnboundLocalError.
+                    # Vortex.sv 触发 (partial AST).
+                    loc = getattr(first_decl, "location", None)
                     if loc is not None:
                         return f"<id@{getattr(loc, 'line', '?')}:{getattr(loc, 'column', '?')}>"
-                    return "<id:non-utf8>"
+                    return "<id:unknown>"
+                # decl_list 为空 (e.g. empty struct)
+                return "<id:empty-decl>"
             elif hasattr(decls, "name"):
                 try:
                     return str(decls.name)
