@@ -150,6 +150,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
         # 但 extract_module 用 user-specified target (e.g. cva6).
         # 两者 prefix 不一致 → edges 0. Rewrite MIG port_to_internal keys+values
         # 用 target 替换 top-level prefix + 剥掉 wrapper 层 (e.g. i_cva6).
+        # 同时 rewrite extract_module 返回的 inst IDs 以对齐.
         pti = getattr(mig, "port_to_internal", {})
         if pti:
             top_prefixes = set()
@@ -189,7 +190,6 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             def rewrite_path(p: str) -> str:
                 if not p:
                     return p
-                # Already pass-1 rewritten above
                 parts = p.split(".")
                 if (
                     len(parts) >= 3
@@ -210,6 +210,25 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
                     f"to align MIG with extract_module's '{target}.*' namespace",
                     file=sys.stderr,
                 )
+
+            # [Bug fix 2026-06-25] extract_module 返回的 inst IDs 也含 wrapper segment
+            # (e.g. darksocv.bridge0.core0), rewrite 后变成 darksocv.core0 跟 MIG keys
+            # 对齐. 不 rewrite 会导致 inst_port_to_inst 匹配不上 → edges=0.
+            if wrappers:
+                import dataclasses
+                rewritten_instances = []
+                any_rewritten = False
+                for inst in result.instances:
+                    new_id = rewrite_path(inst.id)
+                    if new_id != inst.id:
+                        rewritten_instances.append(dataclasses.replace(inst, id=new_id))
+                        any_rewritten = True
+                    else:
+                        rewritten_instances.append(inst)
+                if any_rewritten:
+                    result = dataclasses.replace(result, instances=rewritten_instances)
+                    # Also rewrite the public 'instances' list (used by render pipeline)
+                    instances = [(i.id, i.def_name, i.depth) for i in rewritten_instances]
         try:
             edges = extract_module_edges_from_mig(
                 mig, instances=result.instances, max_edges=500,
