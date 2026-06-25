@@ -22,6 +22,7 @@
 - ✅ **协议检测**: 自动识别 AXI4/TL-UL/AHB/APB/Wishbone,4 项置信度融合
 - ✅ **Dataflow/Pipeline 可视化**: 基于 SignalGraph 自动分类 control/data,检测 pipeline stages
 - ✅ **Fix 修复子系统**: 一键修 timescale/imports/widths,按错误类别分组报告
+- ✅ **arch 架构可视化** (2026-06-25): `arch` 命令一键生成项目架构图, 含跨 module 端口连线, 验证 5 个开源项目 (CoralNPU 28 inst / CVA6 31 ports)
 - ✅ **2280 测试**: 稳定可靠，覆盖核心功能
 
 ---
@@ -96,6 +97,99 @@ Instances: 3
     └─ i_xbar_unmuxed (def=axi_xbar_unmuxed, depth=2)
       └─ i_axi_demux  (def=axi_demux, depth=3)
 ```
+
+---
+
+## 🆕 arch 命令：项目架构可视化 (2026-06-25)
+
+**`arch`** 一键生成整个项目的架构图：模块层级 + 跨模块端口连线。
+
+### 用法
+
+```bash
+# 简单项目 (单文件)
+python run_cli.py arch -f top.sv -t top --summary
+
+# 工业项目 (filelist + 多文件 + 含 typedef headers)
+python run_cli.py arch --filelist=project.f -t top -d 10 --cluster-by-type \
+    --format svg -o arch.svg
+
+# 输出格式: dot / mermaid / html / svg / summary
+python run_cli.py arch -f top.sv --format mermaid   # GitHub README 友好
+python run_cli.py arch -f top.sv --format html      # 交互式
+python run_cli.py arch -f top.sv --format svg       # 调 graphviz, 浏览器看
+```
+
+### 5 种输出格式
+
+| 格式 | 用途 | 例子 |
+|------|------|------|
+| `--summary` | 一段话描述项目架构 | Top module types + 端口连接计数 |
+| `--format dot` | Graphviz, `dot -Tpng` 渲染 | 适合 PNG/SVG 生成 |
+| `--format mermaid` | GitHub README 友好, 自动渲染 | Markdown 里直接显示 |
+| `--format html` | 交互式 (vis.js), 浏览器打开 | 缩放/拖拽/层次布局 |
+| `--format svg` | 标准 SVG (调 `dot -Tsvg`) | 嵌入网页/文档 |
+
+### v2 features
+
+- **`--cluster-by-type`**: 同一 module type 的 instance 合并 cluster + hash-based 颜色
+- **`--max-nodes N`**: 限制 nodes 数 (默认 100), 超出折叠 + collapse note
+- **`--with-ports`**: 显示跨 module 端口连线 (`cva6.flush_i` 同时连 `i_frontend`, `id_stage`, `ex_stage`)
+
+### 实测案例 (5 个开源项目)
+
+| 项目 | Instances | Hierarchy | Ports | 说明 |
+|------|-----------|-----------|-------|------|
+| **Google CoralNPU** | 28 | 4 层 | 31+ | 2025 最新 RISC-V RVV NPU |
+| **CVA6 / Ariane** | 11 | 3 层 | 31 | ETH Zurich 工业 RISC-V CPU |
+| **Vortex** | 3+ | 2 层 | - | 工业 RISC-V GPU |
+| **SERV** | 9 | 1 层 | - | "世界最小 RISC-V" (~200 gates) |
+| **darkriscv** | 5 | 2 层 | - | 极简 RISC-V SoC |
+
+### Google CoralNPU (28 instances / 4 层)
+
+![CoralNPU Architecture](docs/coralnpu_arch.png)
+
+### CVA6 / Ariane (11 instances / 3 层 / 31 port connections)
+
+![CVA6 Architecture](docs/cva6_full_arch.png)
+
+### Vortex GPU
+
+![Vortex Architecture](docs/vortex_arch.png)
+
+### SERV (世界最小 RISC-V)
+
+![SERV Architecture](docs/serv_arch.png)
+
+### darkriscv (极简 RISC-V SoC)
+
+![darkriscv Architecture](docs/darkriscv_arch.png)
+
+### 实际例子 (CoralNPU summary 输出)
+
+```
+📐 Project Architecture: RvvCore
+============================================================
+Total instances:  28
+Hierarchy depth:  4 levels
+Port connections: 31 (cross-module)
+
+Top module types (by instance count):
+  RvvFrontEnd                                 1  █
+  Aligner                                     1  █
+  rvv_backend                                 1  █
+  rvv_backend_decode                          1  █
+  rvv_backend_decode_de2                      1  █
+  ...
+
+Most common port connections:
+  clk_i                             4
+  rst_ni                            4
+  flush_i                           3
+```
+
+详细文档: [`docs/ARCH_EXAMPLES.md`](docs/ARCH_EXAMPLES.md)
 
 ---
 
