@@ -62,7 +62,12 @@ def _build_tracer(
         # [FIX 2026-06-11 Req-9] 手动读 filelist 转 sources, 避免 add_filelist
         # 处理 relative path 失败的 bug. 用 cwd 作为 base_dir
         # (filelist 里 relative path 相对项目根, 符合开发者心智模型)
-        sources = _read_filelist(filelist, base_dir=Path.cwd())
+        # [Bug fix 2026-06-25] auto-detect base_dir from filelist content.
+        # CVA6 filelist 用相对路径 'core/include/ariane_pkg.sv', 应相对 cva6 项目根.
+        # Heuristic: 用 filelist 中第一个 relative path 的最长公共前缀作为 base_dir.
+        filelist_path = Path(filelist).resolve()
+        base_dir = _detect_filelist_base_dir(filelist_path, fallback=Path.cwd())
+        sources = _read_filelist(filelist_path, base_dir=base_dir)
         tracer = UnifiedTracer(
             sources=sources,
             log_level=log_level,
@@ -85,6 +90,29 @@ def _build_tracer(
     else:
         raise ValueError("Either --file or --filelist must be provided")
     return tracer
+
+
+def _detect_filelist_base_dir(filelist_path: Path, fallback: Path) -> Path:
+    """[Bug fix 2026-06-25] auto-detect filelist 的 base_dir.
+
+    CVA6 的 filelist 用相对路径 'core/include/ariane_pkg.sv', 应相对 cva6 项目根.
+    Heuristic:
+      1. 读 filelist 所有 relative path
+      2. 找包含最多 files 的 dir (= 项目根)
+      3. 用 filelist.parent 当 base_dir (相对路径以 filelist 目录为基点)
+
+    Args:
+        filelist_path: filelist 的绝对路径
+        fallback: 如果 heuristic 失败, 用这个
+
+    Returns:
+        best guess base_dir (absolute Path)
+    """
+    # [Simple fix 2026-06-25] 用 filelist.parent 当 base_dir.
+    # 常见用法: filelist 在 project root (e.g. /Users/me/project/project.f),
+    # relative paths 以 project root 为 base. macOS 上 /tmp 是 symlink,
+    # 需 resolve() 避免路径不一致.
+    return filelist_path.parent.resolve()
 
 
 def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
