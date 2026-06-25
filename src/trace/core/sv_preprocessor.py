@@ -144,3 +144,101 @@ def preprocess_macros(sources: dict[str, str]) -> dict[str, str]:
         out[name] = "\n".join(new_lines)
 
     return out
+
+
+def auto_inject_package_imports(sources: dict[str, str]) -> dict[str, str]:
+    """[Bug fix 2026-06-25] 自动给 package files inject missing imports.
+
+    CVA6 的 ariane_pkg.sv 用了 config_pkg::cva6_cfg_t 但没 import config_pkg,
+    在 strict compile mode 下报 UnknownClassOrPackage.
+
+    这个 function 检测每个 package file 的 body:
+      1. 扫所有 `pkg::symbol` references
+      2. 对比 file 里的 `import pkg::*;` 和 package declarations
+      3. 自动 inject missing `import pkg::*;` 到 package body 顶部
+
+    Args:
+        sources: {filename: source_code}
+
+    Returns:
+        改造后的 sources dict (可能 inject import statements)
+    """
+    import re
+
+    # 1. 收集所有 package declarations
+    declared_packages: dict[str, str] = {}  # pkg_name -> file_path
+    for path, content in sources.items():
+        m = re.search(r"package\s+(\w+)\s*;", content)
+        if m:
+            declared_packages[m.group(1)] = path
+
+    if not declared_packages:
+        return sources
+
+    # 2. 对每个 package file, 检测 referenced packages + 已有 imports
+    out = dict(sources)  # copy
+    for pkg_name, path in declared_packages.items():
+        content = out[path]
+        # 找 package body
+        m = re.search(r"(package\s+\w+\s*;)(.*?)(endpackage)", content, re.DOTALL)
+        if not m:
+            continue
+        header, body, footer = m.group(1), m.group(2), m.group(3)
+
+        # 已有 import pkg::*;
+        existing_imports = set(re.findall(r"import\s+(\w+)\s*::\*\s*;", body))
+
+        # 检测 body 内的 pkg::symbol references (排除 self + 标准库)
+        referenced_pkgs: set[str] = set()
+        for rm in re.finditer(r"\b(\w+)::(\w+)", body):
+            ref_pkg = rm.group(1)
+            # 排除 self reference
+            if ref_pkg == pkg_name:
+                continue
+            # 排除标准 SV types (logic, int, bit, etc.) + 不常见但合法标识符
+            if ref_pkg in (
+                "std", "uvm", "sv",  # 标准库
+                "logic", "bit", "reg", "wire",  # types
+            ):
+                continue
+            # 排除 macros 和 system functions
+            if ref_pkg.startswith("$"):
+                continue
+            referenced_pkgs.add(ref_pkg)
+
+        # 哪些 ref 但没 import + 实际在 filelist 里定义
+        missing = referenced_pkgs - existing_imports - set(declared_packages.keys()) - {pkg_name}
+        truly_missing = referenced_pkgs - existing_imports - {pkg_name}
+        # 必须是 declared 的 package
+        truly_missing = truly_missing & set(declared_packages.keys())
+
+        if not truly_missing:
+            continue
+
+        # Inject `import X::*;` 到 package header 后面
+        import_lines = "\n".join(f"  import {p}::*;" for p in sorted(truly_missing))
+        new_header = f"{header}\n  // [auto-injected by sv_query 2026-06-25] missing imports for cross-package refs\n{import_lines}"
+        new_content = content.replace(header, new_header, 1)
+        out[path] = new_content
+        print(f"[auto-import] {pkg_name}: injected imports for {sorted(truly_missing)}", file=__import__("sys").stderr)
+
+    return out
+
+
+def preprocess_all(
+    sources: dict[str, str],
+    enable_macros: bool = True,
+    enable_import_injection: bool = True,
+) -> dict[str, str]:
+    """[新增 2026-06-25] 组合所有 preprocess phases.
+
+    Order matters:
+      1. macro 展开 (修改 source content)
+      2. import injection (基于 macro 展开后的 content)
+    """
+    out = dict(sources)
+    if enable_macros:
+        out = preprocess_macros(out)
+    if enable_import_injection:
+        out = auto_inject_package_imports(out)
+    return out

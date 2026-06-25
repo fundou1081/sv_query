@@ -145,10 +145,72 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
     edges = []
     mig = getattr(tracer, "_module_graph", None)
     if mig is not None:
+        # [Bug fix 2026-06-25] MIG port_to_internal 用 pyslang 的
+        # hierarchicalPath, 起点是第一个 top instance (e.g. ariane).
+        # 但 extract_module 用 user-specified target (e.g. cva6).
+        # 两者 prefix 不一致 → edges 0. Rewrite MIG port_to_internal keys+values
+        # 用 target 替换 top-level prefix + 剥掉 wrapper 层 (e.g. i_cva6).
+        pti = getattr(mig, "port_to_internal", {})
+        if pti:
+            top_prefixes = set()
+            for k in pti:
+                top_prefixes.add(k.split(".", 1)[0])
+            top_prefixes.add(target)
+
+            # Pass 1: replace top-level prefix (e.g. ariane.* → cva6.*).
+            pass1 = {}
+            for k, v in pti.items():
+                def replace_top(p):
+                    if not p:
+                        return p
+                    for tp in top_prefixes:
+                        if tp == target:
+                            continue
+                        if p == tp:
+                            return target
+                        if p.startswith(tp + "."):
+                            return target + p[len(tp):]
+                    return p
+                pass1[replace_top(k)] = replace_top(v)
+
+            # Pass 2: detect wrapper layer after Pass 1. Look for "<target>.<one_seg>.<rest>"
+            # patterns and identify "<one_seg>" segments that are dense AND whose "rest"
+            # parts overlap with extract_module's inst IDs. Strip them.
+            wrapper_candidates = {}
+            for k in pass1:
+                parts = k.split(".")
+                if len(parts) >= 3 and parts[0] == target:
+                    mid = parts[1]
+                    rest = ".".join(parts[2:])
+                    wrapper_candidates.setdefault(mid, []).append(rest)
+            # Wrapper segment = frequent (≥ 10 occurrences)
+            wrappers = [mid for mid, rests in wrapper_candidates.items() if len(rests) >= 10]
+
+            def rewrite_path(p: str) -> str:
+                if not p:
+                    return p
+                # Already pass-1 rewritten above
+                parts = p.split(".")
+                if (
+                    len(parts) >= 3
+                    and parts[0] == target
+                    and parts[1] in wrappers
+                ):
+                    p = target + "." + ".".join(parts[2:])
+                return p
+
+            new_pti = {rewrite_path(k): rewrite_path(v) for k, v in pass1.items()}
+            mig.port_to_internal = new_pti
+            itp = getattr(mig, "internal_to_port", {})
+            if itp:
+                mig.internal_to_port = {rewrite_path(k): rewrite_path(v) for k, v in itp.items()}
+            if wrappers:
+                print(
+                    f"[sv_query] namespace rewrite: stripped wrappers {wrappers} "
+                    f"to align MIG with extract_module's '{target}.*' namespace",
+                    file=sys.stderr,
+                )
         try:
-            # [Bug fix 2026-06-25] 必须传 instances 参数, 否则 function 会
-            # raise TypeError (missing positional arg), 被 except 吞掉,
-            # 表现为 'port connections = 0'.
             edges = extract_module_edges_from_mig(
                 mig, instances=result.instances, max_edges=500,
             )

@@ -348,11 +348,11 @@ class UnifiedTracer:
         """
         if self._preprocessed or not self._preprocess_macros or not self._sources:
             return
-        from .core.sv_preprocessor import preprocess_macros
+        from .core.sv_preprocessor import preprocess_all
         _main_logger.info(
-            f"[preprocess] 跨文件宏展开: {len(self._sources)} files"
+            f"[preprocess] 跨文件宏展开 + auto-inject imports: {len(self._sources)} files"
         )
-        self._sources = preprocess_macros(self._sources)
+        self._sources = preprocess_all(self._sources)
         self._preprocessed = True
 
     def _get_compiler(self) -> SVCompiler:
