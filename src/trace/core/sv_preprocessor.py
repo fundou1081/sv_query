@@ -131,8 +131,15 @@ def preprocess_macros(sources: dict[str, str]) -> dict[str, str]:
                 new_lines.append(line)
                 continue
             for macro_name, val in resolved.items():
-                # 用 \b 边界确保不替换部分匹配
-                line = re.sub(r"`" + macro_name + r"\b", val, line)
+                # [Bug fix 2026-06-25] 用 lambda 做 replacement, 防止 val 里的 \
+                # 被 re 当作 escape sequence (e.g. val 含 \000 → bad escape).
+                # CVA6 cv64a60ax_config_pkg.sv 含 `define IFNDEF_DEFINE(...)` \` 多行宏,
+                # 展开后 val 含行尾 \, trigger 这个 bug.
+                line = re.sub(
+                    r"`" + macro_name + r"\b",
+                    lambda m, _v=val: _v,
+                    line,
+                )
             new_lines.append(line)
         out[name] = "\n".join(new_lines)
 
