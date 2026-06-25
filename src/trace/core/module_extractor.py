@@ -432,7 +432,10 @@ def extract_module_edges_from_mig(
             edges.append({
                 "src": a_inst,  # [PR4 fix] instance, not instance.port
                 "dst": b_inst,
+                "src_instance": a_inst,  # [Phase 4 2026-06-25] alias for arch command
+                "dst_instance": b_inst,
                 "internal": int_sig,
+                "port": int_sig.split(".", 1)[-1] if "." in int_sig else int_sig,  # net 名 (e.g. flush_i)
                 "port_src": a_port,
                 "port_dst": b_port,
                 "width": width,

@@ -154,7 +154,17 @@ class ModuleInstanceGraph:
                             port_name = _safe_attr(port_sym, "name", None)
                             if port_name:
                                 port_path = f"{instance_id}.{port_name}"
-                                internal = f"{inst_type}.{port_name}"
+                                # [Bug fix 2026-06-25] 之前 internal = f"{inst_type}.{port_name}"
+                                # (例如 frontend.flush_i), 多个 instance 共享 parent 内部
+                                # wire 时会 mapping 到不同 internal, edge 永远 0.
+                                # 现在 internal = parent_id.port_name (例如 cva6.flush_i),
+                                # 多个 child instance 连到同一根 parent wire → 共享 internal → edge 创建.
+                                # 拿 parent_id: hierarchy 上父节点的 instance path (没有就空)
+                                if parent:
+                                    # parent 是 module name (e.g. 'cva6'), 用它 + port_name
+                                    internal = f"{parent}.{port_name}"
+                                else:
+                                    internal = f"<root>.{port_name}"
                                 self.port_to_internal[port_path] = internal
                                 self.internal_to_port[internal] = port_path
 

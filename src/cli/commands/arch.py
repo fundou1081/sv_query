@@ -146,8 +146,16 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
     mig = getattr(tracer, "_module_graph", None)
     if mig is not None:
         try:
-            edges = extract_module_edges_from_mig(mig, max_edges=500)
-        except Exception:
+            # [Bug fix 2026-06-25] 必须传 instances 参数, 否则 function 会
+            # raise TypeError (missing positional arg), 被 except 吞掉,
+            # 表现为 'port connections = 0'.
+            edges = extract_module_edges_from_mig(
+                mig, instances=result.instances, max_edges=500,
+            )
+        except Exception as e:
+            import traceback
+            print(f"DEBUG: extract_module_edges_from_mig fail: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             edges = []
 
     return instances, edges, mig, tracer
