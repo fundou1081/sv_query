@@ -53,6 +53,7 @@ def _arch_default(
     summary: bool = typer.Option(False, "--summary"),
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type"),
     max_nodes: int = typer.Option(100, "--max-nodes"),
+    max_port_edges: int = typer.Option(200, "--max-port-edges"),
 ):
     """[arch v1 2026-06-24, v2 2026-06-25] Default: 直接当 show 跑.
 
@@ -76,7 +77,8 @@ def _arch_default(
         return
     if output_format == "dot":
         content = _render_dot(instances, edges, target, True,
-                              cluster_by_type=cluster_by_type, max_nodes=max_nodes)
+                              cluster_by_type=cluster_by_type, max_nodes=max_nodes,
+                              max_port_edges=max_port_edges)
     elif output_format == "mermaid":
         content = _render_mermaid(instances, edges, target, True)
     elif output_format == "html":
@@ -307,6 +309,7 @@ def _safe_cluster_name(name: str) -> str:
 def _render_dot(
     instances, edges, target_module: str, with_ports: bool,
     cluster_by_type: bool = False, max_nodes: int = 100,
+    max_port_edges: int = 200,
 ) -> str:
     """生成 DOT 格式 (Graphviz).
 
@@ -393,7 +396,7 @@ def _render_dot(
     if with_ports and edges:
         lines.append("")
         lines.append(f"  // ---- Cross-module port connections (L2: {len(edges)} edges) ----")
-        for e in edges[:50]:  # cap at 50 for readability
+        for e in edges[:max_port_edges]:  # cap for readability (default 200, was 50)
             src = e.get("src_instance", "")
             dst = e.get("dst_instance", "")
             port = e.get("port", "")
