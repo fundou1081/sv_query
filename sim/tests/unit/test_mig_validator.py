@@ -1,12 +1,14 @@
 """
-test_mig_validator.py — Test MIG validator against pyslang native API.
+test_mig_validator.py — Test MIG validator (Phase 2.1).
 
-[Phase 2 2026-06-25] Use native as oracle to detect MIG bugs.
+[Phase 2 2026-06-25] Original: 比 instance count, 易误报.
+[Phase 2.1 2026-06-25] Redesign:
+  - compare_with_extract_module: MIG vs extract (informational only)
+  - verify_specific_port: native API 验证 specific port
 
 测试策略:
-1. 简单 SV: build MIG, run validator, expect OK
-2. CVA6: build MIG, run validator, expect OK (after namespace rewrite)
-3. Force bug: break MIG, validator should detect
+- simple SV: compare_with_extract_module 应该 work
+- verify_specific_port 跑 actual SV 找 specific port
 """
 
 import sys
@@ -19,9 +21,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'to
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
 from trace.core.mig_validator import (
-    validate_mig_with_native,
-    _collect_native_port_connections,
-    _normalize_mig_keys,
+    compare_with_extract_module,
+    verify_specific_port,
+    ExtractComparison,
+    PortVerification,
 )
 
 
@@ -49,7 +52,6 @@ def _build_adapter_and_mig(simple_sv):
     comp = SVCompiler({'test.sv': simple_sv})
     adapter = SemanticAdapter(comp.get_root())
 
-    # Build minimal MIG (mimics module_instance_graph.build)
     from trace.core.module_instance_graph import ModuleInstanceGraph
     mig = ModuleInstanceGraph(adapter=adapter)
     instances = adapter.get_module_instances()
@@ -63,10 +65,9 @@ def _build_adapter_and_mig(simple_sv):
             continue
         defn = getattr(symbol, 'definition', None)
         inst_type = defn.name if defn else 'unknown'
-        parent = getattr(inst, 'parent_module', None)
-        # Add a fake port mapping
         port_name = 'clk'
         port_path = f"{inst_id}.{port_name}"
+        parent = getattr(inst, 'parent_module', None)
         if parent:
             internal = f"{parent}.{port_name}"
         else:
@@ -76,65 +77,51 @@ def _build_adapter_and_mig(simple_sv):
     return comp, adapter, mig
 
 
-class TestMigValidatorSimple(unittest.TestCase):
-    """Simple SV: build MIG, validator should work."""
+class TestCompareWithExtract(unittest.TestCase):
+    """compare_with_extract_module: MIG vs extract (informational)."""
 
-    def test_simple_validator_runs(self):
+    def test_simple_compare_runs(self):
         comp, adapter, mig = _build_adapter_and_mig(SIMPLE_SV)
-        root = comp.get_root()
-        result = validate_mig_with_native(mig, root, target_module='top')
-        # Should run without exception
-        self.assertEqual(result.target_module, 'top')
-        # Simple: 3 instances (u_a, u_inner, u_b)
-        # MIG has 3 port mappings (1 per instance, fake)
-        print(f"\n{result.summary()}")
+        info = compare_with_extract_module(mig, adapter, target_module='top')
+        self.assertIsInstance(info, ExtractComparison)
+        self.assertEqual(info.target_module, 'top')
+        # Simple: 3 instances in MIG (u_a, u_inner, u_b)
+        # Extract should also find 3
+        print(f"\n{info.summary()}")
 
-    def test_simple_instance_count_match(self):
-        """MIG should find same number of instances as native (after filter)."""
+    def test_simple_no_utility_cells(self):
+        """Simple SV has no utility cells - diff should be 0."""
         comp, adapter, mig = _build_adapter_and_mig(SIMPLE_SV)
-        root = comp.get_root()
-        result = validate_mig_with_native(mig, root, target_module='top')
-        # simple SV: MIG has 3 insts (u_a, u_inner, u_b), native has same
-        # Allow some flexibility
-        self.assertGreater(result.native_instance_count, 0)
-        self.assertGreater(result.mig_instance_count, 0)
+        info = compare_with_extract_module(mig, adapter, target_module='top')
+        # Simple SV: MIG should find same as extract
+        self.assertEqual(info.utility_instance_count, 0)
 
 
-class TestNormalizeMigKeys(unittest.TestCase):
-    """_normalize_mig_keys should strip namespace prefix correctly."""
+class TestVerifySpecificPort(unittest.TestCase):
+    """verify_specific_port: native API cross-check."""
 
-    def test_strips_target_module(self):
-        keys = {'ariane.cva6.X.clk_i', 'cva6.X.clk_i'}
-        result = _normalize_mig_keys(keys, target_module='cva6')
-        # Both should normalize to cva6.X.clk_i (deduplicated)
-        self.assertEqual(result, {'cva6.X.clk_i'})
-
-    def test_no_match_keeps_as_is(self):
-        keys = {'top.i_cva6.X.clk_i'}  # 'cva6' is in 'i_cva6' but not exact
-        result = _normalize_mig_keys(keys, target_module='cva6')
-        # 'i_cva6' is NOT equal to 'cva6' — keep as-is
-        self.assertEqual(result, {'top.i_cva6.X.clk_i'})
-
-    def test_keeps_non_matching(self):
-        keys = {'top.u_a.clk', 'other.path'}
-        result = _normalize_mig_keys(keys, target_module='top')
-        self.assertIn('top.u_a.clk', result)
-        # 'other.path' doesn't contain 'top' — kept as-is
-        self.assertIn('other.path', result)
-
-
-class TestNativeCollection(unittest.TestCase):
-    """_collect_native_port_connections should walk all instances."""
-
-    def test_simple_collection(self):
+    def test_simple_verify_existing_port(self):
+        """Verify a port that exists — should find it."""
         comp = SVCompiler({'test.sv': SIMPLE_SV})
         root = comp.get_root()
-        data = _collect_native_port_connections(root, target_module='top')
-        self.assertGreater(len(data['instances']), 0)
-        # port_connections is dict[inst_id, dict[port, signal]]
-        self.assertGreater(len(data['port_connections']), 0)
-        # Should have connected signals
-        self.assertIn('clk', data['connected_signals'])
+        result = verify_specific_port(
+            root, target_module='top',
+            inst_path='top.u_a', port_name='clk',
+        )
+        self.assertIsInstance(result, PortVerification)
+        self.assertTrue(result.found_in_native)
+        # In simple SV, top.u_a.clk connects to top.clk
+        self.assertEqual(result.native_value, 'clk')
+
+    def test_simple_verify_nonexistent_port(self):
+        """Verify a port that doesn't exist — should not find it."""
+        comp = SVCompiler({'test.sv': SIMPLE_SV})
+        root = comp.get_root()
+        result = verify_specific_port(
+            root, target_module='top',
+            inst_path='top.u_a', port_name='nonexistent_port',
+        )
+        self.assertFalse(result.found_in_native)
 
 
 if __name__ == '__main__':

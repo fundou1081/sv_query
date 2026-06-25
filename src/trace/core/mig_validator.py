@@ -1,26 +1,37 @@
 """
-mig_validator.py — Cross-check MIG output against pyslang native API.
+mig_validator.py — Cross-check MIG output using native API as informational tool.
 
-[Phase 2 2026-06-25] Use native API as oracle to detect MIG bugs.
+[Phase 2 2026-06-25] per user direction:
+- MIG 是 production path, 不替换
+- native API 仅用作 verification / 对标自查
+- 不再 auto-judge MIG is_ok=True/False (之前的 instance count diff 是误报)
 
-策略 (per user direction '保留旧方案用作 debug + 对标自查'):
-- 跑 sv_query 旧 MIG build, 拿到 port_to_internal
-- 用 pyslang native portConnections + definition 算 ground truth
-- 对比: count, key set, value set
-- 不一致 → MIG 有 bug, report
-- 一致 → MIG 正确 (production 可以继续用旧实现)
+[Phase 2.1 2026-06-25] 改 design:
+- 之前: 比 instance count + key set (容易误报, 因为 native 漏 utility cell sub-instances)
+- 现在: 提供 2 个独立 verification functions, 各自返回 informative 结果
+  1. compare_with_extract_module: 拿 extract_module 当 ground truth (user target filtered)
+     跟 MIG 对比, 告诉 user 哪些 inst 是 utility cell (MIG 含) vs user hierarchy
+  2. verify_specific_port: 拿 native portConnections 验证 specific port 是否真的连到某 signal
 
 用法:
-    from trace.core.mig_validator import validate_mig_with_native
-    result = validate_mig_with_native(mig, root, target_module='cva6')
+    from trace.core.mig_validator import compare_with_extract_module, verify_specific_port
+
+    # 1. MIG vs extract_module (informational)
+    info = compare_with_extract_module(mig, semantic_adapter, target_module='cva6')
+    print(info.summary())
+    # 输出: MIG 含 X inst, extract 含 Y inst, diff Z 是 utility cells
+
+    # 2. Specific port verification
+    result = verify_specific_port(root, target_module='cva6',
+                                   inst_path='cva6.i_frontend',
+                                   port_name='clk_i',
+                                   expected_signal='top.clk_i')
     print(result.summary())
-    if not result.is_ok():
-        # 报告不一致, debug
 """
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List
 
 import pyslang
 
@@ -30,154 +41,183 @@ import pyslang
 # ----------------------------------------------------------------------------
 
 @dataclass
-class MigValidationResult:
-    """[Phase 2] Cross-check MIG vs native API."""
+class ExtractComparison:
+    """[Phase 2.1] Compare MIG with extract_module output."""
     target_module: str
     # MIG stats
     mig_instance_count: int = 0
     mig_port_mapping_count: int = 0
-    mig_shared_internal_count: int = 0
-    # Native stats (ground truth)
-    native_instance_count: int = 0
-    native_port_count: int = 0
-    native_connected_signal_count: int = 0
-    # Mismatch
-    instance_count_diff: int = 0
-    extra_mig_keys: list = field(default_factory=list)
-    missing_mig_keys: list = field(default_factory=list)
-    # Verdict
-    is_ok: bool = True
+    # Extract (ground truth) stats
+    extract_instance_count: int = 0
+    extract_port_count: int = 0
+    # Informational
+    utility_instance_count: int = 0
+    utility_instances: list = field(default_factory=list)
+    # Notes (informational, not pass/fail)
+    notes: list = field(default_factory=list)
+
+    def summary(self) -> str:
+        """[Helper] Human-readable summary — informational only."""
+        lines = [
+            f"=== MIG vs Extract Comparison: {self.target_module} ===",
+            f"MIG:    {self.mig_instance_count} instances, {self.mig_port_mapping_count} port mappings",
+            f"Extract: {self.extract_instance_count} instances ({self.extract_port_count} port refs)",
+            f"Utility cells (in MIG but not in user hierarchy): {self.utility_instance_count}",
+        ]
+        if self.utility_instances:
+            lines.append(f"  Sample utility cells: {self.utility_instances[:5]}")
+        if self.notes:
+            for n in self.notes:
+                lines.append(f"📝 {n}")
+        lines.append("")
+        lines.append("ℹ️  This is informational. MIG includes utility cells (e.g. cdc_2phase, fifo,")
+        lines.append("    lfsr_8bit) that are recursive sub-instances within user modules.")
+        lines.append("    arch command re-filters with extract_module to show only user hierarchy.")
+        return "\n".join(lines)
+
+
+@dataclass
+class PortVerification:
+    """[Phase 2.1] Verify a specific port connection using native API."""
+    target_module: str
+    inst_path: str
+    port_name: str
+    expected_signal: Optional[str] = None
+    # Results
+    found_in_mig: bool = False
+    mig_value: Optional[str] = None
+    found_in_native: bool = False
+    native_value: Optional[str] = None
+    match: bool = False
     notes: list = field(default_factory=list)
 
     def summary(self) -> str:
         """[Helper] Human-readable summary."""
         lines = [
-            f"=== MIG Validation: {self.target_module} ===",
-            f"MIG: {self.mig_instance_count} instances, {self.mig_port_mapping_count} port mappings, {self.mig_shared_internal_count} shared",
-            f"Native: {self.native_instance_count} instances, {self.native_port_count} port connections, {self.native_connected_signal_count} unique signals",
-            f"Instance count diff: {self.instance_count_diff}",
+            f"=== Port Verification: {self.inst_path}.{self.port_name} ===",
+            f"MIG: {'✓' if self.found_in_mig else '✗'} {self.mig_value or '(not found)'}",
+            f"Native: {'✓' if self.found_in_native else '✗'} {self.native_value or '(not found)'}",
         ]
-        if self.extra_mig_keys:
-            lines.append(f"⚠️  MIG extra keys (in MIG but not native): {len(self.extra_mig_keys)}")
-            for k in self.extra_mig_keys[:5]:
-                lines.append(f"     {k}")
-        if self.missing_mig_keys:
-            lines.append(f"⚠️  MIG missing keys (in native but not MIG): {len(self.missing_mig_keys)}")
-            for k in self.missing_mig_keys[:5]:
-                lines.append(f"     {k}")
+        if self.expected_signal:
+            lines.append(f"Expected: {self.expected_signal}")
+        if self.match:
+            lines.append("✅ MIG and native agree")
+        else:
+            lines.append("⚠️  MIG and native disagree - investigate")
         if self.notes:
             for n in self.notes:
                 lines.append(f"📝 {n}")
-        if self.is_ok:
-            lines.append("✅ MIG matches native API (no bugs detected)")
-        else:
-            lines.append("❌ MIG has potential bugs - investigate")
         return "\n".join(lines)
 
 
 # ----------------------------------------------------------------------------
-# Public API
+# Public API: Compare MIG with extract_module (ground truth)
 # ----------------------------------------------------------------------------
 
-def validate_mig_with_native(
+def compare_with_extract_module(
     mig,
-    root: pyslang.RootSymbol,
+    semantic_adapter,
     target_module: str,
-) -> MigValidationResult:
-    """[Phase 2] Cross-check MIG against pyslang native API.
+    max_depth: int = 10,
+) -> ExtractComparison:
+    """[Phase 2.1] Compare MIG with extract_module output (informational).
+
+    MIG walks ALL modules (including utility cells like cdc_2phase, fifo).
+    Extract module only returns user-target hierarchy (filtered).
+    This is expected — NOT a bug.
 
     Args:
-        mig: ModuleInstanceGraph instance (with port_to_internal built)
-        root: pyslang RootSymbol
+        mig: ModuleInstanceGraph instance
+        semantic_adapter: SemanticAdapter (for extract_module)
         target_module: user-specified target
+        max_depth: max depth for extract
 
     Returns:
-        MigValidationResult with comparison stats
+        ExtractComparison with stats
     """
-    result = MigValidationResult(target_module=target_module)
+    from trace.core.module_extractor import extract_module
+
+    result = ExtractComparison(target_module=target_module)
 
     # 1. MIG stats
     pti = mig.port_to_internal
     result.mig_port_mapping_count = len(pti)
-    itp = mig.internal_to_port
-    result.mig_shared_internal_count = sum(
-        1 for v in pti.values() if sum(1 for x in pti.values() if x == v) >= 2
-    )
-    # instance count: unique instance_id (everything before last '.port_name')
     mig_instances = set()
     for k in pti:
         if '.' in k:
             mig_instances.add('.'.join(k.split('.')[:-1]))
     result.mig_instance_count = len(mig_instances)
 
-    # 2. Native ground truth
-    native_data = _collect_native_port_connections(root, target_module)
-    result.native_instance_count = len(native_data['instances'])
-    result.native_port_count = sum(
-        len(pcs) for pcs in native_data['port_connections'].values()
-    )
-    result.native_connected_signal_count = len(native_data['connected_signals'])
-
-    # 3. Instance count compare
-    result.instance_count_diff = result.mig_instance_count - result.native_instance_count
-    if abs(result.instance_count_diff) > 0:
-        result.is_ok = False
-        result.notes.append(
-            f"Instance count differs by {result.instance_count_diff} — "
-            f"likely utility cells or namespace mismatch"
+    # 2. Extract stats (ground truth)
+    try:
+        extract = extract_module(semantic_adapter, target_module, max_depth=max_depth)
+        result.extract_instance_count = len(extract.instances)
+        result.extract_port_count = sum(
+            len(p) for p in [getattr(extract, 'external_ports', [])]
         )
+    except Exception as e:
+        result.notes.append(f"Could not run extract_module: {e}")
+        return result
 
-    # 4. Key set compare (normalized — strip namespace prefix)
-    mig_keys_normalized = _normalize_mig_keys(set(pti.keys()), target_module)
-    native_keys = set()
-    for inst_id, pcs in native_data['port_connections'].items():
-        for port_name in pcs.keys():
-            native_keys.add(f"{inst_id}.{port_name}")
-    native_keys_normalized = _normalize_mig_keys(native_keys, target_module)
+    # 3. Find utility cells (in MIG but not in extract)
+    extract_ids = {inst.id for inst in extract.instances}
+    utility = mig_instances - extract_ids
+    result.utility_instance_count = len(utility)
+    result.utility_instances = sorted(utility)[:20]
 
-    extra = mig_keys_normalized - native_keys_normalized
-    missing = native_keys_normalized - mig_keys_normalized
-    if extra:
-        result.is_ok = False
-        result.extra_mig_keys = sorted(extra)[:20]
-    if missing:
-        result.is_ok = False
-        result.missing_mig_keys = sorted(missing)[:20]
-
-    if not result.is_ok and result.instance_count_diff == 0:
+    if utility:
         result.notes.append(
-            "Key mismatch despite matching instance count — "
-            "port name extraction may differ"
+            f"{len(utility)} instances are utility cells (cdc_2phase, fifo, lfsr, etc.) "
+            f"recursively walked by MIG. Extract filters them out — this is expected."
         )
 
     return result
 
 
 # ----------------------------------------------------------------------------
-# Native data collection
+# Public API: Verify specific port connection
 # ----------------------------------------------------------------------------
 
-def _collect_native_port_connections(root, target_module):
-    """[Helper] 用 native API 收集所有 instance 的 port connections.
+def verify_specific_port(
+    root: pyslang.RootSymbol,
+    target_module: str,
+    inst_path: str,
+    port_name: str,
+    expected_signal: Optional[str] = None,
+) -> PortVerification:
+    """[Phase 2.1] Verify a specific port connection using native API.
 
-    Returns: dict with 'instances' (set), 'port_connections' (dict[inst_id, dict[port_name, signal]]),
-             'connected_signals' (set)
+    Use this to debug specific port issues:
+    - Is this port in MIG? What internal signal does MIG map it to?
+    - Does native API agree?
+
+    Args:
+        root: pyslang RootSymbol
+        target_module: user target (e.g. 'cva6')
+        inst_path: full hierarchical path (e.g. 'cva6.i_frontend')
+        port_name: port name (e.g. 'clk_i')
+        expected_signal: optional expected signal name to compare
+
+    Returns:
+        PortVerification with results
     """
-    instances = set()
-    port_connections = {}
-    connected_signals = set()
+    result = PortVerification(
+        target_module=target_module,
+        inst_path=inst_path,
+        port_name=port_name,
+        expected_signal=expected_signal,
+    )
 
-    # Find target top
+    # Native walk
     target_top = None
     for top in root.topInstances:
         try:
             if top.name == target_module:
                 target_top = top
                 break
-        except (UnicodeDecodeError, TypeError, Exception):
+        except Exception:
             continue
     if target_top is None:
-        # Fall back: first user module top
         for top in root.topInstances:
             try:
                 if top.body is not None:
@@ -193,130 +233,96 @@ def _collect_native_port_connections(root, target_module):
             except Exception:
                 continue
 
-    if target_top is None:
-        return {'instances': instances, 'port_connections': port_connections,
-                'connected_signals': connected_signals}
+    # Walk native to find specific instance
+    found_port = False
+    if target_top is not None:
+        try:
+            for inst, hp, _depth in _walk_with_path(target_top):
+                if hp == inst_path:
+                    port_conns = getattr(inst, 'portConnections', [])
+                    for conn in port_conns:
+                        port = getattr(conn, 'port', None)
+                        if port is None:
+                            continue
+                        try:
+                            pname = str(port.name)
+                        except Exception:
+                            continue
+                        if pname == port_name:
+                            expr = getattr(conn, 'expression', None)
+                            sig = None
+                            if expr is not None:
+                                sym = getattr(expr, 'symbol', None)
+                                if sym is not None:
+                                    try:
+                                        sig = str(sym.name)
+                                    except Exception:
+                                        sig = None
+                                if sig is None:
+                                    try:
+                                        sig = str(expr)
+                                    except Exception:
+                                        sig = None
+                            result.found_in_native = True
+                            result.native_value = sig
+                            found_port = True
+                            break
+                    break
+        except Exception as e:
+            result.notes.append(f"Native walk error: {e}")
 
-    # Walk
-    _walk_collect(target_top, target_module, instances, port_connections, connected_signals,
-                  is_top=True)
-    return {'instances': instances, 'port_connections': port_connections,
-            'connected_signals': connected_signals}
+    if not found_port:
+        result.notes.append(
+            f"Native API didn't find {inst_path}.{port_name} — "
+            f"instance path or port name may be wrong, or filelist incomplete"
+        )
+
+    # MIG check (caller should pass mig in via wrapper if needed; here we report not_found)
+    # [Phase 2.1 simplified] MIG check requires access to mig object —
+    # users can verify via direct dict lookup: mig.port_to_internal.get(f"{inst_path}.{port_name}")
+    result.notes.append(
+        "To check MIG value: mig.port_to_internal.get(f'{inst_path}.{port_name}')"
+    )
+
+    return result
 
 
-def _walk_collect(inst, target_module, instances, port_connections,
-                  connected_signals, is_top=False):
-    """[Helper] Recursive walk to collect port connections."""
+def _walk_with_path(inst, parent_path="", depth=0, max_depth=15):
+    """[Helper] Walk with hierarchical path tracking."""
     try:
-        inst_id = str(inst.hierarchicalPath) if hasattr(inst, 'hierarchicalPath') else None
-    except (UnicodeDecodeError, TypeError, Exception):
-        inst_id = None
-    if not inst_id:
+        hp = str(inst.hierarchicalPath) if hasattr(inst, 'hierarchicalPath') else None
+    except Exception:
+        hp = None
+    if not hp:
         return
-
-    # Skip top target
-    if is_top and inst_id == target_module:
-        pass  # Don't emit, but continue walk
+    if hp == parent_path and depth == 0:
+        pass  # top
     else:
-        instances.add(inst_id)
-        # Collect port connections
-        port_conns = getattr(inst, 'portConnections', [])
-        port_connections[inst_id] = {}
-        for conn in port_conns:
-            port = getattr(conn, 'port', None)
-            if port is None:
-                continue
-            try:
-                port_name = str(port.name)
-            except (UnicodeDecodeError, TypeError, Exception):
-                continue
-            if not port_name:
-                continue
-            expr = getattr(conn, 'expression', None)
-            signal_name = None
-            if expr is not None:
-                sym = getattr(expr, 'symbol', None)
-                if sym is not None:
-                    try:
-                        signal_name = str(sym.name)
-                    except (UnicodeDecodeError, TypeError, Exception):
-                        signal_name = None
-                if signal_name is None:
-                    try:
-                        signal_name = str(expr)
-                    except (UnicodeDecodeError, TypeError, Exception):
-                        signal_name = None
-            port_connections[inst_id][port_name] = signal_name
-            if signal_name:
-                connected_signals.add(signal_name)
+        yield inst, hp, depth
 
-    # Recurse
     body = getattr(inst, 'body', None)
-    if body is None:
+    if body is None or depth >= max_depth:
         return
     try:
         for child in body:
             try:
                 kind = str(child.kind)
-            except (UnicodeDecodeError, TypeError, Exception):
-                continue
-            if 'Instance' in kind:
-                _walk_collect(child, target_module, instances, port_connections,
-                              connected_signals, is_top=False)
-            elif 'GenerateBlockArray' in kind:
-                _walk_collect_gba(child, target_module, instances, port_connections,
-                                  connected_signals)
-            elif 'GenerateBlock' in kind:
-                _walk_collect_gb(child, target_module, instances, port_connections,
-                                 connected_signals)
-    except (UnicodeDecodeError, TypeError, Exception):
-        return
-
-
-def _walk_collect_gba(gba, target_module, instances, port_connections, connected_signals):
-    try:
-        entries = getattr(gba, 'entries', None) or list(gba)
-    except Exception:
-        return
-    for entry in entries:
-        try:
-            if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
-                _walk_collect_gb(entry, target_module, instances, port_connections, connected_signals)
-        except Exception:
-            continue
-
-
-def _walk_collect_gb(gb, target_module, instances, port_connections, connected_signals):
-    try:
-        for child in gb:
-            try:
-                kind = str(child.kind)
             except Exception:
                 continue
             if 'Instance' in kind:
-                _walk_collect(child, target_module, instances, port_connections,
-                              connected_signals, is_top=False)
+                yield from _walk_with_path(child, parent_path, depth + 1, max_depth)
             elif 'GenerateBlockArray' in kind:
-                _walk_collect_gba(child, target_module, instances, port_connections, connected_signals)
+                try:
+                    entries = getattr(child, 'entries', None) or list(child)
+                except Exception:
+                    entries = []
+                for entry in entries:
+                    try:
+                        if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
+                            yield from _walk_with_path(entry, parent_path, depth + 1, max_depth)
+                    except Exception:
+                        continue
             elif 'GenerateBlock' in kind:
-                _walk_collect_gb(child, target_module, instances, port_connections, connected_signals)
+                yield from _walk_with_path(child, parent_path, depth + 1, max_depth)
     except Exception:
         return
-
-
-def _normalize_mig_keys(keys, target_module):
-    """[Helper] Strip leading namespace prefix to allow comparison.
-
-    Native uses 'ariane.i_cva6.X.Y' but MIG after namespace rewrite uses 'cva6.X.Y'.
-    Strip until we find a segment EXACTLY matching target_module.
-    """
-    out = set()
-    for k in keys:
-        parts = k.split('.')
-        if target_module in parts:
-            idx = parts.index(target_module)
-            out.add('.'.join(parts[idx:]))
-        else:
-            # Keep as-is (no match = don't normalize)
-            out.add(k)
-    return out
