@@ -485,3 +485,44 @@ class TestPackedStructFieldExtraction:
         from pathlib import Path as P
         r = parse_pyslang_width("instr_i", file=str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")))
         assert r is not None and r == (32, 31, 0), f"width: {r}"
+
+
+# ============================================================================
+# Phase 4 test: multiline macro (`\` 行尾) 不再触发 re.sub error
+# ============================================================================
+class TestMultilineMacroRegression:
+    """[Bug fix 2026-06-25] cv64a60ax_config_pkg.sv 含 `\\` 行尾 macro,
+    sv_preprocessor re.sub 触发 'bad escape' 错误. 修后不再 fail.
+    """
+
+    def test_cva6_config_pkg_with_multiline_macro(self, tmp_path):
+        """`define` 用 \\ 行尾 (multiline macro) 不再触发 re.sub error."""
+        sv = tmp_path / "test_pkg.sv"
+        sv.write_text("""
+package test_pkg;
+
+  `define IFNDEF_DEFINE(name, value) \\
+      `ifndef name \\
+      `define name value \\
+      `endif
+
+  `define MY_MACRO 32
+
+  `IFNDEF_DEFINE(MY_MACRO, 32)
+
+endpackage
+
+module test_top;
+    logic [31:0] x;
+    assign x = `MY_MACRO;
+endmodule
+""")
+        filelist = tmp_path / "test.f"
+        filelist.write_text(str(sv) + "\n")
+        from cli._common import _build_tracer
+        tracer = _build_tracer(
+            filelist=str(filelist),
+            strict=False,
+            log_level="ERROR",
+        )
+        tracer.build_graph()  # 不应 raise
