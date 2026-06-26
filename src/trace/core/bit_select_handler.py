@@ -85,10 +85,15 @@ class BitSelectHandler:
                             node.width = width
 
         # === 处理 Class 中的属性 ===
+        # [FIX 2026-06-26] pyslang binary garbage in cls.name
         for cls in self.adapter.get_classes():
-            cls_name = getattr(cls, "name", None)
-            if cls_name:
-                cls_name = cls_name.value if hasattr(cls_name, "value") else str(cls_name).strip()
+            cls_name = ""
+            try:
+                raw_name = getattr(cls, "name", None)
+                if raw_name:
+                    cls_name = raw_name.value if hasattr(raw_name, "value") else str(raw_name).strip()
+            except (UnicodeDecodeError, TypeError):
+                continue
             if not cls_name:
                 continue
 
@@ -208,10 +213,15 @@ class BitSelectHandler:
         import re
 
         # 遍历所有类
+        # [FIX 2026-06-26] pyslang binary garbage in cls.name
         for cls in self.adapter.get_classes():
-            cls_name = getattr(cls, "name", None)
-            if cls_name:
-                cls_name = cls_name.value if hasattr(cls_name, "value") else str(cls_name).strip()
+            cls_name = ""
+            try:
+                raw_name = getattr(cls, "name", None)
+                if raw_name:
+                    cls_name = raw_name.value if hasattr(raw_name, "value") else str(raw_name).strip()
+            except (UnicodeDecodeError, TypeError):
+                continue
             if not cls_name:
                 continue
 

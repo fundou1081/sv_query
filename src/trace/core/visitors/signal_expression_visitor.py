@@ -382,9 +382,10 @@ class SignalExpressionVisitor(BaseVisitor):
                     return self._safe_str(_name).strip()
 
         # [FIX] IntegerLiteralExpression: 直接返回字符串表示
+        # [FIX 2026-06-26] use _safe_str to handle pyslang binary garbage
         kind = getattr(node, "kind", None)
         if kind and "IntegerLiteral" in str(kind):
-            return str(node).strip()
+            return self._safe_str(node).strip()
 
         return None
 
@@ -6383,9 +6384,10 @@ class SignalExpressionVisitor(BaseVisitor):
         elif "IdentifierName" in kind_str:
             ident = getattr(node, "identifier", None)
             if ident:
-                val = getattr(ident, "value", None)
+                # [FIX 2026-06-26] use _safe_str
+                val = self._safe_str(getattr(ident, "value", None)).strip()
                 if val:
-                    parts.append(str(val).strip())
+                    parts.append(val)
 
         return parts
 
