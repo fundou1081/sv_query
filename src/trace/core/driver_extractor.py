@@ -405,6 +405,70 @@ class DriverExtractor:
                     )
                 )
 
+    def _create_net_alias_edges(self, module, result, module_name):
+        """[REFACTOR 2026-06-26] 处理 alias 语句: alias b = a; → 创建 DRIVER 边 a → b."""
+        for alias in self.adapter.get_net_aliases(module):
+            refs = getattr(alias, "netReferences", None)
+            if not refs or len(refs) < 2:
+                continue
+            # refs[0] = target (b), refs[1] = source (a)
+            target_name = self._extract_alias_ref_name(refs[0])
+            source_name = self._extract_alias_ref_name(refs[1])
+            if not target_name or not source_name:
+                continue
+            target_id = f"{module_name}.{target_name}"
+            source_id = f"{module_name}.{source_name}"
+            self._ensure_signal_node(result, source_id, source_name, module_name)
+            self._ensure_signal_node(result, target_id, target_name, module_name)
+            result.edges.append(
+                TraceEdge(src=source_id, dst=target_id, kind=EdgeKind.DRIVER, assign_type="alias")
+            )
+
+    def _extract_alias_ref_name(self, ref_expr) -> str | None:
+        """[REFACTOR 2026-06-26] 从 alias ref expr 提取 .symbol.name (None if missing)."""
+        if hasattr(ref_expr, "symbol") and hasattr(ref_expr.symbol, "name"):
+            return str(ref_expr.symbol.name)
+        return None
+
+    def _create_net_decl_edges(self, module, result, module_name, port_names):
+        """[REFACTOR 2026-06-26] 处理带初始化器的 Net 声明: wire X = expr; → 创建 DRIVER 边."""
+        for net_decl in self.adapter.get_net_declarations(module):
+            # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
+            # 访问 .name 时可能触发 utf-8 转换 (escape 序列), 需要 try/except
+            try:
+                raw_name = getattr(net_decl, "name", "")
+                lhs_name = self.adapter.clean_name(raw_name or "")
+            except (UnicodeDecodeError, TypeError):
+                lhs_name = "<id:non-utf8>"
+            if not lhs_name or lhs_name in port_names:
+                continue
+            try:
+                init = getattr(net_decl, "initializer", None)
+            except (UnicodeDecodeError, TypeError):
+                init = None
+            if init is None:
+                continue
+            lhs_id = f"{module_name}.{lhs_name}"
+            self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
+            rhs_expr_str = self._get_signal(init) or ""
+            rhs_signals = self._get_all_signals(init) if init else []
+            for src_name in rhs_signals:
+                src_id = f"{module_name}.{src_name}"
+                self._ensure_signal_node(result, src_id, src_name, module_name)
+                if src_id != lhs_id:
+                    result.edges.append(
+                        TraceEdge(src=src_id, dst=lhs_id, kind=EdgeKind.DRIVER,
+                                 assign_type="continuous", expression=rhs_expr_str)
+                    )
+
+    def _ensure_signal_node(self, result, node_id, name, module_name):
+        """[REFACTOR 2026-06-26] 确保 result.nodes 包含 node_id 的 SIGNAL TraceNode."""
+        if node_id in [n.id for n in result.nodes]:
+            return
+        result.nodes.append(
+            TraceNode(id=node_id, name=name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
+        )
+
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
@@ -433,98 +497,9 @@ class DriverExtractor:
             port_names = self._collect_port_names(module)
             self._create_var_nodes(module, result, module_name, port_names)
 
-            # [FIX] alias 语句: alias b = a; -> b 驱动源为 a
-            # 处理 NetAlias,创建 DRIVER 边: a -> b
-            for alias in self.adapter.get_net_aliases(module):
-                refs = getattr(alias, "netReferences", None)
-                if refs and len(refs) >= 2:
-                    # refs[0] = target (b), refs[1] = source (a)
-                    target_expr = refs[0]
-                    source_expr = refs[1]
-
-                    # 获取 target 信号名 (b)
-                    target_name = None
-                    if hasattr(target_expr, "symbol") and hasattr(target_expr.symbol, "name"):
-                        target_name = str(target_expr.symbol.name)
-
-                    # 获取 source 信号名 (a)
-                    source_name = None
-                    if hasattr(source_expr, "symbol") and hasattr(source_expr.symbol, "name"):
-                        source_name = str(source_expr.symbol.name)
-
-                    if target_name and source_name:
-                        target_id = f"{module_name}.{target_name}"
-                        source_id = f"{module_name}.{source_name}"
-
-                        # 确保 source 节点存在
-                        if source_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(
-                                TraceNode(
-                                    id=source_id,
-                                    name=source_name,
-                                    module=module_name,
-                                    kind=NodeKind.SIGNAL,
-                                    width=(1, 0),
-                                )
-                            )
-
-                        # 确保 target 节点存在
-                        if target_id not in [n.id for n in result.nodes]:
-                            result.nodes.append(
-                                TraceNode(
-                                    id=target_id,
-                                    name=target_name,
-                                    module=module_name,
-                                    kind=NodeKind.SIGNAL,
-                                    width=(1, 0),
-                                )
-                            )
-
-                        # 创建 DRIVER 边: source -> target
-                        result.edges.append(
-                            TraceEdge(src=source_id, dst=target_id, kind=EdgeKind.DRIVER, assign_type="alias")
-                        )
-
-            # [FIX Issue 9] 处理带初始化器的 Net 声明: wire X = expr;
-            # 这些不是 ContinuousAssign, 但语义上等价于 assign X = expr
-            # verilog-axi 的 axi_interconnect.v 在 line 429/450 大量使用这种语法
-            for net_decl in self.adapter.get_net_declarations(module):
-                # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
-                # 访问 .name 时可能触发 utf-8 转换 (escape 序列), 需要 try/except
-                try:
-                    raw_name = getattr(net_decl, "name", "")
-                    lhs_name = self.adapter.clean_name(raw_name or "")
-                except (UnicodeDecodeError, TypeError):
-                    lhs_name = "<id:non-utf8>"
-                if not lhs_name or lhs_name in port_names:
-                    continue
-                try:
-                    init = getattr(net_decl, "initializer", None)
-                except (UnicodeDecodeError, TypeError):
-                    init = None
-                if init is None:
-                    continue
-                lhs_id = f"{module_name}.{lhs_name}"
-                # 确保 LHS 节点存在
-                if lhs_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(
-                        TraceNode(id=lhs_id, name=lhs_name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
-                    )
-                # 获取原始表达式字符串供 DriverInfo 使用
-                rhs_expr_str = self._get_signal(init) or ""
-                # 提取 RHS 中的所有信号, 为每个创建 DRIVER 边
-                rhs_signals = self._get_all_signals(init) if init else []
-                for src_name in rhs_signals:
-                    src_id = f"{module_name}.{src_name}"
-                    if src_id not in [n.id for n in result.nodes]:
-                        result.nodes.append(
-                            TraceNode(id=src_id, name=src_name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
-                        )
-                    if src_id != lhs_id:
-                        result.edges.append(
-                            TraceEdge(src=src_id, dst=lhs_id, kind=EdgeKind.DRIVER,
-                                     assign_type="continuous", expression=rhs_expr_str)
-                        )
+            # [REFACTOR 2026-06-26 B-Phase 3-4] 抽 _create_net_alias_edges + _create_net_decl_edges
+            self._create_net_alias_edges(module, result, module_name)
+            self._create_net_decl_edges(module, result, module_name, port_names)
 
             # assign 语句
             for assign in self.adapter.get_assignments(module):
