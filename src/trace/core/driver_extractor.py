@@ -828,6 +828,239 @@ class DriverExtractor:
                         )
                     )
 
+    def _create_always_edges(self, module, result, module_name):
+        """[REFACTOR 2026-06-26] 处理 always 块 (含 always_ff/always_comb/always_latch).
+
+        遍历 always 块的语句, 处理:
+        - INVOCATION: 调 _handle_invocation
+        - Assignment + InvocationExpression RHS: 调 _handle_invocation
+        - 普通 Assignment: 解析 lhs/rhs, 创建 DRIVER edge + CLOCK/RESET edge
+        """
+        for always in self.adapter.get_always_blocks(module):
+            # [铁律29] 使用 _collect_stmts_with_context 包装方法
+            # 内部使用 StatementCollectorVisitor
+            stmts_ctx = self._collect_stmts_with_context(always)
+            for item in stmts_ctx:
+                # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
+                stmt, ctx, item_type = item
+
+                # 如果是 invocation,暂不处理赋值
+                if item_type == ItemType.INVOCATION:
+                    # [NEW] 处理 task/function 调用
+                    self._handle_invocation(stmt, ctx, module, module_name, result)
+                    continue
+
+                # [FIX] 检测 RHS 是否为函数调用InvocationExpression
+                rhs_kind = str(getattr(stmt, "kind", None)) if stmt else ""
+                if "Assignment" in rhs_kind:
+                    raw_rhs = getattr(stmt, "right", None) or getattr(stmt, "left", None)
+                    rhs_kind = str(getattr(raw_rhs, "kind", None)) if raw_rhs else ""
+                    if "Invocation" in rhs_kind or "Call" in rhs_kind:
+                        # 函数调用 RHS: 提取 lhs 并调用 _handle_invocation
+                        raw_lhs = getattr(stmt, "left", None)
+                        lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
+                        self._handle_invocation(raw_rhs, ctx, module, module_name, result, lhs_name)
+                        continue
+
+                lhs, rhs, rhs_expr = self._parse_assign(stmt)
+                if lhs and (rhs or rhs_expr):
+                    # [FIX] 检测 RHS 是否为函数调用
+                    rhs_kind = str(getattr(rhs, "kind", None)) if rhs else ""
+                    if "Invocation" in rhs_kind or "Call" in rhs_kind:
+                        # 函数调用: 调用 _handle_invocation 处理
+                        self._handle_invocation(rhs, ctx, module, module_name, result, lhs)
+                        continue
+                    # Only upgrade to REG if there's a clock context (always_ff)
+                    is_always_ff = bool(ctx.get("clock"))
+                    dst_node_id = f"{module_name}.{lhs}"
+                    existing = next((n for n in result.nodes if n.id == dst_node_id), None)
+                    if existing:
+                        if is_always_ff:
+                            if existing.kind == NodeKind.SIGNAL:
+                                existing.kind = NodeKind.REG
+                            elif existing.kind in (NodeKind.PORT_OUT, NodeKind.PORT_IN):
+                                was_port = existing.is_port
+                                existing.kind = NodeKind.REG
+                                existing.is_port = was_port
+                    else:
+                        kind = NodeKind.REG if is_always_ff else NodeKind.SIGNAL
+                        result.nodes.append(
+                            TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=kind, width=(1, 0))
+                        )
+                    # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
+                    rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+                    if not rhs_signals:
+                        rhs_signals = [rhs]
+                    # [P0-2] 计算完整表达式字符串
+                    if rhs_expr:
+                        try:
+                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                        except (UnicodeDecodeError, TypeError):
+                            expr_str = "<expr:non-utf8>"
+                    else:
+                        expr_str = rhs or ""
+
+                    # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
+                    has_conditional = False
+                    check_expr = rhs_expr
+                    for _ in range(5):  # 解包多层包装
+                        if check_expr is None:
+                            break
+                        rhs_kind_name = getattr(check_expr, "kind", None)
+                        rhs_kind_str = (
+                            rhs_kind_name.name if hasattr(rhs_kind_name, "name")
+                            else str(rhs_kind_name) if rhs_kind_name else ""
+                        )
+                        if "ConditionalOp" in rhs_kind_str:
+                            has_conditional = True
+                            break
+                        operand = getattr(check_expr, "operand", None)
+                        if operand is None or operand is check_expr:
+                            break
+                        check_expr = operand
+
+                    if has_conditional:
+                        signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+                        for sig_rhs_name, sig_cond in signal_conditions:
+                            if not sig_rhs_name:
+                                continue
+                            bit_slice = ""
+                            if "[" in sig_rhs_name and "]" in sig_rhs_name:
+                                start = sig_rhs_name.index("[")
+                                bit_slice = sig_rhs_name[start:]
+                            if sig_rhs_name and not sig_rhs_name[0].isalpha() and not sig_rhs_name.startswith("_"):
+                                result.edges.append(
+                                    self._edge_factory.make_edge(
+                                        src=sig_rhs_name,
+                                        dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER,
+                                        assign_type="nonblocking",
+                                        expression=sig_rhs_name,
+                                        bit_slice=bit_slice,
+                                        clock_domain=ctx.get("clock", ""),
+                                        sig_cond=sig_cond,
+                                    )
+                                )
+                            else:
+                                src_node_id = f"{module_name}.{sig_rhs_name}"
+                                if src_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(
+                                        TraceNode(
+                                            id=src_node_id,
+                                            name=sig_rhs_name,
+                                            module=module_name,
+                                            kind=NodeKind.SIGNAL,
+                                            width=(1, 0),
+                                        )
+                                    )
+                                result.edges.append(
+                                    self._edge_factory.make_edge(
+                                        src=src_node_id,
+                                        dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER,
+                                        assign_type="nonblocking",
+                                        expression=expr_str,
+                                        bit_slice=bit_slice,
+                                        clock_domain=ctx.get("clock", ""),
+                                        sig_cond=sig_cond,
+                                    )
+                                )
+                    else:
+                        for rhs_name in rhs_signals:
+                            if not rhs_name:
+                                continue
+                            bit_slice = ""
+                            if "[" in rhs_name and "]" in rhs_name:
+                                start = rhs_name.index("[")
+                                bit_slice = rhs_name[start:]
+                            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+                                result.edges.append(
+                                    self._edge_factory.make_edge(
+                                        src=rhs_name,
+                                        dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER,
+                                        assign_type="nonblocking",
+                                        bit_slice=bit_slice,
+                                        expression=rhs_name,
+                                        ctx=ctx,
+                                    )
+                                )
+                            else:
+                                src_node_id = f"{module_name}.{rhs_name}"
+                                if src_node_id not in [n.id for n in result.nodes]:
+                                    result.nodes.append(
+                                        TraceNode(
+                                            id=src_node_id,
+                                            name=rhs_name,
+                                            module=module_name,
+                                            kind=NodeKind.SIGNAL,
+                                            width=(1, 0),
+                                        )
+                                    )
+                                result.edges.append(
+                                    self._edge_factory.make_edge(
+                                        src=src_node_id,
+                                        dst=dst_node_id,
+                                        kind=EdgeKind.DRIVER,
+                                        assign_type="nonblocking",
+                                        bit_slice=bit_slice,
+                                        expression=expr_str,
+                                        ctx=ctx,
+                                    )
+                                )
+
+                    # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
+                    clock_signal = ctx.get("clock", "")
+                    if clock_signal:
+                        clock_node_id = f"{module_name}.{clock_signal}"
+                        if clock_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(
+                                TraceNode(
+                                    id=clock_node_id,
+                                    name=clock_signal,
+                                    module=module_name,
+                                    kind=NodeKind.SIGNAL,
+                                    width=(1, 0),
+                                )
+                            )
+                        result.edges.append(
+                            self._edge_factory.make_edge(
+                                src=clock_node_id,
+                                dst=dst_node_id,
+                                expression="",  # CLOCK 边无 expression
+                                kind=EdgeKind.CLOCK,
+                                assign_type="nonblocking",
+                                clock_domain=clock_signal,
+                                ctx=ctx,
+                            )
+                        )
+
+                    # [NEW] RESET 边: always_ff 块内创建 rst -> dst (RESET) 边
+                    reset_signal = ctx.get("reset", "")
+                    if reset_signal:
+                        reset_node_id = f"{module_name}.{reset_signal}"
+                        if reset_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(
+                                TraceNode(
+                                    id=reset_node_id,
+                                    name=reset_signal,
+                                    module=module_name,
+                                    kind=NodeKind.SIGNAL,
+                                    width=(1, 0),
+                                )
+                            )
+                        result.edges.append(
+                            self._edge_factory.make_edge(
+                                src=reset_node_id,
+                                dst=dst_node_id,
+                                expression="",  # RESET 边无 expression
+                                kind=EdgeKind.RESET,
+                                assign_type="nonblocking",
+                                clock_domain=clock_signal,
+                                ctx=ctx,
+                            )
+                        )
+
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
@@ -863,249 +1096,8 @@ class DriverExtractor:
             # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
             self._create_assign_edges(module, result, module_name)
 
-            # always 块 - [铁律7金标准] + 语义上下文
-            for always in self.adapter.get_always_blocks(module):
-                # [铁律29] 使用 _collect_stmts_with_context 包装方法
-                # 内部使用 StatementCollectorVisitor
-                stmts_ctx = self._collect_stmts_with_context(always)
-                for item in stmts_ctx:
-                    # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
-                    stmt, ctx, item_type = item
-
-                    # 如果是 invocation,暂不处理赋值
-                    if item_type == ItemType.INVOCATION:
-                        # [NEW] 处理 task/function 调用
-                        self._handle_invocation(stmt, ctx, module, module_name, result)
-                        continue
-
-                    # [FIX] 检测 RHS 是否为函数调用InvocationExpression
-                    rhs_kind = str(getattr(stmt, "kind", None)) if stmt else ""
-                    if "Assignment" in rhs_kind:
-                        raw_rhs = getattr(stmt, "right", None) or getattr(stmt, "left", None)
-                        rhs_kind = str(getattr(raw_rhs, "kind", None)) if raw_rhs else ""
-                        if "Invocation" in rhs_kind or "Call" in rhs_kind:
-                            # 函数调用 RHS: 提取 lhs 并调用 _handle_invocation
-                            raw_lhs = getattr(stmt, "left", None)
-                            lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
-                            self._handle_invocation(raw_rhs, ctx, module, module_name, result, lhs_name)
-                            continue
-
-                    lhs, rhs, rhs_expr = self._parse_assign(stmt)
-                    if lhs and (rhs or rhs_expr):
-                        # [FIX] 检测 RHS 是否为函数调用
-                        rhs_kind = str(getattr(rhs, "kind", None)) if rhs else ""
-                        if "Invocation" in rhs_kind or "Call" in rhs_kind:
-                            # 函数调用: 调用 _handle_invocation 处理
-                            self._handle_invocation(rhs, ctx, module, module_name, result, lhs)
-                            continue
-                        # Only upgrade to REG if there's a clock context (always_ff)
-                        is_always_ff = bool(ctx.get("clock"))
-                        dst_node_id = f"{module_name}.{lhs}"
-                        existing = next((n for n in result.nodes if n.id == dst_node_id), None)
-                        if existing:
-                            if is_always_ff:
-                                if existing.kind == NodeKind.SIGNAL:
-                                    existing.kind = NodeKind.REG
-                                elif existing.kind in (NodeKind.PORT_OUT, NodeKind.PORT_IN):
-                                    was_port = existing.is_port
-                                    existing.kind = NodeKind.REG
-                                    existing.is_port = was_port
-                        else:
-                            kind = NodeKind.REG if is_always_ff else NodeKind.SIGNAL
-                            result.nodes.append(
-                                TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=kind, width=(1, 0))
-                            )
-                        # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
-                        rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
-
-                        # [BUG-FIX] 检查是否为嵌套三元表达式 (同连续赋值逻辑)
-                        has_conditional = False
-                        check_expr = rhs_expr
-                        for _ in range(5):  # 解包多层包装
-                            if check_expr is None:
-                                break
-                            rhs_kind_name = getattr(check_expr, "kind", None)
-                            rhs_kind_str = (
-                                rhs_kind_name.name
-                                if hasattr(rhs_kind_name, "name")
-                                else str(rhs_kind_name)
-                                if rhs_kind_name
-                                else ""
-                            )
-                            if "ConditionalOp" in rhs_kind_str:
-                                has_conditional = True
-                                break
-                            # 解包一层 (ConversionExpression / Conversion)
-                            operand = getattr(check_expr, "operand", None)
-                            if operand is None or operand is check_expr:
-                                break
-                            check_expr = operand
-
-                        if not rhs_signals:
-                            rhs_signals = [rhs]
-                        # [P0-2] 计算完整表达式字符串
-                        # 使用 SignalExpressionVisitor 获取可读的表达式字符串
-                        if rhs_expr:
-                            try:
-                                expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
-                            except (UnicodeDecodeError, TypeError):
-                                expr_str = "<expr:non-utf8>"
-                        else:
-                            expr_str = rhs or ""
-
-                        # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
-                        if has_conditional:
-                            signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
-                            for sig_rhs_name, sig_cond in signal_conditions:
-                                if not sig_rhs_name:
-                                    continue
-                                bit_slice = ""
-                                if "[" in sig_rhs_name and "]" in sig_rhs_name:
-                                    start = sig_rhs_name.index("[")
-                                    bit_slice = sig_rhs_name[start:]
-
-                                if sig_rhs_name and not sig_rhs_name[0].isalpha() and not sig_rhs_name.startswith("_"):
-                                    result.edges.append(
-                                        self._edge_factory.make_edge(
-                                            src=sig_rhs_name,
-                                            dst=dst_node_id,
-                                            kind=EdgeKind.DRIVER,
-                                            assign_type="nonblocking",
-                                            expression=sig_rhs_name,
-                                            bit_slice=bit_slice,
-                                            # [P1 cycle 3] sig_cond + clock_domain 混合:
-                                            # clock 从 ctx 读, condition 来自 sig_cond
-                                            clock_domain=ctx.get("clock", ""),
-                                            sig_cond=sig_cond,
-                                        )
-                                    )
-                                else:
-                                    src_node_id = f"{module_name}.{sig_rhs_name}"
-                                    if src_node_id not in [n.id for n in result.nodes]:
-                                        result.nodes.append(
-                                            TraceNode(
-                                                id=src_node_id,
-                                                name=sig_rhs_name,
-                                                module=module_name,
-                                                kind=NodeKind.SIGNAL,
-                                                width=(1, 0),
-                                            )
-                                        )
-                                    result.edges.append(
-                                        self._edge_factory.make_edge(
-                                            src=src_node_id,
-                                            dst=dst_node_id,
-                                            kind=EdgeKind.DRIVER,
-                                            assign_type="nonblocking",
-                                            expression=expr_str,
-                                            bit_slice=bit_slice,
-                                            # [P1 cycle 3] sig_cond + clock_domain 混合:
-                                            # clock 从 ctx 读, condition 来自 sig_cond
-                                            clock_domain=ctx.get("clock", ""),
-                                            sig_cond=sig_cond,
-                                        )
-                                    )
-                        else:
-                            for rhs_name in rhs_signals:
-                                if not rhs_name:
-                                    continue
-                                # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
-                                bit_slice = ""
-                                if "[" in rhs_name and "]" in rhs_name:
-                                    start = rhs_name.index("[")
-                                    bit_slice = rhs_name[start:]
-                                # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
-                                # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
-                                if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                                    # 字面量:只用边连接,不做为独立节点
-                                    result.edges.append(
-                                        self._edge_factory.make_edge(
-                                            src=rhs_name,
-                                            dst=dst_node_id,
-                                            kind=EdgeKind.DRIVER,
-                                            assign_type="nonblocking",
-                                            bit_slice=bit_slice,  # 字面量用自己
-                                            expression=rhs_name,
-                                            ctx=ctx,
-                                        )
-                                    )
-                                else:
-                                    src_node_id = f"{module_name}.{rhs_name}"
-                                    if src_node_id not in [n.id for n in result.nodes]:
-                                        result.nodes.append(
-                                            TraceNode(
-                                                id=src_node_id,
-                                                name=rhs_name,
-                                                module=module_name,
-                                                kind=NodeKind.SIGNAL,
-                                                width=(1, 0),
-                                            )
-                                        )
-                                    result.edges.append(
-                                        self._edge_factory.make_edge(
-                                            src=src_node_id,
-                                            dst=dst_node_id,
-                                            kind=EdgeKind.DRIVER,
-                                            assign_type="nonblocking",
-                                            bit_slice=bit_slice,
-                                            expression=expr_str,
-                                            ctx=ctx,
-                                        )
-                                    )
-
-                            # [NEW] CLOCK 边: always_ff 块内创建 clk -> dst (CLOCK) 边
-                            clock_signal = ctx.get("clock", "")
-                            if clock_signal:
-                                clock_node_id = f"{module_name}.{clock_signal}"
-                                if clock_node_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(
-                                        TraceNode(
-                                            id=clock_node_id,
-                                            name=clock_signal,
-                                            module=module_name,
-                                            kind=NodeKind.SIGNAL,
-                                            width=(1, 0),
-                                        )
-                                    )
-                                result.edges.append(
-                                    self._edge_factory.make_edge(
-                                        src=clock_node_id,
-                                        dst=dst_node_id,
-                                        expression="",  # CLOCK 边无 expression
-                                        kind=EdgeKind.CLOCK,
-                                        assign_type="nonblocking",
-                                        # [P1 cycle 2] 显式传 clock_domain
-                                        clock_domain=clock_signal,
-                                        ctx=ctx,
-                                    )
-                                )
-
-                            # [NEW] RESET 边: always_ff 块内创建 rst -> dst (RESET) 边
-                            reset_signal = ctx.get("reset", "")
-                            if reset_signal:
-                                reset_node_id = f"{module_name}.{reset_signal}"
-                                if reset_node_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(
-                                        TraceNode(
-                                            id=reset_node_id,
-                                            name=reset_signal,
-                                            module=module_name,
-                                            kind=NodeKind.SIGNAL,
-                                            width=(1, 0),
-                                        )
-                                    )
-                                result.edges.append(
-                                    self._edge_factory.make_edge(
-                                        src=reset_node_id,
-                                        dst=dst_node_id,
-                                        expression="",  # RESET 边无 expression
-                                        kind=EdgeKind.RESET,
-                                        assign_type="nonblocking",
-                                        # [P1 cycle 2] 显式传 clock_domain
-                                        clock_domain=clock_signal,
-                                        ctx=ctx,
-                                    )
-                                )
+            # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
+            self._create_always_edges(module, result, module_name)
 
         # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
         # 一次性后处理比每个创建点都填更简洁
