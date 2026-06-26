@@ -1362,127 +1362,175 @@ class DriverExtractor:
             result: TraceResult 用于收集节点和边
             lhs_name: 可选,函数调用的目标信号名(ContinuousAssign 的 LHS)
         """
-        try:
-            # 获取调用名称
-            # Semantic AST: CallExpression uses .subroutine or .subroutineName
-            # SyntaxTree: CallExpression uses .left
-            callee = getattr(invocation, "left", None)
-            call_name = None
-            if callee:
-                call_name = str(callee).strip()
+        call_info = self._parse_invocation_call(invocation)
+        if not call_info:
+            return
+        call_name, call_args, named_args = call_info
+        task_def = self._find_task_definition(module, call_name)
+        if not task_def:
+            return
+        # [HANDOFF] def_params 由 _create_invocation_edges 内部根据 task kind 计算
+        self._create_invocation_edges(
+            invocation, ctx, module, module_name, result, lhs_name,
+            call_name, call_args, named_args, task_def,
+        )
+
+    def _parse_invocation_call(self, invocation) -> tuple | None:
+        """[REFACTOR 2026-06-26] 解析 invocation → (call_name, call_args, named_args).
+
+        Returns None if call_name / args 缺失.
+        """
+
+        """
+        处理 task/function 调用
+        建立参数映射并添加边
+
+        Args:
+        invocation: InvocationExpression AST 节点
+        ctx: 上下文(时钟、复位等)
+        module: 模块 AST 节点
+        module_name: 模块名
+        result: TraceResult 用于收集节点和边
+        lhs_name: 可选,函数调用的目标信号名(ContinuousAssign 的 LHS)
+        """
+        # 获取调用名称
+        # Semantic AST: CallExpression uses .subroutine or .subroutineName
+        # SyntaxTree: CallExpression uses .left
+        callee = getattr(invocation, "left", None)
+        call_name = None
+        if callee:
+            call_name = str(callee).strip()
+        if not call_name:
+            # Try Semantic AST path: .subroutineName or .subroutine
+            call_name = getattr(invocation, "subroutineName", None)
             if not call_name:
-                # Try Semantic AST path: .subroutineName or .subroutine
-                call_name = getattr(invocation, "subroutineName", None)
-                if not call_name:
-                    subroutine = getattr(invocation, "subroutine", None)
-                    if subroutine:
-                        call_name = getattr(subroutine, "name", None)
-                if call_name:
-                    call_name = str(call_name).strip()
-            if not call_name:
-                return
+                subroutine = getattr(invocation, "subroutine", None)
+                if subroutine:
+                    call_name = getattr(subroutine, "name", None)
+            if call_name:
+                call_name = str(call_name).strip()
+        if not call_name:
+            return None
 
-            # 获取调用参数 (OrderedArgument 或 NamedArgument 列表)
-            args_node = getattr(invocation, "arguments", None)
-            if args_node is None:
-                return
+        # 获取调用参数 (OrderedArgument 或 NamedArgument 列表)
+        args_node = getattr(invocation, "arguments", None)
+        if args_node is None:
+            return None
 
-            call_args = []  # 位置参数列表
-            named_args = {}  # 命名参数字典 {name: signal}
+        call_args = []  # 位置参数列表
+        named_args = {}  # 命名参数字典 {name: signal}
 
-            # Semantic AST: CallExpression.arguments is a list of Expressions
-            # SyntaxTree: arguments is an ArgumentListSyntax with .parameters
-            if hasattr(args_node, "parameters"):
-                # SyntaxTree path
-                params = getattr(args_node, "parameters", [])
-                for arg in params:
-                    arg_kind = str(getattr(arg, "kind", ""))
-                    if "OrderedArgument" in arg_kind:
-                        expr = getattr(arg, "expr", None)
-                        if expr:
-                            arg_name = self._get_signal(expr)
-                            if arg_name:
-                                call_args.append(arg_name.strip())
-                    elif "NamedArgument" in arg_kind:
-                        name = getattr(arg, "name", None)
-                        expr = getattr(arg, "expr", None)
-                        if name and expr:
-                            name_str = str(name).strip()
-                            arg_name = self._get_signal(expr)
-                            if arg_name:
-                                named_args[name_str] = arg_name.strip()
-            else:
-                # Semantic AST path: arguments is a list of Expressions
-                # Each expression can be:
-                #   - NamedValueExpression: simple signal reference like a
-                #   - AssignmentExpression: inout/output argument like c = <signal>
-                #   - EmptyArgument: no value passed
-                for expr in args_node:
-                    if expr is None:
-                        continue
-                    kind_str = str(getattr(expr, "kind", ""))
-                    if "NamedValue" in kind_str:
-                        # Simple signal reference (input)
+        # Semantic AST: CallExpression.arguments is a list of Expressions
+        # SyntaxTree: arguments is an ArgumentListSyntax with .parameters
+        if hasattr(args_node, "parameters"):
+            # SyntaxTree path
+            params = getattr(args_node, "parameters", [])
+            for arg in params:
+                arg_kind = str(getattr(arg, "kind", ""))
+                if "OrderedArgument" in arg_kind:
+                    expr = getattr(arg, "expr", None)
+                    if expr:
                         arg_name = self._get_signal(expr)
                         if arg_name:
                             call_args.append(arg_name.strip())
-                    elif "Assignment" in kind_str:
-                        # Output/inout argument - the left side is the signal name
-                        lhs = getattr(expr, "left", None)
-                        if lhs:
-                            # Handle nested assignments like c = some_expr
-                            while hasattr(lhs, "kind") and "Assignment" in str(lhs.kind):
-                                lhs = getattr(lhs, "left", None)
-                            if lhs and hasattr(lhs, "kind") and "NamedValue" in str(lhs.kind):
-                                arg_name = self._get_signal(lhs)
-                                if arg_name:
-                                    call_args.append(arg_name.strip())
-                        rhs = getattr(expr, "right", None)
-                        if rhs and hasattr(rhs, "kind") and "NamedValue" in str(rhs.kind):
-                            arg_name = self._get_signal(rhs)
-                            if arg_name:
-                                call_args.append(arg_name.strip())
-                    elif "Empty" not in kind_str:
-                        # Other expression types - try to extract signal anyway
+                elif "NamedArgument" in arg_kind:
+                    name = getattr(arg, "name", None)
+                    expr = getattr(arg, "expr", None)
+                    if name and expr:
+                        name_str = str(name).strip()
                         arg_name = self._get_signal(expr)
                         if arg_name:
+                            named_args[name_str] = arg_name.strip()
+        else:
+            # Semantic AST path: arguments is a list of Expressions
+            # Each expression can be:
+            #   - NamedValueExpression: simple signal reference like a
+            #   - AssignmentExpression: inout/output argument like c = <signal>
+            #   - EmptyArgument: no value passed
+            for expr in args_node:
+                if expr is None:
+                    continue
+                kind_str = str(getattr(expr, "kind", ""))
+                if "NamedValue" in kind_str:
+                    # Simple signal reference (input)
+                    arg_name = self._get_signal(expr)
+                    if arg_name:
+                        call_args.append(arg_name.strip())
+                elif "Assignment" in kind_str:
+                    # Output/inout argument - the left side is the signal name
+                    lhs = getattr(expr, "left", None)
+                    if lhs:
+                        # Handle nested assignments like c = some_expr
+                        while hasattr(lhs, "kind") and "Assignment" in str(lhs.kind):
+                            lhs = getattr(lhs, "left", None)
+                        if lhs and hasattr(lhs, "kind") and "NamedValue" in str(lhs.kind):
+                            arg_name = self._get_signal(lhs)
+                            if arg_name:
+                                call_args.append(arg_name.strip())
+                    rhs = getattr(expr, "right", None)
+                    if rhs and hasattr(rhs, "kind") and "NamedValue" in str(rhs.kind):
+                        arg_name = self._get_signal(rhs)
+                        if arg_name:
                             call_args.append(arg_name.strip())
+                elif "Empty" not in kind_str:
+                    # Other expression types - try to extract signal anyway
+                    arg_name = self._get_signal(expr)
+                    if arg_name:
+                        call_args.append(arg_name.strip())
+        return call_name, call_args, named_args
 
-            # 查找 task 定义 - 在 module 中查找
-            task_def = None
-            for task in self.adapter.get_task_declarations(module):
-                if self.adapter.get_task_name(task) == call_name:
-                    task_def = task
+
+    def _find_task_definition(self, module, call_name) -> tuple:
+        """[REFACTOR 2026-06-26] 找 task/function 定义.
+
+        Returns (task_def, def_params). Both may be None/empty.
+        """
+        # 查找 task 定义 - 在 module 中查找
+        task_def = None
+        for task in self.adapter.get_task_declarations(module):
+            if self.adapter.get_task_name(task) == call_name:
+                task_def = task
+                break
+
+        if not task_def:
+            # 查找 function 定义
+            for func in self.adapter.get_function_declarations(module):
+                if self.adapter.get_function_name(func) == call_name:
+                    task_def = func
                     break
 
-            if not task_def:
-                # 查找 function 定义
-                for func in self.adapter.get_function_declarations(module):
-                    if self.adapter.get_function_name(func) == call_name:
-                        task_def = func
+        if not task_def:
+            # [FIX] CU 级别函数: 在 parser.trees 中搜索 CompilationUnit 级别的函数
+            for _fname, tree in self.adapter.parser.trees.items():
+                if tree and hasattr(tree, "root"):
+                    for member in tree.root.members:
+                        if hasattr(member, "kind") and "Function" in str(member.kind):
+                            proto = getattr(member, "prototype", None)
+                            if proto:
+                                name = getattr(proto, "name", None)
+                                if name:
+                                    # name 是 IdentifierNameSyntax,需要转成字符串再 strip
+                                    name_val = str(name).strip()
+                                    if name_val == call_name:
+                                        task_def = member
+                                        break
+                    if task_def:
                         break
 
-            if not task_def:
-                # [FIX] CU 级别函数: 在 parser.trees 中搜索 CompilationUnit 级别的函数
-                for _fname, tree in self.adapter.parser.trees.items():
-                    if tree and hasattr(tree, "root"):
-                        for member in tree.root.members:
-                            if hasattr(member, "kind") and "Function" in str(member.kind):
-                                proto = getattr(member, "prototype", None)
-                                if proto:
-                                    name = getattr(proto, "name", None)
-                                    if name:
-                                        # name 是 IdentifierNameSyntax,需要转成字符串再 strip
-                                        name_val = str(name).strip()
-                                        if name_val == call_name:
-                                            task_def = member
-                                            break
-                        if task_def:
-                            break
+        if not task_def:
+            return None
+        return task_def
 
-            if not task_def:
-                return
 
+    def _create_invocation_edges(self, invocation, ctx, module, module_name, result, lhs_name,
+                                 call_name, call_args, named_args, task_def):
+        """[REFACTOR 2026-06-26] 建 invocation 边 (含 def_params + param_map + function + output)."""
+        try:
+            # 内部计算 def_params
+            if "Task" in str(getattr(task_def, "kind", "")):
+                def_params = self.adapter.get_task_params(task_def)
+            else:
+                def_params = self.adapter.get_function_params(task_def)
             # 获取定义参数
             if "Task" in str(getattr(task_def, "kind", "")):
                 def_params = self.adapter.get_task_params(task_def)
@@ -1807,7 +1855,7 @@ class DriverExtractor:
                                 ctx=ctx,
                             )
                         )
+            # [REFACTOR 2026-06-26] silent (preserve original except: pass behavior)
+            return
         except Exception:
-
-
-            pass
+            return
