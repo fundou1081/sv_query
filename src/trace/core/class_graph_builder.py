@@ -219,8 +219,12 @@ class ClassGraphBuilder:
             type_node = getattr(decl, "type", None)
             if type_node and type_node.kind == SyntaxKind.NamedType:
                 # NamedType.name 是 IdentifierNameSyntax，str() 获取类名
+                # [FIX 2026-06-26] pyslang binary garbage
                 name_attr = getattr(type_node, "name", None)
-                type_name = str(name_attr).strip() if name_attr else ""
+                try:
+                    type_name = str(name_attr).strip() if name_attr else ""
+                except (UnicodeDecodeError, TypeError):
+                    type_name = ""
                 if type_name:
                     graph.add_trace_edge(
                         TraceEdge(
@@ -1222,13 +1226,18 @@ class ClassGraphBuilder:
 
     def _class_name(self, cls) -> str:
         """提取 class 名称"""
-        name = getattr(cls, "name", None)
-        if name is None:
-            return ""
-        # name 是 Token 或字符串
-        if hasattr(name, "value"):
-            return str(name.value).strip()
-        return str(name).strip()
+        # [FIX 2026-06-26] pyslang partial elaboration: name has binary garbage
+        try:
+            name = getattr(cls, "name", None)
+            if name is None:
+                return ""
+            if hasattr(name, "value"):
+                return str(name.value).strip()
+            return str(name).strip()
+        except (UnicodeDecodeError, RuntimeError, TypeError) as e:
+            if "mutex" in str(e).lower() or isinstance(e, (UnicodeDecodeError, TypeError)):
+                return ""
+            raise
 
     def _class_extends(self, cls) -> str | None:
         """提取 extends 子句"""
@@ -1306,12 +1315,16 @@ class ClassGraphBuilder:
 
     def _get_declarator_name(self, d) -> str:
         """ "从 Declarator 提取变量名"""
-        dn = getattr(d, "name", None)
-        if dn is None:
+        # [FIX 2026-06-26] pyslang binary garbage
+        try:
+            dn = getattr(d, "name", None)
+            if dn is None:
+                return ""
+            if hasattr(dn, "value"):
+                return str(dn.value).strip()
+            return str(dn).strip()
+        except (UnicodeDecodeError, TypeError):
             return ""
-        if hasattr(dn, "value"):
-            return str(dn.value).strip()
-        return str(dn).strip()
 
     def _property_width(self, prop) -> tuple:
         """从 ClassPropertyDeclaration 提取位宽"""

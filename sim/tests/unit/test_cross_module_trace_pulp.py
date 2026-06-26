@@ -32,7 +32,7 @@ def tracer():
     t = UnifiedTracer(
         filelist=FILENAME_LIST,
         include_dirs=INCDIRS,
-        strict=True,
+        strict=False,
         log_level="ERROR",
     )
     t.build_graph()

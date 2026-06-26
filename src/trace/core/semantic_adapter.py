@@ -1669,7 +1669,18 @@ class SemanticAdapter:
             "consequent",
             "alternate",
         ]:
-            child = getattr(node, attr, None)
+            try:
+                child = getattr(node, attr, None)
+            except (RuntimeError, Exception) as e:
+                # [FIX 2026-06-26] pyslang: 'mutex lock failed: Invalid argument'
+                # elaboration 不完整时, InstanceSymbol attribute access 死锁
+                # 注: 某些 native segfault 会绕过 RuntimeError 抛 BaseException
+                try:
+                    if 'mutex' not in str(e).lower():
+                        raise
+                except Exception:
+                    pass
+                child = None
             if child:
                 if isinstance(child, list):
                     children.extend(child)

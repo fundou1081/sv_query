@@ -825,17 +825,28 @@ class SignalExpressionVisitor(BaseVisitor):
 
         结构: IdentifierName.identifier.value = "clk"
         """
+        # [FIX 2026-06-26] pyslang partial elaboration: identifier.value is binary garbage
         ident = getattr(node, "identifier", None)
         if ident is None:
             logger.debug("[FALLBACK] IdentifierName missing 'identifier' attr")
             return None
 
-        val = getattr(ident, "value", None)
+        try:
+            val = getattr(ident, "value", None)
+        except (UnicodeDecodeError, RuntimeError) as e:
+            if "mutex" in str(e).lower() or isinstance(e, UnicodeDecodeError):
+                logger.debug("[FALLBACK] identifier.value lock/encoding fail")
+                return None
+            raise
         if val is None:
             logger.debug("[FALLBACK] IdentifierName.identifier missing 'value' attr")
             return None
 
-        return self.adapter.clean_name(str(val).strip())
+        try:
+            return self.adapter.clean_name(str(val).strip())
+        except (UnicodeDecodeError, TypeError):
+            logger.debug("[FALLBACK] identifier value not decodable")
+            return None
 
     def visit_named_value(self, node) -> str | None:
         """NamedValue: 简单变量引用 din, data 等
