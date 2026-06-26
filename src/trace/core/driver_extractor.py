@@ -469,6 +469,365 @@ class DriverExtractor:
             TraceNode(id=node_id, name=name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
         )
 
+    # [REFACTOR 2026-06-26 B-Phase 5] 抽 assign phase: 4 sub-method + dispatch
+    def _create_assign_edges(self, module, result, module_name):
+        """[REFACTOR 2026-06-26] 处理所有 continuous assign 语句.
+
+        4 sub-phase dispatch:
+        - 5a: _handle_concat_assign (LHS/RHS 是 Concatenation)
+        - 5b: _handle_call_assign (RHS 是 CallExpression)
+        - 5c: _handle_binary_invocation_assign (Binary 含 Invocation)
+        - 5d: _handle_normal_assign (其他)
+        """
+        for assign in self.adapter.get_assignments(module):
+            raw_lhs, raw_rhs = self._extract_assign_lr(assign)
+            if self._handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
+                continue
+            if self._handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
+                continue
+            if self._handle_binary_invocation_assign(assign, raw_rhs, module, result, module_name):
+                continue
+            self._handle_normal_assign(assign, module, result, module_name)
+
+    def _extract_assign_lr(self, assign) -> tuple:
+        """[REFACTOR 2026-06-26] 从 assign 节点提取 (raw_lhs, raw_rhs). None if missing."""
+        raw_rhs = None
+        raw_lhs = None
+        if hasattr(assign, "assignments") and assign.assignments:
+            raw_rhs = assign.assignments[0].right
+            raw_lhs = assign.assignments[0].left
+        elif hasattr(assign, "right"):
+            raw_rhs = assign.right
+            raw_lhs = getattr(assign, "left", None)
+        elif hasattr(assign, "assignment"):
+            # Semantic AST: ContinuousAssignSymbol has .assignment
+            ass = assign.assignment
+            raw_rhs = getattr(ass, "right", None)
+            raw_lhs = getattr(ass, "left", None)
+        return raw_lhs, raw_rhs
+
+    def _handle_concat_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
+        """[REFACTOR 2026-06-26] 5a: 处理 Concatenation 拼接赋值. 处理了 return True (已 dispatch), 否则 False."""
+        if not (raw_lhs and hasattr(raw_lhs, "kind") and "Concatenation" in str(raw_lhs.kind)):
+            return False
+        # 提取 LHS 拼接中的所有位选信号
+        lhs_elements = []
+        lhs_operands = getattr(raw_lhs, "operands", None) or getattr(raw_lhs, "expressions", None)
+        if lhs_operands and hasattr(lhs_operands, "__iter__") and not isinstance(lhs_operands, str):
+            for op in lhs_operands:
+                op_kind = getattr(op, "kind", None)
+                if not op_kind or "Token" in str(op_kind):
+                    continue
+                if "ElementSelect" in str(op_kind) or "RangeSelect" in str(op_kind):
+                    name = self._get_signal(op)
+                    if name:
+                        lhs_elements.append(name)
+                elif "Identifier" in str(op_kind) or "NamedValue" in str(op_kind):
+                    name = self._get_signal(op)
+                    if name:
+                        lhs_elements.append(name)
+
+        # 提取 RHS 拼接中的所有信号
+        # [FIX 2026-06-26] 当 LHS 是 concat 但 RHS 不是 (e.g. CallExpression),
+        # return False 让 _handle_call_assign 接着处理 (跟原代码 if-elif chain 行为一致)
+        if not (raw_rhs and hasattr(raw_rhs, "kind") and "Concatenation" in str(raw_rhs.kind)):
+            return False
+        rhs_signals = []
+        rhs_operands = getattr(raw_rhs, "operands", None) or getattr(raw_rhs, "expressions", None)
+        if rhs_operands and hasattr(rhs_operands, "__iter__") and not isinstance(rhs_operands, str):
+            for op in rhs_operands:
+                op_kind = getattr(op, "kind", None)
+                if not op_kind or "Token" in str(op_kind):
+                    continue
+                signals = self._get_all_signals(op)
+                if signals:
+                    rhs_signals.extend(signals)
+
+        # 为 LHS 的每个元素创建节点和边
+        for lhs_name in lhs_elements:
+            dst_node_id = f"{module_name}.{lhs_name}"
+            if dst_node_id not in [n.id for n in result.nodes]:
+                result.nodes.append(
+                    TraceNode(
+                        id=dst_node_id,
+                        name=lhs_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=(1, 0),
+                    )
+                )
+
+            # 对齐映射: rhs_signals[i] -> lhs_elements[i]
+            for rhs_sig in rhs_signals:
+                if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
+                    result.edges.append(
+                        TraceEdge(
+                            src=rhs_sig, dst=dst_node_id, kind=EdgeKind.DRIVER, assign_type="continuous"
+                        )
+                    )
+                else:
+                    src_node_id = f"{module_name}.{rhs_sig}"
+                    if src_node_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(
+                            TraceNode(
+                                id=src_node_id,
+                                name=rhs_sig,
+                                module=module_name,
+                                kind=NodeKind.SIGNAL,
+                                width=(1, 0),
+                            )
+                        )
+                    result.edges.append(
+                        TraceEdge(
+                            src=src_node_id,
+                            dst=dst_node_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="continuous",
+                        )
+                    )
+        return True
+
+    def _handle_call_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
+        """[REFACTOR 2026-06-26] 5b: 处理 RHS 是 CallExpression (函数调用)."""
+        if not (raw_rhs and hasattr(raw_rhs, "kind") and "Call" in str(raw_rhs.kind)):
+            return False
+        # 先创建 LHS 节点(函数调用的目标)
+        lhs_name = None
+        if raw_lhs:
+            lhs_name = self._get_signal(raw_lhs)
+            if lhs_name:
+                dst_node_id = f"{module_name}.{lhs_name}"
+                if dst_node_id not in [n.id for n in result.nodes]:
+                    result.nodes.append(
+                        TraceNode(
+                            id=dst_node_id,
+                            name=lhs_name,
+                            module=module_name,
+                            kind=NodeKind.SIGNAL,
+                            width=(1, 0),
+                        )
+                    )
+        # 调用 _handle_invocation,传入 lhs_name 作为目标
+        self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
+        return True
+
+    def _handle_binary_invocation_assign(self, assign, raw_rhs, module, result, module_name) -> bool:
+        """[REFACTOR 2026-06-26] 5c: 处理 BinaryExpression 包含 InvocationExpression.
+
+        例: assign result = a & my_func(b);
+        """
+        if not (raw_rhs and hasattr(raw_rhs, "kind") and "Binary" in str(raw_rhs.kind)):
+            return False
+        invocations_found = self._find_invocations(raw_rhs)
+        if not invocations_found:
+            return False
+        raw_lhs = None
+        if hasattr(assign, "assignments") and assign.assignments:
+            raw_lhs = assign.assignments[0].left
+        lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
+        for invocation in invocations_found:
+            self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
+        return True
+
+    def _find_invocations(self, expr, invocations=None) -> list:
+        """[REFACTOR 2026-06-26] 5c-helper: 递归找表达式中的 InvocationExpression / CallExpression.
+
+        之前是 inline closure, 现在抽 public method 可单测.
+        """
+        if invocations is None:
+            invocations = []
+        if expr is None:
+            return invocations
+        kind = getattr(expr, "kind", None)
+        kind_str = str(kind) if kind else ""
+        if kind and ("Invocation" in kind_str or "Call" in kind_str):
+            invocations.append(expr)
+            return invocations  # Don't recurse into children
+        # If expr has __iter__, don't recurse into its attributes
+        # because iteration already yields children
+        if hasattr(expr, "__iter__") and not isinstance(expr, str):
+            for c in expr:
+                if hasattr(c, "kind"):
+                    self._find_invocations(c, invocations)
+        else:
+            for child_attr in ["left", "right", "predicate", "condition"]:
+                child = getattr(expr, child_attr, None)
+                if child:
+                    self._find_invocations(child, invocations)
+        return invocations
+
+    def _handle_normal_assign(self, assign, module, result, module_name) -> None:
+        """[REFACTOR 2026-06-26] 5d: 默认 assign 处理 (call/concat/binary-invocation 之外的).
+
+        处理 ScopedName (tb.data), ConditionalOp, bit_slice, 等.
+        这是最大的 sub-method (~197 lines).
+        """
+        lhs, rhs, rhs_expr = self._parse_assign(assign)
+        if not (lhs and (rhs or rhs_expr is not None)):
+            return
+        # [FIX] ScopedName: tb.data → 创建父子节点和 BIT_SELECT 边
+        if "." in lhs:
+            lhs_parts = lhs.split(".")
+            for i in range(1, len(lhs_parts)):
+                parent_name = ".".join(lhs_parts[:i])
+                parent_id = f"{module_name}.{parent_name}"
+                if parent_id not in [n.id for n in result.nodes]:
+                    result.nodes.append(
+                        TraceNode(
+                            id=parent_id,
+                            name=parent_name,
+                            module=module_name,
+                            kind=NodeKind.PORT_IN,
+                            width=(1, 0),
+                        )
+                    )
+            for i in range(len(lhs_parts) - 1):
+                child_name = ".".join(lhs_parts[: i + 2])
+                parent_name = ".".join(lhs_parts[: i + 1])
+                child_id = f"{module_name}.{child_name}"
+                parent_id = f"{module_name}.{parent_name}"
+                if child_id != parent_id:
+                    existing = next(
+                        ((e.src, e.dst) for e in result.edges if e.src == child_id and e.dst == parent_id),
+                        None,
+                    )
+                    if not existing:
+                        result.edges.append(
+                            TraceEdge(
+                                src=child_id,
+                                dst=parent_id,
+                                kind=EdgeKind.BIT_SELECT,
+                                assign_type="internal",
+                            )
+                        )
+
+        dst_node_id = f"{module_name}.{lhs}"
+        if dst_node_id not in [n.id for n in result.nodes]:
+            result.nodes.append(TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)))
+        rhs_kind = str(getattr(rhs_expr, "kind", "")) if rhs_expr else ""
+        if "EqualsValueClause" in rhs_kind:
+            rhs_signals = []
+        else:
+            rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+
+        ternary_condition = self._extract_ternary_condition(rhs_expr)
+
+        has_conditional = False
+        check_expr = rhs_expr
+        for _ in range(5):  # 解包多层包装
+            if check_expr is None:
+                break
+            rhs_kind_name = getattr(check_expr, "kind", None)
+            rhs_kind_str = (
+                rhs_kind_name.name if hasattr(rhs_kind_name, "name")
+                else str(rhs_kind_name) if rhs_kind_name else ""
+            )
+            if "ConditionalOp" in rhs_kind_str:
+                has_conditional = True
+                break
+            operand = getattr(check_expr, "operand", None)
+            if operand is None or operand is check_expr:
+                break
+            check_expr = operand
+
+        if not rhs_signals:
+            rhs_signals = [rhs]
+        if rhs_expr:
+            try:
+                expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+            except (UnicodeDecodeError, TypeError):
+                expr_str = "<expr:non-utf8>"
+        else:
+            expr_str = rhs or ""
+
+        if has_conditional:
+            signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+            for rhs_name, sig_cond in signal_conditions:
+                if not rhs_name:
+                    continue
+                bit_slice = ""
+                if "[" in rhs_name and "]" in rhs_name:
+                    start = rhs_name.index("[")
+                    bit_slice = rhs_name[start:]
+                if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+                    result.edges.append(
+                        self._edge_factory.make_edge(
+                            src=rhs_name,
+                            dst=dst_node_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="continuous",
+                            expression=rhs_name,
+                            bit_slice=bit_slice,
+                            sig_cond=sig_cond,
+                        )
+                    )
+                else:
+                    src_node_id = f"{module_name}.{rhs_name}"
+                    if src_node_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(
+                            TraceNode(
+                                id=src_node_id,
+                                name=rhs_name,
+                                module=module_name,
+                                kind=NodeKind.SIGNAL,
+                                width=(1, 0),
+                            )
+                        )
+                    result.edges.append(
+                        self._edge_factory.make_edge(
+                            src=src_node_id,
+                            dst=dst_node_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="continuous",
+                            expression=expr_str,
+                            bit_slice=bit_slice,
+                            sig_cond=sig_cond,
+                        )
+                    )
+        else:
+            for rhs_name in rhs_signals:
+                if not rhs_name:
+                    continue
+                bit_slice = ""
+                if "[" in rhs_name and "]" in rhs_name:
+                    start = rhs_name.index("[")
+                    bit_slice = rhs_name[start:]
+                if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+                    result.edges.append(
+                        TraceEdge(
+                            src=rhs_name,
+                            dst=dst_node_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="continuous",
+                            expression=rhs_name,
+                            bit_slice=bit_slice,
+                            condition=ternary_condition,
+                        )
+                    )
+                else:
+                    src_node_id = f"{module_name}.{rhs_name}"
+                    if src_node_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(
+                            TraceNode(
+                                id=src_node_id,
+                                name=rhs_name,
+                                module=module_name,
+                                kind=NodeKind.SIGNAL,
+                                width=(1, 0),
+                            )
+                        )
+                    result.edges.append(
+                        TraceEdge(
+                            src=src_node_id,
+                            dst=dst_node_id,
+                            kind=EdgeKind.DRIVER,
+                            assign_type="continuous",
+                            expression=expr_str,
+                            bit_slice=bit_slice,
+                            condition=ternary_condition,
+                        )
+                    )
+
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
@@ -501,371 +860,8 @@ class DriverExtractor:
             self._create_net_alias_edges(module, result, module_name)
             self._create_net_decl_edges(module, result, module_name, port_names)
 
-            # assign 语句
-            for assign in self.adapter.get_assignments(module):
-                # [系统化改造] 先提取原始 RHS,检查是否是 CallExpression (函数调用)
-                raw_rhs = None
-                raw_lhs = None
-                if hasattr(assign, "assignments") and assign.assignments:
-                    raw_rhs = assign.assignments[0].right
-                    raw_lhs = assign.assignments[0].left
-                elif hasattr(assign, "right"):
-                    raw_rhs = assign.right
-                    raw_lhs = getattr(assign, "left", None)
-                elif hasattr(assign, "assignment"):
-                    # Semantic AST: ContinuousAssignSymbol has .assignment
-                    ass = assign.assignment
-                    raw_rhs = getattr(ass, "right", None)
-                    raw_lhs = getattr(ass, "left", None)
-
-                # [FIX] 拼接赋值 LHS: assign {y[2], y[1], y[0]} = {a, b, c}
-                # 检测 LHS 是否为 Concatenation
-                if raw_lhs and hasattr(raw_lhs, "kind") and "Concatenation" in str(raw_lhs.kind):
-                    # 提取 LHS 拼接中的所有位选信号
-                    lhs_elements = []
-                    lhs_operands = getattr(raw_lhs, "operands", None) or getattr(raw_lhs, "expressions", None)
-                    if lhs_operands and hasattr(lhs_operands, "__iter__") and not isinstance(lhs_operands, str):
-                        for op in lhs_operands:
-                            op_kind = getattr(op, "kind", None)
-                            if not op_kind or "Token" in str(op_kind):
-                                continue
-                            # ElementSelect 或 RangeSelect
-                            if "ElementSelect" in str(op_kind) or "RangeSelect" in str(op_kind):
-                                name = self._get_signal(op)
-                                if name:
-                                    lhs_elements.append(name)
-                            elif "Identifier" in str(op_kind) or "NamedValue" in str(op_kind):
-                                name = self._get_signal(op)
-                                if name:
-                                    lhs_elements.append(name)
-
-                    # 提取 RHS 拼接中的所有信号
-                    if raw_rhs and hasattr(raw_rhs, "kind") and "Concatenation" in str(raw_rhs.kind):
-                        rhs_signals = []
-                        rhs_operands = getattr(raw_rhs, "operands", None) or getattr(raw_rhs, "expressions", None)
-                        if rhs_operands and hasattr(rhs_operands, "__iter__") and not isinstance(rhs_operands, str):
-                            for op in rhs_operands:
-                                op_kind = getattr(op, "kind", None)
-                                if not op_kind or "Token" in str(op_kind):
-                                    continue
-                                # 递归提取信号
-                                signals = self._get_all_signals(op)
-                                if signals:
-                                    rhs_signals.extend(signals)
-
-                        # 为 LHS 的每个元素创建节点和边
-                        for lhs_name in lhs_elements:
-                            dst_node_id = f"{module_name}.{lhs_name}"
-                            if dst_node_id not in [n.id for n in result.nodes]:
-                                result.nodes.append(
-                                    TraceNode(
-                                        id=dst_node_id,
-                                        name=lhs_name,
-                                        module=module_name,
-                                        kind=NodeKind.SIGNAL,
-                                        width=(1, 0),
-                                    )
-                                )
-
-                            # 对齐映射: rhs_signals[i] -> lhs_elements[i]
-                            for rhs_sig in rhs_signals:
-                                if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
-                                    # 字面量
-                                    result.edges.append(
-                                        TraceEdge(
-                                            src=rhs_sig, dst=dst_node_id, kind=EdgeKind.DRIVER, assign_type="continuous"
-                                        )
-                                    )
-                                else:
-                                    src_node_id = f"{module_name}.{rhs_sig}"
-                                    if src_node_id not in [n.id for n in result.nodes]:
-                                        result.nodes.append(
-                                            TraceNode(
-                                                id=src_node_id,
-                                                name=rhs_sig,
-                                                module=module_name,
-                                                kind=NodeKind.SIGNAL,
-                                                width=(1, 0),
-                                            )
-                                        )
-                                    result.edges.append(
-                                        TraceEdge(
-                                            src=src_node_id,
-                                            dst=dst_node_id,
-                                            kind=EdgeKind.DRIVER,
-                                            assign_type="continuous",
-                                        )
-                                    )
-                        continue
-
-                # 检测 CallExpression (函数调用),走专用路径
-                if raw_rhs and hasattr(raw_rhs, "kind") and "Call" in str(raw_rhs.kind):
-                    # [FIX] raw_lhs is already extracted above, don't overwrite
-                    # raw_lhs was set at lines 237-240 using:
-                    #   if hasattr(assign, 'assignments') and assign.assignments: ...
-                    #   elif hasattr(assign, 'right'): ...
-                    #   elif hasattr(assign, 'assignment'): ...
-
-                    # 先创建 LHS 节点(函数调用的目标)
-                    if raw_lhs:
-                        lhs_name = self._get_signal(raw_lhs)
-                        if lhs_name:
-                            dst_node_id = f"{module_name}.{lhs_name}"
-                            if dst_node_id not in [n.id for n in result.nodes]:
-                                result.nodes.append(
-                                    TraceNode(
-                                        id=dst_node_id,
-                                        name=lhs_name,
-                                        module=module_name,
-                                        kind=NodeKind.SIGNAL,
-                                        width=(1, 0),
-                                    )
-                                )
-                    else:
-                        lhs_name = None
-
-                    # 调用 _handle_invocation,传入 lhs_name 作为目标
-                    self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
-                    continue
-
-                # [FIX] 检测 BinaryExpression 包含 InvocationExpression 的情况
-                # assign result = a & my_func(b); → my_func(b) 在 binary 表达式中
-                if raw_rhs and hasattr(raw_rhs, "kind") and "Binary" in str(raw_rhs.kind):
-                    # 检查左右操作数是否包含 InvocationExpression
-                    def find_invocations(expr, invocations=None):
-                        if invocations is None:
-                            invocations = []
-                        if expr is None:
-                            return invocations
-                        kind = getattr(expr, "kind", None)
-                        kind_str = str(kind) if kind else ""
-                        if kind and ("Invocation" in kind_str or "Call" in kind_str):
-                            invocations.append(expr)
-                            return invocations  # Don't recurse into children
-                        # If expr has __iter__, don't recurse into its attributes
-                        # because iteration already yields children
-                        if hasattr(expr, "__iter__") and not isinstance(expr, str):
-                            for c in expr:
-                                if hasattr(c, "kind"):
-                                    find_invocations(c, invocations)
-                        else:
-                            for child_attr in ["left", "right", "predicate", "condition"]:
-                                child = getattr(expr, child_attr, None)
-                                if child:
-                                    find_invocations(child, invocations)
-                        return invocations
-
-                    invocations_found = find_invocations(raw_rhs)
-                    if invocations_found:
-                        raw_lhs = None
-                        if hasattr(assign, "assignments") and assign.assignments:
-                            raw_lhs = assign.assignments[0].left
-                        lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
-                        for invocation in invocations_found:
-                            self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
-                        continue
-
-                # 正常解析
-                lhs, rhs, rhs_expr = self._parse_assign(assign)
-                # [FIX] rhs may be None when rhs_expr is ConcatenationExpression/other complex type
-                # but _get_all_signals(rhs_expr) can still extract signals
-                if lhs and (rhs or rhs_expr is not None):
-                    # [FIX BUG] ScopedName: tb.data → 创建父子节点和 BIT_SELECT 边
-                    # 支持嵌套 ScopedName: tb.data.sub → 创建 tb, tb.data, tb.data.sub
-                    # 所有层级都连接到其直接父节点 (BIT_SELECT 边)
-                    if "." in lhs:
-                        lhs_parts = lhs.split(".")
-                        # 首先:确保所有中间父节点存在
-                        for i in range(1, len(lhs_parts)):
-                            parent_name = ".".join(lhs_parts[:i])
-                            parent_id = f"{module_name}.{parent_name}"
-                            if parent_id not in [n.id for n in result.nodes]:
-                                result.nodes.append(
-                                    TraceNode(
-                                        id=parent_id,
-                                        name=parent_name,
-                                        module=module_name,
-                                        kind=NodeKind.PORT_IN,
-                                        width=(1, 0),
-                                    )
-                                )
-                        # 其次:为每个层级创建 BIT_SELECT 边 (child → parent)
-                        # 即使父节点已存在,也要创建边
-                        for i in range(len(lhs_parts) - 1):
-                            child_name = ".".join(
-                                lhs_parts[: i + 2]
-                            )  # ['p'] + ['sub', 'data'] = ['p','sub','data'], index 1 -> 'p.sub'
-                            parent_name = ".".join(lhs_parts[: i + 1])
-                            child_id = f"{module_name}.{child_name}"
-                            parent_id = f"{module_name}.{parent_name}"
-                            if child_id != parent_id:
-                                # 检查边是否已存在
-                                existing = next(
-                                    ((e.src, e.dst) for e in result.edges if e.src == child_id and e.dst == parent_id),
-                                    None,
-                                )
-                                if not existing:
-                                    result.edges.append(
-                                        TraceEdge(
-                                            src=child_id,
-                                            dst=parent_id,
-                                            kind=EdgeKind.BIT_SELECT,
-                                            assign_type="internal",
-                                        )
-                                    )
-
-                    # 创建 dst 节点
-                    dst_node_id = f"{module_name}.{lhs}"
-                    if dst_node_id not in [n.id for n in result.nodes]:
-                        result.nodes.append(
-                            TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
-                        )
-                    # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
-                    # [FIX] EqualsValueClause (class 实例化: my_cls obj = new()) 不提取信号
-                    rhs_kind = str(getattr(rhs_expr, "kind", "")) if rhs_expr else ""
-                    if "EqualsValueClause" in rhs_kind:
-                        # DataDeclaration: = new(), 不提取信号
-                        rhs_signals = []
-                    else:
-                        rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
-
-                    # [FIX] 提取三元运算符条件: assign y = en ? d : 0;
-                    # 检测 ConditionalOp 并提取条件表达式
-                    ternary_condition = self._extract_ternary_condition(rhs_expr)
-
-                    # [BUG-FIX] 检查是否为嵌套三元表达式
-                    # 如果是，需要为每个信号提取对应的条件
-                    # [FIX] 只检查语义 AST (ConditionalOp)，解包 ConversionExpression 获取真正的表达式
-                    has_conditional = False
-                    check_expr = rhs_expr
-                    for _ in range(5):  # 解包多层包装
-                        if check_expr is None:
-                            break
-                        rhs_kind_name = getattr(check_expr, "kind", None)
-                        rhs_kind_str = (
-                            rhs_kind_name.name
-                            if hasattr(rhs_kind_name, "name")
-                            else str(rhs_kind_name)
-                            if rhs_kind_name
-                            else ""
-                        )
-                        if "ConditionalOp" in rhs_kind_str:
-                            has_conditional = True
-                            break
-                        # 解包一层 (ConversionExpression / Conversion)
-                        operand = getattr(check_expr, "operand", None)
-                        if operand is None or operand is check_expr:
-                            break
-                        check_expr = operand
-
-                    if not rhs_signals:
-                        rhs_signals = [rhs]
-                    # [P0-2] 计算完整表达式字符串
-                    # 使用 SignalExpressionVisitor 获取可读的表达式字符串
-                    if rhs_expr:
-                        try:
-                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
-                        except (UnicodeDecodeError, TypeError):
-                            expr_str = "<expr:non-utf8>"
-                    else:
-                        expr_str = rhs or ""
-
-                    # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
-                    if has_conditional:
-                        signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
-                        # signal_conditions: [(signal_name, condition_str), ...]
-                        for rhs_name, sig_cond in signal_conditions:
-                            if not rhs_name:
-                                continue
-                            # 提取 bit_slice
-                            bit_slice = ""
-                            if "[" in rhs_name and "]" in rhs_name:
-                                start = rhs_name.index("[")
-                                bit_slice = rhs_name[start:]
-
-                            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                                # 字面量
-                                result.edges.append(
-                                    self._edge_factory.make_edge(
-                                        src=rhs_name,
-                                        dst=dst_node_id,
-                                        kind=EdgeKind.DRIVER,
-                                        assign_type="continuous",
-                                        expression=rhs_name,
-                                        bit_slice=bit_slice,
-                                        sig_cond=sig_cond,
-                                    )
-                                )
-                            else:
-                                src_node_id = f"{module_name}.{rhs_name}"
-                                if src_node_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(
-                                        TraceNode(
-                                            id=src_node_id,
-                                            name=rhs_name,
-                                            module=module_name,
-                                            kind=NodeKind.SIGNAL,
-                                            width=(1, 0),
-                                        )
-                                    )
-                                result.edges.append(
-                                    self._edge_factory.make_edge(
-                                        src=src_node_id,
-                                        dst=dst_node_id,
-                                        kind=EdgeKind.DRIVER,
-                                        assign_type="continuous",
-                                        expression=expr_str,
-                                        bit_slice=bit_slice,
-                                        sig_cond=sig_cond,
-                                    )
-                                )
-                    else:
-                        for rhs_name in rhs_signals:
-                            if not rhs_name:
-                                continue
-                            # [P0-2] 提取 bit_slice (如 "sreg_q[8:1]" -> "[8:1]")
-                            bit_slice = ""
-                            if "[" in rhs_name and "]" in rhs_name:
-                                start = rhs_name.index("[")
-                                bit_slice = rhs_name[start:]
-                            # [FIX] 字面量常量(如 "1"、"A5A5A5A5")不拼接 top. 前缀,不创建节点,只创建边
-                            # [P3-6-FIX] 字面量用自己作为 expression，保持原始值
-                            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                                # 字面量:直接用作 edge src,用自己作为 expression
-                                result.edges.append(
-                                    TraceEdge(
-                                        src=rhs_name,
-                                        dst=dst_node_id,
-                                        kind=EdgeKind.DRIVER,
-                                        assign_type="continuous",
-                                        expression=rhs_name,
-                                        bit_slice=bit_slice,  # 字面量用自己
-                                        condition=ternary_condition,
-                                    )
-                                )
-                            else:
-                                src_node_id = f"{module_name}.{rhs_name}"
-                                if src_node_id not in [n.id for n in result.nodes]:
-                                    result.nodes.append(
-                                        TraceNode(
-                                            id=src_node_id,
-                                            name=rhs_name,
-                                            module=module_name,
-                                            kind=NodeKind.SIGNAL,
-                                            width=(1, 0),
-                                        )
-                                    )
-                                result.edges.append(
-                                    TraceEdge(
-                                        src=src_node_id,
-                                        dst=dst_node_id,
-                                        kind=EdgeKind.DRIVER,
-                                        assign_type="continuous",
-                                        expression=expr_str,
-                                        bit_slice=bit_slice,
-                                        condition=ternary_condition,
-                                    )
-                                )
+            # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
+            self._create_assign_edges(module, result, module_name)
 
             # always 块 - [铁律7金标准] + 语义上下文
             for always in self.adapter.get_always_blocks(module):
