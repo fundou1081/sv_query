@@ -156,6 +156,31 @@ def _build_filelist_if_missing(filelist_path, source_paths, include_dirs=None):
     return True
 
 
+def _auto_reclaim_memory():
+    """[ADD 2026-06-26] 6GB 强分配回收 — pyslang partial elaboration 8GB env fix.
+
+    之前 PR (2026-06-15) 发现 4GB reclaim 在 8GB 机器上不够 (87M→300M),
+    5 test batch 跑下来 memory 增量不释放, 触发 SWAP 飙到 3GB+, 引发
+    UnicodeDecodeError / mutex lock failed.
+
+    6GB reclaim: 87M → 642M unused, 单跑 5/5 pass visualize_module_golden.
+
+    失败时 fallback 到 4GB (8GB 机器跑 6GB 偶尔 OOM).
+    """
+    import os, time as _time, subprocess
+    for size_gb in (6, 4):
+        try:
+            subprocess.run(
+                ["python3", "-c",
+                 f"import time; a = bytearray({size_gb} * 1024**3); time.sleep(3); del a"],
+                check=True, timeout=30, capture_output=True,
+            )
+            return  # success
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            continue
+    # both failed — continue without reclaim
+
+
 def _auto_build_test_filelists():
     """[Bug fix 2026-06-26] Auto-build missing test filelists from source repos.
 
@@ -217,6 +242,7 @@ _original_pytest_configure = pytest_configure
 
 
 def pytest_configure(config):
-    """[ADD 2026-06-26] Auto-build test filelists + existing report config."""
+    """[ADD 2026-06-26] Auto-reclaim memory + auto-build filelists + report config."""
+    _auto_reclaim_memory()
     _auto_build_test_filelists()
     _original_pytest_configure(config)
