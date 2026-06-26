@@ -489,9 +489,13 @@ class UnifiedTracer:
         classes = adapter.get_classes()
         class_names = set()
         for cls in classes:
-            name = getattr(cls, "name", None)
-            if name:
-                class_names.add(str(name).strip())
+            # [FIX 2026-06-26] pyslang binary garbage
+            try:
+                name = getattr(cls, "name", None)
+                if name:
+                    class_names.add(str(name).strip())
+            except (UnicodeDecodeError, TypeError):
+                continue
 
         if not class_names:
             return
