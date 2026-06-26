@@ -18,13 +18,14 @@ from typing import Any, Callable, ClassVar
 from ._decorators import on
 from .base_visitor import BaseVisitor
 from .member_visitor import MemberVisitor
+from .generate_visitor import GenerateVisitor
 from .operator_visitor import OperatorVisitor
 from .signal_result import SignalResult
 
 logger = logging.getLogger(__name__)
 
 
-class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
+class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, GenerateVisitor):
     """信号/表达式提取 Visitor
 
     负责将 AST 节点转换为信号名或信号列表。
@@ -1330,20 +1331,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
                     result = result.merge(self.extract(item))
         return result
 
-    @on("CaseGenerate")
-    def extract_case_generate(self, node) -> SignalResult:
-        """[NOT TESTED] CaseGenerate: case generate construct"""
-        result = SignalResult()
-        expr = getattr(node, "expr", None) or getattr(node, "condition", None)
-        if expr:
-            result = result.merge(self.extract(expr))
-        items = getattr(node, "items", None)
-        if items and hasattr(items, "__iter__"):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-
     @on("DefaultCaseItem")
     def extract_default_case_item(self, node) -> SignalResult:
         """[NOT TESTED] DefaultCaseItem: default case item"""
@@ -1490,64 +1477,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
         return SignalResult()
 
     # Generate constructs
-    @on("IfGenerate")
-    def extract_if_generate(self, node) -> SignalResult:
-        """[NOT TESTED] IfGenerate: if generate construct"""
-        result = SignalResult()
-        cond = getattr(node, "condition", None) or getattr(node, "cond", None)
-        if cond:
-            result = result.merge(self.extract(cond))
-        true_body = getattr(node, "true_body", None) or getattr(node, "body", None)
-        if true_body:
-            result = result.merge(self.extract(true_body))
-        false_body = getattr(node, "false_body", None) or getattr(node, "else_body", None)
-        if false_body:
-            result = result.merge(self.extract(false_body))
-        return result
-
-    @on("LoopGenerate")
-    def extract_loop_generate(self, node) -> SignalResult:
-        """[NOT TESTED] LoopGenerate: loop generate construct"""
-        result = SignalResult()
-        init = getattr(node, "init", None)
-        if init:
-            result = result.merge(self.extract(init))
-        cond = getattr(node, "cond", None)
-        if cond:
-            result = result.merge(self.extract(cond))
-        step = getattr(node, "step", None)
-        if step:
-            result = result.merge(self.extract(step))
-        body = getattr(node, "body", None) or getattr(node, "statements", None)
-        if body and hasattr(body, "__iter__"):
-            for stmt in body:
-                if stmt:
-                    result = result.merge(self.extract(stmt))
-        return result
-
-    @on("GenerateBlock")
-    def extract_generate_block(self, node) -> SignalResult:
-        """[NOT TESTED] GenerateBlock: generate block"""
-        result = SignalResult()
-        body = getattr(node, "body", None) or getattr(node, "statements", None)
-        if body and hasattr(body, "__iter__"):
-            for stmt in body:
-                if stmt:
-                    result = result.merge(self.extract(stmt))
-        return result
-
-    @on("GenerateRegion")
-    def extract_generate_region(self, node) -> SignalResult:
-        """[NOT TESTED] GenerateRegion: generate region"""
-        result = SignalResult()
-        items = getattr(node, "items", None) or getattr(node, "statements", None)
-        if items and hasattr(items, "__iter__"):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-
-    # Continuous assignment
     @on("ContinuousAssign")
     def extract_continuous_assign(self, node) -> SignalResult:
         """[NOT TESTED] ContinuousAssign: continuous assignment"""
@@ -1567,36 +1496,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
         init = getattr(node, "init", None) or getattr(node, "value", None)
         if init:
             result = result.merge(self.extract(init))
-        return result
-
-    @on("ForLoopStatement")
-    def extract_for_loop_statement(self, node) -> SignalResult:
-        """[NOT TESTED] ForLoopStatement: for loop statement"""
-        result = SignalResult()
-        init = getattr(node, "init", None)
-        if init:
-            result = result.merge(self.extract(init))
-        cond = getattr(node, "cond", None) or getattr(node, "condition", None)
-        if cond:
-            result = result.merge(self.extract(cond))
-        step = getattr(node, "step", None)
-        if step:
-            result = result.merge(self.extract(step))
-        body = getattr(node, "body", None) or getattr(node, "statement", None)
-        if body:
-            result = result.merge(self.extract(body))
-        return result
-
-    @on("ForeachLoopStatement")
-    def extract_foreach_loop_statement(self, node) -> SignalResult:
-        """[NOT TESTED] ForeachLoopStatement: foreach loop statement"""
-        result = SignalResult()
-        array = getattr(node, "array", None) or getattr(node, "expr", None)
-        if array:
-            result = result.merge(self.extract(array))
-        body = getattr(node, "body", None) or getattr(node, "statement", None)
-        if body:
-            result = result.merge(self.extract(body))
         return result
 
     @on("ReturnStatement")
@@ -1658,20 +1557,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
         return result
 
     # Deferred assertion statements
-    @on("LoopStatement")
-    def extract_loop_statement(self, node) -> SignalResult:
-        """[NOT TESTED] LoopStatement: loop statement (for, while, do-while, repeat, foreach)"""
-        result = SignalResult()
-        body = getattr(node, "body", None) or getattr(node, "statement", None)
-        if body:
-            result = result.merge(self.extract(body))
-        vars_ = getattr(node, "variables", None) or getattr(node, "declarations", None)
-        if vars_ and hasattr(vars_, "__iter__"):
-            for v in vars_:
-                if v:
-                    result = result.merge(self.extract(v))
-        return result
-
     @on("ForVariableDeclaration")
     def extract_for_variable_declaration(self, node) -> SignalResult:
         """[NOT TESTED] ForVariableDeclaration: for loop variable declaration"""
@@ -1682,18 +1567,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
         init = getattr(node, "init", None) or getattr(node, "expr", None)
         if init:
             result = result.merge(self.extract(init))
-        return result
-
-    @on("DoWhileStatement")
-    def extract_do_while_statement(self, node) -> SignalResult:
-        """[NOT TESTED] DoWhileStatement: do-while statement"""
-        result = SignalResult()
-        body = getattr(node, "body", None) or getattr(node, "statement", None)
-        if body:
-            result = result.merge(self.extract(body))
-        cond = getattr(node, "condition", None) or getattr(node, "expr", None)
-        if cond:
-            result = result.merge(self.extract(cond))
         return result
 
     @on("ForeverStatement")
@@ -2177,17 +2050,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
         return SignalResult()
 
     # Queue and literal expressions
-    @on("RepeatedEventControl")
-    def extract_repeated_event_control(self, node) -> SignalResult:
-        """[NOT TESTED] RepeatedEventControl: repeated event control"""
-        result = SignalResult()
-        items = getattr(node, "items", None) or getattr(node, "events", None)
-        if items and hasattr(items, "__iter__"):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-
     @on("StandardCaseItem")
     def extract_standard_case_item(self, node) -> SignalResult:
         """[NOT TESTED] StandardCaseItem: standard case item"""
@@ -2886,18 +2748,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
                     result = result.merge(self.extract(child))
         return result
 
-    @on("RsRepeat")
-    def extract_rsrepeat(self, node) -> SignalResult:
-        """[NOT TESTED] RsRepeat: Rsrepeat"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("RsRule")
     def extract_rsrule(self, node) -> SignalResult:
         """[NOT TESTED] RsRule: Rsrule"""
@@ -3526,18 +3376,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor):
     @on("FilePathSpec")
     def extract_filepathspec(self, node) -> SignalResult:
         """[NOT TESTED] FilePathSpec: Filepathspec"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ForeachLoopList")
-    def extract_foreachlooplist(self, node) -> SignalResult:
-        """[NOT TESTED] ForeachLoopList: Foreachlooplist"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
