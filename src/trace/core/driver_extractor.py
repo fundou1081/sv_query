@@ -320,6 +320,91 @@ class DriverExtractor:
             "the Visitor implementation needs to be extended."
         )
 
+    # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 port + var node 创建
+    def _create_port_nodes(self, module, result, module_name):
+        """[铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)"""
+        port_decls = self.adapter.get_port_declarations(module)
+        for port_decl in port_decls:
+            port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
+            if not port_name:
+                continue
+            port_name = self.adapter.clean_name(port_name)
+            port_id = f"{module_name}.{port_name}"
+            if port_id not in [n.id for n in result.nodes]:
+                kind = self._infer_port_kind(direction)
+                port_width = self._extract_port_width_as_tuple(port_decl, module)
+                port_file, port_line, _, _ = self.adapter.get_source_location(port_decl)
+                result.nodes.append(
+                    TraceNode(
+                        id=port_id,
+                        name=port_name,
+                        module=module_name,
+                        kind=kind,
+                        width=port_width,
+                        is_port=True,
+                        file=port_file,
+                        line=port_line,
+                    )
+                )
+
+    def _infer_port_kind(self, direction: str) -> NodeKind:
+        """根据方向字符串推断 port kind."""
+        d = direction.lower()
+        if "inout" in d:
+            return NodeKind.PORT_INOUT
+        if "output" in d:
+            return NodeKind.PORT_OUT
+        return NodeKind.PORT_IN
+
+    def _extract_port_width_as_tuple(self, port_decl, module) -> tuple:
+        """[FIX] extract_port_width 返回 dict 时转换为 (msb, lsb) tuple."""
+        port_width = self.adapter.extract_port_width(port_decl, scope=module)
+        if not isinstance(port_width, dict):
+            return port_width
+        msb = port_width.get("msb_eval", port_width.get("msb_raw", 0))
+        lsb = port_width.get("lsb_eval", port_width.get("lsb_raw", 0))
+        try:
+            msb = int(msb) if msb is not None else 0
+        except (ValueError, TypeError):
+            msb = 0
+        try:
+            lsb = int(lsb) if lsb is not None else 0
+        except (ValueError, TypeError):
+            lsb = 0
+        return (msb, lsb)
+
+    def _collect_port_names(self, module) -> set:
+        """[REFACTOR 2026-06-26] 收集模块的所有 port name (用于 var decl dedup)."""
+        port_names = set()
+        for port_decl in self.adapter.get_port_declarations(module):
+            pn, _ = self.adapter.get_port_name_and_direction(port_decl)
+            if pn:
+                port_names.add(self.adapter.clean_name(pn))
+        return port_names
+
+    def _create_var_nodes(self, module, result, module_name, port_names):
+        """[铁律4] 为非端口变量/网表声明创建 SIGNAL TraceNode. 跳过端口."""
+        for var_decl in self.adapter.get_variable_declarations(module):
+            var_name = self.adapter.get_signal_name(var_decl)
+            if not var_name or var_name in port_names:
+                continue
+            var_name = self.adapter.clean_name(var_name)
+            var_id = f"{module_name}.{var_name}"
+            if var_id not in [n.id for n in result.nodes]:
+                var_width = self.adapter.extract_data_width(var_decl)
+                var_file, var_line, _, _ = self.adapter.get_source_location(var_decl)
+                result.nodes.append(
+                    TraceNode(
+                        id=var_id,
+                        name=var_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=var_width,
+                        file=var_file,
+                        line=var_line,
+                    )
+                )
+
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
@@ -343,84 +428,10 @@ class DriverExtractor:
             src_file, src_line, _, _ = self.adapter.get_source_location(module)
             self._current_source_file = src_file
 
-            # [铁律4] 为端口创建 TraceNode (根据方向创建正确的 kind)
-            port_decls = self.adapter.get_port_declarations(module)
-            for port_decl in port_decls:
-                port_name, direction = self.adapter.get_port_name_and_direction(port_decl)
-                if not port_name:
-                    continue
-                port_name = self.adapter.clean_name(port_name)
-                port_id = f"{module_name}.{port_name}"
-                if port_id not in [n.id for n in result.nodes]:
-                    # 根据方向确定 kind
-                    if "inout" in direction.lower():
-                        kind = NodeKind.PORT_INOUT
-                    elif "output" in direction.lower():
-                        kind = NodeKind.PORT_OUT
-                    else:
-                        kind = NodeKind.PORT_IN
-                    # 提取端口位宽 (传入 module 作为 scope 以解析参数)
-                    port_width = self.adapter.extract_port_width(port_decl, scope=module)
-                    # extract_port_width with scope returns dict, convert to tuple for compatibility
-                    if isinstance(port_width, dict):
-                        msb = port_width.get("msb_eval", port_width.get("msb_raw", 0))
-                        lsb = port_width.get("lsb_eval", port_width.get("lsb_raw", 0))
-                        try:
-                            msb = int(msb) if msb is not None else 0
-                        except (ValueError, TypeError):
-                            msb = 0
-                        try:
-                            lsb = int(lsb) if lsb is not None else 0
-                        except (ValueError, TypeError):
-                            lsb = 0
-                        port_width = (msb, lsb)
-                    # [P1-3] 获取端口的源码位置
-                    port_file, port_line, _, _ = self.adapter.get_source_location(port_decl)
-                    result.nodes.append(
-                        TraceNode(
-                            id=port_id,
-                            name=port_name,
-                            module=module_name,
-                            kind=kind,
-                            width=port_width,
-                            is_port=True,
-                            file=port_file,
-                            line=port_line,
-                        )
-                    )
-
-            # [铁律4] 为每个信号创建 TraceNode
-            # [FIX Issue 21/29] 为非端口的变量/网表声明创建 TraceNode
-            # 这包括 reg [WIDTH-1:0] var; 等声明
-            # 跳过已经是端口的信号 (已由上面的 port_decls 处理)
-            port_names = set()
-            for port_decl in self.adapter.get_port_declarations(module):
-                pn, _ = self.adapter.get_port_name_and_direction(port_decl)
-                if pn:
-                    port_names.add(self.adapter.clean_name(pn))
-
-            for var_decl in self.adapter.get_variable_declarations(module):
-                var_name = self.adapter.get_signal_name(var_decl)
-                if not var_name or var_name in port_names:
-                    continue
-                var_name = self.adapter.clean_name(var_name)
-                var_id = f"{module_name}.{var_name}"
-                if var_id not in [n.id for n in result.nodes]:
-                    # 提取变量位宽
-                    var_width = self.adapter.extract_data_width(var_decl)
-                    # [P1-3] 获取变量的源码位置
-                    var_file, var_line, _, _ = self.adapter.get_source_location(var_decl)
-                    result.nodes.append(
-                        TraceNode(
-                            id=var_id,
-                            name=var_name,
-                            module=module_name,
-                            kind=NodeKind.SIGNAL,
-                            width=var_width,
-                            file=var_file,
-                            line=var_line,
-                        )
-                    )
+            # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes
+            self._create_port_nodes(module, result, module_name)
+            port_names = self._collect_port_names(module)
+            self._create_var_nodes(module, result, module_name, port_names)
 
             # [FIX] alias 语句: alias b = a; -> b 驱动源为 a
             # 处理 NetAlias,创建 DRIVER 边: a -> b
