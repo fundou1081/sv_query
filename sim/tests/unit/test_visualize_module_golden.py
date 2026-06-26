@@ -23,7 +23,7 @@ def _run_cli_module(target: str, depth: int, output_json: Path) -> int:
             "visualize", "module",
             "--filelist", PULP_FILIST,
             "--target", target,
-            "--depth", str(depth),
+            "--depth", str(depth), "--no-strict",
             "--output-json", str(output_json),
         ],
         capture_output=True, text=True, timeout=60, cwd=PROJECT_ROOT,

@@ -510,7 +510,12 @@ def module(
                 sources=sources, include_dirs=include_dirs, strict=strict,
             )
     except Exception as e:
-        typer.echo(f"Error building tracer: {e}", err=True)
+        # [FIX 2026-06-26] safe print: e may contain binary garbage from pyslang
+        try:
+            msg = f"Error building tracer: {e}"
+        except (UnicodeDecodeError, TypeError):
+            msg = "Error building tracer: <message contains binary garbage>"
+        typer.echo(msg, err=True)
         raise typer.Exit(1)
 
     graph = tracer.build_graph()
