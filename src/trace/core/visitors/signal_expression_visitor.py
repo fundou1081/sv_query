@@ -5230,9 +5230,21 @@ class SignalExpressionVisitor(BaseVisitor):
 
         From visit_identifier_select - handles complex selectors
         """
-        base_name = None
+    @on("IdentifierSelectName")
+    def extract_identifier_select_name(self, node) -> SignalResult:
+        """[MIGRATED] IdentifierSelectName: data[3] etc with bit/range select
 
-        # Get base identifier name
+        From visit_identifier_select - handles complex selectors
+        """
+        base_name = self._extract_identifier_base_name(node)
+        if not base_name:
+            return SignalResult()
+        base_name = self._apply_selectors_to_base_name(node, base_name)
+        clean_name = self.adapter.clean_name(base_name) if base_name else None
+        return SignalResult(primary=clean_name) if clean_name else SignalResult()
+
+    def _extract_identifier_base_name(self, node) -> str:
+        """[REFACTOR A-PR1 2026-06-26] 提取 IdentifierSelectName 节点 base name."""
         if hasattr(node, "identifier"):
             ident = node.identifier
             if hasattr(ident, "value"):
@@ -5242,47 +5254,26 @@ class SignalExpressionVisitor(BaseVisitor):
 
         if not base_name:
             base_name = str(node).strip().split("[")[0]
+        return base_name
 
-        # Get selectors (bit/range selects)
+    def _apply_selectors_to_base_name(self, node, base_name: str) -> str:
+        """[REFACTOR A-PR1 2026-06-26] 处理 selectors (bit/range select) → 返回带 [N] / [M:N] 的 base_name."""
         selectors = getattr(node, "selectors", None)
-        if selectors and hasattr(selectors, "__iter__") and not isinstance(selectors, str):
-            for i in range(len(selectors)):
-                sel = selectors[i]
-                sel_kind = str(getattr(sel, "kind", ""))
+        if not (selectors and hasattr(selectors, "__iter__") and not isinstance(selectors, str)):
+            return base_name
+        for i in range(len(selectors)):
+            sel = selectors[i]
+            sel_kind = str(getattr(sel, "kind", ""))
 
-                if "ElementSelect" in sel_kind:
-                    bit_select = getattr(sel, "selector", None)
-                    if bit_select:
-                        bit_select_kind = str(getattr(bit_select, "kind", ""))
+            if "ElementSelect" in sel_kind:
+                bit_select = getattr(sel, "selector", None)
+                if bit_select:
+                    bit_select_kind = str(getattr(bit_select, "kind", ""))
 
-                        if "SimpleRange" in bit_select_kind:
-                            left_expr = getattr(bit_select, "left", None)
-                            right_expr = getattr(bit_select, "right", None)
+                    if "SimpleRange" in bit_select_kind:
+                        left_expr = getattr(bit_select, "left", None)
+                        right_expr = getattr(bit_select, "right", None)
 
-                            param_map = self._get_param_map()
-                            left_val = self._evaluate_expr(left_expr, param_map) if left_expr else None
-                            right_val = self._evaluate_expr(right_expr, param_map) if right_expr else None
-
-                            if left_val is not None or right_val is not None:
-                                left_str = str(left_val) if left_val is not None else "?"
-                                right_str = str(right_val) if right_val is not None else "?"
-                                base_name = f"{base_name}[{left_str}:{right_str}]"
-                                break
-                        else:
-                            selector_expr = getattr(bit_select, "expr", None)
-                            if selector_expr:
-                                param_map = self._get_param_map()
-                                evaluated = self._evaluate_expr(selector_expr, param_map)
-                                if evaluated is not None:
-                                    base_name = f"{base_name}[{evaluated}]"
-                                    break
-
-                elif "SimpleRangeSelect" in sel_kind:
-                    range_sel = getattr(sel, "selector", None) or sel
-                    left_expr = getattr(range_sel, "left", None)
-                    right_expr = getattr(range_sel, "right", None)
-
-                    if left_expr or right_expr:
                         param_map = self._get_param_map()
                         left_val = self._evaluate_expr(left_expr, param_map) if left_expr else None
                         right_val = self._evaluate_expr(right_expr, param_map) if right_expr else None
@@ -5291,10 +5282,33 @@ class SignalExpressionVisitor(BaseVisitor):
                             left_str = str(left_val) if left_val is not None else "?"
                             right_str = str(right_val) if right_val is not None else "?"
                             base_name = f"{base_name}[{left_str}:{right_str}]"
-                            break
+                            return base_name
+                    else:
+                        selector_expr = getattr(bit_select, "expr", None)
+                        if selector_expr:
+                            param_map = self._get_param_map()
+                            evaluated = self._evaluate_expr(selector_expr, param_map)
+                            if evaluated is not None:
+                                base_name = f"{base_name}[{evaluated}]"
+                                return base_name
 
-        clean_name = self.adapter.clean_name(base_name) if base_name else None
-        return SignalResult(primary=clean_name) if clean_name else SignalResult()
+            elif "SimpleRangeSelect" in sel_kind:
+                range_sel = getattr(sel, "selector", None) or sel
+                left_expr = getattr(range_sel, "left", None)
+                right_expr = getattr(range_sel, "right", None)
+
+                if left_expr or right_expr:
+                    param_map = self._get_param_map()
+                    left_val = self._evaluate_expr(left_expr, param_map) if left_expr else None
+                    right_val = self._evaluate_expr(right_expr, param_map) if right_expr else None
+
+                    if left_val is not None or right_val is not None:
+                        left_str = str(left_val) if left_val is not None else "?"
+                        right_str = str(right_val) if right_val is not None else "?"
+                        base_name = f"{base_name}[{left_str}:{right_str}]"
+                        return base_name
+        return base_name
+
 
     def extract_identifierselectname(self, node) -> SignalResult:
         """[NOT TESTED] IdentifierSelectName: Identifierselectname"""
