@@ -6,7 +6,59 @@
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass
+
+
+def reclaim_memory_for_pyslang() -> None:
+    """[C-Flaky-3b 2026-06-27] Force inactive page reclamation before pyslang elaboration.
+
+    Background: 8GB MBA 上 pyslang elaboration 在内存不足时静默失败
+    (不报 OOM, 但 graph 不完整, 缺 module, binary 名字)。
+
+    通过分配 4GB bytearray 强制 macOS 把 inactive pages 回收,
+    给 pyslang elaboration 足够的连续内存。
+
+    调用点:
+    - sim/tests/conftest.py (pytest main process, session start)
+    - src/cli/main.py (subprocess via run_cli.py)
+    """
+    try:
+        buf = bytearray(4 * 1024**3)
+        time.sleep(3)
+        del buf
+    except MemoryError:
+        # 内存真的不够, 让 pyslang 自己报错
+        pass
+
+
+def reclaim_memory_if_needed() -> None:
+    """[C-Flaky-3b 2026-06-27] 条件式 reclaim — 只在内存压力下跑.
+
+    阈值: swap > 2GB (意味着大量 inactive pages 被 swap 到磁盘,
+    pyslang elaboration 可能因缺内存而静默失败).
+
+    避免在内存充足时无谓 reclaim (每次 ~3s 开销, 还会释放掉
+    可用的 cached memory).
+    """
+    try:
+        import subprocess
+        out = subprocess.run(['sysctl', '-n', 'vm.swapusage'],
+                            capture_output=True, text=True, timeout=2).stdout
+        # 解析 'used = 3367.56M' → 3367
+        import re
+        m = re.search(r'used\s*=\s*([\d.]+)M', out)
+        if m:
+            used_mb = float(m.group(1))
+            if used_mb > 2048:  # 2GB threshold
+                reclaim_memory_for_pyslang()
+    except Exception:
+        # 检测失败时不 reclaim, 让 test 走原路径
+        pass
+
+
+# [C-Flaky-3b 2026-06-27] 向后兼容旧名
+_reclaim_memory_for_pyslang = reclaim_memory_for_pyslang
 
 from .core.bit_select_handler import BitSelectHandler
 from .core.class_graph_builder import ClassGraphBuilder
@@ -391,6 +443,8 @@ class UnifiedTracer:
             force: 强制重新构建（忽略缓存）
             use_cache: 使用缓存加速（基于内容 hash）
         """
+        # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
+        # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
         if self._graph is None or force:
             # 尝试从缓存加载
             if use_cache and self._sources:
