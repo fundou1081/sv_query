@@ -18,6 +18,7 @@ from typing import Any, Callable, ClassVar
 from ._decorators import on
 from .base_visitor import BaseVisitor
 from .member_visitor import MemberVisitor
+from .port_visitor import PortVisitor
 from .declaration_visitor import DeclarationVisitor
 from .statement_visitor import StatementVisitor
 from .type_visitor import TypeVisitor
@@ -30,7 +31,7 @@ from .signal_result import SignalResult
 logger = logging.getLogger(__name__)
 
 
-class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor, DirectiveVisitor):
+class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor, DirectiveVisitor):
     """信号/表达式提取 Visitor
 
     负责将 AST 节点转换为信号名或信号列表。
@@ -1061,12 +1062,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(item))
         return result
 
-    # Default function port
-    @on("DefaultFunctionPort")
-    def extract_default_function_port(self, node) -> SignalResult:
-        """[NOT TESTED] DefaultFunctionPort: default function port"""
-        return SignalResult()
-
     # Case and generate constructs
     @on("DefaultCaseItem")
     def extract_default_case_item(self, node) -> SignalResult:
@@ -1077,15 +1072,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
             for stmt in stmts:
                 if stmt:
                     result = result.merge(self.extract(stmt))
-        return result
-
-    @on("ModportItem")
-    def extract_modport_item(self, node) -> SignalResult:
-        """[NOT TESTED] ModportItem: modport item"""
-        result = SignalResult()
-        signal = getattr(node, "signal", None) or getattr(node, "expr", None)
-        if signal:
-            result = result.merge(self.extract(signal))
         return result
 
     @on("FunctionPrototype")
@@ -1169,15 +1155,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
             return self.extract(seq)
         return result
 
-    @on("FunctionPort")
-    def extract_function_port(self, node) -> SignalResult:
-        """[NOT TESTED] FunctionPort: function port"""
-        result = SignalResult()
-        var = getattr(node, "variable", None) or getattr(node, "var", None)
-        if var:
-            result = result.merge(self.extract(var))
-        return result
-
     @on("ClockingDirection")
     def extract_clocking_direction(self, node) -> SignalResult:
         """[NOT TESTED] ClockingDirection: clocking direction"""
@@ -1203,29 +1180,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     def extract_default_clocking_reference(self, node) -> SignalResult:
         """[NOT TESTED] DefaultClockingReference: default clocking reference"""
         return SignalResult()
-
-    @on("ModportClockingPort")
-    def extract_modport_clocking_port(self, node) -> SignalResult:
-        """[NOT TESTED] ModportClockingPort: modport clocking port"""
-        return SignalResult()
-
-    @on("ModportExplicitPort")
-    def extract_modport_explicit_port(self, node) -> SignalResult:
-        """[NOT TESTED] ModportExplicitPort: modport explicit port"""
-        result = SignalResult()
-        expr = getattr(node, "expr", None) or getattr(node, "signal", None)
-        if expr:
-            result = result.merge(self.extract(expr))
-        return result
-
-    @on("ModportNamedPort")
-    def extract_modport_named_port(self, node) -> SignalResult:
-        """[NOT TESTED] ModportNamedPort: modport named port"""
-        result = SignalResult()
-        expr = getattr(node, "expr", None) or getattr(node, "signal", None)
-        if expr:
-            result = result.merge(self.extract(expr))
-        return result
 
     # Interface port header
     @on("InterfaceHeader")
@@ -1446,11 +1400,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
         """[NOT TESTED] LibraryIncDirClause: library include directory clause"""
         return SignalResult()
 
-    @on("ModportSubroutinePort")
-    def extract_modport_subroutine_port(self, node) -> SignalResult:
-        """[NOT TESTED] ModportSubroutinePort: modport subroutine port"""
-        return SignalResult()
-
     @on("UniquenessConstraint")
     def extract_uniqueness_constraint(self, node) -> SignalResult:
         """[NOT TESTED] UniquenessConstraint: uniqueness constraint"""
@@ -1477,18 +1426,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("Untyped")
     def extract_untyped(self, node) -> SignalResult:
         """[NOT TESTED] Untyped: Untyped"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("WildcardPortConnection")
-    def extract_wildcardportconnection(self, node) -> SignalResult:
-        """[NOT TESTED] WildcardPortConnection: Wildcardportconnection"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -1585,30 +1522,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("UdpEntry")
     def extract_udpentry(self, node) -> SignalResult:
         """[NOT TESTED] UdpEntry: Udpentry"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("UdpInputPortDecl")
-    def extract_udpinputportdecl(self, node) -> SignalResult:
-        """[NOT TESTED] UdpInputPortDecl: Udpinputportdecl"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("UdpOutputPortDecl")
-    def extract_udpoutputportdecl(self, node) -> SignalResult:
-        """[NOT TESTED] UdpOutputPortDecl: Udpoutputportdecl"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -1738,18 +1651,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("NamedPortConnection")
-    def extract_namedportconnection(self, node) -> SignalResult:
-        """[NOT TESTED] NamedPortConnection: Namedportconnection"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("NetAlias")
     def extract_netalias(self, node) -> SignalResult:
         """[NOT TESTED] NetAlias: Netalias"""
@@ -1774,18 +1675,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("OrderedPortConnection")
-    def extract_orderedportconnection(self, node) -> SignalResult:
-        """[NOT TESTED] OrderedPortConnection: Orderedportconnection"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("ParenthesizedPattern")
     def extract_parenthesizedpattern(self, node) -> SignalResult:
         """[NOT TESTED] ParenthesizedPattern: Parenthesizedpattern"""
@@ -1801,18 +1690,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("PathDescription")
     def extract_pathdescription(self, node) -> SignalResult:
         """[NOT TESTED] PathDescription: Pathdescription"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("PortReference")
-    def extract_portreference(self, node) -> SignalResult:
-        """[NOT TESTED] PortReference: Portreference"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2015,57 +1892,9 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("EmptyNonAnsiPort")
-    def extract_emptynonansiport(self, node) -> SignalResult:
-        """[NOT TESTED] EmptyNonAnsiPort: Emptynonansiport"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EmptyPortConnection")
-    def extract_emptyportconnection(self, node) -> SignalResult:
-        """[NOT TESTED] EmptyPortConnection: Emptyportconnection"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("EmptyTimingCheckArg")
     def extract_emptytimingcheckarg(self, node) -> SignalResult:
         """[NOT TESTED] EmptyTimingCheckArg: Emptytimingcheckarg"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ExplicitAnsiPort")
-    def extract_explicitansiport(self, node) -> SignalResult:
-        """[NOT TESTED] ExplicitAnsiPort: Explicitansiport"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ExplicitNonAnsiPort")
-    def extract_explicitnonansiport(self, node) -> SignalResult:
-        """[NOT TESTED] ExplicitNonAnsiPort: Explicitnonansiport"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2349,24 +2178,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                 result.add_signal(str(name.name))
             else:
                 result.add_signal(str(name))
-        return result
-
-    @on("ImplicitAnsiPort")
-    def extract_implicit_ansi_port(self, node) -> SignalResult:
-        """[NOT TESTED] ImplicitAnsiPort: implicit ansi port"""
-        result = SignalResult()
-        name = getattr(node, "name", None)
-        if name:
-            result.add_signal(str(name))
-        return result
-
-    @on("ImplicitNonAnsiPort")
-    def extract_implicit_non_ansi_port(self, node) -> SignalResult:
-        """[NOT TESTED] ImplicitNonAnsiPort: implicit non-ansi port"""
-        result = SignalResult()
-        name = getattr(node, "name", None)
-        if name:
-            result.add_signal(str(name))
         return result
 
     @on("SeparatedList")
