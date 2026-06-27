@@ -19,6 +19,7 @@ from ._decorators import on
 from .base_visitor import BaseVisitor
 from .member_visitor import MemberVisitor
 from .port_visitor import PortVisitor
+from .sequence_visitor import SequenceVisitor
 from .declaration_visitor import DeclarationVisitor
 from .statement_visitor import StatementVisitor
 from .type_visitor import TypeVisitor
@@ -31,7 +32,7 @@ from .signal_result import SignalResult
 logger = logging.getLogger(__name__)
 
 
-class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor, DirectiveVisitor):
+class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor, DirectiveVisitor, SequenceVisitor):
     """信号/表达式提取 Visitor
 
     负责将 AST 节点转换为信号名或信号列表。
@@ -914,14 +915,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
             result = result.merge(self.extract(pattern))
         return result
 
-    @on("SequenceRepetition")
-    def extract_sequence_repetition(self, node) -> SignalResult:
-        """[NOT TESTED] SequenceRepetition: seq[*1:3]"""
-        seq = getattr(node, "sequence", None) or getattr(node, "operand", None)
-        if seq:
-            return self.extract(seq)
-        return SignalResult()
-
     @on("RandCaseItem")
     def extract_rand_case_item(self, node) -> SignalResult:
         """[NOT TESTED] RandCaseItem: rand case item"""
@@ -951,76 +944,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
             for item in items:
                 if item:
                     result = result.merge(self.extract(item))
-        return result
-
-    # Assertion expr kinds
-    @on("AndSequenceExpr")
-    def extract_and_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] AndSequenceExpr: and sequence expression"""
-        result = SignalResult()
-        left = getattr(node, "left", None)
-        right = getattr(node, "right", None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-
-    @on("OrSequenceExpr")
-    def extract_or_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] OrSequenceExpr: or sequence expression"""
-        result = SignalResult()
-        left = getattr(node, "left", None)
-        right = getattr(node, "right", None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-
-    @on("FirstMatchSequenceExpr")
-    def extract_first_match_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] FirstMatchSequenceExpr: first_match sequence expression"""
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            return self.extract(seq)
-        return SignalResult()
-
-    @on("ClockingSequenceExpr")
-    def extract_clocking_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] ClockingSequenceExpr: clocking sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            result = result.merge(self.extract(seq))
-        clock = getattr(node, "clock", None)
-        if clock:
-            result = result.merge(self.extract(clock))
-        return result
-
-    # More SyntaxKind expression handlers
-    @on("WithinSequenceExpr")
-    def extract_within_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] WithinSequenceExpr: within sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            result = result.merge(self.extract(seq))
-        within = getattr(node, "within", None) or getattr(node, "expr2", None)
-        if within:
-            result = result.merge(self.extract(within))
-        return result
-
-    @on("ThroughoutSequenceExpr")
-    def extract_throughout_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] ThroughoutSequenceExpr: throughout sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            result = result.merge(self.extract(seq))
-        throughout = getattr(node, "throughout", None) or getattr(node, "expr2", None)
-        if throughout:
-            result = result.merge(self.extract(throughout))
         return result
 
     @on("ConstraintPrototype")
@@ -1091,68 +1014,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
         constraint = getattr(node, "constraint", None) or getattr(node, "body", None)
         if constraint:
             result = result.merge(self.extract(constraint))
-        return result
-
-    # Jump statements
-    @on("SimpleSequenceExpr")
-    def extract_simple_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] SimpleSequenceExpr: simple sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            return self.extract(seq)
-        return result
-
-    @on("DelayedSequenceExpr")
-    def extract_delayed_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] DelayedSequenceExpr: delayed sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            result = result.merge(self.extract(seq))
-        return result
-
-    @on("DelayedSequenceElement")
-    def extract_delayed_sequence_element(self, node) -> SignalResult:
-        """[NOT TESTED] DelayedSequenceElement: delayed sequence element"""
-        result = SignalResult()
-        items = getattr(node, "items", None)
-        if items and hasattr(items, "__iter__"):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-
-    @on("SequenceMatchList")
-    def extract_sequence_match_list(self, node) -> SignalResult:
-        """[NOT TESTED] SequenceMatchList: sequence match list"""
-        result = SignalResult()
-        items = getattr(node, "items", None)
-        if items and hasattr(items, "__iter__"):
-            for item in items:
-                if item:
-                    result = result.merge(self.extract(item))
-        return result
-
-    @on("IntersectSequenceExpr")
-    def extract_intersect_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] IntersectSequenceExpr: intersect sequence expression"""
-        result = SignalResult()
-        left = getattr(node, "left", None)
-        right = getattr(node, "right", None)
-        if left:
-            result = result.merge(self.extract(left))
-        if right:
-            result = result.merge(self.extract(right))
-        return result
-
-    @on("ParenthesizedSequenceExpr")
-    def extract_parenthesized_sequence_expr(self, node) -> SignalResult:
-        """[NOT TESTED] ParenthesizedSequenceExpr: parenthesized sequence expression"""
-        result = SignalResult()
-        seq = getattr(node, "sequence", None) or getattr(node, "expr", None)
-        if seq:
-            return self.extract(seq)
         return result
 
     @on("ClockingDirection")
