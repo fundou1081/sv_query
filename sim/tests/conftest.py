@@ -4,12 +4,41 @@ pytest configuration for automatic test report generation
 
 import os
 import json
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
+
+
+def _reclaim_memory_for_pyslang() -> None:
+    """[C-Flaky-3 2026-06-27] Force inactive page reclamation before tests.
+
+    Background: 8GB MBA 上 pyslang elaboration 在内存不足时**静默失败**
+    (不报 OOM, 但 graph 不完整, 缺 module, binary 名字)。
+
+    通过分配 4GB bytearray 强制 macOS 把 inactive pages 回收,
+    给 pyslang elaboration 足够的连续内存。
+
+    跑前自动调用, 不影响测试速度 (<3s)。
+    """
+    try:
+        buf = bytearray(4 * 1024**3)
+        time.sleep(3)
+        del buf
+    except MemoryError:
+        # 内存真的不够, 跳过回收, 让 test 自己 fail
+        pass
+
+
+_reclaim_memory_for_pyslang()
+
 
 def pytest_configure(config):
     """Store test start time"""
     config._test_start_time = datetime.now()
+    # [C-Flaky-3 2026-06-27] Run memory reclaim AFTER pytest is fully initialized
+    # so other pytest plugins (xdist, cov, etc.) have already loaded.
+    _reclaim_memory_for_pyslang()
 
 def pytest_collection_modifyitems(config, items):
     """Collect test items for report"""
