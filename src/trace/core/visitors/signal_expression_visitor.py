@@ -21,6 +21,7 @@ from .member_visitor import MemberVisitor
 from .declaration_visitor import DeclarationVisitor
 from .statement_visitor import StatementVisitor
 from .type_visitor import TypeVisitor
+from .directive_visitor import DirectiveVisitor
 from .expression_visitor import ExpressionVisitor
 from .generate_visitor import GenerateVisitor
 from .operator_visitor import OperatorVisitor
@@ -29,7 +30,7 @@ from .signal_result import SignalResult
 logger = logging.getLogger(__name__)
 
 
-class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor):
+class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, GenerateVisitor, ExpressionVisitor, DeclarationVisitor, StatementVisitor, TypeVisitor, DirectiveVisitor):
     """信号/表达式提取 Visitor
 
     负责将 AST 节点转换为信号名或信号列表。
@@ -1049,16 +1050,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(arg))
         return result
 
-    # Bind directive
-    @on("BindDirective")
-    def extract_bind_directive(self, node) -> SignalResult:
-        """[NOT TESTED] BindDirective: bind directive"""
-        result = SignalResult()
-        target = getattr(node, "target", None) or getattr(node, "expr", None)
-        if target:
-            result = result.merge(self.extract(target))
-        return result
-
     @on("BindTargetList")
     def extract_bind_target_list(self, node) -> SignalResult:
         """[NOT TESTED] BindTargetList: bind target list"""
@@ -1471,42 +1462,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(item))
         return result
 
-    @on("UnconnectedDriveDirective")
-    def extract_unconnecteddrivedirective(self, node) -> SignalResult:
-        """[NOT TESTED] UnconnectedDriveDirective: Unconnecteddrivedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("UndefDirective")
-    def extract_undefdirective(self, node) -> SignalResult:
-        """[NOT TESTED] UndefDirective: Undefdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("UndefineAllDirective")
-    def extract_undefinealldirective(self, node) -> SignalResult:
-        """[NOT TESTED] UndefineAllDirective: Undefinealldirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("Unknown")
     def extract_unknown(self, node) -> SignalResult:
         """[NOT TESTED] Unknown: Unknown"""
@@ -1591,18 +1546,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("TimeScaleDirective")
-    def extract_timescaledirective(self, node) -> SignalResult:
-        """[NOT TESTED] TimeScaleDirective: Timescaledirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("TokenList")
     def extract_tokenlist(self, node) -> SignalResult:
         """[NOT TESTED] TokenList: Tokenlist"""
@@ -1675,18 +1618,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("PragmaDirective")
-    def extract_pragmadirective(self, node) -> SignalResult:
-        """[NOT TESTED] PragmaDirective: Pragmadirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("PrimitiveInstantiation")
     def extract_primitiveinstantiation(self, node) -> SignalResult:
         """[NOT TESTED] PrimitiveInstantiation: Primitiveinstantiation"""
@@ -1711,30 +1642,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("ProtectDirective")
-    def extract_protectdirective(self, node) -> SignalResult:
-        """[NOT TESTED] ProtectDirective: Protectdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ProtectedDirective")
-    def extract_protecteddirective(self, node) -> SignalResult:
-        """[NOT TESTED] ProtectedDirective: Protecteddirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("PullStrength")
     def extract_pullstrength(self, node) -> SignalResult:
         """[NOT TESTED] PullStrength: Pullstrength"""
@@ -1750,18 +1657,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("QueueDimensionSpecifier")
     def extract_queuedimensionspecifier(self, node) -> SignalResult:
         """[NOT TESTED] QueueDimensionSpecifier: Queuedimensionspecifier"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ResetAllDirective")
-    def extract_resetalldirective(self, node) -> SignalResult:
-        """[NOT TESTED] ResetAllDirective: Resetalldirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -1858,18 +1753,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("NetAlias")
     def extract_netalias(self, node) -> SignalResult:
         """[NOT TESTED] NetAlias: Netalias"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("NoUnconnectedDriveDirective")
-    def extract_nounconnecteddrivedirective(self, node) -> SignalResult:
-        """[NOT TESTED] NoUnconnectedDriveDirective: Nounconnecteddrivedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2036,57 +1919,9 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("IfDefDirective")
-    def extract_ifdefdirective(self, node) -> SignalResult:
-        """[NOT TESTED] IfDefDirective: Ifdefdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("IfNDefDirective")
-    def extract_ifndefdirective(self, node) -> SignalResult:
-        """[NOT TESTED] IfNDefDirective: Ifndefdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("IncludeDirective")
-    def extract_includedirective(self, node) -> SignalResult:
-        """[NOT TESTED] IncludeDirective: Includedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("LibraryMap")
     def extract_librarymap(self, node) -> SignalResult:
         """[NOT TESTED] LibraryMap: Librarymap"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("LineDirective")
-    def extract_linedirective(self, node) -> SignalResult:
-        """[NOT TESTED] LineDirective: Linedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2180,30 +2015,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("ElsIfDirective")
-    def extract_elsifdirective(self, node) -> SignalResult:
-        """[NOT TESTED] ElsIfDirective: Elsifdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("ElseDirective")
-    def extract_elsedirective(self, node) -> SignalResult:
-        """[NOT TESTED] ElseDirective: Elsedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("EmptyNonAnsiPort")
     def extract_emptynonansiport(self, node) -> SignalResult:
         """[NOT TESTED] EmptyNonAnsiPort: Emptynonansiport"""
@@ -2231,66 +2042,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
     @on("EmptyTimingCheckArg")
     def extract_emptytimingcheckarg(self, node) -> SignalResult:
         """[NOT TESTED] EmptyTimingCheckArg: Emptytimingcheckarg"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EndCellDefineDirective")
-    def extract_endcelldefinedirective(self, node) -> SignalResult:
-        """[NOT TESTED] EndCellDefineDirective: Endcelldefinedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EndIfDirective")
-    def extract_endifdirective(self, node) -> SignalResult:
-        """[NOT TESTED] EndIfDirective: Endifdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EndKeywordsDirective")
-    def extract_endkeywordsdirective(self, node) -> SignalResult:
-        """[NOT TESTED] EndKeywordsDirective: Endkeywordsdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EndProtectDirective")
-    def extract_endprotectdirective(self, node) -> SignalResult:
-        """[NOT TESTED] EndProtectDirective: Endprotectdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("EndProtectedDirective")
-    def extract_endprotecteddirective(self, node) -> SignalResult:
-        """[NOT TESTED] EndProtectedDirective: Endprotecteddirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2372,18 +2123,6 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("DefaultDecayTimeDirective")
-    def extract_defaultdecaytimedirective(self, node) -> SignalResult:
-        """[NOT TESTED] DefaultDecayTimeDirective: Defaultdecaytimedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("DefaultSkewItem")
     def extract_defaultskewitem(self, node) -> SignalResult:
         """[NOT TESTED] DefaultSkewItem: Defaultskewitem"""
@@ -2396,69 +2135,9 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("DefaultTriregStrengthDirective")
-    def extract_defaulttriregstrengthdirective(self, node) -> SignalResult:
-        """[NOT TESTED] DefaultTriregStrengthDirective: Defaulttriregstrengthdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("DefineDirective")
-    def extract_definedirective(self, node) -> SignalResult:
-        """[NOT TESTED] DefineDirective: Definedirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("Delay3")
     def extract_delay3(self, node) -> SignalResult:
         """[NOT TESTED] Delay3: Delay3"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("DelayModePathDirective")
-    def extract_delaymodepathdirective(self, node) -> SignalResult:
-        """[NOT TESTED] DelayModePathDirective: Delaymodepathdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("DelayModeUnitDirective")
-    def extract_delaymodeunitdirective(self, node) -> SignalResult:
-        """[NOT TESTED] DelayModeUnitDirective: Delaymodeunitdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("DelayModeZeroDirective")
-    def extract_delaymodezerodirective(self, node) -> SignalResult:
-        """[NOT TESTED] DelayModeZeroDirective: Delaymodezerodirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
@@ -2552,33 +2231,9 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, Gener
                     result = result.merge(self.extract(child))
         return result
 
-    @on("BeginKeywordsDirective")
-    def extract_beginkeywordsdirective(self, node) -> SignalResult:
-        """[NOT TESTED] BeginKeywordsDirective: Beginkeywordsdirective"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
     @on("CellConfigRule")
     def extract_cellconfigrule(self, node) -> SignalResult:
         """[NOT TESTED] CellConfigRule: Cellconfigrule"""
-        result = SignalResult()
-        # Extract signals from children
-        children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
-        if children:
-            for child in children:
-                if child:
-                    result = result.merge(self.extract(child))
-        return result
-
-    @on("CellDefineDirective")
-    def extract_celldefinedirective(self, node) -> SignalResult:
-        """[NOT TESTED] CellDefineDirective: Celldefinedirective"""
         result = SignalResult()
         # Extract signals from children
         children = getattr(node, "items", None) or getattr(node, "elements", None) or getattr(node, "members", None)
