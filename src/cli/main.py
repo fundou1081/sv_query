@@ -21,10 +21,10 @@ if str(_project_root) not in sys.path:
 
 import typer
 
-# [C-Flaky-3b 2026-06-27] 条件式 reclaim: 只在 swap > 2GB (内存压力)
-# 时跑, 避免 pytest test runner 里多次 reclaim 累积 OOM.
-from trace.unified_tracer import reclaim_memory_if_needed
-reclaim_memory_if_needed()
+# [C-Flaky-3b 2026-06-27 disabled] 经验证 CLI 入口 reclaim 让 subprocess 更慢
+# 甚至更不稳定 (4GB 分配 + 父进程已有 reclaim 时累积). 只依赖 conftest.py
+# 在 pytest session 开始时跑一次, subprocess 不重复 reclaim.
+# reclaim_memory_if_needed() 函数仍保留供未来需要时调用.
 
 from src.cli._common import (
     _build_tracer,
