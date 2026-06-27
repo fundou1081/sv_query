@@ -15,6 +15,20 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+INDUSTRIAL_FILELISTS = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
+NAPLES_UART_F = INDUSTRIAL_FILELISTS / "naplespu_uart.f"
+OPENTITAN_TLUL_F = INDUSTRIAL_FILELISTS / "opentitan_tlul.f"
+
+def _require_filelist(path: Path) -> None:
+    """[Bug 2 fix 2026-06-27] Skip if filelist missing on this host.
+
+    Industrial filelists reference user-specific project paths (~/my_dv_proj/...)
+    and may not exist on all test hosts. Use pytest.skip instead of asserting.
+    """
+    if not path.exists():
+        pytest.skip(f"Industrial filelist not available: {path}")
+
+
 
 def _run(args: list[str], timeout: int = 60) -> tuple[int, str, str]:
     cmd = [sys.executable, str(PROJECT_ROOT / "run_cli.py"), *args]
@@ -43,9 +57,10 @@ def test_cli_deadlock_missing_file():
 
 def test_cli_deadlock_missing_protocol():
     """协议名错应该报错"""
+    _require_filelist(NAPLES_UART_F)
     rc, stdout, stderr = _run([
         "backpressure", "deadlock",
-        "--filelist", "/tmp/naples_sync_uart_complete.f",
+        "--filelist", str(NAPLES_UART_F),
         "-p", "DOES_NOT_EXIST",
     ])
     assert rc != 0
@@ -55,9 +70,10 @@ def test_cli_deadlock_missing_protocol():
 
 def test_cli_deadlock_no_findings_npu():
     """NPU uart 没有 valid/ready → 0 findings"""
+    _require_filelist(NAPLES_UART_F)
     rc, stdout, stderr = _run([
         "backpressure", "deadlock",
-        "--filelist", "/tmp/naples_sync_uart_complete.f",
+        "--filelist", str(NAPLES_UART_F),
         "-p", "TL-UL",
     ])
     assert rc == 0
@@ -66,9 +82,10 @@ def test_cli_deadlock_no_findings_npu():
 
 def test_cli_deadlock_json_output():
     """[P1-6] --json 输出必须可被 json.loads 解析"""
+    _require_filelist(OPENTITAN_TLUL_F)
     rc, stdout, stderr = _run([
         "backpressure", "deadlock",
-        "--filelist", "/tmp/opentitan_tlul.f",
+        "--filelist", str(OPENTITAN_TLUL_F),
         "-p", "TL-UL",
         "--json",
     ])
@@ -88,9 +105,10 @@ def test_cli_deadlock_json_output():
 
 def test_cli_deadlock_axi4_opentitan():
     """AXI4 跑 OpenTitan 应该能找到 cross-channel 候选"""
+    _require_filelist(OPENTITAN_TLUL_F)
     rc, stdout, stderr = _run([
         "backpressure", "deadlock",
-        "--filelist", "/tmp/opentitan_tlul.f",
+        "--filelist", str(OPENTITAN_TLUL_F),
         "-p", "AXI4",
     ])
     assert rc == 0
