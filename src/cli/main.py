@@ -21,6 +21,11 @@ if str(_project_root) not in sys.path:
 
 import typer
 
+# [C-Flaky-3b 2026-06-27] 条件式 reclaim: 只在 swap > 2GB (内存压力)
+# 时跑, 避免 pytest test runner 里多次 reclaim 累积 OOM.
+from trace.unified_tracer import reclaim_memory_if_needed
+reclaim_memory_if_needed()
+
 from src.cli._common import (
     _build_tracer,
     handle_compilation_error,
