@@ -154,17 +154,16 @@ class ModuleInstanceGraph:
                             port_name = _safe_attr(port_sym, "name", None)
                             if port_name:
                                 port_path = f"{instance_id}.{port_name}"
-                                # [Bug fix 2026-06-25] 之前 internal = f"{inst_type}.{port_name}"
-                                # (例如 frontend.flush_i), 多个 instance 共享 parent 内部
-                                # wire 时会 mapping 到不同 internal, edge 永远 0.
-                                # 现在 internal = parent_id.port_name (例如 cva6.flush_i),
-                                # 多个 child instance 连到同一根 parent wire → 共享 internal → edge 创建.
-                                # 拿 parent_id: hierarchy 上父节点的 instance path (没有就空)
-                                if parent:
-                                    # parent 是 module name (e.g. 'cva6'), 用它 + port_name
-                                    internal = f"{parent}.{port_name}"
-                                else:
-                                    internal = f"<root>.{port_name}"
+                                # [Bug 1 fix 2026-06-27] 改回 inst_type 语义.
+                                # 之前 commit 04a9a18 改用 parent (top.clk), 让多个 instance
+                                # 共享 parent wire → 共享 internal → edge 成功创建.
+                                # 但测试 test_port_mapping / test_mig_port_info 期望
+                                # internal_signal = module_type.port_name (e.g. dut.clk),
+                                # 即 "进入 instance 后看到的内部信号名".
+                                # 现恢复: internal = inst_type.port_name (e.g. dut.clk).
+                                # 多 instance edge 创建改由 semantic_adapter.find_connections
+                                # 单独处理 (根据 port connection 直接找目标 wire).
+                                internal = f"{inst_type}.{port_name}"
                                 self.port_to_internal[port_path] = internal
                                 self.internal_to_port[internal] = port_path
 
