@@ -19,6 +19,27 @@ _project_root = _src_dir.parent.parent  # 项目根目录
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
+# [A3 2026-06-28] Global --quiet support for LLM consumers.
+# 在 Typer 启动前检查 sys.argv, 如果有 --quiet / -q / SVQ_QUIET env,
+# 则调用 trace.core.compiler.set_quiet(True) 抑制所有 stderr 输出 (SWAP warning, INFO log, 等).
+# 同时从 sys.argv 中移除 --quiet / -q 避免 Typer 报 unknown option.
+# 这样 LLM 收到的 stdout 只有合法 JSON, 不会被警告污染.
+def _apply_quiet_flag() -> None:
+    """[A3 2026-06-28] Detect --quiet in argv or env, call set_quiet(True)."""
+    quiet_signals = {"--quiet", "-q"}
+    env_quiet = os.environ.get("SVQ_QUIET", "").lower() in ("1", "true", "yes")
+    if env_quiet or any(arg in quiet_signals for arg in sys.argv[1:]):
+        try:
+            from trace.core.compiler import set_quiet
+            set_quiet(True)
+        except ImportError:
+            pass
+        # 从 argv 中移除 --quiet / -q (Typer 不识别全局 flag)
+        sys.argv[:] = [a for a in sys.argv if a not in quiet_signals]
+
+import os  # noqa: E402  (needed for env var check above)
+_apply_quiet_flag()
+
 import typer
 
 # [C-Flaky-3b 2026-06-27 disabled] 经验证 CLI 入口 reclaim 让 subprocess 更慢

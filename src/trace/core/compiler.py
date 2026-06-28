@@ -8,6 +8,25 @@
 import os
 import sys
 
+# [A1 + A3 2026-06-28] Global quiet flag for LLM-friendly output.
+# When True, all diagnostic output (warnings, info, errors) goes to /dev/null.
+# Without --quiet, all non-JSON output still goes to stderr (Unix convention).
+_QUIET = False
+
+
+def set_quiet(quiet: bool = True) -> None:
+    """Set global quiet mode for LLM consumption.
+
+    When quiet=True, all diagnostic messages (SWAP warning, INFO logs,
+    ERROR messages) are suppressed. JSON output via stdout is unaffected.
+
+    Usage:
+        from trace.core.compiler import set_quiet
+        set_quiet(True)  # suppress all stderr noise
+    """
+    global _QUIET
+    _QUIET = quiet
+
 # pyslang  bindings 路径
 PYSLLANG_BINDINGS_PATH = "/Users/fundou/my_dv_proj/slang/build/bindings"
 if PYSLLANG_BINDINGS_PATH not in sys.path:
@@ -49,6 +68,8 @@ def _check_memory_pressure():
     这个函数检测 swap 使用情况, 如果超过阈值就 warn.
     """
     import sys as _sys
+    if _QUIET:  # [A3 2026-06-28] quiet 模式下不输出任何警告
+        return
     try:
         import subprocess, re
         # macOS: 从 sysctl 获取 swap
@@ -129,10 +150,13 @@ class SVCompiler:
         return level_map.get(level.upper(), 30)
 
     def _log(self, level: str, msg: str):
-        """内部日志输出"""
+        """内部日志输出. [A1 2026-06-28] 全部走 stderr (LLM-friendly)."""
+        if _QUIET:
+            return
         level_val = self._parse_log_level(level)
         if level_val >= self._log_level:
-            print(f"[{level}] {msg}", file=sys.stderr if level == "ERROR" else sys.stdout)
+            # [A1 fix 2026-06-28] 所有 level 都走 stderr, 避免污染 stdout JSON
+            print(f"[{level}] {msg}", file=sys.stderr)
 
     def add_source(self, filename: str, source: str):
         """添加源文件"""
