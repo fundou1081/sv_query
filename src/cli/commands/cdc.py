@@ -47,6 +47,7 @@ def analyze(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     high_only: bool = typer.Option(False, "--high-only", help="Show only high-risk CDC paths"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for source/target of each CDC path (optional)"),
+    summary: bool = typer.Option(False, "--summary", "-S", help="[C2 2026-06-28 LLM] Summary only: counts + domains, no paths. Saves context."),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
 ) -> None:
@@ -100,12 +101,23 @@ def analyze(
             return obj
 
         safe_report = _json_safe(report)
+
+        # [C2 2026-06-28 LLM] Summary mode: drop paths, keep only counts
+        if summary:
+            safe_report = {
+                "domains": safe_report.get("domains", []),
+                "total_cdc": safe_report.get("total_cdc", 0),
+                "high_risk": safe_report.get("high_risk", 0),
+                "low_risk": safe_report.get("low_risk", 0),
+                "summary": True,  # marker
+            }
+
         print(
             json.dumps(
                 {
                     "ok": True,
                     "command": "cdc analyze",
-                    "params": {"file": file, "high_only": high_only, "evidence": evidence},
+                    "params": {"file": file, "high_only": high_only, "evidence": evidence, "summary": summary},
                     "result": safe_report,
                 },
                 indent=2,
