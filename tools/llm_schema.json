@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fundou1081/sv_query/tools/llm_schema.json",
+  "title": "sv_query LLM Schema",
+  "description": "[Phase 2 B1 2026-06-28] JSON Schema for sv_query CLI output, for LLM consumption. All commands return JSON via --json flag.",
+  "version": "1.0.0",
+  "definitions": {
+    "SignalId": {
+      "type": "string",
+      "description": "Hierarchical signal identifier, e.g. 'top.cpu.q' or 'top.cpu_inst.data[7:0]'",
+      "pattern": "^[a-zA-Z_][a-zA-Z0-9_.]*(\\[[0-9]+:[0-9]+\\])?$"
+    },
+    "EdgeKind": {
+      "type": "string",
+      "enum": ["DRIVER", "CLOCK", "RESET", "CONTROL", "PORT_IN", "PORT_OUT", "REG", "SIGNAL", "UNKNOWN"],
+      "description": "Edge or signal kind in graph"
+    },
+    "RiskLevel": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      "description": "Risk classification level"
+    },
+    "CommonResult": {
+      "type": "object",
+      "required": ["ok", "command"],
+      "properties": {
+        "ok": {"type": "boolean", "description": "true if success, false if error"},
+        "command": {"type": "string", "description": "Command name (e.g., 'trace_fanout')"},
+        "params": {"type": "object", "description": "Echo of input parameters"},
+        "result": {"description": "Command-specific result (varies by command)"},
+        "errors": {"type": "array", "items": {"type": "string"}, "description": "List of error messages"}
+      }
+    },
+    "ErrorResult": {
+      "type": "object",
+      "required": ["ok", "error_code"],
+      "properties": {
+        "ok": {"const": false},
+        "command": {"type": "string"},
+        "error": {"type": "string", "description": "Human-readable error message"},
+        "error_code": {
+          "type": "string",
+          "enum": [
+            "E_INTERNAL",
+            "E_USAGE",
+            "E_FILE_NOT_FOUND",
+            "E_FILELIST_NOT_FOUND",
+            "E_INVALID_INPUT",
+            "E_ELABORATION_FAILED",
+            "E_PARSE_ERROR",
+            "E_TARGET_NOT_FOUND",
+            "E_SIGNAL_NOT_FOUND",
+            "E_NO_DATA",
+            "E_PARTIAL_RESULT"
+          ],
+          "description": "[B2 2026-06-28] Stable error code for LLM error classification"
+        },
+        "errors": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "commands": {
+    "stats": {
+      "description": "Show graph statistics (nodes, edges, modules, fanout ranking)",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "total_nodes": {"type": "integer"},
+          "total_edges": {"type": "integer"},
+          "nodes": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Count per node kind"},
+          "edges": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Count per edge kind"},
+          "modules": {"type": "array", "items": {"type": "string"}, "description": "Module names in design"},
+          "elaboration_errors": {"type": "array", "items": {"type": "string"}, "description": "pyslang elaboration errors (if any)"}
+        }
+      }
+    },
+    "trace_fanin": {
+      "description": "Trace signal drivers (upstream)",
+      "params_schema": {
+        "type": "object",
+        "required": ["signal"],
+        "properties": {
+          "signal": {"$ref": "#/definitions/SignalId"},
+          "depth": {"type": ["integer", "null"], "description": "Max trace depth (null=unlimited)"},
+          "max_results": {"type": ["integer", "null"], "description": "[C1 2026-06-28] Cap on result count"}
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "drivers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"$ref": "#/definitions/SignalId"},
+                "kind": {"$ref": "#/definitions/EdgeKind"},
+                "distance": {"type": "integer"}
+              }
+            }
+          },
+          "truncated": {"type": "boolean", "description": "[C1 2026-06-28] True if results were capped by max_results"},
+          "total_count": {"type": "integer", "description": "[C1 2026-06-28] Actual number of items returned"}
+        }
+      }
+    },
+    "trace_fanout": {
+      "description": "Trace signal loads (downstream)",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "loads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"$ref": "#/definitions/SignalId"},
+                "kind": {"$ref": "#/definitions/EdgeKind"},
+                "distance": {"type": "integer"}
+              }
+            }
+          },
+          "truncated": {"type": "boolean"},
+          "total_count": {"type": "integer"}
+        }
+      }
+    },
+    "cdc_analyze": {
+      "description": "Detect clock domain crossing (CDC) issues",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "domains": {"type": "array", "items": {"type": "string"}, "description": "Clock domain names"},
+          "domain_count": {"type": "integer"},
+          "domain_pairs": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Pair count per clock-domain combination"},
+          "total_cdc": {"type": "integer", "description": "Total CDC paths"},
+          "high_risk": {"type": "integer", "description": "Count of HIGH risk paths"},
+          "low_risk": {"type": "integer", "description": "Count of LOW risk paths"},
+          "high_risk_paths": {"type": "array", "items": {"type": "object"}},
+          "paths": {"type": "array", "items": {"type": "object"}, "description": "Full list of CDC paths (use --summary to omit)"},
+          "sync_type_stats": {"type": "object", "additionalProperties": {"type": "integer"}}
+        }
+      }
+    },
+    "cdc_analyze_summary": {
+      "description": "CDC analyze with --summary flag (LLM-optimized)",
+      "result_schema": {
+        "type": "object",
+        "required": ["summary"],
+        "properties": {
+          "domains": {"type": "array", "items": {"type": "string"}},
+          "total_cdc": {"type": "integer"},
+          "high_risk": {"type": "integer"},
+          "low_risk": {"type": "integer"},
+          "summary": {"const": true, "description": "[C2 2026-06-28] Marker that --summary was used"}
+        }
+      }
+    },
+    "risk_analyze": {
+      "description": "Signal risk analysis: clock/reset/data classification + risk scoring",
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "clocks": {"type": "array", "items": {"type": "object"}, "description": "Clock signals with metadata"},
+          "resets": {"type": "array", "items": {"type": "object"}, "description": "Reset signals with metadata"},
+          "data_signals": {"type": "array", "items": {"$ref": "#/definitions/SignalRisk"}, "description": "All data signals with risk scores (use --summary to limit)"},
+          "summary": {"$ref": "#/definitions/RiskSummary"}
+        }
+      }
+    },
+    "risk_analyze_summary": {
+      "description": "Risk analyze with --summary flag (LLM-optimized, top-10 only)",
+      "result_schema": {
+        "type": "object",
+        "required": ["summary_mode"],
+        "properties": {
+          "clocks_count": {"type": "integer"},
+          "resets_count": {"type": "integer"},
+          "top_risks": {"type": "array", "items": {"$ref": "#/definitions/SignalRisk"}, "description": "Top 10 highest-risk signals"},
+          "summary": {"$ref": "#/definitions/RiskSummary"},
+          "summary_mode": {"const": true, "description": "[C2 2026-06-28] Marker that --summary was used"}
+        }
+      }
+    }
+  },
+  "reusable_schemas": {
+    "SignalRisk": {
+      "type": "object",
+      "properties": {
+        "node_id": {"$ref": "#/definitions/SignalId"},
+        "name": {"type": "string"},
+        "kind": {"type": "string"},
+        "fan_in": {"type": "integer"},
+        "fan_out": {"type": "integer"},
+        "width": {"type": "integer"},
+        "is_reg": {"type": "boolean"},
+        "is_conv": {"type": "boolean", "description": "Convergent signal (fan_in >= 3)"},
+        "is_div": {"type": "boolean", "description": "Divergent signal (fan_out >= 3)"},
+        "has_sva": {"type": "boolean"},
+        "has_cov": {"type": "boolean"},
+        "func_score": {"type": "number"},
+        "func_level": {"$ref": "#/definitions/RiskLevel"},
+        "timing_score": {"type": "number"},
+        "timing_level": {"$ref": "#/definitions/RiskLevel"}
+      }
+    },
+    "RiskSummary": {
+      "type": "object",
+      "properties": {
+        "total": {"type": "integer"},
+        "critical": {"type": "integer", "description": "Count of CRITICAL func_level"},
+        "high": {"type": "integer", "description": "Count of HIGH func_level"},
+        "sva_covered": {"type": "integer"},
+        "cov_covered": {"type": "integer"},
+        "truncated": {"type": "boolean", "description": "True if data was truncated by --summary"}
+      }
+    }
+  },
+  "usage": {
+    "success_pattern": {
+      "ok": true,
+      "command": "trace_fanout",
+      "params": {"signal": "top.clk", "file": "/path/to/file.sv", "depth": null, "max_results": 10},
+      "result": {"loads": [{"id": "top.q", "kind": "REG", "distance": 1}], "truncated": false, "total_count": 1},
+      "errors": []
+    },
+    "error_pattern": {
+      "ok": false,
+      "command": "trace_fanin",
+      "error": "[Errno 2] No such file or directory: '/tmp/missing.sv'",
+      "error_code": "E_FILE_NOT_FOUND",
+      "errors": ["[Errno 2] No such file or directory: '/tmp/missing.sv'"]
+    },
+    "llm_tips": [
+      "Always pass --json (or -j) for parseable output",
+      "Use --quiet (or -q) to suppress stderr warnings (LLM-friendly)",
+      "Use --summary on cdc/risk when full lists would overflow context",
+      "Use --max-results N on trace fanin/fanout to cap long chains",
+      "Check error_code field for stable classification (don't parse error message string)"
+    ]
+  }
+}
