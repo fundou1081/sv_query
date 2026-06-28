@@ -50,6 +50,7 @@ def analyze(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_comb_depth: int = typer.Option(3, "--max-comb-depth", help="Max combinational depth threshold"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each data signal (optional)"),
+    summary: bool = typer.Option(False, "--summary", "-S", help="[C2 2026-06-28 LLM] Summary only: counts + top-10 high-risk signals, no full list."),
 ) -> None:
     """Analyze signal risk: clock/reset/data classification + risk scoring
 
@@ -170,24 +171,44 @@ def analyze(
     if json_output:
         import json
 
+        # [C2 2026-06-28 LLM] Summary mode: top-10 risks + counts only
+        if summary:
+            data_signals_summary = data_risks[:10]
+            result_payload = {
+                "clocks_count": len(clocks),
+                "resets_count": len(resets),
+                "top_risks": data_signals_summary,
+                "summary": {
+                    "total": len(data_risks),
+                    "critical": len([r for r in data_risks if r["func_level"] == "CRITICAL"]),
+                    "high": len([r for r in data_risks if r["func_level"] == "HIGH"]),
+                    "sva_covered": len(sva_signals),
+                    "cov_covered": len(cov_signals),
+                    "truncated": len(data_risks) > 10,
+                },
+                "summary_mode": True,
+            }
+        else:
+            result_payload = {
+                "clocks": clocks,
+                "resets": resets,
+                "data_signals": data_risks,
+                "summary": {
+                    "total": len(data_risks),
+                    "critical": len([r for r in data_risks if r["func_level"] == "CRITICAL"]),
+                    "high": len([r for r in data_risks if r["func_level"] == "HIGH"]),
+                    "sva_covered": len(sva_signals),
+                    "cov_covered": len(cov_signals),
+                },
+            }
+
         print(
             json.dumps(
                 {
                     "ok": True,
                     "command": "risk analyze",
-                    "params": {"file": file, "max_comb_depth": max_comb_depth},
-                    "result": {
-                        "clocks": clocks,
-                        "resets": resets,
-                        "data_signals": data_risks,
-                        "summary": {
-                            "total": len(data_risks),
-                            "critical": len([r for r in data_risks if r["func_level"] == "CRITICAL"]),
-                            "high": len([r for r in data_risks if r["func_level"] == "HIGH"]),
-                            "sva_covered": len(sva_signals),
-                            "cov_covered": len(cov_signals),
-                        },
-                    },
+                    "params": {"file": file, "max_comb_depth": max_comb_depth, "summary": summary},
+                    "result": result_payload,
                 },
                 indent=2,
                 ensure_ascii=False,
