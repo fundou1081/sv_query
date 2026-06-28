@@ -257,7 +257,6 @@ def main():
     parser.add_argument("--markdown", action="store_true", help="Also output Markdown report")
     parser.add_argument("--skip-flakiness", action="store_true", help="Skip flakiness measurement")
     parser.add_argument("--strict", action="store_true", default=True, help="Strict mode (default ON)")
-    parser.add_argument("--no-strict", dest="strict", action="store_false", help="Disable strict mode (elaborate partial AST)")
     args = parser.parse_args()
 
     print(f"=== [PR5] sv_query benchmark ===")

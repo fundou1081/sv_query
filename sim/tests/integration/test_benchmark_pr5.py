@@ -23,13 +23,8 @@ FILENAME_LIST = "/tmp/pulp_axi_xbar_pr2.f"
 TARGET = "axi_xbar_dp_ram"
 
 
-def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TARGET, depth: int = 4, output: Path = None, no_strict: bool = True) -> dict:
-    """Run benchmark, return parsed JSON.
-
-    [Bug-fix 2026-06-28] pulp_axi_xbar elaboration has 69 known InvalidMemberAccess
-    errors in axi_demux.sv (pyslang limitation on complex parameterized port types).
-    Default to --no-strict to get partial AST output.
-    """
+def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TARGET, depth: int = 4, output: Path = None) -> dict:
+    """Run benchmark, return parsed JSON."""
     if output is None:
         output = Path("/tmp/bench_pr5_test.json")
     args = [
@@ -42,8 +37,6 @@ def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TA
     ]
     if skip_flakiness:
         args.append("--skip-flakiness")
-    if no_strict:
-        args.append("--no-strict")
     result = subprocess.run(
         args, capture_output=True, text=True, timeout=300, cwd=PROJECT_ROOT,
     )
