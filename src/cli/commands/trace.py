@@ -280,7 +280,9 @@ def fanin(
             output_text(data, human=human, tree=tree)
 
     except Exception as e:
-        data = {"ok": False, "command": "trace_fanin", "error": str(e), "errors": [str(e)]}
+        # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
+        from src.cli.errors import make_error, code_for_exception
+        data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
             output_json(data)
         else:
@@ -360,7 +362,13 @@ def fanout(
             output_text(data, human=human, tree=tree)
 
     except Exception as e:
-        data = {"ok": False, "command": "trace_fanout", "error": str(e), "errors": [str(e)]}
+        # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
+        from src.cli.errors import make_error, code_for_exception
+        data = make_error(
+            code_for_exception(e),
+            str(e),
+            command="trace_fanout",
+        )
         if json_output:
             output_json(data)
         else:
