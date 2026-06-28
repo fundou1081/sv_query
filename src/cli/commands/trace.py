@@ -232,6 +232,7 @@ def fanin(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
+    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results (None=unlimited). Returns truncated=true if capped."),
 ) -> None:
     """Trace signal drivers (fanin)"""
     try:
@@ -259,11 +260,17 @@ def fanin(
                     }
                 )
 
+        # [C1 2026-06-28 LLM] Limit results to avoid context overflow
+        truncated = False
+        if max_results is not None and len(drivers) > max_results:
+            drivers = drivers[:max_results]
+            truncated = True
+
         data = {
             "ok": True,
             "command": "trace_fanin",
-            "params": {"signal": signal, "file": str(file), "depth": depth},
-            "result": {"drivers": drivers},
+            "params": {"signal": signal, "file": str(file), "depth": depth, "max_results": max_results},
+            "result": {"drivers": drivers, "truncated": truncated, "total_count": len(drivers)},
             "errors": [],
         }
 
@@ -296,6 +303,7 @@ def fanout(
     include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
+    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results (None=unlimited). Returns truncated=true if capped."),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -332,11 +340,17 @@ def fanout(
                     }
                 )
 
+        # [C1 2026-06-28 LLM] Limit results to avoid context overflow
+        truncated = False
+        if max_results is not None and len(loads) > max_results:
+            loads = loads[:max_results]
+            truncated = True
+
         data = {
             "ok": True,
             "command": "trace_fanout",
-            "params": {"signal": signal, "file": str(file), "depth": depth},
-            "result": {"loads": loads},
+            "params": {"signal": signal, "file": str(file), "depth": depth, "max_results": max_results},
+            "result": {"loads": loads, "truncated": truncated, "total_count": len(loads)},
             "errors": [],
         }
 
