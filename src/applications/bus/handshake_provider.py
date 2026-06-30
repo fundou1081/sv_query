@@ -127,7 +127,7 @@ class HandshakeProvider(ABC):
     """
 
     @abstractmethod
-    def get_handshake(self, valid: str, ready: str) -> Optional[HandshakeInfoLite]:
+    def get_handshake(self, valid: str, ready: str) -> HandshakeInfoLite | None:
         """返回 (valid, ready) 对的握手信息, 或 None.
 
         Args:
@@ -167,13 +167,13 @@ class NameBasedHandshakeProvider(HandshakeProvider):
 
     def __init__(
         self,
-        normalizer: Optional[SignalNormalizer] = None,
+        normalizer: SignalNormalizer | None = None,
     ):
         self._norm = normalizer or SignalNormalizer(NormalizeConfig.default())
 
     def get_handshake(
         self, valid: str, ready: str
-    ) -> Optional[HandshakeInfoLite]:
+    ) -> HandshakeInfoLite | None:
         """name-based 启发式."""
         valid_norm = self._norm.normalize(valid).normalized
         ready_norm = self._norm.normalize(ready).normalized
@@ -207,7 +207,7 @@ class NameBasedHandshakeProvider(HandshakeProvider):
 
     # ----- 内部 -----
 
-    def _match_channel(self, valid_norm: str, ready_norm: str) -> Optional[str]:
+    def _match_channel(self, valid_norm: str, ready_norm: str) -> str | None:
         """匹配已知 AXI/TL-UL 通道."""
         for ch, patterns in self._CHANNEL_SUFFIXES.items():
             valid_pat = patterns["valid"]

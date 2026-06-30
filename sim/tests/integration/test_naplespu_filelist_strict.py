@@ -132,7 +132,7 @@ def test_naplespu_uart_full_filelist_strict():
     if not ok:
         # 跳过测试, 但打印修复指引
         print(f"⚠️  SKIP: {msg}")
-        print(f"   修复: 在 synchronizer.sv / uart*.sv / sync_fifo.sv 头部加 '\\`timescale 1ns/1ps'")
+        print("   修复: 在 synchronizer.sv / uart*.sv / sync_fifo.sv 头部加 '\\`timescale 1ns/1ps'")
         return
 
     # 5 文件完整 filelist
@@ -166,7 +166,7 @@ def test_naplespu_uart_full_filelist_strict():
             print(f"  ✅ {cmd}: EXIT 0")
 
     assert all_pass, "至少一个命令 EXIT 非 0"
-    print(f"✅ NaplesPU 5 文件 + strict 默认: 12/12 命令全 EXIT 0")
+    print("✅ NaplesPU 5 文件 + strict 默认: 12/12 命令全 EXIT 0")
 
 
 # ----------------------------------------------------------------------------

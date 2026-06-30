@@ -11,7 +11,7 @@ class TestInterfaceBasic(unittest.TestCase):
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def test_simple_interface(self):
         source = '''
 interface my_if;
@@ -21,10 +21,10 @@ endinterface
 module top(my_if tb, input [7:0] din);
     assign tb.data = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        
+
         self.assertIsNotNone(tracer.get_graph())
         nodes = list(tracer.get_graph().nodes())
         self.assertTrue(any('tb.data' in n for n in nodes), f'tb.data not in {nodes}')

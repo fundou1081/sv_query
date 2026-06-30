@@ -20,7 +20,7 @@ from typing import List, Optional
 # Helpers
 # ----------------------------------------------------------------------------
 
-def _safe_str(value) -> Optional[str]:
+def _safe_str(value) -> str | None:
     """[Bug-resistant] 跟 sv_query 一样 handle UnicodeDecodeError / binary garbage."""
     if value is None:
         return None
@@ -33,7 +33,7 @@ def _safe_str(value) -> Optional[str]:
         return None
 
 
-def _safe_hierarchical_path(symbol) -> Optional[str]:
+def _safe_hierarchical_path(symbol) -> str | None:
     """Get hierarchicalPath, safely."""
     try:
         hp = symbol.hierarchicalPath
@@ -48,7 +48,7 @@ def _safe_hierarchical_path(symbol) -> Optional[str]:
 
 def get_module_instances_native(
     root: pyslang.RootSymbol,
-    target_module: Optional[str] = None,
+    target_module: str | None = None,
 ) -> list:
     """[Phase 1 2026-06-25] pyslang native API for instance extraction.
 
@@ -88,7 +88,7 @@ def get_module_instances_native(
     return wrappers
 
 
-def _find_target_top(root: pyslang.RootSymbol, target_module: Optional[str]):
+def _find_target_top(root: pyslang.RootSymbol, target_module: str | None):
     """[Helper] 找 user-specified target 在 topInstances 里."""
     if target_module is None:
         # 没指定 — 返第一个 user module top instance
@@ -138,7 +138,7 @@ def _walk_instance(
     parent_module: str,
     wrappers: list,
     root: pyslang.RootSymbol,
-    target_module: Optional[str] = None,
+    target_module: str | None = None,
     is_top: bool = False,
 ) -> None:
     """[Helper] 递归 walk InstanceSymbol, 处理 generate blocks.
@@ -213,7 +213,7 @@ def _walk_instance(
 
 def _walk_generate_block_array(
     gba, parent_module: str, wrappers: list, root: pyslang.RootSymbol,
-    target_module: Optional[str] = None,
+    target_module: str | None = None,
 ) -> None:
     """[Helper] Walk GenerateBlockArray — each entry is a GenerateBlock."""
     try:
@@ -235,7 +235,7 @@ def _walk_generate_block_array(
 
 def _walk_generate_block(
     gb, parent_module: str, wrappers: list, root: pyslang.RootSymbol,
-    target_module: Optional[str] = None,
+    target_module: str | None = None,
 ) -> None:
     """[Helper] Walk GenerateBlock — iterate for instance children."""
     try:
@@ -267,14 +267,14 @@ class _NativeInstanceWrapper:
         parent_module: str — full hierarchical path of parent instance
     """
 
-    def __init__(self, _symbol, type_name: Optional[str], parent_module: Optional[str]):
+    def __init__(self, _symbol, type_name: str | None, parent_module: str | None):
         self._symbol = _symbol
         self.parent_module = parent_module
         # TypeToken-like: must have .value attribute that's a string
         self.type = _TypeToken(type_name) if type_name else _TypeToken(None)
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         try:
             return _safe_str(self._symbol.name)
         except Exception:
@@ -283,7 +283,7 @@ class _NativeInstanceWrapper:
 
 class _TypeToken:
     """[Compat] TypeToken-like object with .value = module name string."""
-    def __init__(self, value: Optional[str]):
+    def __init__(self, value: str | None):
         self.value = value
     def __repr__(self):
         return f"_TypeToken({self.value!r})"

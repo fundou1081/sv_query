@@ -15,13 +15,13 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestDirectives(unittest.TestCase):
     """预处理指令测试"""
-    
+
     def _make_tracer(self, source):
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def _driver_ids(self, result):
         return [d.id for d in result.drivers]
-    
+
     def test_define(self):
         """[Dir] `define 宏定义
         RTL: `define WIDTH 8; assign y = a;
@@ -35,16 +35,16 @@ class TestDirectives(unittest.TestCase):
 module top(input [`WIDTH-1:0] a, output [`WIDTH-1:0] y);
     assign y = a;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "`define WIDTH 8 后 y = a 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_include(self):
         """[Dir] `include 文件包含
         金标准: `include "defines.sv" 文件不存在时被跳过
@@ -54,16 +54,16 @@ endmodule'''
 module top(input a, output y);
     assign y = a;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "`include 文件不存在时 y = a 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_ifdef(self):
         """[Dir] `ifdef 条件编译
         RTL: `ifdef FEATURE; assign y = a; `else; assign y = 1'b0; `endif
@@ -71,7 +71,7 @@ endmodule'''
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | y    | [a]    | high |
-        
+
         FEATURE 已定义，走 `ifdef 分支
         """
         source = '''
@@ -83,16 +83,16 @@ module top(input a, output y);
     assign y = 1'b0;
 `endif
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "`ifdef FEATURE (已定义) y = a 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_ifndef(self):
         """[Dir] `ifndef 条件编译
         RTL: `ifndef DISABLE; assign y = a; `endif
@@ -100,7 +100,7 @@ endmodule'''
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | y    | [a]    | high |
-        
+
         DISABLE 未定义，走 `ifndef 分支
         """
         source = '''
@@ -109,16 +109,16 @@ module top(input a, output y);
     assign y = a;
 `endif
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "`ifndef DISABLE (未定义) y = a 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_undef(self):
         """[Dir] `undef 取消宏定义
         金标准: `undef 只影响后续代码，当前 assign 不受影响
@@ -129,16 +129,16 @@ endmodule'''
 module top(input a, output y);
     assign y = a;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "`undef MY_MACRO 后 y = a 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_pragma(self):
         """[Dir] (* ... *) 属性编译指令
         RTL: always_ff @(posedge clk) dout <= din;
@@ -157,16 +157,16 @@ module top(
     always_ff @(posedge clk)
         dout <= din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "always_ff @(posedge clk) dout <= din 应有 1 个驱动源 (din)")
         self.assertIn('top.din', self._driver_ids(result),
             "dout 的驱动应包含 top.din")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_full_case(self):
         """[Dir] synthesis full_case
         RTL: always_comb case (sel) ... endcase
@@ -189,16 +189,16 @@ module top(
         endcase
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "always_comb q = a; 应有 1 个驱动源 (a)")
         self.assertIn('top.a', self._driver_ids(result),
             "q 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_parallel_case(self):
         """[Dir] synthesis parallel_case
         RTL: always_comb case (sel) ... default: q = a; endcase
@@ -223,10 +223,10 @@ module top(
         endcase
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertEqual(len(result.drivers), 2,
             "always_comb q = a 或 b 应有 2 个驱动源 (a, b)")
         ids = self._driver_ids(result)

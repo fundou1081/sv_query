@@ -195,11 +195,11 @@ class TestNameBasedHandshakeProvider:
 
 class MockHandshakeProvider(HandshakeProvider):
     """可注入的 mock provider, 用于测试 detector 集成."""
-    
-    def __init__(self, mapping: Dict[Tuple[str, str], str]):
+
+    def __init__(self, mapping: dict[tuple[str, str], str]):
         self._mapping = mapping
-    
-    def get_handshake(self, valid: str, ready: str) -> Optional[HandshakeInfoLite]:
+
+    def get_handshake(self, valid: str, ready: str) -> HandshakeInfoLite | None:
         key = (valid, ready)
         if key in self._mapping:
             return HandshakeInfoLite(

@@ -149,7 +149,7 @@ def fix_timescale(
             lines = sorted({e["line"] for e in errs})
             typer.echo(f"  {fpath}")
             typer.echo(f"    lines with error: {lines[:5]}{'...' if len(lines) > 5 else ''}")
-        typer.echo(f"\nRun with --apply to actually modify these files.")
+        typer.echo("\nRun with --apply to actually modify these files.")
         raise typer.Exit(code=0)
 
     # 真改
@@ -188,7 +188,7 @@ def fix_timescale(
 
     typer.echo(f"\nDone: {fixed} fixed, {skipped} skipped (already has timescale).")
     if backup and fixed > 0:
-        typer.echo(f"Original files backed up to *.bak")
+        typer.echo("Original files backed up to *.bak")
     raise typer.Exit(code=0)
 
 
@@ -320,11 +320,11 @@ def fix_report(
 
     # 文本输出
     unique_files = len({e.get("file", "") for e in elaboration_errors if e.get("file")})
-    typer.echo(f"=== Fix Report ===\n")
+    typer.echo("=== Fix Report ===\n")
     typer.echo(f"Total errors: {len(elaboration_errors)}")
     typer.echo(f"Affected files: {unique_files}\n")
 
-    typer.echo(f"=== Error Categories ===\n")
+    typer.echo("=== Error Categories ===\n")
     # 按 category 排序
     for category in sorted(by_category.keys()):
         errs = by_category[category]
@@ -343,17 +343,17 @@ def fix_report(
                 typer.echo(f"        Doc: {rec['doc']}")
 
     if unknown_codes:
-        typer.echo(f"\n=== Unknown Error Codes ===")
+        typer.echo("\n=== Unknown Error Codes ===")
         for code in sorted(unknown_codes):
             cnt = by_code[code]
             typer.echo(f"    [{code}]: {cnt} error(s)  (无推荐修复, 需查 sv_query docs)")
 
     auto_fixable = sum(by_code.get(c, 0) for c in FIX_RECOMMENDATIONS if FIX_RECOMMENDATIONS[c]["auto_fixable"])
-    typer.echo(f"\n=== Summary ===")
+    typer.echo("\n=== Summary ===")
     typer.echo(f"  🟢 Auto-fixable: {auto_fixable} error(s)")
     typer.echo(f"  🟡 Manual fix needed: {len(elaboration_errors) - auto_fixable} error(s)")
     if auto_fixable > 0:
-        typer.echo(f"\nNext step: 跑 'fix timescale --apply' 修 auto-fixable 部分")
+        typer.echo("\nNext step: 跑 'fix timescale --apply' 修 auto-fixable 部分")
     raise typer.Exit(code=0)
 
 

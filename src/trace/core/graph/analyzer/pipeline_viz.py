@@ -36,11 +36,11 @@ from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
 class PipelineStage:
     """一个 pipeline stage"""
     stage_id: int
-    reg_nodes: List[str]  # 该 stage 的寄存器
-    comb_nodes: List[str]  # 寄存器之间的组合逻辑
-    control_inputs: List[str]  # 来自其他 stage 的控制信号
-    data_inputs: List[str]  # 来自前一 stage 的数据
-    data_outputs: List[str]  # 输出到下一 stage 的数据
+    reg_nodes: list[str]  # 该 stage 的寄存器
+    comb_nodes: list[str]  # 寄存器之间的组合逻辑
+    control_inputs: list[str]  # 来自其他 stage 的控制信号
+    data_inputs: list[str]  # 来自前一 stage 的数据
+    data_outputs: list[str]  # 输出到下一 stage 的数据
     latency: int = 1  # cycle 数
 
 
@@ -48,16 +48,16 @@ class PipelineStage:
 class PipelineInfo:
     """Pipeline 分析结果"""
     module_name: str
-    stages: List[PipelineStage] = field(default_factory=list)
+    stages: list[PipelineStage] = field(default_factory=list)
     total_latency: int = 0
-    pipeline_regs: List[str] = field(default_factory=list)
-    control_regs: List[str] = field(default_factory=list)
-    state_regs: List[str] = field(default_factory=list)
+    pipeline_regs: list[str] = field(default_factory=list)
+    control_regs: list[str] = field(default_factory=list)
+    state_regs: list[str] = field(default_factory=list)
 
 
 def detect_pipeline(
     graph: SignalGraph,
-    classification: Optional[SignalClassification] = None,
+    classification: SignalClassification | None = None,
 ) -> PipelineInfo:
     """检测 pipeline 结构
 
@@ -139,7 +139,7 @@ def _build_stages(
     graph: SignalGraph,
     classification: SignalClassification,
     info: PipelineInfo,
-) -> List[PipelineStage]:
+) -> list[PipelineStage]:
     """构建 pipeline stages"""
     if not info.pipeline_regs:
         return []
@@ -153,7 +153,7 @@ def _build_stages(
     ]
 
     # 拓扑排序: 找到 PORT_IN → REG 的最短路径
-    reg_distances: Dict[str, int] = {}
+    reg_distances: dict[str, int] = {}
     reg_queue = deque()
 
     for pid in port_ins:
@@ -176,7 +176,7 @@ def _build_stages(
 
     # 按距离排序 pipeline regs → 分配 stage
     sorted_regs = sorted(info.pipeline_regs, key=lambda r: reg_distances.get(r, 999))
-    stage_map: Dict[str, int] = {}
+    stage_map: dict[str, int] = {}
     for i, reg_id in enumerate(sorted_regs):
         stage_map[reg_id] = i
 
@@ -225,7 +225,7 @@ def _build_stages(
 def generate_pipeline_dot(
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
-    classification: Optional[SignalClassification] = None,
+    classification: SignalClassification | None = None,
 ) -> str:
     _sid = sanitize_dot_id
     """生成 pipeline flow DOT 图
@@ -281,7 +281,7 @@ def generate_pipeline_dot(
             cn = classification.nodes.get(comb_id)
             if cn is None:
                 continue
-            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
+            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
             w = _node_width(cn)
             lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
@@ -298,7 +298,7 @@ def generate_pipeline_dot(
         cn = classification.nodes.get(cid)
         if cn is None:
             continue
-        name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?" 
+        name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
         lines.append(f'  "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
 
     lines.append('')

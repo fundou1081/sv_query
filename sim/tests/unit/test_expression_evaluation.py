@@ -24,9 +24,9 @@ from trace.core.semantic_adapter import SemanticAdapter
 
 class TestExpressionEvaluation(unittest.TestCase):
     """方案 C 表达式求值测试"""
-    
+
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
         comp = SVCompiler({'test.sv': source})
         root = comp.get_root()
-        
+

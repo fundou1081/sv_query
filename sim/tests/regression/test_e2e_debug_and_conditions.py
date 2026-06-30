@@ -177,13 +177,13 @@ endmodule'''
 
         result = trace_signal_debug(graph, 'pipeline.data_reg')
 
-        print(f"\n=== Debug: pipeline.data_reg ===")
-        print(f"  Fanin (向前追踪):")
+        print("\n=== Debug: pipeline.data_reg ===")
+        print("  Fanin (向前追踪):")
         for f in result['fanin']:
             indent = "    " + "  " * f['depth']
             port_mark = " [PORT]" if f['is_port'] else ""
             print(f"{indent}{f['signal']}{port_mark}")
-        print(f"  Fanout (向后追踪):")
+        print("  Fanout (向后追踪):")
         for f in result['fanout']:
             indent = "    " + "  " * f['depth']
             port_mark = " [PORT]" if f['is_port'] else ""
@@ -214,7 +214,7 @@ endmodule'''
 
         result = trace_signal_debug(graph, 'chain.c')
 
-        print(f"\n=== Debug: chain.c ===")
+        print("\n=== Debug: chain.c ===")
         print(f"  Affecting input ports: {result['affecting_ports']}")
         print(f"  Affected output ports: {result['affected_ports']}")
 
@@ -261,14 +261,14 @@ module top; endmodule'''
 
         conditions = extract_true_conditions(graph, 'packet.addr')
 
-        print(f"\n=== 条件提取: packet.addr ===")
+        print("\n=== 条件提取: packet.addr ===")
         for cond in conditions:
             cv = [v.split('.')[-1] for v in cond['condition_vars']]
             print(f"  branch={cond['branch']}, condition_vars={cv}")
 
         # 转换为 coverage 建议
         suggestions = conditions_to_coverage_suggestions(conditions, 'addr')
-        print(f"\n=== Coverage 建议 ===")
+        print("\n=== Coverage 建议 ===")
         for s in suggestions:
             print(f"  {s['type']}: {s['description']}")
             print(f"    → {s['suggested_bins']}")
@@ -314,7 +314,7 @@ module top; endmodule'''
 
         conditions = extract_true_conditions(graph, 'packet.addr')
 
-        print(f"\n=== 嵌套条件提取: packet.addr ===")
+        print("\n=== 嵌套条件提取: packet.addr ===")
         for cond in conditions:
             cv = [v.split('.')[-1] for v in cond['condition_vars']]
             print(f"  branch={cond['branch']}, condition_vars={cv}")
@@ -354,7 +354,7 @@ module top; endmodule'''
 
         conditions = extract_true_conditions(graph, 'packet.addr')
 
-        print(f"\n=== Implication 条件提取: packet.addr ===")
+        print("\n=== Implication 条件提取: packet.addr ===")
         for cond in conditions:
             cv = [v.split('.')[-1] for v in cond['condition_vars']]
             print(f"  branch={cond['branch']}, condition_vars={cv}")

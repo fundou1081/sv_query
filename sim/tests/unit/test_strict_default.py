@@ -174,24 +174,29 @@ def test_error_message_mentions_no_strict_alternative():
 # ----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    tests = [
-        test_default_strict_exits_nonzero_on_broken_sv,
-        test_default_strict_exits_zero_on_good_sv,
-        test_no_strict_explicit_returns_partial_result,
-        test_explicit_strict_flag_works,
-        test_all_commands_default_to_strict,
-        test_help_documents_strict_no_strict,
-        test_error_message_mentions_no_strict_alternative,
-        test_strict_error_message_suggests_filelist_fix,
-        test_strict_passes_when_filelist_complete,
+    # [Fix 2026-06-30 F821] Use sys.modules[__name__].__dict__ to avoid forward reference.
+    # Functions defined later in file would otherwise raise NameError at import time
+    # (when this block is evaluated, e.g. `python test_strict_default.py`).
+    import sys as _sys
+    _mod = _sys.modules[__name__]
+    _test_names = [
+        "test_default_strict_exits_nonzero_on_broken_sv",
+        "test_default_strict_exits_zero_on_good_sv",
+        "test_no_strict_explicit_returns_partial_result",
+        "test_explicit_strict_flag_works",
+        "test_all_commands_default_to_strict",
+        "test_help_documents_strict_no_strict",
+        "test_error_message_mentions_no_strict_alternative",
+        "test_strict_error_message_suggests_filelist_fix",
+        "test_strict_passes_when_filelist_complete",
     ]
-    for t in tests:
+    for _name in _test_names:
         try:
-            t()
+            getattr(_mod, _name)()
         except Exception as e:
-            print(f"❌ {t.__name__}: {e}")
+            print(f"❌ {_name}: {e}")
             sys.exit(1)
-    print(f"\n🎉 All {len(tests)} strict default tests passed!")
+    print(f"\n🎉 All {len(_test_names)} strict default tests passed!")
 
 def test_strict_error_message_suggests_filelist_fix():
     """严格模式错误信息应提示先修 filelist, --no-strict 是 last resort"""

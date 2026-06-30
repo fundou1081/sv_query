@@ -95,7 +95,7 @@ def test_scan_project_finds_identifier():
     from cli.commands.fix_imports import _scan_project_for_identifier
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     found = _scan_project_for_identifier(Path(proj), "my_typedef_t")
-    assert found is not None, f"应找到 my_typedef_t 定义, got None"
+    assert found is not None, "应找到 my_typedef_t 定义, got None"
     assert "lib.sv" in str(found), f"应指向 lib.sv, got {found}"
     print("✅ _scan_project_for_identifier: 找到 my_typedef_t 在 lib.sv")
 

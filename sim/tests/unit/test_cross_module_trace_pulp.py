@@ -81,7 +81,7 @@ class TestCrossModuleTrace:
         drivers = st._collect_all_drivers(sig, max_depth=3)
         # 至少应该有 1 driver (aw_valid signal)
         assert len(drivers) >= 1, \
-            f"m_axi_awvalid should have at least 1 driver (aw_valid), got 0"
+            "m_axi_awvalid should have at least 1 driver (aw_valid), got 0"
 
 
 class TestNoInfiniteLoop:
@@ -98,7 +98,7 @@ class TestNoInfiniteLoop:
         # 跑完 (不死循环) 即可, 节点数应该 > 0
         assert isinstance(loads, list)
         # 实际可能有多个 loads (assign 目标 + 远端 uses)
-        assert len(loads) >= 1, f"expected at least 1 load, got 0"
+        assert len(loads) >= 1, "expected at least 1 load, got 0"
 
 
 class TestCrossModuleSignals:

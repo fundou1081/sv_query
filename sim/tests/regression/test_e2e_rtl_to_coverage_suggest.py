@@ -152,7 +152,7 @@ def generate_coverage_report(graph):
                              NodeKind.REG, NodeKind.CLASS_INSTANCE_PROPERTY,
                              NodeKind.CLASS_PROPERTY):
             continue
-        
+
         # 跳过 clk/rst 信号
         name_lower = node_id.split('.')[-1].lower()
         if name_lower in ('clk', 'clk_i', 'rst', 'rst_n', 'rst_ni'):
@@ -226,7 +226,7 @@ endmodule'''
             "ready 应被识别为 control 信号")
 
         # 验证 cross
-        print(f"\n=== Cross Coverage ===")
+        print("\n=== Cross Coverage ===")
         for cross in report['cross_coverage']:
             print(f"  {cross['signal_a']} x {cross['signal_b']}")
 

@@ -52,7 +52,7 @@ class TestMIGGenerateBlock(unittest.TestCase):
 
     def test_loop_generate_instance(self):
         """[金标准] for 循环生成实例 - MIG 应能识别生成块中的实例
-        
+
         注意: for 循环在 AST 中只对应一个 HierarchyInstantiation 节点，
         因为 genvar 是编译时信息不展开多个实例。
         MIG 识别的是 'top.GEN.u_dut' (模板实例)，这是正确行为。
@@ -244,7 +244,7 @@ endmodule'''
         if gen_inst:
             node = mig.get_instance(gen_inst)
             self.assertIsNotNone(node, f"[金标准] get_instance('{gen_inst}') 应返回节点")
-            self.assertEqual(node.id, gen_inst, f"[金标准] 返回的节点 ID 应匹配")
+            self.assertEqual(node.id, gen_inst, "[金标准] 返回的节点 ID 应匹配")
 
     def test_generate_with_parameterized_module(self):
         """[金标准] generate 块中实例化参数化模块"""

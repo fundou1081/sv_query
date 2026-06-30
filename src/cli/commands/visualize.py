@@ -665,10 +665,10 @@ def _write_module_dot(result, edges: list[dict], path: str) -> None:
         for cluster in sorted(clusters_used):
             lines.append(f'  subgraph "cluster_{cluster}" {{')
             lines.append(f'    label="{cluster}";')
-            lines.append(f'    style="dashed,rounded";')
-            lines.append(f'    color="#999999";')
-            lines.append(f'    fontcolor="#666666";')
-            lines.append(f'    fontsize=10;')
+            lines.append('    style="dashed,rounded";')
+            lines.append('    color="#999999";')
+            lines.append('    fontcolor="#666666";')
+            lines.append('    fontsize=10;')
             # 加上该 cluster 里的所有 instances
             cluster_insts = [iid for iid in inst_ids if _cluster_of(iid) == cluster]
             for iid in cluster_insts:

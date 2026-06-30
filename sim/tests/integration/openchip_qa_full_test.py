@@ -56,15 +56,15 @@ def analyze_file(filepath):
         'parameters': 0,
         'issues': []
     }
-    
+
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-        
+
         if not content.strip():
             result['issues'].append('empty_file')
             return result
-        
+
         # 使用 UnifiedTracer 分析文件
         try:
             tracer = UnifiedTracer(sources={'file': content})
@@ -73,18 +73,18 @@ def analyze_file(filepath):
         except Exception as e:
             result['issues'].append(f'parse_error: {str(e)[:50]}')
             return result
-        
+
         # 获取模块信息
         modules = list(graph.nodes())
         result['module_count'] = len(modules)
         result['modules'] = modules
-        
+
         # 统计信息
         result['ports'] = len([n for n in modules if 'PORT' in str(graph.get_node(n).kind)])
-        
+
     except Exception as e:
         result['issues'].append(f'error: {str(e)[:100]}')
-    
+
     return result
 
 @pytest.mark.parametrize("project", FILENAME_LIST)
@@ -93,14 +93,14 @@ def test_project(project, output_dir):
     print(f"\n{'='*60}")
     print(f"测试项目: {project['name']} ({project['description']})")
     print(f"{'='*60}")
-    
+
     project_dir = os.path.join(output_dir, project['name'])
     os.makedirs(project_dir, exist_ok=True)
-    
+
     # 查找 Verilog 文件
     files = find_verilog_files(project['path'])
     print(f"找到 {len(files)} 个 Verilog 文件")
-    
+
     results = {
         'project': project['name'],
         'description': project['description'],
@@ -117,44 +117,44 @@ def test_project(project, output_dir):
         },
         'timestamp': datetime.now().isoformat()
     }
-    
+
     # 限制每个项目最多N个文件
     max_files = project.get('file_limit', 50)
     files_to_process = files[:max_files]
-    
+
     for i, filepath in enumerate(files_to_process):
         if i % 10 == 0:
             print(f"  处理文件 {i+1}/{len(files_to_process)}...")
-        
+
         file_result = analyze_file(filepath)
         results['files'].append(file_result)
-        
+
         # 更新汇总
         results['summary']['total_modules'] += file_result.get('module_count', 0)
         results['summary']['total_instances'] += len(file_result.get('instances', []))
         results['summary']['total_ports'] += file_result.get('ports', 0)
         results['summary']['total_parameters'] += file_result.get('parameters', 0)
-        
+
         if file_result['issues']:
             results['summary']['files_with_issues'] += 1
             for issue in file_result['issues']:
                 results['summary']['issue_types'][issue] = \
                     results['summary']['issue_types'].get(issue, 0) + 1
-    
+
     # 保存结果
     result_file = os.path.join(project_dir, 'result.json')
     with open(result_file, 'w') as f:
         json.dump(results, f, indent=2)
-    
+
     # 生成摘要报告
     summary_file = os.path.join(project_dir, 'summary.md')
     with open(summary_file, 'w') as f:
         f.write(f"# {project['name']} 测试报告\n\n")
-        f.write(f"## 项目信息\n\n")
+        f.write("## 项目信息\n\n")
         f.write(f"- 描述: {project['description']}\n")
         f.write(f"- 路径: {project['path']}\n")
         f.write(f"- 测试时间: {results['timestamp']}\n\n")
-        f.write(f"## 测试结果\n\n")
+        f.write("## 测试结果\n\n")
         f.write(f"- 总文件数: {results['total_files']}\n")
         f.write(f"- 分析文件数: {len(results['files'])}\n")
         f.write(f"- 总模块数: {results['summary']['total_modules']}\n")
@@ -162,26 +162,26 @@ def test_project(project, output_dir):
         f.write(f"- 总端口数: {results['summary']['total_ports']}\n")
         f.write(f"- 总参数数: {results['summary']['total_parameters']}\n")
         f.write(f"- 有问题的文件: {results['summary']['files_with_issues']}\n\n")
-        
+
         if results['summary']['issue_types']:
-            f.write(f"## 问题类型\n\n")
+            f.write("## 问题类型\n\n")
             for issue, count in results['summary']['issue_types'].items():
                 f.write(f"- {issue}: {count}\n")
-        
+
         # 列出前5个模块
         if results['files']:
-            f.write(f"\n## 示例模块\n\n")
+            f.write("\n## 示例模块\n\n")
             for fdata in results['files'][:3]:
                 if fdata['modules']:
                     f.write(f"- `{fdata['file']}`: {', '.join(fdata['modules'][:5])}")
                     if len(fdata['modules']) > 5:
                         f.write(f" (+{len(fdata['modules'])-5} more)")
-                    f.write(f"\n")
-    
+                    f.write("\n")
+
     print(f"  结果已保存到: {project_dir}")
-    
+
     # 基本断言 - 文件应该被处理
     if results['total_files'] == 0:
         pytest.skip(f"项目 {project['name']} 未找到 Verilog 文件，跳过")
-    
+
     assert len(results['files']) > 0, f"项目 {project['name']} 分析文件数为 0"

@@ -69,7 +69,7 @@ class WidthCategory(Enum):
     WIDE = "wide"        # ≥9 (data / addr)
 
     @classmethod
-    def classify(cls, width: int) -> "WidthCategory":
+    def classify(cls, width: int) -> WidthCategory:
         if width <= 0:
             return cls.UNKNOWN
         if width == 1:
@@ -99,7 +99,7 @@ class SignalContext:
     width: int
     direction: str = "input"
     driver_kind: str = "port"
-    paired_signals: List[str] = field(default_factory=list)
+    paired_signals: list[str] = field(default_factory=list)
 
     def __repr__(self) -> str:
         return (
@@ -143,10 +143,10 @@ class StructuralHints:
     # ----- 工具 -----
 
     # 内部: field 名 → short 名 映射
-    _FIELD_TO_ROLE: Dict[str, str] = None  # type: ignore  # 延迟初始化
+    _FIELD_TO_ROLE: dict[str, str] = None  # type: ignore  # 延迟初始化
 
     @classmethod
-    def _field_to_role_map(cls) -> Dict[str, str]:
+    def _field_to_role_map(cls) -> dict[str, str]:
         if cls._FIELD_TO_ROLE is None:
             cls._FIELD_TO_ROLE = {
                 "is_valid_like": "valid",
@@ -160,7 +160,7 @@ class StructuralHints:
             }
         return cls._FIELD_TO_ROLE
 
-    def _all_scores(self) -> Dict[str, float]:
+    def _all_scores(self) -> dict[str, float]:
         """返回 {short_role: score} 映射, 用于 dominant_role()."""
         m = self._field_to_role_map()
         return {
@@ -172,7 +172,7 @@ class StructuralHints:
         scores = self._all_scores()
         return max(scores.values()) if scores else 0.0
 
-    def dominant_role(self) -> Optional[str]:
+    def dominant_role(self) -> str | None:
         """返回最可能的角色, 阈值 0.5. 若所有都低于阈值, 返回 None."""
         scores = self._all_scores()
         if not scores:
@@ -182,14 +182,14 @@ class StructuralHints:
             return None
         return best_role
 
-    def above_threshold(self, threshold: float) -> List[str]:
+    def above_threshold(self, threshold: float) -> list[str]:
         """返回所有 ≥ threshold 的角色名 (short form)."""
         return [
             role for role, score in self._all_scores().items()
             if score >= threshold
         ]
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """返回 {field_name: score} 完整映射 (与 dataclass 字段名一致)."""
         return {
             field: getattr(self, field)
@@ -238,14 +238,14 @@ class StructuralRoleDetector:
     def detect(
         self,
         signal: SignalContext,
-        all_signals: Optional[List[SignalContext]] = None,
+        all_signals: list[SignalContext] | None = None,
     ) -> StructuralHints:
         """对单个信号计算结构性 hints."""
         hints = StructuralHints()
         wcat = WidthCategory.classify(signal.width)
 
         # 构建按 name 索引的查找表 (用于配对查找)
-        name_lookup: Dict[str, SignalContext] = {}
+        name_lookup: dict[str, SignalContext] = {}
         if all_signals:
             for s in all_signals:
                 name_lookup[s.name] = s
@@ -294,8 +294,8 @@ class StructuralRoleDetector:
         return hints
 
     def detect_all(
-        self, signals: List[SignalContext],
-    ) -> Dict[str, StructuralHints]:
+        self, signals: list[SignalContext],
+    ) -> dict[str, StructuralHints]:
         """批量检测, 返回 {name: hints}."""
         return {s.name: self.detect(s, all_signals=signals) for s in signals}
 
@@ -304,7 +304,7 @@ class StructuralRoleDetector:
     def _apply_pairing_boost(
         self,
         signal: SignalContext,
-        name_lookup: Dict[str, SignalContext],
+        name_lookup: dict[str, SignalContext],
         hints: StructuralHints,
         wcat: WidthCategory,
     ) -> None:

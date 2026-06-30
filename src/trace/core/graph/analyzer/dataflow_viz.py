@@ -37,7 +37,7 @@ _sanitize_dot_id = sanitize_dot_id
 def generate_dataflow_dot(
     graph: SignalGraph,
     module_name: str = "",
-    classification: Optional[SignalClassification] = None,
+    classification: SignalClassification | None = None,
     include_ports: bool = True,
     include_clk_rst: bool = False,
 ) -> str:

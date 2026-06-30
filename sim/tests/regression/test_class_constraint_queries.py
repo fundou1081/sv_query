@@ -32,7 +32,7 @@ def _build_graph(source):
 
 def _find_constraints_for_var(graph, var_id):
     """Q1: 变量在哪些 constraint 中存在？
-    
+
     从变量节点出发，沿 CONSTRAINS/HAS_LHS 边反向查找，
     找到所有引用该变量的 CONSTRAINT_BLOCK。
     """
@@ -66,7 +66,7 @@ def _find_constraints_for_var(graph, var_id):
 
 def _find_vars_for_constraint(graph, constraint_block_id):
     """Q2: constraint 能影响哪些变量？
-    
+
     从 CONSTRAINT_BLOCK 出发，沿 CONSTRAINS 边找到所有 CLASS_PROPERTY。
     """
     vars = set()
@@ -81,7 +81,7 @@ def _find_vars_for_constraint(graph, constraint_block_id):
 
 def _find_constraint_between(graph, var_a, var_b):
     """Q3: 两个变量之间是否存在约束关系？
-    
+
     查找同时约束两个变量的 CONSTRAINT_BLOCK。
     """
     constraints_a = _find_constraints_for_var(graph, var_a)

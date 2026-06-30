@@ -174,7 +174,7 @@ class TestControlFlowMultiBranch(unittest.TestCase):
         金标准:
         - top.y 有条件驱动 (多个 case 项)
         - conditions 应包含 sel 相关条件
-        
+
         注意: 当前实现可能没有提取 always_comb case 语句的条件
         这个测试主要验证不崩溃
         """

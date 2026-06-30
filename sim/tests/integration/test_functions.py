@@ -13,11 +13,11 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestFunctions(unittest.TestCase):
     """函数和任务测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def test_function_simple(self):
         """[Complex] 简单函数"""
         source = '''
@@ -31,15 +31,15 @@ module top(
         input [7:0] y;
         add = x + y;
     endfunction
-    
+
     assign y = add(a, b);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_function_recursive(self):
         """[Complex] 递归函数"""
         source = '''
@@ -54,15 +54,15 @@ module top(
         else
             factorial = x * factorial(x - 1);
     endfunction
-    
+
     assign result = factorial(n);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('result', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_task_simple(self):
         """[Complex] 简单任务"""
         source = '''
@@ -76,16 +76,16 @@ module top(
             // send logic
         end
     endtask
-    
+
     always @(posedge clk)
         send_byte_task(data);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('clk', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_function_with_extends(self):
         """[Complex] 函数返回类型"""
         source = '''
@@ -97,15 +97,15 @@ module top(
         input [7:0] x;
         extend = {8'h00, x};
     endfunction
-    
+
     assign y = extend(a);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_static_function(self):
         """[Complex] 静态函数"""
         source = '''
@@ -116,10 +116,10 @@ module top(input wire [7:0] a, output wire [7:0] y);
     endfunction
     assign y = incr(a);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
 
 

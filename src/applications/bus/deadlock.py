@@ -60,8 +60,8 @@ class DeadlockFinding:
     rule_id: str
     severity: str
     kind: str
-    channels: List[str]
-    node_ids: List[str]
+    channels: list[str]
+    node_ids: list[str]
     description: str
     evidence: str = ""
 
@@ -78,8 +78,8 @@ class DeadlockFinding:
 def detect_deadlock_candidates(
     semantics: ProtocolSemantics,
     graph: SignalGraph,
-    handshake_pairs: Optional[List[HandshakeInfo]] = None,
-) -> List[DeadlockFinding]:
+    handshake_pairs: list[HandshakeInfo] | None = None,
+) -> list[DeadlockFinding]:
     """[B1] 主入口: 从 graph + semantics 找死锁候选。
 
     Args:
@@ -91,7 +91,7 @@ def detect_deadlock_candidates(
     Returns:
         List of DeadlockFinding
     """
-    findings: List[DeadlockFinding] = []
+    findings: list[DeadlockFinding] = []
 
     # 1. 自动提取 handshake pairs (从 graph 找 valid/ready 命名约定)
     if handshake_pairs is None:
@@ -122,7 +122,7 @@ _VALID_SUFFIXES = ("_valid", "valid", "_vld", "vld")
 _READY_SUFFIXES = ("_ready", "ready", "_rdy", "rdy")
 
 
-def _find_valid_ready_pairs(graph: SignalGraph) -> List[HandshakeInfo]:
+def _find_valid_ready_pairs(graph: SignalGraph) -> list[HandshakeInfo]:
     """[B1] 从 graph 找所有 (valid, ready) 对。
 
     启发式:
@@ -130,7 +130,7 @@ def _find_valid_ready_pairs(graph: SignalGraph) -> List[HandshakeInfo]:
       2. 名字以 _valid 结尾 (canonical) → 找对应 _ready
       3. 同一 module 下, 名字差一个 suffix
     """
-    pairs: List[HandshakeInfo] = []
+    pairs: list[HandshakeInfo] = []
     # 收集 1-bit 节点
     one_bit_nodes = []
     for nid in graph.nodes():
@@ -190,8 +190,8 @@ def _find_valid_ready_pairs(graph: SignalGraph) -> List[HandshakeInfo]:
 def _check_combinational_loop(
     rule,
     graph: SignalGraph,
-    handshake_pairs: List[HandshakeInfo],
-) -> List[DeadlockFinding]:
+    handshake_pairs: list[HandshakeInfo],
+) -> list[DeadlockFinding]:
     """[B1] 检查 valid ↔ ready 组合环。
 
     算法: 对每对 (valid, ready):
@@ -199,7 +199,7 @@ def _check_combinational_loop(
       2. 看 valid 是否在 ready 的 driver 链中
       3. 如果是 → combinational loop 候选
     """
-    findings: List[DeadlockFinding] = []
+    findings: list[DeadlockFinding] = []
     for pair in handshake_pairs:
         # 找 ready 的 driver 链
         ready_id = pair.ready
@@ -222,11 +222,11 @@ def _check_combinational_loop(
     return findings
 
 
-def _bfs_drivers(graph: SignalGraph, start: str, max_depth: int = 5) -> Set[str]:
+def _bfs_drivers(graph: SignalGraph, start: str, max_depth: int = 5) -> set[str]:
     """[B1] BFS 找 start 节点的所有上游 driver (深度限制)."""
     if start not in graph.nodes():
         return set()
-    visited: Set[str] = set()
+    visited: set[str] = set()
     queue = [(start, 0)]
     while queue:
         nid, depth = queue.pop(0)
@@ -239,13 +239,13 @@ def _bfs_drivers(graph: SignalGraph, start: str, max_depth: int = 5) -> Set[str]
     return visited
 
 
-def _bfs_path(graph: SignalGraph, start: str, target: str, max_depth: int = 5) -> List[str]:
+def _bfs_path(graph: SignalGraph, start: str, target: str, max_depth: int = 5) -> list[str]:
     """[B1] BFS 找 start → target 的一条路径 (限深)."""
     if start == target:
         return [start]
     if start not in graph.nodes() or target not in graph.nodes():
         return []
-    visited: Set[str] = {start}
+    visited: set[str] = {start}
     queue = [(start, [start])]
     while queue:
         nid, path = queue.pop(0)
@@ -270,20 +270,20 @@ def _check_cross_channel_loop(
     rule,
     semantics: ProtocolSemantics,
     graph: SignalGraph,
-    handshake_pairs: List[HandshakeInfo],
-) -> List[DeadlockFinding]:
+    handshake_pairs: list[HandshakeInfo],
+) -> list[DeadlockFinding]:
     """[B1] 跨通道 ready 链成环检测。
 
     算法:
       1. 构造 channel dependency graph: 节点 = 通道, 边 = 通道 A 的 ready 依赖通道 B 的 ready
       2. 找 SCC (强连通分量), size > 1 → 候选
     """
-    findings: List[DeadlockFinding] = []
+    findings: list[DeadlockFinding] = []
     if not rule.channels or len(rule.channels) < 2:
         return findings
 
     # 通道 ready 的 driver 链
-    ch_to_ready: Dict[str, str] = {}
+    ch_to_ready: dict[str, str] = {}
     for ch in rule.channels:
         ch_spec = semantics.channel(ch)
         if not ch_spec:
@@ -330,8 +330,8 @@ def _check_response_after_request(
     rule,
     semantics: ProtocolSemantics,
     graph: SignalGraph,
-    handshake_pairs: List[HandshakeInfo],
-) -> List[DeadlockFinding]:
+    handshake_pairs: list[HandshakeInfo],
+) -> list[DeadlockFinding]:
     """[B1] 检查 response 通道 valid 是否能追溯到 request 通道。
 
     算法:
@@ -339,7 +339,7 @@ def _check_response_after_request(
       2. 对每个 response 通道, 检查 valid 的 driver 链是否包含 request.valid
       3. 不包含 → 死锁候选 (response 可能先于 request)
     """
-    findings: List[DeadlockFinding] = []
+    findings: list[DeadlockFinding] = []
     for ch in semantics.channels:
         if not ch.depends_on:
             continue

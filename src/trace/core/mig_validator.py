@@ -82,12 +82,12 @@ class PortVerification:
     target_module: str
     inst_path: str
     port_name: str
-    expected_signal: Optional[str] = None
+    expected_signal: str | None = None
     # Results
     found_in_mig: bool = False
-    mig_value: Optional[str] = None
+    mig_value: str | None = None
     found_in_native: bool = False
-    native_value: Optional[str] = None
+    native_value: str | None = None
     match: bool = False
     notes: list = field(default_factory=list)
 
@@ -183,7 +183,7 @@ def verify_specific_port(
     target_module: str,
     inst_path: str,
     port_name: str,
-    expected_signal: Optional[str] = None,
+    expected_signal: str | None = None,
 ) -> PortVerification:
     """[Phase 2.1] Verify a specific port connection using native API.
 

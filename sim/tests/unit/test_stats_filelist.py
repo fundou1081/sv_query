@@ -54,7 +54,7 @@ def test_stats_with_file_still_works():
         assert r.returncode == 0, f"应 exit 0, 实际 {r.returncode}, stderr={r.stderr[:500]}"
         assert "Total nodes" in r.stdout
         assert "Total edges" in r.stdout
-        print(f"✅ stats -f 单文件模式工作 (exit 0)")
+        print("✅ stats -f 单文件模式工作 (exit 0)")
     finally:
         os.unlink(path)
 
@@ -90,7 +90,7 @@ endmodule
 """
         )
         filelist_path = Path(tmpdir) / "files.f"
-        filelist_path.write_text(f"leaf.sv\ntop.sv\n")
+        filelist_path.write_text("leaf.sv\ntop.sv\n")
 
         # 跑 stats --filelist (cwd 是 tmpdir)
         r = subprocess.run(

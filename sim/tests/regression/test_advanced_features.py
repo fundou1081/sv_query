@@ -15,7 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestFunctionTask(unittest.TestCase):
     """函数/任务调用测试"""
-    
+
     def test_function_call(self):
         """[Golden] 函数调用"""
         src = '''
@@ -29,10 +29,10 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_function_return(self):
         """[Golden] 函数返回值"""
         src = '''
@@ -46,9 +46,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_task_call(self):
         """[Golden] 任务调用 - task 不驱动信号，期望 0 个驱动"""
         src = '''
@@ -63,13 +63,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('a', 'top')
-        
+
         self.assertEqual(len(result.drivers), 0)
 
 
 class TestModuleHierarchy(unittest.TestCase):
     """模块 hierarchy 测试"""
-    
+
     def test_module_instantiation(self):
         """[Golden] 模块例化"""
         src = '''
@@ -83,9 +83,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_port_connection(self):
         """[Golden] 端口连接"""
         src = '''
@@ -99,13 +99,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestInterface(unittest.TestCase):
     """接口测试"""
-    
+
     def test_interface_decl(self):
         """[Golden] 接口声明"""
         src = '''
@@ -122,9 +122,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('ifc.data', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_modport(self):
         """[Golden] modport"""
         src = '''
@@ -141,13 +141,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('ifc.data', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestLoop(unittest.TestCase):
     """循环语句测试"""
-    
+
     def test_for_loop(self):
         """[Golden] for 循环"""
         src = '''
@@ -161,10 +161,10 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         # for 循环内部可能无法提取
         self.assertGreaterEqual(len(result.drivers), 0)
-    
+
     def test_while_loop(self):
         """[Golden] while 循环"""
         src = '''
@@ -178,13 +178,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestClass(unittest.TestCase):
     """类测试"""
-    
+
     def test_class_decl(self):
         """[Golden] 类声明 - class 实例未赋值，期望 0 个驱动"""
         src = '''
@@ -198,9 +198,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('obj', 'top')
-        
+
         self.assertEqual(len(result.drivers), 0)
-    
+
     def test_class_method(self):
         """[Golden] 类方法"""
         src = '''
@@ -219,13 +219,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('out', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestInitialBlock(unittest.TestCase):
     """initial 语句测试"""
-    
+
     def test_initial(self):
         """[Golden] initial 块"""
         src = '''
@@ -236,13 +236,13 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
 class TestSequenceBlock(unittest.TestCase):
     """begin-end 块测试"""
-    
+
     def test_begin_end(self):
         """[Golden] begin-end 块"""
         src = '''
@@ -255,9 +255,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_nested_begin_end(self):
         """[Golden] 嵌套 begin-end"""
         src = '''
@@ -274,7 +274,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 

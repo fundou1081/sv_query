@@ -18,14 +18,14 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestOpenTitanUART(unittest.TestCase):
     """OpenTitan UART 模块测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def test_uart_rx_ports(self):
         """[Golden] UART RX 端口声明
-        
+
         RTL: OpenTitan uart_rx.sv
         预期:
         - 模块可解析
@@ -46,10 +46,10 @@ class TestOpenTitanUART(unittest.TestCase):
     logic [10:0] sreg_q, sreg_d;
     logic [3:0]  bit_cnt_q, bit_cnt_d;
     logic [3:0]  baud_div_q, baud_div_d;
-    
+
     assign tick_baud = 1'b0;
     assign idle = 1'b1;
-    
+
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             sreg_q <= 11'h0;
@@ -57,7 +57,7 @@ class TestOpenTitanUART(unittest.TestCase):
             sreg_q <= sreg_d;
         end
     end
-    
+
     always_comb begin
         sreg_d = sreg_q;
         if (rx_enable) begin
@@ -67,20 +67,20 @@ class TestOpenTitanUART(unittest.TestCase):
 endmodule'''
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        
+
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
-        
+
         nodes = list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
-        
+
         # 验证: 关键信号存在
         has_sreg = any('sreg' in n for n in nodes)
         self.assertTrue(has_sreg, f"sreg not found in {nodes}")
-    
+
     def test_uart_rx_signal_chain(self):
         """[Golden] UART RX 信号链
-        
+
         RTL: sreg_d -> sreg_q (always_ff)
         预期:
         - sreg_d -> sreg_q 驱动关系
@@ -92,7 +92,7 @@ endmodule'''
     output logic [10:0]   sreg_q
 );
     logic [10:0] sreg_d;
-    
+
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             sreg_q <= 11'h0;
@@ -100,7 +100,7 @@ endmodule'''
             sreg_q <= sreg_d;
         end
     end
-    
+
     always_comb begin
         sreg_d = sreg_q;
         if (rx_enable) begin
@@ -110,20 +110,20 @@ endmodule'''
 endmodule'''
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        
+
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
-        
+
         nodes = list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
-        
+
         # 验证: sreg_d -> sreg_q
         has_sreg_chain = any('sreg_d' in edge[0] and 'sreg_q' in edge[1] for edge in edges)
         self.assertTrue(has_sreg_chain, f"sreg_d -> sreg_q not found in {edges}")
-    
+
     def test_uart_tx_ports(self):
         """[Golden] UART TX 端口声明
-        
+
         RTL: OpenTitan uart_tx.sv
         预期:
         - 模块可解析
@@ -142,9 +142,9 @@ endmodule'''
 );
     logic [10:0] sreg_q, sreg_d;
     logic [3:0]  bit_cnt_q, bit_cnt_d;
-    
+
     assign tx = sreg_q[0];
-    
+
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             sreg_q <= 11'h0;
@@ -154,7 +154,7 @@ endmodule'''
             bit_cnt_q <= bit_cnt_d;
         end
     end
-    
+
     always_comb begin
         sreg_d = sreg_q;
         bit_cnt_d = bit_cnt_q;
@@ -166,17 +166,17 @@ endmodule'''
 endmodule'''
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        
+
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
-        
+
         nodes = list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
-        
+
         # 验证: tx 信号存在
         has_tx = any('tx' in n for n in nodes)
         self.assertTrue(has_tx, f"tx not found in {nodes}")
-        
+
         # 验证: sreg_q[0] -> tx
         has_tx_driver = any('sreg_q' in edge[0] and 'tx' in edge[1] for edge in edges)
         self.assertTrue(has_tx_driver, f"sreg_q -> tx not found in {edges}")

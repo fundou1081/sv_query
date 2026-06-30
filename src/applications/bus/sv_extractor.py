@@ -52,7 +52,7 @@ class ExtractedModule:
     """
 
     name: str
-    signals: List[SignalContext] = field(default_factory=list)
+    signals: list[SignalContext] = field(default_factory=list)
     file: str = ""
 
 
@@ -65,10 +65,10 @@ class SVSignalExtractor:
 
     def __init__(
         self,
-        sources: Optional[Dict[str, str]] = None,
-        files: Optional[List[str]] = None,
-        filelist: Optional[str] = None,
-        include_dirs: Optional[List[str]] = None,
+        sources: dict[str, str] | None = None,
+        files: list[str] | None = None,
+        filelist: str | None = None,
+        include_dirs: list[str] | None = None,
         log_level: str = "WARNING",
         strict: bool = True,
     ):
@@ -78,16 +78,16 @@ class SVSignalExtractor:
         self._include_dirs = include_dirs or []
         self._log_level = log_level
         self._tracer = None
-        self._extracted: Dict[str, ExtractedModule] = {}
+        self._extracted: dict[str, ExtractedModule] = {}
         self._strict = strict  # [FIX 2026-06-11] 传到 tracer
 
     @classmethod
     def from_file(
         cls,
         file: str,
-        include_dirs: Optional[List[str]] = None,
+        include_dirs: list[str] | None = None,
         strict: bool = True,
-    ) -> "SVSignalExtractor":
+    ) -> SVSignalExtractor:
         """从单文件构造."""
         with open(file) as f:
             sources = {file: f.read()}
@@ -97,15 +97,15 @@ class SVSignalExtractor:
     def from_filelist(
         cls,
         filelist: str,
-        include_dirs: Optional[List[str]] = None,
+        include_dirs: list[str] | None = None,
         strict: bool = True,
-    ) -> "SVSignalExtractor":
+    ) -> SVSignalExtractor:
         """从 filelist (.f/.fl) 构造."""
         return cls(filelist=filelist, include_dirs=include_dirs, strict=strict)
 
     # ----- 提取 -----
 
-    def extract_all_modules(self) -> Dict[str, ExtractedModule]:
+    def extract_all_modules(self) -> dict[str, ExtractedModule]:
         """提取所有模块的信号.
 
         Returns:
@@ -130,12 +130,12 @@ class SVSignalExtractor:
                 )
         return self._extracted
 
-    def extract_module(self, module_name: str) -> Optional[ExtractedModule]:
+    def extract_module(self, module_name: str) -> ExtractedModule | None:
         """提取单个模块的信号."""
         all_mods = self.extract_all_modules()
         return all_mods.get(module_name)
 
-    def list_modules(self) -> List[str]:
+    def list_modules(self) -> list[str]:
         """列出所有模块名."""
         return list(self.extract_all_modules().keys())
 
@@ -170,13 +170,13 @@ class SVSignalExtractor:
         """获取 SemanticAdapter."""
         return tracer._get_adapter()
 
-    def _find_modules(self, root, adapter) -> Dict[str, object]:
+    def _find_modules(self, root, adapter) -> dict[str, object]:
         """从 root 找所有模块定义.
 
         返回 {module_name: module_node}.
         走 SemanticAdapter.get_modules() (兼容好路径).
         """
-        modules: Dict[str, object] = {}
+        modules: dict[str, object] = {}
 
         # 优先用 adapter.get_modules() (已验证走 SymbolKind.Instance 路径)
         if hasattr(adapter, "get_modules"):
@@ -192,13 +192,13 @@ class SVSignalExtractor:
 
         return modules
 
-    def _extract_module_signals(self, mod, adapter) -> List[SignalContext]:
+    def _extract_module_signals(self, mod, adapter) -> list[SignalContext]:
         """从 module 提取所有 port 的 SignalContext."""
-        sigs: List[SignalContext] = []
+        sigs: list[SignalContext] = []
 
         # 1. 收集 port declarations
         port_decls = self._get_port_declarations(mod, adapter)
-        port_names: List[str] = []
+        port_names: list[str] = []
 
         for port in port_decls:
             name, direction = adapter.get_port_name_and_direction(port)
@@ -235,7 +235,7 @@ class SVSignalExtractor:
             sigs_with_paired.append(new_sig)
         return sigs_with_paired
 
-    def _get_port_declarations(self, mod, adapter) -> List[object]:
+    def _get_port_declarations(self, mod, adapter) -> list[object]:
         """获取 module 的所有 port 声明."""
         if hasattr(adapter, "get_port_declarations"):
             try:
@@ -283,8 +283,8 @@ class SVSignalExtractor:
         return 1
 
     def _infer_paired_signals(
-        self, sigs: List[SignalContext],
-    ) -> Dict[str, List[str]]:
+        self, sigs: list[SignalContext],
+    ) -> dict[str, list[str]]:
         """启发式找 valid+ready 配对 (双向).
 
         双向:
@@ -306,7 +306,7 @@ class SVSignalExtractor:
                     return n[: -len(s)]
             return n
 
-        paired: Dict[str, List[str]] = {s.name: [] for s in sigs}
+        paired: dict[str, list[str]] = {s.name: [] for s in sigs}
         sigs_norm = [(s, norm.normalize(s.name).normalized) for s in sigs]
 
         def _try_pair(sig1, sig1_norm, sig2, sig2_norm):
@@ -338,7 +338,7 @@ class SVSignalExtractor:
                 _try_pair(sig1, n1, sig2, n2)
         return paired
 
-    def _safe_get_name(self, mod) -> Optional[str]:
+    def _safe_get_name(self, mod) -> str | None:
         """安全获取 module 名字."""
         try:
             # 优先 header.name

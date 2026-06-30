@@ -16,7 +16,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestCaseKnownLimitation(unittest.TestCase):
     """case 语句 - 已知 API 限制"""
-    
+
     def test_case_compiles(self):
         """验证 case 能够解析"""
         source = '''
@@ -29,11 +29,11 @@ module top(input [1:0] sel, input a, b, output logic y);
         endcase
     end
 endmodule'''
-        
+
         tree = pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
-        
+
         # 已知限制: 内部提取不完整，但基础功能可用
         self.assertIsNotNone(tracer.get_graph())
 

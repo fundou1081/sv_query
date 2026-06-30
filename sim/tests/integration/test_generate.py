@@ -13,11 +13,11 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestGenerate(unittest.TestCase):
     """generate 语句测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def test_generate_for(self):
         """[Gen] generate for"""
         source = '''
@@ -35,12 +35,12 @@ module top(
 
     assign out = tmp[0];
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('out', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_generate_if(self):
         """[Gen] generate if"""
         source = '''
@@ -49,12 +49,12 @@ module top(input wire cond, input wire a, output wire y);
         assign y = a;
     endgenerate
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_generate_case(self):
         """[Gen] generate case"""
         source = '''
@@ -64,12 +64,12 @@ module top(input [1:0] sel, input a, input b, output wire y);
         default: assign y = b;
     endgenerate
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_generate_nested(self):
         """[Gen] 嵌套 generate"""
         source = '''
@@ -83,10 +83,10 @@ module top(input clk, input [1:0] sel, output wire y);
         end
     endgenerate
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
 
 

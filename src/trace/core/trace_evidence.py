@@ -44,15 +44,15 @@ class Evidence:
         enclosing_chain: 完整 enclosing scope 链 (从内到外, 列表)
     """
     signal: str
-    source_location: Optional[SourceLocation] = None
+    source_location: SourceLocation | None = None
     source_text: str = ""
     source_expr: str = ""  # [V4] 驱动表达式 (cross-validation 用)
-    enclosing_always: Optional[SourceSnippet] = None
-    enclosing_always_comb: Optional[SourceSnippet] = None
-    enclosing_if: Optional[SourceSnippet] = None
-    enclosing_assign: Optional[SourceSnippet] = None
-    enclosing_class: Optional[SourceSnippet] = None
-    enclosing_constraint: Optional[SourceSnippet] = None
+    enclosing_always: SourceSnippet | None = None
+    enclosing_always_comb: SourceSnippet | None = None
+    enclosing_if: SourceSnippet | None = None
+    enclosing_assign: SourceSnippet | None = None
+    enclosing_class: SourceSnippet | None = None
+    enclosing_constraint: SourceSnippet | None = None
     enclosing_chain: list[SourceSnippet] = field(default_factory=list)
 
     # ------------------------------------------------------------------
@@ -269,7 +269,7 @@ class TraceEvidenceResolver:
     # V4: Edge 查找 (保留 V3 逻辑)
     # ==================================================================
 
-    def _find_incoming_edge(self, signal_id: str) -> Optional[TraceEdge]:
+    def _find_incoming_edge(self, signal_id: str) -> TraceEdge | None:
         """找 signal_id 的 incoming edge, 优先有 condition_ast 的"""
         if self.graph is None:
             return None
@@ -300,7 +300,7 @@ class TraceEvidenceResolver:
     # V4: Snippet 构造 (offset-based slicing)
     # ==================================================================
 
-    def _snippet_from_syntax(self, syn) -> Optional[SourceSnippet]:
+    def _snippet_from_syntax(self, syn) -> SourceSnippet | None:
         """[V4] 从 syntax 节点构造 SourceSnippet
 
         用 offset 切片: text[start.offset:end.offset] 替代按行号 split

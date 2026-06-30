@@ -44,7 +44,7 @@ endmodule'''
 
         self.assertGreaterEqual(len(result.drivers), 1,
             "task output 参数应有驱动")
-    
+
     def test_task_named_args(self):
         """[Golden] task 调用使用命名参数
         RTL:

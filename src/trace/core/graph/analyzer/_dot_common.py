@@ -37,7 +37,7 @@ def sanitize_dot_id(node_id: str) -> str:
     return safe if safe else f"_node_{(hash(node_id) & 0xFFFF):04x}"
 
 
-def safe_classify(graph: SignalGraph) -> Optional[SignalClassification]:
+def safe_classify(graph: SignalGraph) -> SignalClassification | None:
     """[P1-5] classify_graph + try/except 包装, 返回 None 表示分类失败。
 
     两处 viz 都用相同的 fallback: 失败时返回 None, 然后生成最简 DOT。
@@ -59,7 +59,7 @@ def node_width(cn) -> int:
 
 
 # SignalClass → (fillcolor, bordercolor, fontcolor)
-SIGNAL_CLASS_COLORS: dict[SignalClass, Tuple[str, str, str]] = {
+SIGNAL_CLASS_COLORS: dict[SignalClass, tuple[str, str, str]] = {
     SignalClass.DATA:    ("#4488cc", "#226699", "white"),
     SignalClass.CONTROL: ("#cc8844", "#996622", "white"),
     SignalClass.CLOCK:   ("#888888", "#666666", "white"),
@@ -68,7 +68,7 @@ SIGNAL_CLASS_COLORS: dict[SignalClass, Tuple[str, str, str]] = {
 }
 
 
-def signal_class_color(sc: SignalClass) -> Tuple[str, str, str]:
+def signal_class_color(sc: SignalClass) -> tuple[str, str, str]:
     """[P1-5] 拿 SignalClass 的 DOT 颜色三元组。"""
     return SIGNAL_CLASS_COLORS.get(sc, ("#aaaaaa", "#888888", "black"))
 

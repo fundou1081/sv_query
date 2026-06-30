@@ -31,11 +31,11 @@ from trace.unified_tracer import UnifiedTracer
 # ----------------------------------------------------------------------------
 
 def _build_tracer(
-    file: Optional[Path] = None,
-    filelist: Optional[str] = None,
+    file: Path | None = None,
+    filelist: str | None = None,
     strict: bool = True,
     log_level: str = "WARNING",
-    include_dirs: Optional[list] = None,
+    include_dirs: list | None = None,
     preprocess_macros: bool = True,
 ) -> UnifiedTracer:
     """[ADD 2026-06-11 Req-9] 统一构建 UnifiedTracer, 支持 --file / --filelist

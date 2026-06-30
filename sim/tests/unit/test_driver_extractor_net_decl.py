@@ -38,7 +38,7 @@ endmodule
         st = SignalTracer(graph)
         # The wire 'x' should have a driver
         dis = st.trace_fanin_detailed('test.x')
-        assert len(dis) > 0, f"Expected drivers for test.x, got 0"
+        assert len(dis) > 0, "Expected drivers for test.x, got 0"
         # The driver should reference 'a'
         assert any('a' in (d.expression or '') for d in dis), \
             f"Expected driver expr to contain 'a', got: {[d.expression for d in dis]}"
@@ -71,7 +71,7 @@ endmodule
         from trace.core.query.signal import SignalTracer
         st = SignalTracer(graph)
         dis = st.trace_fanin_detailed('test.sel')
-        assert len(dis) > 0, f"Expected drivers for test.sel, got 0"
+        assert len(dis) > 0, "Expected drivers for test.sel, got 0"
         print(f"test.sel drivers: {len(dis)}")
         for d in dis[:3]:
             print(f"  cond={d.condition[:40]!r} expr={d.expression[:30]!r}")

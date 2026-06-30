@@ -67,7 +67,7 @@ def _get_syntax_trees_typedefs(tracer) -> list:
     return all_typedefs
 
 
-def _parse_clog2_from_text(text: str) -> Optional[tuple[str, int | str]]:
+def _parse_clog2_from_text(text: str) -> tuple[str, int | str] | None:
     """从 typedef 节点文本里找 $clog2(X), 返回 (match_str, value or macro_name)"""
     m = CLOG2_PATTERN.search(text)
     if not m:
@@ -80,7 +80,7 @@ def _parse_clog2_from_text(text: str) -> Optional[tuple[str, int | str]]:
     return None
 
 
-def _resolve_macro_value(macro_name: str, sources: dict[str, str]) -> Optional[int]:
+def _resolve_macro_value(macro_name: str, sources: dict[str, str]) -> int | None:
     """从 sources dict 里 grep `\`<macro_name>` 定义, 解析成 int
 
     支持:
@@ -90,7 +90,7 @@ def _resolve_macro_value(macro_name: str, sources: dict[str, str]) -> Optional[i
     """
     visited = set()
 
-    def _resolve(name: str) -> Optional[int]:
+    def _resolve(name: str) -> int | None:
         if name in visited:
             return None  # 循环引用
         visited.add(name)
@@ -117,7 +117,7 @@ def _resolve_macro_value(macro_name: str, sources: dict[str, str]) -> Optional[i
     return _resolve(macro_name)
 
 
-def _evaluate_clog2(value_or_macro: int | str, sources: dict[str, str]) -> Optional[int]:
+def _evaluate_clog2(value_or_macro: int | str, sources: dict[str, str]) -> int | None:
     """对 int 直接用 pyslang.clog2, 对 str (macro name) 先解析值"""
     if isinstance(value_or_macro, int):
         v = value_or_macro
@@ -249,7 +249,7 @@ def fix_widths_cmd(
         return
 
     # 文本输出
-    typer.echo(f"=== Fix Widths Report ===\n")
+    typer.echo("=== Fix Widths Report ===\n")
     typer.echo(f"Project root: {project_root}")
     typer.echo(f"Total typedefs in syntax trees: {len(typedefs)}")
     typer.echo(f"Typedefs using $clog2: {len(results)}\n")

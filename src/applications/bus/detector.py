@@ -106,9 +106,9 @@ class ChannelMatch:
 
     name: str
     present: bool
-    matched_required: List[str] = field(default_factory=list)
-    matched_optional: List[str] = field(default_factory=list)
-    missing_required: List[str] = field(default_factory=list)
+    matched_required: list[str] = field(default_factory=list)
+    matched_optional: list[str] = field(default_factory=list)
+    missing_required: list[str] = field(default_factory=list)
     score: float = 0.0
     name_score: float = 0.0
     structural_score: float = 0.0
@@ -136,11 +136,11 @@ class ProtocolMatch:
     """
 
     protocol: str
-    variant: Optional[str] = None
+    variant: str | None = None
     confidence: float = 0.0
-    channels: Dict[str, ChannelMatch] = field(default_factory=dict)
-    signal_mappings: List[SignalMapping] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    channels: dict[str, ChannelMatch] = field(default_factory=dict)
+    signal_mappings: list[SignalMapping] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     name_score: float = 0.0
     structural_score: float = 0.0
     pattern_score: float = 0.0
@@ -180,12 +180,12 @@ class ProtocolDetector:
 
     def __init__(
         self,
-        schemas: Optional[Dict[str, ProtocolSchema]] = None,
-        registry: Optional["ProtocolSchemaRegistry"] = None,  # type: ignore
-        normalizer: Optional[SignalNormalizer] = None,
-        structural_detector: Optional[StructuralRoleDetector] = None,
-        pattern_learner: Optional[PatternLearner] = None,
-        handshake_provider: Optional[HandshakeProvider] = None,
+        schemas: dict[str, ProtocolSchema] | None = None,
+        registry: ProtocolSchemaRegistry | None = None,  # type: ignore
+        normalizer: SignalNormalizer | None = None,
+        structural_detector: StructuralRoleDetector | None = None,
+        pattern_learner: PatternLearner | None = None,
+        handshake_provider: HandshakeProvider | None = None,
     ):
         # 接受 schemas dict 或 registry
         if registry is not None:
@@ -201,7 +201,7 @@ class ProtocolDetector:
         # 默认 NameBasedHandshakeProvider, 用户可注入
         self.handshake_provider = handshake_provider or NameBasedHandshakeProvider(self.norm)
 
-    def detect(self, signals: List[SignalContext]) -> ProtocolMatch:
+    def detect(self, signals: list[SignalContext]) -> ProtocolMatch:
         """检测协议, 返回 top-1 ProtocolMatch.
 
         多协议竞争模式: 加载所有 schema, 选 top-1.
@@ -222,7 +222,7 @@ class ProtocolDetector:
         )
 
         # 2) 对每个 schema 协议评分
-        candidates: List[ProtocolMatch] = []
+        candidates: list[ProtocolMatch] = []
         for protocol_name, schema in self.schemas.items():
             match = self._score_protocol(schema, signals, groups, anchors)
             candidates.append(match)
@@ -251,7 +251,7 @@ class ProtocolDetector:
     def detect_single(
         self,
         protocol_name: str,
-        signals: List[SignalContext],
+        signals: list[SignalContext],
     ) -> ProtocolMatch:
         """单协议评分模式: 工程师指定协议名, 只对该 schema 评分.
 
@@ -297,13 +297,13 @@ class ProtocolDetector:
     def _score_protocol(
         self,
         schema: ProtocolSchema,
-        signals: List[SignalContext],
-        groups: List[ChannelGroup],
-        anchors: List[Tuple[str, str]],
+        signals: list[SignalContext],
+        groups: list[ChannelGroup],
+        anchors: list[tuple[str, str]],
     ) -> ProtocolMatch:
         """对单个协议评分."""
-        channel_matches: Dict[str, ChannelMatch] = {}
-        all_mappings: List[SignalMapping] = []
+        channel_matches: dict[str, ChannelMatch] = {}
+        all_mappings: list[SignalMapping] = []
 
         # [FIX 2026-06-11] 预检测 variant, 后续变体特定评分时使用
         variant_name = self._detect_variant(schema, signals)
@@ -343,7 +343,7 @@ class ProtocolDetector:
         # 变体检测
         variant = self._detect_variant(schema, signals)
 
-        warnings: List[str] = []
+        warnings: list[str] = []
         for ch_name, ch_match in channel_matches.items():
             if not ch_match.present:
                 warnings.append(
@@ -368,9 +368,9 @@ class ProtocolDetector:
         ch_name: str,
         ch_spec: ChannelSpec,
         schema: ProtocolSchema,
-        signals: List[SignalContext],
-        groups: List[ChannelGroup],
-    ) -> Tuple[ChannelMatch, List[SignalMapping]]:
+        signals: list[SignalContext],
+        groups: list[ChannelGroup],
+    ) -> tuple[ChannelMatch, list[SignalMapping]]:
         """对单个通道评分."""
         # 标准化所有信号名
         sig_norms = {s.name: self.norm.normalize(s.name).normalized for s in signals}
@@ -383,10 +383,10 @@ class ProtocolDetector:
         def _norm(s: str) -> str:
             return self.norm.normalize(s).normalized
 
-        matched_req: List[str] = []
-        matched_opt: List[str] = []
-        missing_req: List[str] = []
-        mappings: List[SignalMapping] = []
+        matched_req: list[str] = []
+        matched_opt: list[str] = []
+        missing_req: list[str] = []
+        mappings: list[SignalMapping] = []
 
         # 检查 required
         for req_sig in ch_spec.required:
@@ -456,7 +456,7 @@ class ProtocolDetector:
         self,
         ch_spec: ChannelSpec,
         schema: ProtocolSchema,
-        sig_by_norm: Dict[str, List[SignalContext]],
+        sig_by_norm: dict[str, list[SignalContext]],
     ) -> float:
         """通道内 required 信号的结构一致性分数."""
         if not ch_spec.required:
@@ -501,7 +501,7 @@ class ProtocolDetector:
         self,
         ch_name: str,
         ch_spec: ChannelSpec,
-        groups: List[ChannelGroup],
+        groups: list[ChannelGroup],
     ) -> float:
         """通道是否被 PatternLearner 识别为独立 group.
 
@@ -531,7 +531,7 @@ class ProtocolDetector:
 
     def _aggregate_name_score(
         self,
-        channel_matches: Dict[str, ChannelMatch],
+        channel_matches: dict[str, ChannelMatch],
         schema: ProtocolSchema,
     ) -> float:
         """所有通道 name_score 平均."""
@@ -541,15 +541,15 @@ class ProtocolDetector:
 
     def _aggregate_structural_score(
         self,
-        channel_matches: Dict[str, ChannelMatch],
+        channel_matches: dict[str, ChannelMatch],
         schema: ProtocolSchema,
     ) -> float:
         return sum(cm.structural_score for cm in channel_matches.values()) / max(1, len(channel_matches))
 
     def _aggregate_pattern_score(
         self,
-        channel_matches: Dict[str, ChannelMatch],
-        groups: List[ChannelGroup],
+        channel_matches: dict[str, ChannelMatch],
+        groups: list[ChannelGroup],
         schema: ProtocolSchema,
     ) -> float:
         if not groups:
@@ -565,8 +565,8 @@ class ProtocolDetector:
     def _detect_variant(
         self,
         schema: ProtocolSchema,
-        signals: List[SignalContext],
-    ) -> Optional[str]:
+        signals: list[SignalContext],
+    ) -> str | None:
         """检测协议变体. 偏好最具体的变体 (需要检查更多约束的)."""
         def _norm(s: str) -> str:
             return self.norm.normalize(s).normalized
@@ -598,7 +598,7 @@ class ProtocolDetector:
     def _find_variant_spec(
         self,
         schema: ProtocolSchema,
-        variant_name: Optional[str],
+        variant_name: str | None,
     ):
         """根据变体名找到 VariantSpec (无则 None)。"""
         if not variant_name:
@@ -613,7 +613,7 @@ class ProtocolDetector:
         variant,
         ch_name: str,
         ch_match,
-        signals: List[SignalContext],
+        signals: list[SignalContext],
     ) -> None:
         """应用变体级 channel override (从 schema.channel_overrides 读)。
 
@@ -640,9 +640,9 @@ class ProtocolDetector:
 
     def _handshake_score(
         self,
-        anchors: List[Tuple[str, str]],
+        anchors: list[tuple[str, str]],
         schema: ProtocolSchema,
-        signals: List[SignalContext],
+        signals: list[SignalContext],
     ) -> float:
         """4 项融合: handshake_score."""
         # [FIX 2026-06-11] STRUCT_WRAPPER 变体下没有 1-bit anchor, 但 wrapper port
@@ -679,8 +679,8 @@ class ProtocolDetector:
 
     def _find_anchors(
         self,
-        signals: List[SignalContext],
-    ) -> List[Tuple[str, str]]:
+        signals: list[SignalContext],
+    ) -> list[tuple[str, str]]:
         """从信号中找 valid+ready 锡点对.
 
         规则: 1-bit output (以 valid 结尾) + 1-bit input (以 ready 结尾),
@@ -695,7 +695,7 @@ class ProtocolDetector:
         # [FIX 2026-06-11] slave 模块方向反 (valid 是 input, ready 是 output).
         # 原来只找 (output valid + input ready) — 适用 master 模块.
         # slave 模式需要 (output ready + input valid). 同时找两种.
-        anchors: List[Tuple[str, str]] = []
+        anchors: list[tuple[str, str]] = []
         out_valid = [
             s for s in signals
             if s.direction == "output" and s.width == 1

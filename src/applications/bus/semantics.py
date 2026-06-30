@@ -73,8 +73,8 @@ class ChannelRule:
     direction: str  # request/response/data/...
     valid: str
     ready: str
-    data: Optional[str] = None
-    depends_on: List[str] = field(default_factory=list)
+    data: str | None = None
+    depends_on: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -97,7 +97,7 @@ class DeadlockRule:
     description: str
     severity: str = "warning"
     kind: str = ""
-    channels: List[str] = field(default_factory=list)
+    channels: list[str] = field(default_factory=list)
     expression: str = ""
 
 
@@ -118,12 +118,12 @@ class ProtocolSemantics:
     protocol: str
     description: str = ""
     transfer: str = "valid && ready"
-    channels: List[ChannelRule] = field(default_factory=list)
-    deadlock_rules: List[DeadlockRule] = field(default_factory=list)
-    forbidden_combinational_loops: List[str] = field(default_factory=list)
+    channels: list[ChannelRule] = field(default_factory=list)
+    deadlock_rules: list[DeadlockRule] = field(default_factory=list)
+    forbidden_combinational_loops: list[str] = field(default_factory=list)
     notes: str = ""
 
-    def channel(self, name: str) -> Optional[ChannelRule]:
+    def channel(self, name: str) -> ChannelRule | None:
         """按名字查通道。"""
         for ch in self.channels:
             if ch.name == name:
@@ -148,22 +148,22 @@ _DEFAULT_SEMANTICS_DIR = Path(__file__).parents[3] / "config" / "protocols" / "s
 @dataclass
 class ProtocolSemanticsRegistry:
     """协议语义注册表 — 加载整个目录的所有协议。"""
-    semantics: Dict[str, ProtocolSemantics] = field(default_factory=dict)
+    semantics: dict[str, ProtocolSemantics] = field(default_factory=dict)
 
     @property
     def count(self) -> int:
         return len(self.semantics)
 
-    def get(self, name: str) -> Optional[ProtocolSemantics]:
+    def get(self, name: str) -> ProtocolSemantics | None:
         return self.semantics.get(name)
 
-    def list_protocols(self) -> List[str]:
+    def list_protocols(self) -> list[str]:
         return list(self.semantics.keys())
 
     @classmethod
     def from_directory(
         cls, dir_path: Union[str, Path], pattern: str = "*.yaml"
-    ) -> "ProtocolSemanticsRegistry":
+    ) -> ProtocolSemanticsRegistry:
         """从目录加载所有 YAML 文件。"""
         dir_path = Path(dir_path)
         if not dir_path.exists():
@@ -209,7 +209,7 @@ def load_semantics(
     return reg.semantics[protocol_name]
 
 
-def list_semantics(dir_path: Union[str, Path, None] = None) -> List[str]:
+def list_semantics(dir_path: Union[str, Path, None] = None) -> list[str]:
     """[A1] 列出所有可用协议的语义定义。"""
     dir_path = Path(dir_path) if dir_path else _DEFAULT_SEMANTICS_DIR
     if not dir_path.exists():
@@ -222,7 +222,7 @@ def list_semantics(dir_path: Union[str, Path, None] = None) -> List[str]:
 # YAML 解析
 # ---------------------------------------------------------------------------
 
-def _as_str_list(v) -> List[str]:
+def _as_str_list(v) -> list[str]:
     """统一转 str list。"""
     if v is None:
         return []
@@ -239,7 +239,7 @@ def ProtocolSemantics_from_dict(data: dict) -> ProtocolSemantics:  # noqa: N802
         raise ValueError("YAML missing required field: 'protocol'")
 
     # channels
-    channels: List[ChannelRule] = []
+    channels: list[ChannelRule] = []
     for ch_data in (data.get("channels") or []):
         channels.append(ChannelRule(
             name=ch_data.get("name", ""),
@@ -251,7 +251,7 @@ def ProtocolSemantics_from_dict(data: dict) -> ProtocolSemantics:  # noqa: N802
         ))
 
     # deadlock_rules
-    deadlock_rules: List[DeadlockRule] = []
+    deadlock_rules: list[DeadlockRule] = []
     for r_data in (data.get("deadlock_rules") or []):
         deadlock_rules.append(DeadlockRule(
             id=r_data.get("id", ""),

@@ -137,7 +137,7 @@ def _strip_suffix(sig: str) -> str:
     return s
 
 
-def _build_tracer(filelist: Optional[str], file: Optional[str], include: Optional[str], strict: bool = True):
+def _build_tracer(filelist: str | None, file: str | None, include: str | None, strict: bool = True):
     """构造 UnifiedTracer，统一错误处理"""
     if not file and not filelist:
         print("Error: Either --file or --filelist must be provided", file=sys.stderr)
@@ -235,7 +235,7 @@ def _print_scan_table(results, filter_channels: list):
     for hi in results:
         t = hi.handshake_type
         stats[t] = stats.get(t, 0) + 1
-    print(f"  Summary:")
+    print("  Summary:")
     for t, cnt in sorted(stats.items(), key=lambda x: -x[1]):
         print(f"    {TYPE_EMOJI.get(t,'❓')} {t}: {cnt}")
 
@@ -349,7 +349,7 @@ def analyze(
     print(f"  Condition:      {hi.condition or '-'}")
     print(f"  Effective Cond: {hi.effective_condition or '-'}")
     if hi.extra:
-        print(f"  Extra:")
+        print("  Extra:")
         for k, v in hi.extra.items():
             print(f"    {k}: {v}")
     print("")
@@ -396,7 +396,7 @@ def pair(
     print(f"  Condition:      {hi.condition or '-'}")
     print(f"  Effective Cond: {hi.effective_condition or '-'}")
     if hi.extra:
-        print(f"  Extra:")
+        print("  Extra:")
         for k, v in hi.extra.items():
             print(f"    {k}: {v}")
     print("")

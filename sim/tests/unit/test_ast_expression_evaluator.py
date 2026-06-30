@@ -21,9 +21,9 @@ from trace.core.semantic_adapter import SemanticAdapter
 
 class TestASTExpressionEvaluator(unittest.TestCase):
     """AST 递归求值器测试"""
-    
+
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
         comp = SVCompiler({'test.sv': source})
         root = comp.get_root()
-        
+

@@ -32,11 +32,11 @@ class TestIssue21ParameterExpression(unittest.TestCase):
 
     def test_parameter_expression_in_node_name(self):
         """[Golden] 参数表达式应在节点名中展开
-        
+
         源: input wire [ADDR_WIDTH-1:0] in (ADDR_WIDTH=3)
         当前: dual_clock_fifo.in[ADDR_WIDTH-1]
         期望: dual_clock_fifo.in[2] 或 dual_clock_fifo.in (带有正确的位宽信息)
-        
+
         验证: 节点名不应包含未展开的参数名 ADDR_WIDTH
         """
         source = '''
@@ -54,7 +54,7 @@ endmodule
         graph = tracer.get_graph()
 
         node_ids = [nid for nid in graph.nodes()]
-        
+
         # 检查是否有节点名包含 ADDR_WIDTH (未展开)
         for nid in node_ids:
             self.assertNotIn(
@@ -65,11 +65,11 @@ endmodule
 
     def test_parameter_expression_in_internal_signal(self):
         """[Golden] 内部信号的参数位宽表达式应展开
-        
+
         内部信号 reg [ADDR_WIDTH-1:0] wr_addr (ADDR_WIDTH=3)
         当前: dual_clock_fifo.wr_addr[ADDR_WIDTH-1] (在函数返回值中)
         期望: dual_clock_fifo.wr_addr (带有位宽信息) 或 wr_addr[2]
-        
+
         注意: 此测试验证参数表达式不应出现在节点名中
         函数返回值节点创建是另一个问题，此处只检查参数表达式展开
         """
@@ -94,10 +94,10 @@ endmodule
         graph = tracer.get_graph()
 
         node_ids = [nid for nid in graph.nodes()]
-        
+
         # 内部信号 wr_addr 应该存在
         self.assertIn('dual_clock_fifo.wr_addr', node_ids)
-        
+
         # 检查是否有节点名包含未展开的 ADDR_WIDTH
         for nid in node_ids:
             self.assertNotIn(
@@ -108,10 +108,10 @@ endmodule
 
     def test_parameter_expression_in_function_bit_select(self):
         """[Golden] 函数内位选择表达式参数应展开
-        
+
         函数返回值灰Conv = {in[ADDR_WIDTH-1], ...} (ADDR_WIDTH=3)
         期望: in[2] 而非 in[ADDR_WIDTH-1]
-        
+
         验证位宽提取时参数被正确解析
         """
         source = '''
@@ -133,7 +133,7 @@ endmodule
         graph = tracer.get_graph()
 
         node_ids = [nid for nid in graph.nodes()]
-        
+
         # 检查是否有节点名包含未展开的 ADDR_WIDTH
         for nid in node_ids:
             self.assertNotIn(
