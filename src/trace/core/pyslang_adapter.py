@@ -14,6 +14,7 @@ from data_models import (
     new_signal_chain,
     new_signal_node,
 )
+
 from trace.core._pyslang_compat import SyntaxKind, SyntaxTree  # [Stage 6] v10/v11 兼容
 
 
@@ -83,7 +84,7 @@ class PyslangAdapter:
         self.loads.setdefault(rhs, []).append(ConnectionEdge(source=lhs, sink=rhs, edge_type="load"))
 
     def _parse(self):
-        def visitor(node):
+        def visitor(node: object) -> None:
             if node.kind.name == "ImplicitAnsiPort":
                 n = self._port_name(node)
                 if n:
@@ -114,10 +115,10 @@ class PyslangAdapter:
 
         return self
 
-    def get_drivers(self, s):
+    def get_drivers(self, s: str) -> list:
         return self.drivers.get(s, [])
 
-    def get_loads(self, s):
+    def get_loads(self, s: str) -> list:
         return self.loads.get(s, [])
 
     def trace_signal(self, signal: str) -> SignalChain:
