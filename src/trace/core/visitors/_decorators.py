@@ -3,9 +3,10 @@
 [REFACTOR A-PR2 2026-06-26] 抽 on() 从 signal_expression_visitor.py 到独立 module
 让 operator_visitor.py 等 sub_visitor 都能 import, 避免循环依赖.
 """
+from typing import Any, Callable
 
 
-def on(kind_name: str):
+def on(kind_name: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """注册 handler 的装饰器.
 
     用法:
@@ -13,7 +14,7 @@ def on(kind_name: str):
         def handle_binary_op(self, node):
             ...
     """
-    def decorator(func):
-        func._kind_name = kind_name
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        func._kind_name = kind_name  # type: ignore[attr-defined]
         return func
     return decorator

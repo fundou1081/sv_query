@@ -20,11 +20,11 @@ class BaseVisitor(ABC):
         self.max_depth: int = 30
 
     @abstractmethod
-    def visit(self, node):
+    def visit(self, node: object) -> None:
         """主入口：分发到对应的 visit 方法"""
         raise NotImplementedError
 
-    def generic_visit(self, node):
+    def generic_visit(self, node: object) -> None:
         """通用递归：进入子节点"""
         if node is None or self.depth > self.max_depth:
             return
@@ -47,15 +47,15 @@ class BaseVisitor(ABC):
     # [P2] 块语句 Visitors
     # ========================================
 
-    def visit_always_block(self, node):
+    def visit_always_block(self, node: object) -> None:
         """always_ff / always_comb / always_block"""
         self.generic_visit(node)
 
-    def visit_sequential_block(self, node):
+    def visit_sequential_block(self, node: object) -> None:
         """begin...end 块"""
         self.generic_visit(node)
 
-    def visit_timing_control(self, node):
+    def visit_timing_control(self, node: object) -> None:
         """@posedge clk 等时序控制"""
         self.generic_visit(node)
 
@@ -63,7 +63,7 @@ class BaseVisitor(ABC):
     # [P2] Class OOP Visitors
     # ========================================
 
-    def visit_class_declaration(self, node):
+    def visit_class_declaration(self, node: object) -> None:
         """class...endclass 声明"""
         # class 成员在 items 中
         for attr in ["items", "members", "body"]:
@@ -75,12 +75,12 @@ class BaseVisitor(ABC):
                 elif block:
                     self.visit(block)
 
-    def visit_class_property(self, node):
+    def visit_class_property(self, node: object) -> None:
         """class 成员变量"""
         # class 成员变量声明
         self.generic_visit(node)
 
-    def visit_class_method(self, node):
+    def visit_class_method(self, node: object) -> None:
         """class 方法"""
         self.generic_visit(node)
 
@@ -88,7 +88,7 @@ class BaseVisitor(ABC):
     # [P2] Generate 块 Visitors
     # ========================================
 
-    def visit_generate_region(self, node):
+    def visit_generate_region(self, node: object) -> None:
         """generate...endgenerate 块"""
         # 进入 members
         for attr in ["members", "body", "items"]:
@@ -100,7 +100,7 @@ class BaseVisitor(ABC):
                 elif block:
                     self.visit(block)
 
-    def visit_if_generate(self, node):
+    def visit_if_generate(self, node: object) -> None:
         """generate if 语句"""
         # 进入 if 分支
         if hasattr(node, "block"):
@@ -109,7 +109,7 @@ class BaseVisitor(ABC):
         if hasattr(node, "elseClause"):
             self.visit(node.elseClause)
 
-    def visit_generate_block(self, node):
+    def visit_generate_block(self, node: object) -> None:
         """generate 块 (begin...end)"""
         self.generic_visit(node)
 
@@ -117,7 +117,7 @@ class BaseVisitor(ABC):
     # [P2] 循环语句 Visitors
     # ========================================
 
-    def visit_loop_statement(self, node):
+    def visit_loop_statement(self, node: object) -> None:
         """while / for / repeat 循环"""
         self.generic_visit(node)
 
@@ -125,11 +125,11 @@ class BaseVisitor(ABC):
     # [P1] 条件语句 Visitors
     # ========================================
 
-    def visit_case(self, node):
+    def visit_case(self, node: object) -> None:
         """case / casex / casez"""
         self.generic_visit(node)
 
-    def visit_if(self, node):
+    def visit_if(self, node: object) -> None:
         """if-else 语句"""
         self.generic_visit(node)
 
@@ -137,19 +137,19 @@ class BaseVisitor(ABC):
     # [P0] 赋值语句 Visitors
     # ========================================
 
-    def visit_nonblocking_assignment(self, node):
+    def visit_nonblocking_assignment(self, node: object) -> None:
         """<= 非阻塞赋值"""
         pass
 
-    def visit_blocking_assignment(self, node):
+    def visit_blocking_assignment(self, node: object) -> None:
         """= 阻塞赋值"""
         pass
 
-    def visit_continuous_assignment(self, node):
+    def visit_continuous_assignment(self, node: object) -> None:
         """assign 连续赋值"""
         pass
 
-    def visit_expression_statement(self, node):
+    def visit_expression_statement(self, node: object) -> None:
         """表达式语句"""
         self.generic_visit(node)
 
@@ -157,7 +157,7 @@ class BaseVisitor(ABC):
     # [P1] DataDeclaration Visitors
     # ========================================
 
-    def visit_data_declaration(self, node):
+    def visit_data_declaration(self, node: object) -> None:
         """数据声明 (reg, wire, class instance)"""
         # 收集声明的变量
         self.generic_visit(node)
