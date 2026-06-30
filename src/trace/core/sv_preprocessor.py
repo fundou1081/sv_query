@@ -46,8 +46,8 @@ def _strip_comment(val: str) -> str:
 def _resolve_macro_recursive(
     name: str,
     all_macros: dict[str, str],
-    visited: Optional[set] = None,
-) -> Optional[str]:
+    visited: set | None = None,
+) -> str | None:
     """递归解析宏, 防止循环引用
 
     Returns:
@@ -65,7 +65,7 @@ def _resolve_macro_recursive(
     val = all_macros[name].strip()
 
     # 递归替换内部的 backtick 引用
-    def replace_backtick(text: str) -> Optional[str]:
+    def replace_backtick(text: str) -> str | None:
         """递归替换 `NAME, 循环/未定义 返回 None"""
         any_unresolved = False
 

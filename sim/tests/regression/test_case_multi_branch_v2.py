@@ -15,7 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestCaseMultiBranch(unittest.TestCase):
     """case 多分支 Driver 提取"""
-    
+
     def test_case_simple(self):
         """[Golden] 简单 case - 2分支"""
         src = '''module top(input sel, a, b, output logic y);
@@ -29,11 +29,11 @@ class TestCaseMultiBranch(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         # 期望: 2 drivers (a, b)
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_case_3branch(self):
         """[Golden] 3分支 case"""
         src = '''module top(input [1:0] sel, a, b, c, output logic y);
@@ -48,10 +48,10 @@ class TestCaseMultiBranch(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_casez(self):
         """[Golden] casez - 支持 don't care"""
         src = '''module top(input [2:0] sel, a, b, c, output logic y);
@@ -66,9 +66,9 @@ class TestCaseMultiBranch(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_casex(self):
         """[Golden] casex - 支持 x"""
         src = '''module top(input [2:0] sel, a, b, c, output logic y);
@@ -83,7 +83,7 @@ class TestCaseMultiBranch(unittest.TestCase):
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 

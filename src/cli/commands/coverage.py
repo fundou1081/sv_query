@@ -75,7 +75,7 @@ def suggest(
             filelist=filelist,
             strict=strict,
             log_level=tracer_log_level,
-        
+
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
@@ -174,7 +174,7 @@ def gap(
             print(_json.dumps(payload, indent=2, ensure_ascii=False))
         else:
             # Markdown 输出
-            print(f"=== Covergroup ↔ Constraint Coverage Gaps ===")
+            print("=== Covergroup ↔ Constraint Coverage Gaps ===")
             print(f"Covergroups found: {len(covergroups)}")
             if class_filter:
                 print(f"Class filter: {class_filter}")

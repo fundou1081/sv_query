@@ -21,7 +21,7 @@ def _get_metrics(graph, node_id):
     node = graph.get_node(node_id)
     if node is None:
         return None
-    
+
     return {
         'id': node_id,
         'name': node.name,
@@ -86,7 +86,7 @@ endmodule'''
 
         mux_node = graph.get_node('top.mux')
         self.assertIsNotNone(mux_node)
-        
+
         metrics = _get_metrics(graph, 'top.mux')
         self.assertGreaterEqual(metrics['fan_in'], 1)
         self.assertGreaterEqual(metrics['fan_out'], 1)
@@ -104,7 +104,7 @@ endmodule'''
 
         wide = _get_metrics(graph, 'top.wide_in')
         narrow = _get_metrics(graph, 'top.narrow_out')
-        
+
         # 已知限制: width 返回 (0,0)
         # 当前实现 width_bits 都是 1
         # TODO: 从 declaredType 提取位宽

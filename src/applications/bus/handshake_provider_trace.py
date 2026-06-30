@@ -65,13 +65,13 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
         self,
         signal_tracer=None,
         graph=None,
-        module: Optional[str] = None,
+        module: str | None = None,
     ):
         self._tracer = signal_tracer
         self._graph = graph
         self._module = module
         # 缓存: (valid, ready) → HandshakeInfoLite
-        self._cache: Dict[Tuple[str, str], Optional[HandshakeInfoLite]] = {}
+        self._cache: dict[tuple[str, str], HandshakeInfoLite | None] = {}
 
     @property
     def tracer(self):
@@ -82,7 +82,7 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
         self._tracer = value
         self._cache.clear()
 
-    def set_context(self, signal_tracer, graph, module: Optional[str] = None):
+    def set_context(self, signal_tracer, graph, module: str | None = None):
         """设置 graph context (用于每次 scan 重置)."""
         self._tracer = signal_tracer
         self._graph = graph
@@ -91,7 +91,7 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
 
     def get_handshake(
         self, valid: str, ready: str
-    ) -> Optional[HandshakeInfoLite]:
+    ) -> HandshakeInfoLite | None:
         """基于 trace 返回 (valid, ready) 真实 handshake.
 
         Returns:
@@ -113,7 +113,7 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
 
     def _trace_handshake(
         self, valid: str, ready: str
-    ) -> Optional[HandshakeInfoLite]:
+    ) -> HandshakeInfoLite | None:
         """实际 trace 一对 (valid, ready)."""
         try:
             # 1) 找 ready 节点 (trace fanin)
@@ -157,7 +157,7 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
             _logger.debug(f"Trace handshake failed for ({valid}, {ready}): {e}")
             return self._fallback_unknown(valid, ready)
 
-    def _resolve_node(self, name: str) -> Optional[str]:
+    def _resolve_node(self, name: str) -> str | None:
         """解析信号名为 graph 节点 ID.
 
         pyslang 总是返 hierarchical name (如 axi_dp_ram.s_axi_a_awvalid),
@@ -209,7 +209,7 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
 def make_trace_based_provider(
     signal_tracer=None,
     graph=None,
-    module: Optional[str] = None,
+    module: str | None = None,
 ) -> TraceBasedHandshakeProvider:
     """工厂函数: 创建 TraceBasedHandshakeProvider."""
     return TraceBasedHandshakeProvider(

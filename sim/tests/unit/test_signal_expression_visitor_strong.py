@@ -27,7 +27,7 @@ def get_rhs_signals(visitor, module, expr_type='assign'):
         items = list(visitor.adapter.get_processes(module))
     else:
         return []
-    
+
     for item in items:
         if hasattr(item, 'syntax') and item.syntax:
             if hasattr(item.syntax, 'right'):
@@ -83,7 +83,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -127,7 +127,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -152,7 +152,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -176,7 +176,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -299,7 +299,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -323,7 +323,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -428,7 +428,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right
@@ -669,7 +669,7 @@ endmodule'''
         visitor = SignalExpressionVisitor(sem)
         modules = list(sem.get_modules())
         assigns = list(sem.get_assignments(modules[0]))
-        
+
         for assign in assigns:
             if hasattr(assign, 'syntax') and assign.syntax:
                 rhs = assign.syntax.right

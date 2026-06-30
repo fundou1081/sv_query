@@ -84,7 +84,7 @@ class ChannelGroup:
     name: str
     anchor_valid: str
     anchor_ready: str
-    signals: List[str] = field(default_factory=list)
+    signals: list[str] = field(default_factory=list)
     confidence: float = 0.0
 
     def signal_count(self) -> int:
@@ -155,14 +155,14 @@ class PatternLearner:
     输出: List[ChannelGroup] (按通道分组)
     """
 
-    def __init__(self, normalizer: Optional[SignalNormalizer] = None):
+    def __init__(self, normalizer: SignalNormalizer | None = None):
         self._norm = normalizer or SignalNormalizer(NormalizeConfig.default())
 
     def learn(
         self,
-        anchors: List[Tuple[str, str]],
-        all_signals: List[str],
-    ) -> List[ChannelGroup]:
+        anchors: list[tuple[str, str]],
+        all_signals: list[str],
+    ) -> list[ChannelGroup]:
         """从 anchors 学习所有通道.
 
         Args:
@@ -172,8 +172,8 @@ class PatternLearner:
         Returns:
             List[ChannelGroup] — 一个 anchor 对应一个 group
         """
-        groups: List[ChannelGroup] = []
-        seen_bases: Dict[str, ChannelGroup] = {}
+        groups: list[ChannelGroup] = []
+        seen_bases: dict[str, ChannelGroup] = {}
 
         for valid_raw, ready_raw in anchors:
             # 1. 标准化 anchor 双方
@@ -231,9 +231,9 @@ class PatternLearner:
             i += 1
         return s1[:i]
 
-    def _match_signals(self, channel_base: str, all_signals: List[str]) -> List[str]:
+    def _match_signals(self, channel_base: str, all_signals: list[str]) -> list[str]:
         """用 channel_base prefix-match 所有信号 (标准化后)."""
-        matched: List[str] = []
+        matched: list[str] = []
         for sig in all_signals:
             sig_norm = self._norm.normalize(sig).normalized
             # 标准化后名字以 channel_base 开头

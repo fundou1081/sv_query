@@ -64,7 +64,7 @@ class SignalRoleSpec:
 
     channel: str
     role: str
-    width: Optional[int] = None
+    width: int | None = None
 
     def __repr__(self) -> str:
         return f"SignalRoleSpec({self.channel}.{self.role}{f', w={self.width}' if self.width else ''})"
@@ -81,8 +81,8 @@ class ChannelSpec:
     """
 
     name: str
-    required: List[str] = field(default_factory=list)
-    optional: List[str] = field(default_factory=list)
+    required: list[str] = field(default_factory=list)
+    optional: list[str] = field(default_factory=list)
 
     def required_count(self) -> int:
         return len(self.required)
@@ -112,7 +112,7 @@ class ChannelOverride:
         pattern_score: 命中后 channel.pattern_score 的下界
     """
     channel: str
-    required: List[str] = field(default_factory=list)
+    required: list[str] = field(default_factory=list)
     score: float = 0.5
     name_score: float = 0.5
     pattern_score: float = 0.5
@@ -132,11 +132,11 @@ class VariantSpec:
 
     name: str
     description: str = ""
-    needs_signals: List[str] = field(default_factory=list)
-    needs_absent_signals: List[str] = field(default_factory=list)
-    channel_overrides: List["ChannelOverride"] = field(default_factory=list)
+    needs_signals: list[str] = field(default_factory=list)
+    needs_absent_signals: list[str] = field(default_factory=list)
+    channel_overrides: list[ChannelOverride] = field(default_factory=list)
 
-    def override_for(self, channel: str) -> Optional["ChannelOverride"]:
+    def override_for(self, channel: str) -> ChannelOverride | None:
         """查找此变体对该通道的 override (无则 None)."""
         for ov in self.channel_overrides:
             if ov.channel == channel:
@@ -157,9 +157,9 @@ class ProtocolSchema:
 
     protocol: str
     description: str = ""
-    channels: Dict[str, ChannelSpec] = field(default_factory=dict)
-    signal_roles: Dict[str, SignalRoleSpec] = field(default_factory=dict)
-    variants: List[VariantSpec] = field(default_factory=list)
+    channels: dict[str, ChannelSpec] = field(default_factory=dict)
+    signal_roles: dict[str, SignalRoleSpec] = field(default_factory=dict)
+    variants: list[VariantSpec] = field(default_factory=list)
 
     def required_count(self) -> int:
         return sum(ch.required_count() for ch in self.channels.values())
@@ -168,7 +168,7 @@ class ProtocolSchema:
         return sum(ch.total_count() for ch in self.channels.values())
 
     @classmethod
-    def from_yaml(cls, path: Union[str, Path]) -> "ProtocolSchema":
+    def from_yaml(cls, path: Union[str, Path]) -> ProtocolSchema:
         """从 YAML 文件加载."""
         path = Path(path)
         if not path.exists():
@@ -177,13 +177,13 @@ class ProtocolSchema:
         return cls._from_dict(data)
 
     @classmethod
-    def _from_dict(cls, data: dict) -> "ProtocolSchema":
+    def _from_dict(cls, data: dict) -> ProtocolSchema:
         """从 dict 构造, 校验必要字段."""
         if "protocol" not in data:
             raise ValueError("YAML missing required field: 'protocol'")
 
         # channels
-        channels: Dict[str, ChannelSpec] = {}
+        channels: dict[str, ChannelSpec] = {}
         for ch_name, ch_data in (data.get("channels") or {}).items():
             if "required" not in ch_data:
                 raise ValueError(
@@ -200,7 +200,7 @@ class ProtocolSchema:
             )
 
         # signal_roles
-        signal_roles: Dict[str, SignalRoleSpec] = {}
+        signal_roles: dict[str, SignalRoleSpec] = {}
         for sig_name, role_data in (data.get("signal_roles") or {}).items():
             if isinstance(role_data, dict):
                 signal_roles[sig_name] = SignalRoleSpec(
@@ -210,10 +210,10 @@ class ProtocolSchema:
                 )
 
         # variants
-        variants: List[VariantSpec] = []
+        variants: list[VariantSpec] = []
         for v_data in (data.get("variants") or []):
             # 加载 channel_overrides (默认空)
-            overrides: List[ChannelOverride] = []
+            overrides: list[ChannelOverride] = []
             for ov_data in (v_data.get("channel_overrides") or []):
                 overrides.append(ChannelOverride(
                     channel=ov_data.get("channel", ""),
@@ -250,22 +250,22 @@ class ProtocolSchema:
 class ProtocolSchemaRegistry:
     """协议 schema 注册表 — 加载整个目录的所有协议."""
 
-    protocols: Dict[str, ProtocolSchema] = field(default_factory=dict)
+    protocols: dict[str, ProtocolSchema] = field(default_factory=dict)
 
     @property
     def count(self) -> int:
         return len(self.protocols)
 
-    def get(self, name: str) -> Optional[ProtocolSchema]:
+    def get(self, name: str) -> ProtocolSchema | None:
         return self.protocols.get(name)
 
-    def list_protocols(self) -> List[str]:
+    def list_protocols(self) -> list[str]:
         return list(self.protocols.keys())
 
     @classmethod
     def from_directory(
         cls, dir_path: Union[str, Path], pattern: str = "*.yaml"
-    ) -> "ProtocolSchemaRegistry":
+    ) -> ProtocolSchemaRegistry:
         """从目录加载所有 YAML 文件."""
         dir_path = Path(dir_path)
         if not dir_path.exists():
@@ -285,7 +285,7 @@ class ProtocolSchemaRegistry:
         return reg
 
 
-def load_protocols(dir_path: Union[str, Path]) -> Dict[str, ProtocolSchema]:
+def load_protocols(dir_path: Union[str, Path]) -> dict[str, ProtocolSchema]:
     """顶层工具: 加载目录下所有协议 schema."""
     reg = ProtocolSchemaRegistry.from_directory(dir_path)
     return reg.protocols

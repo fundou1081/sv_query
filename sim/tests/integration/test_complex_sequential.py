@@ -13,15 +13,15 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestComplexSequential(unittest.TestCase):
     """复杂时序逻辑测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     #----------------------------------------------------------------------
     # 复杂 always_ff 嵌套
     #----------------------------------------------------------------------
-    
+
     def test_ff_with_case(self):
         """[Complex] always_ff + case"""
         source = '''
@@ -43,12 +43,12 @@ module top(
         endcase
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_ff_with_nested_if(self):
         """[Complex] always_ff + 嵌套 if"""
         source = '''
@@ -72,12 +72,12 @@ module top(
         end
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_ff_with_forloop(self):
         """[Complex] always_ff + for 循环"""
         source = '''
@@ -93,12 +93,12 @@ module top(
         end
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_ff_with_while(self):
         """[Complex] always_ff + while"""
         source = '''
@@ -116,12 +116,12 @@ module top(
         done <= (cnt == 10);
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('done', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     def test_ff_with_disable(self):
         """[Complex] always_ff + disable"""
         source = '''
@@ -136,10 +136,10 @@ module top(
         // disable not supported
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
 
 

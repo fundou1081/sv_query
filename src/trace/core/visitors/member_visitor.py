@@ -18,11 +18,15 @@ Total: 69 @on handler (678 行, 9-12 行 boilerplate each)
 """
 from typing import TYPE_CHECKING
 
+import logging
+
 from ._decorators import on
 from .signal_result import SignalResult
 
 if TYPE_CHECKING:
     from .signal_expression_visitor import SignalExpressionVisitor
+
+logger = logging.getLogger(__name__)
 
 
 class MemberVisitor:

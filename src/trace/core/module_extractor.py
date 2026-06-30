@@ -47,8 +47,8 @@ class ModuleInstance:
     def_name: str
     parent_module: str
     depth: int
-    array_index: Optional[int] = None
-    array_name: Optional[str] = None
+    array_index: int | None = None
+    array_name: str | None = None
     is_collapsed: bool = False
 
 
@@ -66,9 +66,9 @@ class PortConnection:
 class ModuleExtraction:
     """[PR1] 完整 module 提取结果."""
     top_module: str
-    instances: List[ModuleInstance] = field(default_factory=list)
-    connections: List[PortConnection] = field(default_factory=list)
-    external_ports: List[Dict] = field(default_factory=list)
+    instances: list[ModuleInstance] = field(default_factory=list)
+    connections: list[PortConnection] = field(default_factory=list)
+    external_ports: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ def extract_module_from_graph(
     result = ModuleExtraction(top_module=target_module)
 
     # Collect all INSTANTIATED_MODULE nodes
-    raw_insts: List[Tuple[str, str, str]] = []
+    raw_insts: list[tuple[str, str, str]] = []
     for nid in graph.nodes():
         n = graph.get_node(nid)
         if n is None: continue
@@ -106,7 +106,7 @@ def extract_module_from_graph(
         raw_insts.append((nid, n.name or "", n.module))
 
     # Group by top-level module
-    by_top: Dict[str, List[Tuple[str, str, str]]] = {}
+    by_top: dict[str, list[tuple[str, str, str]]] = {}
     for nid, name, mod in raw_insts:
         top = nid.split('.', 1)[0]
         by_top.setdefault(top, []).append((nid, name, mod))
@@ -244,9 +244,9 @@ def _extract_sub_instances(
             )
 
 
-def _iter_sub_instances(adapter, parent_mod) -> List[Tuple]:
-    results: List[Tuple] = []
-    seen_array_counts: Dict[str, int] = {}
+def _iter_sub_instances(adapter, parent_mod) -> list[tuple]:
+    results: list[tuple] = []
+    seen_array_counts: dict[str, int] = {}
 
     for item in parent_mod.body:
         for inst_obj, inst_name, def_name in _collect_instances_from_stmt(adapter, item):
@@ -268,7 +268,7 @@ def _iter_sub_instances(adapter, parent_mod) -> List[Tuple]:
     return results
 
 
-def _collect_instances_from_stmt(adapter, stmt) -> List[Tuple]:
+def _collect_instances_from_stmt(adapter, stmt) -> list[tuple]:
     results = []
     kind_str = _safe_str(_safe_attr(stmt, "kind", ""))
     if "Instance" in kind_str:
@@ -312,7 +312,7 @@ def _find_generate_block(adapter, stmt):
     return None
 
 
-def _iter_generate_body(adapter, gen_block) -> List[Tuple]:
+def _iter_generate_body(adapter, gen_block) -> list[tuple]:
     results = []
     for child in getattr(gen_block, "body", []):
         results.extend(_collect_instances_from_stmt(adapter, child))
@@ -348,9 +348,9 @@ def _is_clean_id(s: str | None) -> bool:
 
 def extract_module_edges_from_mig(
     mig,
-    instances: List[ModuleInstance],
+    instances: list[ModuleInstance],
     max_edges: int = 500,
-) -> List[Dict]:
+) -> list[dict]:
     """[PR4 2026-06-15] 从 MIG 提取 instance-to-instance 的 port 连接.
 
     MIG 的 port_to_internal 映射是 (instance_path.port_name) → (module_def.port_name).
@@ -384,7 +384,7 @@ def extract_module_edges_from_mig(
     inst_ids = {inst.id for inst in instances}
     # 同时建一个 set: instance 的 port (instance.port_name) -> instance
     # 因为 MIG 的 port_to_internal 是 instance-level + port suffix
-    inst_port_to_inst: Dict[str, str] = {}
+    inst_port_to_inst: dict[str, str] = {}
     for inst in instances:
         # 这个 instance 本身可能不在 pti 里, 但它的 port 在
         # 通过 pti 找: 任何 'startswith(inst.id).' 的 port
@@ -392,7 +392,7 @@ def extract_module_edges_from_mig(
             if inst_port.startswith(inst.id + "."):
                 inst_port_to_inst[inst_port] = inst.id
 
-    edges: List[Dict] = []
+    edges: list[dict] = []
 
     for int_sig, ports in int_to_ports.items():
         if len(ports) < 2:

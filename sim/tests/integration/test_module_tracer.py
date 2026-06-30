@@ -13,11 +13,11 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestModuleTracer(unittest.TestCase):
     """模块查询测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def test_trace_module(self):
         """模块追踪"""
         source = '''
@@ -27,24 +27,24 @@ endmodule
 module top(input wire din, output wire dout);
     sub u1(.d(din), .q(dout));
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_module('top')
-        
+
         self.assertIsNotNone(result)
-    
+
     def test_trace_port(self):
         """端口追踪"""
         source = '''
 module top(input wire din, output wire dout);
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_port('top', 'din')
-        
+
         self.assertIsNotNone(result)
-    
+
     def test_find_connected_modules(self):
         """查找连接模块"""
         source = '''
@@ -54,10 +54,10 @@ endmodule
 module top(input wire din, output wire dout);
     sub u1(.d(din), .q(dout));
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.find_connected_modules('top')
-        
+
         self.assertIsNotNone(result)
 
 

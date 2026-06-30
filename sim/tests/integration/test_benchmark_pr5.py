@@ -176,6 +176,6 @@ class TestMarkdownOutput:
         content = md.read_text()
         # Should have all 4 sections
         for section in ("L1", "L2", "L3", "L4"):
-            assert f"## {section}" in content or f"# L1" in content or section in content, (
+            assert f"## {section}" in content or "# L1" in content or section in content, (
                 f"markdown missing L* section: {section}"
             )

@@ -63,11 +63,11 @@ class ClassifyConfig:
         data_patterns: 数据信号名子串
         source: 加载来源 ('builtin' | 'yaml:path/to/file.yaml')
     """
-    control_patterns: List[str] = field(default_factory=lambda: list(_DEFAULT_CONTROL_PATTERNS))
-    data_patterns: List[str] = field(default_factory=lambda: list(_DEFAULT_DATA_PATTERNS))
+    control_patterns: list[str] = field(default_factory=lambda: list(_DEFAULT_CONTROL_PATTERNS))
+    data_patterns: list[str] = field(default_factory=lambda: list(_DEFAULT_DATA_PATTERNS))
     source: str = "builtin"
 
-    def with_overrides(self, control=None, data=None) -> "ClassifyConfig":
+    def with_overrides(self, control=None, data=None) -> ClassifyConfig:
         """返一个新 config, 覆盖部分 pattern 列表。"""
         return ClassifyConfig(
             control_patterns=list(control) if control is not None else list(self.control_patterns),
@@ -151,8 +151,8 @@ def load_config(yaml_path) -> ClassifyConfig:
     if not isinstance(data, dict):
         raise ValueError(f"YAML root must be dict, got {type(data).__name__}")
     rules = data.get("rules") or []
-    control_patterns: List[str] = []
-    data_patterns: List[str] = []
+    control_patterns: list[str] = []
+    data_patterns: list[str] = []
     for rule in rules:
         cls = rule.get("class")
         pats = rule.get("patterns") or []
@@ -172,8 +172,8 @@ def load_config(yaml_path) -> ClassifyConfig:
 
 def _mini_yaml_load(text: str) -> dict:
     """极简 YAML parser: 只支持本文件 schema (rules: list of {class, patterns: list[str]})."""
-    out: Dict = {"rules": []}
-    current: Optional[Dict] = None
+    out: dict = {"rules": []}
+    current: dict | None = None
     for raw in text.splitlines():
         line = raw.rstrip()
         if not line or line.lstrip().startswith("#"):
@@ -185,7 +185,7 @@ def _mini_yaml_load(text: str) -> dict:
         if stripped.startswith("- "):
             if current is None:
                 # start of a new rule in the rules: section
-                item: Dict = {}
+                item: dict = {}
                 key_val = stripped[2:].split(":", 1)
                 if len(key_val) == 2:
                     item[key_val[0].strip()] = key_val[1].strip()
@@ -235,12 +235,12 @@ class ClassifiedEdge:
 @dataclass
 class SignalClassification:
     """全图分类结果"""
-    nodes: Dict[str, ClassifiedNode] = field(default_factory=dict)
-    edges: Dict[tuple[str, str, str], ClassifiedEdge] = field(default_factory=dict)
-    clock_nodes: List[str] = field(default_factory=list)
-    reset_nodes: List[str] = field(default_factory=list)
-    control_nodes: List[str] = field(default_factory=list)
-    data_nodes: List[str] = field(default_factory=list)
+    nodes: dict[str, ClassifiedNode] = field(default_factory=dict)
+    edges: dict[tuple[str, str, str], ClassifiedEdge] = field(default_factory=dict)
+    clock_nodes: list[str] = field(default_factory=list)
+    reset_nodes: list[str] = field(default_factory=list)
+    control_nodes: list[str] = field(default_factory=list)
+    data_nodes: list[str] = field(default_factory=list)
 
 
 def classify_graph(graph: SignalGraph) -> SignalClassification:
@@ -390,7 +390,7 @@ def _classify_edge(
 def get_dataflow_edges(
     classification: SignalClassification,
     include_key_control: bool = True,
-) -> List[ClassifiedEdge]:
+) -> list[ClassifiedEdge]:
     """获取数据流图的边列表 (data 边 + 可选关键 control 边)"""
     result = []
     for key, ce in classification.edges.items():
@@ -401,7 +401,7 @@ def get_dataflow_edges(
     return result
 
 
-def get_data_path_nodes(classification: SignalClassification) -> List[str]:
+def get_data_path_nodes(classification: SignalClassification) -> list[str]:
     """获取数据通路相关的所有节点 ID"""
     result = []
     for node_id, cn in classification.nodes.items():

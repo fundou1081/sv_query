@@ -44,12 +44,12 @@ arch_app = typer.Typer(help="Project architecture visualization (L1 + L2 overvie
 @arch_app.callback(invoke_without_command=True)
 def _arch_default(
     ctx: typer.Context,
-    file: Optional[str] = typer.Option(None, "--file", "-f"),
-    filelist: Optional[str] = typer.Option(None, "--filelist"),
+    file: str | None = typer.Option(None, "--file", "-f"),
+    filelist: str | None = typer.Option(None, "--filelist"),
     target: str = typer.Option("top", "--target", "-t"),
     depth: int = typer.Option(2, "--depth", "-d"),
     format: str = typer.Option("dot", "--format"),
-    output: Optional[str] = typer.Option(None, "--output", "-o"),
+    output: str | None = typer.Option(None, "--output", "-o"),
     summary: bool = typer.Option(False, "--summary"),
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type"),
     max_nodes: int = typer.Option(100, "--max-nodes"),
@@ -325,12 +325,12 @@ def _render_dot(
 
     lines = [
         f"digraph arch_{target_module} {{",
-        f"  rankdir=TB;",
-        f"  splines=polyline;",
-        f"  nodesep=0.4;",
-        f"  ranksep=0.6;",
-        f"  compound=true;",
-        f"  labelloc=t;",
+        "  rankdir=TB;",
+        "  splines=polyline;",
+        "  nodesep=0.4;",
+        "  ranksep=0.6;",
+        "  compound=true;",
+        "  labelloc=t;",
     ]
     # 标题
     title = f"Architecture of {target_module} ({len(instances)} instances"
@@ -338,8 +338,8 @@ def _render_dot(
         title += f", showing {len(visible_instances)}"
     title += ")"
     lines.append(f'  label="{title}";')
-    lines.append(f"")
-    lines.append(f"  // ---- Instances (L1) ----")
+    lines.append("")
+    lines.append("  // ---- Instances (L1) ----")
 
     # 按 cluster_by_type 决定是否分组
     if cluster_by_type:
@@ -354,12 +354,12 @@ def _render_dot(
             safe_name = _safe_cluster_name(inst_type)
             lines.append(f'  subgraph "{safe_name}" {{')
             lines.append(f'    label="{inst_type}";')
-            lines.append(f'    style="rounded,filled";')
+            lines.append('    style="rounded,filled";')
             lines.append(f'    fillcolor="{color}33";')  # alpha (low opacity)
             lines.append(f'    color="{color}";')
-            lines.append(f'    penwidth=2;')
+            lines.append('    penwidth=2;')
             lines.append(f'    fontcolor="{color}";')
-            lines.append(f'    fontsize=11;')
+            lines.append('    fontsize=11;')
             for inst_id, depth in members:
                 short = inst_id.split(".")[-1] if "." in inst_id else inst_id
                 # node fill 用同色 (不透明), 让 cluster bg 透出来
@@ -368,7 +368,7 @@ def _render_dot(
                     f'shape=box style="rounded,filled" fillcolor="{color}" '
                     f'fontcolor="white" penwidth=1];'
                 )
-            lines.append(f"  }}")
+            lines.append("  }")
     else:
         # v1 behavior: depth palette, flat
         for inst_id, inst_type, depth in visible_instances:
@@ -408,7 +408,7 @@ def _render_dot(
     # 添加 collapse note (用 labelloc=t 的扩展)
     if collapse_note:
         lines.append("")
-        lines.append(f"  // ---- Collapse note ----")
+        lines.append("  // ---- Collapse note ----")
         lines.append(f'  note [label=<{collapse_note}> shape=plaintext];')
 
     lines.append("}")
@@ -418,11 +418,11 @@ def _render_dot(
 def _render_mermaid(instances, edges, target_module: str, with_ports: bool) -> str:
     """生成 Mermaid 格式 (GitHub README 友好)."""
     lines = [
-        f"```mermaid",
-        f"graph TD",
+        "```mermaid",
+        "graph TD",
         f"  %% Architecture of {target_module} ({len(instances)} instances)",
-        f"",
-        f"  %% Instances",
+        "",
+        "  %% Instances",
     ]
 
     # 节点 (用 last segment 当 id)
@@ -461,7 +461,7 @@ def _render_mermaid(instances, edges, target_module: str, with_ports: bool) -> s
     return "\n".join(lines) + "\n"
 
 
-def _render_svg(dot_text: str, target_module: str, output: Optional[str]) -> str:
+def _render_svg(dot_text: str, target_module: str, output: str | None) -> str:
     """[v2 2026-06-25] 调用 graphviz `dot -Tsvg` 生成 SVG.
 
     Returns SVG text. 如果 graphviz 没装, raise RuntimeError.
@@ -614,10 +614,10 @@ def _print_summary(instances, edges, target_module: str, file: str | None, filel
     n_edges = len(edges)
     if n == 0:
         print(f"⚠️  No submodule instances found under '{target_module}'.")
-        print(f"   Possible causes:")
-        print(f"   - File has no submodule instantiation (e.g. flat RTL)")
-        print(f"   - Filelist missing required packages (check warnings)")
-        print(f"   - Wrong target module name")
+        print("   Possible causes:")
+        print("   - File has no submodule instantiation (e.g. flat RTL)")
+        print("   - Filelist missing required packages (check warnings)")
+        print("   - Wrong target module name")
         return
 
     # 按 type 分组
@@ -626,14 +626,14 @@ def _print_summary(instances, edges, target_module: str, file: str | None, filel
     top_types = type_counts.most_common(5)
 
     print(f"📐 Project Architecture: {target_module}")
-    print(f"=" * 60)
+    print("=" * 60)
     print(f"Source: {file or filelist}")
     print()
     print(f"Total instances:  {n}")
     print(f"Hierarchy depth:  {max((d for _, _, d in instances), default=0)} levels")
     print(f"Port connections: {n_edges} (cross-module)")
     print()
-    print(f"Top module types (by instance count):")
+    print("Top module types (by instance count):")
     for t, c in top_types:
         bar = "█" * min(c, 30)
         print(f"  {t:40s}  {c:3d}  {bar}")
@@ -643,27 +643,27 @@ def _print_summary(instances, edges, target_module: str, file: str | None, filel
         from collections import Counter
         port_counts = Counter(e.get("port", "") for e in edges)
         top_ports = port_counts.most_common(5)
-        print(f"Most common port connections:")
+        print("Most common port connections:")
         for p, c in top_ports:
             if p:
                 print(f"  {p:30s}  {c:3d}")
     print()
-    print(f"💡 Tip:")
-    print(f"  - Use --format dot to generate Graphviz diagram")
-    print(f"  - Use --format mermaid for GitHub README")
-    print(f"  - Use --format html for interactive visualization")
+    print("💡 Tip:")
+    print("  - Use --format dot to generate Graphviz diagram")
+    print("  - Use --format mermaid for GitHub README")
+    print("  - Use --format html for interactive visualization")
 
 
 @arch_app.command(name="show")
 def show(
-    file: Optional[str] = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: Optional[str] = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
-    include: Optional[str] = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    file: str | None = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str | None = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
+    include: str | None = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     target: str = typer.Option("top", "--target", "-t", help="Target module name (default: top)"),
     depth: int = typer.Option(2, "--depth", "-d", help="Hierarchy depth (default: 2)"),
     with_ports: bool = typer.Option(True, "--with-ports/--no-ports", help="Show cross-module port connections (default ON)"),
     output_format: str = typer.Option("dot", "--format", help="Output format: dot / mermaid / html / svg / summary"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Write to file (default: stdout)"),
+    output: str | None = typer.Option(None, "--output", "-o", help="Write to file (default: stdout)"),
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type", help="[v2] Group same-type instances into clusters + hash-colored"),
     max_nodes: int = typer.Option(100, "--max-nodes", help="[v2] Maximum nodes to render (default: 100). Excess collapsed with note."),
     strict: bool = typer.Option(False, "--strict/--no-strict"),

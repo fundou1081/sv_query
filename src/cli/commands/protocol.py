@@ -134,7 +134,7 @@ def detect(
                     # [FIX 2026-06-11] module 找不到 (elaboration 错等) → fallback mock.
                     # 跟 strict=False 配合: compile 错返回部分 modules, 缺的走 mock.
                     typer.echo(f"Module '{module}' not found in extracted modules (elaboration may have failed).", err=True)
-                    typer.echo(f"  Falling back to demo signals based on path heuristics...", err=True)
+                    typer.echo("  Falling back to demo signals based on path heuristics...", err=True)
                     mock = True
                     sigs = None  # 后面用 _get_demo_signals
             else:
@@ -417,13 +417,13 @@ def _print_text_result(match: ProtocolMatch):
     if match.confidence < 0.5:
         typer.echo("  (LOW CONFIDENCE — may be unknown protocol)")
 
-    typer.echo(f"\n  Score breakdown:")
+    typer.echo("\n  Score breakdown:")
     typer.echo(f"    name:        {match.name_score:.3f}")
     typer.echo(f"    structural:  {match.structural_score:.3f}")
     typer.echo(f"    pattern:     {match.pattern_score:.3f}")
     typer.echo(f"    handshake:   {match.handshake_score:.3f}")
 
-    typer.echo(f"\n  Channels:")
+    typer.echo("\n  Channels:")
     for ch_name, ch in match.channels.items():
         marker = "✓" if ch.present else "✗"
         typer.echo(f"    {marker} {ch_name:<3} {ch.score:.3f}  "
@@ -438,7 +438,7 @@ def _print_text_result(match: ProtocolMatch):
             typer.echo(f"        MISSING:  {ch.missing_required}")
 
     if match.warnings:
-        typer.echo(f"\n  Warnings:")
+        typer.echo("\n  Warnings:")
         for w in match.warnings:
             typer.echo(f"    - {w}")
 
@@ -447,7 +447,7 @@ def _print_text_result(match: ProtocolMatch):
 # Mock 数据 (--mock 标志, 用于 demo)
 # ---------------------------------------------------------------------------
 
-def _get_demo_signals(target: str) -> List[SignalContext]:
+def _get_demo_signals(target: str) -> list[SignalContext]:
     """Demo 数据: 用于在没有 SV 编译时演示检测器.
 
     [FIX 2026-06-11] 启发式添加 TL-UL (OpenTitan) / AHB / APB / AXIS / Wishbone:

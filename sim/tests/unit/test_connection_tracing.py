@@ -20,9 +20,9 @@ from trace.core.semantic_adapter import SemanticAdapter
 
 class TestConnectionTracing(unittest.TestCase):
     """连接追踪测试"""
-    
+
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
         comp = SVCompiler({'test.sv': source})
         root = comp.get_root()
-        
+

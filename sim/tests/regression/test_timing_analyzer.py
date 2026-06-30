@@ -242,11 +242,11 @@ endmodule'''
         graph, _, _ = _build(source)
         analyzer = TimingAnalyzer(graph)
         paths = analyzer.get_critical_paths(max_paths=5)
-        
+
         self.assertGreater(len(paths), 0)
         max_cycles = max(p.get('cycle_estimate', p['depth']) for p in paths)
         self.assertEqual(max_cycles, 5)
-    
+
     def test_15_stage_pipeline(self):
         """[金标准] 15 级超深流水线
 
@@ -262,14 +262,14 @@ endmodule'''
             parts.append(f'  always @(posedge clk or negedge rst_n) begin if (!rst_n) s{i} <= 0; else s{i} <= s{i-1}; end')
         parts.append(f'  assign dout = s{n}; endmodule')
         source = '\n'.join(parts)
-        
+
         graph, _, _ = _build(source)
         analyzer = TimingAnalyzer(graph)
         report = analyzer.timing_report()
-        
+
         self.assertEqual(report['max_cycles'], 15)
         self.assertIn('CRITICAL', report['risk_breakdown'])
-    
+
     def test_50_stage_pipeline(self):
         """[金标准] 50 级超深流水线
 
@@ -284,14 +284,14 @@ endmodule'''
             parts.append(f'  always @(posedge clk or negedge rst_n) begin if (!rst_n) s{i} <= 0; else s{i} <= s{i-1}; end')
         parts.append(f'  assign dout = s{n}; endmodule')
         source = '\n'.join(parts)
-        
+
         graph, _, _ = _build(source)
         analyzer = TimingAnalyzer(graph)
         report = analyzer.timing_report()
-        
+
         self.assertEqual(report['max_cycles'], 50)
         self.assertIn('CRITICAL', report['risk_breakdown'])
-    
+
     def test_multi_path_pipeline(self):
         """[金标准] 多路径流水线
 
@@ -307,7 +307,7 @@ endmodule'''
     output ctrl_out;
     reg [31:0] data_s1, data_s2, data_s3, data_s4, data_s5;
     reg ctrl_s1, ctrl_s2, ctrl_s3, ctrl_s4, ctrl_s5;
-    
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) data_s1 <= 0; else data_s1 <= data_in; end
     always @(posedge clk or negedge rst_n) begin
@@ -318,7 +318,7 @@ endmodule'''
         if (!rst_n) data_s4 <= 0; else data_s4 <= data_s3; end
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) data_s5 <= 0; else data_s5 <= data_s4; end
-    
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) ctrl_s1 <= 0; else ctrl_s1 <= ctrl_in; end
     always @(posedge clk or negedge rst_n) begin
@@ -329,14 +329,14 @@ endmodule'''
         if (!rst_n) ctrl_s4 <= 0; else ctrl_s4 <= ctrl_s3; end
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) ctrl_s5 <= 0; else ctrl_s5 <= ctrl_s4; end
-    
+
     assign data_out = data_s5;
     assign ctrl_out = ctrl_s5;
 endmodule'''
         graph, _, _ = _build(source)
         analyzer = TimingAnalyzer(graph)
         paths = analyzer.get_critical_paths(max_paths=10)
-        
+
         cycles = [p.get('cycle_estimate', p['depth']) for p in paths]
         self.assertIn(5, cycles)  # 至少有一条 5 cycle 路径
 
@@ -353,14 +353,14 @@ def _timing_depth(graph, target_id, max_comb_depth=3):
     target_node = graph.get_node(target_id)
     if target_node is None:
         return -1
-    
+
     # 收集所有寄存器节点
     reg_nodes = set()
     for nid in graph.nodes():
         n = graph.get_node(nid)
         if n and n.kind == NodeKind.REG:
             reg_nodes.add(nid)
-    
+
     # 收集 PORT_IN（排除时钟/复位）
     primary_inputs = set()
     for nid in graph.nodes():
@@ -370,65 +370,65 @@ def _timing_depth(graph, target_id, max_comb_depth=3):
                 name = nid.split('.')[-1]
                 if name not in ('clk', 'clk_i', 'rst_n', 'rst'):
                     primary_inputs.add(nid)
-    
+
     # 如果目标就是主输入，深度=0
     if target_id in primary_inputs:
         return 0
-    
+
     # BFS：从主输入出发，找到达 target 的最短路径
     # 路径上的寄存器级数 = 时序深度
     from collections import deque
-    
+
     visited = set()
     queue = deque()
-    
+
     # 初始：主输入节点，深度=0
     for pi in primary_inputs:
         queue.append((pi, 0, set()))  # (node_id, depth, visited_regs)
         visited.add(pi)
-    
+
     max_depth = 0
     found = False
-    
+
     while queue:
         current, depth, path_regs = queue.popleft()
-        
+
         if current == target_id:
             max_depth = max(max_depth, depth)
             found = True
             continue
-        
+
         # 遍历后继
         for successor in graph.successors(current):
             if successor in visited:
                 continue
-            
+
             succ_node = graph.get_node(successor)
             if succ_node is None:
                 continue
-            
+
             new_depth = depth
             new_regs = path_regs.copy()
-            
+
             # 跳过时钟/复位边
             if succ_node.is_clock or succ_node.is_reset:
                 continue
-            
+
             # 寄存器：深度+1
             if successor in reg_nodes:
                 new_depth += 1
                 new_regs.add(successor)
-            
+
             # 组合逻辑：检查深度限制
             else:
                 # 计算当前组合逻辑深度
                 comb_depth = _comb_depth_from_last_reg(graph, current, reg_nodes)
                 if comb_depth > max_comb_depth:
                     continue  # 超过阈值，截断
-            
+
             visited.add(successor)
             queue.append((successor, new_depth, new_regs))
-    
+
     return max_depth if found else 0
 
 
@@ -436,22 +436,22 @@ def _comb_depth_from_last_reg(graph, node_id, reg_nodes):
     """计算从最近寄存器到当前节点的组合逻辑深度"""
     # 简化：用 BFS 往回找最近的寄存器
     from collections import deque
-    
+
     visited = set()
     queue = deque([(node_id, 0)])
     visited.add(node_id)
-    
+
     while queue:
         current, dist = queue.popleft()
-        
+
         if current in reg_nodes:
             return dist
-        
+
         for pred in graph.predecessors(current):
             if pred not in visited:
                 visited.add(pred)
                 queue.append((pred, dist + 1))
-    
+
     return 0
 
 

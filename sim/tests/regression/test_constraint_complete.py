@@ -412,7 +412,7 @@ endclass'''
         # HAS_CONDITION 边
         has_cond_edges = self._edges_of_kind(graph, EdgeKind.HAS_CONDITION)
         self.assertGreater(len(has_cond_edges), 0,
-            f"应有 HAS_CONDITION 边")
+            "应有 HAS_CONDITION 边")
 
     def test_if_has_consequent_edge(self):
         """[Golden] HAS_CONSEQUENT 边
@@ -431,7 +431,7 @@ endclass'''
         # HAS_CONSEQUENT 边
         has_cons_edges = self._edges_of_kind(graph, EdgeKind.HAS_CONSEQUENT)
         self.assertGreater(len(has_cons_edges), 0,
-            f"应有 HAS_CONSEQUENT 边")
+            "应有 HAS_CONSEQUENT 边")
 
     def test_if_has_alternate_edge(self):
         """[Golden] HAS_ALTERNATE 边
@@ -450,7 +450,7 @@ endclass'''
         # HAS_ALTERNATE 边
         has_alt_edges = self._edges_of_kind(graph, EdgeKind.HAS_ALTERNATE)
         self.assertGreater(len(has_alt_edges), 0,
-            f"应有 HAS_ALTERNATE 边")
+            "应有 HAS_ALTERNATE 边")
 
     def test_class_to_property_edges(self):
         """[Golden] CLASS → CLASS_PROPERTY 边
@@ -467,7 +467,7 @@ endclass'''
         # CLASS → CLASS_PROPERTY 边
         constrains_edges = self._edges_of_kind(graph, EdgeKind.CONSTRAINS)
         self.assertIn(('packet', 'packet.addr'), constrains_edges,
-            f"应有 CONSTRAINS 边: packet → packet.addr")
+            "应有 CONSTRAINS 边: packet → packet.addr")
 
 
 class TestConstraintVariableExtraction(unittest.TestCase):

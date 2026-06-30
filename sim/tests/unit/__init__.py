@@ -8,7 +8,7 @@
 
 __all__ = [
     'TestSignalTracer',
-    'TestGraphModels', 
+    'TestGraphModels',
     'TestPyslangAdapter',
     'TestClockDomain',
 ]

@@ -15,7 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestPositionalPort(unittest.TestCase):
     """位置端口连接 Driver 提取"""
-    
+
     def test_positional_port(self):
         """[Golden] 位置端口连接"""
         src = '''module child(input a, output y);
@@ -27,7 +27,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
 

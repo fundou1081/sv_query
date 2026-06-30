@@ -143,7 +143,7 @@ endmodule'''
         # === Step 6: 汇总报告 ===
         print(f"\n{'='*50}")
         print("端到端验证报告:")
-        print(f"  RTL 信号: dut.data_out → dut.pkt.data")
+        print("  RTL 信号: dut.data_out → dut.pkt.data")
         print(f"  约束块: {data_constraints}")
         print(f"  Coverage bins: {len(cg.coverpoints[0].bins)} 个")
         print(f"  检测问题: {len(gaps)} 个")

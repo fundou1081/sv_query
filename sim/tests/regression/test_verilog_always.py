@@ -15,7 +15,7 @@ def _build(source, filename='test.v'):
 
 
 def _get_regs(graph):
-    return [n for n in graph.nodes() 
+    return [n for n in graph.nodes()
             if graph.get_node(n) and graph.get_node(n).kind == NodeKind.REG]
 
 
@@ -31,7 +31,7 @@ class TestVerilogAlways(unittest.TestCase):
 endmodule'''
         graph = _build(source)
         regs = _get_regs(graph)
-        self.assertGreaterEqual(len(regs), 1, 
+        self.assertGreaterEqual(len(regs), 1,
             f"always @(posedge clk) 应识别为 REG, 实际: {[n for n in graph.nodes()]}")
 
     def test_always_ff_still_works(self):

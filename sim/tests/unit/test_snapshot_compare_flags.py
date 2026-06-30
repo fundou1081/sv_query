@@ -103,7 +103,7 @@ def test_snapshot_compare_show_edges():
     # 应有 + 0 → top.dout 格式
     assert "→" in r.stdout, f"应含箭头格式, stdout={r.stdout[:500]}"
     assert "+" in r.stdout, f"应有 + 前缀, stdout={r.stdout[:500]}"
-    print(f"✅ --show-edges: 显示具体 edge 变化")
+    print("✅ --show-edges: 显示具体 edge 变化")
 
 
 def test_snapshot_compare_pretty():
@@ -122,7 +122,7 @@ def test_snapshot_compare_pretty():
     data_pretty = json.loads(r_pretty.stdout)
     data_normal = json.loads(r_normal.stdout)
     # 内容应一致
-    assert data_pretty == data_normal, f"pretty / normal 输出不一致"
+    assert data_pretty == data_normal, "pretty / normal 输出不一致"
     print("✅ --pretty: JSON 格式化, 内容一致")
 
 

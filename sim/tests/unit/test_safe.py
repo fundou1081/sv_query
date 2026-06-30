@@ -49,7 +49,7 @@ def test_safe_str_unicode_decode_error():
         @property
         def rawText(self):
             return b'\xcc\xcc\xcc\xcc'
-    
+
     result = safe_str(ThrowsOnStr())
     assert result.startswith("<id:0x") or result == "<id:non-utf8>", f"got {result!r}"
 
@@ -112,7 +112,7 @@ def test_semantic_adapter_clean_name_uses_canonical():
     """[P0-1] SemanticAdapter.clean_name delegates to _safe.clean_name"""
     from trace.core.semantic_adapter import SemanticAdapter
     adapter = SemanticAdapter.__new__(SemanticAdapter)  # skip __init__
-    
+
     # Should behave identically to _safe.clean_name
     assert adapter.clean_name("hello") == "hello"
     assert adapter.clean_name(None) == ""
@@ -128,6 +128,6 @@ def test_base_pyslang_adapter_clean_name_uses_canonical():
         adapter = PyslangAdapter.__new__(PyslangAdapter)
     except Exception:
         pytest.skip("PyslangAdapter cannot be instantiated without compiler")
-    
+
     assert adapter.clean_name("hello") == "hello"
     assert adapter.clean_name(None) == ""

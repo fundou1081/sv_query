@@ -15,7 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestInitialBlock(unittest.TestCase):
     """initial 块 Driver 提取"""
-    
+
     def test_initial_simple(self):
         """[Golden] 简单 initial"""
         src = '''module top(output logic y);
@@ -24,7 +24,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
 

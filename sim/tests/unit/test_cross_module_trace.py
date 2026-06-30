@@ -81,14 +81,14 @@ class TestCrossModuleTrace:
         drivers = tracer._collect_all_drivers(sig, max_depth=5)
         # 跨 instance 应该能找到 driver
         assert len(drivers) > 0, (
-            f"❌ trace 跨 module boundary 失败! "
-            f"axi_ram_wr_rd_if.s_axi_awready 是 wrapper, 应该有 driver "
-            f"(来自 axi_ram_wr_if instance). "
-            f"实际 0 driver → handshake detector 返 UNKNOWN/UNUSED."
+            "❌ trace 跨 module boundary 失败! "
+            "axi_ram_wr_rd_if.s_axi_awready 是 wrapper, 应该有 driver "
+            "(来自 axi_ram_wr_if instance). "
+            "实际 0 driver → handshake detector 返 UNKNOWN/UNUSED."
         )
 
     def test_deep_hierarchy_top_port_finds_leaf_reg(self, tracer):
-        """axi_dp_ram.s_axi_a_awready (top, 2 层 instance 嵌套) 
+        """axi_dp_ram.s_axi_a_awready (top, 2 层 instance 嵌套)
         跨 trace 找到 axi_ram_wr_if.s_axi_awready_reg."""
         sig = "axi_dp_ram.s_axi_a_awready"
         assert sig in tracer.graph.nodes()
@@ -107,7 +107,7 @@ class TestCrossModuleTrace:
         drivers = tracer._collect_all_drivers(sig, max_depth=10)
         # interconnect 内部 reg/assign 应该是 driver
         assert len(drivers) > 0, (
-            f"❌ interconnect 的 m_axi_awvalid 应该有 driver (内部 reg or 上游 master)"
+            "❌ interconnect 的 m_axi_awvalid 应该有 driver (内部 reg or 上游 master)"
         )
 
 

@@ -31,11 +31,11 @@ endmodule
         # 检查边是否存在
         edges = list(graph.edges())
         print(f"Edges: {edges}")
-        
+
         # 不应该有 '#5 b' 作为源
         bad_edges = [e for e in edges if '#5' in e[0] or '#5' in e[1]]
         self.assertEqual(bad_edges, [], f"不应有 '#5' 边: {bad_edges}")
-        
+
         # 应该存在 d -> q 边
         self.assertTrue(('test.b', 'test.a') in edges, f"应该有 b -> a 边，实际: {edges}")
 
@@ -56,7 +56,7 @@ endmodule
 
         edges = list(graph.edges())
         print(f"Edges: {edges}")
-        
+
         # 不应该有 'repeat(3)' 在边中
         bad_edges = [e for e in edges if 'repeat' in e[0] or 'repeat' in e[1]]
         self.assertEqual(bad_edges, [], f"不应有 'repeat' 边: {bad_edges}")
@@ -78,7 +78,7 @@ endmodule
 
         edges = list(graph.edges())
         print(f"Edges: {edges}")
-        
+
         # 应该存在 b -> a 边
         self.assertTrue(('test.b', 'test.a') in edges, f"应该有 b -> a 边，实际: {edges}")
 
@@ -103,13 +103,13 @@ endmodule
 
         edges = list(graph.edges())
         print(f"Edges: {edges}")
-        
+
         # 检查是否有 clock 相关边
         clock_edges = [e for e in edges if 'clk' in e[0].lower() or 'clk' in e[1].lower()]
         print(f"Clock edges: {clock_edges}")
-        
+
         # 应该存在 d -> q 边
-        self.assertTrue(('test.d', 'test.q') in edges, f"应该有 d -> q 边")
+        self.assertTrue(('test.d', 'test.q') in edges, "应该有 d -> q 边")
 
 
 if __name__ == '__main__':

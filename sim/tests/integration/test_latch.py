@@ -14,15 +14,15 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestLatch(unittest.TestCase):
     """always_latch 测试"""
-    
+
     def _make_tracer(self, source):
         tree = pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     #----------------------------------------------------------------------
     # [金标准] latch 追踪
     #----------------------------------------------------------------------
-    
+
     def test_latch_basic(self):
         """[Golden] 基础 latch"""
         # RTL:
@@ -36,12 +36,12 @@ module top(
 );
     always_latch if (en) q = d;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIsNotNone(result.confidence)
-    
+
     def test_latch_with_else(self):
         """[Golden] latch with else"""
         source = '''
@@ -54,17 +54,17 @@ module top(
     always_latch if (en) q = d;
     else       q = a;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         # 有多个可能驱动
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
-    
+
     #----------------------------------------------------------------------
     # [边界条件]
     #----------------------------------------------------------------------
-    
+
     def test_latch_no_condition(self):
         """[Boundary] 无条件 latch (可能危险)"""
         source = '''
@@ -74,10 +74,10 @@ module top(
 );
     always_latch q = d;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q', 'top')
-        
+
         self.assertIsNotNone(result.confidence)
 
 

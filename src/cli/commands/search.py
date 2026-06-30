@@ -33,31 +33,31 @@ def search(
     line_numbers: bool = typer.Option(True, "-l", "--line-numbers", help="Show line numbers"),
 ) -> None:
     """Grep-like search across .sv/.v files"""
-    
+
     target = Path(file).expanduser().resolve()
-    
+
     if not target.exists():
         print(f"Error: {target} does not exist", file=sys.stderr)
         raise typer.Exit(code=1)
-    
+
     # Collect files to search
     if target.is_dir():
         files = list(target.rglob("*.sv")) + list(target.rglob("*.v"))
         files = [f for f in files if ".git" not in str(f) and "__pycache__" not in str(f)]
     else:
         files = [target]
-    
+
     if not files:
         print(f"No .sv/.v files found in {target}", file=sys.stderr)
         raise typer.Exit(code=1)
-    
+
     # Build pattern
     flags = re.IGNORECASE if case_insensitive else 0
     if regex:
         pattern = re.compile(keyword, flags)
     else:
         pattern = re.compile(re.escape(keyword), flags)
-    
+
     total_matches = 0
     for filepath in sorted(files):
         try:
@@ -65,40 +65,40 @@ def search(
                 lines = f.readlines()
         except Exception as e:
             continue
-        
+
         matches = []
         for i, line in enumerate(lines, start=1):
             if pattern.search(line):
                 matches.append(i)
-        
+
         if not matches:
             continue
-        
+
         # Header
         rel = filepath.relative_to(target.parent) if target.is_dir() else filepath.name
         print(f"\n{'='*60}")
         print(f"  {rel}")
         print(f"  {len(matches)} match(es) in {len(lines)} lines")
         print(f"{'='*60}")
-        
+
         for lineno in matches[:max_results]:
             start = max(0, lineno - context - 1)
             end = min(len(lines), lineno + context)
-            
+
             for j in range(start, end):
                 marker = ">>>" if j + 1 == lineno else "   "
                 print(f"  {marker} {j+1:5d}  {lines[j].rstrip()}")
-            
+
             if len(matches) > max_results:
                 print(f"\n  ... and {len(matches) - max_results} more matches")
                 break
-        
+
         total_matches += len(matches)
-    
+
     print(f"\n{'='*60}")
     print(f"Total: {total_matches} match(es) across {len(files)} file(s)")
     print(f"{'='*60}")
-    
+
     if total_matches == 0:
         print(f"\n(no matches found for '{keyword}')")
 

@@ -15,7 +15,7 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestModuleHierarchy(unittest.TestCase):
     """模块 hierarchy Driver 提取"""
-    
+
     def test_module_instantiation(self):
         """[Golden] 模块例化"""
         src = '''
@@ -29,10 +29,10 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_port_connection_named(self):
         """[Golden] 命名端口连接"""
         src = '''
@@ -46,9 +46,9 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
-    
+
     def test_port_connection_positional(self):
         """[Golden] 位置端口连接"""
         src = '''
@@ -62,7 +62,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1)
 
 
@@ -99,7 +99,7 @@ endmodule'''
         tree = pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
-        
+
         # 跨模块追踪应返回最终驱动源 a
         driver_ids = [d.id for d in result.drivers]
         print(f"Drivers for 'b': {driver_ids}")

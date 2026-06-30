@@ -26,7 +26,7 @@ from trace.unified_tracer import UnifiedTracer
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter
 # ----------------------------------------------------------------------------
 
-def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True) -> Tuple[TraceEvidenceResolver, Any, Any]:
+def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True) -> tuple[TraceEvidenceResolver, Any, Any]:
     """读取 SV 源文件 -> build graph + adapter + resolver
 
     Args:
@@ -65,7 +65,7 @@ def make_resolver(graph, adapter) -> TraceEvidenceResolver:
 # 2. 序列化: Evidence / SourceSnippet -> JSON-friendly dict
 # ----------------------------------------------------------------------------
 
-def snippet_to_dict(snippet) -> Optional[dict]:
+def snippet_to_dict(snippet) -> dict | None:
     """SourceSnippet -> dict (Stage 4 offset-based slicing 输出)"""
     if snippet is None:
         return None
@@ -78,7 +78,7 @@ def snippet_to_dict(snippet) -> Optional[dict]:
     }
 
 
-def evidence_to_dict(ev) -> Optional[dict]:
+def evidence_to_dict(ev) -> dict | None:
     """Evidence -> dict (含 enclosing_* snippets + credibility)
 
     字段集对齐 trace evidence 命令 Stage 4 形态:
@@ -120,7 +120,7 @@ def evidence_to_dict(ev) -> Optional[dict]:
 # 3. 文本输出: 一行 summary (text 模式 --evidence 用)
 # ----------------------------------------------------------------------------
 
-def _ev_to_inputs(ev) -> Optional[Tuple[Optional[dict], str]]:
+def _ev_to_inputs(ev) -> tuple[dict | None, str] | None:
     """抽取 evidence summary 需要的两个字段: (source_location_dict, source_text)
 
     同时支持 Evidence 对象 (刚 resolve 出来的) 和 dict (已经 evidence_to_dict 过)
@@ -137,7 +137,7 @@ def _ev_to_inputs(ev) -> Optional[Tuple[Optional[dict], str]]:
     return ({"file": loc.file, "line_start": loc.line_start}, text)
 
 
-def evidence_summary_line(ev) -> Optional[str]:
+def evidence_summary_line(ev) -> str | None:
     """生成 1 行 evidence 摘要: 'file:line: source_text_first_line'
 
     返回 None 时表示没有 evidence 可显示 (resolve 失败 / 不在源文件里)
@@ -155,7 +155,7 @@ def evidence_summary_line(ev) -> Optional[str]:
     return f"{loc['file']}:{loc['line_start']}: {first_line}".rstrip()
 
 
-def evidence_summary_indented(ev, indent: str = "  └─ ") -> Optional[str]:
+def evidence_summary_indented(ev, indent: str = "  └─ ") -> str | None:
     """缩进版本,适合贴在信号下方显示"""
     line = evidence_summary_line(ev)
     if line is None:

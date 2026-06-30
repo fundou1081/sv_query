@@ -16,17 +16,17 @@ from trace.unified_tracer import UnifiedTracer
 
 class TestBoundary(unittest.TestCase):
     """边界条件回归测试"""
-    
+
     def _make_tracer(self, source):
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def _driver_ids(self, result):
         return [d.id for d in result.drivers]
-    
+
     #----------------------------------------------------------------------
     # [边界条件]
     #----------------------------------------------------------------------
-    
+
     def test_empty_module(self):
         """[Boundary] 空模块不崩溃
         RTL: module top(); endmodule
@@ -38,14 +38,14 @@ class TestBoundary(unittest.TestCase):
         source = '''
 module top();
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('nonexist', 'top')
-        
+
         self.assertEqual(len(result.drivers), 0,
             "空 module 无信号，驱动数应为 0")
         self.assertEqual(result.confidence, 'uncertain')
-    
+
     def test_single_signal(self):
         """[Boundary] 单信号模块
         RTL: assign out = 1'b0;
@@ -60,16 +60,16 @@ module top(
 );
     assign out = 1'b0;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('out', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "out = 1'b0 应有 1 个驱动源")
         self.assertIn('1\'b0', self._driver_ids(result),
             "out 的驱动应为字面量 1'b0")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_orphan_signal(self):
         """[Boundary] 孤立信号 (无驱动)
         RTL: dout 无连接
@@ -85,14 +85,14 @@ module top(
 );
     // dout unconnected
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 0,
             "孤立信号 dout 无驱动源，驱动数应为 0")
         self.assertEqual(result.confidence, 'uncertain')
-    
+
     def test_multi_bit_single(self):
         """[Boundary] 多比特单线
         RTL: assign dout = din;
@@ -108,20 +108,20 @@ module top(
 );
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "dout = din 应有 1 个驱动源 (din)")
         self.assertIn('top.din', self._driver_ids(result),
             "dout 的驱动应包含 top.din")
         self.assertEqual(result.confidence, 'high')
-    
+
     #----------------------------------------------------------------------
     # [错误处理]
     #----------------------------------------------------------------------
-    
+
     def test_invalid_signal_name(self):
         """[Error] 无效信号名应返回 uncertain
         金标准:
@@ -136,14 +136,14 @@ module top(
 );
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('invalid_@@@', 'top')
-        
+
         self.assertEqual(len(result.drivers), 0,
             "无效信号名驱动数应为 0")
         self.assertEqual(result.confidence, 'uncertain')
-    
+
     def test_signal_in_invalid_module(self):
         """[Error] 无效模块名应返回 uncertain
         金标准:
@@ -158,14 +158,14 @@ module top(
 );
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'invalid_module')
-        
+
         self.assertEqual(len(result.drivers), 0,
             "无效模块驱动数应为 0")
         self.assertEqual(result.confidence, 'uncertain')
-    
+
     def test_empty_signal_name(self):
         """[Error] 空信号名不应崩溃
         金标准: 应返回 uncertain 而非崩溃
@@ -177,9 +177,9 @@ module top(
 );
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
-        
+
         try:
             result = tracer.trace_signal('', 'top')
             self.assertEqual(len(result.drivers), 0,
@@ -187,11 +187,11 @@ endmodule'''
             self.assertEqual(result.confidence, 'uncertain')
         except Exception as e:
             self.fail(f"Empty signal name caused crash: {e}")
-    
+
     #----------------------------------------------------------------------
     # [压力测试]
     #----------------------------------------------------------------------
-    
+
     def test_many_signals(self):
         """[Stress] 大量信号 (100个)
         金标准: w50 = d50，1 个驱动
@@ -203,16 +203,16 @@ endmodule'''
         for i in range(100):
             source += f'wire w{i}; assign w{i} = d{i};'
         source += 'endmodule'
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('w50', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "w50 = d50 应有 1 个驱动源")
         self.assertIn('top.d50', self._driver_ids(result),
             "w50 的驱动应包含 top.d50")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_deep_chain(self):
         """[Stress] 深链 (100 级)
         金标准: q0 <- w99 <- w98 <- ... <- w0 <- d0
@@ -225,10 +225,10 @@ endmodule'''
             else:
                 source += f'w{i-1};'
         source += 'assign q0 = w99;endmodule'
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('q0', 'top')
-        
+
         self.assertGreaterEqual(len(result.drivers), 1,
             "深链应有至少 1 个驱动源")
         self.assertIn('top.w99', self._driver_ids(result),
@@ -242,20 +242,20 @@ if __name__ == '__main__':
 
 class TestBoundaryExtensive(unittest.TestCase):
     """扩展边界测试"""
-    
+
     def _make_tracer(self, source):
         return UnifiedTracer(sources={'test.sv': source})
-    
+
     def _driver_ids(self, result):
         return [d.id for d in result.drivers]
-    
+
     def test_signal_without_module_prefix(self):
         """[Ext] 不带模块前缀查询 (搜索所有模块)
         金标准:
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | top.dout | [top.din] | high |
-        
+
         注意: 不带模块名查询时应自动搜索所有模块找到对应信号。
         当前实现需要指定模块名，此测试验证带模块名的查询正常工作。
         """
@@ -263,9 +263,9 @@ class TestBoundaryExtensive(unittest.TestCase):
 module top(input wire din, output wire dout);
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
-        
+
         # 带模块名查询应该正常工作
         result = tracer.trace_signal('dout', 'top')
         self.assertEqual(len(result.drivers), 1,
@@ -273,14 +273,14 @@ endmodule'''
         self.assertIn('top.din', self._driver_ids(result),
             "dout 的驱动应包含 top.din")
         self.assertEqual(result.confidence, 'high')
-        
+
         # 不带模块名查询 - 期望能自动搜索 (P3 扩展功能)
         result2 = tracer.trace_signal('dout')
         # 当前: 不带模块名返回 uncertain，因为没有默认模块概念
         # 期望: 未来版本应支持自动搜索所有模块
         self.assertEqual(result2.confidence, 'uncertain',
             "当前实现不带模块名查询返回 uncertain")
-    
+
     def test_case_sensitive_signal(self):
         """[Ext] 大小写敏感
         金标准:
@@ -289,16 +289,16 @@ endmodule'''
         | dout | [din]  | high |
         | Din  | []     | uncertain (输入端口,外部驱动) |
         | din  | []     | uncertain (输入端口,外部驱动) |
-        
+
         注意: Din 和 din 是不同信号。输入端口没有内部驱动源。
         """
         source = '''
 module top(input wire Din, input wire din, output wire dout);
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
-        
+
         # dout 被 din 驱动
         result_dout = tracer.trace_signal('dout', 'top')
         self.assertEqual(len(result_dout.drivers), 1,
@@ -306,20 +306,20 @@ endmodule'''
         self.assertIn('top.din', self._driver_ids(result_dout),
             "dout 的驱动应包含 top.din")
         self.assertEqual(result_dout.confidence, 'high')
-        
+
         # Din 是输入端口，没有内部驱动源
         result_din = tracer.trace_signal('Din', 'top')
         self.assertEqual(len(result_din.drivers), 0,
             "Din 是输入端口，应有 0 个驱动源")
         self.assertEqual(result_din.confidence, 'uncertain',
             "Din 输入端口置信度应为 uncertain")
-        
+
         # din 也是输入端口，且与 Din 是不同信号
         result_din2 = tracer.trace_signal('din', 'top')
         self.assertEqual(len(result_din2.drivers), 0,
             "din 是输入端口，应有 0 个驱动源")
         self.assertEqual(result_din2.confidence, 'uncertain')
-    
+
     def test_underscore_in_name(self):
         """[Ext] 下划线信号名
         RTL: assign d_o = s_i;
@@ -332,23 +332,23 @@ endmodule'''
 module top(input wire s_i, output wire d_o);
     assign d_o = s_i;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('d_o', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "d_o = s_i 应有 1 个驱动源")
         self.assertIn('top.s_i', self._driver_ids(result),
             "d_o 的驱动应包含 top.s_i")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_dollar_in_name(self):
         """[Ext] 美元符信号名
         金标准:
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | dout | [sig_123] | high |
-        
+
         注意: 美元符信号名在标准 SystemVerilog 中是保留的,会被当作系统函数。
         此测试使用下划线前缀信号名 (sig_$) 作为替代。
         """
@@ -356,16 +356,16 @@ endmodule'''
 module top(input wire [7:0] sig_$, output wire [7:0] dout);
     assign dout = sig_$;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "dout = sig_$ 应有 1 个驱动源 (sig_$)")
         self.assertIn('top.sig_$', self._driver_ids(result),
             "dout 的驱动应包含 top.sig_$")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_array_signal(self):
         """[Ext] 数组信号
         RTL: assign dout = data[0];
@@ -378,23 +378,23 @@ endmodule'''
 module top(input wire [7:0] data [3:0], output wire [7:0] dout);
     assign dout = data[0];
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "dout = data[0] 应有 1 个驱动源")
         self.assertIn('top.data[0]', self._driver_ids(result),
             "dout 的驱动应包含 top.data[0]")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_parameterized_module(self):
         """[Ext] 参数化模块
         金标准:
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | top.dout | [top.din] | high |
-        
+
         注意: 参数化模块 dout = din 应追踪到 din
         """
         source = '''
@@ -408,22 +408,22 @@ module top #(
 )(input wire [WIDTH-1:0] din, output wire [WIDTH-1:0] dout);
     assign dout = din;
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('dout', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "dout = din 参数化模块应有 1 个驱动源 (din)")
         self.assertIn('top.din', self._driver_ids(result),
             "dout 的驱动应包含 top.din")
         self.assertEqual(result.confidence, 'high',
             "参数化模块置信度应为 high")
-        
+
         # 检查没有外部驱动源 (din 是 top 的输入端口)
         ids = self._driver_ids(result)
         self.assertTrue(all('top.' in i for i in ids),
             "所有驱动源应该在 top 模块内")
-    
+
     def test_generate_for(self):
         """[Ext] generate for 块
         RTL: assign out = clk;
@@ -439,16 +439,16 @@ module top(input wire clk, output wire out);
         assign out = clk;
     end
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('out', 'top')
-        
+
         self.assertEqual(len(result.drivers), 1,
             "generate for 块中 out = clk 应有 1 个驱动源")
         self.assertIn('top.clk', self._driver_ids(result),
             "out 的驱动应包含 top.clk")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_function(self):
         """[Ext] function 定义和调用
         RTL: assign y = add(a);
@@ -456,7 +456,7 @@ endmodule'''
         | 信号 | 驱动源 | 置信度 |
         |------|--------|--------|
         | y    | [add, a] | high |
-        
+
         注意: function 调用 add 和参数 a 都是驱动源
         """
         source = '''
@@ -467,17 +467,17 @@ module top(input wire [7:0] a, input wire [7:0] b, output wire [7:0] y);
     endfunction
     assign y = add(a);
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
-        
+
         self.assertEqual(len(result.drivers), 2,
             "y = add(a) 应有 2 个驱动源 (add, a)")
         ids = self._driver_ids(result)
         self.assertIn('top.add', ids, "y 的驱动应包含 top.add")
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
-    
+
     def test_task(self):
         """[Ext] task 定义
         金标准: task 不影响信号追踪
@@ -489,10 +489,10 @@ module top(input wire clk);
         begin end
     endtask
 endmodule'''
-        
+
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('clk', 'top')
-        
+
         self.assertIsNotNone(result,
             "task 不崩溃应返回结果")
 

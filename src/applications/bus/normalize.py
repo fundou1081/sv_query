@@ -53,9 +53,9 @@ class NormalizeConfig:
     所有列表按 "长度降序" 排序后使用 — 避免短 prefix 抢匹配.
     """
 
-    strip_prefix: List[str] = field(default_factory=list)
-    strip_suffix: List[str] = field(default_factory=list)
-    remove_infix: List[str] = field(default_factory=list)
+    strip_prefix: list[str] = field(default_factory=list)
+    strip_suffix: list[str] = field(default_factory=list)
+    remove_infix: list[str] = field(default_factory=list)
     remove_underscore: bool = True
     take_last_dot: bool = True
     strip_array_index: bool = True
@@ -63,7 +63,7 @@ class NormalizeConfig:
     # ----- 工厂方法 -----
 
     @classmethod
-    def default(cls) -> "NormalizeConfig":
+    def default(cls) -> NormalizeConfig:
         """内置默认配置 — 覆盖常见生成代码 / 手写代码命名风格.
 
         与 config/protocols/normalize/default.yaml 保持同步.
@@ -109,7 +109,7 @@ class NormalizeConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: Union[str, Path]) -> "NormalizeConfig":
+    def from_yaml(cls, path: Union[str, Path]) -> NormalizeConfig:
         """从 YAML 加载配置."""
         path = Path(path)
         if not path.exists():
@@ -122,7 +122,7 @@ class NormalizeConfig:
         cls,
         override_path: Union[str, Path],
         base_path: Union[str, Path],
-    ) -> "NormalizeConfig":
+    ) -> NormalizeConfig:
         """加载 base + override 合并配置.
 
         YAML 中可用 `extra_strip_prefix` / `extra_strip_suffix` / `extra_remove_infix`
@@ -135,7 +135,7 @@ class NormalizeConfig:
         return base._merge_dict(override_data)
 
     @staticmethod
-    def _from_dict(data: dict) -> "NormalizeConfig":
+    def _from_dict(data: dict) -> NormalizeConfig:
         """从 dict 构造. 缺失键用空值."""
         return NormalizeConfig(
             strip_prefix=list(data.get("strip_prefix", [])),
@@ -156,7 +156,7 @@ class NormalizeConfig:
             "strip_array_index": self.strip_array_index,
         }
 
-    def _merge_dict(self, override: dict) -> "NormalizeConfig":
+    def _merge_dict(self, override: dict) -> NormalizeConfig:
         """merge override 进 self, 处理 extra_* 字段.
 
         语义:
@@ -188,11 +188,11 @@ class NormalizeConfig:
 
     def merge(
         self,
-        strip_prefix_extra: Optional[Iterable[str]] = None,
-        strip_suffix_extra: Optional[Iterable[str]] = None,
-        remove_infix_extra: Optional[Iterable[str]] = None,
+        strip_prefix_extra: Iterable[str] | None = None,
+        strip_suffix_extra: Iterable[str] | None = None,
+        remove_infix_extra: Iterable[str] | None = None,
         **overrides,
-    ) -> "NormalizeConfig":
+    ) -> NormalizeConfig:
         """in-memory merge — 返回新 config, 不改 self."""
         new = self._to_dict()
         if strip_prefix_extra:
@@ -205,7 +205,7 @@ class NormalizeConfig:
             new[key] = val
         return NormalizeConfig._from_dict(new)
 
-    def with_overrides(self, **kwargs) -> "NormalizeConfig":
+    def with_overrides(self, **kwargs) -> NormalizeConfig:
         """覆盖字段, 返回新 config."""
         new = self._to_dict()
         for key, val in kwargs.items():
@@ -231,7 +231,7 @@ class NormalizeResult(str):
 
     __slots__ = ("_original",)
 
-    def __new__(cls, original: str, normalized: str) -> "NormalizeResult":
+    def __new__(cls, original: str, normalized: str) -> NormalizeResult:
         instance = super().__new__(cls, normalized)
         instance._original = original
         return instance
@@ -263,7 +263,7 @@ class SignalNormalizer:
     # 数组下标正则: `[anything]` (非贪婪)
     _ARRAY_RE = re.compile(r"\[[^\]]*\]")
 
-    def __init__(self, config: Optional[NormalizeConfig] = None):
+    def __init__(self, config: NormalizeConfig | None = None):
         self.config = config or NormalizeConfig.default()
         # 排序: 长 prefix 优先
         self._prefixes = sorted(
@@ -379,9 +379,9 @@ def _mini_yaml_load(text: str) -> dict:
         remove_underscore: false
     """
     result: dict = {}
-    current_key: Optional[str] = None
-    current_list: Optional[list] = None
-    pending_string: Optional[str] = None  # 等待 `:` 或行尾
+    current_key: str | None = None
+    current_list: list | None = None
+    pending_string: str | None = None  # 等待 `:` 或行尾
 
     for raw_line in text.splitlines():
         line = raw_line.rstrip()

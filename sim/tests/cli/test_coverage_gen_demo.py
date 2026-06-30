@@ -162,7 +162,7 @@ class TestCliErrorHandling:
         """risk analyze 找不到 signal → RuntimeError + exit 1."""
         # 写一个空 filelist
         fl = tmp_path / "empty.f"
-        fl.write_text(f"# empty filelist\n")
+        fl.write_text("# empty filelist\n")
         # 用 tmp_path 之外的文件
         rc, out, err = _run_cli(
             f"--filelist={fl}",

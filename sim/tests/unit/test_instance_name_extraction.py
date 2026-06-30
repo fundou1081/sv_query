@@ -2,7 +2,7 @@
 # test_instance_name_extraction.py - 实例名称提取单元测试
 #==============================================================================
 # Issue 10: clacc反格式实例名称混淆
-# 
+#
 # 测试场景:
 # 1. 标准格式实例: module_name instance_name
 # 2. clacc反格式: instance_name module_name
@@ -20,7 +20,7 @@ from trace.core.semantic_adapter import SemanticAdapter
 
 class TestInstanceNameExtraction(unittest.TestCase):
     """实例名称提取测试"""
-    
+
     def test_clacc_inverted_format(self):
         """测试 clacc 反格式实例名称提取"""
         source = '''
@@ -34,7 +34,7 @@ module pe();
     dual_clock_fifo I0(.clk(clk), .rst(rst));
     ifmap_spad I1(.clk(clk));
 endmodule'''
-        
+
         comp = SVCompiler({'test.sv': source})
         root = comp.get_root()
-        
+

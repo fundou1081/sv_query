@@ -96,7 +96,7 @@ def test_unified_tracer_exposes_elaboration_errors():
     # 应该有部分图(尽管有 error)
     assert graph is not None, "non-strict 模式应返回部分 graph"
     errs = tracer.get_elaboration_errors()
-    assert len(errs) >= 1, f"应至少 1 个 elaboration error"
+    assert len(errs) >= 1, "应至少 1 个 elaboration error"
     print(f"✅ tracer 暴露 {len(errs)} errors, partial graph nodes={graph.number_of_nodes() if hasattr(graph, 'number_of_nodes') else len(graph.nodes())}")
 
 
@@ -111,7 +111,7 @@ def test_strict_mode_raises_compilation_error():
         assert False, "strict=True 应抛 CompilationError"
     except CompilationError as e:
         assert "Elaboration errors" in str(e) or "elaboration" in str(e).lower()
-        print(f"✅ strict 模式正确抛 CompilationError")
+        print("✅ strict 模式正确抛 CompilationError")
 
 
 def test_snapshot_save_non_strict_does_not_crash():
@@ -154,7 +154,7 @@ def test_snapshot_save_non_strict_does_not_crash():
         assert data.get("strict_mode") is False, "metadata 标 strict_mode=False"
         assert "elaboration_errors" in data, "metadata 存了 elaboration_errors"
         assert "failed_files" in data, "metadata 存了 failed_files"
-        print(f"✅ non-strict 模式存盘成功")
+        print("✅ non-strict 模式存盘成功")
         print(f"   elaboration_errors: {len(data['elaboration_errors'])}")
         print(f"   failed_files: {data['failed_files']}")
 
