@@ -158,28 +158,28 @@ class SVCompiler:
             # [A1 fix 2026-06-28] 所有 level 都走 stderr, 避免污染 stdout JSON
             print(f"[{level}] {msg}", file=sys.stderr)
 
-    def add_source(self, filename: str, source: str):
+    def add_source(self, filename: str, source: str) -> None:
         """添加源文件"""
         self._sources[filename] = source
         self._comp = None  # 需要重新编译
 
-    def add_sources(self, sources: dict[str, str]):
+    def add_sources(self, sources: dict[str, str]) -> None:
         """批量添加源文件"""
         self._sources.update(sources)
         self._comp = None
 
-    def add_include_dir(self, dir_path: str):
+    def add_include_dir(self, dir_path: str) -> None:
         """添加 include 搜索路径 [铁律1]"""
         if dir_path not in self._include_dirs:
             self._include_dirs.append(dir_path)
             self._comp = None
 
-    def add_include_dirs(self, dir_paths: list[str]):
+    def add_include_dirs(self, dir_paths: list[str]) -> None:
         """批量添加 include 搜索路径"""
         for d in dir_paths:
             self.add_include_dir(d)
 
-    def add_files(self, file_paths: list[str]):
+    def add_files(self, file_paths: list[str]) -> None:
         """添加文件列表
 
         Args:
@@ -190,7 +190,7 @@ class SVCompiler:
                 self._sources[os.path.basename(path)] = f.read()
         self._comp = None
 
-    def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None, already_loaded: set | None = None):
+    def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None, already_loaded: set | None = None) -> None:
         """从文件列表加载源文件
 
         支持以下语法（Verilator/Modelsim 风格）:
@@ -289,14 +289,14 @@ class SVCompiler:
         import re
 
         # 先展开 ${VAR} 形式
-        def replace_braced(match):
+        def replace_braced(match: object) -> str:
             var = match.group(1)
             return env.get(var, match.group(0))
 
         text = re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", replace_braced, text)
 
         # 再展开 $VAR 形式（避免匹配 $xxxx 中的 $xxxx 是普通字符）
-        def replace_simple(match):
+        def replace_simple(match: object) -> str:
             var = match.group(1)
             return env.get(var, match.group(0))
 
@@ -552,12 +552,12 @@ class SVCompiler:
         self._do_compile()
         return self._comp
 
-    def get_root(self):
+    def get_root(self) -> object:
         """获取 Semantic AST root"""
         self._do_compile()
         return self._root
 
-    def get_diagnostics(self):
+    def get_diagnostics(self) -> list:
         """获取诊断信息"""
         self._do_compile()
         return self._diagnostics
