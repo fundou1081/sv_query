@@ -1,0 +1,14 @@
+// ======================================================================
+// ======================================================================
+covergroup cg_clk_i @(posedge clk_i iff !rst_ni);
+  option.per_instance = 1;
+  option.comment = "clk_i (CONTROL, 1-bit)";
+  // ---- Primary coverpoint ----
+  cp_clk_i: coverpoint clk_i {
+    // CONTROL bins: 1-bit
+    bins low  = {1'b0};
+    bins high = {1'b1};
+  }
+  // ---- Sample event: @(posedge clk_i iff !rst_ni) ----
+  //   Input port control — always stable when not in reset
+endgroup: cg_clk_i
