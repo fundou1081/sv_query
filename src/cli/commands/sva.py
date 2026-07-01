@@ -255,7 +255,7 @@ def timing(
     """Compare SVA timing declarations with signal graph timing depth"""
     from trace.core.graph.models import NodeKind
 
-    def timing_depth(graph, target_id, max_comb_depth=3):
+    def timing_depth(graph: object, target_id: str, max_comb_depth: int = 3) -> int:
         from collections import deque
 
         node = graph.get_node(target_id)

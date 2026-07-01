@@ -216,7 +216,7 @@ class ConnectionExtractor:
         module_to_path = {}  # (inst_module_name, inst_name) -> full_path
 
         # 递归确定路径
-        def get_path(info, depth=0):
+        def get_path(info: dict, depth: int = 0) -> str:
             """递归获取实例的完整路径"""
             if depth > 20:
                 return f"{self.root_module_name}.{info['inst_name']}"

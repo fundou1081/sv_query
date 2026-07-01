@@ -32,7 +32,7 @@ class BitSelectHandler:
         self.graph = graph
         self.signal_widths: dict[str, tuple[int, int]] = {}  # 信号名 → (msb, lsb)
 
-    def process(self):
+    def process(self) -> None:
         """处理所有模块的位选节点"""
         # Phase 1: 提取所有模块的信号位宽
         self._extract_all_widths()
