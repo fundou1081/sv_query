@@ -191,11 +191,11 @@ class SignalGraph(nx.DiGraph):
         """
         return self._port_to_internal.get(inst_port_id)
 
-    def add_trace_node(self, node: TraceNode):
+    def add_trace_node(self, node: TraceNode) -> None:
         self._node_data[node.id] = node
         super().add_node(node.id)
 
-    def add_trace_edge(self, edge: TraceEdge):
+    def add_trace_edge(self, edge: TraceEdge) -> None:
         # [铁律4] 不允许创建孤儿节点:如果目标节点不存在则创建 placeholder
         # [FIX] 字面量节点(如 4'b1011, 8'h42)创建为 CONST 类型节点
         def _is_literal(node_id: str) -> bool:
@@ -250,7 +250,7 @@ class SignalGraph(nx.DiGraph):
         if edge.condition and not edge.effective_condition:
             edge.effective_condition = SignalGraph.compute_effective_condition(edge.condition)
 
-    def set_node_modport_dir(self, node_id: str, modport_dir: str):
+    def set_node_modport_dir(self, node_id: str, modport_dir: str) -> None:
         """[P0-3] 设置已有节点的 modport_dir 属性"""
         if node_id in self._node_data:
             self._node_data[node_id].modport_dir = modport_dir
@@ -310,7 +310,7 @@ class SignalGraph(nx.DiGraph):
 
         return condition
 
-    def set_lifo_order(self, state_values: list[str]):
+    def set_lifo_order(self, state_values: list[str]) -> None:
         """设置 LIFO 顺序的状态值列表，用于边排序
 
         Args:
@@ -543,7 +543,7 @@ class SignalGraph(nx.DiGraph):
         data = json.loads(json_str)
         return cls.from_dict(data)
 
-    def save_snapshot(self, path: str, tag: str = "", git_commit: str = "", files: list = None):
+    def save_snapshot(self, path: str, tag: str = "", git_commit: str = "", files: list | None = None) -> None:
         """[Golden] 保存快照到文件
 
         Args:

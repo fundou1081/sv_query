@@ -145,7 +145,7 @@ class SignalGraphViewer:
         """判断是否为跨模块边"""
         return self._get_module_name(src) != self._get_module_name(dst)
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: object) -> object:
         """配置可视化参数"""
         for key, value in kwargs.items():
             if key in self.config:
@@ -716,7 +716,7 @@ Cover Status:
         return html
 
 
-def create_gap_viewer(graph, sva_signals, cov_signals, gap_signals, output_prefix):
+def create_gap_viewer(graph: object, sva_signals: set, cov_signals: set, gap_signals: list, output_prefix: str) -> object:
     """
     创建验证缺口可视化（带数据流边）
 
