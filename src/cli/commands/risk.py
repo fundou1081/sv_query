@@ -108,7 +108,7 @@ def analyze(
             data_signals.append(node_id)
 
     # 计算数据信号风险
-    def compute_risk(graph, node_id, sva_signals, cov_signals, max_comb_depth):
+    def compute_risk(graph: object, node_id: str, sva_signals: set, cov_signals: set, max_comb_depth: int) -> dict | None:
         node = graph.get_node(node_id)
         if node is None:
             return None

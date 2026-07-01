@@ -131,7 +131,7 @@ def gap(
             }
 
     # ===== 3. 计算风险 + 覆盖状态 =====
-    def compute_risk(node_id, info):
+    def compute_risk(node_id: str, info: dict) -> None:
         node = info["node"]
         fan_in = graph.in_degree(node_id)
         fan_out = graph.out_degree(node_id)
