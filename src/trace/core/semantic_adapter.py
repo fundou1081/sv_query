@@ -1608,7 +1608,7 @@ class SemanticAdapter:
                                 right = getattr(sel, "right", None)
 
                                 # 从 LiteralExpressionSyntax.literal.valueText 获取整数值
-                                def get_int(node):
+                                def get_int(node: object) -> int:
                                     if node is None:
                                         return 0
                                     if hasattr(node, "literal") and node.literal:
@@ -1632,11 +1632,11 @@ class SemanticAdapter:
     # 遍历
     # =========================================================================
 
-    def visit(self, callback: Callable):
+    def visit(self, callback: Callable) -> None:
         """遍历 Semantic AST 所有节点"""
         self._root.visit(callback)
 
-    def visit_module(self, module, callback: Callable):
+    def visit_module(self, module: object, callback: Callable) -> None:
         """遍历模块的所有节点"""
         if hasattr(module, "body") and module.body:
             module.body.visit(callback)
@@ -1717,7 +1717,7 @@ class SemanticAdapter:
                 if "Instance" in kind_str:
                     yield item
 
-    def get_definition(self, name: str):
+    def get_definition(self, name: str) -> object:
         """获取模块/类定义"""
         for item in self._root:
             if hasattr(item, "name") and item.name == name:
@@ -1805,7 +1805,7 @@ class SemanticInstanceWrapper:
         return self.type.value if self.type.value else str(self.name)
 
     @property
-    def parent(self):
+    def parent(self) -> object:
         """兼容属性:返回类似 SyntaxTree 的 parent 节点结构
 
         对于顶级模块(parent_module is None),返回 None
@@ -1814,7 +1814,7 @@ class SemanticInstanceWrapper:
         if self.parent_module:
 
             class ParentModule:
-                def __init__(self, name):
+                def __init__(self, name: str) -> None:
                     self.name = name
                     self.header = type("Header", (), {"name": type("Name", (), {"rawText": name})()})()
 
@@ -1829,11 +1829,11 @@ class SemanticInstanceDeclWrapper:
         self._symbol = instance_symbol
 
     @property
-    def name(self):
+    def name(self) -> object:
         """返回实例名称作为 TokenValue"""
 
         class TokenValue:
-            def __init__(self, val):
+            def __init__(self, val: str) -> None:
                 self.value = val
 
         return TokenValue(self._symbol.name)
