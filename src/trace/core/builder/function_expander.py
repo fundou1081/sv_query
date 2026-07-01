@@ -4,6 +4,8 @@
 # [Expression Node] 函数展开逻辑
 
 
+from typing import Any
+
 from trace.core.graph.models import SignalGraph, TraceEdge
 
 
@@ -21,9 +23,9 @@ class FunctionExpander:
     def __init__(self, adapter, graph: SignalGraph):
         self._adapter = adapter
         self._graph = graph
-        self._subroutine_cache: dict[str, any] = {}
+        self._subroutine_cache: dict[str, Any] = {}
 
-    def get_function_body(self, func_name: str) -> any | None:
+    def get_function_body(self, func_name: str) -> Any | None:
         """获取函数体
 
         Args:
@@ -38,7 +40,7 @@ class FunctionExpander:
         # 在 AST 中查找 Subroutine
         root = self._adapter.get_root()
 
-        def find_subroutine(node):
+        def find_subroutine(node: object) -> object:
             kind = node.kind
             if kind and kind.name == "Subroutine":
                 name = getattr(node, "name", None)
