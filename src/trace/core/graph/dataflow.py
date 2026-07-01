@@ -798,7 +798,7 @@ class DataFlowGraph:
 
         return "safe"
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """清除段缓存"""
         self._segment_cache.clear()
 
