@@ -2,6 +2,8 @@
 # graph_builder.py - Builder Layer
 # ==============================================================================
 
+from __future__ import annotations
+
 import logging
 
 import pyslang
@@ -251,7 +253,7 @@ class GraphBuilder:
             )
             self.graph.add_trace_edge(agg_edge)
 
-    def get_extractor(self, name):
+    def get_extractor(self, name: str) -> object | None:
         return self._extractors.get(name)
 
     def _extract_all_nodes(self):
