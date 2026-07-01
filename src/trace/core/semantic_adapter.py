@@ -157,7 +157,7 @@ class SemanticAdapter:
         # name_str 依赖 pybind11 decode, 随机成功/失败 → 不稳定.
         seen_ids = set()
 
-        def collect_instances(node):
+        def collect_instances(node: object) -> None:
             if node is None:
                 return
 
@@ -223,7 +223,7 @@ class SemanticAdapter:
             # 尝试从 DefinitionSymbol 获取模块定义
             for unit in self._root.compilationUnits:
 
-                    def collect_from_compilation(comp_node):
+                    def collect_from_compilation(comp_node: object) -> None:
                         nonlocal modules
                         if comp_node is None:
                             return
@@ -279,7 +279,7 @@ class SemanticAdapter:
         wrappers = []
         visited_names = set()
 
-        def find_instances(node, parent_path=""):
+        def find_instances(node: object, parent_path: str = "") -> None:
             if node is None:
                 return
 
@@ -809,7 +809,7 @@ class SemanticAdapter:
         """
         assignments = []
 
-        def find_assignments(node):
+        def find_assignments(node: object) -> None:
             if node is None:
                 return
             kind = str(getattr(node, "kind", ""))
