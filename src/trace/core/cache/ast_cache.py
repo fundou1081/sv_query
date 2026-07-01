@@ -135,7 +135,7 @@ class ASTCache:
         """[Legacy] 通过文件路径保存缓存（已废弃，仅保留兼容）"""
         return ""
 
-    def invalidate(self, cache_key: str = None):
+    def invalidate(self, cache_key: str | None = None) -> None:
         """[Golden] 清除缓存
 
         Args:
