@@ -372,7 +372,7 @@ class UnifiedTracer:
         if log_level is not None:
             self.set_log_level(log_level)
 
-    def set_log_level(self, level: str):
+    def set_log_level(self, level: str) -> None:
         """动态设置日志级别
 
         Args:
@@ -432,7 +432,7 @@ class UnifiedTracer:
         return self._sources.copy()
 
     @property
-    def compilation(self):
+    def compilation(self) -> object:
         """获取 Compilation 对象"""
         return self._get_compiler().get_compilation()
 
@@ -502,7 +502,7 @@ class UnifiedTracer:
                 cache.put_by_key(cache_key, cache_data)
         return self._graph
 
-    def load_graph(self, graph: SignalGraph):
+    def load_graph(self, graph: SignalGraph) -> None:
         self._graph = graph
         self._init_tracers()
 
