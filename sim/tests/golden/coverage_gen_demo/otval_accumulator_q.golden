@@ -1,0 +1,17 @@
+// ======================================================================
+// ======================================================================
+covergroup cg_accumulator_q @(posedge clk_i iff !rst_ni);
+  option.per_instance = 1;
+  option.comment = "accumulator_q (DATA, 32-bit)";
+  // ---- Primary coverpoint ----
+  cp_accumulator_q: coverpoint accumulator_q {
+    // DATA bins: 32-bit range partition
+    bins zero  = {32'h0};
+    bins b1    = {[32'h1:32'hFF]};          // 1-byte values
+    bins b2    = {[32'h100:32'hFFFF]};       // 2-byte values
+    bins b3    = {[32'h10000:32'hFFFFFF]};   // 3-byte values
+    bins max   = {32'hFFFF_FFFF};
+  }
+  // ---- Sample event: @(posedge clk_i iff !rst_ni) ----
+  //   Data reg — no valid/enable gating found; sample every cycle (may be too eager)
+endgroup: cg_accumulator_q

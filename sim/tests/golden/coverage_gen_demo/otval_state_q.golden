@@ -1,0 +1,20 @@
+// ======================================================================
+// ======================================================================
+covergroup cg_state_q @(posedge clk_i iff !rst_ni);
+  option.per_instance = 1;
+  option.comment = "state_q (CONTROL, 3-bit)";
+  // ---- Primary coverpoint ----
+  cp_state_q: coverpoint state_q {
+    // CONTROL bins (from enum state_e):
+    bins idle = {0};
+    bins active = {1};
+    bins flush = {2};
+    bins alert = {3};
+    bins recov = {4};
+    bins lp_mode = {5};
+    bins sleep = {7};
+    bins reserved = {[6:6]};
+  }
+  // ---- Sample event: @(posedge clk_i iff !rst_ni) ----
+  //   Control signal (FSM/enum/flag) — always stable when not in reset
+endgroup: cg_state_q
