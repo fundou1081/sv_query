@@ -82,7 +82,7 @@ class TimingAnalyzer:
         return G
 
     @property
-    def reg_graph(self):
+    def reg_graph(self) -> object:
         if self._reg_graph is None:
             self._build_reg_graph()
         return self._reg_graph

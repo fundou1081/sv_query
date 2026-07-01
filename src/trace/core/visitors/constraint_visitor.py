@@ -51,7 +51,7 @@ class ConstraintVisitor(BaseVisitor):
         self.result_edges = []
         self.variables = []
 
-    def visit(self, node):
+    def visit(self, node: object) -> None:
         """[铁律15] 主入口 - 分发到对应 visit 方法"""
         if node is None or self.depth > self.max_depth:
             return
