@@ -74,15 +74,15 @@ class TraceBasedHandshakeProvider(HandshakeProvider):
         self._cache: dict[tuple[str, str], HandshakeInfoLite | None] = {}
 
     @property
-    def tracer(self):
+    def tracer(self) -> object:
         return self._tracer
 
     @tracer.setter
-    def tracer(self, value):
+    def tracer(self, value: object) -> None:
         self._tracer = value
         self._cache.clear()
 
-    def set_context(self, signal_tracer, graph, module: str | None = None):
+    def set_context(self, signal_tracer: object, graph: object, module: str | None = None) -> None:
         """设置 graph context (用于每次 scan 重置)."""
         self._tracer = signal_tracer
         self._graph = graph
