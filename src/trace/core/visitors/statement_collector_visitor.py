@@ -245,7 +245,7 @@ class StatementCollectorVisitor(BaseVisitor):
         self._statements = []
         return result
 
-    def visit(self, node):
+    def visit(self, node: object) -> None:
         """分发到对应的 visit 方法"""
         if node is None or self.depth > self.max_depth:
             return
@@ -332,7 +332,7 @@ class StatementCollectorVisitor(BaseVisitor):
         # 默认: 递归进入子节点
         self.generic_visit(node)
 
-    def generic_visit(self, node):
+    def generic_visit(self, node: object) -> None:
         """通用递归：进入子节点"""
         if node is None or self.depth > self.max_depth:
             return
@@ -602,7 +602,7 @@ class StatementCollectorVisitor(BaseVisitor):
 
         i = getattr(e, "expr", None) or e
 
-        def find_clock(expr):
+        def find_clock(expr: object) -> str:
             if expr is None:
                 return ""
 
