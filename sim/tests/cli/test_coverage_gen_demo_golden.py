@@ -1,33 +1,39 @@
 """
 test_coverage_gen_demo_golden.py - Golden image 回归测试
 ==========================================================
-[Phase 2 2026-07-01] 改用 sv_query 自带小 fixture (sim/openTitan_validation.sv)
-替代工业项目 (NaplesPU/PicoRV32/OpenTitan), 保证测试目的相同 + 不依赖外部项目.
+[Phase 3 2026-07-01] 改用 OpenTitan prim 子项目 (`opentitan_prim_arbiter_tree.sv`)
+替代 Phase 2 sv_query 自带 fixture, 给 sv_query 在**真实工业代码**上做 golden regression.
 
 **测试目的 (核心, 不变)**:
   验证 covergroup 生成器在不同信号类型 (DATA / CONTROL) 上的输出格式:
   - covergroup 关键字 / coverpoint / bins / sample
   - DATA 信号 → range partition bins (zero/b1/b2/b3/max)
-  - CONTROL 信号 → enum-aware 离散 bins
+  - CONTROL 信号 → enum-aware 离散 bins (width < 8)
   - Sample event 推断 (posedge clk iff !rst_n)
   - Bins 命名一致性 (修复了 byte/word/dword → b1/b2/b3)
+  - **跨 include 处理 (含 `include "prim_assert.sv"`)**: 验证 sv_query 处理 `\`include` 指令
+  - **多 module 编译 (依赖 prim_util_pkg.svh 等 core helper)**: 验证 filelist mode 正确
 
-**Fixture 文件**: `sim/openTitan_validation.sv` (50 行单文件)
-   - 含 32-bit DATA (`data_o`, `accumulator_q`)
-   - 含 3-bit CONTROL (`state_q` w/ enum state_e)
-   - 不同风险等级 (low fan_in vs high fan_in/out)
+**Fixture 文件**: `~/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv` (291 行)
+  - 32-bit DATA (`data_o`): 跨 module output, multi-fan_in
+  - 3-bit CONTROL (`idx_o`): winner index of arbitration, parametric width
+  - 1-bit CONTROL (`clk_i`): standard clock input
 
-**为什么不用工业项目 (保留理由)**:
-   - 工业项目不在 sv_query repo 里, 测试机可能没装 → skip 而非 fail
-   - 工业项目源码常带 warning (100+ 行 [WARNING]), 测试需 normalize 才稳定
-   - 单文件 50 行 fixture: scope 极小, 跑得快, 测试 CI 友好
+**工业项目策略**:
+  OpenTitan 是公开 Apache-2.0 项目, 大小适中 (305M). 用 sub-project (`prim_*`) 中的小模块:
+    - scope 小 (单 sub-folder, ~10 个 SV 文件)
+    - 通过 `sim/tests/pyslang_type_fixtures/industrial_filelists/opentitan_prim_arbiter_tree.f` 持久化 filelist
+    - 如果 OpenTitan 源码不存在 (`~/my_dv_proj/opentitan/hw/ip/prim/` 不存在), 测试**自动 skip** 而非 fail
+    - 不污染 sv_query repo (300M+ OpenTitan 树不会 commit)
 
 **Golden 文件存**: `sim/tests/golden/coverage_gen_demo/`
-   - otval_data_o.golden
-   - otval_state_q.golden
-   - otval_accumulator_q.golden
+   - otarb_data_o.golden
+   - otarb_idx_o.golden
+   - otarb_clk_i.golden
 
 [Phase 1 2026-06-24 历史] 用过 NaplesPU/PicoRV32/OpenTitan, 工业项目不可用 → 经常 skip.
+[Phase 2 2026-07-01 临时] 用 sv_query 自带 openTitan_validation.sv (50 行单文件).
+[Phase 3 2026-07-01 现在] 用 OpenTitan 真实 prim_arbiter_tree.sv (291 行, 跨 module 工业代码).
 """
 import os
 import subprocess
@@ -39,9 +45,12 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CLI_SCRIPT = PROJECT_ROOT / "tools" / "coverage_gen_demo.py"
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "coverage_gen_demo"
+INDUSTRIAL_FILELISTS = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
 
-# 单文件 fixture (在 repo 内, 永远存在)
-OTVAL_FIXTURE = PROJECT_ROOT / "sim" / "openTitan_validation.sv"
+# OpenTitan prim_arbiter_tree.sv fixture (工业 sub-project, sub-folder 大小)
+# scope: 1 个 sub-project (~10 个 SV 文件, ~3000 行)
+OTARB_FIXTURE_PATH = Path("/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv")
+OTARB_FILELIST_NAME = "opentitan_prim_arbiter_tree.f"
 
 
 def _run_cli(*args, timeout=60):
@@ -96,33 +105,30 @@ def _normalize_covergroup(text):
 # ============================================================================
 # Golden image cases
 # ============================================================================
-# 3 个 case 覆盖:
-#   1. DATA case (简单 32-bit data_o)
-#   2. DATA case (高风险 32-bit accumulator_q, fan_in=8)
-#   3. CONTROL case (3-bit state_q w/ enum bins)
-# Test purpose: 验证 covergroup 生成在不同信号类型上输出格式稳定.
+# 3 个 case 覆盖 (OpenTitan prim_arbiter_tree.sv 工业 sub-project):
+#   1. otarb_data_o        (32-bit DATA):  跨 module output port, multi-fan_in
+#   2. otarb_idx_o         (3-bit CONTROL): winner index of arbitration, parametric width
+#   3. otarb_clk_i         (1-bit CONTROL): standard clock input
+# Test purpose: 验证 covergroup 生成在真实工业代码 (跨 include + 多 module 依赖) 上输出格式稳定.
 GOLDEN_CASES = [
-    # (name, file, signal, related_signals, [skip_if_missing])
+    # (name, signal, related, [skip_if_missing])
     (
-        "otval_data_o",
-        OTVAL_FIXTURE,
+        "otarb_data_o",
         "data_o",
         [],
-        OTVAL_FIXTURE,  # repo 内文件, 永远存在
+        OTARB_FIXTURE_PATH,  # OpenTitan 源码不存在 → skip, 而非 fail
     ),
     (
-        "otval_state_q",
-        OTVAL_FIXTURE,
-        "state_q",
+        "otarb_idx_o",
+        "idx_o",
         [],
-        OTVAL_FIXTURE,
+        OTARB_FIXTURE_PATH,
     ),
     (
-        "otval_accumulator_q",
-        OTVAL_FIXTURE,
-        "accumulator_q",
+        "otarb_clk_i",
+        "clk_i",
         [],
-        OTVAL_FIXTURE,
+        OTARB_FIXTURE_PATH,
     ),
 ]
 
@@ -132,19 +138,25 @@ class TestCoverageGenDemoGolden:
 
     策略: 跑 CLI → normalize (去掉会变的元信息) → diff vs golden.
     不 strict match (因为 risk score 会变), 只比对结构 (covergroup / bins / cross).
+
+    测试 fixture: OpenTitan prim_arbiter_tree (工业 sub-project, 跨 include 真实代码).
+    如果 OpenTitan 源码不可用 → 整个 test class skip 而非 fail.
     """
 
     @pytest.mark.parametrize(
-        "name,file,sig,related,skip_if_missing",
+        "name,sig,related,skip_if_missing",
         GOLDEN_CASES,
         ids=[c[0] for c in GOLDEN_CASES],
     )
-    def test_golden_match(self, name, file, sig, related, skip_if_missing):
-        """3 个 golden case 验证 covergroup 生成器输出稳定."""
-        if skip_if_missing and not Path(skip_if_missing).exists():
-            pytest.skip(f"Required file not available: {skip_if_missing}")
-        # 跑 CLI (单文件 mode, 不需要 --filelist)
-        args = [str(file), sig] + related
+    def test_golden_match(self, name, sig, related, skip_if_missing):
+        """3 个 OpenTitan-based golden case 验证 covergroup 生成器输出稳定."""
+        if not Path(skip_if_missing).exists():
+            pytest.skip(f"OpenTitan industrial project not available: {skip_if_missing}")
+        fl_path = INDUSTRIAL_FILELISTS / OTARB_FILELIST_NAME
+        if not fl_path.exists():
+            pytest.skip(f"Filelist not found: {fl_path}")
+        # 跑 CLI (filelist mode, OpenTitan 工业代码)
+        args = [f"--filelist={fl_path}", str(skip_if_missing), sig] + related
         rc, out, err = _run_cli(*args)
         assert rc == 0, f"CLI fail: {err[:300]}"
         # 比对 normalized output

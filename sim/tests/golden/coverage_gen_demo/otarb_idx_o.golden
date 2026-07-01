@@ -1,0 +1,17 @@
+// ======================================================================
+// ======================================================================
+covergroup cg_idx_o @(posedge clk_i iff !rst_ni);
+  option.per_instance = 1;
+  option.comment = "idx_o (CONTROL, 3-bit)";
+  // ---- Primary coverpoint ----
+  cp_idx_o: coverpoint idx_o {
+    // CONTROL bins: width=3 (1-of-N)
+    bins zero  = {0};
+    bins one   = {1};
+    bins two   = {2};
+    bins three = {3};
+    bins other = {[4:7]};
+  }
+  // ---- Sample event: @(posedge clk_i iff !rst_ni) ----
+  //   Control signal (FSM/enum/flag) — always stable when not in reset
+endgroup: cg_idx_o
