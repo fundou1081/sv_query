@@ -15,18 +15,18 @@ class AssignmentVisitor(StatementVisitor):
         super().__init__()
         self.assignments: list = []  # 收集到的赋值
 
-    def visit_nonblocking_assignment(self, node):
+    def visit_nonblocking_assignment(self, node: object) -> None:
         """<= 非阻塞赋值"""
         self.assignments.append(node)
 
-    def visit_blocking_assignment(self, node):
+    def visit_blocking_assignment(self, node: object) -> None:
         """= 阻塞赋值"""
         self.assignments.append(node)
 
-    def visit_continuous_assignment(self, node):
+    def visit_continuous_assignment(self, node: object) -> None:
         """assign 连续赋值"""
         self.assignments.append(node)
 
-    def reset(self):
+    def reset(self) -> None:
         """重置收集器"""
         self.assignments = []

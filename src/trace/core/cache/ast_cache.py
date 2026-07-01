@@ -101,7 +101,7 @@ class ASTCache:
             logger.warning(f"Failed to load cache: {e}")
             return None
 
-    def put_by_key(self, cache_key: str, data: dict):
+    def put_by_key(self, cache_key: str, data: dict) -> None:
         """[Golden] 通过 cache_key 保存缓存
 
         Args:
