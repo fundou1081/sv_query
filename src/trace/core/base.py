@@ -19,7 +19,7 @@ class ASTWalker:
     def __init__(self, parser=None):
         self.parser = parser
 
-    def walk_all(self, callback: Callable):
+    def walk_all(self, callback: Callable) -> None:
         """遍历所有文件的AST"""
         if not self.parser or not hasattr(self.parser, "trees"):
             return
@@ -29,7 +29,7 @@ class ASTWalker:
                 continue
             self._visit_node(tree.root, callback)
 
-    def walk_file(self, fname: str, callback: Callable):
+    def walk_file(self, fname: str, callback: Callable) -> None:
         """遍历单个文件的AST"""
         if not self.parser or not hasattr(self.parser, "trees"):
             return
@@ -89,11 +89,11 @@ class PyslangAdapter:
             self.kind = SyntaxKind.PortDeclaration
 
         @property
-        def header(self):
+        def header(self) -> object:
             return self._port_decl.header
 
         @property
-        def declarators(self):
+        def declarators(self) -> list:
             return [self._decl]
 
     """pyslang 适配器 - 将 pyslang AST 转换为内部表示"""
@@ -362,7 +362,7 @@ class PyslangAdapter:
     def iter_children(self, node) -> list:
         return ASTWalker.iter_children(self, node)
 
-    def get_module(self, name: str):
+    def get_module(self, name: str) -> object:
         """按名称获取模块"""
         for module in self.get_modules():
             if hasattr(module, "name") and module.name == name:
@@ -376,7 +376,7 @@ class PyslangAdapter:
             return modports
 
         # 查找 ModportDeclaration
-        def find_modport(node):
+        def find_modport(node: object) -> None:
             if node is None:
                 return
             kind = getattr(node, "kind", None)
@@ -1427,7 +1427,7 @@ class PyslangAdapter:
         visited = set()
         max_depth = 100
 
-        def find_inst(node, depth=0):
+        def find_inst(node: object, depth: int = 0) -> None:
             if node is None or depth > max_depth:
                 return
             node_key = (id(node), getattr(node, "kind", None))
@@ -2138,7 +2138,7 @@ class DriverCollector(ASTWalker):
     def _collect(self):
         """收集所有驱动关系"""
 
-        def visitor(node):
+        def visitor(node: object) -> None:
             self._process_node(node)
 
         self.walk_all(visitor)
@@ -2208,8 +2208,8 @@ class LoadCollector(ASTWalker):
         self.loads = {}  # signal -> [loads]
         self._collect()
 
-    def _collect(self):
-        def visitor(node):
+    def _collect(self) -> None:
+        def visitor(node: object) -> None:
             self._process_node(node)
 
         self.walk_all(visitor)
@@ -2247,7 +2247,7 @@ class ConnectionCollector(ASTWalker):
         self._collect()
 
     def _collect(self):
-        def visitor(node):
+        def visitor(node: object) -> None:
             self._process_node(node)
 
         self.walk_all(visitor)
@@ -2299,7 +2299,7 @@ class ConnectionCollector(ASTWalker):
         """从 always 块中提取 case 语句"""
         cases = []
 
-        def find_case(node):
+        def find_case(node: object) -> None:
             if node is None:
                 return
             kind = getattr(node, "kind", None)
