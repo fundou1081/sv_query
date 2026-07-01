@@ -19,6 +19,7 @@ Canonical functions (use these — others are deprecated):
 """
 from __future__ import annotations
 
+from typing import Any
 
 # Sentinel returned when a name has no usable printable content.
 _EMPTY = ""
@@ -83,7 +84,7 @@ def clean_name(name) -> str:
     return _normalize_identifier(s)
 
 
-def safe_attr(obj, name: str, default=None):
+def safe_attr(obj: Any, name: str, default: Any = None) -> Any:
     """Safe getattr that tolerates non-UTF-8 pyslang property access.
 
     Equivalent to ``getattr(obj, name, default)`` but catches UnicodeDecodeError
