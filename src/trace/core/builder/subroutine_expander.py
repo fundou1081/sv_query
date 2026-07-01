@@ -68,7 +68,7 @@ class SubroutineExpander:
         self._cond_formatter = None  # 延迟加载条件格式化器
 
     @property
-    def cond_formatter(self):
+    def cond_formatter(self) -> object:
         """延迟加载条件格式化器"""
         if self._cond_formatter is None:
             from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
@@ -774,7 +774,7 @@ class SubroutineExpander:
         """提取函数体内的赋值语句"""
         assignments = []
 
-        def collect(stmt):
+        def collect(stmt: object) -> None:
             if stmt is None:
                 return
 
