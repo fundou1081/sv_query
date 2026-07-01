@@ -96,7 +96,7 @@ class DriverExtractor:
             return ""
         i = getattr(e, "expr", None) or e
 
-        def find_clock(expr):
+        def find_clock(expr: object) -> str:
             if expr is None:
                 return ""
             # [FIX] NamedValueExpression with symbol - extract name directly
@@ -137,7 +137,7 @@ class DriverExtractor:
         # Unwrap parenthesized expression
         e = getattr(e, "expr", None) or e
 
-        def find_reset(expr):
+        def find_reset(expr: object) -> str:
             if expr is None:
                 return ""
             # [FIX] Handle SignalEvent directly (it has edge and expr)
