@@ -365,112 +365,112 @@ class StatementCollectorVisitor(BaseVisitor):
         effective_ctx = ctx.copy() if ctx else self.current_ctx.copy()
         self._statements.append((node, effective_ctx, item_type))
 
-    def visit_empty_statement(self, node):
+    def visit_empty_statement(self, node: object) -> None:
         """EmptyStatement: 空语句 ; 或 begin end
 
         不产生任何节点
         """
         pass
 
-    def visit_variable_declaration(self, node):
+    def visit_variable_declaration(self, node: object) -> None:
         """VariableDeclaration: 变量声明 logic [7:0] data;
 
         记录变量声明
         """
         self._add_statement(node, item_type=ItemType.VARIABLE_DECLARATION)
 
-    def visit_invalid_statement(self, node):
+    def visit_invalid_statement(self, node: object) -> None:
         """Invalid: 无效/错误的 AST 节点
 
         跳过不处理
         """
         pass
 
-    def visit_event_trigger(self, node):
+    def visit_event_trigger(self, node: object) -> None:
         """EventTrigger: -> event_name
 
         记录事件触发
         """
         self._add_statement(node, item_type=ItemType.EVENT_TRIGGER)
 
-    def visit_immediate_assertion(self, node):
+    def visit_immediate_assertion(self, node: object) -> None:
         """ImmediateAssertion: assert 表达式
 
         记录断言语句
         """
         self._add_statement(node, item_type=ItemType.IMMEDIATE_ASSERTION)
 
-    def visit_concurrent_assertion(self, node):
+    def visit_concurrent_assertion(self, node: object) -> None:
         """ConcurrentAssertion: assert property(...), assume property(...)
 
         记录并发断言
         """
         self._add_statement(node, item_type=ItemType.CONCURRENT_ASSERTION)
 
-    def visit_procedural_assign(self, node):
+    def visit_procedural_assign(self, node: object) -> None:
         """ProceduralAssign: force assignment
 
         记录 force 语句
         """
         self._add_statement(node, item_type=ItemType.PROCEDURAL_ASSIGN)
 
-    def visit_procedural_deassign(self, node):
+    def visit_procedural_deassign(self, node: object) -> None:
         """ProceduralDeassign: release assignment
 
         记录 release 语句
         """
         self._add_statement(node, item_type=ItemType.PROCEDURAL_DEASSIGN)
 
-    def visit_procedural_checker(self, node):
+    def visit_procedural_checker(self, node: object) -> None:
         """ProceduralChecker: checker declaration
 
         记录 checker
         """
         pass  # 通常在块外定义
 
-    def visit_disable_fork(self, node):
+    def visit_disable_fork(self, node: object) -> None:
         """DisableFork: disable fork
 
         记录 disable fork
         """
         self._add_statement(node, item_type=ItemType.DISABLE_FORK)
 
-    def visit_wait_fork(self, node):
+    def visit_wait_fork(self, node: object) -> None:
         """WaitFork: wait fork
 
         记录 wait fork
         """
         self._add_statement(node, item_type=ItemType.WAIT_FORK)
 
-    def visit_wait_order(self, node):
+    def visit_wait_order(self, node: object) -> None:
         """WaitOrder: wait order(...)
 
         记录 wait order
         """
         self._add_statement(node, item_type=ItemType.WAIT_ORDER)
 
-    def visit_rand_case(self, node):
+    def visit_rand_case(self, node: object) -> None:
         """RandCase: rand case
 
         记录 rand case
         """
         self._add_statement(node, item_type=ItemType.RAND_CASE)
 
-    def visit_rand_sequence(self, node):
+    def visit_rand_sequence(self, node: object) -> None:
         """RandSequence: rand sequence
 
         记录 rand sequence
         """
         self._add_statement(node, item_type=ItemType.RAND_SEQUENCE)
 
-    def visit_pattern_case(self, node):
+    def visit_pattern_case(self, node: object) -> None:
         """PatternCase: pattern case item
 
         使用通用的 case 处理
         """
         self.generic_visit(node)
 
-    def visit_list(self, node):
+    def visit_list(self, node: object) -> None:
         """List: 语句列表
 
         递归处理
@@ -481,7 +481,7 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 过程块 - always_ff / always_comb / always_latch / initial
     # =========================================================================
 
-    def visit_initial_block(self, node):
+    def visit_initial_block(self, node: object) -> None:
         """InitialBlock: initial 块
 
         initial 块没有时钟域，条件为空
@@ -491,7 +491,7 @@ class StatementCollectorVisitor(BaseVisitor):
         if stmt:
             self.visit(stmt)
 
-    def visit_procedure_block(self, node):
+    def visit_procedure_block(self, node: object) -> None:
         """AlwaysFF / AlwaysComb / AlwaysLatch 的统一入口
 
         根据 procedureKind 分发到具体方法
@@ -516,7 +516,7 @@ class StatementCollectorVisitor(BaseVisitor):
         else:
             self.generic_visit(node)
 
-    def visit_always_ff(self, node):
+    def visit_always_ff(self, node: object) -> None:
         """AlwaysFF: always_ff @(posedge clk) ... end
 
         提取时钟和复位信号
@@ -540,7 +540,7 @@ class StatementCollectorVisitor(BaseVisitor):
                 return
             raise
 
-    def visit_always_comb(self, node):
+    def visit_always_comb(self, node: object) -> None:
         """AlwaysComb: always_comb ... end
 
         无时钟域，组合逻辑
@@ -555,7 +555,7 @@ class StatementCollectorVisitor(BaseVisitor):
 
         self._ctx_stack.pop()
 
-    def visit_always_latch(self, node):
+    def visit_always_latch(self, node: object) -> None:
         """AlwaysLatch: always_latch ... end
 
         无时钟域，锁存器
@@ -704,7 +704,7 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 时序控制
     # =========================================================================
 
-    def visit_timing_control(self, node):
+    def visit_timing_control(self, node: object) -> None:
         """TimingControl: @posedge clk 等
 
         提取时钟，进入 statement
@@ -723,7 +723,7 @@ class StatementCollectorVisitor(BaseVisitor):
         if tc:
             self._ctx_stack.pop()
 
-    def visit_Timed(self, node):
+    def visit_Timed(self, node: object) -> None:
         """Timed: TimedStatement 的语义别名
 
         委托给 visit_timed_statement
@@ -731,7 +731,7 @@ class StatementCollectorVisitor(BaseVisitor):
         # 不直接添加，而是委托给 timed_statement 处理
         self.visit_timed_statement(node)
 
-    def visit_timed_statement(self, node):
+    def visit_timed_statement(self, node: object) -> None:
         """TimedStatement: always @(*) wraps content
 
         进入 stmt
@@ -745,7 +745,7 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 块语句
     # =========================================================================
 
-    def visit_block_statement(self, node):
+    def visit_block_statement(self, node: object) -> None:
         """BlockStatement: begin...end 块
 
         进入 body
@@ -763,12 +763,12 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 条件语句
     # =========================================================================
 
-    def visit_sequential_block(self, node):
+    def visit_sequential_block(self, node: object) -> None:
         """begin...end 块"""
         self._add_statement(node, item_type=ItemType.BLOCK)
         self.generic_visit(node)
 
-    def visit_case_statement(self, node):
+    def visit_case_statement(self, node: object) -> None:
         """CaseStatement: case/endcase
 
         处理所有分支，追踪条件上下文
@@ -931,15 +931,15 @@ class StatementCollectorVisitor(BaseVisitor):
                 return expressions
         return None
 
-    def visit_case(self, node):
+    def visit_case(self, node: object) -> None:
         """case / casex / casez"""
         self.visit_case_statement(node)
 
-    def visit_if(self, node):
+    def visit_if(self, node: object) -> None:
         """if-else 语句"""
         self.visit_conditional_statement(node)
 
-    def visit_conditional_statement(self, node):
+    def visit_conditional_statement(self, node: object) -> None:
         """ConditionalStatement: if/else
 
         处理 ifTrue/ifFalse，追踪条件
@@ -1261,7 +1261,7 @@ class StatementCollectorVisitor(BaseVisitor):
 
         return ""
 
-    def visit_else_clause(self, node):
+    def visit_else_clause(self, node: object) -> None:
         """ElseClause: else 分支
 
         进入 clause
@@ -1275,7 +1275,7 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P1] 表达式语句和赋值
     # =========================================================================
 
-    def visit_expression_statement(self, node):
+    def visit_expression_statement(self, node: object) -> None:
         """ExpressionStatement: 表达式语句
 
         对于语义 AST 节点，进入 expr；对于语法 AST 节点，只添加自身
@@ -1289,21 +1289,21 @@ class StatementCollectorVisitor(BaseVisitor):
             if e:
                 self.visit(e)
 
-    def visit_assignment(self, node):
+    def visit_assignment(self, node: object) -> None:
         """Assignment: 赋值语句 (=, <=)
 
         收集赋值节点
         """
         self._add_statement(node, item_type=ItemType.ASSIGNMENT)
 
-    def visit_invocation(self, node):
+    def visit_invocation(self, node: object) -> None:
         """InvocationExpression: 函数/任务调用
 
         收集调用节点
         """
         self._add_statement(node, item_type=ItemType.INVOCATION)
 
-    def visit_continuous_assignment(self, node):
+    def visit_continuous_assignment(self, node: object) -> None:
         """assign 连续赋值"""
         self._add_statement(node, item_type=ItemType.LOOP)
 
@@ -1311,7 +1311,7 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P2] 循环语句
     # =========================================================================
 
-    def visit_loop_statement(self, node):
+    def visit_loop_statement(self, node: object) -> None:
         """LoopStatement: while/for/repeat
 
         进入 body/statement
@@ -1325,35 +1325,35 @@ class StatementCollectorVisitor(BaseVisitor):
     # [P2] 其他语句类型
     # =========================================================================
 
-    def visit_nonblocking_assignment(self, node):
+    def visit_nonblocking_assignment(self, node: object) -> None:
         """<= 非阻塞赋值"""
         self._add_statement(node, item_type=ItemType.BLOCK)
 
-    def visit_blocking_assignment(self, node):
+    def visit_blocking_assignment(self, node: object) -> None:
         """= 阻塞赋值"""
         self._add_statement(node, item_type=ItemType.JUMP)
 
-    def visit_jump_statement(self, node):
+    def visit_jump_statement(self, node: object) -> None:
         """JumpStatement: return/break/continue"""
         self._add_statement(node, item_type=ItemType.DISABLE)
 
-    def visit_wait_statement(self, node):
+    def visit_wait_statement(self, node: object) -> None:
         """WaitStatement: wait(condition)"""
         self._add_statement(node, item_type=ItemType.STATEMENT)
         self.generic_visit(node)
 
-    def visit_event_control(self, node):
+    def visit_event_control(self, node: object) -> None:
         """EventControl: @clk"""
         self._add_statement(node, item_type=ItemType.STATEMENT)
         stmt = getattr(node, "statement", None)
         if stmt:
             self.visit(stmt)
 
-    def visit_disable_statement(self, node):
+    def visit_disable_statement(self, node: object) -> None:
         """DisableStatement: disable name"""
         self._add_statement(node, item_type=ItemType.STATEMENT)
 
-    def visit_procedural_timing_control(self, node):
+    def visit_procedural_timing_control(self, node: object) -> None:
         """ProceduralTimingControl: #delay"""
         self._add_statement(node, item_type=ItemType.STATEMENT)
         self.generic_visit(node)
