@@ -15,6 +15,8 @@ module_instance_graph.py - 模块实例层级图
 """
 
 import logging
+from typing import Any
+
 from .._safe import _safe_attr, _safe_str
 
 import networkx as nx
@@ -117,7 +119,7 @@ class ModuleInstanceGraph:
             return ".".join(parts)
         return "unknown"
 
-    def build(self, trees: dict[str, any] = None):
+    def build(self, trees: dict[str, Any] | None = None) -> None:
         """构建模块实例图 (三阶段:
         Phase 0: 存储所有模块的端口定义
         Phase 1: 收集所有实例化信息 (全树遍历)
