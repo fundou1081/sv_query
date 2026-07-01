@@ -42,21 +42,21 @@ class SemanticAdapter:
         self._fixed_names = {}  # id(cls) -> name (pyslang Unicode bug workaround)
 
     @property
-    def root(self):
+    def root(self) -> object:
         """返回 Semantic AST root"""
         return self._root
 
     @property
-    def parser(self):
+    def parser(self) -> object:
         """兼容属性: 返回 self 用于模拟 parser.trees"""
         return self
 
     @property
-    def trees(self):
+    def trees(self) -> dict:
         """兼容属性: 返回空字典 (Semantic AST 不需要 trees)"""
         return {}
 
-    def items(self):
+    def items(self) -> object:
         """兼容方法: 返回空迭代器 (Semantic AST 不使用 SyntaxTree)"""
         return iter([])
 
