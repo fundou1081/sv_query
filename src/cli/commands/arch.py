@@ -163,7 +163,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             # Pass 1: replace top-level prefix (e.g. ariane.* → cva6.*).
             pass1 = {}
             for k, v in pti.items():
-                def replace_top(p):
+                def replace_top(p: str) -> str:
                     if not p:
                         return p
                     for tp in top_prefixes:

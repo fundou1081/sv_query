@@ -269,7 +269,7 @@ class ControlFlowAnalyzer:
         """检查两个表达式是否互为否定"""
 
         # 简化检测: a vs !a
-        def normalize(expr):
+        def normalize(expr: str) -> str:
             return expr.replace("!", "").replace(" ", "")
 
         n1 = normalize(expr1)

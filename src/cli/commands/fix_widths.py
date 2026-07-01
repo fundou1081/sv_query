@@ -53,7 +53,7 @@ def _get_syntax_trees_typedefs(tracer) -> list:
     try:
         for st in comp.getSyntaxTrees():
             try:
-                def walk(node):
+                def walk(node: object) -> None:
                     if 'TypedefDeclaration' in type(node).__name__:
                         all_typedefs.append(node)
                     if hasattr(node, 'members') and node.members:
