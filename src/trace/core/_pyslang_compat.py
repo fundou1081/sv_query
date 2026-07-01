@@ -169,7 +169,7 @@ def is_syntax_list(node) -> bool:
     return ("SeparatedList" in kind_str) or ("SyntaxList" in kind_str)
 
 
-def iter_syntax_list(node):
+def iter_syntax_list(node: object) -> list:
     """统一处理 v10 / v11 的 syntax list 遍历
 
     v10 上 `node` 是 SyntaxNode (kind=SeparatedList), 迭代产出 syntax 节点
