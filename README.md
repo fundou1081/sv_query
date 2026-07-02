@@ -32,7 +32,18 @@
 ### 1. 安装
 
 ```bash
+# 1. 克隆仓库
+git clone https://github.com/fundou1081/sv_query.git
+cd sv_query
+
+# 2. 装核心依赖 (networkx, typer, pyslang)
+pip install -r requirements.txt
+
+# 3. 以 editable 模式装 sv_query 本身
 pip install -e .
+
+# 4. 验证 (期望: 2415 collected, ~30s)
+python -m pytest sim/tests/unit sim/tests/cli -q
 ```
 
 ### 2. 准备一个 SV 文件
@@ -1478,6 +1489,8 @@ sv_query/
 2. 安装开发依赖：`pip install -e ".[dev]"`
 3. 运行测试：`pytest sim/tests/ -v`
 4. 提交前确保所有测试通过
+
+> ⚠️ **入坑提醒 (2026-07-02)**: 之前 `pip install -e .` 报 `tool.setuptools must not contain {'package_dir'} properties`. 现在修好了. 如果你看到错, 重装: `pip install -e . --force-reinstall`.
 
 ## 许可
 

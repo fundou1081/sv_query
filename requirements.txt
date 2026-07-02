@@ -1,14 +1,12 @@
-# sv_query dependencies
+# sv_query 核心依赖
+# [FIX 2026-07-02] 跟 pyproject.toml [project.dependencies] 同步.
+# 之前 requirements.txt 缺 typer, pyslang 标 optional (实际是核心依赖).
+# 现在用 pip install -r requirements.txt 装核心依赖, 然后 pip install -e . 装 sv_query.
 
 # Core
 networkx>=3.0
+typer>=0.9
+pyslang>=10.0.0,<12.0.0
 
-# Optional: for better performance
-# scipy>=1.10  # for faster graph algorithms
-
-# Development
-pytest>=7.0
-pytest-cov>=4.0
-
-# Parser (optional)
-# pyslang @ https://github.com/standardcells/pyslang
+# [Stage 6] pyslang 10.0.0+ 和 11.0.0+ 都支持
+# (v11 有 submodule 重构 + semantic 变化, 在 _pyslang_compat.py 兼容)

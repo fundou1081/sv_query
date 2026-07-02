@@ -24,14 +24,17 @@ python3 --version
 git clone https://github.com/fundou1081/sv_query.git
 cd sv_query
 
-# 装依赖 (dev 模式)
-pip install -e ".[dev]"
+# 装核心依赖 (networkx, typer, pyslang) — 全部在 PyPI, 不需要 git clone
+pip install -r requirements.txt
 
-# pyslang 不在 PyPI, 装 GitHub 版
-pip install git+https://github.com/MikePopoloski/pyslang.git
+# 以 editable 模式装 sv_query (会创建 `sv_query` 命令)
+pip install -e ".[dev]"
 
 # 验证 (expect: 2415 collected, ~30s)
 python -m pytest sim/tests/unit sim/tests/cli -q
+
+# 验证 sv_query 命令可用
+sv_query --help
 ```
 
 ### 1.2 第一次跑命令
@@ -320,8 +323,8 @@ python3 -c "import time; a = bytearray(4 * 1024**3); time.sleep(3); del a"
 ### 坑 2: 不要删 `~/.gradle/caches/modules-2/metadata-*/`
 （跟 Java/Maven 有关, 不是 sv_query 项目, 但 OpenClaw 跑 MikuNotes 编译时常见坑）
 
-### 坑 3: pyslang 不在 PyPI
-必须从 GitHub 装: `pip install git+https://github.com/MikePopoloski/pyslang.git`
+### 坑 3: (已过期 2026-07-02) pyslang 现在在 PyPI
+之前说 pyslang 不在 PyPI 需 git 装, 实际是错的. 现在直接 `pip install pyslang` 就走.
 
 ### 坑 4: CI 跑全套超时
 本地跑 `sim/tests/unit sim/tests/cli` 就够 (30s)。全套 25min。
