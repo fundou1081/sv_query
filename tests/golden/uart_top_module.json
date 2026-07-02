@@ -1,0 +1,20 @@
+{
+  "module": "uart_top",
+  "view": "module",
+  "level": 1,
+  "depth": 2,
+  "nodes": [
+    {
+      "id": "uart_top.rx_fifo",
+      "name": "rx_fifo",
+      "kind": "module",
+      "def_name": "sync_fifo",
+      "module_path": "uart_top.rx_fifo",
+      "cluster": "rx_fifo",
+      "depth": 1,
+      "array_name": null,
+      "array_index": null
+    }
+  ],
+  "edges": []
+}
