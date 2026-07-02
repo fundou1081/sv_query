@@ -56,7 +56,15 @@ all = [
 
 [project.scripts]
 # 顶层 CLI 入口
-sv_query = "run_cli:main"
+# [FIX 2026-07-02] 修复 pip install -e . 后 sv_query 命不能用的 bug.
+#   之前试过 4 种方式都失败:
+#   - "run_cli:main": run_cli.py 在仓库根, py-modules 装不出
+#   - "src.cli.main:app": src/ 不被 packages.find 装
+#   - "cli.main:app": src/ 在 sys.path 里, import trace 冲突
+#   - "src.cli.main:app" with src/__init__.py: 跟 import 路径冲突
+#   修复: 改用 "cli._entry:main" (在 cli 包内, 一定装得上, .pth 自动含 src/).
+#   详见 src/cli/_entry.py 顶部的 docstring.
+sv_query = "cli._entry:main"
 
 [project.urls]
 Homepage = "https://github.com/fundou1081/sv_query"
@@ -66,10 +74,36 @@ Issues = "https://github.com/fundou1081/sv_query/issues"
 # -----------------------------------------------------------------------------
 # 配置工具
 # -----------------------------------------------------------------------------
-
-[tool.setuptools]
-packages = ["trace", "cli"]
-package_dir = {"" = "src"}
+# [FIX 2026-07-02] 用 packages.find 自动发现 (跟 package_dir 互斥)
+#   原 [tool.setuptools] + package_dir 在 setuptools>=64 报错:
+#   "configuration error: tool.setuptools must not contain {'package_dir'} properties"
+#
+#   试过的 5 种配置:
+#   1) packages = ["trace", "cli"], package_dir = {"" = "src"} → 报错 (package_dir 被禁)
+#   2) packages.find where=["src"] include=["trace*", "cli*", "applications*"]
+#      → 装为 top-level (trace, cli, applications), 跟 stdlib `trace` 冲突
+#   3) packages.find where=["src"] include=["src.*", "trace*", "cli*", "applications*"]
+#      → 装为 top-level, 仍冲突
+#   4) packages.find where=["src"] include=["src", "src.*"]
+#      → src/ 装为 top-level, 但 setuptools 报 "namespace package conflict"
+#
+#   **根因**: sv_query 用了 Python stdlib 同名模块 'trace'. 不能装为 top-level 'trace'.
+#   修复: 保持 src.X.Y 的原始 import 路径. 用 src.* 但不装 src 本身.
+#   - include = ["src.*", "trace*", "cli*", "applications*"] → 装 src.X 为 top-level
+#     (import cli 等, 但 from src.cli... 仍要靠 sys.path 含 src/ 才能解析)
+#   - 实际上, sv_query 全部代码用 `from src.X.Y import Z`. 不能改, 改几千行.
+#
+#   真正的解: 保留 import 路径不变, 装 src/ 整个作为一个 package (含子包 src/trace, src/cli, src/applications).
+#   这样:
+#     `import src` 可以
+#     `from src.cli.main import app` 可以
+#     `from src.trace.core.compiler import X` 可以
+#   setuptools 报 "package_dir" 错的根因是因为用了 [tool.setuptools].package_dir.
+#   修复: 改用 [tool.setuptools.packages.find] 手动拿 src/ 进去, 让它变成 namespace package.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src", "src.*", "trace*", "cli*", "applications*"]
+namespaces = true
 
 [tool.setuptools.package-data]
 trace = ["py.typed"]
