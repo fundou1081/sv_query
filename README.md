@@ -31,19 +31,44 @@
 
 ### 1. 安装
 
+**要求**: Python 3.11+, git, pip (推荐 23+).
+
+#### 最简 (用 sv_query)
+
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/fundou1081/sv_query.git
 cd sv_query
 
-# 2. 装核心依赖 (networkx, typer, pyslang)
-pip install -r requirements.txt
-
-# 3. 以 editable 模式装 sv_query 本身
+# 2. 装依赖 + sv_query 本身 (一个命令)
 pip install -e .
 
-# 4. 验证 (期望: 2415 collected, ~30s)
-python -m pytest sim/tests/unit sim/tests/cli -q
+# 3. 验证安装成功 (期望看到 19 个子命令: stats, trace, arch, ...)
+sv_query --help
+```
+
+`pip install -e .` 会自动装好核心依赖 (`networkx`, `typer`, `pyslang`),
+不需要单独 `pip install -r requirements.txt` — 后者只是为了老工具 / CI 脚本使用。
+
+#### 完整 (含测试 + lint)
+
+```bash
+# 如果要运行测试 + 推代码
+pip install -e ".[dev]"          # 多装 pytest, pytest-cov, pytest-asyncio, ruff
+python -m pytest sim/tests/unit sim/tests/cli -q   # 期望 ~30s
+ruff check src/ tools/           # lint
+```
+
+#### 可选: graphviz (SVG/PNG 渲染)
+
+```bash
+# macOS
+brew install graphviz
+
+# Ubuntu / Debian
+sudo apt-get install graphviz
+
+# 只用 --format dot/mermaid 不需要 graphviz; 只 --format svg/png 需装
 ```
 
 ### 2. 准备一个 SV 文件
@@ -1490,7 +1515,13 @@ sv_query/
 3. 运行测试：`pytest sim/tests/ -v`
 4. 提交前确保所有测试通过
 
-> ⚠️ **入坑提醒 (2026-07-02)**: 之前 `pip install -e .` 报 `tool.setuptools must not contain {'package_dir'} properties`. 现在修好了. 如果你看到错, 重装: `pip install -e . --force-reinstall`.
+> ⚠️ **入坑提醒 (2026-07-02)**: 之前 `pip install -e .` 报 `tool.setuptools must not contain {'package_dir'} properties`. 修好了. 如果你看到错, 重装: `pip install -e . --force-reinstall`.
+>
+> **依赖**:
+> - 必需: `networkx>=3.0`, `typer>=0.9`, `pyslang>=10.0.0,<12.0.0` (pip 自动装)
+> - 测试: `pytest`, `pytest-cov`, `pytest-asyncio`, `ruff` (`.[dev]` 自动装)
+> - 可选 binary: `graphviz` (只 `--format svg/png` 需要)
+> - 工业项目源码: 测试可选, 不装 → 测试自动 skip (不影响 sv_query 本身)
 
 ## 许可
 
