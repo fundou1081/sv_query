@@ -262,3 +262,13 @@ UVM/SVA Skeleton 自动生成规则（如果存在）
 ---
 
 *本文档由 QClaw 自动生成 - 如有问题请联系维护者*
+## 📌 快速导航 (更新 2026-07-03)
+
+| 类别 | 入口文档 |
+|------|----------|
+| **项目门面** | [README.md](../README.md) |
+| **更新日志** | [CHANGELOG.md](../CHANGELOG.md) ← **新增 2026-07-03** |
+| **用户指南** | [USER_GUIDE.md](USER_GUIDE.md) ← 加了 SV 特性 + 输出格式 + stats |
+| **架构可视化** | [ARCH_VISUALIZATION.md](ARCH_VISUALIZATION.md) ← **新增 2026-07-03** |
+| **arch 实测案例** | [ARCH_EXAMPLES.md](ARCH_EXAMPLES.md) |
+| **OpenTitan 大型项目** | [OPENTITAN_HOWTO.md](OPENTITAN_HOWTO.md) ← 加了大项目运行注意 |

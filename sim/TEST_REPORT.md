@@ -3,7 +3,7 @@
 
 <!-- METADATA -->
 {
-  "generated": "2026-07-02 17:48:31",
+  "generated": "2026-07-03 10:29:30",
   "passed": 1275,
   "failed": 0,
   "skipped": 0,
@@ -17,13 +17,13 @@
 - **失败**: 0
 - **跳过**: 0
 - **总计**: 1275
-- **时间**: 2026-07-02 17:48:31
+- **时间**: 2026-07-03 10:29:30
 
 ## 测试结果详情
 
 | 状态 | 测试ID | 时长(秒) |
 |------|--------|----------|
-| ✅ | `unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_complex_parameter_expression` | 0.026s |
+| ✅ | `unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_complex_parameter_expression` | 0.027s |
 | ✅ | `unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_nested_parameter_reference` | 0.009s |
 | ✅ | `unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_package_parameter` | 0.010s |
 | ✅ | `unit/test_advanced_sv_features.py::TestAdvancedSVFeatures::test_package_with_functions` | 0.014s |
@@ -59,25 +59,25 @@
 | ✅ | `unit/test_channel_classification_underscore.py::test_w_b_ar_r_variants` | 0.000s |
 | ✅ | `unit/test_channel_classification_underscore.py::test_with_module_prefix` | 0.000s |
 | ✅ | `unit/test_channel_classification_underscore.py::test_addr_signals` | 0.000s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_risk_file_vs_filelist_parity` | 0.493s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_risk_no_args_errors` | 0.172s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_cdc_file_vs_filelist_parity` | 0.381s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_cdc_no_args_errors` | 0.171s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_coverage_suggest_file_vs_filelist_parity` | 0.384s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_dataflow_file_vs_filelist_parity` | 0.397s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_controlflow_analyze_file_vs_filelist_parity` | 0.403s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_risk_file_vs_filelist_parity` | 0.456s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_risk_no_args_errors` | 0.173s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_cdc_file_vs_filelist_parity` | 0.384s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_cdc_no_args_errors` | 0.172s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_coverage_suggest_file_vs_filelist_parity` | 0.382s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_dataflow_file_vs_filelist_parity` | 0.403s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_controlflow_analyze_file_vs_filelist_parity` | 0.398s |
 | ✅ | `unit/test_cli_filelist_parity.py::test_controlflow_list_conditioned_file_vs_filelist_parity` | 0.400s |
 | ✅ | `unit/test_cli_filelist_parity.py::test_controlflow_conditions_file_vs_filelist_parity` | 0.399s |
 | ✅ | `unit/test_cli_filelist_parity.py::test_sva_extract_file_vs_filelist_parity` | 0.726s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_sva_coverage_file_vs_filelist_parity` | 0.400s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_sva_timing_file_vs_filelist_parity` | 0.397s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_timing_file_vs_filelist_parity` | 0.389s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_verify_file_vs_filelist_parity` | 0.401s |
-| ✅ | `unit/test_cli_filelist_parity.py::test_visualize_file_vs_filelist_parity` | 0.403s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_sva_coverage_file_vs_filelist_parity` | 0.399s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_sva_timing_file_vs_filelist_parity` | 0.392s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_timing_file_vs_filelist_parity` | 0.386s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_verify_file_vs_filelist_parity` | 0.399s |
+| ✅ | `unit/test_cli_filelist_parity.py::test_visualize_file_vs_filelist_parity` | 0.401s |
 | ✅ | `unit/test_clock_domain.py::TestClockDomain::test_clock_detection` | 0.013s |
 | ✅ | `unit/test_clock_domain.py::TestClockDomain::test_single_clock_domain` | 0.012s |
-| ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_block_comment` | 0.130s |
-| ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_dangle_comment` | 0.049s |
+| ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_block_comment` | 0.148s |
+| ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_dangle_comment` | 0.048s |
 | ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_psum_comment` | 0.048s |
 | ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_instance_name_with_single_line_comment` | 0.048s |
 | ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_multiple_instances_mixed_comments` | 0.049s |
@@ -85,7 +85,7 @@
 | ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_port_direction_with_multiline_comment` | 0.048s |
 | ✅ | `unit/test_comment_handling.py::TestCommentHandling::test_port_direction_with_trailing_comment` | 0.048s |
 | ✅ | `unit/test_controlflow_mutex.py::test_if_else_mutex_not_reported_as_contradiction` | 0.200s |
-| ✅ | `unit/test_controlflow_mutex.py::test_complex_negation_still_warns` | 0.200s |
+| ✅ | `unit/test_controlflow_mutex.py::test_complex_negation_still_warns` | 0.201s |
 | ✅ | `unit/test_coverage_generator.py::TestSourceLocation::test_create_full` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestSourceLocation::test_create_minimal` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestSourceLocation::test_is_empty` | 0.000s |
@@ -146,7 +146,7 @@
 | ✅ | `unit/test_coverage_generator.py::TestMarkdownOutput::test_markdown_with_no_signals` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestMarkdownOutput::test_markdown_with_truncated` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggest::test_cli_module_imports` | 0.002s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggest::test_cli_runs_with_real_sv` | 0.229s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggest::test_cli_runs_with_real_sv` | 0.228s |
 | ✅ | `unit/test_coverage_generator.py::TestCrossModuleDetection::test_decompose_with_cross_module_sets_error` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestCrossModuleDetection::test_dot_separated_simple` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestCrossModuleDetection::test_double_dot_cross_module` | 0.000s |
@@ -182,13 +182,13 @@
 | ✅ | `unit/test_coverage_generator.py::TestSerializationV2C::test_to_json_returns_valid_json` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestSerializationV2C::test_to_json_round_trip_minimal` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestSerializationV2C::test_to_json_unicode_safe` | 0.000s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_does_not_output_markdown` | 0.228s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_has_expected_fields` | 0.228s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_help_no_todo` | 0.224s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_does_not_output_markdown` | 0.226s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_has_expected_fields` | 0.226s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_help_no_todo` | 0.225s |
 | ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_indent_default_is_multiline` | 0.227s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_no_fallback_message` | 0.229s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_outputs_valid_json` | 0.227s |
-| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_with_cross_module_error` | 0.229s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_no_fallback_message` | 0.226s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_outputs_valid_json` | 0.228s |
+| ✅ | `unit/test_coverage_generator.py::TestCLICoverageSuggestJSONV2C::test_cli_json_with_cross_module_error` | 0.231s |
 | ✅ | `unit/test_coverage_generator.py::TestMultiSignalDecomposeV2B::test_decompose_control_blocks_deduped_by_src_dst` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestMultiSignalDecomposeV2B::test_decompose_duplicate_signals_deduped` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestMultiSignalDecomposeV2B::test_decompose_empty_signals_returns_error` | 0.000s |
@@ -205,7 +205,7 @@
 | ✅ | `unit/test_coverage_generator.py::TestCLIMultiSignalsV2B::test_cli_signals_comma_separated` | 0.228s |
 | ✅ | `unit/test_coverage_generator.py::TestCLIMultiSignalsV2B::test_cli_signals_empty_string_errors` | 0.176s |
 | ✅ | `unit/test_coverage_generator.py::TestCLIMultiSignalsV2B::test_cli_signals_no_input_errors` | 0.175s |
-| ✅ | `unit/test_coverage_generator.py::TestCLIMultiSignalsV2B::test_cli_signals_whitespace_trimmed` | 0.228s |
+| ✅ | `unit/test_coverage_generator.py::TestCLIMultiSignalsV2B::test_cli_signals_whitespace_trimmed` | 0.229s |
 | ✅ | `unit/test_coverage_generator.py::TestDecomposeASTIntegrationV2A2::test_decompose_ast_falls_back_when_ast_extraction_fails` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestDecomposeASTIntegrationV2A2::test_decompose_ast_path_evidence_marker` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestDecomposeASTIntegrationV2A2::test_decompose_ast_path_handles_broken_string` | 0.000s |
@@ -215,9 +215,9 @@
 | ✅ | `unit/test_coverage_generator.py::TestGraphBuilderConditionAstV2A2::test_graph_builder_condition_ast_is_real_node` | 0.049s |
 | ✅ | `unit/test_coverage_generator.py::TestGraphBuilderConditionAstV2A2::test_graph_builder_populates_condition_ast` | 0.047s |
 | ✅ | `unit/test_coverage_generator.py::TestGraphBuilderAdapterV2A2::test_decompose_real_sv_uses_ast_path` | 0.048s |
-| ✅ | `unit/test_coverage_generator.py::TestGraphBuilderAdapterV2A2::test_graph_has_adapter_after_build` | 0.047s |
+| ✅ | `unit/test_coverage_generator.py::TestGraphBuilderAdapterV2A2::test_graph_has_adapter_after_build` | 0.046s |
 | ✅ | `unit/test_coverage_generator.py::TestCLIAstUtilizationV2A2::test_cli_json_ast_extract_mentions_pyslang_kind` | 0.229s |
-| ✅ | `unit/test_coverage_generator.py::TestCLIAstUtilizationV2A2::test_cli_json_contains_ast_extract_evidence` | 0.230s |
+| ✅ | `unit/test_coverage_generator.py::TestCLIAstUtilizationV2A2::test_cli_json_contains_ast_extract_evidence` | 0.229s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1::test_factory_ctx_priority_over_sig_cond` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1::test_factory_default_kind_and_assign_type` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1::test_factory_passes_all_fields` | 0.000s |
@@ -248,29 +248,29 @@
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1Cycle6::test_factory_with_modport_dir` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1Cycle6::test_factory_with_none_sig_cond_ast` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeFactoryP1Cycle6::test_factory_with_special_chars_in_expression` | 0.000s |
-| ✅ | `unit/test_coverage_generator.py::TestGraphBuilderFactoryRegressionP1::test_factory_used_in_graph_builder_e2e` | 0.049s |
+| ✅ | `unit/test_coverage_generator.py::TestGraphBuilderFactoryRegressionP1::test_factory_used_in_graph_builder_e2e` | 0.048s |
 | ✅ | `unit/test_coverage_generator.py::TestGraphBuilderFactoryRegressionP1::test_graph_builder_condition_ast_filled` | 0.047s |
 | ✅ | `unit/test_coverage_generator.py::TestGraphBuilderFactoryRegressionP1::test_graph_builder_factory_usage_dominates` | 0.001s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocation100Pct::test_combined_condition_ast_fills_source_location` | 0.047s |
-| ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocationEvidence::test_graph_builder_populates_source_location_on_edges` | 0.046s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocationEvidence::test_graph_builder_populates_source_location_on_edges` | 0.047s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocationEvidence::test_semantic_adapter_get_source_location_returns_real_data` | 0.003s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocationEvidence::test_trace_edge_has_source_location_field` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEdgeSourceLocationEvidence::test_trace_edge_source_location_can_be_set` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_evidence_dataclass_exists` | 0.001s |
-| ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolve_unknown_signal_returns_empty_evidence` | 0.009s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolve_unknown_signal_returns_empty_evidence` | 0.008s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolver_class_exists` | 0.000s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolver_finds_enclosing_always` | 0.011s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolver_finds_enclosing_if` | 0.012s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceResolverV2::test_resolver_resolve_returns_evidence` | 0.011s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceCLIV2::test_evidence_command_exists` | 0.002s |
-| ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceCLIV2::test_evidence_json_output` | 0.227s |
+| ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceCLIV2::test_evidence_json_output` | 0.232s |
 | ✅ | `unit/test_coverage_generator.py::TestTraceEvidenceCLIV2::test_evidence_text_output` | 0.228s |
 | ✅ | `unit/test_cross_module_trace.py::TestPortToInternalMapping::test_module_def_to_instance_port` | 0.000s |
 | ✅ | `unit/test_cross_module_trace.py::TestPortToInternalMapping::test_leaf_module_to_instance_port` | 0.000s |
-| ✅ | `unit/test_cross_module_trace.py::TestCrossModuleTrace::test_wrapper_module_def_awready_finds_driver` | 0.070s |
-| ✅ | `unit/test_cross_module_trace.py::TestCrossModuleTrace::test_deep_hierarchy_top_port_finds_leaf_reg` | 0.055s |
+| ✅ | `unit/test_cross_module_trace.py::TestCrossModuleTrace::test_wrapper_module_def_awready_finds_driver` | 0.069s |
+| ✅ | `unit/test_cross_module_trace.py::TestCrossModuleTrace::test_deep_hierarchy_top_port_finds_leaf_reg` | 0.054s |
 | ✅ | `unit/test_cross_module_trace.py::TestCrossModuleTrace::test_crossbar_awvalid_finds_master_driver` | 0.063s |
-| ✅ | `unit/test_cross_module_trace.py::TestNoInfiniteLoop::test_no_infinite_loop_on_cyclic_instance` | 0.089s |
+| ✅ | `unit/test_cross_module_trace.py::TestNoInfiniteLoop::test_no_infinite_loop_on_cyclic_instance` | 0.088s |
 | ✅ | `unit/test_cross_module_trace_pulp.py::TestPortToInternalMapping::test_axi_xbar_intf_port_to_internal` | 0.000s |
 | ✅ | `unit/test_cross_module_trace_pulp.py::TestCrossModuleTrace::test_dp_ram_s_axi_awvalid_chains_through_assign` | 0.000s |
 | ✅ | `unit/test_cross_module_trace_pulp.py::TestCrossModuleTrace::test_dp_ram_m_axi_awvalid_has_internal_driver` | 0.000s |
@@ -280,21 +280,21 @@
 | ✅ | `unit/test_cross_module_trace_pulp.py::TestCrossModuleSignals::test_at_least_1_internal_xbar_awvalid_path` | 0.000s |
 | ✅ | `unit/test_crossbar_addr_channel_classification.py::test_wc_classified_as_aw` | 0.000s |
 | ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_bare_signal_suggests_hierarchical` | 0.201s |
-| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_lists_available_signals` | 0.200s |
-| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_only_first_invalid_signal_reported` | 0.200s |
-| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_valid_hierarchical_works` | 0.200s |
+| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_lists_available_signals` | 0.199s |
+| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_only_first_invalid_signal_reported` | 0.199s |
+| ✅ | `unit/test_dataflow_error_hint.py::test_dataflow_valid_hierarchical_works` | 0.199s |
 | ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_help` | 0.220s |
 | ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_missing_file` | 0.199s |
-| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_missing_protocol` | 0.193s |
+| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_missing_protocol` | 0.192s |
 | ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_no_findings_npu` | 0.325s |
-| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_json_output` | 0.478s |
+| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_json_output` | 0.477s |
 | ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_axi4_opentitan` | 0.474s |
-| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_all_protocols_load` | 1.160s |
+| ✅ | `unit/test_deadlock_cli.py::test_cli_deadlock_all_protocols_load` | 1.154s |
 | ✅ | `unit/test_deadlock_detector.py::test_bfs_drivers_direct` | 0.000s |
 | ✅ | `unit/test_deadlock_detector.py::test_bfs_drivers_chain` | 0.000s |
 | ✅ | `unit/test_deadlock_detector.py::test_bfs_drivers_max_depth` | 0.000s |
 | ✅ | `unit/test_deadlock_detector.py::test_bfs_path_returns_path` | 0.000s |
-| ✅ | `unit/test_deadlock_detector.py::test_detect_combinational_loop_basic` | 0.015s |
+| ✅ | `unit/test_deadlock_detector.py::test_detect_combinational_loop_basic` | 0.016s |
 | ✅ | `unit/test_deadlock_detector.py::test_detect_no_finding_when_independent` | 0.007s |
 | ✅ | `unit/test_deadlock_detector.py::test_detect_combinational_loop_chain` | 0.007s |
 | ✅ | `unit/test_deadlock_detector.py::test_detect_cross_channel_loop` | 0.007s |
@@ -308,40 +308,40 @@
 | ✅ | `unit/test_fix_imports.py::test_extract_definitions_finds_typedef` | 0.001s |
 | ✅ | `unit/test_fix_imports.py::test_scan_project_finds_identifier` | 0.001s |
 | ✅ | `unit/test_fix_imports.py::test_scan_project_returns_none_for_missing` | 0.001s |
-| ✅ | `unit/test_fix_imports.py::test_fix_imports_lists_undefined_identifiers` | 0.197s |
-| ✅ | `unit/test_fix_imports.py::test_fix_imports_explicit_project_root` | 0.199s |
-| ✅ | `unit/test_fix_imports.py::test_fix_imports_json_output` | 0.200s |
+| ✅ | `unit/test_fix_imports.py::test_fix_imports_lists_undefined_identifiers` | 0.201s |
+| ✅ | `unit/test_fix_imports.py::test_fix_imports_explicit_project_root` | 0.198s |
+| ✅ | `unit/test_fix_imports.py::test_fix_imports_json_output` | 0.198s |
 | ✅ | `unit/test_fix_imports.py::test_fix_imports_write_new_filelist` | 0.200s |
-| ✅ | `unit/test_fix_imports.py::test_fix_imports_help_documented` | 0.223s |
+| ✅ | `unit/test_fix_imports.py::test_fix_imports_help_documented` | 0.221s |
 | ✅ | `unit/test_fix_report.py::test_fix_recommendations_cover_common_codes` | 0.001s |
-| ✅ | `unit/test_fix_report.py::test_fix_report_lists_categories` | 0.206s |
-| ✅ | `unit/test_fix_report.py::test_fix_report_json_structure` | 0.206s |
+| ✅ | `unit/test_fix_report.py::test_fix_report_lists_categories` | 0.205s |
+| ✅ | `unit/test_fix_report.py::test_fix_report_json_structure` | 0.205s |
 | ✅ | `unit/test_fix_report.py::test_fix_report_clean_project` | 0.192s |
-| ✅ | `unit/test_fix_report.py::test_fix_report_counts_auto_vs_manual` | 0.206s |
-| ✅ | `unit/test_fix_report.py::test_fix_report_suggests_next_step` | 0.207s |
-| ✅ | `unit/test_fix_report.py::test_fix_report_help_documented` | 0.219s |
+| ✅ | `unit/test_fix_report.py::test_fix_report_counts_auto_vs_manual` | 0.205s |
+| ✅ | `unit/test_fix_report.py::test_fix_report_suggests_next_step` | 0.205s |
+| ✅ | `unit/test_fix_report.py::test_fix_report_help_documented` | 0.218s |
 | ✅ | `unit/test_fix_timescale.py::test_has_timescale_detects_backtick_timescale` | 0.000s |
 | ✅ | `unit/test_fix_timescale.py::test_insert_timescale_idempotent` | 0.000s |
 | ✅ | `unit/test_fix_timescale.py::test_insert_timescale_at_top` | 0.000s |
-| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_dry_run_lists_files` | 0.196s |
+| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_dry_run_lists_files` | 0.195s |
 | ✅ | `unit/test_fix_timescale.py::test_fix_timescale_apply_modifies_and_backs_up` | 0.196s |
-| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_idempotent` | 0.391s |
+| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_idempotent` | 0.390s |
 | ✅ | `unit/test_fix_timescale.py::test_fix_timescale_inserted_at_line_1` | 0.194s |
 | ✅ | `unit/test_fix_timescale.py::test_fix_timescale_custom_value` | 0.194s |
-| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_no_backup` | 0.195s |
-| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_default_skips_svh` | 0.194s |
-| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_help_documented` | 0.220s |
+| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_no_backup` | 0.194s |
+| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_default_skips_svh` | 0.192s |
+| ✅ | `unit/test_fix_timescale.py::test_fix_timescale_help_documented` | 0.219s |
 | ✅ | `unit/test_fix_widths.py::test_parse_clog2_literal` | 0.000s |
 | ✅ | `unit/test_fix_widths.py::test_parse_clog2_macro` | 0.000s |
 | ✅ | `unit/test_fix_widths.py::test_resolve_macro_value_literal` | 0.000s |
 | ✅ | `unit/test_fix_widths.py::test_resolve_macro_value_indirect` | 0.000s |
 | ✅ | `unit/test_fix_widths.py::test_resolve_macro_value_undefined` | 0.000s |
 | ✅ | `unit/test_fix_widths.py::test_evaluate_clog2_pyslang` | 0.000s |
-| ✅ | `unit/test_fix_widths.py::test_fix_widths_resolves_literal_and_macro` | 0.185s |
-| ✅ | `unit/test_fix_widths.py::test_fix_widths_json_structure` | 0.186s |
-| ✅ | `unit/test_fix_widths.py::test_fix_widths_help_documented` | 0.221s |
+| ✅ | `unit/test_fix_widths.py::test_fix_widths_resolves_literal_and_macro` | 0.186s |
+| ✅ | `unit/test_fix_widths.py::test_fix_widths_json_structure` | 0.187s |
+| ✅ | `unit/test_fix_widths.py::test_fix_widths_help_documented` | 0.219s |
 | ✅ | `unit/test_function_expression.py::TestFunctionExpression::test_binary_expression_in_function` | 0.013s |
-| ✅ | `unit/test_function_expression.py::TestFunctionExpression::test_function_call_drivers` | 0.012s |
+| ✅ | `unit/test_function_expression.py::TestFunctionExpression::test_function_call_drivers` | 0.011s |
 | ✅ | `unit/test_get_signal_identifier.py::TestGetSignalIdentifierName::test_identifier_name_without_leading_comment` | 0.018s |
 | ✅ | `unit/test_get_signal_identifier.py::TestGetSignalIdentifierName::test_all_signal_nodes_clean` | 0.018s |
 | ✅ | `unit/test_golden_diff.py::test_perfect_match` | 0.025s |
@@ -445,12 +445,12 @@
 | ✅ | `unit/test_handshake_fusion.py::TestNameBasedHandshakeProvider::test_verilog_axi_style` | 0.000s |
 | ✅ | `unit/test_handshake_fusion.py::TestNameBasedHandshakeProvider::test_unrelated_pair_returns_wire_passthrough` | 0.000s |
 | ✅ | `unit/test_handshake_fusion.py::TestNameBasedHandshakeProvider::test_non_anchor_pair_returns_none_or_wire` | 0.000s |
-| ✅ | `unit/test_handshake_fusion.py::TestMockProvider::test_inject_into_detector` | 0.028s |
+| ✅ | `unit/test_handshake_fusion.py::TestMockProvider::test_inject_into_detector` | 0.029s |
 | ✅ | `unit/test_handshake_fusion.py::TestMockProvider::test_passthrough_lowers_score` | 0.026s |
-| ✅ | `unit/test_handshake_fusion.py::TestFourWayFusion::test_all_four_scores_populated` | 0.026s |
+| ✅ | `unit/test_handshake_fusion.py::TestFourWayFusion::test_all_four_scores_populated` | 0.027s |
 | ✅ | `unit/test_handshake_fusion.py::TestFourWayFusion::test_fusion_improves_confidence` | 0.031s |
 | ✅ | `unit/test_handshake_fusion.py::TestFourWayFusion::test_handshake_boosts_full_more_than_lite` | 0.032s |
-| ✅ | `unit/test_handshake_fusion.py::TestPerformance::test_detect_with_handshake_fast` | 0.063s |
+| ✅ | `unit/test_handshake_fusion.py::TestPerformance::test_detect_with_handshake_fast` | 0.064s |
 | ✅ | `unit/test_handshake_mwc_mrc.py::TestReadyOrValidPattern::test_m_wc_m_rc_recognized[m_wc_valid]` | 0.000s |
 | ✅ | `unit/test_handshake_mwc_mrc.py::TestReadyOrValidPattern::test_m_wc_m_rc_recognized[m_wc_ready]` | 0.000s |
 | ✅ | `unit/test_handshake_mwc_mrc.py::TestReadyOrValidPattern::test_m_wc_m_rc_recognized[m_wc_select]` | 0.000s |
@@ -475,7 +475,7 @@
 | ✅ | `unit/test_issue33_literal_edge.py::TestIssue33LiteralEdge::test_literal_edge_no_module_prefix` | 0.012s |
 | ✅ | `unit/test_issue33_literal_edge.py::TestIssue33LiteralEdge::test_no_literal_node_created` | 0.012s |
 | ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_generate_block_no_crash` | 0.013s |
-| ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_generate_with_parameterized_module` | 0.012s |
+| ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_generate_with_parameterized_module` | 0.011s |
 | ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_get_instance_after_generate` | 0.010s |
 | ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_if_generate_instance` | 0.008s |
 | ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_loop_generate_instance` | 0.011s |
@@ -483,7 +483,7 @@
 | ✅ | `unit/test_mig_generate_block.py::TestMIGGenerateBlock::test_nested_generate_block` | 0.012s |
 | ✅ | `unit/test_mig_validator.py::TestCompareWithExtract::test_simple_compare_runs` | 0.006s |
 | ✅ | `unit/test_mig_validator.py::TestCompareWithExtract::test_simple_no_utility_cells` | 0.006s |
-| ✅ | `unit/test_mig_validator.py::TestVerifySpecificPort::test_simple_verify_existing_port` | 0.004s |
+| ✅ | `unit/test_mig_validator.py::TestVerifySpecificPort::test_simple_verify_existing_port` | 0.003s |
 | ✅ | `unit/test_mig_validator.py::TestVerifySpecificPort::test_simple_verify_nonexistent_port` | 0.003s |
 | ✅ | `unit/test_module_extractor.py::test_truncate_depth_0_returns_module_name` | 0.000s |
 | ✅ | `unit/test_module_extractor.py::test_truncate_depth_1_returns_last_instance` | 0.000s |
@@ -505,14 +505,14 @@
 | ✅ | `unit/test_native_adapter_parity.py::TestPerformanceComparison::test_perf_informational` | 0.005s |
 | ✅ | `unit/test_native_adapter_parity.py::TestNativeAdapterParity::test_generate_block_parity` | 0.009s |
 | ✅ | `unit/test_native_adapter_parity.py::TestNativeAdapterParity::test_multi_depth_parity` | 0.008s |
-| ✅ | `unit/test_native_adapter_parity.py::TestNativeAdapterParity::test_simple_parity` | 0.007s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_ansi_still_works` | 0.003s |
+| ✅ | `unit/test_native_adapter_parity.py::TestNativeAdapterParity::test_simple_parity` | 0.008s |
+| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_ansi_still_works` | 0.004s |
 | ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_comma_separated_direction_inheritance` | 0.004s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_mixed_port_declaration` | 0.003s |
+| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_mixed_port_declaration` | 0.004s |
 | ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_basic` | 0.004s |
 | ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_no_ports` | 0.003s |
 | ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_param_width` | 0.004s |
-| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_with_direction` | 0.003s |
+| ✅ | `unit/test_non_ansi_port.py::TestNonAnsiPortDeclaration::test_non_ansi_with_direction` | 0.004s |
 | ✅ | `unit/test_normalize_filelist.py::TestVerilogAxiChannelPrefix::test_channel_prefix_stripped[s_axi_a_awvalid-awvalid]` | 0.000s |
 | ✅ | `unit/test_normalize_filelist.py::TestVerilogAxiChannelPrefix::test_channel_prefix_stripped[s_axi_a_awready-awready]` | 0.000s |
 | ✅ | `unit/test_normalize_filelist.py::TestVerilogAxiChannelPrefix::test_channel_prefix_stripped[s_axi_a_awaddr-awaddr]` | 0.000s |
@@ -549,21 +549,21 @@
 | ✅ | `unit/test_normalize_filelist.py::TestStripPrefixOrdering::test_longest_prefix_wins` | 0.000s |
 | ✅ | `unit/test_normalize_filelist.py::TestDefaultConfigParity::test_default_includes_verilog_axi_channel_prefix` | 0.000s |
 | ✅ | `unit/test_normalize_filelist.py::TestDefaultConfigParity::test_default_and_yaml_have_same_verilog_axi_prefixes` | 0.001s |
-| ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_design_decision_summary` | 0.054s |
+| ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_design_decision_summary` | 0.055s |
 | ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_p3_1_bit_select_edges_have_correct_kind` | 0.054s |
 | ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_p3_1_part_select_is_valid` | 0.054s |
 | ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_p3_2_literal_edges_exist` | 0.054s |
 | ✅ | `unit/test_p3_bugs.py::TestP3DesignDecisions::test_p3_2_reset_edges_have_correct_kind` | 0.054s |
-| ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_chained_param_references` | 0.051s |
+| ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_chained_param_references` | 0.052s |
 | ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_complex_expr` | 0.050s |
 | ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_divide` | 0.050s |
 | ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_in_width` | 0.050s |
 | ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_param_simple` | 0.050s |
 | ✅ | `unit/test_param_expression_resolution.py::TestParamExpressionResolution::test_param_referencing_subtract` | 0.050s |
-| ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_cva6_parameter` | 0.050s |
+| ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_cva6_parameter` | 0.049s |
 | ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_localparam` | 0.049s |
 | ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_multiple_parameters` | 0.050s |
-| ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_no_parameters` | 0.050s |
+| ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_no_parameters` | 0.049s |
 | ✅ | `unit/test_parameter_extraction.py::TestParameterExtraction::test_simple_parameter` | 0.050s |
 | ✅ | `unit/test_pattern_learner.py::TestAXI4Channels::test_aw_channel_groups_address_write_signals` | 0.000s |
 | ✅ | `unit/test_pattern_learner.py::TestAXI4Channels::test_w_channel_groups_write_data` | 0.000s |
@@ -612,11 +612,11 @@
 | ✅ | `unit/test_pr4_visualize_l2.py::TestEdgesFromMIG::test_no_binary_garbage` | 0.000s |
 | ✅ | `unit/test_pr4_visualize_l2.py::TestMIGNoneGraceful::test_mig_none_returns_empty` | 0.000s |
 | ✅ | `unit/test_pr4_visualize_l2.py::TestMIGNoneGraceful::test_empty_instances_returns_empty` | 0.000s |
-| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_outputs_edges_field` | 0.241s |
-| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_level_is_1_when_no_edges` | 0.240s |
-| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_cluster_field_in_nodes` | 0.272s |
-| ✅ | `unit/test_pr4_visualize_l2.py::TestBackwardCompat::test_no_mig_flag_returns_no_edges` | 0.240s |
-| ✅ | `unit/test_pr4_visualize_l2.py::TestBackwardCompat::test_no_edges_flag_returns_no_edges` | 0.238s |
+| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_outputs_edges_field` | 0.240s |
+| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_level_is_1_when_no_edges` | 0.239s |
+| ✅ | `unit/test_pr4_visualize_l2.py::TestCLIIntegration::test_cli_cluster_field_in_nodes` | 0.238s |
+| ✅ | `unit/test_pr4_visualize_l2.py::TestBackwardCompat::test_no_mig_flag_returns_no_edges` | 0.238s |
+| ✅ | `unit/test_pr4_visualize_l2.py::TestBackwardCompat::test_no_edges_flag_returns_no_edges` | 0.239s |
 | ✅ | `unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_comb` | 0.005s |
 | ✅ | `unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_ff` | 0.004s |
 | ✅ | `unit/test_procedural_blocks.py::TestProceduralBlocks::test_detect_always_latch` | 0.004s |
@@ -646,16 +646,16 @@
 | ✅ | `unit/test_protocol_detector.py::TestChannelCompleteness::test_all_5_channels_present_axi4_full` | 0.007s |
 | ✅ | `unit/test_protocol_detector.py::TestChannelCompleteness::test_required_signals_matched` | 0.007s |
 | ✅ | `unit/test_protocol_detector.py::TestVariantDetection::test_full_vs_lite_disambiguation` | 0.011s |
-| ✅ | `unit/test_protocol_detector.py::TestVariantDetection::test_full_higher_confidence_than_lite` | 0.011s |
+| ✅ | `unit/test_protocol_detector.py::TestVariantDetection::test_full_higher_confidence_than_lite` | 0.017s |
 | ✅ | `unit/test_protocol_detector.py::TestNamingStyleCompatibility::test_chisel_style_detected` | 0.004s |
-| ✅ | `unit/test_protocol_detector.py::TestNamingStyleCompatibility::test_verilog_axi_style_detected` | 0.003s |
-| ✅ | `unit/test_protocol_detector.py::TestFusionSources::test_fusion_result_has_4_components` | 0.007s |
+| ✅ | `unit/test_protocol_detector.py::TestNamingStyleCompatibility::test_verilog_axi_style_detected` | 0.004s |
+| ✅ | `unit/test_protocol_detector.py::TestFusionSources::test_fusion_result_has_4_components` | 0.008s |
 | ✅ | `unit/test_protocol_detector.py::TestFusionSources::test_fusion_weights_sum_to_one` | 0.000s |
 | ✅ | `unit/test_protocol_detector.py::TestSignalMapping::test_basic` | 0.000s |
 | ✅ | `unit/test_protocol_detector.py::TestSignalMapping::test_unknown_match` | 0.000s |
 | ✅ | `unit/test_protocol_detector.py::TestPerformance::test_axi4_30_signals_fast` | 0.007s |
 | ✅ | `unit/test_protocol_detector.py::TestPerformance::test_empty_signals` | 0.000s |
-| ✅ | `unit/test_protocol_json_output.py::test_json_output_pure_json` | 0.211s |
+| ✅ | `unit/test_protocol_json_output.py::test_json_output_pure_json` | 0.212s |
 | ✅ | `unit/test_protocol_json_output.py::test_analyzing_message_on_stderr` | 0.209s |
 | ✅ | `unit/test_protocol_json_output.py::test_result_to_dict_helper` | 0.001s |
 | ✅ | `unit/test_protocol_schema.py::TestLoadAXI4Schema::test_load_default_axi4` | 0.038s |
@@ -697,8 +697,8 @@
 | ✅ | `unit/test_protocol_semantics.py::test_channel_lookup_missing` | 0.007s |
 | ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_tlul` | 0.192s |
 | ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_axi4` | 0.192s |
-| ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_json` | 0.193s |
-| ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_missing_protocol` | 0.193s |
+| ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_json` | 0.192s |
+| ✅ | `unit/test_protocol_semantics.py::test_cli_semantics_missing_protocol` | 0.191s |
 | ✅ | `unit/test_protocol_v2_schemas.py::TestAllSchemasLoad::test_load_6_protocols` | 0.000s |
 | ✅ | `unit/test_protocol_v2_schemas.py::TestAllSchemasLoad::test_each_protocol_has_channels` | 0.000s |
 | ✅ | `unit/test_protocol_v2_schemas.py::TestAllSchemasLoad::test_each_protocol_has_variants` | 0.000s |
@@ -731,39 +731,39 @@
 | ✅ | `unit/test_protocol_v2_schemas.py::TestConfidenceQuality::test_confidence_above_threshold[make_wishbone_classic_sigs-Wishbone-WISHBONE_CLASSIC-0.4]` | 0.001s |
 | ✅ | `unit/test_protocol_v2_schemas.py::TestConfidenceQuality::test_confidence_above_threshold[make_wishbone_pipelined_sigs-Wishbone-WISHBONE_PIPELINED-0.4]` | 0.002s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[clk (1-bit scalar (logic))]` | 0.095s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[rst_n (1-bit scalar (logic))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[rst_n (1-bit scalar (logic))]` | 0.093s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[enable_i (1-bit scalar (logic))]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[valid_i (1-bit scalar (logic))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[ready_o (1-bit scalar (logic))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[trig_i (1-bit scalar (logic))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[data_i (1D logic[WIDTH-1:0] (WIDTH=32))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[data_o (1D logic[WIDTH-1:0] (WIDTH=32))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[half_i (1D logic[WIDTH/2-1:0] (WIDTH=32, /2=16))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[quarter_o (1D logic[WIDTH/4-1:0] (WIDTH=32, /4=8))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_i (1D logic[N_SRC-1:0] (N_SRC=32))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[depth_idx_i ($clog2(DEPTH)=2 (DEPTH=4))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[count_idx_o ($clog2(COUNT)=3 (COUNT=8))]` | 0.091s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_idx_o ($clog2(N_SRC)=5 (N_SRC=32))]` | 0.091s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[ready_o (1-bit scalar (logic))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[trig_i (1-bit scalar (logic))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[data_i (1D logic[WIDTH-1:0] (WIDTH=32))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[data_o (1D logic[WIDTH-1:0] (WIDTH=32))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[half_i (1D logic[WIDTH/2-1:0] (WIDTH=32, /2=16))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[quarter_o (1D logic[WIDTH/4-1:0] (WIDTH=32, /4=8))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_i (1D logic[N_SRC-1:0] (N_SRC=32))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[depth_idx_i ($clog2(DEPTH)=2 (DEPTH=4))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[count_idx_o ($clog2(COUNT)=3 (COUNT=8))]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_idx_o ($clog2(N_SRC)=5 (N_SRC=32))]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_i (typedef word_t \u2192 logic[31:0])]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_o (typedef word_t \u2192 logic[31:0])]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_o (typedef word_t \u2192 logic[31:0])]` | 0.093s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[halfword_i (typedef halfword_t \u2192 logic[15:0])]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[byte_i (typedef byte_t \u2192 logic[7:0])]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[state_i (typedef enum state_t (4 vals, ceil(log2(4))=2))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[state_o (typedef enum state_t (4 vals))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[instr_i (typedef packed struct (8+24=32))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[instr_o (typedef packed struct (8+24=32))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[state_o (typedef enum state_t (4 vals))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[instr_i (typedef packed struct (8+24=32))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[instr_o (typedef packed struct (8+24=32))]` | 0.094s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_u_i (typedef packed union (max(32, 32)=32))]` | 0.094s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_u_o (typedef packed union (max(32, 32)=32))]` | 0.093s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[cached_word_i (typedef cached_word_t \u2192 word_t \u2192 logic[31:0])]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[cached_state_o (typedef cached_state_t \u2192 state_t (2-bit enum))]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[matrix_i (2D logic[DEPTH-1:0][WIDTH-1:0] (\u5916\u5c42=4))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[bytes_o (2D logic[COUNT-1:0][7:0] (\u5916\u5c42=8))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[pipe_q (internal logic[WIDTH-1:0])]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[bytes_o (2D logic[COUNT-1:0][7:0] (\u5916\u5c42=8))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[pipe_q (internal logic[WIDTH-1:0])]` | 0.094s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[half_q (internal logic[WIDTH/2-1:0])]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[depth_idx_q (internal $clog2(DEPTH))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[count_idx_q (internal $clog2(COUNT))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_idx_q (internal $clog2(N_SRC))]` | 0.092s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[fsm_q (internal typedef state_t)]` | 0.092s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[depth_idx_q (internal $clog2(DEPTH))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[count_idx_q (internal $clog2(COUNT))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[src_idx_q (internal $clog2(N_SRC))]` | 0.093s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[fsm_q (internal typedef state_t)]` | 0.093s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[decoded_q (internal typedef instr_t (packed struct))]` | 0.093s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[word_u_q (internal typedef word_u (packed union))]` | 0.092s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPyslangTypeExtraction::test_type_taxonomy_signal[local_reg (module-scope typedef local_word_t)]` | 0.092s |
@@ -798,19 +798,19 @@
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPicoRV32::test_trap_1bit` | 0.000s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPicoRV32::test_irq_32bit_input` | 0.000s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPicoRV32::test_mem_ready_1bit` | 0.000s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_top_level_signal` | 0.069s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_top_level_signal` | 0.067s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_top_level_1bit` | 0.068s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_top_level_internal_state` | 0.067s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_submodule_1level` | 0.067s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_submodule_2level_data` | 0.067s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_submodule_2level_clog2` | 0.067s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_nonexistent_submodule_returns_none` | 0.067s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_submodule_signal_nonexistent` | 0.067s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_1level_typedef` | 0.031s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestCrossModuleHierarchical::test_submodule_signal_nonexistent` | 0.066s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_1level_typedef` | 0.032s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_2level_typedef_chain` | 0.031s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_3level_typedef_chain` | 0.030s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_import_star_pattern` | 0.030s |
-| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_mixed_with_parameter` | 0.030s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_import_star_pattern` | 0.029s |
+| ✅ | `unit/test_pyslang_type_extraction.py::TestMultiPackageTypedefChain::test_mixed_with_parameter` | 0.031s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPackedStructFieldExtraction::test_simple_2_field_struct` | 0.000s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPackedStructFieldExtraction::test_4_field_struct_4bytes` | 0.000s |
 | ✅ | `unit/test_pyslang_type_extraction.py::TestPackedStructFieldExtraction::test_non_uniform_widths` | 0.000s |
@@ -841,7 +841,7 @@
 | ✅ | `unit/test_safe.py::test_base_pyslang_adapter_clean_name_uses_canonical` | 0.000s |
 | ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_always_blocks` | 0.004s |
 | ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_assignments` | 0.004s |
-| ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_module_name` | 0.004s |
+| ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_module_name` | 0.003s |
 | ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_modules` | 0.003s |
 | ✅ | `unit/test_semantic_adapter.py::TestSemanticAdapter::test_get_port_names` | 0.004s |
 | ✅ | `unit/test_signal_classify_yaml.py::test_default_config_is_builtin` | 0.000s |
@@ -856,14 +856,14 @@
 | ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_identifier_name` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_integer_literal` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_scoped_name` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_element_select` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_element_select` | 0.003s |
 | ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_visit_range_select` | 0.003s |
-| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_concatenation` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_conditional` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_generic_visit` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_add_expression` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_concatenation` | 0.003s |
+| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_get_all_signals_conditional` | 0.003s |
+| ✅ | `unit/test_signal_expression_visitor.py::TestSignalExpressionVisitor::test_generic_visit` | 0.003s |
+| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_add_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_subtract_expression` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_multiply_expression` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_multiply_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_divide_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_binary_and_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_binary_or_expression` | 0.004s |
@@ -874,8 +874,8 @@
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_case_equality_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_case_inequality_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_less_than_expression` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_greater_than_expression` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_less_than_equal_expression` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_greater_than_expression` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_less_than_equal_expression` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_greater_than_equal_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_wildcard_equality_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_binary_unary.py::TestBinaryExpressions::test_wildcard_inequality_expression` | 0.004s |
@@ -929,26 +929,26 @@
 | ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorEdgeCases::test_visit_none` | 0.000s |
 | ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorEdgeCases::test_visit_unknown_kind` | 0.000s |
 | ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorEdgeCases::test_get_all_signals_empty` | 0.000s |
-| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorEdgeCases::test_get_all_signals_literal` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_concatenation` | 0.011s |
-| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_conditional` | 0.013s |
-| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_member_access` | 0.014s |
+| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorEdgeCases::test_get_all_signals_literal` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_concatenation` | 0.012s |
+| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_conditional` | 0.014s |
+| ✅ | `unit/test_signal_expression_visitor_coverage.py::TestSignalExpressionVisitorIntegration::test_trace_driver_through_member_access` | 0.015s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestEmptyArgument::test_empty_argument_in_call` | 0.000s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestEmptyArgument::test_empty_argument_placeholder` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestInsideExpression::test_inside_expression_basic` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestEmptyArgument::test_empty_argument_placeholder` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestInsideExpression::test_inside_expression_basic` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestInsideExpression::test_inside_expression_with_signal` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestMinTypMaxExpression::test_min_typ_max_constant` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestMinTypMaxExpression::test_min_typ_max_constant` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestValueRangeExpression::test_value_range` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestMultipleConcatenationExpression::test_multiple_concatenation` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestStreamExpression::test_stream_expression` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestTypeReference::test_type_reference` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestAssignmentExpression::test_assignment_expression` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestStreamExpression::test_stream_expression` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestTypeReference::test_type_reference` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestAssignmentExpression::test_assignment_expression` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestNewClassExpression::test_new_class_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestNewArrayExpression::test_new_array_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestCopyClassExpression::test_copy_class_expression` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestScopedName::test_scoped_name_simple` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestElementSelectExpression::test_element_select_index` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestCastExpression::test_cast_expression` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestScopedName::test_scoped_name_simple` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestElementSelectExpression::test_element_select_index` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestCastExpression::test_cast_expression` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestTaggedUnionExpression::test_tagged_union_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestIntegerVectorExpression::test_integer_vector_expression` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_not_tested.py::TestReplicatedAssignmentPattern::test_replicated_assignment_pattern` | 0.000s |
@@ -998,7 +998,7 @@
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestMinTypMaxExpression::test_min_typ_max_with_signal` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestValueRangeExpression::test_value_range_in_constraint` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestMultipleConcatenationExpression::test_multiple_concatenation_signals` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_strong.py::TestStreamExpression::test_stream_expression_signals` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_strong.py::TestStreamExpression::test_stream_expression_signals` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestAssignmentPatternExpression::test_assignment_pattern_signals` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestTypeReference::test_type_reference_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestNewClassExpression::test_new_class_no_crash` | 0.004s |
@@ -1026,7 +1026,7 @@
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestCasePropertyExpression::test_case_property_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestUnaryPropertyExpression::test_unary_property_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestSequenceRepetition::test_sequence_repetition_signals` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_strong.py::TestConditionalExpression::test_conditional_expression_signals` | 0.005s |
+| ✅ | `unit/test_signal_expression_visitor_strong.py::TestConditionalExpression::test_conditional_expression_signals` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestLetDeclaration::test_let_declaration_signals` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestProceduralAssignStatement::test_procedural_assign_signals` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestProceduralForceStatement::test_procedural_force_no_crash` | 0.005s |
@@ -1037,7 +1037,7 @@
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestProceduralDeassignStatement::test_procedural_deassign_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestRandCaseStatement::test_rand_case_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestRandCaseItem::test_rand_case_item_no_crash` | 0.004s |
-| ✅ | `unit/test_signal_expression_visitor_strong.py::TestConditionalStatement::test_conditional_statement_signals` | 0.004s |
+| ✅ | `unit/test_signal_expression_visitor_strong.py::TestConditionalStatement::test_conditional_statement_signals` | 0.005s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestVariablePattern::test_variable_pattern_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_expression_visitor_strong.py::TestStructurePattern::test_structure_pattern_no_crash` | 0.004s |
 | ✅ | `unit/test_signal_normalizer.py::TestTakeLastDot::test_dotted_module_signal` | 0.000s |
@@ -1129,48 +1129,48 @@
 | ✅ | `unit/test_signal_tracer.py::TestSignalTracer::test_multiple_signals` | 0.013s |
 | ✅ | `unit/test_signal_tracer.py::TestSignalTracer::test_signal_chain_has_root` | 0.011s |
 | ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_top_flag` | 0.577s |
-| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_show_edges` | 0.576s |
-| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_pretty` | 0.754s |
+| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_show_edges` | 0.574s |
+| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_pretty` | 0.751s |
 | ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_default_backward_compat` | 0.573s |
-| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_help_documented` | 0.222s |
+| ✅ | `unit/test_snapshot_compare_flags.py::test_snapshot_compare_help_documented` | 0.221s |
 | ✅ | `unit/test_snapshot_non_strict_mode.py::test_compiler_stores_elaboration_errors` | 0.005s |
 | ✅ | `unit/test_snapshot_non_strict_mode.py::test_compiler_failed_files_set` | 0.004s |
-| ✅ | `unit/test_snapshot_non_strict_mode.py::test_unified_tracer_exposes_elaboration_errors` | 0.012s |
+| ✅ | `unit/test_snapshot_non_strict_mode.py::test_unified_tracer_exposes_elaboration_errors` | 0.011s |
 | ✅ | `unit/test_snapshot_non_strict_mode.py::test_strict_mode_raises_compilation_error` | 0.000s |
-| ✅ | `unit/test_snapshot_non_strict_mode.py::test_snapshot_save_non_strict_does_not_crash` | 0.190s |
+| ✅ | `unit/test_snapshot_non_strict_mode.py::test_snapshot_save_non_strict_does_not_crash` | 0.191s |
 | ✅ | `unit/test_snapshot_non_strict_mode.py::test_snapshot_save_strict_exits_nonzero` | 0.183s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_initial_block` | 0.004s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_always_ff_clock_extraction` | 0.004s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_always_ff_with_reset` | 0.004s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_conditional_statement_ctx_has_condition_ast` | 0.004s |
-| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_conditional_statement` | 0.004s |
+| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_conditional_statement` | 0.003s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_case_statement` | 0.003s |
-| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_sequential_block` | 0.004s |
-| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_loop_statement` | 0.004s |
+| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_sequential_block` | 0.003s |
+| ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_loop_statement` | 0.003s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_generic_visit_none` | 0.000s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_collect_empty` | 0.000s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestStatementCollectorVisitor::test_always_comb` | 0.003s |
 | ✅ | `unit/test_statement_collector_visitor.py::TestCaseStatementConditionAstP1::test_case_statement_ctx_has_condition_ast` | 0.004s |
 | ✅ | `unit/test_stats_filelist.py::test_stats_with_file_still_works` | 0.201s |
-| ✅ | `unit/test_stats_filelist.py::test_stats_with_filelist_loads_all_files` | 0.200s |
-| ✅ | `unit/test_stats_filelist.py::test_stats_filelist_does_not_require_file` | 0.201s |
+| ✅ | `unit/test_stats_filelist.py::test_stats_with_filelist_loads_all_files` | 0.201s |
+| ✅ | `unit/test_stats_filelist.py::test_stats_filelist_does_not_require_file` | 0.202s |
 | ✅ | `unit/test_stats_filelist.py::test_stats_without_file_or_filelist_errors` | 0.181s |
-| ✅ | `unit/test_stats_filelist.py::test_stats_filelist_in_params_json` | 0.199s |
+| ✅ | `unit/test_stats_filelist.py::test_stats_filelist_in_params_json` | 0.202s |
 | ✅ | `unit/test_stats_non_strict.py::test_stats_non_strict_returns_partial_result` | 0.201s |
 | ✅ | `unit/test_stats_non_strict.py::test_stats_strict_fails_cleanly` | 0.178s |
 | ✅ | `unit/test_stats_non_strict.py::test_stats_non_strict_json_has_elaboration_errors` | 0.198s |
-| ✅ | `unit/test_stats_non_strict.py::test_stats_good_sv_no_elaboration_errors` | 0.195s |
-| ✅ | `unit/test_stats_non_strict.py::test_other_commands_non_strict_partial` | 1.205s |
-| ✅ | `unit/test_stats_non_strict.py::test_stats_help_mentions_strict_mode` | 0.222s |
-| ✅ | `unit/test_strict_default.py::test_default_strict_exits_nonzero_on_broken_sv` | 0.179s |
-| ✅ | `unit/test_strict_default.py::test_default_strict_exits_zero_on_good_sv` | 0.196s |
-| ✅ | `unit/test_strict_default.py::test_no_strict_explicit_returns_partial_result` | 0.193s |
+| ✅ | `unit/test_stats_non_strict.py::test_stats_good_sv_no_elaboration_errors` | 0.196s |
+| ✅ | `unit/test_stats_non_strict.py::test_other_commands_non_strict_partial` | 1.201s |
+| ✅ | `unit/test_stats_non_strict.py::test_stats_help_mentions_strict_mode` | 0.221s |
+| ✅ | `unit/test_strict_default.py::test_default_strict_exits_nonzero_on_broken_sv` | 0.178s |
+| ✅ | `unit/test_strict_default.py::test_default_strict_exits_zero_on_good_sv` | 0.195s |
+| ✅ | `unit/test_strict_default.py::test_no_strict_explicit_returns_partial_result` | 0.194s |
 | ✅ | `unit/test_strict_default.py::test_explicit_strict_flag_works` | 0.179s |
-| ✅ | `unit/test_strict_default.py::test_all_commands_default_to_strict` | 1.625s |
-| ✅ | `unit/test_strict_default.py::test_help_documents_strict_no_strict` | 2.228s |
-| ✅ | `unit/test_strict_default.py::test_error_message_mentions_no_strict_alternative` | 0.179s |
+| ✅ | `unit/test_strict_default.py::test_all_commands_default_to_strict` | 1.632s |
+| ✅ | `unit/test_strict_default.py::test_help_documents_strict_no_strict` | 2.231s |
+| ✅ | `unit/test_strict_default.py::test_error_message_mentions_no_strict_alternative` | 0.178s |
 | ✅ | `unit/test_strict_default.py::test_strict_error_message_suggests_filelist_fix` | 0.179s |
-| ✅ | `unit/test_strict_default.py::test_strict_passes_when_filelist_complete` | 0.196s |
+| ✅ | `unit/test_strict_default.py::test_strict_passes_when_filelist_complete` | 0.195s |
 | ✅ | `unit/test_structural_hints.py::TestWidthCategory::test_1bit` | 0.000s |
 | ✅ | `unit/test_structural_hints.py::TestWidthCategory::test_small_2_to_8` | 0.000s |
 | ✅ | `unit/test_structural_hints.py::TestWidthCategory::test_wide_above_8` | 0.000s |
@@ -1216,10 +1216,10 @@
 | ✅ | `unit/test_structural_hints.py::TestDetectorHelpers::test_custom_thresholds` | 0.000s |
 | ✅ | `unit/test_structural_hints.py::TestEdgeAndPerformance::test_zero_width_no_crash` | 0.000s |
 | ✅ | `unit/test_structural_hints.py::TestEdgeAndPerformance::test_all_scores_in_range` | 0.000s |
-| ✅ | `unit/test_structural_hints.py::TestEdgeAndPerformance::test_1000_signals_fast` | 0.029s |
+| ✅ | `unit/test_structural_hints.py::TestEdgeAndPerformance::test_1000_signals_fast` | 0.030s |
 | ✅ | `unit/test_sv_extractor.py::TestBasicExtraction::test_extract_one_module` | 0.008s |
 | ✅ | `unit/test_sv_extractor.py::TestBasicExtraction::test_extract_signals` | 0.007s |
-| ✅ | `unit/test_sv_extractor.py::TestBasicExtraction::test_signal_name` | 0.007s |
+| ✅ | `unit/test_sv_extractor.py::TestBasicExtraction::test_signal_name` | 0.006s |
 | ✅ | `unit/test_sv_extractor.py::TestWidthExtraction::test_1bit_width` | 0.006s |
 | ✅ | `unit/test_sv_extractor.py::TestWidthExtraction::test_vector_width` | 0.006s |
 | ✅ | `unit/test_sv_extractor.py::TestWidthExtraction::test_smaller_vector` | 0.006s |
@@ -1230,7 +1230,7 @@
 | ✅ | `unit/test_sv_extractor.py::TestPairedSignals::test_aw_channel_paired` | 0.006s |
 | ✅ | `unit/test_sv_extractor.py::TestPairedSignals::test_tlul_paired` | 0.005s |
 | ✅ | `unit/test_sv_extractor.py::TestFilelist::test_filelist_basic` | 0.008s |
-| ✅ | `unit/test_sv_extractor.py::TestFilelist::test_list_modules` | 0.006s |
+| ✅ | `unit/test_sv_extractor.py::TestFilelist::test_list_modules` | 0.011s |
 | ✅ | `unit/test_sv_extractor.py::TestEndToEndDetection::test_real_axi_detected` | 0.015s |
 | ✅ | `unit/test_sv_extractor.py::TestEndToEndDetection::test_real_tlul_detected` | 0.008s |
 | ✅ | `unit/test_sv_extractor.py::TestEndToEndDetection::test_real_apb_detected` | 0.007s |
@@ -1266,34 +1266,34 @@
 | ✅ | `unit/test_trace_based_handshake.py::TestRealSVDetection::test_returns_specific_channel` | 0.000s |
 | ✅ | `unit/test_trace_based_handshake.py::TestComparisonWithNameBased::test_both_providers_work` | 0.000s |
 | ✅ | `unit/test_trace_based_handshake.py::TestComparisonWithNameBased::test_trace_based_distinguishes_bp_types` | 0.000s |
-| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_constructor_accepts_trace_based` | 0.022s |
+| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_constructor_accepts_trace_based` | 0.023s |
 | ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_real_sv_e2e_with_trace_provider` | 0.030s |
-| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_handshake_score_differs_between_providers` | 0.036s |
-| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_handshake_score_actually_uses_provider` | 0.061s |
-| ✅ | `unit/test_trace_based_handshake.py::TestPerformance::test_real_sv_under_5_seconds` | 0.089s |
-| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_hierarchical_for_bare_name` | 0.020s |
-| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_hierarchical_with_module` | 0.020s |
+| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_handshake_score_differs_between_providers` | 0.037s |
+| ✅ | `unit/test_trace_based_handshake.py::TestDetectorIntegration::test_handshake_score_actually_uses_provider` | 0.037s |
+| ✅ | `unit/test_trace_based_handshake.py::TestPerformance::test_real_sv_under_5_seconds` | 0.090s |
+| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_hierarchical_for_bare_name` | 0.019s |
+| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_hierarchical_with_module` | 0.019s |
 | ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_already_hierarchical_name` | 0.020s |
-| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_longest_match_when_multiple` | 0.020s |
+| ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_resolves_longest_match_when_multiple` | 0.019s |
 | ✅ | `unit/test_trace_filelist_fix.py::TestResolveNode::test_returns_none_for_unknown_signal` | 0.020s |
 | ✅ | `unit/test_trace_filelist_fix.py::TestGetHandshakeSingleFile::test_get_handshake_returns_valid_type` | 0.020s |
 | ✅ | `unit/test_trace_filelist_fix.py::TestCaching::test_cache_returns_same_result` | 0.020s |
 | ✅ | `unit/test_trace_filelist_fix.py::TestCaching::test_cache_cleared_on_set_context` | 0.020s |
-| ✅ | `unit/test_trace_include_flags.py::test_fanout_default_excludes_clock` | 0.198s |
-| ✅ | `unit/test_trace_include_flags.py::test_fanout_include_clock_shows_sensitivity` | 0.199s |
+| ✅ | `unit/test_trace_include_flags.py::test_fanout_default_excludes_clock` | 0.197s |
+| ✅ | `unit/test_trace_include_flags.py::test_fanout_include_clock_shows_sensitivity` | 0.201s |
 | ✅ | `unit/test_trace_include_flags.py::test_fanout_include_clock_works_on_clk` | 0.200s |
-| ✅ | `unit/test_trace_include_flags.py::test_fanout_only_clock_not_driver` | 0.200s |
-| ✅ | `unit/test_trace_include_flags.py::test_fanout_help_mentions_include_flags` | 0.224s |
-| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_on_uart_top` | 0.266s |
-| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_generates_valid_json` | 0.239s |
-| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_filters_binary_garbage` | 0.240s |
-| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_depth_limit_respected` | 0.477s |
-| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_handles_missing_target` | 0.238s |
-| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_complex_param_expression` | 0.054s |
-| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_literal_width` | 0.051s |
-| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_multiple_widths` | 0.051s |
-| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_parameterized_width` | 0.051s |
-| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_simple_param_width` | 0.050s |
+| ✅ | `unit/test_trace_include_flags.py::test_fanout_only_clock_not_driver` | 0.225s |
+| ✅ | `unit/test_trace_include_flags.py::test_fanout_help_mentions_include_flags` | 0.226s |
+| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_on_uart_top` | 0.271s |
+| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_generates_valid_json` | 0.250s |
+| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_filters_binary_garbage` | 0.243s |
+| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_depth_limit_respected` | 0.483s |
+| ✅ | `unit/test_visualize_module_golden.py::test_visualize_module_handles_missing_target` | 0.243s |
+| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_complex_param_expression` | 0.082s |
+| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_literal_width` | 0.053s |
+| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_multiple_widths` | 0.052s |
+| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_parameterized_width` | 0.054s |
+| ✅ | `unit/test_width_extraction.py::TestWidthExtraction::test_simple_param_width` | 0.052s |
 | ✅ | `unit/test_width_tuple_defense.py::test_classify_node_handles_2tuple_width` | 0.000s |
 | ✅ | `unit/test_width_tuple_defense.py::test_classify_node_handles_3tuple_width` | 0.000s |
 | ✅ | `unit/test_width_tuple_defense.py::test_classify_node_handles_empty_width` | 0.000s |
