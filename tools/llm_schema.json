@@ -3,41 +3,86 @@
   "$id": "https://github.com/fundou1081/sv_query/tools/llm_schema.json",
   "title": "sv_query LLM Schema",
   "description": "[Phase 2 B1 2026-06-28] JSON Schema for sv_query CLI output, for LLM consumption. All commands return JSON via --json flag.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "definitions": {
     "SignalId": {
       "type": "string",
-      "description": "Hierarchical signal identifier, e.g. 'top.cpu.q' or 'top.cpu_inst.data[7:0]'",
-      "pattern": "^[a-zA-Z_][a-zA-Z0-9_.]*(\\[[0-9]+:[0-9]+\\])?$"
+      "description": "Hierarchical signal identifier, e.g. \"top.cpu.q\". May start with digit for pyslang placeholder nodes.",
+      "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_.]*(\\[[0-9]+:[0-9]+\\])?$"
     },
     "EdgeKind": {
       "type": "string",
-      "enum": ["DRIVER", "CLOCK", "RESET", "CONTROL", "PORT_IN", "PORT_OUT", "REG", "SIGNAL", "UNKNOWN"],
+      "enum": [
+        "DRIVER",
+        "CLOCK",
+        "RESET",
+        "CONTROL",
+        "PORT_IN",
+        "PORT_OUT",
+        "REG",
+        "SIGNAL",
+        "UNKNOWN"
+      ],
       "description": "Edge or signal kind in graph"
     },
     "RiskLevel": {
       "type": "string",
-      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ],
       "description": "Risk classification level"
     },
     "CommonResult": {
       "type": "object",
-      "required": ["ok", "command"],
+      "required": [
+        "ok",
+        "command"
+      ],
       "properties": {
-        "ok": {"type": "boolean", "description": "true if success, false if error"},
-        "command": {"type": "string", "description": "Command name (e.g., 'trace_fanout')"},
-        "params": {"type": "object", "description": "Echo of input parameters"},
-        "result": {"description": "Command-specific result (varies by command)"},
-        "errors": {"type": "array", "items": {"type": "string"}, "description": "List of error messages"}
+        "ok": {
+          "type": "boolean",
+          "description": "true if success, false if error"
+        },
+        "command": {
+          "type": "string",
+          "description": "Command name (e.g., 'trace_fanout')"
+        },
+        "params": {
+          "type": "object",
+          "description": "Echo of input parameters"
+        },
+        "result": {
+          "description": "Command-specific result (varies by command)"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of error messages"
+        }
       }
     },
     "ErrorResult": {
       "type": "object",
-      "required": ["ok", "error_code"],
+      "required": [
+        "ok",
+        "error_code"
+      ],
       "properties": {
-        "ok": {"const": false},
-        "command": {"type": "string"},
-        "error": {"type": "string", "description": "Human-readable error message"},
+        "ok": {
+          "const": false
+        },
+        "command": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
         "error_code": {
           "type": "string",
           "enum": [
@@ -55,7 +100,12 @@
           ],
           "description": "[B2 2026-06-28] Stable error code for LLM error classification"
         },
-        "errors": {"type": "array", "items": {"type": "string"}}
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     }
   },
@@ -65,63 +115,406 @@
       "result_schema": {
         "type": "object",
         "properties": {
-          "total_nodes": {"type": "integer"},
-          "total_edges": {"type": "integer"},
-          "nodes": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Count per node kind"},
-          "edges": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Count per edge kind"},
-          "modules": {"type": "array", "items": {"type": "string"}, "description": "Module names in design"},
-          "elaboration_errors": {"type": "array", "items": {"type": "string"}, "description": "pyslang elaboration errors (if any)"}
+          "total_nodes": {
+            "type": "integer"
+          },
+          "total_edges": {
+            "type": "integer"
+          },
+          "nodes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Count per node kind"
+          },
+          "edges": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Count per edge kind"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Module names in design"
+          },
+          "elaboration_errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "pyslang elaboration errors (if any)"
+          }
         }
       }
     },
     "trace_fanin": {
-      "description": "Trace signal drivers (upstream)",
+      "description": "Trace signal drivers (upstream) — batch + filters supported",
       "params_schema": {
         "type": "object",
-        "required": ["signal"],
+        "required": [
+          "signals"
+        ],
         "properties": {
-          "signal": {"$ref": "#/definitions/SignalId"},
-          "depth": {"type": ["integer", "null"], "description": "Max trace depth (null=unlimited)"},
-          "max_results": {"type": ["integer", "null"], "description": "[C1 2026-06-28] Cap on result count"}
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalId"
+            },
+            "description": "[B1 2026-07-03] List of signals (always 1+, batch mode produces >1)"
+          },
+          "depth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Max trace depth (null=unlimited)"
+          },
+          "max_results": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[C1] Cap on result count per signal"
+          },
+          "batch_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B1] Path to batch file"
+          },
+          "batch": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B1] Inline batch (comma-separated)"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --type filter (NodeKind, comma-separated)"
+          },
+          "module": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --module filter (fnmatch glob)"
+          },
+          "width_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[B2] --width-min filter"
+          },
+          "width_max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[B2] --width-max filter"
+          },
+          "exclude": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --exclude filter (fnmatch glob)"
+          }
         }
       },
       "result_schema": {
         "type": "object",
+        "required": [
+          "signals",
+          "total_signals",
+          "total_count",
+          "total_pre_filter",
+          "truncated"
+        ],
         "properties": {
-          "drivers": {
+          "signals": {
             "type": "array",
             "items": {
               "type": "object",
+              "required": [
+                "signal",
+                "index",
+                "drivers",
+                "count",
+                "pre_filter_count",
+                "truncated"
+              ],
               "properties": {
-                "id": {"$ref": "#/definitions/SignalId"},
-                "kind": {"$ref": "#/definitions/EdgeKind"},
-                "distance": {"type": "integer"}
+                "signal": {
+                  "$ref": "#/definitions/SignalId"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "drivers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "module",
+                      "width_msb",
+                      "width_lsb",
+                      "width",
+                      "distance"
+                    ],
+                    "properties": {
+                      "id": {
+                        "$ref": "#/definitions/SignalId"
+                      },
+                      "kind": {
+                        "$ref": "#/definitions/EdgeKind"
+                      },
+                      "module": {
+                        "type": "string",
+                        "description": "[B2] Module name owning this signal"
+                      },
+                      "width_msb": {
+                        "type": "integer",
+                        "description": "[B2] Width tuple msb"
+                      },
+                      "width_lsb": {
+                        "type": "integer",
+                        "description": "[B2] Width tuple lsb"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "description": "[B2] Bit width (msb - lsb + 1)"
+                      },
+                      "distance": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer"
+                },
+                "pre_filter_count": {
+                  "type": "integer",
+                  "description": "[B2] Count before filter"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
               }
             }
           },
-          "truncated": {"type": "boolean", "description": "[C1 2026-06-28] True if results were capped by max_results"},
-          "total_count": {"type": "integer", "description": "[C1 2026-06-28] Actual number of items returned"}
+          "total_signals": {
+            "type": "integer",
+            "description": "[B1] Number of input signals"
+          },
+          "total_count": {
+            "type": "integer",
+            "description": "[B1] Sum of count after filter"
+          },
+          "total_pre_filter": {
+            "type": "integer",
+            "description": "[B2] Sum of pre_filter_count before filter"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True if any signal hit max_results cap"
+          }
         }
       }
     },
     "trace_fanout": {
-      "description": "Trace signal loads (downstream)",
+      "description": "Trace signal loads (downstream) — batch + filters supported",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "signals"
+        ],
+        "properties": {
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalId"
+            },
+            "description": "[B1 2026-07-03] List of signals (always 1+, batch mode produces >1)"
+          },
+          "depth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Max trace depth (null=unlimited)"
+          },
+          "max_results": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[C1] Cap on result count per signal"
+          },
+          "batch_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B1] Path to batch file"
+          },
+          "batch": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B1] Inline batch (comma-separated)"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --type filter (NodeKind, comma-separated)"
+          },
+          "module": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --module filter (fnmatch glob)"
+          },
+          "width_min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[B2] --width-min filter"
+          },
+          "width_max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "[B2] --width-max filter"
+          },
+          "exclude": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "[B2] --exclude filter (fnmatch glob)"
+          }
+        }
+      },
       "result_schema": {
         "type": "object",
+        "required": [
+          "signals",
+          "total_signals",
+          "total_count",
+          "total_pre_filter",
+          "truncated"
+        ],
         "properties": {
-          "loads": {
+          "signals": {
             "type": "array",
             "items": {
               "type": "object",
+              "required": [
+                "signal",
+                "index",
+                "loads",
+                "count",
+                "pre_filter_count",
+                "truncated"
+              ],
               "properties": {
-                "id": {"$ref": "#/definitions/SignalId"},
-                "kind": {"$ref": "#/definitions/EdgeKind"},
-                "distance": {"type": "integer"}
+                "signal": {
+                  "$ref": "#/definitions/SignalId"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "loads": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "module",
+                      "width_msb",
+                      "width_lsb",
+                      "width",
+                      "distance"
+                    ],
+                    "properties": {
+                      "id": {
+                        "$ref": "#/definitions/SignalId"
+                      },
+                      "kind": {
+                        "$ref": "#/definitions/EdgeKind"
+                      },
+                      "module": {
+                        "type": "string",
+                        "description": "[B2] Module name owning this signal"
+                      },
+                      "width_msb": {
+                        "type": "integer",
+                        "description": "[B2] Width tuple msb"
+                      },
+                      "width_lsb": {
+                        "type": "integer",
+                        "description": "[B2] Width tuple lsb"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "description": "[B2] Bit width (msb - lsb + 1)"
+                      },
+                      "distance": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer"
+                },
+                "pre_filter_count": {
+                  "type": "integer",
+                  "description": "[B2] Count before filter"
+                },
+                "truncated": {
+                  "type": "boolean"
+                }
               }
             }
           },
-          "truncated": {"type": "boolean"},
-          "total_count": {"type": "integer"}
+          "total_signals": {
+            "type": "integer",
+            "description": "[B1] Number of input signals"
+          },
+          "total_count": {
+            "type": "integer",
+            "description": "[B1] Sum of count after filter"
+          },
+          "total_pre_filter": {
+            "type": "integer",
+            "description": "[B2] Sum of pre_filter_count before filter"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True if any signal hit max_results cap"
+          }
         }
       }
     },
@@ -130,15 +523,54 @@
       "result_schema": {
         "type": "object",
         "properties": {
-          "domains": {"type": "array", "items": {"type": "string"}, "description": "Clock domain names"},
-          "domain_count": {"type": "integer"},
-          "domain_pairs": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "Pair count per clock-domain combination"},
-          "total_cdc": {"type": "integer", "description": "Total CDC paths"},
-          "high_risk": {"type": "integer", "description": "Count of HIGH risk paths"},
-          "low_risk": {"type": "integer", "description": "Count of LOW risk paths"},
-          "high_risk_paths": {"type": "array", "items": {"type": "object"}},
-          "paths": {"type": "array", "items": {"type": "object"}, "description": "Full list of CDC paths (use --summary to omit)"},
-          "sync_type_stats": {"type": "object", "additionalProperties": {"type": "integer"}}
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Clock domain names"
+          },
+          "domain_count": {
+            "type": "integer"
+          },
+          "domain_pairs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Pair count per clock-domain combination"
+          },
+          "total_cdc": {
+            "type": "integer",
+            "description": "Total CDC paths"
+          },
+          "high_risk": {
+            "type": "integer",
+            "description": "Count of HIGH risk paths"
+          },
+          "low_risk": {
+            "type": "integer",
+            "description": "Count of LOW risk paths"
+          },
+          "high_risk_paths": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Full list of CDC paths (use --summary to omit)"
+          },
+          "sync_type_stats": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
         }
       }
     },
@@ -146,13 +578,29 @@
       "description": "CDC analyze with --summary flag (LLM-optimized)",
       "result_schema": {
         "type": "object",
-        "required": ["summary"],
+        "required": [
+          "summary"
+        ],
         "properties": {
-          "domains": {"type": "array", "items": {"type": "string"}},
-          "total_cdc": {"type": "integer"},
-          "high_risk": {"type": "integer"},
-          "low_risk": {"type": "integer"},
-          "summary": {"const": true, "description": "[C2 2026-06-28] Marker that --summary was used"}
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "total_cdc": {
+            "type": "integer"
+          },
+          "high_risk": {
+            "type": "integer"
+          },
+          "low_risk": {
+            "type": "integer"
+          },
+          "summary": {
+            "const": true,
+            "description": "[C2 2026-06-28] Marker that --summary was used"
+          }
         }
       }
     },
@@ -161,10 +609,30 @@
       "result_schema": {
         "type": "object",
         "properties": {
-          "clocks": {"type": "array", "items": {"type": "object"}, "description": "Clock signals with metadata"},
-          "resets": {"type": "array", "items": {"type": "object"}, "description": "Reset signals with metadata"},
-          "data_signals": {"type": "array", "items": {"$ref": "#/definitions/SignalRisk"}, "description": "All data signals with risk scores (use --summary to limit)"},
-          "summary": {"$ref": "#/definitions/RiskSummary"}
+          "clocks": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Clock signals with metadata"
+          },
+          "resets": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Reset signals with metadata"
+          },
+          "data_signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalRisk"
+            },
+            "description": "All data signals with risk scores (use --summary to limit)"
+          },
+          "summary": {
+            "$ref": "#/definitions/RiskSummary"
+          }
         }
       }
     },
@@ -172,13 +640,253 @@
       "description": "Risk analyze with --summary flag (LLM-optimized, top-10 only)",
       "result_schema": {
         "type": "object",
-        "required": ["summary_mode"],
+        "required": [
+          "summary_mode"
+        ],
         "properties": {
-          "clocks_count": {"type": "integer"},
-          "resets_count": {"type": "integer"},
-          "top_risks": {"type": "array", "items": {"$ref": "#/definitions/SignalRisk"}, "description": "Top 10 highest-risk signals"},
-          "summary": {"$ref": "#/definitions/RiskSummary"},
-          "summary_mode": {"const": true, "description": "[C2 2026-06-28] Marker that --summary was used"}
+          "clocks_count": {
+            "type": "integer"
+          },
+          "resets_count": {
+            "type": "integer"
+          },
+          "top_risks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalRisk"
+            },
+            "description": "Top 10 highest-risk signals"
+          },
+          "summary": {
+            "$ref": "#/definitions/RiskSummary"
+          },
+          "summary_mode": {
+            "const": true,
+            "description": "[C2 2026-06-28] Marker that --summary was used"
+          }
+        }
+      }
+    },
+    "trace_impact": {
+      "description": "Analyze impact of changing a signal (downstream blast radius + risk + coverage)",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "signals"
+        ],
+        "properties": {
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalId"
+            },
+            "description": "[B1 2026-07-03] List of signals (always 1+)"
+          },
+          "min_risk": {
+            "type": "number",
+            "description": "Minimum risk score for HIGH classification"
+          },
+          "batch_file": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "required": [
+          "signals",
+          "total_signals",
+          "total_paths",
+          "total_high_risk_count"
+        ],
+        "properties": {
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "signal",
+                "index",
+                "total_paths",
+                "high_risk_count",
+                "modules",
+                "paths"
+              ],
+              "properties": {
+                "signal": {
+                  "$ref": "#/definitions/SignalId"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "total_paths": {
+                  "type": "integer"
+                },
+                "high_risk_count": {
+                  "type": "integer"
+                },
+                "modules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "paths": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "path",
+                      "path_type",
+                      "risk",
+                      "risk_score",
+                      "fanout",
+                      "coverage"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/SignalId"
+                        }
+                      },
+                      "path_type": {
+                        "type": "string",
+                        "enum": [
+                          "combinational",
+                          "conditional",
+                          "clocked"
+                        ]
+                      },
+                      "risk": {
+                        "$ref": "#/definitions/RiskLevel"
+                      },
+                      "risk_score": {
+                        "type": "number"
+                      },
+                      "fanout": {
+                        "type": "integer"
+                      },
+                      "coverage": {
+                        "type": "object",
+                        "properties": {
+                          "sva": {
+                            "type": "string",
+                            "enum": [
+                              "covered",
+                              "none"
+                            ]
+                          },
+                          "covergroup": {
+                            "type": "string",
+                            "enum": [
+                              "covered",
+                              "none"
+                            ]
+                          }
+                        }
+                      },
+                      "condition": {
+                        "type": "string"
+                      },
+                      "clock_domain": {
+                        "type": "string"
+                      },
+                      "suggestion": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "total_signals": {
+            "type": "integer"
+          },
+          "total_paths": {
+            "type": "integer"
+          },
+          "total_high_risk_count": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "trace_evidence": {
+      "description": "Show source-code evidence (enclosing always/if/class/constraint) for signal(s)",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "signals"
+        ],
+        "properties": {
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SignalId"
+            },
+            "description": "[B1 2026-07-03] List of signals (always 1+)"
+          },
+          "chain": {
+            "type": "boolean",
+            "description": "If true, evidence is array (chain), else object (single)"
+          },
+          "batch_file": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "required": [
+          "signals",
+          "total_signals"
+        ],
+        "properties": {
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "signal",
+                "index",
+                "evidence"
+              ],
+              "properties": {
+                "signal": {
+                  "$ref": "#/definitions/SignalId"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "evidence": {
+                  "description": "[B1] Single evidence object (chain=false) or array (chain=true)"
+                }
+              }
+            }
+          },
+          "total_signals": {
+            "type": "integer"
+          }
         }
       }
     }
@@ -187,32 +895,79 @@
     "SignalRisk": {
       "type": "object",
       "properties": {
-        "node_id": {"$ref": "#/definitions/SignalId"},
-        "name": {"type": "string"},
-        "kind": {"type": "string"},
-        "fan_in": {"type": "integer"},
-        "fan_out": {"type": "integer"},
-        "width": {"type": "integer"},
-        "is_reg": {"type": "boolean"},
-        "is_conv": {"type": "boolean", "description": "Convergent signal (fan_in >= 3)"},
-        "is_div": {"type": "boolean", "description": "Divergent signal (fan_out >= 3)"},
-        "has_sva": {"type": "boolean"},
-        "has_cov": {"type": "boolean"},
-        "func_score": {"type": "number"},
-        "func_level": {"$ref": "#/definitions/RiskLevel"},
-        "timing_score": {"type": "number"},
-        "timing_level": {"$ref": "#/definitions/RiskLevel"}
+        "node_id": {
+          "$ref": "#/definitions/SignalId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "fan_in": {
+          "type": "integer"
+        },
+        "fan_out": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "is_reg": {
+          "type": "boolean"
+        },
+        "is_conv": {
+          "type": "boolean",
+          "description": "Convergent signal (fan_in >= 3)"
+        },
+        "is_div": {
+          "type": "boolean",
+          "description": "Divergent signal (fan_out >= 3)"
+        },
+        "has_sva": {
+          "type": "boolean"
+        },
+        "has_cov": {
+          "type": "boolean"
+        },
+        "func_score": {
+          "type": "number"
+        },
+        "func_level": {
+          "$ref": "#/definitions/RiskLevel"
+        },
+        "timing_score": {
+          "type": "number"
+        },
+        "timing_level": {
+          "$ref": "#/definitions/RiskLevel"
+        }
       }
     },
     "RiskSummary": {
       "type": "object",
       "properties": {
-        "total": {"type": "integer"},
-        "critical": {"type": "integer", "description": "Count of CRITICAL func_level"},
-        "high": {"type": "integer", "description": "Count of HIGH func_level"},
-        "sva_covered": {"type": "integer"},
-        "cov_covered": {"type": "integer"},
-        "truncated": {"type": "boolean", "description": "True if data was truncated by --summary"}
+        "total": {
+          "type": "integer"
+        },
+        "critical": {
+          "type": "integer",
+          "description": "Count of CRITICAL func_level"
+        },
+        "high": {
+          "type": "integer",
+          "description": "Count of HIGH func_level"
+        },
+        "sva_covered": {
+          "type": "integer"
+        },
+        "cov_covered": {
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "True if data was truncated by --summary"
+        }
       }
     }
   },
@@ -220,8 +975,50 @@
     "success_pattern": {
       "ok": true,
       "command": "trace_fanout",
-      "params": {"signal": "top.clk", "file": "/path/to/file.sv", "depth": null, "max_results": 10},
-      "result": {"loads": [{"id": "top.q", "kind": "REG", "distance": 1}], "truncated": false, "total_count": 1},
+      "params": {
+        "signal": "top.clk",
+        "file": "/path/to/file.sv",
+        "depth": null,
+        "max_results": 10,
+        "signals": [
+          "top.clk",
+          "top.data"
+        ]
+      },
+      "result": {
+        "signals": [
+          {
+            "signal": "top.clk",
+            "index": 0,
+            "loads": [
+              {
+                "id": "top.q",
+                "kind": "REG",
+                "module": "top",
+                "width_msb": 0,
+                "width_lsb": 0,
+                "width": 1,
+                "distance": 1
+              }
+            ],
+            "count": 1,
+            "pre_filter_count": 1,
+            "truncated": false
+          },
+          {
+            "signal": "top.data",
+            "index": 1,
+            "loads": [],
+            "count": 0,
+            "pre_filter_count": 0,
+            "truncated": false
+          }
+        ],
+        "total_signals": 2,
+        "total_count": 1,
+        "total_pre_filter": 1,
+        "truncated": false
+      },
       "errors": []
     },
     "error_pattern": {
@@ -229,7 +1026,9 @@
       "command": "trace_fanin",
       "error": "[Errno 2] No such file or directory: '/tmp/missing.sv'",
       "error_code": "E_FILE_NOT_FOUND",
-      "errors": ["[Errno 2] No such file or directory: '/tmp/missing.sv'"]
+      "errors": [
+        "[Errno 2] No such file or directory: '/tmp/missing.sv'"
+      ]
     },
     "llm_tips": [
       "Always pass --json (or -j) for parseable output",
@@ -238,5 +1037,19 @@
       "Use --max-results N on trace fanin/fanout to cap long chains",
       "Check error_code field for stable classification (don't parse error message string)"
     ]
-  }
+  },
+  "changelog": [
+    {
+      "version": "1.1.0",
+      "date": "2026-07-03",
+      "changes": [
+        "trace_fanin/trace_fanout: batch schema (result.signals[] replaces result.drives/loads)",
+        "trace_fanin/trace_fanout: 5 new filter options (--type/--module/--width-min/max/--exclude)",
+        "trace_fanin/trace_fanout: each driver/load has module + width_msb/width_lsb/width fields",
+        "trace_fanin/trace_fanout: pre_filter_count + total_pre_filter for filter transparency",
+        "trace_impact: NEW command schema (batch mode, paths + risk + coverage)",
+        "trace_evidence: NEW command schema (batch mode, evidence per signal)"
+      ]
+    }
+  ]
 }
