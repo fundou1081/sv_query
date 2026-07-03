@@ -464,6 +464,7 @@ def fanin(
     width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
 ) -> None:
     """Trace signal drivers (fanin)
 
@@ -486,58 +487,83 @@ def fanin(
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
-        _ = tracer.build_graph()
+        _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
+        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
         signals_result = []
+        per_signal_errors = []
         total_count = 0
         total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
-            result = tracer.trace_fanin(sig, depth=depth)
-            drivers = []
-            for d in result if hasattr(result, "__iter__") else []:
-                if hasattr(d, "id"):
-                    drivers.append(_node_to_dict(d))
-            # [B2 2026-07-03] Apply 5 filters
-            drivers_pre = len(drivers)
-            drivers = _apply_filters(
-                drivers,
-                type_filter=type_filter,
-                module_filter=module_filter,
-                width_min=width_min,
-                width_max=width_max,
-                exclude=exclude,
-            )
-            # [C1 2026-06-28 LLM] Cap per-signal results
-            truncated = False
-            if max_results is not None and len(drivers) > max_results:
-                drivers = drivers[:max_results]
-                truncated = True
-                truncated_global = True
-            signals_result.append({
-                "signal": sig,
-                "index": i,
-                "drivers": drivers,
-                "count": len(drivers),
-                "pre_filter_count": drivers_pre,
-                "truncated": truncated,
-            })
-            total_count += len(drivers)
-            total_pre_filter += drivers_pre
+            try:
+                result = tracer.trace_fanin(sig, depth=depth)
+                drivers = []
+                for d in result if hasattr(result, "__iter__") else []:
+                    if hasattr(d, "id"):
+                        drivers.append(_node_to_dict(d))
+                # [B2 2026-07-03] Apply 5 filters
+                drivers_pre = len(drivers)
+                drivers = _apply_filters(
+                    drivers,
+                    type_filter=type_filter,
+                    module_filter=module_filter,
+                    width_min=width_min,
+                    width_max=width_max,
+                    exclude=exclude,
+                )
+                # [C1 2026-06-28 LLM] Cap per-signal results
+                truncated = False
+                if max_results is not None and len(drivers) > max_results:
+                    drivers = drivers[:max_results]
+                    truncated = True
+                    truncated_global = True
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "drivers": drivers,
+                    "count": len(drivers),
+                    "pre_filter_count": drivers_pre,
+                    "truncated": truncated,
+                })
+                total_count += len(drivers)
+                total_pre_filter += drivers_pre
+            except Exception as sig_err:
+                # [A3 2026-07-04] Per-signal failure → record error, continue with others
+                from src.cli.errors import make_error, code_for_exception
+                err_data = make_error(
+                    code_for_exception(sig_err), str(sig_err), command="trace_fanin",
+                )
+                per_signal_errors.append({
+                    "signal": sig,
+                    "index": i,
+                    "error": err_data["error"],
+                    "error_code": err_data.get("error_code", "E_INTERNAL"),
+                })
+                # Add empty entry to signals_result to preserve order
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "drivers": [],
+                    "count": 0,
+                    "pre_filter_count": 0,
+                    "truncated": False,
+                })
 
         data = {
-            "ok": True,
+            "ok": per_signal_errors == [],  # [A3] ok=False if any sig failed
             "command": "trace_fanin",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_count": total_count,
                 "total_pre_filter": total_pre_filter,
                 "truncated": truncated_global,
+                "failed_signals": len(per_signal_errors),
             },
-            "errors": [],
+            "errors": per_signal_errors,
         }
 
         if json_output:
@@ -580,6 +606,7 @@ def fanout(
     width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -604,62 +631,86 @@ def fanout(
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
-        _ = tracer.build_graph()
+        _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode
+        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
         signals_result = []
+        per_signal_errors = []
         total_count = 0
         total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
-            result = tracer.trace_fanout(
-                sig, depth=depth,
-                include_clock=include_clock,
-                include_reset=include_reset,
-                include_control=include_control,
-            )
-            loads = []
-            for load in result if hasattr(result, "__iter__") else []:
-                if hasattr(load, "id"):
-                    loads.append(_node_to_dict(load))
-            # [B2 2026-07-03] Apply 5 filters
-            loads_pre = len(loads)
-            loads = _apply_filters(
-                loads,
-                type_filter=type_filter,
-                module_filter=module_filter,
-                width_min=width_min,
-                width_max=width_max,
-                exclude=exclude,
-            )
-            truncated = False
-            if max_results is not None and len(loads) > max_results:
-                loads = loads[:max_results]
-                truncated = True
-                truncated_global = True
-            signals_result.append({
-                "signal": sig,
-                "index": i,
-                "loads": loads,
-                "count": len(loads),
-                "pre_filter_count": loads_pre,
-                "truncated": truncated,
-            })
-            total_count += len(loads)
-            total_pre_filter += loads_pre
+            try:
+                result = tracer.trace_fanout(
+                    sig, depth=depth,
+                    include_clock=include_clock,
+                    include_reset=include_reset,
+                    include_control=include_control,
+                )
+                loads = []
+                for load in result if hasattr(result, "__iter__") else []:
+                    if hasattr(load, "id"):
+                        loads.append(_node_to_dict(load))
+                # [B2 2026-07-03] Apply 5 filters
+                loads_pre = len(loads)
+                loads = _apply_filters(
+                    loads,
+                    type_filter=type_filter,
+                    module_filter=module_filter,
+                    width_min=width_min,
+                    width_max=width_max,
+                    exclude=exclude,
+                )
+                truncated = False
+                if max_results is not None and len(loads) > max_results:
+                    loads = loads[:max_results]
+                    truncated = True
+                    truncated_global = True
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "loads": loads,
+                    "count": len(loads),
+                    "pre_filter_count": loads_pre,
+                    "truncated": truncated,
+                })
+                total_count += len(loads)
+                total_pre_filter += loads_pre
+            except Exception as sig_err:
+                # [A3 2026-07-04] Per-signal failure → record error, continue
+                from src.cli.errors import make_error, code_for_exception
+                err_data = make_error(
+                    code_for_exception(sig_err), str(sig_err), command="trace_fanout",
+                )
+                per_signal_errors.append({
+                    "signal": sig,
+                    "index": i,
+                    "error": err_data["error"],
+                    "error_code": err_data.get("error_code", "E_INTERNAL"),
+                })
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "loads": [],
+                    "count": 0,
+                    "pre_filter_count": 0,
+                    "truncated": False,
+                })
 
         data = {
-            "ok": True,
+            "ok": per_signal_errors == [],
             "command": "trace_fanout",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_count": total_count,
                 "total_pre_filter": total_pre_filter,
                 "truncated": truncated_global,
+                "failed_signals": len(per_signal_errors),
             },
-            "errors": [],
+            "errors": per_signal_errors,
         }
 
         if json_output:
@@ -697,6 +748,7 @@ def impact(
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag. Mutually exclusive with --file/--filelist."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -723,7 +775,7 @@ def impact(
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
-        graph = tracer.build_graph()
+        graph = tracer.build_graph(use_cache=not no_cache)
 
         # 提取 SVA 和 Coverage 信息 (shared across batch)
         if filelist or from_snapshot:
@@ -749,38 +801,62 @@ def impact(
                 cov_signals.add(cp.signal)
 
         # [B1 2026-07-03] Batch mode
+        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
         signals_result = []
+        per_signal_errors = []
         total_paths_all = 0
         total_high_risk_all = 0
         for i, sig in enumerate(signals):
-            load_nodes = tracer.trace_fanout(sig, depth=None)
-            paths = _build_impact_paths(sig, load_nodes, graph, sva_signals, cov_signals, min_risk)
-            modules = _extract_modules(paths)
-            risk_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-            paths.sort(key=lambda x: risk_order.get(x.get("risk", "LOW"), 2))
-            high_risk_count = sum(1 for p in paths if p.get("risk") == "HIGH")
-            signals_result.append({
-                "signal": sig,
-                "index": i,
-                "total_paths": len(paths),
-                "high_risk_count": high_risk_count,
-                "modules": modules,
-                "paths": paths,
-            })
-            total_paths_all += len(paths)
-            total_high_risk_all += high_risk_count
+            try:
+                load_nodes = tracer.trace_fanout(sig, depth=None)
+                paths = _build_impact_paths(sig, load_nodes, graph, sva_signals, cov_signals, min_risk)
+                modules = _extract_modules(paths)
+                risk_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+                paths.sort(key=lambda x: risk_order.get(x.get("risk", "LOW"), 2))
+                high_risk_count = sum(1 for p in paths if p.get("risk") == "HIGH")
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "total_paths": len(paths),
+                    "high_risk_count": high_risk_count,
+                    "modules": modules,
+                    "paths": paths,
+                })
+                total_paths_all += len(paths)
+                total_high_risk_all += high_risk_count
+            except Exception as sig_err:
+                # [A3 2026-07-04] Per-signal failure → record error, continue
+                from src.cli.errors import make_error, code_for_exception
+                err_data = make_error(
+                    code_for_exception(sig_err), str(sig_err), command="trace_impact",
+                )
+                per_signal_errors.append({
+                    "signal": sig,
+                    "index": i,
+                    "error": err_data["error"],
+                    "error_code": err_data.get("error_code", "E_INTERNAL"),
+                })
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "total_paths": 0,
+                    "high_risk_count": 0,
+                    "modules": [],
+                    "paths": [],
+                })
 
         data = {
-            "ok": True,
+            "ok": per_signal_errors == [],
             "command": "trace_impact",
-            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot},
+            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_paths": total_paths_all,
                 "total_high_risk_count": total_high_risk_all,
+                "failed_signals": len(per_signal_errors),
             },
-            "errors": [],
+            "errors": per_signal_errors,
         }
 
         if json_output:
@@ -1031,6 +1107,7 @@ def evidence(
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag. Mutually exclusive with --file/--filelist."),
+    no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)
 
@@ -1043,29 +1120,50 @@ def evidence(
         resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
 
         # [B1 2026-07-03] Batch mode
+        # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
         signals_result = []
+        per_signal_errors = []
         for i, sig in enumerate(signals):
-            if chain:
-                evidences = resolver.resolve_chain(sig)
-                ev_dicts = [_evidence_to_dict(e) for e in evidences]
-            else:
-                ev = resolver.resolve(sig)
-                ev_dicts = _evidence_to_dict(ev)
-            signals_result.append({
-                "signal": sig,
-                "index": i,
-                "evidence": ev_dicts,
-            })
+            try:
+                if chain:
+                    evidences = resolver.resolve_chain(sig)
+                    ev_dicts = [_evidence_to_dict(e) for e in evidences]
+                else:
+                    ev = resolver.resolve(sig)
+                    ev_dicts = _evidence_to_dict(ev)
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "evidence": ev_dicts,
+                })
+            except Exception as sig_err:
+                # [A3 2026-07-04] Per-signal failure → record error, continue
+                from src.cli.errors import make_error, code_for_exception
+                err_data = make_error(
+                    code_for_exception(sig_err), str(sig_err), command="trace_evidence",
+                )
+                per_signal_errors.append({
+                    "signal": sig,
+                    "index": i,
+                    "error": err_data["error"],
+                    "error_code": err_data.get("error_code", "E_INTERNAL"),
+                })
+                signals_result.append({
+                    "signal": sig,
+                    "index": i,
+                    "evidence": None,
+                })
 
         data = {
-            "ok": True,
+            "ok": per_signal_errors == [],
             "command": "trace_evidence",
-            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot},
+            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
+                "failed_signals": len(per_signal_errors),
             },
-            "errors": [],
+            "errors": per_signal_errors,
         }
 
         if json_output:

@@ -9,6 +9,7 @@
     "exclude": null,
     "max_results": null,
     "module": null,
+    "no_cache": false,
     "signals": [
       "sync_fifo.count_q"
     ],
@@ -17,6 +18,7 @@
     "width_min": 2
   },
   "result": {
+    "failed_signals": 0,
     "signals": [
       {
         "count": 0,
