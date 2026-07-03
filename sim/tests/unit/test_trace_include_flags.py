@@ -68,7 +68,10 @@ def test_fanout_only_clock_not_driver():
     assert r.returncode == 0
     import json
     data = json.loads(r.stdout)
-    loads = data.get("result", {}).get("loads", [])
+    # [B1 2026-07-03] batch schema: result.signals[].loads
+    signals = data.get("result", {}).get("signals", [])
+    assert len(signals) == 1
+    loads = signals[0].get("loads", [])
     # 应该返回 3 个 loads (sync0/sync1/data_o)
     assert len(loads) >= 1, f"应有 loads, got {loads}"
     print(f"✅ trace fanout --include-clock JSON: {len(loads)} loads")

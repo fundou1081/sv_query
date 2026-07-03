@@ -39,6 +39,48 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
+def _collect_signals(
+    signal: str | None,
+    batch_file: str | None,
+    batch: str | None,
+) -> list[str]:
+    """[B1 2026-07-03] Collect signals from positional + --batch-file + --batch.
+
+    Priority: dedup, preserves first occurrence order.
+    Comment lines (#) and empty lines in batch_file are skipped.
+    Returns: list of unique signals (at least 1 if any source provided).
+
+    Raises:
+        ValueError: batch_file not found, or no signals collected from any source.
+    """
+    signals: list[str] = []
+    if signal:
+        signals.append(signal)
+    if batch_file:
+        try:
+            with open(batch_file) as f:
+                for line in f:
+                    s = line.strip()
+                    if not s or s.startswith("#"):
+                        continue
+                    signals.append(s)
+        except FileNotFoundError as e:
+            raise ValueError(f"batch file not found: {batch_file}") from e
+    if batch:
+        for s in batch.split(","):
+            s = s.strip()
+            if s:
+                signals.append(s)
+    # dedup, preserve order
+    seen: set[str] = set()
+    deduped = [s for s in signals if not (s in seen or seen.add(s))]
+    if not deduped:
+        raise ValueError(
+            "No signals: provide SIGNAL, --batch-file PATH, or --batch 'sig1,sig2'"
+        )
+    return deduped
+
+
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
 
@@ -51,34 +93,82 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     result = data.get("result", {})
 
     if command == "trace_fanin":
-        signal = data.get("params", {}).get("signal", "")
-        drivers = result.get("drivers", [])
-        if human:
-            ev = result.get("evidence")
-            print(_format_fanin_human(signal, drivers, evidence_map={signal: ev} if ev else None, tree=tree))
+        # [B1 2026-07-03] Batch mode: result.signals = [{signal, drivers, ...}, ...]
+        #                 Single mode: result.drivers = [...] (legacy)
+        signals_result = result.get("signals")
+        if signals_result is not None:
+            # Batch output
+            total = len(signals_result)
+            for sig_entry in signals_result:
+                sig = sig_entry["signal"]
+                drivers = sig_entry["drivers"]
+                i = sig_entry["index"] + 1
+                print(f"signal {i}/{total}: {sig}")
+                if human:
+                    ev = sig_entry.get("evidence")
+                    print(_format_fanin_human(sig, drivers, evidence_map={sig: ev} if ev else None, tree=tree))
+                else:
+                    if not drivers:
+                        print("  (no drivers)")
+                    for d in drivers:
+                        dist = d.get("distance", "")
+                        kind = d.get("kind", "")
+                        print(f"  [{dist}] {d['id']} ({kind})")
+                if i < total:
+                    print()
         else:
-            print(f"Fanin of '{signal}':")
-            if not drivers:
-                print("  (no drivers)")
-            for d in drivers:
-                dist = d.get("distance", "")
-                kind = d.get("kind", "")
-                print(f"  [{dist}] {d['id']} ({kind})")
+            # Single-signal legacy mode
+            signal = data.get("params", {}).get("signal", "")
+            drivers = result.get("drivers", [])
+            if human:
+                ev = result.get("evidence")
+                print(_format_fanin_human(signal, drivers, evidence_map={signal: ev} if ev else None, tree=tree))
+            else:
+                print(f"Fanin of '{signal}':")
+                if not drivers:
+                    print("  (no drivers)")
+                for d in drivers:
+                    dist = d.get("distance", "")
+                    kind = d.get("kind", "")
+                    print(f"  [{dist}] {d['id']} ({kind})")
 
     elif command == "trace_fanout":
-        signal = data.get("params", {}).get("signal", "")
-        loads = result.get("loads", [])
-        if human:
-            ev = result.get("evidence")
-            print(_format_fanout_human(signal, loads, evidence_map={signal: ev} if ev else None, tree=tree))
+        # [B1 2026-07-03] Batch mode
+        signals_result = result.get("signals")
+        if signals_result is not None:
+            total = len(signals_result)
+            for sig_entry in signals_result:
+                sig = sig_entry["signal"]
+                loads = sig_entry["loads"]
+                i = sig_entry["index"] + 1
+                print(f"signal {i}/{total}: {sig}")
+                if human:
+                    ev = sig_entry.get("evidence")
+                    print(_format_fanout_human(sig, loads, evidence_map={sig: ev} if ev else None, tree=tree))
+                else:
+                    if not loads:
+                        print("  (no loads)")
+                    for load in loads:
+                        dist = load.get("distance", "")
+                        kind = load.get("kind", "")
+                        print(f"  [{dist}] {load['id']} ({kind})")
+                if i < total:
+                    print()
         else:
-            print(f"Fanout of '{signal}':")
-            if not loads:
-                print("  (no loads)")
-            for load in loads:
-                dist = load.get("distance", "")
-                kind = load.get("kind", "")
-                print(f"  [{dist}] {load['id']} ({kind})")
+            # Single-signal legacy mode
+            signal = data.get("params", {}).get("signal", "")
+            loads = result.get("loads", [])
+            if human:
+                ev = result.get("evidence")
+                print(_format_fanout_human(signal, loads, evidence_map={signal: ev} if ev else None, tree=tree))
+            else:
+                print(f"Fanout of '{signal}':")
+                if not loads:
+                    print("  (no loads)")
+                for load in loads:
+                    dist = load.get("distance", "")
+                    kind = load.get("kind", "")
+                    print(f"  [{dist}] {load['id']} ({kind})")
 
     elif command == "trace_impact":
         if human:
@@ -222,7 +312,7 @@ trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or i
 
 @trace_app.command()
 def fanin(
-    signal: str = typer.Argument(..., help="Signal to trace (e.g., top.clk)"),
+    signal: str = typer.Argument(None, help="Signal to trace (e.g., top.clk). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -232,10 +322,18 @@ def fanin(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
-    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results (None=unlimited). Returns truncated=true if capped."),
+    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
+    batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
+    batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
 ) -> None:
-    """Trace signal drivers (fanin)"""
+    """Trace signal drivers (fanin)
+
+    Single signal: sv_query trace fanin top.clk -f top.sv
+    Batch:        sv_query trace fanin --batch 'top.clk,top.rst_n' -f top.sv
+                  sv_query trace fanin --batch-file signals.txt -f top.sv
+    """
     try:
+        signals = _collect_signals(signal, batch_file, batch)
         if filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
@@ -246,31 +344,47 @@ def fanin(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph()
 
-        result = tracer.trace_fanin(signal, depth=depth)
-
-        # 转换结果为可序列化格式
-        drivers = []
-        for d in result if hasattr(result, "__iter__") else []:
-            if hasattr(d, "id"):
-                drivers.append(
-                    {
-                        "id": d.id,
-                        "kind": getattr(d, "kind", "UNKNOWN").name if hasattr(d, "kind") else "UNKNOWN",
-                        "distance": getattr(d, "distance", 1) if hasattr(d, "distance") else 1,
-                    }
-                )
-
-        # [C1 2026-06-28 LLM] Limit results to avoid context overflow
-        truncated = False
-        if max_results is not None and len(drivers) > max_results:
-            drivers = drivers[:max_results]
-            truncated = True
+        # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
+        signals_result = []
+        total_count = 0
+        truncated_global = False
+        for i, sig in enumerate(signals):
+            result = tracer.trace_fanin(sig, depth=depth)
+            drivers = []
+            for d in result if hasattr(result, "__iter__") else []:
+                if hasattr(d, "id"):
+                    drivers.append(
+                        {
+                            "id": d.id,
+                            "kind": getattr(d, "kind", "UNKNOWN").name if hasattr(d, "kind") else "UNKNOWN",
+                            "distance": getattr(d, "distance", 1) if hasattr(d, "distance") else 1,
+                        }
+                    )
+            # [C1 2026-06-28 LLM] Cap per-signal results
+            truncated = False
+            if max_results is not None and len(drivers) > max_results:
+                drivers = drivers[:max_results]
+                truncated = True
+                truncated_global = True
+            signals_result.append({
+                "signal": sig,
+                "index": i,
+                "drivers": drivers,
+                "count": len(drivers),
+                "truncated": truncated,
+            })
+            total_count += len(drivers)
 
         data = {
             "ok": True,
             "command": "trace_fanin",
-            "params": {"signal": signal, "file": str(file), "depth": depth, "max_results": max_results},
-            "result": {"drivers": drivers, "truncated": truncated, "total_count": len(drivers)},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch},
+            "result": {
+                "signals": signals_result,
+                "total_signals": len(signals),
+                "total_count": total_count,
+                "truncated": truncated_global,
+            },
             "errors": [],
         }
 
@@ -292,7 +406,7 @@ def fanin(
 
 @trace_app.command()
 def fanout(
-    signal: str = typer.Argument(..., help="Signal to trace (e.g., top.data)"),
+    signal: str = typer.Argument(None, help="Signal to trace (e.g., top.data). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -305,14 +419,20 @@ def fanout(
     include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
-    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results (None=unlimited). Returns truncated=true if capped."),
+    max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
+    batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
+    batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
 ) -> None:
     """Trace signal loads (fanout)
 
     [ADD 2026-06-11 Req-12 Issue 19] 默认只走 DRIVER+CONNECTION 边, 不含 CLOCK/RESET/CONTROL.
     用 --include-clock/reset/control flag 可加入. 完整视图请用 'visualize graph'.
+
+    Single signal: sv_query trace fanout top.data -f top.sv
+    Batch:        sv_query trace fanout --batch 'top.clk,top.data' -f top.sv
     """
     try:
+        signals = _collect_signals(signal, batch_file, batch)
         if filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
@@ -323,36 +443,51 @@ def fanout(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph()
 
-        result = tracer.trace_fanout(
-            signal, depth=depth,
-            include_clock=include_clock,
-            include_reset=include_reset,
-            include_control=include_control,
-        )
-
-        # 转换结果为可序列化格式
-        loads = []
-        for load in result if hasattr(result, "__iter__") else []:
-            if hasattr(load, "id"):
-                loads.append(
-                    {
-                        "id": load.id,
-                        "kind": getattr(load, "kind", "UNKNOWN").name if hasattr(load, "kind") else "UNKNOWN",
-                        "distance": getattr(load, "distance", 1) if hasattr(load, "distance") else 1,
-                    }
-                )
-
-        # [C1 2026-06-28 LLM] Limit results to avoid context overflow
-        truncated = False
-        if max_results is not None and len(loads) > max_results:
-            loads = loads[:max_results]
-            truncated = True
+        # [B1 2026-07-03] Batch mode
+        signals_result = []
+        total_count = 0
+        truncated_global = False
+        for i, sig in enumerate(signals):
+            result = tracer.trace_fanout(
+                sig, depth=depth,
+                include_clock=include_clock,
+                include_reset=include_reset,
+                include_control=include_control,
+            )
+            loads = []
+            for load in result if hasattr(result, "__iter__") else []:
+                if hasattr(load, "id"):
+                    loads.append(
+                        {
+                            "id": load.id,
+                            "kind": getattr(load, "kind", "UNKNOWN").name if hasattr(load, "kind") else "UNKNOWN",
+                            "distance": getattr(load, "distance", 1) if hasattr(load, "distance") else 1,
+                        }
+                    )
+            truncated = False
+            if max_results is not None and len(loads) > max_results:
+                loads = loads[:max_results]
+                truncated = True
+                truncated_global = True
+            signals_result.append({
+                "signal": sig,
+                "index": i,
+                "loads": loads,
+                "count": len(loads),
+                "truncated": truncated,
+            })
+            total_count += len(loads)
 
         data = {
             "ok": True,
             "command": "trace_fanout",
-            "params": {"signal": signal, "file": str(file), "depth": depth, "max_results": max_results},
-            "result": {"loads": loads, "truncated": truncated, "total_count": len(loads)},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch},
+            "result": {
+                "signals": signals_result,
+                "total_signals": len(signals),
+                "total_count": total_count,
+                "truncated": truncated_global,
+            },
             "errors": [],
         }
 
@@ -378,7 +513,7 @@ def fanout(
 
 @trace_app.command()
 def impact(
-    signal: str = typer.Argument(..., help="Signal to analyze impact (e.g., top.rst_ni)"),
+    signal: str = typer.Argument(None, help="Signal to analyze impact (e.g., top.rst_ni). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     min_risk: float = typer.Option(30.0, "--min-risk", "-r", help="Minimum risk score for high-risk"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -388,6 +523,8 @@ def impact(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
+    batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
+    batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -395,8 +532,12 @@ def impact(
     - Impact paths and their risk levels
     - Coverage status (SVA/Covergroup)
     - Suggestions for safe modification
+
+    Single signal: sv_query trace impact top.rst_ni -f top.sv
+    Batch:        sv_query trace impact --batch 'top.clk,top.rst_ni' -f top.sv
     """
     try:
+        signals = _collect_signals(signal, batch_file, batch)
         if filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
@@ -407,10 +548,10 @@ def impact(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
 
-        # 提取 SVA 和 Coverage 信息
-        # 当使用 filelist 时，从 tracer 的 compiler 获取已加载的源码
+        # 提取 SVA 和 Coverage 信息 (shared across batch)
         if filelist:
-            sources_for_extractors = tracer._get_compiler().sources()
+            # [BUGFIX 2026-07-03] c.sources 是 dict (不是 callable!), 之前 .sources() 错
+            sources_for_extractors = tracer._get_compiler().sources
         else:
             sources_for_extractors = {str(file): source}
         sva_extractor = SVAExtractor(sources_for_extractors)
@@ -427,32 +568,37 @@ def impact(
             for cp in cg.coverpoints:
                 cov_signals.add(cp.signal)
 
-        # 使用 trace_fanout 获取所有负载（下游被驱动的信号）
-        # impact 关注"改变这个信号会影响哪些下游"
-        load_nodes = tracer.trace_fanout(signal, depth=None)
-
-        # 构建影响路径
-        paths = _build_impact_paths(signal, load_nodes, graph, sva_signals, cov_signals, min_risk)
-
-        # 提取涉及的模块
-        modules = _extract_modules(paths)
-
-        # 按风险排序
-        risk_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-        paths.sort(key=lambda x: risk_order.get(x.get("risk", "LOW"), 2))
-
-        # 统计高风险路径数
-        high_risk_count = sum(1 for p in paths if p.get("risk") == "HIGH")
-
-        data = {
-            "ok": True,
-            "command": "trace_impact",
-            "params": {"signal": signal, "file": str(file), "min_risk": min_risk},
-            "result": {
+        # [B1 2026-07-03] Batch mode
+        signals_result = []
+        total_paths_all = 0
+        total_high_risk_all = 0
+        for i, sig in enumerate(signals):
+            load_nodes = tracer.trace_fanout(sig, depth=None)
+            paths = _build_impact_paths(sig, load_nodes, graph, sva_signals, cov_signals, min_risk)
+            modules = _extract_modules(paths)
+            risk_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            paths.sort(key=lambda x: risk_order.get(x.get("risk", "LOW"), 2))
+            high_risk_count = sum(1 for p in paths if p.get("risk") == "HIGH")
+            signals_result.append({
+                "signal": sig,
+                "index": i,
                 "total_paths": len(paths),
                 "high_risk_count": high_risk_count,
                 "modules": modules,
                 "paths": paths,
+            })
+            total_paths_all += len(paths)
+            total_high_risk_all += high_risk_count
+
+        data = {
+            "ok": True,
+            "command": "trace_impact",
+            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch},
+            "result": {
+                "signals": signals_result,
+                "total_signals": len(signals),
+                "total_paths": total_paths_all,
+                "total_high_risk_count": total_high_risk_all,
             },
             "errors": [],
         }
@@ -692,7 +838,7 @@ def _extract_modules(paths: list) -> list:
 
 @trace_app.command()
 def evidence(
-    signal: str = typer.Argument(..., help="Signal to query (e.g., top.q)"),
+    signal: str = typer.Argument(None, help="Signal to query (e.g., top.q). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     chain: bool = typer.Option(False, "--chain", "-c", help="Show evidence for entire driver chain"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -702,57 +848,63 @@ def evidence(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
+    batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
+    batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
 ) -> None:
-    """展示信号的源码 evidence (enclosing always/if 块完整源码)"""
+    """展示信号的源码 evidence (enclosing always/if 块完整源码)
+
+    Single signal: sv_query trace evidence top.q -f top.sv
+    Batch:        sv_query trace evidence --batch 'top.q,top.a' -f top.sv
+    """
     try:
+        signals = _collect_signals(signal, batch_file, batch)
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
         resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros)
 
-        if chain:
-            evidences = resolver.resolve_chain(signal)
-            ev_dicts = [_evidence_to_dict(e) for e in evidences]
-            data = {
-                "ok": True,
-                "command": "trace_evidence",
-                "params": {"signal": signal, "file": str(file), "chain": True},
-                "signal": signal,
-                "evidence_chain": ev_dicts,
-                "errors": [],
-            }
-        else:
-            ev = resolver.resolve(signal)
-            data = {
-                "ok": True,
-                "command": "trace_evidence",
-                "params": {"signal": signal, "file": str(file), "chain": False},
-                "signal": signal,
-                "evidence": _evidence_to_dict(ev),
-                "errors": [],
-            }
+        # [B1 2026-07-03] Batch mode
+        signals_result = []
+        for i, sig in enumerate(signals):
+            if chain:
+                evidences = resolver.resolve_chain(sig)
+                ev_dicts = [_evidence_to_dict(e) for e in evidences]
+            else:
+                ev = resolver.resolve(sig)
+                ev_dicts = _evidence_to_dict(ev)
+            signals_result.append({
+                "signal": sig,
+                "index": i,
+                "evidence": ev_dicts,
+            })
+
+        data = {
+            "ok": True,
+            "command": "trace_evidence",
+            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch},
+            "result": {
+                "signals": signals_result,
+                "total_signals": len(signals),
+            },
+            "errors": [],
+        }
 
         if json_output:
             output_json(data, pretty)
         else:
-            if human and chain and isinstance(data.get("evidence_chain"), list):
-                # [Stage 6 part 4] --human --tree: tree 模式渲染 chain
-                from cli._evidence_helpers import render_signal_tree
-                # chain list: [target, driver1, driver2, ...] (target 在前)
-                chain_signals = [ev.get("signal", "?") for ev in data["evidence_chain"]]
-                # 删掉开头的 target (因为我们要 append signal 在末尾, 避免重复)
-                if chain_signals and chain_signals[0] == signal:
-                    chain_signals = chain_signals[1:]
-                # 倒序: source (最早 driver) 在前, signal (终点) 在最后
-                chain_signals = list(reversed(chain_signals))
-                chain_signals.append(signal)
-                # 如果 source 在 chain_signals[0] 还是 signal (eg chain 只有 target 自己), 去重
-                if len(chain_signals) > 1 and chain_signals[0] == chain_signals[-1]:
-                    chain_signals = chain_signals[:-1]
-                print(render_signal_tree(
-                    chain_signals,
-                    title=f"Evidence chain: {signal}",
-                ))
-            else:
-                _output_evidence_text(data)
+            # Text mode: render each signal's evidence with header
+            for sig_entry in signals_result:
+                sig = sig_entry["signal"]
+                idx = sig_entry["index"] + 1
+                total = len(signals)
+                print(f"signal {idx}/{total}: {sig}")
+                print("=" * 60)
+                ev_data = {"signal": sig}
+                if chain:
+                    ev_data["evidence_chain"] = sig_entry["evidence"]
+                else:
+                    ev_data["evidence"] = sig_entry["evidence"]
+                _output_evidence_text(ev_data)
+                if idx < total:
+                    print()
 
     except Exception as e:
         data = {"ok": False, "command": "trace_evidence", "error": str(e), "errors": [str(e)]}
