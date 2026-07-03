@@ -58,17 +58,13 @@ def _get_tracer_from_file(file_path, strict=False):
 def _get_tracer_from_filelist(filelist, strict=False, preprocess_macros=True):
     """[Req-20 2026-06-12] 从 filelist 构建 UnifiedTracer (snapshot filelist 模式)
 
-    [FIX 2026-06-12] 用 for 循环收集 keys, 不用 list(dict.keys()).
-    原因: 在 cli.commands.snapshot module 上下文里, list(dict.keys()) 神秘返回 None
-    (可能是 import chain 冲突). 改用显式 append 避免.
+    [FIX 2026-07-04 B4] Use `UnifiedTracer(filelist=...)` instead of pre-reading
+    sources via _read_filelist (which had base_dir bug causing 0 sources).
     """
-    from cli._common import _read_filelist
-    sources_dict = _read_filelist(filelist, base_dir=Path.cwd())
-    file_paths_list = []
-    for _key in sources_dict:
-        file_paths_list.append(_key)
-    tracer = UnifiedTracer(sources=sources_dict, strict=strict, preprocess_macros=preprocess_macros)
+    tracer = UnifiedTracer(filelist=filelist, strict=strict, preprocess_macros=preprocess_macros)
     tracer.build_graph()
+    # [B4] Get file paths from the tracer for the snapshot metadata
+    file_paths_list = list(tracer._compiler._sources.keys()) if hasattr(tracer, '_compiler') and tracer._compiler else []
     return tracer, file_paths_list
 
 

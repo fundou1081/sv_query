@@ -26,12 +26,13 @@ from trace.unified_tracer import UnifiedTracer
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter
 # ----------------------------------------------------------------------------
 
-def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True) -> tuple[TraceEvidenceResolver, Any, Any]:
+def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True, from_snapshot: str = None) -> tuple[TraceEvidenceResolver, Any, Any]:
     """读取 SV 源文件 -> build graph + adapter + resolver
 
     Args:
         file: SystemVerilog 源文件路径 (与 filelist 二选一)
         filelist: filelist 路径,用于多文件项目
+        from_snapshot: [B4 2026-07-03] snapshot tag (跳过 SV parse, 跟 file/filelist 互斥)
         log_level: 编译器日志级别,CLI 默认 ERROR 静音 WARNING
         strict: True = elaboration error 立即 raise; False = 优雅降级 (默认 False, 供 evidence 走部分图)
         preprocess_macros: [Req-20 2026-06-12] 跨文件 `MACRO 展开, 避免 TooFewArguments
@@ -39,16 +40,30 @@ def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = 
     Returns:
         (resolver, graph, adapter) - adapter 暴露 semantic API 给 resolver 内部用
     """
-    if filelist:
+    if from_snapshot and (file or filelist):
+        raise ValueError("from_snapshot is mutually exclusive with file/filelist")
+    if from_snapshot:
+        # [B4 2026-07-03] Build tracer from snapshot (no SV parse, no real adapter)
+        from src.cli.commands.trace import _load_tracer_from_snapshot
+        tracer = _load_tracer_from_snapshot(from_snapshot, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros)
+        graph = tracer.build_graph()
+        # Snapshot 没有真 semantic adapter; 构造一个空 adapter (resolver 走 fallback)
+        class _NullAdapter:
+            def get_child_modules(self, *a, **kw): return []
+            def get_root(self, *a, **kw): return None
+        adapter = _NullAdapter()
+    elif filelist:
         tracer = UnifiedTracer(filelist=filelist, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros)
+        graph = tracer.build_graph()
+        adapter = tracer._get_adapter()
     elif file:
         with open(str(file)) as f:
             source = f.read()
         tracer = UnifiedTracer(sources={str(file): source}, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros)
+        graph = tracer.build_graph()
+        adapter = tracer._get_adapter()
     else:
-        raise ValueError("Either file or filelist must be provided")
-    graph = tracer.build_graph()
-    adapter = tracer._get_adapter()
+        raise ValueError("Either file, filelist, or from_snapshot must be provided")
     resolver = TraceEvidenceResolver(graph=graph, adapter=adapter)
     return resolver, graph, adapter
 

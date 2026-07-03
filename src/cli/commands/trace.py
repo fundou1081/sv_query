@@ -134,6 +134,86 @@ def _apply_filters(
     return out
 
 
+def _load_tracer_from_snapshot(
+    tag: str,
+    log_level: str = "ERROR",
+    strict: bool = True,
+    preprocess_macros: bool = True,
+) -> "UnifiedTracer":
+    """[B4 2026-07-03] Build UnifiedTracer from saved snapshot, skip SV parse.
+
+    用途: 同一 graph 跑多次 trace 命令, parse 1 次 (snapshot save) + trace N 次.
+    加速: 大项目 (50+ SV) 跑 4 子命令各 1 次 = 4× parse, 现在 1×.
+
+    Returns: UnifiedTracer with _graph + _signal_tracer pre-populated from snapshot JSON.
+
+    Raises:
+        ValueError: snapshot tag not found.
+    """
+    from trace.core.snapshot_manager import SnapshotManager
+    from trace.core.graph.models import (
+        SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind,
+    )
+    from trace.core.query.signal import SignalTracer
+
+    manager = SnapshotManager()
+    snap = manager.load(tag)
+    if snap is None:
+        raise ValueError(f"Snapshot not found: {tag}")
+
+    graph = SignalGraph()
+    for n in snap.get("nodes", []):
+        kind_str = n.get("kind", "SIGNAL")
+        try:
+            kind = NodeKind[kind_str] if isinstance(kind_str, str) else kind_str
+        except KeyError:
+            kind = NodeKind.SIGNAL
+        node = TraceNode(
+            id=n["id"],
+            name=n.get("name", n["id"].rsplit(".", 1)[-1] if "." in n["id"] else n["id"]),
+            module=n.get("module", n["id"].split(".", 1)[0] if "." in n["id"] else ""),
+            kind=kind,
+            width=tuple(n.get("width", (0, 0))),
+            bit_range=n.get("bit_range"),
+            file=n.get("file", ""),
+            line=n.get("line", 0),
+            is_clock=n.get("is_clock", False),
+            is_reset=n.get("is_reset", False),
+            is_enable=n.get("is_enable", False),
+            is_port=n.get("is_port", False),
+            parent=n.get("parent"),
+            parent_bit_start=n.get("parent_bit_start"),
+            parent_bit_end=n.get("parent_bit_end"),
+            modport_dir=n.get("modport_dir"),
+        )
+        graph.add_trace_node(node)
+    for e in snap.get("edges", []):
+        kind_str = e.get("kind", "DRIVER")
+        try:
+            kind = EdgeKind[kind_str] if isinstance(kind_str, str) else kind_str
+        except KeyError:
+            kind = EdgeKind.DRIVER
+        edge = TraceEdge(
+            src=e["src"],
+            dst=e["dst"],
+            kind=kind,
+            assign_type=e.get("assign_type", ""),
+            condition=e.get("condition", ""),
+            clock_domain=e.get("clock_domain", ""),
+            modport_dir=e.get("modport_dir"),
+            confidence=e.get("confidence", "high"),
+        )
+        graph.add_trace_edge(edge)
+
+    # Stub tracer: pre-populate _graph + _signal_tracer
+    tracer = UnifiedTracer(
+        sources={}, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros,
+    )
+    tracer._graph = graph
+    tracer._signal_tracer = SignalTracer(graph, mig=None, use_mig=False)
+    return tracer
+
+
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
 
@@ -383,6 +463,7 @@ def fanin(
     width_min: int = typer.Option(None, "--width-min", help="[B2 2026-07-03] Minimum signal bit width (inclusive)."),
     width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
 ) -> None:
     """Trace signal drivers (fanin)
 
@@ -392,11 +473,16 @@ def fanin(
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
-        if filelist:
+        # [B4 2026-07-03] Mutually exclusive: --from-snapshot vs --file/--filelist
+        if from_snapshot and (file or filelist):
+            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+        if from_snapshot:
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+        elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
-                raise ValueError("Either --file or --filelist must be provided")
+                raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
@@ -443,7 +529,7 @@ def fanin(
         data = {
             "ok": True,
             "command": "trace_fanin",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
@@ -493,6 +579,7 @@ def fanout(
     width_min: int = typer.Option(None, "--width-min", help="[B2 2026-07-03] Minimum signal bit width (inclusive)."),
     width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -504,11 +591,16 @@ def fanout(
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
-        if filelist:
+        # [B4 2026-07-03] Mutually exclusive: --from-snapshot vs --file/--filelist
+        if from_snapshot and (file or filelist):
+            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+        if from_snapshot:
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+        elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
-                raise ValueError("Either --file or --filelist must be provided")
+                raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
@@ -559,7 +651,7 @@ def fanout(
         data = {
             "ok": True,
             "command": "trace_fanout",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude, "from_snapshot": from_snapshot},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
@@ -604,6 +696,7 @@ def impact(
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag. Mutually exclusive with --file/--filelist."),
 ) -> None:
     """Analyze impact of changing a signal
 
@@ -617,21 +710,29 @@ def impact(
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
-        if filelist:
+        # [B4 2026-07-03] Mutually exclusive: --from-snapshot vs --file/--filelist
+        if from_snapshot and (file or filelist):
+            raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
+        if from_snapshot:
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+        elif filelist:
             tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         else:
             if file is None:
-                raise ValueError("Either --file or --filelist must be provided")
+                raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
 
         # 提取 SVA 和 Coverage 信息 (shared across batch)
-        if filelist:
+        if filelist or from_snapshot:
             # [BUGFIX 2026-07-03] c.sources 是 dict (不是 callable!), 之前 .sources() 错
+            # [B4 2026-07-03] from_snapshot 时 c.sources 是空 dict (snapshot 不存 SV 源)
             sources_for_extractors = tracer._get_compiler().sources
         else:
+            with open(str(file)) as f:
+                source = f.read()
             sources_for_extractors = {str(file): source}
         sva_extractor = SVAExtractor(sources_for_extractors)
         sva_data = sva_extractor.extract()
@@ -672,7 +773,7 @@ def impact(
         data = {
             "ok": True,
             "command": "trace_impact",
-            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch},
+            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
@@ -929,6 +1030,7 @@ def evidence(
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
+    from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag. Mutually exclusive with --file/--filelist."),
 ) -> None:
     """展示信号的源码 evidence (enclosing always/if 块完整源码)
 
@@ -938,7 +1040,7 @@ def evidence(
     try:
         signals = _collect_signals(signal, batch_file, batch)
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
-        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros)
+        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
 
         # [B1 2026-07-03] Batch mode
         signals_result = []
@@ -958,7 +1060,7 @@ def evidence(
         data = {
             "ok": True,
             "command": "trace_evidence",
-            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch},
+            "params": {"signals": signals, "file": str(file), "chain": chain, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
