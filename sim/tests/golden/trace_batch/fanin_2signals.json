@@ -10,6 +10,7 @@
     "from_snapshot": null,
     "max_results": null,
     "module": null,
+    "no_cache": false,
     "signals": [
       "uart_top.rx_data_o",
       "sync_fifo.count_q"
@@ -19,6 +20,7 @@
     "width_min": null
   },
   "result": {
+    "failed_signals": 0,
     "signals": [
       {
         "count": 1,
