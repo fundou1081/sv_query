@@ -402,3 +402,114 @@ dot -Tpng -Gsize="20,10" -Gratio=compress in.dot -o out.png
 - Issues: https://github.com/fundou1081/sv_query/issues
 
 **最后更新**: 2026-06-01
+
+---
+
+## 支持的 SV 特性
+
+### 完全支持
+
+| 特性 | 说明 |
+|------|------|
+| `assign` 连续赋值 | 组合逻辑驱动 |
+| `always_ff` | 时序逻辑, 含时钟和复位 |
+| `always_comb` | 组合逻辑, 含 case/if 条件 |
+| `always_latch` | 锁存逻辑 |
+| 位选 `data[7:4]` | 精确位范围追踪 |
+| 位拼接 `{a, b}` | 自动展开为多条边 |
+| Port/Interface 连接 | 实例化信号连接 |
+| Class OOP | 继承, 约束, 虚函数, 实例化, 成员访问, 组合关系, 约束继承传播 |
+| 函数/任务内联展开 | if/else/case/return/三元运算符展开 |
+| 约束详情查询 | 条件链追踪, if/else 上下文, foreach/solve before |
+
+### 部分支持
+
+| 特性 | 说明 |
+|------|------|
+| 拼接运算 `{...}` | 可能存在冗余边 |
+| Struct 成员 | 整体赋值展开为成员赋值 |
+
+### 暂不支持
+
+| 特性 | 替代方案 |
+|------|----------|
+| 复杂宏替换 | 预处理后分析 |
+| `bind` 语句 | 计划中 |
+| 多时钟域处理 | 手动配置时钟信号 |
+| 异步复位边过滤 | 计划中 |
+
+---
+
+## 输出格式
+
+### 表格输出 (默认)
+
+```
+=== Drivers for top.result ===
+Source Signal | Condition | Confidence
+--------------+-----------+----------
+top.temp | Always | Certain
+top.clk | Rising Edge | Certain
+```
+
+### JSON 输出 (程序调用)
+
+```bash
+python run_cli.py trace fanin top.result -f top.sv --json
+```
+
+```json
+{
+  "signal": "top.result",
+  "drivers": [
+    {
+      "source_signal": "top.temp",
+      "condition": "Always",
+      "clock_domain": "clk",
+      "confidence": "certain",
+      "source_location": "top.sv:8"
+    }
+  ]
+}
+```
+
+### `--evidence` 模式 (每条结果附源码)
+
+```bash
+python run_cli.py trace fanin top.result -f top.sv --evidence
+```
+
+输出每条结果下方 1 行源码摘要, JSON 返回完整 evidence 字段含 credibility_score.
+详见 [EVIDENCE_FEATURE.md](EVIDENCE_FEATURE.md).
+
+---
+
+## stats 命令 (图统计 + 扇出排行榜)
+
+```bash
+# 基本统计
+python run_cli.py stats -f top.sv
+
+# 扇出排行榜
+python run_cli.py stats -f top.sv --fanout-rank -n 10
+```
+
+**输出示例**:
+
+```
+=== Fanout Statistics ===
+  Clock fanout: 3 (建议 > 50 考虑 clock gating)
+  Reset fanout: 5 (建议 > 50 考虑分时复位)
+
+  High Fanout Signals (TOP 10):
+  Rank   Fanout   Signal                                   Kind         Suggestion
+  ------ -------- ---------------------------------------- ------------ --------------------
+  1      83       picorv32.0                             SIGNAL       高扇出信号, 检查是否需要拆分
+  2      34       picorv32.1                             SIGNAL
+  3      29       picorv32.mem_rdata_q[14:12]            SIGNAL
+```
+
+| 参数 | 说明 |
+|------|------|
+| `--fanout-rank` | 显示扇出排行榜 |
+| `-n, --top N` | 显示前 N 个 (默认 20) |

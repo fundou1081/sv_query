@@ -223,3 +223,38 @@ python run_cli.py protocol detect --filelist /tmp/opentitan_prim.f --module prim
 - sv_query 项目: github.com/fundou1081/sv_query
 - 相关 commit: `00f03bc` (跨模块 trace 修复)
 - 相关 issue: verilog-axi dual-port 修复 (`4288ef1`)
+
+---
+
+## OpenTitan / 大型项目运行注意
+
+[REFACTOR 2026-07-03] 从 README 同步过来.
+
+OpenTitan 等大型项目依赖复杂的 package / import / prim 库, 跑 sv_query 时:
+
+**单文件分析**: 需要提供完整的 include 路径:
+```bash
+python run_cli.py stats -f rtl/uart_core.sv \
+    -I hw/ip/prim/rtl \
+    -I hw/ip/uart/pkg
+```
+
+**独立模块**: 如 `prim_xor2.sv` 等不依赖外部 package 的模块可直接分析.
+
+**推荐**: 使用项目自己的 build system 生成文件清单, 配合 `run_cli.py --files` 分析:
+```bash
+# 1. 让 build system 生成 filelist
+./generate_opentitan_filelist.sh ~/my_dv_proj/opentitan prim > /tmp/opentitan_prim.f
+
+# 2. 用 sv_query 分析
+python run_cli.py protocol detect --filelist /tmp/opentitan_prim.f --module prim_fifo_sync
+python run_cli.py arch --filelist /tmp/opentitan_prim.f -t prim --summary
+```
+
+**已知问题**:
+- prim 和 tlul 都有同名 module (如 `tlul_fifo_sync` vs `prim_fifo_sync`), sv_query 优雅降级
+- 大型项目 (162+ prim modules) 在 8GB 机器可能 OOM, 用 conftest 自动内存回收:
+  ```bash
+  python3 -c "import time; a = bytearray(4 * 1024**3); time.sleep(3); del a"
+  ```
+  详见 [PYSLANG_MEMORY_ISSUE.md](PYSLANG_MEMORY_ISSUE.md)
