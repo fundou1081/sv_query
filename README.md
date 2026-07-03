@@ -147,12 +147,21 @@ sv_query visualize graph -f top.sv --dot /tmp/graph.dot --html /tmp/graph.html
 sv_query arch --filelist=project.f -t top --summary
 ```
 
-**实战战绩**:
-- Google CoralNPU: 28 instances / 4 层 hierarchy / 31 port connections
-- CVA6 / Ariane: 11 instances / 3 层 / 31 port connections
-- SERV: 9 instances / 1 层 (~200 gates RISC-V)
+### 实际生成的效果 (5 个开源项目验证)
 
-详细能力 + 命令 → [docs/ARCH_VISUALIZATION.md](docs/ARCH_VISUALIZATION.md)
+**Google CoralNPU** (28 instances, 4 层 hierarchy, 31 port connections — 2025 最新 RISC-V RVV NPU):
+
+![CoralNPU Architecture](docs/coralnpu_arch.png)
+
+**CVA6 / Ariane** (11 instances, 3 层, 31 port connections — ETH Zurich 工业 RISC-V CPU):
+
+![CVA6 Architecture](docs/cva6_full_arch.png)
+
+**darkriscv** (5 instances, 2 层 — 极简 RISC-V SoC):
+
+![darkriscv Architecture](docs/darkriscv_arch.png)
+
+更多 (Vortex / SERV) + 用法 → [docs/ARCH_VISUALIZATION.md](docs/ARCH_VISUALIZATION.md)
 
 ---
 
