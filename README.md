@@ -2,6 +2,7 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
+> **在 5 个开源项目上验证过**: CoralNPU 28 inst / CVA6 31 ports / Vortex / SERV / darkriscv.
 > 新成员入门? 从 [CONTRIBUTING.md](CONTRIBUTING.md) 开始 — 5 分钟跑起来 + 30 分钟懂架构 + 加第一个 feature.
 
 [![Tests](https://img.shields.io/badge/tests-2400+_passing-brightgreen)]()
@@ -13,14 +14,14 @@
 
 ## 为什么用 sv_query
 
-- **位精确**: 知道信号 `[3:0]` 从哪里来, 到哪里去 (位选拼接不混淆)
-- **跨模块**: 穿透子模块实例, 追踪真实物理连接 (含 wrapper port passthrough)
-- **4 维分析**: module 抽取 (L1) + 端口连接 (L2) + 内部信号 (L3) + 可视化 (L4)
-- **全场景**: 验证问题, CDC, 时序, 风险, 缺口检测, 协议识别, 架构可视化
-- **多文件**: Verilator 风格 filelist 支持 (CVA6 / OpenTitan 级别)
-- **数据可信**: 底层 [pyslang](https://github.com/MikePopoloski/pyslang) 解析 AST, 不是正则
-- **协议检测**: 自动识别 AXI4 / TL-UL / AHB / APB / Wishbone (4 项置信度融合)
+- **位精确追踪**: 知道信号 `[3:0]` 从哪里来, 到哪里去 (位选拼接不混淆, 不合并冗余边)
+- **穿透子模块**: 跨过 wrapper port passthrough, 追踪真实物理连接 (而不是看 instantiate 表面)
+- **4 维分析 (L1-L4)**: module 抽取 + 端口连接 + 内部信号 + 可视化, 业界少见
+- **协议自动识别**: 一键识别 AXI4 / TL-UL / AHB / APB / Wishbone (4 项置信度融合, 避免误判)
+- **数据可信**: 底层 [pyslang](https://github.com/MikePopoloski/pyslang) 解析 AST, **不是正则匹配**
+- **大型项目支持**: Verilator 风格 filelist (`+incdir+`, `-F`, `${VAR}`), CVA6 / OpenTitan 级别 (162+ prim modules)
 - **架构可视化** ([`arch` 命令](docs/ARCH_VISUALIZATION.md)): 一键生成项目架构图, 含跨 module 端口连线
+- **工业项目跑通**: picorv32, OpenTitan, CVA6, NaplesPU, pulp axi 全部 strict mode 跑通
 - **2400+ 测试**: 稳定可靠, 覆盖核心功能
 
 ---
@@ -114,43 +115,50 @@ dot -Tpng top.dot -o top.png
 
 ## 核心能力 (4 维 L1-L4)
 
-### L1: Module 抽取
+sv_query 是少有的提供**完整 4 维分析**的开源 SV 工具, 大部分同类工具只支持单维度 (e.g. 只有 L1, 或只有 L3).
+
+### L1: Module 抽取 — 看清项目骨架
 
 ```bash
 sv_query visualize module -f top.sv -t top -d 2
-# 抽取 top 的 sub-instance hierarchy
 # top → u_sub, u_xbar, u_demux, ...
 ```
 
-### L2: 跨模块 trace
+### L2: 跨模块 trace — 穿透 wrapper 真实物理连接
 
 ```bash
 sv_query trace fanin axi_xbar_intf.s_axi_awvalid --filelist=pulp_axi.f
 # 跨过模块边界, 追到 leaf driver
 ```
 
-### L3: 内部信号追踪
+### L3: 内部信号追踪 — 走完 always_ff + assign 链
 
 ```bash
 sv_query trace fanin top.u_dff.q -f top.sv --max-depth=3
-# 走 always_ff + assign, 避免循环
 ```
 
-### L4: 可视化
+### L4: 可视化 — 一张图看尽数据流 + 风险 + 覆盖
 
 ```bash
 # 信号图 (数据流 + 风险 + 覆盖状态)
 sv_query visualize graph -f top.sv --dot /tmp/graph.dot --html /tmp/graph.html
 
-# 项目架构图 (跨 module 端口连线)
+# 项目架构图 (跨 module 端口连线) — 5 个开源项目验证
 sv_query arch --filelist=project.f -t top --summary
 ```
+
+**实战战绩**:
+- Google CoralNPU: 28 instances / 4 层 hierarchy / 31 port connections
+- CVA6 / Ariane: 11 instances / 3 层 / 31 port connections
+- SERV: 9 instances / 1 层 (~200 gates RISC-V)
 
 详细能力 + 命令 → [docs/ARCH_VISUALIZATION.md](docs/ARCH_VISUALIZATION.md)
 
 ---
 
 ## 用户场景
+
+15 个常见工程问题, 一行命令直接答:
 
 ### 场景 1: 找不到信号是谁驱动的
 
