@@ -3111,8 +3111,11 @@ class TestTraceEvidenceCLIV2(unittest.TestCase):
             self.fail(f"Invalid JSON: {result.stdout[:300]}")
         # 关键字段
         self.assertEqual(data.get("command"), "trace_evidence")
-        self.assertEqual(data.get("signal"), "data_path.stage1_data")
-        ev = data.get("evidence", {})
+        # [B1 2026-07-03] batch schema: result.signals[].signal + .evidence
+        signals = data.get("result", {}).get("signals", [])
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["signal"], "data_path.stage1_data")
+        ev = signals[0].get("evidence", {})
         self.assertIn("source_location", ev)
         self.assertIn("enclosing_always", ev)
         if ev["enclosing_always"]:

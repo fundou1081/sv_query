@@ -48,7 +48,8 @@ endmodule
             result = self._run_svq(["trace", "fanin", "top.a", "--file", path])
             self.assertEqual(result.returncode, 0, f"Error: {result.stderr}")
             self.assertIn("top.q", result.stdout)
-            self.assertIn("Fanin", result.stdout)
+            # [B1 2026-07-03] batch mode: 1-signal 也走 batch header
+            self.assertIn("signal 1/1", result.stdout)
         finally:
             os.unlink(path)
 
@@ -68,12 +69,13 @@ endmodule
             result = self._run_svq(["trace", "fanout", "top.q", "--file", path])
             self.assertEqual(result.returncode, 0, f"Error: {result.stderr}")
             self.assertIn("top.a", result.stdout)
-            self.assertIn("Fanout", result.stdout)
+            # [B1 2026-07-03] batch mode
+            self.assertIn("signal 1/1", result.stdout)
         finally:
             os.unlink(path)
 
     def test_fanin_json(self):
-        """[Golden] trace fanin --json outputs valid JSON"""
+        """[Golden] trace fanin --json outputs valid JSON with batch schema"""
         source = '''
 module top(input clk, output logic [7:0] q);
     logic [7:0] a;
@@ -88,12 +90,16 @@ endmodule
             data = json.loads(result.stdout)
             self.assertTrue(data.get("ok"))
             self.assertEqual(data.get("command"), "trace_fanin")
-            self.assertIn("drivers", data.get("result", {}))
+            # [B1 2026-07-03] batch schema: result.signals[].drivers
+            signals = data["result"]["signals"]
+            self.assertEqual(len(signals), 1)
+            self.assertEqual(signals[0]["signal"], "top.a")
+            self.assertIn("drivers", signals[0])
         finally:
             os.unlink(path)
 
     def test_fanout_json(self):
-        """[Golden] trace fanout --json outputs valid JSON"""
+        """[Golden] trace fanout --json outputs valid JSON with batch schema"""
         source = '''
 module top(input clk, output logic [7:0] q);
     logic [7:0] a;
@@ -108,7 +114,11 @@ endmodule
             data = json.loads(result.stdout)
             self.assertTrue(data.get("ok"))
             self.assertEqual(data.get("command"), "trace_fanout")
-            self.assertIn("loads", data.get("result", {}))
+            # [B1 2026-07-03] batch schema
+            signals = data["result"]["signals"]
+            self.assertEqual(len(signals), 1)
+            self.assertEqual(signals[0]["signal"], "top.q")
+            self.assertIn("loads", signals[0])
         finally:
             os.unlink(path)
 

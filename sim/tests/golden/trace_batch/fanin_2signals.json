@@ -1,0 +1,53 @@
+{
+  "command": "trace_fanin",
+  "errors": [],
+  "ok": true,
+  "params": {
+    "batch": "uart_top.rx_data_o,sync_fifo.count_q",
+    "batch_file": null,
+    "depth": null,
+    "max_results": null,
+    "signals": [
+      "uart_top.rx_data_o",
+      "sync_fifo.count_q"
+    ]
+  },
+  "result": {
+    "signals": [
+      {
+        "count": 1,
+        "drivers": [
+          {
+            "distance": 1,
+            "id": "uart_top.rx_fifo.pop_data_o",
+            "kind": "PORT_OUT"
+          }
+        ],
+        "index": 0,
+        "signal": "uart_top.rx_data_o",
+        "truncated": false
+      },
+      {
+        "count": 2,
+        "drivers": [
+          {
+            "distance": 1,
+            "id": "sync_fifo.count_q",
+            "kind": "REG"
+          },
+          {
+            "distance": 1,
+            "id": "1",
+            "kind": "SIGNAL"
+          }
+        ],
+        "index": 1,
+        "signal": "sync_fifo.count_q",
+        "truncated": false
+      }
+    ],
+    "total_count": 3,
+    "total_signals": 2,
+    "truncated": false
+  }
+}
