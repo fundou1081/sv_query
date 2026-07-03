@@ -22,7 +22,7 @@
 - **大型项目支持**: Verilator 风格 filelist (`+incdir+`, `-F`, `${VAR}`), CVA6 / OpenTitan 级别 (162+ prim modules)
 - **架构可视化** ([`arch` 命令](docs/ARCH_VISUALIZATION.md)): 一键生成项目架构图, 含跨 module 端口连线
 - **工业项目跑通**: picorv32, OpenTitan, CVA6, NaplesPU, pulp axi 全部 strict mode 跑通
-- **2400+ 测试**: 稳定可靠, 覆盖核心功能
+- **2446 测试** (232 文件): 稳定可靠, 覆盖核心功能
 
 ---
 
@@ -347,7 +347,11 @@ sv_query/
 │   ├── cli/                # typer app + 共享 helper
 │   └── applications/       # bus, cpu, operator (应用层模块)
 ├── tools/                  # 独立工具 (benchmark, fix, coverage_gen)
-├── sim/tests/              # 2400+ 测试
+├── sim/tests/              # 2446 测试 (232 文件)
+│   ├── unit/               # 1277 tests
+│   ├── cli/                # 76 tests
+│   ├── integration/        # 385 tests
+│   └── regression/         # 708 tests
 │   ├── unit/               # 单文件 (1-2s)
 │   ├── cli/                # CLI 端到端 (5-10s)
 │   ├── integration/        # 跨模块 + 工业项目 (5min)
