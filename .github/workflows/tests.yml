@@ -44,6 +44,14 @@ jobs:
         run: |
           python -m pytest sim/tests/ -v --tb=short --maxfail=20
 
+      - name: Check discipline
+        # 3 个纪律: 1) 不在 src/trace/core/ 用 regex
+        #           2) 不导入 igraph / graphviz
+        #           3) 目录深度 ≤ 3 (不含 __pycache__)
+        # 包装在 test_discipline_enforced.py 里, 这里仅冗余跑
+        run: |
+          python .github/workflows/check_discipline.py
+
       - name: Run tests with coverage
         run: |
           python -m pytest sim/tests/ --cov=src --cov-report=term-missing --cov-report=xml

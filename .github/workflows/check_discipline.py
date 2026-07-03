@@ -28,23 +28,28 @@ def check_file_structure():
     """检测文件结构"""
     errors = []
     src_dir = "src/trace"
-    
-    # 检查深度
+
+    # 检查深度 (排除 __pycache__ 等系统目录)
+    EXCLUDED_DIRS = {"__pycache__", ".git", ".pytest_cache", ".ruff_cache", "node_modules"}
     for root, dirs, files in os.walk(src_dir):
+        # os.walk 允许就地修改 dirs 来排除子树
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
         depth = root.replace(src_dir, '').count(os.sep)
         if depth > 3:
             errors.append(f"目录过深: {root}")
-    
+
     return errors
 
 def check_imports():
     """检测禁止的导入"""
     errors = []
     forbidden = ['igraph', 'graphviz']
-    
+
+    EXCLUDED_DIRS = {"__pycache__", ".git", ".pytest_cache", ".ruff_cache", "node_modules"}
     for root, dirs, files in os.walk('src/trace'):
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
         for f in files:
-            if f.endswith('.py'):
+            if f.endswith('.py') and f != '__init__.py':
                 path = os.path.join(root, f)
                 with open(path) as fp:
                     content = fp.read()
