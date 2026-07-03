@@ -7,7 +7,6 @@
     "batch_file": null,
     "depth": null,
     "exclude": null,
-    "from_snapshot": null,
     "max_results": null,
     "module": null,
     "signals": [
