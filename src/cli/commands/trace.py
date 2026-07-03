@@ -145,15 +145,16 @@ def _load_tracer_from_snapshot(
     用途: 同一 graph 跑多次 trace 命令, parse 1 次 (snapshot save) + trace N 次.
     加速: 大项目 (50+ SV) 跑 4 子命令各 1 次 = 4× parse, 现在 1×.
 
+    [A2 2026-07-04] Use SignalGraph.from_dict() instead of manual add_trace_node/edge
+    (1 line vs 30 lines, prevents field drift).
+
     Returns: UnifiedTracer with _graph + _signal_tracer pre-populated from snapshot JSON.
 
     Raises:
         ValueError: snapshot tag not found.
     """
     from trace.core.snapshot_manager import SnapshotManager
-    from trace.core.graph.models import (
-        SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind,
-    )
+    from trace.core.graph.models import SignalGraph
     from trace.core.query.signal import SignalTracer
 
     manager = SnapshotManager()
@@ -161,49 +162,10 @@ def _load_tracer_from_snapshot(
     if snap is None:
         raise ValueError(f"Snapshot not found: {tag}")
 
-    graph = SignalGraph()
-    for n in snap.get("nodes", []):
-        kind_str = n.get("kind", "SIGNAL")
-        try:
-            kind = NodeKind[kind_str] if isinstance(kind_str, str) else kind_str
-        except KeyError:
-            kind = NodeKind.SIGNAL
-        node = TraceNode(
-            id=n["id"],
-            name=n.get("name", n["id"].rsplit(".", 1)[-1] if "." in n["id"] else n["id"]),
-            module=n.get("module", n["id"].split(".", 1)[0] if "." in n["id"] else ""),
-            kind=kind,
-            width=tuple(n.get("width", (0, 0))),
-            bit_range=n.get("bit_range"),
-            file=n.get("file", ""),
-            line=n.get("line", 0),
-            is_clock=n.get("is_clock", False),
-            is_reset=n.get("is_reset", False),
-            is_enable=n.get("is_enable", False),
-            is_port=n.get("is_port", False),
-            parent=n.get("parent"),
-            parent_bit_start=n.get("parent_bit_start"),
-            parent_bit_end=n.get("parent_bit_end"),
-            modport_dir=n.get("modport_dir"),
-        )
-        graph.add_trace_node(node)
-    for e in snap.get("edges", []):
-        kind_str = e.get("kind", "DRIVER")
-        try:
-            kind = EdgeKind[kind_str] if isinstance(kind_str, str) else kind_str
-        except KeyError:
-            kind = EdgeKind.DRIVER
-        edge = TraceEdge(
-            src=e["src"],
-            dst=e["dst"],
-            kind=kind,
-            assign_type=e.get("assign_type", ""),
-            condition=e.get("condition", ""),
-            clock_domain=e.get("clock_domain", ""),
-            modport_dir=e.get("modport_dir"),
-            confidence=e.get("confidence", "high"),
-        )
-        graph.add_trace_edge(edge)
+    # [A2 2026-07-04] Use from_dict (handles all node/edge fields + port_to_internal)
+    # Snapshot extra fields (version, files, elaboration_errors, ...) are ignored
+    # by from_dict, which is what we want.
+    graph = SignalGraph.from_dict(snap)
 
     # Stub tracer: pre-populate _graph + _signal_tracer
     tracer = UnifiedTracer(
