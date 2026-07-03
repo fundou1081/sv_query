@@ -6,11 +6,16 @@
     "batch": "uart_top.rx_data_o,sync_fifo.count_q",
     "batch_file": null,
     "depth": null,
+    "exclude": null,
     "max_results": null,
+    "module": null,
     "signals": [
       "uart_top.rx_data_o",
       "sync_fifo.count_q"
-    ]
+    ],
+    "type": null,
+    "width_max": null,
+    "width_min": null
   },
   "result": {
     "signals": [
@@ -20,10 +25,15 @@
           {
             "distance": 1,
             "id": "uart_top.rx_fifo.pop_data_o",
-            "kind": "PORT_OUT"
+            "kind": "PORT_OUT",
+            "module": "uart_top.rx_fifo",
+            "width": 8,
+            "width_lsb": 0,
+            "width_msb": 7
           }
         ],
         "index": 0,
+        "pre_filter_count": 1,
         "signal": "uart_top.rx_data_o",
         "truncated": false
       },
@@ -33,20 +43,30 @@
           {
             "distance": 1,
             "id": "sync_fifo.count_q",
-            "kind": "REG"
+            "kind": "REG",
+            "module": "sync_fifo",
+            "width": 1,
+            "width_lsb": 0,
+            "width_msb": 0
           },
           {
             "distance": 1,
             "id": "1",
-            "kind": "SIGNAL"
+            "kind": "SIGNAL",
+            "module": "1",
+            "width": 1,
+            "width_lsb": 0,
+            "width_msb": 0
           }
         ],
         "index": 1,
+        "pre_filter_count": 2,
         "signal": "sync_fifo.count_q",
         "truncated": false
       }
     ],
     "total_count": 3,
+    "total_pre_filter": 3,
     "total_signals": 2,
     "truncated": false
   }

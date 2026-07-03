@@ -81,6 +81,59 @@ def _collect_signals(
     return deduped
 
 
+def _node_to_dict(node) -> dict:
+    """[B2 2026-07-03] Convert TraceNode to dict with module + width info.
+
+    暴露 module (for --module filter) + width_msb/width_lsb/width (for --width-min/max).
+    原有 id/kind/distance 字段保留 (向后兼容).
+    """
+    width_tuple = getattr(node, "width", (0, 0))
+    if isinstance(width_tuple, (tuple, list)) and len(width_tuple) >= 2:
+        width_msb = width_tuple[0]
+        width_lsb = width_tuple[1]
+        width = max(0, width_msb - width_lsb + 1)
+    else:
+        width_msb = width_lsb = width = 0
+    return {
+        "id": node.id,
+        "kind": getattr(node, "kind", "UNKNOWN").name if hasattr(node, "kind") else "UNKNOWN",
+        "module": getattr(node, "module", ""),
+        "width_msb": width_msb,
+        "width_lsb": width_lsb,
+        "width": width,
+        "distance": getattr(node, "distance", 1) if hasattr(node, "distance") else 1,
+    }
+
+
+def _apply_filters(
+    items: list[dict],
+    type_filter: str | None = None,
+    module_filter: str | None = None,
+    width_min: int | None = None,
+    width_max: int | None = None,
+    exclude: str | None = None,
+) -> list[dict]:
+    """[B2 2026-07-03] Apply 5 filters to driver/load dicts.
+
+    Uses fnmatch (NOT regex - project discipline: no regex in src/trace/core/).
+    Returns filtered list (preserves order). Empty list if all filtered out.
+    """
+    import fnmatch
+    out = items
+    if type_filter:
+        types = {t.strip().upper() for t in type_filter.split(",") if t.strip()}
+        out = [d for d in out if d.get("kind", "").upper() in types]
+    if module_filter:
+        out = [d for d in out if fnmatch.fnmatch(d.get("module", ""), module_filter)]
+    if width_min is not None:
+        out = [d for d in out if d.get("width", 0) >= width_min]
+    if width_max is not None:
+        out = [d for d in out if d.get("width", 0) <= width_max]
+    if exclude:
+        out = [d for d in out if not fnmatch.fnmatch(d.get("id", ""), exclude)]
+    return out
+
+
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
     """纯文本输出
 
@@ -325,6 +378,11 @@ def fanin(
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
+    type_filter: str = typer.Option(None, "--type", help="[B2 2026-07-03] Filter by node kind, comma-separated (e.g., 'REG,PORT_IN')."),
+    module_filter: str = typer.Option(None, "--module", help="[B2 2026-07-03] Filter by module name, fnmatch glob (e.g., 'uart_*')."),
+    width_min: int = typer.Option(None, "--width-min", help="[B2 2026-07-03] Minimum signal bit width (inclusive)."),
+    width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
+    exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
 ) -> None:
     """Trace signal drivers (fanin)
 
@@ -347,19 +405,24 @@ def fanin(
         # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
         signals_result = []
         total_count = 0
+        total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
             result = tracer.trace_fanin(sig, depth=depth)
             drivers = []
             for d in result if hasattr(result, "__iter__") else []:
                 if hasattr(d, "id"):
-                    drivers.append(
-                        {
-                            "id": d.id,
-                            "kind": getattr(d, "kind", "UNKNOWN").name if hasattr(d, "kind") else "UNKNOWN",
-                            "distance": getattr(d, "distance", 1) if hasattr(d, "distance") else 1,
-                        }
-                    )
+                    drivers.append(_node_to_dict(d))
+            # [B2 2026-07-03] Apply 5 filters
+            drivers_pre = len(drivers)
+            drivers = _apply_filters(
+                drivers,
+                type_filter=type_filter,
+                module_filter=module_filter,
+                width_min=width_min,
+                width_max=width_max,
+                exclude=exclude,
+            )
             # [C1 2026-06-28 LLM] Cap per-signal results
             truncated = False
             if max_results is not None and len(drivers) > max_results:
@@ -371,18 +434,21 @@ def fanin(
                 "index": i,
                 "drivers": drivers,
                 "count": len(drivers),
+                "pre_filter_count": drivers_pre,
                 "truncated": truncated,
             })
             total_count += len(drivers)
+            total_pre_filter += drivers_pre
 
         data = {
             "ok": True,
             "command": "trace_fanin",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_count": total_count,
+                "total_pre_filter": total_pre_filter,
                 "truncated": truncated_global,
             },
             "errors": [],
@@ -422,6 +488,11 @@ def fanout(
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
+    type_filter: str = typer.Option(None, "--type", help="[B2 2026-07-03] Filter by node kind, comma-separated (e.g., 'REG,PORT_OUT')."),
+    module_filter: str = typer.Option(None, "--module", help="[B2 2026-07-03] Filter by module name, fnmatch glob (e.g., 'sync_*')."),
+    width_min: int = typer.Option(None, "--width-min", help="[B2 2026-07-03] Minimum signal bit width (inclusive)."),
+    width_max: int = typer.Option(None, "--width-max", help="[B2 2026-07-03] Maximum signal bit width (inclusive)."),
+    exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -446,6 +517,7 @@ def fanout(
         # [B1 2026-07-03] Batch mode
         signals_result = []
         total_count = 0
+        total_pre_filter = 0
         truncated_global = False
         for i, sig in enumerate(signals):
             result = tracer.trace_fanout(
@@ -457,13 +529,17 @@ def fanout(
             loads = []
             for load in result if hasattr(result, "__iter__") else []:
                 if hasattr(load, "id"):
-                    loads.append(
-                        {
-                            "id": load.id,
-                            "kind": getattr(load, "kind", "UNKNOWN").name if hasattr(load, "kind") else "UNKNOWN",
-                            "distance": getattr(load, "distance", 1) if hasattr(load, "distance") else 1,
-                        }
-                    )
+                    loads.append(_node_to_dict(load))
+            # [B2 2026-07-03] Apply 5 filters
+            loads_pre = len(loads)
+            loads = _apply_filters(
+                loads,
+                type_filter=type_filter,
+                module_filter=module_filter,
+                width_min=width_min,
+                width_max=width_max,
+                exclude=exclude,
+            )
             truncated = False
             if max_results is not None and len(loads) > max_results:
                 loads = loads[:max_results]
@@ -474,18 +550,21 @@ def fanout(
                 "index": i,
                 "loads": loads,
                 "count": len(loads),
+                "pre_filter_count": loads_pre,
                 "truncated": truncated,
             })
             total_count += len(loads)
+            total_pre_filter += loads_pre
 
         data = {
             "ok": True,
             "command": "trace_fanout",
-            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch},
+            "params": {"signals": signals, "file": str(file), "depth": depth, "max_results": max_results, "batch_file": batch_file, "batch": batch, "type": type_filter, "module": module_filter, "width_min": width_min, "width_max": width_max, "exclude": exclude},
             "result": {
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_count": total_count,
+                "total_pre_filter": total_pre_filter,
                 "truncated": truncated_global,
             },
             "errors": [],

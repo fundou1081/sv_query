@@ -1,0 +1,35 @@
+{
+  "command": "trace_fanin",
+  "errors": [],
+  "ok": true,
+  "params": {
+    "batch": null,
+    "batch_file": null,
+    "depth": null,
+    "exclude": null,
+    "max_results": null,
+    "module": null,
+    "signals": [
+      "sync_fifo.count_q"
+    ],
+    "type": "REG",
+    "width_max": null,
+    "width_min": 2
+  },
+  "result": {
+    "signals": [
+      {
+        "count": 0,
+        "drivers": [],
+        "index": 0,
+        "pre_filter_count": 2,
+        "signal": "sync_fifo.count_q",
+        "truncated": false
+      }
+    ],
+    "total_count": 0,
+    "total_pre_filter": 2,
+    "total_signals": 1,
+    "truncated": false
+  }
+}
