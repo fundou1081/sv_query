@@ -184,6 +184,12 @@ def analyze(
                 "segments": segments_data,
                 "distance": path.distance,
                 "has_conditional": path.has_conditional,
+                # [ADD 2026-07-04] latency fields
+                "latency_cycles": path.latency_cycles,
+                "is_async_crossing": path.is_async_crossing,
+                "latency_note": path.latency_note,
+                # [ADD 2026-07-04] stage breakdown
+                "stage_breakdown": getattr(path, "stage_breakdown", []),
             }
         )
 
@@ -197,6 +203,9 @@ def analyze(
             "is_reachable": result.is_reachable,
             "paths_count": result.paths_count,
             "intermediate_signals": sorted(result.intermediate_signals),
+            # [ADD 2026-07-04] latency summary at top level
+            "primary_latency_cycles": result.primary_latency_cycles,
+            "primary_is_async": result.primary_is_async,
             "all_conditions": result.all_conditions,
             "clock_domain": result.clock_domain,
             "timing_risk": result.timing_risk,

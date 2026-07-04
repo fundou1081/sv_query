@@ -18,6 +18,9 @@
       {
         "distance": 4,
         "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
         "path_id": 0,
         "segments": [
           {
@@ -56,11 +59,15 @@
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
-        ]
+        ],
+        "stage_breakdown": []
       },
       {
         "distance": 4,
         "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
         "path_id": 1,
         "segments": [
           {
@@ -99,11 +106,15 @@
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
-        ]
+        ],
+        "stage_breakdown": []
       },
       {
         "distance": 1,
         "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
         "path_id": 2,
         "segments": [
           {
@@ -115,10 +126,13 @@
             "timing": "",
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
-        ]
+        ],
+        "stage_breakdown": []
       }
     ],
     "paths_count": 3,
+    "primary_is_async": false,
+    "primary_latency_cycles": 0,
     "timing_risk": "safe",
     "to_signal": "prim_arbiter_tree.gnt_o"
   }

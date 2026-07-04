@@ -1,0 +1,10 @@
+{
+  "primary_latency_cycles": 2,
+  "primary_is_async": false,
+  "path_0": {
+    "latency_cycles": 2,
+    "is_async_crossing": false,
+    "latency_note": "2 sync stages (cycle latency)",
+    "stage_breakdown_count": 2
+  }
+}
