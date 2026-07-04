@@ -2,9 +2,9 @@
 
 **Status**: Stable, actively maintained, primary investment area.
 
-**Audience**: 任何看 RTL design signal A → signal B 数据流 + if/case 条件 + cycle latency 的人.
+**Audience**: 任何看 RTL design signal A → signal B 数据流 + if/case 条件 + cycle latency + 可视化 的人.
 
-**Last updated**: 2026-07-04
+**Last updated**: 2026-07-04 (3 主推)
 
 ---
 
@@ -15,16 +15,16 @@
 | 命令 | 价值 | 加速比 |
 |------|------|--------|
 | **`dataflow analyze A B`** | 看 A→B 数据流 + 路径 + cycle latency | 5-10x (vs 读代码) |
-| **`controlflow analyze A`** | 看 A 的所有 if/case 条件 | 3-5x |
-| **`trace evidence A`** | 拿 A 所在源码 + enclosing always/if | 10-20x (秒拿源码) |
+| **`controlflow analyze A`** | 看 signal 的 if/case 条件 | 3-5x |
+| **`trace evidence A`** | 拿源码 1 秒 + enclosing always/if | 10-20x (秒拿源码) |
 | **`latency` 子功能** | 回答"几个 cycle 延迟"问题 | 10x |
 
 **集成工作流**: 3 命令组合 (A 方案) — `dataflow` + `controlflow` + `evidence` = 30s 看 1 段.
 
-**3-层 切分** (2026-07-04 v2):
-- ⭐ **主要 (2)**: dataflow + controlflow (本 doc)
+**3-层 切分** (2026-07-04 (3 主推) v2):
+- ⭐ **主要 (3)**: dataflow + controlflow + visualize (本 doc)
 - ✅ **稳定 (12)**: stats / search / arch / trace / protocol / handshake / backpressure / sva / snapshot / diff / fix (相对稳, 不主推)
-- 🟡 **实验 (7)**: cdc / verify gap / visualize / risk / timing / coverage generate / backpressure deadlock (标 `[EXPERIMENTAL]`)
+- 🟡 **实验 (6)**: cdc / verify gap / risk / timing / coverage generate / backpressure deadlock (visualize 升主推) (标 `[EXPERIMENTAL]`)
 
 **深度 doc**:
 - `docs/DATAFLOW_CONTROLFLOW_USAGE.md` - 完整使用指南 (3 命令组合 workflow)
@@ -127,9 +127,39 @@ sv_query -q trace evidence <sig> --no-strict --file x.sv --json
 - `enclosing_if.text`: if 表达式源码
 - `enclosing_always.text`: always block 源码
 
-### 4️⃣ `latency` (子功能 in `dataflow analyze`)
+### 4️⃣ `visualize graph / dataflow / pipeline` (Primary, 2026-07-04 升)
 
-**Status**: ⭐⭐⭐⭐⭐ Stable, **新加 (2026-07-04)**
+**Status**: ⭐⭐⭐⭐ Stable, 重点加强
+
+**子命令**:
+- `graph --dot file.dot` — 画 SignalGraph 整体 (DOT/Mermaid/HTML)
+- `dataflow --dot file.dot` — 画 data path 图 (运算 + control)
+- `pipeline --dot file.dot` — 画 register chain + stage 分组
+- `gap` (🔴 部分实验) — 验证缺口 (viewer KeyError, 修中)
+- `module` (🟡 部分实验) — L1+L2 (跨 module 边不可靠, 修中)
+
+**真稳验证** (4 子命令 graph/dataflow/pipeline/gap):
+- darkriscv (单文件): graph 240 lines DOT 0 errors
+- prim_arbiter_tree: graph 101 lines DOT 0 errors
+- sync_fifo: graph/dataflow/pipeline 3 个都准
+- CVA6 137K: graph 6482 lines 跑通 10.5s
+
+**命令**:
+```bash
+sv_query -q visualize graph --no-strict --file x.sv --dot graph.dot
+sv_query -q visualize dataflow --no-strict --file x.sv --dot df.dot
+sv_query -q visualize pipeline --no-strict --file x.sv --dot pipe.dot
+```
+
+**已知限制** (2 子命令, 修中):
+- `gap` 有 viewer KeyError 'show_type' bug (Traceback)
+- `module` 跨 module 边不可靠 (跟 arch show 类似, CVA6 0 port edges)
+
+**承诺**: 3 子命令真稳 (graph/dataflow/pipeline), 2 子命令 (gap/module) 修完会 stable.
+
+### 5️⃣ `latency` (子功能 in `dataflow analyze`)
+
+**Status**: ⭐⭐⭐⭐⭐ Stable, **新加 (2026-07-04 (3 主推))**
 
 **能做的**:
 - cycle latency (数 REG 节点)
@@ -191,10 +221,10 @@ sv_query -q dataflow analyze sub_a.data_a_i sub_b.data_b_o \
 
 ## 🎯 维护 / 投资
 
-- **2026-07-04** 加 latency 子功能 (commit 5d309a6)
-- **2026-07-04** 加 5 真项目 tests (commit 4fe02c4)
-- **2026-07-04** 加 3 命令组合 workflow doc (commit 26d1c5a, 11.4K)
-- **2026-07-04** 标为主要功能 (本 doc)
+- **2026-07-04 (3 主推)** 加 latency 子功能 (commit 5d309a6)
+- **2026-07-04 (3 主推)** 加 5 真项目 tests (commit 4fe02c4)
+- **2026-07-04 (3 主推)** 加 3 命令组合 workflow doc (commit 26d1c5a, 11.4K)
+- **2026-07-04 (3 主推)** 标为主要功能 (本 doc)
 
 **下一步计划**:
 - B 复合命令 (1h): 1 命令出 A→B 完整 view, 解决限制 1+2

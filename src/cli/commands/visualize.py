@@ -30,7 +30,7 @@ from trace.core.graph.signal_graph_viewer import SignalGraphViewer
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
-vis_app = typer.Typer(help="[EXPERIMENTAL] Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
+vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
 
 @vis_app.command(name="graph")
