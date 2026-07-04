@@ -1,0 +1,22 @@
+{
+  "command": "stats",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "edges": {
+      "BIT_SELECT": 9,
+      "DRIVER": 39
+    },
+    "elaboration_errors": [],
+    "modules": [],
+    "nodes": {
+      "CONST": 2,
+      "PORT_IN": 6,
+      "PORT_OUT": 4,
+      "SIGNAL": 23
+    },
+    "total_edges": 48,
+    "total_nodes": 35
+  }
+}

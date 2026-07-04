@@ -1,0 +1,11 @@
+{
+  "command": "controlflow",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "conditioned_drivers": [],
+    "signal": "prim_arbiter_tree.req_i",
+    "warnings": []
+  }
+}

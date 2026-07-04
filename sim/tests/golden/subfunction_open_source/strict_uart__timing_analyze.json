@@ -1,0 +1,58 @@
+{
+  "command": "timing analyze",
+  "ok": true,
+  "result": {
+    "critical_paths": [
+      {
+        "depth": 1,
+        "full_path": [
+          "push_data_i",
+          "NamedValue)]"
+        ],
+        "registers": [
+          "NamedValue)]"
+        ],
+        "score": 1
+      },
+      {
+        "depth": 1,
+        "full_path": [
+          "async_i",
+          "sync1"
+        ],
+        "registers": [
+          "sync1"
+        ],
+        "score": 1
+      },
+      {
+        "depth": 2,
+        "full_path": [
+          "push_data_i",
+          "NamedValue)]",
+          "pop_data_o"
+        ],
+        "registers": [
+          "NamedValue)]",
+          "pop_data_o"
+        ],
+        "score": 3
+      },
+      {
+        "depth": 2,
+        "full_path": [
+          "async_i",
+          "sync1",
+          "sync0_o"
+        ],
+        "registers": [
+          "sync1",
+          "sync0_o"
+        ],
+        "score": 3
+      }
+    ],
+    "reg_count": 7,
+    "total_nodes": 33
+  }
+}

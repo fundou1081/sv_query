@@ -1,0 +1,10 @@
+{
+  "command": "sva extract",
+  "ok": true,
+  "result": {
+    "assertions": [],
+    "properties": {},
+    "sequences": {},
+    "signal_refs": {}
+  }
+}
