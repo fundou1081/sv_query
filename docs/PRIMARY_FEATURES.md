@@ -21,10 +21,16 @@
 
 **集成工作流**: 3 命令组合 (A 方案) — `dataflow` + `controlflow` + `evidence` = 30s 看 1 段.
 
+**3-层 切分** (2026-07-04 v2):
+- ⭐ **主要 (2)**: dataflow + controlflow (本 doc)
+- ✅ **稳定 (12)**: stats / search / arch / trace / protocol / handshake / backpressure / sva / snapshot / diff / fix (相对稳, 不主推)
+- 🟡 **实验 (7)**: cdc / verify gap / visualize / risk / timing / coverage generate / backpressure deadlock (标 `[EXPERIMENTAL]`)
+
 **深度 doc**:
 - `docs/DATAFLOW_CONTROLFLOW_USAGE.md` - 完整使用指南 (3 命令组合 workflow)
 - `docs/CONTROL_FLOW_ANALYSIS.md` - controlflow 详细原理
 - `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md` - dataflow 架构
+- `docs/EXPERIMENTAL_FEATURES.md` - 7 个实验性 + 12 个稳定列表
 
 ---
 

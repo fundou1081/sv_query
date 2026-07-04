@@ -339,8 +339,8 @@ def _output_fanout_rank(data: dict, top_n: int = 20) -> None:
 
 
 # 注册 stats 为独立命令
-app.command(name="stats", help="[EXPERIMENTAL] Show graph statistics")(stats_callback)
-app.command(name="search", help="[EXPERIMENTAL] Grep-like keyword search across .sv/.v files")(search)
+app.command(name="stats", help="Show graph statistics")(stats_callback)
+app.command(name="search", help="Grep-like keyword search across .sv/.v files")(search)
 
 
 @app.callback(invoke_without_command=True)

@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from trace.core.snapshot_manager import SnapshotManager
 from trace.unified_tracer import UnifiedTracer
 
-snapshot_app = typer.Typer(help="[EXPERIMENTAL] Snapshot management for graph diff")
+snapshot_app = typer.Typer(help="Snapshot management for graph diff")
 
 logger = logging.getLogger(__name__)
 

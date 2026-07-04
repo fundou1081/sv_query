@@ -31,7 +31,7 @@ from trace.core.handshake_detector import (
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
 
-handshake_app = typer.Typer(help="[EXPERIMENTAL] Bus handshake semantic analysis: AXI/TL-UL ready/valid classification (Phase B)")
+handshake_app = typer.Typer(help="Bus handshake semantic analysis: AXI/TL-UL ready/valid classification (Phase B)")
 
 
 # ==============================================================================
