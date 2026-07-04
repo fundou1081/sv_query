@@ -241,3 +241,72 @@ def test_golden_latency_sync_fifo():
     assert p["latency_cycles"] == golden["path_0"]["latency_cycles"]
     assert p["is_async_crossing"] == golden["path_0"]["is_async_crossing"]
     print("✅ Golden sync_fifo matches baseline")
+
+
+# ==============================================================================
+# 真实项目扩展测试 (2026-07-04 added after C 方案)
+# ==============================================================================
+
+
+def test_real_darkriscv_ifpc_to_iaddr_combinational():
+    """[Real] darkriscv: IFPC → IADDR 0 cycle (combinational assign)."""
+    d = _run_dataflow("darkriscv.IFPC", "darkriscv.IADDR", file_path=DARKRISCV)
+    assert d.get("ok")
+    r = d["result"]
+    assert r["is_reachable"]
+    assert r["primary_latency_cycles"] == 0
+    assert r["primary_is_async"] is False
+    assert "no register boundary" in r["paths"][0]["latency_note"]
+    print(f"✅ darkriscv IFPC→IADDR: 0 cycle (combinational)")
+
+
+def test_real_darkriscv_idata1_to_idata2_id_stage():
+    """[Real] darkriscv: IDATA1 → IDATA2 1 cycle (ID stage REG)."""
+    d = _run_dataflow("darkriscv.IDATA1", "darkriscv.IDATA2", file_path=DARKRISCV)
+    assert d.get("ok")
+    r = d["result"]
+    assert r["is_reachable"]
+    assert r["primary_latency_cycles"] == 1
+    assert r["primary_is_async"] is False
+    assert "1 sync stages" in r["paths"][0]["latency_note"]
+    print(f"✅ darkriscv IDATA1→IDATA2: 1 cycle (ID stage)")
+
+
+def test_real_darkriscv_idata2_to_xidata_id_ex():
+    """[Real] darkriscv: IDATA2 → XIDATA 1 cycle (ID/EX REG)."""
+    d = _run_dataflow("darkriscv.IDATA2", "darkriscv.XIDATA", file_path=DARKRISCV)
+    assert d.get("ok")
+    r = d["result"]
+    assert r["is_reachable"]
+    assert r["primary_latency_cycles"] == 1
+    print(f"✅ darkriscv IDATA2→XIDATA: 1 cycle (ID/EX)")
+
+
+def test_real_opentitan_prim_arbiter_combinational():
+    """[Real] OpenTitan prim_arbiter_tree: req → gnt 0 cycle (combinational 4 hops)."""
+    d = _run_dataflow(
+        "prim_arbiter_tree.req_i", "prim_arbiter_tree.gnt_o",
+        file_path=PRIM_ARBITER,
+    )
+    assert d.get("ok")
+    r = d["result"]
+    assert r["is_reachable"]
+    assert r["primary_latency_cycles"] == 0
+    print(f"✅ OpenTitan prim_arbiter: 0 cycle (combinational)")
+
+
+def test_real_opentitan_prim_fifo_sync_passthrough():
+    """[Real] OpenTitan prim_fifo_sync: wdata_i → rdata_o 0 cycle (look-ahead pass-through).
+
+    关键发现: prim_fifo_sync 默认 'Pass=1', fifo_empty + wvalid 时 wdata_i 直接透传 (combinational).
+    这就是 FWFT (First Word Fall Through) FIFO 特性. 工具报 0 cycle 是**正确的**, 反映设计.
+    """
+    d = _run_dataflow(
+        "prim_fifo_sync.wdata_i", "prim_fifo_sync.rdata_o",
+        file_path="/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_fifo_sync.sv",
+    )
+    assert d.get("ok")
+    r = d["result"]
+    assert r["is_reachable"]
+    assert r["primary_latency_cycles"] == 0  # pass-through 模式 0 cycle (look-ahead)
+    print(f"✅ OpenTitan prim_fifo_sync: 0 cycle (FWFT pass-through, 设计特性)")
