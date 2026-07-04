@@ -1,0 +1,11 @@
+{
+  "command": "controlflow",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "conditioned_drivers": [],
+    "signal": "synchronizer.sync0",
+    "warnings": []
+  }
+}

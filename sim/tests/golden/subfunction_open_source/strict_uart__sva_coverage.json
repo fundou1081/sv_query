@@ -1,0 +1,35 @@
+{
+  "command": "sva coverage",
+  "ok": true,
+  "result": {
+    "cov_covered": 0,
+    "coverage_ratio": 0.0,
+    "sva_covered": 0,
+    "total_signals": 28,
+    "uncovered_signals": [
+      "0",
+      "1",
+      "NamedValue)]",
+      "SIZE",
+      "async_i",
+      "count_q",
+      "empty_o",
+      "full_o",
+      "mem",
+      "pop_data_o",
+      "pop_i",
+      "push_data_i",
+      "push_i",
+      "rd_ptr_q",
+      "rst_ni",
+      "rx_data_o",
+      "rx_i",
+      "rx_ready_o",
+      "sync0_o",
+      "sync1",
+      "tx_data_i",
+      "tx_o",
+      "wr_ptr_q"
+    ]
+  }
+}

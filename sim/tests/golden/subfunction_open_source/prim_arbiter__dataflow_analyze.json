@@ -1,0 +1,125 @@
+{
+  "command": "dataflow",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "all_conditions": [],
+    "clock_domain": null,
+    "from_signal": "prim_arbiter_tree.req_i",
+    "intermediate_signals": [
+      "prim_arbiter_tree.prio_tree",
+      "prim_arbiter_tree.req_tree",
+      "prim_arbiter_tree.sel",
+      "prim_arbiter_tree.sel_tree"
+    ],
+    "is_reachable": true,
+    "paths": [
+      {
+        "distance": 4,
+        "has_conditional": false,
+        "path_id": 0,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.req_tree"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_tree",
+            "from_signal": "prim_arbiter_tree.req_tree",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.sel"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "sel_tree",
+            "from_signal": "prim_arbiter_tree.sel",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.sel_tree"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i",
+            "from_signal": "prim_arbiter_tree.sel_tree",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ]
+      },
+      {
+        "distance": 4,
+        "has_conditional": false,
+        "path_id": 1,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.prio_tree"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_tree",
+            "from_signal": "prim_arbiter_tree.prio_tree",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.sel"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "sel_tree",
+            "from_signal": "prim_arbiter_tree.sel",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.sel_tree"
+          },
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i",
+            "from_signal": "prim_arbiter_tree.sel_tree",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ]
+      },
+      {
+        "distance": 1,
+        "has_conditional": false,
+        "path_id": 2,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ]
+      }
+    ],
+    "paths_count": 3,
+    "timing_risk": "safe",
+    "to_signal": "prim_arbiter_tree.gnt_o"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "command": "stats",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "edges": {
+      "BIT_SELECT": 5,
+      "CLOCK": 7,
+      "CONNECTION": 6,
+      "DRIVER": 16,
+      "RESET": 7
+    },
+    "elaboration_errors": [],
+    "modules": [],
+    "nodes": {
+      "INSTANTIATED_MODULE": 1,
+      "PORT_IN": 14,
+      "PORT_OUT": 7,
+      "REG": 7,
+      "SIGNAL": 4
+    },
+    "total_edges": 41,
+    "total_nodes": 33
+  }
+}

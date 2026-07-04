@@ -1,0 +1,36 @@
+{
+  "command": "dataflow",
+  "errors": [],
+  "ok": true,
+  "params": {},
+  "result": {
+    "all_conditions": [
+      "!rst_ni"
+    ],
+    "clock_domain": "clk_i",
+    "from_signal": "sync_fifo.clk_i",
+    "intermediate_signals": [],
+    "is_reachable": true,
+    "paths": [
+      {
+        "distance": 1,
+        "has_conditional": true,
+        "path_id": 0,
+        "segments": [
+          {
+            "assign_type": "nonblocking",
+            "condition": "!rst_ni",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "sync_fifo.clk_i",
+            "timing": "clk_i",
+            "to_signal": "sync_fifo.count_q"
+          }
+        ]
+      }
+    ],
+    "paths_count": 1,
+    "timing_risk": "safe",
+    "to_signal": "sync_fifo.count_q"
+  }
+}

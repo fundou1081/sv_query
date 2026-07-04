@@ -1,0 +1,9 @@
+{
+  "command": "timing analyze",
+  "ok": true,
+  "result": {
+    "critical_paths": [],
+    "reg_count": 0,
+    "total_nodes": 35
+  }
+}
