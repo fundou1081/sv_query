@@ -31,7 +31,7 @@ from trace.core.graph.models import NodeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
-sva_app = typer.Typer(help="SVA (SystemVerilog Assertions) analysis: extract properties, assertions, coverage gaps")
+sva_app = typer.Typer(help="[EXPERIMENTAL] SVA (SystemVerilog Assertions) analysis: extract properties, assertions, coverage gaps")
 
 
 @sva_app.command(name="extract")

@@ -18,7 +18,7 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
-graph_app = typer.Typer(help="Inspect signal graph")
+graph_app = typer.Typer(help="[EXPERIMENTAL] Inspect signal graph")
 
 
 @graph_app.command("dump")

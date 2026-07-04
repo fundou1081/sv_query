@@ -40,7 +40,7 @@ from applications.bus.handshake_provider_trace import (
 from applications.bus.structural import SignalContext
 
 
-protocol_app = typer.Typer(help="Bus protocol detection (Phase A)")
+protocol_app = typer.Typer(help="[EXPERIMENTAL] Bus protocol detection (Phase A)")
 
 
 # ---------------------------------------------------------------------------

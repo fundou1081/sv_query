@@ -113,6 +113,30 @@ dot -Tpng top.dot -o top.png
 
 ---
 
+## ⭐ 主要功能 vs 实验性功能 (战略切分 2026-07-04)
+
+sv_query 21 个主命令**分两类**:
+
+### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)**
+- `dataflow analyze A B` — 看 A→B 数据流 + cycle latency + async crossing
+- `controlflow analyze <sig>` — 看 signal 的 if/case 条件
+- (关联) `trace evidence <sig>` — 拿源码 1 秒
+
+**真稳验证**: 13 tests + 7 真项目 (sync_fifo / darkriscv / OpenTitan prim_arbiter_tree / prim_fifo_sync / CVA6 ALU / two_flop_sync) 100% 准.
+
+**承诺**: 持续投入, 任何 bug 立即修.
+
+**深度 doc**: [`docs/PRIMARY_FEATURES.md`](docs/PRIMARY_FEATURES.md) + [`docs/DATAFLOW_CONTROLFLOW_USAGE.md`](docs/DATAFLOW_CONTROLFLOW_USAGE.md)
+
+### 🟡 **实验性功能 (Experimental, 探索性)**
+其他 19 个命令 (`stats` / `search` / `trace` / `arch` / `cdc` / `verify` / `visualize` / `protocol` / `handshake` / `backpressure` / `risk` / `sva` / `timing` / `coverage` / `snapshot` / `diff` / `fix` 等) 标 `[EXPERIMENTAL]` (CLI `--help` 可见).
+
+**不承诺稳定**: 可能 flaky, 可能有 false positive, 可能有 bug. **不主推, 资源不投**.
+
+**深度 doc**: [`docs/EXPERIMENTAL_FEATURES.md`](docs/EXPERIMENTAL_FEATURES.md)
+
+---
+
 ## 核心能力 (4 维 L1-L4)
 
 sv_query 是少有的提供**完整 4 维分析**的开源 SV 工具, 大部分同类工具只支持单维度 (e.g. 只有 L1, 或只有 L3).
