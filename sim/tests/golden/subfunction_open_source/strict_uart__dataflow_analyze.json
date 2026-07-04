@@ -15,6 +15,9 @@
       {
         "distance": 1,
         "has_conditional": true,
+        "is_async_crossing": false,
+        "latency_cycles": 1,
+        "latency_note": "1 sync stages (cycle latency)",
         "path_id": 0,
         "segments": [
           {
@@ -26,10 +29,23 @@
             "timing": "clk_i",
             "to_signal": "sync_fifo.count_q"
           }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "sync_fifo.clk_i",
+            "from_stage": null,
+            "is_reg_boundary": true,
+            "to_kind": "REG",
+            "to_signal": "sync_fifo.count_q",
+            "to_stage": null
+          }
         ]
       }
     ],
     "paths_count": 1,
+    "primary_is_async": false,
+    "primary_latency_cycles": 1,
     "timing_risk": "safe",
     "to_signal": "sync_fifo.count_q"
   }

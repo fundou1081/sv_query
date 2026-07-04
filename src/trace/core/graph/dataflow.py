@@ -67,14 +67,21 @@ class DataFlowPath:
     Attributes:
         path_id: 路径 ID
         segments: 路径段列表
-        distance: 总跳数
+        distance: 总跳数 (graph hops)
         has_conditional: 是否包含条件分支
+        latency_cycles: cycle latency (数 path 上 REG 节点; null if async crossing)
+        is_async_crossing: 是否跨时钟域 (路径涉及 2+ clk domains)
+        latency_note: latency 备注 (e.g. "2 sync stages" / "async crossing, latency not deterministic")
     """
 
     path_id: int
     segments: list[DataFlowSegment] = field(default_factory=list)
     distance: int = 0
     has_conditional: bool = False
+    # [ADD 2026-07-04] latency 字段
+    latency_cycles: int | None = None
+    is_async_crossing: bool = False
+    latency_note: str = ""
 
 
 @dataclass
@@ -102,6 +109,9 @@ class DataFlowResult:
     all_conditions: list[str] = field(default_factory=list)
     clock_domain: str | None = None
     timing_risk: str = "safe"
+    # [ADD 2026-07-04] latency summary (从主 path 提取, 给快速 view)
+    primary_latency_cycles: int | None = None
+    primary_is_async: bool = False
 
 
 # ==============================================================================
@@ -720,9 +730,18 @@ class DataFlowGraph:
                         all_intermediate.add(seg_from)
 
             # 5. 创建 DataFlowPath
+            # [ADD 2026-07-04] 算 latency_cycles + is_async_crossing + stage_breakdown
+            latency_cycles, is_async, latency_note, stage_breakdown = self._compute_latency_and_stages(path, segments)
             df_path = DataFlowPath(
-                path_id=path_id, segments=segments, distance=len(path) - 1, has_conditional=has_conditional
+                path_id=path_id,
+                segments=segments,
+                distance=len(path) - 1,
+                has_conditional=has_conditional,
+                latency_cycles=latency_cycles,
+                is_async_crossing=is_async,
+                latency_note=latency_note,
             )
+            df_path.stage_breakdown = stage_breakdown  # type: ignore[attr-defined]
             dataflow_paths.append(df_path)
 
         # 6. 收集时钟域
@@ -730,6 +749,10 @@ class DataFlowGraph:
 
         # 7. 评估路径风险
         timing_risk = self._evaluate_timing_risk(dataflow_paths, clock_domain)
+
+        # 7.5 [ADD 2026-07-04] 提取主 path 的 latency summary
+        primary_latency = dataflow_paths[0].latency_cycles if dataflow_paths else None
+        primary_async = dataflow_paths[0].is_async_crossing if dataflow_paths else False
 
         return DataFlowResult(
             from_signal=from_signal,
@@ -741,7 +764,109 @@ class DataFlowGraph:
             all_conditions=all_conditions,
             clock_domain=clock_domain,
             timing_risk=timing_risk,
+            primary_latency_cycles=primary_latency,
+            primary_is_async=primary_async,
         )
+
+    def _compute_latency_and_stages(
+        self,
+        path: list[str],
+        segments: list[DataFlowSegment],
+    ) -> tuple[int | None, bool, str, list[dict]]:
+        """[ADD 2026-07-04] 算 path 的 cycle latency + stage breakdown.
+
+        算法:
+        1. 沿 path 数 REG 节点 (每 REG = 1 cycle boundary)
+        2. 检查是否跨 clk domain (segments timing 多个不同值) → async crossing
+        3. 复用 detect_pipeline 算 stages, 给每个 segment 标 stage_id
+        4. stage_breakdown = list of {stage_id, from_signal, to_signal, is_reg_boundary}
+
+        Returns:
+            (latency_cycles, is_async, note, stage_breakdown)
+        """
+        if not segments:
+            return 0, False, "empty path", []
+
+        # 1. 检查 async crossing: segments timing 多个不同
+        timing_set = {s.timing for s in segments if s.timing}
+        timing_set.discard(None)
+        is_async = len(timing_set) > 1
+
+        # 2. 数 path 上 REG 节点
+        reg_count = 0
+        for node_id in path:
+            node = self.signal_graph.get_node(node_id)
+            if node and node.kind.name == "REG":
+                reg_count += 1
+
+        # 3. 算 stage breakdown (复用 detect_pipeline)
+        stage_breakdown = self._compute_stage_breakdown(path, segments)
+
+        if is_async:
+            return None, True, f"async crossing ({len(timing_set)} clk domains), latency not deterministic", stage_breakdown
+
+        if reg_count == 0:
+            return 0, False, "no register boundary (combinational only)", stage_breakdown
+        else:
+            return reg_count, False, f"{reg_count} sync stages (cycle latency)", stage_breakdown
+
+    def _compute_stage_breakdown(
+        self,
+        path: list[str],
+        segments: list[DataFlowSegment],
+    ) -> list[dict]:
+        """[ADD 2026-07-04] 算 path 跨几个 pipeline stage, 每个 segment 属于哪个 stage.
+
+        复用 detect_pipeline + signal_classifier.
+        """
+        try:
+            from .analyzer.signal_classifier import classify_graph
+            from .analyzer.pipeline_viz import detect_pipeline
+        except ImportError:
+            return []
+
+        try:
+            classification = classify_graph(self.signal_graph)
+            if classification is None:
+                return []
+            pipeline_info = detect_pipeline(self.signal_graph, classification)
+        except Exception:
+            return []
+
+        if not pipeline_info.stages:
+            return []
+
+        # Build stage_id map: reg_id → stage_id
+        reg_to_stage: dict[str, int] = {}
+        for stage in pipeline_info.stages:
+            for reg_id in stage.reg_nodes:
+                reg_to_stage[reg_id] = stage.stage_id
+
+        # 沿 path 走, 标每个 segment 的 stage
+        breakdown = []
+        for i, seg in enumerate(segments):
+            # 这个 segment 的 stage = to_signal (终点) 所属的 stage
+            # 起点可能是 stage N, 终点可能是 stage N (组合) or stage N+1 (REG boundary)
+            from_node = self.signal_graph.get_node(seg.from_signal)
+            to_node = self.signal_graph.get_node(seg.to_signal)
+            from_kind = from_node.kind.name if from_node else "?"
+            to_kind = to_node.kind.name if to_node else "?"
+
+            from_stage = reg_to_stage.get(seg.from_signal)
+            to_stage = reg_to_stage.get(seg.to_signal)
+
+            # 如果 from/to 都不是 REG, 标 -1 (within stage or before first stage)
+            breakdown.append({
+                "from_signal": seg.from_signal,
+                "to_signal": seg.to_signal,
+                "from_stage": from_stage,
+                "to_stage": to_stage,
+                "is_reg_boundary": to_kind == "REG",
+                "from_kind": from_kind,
+                "to_kind": to_kind,
+            })
+
+        return breakdown
 
     def _extract_clock_domain(self, paths: list[DataFlowPath]) -> str | None:
         """提取主时钟域
