@@ -47,45 +47,53 @@ def _run(*args, timeout=90) -> subprocess.CompletedProcess:
 # ============================================================================
 
 def test_p1_cdc_axi_cdc_src_2_high_risk_paths():
-    """P1: axi_cdc_src (4 clk domain) cdc 找 2 paths, 2 HIGH risk (无 synchronizer)."""
+    """P1: axi_cdc_src (1 物理 src_clk_i) cdc 应 1 domain, 0 paths (同 physical wire, 非真 CDC).
+
+    [FIX 2026-07-04] 之前 cdc 算法 bug 用 (module, clock_name) 当 domain key, 把同一根 physical
+    wire 在不同 module 层级报成不同 domain, 制造 4 domains + 2 HIGH risk false positive.
+    修后: 1 domain (src_clk_i), 0 paths (所有 instance port 共享同一 physical wire).
+    """
     r = _run("-q", "cdc", "analyze", "--no-strict",
              "--file", "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
-    # 期望: 4 domains, 2 CDC paths, 2 HIGH risk
-    assert r_data["domain_count"] >= 3
-    assert r_data["total_cdc"] >= 2
-    assert r_data["high_risk"] >= 2
-    # paths 应有 risk='HIGH' 字段
-    for path in r_data.get("paths", []):
-        assert "risk" in path
-    print(f"✅ P1 cdc axi_cdc_src: {r_data['domain_count']} domains, {r_data['total_cdc']} CDC paths ({r_data['high_risk']} HIGH)")
+    # 期望 (修后): 1 domain (src_clk_i), 0 CDC paths (同 physical net)
+    assert r_data["domain_count"] == 1
+    assert r_data["total_cdc"] == 0
+    assert r_data["high_risk"] == 0
+    print(f"✅ P1 cdc axi_cdc_src: {r_data['domain_count']} domain, 0 CDC (单 physical src_clk_i, false positive 已修)")
 
 
 def test_p2_cdc_axi_xbar_2_cdc_paths():
-    """P2: axi_xbar (3 clk domain) cdc 找 2 paths."""
+    """P2: axi_xbar 跑 cdc: 0 CDC (单 physical clk, 修算法后 0 false positive)."""
     r = _run("-q", "cdc", "analyze", "--no-strict",
              "--file", "/Users/fundou/my_dv_proj/axi/src/axi_xbar.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
-    assert r_data["domain_count"] >= 2
-    assert r_data["total_cdc"] >= 2
-    print(f"✅ P2 cdc axi_xbar: {r_data['domain_count']} domains, {r_data['total_cdc']} CDC paths")
+    # 修后: 0 CDC (同 physical wire 共享)
+    assert r_data["total_cdc"] == 0
+    assert r_data["high_risk"] == 0
+    print(f"✅ P2 cdc axi_xbar: {r_data['domain_count']} domains, 0 CDC (false positive 已修)")
 
 
 def test_p3_cdc_tlul_4_domains_0_cdc():
-    """P3: OpenTitan tlul 4 domains, 但全 synchronous → 0 CDC paths (正确, 不该假报)."""
+    """P3: OpenTitan tlul 跑 cdc (修算法后): 1 domain (clk_i), 0 CDC.
+
+    之前 cdc bug 把 sub-module clk_i 当独立 domain, 报 4 domains + 0 CDC.
+    修后: 1 domain (所有 sub-module 共享 clk_i).
+    """
     r = _run("-q", "cdc", "analyze", "--no-strict",
              "--filelist", str(FILELIST_DIR / "opentitan_tlul.f"), "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
-    assert r_data["domain_count"] == 4
+    # 修后: 1 domain (clk_i)
+    assert r_data["domain_count"] == 1
     assert r_data["total_cdc"] == 0  # 全 synchronous
     assert r_data["high_risk"] == 0
-    print(f"✅ P3 cdc tlul: 4 domains, 0 CDC (全 synchronous, 不假报)")
+    print(f"✅ P3 cdc tlul: 1 domain (clk_i 共享), 0 CDC (false positive 已修)")
 
 
 def test_p4_cdc_prim_arbiter_single_domain():
@@ -131,11 +139,10 @@ def test_n1_cdc_nonexistent_file():
 
 
 def test_n2_cdc_strict_uart_4_high_risk():
-    """N2: cdc strict_uart 4 sub-module clk → 4 CDC paths 全 HIGH (无 synchronizer, cdc 真价值).
-    
-    strict_uart 多个 sub-module (synchronizer/uart_top/sync_fifo/rx_fifo) 都有 clk_i input port,
-    互相 connect (uart_top → sync_fifo → rx_fifo). cdc 工具检测这些跨 module clk connection,
-    没 synchronizer → 4 CDC paths 全 HIGH risk. 这是 cdc 工具的真正价值: 找漏 reset 同步器.
+    """N2: cdc strict_uart 修算法后: 1 domain (clk_i 共享), 0 CDC.
+
+    [FIX 2026-07-04] 之前 cdc bug 报 4 domains + 4 CDC paths 全 HIGH (false positive).
+    修后: strict_uart 4 sub-module 共享 clk_i (同 physical wire), 0 CDC.
     """
     r = _run("-q", "cdc", "analyze", "--no-strict",
              "--filelist", str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"),
@@ -143,11 +150,11 @@ def test_n2_cdc_strict_uart_4_high_risk():
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
-    # strict_uart 4 sub-module clk → 4 CDC paths, 4 HIGH risk
-    assert r_data["domain_count"] == 4
-    assert r_data["total_cdc"] >= 1
-    assert r_data["high_risk"] >= 1
-    print(f"✅ N2 cdc strict_uart: {r_data['domain_count']} domains, {r_data['total_cdc']} CDC ({r_data['high_risk']} HIGH - sub-module clk 共享)")
+    # 修后: 1 domain, 0 CDC
+    assert r_data["domain_count"] == 1
+    assert r_data["total_cdc"] == 0
+    assert r_data["high_risk"] == 0
+    print(f"✅ N2 cdc strict_uart: {r_data['domain_count']} domain, 0 CDC (sub-module clk_i 共享, false positive 已修)")
 
 
 # ============================================================================

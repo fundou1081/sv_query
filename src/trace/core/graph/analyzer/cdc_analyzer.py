@@ -38,32 +38,77 @@ class CDCAnalyzer:
         self._node_domains = {}  # node -> domain
 
     def identify_clock_domains(self) -> dict[str, set[str]]:
-        """识别所有时钟域（按 module 分组）"""
+        """识别所有时钟域（按 physical net 追踪，不用 module namespace）
+
+        [FIX 2026-07-04] 之前的 bug: domain_key = f"{module}.{name}" 会把同一根
+        物理线 (e.g. `top.clk_i` = `top.i_a.clk_i` = `sub.clk_i` 通过 port 连接)
+        误判为不同 domain, 制造大量 false-positive CDC paths.
+
+        新算法:
+        1. 找所有顶层 clock port (depth <= 1)
+        2. 用 port_to_internal map 沿 instance 边界传播
+        3. 所有 reachable nodes = 同一 physical net = 同一 domain
+        """
         self._clock_signals = {}
         self._domain_nodes = {}
 
         clock_names = {"clk", "clock", "clk_i", "clk_p", "clk_n"}
 
+        # Step 1: 找顶层 root clock port
+        root_clocks: dict[str, list[str]] = {}  # short_name -> [root_node_ids]
         for node_id in self.graph.nodes():
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
-            name = node_id.split(".")[-1].lower()
-            if node.is_clock or name in clock_names:
-                # 提取 module 名
-                parts = node_id.rsplit(".", 1)
-                module = parts[0] if len(parts) > 1 else "top"
-                domain_key = f"{module}.{name}"
-                if domain_key not in self._clock_signals:
-                    self._clock_signals[domain_key] = []
-                    self._domain_nodes[domain_key] = set()
-                self._clock_signals[domain_key].append(node_id)
-                self._domain_nodes[domain_key].add(node_id)
+            short = node_id.rsplit(".", 1)[-1].lower()
+            if not (node.is_clock or short in clock_names):
+                continue
+            # 只看顶层 (depth <= 1: 'clk_i' 或 'top.clk_i', 不是 'top.i_a.clk_i')
+            if node_id.count(".") > 1:
+                continue
+            root_clocks.setdefault(short, []).append(node_id)
+
+        # Step 2: 对每个 root clock, 沿 port_to_internal 找所有 instance port + internal port
+        #         [FIX 2026-07-04] 不沿 graph succ/pred 走 (那是 assign 阶段的事, 跨域判定)
+        port_to_internal = self.graph.get_port_to_internal()
+        for short, root_ids in root_clocks.items():
+            domain_key = f"domain.{short}"
+            self._clock_signals[domain_key] = []
+            self._domain_nodes[domain_key] = set()
+            visited = set()
+            queue = list(root_ids)
+            for rid in root_ids:
+                visited.add(rid)
+                self._clock_signals[domain_key].append(rid)
+            while queue:
+                cur = queue.pop(0)
+                self._domain_nodes[domain_key].add(cur)
+                # 沿 port_to_internal forward: inst_port → sub-module internal
+                if cur in port_to_internal:
+                    target = port_to_internal[cur]
+                    if target not in visited:
+                        visited.add(target)
+                        queue.append(target)
+                # 沿 port_to_internal reverse: 找哪些 inst_port 映射到 cur
+                # 只在 cur 是 sub-module internal (即在 port_to_internal values 里) 时有意义
+                for inst_port, internal in port_to_internal.items():
+                    if internal == cur and inst_port not in visited:
+                        visited.add(inst_port)
+                        queue.append(inst_port)
 
         return self._domain_nodes
 
     def assign_domains(self) -> dict[str, str]:
-        """为每个节点分配时钟域（基于驱动关系传播）"""
+        """为每个节点分配时钟域（基于 CLOCK 边 + DRIVER 边组合传播）
+
+        [FIX 2026-07-04] 之前的 bug: 通过所有边传播 domain, 导致 DRIVER 边
+        跨 REG 时把 REG 当成同 domain (over-merge). 实际 DRIVER 边可能跨域.
+
+        新算法:
+        1. CLOCK/RESET 边: REG 节点属于该 CLOCK 源 domain
+        2. DRIVER/CONNECTION 边: 只传播到 combinational (WIRE) 节点
+           遇到 REG 节点停止 (REG 的 domain 由 CLOCK 边决定, 不是 data 边)
+        """
         if not self._domain_nodes:
             self.identify_clock_domains()
 
@@ -74,7 +119,9 @@ class CDCAnalyzer:
             for n in nodes:
                 self._node_domains[n] = domain
 
-        # BFS 传播：从时钟信号出发，通过所有边传播域
+        # BFS 传播: 从时钟信号出发, 按边类型分别处理
+        # [FIX 2026-07-04] 也要沿 port_to_internal 走 instance 边界 (graph 边不存跨 instance)
+        port_to_internal = self.graph.get_port_to_internal()
         visited = set(self._node_domains.keys())
         queue = list(self._node_domains.keys())
 
@@ -83,6 +130,14 @@ class CDCAnalyzer:
             cur_domain = self._node_domains.get(cur)
             if cur_domain is None:
                 continue
+
+            # 沿 port_to_internal forward: inst_port → sub-module internal (同一 physical net)
+            if cur in port_to_internal:
+                target = port_to_internal[cur]
+                if target not in visited:
+                    self._node_domains[target] = cur_domain
+                    visited.add(target)
+                    queue.append(target)
 
             for succ in self.graph.successors(cur):
                 if succ in visited:
@@ -95,17 +150,25 @@ class CDCAnalyzer:
                 if succ.startswith("1'b") or succ in ("0", "1", "'0", "'1"):
                     continue
 
-                # CLOCK/RESET 边：目标节点属于该时钟域
+                succ_node = self.graph.get_node(succ)
+                succ_kind = succ_node.kind if succ_node else None
+
+                # CLOCK/RESET 边: REG 节点属于该 CLOCK 源 domain
                 if ek in ("CLOCK", "RESET", "PosEdge", "NegEdge"):
+                    if succ_kind == NodeKind.REG:
+                        self._node_domains[succ] = cur_domain
+                        visited.add(succ)
+                        queue.append(succ)
+                    continue
+
+                # DRIVER/CONNECTION/BIT_SELECT 边: 只传播到 combinational 节点
+                # 遇到 REG 节点停止 (REG domain 由 CLOCK 边决定)
+                if succ_kind in (NodeKind.WIRE, NodeKind.SIGNAL, NodeKind.PORT_IN,
+                                 NodeKind.PORT_OUT, NodeKind.PORT_INOUT, None):
                     self._node_domains[succ] = cur_domain
                     visited.add(succ)
                     queue.append(succ)
-                    continue
-
-                # 其他边（DRIVER/CONNECTION 等）：同样传播域
-                self._node_domains[succ] = cur_domain
-                visited.add(succ)
-                queue.append(succ)
+                # REG 节点: 跳过 (它的 domain 由 CLOCK 边决定)
 
         return self._node_domains
 
