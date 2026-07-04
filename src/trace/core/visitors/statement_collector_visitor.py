@@ -108,31 +108,70 @@ class StatementCollectorVisitor(BaseVisitor):
         return self._ctx_stack[-1] if self._ctx_stack else {}
 
     def _de_morgan_negate(self, cond: str) -> str:
-        """[FIX 2026-07-04] 正确 De Morgan 取反复合条件
+        """[FIX 2026-07-04 v2] 正确 De Morgan 取反复合条件
 
-        修之前 bug: 复杂 else if 累加时给 parent_cond 加 ! 前缀, 变 `!!sel_a`
-        正确 De Morgan 展开: `!(A && B)` = `!A || !B`
+        v1 修后仍有 bug: 复合条件 (e.g. `a && b` 作为 if cond, `!(a && b)` 括号 negation)
+        走不到 simple negation branch, 也走不到 拆 && branch (因为 starts with `!`).
 
-        处理:
+        v2 修: 先 simplify `!!X` 抵消, 处理 `!(X)` 括号 negation, 处理 `(X)` 冗余括号,
+        然后 拆 && / || + 递归 neg 每项.
+
+        期望处理:
         - 简单 `X` → `!X`
         - 简单 `!X` → `X` (去掉 !)
         - 复合 `A && B` → `!A || !B` (De Morgan)
         - 复合 `A || B` → `!A && !B` (De Morgan)
-        - 复合 `!A && B` → `A || !B` (递归 neg 每项)
-        - 复合 `!A && !B` → `A || B` (递归 neg 每项)
-        - 复合: 拆 + 递归 neg 每项 + 反 operator
+        - `!(A && B)` → `A || B` (De Morgan + 简化括号)
+        - `!!(A && B)` → `(A && B)` (双重 negation 抵消)
+        - `A && B || C` → `!A || !B && !C` (De Morgan mixed)
         """
         cond = cond.strip()
         if not cond:
             return ""
 
-        # 简单 negation !X: 去掉 !
+        # [v2] 简化 `!!X` 抵消 (双重 negation)
+        # !!X (simple) → X
+        # !!(X) → (X) (拆括号, 双重 neg 抵消, recurse on X)
+        if cond.startswith("!!"):
+            rest = cond[2:]
+            if rest.startswith("(") and rest.endswith(")"):
+                # !!(X): 双重 negation 抵消, 直接返回 X (不递归 negate)
+                return rest  # 例如 !!(a && b) → (a && b)
+            else:
+                # !!X simple: 去掉 2 个 !
+                return rest
+
+        # 简单 negation !X (X 是 simple): 去掉 !
         if cond.startswith("!") and "(" not in cond and "&&" not in cond and "||" not in cond:
             return cond[1:]
 
         # 简单 identifier X: 加 !
         if not cond.startswith("!") and "(" not in cond and "&&" not in cond and "||" not in cond:
             return "!" + cond
+
+        # [v2] 处理 !(X) 括号 negation: 拆 !( + matching ), recurse on X
+        # !(X): `(` 在 index 1 (因为 startswith("!(") 是 [0:2])
+        if cond.startswith("!("):
+            # 找 matching ), 从 index 1 (位置的 `(`)
+            close_idx = self._find_matching_paren(cond, 1)
+            if close_idx == len(cond) - 1:
+                inner = cond[2:-1]
+                # !(X) = neg(X) (整个 neg 后的内部, 不重复 neg)
+                return self._de_morgan_negate(inner)
+
+        # [v2] 处理 (X) 冗余括号: 拆 matching (), recurse on X
+        if cond.startswith("("):
+            # 找 matching )
+            close_idx = self._find_matching_paren(cond, 0)
+            if close_idx == len(cond) - 1:
+                inner = cond[1:-1]
+                # 检查括号是否冗余 (中间不含 && / ||)
+                if "&&" not in inner and "||" not in inner:
+                    return "!(" + inner + ")"  # 保留括号, 加 neg
+                # [FIX 2026-07-04 v3] (X) 复合不要 De Morgan recurse
+                # 括号是分组标记, negation 只加 ! 外层: (X && Y) → !(X && Y)
+                # 不要拆 inner 拆成 X 跟 Y 然后 De Morgan (会错: !X || !Y)
+                return "!(" + inner + ")"
 
         # 复合 &&: De Morgan `!(A && B)` = `!A || !B`
         if "&&" in cond:
@@ -148,6 +187,31 @@ class StatementCollectorVisitor(BaseVisitor):
 
         # 其他: 加 !
         return "!" + cond
+
+    def _find_matching_paren(self, expr: str, start: int) -> int:
+        """找 start 位置 `(` 对应的 `)` index
+
+        用 depth 计数器, 处理嵌套括号. 如果没找到返回 -1.
+
+        Examples:
+            `find_matching_paren('(a && b)', 0)` → 7
+            `find_matching_paren('!(a && b)', 2)` → 7
+            `find_matching_paren('(a || b) && (c || d)', 0)` → 7
+            `find_matching_paren('(a || b) && (c || d)', 13)` → 20
+        """
+        if start >= len(expr) or expr[start] != "(":
+            return -1
+        depth = 0
+        i = start
+        while i < len(expr):
+            if expr[i] == "(":
+                depth += 1
+            elif expr[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    return i
+            i += 1
+        return -1
 
     def _split_top_level(self, expr: str, op: str) -> list[str]:
         """按顶层 operator split, 不在 () 内 split
@@ -1036,7 +1100,15 @@ class StatementCollectorVisitor(BaseVisitor):
             # Combine parent condition with current condition
             parent_cond = self.current_ctx.get("condition", "")
             if parent_cond:
-                new_cond = parent_cond + " && " + cond if cond else parent_cond
+                # [FIX 2026-07-04 v3] 括号保护 (else 分支别 De Morgan parent_cond)
+                # 在 else-if 链中, parent_cond 可能是 outer else 的 neg 形式 (e.g. '!(a && b)')
+                # 直接 `parent_cond && cond` 出现嵌套 negation (能容忍) + 优先级歧义 (不能容忍)
+                # 修法: cond 含 || 但不含括号, 加括号防止优先级歧义
+                # 不对 parent_cond 做 De Morgan (因为 parent_cond 在 else 分支已处理, if-true 不要重复)
+                cond_for_join = cond
+                if cond and "||" in cond and "(" not in cond:
+                    cond_for_join = f"({cond})"
+                new_cond = parent_cond + " && " + cond_for_join if cond_for_join else parent_cond
             else:
                 new_cond = cond
             # [NEW] 保存条件 AST 到 _cond_exprs 列表
@@ -1128,13 +1200,13 @@ class StatementCollectorVisitor(BaseVisitor):
             parent_cond = self.current_ctx.get("condition", "")
             parent_cond_expr = self.current_ctx.get("_parent_cond_expr", None)
             if parent_cond:
-                # [FIX 2026-07-04] 修 !!X typo
-                # 之前 bug: 嵌套逻辑用 `parent_cond_expr` 判断, 但 `parent_cond_expr` 是 outer if expr,
-                # 不反映 parent_cond 字符串已累积的 neg 形式. 走错路径加 !, 变 `!!sel_a`.
-                # 真修法: 看 parent_cond 字符串本身, 决定 neg 策略.
+                # [FIX 2026-07-04 v3] 修 3 个 bug 链
+                # #1 简单加 ! → !!X typo (修: starts with ! simple neg → strip)
+                # #2 不 De Morgan → !(A&&B) typo (修: complex → De Morgan)
+                # #3 缺括号 → || 跟 && 优先级歧义 (修: || in neg_parent → 加 ())
                 is_complex = ("&&" in parent_cond) or ("||" in parent_cond)
                 if is_complex:
-                    # 复合: De Morgan 展开
+                    # 复合: De Morgan 展开 (e.g. !(a&&b) → !a||!b)
                     neg_parent = self._de_morgan_negate(parent_cond)
                 elif parent_cond.startswith("!") and "(" not in parent_cond and "&&" not in parent_cond and "||" not in parent_cond:
                     # 字符串已 simple neg (!X), 去 ! 得 X
@@ -1143,8 +1215,7 @@ class StatementCollectorVisitor(BaseVisitor):
                     # 字符串 simple id (X), 加 ! 得 !X
                     neg_parent = "!" + parent_cond
                 if neg_parent and neg_cond:
-                    # [FIX 2026-07-04] 避免 || 跟 && 混用缺括号, 加 ()
-                    # 如果 neg_parent 含 ||, 加括号防止优先级歧义
+                    # [FIX 2026-07-04 v3] 避免 || 跟 && 混用缺括号, 加 ()
                     if "||" in neg_parent:
                         new_cond = f"({neg_parent}) && {neg_cond}"
                     else:
