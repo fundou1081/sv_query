@@ -38,7 +38,7 @@ from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.coverage_generator import ControlCoverageGenerator
 
 coverage_app = typer.Typer(
-    help="Control coverage generation: decompose signals to atomic signals"
+    help="[EXPERIMENTAL] Control coverage generation: decompose signals to atomic signals"
 )
 
 

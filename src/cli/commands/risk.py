@@ -35,7 +35,7 @@ from cli._evidence_helpers import (  # noqa: E402
     evidence_summary_indented,
 )
 
-risk_app = typer.Typer(help="Signal risk analysis: classify nodes by clock/reset/data, compute risk scores")
+risk_app = typer.Typer(help="[EXPERIMENTAL] Signal risk analysis: classify nodes by clock/reset/data, compute risk scores")
 
 
 @risk_app.command(name="analyze")

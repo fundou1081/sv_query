@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from trace.core.graph.diff import diff_reachability, diff_with_health
 from trace.unified_tracer import UnifiedTracer
 
-diff_app = typer.Typer(help="Compare two versions of SystemVerilog code")
+diff_app = typer.Typer(help="[EXPERIMENTAL] Compare two versions of SystemVerilog code")
 
 
 def output_json(data: dict, pretty: bool = False) -> None:

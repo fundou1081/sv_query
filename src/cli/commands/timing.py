@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 from trace.core.graph.analyzer.timing_analyzer import TimingAnalyzer
 
-timing_app = typer.Typer(help="Timing critical path analysis: register depth, DAG longest path, SCC detection")
+timing_app = typer.Typer(help="[EXPERIMENTAL] Timing critical path analysis: register depth, DAG longest path, SCC detection")
 
 
 @timing_app.command(name="analyze")

@@ -41,7 +41,7 @@ from cli._evidence_helpers import (  # noqa: E402
     evidence_summary_indented,
 )
 
-verify_app = typer.Typer(help="Verification gap detection: find high-risk signals without SVA/Coverage")
+verify_app = typer.Typer(help="[EXPERIMENTAL] Verification gap detection: find high-risk signals without SVA/Coverage")
 
 
 @verify_app.command(name="gap")

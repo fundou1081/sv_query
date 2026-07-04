@@ -38,7 +38,7 @@ import typer
 
 from src.cli._common import _build_tracer
 
-arch_app = typer.Typer(help="Project architecture visualization (L1 + L2 overview)")
+arch_app = typer.Typer(help="[EXPERIMENTAL] Project architecture visualization (L1 + L2 overview)")
 
 
 @arch_app.callback(invoke_without_command=True)

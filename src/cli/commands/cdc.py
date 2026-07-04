@@ -33,7 +33,7 @@ from cli._evidence_helpers import (  # noqa: E402
     format_cdc_human as _format_cdc_human,
 )
 
-cdc_app = typer.Typer(help="CDC (Clock Domain Crossing) detection: identify cross-clock domain paths")
+cdc_app = typer.Typer(help="[EXPERIMENTAL] CDC (Clock Domain Crossing) detection: identify cross-clock domain paths")
 
 
 @cdc_app.command(name="analyze")

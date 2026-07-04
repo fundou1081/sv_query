@@ -30,7 +30,7 @@ from trace.core.handshake_detector import (
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
 
-backpressure_app = typer.Typer(help="Bus backpressure topology analysis: AXI/TL-UL ready/valid chain visualization")
+backpressure_app = typer.Typer(help="[EXPERIMENTAL] Bus backpressure topology analysis: AXI/TL-UL ready/valid chain visualization")
 
 
 # Handshake type emoji for Mermaid node labels
