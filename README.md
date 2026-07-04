@@ -117,9 +117,10 @@ dot -Tpng top.dot -o top.png
 
 sv_query 21 个主命令**分 3 类**:
 
-### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)** — 2 个
+### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)** — 3 个 (v3 2026-07-04)
 - `dataflow analyze A B` — 看 A→B 数据流 + cycle latency + async crossing
 - `controlflow analyze <sig>` — 看 signal 的 if/case 条件
+- `visualize graph / dataflow / pipeline` — 画 DOT/Mermaid/HTML 图 (3 子命令真稳, 2 子命令 `gap`/`module` 修中)
 - (关联) `trace evidence <sig>` — 拿源码 1 秒
 
 **真稳验证**: 13 tests + 7 真项目 (sync_fifo / darkriscv / OpenTitan prim_arbiter_tree / prim_fifo_sync / CVA6 ALU / two_flop_sync) 100% 准.
@@ -142,10 +143,9 @@ sv_query 21 个主命令**分 3 类**:
 
 **承诺**: 真稳可用, 但**不主推, 资源不投**. 偶尔修 bug.
 
-### 🟡 **实验性功能 (Experimental, 探索性)** — 7 个标 [EXPERIMENTAL]
+### 🟡 **实验性功能 (Experimental, 探索性)** — 6 个标 [EXPERIMENTAL] (v3 2026-07-04 减 1)
 - `cdc analyze` — 跨 clk (刚修算法, 没真 CDC 验证)
 - `verify gap` — 高风险无 SVA (之前 traceback)
-- `visualize dataflow / pipeline / gap / module` — DOT 输出 (跨 module 偶有问题)
 - `risk analyze` — graph-based heuristic (评分是启发式)
 - `timing analyze` — critical path (没压力测试)
 - `coverage generate` — 复杂 covergroup 可能生成不完整

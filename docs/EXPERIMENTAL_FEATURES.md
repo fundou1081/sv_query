@@ -10,7 +10,7 @@
 
 ## ⚠️ 实验性声明
 
-以下 **7 个**命令/子命令**标记为实验性** (在 `sv_query --help` 可见 `[EXPERIMENTAL]` tag):
+以下 **6 个**命令/子命令**标记为实验性** (在 `sv_query --help` 可见 `[EXPERIMENTAL]` tag):
 
 - ⛔ **不保证** 准确 (可能有 false positive / false negative)
 - ⛔ **不保证** 稳定 (可能 flaky)
@@ -18,7 +18,7 @@
 - ⛔ **可能有 bug** (e.g. `verify gap` 之前在真项目报 traceback)
 - ⛔ **API 可能变**
 
-**主推功能** (稳定, 重点投入): 见 `docs/PRIMARY_FEATURES.md` — 2 个 (`dataflow` + `controlflow`)
+**主推功能** (稳定, 重点投入): 见 `docs/PRIMARY_FEATURES.md` — **3 个** (`dataflow` + `controlflow` + `visualize`)
 **稳定功能** (真能用, 不主推): 12 个 — 不在本 doc
 
 **使用建议**:
@@ -29,7 +29,7 @@
 
 ---
 
-## 📋 7 个实验性命令
+## 📋 6 个实验性命令
 
 ### 🔴 真实验性 (高风险, 已知问题)
 
@@ -70,18 +70,7 @@ sv_query -q verify gap --no-strict --file x.sv
 
 ### 🟡 部分实验 (中等风险, 限制已知)
 
-#### 3. `visualize dataflow / pipeline / gap / module`
-**问题**:
-- 单 module OK, **跨 module 边不可靠**
-- namespace rewrite 偶有错
-- CVA6 arch 0 port edges (跨 module 没连上)
-
-**使用建议**:
-- 单 module 画图 OK
-- 跨 module 画图需手动 verify
-- **别依赖** 跨 module 边
-
-#### 4. `risk analyze`
+#### 3. `risk analyze`
 **问题**:
 - graph-based heuristic 评分
 - 跟 "designer 觉得重要" 不完全一致
@@ -125,10 +114,10 @@ sv_query -q verify gap --no-strict --file x.sv
 | 等级 | 数量 | 命令 | 严重度 |
 |------|------|------|--------|
 | 🔴 真实验 | **2** | `cdc`, `verify gap` | 高 (可能挂) |
-| 🟡 部分实验 | **5** | `visualize` / `risk` / `timing` / `coverage generate` / `backpressure deadlock` | 中 (限制已知) |
+| 🟡 部分实验 | **4** | `risk` / `timing` / `coverage generate` / `backpressure deadlock` | 中 (限制已知) |
 | 🟢 标实验 (相对稳) | **0** | (无) | - |
 
-> **v2 (2026-07-04) 升级**: 之前 12 个"稳定但标 experimental" 全部**撤标**. 现在真不稳才标.
+> **v3 (2026-07-04) 升级**: `visualize` 整体升 primary (3 子命令真稳 graph/dataflow/pipeline). 2 子命令 (gap/module) 修完 stable. 现在 6 个实验性 (从 7 减 1).
 
 ---
 
