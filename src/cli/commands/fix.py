@@ -32,7 +32,7 @@ from cli.commands.fix_imports import fix_imports_cmd
 # [ADD 2026-06-12 Req-19] fix widths: 用 syntax tree + pyslang.clog2 拿 $clog2(\`MACRO) 真实位宽
 from cli.commands.fix_widths import fix_widths_cmd
 
-fix_app = typer.Typer(help="[EXPERIMENTAL] 自动修复 elaboration 问题 (MissingTimeScale 等)")
+fix_app = typer.Typer(help="自动修复 elaboration 问题 (MissingTimeScale 等)")
 
 
 # ----------------------------------------------------------------------------

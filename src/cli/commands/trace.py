@@ -402,7 +402,7 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
         print("💡  Review these paths before making changes")
 
 
-trace_app = typer.Typer(help="[EXPERIMENTAL] Trace signal drivers (fanin), loads (fanout), or impact analysis")
+trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or impact analysis")
 
 
 @trace_app.command()

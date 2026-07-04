@@ -30,7 +30,7 @@ from trace.core.handshake_detector import (
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
 
-backpressure_app = typer.Typer(help="[EXPERIMENTAL] Bus backpressure topology analysis: AXI/TL-UL ready/valid chain visualization")
+backpressure_app = typer.Typer(help="Bus backpressure topology analysis: AXI/TL-UL ready/valid chain visualization")
 
 
 # Handshake type emoji for Mermaid node labels
@@ -340,7 +340,7 @@ def deadlock(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default non-strict: 优雅降级)"),
 ) -> None:
-    """[B 2026-06-13] Static deadlock candidate detection.
+    """[B 2026-06-13] [EXPERIMENTAL] Static deadlock candidate detection.
 
     从 SignalGraph + ProtocolSemantics 检测:
       - combinational loop (valid ↔ ready 环)

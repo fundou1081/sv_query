@@ -113,11 +113,11 @@ dot -Tpng top.dot -o top.png
 
 ---
 
-## ⭐ 主要功能 vs 实验性功能 (战略切分 2026-07-04)
+## ⭐ 主要功能 vs 稳定功能 vs 实验性功能 (3-层 2026-07-04)
 
-sv_query 21 个主命令**分两类**:
+sv_query 21 个主命令**分 3 类**:
 
-### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)**
+### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)** — 2 个
 - `dataflow analyze A B` — 看 A→B 数据流 + cycle latency + async crossing
 - `controlflow analyze <sig>` — 看 signal 的 if/case 条件
 - (关联) `trace evidence <sig>` — 拿源码 1 秒
@@ -128,10 +128,30 @@ sv_query 21 个主命令**分两类**:
 
 **深度 doc**: [`docs/PRIMARY_FEATURES.md`](docs/PRIMARY_FEATURES.md) + [`docs/DATAFLOW_CONTROLFLOW_USAGE.md`](docs/DATAFLOW_CONTROLFLOW_USAGE.md)
 
-### 🟡 **实验性功能 (Experimental, 探索性)**
-其他 19 个命令 (`stats` / `search` / `trace` / `arch` / `cdc` / `verify` / `visualize` / `protocol` / `handshake` / `backpressure` / `risk` / `sva` / `timing` / `coverage` / `snapshot` / `diff` / `fix` 等) 标 `[EXPERIMENTAL]` (CLI `--help` 可见).
+### ✅ **稳定功能 (Stable, 真能用, 不主推)** — 12 个
+- `stats` / `search` — 简单查询
+- `arch show` — L1+L2 模块图
+- `trace fanin / fanout / impact` — 信号追踪 (跟 `evidence` 一起)
+- `protocol detect / show / list / semantics` — AXI/AHB/APB 检测
+- `handshake scan / analyze / pair` — ready/valid 检测
+- `backpressure analyze` — ready/valid 拓扑
+- `sva extract / coverage / timing` — SVA 抽 + 覆盖
+- `snapshot save / list / show / delete / compare` — graph 快照
+- `diff compare` — 2 版本对比
+- `fix timescale / report / imports / widths` — elaboration 修
 
-**不承诺稳定**: 可能 flaky, 可能有 false positive, 可能有 bug. **不主推, 资源不投**.
+**承诺**: 真稳可用, 但**不主推, 资源不投**. 偶尔修 bug.
+
+### 🟡 **实验性功能 (Experimental, 探索性)** — 7 个标 [EXPERIMENTAL]
+- `cdc analyze` — 跨 clk (刚修算法, 没真 CDC 验证)
+- `verify gap` — 高风险无 SVA (之前 traceback)
+- `visualize dataflow / pipeline / gap / module` — DOT 输出 (跨 module 偶有问题)
+- `risk analyze` — graph-based heuristic (评分是启发式)
+- `timing analyze` — critical path (没压力测试)
+- `coverage generate` — 复杂 covergroup 可能生成不完整
+- `backpressure deadlock` — 静态死锁检测, 算法不成熟
+
+**不承诺稳定**: 可能 flaky / false positive / 挂掉. **不主推, 资源不投, 只 bug 修**.
 
 **深度 doc**: [`docs/EXPERIMENTAL_FEATURES.md`](docs/EXPERIMENTAL_FEATURES.md)
 
