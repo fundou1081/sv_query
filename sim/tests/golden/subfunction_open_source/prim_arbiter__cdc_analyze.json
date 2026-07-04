@@ -6,7 +6,7 @@
     "domain_count": 1,
     "domain_pairs": {},
     "domains": [
-      "prim_arbiter_tree.clk_i"
+      "domain.clk_i"
     ],
     "high_risk": 0,
     "high_risk_paths": [],

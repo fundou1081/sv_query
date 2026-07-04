@@ -8,108 +8,16 @@
     "summary": false
   },
   "result": {
-    "domain_count": 4,
-    "domain_pairs": {
-      "('src_clk_i', 'src_clk_i')": {
-        "count": 2,
-        "high_risk": 2,
-        "paths": [
-          {
-            "edge_kind": "EdgeKind.CONNECTION",
-            "has_synchronizer": false,
-            "risk": "HIGH",
-            "source": "axi_lite_cdc_src_intf.src_clk_i",
-            "source_domain": "axi_lite_cdc_src_intf.src_clk_i",
-            "source_domain_short": "src_clk_i",
-            "sync_flops": 1,
-            "sync_type": "NONE",
-            "target": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-            "target_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-            "target_domain_short": "src_clk_i"
-          },
-          {
-            "edge_kind": "EdgeKind.CONNECTION",
-            "has_synchronizer": false,
-            "risk": "HIGH",
-            "source": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-            "source_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-            "source_domain_short": "src_clk_i",
-            "sync_flops": 1,
-            "sync_type": "NONE",
-            "target": "axi_cdc_src.src_clk_i",
-            "target_domain": "axi_cdc_src.src_clk_i",
-            "target_domain_short": "src_clk_i"
-          }
-        ]
-      }
-    },
+    "domain_count": 1,
+    "domain_pairs": {},
     "domains": [
-      "axi_cdc_src_intf.src_clk_i",
-      "axi_cdc_src.src_clk_i",
-      "axi_lite_cdc_src_intf.src_clk_i",
-      "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i"
+      "domain.src_clk_i"
     ],
-    "high_risk": 2,
-    "high_risk_paths": [
-      {
-        "edge_kind": "EdgeKind.CONNECTION",
-        "has_synchronizer": false,
-        "risk": "HIGH",
-        "source": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "source_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "source_domain_short": "src_clk_i",
-        "sync_flops": 1,
-        "sync_type": "NONE",
-        "target": "axi_cdc_src.src_clk_i",
-        "target_domain": "axi_cdc_src.src_clk_i",
-        "target_domain_short": "src_clk_i"
-      },
-      {
-        "edge_kind": "EdgeKind.CONNECTION",
-        "has_synchronizer": false,
-        "risk": "HIGH",
-        "source": "axi_lite_cdc_src_intf.src_clk_i",
-        "source_domain": "axi_lite_cdc_src_intf.src_clk_i",
-        "source_domain_short": "src_clk_i",
-        "sync_flops": 1,
-        "sync_type": "NONE",
-        "target": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "target_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "target_domain_short": "src_clk_i"
-      }
-    ],
+    "high_risk": 0,
+    "high_risk_paths": [],
     "low_risk": 0,
-    "paths": [
-      {
-        "edge_kind": "EdgeKind.CONNECTION",
-        "has_synchronizer": false,
-        "risk": "HIGH",
-        "source": "axi_lite_cdc_src_intf.src_clk_i",
-        "source_domain": "axi_lite_cdc_src_intf.src_clk_i",
-        "source_domain_short": "src_clk_i",
-        "sync_flops": 1,
-        "sync_type": "NONE",
-        "target": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "target_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "target_domain_short": "src_clk_i"
-      },
-      {
-        "edge_kind": "EdgeKind.CONNECTION",
-        "has_synchronizer": false,
-        "risk": "HIGH",
-        "source": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "source_domain": "axi_lite_cdc_src_intf.i_axi_cdc_src.src_clk_i",
-        "source_domain_short": "src_clk_i",
-        "sync_flops": 1,
-        "sync_type": "NONE",
-        "target": "axi_cdc_src.src_clk_i",
-        "target_domain": "axi_cdc_src.src_clk_i",
-        "target_domain_short": "src_clk_i"
-      }
-    ],
-    "sync_type_stats": {
-      "NONE": 2
-    },
-    "total_cdc": 2
+    "paths": [],
+    "sync_type_stats": {},
+    "total_cdc": 0
   }
 }
