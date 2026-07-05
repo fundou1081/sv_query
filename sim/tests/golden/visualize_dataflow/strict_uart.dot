@@ -30,29 +30,29 @@ digraph dataflow {
   "uart_top.rx_ready_o" [label="rx_ready_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
 
   // === Data Edges ===
-  "synchronizer.async_i" -> "synchronizer.sync1" [color="#226699", style=solid, penwidth=1.5, label="async_i", fontsize=9, xlabel="!!rst_ni", fontsize=7];
-  "synchronizer.sync1" -> "synchronizer.sync0_o" [color="#226699", style=solid, penwidth=1.5, label="sync1", fontsize=9, xlabel="!!rst_ni", fontsize=7];
-  "sync_fifo.push_data_i" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="push_data_i", fontsize=9, xlabel="!!rst_ni && push_i && !fu", fontsize=7];
+  "synchronizer.async_i" -> "synchronizer.sync1" [color="#226699", style=solid, penwidth=1.5, label="async_i", fontsize=9, xlabel="rst_ni", fontsize=7];
+  "synchronizer.sync1" -> "synchronizer.sync0_o" [color="#226699", style=solid, penwidth=1.5, label="sync1", fontsize=9, xlabel="rst_ni", fontsize=7];
+  "sync_fifo.push_data_i" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="push_data_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7];
   "sync_fifo.pop_data_o" -> "uart_top.rx_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "sync_fifo.empty_o" -> "uart_top.rx_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "sync_fifo.count_q" -> "sync_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9];
   "sync_fifo.count_q" -> "sync_fifo.full_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, penwidth=2.5, color="#224488"];
-  "sync_fifo.count_q" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, xlabel="!!rst_ni && push_i && !fu", fontsize=7];
-  "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="wr_ptr_q", fontsize=9, xlabel="!!rst_ni && push_i && !fu", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7];
+  "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="wr_ptr_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
   "sync_fifo.SIZE" -> "sync_fifo.full_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, penwidth=2.5, color="#224488"];
-  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="rd_ptr_q", fontsize=9, xlabel="!!rst_ni && pop_i && !emp", fontsize=7];
-  "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="mem[Expression(ExpressionKind....", fontsize=9, xlabel="!!rst_ni && pop_i && !emp", fontsize=7];
+  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="rd_ptr_q", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7];
+  "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="mem[Expression(ExpressionKind....", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7];
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.mem" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo" [color="#226699", style=solid, penwidth=1.5, label="pop_data_o", fontsize=9, penwidth=2.5, color="#224488"];
   "uart_top.rx_fifo.empty_o" -> "uart_top.rx_ready_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo" [color="#226699", style=solid, penwidth=1.5, label="empty_o", fontsize=9, penwidth=2.5, color="#224488"];
-  "1" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="1", fontsize=9, xlabel="!!rst_ni && push_i && !fu", fontsize=7, penwidth=2.5, color="#224488"];
+  "1" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="1", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
 
   // === Key Control Edges ===
   "0" -> "sync_fifo.empty_o" [color="#CC6600", style=dashed, penwidth=1.2];
-  "1" -> "sync_fifo.rd_ptr_q" [color="#CC6600", style=dashed, penwidth=1.2, xlabel="!!rst_ni && pop_i && !emp", fontsize=7];
-  "1" -> "sync_fifo.count_q" [color="#CC6600", style=dashed, penwidth=1.2, xlabel="!!rst_ni && push_i && !fu", fontsize=7];
+  "1" -> "sync_fifo.rd_ptr_q" [color="#CC6600", style=dashed, penwidth=1.2, xlabel="rst_ni && pop_i && !empty", fontsize=7];
+  "1" -> "sync_fifo.count_q" [color="#CC6600", style=dashed, penwidth=1.2, xlabel="rst_ni && push_i && !full", fontsize=7];
 
   // === Legend ===
   subgraph cluster_legend {
