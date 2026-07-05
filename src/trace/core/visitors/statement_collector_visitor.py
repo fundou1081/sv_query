@@ -992,18 +992,21 @@ class StatementCollectorVisitor(BaseVisitor):
             self.visit(ts)
             self._ctx_stack.pop()
 
-        # ifFalse (else) 分支: 累加 !this_cond 到 path_neg_conj, push joined as new ctx.cond
+        # ifFalse (else) 分支: 累加 !this_cond 到 path_neg_conj
         # 【v6 fix】!!! typo 防止: cond 是 !X 时, neg 应该 X (去掉 !), 不是 !!X
+        # 【v6.2 fix】nested if + 5-way mux 都对:
+        #   - path_neg_conj 初始为 [] (outer 没走 else)
+        #     - inner else ctx.cond = current_ctx.cond && !cond (累加 outer path)
+        #   - path_neg_conj 不为空 (outer 走了 else path)
+        #     - inner else ctx.cond = joined_neg (current_ctx.cond 已包含 outer 的 neg)
+        # 这区分了 nested if (outer 是 if-true path) 跟 else-if chain (outer 是 else path)
         ec = getattr(node, "ifFalse", None) or getattr(node, "elseClause", None)
         if ec:
             ae = getattr(ec, "clause", None) or ec
             if cond:
                 # !this_cond: simple 用 !c, complex 用 !(c), 已经 !X 则 X (去 !)
                 if cond.startswith("!"):
-                    # cond 已经是 neg 形式 (!X), 取反 = X (去掉 !)
-                    # 但要保留括号如果 cond 是 !(...) 形式
                     if cond.startswith("!(") and cond.endswith(")"):
-                        # !(complex), 取反 = 内部 (去掉外层 !( ))
                         neg_this = cond[2:-1]
                     else:
                         neg_this = cond[1:]
@@ -1012,7 +1015,17 @@ class StatementCollectorVisitor(BaseVisitor):
                 else:
                     neg_this = f"!{cond}"
                 new_path_neg_conj = path_neg_conj + [neg_this]
-                new_ctx_cond = " && ".join(new_path_neg_conj)
+                joined_neg = " && ".join(new_path_neg_conj)
+                # 区分 nested if (path_neg_conj=[]) 跟 else-if chain (path_neg_conj 不空)
+                if path_neg_conj:
+                    # outer 走了 else path, current_ctx.cond 已包含 outer 的 neg
+                    new_ctx_cond = joined_neg
+                else:
+                    # outer 走 if-true path, ctx.cond 应该累加 outer if-true path
+                    if ctx_cond:
+                        new_ctx_cond = f"{ctx_cond} && {neg_this}"
+                    else:
+                        new_ctx_cond = neg_this
                 else_ctx = {**self.current_ctx, "condition": new_ctx_cond, "_path_neg_conj": new_path_neg_conj}
                 self._visited.discard(id(ae))
                 self._ctx_stack.append(else_ctx)
