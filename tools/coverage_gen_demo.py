@@ -42,6 +42,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 # 复用 sv_query 的 filelist 解析器 (Verilator/Modelsim 风格)
@@ -129,7 +130,11 @@ def query_risk_json(
     strict: bool = True,
 ) -> dict:
     import subprocess
-    args = ["python", "run_cli.py", "risk", "analyze", "--json"]
+    import sys as _sys
+    # [FIX 2026-07-05] 8GB MBA + pyslang + 大项目, risk analyze 可能 silent fail (no JSON).
+    # 加 retry 3 次, 每次间隔间 force 4GB 内存 reclaim (降低 pyslang OOM 概率)
+    # 参见 memory/2026-06-15.md (pyslang memory pressure issue)
+    args = [_sys.executable, "run_cli.py", "risk", "analyze", "--json"]
     # filelist 模式下不传 -f (避免 sv_query 重复加载 source 冲突)
     # file 只用于 RTL regex 解析 (width/typedef/param)
     if filelist:
@@ -140,13 +145,27 @@ def query_risk_json(
         args += ["--include", ",".join(include_dirs)]
     if not strict:
         args.append("--no-strict")
-    out = subprocess.run(
-        args, capture_output=True, text=True, cwd=Path(__file__).parent.parent,
+    last_err = ""
+    for attempt in range(3):
+        # 释放 inactive pages
+        try:
+            _a = bytearray(4 * 1024**3)
+            time.sleep(2)
+            del _a
+        except Exception:
+            pass
+        out = subprocess.run(
+            args, capture_output=True, text=True, cwd=Path(__file__).parent.parent,
+            timeout=120,
+        )
+        start = out.stdout.find("{")
+        if start >= 0:
+            return json.loads(out.stdout[start:])["result"]
+        last_err = out.stderr[:300] if out.stderr else f"no stderr, stdout={out.stdout[:200]}"
+        time.sleep(2)
+    raise RuntimeError(
+        f"risk analyze --json returned no JSON after 3 retries:\n{last_err}"
     )
-    start = out.stdout.find("{")
-    if start < 0:
-        raise RuntimeError(f"risk analyze --json returned no JSON:\n{out.stdout[:500]}")
-    return json.loads(out.stdout[start:])["result"]
 
 
 def find_signal(sig_name: str, data_signals: list) -> dict | None:

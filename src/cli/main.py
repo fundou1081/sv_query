@@ -69,6 +69,7 @@ from src.cli.commands.visualize import vis_app
 from src.cli.commands.arch import arch_app
 from src.cli.commands.fix import fix_app
 from src.cli.commands.search import search
+from src.cli.commands.expression import expression_app
 
 app = typer.Typer(
     name="svq",
@@ -94,6 +95,10 @@ app.add_typer(protocol_app, name="protocol")
 app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
 app.add_typer(fix_app, name="fix")
+
+# [FIX 2026-07-05] expression 是早期写但从未注册的 Typer app (build/func/cond 3 commands)
+# 修底层 metadata kwargs bug 之后, 重新启用, 让 CLI 可以手动构造 expression/func/cond 节点
+app.add_typer(expression_app, name="expression")
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖

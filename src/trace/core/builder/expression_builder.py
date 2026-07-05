@@ -32,13 +32,19 @@ class ExpressionBuilder:
         module = kwargs.pop("module", "")
         width = kwargs.pop("width", (0, 0))
 
+        # [FIX 2026-07-05] 剩余 metadata kwargs (expression/function_name/operands/signals/condition/...)
+        # TraceNode 不接受, 全部存到 extra dict
+        extra = kwargs.pop("extra", {})
+        if kwargs:
+            extra = {**extra, **kwargs}
+
         node = TraceNode(
             id=node_id,
             name=name,
             module=module,
             kind=kind,
             width=width,
-            **kwargs,  # 剩余参数传递给 TraceNode
+            extra=extra,
         )
         self._graph.add_trace_node(node)
         return node
