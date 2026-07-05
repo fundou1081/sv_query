@@ -302,18 +302,28 @@ def analyze(
     if output:
         with open(output, "w") as f:
             f.write(mermaid_code)
-        print("✓ Mermaid: " + output)
-        print("  Backpressure signals: " + str(len(bp_nodes)))
-        print("  Edges: " + str(len(bp_edge_set)))
-        print("  Filtered out (passthroughs): " + str(len(filtered_out)))
-        active_layers = ", ".join(l for l in ["SLAVE", "ADAPTER", "CROSSBAR", "MASTER", "OTHER"] if layer_nodes[l])
-        print("  Layers: " + active_layers)
-        print("")
-        print("  Handshake type breakdown:")
-        for t, cnt in sorted(type_stats.items(), key=lambda x: -x[1]):
-            print(f"    {_HANDSHAKE_EMOJI.get(t, '❓')} {t}: {cnt}")
+        _print_backpressure_stats(bp_nodes, bp_edge_set, filtered_out, layer_nodes, type_stats, output)
     else:
+        # [FIX 2026-07-05] 即使没 --output 也输出统计行 — 让 CLI 用户能看到 BP 信号数 / edges / filtered out
         print(mermaid_code)
+        _print_backpressure_stats(bp_nodes, bp_edge_set, filtered_out, layer_nodes, type_stats)
+
+
+def _print_backpressure_stats(bp_nodes, bp_edge_set, filtered_out, layer_nodes, type_stats, output_path=None):
+    """[FIX 2026-07-05] Print backpressure analysis stats (always, even without --output)"""
+    if output_path:
+        print("✓ Mermaid: " + output_path)
+    print("  Backpressure signals: " + str(len(bp_nodes)))
+    print("  Edges: " + str(len(bp_edge_set)))
+    print("  Filtered out (passthroughs): " + str(len(filtered_out)))
+    active_layers = ", ".join(l for l in ["SLAVE", "ADAPTER", "CROSSBAR", "MASTER", "OTHER"] if layer_nodes[l])
+    print("  Layers: " + active_layers)
+    print("")
+    print("  Handshake type breakdown:")
+    for t, cnt in sorted(type_stats.items(), key=lambda x: -x[1]):
+        print(f"    {_HANDSHAKE_EMOJI.get(t, '❓')} {t}: {cnt}")
+
+
 
 
 if __name__ == "__main__":

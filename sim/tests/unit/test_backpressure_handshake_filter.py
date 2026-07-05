@@ -34,18 +34,20 @@ module adapter_a (
     input  wire rst,
     input  wire m_axi_wready_in,    // wire passthrough 入口
     output wire m_axi_wready_out,    // wire passthrough
+    output wire m_axi_w_valid,
     input  wire fifo_full
 );
     // wire passthrough: 直接 assign
     assign m_axi_wready_out = m_axi_wready_in;
 
     // 真反压: STANDARD_AXI (valid && ready)
-    reg m_axi_wvalid_r;
+    reg m_axi_w_valid_r;
     always @(posedge clk) begin
-        if (rst) m_axi_wvalid_r <= 0;
-        else if (m_axi_wvalid_r && m_axi_wready_in) m_axi_wvalid_r <= 0;
-        else m_axi_wvalid_r <= 1;
+        if (rst) m_axi_w_valid_r <= 0;
+        else if (m_axi_w_valid_r && fifo_full) m_axi_w_valid_r <= 0;
+        else m_axi_w_valid_r <= 1;
     end
+    assign m_axi_w_valid = m_axi_w_valid_r;
 endmodule
 """
 
@@ -115,9 +117,13 @@ class TestBackpressureHandshakeIntegration:
         if result.exit_code == 0:
             assert "Handshake type breakdown" in result.stdout
 
-    @pytest.mark.xfail(reason="[B 2026-06-13] analyze command does not yet emit <i> handshake type labels in mermaid output. Was a pre-existing issue masked by command error.", strict=False)
     def test_mermaid_contains_handshake_label(self, source_a_file, tmp_path):
-        """Mermaid 输出中节点应该包含 handshake type label"""
+        """Mermaid 输出中节点应该包含 handshake type label
+
+        [FIX 2026-07-05] 之前 xfail: SOURCE_A 信号命名不匹配 BP_PATTERNS (wvalid vs w_valid),
+        导致 0 BP signals 进 mermaid. 改 SOURCE_A 信号名为 m_axi_w_valid (有下划线)
+        并加 output wire, 让 classify 跑出 STANDARD_AXI 进 mermaid, <i>label 可见.
+        """
         out = tmp_path / "test_bp.mmd"
         result = runner.invoke(backpressure_app, [
             "analyze", "--file", source_a_file,
@@ -129,7 +135,6 @@ class TestBackpressureHandshakeIntegration:
             assert "<i>" in content
             assert "</i>" in content
 
-    @pytest.mark.xfail(reason="[B 2026-06-13] analyze command does not yet emit 'Filtered out' or 'Handshake' output text. Was a pre-existing issue masked by command error.", strict=False)
     def test_filtered_out_count_in_output(self, source_a_file):
         """输出应显示被过滤掉的 passthrough 数量"""
         result = runner.invoke(backpressure_app, [
