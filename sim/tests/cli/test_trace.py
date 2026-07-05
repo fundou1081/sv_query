@@ -48,8 +48,9 @@ endmodule
             result = self._run_svq(["trace", "fanin", "top.a", "--file", path])
             self.assertEqual(result.returncode, 0, f"Error: {result.stderr}")
             self.assertIn("top.q", result.stdout)
-            # [B1 2026-07-03] batch mode: 1-signal 也走 batch header
-            self.assertIn("signal 1/1", result.stdout)
+            # [FIX 2026-07-05] 单 signal backward compat: legacy "Fanin of 'sig':" format
+            # batch mode (--batch) 才输出 'signal 1/1'
+            self.assertIn("Fanin of 'top.a'", result.stdout)
         finally:
             os.unlink(path)
 

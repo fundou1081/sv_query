@@ -192,7 +192,20 @@ def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
         #                 Single mode: result.drivers = [...] (legacy)
         signals_result = result.get("signals")
         if signals_result is not None:
-            # Batch output
+            # [FIX 2026-07-05] Single signal backward compat: 输出 legacy 'Fanin of' 格式
+            if len(signals_result) == 1 and not human:
+                sig_entry = signals_result[0]
+                signal = sig_entry["signal"]
+                drivers = sig_entry["drivers"]
+                print(f"Fanin of '{signal}':")
+                if not drivers:
+                    print("  (no drivers)")
+                for d in drivers:
+                    dist = d.get("distance", "")
+                    kind = d.get("kind", "")
+                    print(f"  [{dist}] {d['id']} ({kind})")
+                return
+            # Batch output (multi-signal 或 --human)
             total = len(signals_result)
             for sig_entry in signals_result:
                 sig = sig_entry["signal"]
@@ -276,10 +289,17 @@ def _output_impact_text(data: dict) -> None:
     """输出 impact 结果"""
     result = data.get("result", {})
     signal = data.get("params", {}).get("signal", "")
-    paths = result.get("paths", [])
+    # [FIX 2026-07-05] paths 在 result.signals[].paths, NOT result.paths
+    signals_list = result.get("signals", [])
+    paths = []
+    for sig_entry in signals_list:
+        for p in sig_entry.get("paths", []):
+            paths.append(p)
+    if not paths:
+        paths = result.get("paths", []) or []
     modules = result.get("modules", [])
     high_risk = result.get("high_risk_count", 0)
-    total_paths = result.get("total_paths", 0)
+    total_paths = result.get("total_paths", 0) or len(paths)
 
     print("=== Impact Summary ===")
     print(f"Signal: {signal}")
@@ -320,10 +340,19 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
     """
     result = data.get("result", {})
     signal = data.get("params", {}).get("signal", "")
-    paths = result.get("paths", [])
+    # [FIX 2026-07-05] paths 在 result.signals[].paths, NOT result.paths
+    # aggregate paths from all signals (batch mode 可能多个 signal)
+    signals_list = result.get("signals", [])
+    paths = []
+    for sig_entry in signals_list:
+        for p in sig_entry.get("paths", []):
+            paths.append(p)
+    # also fallback to top-level paths (legacy mode)
+    if not paths:
+        paths = result.get("paths", []) or []
     modules = result.get("modules", [])
     high_risk = result.get("high_risk_count", 0)
-    total_paths = result.get("total_paths", 0)
+    total_paths = result.get("total_paths", 0) or len(paths)
 
     # ANSI color re-import in this scope (避免乱动模块顶部 import)
     from cli._evidence_helpers import (
@@ -1128,6 +1157,10 @@ def evidence(
             "errors": per_signal_errors,
         }
 
+        # [FIX 2026-07-05] single-signal backward compat: 顶级 evidence field
+        if len(signals_result) == 1 and not chain:
+            data["evidence"] = signals_result[0]["evidence"]
+
         if json_output:
             output_json(data, pretty)
         else:
@@ -1143,7 +1176,7 @@ def evidence(
                     ev_data["evidence_chain"] = sig_entry["evidence"]
                 else:
                     ev_data["evidence"] = sig_entry["evidence"]
-                _output_evidence_text(ev_data)
+                _output_evidence_text(ev_data, tree=tree, human=human)
                 if idx < total:
                     print()
 
@@ -1159,8 +1192,12 @@ def evidence(
 # [Stage 5] 移到 cli/_evidence_helpers.py,5 个命令共用
 
 
-def _output_evidence_text(data: dict) -> None:
-    """人友好文本输出"""
+def _output_evidence_text(data: dict, tree: bool = False, human: bool = False) -> None:
+    """人友好文本输出
+
+    tree: --tree flag. 当 --chain mode 时, 在 [Step N] 列表前加 render_signal_tree
+    human: --human flag. (现仅影响是否去掉 ANSI color, current implementation 不区分)
+    """
     signal = data.get("signal", "")
     print(f"Signal: {signal}")
     print("=" * 60)
@@ -1171,6 +1208,13 @@ def _output_evidence_text(data: dict) -> None:
         if not chain:
             print("  (no evidence found)")
             return
+        # [FIX 2026-07-05] --tree: 在 [Step N] 之前用 render_signal_tree 画 chain tree
+        if tree:
+            from cli._evidence_helpers import render_signal_tree
+            chain_signals = [ev.get("signal", "?") for ev in chain]
+            tree_out = render_signal_tree(chain_signals)
+            if tree_out:
+                print(f"\n{tree_out}")
         for i, ev in enumerate(chain):
             print(f"\n[Step {i}] {ev.get('signal', '?')}")
             if ev.get("source_text"):
