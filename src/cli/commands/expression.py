@@ -11,7 +11,6 @@ import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.core.graph_builder import DriverExtractor
 from trace.core.semantic_adapter import SemanticAdapter
 from trace.unified_tracer import UnifiedTracer
 
@@ -81,17 +80,21 @@ def build(
 
         # 如果提供了文件，使用 DriverExtractor
         if file:
-            with open(str(file)) as f:
-                source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
-            _ = tracer.build_graph()
-
-            adapter = SemanticAdapter(tracer._comp.getRoot())
-            extractor = DriverExtractor(adapter, tracer.graph)
-            expr_id = extractor.build_expression(
-                operands=operands_list, expression=expression, result=result, module=module
+            # [FIX 2026-07-06] DriverExtractor 没有 build_expression 方法 (dead-code path 早期写但没跑过).
+            # 当前 'with --file' 自动从 RTL 提取 operands/expression 没实现.
+            # Fallback 到 ExpressionBuilder 无图模式, 把 --file 当 metadata only.
+            typer.echo(
+                "Warning: --file 当前未使用 (DriverExtractor 没暴露 build_expression). "
+                "Operands/expression 必须手动提供. 见 TODO expression.py:15.",
+                err=True,
             )
-        else:
+
+        # [FIX 2026-07-06] 当前所有命令都用 ExpressionBuilder (无图模式)
+        from trace.core.builder.expression_builder import ExpressionBuilder
+        from trace.core.graph.models import SignalGraph
+        graph = SignalGraph()
+        builder = ExpressionBuilder(graph)
+        if True:  # 之前这里分 if/else, 现合并
             # 无文件模式：直接使用 ExpressionBuilder
             from trace.core.builder.expression_builder import ExpressionBuilder
             from trace.core.graph.models import SignalGraph
@@ -151,25 +154,19 @@ def function_call(
         args_list = [arg.strip() for arg in arguments.split(",")]
 
         if file:
-            with open(str(file)) as f:
-                source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
-            _ = tracer.build_graph()
-
-            adapter = SemanticAdapter(tracer._comp.getRoot())
-            extractor = DriverExtractor(adapter, tracer.graph)
-            func_id = extractor.build_function_call(
-                function_name=function_name, arguments=args_list, result=result, module=module
+            # [FIX 2026-07-06] DriverExtractor 没有 build_function_call 方法. Fallback 到 ExpressionBuilder.
+            typer.echo(
+                "Warning: --file 当前未使用 (DriverExtractor 没暴露 build_function_call).",
+                err=True,
             )
-        else:
-            from trace.core.builder.expression_builder import ExpressionBuilder
-            from trace.core.graph.models import SignalGraph
 
-            graph = SignalGraph()
-            builder = ExpressionBuilder(graph)
-            func_id = builder.build_function_call(
-                function_name=function_name, arguments=args_list, result=result, module=module
-            )
+        from trace.core.builder.expression_builder import ExpressionBuilder
+        from trace.core.graph.models import SignalGraph
+        graph = SignalGraph()
+        builder = ExpressionBuilder(graph)
+        func_id = builder.build_function_call(
+            function_name=function_name, arguments=args_list, result=result, module=module
+        )
 
         data = {
             "ok": True,
@@ -212,25 +209,19 @@ def conditional(
     """Build a conditional expression node (sel ? a : b)"""
     try:
         if file:
-            with open(str(file)) as f:
-                source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source})
-            _ = tracer.build_graph()
-
-            adapter = SemanticAdapter(tracer._comp.getRoot())
-            extractor = DriverExtractor(adapter, tracer.graph)
-            cond_id = extractor.build_conditional(
-                condition=condition, true_branch=true_branch, false_branch=false_branch, result=result, module=module
+            # [FIX 2026-07-06] DriverExtractor 没有 build_conditional 方法. Fallback 到 ExpressionBuilder.
+            typer.echo(
+                "Warning: --file 当前未使用 (DriverExtractor 没暴露 build_conditional).",
+                err=True,
             )
-        else:
-            from trace.core.builder.expression_builder import ExpressionBuilder
-            from trace.core.graph.models import SignalGraph
 
-            graph = SignalGraph()
-            builder = ExpressionBuilder(graph)
-            cond_id = builder.build_conditional(
-                condition=condition, true_branch=true_branch, false_branch=false_branch, result=result, module=module
-            )
+        from trace.core.builder.expression_builder import ExpressionBuilder
+        from trace.core.graph.models import SignalGraph
+        graph = SignalGraph()
+        builder = ExpressionBuilder(graph)
+        cond_id = builder.build_conditional(
+            condition=condition, true_branch=true_branch, false_branch=false_branch, result=result, module=module
+        )
 
         data = {
             "ok": True,

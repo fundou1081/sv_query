@@ -41,6 +41,9 @@ def dump(
             if node:
                 if module and node.module != module:
                     continue
+                # [FIX 2026-07-06] TraceNode 没 expression/operands/signals/function_name/condition
+                # etc 字段 — 它们存到 node.extra dict. 用 .get() 而非直接 .X attribute (避免 AttributeError)
+                extra = node.extra if hasattr(node, 'extra') else {}
                 nodes.append(
                     {
                         "id": nid,
@@ -48,13 +51,13 @@ def dump(
                         "kind": node.kind.name if hasattr(node.kind, "name") else str(node.kind),
                         "module": node.module,
                         "width": node.width,
-                        "expression": node.expression,
-                        "operands": node.operands,
-                        "signals": node.signals,
-                        "function_name": node.function_name,
-                        "condition": node.condition,
-                        "true_branch": node.true_branch,
-                        "false_branch": node.false_branch,
+                        "expression": extra.get("expression", ""),
+                        "operands": extra.get("operands", []),
+                        "signals": extra.get("signals", []),
+                        "function_name": extra.get("function_name", ""),
+                        "condition": extra.get("condition", ""),
+                        "true_branch": extra.get("true_branch", ""),
+                        "false_branch": extra.get("false_branch", ""),
                     }
                 )
 
@@ -62,13 +65,15 @@ def dump(
         for src, dst in graph.edges():
             edge = graph.get_edge(src, dst)
             if edge:
+                # [FIX 2026-07-06] edge.function_return 现在是真 attribute (之前 fix 加),
+                # 但用 getattr 防 future 移除
                 edges.append(
                     {
                         "src": src,
                         "dst": dst,
                         "kind": edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind),
                         "condition": edge.condition,
-                        "function_return": edge.function_return,
+                        "function_return": getattr(edge, "function_return", False),
                     }
                 )
 
