@@ -244,16 +244,17 @@ def _print_scan_table(results, filter_channels: list):
 # 子命令：scan（扫所有 ready/valid 配对）
 # ==============================================================================
 
-@handshake_app.command(name="scan")
-def scan(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
-    channel: str = typer.Option(None, "--channel", "-c", help="Filter by bus channel: AW|W|B|AR|R|A|D (comma-separated)"),
-    max_signals: int = typer.Option(40, "--max-signals", "-n", help="Max pairs to analyze"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
-) -> None:
-    """Scan all ready/valid signal pairs and classify handshake semantics"""
+def _scan_internal(file, filelist, include, channel, max_signals, strict):
+    """[FIX 2026-07-06] 提取 scan 内部逻辑为 helper, 让 scan 和 analyze 共用
+
+    Args:
+        file: SystemVerilog source file (single-file mode)
+        filelist: Filelist for multi-file projects
+        include: Include directory paths
+        channel: Bus channel filter (AW|W|B|AR|R|A|D)
+        max_signals: Max pairs to analyze
+        strict: Strict mode flag
+    """
     tracer = _build_tracer(filelist, file, include, strict=strict)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
@@ -297,6 +298,20 @@ def scan(
     _print_scan_table(results, filter_channels)
 
 
+@handshake_app.command(name="scan")
+def scan(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    channel: str = typer.Option(None, "--channel", "-c", help="Filter by bus channel: AW|W|B|AR|R|A|D (comma-separated)"),
+    max_signals: int = typer.Option(40, "--max-signals", "-n", help="Max pairs to analyze"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
+) -> None:
+    """Scan all ready/valid signal pairs and classify handshake semantics"""
+    # [FIX 2026-07-06] 提取为 _scan_internal helper 让 scan 和 analyze 共用
+    _scan_internal(file, filelist, include, channel, max_signals, strict)
+
+
 # ==============================================================================
 # 子命令：analyze（分析单个 ready 信号）
 # ==============================================================================
@@ -316,9 +331,10 @@ def analyze(
 
     # 没指定 signal → 默认分析所有 backpressure 类
     if not signal:
-        # 复用 scan 逻辑
-        scan.callback(
-            file=file, filelist=filelist, include=include, channel=None, max_signals=40
+        # [FIX 2026-07-06] 之前 scan.callback 是 typo (function 没 .callback attribute)
+        # 改用 _scan_internal helper
+        _scan_internal(
+            file=file, filelist=filelist, include=include, channel=None, max_signals=40, strict=strict,
         )
         return
 
@@ -380,6 +396,38 @@ def pair(
     tracer = _build_tracer(filelist, file, include, strict=strict)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
+
+    # [FIX 2026-07-06] User 给 --ready mem_axi_bready (无 module 前缀) 时, graph 里实际是
+    # "picorv32_axi_adapter.mem_axi_bready" — 直接用短名会 NetworkXError.
+    # 加层 fuzzy resolve: if short signal 不在 graph 里, match "endswith('.short')" 多个 candidates.
+    def _resolve_signal(name: str) -> str:
+        if name in graph.nodes():
+            return name
+        # try with module. prefix
+        matches = [n for n in graph.nodes() if n.endswith("." + name) or n == name]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            # 多候选 — 提俟用户选
+            print(
+                f"Warning: '{name}' 留有 {len(matches)} 个候选: {matches[:5]}{'...' if len(matches) > 5 else ''}",
+                file=sys.stderr,
+            )
+            return matches[0]  # 取首个作为 fallback
+        # 都找不到
+        sample = [n for n in graph.nodes() if name.split('.')[-1] in n][:5]
+        raise SystemExit(
+            f"Error: signal '{name}' not in graph.\n"
+            f"Sample nodes: {sample}\n"
+            f"Try one of: --ready <module.path.{name}>"
+        )
+
+    try:
+        ready = _resolve_signal(ready)
+        if valid:
+            valid = _resolve_signal(valid)
+    except SystemExit:
+        raise typer.Exit(code=1) from None
 
     hi = detect_from_signal_pair(st, valid, ready)
     print("")
