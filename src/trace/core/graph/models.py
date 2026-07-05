@@ -2,7 +2,7 @@
 # graph_models.py - 信号关系图模型
 # ==============================================================================
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC
 from enum import Enum, auto
 from typing import Any
@@ -91,6 +91,9 @@ class TraceNode:
     parent_bit_start: int | None = None  # 位选在父节点中的起始位
     parent_bit_end: int | None = None  # 位选在父节点中的结束位
     modport_dir: str | None = None  # P0-3: modport direction (input/output/inout)
+    # [FIX 2026-07-05] ExpressionBuilder 需要存 metadata (expression/function_name/operands/signals)
+    # 因为 TraceNode 不接受这些 kwargs. 用 dict[str, Any] 存任意 metadata, 向后兼容
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -109,6 +112,10 @@ class TraceEdge:
     bit_slice: str = ""  # 位选择 (如 "[8:1]")
     # [Stage 1] 源码位置 (条件表达式位置, 后续 stage 扩展为 assignment + enclosing scope)
     source_location: SourceLocation | None = None  # noqa: F821 -- forward ref
+    # [FIX 2026-07-05] function_return: True 表示这是函数调用返回值 (result <- func)
+    function_return: bool = False
+    is_function_call: bool = False
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
