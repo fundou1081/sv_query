@@ -175,13 +175,15 @@ def test_edge2_case_inside_if():
 
 
 def test_edge2_if_inside_case():
-    """if inside case: dataflow picks case 01 + !valid path"""
+    """if inside case: data_in → out2 的 primary path 是 case 00 (sel == 2'b00)"""
     conds = svq_dataflow("edge2.data_in", "edge2.out2", EDGE2)
     assert_no_typo(conds)
-    # data_in is referenced in: r2 = data_in (case 00), r2 = data_in+1 (case 01+valid),
-    # r2 = data_in+2 (case 01+!valid). dataflow picks ONE path.
-    # Current primary path: case 01 + !valid (data_in + 2).
-    assert_semantically_eq(conds, ["!valid"], ["sel", "valid"])
+    # data_in 出现在 3 个 case:
+    #   case 00: r2 = data_in (sel == 2'b00)
+    #   case 01 + valid: r2 = data_in + 1 (sel == 2'b01 && valid)
+    #   case 01 + !valid: r2 = data_in + 2 (sel == 2'b01 && !valid)
+    # dataflow primary path: case 00 (direct assignment).
+    assert_semantically_eq(conds, ["sel == 2'b00"], ["sel"])
 
 
 # ===========================================================================
