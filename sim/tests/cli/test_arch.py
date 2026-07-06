@@ -91,6 +91,26 @@ class TestArchSummaryMode:
             f"Output:\n{out[:500]}"
         )
 
+    def test_arch_deep_top_summary_has_6_levels_11_instances(self):
+        """[FIX 2026-07-06] Hand-written 6-level hierarchy fixture
+        (arch_deep_top: top→host_bridge→periph_bridge→dma→bus_bridge→mailbox→
+        fifo+regfile+apb→regfile). Verifies arch walks deep hierarchies.
+
+        这种深嵌套是真实 SoC 设计的 (e.g. APB/AXI bridge stack, DMA controller).
+        """
+        fixture = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/arch/arch_deep_top.sv"
+        rc, out, err = _run_arch(
+            "-f", str(fixture),
+            "-t", "arch_deep_top",
+            "-d", "10",
+            "--format", "summary",
+        )
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        # 11 instances total, 6 levels deep, 7 port connections (FIFOs)
+        assert "Total instances:  11" in out, f"unexpected instance count:\n{out[:500]}"
+        assert "Hierarchy depth:  6" in out, f"depth should be 6:\n{out[:500]}"
+        assert "Port connections: 7" in out, f"expected 7 port connections:\n{out[:500]}"
+
     def test_no_submodule_summary_message(self):
         """无 submodule 的 SV 应该有友好提示."""
         rc, out, _ = _run_arch(
