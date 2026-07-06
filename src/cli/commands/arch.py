@@ -426,7 +426,12 @@ def _render_mermaid(instances, edges, target_module: str, with_ports: bool) -> s
     ]
 
     # 节点 (用 last segment 当 id)
-    node_ids = {}  # inst_id → safe_mermaid_id
+    # [FIX 2026-07-06] 加入 root node (target_module) 当 hierarchy 起点.
+    # 之前只有 sub-instance nodes, 而 root (parent of top-level instances) 不在 node_ids 里,
+    # 导致 hierarchy edges 从不 emit (parent 在 node_ids 中找不到).
+    node_ids = {}  # inst_id or target_module → safe_mermaid_id
+    node_ids[target_module] = "n_root"
+    lines.append(f'  n_root["{target_module}<br/>(root)"]')
     for i, (inst_id, inst_type, _) in enumerate(instances):
         safe_id = f"n{i}"
         node_ids[inst_id] = safe_id
@@ -439,6 +444,7 @@ def _render_mermaid(instances, edges, target_module: str, with_ports: bool) -> s
     for inst_id, _, _ in instances:
         if "." in inst_id:
             parent = ".".join(inst_id.split(".")[:-1])
+            # [FIX 2026-07-06] 加 or parent == target_module 跟 dot render 一致
             if parent in node_ids:
                 lines.append(f"  {node_ids[parent]} -.-> {node_ids[inst_id]}")
 

@@ -68,6 +68,29 @@ class TestArchSummaryMode:
         assert "Total instances" in out
         assert "Hierarchy depth" in out
 
+    def test_arch_test_top_summary_has_port_connections(self):
+        """[FIX 2026-07-06] Regression: summary 必须显示 port connections > 0
+        当 project 有 cross-instance wire (NOT through root module).
+
+        之前以为 darksocv port extraction broken (显示 0), 但实际 darksocv
+        设计没 cross-instance 直连所以 0 是对的. 手写 fixture 验证 L2
+        cross-module port extraction 工作.
+        """
+        fixture = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/arch/arch_test_top.sv"
+        rc, out, err = _run_arch(
+            "-f", str(fixture),
+            "-t", "arch_test_top",
+            "-d", "4",
+            "--format", "summary",
+        )
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        # 期望: 5 instances + 3 port connections (alu 内部 sub_lo/sub_hi)
+        assert "Total instances:  5" in out, f"unexpected instance count:\n{out[:500]}"
+        assert "Port connections: 3" in out, (
+            f"expected 3 port connections but arch doesn't report them.\n"
+            f"Output:\n{out[:500]}"
+        )
+
     def test_no_submodule_summary_message(self):
         """无 submodule 的 SV 应该有友好提示."""
         rc, out, _ = _run_arch(
@@ -105,6 +128,32 @@ class TestArchMermaidOutput:
         # 至少有 2 个 instance 节点 (axi_adapter + picorv32_core)
         node_count = len(re.findall(r"n\d+\[", out))
         assert node_count >= 2, f"expected ≥2 nodes, got {node_count}"
+
+    def test_arch_test_top_mermaid_has_hierarchy_edges(self):
+        """[FIX 2026-07-06] Regression: mermaid render 必须 emit hierarchy
+        edges (parent -.-> child), 不只是 '%% Hierarchy' 注释空段.
+
+        Bug: 之前 _render_mermaid 只检查 'parent in node_ids', 但 root
+        module (target) 不在 dict, 所以永远找不到 parent, 不 emit edges.
+        修法: add root node (target_module) 到 node_ids 当 hierarchy 起点.
+        """
+        fixture = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/arch/arch_test_top.sv"
+        rc, out, err = _run_arch(
+            "-f", str(fixture),
+            "-t", "arch_test_top",
+            "-d", "4",
+            "--format", "mermaid",
+        )
+        assert rc == 0, f"FAIL: rc={rc}, stderr={err[:500]}"
+        # 检查 hierarchy section 真有 edges
+        assert "%% Hierarchy" in out
+        hierarchy_section = out.split("%% Hierarchy")[1].split("```")[0]
+        # 至少应有 1 条 'n_root -.-> nN' 形式的 hierarchy edge
+        edge_count = len(re.findall(r"\s+n_?\w+\s+-\.->\s+n_?\w+", hierarchy_section))
+        assert edge_count >= 1, (
+            f"hierarchy section has no edges (bug #1 not fixed)!\n"
+            f"Section:\n{hierarchy_section}"
+        )
 
 
 # ============================================================================
