@@ -94,6 +94,16 @@ def suggest(
             print(gen.generate_coverage_markdown(result))
 
         if result.truncated or result.error:
+            # [FIX 2026-07-06] 之前只 raise 但不 print error — user 不知道为啥 exit 1.
+            # 现在 print result.error / 说明 truncated 原因.
+            if result.error:
+                print(f"❌ {result.error}", file=sys.stderr)
+            elif result.truncated:
+                print(
+                    f"⚠️ Decomposition truncated (max_signals={max_signals}). "
+                    f"Increase --max-signals to see full result.",
+                    file=sys.stderr,
+                )
             raise typer.Exit(code=1)
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
