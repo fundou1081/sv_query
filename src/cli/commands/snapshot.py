@@ -184,7 +184,8 @@ def show(
 ):
     """Show snapshot details"""
     manager = SnapshotManager()
-    info = manager.get_snapshot(tag)
+    # [FIX 2026-07-06] SnapshotManager API 已用 'show(tag)' / 'delete(tag)', 不是 'get_snapshot' / 'delete_snapshot'
+    info = manager.show(tag)
     if not info:
         print(f"Snapshot not found: {tag}")
         raise typer.Exit(code=1)
@@ -211,7 +212,7 @@ def delete(
 ):
     """Delete a snapshot"""
     manager = SnapshotManager()
-    if not manager.get_snapshot(tag):
+    if not manager.show(tag):
         print(f"Snapshot not found: {tag}")
         raise typer.Exit(code=1)
     if not force:
@@ -219,7 +220,7 @@ def delete(
         if confirm.lower() != "y":
             print("Cancelled")
             return
-    manager.delete_snapshot(tag)
+    manager.delete(tag)
     print(f"✅ Deleted: {tag}")
 
 
