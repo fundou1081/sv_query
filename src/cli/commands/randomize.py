@@ -812,7 +812,7 @@ def reachability_cmd(
         # 过滤掉 declaration 本身
         consumer_refs = [r for r in refs if r["kind"] != "decl"]
 
-        status = "alive" if consumer_refs else "dead"
+        status = "alive" if (consumer_refs or covered_in) else "dead"
 
         rand_info.append({
             "name": vname,
