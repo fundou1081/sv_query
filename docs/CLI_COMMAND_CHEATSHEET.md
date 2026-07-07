@@ -133,6 +133,8 @@
     从入口 method 追踪 call graph + randomize() 调用
   * `sv_query coverage analyze -f pkg.sv`
     列出 covergroup 结构 (coverpoints + bins + crosses)
+  * `sv_query randomize reachability -f packet.sv --class packet`
+    分析 rand var reachability (检测 dead randomize)
 
 ──────────────────────────────────────────────────────────────────────
 ## ⟨7⟩ 可视化

@@ -514,3 +514,174 @@ sv_query coverage analyze -f cg_pkg.sv --json
 | `randomize trace` 的 `randomize_vars` 字段填充 | 🟠 低 (call_graph_builder 需要修) |
 | Source line number 显示 (现在是 0) | 🟡 中 |
 | Fork point 详细显示 (threading 用) | 🟠 低 |
+
+---
+
+## 12. `randomize reachability` 命令 (Phase 3 Day 1-2 2026-07-07)
+
+### 12.1 功能
+
+分析 rand/randc 变量的 **reachability** (是否有 dead randomize):
+- 追踪每个 rand 变量, 找它被 randomize() 的位置
+- 跨 class 扫描, 找它被消费的位置 (assign/always/task body)
+- 报告 status: **alive** (至少被消费一次) | **dead** (从未被消费)
+
+### 12.2 Fixture: driver + consumer
+
+```systemverilog
+// sim/tests/cli/fixtures/randomize/driver.sv
+class packet;
+    rand bit [7:0] addr;
+    rand bit [7:0] data;
+    rand bit [3:0] mode;
+    randc bit [1:0] prio;
+
+    constraint c_addr { addr inside {[0:63]}; }
+endclass
+
+class driver;
+    packet req;
+    bit [7:0] out_addr, out_data;
+    bit [3:0] out_mode;
+    bit [1:0] out_prio;
+
+    task run();
+        // driver 读 packet.addr/data/mode/prio
+        out_addr = req.addr;
+        out_data = req.data;
+        out_mode = req.mode;
+        out_prio = req.prio;
+    endtask
+endclass
+```
+
+### 12.3 driver.sv: 4 rand vars 全 alive
+
+```bash
+sv_query randomize reachability -f driver.sv --class packet
+```
+
+**输出**:
+```
+======================================================================
+Randomize Reachability: packet
+======================================================================
+  Total rand vars: 4 (alive: 4, dead: 0)
+
+  [🟢 ALIVE] rand addr
+    randomized:    0 call(s)
+    consumed:      3 location(s)
+      - other        in task (): ...
+  [🟢 ALIVE] rand data
+    ...
+  [🟢 ALIVE] rand mode
+    ...
+  [🟢 ALIVE] randc prio
+    ...
+
+======================================================================
+✅ All rand vars are consumed
+======================================================================
+```
+
+### 12.4 dead.sv: 1 alive + 2 dead
+
+```systemverilog
+// sim/tests/cli/fixtures/randomize/dead.sv
+class packet;
+    rand bit [7:0] used_addr;
+    rand bit [7:0] unused_data;          // ← DEAD!
+    rand bit [3:0] never_read_mode;      // ← DEAD!
+endclass
+
+class consumer;
+    packet req;
+    bit [7:0] out_addr;
+
+    task run();
+        // 只用 req.used_addr
+        out_addr = req.used_addr;
+    endtask
+endclass
+```
+
+```bash
+sv_query randomize reachability -f dead.sv --class packet
+```
+
+**输出**:
+```
+======================================================================
+Randomize Reachability: packet
+======================================================================
+  Total rand vars: 3 (alive: 1, dead: 2)
+
+  [🟢 ALIVE] rand used_addr
+    consumed: 2 location(s)
+      - other        in task (): out_addr = req.used_addr;
+  [🔴 DEAD] rand unused_data
+    consumed: 0 location(s)
+  [🔴 DEAD] rand never_read_mode
+    consumed: 0 location(s)
+
+======================================================================
+⚠️  2 dead randomize(s) detected (never consumed)
+======================================================================
+```
+
+### 12.5 JSON output
+
+```bash
+sv_query randomize reachability -f dead.sv --class packet --json
+```
+
+```json
+{
+  "class": "packet",
+  "total_rand_vars": 3,
+  "alive_count": 1,
+  "dead_count": 2,
+  "rand_vars": [
+    {
+      "name": "used_addr", "kind": "rand", "status": "alive",
+      "randomized_count": 0, "covered_count": 0, "consumed_count": 2,
+      "consumers": [...], "covered_in": [], "randomized_in": []
+    },
+    {
+      "name": "unused_data", "kind": "rand", "status": "dead",
+      "randomized_count": 0, "covered_count": 0, "consumed_count": 0,
+      "consumers": [], "covered_in": [], "randomized_in": []
+    },
+    ...
+  ]
+}
+```
+
+### 12.6 洞察
+
+- **dead randomize** = 设计 bug (有 rand var 但没人用)
+- **alive 但未被 covergroup sample** = 验证 gap (constraint 覆盖但 covergroup 没 sample)
+- 跟 `coverage gap` 互补: gap 看 covergroup 漏什么, reachability 看 rand var 是否被消费
+
+### 12.7 实现细节
+
+- 走 `ClassType.syntax.items` (不是 `.body` — 那是空)
+- 跨 class 扫描 (driver 消费 packet 的 fields)
+- filter 排除 declaration 自身 (只算 assign/always/task body 等"消费" context)
+- 用 CovergroupExtractor 找 covergroup sample
+
+### 12.8 已知限制
+
+- **Line number** 没显示 (—no-strict 模式也是 0)
+- **C source filename** 没显示
+- **`randomized_in` count** 只算 inline constraint 提及的 var (无 inline constraint 的 bare randomize() 算 0 次 — 这是 limitation)
+- 未来: 跟踪 `ClassProperty` 的 `randMode` (RAND vs RANDC) cross-file
+
+### 12.9 Phase 3 测试覆盖
+
+| Test File | Count | 覆盖 |
+|-----------|-------|------|
+| `test_randomize_reachability.py` | 10 | alive/dead detection + JSON + unknown class + summary |
+
+**累计 Phase 1+2+3 测试**: 52 (前 41 + 10 reachability)
+

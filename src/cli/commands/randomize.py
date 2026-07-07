@@ -564,5 +564,315 @@ def trace_cmd(
     print("=" * 70)
 
 
+# =============================================================================
+# [Phase 3 Day 1 2026-07-07] randomize reachability — dead randomize detection
+# =============================================================================
+
+def _scan_references(root, target_signal: str) -> list[dict]:
+    """扫描 root tree 所有 class/module, 找 target_signal 被引用的位置.
+
+    Returns list of:
+      {"class": str (所在 class), "kind": ..., "context": ..., "snippet": ...}
+    """
+    results = []
+
+    def walk_class(class_node):
+        class_name = str(getattr(class_node, "name", "")).strip()
+        # Use semantic syntax body (ClassDeclarationSyntax.items), not .body (which is empty)
+        syntax = getattr(class_node, 'syntax', None)
+        if syntax and hasattr(syntax, 'items'):
+            try:
+                for member in syntax.items:
+                    walk(member, class_name, [])
+            except TypeError:
+                pass
+
+    def walk(node, class_name: str, ctx_stack: list[str]):
+        if node is None:
+            return
+        kind = str(getattr(node, "kind", ""))
+        # Build context
+        new_ctx = list(ctx_stack)
+        if "Task" in kind and "Declaration" in kind:
+            name = str(getattr(node, "name", "")).strip()
+            new_ctx.append(f"task {name}()")
+        elif "Function" in kind and "Declaration" in kind:
+            name = str(getattr(node, "name", "")).strip()
+            new_ctx.append(f"function {name}()")
+        elif "Coverpoint" in kind:
+            sig = str(getattr(node, "expr", "") or getattr(node, "name", "")).strip()
+            new_ctx.append(f"coverpoint {sig}")
+        elif "Constraint" in kind and "Declaration" in kind:
+            name = str(getattr(node, "name", "")).strip()
+            new_ctx.append(f"constraint {name}")
+        elif "ContinuousAssign" in kind or "Assignment" in kind:
+            new_ctx.append("assign")
+        elif "AlwaysBlock" in kind or "AlwaysFFBlock" in kind or "AlwaysCombBlock" in kind:
+            new_ctx.append("always")
+        elif "Token" in kind:
+            return
+
+        # 检查这个 node 里是否有对 target_signal 的引用
+        try:
+            node_text = str(node)
+        except Exception:
+            node_text = ""
+
+        is_declaration = (
+            ("rand " in node_text or "randc " in node_text) and
+            target_signal in node_text and
+            ("ClassProperty" in kind or "DataDeclaration" in kind)
+        )
+
+        # [Phase 3 Day 1 FIX] 跳过纯 leaf Identifier (declaration 衍生)
+        # 只看有结构 context (assign/always/task/covergroup) 的 reference
+        is_structured = any(
+            kw in kind for kw in [
+                "Assignment", "AssignmentExpression", "Always",
+                "ExpressionStatement", "MemberAccess", "IdentifierSelect",
+                "Conditional", "ProceduralAssignment", "ContinuousAssign",
+                "NamedValue", "ElementSelect", "RangeSelect"
+            ]
+        )
+
+        if target_signal in node_text and not is_declaration and is_structured:
+            # 提取上下文 snippet
+            idx = node_text.find(target_signal)
+            start = max(0, idx - 30)
+            end = min(len(node_text), idx + 50)
+            snippet = node_text[start:end].replace("\n", " ").strip()
+
+            results.append({
+                "class": class_name,
+                "kind": _kind_label(kind),
+                "context": " > ".join(new_ctx[-2:]) if new_ctx else "",
+                "snippet": snippet,
+            })
+
+        # 递归子节点
+        try:
+            for child in node:
+                walk(child, class_name, new_ctx)
+        except TypeError:
+            pass
+
+    # 走 root 找所有 class
+    def walk_root(node):
+        kind = str(getattr(node, "kind", ""))
+        if "ClassType" in kind:
+            walk_class(node)
+            return
+        try:
+            for child in node:
+                walk_root(child)
+        except TypeError:
+            pass
+
+    walk_root(root)
+    return results
+
+
+def _kind_label(kind: str) -> str:
+    """Map AST kind to human-readable category"""
+    if "ConstraintDeclaration" in kind:
+        return "constraint"
+    if "ContinuousAssign" in kind:
+        return "assign"
+    if "AlwaysBlock" in kind or "AlwaysFFBlock" in kind or "AlwaysCombBlock" in kind:
+        return "always"
+    if "TaskDeclaration" in kind:
+        return "task"
+    if "FunctionDeclaration" in kind:
+        return "function"
+    if "Coverpoint" in kind:
+        return "coverpoint"
+    if "CoverCross" in kind:
+        return "cross"
+    if "Declaration" in kind:
+        return "decl"
+    return "other"
+
+
+@randomize_app.command(name="reachability")
+def reachability_cmd(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    cls_filter: str = typer.Option(..., "--class", help="Target class name"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+):
+    """[Phase 3 Day 1 2026-07-07] 分析 rand 变量 reachability (检测 dead randomize)
+
+    对每个 rand/randc 变量:
+      1. 找出被 randomize() 的位置
+      2. 追踪它是否在其他地方被读 (assign/always/task body/covergroup/constraint)
+      3. 报告 status:
+         - alive: 至少被消费一次
+         - dead:  从未被消费 (可能 unused 或 design bug)
+
+    Examples:
+        sv_query randomize reachability -f packet.sv --class packet
+        sv_query randomize reachability -f packet.sv --class my_seq --json
+    """
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+        )
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        raise typer.Exit(code=1) from e
+
+    if not tracer.compilation:
+        print("ERROR: Compilation failed", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    try:
+        root = tracer.compilation.getRoot()
+    except Exception as e:
+        print(f"ERROR: cannot get root: {e}", file=sys.stderr)
+        raise typer.Exit(code=1) from e
+
+    # 找到目标 class
+    target_class = None
+    target_class_name = None
+    for cls_name, cls_node in _find_classes(root):
+        if cls_name == cls_filter:
+            target_class = cls_node
+            target_class_name = cls_name
+            break
+
+    if target_class is None:
+        if json_output:
+            import json as _json
+            print(_json.dumps({"error": f"class {cls_filter} not found", "rand_vars": []}, indent=2))
+        else:
+            print(f"ERROR: class {cls_filter} not found", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    # 拿 rand vars
+    rand_vars = _get_rand_variables(target_class)
+
+    # 收集所有 randomize() calls (用 _find_randomize_calls 走所有 task)
+    all_subs = _walk_subroutines(root)
+    all_calls = []
+    for cls_name, name, syntax, _ in all_subs:
+        if syntax and name not in ("randomize", "pre_randomize", "post_randomize"):
+            calls = _find_randomize_calls(syntax, cls_name, name)
+            for kind, target, inline_str, line in calls:
+                all_calls.append({
+                    "class": cls_name,
+                    "method": name,
+                    "target": target,
+                    "line": line,
+                    "kind": kind,
+                    "inline_constraint": inline_str,
+                })
+
+    # 跨 class 找 covergroup sample (走 CovergroupExtractor)
+    from trace.core.covergroup_extractor import CovergroupExtractor
+    sources = tracer.sources if hasattr(tracer, "sources") else {}
+    extractor = CovergroupExtractor(sources=sources, strict=strict)
+    covergroups = extractor.extract()
+
+    # Analyze reachability for each rand var
+    rand_info = []
+    for vname, vkind in rand_vars:
+        # 找包含这个变量的 coverpoint
+        covered_in = []
+        for cg in covergroups:
+            for cp in cg.coverpoints:
+                if vname == cp.signal:
+                    covered_in.append({
+                        "covergroup": cg.name,
+                        "coverpoint": cp.name or cp.signal,
+                        "in_class": cg.in_class,
+                    })
+
+        # 在所有 randomize() calls 里找这个 var
+        # (看 inline constraint 跟 target receiver name)
+        randomized_in = []
+        for call in all_calls:
+            # target 是 `req` 不是 `addr`, 但 randomize() 是 for receiver 整个 object
+            # 所以只要 target receiver 是 rand var 所属 class 的 instance, 这个 var 被随机化
+            # 简化: 如果 call.target 是某个 class 名 + 这个 var 是那 class 的 rand var
+            # 那这个 var 被 randomize
+            if call["kind"] == "randomize_with_constraint":
+                # inline constraint 里有这个 var → 明确 randomized
+                if vname in call["inline_constraint"]:
+                    randomized_in.append(call)
+            else:
+                # bare randomize() — 假设所有 rand vars 都随机化
+                randomized_in.append(call)
+
+        # 找 references (excluding declaration, 跨 class 扫描)
+        refs = _scan_references(root, vname)
+
+        # 过滤掉 declaration 本身
+        consumer_refs = [r for r in refs if r["kind"] != "decl"]
+
+        status = "alive" if consumer_refs else "dead"
+
+        rand_info.append({
+            "name": vname,
+            "kind": vkind,
+            "status": status,
+            "randomized_count": len(randomized_in),
+            "covered_count": len(covered_in),
+            "consumed_count": len(consumer_refs),
+            "consumers": consumer_refs,
+            "covered_in": covered_in,
+            "randomized_in": randomized_in[:5],  # cap
+        })
+
+    if json_output:
+        import json as _json
+        out = {
+            "class": cls_filter,
+            "total_rand_vars": len(rand_info),
+            "alive_count": sum(1 for r in rand_info if r["status"] == "alive"),
+            "dead_count": sum(1 for r in rand_info if r["status"] == "dead"),
+            "rand_vars": rand_info,
+        }
+        print(_json.dumps(out, indent=2, ensure_ascii=False))
+        return
+
+    # Human-readable output
+    print("=" * 70)
+    print(f"Randomize Reachability: {cls_filter}")
+    print("=" * 70)
+
+    alive = sum(1 for r in rand_info if r["status"] == "alive")
+    dead = sum(1 for r in rand_info if r["status"] == "dead")
+    print(f"  Total rand vars: {len(rand_info)} (alive: {alive}, dead: {dead})")
+
+    for info in rand_info:
+        status_marker = "🟢 ALIVE" if info["status"] == "alive" else "🔴 DEAD"
+        print(f"\n  [{status_marker}] {info['kind']} {info['name']}")
+        print(f"    randomized:    {info['randomized_count']} call(s)")
+        if info['randomized_in']:
+            for c in info['randomized_in']:
+                constraint_str = f" with {c['inline_constraint']}" if c['inline_constraint'] else ""
+                print(f"      - {c['class']}.{c['method']}:{c['line']} {c['target']}.randomize(){constraint_str}")
+
+        print(f"    consumed:      {info['consumed_count']} location(s)")
+        if info['consumers']:
+            for r in info['consumers'][:5]:
+                print(f"      - {r['kind']:12s} in {r['context']}: {r['snippet'][:60]}")
+
+        print(f"    covered:       {info['covered_count']} covergroup(s)")
+        if info['covered_in']:
+            for c in info['covered_in']:
+                print(f"      - {c['covergroup']}.{c['coverpoint']} (in class {c['in_class']})")
+
+    print("\n" + "=" * 70)
+    if dead > 0:
+        print(f"⚠️  {dead} dead randomize(s) detected (never consumed)")
+    else:
+        print("✅ All rand vars are consumed")
+    print("=" * 70)
+
+
 if __name__ == "__main__":
     typer.run(randomize_app)
