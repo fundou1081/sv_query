@@ -368,3 +368,35 @@ Week 3-4 (Phase 3 按需):
 ## 10. 更新日志
 
 - 2026-07-07: 初稿, 基于 7/7 audit
+
+---
+
+## 11. Phase 1 执行记录 (2026-07-07)
+
+### ✅ 完成
+
+**Day 1 上午 (1.5 h)**:
+- 给 `extract_array_randomize_method_expr` 加 6 个 unit test (移除 [NOT TESTED])
+- 修 1 个 pyslang attribute bug: `getattr(node, 'array')` → `getattr(node, 'method')` / `'constraints'`
+- ✅ 测试 pass: `extract(array.randomize())` 现在返回 `SignalResult(primary='addr', all_signals=['addr'])`
+
+**Day 1 下午 + Day 2 上午 (3 h)**:
+- 新 `sv_query randomize list` CLI: 列 rand/randc 变量 + randomize() 调用 + pre/post_randomize hooks
+- 新 `sv_query randomize extract` CLI: 提取 inline constraint 表达式
+- 16 个 cli test pass (含 9 list + 5 extract + 2 empty file)
+- `--class` filter / `--json` output 都 work
+
+**Day 2 下午 (1 h)**:
+- `docs/RANDOMIZE_COVERGROUP_EXAMPLES.md` 完整文档
+- 22 个新测试 (6 unit + 16 cli), **1450 total pass (前 1428 + 22)**
+- 0 regression
+
+### 度量达成
+
+- ✅ [NOT TESTED] 100% 移除 (extract_array_randomize_method_expr)
+- ✅ `sv_query randomize list` + `extract` 工作, --help OK
+- ✅ 6 unit tests pass
+- ✅ 16 cli tests pass
+- ✅ 1 个 example 文档 (RANDOMIZE_COVERGROUP_EXAMPLES.md)
+- ✅ 全套 test 1450 pass (前 1428 + 22 新)
+- ✅ 0 regression

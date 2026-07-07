@@ -1,7 +1,7 @@
 # sv_query CLI 命令速查 (Cheatsheet)
 #
 # Generated 2026-07-06 from `sv_query --help` + `sv_query <cmd> --help`
-# 21 top-level commands, 50 subcommands
+# 22 top-level commands, 52 subcommands (Phase 1 2026-07-07 added randomize: list + extract)
 
 用法: `sv_query <command> [subcommand] [OPTIONS]`
 
@@ -28,6 +28,7 @@
   visualize     Signal graph visualization: DOT, Mermaid, HTML with data flow
   arch          Project architecture visualization (L1 + L2 overview)
   fix           自动修复 elaboration 问题 (MissingTimeScale 等)
+  randomize     [Phase 1 2026-07-07] Randomize 分析 (rand vars + randomize calls + inline constraint)
   expression    Build expression nodes
   graph         Inspect signal graph
 
@@ -124,6 +125,10 @@
     覆盖率缺口检测 (现有 covergroup 漏掉什么)
   * `sv_query coverage generate --file F -s SIGNAL [--related R]`
     自动生成 covergroup .sv (sample 条件 + bins + cross)
+  * `sv_query randomize list -f packet.sv`
+    列出 rand 变量 + randomize() 调用 + pre/post_randomize hooks
+  * `sv_query randomize extract -f packet.sv`
+    提取 randomize() 的 inline constraint 表达式
 
 ──────────────────────────────────────────────────────────────────────
 ## ⟨7⟩ 可视化
