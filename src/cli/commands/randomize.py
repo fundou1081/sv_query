@@ -568,93 +568,159 @@ def trace_cmd(
 # [Phase 3 Day 1 2026-07-07] randomize reachability — dead randomize detection
 # =============================================================================
 
-def _scan_references(root, target_signal: str) -> list[dict]:
-    """扫描 root tree 所有 class/module, 找 target_signal 被引用的位置.
+def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
+    """扫描 tracer 所有 class, 找 target_signal 被引用的位置.
+
+    [Phase 3 Day 4 2026-07-07 REWRITE 鉄律1] 完全用 Semantic AST + Visitor 模式
+    不用 text grep (避免注释/字符串/substring 误判).
+
+    策略:
+      1. 拿 SemanticAdapter (从 tracer)
+      2. 拿 SignalExpressionVisitor (pyslang visitor pattern, 鉄律15/26)
+      3. Walk 所有 class 的 syntax.items (member declarations)
+      4. For each task/function body, walk items
+      5. For each ExpressionStatement/AssignmentStatement, 取 .expr 走 visitor.extract()
+      6. 检查 target_signal in result.all_signals (semantic signal list)
 
     Returns list of:
-      {"class": str (所在 class), "kind": ..., "context": ..., "snippet": ...}
+      {"class": str, "kind": "task" | "function" | "assign" | "always",
+       "context": str (e.g. "task run()"), "snippet": str (source text excerpt)}
     """
     results = []
 
+    # [鉄律28] 用 visitor pattern, 每个语法类型有对应 handler
+    from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+    adapter = tracer._get_adapter()
+    visitor = SignalExpressionVisitor(adapter)
+
+    root = tracer.compilation.getRoot()
+
+    def extract_referenced_signals(stmt_node) -> list[str]:
+        """从 statement node 提取所有 referenced signals (semantic AST, visitor pattern)."""
+        # statement 通常有 .expr 属性 (ExpressionStatement) 或其他
+        sigs = []
+        if hasattr(stmt_node, 'expr') and stmt_node.expr is not None:
+            result = visitor.extract(stmt_node.expr)
+            sigs.extend(result.all_signals if result.all_signals else [])
+        # 一些 statement 类型没有 .expr (e.g. DataDeclaration, ConstraintDeclaration)
+        # 这些被跳过 — 不是 code reference
+        return sigs
+
+    def is_declaration_kind(kind: str) -> bool:
+        """判断是否是 declaration kind (vs reference kind)."""
+        decl_kws = [
+            "ClassPropertyDeclaration", "DataDeclaration",
+            "ConstraintDeclaration", "ClassMethodDeclaration",
+            "CovergroupDeclaration", "NetDeclaration", "ParameterDeclaration",
+        ]
+        return any(kw in kind for kw in decl_kws)
+
+    def is_reference_kind(kind: str) -> bool:
+        """判断是否是 reference 所在的 kind."""
+        ref_kws = [
+            "Assignment", "ExpressionStatement", "MemberAccess",
+            "IdentifierSelect", "ProceduralAssignment", "ContinuousAssign",
+            "Conditional", "NamedValue", "ElementSelect",
+            "FunctionCall", "TaskCall",
+        ]
+        return any(kw in kind for kw in ref_kws)
+
     def walk_class(class_node):
         class_name = str(getattr(class_node, "name", "")).strip()
-        # Use semantic syntax body (ClassDeclarationSyntax.items), not .body (which is empty)
         syntax = getattr(class_node, 'syntax', None)
-        if syntax and hasattr(syntax, 'items'):
-            try:
-                for member in syntax.items:
-                    walk(member, class_name, [])
-            except TypeError:
-                pass
-
-    def walk(node, class_name: str, ctx_stack: list[str]):
-        if node is None:
+        if syntax is None or not hasattr(syntax, 'items'):
             return
-        kind = str(getattr(node, "kind", ""))
-        # Build context
-        new_ctx = list(ctx_stack)
-        if "Task" in kind and "Declaration" in kind:
-            name = str(getattr(node, "name", "")).strip()
-            new_ctx.append(f"task {name}()")
-        elif "Function" in kind and "Declaration" in kind:
-            name = str(getattr(node, "name", "")).strip()
-            new_ctx.append(f"function {name}()")
-        elif "Coverpoint" in kind:
-            sig = str(getattr(node, "expr", "") or getattr(node, "name", "")).strip()
-            new_ctx.append(f"coverpoint {sig}")
-        elif "Constraint" in kind and "Declaration" in kind:
-            name = str(getattr(node, "name", "")).strip()
-            new_ctx.append(f"constraint {name}")
-        elif "ContinuousAssign" in kind or "Assignment" in kind:
-            new_ctx.append("assign")
-        elif "AlwaysBlock" in kind or "AlwaysFFBlock" in kind or "AlwaysCombBlock" in kind:
-            new_ctx.append("always")
-        elif "Token" in kind:
-            return
-
-        # 检查这个 node 里是否有对 target_signal 的引用
         try:
-            node_text = str(node)
-        except Exception:
-            node_text = ""
-
-        is_declaration = (
-            ("rand " in node_text or "randc " in node_text) and
-            target_signal in node_text and
-            ("ClassProperty" in kind or "DataDeclaration" in kind)
-        )
-
-        # [Phase 3 Day 1 FIX] 跳过纯 leaf Identifier (declaration 衍生)
-        # 只看有结构 context (assign/always/task/covergroup) 的 reference
-        is_structured = any(
-            kw in kind for kw in [
-                "Assignment", "AssignmentExpression", "Always",
-                "ExpressionStatement", "MemberAccess", "IdentifierSelect",
-                "Conditional", "ProceduralAssignment", "ContinuousAssign",
-                "NamedValue", "ElementSelect", "RangeSelect"
-            ]
-        )
-
-        if target_signal in node_text and not is_declaration and is_structured:
-            # 提取上下文 snippet
-            idx = node_text.find(target_signal)
-            start = max(0, idx - 30)
-            end = min(len(node_text), idx + 50)
-            snippet = node_text[start:end].replace("\n", " ").strip()
-
-            results.append({
-                "class": class_name,
-                "kind": _kind_label(kind),
-                "context": " > ".join(new_ctx[-2:]) if new_ctx else "",
-                "snippet": snippet,
-            })
-
-        # 递归子节点
-        try:
-            for child in node:
-                walk(child, class_name, new_ctx)
+            members = list(syntax.items)
         except TypeError:
-            pass
+            return
+
+        for member in members:
+            member_kind = str(getattr(member, "kind", ""))
+
+            # [鉄律1 修正] ClassMethodDeclaration 是 wrapper, 走 member.declaration
+            if "ClassMethodDeclaration" in member_kind:
+                # 拿真正的 TaskDeclaration / FunctionDeclaration
+                inner = getattr(member, 'declaration', None)
+                if inner is not None:
+                    inner_kind = str(getattr(inner, "kind", ""))
+                    inner_name = str(getattr(inner, "name", "")).strip()
+                    is_task_or_fn = (
+                        ("Task" in inner_kind and "Declaration" in inner_kind) or
+                        ("Function" in inner_kind and "Declaration" in inner_kind)
+                    )
+                    if is_task_or_fn:
+                        process_task_or_fn(inner, inner_kind, inner_name, class_name)
+                continue
+
+            # 过滤: 只看 task/function body (declaration 跳过)
+            is_task_or_fn = (
+                ("Task" in member_kind and "Declaration" in member_kind) or
+                ("Function" in member_kind and "Declaration" in member_kind)
+            )
+            if not is_task_or_fn:
+                # 但 coverpoint 也是 reference (covergroup sample)
+                if "Coverpoint" in member_kind:
+                    sig_name = str(getattr(member, "name", "")).strip()
+                    if not sig_name and hasattr(member, 'expr') and member.expr:
+                        sig_name = str(member.expr).strip()
+                    if sig_name == target_signal:
+                        results.append({
+                            "class": class_name,
+                            "kind": "covergroup_sample",
+                            "context": f"covergroup > coverpoint {target_signal}",
+                            "snippet": f"coverpoint {target_signal} {{...}}",
+                        })
+                continue
+
+            process_task_or_fn(member, member_kind, str(getattr(member, "name", "")).strip(), class_name)
+
+    def process_task_or_fn(decl, decl_kind: str, decl_name: str, class_name: str):
+        """处理 task/function body 里的 references. Uses decl.items."""
+        ctx_str = f"{('task' if 'Task' in decl_kind else 'function')} {decl_name}()"
+
+        # Walk decl.items (BlockStatementSyntax 里间是 .body.items)
+        items = getattr(decl, 'items', None)
+        if items is None:
+            body = getattr(decl, 'body', None)
+            if body is not None:
+                items = getattr(body, 'items', None) or body
+        if items is None:
+            return
+
+        try:
+            stmts = list(items) if hasattr(items, '__iter__') else []
+        except TypeError:
+            return
+
+        for stmt in stmts:
+            stmt_kind = str(getattr(stmt, "kind", ""))
+            if is_declaration_kind(stmt_kind):
+                continue
+            if not is_reference_kind(stmt_kind) and "ExpressionStatement" not in stmt_kind:
+                continue
+
+            # [鉄律1 修正] 用 visitor.extract() 拿 referenced signals (semantic AST)
+            sigs = extract_referenced_signals(stmt)
+            # [鉄律1 修正] 检查 target_signal 是否在 sigs 里 (考虑 dotted path)
+            # 例如: sigs=['my_other_addr', 'req.used_real'], target='used_real' → match
+            matched = any(
+                target_signal == s or
+                s.endswith('.' + target_signal) or
+                s == 'this.' + target_signal
+                for s in sigs
+            )
+            if matched:
+                try:
+                    snippet = str(stmt).replace("\n", " ").strip()[:120]
+                except Exception:
+                    snippet = ""
+                results.append({
+                    "class": class_name,
+                    "kind": _kind_label(stmt_kind),
+                    "context": ctx_str,
+                    "snippet": snippet,
+                })
 
     # 走 root 找所有 class
     def walk_root(node):
@@ -806,8 +872,8 @@ def reachability_cmd(
                 # bare randomize() — 假设所有 rand vars 都随机化
                 randomized_in.append(call)
 
-        # 找 references (excluding declaration, 跨 class 扫描)
-        refs = _scan_references(root, vname)
+        # 找 references (excluding declaration, 跨 class 扫描) - [Phase 3 Day 4] semantic version
+        refs = _scan_references_semantic(tracer, vname)
 
         # 过滤掉 declaration 本身
         consumer_refs = [r for r in refs if r["kind"] != "decl"]
