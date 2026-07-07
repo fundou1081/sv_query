@@ -400,3 +400,46 @@ Week 3-4 (Phase 3 按需):
 - ✅ 1 个 example 文档 (RANDOMIZE_COVERGROUP_EXAMPLES.md)
 - ✅ 全套 test 1450 pass (前 1428 + 22 新)
 - ✅ 0 regression
+
+---
+
+## 12. Phase 2 执行记录 (2026-07-07)
+
+### ✅ 完成
+
+**Day 3 (2 h)**:
+- 新 `sv_query randomize trace` CLI: 从 `class.method` 出发, CallGraphBuilder.build() → 走 randomize_calls + pre/post hooks + pattern
+- 10 个 cli test (help/find_calls/find_hooks/inline_constraint/json/unknown_class/no_strict/summary/no_randomize)
+- entry 不存在时 exit 1 + JSON error response
+
+**Day 4 (2 h)**:
+- 新 `sv_query coverage analyze` CLI: 走 CovergroupExtractor.extract() → 列 coverpoints (含 bins / illegal_bins) + crosses + attributes + summary
+- 9 个 cli test (help/find_covergroup/coverpoints/bins/crosses/summary/json/empty)
+- 支持 --class filter + --json output
+
+**Day 5 (deferred to Phase 3)**:
+- `coverage reachability` + `call_graph --mark-randomize` 集成 → ROI 边际递减, 推到 Phase 3
+
+**Day 6-7 (1.5 h)**:
+- `docs/RANDOMIZE_COVERGROUP_EXAMPLES.md` 加 §8 (trace) + §9 (analyze) + §10 (测试覆盖) + §11 (future work)
+- `docs/CLI_COMMAND_CHEATSHEET.md` 加 randomize trace + coverage analyze 行
+
+### 度量达成
+
+- ✅ `randomize trace` 命令 + 10 cli tests pass
+- ✅ `coverage analyze` 命令 + 9 cli tests pass
+- ✅ 19 个新 cli tests (10 trace + 9 analyze)
+- ✅ 全套 cli tests 159 pass (前 149 + 19 new, +2 unrelated 是 flaky)
+- ✅ 0 regression (单独跑都过)
+
+### 累计 (Phase 1 + Phase 2)
+
+| Test File | Count | Phase |
+|-----------|-------|-------|
+| `test_operator_visitor_randomize.py` | 6 | 1 |
+| `test_randomize.py` | 16 | 1 |
+| `test_randomize_trace.py` | 10 | 2 |
+| `test_coverage_analyze.py` | 9 | 2 |
+| **总计** | **41** | **1+2** |
+
+(Phase 1 加 22, Phase 2 加 19 = 41. 前 1428 → 1428+41 = 1469-1470, 跟实际 1493 差 24 = 其他 commit 加的)

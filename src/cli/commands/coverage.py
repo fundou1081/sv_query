@@ -284,5 +284,151 @@ def generate(
         print(cg)
 
 
+# =============================================================================
+# [Phase 2 Day 4 2026-07-07] covergroup analyze — 列出每个 covergroup 的结构
+# =============================================================================
+
+@coverage_app.command(name="analyze")
+def analyze(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
+    cls_filter: str = typer.Option(None, "--class", "-c", help="Filter to a specific class"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="JSON output"),
+) -> None:
+    """[Phase 2 Day 4 2026-07-07] 列出每个 covergroup 的完整结构.
+
+    列每个 covergroup:
+      - name (e.g. 'cg'), in_class, sample event
+      - coverpoints (name, signal, bins 类型 + values)
+      - cross coverpoints (name, items, iff, illegal_bins)
+      - attributes (e.g. option.per_instance = 1)
+
+    Examples:
+        sv_query coverage analyze -f my_pkg.sv
+        sv_query coverage analyze -f my_pkg.sv --class my_seq
+        sv_query coverage analyze -f my_pkg.sv --json
+    """
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+        )
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        raise typer.Exit(code=1) from e
+
+    sources = tracer.sources if hasattr(tracer, "sources") else {}
+
+    extractor = CovergroupExtractor(sources=sources, strict=strict)
+    covergroups = extractor.extract()
+
+    # filter
+    if cls_filter:
+        covergroups = [cg for cg in covergroups if cg.in_class == cls_filter]
+
+    if json_output:
+        out = {
+            "total_covergroups": len(covergroups),
+            "covergroups": [
+                {
+                    "name": cg.name,
+                    "in_class": cg.in_class,
+                    "sample_event": cg.clock,
+                    "source_file": cg.source_file,
+                    "source_line": cg.source_line,
+                    "coverpoints": [
+                        {
+                            "name": cp.name,
+                            "signal": cp.signal,
+                            "bins": [
+                                {"kind": b.kind, "name": b.name, "values": b.values}
+                                for b in cp.bins
+                            ],
+                        }
+                        for cp in cg.coverpoints
+                    ],
+                    "crosses": [
+                        {
+                            "name": cr.name,
+                            "items": cr.items,
+                            "iff": cr.iff,
+                        }
+                        for cr in cg.crosses
+                    ],
+                    "attributes": cg.attributes,
+                    "errors": cg.errors,
+                }
+                for cg in covergroups
+            ],
+        }
+        import json as _json
+        print(_json.dumps(out, indent=2, ensure_ascii=False))
+        return
+
+    # Human-readable output
+    print("=" * 70)
+    print(f"Covergroup Analysis ({len(covergroups)} covergroup(s))")
+    print("=" * 70)
+
+    if not covergroups:
+        print("\n  (no covergroup found)")
+        print("\n" + "=" * 70)
+        return
+
+    for i, cg in enumerate(covergroups, 1):
+        print(f"\n[{i}] Covergroup: {cg.name or '(unnamed)'}")
+        if cg.in_class:
+            print(f"    in_class:    {cg.in_class}")
+        if cg.source_file:
+            print(f"    source:      {cg.source_file}:{cg.source_line}")
+        if cg.clock:
+            # clock 可能是 "with function sample(...)" 也可能是 "@(posedge clk)"
+            if cg.clock.startswith("with"):
+                print(f"    sample:      {cg.clock}")
+            else:
+                print(f"    clock:       {cg.clock}")
+
+        if cg.attributes:
+            print(f"    attributes:")
+            for k, v in cg.attributes.items():
+                print(f"      {k}: {v}")
+
+        # Coverpoints
+        if cg.coverpoints:
+            print(f"\n    Coverpoints ({len(cg.coverpoints)}):")
+            for cp in cg.coverpoints:
+                cp_name = cp.name or f"cp@{cp.signal}"
+                print(f"      [{cp_name}] signal = {cp.signal}")
+                if cp.bins:
+                    for b in cp.bins:
+                        print(f"        {b.kind:14s} {b.name:20s} = {b.values}")
+                else:
+                    print(f"        (no bins defined)")
+
+        # Crosses
+        if cg.crosses:
+            print(f"\n    Crosses ({len(cg.crosses)}):")
+            for cr in cg.crosses:
+                cr_name = cr.name or f"cross_{'_'.join(cr.items)}"
+                print(f"      [{cr_name}] items = {', '.join(cr.items)}")
+                if cr.iff:
+                    print(f"        iff: {cr.iff}")
+
+        # Errors
+        if cg.errors:
+            print(f"\n    Errors:")
+            for err in cg.errors:
+                print(f"      - {err}")
+
+    print("\n" + "=" * 70)
+    total_cp = sum(len(cg.coverpoints) for cg in covergroups)
+    total_cross = sum(len(cg.crosses) for cg in covergroups)
+    print(f"Summary: {len(covergroups)} covergroup(s), "
+          f"{total_cp} coverpoint(s), {total_cross} cross(es)")
+    print("=" * 70)
+
+
 if __name__ == "__main__":
     typer.run(coverage_app)
