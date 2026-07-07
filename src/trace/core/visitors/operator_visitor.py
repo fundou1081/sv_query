@@ -777,14 +777,23 @@ class OperatorVisitor:
 
     @on("ArrayOrRandomizeMethodExpression")
     def extract_array_randomize_method_expr(self, node) -> SignalResult:
-        """[NOT TESTED] ArrayOrRandomizeMethodExpression: array.randomize() with method"""
+        """[Phase 1 Day 1 2026-07-07 FIXED + TESTED] ArrayOrRandomizeMethodExpression: array.randomize() with method
+
+        pyslang attrs (verified 2026-07-07):
+          - method    : InvocationExpressionSyntax (the .randomize() call)
+          - constraints : ConstraintBlockSyntax (the `with { ... }` block) — optional
+
+        NOTE: 旧实现用 getattr(node, "array") / "with" 但 pyslang 实际是 "method" / "constraints".
+        """
         result = SignalResult()
-        array = getattr(node, "array", None) or getattr(node, "expr", None)
-        if array:
-            result = result.merge(self.extract(array))
-        with_expr = getattr(node, "with", None) or getattr(node, "expr2", None)
-        if with_expr:
-            result = result.merge(self.extract(with_expr))
+        # .randomize() call (array.randomize())
+        method = getattr(node, "method", None) or getattr(node, "array", None) or getattr(node, "expr", None)
+        if method:
+            result = result.merge(self.extract(method))
+        # with { ... } inline constraint block
+        constraints = getattr(node, "constraints", None) or getattr(node, "with", None) or getattr(node, "expr2", None)
+        if constraints:
+            result = result.merge(self.extract(constraints))
         return result
 
     # Bins selection
