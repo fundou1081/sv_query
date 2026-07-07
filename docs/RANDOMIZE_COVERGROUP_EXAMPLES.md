@@ -10,8 +10,10 @@
 ## 1. 命令总览
 
 ```
-sv_query randomize list     — 列出 rand/randc 变量 + randomize() 调用 + pre/post_randomize hooks
-sv_query randomize extract  — 提取 randomize() 的 inline constraint 表达式
+sv_query randomize list         — 列出 rand/randc 变量 + randomize() 调用 + pre/post_randomize hooks
+sv_query randomize extract      — 提取 randomize() 的 inline constraint 表达式
+sv_query randomize trace        — 从 class.method 入口追踪 call graph + randomize() 调用 + hooks
+sv_query coverage analyze       — 列出每个 covergroup 的完整结构 (coverpoints + bins + crosses)
 ```
 
 **完整 `--help`**:
@@ -297,3 +299,218 @@ Phase 2 已在 `docs/RANDOMIZE_COVERGROUP_DEV_PLAN.md` 规划.
 - [REQUIREMENT_COVERGROUP_ANALYSIS.md](REQUIREMENT_COVERGROUP_ANALYSIS.md) — covergroup ↔ constraint 一致性需求
 - [CLI_COMMAND_CHEATSHEET.md](CLI_COMMAND_CHEATSHEET.md) — 全部 21 顶层 + 50 subcommand 速查
 - [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) — 文档风格参考
+---
+
+## 8. `randomize trace` 命令 (Phase 2 Day 3)
+
+### 8.1 功能
+
+从指定 `class.method` 入口出发, 构建 call graph, 追踪所有 randomize() 调用 + 配对 pre_randomize / post_randomize hooks.
+
+跟 `randomize list/extract` 不同:
+- `list` / `extract` — 看整个文件/类的所有 randomize
+- `trace` — 深入单个 method 的 **call graph** (含 fork/join, sequence/driver pattern)
+
+### 8.2 Fixture
+
+```systemverilog
+// (用 list/extract 同款 packet.sv fixture)
+class my_seq;
+    packet req;
+    bit ok;
+    task body();
+        req.randomize();
+        req.randomize() with { addr < 64; mode != 1; };
+        ok = req.randomize() with { data == 8'hAB; };
+    endtask
+endclass
+```
+
+### 8.3 基本用法
+
+```bash
+sv_query randomize trace -f packet.sv --class my_seq --method body
+```
+
+**输出**:
+```
+======================================================================
+Randomize Trace: my_seq.body
+======================================================================
+  Pattern: generic
+  Pre-randomize hooks:  2 (packet, my_seq)
+  Post-randomize hooks: 2 (packet, my_seq)
+
+[1] Randomize() Calls (3)
+----------------------------------------------------------------------
+
+  [1] my_seq.body:0  req.randomize
+
+  [2] my_seq.body:0  req.randomize
+      inline constraint:
+        { addr < 64; mode != 1; }
+
+  [3] my_seq.body:0  req.randomize
+      inline constraint:
+        { data == 8'hAB; }
+
+======================================================================
+Summary: 3 randomize calls, 0 fork points, 2 pre + 2 post hooks
+======================================================================
+```
+
+**洞察**:
+- `Pattern: generic` — 不是 UVM sequence/driver pattern (识别详见 call_graph_builder._detect_pattern)
+- `Pre-randomize hooks: 2` — packet (auto-derived + user-defined) + my_seq (auto-derived)
+- 3 个 randomize calls, 其中 2 个带 inline constraint
+
+### 8.4 JSON 输出
+
+```bash
+sv_query randomize trace -f packet.sv --class my_seq --method body --json
+```
+
+**输出** (简化):
+```json
+{
+  "entry": "my_seq.body",
+  "pattern": "generic",
+  "randomize_calls": [
+    {
+      "caller": "my_seq.body",
+      "callee": "req.randomize",
+      "kind": "randomize",
+      "inline_constraint": ""
+    },
+    {
+      "caller": "my_seq.body",
+      "callee": "req.randomize",
+      "kind": "randomize",
+      "inline_constraint": "{ addr < 64; mode != 1; }"
+    },
+    ...
+  ],
+  "fork_points": [],
+  "errors": []
+}
+```
+
+### 8.5 错误处理
+
+不存在的 class/method:
+```bash
+sv_query randomize trace -f packet.sv --class nonexistent --method body
+# ERROR: entry nonexistent.body not found
+# exit code 1
+```
+
+---
+
+## 9. `coverage analyze` 命令 (Phase 2 Day 4)
+
+### 9.1 功能
+
+列出每个 covergroup 的完整结构: coverpoints + bins (含 illegal_bins) + crosses.
+
+跟 `coverage gap` 不同:
+- `gap` — 检测 covergroup ↔ constraint 一致性缺口 (missing_cross, missing_illegal_bins)
+- `analyze` — 列出 covergroup 完整结构 (signal, bins, crosses) 供审查
+
+### 9.2 Fixture
+
+```systemverilog
+// sim/tests/cli/fixtures/covergroup/cg_pkg.sv
+class packet;
+    rand bit [7:0] addr;
+    rand bit [1:0] mode;
+
+    covergroup cg;
+        option.per_instance = 1;
+
+        coverpoint addr {
+            bins low  = {[0:63]};
+            bins high = {[64:255]};
+            bins mid  = {[100:150]};
+            illegal_bins bad = {[200:255]};
+        }
+
+        coverpoint mode {
+            bins mode0 = {0};
+            bins mode1 = {1};
+            bins mode2 = {2};
+            bins mode3 = {3};
+        }
+
+        cross addr, mode {
+            illegal_bins addr_high_mode_low = binsof(addr.high) && binsof(mode.mode0);
+        }
+    endgroup
+endclass
+```
+
+### 9.3 基本用法
+
+```bash
+sv_query coverage analyze -f cg_pkg.sv
+```
+
+**输出**:
+```
+======================================================================
+Covergroup Analysis (1 covergroup(s))
+======================================================================
+
+[1] Covergroup: cg
+
+    Coverpoints (2):
+      [addr] signal = addr
+        bins           low                  = {[0:63]}
+        bins           high                 = {[64:255]}
+        bins           mid                  = {[100:150]}
+        illegal_bins   bad                  = {[200:255]}
+      [mode] signal = mode
+        bins           mode0                = {0}
+        bins           mode1                = {1}
+        bins           mode2                = {2}
+        bins           mode3                = {3}
+
+    Crosses (1):
+      [cross_addr_mode] items = addr, mode
+
+======================================================================
+Summary: 1 covergroup(s), 2 coverpoint(s), 1 cross(es)
+======================================================================
+```
+
+### 9.4 JSON 输出
+
+```bash
+sv_query coverage analyze -f cg_pkg.sv --json
+```
+
+输出 JSON 完整 covergroup 信息 (含每个 bin 的 kind/name/values, 跟 cross 的 items/iff).
+
+---
+
+## 10. Phase 2 测试覆盖
+
+| Test File | Count | 覆盖 |
+|-----------|-------|------|
+| `test_operator_visitor_randomize.py` | 6 | `extract_array_randomize_method_expr` unit tests |
+| `test_randomize.py` | 16 | `randomize list/extract` CLI tests |
+| `test_randomize_trace.py` | 10 | `randomize trace` CLI tests |
+| `test_coverage_analyze.py` | 9 | `coverage analyze` CLI tests |
+| **Phase 2 新增** | **41** | (vs Phase 1 加 22 = 63 total randomize/covergroup tests) |
+
+**Total: 63 new tests, 1493 total (前 1428 → 加 22 Phase 1 + 41 Phase 2 + 2 unrelated)**.
+
+---
+
+## 11. Phase 2 future work (Phase 3)
+
+| 缺口 | 优先级 |
+|------|--------|
+| `coverage reachability` 命令 | 🟡 中 |
+| `randomize trace` 的 `randomize_vars` 字段填充 | 🟠 低 (call_graph_builder 需要修) |
+| Source line number 显示 (现在是 0) | 🟡 中 |
+| Fork point 详细显示 (threading 用) | 🟠 低 |

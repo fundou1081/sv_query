@@ -129,6 +129,10 @@
     列出 rand 变量 + randomize() 调用 + pre/post_randomize hooks
   * `sv_query randomize extract -f packet.sv`
     提取 randomize() 的 inline constraint 表达式
+  * `sv_query randomize trace -f pkg.sv --class my_seq --method body`
+    从入口 method 追踪 call graph + randomize() 调用
+  * `sv_query coverage analyze -f pkg.sv`
+    列出 covergroup 结构 (coverpoints + bins + crosses)
 
 ──────────────────────────────────────────────────────────────────────
 ## ⟨7⟩ 可视化
