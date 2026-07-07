@@ -2,7 +2,7 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
-> **在 5 个开源项目上验证过**: CoralNPU 28 inst / CVA6 31 ports / Vortex / SERV / darkriscv.
+> **在 6 个开源项目上验证过**: CoralNPU 28 inst / **openwifi-hw openofdm_tx 31 inst (Wi-Fi 802.11 OFDM TX PHY)** / CVA6 31 ports / Vortex / SERV / darkriscv. Signal tracing + pipeline detection 实战见 [SIGNAL_TRACING_EXAMPLES.md](docs/SIGNAL_TRACING_EXAMPLES.md).
 > 新成员入门? 从 [CONTRIBUTING.md](CONTRIBUTING.md) 开始 — 5 分钟跑起来 + 30 分钟懂架构 + 加第一个 feature.
 
 [![Tests](https://img.shields.io/badge/tests-2400+_passing-brightgreen)]()
