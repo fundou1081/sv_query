@@ -222,3 +222,74 @@ cache.invalidate()     # 清除所有缓存
 | pytest 批量测试 | ✅ 使用 `--cache` |
 | 单次分析 | ❌ 不需要 `--cache` |
 | 大模块重复可视化 | ✅ 使用 `--cache` |
+
+---
+
+## 实战案例: openwifi-hw ifftmain (Wi-Fi OFDM 6-stage IFFT)
+
+**项目**: [open-sdr/openwifi-hw](https://github.com/open-sdr/openwifi-hw) — 802.11 OFDM PHY 中的 6-stage IFFT pipeline (radix-2/4 butterfly).
+
+**Setup**:
+```bash
+mkdir -p /tmp/ofdm_tx_fixed
+cp ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
+sv_query fix timescale --filelist /tmp/ofdm_tx_fix.f --apply   # 22 fixed
+cat > /tmp/ofdm_tx_fixed.f << EOF
++incdir+/tmp/ofdm_tx_fixed
+EOF
+for f in /tmp/ofdm_tx_fixed/*.v; do echo "$f" >> /tmp/ofdm_tx_fixed.f; done
+python3 -c "import time; a = bytearray(4 * 1024**3); time.sleep(2); del a"
+```
+
+### `visualize pipeline` — 自动检测 6-stage IFFT pipeline
+
+```bash
+sv_query visualize pipeline --filelist /tmp/ofdm_tx_fixed.f \
+    --module ifftmain --no-strict --dot /tmp/ifft_pipeline.dot
+```
+
+**输出**:
+```
+Pipeline regs: 39
+Control regs: 7
+State regs: 5
+Stages: 39
+✓ DOT: /tmp/ifft_pipeline.dot
+```
+
+**图**: [openwifi_ifft_pipeline.png](images/openwifi_ifft_pipeline.png) (655 KB) — 6 个 stage 横向排列, 每个 subgraph 含 registers + 组合逻辑, 控制信号虚线跨 stage.
+
+### `visualize dataflow` — 159 data / 72 control / 26 clock 分类
+
+```bash
+sv_query visualize dataflow --filelist /tmp/ofdm_tx_fixed.f \
+    --module ifftmain --no-strict --dot /tmp/ifft_dataflow.dot
+```
+
+**输出**:
+```
+Data nodes: 159
+Control nodes: 72
+Clock nodes: 26
+✓ DOT: /tmp/ifft_dataflow.dot
+```
+
+**图**: [openwifi_ifft_dataflow.png](images/openwifi_ifft_dataflow.png) (538 KB) — 蓝色实线=data path (含运算表达式), 橙色虚线=control (valid/ready/enable), 粗=MUX, 粗边=register.
+
+### `visualize graph` — 完整 signal graph (--module-only)
+
+```bash
+sv_query visualize graph --filelist /tmp/ofdm_tx_fixed.f \
+    --module-only --cluster-modules --no-strict \
+    --dot /tmp/ifft_graph.dot --max-edges 100
+```
+
+**图**: [openwifi_ifft_graph.png](images/openwifi_ifft_graph.png) (16 KB) — 信号节点 + 数据流边, 按 module 聚类, 端口/reg 颜色区分.
+
+### 实战洞察
+
+- **Pipeline detection 自动**: 6 stages × butterfly 子 stage + bit-reverse + sync state = 39 stages
+- **Signal classification 准确**: 159 data 是 OFDM 链 (i_sample → 6 stages IQ → o_result), 72 control 是 FSM/handshake
+- **Bit-reversal stage**: trace 显示 o_result 来自 `revstage.o_out` → `br_result` → `o_result`, 确认 802.11 OFDM 必需的反 bit-order 步
+
+→ 完整实战含 4 个 `trace fanout/fanin` 命令 + trace vs arch 对比表 + 踩坑记录, 见 [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md)
