@@ -207,6 +207,44 @@ class TestChainSubModuleClusters(unittest.TestCase):
         finally:
             Path(dot_path).unlink(missing_ok=True)
 
+    def test_chain_dot_external_submodule_cluster(self):
+        """[金标准 2026-07-08] chain 在 filelist 模式下应该把没 target prefix 的
+        sub-module signals (e.g. bitreverse.*, dpram.*, fftstage.*) 归到
+        'External sub-modules' cluster, 避免被 graphviz 默认渲染成白色椭圆.
+
+        之前 bug: 这些 node 被 silently 跳过 (extract_submodule 返回 None),
+        但 edge 还在引用, 渲染成 white ellipse (no style).
+        """
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            result = _run_svq([
+                "visualize", "chain",
+                "--filelist=/tmp/openofdm_tx.f",
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+                "--no-strict",
+                "--dot", dot_path,
+            ])
+            self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
+            content = Path(dot_path).read_text()
+            # 必须有 'External sub-modules' cluster
+            self.assertIn("External sub-modules", content, f"No external cluster label in DOT:\n{content[:500]}")
+            # 至少有一个 external cluster 节点
+            self.assertIn("cluster_external", content, f"No cluster_external in DOT")
+            # bitreverse.i_clk 这种 external node 应该有 node definition (有 fillcolor)
+            # 不应该是孤立白色椭圆 (之前 bug)
+            if "bitreverse_i_clk" in content or "bitreverse.i_clk" in content:
+                # 找有 fillcolor 的 bitreverse node
+                self.assertRegex(
+                    content, r'"bitreverse_\w+" \[label="[^"]*"\s+shape=\w+\s+style="filled',
+                    f"External node bitreverse.* should have fillcolor/style, not default white ellipse:\n{content[:1000]}"
+                )
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
     def test_chain_dot_distinguishes_input_output(self):
         """[金标准] chain DOT 应该用不同 shape/color 区分 input vs output vs intermediate.
         使用 multi-file filelist 获得 richer paths (会含 intermediate blue nodes)."""
