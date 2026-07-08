@@ -463,7 +463,8 @@ def _generate_chain_dot(
     lines = ["digraph chain {"]
     lines.append(f'  label="Data Chain: {title}\\n({len(edges)} edges, {len(nodes)} nodes)";')
     lines.append("  labelloc=t;")
-    lines.append("  fontsize=14;")
+    lines.append("  fontsize=16;")
+    lines.append('  fontname="Helvetica-Bold";')
     lines.append(f"  rankdir={layout};")
     if layout_engine in ("neato", "fdp"):
         lines.append("  ratio=1.0;")
@@ -472,6 +473,9 @@ def _generate_chain_dot(
         lines.append("  ratio=auto;")
     lines.append("  splines=true;")
     lines.append("  bgcolor=white;")
+    lines.append("  pad=0.5;")
+    lines.append("  nodesep=0.7;")  # 加大 node 间距
+    lines.append("  ranksep=1.2;")  # 加大 rank 间距
     lines.append("")
 
     # [Plan B+2 2026-07-08] 按 sub-module 分组 nodes
@@ -480,79 +484,119 @@ def _generate_chain_dot(
     from_set = set(from_sigs)
     to_set = set(to_sigs)
 
-    def extract_submodule(node_id: str, top: str) -> str:
-        """提取 node 所属 sub-module. 顶层信号归属 top."""
+    def extract_submodule(node_id: str, top: str) -> str | None:
+        """提取 node 所属 sub-module. 顶层信号归属 top.
+        Returns None if signal ID doesn't belong to top (skip cluster)."""
         if not node_id.startswith(f"{top}."):
-            return "(other)"
+            return None  # 跳过外部 node
         rest = node_id[len(top) + 1:]  # strip "top."
         parts = rest.split(".")
         if len(parts) <= 1:
             return top  # top-level signal
-        # 取第一个 segment 作为 sub-module
         return f"{top}.{parts[0]}"
 
     # Group by submodule
     nodes_by_submodule: dict[str, set[str]] = {}
     for node in nodes:
         sub = extract_submodule(node, title)
+        if sub is None:
+            continue  # 跳过外部 node, 不画 cluster
         nodes_by_submodule.setdefault(sub, set()).add(node)
 
-    # Generate subgraph cluster
-    colors = [
-        "#aaffaa",  # light green
-        "#aaaaff",  # light blue
-        "#ffaaaa",  # light red
-        "#ffffaa",  # light yellow
-        "#ffaaff",  # light pink
-        "#aaffff",  # light cyan
-        "#ffddaa",  # light orange
-        "#dddddd",  # light gray
+    # Generate subgraph cluster (不填背景, 只用深色虚线边框)
+    cluster_borders = [
+        "#cc3333",  # red
+        "#3366cc",  # blue
+        "#33aa33",  # green
+        "#cc8833",  # orange
+        "#aa33aa",  # purple
+        "#33aaaa",  # cyan
+        "#999933",  # olive
+        "#663399",  # indigo
     ]
     for i, (sub, sub_nodes) in enumerate(sorted(nodes_by_submodule.items())):
-        # sub 是 module 名字 (e.g. "openofdm_tx.dot11_tx")
-        # 取短名做 label
         if sub == title:
             sub_label = f"{sub} (top)"
         else:
             short = sub.split(".")[-1] if "." in sub else sub
             sub_label = f"{short}"
-        cluster_color = colors[i % len(colors)]
+        border_color = cluster_borders[i % len(cluster_borders)]
         lines.append(f'  subgraph "cluster_{_sanitize_dot_id_chain(sub)}" {{')
         lines.append(f'    label="{sub_label}";')
-        lines.append(f'    style="rounded,filled";')
-        lines.append(f'    fillcolor="{cluster_color}";')
-        lines.append(f'    color="#666666";')
-        lines.append(f'    fontsize=11;')
-        lines.append(f'    fontcolor="#333333";')
+        lines.append(f'    style="rounded,dashed";')  # [FIX] 虚线边框, 不填背景
+        lines.append(f'    color="{border_color}";')
+        lines.append(f'    penwidth=2.5;')
+        lines.append(f'    fontsize=14;')
+        lines.append(f'    fontcolor="{border_color}";')  # [FIX] 跟边框同色
+        lines.append(f'    fontname="Helvetica-Bold";')  # [FIX] 加粗 (必须 quote)
         for node in sorted(sub_nodes):
             safe_id = _sanitize_dot_id_chain(node)
             if node in from_set:
                 color = "#22aa55"  # green for inputs
                 shape = "invhouse"
             elif node in to_set:
-                color = "#aa5522"  # red for outputs
+                color = "#cc3333"  # [FIX] 更鲜明的红
                 shape = "invhouse"
             else:
-                color = "#5599cc"  # blue for intermediate
+                color = "#3366cc"  # [FIX] 更鲜明的蓝
                 shape = "box"
-            label = node
-            if len(label) > 28:
-                label = "..." + label[-25:]
+            # [FIX] 改进 label: 短 label + 换行
+            label = _format_node_label(node, title)
             lines.append(
                 f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
-                f'fillcolor="{color}" fontcolor="white" fontsize=10];'
+                f'fillcolor="{color}" fontcolor="white" fontsize=11 fontname="Helvetica"];'
             )
         lines.append(f'  }}')
     lines.append("")
 
-    # 边定义
+    # 边定义 (深色加粗)
     for src, dst in sorted(edges):
         src_safe = _sanitize_dot_id_chain(src)
         dst_safe = _sanitize_dot_id_chain(dst)
-        lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#666666" penwidth=1.0 arrowhead=normal];')
+        lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#222222" penwidth=1.5 arrowhead=normal];')
 
     lines.append("}")
     return "\n".join(lines)
+
+
+def _format_node_label(node_id: str, top: str) -> str:
+    """[Plan B+2 FIX 2026-07-08] 改进 node label 可读性.
+
+    策略:
+    - 去 "{top}." prefix (重复信息)
+    - 用 \n 换行 segment (e.g. "dot11_tx.ifft64.i_clk" → "dot11_tx\n.ifft64\n.i_clk")
+    - 4+ parts 保留所有 4 part (4 lines max), 超了用 "..." 截断最后
+    - [FIX 2026-07-08] escape DOT 特殊字符 [, ], ", <, >, {, }, |
+    """
+    if node_id.startswith(f"{top}."):
+        rest = node_id[len(top) + 1:]
+    else:
+        rest = node_id
+    parts = rest.split(".")
+    if len(parts) == 1:
+        return _escape_dot_label(parts[0])
+    if len(parts) == 2:
+        return f"{_escape_dot_label(parts[0])}\\n.{_escape_dot_label(parts[1])}"
+    # 3+ parts: 用 \n 连接所有段 (如果 > 4 段, 保留前 2 + last)
+    if len(parts) <= 4:
+        return "\\n.".join(_escape_dot_label(p) for p in parts)
+    # 5+ parts: 第一段 + 第二段 + ... + 末段
+    escaped = [_escape_dot_label(p) for p in parts]
+    return f"{escaped[0]}\\n.{escaped[1]}\\n…\\n.{escaped[-1]}"
+
+
+def _escape_dot_label(s: str) -> str:
+    """[FIX 2026-07-08] Escape DOT special characters in label."""
+    # DOT 在 "..." label 里需要 escape [ ] " < > { } |
+    s = s.replace("[", "\\[")
+    s = s.replace("]", "\\]")
+    s = s.replace("\"", "\\\"")
+    s = s.replace("<", "\\<")
+    s = s.replace(">", "\\>")
+    s = s.replace("{", "\\{")
+    s = s.replace("}", "\\}")
+    s = s.replace("|", "\\|")
+    return s
 
 
 def _sanitize_dot_id_chain(s: str) -> str:

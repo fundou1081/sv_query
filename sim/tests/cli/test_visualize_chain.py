@@ -225,10 +225,10 @@ class TestChainSubModuleClusters(unittest.TestCase):
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
-            # input 是绿色 (#22aa55), output 是红色 (#aa5522), intermediate 是蓝色
+            # input 是绿色 (#22aa55), output 是红色 (#cc3333), intermediate 是蓝色 (#3366cc)
             self.assertIn("#22aa55", content, "No input color (green) in DOT")
-            self.assertIn("#aa5522", content, "No output color (red) in DOT")
-            self.assertIn("#5599cc", content, "No intermediate color (blue) in DOT")
+            self.assertIn("#cc3333", content, "No output color (red) in DOT")
+            self.assertIn("#3366cc", content, "No intermediate color (blue) in DOT")
         finally:
             Path(dot_path).unlink(missing_ok=True)
 
