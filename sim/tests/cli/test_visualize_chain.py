@@ -208,19 +208,20 @@ class TestChainSubModuleClusters(unittest.TestCase):
             Path(dot_path).unlink(missing_ok=True)
 
     def test_chain_dot_distinguishes_input_output(self):
-        """[金标准] chain DOT 应该用不同 shape/color 区分 input vs output vs intermediate"""
+        """[金标准] chain DOT 应该用不同 shape/color 区分 input vs output vs intermediate.
+        使用 multi-file filelist 获得 richer paths (会含 intermediate blue nodes)."""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
             dot_path = f.name
         try:
-            # Use auto mode to get all input→output paths (richer output)
+            # Use filelist mode for richer paths (multi-file project)
             result = _run_svq([
                 "visualize", "chain",
-                "-f", DOT11_TX,
+                "--filelist=/tmp/openofdm_tx.f",
                 "--no-strict",
-                "--target", "dot11_tx",
+                "--target", "openofdm_tx",
                 "--auto",
-                "--max-edges", "20",
+                "--max-edges", "30",
                 "--dot", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
