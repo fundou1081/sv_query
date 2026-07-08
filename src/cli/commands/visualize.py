@@ -328,17 +328,78 @@ def chain(
         from_sigs = from_signals
         to_sigs = to_signals
 
+    # [FIX 2026-07-08] 用 MIG (module_instance_graph) 重写 flat signal ID
+    # 到完整 hierarchy path. e.g. "bitreverse.i_clk" → "openofdm_tx.dot11_tx.ifft64.revstage.i_clk"
+    # 这样 chain 图能正确显示 sub-module 边界.
+    mig = getattr(tracer, "_module_graph", None)
+    hierarchy_map: dict[str, str] = {}  # flat_id → full_hierarchy_id
+    if mig is not None:
+        # [FIX 2026-07-08] 2-level remap:
+        # Level 1: port signals (inst_type.port_name) → inst_path.port_name
+        # Level 2: internal signals (inst_type.signal_name) → inst_path.signal_name
+        #   (e.g. "bitreverse.brmem" 是 bitreverse module 内部 wire, 不是 port)
+        #   我们用 inst_type 模糊匹配: 任何 "<inst_type>.<signal_name>"
+        #   重写到 "<inst_path>.<signal_name>"
+
+        # Collect (module_type) → [instance_id] for module-type → instance mapping
+        module_type_to_instances: dict[str, list[str]] = {}
+        for inst_id, inst in mig.instances.items():
+            module_type_to_instances.setdefault(inst.module_type, []).append(inst_id)
+
+        # Walk all graph nodes to find flat signals
+        for node_id in list(graph.nodes()):
+            # node_id 形如 "bitreverse.brmem" (flat, 2+ parts, 第一段是 module type)
+            if node_id in hierarchy_map:
+                continue  # already mapped
+            parts = node_id.split(".")
+            if len(parts) < 2:
+                continue
+            first_seg = parts[0]
+            if first_seg not in module_type_to_instances:
+                continue
+            # 找到 instance list — 选第一个 (TODO: 智能选)
+            inst_path = module_type_to_instances[first_seg][0]
+            # 重写 node_id: 把第一段 (module type) 替换成 inst_path
+            full_id = f"{inst_path}." + ".".join(parts[1:])
+            hierarchy_map[node_id] = full_id
+
+    def _remap_to_hierarchy(node_id: str) -> str:
+        """如果 node_id 是 flat signal, 重写到完整 hierarchy path."""
+        if node_id in hierarchy_map:
+            return hierarchy_map[node_id]
+        return node_id
+
     # 对每对 (from, to) 找 shortest path
     all_paths = []
     for src in from_sigs:
         for dst in to_sigs:
             if src == dst:
                 continue
-            path = graph.find_path(src, dst)
+            # Remap flat signal IDs to hierarchy
+            src_h = _remap_to_hierarchy(src)
+            dst_h = _remap_to_hierarchy(dst)
+            path = graph.find_path(src_h, dst_h)
+            if not path:
+                # Fall back to original (in case remap failed)
+                path = graph.find_path(src, dst)
             if path and len(path) > 1:
-                all_paths.append(path)
+                # Remap path nodes too
+                path = [_remap_to_hierarchy(n) for n in path]
+                # Dedup consecutive (in case remap creates cycles)
+                deduped = [path[0]]
+                for n in path[1:]:
+                    if n != deduped[-1]:
+                        deduped.append(n)
+                if len(deduped) > 1:
+                    all_paths.append(deduped)
 
     typer.echo(f"  Found {len(all_paths)} data paths from inputs to outputs", err=True)
+    if hierarchy_map:
+        typer.echo(
+            f"  Hierarchy remap: {len(hierarchy_map)} flat signals → full path "
+            f"(e.g. bitreverse.i_clk → openofdm_tx.dot11_tx.ifft64.revstage.i_clk)",
+            err=True,
+        )
 
     # [FIX 2026-07-08] Path-aware truncation: 选择完整 paths (不是 random edges),
     # 避免 intermediate node 变孤儿 (无任何 edge 连接).

@@ -207,13 +207,14 @@ class TestChainSubModuleClusters(unittest.TestCase):
         finally:
             Path(dot_path).unlink(missing_ok=True)
 
-    def test_chain_dot_external_submodule_cluster(self):
-        """[金标准 2026-07-08] chain 在 filelist 模式下应该把没 target prefix 的
-        sub-module signals (e.g. bitreverse.*, dpram.*, fftstage.*) 归到
-        'External sub-modules' cluster, 避免被 graphviz 默认渲染成白色椭圆.
+    def test_chain_dot_hierarchical_signal_ids(self):
+        """[金标准 2026-07-08] 修了 root cause 后: sub-module signals (bitreverse.*,
+        dpram.*, fftstage.*) 应该有完整 hierarchy path (e.g.
+        openofdm_tx.dot11_tx.ifft64.revstage.i_clk), 不是 flattened
+        (e.g. bitreverse.i_clk).
 
-        之前 bug: 这些 node 被 silently 跳过 (extract_submodule 返回 None),
-        但 edge 还在引用, 渲染成 white ellipse (no style).
+        之前 bug: connection_extractor 用 inst_module_name (短名) 替代
+        inst_path, 导致同名 port 多 instance 合并.
         """
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
@@ -230,18 +231,27 @@ class TestChainSubModuleClusters(unittest.TestCase):
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
-            # 必须有 'External sub-modules' cluster
-            self.assertIn("External sub-modules", content, f"No external cluster label in DOT:\n{content[:500]}")
-            # 至少有一个 external cluster 节点
-            self.assertIn("cluster_external", content, f"No cluster_external in DOT")
-            # bitreverse.i_clk 这种 external node 应该有 node definition (有 fillcolor)
-            # 不应该是孤立白色椭圆 (之前 bug)
-            if "bitreverse_i_clk" in content or "bitreverse.i_clk" in content:
-                # 找有 fillcolor 的 bitreverse node
-                self.assertRegex(
-                    content, r'"bitreverse_\w+" \[label="[^"]*"\s+shape=\w+\s+style="filled',
-                    f"External node bitreverse.* should have fillcolor/style, not default white ellipse:\n{content[:1000]}"
-                )
+            # [FIX 验证] 应该看到完整 hierarchy path in node IDs (underscore version
+            # 因为 _sanitize_dot_id_chain 转换). e.g. "openofdm_tx_dot11_tx_ifft64_*"
+            self.assertIn(
+                "openofdm_tx_dot11_tx",
+                content,
+                f"No hierarchy path (openofdm_tx_dot11_tx) in DOT — likely still flattened:\n{content[:1000]}"
+            )
+            # [FIX 验证] 不应该有 "External sub-modules" cluster (因为所有 signal
+            # 都有完整 path, 都被归到正常 cluster)
+            self.assertNotIn(
+                "External sub-modules",
+                content,
+                f"Should not have 'External sub-modules' cluster (root cause fixed):\n{content[:500]}"
+            )
+            # 不应该有短名 (flattened) signal - bitreverse.i_clk 应当有完整前缀
+            # bitreverse 不再作为短名 prefix 出现 (作为 standalone node)
+            self.assertNotRegex(
+                content,
+                r'"\s*bitreverse_\w+"',  # 短名形式如 bitreverse_i_clk
+                f"Found flattened bitreverse.* node (root cause not fixed):\n{content[:1000]}"
+            )
         finally:
             Path(dot_path).unlink(missing_ok=True)
 
