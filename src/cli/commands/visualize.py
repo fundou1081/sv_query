@@ -340,15 +340,60 @@ def chain(
 
     typer.echo(f"  Found {len(all_paths)} data paths from inputs to outputs", err=True)
 
-    # 合并所有 paths 形成 set of edges + nodes
-    chain_edges = set()
-    chain_nodes = set()
-    for path in all_paths:
-        for node in path:
-            chain_nodes.add(node)
-        for i in range(len(path) - 1):
-            edge = (path[i], path[i + 1])
-            chain_edges.add(edge)
+    # [FIX 2026-07-08] Path-aware truncation: 选择完整 paths (不是 random edges),
+    # 避免 intermediate node 变孤儿 (无任何 edge 连接).
+    # 策略: 按 path length 排序 (**LONGEST first** 优先选有 intermediate 的 path),
+    # 贪婪选择, 直到 max_edges 达上限.
+    # 这样保留的 node 都有 edge 相连, 而且能看到 deep data path.
+    if not all_paths:
+        chain_edges = set()
+        chain_nodes = set()
+    else:
+        # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
+        # 这样优先选 multi-hop paths (有 intermediate nodes),
+        # 不是 1-edge paths (只 input → output, no intermediate).
+        sorted_paths = sorted(all_paths, key=len, reverse=True)
+
+        chain_edges: set = set()
+        chain_nodes: set = set()
+
+        # Greedy select: add path by path until max_edges reached
+        for path in sorted_paths:
+            # 计算这条 path 的 edges
+            path_edges = set()
+            for i in range(len(path) - 1):
+                path_edges.add((path[i], path[i + 1]))
+
+            # 如果加上这条 path 会超过 max_edges, 跳过 (除非还是空)
+            if chain_edges and len(chain_edges) + len(path_edges) > max_edges:
+                continue
+
+            chain_edges |= path_edges
+            chain_nodes |= set(path)
+
+            # 如果已经达到 max_edges, 停止
+            if len(chain_edges) >= max_edges:
+                break
+
+        # If still under max_edges, fill with shorter paths
+        if len(chain_edges) < max_edges:
+            for path in sorted_paths:
+                path_edges = set()
+                for i in range(len(path) - 1):
+                    path_edges.add((path[i], path[i + 1]))
+                new_edges = path_edges - chain_edges
+                if not new_edges:
+                    continue
+                if len(chain_edges) + len(new_edges) > max_edges:
+                    break
+                chain_edges |= new_edges
+                chain_nodes |= set(path)
+
+        typer.echo(
+            f"  Selected {len(chain_edges)} edges from {len(all_paths)} paths "
+            f"({len(chain_nodes)} nodes, max={max_edges})",
+            err=True,
+        )
 
     if not chain_nodes:
         typer.echo("  Warning: no chain nodes found, output empty DOT", err=True)
@@ -358,17 +403,8 @@ def chain(
             )
         return
 
-    # 如果 edges 太多, 截断 (--max-edges)
-    if len(chain_edges) > max_edges:
-        typer.echo(
-            f"  Truncating {len(chain_edges)} edges to {max_edges} (use --max-edges to change)",
-            err=True,
-        )
-        chain_edges = set(list(chain_edges)[:max_edges])
-        chain_nodes = set()
-        for s, d in chain_edges:
-            chain_nodes.add(s)
-            chain_nodes.add(d)
+    # [FIX 2026-07-08] Truncation 已在 path-aware loop 中处理
+    # (sorted_paths + greedy select) — 不再这里重复 truncate
 
     # 生成 DOT
     dot = _generate_chain_dot(
