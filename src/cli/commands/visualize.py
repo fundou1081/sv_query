@@ -454,14 +454,19 @@ def _generate_chain_dot(
     nodes: set, edges: set, from_sigs: list, to_sigs: list,
     title: str, layout: str = "LR", layout_engine: str = "neato",
 ) -> str:
-    """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR)."""
+    """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR).
+
+    [Plan B+2 2026-07-08] 按 sub-module cluster 划分节点. Signal ID
+    形如 "{top}.{submodule}.{signal}" (e.g. "openofdm_tx.dot11_tx.ifft64.i_clk")
+    按倒数第二个 segment 划分 cluster.
+    """
     lines = ["digraph chain {"]
     lines.append(f'  label="Data Chain: {title}\\n({len(edges)} edges, {len(nodes)} nodes)";')
     lines.append("  labelloc=t;")
     lines.append("  fontsize=14;")
     lines.append(f"  rankdir={layout};")
     if layout_engine in ("neato", "fdp"):
-        lines.append("  ratio=1.0;")  # 强制 1:1 (方形)
+        lines.append("  ratio=1.0;")
         lines.append("  overlap=false;")
     else:
         lines.append("  ratio=auto;")
@@ -469,29 +474,78 @@ def _generate_chain_dot(
     lines.append("  bgcolor=white;")
     lines.append("")
 
-    # 节点定义
+    # [Plan B+2 2026-07-08] 按 sub-module 分组 nodes
+    # Signal ID: "{top}.{submodule}.{signal}" 或 "{top}.{signal}" (顶层信号)
+    # top 可能是 "openofdm_tx", "dot11_tx" 等
     from_set = set(from_sigs)
     to_set = set(to_sigs)
-    for node in sorted(nodes):
-        safe_id = _sanitize_dot_id_chain(node)
-        if node in from_set:
-            color = "#22aa55"  # green for inputs
-            shape = "invhouse"
-        elif node in to_set:
-            color = "#aa5522"  # red for outputs
-            shape = "invhouse"
+
+    def extract_submodule(node_id: str, top: str) -> str:
+        """提取 node 所属 sub-module. 顶层信号归属 top."""
+        if not node_id.startswith(f"{top}."):
+            return "(other)"
+        rest = node_id[len(top) + 1:]  # strip "top."
+        parts = rest.split(".")
+        if len(parts) <= 1:
+            return top  # top-level signal
+        # 取第一个 segment 作为 sub-module
+        return f"{top}.{parts[0]}"
+
+    # Group by submodule
+    nodes_by_submodule: dict[str, set[str]] = {}
+    for node in nodes:
+        sub = extract_submodule(node, title)
+        nodes_by_submodule.setdefault(sub, set()).add(node)
+
+    # Generate subgraph cluster
+    colors = [
+        "#aaffaa",  # light green
+        "#aaaaff",  # light blue
+        "#ffaaaa",  # light red
+        "#ffffaa",  # light yellow
+        "#ffaaff",  # light pink
+        "#aaffff",  # light cyan
+        "#ffddaa",  # light orange
+        "#dddddd",  # light gray
+    ]
+    for i, (sub, sub_nodes) in enumerate(sorted(nodes_by_submodule.items())):
+        # sub 是 module 名字 (e.g. "openofdm_tx.dot11_tx")
+        # 取短名做 label
+        if sub == title:
+            sub_label = f"{sub} (top)"
         else:
-            color = "#5599cc"  # blue for intermediate
-            shape = "box"
-        label = node
-        if len(label) > 30:
-            label = "..." + label[-27:]
-        lines.append(
-            f'  "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
-            f'fillcolor="{color}" fontcolor="white" fontsize=10];'
-        )
+            short = sub.split(".")[-1] if "." in sub else sub
+            sub_label = f"{short}"
+        cluster_color = colors[i % len(colors)]
+        lines.append(f'  subgraph "cluster_{_sanitize_dot_id_chain(sub)}" {{')
+        lines.append(f'    label="{sub_label}";')
+        lines.append(f'    style="rounded,filled";')
+        lines.append(f'    fillcolor="{cluster_color}";')
+        lines.append(f'    color="#666666";')
+        lines.append(f'    fontsize=11;')
+        lines.append(f'    fontcolor="#333333";')
+        for node in sorted(sub_nodes):
+            safe_id = _sanitize_dot_id_chain(node)
+            if node in from_set:
+                color = "#22aa55"  # green for inputs
+                shape = "invhouse"
+            elif node in to_set:
+                color = "#aa5522"  # red for outputs
+                shape = "invhouse"
+            else:
+                color = "#5599cc"  # blue for intermediate
+                shape = "box"
+            label = node
+            if len(label) > 28:
+                label = "..." + label[-25:]
+            lines.append(
+                f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
+                f'fillcolor="{color}" fontcolor="white" fontsize=10];'
+            )
+        lines.append(f'  }}')
     lines.append("")
 
+    # 边定义
     for src, dst in sorted(edges):
         src_safe = _sanitize_dot_id_chain(src)
         dst_safe = _sanitize_dot_id_chain(dst)

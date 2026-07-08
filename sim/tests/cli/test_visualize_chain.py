@@ -175,5 +175,63 @@ class TestChainMaxEdges(unittest.TestCase):
             Path(dot_path).unlink(missing_ok=True)
 
 
+class TestChainSubModuleClusters(unittest.TestCase):
+    """[Plan B+2 2026-07-08] chain 图应该用 subgraph cluster 区分 sub-module 边界."""
+
+    def test_chain_dot_has_subgraph_clusters(self):
+        """[金标准] chain 在 multi-module 项目 (用 filelist) 应该生成
+        subgraph cluster { label=... } 按 module 分组.
+
+        dot11_tx 是顶层, 但 chain 中间 signals 可能来自 axi_fifo_bram,
+        ifftmain 等 sub-module (PicoRV32 / openwifi PHY). filelist 模式下
+        DOT 应该至少 1 个 subgraph cluster.
+        """
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            result = _run_svq([
+                "visualize", "chain",
+                "--filelist=/tmp/openofdm_tx.f",
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+                "--no-strict",
+                "--dot", dot_path,
+            ])
+            self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
+            content = Path(dot_path).read_text()
+            # 必须有 subgraph cluster
+            self.assertIn("subgraph", content, f"No subgraph cluster in DOT:\n{content[:500]}")
+            self.assertIn("cluster", content, f"No 'cluster' in DOT:\n{content[:500]}")
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+    def test_chain_dot_distinguishes_input_output(self):
+        """[金标准] chain DOT 应该用不同 shape/color 区分 input vs output vs intermediate"""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            # Use auto mode to get all input→output paths (richer output)
+            result = _run_svq([
+                "visualize", "chain",
+                "-f", DOT11_TX,
+                "--no-strict",
+                "--target", "dot11_tx",
+                "--auto",
+                "--max-edges", "20",
+                "--dot", dot_path,
+            ])
+            self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
+            content = Path(dot_path).read_text()
+            # input 是绿色 (#22aa55), output 是红色 (#aa5522), intermediate 是蓝色
+            self.assertIn("#22aa55", content, "No input color (green) in DOT")
+            self.assertIn("#aa5522", content, "No output color (red) in DOT")
+            self.assertIn("#5599cc", content, "No intermediate color (blue) in DOT")
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     unittest.main()
