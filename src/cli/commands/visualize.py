@@ -250,6 +250,279 @@ def gap(
     _run_gap_visualization(file, dot_output, html_output, min_risk, cache)
 
 
+# ==============================================================================
+# [Plan B+ 2026-07-08] visualize chain — 从 input 到 output 画 data path,
+#                                            强制方形 layout (neato + LR).
+# ==============================================================================
+@vis_app.command(name="chain")
+def chain(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    target: str = typer.Option(None, "--target", "-t", help="Target module (focus scope)"),
+    from_signals: list[str] = typer.Option([], "--from", help="Source signal(s) (e.g. dot11_tx.phy_tx_start). Can pass multiple."),
+    to_signals: list[str] = typer.Option([], "--to", help="Target signal(s) (e.g. dot11_tx.result_i). Can pass multiple."),
+    auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports → output ports paths in --target module"),
+    max_edges: int = typer.Option(30, "--max-edges", help="Max edges to render (default 30, prevents huge graphs)"),
+    layout: str = typer.Option("LR", "--layout", "-l", help="Layout: LR (left-right, default) or TB (top-bottom)"),
+    layout_engine: str = typer.Option("neato", "--layout-engine", help="Layout engine: neato (square, default) / dot / fdp"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    png_output: str = typer.Option(None, "--png", help="Output PNG file (auto-call <engine> -Tpng)"),
+    svg_output: str = typer.Option(None, "--svg", help="Output SVG file (auto-call <engine> -Tsvg)"),
+    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict)"),
+) -> None:
+    """[Plan B+ 2026-07-08] 从 input 到 output 画 data path, 方形 layout.
+
+    Use case: 方豆反馈 "深入到具体 module, 完整 input → output 图, 尽可能方形".
+
+    例子:
+      # 手动指定 from/to
+      sv_query visualize chain -f dot11_tx.v --no-strict \\
+        --from dot11_tx.phy_tx_start --to dot11_tx.result_i \\
+        --layout LR --layout-engine neato --png /tmp/chain.png
+
+      # Auto mode: 自动从 target module 的所有 input ports 找 path 到所有 output ports
+      sv_query visualize chain -f dot11_tx.v --no-strict \\
+        --target dot11_tx --auto --max-edges 20 \\
+        --layout LR --layout-engine neato --png /tmp/chain.png
+    """
+    from trace.core.compiler import CompilationError
+    from cli._common import _build_tracer, handle_compilation_error
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    if not auto and (not from_signals or not to_signals):
+        typer.echo("Error: need --from and --to, OR --auto with --target", err=True)
+        raise typer.Exit(code=1)
+
+    include_dirs = include.split(",") if include else None
+    try:
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            include_dirs=include_dirs,
+        )
+        graph = tracer.build_graph()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    # 决定 from/to signals
+    if auto:
+        if not target:
+            typer.echo("Error: --auto requires --target <module>", err=True)
+            raise typer.Exit(code=1)
+        from_sigs, to_sigs = _auto_detect_io_ports(graph, target)
+        if not from_sigs or not to_sigs:
+            typer.echo(
+                f"Error: --auto could not find input/output ports for target={target}",
+                err=True,
+            )
+            typer.echo(f"  found {len(from_sigs)} input ports, {len(to_sigs)} output ports", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(f"  --auto detected {len(from_sigs)} input ports and {len(to_sigs)} output ports", err=True)
+    else:
+        from_sigs = from_signals
+        to_sigs = to_signals
+
+    # 对每对 (from, to) 找 shortest path
+    all_paths = []
+    for src in from_sigs:
+        for dst in to_sigs:
+            if src == dst:
+                continue
+            path = graph.find_path(src, dst)
+            if path and len(path) > 1:
+                all_paths.append(path)
+
+    typer.echo(f"  Found {len(all_paths)} data paths from inputs to outputs", err=True)
+
+    # 合并所有 paths 形成 set of edges + nodes
+    chain_edges = set()
+    chain_nodes = set()
+    for path in all_paths:
+        for node in path:
+            chain_nodes.add(node)
+        for i in range(len(path) - 1):
+            edge = (path[i], path[i + 1])
+            chain_edges.add(edge)
+
+    if not chain_nodes:
+        typer.echo("  Warning: no chain nodes found, output empty DOT", err=True)
+        if dot_output:
+            Path(dot_output).write_text(
+                f'digraph chain {{ label="No data paths from {",".join(from_sigs)} to {",".join(to_sigs)}"; }}'
+            )
+        return
+
+    # 如果 edges 太多, 截断 (--max-edges)
+    if len(chain_edges) > max_edges:
+        typer.echo(
+            f"  Truncating {len(chain_edges)} edges to {max_edges} (use --max-edges to change)",
+            err=True,
+        )
+        chain_edges = set(list(chain_edges)[:max_edges])
+        chain_nodes = set()
+        for s, d in chain_edges:
+            chain_nodes.add(s)
+            chain_nodes.add(d)
+
+    # 生成 DOT
+    dot = _generate_chain_dot(
+        chain_nodes, chain_edges, from_sigs, to_sigs,
+        target or (Path(file).stem if file else "chain"),
+        layout=layout, layout_engine=layout_engine,
+    )
+
+    # 输出
+    if dot_output:
+        Path(dot_output).write_text(dot)
+        typer.echo(f"✓ DOT: {dot_output}", err=True)
+
+    if png_output:
+        _render_with_engine(dot, png_output, layout_engine, fmt="png")
+        typer.echo(f"✓ PNG: {png_output}", err=True)
+
+    if svg_output:
+        _render_with_engine(dot, svg_output, layout_engine, fmt="svg")
+        typer.echo(f"✓ SVG: {svg_output}", err=True)
+
+    if not dot_output and not png_output and not svg_output:
+        typer.echo(dot)
+
+
+def _auto_detect_io_ports(graph, target: str) -> tuple[list[str], list[str]]:
+    """[铁律1] 用 semantic AST (semantic_adapter.get_port_declarations) 拿 target module 的 input/output ports.
+
+    Returns (input_signal_ids, output_signal_ids) — signal IDs 形如 "{target}.{port_name}".
+    """
+    from trace.core.semantic_adapter import SemanticAdapter
+
+    # 找 compilation 入口
+    # tracer is in graph._tracer or similar; 用 graph._tracer 拿
+    tracer = getattr(graph, "_tracer", None)
+    if tracer is None:
+        # 退而求其次: scan all nodes for {target}.<name> pattern
+        # 假设 signals with depth=0 (top module) 是 ports
+        from_sigs = []
+        to_sigs = []
+        for node_id in graph.nodes():
+            if node_id.startswith(f"{target}."):
+                # heuristic: 如果 node 既被驱动又被引用, 可能是 wire (跳过)
+                # 如果只被驱动 (=port_in) 或只被引用 (=port_out)
+                in_deg = graph.in_degree(node_id)
+                out_deg = graph.out_degree(node_id)
+                if in_deg == 0 and out_deg > 0:
+                    from_sigs.append(node_id)
+                elif out_deg == 0 and in_deg > 0:
+                    to_sigs.append(node_id)
+        return from_sigs, to_sigs
+
+    # [铁律1] 用 semantic API
+    compiler = tracer._get_compiler() if hasattr(tracer, "_get_compiler") else None
+    if compiler is None:
+        return [], []
+    adapter = SemanticAdapter(compiler.get_root())
+
+    target_module = None
+    for mod in adapter.get_modules():
+        if adapter.get_module_name(mod) == target:
+            target_module = mod
+            break
+
+    if target_module is None:
+        return [], []
+
+    from_sigs = []
+    to_sigs = []
+    for port_decl in adapter.get_port_declarations(target_module):
+        name, direction = adapter.get_port_name_and_direction(port_decl)
+        if not name or name == "unknown":
+            continue
+        signal_id = f"{target}.{name}"
+        if direction == "input":
+            from_sigs.append(signal_id)
+        elif direction == "output":
+            to_sigs.append(signal_id)
+    return from_sigs, to_sigs
+
+
+def _generate_chain_dot(
+    nodes: set, edges: set, from_sigs: list, to_sigs: list,
+    title: str, layout: str = "LR", layout_engine: str = "neato",
+) -> str:
+    """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR)."""
+    lines = ["digraph chain {"]
+    lines.append(f'  label="Data Chain: {title}\\n({len(edges)} edges, {len(nodes)} nodes)";')
+    lines.append("  labelloc=t;")
+    lines.append("  fontsize=14;")
+    lines.append(f"  rankdir={layout};")
+    if layout_engine in ("neato", "fdp"):
+        lines.append("  ratio=1.0;")  # 强制 1:1 (方形)
+        lines.append("  overlap=false;")
+    else:
+        lines.append("  ratio=auto;")
+    lines.append("  splines=true;")
+    lines.append("  bgcolor=white;")
+    lines.append("")
+
+    # 节点定义
+    from_set = set(from_sigs)
+    to_set = set(to_sigs)
+    for node in sorted(nodes):
+        safe_id = _sanitize_dot_id_chain(node)
+        if node in from_set:
+            color = "#22aa55"  # green for inputs
+            shape = "invhouse"
+        elif node in to_set:
+            color = "#aa5522"  # red for outputs
+            shape = "invhouse"
+        else:
+            color = "#5599cc"  # blue for intermediate
+            shape = "box"
+        label = node
+        if len(label) > 30:
+            label = "..." + label[-27:]
+        lines.append(
+            f'  "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
+            f'fillcolor="{color}" fontcolor="white" fontsize=10];'
+        )
+    lines.append("")
+
+    for src, dst in sorted(edges):
+        src_safe = _sanitize_dot_id_chain(src)
+        dst_safe = _sanitize_dot_id_chain(dst)
+        lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#666666" penwidth=1.0 arrowhead=normal];')
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def _sanitize_dot_id_chain(s: str) -> str:
+    """Sanitize signal ID for DOT (chain version)."""
+    return s.replace(".", "_").replace("[", "_").replace("]", "_").replace(" ", "_")
+
+
+def _render_with_engine(dot_text: str, output_path: str, engine: str, fmt: str = "png") -> int:
+    """调用 graphviz engine 渲染 DOT → PNG/SVG."""
+    import subprocess
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".dot", mode="w", delete=False) as f:
+        f.write(dot_text)
+        tmp_dot = f.name
+
+    try:
+        cmd = [engine, f"-T{fmt}", tmp_dot, "-o", output_path]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        return result.returncode
+    finally:
+        Path(tmp_dot).unlink(missing_ok=True)
+
+
 def _run_graph_visualization(
     file,
     dot_output,
