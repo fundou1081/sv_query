@@ -515,16 +515,14 @@ def _generate_chain_dot(
     lines.append("")
 
     # [Plan B+2 2026-07-08] 按 sub-module 分组 nodes
-    # Signal ID: "{top}.{submodule}.{signal}" 或 "{top}.{signal}" (顶层信号)
-    # top 可能是 "openofdm_tx", "dot11_tx" 等
     from_set = set(from_sigs)
     to_set = set(to_sigs)
 
     def extract_submodule(node_id: str, top: str) -> str | None:
         """提取 node 所属 sub-module. 顶层信号归属 top.
-        Returns None if signal ID doesn't belong to top (skip cluster)."""
+        Returns None if signal ID doesn't belong to top (external sub-module)."""
         if not node_id.startswith(f"{top}."):
-            return None  # 跳过外部 node
+            return None  # [FIX 2026-07-08] 不跳过, 归为 external
         rest = node_id[len(top) + 1:]  # strip "top."
         parts = rest.split(".")
         if len(parts) <= 1:
@@ -533,11 +531,17 @@ def _generate_chain_dot(
 
     # Group by submodule
     nodes_by_submodule: dict[str, set[str]] = {}
+    external_nodes: set[str] = set()  # [FIX 2026-07-08] sub-module signals 没 target prefix
     for node in nodes:
         sub = extract_submodule(node, title)
         if sub is None:
-            continue  # 跳过外部 node, 不画 cluster
-        nodes_by_submodule.setdefault(sub, set()).add(node)
+            # 收集没 target prefix 的 node — 它们是 sub-module internal signals
+            # (e.g. "bitreverse.i_clk" 实际是 "openofdm_tx.dot11_tx.ifft64.bitreverse.i_clk")
+            # 取第一段作为 module name
+            first_seg = node.split(".", 1)[0] if "." in node else node
+            external_nodes.add(node)
+        else:
+            nodes_by_submodule.setdefault(sub, set()).add(node)
 
     # Generate subgraph cluster (不填背景, 只用深色虚线边框)
     cluster_borders = [
@@ -583,6 +587,37 @@ def _generate_chain_dot(
                 f'fillcolor="{color}" fontcolor="white" fontsize=11 fontname="Helvetica"];'
             )
         lines.append(f'  }}')
+
+    # [FIX 2026-07-08] External sub-module cluster (e.g. bitreverse.i_clk 没 target prefix)
+    # 放在独立 cluster 里, 用灰色虚线边框 + 灰色填充 (不跟正常 cluster 混淆)
+    if external_nodes:
+        lines.append(f'  subgraph "cluster_external" {{')
+        lines.append(f'    label="External sub-modules";')
+        lines.append(f'    style="rounded,dashed";')
+        lines.append(f'    color="#999999";')
+        lines.append(f'    penwidth=2.0;')
+        lines.append(f'    fontsize=12;')
+        lines.append(f'    fontcolor="#666666";')
+        lines.append(f'    fontname="Helvetica-Bold";')
+        lines.append(f'    bgcolor="#f5f5f5";')  # 极浅灰背景区分
+        for node in sorted(external_nodes):
+            safe_id = _sanitize_dot_id_chain(node)
+            if node in from_set:
+                color = "#22aa55"
+                shape = "invhouse"
+            elif node in to_set:
+                color = "#cc3333"
+                shape = "invhouse"
+            else:
+                color = "#3366cc"
+                shape = "box"
+            label = _format_node_label(node, title)
+            lines.append(
+                f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
+                f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica"];'
+            )
+        lines.append(f'  }}')
+
     lines.append("")
 
     # 边定义 (深色加粗)
