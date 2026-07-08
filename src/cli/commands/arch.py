@@ -614,6 +614,191 @@ var network = new vis.Network(container, data, options);
 """
 
 
+# =============================================================================
+# [Design Understanding A 2026-07-08] IP-Level Understanding helper
+# =============================================================================
+
+def _classify_signal_role(port_name: str, port_direction: str) -> str:
+    """[鉄律1] 用 semantic name pattern 推断 signal role (no text grep on body).
+    Iron Law 1: name-based pattern only — NO source-code text matching.
+    """
+    name = port_name.lower()
+    # Clock patterns
+    if "clk" in name and "rst" not in name:
+        return "Clock"
+    # Reset patterns
+    if "rst" in name or "reset" in name or "rstn" == name or name == "rst":
+        return "Reset"
+    # Handshake / control patterns
+    handshake = ["valid", "ready", "ack", "req", "grant", "strobe",
+                 "enable", "en", "cs", "we", "re", "wr", "rd", "be",
+                 "burst", "last", "size", "len", "id", "tag", "strb"]
+    if name in handshake or any(name.endswith("_" + h) or name.startswith(h + "_") for h in handshake):
+        return "Control"
+    # Data patterns (default)
+    return "Data"
+
+
+def _infer_module_purpose(target_module: str, instances: list, target_submodule_count: int) -> str:
+    """[鉄律1] 用 target name + submodule list 推断 module purpose (semantic only)."""
+    name = target_module.lower()
+    sub_types = sorted(set(t for _, t, _ in instances))
+
+    # 常见 IP 类型
+    purpose_map = [
+        (("cpu", "core"), "CPU"),
+        (("axi",), "AXI"),
+        (("ahb",), "AHB"),
+        (("apb",), "APB"),
+        (("wb", "wishbone"), "Wishbone"),
+        (("dma",), "DMA"),
+        (("uart",), "UART"),
+        (("spi",), "SPI"),
+        (("i2c",), "I2C"),
+        (("eth", "mac"), "Ethernet"),
+        (("usb",), "USB"),
+        (("pcie",), "PCIe"),
+        (("ddr", "sdram"), "Memory controller"),
+        (("regfile", "reg_bank"), "Register file"),
+        (("alu",), "ALU"),
+        (("fifo",), "FIFO"),
+        (("decoder",), "Decoder"),
+        (("fetch",), "Fetch unit"),
+        (("execute",), "Execute unit"),
+    ]
+    for keywords, label in purpose_map:
+        if any(kw in name for kw in keywords):
+            return f"{label}-type IP ({target_submodule_count} submodules)"
+
+    # Default
+    if target_submodule_count > 0:
+        return f"Custom IP with {target_submodule_count} submodules"
+    return "Custom IP (flat, no submodules)"
+
+
+def _build_understanding(tracer, target_module: str, instances: list) -> dict:
+    """[鉄律1] 用 semantic AST (semantic_adapter.get_port_declarations) 提取 IP understanding.
+
+    Returns dict with:
+      - target: str
+      - purpose: str (inferred)
+      - clock_domains: list[str]
+      - signal_classification: dict[category, list[port_info]]
+      - submodule_types: list[str]
+    """
+    from collections import Counter
+    from trace.core.semantic_adapter import SemanticAdapter
+
+    # 拿 semantic adapter (get ports semantic way)
+    adapter = SemanticAdapter(tracer._get_compiler().get_root())
+
+    # 找 target module
+    target_module_obj = None
+    for mod in adapter.get_modules():
+        if adapter.get_module_name(mod) == target_module:
+            target_module_obj = mod
+            break
+
+    # 提取 ports (semantic AST)
+    clock_signals = []
+    reset_signals = []
+    data_signals = []
+    control_signals = []
+    inout_signals = []
+
+    if target_module_obj is not None:
+        for port_decl in adapter.get_port_declarations(target_module_obj):
+            name, direction = adapter.get_port_name_and_direction(port_decl)
+            if not name or name == "unknown":
+                continue
+
+            role = _classify_signal_role(name, direction)
+            port_info = {"name": name, "direction": direction}
+            width_tuple = adapter.extract_port_width(port_decl)
+            # extract_port_width 返回 (msb, lsb) 或 (1, 0) 表示 1-bit
+            if width_tuple and len(width_tuple) >= 2:
+                msb, lsb = width_tuple[0], width_tuple[1]
+                width = msb - lsb + 1
+                if width > 1:
+                    port_info["width"] = width
+                    port_info["range"] = f"[{msb}:{lsb}]"
+
+            if role == "Clock":
+                clock_signals.append(port_info)
+            elif role == "Reset":
+                reset_signals.append(port_info)
+            elif role == "Control":
+                control_signals.append(port_info)
+            elif role == "Data":
+                if direction == "input":
+                    data_signals.append(port_info)
+                elif direction == "output":
+                    data_signals.append(port_info)
+                else:
+                    inout_signals.append(port_info)
+
+    # submodule overview
+    sub_types = Counter(t for _, t, _ in instances)
+    sub_types_sorted = sub_types.most_common()
+
+    # purpose
+    purpose = _infer_module_purpose(target_module, instances, len(instances))
+
+    # Clock domains (count distinct clock signals)
+    clock_domains = [c["name"] for c in clock_signals]
+
+    return {
+        "target": target_module,
+        "purpose": purpose,
+        "clock_domains": clock_domains,
+        "signal_classification": {
+            "clock": clock_signals,
+            "reset": reset_signals,
+            "control": control_signals,
+            "data": data_signals,
+            "inout": inout_signals,
+        },
+        "submodule_types": [{"type": t, "count": c} for t, c in sub_types_sorted],
+        "submodule_count": len(instances),
+    }
+
+
+def _print_understanding(understanding: dict) -> None:
+    """打印 IP-Level Understanding section (human-readable)."""
+    print()
+    print("=" * 60)
+    print("IP-Level Understanding")
+    print("=" * 60)
+    print(f"  Module purpose:  {understanding['purpose']}")
+
+    # Clock domains
+    clocks = understanding['clock_domains']
+    print(f"  Clock domains:   {len(clocks)} ({', '.join(clocks) if clocks else 'none'})")
+
+    # Signal classification
+    sig_classes = understanding['signal_classification']
+    print()
+    print("  Signal classification:")
+    for category in ['clock', 'reset', 'control', 'data', 'inout']:
+        sigs = sig_classes.get(category, [])
+        if not sigs:
+            continue
+        sig_strs = []
+        for s in sigs[:5]:  # cap display at 5
+            width_str = f" {s.get('range', '')}" if 'range' in s else ""
+            sig_strs.append(f"{s['name']}{width_str}")
+        more = f" (+{len(sigs) - 5} more)" if len(sigs) > 5 else ""
+        print(f"    {category:8s} ({len(sigs):2d}):  {', '.join(sig_strs)}{more}")
+
+    # Submodules
+    print()
+    print(f"  Submodules: {understanding['submodule_count']}")
+    for sub in understanding['submodule_types'][:5]:
+        print(f"    {sub['type']:30s} x {sub['count']}")
+    if len(understanding['submodule_types']) > 5:
+        print(f"    (+{len(understanding['submodule_types']) - 5} more types)")
+
+
 def _print_summary(instances, edges, target_module: str, file: str | None, filelist: str | None) -> None:
     """--summary 模式: 一段话描述项目架构."""
     n = len(instances)
@@ -673,6 +858,7 @@ def show(
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type", help="[v2] Group same-type instances into clusters + hash-colored"),
     max_nodes: int = typer.Option(100, "--max-nodes", help="[v2] Maximum nodes to render (default: 100). Excess collapsed with note."),
     strict: bool = typer.Option(False, "--strict/--no-strict"),
+    understand: bool = typer.Option(False, "--understand", help="[Design Understanding A 2026-07-08] Add IP-level understanding section (module purpose, clock domains, signal classification)"),
 ):
     """[arch v1 2026-06-24] 项目架构可视化 (L1 hierarchy + L2 cross-module port edges).
 
@@ -706,6 +892,10 @@ def show(
     # Step 2: 渲染
     if output_format == "summary":
         _print_summary(instances, edges, target, file, filelist)
+        # [Design Understanding A] Add IP-level understanding section if --understand
+        if understand:
+            understanding = _build_understanding(tracer, target, instances)
+            _print_understanding(understanding)
         return
 
     if output_format == "dot":
