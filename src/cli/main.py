@@ -67,6 +67,7 @@ from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
 from src.cli.commands.arch import arch_app
+from src.cli.commands.design import design_app
 from src.cli.commands.fix import fix_app
 from src.cli.commands.randomize import randomize_app
 from src.cli.commands.search import search
@@ -96,6 +97,7 @@ app.add_typer(handshake_app, name="handshake")
 app.add_typer(protocol_app, name="protocol")
 app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
+app.add_typer(design_app, name="design")
 app.add_typer(fix_app, name="fix")
 app.add_typer(randomize_app, name="randomize")
 
