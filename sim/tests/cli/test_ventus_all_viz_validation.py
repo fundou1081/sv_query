@@ -235,3 +235,43 @@ class TestVentusPipelineP0Fix(unittest.TestCase):
         stages = re.findall(r"cluster_stage\d+", dot)
         self.assertEqual(len(stages), 14,
                         f"Should still have 24 stages, got {len(stages)}")
+
+
+class TestVentusTimingP1Fix(unittest.TestCase):
+    """[P1 fix 2026-07-10] timing analyze --dot visualizes critical paths."""
+
+    def test_timing_dot_has_paths(self):
+        """timing --dot should produce valid DOT with critical paths."""
+        dot = Path("/tmp/sched_timing.dot").read_text()
+        self.assertIn("digraph timing", dot)
+        self.assertIn("Critical Paths", dot)
+        # Should have 5 paths (default --max-paths=5)
+        self.assertIn("5 paths", dot)
+
+    def test_timing_dot_critical_path_highlighted(self):
+        """The deepest (critical) path should be in red."""
+        dot = Path("/tmp/sched_timing.dot").read_text()
+        # Critical path nodes use #cc4444 (reg) or #ee8866 (comb) - red family
+        self.assertIn('fillcolor="#cc4444"', dot,
+                     "Critical path regs should be red")
+        # Critical path edges use #cc2222
+        self.assertIn('color="#cc2222"', dot,
+                     "Critical path edges should be red")
+        # Non-critical paths in blue
+        self.assertIn('color="#226699"', dot,
+                     "Other paths should be blue")
+
+    def test_timing_dot_includes_mem_core_path(self):
+        """The D→mem_core→QN path should be the critical one (depth=2)."""
+        dot = Path("/tmp/sched_timing.dot").read_text()
+        # mem_core is the combinational deepest node
+        self.assertIn("mem_core", dot, "Should show mem_core path")
+        self.assertIn('"dualportSRAM.D"', dot, "Should include SRAM D node")
+        self.assertIn('"dualportSRAM.QN"', dot, "Should include SRAM QN node")
+
+    def test_timing_png_size_reasonable(self):
+        """PNG should be < 2000px in both dimensions."""
+        from PIL import Image
+        img = Image.open("/tmp/sched_timing.png")
+        self.assertLess(img.size[0], 2000, f"Width too large: {img.size[0]}")
+        self.assertLess(img.size[1], 2000, f"Height too large: {img.size[1]}")
