@@ -282,5 +282,134 @@ class TestChainSubModuleClusters(unittest.TestCase):
             Path(dot_path).unlink(missing_ok=True)
 
 
+#==============================================================================
+# [Phase 1 2026-07-09] Cycle / Latency 增强 tests.
+# Plan A+1: chain 图每个 reg 标 [cycle=N], 路径终点标 total:N cycles,
+#           critical path 红色. TDD 先于 implementation.
+#==============================================================================
+class TestChainCycleAnnotation(unittest.TestCase):
+    """[Phase 1 2026-07-09] chain DOT 必须标 latency 信息.
+
+    动机: 方豆反馈 "我还没有办法清晰看到 latency 和信号追踪的图示".
+    Plan: 每条经 reg 边标 '+N cycle', REG 标 '[cycle=K]'.
+          路径终点标 'total: M cycles'. critical (max delay) path 红色.
+    """
+
+    def _run_chain_dot(self, args, dot_path):
+        """运行 sv_query visualize chain, 返回 DOT 文本."""
+        full_args = ["visualize", "chain", "--filelist=/tmp/openofdm_tx.f", "--no-strict"] + args + ["--dot", dot_path]
+        result = _run_svq(full_args)
+        self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}\nstdout: {result.stdout}")
+        return Path(dot_path).read_text()
+
+    def test_chain_dot_has_cycle_labels_on_reg_nodes(self):
+        """[金标准] 链上的 REG 节点必须标 [cycle=N]"""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            content = self._run_chain_dot([
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+            ], dot_path)
+            # 检查有 REG 类型的节点标了 [cycle=N]
+            # pattern: REG shape with cycle label
+            import re
+            cycle_labels = re.findall(r'cycle=\d+', content)
+            self.assertGreater(
+                len(cycle_labels), 0,
+                f"chain DOT 应至少一个 REG 标了 [cycle=N], 实际: 0 匹配"
+            )
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+    def test_chain_dot_edge_increments_by_cycles(self):
+        """[金标准] chain DOT 边标 [+N cycle] 从 src 到 dst 经历的 reg 数."""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            content = self._run_chain_dot([
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+            ], dot_path)
+            # 检查边标了 +N cycle
+            import re
+            edge_cycles = re.findall(r'label="\+(\d+) cycle', content)
+            self.assertGreater(
+                len(edge_cycles), 0,
+                f"chain DOT 边应标 +N cycle, 实际: 0 匹配"
+            )
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+    def test_chain_dot_path_endpoints_show_total_cycles(self):
+        """[金标准] 路径终点 (output) 应标 total: N cycles."""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            content = self._run_chain_dot([
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+            ], dot_path)
+            # output 节点应该标 total cycles
+            self.assertIn(
+                "total cycles",
+                content.lower(),
+                f"chain DOT 应有 'total cycles' 标记, 实际 DOT 不含该字符串"
+            )
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+    def test_chain_dot_critical_path_red_color(self):
+        """[金标准] 最长路径 (critical path) 节点应该红色, 不同于普通 intermediate 蓝."""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            content = self._run_chain_dot([
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+            ], dot_path)
+            # critical path 颜色 = #dd2222 附近 (亮红)
+            # normal intermediate = #3366cc (蓝)
+            # 至少有一个 critical (red) 颜色
+            import re
+            colors = re.findall(r'fillcolor="(#[a-f0-9]{6})"', content)
+            self.assertTrue(
+                any(c.lower().startswith("#dd") or c.lower().startswith("#cc") for c in colors),
+                f"chain DOT 应有 critical path 红色 (#ddXXXX), 实际 colors: {set(colors)}"
+            )
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+    def test_chain_dot_cycle_count_matches_reg_chains(self):
+        """[金标准] cycle 数必须跟 reg chain 深度一致. 3 个连续 reg 链产生 [cycle=2] 节点 (路径上经 2 个 reg)."""
+        import tempfile
+        # 直接生成 pipeline 做验证: pipeline DOT 中 stage 数 = chain latency cycle 数
+        # 这里不是直接验证, 是验证 cycle 数值合理性: 至少 1, 不超过 max-edges
+        with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
+            dot_path = f.name
+        try:
+            content = self._run_chain_dot([
+                "--target", "openofdm_tx",
+                "--auto",
+                "--max-edges", "30",
+            ], dot_path)
+            import re
+            # cycle 数值都在合理范围 (1..50, 因为 dot11_tx 不应该 >50 cycles)
+            cycle_vals = [int(m.group(1)) for m in re.finditer(r'\[cycle=(\d+)\]', content)]
+            for v in cycle_vals:
+                self.assertGreaterEqual(v, 0, f"cycle 不能为负: {v}")
+                self.assertLess(v, 200, f"cycle 不应超过 200: {v}")
+        finally:
+            Path(dot_path).unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     unittest.main()

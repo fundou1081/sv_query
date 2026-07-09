@@ -39,6 +39,139 @@ def output_json(data: dict, pretty: bool = False) -> None:
     print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
+def _sanitize_trace_dot_id(s: str) -> str:
+    """Sanitize signal ID for DOT. Replace non-alphanumeric with underscore.
+
+    [Phase 2 2026-07-09] Required because trace DOT uses signal IDs as node names.
+    E.g. "top.q" → "top_q", "openofdm_tx.dot11_tx.i_clk" → "openofdm_tx_dot11_tx_i_clk".
+    """
+    import re
+    return re.sub(r"[^A-Za-z0-9_]", "_", s)
+
+
+def _format_trace_label(node_id: str, max_len: int = 25) -> str:
+    """Format signal ID for DOT label. Truncate if too long."""
+    return node_id if len(node_id) <= max_len else "..." + node_id[-(max_len - 3):]
+
+
+def _generate_trace_dot(
+    signal: str,
+    drivers_or_loads: list,  # list of driver/load nodes (TraceNode or dict)
+    direction: str = "fanin",  # "fanin" or "fanout"
+    depth: int | None = None,
+    node_kinds: dict | None = None,
+) -> str:
+    """[Phase 2 2026-07-09] Generate DOT for trace fanin/fanout visualization.
+
+    Layout: 中央 source signal, 多个 drivers/loads as neighbors.
+    Edges 标 [+N cycle] 类似 chain (但简化为 +1 each hop).
+    REG 节点用粗框 (penwidth=3), CONST 浅绿色, SIGNAL 默认。
+    """
+    lines = ["digraph trace {"]
+
+    # 标题
+    title = (
+        f"Trace {direction} of {signal}\\n"
+        f"({len(drivers_or_loads)} {'drivers' if direction == 'fanin' else 'loads'}"
+    )
+    if depth:
+        title += f", max-depth={depth}"
+    title += ")"
+    lines.append(f'  label="{title}";')
+    lines.append("  labelloc=t;")
+    lines.append("  fontsize=14;")
+    lines.append('  fontname="Helvetica-Bold";')
+    lines.append("  rankdir=LR;")
+    lines.append("  splines=true;")
+    lines.append("  bgcolor=white;")
+    lines.append("  pad=0.5;")
+    lines.append("  nodesep=0.5;")
+    lines.append("  ranksep=1.0;")
+    lines.append("")
+
+    # 中央 source node
+    safe_signal = _sanitize_trace_dot_id(signal)
+    short_label = _format_trace_label(signal)
+    lines.append(
+        f'  "{safe_signal}" [label="{short_label}" '
+        f'shape=box style="filled,rounded,bold" '
+        f'fillcolor="#3366cc" fontcolor="white" '
+        f'fontsize=13 fontname="Helvetica-Bold" penwidth=3];'
+    )
+    lines.append("")
+
+    # drivers/loads 节点
+    target_set = set()
+    for item in drivers_or_loads:
+        # item may be a dict (from _node_to_dict) or a TraceNode
+        if isinstance(item, dict):
+            node_id = item.get("id", "")
+        else:
+            node_id = getattr(item, "id", str(item))
+
+        if not node_id or node_id == signal:
+            continue
+        target_set.add(node_id)
+        safe_id = _sanitize_trace_dot_id(node_id)
+        label = _format_trace_label(node_id)
+
+        # kind-based styling
+        kind = (node_kinds.get(node_id, "") if node_kinds else "")
+        if kind == "REG":
+            # REG: 粗框 (penwidth=3)
+            color = "#dd8822"
+            font_color = "white"
+            penwidth = 3
+            shape = "box"
+        elif kind == "CONST" or node_id.startswith("1'b") or node_id.startswith("32'd"):
+            # CONST: 浅绿色
+            color = "#ddeedd"
+            font_color = "#225522"
+            penwidth = 1
+            shape = "box"
+        elif kind in ("PORT_IN", "PORT_OUT"):
+            # PORT: 浅灰色
+            color = "#dddddd"
+            font_color = "#333333"
+            penwidth = 2
+            shape = "invhouse"
+        else:
+            # SIGNAL/default: 白底黑框
+            color = "#ffffff"
+            font_color = "#000000"
+            penwidth = 1
+            shape = "box"
+
+        lines.append(
+            f'  "{safe_id}" [label="{label}\\n({kind or "SIGNAL"})" '
+            f'shape={shape} style="filled,rounded" '
+            f'fillcolor="{color}" fontcolor="{font_color}" '
+            f'fontsize=11 fontname="Helvetica" penwidth={penwidth}];'
+        )
+
+    lines.append("")
+
+    # 边
+    for node_id in sorted(target_set):
+        safe_id = _sanitize_trace_dot_id(node_id)
+        if direction == "fanin":
+            # driver -> signal
+            lines.append(
+                f'  "{safe_id}" -> "{safe_signal}" '
+                f'[label="+1 cycle" color="#3366cc" penwidth=1.5 arrowhead=normal];'
+            )
+        else:
+            # signal -> load
+            lines.append(
+                f'  "{safe_signal}" -> "{safe_id}" '
+                f'[label="+1 cycle" color="#3366cc" penwidth=1.5 arrowhead=normal];'
+            )
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
+
 def _collect_signals(
     signal: str | None,
     batch_file: str | None,
@@ -456,12 +589,18 @@ def fanin(
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
     no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
+    format: str = typer.Option("text", "--format", help="[Phase 2 2026-07-09] Output format: text/json/dot (dot = generate DOT graph)"),
+    output: str = typer.Option(None, "--output", "-o", help="[Phase 2 2026-07-09] Output file path (for --format dot)"),
 ) -> None:
     """Trace signal drivers (fanin)
 
     Single signal: sv_query trace fanin top.clk -f top.sv
     Batch:        sv_query trace fanin --batch 'top.clk,top.rst_n' -f top.sv
                   sv_query trace fanin --batch-file signals.txt -f top.sv
+
+    [Phase 2 2026-07-09] Graphical output:
+                  sv_query trace fanin top.a --format dot -o /tmp/fanin.dot
+                  sv_query trace fanin top.a --format dot -o /tmp/fanin.png  # auto-renders
     """
     try:
         signals = _collect_signals(signal, batch_file, batch)
@@ -559,6 +698,41 @@ def fanin(
 
         if json_output:
             output_json(data, pretty)
+        elif format == "dot":
+            # [Phase 2 2026-07-09] Generate DOT visualization for fanin
+            all_drivers = []
+            for sig_res in signals_result:
+                all_drivers.extend(sig_res.get("drivers", []))
+            node_kinds = {}
+            for d in all_drivers:
+                kind_str = d.get("kind", "")
+                if isinstance(kind_str, dict):
+                    kind_str = kind_str.get("name", "SIGNAL")
+                node_kinds[d.get("id", "")] = str(kind_str)
+            dot_content = _generate_trace_dot(
+                signal=signals[0] if signals else signal,
+                drivers_or_loads=all_drivers,
+                direction="fanin",
+                depth=depth,
+                node_kinds=node_kinds,
+            )
+            if output:
+                Path(output).write_text(dot_content)
+                if output.endswith(".png"):
+                    import subprocess
+                    try:
+                        subprocess.run(
+                            ["dot", "-Tpng", "/dev/stdin", "-o", output],
+                            input=dot_content,
+                            text=True,
+                            check=True,
+                            timeout=30,
+                        )
+                    except Exception as e:
+                        typer.echo(f"Warning: failed to render PNG: {e}", err=True)
+                typer.echo(f"✓ DOT written: {output}")
+            else:
+                typer.echo(dot_content)
         else:
             output_text(data, human=human, tree=tree)
 
@@ -568,6 +742,8 @@ def fanin(
         data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
             output_json(data)
+        elif format == "dot":
+            print("Error: failed to generate DOT", file=sys.stderr)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -598,6 +774,8 @@ def fanout(
     exclude: str = typer.Option(None, "--exclude", help="[B2 2026-07-03] Exclude by signal id, fnmatch glob (e.g., '*_int')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag (skip SV parse). Mutually exclusive with --file/--filelist."),
     no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
+    format: str = typer.Option("text", "--format", help="[Phase 2 2026-07-09] Output format: text/json/dot (dot = generate DOT graph)"),
+    output: str = typer.Option(None, "--output", "-o", help="[Phase 2 2026-07-09] Output file path (for --format dot)"),
 ) -> None:
     """Trace signal loads (fanout)
 
@@ -706,6 +884,42 @@ def fanout(
 
         if json_output:
             output_json(data, pretty)
+        elif format == "dot":
+            # [Phase 2 2026-07-09] Generate DOT visualization for fanout
+            all_loads = []
+            for sig_res in signals_result:
+                all_loads.extend(sig_res.get("loads", []) if "loads" in sig_res else sig_res.get("drivers", []))
+            node_kinds = {}
+            for ln in all_loads:
+                kind_str = ln.get("kind", "") if isinstance(ln, dict) else ""
+                if isinstance(kind_str, dict):
+                    kind_str = kind_str.get("name", "SIGNAL")
+                nid = ln.get("id", "") if isinstance(ln, dict) else ""
+                node_kinds[nid] = str(kind_str)
+            dot_content = _generate_trace_dot(
+                signal=signals[0] if signals else signal,
+                drivers_or_loads=all_loads,
+                direction="fanout",
+                depth=depth,
+                node_kinds=node_kinds,
+            )
+            if output:
+                Path(output).write_text(dot_content)
+                if output.endswith(".png"):
+                    import subprocess
+                    try:
+                        subprocess.run(
+                            ["dot", "-Tpng", "/dev/stdin", "-o", output],
+                            input=dot_content,
+                            text=True,
+                            check=True,
+                            timeout=30,
+                        )
+                    except Exception as e:
+                        typer.echo(f"Warning: failed to render PNG: {e}", err=True)
+                typer.echo(f"✓ DOT written: {output}")
+            else:
+                typer.echo(dot_content)
         else:
             output_text(data, human=human, tree=tree)
 
