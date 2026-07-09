@@ -98,11 +98,11 @@ def _check_memory_pressure():
                         file=_sys.stderr,
                     )
                     print(
-                        "                 (2) 或运行: python3 -c 'import time; a=bytearray(4*1024**3); time.sleep(3); del a'",
+                        "                 (2) 用更小 filelist 按模块逐个分析, 而不是一次性加载全部。",
                         file=_sys.stderr,
                     )
                     print(
-                        "                 强制系统回收 inactive pages, 再重试。",
+                        "                 (3) 在 16GB+ RAM 的机器上重跑。",
                         file=_sys.stderr,
                     )
     except Exception:
