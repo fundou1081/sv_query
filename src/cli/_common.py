@@ -56,16 +56,29 @@ def _build_tracer(
         ValueError: --file 和 --filelist 都没给
         FileNotFoundError: filelist / file 路径不存在
     """
-    if filelist:
-        if not Path(filelist).exists():
-            raise FileNotFoundError(f"Filelist not found: {filelist}")
+    # [Bug fix 2026-07-09 CLI-SIGTRAP] Auto-detect: if `file` ends in filelist
+    # extension (.f / .fl / .filelist), 用户用 -f flag 传 filelist 时 typer 会
+    # 把值塞进 `file` (--file) 而非 filelist, 然后 pyslang 解析 filelist 作为
+    # Verilog source 会崩溃 (SIGTRAP / exit 133).
+    # Fix: 检测 `file` 后缀, 若是 filelist, 转走 filelist 路径.
+    _FILELIST_EXTS = (".f", ".fl", ".filelist")
+    _resolved_filelist = filelist
+    _resolved_file = file
+    if _resolved_file is not None and str(_resolved_file).lower().endswith(_FILELIST_EXTS):
+        # promote file to filelist
+        _resolved_filelist = str(_resolved_file)
+        _resolved_file = None
+
+    if _resolved_filelist:
+        if not Path(_resolved_filelist).exists():
+            raise FileNotFoundError(f"Filelist not found: {_resolved_filelist}")
         # [FIX 2026-06-11 Req-9] 手动读 filelist 转 sources, 避免 add_filelist
         # 处理 relative path 失败的 bug. 用 cwd 作为 base_dir
         # (filelist 里 relative path 相对项目根, 符合开发者心智模型)
         # [Bug fix 2026-06-25] auto-detect base_dir from filelist content.
         # CVA6 filelist 用相对路径 'core/include/ariane_pkg.sv', 应相对 cva6 项目根.
         # Heuristic: 用 filelist 中第一个 relative path 的最长公共前缀作为 base_dir.
-        filelist_path = Path(filelist).resolve()
+        filelist_path = Path(_resolved_filelist).resolve()
         base_dir = _detect_filelist_base_dir(filelist_path, fallback=Path.cwd())
         sources = _read_filelist(filelist_path, base_dir=base_dir)
         tracer = UnifiedTracer(
@@ -75,13 +88,13 @@ def _build_tracer(
             strict=strict,
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
-    elif file is not None:
-        if not file.exists():
-            raise FileNotFoundError(f"Source file not found: {file}")
-        with open(str(file)) as f:
+    elif _resolved_file is not None:
+        if not _resolved_file.exists():
+            raise FileNotFoundError(f"Source file not found: {_resolved_file}")
+        with open(str(_resolved_file)) as f:
             source = f.read()
         tracer = UnifiedTracer(
-            sources={str(file): source},
+            sources={str(_resolved_file): source},
             log_level=log_level,
             include_dirs=include_dirs or [],
             strict=strict,
