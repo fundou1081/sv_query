@@ -49,12 +49,19 @@ def _subsection_header(title: str) -> str:
     return f"\n  {title}\n  {'-' * 40}"
 
 
-def _call_subcommand(args: list[str], timeout: int = 60) -> tuple[int, str, str]:
-    """调用 sv_query sub-command. Returns (rc, stdout, stderr)."""
+def _call_subcommand(args: list[str], timeout: int = 60, prepend_svq: bool = True) -> tuple[int, str, str]:
+    """调用 sv_query sub-command. Returns (rc, stdout, stderr).
+
+    Args:
+        args: 命令参数
+        timeout: 超时秒数
+        prepend_svq: 是否在 args 前面加 'sv_query' (默认 True; 传 False 可调外部命令如 dot/mmdc)
+    """
     import subprocess
     try:
+        cmd = (["sv_query"] + args) if prepend_svq else args
         result = subprocess.run(
-            ["sv_query"] + args,
+            cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -188,6 +195,110 @@ def _run_timing(file: str | None, filelist: str | None, target: str, strict: boo
     }
 
 
+def _generate_graphs(file: str | None, filelist: str | None, target: str, strict: bool,
+                     output_dir: str) -> dict:
+    """[Plan B 2026-07-08] 生成可视化图 (dataflow / pipeline / backpressure).
+
+    Calls visualize dataflow / visualize pipeline / backpressure analyze,
+    saves outputs as DOT/Mermaid files, then renders to PNG/SVG if possible.
+
+    Returns dict of {graph_name: {dot_path, png_path, status}}.
+    """
+    import os
+    from pathlib import Path
+
+    os.makedirs(output_dir, exist_ok=True)
+    graphs = {}
+
+    # 1. visualize dataflow
+    dot_path = f"{output_dir}/dataflow.dot"
+    args = ["visualize", "dataflow"]
+    if filelist:
+        args.extend(["--filelist", filelist])
+    elif file:
+        args.extend(["-f", file])
+    if not strict:
+        args.append("--no-strict")
+    args.extend(["--dot", dot_path])
+    rc, out, err = _call_subcommand(args, timeout=180)
+    graphs["dataflow"] = {
+        "dot_path": dot_path if os.path.exists(dot_path) else None,
+        "exit_code": rc,
+        "stderr": err[:200] if err else "",
+    }
+    # try render DOT -> PNG
+    if graphs["dataflow"]["dot_path"]:
+        png_path = f"{output_dir}/dataflow.png"
+        rc2, out2, err2 = _call_subcommand(
+            ["dot", "-Tpng", "-Gdpi=60", dot_path, "-o", png_path],
+            timeout=300,
+            prepend_svq=False,  # dot is external command, not sv_query sub
+        )
+        if rc2 == 0 and os.path.exists(png_path):
+            graphs["dataflow"]["png_path"] = png_path
+        else:
+            graphs["dataflow"]["png_path"] = None
+            graphs["dataflow"]["render_error"] = err2[:200] if err2 else ""
+
+    # 2. visualize pipeline
+    dot_path = f"{output_dir}/pipeline.dot"
+    args = ["visualize", "pipeline"]
+    if filelist:
+        args.extend(["--filelist", filelist])
+    elif file:
+        args.extend(["-f", file])
+    if not strict:
+        args.append("--no-strict")
+    args.extend(["--dot", dot_path])
+    rc, out, err = _call_subcommand(args, timeout=180)
+    graphs["pipeline"] = {
+        "dot_path": dot_path if os.path.exists(dot_path) else None,
+        "exit_code": rc,
+        "stderr": err[:200] if err else "",
+    }
+    if graphs["pipeline"]["dot_path"]:
+        png_path = f"{output_dir}/pipeline.png"
+        rc2, out2, err2 = _call_subcommand(
+            ["dot", "-Tpng", "-Gdpi=60", dot_path, "-o", png_path],
+            timeout=300,
+            prepend_svq=False,  # dot is external command
+        )
+        if rc2 == 0 and os.path.exists(png_path):
+            graphs["pipeline"]["png_path"] = png_path
+        else:
+            graphs["pipeline"]["png_path"] = None
+            graphs["pipeline"]["render_error"] = err2[:200] if err2 else ""
+
+    # 3. backpressure analyze (Mermaid)
+    mmd_path = f"{output_dir}/backpressure.mmd"
+    args = ["backpressure", "analyze"]
+    if filelist:
+        args.extend(["--filelist", filelist])
+    elif file:
+        args.extend(["-f", file])
+    args.extend(["-o", mmd_path])
+    rc, out, err = _call_subcommand(args, timeout=180)
+    graphs["backpressure"] = {
+        "mmd_path": mmd_path if os.path.exists(mmd_path) else None,
+        "exit_code": rc,
+        "stderr": err[:200] if err else "",
+    }
+    # try render Mermaid -> SVG (mmdc)
+    if graphs["backpressure"]["mmd_path"]:
+        svg_path = f"{output_dir}/backpressure.svg"
+        rc2, out2, err2 = _call_subcommand(
+            ["mmdc", "-i", mmd_path, "-o", svg_path],
+            timeout=60,
+            prepend_svq=False,  # mmdc is external command
+        )
+        if rc2 == 0 and os.path.exists(svg_path):
+            graphs["backpressure"]["svg_path"] = svg_path
+        else:
+            graphs["backpressure"]["svg_path"] = None
+
+    return graphs
+
+
 def _extract_cdc_summary(cdc_raw: str) -> str:
     """从 cdc analyze 原始输出提取关键 insights."""
     lines = cdc_raw.split("\n")
@@ -287,6 +398,8 @@ def show(
     target: str = typer.Option("top", "--target", "-t", help="Target module name (default: top)"),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict for partial AST)"),
     output_json: bool = typer.Option(False, "--json", help="Output JSON format (programmatic access)"),
+    graph: bool = typer.Option(False, "--graph", help="[Plan B+ 2026-07-08] Auto-generate visualization graphs (dataflow/pipeline/backpressure)"),
+    graph_dir: str = typer.Option("/tmp/sv_query_design_graphs", "--graph-dir", help="Output directory for --graph images"),
     skip: list[str] = typer.Option([], "--skip", help="Skip sub-commands: cdc,protocol,handshake,backpressure,dataflow,timing"),
 ):
     """[Plan B 2026-07-08] IP-level design understanding (aggregates insights from
@@ -346,6 +459,8 @@ def show(
                 for k, v in results.items()
             },
         }
+        if graph:
+            output["graphs"] = _generate_graphs(file, filelist, target, strict, graph_dir)
         print(json.dumps(output, indent=2, ensure_ascii=False))
     else:
         # Human-readable 模式
@@ -372,6 +487,22 @@ def show(
         print(_section_header("End of Design Summary"))
         print("  Use --json for programmatic access.")
         print("  Use --skip <name> to skip a sub-command (cdc/protocol/handshake/backpressure/dataflow/timing).")
+
+        if graph:
+            print(_section_header("Generating Visualization Graphs"))
+            print(f"  Output dir: {graph_dir}")
+            graphs = _generate_graphs(file, filelist, target, strict, graph_dir)
+            for gname, ginfo in graphs.items():
+                if ginfo.get("exit_code") != 0:
+                    print(f"  ⚠️  {gname}: sub-command failed (exit={ginfo['exit_code']})")
+                    if ginfo.get("stderr"):
+                        print(f"      stderr: {ginfo['stderr'][:200]}")
+                    continue
+                png = ginfo.get("png_path") or ginfo.get("svg_path")
+                if png:
+                    print(f"  ✅ {gname}: {png}")
+                else:
+                    print(f"  ⚠️  {gname}: DOT/MMD generated but PNG/SVG render failed")
 
 
 def _extract_summary_for_key(key: str, raw: str) -> str:

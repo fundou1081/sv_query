@@ -270,6 +270,11 @@ class GraphBuilder:
             # 收集 port_to_internal 映射
             if hasattr(result, "port_to_internal") and result.port_to_internal:
                 self.graph._port_to_internal.update(result.port_to_internal)
+            # [FIX 2026-07-08] 同步收集 port_to_module_type (semantic short name)
+            if hasattr(result, "port_to_module_type") and getattr(result, "port_to_module_type", None):
+                if not hasattr(self.graph, "_port_to_module_type"):
+                    self.graph._port_to_module_type = {}
+                self.graph._port_to_module_type.update(result.port_to_module_type)
 
         # [P0-3] 设置 interface 信号的 modport_dir
         self._set_interface_modport_dirs()
@@ -402,27 +407,34 @@ class GraphBuilder:
 
         实际生成: DRIVER 边 from "axi_dp_ram.b_if.axi_ram_wr_if_inst.s_axi_awready"
         to "axi_ram_wr_rd_if.s_axi_awready"
+
+        [FIX 2026-07-08] 治本后: port_to_internal 是 self-loop, 反向查只能找到
+        instance 自己. 改为查 port_to_module_type (semantic short name) —
+        多个 instance 共享同一 def_port 名字, 能找齐 instance paths.
         """
         from collections import defaultdict
 
-        if not hasattr(self.graph, "_port_to_internal"):
-            return
-
         pti = self.graph._port_to_internal
+        ptt = getattr(self.graph, "_port_to_module_type", {})
 
-        # 1. 对每个 module def port, 找 instance 化它的所有 instance paths
-        #    reverse_pti[def_port] = [instance_port_1, instance_port_2, ...]
-        reverse_pti = defaultdict(list)
-        for inst_port, def_port in pti.items():
-            reverse_pti[def_port].append(inst_port)
+        # 1. 对每个 module def port (短名), 找 instance 化它的所有 instance paths
+        #    reverse_ptt[def_port_short] = [instance_port_1, instance_port_2, ...]
+        reverse_ptt = defaultdict(list)
+        for inst_port, def_port_short in ptt.items():
+            reverse_ptt[def_port_short].append(inst_port)
+        # 合并旧的 pti reverse (如果 def_port short 不在 ptt 中)
+        for inst_port, def_port_short in pti.items():
+            if inst_port not in ptt and def_port_short not in reverse_ptt:
+                reverse_ptt[def_port_short].append(inst_port)
 
         added_edges = 0
         # 2. 对每个 module def port
-        for def_port, inst_ports in reverse_pti.items():
+        for def_port, inst_ports in reverse_ptt.items():
             # 只处理 module def port (PORT_OUT, kind.name='PORT_OUT')
             def_node = self.graph._node_data.get(def_port)
             if not def_node or def_node.kind.name != "PORT_OUT":
                 continue
+            logger.debug(f"_elab_wrapper: PROCESSING {def_port} (inst_ports={len(inst_ports)})")
 
             # 检查 def_port 是否已经有 driver (避免重复加)
             has_driver = any(
