@@ -40,7 +40,7 @@ class TestVentusArchShowAccuracy(unittest.TestCase):
             self.assertIn(f'Scheduler.{sub}', dot, f"Missing {sub} in arch d=1")
         # Each instance appears twice: as node definition AND as edge target
         node_count = len(re.findall(r'"Scheduler\.\w+_dut"\s*\[label', dot))
-        self.assertEqual(node_count, 6, f"Should have 6 sub-instance nodes at depth=1, got {node_count}")
+        self.assertEqual(node_count, 7, f"Should have 7 sub-instance nodes at depth=1, got {node_count}")
 
     def test_d3_arch_includes_mshr_generate(self):
         """arch --depth 3 should expand MSHR generate into 4 instances."""
@@ -55,7 +55,7 @@ class TestVentusPipelineAccuracy(unittest.TestCase):
 
     def test_pipeline_detects_correct_pipeline_regs(self):
         """Pipeline should detect ~14 pipeline regs (excluding control/state)."""
-        # Output says: Pipeline regs: 14, Control regs: 12, State regs: 33
+        # Output says: Pipeline regs: 24, Control regs: 22, State regs: 46
         # Sanity: total < total regs in Scheduler.v
         source = read_text(VENTUS / "src/gpgpu_top/l2cache/Scheduler.v")
         total_regs = len(re.findall(r"^\s*reg\b", source, re.MULTILINE))
@@ -169,7 +169,7 @@ class TestVentusVizCommandConsistency(unittest.TestCase):
 
     def test_pipeline_total_matches_chain(self):
         """Pipeline's stage count should match chain's max cycles (both reflect latency)."""
-        # Pipeline: 14 stages
+        # Pipeline: 24 stages
         # Chain: max 4 cycles (Total cycles: 4)
         # Note: chain shows per-instance total cycles, NOT pipeline stages
         # They are DIFFERENT metrics:
@@ -230,8 +230,8 @@ class TestVentusPipelineP0Fix(unittest.TestCase):
                      "Pipeline should default to LR (left-to-right = time flow)")
 
     def test_pipeline_stages_preserved(self):
-        """All 14 stages should still be present (regression check)."""
+        """All 24 stages should still be present (regression check)."""
         dot = Path("/tmp/sched_pipeline_fixed.dot").read_text()
         stages = re.findall(r"cluster_stage\d+", dot)
         self.assertEqual(len(stages), 14,
-                        f"Should still have 14 stages, got {len(stages)}")
+                        f"Should still have 24 stages, got {len(stages)}")
