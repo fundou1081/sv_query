@@ -181,3 +181,57 @@ class TestVentusVizCommandConsistency(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestVentusPipelineP0Fix(unittest.TestCase):
+    """[P0 fix 2026-07-10] Pipeline PNG reduced from 31k to 4k px."""
+
+    def test_pipeline_dot_has_controls_cluster(self):
+        """Control nodes should be grouped in cluster_controls (not stacked vertically)."""
+        dot = Path("/tmp/sched_pipeline_fixed.dot").read_text()
+        self.assertIn("cluster_controls", dot,
+                     "Control signals should be in cluster_controls")
+        self.assertIn("Control Signals", dot,
+                     "Should label the cluster with total/shown count")
+        # Should show N total, showing M
+        self.assertRegex(dot, r"showing (\d+)",
+                        "Should show how many controls are displayed")
+
+    def test_pipeline_dot_limits_control_nodes(self):
+        """Default --max-control-nodes=30 should limit control display."""
+        dot = Path("/tmp/sched_pipeline_fixed.dot").read_text()
+        # Count orange control nodes (#cc8844)
+        control_count = len(re.findall(r'fillcolor="#cc8844"', dot))
+        self.assertEqual(control_count, 30,
+                        f"Default should show 30 control nodes, got {control_count}")
+
+    def test_pipeline_nocontrol_dot_has_no_controls(self):
+        """--max-control-nodes 0 should hide all controls."""
+        dot = Path("/tmp/sched_pipeline_nocontrol.dot").read_text()
+        self.assertNotIn("cluster_controls", dot,
+                        "Should NOT have cluster_controls when max=0")
+        # No orange control nodes
+        control_count = len(re.findall(r'fillcolor="#cc8844"', dot))
+        self.assertEqual(control_count, 0,
+                        f"No-control should have 0 control nodes, got {control_count}")
+
+    def test_pipeline_png_size_reduced(self):
+        """PNG should be < 5000px tall (was 31851px)."""
+        from PIL import Image
+        for png in ["/tmp/sched_pipeline_fixed.png", "/tmp/sched_pipeline_nocontrol.png"]:
+            img = Image.open(png)
+            self.assertLess(img.size[1], 5000,
+                          f"{png} too tall: {img.size[1]}px (was 31851px before fix)")
+
+    def test_pipeline_default_is_lr_layout(self):
+        """Pipeline should default to rankdir=LR (time flow left-to-right)."""
+        dot = Path("/tmp/sched_pipeline_fixed.dot").read_text()
+        self.assertIn("rankdir=LR", dot,
+                     "Pipeline should default to LR (left-to-right = time flow)")
+
+    def test_pipeline_stages_preserved(self):
+        """All 14 stages should still be present (regression check)."""
+        dot = Path("/tmp/sched_pipeline_fixed.dot").read_text()
+        stages = re.findall(r"cluster_stage\d+", dot)
+        self.assertEqual(len(stages), 14,
+                        f"Should still have 14 stages, got {len(stages)}")
