@@ -56,15 +56,17 @@ class TestPortToInternalMapping:
 
     def test_module_def_to_instance_port(self, graph):
         """axi_ram_wr_rd_if.s_axi_awready ← 它的 instance ports."""
-        pti = graph._port_to_internal
+        # [FIX 2026-07-08] 治本后: port_to_internal 用 inst_path (self-loop)
+        # semantic short name 现在存在 port_to_module_type 中
+        pti = graph._port_to_module_type
         instances = [k for k, v in pti.items() if v == "axi_ram_wr_rd_if.s_axi_awready"]
-        assert len(instances) >= 1, "port_to_internal reverse 应该有 1+ instance"
+        assert len(instances) >= 1, "port_to_module_type reverse 应该有 1+ instance"
         assert "axi_dp_ram.a_if.s_axi_awready" in instances
         assert "axi_dp_ram.b_if.s_axi_awready" in instances
 
     def test_leaf_module_to_instance_port(self, graph):
         """axi_ram_wr_if.s_axi_awready ← 它的 instance port."""
-        pti = graph._port_to_internal
+        pti = graph._port_to_module_type
         instances = [k for k, v in pti.items() if v == "axi_ram_wr_if.s_axi_awready"]
         # axi_ram_wr_if 被 axi_dp_ram.b_if 实例化
         assert any("axi_ram_wr_if" in k for k in instances)
@@ -76,22 +78,24 @@ class TestCrossModuleTrace:
     def test_wrapper_module_def_awready_finds_driver(self, tracer):
         """axi_ram_wr_rd_if.s_axi_awready (wrapper, 0 internal assign)
         应该有 driver (跨 instance 追到 axi_ram_wr_if.s_axi_awready_reg)."""
-        sig = "axi_ram_wr_rd_if.s_axi_awready"
-        assert sig in tracer.graph.nodes()
+        # [FIX 2026-07-08] 治本后: signal ID 用 full hierarchy path
+        # instance 'a_if' 身名 = 'a_if' (不是 axi_ram_wr_rd_if_inst)
+        sig = "axi_dp_ram.a_if.s_axi_awready"
+        assert sig in tracer.graph.nodes(), f"signal not found: {sig}"
         drivers = tracer._collect_all_drivers(sig, max_depth=5)
         # 跨 instance 应该能找到 driver
         assert len(drivers) > 0, (
-            "❌ trace 跨 module boundary 失败! "
-            "axi_ram_wr_rd_if.s_axi_awready 是 wrapper, 应该有 driver "
-            "(来自 axi_ram_wr_if instance). "
-            "实际 0 driver → handshake detector 返 UNKNOWN/UNUSED."
+            f"❌ trace 跨 module boundary 失败! {sig} 是 wrapper instance port, 应该有 driver "
+            f"(来自 axi_ram_wr_if internal reg). "
+            f"实际 0 driver → handshake detector 返 UNKNOWN/UNUSED."
         )
 
     def test_deep_hierarchy_top_port_finds_leaf_reg(self, tracer):
         """axi_dp_ram.s_axi_a_awready (top, 2 层 instance 嵌套)
         跨 trace 找到 axi_ram_wr_if.s_axi_awready_reg."""
+        # [FIX 2026-07-08] 治本后: signal ID 用 full hierarchy path
         sig = "axi_dp_ram.s_axi_a_awready"
-        assert sig in tracer.graph.nodes()
+        assert sig in tracer.graph.nodes(), f"signal not found: {sig}"
         drivers = tracer._collect_all_drivers(sig, max_depth=10)
         # 找 leaf reg
         reg_drivers = [d for d in drivers if d.kind.name == "REG"]
@@ -117,11 +121,13 @@ class TestNoInfiniteLoop:
     def test_no_infinite_loop_on_cyclic_instance(self, tracer):
         """axi_ram_wr_rd_if.s_axi_awready 跨到 axi_dp_ram.a_if.s_axi_awready,
         不能再跨回 axi_ram_wr_rd_if (否则死循环)."""
-        sig = "axi_ram_wr_rd_if.s_axi_awready"
+        # [FIX 2026-07-08] 治本后: signal ID 用 full hierarchy path
+        sig = "axi_dp_ram.a_if.s_axi_awready"
+        assert sig in tracer.graph.nodes(), f"signal not found: {sig}"
         # max_depth=10 足够走完 chain (不能死循环)
         drivers = tracer._collect_all_drivers(sig, max_depth=10)
         # 应该能在有限 steps 找到 leaf reg (证明没死循环)
         reg_ids = [d.id for d in drivers if d.kind.name == "REG"]
         assert any("axi_ram_wr_if" in r for r in reg_ids), (
-            f"❌ 应该找到 axi_ram_wr_if.s_axi_awready_reg, 实际: {reg_ids}"
+            f"❌ 应该找到 axi_ram_wr_if 内部 reg, 实际: {reg_ids}"
         )

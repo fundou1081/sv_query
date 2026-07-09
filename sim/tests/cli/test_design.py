@@ -192,5 +192,40 @@ class TestDesignJson(unittest.TestCase):
         )
 
 
+class TestDesignGraph(unittest.TestCase):
+    """[Plan B+ 2026-07-08] design show --graph 应该自动生成可视化图."""
+
+    def test_design_graph_flag_exists(self):
+        """[金标准] --graph flag 应该存在"""
+        result = _run_svq([
+            "design", "show", "--help",
+        ])
+        self.assertIn("--graph", result.stdout)
+
+    def test_design_graph_generates_pngs(self):
+        """[金标准] --graph 在 dot11_tx 上应该生成 dataflow.png + pipeline.png"""
+        import os
+        import tempfile
+        import shutil
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = _run_svq([
+                "design", "show",
+                "-f", str(Path.home() / "my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dot11_tx.v"),
+                "--target", "dot11_tx",
+                "--no-strict",
+                "--graph",
+                "--graph-dir", tmpdir,
+            ])
+            # command 应该跑通
+            self.assertEqual(result.returncode, 0, f"stderr: {result.stderr[:500]}")
+            # 至少要有 dataflow.png 或 pipeline.png (single file 模式)
+            pngs = [f for f in os.listdir(tmpdir) if f.endswith(".png")]
+            self.assertGreaterEqual(
+                len(pngs), 1,
+                f"Expected ≥1 PNG in {tmpdir}, got {os.listdir(tmpdir)}\nstdout: {result.stdout[-300:]}"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

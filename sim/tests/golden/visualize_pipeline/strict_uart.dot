@@ -26,8 +26,6 @@ digraph pipeline {
     color="#226699";
     fontsize=11;
     "sync_fifo.pop_data_o" [label="pop_data_o\nREG\\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
-    "uart_top.rx_fifo.pop_data_o" [label="pop_data_o\
-8bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];
   }
 
   "synchronizer.async_i" [label="async_i" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
@@ -40,7 +38,6 @@ digraph pipeline {
 
   // === Data edges (stage → stage) ===
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="mem[Expression(Expre" fontsize=8];
-  "sync_fifo.pop_data_o" -> "uart_top.rx_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="" fontsize=8];
 
   // === Control edges (dashed) ===
 }

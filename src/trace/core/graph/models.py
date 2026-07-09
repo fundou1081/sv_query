@@ -182,6 +182,7 @@ class SignalGraph(nx.DiGraph):
         # [FIX] 支持同一 (src, dst) 的多条边 (不同 condition)
         self._edge_data: dict[tuple[str, str], list[TraceEdge]] = {}
         self._port_to_internal: dict[str, str] = {}  # {inst_port_id: child_signal_id}
+        self._port_to_module_type: dict[str, str] = {}  # {inst_port_id: <module_type>.<port_name>} (semantic short name)
 
     def get_port_to_internal(self) -> dict[str, str]:
         """获取端口到内部信号的映射"""

@@ -419,20 +419,28 @@ class ConnectionExtractor:
                             assign_type="connection",
                         )
                     )
-                    child_signal_id = f"{inst_module_name}.{port_name}"
+                    # [FIX 2026-07-08] 用 inst_path (完整 hierarchy) 替代 inst_module_name (短名)
+                    # 之前: bitreverse.i_clk (flatten, 多 instance 合并, 冲突)
+                    # 现在: openofdm_tx.dot11_tx.ifft64.revstage.i_clk (hierarchy 完整)
+                    # 这样多 instance 区分, graph 不再 merge.
+                    child_signal_id = f"{inst_path}.{port_name}"
                     result.edges.append(
                         TraceEdge(
                             src=inst_port_id, dst=child_signal_id, kind=EdgeKind.CONNECTION, assign_type="internal"
                         )
                     )
-                    # 同步构建 port_to_internal 映射
+                    # 同步构建 port_to_internal 映射 (full path)
                     result.port_to_internal[inst_port_id] = child_signal_id
+                    # [FIX 2026-07-08] 同时保留 port_to_module_type 映射 (semantic short name)
+                    # 让 trace 跨 module boundary 仍能找 leaf module 内部 signal
+                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
                 elif direction_clean == "output":
                     # 输出端口: 子模块输出端口驱动实例端口
                     # 连接关系: child.data (child output) -> top.u_driver.data (instance port) -> top.data (parent wire)
                     # 边1: child output -> instance port (DRIVER)
                     # 边2: instance port -> parent wire (CONNECTION)
-                    child_signal_id = f"{inst_module_name}.{port_name}"
+                    # [FIX 2026-07-08] 同上, child_signal_id 用 inst_path
+                    child_signal_id = f"{inst_path}.{port_name}"
                     parent_signal = f"{parent_path}.{signal_name}"
                     # 边1: child output -> instance port (DRIVER)
                     result.edges.append(
@@ -444,7 +452,9 @@ class ConnectionExtractor:
                             src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
                         )
                     )
+                    # 同步构建 port_to_internal (full path) + port_to_module_type (short)
                     result.port_to_internal[inst_port_id] = child_signal_id
+                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
 
         # [FIX] 后处理:修复实例端口的位宽
         # 如果实例端口位宽为默认值(1,0),尝试从连接推断实际位宽
