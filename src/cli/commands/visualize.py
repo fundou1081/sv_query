@@ -468,10 +468,19 @@ def chain(
     # (sorted_paths + greedy select) — 不再这里重复 truncate
 
     # 生成 DOT
+    # [Phase 1 2026-07-09] 传路径 + node kinds 进去, 算每个 node 的 cycle 数 (latency)
+    node_kinds = {}
+    for node_id in chain_nodes:
+        n = graph.get_node(node_id)
+        if n is not None:
+            node_kinds[node_id] = str(getattr(getattr(n, "kind", None), "name", "SIGNAL"))
+
     dot = _generate_chain_dot(
         chain_nodes, chain_edges, from_sigs, to_sigs,
         target or (Path(file).stem if file else "chain"),
         layout=layout, layout_engine=layout_engine,
+        paths=sorted_paths if all_paths else None,
+        node_kinds=node_kinds,
     )
 
     # 输出
@@ -550,12 +559,20 @@ def _auto_detect_io_ports(graph, target: str) -> tuple[list[str], list[str]]:
 def _generate_chain_dot(
     nodes: set, edges: set, from_sigs: list, to_sigs: list,
     title: str, layout: str = "LR", layout_engine: str = "neato",
+    paths: list | None = None,
+    node_kinds: dict | None = None,
 ) -> str:
     """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR).
 
     [Plan B+2 2026-07-08] 按 sub-module cluster 划分节点. Signal ID
     形如 "{top}.{submodule}.{signal}" (e.g. "openofdm_tx.dot11_tx.ifft64.i_clk")
     按倒数第二个 segment 划分 cluster.
+
+    [Phase 1 2026-07-09] 新增 latency / cycle 标:
+    - 每个 node 标 [cycle=N] (从 from_sigs 算起, 路径上遇到几个 reg)
+    - 每条边标 [+M cycle] (src→dst 之间经过几个 reg)
+    - to_sigs (路径终点) 标 'total: N cycles'
+    - critical path (最长的 path) 上的节点 标红色 (highlight critical path)
     """
     lines = ["digraph chain {"]
     lines.append(f'  label="Data Chain: {title}\\n({len(edges)} edges, {len(nodes)} nodes)";')
@@ -578,6 +595,83 @@ def _generate_chain_dot(
     # [Plan B+2 2026-07-08] 按 sub-module 分组 nodes
     from_set = set(from_sigs)
     to_set = set(to_sigs)
+
+    # [Phase 1 2026-07-09] 计算每个 node 的 cycle 数 + critical path
+    # Algorithm:
+    #   - cycle[node] = number of REG hops from from_sig (counted along path)
+    #   - fallback: if no REG in path, cycle = path position (max 1 cycle per hop)
+    #   - critical path = longest path (max cycle count)
+    #   - each edge = +1 cycle (if next node is REG) or 0 (combinational)
+    #   - total cycles = cycle count at path endpoint
+    node_cycles: dict[str, int] = {}
+    edge_cycles: dict[tuple[str, str], int] = {}
+    critical_nodes: set[str] = set()
+    output_total_cycles: dict[str, int] = {}
+    if paths:
+        # 查找最长路径 (critical path) — longest in terms of REG hops, ties break by length
+        def path_score(p):
+            """计算路径 'latency' score (越深 越 critical)."""
+            reg_count = 0
+            for n in p:
+                kind = node_kinds.get(n, "") if node_kinds else ""
+                if kind == "REG":
+                    reg_count += 1
+            return (reg_count, len(p))
+
+        max_score = max(path_score(p) for p in paths)
+        for path in paths:
+            if path_score(path) == max_score:
+                critical_nodes.update(path)
+
+        for path in paths:
+            # 为这个 path 计算每个 node 的 cycle 数
+            reg_counts: list[int] = []
+            running = 0
+            for node in path:
+                reg_counts.append(running)
+                kind = node_kinds.get(node, "") if node_kinds else ""
+                if kind == "REG":
+                    running += 1
+            # total cycles 该路径的: 最后 running (但加 fallback 如 node 为纯 path position)
+            # 使用 max(reg counts 末值, len(path)-1) 估计下行 latency
+            total_reg_in_path = max(running, len(path) - 1)
+            # Track whether this path has at least one REG (for edge cycle label fallback)
+            has_reg_in_path = running > 0
+
+            for i, node in enumerate(path):
+                # 计算 cycle[node] across paths (取最深的)
+                cur = node_cycles.get(node, 0)
+                # 用 path position 作 fallback (确保从 start 到 node 至少 i cycle 跳)
+                # 取 max(reg_counts[i], i) — 这个是“从 src 到 node 经历的 cycle 下界”
+                cycle_at = max(reg_counts[i], i)
+                node_cycles[node] = max(cur, cycle_at)
+                # output_total_cycles: 每个 node 都记一个该 path 的 total cycle
+                # max across paths (即 max latency that leads to this node)
+                # 但只在 to_set 或 path 终点才在最终 label 里标 total cycles
+                output_total_cycles[node] = max(
+                    output_total_cycles.get(node, 0), total_reg_in_path
+                )
+            # 边 cycle: 该 edge 贡献 +1 cycle if dst is REG else +0 (combinational same cycle)
+            # fallback: 如果该 path 无 REG, 用 path position 作 cycle 估计
+            for i in range(len(path) - 1):
+                src, dst = path[i], path[i + 1]
+                dst_kind = node_kinds.get(dst, "") if node_kinds else ""
+                src_kind = node_kinds.get(src, "") if node_kinds else ""
+                if dst_kind == "REG":
+                    inc = 1
+                elif src_kind == "REG":
+                    inc = 0  # reg -> combinational, no new cycle
+                elif not has_reg_in_path:
+                    # 无 REG 路径: 以 path position 作 cycle (每跳 = +1, lower bound estimate)
+                    inc = 1
+                else:
+                    # 仅 combinational: 粗估 +0 (同 cycle 内)
+                    inc = 0
+                cur = edge_cycles.get((src, dst), 0)
+                edge_cycles[(src, dst)] = max(cur, inc)
+    else:
+        for node in nodes:
+            node_cycles[node] = 0
 
     def extract_submodule(node_id: str, top: str) -> str | None:
         """提取 node 所属 sub-module. 顶层信号归属 top.
@@ -638,11 +732,23 @@ def _generate_chain_dot(
             elif node in to_set:
                 color = "#cc3333"  # [FIX] 更鲜明的红
                 shape = "invhouse"
+            elif node in critical_nodes:
+                # [Phase 1 2026-07-09] critical path 标鲜红色
+                color = "#dd2222"
+                shape = "box"
             else:
                 color = "#3366cc"  # [FIX] 更鲜明的蓝
                 shape = "box"
             # [FIX] 改进 label: 短 label + 换行
             label = _format_node_label(node, title)
+            cycle = node_cycles.get(node, 0)
+            # [Phase 1 2026-07-09] 输出节点加 total cycles, 中间节点按 fall-back 加 cycle label
+            # to_set 终点 加 Total cycles (流水线总延迟)
+            if node in to_set and node in output_total_cycles:
+                total = output_total_cycles[node]
+                label = f"{label}\\nTotal cycles: {total}"
+            elif cycle > 0:
+                label = f"{label}\\n[cycle={cycle}]"
             lines.append(
                 f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
                 f'fillcolor="{color}" fontcolor="white" fontsize=11 fontname="Helvetica"];'
@@ -669,10 +775,17 @@ def _generate_chain_dot(
             elif node in to_set:
                 color = "#cc3333"
                 shape = "invhouse"
+            elif node in critical_nodes:
+                # [Phase 1 2026-07-09] critical path 红色
+                color = "#dd2222"
+                shape = "box"
             else:
                 color = "#3366cc"
                 shape = "box"
             label = _format_node_label(node, title)
+            cycle = node_cycles.get(node, 0)
+            if cycle > 0:
+                label = f"{label}\\n[cycle={cycle}]"
             lines.append(
                 f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
                 f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica"];'
@@ -685,7 +798,23 @@ def _generate_chain_dot(
     for src, dst in sorted(edges):
         src_safe = _sanitize_dot_id_chain(src)
         dst_safe = _sanitize_dot_id_chain(dst)
-        lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#222222" penwidth=1.5 arrowhead=normal];')
+        # [Phase 1 2026-07-09] 加 cycle label 到边上
+        edge_cyc = edge_cycles.get((src, dst), 0)
+        if edge_cyc > 0:
+            # critical path 红边, 普通黑边
+            if src in critical_nodes and dst in critical_nodes:
+                color = "#dd2222"
+                penwidth = 2.5
+                edge_label = f' label="+{edge_cyc} cycle" fontcolor="#dd2222" fontsize=10'
+            else:
+                color = "#222222"
+                penwidth = 1.5
+                edge_label = f' label="+{edge_cyc} cycle" fontcolor="#666666" fontsize=9'
+            lines.append(
+                f'  "{src_safe}" -> "{dst_safe}" [color="{color}" penwidth={penwidth}{edge_label} arrowhead=normal];'
+            )
+        else:
+            lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#222222" penwidth=1.5 arrowhead=normal];')
 
     lines.append("}")
     return "\n".join(lines)
