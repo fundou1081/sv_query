@@ -11,49 +11,45 @@ from dataclasses import dataclass
 
 
 def reclaim_memory_for_pyslang() -> None:
-    """[C-Flaky-3b 2026-06-27] Force inactive page reclamation before pyslang elaboration.
+    """[DEPRECATED 2026-07-09] Was: Force inactive page reclamation before pyslang.
 
-    Background: 8GB MBA 上 pyslang elaboration 在内存不足时静默失败
-    (不报 OOM, 但 graph 不完整, 缺 module, binary 名字)。
+    [User 2026-07-09 反馈] 不能使用 swap 来规避内存 oom 问题.
+    The 4GB bytearray trick pushes inactive pages to SWAP — that's a hack
+    that hides pyslang's silent OOM bugs. Real fixes are smaller filelists
+    or explicit OOM errors.
 
-    通过分配 4GB bytearray 强制 macOS 把 inactive pages 回收,
-    给 pyslang elaboration 足够的连续内存。
-
-    调用点:
-    - sim/tests/conftest.py (pytest main process, session start)
-    - src/cli/main.py (subprocess via run_cli.py)
+    This function is kept as a no-op for backward compatibility. New code
+    should not call it. See test_no_swap_reclaim.py for the discipline test.
     """
-    try:
-        buf = bytearray(4 * 1024**3)
-        time.sleep(3)
-        del buf
-    except MemoryError:
-        # 内存真的不够, 让 pyslang 自己报错
-        pass
+    # No-op: do not push pages to SWAP. Use proper memory management instead.
+    return
 
 
 def reclaim_memory_if_needed() -> None:
-    """[C-Flaky-3b 2026-06-27] 条件式 reclaim — 只在内存压力下跑.
+    """[DEPRECATED 2026-07-09] Was: Conditional reclaim based on SWAP usage.
 
-    阈值: swap > 2GB (意味着大量 inactive pages 被 swap 到磁盘,
-    pyslang elaboration 可能因缺内存而静默失败).
-
-    避免在内存充足时无谓 reclaim (每次 ~3s 开销, 还会释放掉
-    可用的 cached memory).
+    [User 2026-07-09 反馈] 不能使用 swap 来规避内存 oom 问题.
+    This function no longer auto-reclaims. It only logs a warning if SWAP
+    usage is high. The user must close other apps or analyze in smaller chunks.
     """
     try:
         import subprocess
         out = subprocess.run(['sysctl', '-n', 'vm.swapusage'],
                             capture_output=True, text=True, timeout=2).stdout
-        # 解析 'used = 3367.56M' → 3367
         import re
         m = re.search(r'used\s*=\s*([\d.]+)M', out)
         if m:
             used_mb = float(m.group(1))
-            if used_mb > 2048:  # 2GB threshold
-                reclaim_memory_for_pyslang()
+            if used_mb > 2048:
+                # Just log — do not reclaim. User must manage memory explicitly.
+                import sys
+                print(
+                    f"[sv_query] ⚠️  SWAP 使用量 {used_mb:.0f}MB — pyslang elaboration may "
+                    f"silently fail. 建议: (1) 关闭其他应用释放内存. "
+                    f"(2) 用更小 filelist 按模块逐个分析.",
+                    file=sys.stderr,
+                )
     except Exception:
-        # 检测失败时不 reclaim, 让 test 走原路径
         pass
 
 
