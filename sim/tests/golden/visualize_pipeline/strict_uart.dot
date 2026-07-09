@@ -28,13 +28,21 @@ digraph pipeline {
     "sync_fifo.pop_data_o" [label="pop_data_o\nREG\\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
   }
 
-  "synchronizer.async_i" [label="async_i" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "synchronizer.sync0_o" [label="sync0_o" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "synchronizer.sync1" [label="sync1" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "uart_top.rx_ready_o" [label="rx_ready_o" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "sync_fifo.wr_ptr_q" [label="wr_ptr_q" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "0" [label="0" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
-  "1" [label="1" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+  // === Control signals (valid/ready/stall, across stages) ===
+  subgraph cluster_controls {
+    label="Control Signals (7 total, showing 7)";
+    style="rounded,filled";
+    fillcolor="#fff5e6";
+    color="#cc8844";
+    fontsize=11;
+    "synchronizer.async_i" [label="async_i" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "synchronizer.sync0_o" [label="sync0_o" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "synchronizer.sync1" [label="sync1" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "uart_top.rx_ready_o" [label="rx_ready_o" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "sync_fifo.wr_ptr_q" [label="wr_ptr_q" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "0" [label="0" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+    "1" [label="1" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];
+  }
 
   // === Data edges (stage → stage) ===
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="mem[Expression(Expre" fontsize=8];

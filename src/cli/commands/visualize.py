@@ -189,6 +189,8 @@ def pipeline(
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
+    max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
+    max_control_nodes: int = typer.Option(30, "--max-control-nodes", help="[P0 fix 2026-07-10] Max control signals to display (default 30). 0 = hide all."),
 ) -> None:
     """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
 
@@ -197,6 +199,9 @@ def pipeline(
     - 每个 stage 一个 subgraph: 含 registers + 组合逻辑
     - 控制信号 (valid/stall) 标记为跨 stage 虚线
     - 左→右布局 = 时间流方向
+
+    [P0 fix 2026-07-10] 控制节点不再堆成 31k PNG, 默认限制每 stage 8 个组合节点 +
+    控制信号区最多 30 个节点。用 --max-control-nodes 0 隐藏控制信号区。
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot
@@ -229,7 +234,11 @@ def pipeline(
     typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
     typer.echo(f"  Stages: {info.total_latency}", err=True)
 
-    dot = generate_pipeline_dot(graph, info, classification)
+    dot = generate_pipeline_dot(
+        graph, info, classification,
+        max_comb_per_stage=max_comb_per_stage,
+        max_control_nodes=max_control_nodes,
+    )
 
     if dot_output:
         Path(dot_output).write_text(dot)

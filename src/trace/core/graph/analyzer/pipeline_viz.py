@@ -226,6 +226,9 @@ def generate_pipeline_dot(
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
+    *,
+    max_comb_per_stage: int = 8,
+    max_control_nodes: int = 30,
 ) -> str:
     _sid = sanitize_dot_id
     """生成 pipeline flow DOT 图
@@ -234,6 +237,8 @@ def generate_pipeline_dot(
         graph: SignalGraph 实例
         pipeline_info: PipelineInfo from detect_pipeline
         classification: 预计算的分类
+        max_comb_per_stage: 每个 stage 最多显示多少组合节点 (防 PNG 过高)
+        max_control_nodes: 控制信号区最多显示多少节点 (防 PNG 过高)
 
     Returns:
         DOT 格式字符串
@@ -277,7 +282,7 @@ def generate_pipeline_dot(
 
         # 组合逻辑
         comb_dedup = list(dict.fromkeys(stage.comb_nodes))
-        for comb_id in comb_dedup[:8]:  # 限制每 stage 显示的 comb 节点数
+        for comb_id in comb_dedup[:max_comb_per_stage]:  # [P0 fix 2026-07-10] limit comb per stage
             cn = classification.nodes.get(comb_id)
             if cn is None:
                 continue
@@ -285,23 +290,37 @@ def generate_pipeline_dot(
             w = _node_width(cn)
             lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
-        if len(stage.comb_nodes) > 8:
-            lines.append(f'    // +{len(stage.comb_nodes)-8} more comb nodes')
+        if len(comb_dedup) > max_comb_per_stage:
+            lines.append(f'    // +{len(comb_dedup)-max_comb_per_stage} more comb nodes (--max-comb-per-stage to show more)')
 
         lines.append('  }')
         lines.append('')
 
-    # 控制节点 (独立)
-    for cid in classification.control_nodes:
-        if cid in all_nodes_in_stages:
-            continue
-        cn = classification.nodes.get(cid)
-        if cn is None:
-            continue
-        name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
-        lines.append(f'  "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
+    # [P0 fix 2026-07-10] 控制节点: 放进独立 cluster, 限制数量 (之前 461 个堆成 31k PNG)
+    control_outside = [
+        cid for cid in classification.control_nodes if cid not in all_nodes_in_stages
+        and classification.nodes.get(cid) is not None
+    ]
+    total_control = len(control_outside)
+    control_shown = control_outside[:max_control_nodes]
 
-    lines.append('')
+    if control_shown:
+        lines.append('  // === Control signals (valid/ready/stall, across stages) ===')
+        lines.append('  subgraph cluster_controls {')
+        lines.append(f'    label="Control Signals ({total_control} total, showing {len(control_shown)})";')
+        lines.append('    style="rounded,filled";')
+        lines.append('    fillcolor="#fff5e6";')
+        lines.append('    color="#cc8844";')
+        lines.append('    fontsize=11;')
+        # 让 control 节点排成多列 (每行 6 个), 防单列堆 30 个高
+        for i, cid in enumerate(control_shown):
+            cn = classification.nodes.get(cid)
+            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
+            lines.append(f'    "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
+        if total_control > len(control_shown):
+            lines.append(f'    // +{total_control - len(control_shown)} more control signals (--max-control-nodes to show more)')
+        lines.append('  }')
+        lines.append('')
 
     # 边
     lines.append('  // === Data edges (stage → stage) ===')
