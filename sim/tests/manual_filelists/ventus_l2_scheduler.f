@@ -15,3 +15,4 @@
 /Users/fundou/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/find_first.v
 /Users/fundou/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/fifo.v
 /Users/fundou/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/fifo_with_count.v
+/Users/fundou/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/directory_test.v
