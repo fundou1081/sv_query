@@ -40,6 +40,7 @@ def analyze(
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_paths: int = typer.Option(5, "--max-paths", help="Max number of paths to report"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="[P1 fix 2026-07-10] Output DOT file visualizing critical paths"),
 ) -> None:
     """Analyze timing critical paths"""
     from trace.core.graph.models import NodeKind
@@ -95,6 +96,44 @@ def analyze(
                 ensure_ascii=False,
             )
         )
+        return
+
+    # [P1 fix 2026-07-10] Generate DOT visualization of critical paths
+    if dot_output:
+        lines = ['digraph timing {']
+        lines.append('  rankdir=LR;')
+        lines.append(f'  label="Critical Paths: {file or filelist}\\n({len(paths)} paths, deepest={max((p["depth"] for p in paths), default=0)})";')
+        lines.append('  labelloc=t;')
+        lines.append('  fontsize=14;')
+        lines.append('  splines=polyline;')
+        lines.append('  ranksep=1.0;')
+        lines.append('  nodesep=0.4;')
+        lines.append('')
+        # Draw all paths with color-coded nodes/edges
+        # Path 1 = red (deepest), others = blue
+        for i, p in enumerate(paths, 1):
+            is_critical = (i == 1)
+            color = "#cc2222" if is_critical else "#226699"
+            penwidth = 3 if is_critical else 1.5
+            path_nodes = p["path"]
+            for j, node in enumerate(path_nodes):
+                short = node.split(".")[-1]
+                # Is this a register?
+                is_reg = node in p["registers"]
+                fillcolor = "#4488cc" if is_reg else "#88bbdd"
+                if is_critical:
+                    fillcolor = "#cc4444" if is_reg else "#ee8866"
+                lines.append(f'  "{node}" [label="{short}" shape=box style="rounded,filled" fillcolor="{fillcolor}" fontcolor="white" penwidth={penwidth}];')
+            # Edges
+            for j in range(len(path_nodes) - 1):
+                lines.append(f'  "{path_nodes[j]}" -> "{path_nodes[j+1]}" [color="{color}" penwidth={penwidth}];')
+            # Subgraph for path (force ranking)
+            if path_nodes:
+                quoted = " ".join(f'"{n}"' for n in path_nodes)
+                lines.append(f'  {{ rank=same; {quoted} }}')
+        lines.append('}')
+        Path(dot_output).write_text("\n".join(lines))
+        typer.echo(f"✓ DOT: {dot_output} ({len(paths)} critical paths)")
         return
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
