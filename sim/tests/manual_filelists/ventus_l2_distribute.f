@@ -1,0 +1,9 @@
++incdir+~/my_dv_proj/ventus-gpgpu-verilog/src/define
++incdir+~/my_dv_proj/ventus-gpgpu-verilog/src/common_cell
+~/my_dv_proj/ventus-gpgpu-verilog/src/define/define.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/define/undefine.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2_distribute.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/find_first.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/fifo.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/fifo_with_count.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/common_cell/fifo_with_flush.v
