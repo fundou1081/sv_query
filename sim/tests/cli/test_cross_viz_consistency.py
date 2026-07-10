@@ -66,7 +66,7 @@ def parse_chain(stderr: str) -> dict:
     m = re.search(r"Found\s+(\d+)\s+data paths", stderr)
     if m:
         info["paths"] = int(m.group(1))
-    m = re.search(r"RTL anomalies detected: ({[^}]+})", stderr)
+    m = re.search(r"RTL anomalies detected[^\n]*:\s*({[^}]+})", stderr)
     if m:
         for am in re.finditer(r"'(\w+)':\s*(\d+)", m.group(1)):
             info["anomaly_counts"][am.group(1)] = int(am.group(2))

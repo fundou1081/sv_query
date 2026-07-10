@@ -1,14 +1,14 @@
 # Test Report
 
-Generated: 2026-07-10T20:45:45.152010
-Duration: 4.6s
+Generated: 2026-07-10T23:44:43.870006
+Duration: 3.3s
 
 ## Results
 
 | Metric | Count |
 |--------|-------|
-| duration_sec | 4.6 |
-| total | 22 |
+| duration_sec | 3.3 |
+| total | 12 |
 | passed | 0 |
 | failed | 0 |
 | errors | 0 |
