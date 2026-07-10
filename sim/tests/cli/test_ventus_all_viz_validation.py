@@ -275,3 +275,85 @@ class TestVentusTimingP1Fix(unittest.TestCase):
         img = Image.open("/tmp/sched_timing.png")
         self.assertLess(img.size[0], 2000, f"Width too large: {img.size[0]}")
         self.assertLess(img.size[1], 2000, f"Height too large: {img.size[1]}")
+
+
+class TestVentusChainAnomalyP1Fix(unittest.TestCase):
+    """[P1 fix 2026-07-10] chain detects RTL anomalies (X_DRIVER, DANGLING, ORPHAN).
+
+    方豆 feedback: "如果真的有寄存器只进不出，说明是悬空节点
+                    如果只出不进，说明是定值，或者X值"
+    """
+
+    def test_chain_anomalies_reported_in_stderr(self):
+        """[方豆 feedback 2026-07-10] chain should report anomaly counts."""
+        import subprocess
+        result = subprocess.run(
+            ["sv_query", "visualize", "chain",
+             "-f", "sim/tests/manual_filelists/ventus_l2_scheduler.f",
+             "--no-strict", "--target", "Scheduler",
+             "--auto", "--max-edges", "50",
+             "--dot", "/tmp/r15.dot"],
+            capture_output=True, text=True, timeout=120,
+        )
+        # Anomaly summary should be in stderr
+        self.assertIn("RTL anomalies detected", result.stderr,
+                     "Should report anomalies in stderr")
+        # Should explain anomaly types
+        self.assertIn("X_DRIVER", result.stderr,
+                     "Should mention X_DRIVER type")
+        self.assertIn("DANGLING", result.stderr,
+                     "Should mention DANGLING type")
+        self.assertIn("ORPHAN", result.stderr,
+                     "Should mention ORPHAN type")
+
+    def test_chain_anomaly_mshr_select_flagged(self):
+        """mshr_select is a reg/wire with no driver in chain → X_DRIVER."""
+        dot = Path("/tmp/r15.dot").read_text()
+        # mshr_select should appear with diamond shape (anomaly marker)
+        mshr_line = [l for l in dot.split("\n") if "mshr_select" in l and "label=" in l]
+        self.assertGreater(len(mshr_line), 0, "mshr_select should appear as node")
+        # Should have diamond shape OR #cc8800 fillcolor (X_DRIVER)
+        line = mshr_line[0]
+        self.assertTrue(
+            'shape=diamond' in line or 'fillcolor="#cc8800"' in line,
+            f"mshr_select should be marked as anomaly (diamond/orange). Line: {line[:200]}"
+        )
+
+    def test_chain_anomaly_tagMatches_flagged(self):
+        """tagMatches is a reg/wire with no driver in chain → X_DRIVER."""
+        dot = Path("/tmp/r15.dot").read_text()
+        tag_line = [l for l in dot.split("\n") if "tagMatches" in l and "label=" in l]
+        self.assertGreater(len(tag_line), 0, "tagMatches should appear as node")
+        line = tag_line[0]
+        self.assertTrue(
+            'shape=diamond' in line or 'fillcolor="#cc8800"' in line,
+            f"tagMatches should be marked as anomaly. Line: {line[:200]}"
+        )
+
+    def test_chain_diamond_shape_used_for_anomalies(self):
+        """Anomaly nodes should use diamond shape (visually distinct)."""
+        dot = Path("/tmp/r15.dot").read_text()
+        # Count diamond shapes
+        diamond_count = dot.count("shape=diamond")
+        self.assertGreater(diamond_count, 0,
+                          "Should have at least one diamond-shaped anomaly node")
+
+    def test_chain_normal_intermediate_still_blue(self):
+        """Non-anomaly intermediate nodes should still be blue (#3366cc) or red (critical path).
+        Critical path nodes use #dd2222 (red), normal intermediates use #3366cc (blue).
+        Anomaly nodes use diamond shape (excluded)."""
+        dot = Path("/tmp/r15.dot").read_text()
+        # alloc is on critical path → red (#dd2222)
+        alloc_line = [l for l in dot.split("\n") if "alloc" in l and "label=" in l]
+        if alloc_line:
+            line = alloc_line[0]
+            # Should be box shape (NOT diamond, which is anomaly marker)
+            self.assertIn(
+                "shape=box", line,
+                f"alloc should be box (not diamond/anomaly). Line: {line[:200]}"
+            )
+            # Should be either blue (#3366cc) or critical red (#dd2222)
+            self.assertTrue(
+                'fillcolor="#3366cc"' in line or 'fillcolor="#dd2222"' in line,
+                f"alloc should be blue or critical-red. Line: {line[:200]}"
+            )
