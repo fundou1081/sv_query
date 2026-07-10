@@ -11,6 +11,7 @@ Usage:
 """
 
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 _current_file = Path(__file__).resolve()
@@ -273,6 +274,7 @@ def chain(
     to_signals: list[str] = typer.Option([], "--to", help="Target signal(s) (e.g. dot11_tx.result_i). Can pass multiple."),
     auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports → output ports paths in --target module"),
     max_edges: int = typer.Option(30, "--max-edges", help="Max edges to render (default 30, prevents huge graphs)"),
+    max_depth: int = typer.Option(0, "--max-depth", help="[ADD 2026-07-10] Max path depth (default 0=unlimited, 方豆 feedback '不限制depth')"),
     layout: str = typer.Option("LR", "--layout", "-l", help="Layout: LR (left-right, default) or TB (top-bottom)"),
     layout_engine: str = typer.Option("neato", "--layout-engine", help="Layout engine: neato (square, default) / dot / fdp"),
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
@@ -415,6 +417,13 @@ def chain(
     # 策略: 按 path length 排序 (**LONGEST first** 优先选有 intermediate 的 path),
     # 贪婪选择, 直到 max_edges 达上限.
     # 这样保留的 node 都有 edge 相连, 而且能看到 deep data path.
+    #
+    # [FIX 2026-07-10] Post-process: 移除 orphan nodes
+    # 方豆反馈 "为什么看到有的节点只进不出?"
+    # 根因: greedy 截断路径后, 有些中间 node 丢失了 incoming 或 outgoing edge,
+    #       看起来 “只进不出” 或 “只出不进”.
+    # 修法: 在 dot 生成前, 删掉任何没有 incoming 或 outgoing edge 的 chain_node
+    #       (IO 端口除外, INPUT 没 incoming 是正常的, OUTPUT 没 outgoing 是正常的).
     if not all_paths:
         chain_edges = set()
         chain_nodes = set()
@@ -459,6 +468,91 @@ def chain(
                 chain_edges |= new_edges
                 chain_nodes |= set(path)
 
+        # [FIX 2026-07-10 方豆 feedback] 不再静默移除 orphan nodes, 改为检查 RTL 语义:
+        # - PORT_IN (input): 应该只有 out (没被内部驱动, 来自外部)
+        # - PORT_OUT (output): 应该只有 in (没内部 load, 去外部)
+        # - REG/WIRE: 必须同时 in & out
+        #   * in=0 out>0 = 悬空驱动 (X 值/未定值)
+        #   * in>0 out=0 = 悬空负载 (未被使用/死代码)
+        #   * in=0 out=0 = 真正孤儿 (两边都没接上)
+        # 例外: SUB_INSTANCE 包装节点 (如 SourceA_dut) 可以 in>0 out=0 (路径终点)
+        #      或 in=0 out>0 (路径起点)。
+        # 报告 anomalies 但保留节点, 在 DOT 里用不同颜色标出。
+        from_set = set(from_sigs)
+        to_set = set(to_sigs)
+
+        # Compute in/out degree for each chain node
+        in_deg: dict[str, int] = defaultdict(int)
+        out_deg: dict[str, int] = defaultdict(int)
+        for src, dst in chain_edges:
+            if src in chain_nodes and dst in chain_nodes:
+                out_deg[src] += 1
+                in_deg[dst] += 1
+
+        anomalies: dict[str, str] = {}  # node_id -> anomaly type
+        for n in chain_nodes:
+            # Get node kind from graph (fallback to flat ID lookup if hierarchy remap)
+            graph_node = graph.get_node(n)
+            if graph_node is None:
+                flat_id = n.split(".")[-1] if "." in n else n
+                graph_node = graph.get_node(flat_id)
+            kind = getattr(getattr(graph_node, "kind", None), "name", "UNKNOWN") if graph_node else "UNKNOWN"
+
+            is_port_in = n in from_set
+            is_port_out = n in to_set
+            # [FIX 2026-07-10 方豆 feedback] OUTPUT 端口在 graph 里可能 kind=WIRE/REG/SIGNAL
+            # (因为 semantic port list 权威但 graph node kind 可能不准)。
+            # INPUT 端口 才需要检查 misclassification (内部 wire 可能被 heuristic 误判为 input)。
+            is_misclassified = False
+            if is_port_in and kind in ("WIRE", "REG", "SIGNAL"):
+                is_misclassified = True
+                is_port_in = False
+                is_port_out = False
+            # Sub-instance wrapper: e.g. "SourceA.sourceA_req_source_i" — contains a sub-module signal but
+            # the node IS the sub-instance entry point. We treat it as a kind=PORT_IN/OUT inside the chain.
+
+            if is_port_in:
+                # INPUT 端口: 期望 out>0
+                if in_deg[n] > 0 and out_deg[n] == 0:
+                    # 路径跨模块边界: 这是子模块输入被某输出驱动, 正常
+                    pass  # OK
+                elif out_deg[n] == 0:
+                    anomalies[n] = "DANGLING_INPUT"  # INPUT 端口在 chain 里完全没下游
+            elif is_port_out:
+                # OUTPUT 端口: 期望 in>0
+                if out_deg[n] > 0 and in_deg[n] == 0:
+                    pass  # 路径起点, OK
+                elif in_deg[n] == 0:
+                    anomalies[n] = "DANGLING_OUTPUT"
+            else:
+                # Intermediate node (REG/WIRE/SIGNAL/UNKNOWN) or misclassified-port:
+                # 方豆 feedback: 寄存器只进不出 = 悬空, 只出不进 = X 驱动
+                if is_misclassified:
+                    anomalies[n] = "X_DRIVER"  # internal signal classified as port (X-driver pattern)
+                elif in_deg[n] == 0 and out_deg[n] == 0:
+                    anomalies[n] = "ORPHAN"  # 两边都没接上 (真实孤点)
+                elif in_deg[n] == 0:
+                    anomalies[n] = "X_DRIVER"  # 只出不进 = 寄存器没被写, 输出 X
+                elif out_deg[n] == 0:
+                    anomalies[n] = "DANGLING"  # 只进不出 = 寄存器写了未被读
+
+        if anomalies:
+            from collections import Counter
+            counts = Counter(anomalies.values())
+            typer.echo(
+                f"  ⚠️  RTL anomalies detected: {dict(counts)}",
+                err=True,
+            )
+            typer.echo(
+                f"     ORPHAN=两端无连接 (悬空) | X_DRIVER=只出不进 (未定值) | DANGLING=只进不出 (死代码)",
+                err=True,
+            )
+            for n, kind in list(anomalies.items())[:5]:
+                short = n.split(".")[-1]
+                typer.echo(f"     - {short}: {kind}", err=True)
+            if len(anomalies) > 5:
+                typer.echo(f"     ... and {len(anomalies) - 5} more", err=True)
+
         typer.echo(
             f"  Selected {len(chain_edges)} edges from {len(all_paths)} paths "
             f"({len(chain_nodes)} nodes, max={max_edges})",
@@ -484,12 +578,16 @@ def chain(
         if n is not None:
             node_kinds[node_id] = str(getattr(getattr(n, "kind", None), "name", "SIGNAL"))
 
+    # [FIX 2026-07-10] Pass anomalies 进去, 让 DOT 用不同颜色高亮 RTL 问题
+    chain_anomalies = anomalies if 'anomalies' in dir() else {}
+
     dot = _generate_chain_dot(
         chain_nodes, chain_edges, from_sigs, to_sigs,
         target or (Path(file).stem if file else "chain"),
         layout=layout, layout_engine=layout_engine,
         paths=sorted_paths if all_paths else None,
         node_kinds=node_kinds,
+        anomalies=chain_anomalies,
     )
 
     # 输出
@@ -570,6 +668,7 @@ def _generate_chain_dot(
     title: str, layout: str = "LR", layout_engine: str = "neato",
     paths: list | None = None,
     node_kinds: dict | None = None,
+    anomalies: dict | None = None,
 ) -> str:
     """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR).
 
@@ -735,7 +834,21 @@ def _generate_chain_dot(
         lines.append(f'    fontname="Helvetica-Bold";')  # [FIX] 加粗 (必须 quote)
         for node in sorted(sub_nodes):
             safe_id = _sanitize_dot_id_chain(node)
-            if node in from_set:
+            # [FIX 2026-07-10] Anomaly 高亮 (RTL 语义检查)
+            anomaly = (anomalies or {}).get(node)
+            if anomaly == "ORPHAN":
+                color = "#888888"  # 灰色 — 两边无连接
+                shape = "diamond"
+            elif anomaly == "X_DRIVER":
+                color = "#cc8800"  # 橙色 — 只出不进 (X 驱动)
+                shape = "diamond"
+            elif anomaly == "DANGLING":
+                color = "#cc0000"  # 鲜红 — 只进不出 (死代码)
+                shape = "diamond"
+            elif anomaly in ("DANGLING_INPUT", "DANGLING_OUTPUT"):
+                color = "#cc6600"  # 深橙 — 端口两端问题
+                shape = "diamond"
+            elif node in from_set:
                 color = "#22aa55"  # green for inputs
                 shape = "invhouse"
             elif node in to_set:
