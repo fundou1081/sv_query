@@ -567,10 +567,23 @@ def chain(
         if anomalies:
             from collections import Counter
             counts = Counter(anomalies.values())
+            # [FIX 2026-07-10 方豆 feedback] 如果 elaboration 不完整 (内存压力),
+            # 报告 anomaly 时加 "low confidence" 警告, 避免误报。
+            from trace.core.compiler import is_elaboration_incomplete
+            confidence = "low confidence (pyslang elaboration incomplete)" if is_elaboration_incomplete() else "high confidence"
             typer.echo(
-                f"  ⚠️  RTL anomalies detected: {dict(counts)}",
+                f"  ⚠️  RTL anomalies detected ({confidence}): {dict(counts)}",
                 err=True,
             )
+            if is_elaboration_incomplete():
+                typer.echo(
+                    "     ⚠️  WARNING: SWAP > 2GB during elaboration — graph may be incomplete.",
+                    err=True,
+                )
+                typer.echo(
+                    "     ⚠️  Anomalies above may be false positives from missing edges.",
+                    err=True,
+                )
             typer.echo(
                 f"     ORPHAN=两端无连接 (悬空) | X_DRIVER=只出不进 (未定值) | DANGLING=只进不出 (死代码)",
                 err=True,
@@ -616,6 +629,7 @@ def chain(
         paths=sorted_paths if all_paths else None,
         node_kinds=node_kinds,
         anomalies=chain_anomalies,
+        graph=graph,  # [FIX 2026-07-10] for anomaly connection lookup
     )
 
     # 输出
@@ -700,6 +714,7 @@ def _generate_chain_dot(
     paths: list | None = None,
     node_kinds: dict | None = None,
     anomalies: dict | None = None,
+    graph=None,  # [FIX 2026-07-10] for finding connections to anomaly nodes
 ) -> str:
     """生成 chain 专用的 DOT 图, 强制方形 layout (neato + LR).
 
@@ -968,6 +983,74 @@ def _generate_chain_dot(
             )
         else:
             lines.append(f'  "{src_safe}" -> "{dst_safe}" [color="#222222" penwidth=1.5 arrowhead=normal];')
+
+    # [FIX 2026-07-10 方豆 feedback 14:20] 加 "Anomalies" cluster, 展示未在 data path 上的异常信号
+    # 背景: chain 报告 X_DRIVER/DANGLING/ORPHAN 但这些信号可能不在 data path 上 (如 orphan_wire)。
+    #       用户看不到图里这个 bug — 只能从 stderr 读出来。
+    # 修法: 把 anomalies 画到独立 cluster, 用虚线箭头表示“该走的连接”, 让用户能肉眼看到问题。
+    if anomalies:
+        anomaly_nodes_in_path = {n for n in anomalies if n in nodes}
+        anomaly_nodes_outside = {n for n in anomalies if n not in nodes}
+        if anomaly_nodes_outside:
+            lines.append("")
+            lines.append('  // === RTL Anomalies (out-of-path X_DRIVER / DANGLING / ORPHAN) ===')
+            lines.append('  subgraph "cluster_anomalies" {')
+            lines.append(f'    label="RTL Anomalies ({len(anomaly_nodes_outside)} signals, NOT on data path)";')
+            lines.append('    style="rounded,dashed";')
+            lines.append('    color="#cc6600";')
+            lines.append('    penwidth=2.5;')
+            lines.append('    fontsize=12;')
+            lines.append('    fontcolor="#cc6600";')
+            lines.append('    fontname="Helvetica-Bold";')
+            lines.append('    bgcolor="#fff5e6";')
+            for n in sorted(anomaly_nodes_outside):
+                kind = anomalies[n]
+                safe_id = _sanitize_dot_id_chain(n)
+                # Color by anomaly type
+                if kind == "X_DRIVER":
+                    color = "#cc8800"
+                elif kind == "DANGLING":
+                    color = "#cc0000"
+                elif kind == "ORPHAN":
+                    color = "#888888"
+                else:
+                    color = "#cc6600"
+                label = _format_node_label(n, title)
+                # Add anomaly type to label
+                label = f"{label}\\n[{kind}]"
+                lines.append(
+                    f'    "{safe_id}" [label="{label}" shape=diamond style="filled,rounded" '
+                    f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica-Bold"];'
+                )
+            lines.append('  }')
+            # Add dashed "ghost" edges to show the broken connection:
+            # For X_DRIVER: dashed edge to consumers (showing the unwired path)
+            # For DANGLING: dashed edge from drivers (showing the unwired path)
+            for n in anomaly_nodes_outside:
+                safe_id = _sanitize_dot_id_chain(n)
+                kind = anomalies[n]
+                if graph is None:
+                    continue
+                # Find connections in full graph
+                if kind == "X_DRIVER":
+                    # Dashed edges to consumers
+                    for succ in graph.successors(n):
+                        succ_safe = _sanitize_dot_id_chain(succ)
+                        # If successor is in chain, draw dashed connection
+                        if succ in nodes:
+                            lines.append(
+                                f'  "{safe_id}" -> "{succ_safe}" [color="#cc8800" style=dashed penwidth=1.5 '
+                                f'label="X-driver path" fontcolor="#cc8800" fontsize=8 arrowhead=normal];'
+                            )
+                elif kind == "DANGLING":
+                    # Dashed edges from drivers
+                    for pred in graph.predecessors(n):
+                        pred_safe = _sanitize_dot_id_chain(pred)
+                        if pred in nodes:
+                            lines.append(
+                                f'  "{pred_safe}" -> "{safe_id}" [color="#cc0000" style=dashed penwidth=1.5 '
+                                f'label="unread path" fontcolor="#cc0000" fontsize=8 arrowhead=normal];'
+                            )
 
     lines.append("}")
     return "\n".join(lines)

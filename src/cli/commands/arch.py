@@ -103,8 +103,15 @@ def _arch_default(
                     arch_anomalies[nid] = "ORPHAN"
             if arch_anomalies:
                 from collections import Counter as _C
+                from trace.core.compiler import is_elaboration_incomplete
                 _counts = dict(_C(arch_anomalies.values()))
-                typer.echo(f"  ⚠️  RTL anomalies in {target}: {_counts}", err=True)
+                _confidence = "low confidence (elaboration incomplete)" if is_elaboration_incomplete() else "high confidence"
+                typer.echo(f"  ⚠️  RTL anomalies in {target} ({_confidence}): {_counts}", err=True)
+                if is_elaboration_incomplete():
+                    typer.echo(
+                        "     ⚠️  WARNING: SWAP > 2GB, graph incomplete — these may be false positives",
+                        err=True,
+                    )
                 for n, kind in list(arch_anomalies.items())[:5]:
                     short = n.split(".")[-1]
                     typer.echo(f"     - {short}: {kind}", err=True)

@@ -12,6 +12,9 @@ import sys
 # When True, all diagnostic output (warnings, info, errors) goes to /dev/null.
 # Without --quiet, all non-JSON output still goes to stderr (Unix convention).
 _QUIET = False
+# [ADD 2026-07-10] Global flag: 是否在本次 elaboration 中遇到内存压力 (SWAP > 2GB).
+#   anomaly 检测应该读这个 flag, 如果为 True, 把 anomalies 标为 "low confidence" (可能是误报)。
+_ELABORATION_INCOMPLETE = False
 
 
 def set_quiet(quiet: bool = True) -> None:
@@ -57,6 +60,18 @@ class CompilationError(Exception):
 # 内存检测
 # ---------------------------------------------------------------------------
 
+def is_elaboration_incomplete() -> bool:
+    """[ADD 2026-07-10] 方豆 feedback: elaboration 不完整时 anomaly 检测不可信.
+
+    Returns True if the last compilation encountered memory pressure (SWAP > 2GB).
+    In that case, the SignalGraph is likely missing edges due to OOM, and any
+    "anomaly" detected (X_DRIVER, DANGLING) is probably a false positive.
+
+    Use this to add a "low confidence" warning to anomaly reports.
+    """
+    return _ELABORATION_INCOMPLETE
+
+
 def _check_memory_pressure():
     """检测系统内存压力, 如果不足输出告警.
 
@@ -81,6 +96,8 @@ def _check_memory_pressure():
             if m:
                 swap_used = float(m.group(1).replace(',', '.'))
                 if swap_used > 2000:  # > 2GB swap used
+                    global _ELABORATION_INCOMPLETE
+                    _ELABORATION_INCOMPLETE = True
                     print(
                         f"[sv_query] ⚠️  SWAP 使用量 {swap_used:.0f}MB (可能内存不足)",
                         file=_sys.stderr,
