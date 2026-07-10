@@ -1026,7 +1026,13 @@ def _generate_chain_dot(
             # Add dashed "ghost" edges to show the broken connection:
             # For X_DRIVER: dashed edge to consumers (showing the unwired path)
             # For DANGLING: dashed edge from drivers (showing the unwired path)
+            # [FIX 2026-07-11] 限制 ghost edges 数量, 不让 max-edges 限制失效
+            # (之前不加限制 → 100+ anomalies 时 DOT 有 40+ 边, 违反 max-edges=5 的预期)
+            MAX_GHOST_EDGES = 20
+            ghost_count = 0
             for n in anomaly_nodes_outside:
+                if ghost_count >= MAX_GHOST_EDGES:
+                    break
                 safe_id = _sanitize_dot_id_chain(n)
                 kind = anomalies[n]
                 if graph is None:
@@ -1038,19 +1044,29 @@ def _generate_chain_dot(
                         succ_safe = _sanitize_dot_id_chain(succ)
                         # If successor is in chain, draw dashed connection
                         if succ in nodes:
+                            if ghost_count >= MAX_GHOST_EDGES:
+                                break
                             lines.append(
                                 f'  "{safe_id}" -> "{succ_safe}" [color="#cc8800" style=dashed penwidth=1.5 '
                                 f'label="X-driver path" fontcolor="#cc8800" fontsize=8 arrowhead=normal];'
                             )
+                            ghost_count += 1
                 elif kind == "DANGLING":
                     # Dashed edges from drivers
                     for pred in graph.predecessors(n):
                         pred_safe = _sanitize_dot_id_chain(pred)
                         if pred in nodes:
+                            if ghost_count >= MAX_GHOST_EDGES:
+                                break
                             lines.append(
                                 f'  "{pred_safe}" -> "{safe_id}" [color="#cc0000" style=dashed penwidth=1.5 '
                                 f'label="unread path" fontcolor="#cc0000" fontsize=8 arrowhead=normal];'
                             )
+                            ghost_count += 1
+            if ghost_count >= MAX_GHOST_EDGES:
+                lines.append(
+                    f'  // Ghost edges capped at {MAX_GHOST_EDGES} (use higher max-edges to see more)'
+                )
 
     lines.append("}")
     return "\n".join(lines)
