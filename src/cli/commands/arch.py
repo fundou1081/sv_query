@@ -54,6 +54,7 @@ def _arch_default(
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type"),
     max_nodes: int = typer.Option(100, "--max-nodes"),
     max_port_edges: int = typer.Option(200, "--max-port-edges"),
+    show_anomalies: bool = typer.Option(False, "--show-anomalies", help="[ADD 2026-07-10] Detect and display RTL anomalies (X_DRIVER, DANGLING, ORPHAN)"),
 ):
     """[arch v1 2026-06-24, v2 2026-06-25] Default: 直接当 show 跑.
 
@@ -75,10 +76,48 @@ def _arch_default(
     if output_format == "summary":
         _print_summary(instances, edges, target, file, filelist)
         return
+
+    # [ADD 2026-07-10] Detect RTL anomalies in target module (--show-anomalies)
+    arch_anomalies: dict[str, str] = {}
+    if show_anomalies and output_format == "dot":
+        try:
+            from trace.core.graph.models import NodeKind as _NK
+            tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist, strict=False)
+            _graph = tracer_obj.build_graph()
+            target_prefix = f"{target}."
+            for nid in _graph.nodes():
+                if not nid.startswith(target_prefix):
+                    continue
+                node = _graph.get_node(nid)
+                if not node:
+                    continue
+                if node.kind in (_NK.PORT_IN, _NK.PORT_OUT):
+                    continue
+                n_in = _graph.in_degree(nid)
+                n_out = _graph.out_degree(nid)
+                if n_in == 0 and n_out > 0:
+                    arch_anomalies[nid] = "X_DRIVER"
+                elif n_out == 0 and n_in > 0:
+                    arch_anomalies[nid] = "DANGLING"
+                elif n_in == 0 and n_out == 0:
+                    arch_anomalies[nid] = "ORPHAN"
+            if arch_anomalies:
+                from collections import Counter as _C
+                _counts = dict(_C(arch_anomalies.values()))
+                typer.echo(f"  ⚠️  RTL anomalies in {target}: {_counts}", err=True)
+                for n, kind in list(arch_anomalies.items())[:5]:
+                    short = n.split(".")[-1]
+                    typer.echo(f"     - {short}: {kind}", err=True)
+        except Exception as e:
+            typer.echo(f"  (anomaly scan failed: {e})", err=True)
+
     if output_format == "dot":
         content = _render_dot(instances, edges, target, True,
                               cluster_by_type=cluster_by_type, max_nodes=max_nodes,
                               max_port_edges=max_port_edges)
+        # Append anomalies cluster to DOT
+        if arch_anomalies:
+            content = _append_anomalies_cluster_to_dot(content, arch_anomalies, target)
     elif output_format == "mermaid":
         content = _render_mermaid(instances, edges, target, True)
     elif output_format == "html":
@@ -86,6 +125,8 @@ def _arch_default(
     elif output_format == "svg":
         dot_text = _render_dot(instances, edges, target, True,
                                cluster_by_type=cluster_by_type, max_nodes=max_nodes)
+        if arch_anomalies:
+            dot_text = _append_anomalies_cluster_to_dot(dot_text, arch_anomalies, target)
         try:
             content = _render_svg(dot_text, target, output)
         except RuntimeError as e:
@@ -303,6 +344,53 @@ def _safe_cluster_name(name: str) -> str:
 
     'axi_master_xbar' → 'cluster_axi_master_xbar'
     """
+    return "cluster_" + name.replace("-", "_").replace(".", "_")
+
+
+def _append_anomalies_cluster_to_dot(dot_content: str, anomalies: dict, target: str) -> str:
+    """[ADD 2026-07-10] Append RTL anomalies cluster to arch DOT.
+
+    Inserts an 'RTL Anomalies' cluster before the closing '}' of the digraph.
+    Each anomaly is shown as a diamond with its kind label.
+    """
+    lines = dot_content.split("\n")
+    # Find the last '}' line and insert before it
+    insert_idx = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip() == "}":
+            insert_idx = i
+            break
+
+    cluster_lines = [
+        "",
+        "  // === RTL Anomalies (from --show-anomalies) ===",
+        '  subgraph "cluster_arch_anomalies" {',
+        f'    label="RTL Anomalies in {target} ({len(anomalies)} signals)";',
+        '    style="rounded,dashed";',
+        '    color="#cc6600";',
+        '    penwidth=2.5;',
+        '    fontsize=12;',
+        '    fontcolor="#cc6600";',
+        '    fontname="Helvetica-Bold";',
+        '    bgcolor="#fff5e6";',
+    ]
+    for n, kind in anomalies.items():
+        short = n.split(".")[-1]
+        if kind == "X_DRIVER":
+            color = "#cc8800"
+        elif kind == "DANGLING":
+            color = "#cc0000"
+        else:
+            color = "#888888"
+        safe_id = n.replace(".", "_").replace("[", "_").replace("]", "_")
+        cluster_lines.append(
+            f'    "{safe_id}" [label="{short}\\n[{kind}]" shape=diamond style="filled,rounded" '
+            f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica-Bold"];'
+        )
+    cluster_lines.append("  }")
+    # Insert before the closing '}'
+    lines = lines[:insert_idx] + cluster_lines + lines[insert_idx:]
+    return "\n".join(lines)
     return "cluster_" + name.replace("-", "_").replace(".", "_")
 
 
@@ -859,6 +947,7 @@ def show(
     max_nodes: int = typer.Option(100, "--max-nodes", help="[v2] Maximum nodes to render (default: 100). Excess collapsed with note."),
     strict: bool = typer.Option(False, "--strict/--no-strict"),
     understand: bool = typer.Option(False, "--understand", help="[Design Understanding A 2026-07-08] Add IP-level understanding section (module purpose, clock domains, signal classification)"),
+    show_anomalies: bool = typer.Option(False, "--show-anomalies", help="[ADD 2026-07-10] Detect and display RTL anomalies in the target module (X_DRIVER, DANGLING, ORPHAN)"),
 ):
     """[arch v1 2026-06-24] 项目架构可视化 (L1 hierarchy + L2 cross-module port edges).
 

@@ -66,6 +66,34 @@ def analyze(
 
     paths = analyzer.get_critical_paths(max_paths=max_paths)
 
+    # [FIX 2026-07-10 方豆 feedback 15:23] Detect RTL anomalies in target module.
+    # This explains why timing's critical path may be incomplete (truncated at
+    # an undriven signal). Critical path is computed from port → reg → port;
+    # an X_DRIVER signal in the path forces the path to stop.
+    target_module = tracer._tracer_root if hasattr(tracer, "_tracer_root") else None
+    timing_anomalies: dict[str, str] = {}
+    from trace.core.graph.models import NodeKind
+    for nid in graph.nodes():
+        # Only check target module's signals (heuristic: first part of dotted name)
+        if "." not in nid:
+            continue
+        first_seg = nid.split(".", 1)[0]
+        if target_module and first_seg != target_module:
+            continue  # Skip sub-modules
+        node = graph.get_node(nid)
+        if not node:
+            continue
+        if node.kind in (NodeKind.PORT_IN, NodeKind.PORT_OUT):
+            continue
+        n_in = graph.in_degree(nid)
+        n_out = graph.out_degree(nid)
+        if n_in == 0 and n_out > 0:
+            timing_anomalies[nid] = "X_DRIVER"
+        elif n_out == 0 and n_in > 0:
+            timing_anomalies[nid] = "DANGLING"
+        elif n_in == 0 and n_out == 0:
+            timing_anomalies[nid] = "ORPHAN"
+
     # 计算节点统计
     reg_count = sum(1 for n in graph.nodes() if graph.get_node(n) and graph.get_node(n).kind == NodeKind.REG)
     total_nodes = len(graph.nodes())
@@ -102,7 +130,10 @@ def analyze(
     if dot_output:
         lines = ['digraph timing {']
         lines.append('  rankdir=LR;')
-        lines.append(f'  label="Critical Paths: {file or filelist}\\n({len(paths)} paths, deepest={max((p["depth"] for p in paths), default=0)})";')
+        anomaly_note = ""
+        if timing_anomalies:
+            anomaly_note = f"\\n⚠️  {len(timing_anomalies)} RTL anomalies (may truncate paths)"
+        lines.append(f'  label="Critical Paths: {file or filelist}\\n({len(paths)} paths, deepest={max((p["depth"] for p in paths), default=0)}){anomaly_note}";')
         lines.append('  labelloc=t;')
         lines.append('  fontsize=14;')
         lines.append('  splines=polyline;')
@@ -131,9 +162,36 @@ def analyze(
             if path_nodes:
                 quoted = " ".join(f'"{n}"' for n in path_nodes)
                 lines.append(f'  {{ rank=same; {quoted} }}')
+
+        # [FIX 2026-07-10] Add anomalies cluster so user can see what truncated paths
+        if timing_anomalies:
+            lines.append('  subgraph "cluster_timing_anomalies" {')
+            lines.append(f'    label="RTL Anomalies ({len(timing_anomalies)} signals, may truncate paths)";')
+            lines.append('    style="rounded,dashed";')
+            lines.append('    color="#cc6600";')
+            lines.append('    penwidth=2.5;')
+            lines.append('    fontsize=11;')
+            lines.append('    fontcolor="#cc6600";')
+            lines.append('    fontname="Helvetica-Bold";')
+            lines.append('    bgcolor="#fff5e6";')
+            for n, kind in timing_anomalies.items():
+                short = n.split(".")[-1]
+                if kind == "X_DRIVER":
+                    color = "#cc8800"
+                elif kind == "DANGLING":
+                    color = "#cc0000"
+                else:
+                    color = "#888888"
+                lines.append(
+                    f'    "{n}" [label="{short}\\n[{kind}]" shape=diamond style="filled,rounded" '
+                    f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica-Bold"];'
+                )
+            lines.append('  }')
         lines.append('}')
         Path(dot_output).write_text("\n".join(lines))
         typer.echo(f"✓ DOT: {dot_output} ({len(paths)} critical paths)")
+        if timing_anomalies:
+            typer.echo(f"  ⚠️  {len(timing_anomalies)} RTL anomalies detected (may truncate critical paths)", err=True)
         return
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
@@ -143,6 +201,17 @@ def analyze(
     print(f"{'=' * 70}")
 
     print(f"\n  节点统计: 总={total_nodes} | 寄存器={reg_count}")
+
+    # [FIX 2026-07-10 方豆 feedback] Show RTL anomalies that may truncate critical paths
+    if timing_anomalies:
+        from collections import Counter
+        counts = Counter(timing_anomalies.values())
+        print(f"  ⚠️  RTL 异常: {dict(counts)} (可能导致 critical path 截断)")
+        for n, kind in list(timing_anomalies.items())[:5]:
+            short = n.split(".")[-1]
+            print(f"     - {short}: {kind}")
+        if len(timing_anomalies) > 5:
+            print(f"     ... and {len(timing_anomalies) - 5} more")
 
     if not paths:
         print("\n  未发现关键路径（可能无寄存器或数据流）")

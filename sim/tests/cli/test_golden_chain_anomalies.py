@@ -164,3 +164,203 @@ class TestGoldenChainSubmodule(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestChainAnomalyVisualization(unittest.TestCase):
+    """[FIX 2026-07-10] Anomalies are now visible in DOT, not just stderr.
+
+    方豆 feedback 14:20: '修复发现的问题'
+    Issue: chain reported X_DRIVER (orphan_wire) in stderr but the signal
+    wasn't visible in the diagram, so users couldn't see the bug from
+    the picture alone.
+    Fix: Add 'Anomalies' cluster to chain DOT with dashed edges showing
+    the broken connections.
+    """
+
+    def _run_chain(self, target: str, tc_dir: str) -> str:
+        filelist = GOLDEN_DIR / tc_dir / "filelist.f"
+        dot_out = Path(f"/tmp/_viz_test_{tc_dir}.dot")
+        subprocess.run(
+            ["sv_query", "visualize", "chain",
+             "-f", str(filelist), "--no-strict",
+             "--target", target, "--auto",
+             "--max-edges", "30", "--dot", str(dot_out)],
+            capture_output=True, text=True, timeout=120,
+        )
+        return dot_out.read_text()
+
+    def test_x_driver_anomaly_visible_in_dot(self):
+        """orphan_wire should be visible as diamond in chain DOT."""
+        dot = self._run_chain("x_driver", "x_driver")
+        # Should have cluster_anomalies
+        self.assertIn("cluster_anomalies", dot,
+                     "Should have 'RTL Anomalies' cluster in DOT")
+        # orphan_wire should appear as a diamond
+        self.assertIn("orphan_wire", dot, "orphan_wire should appear in DOT")
+        # Should be marked as X_DRIVER
+        self.assertIn("[X_DRIVER]", dot,
+                     "orphan_wire should be labeled with anomaly type")
+        # Should have diamond shape
+        self.assertIn("shape=diamond", dot,
+                     "Anomaly node should use diamond shape")
+
+    def test_x_driver_dashed_edge_to_consumer(self):
+        """X_DRIVER should have dashed orange edge to its consumer (data_o)."""
+        dot = self._run_chain("x_driver", "x_driver")
+        # Should have a dashed edge labeled "X-driver path"
+        self.assertRegex(dot, r'style=dashed.*X-driver path',
+                        "Should have dashed edge with 'X-driver path' label")
+
+    def test_combined_anomalies_all_visible(self):
+        """Combined testcase: 2 X_DRIVER + 1 DANGLING all visible."""
+        dot = self._run_chain("combined", "combined")
+        for sig in ["isolated_a", "isolated_b", "chain_wire"]:
+            self.assertIn(sig, dot, f"{sig} should be in DOT")
+        # Should have multiple diamonds
+        diamond_count = dot.count("shape=diamond")
+        self.assertGreaterEqual(diamond_count, 3,
+                              f"Should have 3+ diamonds, got {diamond_count}")
+
+    def test_dangling_anomaly_visible(self):
+        """unused_reg should be visible as DANGLING diamond."""
+        dot = self._run_chain("dangling", "dangling")
+        self.assertIn("cluster_anomalies", dot)
+        self.assertIn("unused_reg", dot)
+        self.assertIn("[DANGLING]", dot,
+                     "unused_reg should be labeled DANGLING")
+
+    def test_normal_has_no_anomaly_cluster(self):
+        """Normal testcase: no anomalies → no anomaly cluster needed."""
+        dot = self._run_chain("normal", "normal")
+        self.assertNotIn("cluster_anomalies", dot,
+                        "Normal chain should NOT have anomaly cluster")
+
+
+class TestTimingAnomalyDetection(unittest.TestCase):
+    """[FIX 2026-07-10] timing analyze detects RTL anomalies that may truncate critical paths.
+
+    方豆 2026-07-10 14:20: '修复发现的问题'
+    Issue: timing's critical path was incomplete (truncated at data_reg) because
+    orphan_wire was undriven. Without visibility into the anomaly, user couldn't
+    understand WHY the path was incomplete.
+    Fix: timing now reports RTL anomalies and shows them in DOT.
+    """
+
+    def _run_timing(self, target: str, tc_dir: str, max_paths: int = 5) -> tuple[str, str]:
+        filelist = GOLDEN_DIR / tc_dir / "filelist.f"
+        dot_out = Path(f"/tmp/_timing_{tc_dir}.dot")
+        result = subprocess.run(
+            ["sv_query", "timing", "analyze",
+             "-f", str(filelist), "--no-strict",
+             "--max-paths", str(max_paths),
+             "--dot", str(dot_out)],
+            capture_output=True, text=True, timeout=120,
+        )
+        return dot_out.read_text(), result.stderr
+
+    def test_timing_x_driver_anomaly_visible(self):
+        """x_driver: timing should report orphan_wire as X_DRIVER anomaly."""
+        dot, stderr = self._run_timing("x_driver", "x_driver")
+        # Should report anomaly count (English message)
+        self.assertIn("RTL anomalies detected", stderr,
+                     "Timing should report anomalies in text output")
+        # Should have cluster_timing_anomalies in DOT
+        self.assertIn("cluster_timing_anomalies", dot,
+                     "DOT should have timing anomalies cluster")
+        # orphan_wire should be in the DOT
+        self.assertIn("orphan_wire", dot, "orphan_wire should appear in DOT")
+        # Should be marked as X_DRIVER
+        self.assertIn("[X_DRIVER]", dot,
+                     "orphan_wire should be labeled with X_DRIVER")
+
+    def test_timing_combined_multiple_anomalies(self):
+        """combined: timing should report 2 X_DRIVER + 1 DANGLING."""
+        dot, stderr = self._run_timing("combined", "combined")
+        self.assertIn("RTL anomalies detected", stderr)
+        # Should have multiple anomalies
+        x_driver_count = dot.count("[X_DRIVER]")
+        dangling_count = dot.count("[DANGLING]")
+        self.assertGreaterEqual(x_driver_count + dangling_count, 3,
+                              f"Should have 3+ anomalies, got X_DRIVER={x_driver_count} DANGLING={dangling_count}")
+
+    def test_timing_normal_no_anomaly(self):
+        """normal: timing should report no anomalies."""
+        dot, stderr = self._run_timing("normal", "normal")
+        # Should NOT have anomaly cluster
+        self.assertNotIn("cluster_timing_anomalies", dot,
+                        "Normal timing should NOT have anomaly cluster")
+        # stderr should not have anomaly warning
+        self.assertNotIn("RTL anomalies detected", stderr,
+                        "Normal timing should not have anomaly warning")
+
+    def test_timing_dangling_anomaly(self):
+        """dangling: timing should report unused_reg as DANGLING."""
+        dot, stderr = self._run_timing("dangling", "dangling")
+        self.assertIn("RTL anomalies detected", stderr)
+        self.assertIn("unused_reg", dot)
+        self.assertIn("[DANGLING]", dot,
+                     "unused_reg should be labeled DANGLING")
+
+    def test_timing_dot_title_includes_anomaly_warning(self):
+        """Timing DOT title should include anomaly warning when present."""
+        dot, _ = self._run_timing("x_driver", "x_driver")
+        # Title should mention RTL anomalies
+        self.assertIn("RTL anomalies", dot,
+                     "DOT title should mention RTL anomalies")
+        self.assertIn("may truncate paths", dot,
+                     "DOT title should warn about path truncation")
+
+
+class TestArchAnomalyDisplay(unittest.TestCase):
+    """[FIX 2026-07-10] arch --show-anomalies displays RTL anomalies in DOT."""
+
+    def _run_arch(self, target: str, tc_dir: str) -> tuple[str, str]:
+        filelist = GOLDEN_DIR / tc_dir / "filelist.f"
+        dot_out = Path(f"/tmp/_arch_{tc_dir}.dot")
+        result = subprocess.run(
+            ["sv_query", "arch",
+             "-f", str(filelist),
+             "--target", target, "--depth", "1",
+             "--show-anomalies",
+             "--format", "dot",
+             "-o", str(dot_out)],
+            capture_output=True, text=True, timeout=120,
+        )
+        return dot_out.read_text(), result.stderr
+
+    def test_arch_x_driver_anomaly_visible(self):
+        """arch --show-anomalies should display orphan_wire in x_driver."""
+        dot, stderr = self._run_arch("x_driver", "x_driver")
+        # Should report anomaly in stderr
+        self.assertIn("RTL anomalies in x_driver", stderr,
+                     "arch should report anomalies in text")
+        # Should have cluster_arch_anomalies in DOT
+        self.assertIn("cluster_arch_anomalies", dot,
+                     "arch DOT should have anomalies cluster")
+        # orphan_wire should be a diamond
+        self.assertIn("orphan_wire", dot, "orphan_wire should appear in arch DOT")
+        self.assertIn("[X_DRIVER]", dot, "Should be labeled X_DRIVER")
+        self.assertIn("shape=diamond", dot, "Should use diamond shape")
+
+    def test_arch_combined_multiple_anomalies(self):
+        """combined: arch should show 2 X_DRIVER + 1 DANGLING."""
+        dot, _ = self._run_arch("combined", "combined")
+        # Should have cluster
+        self.assertIn("cluster_arch_anomalies", dot)
+        # Count anomalies
+        x_driver_count = dot.count("[X_DRIVER]")
+        dangling_count = dot.count("[DANGLING]")
+        self.assertEqual(x_driver_count, 2,
+                       f"Should have 2 X_DRIVER, got {x_driver_count}")
+        self.assertEqual(dangling_count, 1,
+                       f"Should have 1 DANGLING, got {dangling_count}")
+
+    def test_arch_normal_no_anomalies(self):
+        """normal: arch --show-anomalies should NOT show anomaly cluster."""
+        dot, stderr = self._run_arch("normal", "normal")
+        # Should NOT have anomaly cluster
+        self.assertNotIn("cluster_arch_anomalies", dot,
+                        "Normal arch should NOT have anomaly cluster")
+        # Should not report anomalies in stderr
+        self.assertNotIn("RTL anomalies in normal", stderr,
+                        "Normal arch should not report anomalies")
