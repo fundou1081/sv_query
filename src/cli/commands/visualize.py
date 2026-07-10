@@ -326,7 +326,7 @@ def chain(
         if not target:
             typer.echo("Error: --auto requires --target <module>", err=True)
             raise typer.Exit(code=1)
-        from_sigs, to_sigs = _auto_detect_io_ports(graph, target)
+        from_sigs, to_sigs = _auto_detect_io_ports(graph, target, tracer=tracer)
         if not from_sigs or not to_sigs:
             typer.echo(
                 f"Error: --auto could not find input/output ports for target={target}",
@@ -489,6 +489,7 @@ def chain(
                 out_deg[src] += 1
                 in_deg[dst] += 1
 
+        anomalies_extra: dict[str, str] = {}  # for full-module scan (signals not in chain)
         anomalies: dict[str, str] = {}  # node_id -> anomaly type
         for n in chain_nodes:
             # Get node kind from graph (fallback to flat ID lookup if hierarchy remap)
@@ -535,6 +536,33 @@ def chain(
                     anomalies[n] = "X_DRIVER"  # 只出不进 = 寄存器没被写, 输出 X
                 elif out_deg[n] == 0:
                     anomalies[n] = "DANGLING"  # 只进不出 = 寄存器写了未被读
+
+        # [FIX 2026-07-10 方豆 feedback] Full-module anomaly scan.
+        # 除了 chain 里的节点, 还需扫描整个 target module 的信号.
+        # 原因: orphan_wire / isolated_wire 这种 RTL bug, 可能根本不在任何 data path 上
+        #       (因为没 driver, 不能从 input 走到). 但它们仍是真实 RTL 问题.
+        # 补上 full-graph anomaly scan.
+        target_prefix = f"{target}."
+        for node_id in graph.nodes():
+            if not node_id.startswith(target_prefix):
+                continue
+            if node_id in anomalies:
+                continue  # already in chain-based scan
+            # Skip ports (they have a different rule)
+            gn = graph.get_node(node_id)
+            n_kind = str(getattr(getattr(gn, "kind", None), "name", "UNKNOWN")) if gn else "UNKNOWN"
+            if n_kind in ("PORT_IN", "PORT_OUT"):
+                continue
+            if n_kind not in ("REG", "WIRE", "SIGNAL", "UNKNOWN"):
+                continue
+            n_in = graph.in_degree(node_id)
+            n_out = graph.out_degree(node_id)
+            if n_in == 0 and n_out == 0:
+                anomalies[node_id] = "ORPHAN"
+            elif n_in == 0:
+                anomalies[node_id] = "X_DRIVER"
+            elif n_out == 0:
+                anomalies[node_id] = "DANGLING"
 
         if anomalies:
             from collections import Counter
@@ -607,31 +635,34 @@ def chain(
         typer.echo(dot)
 
 
-def _auto_detect_io_ports(graph, target: str) -> tuple[list[str], list[str]]:
+def _auto_detect_io_ports(graph, target: str, tracer=None) -> tuple[list[str], list[str]]:
     """[铁律1] 用 semantic AST (semantic_adapter.get_port_declarations) 拿 target module 的 input/output ports.
 
     Returns (input_signal_ids, output_signal_ids) — signal IDs 形如 "{target}.{port_name}".
+
+    [FIX 2026-07-10] 接受 tracer 参数 (从 chain() 传入), 避免走 fallback heuristic 误报.
+    Fallback heuristic 不区分 port 和 internal reg/wire, 会把 "reg 被写但未读" 误判为 output port.
     """
     from trace.core.semantic_adapter import SemanticAdapter
 
-    # 找 compilation 入口
-    # tracer is in graph._tracer or similar; 用 graph._tracer 拿
-    tracer = getattr(graph, "_tracer", None)
+    # tracer from parameter, fallback to graph._tracer
+    if tracer is None:
+        tracer = getattr(graph, "_tracer", None)
+
     if tracer is None:
         # 退而求其次: scan all nodes for {target}.<name> pattern
-        # 假设 signals with depth=0 (top module) 是 ports
+        # [FIX 2026-07-10] 仅用 kind=PORT_IN/PORT_OUT 过滤, 避免把 dangling reg 误判为 output
         from_sigs = []
         to_sigs = []
         for node_id in graph.nodes():
             if node_id.startswith(f"{target}."):
-                # heuristic: 如果 node 既被驱动又被引用, 可能是 wire (跳过)
-                # 如果只被驱动 (=port_in) 或只被引用 (=port_out)
-                in_deg = graph.in_degree(node_id)
-                out_deg = graph.out_degree(node_id)
-                if in_deg == 0 and out_deg > 0:
+                n = graph.get_node(node_id)
+                kind_name = str(getattr(getattr(n, "kind", None), "name", "SIGNAL")) if n else "SIGNAL"
+                if kind_name == "PORT_IN":
                     from_sigs.append(node_id)
-                elif out_deg == 0 and in_deg > 0:
+                elif kind_name == "PORT_OUT":
                     to_sigs.append(node_id)
+                # Skip SIGNALS/REGS/WIRES
         return from_sigs, to_sigs
 
     # [铁律1] 用 semantic API
