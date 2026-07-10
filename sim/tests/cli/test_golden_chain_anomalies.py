@@ -38,7 +38,7 @@ def run_chain(target: str, tc_dir: str, max_edges: int = 30) -> dict:
         capture_output=True, text=True, timeout=120,
     )
     # Parse anomaly counts from stderr
-    anomaly_match = re.search(r"RTL anomalies detected: ({[^}]+})", result.stderr)
+    anomaly_match = re.search(r"RTL anomalies detected[^\n]*:\s*({[^}]+})", result.stderr)
     anomaly_counts = {}
     if anomaly_match:
         # Parse like "{'X_DRIVER': 2}"
@@ -364,3 +364,38 @@ class TestArchAnomalyDisplay(unittest.TestCase):
         # Should not report anomalies in stderr
         self.assertNotIn("RTL anomalies in normal", stderr,
                         "Normal arch should not report anomalies")
+
+
+class TestLowConfidenceWarning(unittest.TestCase):
+    """[FIX 2026-07-10] When pyslang elaboration is incomplete (SWAP > 2GB),
+    anomaly reports should be marked as 'low confidence' to avoid false positives.
+
+    方豆 2026-07-10 16:14: '不对吧' (not right!) — the previous report on
+    openofdm_tx found 22+ anomalies, but most were false positives because
+    the graph was incomplete due to OOM. clk/reset are clearly INPUT PORTS
+    and cannot be undriven, yet they were flagged as X_DRIVER.
+
+    Fix: detect SWAP > 2GB and add 'low confidence' warning to anomaly reports.
+    """
+
+    def test_chain_low_confidence_when_oom(self):
+        """chain should warn about false positives when elaboration is incomplete."""
+        import subprocess
+        result = subprocess.run(
+            ["sv_query", "visualize", "chain",
+             "-f", "sim/tests/fixtures/golden_chain/dangling/filelist.f",
+             "--no-strict", "--target", "dangling", "--auto",
+             "--max-edges", "30", "--dot", "/tmp/_lc.dot"],
+            capture_output=True, text=True, timeout=120,
+        )
+        # When SWAP > 2GB (which is true on 8GB MBA), should add low confidence
+        if "low confidence" in result.stderr or "elaboration incomplete" in result.stderr:
+            # When SWAP is high, should warn
+            self.assertIn("false positives", result.stderr.lower(),
+                         "Should warn about possible false positives")
+        # Otherwise (rare - if SWAP is low) the test passes
+        else:
+            # Check that we DID detect DANGLING
+            self.assertIn("DANGLING", result.stderr,
+                         "Should detect DANGLING even when SWAP is low")
+

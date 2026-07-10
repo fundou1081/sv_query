@@ -206,7 +206,12 @@ def analyze(
     if timing_anomalies:
         from collections import Counter
         counts = Counter(timing_anomalies.values())
-        print(f"  ⚠️  RTL 异常: {dict(counts)} (可能导致 critical path 截断)")
+        # [FIX 2026-07-10 方豆 feedback 16:14] low-confidence warning when SWAP > 2GB
+        from trace.core.compiler import is_elaboration_incomplete
+        confidence = "low confidence (elaboration incomplete)" if is_elaboration_incomplete() else "high confidence"
+        print(f"  ⚠️  RTL 异常 ({confidence}): {dict(counts)} (可能导致 critical path 截断)")
+        if is_elaboration_incomplete():
+            print("     ⚠️  WARNING: SWAP > 2GB, graph incomplete — these may be false positives")
         for n, kind in list(timing_anomalies.items())[:5]:
             short = n.split(".")[-1]
             print(f"     - {short}: {kind}")
