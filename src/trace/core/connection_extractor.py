@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class ConnectionExtractor:
-    def __init__(self, adapter: PyslangAdapter):
+    def __init__(self, adapter: PyslangAdapter, root_module_name: str | None = None):
         self.adapter = adapter
-        self.root_module_name = None
+        # [Phase 3 2026-07-11] Accept target_module as initial root_module_name.
+        # If None (legacy), falls back to auto-detect first top instance.
+        self.root_module_name = root_module_name
 
     def _get_parent_module_name(self, inst) -> str:
         """Safely get parent module name from instance (handles generate blocks)."""

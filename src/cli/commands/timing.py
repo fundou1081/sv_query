@@ -34,6 +34,7 @@ timing_app = typer.Typer(help="[EXPERIMENTAL] Timing critical path analysis: reg
 def analyze(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    module: str = typer.Option(None, "--module", "-m", help="[Phase 3 2026-07-11] Target module (focus SignalGraph on this module's hierarchy)"),
     strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
@@ -58,7 +59,8 @@ def analyze(
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
-        graph = tracer.build_graph()
+        # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
+        graph = tracer.build_graph(target_module=module)
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return

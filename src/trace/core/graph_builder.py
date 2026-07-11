@@ -31,15 +31,28 @@ __all__ = [
 ]
 
 class GraphBuilder:
-    def __init__(self, adapter: PyslangAdapter):
+    def __init__(self, adapter: PyslangAdapter, target_module: str | None = None):
+        """[Phase 3 2026-07-11] GraphBuilder + target_module filter.
+
+        Args:
+            adapter: PyslangAdapter (semantic AST)
+            target_module: [NEW] If set, extractors use this as root_module_name
+                           instead of auto-detected first top instance. This ensures
+                           instance paths in SignalGraph use user-specified target.
+        """
         self.adapter = adapter
+        self.target_module = target_module  # [Phase 3]
         self.graph = SignalGraph()
         self._extractors = {
             "driver": DriverExtractor(adapter),
             "load": LoadExtractor(adapter),
-            "connection": ConnectionExtractor(adapter),
+            "connection": ConnectionExtractor(adapter, root_module_name=target_module),
             "clock": ClockDomainExtractor(adapter),
         }
+        # Propagate target_module to other extractors that might need it
+        for ext in self._extractors.values():
+            if hasattr(ext, 'set_target_module'):
+                ext.set_target_module(target_module)
         # SubroutineExpander for function/task call expansion
         self._subroutine_expander = SubroutineExpander(adapter)
         # [FIX] Track struct members for expansion
@@ -61,7 +74,81 @@ class GraphBuilder:
         # graph builder 只跑了顶层 elaboration, 缺这层. 加 post-process pass 补上.
         self._elaborate_wrapper_passthroughs()
 
+        # [Phase 3 2026-07-11] If target_module set, drop type-level nodes
+        # that don't belong to target's hierarchy. Without this filter,
+        # DriverExtractor emits nodes like "darkriscv.XRES" (module type +
+        # signal name) which confuse pipeline/timing rendering.
+        if self.target_module:
+            self._filter_by_target()
+
         return self.graph
+
+    def _filter_by_target(self):
+        """[Phase 3 2026-07-11] Drop nodes whose path doesn't start with target.
+
+        Strategy:
+        - KEEP: nodes where node_id starts with '{target}.'
+        - KEEP: nodes where node_id == '{target}' (top-level)
+        - KEEP: literal/constant nodes (no '.', or starts with digit)
+        - DROP: type-level nodes like 'darkriscv.XRES' (when 'darkriscv' != target
+                and 'darkriscv' isn't a sub-instance of target)
+
+        We use a simple heuristic: if node_id contains '.' and first segment
+        is NOT target and NOT a known sub-instance path within target, drop it.
+        """
+        target = self.target_module
+        # Collect all instance paths within target via pyslang
+        target_sub_paths = set()
+        target_sub_paths.add(target)
+        try:
+            from .semantic_adapter import SemanticAdapter
+            sa = SemanticAdapter(self.adapter.root, target_module=target)
+            for inst in sa.get_module_instances():
+                sym = getattr(inst, '_symbol', None)
+                if sym:
+                    try:
+                        hp = str(sym.hierarchicalPath)
+                        if hp:
+                            target_sub_paths.add(hp)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # Filter nodes
+        nodes_to_drop = []
+        for node_id in list(self.graph.nodes()):
+            if not isinstance(node_id, str) or not node_id:
+                continue
+            # Skip literal/constant nodes
+            if node_id[0].isdigit() or node_id.startswith("__"):
+                continue
+            # Skip target itself and its sub-instances
+            if node_id in target_sub_paths:
+                continue
+            # Check if starts with any target sub-path
+            is_within_target = any(
+                node_id == p or node_id.startswith(p + ".")
+                for p in target_sub_paths
+            )
+            if not is_within_target:
+                nodes_to_drop.append(node_id)
+
+        # Drop from graph
+        for node_id in nodes_to_drop:
+            try:
+                self.graph.remove_node(node_id)
+            except Exception:
+                pass
+
+        if nodes_to_drop:
+            import sys
+            print(
+                f"[Phase 3] target={target!r}: filtered {len(nodes_to_drop)} "
+                f"out-of-target nodes (kept {len(list(self.graph.nodes()))} "
+                f"within target)",
+                file=sys.stderr,
+            )
 
     def _collect_struct_members(self):
         """收集所有 struct 变量的成员信息
