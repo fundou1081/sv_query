@@ -114,6 +114,12 @@ def generate_dataflow_dot(
         # 跳过不需要的节点
         if not include_ports and node.kind in (NodeKind.PORT_IN, NodeKind.PORT_OUT, NodeKind.PORT_INOUT):
             continue
+        # [FIX 2026-07-11] Skip CONST (literal) nodes — they're noise in DOT.
+        # E.g., '4'b1011', '32'd3735928559', '0', '1' become standalone boxes
+        # cluttering the visualization. Skip rendering them; literal info
+        # is preserved as edge attributes.
+        if node.kind == NodeKind.CONST:
+            continue
 
         # 标签: name + kind + width
         # [Bug-fix 2026-06-13] 防御 width 是 3-tuple 的情况
