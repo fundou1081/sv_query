@@ -74,6 +74,11 @@ class GraphBuilder:
         # graph builder 只跑了顶层 elaboration, 缺这层. 加 post-process pass 补上.
         self._elaborate_wrapper_passthroughs()
 
+        # [FIX 2026-07-11] Always drop CONST (literal) nodes — they're noise.
+        # add_trace_edge creates CONST nodes for literals like '4'b1011',
+        # '32'd3735928559', '0', '1' which clutter all viz DOTs.
+        self._drop_literal_nodes()
+
         # [Phase 3 2026-07-11] If target_module set, drop type-level nodes
         # that don't belong to target's hierarchy. Without this filter,
         # DriverExtractor emits nodes like "darkriscv.XRES" (module type +
@@ -82,6 +87,36 @@ class GraphBuilder:
             self._filter_by_target()
 
         return self.graph
+
+    def _drop_literal_nodes(self):
+        """[FIX 2026-07-11] Drop CONST (literal) nodes from graph.
+
+        add_trace_edge() auto-creates CONST nodes for any literal in an edge
+        (e.g., '4'b1011', '8'hFF', '0', '1'). These clutter all viz DOTs.
+        Literal info is preserved as edge attributes, not separate nodes.
+        """
+        from .graph.models import NodeKind
+
+        nodes_to_drop = []
+        for node_id in list(self.graph.nodes()):
+            if not isinstance(node_id, str) or not node_id:
+                continue
+            n = self.graph.get_node(node_id)
+            if n and n.kind == NodeKind.CONST:
+                nodes_to_drop.append(node_id)
+
+        for node_id in nodes_to_drop:
+            try:
+                self.graph.remove_node(node_id)
+            except Exception:
+                pass
+
+        if nodes_to_drop:
+            import sys
+            print(
+                f"[FIX 2026-07-11] dropped {len(nodes_to_drop)} CONST (literal) nodes",
+                file=sys.stderr,
+            )
 
     def _filter_by_target(self):
         """[Phase 3 2026-07-11] Drop nodes whose path doesn't start with target.
@@ -120,8 +155,14 @@ class GraphBuilder:
         for node_id in list(self.graph.nodes()):
             if not isinstance(node_id, str) or not node_id:
                 continue
-            # Skip literal/constant nodes
-            if node_id[0].isdigit() or node_id.startswith("__"):
+            # [FIX 2026-07-11] Drop CONST (literal) nodes — they're noise.
+            # add_trace_edge creates CONST nodes for literals like '4'b1011',
+            # '32'd3735928559', '0', '1' which clutter dataflow/timing/chain DOTs.
+            # These should stay as edge attributes, not graph nodes.
+            from .graph.models import NodeKind
+            n = self.graph.get_node(node_id)
+            if n and n.kind == NodeKind.CONST:
+                nodes_to_drop.append(node_id)
                 continue
             # Skip target itself and its sub-instances
             if node_id in target_sub_paths:
