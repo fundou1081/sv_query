@@ -47,6 +47,20 @@ class DriverExtractor:
         self._subroutine_expander = SubroutineExpander(adapter)
         # [P1 cycle 2] TraceEdge 工厂, 消除 8+ ctx.get + 7+ sig_cond 模板
         self._edge_factory = TraceEdgeFactory()
+        # [Phase 4 2026-07-11] If set, walk these (instance_path, module) pairs
+        # instead of iterating all modules. This produces instance-aware signal IDs.
+        # None = legacy behavior (use all modules with type name as prefix).
+        self._instance_paths: list[tuple[str, Any]] | None = None
+
+    def set_instance_paths(self, instance_paths: list[tuple[str, Any]]) -> None:
+        """[Phase 4 2026-07-11] Configure instance-aware signal extraction.
+
+        Args:
+            instance_paths: List of (instance_path, pyslang InstanceSymbol) pairs.
+                Each signal in those instances will be named 'instance_path.signal_name'
+                (correctly namespaced under user target).
+        """
+        self._instance_paths = instance_paths
 
     def _get_all_signals(self, signal) -> list[str]:
         """提取表达式中的所有信号名
@@ -1076,28 +1090,64 @@ class DriverExtractor:
         self._current_module = None
         self._current_source_file = ""
 
-        for module in self.adapter.get_modules():
-            module_name = self.adapter.get_module_name(module)
-            # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
-            self._current_module = module
-            # [P1-3] 获取当前模块的源文件位置
-            src_file, src_line, _, _ = self.adapter.get_source_location(module)
-            self._current_source_file = src_file
+        # [Phase 4 2026-07-11] If instance_paths set, iterate (path, module) pairs
+        # instead of just modules. This makes signal IDs use full instance paths
+        # (e.g., 'darksocv.bridge0.core0.REGS' instead of 'darkriscv.REGS'),
+        # so pipeline/timing inside target see sub-instance registers.
+        if self._instance_paths:
+            for inst_path, module in self._instance_paths:
+                module_name = inst_path  # Use instance path as prefix
+                try:
+                    type_name = self.adapter.get_module_name(module)
+                except Exception:
+                    type_name = '?'
+                # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
+                self._current_module = module
+                # [P1-3] 获取当前模块的源文件位置
+                try:
+                    src_file, src_line, _, _ = self.adapter.get_source_location(module)
+                except Exception:
+                    src_file, src_line = '', 0
+                self._current_source_file = src_file
 
-            # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes
-            self._create_port_nodes(module, result, module_name)
-            port_names = self._collect_port_names(module)
-            self._create_var_nodes(module, result, module_name, port_names)
+                # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes
+                self._create_port_nodes(module, result, module_name)
+                port_names = self._collect_port_names(module)
+                self._create_var_nodes(module, result, module_name, port_names)
 
-            # [REFACTOR 2026-06-26 B-Phase 3-4] 抽 _create_net_alias_edges + _create_net_decl_edges
-            self._create_net_alias_edges(module, result, module_name)
-            self._create_net_decl_edges(module, result, module_name, port_names)
+                # [REFACTOR 2026-06-26 B-Phase 3-4] 抽 _create_net_alias_edges + _create_net_decl_edges
+                self._create_net_alias_edges(module, result, module_name)
+                self._create_net_decl_edges(module, result, module_name, port_names)
 
-            # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
-            self._create_assign_edges(module, result, module_name)
+                # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
+                self._create_assign_edges(module, result, module_name)
 
-            # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
-            self._create_always_edges(module, result, module_name)
+                # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
+                self._create_always_edges(module, result, module_name)
+        else:
+            # 旧路径: 遍历所有 modules (兼容行为)
+            for module in self.adapter.get_modules():
+                module_name = self.adapter.get_module_name(module)
+                # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
+                self._current_module = module
+                # [P1-3] 获取当前模块的源文件位置
+                src_file, src_line, _, _ = self.adapter.get_source_location(module)
+                self._current_source_file = src_file
+
+                # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes
+                self._create_port_nodes(module, result, module_name)
+                port_names = self._collect_port_names(module)
+                self._create_var_nodes(module, result, module_name, port_names)
+
+                # [REFACTOR 2026-06-26 B-Phase 3-4] 抽 _create_net_alias_edges + _create_net_decl_edges
+                self._create_net_alias_edges(module, result, module_name)
+                self._create_net_decl_edges(module, result, module_name, port_names)
+
+                # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
+                self._create_assign_edges(module, result, module_name)
+
+                # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
+                self._create_always_edges(module, result, module_name)
 
         # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
         # 一次性后处理比每个创建点都填更简洁

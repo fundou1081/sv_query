@@ -61,6 +61,13 @@ class GraphBuilder:
         self._struct_members: dict[str, set[str]] = {}
 
     def build(self) -> SignalGraph:
+        # [Phase 4 2026-07-11] If target_module set, walk target's instance tree
+        # to find (instance_path, instance_symbol) pairs. Pass to DriverExtractor
+        # so it emits signal IDs with full instance paths (e.g.,
+        # 'darksocv.bridge0.core0.REGS' instead of 'darkriscv.REGS').
+        if self.target_module:
+            self._configure_instance_paths()
+
         self._extract_all_nodes()
         self._extract_all_edges()
         self._mark_special_signals()
@@ -74,11 +81,6 @@ class GraphBuilder:
         # graph builder 只跑了顶层 elaboration, 缺这层. 加 post-process pass 补上.
         self._elaborate_wrapper_passthroughs()
 
-        # [FIX 2026-07-11] Always drop CONST (literal) nodes — they're noise.
-        # add_trace_edge creates CONST nodes for literals like '4'b1011',
-        # '32'd3735928559', '0', '1' which clutter all viz DOTs.
-        self._drop_literal_nodes()
-
         # [Phase 3 2026-07-11] If target_module set, drop type-level nodes
         # that don't belong to target's hierarchy. Without this filter,
         # DriverExtractor emits nodes like "darkriscv.XRES" (module type +
@@ -88,35 +90,88 @@ class GraphBuilder:
 
         return self.graph
 
-    def _drop_literal_nodes(self):
-        """[FIX 2026-07-11] Drop CONST (literal) nodes from graph.
+    def _configure_instance_paths(self):
+        """[Phase 4 2026-07-11] Walk target instance tree, configure extractors.
 
-        add_trace_edge() auto-creates CONST nodes for any literal in an edge
-        (e.g., '4'b1011', '8'hFF', '0', '1'). These clutter all viz DOTs.
-        Literal info is preserved as edge attributes, not separate nodes.
+        Builds a list of (instance_path, instance_symbol) pairs for all instances
+        within the user-specified target. Passes to DriverExtractor so signal
+        IDs include full instance paths.
         """
-        from .graph.models import NodeKind
+        try:
+            target_top = self._find_target_top(self.target_module)
+            if target_top is None:
+                return
 
-        nodes_to_drop = []
-        for node_id in list(self.graph.nodes()):
-            if not isinstance(node_id, str) or not node_id:
-                continue
-            n = self.graph.get_node(node_id)
-            if n and n.kind == NodeKind.CONST:
-                nodes_to_drop.append(node_id)
+            paths = []
 
-        for node_id in nodes_to_drop:
-            try:
-                self.graph.remove_node(node_id)
-            except Exception:
-                pass
+            def walk(inst, path):
+                paths.append((path, inst))
+                body = getattr(inst, 'body', None)
+                if body is None:
+                    return
+                try:
+                    for child in body:
+                        kind = str(getattr(child, 'kind', ''))
+                        if 'Instance' in kind:
+                            try:
+                                name = str(child.name)
+                            except Exception:
+                                name = '_anon'
+                            walk(child, f"{path}.{name}")
+                        elif 'GenerateBlockArray' in kind:
+                            entries = getattr(child, 'entries', None) or list(child)
+                            for entry in entries:
+                                if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
+                                    walk(entry, path)
+                        elif 'GenerateBlock' in kind:
+                            walk(child, path)
+                except Exception:
+                    pass
 
-        if nodes_to_drop:
+            walk(target_top, self.target_module)
+
+            # Pass to DriverExtractor
+            driver = self._extractors.get('driver')
+            if driver is not None and hasattr(driver, 'set_instance_paths'):
+                driver.set_instance_paths(paths)
+
             import sys
             print(
-                f"[FIX 2026-07-11] dropped {len(nodes_to_drop)} CONST (literal) nodes",
+                f"[Phase 4] target={self.target_module!r}: "
+                f"configured {len(paths)} instance paths for DriverExtractor",
                 file=sys.stderr,
             )
+        except Exception as e:
+            import sys
+            print(f"[Phase 4] _configure_instance_paths failed: {e}", file=sys.stderr)
+
+    def _find_target_top(self, target_module: str):
+        """[Phase 4 2026-07-11] Find target in topInstances."""
+        try:
+            root = self.adapter.root
+            if not hasattr(root, 'topInstances'):
+                return None
+            for top in root.topInstances:
+                try:
+                    if str(top.name) == target_module:
+                        return top
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+    def _drop_literal_nodes(self):
+        """[REVERTED 2026-07-11 Phase 4] Don't drop CONST nodes.
+
+        Original fix tried to drop CONST (literal) nodes from graph, but this
+        broke 14 regression tests that depend on edges like '8'd0 -> ifc.data'.
+
+        Instead, fix should be at viz layer: skip CONST nodes when rendering DOT.
+        See pipeline_viz.py / timing_analyzer.py / dataflow_viz.py.
+
+        Kept as no-op for backward compat.
+        """
 
     def _filter_by_target(self):
         """[Phase 3 2026-07-11] Drop nodes whose path doesn't start with target.
