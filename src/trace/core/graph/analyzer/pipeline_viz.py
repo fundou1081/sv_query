@@ -222,13 +222,67 @@ def _build_stages(
     return stages
 
 
+def _all_nodes_in_stages_lookup(pipeline_info) -> set[str]:
+    """[P5 2026-07-11] 收集所有 stage 内的节点 ID (reg + comb)。"""
+    out: set[str] = set()
+    for stage in pipeline_info.stages:
+        out.update(stage.reg_nodes)
+        out.update(stage.comb_nodes)
+    return out
+
+
+def _collect_outside_controls(classification, pipeline_info) -> list[str]:
+    """[P5 2026-07-11] 收集不在 stage 内但被分类为 CONTROL 的节点。"""
+    in_stages = _all_nodes_in_stages_lookup(pipeline_info)
+    out = []
+    for cid in classification.control_nodes:
+        if cid in in_stages:
+            continue
+        if classification.nodes.get(cid) is None:
+            continue
+        out.append(cid)
+    return out
+
+
+def _group_controls_by_stage(
+    control_nodes: list[str], pipeline_info, graph
+) -> dict[str, int]:
+    """[P5 2026-07-11] 对每个 control 节点, 找它主要 downstream 影响的 stage 索引.
+
+    算法: 沿 graph 向下走, 找第一个属于某个 stage.reg_nodes 的节点, 用那个 stage 的 index.
+    如果走不到任何 stage (孤立的 control), 默认为 0.
+    """
+    reg_to_stage = {}
+    for stage in pipeline_info.stages:
+        for reg_id in stage.reg_nodes:
+            reg_to_stage[reg_id] = stage.stage_id
+
+    result: dict[str, int] = {}
+    for cid in control_nodes:
+        # BFS 找第一个 reachable stage reg
+        visited = {cid}
+        queue = [cid]
+        found_stage = None
+        while queue:
+            cur = queue.pop(0)
+            if cur in reg_to_stage:
+                found_stage = reg_to_stage[cur]
+                break
+            for succ in graph.successors(cur):
+                if succ not in visited:
+                    visited.add(succ)
+                    queue.append(succ)
+        result[cid] = found_stage if found_stage is not None else 0
+    return result
+
+
 def generate_pipeline_dot(
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
     *,
     max_comb_per_stage: int = 8,
-    max_control_nodes: int = 30,
+    max_control_nodes: int = 8,
 ) -> str:
     _sid = sanitize_dot_id
     """生成 pipeline flow DOT 图
@@ -263,6 +317,44 @@ def generate_pipeline_dot(
     lines.append(f'  // {len(pipeline_info.state_regs)} state regs, {pipeline_info.total_latency} stages')
     lines.append('')
 
+    # [P5 2026-07-11] 收集 control 信号 + 它们主要连接的 stage
+    # 用于 后面 在 header row 排列 control, 并按 stage 颜色连接
+    control_outside = _collect_outside_controls(classification, pipeline_info)
+    control_to_stage = _group_controls_by_stage(control_outside, pipeline_info, graph)
+    total_control = len(control_outside)
+    control_shown = control_outside[:max_control_nodes]
+    total_remaining = max(0, total_control - len(control_shown))
+
+    # [P5 2026-07-11] Header row: control signals 上方一行
+    # 颜色按主要 target stage 分组 (valid → stage N → orange, etc.)
+    # 这样 control 跟 stage 视觉对应, 不再是脱节的 "孤岛 cluster"
+    if control_shown:
+        lines.append('  // === Control signals header row (top, color-coded by target stage) ===')
+        lines.append('  subgraph cluster_control_header {')
+        lines.append(f'    label="Control Signals ({total_control} total, showing {len(control_shown)})";')
+        lines.append('    style="rounded,filled";')
+        lines.append('    fillcolor="#fff5e6";')
+        lines.append('    color="#cc8844";')
+        lines.append('    fontsize=10;')
+        lines.append('    rank=min;')  # 强制放最上方 (LR 模式下 = 最左)
+        # [P5 改进] 颜色按 target stage 分组 (4 个颜色轮换)
+        stage_colors = ["#cc6633", "#aa5599", "#5599aa", "#aa8855"]
+        for i, cid in enumerate(control_shown):
+            cn = classification.nodes.get(cid)
+            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
+            target_stage_idx = control_to_stage.get(cid, 0) % len(stage_colors)
+            color = stage_colors[target_stage_idx]
+            lines.append(
+                f'    "{_sid(cid)}" [label="{name}\\n→S{control_to_stage.get(cid, 0)}" '
+                f'shape=box style="rounded,filled" fillcolor="{color}" fontcolor="white" penwidth=1.5 fontsize=9];'
+            )
+        if total_remaining > 0:
+            lines.append(
+                f'    // +{total_remaining} more control signals (--max-control-nodes to show more)'
+            )
+        lines.append('  }')
+        lines.append('')
+
     # 每个 stage 一个 cluster
     all_nodes_in_stages = set()
     for stage in pipeline_info.stages:
@@ -296,31 +388,10 @@ def generate_pipeline_dot(
         lines.append('  }')
         lines.append('')
 
-    # [P0 fix 2026-07-10] 控制节点: 放进独立 cluster, 限制数量 (之前 461 个堆成 31k PNG)
-    control_outside = [
-        cid for cid in classification.control_nodes if cid not in all_nodes_in_stages
-        and classification.nodes.get(cid) is not None
-    ]
-    total_control = len(control_outside)
-    control_shown = control_outside[:max_control_nodes]
-
-    if control_shown:
-        lines.append('  // === Control signals (valid/ready/stall, across stages) ===')
-        lines.append('  subgraph cluster_controls {')
-        lines.append(f'    label="Control Signals ({total_control} total, showing {len(control_shown)})";')
-        lines.append('    style="rounded,filled";')
-        lines.append('    fillcolor="#fff5e6";')
-        lines.append('    color="#cc8844";')
-        lines.append('    fontsize=11;')
-        # 让 control 节点排成多列 (每行 6 个), 防单列堆 30 个高
-        for i, cid in enumerate(control_shown):
-            cn = classification.nodes.get(cid)
-            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
-            lines.append(f'    "{_sid(cid)}" [label="{name}" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5];')
-        if total_control > len(control_shown):
-            lines.append(f'    // +{total_control - len(control_shown)} more control signals (--max-control-nodes to show more)')
-        lines.append('  }')
-        lines.append('')
+    # [P0 fix 2026-07-10] 控制节点: 旧 layout 是独立 cluster 在最后 (突兀)
+    # [P5 2026-07-11] 改为 header row 在最上方, 颜色按 target stage 分组
+    # control_shown / total_control 已在上面 header row 部分收集完, 这里不再重写
+    pass  # control cluster 已经渲染在 header row 部分 (在 stages 之前)
 
     # 边
     lines.append('  // === Data edges (stage → stage) ===')
@@ -334,14 +405,21 @@ def generate_pipeline_dot(
                         lines.append(f'  "{_sid(reg_id)}" -> "{_sid(succ)}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
 
     lines.append('')
-    lines.append('  // === Control edges (dashed) ===')
+    lines.append('  // === Control edges (dashed, color-matched to target stage) ===')
+    # [P5 2026-07-11] 颜色与 control 节点颜色一致 (按 target stage)
+    stage_colors_edge = ["#cc6633", "#aa5599", "#5599aa", "#aa8855"]
     for cid in classification.control_nodes:
+        target_stage_idx = control_to_stage.get(cid, 0) % len(stage_colors_edge)
+        edge_color = stage_colors_edge[target_stage_idx]
         for succ in graph.successors(cid):
             if succ in all_nodes_in_stages:
                 edges = graph.get_edges(cid, succ)
                 for e in edges:
                     if e.kind == EdgeKind.DRIVER:
-                        lines.append(f'  "{_sid(cid)}" -> "{_sid(succ)}" [color="#CC6600" style=dashed penwidth=1.2];')
+                        lines.append(
+                            f'  "{_sid(cid)}" -> "{_sid(succ)}" '
+                            f'[color="{edge_color}" style=dashed penwidth=1.2];'
+                        )
 
     lines.append('}')
     return "\n".join(lines)

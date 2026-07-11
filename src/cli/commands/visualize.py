@@ -192,7 +192,7 @@ def pipeline(
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
     max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
-    max_control_nodes: int = typer.Option(30, "--max-control-nodes", help="[P0 fix 2026-07-10] Max control signals to display (default 30). 0 = hide all."),
+    max_control_nodes: int = typer.Option(8, "--max-control-nodes", help="[P0 fix 2026-07-10 / P5 2026-07-11] Max control signals in header row (default 8, was 30). 0 = hide all."),
 ) -> None:
     """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
 
