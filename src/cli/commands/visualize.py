@@ -163,7 +163,8 @@ def dataflow(
             strict=strict,
             include_dirs=include_dirs,
         )
-        graph = tracer.build_graph()
+        # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
+        graph = tracer.build_graph(target_module=module)
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
@@ -221,7 +222,8 @@ def pipeline(
             strict=strict,
             include_dirs=include_dirs,
         )
-        graph = tracer.build_graph()
+        # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
+        graph = tracer.build_graph(target_module=module)
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
