@@ -31,14 +31,18 @@ class SemanticAdapter:
     - 节点是语义符号 (Symbol),不是语法节点 (SyntaxNode)
     """
 
-    def __init__(self, root, compiler=None):
+    def __init__(self, root, compiler=None, target_module=None):
         """
         Args:
             root: Semantic AST root (RootSymbol from comp.getRoot())
             compiler: Optional SVCompiler for accessing getDefinitions()
+            target_module: [NEW 2026-07-11 Phase 2] 如果指定, get_module_instances()
+                           只返该 user-specified module 的 hierarchy 子树.
+                           None (默认) = 返所有 (兼容旧行为).
         """
         self._root = root
         self._compiler = compiler
+        self._target_module = target_module  # [NEW 2026-07-11]
         self._fixed_names = {}  # id(cls) -> name (pyslang Unicode bug workaround)
 
     @property
@@ -377,10 +381,41 @@ class SemanticAdapter:
                             find_instances(elem, child_path)
 
         # 遍历 root 下的所有项
-        for item in self._root:
-            find_instances(item)
+        # [Phase 2 2026-07-11] 如果指定 target_module, 只 walk 那个 target 的子树
+        # 这样 pyslang 的 hierarchicalPath 会自动以 user target 为前缀
+        if self._target_module:
+            target_top = self._find_target_top(self._target_module)
+            if target_top is not None:
+                find_instances(target_top)
+            else:
+                # Fall back to walking all (target not found in topInstances)
+                for item in self._root:
+                    find_instances(item)
+        else:
+            # 兼容旧行为: walk 所有 top instances
+            for item in self._root:
+                find_instances(item)
 
         return wrappers
+
+    def _find_target_top(self, target_module: str):
+        """[NEW Phase 2 2026-07-11] 在 topInstances 中找 user-specified target.
+
+        Returns:
+            pyslang InstanceSymbol if found, else None.
+
+        Used by get_module_instances() to filter hierarchy before walking,
+        so pyslang auto-prefixes hierarchicalPath with user target.
+        """
+        if not self._root or not hasattr(self._root, 'topInstances'):
+            return None
+        for top in self._root.topInstances:
+            try:
+                if str(top.name) == target_module:
+                    return top
+            except (UnicodeDecodeError, TypeError, Exception):
+                continue
+        return None
 
     def get_module_name(self, module) -> str:
         """获取模块名称
