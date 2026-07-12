@@ -142,6 +142,13 @@ def analyze(
         lines.append('  ranksep=1.0;')
         lines.append('  nodesep=0.4;')
         lines.append('')
+
+        # [Phase 6 2026-07-12] TL;DR 一行摘要
+        max_d = max((p["depth"] for p in paths), default=0)
+        lines.append(
+            f'  // TL;DR: {len(paths)} critical paths · deepest={max_d} cycles · anomalies={len(timing_anomalies)}'
+        )
+        lines.append('')
         # Draw all paths with color-coded nodes/edges
         # Path 1 = red (deepest), others = blue
         for i, p in enumerate(paths, 1):

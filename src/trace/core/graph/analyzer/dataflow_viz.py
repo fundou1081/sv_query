@@ -71,6 +71,15 @@ def generate_dataflow_dot(
     lines.append('  splines=polyline;')
     lines.append('')
 
+    # [Phase 6 2026-07-12] TL;DR 一行摘要
+    n_data = len(classification.data_nodes)
+    n_ctrl = len(classification.control_nodes)
+    n_clk = len(classification.clock_nodes)
+    lines.append(
+        f'  // TL;DR: {n_data} data · {n_ctrl} control · {n_clk} clock nodes'
+    )
+    lines.append('')
+
     # 边收集
     data_edges = []
     control_edges = []

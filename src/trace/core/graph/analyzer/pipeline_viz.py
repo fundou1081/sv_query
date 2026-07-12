@@ -355,6 +355,13 @@ def generate_pipeline_dot(
         lines.append('  }')
         lines.append('')
 
+    # [Phase 6 2026-07-12] TL;DR header (after control computed, more accurate)
+    lines.append(
+        f'  // TL;DR: {len(pipeline_info.pipeline_regs)} pipeline regs · '
+        f'{len(pipeline_info.state_regs)} state regs · {pipeline_info.total_latency} stages · '
+        f'control shown: {len(control_shown)}/{total_control}'
+    )
+
     # 每个 stage 一个 cluster
     all_nodes_in_stages = set()
     for stage in pipeline_info.stages:
