@@ -34,7 +34,139 @@ from trace.unified_tracer import UnifiedTracer
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
 
-@vis_app.command(name="graph")
+def _emit_split_by_module(graph, classification, module_name, dot_output, include_clk_rst, Path):
+    """[Phase 6.1 2026-07-12] Generate per-instance DOT files.
+
+    Groups nodes by their top-level instance path (e.g. 'darksocv.bridge0.core0')
+    and emits one DOT per group, plus a master overview.
+
+    Output naming:
+      <prefix>_overview.dot           - lists all sub-modules + node counts
+      <prefix>_<sub_module>.dot       - one DOT per sub-module
+    """
+    from collections import defaultdict
+    from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
+
+    # Group nodes by instance path.
+    # [Phase 6.1 2026-07-12] Strategy (FINAL):
+    # - 1-segment paths (e.g. 'XRES')           → group 'XRES' (lone module)
+    # - 2-segment paths (e.g. 'darksocv.XRES') → group 'darksocv' (top-level signal)
+    # - 3+ segment paths                       → group by first 2 segments
+    #                                            (e.g. 'darksocv.bridge0.XRES' → 'darksocv.bridge0')
+    # This way 'darksocv.XRES' and 'darksocv.bridge0.XRES' go to DIFFERENT groups.
+    from collections import defaultdict
+    groups = defaultdict(set)
+    for nid in graph.nodes():
+        if not isinstance(nid, str) or not nid or nid[0].isdigit() or nid.startswith("__"):
+            continue
+        parts = nid.split('.')
+        # 2-segment node → group by first 1 part (top-level module)
+        # 3+ segment node → group by first 2 parts (sub-instance)
+        if len(parts) >= 3:
+            key = f"{parts[0]}.{parts[1]}"
+        else:
+            key = parts[0]
+        groups[key].add(nid)
+
+    # [Phase 6.1] Warn if any group is too big, recommend --module
+    MAX_RECOMMENDED = 100
+    for key, nodes in sorted(groups.items()):
+        if len(nodes) > MAX_RECOMMENDED:
+            typer.echo(
+                f"  ⚠️  {key} has {len(nodes)} nodes (>{MAX_RECOMMENDED}). "
+                f"Consider: --module={key}",
+                err=True,
+            )
+
+    if not groups:
+        typer.echo("Error: --split-by-module requires target_module with instances", err=True)
+        return
+
+    base = Path(dot_output)
+    # Use a directory or strip .dot suffix to create prefix
+    if str(base).endswith(".dot"):
+        prefix = str(base)[:-4]
+    else:
+        prefix = str(base)
+    base_dir = Path(prefix)
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # Master overview DOT (lists sub-modules, node counts)
+    overview = ['digraph dataflow_overview {']
+    overview.append('  rankdir=TB;')
+    overview.append(f'  label="Data Flow Overview: {module_name}\\n({len(groups)} sub-modules, {sum(len(s) for s in groups.values())} nodes)";')
+    overview.append('  labelloc=t;')
+    overview.append('  fontsize=14;')
+    overview.append('')
+    # TL;DR
+    overview.append(f'  // TL;DR: {len(groups)} sub-modules · {sum(len(s) for s in groups.values())} nodes')
+    overview.append('')
+    overview.append('  // === Sub-module summary ===')
+    for sub in sorted(groups.keys()):
+        n = len(groups[sub])
+        safe = sub.replace('.', '_')
+        overview.append(
+            f'  "{safe}_anchor" [label="{sub}\\n({n} nodes)" shape=box '
+            f'style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" fontsize=11];'
+        )
+        overview.append(f'  "{safe}_anchor" -> "{sub.replace(".", "_")}.dot" [style=invis];')
+    overview.append('}')
+    (Path(f"{prefix}_overview.dot")).write_text("\n".join(overview))
+    typer.echo(f"✓ Overview: {prefix}_overview.dot ({len(groups)} sub-modules)", err=True)
+
+    # Per-sub-module DOT
+    for sub in sorted(groups.keys()):
+        sub_nodes = groups[sub]
+        # Build sub-classification: only edges where BOTH src/dst are in sub_nodes
+        from trace.core.graph.analyzer.signal_classifier import SignalClassification, SignalClass
+        from trace.core.graph.models import EdgeKind
+        sub_class = SignalClassification()
+        for nid in sub_nodes:
+            cn = classification.nodes.get(nid)
+            if cn is not None:
+                sub_class.nodes[nid] = cn
+        # Classify into buckets
+        for nid, cn in sub_class.nodes.items():
+            if cn.signal_class == SignalClass.DATA:
+                sub_class.data_nodes.append(nid)
+            elif cn.signal_class == SignalClass.CONTROL:
+                sub_class.control_nodes.append(nid)
+            elif cn.signal_class == SignalClass.CLOCK:
+                sub_class.clock_nodes.append(nid)
+            elif cn.signal_class == SignalClass.RESET:
+                sub_class.reset_nodes.append(nid)
+        # Re-classify edges (only those where both src/dst are in sub_nodes)
+        for key, ce in classification.edges.items():
+            src, dst, kind_str = key
+            if src in sub_nodes and dst in sub_nodes:
+                sub_class.edges[key] = ce
+
+        # Build a small SignalGraph view (sub nodes only + edges within sub)
+        # Note: SignalGraph extends DiGraph, so we can use a fresh subgraph
+        sub_graph = graph.__class__()
+        for nid in sub_nodes:
+            n = graph.get_node(nid)
+            if n is not None:
+                sub_graph.add_trace_node(n)
+        for u, v in graph.edges():
+            if u in sub_nodes and v in sub_nodes:
+                e = graph.get_edge(u, v)
+                if e is not None:
+                    sub_graph.add_trace_edge(e)
+
+        # Generate DOT
+        dot = generate_dataflow_dot(
+            sub_graph,
+            sub,
+            classification=sub_class,
+            include_clk_rst=include_clk_rst,
+        )
+        safe = sub.replace('.', '_')
+        out_path = Path(f"{prefix}_{safe}.dot")
+        out_path.write_text(dot)
+        typer.echo(f"✓ {sub}: {out_path} ({len(sub_nodes)} nodes)", err=True)
+
+
 def graph(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
@@ -132,11 +264,12 @@ def graph(
 def dataflow(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file (or prefix when --split-by-module)"),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module (filter edges to this module's signals)"),
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
     include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
+    split_by_module: bool = typer.Option(False, "--split-by-module", help="[Phase 6.1 2026-07-12] Generate one DOT per sub-instance (e.g. darksocv.bridge0). Output: <prefix>_<sub>.dot"),
 ) -> None:
     """数据流图: 显示 data path (运算表达式) + 关键 control 边 (enable/valid/mux sel)
 
@@ -145,6 +278,8 @@ def dataflow(
     - 控制边: 橙色虚线 (valid/ready/enable → 数据目标)
     - MUX 目标: 加粗边 (多源数据汇聚)
     - 寄存器: 粗边框
+
+    [Phase 6.1] Use --split-by-module to split into per-instance DOTs when graph is large.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
@@ -178,6 +313,11 @@ def dataflow(
 
     if dot_output:
         Path(dot_output).write_text(dot)
+
+    # [Phase 6.1 2026-07-12] Split by module: generate per-instance DOTs
+    if split_by_module:
+        from collections import defaultdict
+        _emit_split_by_module(graph, classification, module or file or filelist or "", dot_output, include_clk_rst, Path)
         typer.echo(f"✓ DOT: {dot_output}")
     else:
         typer.echo(dot)
