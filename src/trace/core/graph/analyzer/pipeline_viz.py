@@ -230,12 +230,13 @@ def _should_fold_stages(stages: list, threshold: int) -> bool:
     return len(stages) > threshold
 
 
-def _build_folded_stage_groups(stages: list, fold_every: int) -> list:
+def _build_folded_stage_groups(stages: list, fold_every: int, max_regs_per_fold: int = 8) -> list:
     """[Phase 6.2] Group consecutive stages into folds.
 
     Each fold contains up to `fold_every` consecutive stages and aggregates:
     - stage_ids: list[int] of stage ids in this fold
-    - reg_nodes: combined reg nodes
+    - reg_nodes: combined reg nodes (CAPPED to max_regs_per_fold to keep viz readable)
+    - reg_nodes_total: total reg count (for label)
     - comb_nodes: combined comb nodes
     - is_fold: True (marker for renderer)
 
@@ -247,9 +248,13 @@ def _build_folded_stage_groups(stages: list, fold_every: int) -> list:
     while i < n:
         end = min(i + fold_every, n)
         stages_in_fold = stages[i:end]
+        all_regs = [r for s in stages_in_fold for r in s.reg_nodes]
+        # [Phase 6.5.2 2026-07-13] CAPPED: 只显示前 N 个 REG, 避免上百个节点堆成一团
+        # 用户用 --unfold 可以看全部
         fold = {
             'stage_ids': [s.stage_id for s in stages_in_fold],
-            'reg_nodes': [r for s in stages_in_fold for r in s.reg_nodes],
+            'reg_nodes': all_regs[:max_regs_per_fold],
+            'reg_nodes_total': len(all_regs),
             'comb_nodes': list(dict.fromkeys(
                 c for s in stages_in_fold for c in s.comb_nodes
             )),
@@ -417,10 +422,10 @@ def generate_pipeline_dot(
     stages_to_render = pipeline_info.stages
     folded_groups = None
     if is_folding:
-        # [Phase 6.5 fix 2026-07-13] auto-scale fold_every: ensure max 10 folds
-        # Original default 5 → too many clusters for 150+ stage pipelines
+        # [Phase 6.5.2 fix 2026-07-13] auto-scale fold_every: ensure max 5 folds
+        # 152 stages / 5 = 30 stages/fold, ~30 REGs per fold in a horizontal row
         n_stages = len(stages_to_render)
-        target_folds = 10
+        target_folds = 5
         if fold_every < (n_stages // target_folds):
             fold_every = max(1, (n_stages + target_folds - 1) // target_folds)
             fold_note_extra = f' (auto-fold-every={fold_every})'
@@ -450,7 +455,13 @@ def generate_pipeline_dot(
         if is_fold:
             stage = item  # dict (fold group)
             cluster_name = f"cluster_fold_{stage['start_id']}_{stage['end_id']}"
-            stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, {len(stage['reg_nodes'])} regs)"
+            total_regs = stage.get('reg_nodes_total', len(stage['reg_nodes']))
+            shown = len(stage['reg_nodes'])
+            if total_regs > shown:
+                # 有 truncation 时, label 明确显示
+                stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, showing {shown}/{total_regs} regs)"
+            else:
+                stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, {total_regs} regs)"
             lines.append(f'  subgraph {cluster_name} {{')
             lines.append(f'    label="{stage_label}";')
             lines.append('    style="rounded,dashed";')
@@ -477,6 +488,15 @@ def generate_pipeline_dot(
             w = _node_width(cn)
             lines.append(f'    "{_sid(reg_id)}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
             all_nodes_in_stages.add(reg_id)
+
+        # [Phase 6.5.2 fix 2026-07-13] 折叠模式: 让 REGs 在同一行 (横向排列)
+        # 这样每个 fold = 一行 REG, 多个 fold 之间从上到下堆叠
+        if is_fold and len(reg_nodes) > 1:
+            reg_id_list = [_sid(r) for r in reg_nodes]
+            quoted = ' '.join('"' + r + '"' for r in reg_id_list)
+            lines.append(
+                f'    {{ rank=same; {quoted} }};'
+            )
 
         # [Phase 6.5 fix 2026-07-13] 折叠模式: 只显示 REG, 隐藏 comb (避免 overlap)
         # 在 --unfold 模式下, comb nodes 才会显示
