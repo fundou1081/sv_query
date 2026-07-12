@@ -27,7 +27,11 @@ digraph pipeline {
     "1" [label="1\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
   }
 
-  // TL;DR: 2 pipeline regs · 3 state regs · 2 stages · control shown: 7/7
+  // === TL;DR ===
+  TLDR [shape=plaintext, label="2 pipeline regs · 3 state regs · 2 stages · control shown: 7/7",
+        fontsize=12, fontcolor="#664400",
+        fillcolor="#fffbe6", style="rounded,filled",
+        margin=0.1];
   subgraph cluster_stage0 {
     label="Stage 0\n(latency=1)";
     style=dashed;
@@ -50,4 +54,21 @@ digraph pipeline {
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="mem[Expression(Expre" fontsize=8];
 
   // === Control edges (dashed, color-matched to target stage) ===
+
+  // === Legend ===
+  subgraph cluster_legend {
+    label="Legend";
+    style="rounded,filled";
+    fillcolor="#f8f8f8";
+    color="#aaaaaa";
+    fontsize=10;
+    rank=sink;
+    "legend_pipeline_0" [label="Pipeline Reg" shape=box,style="filled,rounded" fillcolor="#4488cc" fontcolor="white" fontsize=9];
+    "legend_pipeline_1" [label="Combinational" shape=box,style="filled,rounded" fillcolor="#88bbdd" fontcolor="white" fontsize=9];
+    "legend_pipeline_2" [label="State Reg" shape=box,style="filled,rounded" fillcolor="#cc8844" fontcolor="white" fontsize=9];
+    "legend_pipeline_3" [label="Control→S0" shape=box,style="filled,rounded" fillcolor="#cc6633" fontcolor="white" fontsize=9];
+    "legend_pipeline_4" [label="Control→S1" shape=box,style="filled,rounded" fillcolor="#aa5599" fontcolor="white" fontsize=9];
+    "legend_pipeline_5" [label="Control→S2" shape=box,style="filled,rounded" fillcolor="#5599aa" fontcolor="white" fontsize=9];
+    "legend_pipeline_6" [label="Control→S3" shape=box,style="filled,rounded" fillcolor="#aa8855" fontcolor="white" fontsize=9];
+  }
 }

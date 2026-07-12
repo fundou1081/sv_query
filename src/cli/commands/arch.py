@@ -352,7 +352,9 @@ def _render_dot(
         "  compound=true;",
         "  labelloc=t;",
     ]
-    # [Phase 6 2026-07-12] TL;DR label + summary
+    # [Phase 6 2026-07-12] TL;DR as visible box
+    from trace.core.graph.analyzer.viz_legend import render_tldr_box, render_legend
+
     title = f"Architecture of {target_module} ({len(instances)} instances"
     if n_hidden > 0:
         title += f", showing {len(visible_instances)}"
@@ -360,13 +362,16 @@ def _render_dot(
     lines.append(f'  label="{title}";')
     lines.append("")
 
-    # [Phase 6 2026-07-12] TL;DR summary line (small, just below title)
+    # TL;DR text
     tldr_parts = [f"Sub-modules: {len(instances)}"]
     if edges:
         tldr_parts.append(f"Cross-edges: {len(edges)}")
     tldr_text = " · ".join(tldr_parts)
-    lines.append(f'  // TL;DR: {tldr_text}')
+    lines.extend(render_tldr_box(tldr_text))
     lines.append("")
+
+    # [Phase 6.3 2026-07-12] Legend overlay
+    lines.extend(render_legend('arch'))
     lines.append("  // ---- Instances (L1) ----")
 
     # 按 cluster_by_type 决定是否分组
