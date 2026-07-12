@@ -261,6 +261,101 @@ def graph(
 
 
 @vis_app.command(name="dataflow")
+
+@vis_app.command(name="graph")
+def graph(
+    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
+    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file"),
+    html_output: str = typer.Option(None, "--html", help="Output HTML file"),
+    layout: str = typer.Option("TB", "--layout", "-l", help="Layout: TB (top-bottom) or LR (left-right)"),
+    no_edges: bool = typer.Option(False, "--no-edges", help="Hide edges"),
+    show_labels: bool = typer.Option(False, "--show-labels", help="Show edge labels (type)"),
+    show_conditions: bool = typer.Option(False, "--show-conditions", help="Show driver conditions on edges"),
+    max_edges: int = typer.Option(200, "--max-edges", help="Max edges to display"),
+    exclude_clock: bool = typer.Option(False, "--exclude-clock", help="Exclude clock edges"),
+    exclude_reset: bool = typer.Option(False, "--exclude-reset", help="Exclude reset edges"),
+    cluster_modules: bool = typer.Option(False, "--cluster-modules", help="Cluster nodes by module"),
+    layout_engine: str = typer.Option("dot", "--layout-engine", help="Layout engine: dot, neato, fdp"),
+    cache: bool = typer.Option(
+        False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"
+    ),
+    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
+    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): raise on elaboration error. Use --no-strict 优雅降级存部分图 (供分析不完整项目如 NaplesPU/OpenTitan)"),
+) -> None:
+    """可视化信号图（包含数据流关系）
+
+    [ADD 2026-06-11 Req-9] --file 或 --filelist 二选一, 走 _build_tracer 统一 helper.
+    """
+    from cli._common import _build_tracer, handle_compilation_error
+    from trace.core.compiler import CompilationError
+
+    if not file and not filelist:
+        typer.echo("Error: --file or --filelist is required", err=True)
+        raise typer.Exit(code=1)
+
+    try:
+        include_dirs = include.split(",") if include else None
+        tracer = _build_tracer(
+            file=Path(file) if file else None,
+            filelist=filelist,
+            strict=strict,
+            include_dirs=include_dirs,
+        )
+        graph = tracer.build_graph(use_cache=cache)
+        # SVA/Covergroup 提取
+        sources_for_extractors = tracer._sources
+        sva = SVAExtractor(sources_for_extractors).extract()
+        cov_list = CovergroupExtractor(sources_for_extractors).extract()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    sva_signals = set()
+    for prop in sva.properties.values():
+        sva_signals.update(prop.signals)
+
+    cov_signals = set()
+    for cg in cov_list:
+        for cp in cg.coverpoints:
+            cov_signals.add(cp.signal)
+
+    viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
+
+    edge_filter = set()
+    if exclude_clock:
+        edge_filter.add("exclude_clock")
+    if exclude_reset:
+        edge_filter.add("exclude_reset")
+
+    viewer.configure(
+        layout=layout,
+        show_edges=not no_edges,
+        edge_labels=show_labels,
+        edge_conditions=show_conditions,
+        max_edges=max_edges,
+        edge_filter=edge_filter,
+        cluster_modules=cluster_modules,
+        layout_engine=layout_engine,
+        module_only=module_only,
+    )
+
+    if dot_output:
+        viewer.render_dot(output_path=dot_output)
+        typer.echo(f"✓ DOT: {dot_output}")
+    elif mmd_output:
+        viewer.render_mermaid(output_path=mmd_output)
+        typer.echo(f"✓ Mermaid: {mmd_output}")
+    elif html_output:
+        viewer.render_html(output_path=html_output)
+        typer.echo(f"✓ HTML: {html_output}")
+    else:
+        # 默认输出到 stdout (DOT 格式)
+        typer.echo(viewer.render_dot(output_path=None))
+
+
 def dataflow(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
