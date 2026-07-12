@@ -222,6 +222,55 @@ def _build_stages(
     return stages
 
 
+def _should_fold_stages(stages: list, threshold: int) -> bool:
+    """[Phase 6.2 2026-07-12] Decide whether to fold stages for readability.
+
+    Returns True if folding would reduce visual complexity meaningfully.
+    """
+    return len(stages) > threshold
+
+
+def _build_folded_stage_groups(stages: list, fold_every: int) -> list:
+    """[Phase 6.2] Group consecutive stages into folds.
+
+    Each fold contains up to `fold_every` consecutive stages and aggregates:
+    - stage_ids: list[int] of stage ids in this fold
+    - reg_nodes: combined reg nodes
+    - comb_nodes: combined comb nodes
+    - is_fold: True (marker for renderer)
+
+    Returns a list of fold groups. If a stage is alone, it's its own group.
+    """
+    folds = []
+    n = len(stages)
+    i = 0
+    while i < n:
+        end = min(i + fold_every, n)
+        stages_in_fold = stages[i:end]
+        fold = {
+            'stage_ids': [s.stage_id for s in stages_in_fold],
+            'reg_nodes': [r for s in stages_in_fold for r in s.reg_nodes],
+            'comb_nodes': list(dict.fromkeys(
+                c for s in stages_in_fold for c in s.comb_nodes
+            )),
+            'data_inputs': list(dict.fromkeys(
+                c for s in stages_in_fold for c in s.data_inputs
+            )),
+            'data_outputs': list(dict.fromkeys(
+                c for s in stages_in_fold for c in s.data_outputs
+            )),
+            'control_inputs': list(dict.fromkeys(
+                c for s in stages_in_fold for c in s.control_inputs
+            )),
+            'is_fold': len(stages_in_fold) > 1,
+            'start_id': stages_in_fold[0].stage_id,
+            'end_id': stages_in_fold[-1].stage_id,
+        }
+        folds.append(fold)
+        i = end
+    return folds
+
+
 def _all_nodes_in_stages_lookup(pipeline_info) -> set[str]:
     """[P5 2026-07-11] 收集所有 stage 内的节点 ID (reg + comb)。"""
     out: set[str] = set()
@@ -283,6 +332,8 @@ def generate_pipeline_dot(
     *,
     max_comb_per_stage: int = 8,
     max_control_nodes: int = 8,
+    fold_threshold: int = 30,
+    fold_every: int = 5,
 ) -> str:
     _sid = sanitize_dot_id
     """生成 pipeline flow DOT 图
@@ -355,24 +406,55 @@ def generate_pipeline_dot(
         lines.append('  }')
         lines.append('')
 
-    # [Phase 6 2026-07-12] TL;DR header (after control computed, more accurate)
+    # [Phase 6.2 2026-07-12] Stage folding: group consecutive stages into folds
+    # when total stages > fold_threshold. Each fold cluster shows aggregated info.
+    stages_to_render = pipeline_info.stages
+    folded_groups = None
+    is_folding = _should_fold_stages(stages_to_render, fold_threshold)
+    if is_folding:
+        folded_groups = _build_folded_stage_groups(stages_to_render, fold_every)
+
+    # [Phase 6 2026-07-12] TL;DR header (after folding decision)
+    fold_note = f' · folded into {len(folded_groups)} groups (--unfold to expand)' if is_folding else ''
     lines.append(
         f'  // TL;DR: {len(pipeline_info.pipeline_regs)} pipeline regs · '
-        f'{len(pipeline_info.state_regs)} state regs · {pipeline_info.total_latency} stages · '
-        f'control shown: {len(control_shown)}/{total_control}'
+        f'{len(pipeline_info.state_regs)} state regs · {pipeline_info.total_latency} stages'
+        f'{fold_note} · control shown: {len(control_shown)}/{total_control}'
     )
 
-    # 每个 stage 一个 cluster
+    # 每个 stage (或 fold group) 一个 cluster
     all_nodes_in_stages = set()
-    for stage in pipeline_info.stages:
-        lines.append(f'  subgraph cluster_stage{stage.stage_id} {{')
-        lines.append(f'    label="Stage {stage.stage_id}\\n(latency={stage.latency})";')
-        lines.append('    style=dashed;')
-        lines.append('    color="#226699";')
-        lines.append('    fontsize=11;')
+    render_groups = folded_groups if is_folding else None
+    items_to_render = (
+        [(g, True) for g in folded_groups] if is_folding
+        else [(s, False) for s in stages_to_render]
+    )
+    for item, is_fold in items_to_render:
+        if is_fold:
+            stage = item  # dict (fold group)
+            cluster_name = f"cluster_fold_{stage['start_id']}_{stage['end_id']}"
+            stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, {len(stage['reg_nodes'])} regs)"
+            lines.append(f'  subgraph {cluster_name} {{')
+            lines.append(f'    label="{stage_label}";')
+            lines.append('    style="rounded,dashed";')
+            lines.append('    fillcolor="#e8f0f8";')
+            lines.append('    color="#226699";')
+            lines.append('    fontsize=11;')
+            reg_nodes = stage['reg_nodes']
+            comb_nodes = stage['comb_nodes']
+        else:
+            stage = item  # PipelineStage dataclass
+            lines.append(f'  subgraph cluster_stage{stage.stage_id} {{')
+            lines.append(f'    label="Stage {stage.stage_id}\\n(latency={stage.latency})";')
+            lines.append('    style=dashed;')
+            lines.append('    color="#226699";')
+            lines.append('    fontsize=11;')
+            reg_nodes = stage.reg_nodes
+            comb_dedup = list(dict.fromkeys(stage.comb_nodes))
+            comb_nodes = comb_dedup[:max_comb_per_stage]
 
         # Pipeline registers
-        for reg_id in stage.reg_nodes:
+        for reg_id in reg_nodes:
             cn = classification.nodes.get(reg_id)
             name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"  if cn and cn.node.name else reg_id
             w = _node_width(cn)
@@ -380,8 +462,7 @@ def generate_pipeline_dot(
             all_nodes_in_stages.add(reg_id)
 
         # 组合逻辑
-        comb_dedup = list(dict.fromkeys(stage.comb_nodes))
-        for comb_id in comb_dedup[:max_comb_per_stage]:  # [P0 fix 2026-07-10] limit comb per stage
+        for comb_id in comb_nodes:  # [P0 fix 2026-07-10] limit comb per stage
             cn = classification.nodes.get(comb_id)
             if cn is None:
                 continue
@@ -389,8 +470,10 @@ def generate_pipeline_dot(
             w = _node_width(cn)
             lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
-        if len(comb_dedup) > max_comb_per_stage:
-            lines.append(f'    // +{len(comb_dedup)-max_comb_per_stage} more comb nodes (--max-comb-per-stage to show more)')
+        # [Phase 6.2] Trim comb nodes per cluster
+        shown_count = min(len(comb_nodes), max_comb_per_stage)
+        if len(comb_nodes) > shown_count:
+            lines.append(f'    // +{len(comb_nodes) - shown_count} more comb nodes (--max-comb-per-stage to show more)')
 
         lines.append('  }')
         lines.append('')

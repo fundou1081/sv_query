@@ -333,6 +333,8 @@ def pipeline(
     strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
     max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
     max_control_nodes: int = typer.Option(8, "--max-control-nodes", help="[P0 fix 2026-07-10 / P5 2026-07-11] Max control signals in header row (default 8, was 30). 0 = hide all."),
+    unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
+    fold_every: int = typer.Option(5, "--fold-every", help="[Phase 6.2] Number of stages per fold group when total > 30 (default 5)"),
 ) -> None:
     """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
 
@@ -381,6 +383,8 @@ def pipeline(
         graph, info, classification,
         max_comb_per_stage=max_comb_per_stage,
         max_control_nodes=max_control_nodes,
+        fold_threshold=999 if unfold else 30,  # unfold = disable folding
+        fold_every=fold_every,
     )
 
     if dot_output:
