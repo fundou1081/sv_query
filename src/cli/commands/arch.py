@@ -352,12 +352,20 @@ def _render_dot(
         "  compound=true;",
         "  labelloc=t;",
     ]
-    # 标题
+    # [Phase 6 2026-07-12] TL;DR label + summary
     title = f"Architecture of {target_module} ({len(instances)} instances"
     if n_hidden > 0:
         title += f", showing {len(visible_instances)}"
     title += ")"
     lines.append(f'  label="{title}";')
+    lines.append("")
+
+    # [Phase 6 2026-07-12] TL;DR summary line (small, just below title)
+    tldr_parts = [f"Sub-modules: {len(instances)}"]
+    if edges:
+        tldr_parts.append(f"Cross-edges: {len(edges)}")
+    tldr_text = " · ".join(tldr_parts)
+    lines.append(f'  // TL;DR: {tldr_text}')
     lines.append("")
     lines.append("  // ---- Instances (L1) ----")
 

@@ -27,6 +27,7 @@ digraph pipeline {
     "1" [label="1\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
   }
 
+  // TL;DR: 2 pipeline regs · 3 state regs · 2 stages · control shown: 7/7
   subgraph cluster_stage0 {
     label="Stage 0\n(latency=1)";
     style=dashed;

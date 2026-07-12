@@ -736,6 +736,11 @@ def _generate_chain_dot(
     lines.append("  fontsize=16;")
     lines.append('  fontname="Helvetica-Bold";')
     lines.append(f"  rankdir={layout};")
+
+    # [Phase 6 2026-07-12] TL;DR 一行摘要
+    lines.append(
+        f'  // TL;DR: {len(edges)} edges · {len(nodes)} nodes'
+    )
     if layout_engine in ("neato", "fdp"):
         lines.append("  ratio=1.0;")
         lines.append("  overlap=false;")
