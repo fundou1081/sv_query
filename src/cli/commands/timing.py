@@ -143,11 +143,16 @@ def analyze(
         lines.append('  nodesep=0.4;')
         lines.append('')
 
-        # [Phase 6 2026-07-12] TL;DR 一行摘要
+        # [Phase 6.4 2026-07-12] TL;DR as visible box + shared legend
+        from trace.core.graph.analyzer.viz_legend import render_tldr_box, render_legend
         max_d = max((p["depth"] for p in paths), default=0)
-        lines.append(
-            f'  // TL;DR: {len(paths)} critical paths · deepest={max_d} cycles · anomalies={len(timing_anomalies)}'
+        tldr_text = (
+            f'{len(paths)} critical paths · deepest={max_d} cycles · '
+            f'anomalies={len(timing_anomalies)}'
         )
+        lines.extend(render_tldr_box(tldr_text))
+        # Shared legend at bottom
+        lines.extend(render_legend('timing'))
         lines.append('')
         # Draw all paths with color-coded nodes/edges
         # Path 1 = red (deepest), others = blue

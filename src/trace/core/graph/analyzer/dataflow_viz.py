@@ -71,13 +71,13 @@ def generate_dataflow_dot(
     lines.append('  splines=polyline;')
     lines.append('')
 
-    # [Phase 6 2026-07-12] TL;DR 一行摘要
+    # [Phase 6.4 2026-07-12] TL;DR as visible box (not just comment)
+    from .viz_legend import render_tldr_box
     n_data = len(classification.data_nodes)
     n_ctrl = len(classification.control_nodes)
     n_clk = len(classification.clock_nodes)
-    lines.append(
-        f'  // TL;DR: {n_data} data · {n_ctrl} control · {n_clk} clock nodes'
-    )
+    tldr_text = f'{n_data} data · {n_ctrl} control · {n_clk} clock nodes'
+    lines.extend(render_tldr_box(tldr_text))
     lines.append('')
 
     # 边收集
@@ -204,19 +204,9 @@ def generate_dataflow_dot(
             attrs.append('fontsize=7')
         lines.append(f'  "{_sid(ce.src_id)}" -> "{_sid(ce.dst_id)}" [{", ".join(attrs)}];')
 
-    lines.append('')
-    lines.append('  // === Legend ===')
-    lines.append('  subgraph cluster_legend {')
-    lines.append('    label="Legend";')
-    lines.append('    fontsize=10;')
-    lines.append('    style=dashed;')
-    lines.append('    color="#aaaaaa";')
-    lines.append('    legend_data [label="Data Signal\\n(blue, solid)" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white"];')
-    lines.append('    legend_control [label="Control Signal\\n(orange, dashed)" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white"];')
-    lines.append('    legend_reg [label="Register\\n(thick border)" shape=box style="rounded,filled,dashed" fillcolor="#4488cc" fontcolor="white" penwidth=3];')
-    lines.append('    legend_mux [label="MUX target\\n(thick blue edge)" shape=box style="rounded,filled,dashed" fillcolor="#226699" fontcolor="white" penwidth=3];')
-    lines.append('    legend_op [label="Operation\\n(edge label)" shape=none fontsize=9];')
-    lines.append('  }')
+    # [Phase 6.3 2026-07-12] Use shared legend (consistency across all viz)
+    from .viz_legend import render_legend
+    lines.extend(render_legend('dataflow'))
     lines.append('}')
 
     return "\n".join(lines)

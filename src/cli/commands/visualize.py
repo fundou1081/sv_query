@@ -881,10 +881,9 @@ def _generate_chain_dot(
     lines.append('  fontname="Helvetica-Bold";')
     lines.append(f"  rankdir={layout};")
 
-    # [Phase 6 2026-07-12] TL;DR 一行摘要
-    lines.append(
-        f'  // TL;DR: {len(edges)} edges · {len(nodes)} nodes'
-    )
+    # [Phase 6.4 2026-07-12] TL;DR as visible box
+    from trace.core.graph.analyzer.viz_legend import render_tldr_box
+    lines.extend(render_tldr_box(f'{len(edges)} edges · {len(nodes)} nodes'))
     if layout_engine in ("neato", "fdp"):
         lines.append("  ratio=1.0;")
         lines.append("  overlap=false;")
@@ -1729,6 +1728,10 @@ def _write_module_dot(result, edges: list[dict], path: str) -> None:
                 f'arrowhead=none penwidth=0.7];'
             )
         lines.append('')
+
+    # [Phase 6.3 2026-07-12] Shared legend
+    from trace.core.graph.analyzer.viz_legend import render_legend
+    lines.extend(render_legend('chain'))
 
     lines.append('}')
     with open(path, "w") as f:

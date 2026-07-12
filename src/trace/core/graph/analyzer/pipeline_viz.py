@@ -414,13 +414,16 @@ def generate_pipeline_dot(
     if is_folding:
         folded_groups = _build_folded_stage_groups(stages_to_render, fold_every)
 
-    # [Phase 6 2026-07-12] TL;DR header (after folding decision)
+    # [Phase 6.4 2026-07-12] TL;DR as visible box (not just comment)
+    from .viz_legend import render_tldr_box
     fold_note = f' · folded into {len(folded_groups)} groups (--unfold to expand)' if is_folding else ''
-    lines.append(
-        f'  // TL;DR: {len(pipeline_info.pipeline_regs)} pipeline regs · '
-        f'{len(pipeline_info.state_regs)} state regs · {pipeline_info.total_latency} stages'
-        f'{fold_note} · control shown: {len(control_shown)}/{total_control}'
+    tldr_text = (
+        f'{len(pipeline_info.pipeline_regs)} pipeline regs · '
+        f'{len(pipeline_info.state_regs)} state regs · '
+        f'{pipeline_info.total_latency} stages{fold_note} · '
+        f'control shown: {len(control_shown)}/{total_control}'
     )
+    lines.extend(render_tldr_box(tldr_text))
 
     # 每个 stage (或 fold group) 一个 cluster
     all_nodes_in_stages = set()
@@ -510,6 +513,10 @@ def generate_pipeline_dot(
                             f'  "{_sid(cid)}" -> "{_sid(succ)}" '
                             f'[color="{edge_color}" style=dashed penwidth=1.2];'
                         )
+
+    # [Phase 6.3 2026-07-12] Legend overlay at bottom
+    from .viz_legend import render_legend
+    lines.extend(render_legend('pipeline'))
 
     lines.append('}')
     return "\n".join(lines)
