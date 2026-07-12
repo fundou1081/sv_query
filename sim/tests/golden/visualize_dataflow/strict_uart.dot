@@ -7,6 +7,8 @@ digraph dataflow {
   nodesep=0.3;
   splines=polyline;
 
+  // TL;DR: 17 data · 7 control · 4 clock nodes
+
   // === Nodes ===
   "0" [label="0\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
   "1" [label="1\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
