@@ -355,13 +355,19 @@ def generate_pipeline_dot(
             return f'// ERROR: failed to classify graph\ndigraph pipeline {{ label="Error: {pipeline_info.module_name}"; }}'
 
 
+    # [Phase 6.5 fix 2026-07-13] 折叠模式判定 (需要在 layout 之前)
+    stages_count = len(pipeline_info.stages)
+    is_folding = stages_count > fold_threshold
+
     lines = ['digraph pipeline {']
-    lines.append('  rankdir=LR;')  # 左→右 = 时间流
+    # [Phase 6.5 fix 2026-07-13] 全部用 LR (时间流从左到右)
+    # TB 模式在大 pipeline (100+ stages) 会压成细条, 不可读
+    lines.append('  rankdir=LR;')
     lines.append(f'  label="Pipeline Flow: {pipeline_info.module_name}";')
     lines.append('  labelloc=t;')
     lines.append('  fontsize=14;')
     lines.append('  ranksep=0.6;')
-    lines.append('  nodesep=0.2;')
+    lines.append('  nodesep=0.4;')  # [Phase 6.5] 增加节点间距, 防重叠
     lines.append('  splines=polyline;')
     lines.append('')
     lines.append(f'  // {len(pipeline_info.pipeline_regs)} pipeline regs, {len(pipeline_info.control_regs)} control regs')
@@ -410,13 +416,21 @@ def generate_pipeline_dot(
     # when total stages > fold_threshold. Each fold cluster shows aggregated info.
     stages_to_render = pipeline_info.stages
     folded_groups = None
-    is_folding = _should_fold_stages(stages_to_render, fold_threshold)
     if is_folding:
+        # [Phase 6.5 fix 2026-07-13] auto-scale fold_every: ensure max 10 folds
+        # Original default 5 → too many clusters for 150+ stage pipelines
+        n_stages = len(stages_to_render)
+        target_folds = 10
+        if fold_every < (n_stages // target_folds):
+            fold_every = max(1, (n_stages + target_folds - 1) // target_folds)
+            fold_note_extra = f' (auto-fold-every={fold_every})'
+        else:
+            fold_note_extra = ''
         folded_groups = _build_folded_stage_groups(stages_to_render, fold_every)
 
     # [Phase 6.4 2026-07-12] TL;DR as visible box (not just comment)
     from .viz_legend import render_tldr_box
-    fold_note = f' · folded into {len(folded_groups)} groups (--unfold to expand)' if is_folding else ''
+    fold_note = f' · folded into {len(folded_groups)} groups (--unfold to expand){fold_note_extra}' if is_folding else ''
     tldr_text = (
         f'{len(pipeline_info.pipeline_regs)} pipeline regs · '
         f'{len(pipeline_info.state_regs)} state regs · '
@@ -464,14 +478,26 @@ def generate_pipeline_dot(
             lines.append(f'    "{_sid(reg_id)}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
             all_nodes_in_stages.add(reg_id)
 
-        # 组合逻辑
-        for comb_id in comb_nodes:  # [P0 fix 2026-07-10] limit comb per stage
-            cn = classification.nodes.get(comb_id)
-            if cn is None:
-                continue
-            name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
-            w = _node_width(cn)
-            lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
+        # [Phase 6.5 fix 2026-07-13] 折叠模式: 只显示 REG, 隐藏 comb (避免 overlap)
+        # 在 --unfold 模式下, comb nodes 才会显示
+        if is_fold:
+            # Add a small note about hidden comb nodes
+            total_comb = len(comb_nodes)
+            if total_comb > 0:
+                lines.append(
+                    f'    // Folded mode: {total_comb} combinational nodes hidden '
+                    f'(use --unfold to see them)'
+                )
+            # DO NOT continue - we still need the closing } of the cluster
+        else:
+            # 组合逻辑 (只在非折叠模式渲染)
+            for comb_id in comb_nodes:  # [P0 fix 2026-07-10] limit comb per stage
+                cn = classification.nodes.get(comb_id)
+                if cn is None:
+                    continue
+                name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
+                w = _node_width(cn)
+                lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
             all_nodes_in_stages.add(comb_id)
         # [Phase 6.2] Trim comb nodes per cluster
         shown_count = min(len(comb_nodes), max_comb_per_stage)
@@ -488,31 +514,41 @@ def generate_pipeline_dot(
 
     # 边
     lines.append('  // === Data edges (stage → stage) ===')
-    for stage in pipeline_info.stages:
-        for reg_id in stage.reg_nodes:
-            for succ in graph.successors(reg_id):
-                edges = graph.get_edges(reg_id, succ)
-                for e in edges:
-                    if e.kind == EdgeKind.DRIVER:
-                        label = e.expression[:20] if e.expression and e.expression != "?" else ""
-                        lines.append(f'  "{_sid(reg_id)}" -> "{_sid(succ)}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
+    # [Phase 6.5 fix 2026-07-13] 折叠模式: 折叠模式下完全不画跨 fold 边, 避免线团
+    # 只在 --unfold 模式下显示完整边
+    if is_folding:
+        lines.append('  // Folded mode: cross-fold edges omitted for clarity')
+        lines.append('  // Use --unfold to see all edges')
+    else:
+        for stage in pipeline_info.stages:
+            for reg_id in stage.reg_nodes:
+                for succ in graph.successors(reg_id):
+                    edges = graph.get_edges(reg_id, succ)
+                    for e in edges:
+                        if e.kind == EdgeKind.DRIVER:
+                            label = e.expression[:20] if e.expression and e.expression != "?" else ""
+                            lines.append(f'  "{_sid(reg_id)}" -> "{_sid(succ)}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
 
     lines.append('')
     lines.append('  // === Control edges (dashed, color-matched to target stage) ===')
     # [P5 2026-07-11] 颜色与 control 节点颜色一致 (按 target stage)
-    stage_colors_edge = ["#cc6633", "#aa5599", "#5599aa", "#aa8855"]
-    for cid in classification.control_nodes:
-        target_stage_idx = control_to_stage.get(cid, 0) % len(stage_colors_edge)
-        edge_color = stage_colors_edge[target_stage_idx]
-        for succ in graph.successors(cid):
-            if succ in all_nodes_in_stages:
-                edges = graph.get_edges(cid, succ)
-                for e in edges:
-                    if e.kind == EdgeKind.DRIVER:
-                        lines.append(
-                            f'  "{_sid(cid)}" -> "{_sid(succ)}" '
-                            f'[color="{edge_color}" style=dashed penwidth=1.2];'
-                        )
+    # [Phase 6.5 fix 2026-07-13] 折叠模式: 也跳过 control 边 (同避免线团)
+    if is_folding:
+        lines.append('  // Folded mode: control edges omitted for clarity')
+    else:
+        stage_colors_edge = ["#cc6633", "#aa5599", "#5599aa", "#aa8855"]
+        for cid in classification.control_nodes:
+            target_stage_idx = control_to_stage.get(cid, 0) % len(stage_colors_edge)
+            edge_color = stage_colors_edge[target_stage_idx]
+            for succ in graph.successors(cid):
+                if succ in all_nodes_in_stages:
+                    edges = graph.get_edges(cid, succ)
+                    for e in edges:
+                        if e.kind == EdgeKind.DRIVER:
+                            lines.append(
+                                f'  "{_sid(cid)}" -> "{_sid(succ)}" '
+                                f'[color="{edge_color}" style=dashed penwidth=1.2];'
+                            )
 
     # [Phase 6.3 2026-07-12] Legend overlay at bottom
     from .viz_legend import render_legend
