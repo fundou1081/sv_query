@@ -334,6 +334,7 @@ def pipeline(
     max_control_nodes: int = typer.Option(8, "--max-control-nodes", help="[P0 fix 2026-07-10 / P5 2026-07-11] Max control signals in header row (default 8, was 30). 0 = hide all."),
     unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
     fold_every: int = typer.Option(5, "--fold-every", help="[Phase 6.2] Number of stages per fold group when total > 30 (default 5)"),
+    timing: bool = typer.Option(False, "--timing", help="[Phase 7 2026-07-13] Render as parallel pipeline timing diagram (lanes × cycles) instead of folded/unfolded stage flow"),
 ) -> None:
     """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
 
@@ -347,7 +348,7 @@ def pipeline(
     控制信号区最多 30 个节点。用 --max-control-nodes 0 隐藏控制信号区。
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot, generate_pipeline_timing_dot
     from trace.core.compiler import CompilationError
     from cli._common import _build_tracer, handle_compilation_error
 
@@ -384,6 +385,10 @@ def pipeline(
         max_control_nodes=max_control_nodes,
         fold_threshold=999 if unfold else 30,  # unfold = disable folding
         fold_every=fold_every,
+    ) if not timing else generate_pipeline_timing_dot(
+        graph, info, classification,
+        max_lanes=8,
+        max_stages_per_lane=30,
     )
 
     if dot_output:
