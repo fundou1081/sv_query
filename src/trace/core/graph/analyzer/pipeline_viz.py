@@ -519,7 +519,7 @@ def generate_pipeline_dot(
                 name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
                 w = _node_width(cn)
                 lines.append(f'    "{_sid(comb_id)}" [label="{name}\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];')
-            all_nodes_in_stages.add(comb_id)
+                all_nodes_in_stages.add(comb_id)
         # [Phase 6.2] Trim comb nodes per cluster
         shown_count = min(len(comb_nodes), max_comb_per_stage)
         if len(comb_nodes) > shown_count:

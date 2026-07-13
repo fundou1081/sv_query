@@ -1075,6 +1075,86 @@ class DriverExtractor:
                             )
                         )
 
+
+                    # [Phase 7.3 / Fix A 2026-07-13] CONDITION-DRIVEN drivers
+                    # Bug: 在 if-else statement-level conditions 里,
+                    # q <= literal_only 会被简化为 `literal → q` 边,
+                    # 但 condition 里的信号 (e.g. cpu_state) 不会作为 driver 出现.
+                    # 修复: 从 ctx.effective_condition 提取所有信号名, 添加为 DRIVER 边
+                    # (kind=DRIVER 但带 sig_cond, 让 trace_fanin/dataflow 能找到完整 driver chain).
+                    self._add_condition_drivers(
+                        dst_node_id, ctx, module_name, result
+                    )
+
+    def _add_condition_drivers(
+        self,
+        dst_node_id: str,
+        ctx: dict,
+        module_name: str,
+        result,
+    ) -> None:
+        """[Phase 7.3 / Fix A 2026-07-13] 从 ctx.effective_condition 提取所有信号名,
+        添加为 driver 边 (带 sig_cond 标记)."""
+        effective_cond = ctx.get("effective_condition", "")
+        if not effective_cond:
+            return
+
+        cond_signals = []
+        current = ""
+        for c in effective_cond:
+            if c.isalnum() or c == "_":
+                current += c
+            elif c == "[":
+                continue
+            else:
+                if current and current not in ("0", "1"):
+                    cond_signals.append(current)
+                current = ""
+        if current and current not in ("0", "1"):
+            cond_signals.append(current)
+
+        cond_signals = list(dict.fromkeys(cond_signals))
+        dst_short = dst_node_id.split(".")[-1] if "." in dst_node_id else dst_node_id
+        cond_signals = [s for s in cond_signals if s != dst_short]
+
+        existing_signal_ids = set()
+        for e in result.edges:
+            if e.dst == dst_node_id:
+                existing_signal_ids.add(e.src)
+
+        for sig_name in cond_signals:
+            if sig_name.isdigit():
+                continue
+            src_node_id = f"{module_name}.{sig_name}"
+            if src_node_id == dst_node_id:
+                continue
+            if src_node_id in existing_signal_ids:
+                continue
+
+            if src_node_id not in [n.id for n in result.nodes]:
+                result.nodes.append(
+                    TraceNode(
+                        id=src_node_id,
+                        name=sig_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=(1, 0),
+                    )
+                )
+
+            result.edges.append(
+                self._edge_factory.make_edge(
+                    src=src_node_id,
+                    dst=dst_node_id,
+                    kind=EdgeKind.DRIVER,
+                    assign_type="nonblocking",
+                    expression=sig_name,
+                    sig_cond=effective_cond,
+                    ctx=ctx,
+                )
+            )
+            existing_signal_ids.add(src_node_id)
+
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
 
