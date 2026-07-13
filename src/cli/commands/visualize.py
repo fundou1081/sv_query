@@ -387,8 +387,8 @@ def pipeline(
         fold_every=fold_every,
     ) if not timing else generate_pipeline_timing_dot(
         graph, info, classification,
-        max_lanes=8,
-        max_stages_per_lane=30,
+        max_segments=8,
+        max_stages_per_segment=15,
     )
 
     if dot_output:

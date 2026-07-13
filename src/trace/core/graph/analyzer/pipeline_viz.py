@@ -595,15 +595,22 @@ def generate_pipeline_dot(
     return "\n".join(lines)
 
 
-def _group_stages_into_lanes(
+def _group_stages_into_segments(
     stages: list, control_to_stage: dict[str, int]
-) -> list[tuple[str, list]]:
-    """[Phase 7 2026-07-13] 按 control_to_stage 把 stages 分到 lane.
+) -> list[tuple[str | None, list]]:
+    """[Phase 7.1 2026-07-13] 按 control_to_stage 把 stages 切分成 segment.
 
     算法:
-    - 每个 stage 的 lane = 找到 targeting 该 stage 的 control signal
-    - 没有 control targeting 时, 归入 None lane
-    - 连续相同 lane 的 stage 合并为 1 lane
+    - 遍历按 stage_id 排序的 stages
+    - 当 control signal target 变化时, 切分 segment
+    - 没有 control targeting 的 stage 归入 ctrl=None 的 segment
+
+    这是**连续 stage 序列** (按 graph depth 排序), 不是 CPU 架构的
+    "parallel pipeline lanes". 之所以命名 segment (而非 lane), 是为了诚实:
+    这些 stage 是 sequential, 不是 parallel.
+
+    Returns:
+        list of (ctrl_id_or_None, stages_in_segment)
     """
     # Build reverse map: stage_id → control_id
     stage_to_ctrl: dict[int, str] = {}
@@ -612,22 +619,22 @@ def _group_stages_into_lanes(
             stage_to_ctrl[target_stage] = cid
 
     sorted_stages = sorted(stages, key=lambda s: s.stage_id)
-    lanes: list[tuple[str, list]] = []
-    current_lane: list = []
+    segments: list[tuple[str | None, list]] = []
+    current_segment: list = []
     current_ctrl: str | None = None
 
     for stage in sorted_stages:
         ctrl = stage_to_ctrl.get(stage.stage_id)
-        if ctrl != current_ctrl and current_lane:
-            lanes.append((current_ctrl or "", current_lane))
-            current_lane = []
+        if ctrl != current_ctrl and current_segment:
+            segments.append((current_ctrl, current_segment))
+            current_segment = []
         current_ctrl = ctrl
-        current_lane.append(stage)
+        current_segment.append(stage)
 
-    if current_lane:
-        lanes.append((current_ctrl or "", current_lane))
+    if current_segment:
+        segments.append((current_ctrl, current_segment))
 
-    return lanes
+    return segments
 
 
 def generate_pipeline_timing_dot(
@@ -635,21 +642,24 @@ def generate_pipeline_timing_dot(
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
     *,
-    max_lanes: int = 6,
-    max_stages_per_lane: int = 15,
+    max_segments: int = 8,
+    max_stages_per_segment: int = 15,
 ) -> str:
-    """[Phase 7 2026-07-13] Pipeline timing diagram (parallel lanes) using HTML table.
+    """[Phase 7.1 2026-07-13] Pipeline segment diagram using HTML table.
 
     Layout:
-    - Y-axis (rows): lanes = control signal target groups (parallel pipelines)
-    - X-axis (cols): stages sorted by stage_id (= approximate cycle order)
-    - Each cell shows: stage_id + REG name
+    - Y-axis (rows): segments = groups of consecutive stages split by control signal transitions
+    - X-axis (cols): stages within each segment (subsampled)
+    - Each cell shows: S<stage_id>: <reg_name>
+
+    IMPORTANT NAMING NOTE:
+    These are called 'segments' (NOT 'parallel lanes') because:
+    - Stages are sorted by stage_id (which is BFS graph depth, NOT real cycles)
+    - Segments are sequential groups, NOT parallel pipelines
+    - Each segment may have a control signal target OR may be a no-control region
 
     For picorv32-style "150 stages" (where stage_id = BFS graph depth, not real cycles),
-    this groups consecutive stages with same control target into 1 lane,
-    giving a true parallel pipeline view.
-
-    Implementation: uses HTML table label for complete layout control.
+    this shows the structure as segments separated by control signal transitions.
     """
     _sid = sanitize_dot_id
     if classification is None:
@@ -661,28 +671,46 @@ def generate_pipeline_timing_dot(
     control_outside = _collect_outside_controls(classification, pipeline_info)
     control_to_stage = _group_controls_by_stage(control_outside, pipeline_info, graph)
 
-    # Group stages into lanes
-    all_lanes = _group_stages_into_lanes(pipeline_info.stages, control_to_stage)
+    # Group stages into segments
+    all_segments = _group_stages_into_segments(pipeline_info.stages, control_to_stage)
 
-    # Limit to top N lanes by stage count
-    all_lanes_sorted = sorted(all_lanes, key=lambda x: -len(x[1]))
-    shown_lanes = all_lanes_sorted[:max_lanes]
-    hidden_lane_count = max(0, len(all_lanes) - max_lanes)
+    # Limit to top N segments by stage count
+    all_segments_sorted = sorted(all_segments, key=lambda x: -len(x[1]))
+    # [Phase 7.1 2026-07-13] Preserve ORIGINAL ORDER (not sorted by size)
+    # so user sees the actual structure: no-ctrl, ctrl, no-ctrl, ctrl ...
+    # But limit total segments shown (mix of large + small)
+    if len(all_segments) > max_segments:
+        # Take first N segments in original order
+        shown_segments = all_segments[:max_segments]
+        hidden_seg_count = len(all_segments) - max_segments
+    else:
+        shown_segments = all_segments
+        hidden_seg_count = 0
 
-    # Subsample cells per lane
-    lane_cell_data = []  # list of (lane_label, color, cell_texts)
-    for li, (ctrl_id, lane_stages) in enumerate(shown_lanes):
+    # Build segment data
+    segment_data = []  # list of (seg_label_html, color, cell_texts)
+    for si, (ctrl_id, seg_stages) in enumerate(shown_segments):
+        # Determine segment label
         if ctrl_id and ctrl_id in classification.nodes:
             cn = classification.nodes[ctrl_id]
             ctrl_name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else ctrl_id
+            # Strip module prefix
+            if "." in ctrl_name:
+                ctrl_name = ctrl_name.split(".", 1)[1]
+            seg_label_text = f"Segment {si}: ← {ctrl_name} ({len(seg_stages)} stages)"
+            seg_label_html = f"Segment {si}<BR/>← {ctrl_name}<BR/>({len(seg_stages)} stages)"
         else:
-            ctrl_name = "(no control)"
+            seg_label_text = f"Segment {si}: (no control) ({len(seg_stages)} stages)"
+            seg_label_html = f"Segment {si}<BR/>(no control signal target)<BR/>({len(seg_stages)} stages)"
 
-        if len(lane_stages) > max_stages_per_lane:
-            step = max(1, len(lane_stages) // max_stages_per_lane)
-            cell_stages = lane_stages[::step][:max_stages_per_lane]
+        # Subsample cells
+        if len(seg_stages) > max_stages_per_segment:
+            step = max(1, len(seg_stages) // max_stages_per_segment)
+            cell_stages = seg_stages[::step][:max_stages_per_segment]
+            sample_note = f" (sampled {len(cell_stages)}/{len(seg_stages)})"
         else:
-            cell_stages = lane_stages
+            cell_stages = seg_stages
+            sample_note = ""
 
         cell_texts = []
         for stage in cell_stages:
@@ -692,37 +720,34 @@ def generate_pipeline_timing_dot(
                 name = sanitize_dot_id(cn2.node.name) if cn2 and cn2.node.name else "?"
             else:
                 name = "?"
-            # Cell text: stage_id / name (shortened)
-            short_name = name.replace("picorv32.", "")[:18]
+            # Strip module prefix from name
+            if "." in name:
+                name = name.split(".", 1)[1]
+            short_name = name[:18]
             cell_texts.append(f"S{stage.stage_id}: {short_name}")
-        lane_label = f"Lane {li}\n{ctrl_name[:25]}\n({len(lane_stages)} stages)"
-        lane_cell_data.append((lane_label, li, cell_texts))
+
+        segment_data.append((seg_label_html, si, cell_texts, ctrl_id, seg_label_text))
 
     # Build HTML table
     total_regs = sum(len(s.reg_nodes) for s in pipeline_info.stages)
-    
+    max_cells = max(len(c) for _, _, c, _, _ in segment_data)
+
     rows = []
     rows.append('<TR>')
-    rows.append('<TD BGCOLOR="#664400"><FONT COLOR="#ffffff"><B>Lane / Cycle</B></FONT></TD>')
-    # Header row: cycle numbers (just indices)
-    max_cells = max(len(c) for _, _, c in lane_cell_data)
+    rows.append('<TD BGCOLOR="#664400"><FONT COLOR="#ffffff"><B>Segment / Cell</B></FONT></TD>')
     for ci in range(max_cells):
-        rows.append(f'<TD BGCOLOR="#fffbe6"><FONT COLOR="#664400"><B>C{ci+1}</B></FONT></TD>')
+        rows.append(f'<TD BGCOLOR="#fffbe6"><FONT COLOR="#664400"><B>S{ci+1}</B></FONT></TD>')
     rows.append('</TR>')
 
-    # Lane colors
-    lane_colors = ["#4488cc", "#cc6633", "#aa5599", "#5599aa", "#aa8855", "#8888cc"]
+    seg_colors = ["#4488cc", "#cc6633", "#aa5599", "#5599aa", "#aa8855", "#8888cc", "#88cc88", "#cc8888"]
 
-    for lane_label, li, cell_texts in lane_cell_data:
-        color = lane_colors[li % len(lane_colors)]
-        # Lane label cell (left column)
-        # Replace \n with <BR/>
-        label_html = lane_label.replace('\\n', '<BR/>')
+    for seg_label_html, si, cell_texts, ctrl_id, seg_label_text in segment_data:
+        color = seg_colors[si % len(seg_colors)]
         rows.append('<TR>')
-        rows.append(f'<TD BGCOLOR="#f0f0f5" ALIGN="LEFT"><FONT COLOR="{color}"><B>{label_html}</B></FONT></TD>')
+        rows.append(f'<TD BGCOLOR="#f0f0f5" ALIGN="LEFT"><FONT COLOR="{color}"><B>{seg_label_html}</B></FONT></TD>')
         for ci, cell_text in enumerate(cell_texts):
             rows.append(f'<TD BGCOLOR="{color}"><FONT COLOR="#ffffff" POINT-SIZE="8">{cell_text}</FONT></TD>')
-        # Pad with empty cells if fewer
+        # Pad
         for _ in range(max_cells - len(cell_texts)):
             rows.append('<TD BGCOLOR="#eeeeee"> </TD>')
         rows.append('</TR>')
@@ -733,15 +758,24 @@ def generate_pipeline_timing_dot(
         + '</TABLE>'
     )
 
-    # DOT output
+    # Title with honest description
+    all_has_ctrl = sum(1 for cid, _ in all_segments if cid is not None)
+    all_no_ctrl = len(all_segments) - all_has_ctrl
+    has_ctrl_segs = sum(1 for _, _, _, cid, _ in segment_data if cid is not None)
+    no_ctrl_segs = len(segment_data) - has_ctrl_segs
+
     lines = ['digraph pipeline_timing {']
     lines.append('  rankdir=LR;')
     lines.append('  labelloc=t;')
     lines.append('  fontsize=12;')
-    lines.append(f'  label="Pipeline Timing Diagram: {pipeline_info.module_name}\\n' +
-                 f'{len(pipeline_info.stages)} stages · {total_regs} regs · {len(shown_lanes)} parallel lanes' +
-                 (' (showing top ' + str(max_lanes) + ' by stage count)' if hidden_lane_count > 0 else '') +
-                 '";')
+    title = (
+        f'Pipeline Segment Diagram: {pipeline_info.module_name}\\n'
+        f'{len(pipeline_info.stages)} stages (BFS depth, NOT real cycles) → {len(all_segments)} segments '
+        f'({all_has_ctrl} with control signal, {all_no_ctrl} without)'
+    )
+    if hidden_seg_count > 0:
+        title += f'\\n[Showing first {max_segments} of {len(all_segments)} segments in original order]'
+    lines.append(f'  label="{title}";')
     lines.append('  node [shape=none];')
     lines.append('  diagram [label=<')
     lines.append('    ' + table_html)
@@ -749,6 +783,8 @@ def generate_pipeline_timing_dot(
     lines.append('}')
     return "\n".join(lines)
 
+
+# _node_width 委托给 _dot_common.node_width (上面已 import)
 
 # _node_width 委托给 _dot_common.node_width (上面已 import)
 
