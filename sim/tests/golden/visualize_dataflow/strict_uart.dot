@@ -8,7 +8,7 @@ digraph dataflow {
   splines=polyline;
 
   // === TL;DR ===
-  TLDR [shape=plaintext, label="17 data · 7 control · 4 clock nodes",
+  TLDR [shape=plaintext, label="19 data · 7 control · 4 clock nodes",
         fontsize=12, fontcolor="#664400",
         fillcolor="#fffbe6", style="rounded,filled",
         margin=0.1];
@@ -17,13 +17,17 @@ digraph dataflow {
   "0" [label="0\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
   "1" [label="1\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
   "sync_fifo.SIZE" [label="SIZE\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
+  "sync_fifo.b01" [label="b01\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
+  "sync_fifo.b10" [label="b10\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.count_q" [label="count_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
   "sync_fifo.empty_o" [label="empty_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.full_o" [label="full_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.mem" [label="mem\n1bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [label="mem[Expression(ExpressionKind.NamedValue)]\nREG\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
   "sync_fifo.pop_data_o" [label="pop_data_o\nREG\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
+  "sync_fifo.pop_i" [label="pop_i\nPORT_IN\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.push_data_i" [label="push_data_i\nPORT_IN\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
+  "sync_fifo.push_i" [label="push_i\nPORT_IN\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
   "sync_fifo.rd_ptr_q" [label="rd_ptr_q\nREG\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
   "sync_fifo.wr_ptr_q" [label="wr_ptr_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=2];
   "synchronizer.async_i" [label="async_i\nPORT_IN\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
@@ -38,15 +42,25 @@ digraph dataflow {
   // === Data Edges ===
   "synchronizer.async_i" -> "synchronizer.sync1" [color="#226699", style=solid, penwidth=1.5, label="async_i", fontsize=9, xlabel="rst_ni", fontsize=7];
   "synchronizer.sync1" -> "synchronizer.sync0_o" [color="#226699", style=solid, penwidth=1.5, label="sync1", fontsize=9, xlabel="rst_ni", fontsize=7];
-  "sync_fifo.push_data_i" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="push_data_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7];
+  "sync_fifo.push_i" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="push_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.push_i" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="push_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.pop_i" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="pop_i", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.pop_i" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="pop_i", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.push_data_i" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="push_data_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.full_o" -> "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [color="#226699", style=solid, penwidth=1.5, label="full_o", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.full_o" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="full_o", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.empty_o" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="empty_o", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.empty_o" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="empty_o", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
   "sync_fifo.count_q" -> "sync_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9];
   "sync_fifo.count_q" -> "sync_fifo.full_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, penwidth=2.5, color="#224488"];
-  "sync_fifo.count_q" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7];
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
   "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="wr_ptr_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
   "sync_fifo.SIZE" -> "sync_fifo.full_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, penwidth=2.5, color="#224488"];
-  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="rd_ptr_q", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7];
-  "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="mem[Expression(ExpressionKind....", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7];
+  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="rd_ptr_q", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="mem[Expression(ExpressionKind....", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
   "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.mem" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
+  "sync_fifo.b10" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="b10", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
+  "sync_fifo.b01" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="b01", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
   "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
   "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo" [color="#226699", style=solid, penwidth=1.5, label="pop_data_o", fontsize=9, penwidth=2.5, color="#224488"];

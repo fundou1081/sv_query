@@ -24,13 +24,13 @@
         "count": 0,
         "drivers": [],
         "index": 0,
-        "pre_filter_count": 2,
+        "pre_filter_count": 4,
         "signal": "sync_fifo.count_q",
         "truncated": false
       }
     ],
     "total_count": 0,
-    "total_pre_filter": 2,
+    "total_pre_filter": 4,
     "total_signals": 1,
     "truncated": false
   }
