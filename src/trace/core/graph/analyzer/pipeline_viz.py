@@ -230,7 +230,7 @@ def _should_fold_stages(stages: list, threshold: int) -> bool:
     return len(stages) > threshold
 
 
-def _build_folded_stage_groups(stages: list, fold_every: int, max_regs_per_fold: int = 8) -> list:
+def _build_folded_stage_groups(stages: list, fold_every: int, max_regs_per_fold: int = 1) -> list:
     """[Phase 6.2] Group consecutive stages into folds.
 
     Each fold contains up to `fold_every` consecutive stages and aggregates:
@@ -365,14 +365,23 @@ def generate_pipeline_dot(
     is_folding = stages_count > fold_threshold
 
     lines = ['digraph pipeline {']
-    # [Phase 6.5 fix 2026-07-13] 全部用 LR (时间流从左到右)
-    # TB 模式在大 pipeline (100+ stages) 会压成细条, 不可读
-    lines.append('  rankdir=LR;')
+    # [Phase 6.5.3 fix 2026-07-13] 折叠模式用 LR + compact ranks
+    # 让 cluster 内 REGs 横向排成 1 行 (rank=same), 多个 cluster 横向串联
+    # 减少每 fold 节点数 (max 5), 让总宽 < 2000px
+    # [Phase 6.5.5 fix 2026-07-13] 折叠模式用 TB, 5 个 fold 横排成 1 行 (5 列)
+    # 非折叠模式继续 LR
+    layout = 'TB' if is_folding else 'LR'
+    lines.append(f'  rankdir={layout};')
+    if is_folding:
+        lines.append('  ranksep=0.15;')  # TB 折叠: 紧排
+        lines.append('  nodesep=0.15;')
+    else:
+        lines.append('  ranksep=0.6;')
+        lines.append('  nodesep=0.4;')
     lines.append(f'  label="Pipeline Flow: {pipeline_info.module_name}";')
     lines.append('  labelloc=t;')
     lines.append('  fontsize=14;')
-    lines.append('  ranksep=0.6;')
-    lines.append('  nodesep=0.4;')  # [Phase 6.5] 增加节点间距, 防重叠
+    # (ranksep/nodesep already set above)
     lines.append('  splines=polyline;')
     lines.append('')
     lines.append(f'  // {len(pipeline_info.pipeline_regs)} pipeline regs, {len(pipeline_info.control_regs)} control regs')
@@ -451,35 +460,33 @@ def generate_pipeline_dot(
         [(g, True) for g in folded_groups] if is_folding
         else [(s, False) for s in stages_to_render]
     )
+
+    # [Phase 6.5.4 fix 2026-07-13] 折叠模式: 收集所有 REGs, 稍后一次放到一个 rank=same 行
+    # 不用 cluster, 避免 graphviz 垂直堆叠多个 cluster
+    fold_reg_nodes_global = []  # 全局 REG node ID 列表 (用于 rank=same)
+
     for item, is_fold in items_to_render:
         if is_fold:
             stage = item  # dict (fold group)
-            cluster_name = f"cluster_fold_{stage['start_id']}_{stage['end_id']}"
             total_regs = stage.get('reg_nodes_total', len(stage['reg_nodes']))
             shown = len(stage['reg_nodes'])
-            if total_regs > shown:
-                # 有 truncation 时, label 明确显示
-                stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, showing {shown}/{total_regs} regs)"
-            else:
-                stage_label = f"Stages {stage['start_id']}-{stage['end_id']} ({len(stage['stage_ids'])} stages, {total_regs} regs)"
-            lines.append(f'  subgraph {cluster_name} {{')
-            lines.append(f'    label="{stage_label}";')
-            lines.append('    style="rounded,dashed";')
-            lines.append('    fillcolor="#e8f0f8";')
-            lines.append('    color="#226699";')
-            lines.append('    fontsize=11;')
+            # Label 显示在 node 下面 (而不是 cluster 里)
+            stage_label_text = f"Stages {stage['start_id']}-{stage['end_id']} ({total_regs} regs)"
             reg_nodes = stage['reg_nodes']
             comb_nodes = stage['comb_nodes']
         else:
             stage = item  # PipelineStage dataclass
-            lines.append(f'  subgraph cluster_stage{stage.stage_id} {{')
-            lines.append(f'    label="Stage {stage.stage_id}\\n(latency={stage.latency})";')
-            lines.append('    style=dashed;')
-            lines.append('    color="#226699";')
-            lines.append('    fontsize=11;')
+            stage_label_text = f"Stage {stage.stage_id}"
             reg_nodes = stage.reg_nodes
             comb_dedup = list(dict.fromkeys(stage.comb_nodes))
             comb_nodes = comb_dedup[:max_comb_per_stage]
+            # [非折叠模式: 每 stage 一个 cluster, 用虚线边框区分]
+            cluster_name = f"cluster_stage{stage.stage_id}"
+            lines.append(f'  subgraph {cluster_name} {{')
+            lines.append(f'    label="{stage_label_text}";')
+            lines.append('    style=dashed;')
+            lines.append('    color="#226699";')
+            lines.append('    fontsize=11;')
 
         # Pipeline registers
         for reg_id in reg_nodes:
@@ -489,14 +496,8 @@ def generate_pipeline_dot(
             lines.append(f'    "{_sid(reg_id)}" [label="{name}\\nREG\\\\n{w}bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];')
             all_nodes_in_stages.add(reg_id)
 
-        # [Phase 6.5.2 fix 2026-07-13] 折叠模式: 让 REGs 在同一行 (横向排列)
-        # 这样每个 fold = 一行 REG, 多个 fold 之间从上到下堆叠
-        if is_fold and len(reg_nodes) > 1:
-            reg_id_list = [_sid(r) for r in reg_nodes]
-            quoted = ' '.join('"' + r + '"' for r in reg_id_list)
-            lines.append(
-                f'    {{ rank=same; {quoted} }};'
-            )
+        # [Phase 6.5.4 fix 2026-07-13] 折叠模式: 不再加 per-fold rank=same
+        # 改用 loop 结束后加全局 rank=same (所有 fold REGs 在一行)
 
         # [Phase 6.5 fix 2026-07-13] 折叠模式: 只显示 REG, 隐藏 comb (避免 overlap)
         # 在 --unfold 模式下, comb nodes 才会显示
@@ -524,7 +525,23 @@ def generate_pipeline_dot(
         if len(comb_nodes) > shown_count:
             lines.append(f'    // +{len(comb_nodes) - shown_count} more comb nodes (--max-comb-per-stage to show more)')
 
-        lines.append('  }')
+        # [Phase 6.5.4 fix 2026-07-13] 只在非折叠模式关闭 cluster (折叠模式无 cluster)
+        if not is_fold:
+            lines.append('  }')
+            lines.append('')
+
+    # [Phase 6.5.4 fix 2026-07-13] 折叠模式: 所有 fold REGs 在同一 rank (横向单行)
+    # 这是关键: 把所有 fold 的 REG 强制放到一个 rank, graphviz 会按时间顺序横排
+    # 同时加 invisible edges 让 graphviz 必须按顺序排 (左→右)
+    if is_folding and fold_reg_nodes_global:
+        quoted = ' '.join('"' + r + '"' for r in fold_reg_nodes_global)
+        lines.append(f'  {{ rank=same; {quoted} }};')
+        # 加 invisible edges 强制水平流动
+        for i in range(len(fold_reg_nodes_global) - 1):
+            lines.append(
+                f'  "{fold_reg_nodes_global[i]}" -> "{fold_reg_nodes_global[i+1]}" '
+                f'[style=invis weight=10];'
+            )
         lines.append('')
 
     # [P0 fix 2026-07-10] 控制节点: 旧 layout 是独立 cluster 在最后 (突兀)

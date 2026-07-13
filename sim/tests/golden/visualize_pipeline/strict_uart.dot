@@ -1,10 +1,10 @@
 digraph pipeline {
   rankdir=LR;
+  ranksep=0.6;
+  nodesep=0.4;
   label="Pipeline Flow: /Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/strict_uart/filelist.f";
   labelloc=t;
   fontsize=14;
-  ranksep=0.6;
-  nodesep=0.4;
   splines=polyline;
 
   // 2 pipeline regs, 2 control regs
@@ -33,7 +33,7 @@ digraph pipeline {
         fillcolor="#fffbe6", style="rounded,filled",
         margin=0.1];
   subgraph cluster_stage0 {
-    label="Stage 0\n(latency=1)";
+    label="Stage 0";
     style=dashed;
     color="#226699";
     fontsize=11;
@@ -43,7 +43,7 @@ digraph pipeline {
   }
 
   subgraph cluster_stage1 {
-    label="Stage 1\n(latency=1)";
+    label="Stage 1";
     style=dashed;
     color="#226699";
     fontsize=11;
