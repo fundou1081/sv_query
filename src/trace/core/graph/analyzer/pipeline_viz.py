@@ -784,6 +784,210 @@ def generate_pipeline_timing_dot(
     return "\n".join(lines)
 
 
+def _group_stages_by_load_root(
+    graph: SignalGraph,
+    stages: list,
+    info: PipelineInfo,
+    classification,
+) -> dict[int, str]:
+    """[Phase 7.2 2026-07-13] 按 load root (输入端口) 给每个 stage 打标签.
+
+    算法: BFS backward from each REG → 找到最近的 PORT_IN 祖先 (DRIVER 边 only).
+
+    Returns:
+        dict[stage_id, port_in_id]
+    """
+    from .signal_classifier import SignalClass
+    from ..models import NodeKind
+
+    port_ins = {
+        nid for nid in graph.nodes()
+        for cn in [classification.nodes.get(nid)]
+        if cn and cn.node.kind == NodeKind.PORT_IN
+        and cn.signal_class not in (SignalClass.CLOCK, SignalClass.RESET)
+    }
+
+    def driver_preds(node_id: str) -> list[str]:
+        # 只走 DRIVER 边 (排除 CLOCK/RESET)
+        preds = []
+        for p in graph.predecessors(node_id):
+            edges = graph.get_edges(p, node_id)
+            for e in edges:
+                if e.kind == EdgeKind.DRIVER:
+                    preds.append(p)
+                    break
+        return preds
+
+    reg_to_root: dict[str, str] = {}
+    reg_to_dist: dict[str, int] = {}
+
+    for reg_id in info.pipeline_regs:
+        visited = {reg_id}
+        queue = deque([(reg_id, 0)])
+        found = False
+        while queue and not found:
+            current, dist = queue.popleft()
+            for pred in driver_preds(current):
+                if pred in visited:
+                    continue
+                visited.add(pred)
+                if pred in port_ins:
+                    reg_to_dist[reg_id] = dist + 1
+                    reg_to_root[reg_id] = pred
+                    found = True
+                    break
+                else:
+                    queue.append((pred, dist + 1))
+
+    stage_to_root: dict[int, str] = {}
+    for stage in stages:
+        if stage.reg_nodes:
+            first_reg = stage.reg_nodes[0]
+            if first_reg in reg_to_root:
+                stage_to_root[stage.stage_id] = reg_to_root[first_reg]
+
+    return stage_to_root
+
+
+def _group_stages_into_load_segments(
+    stages: list, stage_to_root: dict[int, str]
+) -> list[tuple[str | None, list]]:
+    """[Phase 7.2 2026-07-13] 按 load_root 把 stages 切分成 segment (顺序)."""
+    sorted_stages = sorted(stages, key=lambda s: s.stage_id)
+    segments: list[tuple[str | None, list]] = []
+    current_segment: list = []
+    current_root: str | None = None
+
+    for stage in sorted_stages:
+        root = stage_to_root.get(stage.stage_id)
+        if root != current_root and current_segment:
+            segments.append((current_root, current_segment))
+            current_segment = []
+        current_root = root
+        current_segment.append(stage)
+
+    if current_segment:
+        segments.append((current_root, current_segment))
+
+    return segments
+
+
+def generate_pipeline_load_dot(
+    graph: SignalGraph,
+    pipeline_info: PipelineInfo,
+    classification: SignalClassification | None = None,
+    *,
+    max_segments: int = 8,
+    max_stages_per_segment: int = 15,
+) -> str:
+    """[Phase 7.2 2026-07-13] Pipeline segment diagram grouped by LOAD PATH.
+
+    与 generate_pipeline_timing_dot 区别: 分组依据是 load root (PORT_IN) 而不是 control signal target.
+
+    IMPORTANT: 实际可达性取决于 graph 结构. 如果 reg 不能通过 DRIVER 边追溯到 PORT_IN,
+    则归入 (no load root) segment.
+    """
+    _sid = sanitize_dot_id
+    if classification is None:
+        classification = safe_classify(graph)
+        if classification is None:
+            return f'// ERROR\ndigraph pipeline {{ label="Error: {pipeline_info.module_name}"; }}'
+
+    stage_to_root = _group_stages_by_load_root(graph, pipeline_info.stages, pipeline_info, classification)
+    all_segments = _group_stages_into_load_segments(pipeline_info.stages, stage_to_root)
+
+    # Prefer segments WITH load root (most useful info)
+    # Take top N with root first, then fill with no-root segments if room
+    with_root = sorted([(r, ss) for r, ss in all_segments if r is not None], key=lambda x: -len(x[1]))
+    no_root = sorted([(r, ss) for r, ss in all_segments if r is None], key=lambda x: -len(x[1]))
+    shown_segments = with_root[:max_segments]
+    hidden_seg_count = len(with_root) - len(shown_segments)
+    if len(shown_segments) < max_segments:
+        remaining = max_segments - len(shown_segments)
+        shown_segments.extend(no_root[:remaining])
+
+    segment_data = []
+    for si, (root_id, seg_stages) in enumerate(shown_segments):
+        if root_id and root_id in classification.nodes:
+            cn = classification.nodes[root_id]
+            root_name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else root_id
+            if "." in root_name:
+                root_name = root_name.split(".", 1)[1]
+            seg_label_html = f"Segment {si}<BR/>↓ from {root_name}<BR/>({len(seg_stages)} stages)"
+        else:
+            seg_label_html = f"Segment {si}<BR/>(no load root)<BR/>({len(seg_stages)} stages)"
+
+        if len(seg_stages) > max_stages_per_segment:
+            step = max(1, len(seg_stages) // max_stages_per_segment)
+            cell_stages = seg_stages[::step][:max_stages_per_segment]
+        else:
+            cell_stages = seg_stages
+
+        cell_texts = []
+        for stage in cell_stages:
+            reg_id = stage.reg_nodes[0] if stage.reg_nodes else None
+            if reg_id and reg_id in classification.nodes:
+                cn2 = classification.nodes[reg_id]
+                name = sanitize_dot_id(cn2.node.name) if cn2 and cn2.node.name else "?"
+            else:
+                name = "?"
+            if "." in name:
+                name = name.split(".", 1)[1]
+            short_name = name[:18]
+            cell_texts.append(f"S{stage.stage_id}: {short_name}")
+
+        segment_data.append((seg_label_html, si, cell_texts, root_id))
+
+    total_regs = sum(len(s.reg_nodes) for s in pipeline_info.stages)
+    max_cells = max(len(c) for _, _, c, _ in segment_data) if segment_data else 0
+
+    rows = []
+    rows.append('<TR>')
+    rows.append('<TD BGCOLOR="#664400"><FONT COLOR="#ffffff"><B>Load Path Segment</B></FONT></TD>')
+    for ci in range(max_cells):
+        rows.append(f'<TD BGCOLOR="#fffbe6"><FONT COLOR="#664400"><B>S{ci+1}</B></FONT></TD>')
+    rows.append('</TR>')
+
+    seg_colors = ["#4488cc", "#cc6633", "#aa5599", "#5599aa", "#aa8855", "#8888cc", "#88cc88", "#cc8888"]
+
+    for seg_label_html, si, cell_texts, root_id in segment_data:
+        color = seg_colors[si % len(seg_colors)]
+        rows.append('<TR>')
+        rows.append(f'<TD BGCOLOR="#f0f0f5" ALIGN="LEFT"><FONT COLOR="{color}"><B>{seg_label_html}</B></FONT></TD>')
+        for ci, cell_text in enumerate(cell_texts):
+            rows.append(f'<TD BGCOLOR="{color}"><FONT COLOR="#ffffff" POINT-SIZE="8">{cell_text}</FONT></TD>')
+        for _ in range(max_cells - len(cell_texts)):
+            rows.append('<TD BGCOLOR="#eeeeee"> </TD>')
+        rows.append('</TR>')
+
+    table_html = (
+        '<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">'
+        + ''.join(rows)
+        + '</TABLE>'
+    )
+
+    lines = ['digraph pipeline_load {']
+    lines.append('  rankdir=LR;')
+    lines.append('  labelloc=t;')
+    lines.append('  fontsize=12;')
+    n_with_root = sum(1 for r, _ in all_segments if r is not None)
+    n_no_root = len(all_segments) - n_with_root
+    title = (
+        f'Pipeline Load-Path Diagram: {pipeline_info.module_name}\\n'
+        f'{len(pipeline_info.stages)} stages → {len(all_segments)} load-path segments '
+        f'({n_with_root} with port, {n_no_root} unreachable)'
+    )
+    if hidden_seg_count > 0:
+        title += f'\\n[Showing top {max_segments} of {len(all_segments)} segments by stage count]'
+    lines.append(f'  label="{title}";')
+    lines.append('  node [shape=none];')
+    lines.append('  diagram [label=<')
+    lines.append('    ' + table_html)
+    lines.append('  >];')
+    lines.append('}')
+    return "\n".join(lines)
+
+
 # _node_width 委托给 _dot_common.node_width (上面已 import)
 
 # _node_width 委托给 _dot_common.node_width (上面已 import)
