@@ -1124,17 +1124,22 @@ class DriverExtractor:
             for s in sigs:
                 if not s:
                     continue
-                # 过滤字面量 (纯数字 / SystemVerilog literal "2'b10" / "8'h42" 等)
-                if s.isdigit() or s in ("0", "1"):
+                # 严格过滤: 必须看起来像合法 SV identifier
+                # 1. 长度至少 1 (但单字符基本是 AST 噪音, 如 'i', 'e', '_')
+                if len(s) < 2:
                     continue
-                # SystemVerilog 字面量特征: 含 ''' 或以数字开头
-                if "'" in s or (s[0].isdigit() and not s.startswith("0x")):
+                # 2. 第一个字符必须是字母或下划线 (不允许数字开头, 不允许 '2'b10')
+                if not (s[0].isalpha() or s[0] == "_"):
                     continue
-                # AST 提取会保留 bit select 后缀 (e.g. "mem_rdata[6:0]"),
-                # 去掉 [及之后部分, 让它指向 reg 节点 (而非 slice 节点)
+                # 3. 只允许字母数字下划线
+                if not all(c.isalnum() or c == "_" for c in s):
+                    continue
+                # 4. 不能纯字面量 (已被长度过滤)
+                # 5. AST 提取会保留 bit select 后缀 (e.g. "mem_rdata[6:0]"),
+                #    去掉 [及之后部分, 让它指向 reg 节点 (而非 slice 节点)
                 if "[" in s:
                     s = s.split("[", 1)[0]
-                if s:
+                if s and len(s) >= 2:
                     cond_signals.add(s)
 
         # ── Fix A fallback: 字符串扫描 (AST 失败时) ──
