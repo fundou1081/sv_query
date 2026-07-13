@@ -1093,36 +1093,79 @@ class DriverExtractor:
         module_name: str,
         result,
     ) -> None:
-        """[Phase 7.3 / Fix A 2026-07-13] 从 ctx.effective_condition 提取所有信号名,
-        添加为 driver 边 (带 sig_cond 标记)."""
-        effective_cond = ctx.get("effective_condition", "")
-        if not effective_cond:
-            return
+        """[Phase 7.4 / Fix C 2026-07-13] 从 ctx 的 AST 节点提取所有信号名,
+        添加为 driver 边 (带 sig_cond 标记).
 
-        cond_signals = []
-        current = ""
-        for c in effective_cond:
-            if c.isalnum() or c == "_":
-                current += c
-            elif c == "[":
+        主路径: AST extraction (用 _signal_visitor.get_all_signals)
+        Fallback: 字符串扫描 (Fix A 行为, 当 AST 提取失败时)
+
+        AST 来源:
+          - ctx["_cond_exprs"]: list of AST nodes (累加所有 condition levels)
+          - ctx["condition_ast"]: 当前 immediate condition AST (补 _cond_exprs 为空)
+        """
+        cond_signals: set[str] = set()
+
+        # ── Fix C 主路径: AST extraction ──
+        ast_nodes: list = []
+        cond_exprs_list = ctx.get("_cond_exprs") or []
+        if isinstance(cond_exprs_list, list):
+            ast_nodes.extend(cond_exprs_list)
+        condition_ast = ctx.get("condition_ast")
+        if condition_ast is not None:
+            ast_nodes.append(condition_ast)
+
+        for ast_node in ast_nodes:
+            if ast_node is None:
                 continue
-            else:
-                if current and current not in ("0", "1"):
-                    cond_signals.append(current)
-                current = ""
-        if current and current not in ("0", "1"):
-            cond_signals.append(current)
+            try:
+                sigs = self._signal_visitor.get_all_signals(ast_node)
+            except Exception:
+                sigs = []
+            for s in sigs:
+                if not s:
+                    continue
+                # 过滤字面量 (纯数字 / SystemVerilog literal "2'b10" / "8'h42" 等)
+                if s.isdigit() or s in ("0", "1"):
+                    continue
+                # SystemVerilog 字面量特征: 含 ''' 或以数字开头
+                if "'" in s or (s[0].isdigit() and not s.startswith("0x")):
+                    continue
+                # AST 提取会保留 bit select 后缀 (e.g. "mem_rdata[6:0]"),
+                # 去掉 [及之后部分, 让它指向 reg 节点 (而非 slice 节点)
+                if "[" in s:
+                    s = s.split("[", 1)[0]
+                if s:
+                    cond_signals.add(s)
 
-        cond_signals = list(dict.fromkeys(cond_signals))
+        # ── Fix A fallback: 字符串扫描 (AST 失败时) ──
+        if not cond_signals:
+            effective_cond = ctx.get("effective_condition", "")
+            if effective_cond:
+                current = ""
+                for c in effective_cond:
+                    if c.isalnum() or c == "_":
+                        current += c
+                    elif c == "[":
+                        continue
+                    else:
+                        if current and current not in ("0", "1"):
+                            cond_signals.add(current)
+                        current = ""
+                if current and current not in ("0", "1"):
+                    cond_signals.add(current)
+
+        cond_signals_list = list(cond_signals)
         dst_short = dst_node_id.split(".")[-1] if "." in dst_node_id else dst_node_id
-        cond_signals = [s for s in cond_signals if s != dst_short]
+        cond_signals_list = [s for s in cond_signals_list if s != dst_short]
 
         existing_signal_ids = set()
         for e in result.edges:
             if e.dst == dst_node_id:
                 existing_signal_ids.add(e.src)
 
-        for sig_name in cond_signals:
+        effective_cond_str = ctx.get("effective_condition", "")
+
+        for sig_name in cond_signals_list:
             if sig_name.isdigit():
                 continue
             src_node_id = f"{module_name}.{sig_name}"
@@ -1149,7 +1192,7 @@ class DriverExtractor:
                     kind=EdgeKind.DRIVER,
                     assign_type="nonblocking",
                     expression=sig_name,
-                    sig_cond=effective_cond,
+                    sig_cond=effective_cond_str,
                     ctx=ctx,
                 )
             )
