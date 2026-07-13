@@ -796,6 +796,13 @@ def _group_stages_by_load_root(
 
     Returns:
         dict[stage_id, port_in_id]
+
+    LIMITATION (调查发现 2026-07-13):
+    图结构对"always块内计算结果赋值给 reg"这类场景不完整.
+    例如 picorv32 中 `trap <= (cpu_state == 0 && irq_state != 0)` 这种:
+    - trap reg 的 DRIVER 前驱只有字面量 (0, 1)
+    - 真正的数据流 (cpu_state, irq_state) 通过组合逻辑到达 trap, 但 graph 不跟踪
+    - 所以 BFS 反向找不到 port_in
     """
     from .signal_classifier import SignalClass
     from ..models import NodeKind
@@ -847,7 +854,6 @@ def _group_stages_by_load_root(
                 stage_to_root[stage.stage_id] = reg_to_root[first_reg]
 
     return stage_to_root
-
 
 def _group_stages_into_load_segments(
     stages: list, stage_to_root: dict[int, str]
