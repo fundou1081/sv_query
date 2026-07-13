@@ -1105,7 +1105,7 @@ class DriverExtractor:
         """
         cond_signals: set[str] = set()
 
-        # ── Fix C 主路径: AST extraction ──
+        # ── Fix C/D 主路径: AST extraction (跳过 parameter / enum value) ──
         ast_nodes: list = []
         cond_exprs_list = ctx.get("_cond_exprs") or []
         if isinstance(cond_exprs_list, list):
@@ -1118,29 +1118,9 @@ class DriverExtractor:
             if ast_node is None:
                 continue
             try:
-                sigs = self._signal_visitor.get_all_signals(ast_node)
+                self._collect_signals_from_ast(ast_node, cond_signals)
             except Exception:
-                sigs = []
-            for s in sigs:
-                if not s:
-                    continue
-                # 严格过滤: 必须看起来像合法 SV identifier
-                # 1. 长度至少 1 (但单字符基本是 AST 噪音, 如 'i', 'e', '_')
-                if len(s) < 2:
-                    continue
-                # 2. 第一个字符必须是字母或下划线 (不允许数字开头, 不允许 '2'b10')
-                if not (s[0].isalpha() or s[0] == "_"):
-                    continue
-                # 3. 只允许字母数字下划线
-                if not all(c.isalnum() or c == "_" for c in s):
-                    continue
-                # 4. 不能纯字面量 (已被长度过滤)
-                # 5. AST 提取会保留 bit select 后缀 (e.g. "mem_rdata[6:0]"),
-                #    去掉 [及之后部分, 让它指向 reg 节点 (而非 slice 节点)
-                if "[" in s:
-                    s = s.split("[", 1)[0]
-                if s and len(s) >= 2:
-                    cond_signals.add(s)
+                pass
 
         # ── Fix A fallback: 字符串扫描 (AST 失败时) ──
         if not cond_signals:
@@ -1202,6 +1182,78 @@ class DriverExtractor:
                 )
             )
             existing_signal_ids.add(src_node_id)
+
+    # [Phase 7.5 / Fix D 2026-07-13] Symbol kinds to exclude from condition-driver extraction
+    # These are not real signals, but compile-time constants
+    _EXCLUDED_SYMBOL_KINDS = {
+        "Parameter",        # parameter [2:0] cpu_state_trap = 3'd0;
+        "EnumValue",       # enum value (same as Parameter effectively)
+        "TypeParameter",    # type parameter
+        "Specparam",        # specparam
+        "Genvar",           # generate variable (compile-time)
+    }
+
+    def _collect_signals_from_ast(self, ast_node, cond_signals):
+        """[Phase 7.5 / Fix D 2026-07-13] Traverse AST to extract NamedValueExpression,
+        but skip Symbol kind = parameter/enum value (compile-time constants).
+
+        Difference from _signal_visitor.get_all_signals(): this version checks
+        symbol.kind to exclude Parameter/EnumValue/etc, keeping only real signals.
+        """
+        if ast_node is None:
+            return
+
+        # NamedValueExpression: simple variable reference
+        if hasattr(ast_node, "symbol") and hasattr(ast_node, "kind"):
+            sym = getattr(ast_node, "symbol", None)
+            if sym is not None:
+                # Check symbol kind - skip parameters/enum values
+                sym_kind = getattr(sym, "kind", None)
+                sym_kind_name = str(sym_kind).split(".")[-1] if sym_kind else ""
+                if sym_kind_name in self._EXCLUDED_SYMBOL_KINDS:
+                    return  # Skip this NamedValue, don't recurse
+                # Real signal - extract name
+                try:
+                    name = sym.name
+                except (UnicodeDecodeError, TypeError, Exception):
+                    name = None
+                if name:
+                    name = name.strip() if isinstance(name, str) else str(name)
+                    if self._is_valid_signal_name(name):
+                        # Strip bit select suffix [..]
+                        if "[" in name:
+                            name = name.split("[", 1)[0]
+                        if name and self._is_valid_signal_name(name):
+                            cond_signals.add(name)
+                return  # NamedValue, no need to recurse
+
+        # Recurse into child nodes
+        for attr in ("left", "right", "value", "operand", "operand0", "operand1",
+                     "expression", "expr", "elements", "operands", "args", "arguments"):
+            child = getattr(ast_node, attr, None)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for c in child:
+                    if c is not None:
+                        self._collect_signals_from_ast(c, cond_signals)
+            else:
+                self._collect_signals_from_ast(child, cond_signals)
+
+    @staticmethod
+    def _is_valid_signal_name(name):
+        """Check if looks like a valid SV identifier (exclude AST noise and literals)"""
+        if not name or len(name) < 2:
+            return False
+        if not (name[0].isalpha() or name[0] == "_"):
+            return False
+        if not all(c.isalnum() or c == "_" for c in name):
+            return False
+        if name.isdigit() or name in ("0", "1"):
+            return False
+        if "'" in name:  # SystemVerilog literal like "2'b10"
+            return False
+        return True
 
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法
