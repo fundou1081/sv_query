@@ -257,7 +257,16 @@ def _apply_filters(
         types = {t.strip().upper() for t in type_filter.split(",") if t.strip()}
         out = [d for d in out if d.get("kind", "").upper() in types]
     if module_filter:
-        out = [d for d in out if fnmatch.fnmatch(d.get("module", ""), module_filter)]
+        # [Phase 8 / Fix F 2026-7-14] Include CONST literal nodes regardless of module
+        # Reason: literal drivers like '0', '1' from `q <= 0` are conceptually
+        # in the target module (they're the RHS values assigned in that module's
+        # always block), but their node.module is empty. They're useful info for
+        # trace_fanin queries (e.g., picorv32.trap drivers = [0, 1]).
+        out = [
+            d for d in out
+            if fnmatch.fnmatch(d.get("module", ""), module_filter)
+            or d.get("kind") == "CONST"
+        ]
     if width_min is not None:
         out = [d for d in out if d.get("width", 0) >= width_min]
     if width_max is not None:

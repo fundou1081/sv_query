@@ -215,10 +215,18 @@ class GraphBuilder:
             # '32'd3735928559', '0', '1' which clutter dataflow/timing/chain DOTs.
             # These should stay as edge attributes, not graph nodes.
             from .graph.models import NodeKind
-            n = self.graph.get_node(node_id)
-            if n and n.kind == NodeKind.CONST:
-                nodes_to_drop.append(node_id)
-                continue
+            # [Phase 8 / Fix F 2026-7-14] KEEP CONST (literal) nodes in graph
+            # Reason: trace_fanin queries need literal drivers (e.g., picorv32.trap
+            # drivers = [0, 1] from RHS literals). Dropping them causes fanin=0.
+            # Viz layer (pipeline_viz.py / dataflow_viz.py) already filters CONST
+            # nodes from DOT rendering to avoid clutter, so graph can keep them.
+            # (Removed the unconditional CONST drop here.)
+            # [Phase 8 / Fix F 2026-7-14] KEEP literal/constant nodes per docstring intent
+            # Strategy: nodes without "." or starting with digit are literal-like.
+            # These are needed as driver endpoints for trace_fanin (e.g., picorv32.trap
+            # drivers = [0, 1] from RHS literals).
+            if "." not in node_id or (node_id and node_id[0].isdigit()):
+                continue  # Keep literal-like nodes
             # Skip target itself and its sub-instances
             if node_id in target_sub_paths:
                 continue

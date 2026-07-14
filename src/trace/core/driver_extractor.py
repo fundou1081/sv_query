@@ -62,6 +62,44 @@ class DriverExtractor:
         """
         self._instance_paths = instance_paths
 
+
+    def _expr_is_compile_time(self, ast_node, module=None) -> bool:
+        """[Phase 8 / Fix F 2026-7-14 + 2026-7-15] Check if an AST expression is a compile-time
+        constant (parameter, enum value, localparam, etc.).
+
+        Returns True if the expression evaluates to a compile-time constant.
+
+        [FIX 2026-7-15] Handle Syntax AST nodes (IdentifierNameSyntax etc.) which don't have
+        a .symbol attribute. Use module.body.lookupName() to resolve them.
+        """
+        if ast_node is None:
+            return False
+        # NamedValueExpression: check symbol.kind
+        if hasattr(ast_node, "symbol") and hasattr(ast_node, "kind"):
+            sym = getattr(ast_node, "symbol", None)
+            if sym is not None:
+                return self._is_compile_time_symbol(sym)
+        # [NEW 2026-7-15] Syntax AST (IdentifierNameSyntax): look up via module body
+        # These appear when the same identifier is used in different contexts (e.g., case item
+        # pattern AND procedural assignment in same always block). pyslang returns Syntax node
+        # for some uses and Semantic node for others.
+        if module is not None and hasattr(ast_node, "identifier"):
+            id_attr = getattr(ast_node, "identifier", None)
+            if id_attr is not None:
+                name_val = getattr(id_attr, "value", None) or str(id_attr)
+                if name_val and module is not None and hasattr(module, "body"):
+                    body = getattr(module, "body", None)
+                    if body is not None and hasattr(body, "lookupName"):
+                        sym = body.lookupName(name_val)
+                        if sym is not None:
+                            return self._is_compile_time_symbol(sym)
+        # IntegerLiteral: not a symbol but literal - OK as driver
+        kind = getattr(ast_node, "kind", None)
+        kind_name = str(kind).split(".")[-1] if kind else ""
+        if "Literal" in kind_name:
+            return False  # Integer literal is OK as driver
+        return False
+
     def _get_all_signals(self, signal) -> list[str]:
         """提取表达式中的所有信号名
 
@@ -70,6 +108,83 @@ class DriverExtractor:
         if signal is None:
             return []
         return self._signal_visitor.get_all_signals(signal)
+
+    def _get_all_real_signals(self, signal, module=None) -> list[str]:
+        """[Phase 8 / Fix F 2026-7-14 + 2026-7-15] Like _get_all_signals but filters out
+        compile-time constants (Parameter, EnumValue, localparam, etc.).
+
+        These symbols look like signals but are not real hardware signals.
+        Returning them as drivers would pollute trace_fanin results.
+
+        [FIX 2026-7-15] `module` enables resolution of Syntax AST nodes (IdentifierNameSyntax)
+        via module.body.lookupName().
+        """
+        if signal is None:
+            return []
+        names = self._signal_visitor.get_all_signals(signal)
+        return self._filter_compile_time_signal_names(signal, names, module=module)
+
+    def _filter_compile_time_signal_names(self, ast_node, names: list[str], module=None) -> list[str]:
+        """Walk AST and collect names whose symbol.kind is NOT compile-time.
+
+        [FIX 2026-7-15] Add module parameter to enable Syntax AST lookup via module.body.lookupName.
+        """
+        if ast_node is None or not names:
+            return names
+
+        out: list[str] = []
+        # Recursively walk AST collecting (name, symbol_kind) pairs
+        symbol_kinds: dict[str, str] = {}
+
+        def _walk(node):
+            if node is None:
+                return
+            # NamedValueExpression has .symbol attribute
+            if hasattr(node, "symbol") and hasattr(node, "kind"):
+                sym = getattr(node, "symbol", None)
+                if sym is not None:
+                    try:
+                        sym_name = sym.name
+                    except (UnicodeDecodeError, Exception):
+                        sym_name = None
+                    if sym_name and isinstance(sym_name, str):
+                        sym_kind = str(getattr(sym, "kind", "")).split(".")[-1]
+                        symbol_kinds[sym_name.strip()] = sym_kind
+                    return  # No need to recurse into NamedValue
+            # [NEW 2026-7-15] IdentifierNameSyntax: resolve via module.body.lookupName
+            if module is not None and hasattr(node, "identifier"):
+                id_attr = getattr(node, "identifier", None)
+                if id_attr is not None:
+                    name_val = getattr(id_attr, "value", None) or str(id_attr)
+                    if name_val:
+                        body = getattr(module, "body", None)
+                        if body is not None and hasattr(body, "lookupName"):
+                            sym = body.lookupName(name_val)
+                            if sym is not None:
+                                sym_kind = str(getattr(sym, "kind", "")).split(".")[-1]
+                                symbol_kinds[name_val.strip()] = sym_kind
+                                return
+            # Recurse children
+            for attr in ("left", "right", "operand", "operand0", "operand1",
+                         "value", "expr", "expression", "elements", "operands",
+                         "args", "arguments"):
+                child = getattr(node, attr, None)
+                if child is None:
+                    continue
+                if isinstance(child, list):
+                    for c in child:
+                        _walk(c)
+                else:
+                    _walk(child)
+
+        _walk(ast_node)
+        for name in names:
+            kind = symbol_kinds.get(name.strip(), "")
+            if kind in ("Parameter", "EnumValue", "TypeParameter", "Specparam",
+                        "Genvar", "LocalParameter"):
+                continue  # Skip compile-time symbols
+            out.append(name)
+        return out
 
     def _get_signal(self, signal) -> str | None:
         """获取信号名
@@ -465,7 +580,7 @@ class DriverExtractor:
             lhs_id = f"{module_name}.{lhs_name}"
             self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
             rhs_expr_str = self._get_signal(init) or ""
-            rhs_signals = self._get_all_signals(init) if init else []
+            rhs_signals = self._get_all_real_signals(init, module=module) if init else []
             for src_name in rhs_signals:
                 src_id = f"{module_name}.{src_name}"
                 self._ensure_signal_node(result, src_id, src_name, module_name)
@@ -722,7 +837,7 @@ class DriverExtractor:
         if "EqualsValueClause" in rhs_kind:
             rhs_signals = []
         else:
-            rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+            rhs_signals = self._get_all_real_signals(rhs_expr, module=module) if rhs_expr else [rhs]
 
         ternary_condition = self._extract_ternary_condition(rhs_expr)
 
@@ -745,7 +860,14 @@ class DriverExtractor:
             check_expr = operand
 
         if not rhs_signals:
-            rhs_signals = [rhs]
+            # [Phase 8 / Fix F 2026-7-14] If rhs_expr is a compile-time symbol (parameter,
+            # enum value, localparam), don't fall back to [rhs] - that would re-add
+            # the parameter as a fake driver.
+            # [FIX 2026-7-15] Pass module for Syntax AST resolution.
+            if rhs_expr is not None and self._expr_is_compile_time(rhs_expr, module=module):
+                rhs_signals = []  # Stay empty, no driver
+            else:
+                rhs_signals = [rhs]
         if rhs_expr:
             try:
                 expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
@@ -902,9 +1024,15 @@ class DriverExtractor:
                             TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=kind, width=(1, 0))
                         )
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
-                    rhs_signals = self._get_all_signals(rhs_expr) if rhs_expr else [rhs]
+                    # [FIX 2026-7-15] Pass module for Syntax AST resolution
+                    rhs_signals = self._get_all_real_signals(rhs_expr, module=module) if rhs_expr else [rhs]
                     if not rhs_signals:
-                        rhs_signals = [rhs]
+                        # [Phase 8 / Fix F 2026-7-14] Skip if compile-time symbol
+                        # [FIX 2026-7-15] Pass module for Syntax AST resolution
+                        if rhs_expr is not None and self._expr_is_compile_time(rhs_expr, module=module):
+                            rhs_signals = []
+                        else:
+                            rhs_signals = [rhs]
                     # [P0-2] 计算完整表达式字符串
                     if rhs_expr:
                         try:
@@ -1093,19 +1221,34 @@ class DriverExtractor:
         module_name: str,
         result,
     ) -> None:
-        """[Phase 7.4 / Fix C 2026-07-13] 从 ctx 的 AST 节点提取所有信号名,
-        添加为 driver 边 (带 sig_cond 标记).
+        """[Phase 7.6 / Fix E.4 2026-7-14] Disabled: condition signals no longer
+        added as DRIVER edges.
 
-        主路径: AST extraction (用 _signal_visitor.get_all_signals)
-        Fallback: 字符串扫描 (Fix A 行为, 当 AST 提取失败时)
+        ROOT CAUSE (user verified 2026-7-14):
+        Fix A (2026-7-13) added cond signals as DRIVER edges.
+        test_case_stmt / test_complex_conditions golden expects "drivers = RHS only":
+          - case (sel) 2'b00: y=a;  → drivers = [a, b, 0], NOT sel
+          - if (a) q<=b;            → drivers = [b],       NOT a
+          - case (1'b1) a: y=1;     → drivers = [1, 0],   NOT a, b
+        Fix A violates dataflow semantics: dataflow driver = the actual value
+        expression (RHS), condition is only gating context (controlflow).
 
-        AST 来源:
-          - ctx["_cond_exprs"]: list of AST nodes (累加所有 condition levels)
-          - ctx["condition_ast"]: 当前 immediate condition AST (补 _cond_exprs 为空)
+        REMEDIATION:
+        1. condition signals do NOT enter driver list
+        2. RHS extraction still produces drivers (test cases pass)
+        3. condition still stored in sig_cond context (for controlflow queries)
+        4. picorv32.trap trace_fanin improvement comes from more precise RHS
+           extraction (separate fix)
+
+        Keep Fix C/D/E.1 infrastructure: _collect_signals_from_ast,
+        _is_sv_literal_token still available for controlflow/coverage analysis,
+        just don't write DRIVER edges.
         """
+        # [Phase 7.6 / Fix E.4] No-op: compute cond_signals for analysis but don't
+        # write DRIVER edges. Tests want drivers = RHS only.
         cond_signals: set[str] = set()
 
-        # ── Fix C/D 主路径: AST extraction (跳过 parameter / enum value) ──
+        # AST extraction (Fix C/D infrastructure, not used for graph)
         ast_nodes: list = []
         cond_exprs_list = ctx.get("_cond_exprs") or []
         if isinstance(cond_exprs_list, list):
@@ -1122,7 +1265,7 @@ class DriverExtractor:
             except Exception:
                 pass
 
-        # ── Fix A fallback: 字符串扫描 (AST 失败时) ──
+        # Fallback string scan (Fix E.1 filter applied, but no DRIVER edge written)
         if not cond_signals:
             effective_cond = ctx.get("effective_condition", "")
             if effective_cond:
@@ -1134,57 +1277,16 @@ class DriverExtractor:
                         continue
                     else:
                         if current and current not in ("0", "1"):
-                            cond_signals.add(current)
+                            if not self._is_sv_literal_token(current):
+                                cond_signals.add(current)
                         current = ""
                 if current and current not in ("0", "1"):
-                    cond_signals.add(current)
+                    if not self._is_sv_literal_token(current):
+                        cond_signals.add(current)
 
-        cond_signals_list = list(cond_signals)
-        dst_short = dst_node_id.split(".")[-1] if "." in dst_node_id else dst_node_id
-        cond_signals_list = [s for s in cond_signals_list if s != dst_short]
-
-        existing_signal_ids = set()
-        for e in result.edges:
-            if e.dst == dst_node_id:
-                existing_signal_ids.add(e.src)
-
-        effective_cond_str = ctx.get("effective_condition", "")
-
-        for sig_name in cond_signals_list:
-            if sig_name.isdigit():
-                continue
-            src_node_id = f"{module_name}.{sig_name}"
-            if src_node_id == dst_node_id:
-                continue
-            if src_node_id in existing_signal_ids:
-                continue
-
-            if src_node_id not in [n.id for n in result.nodes]:
-                result.nodes.append(
-                    TraceNode(
-                        id=src_node_id,
-                        name=sig_name,
-                        module=module_name,
-                        kind=NodeKind.SIGNAL,
-                        width=(1, 0),
-                    )
-                )
-
-            result.edges.append(
-                self._edge_factory.make_edge(
-                    src=src_node_id,
-                    dst=dst_node_id,
-                    kind=EdgeKind.DRIVER,
-                    assign_type="nonblocking",
-                    expression=sig_name,
-                    sig_cond=effective_cond_str,
-                    ctx=ctx,
-                )
-            )
-            existing_signal_ids.add(src_node_id)
-
-    # [Phase 7.5 / Fix D 2026-07-13] Symbol kinds to exclude from condition-driver extraction
-    # These are not real signals, but compile-time constants
+        # [Phase 7.6 / Fix E.4] DO NOT write DRIVER edges.
+        # Original edge-creation loop removed. Tests expect drivers = RHS only.
+        return
     _EXCLUDED_SYMBOL_KINDS = {
         "Parameter",        # parameter [2:0] cpu_state_trap = 3'd0;
         "EnumValue",       # enum value (same as Parameter effectively)
@@ -1241,6 +1343,26 @@ class DriverExtractor:
                 self._collect_signals_from_ast(child, cond_signals)
 
     @staticmethod
+    def _is_compile_time_symbol(sym) -> bool:
+        """[Phase 8 / Fix F 2026-7-14] Detect Parameter/EnumValue/Localparam symbols.
+
+        These look like signals but are compile-time constants.
+        Used by RHS extraction to skip them (they're not real signal drivers).
+        """
+        if sym is None:
+            return False
+        sym_kind = getattr(sym, "kind", None)
+        sym_kind_name = str(sym_kind).split(".")[-1] if sym_kind else ""
+        return sym_kind_name in {
+            "Parameter",      # parameter [2:0] foo = 3'd0;
+            "EnumValue",     # enum values
+            "TypeParameter",  # type parameters
+            "Specparam",      # spec parameters
+            "Genvar",         # generate variables
+            "LocalParameter", # localparam (SystemVerilog localparam)
+        }
+
+    @staticmethod
     def _is_valid_signal_name(name):
         """Check if looks like a valid SV identifier (exclude AST noise and literals)"""
         if not name or len(name) < 2:
@@ -1254,6 +1376,58 @@ class DriverExtractor:
         if "'" in name:  # SystemVerilog literal like "2'b10"
             return False
         return True
+
+    @staticmethod
+    def _is_sv_literal_token(token):
+        """[Phase 7.6 / Fix E.1 2026-7-14] Detect if a token is a SystemVerilog literal
+        fragment (e.g., 'b00', 'a' from '2'b00'; 'ff' from '8'hff').
+
+        Returns True if token is part of an SV literal value, False otherwise.
+        Used to filter string-fallback candidates that look like identifiers but
+        are actually literal fragments.
+
+        Examples (True = literal):
+          "2", "8", "16"        - pure digits
+          "3.14", "0.5"         - decimal numbers
+          "x", "z", "X", "Z"    - 1-bit unknown / high-impedance
+          "b00", "hff", "o17"   - base-letter + digits (literal fragment)
+          "ff", "ab", "dead"    - all-hex chars (could be hex literal or signal)
+        Examples (False = signal):
+          "sel", "a", "b", "data", "my_reg", "alu_out_q"
+        """
+        if not token:
+            return False
+
+        # Pure digits: 2, 8, 16
+        if token.isdigit():
+            return True
+
+        # Decimal number: 3.14, 0.5
+        try:
+            float(token)
+            return True
+        except (ValueError, TypeError):
+            pass
+
+        # 1-bit SV literals
+        if token in ("x", "z", "X", "Z"):
+            return True
+
+        # Base-letter fragments from literal: "b00", "hff", "o17", "d42"
+        # After splitting on "'", "2'b00" → ["2", "b00"]
+        # "b" / "h" / "o" / "d" followed by hex digits = literal base+value
+        if len(token) >= 2 and token[0].lower() in ("b", "h", "o", "d"):
+            rest = token[1:]
+            if rest and all(c in "0123456789abcdefABCDEF_xz" for c in rest):
+                return True
+
+        # All-hex chars (e.g., "ff", "ab", "dead", "face")
+        if len(token) >= 2 and all(c in "0123456789abcdefABCDEF" for c in token):
+            if any(c in "abcdefABCDEF" for c in token):
+                return True
+
+        # Otherwise: looks like a real signal name
+        return False
 
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
         """收集语句的包装方法

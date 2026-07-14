@@ -41,7 +41,7 @@
         "truncated": false
       },
       {
-        "count": 4,
+        "count": 2,
         "drivers": [
           {
             "distance": 1,
@@ -54,40 +54,22 @@
           },
           {
             "distance": 1,
-            "id": "sync_fifo.b10",
-            "kind": "SIGNAL",
-            "module": "sync_fifo",
-            "width": 2,
-            "width_lsb": 0,
-            "width_msb": 1
-          },
-          {
-            "distance": 1,
-            "id": "sync_fifo.b01",
-            "kind": "SIGNAL",
-            "module": "sync_fifo",
-            "width": 2,
-            "width_lsb": 0,
-            "width_msb": 1
-          },
-          {
-            "distance": 1,
             "id": "1",
-            "kind": "SIGNAL",
-            "module": "1",
+            "kind": "CONST",
+            "module": "",
             "width": 1,
             "width_lsb": 0,
             "width_msb": 0
           }
         ],
         "index": 1,
-        "pre_filter_count": 4,
+        "pre_filter_count": 2,
         "signal": "sync_fifo.count_q",
         "truncated": false
       }
     ],
-    "total_count": 5,
-    "total_pre_filter": 5,
+    "total_count": 3,
+    "total_pre_filter": 3,
     "total_signals": 2,
     "truncated": false
   }

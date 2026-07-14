@@ -37,7 +37,9 @@ digraph pipeline {
     style=dashed;
     color="#226699";
     fontsize=11;
-    "sync_fifo.pop_data_o" [label="pop_data_o\nREG\\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
+    "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [label="mem[Expression(ExpressionKind.NamedValue)]\nREG\\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
+    "sync_fifo.pop_data_o" [label="pop_data_o\
+8bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];
   }
 
   subgraph cluster_stage1 {
@@ -45,9 +47,7 @@ digraph pipeline {
     style=dashed;
     color="#226699";
     fontsize=11;
-    "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [label="mem[Expression(ExpressionKind.NamedValue)]\nREG\\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
-    "sync_fifo.pop_data_o" [label="pop_data_o\
-8bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];
+    "sync_fifo.pop_data_o" [label="pop_data_o\nREG\\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
   }
 
   // === Data edges (stage → stage) ===
