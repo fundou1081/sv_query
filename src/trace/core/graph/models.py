@@ -207,11 +207,21 @@ class SignalGraph(nx.DiGraph):
         # [铁律4] 不允许创建孤儿节点:如果目标节点不存在则创建 placeholder
         # [FIX] 字面量节点(如 4'b1011, 8'h42)创建为 CONST 类型节点
         def _is_literal(node_id: str) -> bool:
-            """检查是否为字面量常量"""
-            if node_id and len(node_id) >= 3:
-                # 匹配 4'b0, 1'b1, 4'b1011, 8'hFF, 11'd0 等
-                if "'" in node_id and node_id[0].isdigit():
-                    return True
+            """检查是否为字面量常量
+
+            [Phase 8 / Fix F 2026-7-14] Detect plain integer literals too:
+            '0', '1', '2', etc. (single digit integers without '.')
+            These are RHS values from `q <= 0` style assignments.
+            """
+            if not node_id:
+                return False
+            # 匹配 4'b0, 1'b1, 4'b1011, 8'hFF, 11'd0 等
+            if len(node_id) >= 3 and "'" in node_id and node_id[0].isdigit():
+                return True
+            # [Phase 8 / Fix F] Plain integer literals: '0', '1', ..., '42'
+            # No '.' means not a scoped signal name
+            if "." not in node_id and node_id.lstrip("0123456789") == "":
+                return True
             return False
 
         for node_id in [edge.src, edge.dst]:

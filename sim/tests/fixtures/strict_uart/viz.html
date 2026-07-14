@@ -30,9 +30,9 @@
     </div>
 
     <div class="stats">
-        <div class="stat-box"><strong>33</strong><br>Total Nodes</div>
-        <div class="stat-box"><strong>41</strong><br>Total Edges</div>
-        <div class="stat-box"><strong>10</strong><br>High Risk</div>
+        <div class="stat-box"><strong>32</strong><br>Total Nodes</div>
+        <div class="stat-box"><strong>40</strong><br>Total Edges</div>
+        <div class="stat-box"><strong>8</strong><br>High Risk</div>
     </div>
 
     <div class="container">
@@ -40,7 +40,7 @@
             <h3>🗺️ Graph View (Mermaid)</h3>
             <div class="mermaid">
 flowchart TB
-    %% Total nodes: 33
+    %% Total nodes: 32
     N_clk_i["🟢 clk_i (POR)"]
     N_rst_ni["🟢 rst_ni (POR)"]
     N_async_i["🟢 async_i (POR)"]
@@ -53,8 +53,8 @@ flowchart TB
     N_tx_o["🟢 tx_o (POR)"]
     N_rx_data_o["🟢 rx_data_o (POR)"]
     N_rx_ready_o["🟢 rx_ready_o (POR)"]
-    N_clk_i["🟠 clk_i (POR) 🚨"]
-    N_rst_ni["🟠 rst_ni (POR) 🚨"]
+    N_clk_i["🟡 clk_i (POR) 🚨"]
+    N_rst_ni["🟡 rst_ni (POR) 🚨"]
     N_push_i["🟢 push_i (POR)"]
     N_pop_i["🟢 pop_i (POR)"]
     N_push_data_i["🟢 push_data_i (POR)"]
@@ -64,16 +64,15 @@ flowchart TB
     N_mem["🟢 mem (SIG)"]
     N_count_q["🔴 count_q (REG) 🚨"]
     N_wr_ptr_q["🔴 wr_ptr_q (REG) 🚨"]
-    N_SIZE["🟢 SIZE (SIG)"]
     N_rd_ptr_q["🔴 rd_ptr_q (REG) 🚨"]
     N_NamedValue__["🔴 NamedValue)] (REG) 🚨"]
     N_rx_fifo["🟠 rx_fifo (INS) 🚨"]
     N_clk_i["🟢 clk_i (POR)"]
     N_rst_ni["🟢 rst_ni (POR)"]
-    N_pop_data_o["🟢 pop_data_o (POR)"]
-    N_empty_o["🟢 empty_o (POR)"]
-    N_0["🟢 0 (SIG)"]
-    N_1["🟡 1 (SIG)"]
+    N_pop_data_o["🟡 pop_data_o (POR) 🚨"]
+    N_empty_o["🟡 empty_o (POR) 🚨"]
+    N_0["🟢 0 (CON)"]
+    N_1["🟡 1 (CON)"]
 
     N_clk_i --> N_sync1
     N_clk_i --> N_sync0_o
@@ -94,13 +93,10 @@ flowchart TB
     N_rst_ni --> N_NamedValue__
     N_rst_ni --> N_pop_data_o
     N_push_data_i --> N_NamedValue__
-    N_pop_data_o --> N_pop_data_o
-    N_empty_o --> N_empty_o
     N_count_q --> N_empty_o
     N_count_q --> N_full_o
     N_count_q --> N_count_q
     N_wr_ptr_q --> N_wr_ptr_q
-    N_SIZE --> N_full_o
     N_rd_ptr_q --> N_rd_ptr_q
     N_NamedValue__ --> N_pop_data_o
     N_NamedValue__ --> N_mem
@@ -108,8 +104,10 @@ flowchart TB
     N_clk_i --> N_rx_fifo
     N_rst_ni --> N_rst_ni
     N_rst_ni --> N_rx_fifo
+    N_pop_data_o --> N_pop_data_o
     N_pop_data_o --> N_rx_data_o
     N_pop_data_o --> N_rx_fifo
+    N_empty_o --> N_empty_o
     N_empty_o --> N_rx_ready_o
     N_empty_o --> N_rx_fifo
     N_0 --> N_empty_o

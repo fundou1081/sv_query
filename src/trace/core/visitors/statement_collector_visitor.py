@@ -1104,7 +1104,16 @@ class StatementCollectorVisitor(BaseVisitor):
             try:
                 s = self._safe_str(syn).strip()
                 if s:
-                    return s
+                    # [Phase 7.6 / Fix E.3 2026-7-14] Strip trivia (comments) from syntax str
+                    # Bug: pyslang Syntax __str__ includes leading trivia (whitespace + comments).
+                    # For 'case (sel) a: ... // comment', item.expressions[0] is IdentifierNameSyntax 'a',
+                    # but str() returns full preceding trivia like '  // comment a'.
+                    import re
+                    s = re.sub(r'//[^\n]*', '', s)
+                    s = re.sub(r'/\*.*?\*/', '', s, flags=re.DOTALL)
+                    s = s.strip()
+                    if s:
+                        return s
             except (UnicodeDecodeError, TypeError):
                 pass
 
@@ -1189,7 +1198,12 @@ class StatementCollectorVisitor(BaseVisitor):
         if kind:
             kind_name = kind.name if hasattr(kind, "name") else str(kind)
             if "IdentifierName" in kind_name:
-                return self._safe_str(expr).strip()
+                # [Phase 7.6 / Fix E.3b 2026-7-14] Strip trivia from identifier too
+                import re as _re
+                _id_str = self._safe_str(expr).strip()
+                _id_str = _re.sub(r'//[^\n]*', '', _id_str)
+                _id_str = _re.sub(r'/\*.*?\*/', '', _id_str, flags=_re.DOTALL)
+                return _id_str.strip()
 
         # BinaryExpression:          
         if hasattr(expr, "left") and hasattr(expr, "right"):
