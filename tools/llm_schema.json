@@ -21,7 +21,11 @@
         "PORT_OUT",
         "REG",
         "SIGNAL",
-        "UNKNOWN"
+        "UNKNOWN",
+        "CONST",
+        "WIRE",
+        "PARAM",
+        "INSTANTIATED_MODULE"
       ],
       "description": "Edge or signal kind in graph"
     },
@@ -153,7 +157,7 @@
       }
     },
     "trace_fanin": {
-      "description": "Trace signal drivers (upstream) — batch + filters supported",
+      "description": "Trace signal drivers (upstream) \u2014 batch + filters supported",
       "params_schema": {
         "type": "object",
         "required": [
@@ -336,7 +340,7 @@
       }
     },
     "trace_fanout": {
-      "description": "Trace signal loads (downstream) — batch + filters supported",
+      "description": "Trace signal loads (downstream) \u2014 batch + filters supported",
       "params_schema": {
         "type": "object",
         "required": [
