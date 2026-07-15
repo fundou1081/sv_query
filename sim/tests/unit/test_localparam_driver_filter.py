@@ -200,30 +200,27 @@ class TestSignalRHSStillAppears:
 
 
 # =============================================================================
-# KNOWN LIMITATION: continuous assign with localparam RHS
+# Path 3: Continuous assign with ternary localparam RHS (the remaining leak)
 # 
-# As of 2026-07-15, Fix F.5 does NOT filter localparam from continuous assign
-# with conditional RHS (e.g., `assign x = sel ? LOCALPARAM : OTHER`).
-# 
-# Root cause: continuous assign goes through _handle_normal_assign which
-# uses _signal_visitor.get_signals_with_conditions() to extract signals
-# from the ternary branches. This visitor returns signal NAMES (strings)
-# without symbol kind info, so the compile-time filter doesn't apply.
-# 
-# This test documents the limitation. If you need to fix it, the work is in
-# _signal_visitor.get_signals_with_conditions() and downstream filtering.
+# This is the SECOND branch of the same bug Fix F/F.5 tries to solve.
+# _handle_normal_assign goes through _signal_visitor.get_signals_with_conditions
+# which returns string tuples, not AST nodes. The compile-time filter doesn't apply.
+#
+# Per docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md, this MUST be fixed (no known
+# limitations). Test below asserts the CORRECT behavior; will fail until fixed.
 # =============================================================================
 
-class TestContinuousAssignWithLocalparamKKnowLimit:
-    """KNOWN LIMITATION: localparam in continuous assign ternary still leaks.
-    
-    This test DOCUMENTS the limitation. If Fix F.5 is extended to handle this,
-    this test should be moved to TestLocalparamExcluded and the assertion
-    updated.
+class TestLocalparamInContinuousAssignTernary:
+    """Localparam in continuous-assign ternary branch must be excluded.
+
+    Reproducer:
+        assign result = sel ? LOCALPARAM : OTHER;
+
+    Where LOCALPARAM is declared with `localparam`.
     """
 
     SOURCE = """
-    module ternary(
+    module assign_ternary(
         input  wire [1:0] sel,
         output wire [3:0] result
     );
@@ -234,16 +231,23 @@ class TestContinuousAssignWithLocalparamKKnowLimit:
     endmodule
     """
 
-    def test_ternary_localparam_documented_leak(self):
-        """Documenting: continuous assign ternary localparam currently leaks.
-        
-        As of 2026-07-15, this is a known limitation. The test passes when
-        S0/S1 DO appear (since they leak). If a future fix removes them,
-        update this test to assert they are absent.
-        """
-        tracer, _ = _build_tracer(self.SOURCE, "ternary")
-        drivers = _fanin_drivers(tracer, "ternary.result")
-        # Document current behavior: S0 and S1 leak
-        # When fixed, change to: assert "ternary.S0" not in drivers
-        assert "ternary.S0" in drivers, \
-            f"Documenting current leak behavior; S0 should appear. Got: {drivers}"
+    def test_ternary_localparam_in_continuous_assign_excluded(self):
+        """Both S0 and S1 (localparams) MUST NOT appear as drivers."""
+        tracer, _ = _build_tracer(self.SOURCE, "assign_ternary")
+        drivers = _fanin_drivers(tracer, "assign_ternary.result")
+        assert "assign_ternary.S0" not in drivers, \
+            f"S0 (localparam) should NOT be a driver, got: {drivers}"
+        assert "assign_ternary.S1" not in drivers, \
+            f"S1 (localparam) should NOT be a driver, got: {drivers}"
+
+    def test_ternary_non_localparam_branches_preserved(self):
+        """sel (port) and 4'd15 (literal) SHOULD still appear."""
+        tracer, _ = _build_tracer(self.SOURCE, "assign_ternary")
+        drivers = _fanin_drivers(tracer, "assign_ternary.result")
+        # sel should still be a driver (it's a real port)
+        assert "assign_ternary.sel" in drivers, \
+            f"sel (port) should be a driver, got: {drivers}"
+        # The literal 4'd15 should be a driver (CONST)
+        has_const_15 = any("1111" in d for d in drivers)
+        assert has_const_15, \
+            f"4'd15 literal should be a driver (as CONST), got: {drivers}"
