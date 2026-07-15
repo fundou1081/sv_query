@@ -49,8 +49,8 @@ class TestVentusChunkFilelists(unittest.TestCase):
             f"sv_query crashed (ec={result.returncode})"
         )
         # Should mention at least 1 instance (L2 cache has multiple sub-modules)
-        # If 0 instances, that's a known limitation of the small filelist,
-        # but the tool must not crash
+        # 0 instances is acceptable for small filelists (partial design covered)
+        # The tool must not crash regardless
         self.assertNotIn("Trace/BPT trap", result.stderr,
                          "Got SIGTRAP — pyslang crashed unexpectedly")
 
