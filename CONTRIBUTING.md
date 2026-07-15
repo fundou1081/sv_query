@@ -306,7 +306,10 @@ ruff check src/ tools/ tests/
 4. **src/trace/core/compiler.py** — pyslang 怎么用的 (看注释头部)
 5. **docs/PYSLANG_MEMORY_ISSUE.md** — pyslang 内存不足的坑 (8GB MBA 必看)
 6. **docs/CODE_DISCIPLINE_REVIEW.md** — 代码规范 (项目自定)
-7. **MEMORY.md** (在 OpenClaw workspace `~/.openclaw/workspace/MEMORY.md`) — 我 (QClaw) 的长程记忆, 含 sv_query 项目历史 + 踩坑
+7. **docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md** — 基础组件修复铁律
+   (铁律33: "基础组件要足够 stable, 不可妥协")
+8. **DEVELOPMENT.md 铁律33** — 详细版 + 历史教训
+9. **MEMORY.md** (在 OpenClaw workspace `~/.openclaw/workspace/MEMORY.md`) — 我 (QClaw) 的长程记忆, 含 sv_query 项目历史 + 踩坑
 
 ---
 
