@@ -52,6 +52,41 @@ class DriverExtractor:
         # None = legacy behavior (use all modules with type name as prefix).
         self._instance_paths: list[tuple[str, Any]] | None = None
 
+    def _append_edge(
+        self,
+        result,
+        src: str,
+        dst: str,
+        kind: EdgeKind = EdgeKind.DRIVER,
+        assign_type: str = "",
+        **kwargs,
+    ) -> None:
+        """[V4 2026-07-15] 统一入口: factory 创建 + append.
+
+        Consolidates the 7 directly-constructed `TraceEdge(...)` append sites in
+        this module to a single helper that delegates to `TraceEdgeFactory`. Any
+        new field added to TraceEdge (e.g. `source_location`, `confidence`,
+        `function_return`, `condition_ast`) only needs handling at ONE point
+        in the factory, not 20.
+
+        Args:
+            result: TraceResult.
+            src/dst: 边端点.
+            kind: EdgeKind enum (default EdgeKind.DRIVER).
+            assign_type: "continuous" / "nonblocking" / "alias" / "internal".
+            **kwargs: forwarded to TraceEdgeFactory.make_edge
+                     (expression, bit_slice, condition, sig_cond,
+                      sig_cond_ast, ctx, clock_domain).
+        """
+        edge = self._edge_factory.make_edge(
+            src=src,
+            dst=dst,
+            kind=kind,
+            assign_type=assign_type,
+            **kwargs,
+        )
+        result.edges.append(edge)
+
     def set_instance_paths(self, instance_paths: list[tuple[str, Any]]) -> None:
         """[Phase 4 2026-07-11] Configure instance-aware signal extraction.
 
@@ -601,8 +636,13 @@ class DriverExtractor:
             source_id = f"{module_name}.{source_name}"
             self._ensure_signal_node(result, source_id, source_name, module_name)
             self._ensure_signal_node(result, target_id, target_name, module_name)
-            result.edges.append(
-                TraceEdge(src=source_id, dst=target_id, kind=EdgeKind.DRIVER, assign_type="alias")
+            # [V4] factory 统一入口
+            self._append_edge(
+                result,
+                src=source_id,
+                dst=target_id,
+                kind=EdgeKind.DRIVER,
+                assign_type="alias",
             )
 
     def _extract_alias_ref_name(self, ref_expr) -> str | None:
@@ -637,9 +677,14 @@ class DriverExtractor:
                 src_id = f"{module_name}.{src_name}"
                 self._ensure_signal_node(result, src_id, src_name, module_name)
                 if src_id != lhs_id:
-                    result.edges.append(
-                        TraceEdge(src=src_id, dst=lhs_id, kind=EdgeKind.DRIVER,
-                                 assign_type="continuous", expression=rhs_expr_str)
+                    # [V4] factory 统一入口
+                    self._append_edge(
+                        result,
+                        src=src_id,
+                        dst=lhs_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                        expression=rhs_expr_str,
                     )
 
     def _ensure_signal_node(self, result, node_id, name, module_name):
@@ -741,10 +786,13 @@ class DriverExtractor:
             # 对齐映射: rhs_signals[i] -> lhs_elements[i]
             for rhs_sig in rhs_signals:
                 if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
-                    result.edges.append(
-                        TraceEdge(
-                            src=rhs_sig, dst=dst_node_id, kind=EdgeKind.DRIVER, assign_type="continuous"
-                        )
+                    # [V4] factory 统一入口
+                    self._append_edge(
+                        result,
+                        src=rhs_sig,
+                        dst=dst_node_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
                     )
                 else:
                     src_node_id = f"{module_name}.{rhs_sig}"
@@ -758,13 +806,13 @@ class DriverExtractor:
                                 width=(1, 0),
                             )
                         )
-                    result.edges.append(
-                        TraceEdge(
-                            src=src_node_id,
-                            dst=dst_node_id,
-                            kind=EdgeKind.DRIVER,
-                            assign_type="continuous",
-                        )
+                    # [V4] factory 统一入口
+                    self._append_edge(
+                        result,
+                        src=src_node_id,
+                        dst=dst_node_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
                     )
         return True
 
@@ -873,13 +921,13 @@ class DriverExtractor:
                         None,
                     )
                     if not existing:
-                        result.edges.append(
-                            TraceEdge(
-                                src=child_id,
-                                dst=parent_id,
-                                kind=EdgeKind.BIT_SELECT,
-                                assign_type="internal",
-                            )
+                        # [V4] factory 统一入口
+                        self._append_edge(
+                            result,
+                            src=child_id,
+                            dst=parent_id,
+                            kind=EdgeKind.BIT_SELECT,
+                            assign_type="internal",
                         )
 
         dst_node_id = f"{module_name}.{lhs}"
@@ -986,16 +1034,16 @@ class DriverExtractor:
                     start = rhs_name.index("[")
                     bit_slice = rhs_name[start:]
                 if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                    result.edges.append(
-                        TraceEdge(
-                            src=rhs_name,
-                            dst=dst_node_id,
-                            kind=EdgeKind.DRIVER,
-                            assign_type="continuous",
-                            expression=rhs_name,
-                            bit_slice=bit_slice,
-                            condition=ternary_condition,
-                        )
+                    # [V4] factory 统一入口
+                    self._append_edge(
+                        result,
+                        src=rhs_name,
+                        dst=dst_node_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                        expression=rhs_name,
+                        bit_slice=bit_slice,
+                        condition=ternary_condition,
                     )
                 else:
                     src_node_id = f"{module_name}.{rhs_name}"
@@ -1009,16 +1057,16 @@ class DriverExtractor:
                                 width=(1, 0),
                             )
                         )
-                    result.edges.append(
-                        TraceEdge(
-                            src=src_node_id,
-                            dst=dst_node_id,
-                            kind=EdgeKind.DRIVER,
-                            assign_type="continuous",
-                            expression=expr_str,
-                            bit_slice=bit_slice,
-                            condition=ternary_condition,
-                        )
+                    # [V4] factory 统一入口
+                    self._append_edge(
+                        result,
+                        src=src_node_id,
+                        dst=dst_node_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                        expression=expr_str,
+                        bit_slice=bit_slice,
+                        condition=ternary_condition,
                     )
 
     def _create_always_edges(self, module, result, module_name):
