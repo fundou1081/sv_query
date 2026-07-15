@@ -16,18 +16,24 @@
         "DRIVER",
         "CLOCK",
         "RESET",
-        "CONTROL",
-        "PORT_IN",
-        "PORT_OUT",
-        "REG",
-        "SIGNAL",
-        "UNKNOWN",
-        "CONST",
-        "WIRE",
-        "PARAM",
-        "INSTANTIATED_MODULE"
+        "CONNECTION",
+        "BIT_SELECT",
+        "CONSTRAINS",
+        "HAS_CONDITION",
+        "HAS_CONSEQUENT",
+        "HAS_ALTERNATE",
+        "HAS_LHS",
+        "HAS_RHS",
+        "HAS_MEMBER",
+        "HAS_LOOP_VAR",
+        "HAS_BEFORE",
+        "HAS_AFTER",
+        "CONTAINS_MEMBER",
+        "IS_INSTANCE_OF",
+        "SUPER_CALL",
+        "MEMBER_SELECT"
       ],
-      "description": "Edge or signal kind in graph"
+      "description": "Edge kind in graph (DRIVER, CLOCK, RESET, CONNECTION, BIT_SELECT, etc.)"
     },
     "RiskLevel": {
       "type": "string",
@@ -111,6 +117,37 @@
           }
         }
       }
+    },
+    "NodeKind": {
+      "type": "string",
+      "enum": [
+        "SIGNAL",
+        "WIRE",
+        "REG",
+        "PORT_IN",
+        "PORT_OUT",
+        "PORT_INOUT",
+        "PARAM",
+        "CONST",
+        "INSTANTIATED_MODULE",
+        "GENERATE_BLOCK",
+        "CLASS",
+        "CLASS_INSTANCE",
+        "CLASS_INSTANCE_PROPERTY",
+        "CLASS_PROPERTY",
+        "CONSTRAINT_BLOCK",
+        "CONSTRAINT_EXPR",
+        "CONSTRAINT_IF",
+        "CONSTRAINT_ELSE",
+        "CONSTRAINT_IMPLIES",
+        "CONSTRAINT_UNIQUE",
+        "CONSTRAINT_SOLVE",
+        "CONSTRAINT_FOREACH",
+        "CONSTRAINT_RANGE",
+        "EXPRESSION",
+        "FUNCTION_CALL"
+      ],
+      "description": "Node kind in graph (signal/port/reg/instantiated module/etc.)"
     }
   },
   "commands": {
@@ -157,7 +194,7 @@
       }
     },
     "trace_fanin": {
-      "description": "Trace signal drivers (upstream) \u2014 batch + filters supported",
+      "description": "Trace signal drivers (upstream) — batch + filters supported",
       "params_schema": {
         "type": "object",
         "required": [
@@ -283,7 +320,7 @@
                         "$ref": "#/definitions/SignalId"
                       },
                       "kind": {
-                        "$ref": "#/definitions/EdgeKind"
+                        "$ref": "#/definitions/NodeKind"
                       },
                       "module": {
                         "type": "string",
@@ -340,7 +377,7 @@
       }
     },
     "trace_fanout": {
-      "description": "Trace signal loads (downstream) \u2014 batch + filters supported",
+      "description": "Trace signal loads (downstream) — batch + filters supported",
       "params_schema": {
         "type": "object",
         "required": [
@@ -466,7 +503,7 @@
                         "$ref": "#/definitions/SignalId"
                       },
                       "kind": {
-                        "$ref": "#/definitions/EdgeKind"
+                        "$ref": "#/definitions/NodeKind"
                       },
                       "module": {
                         "type": "string",
