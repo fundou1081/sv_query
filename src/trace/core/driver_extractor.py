@@ -186,6 +186,58 @@ class DriverExtractor:
             out.append(name)
         return out
 
+    def _filter_signal_conditions_by_module(
+        self,
+        signal_conditions: list[tuple[str, str]],
+        module=None,
+    ) -> list[tuple[str, str]]:
+        """[Phase 8 / Fix F.6 2026-7-15] Filter ternary branch signals to drop localparams.
+
+        Companion to _expr_is_compile_time (which works on AST nodes):
+        this filters the (name, condition_str) tuples that come back from
+        _signal_visitor.get_signals_with_conditions().
+
+        When pyslang extracts signals from a ternary's true/false branches,
+        it returns plain strings (e.g., "S0", "4'd15") instead of AST nodes.
+        The compile-time filter on AST nodes therefore misses localparam
+        references inside ternary branches.
+
+        This helper resolves each name via module.body.lookupName() and drops
+        any whose symbol kind is Parameter/EnumValue/etc.
+
+        Args:
+            signal_conditions: [(signal_name, condition_str), ...]
+            module: Module InstanceBody (for module.body.lookupName)
+
+        Returns:
+            Filtered list with compile-time symbols removed.
+        """
+        if not signal_conditions or module is None:
+            return signal_conditions
+
+        body = getattr(module, "body", None)
+        if body is None or not hasattr(body, "lookupName"):
+            return signal_conditions
+
+        out: list[tuple[str, str]] = []
+        for sig_name, cond_str in signal_conditions:
+            # Skip SV literals and pure-digit tokens (no need to lookup)
+            if not sig_name or sig_name.isdigit():
+                out.append((sig_name, cond_str))
+                continue
+            if self._is_sv_literal_token(sig_name):
+                out.append((sig_name, cond_str))
+                continue
+            # Resolve via module.body.lookupName
+            try:
+                sym = body.lookupName(sig_name)
+            except Exception:
+                sym = None
+            if sym is not None and self._is_compile_time_symbol(sym):
+                continue  # Skip localparam / parameter / enum value
+            out.append((sig_name, cond_str))
+        return out
+
     def _get_signal(self, signal) -> str | None:
         """获取信号名
 
@@ -877,7 +929,12 @@ class DriverExtractor:
             expr_str = rhs or ""
 
         if has_conditional:
+            # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
+            # (localparam/parameter) from ternary branch signals.
             signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+            signal_conditions = self._filter_signal_conditions_by_module(
+                signal_conditions, module=module
+            )
             for rhs_name, sig_cond in signal_conditions:
                 if not rhs_name:
                     continue
@@ -1062,7 +1119,12 @@ class DriverExtractor:
                         check_expr = operand
 
                     if has_conditional:
+                        # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
+                        # (localparam/parameter) from ternary branch signals.
                         signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+                        signal_conditions = self._filter_signal_conditions_by_module(
+                            signal_conditions, module=module
+                        )
                         for sig_rhs_name, sig_cond in signal_conditions:
                             if not sig_rhs_name:
                                 continue
