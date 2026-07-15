@@ -33,9 +33,13 @@ class TraceEdgeFactory:
         bit_slice: str = "",
         ctx: dict | None = None,
         sig_cond: str = "",
+        condition: str = "",  # [V4 fix] alias for sig_cond when ctx is None
         sig_cond_ast: Any | None = None,
         clock_domain: str = "",
     ) -> TraceEdge:
+        """[V4 2026-07-15] 若 condition 提供且 ctx 为 None, 等同 sig_cond.
+        支持直接传 condition 字段名 (避免 caller 混淆 sig_cond vs condition).
+        """
         """从 ctx dict 或 sig_cond 字符串创建 TraceEdge
 
         Args:
@@ -61,6 +65,13 @@ class TraceEdgeFactory:
         use_ctx = ctx is not None
         # clock_domain 显式参数优先, 否则从 ctx 读
         effective_clock = clock_domain if clock_domain else (c.get("clock", "") if use_ctx else "")
+        # [V4 fix] condition 优先级: ctx > explicit condition > sig_cond (向后兼容)
+        if use_ctx:
+            effective_condition_field = c.get("condition", "")
+        elif condition:
+            effective_condition_field = condition
+        else:
+            effective_condition_field = sig_cond
         return TraceEdge(
             src=src,
             dst=dst,
@@ -69,7 +80,7 @@ class TraceEdgeFactory:
             bit_slice=bit_slice,
             expression=expression,
             clock_domain=effective_clock,
-            condition=c.get("condition", "") if use_ctx else sig_cond,
+            condition=effective_condition_field,
             effective_condition=c.get("effective_condition", "") if use_ctx else "",
             condition_ast=(
                 c.get("condition_ast") if use_ctx else sig_cond_ast
