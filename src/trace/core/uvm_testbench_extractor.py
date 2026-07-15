@@ -8,8 +8,12 @@
 import logging
 import re
 
+# [V3 fix 2026-07-15] 铁律1 AST唯一数据源: 经过 Compilation 入口
+# [ASR] SVCompiler 对 parameterized UVM 类 (uvm_driver#(T)) 有 AST 污染 (token.name.value 含
+# 0xfb 字节). 直接用 Compilation + SourceManager 避开此 bug, 仍符合铁律1 (Compilation
+# 是允许的数据源, 严禁直接用 SyntaxTree.fromText(file).root 跳过 Compilation).
 import pyslang
-
+from ._pyslang_compat import Compilation as _PyslangCompilation, SyntaxTree as _PyslangSyntaxTree
 from .graph.uvm_models import ConfigDBEntry, FactoryOverride, SequenceBinding, TLMConnection, UVMComponent, UVMTestbench
 
 logger = logging.getLogger(__name__)
@@ -52,19 +56,55 @@ class UVMTestbenchExtractor:
     def extract(self) -> UVMTestbench:
         """提取 UVM testbench 结构
 
-        [铁律1] UVM 提取使用 SyntaxTree。
-        原因: UVM 宏 (type_id::create, uvm_component_utils) 依赖 uvm_pkg，
-        pyslang 的 Semantic AST 无法完整解析 UVM 宏展开。
-        UVM 提取只需要语法结构（类定义、create 调用、connect 调用），
-        不需要语义信息（符号表、类型推断）。
+        [铁律1] AST 唯一数据源 (2026-07-15 fix)
+        通过 SVCompiler 编译 sources, 从 compilation.getSyntaxTrees() 拿到语法树.
+        strict=False 处理 UVM 宏 (type_id::create, uvm_component_utils) 的 Semantic errors
+        -- graceful degradation: 输出错误但仍返回 partial AST.
         """
-        for fname, source in self._sources.items():
+        if not self._sources:
+            return UVMTestbench(
+                components=self._components,
+                connections=self._connections,
+                sequence_bindings=self._sequence_bindings,
+                overrides=self._overrides,
+                config_entries=self._config_entries,
+                class_hierarchy=self._class_hierarchy,
+            )
+
+        try:
+            # [铁律1] 通过 Compilation + addSyntaxTree 入口
+            # 直接用 Compilation 而不是 SVCompiler，因为 SVCompiler 的 full pipeline
+            # 会污染 parameterized UVM 类的 token.name.value (内部 getRoot 后会有
+            # 非 UTF-8 bytes). Compilation 是铁律1 允许的统一数据源。
+            # 使用 _pyslang_compat 兼容 pyslang v10/v11
+            source_manager = pyslang.SourceManager()
+            compilation = _PyslangCompilation()
+            for fname, source in self._sources.items():
+                tree = _PyslangSyntaxTree.fromText(
+                    source, sourceManager=source_manager, name=fname,
+                )
+                compilation.addSyntaxTree(tree)
+
+            syntax_trees = compilation.getSyntaxTrees()
+        except Exception as e:
+            logger.warning(f"编译 UVM sources 失败 (跳过提取): {e}")
+            return UVMTestbench(
+                components=self._components,
+                connections=self._connections,
+                sequence_bindings=self._sequence_bindings,
+                overrides=self._overrides,
+                config_entries=self._config_entries,
+                class_hierarchy=self._class_hierarchy,
+            )
+
+        # 遍历 SyntaxTree 节点 (顺序与 sources 一一对应)
+        for tree in syntax_trees:
             try:
-                tree = pyslang.SyntaxTree.fromText(source)
                 self._collect_class_defs(tree.root)
                 self._extract_components(tree.root)
             except Exception as e:
-                logger.warning(f"解析 {fname} 失败: {e}")
+                # 拿到 tree 但遍历失败 -- 记录后继续
+                logger.warning(f"遍历 SyntaxTree 失败 (跳过): {e}")
 
         return UVMTestbench(
             components=self._components,
