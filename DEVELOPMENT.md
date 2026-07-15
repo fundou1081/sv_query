@@ -1093,3 +1093,82 @@ grep -n "def _get_scoped_parts" src/trace/core/
 
 *最后更新: 2026-05-23 12:10 GMT+8*
 *Graph Builder 重构铁律 v1.0*
+
+
+---
+
+## 第三部分：质量铁律
+
+### 铁律33: 基础组件修复必须彻底 (No Known Limitations) [生效]
+
+> **生效日期**: 2026-07-15
+> **触发事件**: `_handle_normal_assign` ternary localparam 泄漏
+> **详细文档**: `docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md`
+
+#### 原则
+
+**基础组件的修复不接受 "Known Limitation"。**
+
+一旦发现 bug → 必须彻底修。不是 "加注释说以后再修"，不是 "写个
+documented leak 测试来记录"。
+
+#### 为什么这条铁律
+
+基础组件 (driver_extractor, graph_builder, semantic_adapter) 是
+4 维分析的根基：
+
+- **L1 模块抽取** → graph_builder, semantic_adapter
+- **L2 端口连接** → semantic_adapter, driver_extractor  
+- **L3 内部信号** → driver_extractor, signal_expression_visitor
+- **L4 可视化** → graph_builder
+
+任何基础组件的 known limitation 都会**扩散到所有 L1-L4**。
+
+#### 反模式 (绝对禁止)
+
+1. **"Documenting current leak" 测试**
+   ```python
+   # 🚫 禁止 — 把 bug 当作 acceptance criteria
+   def test_ternary_localparam_documented_leak(self):
+       """Documenting: this currently leaks."""
+       assert "S0" in drivers  # 故意让 bug 通过!
+   ```
+
+2. **部分修复** (只修一条路径, 漏掉等价路径)
+   ```python
+   # 🚫 禁止 — 同 bug 不同入口, 只修一处
+   # _expr_is_compile_time(node, module) 处理了 NamedValue 路径
+   # 但漏掉 IdentifierNameSyntax 路径 (Fix F.5)
+   ```
+
+3. **"TODO 修复" 注释** 代替真修复
+
+#### 强制规范
+
+1. ✅ **修复前必须写"未修复"测试** — 锁定 bug, 防止"假装修好了"
+2. ✅ **修复后必须所有路径通过** — 同一组件的所有等价入口都要验证
+3. ✅ **不能新增 "Known Limitations" 测试** — 要么修，要么不写测试
+
+#### CI 守护
+
+`.github/workflows/check_fix_completeness.py` 自动扫描
+"documented leak" / "known limitation" 字样 + `assert ... in drivers`
+模式，违规时 PR 失败。
+
+#### 例外 (有限的)
+
+- **第三方依赖限制**: `pytest.mark.skip(reason="pyslang #NNN")`
+  或 `KNOWN_ISSUES.md`，**不放进 suite 里**
+- **性能 trade-off**: 写明性能数据 + issue tracker，**不放进 suite 里**
+
+#### 历史教训
+
+**2026-07-15**: `_handle_normal_assign` ternary 路径泄漏 S0/S1
+localparam。Fix F/F.5 只修复了 named case pattern，没考虑 ternary
+continuous assign 路径。方豆指示 "基础组件要足够 stable, 不可妥协"
+→ 写 Fix F.6 完整修复。
+
+---
+
+*最后更新: 2026-07-15 15:55 GMT+8*
+*基础组件修复铁律 v1.0 (铁律33)*
