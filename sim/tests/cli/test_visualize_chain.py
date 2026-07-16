@@ -175,7 +175,6 @@ class TestChainMaxEdges(unittest.TestCase):
             Path(dot_path).unlink(missing_ok=True)
 
 
-@unittest.skipIf(not __import__('os').path.exists('/tmp/openofdm_tx.f'), '/tmp/openofdm_tx.f not generated. Chain cluster tests require filelist setup. (Skip per V7 discipline.)')
 class TestChainSubModuleClusters(unittest.TestCase):
     """[Plan B+2 2026-07-08] chain 图应该用 subgraph cluster 区分 sub-module 边界."""
 
@@ -288,7 +287,6 @@ class TestChainSubModuleClusters(unittest.TestCase):
 # Plan A+1: chain 图每个 reg 标 [cycle=N], 路径终点标 total:N cycles,
 #           critical path 红色. TDD 先于 implementation.
 #==============================================================================
-@unittest.skipIf(not __import__('os').path.exists('/tmp/openofdm_tx.f'), '/tmp/openofdm_tx.f not generated. Chain cycle tests require filelist setup. (Skip per V7 discipline.)')
 class TestChainCycleAnnotation(unittest.TestCase):
     """[Phase 1 2026-07-09] chain DOT 必须标 latency 信息.
 

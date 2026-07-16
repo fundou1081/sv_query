@@ -150,22 +150,11 @@ def test_p4_latency_darkriscv_1_cycle_id_ex():
 def test_p5_latency_stage_breakdown_sync_fifo():
     """sync_fifo stage_breakdown: 验证每个 segment 标 stage_id + is_reg_boundary."""
     d = _run_dataflow("sync_fifo.push_data_i", "sync_fifo.pop_data_o", file_path=SYNC_FIFO)
-    if not d.get("ok"):
-        pytest.skip(f"dataflow error: {d.get('stderr', d.get('error'))[:100]}")
-    if not d["result"]["is_reachable"]:
-        pytest.skip("sync_fifo push → pop not reachable (analyzer limitation)")
-    
+    assert d.get("ok")
+
     p = d["result"]["paths"][0]
     sb = p["stage_breakdown"]
-    
-    # [V7 2026-07-16] 优雅降级: 当 dataflow 还没合并 output port alias 时 skip
-    if len(sb) != 2:
-        pytest.skip(
-            f"[known limitation] stage_breakdown returns {len(sb)} segments instead of 2. "
-            "When analyzing push_data_i → pop_data_o (wire alias of data_out REG), "
-            "analyzer currently traces: PORT_IN → reg_stage1 → data_out → pop_data_o (3 segments). "
-            "This is a known dataflow analyzer limitation. Skip until analyzer merges output port aliases."
-        )
+    assert len(sb) == 2, f"sync_fifo should have 2 segment breakdown, got {len(sb)}"
 
     # Segment 0: push_data_i (PORT_IN) → mem (REG)
     s0 = sb[0]
@@ -192,19 +181,10 @@ def test_n1_latency_two_flop_sync_async_crossing():
         "sub_a.data_a_i", "sub_b.data_b_o",
         file_path=TWO_FLOP_SYNC,
     )
-    # [V7 2026-07-16] 优雅降级: 跨模块 sub_a→sub_b 数据流分析是已知限制
-    if not d.get("ok"):
-        pytest.skip(
-            f"[known limitation] Cross-module dataflow analysis not yet supported: "
-            f"{d.get('stderr', d.get('error'))[:100]}"
-        )
-    if not d["result"]["is_reachable"]:
-        pytest.skip(
-            "[known limitation] sub_a.data_a_i → sub_b.data_b_o not reachable via analyzer. "
-            "Cross-module hierarchy dataflow tracing needs further implementation."
-        )
+    assert d.get("ok"), f"dataflow failed: {d.get('stderr', d.get('error'))}"
 
     r = d["result"]
+    assert r["is_reachable"]
     assert r["primary_latency_cycles"] is None, (
         f"async crossing should be null latency, got {r['primary_latency_cycles']}"
     )

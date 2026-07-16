@@ -27,11 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sr
 import pytest
 
 PROJ = "/Users/fundou/my_dv_proj/sv_query"
-GOLDEN_SV = "/tmp/cdc_test/golden_mux5.sv"
-
-# Path constants for each fixture
-MUX5_SV = "/tmp/cdc_test/golden_mux5.sv"
-PRIORITY_SV = "/tmp/cdc_test/golden_priority.sv"
+GOLDEN_SV = "/tmp/cdc_test/golden_priority.sv"
 
 
 def svq_dataflow(from_sig: str, to_sig: str, file_path: str = GOLDEN_SV) -> list[str]:

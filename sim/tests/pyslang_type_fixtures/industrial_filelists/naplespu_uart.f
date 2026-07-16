@@ -6,3 +6,4 @@
 /Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/deploy/uart/uart.sv
 /Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/deploy/uart/uart_receive.sv
 /Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/deploy/uart/uart_transmit.sv
+/Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/common/sync_fifo.sv

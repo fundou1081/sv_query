@@ -5,12 +5,9 @@
     "cov_covered": 0,
     "coverage_ratio": 0.0,
     "sva_covered": 0,
-    "total_signals": 28,
+    "total_signals": 25,
     "uncovered_signals": [
-      "0",
-      "1",
       "NamedValue)]",
-      "SIZE",
       "async_i",
       "count_q",
       "empty_o",

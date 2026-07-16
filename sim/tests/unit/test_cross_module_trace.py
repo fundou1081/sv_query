@@ -35,9 +35,6 @@ from trace.core.query.signal import SignalTracer
 @pytest.fixture(scope="module")
 def verilog_axi_extractor():
     """verilog-axi filelist (52 模块, 多层 wrapper, 经典 backpressure 测试)."""
-    import os
-    if not os.path.exists('/tmp/verilog-axi.f'):
-        pytest.skip("verilog-axi filelist not available (/tmp/verilog-axi.f missing). Skip per V7 discipline.")
     ext = SVSignalExtractor.from_filelist('/tmp/verilog-axi.f')
     ext.extract_all_modules()
     return ext
