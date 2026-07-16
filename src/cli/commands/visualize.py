@@ -576,14 +576,7 @@ def chain(
     #       (IO 端口除外, INPUT 没 incoming 是正常的, OUTPUT 没 outgoing 是正常的).
     if not all_paths:
         chain_edges = set()
-        # [V8 2026-07-16] 即使 0 paths 也要包含 IO 节点 (input/output 区分)
-        # 否则测试 test_chain_dot_distinguishes_input_output / cluster / hierarchy 失败
         chain_nodes = set()
-        # 用所有 from_sigs (inputs) + 所有 to_sigs (outputs) 作为 nodes
-        for sig in from_sigs:
-            chain_nodes.add(sig)
-        for sig in to_sigs:
-            chain_nodes.add(sig)
     else:
         # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
         # 这样优先选 multi-hop paths (有 intermediate nodes),
@@ -853,17 +846,9 @@ def _auto_detect_io_ports(graph, target: str, tracer=None) -> tuple[list[str], l
 
     from_sigs = []
     to_sigs = []
-    # [FIX 2026-07-16] 排除 clk/rst/reset/arstn 等 control ports (不是 data path 起点/终点)
-    # 否则 chain 命令尝试找 clk → clk_rst 等路径, 但 graph.find_path 走不出 (clk 被排除).
-    control_keywords = {"clk", "clock", "rst", "rst_n", "rstn", "reset", "arst", "arst_n",
-                       "arstn", "phy_tx_arestn", "phy_tx_aresetn", "s00_axi_aclk",
-                       "s00_axi_aresetn"}
     for port_decl in adapter.get_port_declarations(target_module):
         name, direction = adapter.get_port_name_and_direction(port_decl)
         if not name or name == "unknown":
-            continue
-        # 排除 control signals
-        if any(kw in name.lower() for kw in control_keywords):
             continue
         signal_id = f"{target}.{name}"
         if direction == "input":

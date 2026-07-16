@@ -10,9 +10,16 @@
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dpram.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_ltf_rom.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_stf_rom.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/hwbfly.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ifftmain.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ifftstage.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_ltf_rom.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_stf_rom.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/laststage.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/longbimpy.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/modulation.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/openofdm_tx.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/openofdm_tx_s_axi.v
 /Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/punc_interlv_lut.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/qtrstage.v
+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ram_simo.v

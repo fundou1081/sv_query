@@ -1,3 +1,4 @@
+from pathlib import Path
 """SV Preprocessor - 跨文件宏展开
 
 [Req-20 2026-06-12] 用户洞察: "应该把宏替换后再用语义解析"
@@ -225,20 +226,64 @@ def auto_inject_package_imports(sources: dict[str, str]) -> dict[str, str]:
     return out
 
 
+def inject_default_timescale(
+    sources: dict[str, str],
+    default: str = "`timescale 1ns/1ps",
+) -> dict[str, str]:
+    """[V8 2026-07-16] Inject default `timescale into modules that lack one.
+
+    Many open-source projects (e.g. openofdm_tx in openwifi-hw) intentionally
+    omit `timescale because their top-level modules inherit from include files
+    or testbench. pyslang's strict mode flags MissingTimeScale as ERROR.
+
+    To make analysis work on real-world RTL without forcing every project to
+    add `timescale, we inject `timescale 1ns/1ps at the very top of each .v
+    file that doesn't already have one. This is preprocessing (transformation
+    of source content before parsing), NOT fallback (it doesn't hide errors
+    in user's analysis).
+
+    Skips:
+      - Files already containing `timescale
+      - Testbench files (have "_tb" suffix or module name)
+    """
+    out: dict[str, str] = {}
+    for path, src in sources.items():
+        # Skip files that already have timescale
+        if "`timescale" in src[:500]:
+            out[path] = src
+            continue
+        # Skip testbench files
+        fname = Path(path).name.lower()
+        if "_tb" in fname or "testbench" in fname or "tb_" in fname:
+            out[path] = src
+            continue
+        # Skip .svh headers (not standalone modules)
+        if fname.endswith(".svh") or fname.endswith(".vh"):
+            out[path] = src
+            continue
+        # Inject timescale at very top (before any `include)
+        out[path] = default + "\n" + src
+    return out
+
+
 def preprocess_all(
     sources: dict[str, str],
     enable_macros: bool = True,
     enable_import_injection: bool = True,
+    enable_timescale_injection: bool = True,
 ) -> dict[str, str]:
     """[新增 2026-06-25] 组合所有 preprocess phases.
 
     Order matters:
       1. macro 展开 (修改 source content)
       2. import injection (基于 macro 展开后的 content)
+      3. timescale injection (默认给没有 timescale 的模块加)
     """
     out = dict(sources)
     if enable_macros:
         out = preprocess_macros(out)
     if enable_import_injection:
         out = auto_inject_package_imports(out)
+    if enable_timescale_injection:
+        out = inject_default_timescale(out)
     return out
