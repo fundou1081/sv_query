@@ -1,0 +1,18 @@
+// openofdm_tx filelist (production .v only, no testbench)
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/axi_fifo_bram.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/bimpy.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/bitreverse.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/butterfly.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/convenc.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/convround.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/crc32_tx.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dot11_tx.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dpram.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_ltf_rom.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_stf_rom.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_ltf_rom.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_stf_rom.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/laststage.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/modulation.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/openofdm_tx.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/punc_interlv_lut.v

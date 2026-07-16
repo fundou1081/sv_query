@@ -1,0 +1,12 @@
++incdir+~/my_dv_proj/ventus-gpgpu-verilog/src/define
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/Listbuffer.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/Listbuffer_no_push_opc_put_source.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/SourceA.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/banked_store.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/lru_matrix.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/sinkA.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/sinkD.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/sourceD.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/directory_test.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/Scheduler.v
+~/my_dv_proj/ventus-gpgpu-verilog/src/gpgpu_top/l2cache/MSHR.v
