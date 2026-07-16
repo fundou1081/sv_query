@@ -8,19 +8,20 @@
       "BIT_SELECT": 5,
       "CLOCK": 7,
       "CONNECTION": 6,
-      "DRIVER": 16,
+      "DRIVER": 15,
       "RESET": 7
     },
     "elaboration_errors": [],
     "modules": [],
     "nodes": {
+      "CONST": 2,
       "INSTANTIATED_MODULE": 1,
       "PORT_IN": 14,
       "PORT_OUT": 7,
       "REG": 7,
-      "SIGNAL": 4
+      "SIGNAL": 1
     },
-    "total_edges": 41,
-    "total_nodes": 33
+    "total_edges": 40,
+    "total_nodes": 32
   }
 }

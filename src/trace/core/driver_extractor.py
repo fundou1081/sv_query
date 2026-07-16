@@ -194,7 +194,18 @@ class DriverExtractor:
                     if name_val:
                         body = getattr(module, "body", None)
                         if body is not None and hasattr(body, "lookupName"):
-                            sym = body.lookupName(name_val)
+                            try:
+                                # [V8 FIX 2026-07-16] pyslang 在 partial AST (UnknownModule)
+                                # 状态下会触发 mutex lock failed: Invalid argument.
+                                # 完整 project 测试依赖这不会发生, 但 naplespu uart.f 等
+                                # 含未知依赖的 filelist 需要 graceful fallback.
+                                sym = body.lookupName(name_val)
+                            except RuntimeError as e:
+                                if "mutex" in str(e).lower():
+                                    # partial AST: 跳过这个 identifier, 保守返回所有 names
+                                    # (意味着可能漏掉一些 compile-time filter, 但不会 crash)
+                                    return
+                                raise
                             if sym is not None:
                                 sym_kind = str(getattr(sym, "kind", "")).split(".")[-1]
                                 symbol_kinds[name_val.strip()] = sym_kind

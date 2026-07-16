@@ -846,9 +846,17 @@ def _auto_detect_io_ports(graph, target: str, tracer=None) -> tuple[list[str], l
 
     from_sigs = []
     to_sigs = []
+    # [FIX 2026-07-16] 排除 clk/rst/reset/arstn 等 control ports (不是 data path 起点/终点)
+    # 否则 chain 命令尝试找 clk → clk_rst 等路径, 但 graph.find_path 走不出 (clk 被排除).
+    control_keywords = {"clk", "clock", "rst", "rst_n", "rstn", "reset", "arst", "arst_n",
+                       "arstn", "phy_tx_arestn", "phy_tx_aresetn", "s00_axi_aclk",
+                       "s00_axi_aresetn"}
     for port_decl in adapter.get_port_declarations(target_module):
         name, direction = adapter.get_port_name_and_direction(port_decl)
         if not name or name == "unknown":
+            continue
+        # 排除 control signals
+        if any(kw in name.lower() for kw in control_keywords):
             continue
         signal_id = f"{target}.{name}"
         if direction == "input":

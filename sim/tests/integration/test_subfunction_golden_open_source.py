@@ -155,35 +155,12 @@ def test_golden_subfunction(sub_function, project):
     """Golden: {sub_function} 在 {project} 上 跟 baseline 一致 (增强健壮性)."""
     runner = _GOLDEN_RUNNERS[sub_function]
     r = runner(project)
-    # [V7 2026-07-16] 优雅降级: strict_uart 项目有 UnknownModule 编译错 (naplespu 缺依赖)
-    if r.returncode != 0 and "[UnknownModule]" in r.stderr:
-        pytest.skip(
-            f"[known limitation] Golden {sub_function} on {project} skipped due to "
-            "UnknownModule compile error (project missing dependency). Skip per V7 discipline."
-        )
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:200]}"
     actual_data = json.loads(r.stdout)
     actual = _normalize(actual_data, project)
 
     golden = _read_golden(sub_function, project)
     if actual != golden:
-        # [V7 2026-07-16] 优雅降级: strict_uart 项目有 baseline drift (real RTL ≠ 老 baseline)
-        if project == "strict_uart":
-            import difflib
-            diff = "\n".join(difflib.unified_diff(
-                json.dumps(golden, indent=2, sort_keys=True).splitlines(),
-                json.dumps(actual, indent=2, sort_keys=True).splitlines(),
-                lineterm="",
-                fromfile="golden",
-                tofile="actual",
-                n=3,
-            ))
-            pytest.skip(
-                f"[known limitation] Golden drift in strict_uart/{sub_function}: "
-                f"real RTL analysis differs from baseline. Difference:\n{diff[:500]}"
-                "\n[Action] Re-baseline the golden fixture when analyzer stabilizes. "
-                "Skip per V7 discipline."
-            )
         import difflib
         diff = "\n".join(difflib.unified_diff(
             json.dumps(golden, indent=2, sort_keys=True).splitlines(),
