@@ -28,6 +28,7 @@ import pytest
 
 PROJ = "/Users/fundou/my_dv_proj/sv_query"
 GOLDEN_SV = "/tmp/cdc_test/golden_priority.sv"
+GOLDEN_MUX5_FILE = "/tmp/cdc_test/golden_mux5.sv"
 
 
 def svq_dataflow(from_sig: str, to_sig: str, file_path: str = GOLDEN_SV) -> list[str]:
@@ -91,21 +92,21 @@ def assert_no_typo(conditions: list[str]) -> None:
 
 def test_golden_mux5_in0():
     """in0 → out: sel == 0 (first match)"""
-    conds = svq_dataflow("golden_mux5.in0", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in0", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, ["sel == 3'd0"], ["sel"])
 
 
 def test_golden_mux5_in1():
     """in1 → out: !sel==0 AND sel==1"""
-    conds = svq_dataflow("golden_mux5.in1", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in1", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, ["!sel == 3'd0 && sel == 3'd1"], ["sel"])
 
 
 def test_golden_mux5_in2():
     """in2 → out: !sel==0 AND !sel==1 AND sel==2"""
-    conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
         "!sel == 3'd0 && !sel == 3'd1 && sel == 3'd2"
@@ -114,7 +115,7 @@ def test_golden_mux5_in2():
 
 def test_golden_mux5_in3():
     """in3 → out: !sel==0 AND !sel==1 AND !sel==2 AND sel==3"""
-    conds = svq_dataflow("golden_mux5.in3", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in3", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
         "!sel == 3'd0 && !sel == 3'd1 && !sel == 3'd2 && sel == 3'd3"
@@ -123,7 +124,7 @@ def test_golden_mux5_in3():
 
 def test_golden_mux5_in4():
     """in4 → out: !sel==0 AND !sel==1 AND !sel==2 AND !sel==3 AND sel==4 (5 else-if chain end)"""
-    conds = svq_dataflow("golden_mux5.in4", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in4", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
         "!sel == 3'd0 && !sel == 3'd1 && !sel == 3'd2 && !sel == 3'd3 && sel == 3'd4"
@@ -157,7 +158,7 @@ def test_golden_priority_out_d_double_else_if():
 @pytest.mark.parametrize("iteration", range(3))
 def test_golden_mux5_stability(iteration):
     """重复跑 in2 3 次, 确保稳定"""
-    conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out")
+    conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
         "!sel == 3'd0 && !sel == 3'd1 && sel == 3'd2"

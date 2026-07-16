@@ -576,7 +576,14 @@ def chain(
     #       (IO 端口除外, INPUT 没 incoming 是正常的, OUTPUT 没 outgoing 是正常的).
     if not all_paths:
         chain_edges = set()
+        # [V8 2026-07-16] 即使 0 paths 也要包含 IO 节点 (input/output 区分)
+        # 否则测试 test_chain_dot_distinguishes_input_output / cluster / hierarchy 失败
         chain_nodes = set()
+        # 用所有 from_sigs (inputs) + 所有 to_sigs (outputs) 作为 nodes
+        for sig in from_sigs:
+            chain_nodes.add(sig)
+        for sig in to_sigs:
+            chain_nodes.add(sig)
     else:
         # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
         # 这样优先选 multi-hop paths (有 intermediate nodes),
