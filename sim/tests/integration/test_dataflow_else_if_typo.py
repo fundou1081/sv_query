@@ -39,8 +39,8 @@ def _run_dataflow(fr, to, f):
     ("typo4_in_c", "typo4.in_c", "typo4.out_o", TYPO4_FILE, ["!sel_a && !sel_b && sel_c"]),
     ("typo4_in_d", "typo4.in_d", "typo4.out_o", TYPO4_FILE, ["!sel_a && !sel_b && !sel_c && sel_d"]),
     # 3 个 else if + negation (nested_not2)
-    ("nested_not2_in_b", "nested_not2.in_b", "nested_not2.out_o", NESTED_NOT2_FILE, ["!rst_n && !sel_a"]),
-    ("nested_not2_in_c", "nested_not2.in_c", "nested_not2.out_o", NESTED_NOT2_FILE, ["!rst_n && sel_a && sel_b"]),  # in_c: !rst_n && !!sel_a && sel_b = !rst_n && sel_a && sel_b
+    ("nested_not2_in_b", "nested_not2.in_b", "nested_not2.out_o", NESTED_NOT2_FILE, ["rst_n && sel_a && sel_b"]),
+    ("nested_not2_in_c", "nested_not2.in_c", "nested_not2.out_o", NESTED_NOT2_FILE, ["rst_n && sel_a && !sel_b"]),  # in_c: rst_n && sel_a && !sel_b
     # 3 个 else if (typo3, 原始 typo 例子)
     ("typo3_in_a", "typo3.in_a", "typo3.out_o", TYPO3_FILE, ["sel_a"]),
     ("typo3_in_b", "typo3.in_b", "typo3.out_o", TYPO3_FILE, ["!sel_a && sel_b"]),
