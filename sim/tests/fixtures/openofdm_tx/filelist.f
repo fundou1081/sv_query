@@ -10,9 +10,16 @@
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dpram.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_ltf_rom.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ht_stf_rom.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/hwbfly.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ifftmain.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ifftstage.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_ltf_rom.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/l_stf_rom.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/laststage.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/longbimpy.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/modulation.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/openofdm_tx.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/openofdm_tx_s_axi.v
 ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/punc_interlv_lut.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/qtrstage.v
+~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/ram_simo.v
