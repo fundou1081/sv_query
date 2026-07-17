@@ -285,11 +285,54 @@ class SignalGraphViewer:
         # 模块聚类
         modules = self._extract_modules() if self.config.get("cluster_modules", False) else {}
 
+        # [FIX 2026-07-17] 条件信号过滤: PORT_IN 节点如果没有 DRIVER/CLOCK/RESET 边,
+        # 只在 edge condition 文本中出现, 则不应作为独立块渲染.
+        # e.g. case(op) 中的 op — 它的条件信息已附在每条驱动边 label 上.
+        import re
+        _CONDITION_ONLY_SKIP = set()  # node IDs to skip (condition-only signals)
+        if self.config.get("edge_conditions", False):
+            # 收集所有 edge condition 文本
+            condition_texts: list[str] = []
+            filtered = self._filter_edges(list(self.graph.edges()))
+            for _, _, edge in filtered:
+                if hasattr(edge, "condition") and edge.condition:
+                    condition_texts.append(edge.condition)
+            # 从 condition 文本中提取 signal 名
+            _cond_sigs: set[str] = set()
+            for ct in condition_texts:
+                _cond_sigs.update(re.findall(r'\b([a-zA-Z_]\w*)\b', ct))
+            for node_id in self.graph.nodes():
+                node = self.graph.get_node(node_id)
+                if node is None:
+                    continue
+                kind_str = str(node.kind)
+                if "PORT_IN" not in kind_str:
+                    continue
+                # 检查是否有 DRIVER/CLOCK/RESET 边
+                has_data_edge = False
+                for pred in self.graph.predecessors(node_id):
+                    edge = self.graph.get_edge(pred, node_id)
+                    if edge:
+                        has_data_edge = True
+                        break
+                if not has_data_edge:
+                    for succ in self.graph.successors(node_id):
+                        edge = self.graph.get_edge(node_id, succ)
+                        if edge:
+                            has_data_edge = True
+                            break
+                if not has_data_edge:
+                    name_short = node_id.split(".")[-1]
+                    if name_short in _cond_sigs:
+                        _CONDITION_ONLY_SKIP.add(node_id)
+
         # 收集所有节点（用于后续边处理）
         node_name_map = {}  # full_node_id -> safe_name
 
         # 生成节点声明
         for node_id in self.graph.nodes():
+            if node_id in _CONDITION_ONLY_SKIP:
+                continue  # [FIX 2026-07-17] 条件信号不渲染为独立块
             # module_only 模式: 跳过子模块内部信号
             if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
                 continue
@@ -399,6 +442,8 @@ class SignalGraphViewer:
         for node_id in self.graph.nodes():
             if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
                 continue
+            if node_id in _CONDITION_ONLY_SKIP:
+                continue
             node = self.graph.get_node(node_id)
             if node is None:
                 continue
@@ -431,6 +476,8 @@ class SignalGraphViewer:
             for node_id in self.graph.nodes():
                 if self.config.get("module_only", False) and not self._is_top_module_signal(node_id):
                     continue
+                if node_id in _CONDITION_ONLY_SKIP:
+                    continue  # [FIX 2026-07-17] skip condition-only signals
                 node = self.graph.get_node(node_id)
                 if node is None:
                     continue
