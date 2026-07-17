@@ -79,3 +79,92 @@ COMMON_DOT_DEFAULTS = [
     "labelloc=t;",
     "fontsize=14;",
 ]
+
+
+
+# ---------------------------------------------------------------------------
+# Phase B (2026-07-17) — moved from cli/commands/visualize.py so all viz
+# subcommands can share them.
+# ---------------------------------------------------------------------------
+
+def escape_dot_label(s: str) -> str:
+    """[Phase B] Escape DOT special characters in label.
+
+    DOT inside "..." labels needs: [ ] " < > { } | escaped with backslash.
+    Used by chain/auto mode labels where signal IDs can contain any of these.
+    """
+    s = s.replace("[", "\\[")
+    s = s.replace("]", "\\]")
+    s = s.replace("\"", "\\\"")
+    s = s.replace("<", "\\<")
+    s = s.replace(">", "\\>")
+    s = s.replace("{", "\\{")
+    s = s.replace("}", "\\}")
+    s = s.replace("|", "\\|")
+    return s
+
+
+def format_node_label_chain(node_id: str, top: str) -> str:
+    """[Phase B] Format a hierarchical signal ID as a multi-line DOT label.
+
+    Strategy:
+      - Strip the "<top>." prefix (it is already shown as the graph label).
+      - Split on "." and join parts with "\\n." (graphviz newline).
+      - 4+ parts keep first 2 + last (with "…" ellipsis in between).
+      - All parts DOT-escaped via escape_dot_label().
+
+    Example: 'dot11_tx.ifft64.revstage.i_clk' (top='dot11_tx') →
+             'ifft64\\n.revstage\\n.i_clk'
+    """
+    if node_id.startswith(f"{top}."):
+        rest = node_id[len(top) + 1:]
+    else:
+        rest = node_id
+    parts = rest.split(".")
+    if len(parts) == 1:
+        return escape_dot_label(parts[0])
+    if len(parts) == 2:
+        return f"{escape_dot_label(parts[0])}\\n.{escape_dot_label(parts[1])}"
+    if len(parts) <= 4:
+        return "\\n.".join(escape_dot_label(p) for p in parts)
+    # 5+: first + second + … + last
+    escaped = [escape_dot_label(p) for p in parts]
+    return f"{escaped[0]}\\n.{escaped[1]}\\n…\\n.{escaped[-1]}"
+
+
+def sanitize_dot_id_inner(s: str) -> str:
+    """[Phase B] Sanitize signal ID for DOT (chain-friendly variant).
+
+    Replaces characters that graphviz treats as structural (`.`, `[`, `]`, space)
+    with underscores. Slightly different from sanitize_dot_id() (which strips
+    unsafe chars silently) — this one keeps the original visible shape.
+    """
+    return s.replace(".", "_").replace("[", "_").replace("]", "_").replace(" ", "_")
+
+
+def render_with_engine(dot_text: str, output_path: str, engine: str = "dot", fmt: str = "png") -> int:
+    """[Phase B] Render DOT text via the named graphviz engine (dot/neato/fdp).
+
+    Writes a temp .dot, then invokes `<engine> -T<fmt> -o <output_path>`.
+    Returns the engine's exit code. Raises OSError if the engine binary is not
+    on PATH.
+    """
+    import subprocess
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".dot", delete=False) as tmp:
+        tmp.write(dot_text)
+        tmp_path = tmp.name
+    try:
+        proc = subprocess.run(
+            [engine, f"-T{fmt}", tmp_path, "-o", output_path],
+            capture_output=True,
+            text=True,
+        )
+        return proc.returncode
+    finally:
+        try:
+            import os
+            os.unlink(tmp_path)
+        except OSError:
+            pass

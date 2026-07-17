@@ -37,6 +37,14 @@ from cli._viz_common import (
     build_viz_tracer, get_viz_sources,
 )
 
+# [Phase B 2026-07-17] 共享 DOT helpers (从 _dot_common 移过来)
+from trace.core.graph.analyzer._dot_common import (
+    escape_dot_label,
+    format_node_label_chain,
+    sanitize_dot_id_inner,
+    render_with_engine,
+)
+
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
 
@@ -774,11 +782,11 @@ def chain(
         typer.echo(f"✓ DOT: {dot_output}", err=True)
 
     if png_output:
-        _render_with_engine(dot, png_output, layout_engine, fmt="png")
+        render_with_engine(dot, png_output, layout_engine, fmt="png")
         typer.echo(f"✓ PNG: {png_output}", err=True)
 
     if svg_output:
-        _render_with_engine(dot, svg_output, layout_engine, fmt="svg")
+        render_with_engine(dot, svg_output, layout_engine, fmt="svg")
         typer.echo(f"✓ SVG: {svg_output}", err=True)
 
     if not dot_output and not png_output and not svg_output:
@@ -1010,7 +1018,7 @@ def _generate_chain_dot(
             short = sub.split(".")[-1] if "." in sub else sub
             sub_label = f"{short}"
         border_color = cluster_borders[i % len(cluster_borders)]
-        lines.append(f'  subgraph "cluster_{_sanitize_dot_id_chain(sub)}" {{')
+        lines.append(f'  subgraph "cluster_{sanitize_dot_id_inner(sub)}" {{')
         lines.append(f'    label="{sub_label}";')
         lines.append(f'    style="rounded,dashed";')  # [FIX] 虚线边框, 不填背景
         lines.append(f'    color="{border_color}";')
@@ -1019,7 +1027,7 @@ def _generate_chain_dot(
         lines.append(f'    fontcolor="{border_color}";')  # [FIX] 跟边框同色
         lines.append(f'    fontname="Helvetica-Bold";')  # [FIX] 加粗 (必须 quote)
         for node in sorted(sub_nodes):
-            safe_id = _sanitize_dot_id_chain(node)
+            safe_id = sanitize_dot_id_inner(node)
             # [FIX 2026-07-10] Anomaly 高亮 (RTL 语义检查)
             anomaly = (anomalies or {}).get(node)
             if anomaly == "ORPHAN":
@@ -1048,7 +1056,7 @@ def _generate_chain_dot(
                 color = "#3366cc"  # [FIX] 更鲜明的蓝
                 shape = "box"
             # [FIX] 改进 label: 短 label + 换行
-            label = _format_node_label(node, title)
+            label = format_node_label_chain(node, title)
             cycle = node_cycles.get(node, 0)
             # [Phase 1 2026-07-09] 输出节点加 total cycles, 中间节点按 fall-back 加 cycle label
             # to_set 终点 加 Total cycles (流水线总延迟)
@@ -1076,7 +1084,7 @@ def _generate_chain_dot(
         lines.append(f'    fontname="Helvetica-Bold";')
         lines.append(f'    bgcolor="#f5f5f5";')  # 极浅灰背景区分
         for node in sorted(external_nodes):
-            safe_id = _sanitize_dot_id_chain(node)
+            safe_id = sanitize_dot_id_inner(node)
             if node in from_set:
                 color = "#22aa55"
                 shape = "invhouse"
@@ -1090,7 +1098,7 @@ def _generate_chain_dot(
             else:
                 color = "#3366cc"
                 shape = "box"
-            label = _format_node_label(node, title)
+            label = format_node_label_chain(node, title)
             cycle = node_cycles.get(node, 0)
             if cycle > 0:
                 label = f"{label}\\n[cycle={cycle}]"
@@ -1104,8 +1112,8 @@ def _generate_chain_dot(
 
     # 边定义 (深色加粗)
     for src, dst in sorted(edges):
-        src_safe = _sanitize_dot_id_chain(src)
-        dst_safe = _sanitize_dot_id_chain(dst)
+        src_safe = sanitize_dot_id_inner(src)
+        dst_safe = sanitize_dot_id_inner(dst)
         # [Phase 1 2026-07-09] 加 cycle label 到边上
         edge_cyc = edge_cycles.get((src, dst), 0)
         if edge_cyc > 0:
@@ -1145,7 +1153,7 @@ def _generate_chain_dot(
             lines.append('    bgcolor="#fff5e6";')
             for n in sorted(anomaly_nodes_outside):
                 kind = anomalies[n]
-                safe_id = _sanitize_dot_id_chain(n)
+                safe_id = sanitize_dot_id_inner(n)
                 # Color by anomaly type
                 if kind == "X_DRIVER":
                     color = "#cc8800"
@@ -1155,7 +1163,7 @@ def _generate_chain_dot(
                     color = "#888888"
                 else:
                     color = "#cc6600"
-                label = _format_node_label(n, title)
+                label = format_node_label_chain(n, title)
                 # Add anomaly type to label
                 label = f"{label}\\n[{kind}]"
                 lines.append(
@@ -1173,7 +1181,7 @@ def _generate_chain_dot(
             for n in anomaly_nodes_outside:
                 if ghost_count >= MAX_GHOST_EDGES:
                     break
-                safe_id = _sanitize_dot_id_chain(n)
+                safe_id = sanitize_dot_id_inner(n)
                 kind = anomalies[n]
                 if graph is None:
                     continue
@@ -1181,7 +1189,7 @@ def _generate_chain_dot(
                 if kind == "X_DRIVER":
                     # Dashed edges to consumers
                     for succ in graph.successors(n):
-                        succ_safe = _sanitize_dot_id_chain(succ)
+                        succ_safe = sanitize_dot_id_inner(succ)
                         # If successor is in chain, draw dashed connection
                         if succ in nodes:
                             if ghost_count >= MAX_GHOST_EDGES:
@@ -1194,7 +1202,7 @@ def _generate_chain_dot(
                 elif kind == "DANGLING":
                     # Dashed edges from drivers
                     for pred in graph.predecessors(n):
-                        pred_safe = _sanitize_dot_id_chain(pred)
+                        pred_safe = sanitize_dot_id_inner(pred)
                         if pred in nodes:
                             if ghost_count >= MAX_GHOST_EDGES:
                                 break
@@ -1210,68 +1218,6 @@ def _generate_chain_dot(
 
     lines.append("}")
     return "\n".join(lines)
-
-
-def _format_node_label(node_id: str, top: str) -> str:
-    """[Plan B+2 FIX 2026-07-08] 改进 node label 可读性.
-
-    策略:
-    - 去 "{top}." prefix (重复信息)
-    - 用 \n 换行 segment (e.g. "dot11_tx.ifft64.i_clk" → "dot11_tx\n.ifft64\n.i_clk")
-    - 4+ parts 保留所有 4 part (4 lines max), 超了用 "..." 截断最后
-    - [FIX 2026-07-08] escape DOT 特殊字符 [, ], ", <, >, {, }, |
-    """
-    if node_id.startswith(f"{top}."):
-        rest = node_id[len(top) + 1:]
-    else:
-        rest = node_id
-    parts = rest.split(".")
-    if len(parts) == 1:
-        return _escape_dot_label(parts[0])
-    if len(parts) == 2:
-        return f"{_escape_dot_label(parts[0])}\\n.{_escape_dot_label(parts[1])}"
-    # 3+ parts: 用 \n 连接所有段 (如果 > 4 段, 保留前 2 + last)
-    if len(parts) <= 4:
-        return "\\n.".join(_escape_dot_label(p) for p in parts)
-    # 5+ parts: 第一段 + 第二段 + ... + 末段
-    escaped = [_escape_dot_label(p) for p in parts]
-    return f"{escaped[0]}\\n.{escaped[1]}\\n…\\n.{escaped[-1]}"
-
-
-def _escape_dot_label(s: str) -> str:
-    """[FIX 2026-07-08] Escape DOT special characters in label."""
-    # DOT 在 "..." label 里需要 escape [ ] " < > { } |
-    s = s.replace("[", "\\[")
-    s = s.replace("]", "\\]")
-    s = s.replace("\"", "\\\"")
-    s = s.replace("<", "\\<")
-    s = s.replace(">", "\\>")
-    s = s.replace("{", "\\{")
-    s = s.replace("}", "\\}")
-    s = s.replace("|", "\\|")
-    return s
-
-
-def _sanitize_dot_id_chain(s: str) -> str:
-    """Sanitize signal ID for DOT (chain version)."""
-    return s.replace(".", "_").replace("[", "_").replace("]", "_").replace(" ", "_")
-
-
-def _render_with_engine(dot_text: str, output_path: str, engine: str, fmt: str = "png") -> int:
-    """调用 graphviz engine 渲染 DOT → PNG/SVG."""
-    import subprocess
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(suffix=".dot", mode="w", delete=False) as f:
-        f.write(dot_text)
-        tmp_dot = f.name
-
-    try:
-        cmd = [engine, f"-T{fmt}", tmp_dot, "-o", output_path]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        return result.returncode
-    finally:
-        Path(tmp_dot).unlink(missing_ok=True)
 
 
 def _run_graph_visualization(
