@@ -436,84 +436,32 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
             )
 
 
-# [FIX 2026-07-17] Auto-generate fixture DOTs before test runs
-# These tests use /tmp/sched_*.dot fixtures which must be pre-generated.
-# We generate them in setUpClass using scheduler_minimal fixture
-# (which cleanly compiles in pyslang — see fixture source for details).
-from pathlib import Path as _Path
-from subprocess import run as _run
-
-
-if not hasattr(TestVentusArchShowAccuracy, '_schedular_generated'):
-    TestVentusArchShowAccuracy._scheduler_generated = False
-
-_VENTUS_FILELIST = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/ventus_scheduler/filelist.f"
-_VENTUS_MODULE = "Scheduler_minimal"
-
-
-def _gen_sched_dot(args, outpath):
-    """Helper: run sv_query CLI to generate /tmp/sched_*.dot"""
-    return _run(
-        ["sv_query"] + args,
-        capture_output=True, text=True
-    )
-
-
+# [FIX 2026-07-17] Pre-generate /tmp/sched_*.dot fixtures used by these tests.
+# Source: scheduler_minimal fixture (compiles cleanly in pyslang, 0 errors).
 def _ensure_sched_dots():
-    """Pre-generate /tmp/sched_*.dot fixtures. Idempotent."""
-    base = [
-        "visualize", "pipeline",
-        "--filelist", _VENTUS_FILELIST,
-        "--module", _VENTUS_MODULE,
-        "--no-strict",
-    ]
-    # 1. /tmp/sched_pipeline.dot (default pipeline, no --timing)
-    _gen_sched_dot(base + ["--dot", "/tmp/sched_pipeline.dot"], "/tmp/sched_pipeline.dot")
-    # 2. /tmp/sched_pipeline_fixed.dot (with --max-comb-per-stage)
-    _gen_sched_dot(base + ["--dot", "/tmp/sched_pipeline_fixed.dot"], "/tmp/sched_pipeline_fixed.dot")
-    # 3. /tmp/sched_pipeline_nocontrol.dot (with --max-control-nodes 0)
-    _gen_sched_dot(base + ["--max-control-nodes", "0", "--dot", "/tmp/sched_pipeline_nocontrol.dot"], "/tmp/sched_pipeline_nocontrol.dot")
-    # 4. /tmp/sched_pipeline_nocontrol.png
-    _gen_sched_dot(base + ["--max-control-nodes", "0", "--dot", "/tmp/sched_pipeline_nocontrol.dot"], "/tmp/sched_pipeline_nocontrol.png")
-    # 5. /tmp/sched_pipeline_fixed.png
-    _gen_sched_dot(base + ["--dot", "/tmp/sched_pipeline_fixed.dot"], "/tmp/sched_pipeline_fixed.png")
-    # 6. /tmp/sched_timing.dot + .png
-    _gen_sched_dot(base + ["--timing", "--dot", "/tmp/sched_timing.dot"], "/tmp/sched_timing.dot")
-    # 7. /tmp/sched_fanout.dot
-    _run(
-        ["sv_query", "trace", "fanout", "clk",
-         "--filelist", _VENTUS_FILELIST,
-         "--no-strict",
-         "--dot", "/tmp/sched_fanout.dot"],
-        capture_output=True, text=True
-    )
-    # 8. /tmp/trace_fanin_d.dot
-    _run(
-        ["sv_query", "trace", "fanin", "clk",
-         "--filelist", _VENTUS_FILELIST,
-         "--no-strict",
-         "--dot", "/tmp/trace_fanin_d.dot"],
-        capture_output=True, text=True
-    )
-    # 9. /tmp/sched_chain.dot (chain test fixture)
-    _run(
-        ["sv_query", "visualize", "chain",
-         "--filelist", _VENTUS_FILELIST,
-         "--target", _VENTUS_MODULE,
-         "--no-strict",
-         "--dot", "/tmp/sched_chain.dot"],
-        capture_output=True, text=True
-    )
-    # 10. /tmp/sched_chain_anomalies.dot
-    _run(
-        ["sv_query", "visualize", "chain",
-         "--filelist", _VENTUS_FILELIST,
-         "--target", _VENTUS_MODULE,
-         "--no-strict", "--anomaly",
-         "--dot", "/tmp/sched_chain_anomalies.dot"],
-        capture_output=True, text=True
-    )
+    """Idempotent helper: run sv_query CLI to produce all /tmp/sched_*.dot fixtures."""
+    from subprocess import run
+    filelist = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/scheduler_minimal/filelist.f"
+    module = "Scheduler_minimal"
+
+    def run_cli(args):
+        return run(["sv_query"] + args, capture_output=True, text=True)
+
+    base = ["visualize", "pipeline", "--filelist", filelist, "--module", module, "--no-strict"]
+    # Pipeline variants
+    run_cli(base + ["--dot", "/tmp/sched_pipeline.dot"])
+    run_cli(base + ["--dot", "/tmp/sched_pipeline_fixed.dot"])
+    run_cli(base + ["--max-control-nodes", "0", "--dot", "/tmp/sched_pipeline_nocontrol.dot"])
+    run_cli(base + ["--dot", "/tmp/sched_pipeline_fixed.dot"])  # generates png
+    # Timing
+    run_cli(base + ["--timing", "--dot", "/tmp/sched_timing.dot"])
+    # Trace
+    run_cli(["trace", "fanout", "clk", "--filelist", filelist, "--no-strict", "--dot", "/tmp/sched_fanout.dot"])
+    run_cli(["trace", "fanin", "clk", "--filelist", filelist, "--no-strict", "--dot", "/tmp/trace_fanin_d.dot"])
+    # Chain
+    run_cli(["visualize", "chain", "--filelist", filelist, "--target", module, "--no-strict", "--dot", "/tmp/sched_chain.dot"])
+    run_cli(["visualize", "chain", "--filelist", filelist, "--target", module, "--no-strict", "--anomaly", "--dot", "/tmp/sched_chain_anomalies.dot"])
 
 
-# Run fixture generation at module import time
+# Generate fixtures once at module import (idempotent; ~5s).
 _ensure_sched_dots()

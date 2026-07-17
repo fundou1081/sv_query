@@ -10,8 +10,8 @@
 [Plan B+ 2026-07-08] `sv_query visualize chain` 子命令.
 
 输入:
-  --from <signal> (可多个)  - 起点 signal (e.g. dot11_tx.phy_tx_start)
-  --to   <signal> (可多个)  - 终点 signal (e.g. dot11_tx.result_i)
+  --from <signal> (可多个)  - 起点 signal (e.g. wrapper_chain.bram_din_i)
+  --to   <signal> (可多个)  - 终点 signal (e.g. wrapper_chain.bram_dout_o)
   --auto                    - 自动找所有 input ports → output ports paths
   --target <module>         - focus on module
   --layout {LR,TB}          - 方向 (默认 LR)
@@ -184,7 +184,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
         """[金标准] chain 在 multi-module 项目 (用 filelist) 应该生成
         subgraph cluster { label=... } 按 module 分组.
 
-        dot11_tx 是顶层, 但 chain 中间 signals 可能来自 axi_fifo_bram,
+        wrapper_chain 是顶层. chain 中间 signals 可能来自 inner_proc.
         ifftmain 等 sub-module (PicoRV32 / openwifi PHY). filelist 模式下
         DOT 应该至少 1 个 subgraph cluster.
         """
@@ -212,7 +212,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
     def test_chain_dot_hierarchical_signal_ids(self):
         """[金标准 2026-07-08] 修了 root cause 后: sub-module signals (bitreverse.*,
         dpram.*, fftstage.*) 应该有完整 hierarchy path (e.g.
-        openofdm_tx.dot11_tx.ifft64.revstage.i_clk), 不是 flattened
+        wrapper_chain.inner_proc_dut.data_i), 不是 flattened
         (e.g. bitreverse.i_clk).
 
         之前 bug: connection_extractor 用 inst_module_name (短名) 替代
@@ -405,7 +405,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
                 "--max-edges", "30",
             ], dot_path)
             import re
-            # cycle 数值都在合理范围 (1..50, 因为 dot11_tx 不应该 >50 cycles)
+            # cycle 数值都在合理范围 (1..max_cycles)
             cycle_vals = [int(m.group(1)) for m in re.finditer(r'\[cycle=(\d+)\]', content)]
             for v in cycle_vals:
                 self.assertGreaterEqual(v, 0, f"cycle 不能为负: {v}")
