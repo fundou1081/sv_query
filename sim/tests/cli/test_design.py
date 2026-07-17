@@ -28,7 +28,7 @@ import subprocess
 from pathlib import Path
 
 
-OPENOFDM_TX_FILELIST = "/tmp/openofdm_tx.f"
+OPENOFDM_TX_FILELIST = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f"
 
 
 def _run_svq(args):
@@ -39,7 +39,7 @@ def _run_svq(args):
     )
 
 
-def _run_design(target="openofdm_tx", args=None):
+def _run_design(target="wrapper_chain", args=None):
     """Run `sv_query design show --target <target> [args]`. Returns (rc, stdout, stderr)."""
     full_args = ["design", "show"]
     if args is None:
@@ -78,7 +78,7 @@ class TestDesignIPOverview(unittest.TestCase):
             f"No design section header in stdout:\n{stdout[:500]}\nstderr:\n{stderr[:500]}"
         )
         # 必须见到 target name
-        self.assertIn("openofdm_tx", stdout)
+        self.assertIn("wrapper_chain", stdout)
 
 
 class TestDesignCDCSummary(unittest.TestCase):
@@ -177,7 +177,7 @@ class TestDesignJson(unittest.TestCase):
         result = _run_svq([
             "design", "show",
             "--filelist", OPENOFDM_TX_FILELIST,
-            "--target", "openofdm_tx",
+            "--target", "wrapper_chain",
             "--no-strict",
             "--json",
         ])
@@ -203,7 +203,10 @@ class TestDesignGraph(unittest.TestCase):
         self.assertIn("--graph", result.stdout)
 
     def test_design_graph_generates_pngs(self):
-        """[金标准] --graph 在 dot11_tx 上应该生成 dataflow.png + pipeline.png"""
+        """[金标准] --graph 在 wrapper_chain fixture 上应该生成 design PNGs.
+        (Was dot11_tx/openofdm_tx before — switched to wrapper_chain fixture per
+        user feedback 2026-07-16: open source projects only provide code diversity,
+        not necessarily need to verify them.)"""
         import os
         import tempfile
         import shutil
@@ -211,8 +214,8 @@ class TestDesignGraph(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = _run_svq([
                 "design", "show",
-                "-f", str(Path.home() / "my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dot11_tx.v"),
-                "--target", "dot11_tx",
+                "--filelist", OPENOFDM_TX_FILELIST,
+                "--target", "wrapper_chain",
                 "--no-strict",
                 "--graph",
                 "--graph-dir", tmpdir,
