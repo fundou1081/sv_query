@@ -880,6 +880,7 @@ src/trace/
 │   ├── graph/
 │   │   ├── models.py         # TraceNode, TraceEdge, NodeKind, EdgeKind
 │   │   ├── dataflow.py       # DataFlowGraph
+│   │   ├── signal_graph_viewer.py  # SignalGraphViewer (878 LOC, graph 命令主渲染器)
 │   │   └── diff.py           # 图差异分析
 │   ├── graph_builder.py      # Module 图构建 (2675行)
 │   ├── class_graph_builder.py # Class 图构建 (738行)
@@ -895,18 +896,34 @@ src/trace/
 │   │   ├── statement_collector_visitor.py
 │   │   ├── constraint_visitor.py
 │   │   └── ...
-│   └── query/
-│       ├── signal.py         # SignalTracer
-│       ├── load.py            # LoadTracer
-│       ├── clock_domain.py    # ClockDomainTracer
-│       └── module.py         # ModuleTracer
+│   ├── query/
+│   │   ├── signal.py         # SignalTracer
+│   │   ├── load.py            # LoadTracer
+│   │   ├── clock_domain.py    # ClockDomainTracer
+│   │   └── module.py         # ModuleTracer
+│   └── graph/analyzer/        # [Phase B 2026-07-17] DOT 渲染分析器群
+│       ├── _dot_common.py    # 共享 DOT helpers (170 LOC): escape_dot_label,
+│       │                       format_node_label_chain, sanitize_dot_id_inner,
+│       │                       render_with_engine
+│       ├── dataflow_viz.py   # dataflow 命令渲染
+│       ├── pipeline_viz.py   # pipeline 命令渲染 (1107 LOC, V4 含 cluster+edges+state)
+│       ├── cdc_analyzer.py   # cdc 分析
+│       ├── controlflow_analyzer.py
+│       ├── signal_classifier.py  # 信号分类 (data/control/clock/reset)
+│       ├── timing_analyzer.py    # 时序分析
+│       └── viz_legend.py     # 统一图例渲染
 └── cli/
+    ├── _common.py            # 共享 CLI helpers (_build_tracer, handle_compilation_error)
+    ├── _viz_common.py        # [Phase B 2026-07-17] viz 子命令 CLI plumbing:
+    │                            FILE_OPTION/FILELIST_OPTION/INCLUDE_OPTION/STRICT_OPTION,
+    │                            build_viz_tracer, get_viz_sources (115 LOC)
     └── commands/
         ├── trace.py
         ├── dataflow.py
         ├── diff.py
         ├── snapshot.py
-        └── stats.py
+        ├── stats.py
+        └── visualize.py      # [Phase B] 1682 LOC (原 1750, -68) — 5 viz 子命令
 ```
 
 ---
@@ -929,6 +946,11 @@ Failed:            0 test
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
+| 2026-07-17 | Phase B | viz 子命令重构: `_viz_common.py` + `_dot_common.py` 提取共享代码. visualize.py 1750→1682 LOC (-68) |
+| 2026-07-17 | V4 | pipeline 可视化加强: stage clusters + 跨 stage DRIVER 边 + state→stage 关系 |
+| 2026-07-17 | defaults | pipeline defaults 调整: max_regs/fold 1→3, target_folds 5→10, max_control 8→12 |
+| 2026-07-17 | COND | CONDITION 边可视化: 橙色 + 橙色节点 + `COND` label |
+| 2026-06-25 | 1.2 | `arch` 命令 + 跨模块 port 边 (PR1-PR4) |
 | 2026-05-26 | 1.0 | 初始架构文档 |
 | 2026-05 | 0.1 | 项目启动 |
 
