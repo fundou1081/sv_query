@@ -230,7 +230,7 @@ def _should_fold_stages(stages: list, threshold: int) -> bool:
     return len(stages) > threshold
 
 
-def _build_folded_stage_groups(stages: list, fold_every: int, max_regs_per_fold: int = 1) -> list:
+def _build_folded_stage_groups(stages: list, fold_every: int, max_regs_per_fold: int = 3) -> list:
     """[Phase 6.2] Group consecutive stages into folds.
 
     Each fold contains up to `fold_every` consecutive stages and aggregates:
@@ -434,7 +434,7 @@ def generate_pipeline_dot(
         # [Phase 6.5.2 fix 2026-07-13] auto-scale fold_every: ensure max 5 folds
         # 152 stages / 5 = 30 stages/fold, ~30 REGs per fold in a horizontal row
         n_stages = len(stages_to_render)
-        target_folds = 5
+        target_folds = 10
         if fold_every < (n_stages // target_folds):
             fold_every = max(1, (n_stages + target_folds - 1) // target_folds)
             fold_note_extra = f' (auto-fold-every={fold_every})'
@@ -586,6 +586,36 @@ def generate_pipeline_dot(
                                 f'  "{_sid(cid)}" -> "{_sid(succ)}" '
                                 f'[color="{edge_color}" style=dashed penwidth=1.2];'
                             )
+
+    # [FIX 2026-07-17] State registers cluster: 把state_regs画到独立cluster
+    # 这样用户能看到有几个state machine, 以及它们名字.
+    # 限制state_regs数量避免太大, 默认16.
+    if pipeline_info.state_regs:
+        max_state_shown = 16
+        state_shown = pipeline_info.state_regs[:max_state_shown]
+        state_total = len(pipeline_info.state_regs)
+        state_extra = ''
+        if state_total > max_state_shown:
+            state_extra = f' (+{state_total - max_state_shown} more)'
+        lines.append('')
+        lines.append('  // === State Registers (FSM/state machine regs) ===')
+        lines.append('  subgraph cluster_state_regs {')
+        lines.append(f'    label="State Registers ({state_total} total, showing {len(state_shown)}){state_extra}";')
+        lines.append('    style="rounded,filled";')
+        lines.append('    fillcolor="#fff4e6";')
+        lines.append('    color="#cc8844";')
+        lines.append('    fontsize=10;')
+        lines.append('    rank=max;')
+        for sid in state_shown:
+            node = graph.get_node(sid)
+            name = sanitize_dot_id(node.name) if (node and node.name) else sid.split(".")[-1]
+            w = node.width if node else None
+            w_str = f"{w[1] - w[0] + 1}bit" if w else "?"
+            lines.append(
+                f'    "{_sid(sid)}" [label="{name}\\nREG\\n{w_str}" '
+                f'shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5 fontsize=9];'
+            )
+        lines.append('  }')
 
     # [Phase 6.3 2026-07-12] Legend overlay at bottom
     from .viz_legend import render_legend
