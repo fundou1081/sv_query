@@ -285,6 +285,44 @@ class SignalGraphViewer:
         # 模块聚类
         modules = self._extract_modules() if self.config.get("cluster_modules", False) else {}
 
+        # [FIX 2026-07-17] Pre-scan: identify condition-only signals.
+        # These are PORT_IN nodes whose names appear in edge conditions
+        # but have no DRIVER/CLOCK/RESET edges. They get orange styling.
+        _cond_signal_ids: set[str] = set()
+        if self.config.get("edge_conditions", False):
+            import re as _re_all
+            _cond_texts: list[str] = []
+            filtered = self._filter_edges(list(self.graph.edges()))
+            for _, _, edge in filtered:
+                if hasattr(edge, "condition") and edge.condition:
+                    _cond_texts.append(edge.condition)
+            _cond_names: set[str] = set()
+            for ct in _cond_texts:
+                _cond_names.update(_re_all.findall(r'\b([a-zA-Z_]\w*)\b', ct))
+            _cond_names.difference_update({"default", "d0", "d1", "d2", "d3", "rst_n", "rst"})
+            for node_id in self.graph.nodes():
+                node = self.graph.get_node(node_id)
+                if node is None or "PORT_IN" not in str(node.kind):
+                    continue
+                name_short = node_id.split(".")[-1]
+                if name_short not in _cond_names:
+                    continue
+                # Check: has any non-condition edge?
+                has_real_edge = False
+                for succ in self.graph.successors(node_id):
+                    edge = self.graph.get_edge(node_id, succ)
+                    if edge:
+                        has_real_edge = True
+                        break
+                if not has_real_edge:
+                    for pred in self.graph.predecessors(node_id):
+                        edge = self.graph.get_edge(pred, node_id)
+                        if edge:
+                            has_real_edge = True
+                            break
+                if not has_real_edge:
+                    _cond_signal_ids.add(node_id)
+
         # 生成节点声明
         node_name_map = {}  # full_node_id -> safe_name
         for node_id in self.graph.nodes():
@@ -299,11 +337,16 @@ class SignalGraphViewer:
             risk_score, risk_level = self._compute_risk(node_id)
             cover_status = self._get_cover_status(name)
 
-            # 颜色
-            if self.config["node_style"]["risk_color"]:
+            # 颜色 — 条件信号优先用橙色
+            if node_id in _cond_signal_ids:
+                fillcolor = "#ff9900"  # 橙色 = 条件信号
+                border_color = "#cc5500"
+            elif self.config["node_style"]["risk_color"]:
                 fillcolor = self.RISK_COLORS.get(risk_level, "#cccccc") + "22"
+                border_color = self.RISK_COLORS.get(risk_level, "#888888")
             else:
                 fillcolor = "#f0f0f0"
+                border_color = "#888888"
 
             shape = self.NODE_KIND_SHAPES.get(str(node.kind), "box")
 
@@ -341,11 +384,14 @@ class SignalGraphViewer:
                         .replace("\n", "\\n").replace("(", "\\(").replace(")", "\\)"))
 
             label_str = "\\n".join(_dot_label_escape(l) for l in labels)
-            color = (
-                self.COVER_COLORS.get(cover_status, "#888888")
-                if self.config["node_style"]["cover_marker"]
-                else self.RISK_COLORS.get(risk_level, "#888888")
-            )
+            if node_id in _cond_signal_ids:
+                color = "#cc5500"  # 橙色边 = 条件信号
+            else:
+                color = (
+                    self.COVER_COLORS.get(cover_status, "#888888")
+                    if self.config["node_style"]["cover_marker"]
+                    else self.RISK_COLORS.get(risk_level, "#888888")
+                )
 
             # 处理特殊字符 — 转义 DOT special chars: \", (, ), [, ], -, :, \
             def _dot_escape(s):
@@ -526,7 +572,7 @@ class SignalGraphViewer:
                     _cond_added.add((cond_src_safe, dst_safe))
                     dot_lines.append(
                         f'    {cond_src_safe} -> {dst_safe}'
-                        f'[color="#999999" style=dotted penwidth=1];'
+                        f'[color="#FF6600" style=dashed penwidth=2 xlabel="COND"];'
                     )
 
         dot_lines.append("}")
