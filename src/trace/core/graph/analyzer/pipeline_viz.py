@@ -466,6 +466,7 @@ def generate_pipeline_dot(
     fold_reg_nodes_global = []  # 全局 REG node ID 列表 (用于 rank=same)
 
     for item, is_fold in items_to_render:
+        cluster_name = None
         if is_fold:
             stage = item  # dict (fold group)
             total_regs = stage.get('reg_nodes_total', len(stage['reg_nodes']))
@@ -474,6 +475,15 @@ def generate_pipeline_dot(
             stage_label_text = f"Stages {stage['start_id']}-{stage['end_id']} ({total_regs} regs)"
             reg_nodes = stage['reg_nodes']
             comb_nodes = stage['comb_nodes']
+            # [FIX 2026-07-17] 每个 fold 也作为 cluster (边框) 区分
+            # 这样用户能看出来哪些 REG 同属一个 stage.
+            cluster_name = f"cluster_stage{stage['start_id']}_{stage['end_id']}"
+            lines.append(f'  subgraph {cluster_name} {{')
+            lines.append(f'    label="Stages {stage["start_id"]}-{stage["end_id"]} ({total_regs} regs)";')
+            lines.append('    style="rounded,dashed";')
+            lines.append('    color="#6699cc";')
+            lines.append('    fillcolor="#f0f8ff";')
+            lines.append('    fontsize=11;')
         else:
             stage = item  # PipelineStage dataclass
             stage_label_text = f"Stage {stage.stage_id}"
@@ -525,10 +535,11 @@ def generate_pipeline_dot(
         if len(comb_nodes) > shown_count:
             lines.append(f'    // +{len(comb_nodes) - shown_count} more comb nodes (--max-comb-per-stage to show more)')
 
-        # [Phase 6.5.4 fix 2026-07-13] 只在非折叠模式关闭 cluster (折叠模式无 cluster)
-        if not is_fold:
-            lines.append('  }')
-            lines.append('')
+        # [FIX 2026-07-17] 折叠 + 非折叠模式都关闭 cluster
+        # 这样图用户能看到 fold group 的边框, 一眼看出 stage 范围.
+        # [rank=same 改用 subgraph 级限制位置 - 别处]
+        lines.append('  }')
+        lines.append('')
 
     # [Phase 6.5.4 fix 2026-07-13] 折叠模式: 所有 fold REGs 在同一 rank (横向单行)
     # 这是关键: 把所有 fold 的 REG 强制放到一个 rank, graphviz 会按时间顺序横排
@@ -536,6 +547,32 @@ def generate_pipeline_dot(
     if is_folding and fold_reg_nodes_global:
         quoted = ' '.join('"' + r + '"' for r in fold_reg_nodes_global)
         lines.append(f'  {{ rank=same; {quoted} }};')
+
+    # [FIX 2026-07-17] Cross-stage DRIVER edges: 把每个 fold 的 REGs 间的 data flow 画出来
+    # 用户能看清数据流从哪里到哪里.
+    if is_folding:
+        # 收集所有 item 的 reg_nodes 顺序列表
+        all_reg_groups = []
+        for item, is_fold in items_to_render:
+            if is_fold:
+                all_reg_groups.append(item['reg_nodes'])
+            else:
+                all_reg_groups.append(item.reg_nodes)
+        # 在每一对相邻 group 之间画 DRIVER 边
+        for i in range(len(all_reg_groups) - 1):
+            src_group = all_reg_groups[i]
+            dst_group = all_reg_groups[i + 1]
+            if not src_group or not dst_group:
+                continue
+            # 每组取第一个和最后一个 reg
+            src_first = src_group[0]
+            dst_last = dst_group[-1]
+            # 画一条带 label 的 DRIVER 边表示数据流向
+            label = f"flow_S{i}_to_S{i+1}"
+            lines.append(
+                f'  "{_sid(src_first)}" -> "{_sid(dst_last)}" '
+                f'[color="#226699" penwidth=2 style=bold label="{label}" fontsize=8];'
+            )
         # 加 invisible edges 强制水平流动
         for i in range(len(fold_reg_nodes_global) - 1):
             lines.append(
@@ -616,6 +653,44 @@ def generate_pipeline_dot(
                 f'shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5 fontsize=9];'
             )
         lines.append('  }')
+
+    # [FIX 2026-07-17] State reg → stage connections: 从每个 state reg 
+    # 走到它的 driver 路径上的第一个 pipeline reg, 画虚线表示 state 影响该 stage.
+    if pipeline_info.state_regs and pipeline_info.stages:
+        state_shown_set = set(state_shown)
+        # Build map: pipeline_reg_id → stage_id
+        reg_to_stage = {}
+        for stage in pipeline_info.stages:
+            for rid in stage.reg_nodes:
+                reg_to_stage[rid] = stage.stage_id
+        # For each shown state reg, find what stage it flows into
+        for sid in state_shown:
+            # 双向 BFS via DRIVER edges (state 可以驱动 next logic, 或者被 next logic 读)
+            from collections import deque
+            seen = {sid}
+            queue = deque(
+                list(graph.successors(sid)) + list(graph.predecessors(sid))
+            )
+            target_stage = None
+            target_reg = None
+            while queue:
+                node = queue.popleft()
+                if node in seen:
+                    continue
+                seen.add(node)
+                if node in reg_to_stage:
+                    target_stage = reg_to_stage[node]
+                    target_reg = node
+                    break
+                for s in list(graph.successors(node)) + list(graph.predecessors(node)):
+                    if s not in seen:
+                        queue.append(s)
+            if target_stage and target_reg and target_reg in all_nodes_in_stages:
+                lines.append(
+                    f'  "{_sid(sid)}" -> "{_sid(target_reg)}" '
+                    f'[color="#cc8844" style=dashed penwidth=1.2 arrowsize=0.8 '
+                    f'xlabel="affects S{target_stage}" fontsize=7 fontcolor="#cc8844"];'
+                )
 
     # [Phase 6.3 2026-07-12] Legend overlay at bottom
     from .viz_legend import render_legend
