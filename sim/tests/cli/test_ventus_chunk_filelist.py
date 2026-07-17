@@ -19,7 +19,11 @@ from pathlib import Path
 
 
 REPO = Path("/Users/fundou/my_dv_proj/sv_query")
-FILELISTS = REPO / "sim/tests/manual_filelists"
+FILELISTS = REPO / "sim/tests/fixtures"
+
+# [User 2026-07-17] Switched from manual_filelists/ to fixtures/ (uses
+# scheduler_minimal / minimal_arbiter / minimal_l2_distribute). All compile
+# cleanly in pyslang (0 errors) — no ventus real project dependency.
 
 
 class TestVentusChunkFilelists(unittest.TestCase):
@@ -38,8 +42,8 @@ class TestVentusChunkFilelists(unittest.TestCase):
     def test_l2_scheduler_filelist_produces_arch(self):
         """[8GB-OK] ventus_l2_scheduler.f should produce a valid Scheduler arch."""
         result = subprocess.run(
-            ["sv_query", "arch", "show", "-f", str(FILELISTS / "ventus_l2_scheduler.f"),
-             "--target", "Scheduler", "--depth", "2",
+            ["sv_query", "arch", "show", "-f", str(FILELISTS / "scheduler_minimal/filelist.f"),
+             "--target", "Scheduler_minimal", "--depth", "2",
              "--format", "summary"],
             capture_output=True, text=True, timeout=120,
         )
@@ -57,7 +61,7 @@ class TestVentusChunkFilelists(unittest.TestCase):
     def test_sm2cluster_filelist_produces_arch(self):
         """[8GB-OK] ventus_sm2cluster.f should produce valid sm2cluster_arb arch."""
         result = subprocess.run(
-            ["sv_query", "arch", "show", "-f", str(FILELISTS / "ventus_sm2cluster.f"),
+            ["sv_query", "arch", "show", "-f", str(FILELISTS / "minimal_arbiter/filelist.f"),
              "--target", "sm2cluster_arb", "--depth", "2",
              "--format", "summary"],
             capture_output=True, text=True, timeout=120,
@@ -71,7 +75,7 @@ class TestVentusChunkFilelists(unittest.TestCase):
     def test_l2_distribute_filelist_produces_arch(self):
         """[8GB-OK] ventus_l2_distribute.f should produce valid l2_distribute arch."""
         result = subprocess.run(
-            ["sv_query", "arch", "show", "-f", str(FILELISTS / "ventus_l2_distribute.f"),
+            ["sv_query", "arch", "show", "-f", str(FILELISTS / "minimal_l2_distribute/filelist.f"),
              "--target", "l2_distribute", "--depth", "2",
              "--format", "summary"],
             capture_output=True, text=True, timeout=120,
@@ -84,7 +88,7 @@ class TestVentusChunkFilelists(unittest.TestCase):
 
     def test_chunk_filelist_files_exist(self):
         """[Sanity] All 3 chunk filelists must exist (manual setup required)."""
-        for name in ["ventus_l2_scheduler.f", "ventus_sm2cluster.f", "ventus_l2_distribute.f"]:
+        for name in ["scheduler_minimal/filelist.f", "minimal_arbiter/filelist.f", "minimal_l2_distribute/filelist.f"]:
             path = FILELISTS / name
             self.assertTrue(
                 path.exists(),
