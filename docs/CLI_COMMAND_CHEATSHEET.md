@@ -191,6 +191,25 @@
   * `--no-strict`: elaboration fail 仍存部分 graph
 
 ──────────────────────────────────────────────────────────────────────
+## Viz 命令内部结构 (Phase B 2026-07-17)
+
+5 个 viz 子命令 (`graph`/`dataflow`/`pipeline`/`chain`/`module`) 共享:
+  •  CLI plumbing:  `src/cli/_viz_common.py`  (FILE_OPTION 等 + build_viz_tracer)
+  •  DOT helpers:   `src/trace/core/graph/analyzer/_dot_common.py`
+                    (escape_dot_label / format_node_label_chain /
+                     sanitize_dot_id_inner / render_with_engine)
+
+为什么要加 Phase B: 原来 5 子命令各自重复 ~12 行 tracer build boilerplate + 各自定义同一份 typer options. 统一后可只改一点同步 5 命令的 `--file/--filelist/--include/--strict` 行为.
+
+加新 viz 子命令的范式 (示例):
+   ```
+   from cli._viz_common import (FILE_OPTION, build_viz_tracer, ...)
+   def myview(file: str = FILE_OPTION, ...):
+       tracer, graph = build_viz_tracer(file=file, ...)
+       ...
+   ```
+
+──────────────────────────────────────────────────────────────────────
 ## 今日 (2026-07-06) 修的命令
 
   🆕 新启用 2 顶层:

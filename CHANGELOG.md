@@ -3,6 +3,50 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-07-17/18 (Phase B Refactor)
+
+### visualize 命令重构 (Phase B 2026-07-17)
+
+- **Phase 1A** (commit `e759e87`): 提取共享 viz CLI plumbing
+  - 新建 `src/cli/_viz_common.py`:
+    - `FILE_OPTION`, `FILELIST_OPTION`, `INCLUDE_OPTION`, `STRICT_OPTION` —共享 typer option 常量 (单点修改, 5 子命令同步生效)
+    - `build_viz_tracer(file, filelist, include, strict, ...)` —统一 tracer build + 错误处理 (替换 5 份重复 ~12 行 try/except)
+    - `get_viz_sources(tracer, file, filelist)` —统一 SVA/Covergroup 提取器取源码逻辑
+  - 5 viz 子命令 (`graph`/`dataflow`/`pipeline`/`chain`/`module`) 都改为共享 imports.
+
+- **Phase 2** (commit `9b89240`): 4 个 DOT helper 移到 analyzer
+  - 从 `cli/commands/visualize.py` 移到 `src/trace/core/graph/analyzer/_dot_common.py`:
+    - `escape_dot_label(s)` — DOT label 特殊字符转义
+    - `format_node_label_chain(node_id, top)` — chain 模式多行 label
+    - `sanitize_dot_id_inner(s)` — chain 模式 sanitizer
+    - `render_with_engine(dot_text, output_path, engine='dot', fmt='png')` — graphviz engine 调用封装
+
+- **代码减少**: `visualize.py` 1750 → 1682 LOC (**-68 LOC, -3.9%**).
+  - 5 viz 子命令间重复 boilerplate 从 ~85 行降到 ~0 行.
+- **测试**: 80/80 active viz tests 通过. 2 个 pre-existing golden diff 失败与本次 refactor 无关.
+
+### Pipeline visualization 加强 (V4 2026-07-17)
+
+- **Commit `b793a62`**: 每个 fold group 现在是 `subgraph cluster_stage_X_Y` (蓝色虚线 + 浅蓝填充)
+  - 修复 user feedback: "看起来还是不够清楚"
+  - `openofdm_tx`: 10 cluster 替代原本散落的 28 个 REG 节点
+- **跨 stage DRIVER 边**: 一条粗蓝色 `#226699` 箭头连接相邻 cluster, 标签 `flow_S0_to_S1` 等
+- **state_reg → stage 关系边**: 橙色虚线带 `affects SN` 标签显示 state machine 影响哪个 stage
+- **检测的能力**: openofdm 2 个 state regs → affects S5/S6/S9; scheduler 1 个 → affects S2
+
+### Pipeline defaults 调整 (`a6a50dc`)
+
+- `max_regs_per_fold`: 1 → **3** (每个 fold 现在显示 3 个 REG 节点)
+- `target_folds`: 5 → **10** (fold_every 从 18 变为 10, 更细粒度折叠)
+- `max_control_nodes` 默认: 8 → **12** (更多 AXI 控制信号可见)
+- 新增 `cluster_state_regs`: 橙色 `#cc8844` 节点簇, 显示 state machine registers (FSM context 首个可见)
+
+### CONDITION edges 可视化 (`a22c641`)
+
+- 修复 user feedback: 条件信号 (if/case/ternary 的条件) 之前用 dim 虚线, 看不清
+- 改为橙色 (`#ff9900`) 节点 + 橙色虚边带 `COND` label
+- 实测 4 个开源项目: ventus 13 条 COND 边, openofdm 2 条, opentitan 2 条, darkriscv 2 条
+
 ## 2026-07-02
 
 ### 安装流程修复
