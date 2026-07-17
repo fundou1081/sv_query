@@ -27,7 +27,7 @@ def pytest_configure(config):
     tmp_links = {
         "/tmp/openofdm_tx.f": fixtures_dir / "openofdm_tx" / "filelist.f",
         "/tmp/verilog-axi.f": fixtures_dir / "verilog-axi" / "filelist.f",
-        "/tmp/sched.f": fixtures_dir / "ventus_scheduler" / "filelist.f",
+        "/tmp/sched.f": fixtures_dir / "scheduler_minimal" / "filelist.f",
     }
     for tmp_path, src_path in tmp_links.items():
         tmp_p = Path(tmp_path)

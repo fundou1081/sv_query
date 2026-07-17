@@ -634,14 +634,7 @@ class GraphBuilder:
             is_input = def_node.kind.name == "PORT_IN"
             logger.debug(f"_elab_wrapper: PROCESSING {def_port} (is_input={is_input}, inst_ports={len(inst_ports)})")
 
-            # 检查 def_port 是否已经有 driver (避免重复加)
-            has_driver = any(
-                edge.kind == EdgeKind.DRIVER
-                for edges in self.graph._edge_data.values()
-                for edge in edges
-                if edge.dst == def_port or (isinstance(edges, list) and any(e.dst == def_port for e in edges))
-            )
-            # 上面的检查比较脆弱, 用 predecessors 更稳
+            # 检查 def_port 是否已经有 driver (避免重复加). 用 predecessors 更稳.
             if def_port in self.graph._node_data:
                 preds = list(self.graph.predecessors(def_port))
                 if any(
