@@ -31,7 +31,7 @@ import subprocess
 from pathlib import Path
 
 
-DOT11_TX = str(Path.home() / "my_dv_proj/openwifi-hw/ip/openofdm_tx/src/dot11_tx.v")
+WRAPPER_CHAIN_FILE = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/wrapper_chain.sv"
 
 
 def _run_svq(args):
@@ -57,13 +57,12 @@ class TestChainCommandExists(unittest.TestCase):
 class TestChainFromTo(unittest.TestCase):
     """手动指定 --from / --to 跑 chain."""
 
-    def test_chain_bram_din_to_crc_data(self):
-        """[金标准] chain from bram_din (input data) to crc_data[0] (intermediate)
-        should render DOT (single file mode).
+    def test_chain_bram_din_to_bram_addr(self):
+        """[金标准] chain from bram_din_i (input data) to bram_dout_o (intermediate)
+        should render DOT (filelist mode).
 
-        Note: phy_tx_start → result_i has no direct data path
-              (phy_tx_start is control, not data). Use bram_din → crc_data[0]
-              as a real data path in dot11_tx.
+        Uses wrapper_chain fixture (independent RTL, compiles cleanly in pyslang).
+        Has a real data path: bram_din_i → inner_proc.data_i → stage1 → ... → bram_dout_o.
         """
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
@@ -71,10 +70,11 @@ class TestChainFromTo(unittest.TestCase):
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "-f", DOT11_TX,
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
                 "--no-strict",
-                "--from", "dot11_tx.bram_din",
-                "--to", "dot11_tx.crc_data[0]",
+                "--target", "wrapper_chain",
+                "--from", "wrapper_chain.bram_din_i",
+                "--to", "wrapper_chain.bram_dout_o",
                 "--dot", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
@@ -85,7 +85,7 @@ class TestChainFromTo(unittest.TestCase):
             self.assertIn("digraph", content)
             # 必须含起点/终点
             self.assertTrue(
-                "bram_din" in content or "crc_data" in content,
+                "bram_din" in content or "bram_addr" in content,
                 f"DOT missing key signals: {content[:300]}"
             )
         finally:
@@ -96,16 +96,16 @@ class TestChainAutoMode(unittest.TestCase):
     """--auto 模式: 自动从 input ports 找 path 到 output ports."""
 
     def test_chain_auto_mode(self):
-        """[金标准] chain --auto 在 dot11_tx 上找到 paths"""
+        """[金标准] chain --auto 在 wrapper_chain 上找到 paths (auto-detect IO ports)"""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
             dot_path = f.name
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "-f", DOT11_TX,
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
                 "--no-strict",
-                "--target", "dot11_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
                 "--dot", dot_path,
@@ -123,17 +123,19 @@ class TestChainLayout(unittest.TestCase):
     """layout 选项: LR/TB + neato/dot 引擎."""
 
     def test_chain_lr_neato_renders_square(self):
-        """[金标准] chain --layout LR --layout-engine neato 渲染成方形 PNG"""
+        """[金标准] chain --layout LR --layout-engine neato 渲染成方形 PNG
+        (uses wrapper_chain fixture)"""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             png_path = f.name
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "-f", DOT11_TX,
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
                 "--no-strict",
-                "--from", "dot11_tx.bram_din",
-                "--to", "dot11_tx.crc_data[0]",
+                "--target", "wrapper_chain",
+                "--from", "wrapper_chain.bram_din_i",
+                "--to", "wrapper_chain.bram_dout_o",
                 "--layout", "LR",
                 "--layout-engine", "neato",
                 "--png", png_path,
@@ -152,16 +154,16 @@ class TestChainMaxEdges(unittest.TestCase):
     """--max-edges 限制边的数量."""
 
     def test_chain_max_edges(self):
-        """[金标准] chain --max-edges 10 限制图大小"""
+        """[金标准] chain --max-edges 5 限制图大小 (uses wrapper_chain fixture)"""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".dot", delete=False) as f:
             dot_path = f.name
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "-f", DOT11_TX,
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
                 "--no-strict",
-                "--target", "dot11_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "5",
                 "--dot", dot_path,
@@ -192,8 +194,8 @@ class TestChainSubModuleClusters(unittest.TestCase):
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "--filelist=/tmp/openofdm_tx.f",
-                "--target", "openofdm_tx",
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
                 "--no-strict",
@@ -222,8 +224,8 @@ class TestChainSubModuleClusters(unittest.TestCase):
         try:
             result = _run_svq([
                 "visualize", "chain",
-                "--filelist=/tmp/openofdm_tx.f",
-                "--target", "openofdm_tx",
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
                 "--no-strict",
@@ -231,26 +233,27 @@ class TestChainSubModuleClusters(unittest.TestCase):
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
-            # [FIX 验证] 应该看到完整 hierarchy path in node IDs (underscore version
-            # 因为 _sanitize_dot_id_chain 转换). e.g. "openofdm_tx_dot11_tx_ifft64_*"
+            # [FIX 验证] 应该看到完整 hierarchy path in node IDs.
+            # wrapper_chain fixture: chain paths should be wrapped in "wrapper_chain" cluster
+            # with full ID like wrapper_chain_inner_proc_dut_data_i (not flattened inner_proc.data_i).
             self.assertIn(
-                "openofdm_tx_dot11_tx",
+                "wrapper_chain",
                 content,
-                f"No hierarchy path (openofdm_tx_dot11_tx) in DOT — likely still flattened:\n{content[:1000]}"
+                f"No hierarchy path (wrapper_chain) in DOT:\n{content[:1000]}"
             )
-            # [FIX 验证] 不应该有 "External sub-modules" cluster (因为所有 signal
-            # 都有完整 path, 都被归到正常 cluster)
-            self.assertNotIn(
-                "External sub-modules",
+            # Should have full path with sub-instance: wrapper_chain_inner_proc_dut_*
+            self.assertIn(
+                "wrapper_chain_inner_proc_dut",
                 content,
-                f"Should not have 'External sub-modules' cluster (root cause fixed):\n{content[:500]}"
+                f"No sub-instance path (wrapper_chain_inner_proc_dut) in DOT — likely still flattened:\n{content[:1000]}"
             )
-            # 不应该有短名 (flattened) signal - bitreverse.i_clk 应当有完整前缀
-            # bitreverse 不再作为短名 prefix 出现 (作为 standalone node)
+            # Should NOT have a flat "inner_proc_dut" node ID WITHOUT wrapper_chain prefix.
+            # Cluster label "inner_proc_dut" is allowed; node ID like "wrapper_chain_X" required.
+            # Use negative lookbehind: not preceded by wrapper_chain_.
             self.assertNotRegex(
                 content,
-                r'"\s*bitreverse_\w+"',  # 短名形式如 bitreverse_i_clk
-                f"Found flattened bitreverse.* node (root cause not fixed):\n{content[:1000]}"
+                r'"\s*(?<!wrapper_chain_)inner_proc_dut_\w+"',
+                f"Found flattened inner_proc_dut_ node (root cause not fixed):\n{content[:1000]}"
             )
         finally:
             Path(dot_path).unlink(missing_ok=True)
@@ -265,9 +268,9 @@ class TestChainSubModuleClusters(unittest.TestCase):
             # Use filelist mode for richer paths (multi-file project)
             result = _run_svq([
                 "visualize", "chain",
-                "--filelist=/tmp/openofdm_tx.f",
+                "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
                 "--no-strict",
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
                 "--dot", dot_path,
@@ -297,7 +300,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
 
     def _run_chain_dot(self, args, dot_path):
         """运行 sv_query visualize chain, 返回 DOT 文本."""
-        full_args = ["visualize", "chain", "--filelist=/tmp/openofdm_tx.f", "--no-strict"] + args + ["--dot", dot_path]
+        full_args = ["visualize", "chain", "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f", "--no-strict"] + args + ["--dot", dot_path]
         result = _run_svq(full_args)
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}\nstdout: {result.stdout}")
         return Path(dot_path).read_text()
@@ -309,7 +312,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             dot_path = f.name
         try:
             content = self._run_chain_dot([
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
             ], dot_path)
@@ -331,7 +334,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             dot_path = f.name
         try:
             content = self._run_chain_dot([
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
             ], dot_path)
@@ -352,7 +355,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             dot_path = f.name
         try:
             content = self._run_chain_dot([
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
             ], dot_path)
@@ -372,7 +375,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             dot_path = f.name
         try:
             content = self._run_chain_dot([
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
             ], dot_path)
@@ -397,7 +400,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             dot_path = f.name
         try:
             content = self._run_chain_dot([
-                "--target", "openofdm_tx",
+                "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
             ], dot_path)

@@ -621,11 +621,18 @@ class GraphBuilder:
         added_edges = 0
         # 2. 对每个 module def port
         for def_port, inst_ports in reverse_ptt.items():
-            # 只处理 module def port (PORT_OUT, kind.name='PORT_OUT')
+            # [FIX 2026-07-16] 同时处理 PORT_OUT 和 PORT_IN.
+            # 之前只处理 PORT_OUT, 导致 wrapper input ports (PORT_IN) 的 wrapper passthrough
+            # edge (top.valid_i → wrapper inner.valid_i) 没建, chain/trace 跨 wrapper
+            # input 边界找不到 path.
+            # Edge 方向:
+            # - PORT_OUT: deep → inst_port (deep driver drives wrapper output)
+            # - PORT_IN:  inst_port → deep  (wrapper input drives inner deep port)
             def_node = self.graph._node_data.get(def_port)
-            if not def_node or def_node.kind.name != "PORT_OUT":
+            if not def_node or def_node.kind.name not in ("PORT_OUT", "PORT_IN"):
                 continue
-            logger.debug(f"_elab_wrapper: PROCESSING {def_port} (inst_ports={len(inst_ports)})")
+            is_input = def_node.kind.name == "PORT_IN"
+            logger.debug(f"_elab_wrapper: PROCESSING {def_port} (is_input={is_input}, inst_ports={len(inst_ports)})")
 
             # 检查 def_port 是否已经有 driver (避免重复加)
             has_driver = any(
@@ -673,23 +680,22 @@ class GraphBuilder:
                     deep_node = self.graph._node_data[node_id]
                     if deep_node.kind.name not in ("PORT_OUT", "PORT_IN"):
                         continue
-                    # 加 DRIVER 边: deep_port → def_port
-                    # 在 graph 上加边: deep_port 是实际 driver, def_port 是 wrapper module def
-                    # 但 trace 时, def_port 还需要追到 instance_port (via pti reverse)
-                    # 所以 trace 看到 def_port 时追到 inst_port (实际 signal = deep_port 的 inst scope)
-                    # 加边: deep_port → inst_port (在 inst 内部)
-                    # 这样 trace: top → inst_port → wrapper_def_port (DRIVER 边) → deep_port (DRIVER 边) → leaf
-                    # 注意: ConnectionExtractor 可能已加 CONNECTION 边 (assign_type=connection) for 同一 (src,dst).
-                    # 这里加 DRIVER 边 (assign_type=wrapper_passthrough). 二者不冲突.
+                    # Edge 方向根据 input/output:
+                    # - PORT_OUT: deep → inst_port (deep driver drives wrapper output)
+                    # - PORT_IN:  inst_port → deep  (wrapper input drives inner deep port)
+                    edge_src = inst_port if is_input else deep_node.id
+                    edge_dst = deep_node.id if is_input else inst_port
+                    # 加 DRIVER 边 wrapper_passthrough.
+                    # 注意: ConnectionExtractor 可能已加 CONNECTION 边 for 同一 (src,dst). 这里加 DRIVER 边. 二者不冲突.
                     from .graph.models import TraceEdge
                     already_has_driver = any(
                         e.kind == EdgeKind.DRIVER
-                        for e in self.graph._edge_data.get((deep_node.id, inst_port), [])
+                        for e in self.graph._edge_data.get((edge_src, edge_dst), [])
                     )
                     if not already_has_driver:
                         self.graph.add_trace_edge(TraceEdge(
-                            src=deep_node.id,
-                            dst=inst_port,
+                            src=edge_src,
+                            dst=edge_dst,
                             kind=EdgeKind.DRIVER,
                             assign_type="wrapper_passthrough",
                         ))

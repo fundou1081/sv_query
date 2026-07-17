@@ -466,7 +466,11 @@ def chain(
             strict=strict,
             include_dirs=include_dirs,
         )
-        graph = tracer.build_graph()
+        # [FIX 2026-07-17] Pass target_module to build_graph if provided.
+        # Without this, default top module is auto-detected first top instance —
+        # not user-specified target. Chain/trace commands expect user-specified
+        # target_namespace.
+        graph = tracer.build_graph(target_module=target if target else None)
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
