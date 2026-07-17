@@ -31,6 +31,12 @@ from trace.core.graph.signal_graph_viewer import SignalGraphViewer
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
+# [Phase B 2026-07-17] 共享 viz 子命令的 typer options + build_viz_tracer helper
+from cli._viz_common import (
+    FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, STRICT_OPTION,
+    build_viz_tracer, get_viz_sources,
+)
+
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
 
@@ -167,8 +173,10 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
         typer.echo(f"✓ {sub}: {out_path} ({len(sub_nodes)} nodes)", err=True)
 @vis_app.command(name="graph")
 def graph(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
     mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file"),
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
@@ -184,32 +192,24 @@ def graph(
     cache: bool = typer.Option(
         False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"
     ),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): raise on elaboration error. Use --no-strict 优雅降级存部分图 (供分析不完整项目如 NaplesPU/OpenTitan)"),
 ) -> None:
     """可视化信号图（包含数据流关系）
 
     [ADD 2026-06-11 Req-9] --file 或 --filelist 二选一, 走 _build_tracer 统一 helper.
-    """
-    from cli._common import _build_tracer, handle_compilation_error
-    from trace.core.compiler import CompilationError
 
-    if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
+    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared FILE_OPTION etc.
+    """
+    from trace.core.compiler import CompilationError
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer, get_viz_sources
 
     try:
-        include_dirs = include.split(",") if include else None
-        tracer = _build_tracer(
-            file=Path(file) if file else None,
-            filelist=filelist,
-            strict=strict,
-            include_dirs=include_dirs,
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, use_cache=cache,
         )
-        graph = tracer.build_graph(use_cache=cache)
-        # SVA/Covergroup 提取
-        sources_for_extractors = tracer._sources
+        sources_for_extractors = get_viz_sources(tracer, file, filelist)
         sva = SVAExtractor(sources_for_extractors).extract()
         cov_list = CovergroupExtractor(sources_for_extractors).extract()
     except CompilationError as e:
@@ -261,12 +261,12 @@ def graph(
 
 @vis_app.command(name="dataflow")
 def dataflow(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file (or prefix when --split-by-module)"),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module (filter edges to this module's signals)"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
+    strict: bool = STRICT_OPTION,
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file (or prefix when --split-by-module)"),
     include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
     split_by_module: bool = typer.Option(False, "--split-by-module", help="[Phase 6.1 2026-07-12] Generate one DOT per sub-instance (e.g. darksocv.bridge0). Output: <prefix>_<sub>.dot"),
 ) -> None:
@@ -279,26 +279,21 @@ def dataflow(
     - 寄存器: 粗边框
 
     [Phase 6.1] Use --split-by-module to split into per-instance DOTs when graph is large.
+
+    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
     from trace.core.compiler import CompilationError
-    from cli._common import _build_tracer, handle_compilation_error
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer
 
-    if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
-
-    include_dirs = include.split(",") if include else None
     try:
-        tracer = _build_tracer(
-            file=Path(file) if file else None,
-            filelist=filelist,
-            strict=strict,
-            include_dirs=include_dirs,
-        )
         # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
-        graph = tracer.build_graph(target_module=module)
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=module,
+        )
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
@@ -324,12 +319,12 @@ def dataflow(
 
 @vis_app.command(name="pipeline")
 def pipeline(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default False, use --strict for partial AST)"),
+    strict: bool = STRICT_OPTION,
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
     max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
     max_control_nodes: int = typer.Option(12, "--max-control-nodes", help="[P0 fix 2026-07-17] Max control signals in header row (default 12, was 8). 0 = hide all."),
     unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
@@ -347,26 +342,21 @@ def pipeline(
 
     [P0 fix 2026-07-10] 控制节点不再堆成 31k PNG, 默认限制每 stage 8 个组合节点 +
     控制信号区最多 30 个节点。用 --max-control-nodes 0 隐藏控制信号区。
+
+    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot, generate_pipeline_timing_dot, generate_pipeline_load_dot
     from trace.core.compiler import CompilationError
-    from cli._common import _build_tracer, handle_compilation_error
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer
 
-    if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
-
-    include_dirs = include.split(",") if include else None
     try:
-        tracer = _build_tracer(
-            file=Path(file) if file else None,
-            filelist=filelist,
-            strict=strict,
-            include_dirs=include_dirs,
-        )
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
-        graph = tracer.build_graph(target_module=module)
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=module,
+        )
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
@@ -416,10 +406,11 @@ def gap(
 # ==============================================================================
 @vis_app.command(name="chain")
 def chain(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
     target: str = typer.Option(None, "--target", "-t", help="Target module (focus scope)"),
+    strict: bool = STRICT_OPTION,
     from_signals: list[str] = typer.Option([], "--from", help="Source signal(s) (e.g. dot11_tx.phy_tx_start). Can pass multiple."),
     to_signals: list[str] = typer.Option([], "--to", help="Target signal(s) (e.g. dot11_tx.result_i). Can pass multiple."),
     auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports → output ports paths in --target module"),
@@ -430,7 +421,6 @@ def chain(
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
     png_output: str = typer.Option(None, "--png", help="Output PNG file (auto-call <engine> -Tpng)"),
     svg_output: str = typer.Option(None, "--svg", help="Output SVG file (auto-call <engine> -Tsvg)"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict)"),
 ) -> None:
     """[Plan B+ 2026-07-08] 从 input 到 output 画 data path, 方形 layout.
 
@@ -446,31 +436,23 @@ def chain(
       sv_query visualize chain -f dot11_tx.v --no-strict \\
         --target dot11_tx --auto --max-edges 20 \\
         --layout LR --layout-engine neato --png /tmp/chain.png
+
+    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.compiler import CompilationError
-    from cli._common import _build_tracer, handle_compilation_error
-
-    if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer
 
     if not auto and (not from_signals or not to_signals):
         typer.echo("Error: need --from and --to, OR --auto with --target", err=True)
         raise typer.Exit(code=1)
 
-    include_dirs = include.split(",") if include else None
     try:
-        tracer = _build_tracer(
-            file=Path(file) if file else None,
-            filelist=filelist,
-            strict=strict,
-            include_dirs=include_dirs,
-        )
         # [FIX 2026-07-17] Pass target_module to build_graph if provided.
-        # Without this, default top module is auto-detected first top instance —
-        # not user-specified target. Chain/trace commands expect user-specified
-        # target_namespace.
-        graph = tracer.build_graph(target_module=target if target else None)
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=target if target else None,
+        )
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
@@ -1492,9 +1474,10 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
 
 @vis_app.command(name="module")
 def module(
-    file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
-    include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    strict: bool = STRICT_OPTION,
     target: str = typer.Option(
         "top", "--target", "-t",
         help="Target module name to visualize (e.g. axi_xbar_intf)",
@@ -1523,12 +1506,15 @@ def module(
         500, "--max-edges",
         help="[PR4] Maximum cross-instance edges to show",
     ),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default non-strict)"),
 ) -> None:
     """[PR1+PR4 2026-06-15] L1 module-level + L2 cross-instance port visualization.
 
     1 box = 1 sub-module instance. PR4 加 instance-to-instance port 边 (MIG).
     用于项目架构 review.
+
+    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
+    [Phase B] Module 命令不走 build_viz_tracer 因为它需要 AST path (semantic_adapter)
+    不是单纯 graph. 直接用 UnifiedTracer 构造, 保留原有的二进制垃圾-safe except.
     """
     from trace.core.module_extractor import (
         extract_module_from_graph,
