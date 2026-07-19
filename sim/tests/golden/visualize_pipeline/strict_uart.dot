@@ -12,7 +12,7 @@ digraph pipeline {
 
   // === Control signals header row (top, color-coded by target stage) ===
   subgraph cluster_control_header {
-    label="Control Signals (7 total, showing 7)";
+    label="Control Signals (5 total, showing 5)";
     style="rounded,filled";
     fillcolor="#fff5e6";
     color="#cc8844";
@@ -23,12 +23,10 @@ digraph pipeline {
     "synchronizer.sync1" [label="sync1\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
     "uart_top.rx_ready_o" [label="rx_ready_o\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
     "sync_fifo.wr_ptr_q" [label="wr_ptr_q\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
-    "0" [label="0\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
-    "1" [label="1\n→S0" shape=box style="rounded,filled" fillcolor="#cc6633" fontcolor="white" penwidth=1.5 fontsize=9];
   }
 
   // === TL;DR ===
-  TLDR [shape=plaintext, label="2 pipeline regs · 3 state regs · 2 stages · control shown: 7/7",
+  TLDR [shape=plaintext, label="2 pipeline regs · 3 state regs · 2 stages · control shown: 5/5",
         fontsize=12, fontcolor="#664400",
         fillcolor="#fffbe6", style="rounded,filled",
         margin=0.1];
@@ -37,7 +35,7 @@ digraph pipeline {
     style=dashed;
     color="#226699";
     fontsize=11;
-    "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" [label="mem[Expression(ExpressionKind.NamedValue)]\nREG\\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
+    "sync_fifo.mem[<expr>]" [label="mem[<expr>]\nREG\\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" fontcolor="white" penwidth=2.5];
     "sync_fifo.pop_data_o" [label="pop_data_o\
 8bit" shape=box style="rounded,filled" fillcolor="#88bbdd" fontcolor="white" penwidth=1];
   }
@@ -51,9 +49,22 @@ digraph pipeline {
   }
 
   // === Data edges (stage → stage) ===
-  "sync_fifo.mem[Expression(ExpressionKind.NamedValue)]" -> "sync_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="mem[Expression(Expre" fontsize=8];
+  "sync_fifo.mem[<expr>]" -> "sync_fifo.pop_data_o" [color="#226699" penwidth=1.5 label="mem[<expr>]" fontsize=8];
 
   // === Control edges (dashed, color-matched to target stage) ===
+
+  // === State Registers (FSM/state machine regs) ===
+  subgraph cluster_state_regs {
+    label="State Registers (3 total, showing 3)";
+    style="rounded,filled";
+    fillcolor="#fff4e6";
+    color="#cc8844";
+    fontsize=10;
+    rank=max;
+    "sync_fifo.count_q" [label="count_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5 fontsize=9];
+    "sync_fifo.wr_ptr_q" [label="wr_ptr_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5 fontsize=9];
+    "sync_fifo.rd_ptr_q" [label="rd_ptr_q\nREG\n0bit" shape=box style="rounded,filled" fillcolor="#cc8844" fontcolor="white" penwidth=1.5 fontsize=9];
+  }
 
   // === Legend ===
   subgraph cluster_legend {

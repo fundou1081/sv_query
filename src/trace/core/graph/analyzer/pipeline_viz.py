@@ -600,7 +600,13 @@ def generate_pipeline_dot(
                     edges = graph.get_edges(reg_id, succ)
                     for e in edges:
                         if e.kind == EdgeKind.DRIVER:
-                            label = e.expression[:20] if e.expression and e.expression != "?" else ""
+                            # [V5 2026-07-19] Sanitize expression BEFORE truncation.
+                            # Without this, `imem[Expression(ExpressionKind.NamedValue)]`
+                            # is truncated at 20 chars to `imem[Expression(Expr`
+                            # — visually broken. After sanitize: `imem[<expr>]` is
+                            # already short and meaningful.
+                            expr = sanitize_dot_id(e.expression) if e.expression and e.expression != "?" else ""
+                            label = expr[:24]
                             lines.append(f'  "{_sid(reg_id)}" -> "{_sid(succ)}" [color="#226699" penwidth=1.5 label="{label}" fontsize=8];')
 
     lines.append('')
