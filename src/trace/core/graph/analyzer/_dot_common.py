@@ -22,16 +22,31 @@ from .signal_classifier import (
 from ..models import SignalGraph
 
 
+import re
+
+# [V5 2026-07-19] 用户反馈: "graph 里要有信号名". pyslang 在拿 array
+# 表达式里的索引名 (例如 generate-for 里的变量) 时, 会返回 AST 节点的
+# py_obj.__repr__, 而不是名字. 表现是: `imem[Expression(ExpressionKind.NamedValue)]`.
+# 这种字符串进入 graph 会污染信号名读性.
+# 修复: 检测并收缩为 `<expr>` 占位.
+AST_INDEX_BAD_RE = re.compile(r"Expression\(ExpressionKind\.\w+\)")
+
+
 def sanitize_dot_id(node_id: str) -> str:
     """[P1-5 2026-06-13] 统一 sanitize: 替换 dataflow_viz + pipeline_viz 两份。
 
     清理策略:
       1. 过滤 control chars (< 0x20) 和 non-ASCII (> 0x7E)
       2. 移除 DOT 特殊字符 (", {, }, \\)
-      3. 空字符串时返回 _node_<hash> 占位
+      3. [V5 2026-07-19] 检测并收缩 pyslang AST 占位
+         `Expression(ExpressionKind.NamedValue)` -> `<expr>`.
+      4. 空字符串时返回 _node_<hash> 占位
     """
     if not isinstance(node_id, str):
         node_id = str(node_id)
+    # [V5 2026-07-19] Replace pyslang AST placeholders with concise <expr>.
+    # e.g. 'imem[Expression(ExpressionKind.NamedValue)]' -> 'imem[<expr>]'
+    node_id = AST_INDEX_BAD_RE.sub("<expr>", node_id)
     safe = ''.join(c for c in node_id if 0x20 <= ord(c) < 0x7F)
     safe = safe.replace('"', '').replace('{', '').replace('}', '').replace('\\', '').strip()
     return safe if safe else f"_node_{(hash(node_id) & 0xFFFF):04x}"
