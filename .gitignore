@@ -12,3 +12,4 @@ build/
 # macOS
 .DS_Store
 sim/tests/integration/_debug_case_rhs.py
+.tmp/
