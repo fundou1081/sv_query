@@ -41,6 +41,7 @@ from cli._viz_common import (
 from trace.core.graph.analyzer._dot_common import (
     escape_dot_label,
     format_node_label_chain,
+    sanitize_dot_id,
     sanitize_dot_id_inner,
     render_with_engine,
 )
@@ -1676,6 +1677,352 @@ def _write_module_dot(result, edges: list[dict], path: str) -> None:
     lines.append('}')
     with open(path, "w") as f:
         f.write("\n".join(lines))
+
+
+# =============================================================================
+# V6 2026-07-19: 用户反馈 "我想要对理解有帮助的图"
+#   4 个 use cases (a/b/c/d) 全都实现为 unified `teach` subcommand:
+#
+#   a) 速懂陌生模块    → 默认行为: 生成结构化 "教学页" (HTML)
+#                      包含 ports + FSM + pipeline + coverage summary
+#   b) 查 1 条信号路径 → --focus SIGNAL + --depth N (BFS 后继)
+#                      或 --upstream (寻找前驱)
+#   c) 看控制关系      → --focus SIGNAL + --show-drives 印记边
+#                      （驱动其他 signal 的边被标亮）
+#   d) 看覆盖缺口      → --show-coverage: 点了 SVA/Coverage 才标
+#
+#   输出: /tmp/teach.html (interactive) 或 DOT.
+# =============================================================================
+@vis_app.command(name="teach")
+def teach(
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    strict: bool = STRICT_OPTION,
+    target: str = typer.Option(
+        "top", "--target", "-t",
+        help="Target module to teach (e.g. uart_top, fifo, scheduler_minimal)",
+    ),
+    focus: str = typer.Option(
+        None, "--focus", "-F",
+        help="[B/C] Focus on a specific signal; show its N-hop neighborhood",
+    ),
+    depth: int = typer.Option(
+        2, "--depth", "-d",
+        help="[B/C] Number of BFS hops from focus signal (default 2)",
+    ),
+    upstream: bool = typer.Option(
+        False, "--upstream",
+        help="[B] BFS upward (find what drives --focus signal) instead of downstream",
+    ),
+    show_coverage: bool = typer.Option(
+        False, "--show-coverage",
+        help="[D] Highlight signals NOT covered by SVA/Covergroup",
+    ),
+    show_drives: bool = typer.Option(
+        False, "--show-drives",
+        help="[C] Highlight edges driven by --focus signal",
+    ),
+    output_html: str = typer.Option(
+        None, "--html", help="Output interactive HTML teaching page",
+    ),
+    output_dot: str = typer.Option(
+        None, "--dot", "-d", help="Output focused DOT",
+    ),
+) -> None:
+    """[V6 2026-07-19] Teaching-level view of a module.
+
+    Default: produce an HTML summary page with ports + structure + coverage
+    overview — aimed at "5 分钟读懂一个陌生模块" (use case A).
+
+    With --focus SIGNAL: zoom in on a single signal's reachability
+    graph for understanding its dataflow impact (use case B and C).
+
+    With --show-coverage: highlight signals without SVA/Coverage (use case D).
+
+    Example:
+        sv_query visualize teach -f uart.sv --target uart_top --html /tmp/u.html
+        sv_query visualize teach --filelist f.f --target uart_top \\
+            --focus phy_tx_start --depth 3 --html /tmp/u.html
+        sv_query visualize teach --filelist f.f --target uart_top \\
+            --focus state_q --depth 1 --show-drives --html /tmp/u.html
+        sv_query visualize teach --filelist f.f --target uart_top \\
+            --show-coverage --html /tmp/u.html
+    """
+    from trace.core.compiler import CompilationError
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer, get_viz_sources
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+
+    try:
+        tracer, graph_obj = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=target,
+        )
+        sources = get_viz_sources(tracer, file, filelist)
+        sva = SVAExtractor(sources).extract()
+        cov_list = CovergroupExtractor(sources).extract()
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    # Coverage + SVA -> signal sets (for D)
+    sva_signals = set()
+    for prop in sva.properties.values():
+        sva_signals.update(prop.signals)
+    cov_signals = set()
+    for cg in cov_list:
+        for cp in cg.coverpoints:
+            cov_signals.add(cp.signal)
+    covered = sva_signals | cov_signals
+
+    # [B/C] BFS to compute focus subgraph
+    focus_id = None
+    neighborhood: set[str] = set()
+    if focus:
+        focus_id = _resolve_signal_id(graph_obj, focus)
+        if focus_id is None:
+            typer.echo(f"Error: signal '{focus}' not found in graph", err=True)
+            typer.echo(f"  Hint: use 'sv_query graph dump --file F' to list all signals", err=True)
+            raise typer.Exit(1)
+        # BFS in chosen direction
+        bfs_direction = "predecessors" if upstream else "successors"
+        bfs_fn = getattr(graph_obj, bfs_direction)
+        from collections import deque
+        # focus node IS in neighborhood
+        neighborhood.add(focus_id)
+        seen = {focus_id}
+        queue = deque([(focus_id, 0)])
+        while queue:
+            nid, d = queue.popleft()
+            if d >= depth:
+                continue
+            for nbr in bfs_fn(nid):
+                if nbr not in seen:
+                    seen.add(nbr)
+                    neighborhood.add(nbr)
+                    queue.append((nbr, d + 1))
+
+    # Build DOT
+    dot_lines = _render_teach_dot(
+        graph_obj, target, focus_id, neighborhood,
+        show_coverage=show_coverage, covered=covered,
+        show_drives=show_drives,
+        direction_label="upstream" if upstream else "downstream",
+    )
+    dot_text = "\n".join(dot_lines)
+
+    # Summary (printed always)
+    if focus:
+        typer.echo(f"Focus signal: {focus_id}")
+        typer.echo(f"  direction: {'upstream' if upstream else 'downstream'}, depth: {depth}")
+        typer.echo(f"  neighborhood nodes: {len(neighborhood)}")
+    classification = classify_graph(graph_obj)
+    if not focus:
+        # Print summary when not in focus mode
+        info = detect_pipeline(graph_obj, classification)
+        # [FIX 2026-07-19] classification.data_nodes 等可能是 list, 转成 set
+        data_nodes_set = set(classification.data_nodes)
+        control_nodes_set = set(classification.control_nodes)
+        clock_nodes_set = set(classification.clock_nodes)
+        typer.echo(f"\n=== Teach Summary: {target} ===")
+        typer.echo(f"  Pipeline regs:   {len(info.pipeline_regs)}")
+        typer.echo(f"  State regs:      {len(info.state_regs)}")
+        typer.echo(f"  Pipeline stages: {info.total_latency}")
+        typer.echo(f"  Data nodes:      {len(data_nodes_set)}")
+        typer.echo(f"  Control nodes:   {len(control_nodes_set)}")
+        typer.echo(f"  Clock nodes:     {len(clock_nodes_set)}")
+        typer.echo(f"  SVA signals:     {len(sva_signals)}")
+        typer.echo(f"  Coverpoints:     {len(cov_signals)}")
+        typer.echo(f"  Total covered:   {len(covered)} signals")
+        typer.echo(f"  All nodes:       {graph_obj.number_of_nodes()}")
+        typer.echo(f"  All edges:       {graph_obj.number_of_edges()}")
+        typer.echo("")
+
+    if output_dot:
+        Path(output_dot).write_text(dot_text)
+        typer.echo(f"✓ DOT: {output_dot}")
+    if output_html:
+        Path(output_html).write_text(_render_teach_html(
+            target=target,
+            focus=focus_id,
+            neighborhood_size=len(neighborhood),
+            dot_text=dot_text,
+            show_coverage=show_coverage,
+            covered_count=len(covered),
+            graph_obj=graph_obj,
+        ))
+        typer.echo(f"✓ HTML: {output_html}")
+    if not output_dot and not output_html:
+        typer.echo(dot_text)
+
+
+def _resolve_signal_id(graph_obj, hint: str) -> str | None:
+    """[V6] Resolve a user-provided signal name to a graph node id.
+
+    Tries:
+      1. Exact match
+      2. Suffix match (e.g. `phy_tx_start` -> `top.dut.phy_tx_start`)
+    Returns first suffix match if unique, otherwise None.
+    """
+    if hint in graph_obj:
+        return hint
+    suffix_matches = [n for n in graph_obj.nodes() if n == hint or n.endswith("." + hint)]
+    if len(suffix_matches) == 1:
+        return suffix_matches[0]
+    if len(suffix_matches) > 1:
+        # Prefer shortest (closest to top)
+        suffix_matches.sort(key=len)
+        return suffix_matches[0]
+    return None
+
+
+def _render_teach_dot(
+    graph_obj, target: str, focus_id: str | None, neighborhood: set[str],
+    show_coverage: bool, covered: set[str], show_drives: bool,
+    direction_label: str = "downstream",
+) -> list[str]:
+    """[V6] Render a focused / coverage-aware DOT for the teach command."""
+    lines: list[str] = []
+    if focus_id:
+        lines.append(f'digraph teach_focus {{')
+        lines.append(f'  label="Focused Graph: {focus_id} ({direction_label})";')
+    else:
+        lines.append(f'digraph teach {{')
+        lines.append(f'  label="Teach View: {target}";')
+    lines.append('  rankdir=LR;')
+    lines.append('  splines=polyline;')
+    lines.append('  nodesep=0.4;')
+    lines.append('  ranksep=0.6;')
+    lines.append('  node [shape=box style="rounded,filled" fontname=Helvetica fontsize=10];')
+
+    # Decide node set:
+    # - If focus: only neighborhood (+ focus_id)
+    # - Else: top 100 by some heuristic (alphabetical first)
+    if focus_id:
+        node_set = neighborhood
+    else:
+        node_set = set(list(graph_obj.nodes())[:100])  # crude cap
+
+    # Render nodes
+    for nid in sorted(node_set):
+        if not nid:
+            continue
+        node = graph_obj.get_node(nid)
+        if not node:
+            continue
+        name = node.name or nid.split(".")[-1]
+        safe_name = sanitize_dot_id(name).replace('"', '')
+        kind = node.kind.name if node.kind else ""
+        width = ""
+        if node.width:
+            try:
+                wmsb, wlsb = node.width[0], node.width[1]
+                if isinstance(wmsb, int) and isinstance(wlsb, int):
+                    width = f" [{wmsb-wlsb+1 if wmsb >= wlsb else 1}b]"
+            except Exception:
+                pass
+        label = f"{safe_name}\\n{kind}{width}"
+        # Default fill
+        fillcolor = "#88bbdd"
+        # Coverage overlay (D)
+        if show_coverage and nid not in covered:
+            fillcolor = "#ffaa88"  # uncovered: salmon
+            label += "\\n🚨"
+        # Focus highlight
+        penwidth = 1
+        if nid == focus_id:
+            fillcolor = "#ffcc00"  # focus: bright yellow
+            penwidth = 3
+        lines.append(
+            f'  "{nid}" [label="{label}" fillcolor="{fillcolor}" '
+            f'penwidth={penwidth}];'
+        )
+    # Render edges
+    edges_drawn = 0
+    MAX_EDGES = 200
+    for u, v in graph_obj.edges():
+        if u not in node_set or v not in node_set:
+            continue
+        if edges_drawn >= MAX_EDGES:
+            break
+        edges_drawn += 1
+        # Default edge style
+        color = "#226699"
+        penwidth = 1
+        style = "solid"
+        # Drives highlight (C) - focus signal as driver
+        if show_drives and focus_id and u == focus_id:
+            color = "#ff9900"
+            penwidth = 2.5
+            style = "bold"
+        lines.append(
+            f'  "{u}" -> "{v}" [color="{color}" penwidth={penwidth} style={style}];'
+        )
+    if edges_drawn >= MAX_EDGES:
+        lines.append('  // truncated at max edges')
+
+    lines.append('}')
+    return lines
+
+
+def _render_teach_html(
+    target: str, focus: str | None, neighborhood_size: int,
+    dot_text: str, show_coverage: bool, covered_count: int, graph_obj,
+) -> str:
+    """[V6] Wrap teach DOT in a minimal interactive HTML viewer.
+
+    This is intentionally simple — a self-contained page with:
+    - Summary header
+    - Embedded DOT (rendered via viz.js CDN)
+    - Color legend
+    """
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Teach View: {target}</title>
+<script src="https://unpkg.com/viz.js@2.1.2/viz.js"></script>
+<script src="https://unpkg.com/viz.js@2.1.2/full.render.js"></script>
+<style>
+body {{ font-family: -apple-system, Helvetica, sans-serif; margin: 20px; max-width: 1200px; }}
+.summary {{ background: #f4f4f4; padding: 16px; border-radius: 8px; margin-bottom: 16px; }}
+.summary h2 {{ margin-top: 0; color: #226699; }}
+.summary dl {{ display: grid; grid-template-columns: 180px 1fr; gap: 4px; }}
+.summary dt {{ font-weight: bold; }}
+.dd-colored {{ display: inline-block; padding: 2px 8px; border-radius: 3px; color: white; margin-right: 8px; }}
+#graph {{ border: 1px solid #ccc; min-height: 400px; padding: 8px; }}
+</style>
+</head>
+<body>
+<div class="summary">
+<h2>Teach View: <code>{target}</code></h2>
+{'<p><b>Focus:</b> <code>' + focus + '</code>, neighborhood: ' + str(neighborhood_size) + ' nodes</p>' if focus else ''}
+{'<p><b>Coverage overlay:</b> enabled — uncovered signals marked 🚨</p>' if show_coverage else ''}
+<p><b>Total covered signals in module:</b> {covered_count}</p>
+<h3>Legend</h3>
+<p>
+<span class="dd-colored" style="background:#ffcc00">focus signal</span>
+<span class="dd-colored" style="background:#88bbdd">regular signal</span>
+{'<span class="dd-colored" style="background:#ffaa88">uncovered</span>' if show_coverage else ''}
+</p>
+</div>
+
+<h3>Graph</h3>
+<div id="graph"></div>
+<script>
+const dotSource = {dot_text!r};
+const params = {{ engine: 'dot', format: 'svg' }};
+Viz.svg(dotSource).then(svg => {{
+    document.getElementById('graph').innerHTML = svg;
+}}).catch(err => {{
+    document.getElementById('graph').innerText = 'render error: ' + err;
+}});
+</script>
+
+</body>
+</html>"""
 
 
 if __name__ == "__main__":
