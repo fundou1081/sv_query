@@ -1721,7 +1721,9 @@ def teach(
     ),
     show_drives: bool = typer.Option(
         False, "--show-drives",
-        help="[C] Highlight edges driven by --focus signal",
+        help="[C] Highlight edges driven by --focus signal "
+             "(limitations: combinational deps via `always @*` are NOT in graph; "
+             "if focus has 0 outgoing edges you'll see a comment in the DOT)",
     ),
     output_html: str = typer.Option(
         None, "--html", help="Output interactive HTML teaching page",
@@ -1915,21 +1917,21 @@ def _render_teach_dot(
         name = node.name or nid.split(".")[-1]
         safe_name = sanitize_dot_id(name).replace('"', '')
         kind = node.kind.name if node.kind else ""
-        width = ""
-        if node.width:
-            try:
-                wmsb, wlsb = node.width[0], node.width[1]
-                if isinstance(wmsb, int) and isinstance(wlsb, int):
-                    width = f" [{wmsb-wlsb+1 if wmsb >= wlsb else 1}b]"
-            except Exception:
-                pass
-        label = f"{safe_name}\\n{kind}{width}"
+        # [FIX V6.1 2026-07-20] Drop width display: node.width is unreliable
+        # for inferred register widths (clk declared 1-bit showed [2b]).
+        # Width labelling was Bug-3 root cause. Focus on kind+name only.
+        label = f"{safe_name}\\n{kind}"
         # Default fill
         fillcolor = "#88bbdd"
         # Coverage overlay (D)
-        if show_coverage and nid not in covered:
-            fillcolor = "#ffaa88"  # uncovered: salmon
-            label += "\\n🚨"
+        # [FIX V6.1 2026-07-20] covered set has short names ('state_q', 'sel')
+        # but nids are full hierarchy ('coverage_demo.state_q'). Match
+        # either the full nid or the suffix after last '.'.
+        if show_coverage:
+            short_name = nid.rsplit(".", 1)[-1]
+            if nid not in covered and short_name not in covered:
+                fillcolor = "#ffaa88"  # uncovered: salmon
+                label += "\\n🚨"
         # Focus highlight
         penwidth = 1
         if nid == focus_id:
@@ -1941,9 +1943,13 @@ def _render_teach_dot(
         )
     # Render edges
     edges_drawn = 0
+    edges_skipped_outside = 0
     MAX_EDGES = 200
     for u, v in graph_obj.edges():
         if u not in node_set or v not in node_set:
+            # Bug-1 fix: Tell user when their focus signal *should* have
+            # edges (outgoing) but they fall outside the depth window.
+            edges_skipped_outside += 1
             continue
         if edges_drawn >= MAX_EDGES:
             break
@@ -1962,6 +1968,18 @@ def _render_teach_dot(
         )
     if edges_drawn >= MAX_EDGES:
         lines.append('  // truncated at max edges')
+
+    # [FIX V6.1 2026-07-20] Bug-1 root cause acknowledgement: when a focus
+    # signal has NO outgoing edges (because combinational deps in `always @*`
+    # are not tracked by graph), print a comment in the DOT so user understands.
+    if focus_id and show_drives and edges_drawn == 0:
+        focus_node = graph_obj.get_node(focus_id)
+        if focus_node and graph_obj.out_degree(focus_id) == 0:
+            lines.append(
+                f'  // Note: {focus_id} has no graph successors.\n'
+                f'  // Combinational dependencies from this signal (via always @* blocks)\n'
+                f'  // are not captured in the dataflow graph. Use pipeline/ for state machines.'
+            )
 
     lines.append('}')
     return lines
