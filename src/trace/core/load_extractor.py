@@ -56,9 +56,12 @@ class LoadExtractor:
                         except (ValueError, TypeError):
                             lsb = 0
                         port_width = (msb, lsb)
+                    # [V6.2 2026-07-20] Capture source location for jump-to-source
+                    port_file, port_line, _, _ = self.adapter.get_source_location(port_decl)
                     result.nodes.append(
                         TraceNode(
-                            id=port_id, name=port_name, module=module_name, kind=kind, width=port_width, is_port=True
+                            id=port_id, name=port_name, module=module_name, kind=kind, width=port_width, is_port=True,
+                            file=port_file, line=port_line,
                         )
                     )
 

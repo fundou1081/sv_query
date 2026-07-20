@@ -1725,6 +1725,11 @@ def teach(
              "(limitations: combinational deps via `always @*` are NOT in graph; "
              "if focus has 0 outgoing edges you'll see a comment in the DOT)",
     ),
+    show_source: bool = typer.Option(
+        False, "--show-source",
+        help="[V6.2 2026-07-20] Annotate each node label with 'file:line' "
+             "so you can jump to that line in your editor (use the URL in HTML output)",
+    ),
     output_html: str = typer.Option(
         None, "--html", help="Output interactive HTML teaching page",
     ),
@@ -1811,6 +1816,7 @@ def teach(
         graph_obj, target, focus_id, neighborhood,
         show_coverage=show_coverage, covered=covered,
         show_drives=show_drives,
+        show_source=show_source,
         direction_label="upstream" if upstream else "downstream",
     )
     dot_text = "\n".join(dot_lines)
@@ -1883,6 +1889,7 @@ def _resolve_signal_id(graph_obj, hint: str) -> str | None:
 def _render_teach_dot(
     graph_obj, target: str, focus_id: str | None, neighborhood: set[str],
     show_coverage: bool, covered: set[str], show_drives: bool,
+    show_source: bool = False,
     direction_label: str = "downstream",
 ) -> list[str]:
     """[V6] Render a focused / coverage-aware DOT for the teach command."""
@@ -1921,6 +1928,16 @@ def _render_teach_dot(
         # for inferred register widths (clk declared 1-bit showed [2b]).
         # Width labelling was Bug-3 root cause. Focus on kind+name only.
         label = f"{safe_name}\\n{kind}"
+        # [V6.2 2026-07-20] Annotate with source location if requested.
+        # Makes the graph a "where to look next" tool — click a node,
+        # editor jumps to that file:line.
+        if show_source:
+            f = getattr(node, 'file', '') or ''
+            ln = getattr(node, 'line', 0) or 0
+            if f and ln > 0:
+                # Use short filename for readability
+                short_f = f.split("/")[-1]
+                label += f"\\n{short_f}:{ln}"
         # Default fill
         fillcolor = "#88bbdd"
         # Coverage overlay (D)
@@ -1939,7 +1956,9 @@ def _render_teach_dot(
             penwidth = 3
         lines.append(
             f'  "{nid}" [label="{label}" fillcolor="{fillcolor}" '
-            f'penwidth={penwidth}];'
+            f'penwidth={penwidth}'
+            + (f' tooltip="{getattr(node, "file", "")}:{getattr(node, "line", 0)}" URL="{getattr(node, "file", "")}#{getattr(node, "line", 0)}"' if show_source else '')
+            + '];'
         )
     # Render edges
     edges_drawn = 0

@@ -214,6 +214,18 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
             except Exception:
                 pass
 
+        # [V6.2 2026-07-20] Capture file:line for "open in editor" link.
+        # adapter.get_source_location uses SourceManager (faster than counting \n).
+        source_location = None
+        try:
+            if hasattr(self, 'adapter') and self.adapter is not None and \
+                    hasattr(self.adapter, 'get_source_location'):
+                loc_tuple = self.adapter.get_source_location(node)
+                if loc_tuple and len(loc_tuple) >= 2 and loc_tuple[0] and loc_tuple[1] > 0:
+                    source_location = (loc_tuple[0], loc_tuple[1])
+        except Exception:
+            pass
+
         # === Step 3: Extract primary signal (like visit()) ===
         primary = self.visit(node)
 
@@ -224,7 +236,8 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
             all_signals = self._extract_all_signals_fallback(node)
 
         return SignalResult(
-            primary=primary, all_signals=all_signals, kind_name=kind_name, op_name=op_name, source_range=source_range
+            primary=primary, all_signals=all_signals, kind_name=kind_name, op_name=op_name,
+            source_range=source_range, source_location=source_location,
         )
 
     def _extract_all_signals_fallback(self, node) -> list[str]:
