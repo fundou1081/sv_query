@@ -374,18 +374,22 @@ class SVAExtractor:
             operators.extend(ops)
 
         # 提取信号
+        # [FIX V6.1 2026-07-20] Recurse into ALL non-Token children.
+        # Previous logic skipped system function calls ($changed(x), $rose(x)).
+        # Bug-2 root cause: $changed(state_q) had no recursion path because
+        # the SystemFunctionCall / ItsArgumentExpression kinds didn't match
+        # any of the explicit kind checks above.
         for child in self._iter_children(node):
             ck = str(getattr(child, "kind", ""))
+            if "Token" in ck:
+                continue  # Token: skip
             if "IdentifierName" in ck:
                 name = self._get_identifier_name(child)
                 if name and name not in ("clk", "clk_i"):
                     signals.append(name)
-            elif "PropertyExpr" in ck or "SequenceExpr" in ck or "SimpleProperty" in ck:
-                s, o = self._extract_property_expr(child)
-                signals.extend(s)
-                operators.extend(o)
-            elif "Expression" in ck or "Parenthesized" in ck or "Logical" in ck:
-                # 递归提取表达式中的信号
+            else:
+                # Recurse into all other constructs (system calls,
+                # parenthesized exprs, sequences, etc.)
                 s, o = self._extract_property_expr(child)
                 signals.extend(s)
                 operators.extend(o)
