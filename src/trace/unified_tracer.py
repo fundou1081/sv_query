@@ -491,6 +491,12 @@ class UnifiedTracer:
             self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
 
+            # [V6.2.1 2026-07-20] Backfill file/line for SIGNAL nodes that
+            # had them missing because DriverExtractor built TraceNodes
+            # without source-location args (~10 sites). Without this,
+            # --show-source only works for ports.
+            self._backfill_source_locations(semantic_adapter)
+
             # 保存到缓存
             if use_cache and self._sources:
                 from trace.core.cache import get_cache
@@ -907,6 +913,80 @@ class UnifiedTracer:
         self._module_tracer = ModuleTracer(self._graph)
         self._clock_tracer = ClockDomainTracer(self._graph)
         self._load_tracer = LoadTracer(self._graph)
+
+    def _backfill_source_locations(self, semantic_adapter) -> int:
+        """[V6.2.1 2026-07-20] Backfill file/line on nodes that lack it.
+
+        Drivers and extractors in driver_extractor.py / clock_domain_extractor.py /
+        load_extractor.py sometimes create TraceNode() directly without populating
+        the file/line fields. We do a final pass after build_graph() that walks
+        the semantic body directly (PortSymbol / NetSymbol / VariableSymbol),
+        uses semantic_adapter.get_source_location() to resolve real file/line
+        (which works through the symbol's .syntax + SourceManager), then maps
+        (module_name, signal_name) → (file, line) for graph nodes missing loc.
+
+        Returns: number of nodes updated
+        """
+        try:
+            decl_index: dict[tuple[str, str], tuple[str, int]] = {}
+
+            def _safe_name(sym) -> str:
+                try:
+                    n = sym.name
+                    if isinstance(n, bytes):
+                        try:
+                            return n.decode("utf-8", errors="replace")
+                        except Exception:
+                            return ""
+                    return str(n)
+                except Exception:
+                    return ""
+
+            # Iterate every module's semantic body. PortSymbol / NetSymbol /
+            # VariableSymbol all have .name and .syntax (so
+            # semantic_adapter.get_source_location() returns real file/line).
+            for module in semantic_adapter.get_modules():
+                module_name = semantic_adapter.get_module_name(module)
+                body = getattr(module, "body", None)
+                if body is None:
+                    continue
+                for member in body:
+                    sym_kind = str(getattr(member, "kind", ""))
+                    if not (sym_kind.endswith("Port") or sym_kind.endswith("Net")
+                            or sym_kind.endswith("Variable")):
+                        continue
+                    nm = _safe_name(member)
+                    if not nm:
+                        continue
+                    f, line, _, _ = semantic_adapter.get_source_location(member)
+                    if f and line > 0:
+                        decl_index[(module_name, nm)] = (f, line)
+
+            # Apply to graph nodes missing location
+            updated = 0
+            for nid in list(self._graph.nodes()):
+                node = self._graph.get_node(nid)
+                if not node or (node.file and node.line > 0):
+                    continue
+                mod_split = nid.split('.', 1)
+                if len(mod_split) != 2:
+                    continue
+                mod, rest = mod_split
+                # Try several sig variants: full, last segment, last w/ [n] stripped
+                candidates = [rest]
+                last = rest.split('.')[-1]
+                candidates.append(last)
+                if '[' in last:
+                    candidates.append(last.split('[')[0])
+                for cand in candidates:
+                    key = (mod, cand)
+                    if key in decl_index:
+                        node.file, node.line = decl_index[key]
+                        updated += 1
+                        break
+            return updated
+        except Exception:
+            return 0
 
     # =========================================================================
     # 状态机分析 API
