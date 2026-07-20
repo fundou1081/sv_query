@@ -33,6 +33,8 @@ class SignalResult:
         kind_name: ExpressionKind 名称 (如 'BinaryOp', 'NamedValue')
         op_name: 操作符名 (如 'Add', 'Subtract', 'And')
         source_range: 源码位置 ((line, col), (line, col))
+        source_location: [V6.2 2026-07-20] (file_path, line_number) — 这个 expression
+                        在哪个源码文件/行. 让用户能从图的 node 跳到 .sv:123.
     """
 
     # 核心结果
@@ -48,6 +50,8 @@ class SignalResult:
 
     # 位置信息
     source_range: tuple | None = None
+    # [V6.2 2026-07-20] Source location for "open in editor" link
+    source_location: tuple[str, int] | None = None
 
     def __post_init__(self):
         """去重 all_signals"""

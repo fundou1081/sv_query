@@ -698,12 +698,15 @@ class DriverExtractor:
                         expression=rhs_expr_str,
                     )
 
-    def _ensure_signal_node(self, result, node_id, name, module_name):
-        """[REFACTOR 2026-06-26] 确保 result.nodes 包含 node_id 的 SIGNAL TraceNode."""
+    def _ensure_signal_node(self, result, node_id, name, module_name, file: str = "", line: int = 0):
+        """[REFACTOR 2026-06-26] 确保 result.nodes 包含 node_id 的 SIGNAL TraceNode.
+        [V6.2 2026-07-20] Optional file/line for source-location annotations.
+        """
         if node_id in [n.id for n in result.nodes]:
             return
         result.nodes.append(
-            TraceNode(id=node_id, name=name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0))
+            TraceNode(id=node_id, name=name, module=module_name, kind=NodeKind.SIGNAL,
+                      width=(1, 0), file=file, line=line)
         )
 
     # [REFACTOR 2026-06-26 B-Phase 5] 抽 assign phase: 4 sub-method + dispatch

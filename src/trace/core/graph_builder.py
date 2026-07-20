@@ -335,6 +335,7 @@ class GraphBuilder:
                 if src_member_id not in self.graph.nodes():
                     src_node = self.graph.get_node(src_struct)
                     if src_node:
+                        # [V6.2 2026-07-20] Inherit file/line from parent struct node
                         self.graph.add_trace_node(
                             TraceNode(
                                 id=src_member_id,
@@ -342,12 +343,15 @@ class GraphBuilder:
                                 module=src_node.module,
                                 kind=NodeKind.SIGNAL,
                                 width=src_node.width,
+                                file=getattr(src_node, 'file', ''),
+                                line=getattr(src_node, 'line', 0),
                             )
                         )
 
                 if dst_member_id not in self.graph.nodes():
                     dst_node = self.graph.get_node(dst_struct)
                     if dst_node:
+                        # [V6.2 2026-07-20] Inherit file/line from parent struct node
                         self.graph.add_trace_node(
                             TraceNode(
                                 id=dst_member_id,
@@ -355,6 +359,8 @@ class GraphBuilder:
                                 module=dst_node.module,
                                 kind=NodeKind.SIGNAL,
                                 width=dst_node.width,
+                                file=getattr(dst_node, 'file', ''),
+                                line=getattr(dst_node, 'line', 0),
                             )
                         )
 
@@ -418,12 +424,15 @@ class GraphBuilder:
                 child_node = self.graph.get_node(child_id)
                 if child_node:
                     parent_name = re.sub(r"\[.*?\]", "", child_node.name)
+                    # [V6.2 2026-07-20] Inherit file/line from child (bit-select parent)
                     parent_node = TraceNode(
                         id=parent_id,
                         name=parent_name,
                         module=child_node.module,
                         kind=child_node.kind,
                         width=child_node.width,
+                        file=getattr(child_node, 'file', ''),
+                        line=getattr(child_node, 'line', 0),
                     )
                     self.graph.add_trace_node(parent_node)
 

@@ -55,9 +55,12 @@ class ClockDomainExtractor:
                         except (ValueError, TypeError):
                             lsb = 0
                         port_width = (msb, lsb)
+                    # [V6.2 2026-07-20] Capture source location for jump-to-source
+                    port_file, port_line, _, _ = self.adapter.get_source_location(port_decl)
                     result.nodes.append(
                         TraceNode(
-                            id=port_id, name=port_name, module=module_name, kind=kind, width=port_width, is_port=True
+                            id=port_id, name=port_name, module=module_name, kind=kind, width=port_width, is_port=True,
+                            file=port_file, line=port_line,
                         )
                     )
 
@@ -72,6 +75,9 @@ class ClockDomainExtractor:
                 is_reset = "rst" in port_name.lower()
 
                 if is_clock or is_reset:
+                    # [V6.2 2026-07-20] Capture source location for jump-to-source
+                    # port is a SemanticSymbol — call get_source_location on it
+                    port_file, port_line, _, _ = self.adapter.get_source_location(port)
                     result.nodes.append(
                         TraceNode(
                             id=f"{module_name}.{port_name}",
@@ -81,6 +87,8 @@ class ClockDomainExtractor:
                             width=(1, 0),
                             is_clock=is_clock,
                             is_reset=is_reset,
+                            file=port_file,
+                            line=port_line,
                         )
                     )
 
