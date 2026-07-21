@@ -96,6 +96,7 @@ class SignalGraphViewer:
                 "cover_marker": True,  # 覆盖状态标记
                 "show_type": True,  # 显示节点类型
                 "show_fan": True,  # 显示 fan-in/fan-out
+                "show_source": False,  # [V6.2.1 2026-07-20] 显示源码 file:line
             },
             "cluster_by": None,  # 'module', 'risk_level', 'cover_status', None
             "cluster_modules": True,  # 按模块聚类（跨模块边用虚线）
@@ -378,6 +379,15 @@ class SignalGraphViewer:
                 elif risk_score >= self.config["min_risk_for_highlight"]:
                     labels.append("🚨")
 
+            # 源码位置 — V6.2.1 2026-07-20
+            if self.config["node_style"]["show_source"]:
+                src_file = getattr(node, "file", "") or ""
+                src_line = getattr(node, "line", 0) or 0
+                if src_file and src_line > 0:
+                    # use basename to keep labels compact
+                    short_f = src_file.rsplit("/", 1)[-1] if "/" in src_file else src_file
+                    labels.append(f"{short_f}:{src_line}")
+
             # Escape DOT-special chars in label strings (handles ), \\n, quotes, etc.)
             def _dot_label_escape(s):
                 return (s.replace("\\", "\\\\").replace('"', '\\"')
@@ -410,8 +420,16 @@ class SignalGraphViewer:
                     safe_name = name_escaped
             node_name_map[node_id] = safe_name
 
+            # [V6.2.1 2026-07-20] 源码 tooltip/URL (click-to-open-in-editor)
+            src_attrs = ""
+            if self.config["node_style"]["show_source"]:
+                src_file = getattr(node, "file", "") or ""
+                src_line = getattr(node, "line", 0) or 0
+                if src_file and src_line > 0:
+                    src_attrs = f' tooltip="{src_file}:{src_line}" URL="{src_file}#{src_line}"'
+
             dot_lines.append(
-                f'    {safe_name}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"];'
+                f'    {safe_name}[label="{label_str}" shape={shape} fillcolor="{fillcolor}" color="{color}"]{src_attrs};'
             )
 
         dot_lines.append("")
