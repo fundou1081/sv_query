@@ -40,6 +40,7 @@ def generate_dataflow_dot(
     classification: SignalClassification | None = None,
     include_ports: bool = True,
     include_clk_rst: bool = False,
+    show_source: bool = False,
 ) -> str:
     _sid = sanitize_dot_id  # [P1-5] 用共享实现
     """生成数据流 DOT 图
@@ -155,10 +156,20 @@ def generate_dataflow_dot(
         # REG 加粗边框
         penwidth = 2 if node.kind == NodeKind.REG else 1
 
+        # [V6.2.1 2026-07-20] 源码 tooltip/URL (click-to-open-in-editor)
+        src_attrs = ""
+        if show_source:
+            src_file = getattr(node, "file", "") or ""
+            src_line = getattr(node, "line", 0) or 0
+            if src_file and src_line > 0:
+                short_f = src_file.rsplit("/", 1)[-1] if "/" in src_file else src_file
+                label = label + f"\\n{short_f}:{src_line}"
+                src_attrs = f' tooltip="{src_file}:{src_line}" URL="{src_file}#{src_line}"'
+
         lines.append(
             f'  "{_sid(node_id)}" [label="{label}" shape=box '
             f'style="rounded,filled" fillcolor="{fill}" color="{border}" '
-            f'fontcolor="{font}" penwidth={penwidth}];'
+            f'fontcolor="{font}" penwidth={penwidth}{src_attrs}];'
         )
 
     lines.append('')
