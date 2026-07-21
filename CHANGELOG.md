@@ -3,6 +3,49 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-07-19/20/21 (V6: 教学型可视化 + 源码溯源)
+
+### V6.0: `visualize teach` 子命令 (commit `8c099f2`)
+- 4 个 use case A/B/C/D 全实现:
+  - A: 速懂陌生模块 (HTML 概览页 — ports + FSM + pipeline + coverage)
+  - B: 查 1 条信号路径 (--focus SIGNAL + --depth N)
+  - C: 看控制关系 (--focus + --show-drives)
+  - D: 看覆盖缺口 (--show-coverage)
+
+### V6.1: 4 bug 修复 (commit `0c67f97`)
+- golden self-eval 发现 4 个问题, 修复 3 个 (coverage counter / width display / show-drives 语义)
+- VIZ_UNDERSTANDING_CRITERIA.md 评分卡片: 评分 5/10 → 7/10
+
+### V6.2 + V6.2.1: `--show-source` 源码溯源 (commits `1afbb9e`, `7904e8f`, `b85509c`, `ccb5969`)
+
+**问题**: 用户问"这条信号在哪里定义的?" 传统 viz 不告诉源码在哪.
+
+**V6.2 (1afbb9e)**: 给 `teach` 加 `--show-source`
+  - 每个节点 label 加上 `<file>:<line>` 后缀
+  - DOT 输出带 `tooltip=` + `URL=file.sv#line` 属性 (浏览器可点击跳转)
+  - 限制: 只对 port 节点生效, 内部 SIGNAL 节点 file/line 多为空
+
+**V6.2.1 (7904e8f)**: 在 `UnifiedTracer.build_graph()` 末尾加 `_backfill_source_locations()` pass
+  - 遍历 `module.body` 中所有 PortSymbol / NetSymbol / VariableSymbol
+  - 通过 `semantic_adapter.get_source_location(sym)` 拿真实 file/line (走 syntax.sourceRange + SourceManager)
+  - 在 graph 节点上 fill-in file/line
+  - **结果 (ventus Scheduler.v)**:
+    - V6.2: 72/283 (25%) 节点有 location
+    - V6.2.1: 278/283 (98%) 节点有 location (5 个剩余是 `4'b1` 这样的 CONST literals, 本就没源)
+  - **结果 (darkriscv)**: 26/172 (15%) → 142/172 (82%)
+
+**V6.2.1 (b85509c + ccb5969)**: `--show-source` 扩展到 `graph` 和 `dataflow` viz
+  - `cli/_viz_common.py`: 新增 `SHOW_SOURCE_OPTION` + `format_source_annotation()` + `render_source_tooltip_and_url()`
+  - `signal_graph_viewer.py` + `dataflow_viz.py`: 接受 `show_source` 参数, 在 label 后缀 + tooltip + URL 三个地方都启用
+
+**现在所有 3 个常用 viz 命令 (teach/graph/dataflow) 都能**:
+  - DOT label 显示 `name\nkind\nfile:line`
+  - DOT tooltip 显示完整 `file:line`
+  - DOT URL 让浏览器跳转到 `code -g file:line` 编辑器位置
+  - 浏览器 SVG viewer 直接点击节点跳源码
+
+**测试**: 5 backfill tests + 4 teach source tests + 3 graph source tests = 12 个新 tests 全过
+
 ## 2026-07-17/18 (Phase B Refactor)
 
 ### visualize 命令重构 (Phase B 2026-07-17)
