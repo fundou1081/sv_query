@@ -33,7 +33,7 @@ from trace.unified_tracer import UnifiedTracer
 
 # [Phase B 2026-07-17] 共享 viz 子命令的 typer options + build_viz_tracer helper
 from cli._viz_common import (
-    FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, STRICT_OPTION,
+    FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, STRICT_OPTION, SHOW_SOURCE_OPTION,
     build_viz_tracer, get_viz_sources,
 )
 
@@ -202,6 +202,7 @@ def graph(
         False, "--cache", help="Use cache for faster loading (skip re-parsing if file unchanged)"
     ),
     module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
+    show_source: bool = SHOW_SOURCE_OPTION,
 ) -> None:
     """可视化信号图（包含数据流关系）
 
@@ -252,6 +253,7 @@ def graph(
         cluster_modules=cluster_modules,
         layout_engine=layout_engine,
         module_only=module_only,
+        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True, "show_source": show_source},
     )
 
     if dot_output:
@@ -1241,6 +1243,7 @@ def _run_graph_visualization(
     sources=None,
     module_only=False,
     strict=True,
+    show_source=False,
 ):
     """可视化信号图（包含数据流关系）
 
@@ -1300,7 +1303,7 @@ def _run_graph_visualization(
         cluster_modules=cluster_modules,
         layout_engine=layout_engine,
         module_only=module_only,
-        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True},
+        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True, "show_source": show_source},
     )
 
     if dot_output:

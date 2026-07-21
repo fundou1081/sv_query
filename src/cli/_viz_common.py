@@ -53,6 +53,10 @@ STRICT_OPTION = typer.Option(
     True, "--strict/--no-strict",
     help="Strict mode (default): raise on elaboration error. Use --no-strict for partial AST.",
 )
+SHOW_SOURCE_OPTION = typer.Option(
+    False, "--show-source",
+    help="[V6.2 2026-07-20] Annotate each node with source file:line + clickable URL.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -113,3 +117,43 @@ def get_viz_sources(tracer, file: Optional[str], filelist: Optional[str]) -> dic
     if filelist:
         return tracer._get_compiler()._sources
     return tracer._sources
+
+
+def format_source_annotation(node, show_source: bool = False) -> str:
+    """[V6.2.1 2026-07-20] Render `file:line` suffix for a node, if available.
+
+    Returns an empty string if `show_source` is False OR if the node has
+    no file/line populated. Caller appends to the node label.
+
+    Args:
+        node: a TraceNode (must have .name, .file, .line attrs)
+        show_source: when True, return formatted source annotation.
+
+    Format: `<file>:<line>` if file is a string, else just `:line`.
+    Falls back to empty string if no source is available.
+    """
+    if not show_source:
+        return ""
+    if not getattr(node, "file", "") or getattr(node, "line", 0) == 0:
+        return ""
+    file = node.file or ""
+    line = node.line or 0
+    # If file is just a basename, show full basename
+    if "/" in file:
+        file = file.rsplit("/", 1)[-1]
+    return f"{file}:{line}"
+
+
+def render_source_tooltip_and_url(node) -> str:
+    """[V6.2.1 2026-07-20] Render the DOT tooltip + URL fragment for a node.
+
+    Returns a string like ` tooltip="foo.sv:42" URL="foo.sv#42"` (with leading
+    space), or empty string if node lacks source. Callers embed into DOT.
+
+    The URL is editor-friendly: `code -g file.sv:42` opens at line 42 in VSCode.
+    """
+    file = getattr(node, "file", "") or ""
+    line = getattr(node, "line", 0) or 0
+    if not file or line == 0:
+        return ""
+    return f' tooltip="{file}:{line}" URL="{file}#{line}"'
