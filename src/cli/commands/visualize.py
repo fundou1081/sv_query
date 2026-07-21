@@ -280,6 +280,7 @@ def dataflow(
     dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file (or prefix when --split-by-module)"),
     include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
     split_by_module: bool = typer.Option(False, "--split-by-module", help="[Phase 6.1 2026-07-12] Generate one DOT per sub-instance (e.g. darksocv.bridge0). Output: <prefix>_<sub>.dot"),
+    show_source: bool = SHOW_SOURCE_OPTION,
 ) -> None:
     """数据流图: 显示 data path (运算表达式) + 关键 control 边 (enable/valid/mux sel)
 
@@ -314,7 +315,7 @@ def dataflow(
     typer.echo(f"  Control nodes: {len(classification.control_nodes)}", err=True)
     typer.echo(f"  Clock nodes: {len(classification.clock_nodes)}", err=True)
 
-    dot = generate_dataflow_dot(graph, module or file or filelist or "", classification, include_clk_rst=include_clk_rst)
+    dot = generate_dataflow_dot(graph, module or file or filelist or "", classification, include_clk_rst=include_clk_rst, show_source=show_source)
 
     if dot_output:
         Path(dot_output).write_text(dot)
