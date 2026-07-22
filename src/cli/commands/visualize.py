@@ -1981,13 +1981,35 @@ def _render_teach_dot(
         color = "#226699"
         penwidth = 1
         style = "solid"
+        # [V6.3 2026-07-22] Edge condition label.
+        # For if/case/ternary the extractor stores the guarding condition
+        # on each driver edge (e.g. `sel` for `if(sel) y<=a`, `!sel` for else,
+        # `op == 2'd0` for case branches). Surface it as an edge label so the
+        # user can see *which condition activates each path* at a glance.
+        # Prefer `effective_condition` (already pruned to relevant signals)
+        # over the raw `condition` (may include the always-block guard).
+        edge_label = ""
+        try:
+            edge = graph_obj.get_edge(u, v)
+            if edge is not None:
+                cond = (getattr(edge, "effective_condition", "") or "").strip() \
+                    or (getattr(edge, "condition", "") or "").strip()
+                # Skip clock/reset-only edges — their "condition" is just the
+                # always-block guard (e.g. `sel`) and isn't a per-edge guard.
+                kind = getattr(edge, "kind", None)
+                kind_name = getattr(kind, "name", "") if kind else ""
+                if cond and kind_name == "DRIVER":
+                    edge_label = cond
+        except Exception:
+            edge_label = ""
         # Drives highlight (C) - focus signal as driver
         if show_drives and focus_id and u == focus_id:
             color = "#ff9900"
             penwidth = 2.5
             style = "bold"
+        label_attr = f' label="{edge_label}"' if edge_label else ''
         lines.append(
-            f'  "{u}" -> "{v}" [color="{color}" penwidth={penwidth} style={style}];'
+            f'  "{u}" -> "{v}" [color="{color}" penwidth={penwidth} style={style}{label_attr}];'
         )
     if edges_drawn >= MAX_EDGES:
         lines.append('  // truncated at max edges')
