@@ -51,6 +51,10 @@ python run_cli.py trace fanout -f sim/openTitan_validation.sv -s state_q
 
 # 跑 coverage 命令 (Phase 3 新加): 给一个信号自动生成 covergroup
 python run_cli.py coverage generate -f sim/openTitan_validation.sv -s data_o
+
+# V6+ 新: 跑 teach 命令: 5 分钟速懂模块 (4 个 use case A/B/C/D)
+python run_cli.py visualize teach -f sim/tests/fixtures/golden_mini/case_demo.sv \
+    --target case_demo --no-strict --focus y --upstream --depth 2 --show-source
 ```
 
 跑通了 = 你的环境 OK。
@@ -92,10 +96,10 @@ sv_query/
 │   └── coverage_gen_sv_compile.py   # [Phase 3 #C] SV 编译验证
 ├── sim/
 │   ├── tests/
-│   │   ├── unit/        # 1263 tests (最快, 单文件, 1-2s)
-│   │   ├── cli/         #   59 tests (CLI 端到端, 5-10s)
-│   │   ├── integration/ #  385 tests (跨模块 + 工业项目, 中等)
-│   │   └── regression/  #  708 tests (含 OpenTitan ascon 等大型工业项目, 慢)
+│   │   ├── unit/        # 1318 tests (最快, 单文件, 1-2s)
+│   │   ├── cli/         #  337 tests (CLI 端到端, 5-10s)
+│   │   ├── integration/ #  482 tests (跨模块 + 工业项目, 中等)
+│   │   └── regression/  #  713 tests (含 OpenTitan ascon 等大型工业项目, 慢)
 │   ├── openTitan_validation.sv      # 测试用 SV (含 8+ 子模块, 完整 SV 子集)
 │   ├── TEST_REPORT.md               # 自动生成的测试报告 (每次跑覆盖度更新)
 │   └── golden/coverage_gen_demo/    # Phase 1 golden baselines (3 工业项目)
@@ -232,15 +236,21 @@ python -m pytest sim/tests/ -q
 python -m pytest sim/tests/cli/test_coverage_generate.py -v
 ```
 
-### 4.2 测试统计 (截至 2026-06-24)
+### 4.2 测试统计 (截至 2026-07-25, V6.3+)
 
 | 类型 | 文件数 | tests | 速度 |
 |------|--------|-------|------|
-| `unit/` | 83 | 1,263 | 30s |
-| `cli/` | 7 | 59 | 5s |
-| `integration/` | 51 | 385 | 5min |
-| `regression/` | 88 | 708 | 15min |
-| **总计** | **229** | **2,415** | **~25min 全套** |
+| `unit/` | 80 | 1,318 | 30s |
+| `cli/` | 14 | 337 | 10s |
+| `integration/` | 51 | 482 | 5min |
+| `regression/` | 88 | 713 | 15min |
+| **总计** | **233** | **2,850** | **~25min 全套** |
+
+新增 (V6+):
+- `sim/tests/cli/test_visualize_teach_source.py` (4 tests, --show-source in teach)
+- `sim/tests/cli/test_visualize_graph_source.py` (3 tests, --show-source in graph)
+- `sim/tests/cli/test_visualize_teach_edge_condition.py` (4 tests, V6.3 edge condition labels)
+- `sim/tests/cli/test_backfill_source_locations.py` (5 tests, V6.2.1 file:line backfill)
 
 ### 4.3 工业项目测试
 

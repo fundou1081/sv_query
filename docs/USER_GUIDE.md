@@ -262,6 +262,45 @@ $HOME/module.sv
 
 ## 可视化
 
+> **参考**: 完整画图命令参考看 [docs/VIZ_COMMANDS.md](VIZ_COMMANDS.md) (V6.3+, 涵盖 7 个 `visualize.*` + `arch show` + 4 个 `* analyze` + `design show --graph`).
+> 本节仅讲用户最常用的子集.
+
+### 5 分钟速懂陌生模块 (`visualize teach`, V6.0+)
+
+`teach` 是 V6.0+ 教学视图, 4 个 use case (A/B/C/D) 一条命令应对:
+
+```bash
+# A) 概览 (HTML, 含端口 + FSM + pipeline + coverage summary)
+python run_cli.py visualize teach -f uart.sv -t uart_top --no-strict --html /tmp/u.html
+
+# B) 查某条信号被谁驱动 (--focus + --upstream)
+#    V6.3: 每条 DRIVER 边自动带 guard condition label, e.g. `sel` / `!sel` / `op == 2'd0`
+python run_cli.py visualize teach -f case_demo.sv --focus y --upstream --depth 2
+
+# C) 看控制关系 (--focus + --show-drives 标亮焦点驱动的边)
+python run_cli.py visualize teach -f fsm_demo.sv --focus state_q --show-drives --depth 2
+
+# D) 看覆盖缺口 (--show-coverage, 🚨)
+python run_cli.py visualize teach -f coverage_demo.sv --show-coverage
+```
+
+### 点击节点跳源码 (`--show-source`, V6.2+)
+
+3 个 viz 命令支持 `--show-source`: `teach` / `graph` / `dataflow`.
+
+```bash
+python run_cli.py visualize teach -f case_demo.sv --target case_demo \
+    --focus y --upstream --depth 2 --show-source --dot /tmp/y.dot
+
+# 渲染 (浏览器里点击节点跳到 `code -g case_demo.sv:2`):
+dot -Tsvg /tmp/y.dot -o /tmp/y.svg
+```
+
+DOT 节点会加:
+- `label="case_demo.d0\nPORT_IN\ncase_demo.sv:2"`
+- `tooltip="case_demo.sv:2"`
+- `URL="case_demo.sv#2"` (浏览器可点击)
+
 ### 生成图
 
 ```bash

@@ -46,6 +46,33 @@
 
 **测试**: 5 backfill tests + 4 teach source tests + 3 graph source tests = 12 个新 tests 全过
 
+### V6.3: `teach` 边加 guard condition label (commit `2c3183b`)
+
+**问题**: `--focus y --upstream` 画出的图能看 MUX 结构, 但**看不出哪条路是 if/case 的哪一支**. 用户问"if 里面没有条件信息".
+
+**解决**: `_render_teach_dot` 在每条 `DRIVER` 边自动带 `label=...`:
+  - `if (sel) y <= a; else y <= b;` → `a → y [label="sel"]`, `b → y [label="!sel"]`
+  - `case(op) 2'd0: y<=d0; ...` → `d0 → y [label="op == 2'd0"]`, `d3 → y [label="op == default"]`
+  - `assign y = sel ? a : b;` → `a → y [label="sel"]`, `b → y [label="!(sel)"]`
+
+**实现细节**:
+  - 优先用 raw `edge.condition` (含 `op == X` 完整形式), 兜底用 `effective_condition`
+  - 只在 `EdgeKind.DRIVER` 输出 label (CLOCK/ENABLE/RESET 的 condition 是 always-块守卫, 跳过)
+
+**测试**: 4 个新 tests (if_demo_then/case_demo_each/ternary_demo_inverted/clock_no_label) 全过
+
+### V6.3+1: 画图命令综合文档 (commit `cd8d032`)
+
+**新增**: `docs/VIZ_COMMANDS.md` (483 行, ~12 KB)
+
+**内容**:
+  - 全部 7 个 `visualize.*` 子命令 + `arch show` + 4 个 `* analyze` + `design show --graph`
+  - 每个命令: 一句话功能 + 什么时候用 + 真实示例 (golden_mini fixtures) + 输出特点 + 额外选项
+  - 实战选择指南 (10 种场景 → 推荐命令表)
+  - 所有示例都已在 commit `2c3183b` 上验证可跑
+
+**作用**: 让"我要画 X, 用哪个命令" 一查就到. 老 `docs/VISUALIZATION.md` 标记为 V5 era (只覆盖 visualize graph), 已加 deprecation 指针.
+
 ## 2026-07-17/18 (Phase B Refactor)
 
 ### visualize 命令重构 (Phase B 2026-07-17)

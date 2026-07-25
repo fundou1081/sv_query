@@ -1,5 +1,9 @@
 # 信号图可视化
 
+> ⚠️ **本文档为 V5 era (2026-07 之前), 只覆盖 `visualize graph` 子命令**.
+> V6.0+ 新增的 `visualize teach` + `--show-source` + edge condition labels 都没讲.
+> V6.3+ 完整画图命令参考看 [VIZ_COMMANDS.md](./VIZ_COMMANDS.md).
+
 **sv_query** 提供强大的信号图可视化功能，将信号间的数据流关系、风险等级、验证覆盖状态融为一体，生成可直接用于 code review 的报告图。
 
 ## 功能特性
