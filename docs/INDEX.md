@@ -145,6 +145,19 @@
 
 ---
 
+## 可视化 (V6+)
+
+| 文件 | 说明 |
+|------|------|
+| [VIZ_COMMANDS.md](./VIZ_COMMANDS.md) | **V6.3+ 完整画图命令参考** — 7 个 `visualize.*` + `arch show` + 4 个 `* analyze` + `design show --graph` (483 行, ~12 KB) |
+| [VIZ_DESIGN_SPEC.md](./VIZ_DESIGN_SPEC.md) | V6.0 `teach` 命令的设计 spec |
+| [VIZ_UNDERSTANDING_CRITERIA.md](./VIZ_UNDERSTANDING_CRITERIA.md) | V6 self-eval 评分卡 (v6 怎么算"有用") |
+| [VIZ_GOLDEN_PLAN.md](./VIZ_GOLDEN_PLAN.md) | V6.0 golden 测试计划 |
+| [ARCH_VISUALIZATION.md](./ARCH_VISUALIZATION.md) | `arch` 命令专属文档 (L1+L2) |
+| [VISUALIZATION.md](./VISUALIZATION.md) | **V5 era, 已过期** — 只覆盖 `visualize graph`. V6+ 看 [VIZ_COMMANDS.md](./VIZ_COMMANDS.md) |
+
+---
+
 ## 开发指南
 
 ### 重构与规范化
@@ -181,7 +194,7 @@
 | [DESIGN_COVERGROUP_EXTRACTION.md](./DESIGN_COVERGROUP_EXTRACTION.md) | Covergroup 结构化提取设计 |
 | [SPEC_UVM_TESTBENCH_EXTRACTOR.md](./SPEC_UVM_TESTBENCH_EXTRACTOR.md) | UVM Testbench Extractor 规格 |
 | [RISK_ANALYSIS.md](./RISK_ANALYSIS.md) | 风险分析 |
-| [VISUALIZATION.md](./VISUALIZATION.md) | 可视化 |
+| [VISUALIZATION.md](./VISUALIZATION.md) | 可视化 (V5 era, 只覆盖 `visualize graph`. V6+ 参考 [VIZ_COMMANDS.md](./VIZ_COMMANDS.md)) |
 
 ---
 

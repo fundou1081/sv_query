@@ -452,7 +452,7 @@ PYTHONPATH=src:tools python3 -m pytest \
   -v
 ```
 
-(应有 20+ tests 全过)
+(应有 48+ tests 全过)
 
 ---
 

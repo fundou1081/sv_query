@@ -5,7 +5,7 @@
 > **在 6 个开源项目上验证过**: CoralNPU 28 inst / **openwifi-hw openofdm_tx 31 inst (Wi-Fi 802.11 OFDM TX PHY)** / CVA6 31 ports / Vortex / SERV / darkriscv. Signal tracing + pipeline detection 实战见 [SIGNAL_TRACING_EXAMPLES.md](docs/SIGNAL_TRACING_EXAMPLES.md).
 > 新成员入门? 从 [CONTRIBUTING.md](CONTRIBUTING.md) 开始 — 5 分钟跑起来 + 30 分钟懂架构 + 加第一个 feature.
 
-[![Tests](https://img.shields.io/badge/tests-2400+_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-2855+_passing-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE_MIT)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
@@ -22,7 +22,7 @@
 - **大型项目支持**: Verilator 风格 filelist (`+incdir+`, `-F`, `${VAR}`), CVA6 / OpenTitan 级别 (162+ prim modules)
 - **架构可视化** ([`arch` 命令](docs/ARCH_VISUALIZATION.md)): 一键生成项目架构图, 含跨 module 端口连线
 - **工业项目跑通**: picorv32, OpenTitan, CVA6, NaplesPU, pulp axi 全部 strict mode 跑通
-- **2446 测试** (232 文件): 稳定可靠, 覆盖核心功能
+- **2855 测试** (232 文件): 稳定可靠, 覆盖核心功能
 
 ---
 
@@ -120,8 +120,9 @@ sv_query 21 个主命令**分 3 类**:
 ### ⭐ **主要功能 (Primary, 重点加强, 承诺稳定)** — 3 个 (v3 2026-07-04)
 - `dataflow analyze A B` — 看 A→B 数据流 + cycle latency + async crossing
 - `controlflow analyze <sig>` — 看 signal 的 if/case 条件
-- `visualize graph / dataflow / pipeline` — 画 DOT/Mermaid/HTML 图 (3 子命令真稳, 2 子命令 `gap`/`module` 修中)
+- `visualize graph / dataflow / pipeline / teach` — 画 DOT/Mermaid/HTML 图 (`teach` 是 V6.0+ 教学视图, 支持 4 个 use case: 速懂 / 查信号 / 控制关系 / 覆盖缺口)
 - (关联) `trace evidence <sig>` — 拿源码 1 秒
+- (关联) `visualize ... --show-source` — 节点加 `file:line` 标注, 浏览器点击跳源码 (V6.2+)
 
 **真稳验证**: 13 tests + 7 真项目 (sync_fifo / darkriscv / OpenTitan prim_arbiter_tree / prim_fifo_sync / CVA6 ALU / two_flop_sync) 100% 准.
 
@@ -184,12 +185,20 @@ sv_query trace fanin top.u_dff.q -f top.sv --max-depth=3
 ### L4: 可视化 — 一张图看尽数据流 + 风险 + 覆盖
 
 ```bash
-# 信号图 (数据流 + 风险 + 覆盖状态)
+# 速懂陌生模块 (V6.0+ `teach` 命令, 4 个 use case: A 概览 / B 查信号 / C 控制 / D 覆盖)
+sv_query visualize teach -f top.sv -t top --html /tmp/teach.html
+
+# 查某条信号被谁驱动 — 边带 guard condition (V6.3, 如 `sel` / `op == 2'd0`)
+sv_query visualize teach -f top.sv --focus top.y --upstream --depth 2 --show-source --dot /tmp/y_up.dot
+
+# 完整信号图 (数据流 + 风险 + 覆盖状态)
 sv_query visualize graph -f top.sv --dot /tmp/graph.dot --html /tmp/graph.html
 
 # 项目架构图 (跨 module 端口连线) — 5 个开源项目验证
 sv_query arch --filelist=project.f -t top --summary
 ```
+
+**完整画图命令参考**: [docs/VIZ_COMMANDS.md](docs/VIZ_COMMANDS.md) (V6.3+, 含 7 个 `visualize.*` + arch + 4 个 analyze + design --graph).
 
 ### 实际生成的效果 (5 个开源项目验证)
 
@@ -322,7 +331,23 @@ sv_query risk analyze -f top.sv
 # 评分: 时序深度 × fanout × 控制复杂度
 ```
 
-更多细节 + 输出 → [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+### 场景 16: 5 分钟速懂陌生模块 (V6+ `teach`)
+
+```bash
+# A) 概览 — 端口 + FSM + pipeline + coverage summary (HTML)
+sv_query visualize teach -f unknown.sv -t unknown_top --no-strict --html /tmp/u.html
+
+# B) 查某条信号被谁驱动 — 边带 guard condition (V6.3, 如 `sel` / `op == 2'd0`)
+sv_query visualize teach -f unknown.sv --focus u_top.y --upstream --depth 2 --show-source
+
+# C) 看控制关系 (--show-drives 标亮焦点信号驱动的边)
+sv_query visualize teach -f unknown.sv --focus u_top.state_q --show-drives --depth 2
+
+# D) 看覆盖缺口 (--show-coverage 高亮无 SVA 无 Coverage)
+sv_query visualize teach -f unknown.sv --show-coverage
+```
+
+更多细节 + 输出 → [docs/USER_GUIDE.md](docs/USER_GUIDE.md) 和 [docs/VIZ_COMMANDS.md](docs/VIZ_COMMANDS.md)
 
 ---
 
@@ -341,7 +366,7 @@ sv_query risk analyze -f top.sv
 | `dataflow` | 数据流路径分析 |
 | `controlflow` | 控制流条件分析 |
 | `protocol` | Bus 协议自动识别 |
-| `visualize` | 信号图 (graph / dataflow / pipeline) |
+| `visualize` | 信号图 (graph / dataflow / pipeline / teach 7 个子命令, V6+ 教学视图) |
 | `arch` | 项目架构图 |
 | `extract` | UVM Testbench 静态结构 |
 | `fix` | 自动修复 elaboration 错误 |
@@ -391,7 +416,7 @@ sv_query/
 │   ├── cli/                # typer app + 共享 helper
 │   └── applications/       # bus, cpu, operator (应用层模块)
 ├── tools/                  # 独立工具 (benchmark, fix, coverage_gen)
-├── sim/tests/              # 2446 测试 (232 文件)
+├── sim/tests/              # 2855 测试 (232 文件)
 │   ├── unit/               # 1277 tests (单文件, 1-2s)
 │   ├── cli/                # 76 tests (CLI 端到端, 5-10s)
 │   ├── integration/        # 385 tests (跨模块 + 工业项目, 5min)

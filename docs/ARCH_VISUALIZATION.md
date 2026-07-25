@@ -2,6 +2,8 @@
 
 > **本文档** 涵盖 sv_query 的可视化能力: `arch` 命令 (项目架构) + `visualize` 命令 (信号图)
 > 
+> **V6.3+ 完整参考**: [VIZ_COMMANDS.md](VIZ_COMMANDS.md) (覆盖 7 个 `visualize.*` + arch + 4 个 `* analyze` + design --graph)
+> 
 > 用户场景 + 4 维 L1-L4 能力 → 见 [README.md#用户场景](README.md#用户场景)
 > Python API → 见 [README.md#python-api](README.md#python-api)
 
