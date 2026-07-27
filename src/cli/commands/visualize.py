@@ -1986,16 +1986,17 @@ def _render_teach_dot(
         # on each driver edge (e.g. `sel` for `if(sel) y<=a`, `!sel` for else,
         # `op == 2'd0` for case branches). Surface it as an edge label so the
         # user can see *which condition activates each path* at a glance.
-        # Prefer `effective_condition` (already pruned to relevant signals)
-        # over the raw `condition` (may include the always-block guard).
+        # Prefer raw `condition` (full expression like `op == 2'd0`) over
+        # `effective_condition` (cleaned to just the value, e.g. `2'd0`) so
+        # the user sees BOTH the selector and the value.
+        # Skip CLOCK/ENABLE/RESET edges since their 'condition' is just the
+        # always-block guard, not a per-edge guard.
         edge_label = ""
         try:
             edge = graph_obj.get_edge(u, v)
             if edge is not None:
-                cond = (getattr(edge, "effective_condition", "") or "").strip() \
-                    or (getattr(edge, "condition", "") or "").strip()
-                # Skip clock/reset-only edges — their "condition" is just the
-                # always-block guard (e.g. `sel`) and isn't a per-edge guard.
+                cond = (getattr(edge, "condition", "") or "").strip() \
+                    or (getattr(edge, "effective_condition", "") or "").strip()
                 kind = getattr(edge, "kind", None)
                 kind_name = getattr(kind, "name", "") if kind else ""
                 if cond and kind_name == "DRIVER":
