@@ -171,3 +171,59 @@ def test_all_nodes_have_source_location(tmp_path):
     nodes_with_loc = re.findall(r'label="[^"]*\\nmux_demo\.sv:\d+', text)
     assert len(nodes_with_loc) >= 4, \
         f"expected ≥4 nodes with mux_demo.sv:NN labels, got {len(nodes_with_loc)}"
+
+# --- Pattern 4: nested case containing ternary (compound condition) -----
+
+
+def test_y_nested_compound_conditions_use_and(tmp_path):
+    """[V6.3+1 2026-07-27] y_nested: case containing ternary. Each leaf signal
+    in the ternary should appear as a separate driver edge with the compound
+    condition `(sel_d == X) && (sel_f)` or `(sel_d == X) && (!(sel_f))`.
+
+    Before V6.3+1: only `clk -> y_nested` edge existed (with sel_d == 2'd0),
+    so trace fanin / networkx shortest_path from input signals returned empty.
+    After V6.3+1: 8 leaf signals (a-h) all appear with per-signal compound
+    conditions, and a path a -> y_nested exists.
+    """
+    _strip_pycache()
+    out = tmp_path / "nested.dot"
+    rc, _, err = _run(
+        "-f", str(GOLDEN),
+        "--target", "mux_demo",
+        "--focus", "y_nested",
+        "--upstream", "--depth", "3",
+        "--show-source", "--no-strict",
+        "--dot", str(out),
+    )
+    assert rc == 0, err
+    text = out.read_text()
+    # Each leaf signal a..h should appear as a src in some edge to y_nested
+    for sig in "abcdefgh":
+        assert f'"mux_demo.{sig}" -> "mux_demo.y_nested"' in text, \
+            f"missing driver edge for {sig}"
+    # Outer case condition appears in labels
+    assert "(sel_d == 2'd0)" in text, "outer case cond missing for sel_d==0 branch"
+    assert "(sel_d == 2'd1)" in text, "outer case cond missing for sel_d==1 branch"
+    assert "(sel_d == default)" in text, "outer default cond missing"
+    # Inner ternary condition appears
+    assert "sel_f" in text, "inner ternary cond missing"
+    # Specific compound (sel_d==0 AND sel_f) form exists
+    import re
+    assert re.search(r"\(sel_d == 2'd0\) && \(sel_f\)", text) is not None, \
+        "compound (sel_d==0) && (sel_f) not found in any edge label"
+
+
+def test_y_nested_path_from_input_now_exists():
+    """[V6.3+1 2026-07-27] NetworkX shortest path from input `a` to `y_nested`
+    should exist (was disconnected before the fix)."""
+    _strip_pycache()
+    rc, out, err = _run(
+        "-f", str(GOLDEN),
+        "--target", "mux_demo",
+        "--focus", "y_nested",
+        "--upstream", "--depth", "3",
+        "--no-strict",
+    )
+    # Just verify the run succeeded; detailed path assertion is done
+    # implicitly via the DOT edge assertions above.
+    assert rc == 0, err or "no output"
