@@ -292,6 +292,15 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
         if node is None:
             return []
 
+        # [V6.3+1 2026-07-27 FIX] Unwrap ParenthesizedExpressionSyntax so
+        # `(h ? x0 : x1)` is treated like `h ? x0 : x1` for signal extraction.
+        kind_check = getattr(node, "kind", None)
+        kind_name_check = kind_check.name if hasattr(kind_check, "name") else str(kind_check) if kind_check else ""
+        if "ParenthesizedExpression" in kind_name_check:
+            inner = getattr(node, "expression", None)
+            if inner is not None:
+                return self.get_all_signals(inner)
+
         kind = getattr(node, "kind", None)
         if kind is None:
             return []

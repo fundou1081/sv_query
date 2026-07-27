@@ -325,6 +325,17 @@ class ExpressionVisitor:
             if operand:
                 return self.get_signals_with_conditions(operand, parent_conditions)
 
+        # [V6.3+1 2026-07-27 FIX] 解包 ParenthesizedExpressionSyntax (parens)
+        # When a case branch's RHS is `(h ? x0 : x1)` (parenthesized ternary),
+        # the AST wraps the ternary in ParenthesizedExpressionSyntax. Without
+        # unwrapping here, the recursive calls on `left`/`right` would see
+        # ParenthesizedExpression and fall into the "non-ternary" fallback,
+        # returning only the wrapped signal list, missing the inner x0/x1.
+        if "ParenthesizedExpression" in kind_name:
+            inner = getattr(node, "expression", None)
+            if inner:
+                return self.get_signals_with_conditions(inner, parent_conditions)
+
         # ConditionalOp: 三元运算符
         if "ConditionalOp" in check_kind:
             result = []
