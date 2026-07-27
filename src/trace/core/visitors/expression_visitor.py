@@ -18,6 +18,7 @@ Total: 53 method (1024 行)
 """
 from typing import TYPE_CHECKING, Any
 
+from ..ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from ._decorators import on
 from .signal_result import SignalResult
 
@@ -314,27 +315,18 @@ class ExpressionVisitor:
 
         kind_name = kind.name if hasattr(kind, "name") else str(kind)
 
+        # [V6.3+3 2026-07-27] Refactored to use ast_utils.unwrap() for all
+        # wrapper stripping. Replaces 3 ad-hoc unwrap blocks (Paren,
+        # Conversion, ImplicitCast) with a single call. When a new
+        # wrapper type is discovered, only ast_utils needs updating.
+        inner = unwrap(node)
+        if inner is not None and inner is not node:
+            return self.get_signals_with_conditions(inner, parent_conditions)
+
         # [FIX] 别名处理: ConditionalExpression (Syntax AST) = ConditionalOp (Semantic AST)
         check_kind = kind_name
         if "ConditionalExpression" in kind_name and "ConditionalOp" not in kind_name:
             check_kind = "ConditionalOp"  # Treat ConditionalExpression as ConditionalOp
-
-        # [FIX] 解包 ConversionExpression / Conversion
-        if "Conversion" in kind_name:
-            operand = getattr(node, "operand", None)
-            if operand:
-                return self.get_signals_with_conditions(operand, parent_conditions)
-
-        # [V6.3+1 2026-07-27 FIX] 解包 ParenthesizedExpressionSyntax (parens)
-        # When a case branch's RHS is `(h ? x0 : x1)` (parenthesized ternary),
-        # the AST wraps the ternary in ParenthesizedExpressionSyntax. Without
-        # unwrapping here, the recursive calls on `left`/`right` would see
-        # ParenthesizedExpression and fall into the "non-ternary" fallback,
-        # returning only the wrapped signal list, missing the inner x0/x1.
-        if "ParenthesizedExpression" in kind_name:
-            inner = getattr(node, "expression", None)
-            if inner:
-                return self.get_signals_with_conditions(inner, parent_conditions)
 
         # ConditionalOp: 三元运算符
         if "ConditionalOp" in check_kind:
@@ -366,14 +358,8 @@ class ExpressionVisitor:
             # True 分支 (left)
             left = getattr(node, "left", None)
             if left:
-                # 检查 left 是否也是 ConditionalOp（嵌套情况）
-                left_kind = getattr(left, "kind", None)
-                left_kind_name = left_kind.name if hasattr(left_kind, "name") else str(left_kind) if left_kind else ""
-                # [FIX] 使用与 kind_name 相同的别名处理
-                if "ConditionalExpression" in left_kind_name and "ConditionalOp" not in left_kind_name:
-                    left_kind_name = "ConditionalOp"  # Treat ConditionalExpression as ConditionalOp
-
-                if "ConditionalOp" in left_kind_name:
+                # [V6.3+3 2026-07-27] Use kind_matches for ternary detection.
+                if kind_matches(left, "ConditionalOp", "ConditionalExpression"):
                     # 嵌套三元: 传递当前条件作为父条件
                     true_conds = parent_conditions + [current_cond] if current_cond else parent_conditions
                     result.extend(self.get_signals_with_conditions(left, true_conds))
@@ -391,15 +377,8 @@ class ExpressionVisitor:
             # False 分支 (right)
             right = getattr(node, "right", None)
             if right:
-                right_kind = getattr(right, "kind", None)
-                right_kind_name = (
-                    right_kind.name if hasattr(right_kind, "name") else str(right_kind) if right_kind else ""
-                )
-                # [FIX] 使用与 kind_name 相同的别名处理
-                if "ConditionalExpression" in right_kind_name and "ConditionalOp" not in right_kind_name:
-                    right_kind_name = "ConditionalOp"  # Treat ConditionalExpression as ConditionalOp
-
-                if "ConditionalOp" in right_kind_name:
+                # [V6.3+3 2026-07-27] Use kind_matches for ternary detection.
+                if kind_matches(right, "ConditionalOp", "ConditionalExpression"):
                     # 嵌套三元: 条件取反后传递
                     if current_cond:
                         negated_cond = f"!({current_cond})"
