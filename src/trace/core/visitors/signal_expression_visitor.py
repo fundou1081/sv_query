@@ -15,6 +15,7 @@
 import logging
 from typing import Any, Callable, ClassVar
 
+from ..ast_utils import unwrap  # [V6.3+3 2026-07-27]
 from ._decorators import on
 from .base_visitor import BaseVisitor
 from .member_visitor import MemberVisitor
@@ -292,14 +293,12 @@ class SignalExpressionVisitor(BaseVisitor, OperatorVisitor, MemberVisitor, PortV
         if node is None:
             return []
 
-        # [V6.3+1 2026-07-27 FIX] Unwrap ParenthesizedExpressionSyntax so
-        # `(h ? x0 : x1)` is treated like `h ? x0 : x1` for signal extraction.
-        kind_check = getattr(node, "kind", None)
-        kind_name_check = kind_check.name if hasattr(kind_check, "name") else str(kind_check) if kind_check else ""
-        if "ParenthesizedExpression" in kind_name_check:
-            inner = getattr(node, "expression", None)
-            if inner is not None:
-                return self.get_all_signals(inner)
+        # [V6.3+3 2026-07-27] Use ast_utils.unwrap() to strip wrappers
+        # (Paren, Conversion, ImplicitCast). Replaces 6+ lines of ad-hoc
+        # unwrap logic with a single call.
+        inner = unwrap(node)
+        if inner is not None and inner is not node:
+            return self.get_all_signals(inner)
 
         kind = getattr(node, "kind", None)
         if kind is None:

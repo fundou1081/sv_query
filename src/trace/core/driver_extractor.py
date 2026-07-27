@@ -26,6 +26,7 @@ from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
 
@@ -955,23 +956,20 @@ class DriverExtractor:
 
         ternary_condition = self._extract_ternary_condition(rhs_expr)
 
+        # [V6.3+3 2026-07-27] Use ast_utils for wrapper unwrap and kind
+        # matching. Replaces 4 duplicated unwrap blocks across this file.
         has_conditional = False
         check_expr = rhs_expr
-        for _ in range(5):  # 解包多层包装
+        for _ in range(5):  # 解包多层包装 (最多 5 层)
             if check_expr is None:
                 break
-            rhs_kind_name = getattr(check_expr, "kind", None)
-            rhs_kind_str = (
-                rhs_kind_name.name if hasattr(rhs_kind_name, "name")
-                else str(rhs_kind_name) if rhs_kind_name else ""
-            )
-            if "ConditionalOp" in rhs_kind_str:
+            if kind_matches(check_expr, "ConditionalOp", "ConditionalExpression"):
                 has_conditional = True
                 break
-            operand = getattr(check_expr, "operand", None)
-            if operand is None or operand is check_expr:
+            inner = unwrap(check_expr)
+            if inner is None or inner is check_expr:
                 break
-            check_expr = operand
+            check_expr = inner
 
         if not rhs_signals:
             # [Phase 8 / Fix F 2026-7-14] If rhs_expr is a compile-time symbol (parameter,
@@ -1162,40 +1160,22 @@ class DriverExtractor:
                         expr_str = rhs or ""
 
                     # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
-                    # [V6.3+1 2026-07-27] FIX: case RHS like `(sel_f ? a : b)` is
-                    # wrapped in ParenthesizedExpressionSyntax. The unwrap loop
-                    # must check `.expression` (parens) in addition to `.operand`
-                    # (other wrappers) to find the inner ConditionalOp. Once found,
-                    # pass the UNWRAPPED expression (not the original rhs_expr) to
-                    # get_signals_with_conditions() so the visitor sees the
-                    # ConditionalOp directly.
+                    # [V6.3+3 2026-07-27] Refactored to use ast_utils:
+                    #   - kind_matches handles ConditionalOp/ConditionalExpression aliases
+                    #   - unwrap strips Paren/Conversion/ImplicitCast wrappers
+                    # Replaces 13 lines of substring checks and ad-hoc unwrap.
                     has_conditional = False
                     check_expr = rhs_expr
                     for _ in range(5):  # 解包多层包装
                         if check_expr is None:
                             break
-                        rhs_kind_name = getattr(check_expr, "kind", None)
-                        rhs_kind_str = (
-                            rhs_kind_name.name if hasattr(rhs_kind_name, "name")
-                            else str(rhs_kind_name) if rhs_kind_name else ""
-                        )
-                        # [V6.3+1 2026-07-27 FIX] pyslang 10/11 returns
-                        # SyntaxKind.ConditionalExpression (str "SyntaxKind.ConditionalExpression"
-                        # OR its name attribute is "ConditionalExpression"),
-                        # not the older ExpressionKind.ConditionalOp that the
-                        # code was checking for. Match either form.
-                        if ("ConditionalOp" in rhs_kind_str or
-                                "ConditionalExpression" in rhs_kind_str):
+                        if kind_matches(check_expr, "ConditionalOp", "ConditionalExpression"):
                             has_conditional = True
                             break
-                        # Try `.expression` first (ParenthesizedExpression
-                        # stores its inner expr here), then `.operand` for
-                        # other wrapper kinds. Stop if we hit a self-loop.
-                        next_expr = getattr(check_expr, "expression", None) \
-                            or getattr(check_expr, "operand", None)
-                        if next_expr is None or next_expr is check_expr:
+                        inner = unwrap(check_expr)
+                        if inner is None or inner is check_expr:
                             break
-                        check_expr = next_expr
+                        check_expr = inner
 
                     if has_conditional:
                         # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
@@ -1738,12 +1718,16 @@ class DriverExtractor:
                 stmt = getattr(item, "clause", None) or getattr(item, "statement", None)
                 if stmt:
                     self._collect_assignments_from_stmt(stmt, statements, depth + 1)
-
-                # [NEW] 获取 case condition (a 或 b) 作为驱动
-                condition = getattr(item, "condition", None)
-                if condition:
-                    # 将 condition 作为驱动源添加
-                    statements.append(condition)
+                # [V6.3+3 2026-07-27] REMOVED case-selector-as-driver hack:
+                # Previously code added item.condition (the case item's compare
+                # value like `2'd0` or `default`) as a fake driver source.
+                # That was wrong: case item conditions are LITERAL values
+                # (`2'd0`), not real signals — they shouldn't appear in the
+                # driver graph. The real driver extraction happens in
+                # _create_always_edges via StatementCollectorVisitor which
+                # captures the case condition as a context string (e.g.
+                # "sel_d == 2'd0") on the edge's `condition` field, not as
+                # a node.
             return
             if hasattr(node, "items") and node.items:
                 print(f"[DEBUG case] items count={len(list(node.items))}")
