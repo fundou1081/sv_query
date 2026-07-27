@@ -1162,6 +1162,13 @@ class DriverExtractor:
                         expr_str = rhs or ""
 
                     # [BUG-FIX] 嵌套三元: 为每个信号提取对应条件
+                    # [V6.3+1 2026-07-27] FIX: case RHS like `(sel_f ? a : b)` is
+                    # wrapped in ParenthesizedExpressionSyntax. The unwrap loop
+                    # must check `.expression` (parens) in addition to `.operand`
+                    # (other wrappers) to find the inner ConditionalOp. Once found,
+                    # pass the UNWRAPPED expression (not the original rhs_expr) to
+                    # get_signals_with_conditions() so the visitor sees the
+                    # ConditionalOp directly.
                     has_conditional = False
                     check_expr = rhs_expr
                     for _ in range(5):  # 解包多层包装
@@ -1172,24 +1179,45 @@ class DriverExtractor:
                             rhs_kind_name.name if hasattr(rhs_kind_name, "name")
                             else str(rhs_kind_name) if rhs_kind_name else ""
                         )
-                        if "ConditionalOp" in rhs_kind_str:
+                        # [V6.3+1 2026-07-27 FIX] pyslang 10/11 returns
+                        # SyntaxKind.ConditionalExpression (str "SyntaxKind.ConditionalExpression"
+                        # OR its name attribute is "ConditionalExpression"),
+                        # not the older ExpressionKind.ConditionalOp that the
+                        # code was checking for. Match either form.
+                        if ("ConditionalOp" in rhs_kind_str or
+                                "ConditionalExpression" in rhs_kind_str):
                             has_conditional = True
                             break
-                        operand = getattr(check_expr, "operand", None)
-                        if operand is None or operand is check_expr:
+                        # Try `.expression` first (ParenthesizedExpression
+                        # stores its inner expr here), then `.operand` for
+                        # other wrapper kinds. Stop if we hit a self-loop.
+                        next_expr = getattr(check_expr, "expression", None) \
+                            or getattr(check_expr, "operand", None)
+                        if next_expr is None or next_expr is check_expr:
                             break
-                        check_expr = operand
+                        check_expr = next_expr
 
                     if has_conditional:
                         # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
                         # (localparam/parameter) from ternary branch signals.
-                        signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+                        # Use the unwrapped check_expr so ConditionalOp is at top.
+                        signal_conditions = self._signal_visitor.get_signals_with_conditions(check_expr)
                         signal_conditions = self._filter_signal_conditions_by_module(
                             signal_conditions, module=module
                         )
+                        # [V6.3+1 2026-07-27 FIX] combine the outer condition (from
+                        # case/if ctx, e.g. "sel_d == 2'd0") with the inner ternary
+                        # sig_cond (e.g. "sel_f") so the edge shows the full
+                        # guarding condition, not just the inner ternary.
+                        outer_cond = ctx.get("condition", "") or ""
                         for sig_rhs_name, sig_cond in signal_conditions:
                             if not sig_rhs_name:
                                 continue
+                            # Combine outer AND inner with " && " when both present
+                            if outer_cond and sig_cond:
+                                combined_cond = f"({outer_cond}) && ({sig_cond})"
+                            else:
+                                combined_cond = outer_cond or sig_cond
                             bit_slice = ""
                             if "[" in sig_rhs_name and "]" in sig_rhs_name:
                                 start = sig_rhs_name.index("[")
@@ -1204,7 +1232,7 @@ class DriverExtractor:
                                         expression=sig_rhs_name,
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
-                                        sig_cond=sig_cond,
+                                        sig_cond=combined_cond,
                                     )
                                 )
                             else:
@@ -1228,7 +1256,7 @@ class DriverExtractor:
                                         expression=expr_str,
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
-                                        sig_cond=sig_cond,
+                                        sig_cond=combined_cond,
                                     )
                                 )
                     else:
