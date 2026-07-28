@@ -194,21 +194,39 @@ class DriverInfo:
     """驱动信息 - 包含驱动节点及其驱动条件
 
     [方案C] 从 TraceNode 分离出来,因为 condition 是边的属性而非节点属性
+    [V6.6] source 字段替代 expression/bit_slice，使其变为 derived property
     """
 
     node: TraceNode  # 驱动节点
+    source: SignalSource | None = None  # [V6.6] 位精确信号源 (驱动源或负载源)
     condition: str = ""  # 驱动条件 (来自 if 语句)
     reset_condition: str = ""  # 复位条件 (来自 if (!rst_ni))
     clock_domain: str = ""  # 时钟域
     assign_type: str = ""  # always_ff / always_comb / continuous / blocking / nonblocking
     distance: int = 1  # 驱动距离 (层级深度)
-    expression: str = ""  # 驱动表达式 (如 sreg_d)
-    bit_slice: str = ""  # 位选择 (如 [8:1])
+    # [V6.6] expression/bit_slice 改为 @property，从 source 派生
+    _expression_override: str = ""  # 覆盖 source.full_expression（特殊场景下使用）
     target_signal: str = ""  # 目标信号 (被驱动的信号)
 
     @property
     def id(self) -> str:
         return self.node.id
+
+    @property
+    def expression(self) -> str:
+        """驱动表达式 — 从 source 派生，或使用 _expression_override"""
+        if self._expression_override:
+            return self._expression_override
+        if self.source:
+            return self.source.full_expression
+        return ""
+
+    @property
+    def bit_slice(self) -> str:
+        """位选择 — 从 source 派生"""
+        if self.source:
+            return self.source.bit_slice
+        return ""
 
     @property
     def full_statement(self) -> str:

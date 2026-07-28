@@ -647,12 +647,13 @@ class SignalTracer:
 
             driver_info = DriverInfo(
                 node=node,
+                source=edge.source if edge else None,
                 condition=condition,
                 clock_domain=clock_domain,
                 assign_type=assign_type,
                 distance=1,  # TODO: 计算实际距离
-                expression=expression,
-                bit_slice=edge.bit_slice if edge else "",
+                # expression 仍通过 _resolve_full_expression 获得，优先 source
+                _expression_override=expression if not (edge and edge.source) else "",
                 target_signal=signal_id,  # [P3-6] 目标信号用于组装完整语句
             )
             driver_infos.append(driver_info)
