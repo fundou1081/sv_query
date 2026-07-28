@@ -222,10 +222,15 @@ def graph(
         return
 
     # [V6.7] 统一 VizData 渲染管线
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    classification = classify_graph(graph)
+
     title = file or filelist or "Signal Graph"
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=title,
         max_edges=max_edges,
+        include_node_class=True,
+        classification=classification,
         include_edge_condition=show_conditions,
         include_edge_expression=True,
     ))
@@ -365,7 +370,13 @@ def pipeline(
     typer.echo(f"  Stages: {info.total_latency}", err=True)
 
     # [V6.7] 统一 VizData 渲染管线 — pipeline stages
-    stage_map = {s.stage_id: s.reg_nodes + s.comb_nodes for s in info.stages}
+    # stage_map: pipeline regs + comb nodes + state regs (FSM) + control inputs
+    stage_map = {}
+    for s in info.stages:
+        stage_map[s.stage_id] = s.reg_nodes + s.comb_nodes + s.data_inputs
+    # State regs (FSM) always in stage 0
+    stage_map[0] = list(set(stage_map.get(0, []) + info.state_regs))
+
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=module or file or filelist or "",
         include_node_class=True,
@@ -373,6 +384,7 @@ def pipeline(
         include_node_stage=True,
         pipeline_stages=stage_map,
         include_edge_expression=True,
+        include_edge_condition=True,
     ))
     title = module or file or filelist or "Pipeline"
     dot = render_dot(viz, {
