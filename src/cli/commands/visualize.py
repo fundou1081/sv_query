@@ -365,7 +365,7 @@ def pipeline(
     typer.echo(f"  Stages: {info.total_latency}", err=True)
 
     # [V6.7] 统一 VizData 渲染管线 — pipeline stages
-    stage_map = {s.stage_id: s.node_ids for s in info.stages} if hasattr(info, 'stages') else {}
+    stage_map = {s.stage_id: s.reg_nodes + s.comb_nodes for s in info.stages}
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=module or file or filelist or "",
         include_node_class=True,
