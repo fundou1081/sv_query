@@ -189,20 +189,23 @@ class VizData:
 
     def to_json(self) -> dict:
         """序列化为 JSON 兼容的字典 (纯数据，不依赖 dataclass)"""
+
+        def _keep(v) -> bool:
+            """过滤掉空默认值, 但保留 0/0.0/False (合法值)"""
+            if v is None or v == "" or v == [] or v == {}:
+                return False
+            if isinstance(v, (int, float, bool)):
+                return True  # 保留 0, 0.0, False
+            return True
+
         return {
             "meta": self.meta,
             "nodes": [
-                {
-                    k: v for k, v in n.__dict__.items()
-                    if not k.startswith("_") and v not in (None, "", [], {}, 0, 0.0, False)
-                }
+                {k: v for k, v in n.__dict__.items() if not k.startswith("_") and _keep(v)}
                 for n in self.nodes
             ],
             "edges": [
-                {
-                    k: v for k, v in e.__dict__.items()
-                    if not k.startswith("_") and v not in (None, "", [], {}, 0, 0.0, False)
-                }
+                {k: v for k, v in e.__dict__.items() if not k.startswith("_") and _keep(v)}
                 for e in self.edges
             ],
         }
