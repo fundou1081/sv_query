@@ -1,967 +1,297 @@
-# sv_query 架构文档
+# sv_query 架构文档 v2.0
 
-> 版本: 1.0
-> 更新日期: 2026-05-26
-> 项目路径: /Users/fundou/my_dv_proj/sv_query
+> 更新日期: 2026-07-29
+> 项目路径: ~/my_dv_proj/sv_query
 
 ---
 
 ## 一、架构概览
 
-sv_query 是一个基于 **pyslang AST** 的 SystemVerilog 信号追踪查询引擎，采用分层架构设计：
-
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                    CLI Layer (27 commands)                  │
+│  trace / arch / visualize / dataflow / cdc / timing / ...   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Query Layer (API)                       │
-│  UnifiedTracer - 统一入口，协调各组件                        │
+│  UnifiedTracer — 统一入口, trace_fanin/trace_fanout/...    │
+│  SignalTracer / LoadTracer / ClockDomainTracer             │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Builder Layer                            │
-│  GraphBuilder (Module) / ClassGraphBuilder (Class)         │
-│  BitSelectHandler / ExpressionBuilder                      │
+│             Graph Layer (核心数据模型)                       │
+│  SignalGraph ←─ DataFlowGraph ←─ ModuleInstanceGraph (MIG) │
+│  VizData — 统一可视化中间层 (V6.7)                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Graph Layer                             │
-│  SignalGraph (NetworkX) ←─ DataFlowGraph ←─ ModuleInstance │
+│              Extractor Layer (5 extractors)                │
+│  Driver / Load / Connection / Clock / Module               │
+│  SVA / Covergroup / UVM                                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Visitor Layer                           │
-│  SignalExpressionVisitor / StatementCollectorVisitor      │
-│  ConstraintVisitor / ConstraintVisitor                      │
+│                 Visitor Layer (10+ visitors)               │
+│  SignalExpression / StatementCollector / Constraint / ...  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    pyslang AST (Semantic)                  │
-│  Compilation + getRoot() - 唯一可信数据源                   │
+│                pyslang AST (Semantic)                      │
+│  Compilation + getRoot() — 唯一可信数据源 [铁律1]           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 二、核心组件
+## 二、核心数据模型
 
-### 2.1 入口层 - UnifiedTracer
+### 2.1 SignalGraph — 信号关系图
 
-**文件**: `src/trace/unified_tracer.py`
-
-```python
-class UnifiedTracer:
-    """统一追踪入口"""
-    
-    def build_graph(self, ...) -> SignalGraph
-    def trace_drivers(self, signal, depth=None) -> SignalChain
-    def trace_loads(self, signal, depth=None) -> SignalChain
-    def trace_clock_domain(self, signal) -> ClockDomainTrace
-    def get_module(self, module_name) -> ModuleTracer
-    def analyze_dataflow(self, from_signal, to_signal) -> DataFlowResult
-```
-
-**职责**:
-- 协调各组件
-- 封装 Query API
-- 管理编译和图构建生命周期
-
-### 2.2 构建层 - GraphBuilder
-
-**文件**: `src/trace/core/graph_builder.py` (2675 行)
-
-```python
-class GraphBuilder:
-    """Module 级信号图构建器"""
-    
-    def build(self, ...) -> ExtractorResult
-    
-class DriverExtractor:
-    """驱动关系提取"""
-    
-class SubroutineExpander:
-    """函数/任务内联展开"""
-```
-
-**职责**:
-- 遍历 Module/Interface/Program 的 AST
-- 提取 Signal 节点 (PORT_IN, PORT_OUT, WIRE, REG, etc.)
-- 提取驱动边 (DRIVER, CLOCK, RESET, CONNECTION)
-- 处理连续赋值、时序逻辑、组合逻辑
-- 处理实例化连接
-- **展开函数/任务内的条件分支 (if/else/case/return/三元)**
-
-**核心 Visitor**:
-- `SignalExpressionVisitor` - 表达式 → 信号名提取
-- `StatementCollectorVisitor` - 语句 → 上下文提取
-
-### 2.3 SubroutineExpander - 函数内联展开
-
-**文件**: `src/trace/core/builder/subroutine_expander.py` (750+ 行)
-
-```python
-class SubroutineExpander:
-    """函数/任务内联展开器"""
-    
-    def expand(call_site, ctx) -> ExpansionResult
-    def has_conditional_branches(func_def) -> bool
-    def _collect_branches(body, func_name, branches)
-```
-
-**展开支持**:
-- `if/else` 条件分支
-- `case/endcase` 多路分支
-- `return` 语句
-- 三元运算符 `cond ? if_true : if_false`
-
-**参数映射**:
-- 实参名 → 形参名 替换
-- 条件字符串构造使用映射后的参数名
-
----
-
-### 2.3 Class 构建层 - ClassGraphBuilder
-
-**文件**: `src/trace/core/class_graph_builder.py` (738 行)
-
-```python
-class ClassGraphBuilder:
-    """Class & Constraint 子图构建器"""
-    
-    def build(self, graph: SignalGraph) -> ClassBuilderResult
-```
-
-**职责**:
-- 遍历所有 ClassDeclaration
-- 创建 CLASS、CLASS_PROPERTY 节点
-- 创建 CONSTRAINT_BLOCK 及子节点
-- 创建 CONSTRAINS、HAS_* 等边
-- 建立 ClassHierarchy（extends 链）
-
-**核心 Visitor**:
-- `ConstraintVisitor` - 约束表达式解析
-
----
-
-### 2.4 图层 - SignalGraph
-
-**文件**: `src/trace/core/graph/models.py` (457 行)
+**文件**: `src/trace/core/graph/models.py` (663 行)
 
 ```python
 class NodeKind(Enum):
-    # 信号节点
-    SIGNAL, WIRE, REG, PORT_IN, PORT_OUT, PARAM, CONST
-    INSTANTIATED_MODULE, GENERATE_BLOCK
-    
-    # Class 节点
-    CLASS, CLASS_INSTANCE, CLASS_PROPERTY
-    CONSTRAINT_BLOCK, CONSTRAINT_EXPR, CONSTRAINT_IF, ...
+    # ═══ 核心: 硬件信号 (≈80% 引用) ═══
+    SIGNAL, WIRE, REG, PORT_IN, PORT_OUT, PORT_INOUT, CONST
+    # ═══ 核心: 架构 ═══
+    PARAM, INSTANTIATED_MODULE, GENERATE_BLOCK
+    # ═══ 扩展: Class / Constraint ═══
+    CLASS, CLASS_INSTANCE, CLASS_PROPERTY, CONSTRAINT_*, ...
+    # ═══ 实验: 表达式 ═══
     EXPRESSION, FUNCTION_CALL
 
-class EdgeKind(Enum):
-    # 核心边
+class EdgeKind(Enum):  # V6.6 重新分区
+    # ═══ 核心: 硬件信号边 (≈90% 引用) ═══
     DRIVER, CLOCK, RESET, CONNECTION, BIT_SELECT
-    
-    # Class 边
-    CONSTRAINS, HAS_CONDITION, HAS_CONSEQUENT, HAS_LHS, HAS_RHS
-    HAS_MEMBER, IS_INSTANCE_OF, SUPER_CALL, CONTAINS_MEMBER
+    # ═══ 扩展: Class / Constraint ═══
+    CONSTRAINS, HAS_CONDITION, HAS_CONSEQUENT, HAS_ALTERNATE,
+    HAS_LHS, HAS_RHS, HAS_MEMBER, IS_INSTANCE_OF, ...
 ```
-
-**核心数据结构**:
 
 ```python
 @dataclass
 class TraceNode:
-    id: str              # "top.clk_i"
-    name: str            # "clk_i"
-    module: str           # "top"
+    id: str              # "picorv32.cpuregs"
+    name: str            # "cpuregs"
+    module: str          # "picorv32"
     kind: NodeKind
-    width: Tuple[int, int]  # (31, 0)
-    bit_range: Optional[str]  # "[3:0]"
-    parent: Optional[str]     # 位选父节点
-    parent_bit_start/end: int # 位选范围
+    width: tuple[int, int]  # (31, 0)
+    bit_range: str | None
+    parent: str | None        # 位选父节点
+    is_clock/is_reset: bool
 
-@dataclass
+@dataclass  
 class TraceEdge:
     src: str
     dst: str
     kind: EdgeKind
-    assign_type: str      # continuous/always_ff/always_comb
-    condition: str        # 条件表达式
-    clock_domain: str    # 时钟域
-    expression: str      # 驱动表达式
-    confidence: str      # high/medium/low
+    assign_type: str       # continuous / nonblocking / blocking
+    condition: str         # "state == FETCH" — 显示在边上
+    clock_domain: str
+    expression: str        # "a + b" — 驱动表达式
+    bit_slice: str         # "[7:0]"
+    source: SignalSource | None  # V6.5/V6.6 位精确结构化源
+    confidence: str        # high / medium / low
 ```
 
----
+### 2.2 SignalSource — 位精确信号源 (V6.5/V6.6)
 
-### 2.5 DataFlow 层 - DataFlowGraph
-
-**文件**: `src/trace/core/graph/dataflow.py` (707 行)
-
-```python
-class DataFlowGraph:
-    """信号间数据流分析"""
-    
-    def analyze(self, from_signal, to_signal, max_paths=100) -> DataFlowResult
-    def get_segment(self, from_signal, to_signal) -> DataFlowSegment
-```
-
-**职责**:
-- 路径搜索 (nx.all_simple_paths)
-- BIT_SELECT 边处理 (byte_data[3:0] → byte_data)
-- Struct 成员展开 (pkt1.data → pkt2.data)
-- 时钟域分析
-- 条件判断提取
-- 中间信号收集
-
-**核心数据结构**:
+**driver 和 load 共享**。替代纯字符串的 expression/bit_slice。
 
 ```python
 @dataclass
-class DataFlowSegment:
-    from_signal: str
-    to_signal: str
-    driver: Optional[str]
-    condition: Optional[str]
-    timing: Optional[str]
-    assign_type: str
-    distance: int
-
-@dataclass
-class DataFlowPath:
-    path_id: int
-    segments: List[DataFlowSegment]
-    distance: int
-    has_conditional: bool
-
-@dataclass
-class DataFlowResult:
-    from_signal: str
-    to_signal: str
-    paths: List[DataFlowPath]
-    is_reachable: bool
-    paths_count: int
-    intermediate_signals: Set[str]
-    clock_domain: Optional[str]
-    timing_risk: str  # safe/low/medium/high/critical
+class SignalSource:
+    signal: str             # "a"
+    bit_start: int | None   # 7 (MSB)
+    bit_end: int | None     # 0 (LSB)
+    full_expression: str    # "a[7:0] + b[3:0]"
+    op: str                 # "Add" / "ArithmeticShiftRight"
+    operand_side: str       # "left" / "right"
+    casts: list[str]        # ["$signed"]
+    is_decomposed: bool     # True = 从 binary op 分解
 ```
 
----
-
-### 2.6 模块实例层 - ModuleInstanceGraph
-
-**文件**: `src/trace/core/module_instance_graph.py` (1039 行)
-
-```python
-class ModuleInstanceGraph:
-    """模块实例层级图"""
-    
-    def build(self, trees) -> None
-    def get_instance(self, path) -> ModuleInstanceNode
-    def get_internal_signal(self, port_path) -> str
-    def get_child_instances(self, parent_id) -> List[ModuleInstanceNode]
-```
-
-**职责**:
-- 管理模块实例层级 (top.u_tb, top.u_dut)
-- 维护端口到内部信号的映射
-- 支持跨模块边界追踪
-
----
-
-### 2.7 Visitor 层
-
-#### SignalExpressionVisitor
-
-**文件**: `src/trace/core/visitors/signal_expression_visitor.py` (7064 行)
-
-```python
-class SignalExpressionVisitor:
-    """表达式 → 信号名提取"""
-    
-    def visit(self, node) -> Optional[str]
-    def get_all_signals(self, node) -> List[str]
-    def extract(self, node) -> SignalResult
-```
-
-**特性**:
-- 使用 `@on` 装饰器注册 538 个 handler
-- 支持双接口 (visit + get_all_signals)
-- 覆盖大部分 ExpressionKind
-
-#### StatementCollectorVisitor
-
-**文件**: `src/trace/core/visitors/statement_collector_visitor.py`
-
-```python
-class StatementCollectorVisitor:
-    """语句收集与上下文提取"""
-    
-    def collect(self, stmt) -> List[StatementInfo]
-```
-
-#### ConstraintVisitor
-
-**文件**: `src/trace/core/visitors/constraint_visitor.py`
-
-```python
-class ConstraintVisitor:
-    """约束表达式解析"""
-    
-    def visit_constraint(self, constraint) -> ConstraintResult
-```
-
----
-
-## 三、Visitor 模式详解
-
-### 3.1 Visitor 概览
-
-| Visitor | 文件 | Handler 数 | 主要职责 |
-|---------|------|------------|----------|
-| `SignalExpressionVisitor` | `visitors/signal_expression_visitor.py` | 538 @on | AST → 信号名 |
-| `StatementCollectorVisitor` | `visitors/statement_collector_visitor.py` | ~50 | 语句 + 语义上下文 |
-| `ConstraintVisitor` | `visitors/constraint_visitor.py` | - | 约束表达式解析 |
-| `BaseVisitor` | `visitors/base_visitor.py` | - | 基类 |
-
-### 3.2 使用模式
-
-#### 模式 1: 在 GraphBuilder 中委托调用
-
-```python
-# graph_builder.py
-class DriverExtractor:
-    def __init__(self, adapter):
-        self._signal_visitor = SignalExpressionVisitor(adapter)
-        self._stmt_visitor = StatementCollectorVisitor(adapter)
-
-    def _get_signal(self, signal) -> Optional[str]:
-        # 委托给 Visitor，不直接解析
-        return self._signal_visitor.visit(signal)
-
-    def _get_all_signals(self, signal) -> List[str]:
-        return self._signal_visitor.get_all_signals(signal)
-```
-
-**职责分离**:
-- **GraphBuilder**: 遍历 AST，创建 TraceNode/TraceEdge
-- **Visitor**: 解析表达式中的信号名
-
-#### 模式 2: 在 ClassGraphBuilder 中解析约束变量
-
-```python
-# class_graph_builder.py
-class ClassGraphBuilder:
-    def __init__(self, adapter):
-        self._cv = ConstraintVisitor()
-
-
-    def _build_constraint(self, item, ...):
-        self._cv.reset()
-        self._cv.visit(item)          # 解析约束
-        vars = self._cv.variables     # 提取变量
-```
-
-### 3.3 SignalExpressionVisitor 工作原理
-
-#### 双接口设计
-
-```python
-class SignalExpressionVisitor:
-    def visit(self, node) -> Optional[str]:
-        """单信号接口 - 返回第一个信号名"""
-        ...
-
-    def get_all_signals(self, node) -> List[str]:
-        """多信号接口 - 返回所有信号名"""
-        ...
-
-    def extract(self, node) -> SignalResult:
-        """统一接口 (推荐) - 返回完整结果"""
-        return SignalResult(primary=..., all_signals=..., ...)
-```
-
-#### @on 装饰器注册机制
-
-```python
-@on('IdentifierName')
-def visit_identifier_name(self, node):
-    """处理信号引用"""
-    return self._clean_name(node.symbol.name)
-
-@on('BinaryOp')
-def handle_binary_op(self, node):
-    """处理二元表达式 a + b"""
-    left = self.visit(node.left)
-    right = self.visit(node.right)
-    return f"{left} {node.op} {right}" if left and right else None
-```
-
-**注册表**: `_HANDLERS` 字典，通过 `@on('KindName')` 装饰器自动注册。
-
-#### 示例流程
-
-```systemverilog
-assign data = a + b;
-```
-
-```python
-# GraphBuilder 调用
-expr_str = self._signal_visitor.visit(rhs_expr)  # → "a + b"
-
-# 内部流程
-visitor.visit(binary_op_node)
-  → 获取 kind.name = 'BinaryOp'
-  → 查找 _HANDLERS['BinaryOp']
-  → 调用 handle_binary_op(self, node)
-  → 返回 "a + b"
-```
-
-### 3.4 StatementCollectorVisitor 工作原理
-
-#### 语义上下文收集
-
-```python
-class StatementCollectorVisitor:
-    def collect(self, node, ctx=None) -> List[Tuple[Any, Dict, ItemType]]:
-        """收集语句并携带语义上下文"""
-        # ctx = {clock: 'clk_i', condition: 'en', reset: 'rst_n'}
-```
-
-#### 上下文栈机制
-
-```python
-# 进入 always_ff @(posedge clk)
-self._ctx_stack.append({clock: 'clk_i', ...})
-
-
-# 进入 if (en) 块
-self._ctx_stack.append({condition: 'en', ...})
-
-
-# 收集当前语句，使用合并后的上下文
-current_ctx = self.current_ctx  # {clock: 'clk_i', condition: 'en', ...}
-```
-
-
-### 3.5 Visitor 与 GraphBuilder 的关系
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    GraphBuilder                          │
-│  - 遍历 AST (Module/Interface/Program)                   │
-│  - 创建 TraceNode / TraceEdge                            │
-│  - 调用 Visitor 解析表达式                               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-         ┌─────────────────────────────────┐
-         │     SignalExpressionVisitor      │
-         │  - visit() → 单信号名             │
-         │  - get_all_signals() → 多信号    │
-         │  - 538 个 @on handler             │
-         └─────────────────────────────────┘
-                              │
-                              ▼
-         ┌─────────────────────────────────┐
-         │   StatementCollectorVisitor     │
-         │  - collect() → 语句+上下文       │
-         │  - 携带 clock/condition/reset    │
-         └─────────────────────────────────┘
-```
-
-### 3.6 当前架构问题
-
-| 问题 | 说明 |
-|------|------|
-| **双接口冗余** | visit() 和 get_all_signals() 有重复逻辑 |
-| **Handler 未全利用** | 538 个 handler，但 GraphBuilder 只调用了少量 |
-| **ExpressionBuilder 独立** | `expression_builder.py` 未接入 Visitor |
-
-### 3.7 建议改进
-
-```python
-# 建议: 统一为单接口
-class SignalExpressionVisitor:
-    def extract(self, node) -> SignalResult:
-        """唯一入口，返回完整结果"""
-        return SignalResult(
-            primary=self.visit(node),
-            all_signals=self.get_all_signals(node),
-            all_signals_unique=set(...),
-            kind_name=kind_name,
-            ...
-        )
-```
-
----
-
-## 四、数据抽象详解
-
-### 4.1 数据模型总览
-
-| 模型 | 文件 | 类型 | 用途 |
-|------|------|------|------|
-| `TraceNode` | graph/models.py | @dataclass | 图节点 |
-| `TraceEdge` | graph/models.py | @dataclass | 图边 |
-| `DriverInfo` | graph/models.py | @dataclass | 驱动信息 |
-| `SignalGraph` | graph/models.py | nx.DiGraph | 有向图容器 |
-| `PortInfo` | module_instance_graph.py | @dataclass | 端口信息 |
-| `ModuleInstanceNode` | module_instance_graph.py | @dataclass | 实例节点 |
-| `ModuleInstanceGraph` | module_instance_graph.py | nx.DiGraph | 实例图 |
-| `SignalResult` | signal_result.py | @dataclass | 表达式解析结果 |
-| `DataFlowSegment` | dataflow.py | @dataclass | 数据流段 |
-| `DataFlowPath` | dataflow.py | @dataclass | 数据流路径 |
-| `DataFlowResult` | dataflow.py | @dataclass | 数据流结果 |
-
-### 4.2 NodeKind 枚举 (25个)
-
-```python
-class NodeKind(Enum):
-    # 信号节点 (11个)
-    SIGNAL, WIRE, REG, PORT_IN, PORT_OUT, PORT_INOUT, PARAM, CONST
-    INSTANTIATED_MODULE, GENERATE_BLOCK
-    
-    # Class 节点 (12个)
-    CLASS, CLASS_INSTANCE, CLASS_PROPERTY
-    CONSTRAINT_BLOCK, CONSTRAINT_EXPR, CONSTRAINT_IF, CONSTRAINT_ELSE
-    CONSTRAINT_IMPLIES, CONSTRAINT_UNIQUE, CONSTRAINT_SOLVE
-    CONSTRAINT_FOREACH, CONSTRAINT_RANGE
-    
-    # 表达式节点 (2个)
-    EXPRESSION, FUNCTION_CALL
-```
-
-### 4.3 EdgeKind 枚举 (18个)
-
-
-```python
-class EdgeKind(Enum):
-    # 核心边 (5个)
-    DRIVER, CLOCK, RESET, CONNECTION, BIT_SELECT
-    
-    # Class 边 (13个)
-    CONSTRAINS, HAS_CONDITION, HAS_CONSEQUENT, HAS_ALTERNATE
-    HAS_LHS, HAS_RHS, HAS_MEMBER, HAS_LOOP_VAR
-    HAS_BEFORE, HAS_AFTER, CONTAINS_MEMBER, IS_INSTANCE_OF, SUPER_CALL
-```
-
-### 4.4 核心 dataclass
-
-#### TraceNode
-
-```python
-@dataclass
-class TraceNode:
-    id: str                    # "top.clk_i"
-    name: str                  # "clk_i"
-    module: str                 # "top"
-    kind: NodeKind
-    width: Tuple[int, int]     # (31, 0)
-    bit_range: Optional[str]    # "[3:0]"
-    parent: Optional[str]       # "top.data"
-    parent_bit_start/end: int  # 位选范围
-    is_clock/is_reset: bool    # 语义标记
-```
-
-#### TraceEdge
-
-```python
-@dataclass
-class TraceEdge:
-    src: str
-    dst: str
-    kind: EdgeKind
-    assign_type: str = ""       # always_ff/always_comb/continuous
-    condition: str = ""        # if (en)
-    clock_domain: str = ""     # "clk_i"
-    expression: str = ""       # "sreg_d"
-```
-
-#### DriverInfo
+### 2.3 DriverInfo — 驱动详情 (V6.6)
 
 ```python
 @dataclass
 class DriverInfo:
     node: TraceNode
-    condition: str = ""
-    clock_domain: str = ""
-    assign_type: str = ""
-    distance: int = 1
+    source: SignalSource | None  # V6.6 替代 expression/bit_slice
+    condition: str         # "state == FETCH"
+    reset_condition: str   # "!rst_n"
+    clock_domain: str      # "clk"
+    assign_type: str       # nonblocking / continuous / blocking
+    distance: int
+    target_signal: str
     
     @property
-    def full_statement(self) -> str:
-        """组装完整驱动语句"""
+    def expression(self) -> str:  # 从 source 派生
+    @property
+    def bit_slice(self) -> str:   # 从 source 派生
 ```
 
-#### SignalResult
+### 2.4 VizData — 统一可视化中间层 (V6.7)
+
+**数据和渲染彻底解耦**。所有画图功能的输入。
 
 ```python
 @dataclass
-class SignalResult:
-    primary: Optional[str]       # 单信号名 (LHS)
-    all_signals: List[str]       # 所有信号 (RHS)
-    kind_name: Optional[str]      # 'BinaryOp'
-    op_name: Optional[str]        # 'Add'
+class VizNode:
+    id, label, full_path, module, kind           # 必需
+    class_: str          # DATA/CONTROL/CLOCK/RESET  (可选)
+    stage_id: int | None # pipeline 阶段 (可选)
+    risk_level: str      # LOW/MEDIUM/HIGH/CRITICAL (可选)
+    is_critical: bool    # chain critical path (可选)
+
+@dataclass
+class VizEdge:
+    id, src, dst, kind                           # 必需
+    expression: str      # 驱动表达式
+    condition: str       # "state == FETCH" — 显示在边上!
+    source_signal: str   # 位精确信号名
+    source_op: str       # 操作符
+    is_control_edge: bool # 控制边 → 虚线
+    edge_cycle_delta: int # chain cycle 计数 (可选)
 ```
 
-### 4.5 设计模式
-
-| 模式 | 说明 |
-|------|------|
-| **dataclass** | 简化数据类定义 |
-| **Enum + auto()** | 自动分配枚举值 |
-| **Optional 默认值** | 避免 None 检查 |
-| **field(default_factory=list)** | 避免可变默认值共享 |
-| **@property 派生** | 计算属性 (如 full_statement) |
-| **@classmethod 工厂** | SignalResult.single/multi/empty |
-
-
-### 4.6 数据流
-
-```
-pyslang AST → GraphBuilder → SignalExpressionVisitor
-  → StatementCollectorVisitor → TraceNode/TraceEdge
-  → SignalGraph → DataFlowGraph.analyze()
-```
-
-### 4.7 设计问题
-
-| 问题 | 建议 |
-|------|------|
-| TraceNode 过载 | 考虑继承或泛型 |
-| DriverInfo 与 TraceEdge 重复 | 考虑合并 |
-| BIT_SELECT 复用 (位选+struct.member) | 考虑拆分 |
-| SignalResult 未被广泛使用 | 推动 extract() 统一入口 |
-
-### 4.8 SignalResult 使用分析
-
-#### 三接口设计
-
-SignalExpressionVisitor 提供三个接口：
-
-| 接口 | 返回类型 | 状态 |
-|------|----------|------|
-| `visit(node)` | `Optional[str]` | 旧接口，单信号 |
-| `get_all_signals(node)` | `List[str]` | 旧接口，多信号 |
-| `extract(node)` | `SignalResult` | **推荐** 统一入口 |
-
-#### 实际使用情况
-
-| 使用位置 | 接口 | 说明 |
-|---------|------|------|
-| SignalExpressionVisitor 内部 | `extract()` | ✅ 递归合并到父节点 |
-| CLI expression 命令 | `extract()` | ✅ 使用 SignalResult |
-| GraphBuilder | `visit()` / `get_all_signals()` | ❌ 未迁移到 extract() |
-
-#### SignalResult 数据流
-
-```
-SignalExpressionVisitor.extract(node)
-    ↓
-┌─────────────────────────────────────┐
-│ SignalResult                         │
-│  - primary: 第一个信号名            │
-│  - all_signals: [所有信号]           │
-│  - kind_name: 'BinaryOp'             │
-│  - op_name: 'Add'                    │
-└─────────────────────────────────────┘
-    ├─→ CLI expression 命令 ✅
-    ├─→ 递归合并 (inside/min_typ_max 等) ✅
-    └─→ GraphBuilder ❌ (仍用 visit/get_all)
-```
-
-#### 问题分析
-
-| 问题 | 说明 |
-|------|------|
-| **GraphBuilder 未使用 extract()** | 仍调用旧接口 visit()/get_all_signals() |
-| **ExtractorResult 与 SignalResult 重复** | 两个结果容器，设计冗余 |
-| **extract() 推广受阻** | CLI expression 使用，但 GraphBuilder 未迁移 |
-
-#### ExtractorResult vs SignalResult
-
-```python
-# graph_builder.py - ExtractorResult
-class ExtractorResult:
-    nodes: List[TraceNode]
-    edges: List[TraceEdge]
-    errors: List[str]
-    port_to_internal: Dict[str, str]
-
-# signal_result.py - SignalResult
-class SignalResult:
-    primary: Optional[str]
-    all_signals: List[str]
-    kind_name: Optional[str]
-    op_name: Optional[str]
-```
-
-**建议统一为 SignalResult**：
-```python
-class SignalResult:
-    nodes: List[TraceNode] = field(default_factory=list)
-    edges: List[TraceEdge] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    primary: Optional[str]
-    all_signals: List[str]
-    kind_name: Optional[str]
-    op_name: Optional[str]
-```
+**渲染管线**: `SignalGraph → build_viz_data(options) → VizData → render_dot(config) → DOT`
 
 ---
 
-### 4.9 ExtractorResult vs SignalResult 深度对比
+## 三、Extractor 层 (5 + 3)
 
-#### 定义对比
+| Extractor | 文件 | 职责 |
+|-----------|------|------|
+| **DriverExtractor** | `driver_extractor.py` (2639行) | DRIVER/CLOCK/RESET 边 + SignalSource |
+| **LoadExtractor** | `load_extractor.py` (423行) | 模块端口节点 |
+| **ConnectionExtractor** | `connection_extractor.py` (503行) | CONNECTION 边 (port mapping) |
+| **ClockDomainExtractor** | `clock_domain_extractor.py` | 时钟域推断 |
+| **ModuleExtractor** | `module_extractor.py` (467行) | 模块实例信息 |
+| SVAExtractor | `sva_extractor.py` | SVA assertion 提取 |
+| CovergroupExtractor | `covergroup_extractor.py` | 覆盖率提取 |
+| UVMTestbenchExtractor | `uvm_testbench_extractor.py` | UVM 结构提取 |
 
-| 属性 | ExtractorResult | SignalResult |
-|------|-----------------|--------------|
-| **文件** | `graph_builder.py` | `visitors/signal_result.py` |
-| **职责** | Graph 构建结果 | 表达式解析结果 |
-| **创建者** | DriverExtractor, LoadExtractor | SignalExpressionVisitor |
-| **使用者** | GraphBuilder | GraphBuilder (调用 Visitor) |
-
-#### 字段对比
-
-ExtractorResult:
-```python
-nodes: List[TraceNode]           # 图节点
-edges: List[TraceEdge]          # 图边
-errors: List[str]                # 错误信息
-port_to_internal: Dict[str, str]  # 端口映射
-```
-
-SignalResult:
-```python
-primary: Optional[str]           # 单信号名 (LHS)
-all_signals: List[str]           # 所有信号 (RHS)
-kind_name: Optional[str]         # 表达式类型名
-op_name: Optional[str]           # 操作符名
-signal_info: Dict[str, Any]      # 详细信息
-source_range: Optional[tuple]    # 源码位置
-```
-
-#### 字段对比表
-
-| 维度 | ExtractorResult | SignalResult |
-|------|-----------------|--------------|
-| **节点/边** | ✅ nodes, edges | ❌ 无 |
-| **错误处理** | ✅ errors | ❌ 无 |
-| **端口映射** | ✅ port_to_internal | ❌ 无 |
-| **单信号** | ❌ 无 | ✅ primary |
-| **多信号** | ❌ 无 | ✅ all_signals |
-| **表达式类型** | ❌ 无 | ✅ kind_name |
-| **操作符名** | ❌ 无 | ✅ op_name |
-| **源码位置** | ❌ 无 | ✅ source_range |
-
-#### 问题分析
-
-| 问题 | 说明 |
-|------|------|
-| **功能重复** | 两个结果容器，但数据不共享 |
-| **双接口冗余** | visit() + get_all_signals() + extract() |
-| **推广受阻** | extract() 未被 GraphBuilder 使用 |
-
-#### 重构建议
-
-**方案 A: 扩展 ExtractorResult (推荐)**
-
-```python
-class ExtractorResult:
-    # 图数据 (已有)
-    nodes: List[TraceNode] = field(default_factory=list)
-    edges: List[TraceEdge] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    port_to_internal: Dict[str, str] = field(default_factory=dict)
-    
-    # 信号数据 (新增)
-    expression_result: SignalResult = None
-```
-
-**理由**:
-1. ExtractorResult 是 GraphBuilder 的输出格式，已被广泛使用
-2. SignalResult 作为 ExtractorResult 的字段嵌入
-3. 保持 GraphBuilder 输出格式不变，易于迁移
-
-
-## 五、查询 API
-
-### 3.1 SignalTracer - 信号追踪
-
-```python
-class SignalTracer:
-    def trace_drivers(self, signal_id, depth=None) -> List[DriverChain]
-    def trace_loads(self, signal_id, depth=None) -> List[LoadChain]
-```
-
-### 3.2 LoadTracer - 负载追踪
-
-```python
-class LoadTracer:
-    def trace_loads(self, signal_id, max_depth=None) -> List[LoadChain]
-```
-
-### 3.3 ClockDomainTracer - 时钟域追踪
-
-```python
-class ClockDomainTracer:
-    def trace_clock_domain(self, signal_id) -> ClockDomainTrace
-```
-
-### 3.4 DataFlowAnalyzer - 数据流分析
-
-```python
-class DataFlowGraph:
-    def analyze(self, from_signal, to_signal, max_paths=100) -> DataFlowResult
-```
+所有 extractor 返回 `ExtractorResult(nodes, edges, errors, port_to_internal)`.
 
 ---
 
-## 六、CLI 命令行工具
+## 四、VizData 渲染管线 (V6.7)
 
-**文件**: `src/cli/main.py`
+### 4.1 设计原则
 
-```bash
-# 1. stats - 图统计
-run_cli.py stats -f test.sv
+- **数据和渲染彻底解耦** — VizData 是纯数据，不包含渲染逻辑
+- **一个格式，所有画图功能** — graph/dataflow/pipeline/chain 共用
+- **可选字段** — 每条命令只取自己需要的 5-10 个字段
+- **统一渲染器** — `render_dot(viz, config)` 约 200 行
 
-# 2. trace - 信号追踪
-run_cli.py trace fanin top.clk -f test.sv
-run_cli.py trace fanout top.data -f test.sv
+### 4.2 迁移状态
 
-# 3. diff - 代码对比
-run_cli.py diff old.sv new.sv
+| 命令 | 状态 | 备注 |
+|------|------|------|
+| `visualize graph` | ✅ 已迁移 | 用户命令 |
+| `visualize dataflow` | ✅ 已迁移 | 用户命令 |
+| `visualize pipeline` | ✅ 已迁移 | 用户命令 |
+| `visualize chain` | ⏸ 保留 | 不同数据源 (路径遍历器) |
+| `visualize module` | ⏸ 保留 | 不同数据源 (InstanceResult) |
+| `arch show` | ⏸ 保留 | 不同数据源 (实例图) |
+| `visualize teach` | ⏸ 保留 | 自定义 HTML |
 
-# 4. snapshot - 快照管理
-run_cli.py snapshot save ...
+### 4.3 文件结构
 
-# 5. dataflow - 数据流分析
-run_cli.py dataflow analyze test.data_in test.data_out -f test.sv
 ```
+src/trace/core/graph/viz/
+├── __init__.py            # 公开 API
+├── viz_data_models.py     # VizNode / VizEdge / VizData
+├── viz_data_builder.py    # build_viz_data(graph, options)
+└── viz_dot_renderer.py    # render_dot(viz, config) — 统一 DOT 生成
+```
+
+### 4.4 旧渲染器状态
+
+| 文件 | 状态 |
+|------|------|
+| `signal_graph_viewer.py::render_html` | ⛔ 内部 helper 仍在使用 |
+| `signal_graph_viewer.py::render_mermaid` | ⛔ 内部 helper 仍在使用 |
+| `dataflow_viz.py::generate_dataflow_dot` | ⛔ `_emit_split_by_module` 仍在使用 |
+| `pipeline_viz.py::generate_pipeline_dot` | 🗑 deprecated [V6.7] |
+| `pipeline_viz.py::generate_pipeline_timing_dot` | 🗑 deprecated [V6.7] |
+| `pipeline_viz.py::generate_pipeline_load_dot` | 🗑 deprecated [V6.6] |
+| `viz_legend.py` | ⛔ CLI 层仍在使用 |
+
+---
+
+## 五、Query API
+
+| 类 | 文件 | 职责 |
+|----|------|------|
+| **SignalTracer** | `query/signal.py` | trace_fanin / trace_fanout / trace_fanin_detailed |
+| **LoadTracer** | `query/load.py` | trace_loads |
+| **ClockDomainTracer** | `query/clock_domain.py` | trace_clock_domain |
+| **ModuleTracer** | `query/module.py` | trace_module |
+
+`trace_fanin_detailed()` 返回 `list[DriverInfo]`，DriverInfo 包含 SignalSource.
+
+---
+
+## 六、Graph/Analyzer 层
+
+| 分析器 | 职责 | 稳定性 |
+|--------|------|--------|
+| **DataFlowGraph** | 跨模块数据流路径搜索 | ✅ 核心 |
+| **ControlFlowAnalyzer** | 控制流分析 | ⚠️ 次流 |
+| **CDCAnalyzer** | 跨时钟域检测 | ✅ 核心 |
+| **TimingAnalyzer** | 关键路径 (reg depth) | ⚠️ 次流 |
+| **SignalClassifier** | DATA/CONTROL/CLOCK 分类 | ✅ 核心 |
+| **ControlCoverageGenerator** | 控制覆盖率生成 | ⚠️ 次流 |
+| **HandshakeDetector** | 握手协议检测 | ⚠️ 次流 |
+| **HandshakeDetector** | 握手协议检测 | ⚠️ 次流 |
 
 ---
 
 ## 七、技术栈
 
-| 组件 | 技术 | 说明 |
-|------|------|------|
-| AST 解析 | pyslang | 语义 AST (Compilation + getRoot()) |
-| 图结构 | NetworkX | 有向图 (Digraph) |
-| 数据类 | dataclass | 轻量级数据结构 |
-| Visitor | @on 装饰器 | 538 个 handler |
-| CLI | Typer | 命令行界面 |
-| 测试 | pytest | 839 测试用例 |
-
----
-
-## 八、关键设计原则
-
-| 铁律 | 说明 |
+| 组件 | 技术 |
 |------|------|
-| **Semantic AST 强制** | 必须使用 `Compilation` + `getRoot()` |
-| **位精确性** | `data[7:4]` 和 `data[3:0]` 是不同节点 |
-| **原子化** | 每种语法节点类型独立处理 |
-| **不可信则不输出** | 无法解析时返回 `confidence: "uncertain"` |
-| **Visitor 模式** | [铁律15] 使用 Visitor 替代 if-elif 链 |
-| **图即契约** | 数据结构变更必须同步更新所有消费者 |
+| AST 解析 | pyslang (Compilation + getRoot) |
+| 图结构 | NetworkX DiGraph |
+| 数据类 | dataclass + Enum + auto() |
+| VISITOR | @on 装饰器 handler 注册 |
+| CLI | Typer |
+| 测试 | pytest (2958 tests, 97.1% pass) |
+| 渲染 | Graphviz DOT + `dot -Tpng/svg` |
 
 ---
 
-## 九、文件结构
+## 八、核心设计铁律
 
-```
-src/trace/
-├── unified_tracer.py          # 统一入口
-├── core/
-│   ├── graph/
-│   │   ├── models.py         # TraceNode, TraceEdge, NodeKind, EdgeKind
-│   │   ├── dataflow.py       # DataFlowGraph
-│   │   ├── signal_graph_viewer.py  # SignalGraphViewer (878 LOC, graph 命令主渲染器)
-│   │   └── diff.py           # 图差异分析
-│   ├── graph_builder.py      # Module 图构建 (2675行)
-│   ├── class_graph_builder.py # Class 图构建 (738行)
-│   ├── module_instance_graph.py # MIG (1039行)
-│   ├── bit_select_handler.py # 位选处理
-│   ├── base.py               # PyslangAdapter
-│   ├── compiler.py            # 编译管理
-│   ├── semantic_adapter.py    # 语义适配器
-│   ├── builder/
-│   │   └── subroutine_expander.py  # 函数/任务内联展开 (750+行)
-│   ├── visitors/
-│   │   ├── signal_expression_visitor.py  # 7064行
-│   │   ├── statement_collector_visitor.py
-│   │   ├── constraint_visitor.py
-│   │   └── ...
-│   ├── query/
-│   │   ├── signal.py         # SignalTracer
-│   │   ├── load.py            # LoadTracer
-│   │   ├── clock_domain.py    # ClockDomainTracer
-│   │   └── module.py         # ModuleTracer
-│   └── graph/analyzer/        # [Phase B 2026-07-17] DOT 渲染分析器群
-│       ├── _dot_common.py    # 共享 DOT helpers (170 LOC): escape_dot_label,
-│       │                       format_node_label_chain, sanitize_dot_id_inner,
-│       │                       render_with_engine
-│       ├── dataflow_viz.py   # dataflow 命令渲染
-│       ├── pipeline_viz.py   # pipeline 命令渲染 (1107 LOC, V4 含 cluster+edges+state)
-│       ├── cdc_analyzer.py   # cdc 分析
-│       ├── controlflow_analyzer.py
-│       ├── signal_classifier.py  # 信号分类 (data/control/clock/reset)
-│       ├── timing_analyzer.py    # 时序分析
-│       └── viz_legend.py     # 统一图例渲染
-└── cli/
-    ├── _common.py            # 共享 CLI helpers (_build_tracer, handle_compilation_error)
-    ├── _viz_common.py        # [Phase B 2026-07-17] viz 子命令 CLI plumbing:
-    │                            FILE_OPTION/FILELIST_OPTION/INCLUDE_OPTION/STRICT_OPTION,
-    │                            build_viz_tracer, get_viz_sources (115 LOC)
-    └── commands/
-        ├── trace.py
-        ├── dataflow.py
-        ├── diff.py
-        ├── snapshot.py
-        ├── stats.py
-        └── visualize.py      # [Phase B] 1682 LOC (原 1750, -68) — 5 viz 子命令
-```
+| 铁律 | 内容 |
+|------|------|
+| 铁律1 | pyslang Semantic AST 唯一数据源 |
+| 铁律4 | 不允许创建孤儿节点 |
+| 铁律13 | 金标准测试优先 |
+| 铁律15 | Visitor 模式 |
+| 铁律16 | ENABLE/DATA 不作为独立边类型 |
+| 铁律26 | AST 遍历必须使用 Visitor，禁止 if-elif 链 |
+| 铁律29 | Visitor 调用统一通过 extract() |
 
 ---
 
-## 十、测试统计 (2026-05-27)
-
-```
-Unit tests:       30 tests
-Integration:     125 tests
-Regression:      703 tests
-─────────────────────────
-Total:           996 tests
-Skipped:           0 test
-Failed:            0 test
-```
-
----
-
-## 十一、版本历史
+## 九、版本历史
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
-| 2026-07-17 | Phase B | viz 子命令重构: `_viz_common.py` + `_dot_common.py` 提取共享代码. visualize.py 1750→1682 LOC (-68) |
-| 2026-07-17 | V4 | pipeline 可视化加强: stage clusters + 跨 stage DRIVER 边 + state→stage 关系 |
-| 2026-07-17 | defaults | pipeline defaults 调整: max_regs/fold 1→3, target_folds 5→10, max_control 8→12 |
-| 2026-07-17 | COND | CONDITION 边可视化: 橙色 + 橙色节点 + `COND` label |
-| 2026-06-25 | 1.2 | `arch` 命令 + 跨模块 port 边 (PR1-PR4) |
-| 2026-05-26 | 1.0 | 初始架构文档 |
-| 2026-05 | 0.1 | 项目启动 |
-
----
-
-## 十二、相关文档
-
-| 文档 | 说明 |
-|------|------|
-| `README.md` | 项目整体介绍 |
-| `docs/TODO.md` | 待实现功能清单 |
-| `docs/PENDING_FEATURES.md` | 待实现功能详细清单 |
-| `docs/DATAFLOW_IMPLEMENTATION_PLAN.md` | DataFlow 实现方案 |
-| `docs/CONTROL_FLOW_ANALYSIS.md` | ControlFlow 设计方案 |
+| 2026-07-29 | V6.7 | VizData 统一可视化层，graph/dataflow/pipeline 迁移 |
+| 2026-07-29 | V6.6 | DriverSource→SignalSource, DriverInfo含SignalSource, NodeKind/EdgeKind分区, 可视化清理 |
+| 2026-07-28 | V6.5 | DriverSource结构化驱动源 (位精确binary decomposition) |
+| 2026-07-28 | V6.4 | binary operator decomposition + generate-if限制文档化 |
+| 2026-07-27 | V6.3 | ast_utils: unwrap/kind_matches 统一包装解包 |
+| 2026-06-25 | PR1-7 | Module-level抽取+L2跨模块+L3内部信号+L4可视化+L5 benchmark+L6 CI+L7 picorv32 |
+| 2026-06-15 | 1.0+ | Evidence/Snapshot/Verify/Dataflow/Controlflow 全套 |
+| 2026-05-26 | 1.0 | 初始架构 + 996 tests |
