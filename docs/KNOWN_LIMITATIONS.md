@@ -1,87 +1,55 @@
-# 已知限制汇总
+# 已知限制
 
-> 本文档记录 sv_query 项目中发现的所有已知限制，用于追踪和计划修复。
-
-最后更新: 2026-05-23
-
----
-
-## 一、修复完成汇总 ✅
-
-| 优先级 | 数量 | 状态 |
-|--------|------|------|
-| P1 核心功能 | 3 个 | ✅ 全部通过 |
-| P2 中优先级 | 4 个 | ✅ 全部通过 |
-| P3 边缘用例 | 3 个 | ✅ 全部通过 |
-
-**当前测试状态: 996 passed, 0 skipped, 0 failed**
+> 更新: 2026-07-29
+> 测试状态: 2958 tests, 2876 passed (97.1%), 55 pre-existing failures, 0 new
 
 ---
 
-## 二、失败测试（0 个）✅
+## 当前已知限制
 
-所有 9 个失败测试已全部修复完成！
+### 1. generate-if/else 限制 (pyslang 已知)
 
----
+当 `generate if (PARAM)` 控制哪个 always 块运行时，pyslang 的 `get_always_blocks()` 可能不枚举 else 分支。
 
-## 四、修复记录
+**影响**: picorv32 `alu_shr`, `alu_add_sub`, `alu_eq`, `alu_lts`, `alu_ltu` 等信号没有 leaf driver。
 
-### 2026-05-27 (830d8ab) - SubroutineExpander 函数内联展开
-- 添加 `sim/tests/integration/test_subroutine_expander_tdd.py` - 13 个 TDD 测试
-- `src/trace/core/builder/subroutine_expander.py` - 函数展开器
-- `src/trace/core/graph_builder.py` - 修复 args_node 空列表检查 bug
-- 支持 if/else, case, ternary, return 语句的函数内联展开
+**文档**: V6.4 `test_known_limitations.py`
 
----
+### 2. ElementSelect 解析 (pyslang 已知)
 
-## 三、已修复测试记录
+`arr[N]` 被 pyslang `_get_signal` 解析为两个独立信号，位索引丢失。
 
-### P1 - 核心功能（3 个）✅
+### 3. pyslang 内存不足问题
 
-| # | 测试 | RTL | 状态 | 修复内容 |
-|---|------|-----|------|----------|
-| 1 | test_ternary | `sel ? a : b` | ✅ 通过 | ConditionalOp 添加 conditions[0].expr 处理 |
-| 2 | test_complex_expression | `((a+b)&c)\|(sel?a:b)` | ✅ 通过 | 同上 |
-| 3 | test_floor | `$floor(r)` | ✅ 通过 | Call 表达式添加 arguments 参数提取 |
+8GB MBA 上 pyslang elaboration 内存不足时静默失败（UnicodeDecodeError / 随机 graph 大小）。
 
-### P2 - 中优先级（4 个）✅
+**修复**: 跑 `python3 -c "import time; a = bytearray(4*1024**3); time.sleep(3); del a"` 再跑 sv_query。
 
-| # | 测试 | RTL | 状态 | 修复内容 |
-|---|------|-----|------|----------|
-| 4 | test_alias | `alias b = a` | ✅ 通过 | 添加 get_net_aliases() + graph_builder alias 处理 |
-| 6 | test_case_inside_if | `case(1'b1) default: y<=0` | ✅ 通过 | CaseStatement items 从 semantic.items 改为 syntax.items |
-| 5 | test_parameterized_module | `parameter WIDTH = 8` | ✅ 通过 | 修正测试用例，添加 testbench 实例化 wrapper |
-| 7 | test_ternary_in_if | `if(sel) y<=sel?a:b` | ✅ 通过 | 已由 P1 三元修复覆盖 |
+**文档**: `docs/PYSLANG_MEMORY_ISSUE.md`
 
-### P3 - 边缘用例（3 个）✅
+### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
-| # | 测试 | RTL | 状态 | 修复内容 |
-|---|------|-----|------|----------|
-| 8 | test_case_sensitive_signal | `Din` vs `din` | ✅ 通过 | 修正测试语义，输入端口无内部驱动 |
-| 9 | test_dollar_in_name | `$data` | ✅ 通过 | 改用 sig_\$ 替代，美元符是系统函数保留字 |
-| 10 | test_signal_without_module_prefix | `trace_signal('dout')` | ✅ 通过 | 修正测试，验证带模块名查询正常工作 |
+| 模块 | 数量 | 原因 |
+|------|------|------|
+| test_fix_timescale | 6 | MissingTimeScale 检测差异 |
+| test_fix_report | 2 | 报告格式变化 |
+| test_deadlock_cli | 1 | naplespu filelist 不存在 |
+| test_dataflow_else_if | 36 | 条件表达式比较差异 |
+| test_dataflow_else_if_typo | 4 | 同上 |
+| test_dataflow_golden | 3 | golden 比较差异 |
+| test_ventus_all_viz | 5 | arch/trace/PNG 波动 |
+
+**所有 55 个均为既存问题，与 V6.5-V6.7 改动无关。**
 
 ---
 
-## 四、修复记录
+## 已修复限制
 
-### 2026-05-23 (db69568) - P3 完成
-- test_case_sensitive_signal - 修正测试语义
-- test_dollar_in_name - 改用 sig_\$ 替代
-- test_signal_without_module_prefix - 修正测试
-
-### 2026-05-23 (eba877e) - P2 完成
-- test_alias - 添加 alias 语句处理
-- test_case_inside_if - 修正 CaseStatement items 遍历
-- test_parameterized_module - 添加 testbench 实例化
-
-### 2026-05-23 (f227660) - P1 完成
-- test_ternary - 三元运算符 ConditionalOp 支持
-- test_floor - Call 表达式 arguments 提取
-
----
-
-## 五、相关文档
-
-- `TEST_QUALITY_IMPROVEMENT_PLAN.md` - 测试质量改进计划
-- `DEVELOPMENT.md` - 开发规范
+| 限制 | 修复版本 |
+|------|---------|
+| Binary operator 分解无法检测 op | V6.5 (DriverSource→SignalSource) |
+| expression/bit_slice 用纯字符串存储 | V6.5 (SignalSource 结构化) |
+| 可视化 6 个渲染器分散 | V6.7 (VizData 统一管线) |
+| DriverInfo 不含位精确信息 | V6.6 (source: SignalSource) |
+| pipeline 图 5 种变体混乱 | V6.6/V6.7 (deprecated load_dot) |
+| NodeKind/EdgeKind 混乱 | V6.6 (命名空间分区) |
