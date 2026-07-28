@@ -65,11 +65,6 @@ module test_mixed(input [7:0] a, b, c, output [7:0] y);
 endmodule
 """
 
-TERNARY = """
-module test_ternary(input sel, input [7:0] a, b, output [7:0] y);
-    assign y = sel ? a : b;
-endmodule
-"""
 
 
 class TestDriverSourceBasic:

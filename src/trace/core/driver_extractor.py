@@ -932,6 +932,104 @@ class DriverExtractor:
 
         return signal, bit_start, bit_end
 
+    def _detect_binary_op(
+        self, expr, signal: str
+    ) -> tuple[str, str, bool]:
+        """[V6.5] 检测二元操作符和操作数位置
+
+        解包 Conversion/Cast 到内部 BinaryExpression，提取 op 和 operand_side。
+
+        Returns:
+            (op, operand_side, is_binary) — 无 binary op 时返回 ("", "", False)
+        """
+        if expr is None:
+            return "", "", False
+
+        # 解包 Conversion/Cast → 找到内部 BinaryExpression
+        root = expr
+        kind_str = str(getattr(expr, "kind", ""))
+        if "Conversion" in kind_str or "Cast" in kind_str:
+            inner = unwrap(expr)
+            if inner is not None and inner is not expr:
+                root = inner
+
+        if root is None:
+            return "", "", False
+
+        root_kind_str = str(getattr(root, "kind", ""))
+        if "Binary" not in root_kind_str:
+            return "", "", False
+
+        op_attr = getattr(root, "op", None)
+        op = str(getattr(op_attr, "name", op_attr)) if op_attr else ""
+        operand_side = ""
+
+        for side_name in ("left", "right"):
+            side = getattr(root, side_name, None)
+            if side is None:
+                continue
+            # 两层匹配: visit 优先, get_all_signals 兜底 (CallExpression/$signed)
+            name = self._signal_visitor.visit(side)
+            if name and signal == name:
+                operand_side = side_name
+                break
+            if not name:
+                if signal in self._signal_visitor.get_all_signals(side):
+                    operand_side = side_name
+                    break
+
+        return op, operand_side, True
+
+    def _detect_casts(self, rhs_expr, root_expr, full_expression: str) -> list[str]:
+        """[V6.5] 检测 $signed/$unsigned casts
+
+        3 层 fallback:
+        1. 外层 Conversion 的 kind 含 "Signed"/"Unsigned"
+        2. 解包后 binary 的 left/right 是 CallExpression($signed) — pyslang 把 $signed 解析为 Call
+        3. full_expression 字符串前缀匹配 "$signed"/"$unsigned"
+
+        Returns:
+            cast 名列表 (如 ["$signed"])
+        """
+        if rhs_expr is None:
+            return []
+
+        # 1. 外层 kind 检测
+        kind_str = str(getattr(rhs_expr, "kind", ""))
+        if "Signed" in kind_str and "Conversion" not in kind_str:
+            # $signed 有些 pyslang 版本直接标记为 SignedConversion
+            return ["$signed"]
+        if "Unsigned" in kind_str and "Conversion" not in kind_str:
+            return ["$unsigned"]
+
+        # 2. CallExpression 检测: $signed(a) 在 pyslang 里是 CallExpression
+        # 解包外层 Conversion → inner binary → left/right CallExpression
+        if root_expr is not None and root_expr is not rhs_expr:
+            for side_name in ("left", "right"):
+                side = getattr(root_expr, side_name, None)
+                if side is None:
+                    continue
+                side_kind = str(getattr(side, "kind", ""))
+                if "Call" not in side_kind:
+                    continue
+                sub_info = getattr(side, "subroutine", None)
+                if sub_info is None:
+                    continue
+                sub = getattr(sub_info, "subroutine", None)
+                if sub is None:
+                    continue
+                sub_name = str(getattr(sub, "name", ""))
+                if sub_name in ("$signed", "$unsigned"):
+                    return [sub_name]
+
+        # 3. 字符串前缀 fallback
+        if full_expression.strip().startswith("$signed"):
+            return ["$signed"]
+        if full_expression.strip().startswith("$unsigned"):
+            return ["$unsigned"]
+
+        return []
+
     def _build_driver_source(
         self,
         rhs_name: str,
@@ -940,10 +1038,11 @@ class DriverExtractor:
     ) -> DriverSource | None:
         """[V6.5] 从分解的 leaf signal 和父表达式构建结构化 DriverSource
 
-        3 层检测:
-        1. 位范围解析 (bit_start/bit_end int)
-        2. 二元操作符检测 (先解包 Conversion/Cast, 再检查内部 Binary)
-        3. Cast 检测 ($signed/$unsigned, 优先 kind 字符串, fallback 字符串前缀)
+        步骤:
+        1. 位范围解析 (_parse_bit_range → bit_start/bit_end int)
+        2. 表达式字符串提取 (_get_readable_expr)
+        3. Cast 检测 (_detect_casts, 3 层 fallback)
+        4. Binary op 检测 (_detect_binary_op, 含 operand_side)
 
         Args:
             rhs_name: Leaf 信号名 (可能含位选择, 如 "a[7:0]")
@@ -970,77 +1069,19 @@ class DriverExtractor:
         # ---- 2. 完整表达式字符串 ----
         full_expression = self._get_readable_expr(rhs_expr, full_expr_str)
 
-        # ---- 3. 检测二元操作符 + Cast 包装 ----
-        op = ""
-        operand_side = ""
-        casts: list[str] = []
-        is_decomposed = False
-
-        # 先确定要分析的 "根表达式": 解包 Conversion/Cast 到内部的真实表达式
-        root = rhs_expr
+        # ---- 3. Cast 检测 ----
+        # 先解出内部表达式 (用于 CallExpression 检测)
+        inner = None
         if rhs_expr is not None:
-            kind_str = str(getattr(rhs_expr, "kind", ""))
-            if "Conversion" in kind_str or "Cast" in kind_str or "Signed" in kind_str or "Unsigned" in kind_str:
-                is_decomposed = True
-                if "Signed" in kind_str:
-                    casts.append("$signed")
-                elif "Unsigned" in kind_str:
-                    casts.append("$unsigned")
-                inner = unwrap(rhs_expr)
-                if inner is not None and inner is not rhs_expr:
-                    root = inner
-
-        # 在根表达式上检测 binary op
-        if root is not None:
-            root_kind_str = str(getattr(root, "kind", ""))
-            if "Binary" in root_kind_str:
-                is_decomposed = True
-                op_attr = getattr(root, "op", None)
-                if op_attr:
-                    op = str(getattr(op_attr, "name", op_attr))
-                left = getattr(root, "left", None)
-                right = getattr(root, "right", None)
-                if left:
-                    left_name = self._signal_visitor.visit(left)
-                    if left_name and signal == left_name:
-                        operand_side = "left"
-                    elif not left_name:
-                        # visit 可能返回 None (如 CallExpression/$signed),
-                        # 用 get_all_signals 兜底
-                        left_signals = self._signal_visitor.get_all_signals(left)
-                        if signal in left_signals:
-                            operand_side = "left"
-                if not operand_side and right:
-                    right_name = self._signal_visitor.visit(right)
-                    if right_name and signal == right_name:
-                        operand_side = "right"
-                    elif not right_name:
-                        right_signals = self._signal_visitor.get_all_signals(right)
-                        if signal in right_signals:
-                            operand_side = "right"
-
-        # 字符串级 fallback: $signed/$unsigned (kind 检测失败时)
-        if not casts:
-            if full_expression.strip().startswith("$signed"):
-                casts.append("$signed")
-            elif full_expression.strip().startswith("$unsigned"):
-                casts.append("$unsigned")
-
-        # [V6.5 v2] CallExpression 检测: $signed(a) → CallExpression, subroutine='$signed'
-        # 当外层是 Conversion 包裹 binary, binary 左/右操作数是 CallExpression($signed) 时
-        if not casts and rhs_expr is not None:
             inner = unwrap(rhs_expr)
-            if inner is not None and inner is not rhs_expr:
-                for side_name in ("left", "right"):
-                    side = getattr(inner, side_name, None)
-                    if side is not None and "Call" in str(getattr(side, "kind", "")):
-                        sub_info = getattr(side, "subroutine", None)
-                        if sub_info is not None:
-                            sub = getattr(sub_info, "subroutine", None)
-                            if sub is not None:
-                                sub_name = str(getattr(sub, "name", ""))
-                                if sub_name in ("$signed", "$unsigned"):
-                                    casts.append(sub_name)
+            if inner is rhs_expr:
+                inner = None
+        casts = self._detect_casts(rhs_expr, inner, full_expression)
+
+        # ---- 4. Binary op 检测 ----
+        op, operand_side, is_binary = self._detect_binary_op(rhs_expr, signal)
+
+        is_decomposed = bool(op) or bool(casts) or is_binary
 
         return DriverSource(
             signal=signal,
@@ -1060,7 +1101,10 @@ class DriverExtractor:
         pyslang 多层表示:
         - Semantic AST node: __str__ 返回 "Expression(ExpressionKind.BinaryOp)" (无用)
         - .syntax 属性: Syntax AST node, __str__ 返回 "a + b" (有用!)
-        - .syntax 为 None 时: 回退到 fallback
+        - .syntax 为 None 时: 回退到 fallback, 但过滤掉似是 type name 的字符串
+
+        Returns:
+            可读表达式字符串，优先 syntax.__str__()
         """
         if rhs_expr is None:
             return fallback
@@ -1068,10 +1112,14 @@ class DriverExtractor:
             syntax = getattr(rhs_expr, "syntax", None)
             if syntax is not None:
                 text = str(syntax).strip()
-                if text:
+                if text and "ExpressionKind" not in text:
                     return text
         except (UnicodeDecodeError, TypeError, Exception):
             pass
+
+        # fallback 也检查: 过滤 type name 字符串
+        if "ExpressionKind" in fallback or "Expression(" in fallback:
+            return ""
         return fallback
 
     def _handle_normal_assign(self, assign, module, result, module_name) -> None:
