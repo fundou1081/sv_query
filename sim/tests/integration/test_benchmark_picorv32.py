@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
 BASELINE = PROJECT_ROOT / "tools" / "benchmark" / "baselines" / "picorv32.json"

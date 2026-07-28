@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FILELIST_DIR = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
 PICO_FILE = Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v")

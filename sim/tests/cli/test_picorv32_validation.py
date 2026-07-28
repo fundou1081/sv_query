@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PICORV32 = Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v")
 PYTHONPATH = str(PROJECT_ROOT / "src") + ":" + str(PROJECT_ROOT / "tools")

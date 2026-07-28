@@ -1,3 +1,6 @@
+import pytest
+
+pytestmark = pytest.mark.opensource
 """
 [Manual test 2026-07-10] Verify the per-module chunking approach for Ventus GPGPU
 analysis on memory-constrained systems (8GB MBA).

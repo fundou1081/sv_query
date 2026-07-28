@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 # Test fixtures
 SYNC_FIFO = "/tmp/cdc_test/sync_fifo.sv"
 TWO_FLOP_SYNC = "/tmp/cdc_test/two_flop_sync.sv"

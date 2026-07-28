@@ -42,6 +42,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.golden
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CLI_SCRIPT = PROJECT_ROOT / "tools" / "coverage_gen_demo.py"
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "coverage_gen_demo"

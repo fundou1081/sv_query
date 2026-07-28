@@ -1,3 +1,6 @@
+import pytest
+
+pytestmark = pytest.mark.opensource
 """
 [Validation 2026-07-10] Comprehensive visualization validation across all viz commands.
 
