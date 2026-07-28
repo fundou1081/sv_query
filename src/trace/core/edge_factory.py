@@ -14,7 +14,7 @@
 
 from typing import Any
 
-from .graph.models import DriverSource, EdgeKind, TraceEdge
+from .graph.models import SignalSource, EdgeKind, TraceEdge
 
 
 class TraceEdgeFactory:
@@ -36,18 +36,18 @@ class TraceEdgeFactory:
         condition: str = "",  # [V4 fix] alias for sig_cond when ctx is None
         sig_cond_ast: Any | None = None,
         clock_domain: str = "",
-        driver_source: DriverSource | None = None,  # [V6.5 2026-07-28]
+        source: SignalSource | None = None,  # [V6.5 2026-07-28] [V6.6 renamed from driver_source]
     ) -> TraceEdge:
-        """[V6.5 2026-07-28] 新增 driver_source 参数。
-        当 driver_source 提供时, expression/bit_slice 自动从 driver_source 填充
+        """[V6.6] source 参数：结构化信号源 (driver/load 共享)。
+        当 source 提供时, expression/bit_slice 自动从 source 填充
         (除非调用方显式传了非空值覆盖)。
         """
-        # [V6.5] DriverSource 自动填充 expression/bit_slice
-        if driver_source is not None:
+        # [V6.6] SignalSource 自动填充 expression/bit_slice
+        if source is not None:
             if not expression:
-                expression = driver_source.full_expression
+                expression = source.full_expression
             if not bit_slice:
-                bit_slice = driver_source.bit_slice
+                bit_slice = source.bit_slice
 
         c = ctx or {}
         use_ctx = ctx is not None
@@ -73,5 +73,5 @@ class TraceEdgeFactory:
             condition_ast=(
                 c.get("condition_ast") if use_ctx else sig_cond_ast
             ),
-            driver_source=driver_source,
+            source=source,
         )

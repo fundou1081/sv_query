@@ -1,8 +1,8 @@
-"""test_driver_source_bitprecision.py — [V6.5] 验证 DriverSource 结构化驱动源
+"""test_signal_source_bitprecision.py — [V6.5] 验证 SignalSource 结构化驱动源
 
 测试目标:
-1. DriverSource dataclass 正确创建 (signal/bit_start/bit_end/op/operand_side/casts)
-2. 分解后的 binary operator 边缘携带正确的 DriverSource
+1. SignalSource dataclass 正确创建 (signal/bit_start/bit_end/op/operand_side/casts)
+2. 分解后的 binary operator 边缘携带正确的 SignalSource
 3. bit range 解析正确 (int 而非字符串)
 4. $signed/$unsigned cast 检测
 5. 向后兼容: expression/bit_slice 字符串字段仍然可用
@@ -67,14 +67,14 @@ endmodule
 
 
 
-class TestDriverSourceBasic:
-    """DriverSource 基本功能: 创建和属性"""
+class TestSignalSourceBasic:
+    """SignalSource 基本功能: 创建和属性"""
 
-    def test_driver_source_creation(self):
-        """DriverSource dataclass 正确创建"""
-        from trace.core.graph.models import DriverSource
+    def test_source_creation(self):
+        """SignalSource dataclass 正确创建"""
+        from trace.core.graph.models import SignalSource
 
-        ds = DriverSource(
+        ds = SignalSource(
             signal="a",
             bit_start=7,
             bit_end=0,
@@ -91,26 +91,26 @@ class TestDriverSourceBasic:
         assert ds.bit_slice == "[7:0]"  # property
         assert ds.is_decomposed is True
 
-    def test_driver_source_single_bit(self):
-        """DriverSource 单 bit 选择"""
-        from trace.core.graph.models import DriverSource
+    def test_source_single_bit(self):
+        """SignalSource 单 bit 选择"""
+        from trace.core.graph.models import SignalSource
 
-        ds = DriverSource(signal="data", bit_start=3, bit_end=3)
+        ds = SignalSource(signal="data", bit_start=3, bit_end=3)
         assert ds.bit_slice == "[3]"
 
-    def test_driver_source_no_bit(self):
-        """DriverSource 无 bit 选择时 bit_slice 为空"""
-        from trace.core.graph.models import DriverSource
+    def test_source_no_bit(self):
+        """SignalSource 无 bit 选择时 bit_slice 为空"""
+        from trace.core.graph.models import SignalSource
 
-        ds = DriverSource(signal="data")
+        ds = SignalSource(signal="data")
         assert ds.bit_slice == ""
 
 
-class TestDriverSourceOnEdges:
-    """验证分解后的边携带 DriverSource"""
+class TestSignalSourceOnEdges:
+    """验证分解后的边携带 SignalSource"""
 
-    def test_binary_op_driver_source(self):
-        """a + b 分解后每条边有 DriverSource.op='+' 和 operand_side"""
+    def test_binary_op_source(self):
+        """a + b 分解后每条边有 SignalSource.op='+' 和 operand_side"""
         graph = _build_graph(SIMPLE_BINARY, target="test_binary")
         edges = _get_driver_edges(graph, "y")
 
@@ -118,8 +118,8 @@ class TestDriverSourceOnEdges:
         assert len(edges) >= 2, f"Expected >=2 edges, got {len(edges)}"
 
         for e in edges:
-            assert e.driver_source is not None, f"Edge {e.src}->{e.dst} missing driver_source"
-            ds = e.driver_source
+            assert e.source is not None, f"Edge {e.src}->{e.dst} missing source"
+            ds = e.source
             assert ds.op == "Add", f"Expected op='Add', got '{ds.op}'"
             assert ds.operand_side in ("left", "right"), f"operand_side must be left/right, got '{ds.operand_side}'"
             assert ds.is_decomposed is True
@@ -128,10 +128,10 @@ class TestDriverSourceOnEdges:
             assert "+" in ds.full_expression
 
         # 验证左右操作数
-        sides = {e.driver_source.operand_side for e in edges}
+        sides = {e.source.operand_side for e in edges}
         assert sides == {"left", "right"}, f"Expected both left and right, got {sides}"
 
-    def test_driver_source_parse_bitrange(self):
+    def test_source_parse_bitrange(self):
         """a[7:0] + b[3:0] 正确解析 bit_start/bit_end 为 int"""
         graph = _build_graph(BITRANGE_BINARY, target="test_binary_br")
         edges = _get_driver_edges(graph, "y")
@@ -139,8 +139,8 @@ class TestDriverSourceOnEdges:
         assert len(edges) >= 2
 
         for e in edges:
-            assert e.driver_source is not None
-            ds = e.driver_source
+            assert e.source is not None
+            ds = e.source
             assert ds.op == "Add"
             assert ds.is_decomposed is True
             # Verify bit range is int, not string
@@ -159,9 +159,9 @@ class TestDriverSourceOnEdges:
         assert len(edges) >= 2
 
         # 左侧操作数 a 应检测到 $signed cast
-        left_edge = next((e for e in edges if e.driver_source.operand_side == "left"), None)
+        left_edge = next((e for e in edges if e.source.operand_side == "left"), None)
         assert left_edge is not None
-        ds = left_edge.driver_source
+        ds = left_edge.source
         assert "$signed" in ds.casts, f"Expected $signed in casts, got {ds.casts}"
         assert ds.op == "LogicalShift" or "Shift" in ds.op, f"Expected shift op, got '{ds.op}'"
 
@@ -174,11 +174,11 @@ class TestDriverSourceOnEdges:
 
         # 每个边缘都应携带 op
         for e in edges:
-            assert e.driver_source is not None
-            assert e.driver_source.op, f"Missing op on {e.src} edge"
+            assert e.source is not None
+            assert e.source.op, f"Missing op on {e.src} edge"
 
 
-class TestDriverSourceBackwardCompat:
+class TestSignalSourceBackwardCompat:
     """向后兼容: expression/bit_slice 字符串字段仍然正确"""
 
     def test_expression_still_available(self):
@@ -187,7 +187,7 @@ class TestDriverSourceBackwardCompat:
         edges = _get_driver_edges(graph, "y")
 
         for e in edges:
-            assert e.driver_source is not None
+            assert e.source is not None
             # expression 字段向后兼容, 可能为 leaf name (visit 输出) 或完整形式
             # 关键是它非空
             assert e.expression, f"expression is empty on edge {e.src}->{e.dst}"
@@ -198,16 +198,16 @@ class TestDriverSourceBackwardCompat:
         edges = _get_driver_edges(graph, "y")
 
         for e in edges:
-            assert e.driver_source is not None
-            # bit_slice should match driver_source.bit_slice
-            assert e.bit_slice == e.driver_source.bit_slice
+            assert e.source is not None
+            # bit_slice should match source.bit_slice
+            assert e.bit_slice == e.source.bit_slice
 
 
-class TestDriverSourceNotOnSimple:
-    """简单赋值 (无分解) 不产生 driver_source"""
+class TestSignalSourceNotOnSimple:
+    """简单赋值 (无分解) 不产生 source"""
 
-    def test_simple_assign_no_driver_source(self):
-        """简单连续赋值 assign y = a 不产生 DriverSource (无需分解)"""
+    def test_simple_assign_no_source(self):
+        """简单连续赋值 assign y = a 不产生 SignalSource (无需分解)"""
         src = """
 module test_simple(input [7:0] a, output [7:0] y);
     assign y = a;
@@ -217,11 +217,11 @@ endmodule
         edges = _get_driver_edges(graph, "y")
 
         assert len(edges) == 1
-        # 简单赋值不产生 DriverSource (没有分解动作)
-        # _build_driver_source 只对分解路径添加, 简单路径不产生
-        if edges[0].driver_source is not None:
+        # 简单赋值不产生 SignalSource (没有分解动作)
+        # _build_source 只对分解路径添加, 简单路径不产生
+        if edges[0].source is not None:
             # 如果有, 那应该是 is_decomposed=False
-            assert edges[0].driver_source.is_decomposed is False
+            assert edges[0].source.is_decomposed is False
 
 
 class TestParseBitRange:
