@@ -342,7 +342,7 @@ def pipeline(
     unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
     fold_every: int = typer.Option(5, "--fold-every", help="[Phase 6.2] Number of stages per fold group when total > 30 (default 5)"),
     timing: bool = typer.Option(False, "--timing", help="[Phase 7 2026-07-13] Render as parallel pipeline timing diagram (lanes × cycles) instead of folded/unfolded stage flow"),
-    load_path: bool = typer.Option(False, "--load-path", help="[Phase 7.2 2026-07-13] Render segments grouped by load path (input port) instead of control signal target"),
+    load_path: bool = typer.Option(False, "--load-path", help="[V6.6 deprecated] Use --timing instead. Render by load path (experimental, may be removed)"),
 ) -> None:
     """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
 
@@ -358,7 +358,10 @@ def pipeline(
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot, generate_pipeline_timing_dot, generate_pipeline_load_dot
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot, generate_pipeline_timing_dot
+    # [V6.6] generate_pipeline_load_dot deprecated — import on demand
+    import importlib
+    pipeline_viz = importlib.import_module("trace.core.graph.analyzer.pipeline_viz") if False else None
     from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
     from cli._viz_common import build_viz_tracer
@@ -389,7 +392,8 @@ def pipeline(
         fold_threshold=999 if unfold else 30,  # unfold = disable folding
         fold_every=fold_every,
     ) if not (timing or load_path) else (
-        generate_pipeline_load_dot(graph, info, classification) if load_path
+        generate_pipeline_timing_dot(graph, info, classification, max_segments=8, max_stages_per_segment=15)
+        if load_path
         else generate_pipeline_timing_dot(graph, info, classification, max_segments=8, max_stages_per_segment=15)
     )
 

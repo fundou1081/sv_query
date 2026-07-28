@@ -442,17 +442,6 @@ def generate_pipeline_dot(
             fold_note_extra = ''
         folded_groups = _build_folded_stage_groups(stages_to_render, fold_every)
 
-    # [Phase 6.4 2026-07-12] TL;DR as visible box (not just comment)
-    from .viz_legend import render_tldr_box
-    fold_note = f' · folded into {len(folded_groups)} groups (--unfold to expand){fold_note_extra}' if is_folding else ''
-    tldr_text = (
-        f'{len(pipeline_info.pipeline_regs)} pipeline regs · '
-        f'{len(pipeline_info.state_regs)} state regs · '
-        f'{pipeline_info.total_latency} stages{fold_note} · '
-        f'control shown: {len(control_shown)}/{total_control}'
-    )
-    lines.extend(render_tldr_box(tldr_text))
-
     # 每个 stage (或 fold group) 一个 cluster
     all_nodes_in_stages = set()
     render_groups = folded_groups if is_folding else None
@@ -698,10 +687,6 @@ def generate_pipeline_dot(
                     f'xlabel="affects S{target_stage}" fontsize=7 fontcolor="#cc8844"];'
                 )
 
-    # [Phase 6.3 2026-07-12] Legend overlay at bottom
-    from .viz_legend import render_legend
-    lines.extend(render_legend('pipeline'))
-
     lines.append('}')
     return "\n".join(lines)
 
@@ -895,7 +880,7 @@ def generate_pipeline_timing_dot(
     return "\n".join(lines)
 
 
-def _group_stages_by_load_root(
+def _group_stages_by_load_root(  # [V6.6 deprecated]
     graph: SignalGraph,
     stages: list,
     info: PipelineInfo,
@@ -966,7 +951,7 @@ def _group_stages_by_load_root(
 
     return stage_to_root
 
-def _group_stages_into_load_segments(
+def _group_stages_into_load_segments(  # [V6.6 deprecated]
     stages: list, stage_to_root: dict[int, str]
 ) -> list[tuple[str | None, list]]:
     """[Phase 7.2 2026-07-13] 按 load_root 把 stages 切分成 segment (顺序)."""
@@ -997,12 +982,12 @@ def generate_pipeline_load_dot(
     max_segments: int = 8,
     max_stages_per_segment: int = 15,
 ) -> str:
-    """[Phase 7.2 2026-07-13] Pipeline segment diagram grouped by LOAD PATH.
+    """[Phase 7.2 2026-07-13] [V6.6 deprecated] Pipeline segment diagram grouped by LOAD PATH.
+
+    ⚠️ DEPRECATED: 实验性功能, 将在 V6.7 移除.
+    请使用 generate_pipeline_timing_dot --load-path 替代.
 
     与 generate_pipeline_timing_dot 区别: 分组依据是 load root (PORT_IN) 而不是 control signal target.
-
-    IMPORTANT: 实际可达性取决于 graph 结构. 如果 reg 不能通过 DRIVER 边追溯到 PORT_IN,
-    则归入 (no load root) segment.
     """
     _sid = sanitize_dot_id
     if classification is None:
