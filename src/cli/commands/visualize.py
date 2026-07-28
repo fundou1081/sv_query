@@ -451,6 +451,89 @@ def compute(
         typer.echo(dot)
 
 
+
+@vis_app.command(name="timed")
+def timed(
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    module: str = typer.Option(None, "--module", "-m", help="Target module"),
+    strict: bool = STRICT_OPTION,
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+) -> None:
+    """时间轴运算架构图: 从左到右时间轴 + 运算作为圆形节点
+
+    每个 cycle 一个 vertical cluster (Cycle 0, Cycle 1, ...).
+    REG 寄存器是 cycle 边界 (方框).
+    运算 (+/×/>>) 是独立圆形节点，按颜色分类:
+    - 算术: 橙色, 逻辑: 蓝色, 移位: 绿色
+
+    V6.7 新命令.
+    """
+    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_timed_compute
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+    from trace.core.compiler import CompilationError
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer
+
+    try:
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=module,
+        )
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    classification = classify_graph(graph)
+    info = detect_pipeline(graph, classification)
+
+    # Build stage_map for VizData
+    stage_map = {}
+    for s in info.stages:
+        stage_map[s.stage_id] = s.reg_nodes + s.comb_nodes + s.data_inputs
+    stage_map[0] = list(set(stage_map.get(0, []) + info.state_regs))
+
+    # [V6.7 fix] CONST/input nodes driving a REG inherit that REG's stage
+    node_stage: dict[str, int] = {}
+    for sid, node_list in stage_map.items():
+        for nid in node_list:
+            node_stage[nid] = sid
+    # [V6.7 fix] CONST/input nodes: push to the stage BEFORE the REG they drive
+    # (where the combinatorial OP actually happens)
+    for src, dst in graph.edges():
+        if src in graph.nodes() and dst in node_stage:
+            node = graph.get_node(src)
+            if node and (node.kind.name == "CONST" or node.kind.name == "PORT_IN"):
+                dst_stage = node_stage[dst]
+                # Remove from current stage (if in wrong stage)
+                for sid, nl in list(stage_map.items()):
+                    if src in nl:
+                        stage_map[sid] = [x for x in nl if x != src]
+                op_stage = max(0, dst_stage - 1)
+                node_stage[src] = op_stage
+                stage_map[op_stage] = list(set(stage_map.get(op_stage, []) + [src]))
+
+    title = module or file or filelist or "Timed Compute"
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=title,
+        include_node_stage=True,
+        pipeline_stages=stage_map,
+        include_edge_expression=True,
+        include_edge_condition=True,
+        include_node_class=True,
+        classification=classification,
+    ))
+    dot = render_timed_compute(viz, {"title": f"Timed: {title}"})
+
+    if dot_output:
+        Path(dot_output).write_text(dot)
+        typer.echo(f"\u2713 DOT: {dot_output}")
+    else:
+        typer.echo(dot)
+
+
 @vis_app.command(name="gap")
 def gap(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),

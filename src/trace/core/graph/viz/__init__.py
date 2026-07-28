@@ -15,6 +15,7 @@ from .viz_data_models import VizData, VizNode, VizEdge
 from .viz_data_builder import VizBuildOptions, build_viz_data
 from .viz_dot_renderer import render_dot
 from .viz_compute_renderer import render_compute_dot
+from .viz_timed_compute_renderer import render_timed_compute
 
 __all__ = [
     "VizData",
@@ -24,4 +25,5 @@ __all__ = [
     "build_viz_data",
     "render_dot",
     "render_compute_dot",
+    "render_timed_compute",
 ]
