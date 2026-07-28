@@ -83,21 +83,24 @@ class SignalSource:
 
 
 class NodeKind(Enum):
+    # ═══ 核心: 硬件信号 (≈80% 引用) ═══
     SIGNAL = auto()
     WIRE = auto()
     REG = auto()
     PORT_IN = auto()
     PORT_OUT = auto()
     PORT_INOUT = auto()
-    PARAM = auto()
     CONST = auto()
+
+    # ═══ 核心: 架构节点 ═══
+    PARAM = auto()
     INSTANTIATED_MODULE = auto()  # 实例节点 (top.inst)
     GENERATE_BLOCK = auto()  # generate 块节点 (top.GEN)
 
-    # [Phase1a] Class & Constraint 节点类型
+    # ═══ 扩展: Class / Constraint 节点 (Phase1a) ═══
     CLASS = auto()  # class 定义节点 (packet)
     CLASS_INSTANCE = auto()  # class 实例 (top.p = new())
-    CLASS_INSTANCE_PROPERTY = auto()  # class 实例成员 (top.p.addr, 通过实例访问的成员)
+    CLASS_INSTANCE_PROPERTY = auto()  # class 实例成员 (top.p.addr)
     CLASS_PROPERTY = auto()  # class 成员变量 (packet.addr, rand 变量)
     CONSTRAINT_BLOCK = auto()  # constraint c { ... } 命名块
     CONSTRAINT_EXPR = auto()  # 单条表达式约束
@@ -108,18 +111,21 @@ class NodeKind(Enum):
     CONSTRAINT_SOLVE = auto()  # solve A before B
     CONSTRAINT_FOREACH = auto()  # foreach 循环
     CONSTRAINT_RANGE = auto()  # inside {0,1,2} 的集合
+
+    # ═══ 实验: 表达式级节点 ═══
     EXPRESSION = auto()  # 表达式节点 (a + b, a & b)
     FUNCTION_CALL = auto()  # 函数调用节点
 
 
 class EdgeKind(Enum):
+    # ═══ 核心: 硬件信号边 (≈90% 引用) ═══
     DRIVER = auto()  # 数据驱动 (q <= d)
     CLOCK = auto()  # 时钟触发 (clk -> q)
     RESET = auto()  # 异步复位 (rst_n -> q)
     CONNECTION = auto()  # 模块端口连接
     BIT_SELECT = auto()  # 位选择聚合
 
-    # [Phase1a] Class & Constraint 边类型
+    # ═══ 扩展: Class / Constraint 边 (Phase1a) ═══
     CONSTRAINS = auto()  # CLASS_PROPERTY ← 约束管控
     HAS_CONDITION = auto()  # CONSTRAINT_IF → CLASS_PROPERTY (条件变量)
     HAS_CONSEQUENT = auto()  # CONSTRAINT_IF → CONSTRAINT_EXPR (if 结果)
@@ -132,8 +138,8 @@ class EdgeKind(Enum):
     HAS_AFTER = auto()  # CONSTRAINT_SOLVE → CLASS_PROPERTY (after)
     CONTAINS_MEMBER = auto()  # CLASS → CLASS_PROPERTY (组合/成员变量)
     IS_INSTANCE_OF = auto()  # CLASS_PROPERTY → CLASS (成员变量的类型引用)
-    SUPER_CALL = auto()  # CONSTRAINT_EXPR → 被调用的父类约束 (增量扩展 super.c1)
-    MEMBER_SELECT = auto()  # 实例成员访问: top.p.addr → top.p (p.addr 的 MEMBER_SELECT 边)
+    SUPER_CALL = auto()  # CONSTRAINT_EXPR → 被调用的父类约束
+    MEMBER_SELECT = auto()  # 实例成员访问: top.p.addr → top.p
 
 
 # [铁律16] 注意:ENABLE/DATA 不作为独立边类型
