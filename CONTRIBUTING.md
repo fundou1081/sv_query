@@ -30,7 +30,7 @@ pip install -r requirements.txt
 # 以 editable 模式装 sv_query (会创建 `sv_query` 命令)
 pip install -e ".[dev]"
 
-# 验证 (expect: 2415 collected, ~30s)
+# 验证 (expect: 2958 collected, ~30s)
 python -m pytest sim/tests/unit sim/tests/cli -q
 
 # 验证 sv_query 命令可用
@@ -70,7 +70,7 @@ sv_query/
 ├── README.md               # 项目门面 (5min quickstart 在这)
 ├── CONTRIBUTING.md         # 你正在读的文件
 ├── run_cli.py              # CLI 入口 (typer based)
-├── src/                    # 核心代码 (~26K 行)
+├── src/                    # 核心代码 (~39K 行)
 │   ├── trace/
 │   │   ├── core/
 │   │   │   ├── compiler.py          # pyslang 编译入口 (用这个就对了)
@@ -97,9 +97,9 @@ sv_query/
 ├── sim/
 │   ├── tests/
 │   │   ├── unit/        # 1318 tests (最快, 单文件, 1-2s)
-│   │   ├── cli/         #  337 tests (CLI 端到端, 5-10s)
+│   │   ├── cli/         #  400 tests (CLI 端到端, 5-10s)
 │   │   ├── integration/ #  482 tests (跨模块 + 工业项目, 中等)
-│   │   └── regression/  #  713 tests (含 OpenTitan ascon 等大型工业项目, 慢)
+│   │   └── regression/  #  713 (回归) tests (含 OpenTitan ascon 等大型工业项目, 慢)
 │   ├── openTitan_validation.sv      # 测试用 SV (含 8+ 子模块, 完整 SV 子集)
 │   ├── TEST_REPORT.md               # 自动生成的测试报告 (每次跑覆盖度更新)
 │   └── golden/coverage_gen_demo/    # Phase 1 golden baselines (3 工业项目)
@@ -241,10 +241,10 @@ python -m pytest sim/tests/cli/test_coverage_generate.py -v
 | 类型 | 文件数 | tests | 速度 |
 |------|--------|-------|------|
 | `unit/` | 80 | 1,318 | 30s |
-| `cli/` | 14 | 337 | 10s |
+| `cli/` | 14 | 400 | 10s |
 | `integration/` | 51 | 482 | 5min |
-| `regression/` | 88 | 713 | 15min |
-| **总计** | **233** | **2,850** | **~25min 全套** |
+| `regression/` | 88 | 713 (回归) | 15min |
+| **总计** | **233** | **2,958** | **~15-20min 全套** |
 
 新增 (V6+):
 - `sim/tests/cli/test_visualize_teach_source.py` (4 tests, --show-source in teach)
