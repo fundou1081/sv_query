@@ -72,14 +72,9 @@ def generate_dataflow_dot(
     lines.append('  splines=polyline;')
     lines.append('')
 
-    # [Phase 6.4 2026-07-12] TL;DR as visible box (not just comment)
-    from .viz_legend import render_tldr_box
     n_data = len(classification.data_nodes)
     n_ctrl = len(classification.control_nodes)
     n_clk = len(classification.clock_nodes)
-    tldr_text = f'{n_data} data · {n_ctrl} control · {n_clk} clock nodes'
-    lines.extend(render_tldr_box(tldr_text))
-    lines.append('')
 
     # 边收集
     data_edges = []
@@ -215,9 +210,5 @@ def generate_dataflow_dot(
             attrs.append('fontsize=7')
         lines.append(f'  "{_sid(ce.src_id)}" -> "{_sid(ce.dst_id)}" [{", ".join(attrs)}];')
 
-    # [Phase 6.3 2026-07-12] Use shared legend (consistency across all viz)
-    from .viz_legend import render_legend
-    lines.extend(render_legend('dataflow'))
     lines.append('}')
-
     return "\n".join(lines)
