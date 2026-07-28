@@ -160,14 +160,17 @@ class TestPicorv32ParenTernaryDecomposition:
             alu_shr <= $signed({instr_sra || instr_srai ? reg_op1[31] : 1'b0,
                                 reg_op1}) >>> reg_op2[4:0];
 
-        Known limitation: alu_shr's RHS is `$signed(...) >>> reg_op2`.
-        System functions ($signed) and shift operators (>>>) are not
-        yet unwrapped to leaf drivers. Documented as future work.
+        Known limitation: picorv32 wraps alu_shr in
+        `generate if (TWO_CYCLE_ALU) ... else begin always @* alu_shr = ... end endgenerate`.
+        With TWO_CYCLE_ALU=0 (default), pyslang's elaboration doesn't
+        enumerate the else branch's always block at the module level
+        (get_always_blocks returns 0). So alu_shr has no leaf drivers
+        in the graph even though the expression itself decomposes fine
+        (verified in test_visualize_teach_binary_ops.py).
 
         This test asserts that the graph still builds without error,
         and that alu_shr appears as a node (even if it has no leaf
-        drivers). It does NOT assert specific leaf drivers — that's
-        a follow-up item for V6.4.
+        drivers due to the pyslang generate-if limitation).
         """
         rc, out, err = _run_cli(
             "stats", "-f", str(PICORV32), "--no-strict",
@@ -186,8 +189,10 @@ class TestPicorv32ParenTernaryDecomposition:
             f"expected alu_shr node, got {alu_shr_nodes}"
         )
 
-        # Future improvement: decompose $signed(...) and >>> to leaf signals
-        # so reg_op1 and reg_op2 become drivers of alu_shr.
+        # Known limitation: generate-if doesn't enumerate the else
+        # branch's always block at module level (pyslang issue).
+        # The expression itself would decompose fine in isolation
+        # (see test_visualize_teach_binary_ops.py).
 
 
 @pytest.mark.skipif(not PICORV32.exists(), reason="picorv32.v not found")
