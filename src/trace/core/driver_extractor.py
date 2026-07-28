@@ -471,17 +471,18 @@ class DriverExtractor:
         if expr is None:
             return ""
 
-        # 递归查找 ConditionalOp (可能被 ConversionExpression 包装)
+        # [V6.3+4 2026-07-28] Refactored to use ast_utils for wrapper unwrap
+        # and kind matching. Replaces 6 lines of substring checks and ad-hoc
+        # operand/expr unwrap with a single unwrap() call.
         current = expr
-        for _ in range(3):  # 最多解包3层
+        for _ in range(5):  # 最多解包5层 (was 3, increased to match _create_always_edges)
             if current is None:
                 return ""
 
-            kind = getattr(current, "kind", None)
-            kind_str = str(kind) if kind else ""
-
-            # 检测 ConditionalOp
-            if "ConditionalOp" in kind_str:
+            # [V6.3+4] Use kind_matches instead of substring "ConditionalOp" in str(kind)
+            # to handle pyslang 10/11 SyntaxKind.ConditionalExpression (and any future
+            # enum renames via _KIND_ALIASES).
+            if kind_matches(current, "ConditionalOp", "ConditionalExpression"):
                 # 提取条件
                 conditions = getattr(current, "conditions", None)
                 if conditions and len(conditions) > 0:
@@ -516,14 +517,11 @@ class DriverExtractor:
                             return "<id:non-utf8>"
                 return ""
 
-            # 解包 ConversionExpression 或其他包装
-            operand = getattr(current, "operand", None)
-            if operand is None:
-                # 尝试其他属性
-                operand = getattr(current, "expr", None)
-            if operand is current:  # 防止无限循环
+            # [V6.3+4] Use ast_utils.unwrap() instead of ad-hoc operand/expr getattr
+            inner = unwrap(current)
+            if inner is None or inner is current:  # 防止无限循环
                 return ""
-            current = operand
+            current = inner
 
         return ""
 
@@ -991,7 +989,11 @@ class DriverExtractor:
         if has_conditional:
             # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
             # (localparam/parameter) from ternary branch signals.
-            signal_conditions = self._signal_visitor.get_signals_with_conditions(rhs_expr)
+            # [V6.3+4 2026-07-28] Pass UNWRAPPED check_expr to
+            # get_signals_with_conditions so the visitor sees the
+            # ConditionalOp directly (not the outer ParenthesizedExpression).
+            # This mirrors V6.3+1 fix in _create_always_edges bug #2.
+            signal_conditions = self._signal_visitor.get_signals_with_conditions(check_expr)
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
