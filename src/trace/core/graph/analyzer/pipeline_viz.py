@@ -330,7 +330,7 @@ def _group_controls_by_stage(
     return result
 
 
-def generate_pipeline_dot(
+def generate_pipeline_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead]
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
@@ -733,7 +733,7 @@ def _group_stages_into_segments(
     return segments
 
 
-def generate_pipeline_timing_dot(
+def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead]
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
@@ -880,7 +880,7 @@ def generate_pipeline_timing_dot(
     return "\n".join(lines)
 
 
-def _group_stages_by_load_root(  # [V6.6 deprecated]
+def _group_stages_by_load_root(  # [V6.7 deprecated: use trace.core.graph.viz instead]  # [V6.6 deprecated]
     graph: SignalGraph,
     stages: list,
     info: PipelineInfo,
@@ -951,7 +951,7 @@ def _group_stages_by_load_root(  # [V6.6 deprecated]
 
     return stage_to_root
 
-def _group_stages_into_load_segments(  # [V6.6 deprecated]
+def _group_stages_into_load_segments(  # [V6.7 deprecated: use trace.core.graph.viz instead]  # [V6.6 deprecated]
     stages: list, stage_to_root: dict[int, str]
 ) -> list[tuple[str | None, list]]:
     """[Phase 7.2 2026-07-13] 按 load_root 把 stages 切分成 segment (顺序)."""
@@ -974,7 +974,7 @@ def _group_stages_into_load_segments(  # [V6.6 deprecated]
     return segments
 
 
-def generate_pipeline_load_dot(
+def generate_pipeline_load_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead]
     graph: SignalGraph,
     pipeline_info: PipelineInfo,
     classification: SignalClassification | None = None,
