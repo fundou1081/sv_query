@@ -25,7 +25,7 @@ from .base import PyslangAdapter
 from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
-from .graph.models import DriverSource, EdgeKind, NodeKind, TraceEdge, TraceNode
+from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
@@ -67,7 +67,7 @@ class DriverExtractor:
         Consolidates the 7 directly-constructed `TraceEdge(...)` append sites in
         this module to a single helper that delegates to `TraceEdgeFactory`. Any
         new field added to TraceEdge (e.g. `source_location`, `confidence`,
-        `function_return`, `condition_ast`) only needs handling at ONE point
+        `function_return`, `condition_ast`, `source`) only needs handling at ONE point
         in the factory, not 20.
 
         Args:
@@ -899,7 +899,7 @@ class DriverExtractor:
         return invocations
 
     # ==============================================================================
-    # [V6.5 2026-07-28] DriverSource — 结构化驱动源
+    # [V6.5 2026-07-28] [V6.6] SignalSource — 结构化信号源 (driver/load 共用)
     # ==============================================================================
 
     @staticmethod
@@ -1030,13 +1030,13 @@ class DriverExtractor:
 
         return []
 
-    def _build_driver_source(
+    def _build_signal_source(
         self,
         rhs_name: str,
         rhs_expr,  # AST 父表达式 (可能是 BinaryOp / Conversion / ConditionalOp)
         full_expr_str: str,
-    ) -> DriverSource | None:
-        """[V6.5] 从分解的 leaf signal 和父表达式构建结构化 DriverSource
+    ) -> SignalSource | None:
+        """[V6.5/V6.6] 从分解的 leaf signal 和父表达式构建结构化 SignalSource
 
         步骤:
         1. 位范围解析 (_parse_bit_range → bit_start/bit_end int)
@@ -1050,7 +1050,7 @@ class DriverExtractor:
             full_expr_str: visit 方法输出 (可能只是 leaf name, 如 "a")
 
         Returns:
-            DriverSource or None
+            SignalSource or None
         """
         if not rhs_name:
             return None
@@ -1083,7 +1083,7 @@ class DriverExtractor:
 
         is_decomposed = bool(op) or bool(casts) or is_binary
 
-        return DriverSource(
+        return SignalSource(
             signal=signal,
             bit_start=bit_start,
             bit_end=bit_end,
@@ -1253,7 +1253,7 @@ class DriverExtractor:
                             )
                         )
                     # [V6.5] 结构化驱动源
-                    ds = self._build_driver_source(rhs_name, check_expr, expr_str)
+                    ds = self._build_signal_source(rhs_name, check_expr, expr_str)
                     result.edges.append(
                         self._edge_factory.make_edge(
                             src=src_node_id,
@@ -1263,7 +1263,7 @@ class DriverExtractor:
                             expression=expr_str,
                             bit_slice=bit_slice,
                             sig_cond=sig_cond,
-                            driver_source=ds,
+                            source=ds,
                         )
                     )
         else:
@@ -1299,7 +1299,7 @@ class DriverExtractor:
                             )
                         )
                     # [V6.5] 结构化驱动源
-                    ds = self._build_driver_source(rhs_name, rhs_expr, expr_str)
+                    ds = self._build_signal_source(rhs_name, rhs_expr, expr_str)
                     # [V4] factory 统一入口
                     self._append_edge(
                         result,
@@ -1310,7 +1310,7 @@ class DriverExtractor:
                         expression=expr_str,
                         bit_slice=bit_slice,
                         condition=ternary_condition,
-                        driver_source=ds,
+                        source=ds,
                     )
 
     def _create_always_edges(self, module, result, module_name):
@@ -1460,7 +1460,7 @@ class DriverExtractor:
                                         )
                                     )
                                 # [V6.5] 结构化驱动源
-                                ds = self._build_driver_source(sig_rhs_name, check_expr, expr_str)
+                                ds = self._build_signal_source(sig_rhs_name, check_expr, expr_str)
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -1471,7 +1471,7 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
                                         sig_cond=combined_cond,
-                                        driver_source=ds,
+                                        source=ds,
                                     )
                                 )
                     else:
@@ -1507,7 +1507,7 @@ class DriverExtractor:
                                         )
                                     )
                                 # [V6.5] 结构化驱动源
-                                ds = self._build_driver_source(rhs_name, rhs_expr, expr_str)
+                                ds = self._build_signal_source(rhs_name, rhs_expr, expr_str)
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -1517,7 +1517,7 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         expression=expr_str,
                                         ctx=ctx,
-                                        driver_source=ds,
+                                        source=ds,
                                     )
                                 )
 

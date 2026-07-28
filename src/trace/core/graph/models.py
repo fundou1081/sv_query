@@ -15,10 +15,10 @@ from ..coverage_models import SourceLocation
 
 
 @dataclass
-class DriverSource:
-    """[V6.5 2026-07-28] 结构化驱动源 — 取代纯字符串的 expression/bit_slice
+class SignalSource:
+    """[V6.5 2026-07-28] [V6.6 renamed from DriverSource] 结构化信号源
 
-    在位精确的 binary decomposition 中, 每个驱动源需要区分:
+    driver 和 load 共享 — 表达驱动源或负载源的位精确信息:
     - 实际信号名 (如 a, b, data)
     - 位范围 (MSB/LSB 分别存储为 int, 而非 "[7:0]" 字符串)
     - 表达式上下文 (左/右操作数, 运算符类型)
@@ -26,7 +26,7 @@ class DriverSource:
 
     Example:
         assign y = $signed(a) >>> b[4:0];
-        → DriverSource(
+        → SignalSource(
             signal="a",
             full_expression="$signed(a) >>> b[4:0]",
             op=">>>",
@@ -34,7 +34,7 @@ class DriverSource:
             casts=["$signed"],
             is_decomposed=True,
         )
-        → DriverSource(
+        → SignalSource(
             signal="b",
             bit_start=4, bit_end=0,
             full_expression="$signed(a) >>> b[4:0]",
@@ -183,9 +183,9 @@ class TraceEdge:
     # [FIX 2026-07-05] function_return: True 表示这是函数调用返回值 (result <- func)
     function_return: bool = False
     is_function_call: bool = False
-    # [V6.5 2026-07-28] 结构化驱动源 (取代纯字符串 expression/bit_slice)
-    # 当 driver_source 非 None 时, expression 和 bit_slice 应保持同步
-    driver_source: DriverSource | None = None
+    # [V6.5 2026-07-28] [V6.6 renamed from driver_source] 结构化信号源
+    # driver 和 load 共享 — 当 source 非 None 时, expression/bit_slice 应保持同步
+    source: SignalSource | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
