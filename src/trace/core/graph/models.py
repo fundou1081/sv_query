@@ -51,7 +51,6 @@ class DriverSource:
     op: str = ""  # 二元运算符 (如 "+", "&", ">>>")
     operand_side: str = ""  # "left" / "right" / ""
     casts: list[str] = field(default_factory=list)  # 类型转换列表 (如 ["$signed"])
-    is_concat_fragment: bool = False  # 是否拼接表达式的一部分
     is_decomposed: bool = False  # 是否分解后的片段 (非原始完整表达式)
 
     @property
@@ -78,8 +77,6 @@ class DriverSource:
         if self.op:
             side = f" ({self.operand_side})" if self.operand_side else ""
             parts.append(f"→ op: {self.op}{side}")
-        if self.is_concat_fragment:
-            parts.append("(concat)")
         if self.is_decomposed:
             parts.append("(decomposed)")
         return " ".join(parts)
