@@ -400,6 +400,57 @@ def pipeline(
         typer.echo(dot)
 
 
+
+@vis_app.command(name="compute")
+def compute(
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    module: str = typer.Option(None, "--module", "-m", help="Target module"),
+    strict: bool = STRICT_OPTION,
+    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+) -> None:
+    """运算架构图: 边上直接显示运算符 (+, -, &, >>, ==, etc.)
+
+    基于 SignalSource.op 字段, 映射 pyslang 操作符名到可读符号:
+    - 算术 (Add/Subtract/Multiply): 橙色
+    - 逻辑 (And/Or/Xor): 蓝色
+    - 移位 (LogicalShiftLeft/Right): 绿色
+    - 比较 (GreaterThan/LessThan/Equality): 紫色
+    - MUX 目标: 粗边
+
+    V6.7 新命令.
+    """
+    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_compute_dot
+    from trace.core.compiler import CompilationError
+    from cli._common import handle_compilation_error
+    from cli._viz_common import build_viz_tracer
+
+    try:
+        tracer, graph = build_viz_tracer(
+            file=file, filelist=filelist, include=include,
+            strict=strict, target_module=module,
+        )
+    except CompilationError as e:
+        handle_compilation_error(e, strict=strict)
+        return
+
+    # [V6.7] 运算架构图: 需要 expression + SignalSource op
+    title = module or file or filelist or "Compute"
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=title,
+        include_edge_expression=True,
+        include_edge_condition=True,
+    ))
+    dot = render_compute_dot(viz, {"title": f"Compute: {title}", "layout": "LR"})
+
+    if dot_output:
+        Path(dot_output).write_text(dot)
+        typer.echo(f"\u2713 DOT: {dot_output}")
+    else:
+        typer.echo(dot)
+
+
 @vis_app.command(name="gap")
 def gap(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
