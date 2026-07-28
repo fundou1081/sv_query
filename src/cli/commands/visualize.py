@@ -295,7 +295,7 @@ def dataflow(
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
+    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
     from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
     from cli._viz_common import build_viz_tracer
@@ -315,7 +315,15 @@ def dataflow(
     typer.echo(f"  Control nodes: {len(classification.control_nodes)}", err=True)
     typer.echo(f"  Clock nodes: {len(classification.clock_nodes)}", err=True)
 
-    dot = generate_dataflow_dot(graph, module or file or filelist or "", classification, include_clk_rst=include_clk_rst, show_source=show_source)
+    # [V6.7] 使用统一 VizData 渲染管线
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=module or file or filelist or "",
+        include_node_class=True,
+        classification=classification,
+        include_edge_expression=True,
+    ))
+    title = module or file or filelist or "Dataflow"
+    dot = render_dot(viz, {"title": f"Dataflow: {title}", "show_clock_reset": include_clk_rst})
 
     if dot_output:
         Path(dot_output).write_text(dot)
