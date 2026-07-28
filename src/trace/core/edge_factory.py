@@ -14,7 +14,7 @@
 
 from typing import Any
 
-from .graph.models import EdgeKind, TraceEdge
+from .graph.models import DriverSource, EdgeKind, TraceEdge
 
 
 class TraceEdgeFactory:
@@ -36,31 +36,19 @@ class TraceEdgeFactory:
         condition: str = "",  # [V4 fix] alias for sig_cond when ctx is None
         sig_cond_ast: Any | None = None,
         clock_domain: str = "",
+        driver_source: DriverSource | None = None,  # [V6.5 2026-07-28]
     ) -> TraceEdge:
-        """[V4 2026-07-15] 若 condition 提供且 ctx 为 None, 等同 sig_cond.
-        支持直接传 condition 字段名 (避免 caller 混淆 sig_cond vs condition).
+        """[V6.5 2026-07-28] 新增 driver_source 参数。
+        当 driver_source 提供时, expression/bit_slice 自动从 driver_source 填充
+        (除非调用方显式传了非空值覆盖)。
         """
-        """从 ctx dict 或 sig_cond 字符串创建 TraceEdge
+        # [V6.5] DriverSource 自动填充 expression/bit_slice
+        if driver_source is not None:
+            if not expression:
+                expression = driver_source.full_expression
+            if not bit_slice:
+                bit_slice = driver_source.bit_slice
 
-        Args:
-            src, dst: 边端点 (必填)
-            expression: 驱动表达式字符串
-            kind: 边类型, 默认 DRIVER
-            assign_type: 赋值类型 (continuous/nonblocking/blocking)
-            bit_slice: 位选择 (如 "[7:0]")
-            ctx: 上下文 dict (来自 StatementCollectorVisitor)
-                 读 keys: clock, condition, effective_condition, condition_ast
-            sig_cond: 局部条件字符串 (sig_cond-based 创建点用)
-            sig_cond_ast: sig_cond 对应的 AST 节点
-            clock_domain: 显式指定 (覆盖 ctx.get('clock', ''), 用于 CLOCK 边)
-
-        Returns:
-            TraceEdge 实例
-
-        优先级:
-        - clock_domain 显式 > ctx.get('clock', '')
-        - ctx 优先于 sig_cond (ctx 存在时 sig_cond 被忽略)
-        """
         c = ctx or {}
         use_ctx = ctx is not None
         # clock_domain 显式参数优先, 否则从 ctx 读
@@ -85,4 +73,5 @@ class TraceEdgeFactory:
             condition_ast=(
                 c.get("condition_ast") if use_ctx else sig_cond_ast
             ),
+            driver_source=driver_source,
         )

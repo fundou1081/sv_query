@@ -14,6 +14,77 @@ import networkx as nx
 from ..coverage_models import SourceLocation
 
 
+@dataclass
+class DriverSource:
+    """[V6.5 2026-07-28] 结构化驱动源 — 取代纯字符串的 expression/bit_slice
+
+    在位精确的 binary decomposition 中, 每个驱动源需要区分:
+    - 实际信号名 (如 a, b, data)
+    - 位范围 (MSB/LSB 分别存储为 int, 而非 "[7:0]" 字符串)
+    - 表达式上下文 (左/右操作数, 运算符类型)
+    - 包装转换 (如 $signed, $unsigned)
+
+    Example:
+        assign y = $signed(a) >>> b[4:0];
+        → DriverSource(
+            signal="a",
+            full_expression="$signed(a) >>> b[4:0]",
+            op=">>>",
+            operand_side="left",
+            casts=["$signed"],
+            is_decomposed=True,
+        )
+        → DriverSource(
+            signal="b",
+            bit_start=4, bit_end=0,
+            full_expression="$signed(a) >>> b[4:0]",
+            op=">>>",
+            operand_side="right",
+            is_decomposed=True,
+        )
+    """
+
+    signal: str  # 实际信号名 (如 "a", "b", "data")
+    bit_start: int | None = None  # MSB (高位)
+    bit_end: int | None = None  # LSB (低位)
+    full_expression: str = ""  # 完整表达式 (向后兼容/显示用)
+    op: str = ""  # 二元运算符 (如 "+", "&", ">>>")
+    operand_side: str = ""  # "left" / "right" / ""
+    casts: list[str] = field(default_factory=list)  # 类型转换列表 (如 ["$signed"])
+    is_concat_fragment: bool = False  # 是否拼接表达式的一部分
+    is_decomposed: bool = False  # 是否分解后的片段 (非原始完整表达式)
+
+    @property
+    def bit_slice(self) -> str:
+        """位选择字符串, e.g. "[7:0]", "[3]", """
+        if self.bit_start is not None and self.bit_end is not None:
+            if self.bit_start == self.bit_end:
+                return f"[{self.bit_start}]"
+            return f"[{self.bit_start}:{self.bit_end}]"
+        return ""
+
+    @property
+    def display_str(self) -> str:
+        """可读显示字符串: 包含 casts + signal + bit_slice 的紧凑形式"""
+        parts = []
+        name = self.signal
+        bs = self.bit_slice
+        if bs:
+            name = f"{self.signal}{bs}"
+        if self.casts:
+            for c in self.casts:
+                name = f"{c}({name})"
+        parts.append(name)
+        if self.op:
+            side = f" ({self.operand_side})" if self.operand_side else ""
+            parts.append(f"→ op: {self.op}{side}")
+        if self.is_concat_fragment:
+            parts.append("(concat)")
+        if self.is_decomposed:
+            parts.append("(decomposed)")
+        return " ".join(parts)
+
+
 class NodeKind(Enum):
     SIGNAL = auto()
     WIRE = auto()
@@ -115,6 +186,9 @@ class TraceEdge:
     # [FIX 2026-07-05] function_return: True 表示这是函数调用返回值 (result <- func)
     function_return: bool = False
     is_function_call: bool = False
+    # [V6.5 2026-07-28] 结构化驱动源 (取代纯字符串 expression/bit_slice)
+    # 当 driver_source 非 None 时, expression 和 bit_slice 应保持同步
+    driver_source: DriverSource | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 

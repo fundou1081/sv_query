@@ -25,7 +25,7 @@ from .base import PyslangAdapter
 from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
-from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+from .graph.models import DriverSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
@@ -898,6 +898,182 @@ class DriverExtractor:
                     self._find_invocations(child, invocations)
         return invocations
 
+    # ==============================================================================
+    # [V6.5 2026-07-28] DriverSource — 结构化驱动源
+    # ==============================================================================
+
+    @staticmethod
+    def _parse_bit_range(rhs_name: str) -> tuple[str | None, int | None, int | None]:
+        """[V6.5] 从 rhs_name (如 "a[7:0]" / "data[3]") 解析出 signal + bit_start + bit_end
+
+        Returns:
+            (signal, bit_start, bit_end)
+            signal=None 表示无需解析 (非信号名 / 字面量)
+        """
+        if not rhs_name:
+            return None, None, None
+        signal = rhs_name
+        bit_start = None
+        bit_end = None
+
+        if "[" in rhs_name and "]" in rhs_name:
+            signal = rhs_name.split("[", 1)[0]
+            bit_part = rhs_name[rhs_name.index("["):]
+            import re
+
+            m = re.match(r"\[(\d+):(\d+)\]", bit_part)
+            if m:
+                bit_start = int(m.group(1))
+                bit_end = int(m.group(2))
+            else:
+                m = re.match(r"\[(\d+)\]", bit_part)
+                if m:
+                    bit_start = bit_end = int(m.group(1))
+
+        return signal, bit_start, bit_end
+
+    def _build_driver_source(
+        self,
+        rhs_name: str,
+        rhs_expr,  # AST 父表达式 (可能是 BinaryOp / Conversion / ConditionalOp)
+        full_expr_str: str,
+    ) -> DriverSource | None:
+        """[V6.5] 从分解的 leaf signal 和父表达式构建结构化 DriverSource
+
+        3 层检测:
+        1. 位范围解析 (bit_start/bit_end int)
+        2. 二元操作符检测 (先解包 Conversion/Cast, 再检查内部 Binary)
+        3. Cast 检测 ($signed/$unsigned, 优先 kind 字符串, fallback 字符串前缀)
+
+        Args:
+            rhs_name: Leaf 信号名 (可能含位选择, 如 "a[7:0]")
+            rhs_expr: 父表达式 AST 节点
+            full_expr_str: visit 方法输出 (可能只是 leaf name, 如 "a")
+
+        Returns:
+            DriverSource or None
+        """
+        if not rhs_name:
+            return None
+        if not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+            return None
+
+        # ---- 1. 解析 bit range ----
+        signal = rhs_name
+        bit_start = None
+        bit_end = None
+        if "[" in rhs_name and "]" in rhs_name:
+            signal, bit_start, bit_end = self._parse_bit_range(rhs_name)
+            if signal is None:
+                return None
+
+        # ---- 2. 完整表达式字符串 ----
+        full_expression = self._get_readable_expr(rhs_expr, full_expr_str)
+
+        # ---- 3. 检测二元操作符 + Cast 包装 ----
+        op = ""
+        operand_side = ""
+        casts: list[str] = []
+        is_decomposed = False
+
+        # 先确定要分析的 "根表达式": 解包 Conversion/Cast 到内部的真实表达式
+        root = rhs_expr
+        if rhs_expr is not None:
+            kind_str = str(getattr(rhs_expr, "kind", ""))
+            if "Conversion" in kind_str or "Cast" in kind_str or "Signed" in kind_str or "Unsigned" in kind_str:
+                is_decomposed = True
+                if "Signed" in kind_str:
+                    casts.append("$signed")
+                elif "Unsigned" in kind_str:
+                    casts.append("$unsigned")
+                inner = unwrap(rhs_expr)
+                if inner is not None and inner is not rhs_expr:
+                    root = inner
+
+        # 在根表达式上检测 binary op
+        if root is not None:
+            root_kind_str = str(getattr(root, "kind", ""))
+            if "Binary" in root_kind_str:
+                is_decomposed = True
+                op_attr = getattr(root, "op", None)
+                if op_attr:
+                    op = str(getattr(op_attr, "name", op_attr))
+                left = getattr(root, "left", None)
+                right = getattr(root, "right", None)
+                if left:
+                    left_name = self._signal_visitor.visit(left)
+                    if left_name and signal == left_name:
+                        operand_side = "left"
+                    elif not left_name:
+                        # visit 可能返回 None (如 CallExpression/$signed),
+                        # 用 get_all_signals 兜底
+                        left_signals = self._signal_visitor.get_all_signals(left)
+                        if signal in left_signals:
+                            operand_side = "left"
+                if not operand_side and right:
+                    right_name = self._signal_visitor.visit(right)
+                    if right_name and signal == right_name:
+                        operand_side = "right"
+                    elif not right_name:
+                        right_signals = self._signal_visitor.get_all_signals(right)
+                        if signal in right_signals:
+                            operand_side = "right"
+
+        # 字符串级 fallback: $signed/$unsigned (kind 检测失败时)
+        if not casts:
+            if full_expression.strip().startswith("$signed"):
+                casts.append("$signed")
+            elif full_expression.strip().startswith("$unsigned"):
+                casts.append("$unsigned")
+
+        # [V6.5 v2] CallExpression 检测: $signed(a) → CallExpression, subroutine='$signed'
+        # 当外层是 Conversion 包裹 binary, binary 左/右操作数是 CallExpression($signed) 时
+        if not casts and rhs_expr is not None:
+            inner = unwrap(rhs_expr)
+            if inner is not None and inner is not rhs_expr:
+                for side_name in ("left", "right"):
+                    side = getattr(inner, side_name, None)
+                    if side is not None and "Call" in str(getattr(side, "kind", "")):
+                        sub_info = getattr(side, "subroutine", None)
+                        if sub_info is not None:
+                            sub = getattr(sub_info, "subroutine", None)
+                            if sub is not None:
+                                sub_name = str(getattr(sub, "name", ""))
+                                if sub_name in ("$signed", "$unsigned"):
+                                    casts.append(sub_name)
+
+        return DriverSource(
+            signal=signal,
+            bit_start=bit_start,
+            bit_end=bit_end,
+            full_expression=full_expression,
+            op=op,
+            operand_side=operand_side,
+            casts=casts,
+            is_decomposed=is_decomposed,
+        )
+
+    @staticmethod
+    def _get_readable_expr(rhs_expr, fallback: str) -> str:
+        """[V6.5] 从 pyslang AST 获取可读表达式字符串
+
+        pyslang 多层表示:
+        - Semantic AST node: __str__ 返回 "Expression(ExpressionKind.BinaryOp)" (无用)
+        - .syntax 属性: Syntax AST node, __str__ 返回 "a + b" (有用!)
+        - .syntax 为 None 时: 回退到 fallback
+        """
+        if rhs_expr is None:
+            return fallback
+        try:
+            syntax = getattr(rhs_expr, "syntax", None)
+            if syntax is not None:
+                text = str(syntax).strip()
+                if text:
+                    return text
+        except (UnicodeDecodeError, TypeError, Exception):
+            pass
+        return fallback
+
     def _handle_normal_assign(self, assign, module, result, module_name) -> None:
         """[REFACTOR 2026-06-26] 5d: 默认 assign 处理 (call/concat/binary-invocation 之外的).
 
@@ -1028,6 +1204,8 @@ class DriverExtractor:
                                 width=(1, 0),
                             )
                         )
+                    # [V6.5] 结构化驱动源
+                    ds = self._build_driver_source(rhs_name, check_expr, expr_str)
                     result.edges.append(
                         self._edge_factory.make_edge(
                             src=src_node_id,
@@ -1037,6 +1215,7 @@ class DriverExtractor:
                             expression=expr_str,
                             bit_slice=bit_slice,
                             sig_cond=sig_cond,
+                            driver_source=ds,
                         )
                     )
         else:
@@ -1071,6 +1250,8 @@ class DriverExtractor:
                                 width=(1, 0),
                             )
                         )
+                    # [V6.5] 结构化驱动源
+                    ds = self._build_driver_source(rhs_name, rhs_expr, expr_str)
                     # [V4] factory 统一入口
                     self._append_edge(
                         result,
@@ -1081,6 +1262,7 @@ class DriverExtractor:
                         expression=expr_str,
                         bit_slice=bit_slice,
                         condition=ternary_condition,
+                        driver_source=ds,
                     )
 
     def _create_always_edges(self, module, result, module_name):
@@ -1229,6 +1411,8 @@ class DriverExtractor:
                                             width=(1, 0),
                                         )
                                     )
+                                # [V6.5] 结构化驱动源
+                                ds = self._build_driver_source(sig_rhs_name, check_expr, expr_str)
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -1239,6 +1423,7 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
                                         sig_cond=combined_cond,
+                                        driver_source=ds,
                                     )
                                 )
                     else:
@@ -1273,6 +1458,8 @@ class DriverExtractor:
                                             width=(1, 0),
                                         )
                                     )
+                                # [V6.5] 结构化驱动源
+                                ds = self._build_driver_source(rhs_name, rhs_expr, expr_str)
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -1282,6 +1469,7 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         expression=expr_str,
                                         ctx=ctx,
+                                        driver_source=ds,
                                     )
                                 )
 
