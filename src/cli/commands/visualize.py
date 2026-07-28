@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # ==============================================================================
 # visualize.py - 信号图可视化命令
 # ==============================================================================
@@ -27,7 +28,7 @@ import typer
 warnings.filterwarnings("ignore")
 
 from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.signal_graph_viewer import SignalGraphViewer
+# [V6.7] SignalGraphViewer removed — use trace.core.graph.viz instead
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 
@@ -64,10 +65,10 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
 
     # Group nodes by instance path.
     # [Phase 6.1 2026-07-12] Strategy (FINAL):
-    # - 1-segment paths (e.g. 'XRES')           → group 'XRES' (lone module)
-    # - 2-segment paths (e.g. 'darksocv.XRES') → group 'darksocv' (top-level signal)
-    # - 3+ segment paths                       → group by first 2 segments
-    #                                            (e.g. 'darksocv.bridge0.XRES' → 'darksocv.bridge0')
+    # - 1-segment paths (e.g. 'XRES')           -> group 'XRES' (lone module)
+    # - 2-segment paths (e.g. 'darksocv.XRES') -> group 'darksocv' (top-level signal)
+    # - 3+ segment paths                       -> group by first 2 segments
+    #                                            (e.g. 'darksocv.bridge0.XRES' -> 'darksocv.bridge0')
     # This way 'darksocv.XRES' and 'darksocv.bridge0.XRES' go to DIFFERENT groups.
     from collections import defaultdict
     groups = defaultdict(set)
@@ -75,8 +76,8 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
         if not isinstance(nid, str) or not nid or nid[0].isdigit() or nid.startswith("__"):
             continue
         parts = nid.split('.')
-        # 2-segment node → group by first 1 part (top-level module)
-        # 3+ segment node → group by first 2 parts (sub-instance)
+        # 2-segment node -> group by first 1 part (top-level module)
+        # 3+ segment node -> group by first 2 parts (sub-instance)
         if len(parts) >= 3:
             key = f"{parts[0]}.{parts[1]}"
         else:
@@ -204,71 +205,43 @@ def graph(
     module_only: bool = typer.Option(False, "--module-only", help="Show only top-module signals (skip sub-module internals, show only port/instantiation level)"),
     show_source: bool = SHOW_SOURCE_OPTION,
 ) -> None:
-    """可视化信号图（包含数据流关系）
+    """可视化信号图（包含数据流关系）"""
 
-    [ADD 2026-06-11 Req-9] --file 或 --filelist 二选一, 走 _build_tracer 统一 helper.
-
-    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared FILE_OPTION etc.
-    """
+    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
     from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer, get_viz_sources
+    from cli._viz_common import build_viz_tracer
 
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
             strict=strict, use_cache=cache,
         )
-        sources_for_extractors = get_viz_sources(tracer, file, filelist)
-        sva = SVAExtractor(sources_for_extractors).extract()
-        cov_list = CovergroupExtractor(sources_for_extractors).extract()
     except CompilationError as e:
         handle_compilation_error(e, strict=strict)
         return
 
-    sva_signals = set()
-    for prop in sva.properties.values():
-        sva_signals.update(prop.signals)
-
-    cov_signals = set()
-    for cg in cov_list:
-        for cp in cg.coverpoints:
-            cov_signals.add(cp.signal)
-
-    viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
-
-    edge_filter = set()
-    if exclude_clock:
-        edge_filter.add("exclude_clock")
-    if exclude_reset:
-        edge_filter.add("exclude_reset")
-
-    viewer.configure(
-        layout=layout,
-        show_edges=not no_edges,
-        edge_labels=show_labels,
-        edge_conditions=show_conditions,
+    # [V6.7] 统一 VizData 渲染管线
+    title = file or filelist or "Signal Graph"
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=title,
         max_edges=max_edges,
-        edge_filter=edge_filter,
-        cluster_modules=cluster_modules,
-        layout_engine=layout_engine,
-        module_only=module_only,
-        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True, "show_source": show_source},
-    )
+        include_edge_condition=show_conditions,
+        include_edge_expression=True,
+    ))
+    dot = render_dot(viz, {
+        "title": title,
+        "layout": layout,
+        "layout_engine": layout_engine,
+        "show_clock_reset": not exclude_clock,
+        "edge_labels": show_labels or show_conditions,
+    })
 
     if dot_output:
-        viewer.render_dot(output_path=dot_output)
-        typer.echo(f"✓ DOT: {dot_output}")
-    elif mmd_output:
-        viewer.render_mermaid(output_path=mmd_output)
-        typer.echo(f"✓ Mermaid: {mmd_output}")
-    elif html_output:
-        viewer.render_html(output_path=html_output)
-        typer.echo(f"✓ HTML: {html_output}")
+        Path(dot_output).write_text(dot)
+        typer.echo(f"\u2713 DOT: {dot_output}")
     else:
-        # 默认输出到 stdout (DOT 格式)
-        typer.echo(viewer.render_dot(output_path=None))
-
+        typer.echo(dot)
 
 @vis_app.command(name="dataflow")
 def dataflow(
@@ -286,7 +259,7 @@ def dataflow(
 
     基于 SignalGraph 自动分类 clock/reset/control/data, 生成 DOT 图:
     - 数据边: 蓝色实线,标注运算表达式 (a+b, {rx, sreg[10:1]})
-    - 控制边: 橙色虚线 (valid/ready/enable → 数据目标)
+    - 控制边: 橙色虚线 (valid/ready/enable -> 数据目标)
     - MUX 目标: 加粗边 (多源数据汇聚)
     - 寄存器: 粗边框
 
@@ -352,13 +325,13 @@ def pipeline(
     timing: bool = typer.Option(False, "--timing", help="[Phase 7 2026-07-13] Render as parallel pipeline timing diagram (lanes × cycles) instead of folded/unfolded stage flow"),
     load_path: bool = typer.Option(False, "--load-path", help="[V6.6 deprecated] Use --timing instead. Render by load path (experimental, may be removed)"),
 ) -> None:
-    """Pipeline 流图: 检测 register chain → 划分 time cycle/stage
+    """Pipeline 流图: 检测 register chain -> 划分 time cycle/stage
 
     从 SignalGraph 自动检测 pipeline 结构:
     - 识别 pipeline registers (排除 clock/reset/state-machine regs)
     - 每个 stage 一个 subgraph: 含 registers + 组合逻辑
     - 控制信号 (valid/stall) 标记为跨 stage 虚线
-    - 左→右布局 = 时间流方向
+    - 左->右布局 = 时间流方向
 
     [P0 fix 2026-07-10] 控制节点不再堆成 31k PNG, 默认限制每 stage 8 个组合节点 +
     控制信号区最多 30 个节点。用 --max-control-nodes 0 隐藏控制信号区。
@@ -366,10 +339,8 @@ def pipeline(
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline, generate_pipeline_dot, generate_pipeline_timing_dot
-    # [V6.6] generate_pipeline_load_dot deprecated — import on demand
-    import importlib
-    pipeline_viz = importlib.import_module("trace.core.graph.analyzer.pipeline_viz") if False else None
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
     from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
     from cli._viz_common import build_viz_tracer
@@ -393,17 +364,22 @@ def pipeline(
     typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
     typer.echo(f"  Stages: {info.total_latency}", err=True)
 
-    dot = generate_pipeline_dot(
-        graph, info, classification,
-        max_comb_per_stage=max_comb_per_stage,
-        max_control_nodes=max_control_nodes,
-        fold_threshold=999 if unfold else 30,  # unfold = disable folding
-        fold_every=fold_every,
-    ) if not (timing or load_path) else (
-        generate_pipeline_timing_dot(graph, info, classification, max_segments=8, max_stages_per_segment=15)
-        if load_path
-        else generate_pipeline_timing_dot(graph, info, classification, max_segments=8, max_stages_per_segment=15)
-    )
+    # [V6.7] 统一 VizData 渲染管线 — pipeline stages
+    stage_map = {s.stage_id: s.node_ids for s in info.stages} if hasattr(info, 'stages') else {}
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=module or file or filelist or "",
+        include_node_class=True,
+        classification=classification,
+        include_node_stage=True,
+        pipeline_stages=stage_map,
+        include_edge_expression=True,
+    ))
+    title = module or file or filelist or "Pipeline"
+    dot = render_dot(viz, {
+        "title": f"Pipeline: {title}",
+        "layout": "LR",
+        "show_clock_reset": False,
+    })
 
     if dot_output:
         Path(dot_output).write_text(dot)
@@ -437,7 +413,7 @@ def chain(
     strict: bool = STRICT_OPTION,
     from_signals: list[str] = typer.Option([], "--from", help="Source signal(s) (e.g. dot11_tx.phy_tx_start). Can pass multiple."),
     to_signals: list[str] = typer.Option([], "--to", help="Target signal(s) (e.g. dot11_tx.result_i). Can pass multiple."),
-    auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports → output ports paths in --target module"),
+    auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports -> output ports paths in --target module"),
     max_edges: int = typer.Option(30, "--max-edges", help="Max edges to render (default 30, prevents huge graphs)"),
     max_depth: int = typer.Option(0, "--max-depth", help="[ADD 2026-07-10] Max path depth (default 0=unlimited, 方豆 feedback '不限制depth')"),
     layout: str = typer.Option("LR", "--layout", "-l", help="Layout: LR (left-right, default) or TB (top-bottom)"),
@@ -448,7 +424,7 @@ def chain(
 ) -> None:
     """[Plan B+ 2026-07-08] 从 input 到 output 画 data path, 方形 layout.
 
-    Use case: 方豆反馈 "深入到具体 module, 完整 input → output 图, 尽可能方形".
+    Use case: 方豆反馈 "深入到具体 module, 完整 input -> output 图, 尽可能方形".
 
     例子:
       # 手动指定 from/to
@@ -500,19 +476,19 @@ def chain(
         to_sigs = to_signals
 
     # [FIX 2026-07-08] 用 MIG (module_instance_graph) 重写 flat signal ID
-    # 到完整 hierarchy path. e.g. "bitreverse.i_clk" → "openofdm_tx.dot11_tx.ifft64.revstage.i_clk"
+    # 到完整 hierarchy path. e.g. "bitreverse.i_clk" -> "openofdm_tx.dot11_tx.ifft64.revstage.i_clk"
     # 这样 chain 图能正确显示 sub-module 边界.
     mig = getattr(tracer, "_module_graph", None)
-    hierarchy_map: dict[str, str] = {}  # flat_id → full_hierarchy_id
+    hierarchy_map: dict[str, str] = {}  # flat_id -> full_hierarchy_id
     if mig is not None:
         # [FIX 2026-07-08] 2-level remap:
-        # Level 1: port signals (inst_type.port_name) → inst_path.port_name
-        # Level 2: internal signals (inst_type.signal_name) → inst_path.signal_name
+        # Level 1: port signals (inst_type.port_name) -> inst_path.port_name
+        # Level 2: internal signals (inst_type.signal_name) -> inst_path.signal_name
         #   (e.g. "bitreverse.brmem" 是 bitreverse module 内部 wire, 不是 port)
         #   我们用 inst_type 模糊匹配: 任何 "<inst_type>.<signal_name>"
         #   重写到 "<inst_path>.<signal_name>"
 
-        # Collect (module_type) → [instance_id] for module-type → instance mapping
+        # Collect (module_type) -> [instance_id] for module-type -> instance mapping
         module_type_to_instances: dict[str, list[str]] = {}
         for inst_id, inst in mig.instances.items():
             module_type_to_instances.setdefault(inst.module_type, []).append(inst_id)
@@ -567,8 +543,8 @@ def chain(
     typer.echo(f"  Found {len(all_paths)} data paths from inputs to outputs", err=True)
     if hierarchy_map:
         typer.echo(
-            f"  Hierarchy remap: {len(hierarchy_map)} flat signals → full path "
-            f"(e.g. bitreverse.i_clk → openofdm_tx.dot11_tx.ifft64.revstage.i_clk)",
+            f"  Hierarchy remap: {len(hierarchy_map)} flat signals -> full path "
+            f"(e.g. bitreverse.i_clk -> openofdm_tx.dot11_tx.ifft64.revstage.i_clk)",
             err=True,
         )
 
@@ -590,7 +566,7 @@ def chain(
     else:
         # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
         # 这样优先选 multi-hop paths (有 intermediate nodes),
-        # 不是 1-edge paths (只 input → output, no intermediate).
+        # 不是 1-edge paths (只 input -> output, no intermediate).
         sorted_paths = sorted(all_paths, key=len, reverse=True)
 
         chain_edges: set = set()
@@ -884,7 +860,7 @@ def _generate_chain_dot(
 
     [Phase 1 2026-07-09] 新增 latency / cycle 标:
     - 每个 node 标 [cycle=N] (从 from_sigs 算起, 路径上遇到几个 reg)
-    - 每条边标 [+M cycle] (src→dst 之间经过几个 reg)
+    - 每条边标 [+M cycle] (src->dst 之间经过几个 reg)
     - to_sigs (路径终点) 标 'total: N cycles'
     - critical path (最长的 path) 上的节点 标红色 (highlight critical path)
     """
@@ -1191,7 +1167,7 @@ def _generate_chain_dot(
             # For X_DRIVER: dashed edge to consumers (showing the unwired path)
             # For DANGLING: dashed edge from drivers (showing the unwired path)
             # [FIX 2026-07-11] 限制 ghost edges 数量, 不让 max-edges 限制失效
-            # (之前不加限制 → 100+ anomalies 时 DOT 有 40+ 边, 违反 max-edges=5 的预期)
+            # (之前不加限制 -> 100+ anomalies 时 DOT 有 40+ 边, 违反 max-edges=5 的预期)
             MAX_GHOST_EDGES = 20
             ghost_count = 0
             for n in anomaly_nodes_outside:
@@ -1594,8 +1570,8 @@ def _module_def_cluster(instance_id: str, top_module: str) -> str:
     """[PR4] 按 instance 所在模块类型划分 cluster.
 
     例子:
-      'axi_xbar_dp_ram.i_xbar_intf' → 'axi_xbar_intf'
-      'axi_xbar_dp_ram.i_xbar_intf.i_xbar' → 'axi_xbar'
+      'axi_xbar_dp_ram.i_xbar_intf' -> 'axi_xbar_intf'
+      'axi_xbar_dp_ram.i_xbar_intf.i_xbar' -> 'axi_xbar'
     """
     parts = instance_id.split(".")
     # 去掉 top_module 部分 (cluster 跟它平级)
@@ -1699,13 +1675,13 @@ def _write_module_dot(result, edges: list[dict], path: str) -> None:
 # V6 2026-07-19: 用户反馈 "我想要对理解有帮助的图"
 #   4 个 use cases (a/b/c/d) 全都实现为 unified `teach` subcommand:
 #
-#   a) 速懂陌生模块    → 默认行为: 生成结构化 "教学页" (HTML)
+#   a) 速懂陌生模块    -> 默认行为: 生成结构化 "教学页" (HTML)
 #                      包含 ports + FSM + pipeline + coverage summary
-#   b) 查 1 条信号路径 → --focus SIGNAL + --depth N (BFS 后继)
+#   b) 查 1 条信号路径 -> --focus SIGNAL + --depth N (BFS 后继)
 #                      或 --upstream (寻找前驱)
-#   c) 看控制关系      → --focus SIGNAL + --show-drives 印记边
+#   c) 看控制关系      -> --focus SIGNAL + --show-drives 印记边
 #                      （驱动其他 signal 的边被标亮）
-#   d) 看覆盖缺口      → --show-coverage: 点了 SVA/Coverage 才标
+#   d) 看覆盖缺口      -> --show-coverage: 点了 SVA/Coverage 才标
 #
 #   输出: /tmp/teach.html (interactive) 或 DOT.
 # =============================================================================
