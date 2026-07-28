@@ -106,15 +106,27 @@ sv_query visualize graph -f top.sv --dot /tmp/g.dot && dot -Tpng /tmp/g.dot -o /
 ```python
 from trace.unified_tracer import UnifiedTracer
 
+# 1. 构建图
 tracer = UnifiedTracer(sources={"top.sv": src}, strict=False)
 tracer.trace_module("top")
 graph = tracer.get_graph()
 
-# 查询
+# 2. 查询信号驱动 (含 condition, clock, 位精确 source)
+drivers = tracer.trace_fanin_detailed("top.result")
+for d in drivers:
+    print(f"{d.node.id} ← {d.expression}")
+    if d.source:
+        print(f"  bit:[{d.source.bit_start}:{d.source.bit_end}] op={d.source.op}")
+    print(f"  when: {d.condition or 'always'}")
+
+# 3. 导出可视化数据 (V6.7)
 from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
-viz = build_viz_data(graph)
-dot = render_dot(viz, {"title": "My Design"})
+viz = build_viz_data(graph, VizBuildOptions(include_edge_condition=True))
+dot = render_dot(viz, {"title": "My Design"})    # DOT 字符串
+data = viz.to_json()                               # JSON 纯数据
 ```
+
+更多 → [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
@@ -145,12 +157,18 @@ sv_query/
 ```bash
 pip install -e ".[dev]"
 
-# 日常开发 (跳过开源项目依赖，~30s)
+# 日常开发 — golden 测试 (纯 SV, 30s)
+python -m pytest sim/tests/ -m golden -q
+
+# 日常开发 — 跳过开源项目依赖 (~2min)
 python -m pytest sim/tests/ -m "not opensource" -q
+
+# 发布前 — 开源项目验证 (picorv32, darkriscv, OpenTitan...)
+python -m pytest sim/tests/ -m opensource -v
 
 # 全量
 python -m pytest sim/tests/ -q
-# 2958 tests, 97.1% pass (55 pre-existing failures)
+# 2958 tests, 97.1% pass
 ```
 
 详见 [测试指南](docs/TESTING.md)
