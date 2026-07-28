@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FILELIST_DIR = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" / "industrial_filelists"
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "cdc_risk_open_source"

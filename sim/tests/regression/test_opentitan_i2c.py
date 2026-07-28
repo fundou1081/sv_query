@@ -1,3 +1,6 @@
+import pytest
+
+pytestmark = pytest.mark.opensource
 # test_opentitan_i2c.py - OpenTitan I2C 金标准
 # [铁律13] 金标准测试
 # [铁律15] Visitor 模式

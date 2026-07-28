@@ -5,6 +5,32 @@
 
 ---
 
+## 测试分类 (V6.7)
+
+| 类别 | marker | 说明 | 速度 | 使用场景 |
+|------|--------|------|------|---------|
+| **golden** | `-m golden` | 纯 SV fixture + golden 文件对比 | 🚀 快 (30s) | 日常开发，先跑这个 |
+| **opensource** | `-m opensource` | 依赖开源项目 (picorv32, OpenTitan 等) | 🐢 慢 (5-15min) | 提交前验证 |
+| **普通** | 无 marker | 其余所有测试 | ⚡ 中速 (1-2min) | 日常开发 |
+
+### 快速命令 (按需选择)
+
+```bash
+# 日常开发 (golden + 普通, 跳过开源项目)
+PYTHONPATH=src python3 -m pytest sim/tests/ -m "not opensource" -q
+
+# 只跑 golden 测试 (最快，30s)
+PYTHONPATH=src python3 -m pytest sim/tests/ -m golden -q
+
+# 只跑开源项目验证 (发布前)
+PYTHONPATH=src python3 -m pytest sim/tests/ -m opensource -v
+
+# 全量
+PYTHONPATH=src python3 -m pytest sim/tests/ -q
+```
+
+---
+
 ## 测试结构
 
 ```

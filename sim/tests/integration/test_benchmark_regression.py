@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.opensource
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CHECK = PROJECT_ROOT / "tools" / "benchmark" / "check_regression.py"
 BASELINE_DIR = PROJECT_ROOT / "tools" / "benchmark" / "baselines"
