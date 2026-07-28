@@ -14,6 +14,7 @@ trace.core.graph.viz — 统一可视化数据层 (V6.7)
 from .viz_data_models import VizData, VizNode, VizEdge
 from .viz_data_builder import VizBuildOptions, build_viz_data
 from .viz_dot_renderer import render_dot
+from .viz_compute_renderer import render_compute_dot
 
 __all__ = [
     "VizData",
@@ -22,4 +23,5 @@ __all__ = [
     "VizBuildOptions",
     "build_viz_data",
     "render_dot",
+    "render_compute_dot",
 ]
