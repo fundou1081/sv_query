@@ -140,11 +140,17 @@ def _build_stages(
     classification: SignalClassification,
     info: PipelineInfo,
 ) -> list[PipelineStage]:
-    """构建 pipeline stages"""
+    """[V6.8] 构建 pipeline stages — 按逻辑流水线深度聚合
+
+    算法:
+    1. 计算每个 reg 的 pipeline_depth = PORT_IN → reg 路径上的 reg 数量
+    2. 同一个 depth 的 regs 归入同一个 stage
+    3. comb nodes 归入它们所连接的 reg 对之间的 stage
+    """
     if not info.pipeline_regs:
         return []
 
-    # 从 PORT_IN 出发
+    pipeline_regs = set(info.pipeline_regs)
     port_ins = [
         nid for nid in graph.nodes()
         for cn in [classification.nodes.get(nid)]
@@ -152,49 +158,159 @@ def _build_stages(
         and cn.signal_class not in (SignalClass.CLOCK, SignalClass.RESET)
     ]
 
-    # 拓扑排序: 找到 PORT_IN → REG 的最短路径
-    reg_distances: dict[str, int] = {}
-    reg_queue = deque()
+    # ── Step 1: DFS 计算每个 reg 的 pipeline depth ──
+    # depth = count of pipeline regs on the DATA path from any PORT_IN
+    # 只沿"真正数据流"的 DRIVER 边走（有 expression 且非自环）
+    reg_depths: dict[str, int] = {}
+
+    def _is_data_edge(src: str, dst: str) -> bool:
+        """判断是否是数据流边 (非 control/param pass-through)"""
+        for e in graph.get_edges(src, dst):
+            if e.kind == EdgeKind.DRIVER:
+                # 有表达式且不是简单 identity (自环 pass-through)
+                if e.expression and e.expression != src.split(".")[-1]:
+                    return True
+                if e.source and e.source.op:
+                    return True
+        return False
+
+    def _dfs(node_id: str, current_depth: int, visited: set, path_regs: int):
+        """沿 DRIVER 边走，遇到 pipeline reg 时 path_regs+1"""
+        if node_id in visited:
+            return
+        visited.add(node_id)
+        
+        node = graph.get_node(node_id)
+        is_pipeline_reg = node_id in pipeline_regs
+        
+        if is_pipeline_reg:
+            # 如果已记录更浅的 depth，保留它
+            if node_id not in reg_depths:
+                reg_depths[node_id] = path_regs + 1
+            else:
+                reg_depths[node_id] = min(reg_depths[node_id], path_regs + 1)
+            path_regs += 1
+        
+        # 沿着 DRIVER 边向外走
+        for succ in graph.successors(node_id):
+            for e in graph.get_edges(node_id, succ):
+                if e.kind == EdgeKind.DRIVER:
+                    _dfs(succ, current_depth + 1, visited, path_regs)
 
     for pid in port_ins:
-        # BFS 找可达的 pipeline regs
-        visited = {pid}
-        queue = deque([(pid, 0)])
-        while queue:
-            current, dist = queue.popleft()
-            for succ in graph.successors(current):
-                if succ in visited:
-                    continue
-                if succ in info.pipeline_regs:
-                    if succ not in reg_distances:
-                        reg_distances[succ] = dist + 1
-                        reg_queue.append(succ)
-                    reg_distances[succ] = min(reg_distances.get(succ, 999), dist + 1)
-                if succ not in info.pipeline_regs:
-                    visited.add(succ)
-                    queue.append((succ, dist + 1))
+        _dfs(pid, 0, set(), 0)
 
-    # 按距离排序 pipeline regs → 分配 stage
-    sorted_regs = sorted(info.pipeline_regs, key=lambda r: reg_distances.get(r, 999))
-    stage_map: dict[str, int] = {}
-    for i, reg_id in enumerate(sorted_regs):
-        stage_map[reg_id] = i
+    # Fallback: use iterative propagation through the reg graph
+    # Only consider regs that participate in data path (have a driver reg)
+    data_regs = {rid for rid in pipeline_regs}
+    
+    # Build reg→reg driver edges (ignoring clock/self-loop)
+    reg_drivers: dict[str, set[str]] = {}
+    for rid in data_regs:
+        for src in graph.predecessors(rid):
+            if src in data_regs and src != rid:
+                for e in graph.get_edges(src, rid):
+                    if e.kind == EdgeKind.DRIVER and e.expression:
+                        reg_drivers.setdefault(rid, set()).add(src)
+    
+    # Iterative propagation: starting from regs that already have depth,
+    # propagate to their predecessors/successors
+    max_depth = max(reg_depths.values()) if reg_depths else 0
+    for _ in range(5):  # multiple passes
+        for rid in data_regs:
+            if rid in reg_depths:
+                continue
+            # Check predecessors (upstream)
+            for src in reg_drivers.get(rid, set()):
+                if src in reg_depths:
+                    cand = reg_depths[src] + 1
+                    if rid not in reg_depths or cand < reg_depths[rid]:
+                        reg_depths[rid] = cand
+            # Check successors (downstream)
+            for dst in data_regs:
+                if rid in reg_drivers.get(dst, set()):
+                    if dst in reg_depths:
+                        cand = max(0, reg_depths[dst] - 1)
+                        if rid not in reg_depths or cand < reg_depths[rid]:
+                            reg_depths[rid] = cand
+    
+    # Orphans: default to a reasonable depth based on their fan-in
+    for rid in data_regs:
+        if rid not in reg_depths:
+            # Check what other data regs are at similar distances
+            reg_depths[rid] = max_depth + 1
 
-    # 聚合到 stages
-    max_stage = max(stage_map.values()) if stage_map else 0
+    # ── Step 2: 按 depth 分组 → stages ──
+    depth_to_regs: dict[int, list[str]] = {}
+    for rid, d in reg_depths.items():
+        depth_to_regs.setdefault(d, []).append(rid)
+
     stages = []
-    for si in range(max_stage + 1):
-        stage_regs = [r for r, s in stage_map.items() if s == si]
-        if not stage_regs:
-            continue
-        stage = PipelineStage(
-            stage_id=si, reg_nodes=stage_regs,
+    for d in sorted(depth_to_regs.keys()):
+        stage_regs = depth_to_regs[d]
+        stages.append(PipelineStage(
+            stage_id=d - 1,  # stage 0 = depth 1
+            reg_nodes=stage_regs,
             comb_nodes=[], control_inputs=[], data_inputs=[], data_outputs=[],
-        )
-        stages.append(stage)
+        ))
 
-    # 填充 comb nodes + data inputs/outputs
-    all_data_nodes = set(classification.data_nodes)
+    if not stages:
+        return []
+
+    # ── Step 3: 填充 comb nodes + data inputs/outputs ──
+    # comb node = 连接两个 pipeline regs 之间的信号
+    stage_reg_sets = [set(s.reg_nodes) for s in stages]
+    all_reg_set = set(pipeline_regs)
+
+    for si, stage in enumerate(stages):
+        # 本 stage 的 regs
+        current_regs = stage.reg_nodes
+        
+        # data inputs: 驱动本 stage regs 的信号 (来自前一个 stage 或 PORT_IN)
+        for rid in current_regs:
+            for src in graph.predecessors(rid):
+                for e in graph.get_edges(src, rid):
+                    if e.kind == EdgeKind.DRIVER:
+                        if src not in all_reg_set:
+                            stage.data_inputs.append(src)
+                        elif reg_depths.get(src, 99) < d:  # from previous stage
+                            stage.data_inputs.append(src)
+
+        # data outputs: 本 stage regs 驱动的信号
+        for rid in current_regs:
+            for dst in graph.successors(rid):
+                for e in graph.get_edges(rid, dst):
+                    if e.kind == EdgeKind.DRIVER:
+                        stage.data_outputs.append(dst)
+
+        # comb nodes: non-reg signals that are between this stage and next
+        next_regs = set()
+        if si + 1 < len(stages):
+            next_regs = set(stages[si + 1].reg_nodes)
+        
+        # Walk from current regs' outputs to next regs' inputs
+        for rid in current_regs:
+            for dst in graph.successors(rid):
+                for e in graph.get_edges(rid, dst):
+                    if e.kind == EdgeKind.DRIVER and dst not in all_reg_set and dst in next_regs:
+                        # This is a combinational path: collect intermediate signals
+                        pass
+
+        # Simple approach: all non-reg successors of stage regs
+        for rid in current_regs:
+            for dst in graph.successors(rid):
+                for e in graph.get_edges(rid, dst):
+                    if e.kind == EdgeKind.DRIVER and dst not in all_reg_set:
+                        if dst not in stage.comb_nodes:
+                            stage.comb_nodes.append(dst)
+
+    # Dedup
+    for stage in stages:
+        stage.data_inputs = list(set(stage.data_inputs))
+        stage.data_outputs = list(set(stage.data_outputs))
+        stage.comb_nodes = list(set(stage.comb_nodes))
+
+    return stages
     for stage in stages:
         for reg_id in stage.reg_nodes:
             # 前驱 → data inputs
