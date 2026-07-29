@@ -17,7 +17,6 @@ from trace.core._pyslang_compat import SyntaxKind  # [Stage 6] v10/v11 兼容
 from .base import PyslangAdapter
 from .class_hierarchy import ClassHierarchy
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
-from .visitors.constraint_visitor import ConstraintVisitor
 
 
 @dataclass
@@ -48,7 +47,7 @@ class ClassGraphBuilder:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
         self.hierarchy = ClassHierarchy()
-        self._cv = ConstraintVisitor()
+        # [V6.9] ConstraintVisitor removed — constraint processing inlined in class_graph_builder
 
     # =========================================================================
     # [铁律15] 主入口 - 每个语法类型独立处理方法
