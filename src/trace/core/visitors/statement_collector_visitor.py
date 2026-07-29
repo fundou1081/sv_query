@@ -785,21 +785,18 @@ class StatementCollectorVisitor(BaseVisitor):
         #    items
         items = getattr(node, "items", [])
 
-        # [V6.8 fix] Prefer Semantic ItemGroup over Syntax StandardCaseItemSyntax.
-        # Semantic items have clean expressions (ConversionExpression not IntegerVectorExpressionSyntax)
-        # and don't include comments/trivia in their string representation.
-        # Only fall back to syntax items if semantic items are empty.
+        # [V6.8] Semantic AST only — Syntax fallback removed per 铁律0
+        # Case item expressions come from Semantic ItemGroup.expressions
+        # (ConversionExpression → IntegerLiteral.value), never from Syntax.
+        # If Semantic items are empty, raise — don't silently fall back.
         sem_items = items  # Semantic AST: list of ItemGroup
-        syntax_items = None
-        if hasattr(node, "syntax") and node.syntax and hasattr(node.syntax, "items"):
-            syntax_items = node.syntax.items
+        if not sem_items or len(sem_items) == 0:
+            raise NotImplementedError(
+                f"[铁律0] No Semantic ItemGroup for case statement. "
+                f"Syntax fallback disabled. Add to KNOWN_LIMITATIONS.md if needed."
+            )
 
-        use_syntax = False
-        if syntax_items is not None and len(syntax_items) > 0:
-            if not sem_items or len(sem_items) == 0:
-                use_syntax = True
-
-        process_items = syntax_items if use_syntax else sem_items
+        process_items = sem_items
 
         if process_items:
             for item in process_items:
