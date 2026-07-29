@@ -68,8 +68,9 @@ def render_dot(
     lines.append("")
 
     # ── nodes ──
+    show_src = cfg.get("show_source", False)
     for node in viz.nodes:
-        attrs = _node_attrs(node)
+        attrs = _node_attrs(node, show_source=show_src)
         lines.append(f'  "{_sid(node.id)}" [{"; ".join(attrs)}];')
 
     if viz.nodes:
@@ -111,7 +112,7 @@ _CLASS_COLORS: dict[str, str] = {
 }
 
 
-def _node_attrs(node: VizNode) -> list[str]:
+def _node_attrs(node: VizNode, show_source: bool = False) -> list[str]:
     """构建单个节点的 DOT 属性列表"""
     attrs: list[str] = []
 
@@ -126,6 +127,11 @@ def _node_attrs(node: VizNode) -> list[str]:
         else:
             label_parts.append(f"[{msb}:{lsb}]")
     attrs.append(f'label="{" ".join(label_parts)}"')
+
+    # show_source: only add tooltip/URL when explicitly enabled
+    if show_source and node.file and node.line > 0:
+        attrs.append(f'tooltip="{node.file}:{node.line}"')
+        attrs.append(f'URL="{node.file}#{node.line}"')
 
     # shape
     shape = _KIND_SHAPES.get(node.kind, "box")
