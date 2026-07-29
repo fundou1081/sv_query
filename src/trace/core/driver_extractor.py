@@ -1960,14 +1960,18 @@ class DriverExtractor:
         
         # CaseStatement: 展开各分支
         if "Case" in sk:
-            case_expr = getattr(stmt, "expression", None) or getattr(stmt, "condition", None)
+            case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None) or getattr(stmt, "condition", None)
             case_cond = str(case_expr).strip() if case_expr else ""
             items = getattr(stmt, "items", None)
             if items and hasattr(items, "__iter__"):
                 for item in items:
                     # 每个 case item 有自身的匹配表达式
-                    item_expr = getattr(item, "expression", None)
-                    item_cond = str(item_expr).strip() if item_expr else ""
+                    # expressions 可能是列表 (StandardCaseItem 有多个匹配值)
+                    item_exprs = getattr(item, "expressions", None)
+                    if item_exprs and hasattr(item_exprs, "__iter__") and not isinstance(item_exprs, str):
+                        item_cond = " || ".join(str(e).strip() for e in item_exprs if str(e).strip())
+                    else:
+                        item_cond = str(getattr(item, "expression", None) or "").strip()
                     if case_cond and item_cond:
                         case_full = f"({case_cond}) == ({item_cond})"
                     else:
@@ -1975,7 +1979,8 @@ class DriverExtractor:
                     
                     if case_full:
                         cond_stack.append(case_full)
-                    case_stmt = getattr(item, "statement", None)
+                    # pyslang case item 用 .clause，不是 .statement
+                    case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None)
                     self._flatten_assignments(case_stmt, result, cond_stack)
                     if case_full:
                         cond_stack.pop()
