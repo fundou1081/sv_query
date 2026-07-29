@@ -276,9 +276,9 @@ class ClassGraphBuilder:
         for idx, item in enumerate(getattr(block, "items", [])):
             if item is None:
                 continue
-            self._cv.reset()
-            self._cv.visit(item)
-            vars = self._cv.variables
+            # [V6.9] reset removed
+            self._adapter._extract_signals_from_expr(item)
+            vars = self._adapter._extract_signals_from_expr(item) or []
 
             # 变量名 → CLASS_PROPERTY 节点 ID
             for v in vars:
@@ -410,9 +410,9 @@ class ClassGraphBuilder:
                         )
                     )
                     # 提取变量
-                    self._cv.reset()
-                    self._cv.visit(cons_item)
-                    for v in self._cv.variables:
+                    # [V6.9] reset removed
+                    self._adapter._extract_signals_from_expr(cons_item)
+                    for v in self._adapter._extract_signals_from_expr(item) or []:
                         if v in ["this", "super"]:
                             continue
                         prop_id = f"{cls_name}.{v}"
@@ -444,9 +444,9 @@ class ClassGraphBuilder:
                 )
             )
             # 提取 consequent 引用的变量
-            self._cv.reset()
-            self._cv.visit(consequent)
-            for v in self._cv.variables:
+            # [V6.9] reset removed
+            self._adapter._extract_signals_from_expr(consequent)
+            for v in self._adapter._extract_signals_from_expr(item) or []:
                 if v in ["this", "super"]:
                     continue
                 prop_id = f"{cls_name}.{v}"
@@ -507,9 +507,9 @@ class ClassGraphBuilder:
                                 kind=EdgeKind.HAS_CONSEQUENT,
                             )
                         )
-                        self._cv.reset()
-                        self._cv.visit(alt_item)
-                        for v in self._cv.variables:
+                        # [V6.9] reset removed
+                        self._adapter._extract_signals_from_expr(alt_item)
+                        for v in self._adapter._extract_signals_from_expr(item) or []:
                             if v in ["this", "super"]:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -539,9 +539,9 @@ class ClassGraphBuilder:
                         kind=EdgeKind.HAS_CONSEQUENT,
                     )
                 )
-                self._cv.reset()
-                self._cv.visit(alt_constraints)
-                for v in self._cv.variables:
+                # [V6.9] reset removed
+                self._adapter._extract_signals_from_expr(alt_constraints)
+                for v in self._adapter._extract_signals_from_expr(item) or []:
                     if v in ["this", "super"]:
                         continue
                     prop_id = f"{cls_name}.{v}"
@@ -629,9 +629,9 @@ class ClassGraphBuilder:
                             )
                         )
                         # 提取变量
-                        self._cv.reset()
-                        self._cv.visit(right_item)
-                        for v in self._cv.variables:
+                        # [V6.9] reset removed
+                        self._adapter._extract_signals_from_expr(right_item)
+                        for v in self._adapter._extract_signals_from_expr(item) or []:
                             if v in ["this", "super"]:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -698,9 +698,9 @@ class ClassGraphBuilder:
             )
         )
 
-        self._cv.reset()
-        self._cv.visit(node)
-        for v in self._cv.variables:
+        # [V6.9] reset removed
+        self._adapter._extract_signals_from_expr(node)
+        for v in self._adapter._extract_signals_from_expr(item) or []:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -733,9 +733,9 @@ class ClassGraphBuilder:
             )
         )
 
-        self._cv.reset()
-        self._cv.visit(node)
-        for v in self._cv.variables:
+        # [V6.9] reset removed
+        self._adapter._extract_signals_from_expr(node)
+        for v in self._adapter._extract_signals_from_expr(item) or []:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -768,9 +768,9 @@ class ClassGraphBuilder:
             )
         )
 
-        self._cv.reset()
-        self._cv.visit(node)
-        for v in self._cv.variables:
+        # [V6.9] reset removed
+        self._adapter._extract_signals_from_expr(node)
+        for v in self._adapter._extract_signals_from_expr(item) or []:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -811,8 +811,8 @@ class ClassGraphBuilder:
 
         # 提取循环变量（数组名）和循环索引变量
         loop_index_vars = set()  # 循环索引变量 (i, j 等)，不应创建为 CLASS_PROPERTY
-        self._cv.reset()
-        self._cv.visit(node)
+        # [V6.9] reset removed
+        self._adapter._extract_signals_from_expr(node)
 
         # 从 loopList 提取索引变量名
         loop_list = getattr(node, "loopList", None)
@@ -836,7 +836,7 @@ class ClassGraphBuilder:
                         if text and text.isidentifier():
                             loop_index_vars.add(text)
 
-        for v in self._cv.variables:
+        for v in self._adapter._extract_signals_from_expr(item) or []:
             if v in ["this", "super"] or v in loop_index_vars:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -955,9 +955,9 @@ class ClassGraphBuilder:
                                     kind=EdgeKind.HAS_CONSEQUENT,
                                 )
                             )
-                            self._cv.reset()
-                            self._cv.visit(cons_item)
-                            for v in self._cv.variables:
+                            # [V6.9] reset removed
+                            self._adapter._extract_signals_from_expr(cons_item)
+                            for v in self._adapter._extract_signals_from_expr(item) or []:
                                 if v in ["this", "super"] or v in loop_index_vars:
                                     continue
                                 prop_id = f"{cls_name}.{v}"
@@ -988,9 +988,9 @@ class ClassGraphBuilder:
                             kind=EdgeKind.HAS_CONSEQUENT,
                         )
                     )
-                    self._cv.reset()
-                    self._cv.visit(consequent)
-                    for v in self._cv.variables:
+                    # [V6.9] reset removed
+                    self._adapter._extract_signals_from_expr(consequent)
+                    for v in self._adapter._extract_signals_from_expr(item) or []:
                         if v in ["this", "super"] or v in loop_index_vars:
                             continue
                         prop_id = f"{cls_name}.{v}"
@@ -1048,9 +1048,9 @@ class ClassGraphBuilder:
                                     kind=EdgeKind.HAS_CONSEQUENT,
                                 )
                             )
-                            self._cv.reset()
-                            self._cv.visit(alt_item)
-                            for v in self._cv.variables:
+                            # [V6.9] reset removed
+                            self._adapter._extract_signals_from_expr(alt_item)
+                            for v in self._adapter._extract_signals_from_expr(item) or []:
                                 if v in ["this", "super"] or v in loop_index_vars:
                                     continue
                                 prop_id = f"{cls_name}.{v}"
@@ -1081,9 +1081,9 @@ class ClassGraphBuilder:
                                 kind=EdgeKind.HAS_CONSEQUENT,
                             )
                         )
-                        self._cv.reset()
-                        self._cv.visit(alt_constraints)
-                        for v in self._cv.variables:
+                        # [V6.9] reset removed
+                        self._adapter._extract_signals_from_expr(alt_constraints)
+                        for v in self._adapter._extract_signals_from_expr(item) or []:
                             if v in ["this", "super"] or v in loop_index_vars:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -1116,9 +1116,9 @@ class ClassGraphBuilder:
                     kind=EdgeKind.CONSTRAINS,
                 )
             )
-            self._cv.reset()
-            self._cv.visit(item)
-            for v in self._cv.variables:
+            # [V6.9] reset removed
+            self._adapter._extract_signals_from_expr(item)
+            for v in self._adapter._extract_signals_from_expr(item) or []:
                 if v in ["this", "super"] or v in loop_index_vars:
                     continue
                 prop_id = f"{cls_name}.{v}"
