@@ -178,7 +178,7 @@ class TraceEdge:
     assign_type: str = ""
     condition: str = ""
     effective_condition: str = ""  # 判断清除后的条件（只保留直接相关的条件）
-    condition_ast: Any | None = None  # [V2] 条件表达式 AST 节点 (供 SignalExpressionVisitor 解析)
+    condition_ast: Any | None = None  # [V6.9] 条件表达式 AST 节点 (供 semantic_adapter 解析)
     clock_domain: str = ""
     modport_dir: str | None = None  # P0-3: modport direction (input/output/inout)
     confidence: str = "high"

@@ -17,6 +17,7 @@
 - P3: 边缘情况，暂时跳过
 """
 import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed — semantic_adapter used instead")
 import sys
 import os
 

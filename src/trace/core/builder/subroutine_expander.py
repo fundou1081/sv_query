@@ -71,9 +71,8 @@ class SubroutineExpander:
     def cond_formatter(self) -> object:
         """延迟加载条件格式化器"""
         if self._cond_formatter is None:
-            from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
-
-            self._cond_formatter = SignalExpressionVisitor(self._adapter)
+            # [V6.9] SignalExpressionVisitor removed — conditions handled by semantic_adapter
+            self._cond_formatter = self._adapter
         return self._cond_formatter
 
     def expand(self, call_site: CallSiteInfo, ctx: dict = None) -> ExpansionResult:

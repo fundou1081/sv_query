@@ -27,8 +27,8 @@ from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
-from .visitors.signal_expression_visitor import SignalExpressionVisitor
 from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
+# [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,8 @@ class DriverExtractor:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
-        self._signal_visitor = SignalExpressionVisitor(adapter)
+        # [V6.9] SignalExpressionVisitor removed — adapter handles signal extraction directly
+        self._signal_visitor = adapter  # semantic_adapter has _extract_signals_from_expr() and visit()
         self._stmt_visitor = StatementCollectorVisitor(adapter)
         # SubroutineExpander for function/task call expansion
         self._subroutine_expander = SubroutineExpander(adapter)
@@ -151,7 +152,7 @@ class DriverExtractor:
         """
         if signal is None:
             return []
-        return self._signal_visitor.get_all_signals(signal)
+        return self._signal_visitor._extract_signals_from_expr(signal) or []
 
     def _get_all_real_signals(self, signal, module=None) -> list[str]:
         """[Phase 8 / Fix F 2026-7-14 + 2026-7-15] Like _get_all_signals but filters out
@@ -165,7 +166,7 @@ class DriverExtractor:
         """
         if signal is None:
             return []
-        names = self._signal_visitor.get_all_signals(signal)
+        names = self._signal_visitor._extract_signals_from_expr(signal) or []
         return self._filter_compile_time_signal_names(signal, names, module=module)
 
     def _filter_compile_time_signal_names(self, ast_node, names: list[str], module=None) -> list[str]:
@@ -300,7 +301,7 @@ class DriverExtractor:
         """
         if signal is None:
             return None
-        return self._signal_visitor.visit(signal)
+        return str(signal)
 
     # ==============================================================================
     # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
@@ -977,7 +978,7 @@ class DriverExtractor:
             if side is None:
                 continue
             # 两层匹配: visit 优先, get_all_signals 兜底 (CallExpression/$signed)
-            name = self._signal_visitor.visit(side)
+            name = self._signal_visitor.get_source_text(side) or str(side)
             if name and signal == name:
                 operand_side = side_name
                 break
@@ -1212,7 +1213,7 @@ class DriverExtractor:
                 rhs_signals = [rhs]
         if rhs_expr:
             try:
-                expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                expr_str = self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr) or self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)
             except (UnicodeDecodeError, TypeError):
                 expr_str = "<expr:non-utf8>"
         else:
@@ -1225,7 +1226,7 @@ class DriverExtractor:
             # get_signals_with_conditions so the visitor sees the
             # ConditionalOp directly (not the outer ParenthesizedExpression).
             # This mirrors V6.3+1 fix in _create_always_edges bug #2.
-            signal_conditions = self._signal_visitor.get_signals_with_conditions(check_expr)
+            signal_conditions = self._signal_visitor._extract_signals_from_expr(check_expr) or []
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
@@ -1393,7 +1394,7 @@ class DriverExtractor:
                     # [P0-2] 计算完整表达式字符串
                     if rhs_expr:
                         try:
-                            expr_str = self._signal_visitor.visit(rhs_expr) or str(rhs_expr)
+                            expr_str = self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr) or self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)
                         except (UnicodeDecodeError, TypeError):
                             expr_str = "<expr:non-utf8>"
                     else:
@@ -1421,7 +1422,7 @@ class DriverExtractor:
                         # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
                         # (localparam/parameter) from ternary branch signals.
                         # Use the unwrapped check_expr so ConditionalOp is at top.
-                        signal_conditions = self._signal_visitor.get_signals_with_conditions(check_expr)
+                        signal_conditions = self._signal_visitor._extract_signals_from_expr(check_expr) or []
                         signal_conditions = self._filter_signal_conditions_by_module(
                             signal_conditions, module=module
                         )

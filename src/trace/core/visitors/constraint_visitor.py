@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 
 from ..graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
-from .base_visitor import BaseVisitor
+# [V6.9] BaseVisitor removed — ConstraintVisitor is standalone
 from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
 
 
@@ -30,7 +30,7 @@ class ConstraintNodeResult:
     direct_variables: list[str] = field(default_factory=list)
 
 
-class ConstraintVisitor(BaseVisitor):
+class ConstraintVisitor:  # [V6.9] BaseVisitor removed — standalone semantic tool
     """[铁律15] Constraint Visitor - 每个语法类型独立方法
 
     设计原则:

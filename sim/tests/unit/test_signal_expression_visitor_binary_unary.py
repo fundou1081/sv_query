@@ -5,6 +5,7 @@
 测试 Binary/Unary 表达式类型的 [NOT TESTED] 方法
 """
 import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed — semantic_adapter used instead")
 import sys
 import os
 
