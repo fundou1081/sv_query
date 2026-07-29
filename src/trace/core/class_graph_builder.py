@@ -17,6 +17,7 @@ from trace.core._pyslang_compat import SyntaxKind  # [Stage 6] v10/v11 兼容
 from .base import PyslangAdapter
 from .class_hierarchy import ClassHierarchy
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+# [V6.9] ConstraintVisitor class removed — constraint processing uses adapter
 
 
 @dataclass
@@ -47,7 +48,100 @@ class ClassGraphBuilder:
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
         self.hierarchy = ClassHierarchy()
-        # [V6.9] ConstraintVisitor removed — constraint processing inlined in class_graph_builder
+        
+        # [V6.9] ConstraintVisitor removed — _cv wrapper using semantic_adapter
+        class _ConstraintExtractor:
+            """Inline replacement for ConstraintVisitor using adapter."""
+            def __init__(self, adapter):
+                self.adapter = adapter
+                self.variables = []
+            
+            def reset(self):
+                self.variables = []
+            
+            def visit(self, node):
+                """[V6.9] Extract variable names from constraint node.
+                
+                Replaces ConstraintVisitor with adapter._extract_signals_from_expr().
+                Handles nested constraint structures (if/else/implication/foreach)
+                by recursively visiting child nodes.
+                """
+                if node is None:
+                    return
+                
+                kind_str = str(getattr(node, "kind", ""))
+                
+                # 1. ConditionalConstraint: if (cond) ... else ...
+                if "ConditionalConstraint" in kind_str:
+                    condition = getattr(node, "condition", None)
+                    consequent = getattr(node, "constraints", None)  # if-true body
+                    else_clause = getattr(node, "elseClause", None)  # if-false body
+                    
+                    # Extract condition vars
+                    cond_vars = self._extract_vars_from_expr(condition)
+                    self.variables.extend(cond_vars)
+                    
+                    # Recursively visit consequent (ExpressionConstraint or ConstraintBlock)
+                    self.visit(consequent)
+                    self.visit(else_clause)
+                    return
+                
+                # 2. ImplicationConstraint: left → right
+                if "ImplicationConstraint" in kind_str:
+                    left = getattr(node, "left", None)
+                    right = getattr(node, "right", None)
+                    # Extract vars from both sides
+                    left_vars = self._extract_vars_from_expr(left)
+                    self.variables.extend(left_vars)
+                    self.visit(right)  # right may be ConstraintBlock with items
+                    return
+                
+                # 3. ForeachConstraint: foreach (arr[i]) { constraints }
+                if "ForeachConstraint" in kind_str or "LoopConstraint" in kind_str:
+                    # Extract the array name from loopList
+                    loop_list = getattr(node, "loopList", None)
+                    if loop_list and hasattr(loop_list, "__iter__"):
+                        for elem in loop_list:
+                            elem_kind = str(getattr(elem, "kind", ""))
+                            if "IdentifierName" in elem_kind:
+                                ident = getattr(elem, "identifier", None)
+                                if ident and hasattr(ident, "value"):
+                                    self.variables.append(str(ident.value).strip())
+                    
+                    # Visit constraint body
+                    body = getattr(node, "constraints", None) or getattr(node, "body", None)
+                    if body and hasattr(body, "items") and hasattr(body.items, "__iter__"):
+                        try:
+                            for item in body.items:
+                                self.visit(item)
+                        except Exception:
+                            pass
+                    return
+                
+                # 4. ElseConstraintClause: else { constraints }
+                if "ElseConstraintClause" in kind_str:
+                    clause = getattr(node, "clause", None)
+                    self.visit(clause)
+                    return
+                
+                # 5. ExpressionConstraint / ConstraintBlock: extract signals and recurse items
+                sigs = self._extract_vars_from_expr(node)
+                if sigs:
+                    self.variables.extend(sigs)
+                
+                # Recursively process child items (for ConstraintBlock with multiple constraints)
+                if hasattr(node, 'items') and hasattr(node.items, '__iter__'):
+                    try:
+                        for item in node.items:
+                            self.visit(item)
+                    except Exception:
+                        pass
+            
+            def _extract_vars_from_expr(self, expr):
+                return self.adapter._extract_signals_from_expr(expr) or []
+        
+        self._cv = _ConstraintExtractor(self.adapter)
+
 
     # =========================================================================
     # [铁律15] 主入口 - 每个语法类型独立处理方法
@@ -276,9 +370,9 @@ class ClassGraphBuilder:
         for idx, item in enumerate(getattr(block, "items", [])):
             if item is None:
                 continue
-            # [V6.9] reset removed
-            self._adapter._extract_signals_from_expr(item)
-            vars = self._adapter._extract_signals_from_expr(item) or []
+            self._cv.reset()
+            self._cv.visit(item)
+            vars = self._cv.variables
 
             # 变量名 → CLASS_PROPERTY 节点 ID
             for v in vars:
@@ -410,9 +504,9 @@ class ClassGraphBuilder:
                         )
                     )
                     # 提取变量
-                    # [V6.9] reset removed
-                    self._adapter._extract_signals_from_expr(cons_item)
-                    for v in self._adapter._extract_signals_from_expr(item) or []:
+                    self._cv.reset()
+                    self._cv.visit(cons_item)
+                    for v in self._cv.variables:
                         if v in ["this", "super"]:
                             continue
                         prop_id = f"{cls_name}.{v}"
@@ -444,9 +538,9 @@ class ClassGraphBuilder:
                 )
             )
             # 提取 consequent 引用的变量
-            # [V6.9] reset removed
-            self._adapter._extract_signals_from_expr(consequent)
-            for v in self._adapter._extract_signals_from_expr(item) or []:
+            self._cv.reset()
+            self._cv.visit(consequent)
+            for v in self._cv.variables:
                 if v in ["this", "super"]:
                     continue
                 prop_id = f"{cls_name}.{v}"
@@ -507,9 +601,9 @@ class ClassGraphBuilder:
                                 kind=EdgeKind.HAS_CONSEQUENT,
                             )
                         )
-                        # [V6.9] reset removed
-                        self._adapter._extract_signals_from_expr(alt_item)
-                        for v in self._adapter._extract_signals_from_expr(item) or []:
+                        self._cv.reset()
+                        self._cv.visit(alt_item)
+                        for v in self._cv.variables:
                             if v in ["this", "super"]:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -539,9 +633,9 @@ class ClassGraphBuilder:
                         kind=EdgeKind.HAS_CONSEQUENT,
                     )
                 )
-                # [V6.9] reset removed
-                self._adapter._extract_signals_from_expr(alt_constraints)
-                for v in self._adapter._extract_signals_from_expr(item) or []:
+                self._cv.reset()
+                self._cv.visit(alt_constraints)
+                for v in self._cv.variables:
                     if v in ["this", "super"]:
                         continue
                     prop_id = f"{cls_name}.{v}"
@@ -629,9 +723,9 @@ class ClassGraphBuilder:
                             )
                         )
                         # 提取变量
-                        # [V6.9] reset removed
-                        self._adapter._extract_signals_from_expr(right_item)
-                        for v in self._adapter._extract_signals_from_expr(item) or []:
+                        self._cv.reset()
+                        self._cv.visit(right_item)
+                        for v in self._cv.variables:
                             if v in ["this", "super"]:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -698,9 +792,9 @@ class ClassGraphBuilder:
             )
         )
 
-        # [V6.9] reset removed
-        self._adapter._extract_signals_from_expr(node)
-        for v in self._adapter._extract_signals_from_expr(item) or []:
+        self._cv.reset()
+        self._cv.visit(node)
+        for v in self._cv.variables:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -733,9 +827,9 @@ class ClassGraphBuilder:
             )
         )
 
-        # [V6.9] reset removed
-        self._adapter._extract_signals_from_expr(node)
-        for v in self._adapter._extract_signals_from_expr(item) or []:
+        self._cv.reset()
+        self._cv.visit(node)
+        for v in self._cv.variables:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -768,9 +862,9 @@ class ClassGraphBuilder:
             )
         )
 
-        # [V6.9] reset removed
-        self._adapter._extract_signals_from_expr(node)
-        for v in self._adapter._extract_signals_from_expr(item) or []:
+        self._cv.reset()
+        self._cv.visit(node)
+        for v in self._cv.variables:
             if v in ["this", "super"]:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -811,8 +905,8 @@ class ClassGraphBuilder:
 
         # 提取循环变量（数组名）和循环索引变量
         loop_index_vars = set()  # 循环索引变量 (i, j 等)，不应创建为 CLASS_PROPERTY
-        # [V6.9] reset removed
-        self._adapter._extract_signals_from_expr(node)
+        self._cv.reset()
+        self._cv.visit(node)
 
         # 从 loopList 提取索引变量名
         loop_list = getattr(node, "loopList", None)
@@ -836,7 +930,7 @@ class ClassGraphBuilder:
                         if text and text.isidentifier():
                             loop_index_vars.add(text)
 
-        for v in self._adapter._extract_signals_from_expr(item) or []:
+        for v in self._cv.variables:
             if v in ["this", "super"] or v in loop_index_vars:
                 continue
             prop_id = f"{cls_name}.{v}"
@@ -955,9 +1049,9 @@ class ClassGraphBuilder:
                                     kind=EdgeKind.HAS_CONSEQUENT,
                                 )
                             )
-                            # [V6.9] reset removed
-                            self._adapter._extract_signals_from_expr(cons_item)
-                            for v in self._adapter._extract_signals_from_expr(item) or []:
+                            self._cv.reset()
+                            self._cv.visit(cons_item)
+                            for v in self._cv.variables:
                                 if v in ["this", "super"] or v in loop_index_vars:
                                     continue
                                 prop_id = f"{cls_name}.{v}"
@@ -988,9 +1082,9 @@ class ClassGraphBuilder:
                             kind=EdgeKind.HAS_CONSEQUENT,
                         )
                     )
-                    # [V6.9] reset removed
-                    self._adapter._extract_signals_from_expr(consequent)
-                    for v in self._adapter._extract_signals_from_expr(item) or []:
+                    self._cv.reset()
+                    self._cv.visit(consequent)
+                    for v in self._cv.variables:
                         if v in ["this", "super"] or v in loop_index_vars:
                             continue
                         prop_id = f"{cls_name}.{v}"
@@ -1048,9 +1142,9 @@ class ClassGraphBuilder:
                                     kind=EdgeKind.HAS_CONSEQUENT,
                                 )
                             )
-                            # [V6.9] reset removed
-                            self._adapter._extract_signals_from_expr(alt_item)
-                            for v in self._adapter._extract_signals_from_expr(item) or []:
+                            self._cv.reset()
+                            self._cv.visit(alt_item)
+                            for v in self._cv.variables:
                                 if v in ["this", "super"] or v in loop_index_vars:
                                     continue
                                 prop_id = f"{cls_name}.{v}"
@@ -1081,9 +1175,9 @@ class ClassGraphBuilder:
                                 kind=EdgeKind.HAS_CONSEQUENT,
                             )
                         )
-                        # [V6.9] reset removed
-                        self._adapter._extract_signals_from_expr(alt_constraints)
-                        for v in self._adapter._extract_signals_from_expr(item) or []:
+                        self._cv.reset()
+                        self._cv.visit(alt_constraints)
+                        for v in self._cv.variables:
                             if v in ["this", "super"] or v in loop_index_vars:
                                 continue
                             prop_id = f"{cls_name}.{v}"
@@ -1116,9 +1210,9 @@ class ClassGraphBuilder:
                     kind=EdgeKind.CONSTRAINS,
                 )
             )
-            # [V6.9] reset removed
-            self._adapter._extract_signals_from_expr(item)
-            for v in self._adapter._extract_signals_from_expr(item) or []:
+            self._cv.reset()
+            self._cv.visit(item)
+            for v in self._cv.variables:
                 if v in ["this", "super"] or v in loop_index_vars:
                     continue
                 prop_id = f"{cls_name}.{v}"
