@@ -294,13 +294,17 @@ class DriverExtractor:
         return out
 
     def _get_signal(self, signal) -> str | None:
-        """获取信号名
+        """[V6.9] 获取信号名 — 用 semantic API + strip() 清理空格。
 
-        [铁律29] 直接使用 SignalExpressionVisitor
+        syntax AST 节点的 str() 包含前导空格和换行符,
+        必须 strip() 后使用。
         """
         if signal is None:
             return None
-        return str(signal)
+        result = str(signal).strip()
+        # 处理可能的换行符和多行格式
+        result = result.replace('\n', '').replace('\r', '').strip()
+        return result if result else None
 
     # ==============================================================================
     # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
@@ -1906,8 +1910,16 @@ class DriverExtractor:
         if "If" in sk or "Conditional" in sk:
             then_stmt = getattr(stmt, "statement", None)
             self._flatten_assignments(then_stmt, result)
-            else_stmt = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
-            self._flatten_assignments(else_stmt, result)
+            # else branch: 可能是 ElseClauseSyntax（需要 .clause）或直接是语句
+            else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
+            if else_node is not None:
+                ek = str(getattr(else_node, "kind", ""))
+                # ElseClauseSyntax 有 .clause → 展开内层
+                if "ElseClause" in ek:
+                    clause = getattr(else_node, "clause", None)
+                    self._flatten_assignments(clause, result)
+                else:
+                    self._flatten_assignments(else_node, result)
             return
         
         # ExpressionStatement: 提取内层 assignment expr
