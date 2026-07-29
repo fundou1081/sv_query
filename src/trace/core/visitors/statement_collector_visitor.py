@@ -844,6 +844,30 @@ class StatementCollectorVisitor(BaseVisitor):
                 #      
                 self._ctx_stack.pop()
 
+        # [V6.8] Semantic AST: handle defaultCase (not in .items list)
+        # The Semantic CaseStatement has a .defaultCase field for the "default:" branch.
+        default_case = getattr(node, "defaultCase", None)
+        if default_case is not None:
+            item_cond = f"{selector} == default"
+            parent_cond = self.current_ctx.get("condition", "")
+            cond_exprs = list(self.current_ctx.get("_cond_exprs", []))
+            if parent_cond:
+                combined_cond = f"{parent_cond} && {item_cond}"
+                new_ctx = {
+                    **self.current_ctx,
+                    "condition": combined_cond,
+                    "effective_condition": self._compute_effective_condition(cond_exprs),
+                }
+            else:
+                new_ctx = {
+                    **self.current_ctx,
+                    "condition": item_cond,
+                    "effective_condition": self._compute_effective_condition(cond_exprs),
+                }
+            self._ctx_stack.append(new_ctx)
+            self.visit(default_case)
+            self._ctx_stack.pop()
+
     def _get_case_selector(self, node) -> str:
         """   case     selector       
 
