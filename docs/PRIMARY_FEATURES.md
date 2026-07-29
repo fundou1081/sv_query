@@ -69,7 +69,7 @@ sv_query -q dataflow analyze A B --no-strict --file x.sv --json
 - `paths[].stage_breakdown`: 每个 segment 的 stage_id + is_reg_boundary
 
 **已知限制** (诚实):
-- 嵌套 if 不识别 (1h 可修)
+- ~~嵌套 if 不识别~~ (V6.2 已修复, 2026-07-29 验证通过)
 - 大项目 (CVA6 137K) filelist 不全会慢 (拼完整 filelist)
 
 ### 2️⃣ `controlflow analyze <sig>` (Primary)
