@@ -1137,18 +1137,24 @@ class StatementCollectorVisitor(BaseVisitor):
         if hasattr(expr, "kind"):
             kind_name = expr.kind.name if hasattr(expr.kind, "name") else str(expr.kind)
             if "IntegerVector" in kind_name:
-                #    size, base, value (   Token)
+                # [V6.8 fix] Use .value (clean integer) instead of __str__()
+                # which includes preceding trivia/comments (e.g. "  // ADD\n  2'd1")
+                val = getattr(expr, "value", None)
+                if val is not None and val != "":
+                    return str(val)
+                #   : size'bvalue,    2'b00
                 size_tok = getattr(expr, "size", None)
                 base_tok = getattr(expr, "base", None)
                 value_tok = getattr(expr, "value", None)
-                #   : size'bvalue,    2'b00
                 if size_tok is not None and base_tok is not None and value_tok is not None:
                     size_str = self._safe_str(size_tok).strip()
                     base_str = self._safe_str(base_tok).strip()
                     value_str = self._safe_str(value_tok).strip()
                     return f"{size_str}{base_str}{value_str}"
-                #      expr   
+                #    expr   
                 result = self._safe_str(expr).strip()
+                import re
+                result = re.sub(r'//[^\n]*', '', result).strip()
                 if result:
                     return result
 
