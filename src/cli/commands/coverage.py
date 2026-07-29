@@ -155,7 +155,8 @@ def gap(
         covergroups = extractor.extract()
 
         # 2. 一致性分析
-        analyzer = CovergroupAnalyzer(graph=graph, cgs=covergroups)
+        adapter = tracer._adapter if hasattr(tracer, "_adapter") else None
+        analyzer = CovergroupAnalyzer(adapter=adapter, cgs=covergroups)
         gaps = analyzer.analyze(class_name=class_filter)
 
         # 3. 输出
