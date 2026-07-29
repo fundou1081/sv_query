@@ -188,17 +188,23 @@ def render_timed_compute(
         lines.append("  }")
         lines.append("")
 
-    # ── edges ──
+    # ── edges: source → OP node, OP node → destination ──
+    seen_op_dst: set[tuple[str, str]] = set()  # (op_id, dst) dedup
     for oe in op_edges:
         op_id = oe["op_id"]
+        # source → OP (always unique: one per src)
         lines.append(
             f'  "{_sid(oe["src"])}" -> "{_sid(op_id)}" '
             f'[color="{oe["color"]}"];'
         )
-        lines.append(
-            f'  "{_sid(op_id)}" -> "{_sid(oe["dst"])}" '
-            f'[color="{oe["color"]}"];'
-        )
+        # OP → destination (only once per op_id+dst)
+        key = (op_id, oe["dst"])
+        if key not in seen_op_dst:
+            seen_op_dst.add(key)
+            lines.append(
+                f'  "{_sid(op_id)}" -> "{_sid(oe["dst"])}" '
+                f'[color="{oe["color"]}"];'
+            )
 
     # Non-op edges (direct connections like stage1→stage2, 2→result)
     seen_op_pairs = {(oe["src"], oe["dst"]) for oe in op_edges}
