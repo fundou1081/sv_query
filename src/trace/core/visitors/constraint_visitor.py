@@ -555,21 +555,18 @@ if __name__ == "__main__":
     import pyslang
     from trace.core._pyslang_compat import SyntaxKind  # [Stage 6] v10/v11 兼容
 
-    # === 示例 ===
-    source = """class packet;
-    bit [7:0] addr;
-    bit en;
-    constraint c { if (en) addr == 1; else addr == 2; }
-endclass"""
-    tree = pyslang.SyntaxTree.fromText(source)
-    cls = tree.root
+    # === Example (Semantic AST only per 铁律0) ===
+    from trace.core.compiler import SVCompiler
+    c = SVCompiler()
+    c.add_source('/tmp/test.sv', source)
+    comp = c.get_compilation()
+    root = comp.getRoot()
+    for inst in root.topInstances:
+        cls = inst.body
 
-    visitor = ConstraintVisitor()
-    for item in cls.items:
-        if item.kind == SyntaxKind.ConstraintDeclaration:
-            for expr in item.block.items:
-                visitor.visit(expr)
-                print(f"Constraint expr: {expr.kind}")
-                print(f"  Variables: {visitor.variables}")
-                print(f"  Nodes: {len(visitor.result_nodes)}")
-                print(f"  Edges: {len(visitor.result_edges)}")
+        visitor = ConstraintVisitor()
+        for item in cls.members:
+            if 'Constraint' in str(getattr(item, 'kind', '')):
+                for expr in getattr(item, 'block', {}).items:
+                    visitor.visit(expr)
+                    print(f"Constraint expr: {getattr(expr, 'kind', '?')}")
