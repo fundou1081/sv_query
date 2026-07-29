@@ -8,6 +8,7 @@
 3. get_all_signals(node) 能正确提取信号名
 """
 import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed — semantic_adapter used instead")
 import sys
 import os
 

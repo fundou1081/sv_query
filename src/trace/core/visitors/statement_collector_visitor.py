@@ -17,7 +17,7 @@ import logging
 from enum import Enum, auto
 from typing import Any
 
-from .base_visitor import BaseVisitor
+# [V6.9] BaseVisitor removed — StatementCollectorVisitor is standalone
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class ItemType(Enum):
     DISABLE_FORK = auto()  # disable fork
 
 
-class StatementCollectorVisitor(BaseVisitor):
+class StatementCollectorVisitor:  # [V6.9] BaseVisitor removed — standalone semantic tool
     """     Visitor -        
 
            AST,              .

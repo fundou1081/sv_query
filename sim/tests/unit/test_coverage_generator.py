@@ -971,8 +971,7 @@ class TestASTParsing(unittest.TestCase):
     def test_parse_via_real_pyslang_ast(self):
         """真实 pyslang AST 解析 (集成测试)"""
         import pyslang
-        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
-        from trace.core.semantic_adapter import SemanticAdapter
+                from trace.core.semantic_adapter import SemanticAdapter
 
         # 用简单 SV 创建一个 expression AST
         source = """
@@ -1095,8 +1094,7 @@ class TestASTConditionExtraction(unittest.TestCase):
     def test_extract_via_real_pyslang_ast(self):
         """真实 pyslang AST 解析"""
         import pyslang
-        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
-        from trace.core.semantic_adapter import SemanticAdapter
+                from trace.core.semantic_adapter import SemanticAdapter
 
         source = """
         module test(input a, b, c, output [3:0] d);
@@ -1143,8 +1141,7 @@ class TestASTConditionExtraction(unittest.TestCase):
         """当 AST 可用时, _extract_condition_atomic 优先用 AST"""
         import pyslang
         from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
-        from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
-        from trace.core.semantic_adapter import SemanticAdapter
+                from trace.core.semantic_adapter import SemanticAdapter
 
         # 构造一个 TraceEdge, 带 AST
         source = """

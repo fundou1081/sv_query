@@ -5,6 +5,7 @@
 测试 SignalExpressionVisitor 的各 visit 方法。
 """
 import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed — semantic_adapter used instead")
 import sys
 sys.path.insert(0, 'src')
 

@@ -579,8 +579,8 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
       2. 拿 SignalExpressionVisitor (pyslang visitor pattern, 鉄律15/26)
       3. Walk 所有 class 的 syntax.items (member declarations)
       4. For each task/function body, walk items
-      5. For each ExpressionStatement/AssignmentStatement, 取 .expr 走 visitor.extract()
-      6. 检查 target_signal in result.all_signals (semantic signal list)
+      5. For each ExpressionStatement/AssignmentStatement, 取 .expr 走 adapter._extract_signals_from_expr()
+      6. 检查 target_signal in result (semantic signal list)
 
     Returns list of:
       {"class": str, "kind": "task" | "function" | "assign" | "always",
@@ -589,9 +589,9 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
     results = []
 
     # [鉄律28] 用 visitor pattern, 每个语法类型有对应 handler
-    from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+    # [V6.9] SignalExpressionVisitor removed — using semantic_adapter._extract_signals_from_expr()
     adapter = tracer._get_adapter()
-    visitor = SignalExpressionVisitor(adapter)
+    # [V6.9] adapter._extract_signals_from_expr() used instead
 
     root = tracer.compilation.getRoot()
 
@@ -600,8 +600,8 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
         # statement 通常有 .expr 属性 (ExpressionStatement) 或其他
         sigs = []
         if hasattr(stmt_node, 'expr') and stmt_node.expr is not None:
-            result = visitor.extract(stmt_node.expr)
-            sigs.extend(result.all_signals if result.all_signals else [])
+            result = adapter._extract_signals_from_expr(stmt_node.expr)
+            sigs.extend(result if result else [])
         # 一些 statement 类型没有 .expr (e.g. DataDeclaration, ConstraintDeclaration)
         # 这些被跳过 — 不是 code reference
         return sigs
@@ -700,7 +700,7 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
             if not is_reference_kind(stmt_kind) and "ExpressionStatement" not in stmt_kind:
                 continue
 
-            # [鉄律1 修正] 用 visitor.extract() 拿 referenced signals (semantic AST)
+            # [鉄律1 修正] 用 adapter._extract_signals_from_expr() 拿 referenced signals (semantic AST)
             sigs = extract_referenced_signals(stmt)
             # [鉄律1 修正] 检查 target_signal 是否在 sigs 里 (考虑 dotted path)
             # 例如: sigs=['my_other_addr', 'req.used_real'], target='used_real' → match

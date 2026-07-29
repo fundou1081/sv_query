@@ -5,6 +5,7 @@
 覆盖 signal_expression_visitor.py 中标记为 [NOT TESTED] 的函数。
 """
 import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed — semantic_adapter used instead")
 import sys
 import os
 

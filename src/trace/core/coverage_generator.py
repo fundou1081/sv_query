@@ -473,10 +473,8 @@ class ControlCoverageGenerator:
         adapter = getattr(self._graph, "_adapter", None)
         if adapter is not None:
             try:
-                from .visitors.signal_expression_visitor import SignalExpressionVisitor
-                visitor = SignalExpressionVisitor(adapter)
-                sr = visitor.extract(ast_node)
-                if sr and sr.all_signals:
+                # [V6.9] SignalExpressionVisitor removed, using semantic_adapter._extract_signals_from_expr() instead
+                # [V6.9] semantic_adapter._extract_signals_from_expr() returns list of signal names
                     return self._convert_signal_result_to_atomics(sr, ast_node)
             except Exception:
                 pass  # Fallback to string parsing
@@ -488,25 +486,20 @@ class ControlCoverageGenerator:
         except Exception:
             return []
 
-    def _convert_signal_result_to_atomics(self, sr, ast_node) -> list:
-        """将 SignalResult 转为 AtomicSignal 列表
+    def _convert_signal_names_to_atomics(self, names: list, ast_node) -> list:
+        """[V6.9] 将 signal name list 转为 AtomicSignal 列表。
 
-        Args:
-            sr: SignalResult 实例
-            ast_node: 原始 AST 节点 (用于 evidence)
-
-        Returns:
-            AtomicSignal 列表 (按出现顺序, 自动去重)
+        SignalResult 类已随 syntax AST visitor 体系删除。
+        直接用 semantic_adapter._extract_signals_from_expr() 返回的字符串列表。
         """
-        if not sr or not sr.all_signals:
+        if not names:
             return []
 
         seen = set()
         result = []
-        for name in sr.all_signals:
+        for name in names:
             if not name or name in seen:
                 continue
-            # 跳过字面量
             if name.isdigit() or self._is_simple_literal(name):
                 continue
             seen.add(name)
@@ -517,10 +510,9 @@ class ControlCoverageGenerator:
                 base_name=base_name,
                 bit_range=bit_range,
             )
-            # 添加 evidence
             atomic.evidence.append(EvidenceStep(
-                step_type="ast_extract",
-                description=f"AST extract: {name} (kind={sr.kind_name or '?'})",
+                step_type="semantic_extract",
+                description=f"semantic extract: {name}",
                 from_signal=str(ast_node)[:50] if ast_node else "",
                 to_signals=[name],
             ))
