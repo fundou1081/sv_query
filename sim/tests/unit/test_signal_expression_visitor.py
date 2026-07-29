@@ -11,7 +11,9 @@ sys.path.insert(0, 'src')
 
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
-from trace.core.visitors.signal_expression_visitor import SignalExpressionVisitor
+# [V6.9] SignalExpressionVisitor removed — all tests skipped
+import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] SignalExpressionVisitor removed")
 
 
 class TestSignalExpressionVisitor:
