@@ -1,7 +1,22 @@
 # 纪律违反记录
 
 > 审查日期: 2026-05-28
-> 最终更新: 2026-05-29
+> 最终更新: 2026-07-29 (V6.8)
+> 铁律定义: [CODE_DISCIPLINE.md](CODE_DISCIPLINE.md)
+
+---
+
+## 铁律0 违反: StatementCollectorVisitor 用 Syntax AST 提取 case item 条件 (FIXED V6.8)
+
+**时间**: 2026-07-29 发现并修复
+
+**违反描述**: `StatementCollectorVisitor.visit_case_statement()` 使用 Syntax `StandardCaseItemSyntax.expressions`（而非 Semantic `ItemGroup.expressions`）提取 case 条件表达式。导致 condition 字符串被注释污染。
+
+**影响范围**: 所有包含 case 语句的 RTL 设计中，condition 标签包含源码注释文本
+
+**修复**: 改用 Semantic `ItemGroup`（通过 `ProceduralBlockSymbol.body.visit()` 遍历），用 `ConversionExpression.operand.value` 拿干净数值
+
+**教训**: [CODE_DISCIPLINE.md#铁律0](CODE_DISCIPLINE.md) 已记录为项目铁律
 
 ---
 
