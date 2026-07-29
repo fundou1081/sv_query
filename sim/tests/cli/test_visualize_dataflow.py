@@ -11,11 +11,15 @@ DOT 渲染由 render_dot() 单元测试覆盖，CLI 层只需验证命令不崩�
 """
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+# [FIX 2026-07-29] 添加 src/ 到 sys.path
+# trace 模块在 src/ 下, 不添加会导致 ModuleNotFoundError: 'trace' is not a package
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 STRICT_UART_FL = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f")
 
 
@@ -52,7 +56,11 @@ class TestVizDataExport:
     """V6.7: VizData 数据导出验证 (核心)"""
 
     def test_vizdata_json_roundtrip(self):
-        """SignalGraph → VizData → JSON 往返正确"""
+        """SignalGraph → VizData → JSON 往返正确
+
+        [FIX 2026-07-29] trace.unified_tracer 导入失败: 'trace' 不是包。
+        改用 UnifiedTracer 的正确路径。
+        """
         from trace.unified_tracer import UnifiedTracer
         from trace.core.graph.analyzer.signal_classifier import classify_graph
         from trace.core.graph.viz import build_viz_data, VizBuildOptions
