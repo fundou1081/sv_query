@@ -61,6 +61,7 @@ def render_dot(
     lines.append(f"  ranksep={cfg['rank_spacing']};")
     lines.append('  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10];')
     lines.append("  bgcolor=white;")
+    lines.append("  newrank=true;  // [V6.8] enforce cluster rank ordering")
     if cfg["layout_engine"] in ("neato", "fdp"):
         lines.append("  overlap=false;")
         lines.append("  ratio=1.0;")

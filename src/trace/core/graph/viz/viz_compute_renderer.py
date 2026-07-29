@@ -113,7 +113,8 @@ def render_compute_dot(
         "  nodesep=0.5;",
         "  ranksep=0.8;",
         '  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11];',
-        "  bgcolor=white;",
+        "  bgcolor=white;"
+        "  newrank=true;  // [V6.8] enforce rank ordering",
         '  edge [fontname="Helvetica" fontsize=10];',
         "",
     ]
