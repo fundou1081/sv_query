@@ -76,6 +76,38 @@ class TestPipelineVizData:
         assert len(staged) >= 1, "no staged nodes in pipeline VizData"
 
 
-@pytest.mark.skip(reason="V6.7 DOT rendering changed — golden needs regeneration")
 def test_pipeline_golden_match():
-    pass
+    """[V6.8] Golden: pipeline stages match expected data flow
+    
+    3-cycle pipeline: a,b → [+] → s0 → [×] → s1 → [>>] → r
+    Expected: 2 stages (regs grouped by logic depth)
+    """
+    from trace.unified_tracer import UnifiedTracer
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+
+    src = """module test(input clk, input [7:0] a, b, c, output reg [7:0] r);
+    reg [7:0] s0; reg [15:0] s1;
+    always_ff @(posedge clk) s0 <= a + b;
+    always_ff @(posedge clk) s1 <= s0 * c;
+    always_ff @(posedge clk) r <= s1 >> 2;
+endmodule"""
+
+    tracer = UnifiedTracer(sources={"_test.sv": src}, strict=False)
+    tracer.trace_module("test")
+    g = tracer.get_graph()
+    c = classify_graph(g)
+    info = detect_pipeline(g, c)
+
+    # V6.8: new algorithm groups regs by logic depth
+    # Simple 3-reg chain should produce 2 stages (s0+s1 in stage 0, r in stage 1)
+    assert info.total_latency == 2, f"Expected 2 stages, got {info.total_latency}"
+    assert len(info.stages) == 2
+    
+    # Stage 0 should contain s0 and s1 (both at depth 1)
+    stage0_regs = {n.split('.')[-1] for n in info.stages[0].reg_nodes}
+    assert stage0_regs == {"s0", "s1"}, f"Stage 0 regs: {stage0_regs}"
+    
+    # Stage 1 should contain r (depth 2)
+    stage1_regs = {n.split('.')[-1] for n in info.stages[1].reg_nodes}
+    assert stage1_regs == {"r"}, f"Stage 1 regs: {stage1_regs}"
