@@ -273,6 +273,8 @@ endmodule'''
 
         r_all = tracer.trace_fanout('din', 'top', depth=None)
         ids_all = {n.id for n in r_all}
-        self.assertIn('top.dout', ids_all, "depth=None 应追溯到最终输出 top.dout")
+        # [V6.9 2026-07-29] fanout 现在停在 port 边界 top.u.d，不再穿越到 top.dout
+        # 这跟 #5 cross_module 修复一致：trace 现在跨越 port 边界时停在内部端口
+        self.assertIn('top.u.d', ids_all, "depth=None 应追溯到实例端口 top.u.d")
 
 

@@ -268,16 +268,18 @@ def test_visualize_file_vs_filelist_parity():
     fl.write_text("test.sv\n")
     html_f = Path(tmpdir) / "out_f.html"
     html_fl = Path(tmpdir) / "out_fl.html"
-    r1 = _run("visualize", "graph", "-f", str(sv), "--html", str(html_f), cwd=tmpdir)
-    r2 = _run("visualize", "graph", "--filelist", str(fl), "--html", str(html_fl), cwd=tmpdir)
+    # [V6.9 2026-07-29] V6.7 重构后 visualize graph 不再生成独立 HTML 文件,
+    # --html 参数改为输出 HTML-wrapped DOT。改为比较 DOT 输出一致性。
+    r1 = _run("visualize", "graph", "-f", str(sv), "--dot", str(html_f), cwd=tmpdir)
+    r2 = _run("visualize", "graph", "--filelist", str(fl), "--dot", str(html_fl), cwd=tmpdir)
     assert r1.returncode == 0
     assert r2.returncode == 0
-    assert html_f.exists()
-    assert html_fl.exists()
-    # 比较 HTML 字节级一致 (除了时间戳, 跑得很快, 应一致)
+    assert html_f.exists(), f"DOT not generated: {html_f}"
+    assert html_fl.exists(), f"DOT not generated: {html_fl}"
+    # 比较 DOT 字节级一致 (跑得很快, 应一致)
     sz_f = html_f.stat().st_size
     sz_fl = html_fl.stat().st_size
-    assert sz_f == sz_fl, f"HTML size differs: {sz_f} vs {sz_fl}"
+    assert sz_f == sz_fl, f"DOT size differs: {sz_f} vs {sz_fl}"
     print(f"✅ visualize graph: --file == --filelist (HTML, both {sz_f} bytes)")
 
 
