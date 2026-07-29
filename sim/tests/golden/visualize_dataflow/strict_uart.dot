@@ -1,75 +1,73 @@
-digraph dataflow {
-  rankdir=TB;
-  label="Data Flow: /Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/strict_uart/filelist.f";
+digraph viz {
+  label="Signal Graph";
   labelloc=t;
-  fontsize=14;
-  ranksep=0.5;
-  nodesep=0.3;
-  splines=polyline;
+  rankdir=TB;
+  splines=spline;
+  nodesep=0.4;
+  ranksep=0.6;
+  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10];
+  bgcolor=white;
+  newrank=true;  // [V6.8] enforce cluster rank ordering
 
-  // === TL;DR ===
-  TLDR [shape=plaintext, label="18 data · 5 control · 4 clock nodes",
-        fontsize=12, fontcolor="#664400",
-        fillcolor="#fffbe6", style="rounded,filled",
-        margin=0.1];
+  "synchronizer.clk_i" [label="clk_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#88888822"; color="#888888"];
+  "synchronizer.rst_ni" [label="rst_ni [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#cc444422"; color="#cc4444"];
+  "synchronizer.async_i" [label="async_i [PORT_IN]"; shape=invhouse; fillcolor="#ff883322"; color="#ff8833"];
+  "synchronizer.sync0_o" [label="sync0_o [REG]"; shape=box; fillcolor="#ff883322"; color="#ff8833"];
+  "synchronizer.sync1" [label="sync1 [REG]"; shape=box; fillcolor="#ff883322"; color="#ff8833"];
+  "uart_top.clk_i" [label="clk_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#88888822"; color="#888888"];
+  "uart_top.rst_ni" [label="rst_ni [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#cc444422"; color="#cc4444"];
+  "uart_top.rx_i" [label="rx_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.tx_data_i" [label="tx_data_i [PORT_IN] [7:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.tx_o" [label="tx_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.rx_data_o" [label="rx_data_o [PORT_OUT] [7:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.rx_ready_o" [label="rx_ready_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#ff883322"; color="#ff8833"];
+  "sync_fifo.clk_i" [label="clk_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#88888822"; color="#888888"];
+  "sync_fifo.rst_ni" [label="rst_ni [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#cc444422"; color="#cc4444"];
+  "sync_fifo.push_i" [label="push_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.pop_i" [label="pop_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.push_data_i" [label="push_data_i [PORT_IN] [7:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.pop_data_o" [label="pop_data_o [REG] [7:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.full_o" [label="full_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.empty_o" [label="empty_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.mem" [label="mem"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.count_q" [label="count_q [REG]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.wr_ptr_q" [label="wr_ptr_q [REG]"; shape=box; fillcolor="#ff883322"; color="#ff8833"];
+  "sync_fifo.rd_ptr_q" [label="rd_ptr_q [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.mem[<expr>]" [label="mem[Expression(ExpressionKind.NamedValue)] [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.rx_fifo" [label="rx_fifo [INSTANTIATED_MODULE] [1:0]"; shape=box3d; fillcolor="#f0f0f0"; color="#888888"];
+  "uart_top.rx_fifo.clk_i" [label="clk_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#88888822"; color="#888888"];
+  "uart_top.rx_fifo.rst_ni" [label="rst_ni [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#cc444422"; color="#cc4444"];
+  "uart_top.rx_fifo.pop_data_o" [label="pop_data_o [PORT_OUT] [7:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "uart_top.rx_fifo.empty_o" [label="empty_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
+  "0" [label="0 [CONST]"; shape=hexagon; fillcolor="#4477cc22"; color="#4477cc"];
+  "1" [label="1 [CONST]"; shape=hexagon; fillcolor="#4477cc22"; color="#4477cc"];
 
-  // === Nodes ===
-  "sync_fifo.count_q" [label="count_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
-  "sync_fifo.empty_o" [label="empty_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "sync_fifo.full_o" [label="full_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "sync_fifo.mem" [label="mem\n1bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "sync_fifo.mem[<expr>]" [label="mem[<expr>]\nREG\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
-  "sync_fifo.pop_data_o" [label="pop_data_o\nREG\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
-  "sync_fifo.push_data_i" [label="push_data_i\nPORT_IN\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "sync_fifo.rd_ptr_q" [label="rd_ptr_q\nREG\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=2];
-  "sync_fifo.wr_ptr_q" [label="wr_ptr_q\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=2];
-  "synchronizer.async_i" [label="async_i\nPORT_IN\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
-  "synchronizer.sync0_o" [label="sync0_o\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=2];
-  "synchronizer.sync1" [label="sync1\nREG\n1bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=2];
-  "uart_top.rx_data_o" [label="rx_data_o\nPORT_OUT\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "uart_top.rx_fifo" [label="rx_fifo\nINSTANTIATED_MODULE\n2bit" shape=box style="rounded,filled" fillcolor="#aaaaaa" color="#888888" fontcolor="black" penwidth=1];
-  "uart_top.rx_fifo.empty_o" [label="empty_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "uart_top.rx_fifo.pop_data_o" [label="pop_data_o\nPORT_OUT\n8bit" shape=box style="rounded,filled" fillcolor="#4488cc" color="#226699" fontcolor="white" penwidth=1];
-  "uart_top.rx_ready_o" [label="rx_ready_o\nPORT_OUT\n2bit" shape=box style="rounded,filled" fillcolor="#cc8844" color="#996622" fontcolor="white" penwidth=1];
-
-  // === Data Edges ===
-  "synchronizer.async_i" -> "synchronizer.sync1" [color="#226699", style=solid, penwidth=1.5, label="async_i", fontsize=9, xlabel="rst_ni", fontsize=7];
-  "synchronizer.sync1" -> "synchronizer.sync0_o" [color="#226699", style=solid, penwidth=1.5, label="sync1", fontsize=9, xlabel="rst_ni", fontsize=7];
-  "sync_fifo.push_data_i" -> "sync_fifo.mem[<expr>]" [color="#226699", style=solid, penwidth=1.5, label="push_data_i", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7];
-  "sync_fifo.count_q" -> "sync_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, penwidth=2.5, color="#224488"];
-  "sync_fifo.count_q" -> "sync_fifo.full_o" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9];
-  "sync_fifo.count_q" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="count_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
-  "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="wr_ptr_q", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
-  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="rd_ptr_q", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
-  "sync_fifo.mem[<expr>]" -> "sync_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="mem[<expr>]", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7];
-  "sync_fifo.mem[<expr>]" -> "sync_fifo.mem" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
-  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo.pop_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
-  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_data_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
-  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo" [color="#226699", style=solid, penwidth=1.5, label="pop_data_o", fontsize=9, penwidth=2.5, color="#224488"];
-  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
-  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_ready_o" [color="#226699", style=solid, penwidth=1.5, label="_node_0000", fontsize=9];
-  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo" [color="#226699", style=solid, penwidth=1.5, label="empty_o", fontsize=9, penwidth=2.5, color="#224488"];
-  "0" -> "sync_fifo.empty_o" [color="#226699", style=solid, penwidth=1.5, label="0", fontsize=9, penwidth=2.5, color="#224488"];
-  "1" -> "sync_fifo.wr_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="1", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
-  "1" -> "sync_fifo.rd_ptr_q" [color="#226699", style=solid, penwidth=1.5, label="1", fontsize=9, xlabel="rst_ni && pop_i && !empty", fontsize=7, penwidth=2.5, color="#224488"];
-  "1" -> "sync_fifo.count_q" [color="#226699", style=solid, penwidth=1.5, label="1", fontsize=9, xlabel="rst_ni && push_i && !full", fontsize=7, penwidth=2.5, color="#224488"];
-
-  // === Key Control Edges ===
-
-  // === Legend ===
-  subgraph cluster_legend {
-    label="Legend";
-    style="rounded,filled";
-    fillcolor="#f8f8f8";
-    color="#aaaaaa";
-    fontsize=10;
-    rank=sink;
-    "legend_dataflow_0" [label="Data Reg" shape=box,style="filled,rounded" fillcolor="#4488cc" fontcolor="white" fontsize=9];
-    "legend_dataflow_1" [label="Combinational" shape=box,style="filled,rounded" fillcolor="#88bbdd" fontcolor="white" fontsize=9];
-    "legend_dataflow_2" [label="Control" shape=box,style=dashed,style="filled,rounded" fillcolor="#cc6633" fontcolor="white" fontsize=9];
-    "legend_dataflow_3" [label="Clock" shape=octagon,style="filled,rounded" fillcolor="#996633" fontcolor="white" fontsize=9];
-    "legend_dataflow_4" [label="DANGLING" shape=diamond,style="filled,rounded" fillcolor="#cc0000" fontcolor="white" fontsize=9];
-    "legend_dataflow_5" [label="X_DRIVER" shape=diamond,style="filled,rounded" fillcolor="#cc8800" fontcolor="white" fontsize=9];
-    "legend_dataflow_6" [label="ORPHAN" shape=diamond,style="filled,rounded" fillcolor="#888888" fontcolor="white" fontsize=9];
-  }
+  "synchronizer.async_i" -> "synchronizer.sync1" [label="rst_ni"; fontsize=9];
+  "synchronizer.sync1" -> "synchronizer.sync0_o" [label="rst_ni"; fontsize=9];
+  "uart_top.clk_i" -> "uart_top.rx_fifo.clk_i" [style=solid];
+  "uart_top.rst_ni" -> "uart_top.rx_fifo.rst_ni" [style=solid];
+  "sync_fifo.push_data_i" -> "sync_fifo.mem[<expr>]" [label="rst_ni && push_i && !full_o"; fontsize=9];
+  "sync_fifo.count_q" -> "sync_fifo.empty_o";
+  "sync_fifo.count_q" -> "sync_fifo.full_o";
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [label="rst_ni && {push_i && !full_o, pop_i && !"; fontsize=9];
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [label="rst_ni && {push_i && !full_o, pop_i && !"; fontsize=9];
+  "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [label="rst_ni && push_i && !full_o"; fontsize=9];
+  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [label="rst_ni && pop_i && !empty_o"; fontsize=9];
+  "sync_fifo.mem[<expr>]" -> "sync_fifo.pop_data_o" [label="rst_ni && pop_i && !empty_o\nmem[Expression(ExpressionKind."; fontsize=9];
+  "sync_fifo.mem[<expr>]" -> "sync_fifo.mem" [arrowhead="open"];
+  "uart_top.rx_fifo.clk_i" -> "uart_top.rx_fifo.clk_i" [style=solid];
+  "uart_top.rx_fifo.clk_i" -> "uart_top.rx_fifo" [arrowhead="open"];
+  "uart_top.rx_fifo.rst_ni" -> "uart_top.rx_fifo.rst_ni" [style=solid];
+  "uart_top.rx_fifo.rst_ni" -> "uart_top.rx_fifo" [arrowhead="open"];
+  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo.pop_data_o";
+  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_data_o" [style=solid];
+  "uart_top.rx_fifo.pop_data_o" -> "uart_top.rx_fifo" [arrowhead="open"];
+  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo.empty_o";
+  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_ready_o" [style=solid];
+  "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo" [arrowhead="open"];
+  "0" -> "sync_fifo.empty_o";
+  "1" -> "sync_fifo.wr_ptr_q" [label="rst_ni && push_i && !full_o"; fontsize=9];
+  "1" -> "sync_fifo.rd_ptr_q" [label="rst_ni && pop_i && !empty_o"; fontsize=9];
+  "1" -> "sync_fifo.count_q" [label="rst_ni && {push_i && !full_o, pop_i && !"; fontsize=9];
+  "1" -> "sync_fifo.count_q" [label="rst_ni && {push_i && !full_o, pop_i && !"; fontsize=9];
 }
