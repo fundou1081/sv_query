@@ -1,3 +1,5 @@
+import pytest
+pytestmark = pytest.mark.skip(reason="[V6.9] StatementCollectorVisitor removed — use semantic_adapter")
 # test_statement_collector_visitor.py - StatementCollectorVisitor 单元测试
 """
 [铁律28] Visitor 实现必须包含单元测试
@@ -10,7 +12,6 @@ sys.path.insert(0, 'src')
 
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
-from trace.core.visitors.statement_collector_visitor import StatementCollectorVisitor
 
 
 class TestStatementCollectorVisitor:

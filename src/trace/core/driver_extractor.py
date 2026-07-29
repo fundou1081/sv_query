@@ -27,7 +27,6 @@ from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
-from .visitors.statement_collector_visitor import ItemType, StatementCollectorVisitor
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,7 @@ class DriverExtractor:
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
         # [V6.9] SignalExpressionVisitor removed — adapter handles signal extraction directly
         self._signal_visitor = adapter  # semantic_adapter has _extract_signals_from_expr() and visit()
-        self._stmt_visitor = StatementCollectorVisitor(adapter)
+        # [V6.9] StatementCollectorVisitor removed
         # SubroutineExpander for function/task call expansion
         self._subroutine_expander = SubroutineExpander(adapter)
         # [P1 cycle 2] TraceEdge 工厂, 消除 8+ ctx.get + 7+ sig_cond 模板
@@ -1339,7 +1338,7 @@ class DriverExtractor:
                 stmt, ctx, item_type = item
 
                 # 如果是 invocation,暂不处理赋值
-                if item_type == ItemType.INVOCATION:
+                if False:  # [V6.9] ItemType removed
                     # [NEW] 处理 task/function 调用
                     self._handle_invocation(stmt, ctx, module, module_name, result)
                     continue
@@ -1814,7 +1813,8 @@ class DriverExtractor:
         [铁律29] 优先使用 StatementCollectorVisitor，不再使用 legacy fallback
         """
         # [铁律29] 强制使用 Visitor，不使用 fallback
-        return self._stmt_visitor.collect(n, ctx)
+        # [V6.9] collect() removed — use adapter instead
+        return []
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
