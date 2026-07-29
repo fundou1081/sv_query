@@ -112,10 +112,10 @@ def test_comp_simple_if():
 
 
 def test_comp_case():
-    """case 4 items: cond = sel == 4'b0000"""
+    """case 4 items: cond = sel == 4'b0"""
     conds = svq_dataflow("comprehensive.in_a", "comprehensive.out_case", COMPREHENSIVE)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["sel == 4'b0000"], ["sel"])
+    assert_semantically_eq(conds, ["sel == 4'b0"], ["sel"])
 
 
 def test_comp_ternary():
@@ -168,22 +168,22 @@ EDGE2 = "/tmp/cdc_test/edge2.sv"
 
 
 def test_edge2_case_inside_if():
-    """case inside if: cond = en && sel == 2'b00"""
+    """case inside if: cond = en && sel == 2'b0"""
     conds = svq_dataflow("edge2.data_in", "edge2.out1", EDGE2)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["en && sel == 2'b00"], ["en", "sel"])
+    assert_semantically_eq(conds, ["en && sel == 2'b0"], ["en", "sel"])
 
 
 def test_edge2_if_inside_case():
-    """if inside case: data_in → out2 的 primary path 是 case 00 (sel == 2'b00)"""
+    """if inside case: data_in → out2 的 primary path 是 case 00 (sel == 2'b0)"""
     conds = svq_dataflow("edge2.data_in", "edge2.out2", EDGE2)
     assert_no_typo(conds)
     # data_in 出现在 3 个 case:
-    #   case 00: r2 = data_in (sel == 2'b00)
+    #   case 00: r2 = data_in (sel == 2'b0)
     #   case 01 + valid: r2 = data_in + 1 (sel == 2'b01 && valid)
     #   case 01 + !valid: r2 = data_in + 2 (sel == 2'b01 && !valid)
     # dataflow primary path: case 00 (direct assignment).
-    assert_semantically_eq(conds, ["sel == 2'b00"], ["sel"])
+    assert_semantically_eq(conds, ["sel == 2'b0"], ["sel"])
 
 
 # ===========================================================================
