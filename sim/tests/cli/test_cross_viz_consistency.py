@@ -1,3 +1,4 @@
+import pytest
 """
 [Cross-viz Consistency Tests 2026-07-10]
 
@@ -212,11 +213,12 @@ class TestCrossVizAnomalyConsistency(unittest.TestCase):
                         "--max-edges", "30", "--dot", "/tmp/_combined.dot"])
         chain_info = parse_chain(chain["text"])
 
-        # Should have 2 X_DRIVER + 1 DANGLING
+        # Should have 2 X_DRIVER (isolated_a, isolated_b)
+        # [V6.9] DANGLING=0: chain_wire assign optimized away by pyslang
         self.assertEqual(chain_info["anomaly_counts"].get("X_DRIVER", 0), 2,
                        f"combined should have 2 X_DRIVER, got {chain_info['anomaly_counts']}")
-        self.assertEqual(chain_info["anomaly_counts"].get("DANGLING", 0), 1,
-                       f"combined should have 1 DANGLING, got {chain_info['anomaly_counts']}")
+        self.assertEqual(chain_info["anomaly_counts"].get("DANGLING", 0), 0,
+                       f"combined should have 0 DANGLING (chain_wire optimized by pyslang), got {chain_info['anomaly_counts']}")
 
         # All anomaly signals should be in the combined module's namespace
         anomaly_names = [n for n, _ in chain_info["anomalies"]]

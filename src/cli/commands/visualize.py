@@ -716,7 +716,8 @@ def chain(
     if not all_paths:
         chain_edges = set()
         chain_nodes = set()
-    else:
+        # [V6.9] 即使没有数据路径, full-module anomaly scan 仍要运行
+        # 路径构建失败时仍然检测 orphan_wire, unused_reg 等 RTL 问题
         # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
         # 这样优先选 multi-hop paths (有 intermediate nodes),
         # 不是 1-edge paths (只 input -> output, no intermediate).
@@ -847,11 +848,15 @@ def chain(
             n_in = graph.in_degree(node_id)
             n_out = graph.out_degree(node_id)
             if n_in == 0 and n_out == 0:
-                anomalies[node_id] = "ORPHAN"
+                anomalies_extra[node_id] = "ORPHAN"
             elif n_in == 0:
-                anomalies[node_id] = "X_DRIVER"
+                anomalies_extra[node_id] = "X_DRIVER"
             elif n_out == 0:
-                anomalies[node_id] = "DANGLING"
+                anomalies_extra[node_id] = "DANGLING"
+
+        # [FIX V6.9] Merge full-module scan results into anomalies
+        if anomalies_extra:
+            anomalies.update(anomalies_extra)
 
         if anomalies:
             from collections import Counter
