@@ -276,15 +276,10 @@ class ClassGraphBuilder:
 
         金标准: bit b1, b2, b3; → 每个变量独立节点
         """
-        decl = getattr(prop, "declaration", None)
-        if decl is None:
+        # [V6.9] semantic ClassProperty symbol 直接有 name/type，不需要 declaration
+        prop_name = str(getattr(prop, "name", ""))
+        if not prop_name:
             return
-
-        # 支持 multi-declarator: bit b1, b2, b3;
-        for d in self._iter_declarators(decl):
-            prop_name = self._get_declarator_name(d)
-            if not prop_name:
-                continue
 
             node_id = f"{cls_name}.{prop_name}"
             width = self._property_width(prop)
@@ -308,16 +303,15 @@ class ClassGraphBuilder:
                 )
             )
 
-            # 如果是类引用 (NamedType)，添加 IS_INSTANCE_OF 边
-            type_node = getattr(decl, "type", None)
-            if type_node and type_node.kind == SyntaxKind.NamedType:
-                # NamedType.name 是 IdentifierNameSyntax，str() 获取类名
-                # [FIX 2026-06-26] pyslang binary garbage
-                name_attr = getattr(type_node, "name", None)
-                try:
-                    type_name = str(name_attr).strip() if name_attr else ""
-                except (UnicodeDecodeError, TypeError):
-                    type_name = ""
+            # 如果是类引用，添加 IS_INSTANCE_OF 边
+            # [V6.9] semantic ClassProperty 通过 declaredType 获取类型名
+            type_name = ""
+            try:
+                dt = getattr(prop, "declaredType", None)
+                if dt:
+                    type_name = str(getattr(dt, "name", "")).strip()
+            except Exception:
+                pass
                 if type_name:
                     graph.add_trace_edge(
                         TraceEdge(
@@ -1358,39 +1352,35 @@ class ClassGraphBuilder:
         return None
 
     def _iter_class_properties(self, cls) -> list:
-        """迭代 class 的所有成员变量（包括 rand）
-
-        Semantic AST: ClassType 没有 items 属性，需要通过 cls.syntax.items 访问
+        """[V6.9] 迭代 class 的成员变量 — 用 semantic API。
+        
+        直接遍历 semantic ClassType 的 member symbols，
+        找到 SymbolKind.ClassProperty 即可。
         """
-        # 优先从 syntax 获取（Semantic AST ClassType）
-        items = getattr(cls, "syntax", None) and getattr(cls.syntax, "items", None)
-        if items is None:
-            items = getattr(cls, "items", []) or []
         props = []
-        for item in items:
-            if item is None:
-                continue
-            kind = getattr(item, "kind", None)
-            if kind == SyntaxKind.ClassPropertyDeclaration:
-                props.append(item)
+        try:
+            for member in cls:
+                kind = str(getattr(member, "kind", ""))
+                if "ClassProperty" in kind:
+                    props.append(member)
+        except Exception:
+            pass
         return props
 
     def _iter_constraints(self, cls) -> list:
-        """迭代 class 的所有 constraint 块
-
-        Semantic AST: ClassType 没有 items 属性，需要通过 cls.syntax.items 访问
+        """[V6.9] 迭代 class 的 constraint 块 — 用 semantic API。
+        
+        直接遍历 semantic ClassType 的 member symbols，
+        找到 SymbolKind.ConstraintBlock 即可。
         """
-        # 优先从 syntax 获取（Semantic AST ClassType）
-        items = getattr(cls, "syntax", None) and getattr(cls.syntax, "items", None)
-        if items is None:
-            items = getattr(cls, "items", []) or []
         constrs = []
-        for item in items:
-            if item is None:
-                continue
-            kind = getattr(item, "kind", None)
-            if kind == SyntaxKind.ConstraintDeclaration:
-                constrs.append(item)
+        try:
+            for member in cls:
+                kind = str(getattr(member, "kind", ""))
+                if "ConstraintBlock" in kind:
+                    constrs.append(member)
+        except Exception:
+            pass
         return constrs
 
     def _iter_declarators(self, decl):
@@ -1420,21 +1410,33 @@ class ClassGraphBuilder:
             return ""
 
     def _property_width(self, prop) -> tuple:
-        """从 ClassPropertyDeclaration 提取位宽"""
-        decl = getattr(prop, "declaration", None)
-        if decl is None:
-            return (0, 0)
-        data_type = getattr(decl, "dataType", None) or getattr(decl, "type", None)
-        if data_type is None:
-            return (0, 0)
-        # 查找 dimensions
-        dims = getattr(data_type, "dimensions", None)
-        if dims and hasattr(dims, "__iter__"):
-            for dim in dims:
-                if hasattr(dim, "specifier"):
-                    spec = dim.specifier
-                    if hasattr(spec, "selector"):
-                        sel = spec.selector
+        """[V6.9] 从 semantic ClassProperty symbol 提取位宽。
+        
+        semantic ClassProperty 有 type 属性（PackedArrayType 等），
+        直接从 semantic API 获取宽度，不再走 syntax declaration。
+        """
+        # 从 semantic type 获取 bitWidth
+        try:
+            bw = getattr(prop, "bitWidth", None)
+            if bw is not None and bw > 0:
+                return (0, bw - 1)
+        except Exception:
+            pass
+        
+        # Fallback: 从 syntax declaration 获取
+        syntax = getattr(prop, "syntax", None)
+        if syntax:
+            decl = getattr(syntax, "declaration", None)
+            if decl:
+                data_type = getattr(decl, "dataType", None) or getattr(decl, "type", None)
+                if data_type:
+                    dims = getattr(data_type, "dimensions", None)
+                    if dims and hasattr(dims, "__iter__"):
+                        for dim in dims:
+                            if hasattr(dim, "specifier"):
+                                spec = dim.specifier
+                                if hasattr(spec, "selector"):
+                                    sel = spec.selector
                         if hasattr(sel, "left") and hasattr(sel, "right"):
                             try:
                                 left_val = int(str(sel.left.literal))
