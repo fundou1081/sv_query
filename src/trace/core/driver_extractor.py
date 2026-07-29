@@ -1808,13 +1808,129 @@ class DriverExtractor:
         return False
 
     def _collect_stmts_with_context(self, n, ctx=None) -> list[tuple[Any, dict[str, str], Any]]:
-        """收集语句的包装方法
+        """[V6.9] 用 semantic API 收集 always 块中的语句和 clock context。
 
-        [铁律29] 优先使用 StatementCollectorVisitor，不再使用 legacy fallback
+        不再依赖已删除的 StatementCollectorVisitor。
+        从 syntax AST 获取 clock/reset 信号和 if/case 脉络，
+        并用 semantic adapter 获取语句列表。
         """
-        # [铁律29] 强制使用 Visitor，不使用 fallback
-        # [V6.9] collect() removed — use adapter instead
-        return []
+        if ctx is None:
+            ctx = {}
+        
+        # 1. 从 syntax 层提取 clock 和 reset 信号
+        clock = self._extract_clock_from_always(n)
+        reset = self._extract_reset_from_always(n)
+        if clock:
+            ctx["clock"] = clock
+        if reset:
+            ctx["reset"] = reset
+        
+        # 2. 从 syntax 层获取语句体
+        items = self._get_always_body_items(n)
+        if not items:
+            return items
+        
+        # 3. 处理条件脉络（if/case 等）
+        #    简单实现：把 statement 作为 (node, ctx, type) 的列表返回
+        #    ItemType 已删除，第三个元素用 None
+        result = []
+        for item in items:
+            result.append((item, ctx, None))
+        
+        return result
+    
+    def _extract_reset_from_always(self, n) -> str:
+        """[V6.9] 从 always 块的 syntax timing control 提取 reset 信号。
+        
+        negedge 通常是异步 reset。
+        """
+        reset_signal = ""
+        syntax = getattr(n, "syntax", None)
+        if syntax:
+            tc = getattr(syntax, "timingControl", None)
+            if tc:
+                events = getattr(tc, "events", []) or []
+                for evt in events:
+                    edge = str(getattr(evt, "edge", ""))
+                    if "NegEdge" in edge:
+                        expr = getattr(evt, "expr", None)
+                        if expr:
+                            reset_signal = str(expr).strip()
+        return reset_signal
+    
+    def _get_always_body_items(self, n) -> list:
+        """[V6.9] 从 always 块的 syntax 层获取 flat assignment statements。
+        
+        递归展开 if/else/case 嵌套，展平所有 NonblockingAssignment/BlockingAssignment。
+        
+        路径: ProceduralBlockSymbol.syntax → TimingControlStatement → BlockStatement
+        → items → 展开为 flat expr 列表
+        """
+        syntax = getattr(n, "syntax", None)
+        if syntax is None:
+            return []
+        
+        stmt = getattr(syntax, "statement", None)
+        if stmt is None:
+            return []
+        
+        # 跳过 TimingControlStatement
+        sk = str(getattr(stmt, "kind", ""))
+        if "TimingControlStatement" in sk:
+            stmt = getattr(stmt, "statement", None) or stmt
+        
+        # 递归展平所有赋值语句
+        items = []
+        self._flatten_assignments(stmt, items)
+        return items
+    
+    def _flatten_assignments(self, stmt, result: list):
+        """[V6.9] 递归展平语句树，收集所有 NonblockingAssignment/BlockingAssignment。
+        
+        处理: BlockStatement → IfStatement (then/else) → ExpressionStatement → Assignment
+        """
+        if stmt is None:
+            return
+        
+        sk = str(getattr(stmt, "kind", ""))
+        
+        # BlockStatement: 遍历 items
+        if "Block" in sk or "SeqBlock" in sk:
+            items = getattr(stmt, "items", None)
+            if items and hasattr(items, "__iter__"):
+                for item in items:
+                    self._flatten_assignments(item, result)
+            return
+        
+        # IfStatement / ConditionalStatement: 展开 then + else
+        if "If" in sk or "Conditional" in sk:
+            then_stmt = getattr(stmt, "statement", None)
+            self._flatten_assignments(then_stmt, result)
+            else_stmt = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
+            self._flatten_assignments(else_stmt, result)
+            return
+        
+        # ExpressionStatement: 提取内层 assignment expr
+        if "ExpressionStatement" in sk:
+            expr = getattr(stmt, "expr", None)
+            if expr:
+                ek = str(getattr(expr, "kind", ""))
+                if "Assignment" in ek:
+                    result.append(expr)  # 直接返回 assignment expression 节点
+            return
+        
+        # CaseStatement: 展开各分支
+        if "Case" in sk:
+            items = getattr(stmt, "items", None)
+            if items and hasattr(items, "__iter__"):
+                for item in items:
+                    case_stmt = getattr(item, "statement", None)
+                    self._flatten_assignments(case_stmt, result)
+            return
+        
+        # 直接就是赋值表达式
+        if "Assignment" in sk:
+            result.append(stmt)
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
