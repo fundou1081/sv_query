@@ -785,17 +785,21 @@ class StatementCollectorVisitor(BaseVisitor):
         #    items
         items = getattr(node, "items", [])
 
-        # [FIX]        syntax items    case item   
-        #    ItemGroup    case item      (0:, 1:, default:)
-        # syntax items   StandardCaseItemSyntax.expressions      
+        # [V6.8 fix] Prefer Semantic ItemGroup over Syntax StandardCaseItemSyntax.
+        # Semantic items have clean expressions (ConversionExpression not IntegerVectorExpressionSyntax)
+        # and don't include comments/trivia in their string representation.
+        # Only fall back to syntax items if semantic items are empty.
+        sem_items = items  # Semantic AST: list of ItemGroup
         syntax_items = None
         if hasattr(node, "syntax") and node.syntax and hasattr(node.syntax, "items"):
             syntax_items = node.syntax.items
 
-        #      syntax items(        )
-        use_syntax = syntax_items is not None and len(syntax_items) > 0
+        use_syntax = False
+        if syntax_items is not None and len(syntax_items) > 0:
+            if not sem_items or len(sem_items) == 0:
+                use_syntax = True
 
-        process_items = syntax_items if use_syntax else items
+        process_items = syntax_items if use_syntax else sem_items
 
         if process_items:
             for item in process_items:
@@ -869,48 +873,79 @@ class StatementCollectorVisitor(BaseVisitor):
         """   case item     
 
         Args:
-            item: case item   
+            item: case item (ItemGroup or StandardCaseItemSyntax)
             selector: case selector       
 
         Returns:
                  ,  "sel == 0"   "sel == default"
         """
-        #       default case
+        # [V6.8] Handle both Semantic ItemGroup and Syntax StandardCaseItemSyntax
         item_kind = getattr(item, "kind", None)
         item_kind_name = item_kind.name if hasattr(item_kind, "name") else str(item_kind)
 
-        if "Default" in item_kind_name:
+        if "Default" in item_kind_name or 'Default' in str(getattr(item, 'kind', '')):
             return f"{selector} == default"
 
-        # StandardCaseItem:   expressions      
+        # expressions: Semantic=ConversionExpression, Syntax=IntegerVectorExpressionSyntax
         expressions = getattr(item, "expressions", None)
-        if expressions:
-            # expressions        ,   
+        if expressions is not None:
             if hasattr(expressions, "__iter__") and not isinstance(expressions, str):
                 expr_parts = []
                 for expr in expressions:
-                    expr_str = self._expr_to_string(expr)
-                    if expr_str:
-                        expr_parts.append(expr_str)
+                    s = self._get_semantic_literal_value(expr)
+                    if not s:
+                        s = self._expr_to_string(expr)
+                    if s:
+                        expr_parts.append(s)
                 if expr_parts:
                     return f"{selector} == {' || '.join(expr_parts)}"
             else:
-                expr_str = self._expr_to_string(expressions)
-                if expr_str:
-                    return f"{selector} == {expr_str}"
+                s = self._get_semantic_literal_value(expressions)
+                if not s:
+                    s = self._expr_to_string(expressions)
+                if s:
+                    return f"{selector} == {s}"
 
         return f"{selector} == ?"
 
+    @staticmethod
+    def _get_semantic_literal_value(expr) -> str:
+        """[V6.8] Extract clean literal value from Semantic AST expression
+
+        Semantic ConversionExpression wraps IntegerLiteral with .value (e.g. 2'b0).
+        Returns clean text without comments/trivia.
+        Falls back to empty string for Syntax nodes.
+        """
+        if expr is None:
+            return ""
+        # Semantic IntegerLiteral: has .value
+        v = getattr(expr, "value", None)
+        if v is not None and not callable(v):
+            return str(v)
+        # Semantic ConversionExpression: unwrap to operand
+        operand = getattr(expr, "operand", None)
+        if operand is not None:
+            v = getattr(operand, "value", None)
+            if v is not None and not callable(v):
+                return str(v)
+        # integerValue (some pyslang versions)
+        iv = getattr(expr, "integerValue", None)
+        if iv is not None and not callable(iv):
+            return str(iv)
+        return ""
+
     def _get_case_item_condition_ast(self, item) -> Any | None:
-        """   case item        AST
+        """[V6.8]   case item        AST
 
              _cond_exprs   
+        Semantic ItemGroup: returns the clean condition string (no AST needed).
+        Syntax StandardCaseItemSyntax: returns the expression node.
 
         Args:
-            item: case item   
+            item: case item (ItemGroup or StandardCaseItemSyntax)
 
         Returns:
-                  AST     None
+                  AST     None, or clean condition string for Semantic nodes
         """
         #       default case
         item_kind = getattr(item, "kind", None)
@@ -919,11 +954,25 @@ class StatementCollectorVisitor(BaseVisitor):
         if "Default" in item_kind_name:
             return None  # default        
 
-        # StandardCaseItem:   expressions      AST
+        # [V6.8] Semantic ItemGroup → return clean value string (not raw Syntax node)
+        if item_kind_name == "ItemGroup":
+            expressions = getattr(item, "expressions", None)
+            if expressions is not None:
+                if hasattr(expressions, "__iter__") and not isinstance(expressions, str):
+                    for expr in expressions:
+                        s = self._get_semantic_literal_value(expr)
+                        if s:
+                            return s
+                else:
+                    s = self._get_semantic_literal_value(expressions)
+                    if s:
+                        return s
+            return None
+
+        # Syntax StandardCaseItemSyntax:   expressions      AST
         expressions = getattr(item, "expressions", None)
         if expressions:
             if hasattr(expressions, "__iter__") and not isinstance(expressions, str):
-                #      ,     (   case     )
                 for expr in expressions:
                     return expr
             else:
