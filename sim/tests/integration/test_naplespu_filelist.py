@@ -137,14 +137,14 @@ def test_m11_dataflow_filelist():
 
 
 def test_m12_visualize_filelist():
-    """visualize graph: HTML 应生成, exit 0"""
-    out_html = "/tmp/naples_full/viz_test.html"
-    r = _run("visualize", "graph", "--no-strict", "--html", out_html, "--filelist", FILELIST_PATH)
+    """visualize graph: DOT 应生成 (V6.7 dropped HTML output)"""
+    out_dot = "/tmp/naples_full/viz_test.dot"
+    r = _run("visualize", "graph", "--no-strict", "--dot", out_dot, "--filelist", FILELIST_PATH)
     assert r.returncode == 0, f"visualize 应 exit 0, got {r.returncode}, stderr={r.stderr[:500]}"
     import os
-    assert os.path.exists(out_html), f"HTML 应生成: {out_html}"
-    assert os.path.getsize(out_html) > 1000, f"HTML 应 > 1KB, got {os.path.getsize(out_html)}"
-    print(f"✅ visualize on minimal_3module: HTML {os.path.getsize(out_html)} bytes 生成")
+    assert os.path.exists(out_dot), f"DOT 应生成: {out_dot}"
+    assert os.path.getsize(out_dot) > 100, f"DOT 应 > 100B, got {os.path.getsize(out_dot)}"
+    print(f"✅ visualize on minimal_3module: DOT {os.path.getsize(out_dot)} bytes")
 
 
 # ----------------------------------------------------------------------------
