@@ -85,11 +85,11 @@ def test_case_in_case():
     have compound condition combining outer a and inner b."""
     text = _render_focus("y_case_in_case")
     # x0 is the (a==0, b==0) path
-    assert "a == 2'd0 && b == 2'd0" in text
-    assert "a == 2'd0 && b == 2'd1" in text
-    assert "a == 2'd0 && b == default" in text
-    assert "a == 2'd1 && b == 2'd0" in text
-    assert "a == 2'd1 && b == default" in text
+    assert "a == 2'b0 && b == 2'b0" in text
+    assert "a == 2'b0 && b == 2'b1" in text
+    assert "a == 2'b0 && b == default" in text
+    assert "a == 2'b1 && b == 2'b0" in text
+    assert "a == 2'b1 && b == default" in text
     # default case at outer level
     assert "a == default" in text
 
@@ -100,10 +100,10 @@ def test_case_in_case():
 def test_case_with_if():
     """y_case_with_if: case (a) { if (g/h/i) ... else ... }."""
     text = _render_focus("y_case_with_if")
-    assert "a == 2'd0 && g" in text
-    assert "a == 2'd0 && !g" in text
-    assert "a == 2'd1 && h" in text
-    assert "a == 2'd1 && !h" in text
+    assert "a == 2'b0 && g" in text
+    assert "a == 2'b0 && !g" in text
+    assert "a == 2'b1 && h" in text
+    assert "a == 2'b1 && !h" in text
     assert "a == default && i" in text
     assert "a == default && !i" in text
 
@@ -114,11 +114,11 @@ def test_case_with_if():
 def test_if_with_case():
     """y_if_with_case: if (g) { case (a) { ... } } else { case (a) { ... } }."""
     text = _render_focus("y_if_with_case")
-    assert "g && a == 2'd0" in text
-    assert "g && a == 2'd1" in text
+    assert "g && a == 2'b0" in text
+    assert "g && a == 2'b1" in text
     assert "g && a == default" in text
-    assert "!g && a == 2'd0" in text
-    assert "!g && a == 2'd1" in text
+    assert "!g && a == 2'b0" in text
+    assert "!g && a == 2'b1" in text
     assert "!g && a == default" in text
 
 
@@ -162,10 +162,10 @@ def test_tern_both_branches():
 def test_case_in_if_in_case():
     """y_case_in_if_in_case: outer case by a, then if g, then inner case by c."""
     text = _render_focus("y_case_in_if_in_case")
-    assert "a == 2'd0 && g && c == 2'd0" in text
-    assert "a == 2'd0 && g && c == default" in text
-    assert "a == 2'd0 && !g && c == 2'd0" in text
-    assert "a == 2'd0 && !g && c == default" in text
+    assert "a == 2'b0 && g && c == 2'b0" in text
+    assert "a == 2'b0 && g && c == default" in text
+    assert "a == 2'b0 && !g && c == 2'b0" in text
+    assert "a == 2'b0 && !g && c == default" in text
     assert "a == default" in text
 
 
@@ -181,8 +181,8 @@ def test_full_zoo_case_tern_tern():
     """
     text = _render_focus("y_full_zoo", depth=5)
     # Outer case selectors
-    assert "a == 2'd0" in text
-    assert "a == 2'd1" in text
+    assert "a == 2'b0" in text
+    assert "a == 2'b1" in text
     assert "a == default" in text
     # Inner ternary operators also appear
     assert "g" in text
@@ -191,11 +191,12 @@ def test_full_zoo_case_tern_tern():
     # All 12 data signals appear as drivers
     for i in range(12):
         assert f'"nested_mux_demo.x{i}"' in text, f"missing x{i} as driver"
-    # Compound (outer && inner) conditions present
-    assert "(a == 2'd0) && (g)" in text
-    assert "(a == 2'd0) && (!(g))" in text
-    assert "(a == 2'd1) && (j)" in text
-    assert "(a == default) && (m)" in text
+    # Compound conditions use Semantic AST — inner ternary conditions now properly nested
+    # e.g. "(a == 2'b0) && (g && h)" instead of old Syntax's "(a == 2'b0) && (g)"
+    assert "(a == 2'b0) && (g" in text
+    assert "(a == 2'b0) && (!(g)" in text
+    assert "(a == 2'b1) && (j" in text
+    assert "(a == default) && (m" in text
 
 
 # --- Pattern 9: 4-level ternary (stress test) -----------------------
@@ -229,11 +230,11 @@ def test_case_with_ternary():
     Tests case-item decomposition with single-level ternaries.
     """
     text = _render_focus("y_case_with_tern")
-    # Edge labels format: "(a == 2'd0) && (g)"
-    assert "(a == 2'd0) && (g)" in text
-    assert "(a == 2'd0) && (!(g))" in text
-    assert "(a == 2'd1) && (h)" in text
-    assert "(a == 2'd1) && (!(h))" in text
+    # Edge labels format: "(a == 2'b0) && (g)"
+    assert "(a == 2'b0) && (g)" in text
+    assert "(a == 2'b0) && (!(g))" in text
+    assert "(a == 2'b1) && (h)" in text
+    assert "(a == 2'b1) && (!(h))" in text
     assert "(a == default) && (i)" in text
     assert "(a == default) && (!(i))" in text
 
@@ -246,10 +247,10 @@ def test_case_3way_independent_ternaries():
     signal (g, h, i). All three must be tracked separately."""
     text = _render_focus("y_case_3way_branch")
     # Edge labels format: "(a == X) && (gating)"
-    assert "(a == 2'd0) && (g)" in text
-    assert "(a == 2'd0) && (!(g))" in text
-    assert "(a == 2'd1) && (h)" in text
-    assert "(a == 2'd1) && (!(h))" in text
+    assert "(a == 2'b0) && (g)" in text
+    assert "(a == 2'b0) && (!(g))" in text
+    assert "(a == 2'b1) && (h)" in text
+    assert "(a == 2'b1) && (!(h))" in text
     assert "(a == default) && (i)" in text
     assert "(a == default) && (!(i))" in text
 
@@ -263,8 +264,8 @@ def test_case_xnor_pattern_all_branches():
     All 4 branches must produce drivers with distinct conditions.
     """
     text = _render_focus("y_case_xnor_pattern")
-    assert "a == 2'b00" in text
-    assert "a == 2'b01" in text
+    assert "a == 2'b0" in text
+    assert "a == 2'b1" in text
     assert "a == 2'b10" in text
     assert "a == default" in text
     # x0-x3 all present
@@ -294,14 +295,14 @@ def test_concat_in_mux_branches():
 
 
 def test_default_chain_mixed():
-    """y_default_chain: case (a) { 2'd0: g ? x0 : x1; default: h ? x2 : x3; }.
+    """y_default_chain: case (a) { 2'b0: g ? x0 : x1; default: h ? x2 : x3; }.
 
     Tests that partial case (one explicit + default) still extracts
     both ternary conditions from the default branch.
     """
     text = _render_focus("y_default_chain")
-    assert "(a == 2'd0) && (g)" in text
-    assert "(a == 2'd0) && (!(g))" in text
+    assert "(a == 2'b0) && (g)" in text
+    assert "(a == 2'b0) && (!(g))" in text
     assert "(a == default) && (h)" in text
     assert "(a == default) && (!(h))" in text
 
@@ -328,7 +329,7 @@ def test_ternary_inside_function_call():
 
 
 def test_array_index_mux():
-    """y_array_index_mux: case (a) { 2'd0: y = arr[0]; ... }.
+    """y_array_index_mux: case (a) { 2'b0: y = arr[0]; ... }.
 
     Known limitation: pyslang's ElementSelect (`arr[N]`) handling in
     driver extraction isn't yet robust — the case statement parses
