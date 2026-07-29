@@ -19,9 +19,9 @@ def make_di(cond="", expr="", assign_type="always_comb", clock_domain="clk"):
     return DriverInfo(
         node=node,
         target_signal="m.awready",
-        expression=expr, condition=cond,
+        condition=cond,
         assign_type=assign_type, clock_domain=clock_domain,
-        bit_slice="", distance=0, reset_condition="",
+        _expression_override=expr, distance=0, reset_condition="",
     )
 
 

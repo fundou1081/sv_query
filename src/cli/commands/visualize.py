@@ -240,6 +240,7 @@ def graph(
         "layout_engine": layout_engine,
         "show_clock_reset": not exclude_clock,
         "edge_labels": show_labels or show_conditions,
+        "show_source": show_source,
     })
 
     if dot_output:

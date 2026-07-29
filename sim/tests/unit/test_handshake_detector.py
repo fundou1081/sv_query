@@ -82,10 +82,11 @@ def make_di(condition="", expression="", assign_type="", clock_domain="", target
         id=target_signal, name=target_signal, module="test_module",
         kind=NodeKind.SIGNAL, width=(0, 0),
     )
+    # [V6.6] expression/bit_slice → @property, use _expression_override
     return DriverInfo(
         node=node,
         condition=condition,
-        expression=expression,
+        _expression_override=expression,
         assign_type=assign_type,
         clock_domain=clock_domain,
         target_signal=target_signal,

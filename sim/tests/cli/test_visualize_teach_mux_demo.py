@@ -13,8 +13,8 @@ For each, the viz should show:
   - edge labels matching the actual conditions
 
 This test specifically verifies the V6.3 fix to use raw `condition`
-(includes the selector, e.g. `sel_b == 2'd0`) rather than
-`effective_condition` (just the value, `2'd0`).
+(includes the selector, e.g. `sel_b == 2'b0`) rather than
+`effective_condition` (just the value, `2'b0`).
 """
 import subprocess
 import os
@@ -76,7 +76,7 @@ def test_y_simple_if_then_branch_has_sel_label(tmp_path):
 
 
 def test_y_case_each_branch_shows_selector_and_value(tmp_path):
-    """y_case: c → y [label=sel_b == 2'd0], etc. — NOT just '2'd0'."""
+    """y_case: c → y [label=sel_b == 2'b0], etc. — NOT just '2'b0'."""
     _strip_pycache()
     out = tmp_path / "case.dot"
     rc, _, err = _run(
@@ -90,9 +90,9 @@ def test_y_case_each_branch_shows_selector_and_value(tmp_path):
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     expected = [
-        ('mux_demo.c" -> "mux_demo.y_case"', "sel_b == 2'd0"),
-        ('mux_demo.d" -> "mux_demo.y_case"', "sel_b == 2'd1"),
-        ('mux_demo.e" -> "mux_demo.y_case"', "sel_b == 2'd2"),
+        ('mux_demo.c" -> "mux_demo.y_case"', "sel_b == 2'b0"),
+        ('mux_demo.d" -> "mux_demo.y_case"', "sel_b == 2'b1"),
+        ('mux_demo.e" -> "mux_demo.y_case"', "sel_b == 2'b10"),
     ]
     for substr, label in expected:
         e = next(l for l in edges if substr in l)
@@ -143,10 +143,10 @@ def test_y_deep_compound_conditions_use_and(tmp_path):
     assert rc == 0, err
     text = out.read_text()
     # Should have compound condition labels with &&
-    assert "sel_d == 2'd0 && sel_e == 2'd0" in text, \
+    assert "sel_d == 2'b0 && sel_e == 2'b0" in text, \
         "expected compound condition for a in deep case"
     assert "sel_d == default" in text, "expected default branch"
-    assert "sel_d == 2'd1 && sel_e == 2'd0" in text, \
+    assert "sel_d == 2'b1 && sel_e == 2'b0" in text, \
         "expected compound for d in inner case"
 
 
@@ -180,7 +180,7 @@ def test_y_nested_compound_conditions_use_and(tmp_path):
     in the ternary should appear as a separate driver edge with the compound
     condition `(sel_d == X) && (sel_f)` or `(sel_d == X) && (!(sel_f))`.
 
-    Before V6.3+1: only `clk -> y_nested` edge existed (with sel_d == 2'd0),
+    Before V6.3+1: only `clk -> y_nested` edge existed (with sel_d == 2'b0),
     so trace fanin / networkx shortest_path from input signals returned empty.
     After V6.3+1: 8 leaf signals (a-h) all appear with per-signal compound
     conditions, and a path a -> y_nested exists.
@@ -202,14 +202,14 @@ def test_y_nested_compound_conditions_use_and(tmp_path):
         assert f'"mux_demo.{sig}" -> "mux_demo.y_nested"' in text, \
             f"missing driver edge for {sig}"
     # Outer case condition appears in labels
-    assert "(sel_d == 2'd0)" in text, "outer case cond missing for sel_d==0 branch"
-    assert "(sel_d == 2'd1)" in text, "outer case cond missing for sel_d==1 branch"
+    assert "(sel_d == 2'b0)" in text, "outer case cond missing for sel_d==0 branch"
+    assert "(sel_d == 2'b1)" in text, "outer case cond missing for sel_d==1 branch"
     assert "(sel_d == default)" in text, "outer default cond missing"
     # Inner ternary condition appears
     assert "sel_f" in text, "inner ternary cond missing"
     # Specific compound (sel_d==0 AND sel_f) form exists
     import re
-    assert re.search(r"\(sel_d == 2'd0\) && \(sel_f\)", text) is not None, \
+    assert re.search(r"\(sel_d == 2'b0\) && \(sel_f\)", text) is not None, \
         "compound (sel_d==0) && (sel_f) not found in any edge label"
 
 

@@ -3,7 +3,7 @@ test_visualize_teach_edge_condition.py - V6.3 2026-07-22: edge condition labels.
 
 After V6.3, when teach --focus renders edges, each DRIVER edge should
 carry a label that shows the guarding condition (e.g. `sel` for the if-branch,
-`2'd0` for case branches, `!(sel)` for ternary else-branch).
+`2'b0` for case branches, `!(sel)` for ternary else-branch).
 
 CLOCK/ENABLE/RESET edges should NOT have condition labels (those are
 always-block guards, not per-edge conditions).
@@ -88,7 +88,7 @@ def test_if_demo_clock_edge_has_no_condition_label(tmp_path):
 
 
 def test_case_demo_each_branch_has_op_eq_value(tmp_path):
-    """[V6.3 fix 2026-07-22] Case edges should show `op == 2'd0` not just `2'd0`."""
+    """[V6.3 fix 2026-07-22] Case edges should show `op == 2'b0` not just `2'b0`."""
     _strip_pycache()
     out = tmp_path / "case.dot"
     rc, _, err = _run(
@@ -102,9 +102,9 @@ def test_case_demo_each_branch_has_op_eq_value(tmp_path):
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     expected = {
-        'case_demo.d0" -> "case_demo.y"': "op == 2'd0",
-        'case_demo.d1" -> "case_demo.y"': "op == 2'd1",
-        'case_demo.d2" -> "case_demo.y"': "op == 2'd2",
+        'case_demo.d0" -> "case_demo.y"': "op == 2'b0",
+        'case_demo.d1" -> "case_demo.y"': "op == 2'b1",
+        'case_demo.d2" -> "case_demo.y"': "op == 2'b10",
     }
     for substr, label in expected.items():
         e = next(l for l in edges if substr in l)
