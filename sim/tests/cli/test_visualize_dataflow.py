@@ -105,9 +105,17 @@ class TestVizDataExport:
         assert len(data["nodes"]) > 0, "no nodes in viz JSON export"
 
 
-# Golden DOT comparison: V6.7 迁移后 DOT 生成逻辑已变,
-# golden 文件需要重新生成。暂时 skip，后续恢复。
-@pytest.mark.skip(reason="V6.7 DOT rendering changed — golden needs regeneration")
 def test_visualize_dataflow_golden_match():
-    """Golden DOT comparison (disabled after V6.7 migration)."""
-    pass
+    """[V6.9 fix 2026-07-29] Golden DOT comparison — regenerated after V6.7/V6.8 changes."""
+    import os
+    tmp_dot = "/tmp/test_dataflow_golden.dot"
+    rc, stdout, stderr = _run_dot_output()
+    assert rc == 0, f"dataflow failed: {stderr[:200]}"
+
+    golden_path = str(PROJECT_ROOT / "sim" / "tests" / "golden" / "visualize_dataflow" / "strict_uart.dot")
+    with open(golden_path) as f:
+        golden = f.read()
+    assert stdout.rstrip() == golden.rstrip(), (
+        "DOT output diverged from golden. Regenerate with:\n"
+        f"  sv_query visualize dataflow --filelist sim/tests/fixtures/strict_uart/filelist.f --no-strict --dot {golden_path}"
+    )
