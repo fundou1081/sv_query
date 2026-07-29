@@ -1829,17 +1829,24 @@ class DriverExtractor:
         if reset:
             ctx["reset"] = reset
         
-        # 2. 从 syntax 层获取语句体
+        # 2. 从 syntax 层获取语句体 (带条件信息)
         items = self._get_always_body_items(n)
         if not items:
             return items
         
         # 3. 处理条件脉络（if/case 等）
-        #    简单实现：把 statement 作为 (node, ctx, type) 的列表返回
-        #    ItemType 已删除，第三个元素用 None
+        #    _flatten_assignments 现在返回 (expr, cond_str) 元组
+        #    每个 item 带有自己的条件
         result = []
         for item in items:
-            result.append((item, ctx, None))
+            if isinstance(item, tuple) and len(item) == 2:
+                expr_node, cond_str = item
+                item_ctx = dict(ctx)  # copy base ctx
+                if cond_str:
+                    item_ctx["condition"] = cond_str
+                result.append((expr_node, item_ctx, None))
+            else:
+                result.append((item, ctx, None))
         
         return result
     
@@ -1888,13 +1895,17 @@ class DriverExtractor:
         self._flatten_assignments(stmt, items)
         return items
     
-    def _flatten_assignments(self, stmt, result: list):
+    def _flatten_assignments(self, stmt, result: list, cond_stack: list[str] | None = None):
         """[V6.9] 递归展平语句树，收集所有 NonblockingAssignment/BlockingAssignment。
         
         处理: BlockStatement → IfStatement (then/else) → ExpressionStatement → Assignment
+        
+        cond_stack: 当前所在 if/case 分支的条件列表（用于还原 edge.condition）
         """
         if stmt is None:
             return
+        if cond_stack is None:
+            cond_stack = []
         
         sk = str(getattr(stmt, "kind", ""))
         
@@ -1903,13 +1914,21 @@ class DriverExtractor:
             items = getattr(stmt, "items", None)
             if items and hasattr(items, "__iter__"):
                 for item in items:
-                    self._flatten_assignments(item, result)
+                    self._flatten_assignments(item, result, cond_stack)
             return
         
         # IfStatement / ConditionalStatement: 展开 then + else
         if "If" in sk or "Conditional" in sk:
+            # 提取条件表达式文本
+            # pyslang ConditionalStatement: 条件在 .predicate，不是 .condition
+            cond = getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
+            new_cond = str(cond).strip() if cond else ""
+            # 过滤掉 always @ 的边沿条件（posedge/negedge）
+            if new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or ")):
+                cond_stack.append(new_cond)
+            
             then_stmt = getattr(stmt, "statement", None)
-            self._flatten_assignments(then_stmt, result)
+            self._flatten_assignments(then_stmt, result, cond_stack)
             # else branch: 可能是 ElseClauseSyntax（需要 .clause）或直接是语句
             else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
             if else_node is not None:
@@ -1917,9 +1936,13 @@ class DriverExtractor:
                 # ElseClauseSyntax 有 .clause → 展开内层
                 if "ElseClause" in ek:
                     clause = getattr(else_node, "clause", None)
-                    self._flatten_assignments(clause, result)
+                    self._flatten_assignments(clause, result, cond_stack)
                 else:
-                    self._flatten_assignments(else_node, result)
+                    self._flatten_assignments(else_node, result, cond_stack)
+            
+            # 弹出该层条件
+            if new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or ")):
+                cond_stack.pop()
             return
         
         # ExpressionStatement: 提取内层 assignment expr
@@ -1928,21 +1951,42 @@ class DriverExtractor:
             if expr:
                 ek = str(getattr(expr, "kind", ""))
                 if "Assignment" in ek:
-                    result.append(expr)  # 直接返回 assignment expression 节点
+                    # 带上当前条件栈
+                    if cond_stack:
+                        result.append((expr, " && ".join(cond_stack)))
+                    else:
+                        result.append((expr, ""))
             return
         
         # CaseStatement: 展开各分支
         if "Case" in sk:
+            case_expr = getattr(stmt, "expression", None) or getattr(stmt, "condition", None)
+            case_cond = str(case_expr).strip() if case_expr else ""
             items = getattr(stmt, "items", None)
             if items and hasattr(items, "__iter__"):
                 for item in items:
+                    # 每个 case item 有自身的匹配表达式
+                    item_expr = getattr(item, "expression", None)
+                    item_cond = str(item_expr).strip() if item_expr else ""
+                    if case_cond and item_cond:
+                        case_full = f"({case_cond}) == ({item_cond})"
+                    else:
+                        case_full = item_cond or case_cond
+                    
+                    if case_full:
+                        cond_stack.append(case_full)
                     case_stmt = getattr(item, "statement", None)
-                    self._flatten_assignments(case_stmt, result)
+                    self._flatten_assignments(case_stmt, result, cond_stack)
+                    if case_full:
+                        cond_stack.pop()
             return
         
         # 直接就是赋值表达式
         if "Assignment" in sk:
-            result.append(stmt)
+            if cond_stack:
+                result.append((stmt, " && ".join(cond_stack)))
+            else:
+                result.append((stmt, ""))
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
@@ -2093,29 +2137,6 @@ class DriverExtractor:
                 stmt = getattr(item, "clause", None) or getattr(item, "statement", None)
                 if stmt:
                     self._collect_assignments_from_stmt(stmt, statements, depth + 1)
-                # [V6.3+3 2026-07-27] REMOVED case-selector-as-driver hack:
-                # Previously code added item.condition (the case item's compare
-                # value like `2'd0` or `default`) as a fake driver source.
-                # That was wrong: case item conditions are LITERAL values
-                # (`2'd0`), not real signals — they shouldn't appear in the
-                # driver graph. The real driver extraction happens in
-                # _create_always_edges via StatementCollectorVisitor which
-                # captures the case condition as a context string (e.g.
-                # "sel_d == 2'd0") on the edge's `condition` field, not as
-                # a node.
-            return
-            if hasattr(node, "items") and node.items:
-                print(f"[DEBUG case] items count={len(list(node.items))}")
-                for idx, item in enumerate(node.items):
-                    print(f"[DEBUG case] item[{idx}]: {type(item).__name__}")
-                    if hasattr(item, "statement"):
-                        print(f"  statement: {item.statement}")
-
-            for item in node.items:
-                if item:
-                    stmt = getattr(item, "statement", None)
-                    if stmt:
-                        self._collect_assignments_from_stmt(stmt, statements, depth + 1)
             return
         if kind and ("Assignment" in kind_str):
             statements.append(node)
