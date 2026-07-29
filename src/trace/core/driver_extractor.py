@@ -110,6 +110,14 @@ class DriverExtractor:
         """
         if ast_node is None:
             return False
+        # [V6.9 FIX 2026-07-29] Unwrap Conversion wrapper — pyslang wraps localparam
+        # references in implicit conversion (e.g. cpu_state_trap in case item RHS).
+        # Conversion{operand=NamedValueExpression{cpu_state_trap (Parameter)}}
+        for _ in range(5):
+            if hasattr(ast_node, "operand") and not hasattr(ast_node, "symbol"):
+                ast_node = ast_node.operand
+            else:
+                break
         # NamedValueExpression: check symbol.kind
         if hasattr(ast_node, "symbol") and hasattr(ast_node, "kind"):
             sym = getattr(ast_node, "symbol", None)

@@ -69,9 +69,9 @@ endmodule'''
         _, resolver = _make_resolver(source)
         ev = resolver.resolve("top.y")
         self.assertIsNotNone(ev.source_location)
-        # 第 6 行 (在 module 内部, 0-indexed file 从 1 开始)
-        # file line 6 = "    assign y = a;"
-        self.assertEqual(ev.source_location.line_start, 6)
+        # 第 7 行 (在 module 内部, 1-indexed)
+        # source 开头有空行 → line 1=空, 2=module, 7=assign
+        self.assertEqual(ev.source_location.line_start, 7)
         self.assertEqual(ev.source_location.file, "test.sv")
 
     def test_simple_assign_has_enclosing_chain(self):
