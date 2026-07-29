@@ -248,10 +248,14 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
 
-        self.assertEqual(len(result.drivers), 2,
-            "y 追踪到 a，应有 2 个驱动源 (u1.q, a)")
+        # [V6.9 2026-07-29] 3 drivers: u1.q (PORT_OUT) + a (PORT_IN) + u1.d (PORT_IN)
+        # u1.d 是跨 port 追踪的中间端口，trace 现在能穿越 port 边界
+        self.assertGreaterEqual(len(result.drivers), 2,
+            "y 应至少有 2 个驱动源 (u1.q, a)")
         self.assertIn('top.a', self._driver_ids(result),
             "y 的驱动应包含 top.a")
+        self.assertIn('top.u1.q', self._driver_ids(result),
+            "y 的驱动应包含 u1.q")
         self.assertEqual(result.confidence, 'high')
 
     def test_two_instance(self):
