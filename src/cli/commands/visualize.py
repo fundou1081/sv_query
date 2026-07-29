@@ -500,20 +500,26 @@ def timed(
     for sid, node_list in stage_map.items():
         for nid in node_list:
             node_stage[nid] = sid
-    # [V6.7 fix] CONST/input nodes: push to the stage BEFORE the REG they drive
-    # (where the combinatorial OP actually happens)
+    # [V6.7 fix] CONST/PORT_IN nodes: push to the stage where the OP happens
+    # (the stage BEFORE the REG that consumes them)
+    # Use the initial pipeline stage of the dst REG, not the mutable node_stage
+    reg_stage_map: dict[str, int] = {}
+    for s in info.stages:
+        for nid in s.reg_nodes:
+            reg_stage_map[nid] = s.stage_id
     for src, dst in graph.edges():
-        if src in graph.nodes() and dst in node_stage:
+        if src in graph.nodes() and dst in reg_stage_map:
             node = graph.get_node(src)
             if node and (node.kind.name == "CONST" or node.kind.name == "PORT_IN"):
-                dst_stage = node_stage[dst]
-                # Remove from current stage (if in wrong stage)
-                for sid, nl in list(stage_map.items()):
-                    if src in nl:
-                        stage_map[sid] = [x for x in nl if x != src]
-                op_stage = max(0, dst_stage - 1)
-                node_stage[src] = op_stage
-                stage_map[op_stage] = list(set(stage_map.get(op_stage, []) + [src]))
+                dst_reg_stage = reg_stage_map[dst]
+                op_stage = max(0, dst_reg_stage - 1)
+                # Only move if currently in the wrong stage
+                if op_stage < dst_reg_stage:
+                    for sid, nl in list(stage_map.items()):
+                        if src in nl:
+                            stage_map[sid] = [x for x in nl if x != src]
+                    node_stage[src] = op_stage
+                    stage_map[op_stage] = list(set(stage_map.get(op_stage, []) + [src]))
 
     title = module or file or filelist or "Timed Compute"
     viz = build_viz_data(graph, VizBuildOptions(

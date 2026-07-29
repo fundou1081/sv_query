@@ -116,13 +116,23 @@ def render_timed_compute(
             op_nodes[op_id] = sym
 
             # Find which stage this belongs to
+            # OP happens BEFORE the REG: if dst is a REG in stage N,
+            # the OP happens in stage N-1 (the comb stage)
             op_color = _OP_COLORS.get(op_name, "#888888")
             op_stage = -1
             for sid in all_stages:
                 if dst in stage_nodes.get(sid, []):
                     op_stage = sid
                     break
-            stage_op_nodes.setdefault(op_stage, []).append(op_id)
+            # If dst is a REG, push OP one stage back
+            dst_node = None
+            for n in viz.nodes:
+                if n.id == dst:
+                    dst_node = n
+                    break
+            if dst_node and dst_node.kind == "REG" and op_stage > 0:
+                op_stage -= 1
+            stage_op_nodes.setdefault(max(0, op_stage), []).append(op_id)
         else:
             # Reuse existing OP node
             op_id = f"op_{op_name}_{_sid(dst)}"[:80]
