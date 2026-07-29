@@ -73,6 +73,7 @@ def render_timed_compute(
         '  edge [fontname="Helvetica" fontsize=9 color="#555555"];',
         "  bgcolor=white;",
         "  compound=true;",
+        "  newrank=true;  // [V6.8] enforce left-to-right across clusters",
         "",
     ]
 
@@ -169,6 +170,8 @@ def render_timed_compute(
         lines.append("    style=filled; fillcolor=\"#f8f8f8\";")
         lines.append("    color=\"#cccccc\";")
         lines.append("    fontsize=11;")
+        # [V6.8] Force nodes within this stage to the same graphviz rank
+        lines.append(f'    rank=same;')
 
         # Stage 节点
         for n in viz.nodes:
@@ -198,22 +201,53 @@ def render_timed_compute(
         lines.append("  }")
         lines.append("")
 
+    # [V6.8] Invisible rank edges: force left-to-right stage ordering
+    # Between consecutive stages, add an invisible edge to enforce rank order
+    if len(all_stages) >= 2:
+        for i in range(len(all_stages) - 1):
+            cur_sid = all_stages[i]
+            next_sid = all_stages[i + 1]
+            cur_nodes = stage_nodes.get(cur_sid, [])
+            next_nodes = stage_nodes.get(next_sid, [])
+            # Pick first node from each stage as a rank anchor
+            if cur_nodes and next_nodes:
+                lines.append(
+                    f'  "{_sid(cur_nodes[0])}" -> "{_sid(next_nodes[0])}" '
+                    f'[style=invis; weight=100];'
+                )
+
     # ── edges: source → OP node, OP node → destination ──
     seen_op_dst: set[tuple[str, str]] = set()  # (op_id, dst) dedup
+    # Detects feedback: dst stage < src stage → backwards edge
+    node_to_stage: dict[str, int] = {}
+    for sid in all_stages:
+        for nid in stage_nodes.get(sid, []):
+            node_to_stage[nid] = sid
+
     for oe in op_edges:
         op_id = oe["op_id"]
-        # source → OP (always unique: one per src)
+        src = oe["src"]
+        dst = oe["dst"]
+        src_stage = node_to_stage.get(src, -1)
+        dst_stage = node_to_stage.get(dst, -1)
+        is_feedback = src_stage >= 0 and dst_stage >= 0 and src_stage > dst_stage
+
+        # source → OP
+        edge_attrs = f'color="{oe["color"]}"'
+        if is_feedback:
+            edge_attrs += ' constraint=false dir=back'
         lines.append(
-            f'  "{_sid(oe["src"])}" -> "{_sid(op_id)}" '
-            f'[color="{oe["color"]}"];'
+            f'  "{_sid(src)}" -> "{_sid(op_id)}" [{edge_attrs}];'
         )
         # OP → destination (only once per op_id+dst)
-        key = (op_id, oe["dst"])
+        key = (op_id, dst)
         if key not in seen_op_dst:
             seen_op_dst.add(key)
+            d_attrs = f'color="{oe["color"]}"'
+            if is_feedback:
+                d_attrs += ' constraint=false dir=back'
             lines.append(
-                f'  "{_sid(op_id)}" -> "{_sid(oe["dst"])}" '
-                f'[color="{oe["color"]}"];'
+                f'  "{_sid(op_id)}" -> "{_sid(dst)}" [{d_attrs}];'
             )
 
     # Non-op edges (direct connections like stage1→stage2, 2→result)
