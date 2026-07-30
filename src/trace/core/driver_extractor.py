@@ -341,27 +341,76 @@ class DriverExtractor:
             if ident:
                 val = getattr(ident, "value", None) or str(ident)
                 return str(val).strip()
-        # HierarchicalValue: tb.data → 从 semantic AST 解析分量路径
-        # [V6.9] HierarchicalValueExpression.symbol 是 VariableSymbol,
-        #         通过 parentScope 链向上找到 InterfacePort/Instance 名字
+        # ConversionExpression: type cast (e.g., 8'hAA → int literal)
+        if "Conversion" in sk:
+            operand = getattr(signal, "operand", None)
+            if operand:
+                ok = str(getattr(operand, "kind", ""))
+                if "IntegerLiteral" in ok:
+                    val = getattr(operand, "value", None)
+                    if val is not None:
+                        return str(val)
+                elif "NamedValue" in ok:
+                    return self._get_signal(operand)
+                return str(operand)
+        # ElementSelect: data_out[0]
+        if "ElementSelect" in sk:
+            base = getattr(signal, "value", None) or getattr(signal, "base", None)
+            selector = getattr(signal, "selector", None)
+            base_name = self._get_signal(base) if base else None
+            sel_val = getattr(selector, "value", None) if selector else None
+            sel_str = str(int(sel_val)) if sel_val is not None else "x"
+            if base_name:
+                return f"{base_name}[{sel_str}]"
+            return None
+        # RangeSelect: data[3:0]
+        if "RangeSelect" in sk:
+            base = getattr(signal, "value", None) or getattr(signal, "base", None)
+            left = getattr(signal, "left", None)
+            right = getattr(signal, "right", None)
+            base_name = self._get_signal(base) if base else None
+            lv = getattr(left, "value", None) if left else None
+            rv = getattr(right, "value", None) if right else None
+            li = int(lv) if lv is not None else "x"
+            ri = int(rv) if rv is not None else "x"
+            if base_name:
+                return f"{base_name}[{li}:{ri}]"
+            return None
+        # MemberAccess: pkt.addr → base 信号 + .member (FieldSymbol)
+        if "MemberAccess" in sk:
+            base = getattr(signal, "value", None) or getattr(signal, "base", None)
+            member = getattr(signal, "member", None)
+            member_str = str(getattr(member, "name", member)) if member else ""
+            base_name = self._get_signal(base) if base else None
+            if base_name and member_str:
+                return f"{base_name}.{member_str}"
+            return None
+        # HierarchicalValue: tb.data / ifc.data / u_sub.data → 从 semantic AST 解析分量路径
         if "HierarchicalValue" in sk:
             sym = getattr(signal, "symbol", None)
             if sym:
                 sname = str(getattr(sym, "name", "")).strip()
                 if sname:
-                    # 沿 parentScope 链找到所属实例/接口端口
-                    current = getattr(sym, "parentScope", None)
-                    instances = []
-                    while current is not None:
-                        cn = str(getattr(current, "name", "")).strip()
-                        ck = str(getattr(current, "kind", ""))
-                        if cn and ("Port" in ck or "Instance" in ck or "InterfacePort" in ck):
-                            instances.append(cn)
-                        current = getattr(current, "parentScope", None)
-                    if instances:
-                        # 取最近的实例名
-                        return f"{instances[0]}.{sname}"
-                    # 无法找到实例名：返回单纯的信号名
+                    dd = getattr(sym, "declaringDefinition", None)
+                    defn_type = str(getattr(dd, "name", "")).strip() if dd else ""
+                    if defn_type and hasattr(self, "_current_module") and self._current_module:
+                        body = getattr(self._current_module, "body", None)
+                        if body:
+                            for port in body:
+                                pk = str(getattr(port, "kind", ""))
+                                pn = str(getattr(port, "name", "")).strip()
+                                if "InterfacePort" in pk:
+                                    idf = getattr(port, "interfaceDef", None)
+                                    if idf and str(getattr(idf, "name", "")) == defn_type:
+                                        return f"{pn}.{sname}"
+                                elif "Instance" in pk and getattr(port, "isInterface", False):
+                                    idef = getattr(port, "definition", None)
+                                    if idef and str(getattr(idef, "name", "")) == defn_type:
+                                        return f"{pn}.{sname}"
+                                elif "Instance" in pk:
+                                    idef = getattr(port, "definition", None)
+                                    if idef and str(getattr(idef, "name", "")) == defn_type:
+                                        return f"{pn}.{sname}"
                     return sname
         # fallback: str() + strip()
         result = str(signal).strip()
