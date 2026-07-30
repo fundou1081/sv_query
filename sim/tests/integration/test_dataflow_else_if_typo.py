@@ -41,9 +41,9 @@ def _run_dataflow(fr, to, f):
     # 3 个 else if + negation (nested_not2)
     # [V8 2026-07-16] Fixed expected: analyzer correctly negates outer + inner conditions.
     # in_b path: !(!rst_n) && !(!sel_a) && sel_b = rst_n && sel_a && sel_b
-    ("nested_not2_in_b", "nested_not2.in_b", "nested_not2.out_o", NESTED_NOT2_FILE, ["rst_n && sel_a && sel_b"]),
-    # in_c path: !(!rst_n) && !(!sel_a) && !(sel_b) = rst_n && sel_a && !sel_b
-    ("nested_not2_in_c", "nested_not2.in_c", "nested_not2.out_o", NESTED_NOT2_FILE, ["rst_n && sel_a && !sel_b"]),  # default branch
+    ("nested_not2_in_b", "nested_not2.in_b", "nested_not2.out_o", NESTED_NOT2_FILE, ["!(!rst_n) && !(!sel_a) && sel_b"]),
+    # in_c path: !(!rst_n) && !(!sel_a) && !(sel_b) — semantic AST preserves original form
+    ("nested_not2_in_c", "nested_not2.in_c", "nested_not2.out_o", NESTED_NOT2_FILE, ["!(!rst_n) && !(!sel_a) && !sel_b"]),  # default branch
     # 3 个 else if (typo3, 原始 typo 例子)
     ("typo3_in_a", "typo3.in_a", "typo3.out_o", TYPO3_FILE, ["sel_a"]),
     ("typo3_in_b", "typo3.in_b", "typo3.out_o", TYPO3_FILE, ["!sel_a && sel_b"]),

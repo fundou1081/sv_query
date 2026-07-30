@@ -501,17 +501,37 @@ class TraceEvidenceResolver:
         return ev
 
     def _find_class_symbol_semantic(self, class_name: str):
-        """[V4] 用 semantic API 找指定 class name 的 ClassType"""
+        """[V6.9] 用 semantic API 找指定 class name 的 ClassType
+        
+        通过 root.visit() 遍历所有节点找 ClassType (语义 AST)。
+        compilationUnits 路径在 semantic AST 下不可靠。
+        """
         try:
-            comp = self.adapter._compiler.get_compilation()
-            root = comp.getRoot()
+            comp = getattr(self.adapter, '_compiler', None)
+            if comp and hasattr(comp, 'get_compilation'):
+                root = comp.get_compilation().getRoot()
+            elif comp and hasattr(comp, 'get_root'):
+                root = comp.get_root()
+            else:
+                root = self.adapter.root
         except Exception:
             return None
-        for cu in root.compilationUnits:
-            for item in cu.compilationUnit:
-                if 'Class' in str(type(item)) and str(getattr(item, 'name', '')) == class_name:
-                    return item
-        return None
+        
+        if root is None:
+            return None
+        
+        # Use visit() pattern to find ClassType
+        result = [None]
+        def visitor(node):
+            kind = str(getattr(node, 'kind', ''))
+            if 'ClassType' in kind or 'Class' in str(type(node).__name__):
+                if str(getattr(node, 'name', '')) == class_name:
+                    result[0] = node
+        try:
+            root.visit(visitor)
+        except Exception:
+            pass
+        return result[0]
 
     def _get_syn_name(self, syn) -> str:
         """从 syntax 节点拿名字 (兼容 value/identifier/str)"""
