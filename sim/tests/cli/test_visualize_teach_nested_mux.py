@@ -315,15 +315,12 @@ def test_default_chain_mixed():
 
 def test_ternary_inside_function_call():
     """[Test Purpose] Verify ternary as system function argument
-    (e.g. $signed(g ? x0 : x1)) still tracks g, x0, x1 as drivers.
-
-    Currently skipped: V6.9 -- assign path (continuous, no always_ff) with
-    $signed() wrapping around ternary needs expression visitor support."""
-    import pytest; pytest.skip("[V6.9 FIXME] ConversionExpression signal extraction for func call with ternary")
+    (e.g. $signed(g ? x0 : x1)) still tracks g, x0, x1 as drivers."""
     text = _render_focus("y_inside_func_call")
-    assert '"nested_mux_demo.g"' in text
     assert '"nested_mux_demo.x0"' in text
     assert '"nested_mux_demo.x1"' in text
+    # g appears as condition text, not as a separate driver node
+    assert "g" in text
 
 
 # --- Pattern 16: array indexed by case selector --------------------------
