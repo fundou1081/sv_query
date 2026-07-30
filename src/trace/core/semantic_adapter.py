@@ -1529,6 +1529,46 @@ class SemanticAdapter:
                 signals.extend(self._extract_signals_from_expr(op))
             return signals
 
+        # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] pyslang ConditionalOp 结构:
+        #   .conditions: list of Condition objects (each has .expr)
+        #   .left: true branch, .right: false branch
+        if "ConditionalOp" in kind_str or "ConditionalExpression" in kind_str:
+            # Semantic AST: ConditionalOp/ConditionalExpression
+            # .conditions 是条件列表, .left=true分支, .right=false分支
+            conditions = getattr(expr, "conditions", None)
+            if conditions:
+                for cond in conditions:
+                    ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
+                    signals.extend(self._extract_signals_from_expr(ce))
+            # Syntax AST: .predicate 是条件 (单个节点, 不是列表)
+            pred = getattr(expr, "predicate", None)
+            if pred:
+                signals.extend(self._extract_signals_from_expr(pred))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            return signals
+
+        # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] pyslang ConditionalOp 结构:
+        #   .conditions: list of Condition objects (each has .expr)
+        #   .left: true branch, .right: false branch
+        if "ConditionalOp" in kind_str or "ConditionalExpression" in kind_str:
+            # Semantic AST: ConditionalOp/ConditionalExpression
+            # .conditions 是条件列表, .left=true分支, .right=false分支
+            conditions = getattr(expr, "conditions", None)
+            if conditions:
+                for cond in conditions:
+                    ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
+                    signals.extend(self._extract_signals_from_expr(ce))
+            # Syntax AST: .predicate 是条件 (单个节点, 不是列表)
+            pred = getattr(expr, "predicate", None)
+            if pred:
+                signals.extend(self._extract_signals_from_expr(pred))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            return signals
+
         # BinaryExpression: a ^ b, a + b, etc.
         if "Binary" in kind_str:
             signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
