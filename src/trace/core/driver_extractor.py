@@ -1514,6 +1514,18 @@ class DriverExtractor:
                         # 函数调用: 调用 _handle_invocation 处理
                         self._handle_invocation(rhs, ctx, module, module_name, result, lhs)
                         continue
+
+                if not lhs:
+                    # [V6.9 fix] _parse_assign 对 InvocationExpression/CallExpression 返回 (None,None,None)
+                    #          检查 stmt.expr 是否为 Invocation/Call（always_comb/initial 直接调用）
+                    raw_expr = getattr(stmt, "expr", None)
+                    if raw_expr:
+                        ek = str(getattr(raw_expr, "kind", ""))
+                        if "Invocation" in ek or "Call" in ek:
+                            self._handle_invocation(raw_expr, ctx, module, module_name, result)
+                            continue
+
+                if lhs and (rhs or rhs_expr):
                     # Only upgrade to REG if there's a clock context (always_ff)
                     is_always_ff = bool(ctx.get("clock"))
                     dst_node_id = f"{module_name}.{lhs}"
@@ -2249,13 +2261,16 @@ class DriverExtractor:
                 cond_stack.pop()
             return
         
-        # ExpressionStatement: 提取内层 assignment expr
+        # ExpressionStatement: 提取内层 expression
         if "ExpressionStatement" in sk:
             expr = getattr(stmt, "expr", None)
             if expr:
                 ek = str(getattr(expr, "kind", ""))
                 if "Assignment" in ek:
                     self._expand_and_append_assignment(expr, cond_stack, result)
+                elif "Call" in ek or "Invocation" in ek:
+                    # [V6.9 fix] always_comb task_call(a, b) — 语法树中是 InvocationExpression
+                    result.append((stmt, " ".join(cond_stack) + ""))
             return
         
         # CaseStatement: 展开各分支
@@ -2570,6 +2585,12 @@ class DriverExtractor:
         if hasattr(assign, "expr"):
             assign = assign.expr
 
+        # [V6.9 fix] ExpressionStatement 包裹 InvocationExpression/CallExpression
+        #          (always_comb task_call(a,b)) — 不是 assignment，返回 None 让上层处理
+        kind_str = str(getattr(assign, "kind", ""))
+        if "Invocation" in kind_str or "Call" in kind_str:
+            return None, None, None
+
         try:
             # [P1] DataDeclaration 处理 (class 实例化等)
             # 格式: my_cls obj = new();
@@ -2743,47 +2764,36 @@ class DriverExtractor:
         call_args = []  # 位置参数列表
         named_args = {}  # 命名参数字典 {name: signal}
 
-        # Semantic AST: CallExpression.arguments is a list of Expressions
-        # SyntaxTree: arguments is an ArgumentListSyntax with .parameters
-        if hasattr(args_node, "parameters"):
-            # SyntaxTree path
-            params = getattr(args_node, "parameters", [])
-            for arg in params:
-                arg_kind = str(getattr(arg, "kind", ""))
-                if "OrderedArgument" in arg_kind:
-                    expr = getattr(arg, "expr", None)
-                    if expr:
-                        arg_name = self._get_signal(expr)
-                        if arg_name:
-                            call_args.append(arg_name.strip())
-                elif "NamedArgument" in arg_kind:
-                    name = getattr(arg, "name", None)
-                    expr = getattr(arg, "expr", None)
-                    if name and expr:
-                        name_str = str(name).strip()
-                        arg_name = self._get_signal(expr)
-                        if arg_name:
-                            named_args[name_str] = arg_name.strip()
-        else:
-            # Semantic AST path: arguments is a list of Expressions
-            # Each expression can be:
-            #   - NamedValueExpression: simple signal reference like a
-            #   - AssignmentExpression: inout/output argument like c = <signal>
-            #   - EmptyArgument: no value passed
-            for expr in args_node:
+        # [V6.9] Semantic AST: CallExpression.arguments 直接可迭代（list of Expressions）
+        #         syntax tree: arguments 有 .parameters 属性
+        #         优先尝试 list(args_node)，成功就走语义 AST 路径
+        try:
+            arg_items = list(args_node)
+            # Semantic AST path: each item is an Expression (NamedValueExpression etc)
+            for expr in arg_items:
                 if expr is None:
                     continue
+                # [V6.9 fix] syntax tree ArgumentListSyntax 的 __iter__ 包含 Token 项
+                #          (逗号、括号), 用 hasattr(expr, 'expr') 过滤 Token
+                if not hasattr(expr, "expr"):
+                    continue
                 kind_str = str(getattr(expr, "kind", ""))
+                # NamedArgument: .in(a) 格式，name 字段存参数名
+                if hasattr(expr, "name"):
+                    name = str(getattr(expr, "name", "")).strip()
+                    arg_expr = getattr(expr, "expr", None)
+                    if name and arg_expr:
+                        arg_name = self._get_signal(arg_expr)
+                        if arg_name:
+                            named_args[name] = arg_name.strip()
+                    continue
                 if "NamedValue" in kind_str:
-                    # Simple signal reference (input)
                     arg_name = self._get_signal(expr)
                     if arg_name:
                         call_args.append(arg_name.strip())
                 elif "Assignment" in kind_str:
-                    # Output/inout argument - the left side is the signal name
                     lhs = getattr(expr, "left", None)
                     if lhs:
-                        # Handle nested assignments like c = some_expr
                         while hasattr(lhs, "kind") and "Assignment" in str(lhs.kind):
                             lhs = getattr(lhs, "left", None)
                         if lhs and hasattr(lhs, "kind") and "NamedValue" in str(lhs.kind):
@@ -2796,10 +2806,36 @@ class DriverExtractor:
                         if arg_name:
                             call_args.append(arg_name.strip())
                 elif "Empty" not in kind_str:
-                    # Other expression types - try to extract signal anyway
                     arg_name = self._get_signal(expr)
                     if arg_name:
                         call_args.append(arg_name.strip())
+        except (TypeError, ValueError):
+            # Fallback: syntax tree path with .parameters
+            if hasattr(args_node, "parameters"):
+                params = getattr(args_node, "parameters", [])
+                for arg in params:
+                    arg_kind = str(getattr(arg, "kind", ""))
+                    # [V6.9 fix] syntax tree parameters 包含 Token 项（逗号、括号）
+                    #          用 hasattr(arg, 'expr') 过滤，只有有 .expr 的才是真正的参数
+                    if not hasattr(arg, "expr"):
+                        continue
+                    if "OrderedArgument" in arg_kind:
+                        expr = getattr(arg, "expr", None)
+                        if expr:
+                            arg_name = self._get_signal(expr)
+                            if arg_name:
+                                call_args.append(arg_name.strip())
+                    elif "NamedArgument" in arg_kind:
+                        name = getattr(arg, "name", None)
+                        expr = getattr(arg, "expr", None)
+                        if name and expr:
+                            name_str = str(name).strip()
+                            arg_name = self._get_signal(expr)
+                            if arg_name:
+                                named_args[name_str] = arg_name.strip()
+            else:
+                return None
+
         return call_name, call_args, named_args
 
 
