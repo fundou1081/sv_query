@@ -1556,6 +1556,26 @@ class SemanticAdapter:
                     signals.append(val.strip())
             return signals
 
+        # ScopedName (syntax tree): req.addr → recurse into .left/.right
+        # pyslang syntax AST: ScopedNameSyntax has .left (IdentifierName) and
+        #   .right (IdentifierName or another ScopedName for deeper nesting)
+        if "ScopedName" in kind_str:
+            left = getattr(expr, "left", None)
+            right = getattr(expr, "right", None)
+            left_parts = []
+            if left:
+                left_parts = self._extract_signals_from_expr(left)
+            if right:
+                right_parts = self._extract_signals_from_expr(right)
+            # Build dotted path: left_part.right_part
+            if left_parts and right_parts:
+                for lp in left_parts:
+                    for rp in right_parts:
+                        signals.append(f"{lp}.{rp}")
+            elif right_parts:
+                signals.extend(right_parts)
+            return signals
+
         # NamedValue: signal reference
         if "NamedValue" in kind_str:
             sym = getattr(expr, "symbol", None)
@@ -1563,6 +1583,38 @@ class SemanticAdapter:
                 name = _safe_attr(sym, "name", None)
                 if name:
                     signals.append(str(name))
+            return signals
+
+        # MemberAccess: req.addr → extract full dotted path (semantic AST)
+        if "MemberAccess" in kind_str:
+            # pyslang semantic AST: MemberAccessExpression has:
+            #   .value: the base expression (e.g. NamedValueExpression for 'req')
+            #   .member: ClassPropertySymbol (e.g. 'addr')
+            #   .left: may be None in semantic AST (use .value instead)
+            #   .syntax: ScopedNameSyntax for the full dotted name
+            left = getattr(expr, "left", None) or getattr(expr, "value", None)
+            member = getattr(expr, "member", None)
+            member_name = None
+            if member:
+                # ClassPropertySymbol: .name gives the property name
+                member_name = _safe_attr(member, "name", None) or _safe_attr(member, "value", None) or str(member).strip()
+                # Strip pyslang Symbol(...) wrapper if present
+                if member_name.startswith("Symbol("):
+                    try:
+                        member_name = member_name.split('"')[1]
+                    except (IndexError, AttributeError):
+                        pass
+            if left and member_name:
+                # Recurse into left to get the full dotted path parts
+                left_sigs = self._extract_signals_from_expr(left)
+                if left_sigs:
+                    for ls in left_sigs:
+                        signals.append(f"{ls}.{member_name}")
+                else:
+                    # [V6.9] left might be a NamedValueExpression
+                    lname = _safe_attr(left, "symbol", None) or str(getattr(left, "name", "")).strip()
+                    if lname:
+                        signals.append(f"{lname}.{member_name}")
             return signals
 
         # Concatenation: {a, b, c}
@@ -1679,6 +1731,12 @@ class SemanticAdapter:
                                 pass
                 except (TypeError, AttributeError):
                     pass
+            return signals
+
+        # AssignmentExpression: out_addr = req.addr → recurse into left/right
+        if "Assignment" in kind_str:
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
             return signals
 
         # BinaryExpression: a ^ b, a + b, etc.

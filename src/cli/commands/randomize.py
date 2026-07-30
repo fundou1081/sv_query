@@ -626,60 +626,92 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
         return any(kw in kind for kw in ref_kws)
 
     def walk_class(class_node):
+        """[V6.9] Walk class using semantic AST — find SubroutineSymbol tasks/functions
+        and extract signal references from their statement bodies."""
         class_name = str(getattr(class_node, "name", "")).strip()
+        
+        # Use semantic AST: visit class body to find SubroutineSymbol nodes
+        def visit_class_member(node):
+            kind = str(getattr(node, "kind", ""))
+            if "SubroutineSymbol" in kind or "Subroutine" in kind:
+                sub_name = str(getattr(node, "name", "")).strip()
+                # Skip built-in routines (randomize, pre_randomize, etc.)
+                if sub_name in ("randomize", "pre_randomize", "post_randomize",
+                               "get_randstate", "set_randstate", "srandom",
+                               "rand_mode", "constraint_mode"):
+                    return
+                process_subroutine(node, sub_name, class_name)
+            elif "StatementKind.ExpressionStatement" in kind:
+                # Direct statement in class scope (e.g. initial blocks)
+                process_statement(node, class_name, "class_body")
+        
+        # Walk the class node's body via visitor or direct items
+        if hasattr(class_node, 'items') and hasattr(class_node.items, '__iter__'):
+            try:
+                for item in class_node.items:
+                    visit_class_member(item)
+            except TypeError:
+                pass
+        
+        # Also try via syntax bridge for method bodies
         syntax = getattr(class_node, 'syntax', None)
-        if syntax is None or not hasattr(syntax, 'items'):
+        if syntax is not None and hasattr(syntax, 'items'):
+            try:
+                for syn_item in syntax.items:
+                    syn_kind = str(getattr(syn_item, "kind", ""))
+                    if "ClassMethodDeclaration" in syn_kind:
+                        inner = getattr(syn_item, 'declaration', None)
+                        if inner is not None:
+                            inner_kind = str(getattr(inner, "kind", ""))
+                            # Process task/function body statements via syntax tree
+                            if ("Task" in inner_kind and "Declaration" in inner_kind) or \
+                               ("Function" in inner_kind and "Declaration" in inner_kind):
+                                process_task_or_fn_syntax(inner, inner_kind,
+                                    str(getattr(inner, "name", "")).strip(), class_name)
+            except TypeError:
+                pass
+
+    def process_subroutine(sub_node, sub_name: str, class_name: str):
+        """Process a SubroutineSymbol from semantic AST."""
+        # Walk the subroutine's body statements
+        if hasattr(sub_node, 'items') and hasattr(sub_node.items, '__iter__'):
+            try:
+                for stmt in sub_node.items:
+                    process_statement(stmt, class_name, f"task/function {sub_name}()")
+            except TypeError:
+                pass
+
+    def process_statement(stmt, class_name: str, ctx: str):
+        """Extract signals from a statement node."""
+        stmt_kind = str(getattr(stmt, "kind", ""))
+        # Skip declarations
+        decl_kws = ["ClassProperty", "DataDeclaration", "ConstraintDeclaration", 
+                    "ClassMethod", "Covergroup", "NetDeclaration", "Parameter"]
+        if any(kw in stmt_kind for kw in decl_kws):
             return
-        try:
-            members = list(syntax.items)
-        except TypeError:
-            return
+        
+        sigs = extract_referenced_signals(stmt)
+        matched = any(
+            target_signal == s or
+            s.endswith('.' + target_signal) or
+            s == 'this.' + target_signal
+            for s in sigs
+        )
+        if matched:
+            try:
+                snippet = str(stmt).replace("\n", " ").strip()[:120]
+            except Exception:
+                snippet = ""
+            results.append({
+                "class": class_name,
+                "kind": _kind_label(stmt_kind),
+                "context": ctx,
+                "snippet": snippet,
+            })
 
-        for member in members:
-            member_kind = str(getattr(member, "kind", ""))
-
-            # [鉄律1 修正] ClassMethodDeclaration 是 wrapper, 走 member.declaration
-            if "ClassMethodDeclaration" in member_kind:
-                # 拿真正的 TaskDeclaration / FunctionDeclaration
-                inner = getattr(member, 'declaration', None)
-                if inner is not None:
-                    inner_kind = str(getattr(inner, "kind", ""))
-                    inner_name = str(getattr(inner, "name", "")).strip()
-                    is_task_or_fn = (
-                        ("Task" in inner_kind and "Declaration" in inner_kind) or
-                        ("Function" in inner_kind and "Declaration" in inner_kind)
-                    )
-                    if is_task_or_fn:
-                        process_task_or_fn(inner, inner_kind, inner_name, class_name)
-                continue
-
-            # 过滤: 只看 task/function body (declaration 跳过)
-            is_task_or_fn = (
-                ("Task" in member_kind and "Declaration" in member_kind) or
-                ("Function" in member_kind and "Declaration" in member_kind)
-            )
-            if not is_task_or_fn:
-                # 但 coverpoint 也是 reference (covergroup sample)
-                if "Coverpoint" in member_kind:
-                    sig_name = str(getattr(member, "name", "")).strip()
-                    if not sig_name and hasattr(member, 'expr') and member.expr:
-                        sig_name = str(member.expr).strip()
-                    if sig_name == target_signal:
-                        results.append({
-                            "class": class_name,
-                            "kind": "covergroup_sample",
-                            "context": f"covergroup > coverpoint {target_signal}",
-                            "snippet": f"coverpoint {target_signal} {{...}}",
-                        })
-                continue
-
-            process_task_or_fn(member, member_kind, str(getattr(member, "name", "")).strip(), class_name)
-
-    def process_task_or_fn(decl, decl_kind: str, decl_name: str, class_name: str):
-        """处理 task/function body 里的 references. Uses decl.items."""
+    def process_task_or_fn_syntax(decl, decl_kind, decl_name, class_name):
+        """Fallback: process task/function body via syntax tree bridge."""
         ctx_str = f"{('task' if 'Task' in decl_kind else 'function')} {decl_name}()"
-
-        # Walk decl.items (BlockStatementSyntax 里间是 .body.items)
         items = getattr(decl, 'items', None)
         if items is None:
             body = getattr(decl, 'body', None)
@@ -687,54 +719,20 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
                 items = getattr(body, 'items', None) or body
         if items is None:
             return
-
         try:
             stmts = list(items) if hasattr(items, '__iter__') else []
         except TypeError:
             return
-
         for stmt in stmts:
-            stmt_kind = str(getattr(stmt, "kind", ""))
-            if is_declaration_kind(stmt_kind):
-                continue
-            if not is_reference_kind(stmt_kind) and "ExpressionStatement" not in stmt_kind:
-                continue
+            process_statement(stmt, class_name, ctx_str)
 
-            # [鉄律1 修正] 用 adapter._extract_signals_from_expr() 拿 referenced signals (semantic AST)
-            sigs = extract_referenced_signals(stmt)
-            # [鉄律1 修正] 检查 target_signal 是否在 sigs 里 (考虑 dotted path)
-            # 例如: sigs=['my_other_addr', 'req.used_real'], target='used_real' → match
-            matched = any(
-                target_signal == s or
-                s.endswith('.' + target_signal) or
-                s == 'this.' + target_signal
-                for s in sigs
-            )
-            if matched:
-                try:
-                    snippet = str(stmt).replace("\n", " ").strip()[:120]
-                except Exception:
-                    snippet = ""
-                results.append({
-                    "class": class_name,
-                    "kind": _kind_label(stmt_kind),
-                    "context": ctx_str,
-                    "snippet": snippet,
-                })
-
-    # 走 root 找所有 class
+    # 走 root 找所有 class — use semantic AST visit() pattern
     def walk_root(node):
         kind = str(getattr(node, "kind", ""))
         if "ClassType" in kind:
             walk_class(node)
-            return
-        try:
-            for child in node:
-                walk_root(child)
-        except TypeError:
-            pass
 
-    walk_root(root)
+    root.visit(walk_root)
     return results
 
 
