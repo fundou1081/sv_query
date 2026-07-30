@@ -469,6 +469,27 @@ class ClassGraphBuilder:
                         kind=EdgeKind.CONSTRAINS,
                     )
                 )
+        # [V6.9] 对 bit-slice 引用（如 addr[1:0]），也建立到主变量（addr）的 CONSTRAINS 边
+        # 例如 c_align { addr[1:0] == 0; } → CONSTRAINS → packet.addr[1:0] → CONSTRAINS → packet.addr
+        for prop_id in list(block_direct_vars):
+            _parts = prop_id.rsplit(".", 1)
+            if len(_parts) == 2:
+                cls_prefix, var_name = _parts
+                if "[" in var_name:
+                    base_name = var_name[: var_name.index("[")]
+                    base_id = f"{cls_prefix}.{base_name}"
+                    if "[" in base_id:
+                        base_id = base_id[: base_id.index("[")]
+                    if base_id != prop_id:
+                        existing = graph.get_edge(block_id, base_id)
+                        if existing is None:
+                            graph.add_trace_edge(
+                                TraceEdge(
+                                    src=block_id,
+                                    dst=base_id,
+                                    kind=EdgeKind.CONSTRAINS,
+                                )
+                            )
 
     def _build_conditional_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
         """[铁律15] 处理 ConditionalConstraint → CONSTRAINT_IF + CONSTRAINT_ELSE
@@ -638,7 +659,7 @@ class ClassGraphBuilder:
             alt_constraints = getattr(else_clause, "constraints", None) or else_clause
             alt_kind = str(getattr(alt_constraints, "kind", ""))
 
-            if "ConstraintBlock" in alt_kind or "ConstraintList" in alt_kind:
+            if "ConstraintBlock" in alt_kind or "ConstraintList" in alt_kind or "List" in alt_kind:
                 # 多语句 else 块：展平为多个 CONSTRAINT_EXPR
                 alt_items = getattr(alt_constraints, "items", None) or getattr(alt_constraints, "list", None)
                 if alt_items and hasattr(alt_items, "__iter__"):
@@ -760,10 +781,12 @@ class ClassGraphBuilder:
         if right:
             right_kind = str(getattr(right, "kind", ""))
 
-            if "ConstraintBlock" in right_kind:
+            if "ConstraintBlock" in right_kind or "ConstraintList" in right_kind or "List" in right_kind:
                 # 多语句 block：展平为多个 CONSTRAINT_EXPR
-                if hasattr(right, "items"):
-                    for ri, right_item in enumerate(right.items):
+                # [V6.9] Semantic AST: ConstraintList 用 .list (不是 syntax tree 的 .items)
+                cl = getattr(right, "list", None) or getattr(right, "items", None)
+                if cl and hasattr(cl, "__iter__"):
+                    for ri, right_item in enumerate(cl):
                         right_item_node_id = f"{implies_node_id}::result_{ri}"
                         right_item_node = TraceNode(
                             id=right_item_node_id,
