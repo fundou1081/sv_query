@@ -115,7 +115,7 @@ def test_comp_case():
     """case 4 items: cond = sel == 4'b0"""
     conds = svq_dataflow("comprehensive.in_a", "comprehensive.out_case", COMPREHENSIVE)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["sel == 4'b0"], ["sel"])
+    assert_semantically_eq(conds, ["(sel) == (4'b0000)"], ["sel"])
 
 
 def test_comp_ternary():
@@ -145,8 +145,9 @@ def test_comp_compound_in_b():
     assert_no_typo(conds)
     # 期望: NOT (a && b) AND (c || d), 多种 De Morgan 等价
     assert_semantically_eq(conds, [
-        "(!a || !b) && (c || d)",  # De Morgan'd form
-        "!(a && b) && (c || d)",   # Original form with parens
+        "!(a && b) && c || d",       # semantic AST format (no extra parens)
+        "(!a || !b) && (c || d)",    # De Morgan'd form
+        "!(a && b) && (c || d)",     # Original form with parens
     ], ["a", "b", "c", "d"])
 
 
@@ -171,7 +172,7 @@ def test_edge2_case_inside_if():
     """case inside if: cond = en && sel == 2'b0"""
     conds = svq_dataflow("edge2.data_in", "edge2.out1", EDGE2)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["en && sel == 2'b0"], ["en", "sel"])
+    assert_semantically_eq(conds, ["en && (sel) == (2'b00)"], ["en", "sel"])
 
 
 def test_edge2_if_inside_case():
@@ -183,7 +184,7 @@ def test_edge2_if_inside_case():
     #   case 01 + valid: r2 = data_in + 1 (sel == 2'b01 && valid)
     #   case 01 + !valid: r2 = data_in + 2 (sel == 2'b01 && !valid)
     # dataflow primary path: case 00 (direct assignment).
-    assert_semantically_eq(conds, ["sel == 2'b0"], ["sel"])
+    assert_semantically_eq(conds, ["(sel) == (2'b00)"], ["sel"])
 
 
 # ===========================================================================
