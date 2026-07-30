@@ -341,6 +341,28 @@ class DriverExtractor:
             if ident:
                 val = getattr(ident, "value", None) or str(ident)
                 return str(val).strip()
+        # HierarchicalValue: tb.data → 从 semantic AST 解析分量路径
+        # [V6.9] HierarchicalValueExpression.symbol 是 VariableSymbol,
+        #         通过 parentScope 链向上找到 InterfacePort/Instance 名字
+        if "HierarchicalValue" in sk:
+            sym = getattr(signal, "symbol", None)
+            if sym:
+                sname = str(getattr(sym, "name", "")).strip()
+                if sname:
+                    # 沿 parentScope 链找到所属实例/接口端口
+                    current = getattr(sym, "parentScope", None)
+                    instances = []
+                    while current is not None:
+                        cn = str(getattr(current, "name", "")).strip()
+                        ck = str(getattr(current, "kind", ""))
+                        if cn and ("Port" in ck or "Instance" in ck or "InterfacePort" in ck):
+                            instances.append(cn)
+                        current = getattr(current, "parentScope", None)
+                    if instances:
+                        # 取最近的实例名
+                        return f"{instances[0]}.{sname}"
+                    # 无法找到实例名：返回单纯的信号名
+                    return sname
         # fallback: str() + strip()
         result = str(signal).strip()
         # 处理可能的换行符和多行格式
