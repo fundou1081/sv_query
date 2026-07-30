@@ -1354,12 +1354,33 @@ class SemanticAdapter:
 
         # BlockStatement: begin...end block containing multiple statements
         if "Block" in stmt_kind and "Statement" in stmt_kind:
-            body = getattr(stmt, "body", None)
-            if body:
-                # Handle StatementList
-                stmt_list = getattr(body, "list", None) or list(body) if hasattr(body, "__iter__") else [body]
-                for s in stmt_list:
-                    self._collect_drivers_from_stmt(s, func_name, drivers)
+            # [V6.9 fix] pyslang semantic AST: BlockStatement.body 可以是 StatementList (有 .list)
+            #       或单语句 (直接是 statement, 无 .list)
+            #       BlockStatement 本身也可能有 .list 属性
+            inner = getattr(stmt, "body", None)
+            if inner:
+                slist = getattr(inner, "list", None)
+                if slist:
+                    for s in slist:
+                        self._collect_drivers_from_stmt(s, func_name, drivers)
+                else:
+                    # 如果 inner 是单语句而不是 StatementList，直接递归处理
+                    ik = str(getattr(inner, "kind", ""))
+                    if "List" in ik and "Statement" in ik:
+                        # StatementList 但 .list 为空 - 尝试用 list() 迭代
+                        try:
+                            for s in list(inner):
+                                self._collect_drivers_from_stmt(s, func_name, drivers)
+                        except (TypeError, ValueError):
+                            pass
+                    else:
+                        self._collect_drivers_from_stmt(inner, func_name, drivers)
+            else:
+                # BlockStatement 本身有 .list
+                slist = getattr(stmt, "list", None)
+                if slist:
+                    for s in slist:
+                        self._collect_drivers_from_stmt(s, func_name, drivers)
             return
 
         # ForLoopStatement: for (...) statement
