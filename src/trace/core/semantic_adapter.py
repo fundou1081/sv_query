@@ -1154,6 +1154,38 @@ class SemanticAdapter:
             if operand:
                 signals.extend(self._extract_signals_from_expr(operand))
 
+        # DistExpression: left dist { right }
+        elif "Dist" in kind_str or "dist" in kind_str.lower():
+            left = getattr(expr, "left", None)
+            if left:
+                signals.extend(self._extract_signals_from_expr(left))
+            items = getattr(expr, "items", None)
+            if items and hasattr(items, "__iter__"):
+                for item in items:
+                    # DistItem has .value and .weight
+                    val = getattr(item, "value", None) or getattr(item, "left", None)
+                    if val:
+                        signals.extend(self._extract_signals_from_expr(val))
+
+        # InsideExpression: left inside { rangeList }
+        elif "Inside" in kind_str:
+            left = getattr(expr, "left", None)
+            if left:
+                signals.extend(self._extract_signals_from_expr(left))
+            rlist = getattr(expr, "rangeList", None)
+            if rlist and hasattr(rlist, "__iter__"):
+                for r in rlist:
+                    # ValueRange has .left/.right bounds
+                    l = getattr(r, "left", None)
+                    if l:
+                        signals.extend(self._extract_signals_from_expr(l))
+                    rr = getattr(r, "right", None)
+                    if rr:
+                        signals.extend(self._extract_signals_from_expr(rr))
+                    # Also try direct extraction (for NamedValue items)
+                    if not l and not rr:
+                        signals.extend(self._extract_signals_from_expr(r))
+
         return signals
 
     def get_interface_modport_signals(self, interface_name: str, modport_name: str) -> dict[str, str]:

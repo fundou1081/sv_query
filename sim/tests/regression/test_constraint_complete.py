@@ -3,7 +3,6 @@
 # [铁律17] 强断言原则
 # [铁律22] 测试断言必须验证具体行为
 """
-import pytest
 Class & Constraint 完整金标准测试
 
 测试覆盖:
@@ -32,6 +31,7 @@ import pyslang
 from trace.unified_tracer import UnifiedTracer
 from trace.core.base import PyslangAdapter
 from trace.core.graph.models import NodeKind, EdgeKind
+import pytest
 from pyslang import SyntaxKind
 
 
@@ -479,39 +479,24 @@ class TestConstraintVariableExtraction(unittest.TestCase):
     """
 
     def _assert_vars(self, source, expected_vars):
-        """[V6.9] 验证 constraint 中提取的变量集合（semantic AST）
-        
-        使用 SVCompiler + SemanticAdapter + root.visit() 代替旧的 SyntaxTree API。
-        遵循方豆决策：统一使用 pyslang native API。
-        """
+        """[V6.9] semantic AST version"""
         from trace.core.visitors.constraint_visitor import ConstraintVisitor
         from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
-        
-        # Wrap class source in a minimal module
-        source_wrapped = f"module _ctest; endmodule\n{source}"
-        comp = SVCompiler({"_ctest.sv": source_wrapped})
+        w = f"module _ctest; endmodule\n{source}"
+        comp = SVCompiler({"_ctest.sv": w})
         root = comp.get_root()
         adapter = SemanticAdapter(root, comp)
-        
-        # Only visit ConstraintBlock (root of each constraint tree)
         visitor = ConstraintVisitor(adapter)
-        
-        def visit_callback(node):
-            kind_str = str(getattr(node, "kind", ""))
-            if "ConstraintBlock" in kind_str:
-                try:
-                    visitor.visit(node)
-                except Exception:
-                    pass
-        
-        root.visit(visit_callback)
-        
-        all_vars = set(visitor.variables)
-        self.assertEqual(set(all_vars), set(expected_vars),
-            f"变量集合应为 {set(expected_vars)}，实际为 {all_vars}")
-
-    # -------------------------------------------------------------------------
+        def cb(node):
+            if "ConstraintBlock" in str(getattr(node,"kind","")):
+                try: visitor.visit(node)
+                except: pass
+        root.visit(cb)
+        s = set(visitor.variables)
+        self.assertEqual(s, set(expected_vars),
+            f"变量集合应为 {set(expected_vars)}，实际为 {s}")
+        # -------------------------------------------------------------------------
     # 算术运算符: + - * / %
     # -------------------------------------------------------------------------
     def test_arithmetic_add(self):
@@ -731,47 +716,66 @@ endclass''', ['sel1', 'sel2', 'a', 'b', 'c', 'result'])
     # 数组操作
     # -------------------------------------------------------------------------
     def test_array_index_const(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] 常量索引: arr[0]"""
+        self._assert_vars('''class c;
+    int arr[4], x;
+    constraint c1 { x == arr[0]; }
+endclass''', ['arr', 'x'])
 
     def test_array_index_var(self):
-        """[V6.9] 变量索引: arr[i] — semantic _extract_signals 不提取索引变量 i"""
+        """[Golden] 变量索引: arr[i]"""
         self._assert_vars('''class c;
     int arr[4];
     int i, x;
     constraint c1 { x == arr[i]; }
-endclass''', ['arr', 'x'])
+endclass''', ['arr', 'i', 'x'])
 
     def test_array_multi_dim(self):
-        """[V6.9] 多维数组: mat[row][col] — semantic _extract_signals 不提取索引变量"""
+        """[Golden] 多维数组: mat[row][col]"""
         self._assert_vars('''class c;
     int mat[3][3];
     int row, col, x;
     constraint c1 { x == mat[row][col]; }
-endclass''', ['mat', 'x'])
+endclass''', ['mat', 'row', 'col', 'x'])
 
     def test_array_inside(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] 数组 inside: arr[i] inside {[0:10]}"""
+        self._assert_vars('''class c;
+    int arr[4];
+    int i;
+    constraint c1 { arr[i] inside {[0:10]}; }
+endclass''', ['arr', 'i'])
 
     # -------------------------------------------------------------------------
     # inside / dist
     # -------------------------------------------------------------------------
     def test_inside_simple(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] inside 简单: x inside {0, 1, 2}"""
+        self._assert_vars('''class c;
+    rand int x;
+    constraint c1 { x inside {0, 1, 2}; }
+endclass''', ['x'])
 
     def test_inside_with_range_vars(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] inside 含范围变量: x inside {[a:b]}"""
+        self._assert_vars('''class c;
+    rand int a, b, x;
+    constraint c1 { x inside {[a:b]}; }
+endclass''', ['a', 'b', 'x'])
 
     def test_dist_simple(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] dist 简单: b dist {3 := 1, 10 := 2}"""
+        self._assert_vars('''class c;
+    rand int b;
+    constraint c1 { b dist {3 := 1, 10 := 2}; }
+endclass''', ['b'])
 
     def test_dist_with_range(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] dist 含范围: b dist {[0:5] := 1, [6:10] := 2}"""
+        self._assert_vars('''class c;
+    rand int b;
+    constraint c1 { b dist {[0:5] := 1, [6:10] := 2}; }
+endclass''', ['b'])
 
     # -------------------------------------------------------------------------
     # 多级括号
@@ -849,21 +853,21 @@ endclass''', ['sel', 'a', 'b', 'c'])
     # foreach
     # -------------------------------------------------------------------------
     def test_foreach_single_dim(self):
-        """[V6.9] 单维 foreach: foreach (arr[i]) — semantic AST 提取 i"""
+        """[Golden] 单维 foreach: foreach (arr[i])"""
         self._assert_vars('''class c;
     int arr[4];
     constraint c1 { foreach (arr[i]) arr[i] > 0; }
 endclass''', ['arr', 'i'])
 
     def test_foreach_two_dim(self):
-        """[V6.9] 二维 foreach: foreach (mat[i,j]) — semantic AST 提取 i,j"""
+        """[Golden] 二维 foreach: foreach (mat[i,j])"""
         self._assert_vars('''class c;
     int mat[3][3];
     constraint c1 { foreach (mat[i,j]) mat[i][j] > 0; }
 endclass''', ['mat', 'i', 'j'])
 
     def test_foreach_multiple_arrays(self):
-        """[V6.9] 多数组 foreach — semantic AST 提取 i,j"""
+        """[Golden] 多数组 foreach"""
         self._assert_vars('''class c;
     int a[3], b[3];
     constraint c1 {
@@ -893,15 +897,21 @@ endclass''', ['a', 'b'])
     # unique
     # -------------------------------------------------------------------------
     def test_unique_simple(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[V6.9] simple unique: unique {a, b, c}"""
+        self._assert_vars('''class c;
+    rand bit a, b, c;
+    constraint c1 { unique {a, b, c}; }
+endclass''', ['a', 'b', 'c'])
 
     # -------------------------------------------------------------------------
     # solve before
     # -------------------------------------------------------------------------
     def test_solve_before_simple(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] solve before: solve a before b"""
+        self._assert_vars('''class c;
+    rand int a, b;
+    constraint c1 { solve a before b; }
+endclass''', ['a', 'b'])
 
     # -------------------------------------------------------------------------
     # 混合复杂约束
@@ -914,16 +924,27 @@ endclass''', ['a', 'b'])
 endclass''', ['a', 'b', 'c', 'd'])
 
     def test_dist_in_implication(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] dist 在 implication 中: a -> b dist {...}"""
+        self._assert_vars('''class c;
+    rand int a, b;
+    constraint c1 { a -> b dist {0 := 5, 1 := 5}; }
+endclass''', ['a', 'b'])
 
     def test_if_with_dist(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[V6.9] if 带 dist: if (a) b dist {...}"""
+        self._assert_vars('''class c;
+    bit a;
+    rand int b;
+    constraint c1 { if (a) b dist {0 := 5, 1 := 5}; }
+endclass''', ['a', 'b'])
 
     def test_array_inside_in_if(self):
-        self.skipTest("[V6.9] pyslang semantic cannot compile this constraint type")
-
+        """[Golden] 数组 inside 在 if 中"""
+        self._assert_vars('''class c;
+    bit sel;
+    int arr[4], i;
+    constraint c1 { if (sel) arr[i] inside {[0:10]}; }
+endclass''', ['sel', 'arr', 'i'])
 
     # -------------------------------------------------------------------------
     # 空 constraint

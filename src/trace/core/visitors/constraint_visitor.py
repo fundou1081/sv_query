@@ -64,6 +64,17 @@ class ConstraintVisitor:
             self._visit_foreach(node)
             return
 
+        # 3b. SolveBefore: solve A before B
+        if "SolveBefore" in kind_str or "Solve" in kind_str:
+            solve_list = getattr(node, "solve", None)
+            after_list = getattr(node, "after", None)
+            for lst in (solve_list, after_list):
+                if lst and hasattr(lst, "__iter__"):
+                    for item in lst:
+                        vars_found = self._extract_vars(item)
+                        self.variables.extend(vars_found)
+            return
+
         # 4. ConstraintList: iterate .list children
         if "ConstraintKind.List" in kind_str or "List" in kind_str:
             visited = set()
@@ -142,8 +153,74 @@ class ConstraintVisitor:
         if "ExpressionConstraint" in kind_str or "ConstraintKind.Expression" in kind_str:
             inner = getattr(node, "expr", None)
             if inner is not None:
-                return self.adapter._extract_signals_from_expr(inner) or []
+                return self._extract_vars(inner) or []
             return []
 
-        # 直接表达式
+        # DistExpression: left dist { items }
+        if "Dist" in kind_str or "dist" in kind_str.lower():
+            result = []
+            left = getattr(node, "left", None)
+            if left:
+                result.extend(self._extract_vars(left))
+            items = getattr(node, "items", None)
+            if items and hasattr(items, "__iter__"):
+                for item in items:
+                    val = getattr(item, "value", None) or getattr(item, "left", None)
+                    if val:
+                        result.extend(self._extract_vars(val))
+            return result
+
+        # InsideExpression: left inside { rangeList }
+        if "Inside" in kind_str:
+            result = []
+            left = getattr(node, "left", None)
+            if left:
+                result.extend(self._extract_vars(left))
+            rlist = getattr(node, "rangeList", None)
+            if rlist and hasattr(rlist, "__iter__"):
+                for r in rlist:
+                    l = getattr(r, "left", None)
+                    if l:
+                        result.extend(self._extract_vars(l))
+                    rr = getattr(r, "right", None)
+                    if rr:
+                        result.extend(self._extract_vars(rr))
+                    if not l and not rr:
+                        result.extend(self._extract_vars(r))
+            return result
+
+        # ElementSelect: arr[i] — extract array name + index variables
+        if "ElementSelect" in kind_str:
+            result = []
+            value = getattr(node, "value", None)
+            if value:
+                result.extend(self._extract_vars(value) or [])
+            selector = getattr(node, "selector", None)
+            if selector:
+                sel_name = getattr(getattr(selector, "symbol", None), "name", None)
+                if sel_name:
+                    result.append(str(sel_name).strip())
+                else:
+                    result.extend(self._extract_vars(selector) or [])
+            return result
+
+        # Binary expression: left OP right — recurse both sides
+        if "Binary" in kind_str:
+            result = []
+            left = getattr(node, "left", None)
+            right = getattr(node, "right", None)
+            if left:
+                result.extend(self._extract_vars(left))
+            if right:
+                result.extend(self._extract_vars(right))
+            return result
+
+        # NamedValue: extract symbol name
+        if "NamedValue" in kind_str:
+            sym = getattr(node, "symbol", None)
+            if sym and hasattr(sym, "name"):
+                return [str(sym.name).strip()]
+            return []
+
+        # 直接表达式：委托给 adapter
         return self.adapter._extract_signals_from_expr(node) or []
