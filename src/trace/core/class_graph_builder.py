@@ -888,6 +888,21 @@ class ClassGraphBuilder:
                     kind=EdgeKind.HAS_LHS,
                 )
             )
+            # [V6.9] 对 bit-slice 变量（如 addr[1:0]），也建立到基变量（addr）的 HAS_LHS 边
+            # 这样 Q1/Q2 查询基变量时也能找到这个约束表达式
+            if "[" in v:
+                base_name = v[: v.index("[")]
+                base_id = f"{cls_name}.{base_name}"
+                if base_id != prop_id:
+                    existing = graph.get_edge(expr_node_id, base_id)
+                    if existing is None:
+                        graph.add_trace_edge(
+                            TraceEdge(
+                                src=expr_node_id,
+                                dst=base_id,
+                                kind=EdgeKind.HAS_LHS,
+                            )
+                        )
 
     def _build_uniqueness_constraint(self, graph, node, block_id, cls_name, idx, direct_vars, result):
         """[铁律15] 处理 UniquenessConstraint → CONSTRAINT_UNIQUE"""
