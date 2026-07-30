@@ -1235,12 +1235,25 @@ class DriverExtractor:
         # matching. Replaces 4 duplicated unwrap blocks across this file.
         has_conditional = False
         check_expr = rhs_expr
-        for _ in range(5):  # 解包多层包装 (最多 5 层)
+        for _ in range(10):  # 解包多层包装 (最多 10 层, $signed(Conditional) 需要 <10)
             if check_expr is None:
                 break
             if kind_matches(check_expr, "ConditionalOp", "ConditionalExpression"):
                 has_conditional = True
                 break
+            # [V6.9] Also unwrap Call (system function) — e.g. $signed(g ? x0 : x1)
+            # where the ternary is an argument to the system function call
+            ck = str(getattr(check_expr, "kind", ""))
+            if "Call" in ck:
+                args = getattr(check_expr, "arguments", None)
+                if args and hasattr(args, "__iter__") and not isinstance(args, str):
+                    for arg in args:
+                        if kind_matches(arg, "ConditionalOp", "ConditionalExpression"):
+                            check_expr = arg
+                            has_conditional = True
+                            break
+                if has_conditional:
+                    break
             inner = unwrap(check_expr)
             if inner is None or inner is check_expr:
                 break
@@ -1253,8 +1266,17 @@ class DriverExtractor:
             # [FIX 2026-7-15] Pass module for Syntax AST resolution.
             if rhs_expr is not None and self._expr_is_compile_time(rhs_expr, module=module):
                 rhs_signals = []  # Stay empty, no driver
+            elif has_conditional:
+                # [V6.9] rhs_expr wrapped (e.g. $signed(ternary)): use unwrapped check_expr
+                rhs_signals = self._get_all_real_signals(check_expr, module=module) or []
             else:
                 rhs_signals = [rhs]
+
+        # [V6.9] If has_conditional but rhs_signals still empty after above fallback,
+        # try one more time with the unwrapped ternary expression
+        if has_conditional and not rhs_signals:
+            rhs_signals = self._signal_visitor._extract_signals_from_expr(check_expr) or []
+            rhs_signals = self._filter_compile_time_signal_names(check_expr, rhs_signals, module=module)
         if rhs_expr:
             try:
                 expr_str = self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr) or self._signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)
