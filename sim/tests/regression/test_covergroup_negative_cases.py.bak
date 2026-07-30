@@ -19,7 +19,7 @@ def _analyze(source):
     graph = tracer.build_graph()
     extractor = CovergroupExtractor({'test.sv': source})
     cgs = extractor.extract()
-    analyzer = CovergroupAnalyzer(adapter=tracer._get_adapter() if "tracer" in dir() else graph._adapter, cgs=cgs)
+    analyzer = CovergroupAnalyzer(graph, cgs)
     gaps = analyzer.analyze()
     return cgs, gaps
 
