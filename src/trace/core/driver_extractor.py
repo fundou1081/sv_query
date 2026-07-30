@@ -1509,6 +1509,82 @@ class DriverExtractor:
                         result.nodes.append(
                             TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=kind, width=(1, 0))
                         )
+
+                    # [V6.9] 如果 ctx["leaf_name"] 存在, 说明 ternary 已在 _flatten_assignments
+                    # 中展开。直接使用 leaf_name + ctx["condition"] 创建 edge.                    # [V6.9] 如果 ctx["leaf_name"] 存在, 说明 ternary 已在 _flatten_assignments
+                    # 中展开。直接使用 leaf_name + ctx["condition"] 创建 edge.
+                    leaf_from_ctx = ctx.get("leaf_name", "")
+                    if leaf_from_ctx:
+                        sig_cond = ctx.get("condition", "")
+                        src_node_id = f"{module_name}.{leaf_from_ctx}"
+                        if src_node_id not in [n.id for n in result.nodes]:
+                            result.nodes.append(
+                                TraceNode(
+                                    id=src_node_id, name=leaf_from_ctx,
+                                    module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)
+                                )
+                            )
+                        bit_slice = ""
+                        if "[" in leaf_from_ctx and "]" in leaf_from_ctx:
+                            start = leaf_from_ctx.index("[")
+                            bit_slice = leaf_from_ctx[start:]
+                        result.edges.append(
+                            self._edge_factory.make_edge(
+                                src=src_node_id, dst=dst_node_id,
+                                kind=EdgeKind.DRIVER,
+                                assign_type="nonblocking",
+                                expression=leaf_from_ctx,
+                                bit_slice=bit_slice,
+                                clock_domain=ctx.get("clock", ""),
+                                sig_cond=sig_cond,
+                            )
+                        )
+                        # [V6.9] 继续走 clock/reset edge 创建逻辑
+                        # leaf edge 已创建, 下面是 clock/reset edges
+                        # Create clock edge (mirrors line ~1799)
+                        if is_always_ff and ctx.get("clock"):
+                            clk_name = ctx["clock"]
+                            clk_node_id = f"{module_name}.{clk_name}"
+                            if clk_node_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(
+                                    TraceNode(
+                                        id=clk_node_id, name=clk_name,
+                                        module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)
+                                    )
+                                )
+                            result.edges.append(
+                                self._edge_factory.make_edge(
+                                    src=clk_node_id, dst=dst_node_id,
+                                    expression="",
+                                    kind=EdgeKind.CLOCK,
+                                    assign_type="nonblocking",
+                                    clock_domain=clk_name,
+                                    ctx=ctx,
+                                )
+                            )
+                        # Create reset edge if present
+                        if ctx.get("reset"):
+                            rst_name = ctx["reset"]
+                            rst_node_id = f"{module_name}.{rst_name}"
+                            if rst_node_id not in [n.id for n in result.nodes]:
+                                result.nodes.append(
+                                    TraceNode(
+                                        id=rst_node_id, name=rst_name,
+                                        module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)
+                                    )
+                                )
+                            result.edges.append(
+                                self._edge_factory.make_edge(
+                                    src=rst_node_id, dst=dst_node_id,
+                                    expression="",
+                                    kind=EdgeKind.RESET,
+                                    assign_type="nonblocking",
+                                    clock_domain=rst_name,
+                                    ctx=ctx,
+                                )
+                            )
+                        continue  # 跳过后续的 ternary 复杂逻辑和 rhs_signals 提取
+
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
                     # [FIX 2026-7-15] Pass module for Syntax AST resolution
                     rhs_signals = self._get_all_real_signals(rhs_expr, module=module) if rhs_expr else [rhs]
@@ -2028,15 +2104,19 @@ class DriverExtractor:
             return items
         
         # 3. 处理条件脉络（if/case 等）
-        #    _flatten_assignments 现在返回 (expr, cond_str) 元组
+        #    _flatten_assignments 现在返回 (expr, cond_str) 或 (expr, cond_str, leaf_name) 元组
+        #    leaf_name != None 表示 ternary 展开后的 leaf 信号（覆盖 rhs 信号提取）
         #    每个 item 带有自己的条件
         result = []
         for item in items:
-            if isinstance(item, tuple) and len(item) == 2:
-                expr_node, cond_str = item
+            if isinstance(item, tuple) and len(item) >= 2:
+                expr_node, cond_str = item[0], item[1]
+                leaf_name = item[2] if len(item) >= 3 else None
                 item_ctx = dict(ctx)  # copy base ctx
                 if cond_str:
                     item_ctx["condition"] = cond_str
+                if leaf_name:
+                    item_ctx["leaf_name"] = leaf_name
                 result.append((expr_node, item_ctx, None))
             else:
                 result.append((item, ctx, None))
@@ -2153,11 +2233,7 @@ class DriverExtractor:
             if expr:
                 ek = str(getattr(expr, "kind", ""))
                 if "Assignment" in ek:
-                    # 带上当前条件栈
-                    if cond_stack:
-                        result.append((expr, " && ".join(cond_stack)))
-                    else:
-                        result.append((expr, ""))
+                    self._expand_and_append_assignment(expr, cond_stack, result)
             return
         
         # CaseStatement: 展开各分支
@@ -2190,10 +2266,92 @@ class DriverExtractor:
         
         # 直接就是赋值表达式
         if "Assignment" in sk:
-            if cond_stack:
-                result.append((stmt, " && ".join(cond_stack)))
-            else:
-                result.append((stmt, ""))
+            self._expand_and_append_assignment(stmt, cond_stack, result)
+
+    def _expand_and_append_assignment(self, assign_expr, cond_stack, result):
+        """[V6.9] 如果 RHS 是 ternary (syntax ConditionalExpression), 递归展开。
+
+        g ? x0 : x1 在 case (a==0) 中展开为:
+          - (x0, "a==0 && g")
+          - (x1, "a==0 && !(g)")
+
+        多层嵌套: g ? (h ? x0 : x1) : x2 展开为:
+          - (x0, "a==0 && g && h")
+          - (x1, "a==0 && g && !(h)")
+          - (x2, "a==0 && !(g)")
+        """
+        rhs = getattr(assign_expr, "right", None)
+        if rhs is None:
+            # 没有 RHS: 直接添加
+            outer_cond = " && ".join(cond_stack) if cond_stack else ""
+            result.append((assign_expr, outer_cond))
+            return
+
+        rk = str(getattr(rhs, "kind", ""))
+        if "Conditional" not in rk:
+            # 不是 ternary: 直接添加
+            outer_cond = " && ".join(cond_stack) if cond_stack else ""
+            result.append((assign_expr, outer_cond))
+            return
+
+        # RHS 是 ternary: 递归展开条件树
+        # 我们需要取出 lhs, 然后为每个 leaf 信号创建一个 (lhs=leaf, cond) 元组
+        lhs = getattr(assign_expr, "left", None)
+        lhs_node_id = self._get_signal(lhs) if lhs else None
+        if not lhs_node_id:
+            outer_cond = " && ".join(cond_stack) if cond_stack else ""
+            result.append((assign_expr, outer_cond))
+            return
+
+        # 递归展开 ConditionalExpression 树
+        def _walk_ternary(node, path_conds):
+            """递归遍历 syntax ConditionalExpression, yield (leaf_signal, full_cond)."""
+            if node is None:
+                return
+            nk = str(getattr(node, "kind", ""))
+            if "Conditional" not in nk:
+                # [V6.9] 尝试 unwrap: 可能是 ParenthesizedExpression 包裹了 ConditionalExpression
+                # 如 g ? (h ? x0 : x1) : x2 中 (h ? x0 : x1) 被括号包裹
+                from .ast_utils import unwrap
+                inner = unwrap(node)
+                if inner is not None and inner is not node:
+                    inner_kind = str(getattr(inner, "kind", ""))
+                    if "Conditional" in inner_kind:
+                        yield from _walk_ternary(inner, path_conds)
+                        return
+                # Leaf: 提取信号名, 组合条件
+                name = self._get_signal(node)
+                if name:
+                    combined = " && ".join([c for c in path_conds if c])
+                    yield (name, combined)
+                return
+
+            # 提取条件文本
+            pred = getattr(node, "predicate", None)
+            cond_text = str(pred).strip() if pred else ""
+
+            left = getattr(node, "left", None)
+            right = getattr(node, "right", None)
+
+            # True 分支: 原条件
+            if left and cond_text:
+                yield from _walk_ternary(left, path_conds + [cond_text])
+            elif left:
+                yield from _walk_ternary(left, path_conds)
+
+            # False 分支: 取反条件
+            if right and cond_text:
+                # 简单标识符不加括号, 复杂表达式加括号
+                if all(c.isalnum() or c == '_' for c in cond_text):
+                    neg_cond = f"!{cond_text}"
+                else:
+                    neg_cond = f"!({cond_text})"
+                yield from _walk_ternary(right, path_conds + [neg_cond])
+            elif right:
+                yield from _walk_ternary(right, path_conds)
+
+        for leaf_name, leaf_cond in _walk_ternary(rhs, list(cond_stack)):
+            result.append((assign_expr, leaf_cond, leaf_name))
 
     def extract(self) -> ExtractorResult:
         result = ExtractorResult()
