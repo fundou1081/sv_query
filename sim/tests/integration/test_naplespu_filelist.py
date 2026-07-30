@@ -11,6 +11,10 @@ Validates 12 CLI commands all run cleanly on multi-file filelist (no crash, no
 Python traceback): stats / risk / cdc / sva extract / sva coverage / sva timing /
 timing / verify gap / coverage suggest / controlflow / dataflow / visualize.
 """
+
+import pytest
+pytestmark = pytest.mark.opensource  # NaplesPU filelist dependency
+
 import subprocess
 import sys
 from pathlib import Path

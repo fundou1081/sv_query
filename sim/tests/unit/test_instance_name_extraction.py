@@ -1,3 +1,7 @@
+
+import pytest
+pytestmark = pytest.mark.opensource  # clacc dependency
+
 #==============================================================================
 # test_instance_name_extraction.py - 实例名称提取单元测试
 #==============================================================================

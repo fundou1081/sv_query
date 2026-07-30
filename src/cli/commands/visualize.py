@@ -714,10 +714,12 @@ def chain(
     # 修法: 在 dot 生成前, 删掉任何没有 incoming 或 outgoing edge 的 chain_node
     #       (IO 端口除外, INPUT 没 incoming 是正常的, OUTPUT 没 outgoing 是正常的).
     if not all_paths:
-        chain_edges = set()
-        chain_nodes = set()
+        chain_edges: set = set()
+        chain_nodes: set = set()
+        sorted_paths = []
         # [V6.9] 即使没有数据路径, full-module anomaly scan 仍要运行
         # 路径构建失败时仍然检测 orphan_wire, unused_reg 等 RTL 问题
+    else:
         # [FIX 2026-07-08] Sort paths by length DESCENDING (LONGEST first)
         # 这样优先选 multi-hop paths (有 intermediate nodes),
         # 不是 1-edge paths (只 input -> output, no intermediate).
