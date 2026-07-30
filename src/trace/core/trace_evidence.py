@@ -189,7 +189,23 @@ class TraceEvidenceResolver:
             return ev
 
         # 2. 存 source_expr 供 cross-validation 用
-        ev.source_expr = edge.expression or edge.condition or ""
+        # [V6.9] 优先从 edge.source.full_expression 取 (semantic AST signal source)
+        #        但 source.full_expression 在 always block 场景下可能是整个文件文本
+        #        此时用 edge.condition (if/else 条件) 或 edge.expression
+        source_expr = ""
+        if edge.source:
+            fe = getattr(edge.source, "full_expression", "")
+            # 如果 full_expression 是整个源文件 (>200 chars 或含 \`timescale/newline),
+            # 则回退到 edge.condition / edge.expression
+            if fe and len(fe) < 200 and "\n" not in fe:
+                source_expr = fe
+            elif edge.condition:
+                source_expr = edge.condition
+            elif edge.expression and len(edge.expression) < 200:
+                source_expr = edge.expression
+        else:
+            source_expr = edge.condition or edge.expression or ""
+        ev.source_expr = source_expr
 
         # 3. source_location + source_text (从 edge)
         ev.source_location = edge.source_location
