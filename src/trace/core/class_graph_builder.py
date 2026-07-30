@@ -60,71 +60,73 @@ class ClassGraphBuilder:
                 self.variables = []
             
             def visit(self, node):
-                """[V6.9] Extract variable names from constraint node.
+                """[V6.9] Extract variable names from constraint node (semantic AST).
                 
-                Replaces ConstraintVisitor with adapter._extract_signals_from_expr().
-                Handles nested constraint structures (if/else/implication/foreach)
-                by recursively visiting child nodes.
+                Semantic AST kinds: ConstraintKind.Expression, ConstraintKind.IfElse,
+                ConstraintKind.Implication, ConstraintKind.Foreach, etc.
                 """
                 if node is None:
                     return
                 
                 kind_str = str(getattr(node, "kind", ""))
                 
-                # 1. ConditionalConstraint: if (cond) ... else ...
-                if "ConditionalConstraint" in kind_str:
+                # 1. IfElse constraint: if (cond) ... else ...
+                #    Semantic AST: ConstraintKind.IfElse
+                if "IfElse" in kind_str or "ConditionalConstraint" in kind_str:
                     condition = getattr(node, "condition", None)
-                    consequent = getattr(node, "constraints", None)  # if-true body
-                    else_clause = getattr(node, "elseClause", None)  # if-false body
+                    consequent = getattr(node, "constraints", None) or getattr(node, "ifBody", None)
+                    else_clause = getattr(node, "elseClause", None) or getattr(node, "elseBody", None)
                     
                     # Extract condition vars
                     cond_vars = self._extract_vars_from_expr(condition)
                     self.variables.extend(cond_vars)
                     
-                    # Recursively visit consequent (ExpressionConstraint or ConstraintBlock)
+                    # Recursively visit consequent
                     self.visit(consequent)
                     self.visit(else_clause)
                     return
                 
-                # 2. ImplicationConstraint: left → right
-                if "ImplicationConstraint" in kind_str:
+                # 2. Implication constraint: left → right
+                #    Semantic AST: ConstraintKind.Implication
+                if "Implication" in kind_str:
                     left = getattr(node, "left", None)
                     right = getattr(node, "right", None)
-                    # Extract vars from both sides
                     left_vars = self._extract_vars_from_expr(left)
                     self.variables.extend(left_vars)
-                    self.visit(right)  # right may be ConstraintBlock with items
+                    self.visit(right)
                     return
                 
-                # 3. ForeachConstraint: foreach (arr[i]) { constraints }
-                if "ForeachConstraint" in kind_str or "LoopConstraint" in kind_str:
-                    # Extract the array name from loopList
-                    loop_list = getattr(node, "loopList", None)
-                    if loop_list and hasattr(loop_list, "__iter__"):
-                        for elem in loop_list:
-                            elem_kind = str(getattr(elem, "kind", ""))
-                            if "IdentifierName" in elem_kind:
-                                ident = getattr(elem, "identifier", None)
-                                if ident and hasattr(ident, "value"):
-                                    self.variables.append(str(ident.value).strip())
+                # 3. Foreach constraint: foreach (arr[i]) { constraints }
+                #    Semantic AST: ConstraintKind.Foreach or ConstraintKind.Loop
+                if "Foreach" in kind_str or "LoopConstraint" in kind_str or "Loop" in kind_str:
+                    # Extract array variable from loop variables
+                    loop_vars = getattr(node, "loopVariables", None) or getattr(node, "loopList", None)
+                    if loop_vars and hasattr(loop_vars, "__iter__"):
+                        for lv in loop_vars:
+                            lv_name = str(getattr(lv, "name", "")).strip()
+                            if lv_name:
+                                self.variables.append(lv_name)
                     
                     # Visit constraint body
                     body = getattr(node, "constraints", None) or getattr(node, "body", None)
-                    if body and hasattr(body, "items") and hasattr(body.items, "__iter__"):
+                    if body:
+                        self.visit(body)
+                    elif hasattr(node, 'items') and hasattr(node.items, '__iter__'):
                         try:
-                            for item in body.items:
+                            for item in node.items:
                                 self.visit(item)
                         except Exception:
                             pass
                     return
                 
-                # 4. ElseConstraintClause: else { constraints }
-                if "ElseConstraintClause" in kind_str:
-                    clause = getattr(node, "clause", None)
+                # 4. ElseConstraintClause (Syntax/Semantic): else { constraints }
+                if "ElseConstraintClause" in kind_str or "ElseBody" in kind_str:
+                    clause = getattr(node, "clause", None) or getattr(node, "body", None)
                     self.visit(clause)
                     return
                 
-                # 5. ExpressionConstraint / ConstraintBlock: extract signals and recurse items
+                # 5. Expression / ConstraintBlock: extract signals and recurse items
+                #    Semantic AST: ConstraintKind.Expression, ConstraintKind.List
                 sigs = self._extract_vars_from_expr(node)
                 if sigs:
                     self.variables.extend(sigs)
@@ -136,8 +138,19 @@ class ClassGraphBuilder:
                             self.visit(item)
                     except Exception:
                         pass
+                
+                # Also recurse into constraints (semantic AST field name)
+                constraints = getattr(node, 'constraints', None)
+                if constraints and constraints is not node:
+                    self.visit(constraints)
             
             def _extract_vars_from_expr(self, expr):
+                # [V6.9] For ExpressionConstraint (ConstraintKind.Expression), extract .expr
+                kind_str = str(getattr(expr, "kind", ""))
+                if "Expression" in kind_str or "ExpressionConstraint" in kind_str:
+                    inner = getattr(expr, "expr", None)
+                    if inner is not None:
+                        return self.adapter._extract_signals_from_expr(inner) or []
                 return self.adapter._extract_signals_from_expr(expr) or []
         
         self._cv = _ConstraintExtractor(self.adapter)
@@ -281,45 +294,45 @@ class ClassGraphBuilder:
         if not prop_name:
             return
 
-            node_id = f"{cls_name}.{prop_name}"
-            width = self._property_width(prop)
+        node_id = f"{cls_name}.{prop_name}"
+        width = self._property_width(prop)
 
-            node = TraceNode(
-                id=node_id,
-                name=prop_name,
-                module=cls_name,
-                kind=NodeKind.CLASS_PROPERTY,
-                width=width,
+        node = TraceNode(
+            id=node_id,
+            name=prop_name,
+            module=cls_name,
+            kind=NodeKind.CLASS_PROPERTY,
+            width=width,
+        )
+        graph.add_trace_node(node)
+        result.nodes.append(node)
+
+        # CLASS → CLASS_PROPERTY 边（归属关系）
+        graph.add_trace_edge(
+            TraceEdge(
+                src=cls_name,
+                dst=node_id,
+                kind=EdgeKind.CONSTRAINS,
             )
-            graph.add_trace_node(node)
-            result.nodes.append(node)
+        )
 
-            # CLASS → CLASS_PROPERTY 边（归属关系）
+        # 如果是类引用，添加 IS_INSTANCE_OF 边
+        # [V6.9] semantic ClassProperty 通过 declaredType 获取类型名
+        type_name = ""
+        try:
+            dt = getattr(prop, "declaredType", None)
+            if dt:
+                type_name = str(getattr(dt, "name", "")).strip()
+        except Exception:
+            pass
+        if type_name:
             graph.add_trace_edge(
                 TraceEdge(
-                    src=cls_name,
-                    dst=node_id,
-                    kind=EdgeKind.CONSTRAINS,
+                    src=node_id,
+                    dst=type_name,
+                    kind=EdgeKind.IS_INSTANCE_OF,
                 )
             )
-
-            # 如果是类引用，添加 IS_INSTANCE_OF 边
-            # [V6.9] semantic ClassProperty 通过 declaredType 获取类型名
-            type_name = ""
-            try:
-                dt = getattr(prop, "declaredType", None)
-                if dt:
-                    type_name = str(getattr(dt, "name", "")).strip()
-            except Exception:
-                pass
-                if type_name:
-                    graph.add_trace_edge(
-                        TraceEdge(
-                            src=node_id,
-                            dst=type_name,
-                            kind=EdgeKind.IS_INSTANCE_OF,
-                        )
-                    )
 
     def _build_constraint_block(self, graph, constr, cls_name: str, result: ClassBuilderResult):
         """[铁律15] 处理 ConstraintDeclaration → CONSTRAINT_BLOCK
@@ -354,14 +367,39 @@ class ClassGraphBuilder:
         )
 
         # 处理 constraint block 内的每条表达式
-        block = getattr(constr, "block", None)
-        if block is None:
+        # [V6.9] Semantic AST: constr IS a ConstraintBlockSymbol, has .constraints (ConstraintList with .list)
+        #          Fallback: syntax bridge via .syntax.constraintBlock.items (legacy syntax tree)
+        #          Fallback: constr may have .block wrapper (old API)
+        block = getattr(constr, "block", None) or constr
+        constraint_items = []
+        
+        # Try semantic AST: .constraints.list (constraint block is the symbol itself)
+        constraints = getattr(block, "constraints", None)
+        if constraints:
+            clist = getattr(constraints, "list", None)
+            if clist and hasattr(clist, "__iter__"):
+                try:
+                    constraint_items = list(clist)
+                except Exception:
+                    pass
+            
+            # Fallback: syntax bridge for block.items
+            if not constraint_items:
+                syn_block = getattr(block, "syntax", None) or block
+                syn_items = getattr(syn_block, "items", None)
+                if syn_items and hasattr(syn_items, "__iter__"):
+                    try:
+                        constraint_items = list(syn_items)
+                    except Exception:
+                        pass
+        
+        if not constraint_items:
             return
 
         # 收集此 block 直接引用的 CLASS_PROPERTY（用于 CONSTRAINS 边）
         block_direct_vars: set[str] = set()
 
-        for idx, item in enumerate(getattr(block, "items", [])):
+        for idx, item in enumerate(constraint_items):
             if item is None:
                 continue
             self._cv.reset()
@@ -375,20 +413,20 @@ class ClassGraphBuilder:
                 prop_id = f"{cls_name}.{v}" if not v.startswith(f"{cls_name}.") else v
                 block_direct_vars.add(prop_id)
 
-            # 为每条 constraint 表达式建节点
+            # 为每条 constraint 表达式建节点 (semantic AST kind strings)
             kind_str = str(getattr(item, "kind", ""))
 
-            if "ConditionalConstraint" in kind_str:
+            if "IfElse" in kind_str or "Conditional" in kind_str:
                 self._build_conditional_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif "ImplicationConstraint" in kind_str:
+            elif "Implication" in kind_str:
                 self._build_implication_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif "UniquenessConstraint" in kind_str:
+            elif "Uniqueness" in kind_str:
                 self._build_uniqueness_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif "SolveBeforeConstraint" in kind_str:
+            elif "SolveBefore" in kind_str:
                 self._build_solve_before_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif "ForeachConstraint" in kind_str or "LoopConstraint" in kind_str:
+            elif "Foreach" in kind_str or "Loop" in kind_str:
                 self._build_foreach_constraint(graph, item, block_id, cls_name, idx, block_direct_vars, result)
-            elif "ExpressionConstraint" in kind_str:
+            elif "Expression" in kind_str or "Constraint" in kind_str:
                 # 检查是否是 super.<constraint_name> 调用（增量扩展）
                 item_str = str(item).strip()
                 if item_str.startswith("super."):
@@ -453,8 +491,8 @@ class ClassGraphBuilder:
             )
         )
 
-        # 提取条件变量
-        condition = getattr(node, "condition", None)
+        # [V6.9] Semantic AST: .predicate (condition), .ifBody (consequent), .elseBody (alternate)
+        condition = getattr(node, "condition", None) or getattr(node, "predicate", None)
         cond_vars = self._cv._extract_vars_from_expr(condition)
         for v in cond_vars:
             if v in ["this", "super"]:
@@ -470,16 +508,29 @@ class ClassGraphBuilder:
             direct_vars.add(cond_prop_id)
 
         # consequent: ExpressionConstraint 或 ConstraintBlock（多语句）
-        consequent = getattr(node, "constraints", None)
+        # [V6.9] Semantic AST: ConditionalConstraint has .ifBody (consequent) and .elseBody (alternate)
+        consequent = getattr(node, "constraints", None) or getattr(node, "ifBody", None)
+        else_clause = getattr(node, "elseClause", None) or getattr(node, "elseBody", None)
         if consequent is None:
             return
 
         consequent_kind = str(getattr(consequent, "kind", ""))
 
-        if "ConstraintBlock" in consequent_kind:
+        # [V6.9] For semantic AST, consequent may be a single ConstraintKind.Expression
+        #         or a ConstraintBlock/ConstraintList with .list or .items
+        if "ConstraintBlock" in consequent_kind or "ConstraintList" in consequent_kind or "List" in consequent_kind:
             # 多语句 if 块：展平为多个 CONSTRAINT_EXPR
-            if hasattr(consequent, "items"):
-                for ci, cons_item in enumerate(consequent.items):
+            # [V6.9] Semantic AST: ConstraintList has .list, not .items
+            cons_items = getattr(consequent, "items", None) or getattr(consequent, "list", None)
+            if cons_items and hasattr(cons_items, "__iter__"):
+                for ci, cons_item in enumerate(cons_items):
+                    item_kind = str(getattr(cons_item, "kind", ""))
+                    # [V6.9] Nested if/else → recursive call instead of CONSTRAINT_EXPR
+                    if "Conditional" in item_kind or "IfElse" in item_kind:
+                        self._build_conditional_constraint(
+                            graph, cons_item, block_id, cls_name, ci, direct_vars, result
+                        )
+                        continue
                     cons_node_id = f"{if_node_id}::cons_{ci}"
                     cons_node = TraceNode(
                         id=cons_node_id,
@@ -512,7 +563,13 @@ class ClassGraphBuilder:
                                 kind=EdgeKind.HAS_LHS,
                             )
                         )
-        elif "ExpressionConstraint" in consequent_kind:
+        elif "Conditional" in consequent_kind or "IfElse" in consequent_kind:
+            # [V6.9] Nested if/else (single ConditionalConstraint as consequent)
+            #   Use outer if_node_id as block_id so nested if gets proper namespace
+            self._build_conditional_constraint(
+                graph, consequent, if_node_id, cls_name, 0, direct_vars, result
+            )
+        elif "Expression" in consequent_kind or "Constraint" in consequent_kind:
             # 单语句
             cons_node_id = f"{if_node_id}::cons_0"
             cons_node = TraceNode(
@@ -547,8 +604,7 @@ class ClassGraphBuilder:
                     )
                 )
 
-        # else: ElseConstraintClause
-        else_clause = getattr(node, "elseClause", None)
+        # else: [V6.9] semantic AST uses .elseBody
         if else_clause:
             alt_node_id = f"{if_node_id}::alt_0"
             alt_node = TraceNode(
@@ -567,17 +623,16 @@ class ClassGraphBuilder:
                     kind=EdgeKind.HAS_ALTERNATE,
                 )
             )
-            # else 中的 constraints（ConstraintBlock 多语句或单 ExpressionConstraint）
-            alt_constraints = getattr(else_clause, "constraints", None)
-            if alt_constraints is None:
-                pass  # No else constraints
-            else:
-                alt_kind = str(getattr(alt_constraints, "kind", ""))
+            # [V6.9] semantic AST: else_clause is ExpressionConstraint directly (not wrapped in ConstraintBlock)
+            # Try .expr extraction & .constraints.list for nested blocks
+            alt_constraints = getattr(else_clause, "constraints", None) or else_clause
+            alt_kind = str(getattr(alt_constraints, "kind", ""))
 
-            if "ConstraintBlock" in alt_kind:
+            if "ConstraintBlock" in alt_kind or "ConstraintList" in alt_kind:
                 # 多语句 else 块：展平为多个 CONSTRAINT_EXPR
-                if hasattr(alt_constraints, "items"):
-                    for ai, alt_item in enumerate(alt_constraints.items):
+                alt_items = getattr(alt_constraints, "items", None) or getattr(alt_constraints, "list", None)
+                if alt_items and hasattr(alt_items, "__iter__"):
+                    for ai, alt_item in enumerate(alt_items):
                         alt_expr_id = f"{alt_node_id}::expr_{ai}"
                         alt_expr_node = TraceNode(
                             id=alt_expr_id,
