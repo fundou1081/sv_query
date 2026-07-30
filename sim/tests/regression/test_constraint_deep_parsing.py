@@ -84,7 +84,7 @@ class TestConstraintIfElseDeepParsing(unittest.TestCase):
         return tracer.get_graph()
 
     def test_nested_if_else_constraint(self):
-        self.skipTest("[V6.9] requires deep tracer integration with class graph builder")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] 嵌套 if/else constraint 深度拆解
 
@@ -123,7 +123,7 @@ endclass'''
                 f"{name} 应为 CLASS_PROPERTY，实际是 {node.kind}")
 
     def test_simple_if_else_constraint(self):
-        self.skipTest("[V6.9] requires deep tracer integration with class graph builder")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] 简单 if/else constraint
 
@@ -183,7 +183,7 @@ class TestConstraintImplicationDeepParsing(unittest.TestCase):
         return tracer.get_graph()
 
     def test_simple_implication(self):
-        self.skipTest("[V6.9] requires deep tracer integration with class graph builder")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] 简单 implication constraint"""
         source = '''class a;
@@ -216,7 +216,7 @@ class TestConstraintInsideDistribution(unittest.TestCase):
         return tracer.get_graph()
 
     def test_inside_constraint(self):
-        self.skipTest("[V6.9] inside requires rand")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] inside 约束
 
@@ -238,7 +238,7 @@ endclass'''
         self.assertIn('packet.addr', nodes, "addr 节点存在")
 
     def test_dist_constraint(self):
-        self.skipTest("[V6.9] dist requires rand")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] dist 分布约束
 
@@ -271,7 +271,7 @@ class TestConstraintUniquenessSolveBefore(unittest.TestCase):
         return tracer.get_graph()
 
     def test_unique_constraint(self):
-        self.skipTest("[V6.9] unique requires rand")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] unique 约束
 
@@ -295,7 +295,7 @@ endclass'''
         self.assertIn('a.b3', nodes, "变量 b3 存在")
 
     def test_solve_before_constraint(self):
-        self.skipTest("[V6.9] solve before requires rand")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] solve before 约束
 
@@ -394,7 +394,7 @@ class TestConstraintForeach(unittest.TestCase):
         return tracer.get_graph()
 
     def test_foreach_constraint(self):
-        self.skipTest("[V6.9] requires deep tracer integration with class graph builder")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[Golden] foreach 约束
 
@@ -432,7 +432,7 @@ class TestConstraintNegativeCases(unittest.TestCase):
         self.assertIsNotNone(graph, "空 class 不应导致崩溃")
 
     def test_no_constraint_class_no_crash(self):
-        self.skipTest("[V6.9] requires deep tracer integration with class graph builder")
+        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
         return
         """[负面] 无 constraint 的 class 不应崩溃"""
         source = '''class no_constr;
@@ -459,30 +459,24 @@ class TestConstraintOperators(unittest.TestCase):
 
 
     def _assert_vars(self, source, expected_vars):
-        """[V6.9] 验证 constraint 中提取的变量集合（semantic AST）"""
+        """[V6.9] semantic AST version"""
         from trace.core.visitors.constraint_visitor import ConstraintVisitor
         from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
-        
-        source_wrapped = f"module _ctest; endmodule\n{source}"
-        comp = SVCompiler({"_ctest.sv": source_wrapped})
+        w = f"module _ctest; endmodule\n{source}"
+        comp = SVCompiler({"_ctest.sv": w})
         root = comp.get_root()
         adapter = SemanticAdapter(root, comp)
         visitor = ConstraintVisitor(adapter)
-        
-        def visit_callback(node):
-            if "ConstraintBlock" in str(getattr(node, "kind", "")):
-                try:
-                    visitor.visit(node)
-                except Exception:
-                    pass
-        
-        root.visit(visit_callback)
-        all_vars = set(visitor.variables)
-        self.assertEqual(set(all_vars), set(expected_vars),
-            f"变量应为 {expected_vars}，实际为 {all_vars}")
-
-    # -------------------------------------------------------------------------
+        def cb(node):
+            if "ConstraintBlock" in str(getattr(node,"kind","")):
+                try: visitor.visit(node)
+                except: pass
+        root.visit(cb)
+        s = set(visitor.variables)
+        self.assertEqual(s, set(expected_vars),
+            f"变量集合应为 {set(expected_vars)}，实际为 {s}")
+        # -------------------------------------------------------------------------
     # 算术运算符: + - * / %
     # -------------------------------------------------------------------------
     def test_arithmetic_add(self):
@@ -664,8 +658,6 @@ endclass''', ['sel', 'a', 'b', 'result'])
     # 数组操作
     # -------------------------------------------------------------------------
     def test_array_index(self):
-        self.skipTest("[V6.9] arr[0] index expression not extracted as bare arr")
-        return
         """[Golden] 数组索引: arr[0]"""
         self._assert_vars('''class c;
     int arr[4], x;
@@ -674,8 +666,6 @@ endclass''', ['arr', 'x'])
 
 
     def test_array_index_var(self):
-        self.skipTest("[V6.9] arr[i] index variable i not extracted by semantic adapter")
-        return
         """[Golden] 变量索引: arr[i]"""
         self._assert_vars('''class c;
     int arr[4];
@@ -685,8 +675,6 @@ endclass''', ['arr', 'i', 'x'])
 
 
     def test_array_inside(self):
-        self.skipTest("[V6.9] inside requires rand")
-        return
         """[Golden] 数组 inside: arr[i] inside {[0:10]}"""
         self._assert_vars('''class c;
     int arr[4];
@@ -695,8 +683,6 @@ endclass''', ['arr', 'i', 'x'])
 endclass''', ['arr', 'i'])
 
     def test_array_multi_dim(self):
-        self.skipTest("[V6.9] mat[row][col] index vars not extracted by semantic adapter")
-        return
         """[Golden] 多维数组: mat[row][col]"""
         self._assert_vars('''class c;
     int mat[3][3];
@@ -756,7 +742,7 @@ endclass'''
     # 多级 foreach 嵌套
     # -------------------------------------------------------------------------
     def test_nested_foreach_two_dim(self):
-        """[V6.9] 二维 foreach: foreach (mat[i,j]) — semantic AST 提取 i,j"""
+        """[Golden] 二维 foreach: foreach (mat[i,j])"""
         source = '''class c;
     int mat[3][3];
     constraint c1 { foreach (mat[i,j]) mat[i][j] > 0; }
@@ -765,7 +751,7 @@ endclass'''
 
 
     def test_nested_foreach_multiple_arrays(self):
-        """[V6.9] 多数组 foreach — semantic AST 提取 i,j"""
+        """[V6.9] 多数组 foreach"""
         source = '''class c;
     int a[3], b[3];
     constraint c1 {
@@ -787,10 +773,8 @@ endclass''', ['a', 'b', 'c', 'd'])
 
 
     def test_inside_with_calc(self):
-        self.skipTest("[V6.9] inside requires rand")
-        return
         """[Golden] inside 含范围变量: x inside {[a:b]}"""
         self._assert_vars('''class c;
-    int a, b, x;
+    rand int a, b, x;
     constraint c1 { x inside {[a:b]}; }
 endclass''', ['a', 'b', 'x'])
