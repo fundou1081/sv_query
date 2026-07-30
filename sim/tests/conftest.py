@@ -12,9 +12,22 @@ pytest configuration — test markers + auto symlink setup (V6.7)
   pytest -m "not slow"           # 跳过慢测试
 """
 
+import sys
+from pathlib import Path
+
+# [FIX 2026-07-30] sys.path MUST be set at module-level (not inside
+# pytest_configure hook) so it takes effect before test file collection.
+# Python stdlib has a "trace" module that shadows src/trace/.
+_PKG_ROOT = Path(__file__).resolve().parents[2]  # sv_query root
+_src = str(_PKG_ROOT / "src")
+_tools = str(_PKG_ROOT / "tools")
+if _src not in sys.path:
+    sys.path.insert(0, _src)
+if _tools not in sys.path:
+    sys.path.insert(0, _tools)
+
 import pytest
 from datetime import datetime
-from pathlib import Path
 
 
 def pytest_configure(config):

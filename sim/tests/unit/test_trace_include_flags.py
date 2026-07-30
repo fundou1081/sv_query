@@ -12,6 +12,10 @@ TDD: trace fanout/fanin 加 --include-clock/reset/control flag (Req-12 P1)
 3. --include-clock fanout rst_n → 类似
 4. 完整测试: visualize graph 还是能看到全部
 """
+
+import pytest
+pytestmark = pytest.mark.opensource  # NaplesPU dependency
+
 import subprocess
 import sys
 import warnings

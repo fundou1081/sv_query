@@ -10,6 +10,10 @@ TDD: controlflow if/else 互斥判断 (Req-13 P2)
 2. complex conditions: a&&b vs !a → 不是简单 mutex, 应报矛盾
 3. 多条件 (a vs !a + b vs !b) → 报矛盾
 """
+
+import pytest
+pytestmark = pytest.mark.opensource  # NaplesPU dependency
+
 import subprocess
 import sys
 import warnings
