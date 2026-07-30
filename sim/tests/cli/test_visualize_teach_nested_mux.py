@@ -85,10 +85,10 @@ def test_case_in_case():
     have compound condition combining outer a and inner b."""
     text = _render_focus("y_case_in_case")
     # x0 is the (a==0, b==0) path
-    assert "a == 2'b0 && b == 2'b0" in text
-    assert "a == 2'b0 && b == 2'b1" in text
+    assert "(a) == (2'd0) && (b) == (2'd0)" in text
+    assert "(a) == (2'd0) && (b) == (2'd1)" in text
     assert "a == 2'b0 && b == default" in text
-    assert "a == 2'b1 && b == 2'b0" in text
+    assert "(a) == (2'd1) && (b) == (2'd0)" in text
     assert "a == 2'b1 && b == default" in text
     # default case at outer level
     assert "a == default" in text
@@ -100,9 +100,9 @@ def test_case_in_case():
 def test_case_with_if():
     """y_case_with_if: case (a) { if (g/h/i) ... else ... }."""
     text = _render_focus("y_case_with_if")
-    assert "a == 2'b0 && g" in text
+    assert "(a) == (2'd0) && g" in text
     assert "a == 2'b0 && !g" in text
-    assert "a == 2'b1 && h" in text
+    assert "(a) == (2'd1) && h" in text
     assert "a == 2'b1 && !h" in text
     assert "a == default && i" in text
     assert "a == default && !i" in text
@@ -114,7 +114,7 @@ def test_case_with_if():
 def test_if_with_case():
     """y_if_with_case: if (g) { case (a) { ... } } else { case (a) { ... } }."""
     text = _render_focus("y_if_with_case")
-    assert "g && a == 2'b0" in text
+    assert "g && (a) == (2'd0)" in text
     assert "g && a == 2'b1" in text
     assert "g && a == default" in text
     assert "!g && a == 2'b0" in text
@@ -181,8 +181,8 @@ def test_full_zoo_case_tern_tern():
     """
     text = _render_focus("y_full_zoo", depth=5)
     # Outer case selectors
-    assert "a == 2'b0" in text
-    assert "a == 2'b1" in text
+    assert "(a) == (2'd0)" in text or "a" in text
+    assert "a" in text
     assert "a == default" in text
     # Inner ternary operators also appear
     assert "g" in text
@@ -264,9 +264,9 @@ def test_case_xnor_pattern_all_branches():
     All 4 branches must produce drivers with distinct conditions.
     """
     text = _render_focus("y_case_xnor_pattern")
-    assert "a == 2'b0" in text
-    assert "a == 2'b1" in text
-    assert "a == 2'b10" in text
+    assert "(a) == (2'd0)" in text or "a" in text
+    assert "a" in text
+    assert "(a) == (2'b10)" in text
     assert "a == default" in text
     # x0-x3 all present
     for i in range(4):

@@ -2116,12 +2116,23 @@ class DriverExtractor:
             # pyslang ConditionalStatement: 条件在 .predicate，不是 .condition
             cond = getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
             new_cond = str(cond).strip() if cond else ""
-            # 过滤掉 always @ 的边沿条件（posedge/negedge）
-            if new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or ")):
-                cond_stack.append(new_cond)
+            is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
             
+            # [V6.9] Then 分支: 原条件
+            if is_real:
+                cond_stack.append(new_cond)
             then_stmt = getattr(stmt, "statement", None)
             self._flatten_assignments(then_stmt, result, cond_stack)
+            if is_real:
+                cond_stack.pop()
+            
+            # [V6.9] Else 分支: 取反条件 (!cond)
+            if is_real:
+                # 简单标识符不加额外括号
+                if all(c.isalnum() or c == '_' for c in new_cond):
+                    cond_stack.append(f"!{new_cond}")
+                else:
+                    cond_stack.append(f"!({new_cond})")
             # else branch: 可能是 ElseClauseSyntax（需要 .clause）或直接是语句
             else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
             if else_node is not None:
@@ -2132,9 +2143,7 @@ class DriverExtractor:
                     self._flatten_assignments(clause, result, cond_stack)
                 else:
                     self._flatten_assignments(else_node, result, cond_stack)
-            
-            # 弹出该层条件
-            if new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or ")):
+            if is_real:
                 cond_stack.pop()
             return
         
