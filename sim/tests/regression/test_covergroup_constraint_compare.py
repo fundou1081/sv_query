@@ -44,7 +44,7 @@ def _find_coverpoint(cg, signal):
 
 def _analyze(graph, cgs):
     """执行一致性分析"""
-    analyzer = CovergroupAnalyzer(graph, cgs)
+    analyzer = CovergroupAnalyzer(adapter=graph._adapter, cgs=cgs)
     return analyzer.analyze()
 
 
