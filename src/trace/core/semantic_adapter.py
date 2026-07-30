@@ -1119,75 +1119,6 @@ class SemanticAdapter:
                 params.append(param_info)
 
         return params
-    def _extract_signals_from_expr(self, expr) -> list[str]:
-        """从表达式中提取所有信号名称"""
-        signals = []
-        if expr is None:
-            return signals
-
-        kind_str = str(getattr(expr, "kind", ""))
-
-        # NamedValue: direct signal reference
-        if "NamedValue" in kind_str:
-            sym = getattr(expr, "symbol", None)
-            if sym:
-                sig_name = _safe_attr(sym, "name", None)
-                if sig_name:
-                    signals.append(sig_name)
-
-        # Binary/Unary expressions: recurse into left/right operands
-        elif "Binary" in kind_str:
-            left = getattr(expr, "left", None)
-            right = getattr(expr, "right", None)
-            if left:
-                signals.extend(self._extract_signals_from_expr(left))
-            if right:
-                signals.extend(self._extract_signals_from_expr(right))
-
-        elif "Unary" in kind_str:
-            operand = getattr(expr, "operand", None)
-            if operand:
-                signals.extend(self._extract_signals_from_expr(operand))
-
-        elif "Conversion" in kind_str:
-            operand = getattr(expr, "operand", None)
-            if operand:
-                signals.extend(self._extract_signals_from_expr(operand))
-
-        # DistExpression: left dist { right }
-        elif "Dist" in kind_str or "dist" in kind_str.lower():
-            left = getattr(expr, "left", None)
-            if left:
-                signals.extend(self._extract_signals_from_expr(left))
-            items = getattr(expr, "items", None)
-            if items and hasattr(items, "__iter__"):
-                for item in items:
-                    # DistItem has .value and .weight
-                    val = getattr(item, "value", None) or getattr(item, "left", None)
-                    if val:
-                        signals.extend(self._extract_signals_from_expr(val))
-
-        # InsideExpression: left inside { rangeList }
-        elif "Inside" in kind_str:
-            left = getattr(expr, "left", None)
-            if left:
-                signals.extend(self._extract_signals_from_expr(left))
-            rlist = getattr(expr, "rangeList", None)
-            if rlist and hasattr(rlist, "__iter__"):
-                for r in rlist:
-                    # ValueRange has .left/.right bounds
-                    l = getattr(r, "left", None)
-                    if l:
-                        signals.extend(self._extract_signals_from_expr(l))
-                    rr = getattr(r, "right", None)
-                    if rr:
-                        signals.extend(self._extract_signals_from_expr(rr))
-                    # Also try direct extraction (for NamedValue items)
-                    if not l and not rr:
-                        signals.extend(self._extract_signals_from_expr(r))
-
-        return signals
-
     def get_interface_modport_signals(self, interface_name: str, modport_name: str) -> dict[str, str]:
         """[P0-3] 获取 interface 中指定 modport 的所有信号及其方向
 
@@ -1584,6 +1515,41 @@ class SemanticAdapter:
                 if name:
                     signals.append(str(name))
             return signals
+
+        # [V6.9] ConversionExpression (type casting): recurse into .operand
+        if "Conversion" in kind_str:
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
+            return signals
+
+        # [V6.9] InsideExpression: left inside { rangeList }
+        if "Inside" in kind_str:
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
+            rlist = getattr(expr, "rangeList", None)
+            if rlist and hasattr(rlist, "__iter__"):
+                for r in rlist:
+                    l = getattr(r, "left", None)
+                    if l:
+                        signals.extend(self._extract_signals_from_expr(l))
+                    rr = getattr(r, "right", None)
+                    if rr:
+                        signals.extend(self._extract_signals_from_expr(rr))
+                    if not l and not rr:
+                        signals.extend(self._extract_signals_from_expr(r))
+            return signals
+
+        # [V6.9] DistExpression: left dist { items }
+        if "Dist" in kind_str:
+            left = getattr(expr, "left", None)
+            if left:
+                signals.extend(self._extract_signals_from_expr(left))
+            items = getattr(expr, "items", None)
+            if items and hasattr(items, "__iter__"):
+                for item in items:
+                    val = getattr(item, "value", None) or getattr(item, "left", None)
+                    if val:
+                        signals.extend(self._extract_signals_from_expr(val))
+            return signals
+
 
         # MemberAccess: req.addr → extract full dotted path (semantic AST)
         if "MemberAccess" in kind_str:

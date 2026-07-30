@@ -118,17 +118,35 @@ class CovergroupAnalyzer:
         body = getattr(node, "body", None)
         pred_sigs = set(self._adapter._extract_signals_from_expr(pred) if pred else [])
         body_sigs = set(self._expr_signals(body))
+        # [V6.9 fix] body 可能是 ConstraintList (多重约束), 需要展开提取信号
+        if not body_sigs and body:
+            clist = getattr(body, "list", None)
+            if clist:
+                for ci in clist:
+                    body_sigs |= set(self._expr_signals(ci))
         for cv in pred_sigs:
             for tv in body_sigs:
                 if cv and tv and cv != tv:
                     pairs.add((cv, tv))
 
     def _expr_signals(self, node) -> list[str]:
-        """[V6.9 semantic AST] 从 ExpressionConstraint 提取信号名"""
+        """[V6.9 semantic AST] 从 ExpressionConstraint 或 ConstraintList 提取信号名"""
         if node is None:
             return []
+        # ExpressionConstraint: 取 .expr
         expr = getattr(node, "expr", None)
-        return self._adapter._extract_signals_from_expr(expr) if expr else []
+        if expr is not None:
+            return self._adapter._extract_signals_from_expr(expr)
+        # [V6.9 fix] ConstraintList: 展开 .list 中每个 ExpressionConstraint
+        clist = getattr(node, "list", None)
+        if clist:
+            sigs = []
+            for ci in clist:
+                e = getattr(ci, "expr", None)
+                if e:
+                    sigs.extend(self._adapter._extract_signals_from_expr(e))
+            return sigs
+        return []
 
 
     def _check_missing_cross(self, cg: CovergroupInfo) -> list[CoverageGap]:
