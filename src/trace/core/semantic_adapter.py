@@ -1514,6 +1514,16 @@ class SemanticAdapter:
 
         kind_str = str(kind)
 
+        # Syntax IdentifierName: syntax tree signal reference
+        # [V6.9] pyslang syntax: .identifier.value has the name
+        if "IdentifierName" in kind_str:
+            ident = getattr(expr, "identifier", None)
+            if ident:
+                val = getattr(ident, "value", None) or str(ident).strip()
+                if val:
+                    signals.append(val.strip())
+            return signals
+
         # NamedValue: signal reference
         if "NamedValue" in kind_str:
             sym = getattr(expr, "symbol", None)
@@ -1533,40 +1543,110 @@ class SemanticAdapter:
         # [V6.9] pyslang ConditionalOp 结构:
         #   .conditions: list of Condition objects (each has .expr)
         #   .left: true branch, .right: false branch
+                # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] 处理 semantic AST ConditionalOp 和 syntax ConditionalExpression
+        # Syntax ConditionalExpression: .predicate/.left/.right 返回字符串
+        # 需要遍历子节点来提取信号名
+                # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] 处理 semantic AST ConditionalOp 和 syntax ConditionalExpression
         if "ConditionalOp" in kind_str or "ConditionalExpression" in kind_str:
-            # Semantic AST: ConditionalOp/ConditionalExpression
-            # .conditions 是条件列表, .left=true分支, .right=false分支
+            # Semantic AST: .conditions 列表 (Condition objects), .left/.right 是 AST 节点
             conditions = getattr(expr, "conditions", None)
             if conditions:
                 for cond in conditions:
                     ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
                     signals.extend(self._extract_signals_from_expr(ce))
-            # Syntax AST: .predicate 是条件 (单个节点, 不是列表)
             pred = getattr(expr, "predicate", None)
-            if pred:
+            if pred is not None and not isinstance(pred, str):
                 signals.extend(self._extract_signals_from_expr(pred))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            # Syntax AST: .left/.right 返回字符串, 需要遍历子节点
+            left = getattr(expr, "left", None)
+            right = getattr(expr, "right", None)
+            if left is not None and not isinstance(left, str):
+                signals.extend(self._extract_signals_from_expr(left))
+            if right is not None and not isinstance(right, str):
+                signals.extend(self._extract_signals_from_expr(right))
+            # [V6.9] Syntax: 如果 left/right 是字符串, 遍历子节点提取 IdentifierName
+            if (left is None or isinstance(left, str)) or (right is None or isinstance(right, str)):
+                try:
+                    for child in expr:
+                        ck = str(getattr(child, "kind", ""))
+                        if "IdentifierName" in ck:
+                            ident = getattr(child, "identifier", None)
+                            if ident:
+                                val = getattr(ident, "value", None) or str(ident).strip()
+                                if val:
+                                    signals.append(val.strip())
+                        elif "ConditionalPredicate" in ck or "Predicate" in ck:
+                            # 递归提取条件信号
+                            try:
+                                for pchild in child:
+                                    pck = str(getattr(pchild, "kind", ""))
+                                    if "IdentifierName" in pck:
+                                        pident = getattr(pchild, "identifier", None)
+                                        if pident:
+                                            pval = getattr(pident, "value", None) or str(pident).strip()
+                                            if pval:
+                                                signals.append(pval.strip())
+                            except (TypeError, AttributeError):
+                                pass
+                except (TypeError, AttributeError):
+                    pass
             return signals
 
         # ConditionalOp (ternary: g ? x0 : x1)
         # [V6.9] pyslang ConditionalOp 结构:
         #   .conditions: list of Condition objects (each has .expr)
         #   .left: true branch, .right: false branch
+                # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] 处理 semantic AST ConditionalOp 和 syntax ConditionalExpression
+        # Syntax ConditionalExpression: .predicate/.left/.right 返回字符串
+        # 需要遍历子节点来提取信号名
+                # ConditionalOp (ternary: g ? x0 : x1)
+        # [V6.9] 处理 semantic AST ConditionalOp 和 syntax ConditionalExpression
         if "ConditionalOp" in kind_str or "ConditionalExpression" in kind_str:
-            # Semantic AST: ConditionalOp/ConditionalExpression
-            # .conditions 是条件列表, .left=true分支, .right=false分支
+            # Semantic AST: .conditions 列表 (Condition objects), .left/.right 是 AST 节点
             conditions = getattr(expr, "conditions", None)
             if conditions:
                 for cond in conditions:
                     ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
                     signals.extend(self._extract_signals_from_expr(ce))
-            # Syntax AST: .predicate 是条件 (单个节点, 不是列表)
             pred = getattr(expr, "predicate", None)
-            if pred:
+            if pred is not None and not isinstance(pred, str):
                 signals.extend(self._extract_signals_from_expr(pred))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            # Syntax AST: .left/.right 返回字符串, 需要遍历子节点
+            left = getattr(expr, "left", None)
+            right = getattr(expr, "right", None)
+            if left is not None and not isinstance(left, str):
+                signals.extend(self._extract_signals_from_expr(left))
+            if right is not None and not isinstance(right, str):
+                signals.extend(self._extract_signals_from_expr(right))
+            # [V6.9] Syntax: 如果 left/right 是字符串, 遍历子节点提取 IdentifierName
+            if (left is None or isinstance(left, str)) or (right is None or isinstance(right, str)):
+                try:
+                    for child in expr:
+                        ck = str(getattr(child, "kind", ""))
+                        if "IdentifierName" in ck:
+                            ident = getattr(child, "identifier", None)
+                            if ident:
+                                val = getattr(ident, "value", None) or str(ident).strip()
+                                if val:
+                                    signals.append(val.strip())
+                        elif "ConditionalPredicate" in ck or "Predicate" in ck:
+                            # 递归提取条件信号
+                            try:
+                                for pchild in child:
+                                    pck = str(getattr(pchild, "kind", ""))
+                                    if "IdentifierName" in pck:
+                                        pident = getattr(pchild, "identifier", None)
+                                        if pident:
+                                            pval = getattr(pident, "value", None) or str(pident).strip()
+                                            if pval:
+                                                signals.append(pval.strip())
+                            except (TypeError, AttributeError):
+                                pass
+                except (TypeError, AttributeError):
+                    pass
             return signals
 
         # BinaryExpression: a ^ b, a + b, etc.
