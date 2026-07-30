@@ -317,22 +317,32 @@ class ClassGraphBuilder:
         )
 
         # 如果是类引用，添加 IS_INSTANCE_OF 边
-        # [V6.9] semantic ClassProperty 通过 declaredType 获取类型名
-        type_name = ""
-        try:
-            dt = getattr(prop, "declaredType", None)
-            if dt:
-                type_name = str(getattr(dt, "name", "")).strip()
-        except Exception:
-            pass
-        if type_name:
-            graph.add_trace_edge(
-                TraceEdge(
-                    src=node_id,
-                    dst=type_name,
-                    kind=EdgeKind.IS_INSTANCE_OF,
+        # [V6.9] semantic ClassProperty type 是 ClassType，有 .name 返回类型名
+        #         只在 type.kind 为 ClassType 时添加，过滤基本类型 (int/bit/logic)
+        #         对于数组/队列/动态数组等，递归到 elementType 找真正的类型
+        def _resolve_class_type(ty):
+            """递归解析数组/队列包装，返回 ClassType 或 None"""
+            if ty is None:
+                return None
+            kind = str(getattr(ty, "kind", ""))
+            if "ClassType" in kind:
+                return ty
+            # 递归 elementType (FixedSizeUnpackedArrayType / DynamicArrayType / QueueType 等)
+            elem = getattr(ty, "elementType", None) or getattr(ty, "arrayElementType", None)
+            if elem:
+                return _resolve_class_type(elem)
+            return None
+        class_type = _resolve_class_type(getattr(prop, "type", None))
+        if class_type:
+            type_name = str(getattr(class_type, "name", "")).strip()
+            if type_name:
+                graph.add_trace_edge(
+                    TraceEdge(
+                        src=node_id,
+                        dst=type_name,
+                        kind=EdgeKind.IS_INSTANCE_OF,
+                    )
                 )
-            )
 
     def _build_constraint_block(self, graph, constr, cls_name: str, result: ClassBuilderResult):
         """[铁律15] 处理 ConstraintDeclaration → CONSTRAINT_BLOCK
@@ -726,9 +736,9 @@ class ClassGraphBuilder:
             )
         )
 
-        # 提取左部（条件）和右部（结果）
-        left = getattr(node, "left", None)
-        right = getattr(node, "constraints", None)
+        # [V6.9] Semantic AST: ImplicationConstraint uses .predicate (condition) and .body (consequent)
+        left = getattr(node, "left", None) or getattr(node, "predicate", None)
+        right = getattr(node, "constraints", None) or getattr(node, "body", None) or getattr(node, "right", None)
 
         # 左部变量 → HAS_CONDITION 边
         if left:

@@ -64,150 +64,72 @@ class CovergroupAnalyzer:
         """
         pairs = set()
         try:
+            # [V6.9] 纯 semantic AST 路径：通过 root.visit 找到所有 ConstraintBlock，
+            #          从其 .constraints.list 中提取 condition/target 信号对
             classes = self._adapter.get_classes()
             for cls_node in classes:
-                # 遍历 semantic class members (Symbols)
-                for member in cls_node:
-                    kind_str = str(getattr(member, "kind", ""))
-                    if "ConstraintBlock" in kind_str:
-                        pairs.update(self._extract_constraint_pairs(member, str(getattr(member, "name", ""))))
+                self._extract_pairs_from_class(cls_node, pairs)
         except Exception as e:
             logger.warning(f"Failed to extract constraint pairs: {e}")
         return pairs
 
-    def _extract_constraint_pairs(self, node, cls_name: str) -> set[tuple[str, str]]:
-        """[V6.9] 从 semantic ConstraintBlock 的 syntax 层提取 (cond_var, target_var) 对。
-        
-        node 是 semantic Symbol(ConstraintBlock)，通过 node.syntax.block 获取
-        syntax AST 的 ConstraintBlockSyntax，遍历其 items 找条件约束关系。
-        
-        支持:
-          - if (cond) { expr... } else { ... }
-          - if (cond) { expr... }
-          - cond -> expr (implication)
-        """
-        pairs = set()
-        kind_str = str(getattr(node, "kind", ""))
-        if "ConstraintBlock" not in kind_str:
-            return pairs
+    def _extract_pairs_from_class(self, cls_node, pairs: set):
+        """[V6.9 semantic AST] 遍历 class 的 semantic AST 子节点，
+        找到 ConstraintBlockSymbol，从中提取条件约束对。"""
+        def visitor(node):
+            kind = str(getattr(node, "kind", ""))
+            if "ConstraintBlock" not in kind:
+                return
+            constraints = getattr(node, "constraints", None)
+            if not constraints:
+                return
+            clist = getattr(constraints, "list", None)
+            if not clist:
+                return
+            for ci in clist:
+                cik = str(getattr(ci, "kind", ""))
+                if "Conditional" in cik:
+                    self._add_conditional_pairs(ci, pairs)
+                elif "Implication" in cik:
+                    self._add_implication_pairs(ci, pairs)
+        # Use root.visit through the class node
+        from trace.core.semantic_adapter import SemanticAdapter
+        root = getattr(self._adapter, "_root", None)
+        if root:
+            root.visit(visitor)
 
-        # 从 semantic node 获取 syntax AST 的 constraint block
-        syntax = getattr(node, "syntax", None)
-        if syntax is None:
-            return pairs
-        block = getattr(syntax, "block", None)  # pyslang 属性名是 "block"
-        if block is None:
-            return pairs
 
-        # 遍历 constraint block items
-        try:
-            items = block.items if hasattr(block, 'items') else []
-        except Exception:
-            return pairs
+    def _add_conditional_pairs(self, node, pairs: set):
+        """[V6.9 semantic AST] 从 ConditionalConstraint 提取 (cond_var, target_var) 对"""
+        pred = getattr(node, "predicate", None)
+        ifbody = getattr(node, "ifBody", None)
+        elsebody = getattr(node, "elseBody", None)
+        cond = set(self._adapter._extract_signals_from_expr(pred) if pred else [])
+        cons = set(self._expr_signals(ifbody))
+        alt = set(self._expr_signals(elsebody))
+        for cv in cond:
+            for tv in (cons | alt):
+                if cv and tv and cv != tv:
+                    pairs.add((cv, tv))
 
-        for item in items:
-            if item is None:
-                continue
-            item_kind = str(getattr(item, "kind", ""))
+    def _add_implication_pairs(self, node, pairs: set):
+        """[V6.9 semantic AST] 从 ImplicationConstraint 提取 (pred_var, target_var) 对"""
+        pred = getattr(node, "predicate", None)
+        body = getattr(node, "body", None)
+        pred_sigs = set(self._adapter._extract_signals_from_expr(pred) if pred else [])
+        body_sigs = set(self._expr_signals(body))
+        for cv in pred_sigs:
+            for tv in body_sigs:
+                if cv and tv and cv != tv:
+                    pairs.add((cv, tv))
 
-            # ConditionalConstraint: if (cond) { ... } else { ... }
-            if "ConditionalConstraint" in item_kind:
-                cond = self._extract_signals_from_node(getattr(item, "condition", None))
-                cons = self._extract_signals_from_node(getattr(item, "constraints", None))
-                alt = self._extract_signals_from_node(getattr(item, "elseClause", None))
-                for cv in cond:
-                    for tv in (cons | alt):
-                        if cv != tv:
-                            pairs.add((cv, tv))
-
-            # ImplicationConstraint: cond -> expr
-            elif "ImplicationConstraint" in item_kind:
-                left = self._extract_signals_from_node(getattr(item, "left", None))
-                right = self._extract_signals_from_node(getattr(item, "right", None))
-                for cv in left:
-                    for tv in right:
-                        if cv != tv:
-                            pairs.add((cv, tv))
-
-        return pairs
-
-    def _extract_signals_from_node(self, node) -> set[str]:
-        """[V6.9] 从 constraint expression 节点中提取信号名。
-
-        对 syntax AST 节点（IdentifierName / Expression）直接提取标识符。
-        syntax 层只用于 constraint block 的 structural 解析，
-        信号名提取用 pyslang 原生 API。
-        """
+    def _expr_signals(self, node) -> list[str]:
+        """[V6.9 semantic AST] 从 ExpressionConstraint 提取信号名"""
         if node is None:
-            return set()
-        
-        signals = set()
-        self._walk_signals(node, signals)
-        return signals
+            return []
+        expr = getattr(node, "expr", None)
+        return self._adapter._extract_signals_from_expr(expr) if expr else []
 
-    def _walk_signals(self, node, signals: set[str]):
-        """[V6.9] 递归遍历 syntax AST 节点，收集IdentifierName作为信号名。
-        
-        这是 syntax 独立工具的典型用法——只用于结构遍历，
-        不参与 semantic 信号提取。
-        """
-        if node is None:
-            return
-        
-        kind_str = str(getattr(node, "kind", ""))
-        
-        # IdentifierName: 提取标识符
-        if "IdentifierName" in kind_str:
-            # 尝试获取 semantic symbol name
-            sym = getattr(node, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                name = str(sym.name).strip()
-                if name and not name.isdigit():
-                    signals.add(name)
-                    return
-            # fallback: 从 syntax 层提取
-            try:
-                name = str(node).strip()
-                if name and not name.isdigit():
-                    signals.add(name)
-            except Exception:
-                pass
-            return
-        
-        # NamedValue: semantic symbol 引用
-        if "NamedValue" in kind_str:
-            sym = getattr(node, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                name = str(sym.name).strip()
-                if name and not name.isdigit():
-                    signals.add(name)
-            return
-        
-        # 递归处理子节点
-        for attr in ("left", "right", "operand", "condition", "expression",
-                     "arguments", "elements", "items"):
-            child = getattr(node, attr, None)
-            if child is not None:
-                if hasattr(child, "__iter__") and not isinstance(child, str):
-                    try:
-                        for c in child:
-                            self._walk_signals(c, signals)
-                    except Exception:
-                        pass
-                else:
-                    self._walk_signals(child, signals)
-        
-        # 通用递归：遍历所有子属性
-        try:
-            if hasattr(node, "__iter__") and not isinstance(node, str):
-                for child in node:
-                    self._walk_signals(child, signals)
-        except Exception:
-            pass
-
-    # =========================================================================
-    # 检查 1: 缺失的 cross coverage
-    # =========================================================================
 
     def _check_missing_cross(self, cg: CovergroupInfo) -> list[CoverageGap]:
         """检查条件约束的变量是否在 cross 中"""
