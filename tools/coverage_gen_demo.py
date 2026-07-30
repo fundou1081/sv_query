@@ -145,22 +145,26 @@ def query_risk_json(
         args += ["--include", ",".join(include_dirs)]
     if not strict:
         args.append("--no-strict")
+    # [V6.9 FIX] 8GB MBA 上 4GB/retry 会 OOM，
+    # 只在第一次前分配一次，降低内存压力
+    _reclaimed = False
     last_err = ""
     for attempt in range(3):
-        # 释放 inactive pages
-        try:
-            _a = bytearray(4 * 1024**3)
-            time.sleep(2)
-            del _a
-        except Exception:
-            pass
+        if not _reclaimed:
+            try:
+                _a = bytearray(2 * 1024**3)  # 2GB，不是 4GB
+                time.sleep(1)
+                del _a
+            except Exception:
+                pass
+            _reclaimed = True
         out = subprocess.run(
             args, capture_output=True, text=True, cwd=Path(__file__).parent.parent,
             timeout=120,
         )
         start = out.stdout.find("{")
         if start >= 0:
-            return json.loads(out.stdout[start:])["result"]
+            return json.loads(out.stdout[start:]).get("result", {})
         last_err = out.stderr[:300] if out.stderr else f"no stderr, stdout={out.stdout[:200]}"
         time.sleep(2)
     raise RuntimeError(

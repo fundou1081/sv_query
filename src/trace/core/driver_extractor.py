@@ -172,9 +172,35 @@ class DriverExtractor:
         """Walk AST and collect names whose symbol.kind is NOT compile-time.
 
         [FIX 2026-7-15] Add module parameter to enable Syntax AST lookup via module.body.lookupName.
+        [V6.9] Also filter out ternary condition signals (g, h from g ? h ? x0 : x1 : x2).
         """
         if ast_node is None or not names:
             return names
+        
+        # [V6.9] Extract condition signal names from ternary expressions
+        cond_names2 = set()
+        def _walk_conds(node):
+            if node is None:
+                return
+            ck = str(getattr(node, "kind", ""))
+            if "ConditionalOp" in ck or "ConditionalExpression" in ck:
+                # Semantic: .conditions list
+                cs = getattr(node, "conditions", None)
+                if cs:
+                    for c in cs:
+                        sub = getattr(c, "expr", None) or getattr(c, "expression", None)
+                        if sub:
+                            cond_names2.add(self._get_signal(sub) or str(sub).strip())
+                # Syntax: .predicate (single node)
+                pred = getattr(node, "predicate", None)
+                if pred:
+                    cond_names2.add(self._get_signal(pred) or str(pred).strip())
+                _walk_conds(getattr(node, "left", None))
+                _walk_conds(getattr(node, "right", None))
+        _walk_conds(ast_node)
+        
+        if cond_names2:
+            names = [n for n in names if n not in cond_names2]
 
         out: list[str] = []
         # Recursively walk AST collecting (name, symbol_kind) pairs
@@ -294,13 +320,28 @@ class DriverExtractor:
         return out
 
     def _get_signal(self, signal) -> str | None:
-        """[V6.9] 获取信号名 — 用 semantic API + strip() 清理空格。
+        """[V6.9] 获取信号名 — 优先用 semantic API, fallback 到 str()。
 
         syntax AST 节点的 str() 包含前导空格和换行符,
         必须 strip() 后使用。
         """
         if signal is None:
             return None
+        # NamedValue: 通过 .symbol.name 获取 (不是 str())
+        sk = str(getattr(signal, "kind", ""))
+        if "NamedValue" in sk:
+            sym = getattr(signal, "symbol", None)
+            if sym:
+                name = getattr(sym, "name", None)
+                if name:
+                    return str(name).strip()
+        # IdentifierName: 通过 .identifier.value 获取
+        if "IdentifierName" in sk:
+            ident = getattr(signal, "identifier", None)
+            if ident:
+                val = getattr(ident, "value", None) or str(ident)
+                return str(val).strip()
+        # fallback: str() + strip()
         result = str(signal).strip()
         # 处理可能的换行符和多行格式
         result = result.replace('\n', '').replace('\r', '').strip()
@@ -1229,7 +1270,91 @@ class DriverExtractor:
             # get_signals_with_conditions so the visitor sees the
             # ConditionalOp directly (not the outer ParenthesizedExpression).
             # This mirrors V6.3+1 fix in _create_always_edges bug #2.
-            signal_conditions = self._signal_visitor._extract_signals_from_expr(check_expr) or []
+            #
+            # [V6.9 FIX] semantic_adapter returns list[str] (ALL signals).
+            # Must separate condition signals (g, h) from leaf signals (x0, x1).
+            all_signals = self._signal_visitor._extract_signals_from_expr(check_expr) or []
+            
+            # [V6.9] 递归收集所有层的条件信号名
+            # g ? (h ? x0 : x1) : x2 → 条件信号 = {g, h}
+            def _collect_cond_signals(cond_op, acc_set):
+                if cond_op is None:
+                    return
+                ck = str(getattr(cond_op, "kind", ""))
+                if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+                    return
+                rc = getattr(cond_op, "conditions", None)
+                if rc:
+                    for c in rc:
+                        ce = getattr(c, "expr", None) or getattr(c, "expression", None)
+                        if ce:
+                            for s in (self._signal_visitor._extract_signals_from_expr(ce) or []):
+                                acc_set.add(s)
+                _collect_cond_signals(getattr(cond_op, "left", None), acc_set)
+                _collect_cond_signals(getattr(cond_op, "right", None), acc_set)
+            cond_sig_names = set()
+            _collect_cond_signals(check_expr, cond_sig_names)
+            
+            # Leaf signals = all - conditions
+            leaf_signals = [s for s in all_signals if s not in cond_sig_names]
+            
+            # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
+            # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
+            def _build_ternary_cond_map(cond_op, path=None):
+                result_map = {}
+                if path is None:
+                    path = []
+                if cond_op is None:
+                    return result_map
+                ck = str(getattr(cond_op, "kind", ""))
+                if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+                    return result_map
+                
+                # 提取条件文本
+                cond_texts = []
+                raw_c = getattr(cond_op, "conditions", None)
+                if raw_c:
+                    for c in raw_c:
+                        ce = getattr(c, "expr", None)
+                        if ce:
+                            ct = self._get_signal(ce) or str(ce).strip()
+                            if ct:
+                                cond_texts.append(ct)
+                cond_str = " && ".join(cond_texts) if cond_texts else ""
+                
+                left = getattr(cond_op, "left", None)
+                right = getattr(cond_op, "right", None)
+                
+                # 递归 left (true 分支)
+                if left:
+                    lk = str(getattr(left, "kind", ""))
+                    if "ConditionalOp" in lk or "ConditionalExpression" in lk:
+                        sub = _build_ternary_cond_map(left, path + [cond_str])
+                        result_map.update(sub)
+                    elif "NamedValue" in lk:
+                        name = self._get_signal(left) or ""
+                        full_cond = " && ".join([p for p in path + [cond_str] if p])
+                        if name:
+                            result_map[name] = full_cond
+                
+                # 递归 right (false 分支)
+                if right:
+                    rk = str(getattr(right, "kind", ""))
+                    if "ConditionalOp" in rk or "ConditionalExpression" in rk:
+                        sub = _build_ternary_cond_map(right, path + [f"!({cond_str})"])
+                        result_map.update(sub)
+                    elif "NamedValue" in rk:
+                        name = self._get_signal(right) or ""
+                        neg_cond = f"!({cond_str})" if cond_str else ""
+                        full_cond = " && ".join([p for p in path + [neg_cond] if p])
+                        if name:
+                            result_map[name] = full_cond
+                
+                return result_map
+            
+            cond_map = _build_ternary_cond_map(check_expr)
+            signal_conditions = [(s, cond_map.get(s, "")) for s in leaf_signals]
+            
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
@@ -1425,7 +1550,75 @@ class DriverExtractor:
                         # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
                         # (localparam/parameter) from ternary branch signals.
                         # Use the unwrapped check_expr so ConditionalOp is at top.
-                        signal_conditions = self._signal_visitor._extract_signals_from_expr(check_expr) or []
+                        #
+                        # [V6.9 FIX] semantic_adapter returns list[str] (ALL signals).
+                        # Must separate condition signals from leaf signals.
+                        all_signals2 = self._signal_visitor._extract_signals_from_expr(check_expr) or []
+                        cond_sig_names2 = set()
+                        def _collect2(cop, acc):
+                            if cop is None:
+                                return
+                            ck2 = str(getattr(cop, "kind", ""))
+                            if "ConditionalOp" not in ck2 and "ConditionalExpression" not in ck2:
+                                return
+                            rc2 = getattr(cop, "conditions", None)
+                            if rc2:
+                                for c in rc2:
+                                    ce = getattr(c, "expr", None) or getattr(c, "expression", None)
+                                    if ce:
+                                        for s in (self._signal_visitor._extract_signals_from_expr(ce) or []):
+                                            acc.add(s)
+                            _collect2(getattr(cop, "left", None), acc)
+                            _collect2(getattr(cop, "right", None), acc)
+                        _collect2(check_expr, cond_sig_names2)
+                        leaf_signals2 = [s for s in all_signals2 if s not in cond_sig_names2]
+                        
+                        # [V6.9] 构建每个 leaf 的条件文本
+                        def _build_cond_map(cond_op, path=None):
+                            result = {}
+                            if path is None:
+                                path = []
+                            if cond_op is None:
+                                return result
+                            ck = str(getattr(cond_op, "kind", ""))
+                            if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+                                return result
+                            cond_texts = []
+                            rc = getattr(cond_op, "conditions", None)
+                            if rc:
+                                for c in rc:
+                                    ce = getattr(c, "expr", None)
+                                    if ce:
+                                        ct = self._get_signal(ce) or str(ce).strip()
+                                        if ct:
+                                            cond_texts.append(ct)
+                            cs = " && ".join(cond_texts) if cond_texts else ""
+                            l = getattr(cond_op, "left", None)
+                            r = getattr(cond_op, "right", None)
+                            if l:
+                                lk = str(getattr(l, "kind", ""))
+                                if "ConditionalOp" in lk or "ConditionalExpression" in lk:
+                                    result.update(_build_cond_map(l, path + [cs]))
+                                elif "NamedValue" in lk:
+                                    name = self._get_signal(l) or ""
+                                    fc = " && ".join([p for p in path + [cs] if p])
+                                    if name:
+                                        result[name] = fc
+                            if r:
+                                rk = str(getattr(r, "kind", ""))
+                                if "ConditionalOp" in rk or "ConditionalExpression" in rk:
+                                    result.update(_build_cond_map(r, path + [f"!({cs})"]))
+                                elif "NamedValue" in rk:
+                                    name = self._get_signal(r) or ""
+                                    neg = f"!({cs})" if cs else ""
+                                    fc = " && ".join([p for p in path + [neg] if p])
+                                    if name:
+                                        result[name] = fc
+                            return result
+                        
+                        cond_map = _build_cond_map(check_expr)
+                        signal_conditions = [(s, cond_map.get(s, "")) for s in leaf_signals2]
+                        
                         signal_conditions = self._filter_signal_conditions_by_module(
                             signal_conditions, module=module
                         )
