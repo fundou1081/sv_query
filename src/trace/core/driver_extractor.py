@@ -401,6 +401,7 @@ class DriverExtractor:
                 if "IntegerLiteral" in ok or "UnbasedUnsized" in ok:
                     val = getattr(operand, "value", None)
                     if val is not None:
+                        # [V6.9] 返回字面量值，但调用方应过滤——它不应作为信号名
                         return str(val)
                 elif "NamedValue" in ok:
                     return self._get_signal(operand)
