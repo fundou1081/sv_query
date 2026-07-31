@@ -96,14 +96,14 @@ def test_golden_mux5_in0():
     """in0 → out: sel == 0 (first match)"""
     conds = svq_dataflow("golden_mux5.in0", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["sel == 3'd0"], ["sel"])
+    assert_semantically_eq(conds, ["sel == 3'b0"], ["sel"])
 
 
 def test_golden_mux5_in1():
     """in1 → out: !sel==0 AND sel==1"""
     conds = svq_dataflow("golden_mux5.in1", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
-    assert_semantically_eq(conds, ["!(sel == 3'd0) && sel == 3'd1"], ["sel"])
+    assert_semantically_eq(conds, ["!(sel == 3'b0) && sel == 3'b1"], ["sel"])
 
 
 def test_golden_mux5_in2():
@@ -111,7 +111,7 @@ def test_golden_mux5_in2():
     conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
-        "!(sel == 3'd0) && !(sel == 3'd1) && sel == 3'd2"
+        "!(sel == 3'b0) && !(sel == 3'b1) && sel == 3'b10"
     ], ["sel"])
 
 
@@ -120,7 +120,7 @@ def test_golden_mux5_in3():
     conds = svq_dataflow("golden_mux5.in3", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
-        "!(sel == 3'd0) && !(sel == 3'd1) && !(sel == 3'd2) && sel == 3'd3"
+        "!(sel == 3'b0) && !(sel == 3'b1) && !(sel == 3'b10) && sel == 3'b11"
     ], ["sel"])
 
 
@@ -129,7 +129,7 @@ def test_golden_mux5_in4():
     conds = svq_dataflow("golden_mux5.in4", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
-        "!(sel == 3'd0) && !(sel == 3'd1) && !(sel == 3'd2) && !(sel == 3'd3) && sel == 3'd4"
+        "!(sel == 3'b0) && !(sel == 3'b1) && !(sel == 3'b10) && !(sel == 3'b11) && sel == 3'b100"
     ], ["sel"])
 
 
@@ -163,5 +163,5 @@ def test_golden_mux5_stability(iteration):
     conds = svq_dataflow("golden_mux5.in2", "golden_mux5.out", file_path=GOLDEN_MUX5_FILE)
     assert_no_typo(conds)
     assert_semantically_eq(conds, [
-        "!(sel == 3'd0) && !(sel == 3'd1) && sel == 3'd2"
+        "!(sel == 3'b0) && !(sel == 3'b1) && sel == 3'b10"
     ], ["sel"])
