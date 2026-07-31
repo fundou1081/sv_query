@@ -2585,7 +2585,7 @@ class DriverExtractor:
                     raw = getattr(item, "expression", None)
                     sig = self._get_signal(raw) if raw else ""
                     item_cond = sig if (sig and not sig.startswith("Expression(")) else str(raw or "").strip()
-                case_full = f"({case_cond}) == ({item_cond})" if case_cond and item_cond else (item_cond or case_cond)
+                case_full = f"{case_cond} == {item_cond}" if case_cond and item_cond else (item_cond or case_cond)
                 if case_full:
                     cond_stack.append(case_full)
                 case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None) or getattr(item, "stmt", None)
