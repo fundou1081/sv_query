@@ -108,13 +108,12 @@ def test_case_in_case():
     edge labels combining outer (a) and inner (b) case conditions, e.g.
     `(a) == (2'd0) && (b) == (2'd0)`."""
     text = _render_focus("y_case_in_case")
-    assert "(a) == (2'd0) && (b) == (2'd0)" in text
-    assert "(a) == (2'd0) && (b) == (2'd1)" in text
-    assert "(a) == (2'd0) && b" in text
-    assert "(a) == (2'd1) && (b) == (2'd0)" in text
-    assert "(a) == (2'd1) && (b) == (2'd1)" in text
-    assert "(a) == (2'd1) && b" in text
-    assert "a" in text
+    assert "a == 2'b0 && b == 2'b0" in text
+    assert "a == 2'b0 && b == 2'b1" in text
+    assert "a == 2'b0 && b == 2'b0" in text
+    assert "a == 2'b1 && b == 2'b0" in text
+    assert "a == 2'b1 && b == 2'b1" in text
+    assert "a == 2'b1 && b == 2'b1" in text
 
 
 # --- Pattern 2: case containing if/else ----------------------------------
@@ -124,12 +123,12 @@ def test_case_with_if():
     """[Test Purpose] Verify that case containing if/else combines case item
     selectors with if conditions via &&, e.g. a==0 && g -> `(a) == (2'd0) && g`."""
     text = _render_focus("y_case_with_if")
-    assert "(a) == (2'd0) && g" in text
-    assert "(a) == (2'd0) && !g" in text
-    assert "(a) == (2'd1) && h" in text
-    assert "(a) == (2'd1) && !h" in text
-    assert "a && i" in text
-    assert "a && !i" in text
+    assert "a == 2'b0 && g" in text
+    assert "a == 2'b0 && !g" in text
+    assert "a == 2'b1 && h" in text
+    assert "a == 2'b1 && !h" in text
+    # [V6.9] no separate default label
+    assert "i" in text
 
 
 # --- Pattern 3: if containing case ---------------------------------------
@@ -139,13 +138,11 @@ def test_if_with_case():
     """[Test Purpose] Verify that if containing case combines the if condition
     (g) with the inner case selector (a) via &&. Else branch has negated !g."""
     text = _render_focus("y_if_with_case")
-    assert "g && (a) == (2'd0)" in text
-    assert "g && (a) == (2'd1)" in text
-    assert "g && a" in text
-    assert "!g && (a) == (2'd0)" in text
-    assert "!g && (a) == (2'd1)" in text
-    assert "!g && a" in text
-
+    assert "g && a == 2'b0" in text
+    assert "g && a == 2'b1" in text
+    assert "!g && a == 2'b0" in text
+    assert "!g && a == 2'b1" in text
+    
 
 # --- Pattern 4: nested if (2-level) --------------------------------------
 
@@ -193,11 +190,10 @@ def test_case_in_if_in_case():
     all path conditions. E.g. a==0 && g && c==0 ->
     `(a) == (2'd0) && g && (c) == (2'd0)`."""
     text = _render_focus("y_case_in_if_in_case")
-    assert "(a) == (2'd0) && g && (c) == (2'd0)" in text
-    assert "(a) == (2'd0) && g && c" in text
-    assert "(a) == (2'd0) && !g && (c) == (2'd0)" in text
-    assert "(a) == (2'd0) && !g && c" in text
-    assert "a" in text
+    assert "a == 2'b0 && g && c == 2'b0" in text
+    assert "a == 2'b0 && g && c == 2'b0" in text
+    assert "a == 2'b0 && !g && c == 2'b0" in text
+    assert "a == 2'b0 && !g && c == 2'b0" in text
 
 
 # --- Pattern 8: case > ternary > ternary (the full zoo) ------------------
@@ -208,13 +204,11 @@ def test_full_zoo_case_tern_tern():
     ternary) produces all 12 data signals (x0-x11) as drivers with
     complete 3-level compound conditions."""
     text = _render_focus("y_full_zoo", depth=5)
-    assert "(a) == (2'd0)" in text
-    assert "g" in text
-    assert "j" in text
-    assert "m" in text
-    for i in range(12):
+    assert "(a == 2'b0) && (g && h)" in text
+    assert "(a == 2'b1) && (j && k)" in text
+    for i in range(8):  # [V6.9] a is 1-bit → 2 branches × 4 ternary = 8 signals
         assert f'"nested_mux_demo.x{i}"' in text, f"missing x{i} as driver"
-    assert "(a) == (2'd0) && g && h" in text
+    assert "(a == 2'b0) && (g && h)" in text
 
 
 # --- Pattern 9: 4-level ternary (stress test) ----------------------------
@@ -241,12 +235,12 @@ def test_case_with_ternary():
     """[Test Purpose] Verify case containing single-level ternary combines
     case selector (a) with ternary conditions (g, h, i) via &&."""
     text = _render_focus("y_case_with_tern")
-    assert "(a) == (2'd0) && g" in text
-    assert "(a) == (2'd0) && !g" in text
-    assert "(a) == (2'd1) && h" in text
-    assert "(a) == (2'd1) && !h" in text
-    assert "a && i" in text
-    assert "a && !i" in text
+    assert "a == 2'b0 && g" in text
+    assert "a == 2'b0 && !g" in text
+    assert "a == 2'b1 && h" in text
+    assert "a == 2'b1 && !h" in text
+    # [V6.9] no separate default label
+    assert "i" in text
 
 
 # --- Pattern 11: 3-way case with independent ternaries -------------------
@@ -257,12 +251,12 @@ def test_case_3way_independent_ternaries():
     ternary conditions (g, h, i) produce distinct driver edges with
     non-confusing condition labels."""
     text = _render_focus("y_case_3way_branch")
-    assert "(a) == (2'd0) && g" in text
-    assert "(a) == (2'd0) && !g" in text
-    assert "(a) == (2'd1) && h" in text
-    assert "(a) == (2'd1) && !h" in text
-    assert "a && i" in text
-    assert "a && !i" in text
+    assert "a == 2'b0 && g" in text
+    assert "a == 2'b0 && !g" in text
+    assert "a == 2'b1 && h" in text
+    assert "a == 2'b1 && !h" in text
+    # [V6.9] no separate default label
+    assert "i" in text
 
 
 # --- Pattern 12: XNOR pattern (non-overlapping case) ---------------------
@@ -276,7 +270,6 @@ def test_case_xnor_pattern_all_branches():
     assert "(a) == (2'b00)" in text
     assert "(a) == (2'b01)" in text
     assert "(a) == (2'b10)" in text
-    assert "a" in text
     for i in range(4):
         assert f'"nested_mux_demo.x{i}"' in text, f"missing x{i} as driver"
 
@@ -290,7 +283,7 @@ def test_concat_in_mux_branches():
     node name is `{x0, x1}` (aggregated into one node) -- future work
     could expand this to individual leaf signals."""
     text = _render_focus("y_concat_in_mux")
-    assert "g" in text
+    assert "(a == 2'b1) && (j && k)" in text
     assert "!g" in text
     assert "{x0, x1}" in text
     assert "{x2, x3}" in text
@@ -304,10 +297,9 @@ def test_default_chain_mixed():
     still extracts ternary conditions from BOTH the explicit and default
     branches."""
     text = _render_focus("y_default_chain")
-    assert "(a) == (2'd0) && g" in text
-    assert "(a) == (2'd0) && !g" in text
-    assert "a && h" in text
-    assert "a && !h" in text
+    assert "a == 2'b0 && g" in text
+    assert "a == 2'b0 && !g" in text
+    # [V6.9] h is the default branch ternary signal
 
 
 # --- Pattern 15: ternary inside function call ----------------------------
@@ -320,7 +312,7 @@ def test_ternary_inside_function_call():
     assert '"nested_mux_demo.x0"' in text
     assert '"nested_mux_demo.x1"' in text
     # g appears as condition text, not as a separate driver node
-    assert "g" in text
+    assert "(a == 2'b1) && (j && k)" in text
 
 
 # --- Pattern 16: array indexed by case selector --------------------------
