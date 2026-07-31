@@ -453,8 +453,22 @@ class DriverExtractor:
                     return sname
         # fallback: str() + strip()
         result = str(signal).strip()
-        # 处理可能的换行符和多行格式
         result = result.replace('\n', '').replace('\r', '').strip()
+        # [V6.9] 语义 AST 节点 str() 可能返回 "Expression(ExpressionKind.XXX)" 对象引用
+        # 尝试从常见属性中提取值
+        if result.startswith("Expression(") or result.startswith("<"):
+            # 尝试 .value (IntegerLiteral / StringLiteral / etc)
+            val = getattr(signal, "value", None)
+            if val is not None and not callable(val):
+                vs = str(val).strip()
+                if vs and not vs.startswith("Expression("):
+                    return vs
+            # 尝试 .symbol.name (NamedValue / VariableRef)
+            sym = getattr(signal, "symbol", None)
+            if sym:
+                name = getattr(sym, "name", None)
+                if name:
+                    return str(name).strip()
         return result if result else None
 
     # ==============================================================================
