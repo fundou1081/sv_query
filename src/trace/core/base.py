@@ -2057,6 +2057,14 @@ class PyslangAdapter:
                         self._analyze_stmt_for_drivers(item, drivers, depth + 1)
             return
 
+        # CaseItem (StandardCaseItem, DefaultCaseItem, PatternCaseItem, etc.)
+        # These contain a clause (the statement body) that needs to be analyzed.
+        if "CaseItem" in kind:
+            clause = getattr(stmt, "clause", None)
+            if clause:
+                self._analyze_stmt_for_drivers(clause, drivers, depth + 1)
+            return
+
         # ReturnStatement: return expr (function return value)
         # For functions, the function name itself is the output variable
         if "Return" in kind and "Statement" in kind:
