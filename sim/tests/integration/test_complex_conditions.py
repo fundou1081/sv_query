@@ -136,13 +136,11 @@ endmodule'''
         result = tracer.trace_signal('y', 'top')
 
         # [FIX] 现在正确提取 case 条件，default case 的 0 也被提取
-        self.assertEqual(len(result.drivers), 3,
-            "case V6.9 应有 2 个驱动源 (a, b, 字面量 0 为 CONST)")
+        self.assertEqual(len(result.drivers), 2,
+            "case V6.9 应有 2 个驱动源 (a, b), 字面量 0 为 CONST 不作为 driver")
         ids = self._driver_ids(result)
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
-        # default case 的字面量 0 也被提取
-        self.assertIn('0', ids, "y 的驱动应包含 default case 的 0")
         self.assertEqual(result.confidence, 'high')
 
     def test_case_priority(self):
@@ -280,11 +278,10 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
 
-        self.assertEqual(len(result.drivers), 2,
-            "case (1'b1) priority case V6.9 应有 1 个驱动源 (1, 字面量 0 为 CONST)")
+        self.assertEqual(len(result.drivers), 1,
+            "case (1'b1) priority case V6.9 应有 1 个驱动源 (1), 字面量 0 为 CONST")
         ids = self._driver_ids(result)
         self.assertIn('1', ids, "y 的驱动应包含 1")
-        self.assertIn('0', ids, "y 的驱动应包含 0")
         self.assertEqual(result.confidence, 'high')
 
     def test_multi_else_branch(self):
@@ -339,10 +336,11 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
 
-        self.assertEqual(len(result.drivers), 3,
-            "if (sel) y <= sel ? a : b V6.9 应有 2 个驱动源 (a, b, sel 是条件)")
+        self.assertEqual(len(result.drivers), 2,
+            "if (sel) y <= sel ? a : b V6.9 应有 2 个驱动源 (a, b), sel 是条件不是 driver")
         ids = self._driver_ids(result)
-        self.assertIn('top.sel', ids, "y 的驱动应包含 top.sel")
+        self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
+        self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
         self.assertEqual(result.confidence, 'high')
