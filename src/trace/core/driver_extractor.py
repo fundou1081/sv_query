@@ -386,8 +386,21 @@ class DriverExtractor:
             base_name = self._get_signal(base) if base else None
             lv = getattr(left, "value", None) if left else None
             rv = getattr(right, "value", None) if right else None
-            li = int(lv) if lv is not None else "x"
-            ri = int(rv) if rv is not None else "x"
+            # 语义 AST: left/right 可能是 NamedValueExpression（非 literal）
+            if lv is not None:
+                try:
+                    li = int(lv)
+                except (TypeError, ValueError):
+                    li = self._get_signal(left) or str(lv)
+            else:
+                li = self._get_signal(left) or "x"
+            if rv is not None:
+                try:
+                    ri = int(rv)
+                except (TypeError, ValueError):
+                    ri = self._get_signal(right) or str(rv)
+            else:
+                ri = self._get_signal(right) or "x"
             if base_name:
                 return f"{base_name}[{li}:{ri}]"
             return None
