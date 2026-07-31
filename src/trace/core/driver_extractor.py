@@ -2915,9 +2915,11 @@ class DriverExtractor:
             for expr in arg_items:
                 if expr is None:
                     continue
-                # [V6.9 fix] syntax tree ArgumentListSyntax 的 __iter__ 包含 Token 项
-                #          (逗号、括号), 用 hasattr(expr, 'expr') 过滤 Token
-                if not hasattr(expr, "expr"):
+                # [V6.9 fix] 语义 AST 的 Expression 直接有 .kind，不需要 .expr
+                #         syntax tree 的 Token（逗号、括号）也有 .kind 但无 .symbol
+                #         用 .symbol 区分：语义 AST 的 Expression 有 .symbol
+                is_semantic = hasattr(expr, "symbol")
+                if not hasattr(expr, "expr") and not is_semantic:
                     continue
                 kind_str = str(getattr(expr, "kind", ""))
                 # NamedArgument: .in(a) 格式，name 字段存参数名
