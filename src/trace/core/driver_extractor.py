@@ -1532,30 +1532,27 @@ class DriverExtractor:
                 left = getattr(cond_op, "left", None)
                 right = getattr(cond_op, "right", None)
                 
-                # 递归 left (true 分支)
-                if left:
-                    lk = str(getattr(left, "kind", ""))
-                    if "ConditionalOp" in lk or "ConditionalExpression" in lk:
-                        sub = _build_ternary_cond_map(left, path + [cond_str])
-                        result_map.update(sub)
-                    elif "NamedValue" in lk:
-                        name = self._get_signal(left) or ""
-                        full_cond = " && ".join([p for p in path + [cond_str] if p])
-                        if name:
-                            result_map[name] = full_cond
+                def _extract_arm_signals(arm_expr, cond_path):
+                    """Extract all leaf signal names from a ternary arm.
+
+                    Handles: NamedValue, BinaryOp, ParenthesizedExpression,
+                    Conversion, Call, ElementSelect, and nested ConditionalOp.
+                    Returns dict of {signal_name: cond_string}.
+                    """
+                    if arm_expr is None:
+                        return {}
+                    ak = str(getattr(arm_expr, "kind", ""))
+                    if "ConditionalOp" in ak or "ConditionalExpression" in ak:
+                        return _build_ternary_cond_map(arm_expr, cond_path)
+                    full_cond = " && ".join([p for p in cond_path if p])
+                    # Recurse through _extract_signals_from_expr to get all leaf names
+                    names = self._signal_visitor._extract_signals_from_expr(arm_expr) or []
+                    return {n: full_cond for n in names if n}
                 
-                # 递归 right (false 分支)
-                if right:
-                    rk = str(getattr(right, "kind", ""))
-                    if "ConditionalOp" in rk or "ConditionalExpression" in rk:
-                        sub = _build_ternary_cond_map(right, path + [f"!({cond_str})"])
-                        result_map.update(sub)
-                    elif "NamedValue" in rk:
-                        name = self._get_signal(right) or ""
-                        neg_cond = f"!({cond_str})" if cond_str else ""
-                        full_cond = " && ".join([p for p in path + [neg_cond] if p])
-                        if name:
-                            result_map[name] = full_cond
+                # 递归 left (true 分支) / right (false 分支)
+                result_map.update(_extract_arm_signals(left, path + [cond_str]))
+                neg_cond = f"!({cond_str})" if cond_str else ""
+                result_map.update(_extract_arm_signals(right, path + [neg_cond]))
                 
                 return result_map
             
