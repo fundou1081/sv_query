@@ -2653,7 +2653,7 @@ class DriverExtractor:
 
             # 提取条件文本
             pred = getattr(node, "predicate", None)
-            cond_text = str(pred).strip() if pred else ""
+            cond_text = self._get_signal(pred) or str(pred).strip() if pred else ""
 
             left = getattr(node, "left", None)
             right = getattr(node, "right", None)
