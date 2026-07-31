@@ -2276,9 +2276,14 @@ class DriverExtractor:
         except (ValueError, TypeError):
             pass
 
-        # 1-bit SV literals
+        # 1-bit SV literals: 1'bx, 1'bz 中拆分出的纯 'x'/'z'
+        # 但单字母信号名 'x'/'z' 是真实信号，不能在此过滤。
+        # _filter_signal_conditions_by_module 调用此函数时，
+        # signal names 来自 _extract_signals_from_expr，其中 'x' 是信号名。
+        # 过滤 literal fragment 的任务在 _extract_signals_from_expr 的
+        # Conversion/Call 分支中已处理（跳过 IntegerLiteral）。
         if token in ("x", "z", "X", "Z"):
-            return True
+            return False
 
         # Base-letter fragments from literal: "b00", "hff", "o17", "d42"
         # After splitting on "'", "2'b00" → ["2", "b00"]
