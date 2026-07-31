@@ -2398,7 +2398,7 @@ class DriverExtractor:
                 case_full = f"({case_cond}) == ({item_cond})" if case_cond and item_cond else (item_cond or case_cond)
                 if case_full:
                     cond_stack.append(case_full)
-                case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None)
+                case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None) or getattr(item, "stmt", None)
                 self._flatten_semantic(case_stmt, result, cond_stack)
                 if case_full:
                     cond_stack.pop()
