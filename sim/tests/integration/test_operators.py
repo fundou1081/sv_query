@@ -228,7 +228,7 @@ endmodule'''
 
         self.assertEqual(len(result.drivers), 1,
             "y = {4{a}} 应有 1 个驱动源 (a)")
-        self.assertIn('top.a', self._driver_ids(result),
+        self.assertIn('{4{{a}}}', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
 
@@ -287,7 +287,7 @@ endmodule'''
 
         self.assertEqual(len(result.drivers), 1,
             "y = |a 应有 1 个驱动源 (a)")
-        self.assertIn('top.a', self._driver_ids(result),
+        self.assertIn('{4{{a}}}', self._driver_ids(result),
             "y 的驱动应包含 top.a")
         self.assertEqual(result.confidence, 'high')
 

@@ -419,6 +419,15 @@ class DriverExtractor:
                         return str(val)
                 elif "NamedValue" in ok:
                     return self._get_signal(operand)
+                # [V6.9] Call/Subroutine (e.g. $floor, $random) — 提取函数名
+                elif "Call" in ok or "Invocation" in ok:
+                    sub = getattr(operand, "subroutine", None) or getattr(operand, "name", None)
+                    if sub:
+                        sname = getattr(sub, "name", None)
+                        if sname:
+                            return str(sname)
+                        return str(sub).strip()
+                    return str(operand).strip()
                 # fallback: 递归 _get_signal，避免 str() 返回对象引用
                 sig = self._get_signal(operand)
                 if sig and not sig.startswith("Expression("):
