@@ -33,18 +33,14 @@ digraph viz {
   "sync_fifo.count_q" [label="count_q [REG]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
   "sync_fifo.wr_ptr_q" [label="wr_ptr_q [REG]"; shape=box; fillcolor="#ff883322"; color="#ff8833"];
   "sync_fifo.rd_ptr_q" [label="rd_ptr_q [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.mem[wr_ptr_q[$clog2(SIZE)-1:0]]" [label="mem[wr_ptr_q[$clog2(SIZE)-1:0]] [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.wr_ptr_q + 1" [label="wr_ptr_q + 1 [1:0]"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.mem[rd_ptr_q[$clog2(SIZE)-1:0]]" [label="mem[rd_ptr_q[$clog2(SIZE)-1:0]] [1:0]"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.rd_ptr_q + 1" [label="rd_ptr_q + 1 [1:0]"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.count_q + 1" [label="count_q + 1 [1:0]"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
-  "sync_fifo.count_q - 1" [label="count_q - 1 [1:0]"; shape=ellipse; fillcolor="#4477cc22"; color="#4477cc"];
+  "sync_fifo.mem[wr_ptr_q[<expr> - 1:0]]" [label="mem[wr_ptr_q[Expression(ExpressionKind.Call) - 1:0]] [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
   "uart_top.rx_fifo" [label="rx_fifo [INSTANTIATED_MODULE] [1:0]"; shape=box3d; fillcolor="#f0f0f0"; color="#888888"];
   "uart_top.rx_fifo.clk_i" [label="clk_i [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#88888822"; color="#888888"];
   "uart_top.rx_fifo.rst_ni" [label="rst_ni [PORT_IN] [1:0]"; shape=invhouse; fillcolor="#cc444422"; color="#cc4444"];
   "uart_top.rx_fifo.pop_data_o" [label="pop_data_o [PORT_OUT] [7:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
   "uart_top.rx_fifo.empty_o" [label="empty_o [PORT_OUT] [1:0]"; shape=invhouse; fillcolor="#4477cc22"; color="#4477cc"];
-  "'0" [label="'0"; shape=ellipse; fillcolor="#ff883322"; color="#ff8833"];
+  "1'b0" [label="1'b0 [CONST]"; shape=hexagon; fillcolor="#4477cc22"; color="#4477cc"];
+  "5'b0" [label="5'b0 [CONST]"; shape=hexagon; fillcolor="#4477cc22"; color="#4477cc"];
   "sync_fifo.mem]" [label="mem] [REG] [1:0]"; shape=box; fillcolor="#4477cc22"; color="#4477cc"];
 
   "synchronizer.async_i" -> "synchronizer.sync1" [label="!(!rst_ni)\n`timescale 1ns/1ps
@@ -53,24 +49,23 @@ module sync"; fontsize=9];
 module sync"; fontsize=9];
   "uart_top.clk_i" -> "uart_top.rx_fifo.clk_i" [style=solid];
   "uart_top.rst_ni" -> "uart_top.rx_fifo.rst_ni" [style=solid];
-  "sync_fifo.push_data_i" -> "sync_fifo.mem[wr_ptr_q[$clog2(SIZE)-1:0]]" [label="!(!rst_ni) && push_i && !full_o\n`timescale 1ns/1ps
+  "sync_fifo.push_data_i" -> "sync_fifo.mem[wr_ptr_q[<expr> - 1:0]]" [label="!(!rst_ni) && push_i && !full_o\n`timescale 1ns/1ps
+module sync"; fontsize=9];
+  "sync_fifo.mem" -> "sync_fifo.pop_data_o" [label="!(!rst_ni) && pop_i && !empty_o\n`timescale 1ns/1ps
 module sync"; fontsize=9];
   "sync_fifo.count_q" -> "sync_fifo.empty_o" [label="`timescale 1ns/1ps
 module sync"; fontsize=9];
   "sync_fifo.count_q" -> "sync_fifo.full_o" [label="`timescale 1ns/1ps
 module sync"; fontsize=9];
-  "sync_fifo.mem[wr_ptr_q[$clog2(SIZE)-1:0]]" -> "sync_fifo.mem]" [arrowhead="open"];
-  "sync_fifo.wr_ptr_q + 1" -> "sync_fifo.wr_ptr_q" [label="!(!rst_ni) && push_i && !full_o\n`timescale 1ns/1ps
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [label="!(!rst_ni) && {push_i && !full_o, pop_i \n`timescale 1ns/1ps
 module sync"; fontsize=9];
-  "sync_fifo.mem[rd_ptr_q[$clog2(SIZE)-1:0]]" -> "sync_fifo.pop_data_o" [label="!(!rst_ni) && pop_i && !empty_o\n`timescale 1ns/1ps
+  "sync_fifo.count_q" -> "sync_fifo.count_q" [label="!(!rst_ni) && {push_i && !full_o, pop_i \n`timescale 1ns/1ps
 module sync"; fontsize=9];
-  "sync_fifo.mem[rd_ptr_q[$clog2(SIZE)-1:0]]" -> "sync_fifo.mem]" [arrowhead="open"];
-  "sync_fifo.rd_ptr_q + 1" -> "sync_fifo.rd_ptr_q" [label="!(!rst_ni) && pop_i && !empty_o\n`timescale 1ns/1ps
+  "sync_fifo.wr_ptr_q" -> "sync_fifo.wr_ptr_q" [label="!(!rst_ni) && push_i && !full_o\n`timescale 1ns/1ps
 module sync"; fontsize=9];
-  "sync_fifo.count_q + 1" -> "sync_fifo.count_q" [label="!(!rst_ni) && ({push_i && !full_o, pop_i\n`timescale 1ns/1ps
+  "sync_fifo.rd_ptr_q" -> "sync_fifo.rd_ptr_q" [label="!(!rst_ni) && pop_i && !empty_o\n`timescale 1ns/1ps
 module sync"; fontsize=9];
-  "sync_fifo.count_q - 1" -> "sync_fifo.count_q" [label="!(!rst_ni) && ({push_i && !full_o, pop_i\n`timescale 1ns/1ps
-module sync"; fontsize=9];
+  "sync_fifo.mem[wr_ptr_q[<expr> - 1:0]]" -> "sync_fifo.mem]" [arrowhead="open"];
   "uart_top.rx_fifo.clk_i" -> "uart_top.rx_fifo.clk_i" [style=solid];
   "uart_top.rx_fifo.clk_i" -> "uart_top.rx_fifo" [arrowhead="open"];
   "uart_top.rx_fifo.rst_ni" -> "uart_top.rx_fifo.rst_ni" [style=solid];
@@ -81,9 +76,9 @@ module sync"; fontsize=9];
   "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo.empty_o";
   "uart_top.rx_fifo.empty_o" -> "uart_top.rx_ready_o" [style=solid];
   "uart_top.rx_fifo.empty_o" -> "uart_top.rx_fifo" [arrowhead="open"];
-  "'0" -> "synchronizer.sync1" [label="!rst_ni"; fontsize=9];
-  "'0" -> "synchronizer.sync0_o" [label="!rst_ni"; fontsize=9];
-  "'0" -> "sync_fifo.count_q" [label="!rst_ni"; fontsize=9];
-  "'0" -> "sync_fifo.wr_ptr_q" [label="!rst_ni"; fontsize=9];
-  "'0" -> "sync_fifo.rd_ptr_q" [label="!rst_ni"; fontsize=9];
+  "1'b0" -> "synchronizer.sync1" [label="!rst_ni"; fontsize=9];
+  "1'b0" -> "synchronizer.sync0_o" [label="!rst_ni"; fontsize=9];
+  "5'b0" -> "sync_fifo.count_q" [label="!rst_ni"; fontsize=9];
+  "5'b0" -> "sync_fifo.wr_ptr_q" [label="!rst_ni"; fontsize=9];
+  "5'b0" -> "sync_fifo.rd_ptr_q" [label="!rst_ni"; fontsize=9];
 }

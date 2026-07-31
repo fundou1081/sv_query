@@ -127,7 +127,7 @@ module cmp(input [7:0] a, b, c, d, output [7:0] y);
     assign y = (a > b) ? c : d;
 endmodule""")
         assert rc == 0
-        assert "a>b" in dot, f"Compare not found:\n{dot[:500]}"
+        assert "a > b" in dot or "a>b" in dot, f"Compare not found:\n{dot[:500]}"
 
     # ── 混合运算 ──
 
