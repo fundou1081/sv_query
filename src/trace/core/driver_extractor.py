@@ -2264,22 +2264,36 @@ class DriverExtractor:
         return result
     
     def _extract_reset_from_always(self, n) -> str:
-        """[V6.9] 从 always 块的 syntax timing control 提取 reset 信号。
-        
-        negedge 通常是异步 reset。
+        """[V6.9] 提取 reset 信号 — 优先 semantic AST .timing.events, fallback syntax tree。
+
+        negedge（有时 posedge 第二个）通常是异步 reset。
         """
         reset_signal = ""
-        syntax = getattr(n, "syntax", None)
-        if syntax:
-            tc = getattr(syntax, "timingControl", None)
-            if tc:
-                events = getattr(tc, "events", []) or []
-                for evt in events:
-                    edge = str(getattr(evt, "edge", ""))
-                    if "NegEdge" in edge:
-                        expr = getattr(evt, "expr", None)
-                        if expr:
+        events = []
+        # [V6.9] 优先 semantic AST: TimedStatement.timing.events (SignalEventControl list)
+        body = getattr(n, "body", None)
+        timing = getattr(body, "timing", None) if body else None
+        if timing:
+            events = getattr(timing, "events", None) or []
+        # Fallback: syntax tree timingControl.events
+        if not events:
+            syntax = getattr(n, "syntax", None)
+            if syntax:
+                tc = getattr(syntax, "timingControl", None)
+                if tc:
+                    events = getattr(tc, "events", []) or []
+        if events and hasattr(events, "__iter__") and not isinstance(events, str):
+            for evt in events:
+                edge_str = str(getattr(evt, "edge", ""))
+                if "NegEdge" in edge_str:
+                    expr = getattr(evt, "expr", None) or getattr(evt, "expression", None)
+                    if expr:
+                        sig = self._get_signal(expr)
+                        if sig and sig != str(expr):  # 不返回对象引用
+                            reset_signal = sig
+                        else:
                             reset_signal = str(expr).strip()
+                        break
         return reset_signal
     
     def _get_always_body_items(self, n) -> list:
