@@ -2266,7 +2266,9 @@ class DriverExtractor:
     def _extract_reset_from_always(self, n) -> str:
         """[V6.9] 提取 reset 信号 — 优先 semantic AST .timing.events, fallback syntax tree。
 
-        negedge（有时 posedge 第二个）通常是异步 reset。
+        策略:
+        1. 优先找 NegEdge event（异步低有效复位）
+        2. 如果 events >= 2, 第二个 event 的信号也是 reset（posedge rst 场景）
         """
         reset_signal = ""
         events = []
@@ -2283,17 +2285,23 @@ class DriverExtractor:
                 if tc:
                     events = getattr(tc, "events", []) or []
         if events and hasattr(events, "__iter__") and not isinstance(events, str):
-            for evt in events:
+            evt_list = list(events)
+            # 策略 1: 找 NegEdge（异步低有效复位）
+            for evt in evt_list:
                 edge_str = str(getattr(evt, "edge", ""))
                 if "NegEdge" in edge_str:
                     expr = getattr(evt, "expr", None) or getattr(evt, "expression", None)
                     if expr:
                         sig = self._get_signal(expr)
-                        if sig and sig != str(expr):  # 不返回对象引用
-                            reset_signal = sig
-                        else:
-                            reset_signal = str(expr).strip()
+                        reset_signal = sig if (sig and not sig.startswith("Expression(")) else str(expr).strip()
                         break
+            # 策略 2: 如果没有 NegEdge 但 events >= 2, 第二个是 reset（posedge rst 场景）
+            if not reset_signal and len(evt_list) >= 2:
+                evt = evt_list[1]
+                expr = getattr(evt, "expr", None) or getattr(evt, "expression", None)
+                if expr:
+                    sig = self._get_signal(expr)
+                    reset_signal = sig if (sig and not sig.startswith("Expression(")) else str(expr).strip()
         return reset_signal
     
     def _get_always_body_items(self, n) -> list:
