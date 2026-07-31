@@ -2541,16 +2541,27 @@ class DriverExtractor:
         每个 CaseItem 有 .expressions (值列表) 和 .clause (对应语句)。
         """
         case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None)
-        case_cond = str(case_expr).strip() if case_expr else ""
+        # [V6.9] 用 _get_signal 而非 str() 避免对象引用
+        case_cond = self._get_signal(case_expr) or str(case_expr).strip() if case_expr else ""
         items = getattr(stmt, "items", None)
         if items is not None and hasattr(items, "__iter__") and not isinstance(items, str):
             for item in items:
                 item_exprs = getattr(item, "expressions", None)
                 if item_exprs and hasattr(item_exprs, "__iter__") and not isinstance(item_exprs, str):
-                    expr_strs = [str(e).strip() for e in item_exprs if str(e).strip()]
+                    # [V6.9] 用 _get_signal 而非 str() 避免对象引用
+                    expr_strs = []
+                    for e in item_exprs:
+                        sig = self._get_signal(e)
+                        if sig and not sig.startswith("Expression("):
+                            expr_strs.append(sig)
+                        else:
+                            expr_strs.append(str(e).strip())
                     item_cond = " || ".join(expr_strs)
                 else:
-                    item_cond = str(getattr(item, "expression", None) or "").strip()
+                    # [V6.9] 用 _get_signal 而非 str() 避免对象引用
+                    raw = getattr(item, "expression", None)
+                    sig = self._get_signal(raw) if raw else ""
+                    item_cond = sig if (sig and not sig.startswith("Expression(")) else str(raw or "").strip()
                 case_full = f"({case_cond}) == ({item_cond})" if case_cond and item_cond else (item_cond or case_cond)
                 if case_full:
                     cond_stack.append(case_full)
