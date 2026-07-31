@@ -27,6 +27,7 @@ from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
+from pyslang.pyslang.ast import StatementKind, ExpressionKind  # [V6.9] semantic AST only
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
 logger = logging.getLogger(__name__)
@@ -2248,133 +2249,181 @@ class DriverExtractor:
         return reset_signal
     
     def _get_always_body_items(self, n) -> list:
-        """[V6.9] 从 always 块的 syntax 层获取 flat assignment statements。
-        
-        递归展开 if/else/case 嵌套，展平所有 NonblockingAssignment/BlockingAssignment。
-        
-        路径: ProceduralBlockSymbol.syntax → TimingControlStatement → BlockStatement
-        → items → 展开为 flat expr 列表
+        """[V6.9] 从 semantic AST 获取 flat assignment expressions。
+
+        全部使用 semantic AST (StatementKind/ExpressionKind)。
+
+        - always @(posedge clk): ProceduralBlock.body = TimedStatement → .stmt
+        - initial:           ProceduralBlock.body = ExpressionStatement / BlockStatement
+        - always_comb:       ProceduralBlock.body = BlockStatement / ExpressionStatement
         """
-        syntax = getattr(n, "syntax", None)
-        if syntax is None:
+        sem_body = getattr(n, "body", None)
+        if sem_body is None:
             return []
         
-        stmt = getattr(syntax, "statement", None)
-        if stmt is None:
-            return []
+        kind = getattr(sem_body, "kind", None)
+        # TimedStatement: unwrap timing wrapper
+        if kind == StatementKind.Timed:
+            inner = getattr(sem_body, "stmt", None) or getattr(sem_body, "statement", None)
+            if inner is None:
+                return []
+            sem_body = inner
         
-        # 跳过 TimingControlStatement
-        sk = str(getattr(stmt, "kind", ""))
-        if "TimingControlStatement" in sk:
-            stmt = getattr(stmt, "statement", None) or stmt
-        
-        # 递归展平所有赋值语句
         items = []
-        self._flatten_assignments(stmt, items)
+        self._flatten_semantic(sem_body, items)
         return items
-    
+
     def _flatten_assignments(self, stmt, result: list, cond_stack: list[str] | None = None):
-        """[V6.9] 递归展平语句树，收集所有 NonblockingAssignment/BlockingAssignment。
-        
-        处理: BlockStatement → IfStatement (then/else) → ExpressionStatement → Assignment
-        
-        cond_stack: 当前所在 if/case 分支的条件列表（用于还原 edge.condition）
+        """[DEPRECATED] 旧 syntax-based 展开。保留兼容 _expand_and_append_assignment。"""
+        # 重定向到 semantic 版本
+        self._flatten_semantic(stmt, result, cond_stack)
+
+    def _flatten_semantic(self, stmt, result: list, cond_stack: list[str] | None = None):
+        """[V6.9] 纯 semantic AST 展平。
+
+        遍历语义语句树，收集所有 AssignmentExpression。
+        支持: Block(StatementKind.Block), Conditional, ExpressionStatement,
+               Case, WhileLoop, ForLoop, Timed。
         """
         if stmt is None:
             return
         if cond_stack is None:
             cond_stack = []
-        
-        sk = str(getattr(stmt, "kind", ""))
-        
-        # BlockStatement: 遍历 items
-        if "Block" in sk or "SeqBlock" in sk:
-            items = getattr(stmt, "items", None)
-            if items and hasattr(items, "__iter__"):
-                for item in items:
-                    self._flatten_assignments(item, result, cond_stack)
+
+        kind = getattr(stmt, "kind", None)
+
+        # StatementKind.Block: 遍历 .body (单个对象或 list)
+        if kind == StatementKind.Block:
+            body_val = getattr(stmt, "body", None)
+            if body_val is None:
+                return
+            if hasattr(body_val, "__iter__") and not isinstance(body_val, str):
+                for item in body_val:
+                    self._flatten_semantic(item, result, cond_stack)
+            else:
+                self._flatten_semantic(body_val, result, cond_stack)
             return
-        
-        # IfStatement / ConditionalStatement: 展开 then + else
-        if "If" in sk or "Conditional" in sk:
-            # 提取条件表达式文本
-            # pyslang ConditionalStatement: 条件在 .predicate，不是 .condition
+
+        # StatementKind.Timed: 跳过 timing，进入 .stmt
+        if kind == StatementKind.Timed:
+            inner = getattr(stmt, "stmt", None) or getattr(stmt, "statement", None)
+            self._flatten_semantic(inner, result, cond_stack)
+            return
+
+        # StatementKind.Conditional: 展开 then + else
+        if kind == StatementKind.Conditional:
             cond = getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
             new_cond = str(cond).strip() if cond else ""
             is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
-            
-            # [V6.9] Then 分支: 原条件
             if is_real:
                 cond_stack.append(new_cond)
             then_stmt = getattr(stmt, "statement", None)
-            self._flatten_assignments(then_stmt, result, cond_stack)
+            self._flatten_semantic(then_stmt, result, cond_stack)
             if is_real:
                 cond_stack.pop()
-            
-            # [V6.9] Else 分支: 取反条件 (!cond)
             if is_real:
-                # 简单标识符不加额外括号
                 if all(c.isalnum() or c == '_' for c in new_cond):
                     cond_stack.append(f"!{new_cond}")
                 else:
                     cond_stack.append(f"!({new_cond})")
-            # else branch: 可能是 ElseClauseSyntax（需要 .clause）或直接是语句
             else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
             if else_node is not None:
-                ek = str(getattr(else_node, "kind", ""))
-                # ElseClauseSyntax 有 .clause → 展开内层
-                if "ElseClause" in ek:
-                    clause = getattr(else_node, "clause", None)
-                    self._flatten_assignments(clause, result, cond_stack)
-                else:
-                    self._flatten_assignments(else_node, result, cond_stack)
+                clause = getattr(else_node, "clause", None) or getattr(else_node, "statement", None) or else_node
+                self._flatten_semantic(clause, result, cond_stack)
             if is_real:
                 cond_stack.pop()
             return
-        
-        # ExpressionStatement: 提取内层 expression
-        if "ExpressionStatement" in sk:
-            expr = getattr(stmt, "expr", None)
-            if expr:
-                ek = str(getattr(expr, "kind", ""))
-                if "Assignment" in ek:
-                    self._expand_and_append_assignment(expr, cond_stack, result)
-                elif "Call" in ek or "Invocation" in ek:
-                    # [V6.9 fix] always_comb task_call(a, b) — 语法树中是 InvocationExpression
-                    result.append((stmt, " ".join(cond_stack) + ""))
+
+        # StatementKind.WhileLoop / StatementKind.ForLoop: 进入 .body
+        if kind == StatementKind.WhileLoop or kind == StatementKind.ForLoop:
+            body = getattr(stmt, "body", None)
+            if body is not None and hasattr(body, "__iter__") and not isinstance(body, str):
+                for item in body:
+                    self._flatten_semantic(item, result, cond_stack)
+            elif body is not None:
+                self._flatten_semantic(body, result, cond_stack)
             return
-        
-        # CaseStatement: 展开各分支
-        if "Case" in sk:
-            case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None) or getattr(stmt, "condition", None)
+
+        # StatementKind.ExpressionStatement: 提取 .expr
+        if kind == StatementKind.ExpressionStatement:
+            expr = getattr(stmt, "expr", None)
+            if expr is not None:
+                ek = getattr(expr, "kind", None)
+                if ek == ExpressionKind.Assignment:
+                    # 追加 semantic AssignmentExpression
+                    outer_cond = " && ".join(cond_stack) if cond_stack else ""
+                    result.append((expr, outer_cond))
+            return
+
+        # StatementKind.Case: 展开各分支
+        if kind == StatementKind.Case:
+            case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None)
             case_cond = str(case_expr).strip() if case_expr else ""
             items = getattr(stmt, "items", None)
-            if items and hasattr(items, "__iter__"):
+            if items is not None and hasattr(items, "__iter__") and not isinstance(items, str):
                 for item in items:
-                    # 每个 case item 有自身的匹配表达式
-                    # expressions 可能是列表 (StandardCaseItem 有多个匹配值)
                     item_exprs = getattr(item, "expressions", None)
                     if item_exprs and hasattr(item_exprs, "__iter__") and not isinstance(item_exprs, str):
                         item_cond = " || ".join(str(e).strip() for e in item_exprs if str(e).strip())
                     else:
                         item_cond = str(getattr(item, "expression", None) or "").strip()
-                    if case_cond and item_cond:
-                        case_full = f"({case_cond}) == ({item_cond})"
-                    else:
-                        case_full = item_cond or case_cond
-                    
+                    case_full = f"({case_cond}) == ({item_cond})" if case_cond and item_cond else (item_cond or case_cond)
                     if case_full:
                         cond_stack.append(case_full)
-                    # pyslang case item 用 .clause，不是 .statement
                     case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None)
-                    self._flatten_assignments(case_stmt, result, cond_stack)
+                    self._flatten_semantic(case_stmt, result, cond_stack)
                     if case_full:
                         cond_stack.pop()
             return
-        
+
+        # Fallback: 旧语法树兼容（StatementList / SequentialBlock etc.）
+        # 这些会在逐步迁移中消除
+        kid = str(kind) if kind else ""
+        if "Block" in kid or "SeqBlock" in kid:
+            body = getattr(stmt, "body", None) or getattr(stmt, "items", None)
+            if body and hasattr(body, "__iter__"):
+                for item in body:
+                    self._flatten_semantic(item, result, cond_stack)
+            return
+        if "Conditional" in kid or "If" in kid:
+            cond = getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
+            new_cond = str(cond).strip() if cond else ""
+            is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
+            if is_real:
+                cond_stack.append(new_cond)
+            then_stmt = getattr(stmt, "statement", None)
+            self._flatten_semantic(then_stmt, result, cond_stack)
+            if is_real:
+                cond_stack.pop()
+            if is_real:
+                if all(c.isalnum() or c == '_' for c in new_cond):
+                    cond_stack.append(f"!{new_cond}")
+                else:
+                    cond_stack.append(f"!({new_cond})")
+            else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
+            if else_node is not None:
+                clause = getattr(else_node, "clause", None) or getattr(else_node, "statement", None) or else_node
+                self._flatten_semantic(clause, result, cond_stack)
+            if is_real:
+                cond_stack.pop()
+            return
+        if "ExpressionStatement" in kid:
+            expr = getattr(stmt, "expr", None)
+            if expr is not None:
+                ek = str(getattr(expr, "kind", ""))
+                if "Assignment" in ek:
+                    outer_cond = " && ".join(cond_stack) if cond_stack else ""
+                    result.append((expr, outer_cond))
+            return
+        if "TimingControl" in kid:
+            inner = getattr(stmt, "statement", None)
+            self._flatten_semantic(inner, result, cond_stack)
+            return
         # 直接就是赋值表达式
-        if "Assignment" in sk:
-            self._expand_and_append_assignment(stmt, cond_stack, result)
+        if kind == ExpressionKind.Assignment:
+            outer_cond = " && ".join(cond_stack) if cond_stack else ""
+            result.append((stmt, outer_cond))
+            return
 
     def _expand_and_append_assignment(self, assign_expr, cond_stack, result):
         """[V6.9] 如果 RHS 是 ternary (syntax ConditionalExpression), 递归展开。
