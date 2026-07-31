@@ -97,11 +97,12 @@ def test_y_case_each_branch_shows_selector_and_value(tmp_path):
     for substr, label in expected:
         e = next(l for l in edges if substr in l)
         assert f'label="{label}"' in e, f"expected {label}: {e}"
-    # [V6.9] sel_b is 2-bit (0/1/2/3), pyslang expands default → 2'b11.
-    # The 'f' signal now has a concrete label instead of 'default'.
+    # [V6.9] pyslang semantic AST stores default branch in `.defaultCase`
+    # outside `.items`, so the label uses "default" instead of a concrete
+    # value expression (e.g. "2'b11").  Test for the "default" keyword.
     f_edge = next((l for l in edges if 'mux_demo.f" -> "mux_demo.y_case"' in l), None)
     if f_edge is not None:
-        assert 'label="sel_b == 2' in f_edge, f"f default edge: {f_edge}"
+        assert 'label="sel_b == default"' in f_edge, f"f default edge: {f_edge}"
     else:
         # V6.9 may not generate a separate edge for f; verify at least 3 edges exist
         assert len(edges) >= 3, f"expected ≥3 edges, got {len(edges)}"
