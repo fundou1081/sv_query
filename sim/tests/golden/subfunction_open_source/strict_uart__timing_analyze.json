@@ -7,10 +7,10 @@
         "depth": 1,
         "full_path": [
           "push_data_i",
-          "NamedValue)]"
+          "Call) - 1:0]]"
         ],
         "registers": [
-          "NamedValue)]"
+          "Call) - 1:0]]"
         ],
         "score": 1
       },
@@ -29,12 +29,12 @@
         "depth": 2,
         "full_path": [
           "push_data_i",
-          "NamedValue)]",
-          "pop_data_o"
+          "Call) - 1:0]]",
+          "mem]"
         ],
         "registers": [
-          "NamedValue)]",
-          "pop_data_o"
+          "Call) - 1:0]]",
+          "mem]"
         ],
         "score": 3
       },
@@ -52,7 +52,7 @@
         "score": 3
       }
     ],
-    "reg_count": 7,
-    "total_nodes": 32
+    "reg_count": 8,
+    "total_nodes": 33
   }
 }
