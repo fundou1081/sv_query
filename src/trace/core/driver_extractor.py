@@ -2317,9 +2317,22 @@ class DriverExtractor:
     # —— Visitor 方法 ——
 
     def _flatten_block(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.Block: 遍历 .body (单个对象或 iterable)。"""
+        """StatementKind.Block: 遍历 .body (单个对象或 iterable)。
+
+        .body 可能是:
+          - 单个 Statement (ConditionalStatement, ExpressionStatement 等)
+          - iterable list of Statement
+          - StatementList (StatementKind.List) → 需迭代 .list
+        """
         body_val = getattr(stmt, "body", None)
         if body_val is None:
+            return
+        # StatementKind.List: 特殊类型，迭代 .list 属性
+        if getattr(body_val, "kind", None) == StatementKind.List:
+            stmt_list = getattr(body_val, "list", None)
+            if stmt_list is not None and hasattr(stmt_list, "__iter__") and not isinstance(stmt_list, str):
+                for item in stmt_list:
+                    self._flatten_semantic(item, result, cond_stack)
             return
         if hasattr(body_val, "__iter__") and not isinstance(body_val, str):
             for item in body_val:
