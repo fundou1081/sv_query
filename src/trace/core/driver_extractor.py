@@ -2595,6 +2595,18 @@ class DriverExtractor:
                 if case_full:
                     cond_stack.pop()
 
+            # [V6.9] pyslang semantic AST stores default branch outside `.items`
+            # in `.defaultCase` (ExpressionStatement), not as a CaseItem.
+            default_case = getattr(stmt, "defaultCase", None)
+            if default_case is not None:
+                item_cond = "default"
+                case_full = f"{case_cond} == default" if case_cond else "default"
+                if case_full:
+                    cond_stack.append(case_full)
+                self._flatten_semantic(default_case, result, cond_stack)
+                if case_full:
+                    cond_stack.pop()
+
     def _expand_and_append_assignment(self, assign_expr, cond_stack, result):
         """[V6.9] 如果 RHS 是 ternary (syntax ConditionalExpression), 递归展开。
 
