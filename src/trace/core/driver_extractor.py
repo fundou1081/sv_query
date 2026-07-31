@@ -342,6 +342,20 @@ class DriverExtractor:
             if ident:
                 val = getattr(ident, "value", None) or str(ident)
                 return str(val).strip()
+        # BinaryOp: 递归展开为 "left op right" — 避免对象引用
+        if "BinaryOp" in sk:
+            left = getattr(signal, "left", None)
+            right = getattr(signal, "right", None)
+            ls = self._get_signal(left) if left else "?"
+            rs = self._get_signal(right) if right else "?"
+            if ls and rs:
+                return f"{ls} {rs}"
+            return ls or rs or None
+        # UnaryOp: 递归展开为 "op operand" — 避免对象引用
+        if "UnaryOp" in sk:
+            operand = getattr(signal, "operand", None)
+            op_str = self._get_signal(operand) if operand else "?"
+            return f"!{op_str}" if op_str else None
         # ConversionExpression: type cast (e.g., 8'hAA → int literal)
         if "Conversion" in sk:
             operand = getattr(signal, "operand", None)
