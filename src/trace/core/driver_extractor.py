@@ -2311,22 +2311,25 @@ class DriverExtractor:
             return
 
         # StatementKind.Conditional: 展开 then + else
+        # semantic AST: .ifTrue + .ifFalse（不是 syntax 的 .statement + .elseClause）
         if kind == StatementKind.Conditional:
             cond = getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
             new_cond = str(cond).strip() if cond else ""
             is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
+            # ifTrue: 单语句或 BlockStatement
             if is_real:
                 cond_stack.append(new_cond)
-            then_stmt = getattr(stmt, "statement", None)
+            then_stmt = getattr(stmt, "ifTrue", None) or getattr(stmt, "statement", None)
             self._flatten_semantic(then_stmt, result, cond_stack)
             if is_real:
                 cond_stack.pop()
+            # ifFalse: 单语句或 BlockStatement
             if is_real:
                 if all(c.isalnum() or c == '_' for c in new_cond):
                     cond_stack.append(f"!{new_cond}")
                 else:
                     cond_stack.append(f"!({new_cond})")
-            else_node = getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
+            else_node = getattr(stmt, "ifFalse", None) or getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
             if else_node is not None:
                 clause = getattr(else_node, "clause", None) or getattr(else_node, "statement", None) or else_node
                 self._flatten_semantic(clause, result, cond_stack)
