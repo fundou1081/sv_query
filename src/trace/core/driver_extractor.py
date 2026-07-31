@@ -393,6 +393,20 @@ class DriverExtractor:
             operand = getattr(signal, "operand", None)
             op_str = self._get_signal(operand) if operand else "?"
             return f"!{op_str}" if op_str else None
+        # Replication: {N{expr}} — 返回 "{N{expr}}"
+        if "Replication" in sk:
+            count = getattr(signal, "count", None)
+            concat = getattr(signal, "concat", None)
+            cnt_str = self._get_signal(count) if count else "?"
+            concat_str = self._get_signal(concat) if concat else "?"
+            if cnt_str and concat_str:
+                return f"{{{cnt_str}{{{concat_str}}}}}"
+            return None
+        # Concatenation: {a, b, c} — 展开 operands
+        if "Concatenation" in sk:
+            operands = getattr(signal, "operands", None) or []
+            parts = [self._get_signal(o) or str(o) for o in operands if o]
+            return "{" + ", ".join(parts) + "}" if parts else None
         # ConversionExpression: type cast (e.g., 8'hAA → int literal)
         if "Conversion" in sk:
             operand = getattr(signal, "operand", None)
