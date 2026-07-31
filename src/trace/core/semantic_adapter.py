@@ -1537,9 +1537,15 @@ class SemanticAdapter:
                     signals.append(str(name))
             return signals
 
-        # [V6.9] ConversionExpression (type casting): recurse into .operand
+        # [V6.9] ConversionExpression (type casting): 只在 operand 是信号引用时递归
         if "Conversion" in kind_str:
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
+            operand = getattr(expr, "operand", None)
+            if operand:
+                ok = str(getattr(operand, "kind", ""))
+                # 跳过字面量 (IntegerLiteral, UnbasedUnsizedIntegerLiteral)
+                if "IntegerLiteral" in ok or "UnbasedUnsized" in ok:
+                    return signals
+                signals.extend(self._extract_signals_from_expr(operand))
             return signals
 
         # [V6.9] InsideExpression: left inside { rangeList }
