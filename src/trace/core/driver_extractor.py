@@ -2351,11 +2351,16 @@ class DriverExtractor:
         semantic AST 用 .ifTrue/.ifFalse（不是 syntax 的 .statement/.elseClause）。
         """
         cond = getattr(stmt, "conditions", None) or getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
-        # .conditions 是 list；取第一个元素
+        # .conditions 是 Condition 对象列表；取出第一个 .expr 并用 _get_signal 提取信号名
         if hasattr(cond, "__iter__") and not isinstance(cond, str):
             cond_list = list(cond)
-            cond = cond_list[0] if cond_list else None
-        new_cond = str(cond).strip() if cond is not None else ""
+            if cond_list:
+                cond_expr = getattr(cond_list[0], "expr", None)
+                new_cond = self._get_signal(cond_expr) if cond_expr else ""
+            else:
+                new_cond = ""
+        else:
+            new_cond = str(cond).strip() if cond is not None else ""
         is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
 
         # ifTrue
