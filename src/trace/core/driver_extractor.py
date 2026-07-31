@@ -27,7 +27,7 @@ from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
 from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
-from pyslang.pyslang.ast import StatementKind, ExpressionKind  # [V6.9] semantic AST only
+from pyslang.pyslang.ast import StatementKind, ExpressionKind, BinaryOperator  # [V6.9] semantic AST only
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,40 @@ __all__ = ["DriverExtractor", "ExtractorResult"]
 
 
 class DriverExtractor:
+    """Driver 提取器 — 从 semantic AST 的 always/assign 中提取 driver 边。"""
+
+    # [V6.9] BinaryOperator -> 可读符号映射表
+    _BINOP_SYMBOL = {
+        BinaryOperator.Add: "+",
+        BinaryOperator.ArithmeticShiftLeft: "<<<",
+        BinaryOperator.ArithmeticShiftRight: ">>>",
+        BinaryOperator.BinaryAnd: "&",
+        BinaryOperator.BinaryOr: "|",
+        BinaryOperator.BinaryXnor: "~^",
+        BinaryOperator.BinaryXor: "^",
+        BinaryOperator.CaseEquality: "===",
+        BinaryOperator.CaseInequality: "!==",
+        BinaryOperator.Divide: "/",
+        BinaryOperator.Equality: "==",
+        BinaryOperator.GreaterThan: ">",
+        BinaryOperator.GreaterThanEqual: ">=",
+        BinaryOperator.Inequality: "!=",
+        BinaryOperator.LessThan: "<",
+        BinaryOperator.LessThanEqual: "<=",
+        BinaryOperator.LogicalAnd: "&&",
+        BinaryOperator.LogicalEquivalence: "<->",
+        BinaryOperator.LogicalImplication: "->",
+        BinaryOperator.LogicalOr: "||",
+        BinaryOperator.LogicalShiftLeft: "<<",
+        BinaryOperator.LogicalShiftRight: ">>",
+        BinaryOperator.Mod: "%",
+        BinaryOperator.Multiply: "*",
+        BinaryOperator.Power: "**",
+        BinaryOperator.Subtract: "-",
+        BinaryOperator.WildcardEquality: "==?",
+        BinaryOperator.WildcardInequality: "!=?",
+    }
+
     def __init__(self, adapter: PyslangAdapter):
         self.adapter = adapter
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
@@ -342,14 +376,16 @@ class DriverExtractor:
             if ident:
                 val = getattr(ident, "value", None) or str(ident)
                 return str(val).strip()
-        # BinaryOp: 递归展开为 "left op right" — 避免对象引用
+        # BinaryOp: 递归展开为 "left op right" — 保留操作符
         if "BinaryOp" in sk:
             left = getattr(signal, "left", None)
             right = getattr(signal, "right", None)
+            op = getattr(signal, "op", None)
+            op_sym = self._BINOP_SYMBOL.get(op, "?") if op else "?"
             ls = self._get_signal(left) if left else "?"
             rs = self._get_signal(right) if right else "?"
             if ls and rs:
-                return f"{ls} {rs}"
+                return f"{ls} {op_sym} {rs}"
             return ls or rs or None
         # UnaryOp: 递归展开为 "op operand" — 避免对象引用
         if "UnaryOp" in sk:
