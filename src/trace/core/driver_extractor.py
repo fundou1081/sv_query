@@ -361,12 +361,16 @@ class DriverExtractor:
             operand = getattr(signal, "operand", None)
             if operand:
                 ok = str(getattr(operand, "kind", ""))
-                if "IntegerLiteral" in ok:
+                if "IntegerLiteral" in ok or "UnbasedUnsized" in ok:
                     val = getattr(operand, "value", None)
                     if val is not None:
                         return str(val)
                 elif "NamedValue" in ok:
                     return self._get_signal(operand)
+                # fallback: 递归 _get_signal，避免 str() 返回对象引用
+                sig = self._get_signal(operand)
+                if sig and not sig.startswith("Expression("):
+                    return sig
                 return str(operand)
         # ElementSelect: data_out[0]
         if "ElementSelect" in sk:
