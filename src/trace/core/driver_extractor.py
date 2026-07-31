@@ -2393,13 +2393,35 @@ class DriverExtractor:
                 self._flatten_semantic(body, result, cond_stack)
 
     def _flatten_expression_statement(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.ExpressionStatement: 提取 .expr (Assignment 则追加)。"""
+        """StatementKind.ExpressionStatement: 提取 .expr (Assignment/Call 则追加)。
+
+        铁律1: 只用 semantic AST ExpressionKind，不碰 SyntaxKind。
+        """
         expr = getattr(stmt, "expr", None)
-        if expr is not None:
-            ek = getattr(expr, "kind", None)
-            if ek == ExpressionKind.Assignment:
-                outer_cond = " && ".join(cond_stack) if cond_stack else ""
-                result.append((expr, outer_cond))
+        if expr is None:
+            return
+        ek = getattr(expr, "kind", None)
+        outer_cond = " && ".join(cond_stack) if cond_stack else ""
+        if ek == ExpressionKind.Assignment:
+            result.append((expr, outer_cond))
+        elif ek == ExpressionKind.Call:
+            # [V6.9] task/function 调用: 将 output 参数映射展开为赋值
+            # t(a, b) → arguments = [NamedValue(a), Assignment(b, ...)]
+            args = getattr(expr, "arguments", None)
+            if args is not None and hasattr(args, "__iter__") and not isinstance(args, str):
+                input_sig = None
+                for arg in args:
+                    ak = getattr(arg, "kind", None)
+                    if ak == ExpressionKind.Assignment:
+                        # output 参数: 创建 input → output DRIVER
+                        lhs_node = getattr(arg, "left", None)
+                        out_name = self._get_signal(lhs_node) if lhs_node else None
+                        if input_sig and out_name:
+                            # 构造一个虚拟赋值元组: (output, input_as_string, condition)
+                            result.append((arg, outer_cond))
+                    elif ak == ExpressionKind.NamedValue:
+                        # 第一个是 input 参数
+                        input_sig = self._get_signal(arg)
 
     def _flatten_case(self, stmt, result: list, cond_stack: list[str]):
         """StatementKind Case/PatternCase: 展开各 CaseItem。
