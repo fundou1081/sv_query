@@ -374,7 +374,14 @@ class DriverExtractor:
             selector = getattr(signal, "selector", None)
             base_name = self._get_signal(base) if base else None
             sel_val = getattr(selector, "value", None) if selector else None
-            sel_str = str(int(sel_val)) if sel_val is not None else "x"
+            # 语义 AST: selector 可能是 NamedValueExpression（非 literal）
+            if sel_val is not None:
+                try:
+                    sel_str = str(int(sel_val))
+                except (TypeError, ValueError):
+                    sel_str = self._get_signal(selector) or str(sel_val)
+            else:
+                sel_str = self._get_signal(selector) or "x"
             if base_name:
                 return f"{base_name}[{sel_str}]"
             return None
