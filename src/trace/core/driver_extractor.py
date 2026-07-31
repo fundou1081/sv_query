@@ -337,12 +337,13 @@ class DriverExtractor:
 
         out: list[tuple[str, str]] = []
         for sig_name, cond_str in signal_conditions:
-            # Skip SV literals and pure-digit tokens (no need to lookup)
+            # Skip empty or pure-digit tokens
             if not sig_name or sig_name.isdigit():
-                out.append((sig_name, cond_str))
+                continue
+            # [V6.9] Skip SV literal values like 5'b0, 4'hf, 32'd42 (from _get_signal on Conversion)
+            if "'" in sig_name and self._is_sv_literal_token(sig_name):
                 continue
             if self._is_sv_literal_token(sig_name):
-                out.append((sig_name, cond_str))
                 continue
             # Resolve via module.body.lookupName
             try:
