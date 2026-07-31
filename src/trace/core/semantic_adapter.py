@@ -1743,6 +1743,16 @@ class SemanticAdapter:
             signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
             return signals
 
+        # CallExpression / Invocation: system function call e.g. $signed(a)
+        # [V6.9] $signed(a) is parsed as Call($signed, args=[a]), not Conversion.
+        # Recurse into arguments to extract signal names.
+        if "Call" in kind_str or "Invocation" in kind_str:
+            args = getattr(expr, "arguments", None) or getattr(expr, "args", None) or []
+            if args and hasattr(args, "__iter__") and not isinstance(args, str):
+                for arg in args:
+                    signals.extend(self._extract_signals_from_expr(arg))
+            return signals
+
         # ConversionExpression (type casting) - recurse into operand
         if "Conversion" in kind_str:
             signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
