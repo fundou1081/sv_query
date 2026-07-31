@@ -59,11 +59,28 @@ def truth_table_equiv(expr1: str, expr2: str, vars_list: list[str]) -> bool:
     """检查 expr1 ≡ expr2 (truth-table over all bool combos)
 
     Bit-comparison 表达式 (含 ==, !=, 'b) 跳过 truth-table, 直接 string 比较.
+    但 V6.9 会简化括号 (sel) → sel, 所以比较前先标准化括号.
     """
     # Bit-comparison detection
     bit_pattern = re.compile(r"==|!=|'[bhd]")
     if bit_pattern.search(expr1) or bit_pattern.search(expr2):
-        return expr1 == expr2
+        # Strip redundant parentheses around simple signal names before comparing
+        # V6.9 pyslang simplifies: (sel) -> sel, (4'b0) -> 4'b0
+        def strip_parens(s: str) -> str:
+            # Remove outer parentheses around simple identifiers or literals:
+            # (sel) -> sel, (4'b0) -> 4'b0, (sel_d == 2'b11) -> kept intact
+            while True:
+                # Match (identifier) or (literal like 4'b0)
+                m = re.match(
+                    r'^(.*?)\(([a-zA-Z_][a-zA-Z0-9_]*|\d+\'[bhd]\w*)\)(.*)$',
+                    s
+                )
+                if m:
+                    s = m.group(1) + m.group(2) + m.group(3)
+                else:
+                    break
+            return s
+        return strip_parens(expr1) == strip_parens(expr2)
 
     try:
         for vals in itertools.product([False, True], repeat=len(vars_list)):
