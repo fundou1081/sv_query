@@ -236,8 +236,8 @@ class TestTraceLatencyGolden(unittest.TestCase):
             # trace 边标 +N cycle
             edge_cycles = _count_plus_cycle_edges(content)
             self.assertGreaterEqual(
-                len(edge_cycles), 1,
-                f"trace fanin 应至少 1 个 +N cycle 边标, 实际: {len(edge_cycles)}"
+                edge_cycles, 1,
+                f"trace fanin 应至少 1 个 +N cycle 边标, 实际: {edge_cycles}"
             )
         finally:
             Path(dot_path).unlink(missing_ok=True)
