@@ -10,12 +10,13 @@ Found 31+ missing patterns from real projects (axi/, opentitan tlul/, verilog-ax
 - Custom req/ack/done (dma_*, axi_lite_*, rd_wait, wr_req)
 - AXI4-Stream variants (s_axis_*, m_axis_*)
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
 from cli.commands.handshake import _is_ready_or_valid, _strip_suffix
-
 
 # ==============================================================================
 # AXI sub-channels and AXI-Stream variants (from axi/ project)

@@ -20,28 +20,24 @@ Phase A + Phase B 集成: handshake_score 融合
 
 import sys
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from applications.bus.schema import (
-    ProtocolSchemaRegistry,
-    load_protocols,
-)
 from applications.bus.detector import (
     ProtocolDetector,
-    ProtocolMatch,
 )
 from applications.bus.handshake_provider import (
+    HandshakeInfoLite,  # 轻量版 HandshakeInfo (无 DriverInfo 依赖)
     HandshakeProvider,
     NameBasedHandshakeProvider,
-    HandshakeInfoLite,  # 轻量版 HandshakeInfo (无 DriverInfo 依赖)
     handshake_type_score,
 )
+from applications.bus.schema import (
+    load_protocols,
+)
 from applications.bus.structural import SignalContext
-
 
 # ---------------------------------------------------------------------------
 # HandshakeProvider 抽象接口

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 fix.py - 自动修复 elaboration 问题
 
@@ -19,16 +18,16 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 # [ADD 2026-06-12] 复用 _common
 from cli._common import _build_tracer
+
 # [ADD 2026-06-12] fix imports 子命令
 from cli.commands.fix_imports import fix_imports_cmd
+
 # [ADD 2026-06-12 Req-19] fix widths: 用 syntax tree + pyslang.clog2 拿 $clog2(\`MACRO) 真实位宽
 from cli.commands.fix_widths import fix_widths_cmd
 

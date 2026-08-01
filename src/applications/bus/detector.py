@@ -45,19 +45,16 @@ Phase A Session 4: 协议检测主框架
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
-from .schema import ProtocolSchema, SignalRoleSpec, ChannelSpec, VariantSpec
-from .normalize import SignalNormalizer, NormalizeConfig
-from .structural import SignalContext, StructuralRoleDetector, StructuralHints
-from .pattern_learner import PatternLearner, ChannelGroup
 from .handshake_provider import (
     HandshakeProvider,
     NameBasedHandshakeProvider,
-    HandshakeInfoLite,
     handshake_type_score,
 )
-
+from .normalize import NormalizeConfig, SignalNormalizer
+from .pattern_learner import ChannelGroup, PatternLearner
+from .schema import ChannelSpec, ProtocolSchema
+from .structural import SignalContext, StructuralRoleDetector
 
 # ---------------------------------------------------------------------------
 # 数据结构
@@ -181,7 +178,7 @@ class ProtocolDetector:
     def __init__(
         self,
         schemas: dict[str, ProtocolSchema] | None = None,
-        registry: ProtocolSchemaRegistry | None = None,  # type: ignore
+        registry: 'ProtocolSchemaRegistry | None' = None,  # type: ignore  # noqa: F821
         normalizer: SignalNormalizer | None = None,
         structural_detector: StructuralRoleDetector | None = None,
         pattern_learner: PatternLearner | None = None,
@@ -223,7 +220,7 @@ class ProtocolDetector:
 
         # 2) 对每个 schema 协议评分
         candidates: list[ProtocolMatch] = []
-        for protocol_name, schema in self.schemas.items():
+        for _protocol_name, schema in self.schemas.items():
             match = self._score_protocol(schema, signals, groups, anchors)
             candidates.append(match)
 

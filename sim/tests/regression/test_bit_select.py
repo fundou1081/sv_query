@@ -25,20 +25,22 @@ test_bit_select.py - Bit Select 追踪金标准测试
     - top.data[3:0] --DRIVER--> top.slice
 """
 
-import unittest
 import sys
+import unittest
+
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind, NodeKind
 import pyslang
+
+from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestBitSelectWidth(unittest.TestCase):
     """位选宽度追踪测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -195,7 +197,7 @@ class TestBitSelectNegative(unittest.TestCase):
     """负面测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

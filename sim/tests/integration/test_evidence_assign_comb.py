@@ -17,14 +17,14 @@
 # This test file follows TDD: tests are written FIRST, then implementation
 #==============================================================================
 
-import unittest
-import pytest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+from trace.core.trace_evidence import TraceEvidenceResolver
 from trace.unified_tracer import UnifiedTracer
-from trace.core.trace_evidence import TraceEvidenceResolver, Evidence
 
 
 def _make_resolver(source: str, source_name: str = "test.sv"):
@@ -176,7 +176,7 @@ endmodule'''
 
     def test_always_comb_if_else_full(self):
         """[TDD-8] [V6.9] Evidence on assign/ternary resolves without crash.
-        
+
         Uses minimal assign+ternary (cheaper elaboration on 8GB MBA).
         Core assertion: resolver returns evidence object with source_text attr.
         """

@@ -1,19 +1,22 @@
 # test_fork_join.py - Fork/Join 金标准
 # [铁律13] 金标准测试
 # [铁律15] Visitor 模式
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestForkJoin(unittest.TestCase):
     """Fork/Join 并行线程信号追踪测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_fork_join_basic(self):

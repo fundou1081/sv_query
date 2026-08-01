@@ -2,14 +2,14 @@
 # [铁律13] 金标准测试
 #
 # Phase 2: 将 SVA 中引用的信号映射到 SignalGraph 节点
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.sva_extractor import SVAExtractor
-from trace.core.graph.models import NodeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 def _build_all(source):

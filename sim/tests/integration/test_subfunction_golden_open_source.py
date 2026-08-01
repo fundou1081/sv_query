@@ -21,7 +21,6 @@ strict_uart (33 nodes, 4 sub-module clk) + prim_arbiter_tree (33 nodes, 1 clk).
 """
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest

@@ -23,23 +23,24 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+
 from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
-
 warnings.filterwarnings("ignore")
 
-from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.models import NodeKind
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from cli._evidence_helpers import (
+    evidence_summary_indented,
+    evidence_to_dict,
+)
 
 # [Stage 5] evidence helper (可选 --evidence flag)
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
-    evidence_to_dict,
-    evidence_summary_indented,
 )
+from trace.core.covergroup_extractor import CovergroupExtractor
+from trace.core.graph.models import NodeKind
+from trace.core.sva_extractor import SVAExtractor
 
 verify_app = typer.Typer(help="[EXPERIMENTAL] Verification gap detection: find high-risk signals without SVA/Coverage")
 

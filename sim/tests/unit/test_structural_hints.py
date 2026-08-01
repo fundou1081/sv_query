@@ -19,8 +19,6 @@ Phase A Session 2: StructuralHints 结构性角色提示层
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from applications.bus.structural import (
@@ -29,7 +27,6 @@ from applications.bus.structural import (
     StructuralRoleDetector,
     WidthCategory,
 )
-
 
 # ---------------------------------------------------------------------------
 # SignalContext 构造工具

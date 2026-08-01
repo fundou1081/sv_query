@@ -6,18 +6,16 @@ Verifies:
 - response_after_request detection (D.valid not derived from A.valid)
 - Severity / kind / channel fields correctly populated
 """
-import pytest
 
 from applications.bus.deadlock import (
     DeadlockFinding,
-    detect_deadlock_candidates,
     _bfs_drivers,
     _bfs_path,
     _find_valid_ready_pairs,
+    detect_deadlock_candidates,
 )
 from applications.bus.semantics import load_semantics
-from trace.core.graph.models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
-
+from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 # ---------------------------------------------------------------------------
 # Mock helpers

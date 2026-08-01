@@ -17,13 +17,11 @@ TDD: 所有命令默认 strict=True (Req-15 后续 + 用户反馈)
 4. 错误信息: 'Compilation failed' 干净, 无 Python traceback
 5. --strict/--no-strict flag 文档化
 """
-import re
 import subprocess
 import sys
 import tempfile
 import warnings
 from pathlib import Path
-import tempfile
 
 warnings.filterwarnings("ignore")
 

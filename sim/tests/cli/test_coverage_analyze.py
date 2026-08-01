@@ -14,13 +14,12 @@ Tests:
   7. JSON output valid
 """
 
-import unittest
+import json
+import os
 import subprocess
 import tempfile
-import os
-import json
+import unittest
 from pathlib import Path
-
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "covergroup" / "cg_pkg.sv"
 

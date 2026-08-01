@@ -9,12 +9,14 @@ Pattern: `assign ready = !fifo_full || (count < THRESHOLD);`
 Should be: COMBINATIONAL_BP (FIFO-based backpressure)
 Was: WIRE_PASSTHROUGH (just a wire connection)
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
+from trace.core.graph.models import DriverInfo, NodeKind, TraceNode
 from trace.core.handshake_detector import _classify_one_driver
-from trace.core.graph.models import DriverInfo, TraceNode, NodeKind
 
 
 def make_di(expr="", cond="", assign_type="continuous", clock_domain=""):

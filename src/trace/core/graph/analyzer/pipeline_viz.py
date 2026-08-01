@@ -12,22 +12,21 @@ Algorithm:
 
 from __future__ import annotations
 
-import re
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
 
-from .signal_classifier import (
-    SignalClassification,
-    SignalClass,
-)
+from ..models import EdgeKind, NodeKind, SignalGraph, TraceNode
 from ._dot_common import (
-    sanitize_dot_id,
-    safe_classify,
     node_width as _node_width,
 )
-from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
-
+from ._dot_common import (
+    safe_classify,
+    sanitize_dot_id,
+)
+from .signal_classifier import (
+    SignalClass,
+    SignalClassification,
+)
 
 # [P1-5 2026-06-13] 委托给 _dot_common.sanitize_dot_id (与 dataflow_viz 统一)
 
@@ -179,10 +178,10 @@ def _build_stages(
         if node_id in visited:
             return
         visited.add(node_id)
-        
-        node = graph.get_node(node_id)
+
+        graph.get_node(node_id)
         is_pipeline_reg = node_id in pipeline_regs
-        
+
         if is_pipeline_reg:
             # 如果已记录更浅的 depth，保留它
             if node_id not in reg_depths:
@@ -190,7 +189,7 @@ def _build_stages(
             else:
                 reg_depths[node_id] = min(reg_depths[node_id], path_regs + 1)
             path_regs += 1
-        
+
         # 沿着 DRIVER 边向外走
         for succ in graph.successors(node_id):
             for e in graph.get_edges(node_id, succ):
@@ -203,7 +202,7 @@ def _build_stages(
     # Fallback: use iterative propagation through the reg graph
     # Only consider regs that participate in data path (have a driver reg)
     data_regs = {rid for rid in pipeline_regs}
-    
+
     # Build reg→reg driver edges (ignoring clock/self-loop)
     reg_drivers: dict[str, set[str]] = {}
     for rid in data_regs:
@@ -212,7 +211,7 @@ def _build_stages(
                 for e in graph.get_edges(src, rid):
                     if e.kind == EdgeKind.DRIVER and e.expression:
                         reg_drivers.setdefault(rid, set()).add(src)
-    
+
     # Iterative propagation: starting from regs that already have depth,
     # propagate to their predecessors/successors
     max_depth = max(reg_depths.values()) if reg_depths else 0
@@ -233,7 +232,7 @@ def _build_stages(
                         cand = max(0, reg_depths[dst] - 1)
                         if rid not in reg_depths or cand < reg_depths[rid]:
                             reg_depths[rid] = cand
-    
+
     # Orphans: default to a reasonable depth based on their fan-in
     for rid in data_regs:
         if rid not in reg_depths:
@@ -259,13 +258,13 @@ def _build_stages(
 
     # ── Step 3: 填充 comb nodes + data inputs/outputs ──
     # comb node = 连接两个 pipeline regs 之间的信号
-    stage_reg_sets = [set(s.reg_nodes) for s in stages]
+    [set(s.reg_nodes) for s in stages]
     all_reg_set = set(pipeline_regs)
 
     for si, stage in enumerate(stages):
         # 本 stage 的 regs
         current_regs = stage.reg_nodes
-        
+
         # data inputs: 驱动本 stage regs 的信号 (来自前一个 stage 或 PORT_IN)
         for rid in current_regs:
             for src in graph.predecessors(rid):
@@ -287,7 +286,7 @@ def _build_stages(
         next_regs = set()
         if si + 1 < len(stages):
             next_regs = set(stages[si + 1].reg_nodes)
-        
+
         # Walk from current regs' outputs to next regs' inputs
         for rid in current_regs:
             for dst in graph.successors(rid):
@@ -318,14 +317,14 @@ def _build_stages(
                 edges = graph.get_edges(pred, reg_id)
                 for e in edges:
                     if e.kind == EdgeKind.DRIVER:
-                        if pred in all_data_nodes:
+                        if pred in all_data_nodes:  # noqa: F821
                             stage.data_inputs.append(pred)
             # 后继 → data outputs
             for succ in graph.successors(reg_id):
                 edges = graph.get_edges(reg_id, succ)
                 for e in edges:
                     if e.kind == EdgeKind.DRIVER:
-                        if succ in all_data_nodes:
+                        if succ in all_data_nodes:  # noqa: F821
                             stage.data_outputs.append(succ)
                             stage.comb_nodes.append(succ)
 
@@ -553,14 +552,12 @@ def generate_pipeline_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead
         target_folds = 10
         if fold_every < (n_stages // target_folds):
             fold_every = max(1, (n_stages + target_folds - 1) // target_folds)
-            fold_note_extra = f' (auto-fold-every={fold_every})'
         else:
-            fold_note_extra = ''
+            pass
         folded_groups = _build_folded_stage_groups(stages_to_render, fold_every)
 
     # 每个 stage (或 fold group) 一个 cluster
     all_nodes_in_stages = set()
-    render_groups = folded_groups if is_folding else None
     items_to_render = (
         [(g, True) for g in folded_groups] if is_folding
         else [(s, False) for s in stages_to_render]
@@ -575,7 +572,7 @@ def generate_pipeline_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead
         if is_fold:
             stage = item  # dict (fold group)
             total_regs = stage.get('reg_nodes_total', len(stage['reg_nodes']))
-            shown = len(stage['reg_nodes'])
+            len(stage['reg_nodes'])
             # Label 显示在 node 下面 (而不是 cluster 里)
             stage_label_text = f"Stages {stage['start_id']}-{stage['end_id']} ({total_regs} regs)"
             reg_nodes = stage['reg_nodes']
@@ -765,10 +762,10 @@ def generate_pipeline_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead
             )
         lines.append('  }')
 
-    # [FIX 2026-07-17] State reg → stage connections: 从每个 state reg 
+    # [FIX 2026-07-17] State reg → stage connections: 从每个 state reg
     # 走到它的 driver 路径上的第一个 pipeline reg, 画虚线表示 state 影响该 stage.
     if pipeline_info.state_regs and pipeline_info.stages:
-        state_shown_set = set(state_shown)
+        set(state_shown)
         # Build map: pipeline_reg_id → stage_id
         reg_to_stage = {}
         for stage in pipeline_info.stages:
@@ -887,7 +884,7 @@ def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz 
     all_segments = _group_stages_into_segments(pipeline_info.stages, control_to_stage)
 
     # Limit to top N segments by stage count
-    all_segments_sorted = sorted(all_segments, key=lambda x: -len(x[1]))
+    sorted(all_segments, key=lambda x: -len(x[1]))
     # [Phase 7.1 2026-07-13] Preserve ORIGINAL ORDER (not sorted by size)
     # so user sees the actual structure: no-ctrl, ctrl, no-ctrl, ctrl ...
     # But limit total segments shown (mix of large + small)
@@ -919,10 +916,9 @@ def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz 
         if len(seg_stages) > max_stages_per_segment:
             step = max(1, len(seg_stages) // max_stages_per_segment)
             cell_stages = seg_stages[::step][:max_stages_per_segment]
-            sample_note = f" (sampled {len(cell_stages)}/{len(seg_stages)})"
+            f" (sampled {len(cell_stages)}/{len(seg_stages)})"
         else:
             cell_stages = seg_stages
-            sample_note = ""
 
         cell_texts = []
         for stage in cell_stages:
@@ -941,7 +937,7 @@ def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz 
         segment_data.append((seg_label_html, si, cell_texts, ctrl_id, seg_label_text))
 
     # Build HTML table
-    total_regs = sum(len(s.reg_nodes) for s in pipeline_info.stages)
+    sum(len(s.reg_nodes) for s in pipeline_info.stages)
     max_cells = max(len(c) for _, _, c, _, _ in segment_data)
 
     rows = []
@@ -974,7 +970,7 @@ def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz 
     all_has_ctrl = sum(1 for cid, _ in all_segments if cid is not None)
     all_no_ctrl = len(all_segments) - all_has_ctrl
     has_ctrl_segs = sum(1 for _, _, _, cid, _ in segment_data if cid is not None)
-    no_ctrl_segs = len(segment_data) - has_ctrl_segs
+    len(segment_data) - has_ctrl_segs
 
     lines = ['digraph pipeline_timing {']
     lines.append('  rankdir=LR;')
@@ -1016,8 +1012,8 @@ def _group_stages_by_load_root(  # [V6.7 deprecated: use trace.core.graph.viz in
     - 真正的数据流 (cpu_state, irq_state) 通过组合逻辑到达 trap, 但 graph 不跟踪
     - 所以 BFS 反向找不到 port_in
     """
-    from .signal_classifier import SignalClass
     from ..models import NodeKind
+    from .signal_classifier import SignalClass
 
     port_ins = {
         nid for nid in graph.nodes()
@@ -1156,7 +1152,7 @@ def generate_pipeline_load_dot(  # [V6.7 deprecated: use trace.core.graph.viz in
 
         segment_data.append((seg_label_html, si, cell_texts, root_id))
 
-    total_regs = sum(len(s.reg_nodes) for s in pipeline_info.stages)
+    sum(len(s.reg_nodes) for s in pipeline_info.stages)
     max_cells = max(len(c) for _, _, c, _ in segment_data) if segment_data else 0
 
     rows = []

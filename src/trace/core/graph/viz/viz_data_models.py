@@ -15,8 +15,7 @@ viz_data_models.py — 统一可视化数据格式 (V6.7)
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..models import EdgeKind, NodeKind, SignalGraph, SignalSource, TraceNode, TraceEdge
-
+from ..models import EdgeKind, NodeKind, TraceEdge, TraceNode
 
 # ═══════════════════════════════════════════════════════
 # Node

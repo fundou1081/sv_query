@@ -46,7 +46,7 @@ class TestNoLegacyDataModels(unittest.TestCase):
         ]
         self.assertEqual(
             violating, [],
-            f"[V5 violation] Found references to deleted legacy data_models:\n"
+            "[V5 violation] Found references to deleted legacy data_models:\n"
             + '\n'.join(violating)
         )
 

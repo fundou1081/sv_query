@@ -13,10 +13,8 @@ Pure signal-level analysis — does NOT trace backpressure paths (use
 `backpressure analyze` for that, which uses these results as input).
 """
 
-import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -25,7 +23,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from trace.core.handshake_detector import (
     classify_signal_channel,
     detect_from_signal_pair,
-    detect_handshake_type,
     detect_handshake_type_with_node,
 )
 from trace.core.query.signal import SignalTracer

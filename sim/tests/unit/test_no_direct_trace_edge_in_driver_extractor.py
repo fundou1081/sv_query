@@ -8,7 +8,6 @@
 # (source_location, confidence, function_return 等) 只在 factory 一处修改.
 
 import os
-import re
 import sys
 import unittest
 
@@ -59,8 +58,8 @@ class TestNoDirectTraceEdgeInDriverExtractor(unittest.TestCase):
 
         self.assertEqual(
             offender_lines, [],
-            f"[V4 violation] Direct `TraceEdge(...)` constructors found in driver_extractor.py. "
-            f"Use `self._append_edge(...)` instead:\n"
+            "[V4 violation] Direct `TraceEdge(...)` constructors found in driver_extractor.py. "
+            "Use `self._append_edge(...)` instead:\n"
             + '\n'.join(f"  line {ln}: {l}" for ln, l in offender_lines[:5])
         )
 

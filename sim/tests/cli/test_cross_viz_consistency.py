@@ -1,4 +1,3 @@
-import pytest
 """
 [Cross-viz Consistency Tests 2026-07-10]
 
@@ -24,7 +23,6 @@ import re
 import subprocess
 import unittest
 from pathlib import Path
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 GOLDEN_DIR = PROJECT_ROOT / "tests" / "fixtures" / "golden_chain"
@@ -176,7 +174,7 @@ class TestCrossVizConsistency(unittest.TestCase):
                         f"normal chain should have 0 anomalies, got {facts['chain']}")
         # pipeline should report some regs (data_reg, valid_reg)
         self.assertGreaterEqual(facts["pipeline"]["pipeline_regs"], 2,
-                              f"normal should have at least 2 pipeline regs (data_reg, valid_reg)")
+                              "normal should have at least 2 pipeline regs (data_reg, valid_reg)")
 
     def test_normal_timing_has_consistent_node_count(self):
         """[Cross 2] timing's total_nodes should be related to pipeline's stage count."""

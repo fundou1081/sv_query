@@ -12,9 +12,8 @@ Tests ensure:
   3. Coverage of nodes-with-location is high
   4. CONST nodes remain without location
 """
-from pathlib import Path
 import sys
-import os
+from pathlib import Path
 
 import pytest
 
@@ -55,7 +54,7 @@ def test_clk_i_port_has_location(strict_uart_graph):
     """port clk_i should have correct file/line populated."""
     target = strict_uart_graph.get_node("synchronizer.clk_i")
     assert target is not None, "clk_i should exist in graph"
-    assert target.file, f"file missing"
+    assert target.file, "file missing"
     assert target.line > 0, f"line missing/0: {target.line}"
 
 

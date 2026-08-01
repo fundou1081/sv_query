@@ -86,7 +86,8 @@ def _check_memory_pressure():
     if _QUIET:  # [A3 2026-06-28] quiet 模式下不输出任何警告
         return
     try:
-        import subprocess, re
+        import re
+        import subprocess
         # macOS: 从 sysctl 获取 swap
         result = subprocess.run(
             ["sysctl", "vm.swapusage"], capture_output=True, text=True, timeout=5

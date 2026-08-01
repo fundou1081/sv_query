@@ -15,8 +15,8 @@ viz_timed_compute_renderer.py — 时间轴运算架构图 (V6.7)
 
 from __future__ import annotations
 
-from .viz_data_models import VizData, VizNode, VizEdge
 from ..analyzer._dot_common import sanitize_dot_id
+from .viz_data_models import VizData
 
 _OP_SHAPES: dict[str, str] = {
     "Add": "circle", "Subtract": "circle", "Multiply": "circle", "Divide": "circle",
@@ -64,7 +64,7 @@ def render_timed_compute(
     max_stages = cfg.get("max_stages", 8)
 
     lines = [
-        f"digraph timed_compute {{",
+        "digraph timed_compute {",
         f'  label="{title}"; labelloc=t;',
         "  rankdir=LR;",
         "  splines=polyline;",
@@ -119,7 +119,7 @@ def render_timed_compute(
             # Find which stage this belongs to
             # OP happens BEFORE the REG: if dst is a REG in stage N,
             # the OP happens in stage N-1 (the comb stage)
-            op_color = _OP_COLORS.get(op_name, "#888888")
+            _OP_COLORS.get(op_name, "#888888")
             op_stage = -1
             for sid in all_stages:
                 if dst in stage_nodes.get(sid, []):
@@ -171,7 +171,7 @@ def render_timed_compute(
         lines.append("    color=\"#cccccc\";")
         lines.append("    fontsize=11;")
         # [V6.8] Force nodes within this stage to the same graphviz rank
-        lines.append(f'    rank=same;')
+        lines.append('    rank=same;')
 
         # Stage 节点
         for n in viz.nodes:

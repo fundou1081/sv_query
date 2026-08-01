@@ -10,12 +10,14 @@ pytestmark = pytest.mark.opensource
 场景: aes_sub_bytes 模块的基本功能测试
 来源: hw/ip/aes/rtl/aes_sub_bytes.sv
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -23,7 +25,7 @@ class TestAESSubBytes(unittest.TestCase):
     """AES SubBytes 模块信号追踪测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         # 使用 't' 作为 tree key (符合项目惯例)
         return UnifiedTracer(sources={'t.sv': source})
 

@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
+r"""
 fix_imports.py - 自动找 UndeclaredIdentifier / UnknownModule 的源文件
 
 [ADD 2026-06-12] 'fix imports' 通过诊断 + 扫项目, 推荐补 filelist 的文件.
@@ -27,15 +26,12 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from cli._common import _build_tracer
-
 
 # ----------------------------------------------------------------------------
 # 核心算法: 扫项目找含 identifier 定义的文件
@@ -91,7 +87,7 @@ def _scan_project_for_identifier(
             if fp in exclude_files:
                 continue
             try:
-                content = fp.read_text(encoding="utf-8", errors="replace")
+                fp.read_text(encoding="utf-8", errors="replace")
             except (OSError, UnicodeDecodeError):
                 continue
             # 简单匹配: identifier 出现在定义行
@@ -163,7 +159,7 @@ def fix_imports_cmd(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print"),
     top: int = typer.Option(20, "--top", "-n", help="[Text] 最多显示 N 个 identifier 建议"),
 ):
-    """[ADD 2026-06-12] 自动找 UndeclaredIdentifier 错误的 fix 来源
+    r"""[ADD 2026-06-12] 自动找 UndeclaredIdentifier 错误的 fix 来源
 
     工作流:
     1. 跑 fix report 拿所有 UndeclaredIdentifier 错 (含 identifier 名字)

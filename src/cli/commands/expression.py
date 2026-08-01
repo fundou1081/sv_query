@@ -11,8 +11,6 @@ import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.core.semantic_adapter import SemanticAdapter
-from trace.unified_tracer import UnifiedTracer
 
 
 def output_json(data: dict, pretty: bool = False) -> None:

@@ -31,11 +31,9 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
+from .normalize import NormalizeConfig, SignalNormalizer
 from .structural import SignalContext
-from .normalize import SignalNormalizer, NormalizeConfig
-
 
 # ---------------------------------------------------------------------------
 # 数据结构
@@ -223,7 +221,7 @@ class SVSignalExtractor:
 
         # 更新 sigs, 设置 paired_signals
         sigs_with_paired = []
-        sig_by_name = {s.name: s for s in sigs}
+        {s.name: s for s in sigs}
         for sig in sigs:
             new_sig = SignalContext(
                 name=sig.name,

@@ -820,8 +820,8 @@ class DataFlowGraph:
         复用 detect_pipeline + signal_classifier.
         """
         try:
-            from .analyzer.signal_classifier import classify_graph
             from .analyzer.pipeline_viz import detect_pipeline
+            from .analyzer.signal_classifier import classify_graph
         except ImportError:
             return []
 
@@ -844,7 +844,7 @@ class DataFlowGraph:
 
         # 沿 path 走, 标每个 segment 的 stage
         breakdown = []
-        for i, seg in enumerate(segments):
+        for _i, seg in enumerate(segments):
             # 这个 segment 的 stage = to_signal (终点) 所属的 stage
             # 起点可能是 stage N, 终点可能是 stage N (组合) or stage N+1 (REG boundary)
             from_node = self.signal_graph.get_node(seg.from_signal)

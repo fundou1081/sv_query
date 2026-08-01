@@ -10,19 +10,22 @@ OpenTitan I2C 模块测试:
 2. 双向信号
 3. 中断信号
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestOpenTitanI2C(unittest.TestCase):
     """OpenTitan I2C 模块测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_i2c_basic_structure(self):
@@ -83,7 +86,7 @@ endmodule'''
         self.assertIsNotNone(tracer.get_graph())
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         # 验证: I2C 信号存在
         has_scl = any('scl' in n for n in nodes)
@@ -126,7 +129,7 @@ endmodule'''
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
 
-        nodes = list(tracer.get_graph().nodes())
+        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
 
         # 验证: cio_scl_i -> scl_d

@@ -5,12 +5,14 @@ test_modport_direction.py - P0-3 Modport 方向解析测试
 测试目标: 能够正确解析 modport 的方向 (input/output/inout) 并填充到 TraceNode
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace import UnifiedTracer
 
 
@@ -29,7 +31,7 @@ module top(bus_if.master m, input [7:0] din);
     assign m.data = din;
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
@@ -56,7 +58,7 @@ module top(bus_if.slave s, output [7:0] dout);
     assign dout = s.data;
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
@@ -81,7 +83,7 @@ module top(bus_if.master m, input [7:0] din, input [7:0] addr_in);
     assign m.data = din;
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()
@@ -111,7 +113,7 @@ module top(bus_if.master m, bus_if.slave s, input [7:0] din);
     assign m.data = din;
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'top.sv': source})
         tracer.build_graph()
         g = tracer.get_graph()

@@ -14,6 +14,7 @@ TDD: trace fanout/fanin 加 --include-clock/reset/control flag (Req-12 P1)
 """
 
 import pytest
+
 pytestmark = pytest.mark.opensource  # NaplesPU dependency
 
 import subprocess

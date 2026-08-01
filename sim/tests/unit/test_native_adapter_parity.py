@@ -13,18 +13,16 @@ test_native_adapter_parity.py — TDD test for pyslang native API migration.
 如果一致 → 可以安全切换 semantic_adapter.get_module_instances() 内部.
 """
 
-import sys
 import os
+import sys
 import time
 import unittest
-from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools'))
 
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
-
 
 # ============================================================================
 # Test Fixtures

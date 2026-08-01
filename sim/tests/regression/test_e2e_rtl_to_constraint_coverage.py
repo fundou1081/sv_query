@@ -8,16 +8,16 @@
 #   2. Transaction 类 → 找到约束 data 的 constraint
 #   3. Constraint → 找到对应的 covergroup 定义
 #   4. 检查 coverage bins 是否完整覆盖 constraint 空间
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.covergroup_analyzer import CovergroupAnalyzer
-from trace.core.call_graph_builder import CallGraphBuilder
-from trace.core.graph.models import NodeKind, EdgeKind
+from trace.core.covergroup_extractor import CovergroupExtractor
+from trace.core.graph.models import EdgeKind, NodeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestE2ERTLToConstraintCoverage(unittest.TestCase):

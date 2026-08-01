@@ -2,12 +2,14 @@
 # test_graph_diff.py - Graph Diff 查询测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -15,7 +17,7 @@ class TestGraphDiff(unittest.TestCase):
     """Graph Diff 查询测试 - Phase 1 (Element-wise) + Phase 2 (Reachability)"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     #==========================================================================
@@ -37,10 +39,10 @@ module top(output logic [7:0] q, input clk);
         b <= a;
     end
 endmodule'''
-        from trace.core.graph.diff import diff_graph, GraphDiff
+        from trace.core.graph.diff import diff_graph
 
-        tree_old = pyslang.SyntaxTree.fromText(old_source)
-        tree_new = pyslang.SyntaxTree.fromText(new_source)
+        pyslang.SyntaxTree.fromText(old_source)
+        pyslang.SyntaxTree.fromText(new_source)
         tracer_old = UnifiedTracer(sources={'test.sv': old_source})
         tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
@@ -70,8 +72,8 @@ module top(output logic [7:0] q, input clk);
 endmodule'''
         from trace.core.graph.diff import diff_graph
 
-        tree_old = pyslang.SyntaxTree.fromText(old_source)
-        tree_new = pyslang.SyntaxTree.fromText(new_source)
+        pyslang.SyntaxTree.fromText(old_source)
+        pyslang.SyntaxTree.fromText(new_source)
         tracer_old = UnifiedTracer(sources={'test.sv': old_source})
         tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
@@ -98,8 +100,8 @@ module top(output logic [7:0] q, input clk);
 endmodule'''
         from trace.core.graph.diff import diff_graph
 
-        tree_old = pyslang.SyntaxTree.fromText(old_source)
-        tree_new = pyslang.SyntaxTree.fromText(new_source)
+        pyslang.SyntaxTree.fromText(old_source)
+        pyslang.SyntaxTree.fromText(new_source)
         tracer_old = UnifiedTracer(sources={'test.sv': old_source})
         tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         tracer_old.build_graph()
@@ -119,7 +121,7 @@ module top(input clk, output logic q);
 endmodule'''
         from trace.core.graph.diff import diff_graph
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer1 = UnifiedTracer(sources={'test.sv.sv': source})
         tracer2 = UnifiedTracer(sources={'test.sv.sv': source})
         tracer1.build_graph()
@@ -208,8 +210,8 @@ module top(input clk, output logic [7:0] q);
 endmodule'''
         from trace.core.graph.diff import diff_graph, diff_reachability
 
-        tree_old = pyslang.SyntaxTree.fromText(old_source)
-        tree_new = pyslang.SyntaxTree.fromText(new_source)
+        pyslang.SyntaxTree.fromText(old_source)
+        pyslang.SyntaxTree.fromText(new_source)
         tracer_old = UnifiedTracer(sources={'test.sv': old_source})
         tracer_new = UnifiedTracer(sources={'test.sv': new_source})
         _ = tracer_old.trace_fanout('q', 'top')
@@ -220,7 +222,7 @@ endmodule'''
         diff_result = diff_graph(G_old, G_new)
         # 变更节点为 top.b（被删除的叶子节点）
         # 但我们用 removed_nodes（包含 top.b）来验证可达性差异
-        reach_result = diff_reachability(
+        diff_reachability(
             changed_nodes=diff_result.removed_nodes,
             G_old=G_old,
             G_new=G_new
@@ -228,8 +230,8 @@ endmodule'''
 
         # top.a 在旧图中驱动 top.b，新图中 top.a 无下游
         # 所以 top.a 的可达范围变化了
-        reach_a_old = tracer_old._signal_tracer._collect_all_drivers('top.a')
-        reach_a_new = tracer_new._signal_tracer._collect_all_drivers('top.a')
+        tracer_old._signal_tracer._collect_all_drivers('top.a')
+        tracer_new._signal_tracer._collect_all_drivers('top.a')
 
         # 验证图本身的差异正确
         self.assertIn('top.b', diff_result.removed_nodes, "top.b 应被识别为删除节点")

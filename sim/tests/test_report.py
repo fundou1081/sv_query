@@ -11,13 +11,12 @@ Test Report Generator
     python sim/tests/test_report.py --update
 """
 
-import os
+import json
 import re
 import sys
-import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+
 
 class TestReportGenerator:
     def __init__(self, project_root: Path):
@@ -60,7 +59,7 @@ class TestReportGenerator:
         """解析测试文件提取测试用例信息"""
         tests = []
 
-        with open(test_file, 'r', encoding='utf-8') as f:
+        with open(test_file, encoding='utf-8') as f:
             content = f.read()
 
         # 提取测试类和方法
@@ -81,7 +80,6 @@ class TestReportGenerator:
                 docstring = self._extract_docstring(ct)
 
                 for method in methods:
-                    test_name = method
                     test_id = f"{test_path}::{cls}::{method}"
 
                     test_info = {
@@ -167,9 +165,9 @@ class TestReportGenerator:
         content = self.test_plan_path.read_text(encoding='utf-8')
 
         # 统计各类测试
-        unit_tests = [t for t in test_info['tests'] if '/unit/' in t['file']]
-        integration_tests = [t for t in test_info['tests'] if '/integration/' in t['file']]
-        regression_tests = [t for t in test_info['tests'] if '/regression/' in t['file']]
+        [t for t in test_info['tests'] if '/unit/' in t['file']]
+        [t for t in test_info['tests'] if '/integration/' in t['file']]
+        [t for t in test_info['tests'] if '/regression/' in t['file']]
 
         # 更新时间戳
         content = re.sub(

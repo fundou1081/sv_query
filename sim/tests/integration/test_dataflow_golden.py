@@ -17,11 +17,11 @@ Golden tests for dataflow condition accumulation across else-if chains.
 
 期望: pyslang-safe 输出 + truth-table semantic equivalence
 """
+import itertools
 import os
+import re
 import subprocess
 import sys
-import re
-import itertools
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 import pytest
@@ -59,7 +59,7 @@ def truth_table_equiv(expr1: str, expr2: str, vars_list: list[str]) -> bool:
         return expr1 == expr2
     try:
         for vals in itertools.product([False, True], repeat=len(vars_list)):
-            env = dict(zip(vars_list, vals))
+            env = dict(zip(vars_list, vals, strict=False))
             v1 = eval(to_py(expr1), {"__builtins__": {}}, env)
             v2 = eval(to_py(expr2), {"__builtins__": {}}, env)
             if v1 != v2:
@@ -70,7 +70,7 @@ def truth_table_equiv(expr1: str, expr2: str, vars_list: list[str]) -> bool:
 
 
 def assert_semantically_eq(conditions: list[str], expected: list[str], var_hints: list[str]) -> None:
-    assert conditions, f"No conditions returned"
+    assert conditions, "No conditions returned"
     actual_str = conditions[0]
     for exp in expected:
         all_vars = list(set(var_hints + extract_vars(exp) + extract_vars(actual_str)))

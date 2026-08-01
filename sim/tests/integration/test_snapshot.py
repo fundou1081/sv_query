@@ -8,18 +8,15 @@
 # 3. 快照对比功能
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
 import tempfile
-import json
+import unittest
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import SignalGraph, NodeKind, EdgeKind, TraceNode, TraceEdge
+from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 from trace.core.snapshot_manager import SnapshotManager
 
 

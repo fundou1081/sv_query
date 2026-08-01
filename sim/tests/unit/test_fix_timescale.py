@@ -14,9 +14,6 @@ TDD: fix timescale CLI 命令 (Req-16)
 5. 默认跳过 .svh (CLI, 不依赖 MissingTimeScale)
 6. --help 文档化所有 flag (CLI, 不依赖 MissingTimeScale)
 """
-import os
-import re
-import pytest
 import subprocess
 import sys
 import tempfile
@@ -146,7 +143,7 @@ def test_fix_timescale_no_backup():
     fl = Path(tmpdir) / "test.f"
     fl.write_text(f"{sv_a_path.absolute()}\n{sv_b_path.absolute()}\n")
 
-    bak_path = Path(str(sv_b_path) + ".bak")
+    Path(str(sv_b_path) + ".bak")
     r = _run("fix", "timescale", "--filelist", str(fl), "--apply", "--no-backup", "--log-level", "ERROR")
     assert r.returncode in (0, 1)
     # 不创建 .bak 文件 (由于文件已有 timescale, 不会有任何修改, 但命令跑通)

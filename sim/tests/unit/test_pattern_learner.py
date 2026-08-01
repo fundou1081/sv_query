@@ -26,13 +26,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
+from applications.bus.normalize import NormalizeConfig, SignalNormalizer
 from applications.bus.pattern_learner import (
-    PatternLearner,
     ChannelGroup,
-    ChannelSignal,
+    PatternLearner,
 )
-from applications.bus.normalize import SignalNormalizer, NormalizeConfig
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

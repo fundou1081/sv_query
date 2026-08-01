@@ -2,13 +2,13 @@
 # [铁律13] 金标准测试
 #
 # Phase 2: 识别 UVM sequence/driver 行为模式
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.call_graph_builder import CallGraphBuilder
-from trace.core.graph.call_graph_models import CallNode, CallGraph
 
 
 def _build_call_graph(source, entry_class, entry_method):

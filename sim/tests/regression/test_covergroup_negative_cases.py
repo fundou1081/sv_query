@@ -3,15 +3,15 @@
 # [铁律18] 负面测试
 #
 # 证明系统能发现不合理的 covergroup 写法
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.covergroup_analyzer import CovergroupAnalyzer
-from trace.core.graph.covergroup_models import CovergroupInfo
+from trace.core.covergroup_extractor import CovergroupExtractor
+from trace.unified_tracer import UnifiedTracer
 
 
 def _analyze(source):

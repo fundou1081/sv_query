@@ -3,12 +3,14 @@
 # 项目纪律: 铁律13 金标准测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -19,7 +21,7 @@ class TestInterfaceBasic(unittest.TestCase):
     """[语法] 基本 Interface"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
 
@@ -27,7 +29,7 @@ class TestInterfaceArray(unittest.TestCase):
     """[语法] Interface 数组"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_interface_array(self):
@@ -66,7 +68,7 @@ class TestInterfaceMultiple(unittest.TestCase):
     """[语法] Interface 多信号"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
 
@@ -74,7 +76,7 @@ class TestInterfaceConnection(unittest.TestCase):
     """[语法] Interface 端口连接"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
 
@@ -82,7 +84,7 @@ class TestModportDirection(unittest.TestCase):
     """[语法] Modport 方向"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_modport_master_output(self):

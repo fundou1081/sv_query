@@ -10,25 +10,18 @@ dataflow_viz — 基于 SignalGraph + signal_classifier 生成数据流可视化
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
-from typing import Dict, List, Optional
 
-from .signal_classifier import (
-    SignalClassification,
-    SignalClass,
-    ClassifiedNode,
-    ClassifiedEdge,
-)
+from ..models import NodeKind, SignalGraph
 from ._dot_common import (
-    sanitize_dot_id,
     safe_classify,
-    node_width,
+    sanitize_dot_id,
     signal_class_color,
-    COMMON_DOT_DEFAULTS,
 )
-from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
-
+from .signal_classifier import (
+    SignalClass,
+    SignalClassification,
+)
 
 # [P1-5 2026-06-13] 委托给 _dot_common.sanitize_dot_id
 _sanitize_dot_id = sanitize_dot_id
@@ -72,16 +65,16 @@ def generate_dataflow_dot(
     lines.append('  splines=polyline;')
     lines.append('')
 
-    n_data = len(classification.data_nodes)
-    n_ctrl = len(classification.control_nodes)
-    n_clk = len(classification.clock_nodes)
+    len(classification.data_nodes)
+    len(classification.control_nodes)
+    len(classification.clock_nodes)
 
     # 边收集
     data_edges = []
     control_edges = []
     edge_seen = set()
 
-    for (src, dst, kind_str), ce in classification.edges.items():
+    for (src, dst, _kind_str), ce in classification.edges.items():
         key = (src, dst)
         if key in edge_seen:
             continue
@@ -135,7 +128,6 @@ def generate_dataflow_dot(
         except (TypeError, ValueError, IndexError):
             w_msb, w_lsb = 0, 0
         w = abs(w_msb - w_lsb) + 1 if w_msb >= w_lsb else 1
-        width_str = f"[{w_msb}:{w_lsb}]" if w_msb != w_lsb else f"[{w_msb}]"
         safe_name = sanitize_dot_id(node.name)
         if safe_name and safe_name.startswith('_node_'):
             safe_name = ''  # auto-generated name, skip

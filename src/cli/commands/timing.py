@@ -19,9 +19,9 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+
 from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
-
 
 warnings.filterwarnings("ignore")
 
@@ -45,7 +45,6 @@ def analyze(
 ) -> None:
     """Analyze timing critical paths"""
     from trace.core.graph.models import NodeKind
-    from trace.unified_tracer import UnifiedTracer
 
     if not file and not filelist:
         typer.echo("Error: --file or --filelist is required", err=True)
@@ -74,7 +73,6 @@ def analyze(
     # an X_DRIVER signal in the path forces the path to stop.
     target_module = tracer._tracer_root if hasattr(tracer, "_tracer_root") else None
     timing_anomalies: dict[str, str] = {}
-    from trace.core.graph.models import NodeKind
     for nid in graph.nodes():
         # Only check target module's signals (heuristic: first part of dotted name)
         if "." not in nid:
@@ -144,7 +142,7 @@ def analyze(
         lines.append('')
 
         # [Phase 6.4 2026-07-12] TL;DR as visible box + shared legend
-        from trace.core.graph.analyzer.viz_legend import render_tldr_box, render_legend
+        from trace.core.graph.analyzer.viz_legend import render_legend, render_tldr_box
         max_d = max((p["depth"] for p in paths), default=0)
         tldr_text = (
             f'{len(paths)} critical paths · deepest={max_d} cycles · '

@@ -42,14 +42,16 @@ test_complex_inheritance.py - 复杂 Class 继承场景金标准测试
     - extended_transaction extends transaction
 """
 
-import unittest
 import sys
+import unittest
+
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind, NodeKind
 import pyslang
 from pyslang import SyntaxKind
+
+from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestComplexInheritance(unittest.TestCase):
@@ -100,7 +102,7 @@ class extended_transaction extends transaction;
     constraint c2 { mode < 5; }
 endclass'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -168,7 +170,7 @@ endclass'''
         graph = self._build_graph()
         nodes = list(graph.nodes())
 
-        constraint_nodes = [n for n in nodes if '::c' in n or n.endswith('.addr_c')]
+        [n for n in nodes if '::c' in n or n.endswith('.addr_c')]
 
         expected_constraints = [
             'transaction.c1',
@@ -199,7 +201,7 @@ endclass'''
 
     def test_class_hierarchy_extends(self):
         """ClassHierarchy extends 关系"""
-        graph = self._build_graph()
+        self._build_graph()
         tracer = UnifiedTracer(sources={'test.sv': pyslang.SyntaxTree.fromText('''class a; endclass''')})
 
         # 获取 hierarchy
@@ -213,7 +215,7 @@ endclass
 class extended_transaction extends transaction;
 endclass'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -264,7 +266,7 @@ endclass'''
 
         virtual_methods = []
         for item in cls.items:
-            if getattr(item, 'kind') == SyntaxKind.ClassMethodDeclaration:
+            if item.kind == SyntaxKind.ClassMethodDeclaration:
                 qualifiers = getattr(item, 'qualifiers', None)
                 is_virtual = False
                 if qualifiers:
@@ -307,7 +309,7 @@ endclass'''
             if cls.kind == SyntaxKind.ClassDeclaration:
                 methods = parent_methods if cls.name.value == 'parent' else child_methods
                 for item in cls.items:
-                    if getattr(item, 'kind') == SyntaxKind.ClassMethodDeclaration:
+                    if item.kind == SyntaxKind.ClassMethodDeclaration:
                         qualifiers = getattr(item, 'qualifiers', None)
                         is_virtual = False
                         if qualifiers:

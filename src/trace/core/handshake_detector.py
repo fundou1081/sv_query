@@ -14,7 +14,6 @@ from typing import Literal
 
 from trace.core.graph.models import DriverInfo
 
-
 # ==============================================================================
 # 数据结构
 # ==============================================================================
@@ -63,7 +62,7 @@ def _split_condition(cond: str) -> list[str]:
 
 
 def _extract_signal_names(cond: str) -> list[str]:
-    """从条件中提取信号名 (去除比较值、表达式等)
+    r"""从条件中提取信号名 (去除比较值、表达式等)
 
     用于判断条件里是否含握手信号名 (valid/ready/ack/req/...)。
     例: \`state == READY\`  → \`[state]\` (不是 state + ready)

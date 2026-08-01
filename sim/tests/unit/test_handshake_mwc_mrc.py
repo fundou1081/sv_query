@@ -17,8 +17,8 @@ axi_crossbar_addr 内部用 m_wc (write command) 和 m_rc (read command)
 修复后: 加入 READY_VALID_PATTERNS, scan 能识别
 """
 
-import sys
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -37,6 +37,7 @@ with open(_handshake_path) as f:
     src = f.read()
 # 提取 READY_VALID_PATTERNS 定义
 import re
+
 match = re.search(r"^READY[ _]VALID_PATTERNS\s*=\s*\[(.*?)\]", src, re.DOTALL | re.MULTILINE)
 if match:
     items_str = match.group(1)

@@ -9,21 +9,23 @@
 
 更新: 2026-05-10 增强弱断言，验证边类型和具体行为
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
+from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind, NodeKind
 
 
 class TestClockEdge(unittest.TestCase):
     """CLOCK edge tests"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -104,7 +106,7 @@ class TestResetEdge(unittest.TestCase):
     """RESET edge tests"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -174,7 +176,7 @@ class TestTimingControl(unittest.TestCase):
     """Timing control tests"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -253,7 +255,7 @@ class TestMultiClockDomain(unittest.TestCase):
     """Multi-clock domain tests"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

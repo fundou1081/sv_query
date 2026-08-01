@@ -3,12 +3,14 @@
 # 项目纪律: 铁律13 金标准测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -19,7 +21,7 @@ class TestTaskCall(unittest.TestCase):
     """[语法] Task 调用"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_task_drives_signal(self):
@@ -51,7 +53,7 @@ endmodule'''
         # 金标准: 图建立
         self.assertIsNotNone(tracer.get_graph())
 
-        result = tracer.trace_signal('dout', 'top')
+        tracer.trace_signal('dout', 'top')
         # TODO: 实现 task 调用追踪后验证
         # 金标准: din 是 dout 的驱动 (通过 task)
 
@@ -63,7 +65,7 @@ class TestInterfaceDecl(unittest.TestCase):
     """[语法] Interface 定义"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_interface_port(self):
@@ -104,7 +106,7 @@ class TestModport(unittest.TestCase):
     """[语法] Modport 方向"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_modport_direction(self):
@@ -146,7 +148,7 @@ class TestWhileLoop(unittest.TestCase):
     """[语法] While 循环内赋值"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_while_loop_drives(self):
@@ -191,7 +193,7 @@ class TestClassDecl(unittest.TestCase):
     """[语法] Class 声明"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_class_with_members(self):

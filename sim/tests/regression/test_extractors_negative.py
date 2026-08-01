@@ -2,15 +2,15 @@
 # [铁律18] 负面测试
 #
 # 测试边界条件：空输入、无效入口、非 UVM 代码、编译错误
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.call_graph_builder import CallGraphBuilder
+from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.uvm_testbench_extractor import UVMTestbenchExtractor
-
 
 # =========================================================================
 # CovergroupExtractor 负面测试

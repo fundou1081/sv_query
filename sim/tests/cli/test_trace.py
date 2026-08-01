@@ -2,10 +2,10 @@
 # test_trace.py - trace command tests
 #============================================================================
 
-import unittest
+import os
 import subprocess
 import tempfile
-import os
+import unittest
 
 
 class TestTraceCLI(unittest.TestCase):
@@ -232,7 +232,7 @@ endmodule
             edge_cycles = re.findall(r'label="\+(\d+) cycle', content)
             self.assertGreater(
                 len(edge_cycles), 0,
-                f"trace fanin DOT 应含 +N cycle labels, 实际: 0 匹配"
+                "trace fanin DOT 应含 +N cycle labels, 实际: 0 匹配"
             )
         finally:
             os.unlink(dot_path)
@@ -271,7 +271,7 @@ endmodule
             )
             self.assertIsNotNone(
                 node_match,
-                f"trace fanin DOT 中 top_q 节点没有定义"
+                "trace fanin DOT 中 top_q 节点没有定义"
             )
             pw = int(node_match.group(1))
             self.assertGreaterEqual(

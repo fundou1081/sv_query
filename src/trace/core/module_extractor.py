@@ -21,11 +21,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
+from .._safe import _safe_attr, _safe_str
+from .graph.models import NodeKind, SignalGraph
 from .semantic_adapter import SemanticAdapter
-from .._safe import _safe_str, _safe_attr
-from .graph.models import SignalGraph, NodeKind
 
 
 @dataclass
@@ -207,7 +206,7 @@ def _extract_sub_instances(
     if depth >= max_depth:
         return
 
-    for sub_inst, inst_name, def_name, array_idx, array_name in _iter_sub_instances(adapter, parent_mod):
+    for _sub_inst, inst_name, def_name, array_idx, array_name in _iter_sub_instances(adapter, parent_mod):
         if array_idx is not None:
             full_id = f"{current_path}.{array_name}[{array_idx}].{inst_name}"
             parent_module = current_path
@@ -246,7 +245,6 @@ def _extract_sub_instances(
 
 def _iter_sub_instances(adapter, parent_mod) -> list[tuple]:
     results: list[tuple] = []
-    seen_array_counts: dict[str, int] = {}
 
     for item in parent_mod.body:
         for inst_obj, inst_name, def_name in _collect_instances_from_stmt(adapter, item):

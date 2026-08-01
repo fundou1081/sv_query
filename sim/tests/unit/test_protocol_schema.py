@@ -19,14 +19,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from applications.bus.schema import (
+    ChannelSpec,
     ProtocolSchema,
     ProtocolSchemaRegistry,
-    ChannelSpec,
     SignalRoleSpec,
     VariantSpec,
     load_protocols,
 )
-
 
 # ---------------------------------------------------------------------------
 # 单个 schema 加载

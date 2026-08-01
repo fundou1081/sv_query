@@ -6,21 +6,23 @@ PORT_INOUT 相关测试:
 1. 多 inout 端口
 2. 三态缓冲
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.graph.models import NodeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestPortInout(unittest.TestCase):
     """PORT_INOUT 测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'t.sv': source})
 
     def test_tri_state_buffer(self):

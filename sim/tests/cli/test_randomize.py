@@ -17,13 +17,12 @@ Tests:
  10. Non-existent class filter returns empty
 """
 
-import unittest
+import json
+import os
 import subprocess
 import tempfile
-import os
-import json
+import unittest
 from pathlib import Path
-
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "randomize" / "packet.sv"
 

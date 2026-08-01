@@ -12,6 +12,7 @@ TDD: controlflow if/else 互斥判断 (Req-13 P2)
 """
 
 import pytest
+
 pytestmark = pytest.mark.opensource  # NaplesPU dependency
 
 import subprocess

@@ -8,8 +8,8 @@ Without --show-source, the user sees clean labels. With --show-source,
 each node label includes "<file>:<line>" + dot's `tooltip` and `URL`
 attributes for click-to-open-in-editor behavior.
 """
-import subprocess
 import os
+import subprocess
 from pathlib import Path
 
 import pytest

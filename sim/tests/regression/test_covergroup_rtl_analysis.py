@@ -6,14 +6,14 @@
 #   1. data 信号: bins 是否覆盖数值范围、极值、边界？
 #   2. control 信号: bins 是否覆盖特殊值、cross？
 #   3. 相关信号: 是否有建议的 cross 信号？
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.covergroup_analyzer import CovergroupAnalyzer, CoverageGap
+from trace.unified_tracer import UnifiedTracer
 
 
 def _build_all(source):

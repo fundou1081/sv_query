@@ -6,7 +6,6 @@ test_coverage_gen_demo.py - coverage_gen_demo CLI 端到端测试
 
 测试通过 subprocess 调 run_cli.py, 不直接 import 模块 (避免 sys.path 污染).
 """
-import os
 import re
 import subprocess
 import sys
@@ -75,7 +74,7 @@ class TestFilelistMode:
 
     def test_filelist_basic(self, tmp_path):
         """--filelist=<path> + file + signal → 跨文件 covergroup.
-        
+
         [V6.9] 降低内存需求: 用 small_state_machine.sv 代替 type_taxonomy.sv
         (原测试 8GB MBA 上 query_risk_json OOM)
         """

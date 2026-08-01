@@ -11,10 +11,8 @@ Tests verify:
   - ALU result signal has correct driver edges
   - Binary operators (+, -, &, |, ^, <<, >>) all produce leaf-signal drivers
 """
-from pathlib import Path
 import sys
-
-import pytest
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))

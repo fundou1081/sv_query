@@ -16,7 +16,6 @@ test_trace_cache_error.py - Tests for trace --no-cache + per-signal error recove
 """
 import json
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -41,7 +40,7 @@ def _run(*args, timeout=60) -> subprocess.CompletedProcess:
 def test_a1_default_cache_enabled():
     """A1: 默认 (无 --no-cache) cache 应启用, 第二次跑应命中 cache."""
     # 清 cache
-    cache_dir = Path.home() / ".svq" / "cache"
+    Path.home() / ".svq" / "cache"
     # 跑 1st (cache miss) + 2nd (cache hit)
     t0 = time.time()
     r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST,

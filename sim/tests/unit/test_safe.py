@@ -7,8 +7,8 @@ Verifies:
 - canonical functions are used by semantic_adapter and base
 """
 import pytest
-from trace._safe import safe_str, clean_name, safe_attr
 
+from trace._safe import clean_name, safe_attr, safe_str
 
 # ---- safe_str ----
 

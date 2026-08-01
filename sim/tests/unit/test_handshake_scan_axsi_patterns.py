@@ -5,12 +5,13 @@ Bug: READY_VALID_PATTERNS only includes 'aw_valid' (with underscore) and
 '_valid' (with leading underscore), so it doesn't match signals like
 's_axi_awvalid', 'm_axi_wready' (no underscore between channel and valid/ready).
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
 from cli.commands.handshake import _is_ready_or_valid, _strip_suffix
-
 
 # Standard AXI signal patterns that MUST be recognized
 AXI_VALID_READY = [

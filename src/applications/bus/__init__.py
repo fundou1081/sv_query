@@ -9,30 +9,6 @@ applications.bus - Protocol schema 框架 (Phase A)
   - detector:        协议检测评分引擎 (Session 4)
 """
 
-from .normalize import (
-    NormalizeConfig,
-    NormalizeResult,
-    SignalNormalizer,
-)
-from .structural import (
-    SignalContext,
-    StructuralHints,
-    StructuralRoleDetector,
-    WidthCategory,
-)
-from .pattern_learner import (
-    ChannelGroup,
-    ChannelSignal,  # 别名
-    PatternLearner,
-)
-from .schema import (
-    ChannelSpec,
-    ProtocolSchema,
-    ProtocolSchemaRegistry,
-    SignalRoleSpec,
-    VariantSpec,
-    load_protocols,
-)
 from .detector import (
     ChannelMatch,
     ProtocolDetector,
@@ -48,6 +24,30 @@ from .handshake_provider import (
 from .handshake_provider_trace import (
     TraceBasedHandshakeProvider,
     make_trace_based_provider,
+)
+from .normalize import (
+    NormalizeConfig,
+    NormalizeResult,
+    SignalNormalizer,
+)
+from .pattern_learner import (
+    ChannelGroup,
+    ChannelSignal,  # 别名
+    PatternLearner,
+)
+from .schema import (
+    ChannelSpec,
+    ProtocolSchema,
+    ProtocolSchemaRegistry,
+    SignalRoleSpec,
+    VariantSpec,
+    load_protocols,
+)
+from .structural import (
+    SignalContext,
+    StructuralHints,
+    StructuralRoleDetector,
+    WidthCategory,
 )
 
 __all__ = [

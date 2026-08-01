@@ -11,8 +11,8 @@ PULP axi 版本的 cross-module trace 测试 (替代 verilog-axi)
   新方案: in-memory mock graph + port_to_internal 替代真实数据
 """
 import sys
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -20,7 +20,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from trace.core.query.signal import SignalTracer
-
 
 # ============================================================================
 # Mock graph 模拟 pulp axi_xbar_dp_ram hierarchy
@@ -275,7 +274,7 @@ class TestCrossModuleTrace:
         drivers = st._collect_all_drivers(sig, max_depth=3)
         # 至少应该有 1 driver (mst_ports_aw_valid_o signal)
         assert len(drivers) >= 1, \
-            f"m_axi_awvalid should have at least 1 driver, got 0"
+            "m_axi_awvalid should have at least 1 driver, got 0"
 
 
 class TestNoInfiniteLoop:

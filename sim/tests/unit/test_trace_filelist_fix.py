@@ -16,18 +16,16 @@ Bug: pyslang 总是返 hierarchical name (如 axi_dp_ram.s_axi_a_awvalid),
 """
 
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from applications.bus.sv_extractor import SVSignalExtractor
 from applications.bus.handshake_provider_trace import (
     TraceBasedHandshakeProvider,
 )
-
+from applications.bus.sv_extractor import SVSignalExtractor
 
 # ---------------------------------------------------------------------------
 # Single-file SV fixture
@@ -178,7 +176,7 @@ class TestCaching:
         graph = tracer.build_graph()
         provider = TraceBasedHandshakeProvider()
         provider.set_context(tracer, graph, module="axi_dp_ram")
-        info1 = provider.get_handshake("s_axi_awvalid", "s_axi_awready")
+        provider.get_handshake("s_axi_awvalid", "s_axi_awready")
         # 重置
         provider.set_context(tracer, graph, module="other_mod")
         assert len(provider._cache) == 0  # 缓存已清

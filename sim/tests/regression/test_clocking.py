@@ -7,19 +7,22 @@ Clocking Block 语法覆盖:
 2. clocking 方向 (input/output)
 3. clocking 信号列表
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestClocking(unittest.TestCase):
     """Clocking Block 支持测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_clocking_declaration(self):
@@ -130,7 +133,7 @@ endmodule'''
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
 
-        nodes = list(tracer.get_graph().nodes())
+        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
 
         # 验证: data -> valid

@@ -27,7 +27,6 @@ from trace.core.module_extractor import (
     extract_module_edges_from_mig,
 )
 
-
 # ============================================================================
 # Mock MIG + instances (替代真实 pulp_axi_xbar)
 # ============================================================================

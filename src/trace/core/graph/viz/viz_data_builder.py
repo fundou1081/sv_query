@@ -12,8 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..models import EdgeKind, NodeKind, SignalGraph
-from .viz_data_models import VizData, VizNode, VizEdge
+from ..models import SignalGraph
+from .viz_data_models import VizData, VizEdge, VizNode
 
 
 @dataclass

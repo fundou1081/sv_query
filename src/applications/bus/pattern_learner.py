@@ -60,10 +60,8 @@ Phase A Session 3: PatternLearner
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from .normalize import NormalizeConfig, SignalNormalizer
-
 
 # ---------------------------------------------------------------------------
 # 数据结构

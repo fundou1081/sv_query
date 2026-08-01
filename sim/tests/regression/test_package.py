@@ -7,19 +7,22 @@ Package 语法覆盖:
 2. import pkg::*
 3. 跨 package 引用
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestPackage(unittest.TestCase):
     """Package 支持测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_package_declaration(self):
@@ -214,7 +217,7 @@ endmodule'''
         self.assertIsNotNone(tracer.get_graph())
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         # 验证: data 节点存在
         has_data = any('data' in n for n in nodes)

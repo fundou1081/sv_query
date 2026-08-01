@@ -266,7 +266,7 @@ class SignalTracer:
                                 # semantic short name 是  多个 instance 共享同一 def_port 名字
                                 # 所以可以通过它查 cross-instance mapping.
                                 ptt_for_cross = getattr(self.graph, "_port_to_module_type", {})
-                                def_port_semantic = (
+                                (
                                     self.graph._port_to_internal.get(src)
                                     if hasattr(self.graph, "_port_to_internal")
                                     else None

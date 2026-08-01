@@ -10,12 +10,11 @@ The visualizations should match the expected count of REG nodes, cycle
 values, and trace direction.
 """
 
-import unittest
+import re
 import subprocess
 import tempfile
-import re
+import unittest
 from pathlib import Path
-
 
 LATENCY_FIXTURES = Path(__file__).parent / "fixtures" / "latency"
 

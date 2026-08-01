@@ -3,14 +3,15 @@
 # 项目纪律: 铁律13 金标准测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
 
+from trace.unified_tracer import UnifiedTracer
 
 #==============================================================================
 # 金标准测试 - 10个语法场景
@@ -20,7 +21,7 @@ class TestModportDirection(unittest.TestCase):
     """[语法1] Modport 方向识别"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_modport_master_direction(self):
@@ -58,7 +59,7 @@ class TestInterfaceSignal(unittest.TestCase):
     """[语法2] Interface 内信号点号访问"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_interface_dot_access(self):
@@ -96,7 +97,7 @@ class TestClockingBlock(unittest.TestCase):
     """[语法3] Clocking Block"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_clock_block(self):
@@ -125,7 +126,7 @@ class TestCovergroup(unittest.TestCase):
     """[语法4] Covergroup"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_covergroup(self):
@@ -156,7 +157,7 @@ class TestPropertySequence(unittest.TestCase):
     """[语法5] SVA Property / Sequence"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_property(self):
@@ -190,7 +191,7 @@ class TestRandsequence(unittest.TestCase):
     """[语法6] Randsequence"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_randsequence(self):
@@ -217,7 +218,7 @@ class TestPackageImport(unittest.TestCase):
     """[语法7] Package Import"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_package(self):
@@ -248,7 +249,7 @@ class TestClassExtends(unittest.TestCase):
     """[语法8] Class extends / OOP"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_class(self):
@@ -284,7 +285,7 @@ class TestVirtualInterface(unittest.TestCase):
     """[语法9] Virtual Interface"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_virtual_if(self):
@@ -321,7 +322,7 @@ class TestGenerateIf(unittest.TestCase):
     """[语法10] Generate if/else"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_generate(self):

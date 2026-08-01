@@ -16,11 +16,9 @@
 # ==============================================================================
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .coverage_models import SourceLocation, SourceSnippet
-from .graph.models import TraceEdge, NodeKind
-
+from .graph.models import NodeKind, TraceEdge
 
 # ==============================================================================
 # Evidence 数据类
@@ -348,7 +346,7 @@ class TraceEvidenceResolver:
             start_line = sm.getLineNumber(sr.start)
             start_col = sm.getColumnNumber(sr.start)
             end_line = sm.getLineNumber(sr.end)
-            end_col = sm.getColumnNumber(sr.end)
+            sm.getColumnNumber(sr.end)
         except Exception:
             return None
         if not filename:
@@ -547,7 +545,7 @@ class TraceEvidenceResolver:
 
     def _find_class_symbol_semantic(self, class_name: str):
         """[V6.9] 用 semantic API 找指定 class name 的 ClassType
-        
+
         通过 root.visit() 遍历所有节点找 ClassType (语义 AST)。
         compilationUnits 路径在 semantic AST 下不可靠。
         """
@@ -561,10 +559,10 @@ class TraceEvidenceResolver:
                 root = self.adapter.root
         except Exception:
             return None
-        
+
         if root is None:
             return None
-        
+
         # Use visit() pattern to find ClassType
         result = [None]
         def visitor(node):

@@ -11,10 +11,10 @@ trace.core.graph.viz — 统一可视化数据层 (V6.7)
   viz_dot_renderer: render_dot(viz, config)
 """
 
-from .viz_data_models import VizData, VizNode, VizEdge
-from .viz_data_builder import VizBuildOptions, build_viz_data
-from .viz_dot_renderer import render_dot
 from .viz_compute_renderer import render_compute_dot
+from .viz_data_builder import VizBuildOptions, build_viz_data
+from .viz_data_models import VizData, VizEdge, VizNode
+from .viz_dot_renderer import render_dot
 from .viz_timed_compute_renderer import render_timed_compute
 
 __all__ = [

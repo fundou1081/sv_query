@@ -3,9 +3,10 @@
 #==============================================================================
 # [迁移] 使用 SemanticAdapter 替代 PyslangAdapter
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler
@@ -303,7 +304,7 @@ module mod_d(input wire clk); endmodule
         inst_names = [inst.name for inst in instances]
         expected_names = ['inst_a', 'inst_b', 'inst_c', 'inst_d']
 
-        for expected, actual in zip(expected_names, inst_names):
+        for expected, actual in zip(expected_names, inst_names, strict=False):
             self.assertEqual(actual, expected,
                 f"实例名称应为 '{expected}'，实际为 '{actual}'")
 

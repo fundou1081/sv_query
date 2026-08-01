@@ -21,8 +21,6 @@ TDD: 所有 CLI 命令 --file vs --filelist 行为一致 (Req-9 任务2)
 3. --file 模式输出 == --filelist 模式输出
 4. 不传任何参数时 exit 1
 """
-import json
-import os
 import subprocess
 import sys
 import tempfile

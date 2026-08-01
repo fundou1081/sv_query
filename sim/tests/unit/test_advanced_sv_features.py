@@ -8,14 +8,13 @@
 # 4. 复杂参数表达式 (struct.member)
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 class TestAdvancedSVFeatures(unittest.TestCase):

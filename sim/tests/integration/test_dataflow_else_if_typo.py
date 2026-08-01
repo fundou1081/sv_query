@@ -62,7 +62,7 @@ def test_else_if_chain_no_double_negation(test_input, fr, to, f, expected_condit
     assert len(conds) == len(expected_conditions), (
         f"{test_input}: expected {len(expected_conditions)} conditions, got {len(conds)}"
     )
-    for actual, expected in zip(conds, expected_conditions):
+    for actual, expected in zip(conds, expected_conditions, strict=False):
         assert actual == expected, (
             f"{test_input}: condition mismatch\n"
             f"  actual:   {actual!r}\n"

@@ -22,9 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from applications.bus.sv_extractor import SVSignalExtractor
 from applications.bus.detector import ProtocolDetector
-from applications.bus.schema import ProtocolSchemaRegistry
 from applications.bus.handshake_provider import (
     HandshakeProvider,
     NameBasedHandshakeProvider,
@@ -33,8 +31,8 @@ from applications.bus.handshake_provider_trace import (
     TraceBasedHandshakeProvider,
     make_trace_based_provider,
 )
-from applications.bus.structural import SignalContext
-
+from applications.bus.schema import ProtocolSchemaRegistry
+from applications.bus.sv_extractor import SVSignalExtractor
 
 # ---------------------------------------------------------------------------
 # Fixtures: 真实 SV
@@ -216,7 +214,7 @@ class TestRealSVDetection:
         _, _, st, graph = axi_tracer
         provider = TraceBasedHandshakeProvider(st, graph)
         # 测试多个通道
-        for valid, ready, expected_ch in [
+        for valid, ready, _expected_ch in [
             ("s_axi_awvalid", "s_axi_awready", "AW"),
             ("s_axi_wvalid", "s_axi_wready", "W"),
             ("s_axi_bvalid", "s_axi_bready", "B"),
@@ -242,7 +240,7 @@ class TestComparisonWithNameBased:
 
         v, r = "s_axi_awvalid", "s_axi_awready"
         nb_info = name_based.get_handshake(v, r)
-        tb_info = trace_based.get_handshake(v, r)
+        trace_based.get_handshake(v, r)
 
         # 两者都应返非 None
         assert nb_info is not None
@@ -322,8 +320,8 @@ class TestDetectorIntegration:
         # NameBased 对所有 valid+ready 都给 1.0 (STANDARD_AXI)
         # TraceBased 应该给不同分数 (反映真实 trace 结果)
         # 两者分数不同 (这是 trace-based 价值所在)
-        nb_score = det_nb.detect(sigs).handshake_score
-        tb_score = det_tb.detect(sigs).handshake_score
+        det_nb.detect(sigs).handshake_score
+        det_tb.detect(sigs).handshake_score
         # 不严格相等 (但有概率相等, 所以不 assert)
 
     def test_handshake_score_actually_uses_provider(self, axi_tracer):

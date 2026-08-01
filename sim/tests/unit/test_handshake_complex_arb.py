@@ -5,12 +5,14 @@ Bug: Case 3 (STANDARD_AXI) was checked before COMPLEX_ARB,
 so `if ((v1 && r1) || (v2 && r2))` was mis-classified as STANDARD_AXI.
 This represents multi-source arbitration (e.g. multi-master crossbar).
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
+from trace.core.graph.models import DriverInfo, NodeKind, TraceNode
 from trace.core.handshake_detector import _classify_one_driver
-from trace.core.graph.models import DriverInfo, TraceNode, NodeKind
 
 
 def make_di(cond="", expr="", assign_type="always_comb", clock_domain="clk"):

@@ -10,12 +10,12 @@
 # 根因: 节点创建时使用原始信号名,未替换参数引用
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
 
 

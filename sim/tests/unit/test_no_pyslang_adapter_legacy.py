@@ -6,9 +6,9 @@
 # - 任何文件都不应 import trace.core.pyslang_adapter (如果需要, 改用 trace.core.base.PyslangAdapter)
 
 import os
+import subprocess
 import sys
 import unittest
-import subprocess
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 

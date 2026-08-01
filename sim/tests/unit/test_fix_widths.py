@@ -1,4 +1,4 @@
-"""
+r"""
 TDD: fix widths CLI 命令 (Req-19)
 
 [ADD 2026-06-12] 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽
@@ -15,7 +15,6 @@ TDD: fix widths CLI 命令 (Req-19)
 5. help 文档化
 """
 import json
-import os
 import subprocess
 import sys
 import tempfile

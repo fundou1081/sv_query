@@ -16,18 +16,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import pytest
-import pyslang
 
 # Import the module under test
 from trace.core.ast_utils import (
+    _KIND_ALIASES,
+    _kind_name,
+    is_wrapper,
+    kind_is,
+    kind_matches,
+    node_text,
     unwrap,
     unwrap_paren,
-    is_wrapper,
-    kind_matches,
-    kind_is,
-    node_text,
-    _kind_name,
-    _KIND_ALIASES,
 )
 
 
@@ -295,7 +294,6 @@ class TestRealPyslangIntegration:
     @pytest.fixture
     def parsed_tern(self):
         """Parse `(g ? a : b)` via UnifiedTracer and return the conditional expr."""
-        from pathlib import Path
         from trace.unified_tracer import UnifiedTracer
 
         src_text = """
@@ -305,7 +303,7 @@ class TestRealPyslangIntegration:
         endmodule
         """
         tracer = UnifiedTracer(sources={'m.sv': src_text}, strict=False)
-        g = tracer.build_graph()
+        tracer.build_graph()
 
         # Walk to find a ConditionalOp / ConditionalExpression in any module.
         # After build, the AST is gone but we can still parse fresh.

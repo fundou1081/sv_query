@@ -3,12 +3,14 @@
 # 铁律13: 先推导金标准，再验证
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -27,7 +29,7 @@ class TestBitSelectInAlways(unittest.TestCase):
 module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -47,7 +49,7 @@ endmodule'''
 module top(input [7:0] data, input [2:0] idx, output reg y);
     always_comb y = data[idx];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -67,7 +69,7 @@ endmodule'''
 module top(input [7:0] data, output reg [3:0] y);
     always_comb y = data[7:4];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -90,7 +92,7 @@ module top(input [7:0] data, input sel, output reg y);
         else y = data[0];
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -117,7 +119,7 @@ module top(input [1:0] sel, input [7:0] a, output reg y);
         endcase
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -138,7 +140,7 @@ endmodule'''
 module top(input clk, input [7:0] data, output reg q);
     always_ff @(posedge clk) q <= data[3];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('q', 'top')
 
@@ -162,7 +164,7 @@ class TestTernaryOperator(unittest.TestCase):
 module top(input a, b, sel, output y);
     assign y = sel ? a : b;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -182,7 +184,7 @@ endmodule'''
 module top(input a, b, sel, output reg y);
     always_comb y = sel ? a : b;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -202,7 +204,7 @@ endmodule'''
 module top(input a, b, c, sel1, sel2, output y);
     assign y = sel1 ? a : (sel2 ? b : c);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -226,7 +228,7 @@ class TestConcatLHS(unittest.TestCase):
 module top(input a, b, c, output [2:0] y);
     assign {y[2], y[1], y[0]} = {a, b, c};
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 

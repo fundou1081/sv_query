@@ -12,8 +12,6 @@ TDD: fix report CLI 命令 (Req-16 续)
 5. help 文档化
 """
 import json
-import os
-import pytest
 import subprocess
 import sys
 import tempfile
@@ -112,7 +110,7 @@ def test_fix_report_json_structure():
     assert "by_code" in data
     assert "auto_fixable" in data
     # by_category 应含每个 category 的 count / unique_files / sample_errors
-    for cat, info in data["by_category"].items():
+    for _cat, info in data["by_category"].items():
         assert "count" in info
         assert "unique_files" in info
         assert "sample_errors" in info

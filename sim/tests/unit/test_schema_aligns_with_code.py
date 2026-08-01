@@ -20,8 +20,8 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 # Add src/ to path for imports
-from trace.core.graph.models import NodeKind as CodeNodeKind, EdgeKind as CodeEdgeKind
-
+from trace.core.graph.models import EdgeKind as CodeEdgeKind
+from trace.core.graph.models import NodeKind as CodeNodeKind
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 SCHEMA_PATH = os.path.join(REPO_ROOT, 'tools', 'llm_schema.json')

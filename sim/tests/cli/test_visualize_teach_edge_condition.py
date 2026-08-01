@@ -8,11 +8,9 @@ carry a label that shows the guarding condition (e.g. `sel` for the if-branch,
 CLOCK/ENABLE/RESET edges should NOT have condition labels (those are
 always-block guards, not per-edge conditions).
 """
-import subprocess
 import os
+import subprocess
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"

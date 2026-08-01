@@ -7,20 +7,22 @@ Interface 实例化语法:
 2. 模块端口连接
 3. 接口信号追踪
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
-from trace.core.base import PyslangAdapter
+
 
 class TestInterfaceInstance(unittest.TestCase):
     """Interface 实例化测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_interface_instantiation(self):
@@ -106,7 +108,7 @@ endmodule'''
         self.assertIsNotNone(tracer.get_graph())
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         # 验证: u_top.ifc 节点存在
         has_u_top_ifc = any('u_top.ifc' in n for n in nodes)

@@ -11,14 +11,16 @@ Class 方法语法:
 6. const function 常量方法
 7. virtual function 虚函数
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.base import PyslangAdapter
+
 
 class TestClassMethod(unittest.TestCase):
     """Class 方法测试"""

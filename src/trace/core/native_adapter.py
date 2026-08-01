@@ -12,9 +12,8 @@ native_adapter.py — pyslang native API for instance extraction.
        14 个用户 files 不用改.
 """
 
-import pyslang
-from typing import List, Optional
 
+import pyslang
 
 # ----------------------------------------------------------------------------
 # Helpers
@@ -153,9 +152,9 @@ def _walk_instance(
         if not inst_id:
             return
         try:
-            inst_name = _safe_str(inst.name)
+            _safe_str(inst.name)
         except (UnicodeDecodeError, TypeError, Exception):
-            inst_name = None
+            pass
 
         # Get type name (module name) via definition
         defn = getattr(inst, 'definition', None)

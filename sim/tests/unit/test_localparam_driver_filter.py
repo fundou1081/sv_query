@@ -17,14 +17,13 @@ for the same identifier depending on context:
 This test exercises both paths with minimal SV that reproduces the bug.
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-import pytest
 from trace.unified_tracer import UnifiedTracer
-from trace.core.query.signal import SignalTracer
 
 
 def _build_tracer(source: str, name: str = "test"):
@@ -56,7 +55,7 @@ def _fanin_drivers(tracer, signal: str, module: str = None):
 
 class TestLocalparamRHSInSimpleAlways:
     """When localparam is RHS in a plain always block (no case).
-    
+
     AST is NamedValueExpression. Fix F's .symbol check works.
     """
 
@@ -201,7 +200,7 @@ class TestSignalRHSStillAppears:
 
 # =============================================================================
 # Path 3: Continuous assign with ternary localparam RHS (the remaining leak)
-# 
+#
 # This is the SECOND branch of the same bug Fix F/F.5 tries to solve.
 # _handle_normal_assign goes through _signal_visitor.get_signals_with_conditions
 # which returns string tuples, not AST nodes. The compile-time filter doesn't apply.

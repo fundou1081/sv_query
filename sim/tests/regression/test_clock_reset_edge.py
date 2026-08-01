@@ -7,12 +7,14 @@ CLOCK/RESET 边相关测试:
 2. 异步复位组合
 3. 同步复位
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -20,7 +22,7 @@ class TestClockResetEdge(unittest.TestCase):
     """CLOCK/RESET 边测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'t.sv': source})
 
     def test_nested_always_ff(self):
@@ -134,7 +136,7 @@ class TestClockEdgeCreation(unittest.TestCase):
     """CLOCK 边创建测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'t.sv': source})
 
     def test_clock_edge_creation(self):

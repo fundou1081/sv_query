@@ -38,6 +38,7 @@ def _apply_quiet_flag() -> None:
         sys.argv[:] = [a for a in sys.argv if a not in quiet_signals]
 
 import os  # noqa: E402  (needed for env var check above)
+
 _apply_quiet_flag()
 
 import typer
@@ -46,33 +47,32 @@ import typer
 # 甚至更不稳定 (4GB 分配 + 父进程已有 reclaim 时累积). 只依赖 conftest.py
 # 在 pytest session 开始时跑一次, subprocess 不重复 reclaim.
 # reclaim_memory_if_needed() 函数仍保留供未来需要时调用.
-
 from src.cli._common import (
     _build_tracer,
     handle_compilation_error,
 )
+from src.cli.commands.arch import arch_app
+from src.cli.commands.backpressure import backpressure_app
 from src.cli.commands.cdc import cdc_app
 from src.cli.commands.controlflow import controlflow_app
 from src.cli.commands.coverage import coverage_app
 from src.cli.commands.dataflow import dataflow_app
+from src.cli.commands.design import design_app
 from src.cli.commands.diff import diff_app
+from src.cli.commands.expression import expression_app
+from src.cli.commands.fix import fix_app
+from src.cli.commands.graph import graph_app
+from src.cli.commands.handshake import handshake_app
+from src.cli.commands.protocol import protocol_app
+from src.cli.commands.randomize import randomize_app
 from src.cli.commands.risk import risk_app
+from src.cli.commands.search import search
 from src.cli.commands.snapshot import snapshot_app
 from src.cli.commands.sva import sva_app
 from src.cli.commands.timing import timing_app
-from src.cli.commands.backpressure import backpressure_app
-from src.cli.commands.handshake import handshake_app
-from src.cli.commands.protocol import protocol_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
-from src.cli.commands.arch import arch_app
-from src.cli.commands.design import design_app
-from src.cli.commands.fix import fix_app
-from src.cli.commands.randomize import randomize_app
-from src.cli.commands.search import search
-from src.cli.commands.expression import expression_app
-from src.cli.commands.graph import graph_app
 
 app = typer.Typer(
     name="svq",
@@ -129,7 +129,6 @@ def stats_callback(
     [ADD 2026-06-11 任务3] elaboration error 统一 catch, 错误信息干净.
     """
     from trace.core.compiler import CompilationError
-    from trace.unified_tracer import UnifiedTracer
 
     if not file and not filelist:
         typer.echo("Error: --file or --filelist is required", err=True)

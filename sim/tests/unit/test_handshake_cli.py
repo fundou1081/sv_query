@@ -6,7 +6,6 @@ Tests for src/cli/commands/handshake.py
 Uses typer.testing.CliRunner to invoke commands end-to-end.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -16,7 +15,6 @@ from typer.testing import CliRunner
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from src.cli.commands.handshake import handshake_app
-
 
 runner = CliRunner()
 
@@ -140,7 +138,7 @@ class TestHandshakeAnalyze:
         ])
         # 应该退出码为 0 (fallback to scan) 或有清晰报错
         # 不应该崩溃
-        combined = result.stdout + result.stderr
+        result.stdout + result.stderr
         # 接受多种输出: scan header / error message / empty
         assert result.exit_code in (0, 1, 2)  # 不崩溃
 

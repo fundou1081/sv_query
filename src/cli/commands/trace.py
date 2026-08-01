@@ -17,20 +17,23 @@ import typer
 # 添加 src 到 path 以便 import trace
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
+# [Stage 5] evidence helper (cdc/verify/risk/dataflow/controlflow 复用)
+from cli._evidence_helpers import (  # noqa: E402
+    build_resolver as _build_evidence_resolver,
+)
+from cli._evidence_helpers import (
+    evidence_to_dict as _evidence_to_dict,
+)
+from cli._evidence_helpers import (
+    format_fanin_human as _format_fanin_human,
+)
+from cli._evidence_helpers import (
+    format_fanout_human as _format_fanout_human,
+)
 from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.graph.models import EdgeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
-
-# [Stage 5] evidence helper (cdc/verify/risk/dataflow/controlflow 复用)
-from cli._evidence_helpers import (  # noqa: E402
-    build_resolver as _build_evidence_resolver,
-    evidence_to_dict as _evidence_to_dict,
-    snippet_to_dict as _snippet_to_dict,
-    evidence_summary_line as _evidence_summary_line,
-    format_fanin_human as _format_fanin_human,
-    format_fanout_human as _format_fanout_human,
-)
 
 
 # JSON 输出格式化函数
@@ -295,9 +298,9 @@ def _load_tracer_from_snapshot(
     Raises:
         ValueError: snapshot tag not found.
     """
-    from trace.core.snapshot_manager import SnapshotManager
     from trace.core.graph.models import SignalGraph
     from trace.core.query.signal import SignalTracer
+    from trace.core.snapshot_manager import SnapshotManager
 
     manager = SnapshotManager()
     snap = manager.load(tag)
@@ -498,7 +501,14 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
 
     # ANSI color re-import in this scope (避免乱动模块顶部 import)
     from cli._evidence_helpers import (
-        _color, _ANSI_BOLD, _ANSI_DIM, _ANSI_CYAN, _ANSI_RED, _ANSI_YELLOW, _ANSI_GREEN, _ARROW
+        _ANSI_BOLD,
+        _ANSI_CYAN,
+        _ANSI_DIM,
+        _ANSI_GREEN,
+        _ANSI_RED,
+        _ANSI_YELLOW,
+        _ARROW,
+        _color,
     )
 
     print(f"Impact of {_color(signal, _ANSI_BOLD)}")
@@ -511,7 +521,7 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
         print(f"  {_color('(no impact paths)', _ANSI_DIM)}")
         return
 
-    from cli._evidence_helpers import should_use_tree, render_signal_tree
+    from cli._evidence_helpers import render_signal_tree, should_use_tree
 
     for i, path in enumerate(paths, 1):
         risk = (path.get("risk", "") or "").upper()
@@ -670,7 +680,7 @@ def fanin(
                 total_pre_filter += drivers_pre
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue with others
-                from src.cli.errors import make_error, code_for_exception
+                from src.cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_fanin",
                 )
@@ -747,7 +757,7 @@ def fanin(
 
     except Exception as e:
         # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
-        from src.cli.errors import make_error, code_for_exception
+        from src.cli.errors import code_for_exception, make_error
         data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
             output_json(data)
@@ -857,7 +867,7 @@ def fanout(
                 total_pre_filter += loads_pre
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import make_error, code_for_exception
+                from src.cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_fanout",
                 )
@@ -934,7 +944,7 @@ def fanout(
 
     except Exception as e:
         # [Phase 2 B2 2026-06-28] LLM-friendly error with stable code
-        from src.cli.errors import make_error, code_for_exception
+        from src.cli.errors import code_for_exception, make_error
         data = make_error(
             code_for_exception(e),
             str(e),
@@ -1040,7 +1050,7 @@ def impact(
                 total_high_risk_all += high_risk_count
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import make_error, code_for_exception
+                from src.cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_impact",
                 )
@@ -1352,7 +1362,7 @@ def evidence(
                 })
             except Exception as sig_err:
                 # [A3 2026-07-04] Per-signal failure → record error, continue
-                from src.cli.errors import make_error, code_for_exception
+                from src.cli.errors import code_for_exception, make_error
                 err_data = make_error(
                     code_for_exception(sig_err), str(sig_err), command="trace_evidence",
                 )
@@ -1528,20 +1538,19 @@ def overview(
         raise typer.Exit(code=1)
 
     # ── 公共 tracer (编译一次, 复用) ──
-    from cli._common import _build_tracer as _bt, handle_compilation_error
-    from trace.core.compiler import CompilationError
-    from trace.core.graph.dataflow import DataFlowGraph
-    from trace.core.graph.analyzer.controlflow_analyzer import ControlFlowAnalyzer
-    from trace.core.graph_builder import GraphBuilder
-    from trace.core.compiler import SVCompiler
-    from trace.core.semantic_adapter import SemanticAdapter
+    from cli._common import _build_tracer as _bt
+    from cli._common import handle_compilation_error
+    from cli._evidence_helpers import (
+        evidence_to_dict,
+    )
     from cli._evidence_helpers import (
         make_resolver as _make_evidence_resolver,
-        evidence_to_dict,
-        format_dataflow_human,
-        format_controlflow_human,
-        format_fanin_human,
     )
+    from trace.core.compiler import CompilationError, SVCompiler
+    from trace.core.graph.analyzer.controlflow_analyzer import ControlFlowAnalyzer
+    from trace.core.graph.dataflow import DataFlowGraph
+    from trace.core.graph_builder import GraphBuilder
+    from trace.core.semantic_adapter import SemanticAdapter
 
     try:
         tracer = _bt(
@@ -1697,11 +1706,11 @@ def _output_overview_text(data: dict, human: bool = False) -> None:
 
     # ── 段 1: dataflow ──
     df = result.get("dataflow", {})
-    print(f"\n── 1. DataFlow ──")
+    print("\n── 1. DataFlow ──")
     if not df:
         print(f"  ⚠️  {errors[0] if errors else 'No dataflow result'}")
     elif not df.get("is_reachable"):
-        print(f"  ❌ Not reachable")
+        print("  ❌ Not reachable")
     else:
         latency = df.get("primary_latency_cycles", "?")
         async_flag = df.get("primary_is_async", False)
@@ -1709,7 +1718,7 @@ def _output_overview_text(data: dict, human: bool = False) -> None:
         clock = df.get("clock_domain", "?")
         conditions = df.get("all_conditions", [])
 
-        print(f"  Status: ✅ Reachable")
+        print("  Status: ✅ Reachable")
         print(f"  Latency: {latency} cycle(s)" + (" ⚡ ASYNC" if async_flag else ""))
         print(f"  Clock:   {clock}")
         print(f"  Paths:   {paths_count}")
@@ -1738,15 +1747,15 @@ def _output_overview_text(data: dict, human: bool = False) -> None:
         print(f"\n── 2. ControlFlow ({title}: {sig_name}) ──")
 
         if not cf_entry:
-            print(f"  (no controlflow data)")
+            print("  (no controlflow data)")
             continue
 
         drivers = cf_entry.get("conditioned_drivers", [])
         if not drivers:
-            print(f"  (no conditioned drivers)")
+            print("  (no conditioned drivers)")
         else:
             for cd in drivers:
-                to_node = cd.get("to_node", "?")
+                cd.get("to_node", "?")
                 conditions = cd.get("conditions", [])
                 for cond in conditions:
                     expr = cond.get("expr", "?")
@@ -1783,16 +1792,16 @@ def _output_overview_text(data: dict, human: bool = False) -> None:
             if human:
                 always = ev_dict.get("enclosing_always", {})
                 if always and always.get("text"):
-                    print(f"     always block:")
+                    print("     always block:")
                     for line in always["text"].split("\n")[:6]:
                         print(f"       {line}")
                     if len(always["text"].split("\n")) > 6:
-                        print(f"       ...")
+                        print("       ...")
 
     # ── errors ──
     if errors:
         print(f"\n{'='*60}")
-        print(f"⚠️  Errors:")
+        print("⚠️  Errors:")
         for e in errors[:5]:
             print(f"  - {e}")
     print(f"{'='*60}")

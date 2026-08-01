@@ -5,13 +5,14 @@
 #       computed on demand by cross-validating evidence against source_expr/signal
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.trace_evidence import TraceEvidenceResolver
+from trace.unified_tracer import UnifiedTracer
 
 
 def _make_resolver(source: str, source_name: str = "test.sv"):

@@ -23,15 +23,19 @@ import typer
 
 warnings.filterwarnings("ignore")
 
-from trace.core.graph.analyzer.cdc_analyzer import CDCAnalyzer
+from cli._evidence_helpers import (
+    evidence_summary_indented,
+    evidence_to_dict,
+)
+from cli._evidence_helpers import (
+    format_cdc_human as _format_cdc_human,
+)
 
 # [Stage 5] evidence helper (可选 --evidence flag)
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
-    evidence_to_dict,
-    evidence_summary_indented,
-    format_cdc_human as _format_cdc_human,
 )
+from trace.core.graph.analyzer.cdc_analyzer import CDCAnalyzer
 
 cdc_app = typer.Typer(help="[EXPERIMENTAL] CDC (Clock Domain Crossing) detection: identify cross-clock domain paths")
 

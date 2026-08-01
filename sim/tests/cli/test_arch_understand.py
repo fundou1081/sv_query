@@ -15,10 +15,9 @@ Tests:
   5. Submodule overview
 """
 
-import unittest
 import subprocess
+import unittest
 from pathlib import Path
-
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "arch" / "understand.sv"
 

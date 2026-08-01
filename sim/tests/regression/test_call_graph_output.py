@@ -1,8 +1,9 @@
 # test_call_graph_output.py - 调用图输出格式测试
 # [铁律13] 金标准测试
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.call_graph_builder import CallGraphBuilder

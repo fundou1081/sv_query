@@ -118,7 +118,7 @@ class TestPicorv32Benchmark:
     def test_picorv32_l3_traces_work(self):
         """L3 trace 在 picorv32 上能跑通 (clk, resetn, mem_busy 真实存在)."""
         out = Path("/tmp/bench_pico_l3.json")
-        result = subprocess.run(
+        subprocess.run(
             [
                 sys.executable, str(BENCH),
                 "--files", PICO_FILE,

@@ -6,9 +6,10 @@
 # 铁律18: 负面测试原则 - 每个功能必须有对应的错误/边界测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.unified_tracer import UnifiedTracer

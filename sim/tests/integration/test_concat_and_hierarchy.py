@@ -3,12 +3,14 @@
 # [P1] 增强复杂语法 Driver 提取
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -16,7 +18,7 @@ class TestConcatExtraction(unittest.TestCase):
     """拼接操作 Driver 提取"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     #----------------------------------------------------------------------
@@ -36,7 +38,7 @@ endmodule'''
         result = tracer.trace_signal('y', 'top')
 
         # 修改期望: 至少能提取到 driver
-        driver_ids = [d.id for d in result.drivers]
+        [d.id for d in result.drivers]
         self.assertGreaterEqual(len(result.drivers), 1, "应至少提取1个driver")
         self.assertEqual(result.confidence, 'high')
 
@@ -74,7 +76,7 @@ class TestMultiLevelExtraction(unittest.TestCase):
     """多层级 Driver 提取"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_two_level_chain(self):

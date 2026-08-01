@@ -11,14 +11,14 @@
 # 场景:
 #   - 多层继承 (A extends B extends C)
 #   - 组合关系 (class instance 引用，跨 class 的约束追踪)
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
-
 
 # =========================================================================
 # 辅助方法

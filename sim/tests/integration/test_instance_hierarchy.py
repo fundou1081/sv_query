@@ -13,21 +13,23 @@
 3. 验证节点类型 (NodeKind.REG/PORT_IN/PORT_OUT)
 4. 使用描述性断言消息
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 class TestInstanceHierarchy(unittest.TestCase):
     """Instance and hierarchy tests with strong assertions"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

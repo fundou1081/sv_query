@@ -2,16 +2,13 @@
 # [铁律13] 金标准测试
 #
 # Phase 2: config_db 完整流 + factory override + 虚接口
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.uvm_testbench_extractor import UVMTestbenchExtractor
-from trace.core.graph.uvm_models import (
-    UVMComponent, TLMConnection, SequenceBinding, UVMTestbench,
-    FactoryOverride, ConfigDBEntry
-)
 
 
 def _extract(source):
@@ -140,7 +137,7 @@ class TestUVMCreateMacros(unittest.TestCase):
     endtask
 endclass
 module top; endmodule'''
-        tb = _extract(source)
+        _extract(source)
 
         # uvm_create 应被识别
         # 具体断言取决于实现
@@ -158,7 +155,7 @@ module top; endmodule'''
     endtask
 endclass
 module top; endmodule'''
-        tb = _extract(source)
+        _extract(source)
 
         # uvm_do_with 应被识别为 randomize with
 

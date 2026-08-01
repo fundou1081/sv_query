@@ -29,7 +29,6 @@ test_trace_snapshot.py - Tests for trace --from-snapshot option (B4)
 """
 import json
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -134,7 +133,7 @@ def test_p3_impact_from_snapshot():
     r1 = _run("impact", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--no-strict", "--json")
     r2 = _run("impact", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r1.returncode == 0 and r2.returncode == 0
-    data1 = json.loads(r1.stdout)
+    json.loads(r1.stdout)
     data2 = json.loads(r2.stdout)
     # Note: impact 用了 SVAExtractor 跟 CovergroupExtractor, snapshot 没这些
     # 所以 total_paths 在 snapshot 模式可能为 0 (因为没 extract SVA/Covergroup)
@@ -165,7 +164,7 @@ def test_p5_from_snapshot_with_batch():
     assert data["result"]["total_signals"] == 2
     for sig_entry in data["result"]["signals"]:
         assert sig_entry["count"] >= 0
-    print(f"✅ P5 --from-snapshot + --batch: 2 signals processed")
+    print("✅ P5 --from-snapshot + --batch: 2 signals processed")
 
 
 def test_p6_from_snapshot_with_filter():
@@ -248,7 +247,8 @@ def test_n4_no_source_no_snapshot():
 # ============================================================================
 
 def _normalize_json(data: dict) -> dict:
-    import copy, re
+    import copy
+    import re
     data = copy.deepcopy(data)
 
     def clean(obj):

@@ -1,4 +1,4 @@
-"""
+r"""
 test_coverage_gen_demo_golden.py - Golden image 回归测试
 ==========================================================
 [Phase 3 2026-07-01] 改用 OpenTitan prim 子项目 (`opentitan_prim_arbiter_tree.sv`)
@@ -35,7 +35,6 @@ test_coverage_gen_demo_golden.py - Golden image 回归测试
 [Phase 2 2026-07-01 临时] 用 sv_query 自带 openTitan_validation.sv (50 行单文件).
 [Phase 3 2026-07-01 现在] 用 OpenTitan 真实 prim_arbiter_tree.sv (291 行, 跨 module 工业代码).
 """
-import os
 import subprocess
 import sys
 from pathlib import Path

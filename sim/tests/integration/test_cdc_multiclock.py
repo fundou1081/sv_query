@@ -5,22 +5,23 @@
 [铁律13] 金标准测试
 测试多时钟域场景下 CLOCK/RESET 边工作正常
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
+
 from trace.core.query.clock_domain import ClockDomainTracer
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestCDCMultiClock(unittest.TestCase):
     """多时钟域 CDC 测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

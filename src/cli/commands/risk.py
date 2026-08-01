@@ -23,17 +23,18 @@ import typer
 
 warnings.filterwarnings("ignore")
 
-from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.models import NodeKind
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
+from cli._evidence_helpers import (
+    evidence_summary_indented,
+    evidence_to_dict,
+)
 
 # [Stage 5] evidence helper (可选 --evidence flag)
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
-    evidence_to_dict,
-    evidence_summary_indented,
 )
+from trace.core.covergroup_extractor import CovergroupExtractor
+from trace.core.graph.models import NodeKind
+from trace.core.sva_extractor import SVAExtractor
 
 risk_app = typer.Typer(help="[EXPERIMENTAL] Signal risk analysis: classify nodes by clock/reset/data, compute risk scores")
 
@@ -52,7 +53,7 @@ def analyze(
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each data signal (optional)"),
     summary: bool = typer.Option(False, "--summary", "-S", help="[C2 2026-06-28 LLM] Summary only: counts + top-10 high-risk signals, no full list."),
 ) -> None:
-    """Analyze signal risk: clock/reset/data classification + risk scoring
+    r"""Analyze signal risk: clock/reset/data classification + risk scoring
 
     [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
     [ADD 2026-06-11 任务3] elaboration error 统一 catch.

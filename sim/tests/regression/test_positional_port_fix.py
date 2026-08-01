@@ -4,12 +4,14 @@
 # 项目纪律: 金标准测试优先
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -24,7 +26,7 @@ endmodule
 module top(input a, output b);
     child u1(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
 

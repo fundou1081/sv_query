@@ -9,7 +9,9 @@ m_axi_wready[m_select_reg];' (NetDeclarationSyntax) for inline assigns.
 Result: 7+ signals like current_m_axi_wready, current_s_axi_rready
 appear as 'UNUSED' in handshake scan because no driver edge is created.
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
@@ -27,7 +29,8 @@ module test(
     assign y = x;
 endmodule
 '''
-    import tempfile, os
+    import os
+    import tempfile
     with tempfile.NamedTemporaryFile(suffix='.sv', delete=False, mode='w') as f:
         f.write(code)
         path = f.name
@@ -61,7 +64,8 @@ module test(
     assign y_out = sel;
 endmodule
 '''
-    import tempfile, os
+    import os
+    import tempfile
     with tempfile.NamedTemporaryFile(suffix='.sv', delete=False, mode='w') as f:
         f.write(code)
         path = f.name

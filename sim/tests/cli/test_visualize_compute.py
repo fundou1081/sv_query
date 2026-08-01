@@ -20,7 +20,7 @@ def _run_compute(dot_path: Path, sv_content: str) -> tuple[int, str]:
     with tempfile.NamedTemporaryFile(suffix=".sv", mode="w", delete=False) as f:
         f.write(sv_content)
         sv_path = f.name
-    
+
     try:
         p = subprocess.run(
             ["sv_query", "visualize", "compute", "-f", sv_path, "--no-strict", "--dot", str(dot_path)],
@@ -142,8 +142,8 @@ endmodule""")
         assert '+' in dot
         assert '&"' in dot or 'label="&"' in dot
         # Verify 2 different op colors (arithmetic=orange, logic=blue)
-        assert '#cc4400' in dot, f"Arithmetic color (orange) missing"
-        assert '#4488cc' in dot, f"Logic color (blue) missing"
+        assert '#cc4400' in dot, "Arithmetic color (orange) missing"
+        assert '#4488cc' in dot, "Logic color (blue) missing"
 
     # ── 颜色编码 ──
 
@@ -152,21 +152,21 @@ endmodule""")
 module ac(input [7:0] a, b, output [7:0] y);
     assign y = a + b;
 endmodule""")
-        assert '#cc4400' in dot, f"Orange color not used for arithmetic"
+        assert '#cc4400' in dot, "Orange color not used for arithmetic"
 
     def test_logic_color_blue(self):
         rc, dot = _run_compute(self.dot_path, """
 module lc(input [7:0] a, b, output [7:0] y);
     assign y = a & b;
 endmodule""")
-        assert '#4488cc' in dot, f"Blue color not used for logic"
+        assert '#4488cc' in dot, "Blue color not used for logic"
 
     def test_shift_color_green(self):
         rc, dot = _run_compute(self.dot_path, """
 module sc(input [7:0] a, output [7:0] y);
     assign y = a >> 2;
 endmodule""")
-        assert '#44aa44' in dot, f"Green color not used for shift"
+        assert '#44aa44' in dot, "Green color not used for shift"
 
     # ── 带位范围 ──
 

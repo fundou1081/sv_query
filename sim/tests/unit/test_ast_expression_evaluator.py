@@ -10,13 +10,13 @@
 # - 参数引用参数
 # - 一元表达式
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestASTExpressionEvaluator(unittest.TestCase):
@@ -25,5 +25,5 @@ class TestASTExpressionEvaluator(unittest.TestCase):
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
         comp = SVCompiler({'test.sv': source})
-        root = comp.get_root()
+        comp.get_root()
 

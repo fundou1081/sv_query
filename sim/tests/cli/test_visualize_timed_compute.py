@@ -9,7 +9,6 @@ test_visualize_timed_compute.py — V6.7 golden tests for time-axis compute diag
 """
 import subprocess
 from pathlib import Path
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 randomize.py - Randomize 分析 CLI 命令
 
@@ -27,6 +26,7 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+
 from cli._common import _build_tracer, handle_compilation_error
 from trace.core.compiler import CompilationError
 
@@ -389,7 +389,7 @@ def extract_cmd(
         for cls_name, name, syntax, _ in all_subs:
             if syntax and name not in ("randomize", "pre_randomize", "post_randomize"):
                 calls = _find_randomize_calls(syntax, cls_name, name)
-                for kind, target, inline_str, line in calls:
+                for _kind, target, inline_str, line in calls:
                     out.append({
                         "class": cls_name,
                         "method": name,
@@ -409,13 +409,13 @@ def extract_cmd(
     for cls_name, name, syntax, _ in all_subs:
         if syntax and name not in ("randomize", "pre_randomize", "post_randomize"):
             calls = _find_randomize_calls(syntax, cls_name, name)
-            for kind, target, inline_str, line in calls:
+            for _kind, target, inline_str, line in calls:
                 if not inline_str:
                     continue
                 count += 1
                 print(f"\n  [{count}] {cls_name}.{name}:{line}")
                 print(f"      target:        {target}")
-                print(f"      constraint:")
+                print("      constraint:")
                 for line_str in inline_str.split("\n"):
                     print(f"        {line_str}")
 
@@ -473,7 +473,7 @@ def trace_cmd(
     # [Phase 2 Day 3 2026-07-07] 如果 entry 不存在, exit 1
     if call_graph.entry_point and not call_graph.root:
         if json_output:
-            print(json.dumps({"error": f"entry {cls_filter}.{method} not found", "randomize_calls": [], "fork_points": []}, indent=2))
+            print(json.dumps({"error": f"entry {cls_filter}.{method} not found", "randomize_calls": [], "fork_points": []}, indent=2))  # noqa: F821
         else:
             print(f"ERROR: entry {cls_filter}.{method} not found", file=sys.stderr)
         raise typer.Exit(code=1)
@@ -539,7 +539,7 @@ def trace_cmd(
             if r.randomize_vars:
                 print(f"      rand vars: {', '.join(r.randomize_vars)}")
             if r.inline_constraint:
-                print(f"      inline constraint:")
+                print("      inline constraint:")
                 for line_str in r.inline_constraint.split("\n"):
                     print(f"        {line_str}")
 
@@ -629,7 +629,7 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
         """[V6.9] Walk class using semantic AST — find SubroutineSymbol tasks/functions
         and extract signal references from their statement bodies."""
         class_name = str(getattr(class_node, "name", "")).strip()
-        
+
         # Use semantic AST: visit class body to find SubroutineSymbol nodes
         def visit_class_member(node):
             kind = str(getattr(node, "kind", ""))
@@ -644,7 +644,7 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
             elif "StatementKind.ExpressionStatement" in kind:
                 # Direct statement in class scope (e.g. initial blocks)
                 process_statement(node, class_name, "class_body")
-        
+
         # Walk the class node's body via visitor or direct items
         if hasattr(class_node, 'items') and hasattr(class_node.items, '__iter__'):
             try:
@@ -652,7 +652,7 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
                     visit_class_member(item)
             except TypeError:
                 pass
-        
+
         # Also try via syntax bridge for method bodies
         syntax = getattr(class_node, 'syntax', None)
         if syntax is not None and hasattr(syntax, 'items'):
@@ -685,11 +685,11 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
         """Extract signals from a statement node."""
         stmt_kind = str(getattr(stmt, "kind", ""))
         # Skip declarations
-        decl_kws = ["ClassProperty", "DataDeclaration", "ConstraintDeclaration", 
+        decl_kws = ["ClassProperty", "DataDeclaration", "ConstraintDeclaration",
                     "ClassMethod", "Covergroup", "NetDeclaration", "Parameter"]
         if any(kw in stmt_kind for kw in decl_kws):
             return
-        
+
         sigs = extract_referenced_signals(stmt)
         matched = any(
             target_signal == s or
@@ -800,11 +800,9 @@ def reachability_cmd(
 
     # 找到目标 class
     target_class = None
-    target_class_name = None
     for cls_name, cls_node in _find_classes(root):
         if cls_name == cls_filter:
             target_class = cls_node
-            target_class_name = cls_name
             break
 
     if target_class is None:

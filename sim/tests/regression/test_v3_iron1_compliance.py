@@ -83,8 +83,8 @@ module top; endmodule'''
         result = ext.extract()  # 不应抛异常
         # 提取出 my_driver
         self.assertIn('my_driver', result.components,
-                      f"my_driver 应被识别, 但 components 为空. 这通常是 "
-                      f"SVCompiler 路径污染 token.name.value 的症状.")
+                      "my_driver 应被识别, 但 components 为空. 这通常是 "
+                      "SVCompiler 路径污染 token.name.value 的症状.")
 
     def test_parameterized_driver_type_inference(self):
         """uvm_driver#(...) 类型应推断为 'driver'"""

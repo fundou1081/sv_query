@@ -53,13 +53,10 @@ Phase A + Phase B 集成: handshake_score 融合
 
 from __future__ import annotations
 
-import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
-from .normalize import SignalNormalizer, NormalizeConfig
-
+from .normalize import NormalizeConfig, SignalNormalizer
 
 # ---------------------------------------------------------------------------
 # HandshakeInfoLite (轻量版, 不依赖 DriverInfo)

@@ -7,12 +7,14 @@
 #     内部 out = in + 1 应解析为 y 的驱动 = a
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -38,7 +40,7 @@ module top(input [7:0] a, output reg [7:0] y);
     endtask
     always_comb do_work(a, y);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -64,7 +66,7 @@ module top(input [7:0] a, output reg [7:0] y);
     endtask
     always_comb do_work(.in(a), .out(y));
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -92,7 +94,7 @@ module top(input [7:0] a, output reg [7:0] c);
     endtask
     always_comb do_work(a, c);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('c', 'top')
 
@@ -119,7 +121,7 @@ module top(input [7:0] a);
     endtask
     always_comb do_work(a);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('a', 'top')
 
@@ -151,7 +153,7 @@ module top(input [7:0] a, output reg [7:0] y);
     endfunction
     always_comb y = calc(a);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -186,7 +188,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # if-else 分支，b 可能被 a 驱动
@@ -218,7 +220,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 0)
@@ -241,7 +243,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # for 循环内部 b 被 a 驱动
@@ -270,7 +272,7 @@ module top(input [2:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         # 位选择 v[i] 应映射到 a
@@ -301,7 +303,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endfunction
     always_comb b = f(a);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 0)
@@ -327,7 +329,7 @@ module top(input [7:0] a, output reg [7:0] y);
     endtask
     always_comb do_work(.in(a), .out(y));
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -364,7 +366,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -394,7 +396,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -428,7 +430,7 @@ module top(input [7:0] a, output reg [7:0] b);
     endtask
     always_comb t(a, b);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('b', 'top')
         self.assertGreaterEqual(len(result.drivers), 1,
@@ -452,7 +454,7 @@ class TestEnumSelfDrive(unittest.TestCase):
 module top(input clk, output reg [1:0] state);
     always_ff @(posedge clk) state <= state + 1;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('state', 'top')
 
@@ -474,7 +476,7 @@ module top(input clk, output reg [1:0] state);
         state <= state + 1;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'top.sv': src})
         result = tracer.trace_signal('state', 'top')
 

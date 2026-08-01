@@ -4,9 +4,10 @@
 # [迁移] 使用 SemanticAdapter 替代 PyslangAdapter
 # extract_port_width() 返回 (msb, lsb) 元组，而非字典
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler

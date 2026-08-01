@@ -18,12 +18,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from applications.bus.sv_extractor import SVSignalExtractor, ExtractedModule
-from applications.bus.structural import SignalContext
 from applications.bus.detector import ProtocolDetector
-from applications.bus.schema import ProtocolSchemaRegistry
 from applications.bus.handshake_provider import NameBasedHandshakeProvider
-
+from applications.bus.schema import ProtocolSchemaRegistry
+from applications.bus.sv_extractor import SVSignalExtractor
 
 # ---------------------------------------------------------------------------
 # Fixtures

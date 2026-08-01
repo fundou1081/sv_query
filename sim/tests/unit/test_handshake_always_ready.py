@@ -5,16 +5,18 @@ Pattern: `always_comb a_ready_o = 1'b1;` (always ready)
 - This is the simplest TileLink/AXI master that always accepts
 - Should be classified as PORT_PASSTHROUGH (always-on passthrough)
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
-from trace.core.handshake_detector import _classify_one_driver
 from trace.core.graph.models import DriverInfo
+from trace.core.handshake_detector import _classify_one_driver
 
 
 def make_di(cond="", expr="", assign_type="continuous", clock_domain=""):
-    from trace.core.graph.models import TraceNode, NodeKind
+    from trace.core.graph.models import NodeKind, TraceNode
     node = TraceNode(id="test_signal", name="test_signal", module="test",
                      kind=NodeKind.SIGNAL, width=(1, 0))
     return DriverInfo(

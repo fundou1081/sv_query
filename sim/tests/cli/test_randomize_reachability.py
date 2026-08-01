@@ -14,13 +14,10 @@ Tests:
   7. unknown class 报错
 """
 
-import unittest
-import subprocess
-import tempfile
-import os
 import json
+import subprocess
+import unittest
 from pathlib import Path
-
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "randomize"
 DRIVER_FIXTURE = FIXTURE_DIR / "driver.sv"

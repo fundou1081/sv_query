@@ -6,16 +6,13 @@ Verifies:
 - Instance boundary truncation works
 - depth limits work
 """
-import pytest
 
-from trace.core.graph.models import SignalGraph, TraceNode, EdgeKind, NodeKind
+from trace.core.graph.models import NodeKind, SignalGraph, TraceNode
 from trace.core.module_extractor import (
-    ModuleInstance,
     ModuleExtraction,
     extract_module_from_graph,
     truncate_instance_id,
 )
-
 
 # ---- Helpers ----
 

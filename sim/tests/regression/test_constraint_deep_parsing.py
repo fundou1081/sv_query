@@ -15,16 +15,17 @@ RTL 来源：
 - sv-tests: ~/my_dv_proj/sv-tests/tests/chapter-18/
 - OpenTitan: ~/my_dv_proj/opentitan/hw/top_earlgrey/ip_autogen/rstmgr/dv/env/seq_lib/rstmgr_base_vseq.sv
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.base import PyslangAdapter
-from trace.core.graph.models import NodeKind, EdgeKind
-from pyslang import SyntaxKind
+from trace.core.graph.models import NodeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestConstraintIfElseDeepParsing(unittest.TestCase):
@@ -78,7 +79,7 @@ class TestConstraintIfElseDeepParsing(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -173,7 +174,7 @@ class TestConstraintImplicationDeepParsing(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -204,7 +205,7 @@ class TestConstraintInsideDistribution(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -255,7 +256,7 @@ class TestConstraintUniquenessSolveBefore(unittest.TestCase):
     """[金标准] unique / solve before constraint"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -374,7 +375,7 @@ class TestConstraintForeach(unittest.TestCase):
     """[金标准] foreach 循环约束"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -404,7 +405,7 @@ class TestConstraintNegativeCases(unittest.TestCase):
     """[铁律18] 负面测试 - 每个功能必须有负面测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -434,7 +435,7 @@ class TestConstraintOperators(unittest.TestCase):
     """"[金标准] constraint 运算符全面测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -442,9 +443,9 @@ class TestConstraintOperators(unittest.TestCase):
 
     def _assert_vars(self, source, expected_vars):
         """[V6.9] semantic AST version"""
-        from trace.core.visitors.constraint_visitor import ConstraintVisitor
-        from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        from trace.core.visitors.constraint_visitor import ConstraintVisitor
         w = f"module _ctest; endmodule\n{source}"
         comp = SVCompiler({"_ctest.sv": w})
         root = comp.get_root()

@@ -11,7 +11,6 @@
 import json
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 # [Stage 5] sys.path 必须在所有项目 import 之前设置,避免被 stdlib 'trace' 抢占
@@ -19,7 +18,6 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
-import pytest  # noqa: E402
 
 REPO_ROOT = _REPO_ROOT
 TEST_FILE = str(REPO_ROOT / "sim" / "test_simple.sv")
@@ -153,9 +151,9 @@ class TestEvidenceSummaryInputs:
 
     def test_evidence_object_input(self):
         """Evidence 对象输入: 走属性路径"""
+        from cli._evidence_helpers import evidence_summary_line
         from trace.core.trace_evidence import TraceEvidenceResolver
         from trace.unified_tracer import UnifiedTracer
-        from cli._evidence_helpers import evidence_summary_line
 
         with open(TEST_FILE) as f:
             source = f.read()

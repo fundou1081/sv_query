@@ -14,14 +14,13 @@ from cli._common import (
     FILE_OPTION,
     FILELIST_OPTION,
     LOG_LEVEL_OPTION,
-    STRICT_OPTION,
     PREPROCESS_OPTION,
+    STRICT_OPTION,
     _build_tracer,
     handle_compilation_error,
 )
 from trace.core.compiler import CompilationError
 from trace.core.graph.models import EdgeKind
-from trace.unified_tracer import UnifiedTracer
 
 
 def output_json(data: dict, pretty: bool = False) -> None:

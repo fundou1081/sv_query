@@ -180,7 +180,7 @@ def test_overview_evidence_source_location():
                  "-f", SYNC_FIFO)
 
     ev = data["result"]["evidence"]
-    for sig_name, ev_dict in ev.items():
+    for _sig_name, ev_dict in ev.items():
         if ev_dict and ev_dict.get("source_location"):
             loc = ev_dict["source_location"]
             assert "file" in loc

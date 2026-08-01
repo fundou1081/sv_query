@@ -15,11 +15,9 @@ per-module chunking approach:
 This test verifies that the bundled manual filelists work and produce
 non-empty arch output.
 """
-import os
 import subprocess
 import unittest
 from pathlib import Path
-
 
 REPO = Path(".")
 FILELISTS = REPO / "sim/tests/fixtures"

@@ -13,7 +13,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 VENTUS = Path("~/my_dv_proj/ventus-gpgpu-verilog")
 
 

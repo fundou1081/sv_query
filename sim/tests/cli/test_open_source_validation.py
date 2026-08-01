@@ -16,8 +16,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 STRICT_UART_FL = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"
 
@@ -44,8 +42,8 @@ def _stats(filelist_path: Path) -> tuple[bool, dict]:
 def _conditioned_driver_count(filelist_path: Path) -> int:
     """Count DRIVER edges that have conditions (proves ternary/if/case decomposition)."""
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
-    from trace.unified_tracer import UnifiedTracer
     from trace.core.graph.models import EdgeKind
+    from trace.unified_tracer import UnifiedTracer
 
     sources = {}
     with open(filelist_path) as f:

@@ -4,7 +4,7 @@ test_cdc_risk_open_source.py - cdc/risk on real OSS projects (5 projects)
 [ADD 2026-07-04] Week 4 后续: cdc/risk 命令纪律补 (0 tests → 16+ tests).
 
 **目标**: cdc / risk 命令 (之前 0 tests) 在 5+ 真实开源项目上跑.
-**项目**: 
+**项目**:
   - cdc 用: axi_cdc_src (4 clk, 2 HIGH CDC paths), axi_xbar (3 clk, 2 CDC paths)
   - risk 用: strict_uart (25 data, 8 critical), prim_arbiter_tree (33, 10 critical)
   - 共通: tlul (4 clk, 0 CDC = 全 synchronous)
@@ -13,7 +13,7 @@ test_cdc_risk_open_source.py - cdc/risk on real OSS projects (5 projects)
 - 正面 (P1-P10): 5 项目各跑 cdc + risk, 验证输出稳定
 - 反面 (N1-N5): 错误输入 + 边界情况
 
-**Golden baseline** (2): 
+**Golden baseline** (2):
 - cdc axi_cdc_src 2 paths (HIGH risk)
 - risk strict_uart 8 critical + 5 high
 
@@ -23,7 +23,6 @@ test_cdc_risk_open_source.py - cdc/risk on real OSS projects (5 projects)
 """
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -95,7 +94,7 @@ def test_p3_cdc_tlul_4_domains_0_cdc():
     assert r_data["domain_count"] == 1
     assert r_data["total_cdc"] == 0  # 全 synchronous
     assert r_data["high_risk"] == 0
-    print(f"✅ P3 cdc tlul: 1 domain (clk_i 共享), 0 CDC (false positive 已修)")
+    print("✅ P3 cdc tlul: 1 domain (clk_i 共享), 0 CDC (false positive 已修)")
 
 
 def test_p4_cdc_prim_arbiter_single_domain():
@@ -107,7 +106,7 @@ def test_p4_cdc_prim_arbiter_single_domain():
     r_data = data["result"]
     assert r_data["domain_count"] == 1
     assert r_data["total_cdc"] == 0
-    print(f"✅ P4 cdc prim_arbiter_tree: 1 domain, 0 CDC (single-clk)")
+    print("✅ P4 cdc prim_arbiter_tree: 1 domain, 0 CDC (single-clk)")
 
 
 def test_p5_cdc_summary_mode():

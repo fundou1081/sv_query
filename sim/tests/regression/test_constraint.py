@@ -8,20 +8,22 @@ Constraint 语法覆盖:
 3. constraint 表达式 (inside, dist, solve before)
 4. class 实例化
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
-from trace.core.base import PyslangAdapter
+
 
 class TestConstraint(unittest.TestCase):
     """Constraint 随机约束信号追踪测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_constraint_rand_variable(self):
@@ -103,7 +105,7 @@ endmodule'''
         tracer.build_graph()
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         # 验证: packet 实例存在
         has_p = any('p' in n for n in nodes)

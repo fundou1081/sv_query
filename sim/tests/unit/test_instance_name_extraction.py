@@ -1,5 +1,6 @@
 
 import pytest
+
 pytestmark = pytest.mark.opensource  # clacc dependency
 
 #==============================================================================
@@ -13,13 +14,13 @@ pytestmark = pytest.mark.opensource  # clacc dependency
 # 3. 带注释的实例名称
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestInstanceNameExtraction(unittest.TestCase):
@@ -40,5 +41,5 @@ module pe();
 endmodule'''
 
         comp = SVCompiler({'test.sv': source})
-        root = comp.get_root()
+        comp.get_root()
 

@@ -14,8 +14,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 # [FIX 2026-07-29] 添加 src/ 到 sys.path
 # trace 模块在 src/ 下, 不添加会导致 ModuleNotFoundError: 'trace' is not a package
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -61,9 +59,9 @@ class TestVizDataExport:
         [FIX 2026-07-29] trace.unified_tracer 导入失败: 'trace' 不是包。
         改用 UnifiedTracer 的正确路径。
         """
-        from trace.unified_tracer import UnifiedTracer
         from trace.core.graph.analyzer.signal_classifier import classify_graph
-        from trace.core.graph.viz import build_viz_data, VizBuildOptions
+        from trace.core.graph.viz import VizBuildOptions, build_viz_data
+        from trace.unified_tracer import UnifiedTracer
 
         src = """module test(input clk, input [3:0] a, b, output reg [3:0] y);
             always_ff @(posedge clk) begin
@@ -101,14 +99,12 @@ class TestVizDataExport:
 
         # JSON must be valid and re-serializable
         json_str = json.dumps(data)
-        data2 = json.loads(json_str)
+        json.loads(json_str)
         assert len(data["nodes"]) > 0, "no nodes in viz JSON export"
 
 
 def test_visualize_dataflow_golden_match():
     """[V6.9 fix 2026-07-29] Golden DOT comparison — regenerated after V6.7/V6.8 changes."""
-    import os
-    tmp_dot = "/tmp/test_dataflow_golden.dot"
     rc, stdout, stderr = _run_dot_output()
     assert rc == 0, f"dataflow failed: {stderr[:200]}"
 

@@ -39,8 +39,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional, Union
-
+from typing import Iterable, Union
 
 # ---------------------------------------------------------------------------
 # 配置
@@ -379,9 +378,7 @@ def _mini_yaml_load(text: str) -> dict:
         remove_underscore: false
     """
     result: dict = {}
-    current_key: str | None = None
     current_list: list | None = None
-    pending_string: str | None = None  # 等待 `:` 或行尾
 
     for raw_line in text.splitlines():
         line = raw_line.rstrip()
@@ -401,7 +398,6 @@ def _mini_yaml_load(text: str) -> dict:
             val = val.strip()
             if val == "":
                 # 多行 list 开始
-                current_key = key
                 current_list = []
                 result[key] = current_list
             else:
@@ -411,6 +407,5 @@ def _mini_yaml_load(text: str) -> dict:
                 else:
                     parsed = val.strip('"').strip("'")
                 result[key] = parsed
-                current_key = None
                 current_list = None
     return result

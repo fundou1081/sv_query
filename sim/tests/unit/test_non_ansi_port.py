@@ -9,12 +9,12 @@
 # 3. 与ANSI格式的兼容性
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
 

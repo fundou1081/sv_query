@@ -18,27 +18,23 @@ modules via 4-source confidence fusion:
 
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 import typer
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from applications.bus.schema import (
-    ProtocolSchemaRegistry,
-    load_protocols,
-)
 from applications.bus.detector import (
     ProtocolDetector,
     ProtocolMatch,
 )
-from applications.bus.sv_extractor import SVSignalExtractor
 from applications.bus.handshake_provider_trace import (
-    TraceBasedHandshakeProvider,
     make_trace_based_provider,
 )
+from applications.bus.schema import (
+    ProtocolSchemaRegistry,
+)
 from applications.bus.structural import SignalContext
-
+from applications.bus.sv_extractor import SVSignalExtractor
 
 protocol_app = typer.Typer(help="Bus protocol detection (Phase A)")
 

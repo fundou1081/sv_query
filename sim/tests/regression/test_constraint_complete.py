@@ -22,17 +22,16 @@ Class & Constraint 完整金标准测试
 # |--------|------|------|
 # | a.b1   | CLASS_PROPERTY | rand 变量 |
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.base import PyslangAdapter
-from trace.core.graph.models import NodeKind, EdgeKind
-import pytest
-from pyslang import SyntaxKind
 
 
 class TestConstraintClassPropertyNodes(unittest.TestCase):
@@ -49,7 +48,7 @@ class TestConstraintClassPropertyNodes(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -156,7 +155,7 @@ class TestConstraintBlockNodes(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -219,7 +218,7 @@ class TestConstraintExprNodes(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -289,7 +288,7 @@ class TestConstraintIfNodes(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -343,7 +342,7 @@ endclass'''
             f"应有 CONSTRAINT_IF 节点，实际节点: {nodes}")
         # [V6.9] 只检查直接是 CONSTRAINT_IF 类型的节点
         # 嵌套 if body 内的 consequent/alternate 是 CONSTRAINT_EXPR/CONSTRAINT_ELSE
-        actual_if_nodes = [n for n in if_nodes 
+        actual_if_nodes = [n for n in if_nodes
                           if graph.get_node(n) and graph.get_node(n).kind == NodeKind.CONSTRAINT_IF]
         self.assertGreater(len(actual_if_nodes), 0,
             f"应有 CONSTRAINT_IF 节点，实际 if_nodes: {[(n, graph.get_node(n).kind) for n in if_nodes]}")
@@ -365,7 +364,7 @@ class TestConstraintEdges(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -482,9 +481,9 @@ class TestConstraintVariableExtraction(unittest.TestCase):
 
     def _assert_vars(self, source, expected_vars):
         """[V6.9] semantic AST version"""
-        from trace.core.visitors.constraint_visitor import ConstraintVisitor
-        from trace.core.semantic_adapter import SemanticAdapter
         from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        from trace.core.visitors.constraint_visitor import ConstraintVisitor
         w = f"module _ctest; endmodule\n{source}"
         comp = SVCompiler({"_ctest.sv": w})
         root = comp.get_root()
@@ -966,7 +965,7 @@ class TestConstraintNegativeCases(unittest.TestCase):
     """
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
