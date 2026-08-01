@@ -73,7 +73,7 @@ def test_y_simple_paren_has_drivers_with_condition():
     # y_simple_paren must be the focus node
     assert '"continuous_assign_paren.y_simple_paren"' in text
     # At minimum: 2 driver edges (a → y, b → y)
-    edges = [l for l in text.splitlines() if " -> " in l]
+    edges = [ln for ln in text.splitlines() if " -> " in ln]
     driver_edges = [e for e in edges if "y_simple_paren" in e]
     assert len(driver_edges) >= 2, \
         f"expected ≥2 driver edges for y_simple_paren, got {len(driver_edges)}"
@@ -100,7 +100,7 @@ def test_y_double_paren_drivers_visible():
     text = _render_focus("y_double_paren")
     assert '"continuous_assign_paren.a"' in text
     assert '"continuous_assign_paren.b"' in text
-    edges = [l for l in text.splitlines() if "y_double_paren" in l]
+    edges = [ln for ln in text.splitlines() if "y_double_paren" in ln]
     assert len(edges) >= 2
 
 

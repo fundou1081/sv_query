@@ -153,7 +153,7 @@ endclass'''
 
         self.assertEqual(len(super_edges), 0, "constraint override/replacement 没有 SUPER_CALL 边")
 
-    def test_constraint_override_replacement(self):
+    def test_constraint_override_replacement_v2(self):
         """constraint c2 replacement (无 super.c2)"""
         graph = self._build_graph()
         edges = list(graph.edges())

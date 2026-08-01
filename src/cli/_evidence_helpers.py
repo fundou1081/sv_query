@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 CLI 公共 evidence helpers
 =========================

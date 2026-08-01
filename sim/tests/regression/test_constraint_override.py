@@ -94,7 +94,7 @@ endclass'''
         self.assertIn('standalone', list(graph.nodes()))
         self.assertIn('standalone.c1', list(graph.nodes()))
 
-    def test_no_inheritance_no_super_crash(self):
+    def test_no_inheritance_no_super_crash_v2(self):
         """无继承的 class 使用 super 不崩溃"""
         source = '''class standalone;
     rand int x;

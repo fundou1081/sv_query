@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 # ==============================================================================
 # unified_tracer.py - Query Layer
 # 使用 Semantic AST (Compilation + getRoot())

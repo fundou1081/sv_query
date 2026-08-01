@@ -525,7 +525,7 @@ def generate_pipeline_dot(  # [V6.7 deprecated: use trace.core.graph.viz instead
         lines.append('    rank=min;')  # 强制放最上方 (LR 模式下 = 最左)
         # [P5 改进] 颜色按 target stage 分组 (4 个颜色轮换)
         stage_colors = ["#cc6633", "#aa5599", "#5599aa", "#aa8855"]
-        for i, cid in enumerate(control_shown):
+        for _i, cid in enumerate(control_shown):
             cn = classification.nodes.get(cid)
             name = sanitize_dot_id(cn.node.name) if cn and cn.node.name else "?"
             target_stage_idx = control_to_stage.get(cid, 0) % len(stage_colors)
@@ -949,11 +949,11 @@ def generate_pipeline_timing_dot(  # [V6.7 deprecated: use trace.core.graph.viz 
 
     seg_colors = ["#4488cc", "#cc6633", "#aa5599", "#5599aa", "#aa8855", "#8888cc", "#88cc88", "#cc8888"]
 
-    for seg_label_html, si, cell_texts, ctrl_id, seg_label_text in segment_data:
+    for seg_label_html, si, cell_texts, _ctrl_id, _seg_label_text in segment_data:
         color = seg_colors[si % len(seg_colors)]
         rows.append('<TR>')
         rows.append(f'<TD BGCOLOR="#f0f0f5" ALIGN="LEFT"><FONT COLOR="{color}"><B>{seg_label_html}</B></FONT></TD>')
-        for ci, cell_text in enumerate(cell_texts):
+        for _ci, cell_text in enumerate(cell_texts):
             rows.append(f'<TD BGCOLOR="{color}"><FONT COLOR="#ffffff" POINT-SIZE="8">{cell_text}</FONT></TD>')
         # Pad
         for _ in range(max_cells - len(cell_texts)):
@@ -1164,11 +1164,11 @@ def generate_pipeline_load_dot(  # [V6.7 deprecated: use trace.core.graph.viz in
 
     seg_colors = ["#4488cc", "#cc6633", "#aa5599", "#5599aa", "#aa8855", "#8888cc", "#88cc88", "#cc8888"]
 
-    for seg_label_html, si, cell_texts, root_id in segment_data:
+    for seg_label_html, si, cell_texts, _root_id in segment_data:
         color = seg_colors[si % len(seg_colors)]
         rows.append('<TR>')
         rows.append(f'<TD BGCOLOR="#f0f0f5" ALIGN="LEFT"><FONT COLOR="{color}"><B>{seg_label_html}</B></FONT></TD>')
-        for ci, cell_text in enumerate(cell_texts):
+        for _ci, cell_text in enumerate(cell_texts):
             rows.append(f'<TD BGCOLOR="{color}"><FONT COLOR="#ffffff" POINT-SIZE="8">{cell_text}</FONT></TD>')
         for _ in range(max_cells - len(cell_texts)):
             rows.append('<TD BGCOLOR="#eeeeee"> </TD>')

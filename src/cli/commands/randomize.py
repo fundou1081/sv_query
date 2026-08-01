@@ -1,3 +1,4 @@
+# ruff: noqa: B007
 """
 randomize.py - Randomize 分析 CLI 命令
 

@@ -159,7 +159,7 @@ def analyze(
             color = "#cc2222" if is_critical else "#226699"
             penwidth = 3 if is_critical else 1.5
             path_nodes = p["path"]
-            for j, node in enumerate(path_nodes):
+            for _j, node in enumerate(path_nodes):
                 short = node.split(".")[-1]
                 # Is this a register?
                 is_reg = node in p["registers"]

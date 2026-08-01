@@ -1,3 +1,4 @@
+# ruff: noqa: B007
 # ==============================================================================
 # backpressure.py - Bus backpressure topology analysis
 # =============================================================================
@@ -259,9 +260,9 @@ def analyze(
 
     # 统计
     type_stats = {}
-    for sig, (layer, kind, ht) in bp_nodes.items():
+    for _sig, (_layer, _kind, ht) in bp_nodes.items():
         type_stats[ht] = type_stats.get(ht, 0) + 1
-    for sig, (layer, kind, ht) in filtered_out.items():
+    for _sig, (_layer, _kind, ht) in filtered_out.items():
         type_stats[f"[filtered:{ht}]"] = type_stats.get(f"[filtered:{ht}]", 0) + 1
 
     lines.append("")
@@ -271,7 +272,7 @@ def analyze(
         if not nodes:
             continue
         lines.append("    subgraph " + layer)
-        for name, kind, ht in nodes:
+        for name, _kind, ht in nodes:
             safe_id = _safe_name(name)
             layer_emoji = {"SLAVE": "🔵", "ADAPTER": "🔷", "CROSSBAR": "🟠", "MASTER": "🔴"}.get(layer, "⚪")
             _HANDSHAKE_EMOJI.get(ht, "❓")

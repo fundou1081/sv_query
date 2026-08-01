@@ -75,7 +75,7 @@ def _strip_pycache():
 
 
 def _read_edges(dot_text: str) -> list[str]:
-    return [l for l in dot_text.splitlines() if " -> " in l]
+    return [ln for ln in dot_text.splitlines() if " -> " in ln]
 
 
 def _render_focus(target_signal: str, depth: int = 5) -> str:

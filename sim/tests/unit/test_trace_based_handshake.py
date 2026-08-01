@@ -320,8 +320,8 @@ class TestDetectorIntegration:
         # NameBased 对所有 valid+ready 都给 1.0 (STANDARD_AXI)
         # TraceBased 应该给不同分数 (反映真实 trace 结果)
         # 两者分数不同 (这是 trace-based 价值所在)
-        det_nb.detect(sigs).handshake_score
-        det_tb.detect(sigs).handshake_score
+        _nb = det_nb.detect(sigs).handshake_score
+        _tb = det_tb.detect(sigs).handshake_score
         # 不严格相等 (但有概率相等, 所以不 assert)
 
     def test_handshake_score_actually_uses_provider(self, axi_tracer):
@@ -338,8 +338,8 @@ class TestDetectorIntegration:
         )
         # NameBased 对所有 valid+ready 都给 1.0 (STANDARD_AXI)
         # TraceBased 应该给不同分数 (反映真实 trace 结果)
-        nb_score = det_nb.detect(sigs).handshake_score
-        tb_score = det_tb.detect(sigs).handshake_score
+        nb_score = _nb = det_nb.detect(sigs).handshake_score
+        tb_score = _tb = det_tb.detect(sigs).handshake_score
         # 两者分数可能不同 (这是 trace-based 价值所在)
         # 不严格 assert (可能因为 SV 太简单导致 trace 返相同)
         assert isinstance(nb_score, float)

@@ -1,3 +1,4 @@
+# ruff: noqa: B007
 # test_sva_signal_mapping.py - SVA 信号关联测试
 # [铁律13] 金标准测试
 #

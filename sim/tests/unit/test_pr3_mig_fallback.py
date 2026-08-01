@@ -346,10 +346,10 @@ class TestBinaryFilter:
         loads = st._collect_all_loads(sig, max_depth=2)
         for load in loads:
             assert "<id:binary>" not in load.id, (
-                f"binary garbage leaked into results: {l.id}"
+                f"binary garbage leaked into results: {load.id}"
             )
             assert "_anon_" not in load.id, (
-                f"_anon_ leaked into results: {l.id}"
+                f"_anon_ leaked into results: {load.id}"
             )
 
 

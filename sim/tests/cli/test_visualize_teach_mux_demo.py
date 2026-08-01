@@ -44,7 +44,7 @@ def _strip_pycache():
 
 
 def _read_edges(dot_text: str) -> list[str]:
-    return [l for l in dot_text.splitlines() if " -> " in l]
+    return [ln for ln in dot_text.splitlines() if " -> " in ln]
 
 
 # --- Pattern 1: if/else -------------------------------------------------
@@ -64,9 +64,9 @@ def test_y_simple_if_then_branch_has_sel_label(tmp_path):
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
-    then_edge = next(l for l in edges if 'mux_demo.a" -> "mux_demo.y_simple_if"' in l)
+    then_edge = next(ln for ln in edges if 'mux_demo.a" -> "mux_demo.y_simple_if"' in ln)
     assert 'label="sel_a"' in then_edge, f"then: {then_edge}"
-    else_edge = next(l for l in edges if 'mux_demo.b" -> "mux_demo.y_simple_if"' in l)
+    else_edge = next(ln for ln in edges if 'mux_demo.b" -> "mux_demo.y_simple_if"' in ln)
     assert 'label="!sel_a"' in else_edge, f"else: {else_edge}"
 
 
@@ -93,12 +93,12 @@ def test_y_case_each_branch_shows_selector_and_value(tmp_path):
         ('mux_demo.e" -> "mux_demo.y_case"', "sel_b == 2'b10"),
     ]
     for substr, label in expected:
-        e = next(l for l in edges if substr in l)
+        e = next(ln for ln in edges if substr in ln)
         assert f'label="{label}"' in e, f"expected {label}: {e}"
     # [V6.9] pyslang semantic AST stores default branch in `.defaultCase`
     # outside `.items`, so the label uses "default" instead of a concrete
     # value expression (e.g. "2'b11").  Test for the "default" keyword.
-    f_edge = next((l for l in edges if 'mux_demo.f" -> "mux_demo.y_case"' in l), None)
+    f_edge = next((ln for ln in edges if 'mux_demo.f" -> "mux_demo.y_case"' in ln), None)
     if f_edge is not None:
         assert 'label="sel_b == default"' in f_edge, f"f default edge: {f_edge}"
     else:
@@ -123,9 +123,9 @@ def test_y_tern_branches_have_inverted_conditions(tmp_path):
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
-    then_edge = next(l for l in edges if 'mux_demo.g" -> "mux_demo.y_tern"' in l)
+    then_edge = next(ln for ln in edges if 'mux_demo.g" -> "mux_demo.y_tern"' in ln)
     assert 'label="sel_c"' in then_edge, f"then: {then_edge}"
-    else_edge = next(l for l in edges if 'mux_demo.h" -> "mux_demo.y_tern"' in l)
+    else_edge = next(ln for ln in edges if 'mux_demo.h" -> "mux_demo.y_tern"' in ln)
     assert '!(sel_c)' in else_edge or '!sel_c' in else_edge, f"else: {else_edge}"
 
 

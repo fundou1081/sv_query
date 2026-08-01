@@ -1,3 +1,4 @@
+# ruff: noqa: B007
 """
 fix.py - 自动修复 elaboration 问题
 

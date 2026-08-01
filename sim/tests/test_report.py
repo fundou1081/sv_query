@@ -106,7 +106,7 @@ class TestReportGenerator:
 
     def _extract_purpose(self, docstring: str) -> str:
         """从文档字符串提取测试目的"""
-        lines = [l.strip() for l in docstring.split('\n') if l.strip()]
+        lines = [ln.strip() for ln in docstring.split('\n') if ln.strip()]
         if lines:
             # 去掉 [xxx] 标签
             first_line = re.sub(r'\[.*?\]', '', lines[0]).strip()
