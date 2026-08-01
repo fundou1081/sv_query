@@ -257,6 +257,16 @@ class TraceEvidenceResolver:
             elif "ConstraintDeclaration" in kind and ev.enclosing_constraint is None:
                 ev.enclosing_constraint = snippet
 
+        # 6b. [V6.9-FIX] ConditionalStatement 是 SequentialBlockStatement 的 child，
+        # parent chain 找不到。如果 enclosing_if 还没找到，在 always block 内做一次
+        # descendant 搜索
+        if ev.enclosing_if is None and self._is_always_kind(edge.assign_type):
+            always_syn = self._find_always_block_syntax_semantic(signal_id)
+            if always_syn is not None:
+                cond_snippet = self._find_conditional_statement_in(always_syn)
+                if cond_snippet is not None:
+                    ev.enclosing_if = cond_snippet
+
         # 7. source_text fallback (assign 边可能没 source_location)
         if ev.source_text == "" and ev.enclosing_assign is not None:
             ev.source_location = ev.enclosing_assign.location
@@ -417,6 +427,25 @@ class TraceEvidenceResolver:
             cur = getattr(cur, "parent", None)
             d += 1
         return chain
+
+    def _find_conditional_statement_in(self, syn) -> SourceSnippet | None:
+        """[V6.9-FIX] 在 syn 的子树中搜索 ConditionalStatement 并返回 snippet"""
+        if syn is None:
+            return None
+        kind = str(getattr(syn, "kind", ""))
+        if "ConditionalStatement" in kind:
+            return self._snippet_from_syntax(syn)
+        # DFS 搜索 children
+        for child in getattr(syn, "__iter__", lambda: [])():
+            if child is None or isinstance(child, str):
+                continue
+            child_kind = str(getattr(child, "kind", ""))
+            if child_kind.startswith("Token"):
+                continue
+            result = self._find_conditional_statement_in(child)
+            if result is not None:
+                return result
+        return None
 
     # ==================================================================
     # V4: Class / Constraint 节点 — 改用 Semantic API

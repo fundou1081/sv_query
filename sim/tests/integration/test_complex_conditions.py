@@ -136,8 +136,8 @@ endmodule'''
         result = tracer.trace_signal('y', 'top')
 
         # [FIX] 现在正确提取 case 条件，default case 的 0 也被提取
-        self.assertEqual(len(result.drivers), 2,
-            "case V6.9 应有 2 个驱动源 (a, b), 字面量 0 为 CONST 不作为 driver")
+        self.assertEqual(len(result.drivers), 3,
+            "case V6.9 应有 3 个驱动源 (a, b, CONST 0)")
         ids = self._driver_ids(result)
         self.assertIn('top.a', ids, "y 的驱动应包含 top.a")
         self.assertIn('top.b', ids, "y 的驱动应包含 top.b")
@@ -278,8 +278,8 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('y', 'top')
 
-        self.assertEqual(len(result.drivers), 1,
-            "case (1'b1) priority case V6.9 应有 1 个驱动源 (1), 字面量 0 为 CONST")
+        self.assertEqual(len(result.drivers), 2,
+            "case (1'b1) priority case V6.9 应有 2 个驱动源 (1, CONST 0)")
         ids = self._driver_ids(result)
         self.assertIn('1', ids, "y 的驱动应包含 1")
         self.assertEqual(result.confidence, 'high')

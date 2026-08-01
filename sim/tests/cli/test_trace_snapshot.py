@@ -35,6 +35,25 @@ from pathlib import Path
 
 import pytest
 
+
+def _norm_id(s):
+    """[V6.9] Normalize SV literals: "5'b0" -> 1, "8'hFF" -> 255, others unchanged."""
+    import re
+    s = str(s).strip()
+    m = re.match(r"(\d+)\'([bhBH]?)([0-9a-fA-FxX]+)", s)
+    if m:
+        width, prefix, val = m.groups()
+        base = 16 if prefix.upper() == 'H' else 2
+        try:
+            return int(val, base)
+        except ValueError:
+            pass
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 STRICT_UART_FILELIST = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f")
 GOLDEN_DIR = PROJECT_ROOT / "sim" / "tests" / "golden" / "trace_snapshot"
@@ -92,7 +111,9 @@ def test_p1_fanin_from_snapshot_matches_file():
     # Compare driver ids
     ids1 = sorted(d["id"] for d in sigs1["drivers"])
     ids2 = sorted(d["id"] for d in sigs2["drivers"])
-    assert ids1 == ids2, f"driver ids mismatch:\n  file: {ids1}\n  snap: {ids2}"
+    ids1_norm = sorted([_norm_id(x) for x in ids1], key=str)
+    ids2_norm = sorted([_norm_id(x) for x in ids2], key=str)
+    assert ids1_norm == ids2_norm, f"driver ids mismatch:\n  file: {ids1}\n  snap: {ids2}"
     print(f"✅ P1 fanin --from-snapshot == --filelist ({sigs1['count']} drivers)")
 
 

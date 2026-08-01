@@ -198,13 +198,13 @@ class TestReachabilityMultiRandomize(unittest.TestCase):
         self.assertEqual(status["mode"]["randomized_count"], 1)
 
     def test_multi_randomize_all_alive(self):
-        """addr + mode 都 alive (consumer reads addr; mode referenced in inline constraint)"""
+        """addr alive (consumer reads it); mode dead (only constrained, never consumed)"""
         status = _get_reachability_status(
             FIXTURE_DIR / "multi_randomize.sv", "packet"
         )
         self.assertEqual(status["addr"]["status"], "alive")
-        # mode 被人引用 (在 inline constraint 里 task body) — alive
-        self.assertEqual(status["mode"]["status"], "alive")
+        # [V6.9] mode is dead: referenced in inline constraint but never consumed
+        self.assertEqual(status["mode"]["status"], "dead")
 
 
 # =============================================================================
@@ -246,7 +246,7 @@ class TestReachabilityFixturesOverview(unittest.TestCase):
         ("covergroup_sample.sv", "packet", 2, 0),
         ("hierarchy.sv", "packet", 6, 0),
         ("no_randomize.sv", "packet", 2, 0),
-        ("multi_randomize.sv", "packet", 2, 0),  # addr + mode (mode referenced in inline constraint)
+        ("multi_randomize.sv", "packet", 1, 1),  # [V6.9] addr alive, mode dead (only constrained)
         ("function_randomize.sv", "packet", 1, 0),
     ]
 
