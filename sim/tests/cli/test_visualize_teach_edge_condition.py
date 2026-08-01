@@ -37,7 +37,7 @@ def _strip_pycache():
 
 def _read_edges(dot_text: str) -> list[str]:
     """Return all ` -> ` edge lines from DOT output."""
-    return [l for l in dot_text.splitlines() if " -> " in l]
+    return [line for line in dot_text.splitlines() if " -> " in line]
 
 
 # --- if_demo --------------------------------------------------------------
@@ -57,10 +57,10 @@ def test_if_demo_then_branch_has_sel_condition(tmp_path):
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     # then branch: a -> y  should have label="sel"
-    then_edge = next(l for l in edges if 'if_demo.a" -> "if_demo.y"' in l)
+    then_edge = next(line for line in edges if 'if_demo.a" -> "if_demo.y"' in line)
     assert 'label="sel"' in then_edge, f"expected sel condition on then branch: {then_edge}"
     # else branch: b -> y  should have label="!sel"
-    else_edge = next(l for l in edges if 'if_demo.b" -> "if_demo.y"' in l)
+    else_edge = next(line for line in edges if 'if_demo.b" -> "if_demo.y"' in line)
     assert 'label="!sel"' in else_edge, f"expected !sel condition on else branch: {else_edge}"
 
 
@@ -78,7 +78,7 @@ def test_if_demo_clock_edge_has_no_condition_label(tmp_path):
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
-    clk_edge = next(l for l in edges if 'if_demo.clk" -> "if_demo.y"' in l)
+    clk_edge = next(line for line in edges if 'if_demo.clk" -> "if_demo.y"' in line)
     assert 'label=' not in clk_edge, f"clock edge should have no condition label: {clk_edge}"
 
 
@@ -105,10 +105,10 @@ def test_case_demo_each_branch_has_op_eq_value(tmp_path):
         'case_demo.d2" -> "case_demo.y"': "op == 2'b10",
     }
     for substr, label in expected.items():
-        e = next(l for l in edges if substr in l)
+        e = next(line for line in edges if substr in line)
         assert f'label="{label}"' in e, f"expected {label} on {substr}: {e}"
     # default branch
-    default_edge = next(l for l in edges if 'case_demo.d3" -> "case_demo.y"' in l)
+    default_edge = next(line for line in edges if 'case_demo.d3" -> "case_demo.y"' in line)
     assert 'label="op == default"' in default_edge, f"expected op == default: {default_edge}"
 
 
@@ -128,9 +128,9 @@ def test_ternary_demo_branches_have_inverted_conditions(tmp_path):
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
-    then_edge = next(l for l in edges if 'ternary_demo.a" -> "ternary_demo.y"' in l)
+    then_edge = next(line for line in edges if 'ternary_demo.a" -> "ternary_demo.y"' in line)
     assert 'label="sel"' in then_edge, f"then branch should have sel: {then_edge}"
-    else_edge = next(l for l in edges if 'ternary_demo.b" -> "ternary_demo.y"' in l)
+    else_edge = next(line for line in edges if 'ternary_demo.b" -> "ternary_demo.y"' in line)
     # ternary: condition may be `!sel` or `!(sel)` depending on extractor
     assert ('!sel' in else_edge or '!(sel)' in else_edge), \
         f"else branch should have inverted sel: {else_edge}"

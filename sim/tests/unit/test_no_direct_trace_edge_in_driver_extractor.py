@@ -60,7 +60,7 @@ class TestNoDirectTraceEdgeInDriverExtractor(unittest.TestCase):
             offender_lines, [],
             "[V4 violation] Direct `TraceEdge(...)` constructors found in driver_extractor.py. "
             "Use `self._append_edge(...)` instead:\n"
-            + '\n'.join(f"  line {ln}: {l}" for ln, l in offender_lines[:5])
+            + '\n'.join(f"  line {ln}: {line}" for ln, line in offender_lines[:5])
         )
 
     def test_append_edge_helper_exists(self):

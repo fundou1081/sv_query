@@ -54,7 +54,7 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('din', 'top')
 
-        load_ids = [l.id for l in result.loads]
+        load_ids = [load.id for load in result.loads]
         self.assertIn('top.data', load_ids)
 
     def test_input_port_is_driver_source(self):

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: handshake scan must recognize standard AXI signal patterns.
 

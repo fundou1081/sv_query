@@ -50,7 +50,7 @@ endmodule'''
         # 强断言1: d 的 loads 包含 tmp
         chain = tracer.trace('d', 'top')
         self.assertGreater(len(chain.loads), 0, "d应有后继")
-        load_ids = [l.id for l in chain.loads]
+        load_ids = [load.id for load in chain.loads]
         self.assertIn('top.tmp', load_ids, "d的loads应包含tmp")
 
         # 强断言2: d 的 loads 也包含 q（通过 tmp 追溯）
@@ -58,7 +58,7 @@ endmodule'''
 
         # 强断言3: tmp 的 loads 包含 q
         chain_tmp = tracer.trace('tmp', 'top')
-        tmp_load_ids = [l.id for l in chain_tmp.loads]
+        tmp_load_ids = [load.id for load in chain_tmp.loads]
         self.assertIn('top.q', tmp_load_ids, "tmp的loads应包含q")
 
     def test_no_load(self):
@@ -109,7 +109,7 @@ endmodule'''
 
         chain = tracer.trace('d', 'top')
         self.assertEqual(len(chain.loads), 3, "d应有3个后继")
-        load_ids = [l.id for l in chain.loads]
+        load_ids = [load.id for load in chain.loads]
         self.assertIn('top.q1', load_ids)
         self.assertIn('top.q2', load_ids)
         self.assertIn('top.q3', load_ids)

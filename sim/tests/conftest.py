@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 pytest configuration — test markers + auto symlink setup (V6.7)
 
@@ -26,7 +27,7 @@ if _src not in sys.path:
 if _tools not in sys.path:
     sys.path.insert(0, _tools)
 
-from datetime import datetime
+from datetime import datetime  # noqa: E402
 
 
 def pytest_configure(config):

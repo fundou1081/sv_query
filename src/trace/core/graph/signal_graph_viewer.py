@@ -391,7 +391,7 @@ class SignalGraphViewer:
                 return (s.replace("\\", "\\\\").replace('"', '\\"')
                         .replace("\n", "\\n").replace("(", "\\(").replace(")", "\\)"))
 
-            label_str = "\\n".join(_dot_label_escape(l) for l in labels)
+            label_str = "\\n".join(_dot_label_escape(line) for line in labels)
             if node_id in _cond_signal_ids:
                 color = "#cc5500"  # 橙色边 = 条件信号
             else:

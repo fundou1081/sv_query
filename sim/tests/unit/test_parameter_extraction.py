@@ -42,7 +42,7 @@ class TestParameterExtraction(unittest.TestCase):
                 ["verilator", "--lint-only", "-sv", tmp],
                 capture_output=True, text=True, timeout=30
             )
-            errors = [l for l in result.stderr.split('\n') if '%Error' in l]
+            errors = [line for line in result.stderr.split('\n') if '%Error' in line]
             self.assertEqual(len(errors), 0, f"{name} - Verilator errors: {errors}")
         finally:
             os.unlink(tmp)

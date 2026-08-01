@@ -262,8 +262,8 @@ class TestCrossModuleTrace:
             pytest.skip(f"signal {sig} not in graph")
         loads = st._collect_all_loads(sig, max_depth=3)
         # 至少 aw_valid (中间 signal) 应该是 load
-        assert any("aw_valid" in l.id and l.kind.name == "SIGNAL" for l in loads), \
-            f"expected aw_valid signal as load, got {[l.id for l in loads[:3]]}"
+        assert any("aw_valid" in ld.id and ld.kind.name == "SIGNAL" for ld in loads), \
+            f"expected aw_valid signal as load, got {[load.id for load in loads[:3]]}"
 
     def test_dp_ram_m_axi_awvalid_has_internal_driver(self, tracer):
         """axi_xbar_dp_ram.m_axi_awvalid 是 wrapper 出口, 应该有内部 assign driver."""
@@ -326,8 +326,8 @@ class TestCrossModuleSignals:
             pytest.skip(f"signal {sig} not in graph")
         loads = st._collect_all_loads(sig, max_depth=3)
         # 至少 aw_valid signal
-        aw_valid_loads = [l for l in loads if "aw_valid" in l.id and l.kind.name == "SIGNAL"]
+        aw_valid_loads = [ld for ld in loads if "aw_valid" in ld.id and ld.kind.name == "SIGNAL"]
         assert len(aw_valid_loads) >= 1, (
             f"expected at least 1 'aw_valid' signal load, got 0. "
-            f"All loads: {[l.id for l in loads[:5]]}"
+            f"All loads: {[load.id for load in loads[:5]]}"
         )

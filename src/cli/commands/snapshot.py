@@ -158,7 +158,8 @@ def list(
 ):
     """List all snapshots"""
     manager = SnapshotManager()
-    tags = manager.list_tags(); snapshots = [manager.show(t) for t in tags]
+    tags = manager.list_tags()
+    snapshots = [manager.show(t) for t in tags]
 
     if json_output:
         print(json.dumps(snapshots, indent=2))

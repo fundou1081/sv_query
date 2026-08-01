@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: classify_signal_channel must recognize axi_crossbar_addr internal AW/AR signals.
 

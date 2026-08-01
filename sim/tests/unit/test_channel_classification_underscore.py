@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: channel classification must handle both underscore and non-underscore AXI variants.
 

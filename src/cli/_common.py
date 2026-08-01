@@ -217,7 +217,7 @@ def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
     print(f"Error: {header}", file=sys.stderr)
     if strict:
         # 简洁输出前 10 行, 不暴露 Python stack
-        detail_lines = [l for l in lines[1:] if l.strip()][:10]
+        detail_lines = [line for line in lines[1:] if line.strip()][:10]
         if detail_lines:
             print("\n".join(detail_lines), file=sys.stderr)
             if len(lines) > 11:

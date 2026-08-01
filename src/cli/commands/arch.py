@@ -80,7 +80,7 @@ def _arch_default(
     arch_anomalies: dict[str, str] = {}
     if show_anomalies and output_format == "dot":
         try:
-            from trace.core.graph.models import NodeKind as _NK
+            from trace.core.graph.models import NodeKind as _NK  # noqa: N814
             tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist, strict=False)
             _graph = tracer_obj.build_graph()
             target_prefix = f"{target}."
@@ -101,7 +101,7 @@ def _arch_default(
                 elif n_in == 0 and n_out == 0:
                     arch_anomalies[nid] = "ORPHAN"
             if arch_anomalies:
-                from collections import Counter as _C
+                from collections import Counter as _C  # noqa: N814
 
                 from trace.core.compiler import is_elaboration_incomplete
                 _counts = dict(_C(arch_anomalies.values()))
@@ -138,7 +138,7 @@ def _arch_default(
             content = _render_svg(dot_text, target, output)
         except RuntimeError as e:
             typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
     else:
         typer.echo(f"Error: unknown format '{output_format}'", err=True)
         raise typer.Exit(1)
@@ -177,7 +177,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             )
     except Exception as e:
         typer.echo(f"Error building tracer: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     tracer.build_graph()
     # [Phase 2 2026-07-11] Pass target_module to SemanticAdapter so
@@ -191,7 +191,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
         result = extract_module(semantic_adapter, target, max_depth=depth)
     except Exception as e:
         typer.echo(f"Error extracting module: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     instances = [(i.id, i.def_name, i.depth) for i in result.instances]
 
@@ -948,7 +948,7 @@ def show(
             content = _render_svg(dot_text, target, output)
         except RuntimeError as e:
             typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
     else:
         typer.echo(f"Error: unknown format '{output_format}' (use: dot/mermaid/html/svg/summary)", err=True)
         raise typer.Exit(1)

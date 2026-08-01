@@ -54,7 +54,7 @@ from __future__ import annotations
 _IS_V10 = False
 _IS_V11_PLUS = False
 try:
-    from pyslang import SyntaxKind as _SyntaxKind_v10
+    from pyslang import SyntaxKind as _SyntaxKind_v10  # noqa: F401
     _IS_V10 = True
 except ImportError:
     _IS_V11_PLUS = True

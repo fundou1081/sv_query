@@ -50,7 +50,7 @@ class TestReportGenerator:
                 with open(junit_path) as f:
                     junit_data = json.load(f)
                     result['summary'] = junit_data.get('summary', result['summary'])
-            except:
+            except Exception:
                 pass
 
         return result

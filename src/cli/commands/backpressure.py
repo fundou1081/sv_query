@@ -315,7 +315,7 @@ def _print_backpressure_stats(bp_nodes, bp_edge_set, filtered_out, layer_nodes, 
     print("  Backpressure signals: " + str(len(bp_nodes)))
     print("  Edges: " + str(len(bp_edge_set)))
     print("  Filtered out (passthroughs): " + str(len(filtered_out)))
-    active_layers = ", ".join(l for l in ["SLAVE", "ADAPTER", "CROSSBAR", "MASTER", "OTHER"] if layer_nodes[l])
+    active_layers = ", ".join(layer for layer in ["SLAVE", "ADAPTER", "CROSSBAR", "MASTER", "OTHER"] if layer_nodes[layer])
     print("  Layers: " + active_layers)
     print("")
     print("  Handshake type breakdown:")
@@ -365,7 +365,7 @@ def deadlock(
         sem = load_semantics(protocol, dir_path=semantics_dir)
     except FileNotFoundError as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # 2. 构造 graph
     if not file and not filelist:
@@ -381,7 +381,7 @@ def deadlock(
             tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=strict)
     except Exception as e:
         typer.echo(f"Error building tracer: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     # 3. 抑制 stdout 噪声, 在 --json 模式下 progress 走 stderr
     if json_output:

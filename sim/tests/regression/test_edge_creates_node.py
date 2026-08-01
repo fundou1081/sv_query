@@ -72,7 +72,7 @@ endmodule'''
         result = tracer.trace_signal('din', 'top')
 
         # loads 不应为空
-        load_ids = [l.id for l in result.loads]
+        load_ids = [load.id for load in result.loads]
         self.assertIn('top.dout', load_ids)
 
 
