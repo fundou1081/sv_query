@@ -7,24 +7,29 @@ import sys
 from pathlib import Path
 
 import typer
+
 from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from trace.core.graph.analyzer.controlflow_analyzer import (
-    ControlFlowAnalyzer,
+from cli._evidence_helpers import (
+    evidence_summary_indented,
+    evidence_to_dict,
 )
-from trace.core.graph_builder import GraphBuilder
-from trace.unified_tracer import UnifiedTracer
+from cli._evidence_helpers import (
+    format_controlflow_human as _format_controlflow_human,
+)
 
 # [Stage 5] evidence helper (可选 --evidence flag)
 from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
-    evidence_to_dict,
-    evidence_summary_indented,
-    format_controlflow_human as _format_controlflow_human,
 )
+from trace.core.graph.analyzer.controlflow_analyzer import (
+    ControlFlowAnalyzer,
+)
+from trace.core.graph_builder import GraphBuilder
+
 
 def output_json(data: dict, pretty: bool = False) -> None:
     indent = 2 if pretty else None

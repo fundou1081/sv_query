@@ -19,7 +19,6 @@ SystemVerilog type 构造上的能力.
 Fixture: sim/tests/pyslang_type_fixtures/conftest.py 提供共享 helper
 + 工业项目 skip 逻辑.
 """
-import os
 import sys
 from pathlib import Path
 

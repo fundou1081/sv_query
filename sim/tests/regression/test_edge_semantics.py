@@ -9,14 +9,15 @@
 #   3. if/else + always_ff 组合
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
 
 
 class TestClockDomainOnEdge(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestClockDomainOnEdge(unittest.TestCase):
 module top(input clk, d, output reg q);
     always_ff @(posedge clk) q <= d;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -57,7 +58,7 @@ module top(input clk, rst, d, output reg q);
         else q <= d;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -75,7 +76,7 @@ endmodule'''
 module top(input a, b, output reg y);
     always_comb y = a & b;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -94,7 +95,7 @@ endmodule'''
 module top(input a, output y);
     assign y = a;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -123,7 +124,7 @@ module top(input a, b, sel, output reg y);
         else y = b;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -156,7 +157,7 @@ module top(input a, b, c, sel1, sel2, output reg y);
         end else y = c;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -185,7 +186,7 @@ module top(input a, sel, output reg y);
         if (sel) y = a;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -212,7 +213,7 @@ module top(input clk, en, d, output reg q);
         if (en) q <= d;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -238,7 +239,7 @@ module top(input clk, sel, a, b, output reg q);
         else q <= b;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()

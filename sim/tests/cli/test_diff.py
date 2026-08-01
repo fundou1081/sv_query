@@ -2,11 +2,11 @@
 # test_diff.py - diff command tests
 #============================================================================
 
-import unittest
+import json
+import os
 import subprocess
 import tempfile
-import os
-import json
+import unittest
 
 
 class TestDiffCLI(unittest.TestCase):

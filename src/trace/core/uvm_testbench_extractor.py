@@ -13,7 +13,9 @@ import re
 # 0xfb 字节). 直接用 Compilation + SourceManager 避开此 bug, 仍符合铁律1 (Compilation
 # 是允许的数据源, 严禁直接用 SyntaxTree.fromText(file).root 跳过 Compilation).
 import pyslang
-from ._pyslang_compat import Compilation as _PyslangCompilation, SyntaxTree as _PyslangSyntaxTree
+
+from ._pyslang_compat import Compilation as _PyslangCompilation
+from ._pyslang_compat import SyntaxTree as _PyslangSyntaxTree
 from .graph.uvm_models import ConfigDBEntry, FactoryOverride, SequenceBinding, TLMConnection, UVMComponent, UVMTestbench
 
 logger = logging.getLogger(__name__)

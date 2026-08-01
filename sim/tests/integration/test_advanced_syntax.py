@@ -5,10 +5,10 @@
 # 铁律22: 强断言原则 - 必须验证具体行为
 #==============================================================================
 
-import unittest
-import pytest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.unified_tracer import UnifiedTracer

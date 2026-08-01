@@ -11,14 +11,16 @@ RTL: always_ff @(posedge clk) q <= d;
   - CLOCK 边: clk -> q (EdgeKind.CLOCK)
   - DRIVER 边: d -> q (EdgeKind.DRIVER, clock_domain="clk")
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestClockEdge(unittest.TestCase):
@@ -26,7 +28,7 @@ class TestClockEdge(unittest.TestCase):
 
     def _build_graph(self, source):
         """辅助: 构建图"""
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

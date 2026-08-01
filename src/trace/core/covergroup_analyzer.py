@@ -10,7 +10,6 @@
 #   4. 做语义层面的 gap 比对
 
 import logging
-import re
 from dataclasses import dataclass
 
 from .graph.covergroup_models import CovergroupInfo
@@ -58,7 +57,7 @@ class CovergroupAnalyzer:
 
     def _find_condition_constraint_pairs(self) -> set[tuple[str, str]]:
         """[V6.9] 用 semantic API 从 class body 中抽取 constraint 条件关系。
-        
+
         直接遍历 semantic ClassType 的成员（Symbol），
         找到 ConstraintBlock 后从其 syntax 层提取条件约束对。
         """
@@ -93,7 +92,6 @@ class CovergroupAnalyzer:
                 elif "Implication" in cik:
                     self._add_implication_pairs(ci, pairs)
         # Use root.visit through the class node
-        from trace.core.semantic_adapter import SemanticAdapter
         root = getattr(self._adapter, "_root", None)
         if root:
             root.visit(visitor)
@@ -156,7 +154,7 @@ class CovergroupAnalyzer:
 
         # 收集已有 cross 的变量对
         cross_pairs = set()
-        cp_names = {cp.name for cp in cg.coverpoints if cp.name}
+        {cp.name for cp in cg.coverpoints if cp.name}
         name_to_signal = {cp.name: cp.signal for cp in cg.coverpoints if cp.name and cp.signal}
         for cross in cg.crosses:
             normalized = []

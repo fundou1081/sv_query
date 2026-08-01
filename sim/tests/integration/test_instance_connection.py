@@ -19,21 +19,23 @@ RTL:
   - trace_signal('dout', 'top').drivers 包含 top.din (通过 u1.q -> dout)
   - 或者能追踪到 sub.u1.q -> top.dout 的连接
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestInstanceConnection(unittest.TestCase):
     """模块实例化连接测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

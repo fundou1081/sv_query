@@ -130,7 +130,7 @@ def test_visualize_module_depth_limit_respected(tmp_path):
 def test_visualize_module_handles_missing_target(tmp_path):
     """[REFACTOR 2026-07-02] 找不到 target 时不应该 crash, 返回空 instances."""
     actual = tmp_path / "actual.json"
-    rc = _run_cli_module(STRICT_UART_FILELIST, "nonexistent_module_xyz", 3, actual)
+    _run_cli_module(STRICT_UART_FILELIST, "nonexistent_module_xyz", 3, actual)
     # 不期望 crash, rc 可能 0 或 1
     assert actual.exists()
     data = json.loads(actual.read_text())

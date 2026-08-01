@@ -5,15 +5,16 @@ Root cause: typer maps `-f` short flag to `--file` (not `--filelist`). When user
 passes `-f picorv32.f` (a filelist), typer routes the value to `file`, and pyslang
 tries to parse the filelist as Verilog source, causing a C-level crash.
 
-Fix: `_build_tracer()` in src/cli/_common.py auto-detects .f/.fl/.filelist 
+Fix: `_build_tracer()` in src/cli/_common.py auto-detects .f/.fl/.filelist
 extension in the `file` param and promotes it to filelist path.
 """
 
 import pytest
+
 pytestmark = pytest.mark.opensource  # picorv32 dependency (4/5 tests)
 
-import unittest
 import subprocess
+import unittest
 
 PICORV32_F = "/Users/fundou/my_dv_proj/sv_query/sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f"
 

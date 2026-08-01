@@ -1,4 +1,5 @@
 from pathlib import Path
+
 """SV Preprocessor - 跨文件宏展开
 
 [Req-20 2026-06-12] 用户洞察: "应该把宏替换后再用语义解析"
@@ -33,7 +34,6 @@ from pathlib import Path
 """
 
 import re
-from typing import Optional
 
 
 # 行尾单行注释剥离
@@ -184,7 +184,7 @@ def auto_inject_package_imports(sources: dict[str, str]) -> dict[str, str]:
         m = re.search(r"(package\s+\w+\s*;)(.*?)(endpackage)", content, re.DOTALL)
         if not m:
             continue
-        header, body, footer = m.group(1), m.group(2), m.group(3)
+        header, body, _footer = m.group(1), m.group(2), m.group(3)
 
         # 已有 import pkg::*;
         existing_imports = set(re.findall(r"import\s+(\w+)\s*::\*\s*;", body))
@@ -208,7 +208,7 @@ def auto_inject_package_imports(sources: dict[str, str]) -> dict[str, str]:
             referenced_pkgs.add(ref_pkg)
 
         # 哪些 ref 但没 import + 实际在 filelist 里定义
-        missing = referenced_pkgs - existing_imports - set(declared_packages.keys()) - {pkg_name}
+        referenced_pkgs - existing_imports - set(declared_packages.keys()) - {pkg_name}
         truly_missing = referenced_pkgs - existing_imports - {pkg_name}
         # 必须是 declared 的 package
         truly_missing = truly_missing & set(declared_packages.keys())

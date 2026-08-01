@@ -11,22 +11,21 @@ test_mig_validator.py — Test MIG validator (Phase 2.1).
 - verify_specific_port 跑 actual SV 找 specific port
 """
 
-import sys
 import os
+import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'tools'))
 
 from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
 from trace.core.mig_validator import (
-    compare_with_extract_module,
-    verify_specific_port,
     ExtractComparison,
     PortVerification,
+    compare_with_extract_module,
+    verify_specific_port,
 )
-
+from trace.core.semantic_adapter import SemanticAdapter
 
 SIMPLE_SV = '''
 module top();
@@ -63,8 +62,7 @@ def _build_adapter_and_mig(simple_sv):
             inst_id = str(symbol.hierarchicalPath)
         except Exception:
             continue
-        defn = getattr(symbol, 'definition', None)
-        inst_type = defn.name if defn else 'unknown'
+        getattr(symbol, 'definition', None)
         port_name = 'clk'
         port_path = f"{inst_id}.{port_name}"
         parent = getattr(inst, 'parent_module', None)

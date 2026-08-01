@@ -4,9 +4,10 @@
 # [迁移] 从 test_pyslang_adapter.py 迁移到 SemanticAdapter
 # 新 API 使用源文本 + Semantic AST，不再使用 SyntaxTree
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler

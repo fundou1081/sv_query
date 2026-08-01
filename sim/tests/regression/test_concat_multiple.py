@@ -5,12 +5,14 @@
 # 状态: 已知限制 (文档记录)
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -24,7 +26,7 @@ module top(input a, input b, output [1:0] y);
     assign y = {a, b};
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
 
@@ -39,7 +41,7 @@ module top(input a, input b, input c, input d, output [3:0] y);
     assign y = {a, b, c, d};
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
 
@@ -56,7 +58,7 @@ module top(input a, output [3:0] y);
     assign y = {4{a}};
 endmodule'''
 
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         result = tracer.trace_signal('y', 'top')
 

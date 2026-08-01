@@ -475,7 +475,7 @@ class ControlCoverageGenerator:
             try:
                 # [V6.9] SignalExpressionVisitor removed, using semantic_adapter._extract_signals_from_expr() instead
                 # [V6.9] semantic_adapter._extract_signals_from_expr() returns list of signal names
-                    return self._convert_signal_result_to_atomics(sr, ast_node)
+                    return self._convert_signal_result_to_atomics(sr, ast_node)  # noqa: F821
             except Exception:
                 pass  # Fallback to string parsing
 

@@ -29,12 +29,9 @@ mig_validator.py — Cross-check MIG output using native API as informational to
     print(result.summary())
 """
 
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional, List
 
 import pyslang
-
 
 # ----------------------------------------------------------------------------
 # Result types

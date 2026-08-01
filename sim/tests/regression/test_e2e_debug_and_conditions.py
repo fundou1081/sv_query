@@ -2,13 +2,14 @@
 #
 # 场景4: RTL 信号报错，向前/向后追踪到 module port
 # 场景5: 复杂嵌套 if 条件提取 true condition → coverage
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 def _build_graph(source):
@@ -121,7 +122,7 @@ def conditions_to_coverage_suggestions(conditions, signal_name):
 
     for cond in conditions:
         cond_vars = cond['condition_vars']
-        branch = cond['branch']
+        cond['branch']
 
         if len(cond_vars) == 1:
             cv = cond_vars[0].split('.')[-1]

@@ -19,20 +19,22 @@ test_composition_chain.py - 组合链 (has-a) 金标准测试
   inner -> inner.x (CONSTRAINS)
 """
 
-import unittest
 import sys
+import unittest
+
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind, NodeKind
 import pyslang
+
+from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestCompositionChainBasic(unittest.TestCase):
     """基本组合关系测试"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -116,7 +118,7 @@ class TestCompositionChainNegative(unittest.TestCase):
     """负面测试 - 不应崩溃"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -147,7 +149,7 @@ class TestCompositionChainMultiLevel(unittest.TestCase):
     """多层嵌套组合"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -188,7 +190,7 @@ class TestCompositionChainComplex(unittest.TestCase):
     """复杂组合场景测试"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -432,7 +434,7 @@ class TestCompositionChainEdgeCases(unittest.TestCase):
     """边界条件测试"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

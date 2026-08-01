@@ -19,23 +19,17 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
+from applications.bus.detector import (
+    ChannelMatch,
+    ProtocolDetector,
+    SignalMapping,
+)
 from applications.bus.schema import (
     ProtocolSchemaRegistry,
-    load_protocols,
-)
-from applications.bus.detector import (
-    ProtocolDetector,
-    ProtocolMatch,
-    ChannelMatch,
-    SignalMapping,
 )
 from applications.bus.structural import (
     SignalContext,
-    StructuralRoleDetector,
 )
-from applications.bus.normalize import SignalNormalizer, NormalizeConfig
-from applications.bus.pattern_learner import PatternLearner
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

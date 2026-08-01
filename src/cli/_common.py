@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 CLI 公共 helper
 ================
@@ -18,13 +17,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
 from trace.core.compiler import CompilationError
 from trace.unified_tracer import UnifiedTracer
-
 
 # ----------------------------------------------------------------------------
 # 1. tracer 构建 (核心 helper, 所有 --file 命令复用)

@@ -3,13 +3,15 @@
 # [P2] 性能评估
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
 import time
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -17,7 +19,7 @@ class TestPerformance(unittest.TestCase):
     """性能基准测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     #----------------------------------------------------------------------
@@ -32,7 +34,7 @@ module small(input wire din, output wire dout);
 endmodule'''
 
         start = time.time()
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         parse_time = time.time() - start
 
         self.assertLess(parse_time, 0.1, "解析超时")
@@ -49,7 +51,7 @@ endmodule'''
         source += 'endmodule'
 
         start = time.time()
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         parse_time = time.time() - start
 
         self.assertLess(parse_time, 1.0, "解析超时")
@@ -80,7 +82,7 @@ endmodule'''
         tracer.build_graph()
 
         start = time.time()
-        result = tracer.trace_signal('dout', 'top')
+        tracer.trace_signal('dout', 'top')
         trace_time = time.time() - start
 
         self.assertLess(trace_time, 0.05, "追踪超时")
@@ -99,7 +101,7 @@ endmodule'''
 
         # 运行多次
         for _ in range(10):
-            tree = pyslang.SyntaxTree.fromText(source)
+            pyslang.SyntaxTree.fromText(source)
             tracer = UnifiedTracer(sources={'test.sv': source})
             tracer.build_graph()
 
@@ -124,7 +126,7 @@ endmodule'''
 
         start = time.time()
         try:
-            tree = pyslang.SyntaxTree.fromText(source)
+            pyslang.SyntaxTree.fromText(source)
             parse_time = time.time() - start
             # 应该能完成（可以很慢）
             self.assertGreater(parse_time, 0)

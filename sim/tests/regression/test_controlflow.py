@@ -2,20 +2,20 @@
 # test_controlflow.py - ControlFlow Analysis Tests
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
+from trace.core.compiler import SVCompiler
 from trace.core.graph.analyzer.controlflow_analyzer import (
-    ControlFlowAnalyzer,
     ControlFlowAnalysis,
-    ConditionedDriver,
+    ControlFlowAnalyzer,
 )
 from trace.core.graph_builder import GraphBuilder
 from trace.core.semantic_adapter import SemanticAdapter
-from trace.core.compiler import SVCompiler
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestControlFlowBasic(unittest.TestCase):

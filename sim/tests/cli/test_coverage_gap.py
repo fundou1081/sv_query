@@ -16,11 +16,11 @@ Test coverage:
   6. Markdown output is human-readable
 """
 
-import unittest
+import json
+import os
 import subprocess
 import tempfile
-import os
-import json
+import unittest
 
 
 class TestCoverageGapCLI(unittest.TestCase):

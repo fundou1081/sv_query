@@ -3,10 +3,13 @@
 - repeat timing control: a = repeat(3) @(posedge clk) b;
 """
 import sys
+
 sys.path.insert(0, 'src')
-import pyslang
-from trace.unified_tracer import UnifiedTracer
 import unittest
+
+import pyslang
+
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestTimingControlParsing(unittest.TestCase):
@@ -23,7 +26,7 @@ module test;
     initial a <= #5 b;
 endmodule
 '''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -49,7 +52,7 @@ module test;
     initial a = repeat(3) @(posedge clk) b;
 endmodule
 '''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -71,7 +74,7 @@ module test;
     end
 endmodule
 '''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -96,7 +99,7 @@ module test;
     end
 endmodule
 '''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'test.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()

@@ -11,20 +11,23 @@ Constraint 衍生语法:
 6. unique 唯一性约束
 7. loop 循环约束
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.base import PyslangAdapter
+from trace.unified_tracer import UnifiedTracer
+
 
 class TestConstraintDerivative(unittest.TestCase):
     """Constraint 衍生语法测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def _get_classes(self, source):

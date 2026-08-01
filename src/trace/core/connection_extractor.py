@@ -6,10 +6,10 @@
 
 import logging
 
+from .._safe import _safe_str
 from .base import PyslangAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
-from .._safe import _safe_str
 
 logger = logging.getLogger(__name__)
 

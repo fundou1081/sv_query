@@ -31,14 +31,14 @@ test_mig_generate_block.py - ModuleInstanceGraph generate block 支持金标准�
   4. get_internal_signal('top.GEN[0].u_dut.out') 应返回 'dut.out'
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+
 from trace.unified_tracer import UnifiedTracer
-import pyslang
 
 
 class TestMIGGenerateBlock(unittest.TestCase):

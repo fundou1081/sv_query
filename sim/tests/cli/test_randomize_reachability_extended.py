@@ -13,11 +13,10 @@ Tests:
   6. function_randomize (randomize 在 function body)
 """
 
-import unittest
-import subprocess
 import json
+import subprocess
+import unittest
 from pathlib import Path
-
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "randomize"
 

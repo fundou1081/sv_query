@@ -10,7 +10,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RUN_CLI = PROJECT_ROOT / "run_cli.py"
 

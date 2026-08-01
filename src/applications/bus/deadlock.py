@@ -36,12 +36,12 @@ applications.bus.deadlock - 静态死锁候选检测
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
 
-from .semantics import ProtocolSemantics, ChannelRule
+from trace.core.graph.models import SignalGraph
 from trace.core.handshake_detector import HandshakeInfo
-from trace.core.graph.models import SignalGraph, EdgeKind
+
+from .semantics import ProtocolSemantics
 
 
 @dataclass

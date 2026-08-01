@@ -1,14 +1,12 @@
 """test_viz_data.py — V6.7 VizData 统一可视化数据格式测试"""
 
-import pytest
-from pathlib import Path
 
 from trace.core.graph.viz import (
-    VizData, VizNode, VizEdge, VizBuildOptions,
-    build_viz_data, render_dot,
+    VizBuildOptions,
+    build_viz_data,
+    render_dot,
 )
 from trace.unified_tracer import UnifiedTracer
-
 
 # ── helpers ──
 

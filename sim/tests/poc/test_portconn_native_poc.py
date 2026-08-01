@@ -8,12 +8,15 @@ POC test 2026-07-11: portConnections 替代 MIG 自建 port mappings
 
 关联: MEMORY.md TODO "pyslang Native API 重构机会" (2026-06-25)
 """
+import os
+import sys
+import time
+
 import pytest
-import sys, os, time
+
 sys.path.insert(0, "/Users/fundou/my_dv_proj/sv_query/src")
 
 from trace.core.compiler import SVCompiler
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -43,7 +46,7 @@ def _load_darkriscv():
 def _walk_native(target_top, max_depth=10):
     """Walk target body and yield (hierarchicalPath, depth, type_name)."""
     out = []
-    
+
     def walk(inst, depth=0):
         if depth > max_depth:
             return
@@ -77,7 +80,7 @@ def _walk_native(target_top, max_depth=10):
                     walk(child, depth + 1)
         except Exception:
             return
-    
+
     walk(target_top)
     return out
 
@@ -94,12 +97,12 @@ class TestPortConnNativePOC:
         compiler, target = _load_darkriscv()
         comp = compiler.get_compilation()
         root = comp.getRoot()
-        
+
         tops = list(root.topInstances)
         # Skip if elaboration failed completely
         if not tops:
             pytest.skip("No top instances (elaboration failed)")
-        
+
         # Check darksocv is in topInstances
         names = []
         for t in tops:
@@ -107,7 +110,7 @@ class TestPortConnNativePOC:
                 names.append(str(t.name))
             except Exception:
                 continue
-        
+
         assert "darksocv" in names, f"darksocv not in topInstances: {names}"
 
     def test_hierarchicalPath_uses_target_as_prefix(self):
@@ -120,7 +123,7 @@ class TestPortConnNativePOC:
         compiler, target = _load_darkriscv()
         comp = compiler.get_compilation()
         root = comp.getRoot()
-        
+
         target_top = None
         for t in root.topInstances:
             try:
@@ -129,19 +132,19 @@ class TestPortConnNativePOC:
                     break
             except Exception:
                 continue
-        
+
         if target_top is None:
             pytest.skip(f"target {target!r} not in topInstances")
-        
+
         sub_insts = _walk_native(target_top)
         assert len(sub_insts) > 0, "No sub-instances found"
-        
+
         # All hierarchical paths should start with target.
         bad = []
-        for hp, depth, type_name in sub_insts:
+        for hp, _depth, _type_name in sub_insts:
             if not (hp == target or hp.startswith(f"{target}.")):
                 bad.append(hp)
-        
+
         assert not bad, f"Bad namespace paths (should be {target}.*): {bad}"
 
     def test_portConnections_returns_clean_port_list(self):
@@ -152,7 +155,7 @@ class TestPortConnNativePOC:
         compiler, target = _load_darkriscv()
         comp = compiler.get_compilation()
         root = comp.getRoot()
-        
+
         target_top = None
         for t in root.topInstances:
             try:
@@ -161,17 +164,17 @@ class TestPortConnNativePOC:
                     break
             except Exception:
                 continue
-        
+
         if target_top is None:
             pytest.skip(f"target {target!r} not in topInstances")
-        
+
         sub_insts = _walk_native(target_top)
         # Skip top itself
-        sub_only = [(inst_path) for hp, depth, tn in sub_insts 
+        sub_only = [(inst_path) for hp, depth, tn in sub_insts
                     for inst_path in [hp] if hp != target]
-        
+
         assert len(sub_only) >= 3, f"Expected ≥3 sub-instances in darksocv, got {len(sub_only)}"
-        
+
         # Walk again to get the actual InstanceSymbol objects
         sub_with_insts = []
         def collect(inst, depth=0):
@@ -194,18 +197,18 @@ class TestPortConnNativePOC:
                 elif 'GenerateBlock' in kind:
                     collect(child, depth + 1)
         collect(target_top)
-        
+
         # Find sub-instances only (not target itself)
         sub_only_with_inst = [(i, hp) for i, hp in sub_with_insts if hp != target]
         assert len(sub_only_with_inst) >= 3
-        
+
         # Each sub-instance should have non-empty portConnections
         for inst, hp in sub_only_with_inst:
             port_conns = getattr(inst, 'portConnections', [])
             # portConnections might be 0 for some leaf modules but should be list
             assert isinstance(port_conns, list), \
                 f"{hp}: portConnections is not a list ({type(port_conns).__name__})"
-            
+
             # Check at least one port has a readable name
             for pc in port_conns[:5]:
                 port = getattr(pc, 'port', None)
@@ -228,7 +231,7 @@ class TestPortConnNativePOC:
         compiler, target = _load_darkriscv()
         comp = compiler.get_compilation()
         root = comp.getRoot()
-        
+
         target_top = None
         for t in root.topInstances:
             try:
@@ -237,20 +240,20 @@ class TestPortConnNativePOC:
                     break
             except Exception:
                 continue
-        
+
         if target_top is None:
             pytest.skip(f"target {target!r} not in topInstances")
-        
+
         # Time native walk
         t0 = time.time()
         for _ in range(5):  # 5 runs
             _walk_native(target_top)
         elapsed_ms = (time.time() - t0) * 1000 / 5
-        
+
         # Loose threshold: < 200ms (vs MIG ~600ms baseline)
         assert elapsed_ms < 200, \
             f"Native walk too slow: {elapsed_ms:.1f}ms (expect < 200ms)"
-        
+
         print(f"\n  [PERF] native walk avg: {elapsed_ms:.1f}ms")
 
     def test_native_walk_correct_sub_instance_count(self):
@@ -264,7 +267,7 @@ class TestPortConnNativePOC:
         compiler, target = _load_darkriscv()
         comp = compiler.get_compilation()
         root = comp.getRoot()
-        
+
         target_top = None
         for t in root.topInstances:
             try:
@@ -273,20 +276,20 @@ class TestPortConnNativePOC:
                     break
             except Exception:
                 continue
-        
+
         if target_top is None:
             pytest.skip(f"target {target!r} not in topInstances")
-        
+
         # Walk
         sub_insts = _walk_native(target_top)
         # Direct sub-instances (depth=1)
         direct_subs = [hp for hp, depth, _ in sub_insts if depth == 1]
-        
+
         # Expected: 3 direct subs (bridge0, bram0, io0)
         # darkpll0 is inside `ifdef BOARD_CK` which is NOT defined → hidden
         assert len(direct_subs) >= 3, \
             f"Expected ≥3 direct sub-instances, got {len(direct_subs)}: {direct_subs}"
-        
+
         # Verify the 3 expected sub-instance names are present
         expected = {"bridge0", "bram0", "io0"}
         actual_short = {hp.split(".")[-1] for hp in direct_subs}

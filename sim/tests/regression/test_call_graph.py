@@ -4,13 +4,13 @@
 #
 # 目标: 从入口函数/任务出发，构建完整调用图
 # 支持 fork/join 处理和 randomize 标记
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.call_graph_builder import CallGraphBuilder
-from trace.core.graph.call_graph_models import CallNode, CallGraph
 
 
 def _build_call_graph(source, entry_class, entry_method):

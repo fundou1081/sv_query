@@ -19,13 +19,11 @@ signal_classifier — 基于现有图元数据区分 control 信号 vs data 信�
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
-from ..models import SignalGraph, TraceNode, TraceEdge, EdgeKind, NodeKind
+from ..models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
 
 class SignalClass(Enum):
@@ -393,7 +391,7 @@ def get_dataflow_edges(
 ) -> list[ClassifiedEdge]:
     """获取数据流图的边列表 (data 边 + 可选关键 control 边)"""
     result = []
-    for key, ce in classification.edges.items():
+    for _key, ce in classification.edges.items():
         if ce.edge_class == SignalClass.DATA:
             result.append(ce)
         elif include_key_control and ce.is_control:

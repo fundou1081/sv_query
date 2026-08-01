@@ -10,14 +10,16 @@
 #   查询 data 时: 通过父节点聚合所有位驱动
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
+from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
 
 
 class TestBitSelectHierarchical(unittest.TestCase):
@@ -39,7 +41,7 @@ class TestBitSelectHierarchical(unittest.TestCase):
 module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -80,7 +82,7 @@ endmodule'''
 module top(input [7:0] data, output reg y);
     always_comb y = data[3];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -109,7 +111,7 @@ module top(input [7:0] data, input sel, output reg y);
         else y = data[0];
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -136,7 +138,7 @@ endmodule'''
 module top(input [7:0] data, output y);
     assign y = data[3];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -156,7 +158,7 @@ endmodule'''
 module top(input [7:0] data, output reg [3:0] y);
     always_comb y = data[7:4];
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -176,7 +178,7 @@ endmodule'''
 module top(input [7:0] data, output [7:0] y);
     assign y = data;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -198,7 +200,7 @@ endmodule'''
 module top(input a, output y);
     assign y = a;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 

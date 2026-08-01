@@ -16,19 +16,22 @@
 11. while
 12. repeat
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestBasicSyntaxGolden(unittest.TestCase):
     """基础语法金标准测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     # ========================================================================
@@ -306,7 +309,7 @@ endmodule'''
         tracer.build_graph()
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         self.assertTrue(any('out' in n for n in nodes), f"out not in {nodes}")
 
@@ -364,7 +367,7 @@ endmodule'''
         tracer.build_graph()
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         self.assertTrue(any('data' in n for n in nodes), f"data not in {nodes}")
 

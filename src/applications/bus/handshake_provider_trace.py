@@ -37,13 +37,11 @@ Phase A v4: TraceBasedHandshakeProvider
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Tuple
 
 from .handshake_provider import (
     HandshakeInfoLite,
     HandshakeProvider,
 )
-
 
 _logger = logging.getLogger(__name__)
 

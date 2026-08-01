@@ -9,12 +9,12 @@
 # - 使用 Verilator + Verible 双重验证
 # - 强断言验证具体行为
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
 
@@ -169,7 +169,7 @@ endmodule
 
         # 注意: localparam 在 members 中，不在 header.parameters 中
         # 这里只测试 header 中的参数
-        params = adapter.get_module_parameters(modules[0])
+        adapter.get_module_parameters(modules[0])
 
         # localparam 不是 header 参数，所以可能为空
         # 这是设计决策：是否提取 localparam？

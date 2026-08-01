@@ -3,9 +3,10 @@
 #==============================================================================
 # [迁移] 使用 SemanticAdapter 替代 PyslangAdapter
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler
@@ -85,7 +86,7 @@ endmodule
 
         width = adapter.extract_port_width(ports[0])
         msb = width[0]
-        lsb = width[1]
+        width[1]
         # B 是参数，应返回 B-1 而不是 0
         self.assertNotEqual(msb, 0, f"MSB 不应为 0，实际为 {width}")
 
@@ -110,7 +111,7 @@ endmodule
 
         width = adapter.extract_port_width(ports[0])
         msb = width[0]
-        lsb = width[1]
+        width[1]
         self.assertNotEqual(msb, 0, "MSB 不应为 0")
 
     #============================================================================
@@ -161,7 +162,7 @@ endmodule
 
         width = adapter.extract_port_width(ports[0])
         msb = width[0]
-        lsb = width[1]
+        width[1]
         self.assertNotEqual(msb, 0, "MSB 不应为 0")
 
 

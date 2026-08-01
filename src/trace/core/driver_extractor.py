@@ -21,13 +21,15 @@ import logging
 import warnings
 from typing import Any
 
+from pyslang.pyslang.ast import BinaryOperator, ExpressionKind, StatementKind  # [V6.9] semantic AST only
+
+from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from .base import PyslangAdapter
 from .builder.subroutine_expander import CallSiteInfo, SubroutineExpander
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
-from .graph.models import SignalSource, EdgeKind, NodeKind, TraceEdge, TraceNode
-from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
-from pyslang.pyslang.ast import StatementKind, ExpressionKind, BinaryOperator  # [V6.9] semantic AST only
+from .graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
+
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
 
 logger = logging.getLogger(__name__)
@@ -211,7 +213,7 @@ class DriverExtractor:
         """
         if ast_node is None or not names:
             return names
-        
+
         # [V6.9] Extract condition signal names from ternary expressions
         cond_names2 = set()
         def _walk_conds(node):
@@ -233,7 +235,7 @@ class DriverExtractor:
                 _walk_conds(getattr(node, "left", None))
                 _walk_conds(getattr(node, "right", None))
         _walk_conds(ast_node)
-        
+
         if cond_names2:
             names = [n for n in names if n not in cond_names2]
 
@@ -1495,7 +1497,7 @@ class DriverExtractor:
             # [V6.9 FIX] semantic_adapter returns list[str] (ALL signals).
             # Must separate condition signals (g, h) from leaf signals (x0, x1).
             all_signals = self._signal_visitor._extract_signals_from_expr(check_expr) or []
-            
+
             # [V6.9] 递归收集所有层的条件信号名
             # g ? (h ? x0 : x1) : x2 → 条件信号 = {g, h}
             def _collect_cond_signals(cond_op, acc_set):
@@ -1515,10 +1517,10 @@ class DriverExtractor:
                 _collect_cond_signals(getattr(cond_op, "right", None), acc_set)
             cond_sig_names = set()
             _collect_cond_signals(check_expr, cond_sig_names)
-            
+
             # Leaf signals = all - conditions
             leaf_signals = [s for s in all_signals if s not in cond_sig_names]
-            
+
             # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
             # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
             def _build_ternary_cond_map(cond_op, path=None):
@@ -1530,7 +1532,7 @@ class DriverExtractor:
                 ck = str(getattr(cond_op, "kind", ""))
                 if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
                     return result_map
-                
+
                 # 提取条件文本
                 cond_texts = []
                 raw_c = getattr(cond_op, "conditions", None)
@@ -1542,10 +1544,10 @@ class DriverExtractor:
                             if ct:
                                 cond_texts.append(ct)
                 cond_str = " && ".join(cond_texts) if cond_texts else ""
-                
+
                 left = getattr(cond_op, "left", None)
                 right = getattr(cond_op, "right", None)
-                
+
                 def _extract_arm_signals(arm_expr, cond_path):
                     """Extract all leaf signal names from a ternary arm.
 
@@ -1562,17 +1564,17 @@ class DriverExtractor:
                     # Recurse through _extract_signals_from_expr to get all leaf names
                     names = self._signal_visitor._extract_signals_from_expr(arm_expr) or []
                     return {n: full_cond for n in names if n}
-                
+
                 # 递归 left (true 分支) / right (false 分支)
                 result_map.update(_extract_arm_signals(left, path + [cond_str]))
                 neg_cond = f"!({cond_str})" if cond_str else ""
                 result_map.update(_extract_arm_signals(right, path + [neg_cond]))
-                
+
                 return result_map
-            
+
             cond_map = _build_ternary_cond_map(check_expr)
             signal_conditions = [(s, cond_map.get(s, "")) for s in leaf_signals]
-            
+
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
@@ -1878,7 +1880,7 @@ class DriverExtractor:
                             _collect2(getattr(cop, "right", None), acc)
                         _collect2(check_expr, cond_sig_names2)
                         leaf_signals2 = [s for s in all_signals2 if s not in cond_sig_names2]
-                        
+
                         # [V6.9] 构建每个 leaf 的条件文本
                         def _build_cond_map(cond_op, path=None):
                             result = {}
@@ -1921,10 +1923,10 @@ class DriverExtractor:
                                     if name:
                                         result[name] = fc
                             return result
-                        
+
                         cond_map = _build_cond_map(check_expr)
                         signal_conditions = [(s, cond_map.get(s, "")) for s in leaf_signals2]
-                        
+
                         signal_conditions = self._filter_signal_conditions_by_module(
                             signal_conditions, module=module
                         )
@@ -2324,7 +2326,7 @@ class DriverExtractor:
         """
         if ctx is None:
             ctx = {}
-        
+
         # 1. 从 syntax 层提取 clock 和 reset 信号
         clock = self._extract_clock_from_always(n)
         reset = self._extract_reset_from_always(n)
@@ -2332,12 +2334,12 @@ class DriverExtractor:
             ctx["clock"] = clock
         if reset:
             ctx["reset"] = reset
-        
+
         # 2. 从 syntax 层获取语句体 (带条件信息)
         items = self._get_always_body_items(n)
         if not items:
             return items
-        
+
         # 3. 处理条件脉络（if/case 等）
         #    _flatten_assignments 现在返回 (expr, cond_str) 或 (expr, cond_str, leaf_name) 元组
         #    leaf_name != None 表示 ternary 展开后的 leaf 信号（覆盖 rhs 信号提取）
@@ -2355,9 +2357,9 @@ class DriverExtractor:
                 result.append((expr_node, item_ctx, None))
             else:
                 result.append((item, ctx, None))
-        
+
         return result
-    
+
     def _extract_reset_from_always(self, n) -> str:
         """[V6.9] 提取 reset 信号 — 优先 semantic AST .timing.events, fallback syntax tree。
 
@@ -2398,7 +2400,7 @@ class DriverExtractor:
                     sig = self._get_signal(expr)
                     reset_signal = sig if (sig and not sig.startswith("Expression(")) else str(expr).strip()
         return reset_signal
-    
+
     def _get_always_body_items(self, n) -> list:
         """[V6.9] 从 semantic AST 获取 flat assignment expressions。
 
@@ -2411,7 +2413,7 @@ class DriverExtractor:
         sem_body = getattr(n, "body", None)
         if sem_body is None:
             return []
-        
+
         kind = getattr(sem_body, "kind", None)
         # TimedStatement: unwrap timing wrapper
         if kind == StatementKind.Timed:
@@ -2419,7 +2421,7 @@ class DriverExtractor:
             if inner is None:
                 return []
             sem_body = inner
-        
+
         items = []
         self._flatten_semantic(sem_body, items)
         return items
@@ -2721,9 +2723,9 @@ class DriverExtractor:
             for inst_path, module in self._instance_paths:
                 module_name = inst_path  # Use instance path as prefix
                 try:
-                    type_name = self.adapter.get_module_name(module)
+                    self.adapter.get_module_name(module)
                 except Exception:
-                    type_name = '?'
+                    pass
                 # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
                 self._current_module = module
                 # [P1-3] 获取当前模块的源文件位置

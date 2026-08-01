@@ -2,12 +2,12 @@
 # test_procedural_blocks.py - 程序块单元测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.core.compiler import SVCompiler
 from trace.core.semantic_adapter import SemanticAdapter
 

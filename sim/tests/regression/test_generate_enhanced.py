@@ -7,20 +7,22 @@ Generate 增强语法:
 2. generate for 循环内信号追踪
 3. generate case 信号追踪
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
-from trace.core.base import PyslangAdapter
+
 
 class TestGenerateEnhanced(unittest.TestCase):
     """Generate 增强测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_generate_if_else_signal_tracking(self):
@@ -56,7 +58,7 @@ endmodule'''
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
 
-        nodes = list(tracer.get_graph().nodes())
+        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
 
         # 验证: a -> y
@@ -97,7 +99,7 @@ endmodule'''
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
 
-        nodes = list(tracer.get_graph().nodes())
+        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
 
         # 验证: data_in -> data_out

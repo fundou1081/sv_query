@@ -16,11 +16,9 @@ This test specifically verifies the V6.3 fix to use raw `condition`
 (includes the selector, e.g. `sel_b == 2'b0`) rather than
 `effective_condition` (just the value, `2'b0`).
 """
-import subprocess
 import os
+import subprocess
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "mux_demo.sv"

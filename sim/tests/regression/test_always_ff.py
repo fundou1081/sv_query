@@ -3,12 +3,14 @@
 # Bug: always_ff 非阻塞赋值未提取
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -16,7 +18,7 @@ class TestAlwaysFFExtraction(unittest.TestCase):
     """回归测试 - always_ff 内部赋值��取"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_simple_ff_chain(self):

@@ -28,11 +28,10 @@ When adding a NEW subcommand (e.g. `visualize control-flow`):
         ...
 """
 from pathlib import Path
-from typing import Optional
+
 import typer
 
 from cli._common import _build_tracer
-
 
 # ---------------------------------------------------------------------------
 # Common typer option declarations. Import these instead of redefining.
@@ -63,11 +62,11 @@ SHOW_SOURCE_OPTION = typer.Option(
 # Common tracer build helper.
 # ---------------------------------------------------------------------------
 def build_viz_tracer(
-    file: Optional[str],
-    filelist: Optional[str],
-    include: Optional[str],
+    file: str | None,
+    filelist: str | None,
+    include: str | None,
     strict: bool,
-    target_module: Optional[str] = None,
+    target_module: str | None = None,
     use_cache: bool = False,
 ):
     """Build a tracer + graph for any visualize subcommand.
@@ -106,7 +105,7 @@ def build_viz_tracer(
     return tracer, graph
 
 
-def get_viz_sources(tracer, file: Optional[str], filelist: Optional[str]) -> dict:
+def get_viz_sources(tracer, file: str | None, filelist: str | None) -> dict:
     """Return the sources dict for downstream SVA / Covergroup extractors.
 
     Single-file mode uses tracer._sources directly. Filelist mode needs to

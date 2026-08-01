@@ -14,7 +14,7 @@
 
 from typing import Any
 
-from .graph.models import SignalSource, EdgeKind, TraceEdge
+from .graph.models import EdgeKind, SignalSource, TraceEdge
 
 
 class TraceEdgeFactory:

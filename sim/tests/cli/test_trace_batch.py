@@ -76,7 +76,7 @@ def test_p2_batch_inline_multiple_signals():
     assert len(signals) == 2
     assert signals[0]["signal"] == "uart_top.rx_data_o"
     assert signals[1]["signal"] == "sync_fifo.count_q"
-    print(f"✅ P2 --batch inline: 2 signals")
+    print("✅ P2 --batch inline: 2 signals")
 
 
 def test_p3_batch_file_with_comments_and_dedup():
@@ -110,7 +110,7 @@ uart_top.rx_data_o
         sig_names = [s["signal"] for s in signals]
         assert sig_names[0] == "uart_top.rx_data_o", f"order: {sig_names}"
         assert sig_names[1] == "sync_fifo.count_q"
-        print(f"✅ P3 --batch-file: 3 lines + 1 dup → 2 dedup'd, comment+blank skipped")
+        print("✅ P3 --batch-file: 3 lines + 1 dup → 2 dedup'd, comment+blank skipped")
     finally:
         Path(batch_file.name).unlink(missing_ok=True)
 

@@ -8,7 +8,6 @@ NaplesPU 测试发现 65 个 elaboration errors (MissingTimeScale, UndeclaredIde
 $clog2 TooFewArguments) 让 snapshot 直接失败. 修复后即使有错也能存, 并标记失败文件.
 """
 import json
-import os
 import sys
 import tempfile
 import warnings
@@ -19,7 +18,6 @@ sys.path.insert(0, "src")
 
 from trace.core.compiler import SVCompiler
 from trace.unified_tracer import UnifiedTracer
-
 
 # 故意有 elaboration 错误的 SV: 引用未定义 identifier + 缺 timescale
 BAD_SV_WITH_TIMESCALE = """

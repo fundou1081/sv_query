@@ -74,8 +74,9 @@ def _setup_project_with_missing_typedef():
 
 def test_extract_definitions_finds_typedef():
     """_extract_definitions_from_file 应识别 typedef / module / package / define"""
-    from cli.commands.fix_imports import _extract_definitions_from_file
     import tempfile
+
+    from cli.commands.fix_imports import _extract_definitions_from_file
     with tempfile.NamedTemporaryFile(suffix=".sv", mode="w", delete=False) as f:
         f.write("`timescale 1ns/1ps\nmodule foo (input wire clk); endmodule\ntypedef logic [7:0] my_typedef_t;\npackage my_pkg; endpackage\n`define MY_MACRO 1\n")
         f_path = f.name

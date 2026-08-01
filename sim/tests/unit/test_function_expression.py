@@ -6,14 +6,13 @@
 # 金标准测试：验证函数体内部表达式能够完整展开
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
 
 
 class TestFunctionExpression(unittest.TestCase):
@@ -41,7 +40,7 @@ endmodule'''
 
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        graph = tracer.get_graph()
+        tracer.get_graph()
 
         result = tracer.trace_signal('out', 'top')
         driver_ids = [d.id for d in result.drivers]
@@ -77,7 +76,7 @@ endmodule'''
 
         tracer = self._make_tracer(source)
         tracer.build_graph()
-        graph = tracer.get_graph()
+        tracer.get_graph()
 
         result = tracer.trace_signal('out', 'top')
         driver_ids = [d.id for d in result.drivers]

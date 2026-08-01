@@ -4,14 +4,13 @@
 # [铁律10] 置信度检查
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
 
 
 class TestSignalTracer(unittest.TestCase):

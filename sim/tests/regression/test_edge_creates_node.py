@@ -4,12 +4,14 @@
 # 修复: DriverExtractor.extract() 中同时创建 TraceNode
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -17,7 +19,7 @@ class TestEdgeCreatesNode(unittest.TestCase):
     """回归测试 - Edge 必须创建对应 Node (Bug #1)"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_assign_creates_node(self):

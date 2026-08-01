@@ -31,13 +31,11 @@ Mock 设计:
 """
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.query.signal import SignalTracer
 
 # ============================================================================
@@ -166,7 +164,7 @@ class MockMIG:
         """
         result = []
         for (module_port, instance_ports) in self._port_mappings.items():
-            for (instance, instance_port) in instance_ports:
+            for (_instance, instance_port) in instance_ports:
                 if instance_port == instance_port_id:
                     # module_port is "module.port", split
                     module, port = module_port.rsplit(".", 1)
@@ -210,7 +208,7 @@ class MockSignalTracer(SignalTracer):
             fallback = []
             # If sig is module def port → find instance ports
             instance_ports = self.mig.get_instance_ports_for(sig)
-            for (instance, instance_port) in instance_ports:
+            for (_instance, instance_port) in instance_ports:
                 fallback.append(MockNode(instance_port))
             return fallback
         return []

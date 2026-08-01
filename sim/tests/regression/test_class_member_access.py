@@ -4,14 +4,14 @@
 # [铁律18] 负面测试
 #
 # P0: MEMBER_SELECT 边 + p.addr 追踪
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 class TestClassMemberAccess(unittest.TestCase):

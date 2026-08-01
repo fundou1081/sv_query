@@ -12,23 +12,25 @@ RTL: module top(... output reg q); always_ff @(posedge clk) q <= d;
   - query_module 能找到 q 作为输出端口
   - ClockDomainTracer 能找到 q 作为寄存器
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
-from trace.core.query.module import ModuleTracer
+
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.core.query.clock_domain import ClockDomainTracer
+from trace.core.query.module import ModuleTracer
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestPortRegDetection(unittest.TestCase):
     """端口+寄存器双重语义测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

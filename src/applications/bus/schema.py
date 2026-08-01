@@ -43,10 +43,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Union
 
 from .normalize import _yaml_safe_load
-
 
 # ---------------------------------------------------------------------------
 # 数据结构

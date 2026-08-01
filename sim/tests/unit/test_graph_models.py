@@ -3,14 +3,14 @@
 # [铁律4] 模型即契约
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.graph.models import (
-    SignalGraph, TraceNode, TraceEdge, NodeKind, EdgeKind
-)
+from trace.core.graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+
 
 class TestGraphModels(unittest.TestCase):
     """数据模型测试"""

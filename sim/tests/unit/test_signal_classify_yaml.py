@@ -7,12 +7,12 @@ Verifies:
 - with_overrides() returns a new config with merged patterns
 - reset_config() reverts to builtin
 """
-import pytest
 from pathlib import Path
+
+import pytest
 
 from trace.core.graph.analyzer.signal_classifier import (
     ClassifyConfig,
-    classify_graph,
     get_config,
     load_config,
     reset_config,
@@ -52,11 +52,6 @@ rules:
 
 
 def test_load_config_sets_active():
-    yaml_content = """
-rules:
-  - class: control
-    patterns: [foo, bar]
-"""
     yaml_path = Path("config/signal_classify.yaml")  # default
     if not yaml_path.exists():
         pytest.skip("default config/signal_classify.yaml not present")

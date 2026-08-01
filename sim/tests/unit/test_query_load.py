@@ -6,15 +6,14 @@
 [铁律17] 强断言原则
 [铁律22] 断言必须验证具体行为
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
+from trace.core.query.load import LoadTracer
 from trace.unified_tracer import UnifiedTracer
-from trace.core.query.load import LoadTracer, LoadChain
-from trace.core.graph.models import EdgeKind, NodeKind
 
 
 class TestLoadTracer(unittest.TestCase):

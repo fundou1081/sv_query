@@ -4,12 +4,14 @@
 # 项目纪律: 金标准测试优先
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -19,7 +21,7 @@ class TestReplicationFix(unittest.TestCase):
     def test_replication_lhs(self):
         """[Golden] Replication LHS: {2{a}}"""
         src = 'module top(input a, output [3:0] y); assign y = {2{a}}; endmodule'
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -30,7 +32,7 @@ class TestReplicationFix(unittest.TestCase):
     def test_replication_triple(self):
         """[Golden] 三次复制: {3{a}}"""
         src = 'module top(input a, output [5:0] y); assign y = {3{a}}; endmodule'
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -39,7 +41,7 @@ class TestReplicationFix(unittest.TestCase):
     def test_replication_mixed(self):
         """[Golden] 混合复制: {2{a},b}"""
         src = 'module top(input a,b, output [4:0] y); assign y = {2{a},b}; endmodule'
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 

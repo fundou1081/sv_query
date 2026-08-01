@@ -47,12 +47,9 @@ When assertion formats change due to architecture refactoring, update
 the assertion strings but preserve the test purpose -- the purpose
 is the test's core value.
 """
-import re
-import subprocess
 import os
+import subprocess
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "nested_mux_demo.sv"
@@ -142,7 +139,7 @@ def test_if_with_case():
     assert "g && a == 2'b1" in text
     assert "!g && a == 2'b0" in text
     assert "!g && a == 2'b1" in text
-    
+
 
 # --- Pattern 4: nested if (2-level) --------------------------------------
 

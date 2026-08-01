@@ -5,7 +5,6 @@
 preprocessor 跨文件展开 `MACRO → literal value, 让 pyslang 避开 TooFewArguments.
 """
 
-import re
 import sys
 from pathlib import Path
 
@@ -17,11 +16,10 @@ if SRC_DIR not in sys.path:
 import pytest
 
 from trace.core.sv_preprocessor import (
-    preprocess_macros,
     _resolve_macro_recursive,
     _strip_comment,
+    preprocess_macros,
 )
-
 
 # ----------------------------------------------------------------------------
 # 单元测试: _strip_comment

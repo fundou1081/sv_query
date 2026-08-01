@@ -6,6 +6,7 @@ import logging
 from typing import Any, Callable
 
 from trace.core._pyslang_compat import SyntaxKind, TokenKind, is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
+
 from .._safe import clean_name as _clean_name_fn  # [P0-1] 收口
 
 # 配置日志

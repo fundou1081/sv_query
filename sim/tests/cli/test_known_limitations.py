@@ -18,11 +18,7 @@ V6.3+5 cannot fix but future versions should address:
 3. $signed() / $unsigned() in parens around ternary: works correctly
    when NOT inside a generate-if (see test_visualize_teach_binary_ops).
 """
-import os
-import subprocess
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "generate_if_alu.sv"

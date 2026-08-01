@@ -1,12 +1,13 @@
 # test_verilog_always.py - Verilog always 块识别测试
 # [铁律7] 先写测试
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.models import NodeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 def _build(source, filename='test.v'):

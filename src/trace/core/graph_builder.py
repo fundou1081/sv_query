@@ -214,7 +214,6 @@ class GraphBuilder:
             # add_trace_edge creates CONST nodes for literals like '4'b1011',
             # '32'd3735928559', '0', '1' which clutter dataflow/timing/chain DOTs.
             # These should stay as edge attributes, not graph nodes.
-            from .graph.models import NodeKind
             # [Phase 8 / Fix F 2026-7-14] KEEP CONST (literal) nodes in graph
             # Reason: trace_fanin queries need literal drivers (e.g., picorv32.trap
             # drivers = [0, 1] from RHS literals). Dropping them causes fanin=0.

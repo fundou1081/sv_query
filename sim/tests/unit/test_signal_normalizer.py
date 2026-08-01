@@ -24,11 +24,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from applications.bus.normalize import (
-    SignalNormalizer,
     NormalizeConfig,
-    NormalizeResult,
+    SignalNormalizer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

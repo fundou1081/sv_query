@@ -11,8 +11,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 # [Stage 6] parents[3] = repo root (sim/tests/integration/test_*.py → sim → repo)
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TEST_FILE = str(REPO_ROOT / "sim" / "test_simple.sv")

@@ -27,15 +27,15 @@ if str(_project_root) not in sys.path:
 import warnings
 
 import typer
+
 from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
-
 warnings.filterwarnings("ignore")
 
-from trace.core.covergroup_analyzer import CovergroupAnalyzer, CoverageGap
-from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.coverage_generator import ControlCoverageGenerator
+from trace.core.covergroup_analyzer import CoverageGap, CovergroupAnalyzer
+from trace.core.covergroup_extractor import CovergroupExtractor
 
 coverage_app = typer.Typer(
     help="[EXPERIMENTAL] Control coverage generation: decompose signals to atomic signals"
@@ -57,7 +57,6 @@ def suggest(
     json_output: bool = typer.Option(False, "--json", "-j", help="JSON output (programmatic)"),
 ) -> None:
     """分解信号到原子信号, 生成控制覆盖度建议"""
-    from trace.unified_tracer import UnifiedTracer
 
     # 解析输入信号
     if signal:
@@ -147,7 +146,7 @@ def gap(
             log_level=tracer_log_level,
             preprocess_macros=preprocess_macros,
         )
-        graph = tracer.build_graph()
+        tracer.build_graph()
 
         # 1. 提取 covergroups (使用 tracer 的 sources, 跟 graph 保持一致)
         sources = tracer.sources if hasattr(tracer, "sources") else {}
@@ -392,7 +391,7 @@ def analyze(
                 print(f"    clock:       {cg.clock}")
 
         if cg.attributes:
-            print(f"    attributes:")
+            print("    attributes:")
             for k, v in cg.attributes.items():
                 print(f"      {k}: {v}")
 
@@ -406,7 +405,7 @@ def analyze(
                     for b in cp.bins:
                         print(f"        {b.kind:14s} {b.name:20s} = {b.values}")
                 else:
-                    print(f"        (no bins defined)")
+                    print("        (no bins defined)")
 
         # Crosses
         if cg.crosses:
@@ -419,7 +418,7 @@ def analyze(
 
         # Errors
         if cg.errors:
-            print(f"\n    Errors:")
+            print("\n    Errors:")
             for err in cg.errors:
                 print(f"      - {err}")
 

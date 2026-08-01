@@ -3,12 +3,14 @@
 # 项目纪律: 铁律13 金标准测试
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -19,7 +21,7 @@ class TestTaskCall(unittest.TestCase):
     """[语法] Task 调用参数传递"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_task_output_param(self):
@@ -61,7 +63,7 @@ class TestFunctionCall(unittest.TestCase):
     """[语法] Function 调用"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_function_return(self):
@@ -106,7 +108,7 @@ class TestTaskMultiple(unittest.TestCase):
     """[语法] Task 内多语句"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_task_multiple_stmts(self):
@@ -149,7 +151,7 @@ class TestFunctionExpression(unittest.TestCase):
     """[语法] Function 表达式"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_function_in_expression(self):
@@ -193,7 +195,7 @@ class TestRecursiveFunction(unittest.TestCase):
     """[语法] 递归 Function"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_recursive_function(self):

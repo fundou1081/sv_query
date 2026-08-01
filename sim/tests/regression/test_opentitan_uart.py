@@ -11,19 +11,22 @@ OpenTitan UART 模块测试:
 3. always_comb 组合逻辑
 4. 信号驱动关系
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
+
 
 class TestOpenTitanUART(unittest.TestCase):
     """OpenTitan UART 模块测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_uart_rx_ports(self):
@@ -75,7 +78,7 @@ endmodule'''
         self.assertIsNotNone(tracer.get_graph())
 
         nodes = list(tracer.get_graph().nodes())
-        edges = list(tracer.get_graph().edges())
+        list(tracer.get_graph().edges())
 
         # 验证: 关键信号存在
         has_sreg = any('sreg' in n for n in nodes)
@@ -117,7 +120,7 @@ endmodule'''
         # 金标准: 图建立成功
         self.assertIsNotNone(tracer.get_graph())
 
-        nodes = list(tracer.get_graph().nodes())
+        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
 
         # 验证: sreg_d -> sreg_q

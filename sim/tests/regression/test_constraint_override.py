@@ -15,20 +15,22 @@ test_constraint_override.py - Constraint Override & SUPER_CALL 金标准测试
   - 覆盖场景无 SUPER_CALL 边
 """
 
-import unittest
 import sys
+import unittest
+
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
 import pyslang
+
+from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestConstraintSuperCall(unittest.TestCase):
     """SUPER_CALL 边测试"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -76,7 +78,7 @@ class TestConstraintOverrideNegative(unittest.TestCase):
     """负面测试"""
 
     def _build_graph(self, source: str):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

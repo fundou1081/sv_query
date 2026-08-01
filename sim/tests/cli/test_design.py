@@ -23,10 +23,8 @@ Tests:
   8. Output is human-readable (not JSON unless --json)
 """
 
-import unittest
 import subprocess
-from pathlib import Path
-
+import unittest
 
 OPENOFDM_TX_FILELIST = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f"
 
@@ -209,7 +207,6 @@ class TestDesignGraph(unittest.TestCase):
         not necessarily need to verify them.)"""
         import os
         import tempfile
-        import shutil
 
         with tempfile.TemporaryDirectory() as tmpdir:
             result = _run_svq([

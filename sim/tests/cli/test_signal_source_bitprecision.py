@@ -8,9 +8,7 @@
 5. 向后兼容: expression/bit_slice 字符串字段仍然可用
 """
 
-from pathlib import Path
 
-import pytest
 
 # --- Helper ---
 

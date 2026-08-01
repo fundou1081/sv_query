@@ -1,6 +1,7 @@
 # Fixtures for integration tests
+
 import pytest
-import os
+
 
 @pytest.fixture
 def output_dir(tmp_path):

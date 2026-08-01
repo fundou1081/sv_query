@@ -6,12 +6,13 @@ AW channel indicators (master write command). m_rc_valid / m_rc_ready are
 AR channel indicators (master read command). Both were being classified
 as UNKNOWN, dropping 7+ signals from the AW/AR scan.
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
 from trace.core.handshake_detector import classify_signal_channel
-
 
 WC_RC_SIGNALS = [
     ('m_wc_valid', 'AW'),

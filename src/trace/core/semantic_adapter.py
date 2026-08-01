@@ -6,8 +6,10 @@
 # ==============================================================================
 
 import sys
-from .._safe import _safe_attr, _safe_str, safe_str, clean_name as _clean_name_fn
 from typing import Callable, Iterator
+
+from .._safe import _safe_attr, _safe_str, safe_str
+from .._safe import clean_name as _clean_name_fn
 
 # 确保 pyslang bindings 在 path 中
 PYSLLANG_BINDINGS_PATH = "/Users/fundou/my_dv_proj/slang/build/bindings"
@@ -15,6 +17,7 @@ if PYSLLANG_BINDINGS_PATH not in sys.path:
     sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
 import pyslang
+
 from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
 
 

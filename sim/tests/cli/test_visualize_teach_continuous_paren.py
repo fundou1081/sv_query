@@ -23,8 +23,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "continuous_assign_paren.sv"
 PYTHONPATH = str(PROJECT_ROOT / "src") + ":" + str(PROJECT_ROOT / "tools")

@@ -11,11 +11,9 @@ viz_compute_renderer.py — 运算架构图渲染器 (V6.7)
 
 from __future__ import annotations
 
-from .viz_data_models import VizData, VizNode, VizEdge
-from .viz_dot_renderer import _node_attrs
-
 from ..analyzer._dot_common import sanitize_dot_id
-
+from .viz_data_models import VizData, VizEdge
+from .viz_dot_renderer import _node_attrs
 
 # pyslang OperatorName → 可读符号
 _OP_SYMBOLS: dict[str, str] = {

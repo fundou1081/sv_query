@@ -3,15 +3,13 @@
 # [铁律17] 强断言
 #
 # 使用 Semantic AST 提取 SVA 结构
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.sva_extractor import SVAExtractor
-from trace.core.graph.sva_models import (
-    SVASequenceNode, SVAPropertyNode, SVAAssertionNode, SVAGraph
-)
 
 
 def _extract(source):

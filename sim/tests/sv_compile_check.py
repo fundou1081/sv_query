@@ -26,7 +26,7 @@ from pathlib import Path
 # 添加 src 到 path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
-from trace.core.compiler import SVCompiler, CompilationError
+from trace.core.compiler import CompilationError, SVCompiler
 
 
 def check_sv_compiles(source: str, filename: str = "test.sv") -> tuple[bool, str]:

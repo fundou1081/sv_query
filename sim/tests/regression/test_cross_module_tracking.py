@@ -20,20 +20,21 @@ test_cross_module_tracking.py - 跨模块边界追踪金标准测试
   3. 跨模块路径: top.u_tb.clk → top.u_dut.clk → dut.reg_data
 """
 
-import unittest
 import sys
+import unittest
+
 sys.path.insert(0, 'src')
 
-from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import EdgeKind
 import pyslang
+
+from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestModuleInstanceGraph(unittest.TestCase):
     """模块实例图测试"""
 
     def _build_graph(self):
-        import tempfile
         import os
 
         source = '''module tb(input clk);
@@ -58,7 +59,7 @@ endmodule'''
         with open(temp_path, 'w') as f:
             f.write(source)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -76,7 +77,7 @@ endmodule'''
             self.assertIn('top.u_dut', mig.instances, "应有 top.u_dut 实例")
         else:
             # 备用: 通过端口节点检测
-            nodes = list(graph.nodes())
+            list(graph.nodes())
             # 至少应该能通过边发现实例关系
             has_instance_edge = any('u_tb' in src or 'u_dut' in dst
                                     for src, dst in graph.edges())
@@ -126,7 +127,6 @@ class TestCrossModulePath(unittest.TestCase):
     """跨模块路径追踪测试"""
 
     def _build_graph(self):
-        import tempfile
         import os
         import uuid
 
@@ -152,7 +152,7 @@ endmodule'''
         with open(temp_path, 'w') as f:
             f.write(source)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -205,7 +205,6 @@ class TestHierarchicalPort(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -216,7 +215,7 @@ class TestHierarchicalPort(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -240,7 +239,7 @@ endmodule'''
         self.assertIsNotNone(node, "应有 top.u_sub.data 节点")
 
         # 端口连接边
-        edge = graph.get_edge('top.sub.data', 'top.u_sub.data')
+        graph.get_edge('top.sub.data', 'top.u_sub.data')
         # 注意: 实际节点名可能是 top.u_sub.data
 
     def test_multi_level_hierarchy(self):
@@ -269,7 +268,7 @@ class TestNegativeCases(unittest.TestCase):
     """负面测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
         return tracer.get_graph()
@@ -304,7 +303,7 @@ module top;
     dut #(.WIDTH(16)) u_dut();
 endmodule'''
 
-        graph = self._build_graph(source)
+        self._build_graph(source)
         # 不崩溃即可
 
 
@@ -316,7 +315,6 @@ class TestMultiLevelHierarchy(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -327,7 +325,7 @@ class TestMultiLevelHierarchy(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -368,7 +366,6 @@ class TestArrayOfInstances(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -379,7 +376,7 @@ class TestArrayOfInstances(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -402,7 +399,6 @@ class TestPortWidthMapping(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -413,7 +409,7 @@ class TestPortWidthMapping(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -452,7 +448,6 @@ class TestBidirectionalPort(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -463,7 +458,7 @@ class TestBidirectionalPort(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -496,7 +491,6 @@ class TestCrossModuleClockPath(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -507,7 +501,7 @@ class TestCrossModuleClockPath(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -535,7 +529,6 @@ class TestMultipleConnections(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -546,7 +539,7 @@ class TestMultipleConnections(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -575,7 +568,6 @@ class TestUnconnectedPort(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -586,7 +578,7 @@ class TestUnconnectedPort(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -622,7 +614,6 @@ class TestParameterOverride(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -633,7 +624,7 @@ class TestParameterOverride(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -668,7 +659,6 @@ class TestInterfaceModportCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -679,7 +669,7 @@ class TestInterfaceModportCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -709,7 +699,6 @@ class TestGenerateInstanceCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -720,7 +709,7 @@ class TestGenerateInstanceCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -744,7 +733,6 @@ class TestFunctionPortCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -755,7 +743,7 @@ class TestFunctionPortCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -779,7 +767,6 @@ class TestClassInstanceCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -790,7 +777,7 @@ class TestClassInstanceCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -814,7 +801,6 @@ class TestClockDividerCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -825,7 +811,7 @@ class TestClockDividerCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -854,7 +840,6 @@ class TestResetCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -865,7 +850,7 @@ class TestResetCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -894,7 +879,6 @@ class TestBusArbitrationCrossModule(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -905,7 +889,7 @@ class TestBusArbitrationCrossModule(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -934,7 +918,6 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -945,7 +928,7 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -1392,7 +1375,7 @@ endmodule'''
         )
 
         # 验证跨越模块边界的 DRIVER 边存在
-        driver_edges = [(src, dst) for src, dst in graph.edges()
+        [(src, dst) for src, dst in graph.edges()
                         if graph.get_edge(src, dst).kind.name == 'DRIVER']
 
         # [FIX 2026-07-08] 治本后: child_signal_id 用 inst_path, 自循环代替跨模块
@@ -1455,7 +1438,6 @@ class TestCrossModuleSignalFlow(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -1466,7 +1448,7 @@ class TestCrossModuleSignalFlow(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -1506,7 +1488,6 @@ class TestCrossModulePortTypes(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -1517,7 +1498,7 @@ class TestCrossModulePortTypes(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -1560,7 +1541,6 @@ class TestCrossModulePathFinding(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -1571,7 +1551,7 @@ class TestCrossModulePathFinding(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 
@@ -1600,7 +1580,6 @@ class TestCrossModuleNegativeCases(unittest.TestCase):
 
     def _build_graph(self, source):
         """Build graph from source. Uses temp file for multi-module sources."""
-        import tempfile
         import os
 
         # Write source to temp file to handle multi-module correctly
@@ -1611,7 +1590,7 @@ class TestCrossModuleNegativeCases(unittest.TestCase):
             normalized = source.replace('\\n', '\n')
             f.write(normalized)
 
-        tree = pyslang.SyntaxTree.fromFile(temp_path)
+        pyslang.SyntaxTree.fromFile(temp_path)
         tracer = UnifiedTracer(sources={'test.sv.sv': source})
         tracer.build_graph()
 

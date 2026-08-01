@@ -1,5 +1,6 @@
 
 import pytest
+
 pytestmark = pytest.mark.opensource  # OpenTitan dependency (1/5 tests)
 
 #==============================================================================
@@ -18,13 +19,14 @@ pytestmark = pytest.mark.opensource  # OpenTitan dependency (1/5 tests)
 # 测试目标: 验证这些行为符合预期，不是 bug
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.models import EdgeKind
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestP3DesignDecisions(unittest.TestCase):
@@ -34,7 +36,7 @@ class TestP3DesignDecisions(unittest.TestCase):
     def setUpClass(cls):
         """加载 uart_rx.sv 作为测试文件"""
         file_path = '/Users/fundou/my_dv_proj/opentitan/hw/ip/uart/rtl/uart_rx.sv'
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             cls.source = f.read()
 
     def _make_tracer(self):
@@ -64,7 +66,7 @@ class TestP3DesignDecisions(unittest.TestCase):
         # 检查 sreg_d 的驱动边
         sreg_d_drivers = []
         bit_selects = []
-        for src, dst, data in graph.edges(data=True):
+        for src, dst, _data in graph.edges(data=True):
             if 'sreg_d' in dst:
                 sreg_d_drivers.append(src)
                 if '[10:1]' in src:
@@ -138,7 +140,7 @@ class TestP3DesignDecisions(unittest.TestCase):
 
         # 检查字面量边
         literal_edges = []
-        for src, dst, data in graph.edges(data=True):
+        for src, dst, _data in graph.edges(data=True):
             if (src.startswith("1'") or src.startswith("4'") or
                 src.startswith("11'") or src.startswith("8'")):
                 edge_info = graph._edge_data.get((src, dst))

@@ -26,9 +26,6 @@
 目标: 一个命令看 IP-level 设计理解 (purpose, protocols, handshake, CDC, ...).
 """
 import json
-import sys
-from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -205,7 +202,6 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
     Returns dict of {graph_name: {dot_path, png_path, status}}.
     """
     import os
-    from pathlib import Path
 
     os.makedirs(output_dir, exist_ok=True)
     graphs = {}

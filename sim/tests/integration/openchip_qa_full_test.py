@@ -5,16 +5,16 @@
 # 使用 sv_query 工具对开源芯片项目进行完整测试
 # 记录所有结果到指定文件夹
 
+import json
 import os
 import sys
-import json
 from datetime import datetime
+
 import pytest
 
 # 添加 src 路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
 
 # 项目列表 - 使用 filelist 方式配置
@@ -34,8 +34,10 @@ FILENAME_LIST = [
     {'name': 'ProNoC', 'path': '~/my_dv_proj/ProNoC', 'description': 'NoC 路由器', 'file_limit': 50},
 ]
 
-def find_verilog_files(project_path, extensions=['.v', '.sv']):
+def find_verilog_files(project_path, extensions=None):
     """查找项目中的 Verilog 文件"""
+    if extensions is None:
+        extensions = ['.v', '.sv']
     files = []
     for root, dirs, filenames in os.walk(os.path.expanduser(project_path)):
         # 跳过特定目录
@@ -58,7 +60,7 @@ def analyze_file(filepath):
     }
 
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(filepath, encoding='utf-8', errors='ignore') as f:
             content = f.read()
 
         if not content.strip():

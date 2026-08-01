@@ -6,12 +6,14 @@
 - 异步跨域路径检测
 - 不同时钟驱动的寄存器
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -19,7 +21,7 @@ class TestMultiClockDomain(unittest.TestCase):
     """多时钟域测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'t.sv': source})
 
     def test_dual_clock_registers(self):
@@ -135,7 +137,7 @@ class TestAsyncCrossDomain(unittest.TestCase):
     """异步跨域测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'t.sv': source})
 
     def test_async_signals(self):

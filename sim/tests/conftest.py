@@ -26,7 +26,6 @@ if _src not in sys.path:
 if _tools not in sys.path:
     sys.path.insert(0, _tools)
 
-import pytest
 from datetime import datetime
 
 

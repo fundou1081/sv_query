@@ -20,11 +20,10 @@ If the implementation is text-grep based, these tests will FAIL because
 it will mark 'only_in_comment' / 'only_in_string' / 'unused_real' as ALIVE.
 """
 
-import unittest
-import subprocess
 import json
+import subprocess
+import unittest
 from pathlib import Path
-
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "randomize" / "text_grep_bugs.sv"
 

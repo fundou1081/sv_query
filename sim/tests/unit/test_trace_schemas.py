@@ -27,7 +27,6 @@ LLM agent 依赖 schema 解析 output, schema 不对 = 解析失败.
 """
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import jsonschema
@@ -195,7 +194,7 @@ def test_n1_remove_required_field_fails(validator, schema):
             "truncated": False,
         },
     }
-    fragment = {"$ref": f"#/commands/trace_fanin/result_schema"}
+    fragment = {"$ref": "#/commands/trace_fanin/result_schema"}
     errors = list(validator.iter_errors(bad_data["result"], fragment))
     assert len(errors) > 0, "expected schema validation to fail for missing 'signals'"
     has_signals_err = any("signals" in e.message for e in errors)
@@ -223,7 +222,7 @@ def test_n2_wrong_type_fails(validator, schema):
             "truncated": False,
         },
     }
-    fragment = {"$ref": f"#/commands/trace_fanin/result_schema"}
+    fragment = {"$ref": "#/commands/trace_fanin/result_schema"}
     errors = list(validator.iter_errors(bad_data["result"], fragment))
     assert len(errors) > 0
     print("✅ N2 wrong type: schema validation correctly FAILED")
@@ -257,7 +256,7 @@ def test_n3_valid_full_output_passes(validator, schema):
             "truncated": False,
         },
     }
-    fragment = {"$ref": f"#/commands/trace_fanin/result_schema"}
+    fragment = {"$ref": "#/commands/trace_fanin/result_schema"}
     errors = list(validator.iter_errors(good_data["result"], fragment))
     assert len(errors) == 0, f"valid data should pass: {[e.message for e in errors]}"
     print("✅ N3 sanity: valid full JSON passes schema validation")

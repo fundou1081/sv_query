@@ -37,15 +37,16 @@ endmodule
 - 字面量节点: 0 个
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 import pyslang
 
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestIssue33LiteralEdge:
@@ -77,7 +78,7 @@ endmodule
         - 边 src 不应该是 "serv_top.1'b0" 或 "serv_top.0"
         - 边 src 应该是 "1'b0"（字面量直接作为 src）
         """
-        tree = pyslang.SyntaxTree.fromText(serv_top_source)
+        pyslang.SyntaxTree.fromText(serv_top_source)
         tracer = UnifiedTracer(sources={'serv_top.sv': serv_top_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -115,7 +116,7 @@ endmodule
         - 不应该有节点 ID 为 "serv_top.0" 或 "serv_top.1'b0"
         - 节点名不应该是 "0" 或 "1'b0"
         """
-        tree = pyslang.SyntaxTree.fromText(serv_top_source)
+        pyslang.SyntaxTree.fromText(serv_top_source)
         tracer = UnifiedTracer(sources={'serv_top.sv': serv_top_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()

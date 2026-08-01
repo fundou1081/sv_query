@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
+r"""
 fix_widths.py - 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽
 
 [ADD 2026-06-12] 回答用户问题 'macro 展开用语义 AST 不能直接拿到结果吗?'
@@ -24,17 +23,13 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
-from typing import Optional
-
-import typer
-
-from cli._common import _build_tracer
 
 # [ADD 2026-06-12] pyslang 暴露 clog2 + SVInt
 import pyslang
+import typer
 
+from cli._common import _build_tracer
 
 # ----------------------------------------------------------------------------
 # 核心算法
@@ -81,7 +76,7 @@ def _parse_clog2_from_text(text: str) -> tuple[str, int | str] | None:
 
 
 def _resolve_macro_value(macro_name: str, sources: dict[str, str]) -> int | None:
-    """从 sources dict 里 grep `\`<macro_name>` 定义, 解析成 int
+    r"""从 sources dict 里 grep `\`<macro_name>` 定义, 解析成 int
 
     支持:
     - `define FOO 4            → 4

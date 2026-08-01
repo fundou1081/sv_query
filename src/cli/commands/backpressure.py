@@ -24,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from trace.core.handshake_detector import (
     HandshakeInfo,
-    detect_handshake_type,
     detect_handshake_type_with_node,
 )
 from trace.core.query.signal import SignalTracer
@@ -275,10 +274,10 @@ def analyze(
         for name, kind, ht in nodes:
             safe_id = _safe_name(name)
             layer_emoji = {"SLAVE": "🔵", "ADAPTER": "🔷", "CROSSBAR": "🟠", "MASTER": "🔴"}.get(layer, "⚪")
-            hs_emoji = _HANDSHAKE_EMOJI.get(ht, "❓")
+            _HANDSHAKE_EMOJI.get(ht, "❓")
             short_name = name.split(".")[-1]
             # Mermaid label: emoji + signal short name + handshake type tag
-            lines.append('        %s["%s %s<br/><i>%s</i>"]' % (safe_id, layer_emoji, short_name, ht))
+            lines.append(f'        {safe_id}["{layer_emoji} {short_name}<br/><i>{ht}</i>"]')
         lines.append("    end")
         lines.append("")
 
@@ -293,9 +292,9 @@ def analyze(
         src_ht = bp_nodes.get(src, ("OTHER", "", "UNKNOWN"))[2]
         if src_layer != dst_layer:
             tag = f"{src_ht}"
-            lines.append('    %s -.->|"%s"| %s' % (src_safe, tag, dst_safe))
+            lines.append(f'    {src_safe} -.->|"{tag}"| {dst_safe}')
         else:
-            lines.append('    %s --> %s' % (src_safe, dst_safe))
+            lines.append(f'    {src_safe} --> {dst_safe}')
 
     mermaid_code = "\n".join(lines)
 
@@ -357,9 +356,9 @@ def deadlock(
       - cross-channel loop (跨通道 ready 链环)
       - response_after_request (响应不到达请求 driver 链)
     """
-    from trace.unified_tracer import UnifiedTracer
-    from applications.bus.semantics import load_semantics
     from applications.bus.deadlock import detect_deadlock_candidates
+    from applications.bus.semantics import load_semantics
+    from trace.unified_tracer import UnifiedTracer
 
     # 1. 加载语义
     try:
@@ -386,7 +385,8 @@ def deadlock(
 
     # 3. 抑制 stdout 噪声, 在 --json 模式下 progress 走 stderr
     if json_output:
-        _info = lambda msg: typer.echo(msg, err=True)
+        def _info(msg):
+            return typer.echo(msg, err=True)
     else:
         _info = typer.echo
     _info(f"Protocol: {sem.protocol}")

@@ -7,13 +7,14 @@
 #   1. 识别信号类型 (data/control/addr)
 #   2. 追溯信号的驱动链和约束
 #   3. 根据信号特性生成 coverage bins 建议
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
 
 
 def _build_graph(source):

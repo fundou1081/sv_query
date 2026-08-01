@@ -8,7 +8,6 @@ The `teach` subcommand addresses user feedback "我想要对理解有帮助的�
   D. Coverage overlay (--show-coverage)  - find verification gaps
 """
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest

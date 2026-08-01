@@ -8,8 +8,6 @@ Tests for src/trace/core/handshake_detector.py
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 from trace.core.graph.models import DriverInfo, TraceNode
@@ -18,11 +16,9 @@ from trace.core.handshake_detector import (
     _classify_one_driver,
     _split_condition,
     classify_signal_channel,
-    detect_from_signal_pair,
     detect_handshake_type,
     find_counterpart_in_condition,
 )
-
 
 # ==============================================================================
 # 工具函数测试

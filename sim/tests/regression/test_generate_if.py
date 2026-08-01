@@ -5,12 +5,12 @@ Generate If/Else Test
 测试目标: 能够正确处理条件 generate 块
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace import UnifiedTracer
 
 
@@ -92,7 +92,7 @@ endmodule'''
         tracer = self._make_tracer(source)
         nodes = list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
-        edge_ids = [f"{s}->{d}" for s, d in edges]
+        [f"{s}->{d}" for s, d in edges]
 
         # 应该存在实例节点
         has_instance = any('u1' in n for n in nodes)

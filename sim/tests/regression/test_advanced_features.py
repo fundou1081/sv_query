@@ -4,12 +4,14 @@
 # 项目纪律: 金标准测试优先
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -26,7 +28,7 @@ module top(input [7:0] a, output [7:0] y);
     endfunction
     assign y = add_one(a);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -43,7 +45,7 @@ module top(input a, output y);
     endfunction
     assign y = foo(a);
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -60,7 +62,7 @@ module top(input logic a);
         my_task();
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('a', 'top')
 
@@ -80,7 +82,7 @@ endmodule
 module top(input a, output b);
     child u1(.a(a), .y(b));
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('b', 'top')
 
@@ -96,7 +98,7 @@ endmodule
 module top(input a, b, output y);
     child u1(.a(a), .b(b), .y(y));
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -119,7 +121,7 @@ module top(input logic clk);
         ifc.data <= 8'b0;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('ifc.data', 'top')
 
@@ -138,7 +140,7 @@ module top(input logic clk);
         ifc.data <= 8'b0;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('ifc.data', 'top')
 
@@ -158,7 +160,7 @@ module top(input logic [7:0] data, output logic y);
         end
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -175,7 +177,7 @@ module top(input logic a, output logic y);
         end
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -195,7 +197,7 @@ endclass
 module top();
     my_class obj;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('obj', 'top')
 
@@ -216,7 +218,7 @@ module top(input logic a, output logic out);
         out = a;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('out', 'top')
 
@@ -233,7 +235,7 @@ module top(output logic y);
     initial y = 1'b0;
 endmodule'''
         # initial 只执行一次，通常用于初始化
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -252,7 +254,7 @@ module top(input logic a, logic b, output logic y);
         y = b;
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 
@@ -271,7 +273,7 @@ module top(input logic a, logic b, logic c, output logic y);
         end
     end
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         result = tracer.trace_signal('y', 'top')
 

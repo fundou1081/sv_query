@@ -61,9 +61,9 @@ def search(
     total_matches = 0
     for filepath in sorted(files):
         try:
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            with open(filepath, encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
-        except Exception as e:
+        except Exception:
             continue
 
         matches = []

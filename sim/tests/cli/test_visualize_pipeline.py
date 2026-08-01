@@ -43,7 +43,6 @@ class TestPipelineVizData:
 
     def test_vizdata_with_stages(self):
         """[V6.9] Pipeline DOT output contains stage/reg elements."""
-        import re
         p = subprocess.run(
             ["sv_query", "visualize", "pipeline", "--filelist", STRICT_UART_FL,
              "--no-strict"],
@@ -55,7 +54,7 @@ class TestPipelineVizData:
         dot = p.stdout
         assert "digraph" in dot, "output should be a DOT digraph"
         assert any(kw in dot.lower() for kw in ["reg", "stage", "pipeline"]), \
-            f"DOT should contain pipeline/reg elements"
+            "DOT should contain pipeline/reg elements"
 
 
 def test_pipeline_golden_match():

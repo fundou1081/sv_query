@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 CLI 公共 evidence helpers
 =========================
@@ -16,11 +15,10 @@ dataflow, controlflow)复用。
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from trace.core.trace_evidence import TraceEvidenceResolver
 from trace.unified_tracer import UnifiedTracer
-
 
 # ----------------------------------------------------------------------------
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter
@@ -189,7 +187,6 @@ def evidence_summary_indented(ev, indent: str = "  └─ ") -> str | None:
 # - evidence 可选 (--human + --evidence 同时给)
 # - 跟现有 text / json 输出平行, 互不覆盖
 
-import re
 
 _ARROW = "→"      # 驱动关系
 _ARROW_COND = "⇢" # 条件驱动
@@ -561,7 +558,7 @@ def format_cdc_human(cdc_paths: list, tree: bool = False) -> str:
     lines = ["CDC Paths:", ""]
     for p in cdc_paths:
         src_clk = p.get("source_domain_short", "?")
-        dst_clk = p.get("target_domain_short", "?")
+        p.get("target_domain_short", "?")
         src = p.get("source", "?")
         dst = p.get("target", "?")
         sync = "SYNC" if p.get("has_synchronizer") else "NO SYNC"
@@ -781,5 +778,6 @@ def should_use_tree(chain_len: int, tree_flag: bool = False) -> bool:
 
 # 环境变量: NO_COLOR / SV_QUERY_NO_COLOR 关闭颜色
 import os as _os
+
 if _os.environ.get("NO_COLOR") or _os.environ.get("SV_QUERY_NO_COLOR"):
     _USE_COLOR = False

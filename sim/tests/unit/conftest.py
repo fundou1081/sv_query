@@ -6,7 +6,6 @@ conftest.py — 共享 fixtures 给 type extraction tests.
 
 注意: 这个 conftest 在 sim/tests/unit/ 下, 给同目录的 test_* 共享.
 """
-import os
 import sys
 from pathlib import Path
 

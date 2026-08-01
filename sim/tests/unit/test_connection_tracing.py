@@ -9,13 +9,13 @@
 # - 使用 Verilator 验证语法正确
 # - 强断言验证具体行为
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.compiler import SVCompiler
-from trace.core.semantic_adapter import SemanticAdapter
 
 
 class TestConnectionTracing(unittest.TestCase):
@@ -24,5 +24,5 @@ class TestConnectionTracing(unittest.TestCase):
     def _make_adapter(self, source):
         """辅助: 创建 adapter"""
         comp = SVCompiler({'test.sv': source})
-        root = comp.get_root()
+        comp.get_root()
 

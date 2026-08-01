@@ -2,13 +2,14 @@
 # [铁律18] 负面测试
 #
 # 验证 SVA 提取器能正确处理各种边界情况和异常输入
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.sva_extractor import SVAExtractor
 from trace.core.graph.sva_models import SVAGraph
+from trace.core.sva_extractor import SVAExtractor
 
 
 def _extract(source):

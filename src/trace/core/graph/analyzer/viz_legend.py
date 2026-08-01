@@ -14,8 +14,6 @@ All viz commands should use these helpers so legends are consistent.
 """
 
 from __future__ import annotations
-from typing import List
-
 
 # ----------------------------------------------------------------------------
 # Color palette — referenced from docs/VIZ_DESIGN_SPEC.md
@@ -65,7 +63,7 @@ def get_control_color(stage_idx: int) -> str:
 # TL;DR box (Phase 6.4)
 # ----------------------------------------------------------------------------
 
-def render_tldr_box(text: str) -> List[str]:
+def render_tldr_box(text: str) -> list[str]:
     """[Phase 6.4] Render TL;DR as a visible plaintext box (not just a comment).
 
     Args:
@@ -137,7 +135,7 @@ LEGEND_ITEMS = {
 }
 
 
-def render_legend(viz_type: str, title: str = "Legend") -> List[str]:
+def render_legend(viz_type: str, title: str = "Legend") -> list[str]:
     """[Phase 6.3] Render legend box at bottom-right of diagram.
 
     Args:

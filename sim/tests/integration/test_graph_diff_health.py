@@ -10,19 +10,21 @@
 # 耦合预警: |C| / 总模块 < 5% 且 不稳定比例 > 30% → 高耦合警告
 #==============================================================================
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.graph.diff import (
-    compute_stable_core,
-    compute_health_score,
     compute_coupling_warning,
+    compute_health_score,
+    compute_stable_core,
     diff_with_health,
 )
+from trace.unified_tracer import UnifiedTracer
 
 
 def get_tree_source(tree):
@@ -52,7 +54,7 @@ class TestStableCore(unittest.TestCase):
     logic [7:0] a, b;
     assign b = a;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer1 = UnifiedTracer(sources={'t.sv': src})
         tracer2 = UnifiedTracer(sources={'t.sv': src})
         G1 = tracer1.build_graph()
@@ -83,8 +85,8 @@ endmodule'''
     assign c = b;
 endmodule'''
 
-        tree_old = pyslang.SyntaxTree.fromText(old_src)
-        tree_new = pyslang.SyntaxTree.fromText(new_src)
+        pyslang.SyntaxTree.fromText(old_src)
+        pyslang.SyntaxTree.fromText(new_src)
         tracer_old = UnifiedTracer(sources={'t_old.sv': old_src})
         tracer_new = UnifiedTracer(sources={'t_new.sv': new_src})
         G_old = tracer_old.build_graph()
@@ -115,8 +117,8 @@ endmodule'''
     assign b = a;
 endmodule'''
 
-        tree_old = pyslang.SyntaxTree.fromText(old_src)
-        tree_new = pyslang.SyntaxTree.fromText(new_src)
+        pyslang.SyntaxTree.fromText(old_src)
+        pyslang.SyntaxTree.fromText(new_src)
         tracer_old = UnifiedTracer(sources={'t_old.sv': old_src})
         tracer_new = UnifiedTracer(sources={'t_new.sv': new_src})
         G_old = tracer_old.build_graph()
@@ -147,8 +149,8 @@ endmodule'''
     assign c = a;
 endmodule'''
 
-        tree_old = pyslang.SyntaxTree.fromText(old_src)
-        tree_new = pyslang.SyntaxTree.fromText(new_src)
+        pyslang.SyntaxTree.fromText(old_src)
+        pyslang.SyntaxTree.fromText(new_src)
         tracer_old = UnifiedTracer(sources={'t_old.sv': old_src})
         tracer_new = UnifiedTracer(sources={'t_new.sv': new_src})
         G_old = tracer_old.build_graph()
@@ -173,7 +175,7 @@ class TestHealthScore(unittest.TestCase):
     logic [7:0] a, b;
     assign b = a;
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(src)
+        pyslang.SyntaxTree.fromText(src)
         tracer = UnifiedTracer(sources={'t.sv': src})
         G = tracer.build_graph()
 
@@ -202,8 +204,8 @@ endmodule'''
     assign d = c;
 endmodule'''
 
-        tree_old = pyslang.SyntaxTree.fromText(old_src)
-        tree_new = pyslang.SyntaxTree.fromText(new_src)
+        pyslang.SyntaxTree.fromText(old_src)
+        pyslang.SyntaxTree.fromText(new_src)
         tracer_old = UnifiedTracer(sources={'t_old.sv': old_src})
         tracer_new = UnifiedTracer(sources={'t_new.sv': new_src})
         G_old = tracer_old.build_graph()
@@ -285,8 +287,8 @@ endmodule'''
     assign c = b;
 endmodule'''
 
-        tree_old = pyslang.SyntaxTree.fromText(old_src)
-        tree_new = pyslang.SyntaxTree.fromText(new_src)
+        pyslang.SyntaxTree.fromText(old_src)
+        pyslang.SyntaxTree.fromText(new_src)
         tracer_old = UnifiedTracer(sources={'t_old.sv': old_src})
         tracer_new = UnifiedTracer(sources={'t_new.sv': new_src})
         G_old = tracer_old.build_graph()

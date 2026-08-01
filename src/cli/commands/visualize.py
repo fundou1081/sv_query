@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ==============================================================================
 # visualize.py - 信号图可视化命令
 # ==============================================================================
@@ -27,25 +26,29 @@ import typer
 
 warnings.filterwarnings("ignore")
 
-from trace.core.covergroup_extractor import CovergroupExtractor
-# [V6.7] SignalGraphViewer removed — use trace.core.graph.viz instead
-from trace.core.sva_extractor import SVAExtractor
-from trace.unified_tracer import UnifiedTracer
-
 # [Phase B 2026-07-17] 共享 viz 子命令的 typer options + build_viz_tracer helper
 from cli._viz_common import (
-    FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, STRICT_OPTION, SHOW_SOURCE_OPTION,
-    build_viz_tracer, get_viz_sources,
+    FILE_OPTION,
+    FILELIST_OPTION,
+    INCLUDE_OPTION,
+    SHOW_SOURCE_OPTION,
+    STRICT_OPTION,
+    build_viz_tracer,
+    get_viz_sources,
 )
+from trace.core.covergroup_extractor import CovergroupExtractor
 
 # [Phase B 2026-07-17] 共享 DOT helpers (从 _dot_common 移过来)
 from trace.core.graph.analyzer._dot_common import (
-    escape_dot_label,
     format_node_label_chain,
+    render_with_engine,
     sanitize_dot_id,
     sanitize_dot_id_inner,
-    render_with_engine,
 )
+
+# [V6.7] SignalGraphViewer removed — use trace.core.graph.viz instead
+from trace.core.sva_extractor import SVAExtractor
+from trace.unified_tracer import UnifiedTracer
 
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
@@ -61,6 +64,7 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
       <prefix>_<sub_module>.dot       - one DOT per sub-module
     """
     from collections import defaultdict
+
     from trace.core.graph.analyzer.dataflow_viz import generate_dataflow_dot
 
     # Group nodes by instance path.
@@ -70,7 +74,6 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
     # - 3+ segment paths                       -> group by first 2 segments
     #                                            (e.g. 'darksocv.bridge0.XRES' -> 'darksocv.bridge0')
     # This way 'darksocv.XRES' and 'darksocv.bridge0.XRES' go to DIFFERENT groups.
-    from collections import defaultdict
     groups = defaultdict(set)
     for nid in graph.nodes():
         if not isinstance(nid, str) or not nid or nid[0].isdigit() or nid.startswith("__"):
@@ -134,8 +137,7 @@ def _emit_split_by_module(graph, classification, module_name, dot_output, includ
     for sub in sorted(groups.keys()):
         sub_nodes = groups[sub]
         # Build sub-classification: only edges where BOTH src/dst are in sub_nodes
-        from trace.core.graph.analyzer.signal_classifier import SignalClassification, SignalClass
-        from trace.core.graph.models import EdgeKind
+        from trace.core.graph.analyzer.signal_classifier import SignalClass, SignalClassification
         sub_class = SignalClassification()
         for nid in sub_nodes:
             cn = classification.nodes.get(nid)
@@ -207,10 +209,9 @@ def graph(
 ) -> None:
     """可视化信号图（包含数据流关系）"""
 
-    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
 
     try:
         tracer, graph = build_viz_tracer(
@@ -273,11 +274,10 @@ def dataflow(
 
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
-    from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
 
     try:
         # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
@@ -309,7 +309,6 @@ def dataflow(
 
     # [Phase 6.1 2026-07-12] Split by module: generate per-instance DOTs
     if split_by_module:
-        from collections import defaultdict
         _emit_split_by_module(graph, classification, module or file or filelist or "", dot_output, include_clk_rst, Path)
         typer.echo(f"✓ DOT: {dot_output}")
     else:
@@ -344,12 +343,11 @@ def pipeline(
 
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
-    from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
-    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_dot
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
 
     try:
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
@@ -422,10 +420,9 @@ def compute(
 
     V6.7 新命令.
     """
-    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_compute_dot
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_compute_dot
 
     try:
         tracer, graph = build_viz_tracer(
@@ -471,12 +468,11 @@ def timed(
 
     V6.7 新命令.
     """
-    from trace.core.graph.viz import build_viz_data, VizBuildOptions, render_timed_compute
-    from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
+    from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
+    from trace.core.graph.analyzer.signal_classifier import classify_graph
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_timed_compute
 
     try:
         tracer, graph = build_viz_tracer(
@@ -592,9 +588,8 @@ def chain(
 
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer
+    from trace.core.compiler import CompilationError
 
     if not auto and (not from_signals or not to_signals):
         typer.echo("Error: need --from and --to, OR --auto with --target", err=True)
@@ -881,7 +876,7 @@ def chain(
                     err=True,
                 )
             typer.echo(
-                f"     ORPHAN=两端无连接 (悬空) | X_DRIVER=只出不进 (未定值) | DANGLING=只进不出 (死代码)",
+                "     ORPHAN=两端无连接 (悬空) | X_DRIVER=只出不进 (未定值) | DANGLING=只进不出 (死代码)",
                 err=True,
             )
             for n, kind in list(anomalies.items())[:5]:
@@ -1147,7 +1142,7 @@ def _generate_chain_dot(
             # 收集没 target prefix 的 node — 它们是 sub-module internal signals
             # (e.g. "bitreverse.i_clk" 实际是 "openofdm_tx.dot11_tx.ifft64.bitreverse.i_clk")
             # 取第一段作为 module name
-            first_seg = node.split(".", 1)[0] if "." in node else node
+            node.split(".", 1)[0] if "." in node else node
             external_nodes.add(node)
         else:
             nodes_by_submodule.setdefault(sub, set()).add(node)
@@ -1172,12 +1167,12 @@ def _generate_chain_dot(
         border_color = cluster_borders[i % len(cluster_borders)]
         lines.append(f'  subgraph "cluster_{sanitize_dot_id_inner(sub)}" {{')
         lines.append(f'    label="{sub_label}";')
-        lines.append(f'    style="rounded,dashed";')  # [FIX] 虚线边框, 不填背景
+        lines.append('    style="rounded,dashed";')  # [FIX] 虚线边框, 不填背景
         lines.append(f'    color="{border_color}";')
-        lines.append(f'    penwidth=2.5;')
-        lines.append(f'    fontsize=14;')
+        lines.append('    penwidth=2.5;')
+        lines.append('    fontsize=14;')
         lines.append(f'    fontcolor="{border_color}";')  # [FIX] 跟边框同色
-        lines.append(f'    fontname="Helvetica-Bold";')  # [FIX] 加粗 (必须 quote)
+        lines.append('    fontname="Helvetica-Bold";')  # [FIX] 加粗 (必须 quote)
         for node in sorted(sub_nodes):
             safe_id = sanitize_dot_id_inner(node)
             # [FIX 2026-07-10] Anomaly 高亮 (RTL 语义检查)
@@ -1221,20 +1216,20 @@ def _generate_chain_dot(
                 f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
                 f'fillcolor="{color}" fontcolor="white" fontsize=11 fontname="Helvetica"];'
             )
-        lines.append(f'  }}')
+        lines.append('  }')
 
     # [FIX 2026-07-08] External sub-module cluster (e.g. bitreverse.i_clk 没 target prefix)
     # 放在独立 cluster 里, 用灰色虚线边框 + 灰色填充 (不跟正常 cluster 混淆)
     if external_nodes:
-        lines.append(f'  subgraph "cluster_external" {{')
-        lines.append(f'    label="External sub-modules";')
-        lines.append(f'    style="rounded,dashed";')
-        lines.append(f'    color="#999999";')
-        lines.append(f'    penwidth=2.0;')
-        lines.append(f'    fontsize=12;')
-        lines.append(f'    fontcolor="#666666";')
-        lines.append(f'    fontname="Helvetica-Bold";')
-        lines.append(f'    bgcolor="#f5f5f5";')  # 极浅灰背景区分
+        lines.append('  subgraph "cluster_external" {')
+        lines.append('    label="External sub-modules";')
+        lines.append('    style="rounded,dashed";')
+        lines.append('    color="#999999";')
+        lines.append('    penwidth=2.0;')
+        lines.append('    fontsize=12;')
+        lines.append('    fontcolor="#666666";')
+        lines.append('    fontname="Helvetica-Bold";')
+        lines.append('    bgcolor="#f5f5f5";')  # 极浅灰背景区分
         for node in sorted(external_nodes):
             safe_id = sanitize_dot_id_inner(node)
             if node in from_set:
@@ -1258,7 +1253,7 @@ def _generate_chain_dot(
                 f'    "{safe_id}" [label="{label}" shape={shape} style="filled,rounded" '
                 f'fillcolor="{color}" fontcolor="white" fontsize=10 fontname="Helvetica"];'
             )
-        lines.append(f'  }}')
+        lines.append('  }')
 
     lines.append("")
 
@@ -1289,7 +1284,7 @@ def _generate_chain_dot(
     #       用户看不到图里这个 bug — 只能从 stderr 读出来。
     # 修法: 把 anomalies 画到独立 cluster, 用虚线箭头表示“该走的连接”, 让用户能肉眼看到问题。
     if anomalies:
-        anomaly_nodes_in_path = {n for n in anomalies if n in nodes}
+        {n for n in anomalies if n in nodes}
         anomaly_nodes_outside = {n for n in anomalies if n not in nodes}
         if anomaly_nodes_outside:
             lines.append("")
@@ -1434,7 +1429,7 @@ def _run_graph_visualization(
         for cp in cg.coverpoints:
             cov_signals.add(cp.signal)
 
-    viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
+    viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
 
     edge_filter = set()
     if exclude_clock:
@@ -1517,7 +1512,7 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
     gap_signals.sort(key=lambda x: x["risk_score"], reverse=True)
 
     if dot_output:
-        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
+        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
         viewer.configure(
             layout="TB",
             show_edges=True,
@@ -1551,7 +1546,7 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
                 print(f"  (PNG渲染失败: {e2})")
 
     if html_output:
-        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)
+        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
         viewer.configure(
             layout="TB",
             show_edges=True,
@@ -1616,8 +1611,8 @@ def module(
     不是单纯 graph. 直接用 UnifiedTracer 构造, 保留原有的二进制垃圾-safe except.
     """
     from trace.core.module_extractor import (
-        extract_module_from_graph,
         extract_module_edges_from_mig,
+        extract_module_from_graph,
     )
 
     if not file and not filelist:
@@ -1908,9 +1903,8 @@ def teach(
         sv_query visualize teach --filelist f.f --target uart_top \\
             --show-coverage --html /tmp/u.html
     """
-    from trace.core.compiler import CompilationError
     from cli._common import handle_compilation_error
-    from cli._viz_common import build_viz_tracer, get_viz_sources
+    from trace.core.compiler import CompilationError
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
     from trace.core.graph.analyzer.signal_classifier import classify_graph
 
@@ -1943,7 +1937,7 @@ def teach(
         focus_id = _resolve_signal_id(graph_obj, focus)
         if focus_id is None:
             typer.echo(f"Error: signal '{focus}' not found in graph", err=True)
-            typer.echo(f"  Hint: use 'sv_query graph dump --file F' to list all signals", err=True)
+            typer.echo("  Hint: use 'sv_query graph dump --file F' to list all signals", err=True)
             raise typer.Exit(1)
         # BFS in chosen direction
         bfs_direction = "predecessors" if upstream else "successors"
@@ -2047,10 +2041,10 @@ def _render_teach_dot(
     """[V6] Render a focused / coverage-aware DOT for the teach command."""
     lines: list[str] = []
     if focus_id:
-        lines.append(f'digraph teach_focus {{')
+        lines.append('digraph teach_focus {')
         lines.append(f'  label="Focused Graph: {focus_id} ({direction_label})";')
     else:
-        lines.append(f'digraph teach {{')
+        lines.append('digraph teach {')
         lines.append(f'  label="Teach View: {target}";')
     lines.append('  rankdir=LR;')
     lines.append('  splines=polyline;')

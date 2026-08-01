@@ -15,22 +15,24 @@ RTL:
   - CLOCK 边: clk -> q (EdgeKind.CLOCK)
   - RESET 边: rst_n -> q (EdgeKind.RESET)
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
-from trace.unified_tracer import UnifiedTracer
+
 from trace.core.graph.models import EdgeKind
 from trace.core.query.clock_domain import ClockDomainTracer
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestResetEdge(unittest.TestCase):
     """RESET 边测试"""
 
     def _build_graph(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         tracer = UnifiedTracer(sources={'test.sv': source})
         tracer.build_graph()
         return tracer.get_graph()

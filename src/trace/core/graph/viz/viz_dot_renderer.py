@@ -14,9 +14,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..analyzer._dot_common import sanitize_dot_id, signal_class_color
-from .viz_data_models import VizData, VizNode, VizEdge
-
+from ..analyzer._dot_common import sanitize_dot_id
+from .viz_data_models import VizData, VizEdge, VizNode
 
 # ── DOT 配置默认值 ──
 
@@ -52,7 +51,7 @@ def render_dot(
 
     # ── header ──
     title = viz.meta.get("title", "Signal Graph")
-    lines.append(f"digraph viz {{")
+    lines.append("digraph viz {")
     lines.append(f'  label="{title}";')
     lines.append("  labelloc=t;")
     lines.append(f"  rankdir={cfg['layout']};")

@@ -13,7 +13,6 @@ import os
 import subprocess
 import unittest
 
-
 REPO = "/Users/fundou/my_dv_proj/sv_query"
 
 
@@ -22,7 +21,7 @@ class TestNoSwapReclaimDiscipline(unittest.TestCase):
 
     def test_conftest_does_not_run_swap_reclaim_subprocess(self):
         """[User 2026-07-09] conftest.py must not invoke the 4GB reclaim trick.
-        
+
         The trick:  python3 -c "import time; a=bytearray(4*1024**3); time.sleep(3); del a"
         pushes inactive pages to SWAP by allocating 4GB, then frees. This is a hack
         that hides pyslang's silent OOM bugs. Real tools should use:
@@ -44,7 +43,6 @@ class TestNoSwapReclaimDiscipline(unittest.TestCase):
                 # (The reclaim definition in a comment-only state is OK; an actual
                 # function call that allocates 4GB and waits is NOT.)
                 lines = content.splitlines()
-                in_doc_or_comment = False
                 for i, line in enumerate(lines):
                     stripped = line.strip()
                     # Skip pure docstring/comment lines
@@ -114,7 +112,7 @@ class TestNoSwapReclaimDiscipline(unittest.TestCase):
 
     def test_basic_cli_works_without_swap_trick(self):
         """[Smoke] The CLI should work on a small filelist without using SWAP.
-        
+
         If this requires 4GB reclaim to succeed, that's a bug.
         """
         result = subprocess.run(

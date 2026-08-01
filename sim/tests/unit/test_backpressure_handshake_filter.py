@@ -5,7 +5,6 @@
 Tests for handshake-aware backpressure filtering (task 1.6).
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -102,7 +101,7 @@ class TestBackpressureHandshakeIntegration:
 
     def test_show_passthroughs_flag_exists(self, source_a_file):
         """--show-passthroughs flag 应该存在"""
-        result = runner.invoke(backshake_app := backpressure_app, [
+        result = runner.invoke(_backshake_app := backpressure_app, [
             "analyze", "--help",
         ])
         assert "--show-passthroughs" in result.stdout

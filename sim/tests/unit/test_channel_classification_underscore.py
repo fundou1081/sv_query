@@ -4,7 +4,9 @@ TDD: channel classification must handle both underscore and non-underscore AXI v
 Bug: _classify_by_name uses substring 'awvalid' which matches 'awvalid' but not 'aw_valid'.
 Need to handle both styles (AXI spec uses no underscore, real projects often use underscore).
 """
-import sys, warnings
+import sys
+import warnings
+
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 

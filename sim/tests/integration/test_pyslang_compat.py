@@ -2,11 +2,18 @@
 [Stage 6] pyslang 10/11 兼容层测试
 """
 import sys
+
 sys.path.insert(0, '/Users/fundou/my_dv_proj/sv_query/src')
 import pytest
+
 from trace.core._pyslang_compat import (
-    SyntaxKind, SyntaxTree, TokenKind, Compilation,
-    ValueDriver, NamedValueExpression, _detect_version,
+    Compilation,
+    NamedValueExpression,
+    SyntaxKind,
+    SyntaxTree,
+    TokenKind,
+    ValueDriver,
+    _detect_version,
 )
 
 

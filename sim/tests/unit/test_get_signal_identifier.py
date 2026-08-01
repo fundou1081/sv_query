@@ -24,15 +24,17 @@ RTL 源码:
 - 节点名: "a_int" (不包含注释)
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.unified_tracer import UnifiedTracer
 import pyslang
+
+from trace.unified_tracer import UnifiedTracer
 
 
 class TestGetSignalIdentifierName:
@@ -76,7 +78,7 @@ endmodule
         - 该节点名不包含换行符 \n 或制表符 \t
         """
         # 构建图
-        tree = pyslang.SyntaxTree.fromText(mult_pipe2_source)
+        pyslang.SyntaxTree.fromText(mult_pipe2_source)
         tracer = UnifiedTracer(sources={'mult_pipe2.sv': mult_pipe2_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()
@@ -110,7 +112,7 @@ endmodule
         - 所有节点名都是干净的标识符
         - 不存在名为 "// comment..." 的节点
         """
-        tree = pyslang.SyntaxTree.fromText(mult_pipe2_source)
+        pyslang.SyntaxTree.fromText(mult_pipe2_source)
         tracer = UnifiedTracer(sources={'mult_pipe2.sv': mult_pipe2_source}, log_level='ERROR')
         tracer.build_graph()
         graph = tracer.get_graph()

@@ -116,10 +116,10 @@ class ConstraintVisitor:
 
     def _visit_foreach(self, node):
         """处理 ForeachConstraint: foreach (arr[i]) { body }
-        
+
         semantic AST 结构:
         - .arrayRef → NamedValueExpression (.symbol.name = 数组名)
-        - .loopDims → [LoopDim] (.loopVar.name = 循环变量名)  
+        - .loopDims → [LoopDim] (.loopVar.name = 循环变量名)
         - .body → ExpressionConstraint
         """
         # 1. 提取数组名
@@ -128,7 +128,7 @@ class ConstraintVisitor:
             sym = getattr(array_ref, "symbol", None)
             if sym and hasattr(sym, "name"):
                 self.variables.append(str(sym.name).strip())
-        
+
         # 2. 提取循环变量
         loop_dims = getattr(node, "loopDims", None)
         if loop_dims and hasattr(loop_dims, "__iter__"):
@@ -136,7 +136,7 @@ class ConstraintVisitor:
                 loop_var = getattr(dim, "loopVar", None)
                 if loop_var and hasattr(loop_var, "name"):
                     self.variables.append(str(loop_var.name).strip())
-        
+
         # 3. 递归处理 body
         body = getattr(node, "body", None)
         if body:

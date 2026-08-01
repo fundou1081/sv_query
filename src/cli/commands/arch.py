@@ -32,7 +32,6 @@ arch.py - Project architecture visualization.
 """
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -103,6 +102,7 @@ def _arch_default(
                     arch_anomalies[nid] = "ORPHAN"
             if arch_anomalies:
                 from collections import Counter as _C
+
                 from trace.core.compiler import is_elaboration_incomplete
                 _counts = dict(_C(arch_anomalies.values()))
                 _confidence = "low confidence (elaboration incomplete)" if is_elaboration_incomplete() else "high confidence"
@@ -169,7 +169,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             )
         else:
             with open(file) as f:
-                sources = {file: f.read()}
+                {file: f.read()}
             tracer = _build_tracer(
                 file=Path(file),
                 include_dirs=include_dirs,
@@ -245,7 +245,7 @@ def _collapse_instances(instances, max_nodes: int) -> tuple[list, str | None]:
     """
     if len(instances) <= max_nodes:
         return instances, None
-    from collections import Counter, defaultdict
+    from collections import Counter
     type_counts = Counter(t for _, t, _ in instances)
     # 保留 top-K types (K = max_nodes)
     top_types = set(t for t, _ in type_counts.most_common(max_nodes))
@@ -323,7 +323,7 @@ def _append_anomalies_cluster_to_dot(dot_content: str, anomalies: dict, target: 
     # Insert before the closing '}'
     lines = lines[:insert_idx] + cluster_lines + lines[insert_idx:]
     return "\n".join(lines)
-    return "cluster_" + name.replace("-", "_").replace(".", "_")
+    return "cluster_" + name.replace("-", "_").replace(".", "_")  # noqa: F821
 
 
 def _render_dot(
@@ -353,7 +353,7 @@ def _render_dot(
         "  labelloc=t;",
     ]
     # [Phase 6 2026-07-12] TL;DR as visible box
-    from trace.core.graph.analyzer.viz_legend import render_tldr_box, render_legend
+    from trace.core.graph.analyzer.viz_legend import render_legend, render_tldr_box
 
     title = f"Architecture of {target_module} ({len(instances)} instances"
     if n_hidden > 0:
@@ -542,7 +542,7 @@ def _render_html(instances, edges, target_module: str, with_ports: bool) -> str:
     import json
 
     vis_nodes = []
-    for i, (inst_id, inst_type, depth) in enumerate(instances):
+    for _i, (inst_id, inst_type, depth) in enumerate(instances):
         color_palette = ["#4488cc", "#22aa55", "#dd8822", "#cc4466", "#7755aa"]
         color = color_palette[min(depth, len(color_palette) - 1)]
         short = inst_id.split(".")[-1] if "." in inst_id else inst_id
@@ -675,7 +675,7 @@ def _classify_signal_role(port_name: str, port_direction: str) -> str:
 def _infer_module_purpose(target_module: str, instances: list, target_submodule_count: int) -> str:
     """[鉄律1] 用 target name + submodule list 推断 module purpose (semantic only)."""
     name = target_module.lower()
-    sub_types = sorted(set(t for _, t, _ in instances))
+    sorted(set(t for _, t, _ in instances))
 
     # 常见 IP 类型
     purpose_map = [
@@ -720,6 +720,7 @@ def _build_understanding(tracer, target_module: str, instances: list) -> dict:
       - submodule_types: list[str]
     """
     from collections import Counter
+
     from trace.core.semantic_adapter import SemanticAdapter
 
     # 拿 semantic adapter (get ports semantic way)

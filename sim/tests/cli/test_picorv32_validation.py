@@ -11,12 +11,9 @@ Tests verify:
   2. Graph has healthy DRIVER edges with conditions
   3. Fanin returns correct drivers for simple signals
 """
-import os
-import subprocess
 import re
+import subprocess
 from pathlib import Path
-
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 STRICT_UART_FL = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"

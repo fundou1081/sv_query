@@ -4,10 +4,11 @@
 # [Subroutine Expansion] 专门处理函数/任务调用的展开
 
 from dataclasses import dataclass, field
-from ..._safe import _safe_attr, _safe_str
 from typing import Any
 
 from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+
+from ..._safe import _safe_attr
 
 
 @dataclass

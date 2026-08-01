@@ -6,14 +6,14 @@
 #   - 约束表达式文本
 #   - 条件上下文（if/else 条件）
 #   - 条件变量
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
+from trace.core.graph.models import EdgeKind, NodeKind
 from trace.unified_tracer import UnifiedTracer
-from trace.core.graph.models import NodeKind, EdgeKind
-
 
 # =========================================================================
 # 辅助方法

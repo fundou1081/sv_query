@@ -12,17 +12,14 @@ Public API:
 """
 from __future__ import annotations
 
-from typing import Optional, Tuple
+import re
 
+from ..models import SignalGraph
 from .signal_classifier import (
     SignalClass,
     SignalClassification,
     classify_graph,
 )
-from ..models import SignalGraph
-
-
-import re
 
 # [V5 2026-07-19] 用户反馈: "graph 里要有信号名". pyslang 在拿 array
 # 表达式里的索引名 (例如 generate-for 里的变量) 时, 会返回 AST 节点的

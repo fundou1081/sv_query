@@ -7,20 +7,22 @@
 2. struct 成员访问
 3. 数组元素访问
 """
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pyslang
+
 from trace.unified_tracer import UnifiedTracer
-from trace.core.base import PyslangAdapter
+
 
 class TestDotAccessEnhanced(unittest.TestCase):
     """增强 dot access 测试"""
 
     def _make_tracer(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
+        pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_interface_multiple_signals(self):

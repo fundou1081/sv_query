@@ -26,10 +26,9 @@
 Iron Law 7: golden tests BEFORE implementation.
 """
 
-import unittest
 import subprocess
+import unittest
 from pathlib import Path
-
 
 WRAPPER_CHAIN_FILE = "/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/wrapper_chain.sv"
 
@@ -322,7 +321,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             cycle_labels = re.findall(r'cycle=\d+', content)
             self.assertGreater(
                 len(cycle_labels), 0,
-                f"chain DOT 应至少一个 REG 标了 [cycle=N], 实际: 0 匹配"
+                "chain DOT 应至少一个 REG 标了 [cycle=N], 实际: 0 匹配"
             )
         finally:
             Path(dot_path).unlink(missing_ok=True)
@@ -343,7 +342,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             edge_cycles = re.findall(r'label="\+(\d+) cycle', content)
             self.assertGreater(
                 len(edge_cycles), 0,
-                f"chain DOT 边应标 +N cycle, 实际: 0 匹配"
+                "chain DOT 边应标 +N cycle, 实际: 0 匹配"
             )
         finally:
             Path(dot_path).unlink(missing_ok=True)
@@ -363,7 +362,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             self.assertIn(
                 "total cycles",
                 content.lower(),
-                f"chain DOT 应有 'total cycles' 标记, 实际 DOT 不含该字符串"
+                "chain DOT 应有 'total cycles' 标记, 实际 DOT 不含该字符串"
             )
         finally:
             Path(dot_path).unlink(missing_ok=True)

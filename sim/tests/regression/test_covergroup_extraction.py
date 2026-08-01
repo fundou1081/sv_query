@@ -1,15 +1,13 @@
 # test_covergroup_extraction.py - Covergroup 结构化提取金标准测试
 # [铁律13] 金标准测试
 # [铁律17] 强断言
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.core.covergroup_extractor import CovergroupExtractor
-from trace.core.graph.covergroup_models import (
-    CovergroupInfo, CoverpointInfo, CoverCrossInfo, BinsInfo
-)
 
 
 def _extract(source):

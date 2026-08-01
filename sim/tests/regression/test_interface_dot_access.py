@@ -3,12 +3,12 @@ Interface Dot Access Test
 [P0-1] 支持 interface 点号访问 (ifc.data)
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import pyslang
 from trace.unified_tracer import UnifiedTracer
 
 

@@ -24,7 +24,6 @@ test_trace_filters.py - Tests for trace filters (--type/--module/--width-min/max
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -167,7 +166,7 @@ def test_p7_filter_with_batch():
         drivers = sig_entry["drivers"]
         for d in drivers:
             assert d["kind"] == "REG", f"{sig_entry['signal']}: {d}"
-    print(f"✅ P7 batch + --type REG: 2 signals all REG-only")
+    print("✅ P7 batch + --type REG: 2 signals all REG-only")
 
 
 def test_p8_fanout_also_supports_filters():
@@ -273,7 +272,8 @@ def test_n4_exclude_excludes_everything():
 
 def _normalize_json(data: dict) -> dict:
     """Normalize JSON for golden comparison (strip volatile parts)."""
-    import copy, re
+    import copy
+    import re
     data = copy.deepcopy(data)
 
     def clean(obj):

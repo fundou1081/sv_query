@@ -341,13 +341,11 @@ class SignalGraphViewer:
             # 颜色 — 条件信号优先用橙色
             if node_id in _cond_signal_ids:
                 fillcolor = "#ff9900"  # 橙色 = 条件信号
-                border_color = "#cc5500"
             elif self.config["node_style"]["risk_color"]:
                 fillcolor = self.RISK_COLORS.get(risk_level, "#cccccc") + "22"
-                border_color = self.RISK_COLORS.get(risk_level, "#888888")
+                self.RISK_COLORS.get(risk_level, "#888888")
             else:
                 fillcolor = "#f0f0f0"
-                border_color = "#888888"
 
             shape = self.NODE_KIND_SHAPES.get(str(node.kind), "box")
 

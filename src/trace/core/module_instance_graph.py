@@ -17,9 +17,9 @@ module_instance_graph.py - 模块实例层级图
 import logging
 from typing import Any
 
-from .._safe import _safe_attr, _safe_str
-
 import networkx as nx
+
+from .._safe import _safe_attr, _safe_str
 
 logger = logging.getLogger(__name__)
 
