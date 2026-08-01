@@ -482,7 +482,7 @@ class TestPackedStructFieldExtraction:
         """真实 type_taxonomy.sv 的 instr_t (packed struct).
         之前测过 width=32, 现在测 struct 字段提取.
         """
-        from pathlib import Path as P
+        from pathlib import Path as P  # noqa: N817
         r = parse_pyslang_width("instr_i", file=str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")))
         assert r is not None and r == (32, 31, 0), f"width: {r}"
 

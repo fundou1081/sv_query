@@ -332,7 +332,7 @@ class TestTraceLatencyGolden(unittest.TestCase):
 # =============================================================================
 # Golden Tests: Trace fanin/fanout with cycle labels
 # =============================================================================
-class TestTraceLatencyGolden(unittest.TestCase):
+class TestTraceLatencyGoldenV2(unittest.TestCase):
     """Trace fanin/fanout DOT 对 hand-crafted SV 应该 output 精确的 node/edge count."""
 
     def test_trace_fanin_single_reg_has_1_driver(self):

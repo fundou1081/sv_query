@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 # ==============================================================================
 # semantic_adapter.py - Semantic AST 适配器
 #
@@ -1557,7 +1558,7 @@ class SemanticAdapter:
             rlist = getattr(expr, "rangeList", None)
             if rlist and hasattr(rlist, "__iter__"):
                 for r in rlist:
-                    l = getattr(r, "left", None)
+                    l = getattr(r, "left", None)  # noqa: E741
                     if l:
                         signals.extend(self._extract_signals_from_expr(l))
                     rr = getattr(r, "right", None)

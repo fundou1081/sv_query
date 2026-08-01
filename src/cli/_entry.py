@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 src/cli/_entry.py - Console script entry point for `sv_query` command.
 

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from pathlib import Path
 
 """SV Preprocessor - 跨文件宏展开

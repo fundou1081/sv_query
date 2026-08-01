@@ -101,7 +101,8 @@ def extract_module_from_graph(
             continue
         if any(ord(c) < 0x20 for c in nid if c not in '\n\t'):
             continue
-        if n.module is None: continue
+        if n.module is None:
+            continue
         if any(ord(c) < 0x20 for c in n.module if c not in '\n\t'):
             continue
         raw_insts.append((nid, n.name or "", n.module))

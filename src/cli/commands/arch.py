@@ -393,7 +393,7 @@ def _render_dot(
             lines.append('    penwidth=2;')
             lines.append(f'    fontcolor="{color}";')
             lines.append('    fontsize=11;')
-            for inst_id, depth in members:
+            for inst_id, _depth in members:
                 short = inst_id.split(".")[-1] if "." in inst_id else inst_id
                 # node fill 用同色 (不透明), 让 cluster bg 透出来
                 lines.append(

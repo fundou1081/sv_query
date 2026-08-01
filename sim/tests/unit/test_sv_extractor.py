@@ -326,7 +326,7 @@ class TestEndToEndDetection:
 
 class TestErrorHandling:
     def test_nonexistent_file(self):
-        with pytest.raises(Exception):
+        with pytest.raises(OSError):  # FileNotFoundError is OSError subclass
             SVSignalExtractor.from_file("/nonexistent/path/file.sv").extract_all_modules()
 
     def test_empty_signals_module(self, tmp_path):

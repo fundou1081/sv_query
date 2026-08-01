@@ -472,10 +472,10 @@ class SignalTracer:
         # 但 MIG 知道它被哪个 instance port 驱动.
         if not loads and self.use_mig and self.mig:
             mig_loads = self._find_loads_via_mig(signal_id)
-            for l in mig_loads:
-                if l.id not in seen_ids:
-                    loads.append(l)
-                    seen_ids.add(l.id)
+            for ld in mig_loads:
+                if ld.id not in seen_ids:
+                    loads.append(ld)
+                    seen_ids.add(ld.id)
         return loads
 
     def _trace_loads_recursive(

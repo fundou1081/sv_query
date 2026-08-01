@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 module_instance_graph.py - 模块实例层级图
 

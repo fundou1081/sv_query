@@ -179,7 +179,7 @@ class ConstraintVisitor:
             rlist = getattr(node, "rangeList", None)
             if rlist and hasattr(rlist, "__iter__"):
                 for r in rlist:
-                    l = getattr(r, "left", None)
+                    l = getattr(r, "left", None)  # noqa: E741
                     if l:
                         result.extend(self._extract_vars(l))
                     rr = getattr(r, "right", None)
