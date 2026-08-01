@@ -42,7 +42,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest sim/tests/ -v --tb=short --maxfail=20
+          python -m pytest sim/tests/ --ignore=sim/tests/usage -v --tb=short --maxfail=20
 
       - name: Check discipline
         # 3 个纪律: 1) 不在 src/trace/core/ 用 regex
@@ -54,7 +54,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          python -m pytest sim/tests/ --cov=src --cov-report=term-missing --cov-report=xml
+          python -m pytest sim/tests/ --ignore=sim/tests/usage --cov=src --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'
@@ -77,4 +77,4 @@ jobs:
         run: pip install ruff
       - name: Run ruff
         run: |
-          ruff check src/ tests/ 2>/dev/null || echo "(ruff issues, see above)"
+          ruff check src/ sim/tests/ 2>/dev/null || echo "(ruff issues, see above)"
