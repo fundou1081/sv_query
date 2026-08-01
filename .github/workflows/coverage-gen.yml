@@ -55,25 +55,22 @@ jobs:
           pip install git+https://github.com/MikePopoloski/pyslang.git
 
       - name: Run coverage_gen_demo tests (unit + CLI)
-        # 跟 tests.yml 区别: 这里只跑跟 coverage_gen_demo 相关的测试,
-        # 跟 sv_query 自身 tests 隔离, 出问题更快定位
+        # 这些测试已移入 sim/tests/usage/ (依赖 OpenTitan/PicoRV32/NaplesPU)
         run: |
           python -m pytest \
             sim/tests/unit/test_pyslang_type_extraction.py \
-            sim/tests/cli/test_coverage_generate.py \
-            sim/tests/cli/test_coverage_gen_demo.py \
+            sim/tests/usage/test_coverage_generate.py \
+            sim/tests/usage/test_coverage_gen_demo.py \
             -v --tb=short \
             --maxfail=20
 
       - name: Coverage of coverage_gen_demo.py (fail-under gate)
         if: matrix.python-version == '3.12'
         run: |
-          # 单元测试 conftest 把 tools/ 加到 sys.path, 所以 import 用 'coverage_gen_demo'
-          # (不是 'tools.coverage_gen_demo'). coverage 工具看 module 名.
           python -m pytest \
             sim/tests/unit/test_pyslang_type_extraction.py \
-            sim/tests/cli/test_coverage_generate.py \
-            sim/tests/cli/test_coverage_gen_demo.py \
+            sim/tests/usage/test_coverage_generate.py \
+            sim/tests/usage/test_coverage_gen_demo.py \
             --cov=coverage_gen_demo \
             --cov-report=term-missing \
             --cov-report=xml:coverage-gen.xml \
@@ -144,7 +141,7 @@ jobs:
       - name: Run golden regression
         run: |
           python -m pytest \
-            sim/tests/cli/test_coverage_gen_demo_golden.py \
+            sim/tests/usage/test_coverage_gen_demo_golden.py \
             -v --tb=long \
             --maxfail=10 \
             2>&1 | tee golden-regression.log
