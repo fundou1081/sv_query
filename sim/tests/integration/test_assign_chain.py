@@ -85,7 +85,7 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('data', 'top')
 
-        load_ids = [l.id for l in result.loads]
+        load_ids = [load.id for load in result.loads]
         self.assertIn('top.q1', load_ids)
         self.assertIn('top.q2', load_ids)
 

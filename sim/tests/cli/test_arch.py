@@ -325,7 +325,7 @@ endmodule
         assert "Collapse note" in out or "collapsed" in out.lower()
         # max-nodes=1 → 只保留 1 个 type (sub 或 bus) 的第一个 instance → 1 visible
         # 但 hierarchy edges 来自 parent + visible (2 total lines 含 "top.u_")
-        instance_lines = [l for l in out.split("\n") if '"top.u_' in l and "[" in l and "->" not in l]
+        instance_lines = [line for line in out.split("\n") if '"top.u_' in line and "[" in line and "->" not in line]
         assert len(instance_lines) <= 1, f"expected ≤1 visible instance, got {len(instance_lines)}: {instance_lines}"
 
 

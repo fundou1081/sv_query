@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import pytest
 
 pytestmark = pytest.mark.opensource
@@ -53,11 +54,16 @@ def evaluate_define(defines: str, expr: str) -> int:
 
 
 def eval_op(a: int, op: str, b: int) -> int:
-    if op == "+": return a + b
-    if op == "-": return a - b
-    if op == "*": return a * b
-    if op == "/": return a // b
-    if op == "%": return a % b
+    if op == "+":
+        return a + b
+    if op == "-":
+        return a - b
+    if op == "*":
+        return a * b
+    if op == "/":
+        return a // b
+    if op == "%":
+        return a % b
     raise ValueError(f"Unknown op: {op}")
 
 

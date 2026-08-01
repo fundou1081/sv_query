@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 test_handshake_mwc_mrc.py
 =========================

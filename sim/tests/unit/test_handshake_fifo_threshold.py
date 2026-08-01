@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: handshake detector must catch FIFO backpressure in continuous assign.
 

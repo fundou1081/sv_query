@@ -274,9 +274,9 @@ class TestL3CrossModuleFanout:
         sig = "axi_xbar_dp_ram.s_axi_bvalid"
         loads = st._collect_all_loads(sig, max_depth=3)
         # 验证不返 binary garbage
-        for l in loads:
-            assert "<id:binary>" not in l.id
-            assert "_anon_" not in l.id
+        for load in loads:
+            assert "<id:binary>" not in load.id
+            assert "_anon_" not in load.id
         # 主要检查不崩 + 不污染 (0 loads 是可接受的)
 
     def test_module_def_port_fanout_via_mig(self, st):
@@ -288,10 +288,10 @@ class TestL3CrossModuleFanout:
         sig = "axi_demux.slv_req_i"
         loads = st._collect_all_loads(sig, max_depth=2)
         # 应该至少有 1 instance port via MIG
-        instance_ports = [l for l in loads if "i_axi_demux" in l.id]
+        instance_ports = [load for load in loads if "i_axi_demux" in load.id]
         assert len(instance_ports) >= 1, (
             f"expected at least 1 instance port via MIG, got {len(loads)} loads: "
-            f"{[l.id for l in loads[:5]]}"
+            f"{[load.id for load in loads[:5]]}"
         )
 
 
@@ -333,7 +333,7 @@ class TestOptOutBehavior:
         # 进一步验证: 至少 2 个 loads (aw_valid, m_axi_awvalid)
         assert len(loads_with) >= 2, (
             f"L2 basic case should still work, got {len(loads_with)}: "
-            f"{[l.id for l in loads_with[:3]]}"
+            f"{[load.id for load in loads_with[:3]]}"
         )
 
 
@@ -344,11 +344,11 @@ class TestBinaryFilter:
         """MIG fallback 的 results 不应该有 binary garbage."""
         sig = "axi_demux.slv_req_i"
         loads = st._collect_all_loads(sig, max_depth=2)
-        for l in loads:
-            assert "<id:binary>" not in l.id, (
+        for load in loads:
+            assert "<id:binary>" not in load.id, (
                 f"binary garbage leaked into results: {l.id}"
             )
-            assert "_anon_" not in l.id, (
+            assert "_anon_" not in load.id, (
                 f"_anon_ leaked into results: {l.id}"
             )
 
@@ -365,7 +365,7 @@ class TestBackwardCompat:
         loads = st._collect_all_loads(sig, max_depth=3)
         # 至少 2 个 loads (aw_valid, m_axi_awvalid)
         assert len(loads) >= 2, (
-            f"L2 basic case should still work, got {len(loads)}: {[l.id for l in loads[:3]]}"
+            f"L2 basic case should still work, got {len(loads)}: {[load.id for load in loads[:3]]}"
         )
 
 

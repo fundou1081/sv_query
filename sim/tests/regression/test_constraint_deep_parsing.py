@@ -453,8 +453,10 @@ class TestConstraintOperators(unittest.TestCase):
         visitor = ConstraintVisitor(adapter)
         def cb(node):
             if "ConstraintBlock" in str(getattr(node,"kind","")):
-                try: visitor.visit(node)
-                except: pass
+                try:
+                    visitor.visit(node)
+                except Exception:
+                    pass
         root.visit(cb)
         s = set(visitor.variables)
         self.assertEqual(s, set(expected_vars),

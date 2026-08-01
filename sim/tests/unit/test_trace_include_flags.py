@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: trace fanout/fanin 加 --include-clock/reset/control flag (Req-12 P1)
 

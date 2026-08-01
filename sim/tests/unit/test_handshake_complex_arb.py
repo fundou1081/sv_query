@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: OR-based handshake conditions should be classified as COMPLEX_ARB.
 

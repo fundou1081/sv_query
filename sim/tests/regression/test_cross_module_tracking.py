@@ -1263,7 +1263,7 @@ endmodule'''
 
         # 第1级: top.clk 的直接 load
         loads = graph.find_loads('top.clk')
-        load_ids = [l.id for l in loads]
+        load_ids = [load.id for load in loads]
         self.assertIn('top.u_driver.clk', load_ids,
             f"top.clk 的直接 load 应是 top.u_driver.clk，实际: {load_ids}")
 
@@ -1272,7 +1272,7 @@ endmodule'''
         # 所以 self-loop, 但 graph.find_loads 不含 self
         # 实际: top.u_driver (instance node) 是 load 目标
         loads = graph.find_loads('top.u_driver.clk')
-        load_ids = [l.id for l in loads]
+        load_ids = [load.id for load in loads]
         self.assertTrue(
             any('top.u_driver' in lid for lid in load_ids),
             f"top.u_driver.clk 应有 load in top.u_driver.*, 实际: {load_ids}"
@@ -1305,7 +1305,7 @@ endmodule'''
 
         # top.clk_i loads: top.u_dut.clk_i (跨模块边界)
         loads = graph.find_loads('top.clk_i')
-        load_ids = [l.id for l in loads]
+        load_ids = [load.id for load in loads]
         self.assertIn('top.u_dut.clk_i', load_ids,
             f"top.clk_i 的直接 load 应是 top.u_dut.clk_i，实际: {load_ids}")
 
@@ -1422,13 +1422,13 @@ endmodule'''
 
         # top.x loads: top.a (因为 assign a = x)
         loads = graph.find_loads('top.x')
-        load_ids = [l.id for l in loads]
+        load_ids = [load.id for load in loads]
         self.assertIn('top.a', load_ids,
             f"top.x 的 load 应包含 top.a，实际: {load_ids}")
 
         # top.u_b.x loads: top.tmp (instance connection)
         loads = graph.find_loads('top.u_b.x')
-        load_ids = [l.id for l in loads]
+        load_ids = [load.id for load in loads]
         self.assertIn('top.tmp', load_ids,
             f"top.u_b.x 的 load 应是 top.tmp，实际: {load_ids}")
 

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Test protocol detect --json output is pure JSON (P1-6)
 
 Verifies:

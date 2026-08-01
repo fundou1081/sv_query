@@ -95,8 +95,10 @@ def extract_module_from_graph(
     raw_insts: list[tuple[str, str, str]] = []
     for nid in graph.nodes():
         n = graph.get_node(nid)
-        if n is None: continue
-        if n.kind != NodeKind.INSTANTIATED_MODULE: continue
+        if n is None:
+            continue
+        if n.kind != NodeKind.INSTANTIATED_MODULE:
+            continue
         if any(ord(c) < 0x20 for c in nid if c not in '\n\t'):
             continue
         if n.module is None: continue

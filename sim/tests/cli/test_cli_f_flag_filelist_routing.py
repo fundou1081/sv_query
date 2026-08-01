@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 Regression test: [Bug 2026-07-09] `sv_query X -f filelist.f` caused SIGTRAP/exit 133.
 

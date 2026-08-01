@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 test_ast_utils.py - V6.3+3 2026-07-27: unit tests for ast_utils module.
 

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 test_pyslang_type_extraction.py
 =================================

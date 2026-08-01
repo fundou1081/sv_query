@@ -178,7 +178,7 @@ class ProtocolDetector:
     def __init__(
         self,
         schemas: dict[str, ProtocolSchema] | None = None,
-        registry: 'ProtocolSchemaRegistry | None' = None,  # type: ignore  # noqa: F821
+        registry: ProtocolSchemaRegistry | None = None,  # type: ignore  # noqa: F821
         normalizer: SignalNormalizer | None = None,
         structural_detector: StructuralRoleDetector | None = None,
         pattern_learner: PatternLearner | None = None,

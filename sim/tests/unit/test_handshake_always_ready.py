@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: handshake scan must handle always-1 ready signals (TileLink/AXI common pattern).
 

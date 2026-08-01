@@ -357,7 +357,7 @@ def semantics(
         sem = load_semantics(protocol, dir_path=dir)
     except FileNotFoundError as e:
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
     if json_output:
         import json

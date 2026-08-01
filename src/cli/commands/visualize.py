@@ -1638,7 +1638,7 @@ def module(
         except (UnicodeDecodeError, TypeError):
             msg = "Error building tracer: <message contains binary garbage>"
         typer.echo(msg, err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     graph = tracer.build_graph()
     result = extract_module_from_graph(

@@ -1901,23 +1901,23 @@ class DriverExtractor:
                                         if ct:
                                             cond_texts.append(ct)
                             cs = " && ".join(cond_texts) if cond_texts else ""
-                            l = getattr(cond_op, "left", None)
-                            r = getattr(cond_op, "right", None)
-                            if l:
-                                lk = str(getattr(l, "kind", ""))
+                            left = getattr(cond_op, "left", None)
+                            right = getattr(cond_op, "right", None)
+                            if left:
+                                lk = str(getattr(left, "kind", ""))
                                 if "ConditionalOp" in lk or "ConditionalExpression" in lk:
-                                    result.update(_build_cond_map(l, path + [cs]))
+                                    result.update(_build_cond_map(left, path + [cs]))
                                 elif "NamedValue" in lk:
-                                    name = self._get_signal(l) or ""
+                                    name = self._get_signal(left) or ""
                                     fc = " && ".join([p for p in path + [cs] if p])
                                     if name:
                                         result[name] = fc
-                            if r:
-                                rk = str(getattr(r, "kind", ""))
+                            if right:
+                                rk = str(getattr(right, "kind", ""))
                                 if "ConditionalOp" in rk or "ConditionalExpression" in rk:
-                                    result.update(_build_cond_map(r, path + [f"!({cs})"]))
+                                    result.update(_build_cond_map(right, path + [f"!({cs})"]))
                                 elif "NamedValue" in rk:
-                                    name = self._get_signal(r) or ""
+                                    name = self._get_signal(right) or ""
                                     neg = f"!({cs})" if cs else ""
                                     fc = " && ".join([p for p in path + [neg] if p])
                                     if name:

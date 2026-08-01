@@ -239,7 +239,7 @@ def fix_imports_cmd(
             existing_files.add(Path(line).resolve())
     except Exception as e:
         typer.echo(f"Error: read filelist failed: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     # 拿 elaboration errors
     try:

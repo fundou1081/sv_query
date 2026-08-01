@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: driver_extractor must extract driver edges for 'wire X = expr' syntax.
 

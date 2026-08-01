@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: snapshot save non-strict mode (Issue 17)
 

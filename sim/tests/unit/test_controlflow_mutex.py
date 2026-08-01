@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 TDD: controlflow if/else 互斥判断 (Req-13 P2)
 

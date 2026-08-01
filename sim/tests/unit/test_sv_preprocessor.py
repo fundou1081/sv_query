@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Test SV Preprocessor (Req-20)
 
 [Req-20 2026-06-12] 用户洞察: "应该把宏替换后再用语义解析"
