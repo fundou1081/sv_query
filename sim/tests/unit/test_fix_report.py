@@ -77,10 +77,12 @@ def _setup_three_sv():
     return tmpdir, str(fl)
 
 
-@pytest.mark.skip(reason="MissingTimeScale no longer produced by pyslang 11.0+")
-@pytest.mark.skip(reason="MissingTimeScale no longer produced by pyslang 11.0+")
 def test_fix_report_lists_categories():
-    """fix report 列出错误类别 + 受影响文件数 + 修复建议"""
+    """fix report 列出错误类别 + 受影响文件数 + 修复建议
+
+    pyslang 11.0+ 不再报告 MissingTimeScale, 因此本测试只验证
+    _setup_three_sv() 实际产生的错误 (UnknownModule / UndeclaredIdentifier) 能被正确分类.
+    """
     tmpdir, fl = _setup_three_sv()
     r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
@@ -90,10 +92,10 @@ def test_fix_report_lists_categories():
     assert "Affected files" in r.stdout
     assert "Error Categories" in r.stdout
     assert "Summary" in r.stdout
-    # MissingTimeScale 应被分类 (auto-fixable)
-    assert "MissingTimeScale" in r.stdout
+    # UnknownModule 和 UndeclaredIdentifier (pyslang 11.0+ 实际产生的错误)
     assert "UndeclaredIdentifier" in r.stdout
-    # auto-fixable 标记
+    assert "UnknownModule" in r.stdout
+    # auto-fixable / manual 标记
     assert "auto-fixable" in r.stdout or "manual" in r.stdout
     print("✅ fix report: 列出 category + 受影响文件 + 修复建议")
 
@@ -141,17 +143,21 @@ def test_fix_report_counts_auto_vs_manual():
     print("✅ fix report: 区分 auto-fixable vs manual")
 
 
-@pytest.mark.skip(reason="MissingTimeScale no longer produced by pyslang 11.0+")
-@pytest.mark.skip(reason="MissingTimeScale no longer produced by pyslang 11.0+")
 def test_fix_report_suggests_next_step():
-    """fix report 应建议下一步 (跑 fix timescale --apply)"""
+    """fix report 应给出修复指引 (针对实际产生的错误类别)
+
+    pyslang 11.0+ 不再报告 MissingTimeScale, 因此看不到 'fix timescale' 建议.
+    本测试改为验证: 对于 UnknownModule/UndeclaredIdentifier 这类 filelist 完整性错误,
+    报告给出了 '检查 filelist' 方向的 fix_command 指引.
+    """
     tmpdir, fl = _setup_three_sv()
     r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
-    # 建议跑 fix timescale --apply
-    assert "fix timescale" in r.stdout
-    assert "--apply" in r.stdout
-    print("✅ fix report: 建议下一步 (fix timescale --apply)")
+    # filelist 完整性问题的 fix_command 应出现在报告中
+    assert "filelist" in r.stdout.lower()
+    # 错误信息中有 Fix: 指引
+    assert "Fix:" in r.stdout
+    print("✅ fix report: 给出了针对实际错误的修复指引")
 
 
 def test_fix_report_help_documented():

@@ -84,8 +84,6 @@ class TestConstraintIfElseDeepParsing(unittest.TestCase):
         return tracer.get_graph()
 
     def test_nested_if_else_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] 嵌套 if/else constraint 深度拆解
 
         金标准:
@@ -123,8 +121,6 @@ endclass'''
                 f"{name} 应为 CLASS_PROPERTY，实际是 {node.kind}")
 
     def test_simple_if_else_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] 简单 if/else constraint
 
         金标准:
@@ -183,8 +179,6 @@ class TestConstraintImplicationDeepParsing(unittest.TestCase):
         return tracer.get_graph()
 
     def test_simple_implication(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] 简单 implication constraint"""
         source = '''class a;
     rand int b1;
@@ -216,8 +210,6 @@ class TestConstraintInsideDistribution(unittest.TestCase):
         return tracer.get_graph()
 
     def test_inside_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] inside 约束
 
         金标准:
@@ -238,8 +230,6 @@ endclass'''
         self.assertIn('packet.addr', nodes, "addr 节点存在")
 
     def test_dist_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] dist 分布约束
 
         金标准:
@@ -271,8 +261,6 @@ class TestConstraintUniquenessSolveBefore(unittest.TestCase):
         return tracer.get_graph()
 
     def test_unique_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] unique 约束
 
         金标准:
@@ -295,8 +283,6 @@ endclass'''
         self.assertIn('a.b3', nodes, "变量 b3 存在")
 
     def test_solve_before_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] solve before 约束
 
         金标准:
@@ -394,8 +380,6 @@ class TestConstraintForeach(unittest.TestCase):
         return tracer.get_graph()
 
     def test_foreach_constraint(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[Golden] foreach 约束
 
         金标准:
@@ -432,8 +416,6 @@ class TestConstraintNegativeCases(unittest.TestCase):
         self.assertIsNotNone(graph, "空 class 不应导致崩溃")
 
     def test_no_constraint_class_no_crash(self):
-        self.skipTest("[V6.9] ClassGraphBuilder node naming changed after ConstraintVisitor removal")
-        return
         """[负面] 无 constraint 的 class 不应崩溃"""
         source = '''class no_constr;
     rand int x;

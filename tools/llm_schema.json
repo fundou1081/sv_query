@@ -7,8 +7,8 @@
   "definitions": {
     "SignalId": {
       "type": "string",
-      "description": "Hierarchical signal identifier, e.g. \"top.cpu.q\". May start with digit for pyslang placeholder nodes.",
-      "pattern": "^[a-zA-Z0-9_][a-zA-Z0-9_.]*(\\[[0-9]+:[0-9]+\\])?$"
+      "description": "Hierarchical signal identifier or Verilog literal. e.g. \"top.cpu.q\" or \"5'b0\". V6.9 driver extraction now returns literals for constant drivers.",
+      "pattern": "^(?:[a-zA-Z0-9_][a-zA-Z0-9_.]*(\\[[0-9]+:[0-9]+\\])?|[0-9]+'[bdho]?[0-9a-fA-FxXzZ_]+)$"
     },
     "EdgeKind": {
       "type": "string",

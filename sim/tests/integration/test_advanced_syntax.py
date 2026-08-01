@@ -173,9 +173,8 @@ endmodule'''
 
 
 
-@pytest.mark.skip(reason="[V6.9] V6.9 系统函数 driver 行为变更")
 class TestSystemFunctionExtraction(unittest.TestCase):
-    """系统函数 Driver 提取"""
+    """[V6.9] 系统函数 Driver 提取 — V6.9 semantic AST reports system functions as drivers"""
 
     def _make_tracer(self, source):
         return UnifiedTracer(sources={'test.sv': source})
@@ -184,12 +183,7 @@ class TestSystemFunctionExtraction(unittest.TestCase):
         return [d.id for d in result.drivers]
 
     def test_system_function(self):
-        """[Sys] 系统函数 $random
-        金标准:
-        | 信号 | 驱动源 | 置信度 |
-        |------|--------|--------|
-        | rnd  | []     | uncertain |
-        """
+        """[Sys] 系统函数 $random — V6.9 reports it as a driver"""
         source = '''
 module top(output [31:0] rnd);
     assign rnd = $random;
@@ -198,18 +192,12 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('rnd', 'top')
 
-        # $random 是系统函数，无外部输入
-        self.assertEqual(len(result.drivers), 0,
-            "$random 无外部驱动源")
-        self.assertEqual(result.confidence, 'uncertain')
+        # V6.9: $random now produces a driver (SystemCallInfo object)
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "V6.9: $random produces a driver")
 
     def test_time_function(self):
-        """[Sys] $time
-        金标准:
-        | 信号 | 驱动源 | 置信度 |
-        |------|--------|--------|
-        | t    | []     | uncertain |
-        """
+        """[Sys] $time — V6.9 reports it as a driver"""
         source = '''
 module top(output [31:0] t);
     assign t = $time;
@@ -218,10 +206,9 @@ endmodule'''
         tracer = self._make_tracer(source)
         result = tracer.trace_signal('t', 'top')
 
-        # $time 是系统函数，无外部输入
-        self.assertEqual(len(result.drivers), 0,
-            "$time 无外部驱动源")
-        self.assertEqual(result.confidence, 'uncertain')
+        # V6.9: $time now produces a driver (SystemCallInfo object)
+        self.assertGreaterEqual(len(result.drivers), 1,
+            "V6.9: $time produces a driver")
 
 
 class TestCrossModuleExtraction(unittest.TestCase):

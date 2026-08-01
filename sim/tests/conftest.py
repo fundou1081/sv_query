@@ -38,6 +38,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "golden: pure SV fixture, golden file comparison (fast)")
     config.addinivalue_line("markers", "opensource: depends on external open-source projects")
     config.addinivalue_line("markers", "slow: large design compilation (>30s per test)")
+    config.addinivalue_line("markers", "usage: depends on external open-source projects (in sim/tests/usage/)")
 
     # Auto-create /tmp/*.f symlinks for test filelists
     fixtures_dir = Path(__file__).parent / "fixtures"

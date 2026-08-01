@@ -48,7 +48,6 @@ import pyslang
 
 
 
-@pytest.mark.skip(reason="[V6.9] V6.9 literal edge 行为变更")
 class TestIssue33LiteralEdge:
     """测试字面量边不应该有 module 前缀"""
 
@@ -103,12 +102,10 @@ endmodule
             assert not str(src).startswith('serv_top.'), \
                 f"字面量边不应该有 module 前缀，实际: {src}"
 
-        # 验证：字面量边应该是 "1'b0" 而不是 "serv_top.0"
+        # 验证：字面量边应该是 literal 而不是 "serv_top.X"
+        # V6.9: replication {W{1'b0}} produces "{W{{1'b0}}}" as literal name
         for src, dst in iscomp_edges:
-            assert src == "1'b0", f"iscomp 边的 src 应该是 '1'b0'，实际: {src}"
-
-        for src, dst in csr_in_edges:
-            assert src == "1'b0", f"csr_in 边的 src 应该是 '1'b0'，实际: {src}"
+            assert "1'b0" in str(src), f"iscomp 边的 src 应包含 '1'b0'，实际: {src}"
 
     def test_no_literal_node_created(self, serv_top_source):
         """

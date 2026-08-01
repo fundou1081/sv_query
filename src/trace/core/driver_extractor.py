@@ -1206,8 +1206,22 @@ class DriverExtractor:
             side = getattr(root, side_name, None)
             if side is None:
                 continue
-            # 两层匹配: visit 优先, get_all_signals 兜底 (CallExpression/$signed)
-            name = self._signal_visitor.get_source_text(side) or str(side)
+            # [V6.9 FIX] get_source_text() returns full file source for semantic AST nodes.
+            # Use .syntax.strip() to get the individual token text (e.g. 'a', 'b').
+            # For CallExpression (e.g. $signed(a)), .syntax returns the whole call.
+            # We use _extract_signals_from_expr to get the actual signals inside.
+            side_kind = str(getattr(side, "kind", ""))
+            if "Call" in side_kind:
+                # For CallExpression, check if signal matches any argument
+                call_signals = self._signal_visitor._extract_signals_from_expr(side) or []
+                if signal in call_signals:
+                    operand_side = side_name
+                    break
+                continue
+            syntax_node = getattr(side, "syntax", None)
+            name = str(syntax_node).strip() if syntax_node else ""
+            if not name:
+                name = self._signal_visitor.get_source_text(side) or str(side)
             if name and signal == name:
                 operand_side = side_name
                 break
