@@ -22,7 +22,7 @@ from typing import Any
 
 from ..analyzer._dot_common import sanitize_dot_id
 from ..analyzer.stage_inferrer import infer_stages_bfs
-from .viz_data_models import VizData
+from .viz_data_models import VizData, VizEdge
 
 # ── 运算符映射 ──
 
@@ -120,6 +120,11 @@ def render_datapath(
     show_source = cfg.get("show_source", False)
     focus_signal = cfg.get("focus", "")
     focus_depth = cfg.get("focus_depth", 2)
+
+    # ── Fixed-point annotation ──
+    from ..analyzer.fixed_point_annotator import annotate_fixed_point
+
+    annotate_fixed_point(viz)
 
     # ── Stage inference ──
     # If no nodes have stage_id, run BFS inference
@@ -296,14 +301,27 @@ def render_datapath(
         op_id = oe["op_id"]
         color = oe["color"]
 
+        # Get fixed-point annotation for this edge
+        fp_tag = ""
+        for e in viz.edges:
+            if e.src == src and e.dst == dst:
+                fp_tag = _fp_edge_label(e)
+                break
+
         # src → OP
         lines.append(f'  "{_sid(src)}" -> "{_sid(op_id)}" [color="{color}"];')
 
-        # OP → dst (dedup)
+        # OP → dst (dedup), with fixed-point annotation
         key = (op_id, dst)
         if key not in seen_op_dst:
             seen_op_dst.add(key)
-            lines.append(f'  "{_sid(op_id)}" -> "{_sid(dst)}" [color="{color}"];')
+            if fp_tag:
+                lines.append(
+                    f'  "{_sid(op_id)}" -> "{_sid(dst)}" '
+                    f'[color="{color}"; label="{fp_tag}"; fontsize=9; fontname="Helvetica-Bold"];'
+                )
+            else:
+                lines.append(f'  "{_sid(op_id)}" -> "{_sid(dst)}" [color="{color}"];')
 
     # ── Control/condition edges (dashed) ──
     if show_control:
@@ -319,7 +337,13 @@ def render_datapath(
                 continue
 
             edge_attrs = []
-            if edge.condition and edge.condition.strip():
+            # Fixed-point annotation takes priority over raw condition
+            fp_tag = _fp_edge_label(edge)
+            if fp_tag:
+                edge_attrs.append(f'label="{fp_tag}"')
+                edge_attrs.append('fontsize=9')
+                edge_attrs.append('fontname="Helvetica-Bold"')
+            elif edge.condition and edge.condition.strip():
                 cond = _simplify_condition(edge.condition)
                 edge_attrs.append(f'label="if {cond}"')
                 edge_attrs.append("fontsize=8")
@@ -331,7 +355,7 @@ def render_datapath(
                 f'[{"; ".join(edge_attrs)}];'
             )
 
-    # ── Direct data edges (no OP — e.g. wire passthrough) ──
+    # ── Direct data edges (no OP — e.g. wire passthrough, truncation) ──
     seen_any_pair = {(oe["src"], oe["dst"]) for oe in op_edges}
     for edge in viz.edges:
         if (edge.src, edge.dst) in seen_any_pair:
@@ -340,17 +364,41 @@ def render_datapath(
             continue
         if edge.is_control_edge and show_control:
             continue  # already rendered above
-        # Simple passthrough
-        lines.append(
-            f'  "{_sid(edge.src)}" -> "{_sid(edge.dst)}" '
-            f'[style=dotted; color="#aaaaaa"];'
-        )
+        # Check for fixed-point annotation (truncation, sign-extend, etc.)
+        fp_tag = _fp_edge_label(edge)
+        if fp_tag:
+            lines.append(
+                f'  "{_sid(edge.src)}" -> "{_sid(edge.dst)}" '
+                f'[label="{fp_tag}"; fontsize=9; fontname="Helvetica-Bold"; '
+                f'color="#cc6600"];'
+            )
+        else:
+            lines.append(
+                f'  "{_sid(edge.src)}" -> "{_sid(edge.dst)}" '
+                f'[style=dotted; color="#aaaaaa"];'
+            )
 
     lines.append("}")
     return "\n".join(lines)
 
 
 # ── helpers ──
+
+
+def _fp_edge_label(edge: VizEdge) -> str:
+    """从 edge.extra 提取定点数标注标签"""
+    tags = []
+    if "trunc_tag" in edge.extra:
+        tags.append(edge.extra["trunc_tag"])
+    if "sat_tag" in edge.extra:
+        tags.append(edge.extra["sat_tag"])
+    if "round_tag" in edge.extra:
+        tags.append(edge.extra["round_tag"])
+    if "sext_tag" in edge.extra:
+        tags.append(edge.extra["sext_tag"])
+    if "clamp_tag" in edge.extra:
+        tags.append(edge.extra["clamp_tag"])
+    return " ".join(tags) if tags else ""
 
 
 def _focus_subgraph(viz: VizData, focus_signal: str, depth: int) -> VizData:
