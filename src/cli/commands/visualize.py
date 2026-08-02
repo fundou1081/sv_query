@@ -2231,5 +2231,117 @@ Viz.svg(dotSource).then(svg => {{
 </html>"""
 
 
+# ==============================================================================
+# datapath — 定点数计算架构图 (V6.9)
+# ==============================================================================
+@vis_app.command(name="datapath")
+def datapath(
+    file: str = FILE_OPTION,
+    filelist: str = FILELIST_OPTION,
+    include: str = INCLUDE_OPTION,
+    strict: bool = STRICT_OPTION,
+    target: str = typer.Option(
+        "top", "--target", "-t",
+        help="Target module",
+    ),
+    focus: str = typer.Option(
+        "", "--focus", "-F",
+        help="[可选] 只画指定信号的 N-hop 邻域",
+    ),
+    focus_depth: int = typer.Option(
+        2, "--focus-depth", "-d",
+        help="Focus 邻域的 BFS 深度 (默认 2)",
+    ),
+    stages: str = typer.Option(
+        "auto", "--stages",
+        help="Stage 划分: auto(默认) | reg | depth2 | depth3",
+    ),
+    show_control: bool = typer.Option(
+        True, "--show-control/--no-control",
+        help="显示控制/条件边 (默认开启)",
+    ),
+    show_source: bool = SHOW_SOURCE_OPTION,
+    dot: str = typer.Option(
+        "", "--dot",
+        help="Output DOT file",
+    ),
+    png: str = typer.Option(
+        "", "--png",
+        help="Output PNG file (auto-call dot -Tpng)",
+    ),
+    svg: str = typer.Option(
+        "", "--svg",
+        help="Output SVG file (auto-call dot -Tsvg)",
+    ),
+):
+    """[V6.9] 定点数计算架构图: 运算链、时延、控制、位宽、选择逻辑。
+
+    Example:
+        sv_query visualize datapath -f binary_ops.sv --target binary_ops_test --png /tmp/dp.png
+        sv_query visualize datapath -f alu.sv --target alu_top --focus result --depth 3 --png /tmp/dp.png
+    """
+    tracer, graph = build_viz_tracer(
+        file=file, filelist=filelist, include=include,
+        strict=strict,
+    )
+
+    # Build VizData
+    from trace.core.graph.analyzer.signal_classifier import classify_graph as _classify
+    from trace.core.graph.viz.viz_data_builder import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_datapath_renderer import render_datapath
+
+    try:
+        classification = _classify(graph)
+    except Exception:
+        classification = None
+
+    opts = VizBuildOptions(
+        target_module=target,
+        include_edge_expression=True,
+        include_edge_condition=True,
+        include_node_class=True,
+        include_node_stage=True,
+        classification=classification,
+    )
+    viz = build_viz_data(graph, opts)
+
+    # Render
+    cfg = {
+        "title": f"Datapath: {target}",
+        "layout": "LR",
+        "focus": focus,
+        "focus_depth": focus_depth,
+        "show_control": show_control,
+        "show_source": show_source,
+    }
+    dot_text = render_datapath(viz, cfg)
+
+    # Output
+    if dot:
+        from pathlib import Path
+        Path(dot).parent.mkdir(parents=True, exist_ok=True)
+        Path(dot).write_text(dot_text)
+        typer.echo(f"✓ DOT: {dot}")
+
+    if png:
+        from trace.core.graph.analyzer._dot_common import render_with_engine
+        rc = render_with_engine(dot_text, png, engine="dot", fmt="png")
+        if rc == 0:
+            typer.echo(f"✓ PNG: {png}")
+        else:
+            typer.echo(f"✗ PNG render failed (rc={rc})", err=True)
+
+    if svg:
+        from trace.core.graph.analyzer._dot_common import render_with_engine
+        rc = render_with_engine(dot_text, svg, engine="dot", fmt="svg")
+        if rc == 0:
+            typer.echo(f"✓ SVG: {svg}")
+        else:
+            typer.echo(f"✗ SVG render failed (rc={rc})", err=True)
+
+    if not (dot or png or svg):
+        typer.echo(dot_text)
+
+
 if __name__ == "__main__":
     typer.run(vis_app)
