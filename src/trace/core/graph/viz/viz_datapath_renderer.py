@@ -121,10 +121,11 @@ def render_datapath(
     focus_signal = cfg.get("focus", "")
     focus_depth = cfg.get("focus_depth", 2)
 
-    # ── Fixed-point annotation ──
-    from ..analyzer.fixed_point_annotator import annotate_fixed_point
+    # ── Fixed-point annotation (plugin-based pattern matching) ──
+    from ..analyzer.pattern_matcher import create_default_registry
 
-    annotate_fixed_point(viz)
+    registry = create_default_registry()
+    registry.annotated(viz)
 
     # ── Stage inference ──
     # If no nodes have stage_id, run BFS inference
@@ -386,19 +387,8 @@ def render_datapath(
 
 
 def _fp_edge_label(edge: VizEdge) -> str:
-    """从 edge.extra 提取定点数标注标签"""
-    tags = []
-    if "trunc_tag" in edge.extra:
-        tags.append(edge.extra["trunc_tag"])
-    if "sat_tag" in edge.extra:
-        tags.append(edge.extra["sat_tag"])
-    if "round_tag" in edge.extra:
-        tags.append(edge.extra["round_tag"])
-    if "sext_tag" in edge.extra:
-        tags.append(edge.extra["sext_tag"])
-    if "clamp_tag" in edge.extra:
-        tags.append(edge.extra["clamp_tag"])
-    return " ".join(tags) if tags else ""
+    """从 edge.extra 提取定点数标注标签 (PatternMatch 格式)"""
+    return edge.extra.get("fp_label", "")
 
 
 def _focus_subgraph(viz: VizData, focus_signal: str, depth: int) -> VizData:
