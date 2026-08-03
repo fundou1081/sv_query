@@ -226,6 +226,17 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             seen_op_nodes.add(oid)
             op_registry[oid] = sym
         op_edges.append({"src": e.src, "op_id": oid, "dst": e.dst})
+        
+        # [V8.3] 常量操作数也连接到 OP 节点
+        # 当 dst 有常量映射时，为每条 OP 边生成常量→OP 的额外边
+        dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
+        if dn_short in const_map:
+            for c in const_map[dn_short]:
+                cid = f"op_const_{c}_{_dot_id(e.dst)}"[:60]
+                if cid not in seen_op_nodes:
+                    seen_op_nodes.add(cid)
+                    op_registry[cid] = c
+                op_edges.append({"src": None, "op_id": oid, "dst": e.dst, "_const_src": cid})
 
     # ── Scope 融合: 条件边用嵌套 cluster 框表示选择器 ──
     from .control_tree import build_control_tree
