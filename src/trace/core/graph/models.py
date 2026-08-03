@@ -364,7 +364,14 @@ class SignalGraph(nx.DiGraph):
 
         # 添加新边到列表
         self._edge_data[key].append(edge)
-        super().add_edge(edge.src, edge.dst)
+        # [V8.1 fix] 同步 TraceEdge 属性到 networkx 边, 供 viz_data_builder 使用
+        # 注意: expression 可能包含大段源码 (三目等场景), 不传以避免膨胀
+        super().add_edge(edge.src, edge.dst,
+            source_op=edge.source.op if edge.source else '',
+            condition=edge.condition,
+            condition_chain=edge.condition_chain,
+            assign_type=edge.assign_type,
+        )
 
         # 自动计算 effective_condition
         if edge.condition and not edge.effective_condition:

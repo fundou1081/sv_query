@@ -185,18 +185,21 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             with open(sp) as f:
                 src_text = f.read()
             for line in src_text.split('\n'):
-                m = re.match(r'assign\s+(\w+)\s*=\s*(.+);', line.strip())
+                ls = line.strip()
+                # wire/logic 声明: wire [7:0] prod_e = e * 8'd3;
+                wm = re.match(r'(?:wire|logic)\s.*?(\w+)\s*=\s*(.+);', ls)
+                if wm:
+                    dst, rhs = wm.group(1), wm.group(2)
+                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    if consts: const_map.setdefault(dst, []).extend(consts)
+                    if re.search(r'\{[^}]+\}', rhs): concat_map[dst] = "{ }"
+                # assign 语句: assign y = sel ? (sum_ab + 8'd10) : (sub_cd >> 2);
+                m = re.match(r'assign\s+(\w+)\s*=\s*(.+);', ls)
                 if m:
                     dst, rhs = m.group(1), m.group(2)
-                    # 常量: 只在 rhs 不是三元表达式时 (避免把条件阈值当数据流常量)
-                    if not re.match(r'^\s*\(.*\?.*:.*\)\s*$', rhs) and '?' not in rhs:
-                        # 只匹配 Verilog 字面量 (N'dX)，不匹配裸数字 (避免误匹配 [15:0] 中的 15)
-                        consts = re.findall(r"\d+'[bdh]\w+", rhs)
-                        if consts:
-                            const_map[dst] = consts
-                    # 拼接/聚合 {a, b} or {N{x}}
-                    if re.search(r'\{[^}]+\}', rhs):
-                        concat_map[dst] = "{ }"  # 统一标注为拼接
+                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    if consts: const_map.setdefault(dst, []).extend(consts)
+                    if re.search(r'\{[^}]+\}', rhs): concat_map[dst] = "{ }"
         except Exception:
             pass
 
@@ -255,6 +258,22 @@ def render_dataflow(viz: VizData, config: dict | None = None):
 
     # ── Scope 融合: 条件边用嵌套 cluster 框表示选择器 ──
     from .control_tree import build_control_tree
+
+    # 构建信号→OP+常量的完整索引
+    # signal_name → {op_symbol, consts[]}
+    sig_op_index: dict[str, dict] = {}
+    for dst_sig in set(e.dst for e in viz.edges):
+        dn_s = dst_sig.split('.')[-1]
+        ops_seen = set()
+        op_list = []
+        for e2 in viz.edges:
+            if e2.dst == dst_sig and e2.source_op and e2.source_op not in ops_seen:
+                ops_seen.add(e2.source_op)
+                op_list.append(_OP_SYM.get(e2.source_op, e2.source_op))
+        consts = const_map.get(dn_s, [])
+        if op_list or consts:
+            sig_op_index[dn_s] = {'ops': op_list, 'consts': consts}
+
     # 收集已被 scope 吞并的 (src, dst) 对
     muxed_pairs: set[tuple[str, str]] = set()
     cond_by_dst: dict[str, list] = defaultdict(list)
@@ -273,42 +292,59 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         tree = build_control_tree(dst_id, cedges)
         root_mux = (sorted(tree.muxes.values(), key=lambda m: m.depth)[:1] or [None])[0]
         sel_sig = root_mux.signal if root_mux else "?"
-        dst_short = _short(dst_id)
+        dst_sn = _short(dst_id)
+        dst_consts = const_map.get(dst_sn, [])
         scope_counter[0] += 1
         scope_id = f"scope_{scope_counter[0]}"
 
-        # 外层 cluster
+        # 外层大框
         E(f'  subgraph cluster_{scope_id} {{')
         E(f'    label="选择: {sel_sig}"; labeljust=l; fontsize=10; fontname="Helvetica-Bold";')
         E(f'    style=dashed; color="#888888"; penwidth=1.5; margin=20;')
 
-        # 每个分支 = 独立子 cluster
-        for mux in tree.sorted_muxes():
-            for bi, br in enumerate(mux.branches):
-                border, bg = _BRANCH_COLORS[bi % len(_BRANCH_COLORS)]
-                scope_counter[0] += 1
-                br_id = f"scope_{scope_counter[0]}"
-                cond_lbl = br.condition.replace("'", "").replace(" ","")
-                if len(cond_lbl)>18: cond_lbl=cond_lbl[:15]+"..."
-                E(f'    subgraph cluster_{br_id} {{')
-                E(f'      label="{cond_lbl}"; fontsize=8; fontcolor="{border}";')
-                E(f'      labeljust=l; style=dashed; color="{border}"; penwidth=1.2; bgcolor="{bg}";')
-                if br.source_signal:
-                    sn = _short(br.source_signal)
-                    nid = _dot_id(f"br{scope_counter[0]}_{sn}")
-                    E(f'      {nid} [label="{sn}" fontname="Courier" fontcolor="#2e7d32" shape=box style=solid fillcolor=white fontsize=9];')
-                    # OP 节点
-                    for ce in cedges:
-                        if _short(ce.src)==sn and ce.source_op:
-                            sym=_OP_SYM.get(ce.source_op,ce.source_op)
-                            oid=_dot_id(f"scop{scope_counter[0]}_{sym}")
-                            E(f'      {oid} [label="{sym}" shape=box width=0.2 height=0.2 style=solid color=black fillcolor=white fontsize=7];')
+        branches = list(tree.sorted_muxes()[0].branches) if tree.sorted_muxes() else []
+        # TRUE/FALSE 上下紧邻: 用 rank=same + invisible edge 强制同层
+        prev_nid = None
+        for bi, br in enumerate(branches):
+            border, bg = _BRANCH_COLORS[bi % len(_BRANCH_COLORS)]
+            scope_counter[0] += 1
+            br_id = f"scope_{scope_counter[0]}"
+            cond_lbl = br.condition.replace("'", "").replace(" ","")
+            if len(cond_lbl) > 18: cond_lbl = cond_lbl[:15] + "..."
+            # 分支标签加 TRUE/FALSE 注解
+            branch_kind = "TRUE" if bi == 0 else "FALSE" if bi == 1 else f"BR{bi}"
+            E(f'    subgraph cluster_{br_id} {{')
+            E(f'      label="[{branch_kind}] {cond_lbl}"; fontsize=8; fontcolor="{border}";')
+            E(f'      labeljust=l; style=dashed; color="{border}"; penwidth=1.2; bgcolor="{bg}";')
+            E(f'      rank=same;')
+            if br.source_signal:
+                sn = _short(br.source_signal)
+                nid = _dot_id(f"br{scope_counter[0]}_{sn}")
+                sig_info = sig_op_index.get(sn, {})
+                ops = sig_info.get('ops', [])
+                consts = list(sig_info.get('consts', []))
+                if ops and dst_consts:
+                    consts = consts + dst_consts
+                E(f'      {nid} [label="{sn}" fontname="Courier" fontcolor="#2e7d32" shape=box style=solid fillcolor=white fontsize=9];')
+                if ops:
+                    for op_i, sym in enumerate(ops):
+                        oid = _dot_id(f"scop{scope_counter[0]}_{sym}_{op_i}")
+                        E(f'      {oid} [label="{sym}" shape=box width=0.2 height=0.2 style=solid color=black fillcolor=white fontsize=7];')
+                        if op_i == 0:
                             E(f'      {nid} -> {oid};')
+                        for c in consts:
+                            cid = _dot_id(f"scop{scope_counter[0]}_cnst_{c}")
+                            E(f'      {cid} [label="{c}" shape=box width=0.2 height=0.2 style=solid color="#1565c0" fillcolor=white fontsize=7];')
+                            E(f'      {cid} -> {oid} [color="#1565c0"];')
+                        if op_i == len(ops) - 1:
                             E(f'      {oid} -> {_dot_id(dst_id)} [color="{border}"];')
-                            break
-                    else:
-                        E(f'      {nid} -> {_dot_id(dst_id)} [color="{border}"];')
-                E(f'    }}')
+                else:
+                    E(f'      {nid} -> {_dot_id(dst_id)} [color="{border}"];')
+            # invisible edge 强制 TRUE/FALSE 分支上下紧邻
+            if prev_nid:
+                E(f'      {prev_nid} -> {nid} [style=invis weight=100];')
+            prev_nid = nid
+            E(f'    }}')
         E(f'  }}')
         for ce in cedges:
             muxed_pairs.add((ce.src, ce.dst))
