@@ -276,30 +276,24 @@ def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
                     if iop not in edge.source_inner_ops:
                         edge.source_inner_ops.append(iop)
             if edge.source_op:
-                # edge 已有 OP — 上游 OP 作为 inner
-                sym = _op_symbol(ue.source_op)
-                if sym and sym not in edge.source_inner_ops and edge.source_op != ue.source_op:
-                    edge.source_inner_ops.insert(0, sym)
+                # edge 已有 OP — 上游同 OP 的另一操作数注入为 inner_op
+                if ue.source_op == edge.source_op:
+                    for other_ue in upstream_edges:
+                        if other_ue is ue or not other_ue.source_op:
+                            continue
+                        if other_ue.source_op == edge.source_op:
+                            other_src = other_ue.src.split('.')[-1] if '.' in other_ue.src else other_ue.src
+                            if other_src not in edge.source_inner_ops:
+                                edge.source_inner_ops.append(other_src)
+                else:
+                    # 不同 OP 的符号标记
+                    sym = _op_symbol(ue.source_op)
+                    if sym and sym not in edge.source_inner_ops:
+                        edge.source_inner_ops.insert(0, sym)
             else:
                 # edge 无 OP — 继承上游 OP
                 edge.source_op = ue.source_op
                 edge.source_operand_side = ue.source_operand_side
-            
-            # [V8.3] 收集上游另一操作数信号名 (用于 DOT 渲染时补边)
-            # 当 src 作为 dst 时有 N 条入边，当前 edge 的 src 是其中一条，
-            # 另一条入边的 src 就是另一操作数，把它注入 inner_ops_for_op
-            other_operands = []
-            for other_ue in upstream_edges:
-                if other_ue is ue or not other_ue.source_op:
-                    continue
-                if other_ue.source_operand_side and ue.source_operand_side and other_ue.source_operand_side != ue.source_operand_side:
-                    other_src = other_ue.src.split('.')[-1] if '.' in other_ue.src else other_ue.src
-                    if other_src not in edge.source_inner_ops:
-                        other_operands.append(other_src)
-            # 合并到 inner_ops (DOT 渲染时 source_inner_ops 中的信号名作为额外入边)
-            for name in other_operands:
-                if name not in edge.source_inner_ops:
-                    edge.source_inner_ops.append(name)
 
 
 def _op_symbol(op_name: str) -> str:
