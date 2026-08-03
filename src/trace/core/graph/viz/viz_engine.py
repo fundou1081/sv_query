@@ -188,19 +188,17 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             op_edges.append({"src": e.src, "op_id": oid, "dst": e.dst})
             continue
 
-        # 常量: 收集 dst 的常量并生成常量节点（含条件边）
+        # 常量: 只在没有 condition_chain 的纯数据流边上 (不作为三元条件中的阈值)
         dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
-        if dn_short in const_map and e.kind == "DRIVER":
+        chain = getattr(e, "condition_chain", None) or []
+        if dn_short in const_map and e.kind == "DRIVER" and not chain:
             for c in const_map[dn_short]:
                 oid = f"op_const_{c}_{_dot_id(e.dst)}"[:60]
                 if oid not in seen_op_nodes:
                     seen_op_nodes.add(oid)
                     op_registry[oid] = c
+                # src=None 标记: 常量没有输入源
                 op_edges.append({"src": None, "op_id": oid, "dst": e.dst})
-        
-        # 有 source_op 的边才创建 OP 节点（常量边已生成，后续走 continue 或 fall-through）
-        dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
-        if dn_short in const_map and e.kind == "DRIVER" and not e.source_op:
             continue
 
         # 隐式切片: src 名字带 [...]  且  source_op 为空
@@ -334,7 +332,7 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                         for ioname in inner_names:
                             ioid = _dot_id(f"scop{scope_counter[0]}_inner_{ioname}")
                             E(f'      {ioid} [label="{ioname}" shape=box width=0.2 height=0.2 style=solid color="#666666" fillcolor=white fontsize=7];')
-                            E(f'      {ioid} -> {oid} [style=dotted color="#999999"];')
+                            E(f'      {ioid} -> {oid} [style=solid color="#2e7d32"];')
                         if op_i == len(ops) - 1:
                             E(f'      {oid} -> {_dot_id(dst_id)} [color="{border}"];')
                 else:
@@ -408,7 +406,7 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             sk = (oe["src"], oid)
             if sk not in seen_src_op:
                 seen_src_op.add(sk)
-                E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=dotted color="#999999"];')
+                E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=solid color="#2e7d32"];')
             continue
         
         if oe["src"] is not None:
@@ -417,14 +415,14 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                 sk = (oe["src"], oid)
                 if sk not in seen_src_op:
                     seen_src_op.add(sk)
-                    E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=dashed color="#c62828" arrowsize=0.6];')
+                    E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=solid color="#2e7d32" arrowsize=0.6];')
                 continue
             # MUX parent→child 内部边
             if oe.get("_mux_internal"):
                 sk = (oe["src"], oid)
                 if sk not in seen_src_op:
                     seen_src_op.add(sk)
-                    E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=dotted color="#c62828"];')
+                    E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=solid color="#2e7d32"];')
                 continue
             sst = stages.get(oe["src"], -1)
             dst = stages.get(oe["dst"], -1)
