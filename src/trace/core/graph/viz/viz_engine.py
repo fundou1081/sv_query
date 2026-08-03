@@ -365,6 +365,16 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     for oe in op_edges:
         oid = oe["op_id"]
         is_mux = "op_mux_" in oid
+        
+        # [V8.3] _const_src 边: 常量节点 → OP 节点
+        const_src = oe.get("_const_src")
+        if const_src:
+            csk = (const_src, oid)
+            if csk not in seen_src_op:
+                seen_src_op.add(csk)
+                E(f'  {_dot_id(const_src)} -> {_dot_id(oid)} [style=solid color="#1565c0"];')
+            continue
+        
         if oe["src"] is not None:
             # 条件信号 → MUX 虚线 (cond/sel 输入)
             if oe.get("_cond_line"):
