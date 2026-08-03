@@ -6,7 +6,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
+from trace.core.graph.models import EdgeKind, NodeKind, SignalSource, TraceEdge, TraceNode
 
 from ..._safe import _safe_attr
 
@@ -117,6 +117,12 @@ class SubroutineExpander:
 
             # 生成边:使用映射后的信号名
             for _orig_name, mapped_name in signal_mapping:
+                # [V8.3] 函数入参边带 source (标记为 Call 参数, 无算术 OP)
+                arg_src = SignalSource(
+                    signal=mapped_name,
+                    full_expression=f"{call_site.call_name}({mapped_name})",
+                    op="Call",
+                )
                 edge = TraceEdge(
                     src=f"{call_site.lhs_name.split('.')[0] if '.' in call_site.lhs_name else 'top'}.{mapped_name}",
                     dst=call_site.lhs_name,
@@ -125,6 +131,8 @@ class SubroutineExpander:
                     clock_domain=ctx.get("clock", ""),
                     condition=cond_str,
                     effective_condition=effective_cond,
+                    source=arg_src,
+                    condition_chain=[cond_str] if cond_str else [],
                 )
                 result.edges.append(edge)
 
@@ -142,6 +150,12 @@ class SubroutineExpander:
                         width=(1, 0),
                     )
                 )
+                # [V8.3] 函数返回边带 source (op=Call)
+                func_ret_src = SignalSource(
+                    signal=call_site.call_name,
+                    full_expression=call_site.call_name,
+                    op="Call",
+                )
                 result.edges.append(
                     TraceEdge(
                         src=func_return_id,
@@ -151,6 +165,7 @@ class SubroutineExpander:
                         clock_domain=ctx.get("clock", ""),
                         condition="",
                         effective_condition="",
+                        source=func_ret_src,
                     )
                 )
 
@@ -176,6 +191,12 @@ class SubroutineExpander:
             signal_mapping = self._extract_signals_with_mapping(rhs, call_site.param_map)
 
             for _orig_name, mapped_name in signal_mapping:
+                # [V8.3] 简单函数入参边带 source
+                arg_src = SignalSource(
+                    signal=mapped_name,
+                    full_expression=f"{call_site.call_name}({mapped_name})",
+                    op="",
+                )
                 edge = TraceEdge(
                     src=f"{call_site.lhs_name.split('.')[0] if '.' in call_site.lhs_name else 'top'}.{mapped_name}",
                     dst=call_site.lhs_name,
@@ -184,6 +205,7 @@ class SubroutineExpander:
                     clock_domain=ctx.get("clock", ""),
                     condition=ctx.get("condition", ""),
                     effective_condition=ctx.get("effective_condition", ""),
+                    source=arg_src,
                 )
                 result.edges.append(edge)
 
@@ -201,6 +223,12 @@ class SubroutineExpander:
                         width=(1, 0),
                     )
                 )
+                # [V8.3] 简单函数返回边带 source (op=Call)
+                func_ret_src = SignalSource(
+                    signal=call_site.call_name,
+                    full_expression=call_site.call_name,
+                    op="Call",
+                )
                 result.edges.append(
                     TraceEdge(
                         src=func_return_id,
@@ -210,6 +238,7 @@ class SubroutineExpander:
                         clock_domain=ctx.get("clock", ""),
                         condition=ctx.get("condition", ""),
                         effective_condition=ctx.get("effective_condition", ""),
+                        source=func_ret_src,
                     )
                 )
 
