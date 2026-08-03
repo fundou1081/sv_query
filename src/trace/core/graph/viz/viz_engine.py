@@ -355,24 +355,33 @@ def render_dataflow(viz: VizData, config: dict | None = None):
 
         E(_CLUSTER_HEAD.format(id=f"stage_{sid}", label=f"Stage {sid}"))
 
-        # [V8.2] 从源码提取 function 声明名, 用于六边形标记
-        func_node_ids = set()
+        # [V8.2] 从源码提取 function 声明名+位宽, 用于六边形标记
+        func_node_ids: set[str] = set()
+        func_widths: dict[str, tuple[int,int]] = {}
         import re as _re3
         for sp in src_files:
             try:
                 with open(sp) as f:
-                    for m in _re3.finditer(r'function\s.*?(\w+)\s*\(', f.read()):
-                        fn_name = m.group(1)
-                        for n in viz.nodes:
-                            if _short(n.id) == fn_name:
-                                func_node_ids.add(n.id)
+                    src_text = f.read()
+                for m in _re3.finditer(r'function\s+(?:\[(\d+):(\d+)\]\s+)?(\w+)\s*\(', src_text):
+                    msb, lsb, fn_name = m.group(1), m.group(2), m.group(3)
+                    if msb and lsb:
+                        func_widths[fn_name] = (int(msb), int(lsb))
+                    for n in viz.nodes:
+                        if _short(n.id) == fn_name:
+                            func_node_ids.add(n.id)
             except Exception:
                 pass
 
         for n in viz.nodes:
             if n.id not in snodes: continue
+            sn = _short(n.id)
             ws = _width_label(n)
-            lbl = f"{_short(n.id)}  {ws}" if ws else _short(n.id)
+            # function 节点用源码中的位宽覆盖 pyslang 的不准确宽度
+            if n.id in func_node_ids and sn in func_widths:
+                w = func_widths[sn]
+                ws = f"{{{w[0]}}}" if w[0] == w[1] else f"{{{w[0]}:{w[1]}}}"
+            lbl = f"{sn}  {ws}" if ws else sn
             shape = "hexagon" if n.id in func_node_ids else "box"
             E(f'    {_dot_id(n.id)} [label="{lbl}" fontname="Courier" fontcolor="#2e7d32" shape={shape}];')
 
