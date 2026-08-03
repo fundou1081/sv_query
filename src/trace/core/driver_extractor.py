@@ -1219,7 +1219,17 @@ class DriverExtractor:
             return "", "", False
 
         root_kind_str = str(getattr(root, "kind", ""))
+        # [V8.3] 当表达式不是 BinaryOp 时，递归查找内部 BinaryOp
+        # 处理: 函数调用 (saturate(...)), 位选择, 拼接等
         if "Binary" not in root_kind_str:
+            if "Call" in root_kind_str or "Subroutine" in root_kind_str or "NewArray" in root_kind_str:
+                for arg_attr in ("arguments", "operands", "parameters"):
+                    args = getattr(root, arg_attr, None)
+                    if args:
+                        for arg in args:
+                            sub_op, sub_side, sub_is = self._detect_binary_op(arg, signal)
+                            if sub_op:
+                                return sub_op, sub_side, sub_is
             return "", "", False
 
         op_attr = getattr(root, "op", None)
@@ -1390,6 +1400,23 @@ class DriverExtractor:
 
         # ---- 4. Binary op 检测 ----
         op, operand_side, is_binary = self._detect_binary_op(rhs_expr, signal)
+
+        # ---- 4b. [V8.3] 非 BinaryOp 的操作检测 ----
+        # 当 rhs_expr 不是 BinaryOp 时，尝试检测其他有意义的操作
+        if not op and rhs_expr is not None and signal:
+            rhs_kind = str(getattr(rhs_expr, "kind", ""))
+            # 位选择: sum[7:0], a[15:8] 等
+            if "[" in rhs_name and "]" in rhs_name:
+                op = "Slice"
+                is_binary = True
+            # 拼接: {a, b} → Concat
+            elif "Concat" in rhs_kind or "{" in full_expression:
+                op = "Concat"
+                is_binary = True
+            # 条件表达式 (三目): shifted[7:0] 在 ternary 分支中
+            elif "Condition" in rhs_kind or "Condition" in str(getattr(inner, "kind", "")) if inner else "":
+                # 在条件分支内的信号 — 试着从兄弟表达式推断
+                pass  # 交给 Phase B 透传处理
 
         # ---- 5. 嵌套 OP 链提取 (V6.9 datapath) ----
         # 例: (sum_ac + 128) >>> 8 → 外层 op=">>>", 内层 op="Add"
@@ -3441,6 +3468,12 @@ class DriverExtractor:
                                         id=dst_id, name=lhs_name, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)
                                     )
                                 )
+                            # [V8.3] 函数返回边的 source 用函数名作为 op
+                            func_source = SignalSource(
+                                signal=func_name,
+                                full_expression=func_name,
+                                op="Call",
+                            )
                             result.edges.append(
                                 self._edge_factory.make_edge(
                                     src=func_return_id,
@@ -3448,6 +3481,7 @@ class DriverExtractor:
                                     kind=EdgeKind.DRIVER,
                                     assign_type="continuous",
                                     ctx=ctx,
+                                    source=func_source,
                                 )
                             )
 
@@ -3485,6 +3519,12 @@ class DriverExtractor:
                                         )
                                     )
 
+                                # [V8.3] 函数入参边的 source: 用 Call 标记，不挂算术 OP
+                                arg_source = SignalSource(
+                                    signal=call_arg,
+                                    full_expression=f"{func_name}({call_arg})",
+                                    op="",
+                                )
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -3492,6 +3532,7 @@ class DriverExtractor:
                                         kind=EdgeKind.DRIVER,
                                         assign_type="continuous",
                                         ctx=ctx,
+                                        source=arg_source,
                                     )
                                 )
                     else:
@@ -3553,6 +3594,12 @@ class DriverExtractor:
                                             )
                                         )
 
+                                    # [V8.3] 函数入参边带 source (标记为 Call 参数)
+                                    arg_source = SignalSource(
+                                        signal=call_arg_name,
+                                        full_expression=f"{func_name}({rhs_expr})",
+                                        op="Call",
+                                    )
                                     result.edges.append(
                                         self._edge_factory.make_edge(
                                             src=src_node_id,
@@ -3560,6 +3607,7 @@ class DriverExtractor:
                                             kind=EdgeKind.DRIVER,
                                             assign_type="continuous",
                                             ctx=ctx,
+                                            source=arg_source,
                                         )
                                     )
 
