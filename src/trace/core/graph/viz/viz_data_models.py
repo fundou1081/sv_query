@@ -113,10 +113,13 @@ class VizEdge:
     source_operand_side: str = ""
     source_casts: list[str] = field(default_factory=list)
     source_is_decomposed: bool = False
+    # [V6.9 datapath] 嵌套 OP 链 — 从 SignalSource.inner_ops 透传
+    source_inner_ops: list[str] = field(default_factory=list)
 
     # --- 条件/时钟 ---
     condition: str = ""  # 如 "state == FETCH" — 渲染在边上！
     effective_condition: str = ""
+    condition_chain: list[str] = field(default_factory=list)  # [V7.0] 嵌套条件链
     clock_domain: str = ""
     reset_condition: str = ""
 
@@ -158,8 +161,10 @@ class VizEdge:
             source_operand_side=ss.operand_side if ss else "",
             source_casts=list(ss.casts) if ss else [],
             source_is_decomposed=ss.is_decomposed if ss else False,
+            source_inner_ops=list(ss.inner_ops) if ss else [],
             condition=edge.condition,
             effective_condition=edge.effective_condition,
+            condition_chain=list(edge.condition_chain),  # [V7.0]
             clock_domain=edge.clock_domain,
             assign_type=edge.assign_type,
             confidence=edge.confidence,

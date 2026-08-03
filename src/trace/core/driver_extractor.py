@@ -107,6 +107,9 @@ class DriverExtractor:
         `function_return`, `condition_ast`, `source`) only needs handling at ONE point
         in the factory, not 20.
 
+        [V7.0] 自动从 ctx["condition_chain"] 提取 condition_chain，
+        保证三元展开后的列表形式写到 TraceEdge 上。
+
         Args:
             result: TraceResult.
             src/dst: 边端点.
@@ -114,8 +117,14 @@ class DriverExtractor:
             assign_type: "continuous" / "nonblocking" / "alias" / "internal".
             **kwargs: forwarded to TraceEdgeFactory.make_edge
                      (expression, bit_slice, condition, sig_cond,
-                      sig_cond_ast, ctx, clock_domain).
+                      sig_cond_ast, ctx, clock_domain, condition_chain).
         """
+        # [V7.0] 从 ctx 提取 condition_chain (由 _expand_and_append_assignment 写入)
+        if "condition_chain" not in kwargs:
+            c = kwargs.get("ctx", {})
+            if isinstance(c, dict) and c.get("condition_chain"):
+                kwargs["condition_chain"] = list(c["condition_chain"])
+
         edge = self._edge_factory.make_edge(
             src=src,
             dst=dst,
@@ -902,7 +911,10 @@ class DriverExtractor:
         return None
 
     def _create_net_decl_edges(self, module, result, module_name, port_names):
-        """[REFACTOR 2026-06-26] 处理带初始化器的 Net 声明: wire X = expr; → 创建 DRIVER 边."""
+        """[REFACTOR 2026-06-26] 处理带初始化器的 Net 声明: wire X = expr; → 创建 DRIVER 边.
+        [V6.9] 通过 _build_signal_source 提取 source_op/operand_side/casts,
+        使 net-decl 边和 assign 边的 signal source 信息一致。
+        """
         for net_decl in self.adapter.get_net_declarations(module):
             # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
             # 访问 .name 时可能触发 utf-8 转换 (escape 序列), 需要 try/except
@@ -927,7 +939,9 @@ class DriverExtractor:
                 src_id = f"{module_name}.{src_name}"
                 self._ensure_signal_node(result, src_id, src_name, module_name)
                 if src_id != lhs_id:
-                    # [V4] factory 统一入口
+                    # [V6.9] 通过 _build_signal_source 提取 source_op/operand_side/casts
+                    # 保证 net-decl 边和 assign 边的 signal source 信息一致
+                    ds = self._build_signal_source(src_name, init, rhs_expr_str)
                     self._append_edge(
                         result,
                         src=src_id,
@@ -935,6 +949,14 @@ class DriverExtractor:
                         kind=EdgeKind.DRIVER,
                         assign_type="continuous",
                         expression=rhs_expr_str,
+                        source=SignalSource(
+                            signal=src_name,
+                            full_expression=rhs_expr_str,
+                            op=ds.op if ds.op else "",
+                            operand_side=ds.operand_side if ds.operand_side else "",
+                            casts=list(ds.casts) if ds.casts else [],
+                            is_decomposed=True,
+                        ),
                     )
 
     def _ensure_signal_node(self, result, node_id, name, module_name, file: str = "", line: int = 0):
@@ -1208,27 +1230,31 @@ class DriverExtractor:
             side = getattr(root, side_name, None)
             if side is None:
                 continue
-            # [V6.9 FIX] get_source_text() returns full file source for semantic AST nodes.
-            # Use .syntax.strip() to get the individual token text (e.g. 'a', 'b').
-            # For CallExpression (e.g. $signed(a)), .syntax returns the whole call.
-            # We use _extract_signals_from_expr to get the actual signals inside.
+            # [V6.9] 统一用 _extract_signals_from_expr 提取信号集合
+            # 然后匹配 leaf signal。pyslang 可能返回全限定名 (module.signal)
+            # 或短名 (signal)，都尝试匹配。
             side_kind = str(getattr(side, "kind", ""))
-            if "Call" in side_kind:
-                # For CallExpression, check if signal matches any argument
-                call_signals = self._signal_visitor._extract_signals_from_expr(side) or []
-                if signal in call_signals:
-                    operand_side = side_name
-                    break
-                continue
-            syntax_node = getattr(side, "syntax", None)
-            name = str(syntax_node).strip() if syntax_node else ""
-            if not name:
-                name = self._signal_visitor.get_source_text(side) or str(side)
-            if name and signal == name:
+            side_signals = self._signal_visitor._extract_signals_from_expr(side) or []
+
+            # 匹配：全限定名 或 短名
+            if signal in side_signals:
                 operand_side = side_name
                 break
-            if not name:
-                if signal in self._signal_visitor.get_all_signals(side):
+            # 也检查 short name 匹配 (pyslang 返回 foo.bar, signal 可能只是 bar)
+            for ss in side_signals:
+                if ss.endswith("." + signal):
+                    operand_side = side_name
+                    break
+            if operand_side:
+                break
+
+            # Fallback: .syntax 文本匹配
+            if not side_signals:
+                syntax_node = getattr(side, "syntax", None)
+                name = str(syntax_node).strip() if syntax_node else ""
+                if not name:
+                    name = self._signal_visitor.get_source_text(side) or str(side)
+                if name and signal == name:
                     operand_side = side_name
                     break
 
@@ -1284,6 +1310,36 @@ class DriverExtractor:
 
         return []
 
+    @staticmethod
+    def _detect_inner_ops(rhs_expr, signal: str, operand_side: str) -> list[str]:
+        """[V6.9] 嵌套 OP 提取
+
+        例: (sum_ac + 128) >>> 8 → 外层 op=>>>, 内层 op=Add(+)
+        """
+        if rhs_expr is None or not operand_side:
+            return []
+        root_kind = str(getattr(rhs_expr, "kind", ""))
+        if "Binary" not in root_kind:
+            return []
+        side = getattr(rhs_expr, operand_side, None)
+        if side is None:
+            return []
+        side_kind = str(getattr(side, "kind", ""))
+        if "Binary" not in side_kind:
+            return []
+        op_attr = getattr(side, "op", None)
+        op_name = str(getattr(op_attr, "name", op_attr)) if op_attr else ""
+        if not op_name:
+            return []
+        _MAP = {
+            "Add": "+", "Subtract": "-", "Multiply": "*",
+            "BinaryAnd": "&", "BinaryOr": "|", "BinaryXor": "^",
+            "GreaterThan": ">", "LessThan": "<",
+            "Equality": "==", "Inequality": "!=",
+        }
+        sym = _MAP.get(op_name, op_name)
+        return [sym]
+
     def _build_signal_source(
         self,
         rhs_name: str,
@@ -1335,6 +1391,12 @@ class DriverExtractor:
         # ---- 4. Binary op 检测 ----
         op, operand_side, is_binary = self._detect_binary_op(rhs_expr, signal)
 
+        # ---- 5. 嵌套 OP 链提取 (V6.9 datapath) ----
+        # 例: (sum_ac + 128) >>> 8 → 外层 op=">>>", 内层 op="Add"
+        inner_ops = []
+        if is_binary and rhs_expr is not None:
+            inner_ops = self._detect_inner_ops(rhs_expr, signal, operand_side)
+
         is_decomposed = bool(op) or bool(casts) or is_binary
 
         return SignalSource(
@@ -1346,6 +1408,7 @@ class DriverExtractor:
             operand_side=operand_side,
             casts=casts,
             is_decomposed=is_decomposed,
+            inner_ops=inner_ops,
         )
 
     @staticmethod
@@ -1633,6 +1696,7 @@ class DriverExtractor:
                     bit_slice = rhs_name[start:]
                 if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
                     # [V4] factory 统一入口
+                    chain = [ternary_condition] if ternary_condition else []
                     self._append_edge(
                         result,
                         src=rhs_name,
@@ -1642,6 +1706,7 @@ class DriverExtractor:
                         expression=rhs_name,
                         bit_slice=bit_slice,
                         condition=ternary_condition,
+                        condition_chain=chain,
                     )
                 else:
                     src_node_id = f"{module_name}.{rhs_name}"
@@ -1658,6 +1723,7 @@ class DriverExtractor:
                     # [V6.5] 结构化驱动源
                     ds = self._build_signal_source(rhs_name, rhs_expr, expr_str)
                     # [V4] factory 统一入口
+                    chain = [ternary_condition] if ternary_condition else []
                     self._append_edge(
                         result,
                         src=src_node_id,
@@ -1667,6 +1733,7 @@ class DriverExtractor:
                         expression=expr_str,
                         bit_slice=bit_slice,
                         condition=ternary_condition,
+                        condition_chain=chain,
                         source=ds,
                     )
 
@@ -1769,6 +1836,7 @@ class DriverExtractor:
                                 bit_slice=bit_slice,
                                 clock_domain=ctx.get("clock", ""),
                                 sig_cond=sig_cond,
+                                condition_chain=ctx.get("condition_chain"),
                             )
                         )
                         # [V6.9] 继续走 clock/reset edge 创建逻辑
@@ -1935,6 +2003,8 @@ class DriverExtractor:
                         # sig_cond (e.g. "sel_f") so the edge shows the full
                         # guarding condition, not just the inner ternary.
                         outer_cond = ctx.get("condition", "") or ""
+                        # [V7.0] 构建完整 condition_chain: 外层 + 内层
+                        outer_chain = ctx.get("condition_chain", []) or []
                         for sig_rhs_name, sig_cond in signal_conditions:
                             if not sig_rhs_name:
                                 continue
@@ -1943,6 +2013,11 @@ class DriverExtractor:
                                 combined_cond = f"({outer_cond}) && ({sig_cond})"
                             else:
                                 combined_cond = outer_cond or sig_cond
+                            # [V7.0] condition_chain 列表: 外层链 + 内层条件
+                            if sig_cond:
+                                full_chain = (list(outer_chain) if outer_chain else []) + [sig_cond]
+                            else:
+                                full_chain = list(outer_chain) if outer_chain else []
                             bit_slice = ""
                             if "[" in sig_rhs_name and "]" in sig_rhs_name:
                                 start = sig_rhs_name.index("[")
@@ -1958,6 +2033,8 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
                                         sig_cond=combined_cond,
+                                        condition_chain=full_chain,
+                                        ctx=ctx,
                                     )
                                 )
                             else:
@@ -1984,6 +2061,8 @@ class DriverExtractor:
                                         bit_slice=bit_slice,
                                         clock_domain=ctx.get("clock", ""),
                                         sig_cond=combined_cond,
+                                        condition_chain=full_chain,
+                                        ctx=ctx,
                                         source=ds,
                                     )
                                 )
@@ -2341,17 +2420,24 @@ class DriverExtractor:
             return items
 
         # 3. 处理条件脉络（if/case 等）
-        #    _flatten_assignments 现在返回 (expr, cond_str) 或 (expr, cond_str, leaf_name) 元组
+        #    _flatten_assignments 现在返回 (expr, cond_chain) 或 (expr, cond_chain, leaf_name) 元组
+        #    cond_chain 是 list[str] (V7.0), 旧版 cond_str 是字符串
         #    leaf_name != None 表示 ternary 展开后的 leaf 信号（覆盖 rhs 信号提取）
         #    每个 item 带有自己的条件
         result = []
         for item in items:
             if isinstance(item, tuple) and len(item) >= 2:
-                expr_node, cond_str = item[0], item[1]
+                expr_node, cond_or_chain = item[0], item[1]
                 leaf_name = item[2] if len(item) >= 3 else None
                 item_ctx = dict(ctx)  # copy base ctx
-                if cond_str:
-                    item_ctx["condition"] = cond_str
+                if isinstance(cond_or_chain, list):
+                    # [V7.0] condition_chain: list[str]
+                    item_ctx["condition_chain"] = list(cond_or_chain)
+                    item_ctx["condition"] = " && ".join(cond_or_chain) if cond_or_chain else ""
+                elif cond_or_chain:
+                    # 旧接口: 字符串 (向后兼容)
+                    item_ctx["condition"] = cond_or_chain
+                    item_ctx["condition_chain"] = [cond_or_chain] if " && " not in cond_or_chain else cond_or_chain.split(" && ")
                 if leaf_name:
                     item_ctx["leaf_name"] = leaf_name
                 result.append((expr_node, item_ctx, None))
@@ -2462,8 +2548,8 @@ class DriverExtractor:
         elif kind in (StatementKind.Case, StatementKind.PatternCase):
             self._flatten_case(stmt, result, cond_stack)
         elif kind == ExpressionKind.Assignment:
-            outer_cond = " && ".join(cond_stack) if cond_stack else ""
-            result.append((stmt, outer_cond))
+            condition_chain = list(cond_stack) if cond_stack else []
+            result.append((stmt, condition_chain))
         # 其他 StatementKind（Break, Continue, Return, Wait, EventTrigger 等）：
         # 不展开，不影响驱动提取。
 
@@ -2554,9 +2640,9 @@ class DriverExtractor:
         if expr is None:
             return
         ek = getattr(expr, "kind", None)
-        outer_cond = " && ".join(cond_stack) if cond_stack else ""
+        condition_chain = list(cond_stack) if cond_stack else []
         if ek == ExpressionKind.Assignment:
-            result.append((expr, outer_cond))
+            result.append((expr, condition_chain))
         elif ek == ExpressionKind.Call:
             # [V6.9] task/function 调用: 将 output 参数映射展开为赋值
             # t(a, b) → arguments = [NamedValue(a), Assignment(b, ...)]
@@ -2571,7 +2657,7 @@ class DriverExtractor:
                         out_name = self._get_signal(lhs_node) if lhs_node else None
                         if input_sig and out_name:
                             # 构造一个虚拟赋值元组: (output, input_as_string, condition)
-                            result.append((arg, outer_cond))
+                            result.append((arg, condition_chain))
                     elif ak == ExpressionKind.NamedValue:
                         # 第一个是 input 参数
                         input_sig = self._get_signal(arg)
@@ -2638,15 +2724,15 @@ class DriverExtractor:
         rhs = getattr(assign_expr, "right", None)
         if rhs is None:
             # 没有 RHS: 直接添加
-            outer_cond = " && ".join(cond_stack) if cond_stack else ""
-            result.append((assign_expr, outer_cond))
+            condition_chain = list(cond_stack) if cond_stack else []
+            result.append((assign_expr, condition_chain))
             return
 
         rk = str(getattr(rhs, "kind", ""))
         if "Conditional" not in rk:
             # 不是 ternary: 直接添加
-            outer_cond = " && ".join(cond_stack) if cond_stack else ""
-            result.append((assign_expr, outer_cond))
+            condition_chain = list(cond_stack) if cond_stack else []
+            result.append((assign_expr, condition_chain))
             return
 
         # RHS 是 ternary: 递归展开条件树
@@ -2654,8 +2740,8 @@ class DriverExtractor:
         lhs = getattr(assign_expr, "left", None)
         lhs_node_id = self._get_signal(lhs) if lhs else None
         if not lhs_node_id:
-            outer_cond = " && ".join(cond_stack) if cond_stack else ""
-            result.append((assign_expr, outer_cond))
+            condition_chain = list(cond_stack) if cond_stack else []
+            result.append((assign_expr, condition_chain))
             return
 
         # 递归展开 ConditionalExpression 树
@@ -2677,8 +2763,8 @@ class DriverExtractor:
                 # Leaf: 提取信号名, 组合条件
                 name = self._get_signal(node)
                 if name:
-                    combined = " && ".join([c for c in path_conds if c])
-                    yield (name, combined)
+                    # [V7.0] yield condition_chain list 而非拼接字符串
+                    yield (name, [c for c in path_conds if c])
                 return
 
             # 提取条件文本

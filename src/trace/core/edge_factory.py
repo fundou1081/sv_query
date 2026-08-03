@@ -37,6 +37,7 @@ class TraceEdgeFactory:
         sig_cond_ast: Any | None = None,
         clock_domain: str = "",
         source: SignalSource | None = None,  # [V6.5 2026-07-28] [V6.6 renamed from driver_source]
+        condition_chain: list[str] | None = None,  # [V7.0 2026-08-03] 嵌套条件累积链
     ) -> TraceEdge:
         """[V6.6] source 参数：结构化信号源 (driver/load 共享)。
         当 source 提供时, expression/bit_slice 自动从 source 填充
@@ -60,6 +61,9 @@ class TraceEdgeFactory:
             effective_condition_field = condition
         else:
             effective_condition_field = sig_cond
+        # [V7.0] 从 ctx 提取 condition_chain（只需传 ctx 即可自动获得）
+        if condition_chain is None:
+            condition_chain = c.get("condition_chain") if use_ctx else None
         return TraceEdge(
             src=src,
             dst=dst,
@@ -73,5 +77,6 @@ class TraceEdgeFactory:
             condition_ast=(
                 c.get("condition_ast") if use_ctx else sig_cond_ast
             ),
+            condition_chain=list(condition_chain) if condition_chain else [],
             source=source,
         )

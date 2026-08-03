@@ -165,6 +165,24 @@ def render_datapath(
         sym = _OP_SYMBOLS.get(op_name, op_name)
         color = _op_color(op_name)
 
+        # [V6.9] inner_ops — 在 main OP 前串入额外的 inner OP circle 节点
+        # 链: src → inner_op₁ → ... → main_op → dst
+        inner_ops = getattr(edge, 'source_inner_ops', []) or []
+        chain_src = src
+        for idx, inner_sym in enumerate(inner_ops):
+            inner_id = f"op_inner_{inner_sym}_{_sid(dst)}_{idx}"[:80]
+            op_nodes[inner_id] = (inner_sym, color)
+            # 串接到下一个节点
+            op_edges.append({
+                "src": chain_src,
+                "op_id": inner_id,
+                "dst": None,
+                "op_name": f"inner:{inner_sym}",
+                "color": color,
+                "stage": 0,
+            })
+            chain_src = inner_id
+
         key = (dst, op_name)
         if key not in seen_ops:
             seen_ops.add(key)
@@ -192,7 +210,7 @@ def render_datapath(
             op_stage = max(0, dst_stage_for_color - 1) if dst_stage_for_color > 0 else 0
 
         op_edges.append({
-            "src": src,
+            "src": chain_src,
             "op_id": op_id,
             "dst": dst,
             "op_name": op_name,
@@ -298,9 +316,16 @@ def render_datapath(
 
     for oe in op_edges:
         src = oe["src"]
-        dst = oe["dst"]
+        dst = oe.get("dst")
         op_id = oe["op_id"]
         color = oe["color"]
+
+        # src → OP (always)
+        lines.append(f'  "{_sid(src)}" -> "{_sid(op_id)}" [color="{color}"];')
+
+        # inner OP chain (dst=None): no OP→dst edge, just src→op
+        if dst is None:
+            continue
 
         # Get fixed-point annotation for this edge
         fp_tag = ""
@@ -308,9 +333,6 @@ def render_datapath(
             if e.src == src and e.dst == dst:
                 fp_tag = _fp_edge_label(e)
                 break
-
-        # src → OP
-        lines.append(f'  "{_sid(src)}" -> "{_sid(op_id)}" [color="{color}"];')
 
         # OP → dst (dedup), with fixed-point annotation
         key = (op_id, dst)
@@ -333,17 +355,24 @@ def render_datapath(
             if edge.kind in ("CLOCK", "RESET"):
                 continue
 
-            is_ctrl = edge.is_control_edge or bool(edge.condition)
-            if not is_ctrl:
+            # [V7.0] 用 condition_chain (list) 替代 condition (str)
+            chain = getattr(edge, "condition_chain", None) or []
+            has_cond = edge.is_control_edge or bool(edge.condition) or bool(chain)
+            if not has_cond:
                 continue
 
             edge_attrs = []
-            # Fixed-point annotation takes priority over raw condition
             fp_tag = _fp_edge_label(edge)
             if fp_tag:
                 edge_attrs.append(f'label="{fp_tag}"')
                 edge_attrs.append('fontsize=9')
                 edge_attrs.append('fontname="Helvetica-Bold"')
+            elif chain:
+                # [V7.0] condition_chain 列表 — 用 " && " 拼接
+                cond_str = " && ".join(chain)
+                cond = _simplify_condition(cond_str)
+                edge_attrs.append(f'label="if {cond}"')
+                edge_attrs.append("fontsize=8")
             elif edge.condition and edge.condition.strip():
                 cond = _simplify_condition(edge.condition)
                 edge_attrs.append(f'label="if {cond}"')

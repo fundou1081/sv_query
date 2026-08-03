@@ -246,10 +246,12 @@ class RoundingMatcher(PatternMatcher):
         if not edge.source_op:
             return None
 
-        # Pattern 1: ArithmeticShiftRight → dst, with Add upstream
+        # Pattern 1: ArithmeticShiftRight → dst, with Add upstream or inner_ops
         if edge.source_op == "ArithmeticShiftRight":
             src_incoming = incoming.get(edge.src, [])
-            if any(e.source_op == "Add" for e in src_incoming):
+            has_add_upstream = any(e.source_op == "Add" for e in src_incoming)
+            has_add_inner = "+" in edge.source_inner_ops
+            if has_add_upstream or has_add_inner:
                 return PatternMatch.round_half_up(edge.id)
 
         # Pattern 2: RNE — Add operator, operands are bit slices of same signal

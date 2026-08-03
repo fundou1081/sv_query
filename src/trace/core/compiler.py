@@ -87,43 +87,37 @@ def _check_memory_pressure():
     if _QUIET:  # [A3 2026-06-28] quiet 模式下不输出任何警告
         return
     try:
-        import re
-        import subprocess
-        # macOS: 从 sysctl 获取 swap
-        result = subprocess.run(
-            ["sysctl", "vm.swapusage"], capture_output=True, text=True, timeout=5
-        )
-        if result.returncode == 0:
-            m = re.search(r'used = (\d+[,.]?\d*)M', result.stdout)
-            if m:
-                swap_used = float(m.group(1).replace(',', '.'))
-                if swap_used > 2000:  # > 2GB swap used
-                    global _ELABORATION_INCOMPLETE
-                    _ELABORATION_INCOMPLETE = True
-                    print(
-                        f"[sv_query] ⚠️  SWAP 使用量 {swap_used:.0f}MB (可能内存不足)",
-                        file=_sys.stderr,
-                    )
-                    print(
-                        "[sv_query] → pyslang 在内存不足时**不会报错**, 但 elaboration",
-                        file=_sys.stderr,
-                    )
-                    print(
-                        "           可能不完整 (缺 module, binary 名字)。",
-                        file=_sys.stderr,
-                    )
-                    print(
-                        "           建议: (1) 关闭浏览器/IDE 释放内存。",
-                        file=_sys.stderr,
-                    )
-                    print(
-                        "                 (2) 用更小 filelist 按模块逐个分析, 而不是一次性加载全部。",
-                        file=_sys.stderr,
-                    )
-                    print(
-                        "                 (3) 在 16GB+ RAM 的机器上重跑。",
-                        file=_sys.stderr,
-                    )
+        import resource
+        # 检查进程级 RSS (实际物理内存使用)，不是系统级 swap 总量
+        # macOS 系统 swap 是预分配的全局值，跟 sv_query 进程无关
+        rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0 / 1024.0  # macOS: bytes→GiB→MB
+        if rss_mb > 1536:  # > 1.5GB 进程实际内存
+            global _ELABORATION_INCOMPLETE
+            _ELABORATION_INCOMPLETE = True
+            print(
+                f"[sv_query] ⚠️  进程内存 {rss_mb:.0f}MB (高负载, 可能影响 elaboration)",
+                file=_sys.stderr,
+            )
+            print(
+                "[sv_query] → pyslang 在内存不足时**不会报错**, 但 elaboration",
+                file=_sys.stderr,
+            )
+            print(
+                "           可能不完整 (缺 module, binary 名字)。",
+                file=_sys.stderr,
+            )
+            print(
+                "           建议: (1) 关闭浏览器/IDE 释放内存。",
+                file=_sys.stderr,
+            )
+            print(
+                "                 (2) 用更小 filelist 按模块逐个分析。",
+                file=_sys.stderr,
+            )
+            print(
+                "                 (3) 在 16GB+ RAM 的机器上重跑。",
+                file=_sys.stderr,
+            )
     except Exception:
         pass  # 检测失败不影响正常编译
 
