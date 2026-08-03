@@ -149,6 +149,9 @@ def build_viz_data(
 
     # [V6.9 datapath] OP passthrough — 中间 wire 的上游 OP 透传到下游边
     _passthrough_op_chain(viz, node_map)
+    
+    # [V8.2] 数据富化: function标记 + const_map + op_index (为渲染器准备, 不修改原始数据)
+    _enrich_datapath_info(viz, graph, opts)
 
     viz.meta["filtered_node_count"] = viz.node_count
     viz.meta["filtered_edge_count"] = viz.edge_count
@@ -294,3 +297,107 @@ def _op_symbol(op_name: str) -> str:
         "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
     }
     return _MAP.get(op_name, op_name)
+
+
+# ═══════════════════════════════════════════════════════
+# [V8.2] 数据富化: function标记 + const_map + op_index
+# 从 VizEdge/VizNode 推导, 不修改原始数据字段
+# ═══════════════════════════════════════════════════════
+
+def _enrich_datapath_info(viz, graph, opts):
+    """在 VizData.meta 中注入渲染需要的富化数据。
+    
+    存储位置: viz.meta["datapath"] = {
+        "const_map": {dst → [const_str, ...]},
+        "func_nodes": [node_id, ...],
+        "func_widths": {func_name → (msb,lsb)},
+        "op_index": {signal_name → {ops, consts}},
+    }
+    渲染器只读 viz.meta["datapath"], 不解析SV源码, 不修改viz.nodes/edges。
+    """
+    import re, os as _os
+    from collections import defaultdict
+    from .viz_engine import _short
+    
+    dp = {
+        "const_map": defaultdict(list),
+        "func_nodes": [],
+        "func_widths": {},
+        "op_index": {},
+    }
+    
+    # 1. 从 SV 源码提取常量 + function 声明 (一次性, 不重复开文件)
+    import os as _os_path
+    import glob as _glob
+    src_files = getattr(opts, 'source_files', None) or []
+    if not src_files:
+        # 从 VizNode 的 file 属性反查 SV 源码路径
+        seen_names = set(n.file for n in viz.nodes if n.file)
+        for fname in seen_names:
+            # 递归搜索项目目录找匹配的 SV 文件
+            for root_prefix in [_os_path.getcwd(), _os_path.path.expanduser('~')]:
+                for root, dirs, files in _os_path.walk(root_prefix):
+                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules','__pycache__','.git')]
+                    if fname in files:
+                        src_files.append(_os_path.path.join(root, fname))
+                        break
+                if src_files:
+                    break
+            if src_files:
+                break
+    
+    func_names_set = set()
+    for sp in src_files:
+        try:
+            with open(sp) as f:
+                src_text = f.read()
+            # function 声明: function [7:0] add_sat(input ...);
+            for m in re.finditer(r'function\s+(?:\[(\d+):(\d+)\]\s+)?(\w+)\s*\(', src_text):
+                msb, lsb, fn_name = m.group(1), m.group(2), m.group(3)
+                func_names_set.add(fn_name)
+                if msb and lsb:
+                    dp["func_widths"][fn_name] = (int(msb), int(lsb))
+            # 常量: wire/assign 中的 Verilog 字面量
+            for line in src_text.split('\n'):
+                ls = line.strip()
+                wm = re.match(r'(?:wire|logic)\s.*?(\w+)\s*=\s*(.+);', ls)
+                if wm:
+                    dst, rhs = wm.group(1), wm.group(2)
+                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    if consts: dp["const_map"][dst].extend(consts)
+                am = re.match(r'assign\s+(\w+)\s*=\s*(.+);', ls)
+                if am:
+                    dst, rhs = am.group(1), am.group(2)
+                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    if consts: dp["const_map"][dst].extend(consts)
+        except Exception:
+            pass
+    
+    dp["const_map"] = dict(dp["const_map"])
+    
+    # 2. 标记 function 节点
+    for n in viz.nodes:
+        sn = _short(n.id)
+        if sn in func_names_set:
+            n.is_function = True
+            dp["func_nodes"].append(n.id)
+            # 用源码位宽覆盖 pyslang 的不准确宽度
+            if sn in dp["func_widths"]:
+                w = dp["func_widths"][sn]
+                n.width = (w[0], w[1])
+    
+    # 3. 构建信号→OP索引 (sig_op_index)
+    op_index = dp["op_index"]
+    for dst_sig in set(e.dst for e in viz.edges):
+        dn_s = dst_sig.split('.')[-1]
+        ops_seen = set()
+        op_list = []
+        for e2 in viz.edges:
+            if e2.dst == dst_sig and e2.source_op and e2.source_op not in ops_seen:
+                ops_seen.add(e2.source_op)
+                op_list.append(e2.source_op)
+        consts = dp["const_map"].get(dn_s, [])
+        if op_list or consts:
+            op_index[dn_s] = {'ops': op_list, 'consts': consts}
+    
+    viz.meta["datapath"] = dp

@@ -167,41 +167,12 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     op_edges: list[dict] = []           # [{src, op_id, dst}]
     seen_op_nodes: set[str] = set()
 
-    # 从 SV 源码提取常量 + 拼接/聚合 映射
-    const_map: dict[str, list[str]] = {}  # dst → ["16'd128", ...]
-    concat_map: dict[str, str] = {}       # dst → "{ }", "{n{x}}"
-    src_files = cfg.get("source_files", [])
-    if not src_files:
-        import os as _os
-        for n in viz.nodes:
-            if n.file:
-                p = _os.path.abspath(n.file)
-                if _os.path.isfile(p):
-                    src_files.append(p)
-                    break
-
-    for sp in src_files:
-        try:
-            with open(sp) as f:
-                src_text = f.read()
-            for line in src_text.split('\n'):
-                ls = line.strip()
-                # wire/logic 声明: wire [7:0] prod_e = e * 8'd3;
-                wm = re.match(r'(?:wire|logic)\s.*?(\w+)\s*=\s*(.+);', ls)
-                if wm:
-                    dst, rhs = wm.group(1), wm.group(2)
-                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
-                    if consts: const_map.setdefault(dst, []).extend(consts)
-                    if re.search(r'\{[^}]+\}', rhs): concat_map[dst] = "{ }"
-                # assign 语句: assign y = sel ? (sum_ab + 8'd10) : (sub_cd >> 2);
-                m = re.match(r'assign\s+(\w+)\s*=\s*(.+);', ls)
-                if m:
-                    dst, rhs = m.group(1), m.group(2)
-                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
-                    if consts: const_map.setdefault(dst, []).extend(consts)
-                    if re.search(r'\{[^}]+\}', rhs): concat_map[dst] = "{ }"
-        except Exception:
-            pass
+    # [V8.2] 从 viz.meta["datapath"] 读取已富化的数据 (不再解析SV源码)
+    dp = viz.meta.get("datapath", {})
+    const_map: dict[str, list[str]] = {k: list(v) for k, v in dp.get("const_map", {}).items()}
+    concat_map: dict[str, str] = {}
+    # func 信息已在 VizNode 上 (is_function, width)
+    # 拼接信息暂时为空 (后续可加到 datapath 中)
 
     for e in viz.edges:
         if e.kind == "BIT_SELECT":
@@ -260,19 +231,8 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     from .control_tree import build_control_tree
 
     # 构建信号→OP+常量的完整索引
-    # signal_name → {op_symbol, consts[]}
-    sig_op_index: dict[str, dict] = {}
-    for dst_sig in set(e.dst for e in viz.edges):
-        dn_s = dst_sig.split('.')[-1]
-        ops_seen = set()
-        op_list = []
-        for e2 in viz.edges:
-            if e2.dst == dst_sig and e2.source_op and e2.source_op not in ops_seen:
-                ops_seen.add(e2.source_op)
-                op_list.append(_OP_SYM.get(e2.source_op, e2.source_op))
-        consts = const_map.get(dn_s, [])
-        if op_list or consts:
-            sig_op_index[dn_s] = {'ops': op_list, 'consts': consts}
+    # [V8.2] 从 datapath 读取 sig_op_index (不再遍历 viz.edges 构建)
+    sig_op_index: dict[str, dict] = dp.get("op_index", {})
 
     # 收集已被 scope 吞并的 (src, dst) 对
     muxed_pairs: set[tuple[str, str]] = set()
@@ -355,34 +315,13 @@ def render_dataflow(viz: VizData, config: dict | None = None):
 
         E(_CLUSTER_HEAD.format(id=f"stage_{sid}", label=f"Stage {sid}"))
 
-        # [V8.2] 从源码提取 function 声明名+位宽, 用于六边形标记
-        func_node_ids: set[str] = set()
-        func_widths: dict[str, tuple[int,int]] = {}
-        import re as _re3
-        for sp in src_files:
-            try:
-                with open(sp) as f:
-                    src_text = f.read()
-                for m in _re3.finditer(r'function\s+(?:\[(\d+):(\d+)\]\s+)?(\w+)\s*\(', src_text):
-                    msb, lsb, fn_name = m.group(1), m.group(2), m.group(3)
-                    if msb and lsb:
-                        func_widths[fn_name] = (int(msb), int(lsb))
-                    for n in viz.nodes:
-                        if _short(n.id) == fn_name:
-                            func_node_ids.add(n.id)
-            except Exception:
-                pass
-
+        # [V8.2] 从 VizNode.is_function 读取 (已在 _enrich_datapath_info 中标记)
         for n in viz.nodes:
             if n.id not in snodes: continue
             sn = _short(n.id)
             ws = _width_label(n)
-            # function 节点用源码中的位宽覆盖 pyslang 的不准确宽度
-            if n.id in func_node_ids and sn in func_widths:
-                w = func_widths[sn]
-                ws = f"{{{w[0]}}}" if w[0] == w[1] else f"{{{w[0]}:{w[1]}}}"
             lbl = f"{sn}  {ws}" if ws else sn
-            shape = "hexagon" if n.id in func_node_ids else "box"
+            shape = "hexagon" if n.is_function else "box"
             E(f'    {_dot_id(n.id)} [label="{lbl}" fontname="Courier" fontcolor="#2e7d32" shape={shape}];')
 
         # 统一操作节点: OP/切片用矩形, MUX 用菱形
