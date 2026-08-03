@@ -251,14 +251,28 @@ def render_timed_compute(
             )
 
     # Non-op edges (direct connections like stage1→stage2, 2→result)
+    # [V7.0] 增加 condition_chain 条件虚线和 cycle delta 标注
     seen_op_pairs = {(oe["src"], oe["dst"]) for oe in op_edges}
     for edge in viz.edges:
         if edge.kind != "DRIVER" or (edge.src, edge.dst) in seen_op_pairs:
             continue
-        # Only draw if no OP node was created for this pair
+        
+        # cycle delta: 跨 cycle = 时序边 (实线), 同 cycle = 组合边 (虚线)
+        delta = getattr(edge, "edge_cycle_delta", 0)
+        style = "solid" if delta > 0 else "dotted"
+        color = "#2e7d32" if delta > 0 else "#aaaaaa"
+        
+        # [V7.0] condition_chain 条件标注
+        chain = getattr(edge, "condition_chain", None) or []
+        attrs = f'style={style} color="{color}"'
+        if chain:
+            cond_str = " && ".join(chain)
+            if len(cond_str) > 30:
+                cond_str = cond_str[:27] + "..."
+            attrs += f' label="if {cond_str}" fontsize=7'
+        
         lines.append(
-            f'  "{_sid(edge.src)}" -> "{_sid(edge.dst)}" '
-            f'[style=dotted color="#aaaaaa"];'
+            f'  "{_sid(edge.src)}" -> "{_sid(edge.dst)}" [{attrs}];'
         )
 
     lines.append("}")

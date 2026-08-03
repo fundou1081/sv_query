@@ -147,6 +147,9 @@ def build_viz_data(
             viz.edges.append(ve)
             edge_count += 1
 
+    # [V6.9 datapath] OP passthrough — 中间 wire 的上游 OP 透传到下游边
+    _passthrough_op_chain(viz, node_map)
+
     viz.meta["filtered_node_count"] = viz.node_count
     viz.meta["filtered_edge_count"] = viz.edge_count
     return viz
@@ -181,3 +184,113 @@ def _fill_cover(vn: VizNode, node_id: str, graph: SignalGraph) -> None:
             vn.cover_status = "SVA"
         elif has_cov:
             vn.cover_status = "COV"
+
+
+def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
+    """[V6.9] 用网络拓扑推导中间 wire 的 OP 信息
+
+    算法: 下游推上游
+    1. 对于每个中间 wire W (非 PORT_IN/PORT_OUT/REG):
+       a. 收集 W 的入边 (incoming) 和出边 (outgoing)
+       b. 如果入边 ≥2 条且都无 source_op:
+          - 如果入边=2 → 推导为二元操作 (具体 OP 名无从得知, 标为 "binop")
+          - 如果 W 的出边有 source_op → 把该 OP 写入入边的 inner_ops
+       c. 入边的 source_op 和 casts 从同行入边补全
+    2. 透传到更下游: 对于有 source_op 的出边, 把 src 的入边 OP 作为 inner_ops
+
+    例:
+      a → sum_ac [], c → sum_ac []  (2 入边, 无 OP)
+      sum_ac → y_round [>>>, inner=[]]  (出边, 有 OP)
+      → a → sum_ac [inner=[+]](推导), c → sum_ac [inner=[+]](推导)
+      → sum_ac → y_round [>>>, inner=[+]] (透传)
+    """
+    # Build src → incoming edges index
+    incoming: dict[str, list[VizEdge]] = {}
+    for e in viz.edges:
+        incoming.setdefault(e.dst, []).append(e)
+
+    # ── Phase A: 同位边补全 ──
+    # 同一 dst 的多条入边如果来自同一条 assign (如 a+b)，
+    # 其中某条边有 op 但另一条没有 → 补全
+    for dst_id, in_edges in incoming.items():
+        # 收集这个 dst 的所有已知 op
+        known_ops: dict[str, str] = {}  # operand_side → op_name
+        for ie in in_edges:
+            if ie.source_op and ie.source_operand_side:
+                known_ops[ie.source_operand_side] = ie.source_op
+            elif ie.source_op:
+                # Has op but no operand_side — try to infer
+                for other_ie in in_edges:
+                    if other_ie.source_op and other_ie.source_operand_side:
+                        known_ops.setdefault("unknown", ie.source_op)
+
+        if known_ops:
+            # Determine the shared op (use majority)
+            op_values = list(known_ops.values())
+            shared_op = max(set(op_values), key=op_values.count) if op_values else ""
+            for ie in in_edges:
+                if not ie.source_op:
+                    ie.source_op = shared_op
+                    ie.source_operand_side = next(iter(known_ops.keys()), "")
+                    # Also share casts
+                    for other_ie in in_edges:
+                        if other_ie.source_casts:
+                            if not ie.source_casts:
+                                ie.source_casts = list(other_ie.source_casts)
+                            break
+
+    # ── Phase B: 下游透传 ──
+    # 策略改变: 不仅检查 source_op, 还检查 dst 的所有入边是否构成
+    # 某个已知的二元操作数集合。两条边指向同一个中间 wire,
+    # ── Phase B/C (合并): 对于从中间 wire 出发的每条边，
+    # 如果该 wire (src) 有上游入边带 source_op，
+    # 则把上游 OP 透传到当前边的 inner_ops（如果不同）
+    # 或继承 OP（如果当前边无 source_op）。
+    for edge in viz.edges:
+        if edge.kind in ("CLOCK", "RESET", "CONNECTION"):
+            continue
+
+        src_id = edge.src
+        src_node = node_map.get(src_id)
+        if src_node is None:
+            continue
+        if src_node.kind in ("PORT_IN", "PORT_OUT", "REG"):
+            continue
+
+        upstream_edges = incoming.get(src_id, [])
+        if not upstream_edges:
+            continue
+
+        for ue in upstream_edges:
+            if not ue.source_op:
+                continue
+            # 透传 casts
+            if not edge.source_casts and ue.source_casts:
+                edge.source_casts = list(ue.source_casts)
+            # 合并 inner_ops
+            if ue.source_inner_ops:
+                for iop in ue.source_inner_ops:
+                    if iop not in edge.source_inner_ops:
+                        edge.source_inner_ops.append(iop)
+            if edge.source_op:
+                # edge 已有 OP — 上游 OP 作为 inner
+                sym = _op_symbol(ue.source_op)
+                if sym and sym not in edge.source_inner_ops and edge.source_op != ue.source_op:
+                    edge.source_inner_ops.insert(0, sym)
+            else:
+                # edge 无 OP — 继承上游 OP
+                edge.source_op = ue.source_op
+                edge.source_operand_side = ue.source_operand_side
+
+
+def _op_symbol(op_name: str) -> str:
+    """运算符名 → 可读符号"""
+    _MAP = {
+        "Add": "+", "Subtract": "-", "Multiply": "*", "Divide": "/",
+        "BinaryAnd": "&", "BinaryOr": "|", "BinaryXor": "^",
+        "GreaterThan": ">", "LessThan": "<", "GreaterThanEqual": ">=",
+        "Equality": "==", "Inequality": "!=",
+        "ArithmeticShiftRight": ">>>", "LogicalShiftRight": ">>",
+        "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
+    }
+    return _MAP.get(op_name, op_name)

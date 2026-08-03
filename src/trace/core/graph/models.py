@@ -52,6 +52,9 @@ class SignalSource:
     operand_side: str = ""  # "left" / "right" / ""
     casts: list[str] = field(default_factory=list)  # 类型转换列表 (如 ["$signed"])
     is_decomposed: bool = False  # 是否分解后的片段 (非原始完整表达式)
+    # [V6.9 datapath] 嵌套 OP 链 — 闭式表达式分解后的附加运算符列表
+    # 例: (sum_ac + 128) >>> 8 → signal=sum_ac, op=">>>", inner_ops={"+128"}
+    inner_ops: list[str] = field(default_factory=list)
 
     @property
     def bit_slice(self) -> str:
@@ -192,6 +195,10 @@ class TraceEdge:
     # [V6.5 2026-07-28] [V6.6 renamed from driver_source] 结构化信号源
     # driver 和 load 共享 — 当 source 非 None 时, expression/bit_slice 应保持同步
     source: SignalSource | None = None
+    # [V7.0 2026-08-03] 嵌套条件累积链 (外层→内层, AND 语义)
+    # 例: ["sel_d == 2'd0", "sel_e == 2'd0"]
+    # 互斥关系由渲染器自动推导: 按 (dst, chain[:-1]) 分组, >=2 条边 → mux/case
+    condition_chain: list[str] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
