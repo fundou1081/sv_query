@@ -256,67 +256,6 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             op_registry[oid] = sym
         op_edges.append({"src": e.src, "op_id": oid, "dst": e.dst})
 
-    # ── MUX 汇聚: 同一dst有不同condition的边 → 先经MUX再入OP ──
-    # 逻辑: 收集每个 dst 的 condition 边, 按 source_op 分组,
-    # 同组内有2+不同condition → 生成MUX节点替换原始OP连接
-    mux_nodes: dict[str, dict] = {}  # mux_id → {label, srcs, op_id, dst}
-    cond_edges_by_dst: dict[str, list] = defaultdict(list)
-    for oe in op_edges:
-        if oe["src"] is None: continue
-        chain = []
-        for e in viz.edges:
-            if e.src == oe["src"] and e.dst == oe["dst"]:
-                chain = getattr(e, "condition_chain", None) or []
-                break
-        if chain:
-            cond_edges_by_dst[(oe["dst"], oe["op_id"])].append((oe["src"], chain))
-
-    mux_edge_replacements: list[dict] = []  # 替换原始 op_edges
-    for (dst_id, op_id), edges in cond_edges_by_dst.items():
-        # 按condition去重后 ≥2 才需要MUX
-        unique_conds = {}
-        for src_id, chain in edges:
-            cond_key = " && ".join(chain)
-            if cond_key not in unique_conds:
-                unique_conds[cond_key] = (src_id, chain)
-        if len(unique_conds) < 2:
-            continue
-        # 生成 MUX 节点
-        mux_id = f"op_mux_{_dot_id(dst_id)}_cond"[:60]
-        dst_sn = _short(dst_id)
-        mux_label = f"MUX_{dst_sn}"
-        mux_nodes[mux_id] = {
-            "label": mux_label,
-            "srcs": list(unique_conds.values()),
-            "op_id": op_id,
-            "dst": dst_id,
-        }
-        # 替换: 移除原始条件边的 OP 连接, 改为 signal → MUX (带 branch_label)
-        # MUX → OP → dst
-        for cond_key, (src_id, chain) in unique_conds.items():
-            # 添加 signal → MUX 边 (作为 _mux_internal)
-            op_edges.append({
-                "src": src_id, "op_id": mux_id, "dst": dst_id,
-                "_mux_internal": True,
-                "_branch_label": cond_key[:20],
-            })
-        # 添加 MUX → OP 的连接
-        op_edges.append({
-            "src": None, "op_id": mux_id, "dst": dst_id, "_mux_to_op": op_id,
-        })
-    
-    # 注册 MUX 节点到 op_registry
-    for mux_id, info in mux_nodes.items():
-        op_registry[mux_id] = info["label"]
-    
-    # 从原始 op_edges 中移除被 MUX 替换的条件边
-    replaced_pairs = set()
-    for mux_id, info in mux_nodes.items():
-        for src_id, _ in info["srcs"]:
-            replaced_pairs.add((src_id, info["dst"]))
-    op_edges = [oe for oe in op_edges if (oe.get("src"), oe.get("dst")) not in replaced_pairs
-                or oe.get("_mux_internal") or oe.get("_mux_to_op") or oe.get("src") is None]
-
     # ── Scope 融合: 条件边用嵌套 cluster 框表示选择器 ──
     from .control_tree import build_control_tree
 
