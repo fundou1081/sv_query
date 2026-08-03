@@ -1634,14 +1634,16 @@ class DriverExtractor:
                 return result_map
 
             cond_map = _build_ternary_cond_map(check_expr)
-            signal_conditions = [(s, cond_map.get(s, "")) for s in leaf_signals]
+            # cond_map value = list[str] (cond path). Build both string + list versions.
+            signal_conditions = [(s, cond_map.get(s, [])) for s in leaf_signals]
 
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
-            for rhs_name, sig_cond in signal_conditions:
+            for rhs_name, sig_cond_list in signal_conditions:
                 if not rhs_name:
                     continue
+                sig_cond_str = " && ".join(sig_cond_list) if sig_cond_list else ""
                 bit_slice = ""
                 if "[" in rhs_name and "]" in rhs_name:
                     start = rhs_name.index("[")
@@ -1655,9 +1657,9 @@ class DriverExtractor:
                             assign_type="continuous",
                             expression=rhs_name,
                             bit_slice=bit_slice,
-                            sig_cond=sig_cond,
-                            condition=sig_cond,
-                            condition_chain=[sig_cond] if sig_cond else [],
+                            sig_cond=sig_cond_str,
+                            condition=sig_cond_str,
+                            condition_chain=sig_cond_list if sig_cond_list else [],
                         )
                     )
                 else:
@@ -1682,9 +1684,9 @@ class DriverExtractor:
                             assign_type="continuous",
                             expression=expr_str,
                             bit_slice=bit_slice,
-                            sig_cond=sig_cond,
-                            condition=sig_cond,
-                            condition_chain=[sig_cond] if sig_cond else [],
+                            sig_cond=sig_cond_str,
+                            condition=sig_cond_str,
+                            condition_chain=sig_cond_list if sig_cond_list else [],
                             source=ds,
                         )
                     )

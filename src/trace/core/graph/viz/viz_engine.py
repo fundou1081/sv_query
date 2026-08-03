@@ -297,10 +297,10 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         scope_counter[0] += 1
         scope_id = f"scope_{scope_counter[0]}"
 
-        # 外层大框
+        # 外层大框 — 双线实框
         E(f'  subgraph cluster_{scope_id} {{')
         E(f'    label="选择: {sel_sig}"; labeljust=l; fontsize=10; fontname="Helvetica-Bold";')
-        E(f'    style=dashed; color="#888888"; penwidth=1.5; margin=20;')
+        E(f'    style=solid; color="#444444"; penwidth=2; margin=20;')
 
         branches = list(tree.sorted_muxes()[0].branches) if tree.sorted_muxes() else []
         # TRUE/FALSE 上下紧邻: 用 rank=same + invisible edge 强制同层
@@ -355,11 +355,26 @@ def render_dataflow(viz: VizData, config: dict | None = None):
 
         E(_CLUSTER_HEAD.format(id=f"stage_{sid}", label=f"Stage {sid}"))
 
+        # [V8.2] 从源码提取 function 声明名, 用于六边形标记
+        func_node_ids = set()
+        import re as _re3
+        for sp in src_files:
+            try:
+                with open(sp) as f:
+                    for m in _re3.finditer(r'function\s.*?(\w+)\s*\(', f.read()):
+                        fn_name = m.group(1)
+                        for n in viz.nodes:
+                            if _short(n.id) == fn_name:
+                                func_node_ids.add(n.id)
+            except Exception:
+                pass
+
         for n in viz.nodes:
             if n.id not in snodes: continue
             ws = _width_label(n)
             lbl = f"{_short(n.id)}  {ws}" if ws else _short(n.id)
-            E(f'    {_dot_id(n.id)} [label="{lbl}" fontname="Courier" fontcolor="#2e7d32"];')
+            shape = "hexagon" if n.id in func_node_ids else "box"
+            E(f'    {_dot_id(n.id)} [label="{lbl}" fontname="Courier" fontcolor="#2e7d32" shape={shape}];')
 
         # 统一操作节点: OP/切片用矩形, MUX 用菱形
         for oid in sops:
