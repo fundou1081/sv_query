@@ -228,15 +228,25 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         op_edges.append({"src": e.src, "op_id": oid, "dst": e.dst})
         
         # [V8.3] 常量操作数也连接到 OP 节点
-        # 当 dst 有常量映射时，为每条 OP 边生成常量→OP 的额外边
+        # 优先从 sig_op_index 查源信号的常量（三目分支内的信号）
+        # 其次从 const_map 查 dst 的常量（直接 wire/assign）
+        sn_short = e.src.split('.')[-1] if '.' in e.src else e.src
         dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
+        extra_consts = []
+        # 从 sig_op_index 查源信号的常量（如 sum_ab + 8'd10 → 8'd10 是 sum_ab 所在的表达式常量）
+        if sn_short in dp.get("op_index", {}):
+            extra_consts = list(dp["op_index"][sn_short].get('consts', []))
+        # 也从 const_map 查 dst 常量
         if dn_short in const_map:
             for c in const_map[dn_short]:
-                cid = f"op_const_{c}_{_dot_id(e.dst)}"[:60]
-                if cid not in seen_op_nodes:
-                    seen_op_nodes.add(cid)
-                    op_registry[cid] = c
-                op_edges.append({"src": None, "op_id": oid, "dst": e.dst, "_const_src": cid})
+                if c not in extra_consts:
+                    extra_consts.append(c)
+        for c in extra_consts:
+            cid = f"op_const_{c}_{_dot_id(e.dst)}"[:60]
+            if cid not in seen_op_nodes:
+                seen_op_nodes.add(cid)
+                op_registry[cid] = c
+            op_edges.append({"src": None, "op_id": oid, "dst": e.dst, "_const_src": cid})
 
     # ── Scope 融合: 条件边用嵌套 cluster 框表示选择器 ──
     from .control_tree import build_control_tree
