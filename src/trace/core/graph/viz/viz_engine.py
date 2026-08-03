@@ -188,17 +188,19 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             op_edges.append({"src": e.src, "op_id": oid, "dst": e.dst})
             continue
 
-        # 常量: 只在没有 condition_chain 的纯数据流边上 (不作为三元条件中的阈值)
+        # 常量: 收集 dst 的常量并生成常量节点（含条件边）
         dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
-        chain = getattr(e, "condition_chain", None) or []
-        if dn_short in const_map and e.kind == "DRIVER" and not chain:
+        if dn_short in const_map and e.kind == "DRIVER":
             for c in const_map[dn_short]:
                 oid = f"op_const_{c}_{_dot_id(e.dst)}"[:60]
                 if oid not in seen_op_nodes:
                     seen_op_nodes.add(oid)
                     op_registry[oid] = c
-                # src=None 标记: 常量没有输入源
                 op_edges.append({"src": None, "op_id": oid, "dst": e.dst})
+        
+        # 有 source_op 的边才创建 OP 节点（常量边已生成，后续走 continue 或 fall-through）
+        dn_short = e.dst.split('.')[-1] if '.' in e.dst else e.dst
+        if dn_short in const_map and e.kind == "DRIVER" and not e.source_op:
             continue
 
         # 隐式切片: src 名字带 [...]  且  source_op 为空
