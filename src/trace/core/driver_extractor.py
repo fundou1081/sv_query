@@ -1614,19 +1614,17 @@ class DriverExtractor:
                 def _extract_arm_signals(arm_expr, cond_path):
                     """Extract all leaf signal names from a ternary arm.
 
-                    Handles: NamedValue, BinaryOp, ParenthesizedExpression,
-                    Conversion, Call, ElementSelect, and nested ConditionalOp.
-                    Returns dict of {signal_name: cond_string}.
+                    Returns dict of {signal_name: cond_list} where cond_list is the
+                    list of condition strings on the path (not flattened with &&).
                     """
                     if arm_expr is None:
                         return {}
                     ak = str(getattr(arm_expr, "kind", ""))
                     if "ConditionalOp" in ak or "ConditionalExpression" in ak:
                         return _build_ternary_cond_map(arm_expr, cond_path)
-                    full_cond = " && ".join([p for p in cond_path if p])
                     # Recurse through _extract_signals_from_expr to get all leaf names
                     names = self._signal_visitor._extract_signals_from_expr(arm_expr) or []
-                    return {n: full_cond for n in names if n}
+                    return {n: list(cond_path) for n in names if n}
 
                 # 递归 left (true 分支) / right (false 分支)
                 result_map.update(_extract_arm_signals(left, path + [cond_str]))
@@ -1658,6 +1656,8 @@ class DriverExtractor:
                             expression=rhs_name,
                             bit_slice=bit_slice,
                             sig_cond=sig_cond,
+                            condition=sig_cond,
+                            condition_chain=[sig_cond] if sig_cond else [],
                         )
                     )
                 else:
@@ -1683,6 +1683,8 @@ class DriverExtractor:
                             expression=expr_str,
                             bit_slice=bit_slice,
                             sig_cond=sig_cond,
+                            condition=sig_cond,
+                            condition_chain=[sig_cond] if sig_cond else [],
                             source=ds,
                         )
                     )
@@ -2075,6 +2077,7 @@ class DriverExtractor:
                                 start = rhs_name.index("[")
                                 bit_slice = rhs_name[start:]
                             if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+                                sig_cond = ctx.get("condition", "")
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=rhs_name,
@@ -2083,6 +2086,9 @@ class DriverExtractor:
                                         assign_type="nonblocking",
                                         bit_slice=bit_slice,
                                         expression=rhs_name,
+                                        sig_cond=sig_cond,
+                                        condition=sig_cond,
+                                        condition_chain=[sig_cond] if sig_cond else [],
                                         ctx=ctx,
                                     )
                                 )
@@ -2100,6 +2106,7 @@ class DriverExtractor:
                                     )
                                 # [V6.5] 结构化驱动源
                                 ds = self._build_signal_source(rhs_name, rhs_expr, expr_str)
+                                sig_cond = ctx.get("condition", "")
                                 result.edges.append(
                                     self._edge_factory.make_edge(
                                         src=src_node_id,
@@ -2108,6 +2115,9 @@ class DriverExtractor:
                                         assign_type="nonblocking",
                                         bit_slice=bit_slice,
                                         expression=expr_str,
+                                        sig_cond=sig_cond,
+                                        condition=sig_cond,
+                                        condition_chain=[sig_cond] if sig_cond else [],
                                         ctx=ctx,
                                         source=ds,
                                     )
