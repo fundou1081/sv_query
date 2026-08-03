@@ -61,6 +61,9 @@ class VizNode:
     is_output: bool = False
     is_critical: bool = False
 
+    # --- function 标记 (V8.2) ---
+    is_function: bool = False
+
     # --- 其它 ---
     extra: dict[str, Any] = field(default_factory=dict)
 
