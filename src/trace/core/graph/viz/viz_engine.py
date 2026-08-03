@@ -247,6 +247,16 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                 seen_op_nodes.add(cid)
                 op_registry[cid] = c
             op_edges.append({"src": None, "op_id": oid, "dst": e.dst, "_const_src": cid})
+        
+        # [V8.3] inner_ops 中的上游信号也连接到 OP 节点
+        # 如 sum_ab→z op='Add' 的 inner_ops=['a','b'] — a, b 是原始操作数
+        module_prefix = e.dst.rsplit('.', 1)[0] + '.' if '.' in e.dst else ''
+        for ioname in getattr(e, "source_inner_ops", []) or []:
+            # 跳过符号字符串 (+, -, etc — 这些是 _op_symbol 输出的)
+            if len(ioname) <= 2 and not ioname[0].isalpha():
+                continue
+            inner_id = f"{module_prefix}{ioname}"
+            op_edges.append({"src": inner_id, "op_id": oid, "dst": e.dst, "_inner_op": True})
 
     # ── Scope 融合: 条件边用嵌套 cluster 框表示选择器 ──
     from .control_tree import build_control_tree
@@ -317,6 +327,12 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                             cid = _dot_id(f"scop{scope_counter[0]}_cnst_{c}")
                             E(f'      {cid} [label="{c}" shape=box width=0.2 height=0.2 style=solid color="#1565c0" fillcolor=white fontsize=7];')
                             E(f'      {cid} -> {oid} [color="#1565c0"];')
+                        # [V8.3] inner_ops 中的上游操作数也画到 OP 节点
+                        inner_names = _get_inner_op_signals_for_signal(viz, sn)
+                        for ioname in inner_names:
+                            ioid = _dot_id(f"scop{scope_counter[0]}_inner_{ioname}")
+                            E(f'      {ioid} [label="{ioname}" shape=box width=0.2 height=0.2 style=solid color="#666666" fillcolor=white fontsize=7];')
+                            E(f'      {ioid} -> {oid} [style=dotted color="#999999"];')
                         if op_i == len(ops) - 1:
                             E(f'      {oid} -> {_dot_id(dst_id)} [color="{border}"];')
                 else:
@@ -385,6 +401,14 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                 E(f'  {_dot_id(const_src)} -> {_dot_id(oid)} [style=solid color="#1565c0"];')
             continue
         
+        # [V8.3] _inner_op 边: 上游操作数信号 → OP 节点
+        if oe.get("_inner_op"):
+            sk = (oe["src"], oid)
+            if sk not in seen_src_op:
+                seen_src_op.add(sk)
+                E(f'  {_dot_id(oe["src"])} -> {_dot_id(oid)} [style=dotted color="#999999"];')
+            continue
+        
         if oe["src"] is not None:
             # 条件信号 → MUX 虚线 (cond/sel 输入)
             if oe.get("_cond_line"):
@@ -447,7 +471,69 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             E(f'  {_dot_id(e.src)} -> {_dot_id(e.dst)} [style={"solid" if is_timed else "dashed"}];')
 
     E(_DOT_FOOTER)
-    return "\n".join(out)
+    dot = "\n".join(out)
+    
+    # [V8.3] DOT 层校验: 二元 OP 节点入边数必须 ≥ 2
+    _validate_dot_binary_ops(dot)
+    
+    return dot
+
+
+def _validate_dot_binary_ops(dot: str) -> None:
+    """校验 DOT 中每个二元 OP 节点的入边数 ≥ 2，不够就抛 ValueError。"""
+    import re
+    from collections import defaultdict
+    
+    BINARY_LABELS = {'+', '−', '×', 'Add', 'Subtract', 'Multiply',
+                     '&', '|', '^', '||', '&&', '/', '%'}
+    
+    # 统计 OP 节点
+    op_labels = {}
+    for m in re.finditer(r'(\w+)\s*\[label="([^"]+)"[^\]]*width=0\.[12]', dot):
+        if m.group(2) in BINARY_LABELS:
+            op_labels[m.group(1)] = m.group(2)
+    
+    # 统计入边
+    in_deg: dict[str, list[str]] = defaultdict(list)
+    edge_rgx = re.compile(r'(\w+)\s*->\s*(\w+)')
+    for m in edge_rgx.finditer(dot):
+        src, tgt = m.group(1), m.group(2)
+        if tgt in op_labels:
+            in_deg[tgt].append(src)
+    
+    # 检查
+    bad = []
+    for nid, in_list in in_deg.items():
+        if len(in_list) < 2:
+            lbl = op_labels[nid]
+            srcs = [x.split('_')[-1][:12] for x in in_list]
+            bad.append(f"{nid[-45:]} label={lbl} 入边={len(in_list)} from={srcs}")
+    
+    if bad:
+        msg = f"DOT binary OP validation FAILED — {len(bad)} OP node(s) with <2 inputs:\n"
+        for line in bad[:20]:
+            msg += f"  {line}\n"
+        raise ValueError(msg)
+
+
+def _get_inner_op_signals_for_signal(viz, short_name: str) -> list[str]:
+    """从 VizEdge 的 source_inner_ops 中提取上游操作数信号名。
+    
+    查找短名匹配的任意出边 (src→dst)，取 source_inner_ops 中非符号的信号名。
+    例如 sub_cd→z 的 inner_ops=['d','c'] → 返回 ['d','c']"""
+    for edge in viz.edges:
+        sn = edge.src.split('.')[-1] if '.' in edge.src else edge.src
+        if sn == short_name:
+            inner = getattr(edge, 'source_inner_ops', None) or []
+            if inner:
+                result = []
+                for name in inner:
+                    name = name.split('.')[-1] if '.' in name else name
+                    if name and (name[0].isalpha() or name[0] == '_'):
+                        result.append(name)
+                if result:
+                    return result
+    return []
 
 
 # ═══════════════════════════════════════════════════

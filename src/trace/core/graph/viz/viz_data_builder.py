@@ -284,6 +284,22 @@ def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
                 # edge 无 OP — 继承上游 OP
                 edge.source_op = ue.source_op
                 edge.source_operand_side = ue.source_operand_side
+            
+            # [V8.3] 收集上游另一操作数信号名 (用于 DOT 渲染时补边)
+            # 当 src 作为 dst 时有 N 条入边，当前 edge 的 src 是其中一条，
+            # 另一条入边的 src 就是另一操作数，把它注入 inner_ops_for_op
+            other_operands = []
+            for other_ue in upstream_edges:
+                if other_ue is ue or not other_ue.source_op:
+                    continue
+                if other_ue.source_operand_side and ue.source_operand_side and other_ue.source_operand_side != ue.source_operand_side:
+                    other_src = other_ue.src.split('.')[-1] if '.' in other_ue.src else other_ue.src
+                    if other_src not in edge.source_inner_ops:
+                        other_operands.append(other_src)
+            # 合并到 inner_ops (DOT 渲染时 source_inner_ops 中的信号名作为额外入边)
+            for name in other_operands:
+                if name not in edge.source_inner_ops:
+                    edge.source_inner_ops.append(name)
 
 
 def _op_symbol(op_name: str) -> str:
@@ -297,6 +313,59 @@ def _op_symbol(op_name: str) -> str:
         "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
     }
     return _MAP.get(op_name, op_name)
+
+
+# ── [V8.3] 二元 OP 输入校验 ──
+
+BINARY_OPS = {"Add", "Subtract", "Multiply", "Divide",
+              "BinaryAnd", "BinaryOr", "BinaryXor",
+              "GreaterThan", "LessThan", "GreaterThanEqual", "LessThanEqual",
+              "Equality", "Inequality",
+              "LogicalAnd", "LogicalOr",
+              "ArithmeticShiftRight", "ArithmeticShiftLeft",
+              "LogicalShiftRight", "LogicalShiftLeft"}
+
+
+def _validate_binary_op_inputs(viz: VizData) -> list[tuple[str, str, str, set[str]]]:
+    """校验每条有 source_op 的 DRIVER 边的操作数 ≥ 2。
+    
+    返回不符合的边列表 [(src, dst, op, operands), ...]。
+    """
+    from collections import defaultdict
+    
+    dp = viz.meta.get("datapath", {})
+    op_idx = dp.get("op_index", {})
+    const_map = dp.get("const_map", {})
+    
+    bad: list[tuple[str, str, str, set[str]]] = []
+    
+    for edge in viz.edges:
+        if not edge.source_op or edge.kind != "DRIVER":
+            continue
+        if edge.source_op not in BINARY_OPS:
+            continue
+        
+        sn = edge.src.split('.')[-1] if '.' in edge.src else edge.src
+        dn = edge.dst.split('.')[-1] if '.' in edge.dst else edge.dst
+        
+        # 收集操作数: 信号 + 常量 + 兄弟信号
+        operands = {sn}
+        
+        si = op_idx.get(sn, {})
+        operands.update(si.get('consts', []))
+        operands.update(const_map.get(dn, []))
+        
+        for other in viz.edges:
+            if other is edge:
+                continue
+            s2 = other.src.split('.')[-1] if '.' in other.src else other.src
+            if s2 != sn and other.dst == edge.dst and other.kind == "DRIVER":
+                operands.add(s2)
+        
+        if len(operands) < 2:
+            bad.append((sn, dn, edge.source_op, operands))
+    
+    return bad
 
 
 # ═══════════════════════════════════════════════════════
