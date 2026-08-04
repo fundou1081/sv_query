@@ -147,11 +147,18 @@ def build_viz_data(
             viz.edges.append(ve)
             edge_count += 1
 
-    # [V6.9 datapath] OP passthrough — 中间 wire 的上游 OP 透传到下游边
-    _passthrough_op_chain(viz, node_map)
-    
-    # [V8.2] 数据富化: function标记 + const_map + op_index (为渲染器准备, 不修改原始数据)
+    # [V8.2] 数据富化: function标记 + const_map + op_index (从源码读取，不修改边数据)
     _enrich_datapath_info(viz, graph, opts)
+
+    # [V10] 过滤：PORT_IN 中所有出边都是条件边(会被 scope 吞)的节点不纳入数据流图
+    # 条件/控制信号 (sel, mode, clk, rst_n) 的"数据流"通过 condition_chain 元数据表达
+    port_in_has_direct_edge: set[str] = set()
+    for e in viz.edges:
+        cc = getattr(e, 'condition_chain', None) or []
+        if not cc:
+            port_in_has_direct_edge.add(e.src)
+    viz.nodes = [n for n in viz.nodes
+                 if n.kind not in ("PORT_IN", "CONST") or n.id in port_in_has_direct_edge]
 
     viz.meta["filtered_node_count"] = viz.node_count
     viz.meta["filtered_edge_count"] = viz.edge_count
@@ -189,87 +196,6 @@ def _fill_cover(vn: VizNode, node_id: str, graph: SignalGraph) -> None:
             vn.cover_status = "COV"
 
 
-def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
-    """[V6.9] 用网络拓扑推导中间 wire 的 OP 信息
-
-    算法: 下游推上游
-    1. 对于每个中间 wire W (非 PORT_IN/PORT_OUT/REG):
-       a. 收集 W 的入边 (incoming) 和出边 (outgoing)
-       b. 如果入边 ≥2 条且都无 source_op:
-          - 如果入边=2 → 推导为二元操作 (具体 OP 名无从得知, 标为 "binop")
-          - 如果 W 的出边有 source_op → 把该 OP 写入入边的 inner_ops
-       c. 入边的 source_op 和 casts 从同行入边补全
-    2. 透传到更下游: 对于有 source_op 的出边, 把 src 的入边 OP 作为 inner_ops
-
-    例:
-      a → sum_ac [], c → sum_ac []  (2 入边, 无 OP)
-      sum_ac → y_round [>>>, inner=[]]  (出边, 有 OP)
-      → a → sum_ac [inner=[+]](推导), c → sum_ac [inner=[+]](推导)
-      → sum_ac → y_round [>>>, inner=[+]] (透传)
-    """
-    # Build src → incoming edges index
-    incoming: dict[str, list[VizEdge]] = {}
-    for e in viz.edges:
-        incoming.setdefault(e.dst, []).append(e)
-
-    # ── Phase A: 同位边补全 ──
-    # 同一 dst 的多条入边如果来自同一条 assign (如 a+b)，
-    # 其中某条边有 op 但另一条没有 → 补全
-    for dst_id, in_edges in incoming.items():
-        # 收集这个 dst 的所有已知 op
-        known_ops: dict[str, str] = {}  # operand_side → op_name
-        for ie in in_edges:
-            if ie.source_op and ie.source_operand_side:
-                known_ops[ie.source_operand_side] = ie.source_op
-            elif ie.source_op:
-                # Has op but no operand_side — try to infer
-                for other_ie in in_edges:
-                    if other_ie.source_op and other_ie.source_operand_side:
-                        known_ops.setdefault("unknown", ie.source_op)
-
-        if known_ops:
-            # Determine the shared op (use majority)
-            op_values = list(known_ops.values())
-            shared_op = max(set(op_values), key=op_values.count) if op_values else ""
-            for ie in in_edges:
-                if not ie.source_op:
-                    # [V9 FIX] 不扩散 source_op 给无 op 的边
-                    # 只共享 casts
-                    for other_ie in in_edges:
-                        if other_ie.source_casts:
-                            if not ie.source_casts:
-                                ie.source_casts = list(other_ie.source_casts)
-                            break
-
-    # ── Phase B: 下游透传 ──
-    # 策略改变: 不仅检查 source_op, 还检查 dst 的所有入边是否构成
-    # 某个已知的二元操作数集合。两条边指向同一个中间 wire,
-    # ── Phase B: 继承上游 casts，不再透传 source_op ──
-    # source_op 只在信号的出生点有意义（如 a→+→sum_ab），
-    # 下游边不需要继承——scope 渲染直接从 sig_op_index 查。
-    for edge in viz.edges:
-        if edge.kind in ("CLOCK", "RESET", "CONNECTION"):
-            continue
-
-        src_id = edge.src
-        src_node = node_map.get(src_id)
-        if src_node is None:
-            continue
-        if src_node.kind in ("PORT_IN", "PORT_OUT", "REG"):
-            continue
-
-        upstream_edges = incoming.get(src_id, [])
-        if not upstream_edges:
-            continue
-
-        for ue in upstream_edges:
-            if not ue.source_op:
-                continue
-            # 透传 casts
-            if not edge.source_casts and ue.source_casts:
-                edge.source_casts = list(ue.source_casts)
-
-
 def _op_symbol(op_name: str) -> str:
     """运算符名 → 可读符号"""
     _MAP = {
@@ -281,59 +207,6 @@ def _op_symbol(op_name: str) -> str:
         "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
     }
     return _MAP.get(op_name, op_name)
-
-
-# ── [V8.3] 二元 OP 输入校验 ──
-
-BINARY_OPS = {"Add", "Subtract", "Multiply", "Divide",
-              "BinaryAnd", "BinaryOr", "BinaryXor",
-              "GreaterThan", "LessThan", "GreaterThanEqual", "LessThanEqual",
-              "Equality", "Inequality",
-              "LogicalAnd", "LogicalOr",
-              "ArithmeticShiftRight", "ArithmeticShiftLeft",
-              "LogicalShiftRight", "LogicalShiftLeft"}
-
-
-def _validate_binary_op_inputs(viz: VizData) -> list[tuple[str, str, str, set[str]]]:
-    """校验每条有 source_op 的 DRIVER 边的操作数 ≥ 2。
-    
-    返回不符合的边列表 [(src, dst, op, operands), ...]。
-    """
-    from collections import defaultdict
-    
-    dp = viz.meta.get("datapath", {})
-    op_idx = dp.get("op_index", {})
-    const_map = dp.get("const_map", {})
-    
-    bad: list[tuple[str, str, str, set[str]]] = []
-    
-    for edge in viz.edges:
-        if not edge.source_op or edge.kind != "DRIVER":
-            continue
-        if edge.source_op not in BINARY_OPS:
-            continue
-        
-        sn = edge.src.split('.')[-1] if '.' in edge.src else edge.src
-        dn = edge.dst.split('.')[-1] if '.' in edge.dst else edge.dst
-        
-        # 收集操作数: 信号 + 常量 + 兄弟信号
-        operands = {sn}
-        
-        si = op_idx.get(sn, {})
-        operands.update(si.get('consts', []))
-        operands.update(const_map.get(dn, []))
-        
-        for other in viz.edges:
-            if other is edge:
-                continue
-            s2 = other.src.split('.')[-1] if '.' in other.src else other.src
-            if s2 != sn and other.dst == edge.dst and other.kind == "DRIVER":
-                operands.add(s2)
-        
-        if len(operands) < 2:
-            bad.append((sn, dn, edge.source_op, operands))
-    
-    return bad
 
 
 # ═══════════════════════════════════════════════════════

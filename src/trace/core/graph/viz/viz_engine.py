@@ -277,6 +277,19 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         if chain and e.kind not in ("CLOCK", "RESET", "BIT_SELECT"):
             cond_by_dst[e.dst].append(e)
 
+    module_name = (config or {}).get("title", "").split()[0] if config else ""
+    if module_name:
+        E(f'  subgraph cluster_module {{')
+        E(f'    label="module: {module_name}"; labeljust=l; fontsize=12; fontname="Helvetica-Bold";')
+        E(f'    style=solid; color="#333"; penwidth=2; margin=20;')
+        for n in viz.nodes:
+            if n.kind in ("PORT_IN", "PORT_OUT"):
+                dot_id = _dot_id(n.id)
+                sn = _short(n.id)
+                ws = _width_label(n)
+                lbl = f"{sn}  {ws}" if ws else sn
+                fill = "#e8f5e9" if n.kind == "PORT_IN" else "#fff3e0"
+                E(f'    {dot_id} [label="{lbl}" fontname="Courier" fontcolor="#2e7d32" shape=box style=solid fillcolor="{fill}"];')
     for dst_id, cedges in cond_by_dst.items():
         if len(cedges) < 2:
             continue
@@ -294,6 +307,8 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         E(f'    style=solid; color="#444444"; penwidth=2; margin=20;')
 
         branches = list(tree.sorted_muxes()[0].branches) if tree.sorted_muxes() else []
+        # [V10] 收集本 scope 中出现的分支信号名 (用于后续等价边)
+        scope_signals: set[str] = set()
         # [V9] 预计算同 dst 各分支的其他信号操作数 (用于补 scope 内 OP 入边)
         branch_sibling_signals: dict[str, list[str]] = defaultdict(list)
         for e2 in viz.edges:
@@ -320,6 +335,7 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             E(f'      rank=same;')
             if br.source_signal:
                 sn = _short(br.source_signal)
+                scope_signals.add(sn)  # [V10] 收集分支信号名
                 nid = _dot_id(f"br{scope_counter[0]}_{sn}")
                 # [V9] 匹配源信号+条件+ds中的 VizEdge source_op（区分同信号不同条件）
                 edge_op = ''
@@ -370,6 +386,21 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         E(f'  }}')
         for ce in cedges:
             muxed_pairs.add((ce.src, ce.dst))
+        # [V10] 信号等价边: scope 内分支信号 Gbr* ↔ stage 层 G<module>_<sig> 灰线无箭头
+        # 从 VizEdge 的 dst 推导 module prefix
+        stage_prefix = dst_id.rsplit('.', 1)[0] + '.' if '.' in dst_id else ''
+        for sig in scope_signals:
+            stage_dot_id = _dot_id(f"{stage_prefix}{sig}")
+            # 收集 scope 内该信号的所有分支节点
+            scope_br_ids = set()
+            for bi2, br2 in enumerate(branches):
+                if br2.source_signal:
+                    sn2 = _short(br2.source_signal)
+                    if sn2 == sig:
+                        scope_br_ids.add(_dot_id(f"br{scope_counter[0] - len(branches) + bi2 + 1}_{sn2}"))
+            for br_id in scope_br_ids:
+                E(f'  {br_id} -> {stage_dot_id} [style=solid color="#9e9e9e" dir=none penwidth=1.5];')
+        scope_signals.clear()
     for sid in all_sids:
         snodes = [nid for nid, s in stages.items() if s == sid]
         sops = [oe["op_id"] for oe in op_edges if oe["dst"] in snodes]
@@ -476,26 +507,33 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             seen_op_dst.add(dk)
             E(f'  {_dot_id(oid)} -> {_dot_id(oe["dst"])} [style={op_style} {op_color}];')
 
-    # 非 OP 边 (跳过被 MUX 吞并的边)
+    # 非 OP 边 (条件边保留蓝色虚线，不跳过 muxed_pairs)
     for e in viz.edges:
         if e.kind == "BIT_SELECT": continue
         key = (e.src, e.dst)
         if key in data_pairs: continue
-        if key in muxed_pairs: continue  # 被 MUX 吞并
         if e.kind in ("CLOCK", "RESET"): continue
         chain = getattr(e, "condition_chain", None) or []
         if chain:
+            # [V10] scope 已表达条件选择 — 跳过被 mux 吞并的条件边
+            if key in muxed_pairs: continue
             cond = " && ".join(chain)
             if len(cond) > 30: cond = cond[:27] + "..."
             E(f'  {_dot_id(e.src)} -> {_dot_id(e.dst)} '
               f'[label="{cond}" fontsize=7 style=dashed color="#2563eb"];')
         else:
+            if key in muxed_pairs: continue  # 无条件 mux 边跳过
             sst = stages.get(e.src, -1)
             dst = stages.get(e.dst, -1)
             is_timed = (sst >= 0 and dst >= 0 and dst > sst)
             E(f'  {_dot_id(e.src)} -> {_dot_id(e.dst)} [style={"solid" if is_timed else "dashed"}];')
 
     E(_DOT_FOOTER)
+    
+    # [V10] 闭合 module scope
+    if module_name:
+        E(f'  }}')  # close cluster_module
+    
     dot = "\n".join(out)
     
     # [V8.3] DOT 层校验: 二元 OP 节点入边数必须 ≥ 2
