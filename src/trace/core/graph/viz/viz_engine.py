@@ -161,7 +161,12 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             from .elk_bridge import get_layout
             from .elk_svg_renderer import render_svg
             layout = get_layout(viz)
-            return render_svg(layout, {'title': title})
+            meta = layout.get('_meta', {})
+            return render_svg(layout, {
+                'title': title,
+                'scope_map': meta.get('scope_map', {}),
+                'stage_map': meta.get('stage_map', {}),
+            })
         except Exception as e:
             import sys
             print(f"[viz_engine] ELK.js failed ({e}), falling back to dot", file=sys.stderr)

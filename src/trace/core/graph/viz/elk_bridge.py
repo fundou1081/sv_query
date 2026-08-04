@@ -87,38 +87,16 @@ def _elk_id(s: str) -> str:
 def viz_to_elk(viz: VizData) -> dict:
     """将 VizData 转换为完整 ELK graph JSON。
     
-    产出结构:
-    {
-      id: 'root',
-      layoutOptions: {...},
-      children: [
-        // scope 框 (compound nodes, 嵌套)
-        { id, type:'scope', labels, children:[...], ports:[...] },
-        // 信号节点
-        { id, type:'signal', labels, ports: [{side:WEST}/{side:EAST}], _meta:{...} },
-        // OP 节点
-        { id, type:'op', labels, ports: [WEST, EAST], _meta:{op_kind} },
-      ],
-      edges: [
-        { id, sources, targets, sourcePort, targetPort,
-          _meta: {kind:'signal'|'cond'|'equiv'|'const', label, ...} },
-      ]
-    }
+    产出结构包含 scope_map 和 stage_map 元数据，传给 SVG 渲染器。
     """
     children = []
     edges = []
     edge_counter = 0
     seen_ids: set[str] = set()
     
-    # 收集 module prefix
-    modules: set[str] = set()
-    for n in viz.nodes:
-        if '.' in n.id:
-            modules.add(n.id.rsplit('.', 1)[0])
-    module_prefix = sorted(modules)[0] + '_dot_' if modules else ''
-    if not module_prefix and viz.nodes:
-        # 单 module，用第一个 node 的短名推断
-        pass
+    # ── 元数据: scope 框 + stage 分层 ──
+    scope_map: dict[str, dict] = {}  # {node_id: {depth, label, member_ids}}
+    stage_map: dict[str, int] = {}   # {node_id: stage_number}
     
     def _reg_node(node_id: str, label: str, w: int, h: int,
                   kind: str = 'signal', **meta) -> str:
@@ -243,6 +221,11 @@ def viz_to_elk(viz: VizData) -> dict:
         'layoutOptions': dict(ELK_OPTIONS),
         'children': children,
         'edges': edges,
+        '_meta': {
+            'title': '',
+            'scope_map': _build_scope_map(viz),
+            'stage_map': _build_stage_map(viz),
+        }
     }
     
     return graph
@@ -333,4 +316,55 @@ def run_elk_layout(graph: dict) -> dict:
 def get_layout(viz: VizData) -> dict:
     """VizData → ELK 布局结果（一站式）"""
     elk_graph = viz_to_elk(viz)
-    return run_elk_layout(elk_graph)
+    result = run_elk_layout(elk_graph)
+    # 保留 _meta 元数据给渲染器
+    if '_meta' not in result:
+        result['_meta'] = elk_graph.get('_meta', {})
+    return result
+
+
+# ─────────────────────────────────────────────────────────
+# 4. 元数据构建 (scope_map / stage_map)
+# ─────────────────────────────────────────────────────────
+
+def _build_scope_map(viz: VizData) -> dict:
+    """从 VizData 构建 scope 框映射
+    
+    返回: {scope_id: {depth, label, member_ids: set[str]}}
+    member_ids 是 ELK ID 格式（已通过 _elk_id 转换）。
+    """
+    sm: dict[str, dict] = {}
+    
+    from collections import defaultdict
+    cond_by_dst: dict[str, list] = defaultdict(list)
+    for e in viz.edges:
+        chain = getattr(e, 'condition_chain', None) or []
+        if chain and getattr(e, 'kind', '') not in ('CLOCK', 'RESET', 'BIT_SELECT'):
+            cond_by_dst[e.dst].append(e)
+    
+    scope_idx = 0
+    for dst_id, cedges in cond_by_dst.items():
+        if len(cedges) < 2:
+            continue
+        scope_idx += 1
+        scope_id = f'scope_{scope_idx}'
+        first_cond = getattr(cedges[0], 'condition_chain', [])
+        sel_sig = first_cond[0] if first_cond else '?'
+        label = f'mux: sel={sel_sig}'
+        member_ids: set[str] = set()
+        for e in cedges:
+            member_ids.add(_elk_id(e.src))
+            member_ids.add(_elk_id(e.dst))
+        sm[scope_id] = {'depth': 1, 'label': label, 'member_ids': list(member_ids)}
+    
+    return sm
+
+
+def _build_stage_map(viz: VizData) -> dict:
+    """从 VizData 构建 stage 分层映射，返回 {node_elk_id: stage_number}"""
+    try:
+        from .viz_engine import infer_stages_bfs
+        stages = infer_stages_bfs(viz)
+        return {_elk_id(k): v for k, v in stages.items()}
+    except ImportError:
+        return {}

@@ -1,20 +1,21 @@
-"""elk_svg_renderer.py — ELK.js 布局结果 → SVG 渲染器
+"""elk_svg_renderer.py — ELK.js 布局结果 → SVG 渲染器 (V12)
 
-渲染 ELK layout JSON 为 SVG。支持：
-- Signal 节点（矩形，Courier 字体）
+渲染 ELK layout JSON 为 SVG，支持：
+- Signal 节点（矩形，Courier，绿色字）
 - OP 节点（小矩形，Bold）
-- Scope 框（嵌套 compound nodes）
-- Stage cluster（虚线框）
-- 边样式区分：signal（实线黑）、cond（虚线蓝）、equiv（灰线无箭头）
-- 箭头（默认无箭头，边 _meta.direction 指定时加）
+- Scope 框（嵌套 compound nodes，实线）
+- Stage cluster（虚线框，每层一个）
+- 边样式区分：signal（实线黑）、cond（虚线蓝）、equiv（灰线无箭头）、clk/rst（红线）
+- 等价连线标签
 
 颜色方案：
-  signal: #333333
-  cond:   #2563eb 虚线
-  equiv:  #9e9e9e 无箭头
-  op:     #f5f5f5 填充
-  scope:  #444444 实线框
-  stage:  #2563eb 虚线框
+  signal:  #333333
+  cond:    #2563eb 虚线
+  equiv:   #9e9e9e 无箭头
+  clk/rst: #c62828
+  op:      #f0f0f0 填充
+  scope:   #444444 实线框
+  stage:   #2563eb 虚线框
 """
 
 from __future__ import annotations
@@ -31,12 +32,14 @@ C = {
     'signal': '#333333',
     'cond': '#2563eb',
     'equiv': '#9e9e9e',
-    'const': '#2563eb',
+    'clk': '#c62828',
+    'rst': '#c62828',
+    'const': '#1565c0',
     'node_fill': '#ffffff',
     'node_stroke': '#333333',
     'op_fill': '#f0f0f0',
     'op_stroke': '#666666',
-    'scope_fill': '#fafafa',
+    'scope_fill': 'none',
     'scope_stroke': '#444444',
     'scope_label': '#555555',
     'stage_fill': '#f8faff',
@@ -45,19 +48,16 @@ C = {
     'op_text': '#333333',
     'arrow': '#333333',
     'cond_dasharray': '5,3',
+    'equiv_dasharray': '2,4',
 }
 
-# Arrow marker SVG defs
-ARROW_DEF = '''
-<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
-        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-  <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333"/>
-</marker>
-<marker id="arrow_cond" viewBox="0 0 10 10" refX="9" refY="5"
-        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-  <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
-</marker>
-'''
+# Scope frame colors by depth
+SCOPE_COLORS = [
+    ('#444444', '#fafafa', 2.0),     # module: 实线深灰
+    ('#1b5e20', '#f1f8e9', 1.5),     # condition scope: 绿色虚线
+    ('#c62828', '#ffebee', 1.2),     # 子分支: 红色虚线
+    ('#1565c0', '#e3f2fd', 1.0),     # 更深层
+]
 
 
 def _etree_to_svg(root: ET.Element) -> str:
@@ -75,13 +75,15 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
 
     Args:
         layout: ELK.layout() 返回的 JSON
-        config: {title, show_stage, ...}
+        config: {title, show_stage, scope_map: {child_id: scope_info}, ...}
 
     Returns:
         格式化 SVG 字符串
     """
     cfg = config or {}
     title = cfg.get('title', 'Dataflow')
+    scope_map = cfg.get('scope_map', {})
+    stage_map = cfg.get('stage_map', {})
     
     # 计算 SVG 尺寸
     padding = 50
@@ -89,8 +91,8 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
     for child in layout.get('children', []):
         max_x = max(max_x, child.get('x', 0) + child.get('width', 0))
         max_y = max(max_y, child.get('y', 0) + child.get('height', 0))
-    svg_w = max_x + padding * 2
-    svg_h = max_y + padding * 2
+    svg_w = max(400, max_x + padding * 2)
+    svg_h = max(200, max_y + padding * 2)
     
     # SVG root
     ET.register_namespace('', 'http://www.w3.org/2000/svg')
@@ -104,6 +106,8 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
     defs = ET.SubElement(svg, 'defs')
     _add_marker(defs, 'arrow', C['arrow'])
     _add_marker(defs, 'arrow_cond', C['cond'])
+    _add_marker(defs, 'arrow_clk', C['clk'])
+    _add_marker(defs, 'arrow_equiv', C['equiv'])
     
     # Background
     ET.SubElement(svg, 'rect', {'width': '100%', 'height': '100%', 'fill': C['bg']})
@@ -121,15 +125,134 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
     for child in layout.get('children', []):
         child_map[child['id']] = child
     
-    # Draw edges first (z-order: behind nodes)
+    # 1. Scope 框（z-order: 最底层）
+    _draw_scopes(svg, layout, scope_map)
+    
+    # 2. Stage cluster（z-order: scope 之上）
+    _draw_stages(svg, layout, stage_map)
+    
+    # 3. Edges（z-order: 在节点之下）
     for edge in layout.get('edges', []):
         _draw_edge(svg, edge, child_map)
     
-    # Draw nodes
+    # 4. Nodes（z-order: 最上层）
     for child in layout.get('children', []):
         _draw_node(svg, child)
     
     return _etree_to_svg(svg)
+
+
+# ─────────────────────────────────────────────────────────
+# Scope / Stage frames
+# ─────────────────────────────────────────────────────────
+
+def _draw_scopes(svg: ET.Element, layout: dict, scope_map: dict) -> None:
+    """画 scope 框（module / condition scope）"""
+    if not scope_map:
+        return
+    
+    # Flatten all children into a bounding box per scope
+    scope_children: dict[str, list[dict]] = {}
+    for child in layout.get('children', []):
+        for scope_id, scope_info in scope_map.items():
+            # 检查这个 child 是否属于 scope
+            if child['id'] in scope_info.get('member_ids', set()):
+                scope_children.setdefault(scope_id, []).append(child)
+    
+    for scope_id, members in scope_children.items():
+        info = scope_map.get(scope_id, {})
+        depth = info.get('depth', 0)
+        border_color, bg_color, stroke_w = SCOPE_COLORS[min(depth, len(SCOPE_COLORS) - 1)]
+        
+        if not members:
+            continue
+        
+        # Bounding box
+        margin = 12
+        min_x = min(c.get('x', 0) for c in members) - margin
+        min_y = min(c.get('y', 0) for c in members) - margin
+        max_x = max(c.get('x', 0) + c.get('width', 0) for c in members) + margin
+        max_y = max(c.get('y', 0) + c.get('height', 0) for c in members) + margin
+        
+        label = info.get('label', '')
+        
+        # Background
+        if bg_color != 'none':
+            ET.SubElement(svg, 'rect', {
+                'x': f'{min_x}', 'y': f'{min_y}',
+                'width': f'{max_x - min_x}', 'height': f'{max_y - min_y}',
+                'fill': bg_color, 'stroke': 'none', 'rx': '6',
+            })
+        
+        # Border (dashed for condition, solid for module)
+        is_module = (depth == 0)
+        attrs: dict[str, str] = {
+            'x': f'{min_x}', 'y': f'{min_y}',
+            'width': f'{max_x - min_x}', 'height': f'{max_y - min_y}',
+            'fill': 'none', 'stroke': border_color,
+            'stroke-width': f'{stroke_w}', 'rx': '6',
+        }
+        if not is_module:
+            attrs['stroke-dasharray'] = '5,3'
+        
+        ET.SubElement(svg, 'rect', attrs)
+        
+        # Label
+        if label:
+            t = ET.SubElement(svg, 'text', {
+                'x': f'{min_x + 8}', 'y': f'{min_y - 6}',
+                'font-family': 'Helvetica, Arial, sans-serif',
+                'font-size': '9' if depth > 0 else '11',
+                'font-weight': 'bold' if depth == 0 else 'normal',
+                'fill': border_color,
+            })
+            t.text = label
+
+
+def _draw_stages(svg: ET.Element, layout: dict, stage_map: dict) -> None:
+    """画 Stage cluster（虚线框）"""
+    if not stage_map:
+        return
+    
+    stage_children: dict[int, list[dict]] = {}
+    for child in layout.get('children', []):
+        sid = stage_map.get(child['id'], -1)
+        if sid >= 0:
+            stage_children.setdefault(sid, []).append(child)
+    
+    for sid, members in stage_children.items():
+        if not members:
+            continue
+        margin = 16
+        min_x = min(c.get('x', 0) for c in members) - margin
+        min_y = min(c.get('y', 0) for c in members) - margin - 16  # room for label
+        max_x = max(c.get('x', 0) + c.get('width', 0) for c in members) + margin
+        max_y = max(c.get('y', 0) + c.get('height', 0) for c in members) + margin
+        
+        # Background
+        ET.SubElement(svg, 'rect', {
+            'x': f'{min_x}', 'y': f'{min_y}',
+            'width': f'{max_x - min_x}', 'height': f'{max_y - min_y}',
+            'fill': C['stage_fill'], 'stroke': 'none', 'rx': '4',
+        })
+        
+        # Border
+        ET.SubElement(svg, 'rect', {
+            'x': f'{min_x}', 'y': f'{min_y}',
+            'width': f'{max_x - min_x}', 'height': f'{max_y - min_y}',
+            'fill': 'none', 'stroke': C['stage_stroke'],
+            'stroke-width': '1.5', 'rx': '4',
+            'stroke-dasharray': '8,4',
+        })
+        
+        # Label
+        t = ET.SubElement(svg, 'text', {
+            'x': f'{min_x + 8}', 'y': f'{min_y - 6}',
+            'font-family': 'Helvetica, Arial, sans-serif',
+            'font-size': '10', 'font-weight': 'bold',
+            'fill': C['stage_stroke'],
+        })
+        t.text = f'Stage {sid}'
 
 
 # ─────────────────────────────────────────────────────────
@@ -145,24 +268,26 @@ def _draw_edge(svg: ET.Element, edge: dict, child_map: dict) -> None:
     if not sections:
         return
     
-    stroke = C.get(kind, C['signal'])
     dash = None
     marker_end = None
+    stroke = C.get(kind, C['signal'])
     
     if kind == 'cond':
         dash = C['cond_dasharray']
+        stroke = C['cond']
     elif kind == 'equiv':
+        dash = C['equiv_dasharray']
         stroke = C['equiv']
+    elif kind in ('clk', 'rst'):
+        stroke = C.get(kind, C['clk'])
+        marker_end = 'arrow_clk'
     
-    for sec in sections:
-        sp = sec.get('startPoint', {})
-        ep = sec.get('endPoint', {})
-        bps = sec.get('bendPoints', [])
-        
-        d_parts = [f'M {sp["x"]:.1f} {sp["y"]:.1f}']
-        for bp in bps:
-            d_parts.append(f'L {bp["x"]:.1f} {bp["y"]:.1f}')
-        d_parts.append(f'L {ep["x"]:.1f} {ep["y"]:.1f}')
+    def _draw_path(points: list[dict]) -> None:
+        if len(points) < 2:
+            return
+        d_parts = [f'M {points[0]["x"]:.1f} {points[0]["y"]:.1f}']
+        for pt in points[1:]:
+            d_parts.append(f'L {pt["x"]:.1f} {pt["y"]:.1f}')
         
         attrs: dict[str, str] = {
             'd': ' '.join(d_parts),
@@ -177,11 +302,17 @@ def _draw_edge(svg: ET.Element, edge: dict, child_map: dict) -> None:
         
         ET.SubElement(svg, 'path', attrs)
     
-    # Edge label
+    for sec in sections:
+        sp = sec.get('startPoint', {})
+        ep = sec.get('endPoint', {})
+        bps = sec.get('bendPoints', [])
+        points = [sp] + list(bps) + [ep]
+        _draw_path(points)
+    
+    # Edge label（等价边标注信号名）
     label = meta.get('label', '')
     if label and sections:
-        sec = sections[0]
-        ep = sec.get('endPoint', {})
+        ep = sections[0].get('endPoint', {})
         t = ET.SubElement(svg, 'text', {
             'x': f'{ep.get("x", 0) - 4:.1f}',
             'y': f'{ep.get("y", 0) - 4:.1f}',
@@ -206,20 +337,17 @@ def _draw_node(svg: ET.Element, node: dict) -> None:
     w = node.get('width', 100)
     h = node.get('height', 36)
     
-    # Skip compound nodes (scope containers) — 暂不处理
-    # Compound nodes have children array
-    
     label = ''
     if 'labels' in node and node['labels']:
         label = node['labels'][0].get('text', '')
     
     if kind == 'op':
-        # OP 节点
+        # OP 节点 — 小矩形
         ET.SubElement(svg, 'rect', {
             'x': f'{x:.1f}', 'y': f'{y:.1f}',
             'width': f'{w}', 'height': f'{h}',
             'fill': C['op_fill'], 'stroke': C['op_stroke'],
-            'stroke-width': '1.5', 'rx': '2',
+            'stroke-width': '1.2', 'rx': '2',
         })
         font_family = 'Helvetica, Arial, sans-serif'
         font_size = '9'
@@ -238,7 +366,6 @@ def _draw_node(svg: ET.Element, node: dict) -> None:
         font_weight = 'normal'
         fill = C['text']
     
-    # Label
     if label:
         t = ET.SubElement(svg, 'text', {
             'x': f'{x + w/2:.1f}',
