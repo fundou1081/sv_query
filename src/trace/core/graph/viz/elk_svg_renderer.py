@@ -282,9 +282,14 @@ def _draw_edge(svg: ET.Element, edge: dict, child_map: dict) -> None:
         stroke = C.get(kind, C['clk'])
         marker_end = 'arrow_clk'
     
+    # 获取源/目标节点（用于钳制端点坐标）
+    src_node = child_map.get(edge.get('sources', [None])[0] if edge.get('sources') else None)
+    dst_node = child_map.get(edge.get('targets', [None])[0] if edge.get('targets') else None)
+    
     def _draw_path(points: list[dict]) -> None:
         if len(points) < 2:
             return
+        
         d_parts = [f'M {points[0]["x"]:.1f} {points[0]["y"]:.1f}']
         for pt in points[1:]:
             d_parts.append(f'L {pt["x"]:.1f} {pt["y"]:.1f}')
