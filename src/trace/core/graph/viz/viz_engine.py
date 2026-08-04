@@ -294,6 +294,16 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         E(f'    style=solid; color="#444444"; penwidth=2; margin=20;')
 
         branches = list(tree.sorted_muxes()[0].branches) if tree.sorted_muxes() else []
+        # [V9] 预计算同 dst 各分支的其他信号操作数 (用于补 scope 内 OP 入边)
+        branch_sibling_signals: dict[str, list[str]] = defaultdict(list)
+        for e2 in viz.edges:
+            e2sn = e2.src.split('.')[-1] if '.' in e2.src else e2.src
+            e2dn = e2.dst.split('.')[-1] if '.' in e2.dst else e2.dst
+            if e2dn == dst_sn and e2.source_op:
+                e2cc = getattr(e2, 'condition_chain', None) or []
+                if e2cc:
+                    key = chr(10).join(e2cc)  # condition 签名
+                    branch_sibling_signals[key].append(e2sn)
         # TRUE/FALSE 上下紧邻: 用 rank=same + invisible edge 强制同层
         prev_nid = None
         for bi, br in enumerate(branches):
@@ -311,11 +321,23 @@ def render_dataflow(viz: VizData, config: dict | None = None):
             if br.source_signal:
                 sn = _short(br.source_signal)
                 nid = _dot_id(f"br{scope_counter[0]}_{sn}")
-                sig_info = sig_op_index.get(sn, {})
-                ops = sig_info.get('ops', [])
-                consts = list(sig_info.get('consts', []))
-                if ops and dst_consts:
-                    consts = consts + dst_consts
+                # [V9] 匹配源信号+条件+ds中的 VizEdge source_op（区分同信号不同条件）
+                edge_op = ''
+                matched_cc = []
+                br_cond_text = br.condition
+                for ee in viz.edges:
+                    esn = ee.src.split('.')[-1] if '.' in ee.src else ee.src
+                    edn = ee.dst.split('.')[-1] if '.' in ee.dst else ee.dst
+                    ee_cc = getattr(ee, 'condition_chain', None) or []
+                    ee_cond = ' && '.join(ee_cc) if ee_cc else ''
+                    if esn == sn and edn == dst_sn and ee.source_op:
+                        if ee_cond == br_cond_text:
+                            edge_op = ee.source_op
+                            matched_cc = ee_cc
+                            break
+                ops = [_OP_SYM.get(edge_op, edge_op)] if edge_op else []
+                dst_info = sig_op_index.get(dst_sn, {})
+                consts = list(dst_info.get('consts', []))
                 E(f'      {nid} [label="{sn}" fontname="Courier" fontcolor="#2e7d32" shape=box style=solid fillcolor=white fontsize=9];')
                 if ops:
                     for op_i, sym in enumerate(ops):
@@ -327,12 +349,15 @@ def render_dataflow(viz: VizData, config: dict | None = None):
                             cid = _dot_id(f"scop{scope_counter[0]}_cnst_{c}")
                             E(f'      {cid} [label="{c}" shape=box width=0.2 height=0.2 style=solid color="#1565c0" fillcolor=white fontsize=7];')
                             E(f'      {cid} -> {oid} [color="#1565c0"];')
-                        # [V8.3] inner_ops 中的上游操作数也画到 OP 节点
-                        inner_names = _get_inner_op_signals_for_signal(viz, sn)
-                        for ioname in inner_names:
-                            ioid = _dot_id(f"scop{scope_counter[0]}_inner_{ioname}")
-                            E(f'      {ioid} [label="{ioname}" shape=box width=0.2 height=0.2 style=solid color="#666666" fillcolor=white fontsize=7];')
-                            E(f'      {ioid} -> {oid} [style=solid color="#2e7d32"];')
+                        # [V9] 同条件分支的其他信号作为另一操作数
+                        sn_cc_str = chr(10).join(matched_cc) if matched_cc else ''
+                        if sn_cc_str and sn_cc_str in branch_sibling_signals:
+                            siblings = branch_sibling_signals[sn_cc_str]
+                            for sib in siblings:
+                                if sib != sn:
+                                    sibid = _dot_id(f"scop{scope_counter[0]}_sib_{sib}")
+                                    E(f'      {sibid} [label="{sib}" shape=box width=0.2 height=0.2 style=solid color="#2e7d32" fillcolor=white fontsize=7];')
+                                    E(f'      {sibid} -> {oid} [style=solid color="#2e7d32"];')
                         if op_i == len(ops) - 1:
                             E(f'      {oid} -> {_dot_id(dst_id)} [color="{border}"];')
                 else:

@@ -233,9 +233,8 @@ def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
             shared_op = max(set(op_values), key=op_values.count) if op_values else ""
             for ie in in_edges:
                 if not ie.source_op:
-                    ie.source_op = shared_op
-                    ie.source_operand_side = next(iter(known_ops.keys()), "")
-                    # Also share casts
+                    # [V9 FIX] 不扩散 source_op 给无 op 的边
+                    # 只共享 casts
                     for other_ie in in_edges:
                         if other_ie.source_casts:
                             if not ie.source_casts:
