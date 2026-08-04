@@ -270,9 +270,15 @@ def _draw_edge(svg: ET.Element, edge: dict, child_map: dict) -> None:
     
     dash = None
     marker_end = None
-    stroke = C.get(kind, C['signal'])
     
-    if kind == 'cond':
+    if kind == 'driver':
+        # 驱动边：带箭头实线
+        stroke = C['signal']
+        marker_end = 'arrow'
+    elif kind == 'signal':
+        # 信号/等价边：无箭头灰色实线
+        stroke = C['equiv']
+    elif kind == 'cond':
         dash = C['cond_dasharray']
         stroke = C['cond']
     elif kind == 'equiv':
