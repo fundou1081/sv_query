@@ -346,8 +346,14 @@ class DriverExtractor:
         if body is None or not hasattr(body, "lookupName"):
             return signal_conditions
 
-        out: list[tuple[str, str]] = []
-        for sig_name, cond_str in signal_conditions:
+        out = []
+        for item in signal_conditions:
+            # 兼容新旧两种格式: (name, cond) 或 (name, cond, arm_ast)
+            if len(item) == 3:
+                sig_name, cond_str, arm_ast = item
+            else:
+                sig_name, cond_str = item
+                arm_ast = None
             # Skip empty or pure-digit tokens
             if not sig_name or sig_name.isdigit():
                 continue
@@ -363,7 +369,10 @@ class DriverExtractor:
                 sym = None
             if sym is not None and self._is_compile_time_symbol(sym):
                 continue  # Skip localparam / parameter / enum value
-            out.append((sig_name, cond_str))
+            if arm_ast is not None:
+                out.append((sig_name, cond_str, arm_ast))
+            else:
+                out.append((sig_name, cond_str))
         return out
 
     def _get_signal(self, signal) -> str | None:
@@ -1641,17 +1650,18 @@ class DriverExtractor:
                 def _extract_arm_signals(arm_expr, cond_path):
                     """Extract all leaf signal names from a ternary arm.
 
-                    Returns dict of {signal_name: cond_list} where cond_list is the
-                    list of condition strings on the path (not flattened with &&).
+                    Returns dict of {signal_name: (cond_list, arm_ast)} where cond_list
+                    is the condition path and arm_ast is the original sub-expression AST
+                    (preserved for source_op detection).
                     """
                     if arm_expr is None:
                         return {}
                     ak = str(getattr(arm_expr, "kind", ""))
                     if "ConditionalOp" in ak or "ConditionalExpression" in ak:
                         return _build_ternary_cond_map(arm_expr, cond_path)
-                    # Recurse through _extract_signals_from_expr to get all leaf names
+                    # Preserve sub-expression AST for source_op extraction later
                     names = self._signal_visitor._extract_signals_from_expr(arm_expr) or []
-                    return {n: list(cond_path) for n in names if n}
+                    return {n: (list(cond_path), arm_expr) for n in names if n}
 
                 # 递归 left (true 分支) / right (false 分支)
                 result_map.update(_extract_arm_signals(left, path + [cond_str]))
@@ -1661,13 +1671,13 @@ class DriverExtractor:
                 return result_map
 
             cond_map = _build_ternary_cond_map(check_expr)
-            # cond_map value = list[str] (cond path). Build both string + list versions.
-            signal_conditions = [(s, cond_map.get(s, [])) for s in leaf_signals]
+            # cond_map: {signal_name: (cond_path_list, arm_ast)}
+            signal_conditions = [(s, cond_map[s][0], cond_map[s][1]) for s in leaf_signals if s in cond_map]
 
             signal_conditions = self._filter_signal_conditions_by_module(
                 signal_conditions, module=module
             )
-            for rhs_name, sig_cond_list in signal_conditions:
+            for rhs_name, sig_cond_list, arm_ast in signal_conditions:
                 if not rhs_name:
                     continue
                 sig_cond_str = " && ".join(sig_cond_list) if sig_cond_list else ""
@@ -1701,8 +1711,8 @@ class DriverExtractor:
                                 width=(1, 0),
                             )
                         )
-                    # [V6.5] 结构化驱动源
-                    ds = self._build_signal_source(rhs_name, check_expr, expr_str)
+                    # [V6.5] 结构化驱动源 — 用保留下来的子表达式 AST 检测 source_op
+                    ds = self._build_signal_source(rhs_name, arm_ast, expr_str)
                     result.edges.append(
                         self._edge_factory.make_edge(
                             src=src_node_id,
