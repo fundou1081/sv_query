@@ -149,11 +149,24 @@ def render_signal(viz: VizData, config: dict | None = None):
 def render_dataflow(viz: VizData, config: dict | None = None):
     """
     数据流/运算图 — "怎么算的？"
-    对标参考图: 信号节点+OP圆节点, stage cluster, 组合虚线/时序实线
+    [V11] 使用 ELK.js 做布局，精确控制连线端口方向。
+    保留 dot 渲染作为 fallback（可通过 config['use_dot']=True 启用）。
     """
     cfg = config or {}
     title = cfg.get("title", "Dataflow")
-
+    
+    # [V11] ELK.js 主流程
+    if not cfg.get("use_dot"):
+        try:
+            from .elk_bridge import get_layout
+            from .elk_svg_renderer import render_svg
+            layout = get_layout(viz)
+            return render_svg(layout, {'title': title})
+        except Exception as e:
+            import sys
+            print(f"[viz_engine] ELK.js failed ({e}), falling back to dot", file=sys.stderr)
+    
+    # [V10] dot fallback 渲染（旧代码，ELK 稳定后可以删除）
     stages = infer_stages_bfs(viz)
     all_sids = sorted(set(stages.values()))
     if not all_sids: all_sids = [0]
@@ -173,6 +186,18 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     concat_map: dict[str, str] = {}
     # func 信息已在 VizNode 上 (is_function, width)
     # 拼接信息暂时为空 (后续可加到 datapath 中)
+
+    # [V10] 预填充 _PRE_MUXED：条件边 (src,dst) 会被 scope 吞并
+    _PRE_MUXED: set[tuple[str, str]] = set()
+    _all_cond: dict[str, list] = defaultdict(list)
+    for _e in viz.edges:
+        _ch = getattr(_e, "condition_chain", None) or []
+        if _ch and _e.kind not in ("CLOCK", "RESET", "BIT_SELECT"):
+            _all_cond[_e.dst].append(_e)
+    for _dst, _cds in _all_cond.items():
+        if len(_cds) >= 2:
+            for _ce in _cds:
+                _PRE_MUXED.add((_ce.src, _ce.dst))
 
     for e in viz.edges:
         if e.kind == "BIT_SELECT":
@@ -222,6 +247,8 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         if not e.source_op: continue
         sym = _OP_SYM.get(e.source_op, e.source_op)
         oid = f"op_{e.source_op}_{_dot_id(e.dst)}"[:60]
+        # [V10] 条件边 OP: scope 已渲染 OP 节点，stage 层只保留连边
+        # 但 op_registry 仍需注册以便边渲染时获取正确 label
         if oid not in seen_op_nodes:
             seen_op_nodes.add(oid)
             op_registry[oid] = sym
@@ -277,7 +304,15 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         if chain and e.kind not in ("CLOCK", "RESET", "BIT_SELECT"):
             cond_by_dst[e.dst].append(e)
 
-    module_name = (config or {}).get("title", "").split()[0] if config else ""
+    # [V10] 预填充 muxed_pairs：条件边 (src,dst) 会被 scope 吞并
+    # 用于 OP 边收集时跳过已被 scope 渲染的边
+    _PRE_MUXED: set[tuple[str, str]] = set()
+    for dst_id, cedges in cond_by_dst.items():
+        if len(cedges) >= 2:
+            for ce in cedges:
+                _PRE_MUXED.add((ce.src, ce.dst))
+
+    module_name = ((config or {}).get("title", "") + " ").split()[0] if config else ""
     if module_name:
         E(f'  subgraph cluster_module {{')
         E(f'    label="module: {module_name}"; labeljust=l; fontsize=12; fontname="Helvetica-Bold";')

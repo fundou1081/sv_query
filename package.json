@@ -1,0 +1,29 @@
+{
+  "name": "sv_query",
+  "version": "1.0.0",
+  "description": "**让验证工程师直接问\"这个信号谁驱动的\"，而不是去读代码。**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://fundou1081:<REDACTED_TOKEN>@github.com/fundou1081/sv_query.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/fundou1081/sv_query/issues"
+  },
+  "homepage": "https://github.com/fundou1081/sv_query#readme",
+  "dependencies": {
+    "elkjs": "^0.12.0"
+  }
+}

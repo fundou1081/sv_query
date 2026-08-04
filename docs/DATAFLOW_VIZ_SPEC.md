@@ -1,7 +1,27 @@
 # 数据流图可视化 Spec (V10)
 
-> 最后更新: 2026-08-04 12:48
+> 最后更新: 2026-08-04 14:55
 > 状态: 已确认
+> 布局引擎: ELK.js (替换 Graphviz dot)
+> 渲染: SVG (Python/Node.js 桥接)
+
+## 迁移决定 (2026-08-04)
+
+Graphviz dot 无法精确控制连线端口方向（入口左侧、出口右侧、直连上下），
+且 `splines=ortho` + port 存在已知 bug (Graphviz #1415)。
+
+**决定**：迁移到 **ELK.js (Layered algorithm)**：
+- 原生支持 port side (WEST/EAST) 精确控制连线端口
+- orthogonal edge routing 直角连线
+- compound graph 嵌套 scope 框
+- cross-hierarchy edges 跨 scope 等价边
+- 布局与渲染分离，输出坐标和折线点
+
+**架构**：
+```
+Python (sv_query) → VizData → JSON ──→ Node.js (elk.js) → 布局坐标
+                                    ──→ Python SVG 渲染器 → .svg/.png
+```
 
 ## 核心原则
 
