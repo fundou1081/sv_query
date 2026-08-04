@@ -107,10 +107,8 @@ def viz_to_elk(viz: VizData) -> dict:
         seen_ids.add(eid)
         
         ports = [
-            {'id': f'{eid}_in', 'width': 4, 'height': h - 4,
-             'properties': {'port.side': 'WEST'}},
-            {'id': f'{eid}_out', 'width': 4, 'height': h - 4,
-             'properties': {'port.side': 'EAST'}},
+            {'id': f'{eid}_in', 'properties': {'port.side': 'WEST'}},
+            {'id': f'{eid}_out', 'properties': {'port.side': 'EAST'}},
         ]
         
         node = {
@@ -162,12 +160,9 @@ def viz_to_elk(viz: VizData) -> dict:
                     'width': OP_SIZE['width'], 'height': OP_SIZE['height'],
                     'labels': [{'text': sym, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
                     'ports': [
-                        {'id': f'{op_id}_in1', 'width': 4, 'height': 10,
-                         'properties': {'port.side': 'WEST'}},
-                        {'id': f'{op_id}_in2', 'width': 4, 'height': 10,
-                         'properties': {'port.side': 'WEST'}},
-                        {'id': f'{op_id}_out', 'width': 4, 'height': 10,
-                         'properties': {'port.side': 'EAST'}},
+                        {'id': f'{op_id}_in1', 'properties': {'port.side': 'WEST'}},
+                        {'id': f'{op_id}_in2', 'properties': {'port.side': 'WEST'}},
+                        {'id': f'{op_id}_out', 'properties': {'port.side': 'EAST'}},
                     ],
                     '_meta': {'kind': 'op', 'op_kind': op_kind},
                 })
