@@ -517,22 +517,23 @@ def _validate_dot_binary_ops(dot: str) -> None:
 
 
 def _get_inner_op_signals_for_signal(viz, short_name: str) -> list[str]:
-    """从 VizEdge 的 source_inner_ops 中提取上游操作数信号名。
+    """从 VizEdge 的入边查信号同级另一操作数信号名。
     
-    查找短名匹配的任意出边 (src→dst)，取 source_inner_ops 中非符号的信号名。
-    例如 sub_cd→z 的 inner_ops=['d','c'] → 返回 ['d','c']"""
+    查找 short_name 作为 dst 时所有带 source_op 的入边，
+    把除了 current src 之外的其他入边的 src 信号名返回。
+    如 short_name='sum_ab', 入边有 a→sum_ab, b→sum_ab → 返回 ['a','b']。"""
+    inner_set = set()
     for edge in viz.edges:
-        sn = edge.src.split('.')[-1] if '.' in edge.src else edge.src
-        if sn == short_name:
-            inner = getattr(edge, 'source_inner_ops', None) or []
-            if inner:
-                result = []
-                for name in inner:
-                    name = name.split('.')[-1] if '.' in name else name
-                    if name and (name[0].isalpha() or name[0] == '_'):
-                        result.append(name)
-                if result:
-                    return result
+        dst_sn = edge.dst.split('.')[-1] if '.' in edge.dst else edge.dst
+        if dst_sn != short_name:
+            continue
+        if not edge.source_op:
+            continue
+        src_sn = edge.src.split('.')[-1] if '.' in edge.src else edge.src
+        if src_sn not in inner_set:
+            inner_set.add(src_sn)
+    if inner_set:
+        return sorted(inner_set)
     return []
 
 
