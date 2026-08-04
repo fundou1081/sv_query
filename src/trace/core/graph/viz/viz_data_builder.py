@@ -245,10 +245,9 @@ def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
     # ── Phase B: 下游透传 ──
     # 策略改变: 不仅检查 source_op, 还检查 dst 的所有入边是否构成
     # 某个已知的二元操作数集合。两条边指向同一个中间 wire,
-    # ── Phase B/C (合并): 对于从中间 wire 出发的每条边，
-    # 如果该 wire (src) 有上游入边带 source_op，
-    # 则把上游 OP 透传到当前边的 inner_ops（如果不同）
-    # 或继承 OP（如果当前边无 source_op）。
+    # ── Phase B: 继承上游 casts，不再透传 source_op ──
+    # source_op 只在信号的出生点有意义（如 a→+→sum_ab），
+    # 下游边不需要继承——scope 渲染直接从 sig_op_index 查。
     for edge in viz.edges:
         if edge.kind in ("CLOCK", "RESET", "CONNECTION"):
             continue
@@ -270,30 +269,6 @@ def _passthrough_op_chain(viz: VizData, node_map: dict[str, VizNode]) -> None:
             # 透传 casts
             if not edge.source_casts and ue.source_casts:
                 edge.source_casts = list(ue.source_casts)
-            # 合并 inner_ops
-            if ue.source_inner_ops:
-                for iop in ue.source_inner_ops:
-                    if iop not in edge.source_inner_ops:
-                        edge.source_inner_ops.append(iop)
-            if edge.source_op:
-                # edge 已有 OP — 上游同 OP 的另一操作数注入为 inner_op
-                if ue.source_op == edge.source_op:
-                    for other_ue in upstream_edges:
-                        if other_ue is ue or not other_ue.source_op:
-                            continue
-                        if other_ue.source_op == edge.source_op:
-                            other_src = other_ue.src.split('.')[-1] if '.' in other_ue.src else other_ue.src
-                            if other_src not in edge.source_inner_ops:
-                                edge.source_inner_ops.append(other_src)
-                else:
-                    # 不同 OP 的符号标记
-                    sym = _op_symbol(ue.source_op)
-                    if sym and sym not in edge.source_inner_ops:
-                        edge.source_inner_ops.insert(0, sym)
-            else:
-                # edge 无 OP — 继承上游 OP
-                edge.source_op = ue.source_op
-                edge.source_operand_side = ue.source_operand_side
 
 
 def _op_symbol(op_name: str) -> str:
