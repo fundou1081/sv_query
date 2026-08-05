@@ -178,6 +178,11 @@ def viz_to_elk(viz: VizData) -> dict:
                         label_text = bit_range
                     else:
                         label_text = op_sym
+                elif op == 'Call':
+                    # Show function name from expression: "add_sat(x)" → "add_sat"
+                    expr = getattr(e, 'expression', '') or ''
+                    paren = expr.find('(')
+                    label_text = expr[:paren] if paren > 0 else (expr.strip() or op_sym)
                 else:
                     label_text = op_sym
                 root_children.append({
