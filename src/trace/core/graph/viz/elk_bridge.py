@@ -225,12 +225,13 @@ def viz_to_elk(viz: VizData) -> dict:
                         '_meta': {'kind': 'signal'},
                     })
 
-        # sel → case scope (condition select edge) — ELK-routed
-        # Place a 1×1 anchor at root level so ELK auto-layers it next to the case scope.
-        # Add an invisible edge cond_sel→first branch signal to anchor it near case scope.
+        # sel → case scope (condition select edge) — ELK-routed with anchor inside case scope.
+        # 1×1 invisible anchor at top of case scope (before all branches), FIRST layer position.
+        # ELK routes port_sel → anchor as a top-level edge entering the case scope compound.
         sel_anchor_id = f'cond_sel_{sd}'
-        root_children.append({
+        case_children.insert(0, {
             'id': sel_anchor_id, 'width': 1, 'height': 1,
+            'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
             '_meta': {'kind': 'condition_anchor'},
         })
         for sig in sorted(sel_sigs):
@@ -238,15 +239,6 @@ def viz_to_elk(viz: VizData) -> dict:
                 root_edges.append({
                     'id': ne(), 'sources': [f'port_{sig}'], 'targets': [sel_anchor_id],
                     '_meta': {'kind': 'condition_select'},
-                })
-        # Invisible edge to pull cond_sel next to the case scope
-        if case_children:
-            first_branch = case_children[0] if case_children else None
-            if first_branch and first_branch.get('children'):
-                first_sig = first_branch['children'][0]['id']
-                root_edges.append({
-                    'id': ne(), 'sources': [sel_anchor_id], 'targets': [first_sig],
-                    '_meta': {'kind': 'condition_select', 'invisible': True},
                 })
 
     # ── Phase 4: Assemble case scope ──
