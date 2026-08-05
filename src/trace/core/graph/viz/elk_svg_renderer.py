@@ -149,6 +149,8 @@ def _draw_edges(svg, layout):
     all_edges = []
     _collect_edges(layout, all_edges, 0, 0)
     for e in all_edges:
+        if e.get('_meta', {}).get('invisible'):
+            continue  # invisible edge for ELK layout routing only
         for sec in e.get('sections', []):
             pts = []
             sp = sec.get('startPoint')
