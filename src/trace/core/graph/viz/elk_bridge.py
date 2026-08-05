@@ -21,7 +21,7 @@ Edge routing: ELK 原生 orthogonal, cross-hierarchy 自动处理
 """
 
 from __future__ import annotations
-import json, subprocess, os, sys
+import json, subprocess, os, sys, re
 from collections import defaultdict
 from .viz_data_models import VizData
 
@@ -289,10 +289,14 @@ def viz_to_elk(viz: VizData) -> dict:
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if sid in seen_sigs: continue
                 seen_sigs.add(sid)
+                # Check if signal name is a Verilog constant literal
+                _is_const_val = bool(re.match(r"\d+'[bdh]\w+", sn))
                 branch_children.append({
-                    'id': sid, 'width': SIG_W, 'height': SIG_H,
-                    'labels': [{'text': sn, 'fontSize': 9, 'fontName': 'Courier'}],
-                    '_meta': {'kind': 'signal'},
+                    'id': sid, 'width': 40 if _is_const_val else SIG_W, 'height': SIG_H,
+                    'labels': [{'text': sn, 'fontSize': 8 if _is_const_val else 9,
+                                'fontName': 'Courier'}],
+                    '_meta': {'kind': 'const' if _is_const_val else 'signal'},
+                    'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'} if _is_const_val else {},
                 })
 
             # Branch internal edges (signal → op)
