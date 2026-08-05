@@ -226,18 +226,9 @@ def viz_to_elk(viz: VizData) -> dict:
                     })
 
         # sel → case scope (condition select edge)
-        # Create a dummy anchor inside case scope so ELK can route the edge
-        sel_anchor_id = f'cond_sel_{sd}'
-        case_children.append({
-            'id': sel_anchor_id, 'width': 120, 'height': 1,
-            '_meta': {'kind': 'condition_anchor'},
-        })
-        for sig in sorted(sel_sigs):
-            if sig in input_names:
-                root_edges.append({
-                    'id': ne(), 'sources': [f'port_{sig}'], 'targets': [sel_anchor_id],
-                    '_meta': {'kind': 'condition_select'},
-                })
+        # Rendered in SVG: a stair-step line from port_sel to the top edge of case scope.
+        # ELK doesn't route this edge; we draw it in the SVG renderer directly.
+        pass
 
     # ── Phase 4: Assemble case scope ──
     case_id = f'case_{sd}'
