@@ -212,6 +212,19 @@ def _draw_leaves(svg, leaves):
                     'text-anchor': 'middle', 'font-family': 'Courier, monospace',
                     'font-size': '8', 'fill': '#555555',
                 }).text = text
+        elif kind == 'const':
+            # Constant value node: light amber fill, distinct from signals
+            ET.SubElement(svg, 'rect', {
+                'x': f'{x:.0f}', 'y': f'{y:.0f}',
+                'width': f'{w:.0f}', 'height': f'{h:.0f}',
+                'fill': '#fff8e1', 'stroke': '#e65100', 'stroke-width': '1', 'rx': '3',
+            })
+            if text:
+                ET.SubElement(svg, 'text', {
+                    'x': f'{x + w / 2:.0f}', 'y': f'{y + h / 2 + 4:.0f}',
+                    'text-anchor': 'middle', 'font-family': 'Courier, monospace',
+                    'font-size': '8', 'fill': '#e65100',
+                }).text = text
         elif kind == 'op':
             ET.SubElement(svg, 'rect', {
                 'x': f'{x:.0f}', 'y': f'{y:.0f}',
