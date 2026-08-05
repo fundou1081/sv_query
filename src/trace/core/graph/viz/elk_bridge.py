@@ -85,6 +85,17 @@ def viz_to_elk(viz: VizData) -> dict:
     root_children = []
     root_edges = []
 
+    # Helper: add assign_type to edge meta
+    def _edge_meta(kind='signal'):
+        return {'kind': kind}
+
+    def _emit_edge(eid, srcs, tgts, edge_obj=None):
+        meta = _edge_meta()
+        if edge_obj is not None:
+            at = getattr(edge_obj, 'assign_type', '') or ''
+            meta['assign_type'] = at
+        return {'id': eid, 'sources': srcs, 'targets': tgts, '_meta': meta}
+
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
     for name in input_names:
         root_children.append({

@@ -163,7 +163,7 @@ def build_viz_data(
         if n.kind == "PORT_IN":
             n.is_port = True
             n.port_side = 'left'
-        elif n.kind == "PORT_OUT":
+        elif n.kind in ("PORT_OUT", "REG"):
             n.is_port = True
             n.port_side = 'right'
     viz.nodes = [n for n in viz.nodes
