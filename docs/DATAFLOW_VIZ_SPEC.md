@@ -459,7 +459,119 @@ def _collect_edges(node, out, px, py):
 - 5 signal nodes + 1 op_Add + 1 cond_sel_anchor (1×1 不渲染)
 - 所有边由 ELK orthogonal routing 生成
 
-### 7.8 动手前参考
+### 7.8 数据层 → 绘图层完整映射
+
+#### 7.8.1 VizData（数据层输入）
+
+```python
+viz = VizData(
+    nodes=[
+        VizNode(id='with_case.sel', port_side='left'),   # PORT_IN
+        VizNode(id='with_case.a', port_side='left'),     # PORT_IN
+        VizNode(id='with_case.b', port_side='left'),     # PORT_IN
+        VizNode(id='with_case.c', port_side='left'),     # PORT_IN
+        VizNode(id='with_case.d', port_side='left'),     # PORT_IN
+        VizNode(id='with_case.y', port_side='right'),    # PORT_OUT
+    ],
+    edges=[
+        VizEdge(src='with_case.a', dst='with_case.y', condition_chain=["sel == 2'b0"], kind='DRIVER'),
+        VizEdge(src='with_case.a', dst='with_case.y', condition_chain=["sel == 2'b1"], source_op='Add', kind='DRIVER'),
+        VizEdge(src='with_case.b', dst='with_case.y', condition_chain=["sel == 2'b1"], source_op='Add', kind='DRIVER'),
+        VizEdge(src='with_case.c', dst='with_case.y', condition_chain=["sel == 2'b10"], kind='DRIVER'),
+        VizEdge(src='with_case.d', dst='with_case.y', condition_chain=['sel == default'], kind='DRIVER'),
+    ],
+    meta={'target_module': 'with_case', 'datapath': {'op_index': {'y': {'ops': ['Add']}}}},
+)
+```
+
+#### 7.8.2 数据层字段 → 绘图层元素（完整映射表）
+
+| 数据字段 | 值（示例） | ELK 节点类型 | ELK 位置 | 渲染效果 |
+|----------|-----------|-------------|----------|---------|
+| `VizNode.port_side == 'left'` | `with_case.sel` | `port_{name}` (44×20) | Root children, `FIRST` layer constraint | 灰色小框 (fill=#eee, stroke=#888), 左侧列竖排 |
+| `VizNode.port_side == 'right'` | `with_case.y` | `port_{name}` (44×20) | Root children, `LAST` layer constraint | 灰色小框, 右侧 |
+| `VizEdge.condition_chain` 的 `dst` 相同且有 ≥2 条带 chain 的边 | `with_case.y` 有 5 条条件边 | `case_{dst}` compound node | Root children, `DOWN` direction | **紫色实线大框** (fill=#f3e5f5, stroke=#7b1fa2, 1.5px), label `case (sel)` 在框内左上 |
+| `condition_chain[-1]` (每个不同值) | `sel == 2'b10` | `branch_{dst}_{cond}` compound node | Case scope children, `RIGHT` direction | **绿色虚线框** (fill=#f1f8e9, stroke=#1b5e20, 1.2px, dashed), label 在框内左上 |
+| `condition_chain[0]` (sel 信号名) | `sel` | `cond_sel_{dst}` (1×1) | Case scope children, 不渲染 | 1×1 透明锚点，port_sel 连到这里 |
+| `VizEdge.src` (每个 signal) | `with_case.c` | `sig_{short}_{dst}_{cond}` (50×24) | Branch scope children | **白色矩形** (fill=#fff, stroke=#333), 绿色 Courier 文字 (fill=#2e7d32) |
+| `VizEdge.source_op` | `Add` | `op_{op}_{dst}_{cond}` (24×24) | Branch scope children | **灰色小框** (fill=#f0f0f0, stroke=#666), Bold 符号 (如 `+`) |
+| `VizEdge` (port_in → signal) | `with_case.c → with_case.y` (chain) | Root edge: `port_c → sig_c_...` | Root.edges | ELK orthogonal polyline, 黑色箭头 → |
+| `VizEdge` (signal → op, branch 内) | `with_case.a → with_case.y` (op=Add) | Branch edge: `sig_a_... → op_Add_...` | Branch.edges | ELK orthogonal polyline, 黑色箭头 → |
+| `VizEdge.source_op` (op → port_out) | `op_Add_...` to `with_case.y` | Root edge: `op_Add_... → port_y` | Root.edges | ELK orthogonal polyline, 黑色箭头 → |
+| `VizEdge` (signal → port_out, 无 op) | `sig_c_...` to `with_case.y` | Root edge: `sig_c_... → port_y` | Root.edges | ELK orthogonal polyline, 黑色箭头 → |
+| `VizEdge` (port_sel → case) | `port_sel → cond_sel_...` | Root edge | Root.edges | ELK orthogonal polyline, 台阶线从上面进入 case scope |
+
+#### 7.8.3 数据层字段 → ELK 布局配置（映射表）
+
+| 数据特征 | ELK 参数 | 值 | 作用 |
+|----------|---------|-----|------|
+| 有条件边的图 | `elk.hierarchyHandling` | `INCLUDE_CHILDREN` | 一次布局所有嵌套层级 |
+| 整体流向 | `elk.direction` | `RIGHT` | 左→右数据流 |
+| 所有边 | `elk.edgeRouting` | `ORTHOGONAL` | 直角连线 |
+| PORT_IN 节点 | `elk.layered.layering.layerConstraint` | `FIRST` | 固定在左列 |
+| PORT_OUT 节点 | `elk.layered.layering.layerConstraint` | `LAST` | 固定在右列 |
+| Case scope（含多个 branch） | `elk.direction` | `DOWN` | Branches 竖排 |
+| Branch scope（含 signal+op） | `elk.direction` | `RIGHT` | Signal→op 水平排列 |
+| Case scope padding | `elk.padding` | `[top=14,left=10,right=10,bottom=8]` | 留标签空间 |
+| Branch scope padding | `elk.padding` | `[top=16,left=10,right=10,bottom=8]` | 留标签空间 |
+
+#### 7.8.4 ELK 输出 → SVG 渲染（映射表）
+
+| ELK 输出字段 | 渲染函数 | 渲染效果 |
+|-------------|---------|---------|
+| `node.id startsWith('case_')` (compound, 有 children) | `_draw_scope_bgs()` | 紫色实线 scope 框（background + border rect） |
+| `node.id startsWith('branch_')` (compound, 有 children) | `_draw_scope_bgs()` | 绿色虚线 scope 框（background + dashed border rect） |
+| `node.labels[0].text` (scope 标签) | `_draw_scope_labels()` | `x+6, y+13` 在框内左上，紫色/绿色文字 |
+| `node._meta.kind == 'port_in' / 'port_out'` (leaf, 无 children) | `_draw_leaves()` | 灰色小框 + Courier 文字 |
+| `node._meta.kind == 'signal'` (leaf) | `_draw_leaves()` | 白色矩形 + 绿色 Courier 文字 |
+| `node._meta.kind == 'op'` (leaf) | `_draw_leaves()` | 灰色小框 + Bold 符号 |
+| `node._meta.kind == 'condition_anchor'` (leaf, 1×1) | `_draw_leaves()` | **跳过，不渲染** |
+| `edge.sections[].startPoint/endPoint/bendPoints` (ROOT 坐标) | `_draw_edges()` | SVG `<path>` polyline + 箭头 marker |
+| Branch 内的 edge sections (PARENT 坐标) | `_collect_edges()` → `_draw_edges()` | 自动累加 compound node 偏移后转为 ROOT 坐标再渲染 |
+
+#### 7.8.5 渲染 z-order（从底到顶）
+
+```
+1. _draw_scope_bgs()     — scope 背景色 + 边框（按 depth 降序：内层先画）
+2. _draw_edges()          — 所有 ELK edges（black polyline + arrows）
+3. _draw_leaves()         — 所有 leaf 节点（port/signal/op 矩形 + 文字）
+4. _draw_scope_labels()   — scope 标签文字（最上层，框内左上）
+```
+
+#### 7.8.6 数据示例：`golden_dataflow_9_case.sv` 的完整数据流
+
+```
+输入 VizData:
+  nodes: port_in×5 (sel,a,b,c,d), port_out×1 (y)
+  edges: 5 条, 全部带 condition_chain, 1 条有 source_op='Add'
+
+elk_bridge.py (viz_to_elk):
+  Phase 0: 分类 → cond_by_dst['with_case.y'] = 5 条条件边
+  Phase 1: port_sel, port_a, port_b, port_c, port_d (FIRST)
+  Phase 2: port_y (LAST)
+  Phase 3: 按 condition_chain[-1] 分为 4 组 →
+    branch_{dst}_sel____2_b0  (sig_a)
+    branch_{dst}_sel____2_b1  (sig_a, sig_b, op_Add)  + edges: sig_a→op, sig_b→op
+    branch_{dst}_sel____2_b10 (sig_c)
+    branch_{dst}_sel____default (sig_d)
+    + cond_sel anchor (1×1)
+    + root edges: port→sig, sig→port_y, op→port_y, port_sel→cond_sel
+  Phase 4: case_{dst} compound, DOWN, 包含上面所有 branch + anchor
+
+ELK 输出:
+  11 edges, 11/11 with sections
+  case scope: 140×249, 4 branch scopes nested inside
+  PORT_IN 列在 LEFT (x=20), PORT_OUT 在 RIGHT (x=284)
+
+SVG 渲染:
+  1. 紫色 case scope 背景+实线边框
+  2. 4 个绿色 branch scope 背景+虚线边框（内层先画）
+  3. 11 条 polyline 边
+  4. 5 个 port 灰框 + 5 个 signal 白框 + 1 个 op 灰框
+  5. "case (sel)" + 4 个 "sel == ..." 标签在最上层
+```
+
+### 7.9 动手前参考
 
 - `~/my_proj/elkjs/examples/hierarchical_modules.js` — ELK compound graph 原型
 - `~/my_proj/elkjs/MANUAL.md` — elkjs 手册（坐标系 PARENT/ROOT/CONTAINER）
