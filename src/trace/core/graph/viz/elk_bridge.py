@@ -104,11 +104,10 @@ def viz_to_elk(viz: VizData) -> dict:
     output_set = set(output_names)
 
     # No conditional edges → simple flat layout (PORTS only, no signal nodes)
-    # Pure dataflow: PORT_IN → OP → PORT_OUT
+    # Pure dataflow: PORT_IN → OP → PORT_OUT, with independent CONST nodes
     if not cond_by_dst:
         output_set = set(output_names)
         op_at_dst = {}
-        # Get const data from VizData datapath
         const_map = viz.meta.get('datapath', {}).get('const_map', {})
         for e in regular:
             op = getattr(e, 'source_op', None)
@@ -119,23 +118,30 @@ def viz_to_elk(viz: VizData) -> dict:
             if dst_safe not in op_at_dst:
                 op_id = f'op_{_safe(op)}_{dst_safe}'
                 op_at_dst[dst_safe] = op_id
-                # Build labels: op symbol + consts
-                labels = [{'text': op_sym, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}]
-                dst_short_name = _short(e.dst)
-                cvals = const_map.get(dst_short_name, [])
-                if cvals:
-                    labels.append({'text': ', '.join(cvals[:3]), 'fontSize': 7, 'fontName': 'Courier'})
-                # Adjust height for multi-line labels
-                op_h = OP_H + (6 * (len(labels) - 1))
                 root_children.append({
-                    'id': op_id, 'width': OP_W + 20, 'height': op_h,
-                    'labels': labels,
+                    'id': op_id, 'width': OP_W, 'height': OP_H,
+                    'labels': [{'text': op_sym, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
                     '_meta': {'kind': 'op'},
                 })
                 dst_port = f'port_{_short(e.dst)}' if _short(e.dst) in output_set else None
                 if dst_port:
                     root_edges.append({
                         'id': ne(), 'sources': [op_id], 'targets': [dst_port],
+                        '_meta': {'kind': 'signal'},
+                    })
+                # Create independent CONST nodes for this OP
+                dst_short_name = _short(e.dst)
+                cvals = const_map.get(dst_short_name, [])
+                for ci, cv in enumerate(cvals):
+                    const_id = f'const_{cv}_{dst_safe}'
+                    root_children.append({
+                        'id': const_id, 'width': 40, 'height': SIG_H,
+                        'labels': [{'text': cv, 'fontSize': 8, 'fontName': 'Courier'}],
+                        'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                        '_meta': {'kind': 'const'},
+                    })
+                    root_edges.append({
+                        'id': ne(), 'sources': [const_id], 'targets': [op_id],
                         '_meta': {'kind': 'signal'},
                     })
             src_port = f'port_{_short(e.src)}' if _short(e.src) in input_names else None
