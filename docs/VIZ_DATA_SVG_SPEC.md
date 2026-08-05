@@ -352,3 +352,235 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib python3 /tmp/gen_viz_case9.py
 | `_draw_scopes` | 必需 (事后画 scope 框) | 被 `_draw_scope_bgs` + `_draw_scope_labels` 取代 |
 | PARENT→ROOT 坐标转换 | 不需要 (flat 无嵌套) | 必需: `_collect_edges` 累加 compound offset |
 | 渲染函数 | 4 个: `_draw_scopes`, `_draw_stages`, `_draw_edge`, `_draw_node` | 5 个: `_draw_scope_bgs`, `_draw_edges`, `_draw_leaves`, `_draw_scope_labels`, 递归 `_collect_nodes`/`_collect_edges` |
+
+
+---
+
+## 9. 各阶段关键输出示例 (golden_dataflow_9_case.sv)
+
+### 9.1 阶段 0: 源码输入
+
+```systemverilog
+// sim/tests/fixtures/golden_mini/golden_dataflow_9_case.sv
+module with_case(input sel, a, b, c, d, output y);
+  always_comb
+    case (sel)
+      2'b10:   y = c;
+      default: y = d;
+      2'b1:    y = a + b;
+      2'b0:    y = a;
+    endcase
+endmodule
+```
+
+### 9.2 阶段 1: pyslang AST → SignalGraph
+
+`UnifiedTracer.trace_module('with_case')` 解析后:
+
+```
+Nodes (TraceNode × 6):
+  with_case.sel  [PORT_IN]   port_side 来自 pyslang 端口方向
+  with_case.a    [PORT_IN]
+  with_case.b    [PORT_IN]
+  with_case.c    [PORT_IN]
+  with_case.d    [PORT_IN]
+  with_case.y    [PORT_OUT]
+
+Edges (TraceEdge × 5):
+  with_case.a → with_case.y  | condition_chain=["sel == 2'b0"]              | source_op=None
+  with_case.a → with_case.y  | condition_chain=["sel == 2'b1"]              | source_op=Add
+  with_case.b → with_case.y  | condition_chain=["sel == 2'b1"]              | source_op=Add
+  with_case.c → with_case.y  | condition_chain=["sel == 2'b10"]             | source_op=None
+  with_case.d → with_case.y  | condition_chain=["sel == default"]           | source_op=None
+```
+
+**关键提取**: `condition_chain` 和 `source_op` 在 pyslang 层由 driver_extractor 从 AST 提取。
+
+### 9.3 阶段 2: SignalGraph → VizData
+
+`build_viz_data(graph, include_edge_expression=True)` 输出:
+
+```python
+viz = VizData(
+    nodes=[
+        VizNode(id='with_case.sel', kind='PORT_IN', port_side='left'),
+        VizNode(id='with_case.a', kind='PORT_IN', port_side='left'),
+        VizNode(id='with_case.b', kind='PORT_IN', port_side='left'),
+        VizNode(id='with_case.c', kind='PORT_IN', port_side='left'),
+        VizNode(id='with_case.d', kind='PORT_IN', port_side='left'),
+        VizNode(id='with_case.y', kind='PORT_OUT', port_side='right'),
+    ],
+    edges=[
+        VizEdge(src='with_case.a', dst='with_case.y', condition_chain=["sel == 2'b0"], kind='DRIVER'),
+        VizEdge(src='with_case.a', dst='with_case.y', condition_chain=["sel == 2'b1"], source_op='Add', kind='DRIVER'),
+        VizEdge(src='with_case.b', dst='with_case.y', condition_chain=["sel == 2'b1"], source_op='Add', kind='DRIVER'),
+        VizEdge(src='with_case.c', dst='with_case.y', condition_chain=["sel == 2'b10"], kind='DRIVER'),
+        VizEdge(src='with_case.d', dst='with_case.y', condition_chain=['sel == default'], kind='DRIVER'),
+    ],
+    meta={'target_module': 'with_case', 'datapath': {'op_index': {'y': {'ops': ['Add']}}}},
+)
+```
+
+**每个字段决定什么**:
+
+| VizData 字段 | 决定 |
+|-------------|------|
+| `VizNode.port_side` | `'left'`→PORT_IN 节点, `'right'`→PORT_OUT 节点 |
+| `VizEdge.condition_chain` | 非空→条件边, 归入 case/branch 结构 |
+| `VizEdge.condition_chain[-1]` | branch scope 的 label (`sel == 2'b10` 等) |
+| `VizEdge.condition_chain[0]` | sel 信号名, case scope label `case (sel)` |
+| `VizEdge.source_op` | 非空→创建 OP 节点 (`+` `−` 等) |
+
+### 9.4 阶段 3: VizData → ELK JSON
+
+`viz_to_elk(viz)` 的输出结构 (简化 JSON):
+
+```json
+{
+  "id": "root",
+  "layoutOptions": {
+    "elk.algorithm": "layered", "elk.direction": "RIGHT",
+    "elk.edgeRouting": "ORTHOGONAL",
+    "org.eclipse.elk.hierarchyHandling": "INCLUDE_CHILDREN"
+  },
+  "children": [
+    { "id": "port_sel", "_meta": {"kind": "port_in"},
+      "layoutOptions": {"elk.layered.layering.layerConstraint": "FIRST"} },
+    { "id": "port_c",  "_meta": {"kind": "port_in"}, ... },
+    { "id": "port_d",  "_meta": {"kind": "port_in"}, ... },
+    { "id": "port_b",  "_meta": {"kind": "port_in"}, ... },
+    { "id": "port_a",  "_meta": {"kind": "port_in"}, ... },
+    { "id": "port_y",  "_meta": {"kind": "port_out"},
+      "layoutOptions": {"elk.layered.layering.layerConstraint": "LAST"} },
+    {
+      "id": "case_with_case_dot_y",
+      "_meta": {"kind": "case", "label": "case (sel)"},
+      "layoutOptions": {"elk.direction": "DOWN"},
+      "children": [
+        {
+          "id": "branch_..._sel____2_b10",
+          "_meta": {"kind": "branch", "label": "sel == 2'b10"},
+          "layoutOptions": {"elk.direction": "RIGHT"},
+          "children": [{ "id": "sig_c_...", "_meta": {"kind": "signal"} }],
+          "edges": []
+        },
+        {
+          "id": "branch_..._sel____2_b1",
+          "_meta": {"kind": "branch", "label": "sel == 2'b1"},
+          "children": [
+            { "id": "sig_a_...", "_meta": {"kind": "signal"} },
+            { "id": "sig_b_...", "_meta": {"kind": "signal"} },
+            { "id": "op_Add_...", "_meta": {"kind": "op"} }
+          ],
+          "edges": [
+            { "sources": ["sig_a_..."], "targets": ["op_Add_..."] },
+            { "sources": ["sig_b_..."], "targets": ["op_Add_..."] }
+          ]
+        },
+        { "id": "cond_sel_...", "width": 120, "height": 1,
+          "_meta": {"kind": "condition_anchor"} }
+      ], "edges": []
+    }
+  ],
+  "edges": [
+    { "sources": ["port_c"], "targets": ["sig_c_..."] },
+    { "sources": ["sig_c_..."], "targets": ["port_y"] },
+    { "sources": ["port_sel"], "targets": ["cond_sel_..."] }
+    // ... 9 more edges
+  ]
+}
+```
+
+**VizData→ELK 映射规则**:
+
+| VizData 字段/特征 | ELK 元素 | 规则 |
+|------------------|----------|------|
+| `port_side='left'` | `port_{name}` | layerConstraint FIRST |
+| `port_side='right'` | `port_{name}` | layerConstraint LAST |
+| `condition_chain` 非空 & 同 dst≥2 条 | `case_{dst}` | compound, DOWN 方向 |
+| 每个唯一 `condition_chain[-1]` | `branch_{dst}_{cond}` | compound, RIGHT 方向 |
+| `VizEdge.src` | `sig_{short}_{dst}_{cond}` | leaf in branch |
+| `VizEdge.source_op` | `op_{op}_{dst}_{cond}` | leaf in branch |
+| `condition_chain[0]` | `cond_sel_{dst}` | 120×1 anchor in case scope |
+| port→sig | root edge | 跨层级边 |
+| sig→op (branch 内) | branch edge | branch 内部边 |
+| sig/op→port_y | root edge | 出口边 |
+
+### 9.5 阶段 4: ELK JSON → ELK Layout (+坐标)
+
+`run_elk_layout(graph)` → Node.js ELK 0.12.0 返回 (关键坐标):
+
+```
+root: 348×289
+  port_sel @(20,245) 44×20          ← FIRST constraint, 左列
+  port_c  @(20,100) 44×20
+  port_d  @(20,48)  44×20
+  port_b  @(20,200) 44×20
+  port_a  @(20,155) 44×20
+  port_y  @(284,54) 44×20           ← LAST constraint, 右列
+  case_with_case_dot_y @(89,20) 140×249  ← ELK 自算尺寸
+    branch_2b10 @(37,66) 66×42
+      sig_c @(8,12) 50×24           ← PARENT 坐标 (相对 branch)
+    branch_2b1 @(15,170) 110×71
+      sig_a @(8,12) 50×24           ← PARENT 坐标
+      sig_b @(8,41) 50×24
+      op_Add @(78,16) 24×24
+    cond_sel_... @(15,14) 120×1     ← PARENT 坐标
+```
+
+**关键**: ELK 输出 PARENT 坐标系。branch 内部节点/边的坐标都相对于其 compound parent。
+
+### 9.6 阶段 5: ELK Layout → SVG
+
+`render_svg(layout)` 渲染步骤:
+
+```
+1. _collect_nodes() — 递归遍历 tree, 累加 parent 坐标
+   输出: leaves[], compounds[]
+
+   坐标累加示例:
+     case.x=89, case.y=20
+       branch_2b10.x=37, branch_2b10.y=14
+         sig_c.x=8 → global_x = 89+37+8 = 134
+                      global_y = 20+14+12 = 46
+
+2. _collect_edges() — 递归收集边, PARENT→ROOT 坐标转换
+   示例: e3 在 branch_2b1 内, startPoint=(60,28) 是 PARENT 坐标
+         转换后: global_start = (89+15+60, 20+170+28) = (164, 218)
+                    ↑ case+branch offsets
+
+3. _draw_scope_bgs() — scope 框 (depth 降序: 内层先画)
+   case: fill=#f3e5f5, border=#7b1fa2 solid 1.5px, rx=6
+   branch: fill=#f1f8e9, border=#1b5e20 dashed 1.2px (5,3), rx=4
+
+4. _draw_edges() — polyline + arrow marker
+   stroke=#555555, stroke-width=1.5, marker-end=url(#arrow)
+
+5. _draw_leaves() — 按 _meta.kind 渲染:
+   port_in/out → fill=#eee, stroke=#888, 8px Courier #555
+   signal → fill=#fff, stroke=#333, 9px Courier #2e7d32 (绿色)
+   op → fill=#f0f0f0, stroke=#666, 9px Helvetica Bold #333
+
+6. _draw_scope_labels() — 框内左上角 (x+6, y+13)
+   case: 10px Bold #7b1fa2 (紫色)
+   branch: 8px Normal #1b5e20 (绿色)
+```
+
+### 9.7 完整映射速查表 (一条龙)
+
+```
+VizData 字段                   →  ELK 元素              →  SVG 渲染
+───────────────────────────────────────────────────────────────────
+VizNode.port_side='left'       →  port_{name}           →  灰色端口框, 左列
+VizNode.port_side='right'      →  port_{name}           →  灰色端口框, 右列
+VizEdge.condition_chain (≥2)   →  case_{dst}            →  紫色实线大框 "case (sel)"
+VizEdge.condition_chain[-1]    →  branch_{...}          →  绿色虚线框, label=条件文字
+VizEdge.src                    →  sig_{...}             →  白色矩形, 绿色Courier文字
+VizEdge.source_op              →  op_{...}              →  灰色小矩形, Bold符号
+condition_chain[0]             →  cond_sel_{...}        →  120×1 透明锚点(不渲染)
+port→sig 边                    →  root edge             →  黑色折线+箭头
+sig→op 边 (branch 内)          →  branch edge           →  黑色折线+箭头(PARENT→ROOT转换)
+sig/op→port 边                 →  root edge             →  黑色折线+箭头
+```
+
+**z-order**: scope bg → edges → nodes → scope labels (标签在最上层)
