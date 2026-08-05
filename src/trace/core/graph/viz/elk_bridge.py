@@ -248,7 +248,7 @@ def viz_to_elk(viz: VizData) -> dict:
         'labels': [{'text': f'case ({sel_label})', 'fontSize': 10, 'fontName': 'sans-serif'}],
         'layoutOptions': {
             'elk.direction': 'DOWN',
-            'elk.padding': '[top=14,left=10,right=10,bottom=8]',
+            'elk.padding': '[top=14,left=0,right=10,bottom=8]',
             'elk.spacing.nodeNode': '10',
         },
         'children': case_children,
