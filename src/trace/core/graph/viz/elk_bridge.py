@@ -225,9 +225,7 @@ def viz_to_elk(viz: VizData) -> dict:
                         '_meta': {'kind': 'signal'},
                     })
 
-        # sel → case scope (condition select edge) — ELK-routed with anchor inside case scope.
-        # 1×1 invisible anchor at top of case scope (before all branches), FIRST layer position.
-        # ELK routes port_sel → anchor as a top-level edge entering the case scope compound.
+        # sel → case scope (condition select edge)
         sel_anchor_id = f'cond_sel_{sd}'
         case_children.insert(0, {
             'id': sel_anchor_id, 'width': 1, 'height': 1,
@@ -241,21 +239,26 @@ def viz_to_elk(viz: VizData) -> dict:
                     '_meta': {'kind': 'condition_select'},
                 })
 
-    # ── Phase 4: Assemble case scope ──
-    case_id = f'case_{sd}'
-    case_node = {
-        'id': case_id,
-        'labels': [{'text': f'case ({sel_label})', 'fontSize': 10, 'fontName': 'sans-serif'}],
-        'layoutOptions': {
-            'elk.direction': 'DOWN',
-            'elk.padding': '[top=14,left=0,right=10,bottom=8]',
-            'elk.spacing.nodeNode': '10',
-        },
-        'children': case_children,
-        'edges': case_edges,
-        '_meta': {'kind': 'case', 'label': f'case ({sel_label})'},
-    }
-    root_children.append(case_node)
+        # Phase 4: Assemble case scope
+        case_node = {
+            'id': f'case_{sd}',
+            'labels': [{'text': f'case ({sel_label})', 'fontSize': 10, 'fontName': 'sans-serif'}],
+            'layoutOptions': {
+                'elk.direction': 'DOWN',
+                'elk.padding': '[top=14,left=0,right=10,bottom=8]',
+                'elk.spacing.nodeNode': '10',
+            },
+            'children': case_children,
+            'edges': case_edges,
+            '_meta': {'kind': 'case', 'label': f'case ({sel_label})'},
+        }
+        root_children.append(case_node)
+
+    # Filter out edges with empty targets (ELK rejects them)
+    for e in list(root_edges):
+        if 'targets' in e and not e['targets']:
+            root_edges.remove(e)
+            print(f"[WARN] removed edge {e['id']}: empty target", file=sys.stderr)
 
     return _make_graph(root_children, root_edges)
 
