@@ -75,11 +75,11 @@ def viz_to_elk(viz: VizData) -> dict:
         elif ek not in ('CLOCK', 'RESET', 'BIT_SELECT'):
             regular.append(e)
 
-    input_names, output_name = [], ''
+    input_names, output_names = [], []
     for n in viz.nodes:
         side = getattr(n, 'port_side', '')
         if side == 'left': input_names.append(_short(n.id))
-        elif side == 'right': output_name = _short(n.id)
+        elif side == 'right': output_names.append(_short(n.id))
 
     root_children = []
     root_edges = []
@@ -93,28 +93,57 @@ def viz_to_elk(viz: VizData) -> dict:
             '_meta': {'kind': 'port_in'},
         })
 
-    # ── Phase 2: PORT_OUT node (top-level, RIGHT column) ──
-    if output_name:
+    # ── Phase 2: PORT_OUT nodes (top-level, RIGHT column) ──
+    for name in output_names:
         root_children.append({
-            'id': f'port_{output_name}', 'width': PORT_W, 'height': PORT_H,
-            'labels': [{'text': output_name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
             '_meta': {'kind': 'port_out'},
         })
+    output_set = set(output_names)
 
-    # No conditional edges → simple flat layout
+    # No conditional edges → simple flat layout (PORTS only, no signal nodes)
+    # Pure dataflow: PORT_IN → OP → PORT_OUT
     if not cond_by_dst:
-        for n in viz.nodes:
-            root_children.append({
-                'id': _safe(n.id), 'width': SIG_W, 'height': SIG_H,
-                'labels': [{'text': _short(n.id), 'fontSize': 9, 'fontName': 'Courier'}],
-                '_meta': {'kind': 'signal'},
-            })
+        output_set = set(output_names)
+        op_at_dst = {}
+        # Get const data from VizData datapath
+        const_map = viz.meta.get('datapath', {}).get('const_map', {})
         for e in regular:
-            root_edges.append({
-                'id': ne(), 'sources': [_safe(e.src)], 'targets': [_safe(e.dst)],
-                '_meta': {'kind': 'signal'},
-            })
+            op = getattr(e, 'source_op', None)
+            if not op:
+                continue
+            op_sym = _OP_SYM.get(op, op)
+            dst_safe = _safe(e.dst)
+            if dst_safe not in op_at_dst:
+                op_id = f'op_{_safe(op)}_{dst_safe}'
+                op_at_dst[dst_safe] = op_id
+                # Build labels: op symbol + consts
+                labels = [{'text': op_sym, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}]
+                dst_short_name = _short(e.dst)
+                cvals = const_map.get(dst_short_name, [])
+                if cvals:
+                    labels.append({'text': ', '.join(cvals[:3]), 'fontSize': 7, 'fontName': 'Courier'})
+                # Adjust height for multi-line labels
+                op_h = OP_H + (6 * (len(labels) - 1))
+                root_children.append({
+                    'id': op_id, 'width': OP_W + 20, 'height': op_h,
+                    'labels': labels,
+                    '_meta': {'kind': 'op'},
+                })
+                dst_port = f'port_{_short(e.dst)}' if _short(e.dst) in output_set else None
+                if dst_port:
+                    root_edges.append({
+                        'id': ne(), 'sources': [op_id], 'targets': [dst_port],
+                        '_meta': {'kind': 'signal'},
+                    })
+            src_port = f'port_{_short(e.src)}' if _short(e.src) in input_names else None
+            if src_port:
+                root_edges.append({
+                    'id': ne(), 'sources': [src_port], 'targets': [op_at_dst[dst_safe]],
+                    '_meta': {'kind': 'signal'},
+                })
         return _make_graph(root_children, root_edges)
 
     # ── Phase 3: Build compound case/branch scopes ──
@@ -122,6 +151,7 @@ def viz_to_elk(viz: VizData) -> dict:
     case_edges = []
 
     for dst_id, cedges in cond_by_dst.items():
+        dst_short = _short(dst_id)
         if len(cedges) < 2:
             for e in cedges:
                 root_edges.append({'id': ne(), 'sources': [_safe(e.src)], 'targets': [_safe(e.dst)],
@@ -213,7 +243,7 @@ def viz_to_elk(viz: VizData) -> dict:
 
             if op_id:
                 root_edges.append({
-                    'id': ne(), 'sources': [op_id], 'targets': [f'port_{output_name}'] if output_name else [],
+                    'id': ne(), 'sources': [op_id], 'targets': [f'port_{dst_short}'] if dst_short in output_set else [],
                     '_meta': {'kind': 'signal'},
                 })
             for ge in group:
@@ -221,7 +251,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if not getattr(ge, 'source_op', None):
                     root_edges.append({
-                        'id': ne(), 'sources': [sid], 'targets': [f'port_{output_name}'] if output_name else [],
+                        'id': ne(), 'sources': [sid], 'targets': [f'port_{dst_short}'] if dst_short in output_set else [],
                         '_meta': {'kind': 'signal'},
                     })
 

@@ -218,12 +218,18 @@ def _draw_leaves(svg, leaves):
                 'width': f'{w:.0f}', 'height': f'{h:.0f}',
                 'fill': '#f0f0f0', 'stroke': '#666666', 'stroke-width': '1', 'rx': '2',
             })
-            if text:
-                ET.SubElement(svg, 'text', {
-                    'x': f'{x + w / 2:.0f}', 'y': f'{y + h / 2 + 4:.0f}',
-                    'text-anchor': 'middle', 'font-family': 'Helvetica, Arial, sans-serif',
-                    'font-size': '9', 'font-weight': 'bold', 'fill': '#333333',
-                }).text = text
+            if labels:
+                line_h = 10
+                start_y = y + (h - line_h * len(labels)) / 2 + 7
+                for i, lbl in enumerate(labels):
+                    t = lbl.get('text', '')
+                    sz = lbl.get('fontSize', 9)
+                    fw = 'bold' if lbl.get('fontName', '').lower().find('bold') >= 0 else 'normal'
+                    ET.SubElement(svg, 'text', {
+                        'x': f'{x + w / 2:.0f}', 'y': f'{start_y + i * line_h:.0f}',
+                        'text-anchor': 'middle', 'font-family': 'Helvetica, Arial, sans-serif',
+                        'font-size': str(sz), 'font-weight': fw, 'fill': '#333333',
+                    }).text = t
         else:
             ET.SubElement(svg, 'rect', {
                 'x': f'{x:.0f}', 'y': f'{y:.0f}',
