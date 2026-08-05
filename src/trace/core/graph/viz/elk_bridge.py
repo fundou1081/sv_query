@@ -109,6 +109,26 @@ def viz_to_elk(viz: VizData) -> dict:
         output_set = set(output_names)
         op_at_dst = {}
         const_map = viz.meta.get('datapath', {}).get('const_map', {})
+        input_set = set(input_names)
+        
+        # First pass: identify internal signals (dsts that are not ports)
+        internal_signals = {}  # dst_safe → node info
+        for e in regular:
+            op = getattr(e, 'source_op', None)
+            if not op:
+                continue
+            dst_short = _short(e.dst)
+            dst_safe = _safe(e.dst)
+            if dst_short not in output_set and dst_short not in input_set:
+                # Internal signal — create a signal node
+                if dst_safe not in internal_signals:
+                    internal_signals[dst_safe] = dst_short
+                    root_children.append({
+                        'id': dst_safe, 'width': SIG_W, 'height': SIG_H,
+                        'labels': [{'text': dst_short, 'fontSize': 9, 'fontName': 'Courier'}],
+                        '_meta': {'kind': 'signal'},
+                    })
+        
         for e in regular:
             op = getattr(e, 'source_op', None)
             if not op:
@@ -118,21 +138,37 @@ def viz_to_elk(viz: VizData) -> dict:
             if dst_safe not in op_at_dst:
                 op_id = f'op_{_safe(op)}_{dst_safe}'
                 op_at_dst[dst_safe] = op_id
+                # Build label: for Slice op, show the bit range instead of 'Slice'
+                if op in ('Slice', 'PartSelect'):
+                    src_str = getattr(e, 'src', '') or ''
+                    if '[' in src_str and ']' in src_str:
+                        bit_range = src_str[src_str.index('['):src_str.index(']')+1]
+                        label_text = bit_range
+                    else:
+                        label_text = op_sym
+                else:
+                    label_text = op_sym
                 root_children.append({
                     'id': op_id, 'width': OP_W, 'height': OP_H,
-                    'labels': [{'text': op_sym, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+                    'labels': [{'text': label_text, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
                     '_meta': {'kind': 'op'},
                 })
-                dst_port = f'port_{_short(e.dst)}' if _short(e.dst) in output_set else None
-                if dst_port:
+                # OP → destination (port if output, else internal signal)
+                dst_short = _short(e.dst)
+                if dst_short in output_set:
+                    dst_node = f'port_{dst_short}'
+                elif dst_safe in internal_signals:
+                    dst_node = dst_safe
+                else:
+                    dst_node = None  # fallback, may cause ELK error
+                if dst_node:
                     root_edges.append({
-                        'id': ne(), 'sources': [op_id], 'targets': [dst_port],
+                        'id': ne(), 'sources': [op_id], 'targets': [dst_node],
                         '_meta': {'kind': 'signal'},
                     })
                 # Create independent CONST nodes for this OP
-                dst_short_name = _short(e.dst)
-                cvals = const_map.get(dst_short_name, [])
-                for ci, cv in enumerate(cvals):
+                cvals = const_map.get(dst_short, [])
+                for cv in cvals:
                     const_id = f'const_{cv}_{dst_safe}'
                     root_children.append({
                         'id': const_id, 'width': 40, 'height': SIG_H,
@@ -144,10 +180,29 @@ def viz_to_elk(viz: VizData) -> dict:
                         'id': ne(), 'sources': [const_id], 'targets': [op_id],
                         '_meta': {'kind': 'signal'},
                     })
-            src_port = f'port_{_short(e.src)}' if _short(e.src) in input_names else None
-            if src_port:
+            # Source (port if input, else internal signal) → OP
+            src_short = _short(e.src)
+            if src_short in input_set:
+                src_node = f'port_{src_short}'
+            else:
+                # Check raw e.src (not _safe) for bit-select [7:0], [15:8] etc.
+                if '[' in e.src and ']' in e.src:
+                    # e.g. "with_trunc.sum[7:0]" → base signal name = "sum"
+                    base_short = e.src.split('.')[-1].split('[')[0]
+                    if base_short in internal_signals.values():
+                        base_safe = _safe(e.src.split('[')[0])
+                        src_node = base_safe
+                    elif base_short in input_set:
+                        src_node = f'port_{base_short}'
+                    else:
+                        src_node = None
+                elif _safe(e.src) in internal_signals:
+                    src_node = _safe(e.src)
+                else:
+                    src_node = None
+            if src_node:
                 root_edges.append({
-                    'id': ne(), 'sources': [src_port], 'targets': [op_at_dst[dst_safe]],
+                    'id': ne(), 'sources': [src_node], 'targets': [op_at_dst[dst_safe]],
                     '_meta': {'kind': 'signal'},
                 })
         return _make_graph(root_children, root_edges)
