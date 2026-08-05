@@ -192,8 +192,8 @@ def viz_to_elk(viz: VizData) -> dict:
                 'labels': [{'text': cond_label, 'fontSize': 8, 'fontName': 'sans-serif'}],
                 'layoutOptions': {
                     'elk.direction': 'RIGHT',
-                    'elk.padding': '[top=12,left=8,right=8,bottom=6]',
-                    'elk.spacing.nodeNode': '5',
+                    'elk.padding': '[top=16,left=10,right=10,bottom=8]',
+                    'elk.spacing.nodeNode': '12',
                 },
                 'children': branch_children,
                 'edges': branch_edges,
@@ -225,8 +225,19 @@ def viz_to_elk(viz: VizData) -> dict:
                         '_meta': {'kind': 'signal'},
                     })
 
-        # sel → case scope (condition select edge — skip if no target in case scope)
-        # ELK requires both source and target; skip for now, will be SVG-drawn
+        # sel → case scope (condition select edge)
+        # Create a dummy anchor inside case scope so ELK can route the edge
+        sel_anchor_id = f'cond_sel_{sd}'
+        case_children.append({
+            'id': sel_anchor_id, 'width': 1, 'height': 1,
+            '_meta': {'kind': 'condition_anchor'},
+        })
+        for sig in sorted(sel_sigs):
+            if sig in input_names:
+                root_edges.append({
+                    'id': ne(), 'sources': [f'port_{sig}'], 'targets': [sel_anchor_id],
+                    '_meta': {'kind': 'condition_select'},
+                })
 
     # ── Phase 4: Assemble case scope ──
     case_id = f'case_{sd}'
