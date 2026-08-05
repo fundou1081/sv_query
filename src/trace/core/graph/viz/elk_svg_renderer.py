@@ -71,9 +71,6 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
     # 4. Scope labels (topmost)
     _draw_scope_labels(svg, compounds_sorted)
 
-    # 5. Sel → case scope edge (SVG direct, not through ELK)
-    _draw_sel_to_case_edge(svg, layout, all_leaves, compounds_sorted)
-
     raw = ET.tostring(svg, encoding='unicode')
     return minidom.parseString(raw).toprettyxml(indent='  ')
 
@@ -193,6 +190,8 @@ def _draw_leaves(svg, leaves):
     for l in leaves:
         meta = l.get('meta', {})
         kind = meta.get('kind', 'signal')
+        if kind == 'condition_anchor':
+            continue  # invisible anchor, only exists for ELK edge routing
         x, y = l['ax'] + OX, l['ay'] + OY
         w = l.get('width', 0) or 40
         h = l.get('height', 0) or 20
@@ -235,34 +234,3 @@ def _draw_leaves(svg, leaves):
                     'text-anchor': 'middle', 'font-family': 'Courier, monospace',
                     'font-size': '9', 'fill': '#2e7d32',
                 }).text = text
-
-
-def _draw_sel_to_case_edge(svg, layout, leaves, compounds):
-    """Draw sel→case scope edge: port_sel right edge → horizontal → case scope left edge."""
-    port_sel = None
-    for l in leaves:
-        if l['id'] == 'port_sel':
-            port_sel = l
-            break
-    if not port_sel:
-        return
-
-    case_c = None
-    for c in compounds:
-        if c['meta'].get('kind') == 'case':
-            case_c = c
-            break
-    if not case_c:
-        return
-
-    # Port right edge → case scope left edge (straight horizontal)
-    sx = port_sel['ax'] + port_sel.get('width', 44) + OX
-    sy = port_sel['ay'] + port_sel.get('height', 20) / 2 + OY
-    tx = case_c['ax'] + OX
-
-    d = f'M {sx:.1f} {sy:.1f} L {tx:.1f} {sy:.1f}'
-    ET.SubElement(svg, 'path', {
-        'd': d, 'fill': 'none',
-        'stroke': '#555555', 'stroke-width': '1.5',
-        'marker-end': 'url(#arrow)',
-    })

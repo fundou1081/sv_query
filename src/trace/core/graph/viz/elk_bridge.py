@@ -85,17 +85,11 @@ def viz_to_elk(viz: VizData) -> dict:
     root_edges = []
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
-    for idx, name in enumerate(input_names):
-        port_opts = {'elk.layered.layering.layerConstraint': 'FIRST'}
-        # Put SEL signal at the top of the left column (lowest model order → highest position)
-        # Use cycleBreakingId: smaller = placed before (higher in vertical column)
-        port_opts['elk.layered.considerModelOrder.groupModelOrder.cycleBreakingId'] = str(
-            0 if name == 'sel' else idx + 1
-        )
+    for name in input_names:
         root_children.append({
             'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
             'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
-            'layoutOptions': port_opts,
+            'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
             '_meta': {'kind': 'port_in'},
         })
 
@@ -231,10 +225,29 @@ def viz_to_elk(viz: VizData) -> dict:
                         '_meta': {'kind': 'signal'},
                     })
 
-        # sel → case scope (condition select edge)
-        # Rendered in SVG: a stair-step line from port_sel to the top edge of case scope.
-        # ELK doesn't route this edge; we draw it in the SVG renderer directly.
-        pass
+        # sel → case scope (condition select edge) — ELK-routed
+        # Place a 1×1 anchor at root level so ELK auto-layers it next to the case scope.
+        # Add an invisible edge cond_sel→first branch signal to anchor it near case scope.
+        sel_anchor_id = f'cond_sel_{sd}'
+        root_children.append({
+            'id': sel_anchor_id, 'width': 1, 'height': 1,
+            '_meta': {'kind': 'condition_anchor'},
+        })
+        for sig in sorted(sel_sigs):
+            if sig in input_names:
+                root_edges.append({
+                    'id': ne(), 'sources': [f'port_{sig}'], 'targets': [sel_anchor_id],
+                    '_meta': {'kind': 'condition_select'},
+                })
+        # Invisible edge to pull cond_sel next to the case scope
+        if case_children:
+            first_branch = case_children[0] if case_children else None
+            if first_branch and first_branch.get('children'):
+                first_sig = first_branch['children'][0]['id']
+                root_edges.append({
+                    'id': ne(), 'sources': [sel_anchor_id], 'targets': [first_sig],
+                    '_meta': {'kind': 'condition_select', 'invisible': True},
+                })
 
     # ── Phase 4: Assemble case scope ──
     case_id = f'case_{sd}'
