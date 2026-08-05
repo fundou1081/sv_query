@@ -149,8 +149,13 @@ def _draw_edges(svg, layout):
     all_edges = []
     _collect_edges(layout, all_edges, 0, 0)
     for e in all_edges:
-        if e.get('_meta', {}).get('invisible'):
+        meta = e.get('_meta', {})
+        if meta.get('invisible'):
             continue  # invisible edge for ELK layout routing only
+        assign_type = meta.get('assign_type', '')
+        is_nonblocking = assign_type == 'nonblocking'
+        stroke_color = '#e53935' if is_nonblocking else '#555555'
+        stroke_width = '2' if is_nonblocking else '1.5'
         for sec in e.get('sections', []):
             pts = []
             sp = sec.get('startPoint')
@@ -164,7 +169,7 @@ def _draw_edges(svg, layout):
             for p in pts[1:]: parts.append(f'L {p[0]:.1f} {p[1]:.1f}')
             ET.SubElement(svg, 'path', {
                 'd': ' '.join(parts), 'fill': 'none',
-                'stroke': '#555555', 'stroke-width': '1.5', 'marker-end': 'url(#arrow)',
+                'stroke': stroke_color, 'stroke-width': stroke_width, 'marker-end': 'url(#arrow)',
             })
 
 
