@@ -229,7 +229,7 @@ def viz_to_elk(viz: VizData) -> dict:
         # Create a dummy anchor inside case scope so ELK can route the edge
         sel_anchor_id = f'cond_sel_{sd}'
         case_children.append({
-            'id': sel_anchor_id, 'width': 1, 'height': 1,
+            'id': sel_anchor_id, 'width': 120, 'height': 1,
             '_meta': {'kind': 'condition_anchor'},
         })
         for sig in sorted(sel_sigs):
