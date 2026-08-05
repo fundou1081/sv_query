@@ -85,15 +85,27 @@ def viz_to_elk(viz: VizData) -> dict:
     root_children = []
     root_edges = []
 
+    # Build set of REG output port IDs for nonblocking edge detection
+    _REG_PORTS = set()
+    for n in viz.nodes:
+        if getattr(n, 'kind', '') == 'REG':
+            _REG_PORTS.add(f'port_{_short(n.id)}')
+
     # Helper: add assign_type to edge meta
     def _edge_meta(kind='signal'):
         return {'kind': kind}
 
-    def _emit_edge(eid, srcs, tgts, edge_obj=None):
-        meta = _edge_meta()
+    def _emit_edge(eid, srcs, tgts, edge_obj=None, kind='signal'):
+        meta = {'kind': kind}
         if edge_obj is not None:
             at = getattr(edge_obj, 'assign_type', '') or ''
-            meta['assign_type'] = at
+            if at:
+                meta['assign_type'] = at
+        # If target is a REG output port, mark as nonblocking
+        for t in tgts:
+            if t in _REG_PORTS:
+                meta['assign_type'] = 'nonblocking'
+                break
         return {'id': eid, 'sources': srcs, 'targets': tgts, '_meta': meta}
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
@@ -174,10 +186,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 else:
                     dst_node = None  # fallback, may cause ELK error
                 if dst_node:
-                    root_edges.append({
-                        'id': ne(), 'sources': [op_id], 'targets': [dst_node],
-                        '_meta': {'kind': 'signal'},
-                    })
+                    root_edges.append(_emit_edge(ne(), [op_id], [dst_node], e))
                 # Create independent CONST nodes for this OP
                 cvals = const_map.get(dst_short, [])
                 for cv in cvals:
@@ -188,10 +197,7 @@ def viz_to_elk(viz: VizData) -> dict:
                         'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
                         '_meta': {'kind': 'const'},
                     })
-                    root_edges.append({
-                        'id': ne(), 'sources': [const_id], 'targets': [op_id],
-                        '_meta': {'kind': 'signal'},
-                    })
+                    root_edges.append(_emit_edge(ne(), [const_id], [op_id]))
             # Source (port if input, else internal signal) → OP
             src_short = _short(e.src)
             if src_short in input_set:
@@ -213,10 +219,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 else:
                     src_node = None
             if src_node:
-                root_edges.append({
-                    'id': ne(), 'sources': [src_node], 'targets': [op_at_dst[dst_safe]],
-                    '_meta': {'kind': 'signal'},
-                })
+                root_edges.append(_emit_edge(ne(), [src_node], [op_at_dst[dst_safe]], e))
         return _make_graph(root_children, root_edges)
 
     # ── Phase 3: Build compound case/branch scopes ──
@@ -227,8 +230,7 @@ def viz_to_elk(viz: VizData) -> dict:
         dst_short = _short(dst_id)
         if len(cedges) < 2:
             for e in cedges:
-                root_edges.append({'id': ne(), 'sources': [_safe(e.src)], 'targets': [_safe(e.dst)],
-                                   '_meta': {'kind': 'signal'}})
+                root_edges.append(_emit_edge(ne(), [_safe(e.src)], [_safe(e.dst)], e))
             continue
 
         sd = _safe(dst_id)
@@ -285,10 +287,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 for ge in group:
                     sn = _short(ge.src)
                     sid = f'sig_{sn}_{sd}_{sc}'
-                    branch_edges.append({
-                        'id': ne(), 'sources': [sid], 'targets': [op_id],
-                        '_meta': {'kind': 'signal'},
-                    })
+                    branch_edges.append(_emit_edge(ne(), [sid], [op_id], ge))
 
             case_children.append({
                 'id': bid,
@@ -309,24 +308,15 @@ def viz_to_elk(viz: VizData) -> dict:
                 sid = f'sig_{sn}_{sd}_{sc}'
                 # PORT_IN → signal
                 if sn in input_names:
-                    root_edges.append({
-                        'id': ne(), 'sources': [f'port_{sn}'], 'targets': [sid],
-                        '_meta': {'kind': 'signal', 'label': sn},
-                    })
+                    root_edges.append(_emit_edge(ne(), [f'port_{sn}'], [sid], ge))
 
             if op_id:
-                root_edges.append({
-                    'id': ne(), 'sources': [op_id], 'targets': [f'port_{dst_short}'] if dst_short in output_set else [],
-                    '_meta': {'kind': 'signal'},
-                })
+                root_edges.append(_emit_edge(ne(), [op_id], [f'port_{dst_short}'] if dst_short in output_set else []))
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if not getattr(ge, 'source_op', None):
-                    root_edges.append({
-                        'id': ne(), 'sources': [sid], 'targets': [f'port_{dst_short}'] if dst_short in output_set else [],
-                        '_meta': {'kind': 'signal'},
-                    })
+                    root_edges.append(_emit_edge(ne(), [sid], [f'port_{dst_short}'] if dst_short in output_set else [], ge))
 
         # sel → case scope (condition select edge)
         sel_anchor_id = f'cond_sel_{sd}'
@@ -337,10 +327,7 @@ def viz_to_elk(viz: VizData) -> dict:
         })
         for sig in sorted(sel_sigs):
             if sig in input_names:
-                root_edges.append({
-                    'id': ne(), 'sources': [f'port_{sig}'], 'targets': [sel_anchor_id],
-                    '_meta': {'kind': 'condition_select'},
-                })
+                root_edges.append(_emit_edge(ne(), [f'port_{sig}'], [sel_anchor_id], kind='condition_select'))
 
         # Phase 4: Assemble case scope
         case_node = {
