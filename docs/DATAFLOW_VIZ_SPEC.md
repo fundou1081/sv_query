@@ -334,169 +334,134 @@ elk_svg_renderer.py:
 
 ---
 
-## 七、V12→V100 增量改动：Scope 层级深度 + 渲染顺序
+## 七、V100: ELK Compound Graph（✅ 已实现）
 
-> 日期: 2026-08-05 13:23
-> 状态: 技术方案评估完成，待实现
-> 背景: 方豆发参考图（case (sel) 紫色大框 + 绿色虚线分支框 + 双行 condition/value 节点）
-> 决策: 不改 elk_bridge 主逻辑（viz_to_elk），只改 `_build_scope_map` + SVG 渲染
+> 日期: 2026-08-05 13:37
+> 状态: ✅ 已实现并 commit
+> Commits: d5bd09c, e74245d, 14acdd0
+> 方案: 用 ELK 原生 compound graph (INCLUDE_CHILDREN) 替代 flat layout + SVG 后补 scope 框
 
-### 7.1 当前 V12 基线数据评估
+### 7.1 为什么从 V12 flat 迁移到 compound graph
 
-**VizData 结构**（golden_dataflow_9_case）：
-- 6 个节点: 5 PORT_IN (sel, a, b, c, d) + 1 PORT_OUT (y)
-- 5 条边: 全部带 condition_chain，4 个不同条件标签 + 1 个 Add OP
-- 条件标签: `sel == 2'b10`, `sel == default`, `sel == 2'b1`, `sel == 2'b0`
-- `datapath.op_index['y']` = {'ops': ['Add'], 'consts': []}
+**V12 问题**：flat layout（所有节点在 root 下），SVG 渲染器事后计算 scope 框 (post-layout bbox from member positions)。Scope 框不是 ELK 原生布局，导致：
+- 框和内容脱节、视觉差
+- scope 框 bbox 算法不够精确
+- 无法利用 ELK 的层级 spacer 和 cross-hierarchy edge routing
 
-**V12 `_build_scope_map` 的问题**：
-- 只有一个 scope，所有 5 条边的 src+dst 打平到同一 scope
-- depth 全是 1
-- scope label = `mux: sel=sel == 2'b0`（取第一条边的条件，不准确）
-- 没有 case scope（紫色外层）和 branch scope（绿色内层）的层级区分
+**V100 方案**：让 ELK 原生处理 scope 嵌套（compound graph），ELK 自动计算 scope 框尺寸和位置。
 
-### 7.2 参考图结构（方豆提供）
+### 7.2 核心架构
 
 ```
-┌─ case (sel) 紫色实线大框 ─────────────────────────────────┐
-│                                                             │
-│  ┌─ sel == 2'b10 绿色虚线框 ─┐                              │
-│  │  [c]                       │──→ y                        │
-│  └───────────────────────────┘                              │
-│  ┌─ sel == default 绿色虚线框 ─┐                             │
-│  │  [d]                       │──→ y                        │
-│  └───────────────────────────┘                              │
-│  ┌─ sel == 2'b1 绿色虚线框 ─┐                                │
-│  │  [b]                       │──→ + ──→ y                  │
-│  └───────────────────────────┘                              │
-│  ┌─ sel == 2'b0 绿色虚线框 ─┐                                │
-│  │  [a]                       │──→ + ──→ y                  │
-│  └───────────────────────────┘                              │
-│                                                             │
-│  绿色大框（无标签，包裹所有 4 个分支）                         │
-└─────────────────────────────────────────────────────────────┘
+root (hierarchyHandling: INCLUDE_CHILDREN, RIGHT)
+├── PORT_IN: port_sel, port_c, port_d, port_b, port_a  (FIRST layer constraint)
+├── PORT_OUT: port_y  (LAST layer constraint)
+├── case scope (compound, 无 w/h, ELK 自算)
+│   ├── layoutOptions: DOWN direction  (branches 竖排)
+│   ├── cond_sel anchor (1x1, 不渲染)  — port_sel 连到这里
+│   ├── branch_2b10 (compound, RIGHT)
+│   │   └── sig_c
+│   ├── branch_default (compound, RIGHT)
+│   │   └── sig_d
+│   ├── branch_2b1 (compound, RIGHT)
+│   │   ├── sig_a, sig_b
+│   │   ├── op_Add
+│   │   └── edges: sig_a→op_Add, sig_b→op_Add
+│   └── branch_2b0 (compound, RIGHT)
+│       └── sig_a
+└── root edges (跨层级):
+    port_c→sig_c, port_d→sig_d, port_b→sig_b, port_a→sig_a(b0), port_a→sig_a(b1)
+    sig_c→port_y, sig_d→port_y, sig_a0→port_y, op_Add→port_y
+    port_sel→cond_sel_anchor
 ```
 
-Scope 层级深度：
-- depth=0: case scope（紫色实线 #f3e5f5 / #7b1fa2）
-- depth=1: 绿色大框（无标签，包裹所有分支）← 当前暂不实现
-- depth=2: branch scope（绿色虚线 #f1f8e9 / #1b5e20，每条件一个）
-
-### 7.3 改动范围（仅 2 个函数）
-
-| 文件 | 函数 | 改动 |
-|------|------|------|
-| `elk_bridge.py` | `_build_scope_map()` | **重写**：按 condition 分组 → 每条件一个 branch scope (depth=1) + case scope (depth=0)。`member_ids` 按条件分组，只含该条件的 signal/op 节点 |
-| `elk_svg_renderer.py` | `_draw_scopes()` / `render_svg()` | 渲染顺序改为 scope bg → edges → nodes → scope labels（标签最上层）。标签从框外 `y-6` 改为框内 `x+8, y+14`。按 depth 降序渲染（外层后画，作为背景） |
-
-**不需要改的部分**：
-- `viz_to_elk()` — 节点/边构建逻辑不动
-- `run_elk_layout()` — ELK 布局引擎不动
-- `_draw_node()` / `_draw_edge()` — 节点/边的绘制逻辑不动
-- elk_svg_renderer 的其他渲染函数
-
-### 7.4 `_build_scope_map()` 新算法（伪代码）
+### 7.3 ELK 配置关键点
 
 ```python
-def _build_scope_map(viz):
-    cond_by_dst = defaultdict(list)
-    for e in viz.edges:
-        chain = getattr(e, 'condition_chain', None) or []
-        if chain: cond_by_dst[e.dst].append(e)
+ELK_OPTIONS = {
+    'elk.algorithm': 'layered',
+    'elk.direction': 'RIGHT',
+    'elk.edgeRouting': 'ORTHOGONAL',
+    'org.eclipse.elk.hierarchyHandling': 'INCLUDE_CHILDREN',  # ← 关键！
+}
 
-    scope_map = {}
-    scope_idx = 0
+# PORT_IN/OUT: layer constraint 固定左右列
+port_node['layoutOptions'] = {'elk.layered.layering.layerConstraint': 'FIRST'}   # LEFT
+port_node['layoutOptions'] = {'elk.layered.layering.layerConstraint': 'LAST'}    # RIGHT
 
-    for dst_id, cedges in cond_by_dst.items():
-        if len(cedges) < 2: continue  # 不是 case 语句
-        
-        scope_idx += 1
-        case_id = f'scope_{scope_idx}'
-        
-        # 提取 sel 信号名
-        sel_sig = extract_sel_signal(cedges)  # from condition_chain
-        
-        # 按 condition label 分组
-        by_cond = defaultdict(list)
-        for e in cedges:
-            chain = getattr(e, 'condition_chain', [])
-            by_cond[chain[-1]].append(e)
-        
-        # 为每个 condition 建 branch scope
-        case_members = []
-        for cond_label, edges in by_cond.items():
-            scope_idx += 1
-            branch_id = f'scope_{scope_idx}'
-            members = set()
-            for e in edges:
-                members.add(_elk_id(e.src))
-                members.add(_elk_id(e.dst))
-                # 如果有 OP，也加入
-                if getattr(e, 'source_op', None):
-                    members.add(make_op_id(e))
-            scope_map[branch_id] = {
-                'depth': 1, 'label': cond_label,
-                'member_ids': list(members),
-            }
-            case_members.extend(members)
-        
-        # Case scope（外层）
-        scope_map[case_id] = {
-            'depth': 0, 'label': f'case ({sel_sig})',
-            'member_ids': list(set(case_members)),
-        }
-    
-    return scope_map
+# Case scope: DOWN 方向让 branches 竖排
+case_scope['layoutOptions'] = {
+    'elk.direction': 'DOWN',
+    'elk.padding': '[top=14,left=10,right=10,bottom=8]',
+    'elk.spacing.nodeNode': '10',
+}
+
+# Branch scope: RIGHT 方向让 signal→op 水平排列
+branch_scope['layoutOptions'] = {
+    'elk.direction': 'RIGHT',
+    'elk.padding': '[top=16,left=10,right=10,bottom=8]',
+    'elk.spacing.nodeNode': '12',
+}
 ```
 
-### 7.5 SVG 渲染改动
+### 7.4 三层节点布局
 
-**渲染 z-order**（render_svg 内）：
+| 层级 | 节点类型 | size | 渲染 | 说明 |
+|------|----------|------|------|------|
+| Root | PORT_IN | 44×20 | 灰色小框 | FIRST layer constraint, 左侧列 |
+| Root | PORT_OUT | 44×20 | 灰色小框 | LAST layer constraint, 右侧 |
+| Case scope | compound | 自算 | 紫色实线框 | 不设 w/h, ELK 自动扩到包含所有 branch |
+| Branch scope | compound | 自算 | 绿色虚线框 | 每个 condition label 一个 |
+| Branch 内 | signal | 50×24 | 白底黑框, 绿色 Courier | 短信号名 |
+| Branch 内 | op | 24×24 | 灰底小框, Bold | +, −, × 等 |
+| Branch 内 | cond_sel_anchor | 1×1 | 不渲染 | port_sel 连线目标，只占 ELK 位置 |
+
+### 7.5 边路由（全由 ELK 生成）
+
+所有边都由 ELK orthogonal routing 生成 sections，0 fallback。
+
+| 边类型 | 挂载位置 | 示例 |
+|--------|----------|------|
+| PORT_IN → branch signal | root edges | `port_c → sig_c` |
+| Branch 内 signal → op | branch edges | `sig_a → op_Add` |
+| Signal/op → PORT_OUT | root edges | `sig_c → port_y` |
+| port_sel → case anchor | root edges | `port_sel → cond_sel_anchor` |
+| sel select 虚线 | SVG 渲染器 | 从 port_sel 画台阶线到 case scope 顶边 |
+
+### 7.6 关键 bug 修复
+
+**Bug: branch 内线段坐标偏移**（commit 14acdd0）
+- ELK 对 branch compound node 内的 edge sections 使用 **PARENT 坐标**（相对于 branch node）
+- `_collect_edges` 必须递归累加 compound node 的 x/y 偏移，转换到 ROOT 坐标
+- 根因：ELK 默认 `json.edgeCoords: CONTAINER`，branch 内的 section 坐标是相对于 branch compound node 而非 root
+
 ```python
-# 当前 V12:
-_draw_scopes(svg, layout, scope_map)   # scope 框 + label 一起画
-_draw_stages(svg, layout, stage_map)
-_draw_edges(...)
-_draw_node(...)
-
-# V100 改动后:
-_draw_scopes_bg(svg, layout, scope_map)     # 仅 scope 背景填充 + 边框
-_draw_stages(svg, layout, stage_map)
-_draw_edges(...)
-_draw_node(...)
-_draw_scopes_labels(svg, layout, scope_map) # scope 标签（最上层）
+def _collect_edges(node, out, px, py):
+    """递归收集边，PARENT→ROOT 坐标转换"""
+    nx = (node.get('x', 0) or 0) + px
+    ny = (node.get('y', 0) or 0) + py
+    for e in node.get('edges', []):
+        ec = dict(e)
+        for sec in ec.get('sections', []):
+            # 偏移 startPoint/endPoint/bendPoints 到 ROOT 坐标
+            sec['startPoint'] = {'x': sec['startPoint']['x'] + nx, 'y': ...}
+            ...
+        out.append(ec)
+    for c in node.get('children', []):
+        _collect_edges(c, out, nx, ny)
 ```
 
-**`_draw_scopes_bg` 逻辑**：
-- 按 depth 降序排序（depth 大的先画 = 内层先画）
-- 对每个 scope：画背景 rect + 边框 rect
-- dashed 仅对 depth >= 1 的 scope
+### 7.7 结果 (golden_dataflow_9_case)
 
-**`_draw_scopes_labels` 逻辑**：
-- 标签位置从 `min_y - 6` 改为 `min_y + 14`（框内左上角）
-- 只画有 label 的 scope
+- **11/11 边**，全有 ELK sections（0 no-section）
+- 1 紫色 case scope + 4 绿色 branch scope
+- 5 PORT_IN (LEFT) + 1 PORT_OUT (RIGHT)
+- 5 signal nodes + 1 op_Add + 1 cond_sel_anchor (1×1 不渲染)
+- 所有边由 ELK orthogonal routing 生成
 
-### 7.6 决策确认（与方豆讨论）
+### 7.8 动手前参考
 
-| 问题 | 决策 |
-|------|------|
-| branch scope 分组 | 1 个 condition label → 1 个绿色虚线框，**不合并** |
-| 分支节点 label | 单行 condition 文字（非双行 condition+value） |
-| 绿色大框（无标签，包裹所有分支）| **本次不实现**，后续再加 |
-| PORT_IN/OUT 布局 | **不改**，沿用 V12 的 viz_to_elk() 逻辑 |
-
-### 7.7 预期效果
-
-改动后 golden_dataflow_9_case 的 scope_map 应产出：
-
-```
-scope_1 (case_scope): depth=0  label='case (sel)'
-  member_ids=[all signal + op nodes]
-
-scope_2: depth=1  label='sel == 2'b10'  member_ids=[c, y]
-scope_3: depth=1  label='sel == default'  member_ids=[d, y]
-scope_4: depth=1  label='sel == 2'b1'  member_ids=[a, b, y, op_Add]
-scope_5: depth=1  label='sel == 2'b0'  member_ids=[a, y]
-```
-
-渲染：4 个绿色虚线框（各含对应信号）嵌套在 1 个紫色实线 case 框内。标签在框内左上。
+- `~/my_proj/elkjs/examples/hierarchical_modules.js` — ELK compound graph 原型
+- `~/my_proj/elkjs/MANUAL.md` — elkjs 手册（坐标系 PARENT/ROOT/CONTAINER）
+- `~/my_proj/elkjs/PARAMETERS.md` — 参数参考（hierarchyHandling, layerConstraint, compoundNode）
+- `/tmp/test_elk_compound.js` — Node.js 原型验证脚本（case9 场景）
