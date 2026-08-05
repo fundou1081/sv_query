@@ -77,10 +77,18 @@ def viz_to_elk(viz: VizData) -> dict:
             regular.append(e)
 
     input_names, output_names = [], []
+    # Identify clock/reset ports to exclude from dataflow display
+    _clock_reset_srcs = set()
+    for e in viz.edges:
+        ek = getattr(e, 'kind', '')
+        if ek in ('CLOCK', 'RESET'):
+            _clock_reset_srcs.add(_short(e.src))
     for n in viz.nodes:
         side = getattr(n, 'port_side', '')
-        if side == 'left': input_names.append(_short(n.id))
-        elif side == 'right': output_names.append(_short(n.id))
+        if side == 'left' and _short(n.id) not in _clock_reset_srcs:
+            input_names.append(_short(n.id))
+        elif side == 'right':
+            output_names.append(_short(n.id))
 
     root_children = []
     root_edges = []
