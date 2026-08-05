@@ -577,3 +577,43 @@ SVG 渲染:
 - `~/my_proj/elkjs/MANUAL.md` — elkjs 手册（坐标系 PARENT/ROOT/CONTAINER）
 - `~/my_proj/elkjs/PARAMETERS.md` — 参数参考（hierarchyHandling, layerConstraint, compoundNode）
 - `/tmp/test_elk_compound.js` — Node.js 原型验证脚本（case9 场景）
+
+---
+
+## 八、V100 已知限制 (2026-08-05 15:00)
+
+### 8.1 sel → case 连线无法精确到边框边缘
+
+**当前方案** (commit `07fe342`): cond_sel 1×1 不可见锚点放在 case scope 内部
+（FIRST layer constraint，插在所有 branch 之前），ELK 通过 INCLUDE_CHILDREN
+模式路由 port_sel → cond_sel 的跨层级边。
+
+**限制根因**:
+
+1. **ELK 不支持边直接连到 compound node** — edge target 必须是 leaf node，
+   所以必须有一个 cond_sel leaf anchor 来接收边。leaf 必然在 compound **内部**。
+
+2. **Compound node padding 把 leaf 从边框向内侧推** —
+   即使 case scope 的 `left` padding 改为 0，ELK 仍会有内部最小间距（~5px）。
+
+3. **Case scope `direction: DOWN` + cond_sel `FIRST`** —
+   cond_sel 被排到 case scope 最顶部（top padding 之后），
+   而 top padding 同样从顶边向内推。
+
+**结果**: 连线终点在 case scope **内部**约 5-15px，视觉上略深入框内。
+
+**尝试过的方案**:
+
+| 方案 | 结果 |
+|------|------|
+| cond_sel 在 root 层（无连接关系） | ELK 随机排层，不靠近 case scope ❌ |
+| cond_sel 在 root 层 + 不可见边连到 branch signal | 锚定偏左上方，不是正对 case scope ❌ |
+| case scope left padding 10→0 | gap 减少但仍 ~5px offset ⚠️ 当前 |
+| SVG 直画 `_draw_sel_to_case_edge` | 精确定位但绕过 ELK 路由 ✅ 已删除 |
+
+**决策 (2026-08-05 14:59)**: **维持当前 ELK 原生版本，不切回 SVG。**
+用户明确要求"维持当前的版本，不切回svg"。
+
+**未来可能的改进方向**:
+- 混合方案：ELK 路由 + SVG 在边缘补 5-10px 延长线
+- 等 ELK 支持 compound-node port edges 后迁移
