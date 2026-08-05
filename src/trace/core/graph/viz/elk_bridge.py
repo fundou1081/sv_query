@@ -85,11 +85,17 @@ def viz_to_elk(viz: VizData) -> dict:
     root_edges = []
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
-    for name in input_names:
+    for idx, name in enumerate(input_names):
+        port_opts = {'elk.layered.layering.layerConstraint': 'FIRST'}
+        # Put SEL signal at the top of the left column (lowest model order → highest position)
+        # Use cycleBreakingId: smaller = placed before (higher in vertical column)
+        port_opts['elk.layered.considerModelOrder.groupModelOrder.cycleBreakingId'] = str(
+            0 if name == 'sel' else idx + 1
+        )
         root_children.append({
             'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
             'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
-            'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+            'layoutOptions': port_opts,
             '_meta': {'kind': 'port_in'},
         })
 
