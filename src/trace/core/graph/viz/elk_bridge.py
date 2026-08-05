@@ -48,6 +48,7 @@ _OP_SYM = {
     "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
     "LogicalAnd": "&&", "LogicalOr": "||",
     "Ternary": "?:", "Mux": "MUX",
+    "Concat": "{}",
 }
 
 def _short(s): return s.split('.')[-1] if '.' in s else s
