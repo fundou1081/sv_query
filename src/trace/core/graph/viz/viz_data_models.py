@@ -64,6 +64,10 @@ class VizNode:
     # --- function 标记 (V8.2) ---
     is_function: bool = False
 
+    # --- [V13] Port 节点标记 ---
+    is_port: bool = False       # 是否为显式 port 节点 (PORT_IN/PORT_OUT)
+    port_side: str = ""         # 'left' (input) | 'right' (output) | '' (非 port)
+
     # --- 其它 ---
     extra: dict[str, Any] = field(default_factory=dict)
 

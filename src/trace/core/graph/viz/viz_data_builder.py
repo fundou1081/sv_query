@@ -150,15 +150,24 @@ def build_viz_data(
     # [V8.2] 数据富化: function标记 + const_map + op_index (从源码读取，不修改边数据)
     _enrich_datapath_info(viz, graph, opts)
 
-    # [V10] 过滤：PORT_IN 中所有出边都是条件边(会被 scope 吞)的节点不纳入数据流图
-    # 条件/控制信号 (sel, mode, clk, rst_n) 的"数据流"通过 condition_chain 元数据表达
+    # [V13] Port 节点生成: PORT_IN/PORT_OUT 转为显式 port 节点
+    # PORT_IN: 标记 is_port=True, port_side='left', 保留在图中
+    # PORT_OUT: 标记 is_port=True, port_side='right', 保留在图中
+    # CONST 节点: 如果所有出边都是条件边则过滤 (纯控制信号)
     port_in_has_direct_edge: set[str] = set()
     for e in viz.edges:
         cc = getattr(e, 'condition_chain', None) or []
         if not cc:
             port_in_has_direct_edge.add(e.src)
+    for n in viz.nodes:
+        if n.kind == "PORT_IN":
+            n.is_port = True
+            n.port_side = 'left'
+        elif n.kind == "PORT_OUT":
+            n.is_port = True
+            n.port_side = 'right'
     viz.nodes = [n for n in viz.nodes
-                 if n.kind not in ("PORT_IN", "CONST") or n.id in port_in_has_direct_edge]
+                 if n.kind != "CONST" or n.id in port_in_has_direct_edge]
 
     viz.meta["filtered_node_count"] = viz.node_count
     viz.meta["filtered_edge_count"] = viz.edge_count
@@ -227,7 +236,10 @@ def _enrich_datapath_info(viz, graph, opts):
     """
     import re, os as _os
     from collections import defaultdict
-    from .viz_engine import _short
+    
+    def _short(s: str) -> str:
+        """模块前缀剥离"""
+        return s.split(".")[-1] if "." in s else s
     
     dp = {
         "const_map": defaultdict(list),
@@ -242,14 +254,18 @@ def _enrich_datapath_info(viz, graph, opts):
     src_files = getattr(opts, 'source_files', None) or []
     if not src_files:
         # 从 VizNode 的 file 属性反查 SV 源码路径
+        # 只在项目目录和 fixtures 目录查找，不做全盘递归
+        search_roots = [
+            _os_path.getcwd(),
+            _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures'),
+        ]
         seen_names = set(n.file for n in viz.nodes if n.file)
         for fname in seen_names:
-            # 递归搜索项目目录找匹配的 SV 文件
-            for root_prefix in [_os_path.getcwd(), _os_path.path.expanduser('~')]:
-                for root, dirs, files in _os_path.walk(root_prefix):
-                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules','__pycache__','.git')]
+            for root in search_roots:
+                for dirpath, dirs, files in _os_path.walk(root):
+                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules','__pycache__','.git','.venv')]
                     if fname in files:
-                        src_files.append(_os_path.path.join(root, fname))
+                        src_files.append(_os_path.path.join(dirpath, fname))
                         break
                 if src_files:
                     break
