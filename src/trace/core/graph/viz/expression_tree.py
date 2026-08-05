@@ -176,6 +176,12 @@ class ExpressionTree:
                     inner = list(token)
                     if inner:
                         return ExpressionTree._parse_expr(inner, 0, len(inner))
+                # Fallback: try .expression for nodes that expose it
+                inner_attr = getattr(token, 'expression', None)
+                if inner_attr is not None and hasattr(inner_attr, '__iter__') and not isinstance(inner_attr, str):
+                    inner_tokens = list(inner_attr)
+                    if inner_tokens:
+                        return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
                 return ExpressionTree._leaf(token)
             
             # Concatenation → build from operands
@@ -395,7 +401,13 @@ class ExpressionTree:
         return label_map.get(op_name, op_name)
     
     @staticmethod
-    def _source_text(token, fallback: str) -> str:
+    def _to_dict(node: ExprNode) -> dict:
+        """Serialize ExprNode tree to JSON-safe dict for viz.meta storage."""
+        return {
+            "label": node.label,
+            "op": node.op,
+            "children": [ExpressionTree._to_dict(c) for c in node.children]
+        }
         """Extract original source text from token's sourceRange (line/col based).
         
         Falls back to str(token).strip() if sourceRange is unavailable.

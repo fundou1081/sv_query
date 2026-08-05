@@ -355,3 +355,56 @@ def _enrich_datapath_info(viz, graph, opts):
             op_index[dn_s] = {'ops': op_list, 'consts': consts}
     
     viz.meta["datapath"] = dp
+
+    # ── V6.11 ExpressionTree: 从 SV 源码 AST 为每个 assign 构建表达式树 ──
+    _build_expr_trees_for_datapath(viz, dp, src_files, opts)
+
+
+def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
+    """为每个 assign 构建 ExpressionTree，存到 dp["expr_trees"] = {dst → tree_dict}
+    
+    tree_dict 格式: {"label": "Add", "children": [...child_dict]} (JSON 可序列化)
+    """
+    from .expression_tree import ExpressionTree
+    from trace.core._pyslang_compat import SyntaxTree
+    
+    expr_trees = {}
+    if not src_files:
+        return
+    
+    for sp in src_files:
+        try:
+            with open(sp) as f:
+                src_text = f.read()
+            st = SyntaxTree.fromText(src_text)
+        except Exception:
+            continue
+        
+        # st.root is ModuleDeclarationSyntax (single node)
+        # It has .members which is a list of module body items
+        root = st.root
+        module_name = _extract_module_name(root)
+        
+        for member in st.root.members:
+            if not hasattr(member, 'assignments'):
+                continue
+            for ass in member.assignments:
+                et = ExpressionTree.build(ass)
+                if et is None or et.root is None:
+                    continue
+                left = str(ass.left).strip()
+                tree_key = f"{module_name}.{left}" if module_name else left
+                expr_trees[tree_key] = ExpressionTree._to_dict(et.root)
+    dp["expr_trees"] = expr_trees
+
+
+def _extract_module_name(root) -> str:
+    """从 ModuleDeclarationSyntax 提取模块名"""
+    header = getattr(root, 'header', None)
+    if header is None:
+        return ''
+    # header is iterable: [module_keyword, IdentifierName, ...]
+    items = list(header)
+    if len(items) >= 2:
+        return str(items[1]).strip()
+    return ''
