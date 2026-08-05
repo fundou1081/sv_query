@@ -116,6 +116,67 @@ def viz_to_elk(viz: VizData) -> dict:
                 break
         return {'id': eid, 'sources': srcs, 'targets': tgts, '_meta': meta}
 
+    _EXPR_OP_W, _EXPR_OP_H = 20, 20
+    
+    def _render_expr_tree(tree_node, prefix, dst_safe, dst_node, const_map, dst_short, e):
+        """递归渲染 ExpressionTree 为 ELK node/edge 列表
+        
+        返回: (root_op_id, new_children, new_edges)
+        
+        结构: SignalRef → signal node (port or internal)
+              Const → const node
+              OP → op node + edges to children
+        """
+        from .expression_tree import ExpressionTree
+        
+        new_children = []
+        new_edges = []
+        
+        node_id = f"{prefix}_{_safe(tree_node['op'])}_{tree_node['label']}" if tree_node.get('op') else f"{prefix}_leaf_{tree_node['label']}"
+        # Deduplicate: append counter
+        nc = len(root_children) + len(new_children)
+        node_id = f"{node_id}_{nc}"
+        
+        label = tree_node.get('label', '?')
+        children = tree_node.get('children', [])
+        
+        if tree_node.get('op') == 'SignalRef':
+            # Leaf: signal reference → return as source node ref
+            if label in input_set:
+                return (f'port_{label}', [], [])
+            elif label in internal_signals:
+                return (label, [], [])
+            else:
+                return (label, [], [])
+        
+        if tree_node.get('op') == 'Const':
+            const_id = f'const_{label}_{dst_safe}_{nc}'
+            new_children.append({
+                'id': const_id, 'width': 40, 'height': SIG_H,
+                'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                '_meta': {'kind': 'const'},
+            })
+            return (const_id, new_children, new_edges)
+        
+        # Operator node
+        op_h = _EXPR_OP_H + max(0, (len(children) - 2) * 8)
+        new_children.append({
+            'id': node_id, 'width': _EXPR_OP_W, 'height': op_h,
+            'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+            '_meta': {'kind': 'op'},
+        })
+        
+        # Recurse into children
+        for ci, child in enumerate(children):
+            child_id, c_children, c_edges = _render_expr_tree(
+                child, f"{prefix}_c{ci}", dst_safe, dst_node, const_map, dst_short, e)
+            new_children.extend(c_children)
+            new_edges.extend(c_edges)
+            if child_id:
+                new_edges.append(_emit_edge(ne(), [child_id], [node_id]))
+        
+        return (node_id, new_children, new_edges)
+
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
     for name in input_names:
         root_children.append({
@@ -141,6 +202,7 @@ def viz_to_elk(viz: VizData) -> dict:
         output_set = set(output_names)
         op_at_dst = {}
         const_map = viz.meta.get('datapath', {}).get('const_map', {})
+        expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
         input_set = set(input_names)
         
         # First pass: identify internal signals (dsts that are not ports)
@@ -167,6 +229,38 @@ def viz_to_elk(viz: VizData) -> dict:
                 continue
             op_sym = _OP_SYM.get(op, op)
             dst_safe = _safe(e.dst)
+            dst_short = _short(e.dst)
+            
+            # Check for ExpressionTree: if available, render tree instead of flat OP
+            # expr_trees keys: "with_function.z", "with_function.y" (module.dst)
+            tree_data = None
+            # Try exact dst (with module prefix), then short form, then safe form
+            for tk in [e.dst, dst_short, dst_safe]:
+                if tk in expr_trees:
+                    tree_data = expr_trees[tk]
+                    break
+            
+            if tree_data and dst_safe not in op_at_dst:
+                # Render expression tree recursively
+                dst_node = None
+                if dst_short in output_set:
+                    dst_node = f'port_{dst_short}'
+                elif dst_safe in internal_signals:
+                    dst_node = dst_safe
+                
+                root_op_id, tree_children, tree_edges = _render_expr_tree(
+                    tree_data, f"et_{dst_safe}", dst_safe, dst_node, const_map, dst_short, e)
+                root_children.extend(tree_children)
+                root_edges.extend(tree_edges)
+                
+                # Connect tree root → dst
+                if dst_node and root_op_id:
+                    root_edges.append(_emit_edge(ne(), [root_op_id], [dst_node], e))
+                
+                # Mark as done
+                op_at_dst[dst_safe] = root_op_id
+                continue
+            
             if dst_safe not in op_at_dst:
                 op_id = f'op_{_safe(op)}_{dst_safe}'
                 op_at_dst[dst_safe] = op_id
