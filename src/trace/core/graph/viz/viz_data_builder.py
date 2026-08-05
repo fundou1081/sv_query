@@ -250,11 +250,9 @@ def _enrich_datapath_info(viz, graph, opts):
     
     # 1. 从 SV 源码提取常量 + function 声明 (一次性, 不重复开文件)
     import os as _os_path
-    import glob as _glob
     src_files = getattr(opts, 'source_files', None) or []
     if not src_files:
         # 从 VizNode 的 file 属性反查 SV 源码路径
-        # 只在项目目录和 fixtures 目录查找，不做全盘递归
         search_roots = [
             _os_path.getcwd(),
             _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures'),
@@ -271,6 +269,36 @@ def _enrich_datapath_info(viz, graph, opts):
                     break
             if src_files:
                 break
+    
+    # 常量提取: 用 VizEdge.expression 中的 assign/wire 行逐行提取常量
+    # expression 可能是整个源文件，按行扫描 assign/wire dst=rhs 行，精确匹配每个 dst
+    _verilog_const = re.compile(r"\d+'[bdh]\w+")
+    _bare_num = re.compile(r'(?<![\[\w])\d+(?![:\w\]])')
+    for e in viz.edges:
+        expr = getattr(e, 'expression', '') or ''
+        if not expr or len(expr) > 10000:
+            continue
+        dn_s = e.dst.split('.')[-1]
+        for line in expr.split('\n'):
+            ls = line.strip()
+            if ls.startswith('//') or ls.startswith('module') or ls.startswith('input') or ls.startswith('output'):
+                continue
+            m = re.match(r'(?:assign|wire)\s+(?:\S+\s+)?(\w+)\s*=\s*(.+);', ls)
+            if not m:
+                continue
+            rhs_dst, rhs = m.group(1), m.group(2)
+            if rhs_dst != dn_s:
+                continue  # only collect consts for this edge's dst
+            # Verilog 字面量 (8'd128)
+            vc = _verilog_const.findall(rhs)
+            for c in vc:
+                if c not in dp["const_map"][dn_s]:
+                    dp["const_map"][dn_s].append(c)
+            # 从 rhs 移除 Verilog 字面量后, 提取纯数字 (2)
+            cleaned = _verilog_const.sub('', rhs)
+            for c in _bare_num.findall(cleaned):
+                if c not in dp["const_map"][dn_s]:
+                    dp["const_map"][dn_s].append(c)
     
     func_names_set = set()
     for sp in src_files:
@@ -289,12 +317,12 @@ def _enrich_datapath_info(viz, graph, opts):
                 wm = re.match(r'(?:wire|logic)\s.*?(\w+)\s*=\s*(.+);', ls)
                 if wm:
                     dst, rhs = wm.group(1), wm.group(2)
-                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    consts = CONST_PAT.findall(rhs)
                     if consts: dp["const_map"][dst].extend(consts)
                 am = re.match(r'assign\s+(\w+)\s*=\s*(.+);', ls)
                 if am:
                     dst, rhs = am.group(1), am.group(2)
-                    consts = re.findall(r"\d+'[bdh]\w+\b", rhs)
+                    consts = CONST_PAT.findall(rhs)
                     if consts: dp["const_map"][dst].extend(consts)
         except Exception:
             pass
