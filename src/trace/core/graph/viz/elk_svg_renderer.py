@@ -238,12 +238,7 @@ def _draw_leaves(svg, leaves):
 
 
 def _draw_sel_to_case_edge(svg, layout, leaves, compounds):
-    """Draw sel→case scope stair-step edge directly in SVG (not through ELK).
-
-    Finds port_sel and case scope, then draws:
-      port_sel right edge → horizontal 30px → vertical down to case scope top edge.
-    """
-    # Find port_sel leaf
+    """Draw sel→case scope edge: port_sel right edge → horizontal → case scope left edge."""
     port_sel = None
     for l in leaves:
         if l['id'] == 'port_sel':
@@ -252,7 +247,6 @@ def _draw_sel_to_case_edge(svg, layout, leaves, compounds):
     if not port_sel:
         return
 
-    # Find case scope (depth=2 means case scope in current nesting)
     case_c = None
     for c in compounds:
         if c['meta'].get('kind') == 'case':
@@ -261,17 +255,12 @@ def _draw_sel_to_case_edge(svg, layout, leaves, compounds):
     if not case_c:
         return
 
-    # Port right edge (ROOT coords + SVG offset)
+    # Port right edge → case scope left edge (straight horizontal)
     sx = port_sel['ax'] + port_sel.get('width', 44) + OX
     sy = port_sel['ay'] + port_sel.get('height', 20) / 2 + OY
+    tx = case_c['ax'] + OX
 
-    # Case scope top edge
-    ty = case_c['ay'] + OY
-    step_x = sx + 30
-
-    # Stair-step: → right to align with case left → ↓ to case top → → into case
-    target_x = case_c['ax'] + OX + 6
-    d = f'M {sx:.1f} {sy:.1f} L {target_x:.1f} {sy:.1f} L {target_x:.1f} {ty:.1f} L {target_x + 8:.1f} {ty:.1f}'
+    d = f'M {sx:.1f} {sy:.1f} L {tx:.1f} {sy:.1f}'
     ET.SubElement(svg, 'path', {
         'd': d, 'fill': 'none',
         'stroke': '#555555', 'stroke-width': '1.5',
