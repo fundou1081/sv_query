@@ -141,13 +141,22 @@ class ExpressionTree:
             token = tokens[start]
             kind = str(getattr(token, 'kind', ''))
             
-            # Compound expression node (AddExpression, MultiplyExpression, etc.)
-            # These wrap sub-expressions and are iterable
-            if 'Expression' in kind and kind != 'AssignmentExpression':
-                if hasattr(token, '__iter__') and not isinstance(token, str):
-                    inner = list(token)
-                    if inner:
-                        return ExpressionTree._parse_expr(inner, 0, len(inner))
+            # IntegerVectorExpression / Literal tokens: never iterate, use _leaf directly.
+            # (IntegerVectorExpression.__iter__ returns tokens like [8, 'd, 128]
+            #  which breaks _parse_expr's operator detection.)
+            if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind or 'Literal' in kind:
+                return ExpressionTree._leaf(token)
+                inner = getattr(token, 'expression', None)
+                if inner is not None:
+                    inner_tokens = list(inner)
+                    if inner_tokens:
+                        return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
+                return None
+            
+            # IntegerVectorExpression / Literal tokens: never iterate, use _leaf directly.
+            # (IntegerVectorExpression.__iter__ returns tokens like [8, 'd, 128]
+            #  which breaks _parse_expr's operator detection.)
+            if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind:
                 return ExpressionTree._leaf(token)
             
             # Parenthesized expression → recurse into .expression
@@ -158,6 +167,16 @@ class ExpressionTree:
                     if inner_tokens:
                         return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
                 return None
+            
+            # Compound expression node (AddExpression, MultiplyExpression, etc.)
+            # These wrap sub-expressions and are iterable via __iter__.
+            # Do NOT use .expression — only ParenthesizedExpression has .expression.
+            if 'Expression' in kind and kind != 'AssignmentExpression':
+                if hasattr(token, '__iter__') and not isinstance(token, str):
+                    inner = list(token)
+                    if inner:
+                        return ExpressionTree._parse_expr(inner, 0, len(inner))
+                return ExpressionTree._leaf(token)
             
             # Concatenation → build from operands
             if 'Concatenation' in kind or 'OpenBrace' in kind:
@@ -253,11 +272,11 @@ class ExpressionTree:
         kind = str(getattr(token, 'kind', ''))
         text = str(token).strip()
         
-        # Integer literal expression (pyslang wraps bare integers)
-        if 'IntegerLiteral' in kind or 'Literal' in kind:
-            if _re.match(r'^\d+$', text):
-                return ExprNode(op="Const", label=text)
-            return ExprNode(op="Const", label=text)
+        # Integer vector literal (e.g. 8'd128) — use source text for original representation
+        if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind or 'Literal' in kind:
+            # Try sourceRange for exact original text
+            label = ExpressionTree._source_text(token, text)
+            return ExprNode(op="Const", label=label)
         
         # Verilog literal constant
         if _re.match(r"\d+'[bdh]\w+", text):
@@ -374,3 +393,33 @@ class ExpressionTree:
             "Ternary": "?:", "Concat": "{}", "Modulo": "%",
         }
         return label_map.get(op_name, op_name)
+    
+    @staticmethod
+    def _source_text(token, fallback: str) -> str:
+        """Extract original source text from token's sourceRange (line/col based).
+        
+        Falls back to str(token).strip() if sourceRange is unavailable.
+        """
+        import re as _re2
+        sr = getattr(token, 'sourceRange', None)
+        if sr is None:
+            return fallback
+        
+        start = getattr(sr, 'start', None)
+        end = getattr(sr, 'end', None)
+        if start is None or end is None:
+            return fallback
+        
+        start_line = getattr(start, 'line', 1)
+        start_col = getattr(start, 'column', 1)
+        end_line = getattr(end, 'line', 1)
+        end_col = getattr(end, 'column', 1)
+        
+        parent = getattr(token, 'parent', None)
+        # Walk up to find the root SyntaxTree or source text
+        # Use str(token) which pyslang gives the original text for tokens
+        text = str(token).strip()
+        if text and text != fallback:
+            return text
+        
+        return fallback
