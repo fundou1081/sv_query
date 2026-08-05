@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/fundou1081/sv_query#readme",
   "dependencies": {
-    "elkjs": "^0.12.0"
+    "elkjs": "^0.12.0",
+    "elkjs-svg": "^0.2.1"
   }
 }

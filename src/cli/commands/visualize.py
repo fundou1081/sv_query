@@ -211,7 +211,8 @@ def graph(
 
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
-    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         tracer, graph = build_viz_tracer(
@@ -222,7 +223,7 @@ def graph(
         handle_compilation_error(e, strict=strict)
         return
 
-    # [V6.7] 统一 VizData 渲染管线
+    # [V12] 统一 ELK.js 渲染管线
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     classification = classify_graph(graph)
 
@@ -235,20 +236,13 @@ def graph(
         include_edge_condition=show_conditions,
         include_edge_expression=True,
     ))
-    dot = render_dot(viz, {
-        "title": title,
-        "layout": layout,
-        "layout_engine": layout_engine,
-        "show_clock_reset": not exclude_clock,
-        "edge_labels": show_labels or show_conditions,
-        "show_source": show_source,
-    })
+    svg = render_dataflow(viz, {"title": title})
 
     if dot_output:
-        Path(dot_output).write_text(dot)
-        typer.echo(f"\u2713 DOT: {dot_output}")
+        Path(dot_output).write_text(svg)
+        typer.echo(f"\u2713 SVG: {dot_output}")
     else:
-        typer.echo(dot)
+        typer.echo(svg)
 
 @vis_app.command(name="dataflow")
 def dataflow(
@@ -277,7 +271,8 @@ def dataflow(
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
@@ -294,7 +289,7 @@ def dataflow(
     typer.echo(f"  Control nodes: {len(classification.control_nodes)}", err=True)
     typer.echo(f"  Clock nodes: {len(classification.clock_nodes)}", err=True)
 
-    # [V6.7] 使用统一 VizData 渲染管线
+    # [V12] ELK.js 渲染管线
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=module or file or filelist or "",
         include_node_class=True,
@@ -302,17 +297,16 @@ def dataflow(
         include_edge_expression=True,
     ))
     title = module or file or filelist or "Dataflow"
-    dot = render_dot(viz, {"title": f"Dataflow: {title}", "show_clock_reset": include_clk_rst})
+    svg = render_dataflow(viz, {"title": f"Dataflow: {title}"})
 
     if dot_output:
-        Path(dot_output).write_text(dot)
+        Path(dot_output).write_text(svg)
 
-    # [Phase 6.1 2026-07-12] Split by module: generate per-instance DOTs
     if split_by_module:
         _emit_split_by_module(graph, classification, module or file or filelist or "", dot_output, include_clk_rst, Path)
-        typer.echo(f"✓ DOT: {dot_output}")
+        typer.echo(f"✓ SVG: {dot_output}")
     else:
-        typer.echo(dot)
+        typer.echo(svg)
 
 
 @vis_app.command(name="pipeline")
