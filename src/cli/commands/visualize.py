@@ -341,7 +341,8 @@ def pipeline(
     from trace.core.compiler import CompilationError
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_dot
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
@@ -380,17 +381,13 @@ def pipeline(
         include_edge_condition=True,
     ))
     title = module or file or filelist or "Pipeline"
-    dot = render_dot(viz, {
-        "title": f"Pipeline: {title}",
-        "layout": "LR",
-        "show_clock_reset": False,
-    })
+    svg = render_dataflow(viz, {"title": f"Pipeline: {title}"})
 
     if dot_output:
-        Path(dot_output).write_text(dot)
-        typer.echo(f"✓ DOT: {dot_output}")
+        Path(dot_output).write_text(svg)
+        typer.echo(f"✓ SVG: {dot_output}")
     else:
-        typer.echo(dot)
+        typer.echo(svg)
 
 
 
@@ -416,7 +413,8 @@ def compute(
     """
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
-    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_compute_dot
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         tracer, graph = build_viz_tracer(
@@ -427,20 +425,20 @@ def compute(
         handle_compilation_error(e, strict=strict)
         return
 
-    # [V6.7] 运算架构图: 需要 expression + SignalSource op
+    # [V12] 运算架构图: ELK.js 渲染
     title = module or file or filelist or "Compute"
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=title,
         include_edge_expression=True,
         include_edge_condition=True,
     ))
-    dot = render_compute_dot(viz, {"title": f"Compute: {title}", "layout": "LR"})
+    svg = render_dataflow(viz, {"title": f"Compute: {title}"})
 
     if dot_output:
-        Path(dot_output).write_text(dot)
-        typer.echo(f"\u2713 DOT: {dot_output}")
+        Path(dot_output).write_text(svg)
+        typer.echo(f"\u2713 SVG: {dot_output}")
     else:
-        typer.echo(dot)
+        typer.echo(svg)
 
 
 
@@ -466,7 +464,8 @@ def timed(
     from trace.core.compiler import CompilationError
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
     from trace.core.graph.analyzer.signal_classifier import classify_graph
-    from trace.core.graph.viz import VizBuildOptions, build_viz_data, render_timed_compute
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         tracer, graph = build_viz_tracer(
@@ -522,13 +521,13 @@ def timed(
         include_node_class=True,
         classification=classification,
     ))
-    dot = render_timed_compute(viz, {"title": f"Timed: {title}"})
+    svg = render_dataflow(viz, {"title": f"Timed: {title}"})
 
     if dot_output:
-        Path(dot_output).write_text(dot)
-        typer.echo(f"\u2713 DOT: {dot_output}")
+        Path(dot_output).write_text(svg)
+        typer.echo(f"\u2713 SVG: {dot_output}")
     else:
-        typer.echo(dot)
+        typer.echo(svg)
 
 
 @vis_app.command(name="gap")
@@ -1423,38 +1422,31 @@ def _run_graph_visualization(
         for cp in cg.coverpoints:
             cov_signals.add(cp.signal)
 
-    viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
+    # [V12] ELK.js 渲染路径
+    from trace.core.graph.analyzer.signal_classifier import classify_graph as _cls
+    from trace.core.graph.viz import VizBuildOptions, build_viz_data
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
-    edge_filter = set()
-    if exclude_clock:
-        edge_filter.add("exclude_clock")
-    if exclude_reset:
-        edge_filter.add("exclude_reset")
-
-    viewer.configure(
-        layout=layout,
-        show_edges=not no_edges,
-        edge_labels=show_labels,
-        edge_conditions=show_conditions,
+    classification = _cls(graph)
+    viz = build_viz_data(graph, VizBuildOptions(
+        target_module=file or "Signal Graph",
         max_edges=max_edges,
-        edge_filter=edge_filter,
-        cluster_modules=cluster_modules,
-        layout_engine=layout_engine,
-        module_only=module_only,
-        node_style={"risk_color": True, "cover_marker": True, "show_fan": True, "show_type": True, "show_source": show_source},
-    )
+        include_node_class=True,
+        classification=classification,
+        include_edge_condition=show_conditions,
+        include_edge_expression=True,
+    ))
 
     if dot_output:
-        viewer.render_dot(dot_output, f"Signal Graph: {file}")
-        print(f"✓ DOT: {dot_output}")
+        svg_text = render_dataflow(viz, {"title": f"Signal Graph: {file}"})
+        Path(dot_output).write_text(svg_text)
+        print(f"✓ SVG: {dot_output}")
 
     if mmd_output:
-        viewer.render_mermaid(mmd_output)
-        print(f"✓ Mermaid: {mmd_output}")
+        print(f"  (Mermaid output deprecated, use --dot for SVG)")
 
     if html_output:
-        viewer.render_html(html_output)
-        print(f"✓ HTML: {html_output}")
+        print(f"  (HTML output deprecated, use --dot for SVG)")
 
     if not (dot_output or mmd_output or html_output):
         print("No output specified. Use --dot, --mmd, or --html")
@@ -1506,52 +1498,38 @@ def _run_gap_visualization(file, dot_output, html_output, min_risk, cache=False)
     gap_signals.sort(key=lambda x: x["risk_score"], reverse=True)
 
     if dot_output:
-        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
-        viewer.configure(
-            layout="TB",
-            show_edges=True,
-            edge_filter={"exclude_clock", "exclude_reset"},
+        # [V12] ELK.js SVG 输出
+        from trace.core.graph.viz import VizBuildOptions, build_viz_data
+        from trace.core.graph.viz.viz_engine import render_dataflow
+        from trace.core.graph.analyzer.signal_classifier import classify_graph as _cls
+        classification = _cls(graph)
+        viz = build_viz_data(graph, VizBuildOptions(
+            target_module=file,
+            include_node_class=True,
+            classification=classification,
+            include_edge_condition=True,
+            include_edge_expression=True,
             max_edges=200,
-            node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
-            highlight_gaps=True,
-            min_risk_for_highlight=min_risk,
-        )
-        viewer.render_dot(dot_output, f"Verification Gap: {file}")
-        print(f"✓ DOT: {dot_output}")
+        ))
+        svg_text = render_dataflow(viz, {"title": f"Verification Gap: {file}"})
+        Path(dot_output).write_text(svg_text)
+        print(f"✓ SVG: {dot_output}")
 
-        # 渲染为 PNG (正方形比例)
-        png_output = dot_output.replace(".dot", ".png")
+        # 渲染为 PNG
+        png_output = dot_output.replace(".dot", ".png").replace(".svg", ".png")
         import subprocess
-
         try:
-            # 使用 -G 指定图形属性，确保正方形输出（不裁剪）
-            subprocess.run(
-                ["dot", "-Tpng", "-Gsize=10", "-Gratio=compress", dot_output, "-o", png_output],
-                check=True,
-                capture_output=True,
-            )
+            rc = subprocess.run(
+                ["cairosvg", dot_output, "-o", png_output],
+                check=True, capture_output=True,
+            ).returncode
             print(f"✓ PNG: {png_output}")
-        except Exception:
-            # fallback: 不带额外参数
-            try:
-                subprocess.run(["dot", "-Tpng", dot_output, "-o", png_output], check=True, capture_output=True)
-                print(f"✓ PNG: {png_output}")
-            except Exception as e2:
-                print(f"  (PNG渲染失败: {e2})")
+        except Exception as e:
+            print(f"  (PNG渲染失败: {e})")
 
     if html_output:
-        viewer = SignalGraphViewer(graph, sva_signals, cov_signals)  # noqa: F821
-        viewer.configure(
-            layout="TB",
-            show_edges=True,
-            edge_filter={"exclude_clock", "exclude_reset"},
-            max_edges=200,
-            node_style={"risk_color": True, "cover_marker": True, "show_fan": True},
-            highlight_gaps=True,
-            min_risk_for_highlight=min_risk,
-        )
-        viewer.render_html(html_output)
-        print(f"✓ HTML: {html_output}")
+        # [V12] HTML 暂不支持, 输出 SVG
+        print(f"  (HTML output deprecated, use --dot for SVG)")
 
     print(f"\n  📊 Gap signals: {len(gap_signals)} (risk >= {min_risk})")
 
@@ -2282,7 +2260,7 @@ def datapath(
     # Build VizData
     from trace.core.graph.analyzer.signal_classifier import classify_graph as _classify
     from trace.core.graph.viz.viz_data_builder import VizBuildOptions, build_viz_data
-    from trace.core.graph.viz.viz_datapath_renderer import render_datapath
+    from trace.core.graph.viz.viz_engine import render_dataflow
 
     try:
         classification = _classify(graph)
@@ -2299,7 +2277,7 @@ def datapath(
     )
     viz = build_viz_data(graph, opts)
 
-    # Render
+    # Render (V12 ELK.js)
     cfg = {
         "title": f"Datapath: {target}",
         "layout": "LR",
@@ -2308,33 +2286,34 @@ def datapath(
         "show_control": show_control,
         "show_source": show_source,
     }
-    dot_text = render_datapath(viz, cfg)
+    svg_text = render_dataflow(viz, cfg)
 
     # Output
     if dot:
         from pathlib import Path
         Path(dot).parent.mkdir(parents=True, exist_ok=True)
-        Path(dot).write_text(dot_text)
-        typer.echo(f"✓ DOT: {dot}")
+        Path(dot).write_text(svg_text)
+        typer.echo(f"✓ SVG: {dot}")
 
     if png:
-        from trace.core.graph.analyzer._dot_common import render_with_engine
-        rc = render_with_engine(dot_text, png, engine="dot", fmt="png")
+        from pathlib import Path
+        import subprocess
+        svg_path = str(Path(png).with_suffix('.svg'))
+        Path(svg_path).write_text(svg_text)
+        rc = subprocess.run(['cairosvg', svg_path, '-o', png], capture_output=True).returncode
         if rc == 0:
             typer.echo(f"✓ PNG: {png}")
         else:
             typer.echo(f"✗ PNG render failed (rc={rc})", err=True)
 
     if svg:
-        from trace.core.graph.analyzer._dot_common import render_with_engine
-        rc = render_with_engine(dot_text, svg, engine="dot", fmt="svg")
-        if rc == 0:
-            typer.echo(f"✓ SVG: {svg}")
-        else:
-            typer.echo(f"✗ SVG render failed (rc={rc})", err=True)
+        from pathlib import Path
+        Path(svg).parent.mkdir(parents=True, exist_ok=True)
+        Path(svg).write_text(svg_text)
+        typer.echo(f"✓ SVG: {svg}")
 
     if not (dot or png or svg):
-        typer.echo(dot_text)
+        typer.echo(svg_text)
 
 
 if __name__ == "__main__":

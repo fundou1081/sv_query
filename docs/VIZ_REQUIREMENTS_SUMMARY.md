@@ -1,11 +1,16 @@
-# sv_query 可视化设计文档 V12 — ELK.js 架构
+# sv_query 可视化设计文档 V13 — ELK.js 架构
 
-> 状态: 当前实现 (2026-08-04)
+> 状态: 设计中 (2026-08-04)
 > 布局引擎: ELK.js 0.12+ (Sugiyama layered)
 > 渲染后端: Python SVG (cairosvg)
-> 输出格式: SVG / PNG / DOT (fallback)
+> 输出格式: SVG / PNG
 >
 > 本文档覆盖完整技术细节: 数据模型、ELK JSON 结构、端口定义、坐标计算、边路由规则、scope 框去重算法、渲染 Z-order。
+>
+> **V13 新增规则 (2026-08-04, 基于 case1 golden 审查):**
+> 1. Module scope 必须有显式 port 节点 (input 左侧/output 右侧, 竖向排列)
+> 2. Case/if-else 需要嵌套 condition scope (外层 case scope + 每分支子 scope)
+> 3. 整体数据流从左到右
 
 ---
 
@@ -22,7 +27,11 @@
 9. [等价连线](#9-等价连线)
 10. [颜色方案](#10-颜色方案)
 11. [节点渲染细节](#11-节点渲染细节)
-12. [已知问题 & 陷阱](#12-已知问题--陷阱)
+12. [V13 新规则 — 模块 Port 节点与嵌套 Condition Scope](#12-v13-新规则--模块-port-节点与嵌套-condition-scope)
+    - [12.1 规则一: Module Scope 显式 Port 节点](#121-规则一-module-scope-显式-port-节点)
+    - [12.2 规则二: Case/If-Else 嵌套 Condition Scope](#122-规则二-caseif-else-嵌套-condition-scope)
+    - [12.3 规则三: 整体数据流 — 左到右](#123-规则三-整体数据流--左到右)
+13. [已知问题 & 陷阱](#13-已知问题--陷阱)
 
 ---
 
@@ -89,7 +98,18 @@ class VizNode:
     stage_id: int        # pipeline stage id (BSF 深度)
     cycle: int           # 所在 cycle
     risk_level: str      # LOW | MEDIUM | HIGH | CRITICAL
+
+    # [V13] Port 节点标记
+    is_port: bool        # 是否为显式 port 节点 (PORT_IN/PORT_OUT)
+    port_side: str       # 'left' (input) | 'right' (output) | '' (非 port)
 ```
+
+**kind 枚举值**:
+- `PORT_IN`: 模块 input port, 显式节点, 位于 module scope 内左侧, 数据源
+- `PORT_OUT`: 模块 output port, 显式节点, 位于 module scope 内右侧, 数据汇
+- `SIGNAL`: 内部信号节点
+- `REG`: 寄存器节点
+- `CONST`: 常量节点
 
 ### 2.2 VizEdge 关键字段
 
@@ -167,6 +187,60 @@ def _reg_node(node_id: str, label: str, w: int, h: int,
       - 首字符若为数字 → 前缀 'n_'
       - 只保留 [a-zA-Z0-9_-]
     """
+```
+
+#### Port 节点 (V13 新增)
+
+```python
+def _reg_port_node(node: VizNode) -> str:
+    """
+    注册显式 port 节点 (PORT_IN / PORT_OUT)
+    
+    PORT_IN (input):
+      - port.side=EAST  (只有输出边, 数据流向 module 内部)
+      - ELK layer constraint: FIRST_SEPARATE (强制最左列)
+    
+    PORT_OUT (output):
+      - port.side=WEST  (只有输入边, 从 module 内部收集数据)
+      - ELK layer constraint: LAST_SEPARATE (强制最右列)
+    
+    节点外观: 与 signal 节点相同 (白底黑框 rx=3)
+    但 kind='port' → SVG 用稍深的灰色边框 (区分 signal)
+    """
+```
+
+**Port 节点的 ELK JSON 结构**:
+
+```json
+// PORT_IN (input, 左侧)
+{
+    "id": "port_in_a",
+    "width": 100,
+    "height": 32,
+    "labels": [{"text": "a", "fontSize": 9, "fontName": "Courier"}],
+    "ports": [
+        {"id": "port_in_a_out", "properties": {"port.side": "EAST"}}
+    ],
+    "properties": {
+        "elk.layered.layerConstraint": "FIRST_SEPARATE"
+    },
+    "_meta": {"kind": "port", "port_dir": "input"}
+}
+
+// PORT_OUT (output, 右侧)
+{
+    "id": "port_out_y",
+    "width": 100,
+    "height": 32,
+    "labels": [{"text": "y", "fontSize": 9, "fontName": "Courier"}],
+    "ports": [
+        {"id": "port_out_y_in", "properties": {"port.side": "WEST"}}
+    ],
+    "properties": {
+        "elk.layered.layerConstraint": "LAST_SEPARATE"
+    },
+    "_meta": {"kind": "port", "port_dir": "output"}
+}
 ```
 
 生成的 ELK JSON 节点结构:
@@ -780,7 +854,166 @@ text_y = y + h / 2 + 4  # +4 调整 baseline
 
 ---
 
-## 12. 已知问题 & 陷阱
+## 12. V13 新规则 — 模块 Port 节点与嵌套 Condition Scope
+
+> 状态: 设计中 (2026-08-04)
+> 来源: golden_dataflow_9_case.sv (case1) 审查反馈
+
+### 12.1 规则一: Module Scope 显式 Port 节点
+
+**规则**: Module scope 框内必须有显式的 input/output port 节点。
+
+- **Input port 节点**在 module scope 内**左侧**，竖向排列，作为数据源（出边）
+- **Output port 节点**在 module scope 内**右侧**，竖向排列，作为数据汇（入边）
+- 整体数据流方向: **左 → 右**
+
+**渲染效果**（case1 示例）:
+
+```
+┌── module with_case ──────────────────────────────────┐
+│                                                       │
+│  [sel]  [a]  [b]  [c]  [d]     ← input ports (左侧)  │
+│   │      │    │     │    │                            │
+│   │      │    │     │    └──────────────┐             │
+│   │      │    │     └─────────────────┐│             │
+│   │      ├────┤                      ││             │
+│   │      │    └───┐                  ││             │
+│   │      │        │    ┌─ case ──┐   ││             │
+│   │      │        │    │ ...     │   ││             │
+│   │      │        │    └─────────┘   ││             │
+│   └──────┼────────┼─────────┼────────┼│             │
+│          ▼        ▼         ▼         ▼│             │
+│                                        │             │
+│                                 [y]  ← output port   │
+│                                                       │
+└───────────────────────────────────────────────────────┘
+```
+
+**数据层要求**:
+
+```python
+# VizData.build_options 新增:
+@dataclass
+class VizBuildOptions:
+    # ...现有字段...
+    show_ports: bool = True          # [V13] 是否显式 port 节点
+    port_layout: str = 'left-right'  # [V13] port 排列方向
+
+# VizNode 新增 kind:
+# 'PORT_IN'  — 模块 input port, 左侧, 仅出边
+# 'PORT_OUT' — 模块 output port, 右侧, 仅入边
+
+# VizData 自动生成 port 节点:
+# 从 SignalGraph 的 PORT_IN/PORT_OUT 类型节点中提取
+# 如果 VizBuildOptions.target_module 已指定, 只生成该 module 的 port
+```
+
+**ELK 布局约束**:
+
+```python
+# Port 节点使用 ELK layering constraints:
+# Input ports: 强制在 LAYER_0 (最左列)
+# Output ports: 强制在 LAYER_∞ (最右列, 通过 HIGH_PRIORITY 实现)
+
+# 或者: Input ports → FIRST_SEPARATE layer
+#        Output ports → LAST_SEPARATE layer
+```
+
+**Node rendering**:
+
+- Port 节点与 signal 节点外观相同（白底黑框, rx=3）
+- 但字体颜色为系统默认黑色（非绿色），以区分 data/signal 节点
+- Port 节点 label = 短信号名 (如 `sel`, `a`, `y`)
+
+### 12.2 规则二: Case/If-Else 嵌套 Condition Scope
+
+**规则**: 条件块 (case / if-else) 渲染为**嵌套 scope 结构**:
+
+- 外层 scope 框 = case/if-else 本身
+  - 标签: `case (sel)` 或 `if (cond)`
+  - 边框: 紫色实线 (区分于 module 灰线)
+- 内层子 scope = 每个条件分支
+  - 每个分支一个独立子框
+  - 标签: 条件表达式 (`sel == 2'b00`, `sel == 2'b01`, `default`)
+  - 子框内: 该分支的数据流子图（信号节点 + OP 节点 + 边）
+  - 边框: 绿色虚线
+
+**渲染效果**（case 示例）:
+
+```
+┌── case (sel) ────────────────────────────────┐
+│                                               │
+│  ┌─ sel == 2'b00 ──┐  ┌─ sel == 2'b01 ────┐ │
+│  │ a ──────────→ y │  │ a ──┐              │ │
+│  └─────────────────┘  │ b ──[+]──→ y       │ │
+│                       └───────────────────┘ │
+│                                               │
+│  ┌─ sel == 2'b10 ──┐  ┌─ sel == default ──┐ │
+│  │ c ──────────→ y │  │ d ────────────→ y │ │
+│  └─────────────────┘  └───────────────────┘ │
+│                                               │
+└───────────────────────────────────────────────┘
+```
+
+**数据层变化**:
+
+```python
+# VizData 新增字段:
+@dataclass
+class VizData:
+    # ...现有字段...
+    case_scopes: list[CaseScope] = []   # [V13] case/if-else scope 树
+
+@dataclass
+class CaseScope:
+    id: str                  # 唯一标识, 如 "case_y"
+    dst: str                 # 目标信号名, 如 "y"
+    kind: str                # 'case' | 'ifelse' | 'ternary'
+    selector: str            # 选择信号/条件, 如 "sel"
+    branches: list[CaseBranch]  # 各分支
+
+@dataclass
+class CaseBranch:
+    id: str                  # "case_y_branch_0"
+    condition: str           # "sel == 2'b00", "default"
+    member_srcs: list[str]   # 该分支涉及的源信号
+    member_edges: list[str]  # 该分支涉及的边
+    member_ops: list[str]    # 该分支涉及的 OP 节点
+```
+
+**scope 层级体系**:
+
+| Depth | Kind | 颜色 | 示例 |
+|-------|------|------|------|
+| 0 | `module` | 灰实线 | `module with_case` |
+| 1 | `case` / `if` / `ternary` | 紫实线 | `case (sel)` |
+| 2 | `branch` | 绿虚线 | `sel == 2'b00`, `default` |
+| 3+ | (嵌套 case/if) | 红/蓝虚线 | 嵌套条件 |
+
+### 12.3 规则三: 整体数据流 — 左到右
+
+**规则**: 所有图的默认布局方向为 `LEFT → RIGHT`。
+
+- ELK `elk.direction = "RIGHT"`
+- Input ports 在左侧列
+- 数据流从左向右穿过 case scope → OP 节点 → output port
+- 子 scope 按条件顺序从上到下排列
+
+**ELK layout options 需调整**:
+
+```python
+LAYOUT_OPTIONS = {
+    "elk.algorithm": "layered",
+    "elk.direction": "RIGHT",
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    # [V13] 确保 input ports 在最左, output ports 在最右
+    "elk.layered.layering.strategy": "LONGEST_PATH",
+}
+```
+
+---
+
+## 13. 已知问题 & 陷阱
 
 ### 12.1 Port width/height 导致 Y 偏移 ⚠️
 

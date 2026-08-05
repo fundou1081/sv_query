@@ -170,7 +170,18 @@ def _collect_edges(node, out, px, py):
     nx = (node.get('x', 0) or 0) + px
     ny = (node.get('y', 0) or 0) + py
     for e in node.get('edges', []):
-        out.append(e)
+        # Shift sections from PARENT coordinates to ROOT coordinates
+        ec = dict(e)
+        shifted_sections = []
+        for sec in ec.get('sections', []):
+            sc = dict(sec)
+            for k in ('startPoint', 'endPoint'):
+                if k in sc and sc[k]:
+                    sc[k] = {'x': sc[k]['x'] + nx, 'y': sc[k]['y'] + ny}
+            sc['bendPoints'] = [{'x': b['x'] + nx, 'y': b['y'] + ny} for b in sc.get('bendPoints', [])]
+            shifted_sections.append(sc)
+        ec['sections'] = shifted_sections
+        out.append(ec)
     for c in node.get('children', []):
         _collect_edges(c, out, nx, ny)
 
