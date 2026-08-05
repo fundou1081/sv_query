@@ -14,3 +14,4 @@ build/
 sim/tests/integration/_debug_case_rhs.py
 .tmp/
 MEMORY.md
+node_modules/
