@@ -71,6 +71,9 @@ def render_svg(layout: dict, config: dict | None = None) -> str:
     # 4. Scope labels (topmost)
     _draw_scope_labels(svg, compounds_sorted)
 
+    # 5. Sel → case scope edge (SVG direct, not through ELK)
+    _draw_sel_to_case_edge(svg, layout, all_leaves, compounds_sorted)
+
     raw = ET.tostring(svg, encoding='unicode')
     return minidom.parseString(raw).toprettyxml(indent='  ')
 
@@ -232,3 +235,45 @@ def _draw_leaves(svg, leaves):
                     'text-anchor': 'middle', 'font-family': 'Courier, monospace',
                     'font-size': '9', 'fill': '#2e7d32',
                 }).text = text
+
+
+def _draw_sel_to_case_edge(svg, layout, leaves, compounds):
+    """Draw sel→case scope stair-step edge directly in SVG (not through ELK).
+
+    Finds port_sel and case scope, then draws:
+      port_sel right edge → horizontal 30px → vertical down to case scope top edge.
+    """
+    # Find port_sel leaf
+    port_sel = None
+    for l in leaves:
+        if l['id'] == 'port_sel':
+            port_sel = l
+            break
+    if not port_sel:
+        return
+
+    # Find case scope (depth=2 means case scope in current nesting)
+    case_c = None
+    for c in compounds:
+        if c['meta'].get('kind') == 'case':
+            case_c = c
+            break
+    if not case_c:
+        return
+
+    # Port right edge (ROOT coords + SVG offset)
+    sx = port_sel['ax'] + port_sel.get('width', 44) + OX
+    sy = port_sel['ay'] + port_sel.get('height', 20) / 2 + OY
+
+    # Case scope top edge
+    ty = case_c['ay'] + OY
+    step_x = sx + 30
+
+    # Stair-step: → right to align with case left → ↓ to case top → → into case
+    target_x = case_c['ax'] + OX + 6
+    d = f'M {sx:.1f} {sy:.1f} L {target_x:.1f} {sy:.1f} L {target_x:.1f} {ty:.1f} L {target_x + 8:.1f} {ty:.1f}'
+    ET.SubElement(svg, 'path', {
+        'd': d, 'fill': 'none',
+        'stroke': '#555555', 'stroke-width': '1.5',
+        'marker-end': 'url(#arrow)',
+    })
