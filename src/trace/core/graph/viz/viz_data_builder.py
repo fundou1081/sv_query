@@ -392,16 +392,39 @@ def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
         module_name = _extract_module_name(root)
         
         for member in st.root.members:
-            if not hasattr(member, 'assignments'):
-                continue
-            for ass in member.assignments:
-                et = ExpressionTree.build(ass)
-                if et is None or et.root is None:
-                    continue
-                left = str(ass.left).strip()
-                tree_key = f"{module_name}.{left}" if module_name else left
-                tree_data = ExpressionTree._to_dict(et.root)
-                expr_trees[tree_key] = tree_data
+            # ContinuousAssign: assign lhs = rhs
+            if hasattr(member, 'assignments'):
+                for ass in member.assignments:
+                    et = ExpressionTree.build(ass)
+                    if et is None or et.root is None:
+                        continue
+                    left = str(ass.left).strip()
+                    tree_key = f"{module_name}.{left}" if module_name else left
+                    tree_data = ExpressionTree._to_dict(et.root)
+                    expr_trees[tree_key] = tree_data
+            
+            # NetDeclaration: wire lhs = rhs (intermediate signals)
+            if 'NetDeclaration' in str(member.kind):
+                for d in member.declarators:
+                    init = getattr(d, 'initializer', None)
+                    if init is None:
+                        continue
+                    # init.expr is a raw expression (e.g. AddExpression), not AssignmentExpression.
+                    # ExpressionTree.build() expects AssignmentExpression with .right token list,
+                    # so we call _parse_expr on the expression's token list directly.
+                    try:
+                        tokens = list(init.expr)
+                    except (TypeError, ValueError):
+                        continue
+                    if not tokens:
+                        continue
+                    root = ExpressionTree._parse_expr(tokens, 0, len(tokens))
+                    if root is None:
+                        continue
+                    left = str(d.name).strip()
+                    tree_key = f"{module_name}.{left}" if module_name else left
+                    tree_data = ExpressionTree._to_dict(root)
+                    expr_trees[tree_key] = tree_data
     dp["expr_trees"] = expr_trees
 
 
