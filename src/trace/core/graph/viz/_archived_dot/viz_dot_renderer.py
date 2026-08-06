@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..analyzer._dot_common import sanitize_dot_id
-from .viz_data_models import VizData, VizEdge, VizNode
+from trace.core.graph.analyzer._dot_common import sanitize_dot_id
+from trace.core.graph.viz.viz_data_models import VizData, VizEdge, VizNode
 
 # ── DOT 配置默认值 ──
 

@@ -60,21 +60,135 @@ def _safe(s):
     return r or '_empty'
 
 
+def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
+    """ExpressionTree dicts → 纯 ELK JSON
+    
+    把 ExpressionTree 嵌套树转换为 ELK 扁平节点+边。
+    输入端口用 FIRST 层约束固定在左边，输出端口用 LAST 固定在右边。
+    OP 节点由 ELK 自动分层。
+    
+    也兼容 viz (VizData) 传入——提取 CLOCK/RESET 端口信息用于过滤。
+    """
+    root_children = []
+    root_edges = []
+    input_set = set(input_names)
+    output_set = set(output_names)
+    ctr = [0]
+    
+    # ── CLOCK/RESET 端口过滤 (从 viz.edges 提取，路径 A 风格) ──
+    clock_reset_srcs = set()
+    if viz is not None:
+        for e in viz.edges:
+            ek = getattr(e, 'kind', '')
+            if ek in ('CLOCK', 'RESET'):
+                clock_reset_srcs.add(_short(e.src))
+        # 也从 node kind 过滤
+        for n in viz.nodes:
+            if getattr(n, 'kind', '') in ('CLOCK', 'RESET'):
+                clock_reset_srcs.add(_short(n.id))
+    
+    def ne(): ctr[0] += 1; return f'e{ctr[0]}'
+    
+    def _emit_edge(eid, srcs, tgts, kind='dataflow'):
+        return {'id': eid, 'sources': list(srcs), 'targets': list(tgts),
+                '_meta': {'kind': kind}}
+    
+    # Port nodes (排除 CLOCK/RESET)
+    for name in sorted(input_set):
+        if name in clock_reset_srcs:
+            continue
+        root_children.append({
+            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+            '_meta': {'kind': 'port_in'},
+        })
+    for name in sorted(output_set):
+        root_children.append({
+            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
+            '_meta': {'kind': 'port_out'},
+        })
+    
+    def render_tree(tree_node, prefix):
+        """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id"""
+        label = tree_node.get('label', '?')
+        op = tree_node.get('op', '?')
+        children = tree_node.get('children', [])
+        nc = len(root_children)
+        node_id = f"op_{_safe(label)}_{prefix}_{nc}"
+        
+        if op == 'SignalRef':
+            if label in input_set:
+                return f'port_{label}'
+            elif label in output_set:
+                return f'port_{label}'
+            sig_id = f'sig_{_safe(label)}_{nc}'
+            existing = [c for c in root_children if c.get('id') == sig_id]
+            if not existing:
+                root_children.append({
+                    'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                    'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                    '_meta': {'kind': 'signal'},
+                })
+            return sig_id
+        
+        if op == 'Const':
+            const_id = f'const_{_safe(label)}_{nc}'
+            root_children.append({
+                'id': const_id, 'width': 40, 'height': SIG_H,
+                'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                '_meta': {'kind': 'const'},
+            })
+            return const_id
+        
+        # Operator node
+        op_w = OP_W
+        if op == 'Call':
+            op_w = max(OP_W + len(label) * 6, 50)
+        op_h = OP_H + max(0, (len(children) - 2) * 8)
+        
+        root_children.append({
+            'id': node_id, 'width': op_w, 'height': op_h,
+            'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+            '_meta': {'kind': 'op'},
+        })
+        
+        for child in children:
+            child_id = render_tree(child, f"{prefix}_c")
+            if child_id:
+                root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
+        
+        return node_id
+    
+    for dst_name, tree_data in expr_trees.items():
+        top_op_id = render_tree(tree_data, dst_name)
+        dst_short = _short(dst_name)
+        if dst_short in output_set and top_op_id:
+            root_edges.append(_emit_edge(ne(), [top_op_id], [f'port_{dst_short}']))
+    
+    return {
+        'id': 'root',
+        'properties': dict(ELK_OPTIONS),
+        'children': root_children,
+        'edges': root_edges,
+    }
+
+
 def viz_to_elk(viz: VizData) -> dict:
     """VizData → ELK compound graph JSON"""
     ctr = [0]
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
 
-    # ── Phase 0: Classify edges ──
+    # ── Phase 0: Classify edges (only for case/if compound graph) ──
     cond_by_dst = defaultdict(list)
-    regular = []
     for e in viz.edges:
         chain = getattr(e, 'condition_chain', None) or []
         ek = getattr(e, 'kind', '')
         if chain and ek not in ('CLOCK', 'RESET', 'BIT_SELECT'):
             cond_by_dst[e.dst].append(e)
-        elif ek not in ('CLOCK', 'RESET', 'BIT_SELECT'):
-            regular.append(e)
 
     input_names, output_names = [], []
     # Identify clock/reset ports to exclude from dataflow display
@@ -93,89 +207,14 @@ def viz_to_elk(viz: VizData) -> dict:
     root_children = []
     root_edges = []
 
-    # Build set of REG output port IDs for nonblocking edge detection
-    _REG_PORTS = set()
-    for n in viz.nodes:
-        if getattr(n, 'kind', '') == 'REG':
-            _REG_PORTS.add(f'port_{_short(n.id)}')
-
-    # Helper: add assign_type to edge meta
-    def _edge_meta(kind='signal'):
-        return {'kind': kind}
-
+    # Local edge helper (Phase 3 compound graph uses this)
     def _emit_edge(eid, srcs, tgts, edge_obj=None, kind='signal'):
         meta = {'kind': kind}
         if edge_obj is not None:
             at = getattr(edge_obj, 'assign_type', '') or ''
             if at:
                 meta['assign_type'] = at
-        # If target is a REG output port, mark as nonblocking
-        for t in tgts:
-            if t in _REG_PORTS:
-                meta['assign_type'] = 'nonblocking'
-                break
-        return {'id': eid, 'sources': srcs, 'targets': tgts, '_meta': meta}
-
-    _EXPR_OP_W, _EXPR_OP_H = 20, 20
-    
-    def _render_expr_tree(tree_node, prefix, dst_safe, dst_node, const_map, dst_short, e):
-        """递归渲染 ExpressionTree 为 ELK node/edge 列表
-        
-        返回: (root_op_id, new_children, new_edges)
-        
-        结构: SignalRef → signal node (port or internal)
-              Const → const node
-              OP → op node + edges to children
-        """
-        from .expression_tree import ExpressionTree
-        
-        new_children = []
-        new_edges = []
-        
-        node_id = f"{prefix}_{_safe(tree_node['op'])}_{tree_node['label']}" if tree_node.get('op') else f"{prefix}_leaf_{tree_node['label']}"
-        # Deduplicate: append counter
-        nc = len(root_children) + len(new_children)
-        node_id = f"{node_id}_{nc}"
-        
-        label = tree_node.get('label', '?')
-        children = tree_node.get('children', [])
-        
-        if tree_node.get('op') == 'SignalRef':
-            # Leaf: signal reference → return as source node ref
-            if label in input_set:
-                return (f'port_{label}', [], [])
-            elif label in internal_signals:
-                return (label, [], [])
-            else:
-                return (label, [], [])
-        
-        if tree_node.get('op') == 'Const':
-            const_id = f'const_{label}_{dst_safe}_{nc}'
-            new_children.append({
-                'id': const_id, 'width': 40, 'height': SIG_H,
-                'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
-                '_meta': {'kind': 'const'},
-            })
-            return (const_id, new_children, new_edges)
-        
-        # Operator node
-        op_h = _EXPR_OP_H + max(0, (len(children) - 2) * 8)
-        new_children.append({
-            'id': node_id, 'width': _EXPR_OP_W, 'height': op_h,
-            'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op'},
-        })
-        
-        # Recurse into children
-        for ci, child in enumerate(children):
-            child_id, c_children, c_edges = _render_expr_tree(
-                child, f"{prefix}_c{ci}", dst_safe, dst_node, const_map, dst_short, e)
-            new_children.extend(c_children)
-            new_edges.extend(c_edges)
-            if child_id:
-                new_edges.append(_emit_edge(ne(), [child_id], [node_id]))
-        
-        return (node_id, new_children, new_edges)
+        return {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
     for name in input_names:
@@ -196,137 +235,9 @@ def viz_to_elk(viz: VizData) -> dict:
         })
     output_set = set(output_names)
 
-    # No conditional edges → simple flat layout (PORTS only, no signal nodes)
-    # Pure dataflow: PORT_IN → OP → PORT_OUT, with independent CONST nodes
+    # ── No non-cond path: ExpressionTree handles dataflow via expr_trees_to_elk() ──
+    # 如果没有任何条件边，返回一个空图（数据流由 expr_trees_to_elk 处理）
     if not cond_by_dst:
-        output_set = set(output_names)
-        op_at_dst = {}
-        const_map = viz.meta.get('datapath', {}).get('const_map', {})
-        expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
-        input_set = set(input_names)
-        
-        # First pass: identify internal signals (dsts that are not ports)
-        internal_signals = {}  # dst_safe → node info
-        for e in regular:
-            op = getattr(e, 'source_op', None)
-            if not op:
-                continue
-            dst_short = _short(e.dst)
-            dst_safe = _safe(e.dst)
-            if dst_short not in output_set and dst_short not in input_set:
-                # Internal signal — create a signal node
-                if dst_safe not in internal_signals:
-                    internal_signals[dst_safe] = dst_short
-                    root_children.append({
-                        'id': dst_safe, 'width': SIG_W, 'height': SIG_H,
-                        'labels': [{'text': dst_short, 'fontSize': 9, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal'},
-                    })
-        
-        for e in regular:
-            op = getattr(e, 'source_op', None)
-            if not op:
-                continue
-            op_sym = _OP_SYM.get(op, op)
-            dst_safe = _safe(e.dst)
-            dst_short = _short(e.dst)
-            
-            # Check for ExpressionTree: if available, render tree instead of flat OP
-            # expr_trees keys: "with_function.z", "with_function.y" (module.dst)
-            tree_data = None
-            # Try exact dst (with module prefix), then short form, then safe form
-            for tk in [e.dst, dst_short, dst_safe]:
-                if tk in expr_trees:
-                    tree_data = expr_trees[tk]
-                    break
-            
-            if tree_data and dst_safe not in op_at_dst:
-                # Render expression tree recursively
-                dst_node = None
-                if dst_short in output_set:
-                    dst_node = f'port_{dst_short}'
-                elif dst_safe in internal_signals:
-                    dst_node = dst_safe
-                
-                root_op_id, tree_children, tree_edges = _render_expr_tree(
-                    tree_data, f"et_{dst_safe}", dst_safe, dst_node, const_map, dst_short, e)
-                root_children.extend(tree_children)
-                root_edges.extend(tree_edges)
-                
-                # Connect tree root → dst
-                if dst_node and root_op_id:
-                    root_edges.append(_emit_edge(ne(), [root_op_id], [dst_node], e))
-                
-                # Mark as done
-                op_at_dst[dst_safe] = root_op_id
-                continue
-            
-            if dst_safe not in op_at_dst:
-                op_id = f'op_{_safe(op)}_{dst_safe}'
-                op_at_dst[dst_safe] = op_id
-                # Build label: for Slice op, show the bit range instead of 'Slice'
-                if op in ('Slice', 'PartSelect'):
-                    src_str = getattr(e, 'src', '') or ''
-                    if '[' in src_str and ']' in src_str:
-                        bit_range = src_str[src_str.index('['):src_str.index(']')+1]
-                        label_text = bit_range
-                    else:
-                        label_text = op_sym
-                elif op == 'Call':
-                    # Show function name from expression: "add_sat(x)" → "add_sat"
-                    expr = getattr(e, 'expression', '') or ''
-                    paren = expr.find('(')
-                    label_text = expr[:paren] if paren > 0 else (expr.strip() or op_sym)
-                else:
-                    label_text = op_sym
-                root_children.append({
-                    'id': op_id, 'width': OP_W, 'height': OP_H,
-                    'labels': [{'text': label_text, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-                    '_meta': {'kind': 'op'},
-                })
-                # OP → destination (port if output, else internal signal)
-                dst_short = _short(e.dst)
-                if dst_short in output_set:
-                    dst_node = f'port_{dst_short}'
-                elif dst_safe in internal_signals:
-                    dst_node = dst_safe
-                else:
-                    dst_node = None  # fallback, may cause ELK error
-                if dst_node:
-                    root_edges.append(_emit_edge(ne(), [op_id], [dst_node], e))
-                # Create independent CONST nodes for this OP
-                cvals = const_map.get(dst_short, [])
-                for cv in cvals:
-                    const_id = f'const_{cv}_{dst_safe}'
-                    root_children.append({
-                        'id': const_id, 'width': 40, 'height': SIG_H,
-                        'labels': [{'text': cv, 'fontSize': 8, 'fontName': 'Courier'}],
-                        'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
-                        '_meta': {'kind': 'const'},
-                    })
-                    root_edges.append(_emit_edge(ne(), [const_id], [op_id]))
-            # Source (port if input, else internal signal) → OP
-            src_short = _short(e.src)
-            if src_short in input_set:
-                src_node = f'port_{src_short}'
-            else:
-                # Check raw e.src (not _safe) for bit-select [7:0], [15:8] etc.
-                if '[' in e.src and ']' in e.src:
-                    # e.g. "with_trunc.sum[7:0]" → base signal name = "sum"
-                    base_short = e.src.split('.')[-1].split('[')[0]
-                    if base_short in internal_signals.values():
-                        base_safe = _safe(e.src.split('[')[0])
-                        src_node = base_safe
-                    elif base_short in input_set:
-                        src_node = f'port_{base_short}'
-                    else:
-                        src_node = None
-                elif _safe(e.src) in internal_signals:
-                    src_node = _safe(e.src)
-                else:
-                    src_node = None
-            if src_node:
-                root_edges.append(_emit_edge(ne(), [src_node], [op_at_dst[dst_safe]], e))
         return _make_graph(root_children, root_edges)
 
     # ── Phase 3: Build compound case/branch scopes ──
