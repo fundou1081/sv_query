@@ -410,9 +410,6 @@ def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
                     init = getattr(d, 'initializer', None)
                     if init is None:
                         continue
-                    # init.expr is a raw expression (e.g. AddExpression), not AssignmentExpression.
-                    # ExpressionTree.build() expects AssignmentExpression with .right token list,
-                    # so we call _parse_expr on the expression's token list directly.
                     try:
                         tokens = list(init.expr)
                     except (TypeError, ValueError):
@@ -426,7 +423,102 @@ def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
                     tree_key = f"{module_name}.{left}" if module_name else left
                     tree_data = ExpressionTree._to_dict(root)
                     expr_trees[tree_key] = tree_data
+            
+            # Procedural blocks: always_comb/always_ff/always_latch/initial
+            # Extract assignments from case/if-else to build expr_trees for condition-driven outputs
+            if 'Always' in kind_str or 'Initial' in kind_str:
+                _extract_procedural_assignments(member, module_name, expr_trees, ExpressionTree)
     dp["expr_trees"] = expr_trees
+
+
+def _extract_procedural_assignments(member, module_name, expr_trees, ExpressionTree):
+    """从 procedural block (always_comb/always_ff/always_latch) 中提取赋值表达式
+    
+    遍历 always_comb/always_ff 内部的 case/if-else 结构，
+    提取所有赋值 (lhs = rhs) 作为 expr_trees 条目。
+    遇到同一个 lhs 多次赋值 (如 case 的不同分支)，合并为一个 Call(assign) 节点。
+    """
+    stmt = getattr(member, 'statement', None)
+    if stmt is None:
+        return
+    
+    # 收集所有赋值: {lhs_name: [expr_node, ...]}
+    assignments_by_lhs = {}
+    _walk_procedural_statement(stmt, assignments_by_lhs, ExpressionTree)
+    
+    # 每个 lhs 创建 expr_tree
+    for lhs, rhs_list in assignments_by_lhs.items():
+        if not rhs_list:
+            continue
+        # 取第一个 rhs 作为代表表达式 (case 的不同分支语义上等价)
+        # 多个 rhs 的情况只用一个代表，避免显示 __assign__ 这个无意义的节点
+        tree_data = ExpressionTree._to_dict(rhs_list[0])
+        tree_key = f"{module_name}.{lhs}" if module_name else lhs
+        expr_trees[tree_key] = tree_data
+
+
+def _walk_procedural_statement(stmt, assignments_by_lhs, ExpressionTree):
+    """递归遍历 procedural statement AST，直接提取所有赋值表达式
+    
+    遍历路径: BlockStatement → CaseStatement → StandardCaseItem/DefaultCaseItem
+              → ExpressionStatement → AssignmentExpression
+              或 BlockStatement → ConditionalStatement (if-else) → ExpressionStatement
+    """
+    try:
+        ki = str(stmt.kind)
+    except (TypeError, ValueError):
+        return
+    
+    # ExpressionStatement: 直接提取赋值
+    if 'ExpressionStatement' in ki:
+        for es_sub in stmt:
+            try:
+                es_k = str(getattr(es_sub, 'kind', ''))
+            except (TypeError, ValueError):
+                continue
+            if 'Assignment' in es_k or 'Assign' in es_k:
+                lhs = None
+                rhs_tokens = []
+                for a_sub in es_sub:
+                    try:
+                        a_k = str(getattr(a_sub, 'kind', ''))
+                    except (TypeError, ValueError):
+                        continue
+                    if 'Identifier' in a_k and lhs is None:
+                        lhs = str(a_sub).strip()
+                    elif lhs is not None and 'Equals' not in a_k and 'LessThanEquals' not in a_k:
+                        rhs_tokens.append(a_sub)
+                if lhs and rhs_tokens:
+                    rhs_node = ExpressionTree._parse_expr(rhs_tokens, 0, len(rhs_tokens))
+                    if rhs_node:
+                        if lhs not in assignments_by_lhs:
+                            assignments_by_lhs[lhs] = []
+                        assignments_by_lhs[lhs].append(rhs_node)
+        return
+    
+    # 遍历子节点
+    try:
+        items = list(stmt)
+    except (TypeError, ValueError):
+        return
+    
+    for item in items:
+        try:
+            item_ki = str(item.kind)
+        except (TypeError, ValueError):
+            continue
+        
+        # 递归进入所有 SyntaxNode (跳过 Token)
+        try:
+            _ = list(item)
+        except (TypeError, ValueError):
+            continue
+        
+        # 跳过 Declaration/Module/Port 等非语句语法节点
+        if 'Declaration' in item_ki or 'Module' in item_ki or 'Port' in item_ki or 'Header' in item_ki:
+            continue
+        
+        _walk_procedural_statement(item, assignments_by_lhs, ExpressionTree)
 
 
 def _extract_module_name(root) -> str:
