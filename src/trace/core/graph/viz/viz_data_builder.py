@@ -9,6 +9,7 @@ viz_data_builder.py — SignalGraph → VizData 转换器 (V6.7)
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -47,6 +48,9 @@ class VizBuildOptions:
     # 分类 (从外部注入, 避免循环依赖)
     classification: Any | None = None
     pipeline_stages: Any | None = None
+
+    # ExpressionTree 源码文件
+    source_files: list[str] = field(default_factory=list)
 
 
 def build_viz_data(
@@ -251,11 +255,14 @@ def _enrich_datapath_info(viz, graph, opts):
     # 1. 从 SV 源码提取常量 + function 声明 (一次性, 不重复开文件)
     import os as _os_path
     src_files = getattr(opts, 'source_files', None) or []
+    if not src_files and os.getenv("SV_QUERY_SRC"):
+        src_files = [os.getenv("SV_QUERY_SRC")]
     if not src_files:
-        # 从 VizNode 的 file 属性反查 SV 源码路径
+        # 从 VizNode 的 file 属性反查 SV 源码路径 (fallback)
         search_roots = [
             _os_path.getcwd(),
             _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures'),
+            _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures', 'golden_mini'),
         ]
         seen_names = set(n.file for n in viz.nodes if n.file)
         for fname in seen_names:
@@ -264,7 +271,6 @@ def _enrich_datapath_info(viz, graph, opts):
                     dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules','__pycache__','.git','.venv')]
                     if fname in files:
                         src_files.append(_os_path.path.join(dirpath, fname))
-                        break
                 if src_files:
                     break
             if src_files:
@@ -394,7 +400,8 @@ def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
                     continue
                 left = str(ass.left).strip()
                 tree_key = f"{module_name}.{left}" if module_name else left
-                expr_trees[tree_key] = ExpressionTree._to_dict(et.root)
+                tree_data = ExpressionTree._to_dict(et.root)
+                expr_trees[tree_key] = tree_data
     dp["expr_trees"] = expr_trees
 
 

@@ -4,8 +4,8 @@
 from trace.core.graph.viz import (
     VizBuildOptions,
     build_viz_data,
-    render_dot,
 )
+from trace.core.graph.viz._archived_dot.viz_dot_renderer import render_dot
 from trace.unified_tracer import UnifiedTracer
 
 # ── helpers ──
