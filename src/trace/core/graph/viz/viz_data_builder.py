@@ -450,8 +450,19 @@ def _extract_procedural_assignments(member, module_name, expr_trees, ExpressionT
     for lhs, rhs_list in assignments_by_lhs.items():
         if not rhs_list:
             continue
-        # 取最后一个 rhs 作为代表表达式 (避免取 if (!rst_n) 分支的复位常量)
-        tree_data = ExpressionTree._to_dict(rhs_list[-1])
+        # 取最复杂的 rhs 作为代表 (优先选包含运算符/三元/函数调用的，而非纯 SignalRef/Const)
+        # 取最复杂的 rhs 作为代表 (优先选包含运算符/三元/函数调用的，而非纯 SignalRef/Const)
+        def _complexity(node):
+            """计算表达式树的复杂度 (children 总数)"""
+            if node is None:
+                return 0
+            c = node
+            total = 1
+            for child in c.children if hasattr(c, 'children') else []:
+                total += _complexity(child)
+            return total
+        best = max(rhs_list, key=_complexity)
+        tree_data = ExpressionTree._to_dict(best)
         tree_key = f"{module_name}.{lhs}" if module_name else lhs
         expr_trees[tree_key] = tree_data
 
