@@ -111,6 +111,69 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             '_meta': {'kind': 'port_out'},
         })
     
+    def collect_signals(tree_node, into):
+        """递归收集表达式树中所有 SignalRef labels"""
+        if not tree_node:
+            return
+        if tree_node.get('op') == 'SignalRef':
+            into.add(tree_node.get('label', ''))
+        for c in tree_node.get('children', []):
+            collect_signals(c, into)
+
+    def render_ternary(node_id, children, prefix, nc):
+        """轻量三元渲染：?: OP 节点 + 条件虚线边
+
+        children[0] = 条件信号 (SignalRef)
+        children[1] = true 分支数据
+        children[2] = false 分支数据
+
+        效果: 条件信号 → ?: 节点 (灰色虚线, cond 标签)
+              true/false 数据 → ?: (普通实线)
+        节点 label: ?: (sel_name)
+        """
+        cond = children[0] if len(children) >= 1 else None
+        true_child = children[1] if len(children) >= 2 else None
+        false_child = children[2] if len(children) >= 3 else None
+
+        # 收集条件信号名
+        cond_sigs = set()
+        if cond:
+            collect_signals(cond, cond_sigs)
+        sel_label = ', '.join(sorted(cond_sigs)) if cond_sigs else '?'
+
+        # ?: OP 节点
+        op_w = max(OP_W, len(sel_label) * 8 + 20)
+        root_children.append({
+            'id': node_id, 'width': op_w, 'height': OP_H,
+            'labels': [{'text': f'?: ({sel_label})', 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+            '_meta': {'kind': 'op'},
+        })
+
+        # 条件信号 → ?: 节点 (虚线 cond 边)
+        for sig in sorted(cond_sigs):
+            if sig in input_set:
+                src_id = f'port_{sig}'
+            else:
+                sig_id = f'sig_{_safe(sig)}_{nc}'
+                existing = any(c.get('id') == sig_id for c in root_children)
+                if not existing:
+                    root_children.append({
+                        'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                        'labels': [{'text': sig, 'fontSize': 8, 'fontName': 'Courier'}],
+                        '_meta': {'kind': 'signal'},
+                    })
+                src_id = sig_id
+            root_edges.append(_emit_edge(ne(), [src_id], [node_id], kind='condition_select'))
+
+        # true/false 分支数据 → ?: (普通 dataflow 边)
+        for child in (true_child, false_child):
+            if child:
+                child_id = render_tree(child, f'{prefix}_btf')
+                if child_id:
+                    root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
+
+        return node_id
+
     def render_tree(tree_node, prefix):
         """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id"""
         label = tree_node.get('label', '?')
@@ -143,6 +206,10 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 '_meta': {'kind': 'const'},
             })
             return const_id
+        
+        # ── Ternary: compound case/branch structure ──
+        if op == 'Ternary':
+            return render_ternary(node_id, children, prefix, nc)
         
         # Operator node
         op_w = OP_W
