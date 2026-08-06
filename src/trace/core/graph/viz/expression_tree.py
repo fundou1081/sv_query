@@ -119,8 +119,9 @@ class ExpressionTree:
         if end - start == 2:
             first_kind = str(getattr(tokens[start], 'kind', '')).lower()
             
-            # Function call: IdentifierName + ArgumentList
-            if 'identifier' in first_kind and 'argumentlist' in str(getattr(tokens[1], 'kind', '')).lower():
+            # Function call: IdentifierName/SystemName/FunctionName + ArgumentList
+            is_name = any(k in first_kind for k in ('identifier', 'systemname', 'functionname', 'name'))
+            if is_name and 'argumentlist' in str(getattr(tokens[1], 'kind', '')).lower():
                 name = str(tokens[start]).strip()
                 children = ExpressionTree._parse_arguments(tokens[1])
                 return ExprNode(op="Call", label=name, children=children)
