@@ -450,9 +450,8 @@ def _extract_procedural_assignments(member, module_name, expr_trees, ExpressionT
     for lhs, rhs_list in assignments_by_lhs.items():
         if not rhs_list:
             continue
-        # 取第一个 rhs 作为代表表达式 (case 的不同分支语义上等价)
-        # 多个 rhs 的情况只用一个代表，避免显示 __assign__ 这个无意义的节点
-        tree_data = ExpressionTree._to_dict(rhs_list[0])
+        # 取最后一个 rhs 作为代表表达式 (避免取 if (!rst_n) 分支的复位常量)
+        tree_data = ExpressionTree._to_dict(rhs_list[-1])
         tree_key = f"{module_name}.{lhs}" if module_name else lhs
         expr_trees[tree_key] = tree_data
 
