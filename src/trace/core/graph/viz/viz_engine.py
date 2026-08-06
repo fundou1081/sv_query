@@ -81,6 +81,8 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
         for e in n.get('edges', []):
             srcs = e.get('sources', [])
             tgts = e.get('targets', [])
+            meta = e.get('_meta', {})
+            ekind = meta.get('kind', '')
             for sec in e.get('sections', []):
                 sp = sec.get('startPoint') or {}
                 ep = sec.get('endPoint') or {}
@@ -92,6 +94,7 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
                         'sy': sp.get('y', 0) + gy,
                         'ex': ep.get('x', 0) + gx,
                         'ey': ep.get('y', 0) + gy,
+                        'kind': ekind,
                     })
         for c in n.get('children', []):
             walk_e(c, gx, gy)
@@ -137,8 +140,13 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     
     # Edges
     for e in edges:
-        lines.append('<path d="M %.1f %.1f L %.1f %.1f" fill="none" stroke="#555555" stroke-width="1.5" marker-end="url(#arrow)"/>' %
-                     (e['sx'] + OX, e['sy'] + OY, e['ex'] + OX, e['ey'] + OY))
+        ekind = e.get('kind', '')
+        if ekind == 'condition_select':
+            stroke, dash = '#989898', ' stroke-dasharray="6,3"'
+        else:
+            stroke, dash = '#555555', ''
+        lines.append('<path d="M %.1f %.1f L %.1f %.1f" fill="none" stroke="%s" stroke-width="1.5"%s marker-end="url(#arrow)"/>' %
+                     (e['sx'] + OX, e['sy'] + OY, e['ex'] + OX, e['ey'] + OY, stroke, dash))
     
     # Leaves
     for lf in leaves:
