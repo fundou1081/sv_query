@@ -93,8 +93,19 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         return {'id': eid, 'sources': list(srcs), 'targets': list(tgts),
                 '_meta': {'kind': kind}}
     
-    # Port nodes (排除 CLOCK/RESET)
-    for name in sorted(input_set):
+    # 收集 expr_trees 中所有被引用的信号名
+    _expr_signal_refs = set()
+    for v in expr_trees.values():
+        def _collect_sigs(node):
+            if node.get('op') == 'SignalRef':
+                _expr_signal_refs.add(node['label'])
+            for c in node.get('children', []):
+                _collect_sigs(c)
+        _collect_sigs(v)
+
+    # Port nodes: 只渲染在 expr_trees 中被引用的 port (排除 CLOCK/RESET)
+    # 排除孤悬的 input port (threshold, mode, valid, en 等未在数据流表达式中出现的)
+    for name in sorted(input_set & _expr_signal_refs):
         if name in clock_reset_srcs:
             continue
         root_children.append({
