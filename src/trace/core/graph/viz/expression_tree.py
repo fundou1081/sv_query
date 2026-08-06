@@ -30,25 +30,30 @@ from trace.core._pyslang_compat import SyntaxKind
 
 # Map pyslang operator token kinds to ExprNode op names
 _OP_MAP = {
-    "Plus": "Add", "PlusEquals": "Add",
-    "Minus": "Subtract", "MinusEquals": "Subtract",
-    "Star": "Multiply", "StarEquals": "Multiply",
-    "Slash": "Divide", "SlashEquals": "Divide",
-    "Percent": "Modulo",
+    # arithmetic
+    "plus": "Add", "plusequals": "Add",
+    "minus": "Subtract", "minusequals": "Subtract",
+    "star": "Multiply", "starequals": "Multiply",
+    "slash": "Divide", "slashequals": "Divide",
+    "percent": "Modulo",
     # bitwise
-    "And": "BinaryAnd", "Or": "BinaryOr", "Xor": "BinaryXor",
-    "Tilde": "BinaryNot",
+    "and": "BinaryAnd", "or": "BinaryOr", "xor": "BinaryXor",
+    "tilde": "BinaryNot",
     # shift
-    "LessLess": "LogicalShiftLeft", "GreaterGreater": "LogicalShiftRight",
-    "LessLessLess": "ArithmeticShiftLeft", "GreaterGreaterGreater": "ArithmeticShiftRight",
+    "leftshift": "LeftShift", "rightshift": "RightShift",
+    "lessless": "LogicalShiftLeft", "greatergreater": "LogicalShiftRight",
     # comparison
-    "Less": "LessThan", "Greater": "GreaterThan",
-    "LessEqual": "LessThanEqual", "GreaterEqual": "GreaterThanEqual",
-    "EqualsEquals": "Equality", "ExclamationEquals": "Inequality",
+    "less": "LessThan", "greater": "GreaterThan",
+    "lessthanequals": "LessThanEqual", "greaterthanequals": "GreaterThanEqual",
+    "lessequal": "LessThanEqual", "greaterequal": "GreaterThanEqual",
+    "doubleequals": "Equality", "exclamationequals": "Inequality",
     # logical
-    "AndAnd": "LogicalAnd", "OrOr": "LogicalOr",
-    # question mark (ternary)
-    "Question": "Ternary",
+    "doubleand": "LogicalAnd", "doubleor": "LogicalOr",
+    # unary
+    "exclamation": "UnaryNot", "unaryprefixminus": "UnaryMinus",
+    "unaryprefixplus": "UnaryPlus", "unaryprefixtilde": "UnaryNot",
+    # ternary
+    "question": "Ternary",
 }
 
 # Token kind names that are pure numbers or identifiers (not operators)
@@ -110,7 +115,38 @@ class ExpressionTree:
         if start >= end:
             return None
         
-        # ── 0. Check for concatenation (token list starts with OpenBrace) ──
+        # ── 0. Check for function call: [IdentifierName, ArgumentList] ──
+        if end - start == 2:
+            first_kind = str(getattr(tokens[start], 'kind', '')).lower()
+            
+            # Function call: IdentifierName + ArgumentList
+            if 'identifier' in first_kind and 'argumentlist' in str(getattr(tokens[1], 'kind', '')).lower():
+                name = str(tokens[start]).strip()
+                children = ExpressionTree._parse_arguments(tokens[1])
+                return ExprNode(op="Call", label=name, children=children)
+            
+            # Unary prefix pattern: [operator, operand]
+            op_kinds = {'exclamation', 'tilde', 'or', 'and', 'xor',
+                        'minus', 'plus', 'unaryprefixminus', 'unaryprefixplus', 'unaryprefixtilde'}
+            if any(ok in first_kind for ok in op_kinds):
+                operand = ExpressionTree._parse_expr(tokens, start + 1, end)
+                op_name = ExpressionTree._kind_to_op(str(getattr(tokens[start], 'kind', '')))
+                label = ExpressionTree._kind_to_label(str(getattr(tokens[start], 'kind', '')))
+                children = [operand] if operand else []
+                # Reduce operators
+                if op_name in ('BinaryOr', 'BinaryAnd', 'BinaryXor'):
+                    op_name = 'Reduce' + op_name[6:]
+                return ExprNode(op=op_name, label=label, children=children)
+            
+            # Bit select: [IdentifierName, ElementSelect]
+            if 'identifier' in first_kind and 'elementselect' in str(getattr(tokens[1], 'kind', '')).lower():
+                name = str(tokens[start]).strip()
+                sel_text = str(tokens[1]).strip()
+                return ExprNode(op="BitSelect", label=f"{name}{sel_text}", children=[
+                    ExprNode(op="SignalRef", label=name)
+                ])
+        
+        # ── 1. Check for concatenation (token list starts with OpenBrace) ──
         first_token = tokens[start] if start < end else None
         if first_token is not None and 'OpenBrace' in str(getattr(first_token, 'kind', '')):
             return ExpressionTree._build_concat_from_tokens(tokens, start, end)
@@ -243,6 +279,56 @@ class ExpressionTree:
         return None
     
     @staticmethod
+    def _parse_arguments(arg_list_node) -> list:
+        """解析函数调用的参数列表，返回 ExprNode children
+        
+        ArgumentList 是 iterable: [OpenParenthesis, OrderedArgument, Comma, OrderedArgument, CloseParenthesis]
+        每个 OrderedArgument 的 .expression 包含实际表达式 token
+        """
+        children = []
+        try:
+            raw = list(arg_list_node)
+        except (TypeError, ValueError):
+            return children
+        
+        for item in raw:
+            kind = str(getattr(item, 'kind', ''))
+            # Skip parens and commas
+            if 'OpenParenthesis' in kind or 'CloseParenthesis' in kind or 'Comma' in kind:
+                continue
+            
+            # OrderedArgument → get .expression
+            text = str(item).strip()
+            if 'OrderedArgument' in kind or 'Argument' in kind:
+                expr = getattr(item, 'expression', None)
+                if expr is not None:
+                    if hasattr(expr, '__iter__') and not isinstance(expr, str):
+                        try:
+                            tokens = list(expr)
+                            if tokens:
+                                node = ExpressionTree._parse_expr(tokens, 0, len(tokens))
+                                if node:
+                                    children.append(node)
+                        except (TypeError, ValueError):
+                            pass
+                    else:
+                        leaf = ExpressionTree._leaf(expr)
+                        if leaf:
+                            children.append(leaf)
+                else:
+                    # Fallback: try _leaf on item directly
+                    leaf = ExpressionTree._leaf(item)
+                    if leaf:
+                        children.append(leaf)
+            else:
+                # Direct expression token
+                leaf = ExpressionTree._leaf(item)
+                if leaf:
+                    children.append(leaf)
+        
+        return children
+    
+    @staticmethod
     def _build_concat(node) -> ExprNode:
         """Build ExprNode from Concatenation node (has .operands)"""
         ops = getattr(node, 'operands', None) or getattr(node, 'expressions', None) or []
@@ -347,30 +433,32 @@ class ExpressionTree:
         """返回操作符优先级（数字越大越先合并/越低优先级）"""
         if not kind_str:
             return -1
-        k = kind_str.lower()
+        k = kind_str.lower().replace('tokenkind.', '').replace('syntaxkind.', '')
         if 'question' in k:
             return 1
         if 'colon' in k:
-            return 1  # : (ternary else)
-        if 'oror' in k:
+            return 1
+        if 'doubleor' in k or 'oror' in k:
             return 2
-        if 'andand' in k:
+        if 'doubleand' in k or 'andand' in k:
             return 3
-        if 'or' in k and 'xor' not in k:
+        if k == 'or' or k == 'pipe':
             return 4
-        if 'xor' in k or 'tilde' in k:
+        if 'xor' in k:
             return 4
-        if 'and' in k and 'shift' not in k:
+        if k == 'tilde':
+            return 4  # unary bit-not: highest precedence
+        if k == 'and' or k == 'ampersand':
             return 5
         if 'equals' in k or 'exclamation' in k:
             return 6
         if 'less' in k or 'greater' in k:
             return 6
         if 'shift' in k:
-            return 7  # RightShift, LeftShift, ArithmeticShiftLeft, etc.
+            return 7
         if 'plus' in k or 'minus' in k:
             return 8
-        if 'star' in k or 'slash' in k or 'percent' in k:
+        if k in ('star', 'slash', 'percent'):
             return 9
         if 'unary' in k:
             return 10
@@ -378,11 +466,19 @@ class ExpressionTree:
     
     @staticmethod
     def _kind_to_op(kind_str: str) -> str:
-        """pyslang token kind → ExprNode op name"""
+        """pyslang token kind → ExprNode op name
+        Match token kind name to _OP_MAP key.
+        Token kinds from pyslang: TokenKind.DoubleAnd, TokenKind.DoubleOr,
+        TokenKind.Exclamation, TokenKind.Tilde, TokenKind.Xor, etc.
+        """
+        lower = kind_str.lower().replace('tokenkind.', '').replace('syntaxkind.', '')
+        if lower in _OP_MAP:
+            return _OP_MAP[lower]
         for key, val in _OP_MAP.items():
-            if key.lower() in kind_str.lower():
+            if key in lower:
                 return val
-        return kind_str.replace('SyntaxKind.', '').replace('TokenKind.', '')
+        # Fallback: extract meaningful part
+        return lower
     
     @staticmethod
     def _kind_to_label(kind_str: str) -> str:
@@ -392,11 +488,15 @@ class ExpressionTree:
             "Add": "+", "Subtract": "−", "Multiply": "×", "Divide": "÷",
             "BinaryAnd": "&", "BinaryOr": "|", "BinaryXor": "^",
             "GreaterThan": ">", "LessThan": "<", "GreaterThanEqual": "≥",
+            "LessThanEqual": "≤",
             "Equality": "=", "Inequality": "≠",
             "ArithmeticShiftRight": ">>>", "LogicalShiftRight": ">>",
             "ArithmeticShiftLeft": "<<<", "LogicalShiftLeft": "<<",
             "LogicalAnd": "&&", "LogicalOr": "||",
             "Ternary": "?:", "Concat": "{}", "Modulo": "%",
+            "BinaryNot": "~", "UnaryNot": "!",
+            "ReduceOr": "|", "ReduceAnd": "&", "ReduceXor": "^",
+            "LeftShift": "<<", "RightShift": ">>",
         }
         return label_map.get(op_name, op_name)
     
