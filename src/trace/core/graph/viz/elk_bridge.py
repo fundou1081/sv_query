@@ -187,6 +187,30 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 return f'port_{label}'
             elif label in output_set:
                 return f'port_{label}'
+            # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
+            # 连接一个带信号名的标签节点（→ sum → 下游引用）
+            # expr_trees keys 格式: module.signal → 需要短名匹配
+            matched_tree = None
+            for ek, ev in expr_trees.items():
+                if ek.rsplit('.', 1)[-1] == label:
+                    matched_tree = ev
+                    break
+            if matched_tree is not None:
+                # 先检查是否已渲染过（避免重复渲染同一个中间 wire）
+                sig_id = f'sig_{_safe(label)}_expr'
+                existing = [c for c in root_children if c.get('id') == sig_id]
+                if existing:
+                    return sig_id
+                op_id = render_tree(matched_tree, f'{prefix}_wire')
+                if op_id:
+                    # 创建信号标签节点，OP 输出连到这里
+                    root_children.append({
+                        'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                        'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                        '_meta': {'kind': 'signal'},
+                    })
+                    root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
+                    return sig_id
             sig_id = f'sig_{_safe(label)}_{nc}'
             existing = [c for c in root_children if c.get('id') == sig_id]
             if not existing:
