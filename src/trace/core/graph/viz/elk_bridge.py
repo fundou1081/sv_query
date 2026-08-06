@@ -174,6 +174,9 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
 
         return node_id
 
+    # 已渲染的中间信号缓存: signal_short_name -> node_id
+    _signal_cache = {}
+
     def render_tree(tree_node, prefix):
         """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id"""
         label = tree_node.get('label', '?')
@@ -190,26 +193,50 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
             # 连接一个带信号名的标签节点（→ sum → 下游引用）
             # expr_trees keys 格式: module.signal → 需要短名匹配
+            # 同时支持 prod[15:8] → 去 [...] 后缀匹配 prod 中间 wire
+            _match_label = label
+            _bracket_idx = label.find('[')
+            if _bracket_idx > 0:
+                _match_label = label[:_bracket_idx]
+            # 先查缓存（带后缀匹配）
+            if _match_label in _signal_cache:
+                return _signal_cache[_match_label]
+            if label in _signal_cache:
+                return _signal_cache[label]
             matched_tree = None
             for ek, ev in expr_trees.items():
-                if ek.rsplit('.', 1)[-1] == label:
+                ek_short = ek.rsplit('.', 1)[-1]
+                if ek_short == label or ek_short == _match_label:
                     matched_tree = ev
                     break
             if matched_tree is not None:
-                # 先检查是否已渲染过（避免重复渲染同一个中间 wire）
-                sig_id = f'sig_{_safe(label)}_expr'
-                existing = [c for c in root_children if c.get('id') == sig_id]
-                if existing:
-                    return sig_id
+                # 先查缓存
+                if label in _signal_cache:
+                    return _signal_cache[label]
+                if _match_label in _signal_cache:
+                    return _signal_cache[_match_label]
                 op_id = render_tree(matched_tree, f'{prefix}_wire')
                 if op_id:
+                    # 如果 op_id 就是 sig_id（可能是递归匹配的缓存结果），直接返回
+                    if op_id.startswith('sig_'):
+                        _signal_cache[_match_label] = op_id
+                        _signal_cache[label] = op_id
+                        return op_id
                     # 创建信号标签节点，OP 输出连到这里
+                    sig_id = f'sig_{_safe(_match_label)}_expr'
+                    existing = [c for c in root_children if c.get('id') == sig_id]
+                    if existing:
+                        _signal_cache[_match_label] = sig_id
+                        _signal_cache[label] = sig_id
+                        return sig_id
                     root_children.append({
                         'id': sig_id, 'width': SIG_W, 'height': SIG_H,
-                        'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                        'labels': [{'text': _match_label, 'fontSize': 8, 'fontName': 'Courier'}],
                         '_meta': {'kind': 'signal'},
                     })
                     root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
+                    _signal_cache[_match_label] = sig_id
+                    _signal_cache[label] = sig_id
                     return sig_id
             sig_id = f'sig_{_safe(label)}_{nc}'
             existing = [c for c in root_children if c.get('id') == sig_id]
@@ -255,8 +282,22 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         return node_id
     
     for dst_name, tree_data in expr_trees.items():
-        top_op_id = render_tree(tree_data, dst_name)
         dst_short = _short(dst_name)
+        # 中间 wire (非 input 非 output): 创建 sig 标签节点 + 渲染表达式树
+        if dst_short not in output_set and dst_short not in input_set:
+            sig_id = f'sig_{_safe(dst_short)}_wire'
+            root_children.append({
+                'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                'labels': [{'text': dst_short, 'fontSize': 8, 'fontName': 'Courier'}],
+                '_meta': {'kind': 'signal'},
+            })
+            _signal_cache[dst_short] = sig_id
+            op_id = render_tree(tree_data, f'wire_{dst_short}')
+            if op_id:
+                root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
+            continue
+        # Output port: 渲染树 + 连到 port
+        top_op_id = render_tree(tree_data, dst_name)
         if dst_short in output_set and top_op_id:
             root_edges.append(_emit_edge(ne(), [top_op_id], [f'port_{dst_short}']))
     

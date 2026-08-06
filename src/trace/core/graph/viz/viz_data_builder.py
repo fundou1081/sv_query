@@ -403,8 +403,9 @@ def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
                     tree_data = ExpressionTree._to_dict(et.root)
                     expr_trees[tree_key] = tree_data
             
-            # NetDeclaration: wire lhs = rhs (intermediate signals)
-            if 'NetDeclaration' in str(member.kind):
+            # NetDeclaration / VariableDeclaration: wire/logic lhs = rhs (intermediate signals)
+            kind_str = str(member.kind)
+            if 'NetDeclaration' in kind_str or 'VariableDeclaration' in kind_str:
                 for d in member.declarators:
                     init = getattr(d, 'initializer', None)
                     if init is None:
