@@ -227,7 +227,8 @@ def graph(
     from trace.core.graph.analyzer.signal_classifier import classify_graph
     classification = classify_graph(graph)
 
-    title = file or filelist or "Signal Graph"
+    # Normalize title: strip path+ext to avoid --file (.sv) vs --filelist (.f) diff
+    title = Path(file or filelist).stem if (file or filelist) else "Signal Graph"
     viz = build_viz_data(graph, VizBuildOptions(
         target_module=title,
         max_edges=max_edges,
@@ -295,8 +296,10 @@ def dataflow(
         include_node_class=True,
         classification=classification,
         include_edge_expression=True,
+        source_files=[file] if file else [],
     ))
-    title = module or file or filelist or "Dataflow"
+    # Strip path+ext for consistent --file vs --filelist titles
+    title = module or (Path(file or filelist).stem if (file or filelist) else "Dataflow")
     svg = render_dataflow(viz, {"title": f"Dataflow: {title}"})
 
     if dot_output:

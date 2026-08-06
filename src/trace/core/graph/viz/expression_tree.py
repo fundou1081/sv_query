@@ -366,8 +366,8 @@ class ExpressionTree:
         
         # Integer vector literal (e.g. 8'd128) — use source text for original representation
         if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind or 'Literal' in kind:
-            # Try sourceRange for exact original text
-            label = ExpressionTree._source_text(token, text)
+            # str(token) gives the original text from pyslang
+            label = text if text else '?'
             return ExprNode(op="Const", label=label)
         
         # Verilog literal constant
