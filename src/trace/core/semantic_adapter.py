@@ -1316,6 +1316,31 @@ class SemanticAdapter:
                 params.append((direction, str(name)))
         return params
 
+    def get_function_width(self, func) -> tuple[int, int] | None:
+        """[REFACTOR 2026-08-07 A计划] 从 function symbol 的 returnType 提取 (msb, lsb)
+
+        function [7:0] saturate(...) → returnType=PackedArrayType
+        getBitVectorRange() → "[7:0]" → 解析 (7, 0)
+        标量函数 (无打包范围) → None (用 EffectiveWidth)
+
+        替代旧 regex 从源码文本扫 function 声明的方式，数据源改为 semantic AST。
+        """
+        import re
+        rt = getattr(func, 'returnType', None)
+        if rt is None:
+            return None
+        try:
+            rng = rt.getBitVectorRange()  # "[7:0]" (str) 或 None
+        except Exception:
+            rng = None
+        if rng:
+            m = re.fullmatch(r'\[(\d+)(?::(\d+))?\]', str(rng).strip())
+            if m:
+                msb = int(m.group(1))
+                lsb = int(m.group(2)) if m.group(2) else msb
+                return (msb, lsb)
+        return None
+
     def analyze_task_internal_drivers(self, task_or_func) -> dict:
         """分析 task/function 内部的驱动关系
 

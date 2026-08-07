@@ -49,9 +49,6 @@ class VizBuildOptions:
     classification: Any | None = None
     pipeline_stages: Any | None = None
 
-    # ExpressionTree 源码文件
-    source_files: list[str] = field(default_factory=list)
-
 
 def build_viz_data(
     graph: SignalGraph,
@@ -238,114 +235,39 @@ def _enrich_datapath_info(viz, graph, opts):
     }
     渲染器只读 viz.meta["datapath"], 不解析SV源码, 不修改viz.nodes/edges。
     """
-    import re, os as _os
-    from collections import defaultdict
-    
     def _short(s: str) -> str:
         """模块前缀剥离"""
         return s.split(".")[-1] if "." in s else s
     
     dp = {
-        "const_map": defaultdict(list),
+        "const_map": dict(graph._const_map) if hasattr(graph, "_const_map") else {},
         "func_nodes": [],
         "func_widths": {},
         "op_index": {},
     }
-    
-    # 1. 从 SV 源码提取常量 + function 声明 (一次性, 不重复开文件)
-    import os as _os_path
-    src_files = getattr(opts, 'source_files', None) or []
-    if not src_files and os.getenv("SV_QUERY_SRC"):
-        src_files = [os.getenv("SV_QUERY_SRC")]
-    if not src_files:
-        # 从 VizNode 的 file 属性反查 SV 源码路径 (fallback)
-        search_roots = [
-            _os_path.getcwd(),
-            _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures'),
-            _os_path.path.join(_os_path.getcwd(), 'sim', 'tests', 'fixtures', 'golden_mini'),
-        ]
-        seen_names = set(n.file for n in viz.nodes if n.file)
-        for fname in seen_names:
-            for root in search_roots:
-                for dirpath, dirs, files in _os_path.walk(root):
-                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules','__pycache__','.git','.venv')]
-                    if fname in files:
-                        src_files.append(_os_path.path.join(dirpath, fname))
-                if src_files:
-                    break
-            if src_files:
-                break
-    
-    # 常量提取: 用 VizEdge.expression 中的 assign/wire 行逐行提取常量
-    # expression 可能是整个源文件，按行扫描 assign/wire dst=rhs 行，精确匹配每个 dst
-    _verilog_const = re.compile(r"\d+'[bdh]\w+")
-    _bare_num = re.compile(r'(?<![\[\w])\d+(?![:\w\]])')
-    for e in viz.edges:
-        expr = getattr(e, 'expression', '') or ''
-        if not expr or len(expr) > 10000:
-            continue
-        dn_s = e.dst.split('.')[-1]
-        for line in expr.split('\n'):
-            ls = line.strip()
-            if ls.startswith('//') or ls.startswith('module') or ls.startswith('input') or ls.startswith('output'):
-                continue
-            m = re.match(r'(?:assign|wire)\s+(?:\S+\s+)?(\w+)\s*=\s*(.+);', ls)
-            if not m:
-                continue
-            rhs_dst, rhs = m.group(1), m.group(2)
-            if rhs_dst != dn_s:
-                continue  # only collect consts for this edge's dst
-            # Verilog 字面量 (8'd128)
-            vc = _verilog_const.findall(rhs)
-            for c in vc:
-                if c not in dp["const_map"][dn_s]:
-                    dp["const_map"][dn_s].append(c)
-            # 从 rhs 移除 Verilog 字面量后, 提取纯数字 (2)
-            cleaned = _verilog_const.sub('', rhs)
-            for c in _bare_num.findall(cleaned):
-                if c not in dp["const_map"][dn_s]:
-                    dp["const_map"][dn_s].append(c)
-    
-    func_names_set = set()
-    for sp in src_files:
-        try:
-            with open(sp) as f:
-                src_text = f.read()
-            # function 声明: function [7:0] add_sat(input ...);
-            for m in re.finditer(r'function\s+(?:\[(\d+):(\d+)\]\s+)?(\w+)\s*\(', src_text):
-                msb, lsb, fn_name = m.group(1), m.group(2), m.group(3)
-                func_names_set.add(fn_name)
-                if msb and lsb:
-                    dp["func_widths"][fn_name] = (int(msb), int(lsb))
-            # 常量: wire/assign 中的 Verilog 字面量
-            for line in src_text.split('\n'):
-                ls = line.strip()
-                wm = re.match(r'(?:wire|logic)\s.*?(\w+)\s*=\s*(.+);', ls)
-                if wm:
-                    dst, rhs = wm.group(1), wm.group(2)
-                    consts = CONST_PAT.findall(rhs)
-                    if consts: dp["const_map"][dst].extend(consts)
-                am = re.match(r'assign\s+(\w+)\s*=\s*(.+);', ls)
-                if am:
-                    dst, rhs = am.group(1), am.group(2)
-                    consts = CONST_PAT.findall(rhs)
-                    if consts: dp["const_map"][dst].extend(consts)
-        except Exception:
-            pass
-    
-    dp["const_map"] = dict(dp["const_map"])
-    
+
+    # [REFACTOR 2026-08-07 A计划] 数据全部从 SignalGraph 获取（semantic AST 已解析）
+    # 不再 open().read() + regex 扫源码 / 不再 SyntaxTree.fromText 重解析。
+    # DriverExtractor 已填充 graph._expr_trees / _const_map / _func_info。
+
+    # func_names_set + func_widths：从 graph._func_info 读取
+    # func_info: {func_name → (msb,lsb)|None}
+    func_names_set = set(getattr(graph, "_func_info", {}) or {})
+    for fn_name, w in (getattr(graph, "_func_info", {}) or {}).items():
+        if w is not None:
+            dp["func_widths"][fn_name] = (w[0], w[1])
+
     # 2. 标记 function 节点
     for n in viz.nodes:
         sn = _short(n.id)
         if sn in func_names_set:
             n.is_function = True
             dp["func_nodes"].append(n.id)
-            # 用源码位宽覆盖 pyslang 的不准确宽度
+            # 用语义位宽覆盖 pyslang 的不准确宽度
             if sn in dp["func_widths"]:
                 w = dp["func_widths"][sn]
                 n.width = (w[0], w[1])
-    
+
     # 3. 构建信号→OP索引 (sig_op_index)
     op_index = dp["op_index"]
     for dst_sig in set(e.dst for e in viz.edges):
@@ -359,185 +281,14 @@ def _enrich_datapath_info(viz, graph, opts):
         consts = dp["const_map"].get(dn_s, [])
         if op_list or consts:
             op_index[dn_s] = {'ops': op_list, 'consts': consts}
-    
+
     viz.meta["datapath"] = dp
 
-    # ── V6.11 ExpressionTree: 从 SV 源码 AST 为每个 assign 构建表达式树 ──
-    _build_expr_trees_for_datapath(viz, dp, src_files, opts)
+    # [REFACTOR 2026-08-07 A计划] expr_trees 从 SignalGraph 读取
+    # DriverExtractor 已构建每 lhs 的表达式树（含多分支 max 合并）
+    if hasattr(graph, "_expr_trees"):
+        dp["expr_trees"] = dict(graph._expr_trees)
+    else:
+        dp["expr_trees"] = {}
 
 
-def _build_expr_trees_for_datapath(viz, dp, src_files, opts):
-    """为每个 assign 构建 ExpressionTree，存到 dp["expr_trees"] = {dst → tree_dict}
-    
-    tree_dict 格式: {"label": "Add", "children": [...child_dict]} (JSON 可序列化)
-    """
-    from .expression_tree import ExpressionTree
-    from trace.core._pyslang_compat import SyntaxTree
-    
-    expr_trees = {}
-    if not src_files:
-        return
-    
-    for sp in src_files:
-        try:
-            with open(sp) as f:
-                src_text = f.read()
-            st = SyntaxTree.fromText(src_text)
-        except Exception:
-            continue
-        
-        # st.root is ModuleDeclarationSyntax (single node)
-        # It has .members which is a list of module body items
-        root = st.root
-        module_name = _extract_module_name(root)
-        
-        for member in st.root.members:
-            # ContinuousAssign: assign lhs = rhs
-            if hasattr(member, 'assignments'):
-                for ass in member.assignments:
-                    et = ExpressionTree.build(ass)
-                    if et is None or et.root is None:
-                        continue
-                    left = str(ass.left).strip()
-                    tree_key = f"{module_name}.{left}" if module_name else left
-                    tree_data = ExpressionTree._to_dict(et.root)
-                    expr_trees[tree_key] = tree_data
-            
-            # NetDeclaration / VariableDeclaration: wire/logic lhs = rhs (intermediate signals)
-            kind_str = str(member.kind)
-            if 'NetDeclaration' in kind_str or 'VariableDeclaration' in kind_str:
-                for d in member.declarators:
-                    init = getattr(d, 'initializer', None)
-                    if init is None:
-                        continue
-                    try:
-                        tokens = list(init.expr)
-                    except (TypeError, ValueError):
-                        continue
-                    if not tokens:
-                        continue
-                    root = ExpressionTree._parse_expr(tokens, 0, len(tokens))
-                    if root is None:
-                        continue
-                    left = str(d.name).strip()
-                    tree_key = f"{module_name}.{left}" if module_name else left
-                    tree_data = ExpressionTree._to_dict(root)
-                    expr_trees[tree_key] = tree_data
-            
-            # Procedural blocks: always_comb/always_ff/always_latch/initial
-            # Extract assignments from case/if-else to build expr_trees for condition-driven outputs
-            if 'Always' in kind_str or 'Initial' in kind_str:
-                _extract_procedural_assignments(member, module_name, expr_trees, ExpressionTree)
-    dp["expr_trees"] = expr_trees
-
-
-def _extract_procedural_assignments(member, module_name, expr_trees, ExpressionTree):
-    """从 procedural block (always_comb/always_ff/always_latch) 中提取赋值表达式
-    
-    遍历 always_comb/always_ff 内部的 case/if-else 结构，
-    提取所有赋值 (lhs = rhs) 作为 expr_trees 条目。
-    遇到同一个 lhs 多次赋值 (如 case 的不同分支)，合并为一个 Call(assign) 节点。
-    """
-    stmt = getattr(member, 'statement', None)
-    if stmt is None:
-        return
-    
-    # 收集所有赋值: {lhs_name: [expr_node, ...]}
-    assignments_by_lhs = {}
-    _walk_procedural_statement(stmt, assignments_by_lhs, ExpressionTree)
-    
-    # 每个 lhs 创建 expr_tree
-    for lhs, rhs_list in assignments_by_lhs.items():
-        if not rhs_list:
-            continue
-        # 取最复杂的 rhs 作为代表 (优先选包含运算符/三元/函数调用的，而非纯 SignalRef/Const)
-        # 取最复杂的 rhs 作为代表 (优先选包含运算符/三元/函数调用的，而非纯 SignalRef/Const)
-        def _complexity(node):
-            """计算表达式树的复杂度 (children 总数)"""
-            if node is None:
-                return 0
-            c = node
-            total = 1
-            for child in c.children if hasattr(c, 'children') else []:
-                total += _complexity(child)
-            return total
-        best = max(rhs_list, key=_complexity)
-        tree_data = ExpressionTree._to_dict(best)
-        tree_key = f"{module_name}.{lhs}" if module_name else lhs
-        expr_trees[tree_key] = tree_data
-
-
-def _walk_procedural_statement(stmt, assignments_by_lhs, ExpressionTree):
-    """递归遍历 procedural statement AST，直接提取所有赋值表达式
-    
-    遍历路径: BlockStatement → CaseStatement → StandardCaseItem/DefaultCaseItem
-              → ExpressionStatement → AssignmentExpression
-              或 BlockStatement → ConditionalStatement (if-else) → ExpressionStatement
-    """
-    try:
-        ki = str(stmt.kind)
-    except (TypeError, ValueError):
-        return
-    
-    # ExpressionStatement: 直接提取赋值
-    if 'ExpressionStatement' in ki:
-        for es_sub in stmt:
-            try:
-                es_k = str(getattr(es_sub, 'kind', ''))
-            except (TypeError, ValueError):
-                continue
-            if 'Assignment' in es_k or 'Assign' in es_k:
-                lhs = None
-                rhs_tokens = []
-                for a_sub in es_sub:
-                    try:
-                        a_k = str(getattr(a_sub, 'kind', ''))
-                    except (TypeError, ValueError):
-                        continue
-                    if 'Identifier' in a_k and lhs is None:
-                        lhs = str(a_sub).strip()
-                    elif lhs is not None and 'Equals' not in a_k and 'LessThanEquals' not in a_k:
-                        rhs_tokens.append(a_sub)
-                if lhs and rhs_tokens:
-                    rhs_node = ExpressionTree._parse_expr(rhs_tokens, 0, len(rhs_tokens))
-                    if rhs_node:
-                        if lhs not in assignments_by_lhs:
-                            assignments_by_lhs[lhs] = []
-                        assignments_by_lhs[lhs].append(rhs_node)
-        return
-    
-    # 遍历子节点
-    try:
-        items = list(stmt)
-    except (TypeError, ValueError):
-        return
-    
-    for item in items:
-        try:
-            item_ki = str(item.kind)
-        except (TypeError, ValueError):
-            continue
-        
-        # 递归进入所有 SyntaxNode (跳过 Token)
-        try:
-            _ = list(item)
-        except (TypeError, ValueError):
-            continue
-        
-        # 跳过 Declaration/Module/Port 等非语句语法节点
-        if 'Declaration' in item_ki or 'Module' in item_ki or 'Port' in item_ki or 'Header' in item_ki:
-            continue
-        
-        _walk_procedural_statement(item, assignments_by_lhs, ExpressionTree)
-
-
-def _extract_module_name(root) -> str:
-    """从 ModuleDeclarationSyntax 提取模块名"""
-    header = getattr(root, 'header', None)
-    if header is None:
-        return ''
-    # header is iterable: [module_keyword, IdentifierName, ...]
-    items = list(header)
-    if len(items) >= 2:
-        return str(items[1]).strip()
-    return ''
