@@ -189,16 +189,31 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     cfg = config or {}
     title = cfg.get("title", "Dataflow")
     
-    from .elk_bridge import expr_trees_to_elk, run_elk_layout
+    from .elk_bridge import expr_trees_to_elk, run_elk_layout, get_layout
     
-    # 有 expr_trees → 纯 ELK 路径
-    # Normalize expr_trees keys: strip module prefix (with_function.y → y)
+    # [FIX 2026-08-07] 路径选择: 有 case/if 条件边(condition_chain) 的信号走 get_layout
+    # (compound graph → 渲染 case/branch 框, true/false 条件区分).
+    # 之前用 `if expr_trees:` 判断, 导致 case9 这类 case 多分支被 _store_expr_tree
+    # 合并成单个表达式树后误走 expr_trees_to_elk, 丢失 case/if 分支框.
+    # 有条件边的 dest → 走 get_layout; 否则 → expr_trees_to_elk (纯表达式树).
     raw_expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
     expr_trees = {}
     for k, v in raw_expr_trees.items():
         short_key = k.rsplit('.', 1)[-1] if '.' in k else k
         if short_key not in expr_trees:
             expr_trees[short_key] = v
+    
+    # 检测是否有 case/if 条件边 (condition_chain 非空 或 condition 非空)
+    has_cond_edges = any(
+        (getattr(e, 'condition_chain', None) or []) or getattr(e, 'condition', None)
+        for e in viz.edges
+    )
+    
+    # 检测是否有分支框信号 (有条件边汇聚到同一 dst)
+    if has_cond_edges:
+        # compound graph 路径: 渲染 case/if 分支框
+        layout = get_layout(viz)
+        return _render_svg_direct(layout, {'title': title})
     
     if expr_trees:
         input_names = []
@@ -216,7 +231,5 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         return _render_svg_direct(layout, {'title': title})
     
     # Fallback: compound graph for case/if branches (no expr_trees, but condition edges)
-    from .elk_bridge import get_layout
-    
     layout = get_layout(viz)
     return _render_svg_direct(layout, {'title': title})
