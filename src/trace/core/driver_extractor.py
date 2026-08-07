@@ -1078,29 +1078,23 @@ class DriverExtractor:
                 continue
             if self._handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
                 continue
-            if self._handle_binary_invocation_assign(assign, raw_rhs, module, result, module_name,
-                                                      _raw_lhs=raw_lhs):
+            if self._handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
                 continue
             self._handle_normal_assign(assign, module, result, module_name)
 
     def _extract_assign_lr(self, assign) -> tuple:
-        """[REFACTOR 2026-06-26] 从 assign 节点提取 (raw_lhs, raw_rhs). None if missing."""
-        raw_rhs = None
-        raw_lhs = None
-        # [FIX 2026-08-07] 语义 AST ContinuousAssignSymbol 优先 (.assignment), 顺序与
-        # load_extractor._parse_assign 统一 — 防未来某对象同时有 .assignments + .assignment 时走错
-        if hasattr(assign, "assignment"):
-            # Semantic AST: ContinuousAssignSymbol has .assignment
-            ass = assign.assignment
-            raw_rhs = getattr(ass, "right", None)
-            raw_lhs = getattr(ass, "left", None)
-        elif hasattr(assign, "right"):
-            raw_rhs = assign.right
-            raw_lhs = getattr(assign, "left", None)
-        elif hasattr(assign, "assignments") and assign.assignments:
-            raw_rhs = assign.assignments[0].right
-            raw_lhs = assign.assignments[0].left
-        return raw_lhs, raw_rhs
+        """[语义 AST] 从 assign 节点提取 (raw_lhs, raw_rhs).
+
+        get_assignments() 只返回 SymbolKind.ContinuousAssign, 其结构固定:
+        - .assignment → AssignmentExpression (含 .left/.right)
+        - 本身无 .left/.right/assignments
+        [重构 2026-08-07] 激进精简: 删除历史语法树 fallback (assignments/right),
+        它们在新 pipeline (纯语义 AST) 下是死代码.
+        """
+        ass = getattr(assign, "assignment", None)
+        if ass is None:
+            return None, None
+        return getattr(ass, "left", None), getattr(ass, "right", None)
 
     def _handle_concat_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
         """[REFACTOR 2026-06-26] 5a: 处理 Concatenation 拼接赋值. 处理了 return True (已 dispatch), 否则 False."""
@@ -1219,32 +1213,24 @@ class DriverExtractor:
             self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
         return True
 
-    def _handle_binary_invocation_assign(self, assign, raw_rhs, module, result, module_name,
-                                          _raw_lhs=None) -> bool:
+    def _handle_binary_invocation_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
         """5c: 处理 BinaryExpression 包含 InvocationExpression.
 
         例: assign result = a & my_func(b);
-        优先用 _create_assign_edges 经 _extract_assign_lr 解包的 raw_lhs
-        (兼容语义 AST ContinuousAssignSymbol.assignment).
+        raw_lhs/raw_rhs 由 _create_assign_edges 经 _extract_assign_lr 解包传入
+        (与其他 handler 签名一致).
 
         [FIX 2026-08-07] case19 overflow 孤立根因:
         之前内部用 `assign.assignments[0].left` 重新提取 raw_lhs, 对语义 AST
         ContinuousAssignSymbol 只有 .assignment 无 .assignments → raw_lhs=None
         → lhs_name=None → 不建 sat_add→overflow 返回边 + 不存 expr_tree
-        → overflow 输出节点孤立.
+        → overflow 输出节点孤立. 已改为直接接收解包的 raw_lhs.
         """
         if not (raw_rhs and hasattr(raw_rhs, "kind") and "Binary" in str(raw_rhs.kind)):
             return False
         invocations_found = self._find_invocations(raw_rhs)
         if not invocations_found:
             return False
-        raw_lhs = _raw_lhs
-        if raw_lhs is None:
-            # 兼容旧调用: 仅当调用方未传 raw_lhs 时才回退到自身提取
-            if hasattr(assign, "assignments") and assign.assignments:
-                raw_lhs = assign.assignments[0].left
-            elif hasattr(assign, "assignment"):  # Semantic AST: ContinuousAssignSymbol.assignment
-                raw_lhs = getattr(assign.assignment, "left", None)
         lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
         for invocation in invocations_found:
             self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
@@ -3201,13 +3187,10 @@ class DriverExtractor:
                 a = assign.assignment
                 lhs = a.left if hasattr(a, "left") else None
                 rhs = a.right if hasattr(a, "right") else None
-            elif hasattr(assign, "assignments") and assign.assignments:
-                a = assign.assignments[0]
-                lhs = a.left if hasattr(a, "left") else None
-                rhs = a.right if hasattr(a, "right") else None
             else:
-                lhs = getattr(assign, "left", None) or getattr(assign, "lhs", None)
+                # Nonblocking/BlockingAssignmentExpression (always 块 procedural assign)
                 rhs = getattr(assign, "right", None) or getattr(assign, "rhs", None)
+                lhs = getattr(assign, "left", None) or getattr(assign, "lhs", None)
 
             lhs_name = self._get_signal(lhs)
             rhs_name = self._get_signal(rhs)
