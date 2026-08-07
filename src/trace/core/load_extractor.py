@@ -100,42 +100,9 @@ class LoadExtractor:
 
         return result
 
-    def _parse_assign(self, assign) -> tuple:
-        """
-        解析赋值语句,返回 (lhs_name, rhs_name, rhs_expr)
-        - lhs_name: 左操作数信号名
-        - rhs_name: 右操作数信号名 (简单信号,用于简单赋值)
-        - rhs_expr: 原始 RHS 表达式 (用于复杂类型判断和_get_all_signals)
-        """
-        # [铁律2] 支持所有赋值语法结构
-        try:
-            # [P2-FIX] 语义 AST ContinuousAssignSymbol: 有 'assignment' 属性,没有 'assignments'
-            # 优先走语义路径, 与 driver_extractor 保持一致 (顺序稳健)
-            if hasattr(assign, "assignment") and hasattr(assign.assignment, "left"):
-                a = assign.assignment
-                lhs = a.left if hasattr(a, "left") else None
-                rhs = a.right if hasattr(a, "right") else None
-            # [P2] 支持 ContinuousAssign 嵌套结构: assign.assignments[0]
-            elif hasattr(assign, "assignments") and assign.assignments:
-                a = assign.assignments[0]
-                lhs = a.left if hasattr(a, "left") else None
-                rhs = a.right if hasattr(a, "right") else None
-            elif hasattr(assign, "left") and hasattr(assign, "right"):
-                # NonblockingAssignmentExpression / BlockingAssignmentExpression
-                lhs = getattr(assign, "left", None)
-                rhs = getattr(assign, "right", None)
-            else:
-                # 兜底: 直接尝试 lhs/rhs
-                lhs = getattr(assign, "lhs", None)
-                rhs = getattr(assign, "rhs", None)
-
-            lhs_name = self._get_signal(lhs)
-            rhs_name = self._get_signal(rhs)
-
-            return lhs_name, rhs_name, rhs
-        except Exception:
-            # [铁律3] 解析失败时返回空值,但记录错误上下文
-            return None, None, None
+    # [重构 2026-08-07] 删除孤儿死方法 _parse_assign:
+    # 它在本模块无任何调用点, LoadExtractor.extract() 不调用它,
+    # 也没有外部调用者 (仅 re-export 类本身). 属于历史遗留死代码.
 
     def _get_signal(self, signal) -> str | None:
         if signal is None:
