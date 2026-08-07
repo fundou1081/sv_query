@@ -285,6 +285,10 @@ class SignalGraph(nx.DiGraph):
         self._edge_data: dict[tuple[str, str], list[TraceEdge]] = {}
         self._port_to_internal: dict[str, str] = {}  # {inst_port_id: child_signal_id}
         self._port_to_module_type: dict[str, str] = {}  # {inst_port_id: <module_type>.<port_name>} (semantic short name)
+        # [REFACTOR 2026-08-07 A计划] 表达式树/常量/函数信息 — 从 semantic AST 构建，消灭 viz 层源码重读
+        self._expr_trees: dict[str, dict] = {}      # {dst_key → tree_dict}
+        self._const_map: dict[str, list] = {}       # {dst_short → [const_str,...]}
+        self._func_info: dict[str, tuple | None] = {}  # {func_name → (msb,lsb)|None}
 
     def get_port_to_internal(self) -> dict[str, str]:
         """获取端口到内部信号的映射"""
@@ -586,6 +590,10 @@ class SignalGraph(nx.DiGraph):
             "port_to_internal": dict(self._port_to_internal),
             "nodes": nodes_data,
             "edges": edges_data,
+            # [REFACTOR 2026-08-07 A计划] 持久化表达式树/常量/函数信息
+            "expr_trees": dict(self._expr_trees),
+            "const_map": dict(self._const_map),
+            "func_info": dict(self._func_info),
         }
 
     @classmethod
@@ -652,6 +660,12 @@ class SignalGraph(nx.DiGraph):
                 confidence=edge_dict.get("confidence", "high"),
             )
             graph.add_trace_edge(edge)
+
+        # [REFACTOR 2026-08-07 A计划] 恢复表达式树/常量/函数信息
+        # 旧 snapshot 可能没有这些字段，get 默认空保持兼容
+        graph._expr_trees = dict(data.get("expr_trees", {}) or {})
+        graph._const_map = dict(data.get("const_map", {}) or {})
+        graph._func_info = dict(data.get("func_info", {}) or {})
 
         return graph
 

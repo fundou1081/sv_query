@@ -31,3 +31,7 @@ class ExtractorResult:
     errors: list[str] = field(default_factory=list)
     port_to_internal: dict[str, str] = field(default_factory=dict)  # {inst_port_id: child_signal_id}
     port_to_module_type: dict[str, str] = field(default_factory=dict)  # {inst_port_id: <module_type>.<port_name>}
+    # [REFACTOR 2026-08-07 A计划] 表达式树/常量/函数信息 — 全部从 semantic AST 构建，消灭 viz 层源码重读
+    expr_trees: dict[str, dict] = field(default_factory=dict)   # {dst_key → tree_dict} (含多分支 max 合并)
+    const_map: dict[str, list] = field(default_factory=dict)    # {dst_short → [const_str,...]} 从 expr_trees 树遍历提取
+    func_info: dict[str, tuple | None] = field(default_factory=dict)  # {func_name → (msb,lsb)|None} 从 semantic function symbol 提取

@@ -40,6 +40,37 @@ logger = logging.getLogger(__name__)
 __all__ = ["DriverExtractor", "ExtractorResult"]
 
 
+def _tree_complexity(d: dict) -> int:
+    """计算 tree_dict 的 descendants 总数（含自身）
+
+    用于多分支 case/if 赋值时，选择最复杂的代表表达式。
+    """
+    total = 1
+    for c in d.get('children', []):
+        total += _tree_complexity(c)
+    return total
+
+
+def _collect_from_tree(tree_dict: dict, dst_short: str, const_map: dict, func_info: dict) -> None:
+    """从 expr_tree 树遍历提取 Const 叶子 → const_map，Call 节点 → func_info
+
+    替代旧 regex 从源码文本扫 assign/wire 行的 const_map 提取方式，
+    数据源改为表达式树本身（更准确，旧 regex 在复杂 case 会漏）。
+    """
+    op = tree_dict.get('op')
+    lbl = tree_dict.get('label')
+    if op == 'Const' and lbl:
+        lst = const_map.setdefault(dst_short, [])
+        if lbl not in lst:
+            lst.append(lbl)
+    if op == 'Call' and lbl:
+        if lbl not in func_info:
+            func_info[lbl] = None  # 宽度由 extract() 阶段从 semantic function symbol 补充
+    for c in tree_dict.get('children', []):
+        _collect_from_tree(c, dst_short, const_map, func_info)
+
+
+
 class DriverExtractor:
     """Driver 提取器 — 从 semantic AST 的 always/assign 中提取 driver 边。"""
 
@@ -133,6 +164,55 @@ class DriverExtractor:
             **kwargs,
         )
         result.edges.append(edge)
+
+    # ═══════════════════════════════════════════════════════════
+    # [REFACTOR 2026-08-07 A计划] ExpressionTree 收集
+    # 从 semantic AST 节点的 .syntax 构建表达式树，存入 result.expr_trees
+    # 同时遍历树提取 Const → result.const_map，Call → result.func_info
+    # 目标: 消灭 viz 层 SyntaxTree.fromText() 源码重读
+    # ═══════════════════════════════════════════════════════════
+
+    def _store_expr_tree(self, lhs_name, rhs_expr, module_name, result) -> None:
+        """从 rhs_expr.syntax 构建 ExpressionTree，存入 result.expr_trees。
+
+        同一 lhs 多 rhs（case/if 多分支）时，收集所有 tree_dict，
+        最后取「最复杂」(descendant count max) 的代表。
+
+        Args:
+            lhs_name: 被赋值信号名 (不含 module 前缀)
+            rhs_expr: pyslang semantic AST 表达式节点 (BinaryOp/ConditionalOp/Call...)
+            module_name: 模块/实例路径前缀
+            result: ExtractorResult
+        """
+        if not lhs_name or rhs_expr is None:
+            return
+        syntax = getattr(rhs_expr, 'syntax', None)
+        if syntax is None:
+            return
+        try:
+            tokens = list(syntax)
+        except (TypeError, ValueError):
+            return
+        if not tokens:
+            return
+
+        from .graph.viz.expression_tree import ExpressionTree
+        root = ExpressionTree._parse_expr(tokens, 0, len(tokens))
+        if root is None:
+            return
+
+        tree_key = f"{module_name}.{lhs_name}" if module_name else lhs_name
+        tree_dict = ExpressionTree._to_dict(root)
+
+        # 多分支合并：已有则保留更复杂的一个
+        existing = result.expr_trees.get(tree_key)
+        if existing is not None and _tree_complexity(tree_dict) <= _tree_complexity(existing):
+            return
+        result.expr_trees[tree_key] = tree_dict
+
+        # 从树遍历提取 Const → const_map, Call → func_info
+        dst_short = lhs_name
+        _collect_from_tree(tree_dict, dst_short, result.const_map, result.func_info)
 
     def set_instance_paths(self, instance_paths: list[tuple[str, Any]]) -> None:
         """[Phase 4 2026-07-11] Configure instance-aware signal extraction.
@@ -940,6 +1020,9 @@ class DriverExtractor:
                 init = None
             if init is None:
                 continue
+            # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
+            # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
+            self._store_expr_tree(lhs_name, init, module_name, result)
             lhs_id = f"{module_name}.{lhs_name}"
             self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
             rhs_expr_str = self._get_signal(init) or ""
@@ -1098,6 +1181,12 @@ class DriverExtractor:
                         kind=EdgeKind.DRIVER,
                         assign_type="continuous",
                     )
+        # [REFACTOR 2026-08-07 A计划] 拼接赋值: assign y = {a, b};
+        # raw_rhs 是 Concat semantic 节点，.syntax 构建 Concat 树
+        if raw_lhs is not None:
+            lst = self._get_signal(raw_lhs)
+            if lst and raw_rhs is not None:
+                self._store_expr_tree(lst, raw_rhs, module_name, result)
         return True
 
     def _handle_call_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
@@ -1122,6 +1211,9 @@ class DriverExtractor:
                     )
         # 调用 _handle_invocation,传入 lhs_name 作为目标
         self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
+        # [REFACTOR 2026-08-07 A计划] 函数调用赋值: assign y = func(a,b);
+        if lhs_name and raw_rhs is not None:
+            self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
         return True
 
     def _handle_binary_invocation_assign(self, assign, raw_rhs, module, result, module_name) -> bool:
@@ -1140,6 +1232,9 @@ class DriverExtractor:
         lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
         for invocation in invocations_found:
             self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
+        # [REFACTOR 2026-08-07 A计划] 二元+函数调用赋值: assign y = a & func(b);
+        if lhs_name and raw_rhs is not None:
+            self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
         return True
 
     def _find_invocations(self, expr, invocations=None) -> list:
@@ -1778,6 +1873,11 @@ class DriverExtractor:
                         source=ds,
                     )
 
+        # [REFACTOR 2026-08-07 A计划] 从完整 rhs 构建表达式树 (assign y = rhs)
+        # rhs_expr 是完整 semantic 表达式，.syntax 建整棵树（含三元/嵌套运算）
+        if lhs and rhs_expr is not None:
+            self._store_expr_tree(lhs, rhs_expr, module_name, result)
+
     def _create_always_edges(self, module, result, module_name):
         """[REFACTOR 2026-06-26] 处理 always 块 (含 always_ff/always_comb/always_latch).
 
@@ -1925,6 +2025,12 @@ class DriverExtractor:
                                 )
                             )
                         continue  # 跳过后续的 ternary 复杂逻辑和 rhs_signals 提取
+
+                    # [REFACTOR 2026-08-07 A计划] 从 procedural assignment 构建表达式树
+                    # always_comb/always_ff 中 case/if 每个分支的 rhs 是独立 semantic 节点，
+                    # _store_expr_tree 内部对同一 lhs 多分支做 max 合并（取最复杂代表）
+                    if lhs and rhs_expr is not None:
+                        self._store_expr_tree(lhs, rhs_expr, module_name, result)
 
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
                     # [FIX 2026-7-15] Pass module for Syntax AST resolution
@@ -2926,6 +3032,24 @@ class DriverExtractor:
                     )
             except Exception:
                 pass  # source_location 失败不影响 edge
+
+        # [REFACTOR 2026-08-07 A计划] 收集 function 宽度到 func_info
+        # _store_expr_tree 的 _collect_from_tree 只记录了 Call 节点名 (func_info[name]=None)
+        # 这里遍历 module 的 function declarations，从 semantic returnType 补全宽度
+        # 替代旧 regex 从源码文本扫 function 声明的方式
+        if result.func_info:
+            for module in self.adapter.get_modules():
+                try:
+                    fns = self.adapter.get_function_declarations(module)
+                except Exception:
+                    continue
+                for fn in fns:
+                    try:
+                        fn_name = self.adapter.get_function_name(fn)
+                    except Exception:
+                        continue
+                    if fn_name in result.func_info and result.func_info.get(fn_name) is None:
+                        result.func_info[fn_name] = self.adapter.get_function_width(fn)
 
         return result
 

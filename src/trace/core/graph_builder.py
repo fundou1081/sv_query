@@ -474,6 +474,13 @@ class GraphBuilder:
                 if not hasattr(self.graph, "_port_to_module_type"):
                     self.graph._port_to_module_type = {}
                 self.graph._port_to_module_type.update(result.port_to_module_type)
+            # [REFACTOR 2026-08-07 A计划] 收集 expr_trees/const_map/func_info (从 semantic AST, 消灭 viz 源码重读)
+            if getattr(result, 'expr_trees', None):
+                self.graph._expr_trees.update(result.expr_trees)
+            if getattr(result, 'const_map', None):
+                self.graph._const_map.update(result.const_map)
+            if getattr(result, 'func_info', None):
+                self.graph._func_info.update(result.func_info)
 
         # [P0-3] 设置 interface 信号的 modport_dir
         self._set_interface_modport_dirs()

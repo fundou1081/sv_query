@@ -296,7 +296,6 @@ def dataflow(
         include_node_class=True,
         classification=classification,
         include_edge_expression=True,
-        source_files=[file] if file else [],
     ))
     # Strip path+ext for consistent --file vs --filelist titles
     title = module or (Path(file or filelist).stem if (file or filelist) else "Dataflow")
