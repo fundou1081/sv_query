@@ -1078,7 +1078,8 @@ class DriverExtractor:
                 continue
             if self._handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
                 continue
-            if self._handle_binary_invocation_assign(assign, raw_rhs, module, result, module_name):
+            if self._handle_binary_invocation_assign(assign, raw_rhs, module, result, module_name,
+                                                      _raw_lhs=raw_lhs):
                 continue
             self._handle_normal_assign(assign, module, result, module_name)
 
@@ -1216,19 +1217,32 @@ class DriverExtractor:
             self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
         return True
 
-    def _handle_binary_invocation_assign(self, assign, raw_rhs, module, result, module_name) -> bool:
-        """[REFACTOR 2026-06-26] 5c: 处理 BinaryExpression 包含 InvocationExpression.
+    def _handle_binary_invocation_assign(self, assign, raw_rhs, module, result, module_name,
+                                          _raw_lhs=None) -> bool:
+        """5c: 处理 BinaryExpression 包含 InvocationExpression.
 
         例: assign result = a & my_func(b);
+        优先用 _create_assign_edges 经 _extract_assign_lr 解包的 raw_lhs
+        (兼容语义 AST ContinuousAssignSymbol.assignment).
+
+        [FIX 2026-08-07] case19 overflow 孤立根因:
+        之前内部用 `assign.assignments[0].left` 重新提取 raw_lhs, 对语义 AST
+        ContinuousAssignSymbol 只有 .assignment 无 .assignments → raw_lhs=None
+        → lhs_name=None → 不建 sat_add→overflow 返回边 + 不存 expr_tree
+        → overflow 输出节点孤立.
         """
         if not (raw_rhs and hasattr(raw_rhs, "kind") and "Binary" in str(raw_rhs.kind)):
             return False
         invocations_found = self._find_invocations(raw_rhs)
         if not invocations_found:
             return False
-        raw_lhs = None
-        if hasattr(assign, "assignments") and assign.assignments:
-            raw_lhs = assign.assignments[0].left
+        raw_lhs = _raw_lhs
+        if raw_lhs is None:
+            # 兼容旧调用: 仅当调用方未传 raw_lhs 时才回退到自身提取
+            if hasattr(assign, "assignments") and assign.assignments:
+                raw_lhs = assign.assignments[0].left
+            elif hasattr(assign, "assignment"):  # Semantic AST: ContinuousAssignSymbol.assignment
+                raw_lhs = getattr(assign.assignment, "left", None)
         lhs_name = self._get_signal(raw_lhs) if raw_lhs else None
         for invocation in invocations_found:
             self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
