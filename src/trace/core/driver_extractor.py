@@ -1087,17 +1087,19 @@ class DriverExtractor:
         """[REFACTOR 2026-06-26] 从 assign 节点提取 (raw_lhs, raw_rhs). None if missing."""
         raw_rhs = None
         raw_lhs = None
-        if hasattr(assign, "assignments") and assign.assignments:
-            raw_rhs = assign.assignments[0].right
-            raw_lhs = assign.assignments[0].left
-        elif hasattr(assign, "right"):
-            raw_rhs = assign.right
-            raw_lhs = getattr(assign, "left", None)
-        elif hasattr(assign, "assignment"):
+        # [FIX 2026-08-07] 语义 AST ContinuousAssignSymbol 优先 (.assignment), 顺序与
+        # load_extractor._parse_assign 统一 — 防未来某对象同时有 .assignments + .assignment 时走错
+        if hasattr(assign, "assignment"):
             # Semantic AST: ContinuousAssignSymbol has .assignment
             ass = assign.assignment
             raw_rhs = getattr(ass, "right", None)
             raw_lhs = getattr(ass, "left", None)
+        elif hasattr(assign, "right"):
+            raw_rhs = assign.right
+            raw_lhs = getattr(assign, "left", None)
+        elif hasattr(assign, "assignments") and assign.assignments:
+            raw_rhs = assign.assignments[0].right
+            raw_lhs = assign.assignments[0].left
         return raw_lhs, raw_rhs
 
     def _handle_concat_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
