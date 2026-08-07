@@ -203,15 +203,22 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         if short_key not in expr_trees:
             expr_trees[short_key] = v
     
-    # [FIX 2026-08-07 v2] 路径选择精细化:
+    # [FIX 2026-08-07 v3] 路径选择精细化:
     # - 无条件数据运算边 (source_op 非空, 无 condition) 存在 → 走 expr_trees_to_elk
     #   (数据链完整渲染, scale/valid 正确连接)
-    # - 仅 case/if 条件边 (无数据运算边) → 走 get_layout (case/branch 分支框)
-    # v1 用全局 has_cond_edges 判断导致 case13 这类「有数据链+有case分支」的
-    # 被切到分支框, 丢失 scale→scaled 等无条件数据运算边 → scale/valid 孤立.
+    # - 函数调用边 (source_op=='Call', 可能带 condition) → 走 expr_trees_to_elk,
+    #   因为 viz_to_elk 分支框路径不支持 op='Call' 的函数调用边 (会报
+    #   'Referenced shape does not exist'), 而 expr_trees 能完整表达 Call 子树.
+    # v2 只判断无条件 op, 导致 case21 (case+function 调用, Call 边都带 condition)
+    # 被误切到分支框路径而崩溃.
     has_uncond_op = any(
         getattr(e, 'source_op', None) and not (getattr(e, 'condition_chain', None) or [])
         and getattr(e, 'kind', '') not in ('CLOCK', 'RESET', 'BIT_SELECT')
+        for e in viz.edges
+    )
+    # 函数调用边 (op='Call') — 这类边分支框路径无法渲染, 强制走 expr_trees
+    has_call_edge = any(
+        getattr(e, 'source_op', None) == 'Call'
         for e in viz.edges
     )
     
@@ -221,8 +228,8 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         for e in viz.edges
     )
     
-    # 有无条件数据运算边 → expr_trees 路径 (数据链完整)
-    if has_uncond_op:
+    # 有无条件数据运算边 或 函数调用边 → expr_trees 路径 (数据链/函数完整)
+    if has_uncond_op or has_call_edge:
         if expr_trees:
             input_names = []
             output_names = []
