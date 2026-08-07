@@ -29,8 +29,8 @@ def check_file_structure():
     errors = []
     src_dir = "src/trace"
 
-    # 检查深度 (排除 __pycache__ 等系统目录)
-    EXCLUDED_DIRS = {"__pycache__", ".git", ".pytest_cache", ".ruff_cache", "node_modules"}
+    # 检查深度 (排除 __pycache__ 等系统目录 + _archived 归档目录)
+    EXCLUDED_DIRS = {"__pycache__", ".git", ".pytest_cache", ".ruff_cache", "node_modules", "_archived", "_archived_dot"}
     for root, dirs, files in os.walk(src_dir):
         # os.walk 允许就地修改 dirs 来排除子树
         dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
