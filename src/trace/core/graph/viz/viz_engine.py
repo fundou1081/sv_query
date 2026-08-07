@@ -203,13 +203,42 @@ def render_dataflow(viz: VizData, config: dict | None = None):
         if short_key not in expr_trees:
             expr_trees[short_key] = v
     
+    # [FIX 2026-08-07 v2] 路径选择精细化:
+    # - 无条件数据运算边 (source_op 非空, 无 condition) 存在 → 走 expr_trees_to_elk
+    #   (数据链完整渲染, scale/valid 正确连接)
+    # - 仅 case/if 条件边 (无数据运算边) → 走 get_layout (case/branch 分支框)
+    # v1 用全局 has_cond_edges 判断导致 case13 这类「有数据链+有case分支」的
+    # 被切到分支框, 丢失 scale→scaled 等无条件数据运算边 → scale/valid 孤立.
+    has_uncond_op = any(
+        getattr(e, 'source_op', None) and not (getattr(e, 'condition_chain', None) or [])
+        and getattr(e, 'kind', '') not in ('CLOCK', 'RESET', 'BIT_SELECT')
+        for e in viz.edges
+    )
+    
     # 检测是否有 case/if 条件边 (condition_chain 非空 或 condition 非空)
     has_cond_edges = any(
         (getattr(e, 'condition_chain', None) or []) or getattr(e, 'condition', None)
         for e in viz.edges
     )
     
-    # 检测是否有分支框信号 (有条件边汇聚到同一 dst)
+    # 有无条件数据运算边 → expr_trees 路径 (数据链完整)
+    if has_uncond_op:
+        if expr_trees:
+            input_names = []
+            output_names = []
+            for n in viz.nodes:
+                side = getattr(n, 'port_side', '')
+                name = str(n.id).rsplit('.', 1)[-1] if '.' in str(n.id) else str(n.id)
+                if side == 'left':
+                    input_names.append(name)
+                elif side == 'right':
+                    output_names.append(name)
+            
+            elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
+            layout = run_elk_layout(elk)
+            return _render_svg_direct(layout, {'title': title})
+    
+    # 仅 case/if 条件边 (无数据运算链) → 分支框路径
     if has_cond_edges:
         # compound graph 路径: 渲染 case/if 分支框
         layout = get_layout(viz)
