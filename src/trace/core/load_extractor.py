@@ -109,14 +109,15 @@ class LoadExtractor:
         """
         # [铁律2] 支持所有赋值语法结构
         try:
-            # [P2] 支持 ContinuousAssign 嵌套结构: assign.assignments[0]
-            if hasattr(assign, "assignments") and assign.assignments:
-                a = assign.assignments[0]
+            # [P2-FIX] 语义 AST ContinuousAssignSymbol: 有 'assignment' 属性,没有 'assignments'
+            # 优先走语义路径, 与 driver_extractor 保持一致 (顺序稳健)
+            if hasattr(assign, "assignment") and hasattr(assign.assignment, "left"):
+                a = assign.assignment
                 lhs = a.left if hasattr(a, "left") else None
                 rhs = a.right if hasattr(a, "right") else None
-            # [P2-FIX] 处理 ContinuousAssignSymbol: 它有 'assignment' 属性,不是 'assignments'
-            elif hasattr(assign, "assignment") and hasattr(assign.assignment, "left"):
-                a = assign.assignment
+            # [P2] 支持 ContinuousAssign 嵌套结构: assign.assignments[0]
+            elif hasattr(assign, "assignments") and assign.assignments:
+                a = assign.assignments[0]
                 lhs = a.left if hasattr(a, "left") else None
                 rhs = a.right if hasattr(a, "right") else None
             elif hasattr(assign, "left") and hasattr(assign, "right"):
