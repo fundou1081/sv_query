@@ -384,10 +384,13 @@ def viz_to_elk(viz: VizData) -> dict:
         return _make_graph(root_children, root_edges)
 
     # ── Phase 3: Build compound case/branch scopes ──
-    case_children = []
+    # [FIX 2026-08-08] case_children / case_edges 必须在循环内重置,
+    # 否则两个 case_node 共享同一个 list, 导致每个 case 框都包含全部
+    # dst 的分支 (跨 case 的 sig 节点指向同一个 box, ELK 渲染出孤儿).
     case_edges = []
 
     for dst_id, cedges in cond_by_dst.items():
+        case_children = []  # ← 每个 dst 独立 list
         dst_short = _short(dst_id)
         if len(cedges) < 2:
             for e in cedges:
@@ -396,9 +399,18 @@ def viz_to_elk(viz: VizData) -> dict:
 
         sd = _safe(dst_id)
         sel_sigs = set()
+        # [FIX 2026-08-08] 收集整个 condition_chain 中所有信号名
+        # 原代码只取 chain[0], 丢掉了嵌套条件中的 sel_b 等
+        # 例: chain=['sel_a', 'sel_b'] 只取 'sel_a' → 两个 case 框 label 重复
+        sig_pat = re.compile(r'\b\w+\b')
         for e in cedges:
             chain = getattr(e, 'condition_chain', [])
-            if chain and chain[0].split(): sel_sigs.add(chain[0].split()[0])
+            for c in chain:
+                # 提取所有 ident (排除 'sel' 等关键字需要上下文, 这里仅提取 ident)
+                for tok in sig_pat.findall(c):
+                    # 排除常见 noise words
+                    if tok not in ('and', 'or', 'not', 'select'):
+                        sel_sigs.add(tok)
         sel_label = ', '.join(sorted(sel_sigs)) if sel_sigs else '?'
 
         by_cond = defaultdict(list)
