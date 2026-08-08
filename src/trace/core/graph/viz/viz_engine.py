@@ -197,11 +197,9 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     # 合并成单个表达式树后误走 expr_trees_to_elk, 丢失 case/if 分支框.
     # 有条件边的 dest → 走 get_layout; 否则 → expr_trees_to_elk (纯表达式树).
     raw_expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
-    expr_trees = {}
-    for k, v in raw_expr_trees.items():
-        short_key = k.rsplit('.', 1)[-1] if '.' in k else k
-        if short_key not in expr_trees:
-            expr_trees[short_key] = v
+    # [2026-08-08] 保留完整路径作为 key，不去重不丢信息
+    # 原 dedup 逻辑 (按短名) 会丢跨 instance 同名信号 (u_scale.dout vs u_off.dout)
+    expr_trees = dict(raw_expr_trees)
     
     # [FIX 2026-08-07 v3] 路径选择精细化:
     # - 无条件数据运算边 (source_op 非空, 无 condition) 存在 → 走 expr_trees_to_elk
