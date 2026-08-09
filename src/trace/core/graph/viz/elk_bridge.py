@@ -394,7 +394,17 @@ def viz_to_elk(viz: VizData) -> dict:
         dst_short = _short(dst_id)
         if len(cedges) < 2:
             for e in cedges:
-                root_edges.append(_emit_edge(ne(), [_safe(e.src)], [_safe(e.dst)], e))
+                # [FIX 2026-08-09 方案1] ID 映射: port_in/port_out 使用
+                # 'port_<short>' 格式 (与 Phase 1/2 emit 一致), 其他使用
+                # _safe(<full_id>). 原代码无差别 _safe 总是产生 'if_case_function_dot_a',
+                # 但 children 里只有 'port_a' → ELK 报 "Referenced shape does not exist".
+                src_short = _short(e.src)
+                dst_short_e = _short(e.dst)
+                src_id = f'port_{src_short}' if src_short in input_names else _safe(e.src)
+                tgt_id = f'port_{dst_short_e}' if dst_short_e in output_names else _safe(e.dst)
+                # 注: 'endpoint 未在 root_children 中' 的防御性 filter 移到末尾统一处理,
+                # 这里不逐个 filter (避免里应一致问题)
+                root_edges.append(_emit_edge(ne(), [src_id], [tgt_id], e))
             continue
 
         sd = _safe(dst_id)
@@ -522,10 +532,38 @@ def viz_to_elk(viz: VizData) -> dict:
         root_children.append(case_node)
 
     # Filter out edges with empty targets (ELK rejects them)
+    # [FIX 2026-08-09 方案1 拓展] 也过滤掉 endpoints 不在任何已 emit 节点里的 root edge.
+    # 背景: viz_to_elk 只 emit port_in/port_out 作为 root children, 但 viz.edges 可能引用
+    # 中间信号 (case20 sum / case23 s2), 函数名 (case21 mul2/div2), 实例端口 (case26 din[7:0])
+    # 等. 这些引用在 ELK JSON 里会报 "Referenced shape does not exist".
+    # 防御性 filter: 递归收集所有已 emit 节点 ID (含 case compound 内部), 跳过不在其中的 src/tgt.
+    # 关键: ELK 允许跨层级引用 (root edge 可以连到 case compound 内部节点), 所以收集必须递归.
+    def _collect_all_emitted_ids(node, acc):
+        """递归收集 ELK JSON 节点下所有已 emit 的 ID (含嵌套 children 和 ports)."""
+        if isinstance(node, dict):
+            if 'id' in node:
+                acc.add(node['id'])
+            for c in node.get('children', []) or []:
+                _collect_all_emitted_ids(c, acc)
+            for p in node.get('ports', []) or []:
+                if 'id' in p:
+                    acc.add(p['id'])
+    all_emitted_ids = set()
+    for c in root_children:
+        _collect_all_emitted_ids(c, all_emitted_ids)
+
     for e in list(root_edges):
         if 'targets' in e and not e['targets']:
             root_edges.remove(e)
             print(f"[WARN] removed edge {e['id']}: empty target", file=sys.stderr)
+            continue
+        # 检查 src/tgt 是否在递归收集的已 emit ID 里 (允许跨层级引用)
+        srcs = e.get('sources', [])
+        tgts = e.get('targets', [])
+        if any(s not in all_emitted_ids for s in srcs) or any(t not in all_emitted_ids for t in tgts):
+            root_edges.remove(e)
+            print(f"[WARN] removed edge {e['id']}: endpoint not in emitted nodes "
+                  f"(src={srcs}, tgt={tgts})", file=sys.stderr)
 
     return _make_graph(root_children, root_edges)
 
