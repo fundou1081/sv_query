@@ -1714,8 +1714,34 @@ class DriverExtractor:
             cond_sig_names = set()
             _collect_cond_signals(check_expr, cond_sig_names)
 
-            # Leaf signals = all - conditions
-            leaf_signals = [s for s in all_signals if s not in cond_sig_names]
+            # [FIX 2026-08-09 A方案] 用分支信号作为 leaf_signals, 而不是从 all_signals 排除条件信号.
+            # 原逻辑 'leaf_signals = [s for s in all_signals if s not in cond_sig_names]' 在
+            # 'z = (a > b) ? (a - b) : 8'd0' 这类嵌套表达式 cond 场景下丢边:
+            #   all_signals = {a, b}, cond_sig_names = {a, b} (a、b 同时出现在 cond 和 branch)
+            #   leaf_signals = {} → 0 条边生成 → z 在 viz.edges 里消失 → viz_to_elk 不会为 z
+            #   生成 case 框 → port_out 'z' 在 SVG 里孤儿.
+            # 修复: 递归收集 ternary 分支 (left/right) 里出现的所有信号, 这才是真正的
+            # 'driver 来源信号'. 'cond_sig_names' 仅用于去重/参考, 不作为排除集.
+            branch_sigs = set()
+            def _collect_branch_signals(cond_op):
+                if cond_op is None:
+                    return
+                ck = str(getattr(cond_op, "kind", ""))
+                if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+                    return
+                for arm in [getattr(cond_op, "left", None), getattr(cond_op, "right", None)]:
+                    if arm is None:
+                        continue
+                    ak = str(getattr(arm, "kind", ""))
+                    if "ConditionalOp" in ak or "ConditionalExpression" in ak:
+                        _collect_branch_signals(arm)
+                    else:
+                        for s in (self._signal_visitor._extract_signals_from_expr(arm) or []):
+                            branch_sigs.add(s)
+            _collect_branch_signals(check_expr)
+
+            # Leaf signals = 在分支中出现的信号 (包含同时在条件中出现的 — 它们仍然驱动输出)
+            leaf_signals = [s for s in all_signals if s in branch_sigs]
 
             # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
             # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
