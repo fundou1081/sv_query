@@ -170,6 +170,35 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         if _tree_key in output_paths:
             _referenced_output_fulls.add(_tree_key)
 
+    # [Plan E2.A 2026-08-10] 保守版 emit: 仅参考 DRIVER 边且两端都是端口的 viz.edges.
+    # 背景: 原 E2 (激进版) 任何 viz.edge 引用的端口都 emit, 造成 orphan leaves:
+    #   - case24 'b': DRIVER 'b → max2' (max2 不是端口)
+    #   - case26 'gain': CONNECTION 'gain → u_scale.gain' (CONNECTION 不渲染)
+    # E2.A 收窄: 只有 DRIVER 边两端都是端口才 emit, 避免 function 中间信号和 CONNECTION
+    # 造成的 orphan. 真数据流边 (e.g. 'a → y' 或 'data_in → result') 两端都是端口
+    # → emit, 不会 orphan.
+    if viz is not None:
+        _input_path_set = set(input_paths)
+        _output_path_set = set(output_paths)
+        _all_port_paths = _input_path_set | _output_path_set
+        for _e in viz.edges:
+            _kind_str = str(_e.kind) if not isinstance(_e.kind, str) else _e.kind
+            if _kind_str != 'DRIVER':
+                continue  # 只考虑真数据流 DRIVER 边
+            _src_str = str(_e.src)
+            _dst_str = str(_e.dst)
+            # 两端都是端口才考虑 (避免 case24 'b' orphan - DRIVER 'b → mul2' 中 mul2 不是端口)
+            if _src_str not in _all_port_paths or _dst_str not in _all_port_paths:
+                continue
+            if _src_str in _input_path_set:
+                _referenced_input_fulls.add(_src_str)
+            elif _src_str in _output_path_set:
+                _referenced_output_fulls.add(_src_str)
+            if _dst_str in _input_path_set:
+                _referenced_input_fulls.add(_dst_str)
+            elif _dst_str in _output_path_set:
+                _referenced_output_fulls.add(_dst_str)
+
     # Port nodes: 只渲染在 expr_trees 中被引用的 port (排除 CLOCK/RESET)
     # 排除孤悬的 input port (threshold, mode, valid, en 等未在数据流表达式中出现的)
     # [Plan D1] 用 full path 作 ID (短名仅作 label), 避免 dedup loss.
