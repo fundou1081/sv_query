@@ -87,6 +87,45 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             if getattr(n, 'kind', '') in ('CLOCK', 'RESET'):
                 clock_reset_srcs.add(_short(n.id))
     
+    # ── [Plan D1 2026-08-10] 端口 full path 跟踪 ──
+    # 背景: 多个端口可能有同名短名 (如 case26 u_scale.din / u_off.din / u_clamp_u.din / u_clamp.din
+    # 都是 'din'). 旧逻辑用短名 index 导致 4 个 input port dedup 成 1 个, C4 dedup loss fail.
+    # 修复: 从 viz.nodes 提取 full path, 用 full path 作 port ID (短名仅作 label).
+    # 同一短名多实例时仍 emit 唯一 ID 端口, SignalRef 根据 parent_module 解析为正确 full path.
+    input_paths = []  # full paths of input ports
+    output_paths = []  # full paths of output ports
+    if viz is not None:
+        for _n in viz.nodes:
+            _full = str(_n.id)
+            _side = getattr(_n, 'port_side', '')
+            if _side == 'left':
+                input_paths.append(_full)
+            elif _side == 'right':
+                output_paths.append(_full)
+    
+    input_short_to_fulls = defaultdict(list)
+    for _full in input_paths:
+        _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
+        input_short_to_fulls[_sn].append(_full)
+    output_short_to_fulls = defaultdict(list)
+    for _full in output_paths:
+        _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
+        output_short_to_fulls[_sn].append(_full)
+    
+    def _port_id_for_input(full_path):
+        """根据 full path 生成端口 ID. 同一短名多实例时用 full path, 其他用短名."""
+        _sn = full_path.rsplit('.', 1)[-1] if '.' in full_path else full_path
+        if len(input_short_to_fulls[_sn]) > 1:
+            return f'port_{_safe(full_path)}'
+        return f"port_{_sn}"
+    
+    def _port_id_for_output(full_path):
+        """同样规则: 输出端口 ID."""
+        _sn = full_path.rsplit('.', 1)[-1] if '.' in full_path else full_path
+        if len(output_short_to_fulls[_sn]) > 1:
+            return f'port_{_safe(full_path)}'
+        return f"port_{_sn}"
+    
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
     
     def _emit_edge(eid, srcs, tgts, kind='dataflow'):
@@ -103,24 +142,64 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 _collect_sigs(c)
         _collect_sigs(v)
 
+    # [Plan D1] 收集 expr_trees 实际引用的 full paths. 只 emit 这些端口, 避免
+    # “短名被引用但多 full path”情况下 emit 未连接端口 (orphan leaf).
+    # 推导: parent_module = expr_tree key.rsplit('.', 1)[0], SignalRef label →
+    # full = parent_module + '.' + label. 检查是否在 input_paths / output_paths 里.
+    _referenced_input_fulls = set()
+    _referenced_output_fulls = set()
+    for _tree_key, _tree_data in expr_trees.items():
+        _pm = _tree_key.rsplit('.', 1)[0] if '.' in _tree_key else ''
+        def _walk_refs(node, pm=_pm):
+            if node.get('op') == 'SignalRef':
+                _lbl = node.get('label', '')
+                _full = f'{pm}.{_lbl}'
+                if _full in input_paths:
+                    _referenced_input_fulls.add(_full)
+                # 也试 bit slice 去括号后的 full
+                _bi = _lbl.find('[')
+                if _bi > 0:
+                    _full2 = f'{pm}.{_lbl[:_bi]}'
+                    if _full2 in input_paths:
+                        _referenced_input_fulls.add(_full2)
+            for _c in node.get('children', []):
+                _walk_refs(_c, pm)
+        _walk_refs(_tree_data)
+    # outputs: expr_trees key 本身就是输出 full path
+    for _tree_key in expr_trees.keys():
+        if _tree_key in output_paths:
+            _referenced_output_fulls.add(_tree_key)
+
     # Port nodes: 只渲染在 expr_trees 中被引用的 port (排除 CLOCK/RESET)
     # 排除孤悬的 input port (threshold, mode, valid, en 等未在数据流表达式中出现的)
-    for name in sorted(input_set & _expr_signal_refs):
-        if name in clock_reset_srcs:
+    # [Plan D1] 用 full path 作 ID (短名仅作 label), 避免 dedup loss.
+    _emitted_port_ids = set()
+    for _full in sorted(_referenced_input_fulls):
+        _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
+        if _sn in clock_reset_srcs:
+            continue
+        _pid = _port_id_for_input(_full)
+        if _pid in _emitted_port_ids:
             continue
         root_children.append({
-            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
-            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'id': _pid, 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
             '_meta': {'kind': 'port_in'},
         })
-    for name in sorted(output_set):
+        _emitted_port_ids.add(_pid)
+    for _full in sorted(_referenced_output_fulls):
+        _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
+        _pid = _port_id_for_output(_full)
+        if _pid in _emitted_port_ids:
+            continue
         root_children.append({
-            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
-            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'id': _pid, 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
             '_meta': {'kind': 'port_out'},
         })
+        _emitted_port_ids.add(_pid)
     
     def collect_signals(tree_node, into):
         """递归收集表达式树中所有 SignalRef labels"""
@@ -131,7 +210,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         for c in tree_node.get('children', []):
             collect_signals(c, into)
 
-    def render_ternary(node_id, children, prefix, nc):
+    def render_ternary(node_id, children, prefix, nc, parent_module=''):
         """轻量三元渲染：?: OP 节点 + 条件虚线边
 
         children[0] = 条件信号 (SignalRef)
@@ -141,6 +220,8 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         效果: 条件信号 → ?: 节点 (灰色虚线, cond 标签)
               true/false 数据 → ?: (普通实线)
         节点 label: ?: (sel_name)
+
+        [Plan D1 2026-08-10] parent_module: 上下文传递给 child render_tree.
         """
         cond = children[0] if len(children) >= 1 else None
         true_child = children[1] if len(children) >= 2 else None
@@ -162,7 +243,14 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
 
         # 条件信号 → ?: 节点 (虚线 cond 边)
         for sig in sorted(cond_sigs):
-            if sig in input_set:
+            # [Plan D1] 尝试 full path 解析
+            if parent_module and sig in input_short_to_fulls and len(input_short_to_fulls[sig]) > 1:
+                full_path = f"{parent_module}.{sig}"
+                if full_path in input_paths:
+                    src_id = f'port_{_safe(full_path)}'
+                else:
+                    src_id = f'port_{sig}'
+            elif sig in input_set:
                 src_id = f'port_{sig}'
             else:
                 sig_id = f'sig_{_safe(sig)}_{nc}'
@@ -179,7 +267,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         # true/false 分支数据 → ?: (普通 dataflow 边)
         for child in (true_child, false_child):
             if child:
-                child_id = render_tree(child, f'{prefix}_btf')
+                child_id = render_tree(child, f'{prefix}_btf', parent_module=parent_module)
                 if child_id:
                     root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
 
@@ -188,15 +276,32 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 已渲染的中间信号缓存: signal_short_name -> node_id
     _signal_cache = {}
 
-    def render_tree(tree_node, prefix):
-        """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id"""
+    def render_tree(tree_node, prefix, parent_module=''):
+        """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id
+
+        [Plan D1 2026-08-10] parent_module: 从 expr_tree key 推导的父路径
+        (如 'golden_hier_top.u_scale' for key 'golden_hier_top.u_scale.dout').
+        用于 SignalRef 上下文感知 — 同名短名 'din' 在不同 parent_module 下
+        指向不同 full path, 必须区分以避免 dedup loss.
+        """
         label = tree_node.get('label', '?')
         op = tree_node.get('op', '?')
         children = tree_node.get('children', [])
         nc = len(root_children)
         node_id = f"op_{_safe(label)}_{prefix}_{nc}"
-        
+
         if op == 'SignalRef':
+            # [Plan D1] 优先用 parent_module + label 推导 full path.
+            # 多个同短名 input port 时, 这个 full path 才能定位正确端口.
+            if parent_module and label in input_short_to_fulls and len(input_short_to_fulls[label]) > 1:
+                full_path = f"{parent_module}.{label}"
+                if full_path in input_paths:
+                    return f'port_{_safe(full_path)}'
+            if parent_module and label in output_short_to_fulls and len(output_short_to_fulls[label]) > 1:
+                full_path = f"{parent_module}.{label}"
+                if full_path in output_paths:
+                    return f'port_{_safe(full_path)}'
+            # Fallback: 短名只在只有一个实例时使用
             if label in input_set:
                 return f'port_{label}'
             elif label in output_set:
@@ -226,7 +331,15 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     return _signal_cache[label]
                 if _match_label in _signal_cache:
                     return _signal_cache[_match_label]
-                op_id = render_tree(matched_tree, f'{prefix}_wire')
+                # [Plan D1] matched_tree 递归: 新的 parent_module 是 matched_tree key 的父路径
+                _matched_key = None
+                for _ek, _ev in expr_trees.items():
+                    _ek_short = _ek.rsplit('.', 1)[-1]
+                    if _ev is matched_tree:
+                        _matched_key = _ek
+                        break
+                _matched_parent = _matched_key.rsplit('.', 1)[0] if _matched_key else parent_module
+                op_id = render_tree(matched_tree, f'{prefix}_wire', parent_module=_matched_parent)
                 if op_id:
                     # 如果 op_id 就是 sig_id（可能是递归匹配的缓存结果），直接返回
                     if op_id.startswith('sig_'):
@@ -271,7 +384,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         
         # ── Ternary: compound case/branch structure ──
         if op == 'Ternary':
-            return render_ternary(node_id, children, prefix, nc)
+            return render_ternary(node_id, children, prefix, nc, parent_module=parent_module)
         
         # Operator node
         op_w = OP_W
@@ -286,7 +399,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         })
         
         for child in children:
-            child_id = render_tree(child, f"{prefix}_c")
+            child_id = render_tree(child, f"{prefix}_c", parent_module=parent_module)
             if child_id:
                 root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
         
@@ -294,6 +407,9 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     
     for dst_name, tree_data in expr_trees.items():
         dst_short = _short(dst_name)
+        # [Plan D1] 推导 parent_module: expr_tree key 的父路径
+        # 如 'golden_hier_top.u_scale.dout' → parent_module = 'golden_hier_top.u_scale'
+        _parent_module = dst_name.rsplit('.', 1)[0] if '.' in dst_name else ''
         # 中间 wire (非 input 非 output): 创建 sig 标签节点 + 渲染表达式树
         if dst_short not in output_set and dst_short not in input_set:
             sig_id = f'sig_{_safe(dst_short)}_wire'
@@ -303,14 +419,16 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 '_meta': {'kind': 'signal'},
             })
             _signal_cache[dst_short] = sig_id
-            op_id = render_tree(tree_data, f'wire_{dst_short}')
+            op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module)
             if op_id:
                 root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
             continue
         # Output port: 渲染树 + 连到 port
-        top_op_id = render_tree(tree_data, dst_name)
+        top_op_id = render_tree(tree_data, dst_name, parent_module=_parent_module)
         if dst_short in output_set and top_op_id:
-            root_edges.append(_emit_edge(ne(), [top_op_id], [f'port_{dst_short}']))
+            # [Plan D1] 用 full path port ID
+            _out_port_id = _port_id_for_output(dst_name)
+            root_edges.append(_emit_edge(ne(), [top_op_id], [_out_port_id]))
     
     return {
         'id': 'root',
