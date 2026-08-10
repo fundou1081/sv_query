@@ -489,6 +489,75 @@ def _short_name(full_id: str) -> str:
     return full_id.rsplit('.', 1)[-1] if '.' in full_id else full_id
 
 
+def _compute_rendered_label_set(viz) -> set:
+    """[Plan E1 2026-08-10] 计算 expr_trees render 路径会 emit 的 label 集合.
+
+    expr_trees_to_elk emit 的节点: input ports (in expr_signal_refs) + output ports
+    + ops + sigs + consts. 任何不在这个集合的 label 不会被 emit, B1/C4 检查这些
+    边是误报.
+    """
+    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
+    expr_signal_refs = set()
+    for _tree in trees.values():
+        def _collect(n):
+            if n.get('op') == 'SignalRef':
+                expr_signal_refs.add(n.get('label', ''))
+            for c in n.get('children', []):
+                _collect(c)
+        _collect(_tree)
+    output_set = set()
+    for _n in viz.nodes:
+        if getattr(_n, 'port_side', '') == 'right':
+            output_set.add(_short_name(_n.id))
+    return expr_signal_refs | output_set
+
+
+def _compute_referenced_fulls(viz) -> set:
+    """[Plan D1 2026-08-10] 计算 expr_trees render 路径会 emit 端口的 full path 集合.
+
+    背景: C4 dedup loss 检查 viz.edges 中同名短名的 unique full paths 与 SVG 位置数.
+    但 viz.edges 里“外部”边 (未 render 路径) 引用的 full path 不应被计数.
+    例子: case26 'gain' 2 full paths (golden_hier_top.gain, golden_hier_top.u_scale.gain),
+    只 emit 后者; 但前者也在 viz.edges (黄金 端口未被 expr_trees 引用).
+    修复: 只统计 referenced full paths.
+
+    推导: parent_module = expr_tree key.rsplit('.', 1)[0]
+          SignalRef label → full = parent_module + '.' + label
+    """
+    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
+    input_paths = set()
+    output_paths = set()
+    for _n in viz.nodes:
+        _full = str(_n.id)
+        _side = getattr(_n, 'port_side', '')
+        if _side == 'left':
+            input_paths.add(_full)
+        elif _side == 'right':
+            output_paths.add(_full)
+    referenced = set()
+    for _tree_key, _tree_data in trees.items():
+        _pm = _tree_key.rsplit('.', 1)[0] if '.' in _tree_key else ''
+        def _walk(node, pm=_pm):
+            if node.get('op') == 'SignalRef':
+                _lbl = node.get('label', '')
+                _full = f'{pm}.{_lbl}'
+                if _full in input_paths:
+                    referenced.add(_full)
+                # bit slice
+                _bi = _lbl.find('[')
+                if _bi > 0:
+                    _full2 = f'{pm}.{_lbl[:_bi]}'
+                    if _full2 in input_paths:
+                        referenced.add(_full2)
+            for _c in node.get('children', []):
+                _walk(_c, pm)
+        _walk(_tree_data)
+    for _tree_key in trees.keys():
+        if _tree_key in output_paths:
+            referenced.add(_tree_key)
+    return referenced
+
+
 def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
                    viz, exp: ExpectedCounts) -> list[CheckResult]:
     results = []
@@ -513,20 +582,7 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     # 隐式 const literal) 引用的节点根本不在 expr_trees 里 → 既不会被 emit, 也不该被 B1 检查.
     # 错误案例: case21 "8'd0", case24 b/max2/min2/mix, case26 scaled/offsetted/u_scale 等.
     # 修复: filter viz.edges → 只检查 expr_trees 路径看得见的边 (src/dst ⊆ expr_signal_refs ∪ output_set).
-    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
-    expr_signal_refs = set()
-    for _tree in trees.values():
-        def _collect(n):
-            if n.get('op') == 'SignalRef':
-                expr_signal_refs.add(n.get('label', ''))
-            for c in n.get('children', []):
-                _collect(c)
-        _collect(_tree)
-    output_set = set()
-    for _n in viz.nodes:
-        if getattr(_n, 'port_side', '') == 'right':
-            output_set.add(_short_name(_n.id))
-    _rendered_label_set = expr_signal_refs | output_set
+    _rendered_label_set = _compute_rendered_label_set(viz)
     
     missing_src = []
     missing_dst = []
@@ -704,11 +760,21 @@ def _check_layer_c(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     
     # ── C4: 不同 viz 边的同名 src/dst 在 SVG 里位置不同 (dedup loss 检测) ──
     # 收集 viz 中出现多次的短名
+    _rendered_label_set = _compute_rendered_label_set(viz)
+    _referenced_fulls = _compute_referenced_fulls(viz)
     short_name_to_fulls: dict[str, list[str]] = defaultdict(list)
     for e in viz.edges:
+        src_short_e = _short_name(e.src)
+        dst_short_e = _short_name(e.dst)
+        # [Plan E1 2026-08-10 拓展] 跳过未在 render 路径的边 —
+        # 外部 driver_extractor 边 (function call 嵌套, 隐式 const, 跨 instance wire) 引用
+        # 末 render 节点, 不应参与 dedup loss 检查. 与 B1 filter 一致.
+        if src_short_e not in _rendered_label_set or dst_short_e not in _rendered_label_set:
+            continue
         for sig in [e.src, e.dst]:
             short = _short_name(sig)
             if short:
+                # [Plan D1 2026-08-10] 只统计 referenced full paths.
                 short_name_to_fulls[short].append(sig)
     
     dup_short_names = {
@@ -728,11 +794,17 @@ def _check_layer_c(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
         for sn, fulls in dup_short_names.items():
             positions = svg_positions.get(sn, [])
             unique_positions = set(p for p in positions)
-            if len(unique_positions) < len(set(fulls)):
-                # SVG 位置数 < viz 中不同完整路径数 → 可能有 dedup loss
+            # [Plan D1 2026-08-10] 只统计 referenced full paths (被 expr_trees
+            # 路径 引用 的端口), 未引用的 full path 不该让 C4 误报.
+            # 例: case26 'gain' 有 2 full paths (golden_hier_top.gain, u_scale.gain),
+            # 只后者被 u_scale.dout expr_tree 引用 → 只应算 1.
+            filtered_fulls = [f for f in fulls if f in _referenced_fulls]
+            unique_filtered = set(filtered_fulls)
+            if len(unique_positions) < len(unique_filtered) and len(unique_filtered) > 1:
+                # SVG 位置数 < viz 中 referenced full paths 数 → 可能有 dedup loss
                 dedup_loss.append({
                     'short_name': sn,
-                    'viz_fulls': sorted(set(fulls)),
+                    'viz_fulls': sorted(unique_filtered),
                     'svg_positions': list(unique_positions),
                 })
         
