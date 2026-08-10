@@ -1581,7 +1581,7 @@ class DriverExtractor:
         lhs, rhs, rhs_expr = self._parse_assign(assign)
         if not (lhs and (rhs or rhs_expr is not None)):
             return
-        # [FIX] ScopedName: tb.data → 创建父子节点和 BIT_SELECT 边
+        # [FIX] ScopedName: tb.data → 创建 instance 路径上的所有父节点
         if "." in lhs:
             lhs_parts = lhs.split(".")
             for i in range(1, len(lhs_parts)):
@@ -1597,25 +1597,20 @@ class DriverExtractor:
                             width=(1, 0),
                         )
                     )
-            for i in range(len(lhs_parts) - 1):
-                child_name = ".".join(lhs_parts[: i + 2])
-                parent_name = ".".join(lhs_parts[: i + 1])
-                child_id = f"{module_name}.{child_name}"
-                parent_id = f"{module_name}.{parent_name}"
-                if child_id != parent_id:
-                    existing = next(
-                        ((e.src, e.dst) for e in result.edges if e.src == child_id and e.dst == parent_id),
-                        None,
-                    )
-                    if not existing:
-                        # [V4] factory 统一入口
-                        self._append_edge(
-                            result,
-                            src=child_id,
-                            dst=parent_id,
-                            kind=EdgeKind.BIT_SELECT,
-                            assign_type="internal",
-                        )
+            # [Plan E1.3 2026-08-10] 删除错误的 BIT_SELECT 边生成.
+            #
+            # 旧代码对所有 '.' 分隔的路径生成 BIT_SELECT 边, 包括
+            # instance 路径 (e.g., u_scale.din → u_scale). 但 u_scale 是
+            # module 实例名, 不是信号, 这条边没语义意义.
+            #
+            # 真 BIT_SELECT (e.g., data[7:0] → data, din[3:0] → din)
+            # 由 bit_select_handler._create_hierarchical_bit_nodes() 处理,
+            # 那里只对含 '[..]' 的 bit slice 节点生成, 是正确的.
+            #
+            # 修后效果:
+            # - case26 (golden_hier_top) 错 BIT_SELECT 边从 12 个 → 0
+            # - viz.edges 减少 12 条无效边
+            # - checker E1 filter 不再需要 filter 这类误报
 
         dst_node_id = f"{module_name}.{lhs}"
         if dst_node_id not in [n.id for n in result.nodes]:
