@@ -506,6 +506,28 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
             return True
         return False
     
+    # [Plan E1 2026-08-10] 路由感知 edge filter.
+    # 背景: B1 原本检查全部 viz.edges 的 src/dst label. 但 expr_trees_to_elk 只 emit
+    # expr_trees 树里的节点: input_set ∩ expr_signal_refs + output_set + ops + sigs + consts.
+    # viz.edges 里大量 DRIVER / CONNECTION 边 (function call 嵌套, 跨 instance wire,
+    # 隐式 const literal) 引用的节点根本不在 expr_trees 里 → 既不会被 emit, 也不该被 B1 检查.
+    # 错误案例: case21 "8'd0", case24 b/max2/min2/mix, case26 scaled/offsetted/u_scale 等.
+    # 修复: filter viz.edges → 只检查 expr_trees 路径看得见的边 (src/dst ⊆ expr_signal_refs ∪ output_set).
+    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
+    expr_signal_refs = set()
+    for _tree in trees.values():
+        def _collect(n):
+            if n.get('op') == 'SignalRef':
+                expr_signal_refs.add(n.get('label', ''))
+            for c in n.get('children', []):
+                _collect(c)
+        _collect(_tree)
+    output_set = set()
+    for _n in viz.nodes:
+        if getattr(_n, 'port_side', '') == 'right':
+            output_set.add(_short_name(_n.id))
+    _rendered_label_set = expr_signal_refs | output_set
+    
     missing_src = []
     missing_dst = []
     for e in viz.edges:
@@ -516,6 +538,13 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
         if e.kind == 'BIT_SELECT' and src_short == dst_short:
             continue
         if e.kind in ('CLOCK', 'RESET'):
+            continue
+        
+        # [Plan E1] 跳过未在 render 路径的边 (不会 emit 对应节点, 也不该被 B1 检查)
+        # 要求 src 或 dst 任意一端不在 rendered_label_set 就 skip —
+        # 内部表达树边的两端都在 rendered set; driver_extractor 产的外部边
+        # (call 指向嵌套函数, 隐式 const, 跨 instance wire) 至少一端不在.
+        if src_short not in _rendered_label_set or dst_short not in _rendered_label_set:
             continue
         
         # viz.label 处理 (可能有 bit slice 后缀)
