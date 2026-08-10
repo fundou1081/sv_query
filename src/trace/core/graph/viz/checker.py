@@ -304,22 +304,33 @@ def _compute_expected(viz, layout: dict | None) -> ExpectedCounts:
     """从 viz + ELK layout 推导预期值"""
     exp = ExpectedCounts()
     
+    # ── 路由检测 — Plan D 修复 (2026-08-10) ──
+    # expr_trees 非空 走 expr_trees_to_elk 路径 (路径 1 或 3).
+    # 这个路径 SEMANTICS 上只 emit 输入输出端口 + 算子 + 被引用的 SignalRef.
+    # viz.nodes 里的中间信号/REG (如 case21 mul2/div2, case24 sat_sub/max2/min2/mix,
+    # case26 clamped/scaled/offsetted/clamped_w) 许多根本不在 expr_trees 里 →
+    # expr_trees_to_elk 不会 emit 它们, 但旧逻辑双计数 (viz.nodes + layout children)
+    # 导致 expected 偏高、ratio 偏低、A1 fail.
+    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
+    has_expr_trees = bool(trees)
+    
     # ── viz.nodes ──
     for n in viz.nodes:
         if n.port_side == 'left':
             exp.port_ins.append(n.label)
-            exp.leaves += 1
         elif n.port_side == 'right':
             exp.port_outs.append(n.label)
-            exp.leaves += 1
         elif n.kind in ('SIGNAL', 'REG', 'WIRE'):
-            # signal 节点预期 leaf 数
+            # signal 节点 记录 label, 不计入 leaf 预期
             exp.signal_labels.append(n.label)
-            exp.leaves += 1
         # INSTANCE / CONST 等不计入 leaf
+        # [Plan D 修复] leaves 只在 viz_to_elk 路径 (无 expr_trees) 计数.
+        # expr_trees 路径下 layout children 就是实际 emit, 下面 walk() 会准确计数.
+        if not has_expr_trees:
+            if n.port_side in ('left', 'right') or n.kind in ('SIGNAL', 'REG', 'WIRE'):
+                exp.leaves += 1
     
     # ── expr_trees 涉及的信号 ──
-    trees = viz.meta.get('datapath', {}).get('expr_trees', {})
     for tree_key in trees:
         # tree_key 格式: "module.signal_name" 或 "signal_name"
         signal_name = tree_key.rsplit('.', 1)[-1]
