@@ -1,5 +1,5 @@
 // golden_dataflow_13_complex.sv — 复杂复合场景
-module complex_design(
+module complex_op(
     input clk, rst_n,
     input [7:0] data_in, offset, scale, threshold,
     input [1:0] mode,
