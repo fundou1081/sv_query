@@ -188,82 +188,12 @@ def render_dataflow(viz: VizData, config: dict | None = None):
     """数据流/运算图 — ExpressionTree → ELK 布局 → 内联 SVG 渲染"""
     cfg = config or {}
     title = cfg.get("title", "Dataflow")
-    
-    from .elk_bridge import expr_trees_to_elk, run_elk_layout, get_layout
-    
-    # [FIX 2026-08-07] 路径选择: 有 case/if 条件边(condition_chain) 的信号走 get_layout
-    # (compound graph → 渲染 case/branch 框, true/false 条件区分).
-    # 之前用 `if expr_trees:` 判断, 导致 case9 这类 case 多分支被 _store_expr_tree
-    # 合并成单个表达式树后误走 expr_trees_to_elk, 丢失 case/if 分支框.
-    # 有条件边的 dest → 走 get_layout; 否则 → expr_trees_to_elk (纯表达式树).
-    raw_expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
-    # [2026-08-08] 保留完整路径作为 key，不去重不丢信息
-    # 原 dedup 逻辑 (按短名) 会丢跨 instance 同名信号 (u_scale.dout vs u_off.dout)
-    expr_trees = dict(raw_expr_trees)
-    
-    # [FIX 2026-08-07 v3] 路径选择精细化:
-    # - 无条件数据运算边 (source_op 非空, 无 condition) 存在 → 走 expr_trees_to_elk
-    #   (数据链完整渲染, scale/valid 正确连接)
-    # - 函数调用边 (source_op=='Call', 可能带 condition) → 走 expr_trees_to_elk,
-    #   因为 viz_to_elk 分支框路径不支持 op='Call' 的函数调用边 (会报
-    #   'Referenced shape does not exist'), 而 expr_trees 能完整表达 Call 子树.
-    # v2 只判断无条件 op, 导致 case21 (case+function 调用, Call 边都带 condition)
-    # 被误切到分支框路径而崩溃.
-    has_uncond_op = any(
-        getattr(e, 'source_op', None) and not (getattr(e, 'condition_chain', None) or [])
-        and getattr(e, 'kind', '') not in ('CLOCK', 'RESET', 'BIT_SELECT')
-        for e in viz.edges
-    )
-    # 函数调用边 (op='Call') — 这类边分支框路径无法渲染, 强制走 expr_trees
-    has_call_edge = any(
-        getattr(e, 'source_op', None) == 'Call'
-        for e in viz.edges
-    )
-    
-    # 检测是否有 case/if 条件边 (condition_chain 非空 或 condition 非空)
-    has_cond_edges = any(
-        (getattr(e, 'condition_chain', None) or []) or getattr(e, 'condition', None)
-        for e in viz.edges
-    )
-    
-    # 有无条件数据运算边 或 函数调用边 → expr_trees 路径 (数据链/函数完整)
-    if has_uncond_op or has_call_edge:
-        if expr_trees:
-            input_names = []
-            output_names = []
-            for n in viz.nodes:
-                side = getattr(n, 'port_side', '')
-                name = str(n.id).rsplit('.', 1)[-1] if '.' in str(n.id) else str(n.id)
-                if side == 'left':
-                    input_names.append(name)
-                elif side == 'right':
-                    output_names.append(name)
-            
-            elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
-            layout = run_elk_layout(elk)
-            return _render_svg_direct(layout, {'title': title})
-    
-    # 仅 case/if 条件边 (无数据运算链) → 分支框路径
-    if has_cond_edges:
-        # compound graph 路径: 渲染 case/if 分支框
-        layout = get_layout(viz)
-        return _render_svg_direct(layout, {'title': title})
-    
-    if expr_trees:
-        input_names = []
-        output_names = []
-        for n in viz.nodes:
-            side = getattr(n, 'port_side', '')
-            name = str(n.id).rsplit('.', 1)[-1] if '.' in str(n.id) else str(n.id)
-            if side == 'left':
-                input_names.append(name)
-            elif side == 'right':
-                output_names.append(name)
-        
-        elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
-        layout = run_elk_layout(elk)
-        return _render_svg_direct(layout, {'title': title})
-    
-    # Fallback: compound graph for case/if branches (no expr_trees, but condition edges)
-    layout = get_layout(viz)
+
+    # [Plan B 2026-08-10] 路由逻辑提到 elk_bridge._build_elk_for_viz,
+    # render_dataflow / checker / 测试 代码共享同一份路径选择 (避免 SVG 跟
+    # layout 来自不同路径造成的误报). 这里只负责跑 layout + 拼 SVG.
+    from .elk_bridge import _build_elk_for_viz, run_elk_layout
+
+    elk = _build_elk_for_viz(viz)
+    layout = run_elk_layout(elk)
     return _render_svg_direct(layout, {'title': title})

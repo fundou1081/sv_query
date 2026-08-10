@@ -602,3 +602,74 @@ def get_layout(viz):
     result = run_elk_layout(elk)
     if '_meta' not in result: result['_meta'] = elk.get('_meta', {})
     return result
+
+
+# ═══════════════════════════════════════════════════
+# [Plan B 2026-08-10] 统一 ELK 路由 helper
+# ═══════════════════════════════════════════════════
+
+def _compute_routing(viz):
+    """跟 render_dataflow 同步的路由判断 — 返回 (path_name, has_uncond_op, has_call_edge, has_cond_edges, expr_trees).
+
+    path_name ∈ {'expr_trees', 'viz_to_elk'}
+    """
+    raw_expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
+    expr_trees = dict(raw_expr_trees)
+
+    has_uncond_op = any(
+        getattr(e, 'source_op', None) and not (getattr(e, 'condition_chain', None) or [])
+        and getattr(e, 'kind', '') not in ('CLOCK', 'RESET', 'BIT_SELECT')
+        for e in viz.edges
+    )
+    has_call_edge = any(
+        getattr(e, 'source_op', None) == 'Call'
+        for e in viz.edges
+    )
+    has_cond_edges = any(
+        (getattr(e, 'condition_chain', None) or []) or getattr(e, 'condition', None)
+        for e in viz.edges
+    )
+    return raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges
+
+
+def _compute_input_output_names(viz):
+    """跟 render_dataflow 同步的 input/output names 提取."""
+    input_names, output_names = [], []
+    for n in viz.nodes:
+        side = getattr(n, 'port_side', '')
+        name = str(n.id).rsplit('.', 1)[-1] if '.' in str(n.id) else str(n.id)
+        if side == 'left':
+            input_names.append(name)
+        elif side == 'right':
+            output_names.append(name)
+    return input_names, output_names
+
+
+def _build_elk_for_viz(viz):
+    """根据 viz.edges 路由, 构建 render_dataflow 将使用的 ELK JSON.
+
+    跟 viz_engine.render_dataflow 完全同步 — checker/test 调这个函数取 layout,
+    可以保证 SVG 和 layout 永远匹配 (不走跟 render 不同的 ELK 路径).
+
+    Returns: dict (ELK JSON, 还未调 run_elk_layout)
+    """
+    raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges = _compute_routing(viz)
+
+    # 路径 1: 数据运算边 / 函数调用 → expr_trees_to_elk
+    if has_uncond_op or has_call_edge:
+        if expr_trees:
+            input_names, output_names = _compute_input_output_names(viz)
+            return expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
+        # 没 expr_trees 但有 call edge — 退回 viz_to_elk
+
+    # 路径 2: case/if 条件边 → viz_to_elk (case compound)
+    if has_cond_edges:
+        return viz_to_elk(viz)
+
+    # 路径 3: 纯 expr_trees (无 cond, 无 uncond op) → expr_trees_to_elk
+    if expr_trees:
+        input_names, output_names = _compute_input_output_names(viz)
+        return expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
+
+    # 路径 4: fallback — viz_to_elk (保证有输出)
+    return viz_to_elk(viz)
