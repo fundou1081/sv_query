@@ -586,14 +586,30 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     
     missing_src = []
     missing_dst = []
+    # [Plan E1.2 2026-08-10] 加可观测性: 分类追踪所有 skipped 边, 让用户看到
+    # E1 filter 跳了什么 — 不再 silent.
+    _skipped_by_kind: dict[str, list[dict]] = {}
+    _total_skipped = 0
+    
+    def _record_skip(e, reason: str) -> None:
+        nonlocal _total_skipped
+        _total_skipped += 1
+        _skipped_by_kind.setdefault(reason, []).append({
+            'kind': e.kind.name if hasattr(e.kind, 'name') else str(e.kind),
+            'src': str(e.src),
+            'dst': str(e.dst),
+        })
+    
     for e in viz.edges:
         src_short = _short_name(e.src)
         dst_short = _short_name(e.dst)
         
         # 例外: BIT_SELECT 自环 / 折叠边
         if e.kind == 'BIT_SELECT' and src_short == dst_short:
+            _record_skip(e, 'bit_select_self_loop')
             continue
         if e.kind in ('CLOCK', 'RESET'):
+            _record_skip(e, 'clock_reset')
             continue
         
         # [Plan E1] 跳过未在 render 路径的边 (不会 emit 对应节点, 也不该被 B1 检查)
@@ -601,6 +617,13 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
         # 内部表达树边的两端都在 rendered set; driver_extractor 产的外部边
         # (call 指向嵌套函数, 隐式 const, 跨 instance wire) 至少一端不在.
         if src_short not in _rendered_label_set or dst_short not in _rendered_label_set:
+            # [Plan E1.2] 进一步区分: 哪一端不在 rendered set
+            if src_short not in _rendered_label_set and dst_short not in _rendered_label_set:
+                _record_skip(e, 'both_unrendered')
+            elif src_short not in _rendered_label_set:
+                _record_skip(e, 'src_unrendered')
+            else:
+                _record_skip(e, 'dst_unrendered')
             continue
         
         # viz.label 处理 (可能有 bit slice 后缀)
@@ -613,6 +636,14 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
             missing_dst.append(dst_viz_label)
     
     passed = len(missing_src) == 0 and len(missing_dst) == 0
+    # [Plan E1.2] 跳过的边分类汇总 (按 reason)
+    _skip_summary = {
+        reason: {
+            'count': len(samples),
+            'sample': samples[:3],  # 最多 3 个样本
+        }
+        for reason, samples in _skipped_by_kind.items()
+    }
     result = CheckResult(
         name='B1: edge endpoint labels present',
         layer='B',
@@ -622,6 +653,11 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
             'missing_dst_count': len(missing_dst),
             'missing_src_sample': missing_src[:5],
             'missing_dst_sample': missing_dst[:5],
+            # [Plan E1.2] 可观测性: 多少边被 filter 跳过 + 为什么
+            'total_edges': len(viz.edges),
+            'total_skipped': _total_skipped,
+            'checked_count': len(viz.edges) - _total_skipped,
+            'skipped_by_reason': _skip_summary,
         },
     )
     if not passed:
@@ -636,21 +672,29 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     results.append(result)
     
     # ── B2: 自环 / BIT_SELECT / 已知省略类白名单正确省略 ──
-    # 实际上 B1 已经处理, 这里只统计
-    skipped = sum(
-        1 for e in viz.edges
-        if (e.kind == 'BIT_SELECT' and _short_name(e.src) == _short_name(e.dst))
-        or e.kind in ('CLOCK', 'RESET')
-    )
+    # [Plan E1.2 2026-08-10] 从 B1 复用 _skipped_by_kind 分类汇总, 不再重复统计.
+    # B1 现在记录 5 种 reason: bit_select_self_loop, clock_reset, both_unrendered,
+    # src_unrendered, dst_unrendered. B2 报告他们作为可观测性数据.
     result = CheckResult(
         name='B2: filtered edges',
         layer='B',
         passed=True,  # info only
-        details={'skipped_count': skipped},
+        details={
+            'skipped_count': _total_skipped,
+            'skipped_by_reason': {
+                reason: {
+                    'count': len(samples),
+                    'sample': samples[:3],
+                }
+                for reason, samples in _skipped_by_kind.items()
+            },
+        },
     )
-    if skipped > 0:
+    if _total_skipped > 0:
         result.warnings.append(
-            f"Skipped {skipped} self-loop/CLOCK/RESET edges (expected)"
+            f"Skipped {_total_skipped} edges ("
+            + ', '.join(f'{r}={len(s)}' for r, s in _skipped_by_kind.items())
+            + ') — E1 route-aware filter'
         )
     results.append(result)
     
