@@ -75,11 +75,12 @@ class CheckReport:
     layer_a: list[CheckResult] = field(default_factory=list)
     layer_b: list[CheckResult] = field(default_factory=list)
     layer_c: list[CheckResult] = field(default_factory=list)
+    layer_d: list[CheckResult] = field(default_factory=list)  # [Plan D2] sanity checks
     level: str = 'strict'
     
     @property
     def all_results(self) -> list[CheckResult]:
-        return self.layer_a + self.layer_b + self.layer_c
+        return self.layer_d + self.layer_a + self.layer_b + self.layer_c
     
     @property
     def errors(self) -> list[str]:
@@ -387,6 +388,58 @@ def _compute_expected(viz, layout: dict | None) -> ExpectedCounts:
         walk(layout)
     
     return exp
+
+
+# ═══════════════════════════════════════════════════
+# Layer D — Sanity checks (防止 silent pass)
+# ═══════════════════════════════════════════════════
+
+def _check_layer_d(viz, exp: ExpectedCounts) -> list[CheckResult]:
+    """[Plan D2 2026-08-10] Sanity checks — 防止 viz=0 silent pass.
+
+    case13 (complex_op) 暴露的问题:
+    - fixture module 名错 (complex_design vs complex_op), Phase 3 filter 丢 17 节点
+    - viz.node_count = 0
+    - 但 checker 全 trivially pass (没节点没边 → 没东西可检查)
+    - report.passed = True, 但实际什么都没检查 → silent pass
+
+    D1: viz should not be empty
+    - target_module 设了 + viz 空 → 错 (有 target 但找不到)
+    - target_module 没设 + viz 空 → 错 (检查器拿不到任何数据)
+    背景: Layer A/B/C 都隐含假设 viz 有数据. viz=0 时它们 trivially pass —
+    D 必须在 A/B/C 之前跑, 作为 guarding check.
+    """
+    results = []
+    target_module = viz.meta.get('target_module', '') or ''
+    viz_node_count = viz.node_count
+
+    # D1: viz should not be empty
+    passed = viz_node_count > 0
+    result = CheckResult(
+        name='D1: viz not empty (silent pass guard)',
+        layer='D',
+        passed=passed,
+        details={
+            'viz_node_count': viz_node_count,
+            'target_module': target_module,
+            'expected_leaves': exp.leaves,
+            'expected_compounds': exp.compounds,
+        },
+    )
+    if not passed:
+        if target_module:
+            result.errors.append(
+                f"viz is empty but target_module='{target_module}' was specified — "
+                f"silent pass bug pattern. Likely fixture module name mismatch "
+                f"(case13 lesson: rename module in fixture to match target)."
+            )
+        else:
+            result.errors.append(
+                "viz is empty and no target_module — checker has nothing to check"
+            )
+    results.append(result)
+
+    return results
 
 
 # ═══════════════════════════════════════════════════
@@ -920,6 +973,10 @@ def check_viz_render(
     exp = _compute_expected(viz, layout)
     
     report = CheckReport(level=level)
+    
+    # [Plan D2 2026-08-10] Layer D — sanity guards (必须在 A/B/C 之前跑, 防止
+    # viz=0 silent pass). 总是跑, 不受 level 影响.
+    report.layer_d = _check_layer_d(viz, exp)
     
     # Layer A — 必跑
     report.layer_a = _check_layer_a(svg_nodes, svg_edges, viz, exp)
