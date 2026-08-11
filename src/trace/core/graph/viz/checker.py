@@ -670,8 +670,25 @@ def _check_layer_b(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
         # 内部表达树边的两端都在 rendered set; driver_extractor 产的外部边
         # (call 指向嵌套函数, 隐式 const, 跨 instance wire) 至少一端不在.
         if src_short not in _rendered_label_set or dst_short not in _rendered_label_set:
+            # [Plan E3 2026-08-11] 把 BIT_SELECT skip 拆细成 4 种 reason,
+            # 让 B2 报告能区分 hierarchical aggregation (12) vs 真 bit slice unrendered (2).
+            # 不改 filter 行为 — 两种都应 skip, 只是 reason 不同.
+            _kind_str = e.kind.name if hasattr(e.kind, 'name') else str(e.kind)
+            if _kind_str == 'BIT_SELECT':
+                _has_slice_src = '[' in str(e.src) and ']' in str(e.src)
+                if not _has_slice_src:
+                    # src 是普通端口路径 (e.g., "u_scale.din"), dst 是 wrapper
+                    # → hierarchical aggregation edge (graph_builder.py:451 创建)
+                    _record_skip(e, 'bit_select_aggregation')
+                elif (src_short not in _rendered_label_set and
+                      dst_short not in _rendered_label_set):
+                    _record_skip(e, 'bit_select_both_unrendered')
+                elif src_short not in _rendered_label_set:
+                    _record_skip(e, 'bit_select_src_unrendered')
+                else:
+                    _record_skip(e, 'bit_select_dst_unrendered')
             # [Plan E1.2] 进一步区分: 哪一端不在 rendered set
-            if src_short not in _rendered_label_set and dst_short not in _rendered_label_set:
+            elif src_short not in _rendered_label_set and dst_short not in _rendered_label_set:
                 _record_skip(e, 'both_unrendered')
             elif src_short not in _rendered_label_set:
                 _record_skip(e, 'src_unrendered')
