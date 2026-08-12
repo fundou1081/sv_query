@@ -374,8 +374,18 @@ class ControlCoverageGenerator:
             # 获取 driver 表达式
             expr = getattr(edge, "expression", "") or ""
 
-            # 解析表达式 -> 原子信号
-            atomics = self._parse_expression_to_atomics(expr)
+            # [Plan F2.4.3 2026-08-13] 优先用结构化 ExpressionTree (graph._expr_trees)
+            # 走 AST walk 抽原子; 拿不到 (老 graph / tree_key 不匹配) 时回退到 string parsing.
+            # 这是 Plan F2 的核心收益点: 消灭 string parsing 误识别 (字面量 / 关键字 / 嵌套).
+            atomics: list = []
+            expr_trees = getattr(self._graph, '_expr_trees', None)
+            if expr_trees is not None:
+                tree_dict = expr_trees.get(signal)
+                if tree_dict is not None:
+                    atomics = self._extract_atomics_from_expr_tree(tree_dict)
+            if not atomics:
+                # 回退: string parsing (向后兼容 + 老 graph 兼容)
+                atomics = self._parse_expression_to_atomics(expr)
 
             # 记录 evidence (为每个原子附加 driver 链证据)
             step = EvidenceStep(
@@ -453,6 +463,63 @@ class ControlCoverageGenerator:
         # 三点以上算跨模块
         parts = signal_id.split(".")
         return len(parts) > 2
+
+    def _extract_atomics_from_expr_tree(self, tree_dict: dict) -> list:
+        """[Plan F2.4.3 2026-08-13] 从 ExpressionTree dict walk 提取原子信号
+
+        跟 `_parse_expression_to_atomics` (string parsing) 一样目的, 但走结构化
+        AST 而不是 string. 优势:
+          - 避免字面量 false-positive (`4'b1011` 不会被误识为 `b1011` 标识符)
+          - 准确识别 Slice/Concat 的子表达式 (string parsing 在复杂 case 会漏)
+          - 不依赖标识符 regex (不跟 SystemVerilog 关键字混淆)
+
+        Args:
+            tree_dict: ExpressionTree._to_dict() 输出 (SignalGraph._expr_trees[signal_id])
+
+        Returns:
+            AtomicSignal 列表, 跟 `_parse_expression_to_atomics` 一致
+        """
+        if not tree_dict:
+            return []
+
+        seen = set()
+        result = []
+
+        def _walk(node: dict):
+            op = node.get('op', '')
+            label = node.get('label', '')
+
+            # SignalRef 是叶子 — 转 AtomicSignal
+            if op == 'SignalRef' and label:
+                if label in seen:
+                    return
+                # 过滤 SV 关键字
+                if label in (
+                    'logic', 'wire', 'reg', 'input', 'output', 'inout',
+                    'module', 'always', 'assign', 'if', 'else', 'case',
+                    'begin', 'end', 'posedge', 'negedge', 'or', 'and',
+                ):
+                    return
+                # 过滤纯数字 / 字面量
+                if label.isdigit() or self._is_simple_literal(label):
+                    return
+
+                seen.add(label)
+                base_name, bit_range = self._split_identifier(label)
+                result.append(AtomicSignal(
+                    name=label,
+                    base_name=base_name,
+                    bit_range=bit_range,
+                ))
+                return
+
+            # Const/Slice/Concat/Op 等节点: 递归 children
+            # (Const 叶子直接 skip — 字面量)
+            for child in node.get('children', []) or []:
+                _walk(child)
+
+        _walk(tree_dict)
+        return result
 
     def _extract_atomics_from_ast(self, ast_node) -> list:
         """从 AST 节点提取原子信号
