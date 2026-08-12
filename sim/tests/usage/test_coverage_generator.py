@@ -439,6 +439,36 @@ def _make_driver_edge(src: str, dst: str, expr: str = "", condition: str = "") -
     )
 
 
+class FakeAST:
+    """[Plan F3 2026-08-13] 模拟 AST 节点. fake adapter 读 .s 属性返回信号名."""
+    def __init__(self, s: str):
+        self.s = s
+    def __str__(self) -> str:
+        return self.s
+
+
+def _attach_fake_adapter(g, signal_map: dict):
+    """[Plan F3 2026-08-13] 给 graph 附 fake semantic adapter.
+
+    模拟真实 graph 里 graph_builder 会填的 `_adapter`, 让 condition_ast
+    提取 (走 _extract_atomics_from_ast → _extract_signals_from_expr) 能工作.
+
+    Args:
+        signal_map: {ast_node_id(s) → [signal_names]}。用 ast 节点的 identity/
+            str 映射到它应该返回的信号名。简化: 一个 FakeAST 对象存 s, adapter
+            按 s 返回对应信号名列表。
+    """
+    class _FakeAdapter:
+        def _extract_signals_from_expr(self, expr):
+            # expr 是 _FakeAST (有 .s 属性) 或字符串
+            s = getattr(expr, "s", None) if expr is not None else None
+            if s is None:
+                s = str(expr) if expr is not None else ""
+            return signal_map.get(s, [])
+    g._adapter = _FakeAdapter()
+    return g
+
+
 class TestIsModulePort(unittest.TestCase):
     """_is_module_port: 端口检测"""
 
@@ -699,17 +729,21 @@ class TestDecompose(unittest.TestCase):
             "top.c", "top.x", expr="c & d",
             condition="rst_n && en",
             effective_condition="en",
+            condition_ast=FakeAST("en"),
         ))
         g.add_trace_edge(_make_conditional_edge(
             "top.d", "top.x", expr="c & d",
             condition="rst_n && en",
             effective_condition="en",
+            condition_ast=FakeAST("en"),
         ))
         # assign c = a | b;
         g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
         g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
         # a, b 都有 driver (端口)
         g.add_trace_edge(_make_driver_edge("top.en_input", "top.en_signal"))
+        # [Plan F3 2026-08-13] 附 fake adapter, 让 condition_ast (en) 能提取
+        _attach_fake_adapter(g, {"en": ["en"]})
         # [Plan F2.7 2026-08-13] 模拟真实 graph 的 _expr_trees (严格 tree 模式需要)
         g._expr_trees = {
             "top.x": {"label": "&", "op": "BinaryAnd", "children": [
@@ -1182,36 +1216,9 @@ class TestASTConditionExtraction(unittest.TestCase):
             self.assertIn(expected, names)
 
     def test_extract_ast_path_preferred(self):
-        """当 AST 可用时, _extract_condition_atomic 优先用 AST"""
-        import pyslang
+        """[Plan F3 2026-08-13] 当 condition_ast 可用时, _extract_condition_atomic
+        走 AST 路径 (通过 graph._adapter._extract_signals_from_expr), 不 fallback 字符串."""
         from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
-        from trace.core.semantic_adapter import SemanticAdapter
-
-        # 构造一个 TraceEdge, 带 AST
-        source = """
-        module test(input a, b, output [3:0] c);
-            assign c = a & b;
-        endmodule
-        """
-        tree = pyslang.SyntaxTree.fromText(source)
-        root = tree.root
-
-        def find_binary(node):
-            s = str(node.kind)
-            if "Binary" in s and "Expression" in s:
-                return node
-            if hasattr(node, "__iter__") and not isinstance(node, str):
-                try:
-                    for c in node:
-                        r = find_binary(c)
-                        if r is not None:
-                            return r
-                except Exception:
-                    pass
-            return None
-
-        ast_node = find_binary(root)
-        self.assertIsNotNone(ast_node)
 
         # 模拟一个 "被错误字符串表示" 的 edge (但 AST 是正确的)
         edge = TraceEdge(
@@ -1219,19 +1226,23 @@ class TestASTConditionExtraction(unittest.TestCase):
             dst="top.c",
             kind=EdgeKind.DRIVER,
             condition="BROKEN_STRING",  # 故意错的字符串
-            condition_ast=ast_node,     # AST 是对的
+            condition_ast=FakeAST("a & b"),  # AST 是对的
         )
 
         g = SignalGraph()
+        # F3: AST 路径要求 adapter 从 condition_ast 提取信号
+        _attach_fake_adapter(g, {"a & b": ["a", "b"]})
         gen = ControlCoverageGenerator(graph=g)
-        # 优先用 AST, 应该能正确解析出 a, b
         atomics = gen._extract_condition_atomic(edge, "top.c")
         names = {s.base_name for s in atomics}
+        # 走 AST 提取, 应得 a, b (而非 string "BROKEN_STRING" 的误识别)
         self.assertIn("a", names)
         self.assertIn("b", names)
+        self.assertNotIn("<NO_TREE>", names)
 
     def test_extract_fallback_to_string(self):
-        """当 AST 不可用 (None) 时, 回退到字符串解析"""
+        """[Plan F3 2026-08-13] 当 AST 不可用 (None) 时, 不 fallback 字符串,
+        而是返回 NO_TREE_MARKER."""
         from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
         g = SignalGraph()
         gen = ControlCoverageGenerator(graph=g)
@@ -1239,13 +1250,15 @@ class TestASTConditionExtraction(unittest.TestCase):
             src="top.a",
             dst="top.c",
             kind=EdgeKind.DRIVER,
-            condition="a & b",  # 只用字符串
+            condition="a & b",  # 只有字符串, 无 condition_ast
             condition_ast=None,
         )
         atomics = gen._extract_condition_atomic(edge, "top.c")
         names = {s.base_name for s in atomics}
-        self.assertIn("a", names)
-        self.assertIn("b", names)
+        # F3: 不 fallback 字符串 -> 返回 NO_TREE_MARKER, 不是 'a'/'b'
+        self.assertIn("<NO_TREE>", names)
+        self.assertNotIn("a", names)
+        self.assertNotIn("b", names)
 
 
 class TestSerializationV2C(unittest.TestCase):
@@ -1683,22 +1696,38 @@ class TestMultiSignalDecomposeV2B(unittest.TestCase):
             "top.c", "top.x", expr="c & d",
             condition="en",
             effective_condition="en",
+            condition_ast=FakeAST("en"),
         ))
         g.add_trace_edge(_make_conditional_edge(
             "top.d", "top.x", expr="c & d",
             condition="en",
             effective_condition="en",
+            condition_ast=FakeAST("en"),
         ))
         g.add_trace_edge(_make_conditional_edge(
             "top.a", "top.y", expr="a | b",
             condition="mode",
             effective_condition="mode",
+            condition_ast=FakeAST("mode"),
         ))
         g.add_trace_edge(_make_conditional_edge(
             "top.b", "top.y", expr="a | b",
             condition="mode",
             effective_condition="mode",
+            condition_ast=FakeAST("mode"),
         ))
+        # [Plan F3 2026-08-13] adapter + _expr_trees (真实 graph 形态)
+        _attach_fake_adapter(g, {"en": ["en"], "mode": ["mode"]})
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+            "top.y": {"label": "|", "op": "BinaryOr", "children": [
+                {"label": "a", "op": "SignalRef", "children": []},
+                {"label": "b", "op": "SignalRef", "children": []},
+            ]},
+        }
         return g
 
     # --- original_signals 字段 ---
@@ -1937,7 +1966,8 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
         """构造图: if (en) x <= c & d;
 
         Args:
-            use_ast: True=填 condition_ast, False=None (字符串)
+            use_ast: True=填 condition_ast + adapter + _expr_trees (真实 graph 形态),
+                     False=只填 condition 字符串 (无 AST, 验证严格 marker)
         """
         from trace.core.graph.models import SignalGraph
         g = SignalGraph()
@@ -1956,29 +1986,42 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
         if use_ast:
             kwargs["condition_ast"] = self._FakeAST("en")  # AST 节点
         g.add_trace_edge(_make_conditional_edge(**kwargs))
+        if use_ast:
+            # [Plan F3 2026-08-13] 真实 graph: adapter 从 condition_ast 提取 en,
+            # _expr_trees 让 driver 表达式 (c & d) 走 AST walk.
+            _attach_fake_adapter(g, {"en": ["en"]})
+            g._expr_trees = {
+                "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                    {"label": "c", "op": "SignalRef", "children": []},
+                    {"label": "d", "op": "SignalRef", "children": []},
+                ]},
+            }
         return g
 
     # --- 向后兼容 (AST=None) ---
 
     def test_decompose_uses_string_when_condition_ast_is_none(self):
-        """condition_ast=None 时, decompose() 走字符串路径 (跟 V2.B 一致)"""
+        """[Plan F3 2026-08-13] condition_ast=None 时, decompose() 不 fallback 字符串,
+        返回 NO_TREE_MARKER (严格模式)。"""
         g = self._make_graph_with_ast(use_ast=False)
         gen = ControlCoverageGenerator(graph=g)
         result = gen.decompose(["top.x"], max_signals=10)
         names = {s.base_name for s in result.atomic_signals}
-        # en, c, d 都应被提取 (从字符串 "en" 和 "c & d")
-        self.assertIn("en", names)
-        self.assertIn("c", names)
-        self.assertIn("d", names)
+        # F3: 无 condition_ast → condition 提取返 marker, 不 fallback "en" 字符串
+        self.assertIn("<NO_TREE>", names)
+        self.assertNotIn("en", names)
 
     def test_decompose_with_ast_none_matches_v2b_behavior(self):
-        """AST=None 时与 V2.B decompose() 输出一致 (回归保护)"""
+        """[Plan F3 2026-08-13] AST=None 严格模式: 不 fallback 字符串."""
         g = self._make_graph_with_ast(use_ast=False)
         gen = ControlCoverageGenerator(graph=g)
         result = gen.decompose(["top.x"], max_signals=10)
-        # 期望: en, c, d (不含 b/c 等未连接信号)
-        names = sorted({s.base_name for s in result.atomic_signals})
-        self.assertEqual(names, ["c", "d", "en"])
+        names = {s.base_name for s in result.atomic_signals}
+        # F3: 无 condition_ast + 无 _expr_trees → 全部返 marker, 不产生 en/c/d
+        self.assertIn("<NO_TREE>", names)
+        self.assertNotIn("en", names)
+        self.assertNotIn("c", names)
+        self.assertNotIn("d", names)
 
     # --- AST 路径 (有 condition_ast) ---
 
@@ -1994,11 +2037,8 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
         self.assertIn("d", names)
 
     def test_decompose_ast_path_handles_broken_string(self):
-        """AST 路径不依赖字符串: 即使字符串是垃圾, 也能正确提取
-
-        关键场景: 条件在字符串中被重命名/转换 (例如 宏展开后),
-        但 AST 节点保留原始语义. V2.A.2 必须走 AST 而不是字符串.
-        """
+        """[Plan F3 2026-08-13] AST 路径不依赖字符串: 即使 condition 字符串是垃圾,
+        只要 condition_ast 正确 (+ adapter), 也能提取. driver 表达式走 _expr_trees."""
         from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
         g = SignalGraph()
         g.add_trace_node(_make_signal_node("top.x"))
@@ -2012,21 +2052,29 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
             expression="c & d",
             condition="BROKEN_GARBAGE_$$$",  # 垃圾字符串
             effective_condition="BROKEN_GARBAGE_$$$",
-            condition_ast=self._FakeAST("en"),  # AST 正确
+            condition_ast=FakeAST("en"),  # AST 正确
         )
         g.add_trace_edge(edge)
+        # F3: adapter 从 condition_ast 提取 en; _expr_trees 让 c/d 走 AST
+        _attach_fake_adapter(g, {"en": ["en"]})
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+        }
         gen = ControlCoverageGenerator(graph=g)
         result = gen.decompose(["top.x"], max_signals=10)
         names = {s.base_name for s in result.atomic_signals}
-        # 如果走 AST: en, c, d 都在
-        # 如果只走字符串: en 不在 (字符串是垃圾)
+        # 走 AST: en 从 condition_ast 提取 (字符串是垃圾也能提)
         self.assertIn("en", names, "AST path should extract en from condition_ast")
-        # driver 表达式仍走字符串, c/d 应从 expression 提取
+        # driver 表达式走 _expr_trees, c/d 从 tree 提取
         self.assertIn("c", names)
         self.assertIn("d", names)
+        self.assertNotIn("<NO_TREE>", names)
 
     def test_decompose_ast_falls_back_when_ast_extraction_fails(self):
-        """AST 路径本身失败时回退到字符串"""
+        """[Plan F3 2026-08-13] AST 提取失败时不 fallback 字符串, 返回 marker."""
         from trace.core.graph.models import SignalGraph, TraceEdge, EdgeKind
         g = SignalGraph()
         g.add_trace_node(_make_signal_node("top.x"))
@@ -2047,12 +2095,21 @@ class TestDecomposeASTIntegrationV2A2(unittest.TestCase):
             condition_ast=BrokenAST(),  # AST 坏
         )
         g.add_trace_edge(edge)
+        # F3: adapter 无 _extract_signals_from_expr → 返 marker, 不 fallback "en"
+        _attach_fake_adapter(g, {})
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+        }
         gen = ControlCoverageGenerator(graph=g)
         result = gen.decompose(["top.x"], max_signals=10)
         names = {s.base_name for s in result.atomic_signals}
-        # 回退到字符串: en 仍能提取
-        self.assertIn("en", names, "Fallback to string should work")
-        # driver 表达式独立
+        # F3: AST 坏 → condition 提取返 marker, 不 fallback "en" 字符串
+        self.assertIn("<NO_TREE>", names)
+        self.assertNotIn("en", names)
+        # driver 表达式独立走 _expr_trees
         self.assertIn("c", names)
         self.assertIn("d", names)
 
