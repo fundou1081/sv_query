@@ -154,9 +154,12 @@ class ControlCoverageGenerator:
                     if a.name not in seen_atomics:
                         seen_atomics.add(a.name)
                         primary_atomics.append(a)
-                # 2. 从 driver 表达式提取 (保持字符串, AST 暂不覆盖)
+                # 2. [Plan F3 2026-08-13] 从 driver 表达式提取 — 走 ExpressionTree AST,
+                #    不再 string parsing (消灭 string parsing 误识别).
+                #    tree_key = edge.dst (被赋值的信号), 跟 _trace_drivers 一致.
                 expr = getattr(edge, "expression", "") or ""
-                for a in self._parse_expression_to_atomics(expr):
+                tree_atomics = self._extract_atomics_for_signal(edge.dst, expr, primary)
+                for a in tree_atomics:
                     if a.name not in seen_atomics:
                         seen_atomics.add(a.name)
                         primary_atomics.append(a)
@@ -382,35 +385,9 @@ class ControlCoverageGenerator:
             # 获取 driver 表达式
             expr = getattr(edge, "expression", "") or ""
 
-            # [Plan F2.7 2026-08-13] 严格走结构化 ExpressionTree, 不再 string fallback.
-            #
-            # [F2.4.3 旧实现] 拿不到 tree 时回退到 _parse_expression_to_atomics (string parsing).
-            #   问题: string parsing 有 false-positive (8'd100 → 'd100', timescale/ns/endmodule 等),
-            #   跟 F2 的核心承诺「消灭 string parsing 误识别」矛盾.
-            # [F2.7 新实现] tree 拿不到时立刻报告, 不 fallback:
-            #   - WARNING 日志记录 signal_id / expr / tree_key 全 context
-            #   - 返回 1 个 error_marker AtomicSignal (name=NO_TREE_MARKER)
-            #     让 caller 能看到这个 edge 的 atomic 为空 / 以标记代替
-            #   - 不会静默 fallback 到 string parsing
-            atomics: list = []
-            expr_trees = getattr(self._graph, '_expr_trees', None)
-            tree_dict = expr_trees.get(signal) if expr_trees is not None else None
-            if tree_dict is not None:
-                atomics = self._extract_atomics_from_expr_tree(tree_dict)
-            if not atomics:
-                # [Plan F2.7] 严格模式: 拿不到 tree 不能静默 fallback
-                tree_key = signal  # signal_id = tree_key by F2.4.2 invariant
-                _LOGGER.warning(
-                    "[Plan F2.7] NO_EXPR_TREE: signal=%s, expr=%r, tree_key=%s. "
-                    "Tree missing — returning error marker, NOT fallback to string parsing. "
-                    "If this is wrong, check graph._expr_trees population or tree_key format.",
-                    signal, expr, tree_key,
-                )
-                atomics = [AtomicSignal(
-                    name=NO_TREE_MARKER,
-                    base_name=NO_TREE_MARKER,
-                    bit_range=None,
-                )]
+            # [Plan F3 2026-08-13] 严格走 ExpressionTree, 统一用 _extract_atomics_for_signal.
+            # tree 拿不到 → WARNING + NO_TREE_MARKER, 绝不 string fallback.
+            atomics = self._extract_atomics_for_signal(signal, expr, context=driver_id)
 
             # 记录 evidence (为每个原子附加 driver 链证据)
             step = EvidenceStep(
@@ -499,6 +476,46 @@ class ControlCoverageGenerator:
         parts = signal_id.split(".")
         return len(parts) > 2
 
+    def _extract_atomics_for_signal(self, signal: str, expr: str, context: str = "") -> list:
+        """[Plan F3 2026-08-13] F3 核心: 统一走 ExpressionTree 提取原子信号.
+
+        替代 `_parse_expression_to_atomics` (string parsing). tree 拿不到时
+        严格报错 + 返回 NO_TREE_MARKER, 绝不静默 fallback.
+
+        Args:
+            signal: tree_key (= 被赋值信号 signal_id, 如 'top.x')
+            expr: driver 表达式字符串 (用于 WARNING 日志 context)
+            context: 附加 context (如 primary 信号), 用于日志
+
+        Returns:
+            AtomicSignal 列表 (tree 有 → 真原子; 无 → [NO_TREE_MARKER])
+        """
+        expr_trees = getattr(self._graph, '_expr_trees', None)
+        tree_dict = expr_trees.get(signal) if expr_trees is not None else None
+        if tree_dict is not None:
+            atomics = self._extract_atomics_from_expr_tree(tree_dict)
+            if atomics:
+                return atomics
+            # tree 存在但 walk 返回空 (例如全是 Const 字面量赋值)
+            _LOGGER.warning(
+                "[Plan F3] EMPTY_TREE: signal=%s, expr=%r, context=%r. "
+                "ExpressionTree walk returned empty — returning error marker, "
+                "no string fallback.",
+                signal, expr, context,
+            )
+        else:
+            _LOGGER.warning(
+                "[Plan F3] NO_EXPR_TREE: signal=%s, expr=%r, context=%r. "
+                "Tree missing — returning error marker, no string fallback. "
+                "If this is wrong, check graph._expr_trees population or tree_key format.",
+                signal, expr, context,
+            )
+        return [AtomicSignal(
+            name=NO_TREE_MARKER,
+            base_name=NO_TREE_MARKER,
+            bit_range=None,
+        )]
+
     def _extract_atomics_from_expr_tree(self, tree_dict: dict) -> list:
         """[Plan F2.4.3 2026-08-13] 从 ExpressionTree dict walk 提取原子信号
 
@@ -583,22 +600,37 @@ class ControlCoverageGenerator:
         if ast_node is None:
             return []
 
-        # 优先用 SignalExpressionVisitor (如果有 pyslang adapter)
+        # 优先用结构化 AST 提取 (如果有 pyslang adapter)
         adapter = getattr(self._graph, "_adapter", None)
         if adapter is not None:
             try:
                 # [V6.9] SignalExpressionVisitor removed, using semantic_adapter._extract_signals_from_expr() instead
-                # [V6.9] semantic_adapter._extract_signals_from_expr() returns list of signal names
-                    return self._convert_signal_result_to_atomics(sr, ast_node)  # noqa: F821
-            except Exception:
-                pass  # Fallback to string parsing
+                signals = getattr(adapter, "_extract_signals_from_expr", None)
+                if signals is not None:
+                    names = signals(ast_node)
+                    if names:
+                        return self._convert_signal_names_to_atomics(names, ast_node)
+            except Exception as exc:
+                _LOGGER.warning(
+                    "[Plan F3] AST_EXTRACT_FAILED: err=%r. "
+                    "No string fallback — returning error marker.",
+                    exc,
+                )
+                return [AtomicSignal(
+                    name=NO_TREE_MARKER,
+                    base_name=NO_TREE_MARKER,
+                    bit_range=None,
+                )]
 
-        # Fallback: 转为字符串
-        try:
-            text = str(ast_node).strip()
-            return self._parse_expression_to_atomics(text)
-        except Exception:
-            return []
+        # [Plan F3 2026-08-13] 严格模式: 无 adapter / AST 提取失败时不 fallback string.
+        _LOGGER.warning(
+            "[Plan F3] NO_AST_EXTRACT: no adapter — returning marker (no string fallback)."
+        )
+        return [AtomicSignal(
+            name=NO_TREE_MARKER,
+            base_name=NO_TREE_MARKER,
+            bit_range=None,
+        )]
 
     def _convert_signal_names_to_atomics(self, names: list, ast_node) -> list:
         """[V6.9] 将 signal name list 转为 AtomicSignal 列表。
@@ -641,9 +673,8 @@ class ControlCoverageGenerator:
     def _extract_condition_atomic(self, edge, src_signal: str) -> list:
         """从 TraceEdge 提取条件中的原子信号
 
-        [V2] 优先用 condition_ast, 回退到字符串解析.
-        [V2.A.2 cycle 16] 增加: AST 提取返回空时也回退到字符串,
-        避免 AST 本身的异常/坏节点导致数据丢失.
+        [Plan F3 2026-08-13] 严格模式: 只用 condition_ast 提取. 缺失或提取失败时
+        返回 NO_TREE_MARKER + WARNING, 不静默回退到字符串解析.
 
         Args:
             edge: TraceEdge 实例
@@ -658,15 +689,29 @@ class ControlCoverageGenerator:
         ast_node = getattr(edge, "condition_ast", None)
         if ast_node is not None:
             atoms = self._extract_atomics_from_ast(ast_node)
-            if atoms:
+            if atoms and atoms[0].name != NO_TREE_MARKER:
                 return atoms
-            # AST 提取返回空 - 回退到字符串 (防止 AST 坏节点丢数据)
+            # [Plan F3 2026-08-13] 严格模式: AST 提取返回 marker 时不 fallback.
+            _LOGGER.warning(
+                "[Plan F3] CONDITION_AST_MARKER: edge=%s, condition=%r. "
+                "condition_ast extraction returned NO_TREE marker — no string fallback.",
+                getattr(edge, "id", None),
+                getattr(edge, "condition", ""),
+            )
+            return atoms
 
-        # Fallback: 用字符串 (effective_condition 优先, 然后 condition)
-        cond = getattr(edge, "effective_condition", "") or ""
-        if not cond:
-            cond = getattr(edge, "condition", "") or ""
-        return self._parse_expression_to_atomics(cond)
+        # [Plan F3 2026-08-13] 严格模式: 没 condition_ast → 报错 + 错误 marker.
+        _LOGGER.warning(
+            "[Plan F3] NO_CONDITION_AST: edge=%s, condition=%r. "
+            "condition_ast missing — no string fallback.",
+            getattr(edge, "id", None),
+            getattr(edge, "condition", ""),
+        )
+        return [AtomicSignal(
+            name=NO_TREE_MARKER,
+            base_name=NO_TREE_MARKER,
+            bit_range=None,
+        )]
 
     def generate_coverage_markdown(self, result) -> str:
         """生成 Markdown 格式的分解报告
