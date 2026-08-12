@@ -113,8 +113,16 @@ class TestF2GenerateForLimitation(unittest.TestCase):
       - 新行为: tree 建 → test fail (驱动修复)
     """
 
-    def test_generate_for_limitation_no_tree_for_indexed_lhs(self):
-        """[LIMITATION] generate for 块内 LHS 带索引时, _expr_trees 是空"""
+    def test_generate_for_indexed_lhs_now_has_tree(self):
+        """[F2.6 FIX 2026-08-13] generate for 块内 indexed LHS 现在能建 tree
+
+        [历史 limitation] F2.4.4/F2.5 锁定 limitation: generate for 块内 LHS 带索引
+        (e.g. `assign y[i] = a + b`) 边建了但 tree 缺. driver_extractor 限制.
+
+        [F2.6 FIX] _store_expr_tree 加 Conversion unwrap 后, 这种情况也能建 tree.
+        - tree_key 应该是 'top.y[0]' / 'top.y[1]'
+        - tree 形状应该是 Add(+, [SignalRef(a), SignalRef(b)])
+        """
         src = '''module top(input [7:0] a, b, output [1:0] y);
     genvar i;
     generate
@@ -133,15 +141,26 @@ endmodule'''
         self.assertGreater(len(indexed_nodes), 0,
                            "generate for should create indexed signals like y[0], y[1]")
 
-        # [LIMITATION] tree 缺 — 这是已知 gap, 记录它
+        # [F2.6 FIX] tree 现在建了 — 验证 key + 形状
         expr_trees = getattr(g, '_expr_trees', {})
-        # 如果未来修了, 这会变成 != 0, test 自动 fail 提示修复
-        # 如果保持 limitation, 这里 = 0, test pass (确认 limitation 还在)
         indexed_trees = [k for k in expr_trees.keys()
                          if k.endswith('[0]') or k.endswith('[1]')]
-        self.assertEqual(len(indexed_trees), 0,
-                         f"[F2.5+] Generate for tree was fixed! "
-                         f"Found: {indexed_trees}. Update test to verify tree shape.")
+        self.assertEqual(len(indexed_trees), 2,
+                         f"[F2.6 FIX] Expected 2 indexed trees (y[0], y[1]), "
+                         f"got {len(indexed_trees)}: {indexed_trees}")
+
+        # 验证 'top.y[0]' tree 是 Add(a, b)
+        tree_y0 = expr_trees.get('top.y[0]')
+        self.assertIsNotNone(tree_y0)
+        self.assertEqual(tree_y0['op'], 'Add')
+        self.assertEqual(tree_y0['label'], '+')
+        labels = sorted(c['label'] for c in tree_y0['children'])
+        self.assertEqual(labels, ['a', 'b'])
+
+        # 验证 'top.y[1]' 同样
+        tree_y1 = expr_trees.get('top.y[1]')
+        self.assertIsNotNone(tree_y1)
+        self.assertEqual(tree_y1['op'], 'Add')
 
 
 class TestF2GenerateCaseLimitation(unittest.TestCase):
