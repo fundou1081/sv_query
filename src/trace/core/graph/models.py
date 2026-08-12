@@ -208,11 +208,15 @@ class DriverInfo:
 
     [方案C] 从 TraceNode 分离出来,因为 condition 是边的属性而非节点属性
     [V6.6] source 字段替代 expression/bit_slice，使其变为 derived property
+    [Plan F2.4.1 2026-08-13] expression_tree 字段 — 从 SignalGraph._expr_trees[signal_id]
+    注入结构化 driver 表达式 AST (由 driver_extractor 构建)。跟 string-based
+    `expression` 字段并存: string 给向后兼容/显示用, tree 给静态分析/checker 用.
     """
 
     node: TraceNode  # 驱动节点
     source: SignalSource | None = None  # [V6.6] 位精确信号源 (驱动源或负载源)
     condition: str = ""  # 驱动条件 (来自 if 语句)
+    expression_tree: dict | None = None  # [Plan F2.4.1] 结构化 driver 表达式 AST (None = 未注入/无)
     reset_condition: str = ""  # 复位条件 (来自 if (!rst_ni))
     clock_domain: str = ""  # 时钟域
     assign_type: str = ""  # always_ff / always_comb / continuous / blocking / nonblocking
