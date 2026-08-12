@@ -455,14 +455,22 @@ class DriverExtractor:
                 out.append((sig_name, cond_str))
         return out
 
-    def _get_signal(self, signal) -> str | None:
+    def _get_signal(self, signal, genvar_ctx: dict | None = None) -> str | None:
         """[V6.9] 获取信号名 — 优先用 semantic API, fallback 到 str()。
 
         syntax AST 节点的 str() 包含前导空格和换行符,
         必须 strip() 后使用。
+
+        [Plan F1 2026-08-12] 新增 genvar_ctx 参数:
+        - 顶层 assigns 传 None 或 {}
+        - generate for 内的 assigns 传 {genvar_name: entry.arrayIndex}
+          e.g. gen_accum[1] 内的 assign → {'i': 1}
+        - NamedValueExpression name 是 genvar → substitute 成 concrete value
+        - BinaryOp (i+1) → 递归 substitute 子节点
         """
         if signal is None:
             return None
+        ctx = genvar_ctx or {}
         # NamedValue: 通过 .symbol.name 获取 (不是 str())
         sk = str(getattr(signal, "kind", ""))
         if "NamedValue" in sk:
@@ -470,7 +478,11 @@ class DriverExtractor:
             if sym:
                 name = getattr(sym, "name", None)
                 if name:
-                    return str(name).strip()
+                    name_str = str(name).strip()
+                    # [Plan F1] genvar substitute
+                    if name_str in ctx:
+                        return str(ctx[name_str])
+                    return name_str
         # IdentifierName: 通过 .identifier.value 获取
         if "IdentifierName" in sk:
             ident = getattr(signal, "identifier", None)
@@ -478,13 +490,14 @@ class DriverExtractor:
                 val = getattr(ident, "value", None) or str(ident)
                 return str(val).strip()
         # BinaryOp: 递归展开为 "left op right" — 保留操作符
+        # [Plan F1] 传入 genvar_ctx 让子表达式可 substitute genvar
         if "BinaryOp" in sk:
             left = getattr(signal, "left", None)
             right = getattr(signal, "right", None)
             op = getattr(signal, "op", None)
             op_sym = self._BINOP_SYMBOL.get(op, "?") if op else "?"
-            ls = self._get_signal(left) if left else "?"
-            rs = self._get_signal(right) if right else "?"
+            ls = self._get_signal(left, ctx) if left else "?"
+            rs = self._get_signal(right, ctx) if right else "?"
             if ls and rs:
                 return f"{ls} {op_sym} {rs}"
             return ls or rs or None
@@ -534,19 +547,26 @@ class DriverExtractor:
                     return sig
                 return str(operand)
         # ElementSelect: data_out[0]
+        # [Plan F1 2026-08-12] selector 优先 constant fold (避免 acc[1 + 1] 这种中间表示)
+        # (e.g. acc[i+1] 在 gen_accum[1] 里应变成 acc[2], 不是 acc[1 + 1])
         if "ElementSelect" in sk:
             base = getattr(signal, "value", None) or getattr(signal, "base", None)
             selector = getattr(signal, "selector", None)
-            base_name = self._get_signal(base) if base else None
-            sel_val = getattr(selector, "value", None) if selector else None
-            # 语义 AST: selector 可能是 NamedValueExpression（非 literal）
-            if sel_val is not None:
-                try:
-                    sel_str = str(int(sel_val))
-                except (TypeError, ValueError):
-                    sel_str = self._get_signal(selector) or str(sel_val)
+            base_name = self._get_signal(base, ctx) if base else None
+            # 优先 constant fold: 求 selector 在 ctx 下的值
+            folded = self._fold_constant(selector, ctx)
+            if folded is not None:
+                sel_str = str(folded)
             else:
-                sel_str = self._get_signal(selector) or "x"
+                # fold 失败: fallback 到 _get_signal (BinaryOp 格式: "i + 1")
+                sel_val = getattr(selector, "value", None) if selector else None
+                if sel_val is not None:
+                    try:
+                        sel_str = str(int(sel_val))
+                    except (TypeError, ValueError):
+                        sel_str = self._get_signal(selector, ctx) or str(sel_val)
+                else:
+                    sel_str = self._get_signal(selector, ctx) or "x"
             if base_name:
                 return f"{base_name}[{sel_str}]"
             return None
@@ -635,6 +655,84 @@ class DriverExtractor:
     # ==============================================================================
     # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
     # ==============================================================================
+
+    def _fold_constant(self, expr, ctx: dict | None = None) -> int | None:
+        """[Plan F1 2026-08-12] 对含 genvar substitute 后的表达式求 constant.
+
+        处理:
+        - IntegerLiteral (constant SVInt): 直接返 int
+        - NamedValueExpression: 如果 name 在 ctx 里, 返 ctx[name]
+        - BinaryOp (a + b / a - b): 递归 fold 两边, 应用 operator
+        - UnaryOp (-a): fold operand, 应用 unary minus
+        - 其他 (CallExpression 等): 返 None (不能 fold)
+
+        Returns:
+            int: 表达式求值后的 constant
+            None: 不能 fold (例如含 function call)
+        """
+        if expr is None:
+            return None
+        ctx = ctx or {}
+        sk = str(getattr(expr, "kind", ""))
+
+        # IntegerLiteral
+        if "IntegerLiteral" in sk or "Literal" in sk:
+            val = getattr(expr, "value", None)
+            if val is not None:
+                try:
+                    return int(str(val))
+                except (TypeError, ValueError):
+                    return None
+
+        # NamedValue: name 在 ctx → substitute
+        if "NamedValue" in sk:
+            sym = getattr(expr, "symbol", None)
+            if sym:
+                name = getattr(sym, "name", None)
+                if name and str(name) in ctx:
+                    return int(ctx[str(name)])
+
+        # BinaryOp: 递归
+        if "BinaryOp" in sk:
+            left = getattr(expr, "left", None)
+            right = getattr(expr, "right", None)
+            op = getattr(expr, "op", None)
+            lv = self._fold_constant(left, ctx)
+            rv = self._fold_constant(right, ctx)
+            if lv is None or rv is None:
+                return None
+            op_str = str(op).lower() if op else ""
+            try:
+                if op_str.endswith(".add") or op_str == "+":
+                    return lv + rv
+                if op_str.endswith(".subtract") or op_str == "-":
+                    return lv - rv
+                if op_str.endswith(".multiply") or op_str == "*":
+                    return lv * rv
+                if op_str.endswith(".divide") or op_str == "/":
+                    return lv // rv if rv != 0 else None
+                if op_str.endswith(".mod") or op_str == "%":
+                    return lv % rv if rv != 0 else None
+                return None
+            except (TypeError, ZeroDivisionError):
+                return None
+
+        # UnaryOp
+        if "UnaryOp" in sk:
+            operand = getattr(expr, "operand", None)
+            ov = self._fold_constant(operand, ctx)
+            if ov is None:
+                return None
+            return -ov
+
+        # [Plan F1.1 2026-08-12] ConversionExpression (pyslang 包装类型转换)
+        # e.g. `1` 在 BinaryOp 里可能被包成 ConversionExpression
+        # 看 operand 是 literal 还是 NamedValue
+        if "Conversion" in sk:
+            operand = getattr(expr, "operand", None)
+            return self._fold_constant(operand, ctx)
+
+        return None
 
     def _extract_clock_from_always(self, n) -> str:
         """从 always_ff @(posedge clk) 提取时钟信号名"""
@@ -3180,6 +3278,12 @@ class DriverExtractor:
         - lhs_name: 左操作数信号名
         - rhs_name: 右操作数信号名 (简单信号,用于简单赋值)
         - rhs_expr: 原始 RHS 表达式 (用于复杂类型判断和_get_all_signals)
+
+        [Plan F1 2026-08-12] 从 assign.genvar_ctx 读 genvar 上下文
+        (顶层 assigns 没这属性 → 空 dict {}; generate for 内的 assigns
+        有 {genvar_name: entry.arrayIndex}). 传给 _get_signal 让
+        ElementSelect / NamedValue 的 selector 路径能 substitute genvar
+        (e.g. gen_accum[1] 里的 acc[i+1] → acc[2]).
         """
         # [P0] 处理 ExpressionStatement (always_ff/always_comb 内部)
         if hasattr(assign, "expr"):
@@ -3191,6 +3295,10 @@ class DriverExtractor:
         if "Invocation" in kind_str or "Call" in kind_str:
             return None, None, None
 
+        # [Plan F1] 读 genvar_ctx (由 semantic_adapter.get_genvar_context() 提供)
+        # pyslang symbol 不可 setattr, 所以 context 存在 adapter._genvar_context (id-keyed dict)
+        genvar_ctx = self.adapter.get_genvar_context(assign) if self.adapter else {}
+
         try:
             # [P1] DataDeclaration 处理 (class 实例化等)
             # 格式: my_cls obj = new();
@@ -3198,7 +3306,7 @@ class DriverExtractor:
                 decl = assign.declarators[0]
                 lhs = getattr(decl, "name", None)
                 rhs = getattr(decl, "initializer", None)
-                lhs_name = self._get_signal(lhs)
+                lhs_name = self._get_signal(lhs, genvar_ctx)
                 # RHS 是构造函数调用,提取函数名
                 rhs_name = self._get_constructor_call(rhs) if rhs else None
                 return lhs_name, rhs_name, rhs
@@ -3213,8 +3321,8 @@ class DriverExtractor:
                 rhs = getattr(assign, "right", None) or getattr(assign, "rhs", None)
                 lhs = getattr(assign, "left", None) or getattr(assign, "lhs", None)
 
-            lhs_name = self._get_signal(lhs)
-            rhs_name = self._get_signal(rhs)
+            lhs_name = self._get_signal(lhs, genvar_ctx)
+            rhs_name = self._get_signal(rhs, genvar_ctx)
 
             return lhs_name, rhs_name, rhs
         except Exception:

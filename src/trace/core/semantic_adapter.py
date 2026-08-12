@@ -48,6 +48,9 @@ class SemanticAdapter:
         self._compiler = compiler
         self._target_module = target_module  # [NEW 2026-07-11]
         self._fixed_names = {}  # id(cls) -> name (pyslang Unicode bug workaround)
+        # [Plan F1 2026-08-12] genvar context: assign id → {genvar_name: int}
+        # pyslang symbol 不允许 setattr, 不能直接挂 .genvar_ctx
+        self._genvar_context = {}  # id(assign) → dict
 
     @property
     def root(self) -> object:
@@ -845,43 +848,102 @@ class SemanticAdapter:
         """获取模块的连续赋值语句
 
         Semantic AST: 遍历 always_ff/always_comb/连续赋值
+
+        [FIX 2026-08-12 Plan F1] 给每个返回的 assign 加 `.genvar_ctx` 属性:
+        - 顶层 assigns: genvar_ctx = {}
+        - generate for 内的 assigns: genvar_ctx = {genvar_name: entry.arrayIndex}
+          (e.g. gen_accum[1] 内的 assign → genvar_ctx = {'i': 1})
+        - generate if / generate case 内的 assigns: genvar_ctx = {} (无 genvar,
+          但 pyslang 已根据 condition filter 了 entries)
+
+        下游 (driver_extractor) 读取 .genvar_ctx 后, 在提取 signal name 时
+        把 expression 里的 genvar 引用 substitute 成具体值, 这样
+        `acc[i+1]` 在 gen_accum[1] 内变成 `acc[2]`, 而不是合并成单个
+        `acc[i+1]` 节点.
         """
         assignments = []
 
-        def find_assignments(node: object) -> None:
+        def find_assignments(node: object, genvar_ctx: dict | None = None) -> None:
             if node is None:
                 return
             kind = str(getattr(node, "kind", ""))
+            ctx = genvar_ctx if genvar_ctx is not None else {}
 
             # ContinuousAssign 语法
             if "ContinuousAssign" in kind:
+                # [Plan F1] 存到 adapter._genvar_context (pyslang symbol 不可 setattr)
+                self._genvar_context[id(node)] = dict(ctx)
                 assignments.append(node)
                 return  # 不递归到子节点
             # AssignmentExpression (procedural)
             elif "AssignmentExpression" in kind:
+                self._genvar_context[id(node)] = dict(ctx)
                 assignments.append(node)
                 return  # 不递归到子节点
 
-            # [FIX Ghost-Signal] 递归只能进入"作用域"节点。
-            # 之前的实现递归了 PortSymbol/NetSymbol 这些顶层成员, PortSymbol 的
-            # __iter__ 会产生该 port 在子模块内部的相关节点 (包括其内部的
-            # ContinuousAssign)。这会错误地将子模块的 assigns 加入到父模块。
-            # 修正: 只递归 user code scope 节点 (always/generate), 不递归 Port/Net 等符号。
-            #
-            # 合法 scope 节点:
-            #   - ProceduralBlock  (always_ff / always_comb / always 等)
-            #   - GenerateBlock    (generate for / generate if 内的代码块)
-            #   - GenerateBlockArray (generate for 展开的数组入口)
-            if ("ProceduralBlock" in kind
-                or "GenerateBlock" in kind):
+            # GenerateBlockArray (generate for 展开入口): 进入每个 entry,
+            # 把 entry 的 arrayIndex 作为对应 genvar 的 substitute value
+            if "GenerateBlockArray" in kind:
+                entries = getattr(node, "entries", None) or []
+                # Genvar name 从 generate block 拿
+                genvar_name = None
+                loop_var = getattr(node, "loopVariable", None)
+                if loop_var is not None:
+                    gn = getattr(loop_var, "name", None)
+                    if gn:
+                        genvar_name = str(gn)
+                for entry in entries:
+                    # [Plan F1.2 2026-08-12] Skip uninstantiated entries
+                    if getattr(entry, 'isUninstantiated', False):
+                        continue
+                    child_ctx = dict(ctx)
+                    if genvar_name:
+                        ai = getattr(entry, "arrayIndex", None)
+                        if ai is not None:
+                            try:
+                                child_ctx[genvar_name] = int(str(ai))
+                            except Exception:
+                                pass
+                    for child in self._iter_children(entry):
+                        find_assignments(child, child_ctx)
+                return
+
+            # GenerateBlock (generate if 内的单个 block): 无 genvar, 保留 ctx
+            if "GenerateBlock" in kind:
+                # [Plan F1.2 2026-08-12] Skip uninstantiated branches
+                # (generate if/case false branch: pyslang 仍 expose assign symbols,
+                #  需手动 filter 避免 hallucinatory driver 边)
+                if getattr(node, 'isUninstantiated', False):
+                    return
                 for child in self._iter_children(node):
-                    find_assignments(child)
+                    find_assignments(child, ctx)
+                return
+
+            # ProceduralBlock (always_ff 等)
+            if "ProceduralBlock" in kind:
+                for child in self._iter_children(node):
+                    find_assignments(child, ctx)
+                return
 
         if hasattr(module, "body") and module.body:
             for member in module.body:
                 find_assignments(member)
 
         return assignments
+
+    def get_genvar_context(self, assign) -> dict:
+        """[Plan F1 2026-08-12] 拿 assign 所在的 generate entry 的 genvar 上下文。
+
+        Returns:
+            dict: {genvar_name: int_value}
+            - 顶层 assign: {}
+            - generate for 内: {genvar_name: entry.arrayIndex}
+              e.g. gen_accum[1] 里的 assign → {'i': 1}
+            - generate if 内: {} (无 genvar)
+
+        pyslang symbol 不可 setattr, 所以 context 存在 adapter._genvar_context (id-keyed dict).
+        """
+        return self._genvar_context.get(id(assign), {})
 
     # =========================================================================
     # Always 块
