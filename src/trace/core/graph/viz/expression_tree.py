@@ -509,30 +509,3 @@ class ExpressionTree:
             "op": node.op,
             "children": [ExpressionTree._to_dict(c) for c in node.children]
         }
-        """Extract original source text from token's sourceRange (line/col based).
-        
-        Falls back to str(token).strip() if sourceRange is unavailable.
-        """
-        import re as _re2
-        sr = getattr(token, 'sourceRange', None)
-        if sr is None:
-            return fallback
-        
-        start = getattr(sr, 'start', None)
-        end = getattr(sr, 'end', None)
-        if start is None or end is None:
-            return fallback
-        
-        start_line = getattr(start, 'line', 1)
-        start_col = getattr(start, 'column', 1)
-        end_line = getattr(end, 'line', 1)
-        end_col = getattr(end, 'column', 1)
-        
-        parent = getattr(token, 'parent', None)
-        # Walk up to find the root SyntaxTree or source text
-        # Use str(token) which pyslang gives the original text for tokens
-        text = str(token).strip()
-        if text and text != fallback:
-            return text
-        
-        return fallback
