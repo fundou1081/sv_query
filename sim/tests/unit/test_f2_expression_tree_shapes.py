@@ -168,25 +168,28 @@ endmodule'''
         self.assertEqual(tree['children'][0]['label'], 'a')
 
     def test_partial_bit_select_width_mismatch_no_tree(self):
-        """[F2.4.4 修正] 真正的 limitation — width mismatch 时 pyslang 不生成 tree
+        """[F2.6 修正 2026-08-13] width mismatch 现在也能建 tree (Conversion unwrap)
 
-        [NOTE 2026-08-13 实际发现] `assign [7:0] y = a[3];` (LHS 8bit, RHS 1bit):
-        pyslang 走 elaboration error path, 不生成 ExpressionTree.
-        不是 pyslang 11 inherent 限制, 而是 width mismatch 触发.
-
-        这个 limitation 应该被 coverage_generator 正确处理:
-        _extract_atomics_from_expr_tree 在 tree 是 None 时 fallback 到 string parsing.
+        [BUG REGRESSION F2.4.4] 原本锁定 width-mismatch partial select 不生成 tree.
+        [F2.6 FIX] driver_extractor._store_expr_tree 加 Conversion unwrap 后,
+        这种情况pyslang 也包成 ExpressionKind.Conversion (width expand), unwrap 后拿到 tree.
+        这是 F2.6 顺带修复的额外 limitation.
         """
         src = '''module top(input [7:0] a, output [7:0] y);
     assign y = a[3];
 endmodule'''
         g = _tracer_for(src)
         tree = _tree_for(g, 'top.y')
-        # width mismatch → 无 tree. 锁定 limitation 真实原因 (不是 pyslang)
-        # 如果未来修了, 这个 test 自动 fail 提示修复
-        self.assertIsNone(tree,
-                          "[F2.4.4 锁定] width-mismatch partial select 不生成 tree. "
-                          "如果这修好了, 验证 tree 形状.")
+        # [F2.6 FIX] 现在有 tree — BitSelect(a[3])
+        self.assertIsNotNone(tree,
+                             "[F2.6 FIX] width-mismatch partial select 现在能建 tree. "
+                             "如果这又 break 了, 是新 regression.")
+        self.assertEqual(tree['op'], 'BitSelect')
+        self.assertEqual(tree['label'], 'a[3]')
+        # child 是 SignalRef(a)
+        self.assertEqual(len(tree['children']), 1)
+        self.assertEqual(tree['children'][0]['op'], 'SignalRef')
+        self.assertEqual(tree['children'][0]['label'], 'a')
 
 
 class TestExpressionTreeShapesTernary(unittest.TestCase):
