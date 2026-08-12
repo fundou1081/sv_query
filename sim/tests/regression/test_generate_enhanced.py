@@ -26,12 +26,12 @@ class TestGenerateEnhanced(unittest.TestCase):
         return UnifiedTracer(sources={'test.sv': source})
 
     def test_generate_if_else_signal_tracking(self):
-        """[Golden] generate if/else 块内信号追踪
+        """[Golden] generate if/else 块内信号追踪 (Plan F1.3 2026-08-12 修复)
 
-        RTL:
-        module top(input a, b, output y);
+        RTL with runtime parameter:
+        module top #(parameter COND = 1) (input a, b, output y);
             generate
-                if (1'b1) begin : gen_true
+                if (COND) begin : gen_true
                     assign y = a;
                 end else begin : gen_false
                     assign y = b;
@@ -40,34 +40,42 @@ class TestGenerateEnhanced(unittest.TestCase):
         endmodule
 
         预期:
-        - a -> y 驱动关系
-        - b -> y 驱动关系
+        - COND=1 → 只 instantiate gen_true: a -> y 存在, b -> y 不存在
+        - COND=0 → 只 instantiate gen_false: b -> y 存在, a -> y 不存在
+
+        之前错误源码用 `if (1'b1)` (编译期常量), pyslang 正确 instantiate
+        只 gen_true, gen_false.isUninstantiated=True. Plan F1 增 isUninstantiated
+        filter (case30/31 依赖) 后, b -> y 不再出现 — 暴露了测试源码的逻辑错误.
         """
-        source = '''module top(input a, b, output y);
+        source_template = '''module top #(parameter COND = 1) (input a, b, output y);
     generate
-        if (1'b1) begin : gen_true
+        if (COND) begin : gen_true
             assign y = a;
         end else begin : gen_false
             assign y = b;
         end
     endgenerate
 endmodule'''
-        tracer = self._make_tracer(source)
+
+        # --- COND=1: 只 gen_true active ---
+        source_true = source_template.replace('parameter COND = 1', 'parameter COND = 1')
+        tracer = self._make_tracer(source_true)
         tracer.build_graph()
-
-        # 金标准: 图建立成功
-        self.assertIsNotNone(tracer.get_graph())
-
-        list(tracer.get_graph().nodes())
         edges = list(tracer.get_graph().edges())
-
-        # 验证: a -> y
         has_a_y = any('a' in edge[0] and 'y' in edge[1] for edge in edges)
-        self.assertTrue(has_a_y, f"a -> y not found in {edges}")
-
-        # 验证: b -> y
         has_b_y = any('b' in edge[0] and 'y' in edge[1] for edge in edges)
-        self.assertTrue(has_b_y, f"b -> y not found in {edges}")
+        self.assertTrue(has_a_y, f"COND=1: a -> y not found in {edges}")
+        self.assertFalse(has_b_y, f"COND=1: b -> y should NOT appear (gen_false uninstantiated), got {edges}")
+
+        # --- COND=0: 只 gen_false active ---
+        source_false = source_template.replace('parameter COND = 1', 'parameter COND = 0')
+        tracer = self._make_tracer(source_false)
+        tracer.build_graph()
+        edges = list(tracer.get_graph().edges())
+        has_a_y = any('a' in edge[0] and 'y' in edge[1] for edge in edges)
+        has_b_y = any('b' in edge[0] and 'y' in edge[1] for edge in edges)
+        self.assertFalse(has_a_y, f"COND=0: a -> y should NOT appear (gen_true uninstantiated), got {edges}")
+        self.assertTrue(has_b_y, f"COND=0: b -> y not found in {edges}")
 
     def test_generate_for_signal_tracking(self):
         """[Golden] generate for 循环内信号追踪
