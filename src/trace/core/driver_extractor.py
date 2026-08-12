@@ -116,6 +116,10 @@ class DriverExtractor:
         self._subroutine_expander = SubroutineExpander(adapter)
         # [P1 cycle 2] TraceEdge 工厂, 消除 8+ ctx.get + 7+ sig_cond 模板
         self._edge_factory = TraceEdgeFactory()
+        # [Plan F3-pre 2026-08-13] 条件字符串 → 条件 AST 节点映射.
+        # _flatten_conditional/_flatten_case 展开时记录, 供 _collect_stmts_with_context
+        # 回填 edge.condition_ast (graph_builder condition_ast 填充链路修复).
+        self._cond_ast_by_str: dict[str, Any] = {}
         # [Phase 4 2026-07-11] If set, walk these (instance_path, module) pairs
         # instead of iterating all modules. This produces instance-aware signal IDs.
         # None = legacy behavior (use all modules with type name as prefix).
@@ -2730,6 +2734,18 @@ class DriverExtractor:
                     # 旧接口: 字符串 (向后兼容)
                     item_ctx["condition"] = cond_or_chain
                     item_ctx["condition_chain"] = [cond_or_chain] if " && " not in cond_or_chain else cond_or_chain.split(" && ")
+                # [Plan F3-pre 2026-08-13] 回填 condition_ast: 从条件链反查 AST,
+                # 取最内层 (最后一个) 条件对应的 AST 节点。修复 graph_builder
+                # condition_ast 填充链路断裂 (48 条条件边全 None 的根因).
+                chain = item_ctx.get("condition_chain") or []
+                cond_ast = None
+                for c in reversed(chain):
+                    ast_node = self._cond_ast_by_str.get(c)
+                    if ast_node is not None:
+                        cond_ast = ast_node
+                        break
+                if cond_ast is not None:
+                    item_ctx["condition_ast"] = cond_ast
                 if leaf_name:
                     item_ctx["leaf_name"] = leaf_name
                 result.append((expr_node, item_ctx, None))
@@ -2883,6 +2899,7 @@ class DriverExtractor:
         """
         cond = getattr(stmt, "conditions", None) or getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
         # .conditions 是 Condition 对象列表；取出第一个 .expr 并用 _get_signal 提取信号名
+        cond_expr = None
         if hasattr(cond, "__iter__") and not isinstance(cond, str):
             cond_list = list(cond)
             if cond_list:
@@ -2892,6 +2909,9 @@ class DriverExtractor:
                 new_cond = ""
         else:
             new_cond = str(cond).strip() if cond is not None else ""
+        # [Plan F3-pre 2026-08-13] 记录条件 AST (回填 edge.condition_ast)
+        if new_cond and cond_expr is not None:
+            self._cond_ast_by_str[new_cond] = cond_expr
         is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
 
         # ifTrue
@@ -2962,6 +2982,9 @@ class DriverExtractor:
         case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None)
         # [V6.9] 用 _get_signal 而非 str() 避免对象引用
         case_cond = self._get_signal(case_expr) or str(case_expr).strip() if case_expr else ""
+        # [Plan F3-pre 2026-08-13] 记录 case 选择信号 AST
+        if case_cond and case_expr is not None:
+            self._cond_ast_by_str[case_cond] = case_expr
         items = getattr(stmt, "items", None)
         if items is not None and hasattr(items, "__iter__") and not isinstance(items, str):
             for item in items:
