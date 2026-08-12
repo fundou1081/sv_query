@@ -248,5 +248,112 @@ endmodule'''
             self.assertIn(tree['op'], ('Concatenation', 'ConcatenationExpression', 'Concat'))
 
 
+class TestExpressionTreeShapesExtra(unittest.TestCase):
+    """[Plan F2.4.4 扩展] 高价值常见 RTL 表达式形状
+
+    [NOTE 2026-08-13] pyslang 实测形状:
+    - 左结合 `a + b + c` → Add(Add(a, b), c)  (左嵌套)
+    - Reduction OR + binary AND: `|a & |b` → BinaryAnd(ReduceOr(a), ReduceOr(b))
+    - 比较 op `a > b` → GreaterThan
+    - always block 内 `<=` (NBA): tree 仍建 (顶层是 Add), expression 形状跟 assign 一致
+    - 嵌套 ternary `sel1 ? (sel2 ? a : b) : (sel2 ? c : d)` → 3-level Ternary nesting
+    """
+
+    def test_left_associative_chained_add(self):
+        """`a + b + c` → Add(Add(a, b), c) 左结合嵌套"""
+        src = '''module top(input [7:0] a, b, c, output [7:0] y);
+    assign y = a + b + c;
+endmodule'''
+        g = _tracer_for(src)
+        tree = _tree_for(g, 'top.y')
+        self.assertIsNotNone(tree)
+        self.assertEqual(tree['op'], 'Add')
+        # 左 child 是嵌套 Add(a, b), 右 child 是 SignalRef(c)
+        left = tree['children'][0]
+        right = tree['children'][1]
+        self.assertEqual(left['op'], 'Add', "left should be nested Add (left-assoc)")
+        self.assertEqual(right['op'], 'SignalRef')
+        self.assertEqual(right['label'], 'c')
+        # 验证所有 leaf SignalRef
+        refs = sorted(_collect_signal_refs(tree))
+        self.assertEqual(refs, ['a', 'b', 'c'])
+
+    def test_reduction_or_with_binary_and(self):
+        """`|a & |b` → BinaryAnd(ReduceOr(a), ReduceOr(b))"""
+        src = '''module top(input [7:0] a, b, output y);
+    assign y = (|a) & (|b);
+endmodule'''
+        g = _tracer_for(src)
+        tree = _tree_for(g, 'top.y')
+        self.assertIsNotNone(tree)
+        self.assertEqual(tree['op'], 'BinaryAnd')
+        # 两个 child 都是 ReduceOr
+        for c in tree['children']:
+            self.assertEqual(c['op'], 'ReduceOr',
+                             f"Expected ReduceOr child, got '{c['op']}'")
+        # 每个 ReduceOr 有一个 SignalRef child
+        refs = sorted(_collect_signal_refs(tree))
+        self.assertEqual(refs, ['a', 'b'])
+
+    def test_comparison_greater_than(self):
+        """`a > b` → GreaterThan(>, [SignalRef(a), SignalRef(b)])"""
+        src = '''module top(input [7:0] a, b, output y);
+    assign y = a > b;
+endmodule'''
+        g = _tracer_for(src)
+        tree = _tree_for(g, 'top.y')
+        self.assertIsNotNone(tree)
+        self.assertEqual(tree['op'], 'GreaterThan')
+        self.assertEqual(tree['label'], '>')
+        self.assertEqual(len(tree['children']), 2)
+        labels = sorted(c['label'] for c in tree['children'])
+        self.assertEqual(labels, ['a', 'b'])
+
+    def test_always_block_nonblocking_assignment(self):
+        """`always @(posedge clk) y <= a + b` 块内 NBA tree 仍建 ✅
+
+        [NOTE 2026-08-13] driver_extractor 应该对 NBA (<=) 也建 tree, 跟连续赋值 (=) 一致.
+        这是 F1+F2 集成测试 — generate/always 块内 expression tree 仍正确.
+        """
+        src = '''module top(input clk, input [7:0] a, b, output reg [7:0] y);
+    always @(posedge clk) y <= a + b;
+endmodule'''
+        g = _tracer_for(src)
+        tree = _tree_for(g, 'top.y')
+        self.assertIsNotNone(tree, "always block NBA should still build tree")
+        self.assertEqual(tree['op'], 'Add')
+        labels = sorted(c['label'] for c in tree['children'])
+        self.assertEqual(labels, ['a', 'b'])
+
+    def test_nested_ternary_three_levels(self):
+        """嵌套 ternary `sel1 ? (sel2 ? a : b) : (sel2 ? c : d)` → 3-level Ternary"""
+        src = '''module top(input [1:0] sel, input [7:0] a, b, c, d, output [7:0] y);
+    assign y = sel[1] ? (sel[0] ? a : b) : (sel[0] ? c : d);
+endmodule'''
+        g = _tracer_for(src)
+        tree = _tree_for(g, 'top.y')
+        self.assertIsNotNone(tree)
+        self.assertEqual(tree['op'], 'Ternary')
+        # 顶层 3 children: cond, true_branch, false_branch
+        self.assertEqual(len(tree['children']), 3)
+        # true_branch 和 false_branch 都是 Ternary (嵌套 level 2)
+        true_branch = tree['children'][1]
+        false_branch = tree['children'][2]
+        self.assertEqual(true_branch['op'], 'Ternary',
+                         "true branch should be nested Ternary")
+        self.assertEqual(false_branch['op'], 'Ternary',
+                         "false branch should be nested Ternary")
+        # 收集所有叶子 SignalRef: sel[0] 出现两次 (作为两个内层 ternary 的 condition),
+        # 所以 refs 列表含 sel[0] × 2. 用 set 断言叶子类型集合.
+        refs = _collect_signal_refs(tree)
+        unique_refs = set(refs)
+        self.assertEqual(unique_refs, {'a', 'b', 'c', 'd', 'sel[0]', 'sel[1]'},
+                         f"Expected leaves {{a,b,c,d,sel[0],sel[1]}}, got {unique_refs}")
+        # sel[0] 应该出现 2 次 (被两个内层 ternary 共用)
+        self.assertEqual(refs.count('sel[0]'), 2,
+                         "sel[0] should appear twice (cond of both inner ternaries)")
+        self.assertEqual(refs.count('sel[1]'), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
