@@ -656,6 +656,15 @@ class SignalTracer:
                 _expression_override=expression if not (edge and edge.source) else "",
                 target_signal=signal_id,  # [P3-6] 目标信号用于组装完整语句
             )
+            # [Plan F2.4.2 2026-08-13] 从 graph._expr_trees 注入结构化 driver 表达式
+            # tree_key 格式 = {module_name}.{lhs_name}, 跟 signal_id 完全一致
+            # (driver_extractor._store_expr_tree 验证). 如果 graph 没有 _expr_trees 或
+            # 该 signal 不在表里, 保持 None (向后兼容).
+            expr_trees = getattr(self.graph, '_expr_trees', None)
+            if expr_trees is not None:
+                tree_dict = expr_trees.get(signal_id)
+                if tree_dict is not None:
+                    driver_info.expression_tree = tree_dict
             driver_infos.append(driver_info)
 
         # [P3-3] 补全缺失的 clock_domain：通过后继节点的 CLOCK 边反推
