@@ -25,7 +25,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from trace.core.coverage_generator import ControlCoverageGenerator
+from trace.core.coverage_generator import ControlCoverageGenerator, NO_TREE_MARKER
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -144,12 +144,16 @@ endmodule'''
         self.assertEqual(set(names), {'a', 'b'},
                          f"Expected {{a, b}}, got {names}")
 
-    def test_trace_drivers_falls_back_to_string_when_no_tree(self):
-        """[向后兼容] graph 没 _expr_trees → 回退到 string parsing
+    def test_trace_drivers_no_string_fallback_returns_marker(self):
+        """[Plan F2.7 2026-08-13] 强制不 fallback 到 string parsing
 
-        [NOTE 2026-08-13] String fallback 已知有 false-positive (会拾取 timescale/
-        endmodule 等 SV 关键字). Plan F2 的目的正是消除这些. 本 test 验证 fallback
-        至少能找到核心信号 (a, b), 不要求精确等于 — 精确性是 ExpressionTree path 的事.
+        [USER 2026-08-13 06:06] "不需要 string fallback... 不要 fallback"
+        [F2.7 设计] tree 拿不到 → 返回 NO_TREE_MARKER + log WARNING.
+        绝不调用 _parse_expression_to_atomics.
+
+        [之前 F2.4.3] 老版本测试 'test_trace_drivers_falls_back_to_string_when_no_tree'
+        锁定 string fallback 行为. F2.7 拆除 fallback 后, 这个 test 必须改为
+        锁定「拿不到 tree → 返回 error marker, 不调用 string parsing」.
         """
         src = '''module top(input a, b, c, output [7:0] y);
     wire [7:0] tmp;
@@ -158,16 +162,43 @@ endmodule'''
 endmodule'''
         g = self._make_tracer_and_graph(src)
 
-        # 删除 _expr_trees 模拟老 graph
+        # 删除 _expr_trees 模拟 tree 不可用
         if hasattr(g, '_expr_trees'):
             delattr(g, '_expr_trees')
 
-        cov = self._make_cov(g)
-        atomics = cov._trace_drivers('top.tmp', None, 0, 10, set())
-        names = set(a.name for a in atomics)
-        # 核心信号必须被找到 (subset check)
-        self.assertIn('a', names, f"Fallback missed 'a': {names}")
-        self.assertIn('b', names, f"Fallback missed 'b': {names}")
+        # Capture log
+        import logging
+        log_records = []
+        handler = logging.Handler()
+        handler.emit = lambda record: log_records.append(record)
+        logger = logging.getLogger('trace.core.coverage_generator')
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+        try:
+            cov = self._make_cov(g)
+            atomics = cov._trace_drivers('top.tmp', None, 0, 10, set())
+            names = [a.name for a in atomics]
+
+            # [F2.7] 应该只有 NO_TREE_MARKER (不能有 'a'/'b' — 那意味着 fallback 被调了)
+            self.assertEqual(len(atomics), 1,
+                             f"[F2.7] Should return exactly 1 NO_TREE_MARKER, got {len(atomics)}")
+            self.assertEqual(atomics[0].name, NO_TREE_MARKER,
+                             f"[F2.7] Should return NO_TREE_MARKER, got {atomics[0].name}")
+            self.assertNotIn('a', names,
+                             f"[F2.7] String fallback should NOT be called, but got 'a' in {names}")
+            self.assertNotIn('b', names,
+                             f"[F2.7] String fallback should NOT be called, but got 'b' in {names}")
+
+            # [F2.7] WARNING 应该 log, 含 NO_EXPR_TREE + signal_id + tree_key
+            self.assertGreater(len(log_records), 0,
+                               "[F2.7] Should log WARNING when tree missing")
+            msg = log_records[-1].getMessage()
+            self.assertIn('NO_EXPR_TREE', msg,
+                          f"[F2.7] WARNING should mention NO_EXPR_TREE, got: {msg}")
+            self.assertIn('top.tmp', msg,
+                          f"[F2.7] WARNING should include signal_id, got: {msg}")
+        finally:
+            logger.removeHandler(handler)
 
 
 if __name__ == '__main__':
