@@ -485,7 +485,7 @@ class ControlCoverageGenerator:
         seen = set()
         result = []
 
-        def _walk(node: dict):
+        def _walk(node: dict, parent_bit_range=None):
             op = node.get('op', '')
             label = node.get('label', '')
 
@@ -505,7 +505,13 @@ class ControlCoverageGenerator:
                     return
 
                 seen.add(label)
-                base_name, bit_range = self._split_identifier(label)
+                # [Plan F2.5 2026-08-13 BUG FIX] 如果 parent 是 BitSelect,
+                # 用 BitSelect label 的 bit_range, 不再用 SignalRef label 解析.
+                # 这保证 BitSelect-wrapped SignalRef 也能保留 bit_range.
+                if parent_bit_range is not None:
+                    base_name, bit_range = self._split_identifier(label)[0], parent_bit_range
+                else:
+                    base_name, bit_range = self._split_identifier(label)
                 result.append(AtomicSignal(
                     name=label,
                     base_name=base_name,
@@ -513,10 +519,16 @@ class ControlCoverageGenerator:
                 ))
                 return
 
+            # [Plan F2.5 2026-08-13 BUG FIX] BitSelect 节点把自身 label 的 bit_range
+            # 作为 child SignalRef 的 parent_bit_range, 透传下去.
+            child_parent_br = parent_bit_range
+            if op == 'BitSelect':
+                _, child_parent_br = self._split_identifier(label)
+
             # Const/Slice/Concat/Op 等节点: 递归 children
             # (Const 叶子直接 skip — 字面量)
             for child in node.get('children', []) or []:
-                _walk(child)
+                _walk(child, child_parent_br)
 
         _walk(tree_dict)
         return result
