@@ -656,9 +656,16 @@ class ControlCoverageGenerator:
                 base_name=base_name,
                 bit_range=bit_range,
             )
+            # [Plan F3-pre 2026-08-13] 产出 ast_extract evidence + kind=
+            # (V2.A.2 需求: 证明真 AST 被识别出语法类型).
+            kind_str = ""
+            if ast_node is not None:
+                k = getattr(ast_node, "kind", None)
+                if k is not None:
+                    kind_str = str(k).split(".")[-1]
             atomic.evidence.append(EvidenceStep(
-                step_type="semantic_extract",
-                description=f"semantic extract: {name}",
+                step_type="ast_extract",
+                description=f"ast extract: {name} kind={kind_str}" if kind_str else f"ast extract: {name}",
                 from_signal=str(ast_node)[:50] if ast_node else "",
                 to_signals=[name],
             ))
