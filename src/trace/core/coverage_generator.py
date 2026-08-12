@@ -15,6 +15,7 @@
 # ==============================================================================
 
 import re
+import logging
 from typing import Any, Callable
 
 from .coverage_models import (
@@ -23,6 +24,13 @@ from .coverage_models import (
     EvidenceStep,
 )
 from .graph.models import NodeKind
+
+
+_LOGGER = logging.getLogger(__name__)
+
+# [Plan F2.7 2026-08-13] 错误 marker: tree 缺失时用这个代替, 让 caller 能
+# 识别 (grep name=NO_TREE_MARKER). 不再静默 fallback 到 string parsing.
+NO_TREE_MARKER = "<NO_TREE>"
 
 
 class ControlCoverageGenerator:
@@ -374,18 +382,35 @@ class ControlCoverageGenerator:
             # 获取 driver 表达式
             expr = getattr(edge, "expression", "") or ""
 
-            # [Plan F2.4.3 2026-08-13] 优先用结构化 ExpressionTree (graph._expr_trees)
-            # 走 AST walk 抽原子; 拿不到 (老 graph / tree_key 不匹配) 时回退到 string parsing.
-            # 这是 Plan F2 的核心收益点: 消灭 string parsing 误识别 (字面量 / 关键字 / 嵌套).
+            # [Plan F2.7 2026-08-13] 严格走结构化 ExpressionTree, 不再 string fallback.
+            #
+            # [F2.4.3 旧实现] 拿不到 tree 时回退到 _parse_expression_to_atomics (string parsing).
+            #   问题: string parsing 有 false-positive (8'd100 → 'd100', timescale/ns/endmodule 等),
+            #   跟 F2 的核心承诺「消灭 string parsing 误识别」矛盾.
+            # [F2.7 新实现] tree 拿不到时立刻报告, 不 fallback:
+            #   - WARNING 日志记录 signal_id / expr / tree_key 全 context
+            #   - 返回 1 个 error_marker AtomicSignal (name=NO_TREE_MARKER)
+            #     让 caller 能看到这个 edge 的 atomic 为空 / 以标记代替
+            #   - 不会静默 fallback 到 string parsing
             atomics: list = []
             expr_trees = getattr(self._graph, '_expr_trees', None)
-            if expr_trees is not None:
-                tree_dict = expr_trees.get(signal)
-                if tree_dict is not None:
-                    atomics = self._extract_atomics_from_expr_tree(tree_dict)
+            tree_dict = expr_trees.get(signal) if expr_trees is not None else None
+            if tree_dict is not None:
+                atomics = self._extract_atomics_from_expr_tree(tree_dict)
             if not atomics:
-                # 回退: string parsing (向后兼容 + 老 graph 兼容)
-                atomics = self._parse_expression_to_atomics(expr)
+                # [Plan F2.7] 严格模式: 拿不到 tree 不能静默 fallback
+                tree_key = signal  # signal_id = tree_key by F2.4.2 invariant
+                _LOGGER.warning(
+                    "[Plan F2.7] NO_EXPR_TREE: signal=%s, expr=%r, tree_key=%s. "
+                    "Tree missing — returning error marker, NOT fallback to string parsing. "
+                    "If this is wrong, check graph._expr_trees population or tree_key format.",
+                    signal, expr, tree_key,
+                )
+                atomics = [AtomicSignal(
+                    name=NO_TREE_MARKER,
+                    base_name=NO_TREE_MARKER,
+                    bit_range=None,
+                )]
 
             # 记录 evidence (为每个原子附加 driver 链证据)
             step = EvidenceStep(
@@ -396,11 +421,21 @@ class ControlCoverageGenerator:
             )
             for atomic in atomics:
                 atomic.evidence.append(step)
+            # [Plan F2.7 2026-08-13] dedup NO_TREE_MARKER per signal.
+            # 同一 signal 可能有多个 driver edge (e.g. 'a + b' 拆成 'a' + 'b' 两个 driver),
+            # 每个 edge 各自返回 NO_TREE_MARKER 会让 result 重复.
+            # marker 是 signal 级别的状态, 一个 signal 最多 1 个.
+            if atomics and atomics[0].name == NO_TREE_MARKER:
+                if any(a.name == NO_TREE_MARKER for a in result):
+                    continue  # 已有 marker, 跳过
             result.extend(atomics)
 
             # 递归追踪每个 driver 的源
             # 注意: 用 driver_id (完整 ID) 而非 atomic.base_name (可能已去模块前缀)
             for atomic in atomics:
+                # [Plan F2.7 2026-08-13] error marker 是占位, 不能递归 (会无限 loop)
+                if atomic.name == NO_TREE_MARKER:
+                    continue
                 # 构造完整 ID: 如果 base_name 已含模块前缀, 直接用
                 recurse_id = self._resolve_signal_id(atomic.base_name, driver_id)
                 sub_atomics = self._trace_drivers(
