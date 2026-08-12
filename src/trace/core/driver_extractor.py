@@ -186,7 +186,23 @@ class DriverExtractor:
         """
         if not lhs_name or rhs_expr is None:
             return
-        syntax = getattr(rhs_expr, 'syntax', None)
+        # [Plan F2.6 2026-08-13 BUG FIX] unwrap Conversion wrappers
+        # pyslang 在 generate for 块内的 RHS (例如 `a + b`) 会包成
+        # ExpressionKind.Conversion (整数提升 / type cast), .syntax 是 None
+        # 导致 _store_expr_tree 早返. 递归 unwrap Conversion.operand 找到
+        # 真正的 internal expression.
+        cur = rhs_expr
+        for _ in range(10):  # 最多解 10 层防无限循环
+            if cur is None:
+                return
+            sk = str(getattr(cur, 'kind', ''))
+            if 'Conversion' not in sk:
+                break
+            operand = getattr(cur, 'operand', None)
+            if operand is None or operand is cur:
+                break
+            cur = operand
+        syntax = getattr(cur, 'syntax', None)
         if syntax is None:
             return
         try:
