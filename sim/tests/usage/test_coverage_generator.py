@@ -494,6 +494,19 @@ class TestTraceDrivers(unittest.TestCase):
         g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
         g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
         g.add_trace_edge(_make_driver_edge("top.a_input", "top.a", expr="a_input"))
+        # [Plan F2.7 2026-08-13] 模拟真实 graph 的 _expr_trees (严格 tree 模式需要)
+        # 真实 graph 由 driver_extractor 填充, 手工 fixture 必须手动填
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+            "top.c": {"label": "|", "op": "BinaryOr", "children": [
+                {"label": "a", "op": "SignalRef", "children": []},
+                {"label": "b", "op": "SignalRef", "children": []},
+            ]},
+            "top.a": {"label": "a_input", "op": "SignalRef", "children": []},
+        }
         return g
 
     def test_trace_drivers_simple(self):
@@ -560,6 +573,11 @@ class TestTraceDrivers(unittest.TestCase):
         g.add_trace_node(_make_signal_node("top.l3"))
         g.add_trace_edge(_make_driver_edge("top.l2", "top.l1", expr="l2"))
         g.add_trace_edge(_make_driver_edge("top.l3", "top.l2", expr="l3"))
+        # [Plan F2.7 2026-08-13] 模拟真实 graph 的 _expr_trees (严格 tree 模式需要)
+        g._expr_trees = {
+            "top.l1": {"label": "l2", "op": "SignalRef", "children": []},
+            "top.l2": {"label": "l3", "op": "SignalRef", "children": []},
+        }
         gen = ControlCoverageGenerator(graph=g)
         result = gen._trace_drivers("top.l1", None, depth=0, max_depth=1, visited=set())
         # depth=0, max_depth=1: 只能看到 l2, 不能递归到 l3
@@ -692,6 +710,18 @@ class TestDecompose(unittest.TestCase):
         g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
         # a, b 都有 driver (端口)
         g.add_trace_edge(_make_driver_edge("top.en_input", "top.en_signal"))
+        # [Plan F2.7 2026-08-13] 模拟真实 graph 的 _expr_trees (严格 tree 模式需要)
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+            "top.c": {"label": "|", "op": "BinaryOr", "children": [
+                {"label": "a", "op": "SignalRef", "children": []},
+                {"label": "b", "op": "SignalRef", "children": []},
+            ]},
+            "top.en_signal": {"label": "en_input", "op": "SignalRef", "children": []},
+        }
         return g
 
     def test_decompose_returns_decomposition_result(self):
@@ -779,6 +809,18 @@ class TestMarkdownOutput(unittest.TestCase):
         g.add_trace_edge(_make_driver_edge("top.a", "top.c", expr="a | b"))
         g.add_trace_edge(_make_driver_edge("top.b", "top.c", expr="a | b"))
         g.add_trace_edge(_make_driver_edge("top.en_input", "top.a", expr="a_input"))
+        # [Plan F2.7 2026-08-13] 模拟真实 graph 的 _expr_trees (严格 tree 模式需要)
+        g._expr_trees = {
+            "top.x": {"label": "&", "op": "BinaryAnd", "children": [
+                {"label": "c", "op": "SignalRef", "children": []},
+                {"label": "d", "op": "SignalRef", "children": []},
+            ]},
+            "top.c": {"label": "|", "op": "BinaryOr", "children": [
+                {"label": "a", "op": "SignalRef", "children": []},
+                {"label": "b", "op": "SignalRef", "children": []},
+            ]},
+            "top.a": {"label": "a_input", "op": "SignalRef", "children": []},
+        }
         return g
 
     def test_markdown_returns_string(self):
