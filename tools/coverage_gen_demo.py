@@ -131,9 +131,12 @@ def query_risk_json(
 ) -> dict:
     import subprocess
     import sys as _sys
-    # [FIX 2026-07-05] 8GB MBA + pyslang + 大项目, risk analyze 可能 silent fail (no JSON).
-    # 加 retry 3 次, 每次间隔间 force 4GB 内存 reclaim (降低 pyslang OOM 概率)
-    # 参见 memory/2026-06-15.md (pyslang memory pressure issue)
+    # [FIX 2026-08-13] 移除废弃的 2GB bytearray 内存回收 hack.
+    #   根据 unified_tracer.py 的 DEPRECATED 注释 (2026-07-09), 用户明确反馈
+    #   "不能使用 swap 来规避内存 oom 问题" — 这个 bytearray(2GB) + del 会让
+    #   小项目 (e.g. prim_max_tree) 的 pyslang 在内存碎片化/swap 压力下
+    #   str(token) 返回非法 UTF-8 → UnicodeDecodeError → risk analyze 崩溃.
+    #   原注释: [FIX 2026-07-05] 加 retry + 4GB reclaim (已废弃, 应移除).
     args = [_sys.executable, "run_cli.py", "risk", "analyze", "--json"]
     # filelist 模式下不传 -f (避免 sv_query 重复加载 source 冲突)
     # file 只用于 RTL regex 解析 (width/typedef/param)
@@ -141,23 +144,14 @@ def query_risk_json(
         args += ["--filelist", filelist]
     elif file:
         args += ["-f", file]
-    if include_dirs:
-        args += ["--include", ",".join(include_dirs)]
+    # [FIX 2026-08-13] 不传 --include: filelist 已含 +incdir+, pyslang 能自己解析.
+    #   显式传 include_dirs → addUserDirectories 加载整个目录 (e.g. 171 个 OpenTitan
+    #   文件) → prim_assert.sv 的 include 链展开内存暴增 → 8GB MBA 内存不足 →
+    #   pyslang 静默失败 (str() 返回非法 UTF-8) → UnicodeDecodeError 崩溃.
     if not strict:
         args.append("--no-strict")
-    # [V6.9 FIX] 8GB MBA 上 4GB/retry 会 OOM，
-    # 只在第一次前分配一次，降低内存压力
-    _reclaimed = False
     last_err = ""
     for attempt in range(3):
-        if not _reclaimed:
-            try:
-                _a = bytearray(2 * 1024**3)  # 2GB，不是 4GB
-                time.sleep(1)
-                del _a
-            except Exception:
-                pass
-            _reclaimed = True
         out = subprocess.run(
             args, capture_output=True, text=True, cwd=Path(__file__).parent.parent,
             timeout=120,
@@ -855,9 +849,11 @@ def generate_covergroup(
     else:
         sig_info = find_signal(target_signal, risk["data_signals"])
     # ★ 优先用 pyslang 拿真实 width (包括 $clog2 等派生参数)
+    # [FIX 2026-08-13] 不传 include_dirs (None): filelist 已含 +incdir+,
+    #   显式传 addUserDirectories 加载整个目录会内存暴增导致 pyslang 崩溃.
     pyslang_w = parse_width_from_pyslang(
         target_signal, file=file, filelist=filelist,
-        module_name=module_name, include_dirs=include_dirs,
+        module_name=module_name, include_dirs=None,
     )
     if pyslang_w is not None:
         width, hi, lo = pyslang_w
