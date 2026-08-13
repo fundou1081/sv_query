@@ -26,6 +26,27 @@ import re as _re
 from trace.core._pyslang_compat import SyntaxKind
 
 
+# ── 安全字符串转换 ──
+
+def _safe_str(obj) -> str:
+    """pyslang 内存不足时 str(token) 可能返回损坏字节 (非 UTF-8),
+    触发 UnicodeDecodeError。这里用 errors='replace' 优雅降级。
+
+    [FIX 2026-08-13] 8GB MBA + pyslang 内存压力下, str(token) 会返回
+    非法 UTF-8 (e.g. byte 0x88), 直接 str().strip() 抛 UnicodeDecodeError。
+    """
+    try:
+        return str(obj)
+    except UnicodeDecodeError:
+        try:
+            raw = obj.__str__() if hasattr(obj, "__str__") else b""
+            if isinstance(raw, bytes):
+                return raw.decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        return "?"
+
+
 # ── Constants ──
 
 # Map pyslang operator token kinds to ExprNode op names
@@ -122,7 +143,7 @@ class ExpressionTree:
             # Function call: IdentifierName/SystemName/FunctionName + ArgumentList
             is_name = any(k in first_kind for k in ('identifier', 'systemname', 'functionname', 'name'))
             if is_name and 'argumentlist' in str(getattr(tokens[1], 'kind', '')).lower():
-                name = str(tokens[start]).strip()
+                name = _safe_str(tokens[start]).strip()
                 children = ExpressionTree._parse_arguments(tokens[1])
                 return ExprNode(op="Call", label=name, children=children)
             
@@ -141,8 +162,8 @@ class ExpressionTree:
             
             # Bit select: [IdentifierName, ElementSelect]
             if 'identifier' in first_kind and 'elementselect' in str(getattr(tokens[1], 'kind', '')).lower():
-                name = str(tokens[start]).strip()
-                sel_text = str(tokens[1]).strip()
+                name = _safe_str(tokens[start]).strip()
+                sel_text = _safe_str(tokens[1]).strip()
                 return ExprNode(op="BitSelect", label=f"{name}{sel_text}", children=[
                     ExprNode(op="SignalRef", label=name)
                 ])
@@ -299,7 +320,7 @@ class ExpressionTree:
                 continue
             
             # OrderedArgument → get .expression
-            text = str(item).strip()
+            text = _safe_str(item).strip()
             if 'OrderedArgument' in kind or 'Argument' in kind:
                 expr = getattr(item, 'expression', None)
                 if expr is not None:
@@ -363,7 +384,7 @@ class ExpressionTree:
     def _leaf(token) -> Optional[ExprNode]:
         """将单个 pyslang token 转为 ExprNode 叶子"""
         kind = str(getattr(token, 'kind', ''))
-        text = str(token).strip()
+        text = _safe_str(token).strip()
         
         # Integer vector literal (e.g. 8'd128) — use source text for original representation
         if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind or 'Literal' in kind:
