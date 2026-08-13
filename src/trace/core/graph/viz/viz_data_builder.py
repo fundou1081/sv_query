@@ -81,6 +81,33 @@ def build_viz_data(
 
         vn = VizNode.from_trace_node(node)
 
+        # [V14 2026-08-13] 层级模块折叠: 填充 instance_path / module_type / cluster_id
+        # TraceNode.module 取值有两种:
+        #   1. PORT_IN/PORT_OUT 节点: 'golden_hier_top.u_scale' (包含 instance 路径)
+        #   2. INSTANTIATED_MODULE 节点: 'level2_scale' (只有 module 类型名, inst_path 在 node.id 里)
+        node_module = getattr(node, 'module', '') or ''
+        target_mod = opts.target_module or ''
+        node_id = getattr(node, 'id', '') or ''
+        if vn.kind == 'INSTANTIATED_MODULE':
+            # INSTANTIATED_MODULE 节点: inst_path 从 node.id 提取 (id 格式: "top.inst_name")
+            if target_mod and node_id.startswith(target_mod + '.'):
+                inst_path = node_id[len(target_mod) + 1:]
+            else:
+                inst_path = ''
+            # module_type 就是 node.module (例如 'level2_scale')
+            vn.instance_path = inst_path
+            vn.module_type = node_module
+            vn.cluster_id = inst_path
+        elif target_mod and node_module.startswith(target_mod + '.'):
+            # PORT/SIGNAL 节点: module 含 instance 路径
+            inst_path = node_module[len(target_mod) + 1:]
+            vn.instance_path = inst_path
+            vn.cluster_id = inst_path
+        else:
+            # 顶层节点
+            vn.instance_path = ''
+            vn.cluster_id = ''
+
         # 分类 (可选)
         if opts.include_node_class and opts.classification:
             cn = opts.classification.nodes.get(node_id)

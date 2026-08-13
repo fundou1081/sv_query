@@ -413,24 +413,34 @@ class ConnectionExtractor:
                 parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
 
                 if direction_clean == "input":
-                    result.edges.append(
-                        TraceEdge(
-                            src=f"{parent_path}.{signal_name}",
-                            dst=inst_port_id,
-                            kind=EdgeKind.CONNECTION,
-                            assign_type="connection",
+                    parent_sig = f"{parent_path}.{signal_name}"
+                    # [FIX 2026-08-13] 跳过 SELFLOOP (SELFLOOP 边不画)。
+                    # 当 parent_sig 路径与 inst_path 路径冲突时 (e.g. case26 中
+                    # level2_scale u_scale (.din(data_in)) — parent_sig = "golden_hier_top.u_scale.din"
+                    # 而 inst_path = "golden_hier_top.u_scale" + 拼 ".din" 之后两个 ID 完全一样)
+                    # 会出现 self-loop: src == dst.
+                    # 决策: D2 (只给 CROSS_TOP 画红线 + SELFLOOP 删)
+                    if parent_sig != inst_port_id:
+                        result.edges.append(
+                            TraceEdge(
+                                src=parent_sig,
+                                dst=inst_port_id,
+                                kind=EdgeKind.CONNECTION,
+                                assign_type="connection",
+                            )
                         )
-                    )
                     # [FIX 2026-07-08] 用 inst_path (完整 hierarchy) 替代 inst_module_name (短名)
                     # 之前: bitreverse.i_clk (flatten, 多 instance 合并, 冲突)
                     # 现在: openofdm_tx.dot11_tx.ifft64.revstage.i_clk (hierarchy 完整)
                     # 这样多 instance 区分, graph 不再 merge.
                     child_signal_id = f"{inst_path}.{port_name}"
-                    result.edges.append(
-                        TraceEdge(
-                            src=inst_port_id, dst=child_signal_id, kind=EdgeKind.CONNECTION, assign_type="internal"
+                    # [FIX 2026-08-13] 同样跳过 SELFLOOP (inst_port_id == child_signal_id)
+                    if child_signal_id != inst_port_id:
+                        result.edges.append(
+                            TraceEdge(
+                                src=inst_port_id, dst=child_signal_id, kind=EdgeKind.CONNECTION, assign_type="internal"
+                            )
                         )
-                    )
                     # 同步构建 port_to_internal 映射 (full path)
                     result.port_to_internal[inst_port_id] = child_signal_id
                     # [FIX 2026-07-08] 同时保留 port_to_module_type 映射 (semantic short name)
@@ -449,11 +459,13 @@ class ConnectionExtractor:
                         TraceEdge(src=child_signal_id, dst=inst_port_id, kind=EdgeKind.DRIVER, assign_type="internal")
                     )
                     # 边2: instance port -> parent wire (CONNECTION)
-                    result.edges.append(
-                        TraceEdge(
-                            src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
+                    # [FIX 2026-08-13] 跳过 SELFLOOP (同样防御 case26 中 parent_signal == inst_port_id)
+                    if parent_signal != inst_port_id:
+                        result.edges.append(
+                            TraceEdge(
+                                src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
+                            )
                         )
-                    )
                     # 同步构建 port_to_internal (full path) + port_to_module_type (short)
                     result.port_to_internal[inst_port_id] = child_signal_id
                     result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
