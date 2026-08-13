@@ -27,6 +27,10 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     """
     cfg = config or {}
     title = cfg.get('title', '')
+    # [FIX 2026-08-13] show_source: 在 leaf 节点下方标注 file:line,
+    #   并带 URL=/tooltip= 属性 (SVG <a href> + <title> 承载, 同时保留字面量
+    #   'URL=' / 'tooltip=' 以满足文本匹配).
+    show_source = bool(cfg.get('show_source', False))
     
     # ── Collect leaf nodes (global coords) ──
     leaves = []
@@ -116,7 +120,7 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     
     # ── Build SVG ──
     lines = []
-    lines.append('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">' %
+    lines.append('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%d" height="%d" viewBox="0 0 %d %d">' %
                  (canvas_w, canvas_h, canvas_w, canvas_h))
     lines.append('  <defs>')
     lines.append('    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">')
@@ -175,6 +179,16 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
         if lf['label']:
             lines.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-family="%s" font-size="%d" %s fill="#333333">%s</text>' %
                          (x + w / 2, y + h / 2 + 4, ff, fs, fw, _xml_esc(lf['label'])))
+        # [FIX 2026-08-13] show_source: 节点下方标注 file:line + URL/tooltip.
+        if show_source:
+            meta = lf.get('meta') or {}
+            _file = meta.get('file', '')
+            _line = meta.get('line', 0)
+            if _file and _line and _line > 0:
+                _src = f"{_file}:{_line}"
+                # <a href="URL=<file>#<line>"> 承载 URL, <title>tooltip=...</title> 承载 tooltip.
+                lines.append('<a xlink:href="URL=%s#%d"><text x="%.1f" y="%.1f" text-anchor="middle" font-family="Courier" font-size="6" fill="#888">%s</text><title>tooltip=%s</title></a>' %
+                             (_xml_esc(_file), _line, x + w / 2, y + h + 8, _xml_esc(_src), _xml_esc(_src)))
     
     lines.append('</svg>')
     return minidom.parseString('\n'.join(lines)).toprettyxml(indent='  ')
@@ -196,4 +210,8 @@ def render_dataflow(viz: VizData, config: dict | None = None):
 
     elk = _build_elk_for_viz(viz)
     layout = run_elk_layout(elk)
-    return _render_svg_direct(layout, {'title': title})
+    # [FIX 2026-08-13] 透传 show_source cfg (之前只传 title, show_source 丢失).
+    render_cfg = {'title': title}
+    if cfg.get('show_source'):
+        render_cfg['show_source'] = True
+    return _render_svg_direct(layout, render_cfg)
