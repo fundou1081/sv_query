@@ -207,7 +207,9 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
     graphs = {}
 
     # 1. visualize dataflow
-    dot_path = f"{output_dir}/dataflow.dot"
+    # [V100 SVG 2026-08-13] visualize dataflow --dot 现在输出 SVG 内容,
+    # 直接写 .svg 文件 (不再 dot -Tpng 渲染, DOT 已废弃).
+    svg_path = f"{output_dir}/dataflow.svg"
     args = ["visualize", "dataflow"]
     if filelist:
         args.extend(["--filelist", filelist])
@@ -215,29 +217,16 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["-f", file])
     if not strict:
         args.append("--no-strict")
-    args.extend(["--dot", dot_path])
+    args.extend(["--dot", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["dataflow"] = {
-        "dot_path": dot_path if os.path.exists(dot_path) else None,
+        "svg_path": svg_path if os.path.exists(svg_path) else None,
         "exit_code": rc,
         "stderr": err[:200] if err else "",
     }
-    # try render DOT -> PNG
-    if graphs["dataflow"]["dot_path"]:
-        png_path = f"{output_dir}/dataflow.png"
-        rc2, out2, err2 = _call_subcommand(
-            ["dot", "-Tpng", "-Gdpi=60", dot_path, "-o", png_path],
-            timeout=300,
-            prepend_svq=False,  # dot is external command, not sv_query sub
-        )
-        if rc2 == 0 and os.path.exists(png_path):
-            graphs["dataflow"]["png_path"] = png_path
-        else:
-            graphs["dataflow"]["png_path"] = None
-            graphs["dataflow"]["render_error"] = err2[:200] if err2 else ""
 
     # 2. visualize pipeline
-    dot_path = f"{output_dir}/pipeline.dot"
+    svg_path = f"{output_dir}/pipeline.svg"
     args = ["visualize", "pipeline"]
     if filelist:
         args.extend(["--filelist", filelist])
@@ -245,25 +234,13 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["-f", file])
     if not strict:
         args.append("--no-strict")
-    args.extend(["--dot", dot_path])
+    args.extend(["--dot", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["pipeline"] = {
-        "dot_path": dot_path if os.path.exists(dot_path) else None,
+        "svg_path": svg_path if os.path.exists(svg_path) else None,
         "exit_code": rc,
         "stderr": err[:200] if err else "",
     }
-    if graphs["pipeline"]["dot_path"]:
-        png_path = f"{output_dir}/pipeline.png"
-        rc2, out2, err2 = _call_subcommand(
-            ["dot", "-Tpng", "-Gdpi=60", dot_path, "-o", png_path],
-            timeout=300,
-            prepend_svq=False,  # dot is external command
-        )
-        if rc2 == 0 and os.path.exists(png_path):
-            graphs["pipeline"]["png_path"] = png_path
-        else:
-            graphs["pipeline"]["png_path"] = None
-            graphs["pipeline"]["render_error"] = err2[:200] if err2 else ""
 
     # 3. backpressure analyze (Mermaid)
     mmd_path = f"{output_dir}/backpressure.mmd"

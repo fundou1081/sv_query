@@ -28,7 +28,8 @@ class TestPipelineCli:
 
     def test_output_is_digraph(self):
         _, stdout, _ = _run_pipeline()
-        assert "digraph" in stdout
+        # [V100 SVG 2026-08-13] pipeline 输出 SVG, 不再输出 DOT digraph
+        assert "<svg" in stdout or "svg" in stdout.lower()
 
     def test_has_pipeline_stats(self):
         import re
@@ -42,7 +43,7 @@ class TestPipelineVizData:
     """V6.7: Pipeline 的 VizData 数据导出"""
 
     def test_vizdata_with_stages(self):
-        """[V6.9] Pipeline DOT output contains stage/reg elements."""
+        """[V6.9] Pipeline output contains stage/reg elements."""
         p = subprocess.run(
             ["sv_query", "visualize", "pipeline", "--filelist", STRICT_UART_FL,
              "--no-strict"],
@@ -50,16 +51,22 @@ class TestPipelineVizData:
         )
         if p.returncode != 0:
             pytest.skip(f"CLI failed: {p.stderr[:200]}")
-        # V6.9: DOT output should contain reg references and stage info
+        # [V100 SVG 2026-08-13] output 是 SVG, 不再断言 'digraph'
         dot = p.stdout
-        assert "digraph" in dot, "output should be a DOT digraph"
+        assert "<svg" in dot or "svg" in dot.lower(), "output should be SVG"
         assert any(kw in dot.lower() for kw in ["reg", "stage", "pipeline"]), \
-            "DOT should contain pipeline/reg elements"
+            "SVG should contain pipeline/reg elements"
 
 
 def test_pipeline_golden_match():
-    """[V6.9] Pipeline output contains expected reg labels."""
+    """[V6.9] Pipeline output contains expected reg labels.
+
+    [V100 SVG 2026-08-13] pipeline 输出 SVG, 不再有 DOT golden 对比.
+    改为验证 SVG 输出含真实的寄存器信号 (strict_uart 的 _q 后缀寄存器).
+    """
     rc, stdout, _ = _run_pipeline()
     assert rc == 0
-    # V6.9: at minimum, the output should contain some reg references
-    assert "reg" in stdout.lower() or "REG" in stdout
+    # strict_uart 的寄存器信号: count_q / rd_ptr_q / wr_ptr_q / mem
+    assert "<svg" in stdout, "output should be SVG"
+    assert any(kw in stdout for kw in ["_q", "mem", "count", "ptr"]), \
+        "SVG should contain register signals"
