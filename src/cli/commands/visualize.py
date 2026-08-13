@@ -209,6 +209,15 @@ def graph(
 ) -> None:
     """可视化信号图（包含数据流关系）"""
 
+    # [TODO 2026-08-13] show_source 功能在 V100 转 SVG 后静默丢失:
+    #   旧 DOT 路径 (_render_teach_dot line ~2054-2080) 用 node.file:node.line 产
+    #   'file:line' label + tooltip/URL 属性, 但 graph 命令走 viz_engine.render_dataflow
+    #   的 SVG 渲染链路, 该渲染器 (_render_svg_direct) 只读 e.get('sources') 且不输出
+    #   file:line / URL / tooltip 标注.
+    # 未来方案: 在 viz_engine SVG 渲染里消费 show_source cfg, 从 VizNode.file/line
+    #   (或 edge sources) 生成 <text>file:line</text> + <a xlink:href="file#line">.
+    #   届时同步恢复 sim/tests/cli/test_visualize_graph_source.py 的 xfail 测试.
+
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
     from trace.core.graph.viz import VizBuildOptions, build_viz_data
@@ -2108,6 +2117,14 @@ def _render_teach_dot(
         # Skip CLOCK/ENABLE/RESET edges since their 'condition' is just the
         # always-block guard, not a per-edge guard.
         edge_label = ""
+        # [TODO 2026-08-13] teach 条件截断 bug:
+        #   嵌套 case/ternary 的复合条件被简化成 'a == default' 丢了内层 ternary 条件.
+        #   例如 `case(a) 2'b0: y = g ? h : 0;` 的边 label 变成 'a == default',
+        #   期望是完整链 '(a == 2'b0) && (g && h)' 之类. 根因在图构建层
+        #   (driver_extractor 的 condition/condition_chain 提取时, 内层 ternary
+        #   的 arm condition 未拼接进外层 case 条件), 不在本渲染层.
+        # 未来方案: 修 driver_extractor 的复合条件链拼接 (case arm condition
+        #   × nested ternary condition 的笛卡尔积展开), 而非在渲染层拼.
         try:
             edge = graph_obj.get_edge(u, v)
             if edge is not None:

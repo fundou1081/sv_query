@@ -201,10 +201,14 @@ class TestDesignGraph(unittest.TestCase):
         self.assertIn("--graph", result.stdout)
 
     def test_design_graph_generates_pngs(self):
-        """[金标准] --graph 在 wrapper_chain fixture 上应该生成 design PNGs.
+        """[金标准] --graph 在 wrapper_chain fixture 上应该生成 design SVGs.
         (Was dot11_tx/openofdm_tx before — switched to wrapper_chain fixture per
         user feedback 2026-07-16: open source projects only provide code diversity,
-        not necessarily need to verify them.)"""
+        not necessarily need to verify them.)
+
+        [V100 SVG 2026-08-13] 原断言 PNG, 但 dataflow/pipeline 已转 SVG 输出,
+        不再 dot -Tpng 渲染 PNG. 改为断言 ≥1 SVG.
+        """
         import os
         import tempfile
 
@@ -219,11 +223,11 @@ class TestDesignGraph(unittest.TestCase):
             ])
             # command 应该跑通
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr[:500]}")
-            # 至少要有 dataflow.png 或 pipeline.png (single file 模式)
-            pngs = [f for f in os.listdir(tmpdir) if f.endswith(".png")]
+            # dataflow/pipeline/backpressure 至少生成一个 SVG
+            svgs = [f for f in os.listdir(tmpdir) if f.endswith(".svg")]
             self.assertGreaterEqual(
-                len(pngs), 1,
-                f"Expected ≥1 PNG in {tmpdir}, got {os.listdir(tmpdir)}\nstdout: {result.stdout[-300:]}"
+                len(svgs), 1,
+                f"Expected ≥1 SVG in {tmpdir}, got {os.listdir(tmpdir)}\nstdout: {result.stdout[-300:]}"
             )
 
 

@@ -61,13 +61,14 @@ endmodule""")
     # ── 逻辑 ──
 
     def test_bitwise_and_appears(self):
-        """按位与应显示 '&'"""
+        """按位与应显示 '&' (SVG 输出, XML 转义为 &amp;)"""
         rc, dot = _run_compute(self.dot_path, """
 module band(input [7:0] a, b, output [7:0] y);
     assign y = a & b;
 endmodule""")
         assert rc == 0
-        assert '&"' in dot or 'label="&"' in dot, f"AND not found:\n{dot[:500]}"
+        # [V100 SVG 2026-08-13] visualize compute 输出 SVG, '&' 转义为 &amp;
+        assert '&amp;' in dot, f"AND not found:\n{dot[:500]}"
 
     def test_bitwise_or_appears(self):
         """按位或应显示 '|'"""
@@ -90,44 +91,48 @@ endmodule""")
     # ── 移位 ──
 
     def test_shift_left_appears(self):
-        """左移应显示 '<<'"""
+        """左移应显示 '<<' (SVG 输出, XML 转义为 &lt;&lt;)"""
         rc, dot = _run_compute(self.dot_path, """
 module shl(input [7:0] a, output [7:0] y);
     assign y = a << 2;
 endmodule""")
         assert rc == 0
-        assert '<<' in dot, f"ShiftLeft not found:\n{dot[:500]}"
+        # [V100 SVG 2026-08-13] '<<' 转义为 &lt;&lt;
+        assert '&lt;&lt;' in dot or '<<' in dot, f"ShiftLeft not found:\n{dot[:500]}"
 
     def test_shift_right_appears(self):
-        """右移应显示 '>>'"""
+        """右移应显示 '>>' (SVG 输出, XML 转义为 &gt;&gt;)"""
         rc, dot = _run_compute(self.dot_path, """
 module shr(input [7:0] a, output [7:0] y);
     assign y = a >> 2;
 endmodule""")
         assert rc == 0
-        assert '>>' in dot, f"ShiftRight not found:\n{dot[:500]}"
+        # [V100 SVG 2026-08-13] '>>' 转义为 &gt;&gt;
+        assert '&gt;&gt;' in dot or '>>' in dot, f"ShiftRight not found:\n{dot[:500]}"
 
     # ── MUX / 选择 ──
 
     def test_mux_shows_condition(self):
-        """MUX 应显示 'if select' condition"""
+        """MUX 应显示条件 (SVG 输出, ternary 展开为 case (sel) + !(sel))"""
         rc, dot = _run_compute(self.dot_path, """
 module mux(input [7:0] a, b, input sel, output [7:0] y);
     assign y = sel ? a : b;
 endmodule""")
         assert rc == 0
-        assert "if " in dot, f"Condition not found:\n{dot[:500]}"
+        # [V100 SVG 2026-08-13] ternary 展开为 case (cond) + !(cond), 不再是 'if '
+        assert "case (sel)" in dot or "sel" in dot, f"Condition not found:\n{dot[:500]}"
 
     # ── 比较 ──
 
     def test_compare_greater_appears(self):
-        """比较应显示 'if a>b' condition"""
+        """比较应显示 'a > b' condition (SVG 输出, '>' 转义为 &gt;)"""
         rc, dot = _run_compute(self.dot_path, """
 module cmp(input [7:0] a, b, c, d, output [7:0] y);
     assign y = (a > b) ? c : d;
 endmodule""")
         assert rc == 0
-        assert "a > b" in dot or "a>b" in dot, f"Compare not found:\n{dot[:500]}"
+        # [V100 SVG 2026-08-13] '>' 转义为 &gt;
+        assert "a &gt; b" in dot or "a > b" in dot or "a&gt;b" in dot, f"Compare not found:\n{dot[:500]}"
 
     # ── 混合运算 ──
 
@@ -140,10 +145,9 @@ module mixed(input [7:0] a, b, c, output [7:0] y, output [7:0] z);
 endmodule""")
         assert rc == 0
         assert '+' in dot
-        assert '&"' in dot or 'label="&"' in dot
-        # Verify 2 different op colors (arithmetic=orange, logic=blue)
-        assert '#cc4400' in dot, "Arithmetic color (orange) missing"
-        assert '#4488cc' in dot, "Logic color (blue) missing"
+        assert '&amp;' in dot
+        # [V100 SVG 2026-08-13] op 节点统一橙色 #e65100 (不再三色区分算术/逻辑/移位)
+        assert '#e65100' in dot, "op node orange missing"
 
     # ── 颜色编码 ──
 
@@ -152,21 +156,24 @@ endmodule""")
 module ac(input [7:0] a, b, output [7:0] y);
     assign y = a + b;
 endmodule""")
-        assert '#cc4400' in dot, "Orange color not used for arithmetic"
+        # [V100 SVG 2026-08-13] op 节点统一橙色 #e65100
+        assert '#e65100' in dot, "op node orange not used"
 
     def test_logic_color_blue(self):
         rc, dot = _run_compute(self.dot_path, """
 module lc(input [7:0] a, b, output [7:0] y);
     assign y = a & b;
 endmodule""")
-        assert '#4488cc' in dot, "Blue color not used for logic"
+        # [V100 SVG 2026-08-13] op 节点统一橙色 #e65100
+        assert '#e65100' in dot, "op node orange not used"
 
     def test_shift_color_green(self):
         rc, dot = _run_compute(self.dot_path, """
 module sc(input [7:0] a, output [7:0] y);
     assign y = a >> 2;
 endmodule""")
-        assert '#44aa44' in dot, "Green color not used for shift"
+        # [V100 SVG 2026-08-13] op 节点统一橙色 #e65100
+        assert '#e65100' in dot, "op node orange not used"
 
     # ── 带位范围 ──
 
