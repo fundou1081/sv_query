@@ -181,6 +181,8 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # E2.A 收窄: 只有 DRIVER 边两端都是端口才 emit, 避免 function 中间信号和 CONNECTION
     # 造成的 orphan. 真数据流边 (e.g. 'a → y' 或 'data_in → result') 两端都是端口
     # → emit, 不会 orphan.
+    # [V15 2026-08-13 注] 跨 instance 的 CONNECTION 边 (u_scale.dout → scaled → u_off.din)
+    # 走另外的 post-process 阶段, 在 expr_trees_to_elk 返回后额外补上 (见 _emit_cross_instance_edges).
     if viz is not None:
         _input_path_set = set(input_paths)
         _output_path_set = set(output_paths)
@@ -464,13 +466,183 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             # [Plan D1] 用 full path port ID
             _out_port_id = _port_id_for_output(dst_name)
             root_edges.append(_emit_edge(ne(), [top_op_id], [_out_port_id]))
-    
-    return {
+
+    result = {
         'id': 'root',
         'properties': dict(ELK_OPTIONS),
         'children': root_children,
         'edges': root_edges,
     }
+    # [V14 2026-08-13] 层级模块折叠 cluster 重组
+    return _wrap_into_clusters(viz, result)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# [V14 2026-08-13] 层级模块折叠 cluster 重组
+# ═══════════════════════════════════════════════════════════════════
+# 背景: case26 等层级设计需要把 4 个 instance 装进各自的 cluster 框
+# (浅蓝边框), 顶层 target module 装进虚线框, CONNECTION 边走红线
+# (D2 决策: 只给 CROSS_TOP 加红线).
+# 重塑 root_children: 按 VizNode.cluster_id 重组为嵌套 cluster 结构.
+# ═══════════════════════════════════════════════════════════════════
+
+def _wrap_into_clusters(viz, elk_json):
+    """按 VizNode.cluster_id 把 root_children 重组为嵌套 cluster 框.
+
+    输入: 扁平 root_children (case26: 23 节点)
+    输出: 嵌套 children 列表, 每个 instance 一个 cluster, 顶层 target 一个虚线框 cluster.
+
+    重要: ELK compound graph 可以让子节点用自己原始的 id 引用, 不需要
+    重写为 cluster id — ELK 会自动查找 hierarchy. 所以我们只重塑 children
+    树结构, 不动 edge 端点.
+
+    阶段 5 (CONNECTION 边红色): 只加 meta.stroke, 不重写 src/dst.
+    """
+    from collections import defaultdict
+    root_children = elk_json.get('children', [])
+    root_edges = elk_json.get('edges', [])
+
+    if not viz or not viz.nodes:
+        return elk_json
+
+    # ── 1. 按 cluster_id 分组 ──
+    # ELK 节点 id 可能是 'port_data_in' (顶层) 或 'port_golden_hier_top_dot_u_scale_dot_din' (子模块)
+    # 从 ELK 节点 id 反推 VizNode 用 _safe 反向映射 (port_<safe_full_path>)
+    clusters = defaultdict(list)
+    # 构造 full_path → cluster_id 映射
+    fp_to_cid = {}
+    for n in viz.nodes:
+        fp_to_cid[str(n.id)] = getattr(n, 'cluster_id', '') or ''
+
+    def _child_cluster(child):
+        cid = str(child.get('id', ''))
+        # 'port_xxx' 形式 — 从 xxx 反推
+        if cid.startswith('port_'):
+            port_part = cid[5:]
+            # 检查是否含 '_dot_' (子模块多短名) — 'golden_hier_top_dot_u_scale_dot_din'
+            if '_dot_' in port_part:
+                # 拼回 full path: 'golden_hier_top.u_scale.din'
+                fp = port_part.replace('_dot_', '.')
+                # 尝试匹配最长 VizNode.id
+                for vp in sorted(fp_to_cid.keys(), key=len, reverse=True):
+                    if fp.endswith(vp) or fp == vp:
+                        return fp_to_cid[vp]
+                return ''
+            else:
+                # 顶层 port, e.g. 'data_in' → 'golden_hier_top.data_in'
+                for vp, vc in fp_to_cid.items():
+                    if vp.endswith('.' + port_part):
+                        return vc
+                return ''
+        # 'op___full_path' 形式 (e.g. 'op___golden_hier_top.u_scale.dout_15')
+        if cid.startswith('op__'):
+            # 提取 'golden_hier_top.u_scale.dout_15' (去掉末尾 _<n>)
+            m = cid[4:]
+            # 去末尾 _<数字> 尼竞作 id
+            import re as _re
+            m2 = _re.sub(r'_\d+$', '', m)
+            # 变成 full path
+            fp = m2.replace('_dot_', '.')
+            for vp in sorted(fp_to_cid.keys(), key=len, reverse=True):
+                if fp.endswith(vp) or fp == vp:
+                    return fp_to_cid[vp]
+            return ''
+        # 'sig_<label>_<n>' 形式
+        if cid.startswith('sig_'):
+            label = cid[4:].rsplit('_', 1)[0]
+            for vp, vc in fp_to_cid.items():
+                if vp.endswith('.' + label.replace('_dot_', '.')):
+                    return vc
+            return ''
+        # 'const_<label>_<n>' 形式
+        if cid.startswith('const_'):
+            return ''  # const 总是顶层
+        return ''  # 未知 → 顶层
+
+    for child in root_children:
+        matched_cid = _child_cluster(child)
+        clusters[matched_cid].append(child)
+
+    # ── 2. 构造每个 cluster 的 child wrapper ──
+    new_children = []
+    cluster_id_to_elk_id = {}
+
+    # [V14 2026-08-13 回归修复] 只在 viz 真的包含子模块时 (有 cluster_id != '')
+    # 才包 cluster_target_top 虚线框. 纯顶层 case (如 case1-25 多数)
+    # 不包顶层 cluster, 避免给 checker compounds 期望数 +1 的 regression.
+    has_submodules = any(cid for cid in clusters if cid)
+
+    if clusters[''] and has_submodules:
+        cluster_id_to_elk_id[''] = 'cluster_target_top'
+        target_label = ''
+        for n in viz.nodes:
+            if getattr(n, 'cluster_id', '') == '':
+                target_label = n.module or ''
+                break
+        if not target_label and viz.meta:
+            target_label = viz.meta.get('target_module', 'target')
+        new_children.append({
+            'id': 'cluster_target_top',
+            'labels': [{'text': target_label, 'fontSize': 10}],
+            'borderStyle': 'dashed',
+            '_meta': {'is_cluster': True, 'is_target': True, 'cluster_id': ''},
+            'children': clusters[''],
+            # [V15 2026-08-13 修复] 删硬编码 width/height — 让 ELK 自动算 cluster 尺寸.
+            # 之前设 (200,150) / (180,130) 让多个 cluster 子节点 layout 到相同相对坐标,
+            # 出现 sp/ep 重叠 → SVG 看起来"重复 path".
+        })
+    elif clusters['']:
+        # 纯顶层 case: 保持扁平, 不加 wrapper
+        for child in clusters['']:
+            new_children.append(child)
+
+    for cid in sorted(k for k in clusters if k):
+        mod_type = ''
+        for n in viz.nodes:
+            if getattr(n, 'cluster_id', '') == cid and getattr(n, 'module_type', ''):
+                mod_type = n.module_type
+                break
+        label_text = f'{mod_type}  {cid}' if mod_type else cid
+        elk_cluster_id = f'cluster_{_safe(cid)}'
+        cluster_id_to_elk_id[cid] = elk_cluster_id
+        new_children.append({
+            'id': elk_cluster_id,
+            'labels': [{'text': label_text, 'fontSize': 10}],
+            'borderStyle': 'solid',
+            '_meta': {'is_cluster': True, 'is_target': False, 'cluster_id': cid,
+                      'module_type': mod_type, 'instance_path': cid},
+            'children': clusters[cid],
+            # [V15 2026-08-13 修复] 删硬编码 width/height — 让 ELK 自动算 cluster 尺寸.
+        })
+
+    # ── 3. 不重写 edge 端点 (ELK compound 自动处理)
+    # 只加 _meta.stroke = 'red' 给 CROSS_TOP 边 (D2 决策)
+    # 检测方法: src 或 dst 在顶层 cluster, 且另边在子模块 cluster
+    new_edges = []
+    # 构造 eid → cluster_id 映射
+    eid_to_cid = {}
+    for cid, items in clusters.items():
+        for child in items:
+            eid_to_cid[str(child.get('id', ''))] = cid
+    for e in root_edges:
+        meta = dict(e.get('_meta', {}))
+        # 阶段 5: CROSS_TOP 边检测 (不论什么 kind, 只要跨顶层/子模块)
+        src_id = (e.get('sources', ['']) or [''])[0]
+        dst_id = (e.get('targets', ['']) or [''])[0]
+        src_cid = eid_to_cid.get(src_id, '')
+        dst_cid = eid_to_cid.get(dst_id, '')
+        is_cross_top = (src_cid == '' and dst_cid != '') or (dst_cid == '' and src_cid != '')
+        if is_cross_top:
+            meta['stroke'] = 'red'
+            meta['cross_top'] = True
+        new_e = dict(e)
+        new_e['_meta'] = meta
+        new_edges.append(new_e)
+
+    elk_json = dict(elk_json)
+    elk_json['children'] = new_children
+    elk_json['edges'] = new_edges
+    return elk_json
 
 
 def viz_to_elk(viz: VizData) -> dict:
@@ -534,7 +706,7 @@ def viz_to_elk(viz: VizData) -> dict:
     # ── No non-cond path: ExpressionTree handles dataflow via expr_trees_to_elk() ──
     # 如果没有任何条件边，返回一个空图（数据流由 expr_trees_to_elk 处理）
     if not cond_by_dst:
-        return _make_graph(root_children, root_edges)
+        return _wrap_into_clusters(viz, _make_graph(root_children, root_edges))
 
     # ── Phase 3: Build compound case/branch scopes ──
     # [FIX 2026-08-08] case_children / case_edges 必须在循环内重置,
@@ -718,7 +890,7 @@ def viz_to_elk(viz: VizData) -> dict:
             print(f"[WARN] removed edge {e['id']}: endpoint not in emitted nodes "
                   f"(src={srcs}, tgt={tgts})", file=sys.stderr)
 
-    return _make_graph(root_children, root_edges)
+    return _wrap_into_clusters(viz, _make_graph(root_children, root_edges))
 
 
 def _make_graph(children, edges):
@@ -812,17 +984,147 @@ def _build_elk_for_viz(viz):
     if has_uncond_op or has_call_edge:
         if expr_trees:
             input_names, output_names = _compute_input_output_names(viz)
-            return expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
-        # 没 expr_trees 但有 call edge — 退回 viz_to_elk
-
+            elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
+            # [V15 fix 6] 之前这里 return, 跳过 post-process. 改为赋值 + 走末尾统一 post-process
+        else:
+            # 没 expr_trees 但有 call edge — 退回 viz_to_elk
+            elk = viz_to_elk(viz)
     # 路径 2: case/if 条件边 → viz_to_elk (case compound)
-    if has_cond_edges:
-        return viz_to_elk(viz)
-
+    elif has_cond_edges:
+        elk = viz_to_elk(viz)
     # 路径 3: 纯 expr_trees (无 cond, 无 uncond op) → expr_trees_to_elk
-    if expr_trees:
+    elif expr_trees:
         input_names, output_names = _compute_input_output_names(viz)
-        return expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
-
+        elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
     # 路径 4: fallback — viz_to_elk (保证有输出)
-    return viz_to_elk(viz)
+    else:
+        elk = viz_to_elk(viz)
+
+    # [V15 2026-08-13 修复] 补全跨 instance CONNECTION 边 (适用于所有路径)
+    # 原 expr_trees_to_elk 和 viz_to_elk 都不 emit 跨 module 的 CONNECTION 边:
+    #   u_scale.dout → scaled → u_off.din 这样的 instance→instance 连线.
+    # 原因: E2.A 规则不 emit CONNECTION 边, 但跨 instance 的 CONNECTION (instance port → wire
+    # 或 wire → instance port) 是必要的. 这里 post-process 补上这些边.
+    # [V15 fix 2] 移到所有路径之后, case26 (expr_trees=0) 也能触发.
+    # [V15 fix 6] 路径 1 原本有 return, 跳过 post-process. 修复后统一走末尾.
+    if viz is not None:
+        elk = _emit_cross_instance_connection_edges(elk, viz)
+    return elk
+
+
+def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
+    """[V15 2026-08-13] 补全跨 instance 的 CONNECTION 边.
+
+    背景: case26 源码有 u_scale.dout → scaled → u_off.din 这样的 instance→instance 连线,
+    但 expr_trees_to_elk 只 emit expression tree 渲染的边, 漏了这些.
+
+    [V15 fix 3] 策略调整: 不在 ELK emit 中间 wire 节点 (sig_scaled_wire), 因为
+    _wrap_into_clusters 会把不属于任何 cluster 的 root_children 节点剥掉. 改为:
+    - 跳 过中间 wire 节点 (scaled/offsetted/clamped_w/clamped)
+    - 找 'X.dout → wire → Y.din' 这种两步 CONNECTION, 拼为 'X.dout → Y.din' 一步 emit
+    - 这样 ELK 会画出 instance→instance 的直接连线 (一条黑线/红线)
+    """
+    from collections import defaultdict
+    if not viz or not viz.edges:
+        return elk_json
+
+    # 1. 收集 input/output port 集合 (避免重复 emit)
+    _input_paths = set()
+    _output_paths = set()
+    for n in viz.nodes:
+        side = getattr(n, 'port_side', '')
+        if side == 'left':
+            _input_paths.add(n.id)
+        elif side == 'right':
+            _output_paths.add(n.id)
+    _all_top_ports = _input_paths | _output_paths
+
+    # 2. 收集 instance port 集合 (cluster_id != '' 且 port_side != '')
+    _instance_ports = set()
+    for n in viz.nodes:
+        cid = getattr(n, 'cluster_id', '') or ''
+        side = getattr(n, 'port_side', '') or ''
+        if cid and side:
+            _instance_ports.add(n.id)
+
+    # 3. 收集 CONNECTION 边, 构建 instance_port → instance_port 映射
+    # 思路: 'X.dout → wire → Y.din' 是两条边 (X.dout→wire, wire→Y.din)
+    # 拼成 X.dout→Y.din
+    # 步骤 3a: 收集 wire 节点 (顶层 port 不算)
+    # [V15 fix 4] 关键: instance port (e.g. 'golden_hier_top.u_scale.dout') 同时在
+    # _all_top_ports 里 (因为 port_side='right' 也算 output port). 需要扣除.
+    _real_top_ports = _all_top_ports - _instance_ports  # 只含 target module 顶层 port
+    _wire_to_dsts = defaultdict(list)  # wire → [Y.din]
+    _srcs_to_wire = defaultdict(list)  # X.dout → [wire]
+    for e in viz.edges:
+        ek = str(e.kind) if not isinstance(e.kind, str) else e.kind
+        if ek != 'CONNECTION':
+            continue
+        s, t = str(e.src), str(e.dst)
+        s_is_inst = s in _instance_ports
+        t_is_inst = t in _instance_ports
+        s_is_top = s in _real_top_ports
+        t_is_top = t in _real_top_ports
+        if s_is_inst and not t_is_inst and not t_is_top:
+            # 'X.dout → wire' (wire 不是 instance port 也不是真顶层 port)
+            _srcs_to_wire[s].append(t)
+        elif t_is_inst and not s_is_inst and not s_is_top:
+            # 'wire → Y.din'
+            _wire_to_dsts[s].append(t)
+
+    # 3b. 拼接: X.dout → wire → Y.din → emit X.dout → Y.din
+    root_edges = elk_json.get('edges', [])
+    existing_edge_keys = set()
+    for e in root_edges:
+        for s in e.get('sources', []):
+            for t in e.get('targets', []):
+                existing_edge_keys.add((s, t))
+
+    ctr = [int(root_edges[-1]['id'][1:]) if root_edges else 0]
+    def _ne():
+        ctr[0] += 1
+        return f'e{ctr[0]}'
+
+    added = 0
+    for src_inst, wires in _srcs_to_wire.items():
+        for wire in wires:
+            for dst_inst in _wire_to_dsts.get(wire, []):
+                # 拼接 X.dout → Y.din (跨 instance 一步)
+                s_id = _map_to_elk_id(src_inst, _instance_ports, set(), _all_top_ports)
+                t_id = _map_to_elk_id(dst_inst, _instance_ports, set(), _all_top_ports)
+                if not s_id or not t_id:
+                    continue
+                if (s_id, t_id) in existing_edge_keys:
+                    continue
+                # 跨 instance CONNECTION 用紫色 (区分于 CROSS_TOP 红)
+                root_edges.append({
+                    'id': _ne(),
+                    'sources': [s_id],
+                    'targets': [t_id],
+                    '_meta': {
+                        'kind': 'connection',
+                        'stroke': 'purple',  # [V15 阶段 6] 跨 instance 连线紫色
+                        'v15_added': True,
+                    },
+                })
+                existing_edge_keys.add((s_id, t_id))
+                added += 1
+
+    if added:
+        elk_json['edges'] = root_edges
+    return elk_json
+
+
+def _map_to_elk_id(path, _instance_ports, _wire_nodes, _all_top_ports):
+    """[V15 2026-08-13] 把 viz_data path 映射到 ELK 节点 id."""
+    # [V15 fix 5] 顺序调整: 先查 instance port (e.g. 'golden_hier_top.u_scale.dout' 也在
+    # _all_top_ports 里, 因为 port_side='right' 让它既是 instance port 又是 output port).
+    # 必须先匹配 instance port 拿到 full-path id, 不然会走 'port_dout' 短名分支.
+    if path in _instance_ports:
+        return 'port_' + path.replace('.', '_dot_')
+    if path in _all_top_ports:
+        return f'port_{path.rsplit(".", 1)[-1]}' if '.' in path else f'port_{path}'
+    if path in _wire_nodes:
+        short = path.rsplit('.', 1)[-1] if '.' in path else path
+        return f'sig_{short}_wire'
+    return None

@@ -68,6 +68,11 @@ class VizNode:
     is_port: bool = False       # 是否为显式 port 节点 (PORT_IN/PORT_OUT)
     port_side: str = ""         # 'left' (input) | 'right' (output) | '' (非 port)
 
+    # --- [V14 2026-08-13] 层级模块折叠 ---
+    instance_path: str = ""     # 节点所在 instance 路径 (顶层='', 如 'u_scale')
+    module_type: str = ""       # instance 的 module 类型 (如 'level2_scale')
+    cluster_id: str = ""        # cluster key (''=顶层, 'u_scale'=子模块 cluster)
+
     # --- 其它 ---
     extra: dict[str, Any] = field(default_factory=dict)
 

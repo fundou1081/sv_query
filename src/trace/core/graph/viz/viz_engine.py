@@ -72,11 +72,36 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     
     # ── Collect edges (global coords) ──
     # ELK returns section coordinates relative to the containing node.
-    # Root container edge sections: absolute (root.x == 0).
-    # Child container edge sections: relative to child.x (so we add gx,gy).
-    # Flat (no containers): root contains all edges → section coords are already global.
+    # [V15 2026-08-13 关键修复] ELK 把所有 edges 都 emit 到 root.edges (不在 cluster children.edges),
+    # 但 section 的 startPoint/endPoint 是 RELATIVE TO ITS CLUSTER (含 cluster wrapper offset).
+    # 如果直接把 sp/ep 当 root 坐标用, 4 个 cluster 的同构子图 layout 到相同相对坐标后,
+    # SVG 会出现 5 条重复 path. 必须根据 src/tgt 节点所属 cluster, 加对应 (x,y) offset.
     edges = []
-    
+
+    # 1) 递归收集所有 compound node 的全局 (x, y) — 包括 cluster 和 root 本身
+    cluster_offsets = {'root': (0.0, 0.0)}
+
+    def _collect_offsets(n, px=0, py=0):
+        nx = n.get('x', 0) or 0
+        ny = n.get('y', 0) or 0
+        gx, gy = nx + px, ny + py
+        nid = n.get('id', '?')
+        cluster_offsets[nid] = (gx, gy)
+        for ch in n.get('children', []) or []:
+            _collect_offsets(ch, gx, gy)
+
+    _collect_offsets(layout)
+
+    # 2) 找 node 属于哪个 cluster (parent compound id)
+    def _find_parent(n, target_id, parent_id='root'):
+        if n.get('id') == target_id:
+            return parent_id
+        for ch in n.get('children', []) or []:
+            r = _find_parent(ch, target_id, n.get('id', '?'))
+            if r is not None:
+                return r
+        return None
+
     def walk_e(n, px=0, py=0):
         nx = (n.get('x', 0) or 0)
         ny = (n.get('y', 0) or 0)
@@ -87,19 +112,57 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
             tgts = e.get('targets', [])
             meta = e.get('_meta', {})
             ekind = meta.get('kind', '')
+            estroke = meta.get('stroke', '')  # [V14 2026-08-13] CROSS_TOP 红线
+            # [V15 2026-08-13] 从 src/tgt id 反查所在 cluster, 取 offset 加到 sp/ep
+            src_id = srcs[0] if srcs else '?'
+            tgt_id = tgts[0] if tgts else '?'
+            src_parent = _find_parent(layout, src_id) or 'root'
+            tgt_parent = _find_parent(layout, tgt_id) or 'root'
+            src_off = cluster_offsets.get(src_parent, (0.0, 0.0))
+            tgt_off = cluster_offsets.get(tgt_parent, (0.0, 0.0))
+            # [V15 2026-08-13 关键修复] ELK 给不同类型边用不同坐标系:
+            #   - cluster 内部边 (src 和 tgt 在同一 cluster): sp/ep relative-to-cluster, 需要加 cluster offset
+            #   - 跨 cluster 边 (src 和 tgt 在不同 cluster 或 src/tgt 是 cluster 本身): sp/ep 是 root 绝对坐标, 不加 offset
+            # 判断: src_off == tgt_off && src_parent != 'root' 是 cluster 内部边
+            if src_parent == tgt_parent and src_parent != 'root':
+                # cluster 内部边: sp/ep relative-to-cluster, bendPoints 也 relative-to-cluster
+                use_offset = True
+            elif src_parent == 'root' and tgt_parent == 'root':
+                # root 内部边: sp/ep 已经是 root 绝对
+                use_offset = False
+            else:
+                # 跨 cluster 边: sp/ep 是 root 绝对, bendPoints 也 root 绝对
+                use_offset = False
             for sec in e.get('sections', []):
                 sp = sec.get('startPoint') or {}
                 ep = sec.get('endPoint') or {}
-                if sp and ep:
-                    edges.append({
-                        'src': srcs[0] if srcs else '?',
-                        'dst': tgts[0] if tgts else '?',
-                        'sx': sp.get('x', 0) + gx,
-                        'sy': sp.get('y', 0) + gy,
-                        'ex': ep.get('x', 0) + gx,
-                        'ey': ep.get('y', 0) + gy,
-                        'kind': ekind,
-                    })
+                if not (sp and ep):
+                    continue
+                # [V15 2026-08-13] 累加 bendPoints — ELK 返回的 bendPoints
+                # 是 [startPoint, bend1, bend2, ..., endPoint] 路径上的中间拐点.
+                # 不读它们会导致跨 cluster 边斜切画布. 现在用折线画.
+                bends = sec.get('bendPoints') or []
+                if use_offset:
+                    points = [(sp.get('x', 0) + src_off[0], sp.get('y', 0) + src_off[1])]
+                    for bp in bends:
+                        # bendPoints 也是 relative-to-cluster, 加 src_off
+                        points.append((bp.get('x', 0) + src_off[0], bp.get('y', 0) + src_off[1]))
+                    points.append((ep.get('x', 0) + tgt_off[0], ep.get('y', 0) + tgt_off[1]))
+                else:
+                    # 跨 cluster 边: sp/ep/bends 都是 root 绝对坐标, 不加 offset
+                    points = [(sp.get('x', 0), sp.get('y', 0))]
+                    for bp in bends:
+                        points.append((bp.get('x', 0), bp.get('y', 0)))
+                    points.append((ep.get('x', 0), ep.get('y', 0)))
+                edges.append({
+                    'src': src_id,
+                    'dst': tgt_id,
+                    'points': points,  # 多点折线
+                    'sx': points[0][0], 'sy': points[0][1],
+                    'ex': points[-1][0], 'ey': points[-1][1],
+                    'kind': ekind,
+                    'stroke': estroke,
+                })
         for c in n.get('children', []):
             walk_e(c, gx, gy)
     
@@ -145,12 +208,24 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     # Edges
     for e in edges:
         ekind = e.get('kind', '')
-        if ekind == 'condition_select':
+        estroke = e.get('stroke', '')  # [V14 2026-08-13] CROSS_TOP 红线
+        if estroke == 'red':
+            # CROSS_TOP CONNECTION 边 (D2 决策) - 红色
+            stroke, dash = 'red', ''
+        elif ekind == 'condition_select':
             stroke, dash = '#989898', ' stroke-dasharray="6,3"'
         else:
             stroke, dash = '#555555', ''
-        lines.append('<path d="M %.1f %.1f L %.1f %.1f" fill="none" stroke="%s" stroke-width="1.5"%s marker-end="url(#arrow)"/>' %
-                     (e['sx'] + OX, e['sy'] + OY, e['ex'] + OX, e['ey'] + OY, stroke, dash))
+        # [V15 2026-08-13] 用 points 折线画 (含 bendPoints) — ELK 正交路由
+        points = e.get('points')
+        if points and len(points) >= 2:
+            d = 'M %.1f %.1f' % (points[0][0] + OX, points[0][1] + OY)
+            for px, py in points[1:]:
+                d += ' L %.1f %.1f' % (px + OX, py + OY)
+        else:
+            d = 'M %.1f %.1f L %.1f %.1f' % (e['sx'] + OX, e['sy'] + OY, e['ex'] + OX, e['ey'] + OY)
+        lines.append('<path d="%s" fill="none" stroke="%s" stroke-width="1.5"%s marker-end="url(#arrow)"/>' %
+                     (d, stroke, dash))
     
     # Leaves
     for lf in leaves:
