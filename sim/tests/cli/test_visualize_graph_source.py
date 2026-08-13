@@ -3,13 +3,8 @@ test_visualize_graph_source.py - V6.2.1 2026-07-20: --show-source for graph viz.
 
 After V6.2.1, the shared --show-source flag should also work for
 `visualize graph` (not just `visualize teach`). This file verifies:
-  - Without --show-source: no source annotation in DOT
-  - With --show-source: file:line in label + tooltip + URL attributes
-
-[V100 2026-08-13] graph 命令已转 SVG 渲染, show_source 标注 (file:line label +
-tooltip/URL) 在 viz_engine._render_svg_direct 里未实现, 功能静默丢失.
-详见 src/cli/commands/visualize.py graph 命令处的 TODO 2026-08-13.
-恢复前这些测试用 xfail 标注.
+  - Without --show-source: no source annotation in SVG
+  - With --show-source: file:line in label + URL/tooltip attributes
 """
 import os
 import subprocess
