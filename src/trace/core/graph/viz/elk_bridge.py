@@ -94,10 +94,14 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 同一短名多实例时仍 emit 唯一 ID 端口, SignalRef 根据 parent_module 解析为正确 full path.
     input_paths = []  # full paths of input ports
     output_paths = []  # full paths of output ports
+    # [FIX 2026-08-13] full_path → (file, line) 映射, 供 show_source 标注.
+    node_source_map = {}  # full_path -> (file, line)
     if viz is not None:
         for _n in viz.nodes:
             _full = str(_n.id)
             _side = getattr(_n, 'port_side', '')
+            if getattr(_n, 'file', '') or getattr(_n, 'line', 0):
+                node_source_map[_full] = (getattr(_n, 'file', '') or '', getattr(_n, 'line', 0) or 0)
             if _side == 'left':
                 input_paths.append(_full)
             elif _side == 'right':
@@ -210,11 +214,12 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         _pid = _port_id_for_input(_full)
         if _pid in _emitted_port_ids:
             continue
+        _fl = node_source_map.get(_full, ('', 0))
         root_children.append({
             'id': _pid, 'width': PORT_W, 'height': PORT_H,
             'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
-            '_meta': {'kind': 'port_in'},
+            '_meta': {'kind': 'port_in', 'file': _fl[0], 'line': _fl[1]},
         })
         _emitted_port_ids.add(_pid)
     for _full in sorted(_referenced_output_fulls):
@@ -222,11 +227,12 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         _pid = _port_id_for_output(_full)
         if _pid in _emitted_port_ids:
             continue
+        _fl = node_source_map.get(_full, ('', 0))
         root_children.append({
             'id': _pid, 'width': PORT_W, 'height': PORT_H,
             'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
-            '_meta': {'kind': 'port_out'},
+            '_meta': {'kind': 'port_out', 'file': _fl[0], 'line': _fl[1]},
         })
         _emitted_port_ids.add(_pid)
     

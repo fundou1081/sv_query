@@ -52,9 +52,9 @@ def test_graph_show_source_adds_file_line_to_label(tmp_path):
     )
     assert rc == 0, err
     text = out.read_text()
-    # Expect CLK port to have source line annotation
-    if "darkriscv.v:63" not in text:
-        pytest.xfail("[V100 SVG 2026-08-13] show_source 标注未在 SVG 渲染里实现 (TODO 2026-08-13)")
+    # Expect a rendered port to have source line annotation.
+    # CLK (:63) is filtered by --module-only (clock), but RES (:64) renders.
+    assert "darkriscv.v:64" in text
 
 
 def test_graph_show_source_adds_url_attribute(tmp_path):
@@ -70,9 +70,8 @@ def test_graph_show_source_adds_url_attribute(tmp_path):
     assert rc == 0, err
     text = out.read_text()
     # URL is full path (tooling-friendly), line is appended as fragment
-    if not ("URL=" in text and "#63" in text):
-        pytest.xfail("[V100 SVG 2026-08-13] show_source URL 属性未在 SVG 渲染里实现 (TODO 2026-08-13)")
-    assert "tooltip=" in text and ":63" in text, "expected tooltip attribute"
+    assert "URL=" in text and "#64" in text
+    assert "tooltip=" in text and ":64" in text, "expected tooltip attribute"
 
 
 def test_graph_without_show_source_has_no_url(tmp_path):

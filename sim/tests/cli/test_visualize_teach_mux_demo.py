@@ -215,12 +215,10 @@ def test_y_nested_compound_conditions_use_and(tmp_path):
     assert "sel_d == 2'b0" in text, "outer case cond missing for sel_d==0 branch"
     assert "sel_d == 2'b1" in text, "outer case cond missing for sel_d==1 branch"
     assert "sel_d == 2'b10" in text, "outer default cond (2'b10) missing"
-    # Inner ternary condition appears (case×ternary 复合条件截断 root cause, TODO)
-    import re
-    if re.search(r"\(sel_d == 2'b0\) && \(sel_f\)", text) is None:
-        pytest.xfail("[TODO 2026-08-13] case×ternary 复合条件截断 (driver_extractor 未拼内层 ternary cond)")
+    # Inner ternary condition appears (完整复合条件现已拼接)
     assert "sel_f" in text, "inner ternary cond missing"
     # Specific compound (sel_d==0 AND sel_f) form exists
+    import re
     assert re.search(r"\(sel_d == 2'b0\) && \(sel_f\)", text) is not None, \
         "compound (sel_d==0) && (sel_f) not found in any edge label"
 

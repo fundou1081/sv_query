@@ -209,14 +209,12 @@ def graph(
 ) -> None:
     """可视化信号图（包含数据流关系）"""
 
-    # [TODO 2026-08-13] show_source 功能在 V100 转 SVG 后静默丢失:
-    #   旧 DOT 路径 (_render_teach_dot line ~2054-2080) 用 node.file:node.line 产
-    #   'file:line' label + tooltip/URL 属性, 但 graph 命令走 viz_engine.render_dataflow
-    #   的 SVG 渲染链路, 该渲染器 (_render_svg_direct) 只读 e.get('sources') 且不输出
-    #   file:line / URL / tooltip 标注.
-    # 未来方案: 在 viz_engine SVG 渲染里消费 show_source cfg, 从 VizNode.file/line
-    #   (或 edge sources) 生成 <text>file:line</text> + <a xlink:href="file#line">.
-    #   届时同步恢复 sim/tests/cli/test_visualize_graph_source.py 的 xfail 测试.
+    # [FIX 2026-08-13] show_source 现已接入 SVG 渲染链路:
+    #   graph 命令把 show_source 传进 render_dataflow config, 由
+    #   viz_engine._render_svg_direct 在 leaf 节点下方标注 file:line +
+    #   URL=/tooltip= (SVG <a href> + <title> 承载).
+    #   旧 DOT 路径 (viz_dot_renderer) 已废弃, 此链路通过 VizNode.file/line
+    #   → elk_bridge _meta → viz_engine 渲染.
 
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
@@ -246,7 +244,7 @@ def graph(
         include_edge_condition=show_conditions,
         include_edge_expression=True,
     ))
-    svg = render_dataflow(viz, {"title": title})
+    svg = render_dataflow(viz, {"title": title, "show_source": show_source})
 
     if dot_output:
         Path(dot_output).write_text(svg)
@@ -2117,23 +2115,34 @@ def _render_teach_dot(
         # Skip CLOCK/ENABLE/RESET edges since their 'condition' is just the
         # always-block guard, not a per-edge guard.
         edge_label = ""
-        # [TODO 2026-08-13] teach 条件截断 bug:
-        #   嵌套 case/ternary 的复合条件被简化成 'a == default' 丢了内层 ternary 条件.
-        #   例如 `case(a) 2'b0: y = g ? h : 0;` 的边 label 变成 'a == default',
-        #   期望是完整链 '(a == 2'b0) && (g && h)' 之类. 根因在图构建层
-        #   (driver_extractor 的 condition/condition_chain 提取时, 内层 ternary
-        #   的 arm condition 未拼接进外层 case 条件), 不在本渲染层.
-        # 未来方案: 修 driver_extractor 的复合条件链拼接 (case arm condition
-        #   × nested ternary condition 的笛卡尔积展开), 而非在渲染层拼.
+        # [FIX 2026-08-13] 条件链拼接: 之前只读 edge.condition (简化成 'a == 2'b0'),
+        #   丢了内层 ternary 条件. 根因在渲染层 (非 driver_extractor — 该层已正确填
+        #   condition_chain e.g. ['a == 2'b0', 'g']). 现在优先用 condition_chain
+        #   拼接完整条件.
         try:
             edge = graph_obj.get_edge(u, v)
             if edge is not None:
-                cond = (getattr(edge, "condition", "") or "").strip() \
-                    or (getattr(edge, "effective_condition", "") or "").strip()
                 kind = getattr(edge, "kind", None)
                 kind_name = getattr(kind, "name", "") if kind else ""
-                if cond and kind_name == "DRIVER":
-                    edge_label = cond
+                if kind_name == "DRIVER":
+                    chain = getattr(edge, "condition_chain", None) or []
+                    chain = [c for c in chain if c]
+                    if chain:
+                        # [FIX 2026-08-13] 用 condition_chain 拼接完整条件.
+                        # case 套 ternary 时 chain 含比较运算符 (e.g. ['a == 2'b0','g']),
+                        #   期望带括号 '(a == 2'b0) && (g)'; 纯 ternary 嵌套时 chain 是
+                        #   纯信号名 (e.g. ['g','h']), 期望不带括号 'g && h'.
+                        # 判据: chain 长度 > 1 且任一元素含比较运算符 ('==' 或 verilog 字面量)
+                        #   → 全加括号; 否则直接 join 不带括号.
+                        has_cmp = any(("==" in c) or ("'b" in c) or ("'h" in c) or ("'d" in c) for c in chain)
+                        if len(chain) > 1 and has_cmp:
+                            edge_label = " && ".join(f"({c})" for c in chain)
+                        else:
+                            edge_label = " && ".join(chain)
+                    else:
+                        cond = (getattr(edge, "condition", "") or "").strip() \
+                            or (getattr(edge, "effective_condition", "") or "").strip()
+                        edge_label = cond
         except Exception:
             edge_label = ""
         # Drives highlight (C) - focus signal as driver

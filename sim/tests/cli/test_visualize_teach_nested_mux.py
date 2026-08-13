@@ -203,8 +203,6 @@ def test_full_zoo_case_tern_tern():
     ternary) produces all 12 data signals (x0-x11) as drivers with
     complete 3-level compound conditions."""
     text = _render_focus("y_full_zoo", depth=5)
-    if "(a == 2'b0) && (g && h)" not in text:
-        pytest.xfail("[TODO 2026-08-13] case×ternary 复合条件截断 (driver_extractor 未拼内层 ternary cond)")
     assert "(a == 2'b0) && (g && h)" in text
     assert "(a == 2'b1) && (j && k)" in text
     for i in range(8):  # [V6.9] a is 1-bit → 2 branches × 4 ternary = 8 signals
@@ -236,8 +234,6 @@ def test_case_with_ternary():
     """[Test Purpose] Verify case containing single-level ternary combines
     case selector (a) with ternary conditions (g, h, i) via &&."""
     text = _render_focus("y_case_with_tern")
-    if "(a == 2'b0) && (g)" not in text:
-        pytest.xfail("[TODO 2026-08-13] case×ternary 复合条件截断 (driver_extractor 未拼内层 ternary cond)")
     assert "(a == 2'b0) && (g)" in text
     assert "(a == 2'b0) && (!(g))" in text
     assert "(a == 2'b1) && (h)" in text
@@ -252,8 +248,6 @@ def test_case_3way_independent_ternaries():
     ternary conditions (g, h, i) produce distinct driver edges with
     non-confusing condition labels."""
     text = _render_focus("y_case_3way_branch")
-    if "(a == 2'b0) && (g)" not in text:
-        pytest.xfail("[TODO 2026-08-13] case×ternary 复合条件截断 (driver_extractor 未拼内层 ternary cond)")
     assert "(a == 2'b0) && (g)" in text
     assert "(a == 2'b0) && (!(g))" in text
     assert "(a == 2'b1) && (h)" in text
@@ -298,8 +292,6 @@ def test_default_chain_mixed():
     still extracts ternary conditions from BOTH the explicit and default
     branches."""
     text = _render_focus("y_default_chain")
-    if "(a == 2'b0) && (g)" not in text:
-        pytest.xfail("[TODO 2026-08-13] case×ternary 复合条件截断 (driver_extractor 未拼内层 ternary cond)")
     # [V6.9] ternary compound retains outer parens
     assert "(a == 2'b0) && (g)" in text
     assert "(a == 2'b0) && (!(g))" in text
