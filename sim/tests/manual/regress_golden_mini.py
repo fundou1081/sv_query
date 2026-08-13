@@ -24,6 +24,7 @@ golden_mini fixture 的 strict 模式, 报告 pass/fail.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -35,6 +36,7 @@ from cli._viz_common import build_viz_tracer  # noqa: E402
 from trace.core.graph.analyzer.signal_classifier import classify_graph  # noqa: E402
 from trace.core.graph.viz import VizBuildOptions, build_viz_data  # noqa: E402
 from trace.core.graph.viz.checker import check_viz_render  # noqa: E402
+from trace.core.graph.viz.elk_bridge import _build_elk_for_viz, run_elk_layout  # noqa: E402
 from trace.core.graph.viz.viz_engine import render_dataflow  # noqa: E402
 
 from .extract_target import extract_target  # noqa: E402
@@ -42,8 +44,12 @@ from .extract_target import extract_target  # noqa: E402
 DEFAULT_DIR = Path('sim/tests/fixtures/golden_mini')
 
 
-def _run_case(fix: Path, level: str) -> tuple[bool, str]:
-    """跑单个 case, 返 (passed, short_message)."""
+def _run_case(fix: Path, level: str, dump_dir: Path | None = None) -> tuple[bool, str]:
+    """跑单个 case, 返 (passed, short_message).
+
+    [2026-08-13] 加 dump_dir 参数: 若提供, 落盘 4 份产物 (viz/elk/layout/svg)
+    便于逐 case review (图 + 代码 对照).
+    """
     try:
         target = extract_target(fix)
     except Exception as e:
@@ -57,8 +63,37 @@ def _run_case(fix: Path, level: str) -> tuple[bool, str]:
         viz = build_viz_data(graph, VizBuildOptions(
             target_module=target, include_edge_expression=True,
             classification=classification, include_node_class=True))
+
+        # [2026-08-13] 落盘 elk 链路各阶段产物
+        if dump_dir is not None:
+            dump_dir.mkdir(parents=True, exist_ok=True)
+            case_name = fix.stem.replace("golden_dataflow_", "case")
+            # 1. VizData (build_viz_data 输出)
+            viz_json = _viz_to_jsonable(viz)
+            (dump_dir / f"{case_name}.viz.json").write_text(
+                json.dumps(viz_json, indent=2, default=str)
+            )
+
+        # 2. ELK JSON (elk_bridge 输出)
+        elk = _build_elk_for_viz(viz)
+        if dump_dir is not None:
+            (dump_dir / f"{case_name}.elk.json").write_text(
+                json.dumps(elk, indent=2, default=str)
+            )
+
+        # 3. ELK layout (elk_layout.js 输出)
+        layout = run_elk_layout(elk)
+        if dump_dir is not None:
+            (dump_dir / f"{case_name}.layout.json").write_text(
+                json.dumps(layout, indent=2, default=str)
+            )
+
+        # 4. SVG 最终输出
         svg = render_dataflow(viz)
-        report = check_viz_render(viz, layout=None, svg=svg, level=level)
+        if dump_dir is not None:
+            (dump_dir / f"{case_name}.svg").write_text(svg)
+
+        report = check_viz_render(viz, layout=layout, svg=svg, level=level)
         ok = all(
             r.passed for r in (
                 report.layer_a + report.layer_b + report.layer_c + report.layer_d
@@ -74,6 +109,32 @@ def _run_case(fix: Path, level: str) -> tuple[bool, str]:
         return False, f'{target}: <no error message>'
     except Exception as e:
         return False, f'{target}: EXCEPTION {type(e).__name__}: {str(e)[:80]}'
+
+
+def _viz_to_jsonable(viz) -> dict:
+    """把 VizData 转成可 JSON 序列化的 dict (用于 dump)。"""
+    def _node_to_dict(n):
+        d = {"id": str(getattr(n, "id", ""))}
+        for attr in ("name", "module", "kind", "class", "width", "file", "line",
+                     "port_side", "node_class"):
+            v = getattr(n, attr, None)
+            if v is not None and v != "" and v != 0:
+                d[attr] = str(v) if not isinstance(v, (int, float, bool, list, dict)) else v
+        return d
+    def _edge_to_dict(e):
+        d = {}
+        for attr in ("src", "dst", "kind", "expression", "condition", "bit_slice",
+                     "assign_type", "clock_domain"):
+            v = getattr(e, attr, None)
+            if v is not None and v != "":
+                d[attr] = str(v) if not isinstance(v, (int, float, bool, list, dict)) else v
+        return d
+    return {
+        "nodes": [_node_to_dict(n) for n in getattr(viz, "nodes", [])],
+        "edges": [_edge_to_dict(e) for e in getattr(viz, "edges", [])],
+        "expr_trees": getattr(viz, "expr_trees", []),
+        "const_map": getattr(viz, "const_map", {}),
+    }
 
 
 def _cli(argv: list[str] | None = None) -> int:
@@ -96,6 +157,10 @@ def _cli(argv: list[str] | None = None) -> int:
         '--quiet', action='store_true',
         help='只打印 fail 和最终统计',
     )
+    parser.add_argument(
+        '--dump', type=Path, default=None,
+        help='落盘 elk 链路各阶段产物 (viz/elk/layout/svg) 到指定目录 (供逐 case review)',
+    )
     args = parser.parse_args(argv)
 
     # 收 fixture 列表
@@ -114,7 +179,7 @@ def _cli(argv: list[str] | None = None) -> int:
     failed = 0
     fails: list[tuple[str, str]] = []
     for fix in fixes:
-        ok, msg = _run_case(fix, args.level)
+        ok, msg = _run_case(fix, args.level, dump_dir=args.dump)
         if ok:
             passed += 1
             if not args.quiet:

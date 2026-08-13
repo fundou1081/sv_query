@@ -724,6 +724,33 @@ class SemanticAdapter:
                                 signal_name = str(left.symbol.name)
                             except (UnicodeDecodeError, TypeError, Exception):
                                 signal_name = "<id:non-utf8>"
+                    # [V15.2 2026-08-13] 方向 A: pyslang semantic AST 处理 ConcatenationExpression
+                    # 当 .port(expr) 的 expr 是 {a, b, c} 时, 原逻辑 (NamedValue/Assignment)
+                    # 不命中 → 整条 conn 被丢弃. 现在走 semantic AST 的 ConcatenationExpression.operands,
+                    # 每个 operand emit 一条 (port_name, signal_name) conn.
+                    # 例: .din({3'b0, offsetted}) → ('din', 'offsetted') (跳过 IntegerLiteral const)
+                    #     让 connection_extractor 生成 offsetted → u_clamp_u.din 跨实例连线
+                    elif "Concatenation" in expr_kind and hasattr(expr, "operands"):
+                        for operand in expr.operands:
+                            op_kind_str = str(getattr(operand, "kind", ""))
+                            # 跳过 const literals (IntegerLiteral, RealLiteral, etc.)
+                            if "Literal" in op_kind_str:
+                                continue
+                            # NamedValueExpression: operand.symbol.name
+                            if hasattr(operand, "symbol") and operand.symbol is not None:
+                                try:
+                                    connections.append((port_name, str(operand.symbol.name)))
+                                    continue
+                                except (UnicodeDecodeError, TypeError, Exception):
+                                    pass
+                            # ElementSelect / RangeSelect (e.g. din[7:0]):
+                            # operand.expr 是 inner NamedValue
+                            inner = getattr(operand, "expr", None)
+                            if inner is not None and hasattr(inner, "symbol") and inner.symbol is not None:
+                                try:
+                                    connections.append((port_name, str(inner.symbol.name)))
+                                except (UnicodeDecodeError, TypeError, Exception):
+                                    pass
 
                 if port_name != "?" and signal_name != "?":
                     connections.append((port_name, signal_name))
