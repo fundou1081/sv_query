@@ -54,3 +54,25 @@ def pytest_configure(config):
                 tmp_p.symlink_to(src_path.resolve())
             except (OSError, FileExistsError):
                 pass
+
+    # Auto-create /tmp/cdc_test/*.sv symlinks for dataflow integration/usage tests.
+    # 这些测试硬编码了 /tmp/cdc_test/<name>.sv 路径, 但真实 fixture 在
+    # sim/tests/integration/dataflow_fixtures/ 下 (a7e4f4c fixture-based 重构时
+    # 只建了 /tmp/*.f 软链, 漏了 /tmp/cdc_test/ 目录, 导致这批测试空跑失败).
+    dataflow_fixtures_dir = Path(__file__).parent / "integration" / "dataflow_fixtures"
+    cdc_test_dir = Path("/tmp/cdc_test")
+    if dataflow_fixtures_dir.is_dir():
+        cdc_test_dir.mkdir(parents=True, exist_ok=True)
+        cdc_srcs = {
+            "comprehensive.sv", "edge2.sv", "golden_mux5.sv",
+            "golden_priority.sv", "nested_not2.sv", "sync_fifo.sv",
+            "two_flop_sync.sv", "typo3.sv", "typo4.sv",
+        }
+        for name in cdc_srcs:
+            src = dataflow_fixtures_dir / name
+            dst = cdc_test_dir / name
+            if src.exists() and not dst.exists():
+                try:
+                    dst.symlink_to(src.resolve())
+                except (OSError, FileExistsError):
+                    pass
