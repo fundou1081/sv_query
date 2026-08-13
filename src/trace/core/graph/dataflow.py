@@ -203,6 +203,18 @@ class DataFlowGraph:
         """
         return self._build_segments(from_signal, to_signal)
 
+    def _edge_condition(self, edge) -> str:
+        """从边提取条件文本 (优先 condition, 为空时回退 condition_chain join).
+
+        [FIX 2026-08-13] always 块内 ternary 场景下 edge.condition 为空, 但
+        condition_chain 已正确填充 (e.g. ['a']). 回退读 chain 避免条件丢失.
+        """
+        cond = getattr(edge, "condition", None)
+        if cond:
+            return cond
+        chain = getattr(edge, "condition_chain", None) or []
+        return " && ".join([c for c in chain if c])
+
     def _build_segment(self, from_signal: str, to_signal: str) -> DataFlowSegment | None:
         """构建段信息 - 返回优先级最高的边
 
@@ -234,7 +246,7 @@ class DataFlowGraph:
             from_signal=from_signal,  # 保持原始 hierarchy path
             to_signal=to_signal,
             driver=edge.expression if hasattr(edge, "expression") else None,
-            condition=edge.condition if hasattr(edge, "condition") else None,
+            condition=self._edge_condition(edge),
             effective_condition=edge.effective_condition if hasattr(edge, "effective_condition") else None,
             timing=edge.clock_domain if hasattr(edge, "clock_domain") else None,
             assign_type=edge.assign_type if hasattr(edge, "assign_type") else "continuous",
@@ -275,7 +287,7 @@ class DataFlowGraph:
                     from_signal=from_signal,
                     to_signal=to_signal,
                     driver=edge.expression if hasattr(edge, "expression") else None,
-                    condition=edge.condition if hasattr(edge, "condition") else None,
+                    condition=self._edge_condition(edge),
                     effective_condition=edge.effective_condition if hasattr(edge, "effective_condition") else None,
                     timing=edge.clock_domain if hasattr(edge, "clock_domain") else None,
                     assign_type=edge.assign_type if hasattr(edge, "assign_type") else "continuous",
