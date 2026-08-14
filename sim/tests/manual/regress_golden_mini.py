@@ -114,20 +114,60 @@ def _run_case(fix: Path, level: str, dump_dir: Path | None = None) -> tuple[bool
 def _viz_to_jsonable(viz) -> dict:
     """把 VizData 转成可 JSON 序列化的 dict (用于 dump)。"""
     def _node_to_dict(n):
+        # [V16 Plan Phase 3.1 2026-08-14] dump 字段补全:
+        # label, full_path, cluster_id, instance_path, module_type,
+        # def_name, depth, is_port, is_function, class_ (修正 Python class 冲突),
+        # class_confidence, risk_level, risk_score, cover_status,
+        # stage_id, cycle, is_input, is_output, is_critical
         d = {"id": str(getattr(n, "id", ""))}
-        for attr in ("name", "module", "kind", "class", "width", "file", "line",
-                     "port_side", "node_class"):
+        for attr in ("name", "label", "full_path", "module", "module_type",
+                     "kind", "class_", "class_confidence",
+                     "width", "file", "line",
+                     "def_name", "depth",
+                     "port_side", "cluster_id", "instance_path",
+                     "risk_level", "risk_score", "cover_status"):
             v = getattr(n, attr, None)
             if v is not None and v != "" and v != 0:
                 d[attr] = str(v) if not isinstance(v, (int, float, bool, list, dict)) else v
+        # bool 字段 (过滤默认值 False)
+        for attr in ("is_port", "is_function", "is_input", "is_output", "is_critical"):
+            v = getattr(n, attr, None)
+            if v is not None and v is not False:
+                d[attr] = bool(v)
+        # stage_id/cycle 是 int? 类型, 默认 None (过滤)
+        for attr in ("stage_id", "cycle"):
+            v = getattr(n, attr, None)
+            if v is not None:
+                d[attr] = int(v)
         return d
     def _edge_to_dict(e):
+        # [V16 Plan Phase 3.1 2026-08-14] dump 字段补全:
+        # effective_condition, condition_chain, is_port_connection, port_name,
+        # is_control_edge, edge_cycle_delta, source_signal, source_op,
+        # source_bit_start, source_bit_end, confidence, reset_condition
         d = {}
-        for attr in ("src", "dst", "kind", "expression", "condition", "bit_slice",
-                     "assign_type", "clock_domain"):
+        for attr in ("src", "dst", "kind", "expression", "bit_slice",
+                     "assign_type", "clock_domain",
+                     "effective_condition", "source_signal", "source_op",
+                     "source_operand_side", "source_casts",
+                     "confidence", "reset_condition", "port_name"):
             v = getattr(e, attr, None)
-            if v is not None and v != "":
+            if v is not None and v != "" and v != []:
                 d[attr] = str(v) if not isinstance(v, (int, float, bool, list, dict)) else v
+        # condition_chain (list[str], 过滤空 list)
+        cc = getattr(e, "condition_chain", None)
+        if cc:
+            d["condition_chain"] = list(cc)
+        # bool 字段
+        for attr in ("is_port_connection", "is_control_edge", "source_is_decomposed"):
+            v = getattr(e, attr, None)
+            if v is not None and v is not False:
+                d[attr] = bool(v)
+        # int 字段
+        for attr in ("source_bit_start", "source_bit_end", "edge_cycle_delta"):
+            v = getattr(e, attr, None)
+            if v is not None:
+                d[attr] = int(v)
         return d
     return {
         "nodes": [_node_to_dict(n) for n in getattr(viz, "nodes", [])],
