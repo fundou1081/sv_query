@@ -102,6 +102,48 @@ sv_query visualize dataflow -f top.sv --dot output.svg
 
 复合条件展开，分支内嵌操作符
 
+### 32 个 Golden Case 数据流图全景（V15.2+）
+
+下面这张 4×8 grid 包含 **32 个 `golden_dataflow_*.sv` fixture** 的全部数据流可视化输出，按 case 编号 1 → 31 排序（case12 含 2 张：complex + mixed，故 32 张图覆盖 31 个编号）。
+
+![v15.2 32 cases grid](docs/images/v15_2_32cases_grid.png)
+
+涵盖的场景类型：
+- **基础算子** (case1-3)：算术、切片、拼接
+- **复杂运算** (case4-6)：concat、signed、$clog2
+- **三元 + case + if-else** (case7-20)：各种嵌套分支与多路选择
+- **generate 循环 + case** (case21-31)：生成块、函数复用、数组索引
+
+**生成过程**（在 `~/my_dv_proj/sv_query` 目录下，Python 3.11+pyslang 11.0.0+ELK 0.9+）：
+
+```bash
+# 1. 跑 32 case strict 回归 + dump 每个 case 的 SVG
+PYTHONPATH=src python3 -m sim.tests.manual.regress_golden_mini \
+    --level strict --quiet \
+    --dump /tmp/viz_32_full
+# → PASSED: 32 / 32
+
+# 2. SVG → PNG 批量转换
+mkdir -p /tmp/v15_2_32cases
+for svg in /tmp/viz_32_full/*.svg; do
+    name=$(basename "$svg" .svg)
+    rsvg-convert -f png -o "/tmp/v15_2_32cases/${name}.png" "$svg"
+done
+
+# 3. 拼成 4×8 grid 全景图
+montage /tmp/v15_2_32cases/*.png \
+    -tile 4x8 \
+    -geometry 320x220+6+6 \
+    -background white \
+    -bordercolor '#888888' \
+    /tmp/v15_2_32cases_grid.png
+```
+
+**关键产物**：
+- 单图：32 个 PNG（`case1_op.png` 到 `case31_generate_case.png`）—— 全部在 `docs/images/`
+- 全景：1 张 4×8 grid（JPEG 1.37 MB）—— `docs/images/v15_2_32cases_grid.png`
+- 严格回归：**32 / 32 PASS**（V15.2 semantic AST 修复对所有 32 case 零回归）
+
 ### 实现细节
 
 | 路径 | 条件 | 渲染方式 |
