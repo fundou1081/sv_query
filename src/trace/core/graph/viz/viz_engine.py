@@ -208,10 +208,16 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     # Edges
     for e in edges:
         ekind = e.get('kind', '')
-        estroke = e.get('stroke', '')  # [V14 2026-08-13] CROSS_TOP 红线
+        # [V16 Plan Phase 1.5 2026-08-14] stroke 字段可能在 _meta 子字典里 (V15.1 emit 路径)
+        # 或在顶层 (V14 emit 路径). 都读一下.
+        _meta_d = e.get('_meta', {}) or {}
+        estroke = e.get('stroke', '') or _meta_d.get('stroke', '')
         if estroke == 'red':
             # CROSS_TOP CONNECTION 边 (D2 决策) - 红色
             stroke, dash = 'red', ''
+        elif estroke == 'purple':
+            # [V15 阶段 6] 跨 instance 连线紫色
+            stroke, dash = '#9C27B0', ''
         elif ekind == 'condition_select':
             stroke, dash = '#989898', ' stroke-dasharray="6,3"'
         else:
