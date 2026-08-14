@@ -102,47 +102,121 @@ sv_query visualize dataflow -f top.sv --dot output.svg
 
 复合条件展开，分支内嵌操作符
 
-### 32 个 Golden Case 数据流图全景（V15.2+）
+### 32 个 Golden Case 数据流图全景（V16.6+）
 
-下面这张 4×8 grid 包含 **32 个 `golden_dataflow_*.sv` fixture** 的全部数据流可视化输出，按 case 编号 1 → 31 排序（case12 含 2 张：complex + mixed，故 32 张图覆盖 31 个编号）。
+下面这张 4×8 grid 包含 **32 个 `golden_dataflow_*.sv` fixture** 的全部数据流可视化输出（V16.6 修复后），按 case 编号 1 → 31 排序（case12 含 2 张：complex + mixed，故 32 张图覆盖 31 个编号）。
 
-![v15.2 32 cases grid](docs/images/v15_2_32cases_grid.png)
+![v16.6 32 cases grid](docs/images/v16_6_32cases_grid.png)
 
 涵盖的场景类型：
 - **基础算子** (case1-3)：算术、切片、拼接
 - **复杂运算** (case4-6)：concat、signed、$clog2
 - **三元 + case + if-else** (case7-20)：各种嵌套分支与多路选择
 - **generate 循环 + case** (case21-31)：生成块、函数复用、数组索引
+- **层级设计** (case26)：4 个 instance 各自的 cluster 框，顶层 cluster_target_top 作为最大外层框
 
-**生成过程**（在 `~/my_dv_proj/sv_query` 目录下，Python 3.11+pyslang 11.0.0+ELK 0.9+）：
+### V16 Plan 重大改进（V16.1 → V16.6）
+
+V16 Plan 完整故事线见 [`docs/VIZ_V16_PLAN.md`](docs/VIZ_V16_PLAN.md)，6 个 phase 解决的问题：
+
+#### V16.1 — const / sig 节点归位 + 紫色 stroke 修复 (commit `73b16ec`)
+
+const 节点从"永远在顶层"修复为按 `parent_module` 归位到对应 instance cluster。
+
+![V16.1 case26 const cluster](docs/images/case26_v16_p1_const_cluster.png)
+
+#### V16.2 — 4 个 wire 节点归位 cluster_target_top (commit `cf208fb`)
+
+`sig_<name>_wire` 节点（`render_tree` 的递归匹配结果）从散落各处归位到顶层 cluster_target_top。
+
+![V16.2 case26 wire nodes](docs/images/case26_v16_p2_wire_nodes.png)
+
+#### V16.3 — A3 orphan 检测用 layout 数据 + 32-case 全 PASS (commit `5df3736`)
+
+`checker.py` A3 规则从用 `viz.nodes` 切换为用 ELK `layout.json`，orphan 检测基于真实渲染位置。
+
+![V16.3 32-case pass](docs/images/case26_v16_p3_32case_pass.png)
+
+#### V16.3.2 — VizData emit const 节点 (commit `382d5d6`)
+
+`viz_data_builder._walk_collect_const()` 从 `graph._expr_trees` 递归找 `op='Const'` 节点生成 VizNode，让 const 在 viz.json 里可验证。
+
+![V16.3.2 case26 const vizdata](docs/images/case26_v16_p3_2_const_vizdata.png)
+
+#### V16.4 — 嵌套 cluster：top 作为最大框，子 instance cluster 嵌套其中 (commit `14a6a91`)
+
+`_wrap_into_clusters` 改写：子 instance cluster 嵌套到 `cluster_target_top.children` 而不是 root 的 children。
+
+![V16.4 case26 nested clusters](docs/images/case26_v16_p4_nested_clusters.png)
+
+#### V16.5 — 线位置修复：用 ELK container 字段决定 cluster offset (commit `e08c64c`)
+
+`_render_svg_direct.walk_e()` 用 `e.get('container')` 取 cluster offset，修复 case26 29 条边端点错位。
+
+![V16.5 case26 line fix](docs/images/case26_v16_p5_line_fix.png)
+
+#### V16.6 — 顶层 const cluster_id 归位（消除 CROSS_TOP 红线）(commit `c32e7ac`)
+
+`elk_bridge.py` L443-448 新增分支：`parent_module == target_mod` 时 const 节点归到 `cluster_target_top` 而非创建嵌套子框 `cluster_<mod>`，消除 case2 等单层 module 的误判红线。
+
+**case2 (with_const) 修复前 vs 修复后**：
+
+![V16.6 case2 red line fix](docs/images/case2_v16_6_red_line_fix.png)
+
+- 修复前：2 条红色 CROSS_TOP 边（const_n_8_d128_4 → op_+ 和 const_n_2_6 → op_>>）
+- 修复后：0 条红线，所有 const 节点归位到 cluster_target_top 顶层
+
+**V16.6 修复源码**（`src/trace/core/graph/viz/elk_bridge.py` L441-457）：
+
+```python
+_target_mod = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+_cluster_id = parent_module
+# V16 Plan Phase 1.5: 顶层 const (parent_module == target_mod) 
+# 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框
+if _target_mod and _cluster_id == _target_mod:
+    _cluster_id = ''  # 顶层, 归 cluster_target_top
+elif _target_mod and _cluster_id.startswith(_target_mod + '.'):
+    _cluster_id = _cluster_id[len(_target_mod) + 1:]
+_meta = {'kind': 'const', 'cluster_id': _cluster_id or ''}
+```
+
+### V16.6 完整验证
+
+- ✅ **32-case strict regression: 32 / 32 PASS**（V16.1 → V16.6 零回归）
+- ✅ **case2 红线消失**：0 red edges (修复前 2 条)
+- ✅ **case26 const 归位保持不变**：`u_clamp`/`u_clamp_u`/`u_off`/`u_scale` 4 个 cluster 仍正确归位
+- ✅ **嵌套 cluster 结构保持**：V16.4 引入的 cluster_target_top 嵌套子框结构不受影响
+
+### 生成过程（在 `~/my_dv_proj/sv_query` 目录下）
 
 ```bash
-# 1. 跑 32 case strict 回归 + dump 每个 case 的 SVG
+# 1. 跑 32 case strict 回归 + dump 每个 case 的 SVG/PNG/viz.json/elk.json/layout.json
 PYTHONPATH=src python3 -m sim.tests.manual.regress_golden_mini \
     --level strict --quiet \
     --dump /tmp/viz_32_full
 # → PASSED: 32 / 32
 
 # 2. SVG → PNG 批量转换
-mkdir -p /tmp/v15_2_32cases
+mkdir -p /tmp/v16_32cases
 for svg in /tmp/viz_32_full/*.svg; do
     name=$(basename "$svg" .svg)
-    rsvg-convert -f png -o "/tmp/v15_2_32cases/${name}.png" "$svg"
+    rsvg-convert -f png -o "/tmp/v16_32cases/${name}.png" "$svg"
 done
 
-# 3. 拼成 4×8 grid 全景图
-montage /tmp/v15_2_32cases/*.png \
+# 3. 拼成 4×8 grid 全景图 (1.18 MB)
+montage /tmp/v16_32cases/*.png \
     -tile 4x8 \
-    -geometry 320x220+6+6 \
-    -background white \
-    -bordercolor '#888888' \
-    /tmp/v15_2_32cases_grid.png
+    -geometry '280x180+5+5' \
+    -background '#fafafa' \
+    /tmp/v16_32cases_grid.png
 ```
 
-**关键产物**：
-- 单图：32 个 PNG（`case1_op.png` 到 `case31_generate_case.png`）—— 全部在 `docs/images/`
-- 全景：1 张 4×8 grid（JPEG 1.37 MB）—— `docs/images/v15_2_32cases_grid.png`
-- 严格回归：**32 / 32 PASS**（V15.2 semantic AST 修复对所有 32 case 零回归）
+**关键产物**（全部在 `docs/images/`）：
+- `v16_6_32cases_grid.png` (1.18 MB, 4×8 grid, V16.6 修复后 32 case 全景)
+- `case1_op.png` 到 `case31_generate_case.png` (32 个单图)
+- `case2_const.png` (V16.6 修复后 case2 渲染)
+- `case2_v16_6_red_line_fix.png` (case2 修复前后对比)
+- `case26_v16_p1_const_cluster.png` ~ `case26_v16_p5_line_fix.png` (V16 6 phase 进度记录)
 
 ### 实现细节
 
@@ -150,10 +224,13 @@ montage /tmp/v15_2_32cases/*.png \
 |------|------|---------|
 | ExpressionTree | 有 `assign` / 组合逻辑 | `expr_trees_to_elk()` → ELK layered layout |
 | Compound fallback | 纯时序 / case / if | `viz_to_elk()` → ELK compound graph |
+| Nested clusters | target_mod 有子 instance | `_wrap_into_clusters()` 嵌套到 cluster_target_top |
+| Const emission | expr tree 含 Const 节点 | `_walk_collect_const()` → VizNode (kind=CONST) |
+| Stroke colors | dataflow/condition/cross-instance/cross-top | `#555` 实线 / `#989` 虚线 / `#9C27B0` 紫色 / `red` 红色 |
 
 - **三目展开**: `ExpressionTree._build_ternary()` 从 pyslang AST `ConditionalPredicate` 提取条件+真/假分支
-- **边颜色**: dataflow 实线 `#555` / condition_select 虚线 `#989` (stroke-dasharray 6,3)
-- **节点类型**: port_in/port_out (灰色圆角) · op (橙色方框) · signal (黄色圆角) · const (青色圆角)
+- **边颜色**: dataflow 实线 `#555` / condition_select 虚线 `#989` (stroke-dasharray 6,3) / 跨 instance 紫色 `#9C27B0` / CROSS_TOP 红色 `red`
+- **节点类型**: port_in/port_out (灰色圆角) · op (橙色方框) · signal (黄色圆角) · const (青色圆角) · cluster (浅蓝边框 solid, target 虚线)
 
 ---
 
