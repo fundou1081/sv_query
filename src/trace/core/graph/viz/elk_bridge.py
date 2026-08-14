@@ -505,6 +505,10 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         'children': root_children,
         'edges': root_edges,
     }
+    # [V16 Plan Phase 2.1 2026-08-14] emit wire 节点 + 两步紫色边在 _wrap_into_clusters 之前
+    # 这样 emit 的 sig_scaled_wire 等 wire 节点会被 _wrap_into_clusters 看到, 放进 cluster_target_top
+    if viz is not None:
+        result = _emit_cross_instance_connection_edges(result, viz)
     # [V14 2026-08-13] 层级模块折叠 cluster 重组
     return _wrap_into_clusters(viz, result)
 
@@ -581,7 +585,18 @@ def _wrap_into_clusters(viz, elk_json):
             return ''
         # 'sig_<label>_<n>' 形式
         if cid.startswith('sig_'):
+            # [V16 Plan Phase 2.1 2026-08-14] wire 节点 (e.g. sig_scaled_wire) 总是顶层
+            # 之前 rsplit('_', 1) 会拆 'scaled_wire' 为 'scaled'+'wire' 然后找 scaled 找不到
+            # V16: 检测 _wire 后缀直接返回 '' (进入 cluster_target_top)
+            if cid.endswith('_wire'):
+                return ''  # 顶层, 进入 cluster_target_top
             label = cid[4:].rsplit('_', 1)[0]
+            # [V16 Plan Phase 1.4 2026-08-14] sig 节点 同样 const 路径, 优先读 _meta.cluster_id
+            for child in root_children:
+                if str(child.get('id', '')) == cid:
+                    _mc = str(child.get('_meta', {}).get('cluster_id', ''))
+                    if _mc:
+                        return _mc
             for vp, vc in fp_to_cid.items():
                 if vp.endswith('.' + label.replace('_dot_', '.')):
                     return vc
@@ -671,7 +686,9 @@ def _wrap_into_clusters(viz, elk_json):
         src_cid = eid_to_cid.get(src_id, '')
         dst_cid = eid_to_cid.get(dst_id, '')
         is_cross_top = (src_cid == '' and dst_cid != '') or (dst_cid == '' and src_cid != '')
-        if is_cross_top:
+        # [V16 Plan Phase 2.1 2026-08-14] 只覆盖 stroke 默认情况的边. 不覆盖 explicit stroke='purple'
+        # (紫色是 V16 跨 instance 两步边的明确颜色, CROSS_TOP 默认是红色)
+        if is_cross_top and not meta.get('stroke'):
             meta['stroke'] = 'red'
             meta['cross_top'] = True
         new_e = dict(e)
@@ -929,7 +946,11 @@ def viz_to_elk(viz: VizData) -> dict:
             print(f"[WARN] removed edge {e['id']}: endpoint not in emitted nodes "
                   f"(src={srcs}, tgt={tgts})", file=sys.stderr)
 
-    return _wrap_into_clusters(viz, _make_graph(root_children, root_edges))
+    # [V16 Plan Phase 2.1 2026-08-14] emit wire 节点 + 两步紫色边 在 _wrap_into_clusters 之前
+    # 这样 emit 的 sig_scaled_wire 等 wire 节点会进入 cluster_target_top 内部
+    graph = _make_graph(root_children, root_edges)
+    graph = _emit_cross_instance_connection_edges(graph, viz)
+    return _wrap_into_clusters(viz, graph)
 
 
 def _make_graph(children, edges):
@@ -1046,8 +1067,8 @@ def _build_elk_for_viz(viz):
     # 或 wire → instance port) 是必要的. 这里 post-process 补上这些边.
     # [V15 fix 2] 移到所有路径之后, case26 (expr_trees=0) 也能触发.
     # [V15 fix 6] 路径 1 原本有 return, 跳过 post-process. 修复后统一走末尾.
-    if viz is not None:
-        elk = _emit_cross_instance_connection_edges(elk, viz)
+    # [V16 Plan Phase 2.1 2026-08-14] emit 边 + 紫色移到 expr_trees_to_elk / viz_to_elk 内部
+    # (_wrap_into_clusters 之前). 这里不放 emit, 避免重复 emit wire 节点.
     return elk
 
 
@@ -1095,11 +1116,18 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
     _real_top_ports = _all_top_ports - _instance_ports  # 只含 target module 顶层 port
     _wire_to_dsts = defaultdict(list)  # wire → [Y.din]
     _srcs_to_wire = defaultdict(list)  # X.dout → [wire]
+    # [V16 Plan Phase 2.1 2026-08-14] 收集真正 wire 节点: 只有 CONNECTION 边 src/dst 端才算
+    # 之前 V16 收集逻辑太宽泛把 SignalRef 中间变量 (e.g. din[7:0]) 也算入, 导致重复 emit
+    _wire_nodes_v16 = set()
     for e in viz.edges:
         ek = str(e.kind) if not isinstance(e.kind, str) else e.kind
         if ek != 'CONNECTION':
             continue
         s, t = str(e.src), str(e.dst)
+        if s not in _all_top_ports and s not in _instance_ports:
+            _wire_nodes_v16.add(s)
+        if t not in _all_top_ports and t not in _instance_ports:
+            _wire_nodes_v16.add(t)
         s_is_inst = s in _instance_ports
         t_is_inst = t in _instance_ports
         s_is_top = s in _real_top_ports
@@ -1111,7 +1139,10 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
             # 'wire → Y.din'
             _wire_to_dsts[s].append(t)
 
-    # 3b. 拼接: X.dout → wire → Y.din → emit X.dout → Y.din
+    # 3b. [V16 Plan Phase 2.1 2026-08-14] emit wire 节点 + 两步 X.dout → wire → Y.din
+    # 之前 V15 fix 3 走一步 emit X.dout → Y.din, 跳过中间 wire 节点
+    # 现在 V16 改为: emit wire 节点 (cluster_id='') 然后 emit 两条边 (X.dout → wire, wire → Y.din)
+    root_children = elk_json.get('children', [])
     root_edges = elk_json.get('edges', [])
     existing_edge_keys = set()
     for e in root_edges:
@@ -1119,38 +1150,67 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
             for t in e.get('targets', []):
                 existing_edge_keys.add((s, t))
 
+    # emit wire 节点 (cluster_id='' 顶层, 走 _wrap_into_clusters 放入 cluster_target_top)
+    for wire_id in _wire_nodes_v16:
+        wire_short = wire_id.rsplit('.', 1)[-1] if '.' in wire_id else wire_id
+        wire_node_id = f'sig_{_safe(wire_short)}_wire'
+        if any(c.get('id') == wire_node_id for c in root_children):
+            continue
+        root_children.append({
+            'id': wire_node_id, 'width': SIG_W, 'height': SIG_H,
+            'labels': [{'text': wire_short, 'fontSize': 8, 'fontName': 'Courier'}],
+            '_meta': {'kind': 'signal', 'cluster_id': ''},
+        })
+
     ctr = [int(root_edges[-1]['id'][1:]) if root_edges else 0]
     def _ne():
         ctr[0] += 1
         return f'e{ctr[0]}'
 
-    added = 0
+    # emit X.dout → wire (紫色, 跨 instance)
     for src_inst, wires in _srcs_to_wire.items():
         for wire in wires:
-            for dst_inst in _wire_to_dsts.get(wire, []):
-                # 拼接 X.dout → Y.din (跨 instance 一步)
-                s_id = _map_to_elk_id(src_inst, _instance_ports, set(), _all_top_ports)
-                t_id = _map_to_elk_id(dst_inst, _instance_ports, set(), _all_top_ports)
-                if not s_id or not t_id:
-                    continue
-                if (s_id, t_id) in existing_edge_keys:
-                    continue
-                # 跨 instance CONNECTION 用紫色 (区分于 CROSS_TOP 红)
-                root_edges.append({
-                    'id': _ne(),
-                    'sources': [s_id],
-                    'targets': [t_id],
-                    '_meta': {
-                        'kind': 'connection',
-                        'stroke': 'purple',  # [V15 阶段 6] 跨 instance 连线紫色
-                        'v15_added': True,
-                    },
-                })
-                existing_edge_keys.add((s_id, t_id))
-                added += 1
+            s_id = _map_to_elk_id(src_inst, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            t_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            if not s_id or not t_id:
+                continue
+            if (s_id, t_id) in existing_edge_keys:
+                continue
+            root_edges.append({
+                'id': _ne(),
+                'sources': [s_id],
+                'targets': [t_id],
+                '_meta': {
+                    'kind': 'connection',
+                    'stroke': 'purple',  # [V15 阶段 6] 跨 instance 连线紫色
+                    'v15_added': True,
+                },
+            })
+            existing_edge_keys.add((s_id, t_id))
 
-    if added:
-        elk_json['edges'] = root_edges
+    # emit wire → Y.din (紫色, 跨 instance)
+    for wire, dst_insts in _wire_to_dsts.items():
+        for dst_inst in dst_insts:
+            s_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            t_id = _map_to_elk_id(dst_inst, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            if not s_id or not t_id:
+                continue
+            if (s_id, t_id) in existing_edge_keys:
+                continue
+            root_edges.append({
+                'id': _ne(),
+                'sources': [s_id],
+                'targets': [t_id],
+                '_meta': {
+                    'kind': 'connection',
+                    'stroke': 'purple',  # [V15 阶段 6] 跨 instance 连线紫色
+                    'v15_added': True,
+                },
+            })
+            existing_edge_keys.add((s_id, t_id))
+
+    elk_json['children'] = root_children
+    elk_json['edges'] = root_edges
     return elk_json
 
 
