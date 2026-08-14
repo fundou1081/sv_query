@@ -440,7 +440,13 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             # 注: viz.meta.target_module 是 'golden_hier_top', 需去掉前缀匹配 VizNode.cluster_id 短名规则
             _target_mod = (viz.meta or {}).get('target_module', '') if viz is not None else ''
             _cluster_id = parent_module
-            if _target_mod and _cluster_id.startswith(_target_mod + '.'):
+            # [V16 Plan Phase 1.5 2026-08-14] FIX: 顶层 const (parent_module == target_mod) 
+            # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
+            # Bug 路径: case2 (with_const) const 8'd128/2 实际归到 cluster_with_const 子框,
+            # → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
+            if _target_mod and _cluster_id == _target_mod:
+                _cluster_id = ''  # 顶层, 归 cluster_target_top
+            elif _target_mod and _cluster_id.startswith(_target_mod + '.'):
                 _cluster_id = _cluster_id[len(_target_mod) + 1:]
             _meta = {'kind': 'const', 'cluster_id': _cluster_id or ''}
             root_children.append({
