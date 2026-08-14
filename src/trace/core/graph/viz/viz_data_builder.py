@@ -143,6 +143,62 @@ def build_viz_data(
 
     viz.nodes = list(node_map.values())
 
+    # [V16 Plan Phase 3.2 2026-08-14] 从 expr_trees 提取 const 节点 emit 进 VizData
+    # 之前 V16.1 让 const 进 ELK (via expr_trees_to_elk), 但 VizData.nodes 没有 const,
+    #  导致 dump 的 viz.json 看不出 const 是否归位到正确 instance cluster.
+    # 修复: 遍历 graph._expr_trees, 递归找 op='Const' 节点, 给每个 const 创建 VizNode
+    # (kind='CONST', cluster_id=parent instance_path, instance_path=parent instance_path,
+    #  module=parent module).
+    target_mod = opts.target_module or ''
+    expr_trees = getattr(graph, '_expr_trees', {}) or {}
+    const_seen: set[tuple[str, str]] = set()  # (instance_path, label) 去重
+    for tree_key, tree_dict in expr_trees.items():
+        if not isinstance(tree_dict, dict):
+            continue
+        # tree_key 格式: "{module_name}.{lhs_name}" (e.g. "golden_hier_top.u_clamp.dout")
+        # 解析 module 和 lhs
+        parts = tree_key.rsplit('.', 1)
+        if len(parts) != 2:
+            continue
+        parent_module_full, lhs_short = parts
+        # 计算 instance_path (parent module 相对 target_mod 的路径)
+        if target_mod and parent_module_full.startswith(target_mod + '.'):
+            inst_path = parent_module_full[len(target_mod) + 1:]
+        elif target_mod and parent_module_full == target_mod:
+            inst_path = ''  # 顶层
+        else:
+            # target_mod 为空或 parent_module 不属于 target, 用完整路径
+            inst_path = parent_module_full
+        # 递归遍历 tree 找 Const 节点
+        def _walk_collect_const(node, path):
+            if not isinstance(node, dict):
+                return
+            op = node.get('op')
+            lbl = node.get('label')
+            if op == 'Const' and lbl:
+                key = (inst_path, lbl)
+                if key not in const_seen:
+                    const_seen.add(key)
+                    # [V16 Plan Phase 3.2 2026-08-14] const_id 加 parent instance_path 前缀防重复
+                    # 多个 instance 可能有相同 lhs (如 .u_clamp.dout 和 .u_clamp_u.dout),
+                    # 需在 const_id 里包含 inst_path 区分.
+                    label_safe = lbl.replace(chr(39), '').replace('d', '_d').replace('b', '_b').replace('h', '_h')
+                    inst_safe = inst_path.replace('.', '_') if inst_path else 'top'
+                    const_id = f"const_n_{inst_safe}_{lhs_short}_{label_safe}"
+                    cn = VizNode(
+                        id=const_id,
+                        label=lbl,
+                        full_path=const_id,
+                        module=parent_module_full,
+                        kind='CONST',
+                        cluster_id=inst_path,
+                        instance_path=inst_path,
+                    )
+                    viz.nodes.append(cn)
+            for c in node.get('children', []) or []:
+                _walk_collect_const(c, path)
+        _walk_collect_const(tree_dict, [])
+
     # ── 构建边 ──
     edge_count = 0
     for src, dst in list(graph.edges()):
@@ -195,7 +251,11 @@ def build_viz_data(
             n.is_port = True
             n.port_side = 'right'
     viz.nodes = [n for n in viz.nodes
-                 if n.kind != "CONST" or n.id in port_in_has_direct_edge]
+                 if n.kind != "CONST"
+                 or n.id in port_in_has_direct_edge
+                 # [V16 Plan Phase 3.2 2026-08-14] 保留从 expr_trees 提取的 instance 内 const 节点
+                 or n.cluster_id
+                ]
 
     viz.meta["filtered_node_count"] = viz.node_count
     viz.meta["filtered_edge_count"] = viz.edge_count
