@@ -635,20 +635,28 @@ def _wrap_into_clusters(viz, elk_json):
                 break
         if not target_label and viz.meta:
             target_label = viz.meta.get('target_module', 'target')
-        new_children.append({
+        # [V16.4 2026-08-14] top 作为最大框，子 instance cluster 嵌套在其内
+        # 之前所有子 cluster append 到 new_children (root 的 children), 跟 cluster_target_top 平级
+        # 现在子 cluster 嵌套到 cluster_target_top.children, 真正实现递归嵌套
+        cluster_target_top_node = {
             'id': 'cluster_target_top',
             'labels': [{'text': target_label, 'fontSize': 10}],
             'borderStyle': 'dashed',
             '_meta': {'is_cluster': True, 'is_target': True, 'cluster_id': ''},
-            'children': clusters[''],
+            'children': list(clusters['']),  # 顶层叶子节点
             # [V15 2026-08-13 修复] 删硬编码 width/height — 让 ELK 自动算 cluster 尺寸.
             # 之前设 (200,150) / (180,130) 让多个 cluster 子节点 layout 到相同相对坐标,
             # 出现 sp/ep 重叠 → SVG 看起来"重复 path".
-        })
+        }
+        new_children.append(cluster_target_top_node)
     elif clusters['']:
         # 纯顶层 case: 保持扁平, 不加 wrapper
         for child in clusters['']:
             new_children.append(child)
+
+    # [V16.4 2026-08-14] 子 instance cluster 嵌套到 cluster_target_top (而非平级)
+    # 保持 cluster_target_top_node 引用以便 append 子 cluster 到其内部
+    parent_top_node = new_children[-1] if (clusters[''] and has_submodules) else None
 
     for cid in sorted(k for k in clusters if k):
         mod_type = ''
@@ -659,7 +667,7 @@ def _wrap_into_clusters(viz, elk_json):
         label_text = f'{mod_type}  {cid}' if mod_type else cid
         elk_cluster_id = f'cluster_{_safe(cid)}'
         cluster_id_to_elk_id[cid] = elk_cluster_id
-        new_children.append({
+        sub_cluster_node = {
             'id': elk_cluster_id,
             'labels': [{'text': label_text, 'fontSize': 10}],
             'borderStyle': 'solid',
@@ -667,7 +675,12 @@ def _wrap_into_clusters(viz, elk_json):
                       'module_type': mod_type, 'instance_path': cid},
             'children': clusters[cid],
             # [V15 2026-08-13 修复] 删硬编码 width/height — 让 ELK 自动算 cluster 尺寸.
-        })
+        }
+        # 嵌套到 cluster_target_top, 否则平级
+        if parent_top_node is not None:
+            parent_top_node['children'].append(sub_cluster_node)
+        else:
+            new_children.append(sub_cluster_node)
 
     # ── 3. 不重写 edge 端点 (ELK compound 自动处理)
     # 只加 _meta.stroke = 'red' 给 CROSS_TOP 边 (D2 决策)
