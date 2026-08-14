@@ -447,7 +447,7 @@ def _check_layer_d(viz, exp: ExpectedCounts) -> list[CheckResult]:
 # ═══════════════════════════════════════════════════
 
 def _check_layer_a(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
-                   viz, exp: ExpectedCounts) -> list[CheckResult]:
+                   viz, exp: ExpectedCounts, layout: dict | None = None) -> list[CheckResult]:
     results = []
     
     # A1: SVG leaf 数 vs 预期 leaf 数
@@ -502,13 +502,41 @@ def _check_layer_a(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     
     orphan_count = 0
     orphan_labels = []
+    # [V16 Plan Phase 3.1 2026-08-14] 优先用 layout 数据检测 orphan (ELK JSON 里有 sources/targets 列表)
+    # fallback 到 SVG 几何检测
+    _layout_incident_labels = None
+    if layout is not None:
+        _layout_incident_labels = set()
+        def _walk_layout(n):
+            if isinstance(n, dict):
+                # 收集边端的 full id (用于精确匹配)
+                for e in n.get('edges', []) or []:
+                    for s in e.get('sources', []) or []:
+                        _layout_incident_labels.add(str(s))
+                    for t in e.get('targets', []) or []:
+                        _layout_incident_labels.add(str(t))
+                # 收集节点 labels.text 短名 (用于 SvgNode.label 匹配)
+                # [V16 Plan Phase 3.1 修复] SvgNode 只有 label 字段 (短名如 'a', 'b'),
+                # ELK id 是 full id (如 'sig_a_with_case_dot_y_sel____2_b0'), 必须两者都收集
+                labels = n.get('labels') or []
+                if labels:
+                    _layout_incident_labels.add(str(labels[0].get('text', '')))
+                for c in n.get('children', []) or []:
+                    _walk_layout(c)
+        _walk_layout(layout)
     for n in svg_leaves:
-        # 检查该 rect 是否有任何边端点 incident
         has_incident = False
-        for e in svg_edges:
-            if _is_incident(e.src_x, e.src_y, n) or _is_incident(e.dst_x, e.dst_y, n):
+        # [V16 Plan Phase 3.1] 优先用 layout 数据 (准确)
+        if _layout_incident_labels is not None:
+            # SvgNode 只有 label 字段, 没有 id. 用 label 作为 key (短名匹配 labels.text)
+            if n.label in _layout_incident_labels:
                 has_incident = True
-                break
+        else:
+            # fallback: SVG 几何检测
+            for e in svg_edges:
+                if _is_incident(e.src_x, e.src_y, n) or _is_incident(e.dst_x, e.dst_y, n):
+                    has_incident = True
+                    break
         
         # 例外识别: port_in (#e8e8e8, fill 浅灰, 仅出边) 不算 orphan
         # (即使无 incident 也合法, 因为可能没有连接 — 真的孤立才报错)
@@ -998,7 +1026,7 @@ def check_viz_render(
     report.layer_d = _check_layer_d(viz, exp)
     
     # Layer A — 必跑
-    report.layer_a = _check_layer_a(svg_nodes, svg_edges, viz, exp)
+    report.layer_a = _check_layer_a(svg_nodes, svg_edges, viz, exp, layout=layout)
     
     # Layer B — standard 以上
     if level in ('standard', 'strict'):
