@@ -259,12 +259,16 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         节点 label: ?: (sel_name)
 
         [Plan D1 2026-08-10] parent_module: 上下文传递给 child render_tree.
+
+        [V16 Plan Phase 1.3 2026-08-14] 修正: cond 是表达式树 (e.g. > (din, 11'd255)),
+        之前 V15 只收集 cond_sigs 然后直接 emit 虚线边, 丢失 cond 内部的 op 和 const 节点
+        (e.g. > op, 11'd255). 修复: 递归 render_tree 渲染 cond 子树, 双重 emit (虚线边 + 节点).
         """
         cond = children[0] if len(children) >= 1 else None
         true_child = children[1] if len(children) >= 2 else None
         false_child = children[2] if len(children) >= 3 else None
 
-        # 收集条件信号名
+        # 收集条件信号名 (仅 SignalRef)
         cond_sigs = set()
         if cond:
             collect_signals(cond, cond_sigs)
@@ -300,6 +304,15 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     })
                 src_id = sig_id
             root_edges.append(_emit_edge(ne(), [src_id], [node_id], kind='condition_select'))
+
+        # [V16 Plan Phase 1.3 2026-08-14] 递归渲染 cond 子树 (e.g. > (din, 11'd255))
+        # 产生 > op 节点和 11'd255 const 节点, 这些之前丢失
+        if cond and cond.get('op') not in ('SignalRef',):
+            # cond 是表达式 (如 GreaterThan), 递归 render
+            cond_op_id = render_tree(cond, f'{prefix}_cond', parent_module=parent_module)
+            if cond_op_id:
+                # 让 cond op 节点 → ?: 也连一条 dataflow 边 (不仅 cond_sigs 虚线)
+                root_edges.append(_emit_edge(ne(), [cond_op_id], [node_id]))
 
         # true/false 分支数据 → ?: (普通 dataflow 边)
         for child in (true_child, false_child):
@@ -390,10 +403,15 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                         _signal_cache[_match_label] = sig_id
                         _signal_cache[label] = sig_id
                         return sig_id
+                    # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
+                    _target_mod_sig = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+                    _sig_cluster_id = parent_module
+                    if _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
+                        _sig_cluster_id = _sig_cluster_id[len(_target_mod_sig) + 1:]
                     root_children.append({
                         'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                         'labels': [{'text': _match_label, 'fontSize': 8, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal'},
+                        '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id or ''},
                     })
                     root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
                     _signal_cache[_match_label] = sig_id
@@ -402,20 +420,34 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             sig_id = f'sig_{_safe(label)}_{nc}'
             existing = [c for c in root_children if c.get('id') == sig_id]
             if not existing:
+                # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
+                _target_mod_sig2 = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+                _sig_cluster_id2 = parent_module
+                if _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
+                    _sig_cluster_id2 = _sig_cluster_id2[len(_target_mod_sig2) + 1:]
                 root_children.append({
                     'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                     'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
-                    '_meta': {'kind': 'signal'},
+                    '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id2 or ''},
                 })
             return sig_id
         
         if op == 'Const':
             const_id = f'const_{_safe(label)}_{nc}'
+            # [V16 Plan Phase 1.1 2026-08-14] const 节点归位: cluster_id = parent_module
+            # 例: level2_clamp.u_clamp.dout 的 expr 树里 11'd255 的 parent_module = 'golden_hier_top.u_clamp'
+            # → const 归到 u_clamp cluster (短名), 而不是顶层 cluster_target_top
+            # 注: viz.meta.target_module 是 'golden_hier_top', 需去掉前缀匹配 VizNode.cluster_id 短名规则
+            _target_mod = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+            _cluster_id = parent_module
+            if _target_mod and _cluster_id.startswith(_target_mod + '.'):
+                _cluster_id = _cluster_id[len(_target_mod) + 1:]
+            _meta = {'kind': 'const', 'cluster_id': _cluster_id or ''}
             root_children.append({
                 'id': const_id, 'width': 40, 'height': SIG_H,
                 'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
                 'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
-                '_meta': {'kind': 'const'},
+                '_meta': _meta,
             })
             return const_id
         
@@ -555,8 +587,15 @@ def _wrap_into_clusters(viz, elk_json):
                     return vc
             return ''
         # 'const_<label>_<n>' 形式
+        # [V16 Plan Phase 1.2 2026-08-14] const 节点归位: 读 _meta.cluster_id (Phase 1.1 写入)
+        # 之前硬编码 return '' 是错的: V15 假设 const 总是顶层, 但实际 const 属于
+        # 父 expression tree 所在 instance (e.g. 11'd255 在 u_clamp 内部, 应该在 u_clamp cluster)
         if cid.startswith('const_'):
-            return ''  # const 总是顶层
+            # 在 root_children 里找到对应节点, 读 _meta.cluster_id
+            for child in root_children:
+                if str(child.get('id', '')) == cid:
+                    return str(child.get('_meta', {}).get('cluster_id', ''))
+            return ''  # fallback
         return ''  # 未知 → 顶层
 
     for child in root_children:
