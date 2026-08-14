@@ -113,26 +113,18 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
             meta = e.get('_meta', {})
             ekind = meta.get('kind', '')
             estroke = meta.get('stroke', '')  # [V14 2026-08-13] CROSS_TOP 红线
-            # [V15 2026-08-13] 从 src/tgt id 反查所在 cluster, 取 offset 加到 sp/ep
+            # [V16.5 2026-08-14 调查线位置 bug] ELK 总是把所有 inner-cluster 边 emit 到 root.edges
+            # 但每条边带有 'container' 字段指明它逻辑上属于哪个 cluster.
+            # section.startPoint/endPoint/bendPoints 的坐标是相对 container cluster,
+            # 不是相对 edge 所在的 edges list 的父节点.
+            # 之前 V15 修复用 src_parent == tgt_parent 决策 use_offset, 但这条决策
+            # 假设边放在哪个 edges list 就是相对哪个 cluster — 这对 ELK 不成立.
+            # 正确: 用 e.get('container') 字段 + cluster_offsets.
+            container_id = e.get('container') or 'root'
+            container_off = cluster_offsets.get(container_id, (0.0, 0.0))
+            use_offset = (container_id != 'root')
             src_id = srcs[0] if srcs else '?'
             tgt_id = tgts[0] if tgts else '?'
-            src_parent = _find_parent(layout, src_id) or 'root'
-            tgt_parent = _find_parent(layout, tgt_id) or 'root'
-            src_off = cluster_offsets.get(src_parent, (0.0, 0.0))
-            tgt_off = cluster_offsets.get(tgt_parent, (0.0, 0.0))
-            # [V15 2026-08-13 关键修复] ELK 给不同类型边用不同坐标系:
-            #   - cluster 内部边 (src 和 tgt 在同一 cluster): sp/ep relative-to-cluster, 需要加 cluster offset
-            #   - 跨 cluster 边 (src 和 tgt 在不同 cluster 或 src/tgt 是 cluster 本身): sp/ep 是 root 绝对坐标, 不加 offset
-            # 判断: src_off == tgt_off && src_parent != 'root' 是 cluster 内部边
-            if src_parent == tgt_parent and src_parent != 'root':
-                # cluster 内部边: sp/ep relative-to-cluster, bendPoints 也 relative-to-cluster
-                use_offset = True
-            elif src_parent == 'root' and tgt_parent == 'root':
-                # root 内部边: sp/ep 已经是 root 绝对
-                use_offset = False
-            else:
-                # 跨 cluster 边: sp/ep 是 root 绝对, bendPoints 也 root 绝对
-                use_offset = False
             for sec in e.get('sections', []):
                 sp = sec.get('startPoint') or {}
                 ep = sec.get('endPoint') or {}
@@ -143,13 +135,14 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
                 # 不读它们会导致跨 cluster 边斜切画布. 现在用折线画.
                 bends = sec.get('bendPoints') or []
                 if use_offset:
-                    points = [(sp.get('x', 0) + src_off[0], sp.get('y', 0) + src_off[1])]
+                    # [V16.5 2026-08-14] 用 container offset (非 src_off/tgt_off) 加到所有点
+                    points = [(sp.get('x', 0) + container_off[0], sp.get('y', 0) + container_off[1])]
                     for bp in bends:
-                        # bendPoints 也是 relative-to-cluster, 加 src_off
-                        points.append((bp.get('x', 0) + src_off[0], bp.get('y', 0) + src_off[1]))
-                    points.append((ep.get('x', 0) + tgt_off[0], ep.get('y', 0) + tgt_off[1]))
+                        # bendPoints 也是 relative-to-container, 加 container_off
+                        points.append((bp.get('x', 0) + container_off[0], bp.get('y', 0) + container_off[1]))
+                    points.append((ep.get('x', 0) + container_off[0], ep.get('y', 0) + container_off[1]))
                 else:
-                    # 跨 cluster 边: sp/ep/bends 都是 root 绝对坐标, 不加 offset
+                    # root 内部边: sp/ep/bends 都是 root 绝对坐标, 不加 offset
                     points = [(sp.get('x', 0), sp.get('y', 0))]
                     for bp in bends:
                         points.append((bp.get('x', 0), bp.get('y', 0)))
