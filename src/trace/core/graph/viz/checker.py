@@ -486,11 +486,13 @@ def _check_layer_a(svg_nodes: list[SvgNode], svg_edges: list[SvgEdge],
     
     # A3: 没有孤立 leaf (没有入边或出边的 leaf)
     # 例外: port_in (只有出边, 无入边), port_out (只有入边), condition_anchor
-    # 用 proximity matching: edge 端点在 rect 边界 ±5px 范围内算 incident
+    # 用 proximity matching: edge 端点在 rect 边界 ±30px 范围内算 incident
     def _is_incident(point_x: float, point_y: float, node: SvgNode) -> bool:
         """edge 端点是否落在 rect 边界附近"""
-        # rect 4 条边界上的点都算 incident (含 5px 容忍)
-        tol = 5.0
+        # rect 4 条边界上的点都算 incident (含 30px 容忍)
+        # [V16 Plan Phase 2.1 2026-08-14] 5px → 30px: emit 紫色两步边 (X.dout → wire → Y.din)
+        # 端点在 cluster 边界附近, wire 节点在 cluster 内部, 几何差距可能 ~50px. 5px 太严格.
+        tol = 30.0
         # 检查端点是否在 rect 边界上 (含子像素鲁棒)
         on_left = abs(point_x - node.x) <= tol and node.y - tol <= point_y <= node.y + node.h + tol
         on_right = abs(point_x - (node.x + node.w)) <= tol and node.y - tol <= point_y <= node.y + node.h + tol
