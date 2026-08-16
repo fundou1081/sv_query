@@ -406,7 +406,14 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
                     _target_mod_sig = (viz.meta or {}).get('target_module', '') if viz is not None else ''
                     _sig_cluster_id = parent_module
-                    if _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
+                    # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig (parent_module == target_mod) 
+                    # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
+                    # Bug 路径: case13/19/24/27/28/29 (单 module + function/generate) 的 sig 节点
+                    # 实际归到 cluster_<mod> 子框, → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
+                    # 注意: 真正的子 instance sig 仍归对应 instance cluster (parent_module != target_mod)
+                    if _target_mod_sig and _sig_cluster_id == _target_mod_sig:
+                        _sig_cluster_id = ''  # 顶层, 归 cluster_target_top
+                    elif _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
                         _sig_cluster_id = _sig_cluster_id[len(_target_mod_sig) + 1:]
                     root_children.append({
                         'id': sig_id, 'width': SIG_W, 'height': SIG_H,
@@ -423,7 +430,10 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
                 _target_mod_sig2 = (viz.meta or {}).get('target_module', '') if viz is not None else ''
                 _sig_cluster_id2 = parent_module
-                if _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
+                # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig 同样问题 (与 line 406 注释相同)
+                if _target_mod_sig2 and _sig_cluster_id2 == _target_mod_sig2:
+                    _sig_cluster_id2 = ''  # 顶层, 归 cluster_target_top
+                elif _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
                     _sig_cluster_id2 = _sig_cluster_id2[len(_target_mod_sig2) + 1:]
                 root_children.append({
                     'id': sig_id, 'width': SIG_W, 'height': SIG_H,
