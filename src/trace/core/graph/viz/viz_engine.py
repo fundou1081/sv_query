@@ -275,7 +275,14 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
 def render_dataflow(viz: VizData, config: dict | None = None):
     """数据流/运算图 — ExpressionTree → ELK 布局 → 内联 SVG 渲染"""
     cfg = config or {}
-    title = cfg.get("title", "Dataflow")
+    # [V16 Plan Phase 1.9 2026-08-17] SVG 标题默认从 viz.meta.target_module 推导
+    # 之前默认 "Dataflow" 是通用占位, 但用户看图时无法立刻知道是哪个 module
+    # 改成显示源码 module 名 (e.g. "golden_hier_top", "complex_op")
+    # 优先级: cfg.get("title") > viz.meta.target_module > "Dataflow"
+    if "title" in cfg:
+        title = cfg["title"]
+    else:
+        title = (viz.meta or {}).get("target_module") or "Dataflow"
 
     # [Plan B 2026-08-10] 路由逻辑提到 elk_bridge._build_elk_for_viz,
     # render_dataflow / checker / 测试 代码共享同一份路径选择 (避免 SVG 跟
