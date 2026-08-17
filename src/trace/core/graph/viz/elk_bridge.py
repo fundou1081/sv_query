@@ -276,10 +276,19 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
 
         # ?: OP 节点
         op_w = max(OP_W, len(sel_label) * 8 + 20)
+        # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
+        # 之前 op 节点 _meta 只有 kind, 没 cluster_id → _wrap_into_clusters 靠 node id 反推 (脆弱)
+        # → case26 的 `>` op 错放到 cluster_target_top, 跟 const `11'd255` 在 cluster_u_clamp 跨 cluster → CROSS_TOP 染红
+        _target_mod_op = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+        _op_cluster_id = parent_module or ''
+        if _target_mod_op and _op_cluster_id == _target_mod_op:
+            _op_cluster_id = ''  # 顶层, 归 cluster_target_top
+        elif _target_mod_op and _op_cluster_id.startswith(_target_mod_op + '.'):
+            _op_cluster_id = _op_cluster_id[len(_target_mod_op) + 1:]
         root_children.append({
             'id': node_id, 'width': op_w, 'height': OP_H,
             'labels': [{'text': f'?: ({sel_label})', 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op'},
+            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id or ''},
         })
 
         # 条件信号 → ?: 节点 (虚线 cond 边)
@@ -476,11 +485,19 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         if op == 'Call':
             op_w = max(OP_W + len(label) * 6, 50)
         op_h = OP_H + max(0, (len(children) - 2) * 8)
-        
+
+        # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
+        _target_mod_op2 = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+        _op_cluster_id2 = parent_module or ''
+        if _target_mod_op2 and _op_cluster_id2 == _target_mod_op2:
+            _op_cluster_id2 = ''  # 顶层, 归 cluster_target_top
+        elif _target_mod_op2 and _op_cluster_id2.startswith(_target_mod_op2 + '.'):
+            _op_cluster_id2 = _op_cluster_id2[len(_target_mod_op2) + 1:]
+
         root_children.append({
             'id': node_id, 'width': op_w, 'height': op_h,
             'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op'},
+            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id2 or ''},
         })
         
         for child in children:
@@ -588,12 +605,19 @@ def _wrap_into_clusters(viz, elk_json):
                 return ''
         # 'op___full_path' 形式 (e.g. 'op___golden_hier_top.u_scale.dout_15')
         if cid.startswith('op__'):
-            # 提取 'golden_hier_top.u_scale.dout_15' (去掉末尾 _<n>)
+            # [V16 Plan Phase 1.8 2026-08-17] 优先读 _meta.cluster_id (跟 sig/const 对称)
+            # 之前 _meta 没 cluster_id 字段, 靠 node id 反推 + fp_to_cid 匹配 → 脆弱
+            # Bug 路径: op___golden_hier_top.u_clamp_u.dout_cond_18 反推为 fp='golden_hier_top.u_clamp_u.dout_cond'
+            # 找不到精确 match → fallback '' → 归到 cluster_target_top → CROSS_TOP 染红
+            for child in root_children:
+                if str(child.get('id', '')) == cid:
+                    _mc = str(child.get('_meta', {}).get('cluster_id', ''))
+                    if _mc:
+                        return _mc
+            # fallback (老逻辑, 保留兼容)
             m = cid[4:]
-            # 去末尾 _<数字> 尼竞作 id
             import re as _re
             m2 = _re.sub(r'_\d+$', '', m)
-            # 变成 full path
             fp = m2.replace('_dot_', '.')
             for vp in sorted(fp_to_cid.keys(), key=len, reverse=True):
                 if fp.endswith(vp) or fp == vp:
@@ -847,6 +871,17 @@ def viz_to_elk(viz: VizData) -> dict:
             branch_children = []
             branch_edges = []
 
+            # [V16 Plan Phase 1.8 2026-08-17] branch 内 op 节点归位: cluster_id 从 dst_id 父路径推导
+            # dst_id 是 case 目标信号的 full path (e.g. 'golden_hier_top.u_clamp.dout'),
+            # parent_module = dst_id.rsplit('.', 1)[0] (e.g. 'golden_hier_top.u_clamp')
+            _branch_parent_mod = dst_id.rsplit('.', 1)[0] if '.' in dst_id else ''
+            _target_mod_branch = (viz.meta or {}).get('target_module', '') if viz is not None else ''
+            _branch_op_cid = _branch_parent_mod or ''
+            if _target_mod_branch and _branch_op_cid == _target_mod_branch:
+                _branch_op_cid = ''
+            elif _target_mod_branch and _branch_op_cid.startswith(_target_mod_branch + '.'):
+                _branch_op_cid = _branch_op_cid[len(_target_mod_branch) + 1:]
+
             # OP node (if any in this group)
             op_id = None
             op_seen = set()
@@ -859,7 +894,7 @@ def viz_to_elk(viz: VizData) -> dict:
                         'id': op_id, 'width': OP_W, 'height': OP_H,
                         'labels': [{'text': _OP_SYM.get(op, op), 'fontSize': 9,
                                     'fontName': 'Helvetica-Bold'}],
-                        '_meta': {'kind': 'op'},
+                        '_meta': {'kind': 'op', 'cluster_id': _branch_op_cid or ''},
                     })
 
             # Signal nodes (dedup within branch)
