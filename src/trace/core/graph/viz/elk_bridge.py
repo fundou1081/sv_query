@@ -162,9 +162,13 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         for _n in viz.nodes:
             _full = str(_n.id)
             _side = getattr(_n, 'port_side', '')
+            _cid = getattr(_n, 'cluster_id', '') or ''
             if getattr(_n, 'file', '') or getattr(_n, 'line', 0):
                 node_source_map[_full] = (getattr(_n, 'file', '') or '', getattr(_n, 'line', 0) or 0)
-            if _side == 'left':
+            # [V16.12 2026-08-18] 同时收顶层 port (port_side='left'/'right') 和 sub-module
+            # instance port (cluster_id != '' 且 port_side != ''). 这保证多模块同名 port
+            # (case26 'offset' 在 top-level + u_off 都有) 进 dedup_map, 走 full path 分支.
+            if _side == 'left' or (_cid and _side):
                 input_paths.append(_full)
             elif _side == 'right':
                 output_paths.append(_full)
@@ -178,19 +182,31 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
         output_short_to_fulls[_sn].append(_full)
     
-    def _port_id_for_input(full_path):
-        """根据 full path 生成端口 ID. 同一短名多实例时用 full path, 其他用短名."""
+    def _resolve_port_id(full_path, role='in'):
+        """[V16.12 2026-08-18] 单一源 of truth: full path → port 节点 ID.
+
+        规则:
+        - 同一短名在多 input (或 output) port 中出现 → 用 full path (e.g. port_<full_path_safe>)
+          否则不同实例的同短名 port 会 dedup 失败, ELK 报 "Referenced shape does not exist"
+        - 短名唯一 → 用短名 (e.g. port_<short>)
+
+        role: 'in' | 'out' — 决定查 input_short_to_fulls 还是 output_short_to_fulls
+
+        所有 port-id 生成 (port emit 侧 + edge source/target 侧) 必须统一走这里.
+        之前 V16.11 之前 case26 fail 的根因就是 line 1039 用了简化版 'port_<short>' 而没用
+        这里的 dedup-aware 逻辑, 导致 cross-top edge source 引用了不存在的 port 节点.
+        """
         _sn = full_path.rsplit('.', 1)[-1] if '.' in full_path else full_path
-        if len(input_short_to_fulls[_sn]) > 1:
-            return f'port_{_safe(full_path)}'
-        return f"port_{_sn}"
-    
-    def _port_id_for_output(full_path):
-        """同样规则: 输出端口 ID."""
-        _sn = full_path.rsplit('.', 1)[-1] if '.' in full_path else full_path
-        if len(output_short_to_fulls[_sn]) > 1:
-            return f'port_{_safe(full_path)}'
-        return f"port_{_sn}"
+        _dedup_map = input_short_to_fulls if role == 'in' else output_short_to_fulls
+        _count = len(_dedup_map.get(_sn, []))
+        if _count > 1:
+            _full = full_path if '.' in full_path else (_dedup_map[_sn][0] if _dedup_map[_sn] else full_path)
+            return f'port_{_safe(_full)}'
+        return f'port_{_sn}'
+
+    # 保留旧名 alias, 向后兼容现有调用 (V16.12 优雅重构期过渡)
+    _port_id_for_input = lambda full_path: _resolve_port_id(full_path, role='in')
+    _port_id_for_output = lambda full_path: _resolve_port_id(full_path, role='out')
     
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
     
@@ -359,16 +375,17 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         })
 
         # 条件信号 → ?: 节点 (虚线 cond 边)
+        # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
         for sig in sorted(cond_sigs):
             # [Plan D1] 尝试 full path 解析
             if parent_module and sig in input_short_to_fulls and len(input_short_to_fulls[sig]) > 1:
                 full_path = f"{parent_module}.{sig}"
                 if full_path in input_paths:
-                    src_id = f'port_{_safe(full_path)}'
+                    src_id = _resolve_port_id(full_path, role='in')
                 else:
-                    src_id = f'port_{sig}'
+                    src_id = _resolve_port_id(sig, role='in')
             elif sig in input_set:
-                src_id = f'port_{sig}'
+                src_id = _resolve_port_id(sig, role='in')
             else:
                 sig_id = f'sig_{_safe(sig)}_{nc}'
                 existing = any(c.get('id') == sig_id for c in root_children)
@@ -441,21 +458,25 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         node_id = f"op_{_safe(label)}_{prefix}_{nc}"
 
         if op == 'SignalRef':
-            # [Plan D1] 优先用 parent_module + label 推导 full path.
-            # 多个同短名 input port 时, 这个 full path 才能定位正确端口.
-            if parent_module and label in input_short_to_fulls and len(input_short_to_fulls[label]) > 1:
+            # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
+            # [V16.12 Fix E 2026-08-18] 移除 'len > 1' 限制: 只要 parent_module + label
+            # 组合出 full_path 且在 input_paths/output_paths 里, 就走 full path 分支.
+            # 原因: case26 中 'golden_hier_top.u_off.offset' 是 sub-module port, 而 top-level
+            # input 'offset' **不在 viz.nodes** (filtered by Phase 3 target_module=level2_scale).
+            # input_short_to_fulls['offset'] 长度=1 (只有 sub-module port), 走 fallback emit
+            # 'port_offset' 但 root_children 没有 'port_offset' node (有的是 full path 节点).
+            # 修复: parent_module 已是上下文, 不依赖 dedup_map count 即可正确选 full path.
+            if parent_module:
                 full_path = f"{parent_module}.{label}"
                 if full_path in input_paths:
-                    return f'port_{_safe(full_path)}'
-            if parent_module and label in output_short_to_fulls and len(output_short_to_fulls[label]) > 1:
-                full_path = f"{parent_module}.{label}"
+                    return _resolve_port_id(full_path, role='in')
                 if full_path in output_paths:
-                    return f'port_{_safe(full_path)}'
+                    return _resolve_port_id(full_path, role='out')
             # Fallback: 短名只在只有一个实例时使用
             if label in input_set:
-                return f'port_{label}'
+                return _resolve_port_id(label, role='in')
             elif label in output_set:
-                return f'port_{label}'
+                return _resolve_port_id(label, role='out')
             # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
             # 连接一个带信号名的标签节点（→ sum → 下游引用）
             # expr_trees keys 格式: module.signal → 需要短名匹配
@@ -976,12 +997,26 @@ def viz_to_elk(viz: VizData) -> dict:
         ek = getattr(e, 'kind', '')
         if ek in ('CLOCK', 'RESET'):
             _clock_reset_srcs.add(_short(e.src))
+    # [V16.12 2026-08-18] 同时构建 input_short_to_fulls / output_short_to_fulls
+    # 让 _resolve_port_id (case compound graph 用的嵌套 helper) 能 dedup-aware.
+    input_short_to_fulls = defaultdict(list)
+    output_short_to_fulls = defaultdict(list)
     for n in viz.nodes:
         side = getattr(n, 'port_side', '')
-        if side == 'left' and _short(n.id) not in _clock_reset_srcs:
-            input_names.append(_short(n.id))
+        cid = getattr(n, 'cluster_id', '') or ''
+        nid = str(n.id)
+        nid_short = _short(nid)
+        # 同时收顶层 port 和 sub-module instance port (cluster_id != '' 且 port_side != '')
+        if side == 'left' and nid_short not in _clock_reset_srcs:
+            input_names.append(nid_short)
+            input_short_to_fulls[nid_short].append(nid)
+            if cid and side:  # sub-module port
+                input_short_to_fulls[nid_short].append(nid)
         elif side == 'right':
-            output_names.append(_short(n.id))
+            output_names.append(nid_short)
+            output_short_to_fulls[nid_short].append(nid)
+            if cid:  # sub-module port
+                output_short_to_fulls[nid_short].append(nid)
 
     root_children = []
     root_edges = []
@@ -996,19 +1031,75 @@ def viz_to_elk(viz: VizData) -> dict:
         return {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
-    for name in input_names:
+    # [V16.12 2026-08-18] dedup-aware: 同一短名多实例时, 用 full path 避免短名冲突.
+    # viz_to_elk 之前是 _resolve_port_id 漏改的一处 (case26 fail 根因).
+    # 不仅收集顶层 input, 还收集 sub-module input (如 'golden_hier_top.u_scale.din'),
+    # 因为顶层 input port + sub-module 端口可能同名 (都叫 'din').
+    _in_dedup_map = defaultdict(list)
+    for _e in viz.edges:
+        if getattr(_e, 'kind', '') in ('CLOCK', 'RESET'):
+            continue
+        _sn = _short(_e.src)
+        if _sn in input_names or '.' in _e.src:
+            _in_dedup_map[_sn].append(_e.src)
+    _in_emitted = set()
+    for _full in sorted(set(_f for _fulls in _in_dedup_map.values() for _f in _fulls)):
+        _sn = _short(_full)
+        # [V16.12 Fix G 2026-08-18] 删 filter: dedup_map 收集的 full path 都 emit
+        # case26: target_module=level2_scale filter 掉顶层 'offset' input,
+        # 但 sub-module 'golden_hier_top.u_off.offset' 仍在 dedup_map, 不该被滤.
+        # [V16.12 Fix G 2026-08-18] filter removed — dedup_map-driven emit (allow ALL)
+        # 顶层 input 走短名, sub-module 走 full path
+        if '.' in _full and _full.split('.')[-2] in input_names:
+            # 子模块 port: e.g. 'golden_hier_top.u_scale.din' 但顶层 'golden_hier_top' 是 input
+            # 顶层仍然 emit port_<short>; sub-module port emit port_<safe(full)>
+            _is_sub = True
+        elif '.' in _full:
+            _is_sub = True
+        else:
+            _is_sub = False
+        _fulls_for_sn = _in_dedup_map.get(_sn, [])
+        if _is_sub:
+            _pid = f'port_{_safe(_full)}'
+        elif len(_fulls_for_sn) > 1:
+            _pid = f'port_{_safe(_fulls_for_sn[0])}'
+        else:
+            _pid = f'port_{_sn}'
+        if _pid in _in_emitted:
+            continue
+        _in_emitted.add(_pid)
         root_children.append({
-            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
-            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'id': _pid, 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
             '_meta': {'kind': 'port_in'},
         })
 
     # ── Phase 2: PORT_OUT nodes (top-level, RIGHT column) ──
-    for name in output_names:
+    # [V16.12] 同样收 sub-module port_out (e.dst 含 '.')
+    _out_dedup_map = defaultdict(list)
+    for _e in viz.edges:
+        _sn = _short(_e.dst)
+        if _sn in output_names or '.' in _e.dst:
+            _out_dedup_map[_sn].append(_e.dst)
+    _out_emitted = set()
+    for _full in sorted(set(_f for _fulls in _out_dedup_map.values() for _f in _fulls)):
+        _sn = _short(_full)
+        if _sn not in output_names and not '.' in _full:
+            continue
+        _fulls_for_sn = _out_dedup_map.get(_sn, [])
+        if '.' in _full:
+            _pid = f'port_{_safe(_full)}'
+        elif len(_fulls_for_sn) > 1:
+            _pid = f'port_{_safe(_fulls_for_sn[0])}'
+        else:
+            _pid = f'port_{_sn}'
+        if _pid in _out_emitted:
+            continue
+        _out_emitted.add(_pid)
         root_children.append({
-            'id': f'port_{name}', 'width': PORT_W, 'height': PORT_H,
-            'labels': [{'text': name, 'fontSize': 8, 'fontName': 'Courier'}],
+            'id': _pid, 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
             'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
             '_meta': {'kind': 'port_out'},
         })
@@ -1030,14 +1121,24 @@ def viz_to_elk(viz: VizData) -> dict:
         dst_short = _short(dst_id)
         if len(cedges) < 2:
             for e in cedges:
-                # [FIX 2026-08-09 方案1] ID 映射: port_in/port_out 使用
-                # 'port_<short>' 格式 (与 Phase 1/2 emit 一致), 其他使用
-                # _safe(<full_id>). 原代码无差别 _safe 总是产生 'if_case_function_dot_a',
-                # 但 children 里只有 'port_a' → ELK 报 "Referenced shape does not exist".
+                # [V16.12 2026-08-18] 统一走 _resolve_port_id (单源 of truth)
+                # 之前用 'port_<short>' 简化版 → case26 fail (golden_hier_top 有 3 个
+                # 子模块同名 'din' port, 短名 'port_din' 在 children 里不存在,
+                # 真节点是 'port_level2_scale_dot_din').
                 src_short = _short(e.src)
                 dst_short_e = _short(e.dst)
-                src_id = f'port_{src_short}' if src_short in input_names else _safe(e.src)
-                tgt_id = f'port_{dst_short_e}' if dst_short_e in output_names else _safe(e.dst)
+                # [V16.12 Fix F 2026-08-18] 短名 input 但 dedup_map 有 full path → 用 full path.
+                # 原因: case26 e10 的 e.src='offset' (短名), input_short_to_fulls['offset']
+                # = ['golden_hier_top.u_off.offset'] (count=1), 走短名 fallback emit
+                # 'port_offset' 但 root_children emit 'port_golden_hier_top_dot_u_off_dot_offset'
+                # → ELK 报 "Referenced shape does not exist". Fix: 优先用 dedup_map full path.
+                if src_short in input_names and _in_dedup_map.get(src_short):
+                    src_id = _resolve_port_id(_in_dedup_map[src_short][0], role='in')
+                elif src_short in input_names:
+                    src_id = _resolve_port_id(e.src, role='in')
+                else:
+                    src_id = _safe(e.src)
+                tgt_id = _resolve_port_id(e.dst, role='out') if dst_short_e in output_names else _safe(e.dst)
                 # 注: 'endpoint 未在 root_children 中' 的防御性 filter 移到末尾统一处理,
                 # 这里不逐个 filter (避免里应一致问题)
                 root_edges.append(_emit_edge(ne(), [src_id], [tgt_id], e))
@@ -1137,20 +1238,21 @@ def viz_to_elk(viz: VizData) -> dict:
             })
 
             # Root edges: PORT_IN → branch signal, signal/op → PORT_OUT
+            # [V16.12 2026-08-18] 统一走 _resolve_port_id (单源 of truth)
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 # PORT_IN → signal
                 if sn in input_names:
-                    root_edges.append(_emit_edge(ne(), [f'port_{sn}'], [sid], ge))
+                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, role='in')], [sid], ge))
 
             if op_id:
-                root_edges.append(_emit_edge(ne(), [op_id], [f'port_{dst_short}'] if dst_short in output_set else []))
+                root_edges.append(_emit_edge(ne(), [op_id], [_resolve_port_id(dst_name, role='out')] if dst_short in output_set else []))
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if not getattr(ge, 'source_op', None):
-                    root_edges.append(_emit_edge(ne(), [sid], [f'port_{dst_short}'] if dst_short in output_set else [], ge))
+                    root_edges.append(_emit_edge(ne(), [sid], [_resolve_port_id(ge.dst, role='out')] if dst_short in output_set else [], ge))
 
         # sel → case scope (condition select edge)
         sel_anchor_id = f'cond_sel_{sd}'
@@ -1161,7 +1263,10 @@ def viz_to_elk(viz: VizData) -> dict:
         })
         for sig in sorted(sel_sigs):
             if sig in input_names:
-                root_edges.append(_emit_edge(ne(), [f'port_{sig}'], [sel_anchor_id], kind='condition_select'))
+                # [V16.12] 用 _resolve_port_id 解析 (sel 信号可能在多模块同名, 需要 full path)
+                # 用 _resolve_full_input_path(sig) 推导 full path, 或 fallback 短名
+                _sel_full = input_short_to_fulls.get(sig, [sig])[0]
+                root_edges.append(_emit_edge(ne(), [_resolve_port_id(_sel_full, role='in')], [sel_anchor_id], kind='condition_select'))
 
         # Phase 4: Assemble case scope
         case_node = {
@@ -1373,6 +1478,17 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
         if cid and side:
             _instance_ports.add(n.id)
 
+    # [V16.12 2026-08-18] Build dedup maps for _map_to_elk_id dedup-aware logic.
+    # 顶层 port + 同名 sub-module port 都参与 dedup, 防止短名端口多实例 emit 不匹配.
+    _input_dedup_map = defaultdict(list)
+    _output_dedup_map = defaultdict(list)
+    for n in viz.nodes:
+        side = getattr(n, 'port_side', '') or ''
+        if side == 'left':
+            _input_dedup_map[n.id.rsplit('.', 1)[-1] if '.' in n.id else n.id].append(n.id)
+        elif side == 'right':
+            _output_dedup_map[n.id.rsplit('.', 1)[-1] if '.' in n.id else n.id].append(n.id)
+
     # 3. 收集 CONNECTION 边, 构建 instance_port → instance_port 映射
     # 思路: 'X.dout → wire → Y.din' 是两条边 (X.dout→wire, wire→Y.din)
     # 拼成 X.dout→Y.din
@@ -1436,8 +1552,10 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
     # emit X.dout → wire (紫色, 跨 instance)
     for src_inst, wires in _srcs_to_wire.items():
         for wire in wires:
-            s_id = _map_to_elk_id(src_inst, _instance_ports, _wire_nodes_v16, _all_top_ports)
-            t_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            s_id = _map_to_elk_id(src_inst, _instance_ports, _wire_nodes_v16, _all_top_ports,
+                                 _input_dedup_map, _output_dedup_map)
+            t_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports,
+                                 _input_dedup_map, _output_dedup_map)
             if not s_id or not t_id:
                 continue
             if (s_id, t_id) in existing_edge_keys:
@@ -1457,8 +1575,10 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
     # emit wire → Y.din (紫色, 跨 instance)
     for wire, dst_insts in _wire_to_dsts.items():
         for dst_inst in dst_insts:
-            s_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports)
-            t_id = _map_to_elk_id(dst_inst, _instance_ports, _wire_nodes_v16, _all_top_ports)
+            s_id = _map_to_elk_id(wire, _instance_ports, _wire_nodes_v16, _all_top_ports,
+                                 _input_dedup_map, _output_dedup_map)
+            t_id = _map_to_elk_id(dst_inst, _instance_ports, _wire_nodes_v16, _all_top_ports,
+                                 _input_dedup_map, _output_dedup_map)
             if not s_id or not t_id:
                 continue
             if (s_id, t_id) in existing_edge_keys:
@@ -1480,15 +1600,40 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
     return elk_json
 
 
-def _map_to_elk_id(path, _instance_ports, _wire_nodes, _all_top_ports):
-    """[V15 2026-08-13] 把 viz_data path 映射到 ELK 节点 id."""
+def _map_to_elk_id(path, _instance_ports, _wire_nodes, _all_top_ports,
+                     _input_dedup_map=None, _output_dedup_map=None):
+    """[V15 2026-08-13] 把 viz_data path 映射到 ELK 节点 id.
+    
+    [V16.12 2026-08-18] 新增 _input_dedup_map / _output_dedup_map 参数:
+    - top-level port emit 如果 dedup-aware, edge emit 也必须 dedup-aware
+    - 否则 case26 等多实例同名 case 会出现 port_<short> emit + port_<full> edge 引用不匹配
+    """
     # [V15 fix 5] 顺序调整: 先查 instance port (e.g. 'golden_hier_top.u_scale.dout' 也在
     # _all_top_ports 里, 因为 port_side='right' 让它既是 instance port 又是 output port).
     # 必须先匹配 instance port 拿到 full-path id, 不然会走 'port_dout' 短名分支.
     if path in _instance_ports:
         return 'port_' + path.replace('.', '_dot_')
     if path in _all_top_ports:
-        return f'port_{path.rsplit(".", 1)[-1]}' if '.' in path else f'port_{path}'
+        # [V16.12] dedup-aware: 如果同名 short 出现多次, 用 representative full path
+        _short = path.rsplit('.', 1)[-1] if '.' in path else path
+        # 决定是 input 还是 output (用 _input_dedup_map / _output_dedup_map)
+        _dedup_count = 0
+        if _input_dedup_map and _short in _input_dedup_map:
+            _dedup_count = len(_input_dedup_map[_short])
+        elif _output_dedup_map and _short in _output_dedup_map:
+            _dedup_count = len(_output_dedup_map[_short])
+        if 'offset' in str(path).lower() or 'offset' in _short.lower():
+            import sys as _sys
+            print(f'[DBG _map_to_elk_id] path={path!r} short={_short!r} in_count={len(_input_dedup_map.get(_short,[])) if _input_dedup_map else "None"} out_count={len(_output_dedup_map.get(_short,[])) if _output_dedup_map else "None"} -> dedup_count={_dedup_count}', file=_sys.stderr, flush=True)
+        if _dedup_count > 1:
+            # 多实例同名: 用 full path 避免 dedup 冲突
+            # _all_top_ports 里的 path 可能是 'level2_offset.offset' (sub-module 路径)
+            # 但 _input_dedup_map 的 value 是 src full path, 取第一个匹配
+            _full = path if '.' in path else (
+                (_input_dedup_map.get(_short, [path]) or [path])[0]
+            )
+            return f'port_{_full.replace(".", "_dot_")}' if '.' in _full else f'port_{_short}'
+        return f'port_{_short}' if '.' in path else f'port_{path}'
     if path in _wire_nodes:
         short = path.rsplit('.', 1)[-1] if '.' in path else path
         return f'sig_{short}_wire'
