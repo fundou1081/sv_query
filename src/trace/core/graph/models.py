@@ -293,6 +293,10 @@ class SignalGraph(nx.DiGraph):
         self._expr_trees: dict[str, dict] = {}      # {dst_key → tree_dict}
         self._const_map: dict[str, list] = {}       # {dst_short → [const_str,...]}
         self._func_info: dict[str, tuple | None] = {}  # {func_name → (msb,lsb)|None}
+        # [V16.11 2026-08-18] generate block real-label map (pyslang native API)
+        # {dst_signal_short_name → GenerateBlockArray.name (e.g. 'buf1' → 'gen_stage1', 'acc' → 'gen_accum')}
+        # 替代 V16.10.3 的启发式 (_parse_gen_block): 直接从源码读取真实 label, 适用于任意命名
+        self._gen_block_map: dict[str, str] = {}
 
     def get_port_to_internal(self) -> dict[str, str]:
         """获取端口到内部信号的映射"""

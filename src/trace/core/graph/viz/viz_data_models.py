@@ -73,6 +73,13 @@ class VizNode:
     module_type: str = ""       # instance 的 module 类型 (如 'level2_scale')
     cluster_id: str = ""        # cluster key (''=顶层, 'u_scale'=子模块 cluster)
 
+    # --- [V16.10 2026-08-17] generate block 折叠 (case29 generate_for_chain) ---
+    # 源码: for (i=0; i<N-1; i++) begin : gen_stage1 ... end
+    # 节点在 gen_stage1 loop iteration K 内部 → gen_block='gen_stage1', gen_iter='i=0'
+    # VizLayer 用 gen_block 做 sub-cluster 分组 (生成 for-loop 视觉框)
+    gen_block: str = ""         # 生成块名 ('gen_stage1'), ''=不在 generate iteration 内
+    gen_iter: str = ""          # iteration 标签 ('i=0'), ''=顶层 assign
+
     # --- 其它 ---
     extra: dict[str, Any] = field(default_factory=dict)
 

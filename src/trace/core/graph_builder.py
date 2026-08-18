@@ -88,7 +88,135 @@ class GraphBuilder:
         if self.target_module:
             self._filter_by_target()
 
+        # [V16.11 2026-08-18] 抓 pyslang GenerateBlock{Array} → assign LHS base signal 映射
+        # 替代 V16.10.3 的启发式: 直接从源码读 generate block 真实 label
+        self._capture_generate_block_map()
+
         return self.graph
+
+    def _capture_generate_block_map(self):
+        """[V16.11.1 2026-08-18] Capture pyslang GenerateBlockArray/GenerateBlock.name → LHS base signal mapping.
+
+        V16.10.3 用启发式 (信号名 bufN → gen_stageN):
+          - 仅凑巧对 case29 有效 (3 个 generate block 恰好叫 gen_stage1/2/3)
+          - 对 case27 (gen_accum 块, acc[] 信号) 完全失败: 0 个 genblk 分组
+
+        V16.11 用 pyslang native API 真读 GenerateBlockArray.name (for-loop 型):
+          - 遍历 target_top.body 找 GenerateBlockArray.name (e.g. 'gen_accum', 'gen_stage1')
+          - 遍历 entries → ContinuousAssign → assignment.left (ElementSelect) → .value.symbol.name
+          - 存入 graph._gen_block_map: {signal_short_name → gen_block_real_label}
+
+        V16.11.1 扩展 (case30/case31):
+          - 新增 GenerateBlock (if/case 型) 处理 — case30/31 的 generate 不是 Array, 直接 iterate item
+          - 新增 NamedValue LHS 支持 — case30/31 的 LHS 是简单信号 (e.g. result) 而非 ElementSelect (e.g. buf[i])
+
+        用法: viz_data_builder 把 graph._gen_block_map 复制到 viz.meta.datapath.gen_block_map,
+             elk_bridge 用真值替代启发式归位.
+        """
+        def _extract_lhs_base_signal(left_expr):
+            """从 LHS 表达式提取 base signal 短名.
+
+            支持三种 pyslang LHS 形态:
+            - ElementSelect (arr[i]): case27/29 for-loop generate 内的 buf[i+1]
+              → left.value.symbol (NamedValue→NetSymbol)
+            - NamedValue (x): case30/31 if/case generate 内的 result = ...
+              → left.symbol (NetSymbol) 或 left.expression.symbol
+            - 其他 (e.g. HierarchicalReference 链): 防御性 fallback 拿名字
+            """
+            if left_expr is None:
+                return ''
+            kind_str = str(getattr(left_expr, 'kind', ''))
+            sym = None
+            if 'ElementSelect' in kind_str:
+                base = getattr(left_expr, 'value', None) or getattr(left_expr, 'base', None)
+                if base is not None:
+                    sym = getattr(base, 'symbol', None)
+            elif 'NamedValue' in kind_str:
+                sym = getattr(left_expr, 'symbol', None)
+                if sym is None:
+                    expr = getattr(left_expr, 'expression', None)
+                    if expr is not None:
+                        sym = getattr(expr, 'symbol', None)
+            if sym is None:
+                return ''
+            sig_name = getattr(sym, 'name', '') or ''
+            if not sig_name:
+                sig_name = str(sym).strip().strip()
+            return sig_name
+
+        try:
+            target_top = self._find_target_top(self.target_module or '')
+            if target_top is None:
+                return
+            target_module = self.target_module or ''
+
+            # [V16.11 2026-08-18] 1st pass: GenerateBlockArray (for-loop 型)
+            # entries[i].sub 里的 ContinuousAssign, case27/29 都走这条路
+            for item in target_top.body:
+                kind = str(getattr(item, 'kind', ''))
+                if 'GenerateBlockArray' not in kind:
+                    continue
+                gb_name = getattr(item, 'name', '')
+                if not gb_name:
+                    continue
+                entries = getattr(item, 'entries', None)
+                if not entries:
+                    continue
+                for entry in entries:
+                    for sub in entry:
+                        sk = str(getattr(sub, 'kind', ''))
+                        if 'ContinuousAssign' not in sk and 'Assign' not in sk:
+                            continue
+                        asg = getattr(sub, 'assignment', None)
+                        if asg is None:
+                            continue
+                        sig_name = _extract_lhs_base_signal(getattr(asg, 'left', None))
+                        if not sig_name:
+                            continue
+                        self.graph._gen_block_map[sig_name] = gb_name
+
+            # [V16.11.2 2026-08-18] 2nd pass: GenerateBlock (if/case 型, case30/case31)
+            # 不是 GenerateBlockArray, 直接 iterate item 拿 sub
+            # 优雅修复: 用 pyslang 原生 isUninstantiated 过滤 inactive branch
+            # (case30 MODE=1 时 gen_subtractor.isUninstantiated=True → skip)
+            # (case31 SEL=2 时 gen_adder/gen_default isUninstantiated=True → skip)
+            for item in target_top.body:
+                kind = str(getattr(item, 'kind', ''))
+                if 'GenerateBlockArray' in kind:
+                    continue  # 已在 1st pass 处理
+                if 'GenerateBlock' not in kind:
+                    continue
+                # [V16.11.2] pyslang 提供 isUninstantiated 属性优雅区分 active vs inactive branch
+                if getattr(item, 'isUninstantiated', False):
+                    continue  # inactive branch: pyslang 已经决定排除, 不 capture
+                gb_name = getattr(item, 'name', '')
+                if not gb_name:
+                    continue
+                try:
+                    for sub in item:
+                        sk = str(getattr(sub, 'kind', ''))
+                        if 'ContinuousAssign' not in sk and 'Assign' not in sk:
+                            continue
+                        asg = getattr(sub, 'assignment', None)
+                        if asg is None:
+                            continue
+                        sig_name = _extract_lhs_base_signal(getattr(asg, 'left', None))
+                        if not sig_name:
+                            continue
+                        self.graph._gen_block_map[sig_name] = gb_name
+                except Exception:
+                    pass
+
+            import sys
+            if self.graph._gen_block_map:
+                print(
+                    f"[V16.11.1] captured {len(self.graph._gen_block_map)} generate block labels: "
+                    f"{dict(list(self.graph._gen_block_map.items())[:5])}{'...' if len(self.graph._gen_block_map) > 5 else ''}",
+                    file=sys.stderr,
+                )
+        except Exception as e:
+            import sys
+            print(f"[V16.11.1] _capture_generate_block_map failed: {e}", file=sys.stderr)
 
     def _configure_instance_paths(self):
         """[Phase 4 2026-07-11] Walk target instance tree, configure extractors.

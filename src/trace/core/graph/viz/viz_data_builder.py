@@ -105,8 +105,27 @@ def build_viz_data(
             vn.cluster_id = inst_path
         else:
             # 顶层节点
+            inst_path = ''
             vn.instance_path = ''
             vn.cluster_id = ''
+
+        # [V16.10 2026-08-17] generate block 解析: 从 node.id 找 gen_blk[i] pattern
+        # 范例: 'golden_hier_top.gen_stage1[2].x_temp' → gen_block='gen_stage1', gen_iter='i=2'
+        # 范例: 'golden_hier_top.gen_stage2[0].y_reg' → gen_block='gen_stage2', gen_iter='i=0'
+        # 顶层: 'golden_hier_top.data' → '', ''
+        # 收集 (含子模块内嵌 generate): 'u_scale.gen_stage1[0].p' → gen_block='gen_stage1', gen_iter='i=0'
+        import re as _re_v1610
+        _gen_block = ''
+        _gen_iter = ''
+        # 検测 .gen_blk[数字] 模式 (不限顶层)
+        _genblk_matches = _re_v1610.findall(r'(gen_[A-Za-z0-9_]+)\[(\d+)\]', node_id)
+        if _genblk_matches:
+            # 取最后一个 (inner-most generate block)
+            _gb_name, _gb_idx = _genblk_matches[-1]
+            _gen_block = _gb_name
+            _gen_iter = f'i={_gb_idx}'
+        vn.gen_block = _gen_block
+        vn.gen_iter = _gen_iter
 
         # 分类 (可选)
         if opts.include_node_class and opts.classification:
@@ -377,5 +396,13 @@ def _enrich_datapath_info(viz, graph, opts):
         dp["expr_trees"] = dict(graph._expr_trees)
     else:
         dp["expr_trees"] = {}
+
+    # [V16.11 2026-08-18] generate block real-label map (pyslang native API)
+    # 替代 V16.10.3 启发式: graph._gen_block_map 在 GraphBuilder.build() 末尾已填充
+    # key=signal short name (e.g. 'acc', 'buf1'), value=real label (e.g. 'gen_accum', 'gen_stage1')
+    if hasattr(graph, "_gen_block_map"):
+        dp["gen_block_map"] = dict(graph._gen_block_map)
+    else:
+        dp["gen_block_map"] = {}
 
 
