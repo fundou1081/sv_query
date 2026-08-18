@@ -309,7 +309,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         for c in tree_node.get('children', []):
             collect_signals(c, into)
 
-    def render_ternary(node_id, children, prefix, nc, parent_module=''):
+    def render_ternary(node_id, children, prefix, nc, parent_module='', gen_block='', gen_iter=''):
         """轻量三元渲染：?: OP 节点 + 条件虚线边
 
         children[0] = 条件信号 (SignalRef)
@@ -581,7 +581,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         
         # ── Ternary: compound case/branch structure ──
         if op == 'Ternary':
-            return render_ternary(node_id, children, prefix, nc, parent_module=parent_module)
+            return render_ternary(node_id, children, prefix, nc, parent_module=parent_module, gen_block=gen_block, gen_iter=gen_iter)
         
         # Operator node
         op_w = OP_W
