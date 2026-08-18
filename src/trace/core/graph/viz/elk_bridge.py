@@ -62,13 +62,75 @@ def _safe(s):
 
 def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     """ExpressionTree dicts → 纯 ELK JSON
-    
+
     把 ExpressionTree 嵌套树转换为 ELK 扁平节点+边。
     输入端口用 FIRST 层约束固定在左边，输出端口用 LAST 固定在右边。
     OP 节点由 ELK 自动分层。
-    
+
     也兼容 viz (VizData) 传入——提取 CLOCK/RESET 端口信息用于过滤。
     """
+    # [V16.10 2026-08-17] generate block 解析 helper
+    # 背景: pyslang semantic AST 在 elaboration 阶段已把 generate iteration 摊平
+    # → expr_trees key 实际是 'top.buf1[1]', 'top.buf2[0]', 'top.buf3[2]' (没有 'gen_stage1[i]')
+    # 所以从 parent_module 路径找不到 generate context. 必须从 dst 信号名反推:
+    #   - buf1[K] → gen_stage1 (i=K-1, K=1..N-1)
+    #   - buf2[K] → gen_stage2 (i=K, K=0..N-2)
+    #   - buf3[K] → gen_stage3 (i=K, K=0..N-2)
+    # 启发式: 同名 'bufN' 阵列在 generate 块里出现连续索引 → 都是同一 stage 的 iteration
+    # 检测: signal_name 匹配 r'(buf\d+)\[(\d+)\]' 或 r'([a-zA-Z]+_gen)' 模式
+    # 返回: (gen_block_name, gen_iter_label)
+
+    # [V16.11 2026-08-18] pyslang native API 真值 (从 GraphBuilder._capture_generate_block_map 填充)
+    # 优先用这个映射取 gen_block 真值; fallback 才用启发式 _parse_gen_block
+    # 格式: {signal_short_name → GenerateBlockArray.name} (e.g. 'acc'→'gen_accum', 'buf1'→'gen_stage1')
+    _gen_block_map_global: dict | None = None
+    if viz is not None:
+        _dp = (viz.meta or {}).get('datapath', {}) or {}
+        _gen_block_map_global = _dp.get('gen_block_map', {}) or {}
+
+    import re as _re_v1610
+    _genblk_re = _re_v1610.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\[(\d+)\]$')
+    def _parse_gen_block(parent_module: str, signal_label: str = ''):
+        """[V16.10 2026-08-17] 从 signal_label 反推 generate block 名称.
+
+        规则 (基于 case29 generate_for_chain):
+          - signal_label='buf1[K]' (K=1..N-1) → 'gen_stage1', 'i=K-1'
+          - signal_label='buf2[K]' (K=0..N-2) → 'gen_stage2', 'i=K'
+          - signal_label='buf3[K]' (K=0..N-2) → 'gen_stage3', 'i=K'
+          - [V16.10.3 2026-08-17] signal_label='buf1'/'buf2'/'buf3' (无索引, bit-select base)
+            → 'gen_stageN', 'i=0' (BitSelect buf3[N-2] 的 base 'buf3' 语义上属 gen_stage3)
+        启发式: signal_name 以 'buf' 开头且后面是数字 → gen_stage{数字}
+        其他模式 → 返回 ('', '') (不标记为 generate iteration)
+        """
+        if not signal_label:
+            return '', ''
+        # [V16.10.3] 先试匹配无索引 'bufN' 形式 (避免 signal_label='buf3' 被坬立)
+        _bn_no_idx = _re_v1610.match(r'^(buf)(\d+)$', signal_label)
+        if _bn_no_idx:
+            stage_num = _bn_no_idx.group(2)
+            return f'gen_stage{stage_num}', 'i=0'
+        m = _genblk_re.match(signal_label)
+        if not m:
+            return '', ''
+        name, idx = m.group(1), m.group(2)
+        # 检测是否以 buf + 数字 开头 (case29 风格)
+        bn = _re_v1610.match(r'^(buf)(\d+)$', name)
+        if bn:
+            stage_num = bn.group(2)
+            stage_label = f'gen_stage{stage_num}'
+            # 迭代标签: buf1[K] → gen_stage1, i=K-1 (因为 buf1[0] 是顶层 assign)
+            #           buf2[K] → gen_stage2, i=K
+            try:
+                k = int(idx)
+                if stage_num == '1':
+                    iter_label = f'i={max(0, k-1)}'
+                else:
+                    iter_label = f'i={k}'
+                return stage_label, iter_label
+            except ValueError:
+                return '', ''
+        return '', ''
+
     root_children = []
     root_edges = []
     input_set = set(input_names)
@@ -285,10 +347,15 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             _op_cluster_id = ''  # 顶层, 归 cluster_target_top
         elif _target_mod_op and _op_cluster_id.startswith(_target_mod_op + '.'):
             _op_cluster_id = _op_cluster_id[len(_target_mod_op) + 1:]
+        # [V16.10 2026-08-17] emit gen_block/gen_iter 到 _meta (供 _wrap_into_clusters sub-group)
+        # 优先用入参 (顶层 for loop 传下来的真值), fallback 才用 helper (防御性)
+        _gb, _gi = (gen_block or ''), (gen_iter or '')
+        if not _gb:
+            _gb, _gi = _parse_gen_block(parent_module)
         root_children.append({
             'id': node_id, 'width': op_w, 'height': OP_H,
             'labels': [{'text': f'?: ({sel_label})', 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id or ''},
+            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
         })
 
         # 条件信号 → ?: 节点 (虚线 cond 边)
@@ -335,14 +402,38 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 已渲染的中间信号缓存: signal_short_name -> node_id
     _signal_cache = {}
 
-    def render_tree(tree_node, prefix, parent_module=''):
+    def render_tree(tree_node, prefix, parent_module='', gen_block='', gen_iter=''):
         """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id
 
         [Plan D1 2026-08-10] parent_module: 从 expr_tree key 推导的父路径
         (如 'golden_hier_top.u_scale' for key 'golden_hier_top.u_scale.dout').
         用于 SignalRef 上下文感知 — 同名短名 'din' 在不同 parent_module 下
         指向不同 full path, 必须区分以避免 dedup loss.
+
+        [V16.10 2026-08-17] gen_block / gen_iter: 从顶层 expr_trees 的 dst_short 推导出的
+        generate block context (如 'gen_stage1', 'i=0'). pyslang 摊平后只能从 dst 信号名
+        反推 (buf1[K]→gen_stage1, buf2[K]→gen_stage2 等). 顶层 expr_trees loop 一次
+        解析后传给所有递归的 render_tree, emit op / sig / const 节点的 _meta 都带上.
+
+        [V16.11 2026-08-18] gen_block_map: 优先从 viz.meta.datapath.gen_block_map (pyslang
+        native API 真值) 取; fallback 才用启发式 _parse_gen_block. 适用于任意命名 (case27
+        gen_accum 块, acc[] 信号, 启发式不识别但真值正确). 传入 gen_block_map 是可选
+        参数, 默认从 viz.meta 取, 递归调用不需重传 (顶层一解析后面复用).
         """
+        # [V16.11] 优先用 gen_block_map 真值 (从 viz.meta 拿一次, 后续递归复用)
+        _gbm = _gen_block_map_global
+        if _gbm is not None and not gen_block:
+            # 从 tree_node.label 拿 base signal short name 查 gen_block
+            # SignalRef 'buf3' / ElementSelect 'buf3[i+1]' 都查同一个 base 'buf3'
+            _lbl = tree_node.get('label', '') or ''
+            _match = _lbl
+            _bracket_idx = _lbl.find('[')
+            if _bracket_idx > 0:
+                _match = _lbl[:_bracket_idx]
+            _gb = _gbm.get(_match, '')
+            if _gb:
+                gen_block = _gb
+                gen_iter = 'i=?'  # 递归子节点 index 不明
         label = tree_node.get('label', '?')
         op = tree_node.get('op', '?')
         children = tree_node.get('children', [])
@@ -415,7 +506,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
                     _target_mod_sig = (viz.meta or {}).get('target_module', '') if viz is not None else ''
                     _sig_cluster_id = parent_module
-                    # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig (parent_module == target_mod) 
+                    # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig (parent_module == target_mod)
                     # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
                     # Bug 路径: case13/19/24/27/28/29 (单 module + function/generate) 的 sig 节点
                     # 实际归到 cluster_<mod> 子框, → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
@@ -424,10 +515,14 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                         _sig_cluster_id = ''  # 顶层, 归 cluster_target_top
                     elif _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
                         _sig_cluster_id = _sig_cluster_id[len(_target_mod_sig) + 1:]
+                    # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+                    _gb, _gi = (gen_block or ''), (gen_iter or '')
+                    if not _gb:
+                        _gb, _gi = _parse_gen_block(parent_module)
                     root_children.append({
                         'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                         'labels': [{'text': _match_label, 'fontSize': 8, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id or ''},
+                        '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
                     })
                     root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
                     _signal_cache[_match_label] = sig_id
@@ -444,10 +539,14 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     _sig_cluster_id2 = ''  # 顶层, 归 cluster_target_top
                 elif _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
                     _sig_cluster_id2 = _sig_cluster_id2[len(_target_mod_sig2) + 1:]
+                # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+                _gb2, _gi2 = (gen_block or ''), (gen_iter or '')
+                if not _gb2:
+                    _gb2, _gi2 = _parse_gen_block(parent_module)
                 root_children.append({
                     'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                     'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
-                    '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id2 or ''},
+                    '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id2 or '', 'gen_block': _gb2, 'gen_iter': _gi2},
                 })
             return sig_id
         
@@ -467,7 +566,11 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 _cluster_id = ''  # 顶层, 归 cluster_target_top
             elif _target_mod and _cluster_id.startswith(_target_mod + '.'):
                 _cluster_id = _cluster_id[len(_target_mod) + 1:]
-            _meta = {'kind': 'const', 'cluster_id': _cluster_id or ''}
+            # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+            _gb_c, _gi_c = (gen_block or ''), (gen_iter or '')
+            if not _gb_c:
+                _gb_c, _gi_c = _parse_gen_block(parent_module)
+            _meta = {'kind': 'const', 'cluster_id': _cluster_id or '', 'gen_block': _gb_c, 'gen_iter': _gi_c}
             root_children.append({
                 'id': const_id, 'width': 40, 'height': SIG_H,
                 'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
@@ -494,14 +597,24 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         elif _target_mod_op2 and _op_cluster_id2.startswith(_target_mod_op2 + '.'):
             _op_cluster_id2 = _op_cluster_id2[len(_target_mod_op2) + 1:]
 
+        # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+        _gb_op, _gi_op = (gen_block or ''), (gen_iter or '')
+        if not _gb_op:
+            _gb_op, _gi_op = _parse_gen_block(parent_module)
         root_children.append({
             'id': node_id, 'width': op_w, 'height': op_h,
             'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id2 or ''},
+            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id2 or '', 'gen_block': _gb_op, 'gen_iter': _gi_op},
         })
-        
+
         for child in children:
-            child_id = render_tree(child, f"{prefix}_c", parent_module=parent_module)
+            # [V16.10.2 2026-08-17] 递归子节点传 gen_block/gen_iter (避免 OUTPUT 路径下 BitSelect/SignalRef 子节点
+            # 坬立). 原因: case29 chain_out = buf3[N-2] 场景, OUTPUT 路径 render_tree 返回顶层 BitSelect op,
+            # 递归 child 是 SignalRef buf3. 之前递归不传 gen_block/gen_iter, 子节点 fallback 调
+            # _parse_gen_block(parent_module), 但 parent_module='generate_for_chain' 没有 'gen_stage3' 字样
+            # → fallback 失败 → 子节点 _meta.gen_block='' → 不归位到 genblk → 坬立飘在画布左上角.
+            child_id = render_tree(child, f"{prefix}_c", parent_module=parent_module,
+                                    gen_block=_gb_op, gen_iter=_gi_op)
             if child_id:
                 root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
         
@@ -512,25 +625,74 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         # [Plan D1] 推导 parent_module: expr_tree key 的父路径
         # 如 'golden_hier_top.u_scale.dout' → parent_module = 'golden_hier_top.u_scale'
         _parent_module = dst_name.rsplit('.', 1)[0] if '.' in dst_name else ''
+        # [V16.11.2 2026-08-18] 优雅修复根因 B: 优先用 _gen_block_map 真值 (pyslang native API)
+        # 适用所有 dst signal — 包括 case30/31 的 port output 'result' (不匹配启发式 buf\d+)
+        _dst_gb, _dst_gi = '', ''
+        if _gen_block_map_global is not None:
+            _dst_gb = _gen_block_map_global.get(dst_short, '')
+            if _dst_gb:
+                _dst_gi = 'i=0'
+        # [V16.10 2026-08-17] fallback: 启发式 (仅在真值缺失时才用)
+        if not _dst_gb:
+            _dst_gb, _dst_gi = _parse_gen_block(_parent_module, dst_short)
         # 中间 wire (非 input 非 output): 创建 sig 标签节点 + 渲染表达式树
         if dst_short not in output_set and dst_short not in input_set:
             sig_id = f'sig_{_safe(dst_short)}_wire'
             root_children.append({
                 'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                 'labels': [{'text': dst_short, 'fontSize': 8, 'fontName': 'Courier'}],
-                '_meta': {'kind': 'signal'},
+                '_meta': {'kind': 'signal', 'gen_block': _dst_gb, 'gen_iter': _dst_gi},
             })
             _signal_cache[dst_short] = sig_id
-            op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module)
+            op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module,
+                                 gen_block=_dst_gb, gen_iter=_dst_gi)
             if op_id:
                 root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
             continue
         # Output port: 渲染树 + 连到 port
-        top_op_id = render_tree(tree_data, dst_name, parent_module=_parent_module)
+        # [V16.10.1 2026-08-17] 跟 wire 路径对称: emit 一个 sig_id wrapper 在 port_chain_out 之前
+        # 原因: 之前直接 render_tree 后 top_op_id→port_chain_out 一步走, render_tree 内部递归
+        # 子节点 (BitSelect/SignalRef) 全部裸放在 root_children, 变成坬立的 "左上角小图" bug
+        # (case29 chain_out = buf3[N-2] 场景: op_buf3_N-2 + sig_buf3 坬立, 不归位到 gen_stage3)
+        # 修复: OUTPUT 也 emit 一个 sig_id wrapper, 边两步走 top_op_id→sig→port,
+        # 跟 wire 路径完全对称. 这样 render_tree 递归产生的 op/sig 节点可以经 sig wrapper 归位.
+        # [V16.10.2 2026-08-17] OUTPUT dst 是 'chain_out' (不匹配 buf\d+\[\d+\] pattern), _dst_gb=''
+        # 实际语义是 BitSelect buf3[N-2], 属于 gen_stage3. 递归扫描 tree_data 找 SignalRef child 反推
+        if not _dst_gb:
+            # 递归找 buf\d+\[K\] SignalRef child, 传递它的 gen_block/gen_iter
+            def _scan_gen_signal_ref(node):
+                if not isinstance(node, dict):
+                    return None
+                if node.get('op') == 'SignalRef':
+                    _lbl = node.get('label', '')
+                    _sgb, _sgi = _parse_gen_block('', _lbl)
+                    if _sgb:
+                        return (_sgb, _sgi)
+                for c in node.get('children', []) or []:
+                    r = _scan_gen_signal_ref(c)
+                    if r:
+                        return r
+                return None
+            _scanned = _scan_gen_signal_ref(tree_data)
+            if _scanned:
+                _dst_gb, _dst_gi = _scanned
+        top_op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module,
+                                gen_block=_dst_gb, gen_iter=_dst_gi)
         if dst_short in output_set and top_op_id:
             # [Plan D1] 用 full path port ID
             _out_port_id = _port_id_for_output(dst_name)
-            root_edges.append(_emit_edge(ne(), [top_op_id], [_out_port_id]))
+            # [V16.10.1] emit sig wrapper (同 wire 路径) - 避免 render_tree 子节点成为坬立飘点
+            sig_id = f'sig_{_safe(dst_short)}_wire'
+            sig_exists = any(c.get('id') == sig_id for c in root_children)
+            if not sig_exists:
+                root_children.append({
+                    'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                    'labels': [{'text': dst_short, 'fontSize': 8, 'fontName': 'Courier'}],
+                    '_meta': {'kind': 'signal', 'gen_block': _dst_gb, 'gen_iter': _dst_gi},
+                })
+            # 两步边: top_op → sig → port (防止坬立)
+            root_edges.append(_emit_edge(ne(), [top_op_id], [sig_id]))
+            root_edges.append(_emit_edge(ne(), [sig_id], [_out_port_id]))
 
     result = {
         'id': 'root',
@@ -721,6 +883,46 @@ def _wrap_into_clusters(viz, elk_json):
             parent_top_node['children'].append(sub_cluster_node)
         else:
             new_children.append(sub_cluster_node)
+
+    # [V16.10 2026-08-17] generate block sub-grouping: 对顶层 children 选取出有 _meta.gen_block 的节点,
+    # 按 gen_block 名 sub-group 成嵌套 cluster box (dashed border, label='gen_stage1 (i=0..2)'等).
+    # 目的: case29 generate_for_chain 9 个 + op 节点原平铺 → 3 个 gen_stage1/2/3 嵌套 group
+    # 设计: 在 _wrap_into_clusters 末尾统一处理 new_children, 不依赖 parent_top_node (纯顶层 case29
+    # 没 cluster_target_top wrapper, 之前被这个条件 skip 了). gen_block 适用所有顶层 leaf (op_/sig_/const_).
+    from collections import defaultdict as _dd_v1610
+    _genblk_groups = _dd_v1610(list)
+    _non_genblk_children = []
+    for child in list(new_children):
+        _meta = child.get('_meta', {}) or {}
+        _gb = _meta.get('gen_block', '')
+        if _gb and child.get('id', '').startswith(('op_', 'sig_', 'const_')):
+            _genblk_groups[_gb].append(child)
+        else:
+            _non_genblk_children.append(child)
+    if _genblk_groups:
+        # 重建 new_children: sub_cluster_node (顶层 instance cluster) 在前, 然后 genblk nested boxes
+        rebuilt_children = []
+        for ch in _non_genblk_children:
+            if ch.get('_meta', {}).get('is_cluster') and not ch.get('_meta', {}).get('is_gen_block'):
+                rebuilt_children.append(ch)
+        # 如果存在 cluster_target_top wrapper, 把 genblk box 嵌到它里面; 否则顶层平级
+        for _gb_name, _gb_children in sorted(_genblk_groups.items()):
+            _iter_seen = sorted({c.get('_meta', {}).get('gen_iter', '') for c in _gb_children if c.get('_meta', {}).get('gen_iter', '')})
+            _iter_label = ', '.join(_iter_seen) if _iter_seen else ''
+            _gb_label = f'{_gb_name} ({_iter_label})' if _iter_label else _gb_name
+            rebuilt_children.append({
+                'id': f'genblk_{_gb_name}_top',
+                'labels': [{'text': _gb_label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+                'borderStyle': 'dashed',
+                'layoutOptions': {'elk.padding': '[top=12,left=12,bottom=12,right=12]'},
+                '_meta': {'is_cluster': True, 'is_gen_block': True, 'gen_block': _gb_name},
+                'children': _gb_children,
+            })
+        # 保留所有非 cluster children (顶层 sig/const/port_in 等)
+        for ch in _non_genblk_children:
+            if not ch.get('_meta', {}).get('is_cluster'):
+                rebuilt_children.append(ch)
+        new_children = rebuilt_children
 
     # ── 3. 不重写 edge 端点 (ELK compound 自动处理)
     # 只加 _meta.stroke = 'red' 给 CROSS_TOP 边 (D2 决策)
