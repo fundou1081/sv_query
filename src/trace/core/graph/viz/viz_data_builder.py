@@ -404,5 +404,14 @@ def _enrich_datapath_info(viz, graph, opts):
         dp["gen_block_map"] = dict(graph._gen_block_map)
     else:
         dp["gen_block_map"] = {}
+    # [V16.14 F-N3 2026-08-19] 配套 iter map: {signal_short_name 或 'sig[K]' → entry_idx}.
+    # 存在两种 key:
+    #  - base 名 'acc': setdefault 第一个 entry_idx (case29/30/31 兼容, ElkBridge fallback 用)
+    #  - per-element 'acc[1]', 'acc[2]': pyslang selector.constant 拿到的 elaborated index
+    #    (case27 主路径, 区分 4 个不同 iter)
+    if hasattr(graph, "_gen_iter_map"):
+        dp["gen_iter_map"] = dict(graph._gen_iter_map)
+    else:
+        dp["gen_iter_map"] = {}
 
 

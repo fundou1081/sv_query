@@ -144,6 +144,35 @@ class GraphBuilder:
                 sig_name = str(sym).strip().strip()
             return sig_name
 
+        def _extract_lhs_constant_index(left_expr):
+            """[V16.14 F-N3 2026-08-19] 从 ElementSelect.selector 提取 élaboré constant index.
+
+            pyslang 11.x 在 semantic AST 中会 fold genvar 表达式到 constant. 例如:
+              case27 src: assign acc[i+1] = acc[i] + prod; (genvar i loop)
+              entry[0].selector.constant = 1   (i=0 → 0+1=1)
+              entry[1].selector.constant = 2
+              ...
+            通过 left.selector.constant 拿 constant, 转 int 返. 失败返 None.
+            """
+            if left_expr is None:
+                return None
+            if 'ElementSelect' not in str(getattr(left_expr, 'kind', '')):
+                return None
+            sel = getattr(left_expr, 'selector', None)
+            if sel is None:
+                return None
+            cv = getattr(sel, 'constant', None)
+            if cv is None:
+                return None
+            try:
+                if hasattr(cv, 'integer'):
+                    return int(cv.integer)
+                if hasattr(cv, 'value'):
+                    return int(cv.value)
+                return int(str(cv))
+            except (TypeError, ValueError):
+                return None
+
         try:
             target_top = self._find_target_top(self.target_module or '')
             if target_top is None:
@@ -162,7 +191,7 @@ class GraphBuilder:
                 entries = getattr(item, 'entries', None)
                 if not entries:
                     continue
-                for entry in entries:
+                for entry_idx, entry in enumerate(entries):
                     for sub in entry:
                         sk = str(getattr(sub, 'kind', ''))
                         if 'ContinuousAssign' not in sk and 'Assign' not in sk:
@@ -170,10 +199,29 @@ class GraphBuilder:
                         asg = getattr(sub, 'assignment', None)
                         if asg is None:
                             continue
-                        sig_name = _extract_lhs_base_signal(getattr(asg, 'left', None))
+                        left = getattr(asg, 'left', None)
+                        sig_name = _extract_lhs_base_signal(left)
                         if not sig_name:
                             continue
+                        # [V16.14 F-N3 2026-08-19] 提取 LHS element constant index (pyslang selector.constant)
+                        # 并存 _gen_iter_map. key 策略:
+                        #  - 有 constant (case27): 用 per-element key 'acc[1]', 'acc[2]'.
+                        #    elk_bridge 顶层按 dst_short='acc[1]' 查 → entry_idx=0,
+                        #    'acc[2]' → entry_idx=1 → 4 个独立 cluster (gen_accum i=0/1/2/3)
+                        #  - 无 constant (case30 NamedValue 'result' / case29 退化): 仍存 base 名,
+                        #    case29 里所有 sub-iter (chain_out dst) 都查到 base 'buf3' → entry_idx=0,
+                        #    累加语义由 viz_data_builder regex 提供 (gen_stage1 i=0/1/2)
+                        const_idx = _extract_lhs_constant_index(left)
                         self.graph._gen_block_map[sig_name] = gb_name
+                        if const_idx is not None:
+                            # per-element key (case27 主路径)
+                            full_pattern = f'{sig_name}[{const_idx}]'
+                            self.graph._gen_iter_map[full_pattern] = entry_idx
+                            # 总是也存 base (兼容 case30 NamedValue 退化路径)
+                            self.graph._gen_iter_map.setdefault(sig_name, entry_idx)
+                        else:
+                            # NamedValue / 其他 (case30/31 result, case29 buffer buf3 退化)
+                            self.graph._gen_iter_map.setdefault(sig_name, entry_idx)
 
             # [V16.11.2 2026-08-18] 2nd pass: GenerateBlock (if/case 型, case30/case31)
             # 不是 GenerateBlockArray, 直接 iterate item 拿 sub
