@@ -297,6 +297,11 @@ class SignalGraph(nx.DiGraph):
         # {dst_signal_short_name → GenerateBlockArray.name (e.g. 'buf1' → 'gen_stage1', 'acc' → 'gen_accum')}
         # 替代 V16.10.3 的启发式 (_parse_gen_block): 直接从源码读取真实 label, 适用于任意命名
         self._gen_block_map: dict[str, str] = {}
+        # [V16.14 2026-08-19 F-N3 redesign] 配套 iter map: 区分 per-LHS-element vs base name.
+        # case27 顶层: 'acc[1]','acc[2]','acc[3]','acc[4]' → entry_idx (0,1,2,3) — per-element 拆分
+        # case29 顶层: 'chain_out' (只一个 dst short) → entry_idx (0) — 全局 setdefault
+        # elk_bridge 顶层 lookup 会按 _dst_short (tree key 短名) 查, 拿 per-element key.
+        self._gen_iter_map: dict[str, int] = {}
 
     def get_port_to_internal(self) -> dict[str, str]:
         """获取端口到内部信号的映射"""

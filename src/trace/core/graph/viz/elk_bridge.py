@@ -111,9 +111,16 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 优先用这个映射取 gen_block 真值; fallback 才用启发式 _parse_gen_block
     # 格式: {signal_short_name → GenerateBlockArray.name} (e.g. 'acc'→'gen_accum', 'buf1'→'gen_stage1')
     _gen_block_map_global: dict | None = None
+    # [V16.14 F-N3 2026-08-19] 配套 iter map: per-LHS-element 区分不同 iter.
+    # 格式: {signal_short_name 或 'sig[K]' → entry_idx}.
+    # 查 dict 顺序:
+    #  1. 完整 pattern 'acc[1]' (case27 per-element) → 拿精确 entry_idx
+    #  2. base 名 'acc' (case29 兼容 fallback) → entry_idx=0 (setdefault)
+    _gen_iter_map_global: dict | None = None
     if viz is not None:
         _dp = (viz.meta or {}).get('datapath', {}) or {}
         _gen_block_map_global = _dp.get('gen_block_map', {}) or {}
+        _gen_iter_map_global = _dp.get('gen_iter_map', {}) or {}
 
     import re as _re_v1610
     _genblk_re = _re_v1610.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\[(\d+)\]$')
@@ -674,11 +681,28 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         _parent_module = dst_name.rsplit('.', 1)[0] if '.' in dst_name else ''
         # [V16.11.2 2026-08-18] 优雅修复根因 B: 优先用 _gen_block_map 真值 (pyslang native API)
         # 适用所有 dst signal — 包括 case30/31 的 port output 'result' (不匹配启发式 buf\d+)
+        # [V16.14 F-N3 2026-08-19] per-LHS-element lookup:
+        #  1. _gen_block_map 只存 base 名 ('acc'), 不含 bracket.  所以总是查 dst_short 前缀 (去 bracket).
+        #  2. _gen_iter_map 存 per-element key ('acc[1]', 'acc[2]'), 优先查完整 pattern,
+        #     再 fallback 到 base (兼容 case29).
         _dst_gb, _dst_gi = '', ''
         if _gen_block_map_global is not None:
-            _dst_gb = _gen_block_map_global.get(dst_short, '')
+            # 取 base 名 (case30 'result' 无 bracket, 仍是 'result')
+            _bi = dst_short.find('[')
+            _base = dst_short[:_bi] if _bi > 0 else dst_short
+            _dst_gb = _gen_block_map_global.get(_base, '')
             if _dst_gb:
                 _dst_gi = 'i=0'
+                # [V16.14 F-N3] 优先查 per-element key ('acc[1]'), 拿真 entry_idx
+                if _gen_iter_map_global is not None:
+                    _idx = _gen_iter_map_global.get(dst_short)
+                    if _idx is not None:
+                        _dst_gi = f'i={_idx}'
+                    else:
+                        # Fallback: base 名 (case29 chain_out 等退化场景)
+                        _idx2 = _gen_iter_map_global.get(_base)
+                        if _idx2 is not None:
+                            _dst_gi = f'i={_idx2}'
         # [V16.10 2026-08-17] fallback: 启发式 (仅在真值缺失时才用)
         if not _dst_gb:
             _dst_gb, _dst_gi = _parse_gen_block(_parent_module, dst_short)
