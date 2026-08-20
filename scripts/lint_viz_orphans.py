@@ -26,12 +26,17 @@ def _category(label: str) -> str:
     """Classify an orphan label into a severity category."""
     # ERROR: high-confidence bug patterns
     if re.match(r"^\?:\s*\(", label):  # "?: (cond [, cond])"
-        return "error"
+        # [2026-08-20] 跟 case (sel) 同理 — 是 render_ternary 合成的 visualization 标记.
+        # ELK 需要这个 OP 节点存在 (移除会 JsonImportException + regress_golden_mini fail),
+        # 内部 graph nodes -j 不会 emit '?: (...)' 这种 label → 必然 orphan.
+        # 但它是 by-design 的合成节点, 不是真 bug.  归为 INFO (一级降 WARN 会更激进,
+        # 先 INFO 保守).
+        return "info"
     if re.match(r"^case\s*\(.*\)\s*$", label):  # "case (...)"
         # [2026-08-20] case scope label 是 elk_bridge.py render_case 合成的 visualization 标记.
         # 如果保持 case label → regress_golden_mini 32 cases 全过 + checker C3 rule 走
         # 如果移除 case label → ELK JsonImportException + regress_golden_mini 13 fail
-        # 因此归为 INFO (设计限制, 不是 bug).  render_ternary 的 ?: 仍为 ERROR (可移除无副作用).
+        # 因此归为 INFO (设计限制, 不是 bug).
         return "info"
     if re.match(r"^[a-zA-Z_][\w\[\]:\s]*==\d+'b[01xz]+\s*$", label):  # "x == 32'b1zz..."
         return "error"
