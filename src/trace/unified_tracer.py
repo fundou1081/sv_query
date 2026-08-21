@@ -491,6 +491,12 @@ class UnifiedTracer:
             self._path_resolver = PathResolver(self._graph, self._module_graph)
             self._init_tracers()
 
+            # [FIX 2026-08-21 Plan B Step 1] emit OP_TERNARY / OP_CASE from expr_trees
+            # 之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到.
+            # 现在 emitted as real TraceNode entries so `graph nodes -j` returns them.
+            # 跟 const 一样, 遍历 _expr_trees, 找 op='Ternary' / 'Case' / 等, emit 为节点.
+            self._emit_conditional_op_nodes()
+
             # [V6.2.1 2026-07-20] Backfill file/line for SIGNAL nodes that
             # had them missing because DriverExtractor built TraceNodes
             # without source-location args (~10 sites). Without this,
@@ -669,6 +675,119 @@ class UnifiedTracer:
                         kind=EdgeKind.MEMBER_SELECT,
                     )
                 )
+
+    # =========================================================================
+    # [FIX 2026-08-21 Plan B Step 1] OP_TERNARY / OP_CASE 节点 emit
+    # =========================================================================
+    def _emit_conditional_op_nodes(self) -> None:
+        """从 _expr_trees 提取 OP_TERNARY / OP_CASE 节点, 加到 graph.
+
+        之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到,
+        导致 `graph nodes -j` 不显示, lint 误报 orphan, trace 看不到条件分支.
+
+        现在遍历 _expr_trees, 找 op='Ternary' / 'Case' / 'CaseStatement' / 'ConditionalOp',
+        emit 为 NodeKind.OP_TERNARY / NodeKind.OP_CASE 节点.
+
+        op 别名 (pyslang 10/11 + syntactic_form):
+        - 'Ternary' (pyslang 11 ExpressionKind)
+        - 'ConditionalOp' (pyslang 10 semantic)
+        - 'ConditionalExpression' (pyslang 10/11 syntax)
+        - 'Case' / 'CaseStatement' (case 表达式)
+        """
+        if self._graph is None:
+            return
+        from trace.core.graph.models import NodeKind, TraceNode
+
+        expr_trees = getattr(self._graph, "_expr_trees", {}) or {}
+        if not expr_trees:
+            return
+
+        OP_TERNARY_OPS = ("Ternary", "ConditionalOp", "ConditionalExpression")
+        OP_CASE_OPS = ("Case", "CaseStatement", "CaseExpression")
+
+        for tree_key, tree_dict in expr_trees.items():
+            if not isinstance(tree_dict, dict):
+                continue
+            # tree_key 格式: "{module_name}.{lhs_name}" (e.g. "ternary_test.y")
+            # 解析 module 和 lhs_short
+            parts = tree_key.rsplit(".", 1)
+            if len(parts) != 2:
+                continue
+            parent_module, lhs_short = parts
+
+            # 遍历 tree_dict 找 ConditionalOp / Case 节点
+            seen_keys: set[str] = set()
+
+            def _walk(node, path):
+                if not isinstance(node, dict):
+                    return
+                op = node.get("op")
+                if op in OP_TERNARY_OPS:
+                    # 提取条件信号名
+                    cond_sigs = []
+                    children = node.get("children", []) or []
+                    if children:
+                        def _collect_sigrefs(n):
+                            if isinstance(n, dict):
+                                if n.get("op") == "SignalRef":
+                                    lbl = n.get("label", "")
+                                    if lbl and lbl not in cond_sigs:
+                                        cond_sigs.append(lbl)
+                                for ch in n.get("children", []) or []:
+                                    _collect_sigrefs(ch)
+                        _collect_sigrefs(children[0])
+                    sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
+                    op_label = f"?: ({sel_label})"
+                    op_node_id = f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
+                    if op_node_id not in seen_keys and op_node_id not in self._graph:
+                        seen_keys.add(op_node_id)
+                        try:
+                            tn = TraceNode(
+                                id=op_node_id,
+                                name=op_label,
+                                module=parent_module,
+                                kind=NodeKind.OP_TERNARY,
+                                width=(0, 0),
+                                extra={"op": "Ternary", "sel_label": sel_label},
+                            )
+                            self._graph.add_trace_node(tn)
+                        except Exception as e:
+                            # [FIX 2026-08-21] 不让错误中断 build_graph 主流程
+                            pass
+                elif op in OP_CASE_OPS:
+                    cond_sigs = []
+                    children = node.get("children", []) or []
+                    if children:
+                        def _collect_sigrefs2(n):
+                            if isinstance(n, dict):
+                                if n.get("op") == "SignalRef":
+                                    lbl = n.get("label", "")
+                                    if lbl and lbl not in cond_sigs:
+                                        cond_sigs.append(lbl)
+                                for ch in n.get("children", []) or []:
+                                    _collect_sigrefs2(ch)
+                        _collect_sigrefs2(children[0])
+                    sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
+                    op_label = f"case ({sel_label})"
+                    op_node_id = f"{parent_module}.{lhs_short}.case_{sel_label.replace(',', '_').replace(' ', '')}"
+                    if op_node_id not in seen_keys and op_node_id not in self._graph:
+                        seen_keys.add(op_node_id)
+                        try:
+                            tn = TraceNode(
+                                id=op_node_id,
+                                name=op_label,
+                                module=parent_module,
+                                kind=NodeKind.OP_CASE,
+                                width=(0, 0),
+                                extra={"op": "Case", "sel_label": sel_label},
+                            )
+                            self._graph.add_trace_node(tn)
+                        except Exception:
+                            pass
+                for c in node.get("children", []) or []:
+                    _walk(c, path + [node])
+
+            _walk(tree_dict, [])
 
     # =========================================================================
     # 实例提取 API (Req-1: API 简化)
