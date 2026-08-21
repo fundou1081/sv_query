@@ -527,6 +527,7 @@ class SignalTracer:
         include_clock: bool = False,
         include_reset: bool = False,
         include_control: bool = False,
+        include_conditional: bool = False,
     ) -> list[TraceNode]:
         """Trace signal fanout (loads driven by this signal)
 
@@ -537,6 +538,8 @@ class SignalTracer:
             include_clock: [Req-12 Issue 19] True 时包含 CLOCK 边 (sensitivity list)
             include_reset: [Req-12 Issue 19] True 时包含 RESET 边
             include_control: [Req-12 Issue 19] True 时包含 CONTROL 边 (always 块引用)
+            include_conditional: [FIX 2026-08-21 Plan B Step 2] True 时包含 BRANCH_* / CASE_*
+                边 (conditional/case 表达式分支), 让 trace 能看到 ?:/case 的两个分支.
 
         默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
@@ -551,6 +554,17 @@ class SignalTracer:
             allowed_kinds.add(EdgeKind.RESET)
         if include_control:
             allowed_kinds.add(EdgeKind.CONTROL)
+        # [FIX 2026-08-21 Plan B Step 2] 包含 conditional branches (?: / case)
+        if include_conditional:
+            allowed_kinds.update({
+                EdgeKind.BRANCH_CONDITION,
+                EdgeKind.BRANCH_TRUE,
+                EdgeKind.BRANCH_FALSE,
+                EdgeKind.BRANCH_RESULT,
+                EdgeKind.CASE_SELECT,
+                EdgeKind.CASE_ITEM,
+                EdgeKind.CASE_RESULT,
+            })
         # depth=1 用 _find_loads 过滤
         if depth == 1:
             return self._find_loads(signal_id, allowed_kinds=allowed_kinds)

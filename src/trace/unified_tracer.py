@@ -933,13 +933,20 @@ class UnifiedTracer:
         include_clock: bool = False,
         include_reset: bool = False,
         include_control: bool = False,
+        include_conditional: bool = False,
     ) -> list:
+        """[FIX 2026-08-21 Plan B Step 2] trace fanout 支持 include_conditional.
+
+        当 include_conditional=True 时, trace 会穿过 OP_TERNARY/OP_CASE 节点,
+        看到条件表达式 (?: / case) 的两个分支.
+        """
         self.build_graph()
         return self._signal_tracer.trace_fanout(
             signal, module, depth,
             include_clock=include_clock,
             include_reset=include_reset,
             include_control=include_control,
+            include_conditional=include_conditional,
         )
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None) -> list:
