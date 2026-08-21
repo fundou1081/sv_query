@@ -751,6 +751,39 @@ class UnifiedTracer:
                                 extra={"op": "Ternary", "sel_label": sel_label},
                             )
                             self._graph.add_trace_node(tn)
+                            # [FIX 2026-08-22 Plan B Step 2b] emit BRANCH_* edges
+                            # cond_sigs → OP_TERNARY (BRANCH_CONDITION)
+                            # true_branch → OP_TERNARY (BRANCH_TRUE)
+                            # false_branch → OP_TERNARY (BRANCH_FALSE)
+                            # OP_TERNARY → lhs (BRANCH_RESULT)
+                            from trace.core.graph.models import EdgeKind, TraceEdge
+                            for cond_sig in cond_sigs:
+                                cond_full = f"{parent_module}.{cond_sig}"
+                                if cond_full in self._graph:
+                                    self._graph.add_trace_edge(TraceEdge(
+                                        src=cond_full, dst=op_node_id,
+                                        kind=EdgeKind.BRANCH_CONDITION,
+                                    ))
+                            # children[1] = true branch, children[2] = false branch
+                            for ci, edge_kind in [(1, EdgeKind.BRANCH_TRUE), (2, EdgeKind.BRANCH_FALSE)]:
+                                if ci < len(children):
+                                    branch_node = children[ci]
+                                    if isinstance(branch_node, dict) and branch_node.get('op') == 'SignalRef':
+                                        bl = branch_node.get('label', '')
+                                        if bl:
+                                            branch_full = f"{parent_module}.{bl}"
+                                            if branch_full in self._graph:
+                                                self._graph.add_trace_edge(TraceEdge(
+                                                    src=branch_full, dst=op_node_id,
+                                                    kind=edge_kind,
+                                                ))
+                            # OP_TERNARY → lhs (BRANCH_RESULT)
+                            lhs_full = f"{parent_module}.{lhs_short}"
+                            if lhs_full in self._graph:
+                                self._graph.add_trace_edge(TraceEdge(
+                                    src=op_node_id, dst=lhs_full,
+                                    kind=EdgeKind.BRANCH_RESULT,
+                                ))
                         except Exception as e:
                             # [FIX 2026-08-21] 不让错误中断 build_graph 主流程
                             pass
@@ -782,6 +815,37 @@ class UnifiedTracer:
                                 extra={"op": "Case", "sel_label": sel_label},
                             )
                             self._graph.add_trace_node(tn)
+                            # [FIX 2026-08-22 Plan B Step 2b] emit CASE_* edges
+                            # cond_sigs → OP_CASE (CASE_SELECT)
+                            # case_items → OP_CASE (CASE_ITEM)
+                            # OP_CASE → lhs (CASE_RESULT)
+                            from trace.core.graph.models import EdgeKind, TraceEdge
+                            for cond_sig in cond_sigs:
+                                cond_full = f"{parent_module}.{cond_sig}"
+                                if cond_full in self._graph:
+                                    self._graph.add_trace_edge(TraceEdge(
+                                        src=cond_full, dst=op_node_id,
+                                        kind=EdgeKind.CASE_SELECT,
+                                    ))
+                            # case 语句 items: children[1:] 是 case item 表达式
+                            for ci in range(1, len(children)):
+                                item_node = children[ci]
+                                if isinstance(item_node, dict) and item_node.get('op') == 'SignalRef':
+                                    il = item_node.get('label', '')
+                                    if il:
+                                        item_full = f"{parent_module}.{il}"
+                                        if item_full in self._graph:
+                                            self._graph.add_trace_edge(TraceEdge(
+                                                src=item_full, dst=op_node_id,
+                                                kind=EdgeKind.CASE_ITEM,
+                                            ))
+                            # OP_CASE → lhs (CASE_RESULT)
+                            lhs_full = f"{parent_module}.{lhs_short}"
+                            if lhs_full in self._graph:
+                                self._graph.add_trace_edge(TraceEdge(
+                                    src=op_node_id, dst=lhs_full,
+                                    kind=EdgeKind.CASE_RESULT,
+                                ))
                         except Exception:
                             pass
                 for c in node.get("children", []) or []:
