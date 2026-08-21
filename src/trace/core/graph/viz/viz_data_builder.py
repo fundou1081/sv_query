@@ -214,6 +214,45 @@ def build_viz_data(
                         instance_path=inst_path,
                     )
                     viz.nodes.append(cn)
+            # [FIX 2026-08-21 Plan B Step 1] extract ConditionalOp / CaseStatement
+            # 之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到.
+            # 现在 emit OP_TERNARY / OP_CASE 节点, 让 lint 不再误报 orphan,
+            # 同时 trace / coverage / evidence 命令可以引用这些节点.
+            # 跟 const 一样, 加 (inst_path, node_id) 去重防重复 emit.
+            # [FIX 2026-08-21 23:46] pyslang 11 实际 op 值是 'Ternary' (不是 'ConditionalOp').
+            # Case 表达式的 op 可能叫 'Case' / 'CaseStatement' / 'ConditionalOp' — 多个 alias 都接受.
+            if op in ('Ternary', 'ConditionalOp', 'Case', 'CaseStatement', 'ConditionalExpression'):
+                # 使用 node 自身 id (driver_extractor 已赋) 去重
+                cond_key = (inst_path, id(node))
+                if cond_key not in const_seen:
+                    const_seen.add(cond_key)
+                    inst_safe = inst_path.replace('.', '_') if inst_path else 'top'
+                    op_kind = 'OP_TERNARY' if op == 'ConditionalOp' else 'OP_CASE'
+                    # 提取条件信号名 (从 children[0] 收集 SignalRef labels)
+                    cond_sigs = []
+                    children = node.get('children', []) or []
+                    if children:
+                        def _collect_sigrefs(n):
+                            if isinstance(n, dict):
+                                if n.get('op') == 'SignalRef':
+                                    cond_sigs.append(n.get('label', ''))
+                                for ch in n.get('children', []) or []:
+                                    _collect_sigrefs(ch)
+                        _collect_sigrefs(children[0])
+                    sel_label = ', '.join(sorted(s for s in cond_sigs if s)) or '?'
+                    op_label = f'?: ({sel_label})' if op == 'ConditionalOp' else f'case ({sel_label})'
+                    # 使用确定性 id (跟 ELK render_ternary 保持一致: ternary_{idx} / case_{idx})
+                    op_id = f"{op_kind.lower()}_{inst_safe}_{lhs_short}_{sel_label.replace(',', '_').replace(' ', '')}_{id(node) % 10000}"
+                    # 真正 emit - 创建 VizNode
+                    viz.nodes.append(VizNode(
+                        id=op_id,
+                        label=op_label,
+                        full_path=op_id,
+                        module=parent_module_full,
+                        kind=op_kind,
+                        cluster_id=inst_path,
+                        instance_path=inst_path,
+                    ))
             for c in node.get('children', []) or []:
                 _walk_collect_const(c, path)
         _walk_collect_const(tree_dict, [])
@@ -274,6 +313,10 @@ def build_viz_data(
                  or n.id in port_in_has_direct_edge
                  # [V16 Plan Phase 3.2 2026-08-14] 保留从 expr_trees 提取的 instance 内 const 节点
                  or n.cluster_id
+                 # [FIX 2026-08-21 Plan B Step 1] 保留 OP_TERNARY / OP_CASE 节点
+                 # 这些是从 expr_trees 提取的 conditional/case 表达式节点,
+                 # 默认过不有 port_in 边, 但应该跟 const 一样保留.
+                 or n.kind in ('OP_TERNARY', 'OP_CASE')
                 ]
 
     viz.meta["filtered_node_count"] = viz.node_count

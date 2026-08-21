@@ -119,6 +119,12 @@ class NodeKind(Enum):
     EXPRESSION = auto()  # 表达式节点 (a + b, a & b)
     FUNCTION_CALL = auto()  # 函数调用节点
 
+    # ═══ [FIX 2026-08-21 Plan B] 条件分支节点 (三目 + case) ═══
+    # 之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 没有,
+    # 导致 lint 误报 orphan + trace 看不到条件分支.  现在作为真实节点 emit.
+    OP_TERNARY = auto()  # 条件三目节点 (? : ), name='?: (sel)'
+    OP_CASE = auto()     # case 块 ( case (sel) { ... } ), name='case (sel)'
+
 
 class EdgeKind(Enum):
     # ═══ 核心: 硬件信号边 (≈90% 引用) ═══
@@ -143,6 +149,16 @@ class EdgeKind(Enum):
     IS_INSTANCE_OF = auto()  # CLASS_PROPERTY → CLASS (成员变量的类型引用)
     SUPER_CALL = auto()  # CONSTRAINT_EXPR → 被调用的父类约束
     MEMBER_SELECT = auto()  # 实例成员访问: top.p.addr → top.p
+
+    # ═══ [FIX 2026-08-21 Plan B] 条件分支边 (三目 + case) ═══
+    # 供 trace 默认走 DRIVER + CONDITIONAL, coverage 统计条件分支.
+    BRANCH_CONDITION = auto()  # cond_signal → OP_TERNARY (条件选选信号)
+    BRANCH_TRUE = auto()       # true_expr → OP_TERNARY (true 分支输出)
+    BRANCH_FALSE = auto()      # false_expr → OP_TERNARY (false 分支输出)
+    BRANCH_RESULT = auto()     # OP_TERNARY → dst_signal (三目表达式结果)
+    CASE_SELECT = auto()       # sel_signal → OP_CASE (case 选选信号)
+    CASE_ITEM = auto()         # case_item_src → OP_CASE (case 各项驱动)
+    CASE_RESULT = auto()       # OP_CASE → dst_signal (case 表达式结果)
 
 
 # [铁律16] 注意:ENABLE/DATA 不作为独立边类型
