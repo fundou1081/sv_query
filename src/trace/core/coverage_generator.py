@@ -17,6 +17,8 @@
 import re
 import logging
 from typing import Any, Callable
+from dataclasses import dataclass, field
+from enum import Enum
 
 from .coverage_models import (
     AtomicSignal,
@@ -31,6 +33,53 @@ _LOGGER = logging.getLogger(__name__)
 # [Plan F2.7 2026-08-13] 错误 marker: tree 缺失时用这个代替, 让 caller 能
 # 识别 (grep name=NO_TREE_MARKER). 不再静默 fallback 到 string parsing.
 NO_TREE_MARKER = "<NO_TREE>"
+
+
+# [FIX 2026-08-22 Plan B Step 3] BranchType 维度
+# 让 coverage 能按分支类型 (ternary / case / if / function) 统计决策点.
+# 之前 coverage 只产生一层 atomic 列表, 不知道哪个 atomic 来自哪种分支.
+class BranchType(Enum):
+    TERNARY = "ternary"      # ?: 表达式
+    CASE = "case"            # case 语句
+    IF = "if"                # if 语句
+    FUNCTION = "function"    # 函数调用
+    ASSIGN = "assign"        # 普通 assign
+    OTHER = "other"
+
+
+@dataclass
+class BranchTypeStats:
+    """[FIX 2026-08-22 Plan B Step 3] 按类型统计分支决策点"""
+    counts: dict[str, int] = field(default_factory=lambda: {
+        "ternary": 0, "case": 0, "if": 0, "function": 0, "assign": 0, "other": 0,
+    })
+    # 关联信号 (decision 信号名) 用于覆盖率细查
+    ternary_signals: list[str] = field(default_factory=list)
+    case_signals: list[str] = field(default_factory=list)
+
+    def total(self) -> int:
+        return sum(self.counts.values())
+
+    def to_markdown(self) -> str:
+        if self.total() == 0:
+            return "*No branches detected*\n"
+        lines = [
+            "| Branch Type | Count | Signals |",
+            "|---|---|---|",
+        ]
+        for bt in BranchType:
+            cnt = self.counts.get(bt.value, 0)
+            sigs = ""
+            if bt == BranchType.TERNARY:
+                sigs = ", ".join(self.ternary_signals[:5])
+                if len(self.ternary_signals) > 5:
+                    sigs += f" (+{len(self.ternary_signals)-5} more)"
+            elif bt == BranchType.CASE:
+                sigs = ", ".join(self.case_signals[:5])
+                if len(self.case_signals) > 5:
+                    sigs += f" (+{len(self.case_signals)-5} more)"
+            lines.append(f"| {bt.value} | {cnt} | {sigs or '—'} |")
+        return "\n".join(lines) + "\n"
 
 
 class ControlCoverageGenerator:
@@ -516,6 +565,54 @@ class ControlCoverageGenerator:
             bit_range=None,
         )]
 
+    # [FIX 2026-08-22 Plan B Step 3] BranchType 统计
+    # 遍历 expression tree, 统计 ternary / case / if / function 决策点个数,
+    # 并记录 ternary / case 相关的信号名 (供 markdown 报告).
+    def _classify_branches(self, tree_dict: dict | None) -> BranchTypeStats:
+        stats = BranchTypeStats()
+        if not tree_dict or not isinstance(tree_dict, dict):
+            return stats
+
+        # 收集整棵树里的信号名 (按出现顺序)
+        all_signals: list[str] = []
+        # 识别顶层 op (assign 的 kind)
+        top_op = tree_dict.get('op', '')
+
+        def _walk(node):
+            if not isinstance(node, dict):
+                return
+            op = node.get('op', '')
+            label = node.get('label', '')
+            # SignalRef → 收集信号名
+            if op == 'SignalRef' and label:
+                all_signals.append(label)
+            # TERNARY (?:)
+            if op in ('Ternary', 'ConditionalOp', 'ConditionalExpression'):
+                stats.counts['ternary'] += 1
+                stats.ternary_signals.extend(all_signals[-3:])  # 最近 3 个信号
+            # CASE
+            elif op in ('Case', 'CaseStatement', 'CaseExpression'):
+                stats.counts['case'] += 1
+                stats.case_signals.extend(all_signals[-3:])
+            # IF
+            elif op in ('If', 'IfStatement', 'ConditionalStatement'):
+                stats.counts['if'] += 1
+            # FUNCTION CALL
+            elif op in ('Call', 'FunctionCall', 'SystemCall'):
+                stats.counts['function'] += 1
+            # ASSIGN (顶层)
+            elif op in ('Assignment',):
+                stats.counts['assign'] += 1
+            # 递归 children
+            for c in node.get('children', []) or []:
+                _walk(c)
+
+        _walk(tree_dict)
+        # 如果没识别到任何分支, 至少计一个 assign
+        if stats.total() == 0:
+            stats.counts['assign'] += 1
+        return stats
+
     def _extract_atomics_from_expr_tree(self, tree_dict: dict) -> list:
         """[Plan F2.4.3 2026-08-13] 从 ExpressionTree dict walk 提取原子信号
 
@@ -746,6 +843,27 @@ class ControlCoverageGenerator:
         lines.append(f"- **分解深度**: {result.depth_reached}")
         lines.append(f"- **控制块数**: {len(result.control_blocks)}")
         lines.append("")
+
+        # [FIX 2026-08-22 Plan B Step 3] Branch Type Breakdown
+        # 遍历 _expr_trees 收集 BranchType 统计, 加进 markdown 报告.
+        # 这样用户能看到 ternary / case / if 各贡献了多少决策点.
+        try:
+            branch_stats = BranchTypeStats()
+            graph = getattr(self, "_graph", None)
+            expr_trees = getattr(graph, "_expr_trees", {}) or {} if graph else {}
+            for tree_dict in expr_trees.values():
+                if isinstance(tree_dict, dict):
+                    subtree_stats = self._classify_branches(tree_dict)
+                    for bt, cnt in subtree_stats.counts.items():
+                        branch_stats.counts[bt] = branch_stats.counts.get(bt, 0) + cnt
+                    branch_stats.ternary_signals.extend(subtree_stats.ternary_signals)
+                    branch_stats.case_signals.extend(subtree_stats.case_signals)
+            lines.append("## Branch Type Breakdown")
+            lines.append("")
+            lines.append(branch_stats.to_markdown())
+            lines.append("")
+        except Exception as e:
+            _LOGGER.debug(f"Branch stats collection failed: {e}")
 
         # 错误信息
         if result.error:
