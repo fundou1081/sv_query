@@ -214,45 +214,12 @@ def build_viz_data(
                         instance_path=inst_path,
                     )
                     viz.nodes.append(cn)
-            # [FIX 2026-08-21 Plan B Step 1] extract ConditionalOp / CaseStatement
-            # 之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到.
-            # 现在 emit OP_TERNARY / OP_CASE 节点, 让 lint 不再误报 orphan,
-            # 同时 trace / coverage / evidence 命令可以引用这些节点.
-            # 跟 const 一样, 加 (inst_path, node_id) 去重防重复 emit.
-            # [FIX 2026-08-21 23:46] pyslang 11 实际 op 值是 'Ternary' (不是 'ConditionalOp').
-            # Case 表达式的 op 可能叫 'Case' / 'CaseStatement' / 'ConditionalOp' — 多个 alias 都接受.
-            if op in ('Ternary', 'ConditionalOp', 'Case', 'CaseStatement', 'ConditionalExpression'):
-                # 使用 node 自身 id (driver_extractor 已赋) 去重
-                cond_key = (inst_path, id(node))
-                if cond_key not in const_seen:
-                    const_seen.add(cond_key)
-                    inst_safe = inst_path.replace('.', '_') if inst_path else 'top'
-                    op_kind = 'OP_TERNARY' if op == 'ConditionalOp' else 'OP_CASE'
-                    # 提取条件信号名 (从 children[0] 收集 SignalRef labels)
-                    cond_sigs = []
-                    children = node.get('children', []) or []
-                    if children:
-                        def _collect_sigrefs(n):
-                            if isinstance(n, dict):
-                                if n.get('op') == 'SignalRef':
-                                    cond_sigs.append(n.get('label', ''))
-                                for ch in n.get('children', []) or []:
-                                    _collect_sigrefs(ch)
-                        _collect_sigrefs(children[0])
-                    sel_label = ', '.join(sorted(s for s in cond_sigs if s)) or '?'
-                    op_label = f'?: ({sel_label})' if op == 'ConditionalOp' else f'case ({sel_label})'
-                    # 使用确定性 id (跟 ELK render_ternary 保持一致: ternary_{idx} / case_{idx})
-                    op_id = f"{op_kind.lower()}_{inst_safe}_{lhs_short}_{sel_label.replace(',', '_').replace(' ', '')}_{id(node) % 10000}"
-                    # 真正 emit - 创建 VizNode
-                    viz.nodes.append(VizNode(
-                        id=op_id,
-                        label=op_label,
-                        full_path=op_id,
-                        module=parent_module_full,
-                        kind=op_kind,
-                        cluster_id=inst_path,
-                        instance_path=inst_path,
-                    ))
+            # [FIX 2026-08-22 Plan B Step A2] 移除 viz_data_builder 内的 OP_TERNARY/OP_CASE emit
+            # 原因: unified_tracer._emit_conditional_op_nodes 已经在 build_graph()
+            # 阶段 emit OP_TERNARY/OP_CASE 节点到 internal graph (commit 90b9076).
+            # viz_data_builder 通过 _to_viz() 转换 internal graph → viz,
+            # 不需要在 _walk_collect_const 里再 emit 一次.
+            # [原代码段删除 — 重复 emit, 已被 internal graph 取代]
             for c in node.get('children', []) or []:
                 _walk_collect_const(c, path)
         _walk_collect_const(tree_dict, [])
