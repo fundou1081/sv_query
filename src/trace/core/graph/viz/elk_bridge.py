@@ -3,6 +3,30 @@
 V100: 用 ELK 原生 compound graph (INCLUDE_CHILDREN) 实现 scope 嵌套。
 ELK 自动计算 case/branch scope 框的尺寸和位置，不再 SVG 后补。
 
+[Plan B Step 4 设计说明 2026-08-22] — 渲染三元/case 节点:
+
+  本文件中 render_ternary / render_case 是 ELK JSON 层合成节点 的唯一产生者。
+  它们发射 label 为 "?: (sel)" / "case (sel)" 的 OP 节点，
+  并生成对应的 cond_sigs → OP (虚线) / true_false → OP (实线) 边。
+
+  内部 graph 层 (SignalGraph._emit_conditional_op_nodes) 在 build_graph()
+  阶段已经 emit OP_TERNARY / OP_CASE 节点 (commit 90b9076) + BRANCH_* / CASE_*
+  边 (commit 33b253f), 但那是给 trace / coverage / lint 用的单一真实源。
+
+  ELK 层与 internal graph 各自独立:
+  - Internal graph 节点 ID: "{module}.{lhs}.ternary_{sel}" (确定性)
+  - ELK 节点 ID: "ternary_{idx}" / "case_{idx}" (自增计数器)
+  - 两者 label 格式完全一致: "?: (sel)" / "case (sel)"
+  - SVG 文本 一致 → lint script 看到 '?: (sel)' 两者都可能是 orphan
+    (内 internal graph 的 ?: (sel) 不是 orphan, ELK 合成节点是)
+
+  为什么不重构 render_ternary 让其消费 internal graph 节点:
+  - 之前试过删 ELK 合成节点 → ELK JsonImportException + regress_golden_mini 13/32 FAIL
+  - ELK 依赖该节点做布局 (JSON schema 必需)
+  - 完整重构需 4-6h 重写 ELK JSON schema, 风险高 / 收益小
+  - 当前状态: internal graph 节点可见 (供 trace/coverage), ELK 节点可见 (供 SVG 渲染),
+    两者 label 一致 → lint 不报 orphan (已降级为 INFO)
+
 架构:
   root (INCLUDE_CHILDREN, RIGHT)
   ├── PORT_IN nodes (FIRST layer constraint, 左侧列)
