@@ -409,6 +409,19 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             collect_signals(cond, cond_sigs)
         sel_label = ', '.join(sorted(cond_sigs)) if cond_sigs else '?'
 
+        # [Plan B Step A3 2026-08-22] 提前重命名 node_id 为内部 graph ID
+        # 内部 graph 层 (unified_tracer._emit_conditional_op_nodes) 已经 emit
+        # OP_TERNARY TraceNode (commit 90b9076), 通过 viz_data_builder 流入 viz.
+        # 内部 ID 格式: "{module}.{lhs}.ternary_{sel}" (确定性)
+        # 重命名后, 后续 emit 的边也用新 ID → 避免 dangling edge 引起 ELK layout error.
+        if viz is not None:
+            for _vn in viz.nodes:
+                if getattr(_vn, 'kind', '') == 'OP_TERNARY':
+                    _vn_label = getattr(_vn, 'label', '')
+                    if _vn_label == f'?: ({sel_label})':
+                        node_id = _vn.id
+                        break
+
         # ?: OP 节点
         op_w = max(OP_W, len(sel_label) * 8 + 20)
         # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
