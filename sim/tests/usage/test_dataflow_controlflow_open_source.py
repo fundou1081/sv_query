@@ -121,14 +121,19 @@ def test_p6_opentitan_tlul_controlflow_list_conditioned():
 
 
 def test_p7_picorv32_dataflow_analyze():
-    """P7: PicoRV32 picorv32.q dataflow (单文件模式, 101 warnings 容忍)."""
+    """P7: PicoRV32 picorv32.clk → mem_valid dataflow (单文件模式, 101 warnings 容忍).
+
+    [FIX 2026-08-23 A4] 原本用 picorv32.q, 但 picorv32.v 没有 q 这个输出 port
+    (picorv32 是 memory-mapped bus, 输出是 mem_valid/mem_addr/mem_wdata).
+    改用 mem_valid (真正的顶层 output).
+    """
     if not PICO_FILE.exists():
         pytest.skip("PicoRV32 not available")
     r = _run("dataflow", "analyze", "--no-strict",
-             "picorv32.clk", "picorv32.q",
+             "picorv32.clk", "picorv32.mem_valid",
              "--file", str(PICO_FILE))
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:300]}"
-    # picorv32 q 跟 clk 是 clock-driven, 时序组合
+    # picorv32 mem_valid 跟 clk 是 clock-driven, 时序组合
     assert "Reachable:" in r.stdout
     print("✅ P7 PicoRV32 dataflow: 跑通 (单文件模式)")
 

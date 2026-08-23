@@ -7,7 +7,7 @@
     "edges": {
       "BIT_SELECT": 5,
       "CLOCK": 7,
-      "CONNECTION": 6,
+      "CONNECTION": 4,
       "DRIVER": 16,
       "RESET": 7
     },
@@ -21,7 +21,7 @@
       "REG": 8,
       "SIGNAL": 1
     },
-    "total_edges": 41,
+    "total_edges": 39,
     "total_nodes": 33
   }
 }
