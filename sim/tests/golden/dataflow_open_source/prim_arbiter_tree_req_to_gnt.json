@@ -1,6 +1,6 @@
 {
   "command": "dataflow",
   "is_reachable": true,
-  "n_intermediate": 9,
-  "paths_count": 5
+  "n_intermediate": 16,
+  "paths_count": 40
 }
