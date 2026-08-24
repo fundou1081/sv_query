@@ -27,6 +27,33 @@ ELK 自动计算 case/branch scope 框的尺寸和位置，不再 SVG 后补。
   - 当前状态: internal graph 节点可见 (供 trace/coverage), ELK 节点可见 (供 SVG 渲染),
     两者 label 一致 → lint 不报 orphan (已降级为 INFO)
 
+[Plan B Step A6 设计说明 2026-08-24] — BRANCH_* 边渲染状态 (诚实文档):
+
+  现状: internal graph emit BRANCH_CONDITION / BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT
+  边 + CASE_SELECT / CASE_ITEM / CASE_RESULT 边 (commit 33b253f) — 这是 single source of truth.
+
+  ELK render 现状: render_ternary / render_case 只合成 condition_select 虚线边
+  (从 cond_sigs 推断), 没把 internal graph 的 BRANCH_* 边 emit 到 ELK JSON / SVG / DOT.
+
+  影响:
+    ✅ trace / coverage / lint 命令: 看到 BRANCH_* 边 (从 viz.edges 拿)
+    ✅ stats --json: BRANCH_* 边计数正确
+    ❌ SVG / DOT 可视化: 只看到 condition_select 边 (虚线), 看不到 BRANCH_* 边
+    ❌ ELK 布局: 不知道 BRANCH_* 边存在, 节点布局没考虑这些边
+
+  例子 (picorv32):
+    Internal graph:  31 OP_TERNARY + 90 BRANCH_* 边 ✓
+    SVG 渲染:        31 '?: (xxx)' 节点 + 0 BRANCH_* 边 ❌
+
+  验证: 用户在 A4 跳出质疑 (Run 12123), 跨参考验证后发现.
+
+  Plan B Step A5 (下一阶段): 设计 BRANCH_* 边 emit 策略
+    - 目的: 让 SVG 显示 BRANCH_* 边, 跟 internal graph 一致
+    - 难点: 不能跟现有 condition_select 重复 emit (之前尝试 → ELK layout error)
+    - 策略: 在 render_ternary 后阶段 emit, 用 internal graph 的 (src, dst) 跟
+      condition_select 去重, 避免重复边
+    - 预期: 4-6h 重构, 连续测试 regress_golden_mini 守卫
+
 架构:
   root (INCLUDE_CHILDREN, RIGHT)
   ├── PORT_IN nodes (FIRST layer constraint, 左侧列)
