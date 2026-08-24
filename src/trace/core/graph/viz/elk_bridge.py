@@ -699,6 +699,58 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         
         # ── Ternary: compound case/branch structure ──
         if op == 'Ternary':
+            # [Plan B Step A12.3 2026-08-24] 嵌套 ternary 时用内部 graph ID 格式
+            # 背景: A3 重命名只在 viz.nodes 有匹配 OP_TERNARY 时生效.
+            # 嵌套 ternary 的内部 OP_TERNARY 不在 viz.nodes (unified_tracer 只 emit 外层),
+            # 所以重命名静默失败, 嵌套 OP 仍用 counter-based ID (op_xxx_y_btf_5),
+            # 跟内部 graph 的 ID (ternary_test.y.ternary_sel) 不一致 → BRANCH_* 边 dangle.
+            # 修复: 从 prefix 反推 lhs_short, 跟 unified_tracer._emit_conditional_op_nodes 同样的 ID 公式.
+            # 公式: f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
+            _lhs_short_a12 = None
+            if prefix.startswith('wire_'):
+                # 拔掉 'wire_' 前缀, 取第一个 '_' 前的部分
+                _after = prefix[len('wire_'):]
+                # 容忍嵌套: 'wire_y' → 'y'; 'wire_y_btf' → 'y' (后面是 btf/cond)
+                for _marker in ('_btf', '_cond', '_wire', '_c'):
+                    if _marker in _after:
+                        _lhs_short_a12 = _after.split(_marker)[0]
+                        break
+                if _lhs_short_a12 is None:
+                    _lhs_short_a12 = _after.split('_')[0] if '_' in _after else _after
+            if _lhs_short_a12 is None:
+                _lhs_short_a12 = prefix.split('_')[0] if '_' in prefix else prefix
+            # 提取 sel_label 从 cond 子树 (跟 render_ternary 同样逻辑)
+            _sel_label_a12 = '?'
+            if children and isinstance(children[0], dict):
+                _cond_a12 = children[0]
+                _cond_sigs_a12 = []
+                def _a12_collect(n):
+                    if isinstance(n, dict):
+                        if n.get('op') == 'SignalRef':
+                            _lbl = n.get('label', '')
+                            if _lbl and _lbl not in _cond_sigs_a12:
+                                _cond_sigs_a12.append(_lbl)
+                        for _ch in n.get('children', []) or []:
+                            _a12_collect(_ch)
+                _a12_collect(_cond_a12)
+                _sel_label_a12 = ', '.join(sorted(_cond_sigs_a12)) if _cond_sigs_a12 else '?'
+            _safe_sel_a12 = _sel_label_a12.replace(',', '_').replace(' ', '')
+            _det_id_a12 = f"{parent_module}.{_lhs_short_a12}.ternary_{_safe_sel_a12}"
+            # 如果内部 graph 有这个 ID, 用它 (跟 A3 一致). 否则用计算的 deterministic ID
+            # (这样嵌套 ternary 也能跟内部 graph 对齐, 修复 5 nested case)
+            _use_det_id = True
+            if viz is not None:
+                _matched_in_viz = False
+                for _vn in viz.nodes:
+                    if getattr(_vn, 'kind', '') == 'OP_TERNARY' and getattr(_vn, 'id', '') == _det_id_a12:
+                        _matched_in_viz = True
+                        node_id = _det_id_a12
+                        break
+                if not _matched_in_viz:
+                    # 嵌套情况: 用计算的 deterministic ID (内部 graph 未 emit, 但 ID 格式对齐)
+                    node_id = _det_id_a12
+            else:
+                node_id = _det_id_a12
             return render_ternary(node_id, children, prefix, nc, parent_module=parent_module, gen_block=gen_block, gen_iter=gen_iter)
         
         # Operator node
