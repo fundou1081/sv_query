@@ -27,32 +27,39 @@ ELK 自动计算 case/branch scope 框的尺寸和位置，不再 SVG 后补。
   - 当前状态: internal graph 节点可见 (供 trace/coverage), ELK 节点可见 (供 SVG 渲染),
     两者 label 一致 → lint 不报 orphan (已降级为 INFO)
 
-[Plan B Step A6 设计说明 2026-08-24] — BRANCH_* 边渲染状态 (诚实文档):
+[Plan B Step A6 设计说明 2026-08-24 + A5 2026-08-25] — BRANCH_* 边渲染状态 (诚实文档):
 
   现状: internal graph emit BRANCH_CONDITION / BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT
   边 + CASE_SELECT / CASE_ITEM / CASE_RESULT 边 (commit 33b253f) — 这是 single source of truth.
 
-  ELK render 现状: render_ternary / render_case 只合成 condition_select 虚线边
-  (从 cond_sigs 推断), 没把 internal graph 的 BRANCH_* 边 emit 到 ELK JSON / SVG / DOT.
+  ELK render 现状 (A5 后):
+    ✅ BRANCH_CONDITION 边: 已 emit (via sel_anchor condition_select 边, src=port → tgt=cond_sel_<dst>)
+       + CASE_SELECT 边: 同样路径 emit
+    ❌ BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT 边: 仍未 emit
+       + CASE_ITEM / CASE_RESULT 边: 仍未 emit
+
+  A5 修复 (2026-08-25, commit pending):
+    根因: sel_anchor edge emit 时, src port_in (case selector) 不在 root_children,
+          被 _collect_all_emitted_ids filter 删边 (6 个 [WARN] removed edge).
+    修复: lazy emit port_in 节点 (用 viz.nodes 直接查 source location, 避免跨函数引用).
+    验证: regress_golden_mini 32/32 PASS, 0 [WARN] removed edge.
 
   影响:
-    ✅ trace / coverage / lint 命令: 看到 BRANCH_* 边 (从 viz.edges 拿)
-    ✅ stats --json: BRANCH_* 边计数正确
-    ❌ SVG / DOT 可视化: 只看到 condition_select 边 (虚线), 看不到 BRANCH_* 边
-    ❌ ELK 布局: 不知道 BRANCH_* 边存在, 节点布局没考虑这些边
+    ✅ trace / coverage / lint 命令: 看到所有 BRANCH_* / CASE_* 边 (从 viz.edges 拿)
+    ✅ stats --json: 边计数正确
+    ✅ SVG / DOT 可视化: condition_select 边现在正确显示 (A5 修复)
+       (但 BRANCH_TRUE/FALSE/RESULT + CASE_ITEM/RESULT 边仍未显示)
+    ⚠️ ELK 布局: 知道 BRANCH_CONDITION / CASE_SELECT 边 (A5), 但不知其他 BRANCH_* 边
 
   例子 (picorv32):
-    Internal graph:  31 OP_TERNARY + 90 BRANCH_* 边 ✓
-    SVG 渲染:        31 '?: (xxx)' 节点 + 0 BRANCH_* 边 ❌
+    Internal graph:  31 OP_TERNARY + 90 BRANCH_* 边
+    SVG 渲染:        31 '?: (xxx)' 节点 + sel_anchor condition_select 边 ✓ (A5)
+                   + 0 BRANCH_TRUE/FALSE/RESULT 边 ❌ (A7+ 待修)
 
-  验证: 用户在 A4 跳出质疑 (Run 12123), 跨参考验证后发现.
-
-  Plan B Step A5 (下一阶段): 设计 BRANCH_* 边 emit 策略
-    - 目的: 让 SVG 显示 BRANCH_* 边, 跟 internal graph 一致
-    - 难点: 不能跟现有 condition_select 重复 emit (之前尝试 → ELK layout error)
-    - 策略: 在 render_ternary 后阶段 emit, 用 internal graph 的 (src, dst) 跟
-      condition_select 去重, 避免重复边
-    - 预期: 4-6h 重构, 连续测试 regress_golden_mini 守卫
+  Plan B Step A7+ (下一阶段): emit BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT + CASE_ITEM / CASE_RESULT
+    - 目的: 完整显示 BRANCH_* 边谱, 让 SVG 跟 internal graph 100% 一致
+    - 难度: 比 A5 高 — 需要 emit 新节点 (true_expr / false_expr / case_items)
+    - 预计: 6-8h 重构, 连续测试 regress_golden_mini 守卫
 
 架构:
   root (INCLUDE_CHILDREN, RIGHT)
@@ -1148,6 +1155,11 @@ def viz_to_elk(viz: VizData) -> dict:
     ctr = [0]
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
 
+    # [Plan B Step A5 2026-08-25] _emitted_port_ids 在 viz_to_elk scope 初始化,
+    # 让 sel_anchor block (line ~1445) 的 lazy port_in emit 能 dedup.
+    # 之前 _emitted_port_ids 只在 expr_trees_to_elk 内定义, viz_to_elk 用不到 → NameError.
+    _emitted_port_ids = set()
+
     # ── Phase 0: Classify edges (only for case/if compound graph) ──
     cond_by_dst = defaultdict(list)
     for e in viz.edges:
@@ -1436,7 +1448,29 @@ def viz_to_elk(viz: VizData) -> dict:
                 # [V16.12] 用 _resolve_port_id 解析 (sel 信号可能在多模块同名, 需要 full path)
                 # 用 _resolve_full_input_path(sig) 推导 full path, 或 fallback 短名
                 _sel_full = input_short_to_fulls.get(sig, [sig])[0]
-                root_edges.append(_emit_edge(ne(), [_resolve_port_id(_sel_full, 'in', input_short_to_fulls, output_short_to_fulls)], [sel_anchor_id], kind='condition_select'))
+                _sel_port_id = _resolve_port_id(_sel_full, 'in', input_short_to_fulls, output_short_to_fulls)
+                # [Plan B Step A5 2026-08-25] Lazy emit port_in 节点 (如果 root_children 里不存在)
+                # 背景: case9/15/16/17/22 的 sel 信号可能未被 _referenced_input_fulls 引用 (它们是
+                # 纯 case selector, 不驱动任何输出), 所以 port_in 没在主 emit block (line 378-388) emit.
+                # 后果: sel_anchor edge src='port_<full>_dot_<sig>' 在 _collect_all_emitted_ids 时找不到 → filter 删边.
+                # 修复: emit edge 前检查 port_in 是否存在, 不存在则补 emit.
+                if _sel_port_id not in _emitted_port_ids:
+                    # [Plan B Step A5 v2] 用 viz.nodes 直接查找 source location (避免 cross-function
+                    # node_source_map 引用 — 那是 expr_trees_to_elk 的本地变量, viz_to_elk 用不到)
+                    _sel_file, _sel_line = '', 0
+                    for _vn in viz.nodes:
+                        if getattr(_vn, 'full_path', '') == _sel_full:
+                            _sel_file = getattr(_vn, 'file', '') or ''
+                            _sel_line = getattr(_vn, 'line', 0) or 0
+                            break
+                    root_children.append({
+                        'id': _sel_port_id, 'width': PORT_W, 'height': PORT_H,
+                        'labels': [{'text': sig, 'fontSize': 8, 'fontName': 'Courier'}],
+                        'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                        '_meta': {'kind': 'port_in', 'file': _sel_file, 'line': _sel_line},
+                    })
+                    _emitted_port_ids.add(_sel_port_id)
+                root_edges.append(_emit_edge(ne(), [_sel_port_id], [sel_anchor_id], kind='condition_select'))
 
         # Phase 4: Assemble case scope
         case_node = {
