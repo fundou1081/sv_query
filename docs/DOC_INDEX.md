@@ -85,7 +85,8 @@ docs/
 │   └── SV_SYNTAX_ROADMAP.md
 │
 ├── debugging_lessons/          # 调试案例 + 经验教训 (future reference)
-│   └── 2026-08-25_picorv32_render_tree_cycle.md
+│   ├── 2026-08-25_picorv32_render_tree_cycle.md
+│   └── debug-mindset-skill.md  # 通用 debug mindset skill (5 模式 + 切换规则)
 │
 └── archive/                    # 过时文档 (已归档)
     ├── GRAPH_BUILDER_*.md
@@ -150,6 +151,7 @@ UVM/SVA Skeleton 自动生成规则
 | 文档 | 描述 |
 |------|------|
 | `2026-08-25_picorv32_render_tree_cycle.md` | render_tree 的 RecursionError 调查 + cycle detection 修复 (Plan B Step F) |
+| `debug-mindset-skill.md` | **通用 debugging skill** — 5 种思维模式 + 切换规则. 下次遇到任何 bug 可直接套用. |
 
 ### `archive/` - 过时文档
 已废弃或被替代的文档
