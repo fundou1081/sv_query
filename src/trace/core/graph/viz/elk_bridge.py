@@ -1267,13 +1267,54 @@ def viz_to_elk(viz: VizData) -> dict:
     root_edges = []
 
     # Local edge helper (Phase 3 compound graph uses this)
+    # [Plan B Step C 2026-08-25] Branch differentiator
+    # 背景: case/ternary 内部各分支边 (true/false/case_item) 视觉上没区分.
+    # 修复: 给 _emit_edge 加 ELK layoutOptions, 不同 kind 走不同样式:
+    #   - condition_select: 虚线 (selector → case scope)
+    #   - branch_true: 实线绿色 (case true 分支源)
+    #   - branch_false: 实线红色 (ternary false 分支源)
+    #   - case_item: 实线蓝色 (case 各项驱动)
+    _EDGE_STYLES = {
+        'condition_select': {
+            'elk.edge': 'direct',
+            'edgeRouting': 'ORTHOGONAL',
+            'stroke': '#888888',
+            'strokeDasharray': '4 4',  # 虚线
+            'strokeWidth': 1.2,
+        },
+        'branch_true': {
+            'elk.edge': 'direct',
+            'edgeRouting': 'ORTHOGONAL',
+            'stroke': '#2e7d32',  # 绿色
+            'strokeDasharray': 'none',
+            'strokeWidth': 1.4,
+        },
+        'branch_false': {
+            'elk.edge': 'direct',
+            'edgeRouting': 'ORTHOGONAL',
+            'stroke': '#c62828',  # 红色
+            'strokeDasharray': 'none',
+            'strokeWidth': 1.4,
+        },
+        'case_item': {
+            'elk.edge': 'direct',
+            'edgeRouting': 'ORTHOGONAL',
+            'stroke': '#1565c0',  # 蓝色
+            'strokeDasharray': 'none',
+            'strokeWidth': 1.4,
+        },
+    }
     def _emit_edge(eid, srcs, tgts, edge_obj=None, kind='signal'):
         meta = {'kind': kind}
         if edge_obj is not None:
             at = getattr(edge_obj, 'assign_type', '') or ''
             if at:
                 meta['assign_type'] = at
-        return {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
+        edge = {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
+        # [Plan B Step C] 应用不同样式
+        if kind in _EDGE_STYLES:
+            edge['layoutOptions'] = dict(_EDGE_STYLES[kind])
+        return edge
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
     # [V16.12 2026-08-18] dedup-aware: 同一短名多实例时, 用 full path 避免短名冲突.
@@ -1414,6 +1455,19 @@ def viz_to_elk(viz: VizData) -> dict:
         sig_counter = [0]
 
         for cond_label, group in by_cond.items():
+            # [Plan B Step D 2026-08-25] Cond label compaction + tooltip
+            # 背景: case16 嵌套 case 条件 label (e.g. "sel == 2'b1 && sub_sel == 2'b00")
+            #       太长 → SVG 渲染时被截断 ("sel == 2'b1 && su...").
+            # 修复:
+            #   1. 压缩空格: "sub_sel == 2'b0" → "sub_sel==2'b0" (减少 20-30% 宽度)
+            #   2. 多行: "&&" 处换行, 让 SVG 多行渲染
+            #   3. tooltip: 完整 label 通过 <title> 标签在 hover 时显示
+            _full_cond = cond_label  # 保留完整原始 label (for tooltip)
+            _compact_cond = cond_label
+            # 压缩: ' == ' → '==' (去掉空格)
+            _compact_cond = _compact_cond.replace(' == ', '==').replace(' != ', '!=')
+            # 多行: split at '&&' (use newline char)
+            _multiline_cond = _compact_cond.replace(' && ', '\n')
             sc = _safe(cond_label)
             bid = f'branch_{sd}_{sc}'
             branch_children = []
@@ -1471,7 +1525,7 @@ def viz_to_elk(viz: VizData) -> dict:
 
             case_children.append({
                 'id': bid,
-                'labels': [{'text': cond_label, 'fontSize': 8, 'fontName': 'sans-serif'}],
+                'labels': [{'text': _multiline_cond, 'fontSize': 8, 'fontName': 'sans-serif'}],
                 'layoutOptions': {
                     'elk.direction': 'RIGHT',
                     'elk.padding': '[top=16,left=10,right=10,bottom=8]',
@@ -1479,17 +1533,21 @@ def viz_to_elk(viz: VizData) -> dict:
                 },
                 'children': branch_children,
                 'edges': branch_edges,
-                '_meta': {'kind': 'branch', 'label': cond_label},
+                '_meta': {'kind': 'branch', 'label': cond_label,
+                          'compact_label': _compact_cond,
+                          'tooltip': _full_cond,
+                          '_plan_b_step_d': True},
             })
 
             # Root edges: PORT_IN → branch signal, signal/op → PORT_OUT
             # [V16.12 2026-08-18] 统一走 _resolve_port_id (单源 of truth)
+            # [Plan B Step C 2026-08-25] Case item edges use 'case_item' kind for blue styling
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 # PORT_IN → signal
                 if sn in input_names:
-                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge))
+                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge, kind='case_item'))
 
             if op_id:
                 # [V16.13 Fix M 2026-08-18] dst_name 不存在于 viz_to_elk scope (原本是
