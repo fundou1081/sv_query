@@ -196,6 +196,13 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 优先用这个映射取 gen_block 真值; fallback 才用启发式 _parse_gen_block
     # 格式: {signal_short_name → GenerateBlockArray.name} (e.g. 'acc'→'gen_accum', 'buf1'→'gen_stage1')
     _gen_block_map_global: dict | None = None
+    # [Plan B Step F Fix #4 v3 2026-08-25] cycle detection set.
+    # picorv32_pcpi_mul 的 mul_finish / pcpi_wait_q / mul_waiting 等信号在 expr_trees
+    # 里互相引用 (A→B→A 形成环). matched_tree 递归 (line ~684) 没有 cycle 防护,
+    # 反复递归 → RecursionError.
+    # 修复: render_tree 用 _being_rendered set 跟踪正在递归的 _matched_key,
+    # 进入递归前检查 → cycle 时 skip 递归 (返回 None) → op_id 为 None → 安全跳过.
+    _being_rendered: set = set()
     # [V16.14 F-N3 2026-08-19] 配套 iter map: per-LHS-element 区分不同 iter.
     # 格式: {signal_short_name 或 'sig[K]' → entry_idx}.
     # 查 dict 顺序:
@@ -680,8 +687,22 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     if _ev is matched_tree:
                         _matched_key = _ek
                         break
-                _matched_parent = _matched_key.rsplit('.', 1)[0] if _matched_key else parent_module
-                op_id = render_tree(matched_tree, f'{prefix}_wire', parent_module=_matched_parent)
+                # [Plan B Step F Fix #4 v3 2026-08-25] cycle detection.
+                # picorv32_pcpi_mul 的 mul_finish / pcpi_wait_q / mul_waiting 等信号在
+                # expr_trees 里互相引用 (A→B→A 形成环). 之前没防护 → RecursionError.
+                # 修复: 检查 _matched_key 是否在 _being_rendered set 里 (表示正在递归
+                # 渲染该信号). 是 → 跳过递归, 让 op_id = None, 外层 if op_id 跳过 sig
+                # emit → 安全失败, ELK 不会崩. 同时 add/remove 用 try/finally 确保.
+                op_id = None  # [Fix v3 follow-up] default for cycle case
+                if _matched_key in _being_rendered:
+                    pass  # cycle detected, skip recursion (op_id stays None)
+                else:
+                    _being_rendered.add(_matched_key)
+                    try:
+                        _matched_parent = _matched_key.rsplit('.', 1)[0] if _matched_key else parent_module
+                        op_id = render_tree(matched_tree, f'{prefix}_wire', parent_module=_matched_parent)
+                    finally:
+                        _being_rendered.discard(_matched_key)
                 if op_id:
                     # 如果 op_id 就是 sig_id（可能是递归匹配的缓存结果），直接返回
                     if op_id.startswith('sig_'):
