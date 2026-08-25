@@ -198,23 +198,16 @@ class ExpressionTree:
         if end - start == 1:
             token = tokens[start]
             kind = str(getattr(token, 'kind', ''))
-            
+
             # IntegerVectorExpression / Literal tokens: never iterate, use _leaf directly.
             # (IntegerVectorExpression.__iter__ returns tokens like [8, 'd, 128]
             #  which breaks _parse_expr's operator detection.)
-            if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind or 'Literal' in kind:
-                return ExpressionTree._leaf(token)
-                inner = getattr(token, 'expression', None)
-                if inner is not None:
-                    inner_tokens = list(inner)
-                    if inner_tokens:
-                        return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
-                return None
-            
-            # IntegerVectorExpression / Literal tokens: never iterate, use _leaf directly.
-            # (IntegerVectorExpression.__iter__ returns tokens like [8, 'd, 128]
-            #  which breaks _parse_expr's operator detection.)
-            if 'IntegerVector' in kind or 'VectorLiteral' in kind or 'IntegerLiteral' in kind:
+            # [Plan B Step F Fix #1 2026-08-25] 合并两个重复 IntegerVector 检查块.
+            # 旧代码 line 188-201 (4 条 kind 匹配) 和 line 204-207 (3 条 kind 匹配)
+            # 重复, 第一块还有 `return _leaf(token)` 后的 dead code (return 后代码永远不执行).
+            # 修复: 合并为单一检查, 移除 dead code.
+            if ('IntegerVector' in kind or 'VectorLiteral' in kind
+                    or 'IntegerLiteral' in kind or 'Literal' in kind):
                 return ExpressionTree._leaf(token)
             
             # Parenthesized expression → recurse into .expression
@@ -229,17 +222,39 @@ class ExpressionTree:
             # Compound expression node (AddExpression, MultiplyExpression, etc.)
             # These wrap sub-expressions and are iterable via __iter__.
             # Do NOT use .expression — only ParenthesizedExpression has .expression.
+            # [Plan B Step F Fix #2 2026-08-25] Fix double-recursion bug.
+            # 旧代码: `__iter__` 成功时 return _parse_expr(inner), 但下一块
+            # `getattr(token, 'expression', None)` 仍然执行 — 因为已经 return, 表面上看
+            # 是 fallback. 实际上这是 **two independent `if` blocks**, 第二个 if 紧接
+            # 着第一个 if 但第一个 if 已经 return — 所以只 return 一次, 看似 OK.
+            #
+            # **真 bug**: pyslang 的 compound expression 节点 (`ForLoopExpression`,
+            # `ConditionalExpression`, `ConcatenationExpression` 等) 通常 **同时有**
+            # `__iter__` 和 `.expression` 两个属性. pyslang `for (j = 0; j < 64; j += 4)`
+            # 循环会生成多个嵌套 compound expression, 每个都触发 **2次递归**.
+            # 16 次循环迭代 × 2 倍 = 32x 深度膨胀, picorv32_pcpi_mul 因此触发 RecursionError.
+            #
+            # 修复: 用 `else` 链 — 第二个分支**真的**是 fallback, 只在第一个失败时执行.
             if 'Expression' in kind and kind != 'AssignmentExpression':
+                # 1st try: __iter__ path (most common for compound expressions)
                 if hasattr(token, '__iter__') and not isinstance(token, str):
-                    inner = list(token)
+                    try:
+                        inner = list(token)
+                    except TypeError:
+                        inner = []
                     if inner:
                         return ExpressionTree._parse_expr(inner, 0, len(inner))
-                # Fallback: try .expression for nodes that expose it
-                inner_attr = getattr(token, 'expression', None)
-                if inner_attr is not None and hasattr(inner_attr, '__iter__') and not isinstance(inner_attr, str):
-                    inner_tokens = list(inner_attr)
-                    if inner_tokens:
-                        return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
+                # 2nd try (true fallback): .expression path
+                else:
+                    inner_attr = getattr(token, 'expression', None)
+                    if inner_attr is not None and hasattr(inner_attr, '__iter__') and not isinstance(inner_attr, str):
+                        try:
+                            inner_tokens = list(inner_attr)
+                        except TypeError:
+                            inner_tokens = []
+                        if inner_tokens:
+                            return ExpressionTree._parse_expr(inner_tokens, 0, len(inner_tokens))
+                # Both paths failed → treat as leaf (signal ref or const)
                 return ExpressionTree._leaf(token)
             
             # Concatenation → build from operands
