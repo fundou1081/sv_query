@@ -404,6 +404,16 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # Port nodes: 只渲染在 expr_trees 中被引用的 port (排除 CLOCK/RESET)
     # 排除孤悬的 input port (threshold, mode, valid, en 等未在数据流表达式中出现的)
     # [Plan D1] 用 full path 作 ID (短名仅作 label), 避免 dedup loss.
+    # [Plan B Step B1 v3 2026-08-25] Bit-port parent emission
+    # 背景: darkriscv DLEN = 'output [2:0]'. pyslang 拆成 darkriscv.DLEN[0/1/2].
+    #       主 emit loop emit 'port_DLEN[0/1/2]' (短名+bit_index).
+    #       但 edge 可能引用 parent-port 'port_darkriscv_dot_DLEN' (不带 bit index,
+    #       _resolve_port_id 处理 'darkriscv.DLEN').
+    #       ELK 报 'Referenced shape does not exist: port_darkriscv_dot_DLEN'.
+    # 修复: 当 _full 是 bit-indexed (含 [N]), emit bit-port 同时, 如果还有同短名
+    #       parent-full path 在 references 里, emit parent-port 'port_<safe(parent)>'.
+    import re as _re_b1v3
+    _bit_idx_re = _re_b1v3.compile(r'^(.+)\[(\d+)\]$')
     _emitted_port_ids = set()
     for _full in sorted(_referenced_input_fulls):
         _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
@@ -420,6 +430,21 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             '_meta': {'kind': 'port_in', 'file': _fl[0], 'line': _fl[1]},
         })
         _emitted_port_ids.add(_pid)
+        # [B1 v3] 如果是 bit-indexed, 补 emit parent-port
+        _m = _bit_idx_re.match(_sn)
+        if _m:
+            _parent_sn = _m.group(1)
+            _parent_full = _full[:_full.rfind('.') + 1] + _parent_sn if '.' in _full else _parent_sn
+            _parent_pid = _port_id_for_input(_parent_full)
+            if _parent_pid not in _emitted_port_ids:
+                root_children.append({
+                    'id': _parent_pid, 'width': PORT_W, 'height': PORT_H,
+                    'labels': [{'text': _parent_sn, 'fontSize': 8, 'fontName': 'Courier'}],
+                    'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                    '_meta': {'kind': 'port_in', 'file': _fl[0], 'line': _fl[1],
+                              '_bit_parent': True, '_plan_b_b1v3': True},
+                })
+                _emitted_port_ids.add(_parent_pid)
     for _full in sorted(_referenced_output_fulls):
         _sn = _full.rsplit('.', 1)[-1] if '.' in _full else _full
         _pid = _port_id_for_output(_full)
@@ -433,6 +458,21 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             '_meta': {'kind': 'port_out', 'file': _fl[0], 'line': _fl[1]},
         })
         _emitted_port_ids.add(_pid)
+        # [B1 v3] 如果是 bit-indexed, 补 emit parent-port
+        _m = _bit_idx_re.match(_sn)
+        if _m:
+            _parent_sn = _m.group(1)
+            _parent_full = _full[:_full.rfind('.') + 1] + _parent_sn if '.' in _full else _parent_sn
+            _parent_pid = _port_id_for_output(_parent_full)
+            if _parent_pid not in _emitted_port_ids:
+                root_children.append({
+                    'id': _parent_pid, 'width': PORT_W, 'height': PORT_H,
+                    'labels': [{'text': _parent_sn, 'fontSize': 8, 'fontName': 'Courier'}],
+                    'layoutOptions': {'elk.layered.layering.layerConstraint': 'LAST'},
+                    '_meta': {'kind': 'port_out', 'file': _fl[0], 'line': _fl[1],
+                              '_bit_parent': True, '_plan_b_b1v3': True},
+                })
+                _emitted_port_ids.add(_parent_pid)
     
     def collect_signals(tree_node, into):
         """递归收集表达式树中所有 SignalRef labels"""
@@ -1535,6 +1575,71 @@ def viz_to_elk(viz: VizData) -> dict:
     for c in root_children:
         _collect_all_emitted_ids(c, all_emitted_ids)
 
+    # [Plan B Step B1 2026-08-25] Defensive port emission
+    # 背景: darkriscv ELK layout fail: 'Referenced shape does not exist: port_darkriscv_dot_DLEN'
+    # 根因: edge 引用 port_X, 但 main port emit loop (line ~405) 只遍历 _referenced_input_fulls
+    #       过滤掉了 clock_reset_srcs 等. 但 edge 旁路 (case anchor / lazy emit) 可能引用
+    #       没在 _referenced_input_fulls 里的信号 (例如 darkriscv DLEN 是 output port,
+    #       不在主 viz pipeline 的 referenced list 里).
+    # 修复: 在 _collect_all_emitted_ids 后, 扫描所有 root_edges + case_edges 找缺失的 port_*
+    #       references, 补 emit. 比 "删 edge" 更鲁棒 — 不丢失有用信息.
+    _port_refs = set()
+    _all_edge_lists = [root_edges]
+    # 收集 case compound 内部的 edges (case_edges / branch_edges) 也扫描
+    for _c in root_children:
+        if isinstance(_c, dict) and _c.get('_meta', {}).get('kind') == 'case':
+            _all_edge_lists.append(_c.get('edges', []) or [])
+            for _sub in _c.get('children', []) or []:
+                if isinstance(_sub, dict):
+                    _all_edge_lists.append(_sub.get('edges', []) or [])
+    for _el in _all_edge_lists:
+        for _e in _el:
+            for _s in (_e.get('sources', []) or []):
+                if isinstance(_s, str) and _s.startswith('port_'):
+                    _port_refs.add(_s)
+            for _t in (_e.get('targets', []) or []):
+                if isinstance(_t, str) and _t.startswith('port_'):
+                    _port_refs.add(_t)
+
+    _existing_port_ids = {c.get('id') for c in root_children
+                          if c.get('_meta', {}).get('kind') in ('port_in', 'port_out')}
+    _missing_ports = _port_refs - _existing_port_ids
+
+    # [Plan B Step B2 2026-08-25] Port ID 一致性 assert
+    # 防御: emit 端的 port_id 必须 == edge 端的 port_id. 如果不一致, 立即报错.
+    # 这是为了防止未来重构时引入 emit/edge 不一致导致的 "Referenced shape does not exist".
+    if _missing_ports:
+        # 反推 full_path 用于 _pid 重建和 label
+        # port_<safe(full)> → full = _pid[5:].replace('_dot_', '.')
+        for _pid in sorted(_missing_ports):
+            # 反推 _full 用于 source map 查询 (尽力恢复原始 full_path)
+            # 注意: _safe 把 . 换成 _dot_, 但其他 字符处理不可逆 (例如 [ 变 n_)
+            # 所以 source location 不可得 — 留空.
+            _full_attempt = _pid[5:].replace('_dot_', '.')
+            _sn = _full_attempt.rsplit('.', 1)[-1]
+            root_children.append({
+                'id': _pid, 'width': PORT_W, 'height': PORT_H,
+                'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
+                'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                '_meta': {'kind': 'port_in', 'file': '', 'line': 0,
+                          '_defensive': True,
+                          '_plan_b_b1': True},
+            })
+            all_emitted_ids.add(_pid)
+            _existing_port_ids.add(_pid)
+        print(f"[Plan B Step B1] defensively emitted {len(_missing_ports)} missing ports: "
+              f"{sorted(_missing_ports)[:5]}{'...' if len(_missing_ports) > 5 else ''}",
+              file=sys.stderr)
+
+    # [Plan B Step B2] 一致性 assert: 所有 edge 的 port refs 都必须在 _existing_port_ids 里
+    for _el in _all_edge_lists:
+        for _e in _el:
+            for _s in (_e.get('sources', []) or []):
+                if isinstance(_s, str) and _s.startswith('port_'):
+                    assert _s in _existing_port_ids, \
+                        f"[Plan B Step B2] inconsistent port ref: {_s} not emitted " \
+                        f"(edge {_e.get('id', '?')}, kind={_e.get('_meta', {}).get('kind', '?')})"
+
     for e in list(root_edges):
         if 'targets' in e and not e['targets']:
             root_edges.remove(e)
@@ -1552,6 +1657,50 @@ def viz_to_elk(viz: VizData) -> dict:
     # 这样 emit 的 sig_scaled_wire 等 wire 节点会进入 cluster_target_top 内部
     graph = _make_graph(root_children, root_edges)
     graph = _emit_cross_instance_connection_edges(graph, viz)
+
+    # [Plan B Step B1 v2 2026-08-25] 第二轮 defensive port emission
+    # 背景: darkriscv 第一次 fail 即使加了 B1 — 因为 cross-instance edges
+    #       (port_darkriscv_dot_DLEN) 在 _emit_cross_instance_connection_edges
+    #       里才被加入 graph.edges, B1 第一轮扫描 (line 1541) 太早.
+    # 修复: cross-instance edges 加入后, 再扫一轮. 仍然缺失就补 emit.
+    _post_emitted = set()
+    def _collect_post_ids(node, acc):
+        if isinstance(node, dict):
+            if 'id' in node:
+                acc.add(node['id'])
+            for c in node.get('children', []) or []:
+                _collect_post_ids(c, acc)
+            for p in node.get('ports', []) or []:
+                if 'id' in p:
+                    acc.add(p['id'])
+    _collect_post_ids(graph, _post_emitted)
+    _post_edge_port_refs = set()
+    for _e in graph.get('edges', []) or []:
+        for _s in (_e.get('sources', []) or []):
+            if isinstance(_s, str) and _s.startswith('port_'):
+                _post_edge_port_refs.add(_s)
+        for _t in (_e.get('targets', []) or []):
+            if isinstance(_t, str) and _t.startswith('port_'):
+                _post_edge_port_refs.add(_t)
+    _post_existing = {c.get('id') for c in (graph.get('children', []) or [])
+                      if c.get('_meta', {}).get('kind') in ('port_in', 'port_out')}
+    _post_missing = _post_edge_port_refs - _post_existing - _post_emitted
+    if _post_missing:
+        for _pid in sorted(_post_missing):
+            _full_attempt = _pid[5:].replace('_dot_', '.')
+            _sn = _full_attempt.rsplit('.', 1)[-1]
+            graph['children'].append({
+                'id': _pid, 'width': PORT_W, 'height': PORT_H,
+                'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
+                'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+                '_meta': {'kind': 'port_in', 'file': '', 'line': 0,
+                          '_defensive': True,
+                          '_plan_b_b1_v2': True},
+            })
+        print(f"[Plan B Step B1 v2] defensively emitted {len(_post_missing)} "
+              f"missing ports after cross-instance: "
+              f"{sorted(_post_missing)[:5]}", file=sys.stderr)
+
     return _wrap_into_clusters(viz, graph)
 
 
