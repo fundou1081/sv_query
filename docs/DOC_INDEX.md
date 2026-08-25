@@ -84,6 +84,9 @@ docs/
 │   ├── GRAPH_DIFF_DESIGN.md
 │   └── SV_SYNTAX_ROADMAP.md
 │
+├── debugging_lessons/          # 调试案例 + 经验教训 (future reference)
+│   └── 2026-08-25_picorv32_render_tree_cycle.md
+│
 └── archive/                    # 过时文档 (已归档)
     ├── GRAPH_BUILDER_*.md
     ├── ISSUE_*.md
@@ -140,6 +143,13 @@ UVM/SVA Skeleton 自动生成规则
 
 ### `architecture/` - 架构子文档
 较为独立的架构分析文档
+
+### `debugging_lessons/` - 调试案例 + 经验教训
+**未来 debugging 参考**。记录复杂 bug 的完整调查过程、根因分析、修复方案、教训。遇到类似问题可以查阅。
+
+| 文档 | 描述 |
+|------|------|
+| `2026-08-25_picorv32_render_tree_cycle.md` | render_tree 的 RecursionError 调查 + cycle detection 修复 (Plan B Step F) |
 
 ### `archive/` - 过时文档
 已废弃或被替代的文档
