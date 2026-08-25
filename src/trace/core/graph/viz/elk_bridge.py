@@ -2003,6 +2003,42 @@ def _emit_cross_instance_connection_edges(elk_json: dict, viz) -> dict:
             '_meta': {'kind': 'signal', 'cluster_id': ''},
         })
 
+    # [Plan B Step G 2026-08-26] Emit port_in/port_out shapes for instance ports that
+    # are referenced by CONNECTION edges. Without this, _map_to_elk_id returns
+    # full-path port IDs (e.g. 'port_picorv32_wb_dot_picorv32_core_dot_clk') for
+    # edges, but the corresponding port shape never appears in root_children,
+    # causing ELK 'Referenced shape does not exist' errors.
+    # Background: picorv32_wb instantiates picorv32_core, CONNECTION edge
+    # 'sig_clk_wire → picorv32_wb.picorv32_core.clk' triggered this.
+    _v15_emitted_port_ids = set(c.get('id') for c in root_children
+                                 if c.get('_meta', {}).get('kind') in ('port_in', 'port_out'))
+    _v15_count = 0
+    for _inst_port in _instance_ports:
+        if _inst_port not in _all_top_ports:
+            continue  # 只处理同时是顶层 port 的 instance port
+        _ip_short = _inst_port.rsplit('.', 1)[-1]
+        _is_input = _ip_short in _input_dedup_map
+        _is_output = _ip_short in _output_dedup_map
+        if not (_is_input or _is_output):
+            continue
+        _pid = f'port_{_inst_port.replace(".", "_dot_")}'
+        if _pid in _v15_emitted_port_ids:
+            continue
+        _kind = 'port_in' if _is_input else 'port_out'
+        _constraint = 'FIRST' if _is_input else 'LAST'
+        root_children.append({
+            'id': _pid, 'width': PORT_W, 'height': PORT_H,
+            'labels': [{'text': _ip_short, 'fontSize': 8, 'fontName': 'Courier'}],
+            'layoutOptions': {'elk.layered.layering.layerConstraint': _constraint},
+            '_meta': {'kind': _kind, 'file': '', 'line': 0,
+                      '_plan_b_g_v15': True},
+        })
+        _v15_emitted_port_ids.add(_pid)
+        _v15_count += 1
+    if _v15_count > 0:
+        print(f"[Plan B Step G] emitted {_v15_count} V15 cross-instance ports",
+              file=sys.stderr)
+
     ctr = [int(root_edges[-1]['id'][1:]) if root_edges else 0]
     def _ne():
         ctr[0] += 1
