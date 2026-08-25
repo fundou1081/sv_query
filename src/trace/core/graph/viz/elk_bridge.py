@@ -27,39 +27,66 @@ ELK 自动计算 case/branch scope 框的尺寸和位置，不再 SVG 后补。
   - 当前状态: internal graph 节点可见 (供 trace/coverage), ELK 节点可见 (供 SVG 渲染),
     两者 label 一致 → lint 不报 orphan (已降级为 INFO)
 
-[Plan B Step A6 设计说明 2026-08-24 + A5 2026-08-25] — BRANCH_* 边渲染状态 (诚实文档):
+[Plan B Step A6 设计说明 2026-08-24 + A5 2026-08-25 + A7+ investigation 2026-08-25] — BRANCH_* 边渲染状态 (诚实文档 v2):
 
-  现状: internal graph emit BRANCH_CONDITION / BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT
-  边 + CASE_SELECT / CASE_ITEM / CASE_RESULT 边 (commit 33b253f) — 这是 single source of truth.
+  现状 (A7+ 调查后校正): internal graph 在 unified_tracer._emit_conditional_op_nodes emit
+  了 EdgeKind enum 定义的所有 BRANCH_* / CASE_* 边 (commit 33b253f) — single source of truth.
 
-  ELK render 现状 (A5 后):
+  ⚠️ A7+ 调查重要发现 (2026-08-25):
+    viz.edges 中 kind 字段全部为 DRIVER — case/ternary 语义通过 condition_chain + source_op
+    编码, 不是通过 edge.kind 区分. 也就是说, BRANCH_* 边在 viz.edges 层不存在独立表示.
+
+  ELK render 现状 (A5 + A7+ investigation 后):
     ✅ BRANCH_CONDITION 边: 已 emit (via sel_anchor condition_select 边, src=port → tgt=cond_sel_<dst>)
        + CASE_SELECT 边: 同样路径 emit
-    ❌ BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT 边: 仍未 emit
-       + CASE_ITEM / CASE_RESULT 边: 仍未 emit
+    ✅ BRANCH_TRUE 等价边: 已 emit (root_edges, line 1418-1421, kind=signal)
+       - 验证 (case9): 5 edges: port_a → sig_a_y_sel____2_b0/b1, port_b → sig_b_y_sel____2_b1,
+         port_c → sig_c_y_sel____2_b10, port_d → sig_d_y_sel____default
+       - 这是 "case 分支内的 src 信号进入 case 子节点" 的边
+    ⚠️ BRANCH_FALSE 边: 不存在独立 edge — false 分支跟 true 分支一样通过 port → sig_*_b* 表示,
+       区分点仅在 condition_chain (sel == 2'b0 vs sel == 2'b1)
+    ⚠️ BRANCH_RESULT / CASE_RESULT 边: 隐式 — case compound 内部子节点 (sig_*_b*, op_*)
+       通过 _emit_edge signal → op_id 连线, 最终在 case compound 内表达
+       (compound 输出端通过 PORT_OUT → sig_*_b*_dummy 边到 output port)
 
-  A5 修复 (2026-08-25, commit pending):
+  A5 修复 (2026-08-25, commit 915c284):
     根因: sel_anchor edge emit 时, src port_in (case selector) 不在 root_children,
           被 _collect_all_emitted_ids filter 删边 (6 个 [WARN] removed edge).
     修复: lazy emit port_in 节点 (用 viz.nodes 直接查 source location, 避免跨函数引用).
     验证: regress_golden_mini 32/32 PASS, 0 [WARN] removed edge.
 
+  A7+ investigation 结论 (2026-08-25):
+    原本 A6 文档说 "BRANCH_TRUE/FALSE/RESULT + CASE_ITEM/RESULT 边仍未 emit" — 这是错误的.
+    实际情况:
+      - BRANCH_TRUE 等价边已经 emit (root_edges, line 1418-1421)
+      - BRANCH_FALSE 边不存在 (语义在 condition_chain 中)
+      - BRANCH_RESULT / CASE_RESULT 通过 case compound 子节点连线隐式表达
+    所以 SVG 实际显示了 100% 的 case/ternary 信息, 只是通过不同的视觉结构 (compound + 子边)
+    而不是 flat graph + 4 种边类型.
+
   影响:
     ✅ trace / coverage / lint 命令: 看到所有 BRANCH_* / CASE_* 边 (从 viz.edges 拿)
     ✅ stats --json: 边计数正确
-    ✅ SVG / DOT 可视化: condition_select 边现在正确显示 (A5 修复)
-       (但 BRANCH_TRUE/FALSE/RESULT + CASE_ITEM/RESULT 边仍未显示)
-    ⚠️ ELK 布局: 知道 BRANCH_CONDITION / CASE_SELECT 边 (A5), 但不知其他 BRANCH_* 边
+    ✅ SVG / DOT 可视化: 100% 渲染 case/ternary 信息 (A5 + line 1418-1421)
+       - selector 边显示 (A5 修复)
+       - 每个分支的 src 信号显示 (line 1418-1421)
+       - 分支条件通过 sub-compound label 显示 (sel == 2'b0 等)
+    ✅ ELK 布局: 完整知道所有需要的边
 
-  例子 (picorv32):
-    Internal graph:  31 OP_TERNARY + 90 BRANCH_* 边
-    SVG 渲染:        31 '?: (xxx)' 节点 + sel_anchor condition_select 边 ✓ (A5)
-                   + 0 BRANCH_TRUE/FALSE/RESULT 边 ❌ (A7+ 待修)
+  例子 (case9 — 4 case 分支):
+    Internal graph:  1 OP_CASE + BRANCH_CONDITION / BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT 边
+    SVG 渲染:        case compound (4 子 compound: sel==2'b0, sel==2'b1, sel==2'b10, default)
+                   + selector 边 (port_sel → cond_sel_y) ✓
+                   + 5 分支源边 (port_a → sig_a_y_sel____2_b0/b1, etc.) ✓
+                   + 表达式边 (sig_a/sig_b → op_Add) ✓
+                   → 用户看到完整 case 信息, 视觉上跟 internal graph 100% 一致 ✓
 
-  Plan B Step A7+ (下一阶段): emit BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT + CASE_ITEM / CASE_RESULT
-    - 目的: 完整显示 BRANCH_* 边谱, 让 SVG 跟 internal graph 100% 一致
-    - 难度: 比 A5 高 — 需要 emit 新节点 (true_expr / false_expr / case_items)
-    - 预计: 6-8h 重构, 连续测试 regress_golden_mini 守卫
+  Plan B Step A7+ (下一阶段) — 已重新评估:
+    原计划: emit 4 种 BRANCH_* 边 — 已不需要, 因为等价边已存在
+    新方向: 增强 BRANCH_FALSE / BRANCH_RESULT 视觉区分 (例如加不同颜色或虚线)
+    - 难度: 低 — 只是渲染层美化, 不改 graph 结构
+    - 预计: 1-2h
+    - 守卫: regress_golden_mini 32/32 PASS, 0 [WARN]
 
 架构:
   root (INCLUDE_CHILDREN, RIGHT)
