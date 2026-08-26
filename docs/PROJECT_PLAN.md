@@ -1,6 +1,6 @@
 # 开源 RTL 验证问题生成计划
 
-> 更新日期: 2026-05-31
+> 更新日期: 2026-08-26 (V6+V6.7+design+backpressure+handshake 同步)
 > 状态: 测试框架已稳定 (1267 passed, 0 failed)
 
 ---

@@ -2,7 +2,9 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
-> 2958 测试 (97.1% pass) | Python 3.11+ | pyslang AST | NetworkX graph | 7 个开源项目验证
+> 3131 测试 | Python 3.11+ | pyslang AST | NetworkX graph | 开源项目验证
+
+> 更新日期: 2026-08-26
 
 ---
 
@@ -11,7 +13,7 @@
 - **位精确追踪**: V6.5 `SignalSource` 结构化存储 bit_range + op + casts，知道信号 `[7:0]` 确切来源
 - **穿透子模块**: 跨 wrapper port passthrough，追踪真实物理连接 (MIG 跨模块)
 - **数据可信**: [pyslang](https://github.com/MikePopoloski/pyslang) 语义 AST，不是正则匹配
-- **7 个开源项目跑通**: picorv32, darkriscv, CVA6, OpenTitan, Ventus, CoralNPU, NaplesPU
+- **开源项目验证**: picorv32, darkriscv, CVA6, OpenTitan, XiangShan, verilog-axi (本机 `~/my_dv_proj/` 实际存在)
 - **架构可视化**: `arch show` 一键生成项目架构图 (DOT/Mermaid/HTML/summary)
 - **数据与渲染解耦**: V6.7 VizData 统一可视化数据层
 
@@ -326,8 +328,8 @@ sv_query/
 │   │   ├── driver_extractor.py  # Driver 提取 (2639 行)
 │   │   ├── graph_builder.py     # 图构建器
 │   │   └── visitors/            # AST Visitor (~10K 行)
-│   └── cli/commands/            # 27 CLI 命令
-├── sim/tests/              # 2958 测试 (247+ 文件)
+│   └── cli/commands/            # 23 CLI 命令
+├── sim/tests/              # 3131 测试 (305+ 文件)
 ├── docs/                   # 文档
 └── tools/                  # 独立工具
 ```
@@ -350,7 +352,7 @@ python -m pytest sim/tests/ -m opensource -v
 
 # 全量
 python -m pytest sim/tests/ -q
-# 2958 tests, 97.1% pass
+# 3131 tests (2026-08-26 更新)
 ```
 
 详见 [测试指南](docs/TESTING.md)

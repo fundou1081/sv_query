@@ -1,6 +1,6 @@
 # 📚 SVQuery 文档目录
 
-> 更新日期：2026-05-31
+> 更新日期：2026-08-26
 > 状态：已整理
 
 ---
@@ -9,11 +9,12 @@
 
 | 位置 | 数量 |
 |------|------|
-| `docs/` 根目录 | 64 |
-| `docs/architecture/` | 9 |
-| `docs/skeleton/` | ~ |
-| `docs/archive/` | 21 |
-| **总计** | **90+** |
+| `docs/` 根目录 | 86 |
+| `docs/architecture/` | 10 |
+| `docs/archive/` | 24 |
+| `docs/debugging_lessons/` | 3 |
+| `docs/task_tree/` (iterations+tasks) | 30+ |
+| **总计** | **150+** |
 
 ---
 
@@ -26,18 +27,12 @@ docs/
 ├── TODO.md                      # 待办事项
 ├── PROJECT_PLAN.md              # 项目计划
 │
-├── core/                        # 核心架构 ⭐
-│   ├── FINAL_SCHEMA_DECISION.md
-│   ├── ARCHITECTURE_DEEP_REVIEW.md
-│   └── GRAPH_BUILDER_REVIEW.md
+├── core/                        # ⚠️ 目录已不存在 (见下方注)
+├── dataflow/                    # ⚠️ 目录已不存在 (见下方注)
+├── controlflow/                # ⚠️ 目录已不存在 (见下方注)
+├── skeleton/                    # ⚠️ 目录已不存在 (见下方注)
 │
-├── dataflow/                    # DataFlow 分析
-│   ├── DATAFLOW_ANALYSIS_ARCHITECTURE.md
-│   ├── DATAFLOW_IMPLEMENTATION_PLAN.md
-│   └── SIGNAL_GRAPH_ANALYSIS_REQUIREMENTS.md
-│
-├── controlflow/                # ControlFlow 分析
-│   ├── CONTROL_FLOW_ANALYSIS.md
+├── architecture/               # ✅ 存在 (10 文件)
 │   ├── CONTROL_FLOW_DESIGN.md
 │   ├── CONTROL_FLOW_IMPROVEMENTS.md
 │   └── IMPLEMENTATION_RELATION_CONTROL_FLOW.md

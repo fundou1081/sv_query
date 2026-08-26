@@ -155,7 +155,7 @@ TARGET_CFG=cv64a6_imafdc_sv39 \
   python run_cli.py visualize graph \
     -f ~/my_dv_proj/cva6/core/cva6.sv \
     --filelist /tmp/cva6_test.fl \
-    --dot /tmp/cva6.dot
+    --svg /tmp/cva6.svg
 ```
 
 **结果**: 加载 152 个 SV 文件 + 6 个 include 路径。

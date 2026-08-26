@@ -1,7 +1,7 @@
 # sv_query 用户指南
 
 **版本**: 2.0
-**更新日期**: 2026-06-01
+**更新日期**: 2026-08-26 (V100 sync: 22 命令文档化扩到 23/23)
 
 ---
 
@@ -38,7 +38,7 @@ pip install -e .
 python run_cli.py --help
 
 # 信号图可视化
-python run_cli.py visualize graph -f your_module.sv --dot out.dot
+python run_cli.py visualize graph -f your_module.sv --svg out.svg
 
 # 数据流分析
 python run_cli.py dataflow -f your_module.sv --from sig_a --to sig_b
@@ -110,7 +110,7 @@ python run_cli.py <command> [options]
 ```bash
 python run_cli.py visualize graph \
     -f <file.sv> \                    # 必需：源文件
-    --dot output.dot \                 # DOT 输出
+    --svg output.svg \                 # DOT 输出
     --mmd output.mmd \                 # Mermaid 输出
     --html output.html \               # HTML 输出
     --layout TB \                      # TB (top-bottom) / LR (left-right)
@@ -131,7 +131,7 @@ python run_cli.py visualize graph \
 ```bash
 python run_cli.py visualize gap \
     -f <file.sv> \
-    --dot gap.dot \
+    --svg gap.svg \
     --html gap.html \
     --min-risk 20.0
 ```
@@ -290,7 +290,7 @@ python run_cli.py visualize teach -f coverage_demo.sv --show-coverage
 
 ```bash
 python run_cli.py visualize teach -f case_demo.sv --target case_demo \
-    --focus y --upstream --depth 2 --show-source --dot /tmp/y.dot
+    --focus y --upstream --depth 2 --show-source --svg /tmp/y.svg
 
 # 渲染 (浏览器里点击节点跳到 `code -g case_demo.sv:2`):
 dot -Tsvg /tmp/y.dot -o /tmp/y.svg
@@ -305,10 +305,10 @@ DOT 节点会加:
 
 ```bash
 # DOT 文件
-python run_cli.py visualize graph -f module.sv --dot out.dot
+python run_cli.py visualize graph -f module.sv --svg out.svg
 
 # PNG（正方形）
-python run_cli.py visualize graph -f module.sv --dot out.dot && \
+python run_cli.py visualize graph -f module.sv --svg out.svg && \
     dot -Tpng -Gsize=10 -Gratio=compress out.dot -o out.png
 ```
 
@@ -321,7 +321,7 @@ python run_cli.py visualize graph -f module.sv --dot out.dot && \
 ### 验证缺口
 
 ```bash
-python run_cli.py visualize gap -f module.sv --dot gap.dot --min-risk 25
+python run_cli.py visualize gap -f module.sv --svg gap.svg --min-risk 25
 ```
 
 高亮无 SVA/Coverage 的高风险信号。
@@ -400,7 +400,7 @@ os.environ['UVM_HOME'] = '/path/to/uvm-1.2'
 **A**: 调整 `--max-edges`：
 
 ```bash
-python run_cli.py visualize graph -f m.sv --dot out.dot --max-edges 5000
+python run_cli.py visualize graph -f m.sv --svg out.svg --max-edges 5000
 ```
 
 ### Q: 输出 PNG 比例不对？

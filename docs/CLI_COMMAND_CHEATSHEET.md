@@ -1,7 +1,7 @@
 # sv_query CLI 命令速查 (Cheatsheet)
 #
-# Generated 2026-07-06 from `sv_query --help` + `sv_query <cmd> --help`
-# 22 top-level commands, 52 subcommands (Phase 1 2026-07-07 added randomize: list + extract)
+# Updated 2026-08-26 from `sv_query --help` + `sv_query <cmd> --help`
+# 23 top-level commands (2026-08-26), expression/graph 加入) (Phase 1 2026-07-07 added randomize: list + extract)
 
 用法: `sv_query <command> [subcommand] [OPTIONS]`
 

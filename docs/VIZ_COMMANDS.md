@@ -1,6 +1,6 @@
 # 画图命令完整参考 (VIZ_COMMANDS)
 
-> **状态**: V6.3 (2026-07-25) — 含 `teach` (V6.0), `--show-source` (V6.2 / V6.2.1), edge conditions (V6.3).
+> **状态**: V6.3 (2026-07-25), 文档 sync 2026-08-26 (--dot → --svg) — 含 `teach` (V6.0), `--show-source` (V6.2 / V6.2.1), edge conditions (V6.3).
 > **目标读者**: 想快速知道 "我要画 X, 用哪个命令" 的人.
 > **测试基础**: 文档中的所有示例都在 `sim/tests/fixtures/golden_mini/*.sv` 上验证过 (commit `2c3183b`).
 
@@ -42,7 +42,7 @@ sv_query 的可视化能力分散在 3 个命令族:
 --filelist <f.f>   # 多文件 (项目模式)
 -I <dir1,dir2>     # include 路径
 --no-strict        # 部分 AST 也跑 (默认 strict, 大项目用 --no-strict)
---dot OUT.dot      # 输出 DOT
+--svg       # 输出 DOT
 --mmd OUT.mmd      # 输出 Mermaid  
 --html OUT.html    # 输出 HTML (SVG 内嵌)
 ```
@@ -64,7 +64,7 @@ sv_query visualize graph \
   -f sim/tests/fixtures/golden_mini/case_demo.sv \
   --no-strict \
   --module-only \
-  --dot /tmp/case_graph.dot
+  --svg 
 ```
 
 **输出特点**:
@@ -98,7 +98,7 @@ sv_query visualize dataflow \
   -f sim/tests/fixtures/golden_mini/if_demo.sv \
   --no-strict --with-clk-rst \
   --show-source \
-  --dot /tmp/if_df.dot
+  --svg 
 ```
 
 **输出特点**:
@@ -128,7 +128,7 @@ sv_query visualize dataflow \
 sv_query visualize pipeline \
   -f sim/tests/fixtures/golden_mini/pipeline_demo.sv \
   --no-strict \
-  --dot /tmp/pipe.dot
+  --svg 
 ```
 
 **3 种 layout 模式**:
@@ -161,7 +161,7 @@ sv_query visualize gap \
   -f sim/tests/fixtures/golden_mini/coverage_demo.sv \
   --no-strict \
   --min-risk 20 \
-  --dot /tmp/gap.dot
+  --svg 
 ```
 
 **输出特点**:
@@ -187,7 +187,7 @@ sv_query visualize chain \
   -f sim/tests/fixtures/golden_mini/pipeline_demo.sv \
   --module pipeline_demo \
   --no-strict \
-  --dot /tmp/chain.dot
+  --svg 
 ```
 
 ---
@@ -207,7 +207,7 @@ sv_query visualize module \
   -f sim/tests/fixtures/golden_mini/case_demo.sv \
   --no-strict \
   --depth 2 \
-  --dot /tmp/mod.dot
+  --svg 
 ```
 
 **额外选项**:
@@ -247,7 +247,7 @@ sv_query visualize teach \
   -f sim/tests/fixtures/golden_mini/case_demo.sv \
   --target case_demo --focus y --upstream --depth 2 \
   --no-strict --show-source \
-  --dot /tmp/y_up.dot
+  --svg 
 ```
 - `--upstream`: 找前驱 (谁驱动 --focus)
 - 默认 downstream: 找后继 (--focus 驱动谁)
@@ -259,7 +259,7 @@ sv_query visualize teach \
   -f sim/tests/fixtures/golden_mini/fsm_demo.sv \
   --target fsm_demo --focus state_q --show-drives --depth 2 \
   --no-strict \
-  --dot /tmp/state_drives.dot
+  --svg 
 ```
 焦点信号作为 driver 的边被标橙加粗 (告诉你"如果你改 state_q, 影响哪些下游").
 
@@ -334,8 +334,8 @@ sv_query arch show \
 
 | 命令 | 文本报告 | 可视化 | 触发选项 |
 |------|---------|--------|---------|
-| `verify gap` | ✅ | DOT / Mermaid | `--dot OUT.dot` 或 `--mmd OUT.mmd` |
-| `timing analyze` | ✅ | DOT | `--dot OUT.dot` (P1 fix 2026-07-10) |
+| `verify gap` | ✅ | DOT / Mermaid | `--svg` 或 `--mmd OUT.mmd` |
+| `timing analyze` | ✅ | DOT | `--svg` (P1 fix 2026-07-10) |
 | `cdc analyze` | ✅ | ❌ (仅文本) | — |
 | `backpressure analyze` | ✅ | Mermaid | `--output OUT.mmd` (默认 stdout) |
 
@@ -347,7 +347,7 @@ sv_query arch show \
 sv_query verify gap \
   -f sim/tests/fixtures/golden_mini/coverage_demo.sv \
   --no-strict \
-  --dot /tmp/v_gap.dot \
+  --svg  \
   --evidence
 ```
 
@@ -361,7 +361,7 @@ sv_query verify gap \
 sv_query timing analyze \
   -f sim/tests/fixtures/golden_mini/case_demo.sv \
   --no-strict --max-paths 5 \
-  --dot /tmp/timing.dot
+  --svg 
 ```
 
 ### backpressure analyze
@@ -421,7 +421,7 @@ backpressure.svg     backpressure.mmd
 | **看 MUX 怎么选通** | `visualize teach --focus OUT --upstream` (边上有 `sel` / `op == 2'd0` label) |
 | **看流水线几级** | `visualize pipeline --unfold` |
 | **看数据流分类** (data vs control) | `visualize dataflow --with-clk-rst` |
-| **找验证缺口** | `visualize gap --min-risk 20` 或 `verify gap --dot` |
+| **找验证缺口** | `visualize gap --min-risk 20` 或 `verify gap --svg` |
 | **看项目架构** | `arch show --format dot --depth 3` |
 | **跨模块追溯** | `visualize module --depth 2` |
 | **一次出全套图** | `design show --graph --graph-dir /tmp/g/` |
