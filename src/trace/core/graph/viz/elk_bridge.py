@@ -1335,6 +1335,9 @@ def viz_to_elk(viz: VizData) -> dict:
         # [Plan B Step C] 应用不同样式
         if kind in _EDGE_STYLES:
             edge['layoutOptions'] = dict(_EDGE_STYLES[kind])
+        # [FIX 2026-08-26 iter_026] also store kind in layoutOptions so it survives
+        # ELK.js round-trip (ELK.js only preserves ELK-specific fields, _meta gets lost)
+        edge['layoutOptions']['kind'] = kind
         return edge
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
@@ -1538,11 +1541,17 @@ def viz_to_elk(viz: VizData) -> dict:
                 })
 
             # Branch internal edges (signal → op)
+            # [FIX 2026-08-26 iter_026] emit BRANCH_FALSE same as BRANCH_TRUE
+            # 之前 BRANCH_FALSE 不 emit 独立 edge (line 46 注释),
+            # 现在按用户要求统一处理: default / else / ! 前缀条件 走 branch_false 样式 (红色),
+            # 其他条件走 branch_true 样式 (绿色)
+            _is_false_branch = (cond_label == 'default' or cond_label.startswith('!') or 'else' in cond_label.lower())
+            _branch_edge_kind = 'branch_false' if _is_false_branch else 'branch_true'
             if op_id:
                 for ge in group:
                     sn = _short(ge.src)
                     sid = f'sig_{sn}_{sd}_{sc}'
-                    branch_edges.append(_emit_edge(ne(), [sid], [op_id], ge))
+                    branch_edges.append(_emit_edge(ne(), [sid], [op_id], ge, _branch_edge_kind))
 
             case_children.append({
                 'id': bid,
@@ -1563,24 +1572,27 @@ def viz_to_elk(viz: VizData) -> dict:
             # Root edges: PORT_IN → branch signal, signal/op → PORT_OUT
             # [V16.12 2026-08-18] 统一走 _resolve_port_id (单源 of truth)
             # [Plan B Step C 2026-08-25] Case item edges use 'case_item' kind for blue styling
+            # [FIX 2026-08-26 iter_026] 统一应用 _branch_edge_kind (true=green/false=red)
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 # PORT_IN → signal
                 if sn in input_names:
-                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge, kind='case_item'))
+                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge, kind=_branch_edge_kind))
 
             if op_id:
                 # [V16.13 Fix M 2026-08-18] dst_name 不存在于 viz_to_elk scope (原本是
                 # expr_trees_to_elk 的本地变量名). 正确变量是 dst_id (case dst signal full path).
                 # 之前 case8/9/11/15/16/17/18/22 fail 都是 dst_name NameError 根因.
-                root_edges.append(_emit_edge(ne(), [op_id], [_resolve_port_id(dst_id, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else []))
+                # [FIX 2026-08-26 iter_026] op → PORT_OUT 边统一应用 _branch_edge_kind
+                root_edges.append(_emit_edge(ne(), [op_id], [_resolve_port_id(dst_id, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], None, _branch_edge_kind))
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if not getattr(ge, 'source_op', None):
                     # [V16.13 Fix M 2026-08-18] output_set → output_names (viz_to_elk 只定义 output_names)
-                    root_edges.append(_emit_edge(ne(), [sid], [_resolve_port_id(ge.dst, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], ge))
+                    # [FIX 2026-08-26 iter_026] signal → PORT_OUT 边统一应用 _branch_edge_kind
+                    root_edges.append(_emit_edge(ne(), [sid], [_resolve_port_id(ge.dst, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], ge, _branch_edge_kind))
 
         # sel → case scope (condition select edge)
         sel_anchor_id = f'cond_sel_{sd}'

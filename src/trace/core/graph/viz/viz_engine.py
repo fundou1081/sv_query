@@ -200,10 +200,14 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     
     # Edges
     for e in edges:
+        # [FIX 2026-08-26 iter_026] walk_e at line 117 已读 _meta.kind 并存在顶层 kind,
+        # 直接读顶层 kind 即可.
         ekind = e.get('kind', '')
+        _meta_d = e.get('_meta', {}) or {}
+        # 读 _meta kind (向后兼容 V14 路径)
+        ekind = ekind or _meta_d.get('kind', '')
         # [V16 Plan Phase 1.5 2026-08-14] stroke 字段可能在 _meta 子字典里 (V15.1 emit 路径)
         # 或在顶层 (V14 emit 路径). 都读一下.
-        _meta_d = e.get('_meta', {}) or {}
         estroke = e.get('stroke', '') or _meta_d.get('stroke', '')
         if estroke == 'red':
             # CROSS_TOP CONNECTION 边 (D2 决策) - 红色
@@ -213,6 +217,15 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
             stroke, dash = '#9C27B0', ''
         elif ekind == 'condition_select':
             stroke, dash = '#989898', ' stroke-dasharray="6,3"'
+        elif ekind == 'branch_true':
+            # [FIX 2026-08-26 iter_026] 绿色实线 (条件 true 分支驱动)
+            stroke, dash = '#2e7d32', ''
+        elif ekind == 'branch_false':
+            # [FIX 2026-08-26 iter_026] 红色实线 (条件 false 分支驱动)
+            stroke, dash = '#c62828', ''
+        elif ekind == 'case_item':
+            # [FIX 2026-08-26 iter_026] 蓝色实线 (case 各项驱动)
+            stroke, dash = '#1565c0', ''
         else:
             stroke, dash = '#555555', ''
         # [V15 2026-08-13] 用 points 折线画 (含 bendPoints) — ELK 正交路由
