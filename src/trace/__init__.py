@@ -2,15 +2,36 @@
 # trace - SystemVerilog 信号追踪框架
 # ==============================================================================
 
-# [Stage 6] pyslang 10/11 兼容: 先 import compat, 它会在 v11+ 上把 SyntaxKind /
-# SyntaxTree / Compilation / TokenKind / ValueDriver / NamedValueExpression 注入到
-# pyslang 主模块, 保证 `pyslang.X` 形式的代码不用动
+# [D5] pyslang v11 only — alias bridge: pyslang v11 把 Compilation/SyntaxKind/
+# SyntaxTree/TokenKind/ValueDriver/NamedValueExpression 移到子模块, 但业务代码常
+# 用 `pyslang.X` 顶层形式. 这里在 import 时把它们 alias 回顶层 (不是 v9/v10 compat,
+# 是 v11 子模块 → 顶层 bridge). 加 noqa 因为我们是有意扩展 pyslang.
+import pyslang as _pyslang
+from pyslang.ast import Compilation as _Compilation_v11, NamedValueExpression as _NamedValueExpression_v11
+from pyslang.syntax import SyntaxKind as _SyntaxKind_v11, SyntaxTree as _SyntaxTree_v11
+from pyslang.parsing import TokenKind as _TokenKind_v11
+from pyslang.analysis import ValueDriver as _ValueDriver_v11
+for _name, _obj in [
+    ("Compilation", _Compilation_v11),
+    ("SyntaxKind", _SyntaxKind_v11),
+    ("SyntaxTree", _SyntaxTree_v11),
+    ("TokenKind", _TokenKind_v11),
+    ("ValueDriver", _ValueDriver_v11),
+    ("NamedValueExpression", _NamedValueExpression_v11),
+]:
+    if not hasattr(_pyslang, _name):
+        setattr(_pyslang, _name, _obj)
+del _name, _obj, _pyslang
+del _Compilation_v11, _SyntaxKind_v11, _SyntaxTree_v11, _TokenKind_v11, _ValueDriver_v11, _NamedValueExpression_v11
+
+
+# [D5] pyslang v11 only. No more compat shim — code uses `pyslang.ast` /
+# `pyslang.syntax` / `pyslang.parsing` / `pyslang.analysis` directly.
 from .core import (
     ClockDomainTracer,
     ModuleTracer,
     SignalGraph,
     SignalTracer,
-    _pyslang_compat,  # noqa: F401
 )
 from .unified_tracer import UnifiedTracer
 
