@@ -189,7 +189,7 @@ def graph(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     strict: bool = STRICT_OPTION,
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
     mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file"),
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
     layout: str = typer.Option("TB", "--layout", "-l", help="Layout: TB (top-bottom) or LR (left-right)"),
@@ -259,7 +259,7 @@ def dataflow(
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module (filter edges to this module's signals)"),
     strict: bool = STRICT_OPTION,
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file (or prefix when --split-by-module)"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias). Prefix when --split-by-module."),
     include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
     split_by_module: bool = typer.Option(False, "--split-by-module", help="[Phase 6.1 2026-07-12] Generate one DOT per sub-instance (e.g. darksocv.bridge0). Output: <prefix>_<sub>.dot"),
     show_source: bool = SHOW_SOURCE_OPTION,
@@ -325,7 +325,7 @@ def pipeline(
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
     strict: bool = STRICT_OPTION,
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
     max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
     max_control_nodes: int = typer.Option(12, "--max-control-nodes", help="[P0 fix 2026-07-17] Max control signals in header row (default 12, was 8). 0 = hide all."),
     unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
@@ -407,7 +407,7 @@ def compute(
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Target module"),
     strict: bool = STRICT_OPTION,
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
 ) -> None:
     """运算架构图: 边上直接显示运算符 (+, -, &, >>, ==, etc.)
 
@@ -458,7 +458,7 @@ def timed(
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Target module"),
     strict: bool = STRICT_OPTION,
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
 ) -> None:
     """时间轴运算架构图: 从左到右时间轴 + 运算作为圆形节点
 
@@ -542,7 +542,7 @@ def timed(
 @vis_app.command(name="gap")
 def gap(
     file: str = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
     min_risk: float = typer.Option(20.0, "--min-risk", "-r", help="Minimum risk threshold"),
     cache: bool = typer.Option(False, "--cache", help="Use cache for faster loading"),
@@ -569,7 +569,7 @@ def chain(
     max_depth: int = typer.Option(0, "--max-depth", help="[ADD 2026-07-10] Max path depth (default 0=unlimited, 方豆 feedback '不限制depth')"),
     layout: str = typer.Option("LR", "--layout", "-l", help="Layout: LR (left-right, default) or TB (top-bottom)"),
     layout_engine: str = typer.Option("neato", "--layout-engine", help="Layout engine: neato (square, default) / dot / fdp"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file"),
+    dot_output: str = typer.Option(None, "--svg", "--dot", "-d", help="Output SVG file (was DOT before V100; --dot kept as deprecated alias)"),
     png_output: str = typer.Option(None, "--png", help="Output PNG file (auto-call <engine> -Tpng)"),
     svg_output: str = typer.Option(None, "--svg", help="Output SVG file (auto-call <engine> -Tsvg)"),
 ) -> None:
