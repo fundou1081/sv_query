@@ -1470,6 +1470,18 @@ def viz_to_elk(viz: VizData) -> dict:
                         sel_sigs.add(tok)
         sel_label = ', '.join(sorted(sel_sigs)) if sel_sigs else '?'
 
+        # [FIX 2026-08-26 iter_026+] 检测当前 dst 是 ternary 还是 case
+        # ternary: viz.nodes 里有 OP_TERNARY TraceNode 且 ID 以 dst_short 结尾
+        # case: 其他 (不是 ternary, 但有 case 分支)
+        _is_ternary_dst = False
+        if viz is not None:
+            for _vn in viz.nodes:
+                if getattr(_vn, 'kind', '') == 'OP_TERNARY':
+                    _vn_id = getattr(_vn, 'id', '')
+                    if _vn_id.startswith(dst_id + '.') or _vn_id == dst_id:
+                        _is_ternary_dst = True
+                        break
+
         by_cond = defaultdict(list)
         for e in cedges:
             chain = getattr(e, 'condition_chain', [])
@@ -1545,8 +1557,23 @@ def viz_to_elk(viz: VizData) -> dict:
             # 之前 BRANCH_FALSE 不 emit 独立 edge (line 46 注释),
             # 现在按用户要求统一处理: default / else / ! 前缀条件 走 branch_false 样式 (红色),
             # 其他条件走 branch_true 样式 (绿色)
-            _is_false_branch = (cond_label == 'default' or cond_label.startswith('!') or 'else' in cond_label.lower())
-            _branch_edge_kind = 'branch_false' if _is_false_branch else 'branch_true'
+            # [FIX 2026-08-26 iter_026+] 区分 ternary 和 case (使用外层检测的 _is_ternary_dst):
+            #   - ternary: cond_label 以 '!' 开头表示 false 分支 → branch_false (红)
+            #   - ternary 其他: branch_true (绿)
+            #   - case item: case_item (蓝) - 非 default 项
+            #   - case default: branch_false (红)
+            _is_false_branch = (
+                cond_label.startswith('!') or  # ternary false 分支 (e.g. !(cond))
+                'else' in cond_label.lower()    # if-else 分支
+            )
+            if _is_ternary_dst:
+                _branch_edge_kind = 'branch_false' if _is_false_branch else 'branch_true'
+            else:
+                # case 语句: 区分 case item vs default
+                if cond_label == 'default':
+                    _branch_edge_kind = 'branch_false'
+                else:
+                    _branch_edge_kind = 'case_item'
             if op_id:
                 for ge in group:
                     sn = _short(ge.src)
