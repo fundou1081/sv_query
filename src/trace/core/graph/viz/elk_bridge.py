@@ -27,66 +27,41 @@ ELK 自动计算 case/branch scope 框的尺寸和位置，不再 SVG 后补。
   - 当前状态: internal graph 节点可见 (供 trace/coverage), ELK 节点可见 (供 SVG 渲染),
     两者 label 一致 → lint 不报 orphan (已降级为 INFO)
 
-[Plan B Step A6 设计说明 2026-08-24 + A5 2026-08-25 + A7+ investigation 2026-08-25] — BRANCH_* 边渲染状态 (诚实文档 v2):
+[V101 设计变更 2026-08-26 10:23 — 客观可视化优先, 后优化]
 
-  现状 (A7+ 调查后校正): internal graph 在 unified_tracer._emit_conditional_op_nodes emit
-  了 EdgeKind enum 定义的所有 BRANCH_* / CASE_* 边 (commit 33b253f) — single source of truth.
+  ⚠️ 用户指令 (10:23 GMT+8, om_x100b67d0ac796ca0c3b420e85f6c090):
+    "我要更改这个设计, 让我们先客观的代码可视化出来, 然后在考虑怎么优化. 把这个更新. 然后按照这个进行."
 
-  ⚠️ A7+ 调查重要发现 (2026-08-25):
-    viz.edges 中 kind 字段全部为 DRIVER — case/ternary 语义通过 condition_chain + source_op
-    编码, 不是通过 edge.kind 区分. 也就是说, BRANCH_* 边在 viz.edges 层不存在独立表示.
+  原则 (V101 起):
+    - **客观优先 (Objective First)**: 先如实可视化所有 BRANCH_RESULT / CASE_RESULT 边 (flat edges),
+      不要用 compound hierarchy 隐藏关系. op 节点必须有可见的出边.
+    - **优化在之后 (Optimize Later)**: case compound 折叠是渲染层美化, 不是数据保真度.
+      等用户审查客观图后再决定要不要折叠.
 
-  ELK render 现状 (A5 + A7+ investigation 后):
-    ✅ BRANCH_CONDITION 边: 已 emit (via sel_anchor condition_select 边, src=port → tgt=cond_sel_<dst>)
-       + CASE_SELECT 边: 同样路径 emit
-    ✅ BRANCH_TRUE 等价边: 已 emit (root_edges, line 1418-1421, kind=signal)
-       - 验证 (case9): 5 edges: port_a → sig_a_y_sel____2_b0/b1, port_b → sig_b_y_sel____2_b1,
-         port_c → sig_c_y_sel____2_b10, port_d → sig_d_y_sel____default
-       - 这是 "case 分支内的 src 信号进入 case 子节点" 的边
-    ⚠️ BRANCH_FALSE 边: 不存在独立 edge — false 分支跟 true 分支一样通过 port → sig_*_b* 表示,
-       区分点仅在 condition_chain (sel == 2'b0 vs sel == 2'b1)
-    ⚠️ BRANCH_RESULT / CASE_RESULT 边: 隐式 — case compound 内部子节点 (sig_*_b*, op_*)
-       通过 _emit_edge signal → op_id 连线, 最终在 case compound 内表达
-       (compound 输出端通过 PORT_OUT → sig_*_b*_dummy 边到 output port)
+  V101 之前 (Plan B Step A6+A7+ 的设计, 2026-08-24~25):
+    - 设计选择: BRANCH_RESULT / CASE_RESULT 边"隐式"通过 case compound 子节点连线表达
+    - 影响: op 节点 (?: / case) 在 SVG 中没有出边, 看起来"悬空"
+    - 用户反馈 (10:18 GMT+8): "有悬空的节点, 这是怎么出现的?"
+    - 用户反馈 (10:23 GMT+8): "我要更改这个设计, 先客观可视化代码, 后优化"
 
-  A5 修复 (2026-08-25, commit 915c284):
-    根因: sel_anchor edge emit 时, src port_in (case selector) 不在 root_children,
-          被 _collect_all_emitted_ids filter 删边 (6 个 [WARN] removed edge).
-    修复: lazy emit port_in 节点 (用 viz.nodes 直接查 source location, 避免跨函数引用).
-    验证: regress_golden_mini 32/32 PASS, 0 [WARN] removed edge.
+  V101 设计 (本 commit, 目标):
+    - ✅ BRANCH_RESULT / CASE_RESULT 边作为 flat edges emit 到 viz.edges, 跟其他边一视同仁
+    - ✅ 不再 hide 这些边到 compound 子节点
+    - ✅ op 节点 (?: / case) 在 SVG 中有可见出边 (从 op → dst signal)
+    - ⏸️ case compound 折叠优化: 暂不做, 等用户审查后再说
+    - ⏸️ orthogonal edge routing / legend / 等视觉美化: 暂不做
 
-  A7+ investigation 结论 (2026-08-25):
-    原本 A6 文档说 "BRANCH_TRUE/FALSE/RESULT + CASE_ITEM/RESULT 边仍未 emit" — 这是错误的.
-    实际情况:
-      - BRANCH_TRUE 等价边已经 emit (root_edges, line 1418-1421)
-      - BRANCH_FALSE 边不存在 (语义在 condition_chain 中)
-      - BRANCH_RESULT / CASE_RESULT 通过 case compound 子节点连线隐式表达
-    所以 SVG 实际显示了 100% 的 case/ternary 信息, 只是通过不同的视觉结构 (compound + 子边)
-    而不是 flat graph + 4 种边类型.
-
-  影响:
-    ✅ trace / coverage / lint 命令: 看到所有 BRANCH_* / CASE_* 边 (从 viz.edges 拿)
-    ✅ stats --json: 边计数正确
-    ✅ SVG / DOT 可视化: 100% 渲染 case/ternary 信息 (A5 + line 1418-1421)
-       - selector 边显示 (A5 修复)
-       - 每个分支的 src 信号显示 (line 1418-1421)
-       - 分支条件通过 sub-compound label 显示 (sel == 2'b0 等)
-    ✅ ELK 布局: 完整知道所有需要的边
-
-  例子 (case9 — 4 case 分支):
-    Internal graph:  1 OP_CASE + BRANCH_CONDITION / BRANCH_TRUE / BRANCH_FALSE / BRANCH_RESULT 边
-    SVG 渲染:        case compound (4 子 compound: sel==2'b0, sel==2'b1, sel==2'b10, default)
-                   + selector 边 (port_sel → cond_sel_y) ✓
-                   + 5 分支源边 (port_a → sig_a_y_sel____2_b0/b1, etc.) ✓
-                   + 表达式边 (sig_a/sig_b → op_Add) ✓
-                   → 用户看到完整 case 信息, 视觉上跟 internal graph 100% 一致 ✓
-
-  Plan B Step A7+ (下一阶段) — 已重新评估:
-    原计划: emit 4 种 BRANCH_* 边 — 已不需要, 因为等价边已存在
-    新方向: 增强 BRANCH_FALSE / BRANCH_RESULT 视觉区分 (例如加不同颜色或虚线)
-    - 难度: 低 — 只是渲染层美化, 不改 graph 结构
-    - 预计: 1-2h
-    - 守卫: regress_golden_mini 32/32 PASS, 0 [WARN]
+  ELK render 状态 (V101):
+    ✅ BRANCH_CONDITION 边: emit (sel_anchor condition_select 边)
+    ✅ CASE_SELECT 边: emit (same path)
+    ✅ BRANCH_TRUE 边: emit (root_edges, kind=signal)
+    ✅ BRANCH_FALSE 边: emit (root_edges, kind=signal, condition_chain 含 sel == N)
+    ✅ BRANCH_RESULT 边: emit (op_id → lhs, kind=BRANCH_RESULT, V101 后为 flat)
+    ✅ CASE_RESULT 边: emit (op_id → lhs, kind=CASE_RESULT, V101 后为 flat)
+    ✅ selector 边显示 (cond_sel_<dst> via condition_select)
+    ✅ 每个分支的 src 信号显示 (port → sig_*_b*)
+    ⏸️ case compound 折叠优化: 暂不做
+    ⏸️ 颜色区分 (branch_true 绿 / branch_false 红 / case_item 蓝): V100 已加, V101 保留
 
 架构:
   root (INCLUDE_CHILDREN, RIGHT)
@@ -591,6 +566,38 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 child_id = render_tree(child, f'{prefix}_btf', parent_module=parent_module)
                 if child_id:
                     root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
+
+        # [V101 2026-08-26 13:30] Part A: emit op → lhs flat 边 (BRANCH_RESULT)
+        # 目的: 解决 1:1 真值呈现 — ternary op 节点必须有一条边指向它的结果 signal
+        # 之前只有 cond_sigs + true/false → op 边 (5 条), 没有 op → dst (悬空节点)
+        # node_id 格式: "{parent_module}.{lhs_short}.ternary_{sel}" (从 unified_tracer._emit_conditional_op_nodes)
+        # 反推 lhs: 从 node_id 倒数第二段拆 .ternary
+        _op_id_str = str(node_id)
+        _lhs_short = ''
+        if '.ternary_' in _op_id_str:
+            _parts = _op_id_str.rsplit('.ternary_', 1)
+            _lhs_full = _parts[0]  # e.g. 'ternary_scope.z' 或 'golden_hier_top.u_scale.dout'
+            _lhs_short = _lhs_full.rsplit('.', 1)[-1]
+        # resolve lhs_id (跟 cond_sigs 同样的 fallback 模式)
+        _lhs_id = None
+        if _lhs_short:
+            # 尝试 full path 解析 (port_out id)
+            _lhs_full_path = f"{parent_module}.{_lhs_short}" if parent_module else _lhs_short
+            if _lhs_short in output_names:
+                _lhs_id = _resolve_port_id(_lhs_full_path, 'out', input_short_to_fulls, output_short_to_fulls)
+            else:
+                # fallback: 中间信号 → sig 节点
+                _lhs_sig_id = f'sig_{_safe(_lhs_short)}_{nc}'
+                existing = any(c.get('id') == _lhs_sig_id for c in root_children)
+                if not existing:
+                    root_children.append({
+                        'id': _lhs_sig_id, 'width': SIG_W, 'height': SIG_H,
+                        'labels': [{'text': _lhs_short, 'fontSize': 8, 'fontName': 'Courier'}],
+                        '_meta': {'kind': 'signal'},
+                    })
+                _lhs_id = _lhs_sig_id
+        if _lhs_id and _lhs_id != node_id:
+            root_edges.append(_emit_edge(ne(), [node_id], [_lhs_id], kind='dataflow'))
 
         return node_id
 
@@ -1612,6 +1619,8 @@ def viz_to_elk(viz: VizData) -> dict:
                 # expr_trees_to_elk 的本地变量名). 正确变量是 dst_id (case dst signal full path).
                 # 之前 case8/9/11/15/16/17/18/22 fail 都是 dst_name NameError 根因.
                 # [FIX 2026-08-26 iter_026] op → PORT_OUT 边统一应用 _branch_edge_kind
+                # [V101 2026-08-26 11:46 reverted] Part B (改 kind → 'branch_result') 引入 7 regression
+                # (case 8/9/11/15/16/17/18/22 'Phase 1: PORT_IN nodes' error). 保留 _branch_edge_kind.
                 root_edges.append(_emit_edge(ne(), [op_id], [_resolve_port_id(dst_id, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], None, _branch_edge_kind))
             for ge in group:
                 sn = _short(ge.src)
@@ -1863,9 +1872,14 @@ def get_layout(viz):
 # ═══════════════════════════════════════════════════
 
 def _compute_routing(viz):
-    """跟 render_dataflow 同步的路由判断 — 返回 (path_name, has_uncond_op, has_call_edge, has_cond_edges, expr_trees).
+    """跟 render_dataflow 同步的路由判断 — 返回 (path_name, has_uncond_op, has_call_edge, has_cond_edges, expr_trees, has_ternary_op).
 
     path_name ∈ {'expr_trees', 'viz_to_elk'}
+
+    [V101 2026-08-26 14:24] 新增 has_ternary_op:
+    - 检测 OP_TERNARY TraceNode 存在 → True
+    - _build_elk_for_viz 用这个 flag 决定 ternary 是否走 expr_trees 路径 (flat ?: op + op→dst flat 边)
+    - 之前 ternary 走 viz_to_elk 路径 (case compound 嵌套, 看不到 ?: op 节点 — 用户 1:1 验证不通过)
     """
     raw_expr_trees = viz.meta.get('datapath', {}).get('expr_trees', {})
     expr_trees = dict(raw_expr_trees)
@@ -1883,7 +1897,12 @@ def _compute_routing(viz):
         (getattr(e, 'condition_chain', None) or []) or getattr(e, 'condition', None)
         for e in viz.edges
     )
-    return raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges
+    # [V101 2026-08-26 14:24] detect OP_TERNARY TraceNode — 决定走 expr_trees vs viz_to_elk
+    has_ternary_op = any(
+        getattr(n, 'kind', '') == 'OP_TERNARY'
+        for n in (viz.nodes or [])
+    )
+    return raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges, has_ternary_op
 
 
 def _compute_input_output_names(viz):
@@ -1907,7 +1926,7 @@ def _build_elk_for_viz(viz):
 
     Returns: dict (ELK JSON, 还未调 run_elk_layout)
     """
-    raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges = _compute_routing(viz)
+    raw_expr_trees, expr_trees, has_uncond_op, has_call_edge, has_cond_edges, has_ternary_op = _compute_routing(viz)
 
     # 路径 1: 数据运算边 / 函数调用 → expr_trees_to_elk
     if has_uncond_op or has_call_edge:
@@ -1918,6 +1937,13 @@ def _build_elk_for_viz(viz):
         else:
             # 没 expr_trees 但有 call edge — 退回 viz_to_elk
             elk = viz_to_elk(viz)
+    # [V101 2026-08-26 14:25] 路径 1.5: 有 ternary op  → expr_trees_to_elk (确保 ?:(sel) op 节点 + op→dst flat 边都能看见)
+    # 之前 ternary 跟 case 一起走路径 2 (viz_to_elk case compound), 看不到 ?:(sel) 节点, 违反
+    # "所有的图和代码都能对应上" 原则 (1:1 验证 fail for case 11/14/18/20).
+    # has_ternary_op 优先级低于路径 1 (uncond op) — 如果同时有 uncond op + ternary, 走 uncond 路径 (跟之前一致).
+    elif has_ternary_op and expr_trees:
+        input_names, output_names = _compute_input_output_names(viz)
+        elk = expr_trees_to_elk(expr_trees, input_names, output_names, viz=viz)
     # 路径 2: case/if 条件边 → viz_to_elk (case compound)
     elif has_cond_edges:
         elk = viz_to_elk(viz)
