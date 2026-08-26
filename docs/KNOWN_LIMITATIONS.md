@@ -1,7 +1,23 @@
 # 已知限制
 
-> 更新: 2026-07-29
+> 更新: 2026-08-26 23:00 GMT+8 (case27 架构决策生效)
 > 测试状态: 2958 tests, 2876 passed (97.1%), 55 pre-existing failures, 0 new
+>
+> **架构决策**: `docs/architecture/case27_signal_graph_completeness_decision.md` (D1-D5 锁定, 含 v11-only)
+
+### 5. pyslang 版本兼容代码 (~1.5h 清理, iter_034)
+
+D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
+
+**当前 compat shim**: `src/trace/core/_pyslang_compat.py` (8327 bytes)
+- `_detect_version()` — 版本探测 (v11 不需要)
+- `_KIND_ALIASES` — kind 名字 v10/v11 映射
+- `is_syntax_list` / `iter_syntax_list` — v11 已拆 plain list, 可能不需要
+- 5 个调用点 (uvm_testbench_extractor / expression_tree / semantic_adapter / subroutine_expander / base)
+- 4 个 hasattr probes (mig_validator / semantic_adapter x2 / graph_builder)
+- 6 处 `[Stage 6] v10/v11 兼容` 注释
+
+**iter_034 计划**: 全部清理, 直接用 `pyslang.ast.*` (v11 only API)
 
 ---
 
@@ -53,3 +69,30 @@
 | DriverInfo 不含位精确信息 | V6.6 (source: SignalSource) |
 | pipeline 图 5 种变体混乱 | V6.6/V6.7 (deprecated load_dot) |
 | NodeKind/EdgeKind 混乱 | V6.6 (命名空间分区) |
+
+---
+
+## ⚠️ 2026-08-26 case27 架构决策生效
+
+### 接受为设计选择 (不再修)
+
+| 项 | 原因 | 决策文档 |
+|---|---|---|
+| **case27 Gap 1** — `acc[i]` 显示模板 label `[i]` 而非 `[0..4]` | Semantic API 不展开 genvar 替换 | D2 |
+| **case27 Gap 2** — generate-block 内 `prod[0..3]` 4 个 `*` op 节点缺失 | Semantic API 不 walk generate-block body | D2 |
+| **generate-block 整体展平** | 可视化彻底展平到 module 顶层 | D3 |
+
+### 仍待修 (核心约束: 信号图信息完整)
+
+| 项 | 优先级 | 决策 |
+|---|---|---|
+| **case27 Gap 3** — module 顶层 `sum_out` ternary `?:` op 节点缺失 | ⭐⭐⭐⭐⭐ | iter_033 必做 |
+| **"信号图信息完整" 定义** (A/B/C/D) | ⏳ 待用户选 | 待 Feishu 回复 |
+
+---
+
+## 📞 相关引用
+
+- 决策文件: `docs/architecture/case27_signal_graph_completeness_decision.md`
+- iter_032 (前置已知问题): `docs/task_tree/iterations/iter_032_case27_semantic_gaps.md`
+- iter_033 (待开工): `docs/task_tree/iterations/iter_033_*.md` (创建中)
