@@ -1006,6 +1006,26 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
 # 重塑 root_children: 按 VizNode.cluster_id 重组为嵌套 cluster 结构.
 # ═══════════════════════════════════════════════════════════════════
 
+def collect_leaf_children(children):
+    """[T.55 2026-08-26] 递归收集 children 树里所有叶子节点 (非 cluster, 有 id 的节点).
+
+    用于 _wrap_into_clusters 里 gen_block 边冲突检测 — 需要查每个 edge 端点
+    node 的 _meta.gen_block, 而这些 node 可能嵌套在 cluster_target_top / genblk_*_top 里.
+    """
+    _leaves = []
+    def _walk(n):
+        if isinstance(n, dict):
+            _meta = n.get('_meta', {}) or {}
+            if _meta.get('is_cluster'):
+                for _c in n.get('children', []) or []:
+                    _walk(_c)
+            elif n.get('id'):
+                _leaves.append(n)
+    for _n in children:
+        _walk(_n)
+    return _leaves
+
+
 def _wrap_into_clusters(viz, elk_json):
     """按 VizNode.cluster_id 把 root_children 重组为嵌套 cluster 框.
 
@@ -1222,22 +1242,73 @@ def _wrap_into_clusters(viz, elk_json):
     for cid, items in clusters.items():
         for child in items:
             eid_to_cid[str(child.get('id', ''))] = cid
+    # [T.55 2026-08-26] 修复 case27 悬空节点根因
+    # 根因: generate block sub-grouping 把 op/sig 节点归入 genblk_*_top cluster, 但边留在 root
+    # → ELK 无法把边穿透进手动嵌套 cluster → 节点视觉上"悬空".
+    # 修复: 对同 cluster 内部或同 gen_block 内部的边, 移进对应 cluster 的 edges 字段.
+    #   - cluster 内部: src_cid == dst_cid != '' (sub-module cluster)
+    #   - gen_block 内部: 节点 cluster_id 都是 '' (target module 顶层), 但 gen_block 相同 → 属同一 genblk box
+    # 注意顺序: gen_block 匹配必须发生在 cluster_id 匹配之后, 且 genblk 边优先归 genblk cluster.
+    # 顶层 port/input 节点 (cluster_id='', gen_block='') 的边留在 root.
+    _node_meta = {}
+    for _leaf in collect_leaf_children(new_children):
+        _node_meta[str(_leaf.get('id', ''))] = _leaf.get('_meta', {}) or {}
+    # cluster_id (viz 的, e.g. 'golden_hier_top.u_scale' 或 gen_block 'gen_accum') → internal edges
+    cluster_internal_edges = defaultdict(list)
+    genblk_internal_edges = defaultdict(list)
     for e in root_edges:
         meta = dict(e.get('_meta', {}))
-        # 阶段 5: CROSS_TOP 边检测 (不论什么 kind, 只要跨顶层/子模块)
         src_id = (e.get('sources', ['']) or [''])[0]
         dst_id = (e.get('targets', ['']) or [''])[0]
         src_cid = eid_to_cid.get(src_id, '')
         dst_cid = eid_to_cid.get(dst_id, '')
         is_cross_top = (src_cid == '' and dst_cid != '') or (dst_cid == '' and src_cid != '')
-        # [V16 Plan Phase 2.1 2026-08-14] 只覆盖 stroke 默认情况的边. 不覆盖 explicit stroke='purple'
-        # (紫色是 V16 跨 instance 两步边的明确颜色, CROSS_TOP 默认是红色)
         if is_cross_top and not meta.get('stroke'):
             meta['stroke'] = 'red'
             meta['cross_top'] = True
         new_e = dict(e)
         new_e['_meta'] = meta
-        new_edges.append(new_e)
+        # gen_block 匹配 (src/dst 都在同一个 genblk box)
+        _src_gb = _node_meta.get(src_id, {}).get('gen_block', '')
+        _dst_gb = _node_meta.get(dst_id, {}).get('gen_block', '')
+        if _src_gb and _src_gb == _dst_gb:
+            genblk_internal_edges[_src_gb].append(new_e)
+        elif src_cid == dst_cid and src_cid != '':
+            cluster_internal_edges[src_cid].append(new_e)
+        else:
+            new_edges.append(new_e)
+
+    # [T.55 2026-08-26] 把 cluster internal edges 写回对应的 cluster 节点.
+    # 需要能定位 cluster 节点 (cluster_<safe(cid)> 或 genblk_<gb>_top).
+    # 注意: sub-module cluster 用 'cluster_{_safe(cid)}' id; gen-block cluster 用
+    # 'genblk_{_gb}_top' id. 两者 _meta 里都存了 cluster_id / gen_block, 这里统一匹配.
+    # 先把 genblk 边写回 genblk cluster, 再处理 sub-module cluster 边.
+    if genblk_internal_edges or cluster_internal_edges:
+        _all_clusters = []
+        def _collect(n):
+            if isinstance(n, dict) and n.get('_meta', {}).get('is_cluster'):
+                _all_clusters.append(n)
+            for _c in n.get('children', []) or []:
+                _collect(_c)
+        for _n in new_children:
+            _collect(_n)
+        for _cl in reversed(_all_clusters):  # 先内层后外层
+            _meta = _cl.get('_meta', {}) or {}
+            _cid = _meta.get('cluster_id', '')
+            _gb = _meta.get('gen_block', '')
+            _cl_edges = None
+            if _gb and _gb in genblk_internal_edges:
+                _cl_edges = genblk_internal_edges[_gb]
+            elif _cid and _cid in cluster_internal_edges:
+                _cl_edges = cluster_internal_edges[_cid]
+            if _cl_edges:
+                _cl.setdefault('edges', []).extend(_cl_edges)
+                genblk_internal_edges.pop(_gb, None) if _gb in genblk_internal_edges else None
+                if _cid in cluster_internal_edges:
+                    cluster_internal_edges.pop(_cid, None)
+        # 剩余的 (极端情况: cluster 节点被 skip 了) → 兜底放回 root
+        for _rem in list(cluster_internal_edges.values()) + list(genblk_internal_edges.values()):
+            new_edges.extend(_rem)
 
     elk_json = dict(elk_json)
     elk_json['children'] = new_children
@@ -1852,12 +1923,21 @@ def _find_elk_js():
 
 
 def run_elk_layout(graph):
+    # [T.54 DEBUG 2026-08-26] dump pre-layout for case 27 investigation
+    if os.environ.get('SV_DUMP_ELK_PRE') == '1':
+        with open(os.environ.get('SV_DUMP_ELK_PRE_PATH', '/tmp/elk_pre_layout.json'), 'w') as _f:
+            json.dump(graph, _f, indent=2, ensure_ascii=False)
     proc = subprocess.run(['node', _find_elk_js()],
         input=json.dumps(graph, ensure_ascii=False),
         text=True, capture_output=True, timeout=30)
     if proc.returncode != 0:
         raise RuntimeError(f"ELK layout failed: {proc.stderr[:500]}")
-    return json.loads(proc.stdout)
+    _result = json.loads(proc.stdout)
+    # [T.54 DEBUG 2026-08-26] dump post-layout for case 27 investigation
+    if os.environ.get('SV_DUMP_ELK_PRE') == '1':
+        with open(os.environ.get('SV_DUMP_ELK_PRE_PATH', '/tmp/elk_pre_layout.json').replace('_pre_', '_post_'), 'w') as _f:
+            json.dump(_result, _f, indent=2, ensure_ascii=False)
+    return _result
 
 
 def get_layout(viz):

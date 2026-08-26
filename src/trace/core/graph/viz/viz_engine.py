@@ -69,7 +69,7 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
             })
     
     walk_n(layout)
-    
+
     # ── Collect edges (global coords) ──
     # ELK returns section coordinates relative to the containing node.
     # [V15 2026-08-13 关键修复] ELK 把所有 edges 都 emit 到 root.edges (不在 cluster children.edges),
@@ -77,6 +77,9 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
     # 如果直接把 sp/ep 当 root 坐标用, 4 个 cluster 的同构子图 layout 到相同相对坐标后,
     # SVG 会出现 5 条重复 path. 必须根据 src/tgt 节点所属 cluster, 加对应 (x,y) offset.
     edges = []
+
+    # 0) Build leaves_by_id for O(1) node lookup (used by Plan A back-edge snap, iter_031)
+    leaves_by_id = {lf['id']: lf for lf in leaves}
 
     # 1) 递归收集所有 compound node 的全局 (x, y) — 包括 cluster 和 root 本身
     cluster_offsets = {'root': (0.0, 0.0)}
@@ -147,6 +150,22 @@ def _render_svg_direct(layout: dict, config: dict) -> str:
                     for bp in bends:
                         points.append((bp.get('x', 0), bp.get('y', 0)))
                     points.append((ep.get('x', 0), ep.get('y', 0)))
+                # [T.64 iter_031 2026-08-26] Plan A: 修正环回边 endPoint 坐标偏移 bug
+                # 根因: ELK 对返身边 (back-edge, 终点是已布局的上游节点) 计算 endpoint 时
+                #       使用了不同的坐标基准，导致 endPoint.x 偏离目标节点 left 约一个 SIG_W (50px)。
+                #       case27 e4 ({} → acc[0]) 是返身边 (acc[0]→$bits→{}→acc[0] 环),
+                #       endPoint.x=62 (相对 genblk) + container_off.x=20 = 82, 但 acc[0] left=32,
+                #       偏离 50px，视觉上 {} 看起来"悬空"。
+                # 修复: 当 points[-1].x 与 target node left 偏离 ~SIG_W 时, snap 到 tgt_left。
+                #       检测范围 [SIG_W/2, 3*SIG_W/2] 避免误伤 (需引入 SIG_W 常量)。
+                _tgt_node = leaves_by_id.get(tgt_id)
+                if _tgt_node and points:
+                    _tgt_left = _tgt_node['gx']
+                    _last_x, _last_y = points[-1]
+                    _delta = _last_x - _tgt_left
+                    _SIG_W = 50.0  # [iter_031] sync with elk_bridge SIG_W=50
+                    if 0.5 * _SIG_W <= abs(_delta) <= 1.5 * _SIG_W:
+                        points[-1] = (_tgt_left, _last_y)
                 edges.append({
                     'src': src_id,
                     'dst': tgt_id,
