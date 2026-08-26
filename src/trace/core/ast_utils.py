@@ -240,3 +240,44 @@ def node_source_location(node: Any) -> tuple[str, int, int, int]:
         )
     except (AttributeError, TypeError):
         return ("", 0, 0, 0)
+
+
+# ---------------------------------------------------------------------------
+# SyntaxList helpers (v11: SyntaxList 已拆为 plain list, 但保留兼容)
+# ---------------------------------------------------------------------------
+#
+# 在 v10 时代, `node.items` 是 SyntaxNode (kind=SeparatedList),
+# 需 `list(node.items)` 拿元素。
+# 在 v11, `node.items` 直接是 plain Python list。
+# 这些 helper 抽象掉版本差异, 让业务代码统一调用。
+#
+# [D5] v11-only 后, 我们仍保留这些 helper:
+# - is_syntax_list: 现在变成 isinstance(node, list) 或 kind in {SeparatedList, SyntaxList}
+# - iter_syntax_list: 现在变成 list(node) (list 或 SyntaxNode 都 OK)
+
+
+def is_syntax_list(node: object) -> bool:
+    """判断节点是否表示一个 syntax list (可迭代 + 包含 syntax 节点)。
+
+    v11 主要返回 isinstance(node, list); 但保留 kind 检查以防 pyslang 内部
+    仍有 SyntaxList/SeparatedList wrapper type.
+    """
+    if node is None:
+        return False
+    if isinstance(node, list):
+        return True
+    kind = getattr(node, "kind", None)
+    if kind is None:
+        return False
+    kind_str = str(kind)
+    return ("SeparatedList" in kind_str) or ("SyntaxList" in kind_str)
+
+
+def iter_syntax_list(node: object) -> list:
+    """统一返回 Python list 含所有 syntax 节点。
+
+    v11: node 可能是 plain list (直接 list()) 或 SyntaxNode (list() 也 OK).
+    """
+    if node is None:
+        return []
+    return list(node)
