@@ -286,8 +286,9 @@ def verify_specific_port(
 
 def _walk_with_path(inst, parent_path="", depth=0, max_depth=15):
     """[Helper] Walk with hierarchical path tracking."""
+    # [D5] v11 always has hierarchicalPath on InstanceSymbol
     try:
-        hp = str(inst.hierarchicalPath) if hasattr(inst, 'hierarchicalPath') else None
+        hp = str(inst.hierarchicalPath)
     except Exception:
         hp = None
     if not hp:
