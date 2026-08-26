@@ -4,7 +4,7 @@
 
 **Audience**: 任何看 RTL design signal A → signal B 数据流 + if/case 条件 + cycle latency + 可视化 的人.
 
-**Last updated**: 2026-07-04 (3 主推)
+**Last updated**: 2026-08-26 (文档同步修正: --dot → --svg, 数据更新)
 
 ---
 
@@ -132,9 +132,9 @@ sv_query -q trace evidence <sig> --no-strict --file x.sv --json
 **Status**: ⭐⭐⭐⭐ Stable, 重点加强
 
 **子命令**:
-- `graph --dot file.dot` — 画 SignalGraph 整体 (DOT/Mermaid/HTML)
-- `dataflow --dot file.dot` — 画 data path 图 (运算 + control)
-- `pipeline --dot file.dot` — 画 register chain + stage 分组
+- `graph --svg file.svg` — 画 SignalGraph 整体 (DOT/Mermaid/HTML)
+- `dataflow --svg file.svg` — 画 data path 图 (运算 + control)
+- `pipeline --svg file.svg` — 画 register chain + stage 分组
 - `gap` (🔴 部分实验) — 验证缺口 (viewer KeyError, 修中)
 - `module` (🟡 部分实验) — L1+L2 (跨 module 边不可靠, 修中)
 
@@ -146,9 +146,9 @@ sv_query -q trace evidence <sig> --no-strict --file x.sv --json
 
 **命令**:
 ```bash
-sv_query -q visualize graph --no-strict --file x.sv --dot graph.dot
-sv_query -q visualize dataflow --no-strict --file x.sv --dot df.dot
-sv_query -q visualize pipeline --no-strict --file x.sv --dot pipe.dot
+sv_query -q visualize graph --no-strict --file x.sv --svg graph.svg
+sv_query -q visualize dataflow --no-strict --file x.sv --svg df.svg
+sv_query -q visualize pipeline --no-strict --file x.sv --svg pipe.svg
 ```
 
 **已知限制** (2 子命令, 修中):

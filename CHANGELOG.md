@@ -3,6 +3,28 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-08-26 (V100: --dot → --svg flag 重命名 + 文档同步修正)
+
+### V100: --dot flag → --svg (canonical) (commit `7701a4e`)
+- `visualize.py` 主 flag `--dot` 改名为 `--svg` (更直观, 实际输出 SVG)
+- `--dot` 保留为 deprecated alias (`-d` 也保留)
+- 文档同步: README/ARCHITECTURE/PRIMARY_FEATURES/VIZ_COMMANDS/ARCH_VISUALIZATION 全部更新
+
+### V99: Plan B Step G CLOSED (commit `52bedd1`)
+- picorv32_wb cross-module port fix
+- V15 cross-instance port shapes emit 修正
+- 7h 后 (commit `7701a4e` 之前) 重新验证, 全部 7 sub-targets PASS
+
+### V98: case_item 颜色修复 + 区分 ternary vs case (commit `c92db0d`)
+- `_is_ternary_dst` per-dst 检测 + `_branch_edge_kind` 内部逻辑
+- 32/32 regression PASS, case_demo 8 blue + fsm_demo 16 blue + ternary_scope 7 green + 2 red
+
+### V97: BRANCH_FALSE 边 emit (commit `f459e4f`)
+- 用户要求: "branch false 也应该画出来, 和 branch true 一样的处理方式"
+- elk_bridge.py 加 _branch_edge_kind 判断 (default / ! 前缀 / else)
+- viz_engine.py 修复 `if False else ` 调试残留 + 3 色 stroke 映射 (branch_true 绿 / branch_false 红 / case_item 蓝)
+
+
 ## 2026-07-19/20/21 (V6: 教学型可视化 + 源码溯源)
 
 ### V6.0: `visualize teach` 子命令 (commit `8c099f2`)

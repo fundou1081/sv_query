@@ -1,6 +1,6 @@
 # sv_query 架构文档 v2.0
 
-> 更新日期: 2026-07-29
+> 更新日期: 2026-08-26
 > 项目路径: ~/my_dv_proj/sv_query
 
 ---
@@ -9,7 +9,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CLI Layer (27 commands)                  │
+│                    CLI Layer (23 commands)                  │
 │  trace / arch / visualize / dataflow / cdc / timing / ...   │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -53,7 +53,7 @@
 
 ### 2.1 SignalGraph — 信号关系图
 
-**文件**: `src/trace/core/graph/models.py` (663 行)
+**文件**: `src/trace/core/graph/models.py` (744 行)
 
 ```python
 class NodeKind(Enum):
@@ -169,7 +169,7 @@ class VizEdge:
 
 | Extractor | 文件 | 职责 |
 |-----------|------|------|
-| **DriverExtractor** | `driver_extractor.py` (2639行) | DRIVER/CLOCK/RESET 边 + SignalSource |
+| **DriverExtractor** | `driver_extractor.py` (3987行) | DRIVER/CLOCK/RESET 边 + SignalSource |
 | **LoadExtractor** | `load_extractor.py` (423行) | 模块端口节点 |
 | **ConnectionExtractor** | `connection_extractor.py` (503行) | CONNECTION 边 (port mapping) |
 | **ClockDomainExtractor** | `clock_domain_extractor.py` | 时钟域推断 |

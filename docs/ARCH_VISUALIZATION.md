@@ -1,6 +1,7 @@
 # 架构可视化 (arch 命令 + 信号图)
 
 > **本文档** 涵盖 sv_query 的可视化能力: `arch` 命令 (项目架构) + `visualize` 命令 (信号图)
+> 更新日期: 2026-08-26 (--dot → --svg canonical flag 同步)
 > 
 > **V6.3+ 完整参考**: [VIZ_COMMANDS.md](VIZ_COMMANDS.md) (覆盖 7 个 `visualize.*` + arch + 4 个 `* analyze` + design --graph)
 > 
@@ -105,7 +106,7 @@ python run_cli.py visualize graph [OPTIONS]
 
 选项:
   -f, --file PATH          输入 SystemVerilog 文件
-  -d, --dot PATH           输出 DOT 文件
+  -d, --svg            输出 DOT 文件
   -m, --mmd PATH           输出 Mermaid 文件
   --html PATH              输出 HTML 文件
   -l, --layout TEXT        布局方向: TB (上下) 或 LR (左右), 默认 TB
@@ -123,10 +124,10 @@ python run_cli.py visualize graph [OPTIONS]
 
 ```bash
 # 生成信号图 (含数据流关系)
-python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot --html /tmp/graph.html
+python run_cli.py visualize graph -f top.sv --svg  --html /tmp/graph.html
 
 # 生成验证缺口分析图 (高亮无覆盖的高风险信号)
-python run_cli.py verify gap -f top.sv --dot /tmp/gap.dot --mmd /tmp/gap.mmd
+python run_cli.py verify gap -f top.sv --svg  --mmd /tmp/gap.mmd
 
 # DOT 渲染为 PNG (需安装 graphviz, 见 README 安装步骤)
 dot -Tpng /tmp/graph.dot -o graph.png
@@ -135,7 +136,7 @@ dot -Tpng /tmp/graph.dot -o graph.png
 ### Dataflow 可视化
 
 ```bash
-python run_cli.py visualize dataflow -f top.sv --dot /tmp/dataflow.dot
+python run_cli.py visualize dataflow -f top.sv --svg 
 ```
 
 自动分类 clock/reset/control/data, 显示运算表达式 (a+b) + MUX 选择 + 关键控制边.
@@ -143,7 +144,7 @@ python run_cli.py visualize dataflow -f top.sv --dot /tmp/dataflow.dot
 ### Pipeline 可视化
 
 ```bash
-python run_cli.py visualize pipeline -f uart.sv --dot /tmp/pipeline.dot
+python run_cli.py visualize pipeline -f uart.sv --svg 
 ```
 
 自动检测 pipeline registers (排除 FSM state regs), 按 stage 分组, 左→右时间流布局.
@@ -152,7 +153,7 @@ python run_cli.py visualize pipeline -f uart.sv --dot /tmp/pipeline.dot
 
 ```bash
 # 默认参数已优化, 直接跑即可:
-python run_cli.py visualize pipeline -f uart.sv --dot /tmp/pipeline.dot
+python run_cli.py visualize pipeline -f uart.sv --svg 
 ```
 
 主要内容 (Phase 6.5.4 + V4):

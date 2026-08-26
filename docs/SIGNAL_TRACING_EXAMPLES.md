@@ -165,7 +165,7 @@ Fanin of ifftmain.o_result
 ```bash
 sv_query visualize pipeline \
     --filelist /tmp/ofdm_tx_fixed.f --module ifftmain --no-strict \
-    --dot /tmp/ifft_pipeline.dot
+    --svg /tmp/ifft_pipeline.svg
 dot -Tpng /tmp/ifft_pipeline.dot -o docs/images/openwifi_ifft_pipeline.png
 ```
 
@@ -198,7 +198,7 @@ Stages: 39
 ```bash
 sv_query visualize dataflow \
     --filelist /tmp/ofdm_tx_fixed.f --module ifftmain --no-strict \
-    --dot /tmp/ifft_dataflow.dot
+    --svg /tmp/ifft_dataflow.svg
 dot -Tpng /tmp/ifft_dataflow.dot -o docs/images/openwifi_ifft_dataflow.png
 ```
 
@@ -232,7 +232,7 @@ Clock nodes: 26
 ```bash
 sv_query visualize graph \
     --filelist /tmp/ofdm_tx_fixed.f --module-only --no-strict \
-    --cluster-modules --dot /tmp/ifft_graph.dot --max-edges 100
+    --cluster-modules --svg /tmp/ifft_graph.svg --max-edges 100
 dot -Tpng /tmp/ifft_graph.dot -o docs/images/openwifi_ifft_graph.png
 ```
 
@@ -322,14 +322,14 @@ sv_query trace fanin ifftmain.o_result --filelist /tmp/ofdm_tx_fixed.f \
 
 # === visualize ===
 sv_query visualize pipeline --filelist /tmp/ofdm_tx_fixed.f \
-    --module ifftmain --no-strict --dot /tmp/ifft_pipeline.dot
+    --module ifftmain --no-strict --svg /tmp/ifft_pipeline.svg
 
 sv_query visualize dataflow --filelist /tmp/ofdm_tx_fixed.f \
-    --module ifftmain --no-strict --dot /tmp/ifft_dataflow.dot
+    --module ifftmain --no-strict --svg /tmp/ifft_dataflow.svg
 
 sv_query visualize graph --filelist /tmp/ofdm_tx_fixed.f \
     --module-only --cluster-modules --no-strict \
-    --dot /tmp/ifft_graph.dot --max-edges 100
+    --svg /tmp/ifft_graph.svg --max-edges 100
 
 # === render PNG ===
 dot -Tpng /tmp/ifft_pipeline.dot -o docs/images/openwifi_ifft_pipeline.png
