@@ -18,13 +18,14 @@ sv_query_project/
     ├── L2: Plan_B_Step_C+D/  [CLOSED ✅, commit 8e98abd]
     ├── L2: Plan_B_Step_E/  [CLOSED ✅, sys.setrecursionlimit workaround]
     ├── L2: Plan_B_Step_F/  [CLOSED ✅, commit a939d68, cycle detection for picorv32_pcpi_mul]
-    └── L2: Plan_B_Step_G/  [🟡 IN PROGRESS, 🔴 BLOCKED on picorv32_wb cross-module port]
+    └── L2: Plan_B_Step_G/  [✅ CLOSED (commit 52bedd1), picorv32_wb cross-module port FIXED]
         ├── L3: Understand_bug_class/  [CLOSED ✅]
         ├── L3: Trace_evidence/  [CLOSED ✅, edge e1308 identified]
-        ├── L3: Identify_root_cause/  [CLOSED ✅, port not in input_paths OR _referenced_input_fulls]
+        ├── L3: Identify_root_cause/  [CLOSED ✅, _map_to_elk_id Branch 1 returns IDs without emit]
         ├── L3: Fix_v1_connection_handler/  [FAILED ❌, port count 422→436 but target still missing]
         ├── L3: Fix_v2_recursive_existing/  [FAILED ❌, no effect, port nowhere in graph]
-        └── L3: Investigate_alternate_path/  [🟡 ACTIVE — exploring _map_to_elk_id / V15 cross-instance code]
+        ├── L3: Fix_v3_emit_instance_ports/  [CLOSED ✅, ROOT CAUSE FIX]
+        └── L3: Verify_no_regression/  [CLOSED ✅, all projects pass, golden 5/5]
 ```
 
 ---
@@ -44,7 +45,11 @@ sv_query_project/
 | 9 | 23:10 | L3 | Fix_v2_recursive_existing | Make defensive check recursive | Port emitted | No effect (port nowhere) | ❌ |
 | 10 | 23:30 | L2 | Plan_B_Step_G | Revert + write down | Clean state + lessons doc | ✅ All clean, golden 5/5 PASS | ✅ |
 | 11 | 23:48 | L1 | Setup_task_tree | Create iteration tracking infra | Folder structure + overview | ✅ This file + 2 subfolders | ✅ |
-| 12 | (next) | L3 | Investigate_alternate_path | Read _map_to_elk_id / V15 cross-instance code | Find true root cause | TBD | 🟡 |
+| 12 | 23:48 | L1 | Setup_task_tree | Create iteration tracking infra | Folder structure + overview | ✅ This file + 2 subfolders | ✅ |
+| 13 | 23:55 | L3 | Investigate_alternate_path | Read _map_to_elk_id | Find true root cause | ✅ Found Branch 1 issue | ✅ |
+| 14 | 00:05 | L3 | Fix_v3_emit_instance_ports | Apply V15 cross-instance port emit fix | picorv32_wb PASS | ✅ 539813 bytes, golden 5/5 | ✅ |
+| 15 | 00:10 | L2 | Verify_no_regression | Test all sub-targets + golden | All pass | ✅ All 7 projects, golden 5/5 | ✅ |
+| **16** | **07:30** | **L2** | **Reconfirm_picorv32_wb** | **Re-verify after 7h** | **Still passes** | **✅ All pass, fix stable** | **✅** |
 
 ---
 
@@ -155,5 +160,26 @@ Each iteration file in `iterations/` follows this format:
 
 ---
 
-**Last updated**: 2026-08-25 23:48 GMT+8 (after task tree infrastructure setup)
-**Next update**: After iteration 13+ completes (continuing Plan B Step G investigation)
+**Last updated**: 2026-08-26 07:35 GMT+8 (after re-verification of Plan B Step G fix)
+**Status**: ✅ Plan B Step G fix is STABLE and working. All real projects pass. Golden regression 5/5.
+
+## 🎉 闭环总结 (2026-08-26 07:35)
+
+| Step | Commit | Status |
+|------|--------|--------|
+| A | (prior) | ✅ |
+| B | `6e8256c` | ✅ |
+| C+D | `8e98abd` | ✅ |
+| E | (folded into F) | ✅ |
+| F | `a939d68` | ✅ |
+| **G** | **`52bedd1`** | **✅ FIXED + RE-VERIFIED 7h later** |
+
+**Tonight's commits (4 total)**: `a939d68`, `9eab9ed`, `50620e6`, `52bedd1`
+
+**Real-project visualization status (07:35 GMT+8)**:
+- ✅ picorv32_wb (was failing, NOW FIXED)
+- ✅ picorv32_core, picorv32_pcpi_mul, picorv32_pcpi_div, picorv32_axi, picorv32_regs
+- ✅ darkriscv
+- ✅ Golden regression 5/5
+
+Open-source project visualization is **correct and verified**. Ready for next task.
