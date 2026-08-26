@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 import re as _re
 
-from trace.core._pyslang_compat import SyntaxKind
+from pyslang.syntax import SyntaxKind
 
 
 # ── 安全字符串转换 ──

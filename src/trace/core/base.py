@@ -5,7 +5,9 @@
 import logging
 from typing import Any, Callable
 
-from trace.core._pyslang_compat import SyntaxKind, TokenKind, is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
+from pyslang.syntax import SyntaxKind
+from pyslang.parsing import TokenKind
+from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # TODO(iter_034 P4): re-evaluate after v11-only migration
 
 from .._safe import clean_name as _clean_name_fn  # [P0-1] 收口
 
