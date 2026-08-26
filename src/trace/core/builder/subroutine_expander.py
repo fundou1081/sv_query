@@ -914,7 +914,7 @@ class ParameterReplacer:
 
     def _create_named_value(self, name: str, ref_node: Any) -> Any:
         """创建 NamedValue 节点"""
-        from trace.core._pyslang_compat import NamedValueExpression, ValueDriver  # [Stage 6] v10/v11 兼容
+        from pyslang.ast import NamedValueExpression
 
         try:
             # 尝试创建语义 AST 节点

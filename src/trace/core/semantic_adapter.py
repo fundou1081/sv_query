@@ -19,7 +19,7 @@ if PYSLLANG_BINDINGS_PATH not in sys.path:
 
 import pyslang
 
-from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # [Stage 6] v10/v11 兼容
+from trace.core._pyslang_compat import is_syntax_list, iter_syntax_list  # TODO(iter_034 P4): re-evaluate after v11-only migration
 
 
 class SemanticAdapter:
