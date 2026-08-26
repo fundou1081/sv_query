@@ -249,3 +249,85 @@ TraversalStrategy (遍历) + NodeAccessor (访问) + Handler (业务)
 1. **TraverseStrategy 抽象** - 支持 DFS/BFS/Selective
 2. **NodeAccessor 抽象** - 封装 pyslang API
 3. **简化 Handler** - 只处理业务逻辑，不涉及遍历
+
+---
+
+## 七、2026-08-26 case27 架构决策
+
+### 背景
+
+iter_031 + iter_032 调查发现 case27 (`golden_dataflow_27_generate_loop.sv`) 信号图与代码 1:1 不对应, 3 个 gap:
+
+- Gap 1: `acc[i]` 显示 `[i]` 模板 label
+- Gap 2: generate-block 内 4 个 `prod[i]` 的 `*` op 节点缺失
+- Gap 3: module 顶层 `sum_out` ternary `?:` op 节点缺失
+
+深度架构分析 (T.66, T.83, T.85, T.87) 揭示根因: pyslang API 选型问题 (Syntax vs Semantic vs native).
+
+### 锁定决策 (4 条)
+
+| # | 决策 | 含义 |
+|---|------|------|
+| **D1** | **坚持 Semantic API** | 不用 Syntax API, 不用混合层 (`PyslangAdapter`), 不用 native API 重构 |
+| **D2** | **放弃 generate-block 内部信息** | case27 Gap 1 + Gap 2 接受为设计限制, 不再修 |
+| **D3** | **可视化彻底展平** | generate-block 不作为独立 viz 节点, 全部展平到 module 顶层 |
+| **D4** | **signal graph 信息完整是核心不变式** | module 顶层所有可见信号必须 100% 在 viz 里 (定义 A/B/C/D 待用户选) |
+
+### 修复方向调整
+
+- ❌ 取消方案 5 (切到 `PyslangAdapter`)
+- ❌ 取消方案 2 (`_create_net_decl_edges` 加 generate 递归)
+- ❌ 取消方案 4 (PR3 MIG fallback 拓展到 DriverExtractor)
+- ❌ 取消方案 3 (pyslang native API 重构)
+- ✅ 保留方案 1 (修 `_get_readable_expr` 表达式污染) — 修 Gap 3 症状
+- ✅ 新增 iter_033 任务: 修 Gap 3 (顶层 ternary `?:` op 节点) + 写"信息完整"校验测试
+
+### 决策文件
+
+`docs/architecture/case27_signal_graph_completeness_decision.md` — 完整 D1-D4 + 拒绝方案 + 后果清单 + 相关 commits
+
+### 关键引文 (用户 23:00 GMT+8)
+
+> "不，我坚持使用 semantic api 。那么看来使用 semantic api 就无法提取 generate 信息，那就不要了。我们最终可视化就彻底展平。更关键的，我们必须保证 signal graph 的信息完整。"
+
+---
+
+## 八、2026-08-27 pyslang v11-only 决策 (D5)
+
+### 背景
+
+iter_034 启动, 发现 pyslang v11 跟 v10/v9 的 API 差异是 case27 Gap 3 的根因之一:
+- `InstanceBodySymbol.members` 在 v11 返回 0 (包装层变化)
+- `compilation.topInstances` 是 v11 新增 API
+- `portConnections` / `hierarchicalPath` 是 v11 实例属性
+
+继续保留 v9/v10 compat 代码让代码变复杂, 维护成本高, 但 v11 已稳定部署.
+
+### D5 决策
+
+| 项 | 内容 |
+|---|---|
+| **决策** | 以后仅支持 pyslang v11 API |
+| **用户原话** (07:20 GMT+8): | "那我们确定一下版本，以后仅支持 v11 api，之后都不要再考虑v9 和 v10兼容的事情。" |
+| **影响** | `_pyslang_compat.py` 大部分清理, 6 个 [Stage 6] 注释删除, 4 个 hasattr probes 改直接访问 |
+| **风险** | 🟢 LOW — 当前 installed pyslang 已是 v11 |
+| **任务** | iter_034 (见 `docs/task_tree/iterations/iter_034_pyslang_v11_only_cleanup.md`) |
+
+### 关键技术变化
+
+| Symbol 类型 | v10 API | v11 API |
+|---|---|---|
+| `Compilation` | `pyslang.Compilation` | `pyslang.ast.Compilation` |
+| `SyntaxKind` | `pyslang.SyntaxKind` | `pyslang.ast.SyntaxKind` |
+| `SyntaxTree` | `pyslang.SyntaxTree` | `pyslang.ast.SyntaxTree` |
+| `TokenKind` | `pyslang.TokenKind` | `pyslang.ast.TokenKind` |
+| `ValueDriver` | `pyslang.ValueDriver` | `pyslang.ast.ValueDriver` |
+| `NamedValueExpression` | `pyslang.NamedValueExpression` | `pyslang.ast.NamedValueExpression` |
+| `RootSymbol.members` | ✓ | ❌ (改用 topInstances) |
+| `InstanceBodySymbol.members` | ✓ 直接 | ❌ 返回 0 (新包装) |
+
+---
+
+## 关键引文 (用户 23:00 GMT+8)
+
+> "不，我坚持使用 semantic api 。那么看来使用 semantic api 就无法提取 generate 信息，那就不要了。我们最终可视化就彻底展平。更关键的，我们必须保证 signal graph 的信息完整。"
