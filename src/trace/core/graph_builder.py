@@ -324,8 +324,9 @@ class GraphBuilder:
     def _find_target_top(self, target_module: str):
         """[Phase 4 2026-07-11] Find target in topInstances."""
         try:
+            # [D5] v11 always has topInstances on RootSymbol
             root = self.adapter.root
-            if not hasattr(root, 'topInstances'):
+            if not root or not root.topInstances:
                 return None
             for top in root.topInstances:
                 try:
