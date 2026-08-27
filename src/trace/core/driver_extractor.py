@@ -299,7 +299,7 @@ class DriverExtractor:
             return []
         return self._signal_visitor._extract_signals_from_expr(signal) or []
 
-    def _get_all_real_signals(self, signal, module=None) -> list[str]:
+    def _get_all_real_signals(self, signal, module=None, genvar_ctx: dict | None = None) -> list[str]:
         """[Phase 8 / Fix F 2026-7-14 + 2026-7-15] Like _get_all_signals but filters out
         compile-time constants (Parameter, EnumValue, localparam, etc.).
 
@@ -311,7 +311,8 @@ class DriverExtractor:
         """
         if signal is None:
             return []
-        names = self._signal_visitor._extract_signals_from_expr(signal) or []
+        # [G1 iter_038] 传 ctx 到 _extract_signals_from_expr
+        names = self._signal_visitor._extract_signals_from_expr(signal, genvar_ctx) or []
         return self._filter_compile_time_signal_names(signal, names, module=module)
 
     def _filter_compile_time_signal_names(self, ast_node, names: list[str], module=None) -> list[str]:
@@ -1117,7 +1118,7 @@ class DriverExtractor:
             return str(ref_expr.symbol.name)
         return None
 
-    def _create_net_decl_edges(self, module, result, module_name, port_names):
+    def _create_net_decl_edges(self, module, result, module_name, port_names, genvar_ctx: dict | None = None):
         """[REFACTOR 2026-06-26] 处理带初始化器的 Net 声明: wire X = expr; → 创建 DRIVER 边.
         [V6.9] 通过 _build_signal_source 提取 source_op/operand_side/casts,
         使 net-decl 边和 assign 边的 signal source 信息一致。
@@ -1144,7 +1145,7 @@ class DriverExtractor:
             lhs_id = f"{module_name}.{lhs_name}"
             self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
             rhs_expr_str = self._get_signal(init) or ""
-            rhs_signals = self._get_all_real_signals(init, module=module) if init else []
+            rhs_signals = self._get_all_real_signals(init, module=module, genvar_ctx=genvar_ctx) if init else []
             for src_name in rhs_signals:
                 src_id = f"{module_name}.{src_name}"
                 self._ensure_signal_node(result, src_id, src_name, module_name)
@@ -1191,14 +1192,20 @@ class DriverExtractor:
         - 5d: _handle_normal_assign (其他)
         """
         for assign in self.adapter.get_assignments(module):
+            # [G1 iter_038] Plan F1: 从 assign 拿 genvar_ctx (generate for 内的 iteration)
+            #   gen_accum[1] → ctx={'i': 1}, acc[i+1] RHS 里 'i' substitute 成 '1'
+            try:
+                genvar_ctx = self.adapter.get_genvar_context(assign) or {}
+            except Exception:
+                genvar_ctx = {}
             raw_lhs, raw_rhs = self._extract_assign_lr(assign)
-            if self._handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
+            if self._handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx):
                 continue
-            if self._handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
+            if self._handle_call_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx):
                 continue
-            if self._handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, module_name):
+            if self._handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx):
                 continue
-            self._handle_normal_assign(assign, module, result, module_name)
+            self._handle_normal_assign(assign, module, result, module_name, genvar_ctx)
 
     def _extract_assign_lr(self, assign) -> tuple:
         """[语义 AST] 从 assign 节点提取 (raw_lhs, raw_rhs).
@@ -1214,7 +1221,7 @@ class DriverExtractor:
             return None, None
         return getattr(ass, "left", None), getattr(ass, "right", None)
 
-    def _handle_concat_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
+    def _handle_concat_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None) -> bool:
         """[REFACTOR 2026-06-26] 5a: 处理 Concatenation 拼接赋值. 处理了 return True (已 dispatch), 否则 False."""
         if not (raw_lhs and hasattr(raw_lhs, "kind") and "Concatenation" in str(raw_lhs.kind)):
             return False
@@ -1304,7 +1311,7 @@ class DriverExtractor:
                 self._store_expr_tree(lst, raw_rhs, module_name, result)
         return True
 
-    def _handle_call_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
+    def _handle_call_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None) -> bool:
         """[REFACTOR 2026-06-26] 5b: 处理 RHS 是 CallExpression (函数调用)."""
         if not (raw_rhs and hasattr(raw_rhs, "kind") and "Call" in str(raw_rhs.kind)):
             return False
@@ -1331,7 +1338,7 @@ class DriverExtractor:
             self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
         return True
 
-    def _handle_binary_invocation_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name) -> bool:
+    def _handle_binary_invocation_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None) -> bool:
         """5c: 处理 BinaryExpression 包含 InvocationExpression.
 
         例: assign result = a & my_func(b);
@@ -1690,7 +1697,7 @@ class DriverExtractor:
             return ""
         return fallback
 
-    def _handle_normal_assign(self, assign, module, result, module_name) -> None:
+    def _handle_normal_assign(self, assign, module, result, module_name, genvar_ctx: dict | None = None) -> None:
         """[REFACTOR 2026-06-26] 5d: 默认 assign 处理 (call/concat/binary-invocation 之外的).
 
         处理 ScopedName (tb.data), ConditionalOp, bit_slice, 等.
@@ -1737,7 +1744,7 @@ class DriverExtractor:
         if "EqualsValueClause" in rhs_kind:
             rhs_signals = []
         else:
-            rhs_signals = self._get_all_real_signals(rhs_expr, module=module) if rhs_expr else [rhs]
+            rhs_signals = self._get_all_real_signals(rhs_expr, module=module, genvar_ctx=genvar_ctx) if rhs_expr else [rhs]
 
         ternary_condition = self._extract_ternary_condition(rhs_expr)
 
@@ -1778,7 +1785,7 @@ class DriverExtractor:
                 rhs_signals = []  # Stay empty, no driver
             elif has_conditional:
                 # [V6.9] rhs_expr wrapped (e.g. $signed(ternary)): use unwrapped check_expr
-                rhs_signals = self._get_all_real_signals(check_expr, module=module) or []
+                rhs_signals = self._get_all_real_signals(check_expr, module=module, genvar_ctx=genvar_ctx) or []
             else:
                 rhs_signals = [rhs]
 
@@ -2019,7 +2026,7 @@ class DriverExtractor:
         if lhs and rhs_expr is not None:
             self._store_expr_tree(lhs, rhs_expr, module_name, result)
 
-    def _create_always_edges(self, module, result, module_name):
+    def _create_always_edges(self, module, result, module_name, genvar_ctx: dict | None = None):
         """[REFACTOR 2026-06-26] 处理 always 块 (含 always_ff/always_comb/always_latch).
 
         遍历 always 块的语句, 处理:
@@ -2175,7 +2182,7 @@ class DriverExtractor:
 
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
                     # [FIX 2026-7-15] Pass module for Syntax AST resolution
-                    rhs_signals = self._get_all_real_signals(rhs_expr, module=module) if rhs_expr else [rhs]
+                    rhs_signals = self._get_all_real_signals(rhs_expr, module=module, genvar_ctx=genvar_ctx) if rhs_expr else [rhs]
                     if not rhs_signals:
                         # [Phase 8 / Fix F 2026-7-14] Skip if compile-time symbol
                         # [FIX 2026-7-15] Pass module for Syntax AST resolution

@@ -970,10 +970,14 @@ class SemanticAdapter:
         assignments = []
 
         def find_assignments(node: object, genvar_ctx: dict | None = None) -> None:
+            import os as _os, sys as _sys
+            _dbg = _os.environ.get('G1_DEBUG')
             if node is None:
                 return
             kind = str(getattr(node, "kind", ""))
             ctx = genvar_ctx if genvar_ctx is not None else {}
+            if _dbg:
+                print(f'[FIND] kind={kind!r:50s} ctx={ctx}', file=_sys.stderr)
 
             # ContinuousAssign 语法
             if "ContinuousAssign" in kind:
@@ -1673,7 +1677,7 @@ class SemanticAdapter:
         if rhs_signals:
             drivers[lhs_name] = rhs_signals
 
-    def _extract_signals_from_expr(self, expr) -> list[str]:
+    def _extract_signals_from_expr(self, expr, genvar_ctx: dict | None = None) -> list[str]:
         """从表达式中提取所有信号名
 
         Handles:
@@ -1684,8 +1688,21 @@ class SemanticAdapter:
         - BinaryExpression: a ^ b, a + b, etc.
         - UnaryExpression
         - IntegerLiteral: index value (not a signal)
+
+        [G1 iter_038 2026-08-27] 新增 genvar_ctx 参数:
+        - 顶层 expr 传 None 或 {}
+        - generate for 内的 expr 传 {genvar_name: entry.arrayIndex}
+          (e.g. gen_accum[1] 内的 RHS → ctx={'i': 1})
+        - NamedValue.name 是 genvar → substitute 成 ctx[name] (int)
+        - ElementSelect / RangeSelect / BinaryOp / ConditionalOp / Concatenation
+          递归时传 ctx 到子节点
+
+        Pure semantic API: NamedValue (.symbol.name), ElementSelect (.value/.selector),
+        BinaryOp (.left/.right), ConditionalOp (.conditions/.left/.right) 全部 pyslang
+        semantic AST, 不碰 .syntax.members / IdentifierNameSyntax / .identifier.value.
         """
         signals = []
+        ctx = genvar_ctx or {}
         if expr is None:
             return signals
 
@@ -1726,12 +1743,17 @@ class SemanticAdapter:
             return signals
 
         # NamedValue: signal reference
+        # [G1 iter_038] genvar substitute: name 在 ctx 里则替换 (e.g. 'i' in {'i': 1} -> '1')
         if "NamedValue" in kind_str:
             sym = getattr(expr, "symbol", None)
             if sym:
                 name = _safe_attr(sym, "name", None)
                 if name:
-                    signals.append(str(name))
+                    name_str = str(name)
+                    if name_str in ctx:
+                        signals.append(str(ctx[name_str]))
+                    else:
+                        signals.append(name_str)
             return signals
 
         # [V6.9] ConversionExpression (type casting): 只在 operand 是信号引用时递归
@@ -1742,36 +1764,38 @@ class SemanticAdapter:
                 # 跳过字面量 (IntegerLiteral, UnbasedUnsizedIntegerLiteral)
                 if "IntegerLiteral" in ok or "UnbasedUnsized" in ok:
                     return signals
-                signals.extend(self._extract_signals_from_expr(operand))
+                signals.extend(self._extract_signals_from_expr(operand, ctx))
             return signals
 
         # [V6.9] InsideExpression: left inside { rangeList }
+        # [G1 iter_038] recursion 传 ctx
         if "Inside" in kind_str:
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None), ctx))
             rlist = getattr(expr, "rangeList", None)
             if rlist and hasattr(rlist, "__iter__"):
                 for r in rlist:
                     l = getattr(r, "left", None)  # noqa: E741
                     if l:
-                        signals.extend(self._extract_signals_from_expr(l))
+                        signals.extend(self._extract_signals_from_expr(l, ctx))
                     rr = getattr(r, "right", None)
                     if rr:
-                        signals.extend(self._extract_signals_from_expr(rr))
+                        signals.extend(self._extract_signals_from_expr(rr, ctx))
                     if not l and not rr:
-                        signals.extend(self._extract_signals_from_expr(r))
+                        signals.extend(self._extract_signals_from_expr(r, ctx))
             return signals
 
         # [V6.9] DistExpression: left dist { items }
+        # [G1 iter_038] recursion 传 ctx
         if "Dist" in kind_str:
             left = getattr(expr, "left", None)
             if left:
-                signals.extend(self._extract_signals_from_expr(left))
+                signals.extend(self._extract_signals_from_expr(left, ctx))
             items = getattr(expr, "items", None)
             if items and hasattr(items, "__iter__"):
                 for item in items:
                     val = getattr(item, "value", None) or getattr(item, "left", None)
                     if val:
-                        signals.extend(self._extract_signals_from_expr(val))
+                        signals.extend(self._extract_signals_from_expr(val, ctx))
             return signals
 
 
@@ -1796,7 +1820,8 @@ class SemanticAdapter:
                         pass
             if left and member_name:
                 # Recurse into left to get the full dotted path parts
-                left_sigs = self._extract_signals_from_expr(left)
+                # [G1 iter_038] recursion 传 ctx
+                left_sigs = self._extract_signals_from_expr(left, ctx)
                 if left_sigs:
                     for ls in left_sigs:
                         signals.append(f"{ls}.{member_name}")
@@ -1808,9 +1833,10 @@ class SemanticAdapter:
             return signals
 
         # Concatenation: {a, b, c}
+        # [G1 iter_038] recursion 传 ctx
         if "Concatenation" in kind_str:
             for op in getattr(expr, "operands", []):
-                signals.extend(self._extract_signals_from_expr(op))
+                signals.extend(self._extract_signals_from_expr(op, ctx))
             return signals
 
         # ConditionalOp (ternary: g ? x0 : x1)
@@ -1829,17 +1855,21 @@ class SemanticAdapter:
             if conditions:
                 for cond in conditions:
                     ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
-                    signals.extend(self._extract_signals_from_expr(ce))
+                    # [G1 iter_038] recursion 传 ctx
+                    signals.extend(self._extract_signals_from_expr(ce, ctx))
             pred = getattr(expr, "predicate", None)
             if pred is not None and not isinstance(pred, str):
-                signals.extend(self._extract_signals_from_expr(pred))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(pred, ctx))
             # Syntax AST: .left/.right 返回字符串, 需要遍历子节点
             left = getattr(expr, "left", None)
             right = getattr(expr, "right", None)
             if left is not None and not isinstance(left, str):
-                signals.extend(self._extract_signals_from_expr(left))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(left, ctx))
             if right is not None and not isinstance(right, str):
-                signals.extend(self._extract_signals_from_expr(right))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(right, ctx))
             # [V6.9] Syntax: 如果 left/right 是字符串, 遍历子节点提取 IdentifierName
             if (left is None or isinstance(left, str)) or (right is None or isinstance(right, str)):
                 try:
@@ -1884,17 +1914,21 @@ class SemanticAdapter:
             if conditions:
                 for cond in conditions:
                     ce = getattr(cond, "expr", None) or getattr(cond, "expression", None)
-                    signals.extend(self._extract_signals_from_expr(ce))
+                    # [G1 iter_038] recursion 传 ctx
+                    signals.extend(self._extract_signals_from_expr(ce, ctx))
             pred = getattr(expr, "predicate", None)
             if pred is not None and not isinstance(pred, str):
-                signals.extend(self._extract_signals_from_expr(pred))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(pred, ctx))
             # Syntax AST: .left/.right 返回字符串, 需要遍历子节点
             left = getattr(expr, "left", None)
             right = getattr(expr, "right", None)
             if left is not None and not isinstance(left, str):
-                signals.extend(self._extract_signals_from_expr(left))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(left, ctx))
             if right is not None and not isinstance(right, str):
-                signals.extend(self._extract_signals_from_expr(right))
+                # [G1 iter_038] recursion 传 ctx
+                signals.extend(self._extract_signals_from_expr(right, ctx))
             # [V6.9] Syntax: 如果 left/right 是字符串, 遍历子节点提取 IdentifierName
             if (left is None or isinstance(left, str)) or (right is None or isinstance(right, str)):
                 try:
@@ -1925,19 +1959,22 @@ class SemanticAdapter:
 
         # AssignmentExpression: out_addr = req.addr → recurse into left/right
         if "Assignment" in kind_str:
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            # [G1 iter_038] 传 ctx 给 left/right recursion
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None), ctx))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None), ctx))
             return signals
 
         # BinaryExpression: a ^ b, a + b, etc.
         if "Binary" in kind_str:
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None)))
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None)))
+            # [G1 iter_038] 传 ctx 给 left/right recursion
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "left", None), ctx))
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "right", None), ctx))
             return signals
 
         # UnaryExpression
         if "Unary" in kind_str:
-            signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
+            # [G1 iter_038] 传 ctx 给 operand recursion
+            signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None), ctx))
             return signals
 
         # CallExpression / Invocation: system function call e.g. $signed(a)
@@ -1958,7 +1995,8 @@ class SemanticAdapter:
         # ElementSelect: signal[bit] - extract full name signal[bit]
         if "ElementSelect" in kind_str:
             # Get the base signal
-            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None))
+            # [G1 iter_038] 传 ctx 给 base + selector recursion
+            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None), ctx)
             # Get the selector (bit index)
             selector = getattr(expr, "selector", None)
             if selector and base_signals:
@@ -1968,7 +2006,16 @@ class SemanticAdapter:
                     sel_kind_str = str(sel_kind)
                     if "IntegerLiteral" in sel_kind_str:
                         # Get the integer value
-                        sel_val = _safe_attr(selector, "value", None)
+                        # [G1 iter_038] pyslang 11.x folded selectors expose .constant (ConstantValue)
+                        #   not .value. Try .constant first, fallback to .value.
+                        sel_val = _safe_attr(selector, "constant", None)
+                        if sel_val is None:
+                            sel_val = _safe_attr(selector, "value", None)
+                        if sel_val is not None and hasattr(sel_val, "integer"):
+                            try:
+                                sel_val = int(sel_val.integer)
+                            except Exception:
+                                sel_val = str(sel_val.integer)
                         if sel_val is not None:
                             for base in base_signals:
                                 signals.append(f"{base}[{sel_val}]")
@@ -1988,7 +2035,8 @@ class SemanticAdapter:
         # RangeSelect: signal[msb:lsb] - extract full name signal[msb:lsb]
         if "RangeSelect" in kind_str:
             # Get the base signal
-            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None))
+            # [G1 iter_038] 传 ctx 给 base recursion
+            base_signals = self._extract_signals_from_expr(_safe_attr(expr, "value", None), ctx)
             # Get the range (left/right or selector with left/right)
             left = getattr(expr, "left", None)
             right = getattr(expr, "right", None)
@@ -1999,8 +2047,20 @@ class SemanticAdapter:
                     left = getattr(selector, "left", None)
                     right = getattr(selector, "right", None)
             if left and right:
-                left_val = _safe_attr(left, "value", None)
-                right_val = _safe_attr(right, "value", None)
+                # [G1 iter_038] .constant fallback for pyslang 11.x folded selectors
+                left_val = _safe_attr(left, "constant", None) or _safe_attr(left, "value", None)
+                right_val = _safe_attr(right, "constant", None) or _safe_attr(right, "value", None)
+                # .constant may be ConstantValue → unwrap .integer
+                if hasattr(left_val, "integer"):
+                    try:
+                        left_val = int(left_val.integer)
+                    except Exception:
+                        left_val = str(left_val.integer)
+                if hasattr(right_val, "integer"):
+                    try:
+                        right_val = int(right_val.integer)
+                    except Exception:
+                        right_val = str(right_val.integer)
                 for base in base_signals:
                     if left_val is not None and right_val is not None:
                         signals.append(f"{base}[{left_val}:{right_val}]")
