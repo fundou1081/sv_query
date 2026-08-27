@@ -18,7 +18,8 @@
   - [x] 设计 ExtractorResult 新协议 (按需扩展)
   - [x] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖 — G2 plan 完成
   - [x] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) — commit `b6708b5`, 1461 tests 0 regression
-  - [ ] Step 3: 拆 wire_init_extractor (0.5 天) ← 下一步
+  - [x] **Step 3: 拆 wire_init_extractor** (0.3 天, 完成核心) — commit `a2dac7c`, 1461 tests 0 regression. _create_var_nodes (22 行) 已拆, _create_net_decl_edges (~123 行) 依赖 7 个 helper, 留 Step 3b
+  - [ ] **Step 3b: 拆 _create_net_decl_edges** (1+ 天, _build_signal_source 需先提到 _common)
   - [ ] Step 4: 拆 assign_extractor (1 天)
   - [ ] Step 5: 拆 statement_flattener (0.5 天)
   - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
@@ -122,3 +123,4 @@
 
 - **2026-08-27 20:36** — todolist 创建, 7 项 pending. 启动 #1 拆 driver_extractor 计划.
 - **2026-08-27 20:38** — #1 启动 Step 1+2 (alias_extractor), G2 plan 完成. 预计 6 天总工作量.
+- **2026-08-27 21:33** — #1 Step 3 完成 (commit `a2dac7c`). _get_signal/_fold_constant/_create_var_nodes 拆出, driver_extractor 净减 262 行 (-6.4%). 新增 Step 3b 后续处理 _create_net_decl_edges.
