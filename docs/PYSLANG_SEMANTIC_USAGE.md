@@ -175,24 +175,96 @@ str(getattr(node, "kind", ""))       # kind 转字符串判断 (contains 匹配)
 
 ---
 
-## 6. SemanticAdapter 方法总览 (68 个)
+## 6. SemanticAdapter 方法总览 (53 公开方法)
 
-| 分类 | 方法 | 说明 |
+> 2026-08-27 Phase 1B 修正: 前版写"76 个"是按 def 总行数算的。subagent 严格按"外部可调用 class 方法"重数 = **53 个**。差额 23 = 6 嵌套 helper + 17 私有/dunder。
+
+| 调用频次 | 标记 | 说明 |
+|---|---|---|
+| 🔥 > 5 文件 | 核心 API | 所有生产 extractor、CLI 都调用 |
+| 高频 (2-5) | 正常使用 | 多个业务点调用 |
+| 低频 / 单点 (1×) | 🔸 可能内部细节 | 只在 1 个调用点使用，需考察是否应合并 |
+| 0 调用方 | ⚠️ UNUSED | 兼容性 stub / 后续可删 |
+
+### 6.1 🔥 核心方法（按调用频次降序）
+
+| 方法 | 调用文件数 | 主要调用方 |
 |------|------|------|
-| 入口 | `__init__`, `root`, `parser`, `trees`, `items` | 构造 + 顶层访问 |
-| 源码 | `get_source_location`, `get_source_text` | --show-source |
-| 模块 | `get_modules`, `get_module_instances`, `get_module_name`, `_find_target_top` | 模块/实例 |
-| class | `get_classes`, `get_class_name` | ClassGraph |
-| interface | `get_interfaces`, `get_modport_declarations`, `get_modport_info`, `get_interface_modport_signals`, `get_interface_members` | interface/modport |
-| generate | `get_generate_instances`, `get_generate_net_declarations` | [G3] generate 内 net | 
-| 端口 | `get_instance_connection`, `get_port_declarations`, `get_port_names`, `get_port_name`, `get_port_name_and_direction`, `extract_port_width` | 端口 |
-| 赋值 | `get_assignments`, `get_genvar_context`, `get_net_declarations`, `get_net_aliases`, `get_variable_declarations`, `get_data_declarations` | 赋值/net/var |
-| 过程块 | `get_always_blocks`, `get_task_declarations`, `get_function_declarations`, `get_top_level_subroutines` | always/task/function |
-| 信号 | `get_signal_name`, `extract_data_width`, `get_drivers`, `get_loads`, `extract_signals_from_expr`(私有 `_extract_signals_from_expr`) | 信号操作 |
-| 函数 | `get_function_params`, `get_function_width`, `get_task_params`, `get_task_name`, `get_function_name`, `analyze_task_internal_drivers` | 函数/任务 |
-| 参数 | `get_module_parameters` | parameter |
-| 遍历 | `visit`, `visit_module`, `_iter_children`, `iter_modules`, `get_definition` | 通用 |
-| 工具 | `clean_name`, `SemanticInstanceWrapper` | 名字清理/实例包装 |
+| `get_modules` | 27× | 所有 9 个 extractor, CLI, tests |
+| `get_port_declarations` | 13× | connection_extractor, driver_extractor, bit_select_handler, load_extractor, clock_domain_extractor, CLI |
+| `get_module_name` | 13× | CLI (`arch`/`visualize`), manual scripts |
+| `extract_port_width` | 10× | connection_extractor, bit_select_handler, driver_extractor, load_extractor, clock_domain_extractor, CLI |
+| `get_port_name_and_direction` | 10× | driver_extractor, load_extractor, bit_select_handler, connection_extractor |
+| `get_assignments` | 8× | driver_extractor, generate handling tests |
+| `get_module_instances` | 8× | connection_extractor, module_instance_graph, graph_builder, unified_tracer |
+| `get_classes` | 7× | ClassGraph, regression tests |
+| `clean_name` | 6× | 5 个 extractor 全员使用（委托给 `_safe.clean_name`） |
+
+### 6.2 高频方法 (2-5 调用方)
+
+| 方法 | 频次 | 主要调用方 |
+|------|------|------|
+| `get_source_location` | 5× | driver_extractor, load_extractor, clock_domain_extractor, unified_tracer（--show-source） |
+| `get_always_blocks` | 5× | driver_extractor, procedural_blocks test |
+| `get_module_parameters` | 3× | driver_extractor, parameter_extraction tests |
+| `get_genvar_context` | 2× | driver_extractor (line 1195), generate_handling tests |
+| `get_source_text` | 2× | driver_extractor (line 1605, 1907, 2304) |
+| `root` (@property) | 2× | graph_builder, trace_evidence |
+| `get_variable_declarations` | 2× | driver_extractor (line 1119) |
+| `get_data_declarations` | 2× | bit_select_handler, unified_tracer |
+| `get_signal_name` | 2× | driver_extractor, unified_tracer |
+| `extract_data_width` | 2× | bit_select_handler, driver_extractor |
+
+### 6.3 🔸 低频 / 单点调用方（仅 1 个调用点）
+
+| 方法 | 调用点 | 备注 |
+|------|------|------|
+| `get_function_name` | driver_extractor | 仅 function/task name 提取 |
+| `parser` (@property) | connection_extractor (L112, L146) | 兼容性 wrapper，返回 self |
+| `get_modport_info` | interface regression test |  |
+| `get_generate_instances` | connection_extractor (L123, L147) | 与 `get_module_instances` 联用 |
+| `get_function_declarations` | driver_extractor (L3318, L3716) |  |
+| `get_task_params` | driver_extractor |  |
+| `get_interface_modport_signals` | graph_builder (L711, L737) |  |
+| `get_function_params` | driver_extractor |  |
+| `get_interfaces` | interface regression test |  |
+| `get_modport_declarations` | interface regression test |  |
+| `get_instance_connection` | connection_extractor (L318) |  |
+| `get_port_names` | clock_domain_extractor |  |
+| `get_port_name` | bit_select_handler (L55) | 已被 `get_port_name_and_direction` 替代 |
+| `get_task_declarations` | driver_extractor |  |
+| `get_loads` | driver_extractor |  |
+| `get_drivers` | driver_extractor |  |
+| `extract_signals_from_expr` | — | 私有 helper；真实现是 `_extract_signals_from_expr` |
+| `get_net_declarations` | driver_extractor | 与 `get_generate_net_declarations` 互补 |
+| `get_net_aliases` | driver_extractor | alias 提取 |
+
+### 6.4 ⚠️ UNUSED / 兼容性 stub（0 调用方）
+
+前版 spec 列了但 subagent 严格反向 grep 发现这些方法**未被任何外部调用方使用**：
+
+| 方法 | 判定 | 备注 |
+|------|------|------|
+| `get_visit` | ⛔ UNUSED | 文档列了但**完全未调用** |
+| `get_top_level_subroutines` | ⛔ UNUSED | **完全未调用** |
+| `get_class_name` | ⛔ UNUSED | **完全未调用** |
+| `items` | ⛔ 兼容性 stub | 注释明示"返回空迭代器"；唯一 .items 调用是 `dict.items()` 链 |
+| `trees` | ⛔ 兼容性 stub | 同 items |
+| `get_port_name` | ⚠️ 已被替代 | 现有调用点建议改用 `get_port_name_and_direction` |
+
+> **后续可作**: UNUSED 方法 + 已被替代的方法可在下一轮 deprecation 中移除。`items`/`trees` 是为了兼容旧代码留下的 stub，删除前确认无外部依赖。
+
+### 6.5 不属于"公开 API"的内部构造（23 个）
+
+| 类型 | 举例 | 说明 |
+|------|------|------|
+| 嵌套 helper | `_fix_unicode_class_names` | 仅在 `get_classes` 内部调用 |
+| `_`-prefix | `_iter_children`/`_safe_str`/`_find_target_top`/`_collect_drivers_from_stmt`/`_extract_assignment_drivers`/`_extract_signals_from_expr` | 私有 helper，外部不推荐调用 |
+| dunder | `__init__`/`__str__`/`__repr__` | 对象生命周期，不列入公开 API |
+| `@property` 内部 | `parser` (wrapper) | 内部访问，不列入 public API |
+| Wrapper 内部 | `SemanticInstanceWrapper`/`SemanticInstanceDeclWrapper` 的所有内部方法 | 包装器内部 |
+
+> 加上以上项，`semantic_adapter.py` 总 `def` 行数 = 53 (公开) + 23 (内部) = 76。
 
 ---
 
