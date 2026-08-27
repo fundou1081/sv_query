@@ -39,16 +39,18 @@
   - [ ] 回归测试
 - **依赖**: 无
 
-### #3 建 EXTRACTION_COVERAGE.md 总表  ⬜
+### #3 建 EXTRACTION_COVERAGE.md 总表  ✅
 - **ROI**: 🔥🔥 中高
-- **工作量**: 半天
-- **状态**: pending
-- **目标**: 30 种 SV 语法 × 4 档支持 (✅/⚠️/🔶/⛔) × 对应 fixture × 对应 test 的总表
+- **工作量**: 半天 (估)
+- **状态**: ✅ **done (2026-08-27 23:48)** — commit pending
+- **目标**: 33 种 SV 语法 × 5 档支持 (✅/⚠️/🔶/❌/🔸) × 对应 fixture × 对应 test 的总表
 - **子任务**:
-  - [ ] 从 `memory/2026-08-27.md` Phase 1A 矩阵抽出 30 种语法
-  - [ ] 对每种语法填: 支持度 / fixture 路径 / test 路径 / 已知限制
-  - [ ] 把现有 7 个 spec_golden fixture + 46 个 golden_mini fixture 标上
-  - [ ] 链接 SV_SYNTAX_MAPPING.md 和 PYSLANG_SEMANTIC_USAGE.md
+  - [x] 从 `memory/2026-08-27.md` Phase 1A 矩阵抽 33 种语法
+  - [x] 对每种语法填: 支持度 / fixture 路径 / test 路径 / 已知限制 / 实施建议
+  - [x] 把现有 7 个 spec_golden fixture + 32 个 orphan_regression + 30+ golden_dataflow + 7 demo = 101 fixture 全标上
+  - [x] 链接 SV_SYNTAX_MAPPING.md + PYSLANG_SEMANTIC_USAGE.md + SIGNAL_GRAPH_SPEC.md
+  - [x] **修正 2 个 Phase 1A 误报**: alias 方向 (Bug #1) + function 递归 (Bug #4), 加 "🟢 已确认误报修正" 章节
+- **产出**: [docs/EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) (7814 bytes, 33 语法 × 5 档)
 - **依赖**: 无
 
 ### #4 建 docs/EXTRACTION_FAILURES.md 集中表  ⬜
@@ -107,15 +109,15 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | ⬜ pending | — | — |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3 ✅ |
 | 2 | 统一 BitSelectHandler | 🔥🔥 | ⬜ pending | — | — |
-| 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ⬜ pending | — | — |
+| 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
 | 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: 0/7 (0%)
+**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #3 done; 其他 5 项 pending. **总 1.5/7 (21%)**.
 
 ---
 
@@ -124,3 +126,5 @@
 - **2026-08-27 20:36** — todolist 创建, 7 项 pending. 启动 #1 拆 driver_extractor 计划.
 - **2026-08-27 20:38** — #1 启动 Step 1+2 (alias_extractor), G2 plan 完成. 预计 6 天总工作量.
 - **2026-08-27 21:33** — #1 Step 3 完成 (commit `a2dac7c`). _get_signal/_fold_constant/_create_var_nodes 拆出, driver_extractor 净减 262 行 (-6.4%). 新增 Step 3b 后续处理 _create_net_decl_edges.
+- **2026-08-27 23:46** — todolist 进度总览表修正 (之前显示 0/7 但实际 #1 已 in_progress). 修后续梳理下一步.
+- **2026-08-27 23:48** — #3 EXTRACTION_COVERAGE.md 完成 (7814 bytes, 33 语法 × 5 档 × 101 fixture). 修正 2 个 Phase 1A 误报 (alias 方向 / function 递归). 总进度 1.5/7 (21%).
