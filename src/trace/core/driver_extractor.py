@@ -1188,9 +1188,18 @@ class DriverExtractor:
                 init = None
             if init is None:
                 continue
+            # [Plan G3 2026-08-27 12:35] 每个 net_decl 独立拿 genvar_ctx
+            # wire decl 在 generate-for 内时, e.g. case27 gen_accum.iter[0] 内的
+            # 'wire prod = data * weights[i]' 需要 ctx={'i': 0} 来 substitute weights[i] → weights[0]
+            try:
+                net_decl_ctx = dict(self.adapter.get_genvar_context(net_decl) or {})
+                if genvar_ctx:
+                    net_decl_ctx.update(genvar_ctx)
+            except Exception:
+                net_decl_ctx = dict(genvar_ctx or {})
             # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
             # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
-            self._store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=None)
+            self._store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=net_decl_ctx)
             lhs_id = f"{module_name}.{lhs_name}"
             self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
             rhs_expr_str = self._get_signal(init) or ""
@@ -1212,6 +1221,56 @@ class DriverExtractor:
                         source=SignalSource(
                             signal=src_name,
                             full_expression=rhs_expr_str,
+                            op=ds.op if ds.op else "",
+                            operand_side=ds.operand_side if ds.operand_side else "",
+                            casts=list(ds.casts) if ds.casts else [],
+                            is_decomposed=True,
+                        ),
+                    )
+
+        # [Plan G3 2026-08-27 13:01] 补 generate-for 内展开的带 init wire decl
+        # 例如 case27 'wire [W-1:0] prod = data * weights[i]' (line 25, 藏在 gen_accum entry 内)
+        # get_net_declarations(module) 只遍历 module.body 顶层, 拿不到这些; 用纯 semantic
+        # get_generate_net_declarations 补上. 每个 entry 有 arrayIndex → genvar_ctx {'i': N},
+        # RHS 信号名 substitute 用 entry 的 ctx (weights[i] → weights[N 的 constant value]).
+        for g_decl in self.adapter.get_generate_net_declarations(module):
+            g_name = g_decl.get("name", "")
+            g_init = g_decl.get("initializer")
+            g_ctx = g_decl.get("genvar_ctx") or {}
+            if not g_name or g_init is None:
+                continue
+            # [Plan G3 2026-08-27 13:20] 用 hierarchicalPath 当 node id — 4 entry 的 prod 是
+            # 4 个独立 symbol (generate_loop.gen_accum[N].prod). 之前用 f"{module_name}.{g_name}"
+            # = 'generate_loop.prod' 全一样, 导致 tree_key max-合并成 1 个 (gap_2 只 1 个 '*').
+            g_hp = g_decl.get("hierarchical_path") or ""
+            if g_hp:
+                # hp 已经是完整路径 (generate_loop.gen_accum[0].prod), 直接用当 node id
+                g_lhs_id = g_hp
+                g_short = g_hp.rsplit(".", 1)[-1] if "." in g_hp else g_hp
+            else:
+                g_hp_fallback = f"{module_name}.gen_accum[{g_decl.get('array_index')}].{g_name}"
+                g_lhs_id = g_hp_fallback
+                g_short = g_name
+            self._ensure_signal_node(result, g_lhs_id, g_short, module_name)
+            # expr tree (换入 entry ctx, weights[i] → 数值), 用 g_lhs_id 当 tree_key 区分
+            self._store_expr_tree(g_lhs_id, g_init, "", result, genvar_ctx=g_ctx)
+            g_rhs_str = self._get_signal(g_init) or ""
+            g_signals = self._get_all_real_signals(g_init, module=module, genvar_ctx=g_ctx) if g_init else []
+            for src_name in g_signals:
+                src_id = f"{module_name}.{src_name}"
+                self._ensure_signal_node(result, src_id, src_name, module_name)
+                if src_id != g_lhs_id:
+                    ds = self._build_signal_source(src_name, g_init, g_rhs_str)
+                    self._append_edge(
+                        result,
+                        src=src_id,
+                        dst=g_lhs_id,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                        expression=g_rhs_str,
+                        source=SignalSource(
+                            signal=src_name,
+                            full_expression=g_rhs_str,
                             op=ds.op if ds.op else "",
                             operand_side=ds.operand_side if ds.operand_side else "",
                             casts=list(ds.casts) if ds.casts else [],

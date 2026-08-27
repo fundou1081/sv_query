@@ -27,5 +27,5 @@ module generate_loop #(
         end
     endgenerate
 
-    assign sum_out = (acc[N] > {W{{1'b1}}}) ? 8'd255 : acc[N][?:0];
+    assign sum_out = (acc[N] > {W{{1'b1}}}) ? 8'd255 : acc[N];
 endmodule
