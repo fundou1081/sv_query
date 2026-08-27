@@ -309,8 +309,10 @@ iter_034 启动, 发现 pyslang v11 跟 v10/v9 的 API 差异是 case27 Gap 3 �
 |---|---|
 | **决策** | 以后仅支持 pyslang v11 API |
 | **用户原话** (07:20 GMT+8): | "那我们确定一下版本，以后仅支持 v11 api，之后都不要再考虑v9 和 v10兼容的事情。" |
-| **影响** | `_pyslang_compat.py` 大部分清理, 6 个 [Stage 6] 注释删除, 4 个 hasattr probes 改直接访问 |
+| **影响** | `_pyslang_compat.py` 整个删除 (git rm, 232 行), 5 个 import 迁到 `pyslang.ast.*` / `pyslang.syntax.*` / `pyslang.parsing.*` / `pyslang.analysis.*`, `is_syntax_list` / `iter_syntax_list` 迁到 `ast_utils.py`, 5 个 [Stage 6] v10/v11 注释清理, `trace/__init__.py` 加 PEP 562 `__getattr__` v11 alias bridge |
 | **风险** | 🟢 LOW — 当前 installed pyslang 已是 v11 |
+| **状态** | ✅ DONE (2026-08-27, HEAD `62ef835`) — 6 commits, 1470 tests pass, 0 回归 |
+| **commit chain** | P1 docs `1b4b573` → P2 imports `88c0f05` → P3 probes `2ce4e09` → P4 compat shim `6199a03` → P5 注释 `0fb950c` (amended) → P6 tests + alias bridge `62ef835` |
 | **任务** | iter_034 (见 `docs/task_tree/iterations/iter_034_pyslang_v11_only_cleanup.md`) |
 
 ### 关键技术变化
@@ -318,10 +320,10 @@ iter_034 启动, 发现 pyslang v11 跟 v10/v9 的 API 差异是 case27 Gap 3 �
 | Symbol 类型 | v10 API | v11 API |
 |---|---|---|
 | `Compilation` | `pyslang.Compilation` | `pyslang.ast.Compilation` |
-| `SyntaxKind` | `pyslang.SyntaxKind` | `pyslang.ast.SyntaxKind` |
-| `SyntaxTree` | `pyslang.SyntaxTree` | `pyslang.ast.SyntaxTree` |
-| `TokenKind` | `pyslang.TokenKind` | `pyslang.ast.TokenKind` |
-| `ValueDriver` | `pyslang.ValueDriver` | `pyslang.ast.ValueDriver` |
+| `SyntaxKind` | `pyslang.SyntaxKind` | `pyslang.syntax.SyntaxKind` |
+| `SyntaxTree` | `pyslang.SyntaxTree` | `pyslang.syntax.SyntaxTree` |
+| `TokenKind` | `pyslang.TokenKind` | `pyslang.parsing.TokenKind` |
+| `ValueDriver` | `pyslang.ValueDriver` | `pyslang.analysis.ValueDriver` |
 | `NamedValueExpression` | `pyslang.NamedValueExpression` | `pyslang.ast.NamedValueExpression` |
 | `RootSymbol.members` | ✓ | ❌ (改用 topInstances) |
 | `InstanceBodySymbol.members` | ✓ 直接 | ❌ 返回 0 (新包装) |

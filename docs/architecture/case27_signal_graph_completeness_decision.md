@@ -3,7 +3,7 @@
 **Status**: 🔒 **LOCKED** (D1-D4 at 23:00 GMT+8 `om_x100b67dbb9a3d8acc363f6f98e6bd89`; D5 added 07:20 GMT+8 `om_x100b67c3047874a0c44881d1ea50581`)
 **Owner**: 方豆 / QClaw
 **Scope**: signal-graph extraction → visualization pipeline + pyslang version policy
-**Affects**: `src/trace/core/semantic_adapter.py`, `src/trace/core/driver_extractor.py`, `src/trace/core/graph/viz/*`, `src/trace/core/_pyslang_compat.py`
+**Affects**: `src/trace/core/semantic_adapter.py`, `src/trace/core/driver_extractor.py`, `src/trace/core/graph/viz/*`, `src/trace/__init__.py` (v11 alias bridge), `src/trace/core/ast_utils.py` (helper migration)
 
 ---
 

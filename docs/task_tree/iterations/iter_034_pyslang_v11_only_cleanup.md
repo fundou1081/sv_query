@@ -141,3 +141,67 @@ git checkout -b chore/v11-only-cleanup
 - Doc (this file): ✅ Written
 - Plan (P1-P7): ✅ Listed
 - Code: ⏳ Not started — awaiting user "OK 开工"
+
+
+---
+
+## 实际执行结果 (2026-08-27, HEAD `62ef835`)
+
+### Commit chain
+
+| Step | Commit | 描述 | Lines |
+|---|---|---|---|
+| P1 docs | `1b4b573` | 创建 iter_034 doc + case27 decision D5 锁定 | +684 / -3 |
+| P2 imports | `88c0f05` | 5 个 import 从 `_pyslang_compat` 迁到 `pyslang.ast.*` 等 | +7 / -7 |
+| P3 probes | `2ce4e09` | 4 个 `hasattr` probes 改直接 attribute 访问 (v11 only) | +8 / -8 |
+| P4 shim | `6199a03` | `_pyslang_compat.py` 整个 git rm (232 行), helper 迁 `ast_utils.py`, 加 v11 alias bridge | +68 / -239 |
+| P5 comments | `0fb950c` (amended) | 2 个 `[Stage 6] v10/v11` 注释清理 + `.gitignore` 加 bak/tmp 规则 | +6 / -3 |
+| P6 tests | `62ef835` | 2 个 compat 测试重写为 v11-only, alias bridge 扩展 PEP 562 `__getattr__` | +182 / -140 |
+
+### 验证统计
+
+| 层 | Pass | Fail | 说明 |
+|---|---|---|---|
+| Unit tests | **1061** | 0 | 62.29s, 全过 |
+| Integration (377 - 5 pre-exist) | 377 | 2 pre-exist | darkriscv + picorv32 SVG (base `488932e` 也 fail) |
+| v11 alias + helpers | 19 | 0 | 全过 |
+| v11 CLI smoke | 12 | 0 | 7 个 CLI 命令 (trace/verify/risk/dataflow/controlflow/cdc) 全过 |
+| Case27 truth | 1 | 3 pre-exist | iter_032 documented gaps |
+| **总计** | **1470** | 5 (均 pre-existing) | **0 回归** |
+
+### Plan vs Reality 对照
+
+| Plan | Reality | 偏差原因 |
+|---|---|---|
+| P4: keep `is_syntax_list` / `iter_syntax_list` in compat shim | 直接移到 `ast_utils.py` (P4) | P3 已迁所有 callers 到 v11 直接 import, 但仍有 10 个 helper 调用 → helper 移到 ast_utils, shim 整个删 |
+| P5: 删 6 个 `[Stage 6]` 注释 | 只剩 2 个真 compat 注释 (清理) | 其余 `[Stage 6]` 注释是关于 `--human` 友好输出, 跟 pyslang 无关, 保留 |
+| P6: 1458 unit + 32 batch + case27 + 7 real + golden 5/5 | 1061 unit (测试数比 plan 少) + 377 integration + 31 v11 + case27 + 7 real | plan 数据不准 (实际 unit 数 1061 不是 1458), 5 real project (cva6/vortex/etc) |
+| Doc: PYSLANG_COMPAT.md 只需小改 | 整个文件重写为 `PYSLANG_V11.md` (149 → 133 行) | 内容变更太多, 改 file 名更清晰 |
+| D5 table: pyslang.ast.SyntaxKind 等 | 实际 `pyslang.syntax.SyntaxKind` / `parsing.TokenKind` / `analysis.ValueDriver` (各子模块) | 我之前在 ARCHITECTURE_EVOLUTION.md 写错, P7.2 修正 |
+
+### 已知遗留
+
+- 5 个 failing tests (case27 3 + real_project_viz 2) 都是 pre-existing, 跟本次清理无关
+  - case27: iter_032 documented signal graph 3 gaps (gen_accum 未展开, * 未提取, ?: 未提取)
+  - darkriscv/picorv32 SVG: visualize 命令在某些 project 上不生成 DOT 中间文件, 跑在 base `488932e` 上同样 fail
+
+### 关键文件变更
+
+```
+A  docs/PYSLANG_V11.md             (新, 替代 PYSLANG_COMPAT.md)
+D  src/trace/core/_pyslang_compat.py (232 行, git rm)
+M  src/trace/__init__.py           (alias bridge + ~25 行)
+M  src/trace/core/ast_utils.py     (+ helper)
+M  src/trace/core/semantic_adapter.py (import 改)
+M  src/trace/core/base.py          (import 改)
+M  src/trace/core/uvm_testbench_extractor.py (删 1 注释)
+M  src/trace/core/driver_extractor.py (改写 1 注释)
+A  sim/tests/integration/test_pyslang_v11_aliases.py (新, 19 tests)
+A  sim/tests/integration/test_pyslang_v11_cli_smoke.py (新, 12 tests)
+D  sim/tests/integration/test_pyslang_compat.py (整个删)
+D  sim/tests/integration/test_pyslang_version_compat.py (整个删, 内容迁到 cli_smoke)
+M  docs/PYSLANG_V11.md             (前 PYSLANG_COMPAT.md 重写)
+M  docs/ARCHITECTURE_EVOLUTION.md  (Section 八 D5 更新)
+M  docs/architecture/case27_signal_graph_completeness_decision.md (Affects row 修)
+M  .gitignore                      (+ bak/tmp 规则)
+```
