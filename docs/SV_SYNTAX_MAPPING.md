@@ -57,7 +57,7 @@
 | 函数调用 `f(x,y)` | `SubroutineCall` → SubroutineExpander | `FUNCTION_CALL` 节点 + 展开 | — |
 | 端口连接 `.clk(clk)` | `PortConnectionSymbol` | `INSTANTIATED_MODULE` 节点 + `CONNECTION` 边 + `_port_to_internal` | — |
 | 常量 `{W{1'b1}}` | MultipleConcatenation (semantic 展开) | `CONST` 节点（值展开） | — |
-| alias `alias a = b;` | `NetAlias` symbol | `a --DRIVER--> b`（**注：方向语义与 SV 规范相反**，refs[0]=target, refs[1]=source 见 driver_extractor.py:1147-1148） | `alias` |
+| alias `alias a = b;` | `NetAlias` symbol | `a --DRIVER--> b`（**方向语义与 SV 规范一致**：`alias b = a` 表示 b 是 a 的别名，驱动方向 a→b；pyslang `netReferences` 顺序 = `[target, source]`，driver_extractor 取 `refs[0]=target, refs[1]=source` 见 driver_extractor.py:1147-1148；2026-08-27 审查实测确认） | `alias` |
 | class / constraint | `ClassSymbol` | ClassGraph 子图 (CLASS/CONSTRAINT_* 节点 + 关系边) | — |
 
 > **图中符号说明**: ✅ 完整 / ⚠️ 部分（有缺陷） / 🔶 有条件（部分场景下不准） / ⛔ 不支持（spec 不应谎称支持）
