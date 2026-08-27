@@ -1138,31 +1138,28 @@ class DriverExtractor:
                 )
 
     def _create_net_alias_edges(self, module, result, module_name):
-        """[REFACTOR 2026-06-26] 处理 alias 语句: alias b = a; → 创建 DRIVER 边 a → b."""
-        for alias in self.adapter.get_net_aliases(module):
-            refs = getattr(alias, "netReferences", None)
-            if not refs or len(refs) < 2:
-                continue
-            # refs[0] = target (b), refs[1] = source (a)
-            target_name = self._extract_alias_ref_name(refs[0])
-            source_name = self._extract_alias_ref_name(refs[1])
-            if not target_name or not source_name:
-                continue
-            target_id = f"{module_name}.{target_name}"
-            source_id = f"{module_name}.{source_name}"
-            self._ensure_signal_node(result, source_id, source_name, module_name)
-            self._ensure_signal_node(result, target_id, target_name, module_name)
-            # [V4] factory 统一入口
-            self._append_edge(
-                result,
-                src=source_id,
-                dst=target_id,
-                kind=EdgeKind.DRIVER,
-                assign_type="alias",
-            )
+        """[REFACTOR 2026-06-26] 处理 alias 语句: alias b = a; → 创建 DRIVER 边 a → b.
+
+        [ARCHITECTURE_TODOLIST #1 2026-08-27] 薄壳, 实际逻辑在 extractors/alias_extractor.py.
+        保留方法签名 (外部 graph_builder 等通过 _create_net_alias_edges 调用, 不改调用方).
+        行为 1:1 一致 — 同样的 DRIVER 边、同样的节点、同样的 assign_type="alias".
+        """
+        from .extractors.alias_extractor import extract_alias_edges
+        extract_alias_edges(
+            adapter=self.adapter,
+            module=module,
+            result=result,
+            module_name=module_name,
+            ensure_signal_node=self._ensure_signal_node,
+            append_edge=self._append_edge,
+        )
 
     def _extract_alias_ref_name(self, ref_expr) -> str | None:
-        """[REFACTOR 2026-06-26] 从 alias ref expr 提取 .symbol.name (None if missing)."""
+        """[REFACTOR 2026-06-26] 从 alias ref expr 提取 .symbol.name (None if missing).
+
+        [ARCHITECTURE_TODOLIST #1 2026-08-27] 保持本地副本 (避免跨文件依赖, alias_extractor
+        是独立模块). 行为 1:1 一致.
+        """
         if hasattr(ref_expr, "symbol") and hasattr(ref_expr.symbol, "name"):
             return str(ref_expr.symbol.name)
         return None

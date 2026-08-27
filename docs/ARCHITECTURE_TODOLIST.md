@@ -7,21 +7,24 @@
 
 ## 🎯 7 项改造任务 (按 ROI 排序)
 
-### #1 拆 driver_extractor (4101 行 → 10 个文件)  ⬜
+### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
-- **工作量**: 2-3 天
-- **状态**: pending
+- **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
+- **状态**: 🟡 **in_progress (Step 1+2 alias_extractor 启动 20:38)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
-  - [ ] 盘点 driver_extractor 全部公开方法 (def 清单)
-  - [ ] 设计新目录结构: `src/trace/core/extractors/{assign, always, wire_init, function, case, ternary, bit_select, struct, generate, alias}_extractor.py`
-  - [ ] 设计 ExtractorResult 新协议 (按需扩展)
-  - [ ] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖
-  - [ ] 实施拆分 (每拆一个文件跑一次回归)
-  - [ ] 删 driver_extractor.py (全部迁完)
-  - [ ] 全套回归 1460+ 测试 + 新增拆分后子文件测试
-- **commit 基线**: HEAD = `912b306`
-- **风险**: 高 (40% 核心代码改动) — 必须**分批拆分** + **每批跑回归**
+  - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
+  - [x] 设计新目录结构: `src/trace/core/extractors/{assign, always, wire_init, function, case, ternary, bit_select, struct, generate, alias}_extractor.py`
+  - [x] 设计 ExtractorResult 新协议 (按需扩展)
+  - [x] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖 — G2 plan 完成
+  - [ ] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) ← 当前
+  - [ ] Step 3: 拆 wire_init_extractor (0.5 天)
+  - [ ] Step 4: 拆 assign_extractor (1 天)
+  - [ ] Step 5: 拆 statement_flattener (0.5 天)
+  - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
+  - [ ] Step 7: 拆 function_extractor (1 天)
+  - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
+  - [ ] Step 9: 全套最终回归 (0.5 天)
 
 ### #2 统一 BitSelectHandler (去重 graph_builder 那套)  ⬜
 - **ROI**: 🔥🔥 中高
@@ -118,3 +121,4 @@
 ## 🔄 状态变更日志
 
 - **2026-08-27 20:36** — todolist 创建, 7 项 pending. 启动 #1 拆 driver_extractor 计划.
+- **2026-08-27 20:38** — #1 启动 Step 1+2 (alias_extractor), G2 plan 完成. 预计 6 天总工作量.
