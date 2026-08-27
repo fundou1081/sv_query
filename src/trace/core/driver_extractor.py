@@ -3410,8 +3410,7 @@ class DriverExtractor:
 
         # SequentialBlock
         if "SequentialBlock" in kind:
-            # [Stage 6] v10: SequentialBlockStatement children 含 [SyntaxList(...)]
-            #         v11: children 直接是 plain list (SyntaxList 已展开)
+            # v11: SequentialBlockStatement.children 是 plain list (no SyntaxList wrapper)
             statements = None
             for i, child in enumerate(stmt):
                 child_kind = str(getattr(child, "kind", ""))
