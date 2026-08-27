@@ -78,7 +78,6 @@ class UVMTestbenchExtractor:
             # 直接用 Compilation 而不是 SVCompiler，因为 SVCompiler 的 full pipeline
             # 会污染 parameterized UVM 类的 token.name.value (内部 getRoot 后会有
             # 非 UTF-8 bytes). Compilation 是铁律1 允许的统一数据源。
-            # 使用 _pyslang_compat 兼容 pyslang v10/v11
             source_manager = pyslang.SourceManager()
             compilation = _PyslangCompilation()
             for fname, source in self._sources.items():

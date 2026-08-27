@@ -16,3 +16,8 @@ sim/tests/integration/_debug_case_rhs.py
 MEMORY.md
 node_modules/
 .openclaw/
+
+# Backup / noise (not source code)
+*.bak_pre_*
+.bak_pre_*
+tmp_v*_pngs/
