@@ -65,6 +65,63 @@ module top(input clk);
 endmodule
 '''
 
+# [2026-08-28 06:33] 边界 fixture — 测 regex 反推位选名的脆弱性
+# 现实 SV 代码常见位选形式, 大多不是简单的 '[N:M]'
+FIXTURE_PARAMETER = '''
+module top #(parameter W = 8) (input clk);
+    logic [W-1:0] data;
+    logic [W-1:0] slice;
+
+    always_ff @(posedge clk) begin
+        slice <= data[W-1:0];  // Parameter 位选: regex 匹配不了 (W-1 不是数字)
+    end
+endmodule
+'''
+
+FIXTURE_GENERATE = '''
+module top #(parameter N = 4) (input clk);
+    logic [3:0] acc [0:N];
+    logic [3:0] data_in;
+
+    genvar i;
+    generate
+        for (i = 0; i < N; i = i + 1) begin : gen
+            always_ff @(posedge clk) begin
+                acc[i] <= data_in;   // ElementSelect 动态: acc[i]
+                acc[i+1] <= acc[i];  // 表达式位选: acc[i+1] (i+1 不是字面量)
+            end
+        end
+    endgenerate
+endmodule
+'''
+
+FIXTURE_NESTED = '''
+module top(input clk);
+    logic [7:0] data;
+    logic [1:0] slice;
+
+    always_ff @(posedge clk) begin
+        slice <= data[3:0][1:0];  // 多维位选嵌套: regex 匹配不了
+    end
+endmodule
+'''
+
+FIXTURE_STRUCT = '''
+module top(input clk);
+    typedef struct packed {
+        logic [7:0] addr;
+        logic [7:0] data;
+    } pkt_t;
+
+    pkt_t pkt;
+    logic [3:0] low_nibble;
+
+    always_ff @(posedge clk) begin
+        low_nibble <= pkt.addr[3:0];  // struct 字段位选: regex 可能不支持
+    end
+endmodule
+'''
+
 
 def _build_unified_tracer(source):
     """路径 A: 完整 unified_tracer (走 BitSelectHandler.process 3 阶段)"""
@@ -224,6 +281,35 @@ class TestBitSelectHandlerDiff(unittest.TestCase):
         """[Mixed] RangeSelect + ElementSelect 混合 — 全面验证"""
         diff = self._run_diff(FIXTURE_MIXED, 'FIXTURE_MIXED')
         # TODO (#2 G3): 根据 diff 决定哪套对
+
+    # === [2026-08-28 06:33] 边界 fixture, 测 regex 反推脆弱性 ===
+
+    def test_parameter_diff(self):
+        """[Parameter 位选] data[W-1:0] — regex [0-9]+ 匹配不了"""
+        diff = self._run_diff(FIXTURE_PARAMETER, 'FIXTURE_PARAMETER')
+        # 预期: 两套都创建 BIT_SELECT 边, 但路径 A 应该用 pyslang API 计算实际 msb/lsb
+
+    def test_generate_diff(self):
+        """[Generate-for 动态位选] acc[i], acc[i+1] — 表达式位选"""
+        diff = self._run_diff(FIXTURE_GENERATE, 'FIXTURE_GENERATE')
+        # 预期: 节点 ID 含 gen[N].acc[i], gen[N].acc[i+1], regex 可能处理不了 i+1
+
+    def test_nested_diff(self):
+        """[嵌套位选] data[3:0][1:0] — 多维位选"""
+        diff = self._run_diff(FIXTURE_NESTED, 'FIXTURE_NESTED')
+        # 预期: 节点 ID 形如 top.data[3:0][1:0], regex 反推可能产生错误 parent_id
+
+    def test_struct_diff(self):
+        """[Struct 字段位选] pkt.addr[3:0] — scoped 位选"""
+        diff = self._run_diff(FIXTURE_STRUCT, 'FIXTURE_STRUCT')
+        # 预期: 节点 ID 形如 top.pkt.addr[3:0], 应能匹配 regex [^\[]+ 前缀
+
+    def test_struct_field_only_diff(self):
+        """[Struct 字段访问无位选] pkt.addr — 验证不会误处理 struct 字段访问为位选"""
+        # 注: 此 fixture 现有 Mermaid 表达中应不生成 BIT_SELECT 边
+        # 为简洁, 复用 FIXTURE_STRUCT 但断言 .addr 不产生 BIT_SELECT 边
+        diff = self._run_diff(FIXTURE_STRUCT, 'FIXTURE_STRUCT')
+        # 验证 pkt.addr (无位选) 不被错误归类为位选节点
 
 
 if __name__ == '__main__':

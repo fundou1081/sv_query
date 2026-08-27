@@ -30,20 +30,31 @@
 ### #2 统一 BitSelectHandler (去重 graph_builder 那套)  🟡
 - **ROI**: 🔥🔥 中高
 - **工作量**: 1 天
-- **状态**: 🟡 **in_progress (G2 计划 + diff 验证脚本完成, G3 待决策 06:23)**
+- **状态**: 🟡 **in_progress (G2 计划 + diff 验证脚本完成, 边界 fixture 实测 06:33)**
 - **目标**: 选一套保留 (推荐 graph_builder._create_hierarchical_bit_nodes), 另一套标 deprecated → 删除
 - **子任务**:
   - [x] 对比两套实现的输出 diff (golden fixture 跑两次) — 完成, 见 `sim/tests/integration/test_bitselect_handler_diff.py`
+  - [x] 边界 fixture 实测 (parameter / generate / nested / struct) — 完成 06:33
   - [ ] 决定保留哪套 — G3 决策待确认
   - [ ] 删另一套, 更新所有 import
   - [ ] 回归测试
-- **G2 实测发现**: 边/节点存在性一致, 唯一差异是 RangeSelect 节点 4 个属性 (bit_range / parent_bit_* / width) 路径 B 漏设
-- **G3 选项**:
-  1. **复制路径 A 到路径 B (推荐, 0.5 天)** — 修真实 bug, 风险低
+- **G2 实测发现 (06:33 更新)**:
+  - 边/节点存在性一致 (0 差异)
+  - 唯一差异: RangeSelect 节点 4 个属性 (bit_range / parent_bit_* / width) 路径 B 漏设
+  - 🆕 边界 fixture 额外发现:
+    - Parameter 位选 (`data[W-1:0]`): pyslang elaboration 折叠 W-1→7, 正常
+    - Generate-for 动态位选 (`acc[i]`): 🔴 不产生 BIT_SELECT 边, 是 #8 新项
+    - Nested 位选: SV 非法, pyslang 报错
+    - Struct 字段位选 (`pkt.addr[3:0]`): 正常
+    - **regex 实际比想象鲁棒** (pyslang 折叠 + struct 前缀可匹配)
+  - 🆕 **新架构债**: 两套实现完全不用 pyslang API, 全 regex
+- **G3 选项 (06:33 更新)**:
+  1. **复制路径 A 到路径 B (推荐, 0.5 天)** — 修 #2 真实 bug, 风险低
   2. 删路径 A 的 _create_hierarchical_bit_nodes (1 天) — 中风险
-  3. 路径 B 升级替代路径 A (1-1.5 天) — 中风险
+  3. **用 pyslang API 替代 regex (1-2 天)** — 治本, 但风险高
   4. 纯文档说明 (0.1 天) — 不修 bug
-- **产出**: [docs/BITSELECT_HANDLER_G2_PLAN.md](BITSELECT_HANDLER_G2_PLAN.md) (5168 bytes)
+  5. **选项 1 + 新建 #8 修 generate-for 动态位选** (推荐, #2 0.5 天 + #8 1+ 天)
+- **产出**: [docs/BITSELECT_HANDLER_G2_PLAN.md](BITSELECT_HANDLER_G2_PLAN.md)
 - **依赖**: 无
 
 ### #3 建 EXTRACTION_COVERAGE.md 总表  ✅
@@ -117,14 +128,14 @@
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
 | 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3 ✅ |
-| 2 | 统一 BitSelectHandler | 🔥🔥 | 🟡 in_progress | 06:23 | G2 ✅, G3 待决策 |
+| 2 | 统一 BitSelectHandler | 🔥🔥 | 🟡 in_progress | 06:23 | G2 +边界 ✅, G3 待决策 |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
 | 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #2 进行中 (G2 完成, G3 待决策); #3 done; 其他 4 项 pending. **总 2/7 (28.5%)**.
+**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #2 进行中 (G2 + 边界 fixture 完成, G3 待决策); #3 done; 其他 4 项 pending. **总 2/7 (28.5%) + 发现 #8 (待决策)**.
 
 ---
 
@@ -136,3 +147,4 @@
 - **2026-08-27 23:46** — todolist 进度总览表修正 (之前显示 0/7 但实际 #1 已 in_progress). 修后续梳理下一步.
 - **2026-08-27 23:48** — #3 EXTRACTION_COVERAGE.md 完成 (7814 bytes, 33 语法 × 5 档 × 101 fixture). 修正 2 个 Phase 1A 误报 (alias 方向 / function 递归). 总进度 1.5/7 (21%).
 - **2026-08-28 06:23** — #2 G2 计划 + diff 验证脚本完成. 实测 3 fixture × 2 路径, 边/节点存在性完全一致, 唯一差异是 RangeSelect 节点 4 个属性路径 B 漏设. G3 待决策 (4 选项, 推荐选项 1, 0.5 天). 总进度 2/7 (28.5%).
+- **2026-08-28 06:33** — #2 加 4 边界 fixture (parameter / generate / nested / struct). 修正结论: regex 比想象鲁棒; 真实额外 bug 是 generate-for 动态位选 (新建 #8). 新架构债: 两套实现全 regex, 未用 pyslang API. G3 选项扩到 5 个 (新增选项 3 pyslang API 治本 + 选项 5 推荐 #2+#8 组合).
