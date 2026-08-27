@@ -176,17 +176,24 @@ class DriverExtractor:
     # 目标: 消灭 viz 层 SyntaxTree.fromText() 源码重读
     # ═══════════════════════════════════════════════════════════
 
-    def _store_expr_tree(self, lhs_name, rhs_expr, module_name, result) -> None:
+    def _store_expr_tree(self, lhs_name, rhs_expr, module_name, result, genvar_ctx: dict | None = None) -> None:
         """从 rhs_expr.syntax 构建 ExpressionTree，存入 result.expr_trees。
 
         同一 lhs 多 rhs（case/if 多分支）时，收集所有 tree_dict，
         最后取「最复杂」(descendant count max) 的代表。
+
+        [Plan G2 2026-08-27] genvar_ctx 参数 + post-process substitute:
+        raw AST ExpressionTree._parse_expr emit leaves like 'acc[i]' (literal),
+        即使 generate-for 已经把 LHS 'acc[i+1]' 展开成 'acc[N]'.
+        现在用 ctx={'i': N} 在 graph 层 substitute leaf SignalRef 'acc[i]' → 'acc[N]'.
+        用户 directive: "viz 不要再从 raw ast 拿数据, 仅从 graph 拿需要的数据".
 
         Args:
             lhs_name: 被赋值信号名 (不含 module 前缀)
             rhs_expr: pyslang semantic AST 表达式节点 (BinaryOp/ConditionalOp/Call...)
             module_name: 模块/实例路径前缀
             result: ExtractorResult
+            genvar_ctx: {genvar_name: int_value} e.g. {'i': 2} for gen_accum iter 2
         """
         if not lhs_name or rhs_expr is None:
             return
@@ -224,6 +231,11 @@ class DriverExtractor:
         tree_key = f"{module_name}.{lhs_name}" if module_name else lhs_name
         tree_dict = ExpressionTree._to_dict(root)
 
+        # [Plan G2 2026-08-27] substitute genvar refs in tree leaves
+        # 'acc[i]' (literal) → 'acc[N]' (展开) where N = ctx['i']
+        if genvar_ctx and tree_dict:
+            tree_dict = DriverExtractor._substitute_genvar_in_tree(tree_dict, genvar_ctx)
+
         # 多分支合并：已有则保留更复杂的一个
         existing = result.expr_trees.get(tree_key)
         if existing is not None and _tree_complexity(tree_dict) <= _tree_complexity(existing):
@@ -233,6 +245,43 @@ class DriverExtractor:
         # 从树遍历提取 Const → const_map, Call → func_info
         dst_short = lhs_name
         _collect_from_tree(tree_dict, dst_short, result.const_map, result.func_info)
+
+    @staticmethod
+    def _substitute_genvar_in_tree(tree_dict, ctx):
+        """[Plan G2 2026-08-27] Walk ExpressionTree._to_dict() tree and substitute
+        genvar references in SignalRef leaf labels.
+
+        raw AST ExpressionTree._parse_expr emit leaves like 'acc[i]' (literal),
+        even though ctx={'i': N} is available. viz layer reads these labels
+        directly → SVG has 'acc[i]' literal. 用户 directive: "viz 不要从 raw AST
+        拿数据, 仅从 graph 拿需要的数据" — substitute 发生在 graph 层
+        (driver_extractor._store_expr_tree), 不在 viz.
+
+        Args:
+            tree_dict: ExpressionTree._to_dict(root) — {op, label, children:[...]}
+            ctx: {genvar_name: int_value} (e.g. {'i': 2})
+
+        Returns:
+            New tree_dict with leaf labels substituted (or original if no match).
+        """
+        if not isinstance(tree_dict, dict) or not ctx:
+            return tree_dict
+        op = tree_dict.get("op", "")
+        label = tree_dict.get("label", "")
+        children = tree_dict.get("children", []) or []
+        new_label = label
+        if op in ("SignalRef", "BitSelect") and label:
+            if "[" in label and label.endswith("]"):
+                base, _, idx_str = label[:-1].rpartition("[")
+                if idx_str in ctx:
+                    new_label = f"{base}[{ctx[idx_str]}]"
+            elif label in ctx:
+                new_label = str(ctx[label])
+        new_children = [
+            DriverExtractor._substitute_genvar_in_tree(c, ctx)
+            for c in children if isinstance(c, dict)
+        ]
+        return {**tree_dict, "label": new_label, "children": new_children}
 
     def set_instance_paths(self, instance_paths: list[tuple[str, Any]]) -> None:
         """[Phase 4 2026-07-11] Configure instance-aware signal extraction.
@@ -1141,7 +1190,7 @@ class DriverExtractor:
                 continue
             # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
             # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
-            self._store_expr_tree(lhs_name, init, module_name, result)
+            self._store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=None)
             lhs_id = f"{module_name}.{lhs_name}"
             self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
             rhs_expr_str = self._get_signal(init) or ""
@@ -1308,7 +1357,7 @@ class DriverExtractor:
         if raw_lhs is not None:
             lst = self._get_signal(raw_lhs)
             if lst and raw_rhs is not None:
-                self._store_expr_tree(lst, raw_rhs, module_name, result)
+                self._store_expr_tree(lst, raw_rhs, module_name, result, genvar_ctx=genvar_ctx)
         return True
 
     def _handle_call_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None) -> bool:
@@ -1335,7 +1384,7 @@ class DriverExtractor:
         self._handle_invocation(raw_rhs, {}, module, module_name, result, lhs_name)
         # [REFACTOR 2026-08-07 A计划] 函数调用赋值: assign y = func(a,b);
         if lhs_name and raw_rhs is not None:
-            self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
+            self._store_expr_tree(lhs_name, raw_rhs, module_name, result, genvar_ctx=genvar_ctx)
         return True
 
     def _handle_binary_invocation_assign(self, assign, raw_lhs, raw_rhs, module, result, module_name, genvar_ctx: dict | None = None) -> bool:
@@ -1361,7 +1410,7 @@ class DriverExtractor:
             self._handle_invocation(invocation, {}, module, module_name, result, lhs_name)
         # [REFACTOR 2026-08-07 A计划] 二元+函数调用赋值: assign y = a & func(b);
         if lhs_name and raw_rhs is not None:
-            self._store_expr_tree(lhs_name, raw_rhs, module_name, result)
+            self._store_expr_tree(lhs_name, raw_rhs, module_name, result, genvar_ctx=genvar_ctx)
         return True
 
     def _find_invocations(self, expr, invocations=None) -> list:
@@ -2024,7 +2073,7 @@ class DriverExtractor:
         # [REFACTOR 2026-08-07 A计划] 从完整 rhs 构建表达式树 (assign y = rhs)
         # rhs_expr 是完整 semantic 表达式，.syntax 建整棵树（含三元/嵌套运算）
         if lhs and rhs_expr is not None:
-            self._store_expr_tree(lhs, rhs_expr, module_name, result)
+            self._store_expr_tree(lhs, rhs_expr, module_name, result, genvar_ctx=genvar_ctx)
 
     def _create_always_edges(self, module, result, module_name, genvar_ctx: dict | None = None):
         """[REFACTOR 2026-06-26] 处理 always 块 (含 always_ff/always_comb/always_latch).
@@ -2178,7 +2227,7 @@ class DriverExtractor:
                     # always_comb/always_ff 中 case/if 每个分支的 rhs 是独立 semantic 节点，
                     # _store_expr_tree 内部对同一 lhs 多分支做 max 合并（取最复杂代表）
                     if lhs and rhs_expr is not None:
-                        self._store_expr_tree(lhs, rhs_expr, module_name, result)
+                        self._store_expr_tree(lhs, rhs_expr, module_name, result, genvar_ctx=genvar_ctx)
 
                     # [NEW] 使用 rhs_expr (来自 _parse_assign) 提取所有驱动源
                     # [FIX 2026-7-15] Pass module for Syntax AST resolution
