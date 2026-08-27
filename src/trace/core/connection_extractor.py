@@ -381,6 +381,28 @@ class ConnectionExtractor:
                 direction = module_ports.get(port_name, "unknown").strip()
 
                 inst_port_id = f"{inst_path}.{port_name}"
+                # [FIX 2026-08-27 18:56] Bug #2: 端口方向未识别不再静默 fallback
+                # 区分两种情况: (a) 端口在 module_ports 缺失 (ref port / 拼写错 / 模块定义不全)
+                #             (b) direction 是 'unknown' 字符串 (get_port_name_and_direction 返默认值)
+                # 之前两者都静默落 PORT_IN, 违反 AGENTS.md §2 禁止 silent fallback.
+                # 现在: 未识别时 logger.warning + extra 记实际 direction, 行为仍取 PORT_IN (兼容).
+                if port_name not in module_ports:
+                    logger.warning(
+                        "[connection_extractor] port '%s' not in module_ports for %s; "
+                        "falling back to PORT_IN (likely ref port or missing module def)",
+                        port_name, inst_module_name,
+                    )
+                    port_extra = {"direction": "missing", "fallback": "PORT_IN"}
+                elif direction == "unknown":
+                    logger.warning(
+                        "[connection_extractor] port '%s' direction unknown for %s; "
+                        "falling back to PORT_IN (likely ref port or unparsed direction)",
+                        port_name, inst_module_name,
+                    )
+                    port_extra = {"direction": "unknown", "fallback": "PORT_IN"}
+                else:
+                    port_extra = {"direction": direction.lower()}
+
                 if "inout" in direction.lower():
                     kind = NodeKind.PORT_INOUT
                 elif "output" in direction.lower():
@@ -398,14 +420,32 @@ class ConnectionExtractor:
                     if signal_name in parent_widths:
                         width = parent_widths[signal_name]
 
+                # [FIX 2026-08-27 18:56] Bug #3: 位宽 (0,0) 静默兜底为 (1,0) 加 warning
+                # 之前 line 407 静默 fallback if width == (0,0) -> (1,0),
+                # 违反 AGENTS.md §2. 现在: 兜底仍保留 (兼容), 但 logger.warning + extra 记实际 width.
+                if width == (0, 0):
+                    logger.warning(
+                        "[connection_extractor] port '%s' width (0,0) for %s; "
+                        "falling back to (1,0) (likely parameterized port or missing width)",
+                        port_name, inst_module_name,
+                    )
+                    width_extra = {"width": (0, 0), "fallback": (1, 0)}
+                    final_width = (1, 0)
+                else:
+                    width_extra = {"width": width}
+                    final_width = width
+                # 合并 port_extra + width_extra 到 TraceNode.extra
+                merged_extra = {**port_extra, **width_extra}
+
                 result.nodes.append(
                     TraceNode(
                         id=inst_port_id,
                         name=port_name,
                         module=inst_path,
                         kind=kind,
-                        width=width if width != (0, 0) else (1, 0),
+                        width=final_width,
                         is_port=True,
+                        extra=merged_extra,
                     )
                 )
 
