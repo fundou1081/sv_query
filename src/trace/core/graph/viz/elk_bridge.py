@@ -362,9 +362,12 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             if _kind_str == 'DRIVER':
                 _src_str = str(_e.src)
                 _dst_str = str(_e.dst)
-                # 两端都是端口才考虑 (避免 case24 'b' orphan - DRIVER 'b → mul2' 中 mul2 不是端口)
-                if _src_str not in _all_port_paths or _dst_str not in _all_port_paths:
-                    continue
+                # [Plan G3 2026-08-27 13:15] src 是端口就必须收进 references, 即使 dst 非端口.
+                # case27 'generate_loop.data → generate_loop.gen_accum[0].prod': src 是 input port,
+                # dst 是 generate-local wire (非端口). 旧逻辑要求"两端都是端口"→ continue,
+                # data 没进 _referenced_input_fulls → port_data 不 emit → edge 引用 dangle
+                # → JsonImportException 'Referenced shape does not exist: port_...data'
+                # → ELK 布局降级, 4 个 prod × 只显示 1 个. 修复: src 是 port 就收.
                 if _src_str in _input_path_set:
                     _referenced_input_fulls.add(_src_str)
                 elif _src_str in _output_path_set:
@@ -373,6 +376,9 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                     _referenced_input_fulls.add(_dst_str)
                 elif _dst_str in _output_path_set:
                     _referenced_output_fulls.add(_dst_str)
+                # dst 非端口时 src 已处理; 两端都不是端口 → 无 ports 可收, 跳过 (case24 orphan)
+                if _src_str not in _all_port_paths and _dst_str not in _all_port_paths:
+                    continue
             elif _kind_str == 'BIT_SELECT':
                 # BIT_SELECT 边 src 通常是 sub-module INPUT port (e.g. 'golden_hier_top.u_off.offset'),
                 # dst 是 sub-module instance node (e.g. 'golden_hier_top.u_off'). 这种情况 src 必须是
@@ -926,14 +932,19 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             _dst_gb, _dst_gi = _parse_gen_block(_parent_module, dst_short)
         # 中间 wire (非 input 非 output): 创建 sig 标签节点 + 渲染表达式树
         if dst_short not in output_set and dst_short not in input_set:
-            sig_id = f'sig_{_safe(dst_short)}_wire'
+            # [Plan G3 2026-08-27 13:10] 用完整 dst_name (hierarchical path) 生成唯一 sig_id.
+            # 4 个 generate-local prod (generate_loop.gen_accum[0..3].prod) 的 _short() 全是
+            # 'prod' → 旧 sig_id='sig_prod_wire' 4 次相同 → ELK 归并 → 只渲染 1 个 '×'.
+            # 用 hp 区分 → 4 个独立 sig node + 各自 op tree. label 仍显示 dst_short (美观).
+            sig_key = dst_name
+            sig_id = f'sig_{_safe(sig_key)}_wire'
             root_children.append({
                 'id': sig_id, 'width': SIG_W, 'height': SIG_H,
                 'labels': [{'text': dst_short, 'fontSize': 8, 'fontName': 'Courier'}],
                 '_meta': {'kind': 'signal', 'gen_block': _dst_gb, 'gen_iter': _dst_gi},
             })
-            _signal_cache[dst_short] = sig_id
-            op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module,
+            _signal_cache[sig_key] = sig_id
+            op_id = render_tree(tree_data, f'wire_{dst_name}', parent_module=_parent_module,
                                  gen_block=_dst_gb, gen_iter=_dst_gi)
             if op_id:
                 root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))

@@ -1193,6 +1193,97 @@ class SemanticAdapter:
 
         return nets
 
+    def get_generate_net_declarations(self, module) -> list[dict]:
+        """[Plan G3 2026-08-27 13:01] 纯 semantic 收集 generate-for 内展开后的带 init Net decl.
+
+        现有 get_net_declarations(module) 只遍历 module.body 顶层, 拿不到 generate-for 块内
+        的 wire decl — 例如 case27 'wire [W-1:0] prod = data * weights[i]' (line 25) 在
+        gen_accum GenerateBlockArraySymbol 每个 entry 内. 顶层有同名 module-level 'prod'
+        (line 18, 无 init), 所以 get_net_declarations 只返回无 init 的那个, init 永远漏掉.
+
+        本方法走 GenerateBlockArraySymbol.entries (pure semantic API, 与 E1 get_generate_instances
+        同模式): 每个 entry 是 GenerateBlockSymbol (semantic scope), 直接 __iter__ 拿 NetSymbol,
+        读其 .initializer. 结合 entry.arrayIndex + gen_block.loopVariable.name 构造 genvar_ctx.
+
+        Returns:
+            list[dict], 每个 dict:
+              name: str                 — 展开后信号名 (如 'prod')
+              initializer: object       — pyslang semantic Expression (BinaryOp)
+              genvar_ctx: dict          — {'i': 0} 之类 (0 = arrayIndex 数值)
+              array_index: int|None
+              hierarchical_path: str    — 'generate_loop.gen_accum[0].prod' (独立 node id)
+              loop_var: str             — genvar 名字 (如 'i')
+        """
+        results: list[dict] = []
+        if not hasattr(module, "body") or not module.body:
+            return results
+
+        for member in module.body:
+            kind = str(getattr(member, "kind", ""))
+            if "GenerateBlockArray" not in kind:
+                continue
+            # genvar 名字 (从 loopVariable, pure semantic)
+            genvar_name = None
+            try:
+                lv = getattr(member, "loopVariable", None)
+                if lv is not None:
+                    genvar_name = str(getattr(lv, "name", "") or "")
+            except Exception:
+                genvar_name = None
+
+            # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
+            try:
+                entries = list(member)
+            except TypeError:
+                entries = getattr(member, "entries", None) or []
+
+            for entry in entries:
+                if getattr(entry, "isUninstantiated", False):
+                    continue
+                arr_idx = getattr(entry, "arrayIndex", None)
+                ctx = {}
+                if genvar_name and arr_idx is not None:
+                    try:
+                        ctx = {genvar_name: int(arr_idx)}
+                    except (TypeError, ValueError):
+                        ctx = {genvar_name: arr_idx}
+                # GenerateBlockSymbol __iter__ → NetSymbol (pure semantic)
+                try:
+                    children = list(entry)
+                except TypeError:
+                    children = self._iter_children(entry)
+                for child in children:
+                    child_kind = str(getattr(child, "kind", ""))
+                    if "Net" not in child_kind:
+                        continue
+                    try:
+                        nm = getattr(child, "name", "")
+                        nm = str(nm) if nm else ""
+                    except Exception:
+                        nm = ""
+                    if not nm:
+                        continue
+                    init = getattr(child, "initializer", None)
+                    # [Plan G3 2026-08-27 13:20] hierarchicalPath 区分每个 entry 的独立 symbol
+                    # 4 entry 的 prod 是 4 个独立 symbol (generate_loop.gen_accum[N].prod),
+                    # 用 hp 当 node id → 4 个独立 tree/edge (gap_2: 4 个 '*' op)
+                    hp_str = ""
+                    try:
+                        hp = getattr(child, "hierarchicalPath", None)
+                        if hp is not None:
+                            hp_str = str(hp) or ""
+                    except Exception:
+                        hp_str = ""
+                    results.append({
+                        "name": nm,
+                        "initializer": init,
+                        "genvar_ctx": dict(ctx),
+                        "array_index": arr_idx,
+                        "hierarchical_path": hp_str,
+                        "loop_var": genvar_name or "",
+                    })
+        return results
+
     def get_net_aliases(self, module) -> list:
         """获取模块的 NetAlias (alias 语句)"""
         aliases = []
