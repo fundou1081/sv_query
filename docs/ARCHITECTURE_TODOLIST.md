@@ -10,15 +10,15 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 1+2 alias_extractor 启动 20:38)**
+- **状态**: 🟡 **in_progress (Step 1+2 alias_extractor ✅ commit b6708b5, 准备 Step 3)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
   - [x] 设计新目录结构: `src/trace/core/extractors/{assign, always, wire_init, function, case, ternary, bit_select, struct, generate, alias}_extractor.py`
   - [x] 设计 ExtractorResult 新协议 (按需扩展)
   - [x] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖 — G2 plan 完成
-  - [ ] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) ← 当前
-  - [ ] Step 3: 拆 wire_init_extractor (0.5 天)
+  - [x] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) — commit `b6708b5`, 1461 tests 0 regression
+  - [ ] Step 3: 拆 wire_init_extractor (0.5 天) ← 下一步
   - [ ] Step 4: 拆 assign_extractor (1 天)
   - [ ] Step 5: 拆 statement_flattener (0.5 天)
   - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)

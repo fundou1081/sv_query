@@ -526,283 +526,27 @@ class DriverExtractor:
         return out
 
     def _get_signal(self, signal, genvar_ctx: dict | None = None) -> str | None:
-        """[V6.9] 获取信号名 — 优先用 semantic API, fallback 到 str()。
+        """[ARCHITECTURE_TODOLIST #1 Step 3 2026-08-27] 薄壳委托给 extractors._common.get_signal.
 
-        syntax AST 节点的 str() 包含前导空格和换行符,
-        必须 strip() 后使用。
-
-        [Plan F1 2026-08-12] 新增 genvar_ctx 参数:
-        - 顶层 assigns 传 None 或 {}
-        - generate for 内的 assigns 传 {genvar_name: entry.arrayIndex}
-          e.g. gen_accum[1] 内的 assign → {'i': 1}
-        - NamedValueExpression name 是 genvar → substitute 成 concrete value
-        - BinaryOp (i+1) → 递归 substitute 子节点
+        原实现 200 行已迁到 src/trace/core/extractors/_common.py (共享纯函数).
+        保留 self._get_signal 调用方零改动 — driver_extractor.py 内 ~40 个调用点.
         """
-        if signal is None:
-            return None
-        ctx = genvar_ctx or {}
-        # NamedValue: 通过 .symbol.name 获取 (不是 str())
-        sk = str(getattr(signal, "kind", ""))
-        if "NamedValue" in sk:
-            sym = getattr(signal, "symbol", None)
-            if sym:
-                name = getattr(sym, "name", None)
-                if name:
-                    name_str = str(name).strip()
-                    # [Plan F1] genvar substitute
-                    if name_str in ctx:
-                        return str(ctx[name_str])
-                    return name_str
-        # IdentifierName: 通过 .identifier.value 获取
-        if "IdentifierName" in sk:
-            ident = getattr(signal, "identifier", None)
-            if ident:
-                val = getattr(ident, "value", None) or str(ident)
-                return str(val).strip()
-        # BinaryOp: 递归展开为 "left op right" — 保留操作符
-        # [Plan F1] 传入 genvar_ctx 让子表达式可 substitute genvar
-        if "BinaryOp" in sk:
-            left = getattr(signal, "left", None)
-            right = getattr(signal, "right", None)
-            op = getattr(signal, "op", None)
-            op_sym = self._BINOP_SYMBOL.get(op, "?") if op else "?"
-            ls = self._get_signal(left, ctx) if left else "?"
-            rs = self._get_signal(right, ctx) if right else "?"
-            if ls and rs:
-                return f"{ls} {op_sym} {rs}"
-            return ls or rs or None
-        # UnaryOp: 递归展开为 "op operand" — 避免对象引用
-        if "UnaryOp" in sk:
-            operand = getattr(signal, "operand", None)
-            op_str = self._get_signal(operand) if operand else "?"
-            return f"!{op_str}" if op_str else None
-        # Replication: {N{expr}} — 返回 "{N{expr}}"
-        if "Replication" in sk:
-            count = getattr(signal, "count", None)
-            concat = getattr(signal, "concat", None)
-            cnt_str = self._get_signal(count) if count else "?"
-            concat_str = self._get_signal(concat) if concat else "?"
-            if cnt_str and concat_str:
-                return f"{{{cnt_str}{{{concat_str}}}}}"
-            return None
-        # Concatenation: {a, b, c} — 展开 operands
-        if "Concatenation" in sk:
-            operands = getattr(signal, "operands", None) or []
-            parts = [self._get_signal(o) or str(o) for o in operands if o]
-            return "{" + ", ".join(parts) + "}" if parts else None
-        # ConversionExpression: type cast (e.g., 8'hAA → int literal)
-        if "Conversion" in sk:
-            operand = getattr(signal, "operand", None)
-            if operand:
-                ok = str(getattr(operand, "kind", ""))
-                if "IntegerLiteral" in ok or "UnbasedUnsized" in ok:
-                    val = getattr(operand, "value", None)
-                    if val is not None:
-                        # [V6.9] 返回字面量值，但调用方应过滤——它不应作为信号名
-                        return str(val)
-                elif "NamedValue" in ok:
-                    return self._get_signal(operand)
-                # [V6.9] Call/Subroutine (e.g. $floor, $random) — 提取函数名
-                elif "Call" in ok or "Invocation" in ok:
-                    sub = getattr(operand, "subroutine", None) or getattr(operand, "name", None)
-                    if sub:
-                        sname = getattr(sub, "name", None)
-                        if sname:
-                            return str(sname)
-                        return str(sub).strip()
-                    return str(operand).strip()
-                # fallback: 递归 _get_signal，避免 str() 返回对象引用
-                sig = self._get_signal(operand)
-                if sig and not sig.startswith("Expression("):
-                    return sig
-                return str(operand)
-        # ElementSelect: data_out[0]
-        # [Plan F1 2026-08-12] selector 优先 constant fold (避免 acc[1 + 1] 这种中间表示)
-        # (e.g. acc[i+1] 在 gen_accum[1] 里应变成 acc[2], 不是 acc[1 + 1])
-        if "ElementSelect" in sk:
-            base = getattr(signal, "value", None) or getattr(signal, "base", None)
-            selector = getattr(signal, "selector", None)
-            base_name = self._get_signal(base, ctx) if base else None
-            # 优先 constant fold: 求 selector 在 ctx 下的值
-            folded = self._fold_constant(selector, ctx)
-            if folded is not None:
-                sel_str = str(folded)
-            else:
-                # fold 失败: fallback 到 _get_signal (BinaryOp 格式: "i + 1")
-                sel_val = getattr(selector, "value", None) if selector else None
-                if sel_val is not None:
-                    try:
-                        sel_str = str(int(sel_val))
-                    except (TypeError, ValueError):
-                        sel_str = self._get_signal(selector, ctx) or str(sel_val)
-                else:
-                    sel_str = self._get_signal(selector, ctx) or "x"
-            if base_name:
-                return f"{base_name}[{sel_str}]"
-            return None
-        # RangeSelect: data[3:0]
-        if "RangeSelect" in sk:
-            base = getattr(signal, "value", None) or getattr(signal, "base", None)
-            left = getattr(signal, "left", None)
-            right = getattr(signal, "right", None)
-            base_name = self._get_signal(base) if base else None
-            lv = getattr(left, "value", None) if left else None
-            rv = getattr(right, "value", None) if right else None
-            # 语义 AST: left/right 可能是 NamedValueExpression（非 literal）
-            if lv is not None:
-                try:
-                    li = int(lv)
-                except (TypeError, ValueError):
-                    li = self._get_signal(left) or str(lv)
-            else:
-                li = self._get_signal(left) or "x"
-            if rv is not None:
-                try:
-                    ri = int(rv)
-                except (TypeError, ValueError):
-                    ri = self._get_signal(right) or str(rv)
-            else:
-                ri = self._get_signal(right) or "x"
-            if base_name:
-                return f"{base_name}[{li}:{ri}]"
-            return None
-        # MemberAccess: pkt.addr → base 信号 + .member (FieldSymbol)
-        if "MemberAccess" in sk:
-            base = getattr(signal, "value", None) or getattr(signal, "base", None)
-            member = getattr(signal, "member", None)
-            member_str = str(getattr(member, "name", member)) if member else ""
-            base_name = self._get_signal(base) if base else None
-            if base_name and member_str:
-                return f"{base_name}.{member_str}"
-            return None
-        # HierarchicalValue: tb.data / ifc.data / u_sub.data → 从 semantic AST 解析分量路径
-        if "HierarchicalValue" in sk:
-            sym = getattr(signal, "symbol", None)
-            if sym:
-                sname = str(getattr(sym, "name", "")).strip()
-                if sname:
-                    dd = getattr(sym, "declaringDefinition", None)
-                    defn_type = str(getattr(dd, "name", "")).strip() if dd else ""
-                    if defn_type and hasattr(self, "_current_module") and self._current_module:
-                        body = getattr(self._current_module, "body", None)
-                        if body:
-                            for port in body:
-                                pk = str(getattr(port, "kind", ""))
-                                pn = str(getattr(port, "name", "")).strip()
-                                if "InterfacePort" in pk:
-                                    idf = getattr(port, "interfaceDef", None)
-                                    if idf and str(getattr(idf, "name", "")) == defn_type:
-                                        return f"{pn}.{sname}"
-                                elif "Instance" in pk and getattr(port, "isInterface", False):
-                                    idef = getattr(port, "definition", None)
-                                    if idef and str(getattr(idef, "name", "")) == defn_type:
-                                        return f"{pn}.{sname}"
-                                elif "Instance" in pk:
-                                    idef = getattr(port, "definition", None)
-                                    if idef and str(getattr(idef, "name", "")) == defn_type:
-                                        return f"{pn}.{sname}"
-                    return sname
-        # fallback: str() + strip()
-        result = str(signal).strip()
-        result = result.replace('\n', '').replace('\r', '').strip()
-        # [V6.9] 语义 AST 节点 str() 可能返回 "Expression(ExpressionKind.XXX)" 对象引用
-        # 尝试从常见属性中提取值
-        if result.startswith("Expression(") or result.startswith("<"):
-            # 尝试 .value (IntegerLiteral / StringLiteral / etc)
-            val = getattr(signal, "value", None)
-            if val is not None and not callable(val):
-                vs = str(val).strip()
-                if vs and not vs.startswith("Expression("):
-                    return vs
-            # 尝试 .symbol.name (NamedValue / VariableRef)
-            sym = getattr(signal, "symbol", None)
-            if sym:
-                name = getattr(sym, "name", None)
-                if name:
-                    return str(name).strip()
-        return result if result else None
+        from .extractors._common import get_signal
+        return get_signal(signal, genvar_ctx, current_module=getattr(self, "_current_module", None))
 
     # ==============================================================================
     # [NEW] 语义上下文提取方法 - 从 always_ff/if 语句提取时钟域和条件
     # ==============================================================================
 
     def _fold_constant(self, expr, ctx: dict | None = None) -> int | None:
-        """[Plan F1 2026-08-12] 对含 genvar substitute 后的表达式求 constant.
+        """[ARCHITECTURE_TODOLIST #1 Step 3 2026-08-27] 薄壳委托给 extractors._common.fold_constant.
 
-        处理:
-        - IntegerLiteral (constant SVInt): 直接返 int
-        - NamedValueExpression: 如果 name 在 ctx 里, 返 ctx[name]
-        - BinaryOp (a + b / a - b): 递归 fold 两边, 应用 operator
-        - UnaryOp (-a): fold operand, 应用 unary minus
-        - 其他 (CallExpression 等): 返 None (不能 fold)
-
-        Returns:
-            int: 表达式求值后的 constant
-            None: 不能 fold (例如含 function call)
+        原实现 ~80 行已迁到 src/trace/core/extractors/_common.py (共享纯函数).
+        保留 self._fold_constant 调用方零改动.
         """
-        if expr is None:
-            return None
-        ctx = ctx or {}
-        sk = str(getattr(expr, "kind", ""))
+        from .extractors._common import fold_constant
+        return fold_constant(expr, ctx)
 
-        # IntegerLiteral
-        if "IntegerLiteral" in sk or "Literal" in sk:
-            val = getattr(expr, "value", None)
-            if val is not None:
-                try:
-                    return int(str(val))
-                except (TypeError, ValueError):
-                    return None
-
-        # NamedValue: name 在 ctx → substitute
-        if "NamedValue" in sk:
-            sym = getattr(expr, "symbol", None)
-            if sym:
-                name = getattr(sym, "name", None)
-                if name and str(name) in ctx:
-                    return int(ctx[str(name)])
-
-        # BinaryOp: 递归
-        if "BinaryOp" in sk:
-            left = getattr(expr, "left", None)
-            right = getattr(expr, "right", None)
-            op = getattr(expr, "op", None)
-            lv = self._fold_constant(left, ctx)
-            rv = self._fold_constant(right, ctx)
-            if lv is None or rv is None:
-                return None
-            op_str = str(op).lower() if op else ""
-            try:
-                if op_str.endswith(".add") or op_str == "+":
-                    return lv + rv
-                if op_str.endswith(".subtract") or op_str == "-":
-                    return lv - rv
-                if op_str.endswith(".multiply") or op_str == "*":
-                    return lv * rv
-                if op_str.endswith(".divide") or op_str == "/":
-                    return lv // rv if rv != 0 else None
-                if op_str.endswith(".mod") or op_str == "%":
-                    return lv % rv if rv != 0 else None
-                return None
-            except (TypeError, ZeroDivisionError):
-                return None
-
-        # UnaryOp
-        if "UnaryOp" in sk:
-            operand = getattr(expr, "operand", None)
-            ov = self._fold_constant(operand, ctx)
-            if ov is None:
-                return None
-            return -ov
-
-        # [Plan F1.1 2026-08-12] ConversionExpression (pyslang 包装类型转换)
-        # e.g. `1` 在 BinaryOp 里可能被包成 ConversionExpression
-        # 看 operand 是 literal 还是 NamedValue
-        if "Conversion" in sk:
-            operand = getattr(expr, "operand", None)
-            return self._fold_constant(operand, ctx)
-
-        return None
 
     def _extract_clock_from_always(self, n) -> str:
         """从 always_ff @(posedge clk) 提取时钟信号名"""
@@ -1115,27 +859,21 @@ class DriverExtractor:
         return port_names
 
     def _create_var_nodes(self, module, result, module_name, port_names):
-        """[铁律4] 为非端口变量/网表声明创建 SIGNAL TraceNode. 跳过端口."""
-        for var_decl in self.adapter.get_variable_declarations(module):
-            var_name = self.adapter.get_signal_name(var_decl)
-            if not var_name or var_name in port_names:
-                continue
-            var_name = self.adapter.clean_name(var_name)
-            var_id = f"{module_name}.{var_name}"
-            if var_id not in [n.id for n in result.nodes]:
-                var_width = self.adapter.extract_data_width(var_decl)
-                var_file, var_line, _, _ = self.adapter.get_source_location(var_decl)
-                result.nodes.append(
-                    TraceNode(
-                        id=var_id,
-                        name=var_name,
-                        module=module_name,
-                        kind=NodeKind.SIGNAL,
-                        width=var_width,
-                        file=var_file,
-                        line=var_line,
-                    )
-                )
+        """[铁律4] 为非端口变量/网表声明创建 SIGNAL TraceNode. 跳过端口.
+
+        [ARCHITECTURE_TODOLIST #1 Step 3 2026-08-27 21:33] 薄壳, 实际逻辑在
+        extractors/wire_init_extractor.create_var_nodes.
+        保留方法签名 (extract() 入口处调用, 不改调用方).
+        行为 1:1 一致 — 同样的 TraceNode、同样的 width、同样的跳过端口逻辑.
+        """
+        from .extractors.wire_init_extractor import create_var_nodes
+        return create_var_nodes(
+            adapter=self.adapter,
+            module=module,
+            result=result,
+            module_name=module_name,
+            port_names=port_names,
+        )
 
     def _create_net_alias_edges(self, module, result, module_name):
         """[REFACTOR 2026-06-26] 处理 alias 语句: alias b = a; → 创建 DRIVER 边 a → b.
