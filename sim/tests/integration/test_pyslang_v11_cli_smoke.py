@@ -1,25 +1,22 @@
 """
-[Stage 6] pyslang 10/11 双版本烟雾测试
+v11-only: CLI smoke test (D5 实施后)
 
-不依赖任何 v10/v11 specific 行为, 只验证:
-1. 5 个主 CLI 命令 (trace/cdc/verify/risk/dataflow/controlflow)
-2. 都能 import + 跑出预期结果
-3. 在当前安装的 pyslang 版本上 work
+[Stage 6] 旧版本来测 v10/v11 双版本都能跑. D5 锁定 v11 only 后, 本测试简化为:
+1. 验证 pyslang v11 已安装
+2. 验证 7 个主 CLI 命令 (trace/verify/risk/dataflow/controlflow/cdc) 在 v11 上 work
 
-这个测试在 v10 和 v11 上都应该过。
+CLI 测试保留 (跟 v10/v11 兼容无关, 是 sv_query 自身功能的验证).
 """
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-# [Stage 6] 顶层 import 之前 sys.path, 避免 stdlib 'trace' 抢占
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import pytest  # noqa: E402
 
-# [Stage 6] parents[3] = repo root (sim/tests/integration/test_*.py → sim → repo)
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TEST_FILE = str(REPO_ROOT / "sim" / "test_simple.sv")
 TEST_CDC_FILE = str(REPO_ROOT / "sim" / "test_cdc.sv")
@@ -38,30 +35,37 @@ def _run_cli(*args, timeout=60):
 
 
 def _detect_pyslang_version() -> str:
-    """Detect installed pyslang version"""
-    try:
-        from trace.core._pyslang_compat import _detect_version
-        return _detect_version()
-    except ImportError:
-        return "unknown"
+    """D5 后: 直接测 pyslang 版本号 (绕过 trace/__init__.py 的 alias bridge).
 
+    注意: 不能用 'from pyslang import SyntaxKind' 来探测, 因为我们的 alias bridge
+    会把 SyntaxKind 注入回顶层 — 那会让 v11 看起来像 v10.
 
-class TestPyslangDualVersion:
-    """[Stage 6] 主命令在当前 pyslang 版本上 smoke test"""
+    方法: 用 pyslang 顶层 uppercase class 数 (v11 ~34, v10 ~250+) — 这不受 alias
+    bridge 影响, 因为 alias bridge 只在 trace import 时生效.
+    """
+    import pyslang
+    top = [a for a in dir(pyslang) if not a.startswith("_") and a[0].isupper()]
+    if len(top) < 50:
+        return "v11+"  # v11 顶层少 (大部分移到子模块)
+    return "v10"  # v10 顶层多
 
-    def test_version_detected(self):
+class TestV11Installation:
+    """[D5] v11 only — 验证环境装的是 v11+"""
+
+    def test_pyslang_v11_installed(self):
         v = _detect_pyslang_version()
-        # v10 / v11+ / unknown, unknown 通常说明 pyslang 没装
-        assert v in ("v10", "v11+"), f"Unexpected pyslang version: {v}"
+        assert v == "v11+", f"D5 requires pyslang v11+, but got: {v}"
+
+
+class TestV11CLISmoke:
+    """主命令在 v11 上 smoke test (跟原 test_pyslang_version_compat 一致)"""
 
     def test_trace_evidence_text(self):
-        """trace evidence text 输出"""
         rc, out, _ = _run_cli("trace", "evidence", "--file", TEST_FILE, "top.data")
         assert rc == 0
         assert "data = din" in out or "Source:" in out
 
     def test_trace_evidence_json(self):
-        """trace evidence JSON 输出"""
         rc, out, _ = _run_cli("trace", "evidence", "--file", TEST_FILE, "top.data", "--json")
         assert rc == 0
         d = json.loads(out)
@@ -69,7 +73,6 @@ class TestPyslangDualVersion:
         assert d["evidence"]["source_text"] == "data = din;"
 
     def test_verify_gap_evidence(self):
-        """verify gap --evidence JSON 包含 evidence 字段"""
         rc, out, _ = _run_cli("verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
@@ -80,7 +83,6 @@ class TestPyslangDualVersion:
         pytest.fail("Expected at least one signal with evidence")
 
     def test_risk_analyze_evidence(self):
-        """risk analyze --evidence JSON"""
         rc, out, _ = _run_cli("risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
@@ -88,7 +90,6 @@ class TestPyslangDualVersion:
         assert len(with_ev) >= 1
 
     def test_dataflow_evidence(self):
-        """dataflow analyze --evidence"""
         rc, out, _ = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
@@ -97,7 +98,6 @@ class TestPyslangDualVersion:
             assert "evidence" in seg
 
     def test_controlflow_evidence(self):
-        """controlflow analyze --evidence"""
         rc, out, _ = _run_cli("controlflow", "analyze", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
@@ -106,7 +106,6 @@ class TestPyslangDualVersion:
         assert len(with_ev) >= 1
 
     def test_cdc_analyze_evidence(self):
-        """cdc analyze --evidence (需 CDC 路径)"""
         rc, out, _ = _run_cli("cdc", "analyze", "-f", TEST_CDC_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
