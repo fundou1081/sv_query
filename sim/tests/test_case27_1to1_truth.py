@@ -44,7 +44,7 @@ def _render_case27_svg() -> str:
     proc = subprocess.run(
         [sys.executable, 'run_cli.py', 'visualize', 'dataflow',
          '--file', str(CASE27_SV),
-         '--module', 'generate_loop', '--no-strict',
+         '--module', 'generate_loop',
          '--svg', str(SVG_PATH)],
         cwd=REPO, capture_output=True, text=True, timeout=120,
     )
