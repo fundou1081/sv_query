@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 3b ✅ 2026-08-28, 9 步完成 4 步; 下一步 Step 4 assign_extractor)**
+- **状态**: 🟡 **in_progress (Step 4 ✅ 2026-08-28, 9 步完成 5 步; 下一步 Step 4b/5)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -24,8 +24,15 @@
         - 顺手消除两段近乎逐行重复的循环 → 抽出 `_emit_driver_edges()` 共用
         - `driver_extractor.py` 3836 → **3754 行** (净减 82)
         - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (全沙箱所致) / truth 4 passed = **0 回归**; 另写探针对比两条路径 (顶层 net decl + generate-for 展开) 输出 **byte-identical**
-  - [ ] Step 4: 拆 assign_extractor (1 天) ← **下一步**
-  - [ ] Step 5: 拆 statement_flattener (0.5 天)
+  - [x] ✅ **Step 4: 拆 assign_extractor (580 行: 5 方法 + 2 专属 helper)** — 见 [iter_038](task_tree/iterations/iter_038_step4_assign_extractor.md)
+        - **闭包规模**: 31 方法 / 2028 行 (Step 3b 的 12/563 大一个量级)
+        - **关键设计: 用 AssignHelpers dataclass 打包注入** (而非逐个 Callable) — 13 个共享 helper 一并打包, 调用方一次构造, 内部统一 `h.xxx` 访问, 避免 5 个 handler 签名膨胀到 15+ 行
+        - 4 个 assign 专属 helper 随之搬走, 13 个共享 helper 仍留 driver_extractor (Step 5-7 共用)
+        - **机械搬迁**: 50 行 Python 脚本按行号切分 + 规则转换 (self.→h. / handler 互调传 h=h), 0 处 self. 残留, 0 处遗漏
+        - `driver_extractor.py` 3754 → **3211 行** (净减 543, 累计 #1 拆出 891 行)
+        - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (沙箱) / truth 4 passed = **0 回归**; 4 个 dispatch 分支 (concat/ ternary/ call/ binary+invocation) 探针 byte-identical; 历史 net_decl + generate-for 路径亦 byte-identical
+  - [ ] ⚠️ **Step 4b: 拆 `_handle_normal_assign` (329 行)** ← 建议 (不与搬文件混, 单独 commit 便于归因)
+  - [ ] Step 5: 拆 statement_flattener (0.5 天) ← **下一步**
   - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
   - [ ] Step 7: 拆 function_extractor (1 天)
   - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
@@ -137,7 +144,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b ✅ (4/9) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b/4 ✅ (5/9) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -145,7 +152,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**9 步完成 4 步**, Step 3b ✅); #2 ✅ done; #3 done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
+**总进度**: #1 进行中 (**9 步完成 5 步**, Step 3b/4 ✅); #2 ✅ done; #3 done; 其他 4 项 pending. **总 3.5/7 (50%) + #8 待决策**.
 
 ---
 
@@ -191,3 +198,11 @@
   - 顺手消除原函数两段近乎逐行重复的循环 (顶层 net decl / generate-for 展开), 抽出 `_emit_driver_edges()`。
   - `driver_extractor.py` **3836 → 3754 行** (净减 82)。
   - **验证**: integration 13→13, cli 20→20, unit 13→4 (剩余全部 `Operation not permitted` 沙箱所致), truth 4 passed → **0 回归**。另写探针 A/B 对比两条代码路径输出 **byte-identical**, 特别确认 generate-for 的 3 个 `gen_accum[N].prod` 仍是独立节点 (Plan G3 历史 bug 高发点)。
+- **2026-08-28 16:10** — #1 **Step 4 完成** (iter_038). 拆 `_create_assign_edges` + 4 个 sub-method + 2 个 assign 专属 helper (580 行) → `extractors/assign_extractor.py`.
+  - **闭包规模**: 31 方法 / 2028 行 (Step 3b 的 12/563 大一个量级)
+  - **关键设计: 用 `AssignHelpers` dataclass 打包注入** (而非逐个 Callable) — 13 个共享 helper 一并打包, 调用方一次构造, 内部统一 `h.xxx` 访问。这与 Step 1+2/3b 用的逐个 Callable 是**同源但不同规模**的方案: 2-6 个依赖时前者更显式, 13 个依赖时后者签名不膨胀。判定标准是"handler 签名能否保持 ~50 行阈值"
+  - 4 个 assign 专属 helper 随之搬走, 13 个共享 helper 仍留 driver_extractor (Step 5-7 共用, 不能提前搬)
+  - **机械搬迁**: 50 行 Python 脚本按行号切分 + 规则转换 (self.→h. / handler 互调自动传 h=h), 0 处 self. 残留, 0 处遗漏
+  - `driver_extractor.py` 3754 → **3211 行** (净减 543, #1 累计拆出 891 行 / 4101 → 3211)
+  - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (沙箱) / truth 4 passed = **0 回归**; 4 个 dispatch 分支 (concat/ ternary/ call/ binary+invocation) 探针 byte-identical; 历史 net_decl + generate-for 路径亦 byte-identical
+  - `_handle_normal_assign` 329 行**未动** (行为重构不与搬文件混 commit, 单独留 Step 4b)
