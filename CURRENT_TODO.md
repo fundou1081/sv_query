@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 19:10 GMT+8
+> **最后更新**: 2026-08-28 19:55 GMT+8
 
 ---
 
@@ -24,8 +24,8 @@
 
 **任务**: 架构改造 #1 — 拆 driver_extractor (4101 行 → 10 个文件)
 **来源**: `docs/ARCHITECTURE_TODOLIST.md` #1
-**状态**: 🟡 in_progress — **7/9 步完成** (Step 6 ✅)
-**下一步**: **Step 7 拆 function_extractor** (估 1 天)
+**状态**: 🟡 in_progress — **8/9 步完成** (Step 7 ✅)
+**下一步**: **Step 8 删 driver_extractor.py 主体** (0.5 天)
 
 ### Sub-task 勾选
 
@@ -38,8 +38,8 @@
 - [x] ✅ Step 4b 拆 `_handle_normal_assign` (329 行) → 4 个具名 helper, 主函数 329 → 33 行
 - [x] ✅ Step 5 拆 statement_flattener (8 方法/204 行) → `statement_flattener.py`; 3211→3035 行; flattener 全路径探针 byte-identical
 - [x] ✅ Step 6 拆 always_extractor (9 方法/~790 行) → `always_extractor.py`; 3035→2292 行; always 全路径探针 byte-identical
-- [ ] Step 7 拆 function_extractor (1 天) ← **下一步**
-- [ ] Step 8 删 driver_extractor.py 主体 (0.5 天)
+- [x] ✅ Step 7 拆 function_extractor (7 方法/648 行) → `function_extractor.py`; 2292→1685 行; function+task 探针 byte-identical
+- [ ] Step 8 删 driver_extractor.py 主体 (0.5 天) ← **下一步**
 - [ ] Step 9 全套最终回归 (0.5 天)
 
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
