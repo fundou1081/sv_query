@@ -125,14 +125,84 @@ elif direction == "unknown":
 
 ---
 
-## 🛠️ 清理优先级建议
+## ✅ B/C/E 三类审查结论 (2026-08-28 21:50)
+
+对分类 B/C/E 做了**逐点审查** (113 处 try/except+pass + 121 处 fallback 关键词 + 163 处 getattr default)。
+
+### 分类 B 审查结果: 111 处判定 = **36 违规 / 55 合规 / 20 边界**
+
+| 判定 | 数量 | 说明 |
+|---|---|---|
+| 🔴 **违规** | 36 | Exception 过宽 + 数据提取路径, 失败静默丢数据 |
+| 🟢 合规 | 55 | 防御性遍历 / 可选增强 / 有 sentinel / 有注释 |
+| 🟡 边界 | 20 | 有防御意图但无日志, 建议加 logger.debug |
+
+**违规分布** (按文件):
+- `class_graph_builder.py` (7 处): 类约束/成员提取失败静默 — **最高危** (约束数据丢失)
+- `graph_builder.py` (6 处): 图构建失败静默 — 丢节点/边
+- `load_extractor.py` (7 处): 端口/参数提取失败静默
+- `sva_extractor.py` (5 处): SVA 信号提取失败静默
+- `compiler.py` (5 处): source_location 提取失败静默
+- `semantic_adapter.py` (4 处): 端口/成员提取失败 + Exception 冗余
+- `native_adapter.py` (1 处): `except (UnicodeDecodeError, TypeError, Exception)` — Exception 包揽前两个, 冗余
+
+**典型违规模式**:
+```python
+# 违规: Exception 过宽 + 无日志
+try:
+    for item in node.items:
+        self.visit(item)
+except Exception:
+    pass  # ← 类约束遍历失败, 约束数据静默丢失
+```
+
+**合规典型** (不需要改):
+- `graph/dataflow.py` NetworkX 无路径返回空 — 正常契约
+- `_dot_common.py` 临时文件清理 OSError — 资源清理
+- `extractors/_common.py` 常量折叠返回 None — sentinel
+- `uvm_testbench` / `call_graph` / `covergroup` 的 TypeError 跳过 — 有注释
+- `sva_extractor` 的 TypeError 遍历跳过 — 有注释
+
+### 分类 C 审查结果: 121 处 fallback 关键词 = **绝大多数有意设计**
+
+抽查 (elk_bridge 25 / driver_extractor 12 / coverage_generator 12 / connection_extractor 10 / semantic_adapter 8):
+
+| 类型 | 占比 | 说明 |
+|---|---|---|
+| ✅ 有意设计 (优先路径 + fallback helper) | ~85% | 注释明确 "优先入参, fallback 才用 helper" |
+| ✅ 显式 sentinel (NO_TREE_MARKER) | ~10% | coverage_generator 已贯彻纪律 |
+| ⚠️ 需注意 | ~5% | `driver_extractor:450` filelist mutex fallback (特殊处理, 合规但复杂) |
+
+**结论**: 分类 C 无系统性违规, 注释驱动的 fallback 是项目设计的一部分。
+重点是**新增代码**不要引入 silent fallback (AGENTS.md 纪律 #2)。
+
+### 分类 E 审查结果: 163 处 getattr+default = **绝大多数合规**
+
+抽查 (class_graph_builder 68 / module_instance_graph 37 / load_extractor 33 / sva_extractor 28):
+
+| 类型 | 占比 | 说明 |
+|---|---|---|
+| ✅ 防御性 AST 遍历 (getattr kind/name → "") | ~95% | pyslang 属性可选, kind 判断走 else 分支 |
+| ✅ 属性名兼容 (or 链尝试多个属性名) | ~4% | pyslang v10/v11 兼容 |
+| ⚠️ 需注意 | ~1% | `base.py:521` direction 缺省取 "" (modport, 边界) |
+
+**结论**: getattr+default 是防御性编程标准做法, 合规。
+关键字段 (方向/信号名) 缺省时建议加 warning, 但当前无实际数据错误。
+
+---
+
+## 🛠️ 清理优先级建议 (审查后更新)
 
 | 优先级 | 目标 | 理由 |
 |---|---|---|
-| P0 | `native_adapter.py:156` / `coverage_models.py:239` / `compiler.py:481/486` 的 `except Exception: pass` | 包揽所有异常 = 完全隐藏错误, 最危险 |
-| P1 | uvm_testbench_extractor 6 处 TypeError pass | 有注释但无 warning, 加 logger.debug |
-| P2 | 113 处 try/except+pass 逐点审查 | 分类出"真违规"vs"可选增强" |
-| P3 | elk_bridge 25 处 fallback 抽查 | 数量最多, 需确认无 silent 路径 |
+| P0 | `class_graph_builder.py` 7 处违规 | 类约束数据静默丢失, 最影响功能正确性 |
+| P0 | `graph_builder.py` 6 处违规 | 图节点/边静默缺失 |
+| P0 | `load_extractor.py` 7 处违规 | 端口/参数提取失败静默 |
+| P0 | `native_adapter.py:156` / `compiler.py` 5 处 | Exception 过宽 + source_location 静默 |
+| P1 | `sva_extractor.py` 5 处违规 | SVA 信号提取失败静默 |
+| P1 | `semantic_adapter.py` 4 处违规 | 端口/成员提取失败 |
+| P2 | 20 处边界 → 加 logger.debug | 低成本提升可观测性 |
+| P3 | `base.py:521` direction 缺省 → warning | 关键字段缺失提示 |
 
 ---
 
