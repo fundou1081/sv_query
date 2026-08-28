@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 5 ✅ 2026-08-28, 6/9 步; 下一步 Step 6 always_extractor)**
+- **状态**: 🟡 **in_progress (Step 6 ✅ 2026-08-28, 7/9 步; 下一步 Step 7 function_extractor)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -37,7 +37,11 @@
         - 6 个 visitor 纯模块内互调, 无外部依赖
         - `driver_extractor.py` 3211 → **3035 行** (#1 累计 -1066 行)
         - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / flattener 全路径探针 (if/case/loop/timing) byte-identical
-  - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
+  - [x] ✅ **Step 6: 拆 always_extractor (9 方法/~790 行)** — [iter_041](task_tree/iterations/iter_041_step6_always_extractor.md)
+        - **共享 helper 边界**: `_is_compile_time_symbol` / `_is_sv_literal_token` 被 always 块外的 `_expr_is_compile_time` / `_filter_signal_conditions_by_module` 共用 → 留 driver_extractor, 经 AlwaysHelpers 注入
+        - `_create_always_edges` 453 行**只搬不拆** (行为重构留待独立 commit)
+        - `driver_extractor.py` 3035 → **2292 行** (#1 累计 -1809 行)
+        - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / always 全路径探针 (ff+async reset / comb case / ternary) byte-identical
   - [ ] Step 7: 拆 function_extractor (1 天)
   - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
   - [ ] Step 9: 全套最终回归 (0.5 天)
@@ -148,7 +152,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 6/9 ✅ (4101→3035 行) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 7/9 ✅ (4101→2292 行) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -156,7 +160,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**6/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
+**总进度**: #1 进行中 (**7/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
 
 ---
 
@@ -222,3 +226,9 @@
   - `driver_extractor.py` 3211 → **3035 行** (#1 累计 -1066 行)
   - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; flattener 全路径探针 (if/else + case + for loop + timing, 19 边/11 节点) byte-identical
   - 实施中 3 次小修正 (参数转发 / StatementKind import / 薄壳函数名下划线), 均当场测试暴露
+- **2026-08-28 19:10** — #1 **Step 6 完成** (iter_041). 拆 always 相关 9 个方法 (~790 行) → `extractors/always_extractor.py`.
+  - **共享 helper 边界**: `_is_compile_time_symbol` / `_is_sv_literal_token` 被 always 块外的 `_expr_is_compile_time` / `_filter_signal_conditions_by_module` 共用 (assign/always/function 三处), 不能搬走 → 留 driver_extractor, 经 AlwaysHelpers 注入
+  - `_create_always_edges` 453 行**只搬不拆** (行为重构留待独立 commit, 与 Step 4b 同策略)
+  - `driver_extractor.py` 3035 → **2292 行** (#1 累计 -1809 行)
+  - **诚实标注**: 删除区间吞掉了下一个方法的 `@staticmethod` 装饰器 → 25 个测试失败, 错误信息 `takes 1 positional argument but 2 were given` 直接定位, 加回即修复
+  - 验证: integration 13→13 (修复前 38) / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; always 全路径探针 byte-identical
