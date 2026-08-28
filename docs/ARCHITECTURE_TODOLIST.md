@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 4b ✅ 2026-08-28, 9 步完成 5 步 + 4b; 下一步 Step 5)**
+- **状态**: 🟡 **in_progress (Step 5 ✅ 2026-08-28, 6/9 步; 下一步 Step 6 always_extractor)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -32,7 +32,11 @@
         - `driver_extractor.py` 3754 → **3211 行** (净减 543, 累计 #1 拆出 891 行)
         - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (沙箱) / truth 4 passed = **0 回归**; 4 个 dispatch 分支 (concat/ ternary/ call/ binary+invocation) 探针 byte-identical; 历史 net_decl + generate-for 路径亦 byte-identical
   - [ ] ⚠️ **Step 4b: 拆 `_handle_normal_assign` (329 行)** ← 建议 (不与搬文件混, 单独 commit 便于归因)
-  - [ ] Step 5: 拆 statement_flattener (0.5 天) ← **下一步**
+  - [x] ✅ **Step 5: 拆 statement_flattener (8 方法/204 行)** — [iter_040](task_tree/iterations/iter_040_step5_statement_flattener.md)
+        - 依赖极简: 仅 `_get_signal` (Callable 注入) + `_cond_ast_by_str` (参数传入, 非全局)
+        - 6 个 visitor 纯模块内互调, 无外部依赖
+        - `driver_extractor.py` 3211 → **3035 行** (#1 累计 -1066 行)
+        - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / flattener 全路径探针 (if/case/loop/timing) byte-identical
   - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
   - [ ] Step 7: 拆 function_extractor (1 天)
   - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
@@ -144,7 +148,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b/4/4b ✅ (5/9 + 4b) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 6/9 ✅ (4101→3035 行) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -152,7 +156,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**Step 1+2/3/3b/4/4b ✅**, 5 步 + 4b 完成); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
+**总进度**: #1 进行中 (**6/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
 
 ---
 
@@ -212,3 +216,9 @@
   - **诚实标注**: 实施中 2 个失误 (早期 return 改 4 元组 + 漏写 helper 末尾 return), 当场测试发现, 未污染 commit
   - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / 4 dispatch 探针 byte-identical
   - 183 行的 `_build_ternary_edge_signals` 仍超 AGENTS.md ~50 行阈值, 但合理: 含 3 个递归嵌套 helper 共 60 行, 主体调度而非单层复杂度
+- **2026-08-28 18:20** — #1 **Step 5 完成** (iter_040). 拆 8 个 `_flatten_*` 方法 (204 行) → `extractors/statement_flattener.py`.
+  - 依赖极简: 仅 `_get_signal` (Callable 注入) + `_cond_ast_by_str` (作为参数传入, 非全局单例 — 遵守纪律 #2)
+  - 6 个 visitor 纯模块内互调, 无外部依赖
+  - `driver_extractor.py` 3211 → **3035 行** (#1 累计 -1066 行)
+  - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; flattener 全路径探针 (if/else + case + for loop + timing, 19 边/11 节点) byte-identical
+  - 实施中 3 次小修正 (参数转发 / StatementKind import / 薄壳函数名下划线), 均当场测试暴露

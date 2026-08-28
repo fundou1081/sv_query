@@ -21,7 +21,7 @@ import logging
 import warnings
 from typing import Any
 
-from pyslang.pyslang.ast import BinaryOperator, ExpressionKind, StatementKind  # [V6.9] semantic AST only
+from pyslang.pyslang.ast import BinaryOperator, StatementKind  # [V6.9] semantic AST only (ExpressionKind 已随 Step 5 flattener 拆走)
 
 from .ast_utils import kind_matches, unwrap  # [V6.3+3 2026-07-27]
 from .base import PyslangAdapter
@@ -2044,210 +2044,34 @@ class DriverExtractor:
         items = []
         self._flatten_semantic(sem_body, items)
         return items
-
     def _flatten_assignments(self, stmt, result: list, cond_stack: list[str] | None = None):
-        """[DEPRECATED] 旧 syntax-based 展开。保留兼容 _expand_and_append_assignment。"""
-        # 重定向到 semantic 版本
-        self._flatten_semantic(stmt, result, cond_stack)
+        """[DEPRECATED] 旧 syntax-based 展开。保留兼容 _expand_and_append_assignment。
 
-    # ======================================================================
-    # SemanticStatementFlattener: 纯 semantic AST 展平 (V6.9)
-    # 铁律15/26: Visitor 模式 — 每个 StatementKind 独立方法，禁止字符串匹配
-    # ======================================================================
+        [ARCHITECTURE_TODOLIST #1 Step 5 2026-08-28] 薄壳, 实际逻辑在
+        extractors/statement_flattener.py (8 个 _flatten_* 方法, 204 行)。
+        保留方法签名 (调用方零改动)。行为 1:1 一致 — 相同的 visitor 分发、
+        相同的 cond_ast_by_str 副作用。
+        """
+        from .extractors.statement_flattener import _flatten_assignments
+        _flatten_assignments(
+            stmt, result, cond_stack,
+            get_signal=self._get_signal,
+            cond_ast_by_str=self._cond_ast_by_str,
+        )
 
     def _flatten_semantic(self, stmt, result: list, cond_stack: list[str] | None = None):
         """[V6.9] Dispatcher — 按 StatementKind / ExpressionKind 分发到独立 visitor 方法。
 
-        铁律15/26: 禁止 if-elif 链，禁止 str(kind) 字符串匹配。
+        [ARCHITECTURE_TODOLIST #1 Step 5 2026-08-28] 薄壳, 委派到
+        extractors/statement_flattener._flatten_semantic。
         """
-        if stmt is None:
-            return
-        if cond_stack is None:
-            cond_stack = []
+        from .extractors.statement_flattener import _flatten_semantic
+        _flatten_semantic(
+            stmt, result, cond_stack,
+            get_signal=self._get_signal,
+            cond_ast_by_str=self._cond_ast_by_str,
+        )
 
-        kind = getattr(stmt, "kind", None)
-
-        if kind == StatementKind.Block:
-            self._flatten_block(stmt, result, cond_stack)
-        elif kind == StatementKind.Timed:
-            self._flatten_timed(stmt, result, cond_stack)
-        elif kind == StatementKind.Conditional:
-            self._flatten_conditional(stmt, result, cond_stack)
-        elif kind in (StatementKind.WhileLoop, StatementKind.ForLoop, StatementKind.DoWhileLoop,
-                      StatementKind.ForeverLoop, StatementKind.RepeatLoop, StatementKind.ForeachLoop):
-            self._flatten_loop(stmt, result, cond_stack)
-        elif kind == StatementKind.ExpressionStatement:
-            self._flatten_expression_statement(stmt, result, cond_stack)
-        elif kind in (StatementKind.Case, StatementKind.PatternCase):
-            self._flatten_case(stmt, result, cond_stack)
-        elif kind == ExpressionKind.Assignment:
-            condition_chain = list(cond_stack) if cond_stack else []
-            result.append((stmt, condition_chain))
-        # 其他 StatementKind（Break, Continue, Return, Wait, EventTrigger 等）：
-        # 不展开，不影响驱动提取。
-
-    # —— Visitor 方法 ——
-
-    def _flatten_block(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.Block: 遍历 .body (单个对象或 iterable)。
-
-        .body 可能是:
-          - 单个 Statement (ConditionalStatement, ExpressionStatement 等)
-          - iterable list of Statement
-          - StatementList (StatementKind.List) → 需迭代 .list
-        """
-        body_val = getattr(stmt, "body", None)
-        if body_val is None:
-            return
-        # StatementKind.List: 特殊类型，迭代 .list 属性
-        if getattr(body_val, "kind", None) == StatementKind.List:
-            stmt_list = getattr(body_val, "list", None)
-            if stmt_list is not None and hasattr(stmt_list, "__iter__") and not isinstance(stmt_list, str):
-                for item in stmt_list:
-                    self._flatten_semantic(item, result, cond_stack)
-            return
-        if hasattr(body_val, "__iter__") and not isinstance(body_val, str):
-            for item in body_val:
-                self._flatten_semantic(item, result, cond_stack)
-        else:
-            self._flatten_semantic(body_val, result, cond_stack)
-
-    def _flatten_timed(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.Timed: 跳过 timing，进入 .stmt。"""
-        inner = getattr(stmt, "stmt", None) or getattr(stmt, "statement", None)
-        self._flatten_semantic(inner, result, cond_stack)
-
-    def _flatten_conditional(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.Conditional: 展开 ifTrue + ifFalse。
-
-        semantic AST 用 .ifTrue/.ifFalse（不是 syntax 的 .statement/.elseClause）。
-        """
-        cond = getattr(stmt, "conditions", None) or getattr(stmt, "predicate", None) or getattr(stmt, "condition", None)
-        # .conditions 是 Condition 对象列表；取出第一个 .expr 并用 _get_signal 提取信号名
-        cond_expr = None
-        if hasattr(cond, "__iter__") and not isinstance(cond, str):
-            cond_list = list(cond)
-            if cond_list:
-                cond_expr = getattr(cond_list[0], "expr", None)
-                new_cond = self._get_signal(cond_expr) if cond_expr else ""
-            else:
-                new_cond = ""
-        else:
-            new_cond = str(cond).strip() if cond is not None else ""
-        # [Plan F3-pre 2026-08-13] 记录条件 AST (回填 edge.condition_ast)
-        if new_cond and cond_expr is not None:
-            self._cond_ast_by_str[new_cond] = cond_expr
-        is_real = new_cond and not any(kw in new_cond for kw in ("posedge", "negedge", "or "))
-
-        # ifTrue
-        if is_real:
-            cond_stack.append(new_cond)
-        then_stmt = getattr(stmt, "ifTrue", None) or getattr(stmt, "statement", None)
-        self._flatten_semantic(then_stmt, result, cond_stack)
-        if is_real:
-            cond_stack.pop()
-
-        # ifFalse（仅当有 else 分支时）
-        else_node = getattr(stmt, "ifFalse", None) or getattr(stmt, "elseClause", None) or getattr(stmt, "elseStatement", None)
-        if else_node is not None:
-            if is_real:
-                neg_cond = f"!{new_cond}" if all(c.isalnum() or c == '_' for c in new_cond) else f"!({new_cond})"
-                cond_stack.append(neg_cond)
-            clause = getattr(else_node, "clause", None) or getattr(else_node, "statement", None) or else_node
-            self._flatten_semantic(clause, result, cond_stack)
-            if is_real:
-                cond_stack.pop()
-
-    def _flatten_loop(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind WhileLoop/ForLoop/DoWhile/Forever/Repeat/Foreach: 进入 .body。"""
-        body = getattr(stmt, "body", None)
-        if body is not None:
-            if hasattr(body, "__iter__") and not isinstance(body, str):
-                for item in body:
-                    self._flatten_semantic(item, result, cond_stack)
-            else:
-                self._flatten_semantic(body, result, cond_stack)
-
-    def _flatten_expression_statement(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind.ExpressionStatement: 提取 .expr (Assignment/Call 则追加)。
-
-        铁律1: 只用 semantic AST ExpressionKind，不碰 SyntaxKind。
-        """
-        expr = getattr(stmt, "expr", None)
-        if expr is None:
-            return
-        ek = getattr(expr, "kind", None)
-        condition_chain = list(cond_stack) if cond_stack else []
-        if ek == ExpressionKind.Assignment:
-            result.append((expr, condition_chain))
-        elif ek == ExpressionKind.Call:
-            # [V6.9] task/function 调用: 将 output 参数映射展开为赋值
-            # t(a, b) → arguments = [NamedValue(a), Assignment(b, ...)]
-            args = getattr(expr, "arguments", None)
-            if args is not None and hasattr(args, "__iter__") and not isinstance(args, str):
-                input_sig = None
-                for arg in args:
-                    ak = getattr(arg, "kind", None)
-                    if ak == ExpressionKind.Assignment:
-                        # output 参数: 创建 input → output DRIVER
-                        lhs_node = getattr(arg, "left", None)
-                        out_name = self._get_signal(lhs_node) if lhs_node else None
-                        if input_sig and out_name:
-                            # 构造一个虚拟赋值元组: (output, input_as_string, condition)
-                            result.append((arg, condition_chain))
-                    elif ak == ExpressionKind.NamedValue:
-                        # 第一个是 input 参数
-                        input_sig = self._get_signal(arg)
-
-    def _flatten_case(self, stmt, result: list, cond_stack: list[str]):
-        """StatementKind Case/PatternCase: 展开各 CaseItem。
-
-        每个 CaseItem 有 .expressions (值列表) 和 .clause (对应语句)。
-        """
-        case_expr = getattr(stmt, "expr", None) or getattr(stmt, "expression", None)
-        # [V6.9] 用 _get_signal 而非 str() 避免对象引用
-        case_cond = self._get_signal(case_expr) or str(case_expr).strip() if case_expr else ""
-        # [Plan F3-pre 2026-08-13] 记录 case 选择信号 AST
-        if case_cond and case_expr is not None:
-            self._cond_ast_by_str[case_cond] = case_expr
-        items = getattr(stmt, "items", None)
-        if items is not None and hasattr(items, "__iter__") and not isinstance(items, str):
-            for item in items:
-                item_exprs = getattr(item, "expressions", None)
-                if item_exprs and hasattr(item_exprs, "__iter__") and not isinstance(item_exprs, str):
-                    # [V6.9] 用 _get_signal 而非 str() 避免对象引用
-                    expr_strs = []
-                    for e in item_exprs:
-                        sig = self._get_signal(e)
-                        if sig and not sig.startswith("Expression("):
-                            expr_strs.append(sig)
-                        else:
-                            expr_strs.append(str(e).strip())
-                    item_cond = " || ".join(expr_strs)
-                else:
-                    # [V6.9] 用 _get_signal 而非 str() 避免对象引用
-                    raw = getattr(item, "expression", None)
-                    sig = self._get_signal(raw) if raw else ""
-                    item_cond = sig if (sig and not sig.startswith("Expression(")) else str(raw or "").strip()
-                case_full = f"{case_cond} == {item_cond}" if case_cond and item_cond else (item_cond or case_cond)
-                if case_full:
-                    cond_stack.append(case_full)
-                case_stmt = getattr(item, "clause", None) or getattr(item, "statement", None) or getattr(item, "stmt", None)
-                self._flatten_semantic(case_stmt, result, cond_stack)
-                if case_full:
-                    cond_stack.pop()
-
-            # [V6.9] pyslang semantic AST stores default branch outside `.items`
-            # in `.defaultCase` (ExpressionStatement), not as a CaseItem.
-            default_case = getattr(stmt, "defaultCase", None)
-            if default_case is not None:
-                item_cond = "default"
-                case_full = f"{case_cond} == default" if case_cond else "default"
-                if case_full:
-                    cond_stack.append(case_full)
-                self._flatten_semantic(default_case, result, cond_stack)
-                if case_full:
-                    cond_stack.pop()
 
     def _expand_and_append_assignment(self, assign_expr, cond_stack, result):
         """[V6.9] 如果 RHS 是 ternary (syntax ConditionalExpression), 递归展开。
