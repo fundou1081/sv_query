@@ -25,7 +25,7 @@
 **任务**: (无 — 架构改造 #1/#2/#3 已完成)
 
 **下一候选** (未启动, 先问方豆):
-- **#6**: expression tree 提取独立成 builder (2 天)
+- **#7**: 迁 pyslang 11.0 native API (1-2 周, 长期高 ROI) — **最后一项**
 - #7: 迁 pyslang 11.0 native API (1-2 周)
 
 ---
@@ -33,6 +33,7 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-08-28 23:40** | **#6 — expression tree 独立 builder** | expr_tree_builder.py, 0 回归, tree 探针 byte-identical. [iter_050](docs/task_tree/iterations/iter_050_expr_tree_builder.md) |
 | **2026-08-28 23:10** | **#5 — 管线 → 显式 DAG** | 新建 pipeline.py, 11 步 DAG, 0 回归. [iter_049](docs/task_tree/iterations/iter_049_pipeline_dag.md) |
 | **2026-08-28 22:30** | **#4 清理 — 36 违规+20 边界** | 58 处日志/收窄, 0 回归. [iter_048](docs/task_tree/iterations/iter_048_fallback_cleanup.md) |
 | **2026-08-28 21:45** | **#4 — EXTRACTION_FAILURES.md 集中表** | 登记 113+121 处 fallback, 5 类分类, P0-P3 清理优先级. [iter_046](docs/task_tree/iterations/iter_046_extraction_failures_table.md) |
