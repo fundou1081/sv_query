@@ -191,3 +191,62 @@ G3 选项 3 **主目标达成** (RangeSelect 4 属性齐 / struct 3 条边对齐
 6. 全套回归 + 提交 (代码与文档同一 commit)
 
 **本次未提交任何代码改动** — 仅新增/更新决策记录与本迭代记录。
+
+---
+
+## ✅ 结案复核 (2026-08-28 11:20, 方豆要求"再检查下现在的状态")
+
+### 状态变化
+
+07:50 本记录判定 "引入 9 个回归, 不可提交"。此后 (08:28) 已提交 **`bec0f51`**,
+方豆指示 "重新生成 golden, 覆盖全一些"。**本次做独立复核, 验证该提交是否可信。**
+
+### 复核方法
+
+用 `git worktree` 在父提交 `49b475c` 建**独立基线**(不动主工作区), 与 `bec0f51` 做 A/B 对照。
+
+### 复核结果: ✅ 可信, 0 回归
+
+| 测试套 | 基线 `49b475c` | 当前 `bec0f51` | 结论 |
+|---|---|---|---|
+| `integration` | 23 failed | **13 failed** | ✅ **0 回归, 修好 10 个** |
+| `case27_1to1_truth` | — | **4 passed** | ✅ 全绿 |
+| `unit` | — | 13 failed | ⚠️ 全部沙箱所致 |
+
+**07:50 报告的 9 个回归已全部清零。**
+
+### 🔑 关键验证: 真修复, 不是掩盖
+
+07:50 我曾警告 "若直接重新生成 golden, 会把驱动源丢失的真 bug 固化成 baseline"。
+**本次专门验证这一点**:
+
+```
+git show --stat bec0f51 -- sim/tests/integration/test_advanced_grammar.py
+→ (空输出)
+```
+
+**测试文件本身未被改动**, 而 `test_for_loop_in_always` / `test_generate_for` 现在**原样通过**
+→ 说明是**代码真修复**, 排除了"为通过而改 assertion"。
+
+修复手法 (commit message): 符号下标 (`q[i]`/`out[i]`) 改用 `hit.full_id` **保留 `[i]`**,
+不再生成 `[?]` placeholder 节点 — 这是**根因层**修复, 非症状层绕过。
+
+**顺序也正确**: 先修真 bug → 再重录 golden。若顺序颠倒就会固化 bug。
+
+### 剩余 13 个 integration 失败 (均先期存在, 与 #2 无关)
+
+- `test_nested_diff` — fixture `data[3:0][1:0]` 是**非法 SV**, pyslang 拒编译 (预期失败)
+- `test_human_output` × 5 / `test_tree_output` × 5 / `test_real_project_viz` × 2 — 基线同样失败
+
+### `sim/tests/unit` 13 failed 属 AI 沙箱限制
+
+子进程 CLI 写 `~/.svq/cache` 被拒 (`ast_cache.py:30` 用 `Path.home()`),
+报 `[Errno 1] Operation not permitted`。**非代码缺陷, 方豆本地应全绿。**
+
+### 🔴 仍未完成 (选项 3 只做了一半)
+
+1. **silent fallback 仍在** — `_common.py:440-441` `if not _HAS_PYSLANG: return  # 退化: 让调用方走 regex 老路径`, 违反核心纪律 #2
+2. **路径 A 仍是 regex** — `bit_select_handler.py:305` `re.match(r"^([^\[]+)\[(\d+):(\d+)\]$", nid)`
+3. `graph_builder.py:442` 残留 `import re`
+
+**Outcome 更新**: ⚠️ 部分完成 → 🟢 **主体完成 (提交可信, 0 回归)**, 剩 3 项收尾。

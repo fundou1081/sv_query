@@ -608,7 +608,15 @@ class GraphBuilder:
                 pyslang_root = adapter_root
 
         if pyslang_root is None:
-            return
+            # [2026-08-28 纪律修正] 原为 `return` (静默跳过全部位选处理)。
+            # SemanticAdapter.__init__ 恒设 self._root, 故 None 只可能是调用方传错
+            # adapter 类型 —— 静默 return 会让整张图的 BIT_SELECT 边凭空消失,
+            # 且与"该设计本来就没有位选"无法区分。依 AGENTS.md 纪律 #2 改为显式报错。
+            raise ValueError(
+                f"GraphBuilder._create_hierarchical_bit_nodes: 无法从 adapter "
+                f"({type(self.adapter).__name__}) 取得 pyslang root。"
+                "位选处理需要 semantic root; 静默跳过会导致 BIT_SELECT 边全部缺失。"
+            )
 
         if self.target_module:
             instance_path = self.target_module
