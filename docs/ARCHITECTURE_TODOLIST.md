@@ -171,8 +171,9 @@
 | 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
+| 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1 ✅ done (4101→1431 行)**; #2 ✅ done; #3 ✅ done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
+**总进度**: **#1 ✅ done**; #2 ✅ done; #3 ✅ done; **#8 ✅ done (2026-08-28 21:30)**; 其他 4 项 pending. **总 4/8 (50%)**.
 
 ---
 
@@ -261,3 +262,8 @@
   - **6 探针全部 byte-identical** (assign/flattener/always/function/net_decl/generate-for)
   - 最终: driver_extractor **4101 → 1431 行**, 净拆 2670 行 (65%) 到 7 个独立模块
   - **9 个迭代经验沉淀**: 共享 helper 不跟业务搬 / 注入多打包 dataclass / 搬与重构分 commit / 行号删除要保护 / 行为等价要探针 / 死代码要全仓搜
+- **2026-08-28 21:30** — **#8 done** (iter_045). 修 generate-for 动态位选.
+  - **调查发现**: BIT_SELECT 边部分已被 #2 semantic API 顺带修复 (G2 时代 0 条 → 当前 5 条); 真正剩余的是 DRIVER 边缺失
+  - **根因**: `get_always_blocks` 不枚举 generate 内 always 块 + `find_assignments` 缺 Timed/Block/List/ExpressionStatement 分支导致 `_genvar_context` 永不填充 + `acc[i]` 无法 substitute
+  - **修复**: find_assignments 补 4 分支 + `_iter_children` 加 stmt/list 属性 + get_assignments 保持只返回 continuous + always_extractor 遍历 generate always + genvar 注入 (消费侧真实 id 登记)
+  - **验证**: 全套 0 回归 / 6 探针 byte-identical / 新测试 `test_generate_for_dynamic_bitselect` 有效 (revert 修复即失败)
