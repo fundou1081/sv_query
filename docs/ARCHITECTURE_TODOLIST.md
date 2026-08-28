@@ -7,10 +7,10 @@
 
 ## 🎯 7 项改造任务 (按 ROI 排序)
 
-### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
+### #1 拆 driver_extractor (4101 行 → 10 个文件)  ✅
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 8 ✅ 2026-08-28, 8.5/9 步; 下一步 Step 9 最终回归)**
+- **状态**: ✅ **done (2026-08-28 20:45, 全部 9 步完成)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -53,7 +53,10 @@
         - 第一次删除误删 extract() → 加 extract 保护后重删
         - `driver_extractor.py` 1687 → **1432 行** (#1 累计 -2669 行)
         - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / 4 探针 byte-identical
-  - [ ] Step 9: 全套最终回归 (0.5 天)
+  - [x] ✅ **Step 9: 全套最终回归 — #1 收官** — [iter_044](task_tree/iterations/iter_044_step9_final_regression.md)
+        - 全套: truth 4 passed / integration 13 (先期) / cli 20 (先期) / unit 4 (沙箱) = **0 回归**
+        - **6 探针全部 byte-identical**: assign 4 分支 / flattener / always / function / net_decl / generate-for
+        - 最终: driver_extractor **4101 → 1431 行** (净拆 2670 行 / 65%)
 
 ### #2 统一 BitSelectHandler (去重 graph_builder 那套)  ✅
 - **ROI**: 🔥🔥 中高
@@ -161,7 +164,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 8.5/9 ✅ (4101→1432 行) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | ✅ done | 20:38 | 20:45 (4101→1431 行) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -169,7 +172,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**8.5/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
+**总进度**: **#1 ✅ done (4101→1431 行)**; #2 ✅ done; #3 ✅ done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
 
 ---
 
@@ -253,3 +256,8 @@
   - **诚实标注**: 第一次行号区间删除误删 extract() → 7 个测试失败; 改用 extract 保护 (区间内含 def extract 则跳过) 后重删
   - `driver_extractor.py` 1687 → **1432 行** (#1 累计 -2669 行)
   - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; 4 探针 (assign/flatten/always/function) 全部 byte-identical
+- **2026-08-28 20:45** — #1 **Step 9 完成, 全部 9 步收官** (iter_044).
+  - 全套回归: truth 4 passed / integration 13 (先期) / cli 20 (先期) / unit 4 (沙箱) = **0 回归**
+  - **6 探针全部 byte-identical** (assign/flattener/always/function/net_decl/generate-for)
+  - 最终: driver_extractor **4101 → 1431 行**, 净拆 2670 行 (65%) 到 7 个独立模块
+  - **9 个迭代经验沉淀**: 共享 helper 不跟业务搬 / 注入多打包 dataclass / 搬与重构分 commit / 行号删除要保护 / 行为等价要探针 / 死代码要全仓搜
