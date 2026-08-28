@@ -5,21 +5,22 @@
   "params": {},
   "result": {
     "edges": {
-      "BIT_SELECT": 30,
+      "BIT_SELECT": 226,
       "BRANCH_CONDITION": 10,
+      "BRANCH_FALSE": 8,
       "BRANCH_RESULT": 10,
-      "DRIVER": 80
+      "DRIVER": 88
     },
     "elaboration_errors": [],
     "modules": [],
     "nodes": {
-      "CONST": 2,
+      "CONST": 10,
       "OP_TERNARY": 10,
       "PORT_IN": 6,
       "PORT_OUT": 4,
-      "SIGNAL": 41
+      "SIGNAL": 245
     },
-    "total_edges": 130,
-    "total_nodes": 63
+    "total_edges": 342,
+    "total_nodes": 275
   }
 }

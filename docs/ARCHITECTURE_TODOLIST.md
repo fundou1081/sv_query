@@ -30,14 +30,19 @@
 ### #2 统一 BitSelectHandler (去重 graph_builder 那套)  🟡
 - **ROI**: 🔥🔥 中高
 - **工作量**: 1 天
-- **状态**: 🟡 **in_progress (G2 计划 + diff 验证脚本完成, 边界 fixture 实测 06:33)**
-- **目标**: 选一套保留 (推荐 graph_builder._create_hierarchical_bit_nodes), 另一套标 deprecated → 删除
+- **状态**: 🔴 **in_progress (实现基本完成, 但实测净引入 9 个回归, 其中 2 个是真功能 bug — 不可提交)**
+- **目标**: ~~选一套保留, 另一套标 deprecated~~ → **改为: 两套都改用 pyslang semantic API 替代 regex** (G3 选项 3)
+- **决策记录**: [architecture/bitselect_semantic_api_decision.md](architecture/bitselect_semantic_api_decision.md) / [iter_035](task_tree/iterations/iter_035_bitselect_semantic_api_decision.md)
 - **子任务**:
   - [x] 对比两套实现的输出 diff (golden fixture 跑两次) — 完成, 见 `sim/tests/integration/test_bitselect_handler_diff.py`
   - [x] 边界 fixture 实测 (parameter / generate / nested / struct) — 完成 06:33
-  - [ ] 决定保留哪套 — G3 决策待确认
-  - [ ] 删另一套, 更新所有 import
-  - [ ] 回归测试
+  - [x] **G3 决策 = 选项 3 (pyslang semantic API 替代 regex)** — 方豆 06:36 "走 g3 的 3" + 07:46 "选择 semantic api"
+  - [x] 路径 B 改造: `_common.iter_bit_selects` / `BitSelectHit` / `_PyslangSelectWalker` + `graph_builder` 接入 — ⚠️ **WIP 未提交**
+  - [ ] 🔴🔴 **最高优先: 修 for-loop / generate-for 驱动源丢失 (1 → 0)** — 真功能 bug, 见 iter_035
+  - [ ] 🔴 修 silent fallback `_common.py:441` "退化: 让调用方走 regex 老路径" — **违反核心纪律 #2**
+  - [ ] 🔴 路径 A 改造 `bit_select_handler.py:290` 仍是 regex — 选项 3 只完成一半
+  - [ ] 清理 `graph_builder.py:442` 残留 `import re`
+  - [ ] 回归测试 + 提交 (代码与文档同一 commit)
 - **G2 实测发现 (06:33 更新)**:
   - 边/节点存在性一致 (0 差异)
   - 唯一差异: RangeSelect 节点 4 个属性 (bit_range / parent_bit_* / width) 路径 B 漏设
@@ -135,7 +140,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #2 进行中 (G2 + 边界 fixture 完成, G3 待决策); #3 done; 其他 4 项 pending. **总 2/7 (28.5%) + 发现 #8 (待决策)**.
+**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #2 进行中 (**G3 已决策 = 选项 3 semantic API**, 路径 B 改造完成但 WIP 未提交, 路径 A 待改造 + silent fallback 待修); #3 done; 其他 4 项 pending. **总 2/7 (28.5%) + 发现 #8 (待决策)**.
 
 ---
 
@@ -148,3 +153,15 @@
 - **2026-08-27 23:48** — #3 EXTRACTION_COVERAGE.md 完成 (7814 bytes, 33 语法 × 5 档 × 101 fixture). 修正 2 个 Phase 1A 误报 (alias 方向 / function 递归). 总进度 1.5/7 (21%).
 - **2026-08-28 06:23** — #2 G2 计划 + diff 验证脚本完成. 实测 3 fixture × 2 路径, 边/节点存在性完全一致, 唯一差异是 RangeSelect 节点 4 个属性路径 B 漏设. G3 待决策 (4 选项, 推荐选项 1, 0.5 天). 总进度 2/7 (28.5%).
 - **2026-08-28 06:33** — #2 加 4 边界 fixture (parameter / generate / nested / struct). 修正结论: regex 比想象鲁棒; 真实额外 bug 是 generate-for 动态位选 (新建 #8). 新架构债: 两套实现全 regex, 未用 pyslang API. G3 选项扩到 5 个 (新增选项 3 pyslang API 治本 + 选项 5 推荐 #2+#8 组合).
+- **2026-08-28 07:46** — #2 **G3 决策确认 = 选项 3 (pyslang semantic API 替代 regex, 治本)**. 方豆 06:36 "走 g3 的 3" + 07:46 "选择 semantic api" 两次指示. 归档 [决策记录](architecture/bitselect_semantic_api_decision.md) + [iter_035](task_tree/iterations/iter_035_bitselect_semantic_api_decision.md).
+  - **核实 WIP 状态**: 前一 session 已按 06:36 指示开工但**未提交、未记录文档** — 路径 B 已改造 (`_common.py` +492 行 / `graph_builder.py` +145 行), 路径 A 未动.
+  - **实测**: bitselect 相关 12 passed / 1 failed (失败项 fixture 是非法 SV, 非代码缺陷); case27 1to1 truth 4 passed.
+  - **A/B 回归对照 (git stash)**: 带 WIP 33 failed / 干净 HEAD 亦 33 failed — **WIP 引入 0 回归**. 33 项失败根因是 `~/.svq/cache` 在 AI 沙箱外不可写 (`ast_cache.py:30` 用 `Path.home()`), 属执行环境限制, 非项目缺陷.
+  - 🔴 **发现纪律违规**: `_common.py:441` `if not _HAS_PYSLANG: return  # 退化: 让调用方走 regex 老路径` — 违反核心纪律 #2 "禁止 fallback". 待修.
+  - 🔴 **选项 3 仅完成一半**: 路径 A (`bit_select_handler.py:290`) 仍是 regex.
+- **2026-08-28 07:50** — #2 **补充核实, 更正 07:46 的错误结论**.
+  - 期间另一 agent (QClaw) 并行完成实现, 产出 `BITSELECT_HANDLER_G3_OPTION3_REPORT.md` (报 8 regression).
+  - **更正 1**: 07:46 "0 回归" 是**误判** — 当时只跑 `unit + cli`, **漏跑 integration**. 重测 integration A/B: 带 WIP 25 failed vs 干净 HEAD 16 failed → **净引入 9 个回归** (QClaw 报 8, 实际 9).
+  - **更正 2**: QClaw "全部是 golden 比对差异" **不成立**. `test_for_loop_in_always` / `test_generate_for` 是**功能断言**失败: 驱动源 **1 → 0**, 即 for-loop/generate-for 内位选驱动关系被弄丢. `test_golden_risk_strict_uart` 风险项 25 → 28.
+  - ⚠️ **故 QClaw 建议的"重新生成 golden"不可直接采纳** — 会把真 bug 固化成 baseline, 违反 "禁止为通过而改 assertion/golden".
+  - ✅ 单元测试 A/B: 13 failed vs 13 failed, **0 新增**; `case27_1to1_truth` 4 passed.

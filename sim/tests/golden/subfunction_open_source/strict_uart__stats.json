@@ -5,7 +5,7 @@
   "params": {},
   "result": {
     "edges": {
-      "BIT_SELECT": 5,
+      "BIT_SELECT": 8,
       "CLOCK": 7,
       "CONNECTION": 4,
       "DRIVER": 16,
@@ -18,10 +18,10 @@
       "INSTANTIATED_MODULE": 1,
       "PORT_IN": 14,
       "PORT_OUT": 7,
-      "REG": 8,
-      "SIGNAL": 1
+      "REG": 7,
+      "SIGNAL": 8
     },
-    "total_edges": 39,
-    "total_nodes": 33
+    "total_edges": 42,
+    "total_nodes": 39
   }
 }

@@ -127,7 +127,9 @@ def _build_unified_tracer(source):
     """路径 A: 完整 unified_tracer (走 BitSelectHandler.process 3 阶段)"""
     pyslang.SyntaxTree.fromText(source)
     tracer = UnifiedTracer(sources={'test.sv': source})
-    tracer.build_graph()
+    # [FIX 2026-08-28 06:53] 路径 A 也传 target_module, 跟路径 B 一致
+    # 不传时 UnifiedTracer 会输出 type-level 节点 (e.g. 'data[3:0]') 跟 hierarchical (e.g. 'top.data[3:0]') 双份
+    tracer.build_graph(target_module='top')
     return tracer.get_graph()
 
 
