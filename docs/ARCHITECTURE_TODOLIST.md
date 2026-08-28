@@ -27,22 +27,23 @@
   - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
   - [ ] Step 9: 全套最终回归 (0.5 天)
 
-### #2 统一 BitSelectHandler (去重 graph_builder 那套)  🟡
+### #2 统一 BitSelectHandler (去重 graph_builder 那套)  ✅
 - **ROI**: 🔥🔥 中高
 - **工作量**: 1 天
-- **状态**: 🔴 **in_progress (实现基本完成, 但实测净引入 9 个回归, 其中 2 个是真功能 bug — 不可提交)**
+- **状态**: ✅ **done (2026-08-28 11:40)** — 两条路径均改用 semantic API, silent fallback 清零, 0 回归
 - **目标**: ~~选一套保留, 另一套标 deprecated~~ → **改为: 两套都改用 pyslang semantic API 替代 regex** (G3 选项 3)
-- **决策记录**: [architecture/bitselect_semantic_api_decision.md](architecture/bitselect_semantic_api_decision.md) / [iter_035](task_tree/iterations/iter_035_bitselect_semantic_api_decision.md)
+- **决策记录**: [architecture/bitselect_semantic_api_decision.md](architecture/bitselect_semantic_api_decision.md) / [iter_035](task_tree/iterations/iter_035_bitselect_semantic_api_decision.md) / [iter_036](task_tree/iterations/iter_036_bitselect_g3_cleanup.md)
 - **子任务**:
   - [x] 对比两套实现的输出 diff (golden fixture 跑两次) — 完成, 见 `sim/tests/integration/test_bitselect_handler_diff.py`
   - [x] 边界 fixture 实测 (parameter / generate / nested / struct) — 完成 06:33
   - [x] **G3 决策 = 选项 3 (pyslang semantic API 替代 regex)** — 方豆 06:36 "走 g3 的 3" + 07:46 "选择 semantic api"
-  - [x] 路径 B 改造: `_common.iter_bit_selects` / `BitSelectHit` / `_PyslangSelectWalker` + `graph_builder` 接入 — ⚠️ **WIP 未提交**
-  - [ ] 🔴🔴 **最高优先: 修 for-loop / generate-for 驱动源丢失 (1 → 0)** — 真功能 bug, 见 iter_035
-  - [ ] 🔴 修 silent fallback `_common.py:441` "退化: 让调用方走 regex 老路径" — **违反核心纪律 #2**
-  - [ ] 🔴 路径 A 改造 `bit_select_handler.py:290` 仍是 regex — 选项 3 只完成一半
-  - [ ] 清理 `graph_builder.py:442` 残留 `import re`
-  - [ ] 回归测试 + 提交 (代码与文档同一 commit)
+  - [x] 路径 B 改造: `_common.iter_bit_selects` / `BitSelectHit` / `_PyslangSelectWalker` + `graph_builder` 接入 — ✅ 提交 `bec0f51`
+  - [x] ✅ **修 for-loop / generate-for 驱动源丢失** — `hit.full_id` 保留 `[i]`, 不再生成 `[?]` placeholder. **复核确认真修复** (测试文件未被改动, 断言原样通过)
+  - [x] ✅ **重新生成 golden** (18 JSON) — 在**真 bug 修复之后**执行, 顺序正确
+  - [x] ✅ **修 silent fallback `_common.py`** — 查证 pyslang 是核心依赖 (pyproject/requirements 硬声明, 全仓另 12 处均直接 import), `try/except`+`_HAS_PYSLANG` 全删, 改显式 import + `raise ValueError`
+  - [x] ✅ **路径 A 改造 `bit_select_handler.py`** — `_create_hierarchical_bit_nodes` 改用同一个 `iter_bit_selects` helper, 模块级 `import re` 删除, 新增 `_get_pyslang_root()` 显式报错
+  - [x] ✅ **额外修复**: `graph_builder` 的 `if pyslang_root is None: return` 同属 silent fallback (iter_035 漏标), 一并改显式 raise
+  - [x] ⚠️ **更正**: `graph_builder.py:442` 的 `import re` **不是位选残留** — 属 `_collect_struct_members()` 拆 `parent.member`, 与位选无关, **保留**
 - **G2 实测发现 (06:33 更新)**:
   - 边/节点存在性一致 (0 差异)
   - 唯一差异: RangeSelect 节点 4 个属性 (bit_range / parent_bit_* / width) 路径 B 漏设
@@ -133,14 +134,14 @@
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
 | 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3 ✅ |
-| 2 | 统一 BitSelectHandler | 🔥🔥 | 🟡 in_progress | 06:23 | G2 +边界 ✅, G3 待决策 |
+| 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
 | 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (Step 1+2/3b/4-9 完成 3/9, 子任务 6/9 还在 pending); #2 进行中 (**G3 已决策 = 选项 3 semantic API**, 路径 B 改造完成但 WIP 未提交, 路径 A 待改造 + silent fallback 待修); #3 done; 其他 4 项 pending. **总 2/7 (28.5%) + 发现 #8 (待决策)**.
+**总进度**: #1 进行中 (9 步完成 3 步); **#2 ✅ done (两条路径均 semantic API, 0 回归)**; #3 done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
 
 ---
 
@@ -165,3 +166,19 @@
   - **更正 2**: QClaw "全部是 golden 比对差异" **不成立**. `test_for_loop_in_always` / `test_generate_for` 是**功能断言**失败: 驱动源 **1 → 0**, 即 for-loop/generate-for 内位选驱动关系被弄丢. `test_golden_risk_strict_uart` 风险项 25 → 28.
   - ⚠️ **故 QClaw 建议的"重新生成 golden"不可直接采纳** — 会把真 bug 固化成 baseline, 违反 "禁止为通过而改 assertion/golden".
   - ✅ 单元测试 A/B: 13 failed vs 13 failed, **0 新增**; `case27_1to1_truth` 4 passed.
+- **2026-08-28 08:28** — #2 **提交 `bec0f51`** (方豆指示 "重新生成 golden, 覆盖全一些").
+  - 先**修真 bug** 再重录 golden: 符号下标 (`q[i]`/`out[i]`) 改用 `hit.full_id` 保留 `[i]`, 不再生成 `[?]` placeholder 节点; 无 target_module 时用首 top instance 名前缀匹配 DriverExtractor.
+  - 重新生成 18 个 golden JSON (subfunction 16 + cdc_risk 2).
+- **2026-08-28 11:20** — #2 **独立复核 (git worktree A/B 对照), 确认可信**.
+  - 方法: 在父提交 `49b475c` 建独立 worktree 做基线, 与 `bec0f51` 对比 integration.
+  - **结果: 23 failed → 13 failed, 净引入 0 回归, 修好 10 个**. 7:50 报告的 9 个回归已全部清零.
+  - ✅ **关键验证: for-loop/generate-for 是真修复而非掩盖** — `test_advanced_grammar.py` **测试文件本身未被该 commit 改动** (`git show --stat` 为空), 断言原样通过, 排除"为通过改 assertion"。golden 重录发生在真 bug 修复**之后**, 顺序正确.
+  - 剩余 13 个 integration 失败均**先期存在**且与 #2 无关 (nested 非法 SV / human_output × 5 / tree_output × 5 / real_project_viz × 2).
+  - ⚠️ `sim/tests/unit` 13 failed 是 **AI 沙箱限制** (子进程 CLI 写 `~/.svq/cache` 被拒), 非代码缺陷, 方豆本地应全绿.
+  - 🔴 **仍未完成**: silent fallback (`_common.py:440-441`) + 路径 A regex (`bit_select_handler.py:305`) + `graph_builder.py:442` 残留 `import re`.
+- **2026-08-28 11:40** — #2 **✅ 完成** (iter_036). G3 选项 3 两条路径全部落地:
+  - **路径 A** (`bit_select_handler.py`) 改用 `_common.iter_bit_selects`, 模块级 `import re` 删除 — 至此位选 regex 反推**彻底消失**.
+  - **silent fallback 清零**: 查证 pyslang 为核心依赖 (pyproject/requirements 硬声明 + 全仓另 12 处直接 import, 0 处 try/except), 原 `_HAS_PYSLANG` 开关前提不成立, 全删改显式 import; `iter_bit_selects(module=None)` 与 `graph_builder` 的 `pyslang_root is None` 均由静默 return 改 `raise ValueError`.
+  - **额外修复**: `graph_builder` 那处 silent fallback 是 iter_035 漏标的同类问题.
+  - ⚠️ **更正 iter_035 的误判**: `graph_builder.py:442` 的 `import re` 属 `_collect_struct_members()` 拆 `parent.member`, **与位选无关, 保留不删**.
+  - **回归 (worktree A/B, 基线 `bec0f51`)**: integration 13→13 (0 回归), cli 23→**20** (0 回归, 另修好 3 个 `test_visualize_graph_source`), unit 13→13 (全沙箱所致), `case27_1to1_truth` 4 passed.

@@ -388,15 +388,18 @@ def get_signal(
 # ==============================================================================
 from typing import Any, Iterator, NamedTuple
 
-# [兼容性] pyslang 在测试/lint 环境可能没装 (CI), 优雅 import 失败
-try:
-    from pyslang import ExpressionKind, EvalContext  # type: ignore
-    _HAS_PYSLANG = True
-except ImportError:
-    _HAS_PYSLANG = False
-    # 提供 fallback 让 import 不爆, 但调用方在没 pyslang 时直接走 regex 老路径
-    ExpressionKind = None  # type: ignore
-    EvalContext = None  # type: ignore
+# [2026-08-28 纪律修正] pyslang 是**核心依赖**, 不是可选依赖:
+#   pyproject.toml [project.dependencies] / requirements.txt 都硬声明 pyslang>=10.0.0,<12.0.0
+#   src/ 下其余 12 处 (compiler / graph_builder / semantic_adapter / driver_extractor ...)
+#   全部直接 `import pyslang`, 无一使用 try/except。
+#
+# 原先此处的 `try/except ImportError` + `_HAS_PYSLANG` 开关是本文件独有的例外, 且在
+# iter_bit_selects() 里退化成 "静默 return, 让调用方走 regex 老路径" —— 属于
+# AGENTS.md 核心纪律 #2 明令禁止的 silent fallback (primary 失败就 secondary path)。
+# 讽刺的是本次改造 (#2 G3 选项 3) 的目的正是消除 regex, 却内置了一条回到 regex 的静默退路。
+#
+# 现改为与全项目一致的直接 import: pyslang 缺失时 ImportError 立刻显式暴露, 而非静默降级。
+from pyslang import ExpressionKind, EvalContext  # type: ignore
 
 
 class BitSelectHit(NamedTuple):
@@ -436,12 +439,18 @@ def iter_bit_selects(module: Any, instance_path: str = '') -> Iterator[BitSelect
 
     Yields:
         BitSelectHit namedtuple: 每个位选节点的结构化信息
-    """
-    if not _HAS_PYSLANG:
-        return  # 退化: 让调用方走 regex 老路径
 
+    Raises:
+        ValueError: module 为 None (调用方 bug — 唯一调用点 graph_builder 遍历
+                    topInstances 得到的 symbol 不可能为 None). 依 AGENTS.md 纪律 #2,
+                    此处显式报错而非静默 return 空结果, 避免"位选全部消失"被误认为
+                    "该设计本来就没有位选"。
+    """
     if module is None:
-        return
+        raise ValueError(
+            "iter_bit_selects(module=None): 期望 pyslang module symbol。"
+            "静默返回空结果会让位选 edge 全部消失且无人察觉, 故显式报错。"
+        )
 
     walker = _PyslangSelectWalker(instance_path)
     if hasattr(module, 'visit'):
@@ -767,13 +776,13 @@ def _eval_to_int(expr: Any) -> int | None:
             except (TypeError, ValueError):
                 pass
 
-    # 慢路径: 走 pyslang eval (需要 EvalContext)
-    if _HAS_PYSLANG and EvalContext is not None:
+    # 慢路径: 走 pyslang eval (某些版本 expr.eval() 无参可用)
+    # [2026-08-28] `_HAS_PYSLANG` 开关已删 (pyslang 是核心依赖, 见文件头说明)。
+    # 注意: 此处 `return None` **不是** silent fallback —— None 是本函数的既定 sentinel,
+    # 表示"该表达式无法折叠成常量"(如符号下标 `data[i]`), 调用方 (_PyslangSelectWalker)
+    # 会据此保留符号形式而非伪造数值。语义上等同 coverage_generator 的 NO_TREE_MARKER。
+    if EvalContext is not None:
         try:
-            # eval() 需要 EvalContext 参数, 这里拿不到 compilation
-            # 试试看 expr.eval(EvalContext(compilation=...))
-            # 但 helper 是通用的, 调用方应该传 EvalContext
-            # 退化: 试 expr.eval() 看是否某些版本可工作
             result = expr.eval()
             iv = getattr(result, 'integerValue', None)
             if iv is not None:

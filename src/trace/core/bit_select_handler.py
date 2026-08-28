@@ -14,7 +14,10 @@ bit_select_handler.py - Bit Select 节点处理模块
   handler.process()
 """
 
-import re
+# [2026-08-28 #2 G3 Option3 收尾] 模块级 `import re` 已删:
+#   位选解析改用 pyslang semantic API (_common.iter_bit_selects), 不再 regex 反推节点 ID。
+#   Phase 3 的 constraint 字符串扫描 (_scan_constraint_bit_selects) 自带函数内 import re,
+#   那是对 constraint 表达式**文本**做模式提取, 不是对 AST 结构反推, 属合理用法。
 
 from trace.core.base import PyslangAdapter
 
@@ -290,39 +293,57 @@ class BitSelectHandler:
     def _create_hierarchical_bit_nodes(self):
         """为位选节点创建父子关系和属性
 
-        - 识别 data[3:0] 形式的节点
-        - 解析位选择范围
-        - 设置 bit_range, parent_bit_start, parent_bit_end
+        - 用 pyslang semantic API 识别 RangeSelect (`data[3:0]`) 位选
+        - 设置 bit_range, parent, parent_bit_start, parent_bit_end, width
         - 创建 BIT_SELECT 边
+
+        [ARCHITECTURE_TODOLIST #2 G3 Option 3 收尾 2026-08-28]
+        原实现用 regex `^([^\\[]+)\\[(\\d+):(\\d+)\\]$` 反推节点 ID 字符串, 与路径 B
+        (`graph_builder._create_hierarchical_bit_nodes`) 并行且同样脆弱。本次改为复用
+        与路径 B **同一个** semantic helper (`_common.iter_bit_selects`), 彻底消除
+        本文件的 regex 位选解析, 完成 G3 选项 3 的另一半。
+
+        与路径 B 的分工保持不变 (职责不同, 非重复实现):
+        - 本方法 (路径 A): 依赖 `self.signal_widths` 补建缺失父节点, 供 unified_tracer
+          在 class_builder 之后调用
+        - 路径 B: GraphBuilder.build() 内部调用, 走 base_chain 建多级边
+
+        注意: 只处理 RangeSelect (`[msb:lsb]`)。ElementSelect (`data[0]`) 维持原
+        regex 实现的行为 —— 原正则要求 `(\\d+):(\\d+)` 冒号形式, 从不匹配单下标,
+        这是**刻意保留的语义**, 不是遗漏 (见类 docstring: 数组下标不是位选)。
         """
-        # 找到所有位选节点 (包含 [ 且包含 ] 但不包含 ['][)
-        child_ids = []
-        for nid in list(self.graph.nodes()):
-            if "[" in nid and "]" in nid:
-                # 排除数组访问格式 like signal[0] (可能是数组下标，不是位选)
-                # 位选格式: data[3:0], data[7:4], data[msb:lsb]
-                # 数组下标: arr[0], arr[i] (没有冒号)
-                match = re.match(r"^([^\[]+)\[(\d+):(\d+)\]$", nid)
-                if match:
-                    child_ids.append((nid, match.group(1), match.group(2), match.group(3)))
+        from trace.core.extractors._common import iter_bit_selects
+        from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
 
-        for child_id, parent_name, msb_str, lsb_str in child_ids:
-            msb = int(msb_str)
-            lsb = int(lsb_str)
+        pyslang_root = self._get_pyslang_root()
 
-            # 构造完整父节点 ID
-            # parent_name 已经是完整路径 (从正则捕获的)，直接使用
-            # child_id 格式: "top.data[3:0]" → parent_name = "top.data"
-            parent_id = parent_name
+        # 收集 (child_id, parent_id, msb, lsb) —— 语义遍历替代 regex
+        found: list[tuple[str, str, int, int]] = []
+        for i in range(len(pyslang_root.topInstances)):
+            mod = pyslang_root.topInstances[i]
+            instance_path = mod.name or ''
+            for hit in iter_bit_selects(mod, instance_path=instance_path):
+                if hit.select_kind != 'RangeSelect':
+                    continue
+                # msb/lsb 无法折叠成常量 (如 `data[i]` 符号下标) 时跳过:
+                # 原 regex `(\d+):(\d+)` 同样只接受字面量, 行为对齐。
+                if hit.msb is None or hit.lsb is None:
+                    continue
+                if not hit.base_chain:
+                    continue
+                found.append((hit.full_id, hit.base_chain[-2] if len(hit.base_chain) >= 2
+                              else hit.base_chain[0], hit.msb, hit.lsb))
+
+        for child_id, parent_id, msb, lsb in found:
+            # 只处理图中已存在的位选节点 (与原 regex 实现一致: 它遍历 self.graph.nodes())
+            if child_id not in self.graph.nodes():
+                continue
 
             # 确保父节点存在
             if parent_id not in self.graph.nodes():
-                # 从 signal_widths 获取或创建默认节点
                 parent_width = self.signal_widths.get(parent_id, (1, 0))
-                # 提取 module: parent_id = "top.data" → module = "top", name = "data"
                 module = parent_id.rsplit(".", 1)[0] if "." in parent_id else ""
                 name = parent_id.rsplit(".", 1)[-1] if "." in parent_id else parent_id
-                from trace.core.graph.models import NodeKind, TraceNode
 
                 parent_node = TraceNode(
                     id=parent_id,
@@ -336,34 +357,42 @@ class BitSelectHandler:
             # 更新子节点的属性
             child_node = self.graph.get_node(child_id)
             if child_node:
-                # 设置 bit_range
                 child_node.bit_range = f"[{msb}:{lsb}]"
-
-                # 设置父节点信息
                 child_node.parent = parent_id
-
-                # 设置在父节点中的起止位置
-                # parent_bit_start 是 LSB 侧 (值小的)
-                # parent_bit_end 是 MSB 侧 (值大的)
+                # parent_bit_start 是 LSB 侧 (值小的), parent_bit_end 是 MSB 侧 (值大的)
                 child_node.parent_bit_start = min(msb, lsb)
                 child_node.parent_bit_end = max(msb, lsb)
-
-                # 更新宽度为位选范围
                 child_node.width = (max(msb, lsb), min(msb, lsb))
 
-                # 确保有 kind
                 if child_node.kind is None:
                     child_node.kind = NodeKind.SIGNAL
 
             # 创建 BIT_SELECT 边
-            from trace.core.graph.models import EdgeKind, TraceEdge
-
             agg_edge = TraceEdge(
                 src=child_id,
                 dst=parent_id,
                 kind=EdgeKind.BIT_SELECT,
             )
             self.graph.add_trace_edge(agg_edge)
+
+    def _get_pyslang_root(self):
+        """取 pyslang semantic root。
+
+        Raises:
+            ValueError: adapter 拿不到 root。BitSelectHandler 恒由 unified_tracer 传入
+                SemanticAdapter (其 __init__ 必设 _root), 故取不到只可能是调用方传错
+                adapter 类型。依 AGENTS.md 纪律 #2, 显式报错而非静默跳过位选处理。
+        """
+        adapter_root = getattr(self.adapter, '_root', None)
+        if adapter_root is not None:
+            if hasattr(adapter_root, 'get_root'):
+                return adapter_root.get_root()
+            if hasattr(adapter_root, 'topInstances'):
+                return adapter_root
+        raise ValueError(
+            f"BitSelectHandler: 无法从 adapter ({type(self.adapter).__name__}) 取得 "
+            "pyslang root。位选处理需要 semantic root; 静默跳过会让 BIT_SELECT 边缺失。"
+        )
 
     def get_signal_width(self, signal_id: str) -> tuple[int, int]:
         """获取信号的位宽
