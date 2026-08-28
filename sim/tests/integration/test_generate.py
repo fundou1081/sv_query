@@ -91,6 +91,65 @@ endmodule'''
 
         self.assertIn(result.confidence, ['high', 'medium', 'uncertain'])
 
+    def test_generate_for_dynamic_bitselect(self):
+        """[#8] generate-for 内动态位选必须产生 BIT_SELECT + DRIVER 边
+
+        历史 bug: G2 计划 (06:33) 实测 generate-for 内 `acc[i]` 动态位选
+        **不产生 BIT_SELECT 边** (节点 ID 是 'top.gen[0].acc[0]' 形式,
+        regex 反推看不到)。#2 semantic API 修复了 BIT_SELECT 边, 但
+        `acc[i] <= data_in` 的 DRIVER 边仍缺失 (generate always 块不被
+        get_always_blocks 枚举 + genvar_ctx 不 substitute)。
+
+        本测试断言三条:
+        1. BIT_SELECT 边存在: acc[i] 展开后 acc[0..4] → acc
+        2. DRIVER 边存在且 substitute: data_in → acc[0..3]
+           (不是 data_in → acc[i])
+        3. 无未 substitute 的 'acc[i]' 残留节点
+        """
+        source = '''
+module top #(parameter N = 4) (input clk, input [3:0] data_in);
+    logic [3:0] acc [0:N];
+    genvar i;
+    generate
+        for (i = 0; i < N; i = i + 1) begin : gen
+            always_ff @(posedge clk) begin
+                acc[i] <= data_in;
+                acc[i+1] <= acc[i];
+            end
+        end
+    endgenerate
+endmodule'''
+
+        tracer = self._make_tracer(source)
+        tracer.build_graph(target_module='top')
+        graph = tracer.get_graph()
+
+        bit_select = []
+        driver = []
+        for u, v in graph.edges():
+            te = graph.get_edge(u, v) if hasattr(graph, 'get_edge') else None
+            if te is None:
+                continue
+            kd = str(getattr(te, 'kind', ''))
+            if 'BIT_SELECT' in kd:
+                bit_select.append((u, v))
+            elif 'DRIVER' in kd:
+                driver.append((u, v))
+
+        # 1. BIT_SELECT: acc[0..4] → acc (≥4 条)
+        self.assertGreaterEqual(len(bit_select), 4,
+            f"generate-for 动态位选应有 BIT_SELECT 边, got {len(bit_select)}")
+        # 2. DRIVER: data_in → acc[i] 应 substitute 成 acc[0..3], 不能有 acc[i] 残留
+        data_in_drivers = [v for u, v in driver if u == 'top.data_in']
+        self.assertGreaterEqual(len(data_in_drivers), 4,
+            f"data_in 应驱动 acc[0..3], got {data_in_drivers}")
+        self.assertNotIn('top.acc[i]', data_in_drivers,
+            f"不应有未 substitute 的 acc[i] 残留: {data_in_drivers}")
+        # 3. 节点: 无 'acc[i]' 残留
+        node_ids = [n for n in graph.nodes() if 'acc' in n]
+        self.assertNotIn('top.acc[i]', node_ids,
+            f"不应有未 substitute 的 acc[i] 节点: {node_ids}")
+
 
 if __name__ == '__main__':
     unittest.main()

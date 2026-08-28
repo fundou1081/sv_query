@@ -132,13 +132,34 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
     - Assignment + InvocationExpression RHS: 调 _handle_invocation
     - 普通 Assignment: 解析 lhs/rhs, 创建 DRIVER edge + CLOCK/RESET edge
     """
-    for always in h.adapter.get_always_blocks(module):
+    # [#8 2026-08-28] 顶层 always + generate-for 内展开的 always 一起处理.
+    # get_always_blocks 只遍历 module.body 顶层; generate-for 内的 always 块
+    # (e.g. `for(i...) begin: gen always_ff @(posedge clk) acc[i] <= data_in; end`)
+    # 在 GenerateBlockArray.entries 里, 需要 get_generate_always_blocks 补上,
+    # 否则 generate 内所有 procedural 赋值没有 DRIVER 边。
+    all_always = list(h.adapter.get_always_blocks(module))
+    for ga in h.adapter.get_generate_always_blocks(module):
+        all_always.append((ga["always"], ga["genvar_ctx"]))
+
+    for item_ga in all_always:
+        always = item_ga[0] if isinstance(item_ga, tuple) else item_ga
+        ga_ctx = item_ga[1] if isinstance(item_ga, tuple) else None
         # [铁律29] 使用 _collect_stmts_with_context 包装方法
         # 内部使用 StatementCollectorVisitor
-        stmts_ctx = _collect_stmts_with_context(always, h=h)
+        stmts_ctx = _collect_stmts_with_context(always, h=h, genvar_ctx=ga_ctx)
         for item in stmts_ctx:
             # [铁律29] StatementCollectorVisitor 返回 (node, ctx, ItemType)
             stmt, ctx, item_type = item
+            # [#8 2026-08-28] 把 genvar_ctx 塞进 adapter._genvar_context (id-keyed),
+            # 保证 _parse_assign → adapter.get_genvar_context(stmt) 命中并 substitute.
+            # _collect_stmts_with_context 返回的 stmt 与 get_assignments 遍历到的
+            # 可能不是同一对象 (id 不可靠), 这里用当前 stmt 的真实 id 重新登记。
+            gv = ctx.get("_genvar")
+            if gv:
+                try:
+                    h.adapter._genvar_context[id(stmt)] = dict(gv)
+                except Exception:
+                    pass
 
             # 如果是 invocation,暂不处理赋值
             if False:  # [V6.9] ItemType removed
@@ -726,12 +747,16 @@ def _is_valid_signal_name(name, *, h: 'AlwaysHelpers'):
 
 
 
-def _collect_stmts_with_context(n, ctx=None, *, h: 'AlwaysHelpers') -> list[tuple[Any, dict[str, str], Any]]:
+def _collect_stmts_with_context(n, ctx=None, *, h: 'AlwaysHelpers', genvar_ctx: dict | None = None) -> list[tuple[Any, dict[str, str], Any]]:
     """[V6.9] 用 semantic API 收集 always 块中的语句和 clock context。
 
     不再依赖已删除的 StatementCollectorVisitor。
     从 syntax AST 获取 clock/reset 信号和 if/case 脉络，
     并用 semantic adapter 获取语句列表。
+
+    [#8 2026-08-28] genvar_ctx: generate-for 内展开的 always 块的
+    {genvar_name: entry.arrayIndex} 上下文 (e.g. {'i': 0})。注入每条返回
+    item 的 ctx["_genvar"], 供 _create_always_edges 做 lhs genvar substitute。
     """
     if ctx is None:
         ctx = {}
@@ -760,6 +785,8 @@ def _collect_stmts_with_context(n, ctx=None, *, h: 'AlwaysHelpers') -> list[tupl
             expr_node, cond_or_chain = item[0], item[1]
             leaf_name = item[2] if len(item) >= 3 else None
             item_ctx = dict(ctx)  # copy base ctx
+            if genvar_ctx:
+                item_ctx["_genvar"] = dict(genvar_ctx)
             if isinstance(cond_or_chain, list):
                 # [V7.0] condition_chain: list[str]
                 item_ctx["condition_chain"] = list(cond_or_chain)

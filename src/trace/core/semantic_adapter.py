@@ -970,7 +970,8 @@ class SemanticAdapter:
         assignments = []
 
         def find_assignments(node: object, genvar_ctx: dict | None = None) -> None:
-            import os as _os, sys as _sys
+            import os as _os
+            import sys as _sys
             _dbg = _os.environ.get('G1_DEBUG')
             if node is None:
                 return
@@ -986,10 +987,16 @@ class SemanticAdapter:
                 assignments.append(node)
                 return  # 不递归到子节点
             # AssignmentExpression (procedural)
-            elif "AssignmentExpression" in kind:
+            # [#8 2026-08-28] kind 可能是 'ExpressionKind.Assignment' (pyslang v11)
+            # 或 'AssignmentExpression' (旧), 统一用 "Assignment" 匹配。
+            # **只存 _genvar_context, 不 append 到返回列表**: procedural 赋值由
+            # always_extractor 处理 (assign_extractor 只处理 continuous),
+            # append 会导致 assign 阶段误处理 procedural 产生重复/错误边。
+            # (原始代码遍历不到 Timed 内的 procedural, 所以 get_assignments
+            #  实际只返回 continuous; 本次修复扩展了遍历, 必须保持契约不变)
+            elif "Assignment" in kind:
                 self._genvar_context[id(node)] = dict(ctx)
-                assignments.append(node)
-                return  # 不递归到子节点
+                return  # 不递归到子节点, 也不 append (保持 get_assignments 只返回 continuous)
 
             # GenerateBlockArray (generate for 展开入口): 进入每个 entry,
             # 把 entry 的 arrayIndex 作为对应 genvar 的 substitute value
@@ -1033,6 +1040,36 @@ class SemanticAdapter:
             if "ProceduralBlock" in kind:
                 for child in self._iter_children(node):
                     find_assignments(child, ctx)
+                return
+
+            # TimedStatement (@(posedge clk) ...): 进入 .stmt 递归
+            # [#8 2026-08-28] generate for 内的 always_ff 是
+            # ProceduralBlock → Timed → Block → ExpressionStatement(Assignment),
+            # 缺此分支导致 _genvar_context 永不填充, acc[i] 无法 substitute 成 acc[0],
+            # generate 内所有 procedural 赋值丢失 DRIVER 边。
+            if "Timed" in kind:
+                for child in self._iter_children(node):
+                    find_assignments(child, ctx)
+                return
+
+            # BlockStatement (begin ... end): 进入 .body 递归
+            if "Block" in kind:
+                for child in self._iter_children(node):
+                    find_assignments(child, ctx)
+                return
+
+            # StatementList (多条语句): 进入 .list 递归
+            # [#8 2026-08-28] 双赋值时 Block → List → ExpressionStatement 链
+            if "List" in kind:
+                for child in self._iter_children(node):
+                    find_assignments(child, ctx)
+                return
+
+            # ExpressionStatement (acc[i] <= data_in;): 进入 .expr (AssignmentExpression)
+            if "ExpressionStatement" in kind:
+                expr = getattr(node, "expr", None)
+                if expr is not None:
+                    find_assignments(expr, ctx)
                 return
 
         if hasattr(module, "body") and module.body:
@@ -1280,6 +1317,83 @@ class SemanticAdapter:
                         "genvar_ctx": dict(ctx),
                         "array_index": arr_idx,
                         "hierarchical_path": hp_str,
+                        "loop_var": genvar_name or "",
+                    })
+        return results
+
+    def get_generate_always_blocks(self, module) -> list[dict]:
+        """[#8 2026-08-28] 纯 semantic 收集 generate-for 内展开后的 always 块.
+
+        现有 get_always_blocks(module) 只遍历 module.body 顶层, 拿不到 generate-for
+        块内的 always 块 — 例如 `for (i...) begin: gen always_ff @(posedge clk) acc[i] <= data_in; end`
+        的 always 在 gen GenerateBlockArraySymbol 每个 entry 内. 顶层 get_always_blocks
+        返回 0 个, 导致 generate 内所有 procedural 赋值没有 DRIVER 边
+        (G2 计划 #8: generate-for 动态位选不产生 BIT_SELECT/DRIVER 边的一部分).
+
+        本方法走 GenerateBlockArraySymbol.entries (pure semantic API, 与
+        get_generate_net_declarations / get_generate_instances 同模式):
+        每个 entry 是 GenerateBlockSymbol, __iter__ 拿 ProceduralBlockSymbol.
+
+        Returns:
+            list[dict], 每个 dict:
+              always: object             — ProceduralBlockSymbol
+              genvar_ctx: dict           — {'i': 0} 之类 (0 = arrayIndex 数值)
+              array_index: int|None
+              hierarchical_path: str     — 'top.gen[0]' (generate block 路径, 供 node id)
+              loop_var: str              — genvar 名字 (如 'i')
+        """
+        results: list[dict] = []
+        if not hasattr(module, "body") or not module.body:
+            return results
+
+        for member in module.body:
+            kind = str(getattr(member, "kind", ""))
+            if "GenerateBlockArray" not in kind:
+                continue
+            # genvar 名字 (从 loopVariable, pure semantic)
+            genvar_name = None
+            try:
+                lv = getattr(member, "loopVariable", None)
+                if lv is not None:
+                    genvar_name = str(getattr(lv, "name", "") or "")
+            except Exception:
+                genvar_name = None
+
+            # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
+            try:
+                entries = list(member)
+            except TypeError:
+                entries = getattr(member, "entries", None) or []
+
+            for entry in entries:
+                if getattr(entry, "isUninstantiated", False):
+                    continue
+                arr_idx = getattr(entry, "arrayIndex", None)
+                ctx = {}
+                if genvar_name and arr_idx is not None:
+                    try:
+                        ctx = {genvar_name: int(arr_idx)}
+                    except (TypeError, ValueError):
+                        ctx = {genvar_name: arr_idx}
+                # GenerateBlockSymbol __iter__ → ProceduralBlockSymbol
+                try:
+                    children = list(entry)
+                except TypeError:
+                    children = self._iter_children(entry)
+                for child in children:
+                    child_kind = str(getattr(child, "kind", ""))
+                    if "ProceduralBlock" not in child_kind:
+                        continue
+                    hp = ""
+                    try:
+                        hp = str(getattr(entry, "hierarchicalPath", "") or "")
+                    except Exception:
+                        hp = ""
+                    results.append({
+                        "always": child,
+                        "genvar_ctx": dict(ctx),
+                        "array_index": arr_idx,
+                        "hierarchical_path": hp,
                         "loop_var": genvar_name or "",
                     })
         return results
@@ -2258,6 +2372,10 @@ class SemanticAdapter:
             "body",
             "statement",
             "statements",
+            "stmt",       # [#8 2026-08-28] TimedStatement (@(posedge clk) ...) 用 .stmt,
+                          # 不是 .statement — 缺它导致 generate always 内赋值拿不到 genvar_ctx
+            "list",       # [#8 2026-08-28] StatementKind.List 的语句列表 (.list),
+                          # 双赋值时 Block → List → ExpressionStatement 链需要它
             "left",
             "right",
             "expr",
