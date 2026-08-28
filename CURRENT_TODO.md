@@ -25,8 +25,7 @@
 **任务**: (无 — 架构改造 #1/#2/#3 已完成)
 
 **下一候选** (未启动, 先问方豆):
-- **#5**: UnifiedTracer 20 步管线 → 依赖图 (2 天)
-- #6: expression tree 提取独立成 builder (2 天)
+- **#6**: expression tree 提取独立成 builder (2 天)
 - #7: 迁 pyslang 11.0 native API (1-2 周)
 
 ---
@@ -34,6 +33,8 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-08-28 23:10** | **#5 — 管线 → 显式 DAG** | 新建 pipeline.py, 11 步 DAG, 0 回归. [iter_049](docs/task_tree/iterations/iter_049_pipeline_dag.md) |
+| **2026-08-28 22:30** | **#4 清理 — 36 违规+20 边界** | 58 处日志/收窄, 0 回归. [iter_048](docs/task_tree/iterations/iter_048_fallback_cleanup.md) |
 | **2026-08-28 21:45** | **#4 — EXTRACTION_FAILURES.md 集中表** | 登记 113+121 处 fallback, 5 类分类, P0-P3 清理优先级. [iter_046](docs/task_tree/iterations/iter_046_extraction_failures_table.md) |
 | **2026-08-28 21:30** | **#8 — generate-for 动态位选修复** | BIT_SELECT+DRIVER+CLOCK 边全齐, 0 回归, 新测试有效. [iter_045](docs/task_tree/iterations/iter_045_generate_bitselect_fix.md) |
 | **2026-08-28 20:45** | **架构改造 #1 — 拆 driver_extractor** | 4101→1431 行, 拆出 7 模块, 9 步全 done, 6 探针 byte-identical, 0 回归. [iter_044](docs/task_tree/iterations/iter_044_step9_final_regression.md) |

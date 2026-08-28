@@ -460,48 +460,94 @@ class UnifiedTracer:
                     self._init_tracers()
                     return self._graph
 
-            root = self._get_compiler().get_root()
+            # =================================================================
+            # [ARCHITECTURE_TODOLIST #5 2026-08-28] 显式 DAG 管线
+            # 把原来的隐式顺序链重构为 PipelineStep 声明 (inputs/outputs)。
+            # 行为 1:1 一致 — 拓扑序与原来顺序相同, 产物存储方式不变。
+            # 依赖关系:
+            #   compile → adapter → graph → {class, class_member, bit_select, module_graph}
+            #   module_graph → path_resolver → tracers
+            #   graph → {cond_ops, backfill}
+            # 独立步骤 (class/bit_select vs module_graph) 结构上可并行。
+            # =================================================================
+            from .core.pipeline import Pipeline, PipelineStep
 
-            # 创建 SemanticAdapter 供各组件使用
-            # [Phase 3 2026-07-11] Pass target_module to filter instance hierarchy
-            from .core.semantic_adapter import SemanticAdapter
+            def _step_compile(ctx):
+                # [fix] 原错写 return ctx["root"] — compile 步应**产出** root
+                return self._get_compiler().get_root()
 
-            compiler = self._get_compiler()
-            semantic_adapter = SemanticAdapter(root, compiler, target_module=target_module)
-            self._adapter = semantic_adapter  # Store for later access by _get_adapter()
+            def _step_adapter(ctx):
+                from .core.semantic_adapter import SemanticAdapter
 
-            builder = GraphBuilder(semantic_adapter, target_module=target_module)
-            self._graph = builder.build()
-            # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
-            # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast
-            # 走字符串 fallback, 真实 AST 路径不生效)
-            self._graph._adapter = semantic_adapter
-            # [Phase2] 追加 class 子图
-            class_builder = ClassGraphBuilder(semantic_adapter)
-            class_builder.build(self._graph)
-            # [Phase2.5] 解析 class 实例成员访问 (p.addr -> MEMBER_SELECT 边)
-            self._resolve_class_member_access(semantic_adapter, self._graph)
-            # [Phase3] 处理位选节点 (提取位宽、设置父子关系) - 在所有节点创建后
-            bit_select_handler = BitSelectHandler(semantic_adapter, self._graph)
-            bit_select_handler.process()
+                compiler = ctx["compiler"]
+                semantic_adapter = SemanticAdapter(
+                    ctx["root"], compiler, target_module=target_module
+                )
+                self._adapter = semantic_adapter  # Store for later access by _get_adapter()
+                return semantic_adapter
 
-            # [Phase4] 构建模块实例图 (跨模块边界追踪)
-            self._module_graph = ModuleInstanceGraph(semantic_adapter, self._graph)
-            self._module_graph.build(semantic_adapter)  # 传入 SemanticAdapter 用于 generate 实例收集
-            self._path_resolver = PathResolver(self._graph, self._module_graph)
-            self._init_tracers()
+            def _step_graph(ctx):
+                semantic_adapter = ctx["adapter"]
+                builder = GraphBuilder(semantic_adapter, target_module=target_module)
+                graph = builder.build()
+                # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
+                # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast
+                # 走字符串 fallback, 真实 AST 路径不生效)
+                graph._adapter = semantic_adapter
+                self._graph = graph
+                return graph
 
-            # [FIX 2026-08-21 Plan B Step 1] emit OP_TERNARY / OP_CASE from expr_trees
-            # 之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到.
-            # 现在 emitted as real TraceNode entries so `graph nodes -j` returns them.
-            # 跟 const 一样, 遍历 _expr_trees, 找 op='Ternary' / 'Case' / 等, emit 为节点.
-            self._emit_conditional_op_nodes()
+            def _step_class(ctx):
+                class_builder = ClassGraphBuilder(ctx["adapter"])
+                class_builder.build(ctx["graph"])
+                return None
 
-            # [V6.2.1 2026-07-20] Backfill file/line for SIGNAL nodes that
-            # had them missing because DriverExtractor built TraceNodes
-            # without source-location args (~10 sites). Without this,
-            # --show-source only works for ports.
-            self._backfill_source_locations(semantic_adapter)
+            def _step_class_member(ctx):
+                self._resolve_class_member_access(ctx["adapter"], ctx["graph"])
+                return None
+
+            def _step_bit_select(ctx):
+                bit_select_handler = BitSelectHandler(ctx["adapter"], ctx["graph"])
+                bit_select_handler.process()
+                return None
+
+            def _step_module_graph(ctx):
+                module_graph = ModuleInstanceGraph(ctx["adapter"], ctx["graph"])
+                module_graph.build(ctx["adapter"])
+                self._module_graph = module_graph
+                return module_graph
+
+            def _step_path_resolver(ctx):
+                path_resolver = PathResolver(ctx["graph"], ctx["module_graph"])
+                self._path_resolver = path_resolver
+                return path_resolver
+
+            def _step_tracers(ctx):
+                self._init_tracers()
+                return None
+
+            def _step_cond_ops(ctx):
+                self._emit_conditional_op_nodes()
+                return None
+
+            def _step_backfill(ctx):
+                self._backfill_source_locations(ctx["adapter"])
+                return None
+
+            pipeline = Pipeline([
+                PipelineStep("compile", _step_compile, outputs=("root",)),
+                PipelineStep("adapter", _step_adapter, inputs=("root",), outputs=("adapter",)),
+                PipelineStep("graph", _step_graph, inputs=("adapter",), outputs=("graph",)),
+                PipelineStep("class", _step_class, inputs=("adapter", "graph")),
+                PipelineStep("class_member", _step_class_member, inputs=("adapter", "graph")),
+                PipelineStep("bit_select", _step_bit_select, inputs=("adapter", "graph")),
+                PipelineStep("module_graph", _step_module_graph, inputs=("adapter", "graph"), outputs=("module_graph",)),
+                PipelineStep("path_resolver", _step_path_resolver, inputs=("graph", "module_graph"), outputs=("path_resolver",)),
+                PipelineStep("tracers", _step_tracers, inputs=("graph", "module_graph")),
+                PipelineStep("cond_ops", _step_cond_ops, inputs=("graph",)),
+                PipelineStep("backfill", _step_backfill, inputs=("adapter", "graph")),
+            ])
+            pipeline.run({"compiler": self._get_compiler()})
 
             # 保存到缓存
             if use_cache and self._sources:
