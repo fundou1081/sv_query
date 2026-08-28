@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 7 ✅ 2026-08-28, 8/9 步; 下一步 Step 8 删主体)**
+- **状态**: 🟡 **in_progress (Step 8 ✅ 2026-08-28, 8.5/9 步; 下一步 Step 9 最终回归)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -47,7 +47,12 @@
         - `_find_invocations` / `_handle_invocation` / `_get_all_signals` / `_get_constructor_call` 在 driver_extractor 留薄壳 (Assign/AlwaysHelpers 注入点引用)
         - `driver_extractor.py` 2292 → **1685 行** (#1 累计 -2416 行)
         - 验证: integration 13→13 (修 staticmethod 前 44) / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / function+task 探针 byte-identical
-  - [ ] Step 8: 删 driver_extractor.py 主体 (0.5 天)
+  - [x] ✅ **Step 8: 删除死代码 (4 方法/255 行)** — [iter_043](task_tree/iterations/iter_043_step8_dead_code_removal.md)
+        - 死代码: `_expand_and_append_assignment` (85) / `_collect_assignments_from_stmt` (98) / `_legacy_collect_stmts_with_context` (22) / `_extract_condition_str` (50)
+        - **关键**: 1687 行剩余的是共享 helper + 薄壳 (被 extractor 注入), 真正能删的是死代码
+        - 第一次删除误删 extract() → 加 extract 保护后重删
+        - `driver_extractor.py` 1687 → **1432 行** (#1 累计 -2669 行)
+        - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / 4 探针 byte-identical
   - [ ] Step 9: 全套最终回归 (0.5 天)
 
 ### #2 统一 BitSelectHandler (去重 graph_builder 那套)  ✅
@@ -156,7 +161,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 8/9 ✅ (4101→1685 行) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | 8.5/9 ✅ (4101→1432 行) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -164,7 +169,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**8/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
+**总进度**: #1 进行中 (**8.5/9 步完成**); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
 
 ---
 
@@ -242,3 +247,9 @@
   - `driver_extractor.py` 2292 → **1685 行** (#1 累计 -2416 行)
   - **诚实标注**: `_parse_bit_range` 的 `@staticmethod` 被删区间吞掉 (**Step 6 同类错误第 2 次**), 31 个测试失败; 用基线对比法系统检查确认无其他丢失
   - 验证: integration 13→13 (修复前 44) / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; function+task 探针 byte-identical
+- **2026-08-28 20:20** — #1 **Step 8 完成** (iter_043). 删除 4 个真死代码方法 (255 行).
+  - `_expand_and_append_assignment` (85) / `_collect_assignments_from_stmt` (98) / `_legacy_collect_stmts_with_context` (22) / `_extract_condition_str` (50) — 全仓无调用者
+  - **澄清 Step 8 含义**: 1687 行剩余的是共享 helper + 薄壳 (被 6 个 extractor 注入), 真正能删的是死代码
+  - **诚实标注**: 第一次行号区间删除误删 extract() → 7 个测试失败; 改用 extract 保护 (区间内含 def extract 则跳过) 后重删
+  - `driver_extractor.py` 1687 → **1432 行** (#1 累计 -2669 行)
+  - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed; 4 探针 (assign/flatten/always/function) 全部 byte-identical
