@@ -1124,8 +1124,8 @@ class DriverExtractor:
                 text = str(syntax).strip()
                 if text and "ExpressionKind" not in text:
                     return text
-        except (UnicodeDecodeError, TypeError, Exception):
-            pass
+        except Exception as e:
+            logger.debug("readable expr 提取失败: %s", e)
 
         # fallback 也检查: 过滤 type name 字符串
         if "ExpressionKind" in fallback or "Expression(" in fallback:

@@ -1,12 +1,13 @@
+import logging
+
 # ==============================================================================
 # query_signal.py - Simplified Signal Query
 # ==============================================================================
-
 from dataclasses import dataclass
 
 from ..graph.models import DriverInfo, EdgeKind, NodeKind, SignalGraph, TraceNode
 
-
+logger = logging.getLogger(__name__)
 @dataclass
 class SignalChain:
     root: str
@@ -386,7 +387,8 @@ class SignalTracer:
                         if node:
                             loads.append(node)
                             seen.add(inst_port)
-        except Exception:
+        except Exception as e:
+            logger.debug("load/driver 收集失败: %s", e)
             pass
 
         return loads
@@ -427,8 +429,8 @@ class SignalTracer:
                             if node:
                                 drivers.append(node)
                                 seen.add(inst_port)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("load 收集失败: %s", e)
 
         return drivers
 

@@ -157,8 +157,8 @@ class PyslangAdapter:
                                 m = re.match(r"module\s+(\w+)", remaining)
                                 if m:
                                     return m.group(1)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("module 名提取失败: %s", e)
 
         return "unknown"
 

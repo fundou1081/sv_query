@@ -6,8 +6,11 @@
 # 遵循铁律1: 必须使用 Semantic AST (Compilation + getRoot())
 # ==============================================================================
 
+import logging
 import sys
 from typing import Callable, Iterator
+
+logger = logging.getLogger(__name__)
 
 from .._safe import _safe_attr, _safe_str, safe_str
 from .._safe import clean_name as _clean_name_fn
@@ -298,7 +301,7 @@ class SemanticAdapter:
             kind_str = str(kind) if kind else "None"
             try:
                 name = node.name
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 name = None
             name_str = self._safe_str(name) if name else "_anon_"
 
@@ -306,7 +309,7 @@ class SemanticAdapter:
 
             try:
                 hp = node.hierarchicalPath
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 hp = None
             hp_str = self._safe_str(hp) if hp else ""
             key = (kind_str, name_str, hp_str)
@@ -420,7 +423,7 @@ class SemanticAdapter:
             try:
                 if str(top.name) == target_module:
                     return top
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 continue
         return None
 
@@ -661,8 +664,8 @@ class SemanticAdapter:
                                                 pn_name = _safe_attr(pn, "name", None)
                                                 if pn_name:
                                                     info["ports"].append(str(pn_name).strip())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("提取失败: %s", e)
 
         return info
 
@@ -779,7 +782,7 @@ class SemanticAdapter:
             if hasattr(conn, "port"):
                 try:
                     port_name = str(conn.port.name)
-                except (UnicodeDecodeError, TypeError, Exception):
+                except (UnicodeDecodeError, TypeError):
                     port_name = "<id:non-utf8>"
 
             # expression 是 NamedValue,其 symbol 是信号
@@ -789,7 +792,7 @@ class SemanticAdapter:
                 # NamedValue expression
                 try:
                     signal_name = str(conn.expression.symbol.name)
-                except (UnicodeDecodeError, TypeError, Exception):
+                except (UnicodeDecodeError, TypeError):
                     signal_name = "<id:non-utf8>"
             elif hasattr(conn, "expression"):
                 expr = conn.expression
@@ -801,7 +804,7 @@ class SemanticAdapter:
                     if left and hasattr(left, "symbol"):
                         try:
                             signal_name = str(left.symbol.name)
-                        except (UnicodeDecodeError, TypeError, Exception):
+                        except (UnicodeDecodeError, TypeError):
                             signal_name = "<id:non-utf8>"
                 # [V15.2 2026-08-13] 方向 A: pyslang semantic AST 处理 ConcatenationExpression
                 # 当 .port(expr) 的 expr 是 {a, b, c} 时, 原逻辑 (NamedValue/Assignment)
@@ -820,16 +823,16 @@ class SemanticAdapter:
                             try:
                                 connections.append((port_name, str(operand.symbol.name)))
                                 continue
-                            except (UnicodeDecodeError, TypeError, Exception):
-                                pass
+                            except (UnicodeDecodeError, TypeError) as e:
+                                logger.warning("提取失败: %s", e)
                         # ElementSelect / RangeSelect (e.g. din[7:0]):
                         # operand.expr 是 inner NamedValue
                         inner = getattr(operand, "expr", None)
                         if inner is not None and hasattr(inner, "symbol") and inner.symbol is not None:
                             try:
                                 connections.append((port_name, str(inner.symbol.name)))
-                            except (UnicodeDecodeError, TypeError, Exception):
-                                pass
+                            except (UnicodeDecodeError, TypeError) as e:
+                                logger.warning("提取失败: %s", e)
 
             if port_name != "?" and signal_name != "?":
                 connections.append((port_name, signal_name))
@@ -1019,8 +1022,8 @@ class SemanticAdapter:
                         if ai is not None:
                             try:
                                 child_ctx[genvar_name] = int(str(ai))
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning("提取失败: %s", e)
                     for child in self._iter_children(entry):
                         find_assignments(child, child_ctx)
                 return
@@ -1674,8 +1677,8 @@ class SemanticAdapter:
                                         members.append(str(name.value).strip())
                                     else:
                                         members.append(str(name).strip())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("提取失败: %s", e)
 
         return members
 
@@ -2097,10 +2100,10 @@ class SemanticAdapter:
                                             pval = getattr(pident, "value", None) or str(pident).strip()
                                             if pval:
                                                 signals.append(pval.strip())
-                            except (TypeError, AttributeError):
-                                pass
-                except (TypeError, AttributeError):
-                    pass
+                            except (TypeError, AttributeError) as e:
+                                logger.warning("提取失败: %s", e)
+                except (TypeError, AttributeError) as e:
+                    logger.warning("提取失败: %s", e)
             return signals
 
         # ConditionalOp (ternary: g ? x0 : x1)
@@ -2156,10 +2159,10 @@ class SemanticAdapter:
                                             pval = getattr(pident, "value", None) or str(pident).strip()
                                             if pval:
                                                 signals.append(pval.strip())
-                            except (TypeError, AttributeError):
-                                pass
-                except (TypeError, AttributeError):
-                    pass
+                            except (TypeError, AttributeError) as e:
+                                logger.warning("提取失败: %s", e)
+                except (TypeError, AttributeError) as e:
+                    logger.warning("提取失败: %s", e)
             return signals
 
         # AssignmentExpression: out_addr = req.addr → recurse into left/right
@@ -2324,8 +2327,8 @@ class SemanticAdapter:
                                     if hasattr(node, "literal") and node.literal:
                                         try:
                                             return int(node.literal.valueText)
-                                        except Exception:
-                                            pass
+                                        except Exception as e:
+                                            logger.warning("提取失败: %s", e)
                                     try:
                                         return int(str(node))
                                     except Exception:
@@ -2392,8 +2395,8 @@ class SemanticAdapter:
                 try:
                     if 'mutex' not in str(e).lower():
                         raise
-                except Exception:
-                    pass
+                except Exception as e2:
+                    logger.debug("pyslang mutex 防御 (partial AST): %s", e2)
                 child = None
             if child:
                 if isinstance(child, list):
@@ -2458,17 +2461,17 @@ class SemanticInstanceWrapper:
         # 使用 arrayName + arrayPath 构建完整实例名
         try:
             inst_name = instance_symbol.name
-        except (UnicodeDecodeError, TypeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             inst_name = None
         if not inst_name:
             try:
                 array_name = instance_symbol.arrayName
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 array_name = None
             if array_name:
                 try:
                     arr_path = instance_symbol.arrayPath
-                except (UnicodeDecodeError, TypeError, Exception):
+                except (UnicodeDecodeError, TypeError):
                     arr_path = None
                 if arr_path and hasattr(arr_path, "__iter__") and not isinstance(arr_path, str):
                     inst_name = f"{array_name}[{arr_path[0]}]"
@@ -2493,7 +2496,7 @@ class SemanticInstanceWrapper:
             defn = self._symbol.definition
             try:
                 name_str = str(defn.name)
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 name_str = None
             if name_str:
                 return name_str

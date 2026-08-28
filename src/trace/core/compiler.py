@@ -6,8 +6,11 @@
 # 遵循铁律1: 必须使用 Semantic AST (Compilation + getRoot())
 # ==============================================================================
 
+import logging
 import os
 import sys
+
+logger = logging.getLogger(__name__)
 
 # [A1 + A3 2026-06-28] Global quiet flag for LLM-friendly output.
 # When True, all diagnostic output (warnings, info, errors) goes to /dev/null.
@@ -478,22 +481,22 @@ class SVCompiler:
                 # pyslang v3 getFileName 接受 SourceLocation, 不是 BufferID
                 try:
                     fname = sm.getFileName(loc) or ""
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("getFileName 失败: %s", e)
                 if not fname:
                     try:
                         fname = sm.getRawFileName(loc) or ""
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("getRawFileName 失败: %s", e)
                 # 行号 / 列号
                 try:
                     line = sm.getLineNumber(loc) or 0
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("getLineNumber 失败: %s", e)
                 try:
                     col = sm.getColumnNumber(loc) or 0
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("getColumnNumber 失败: %s", e)
             code = getattr(d, "code", None)
             code_str = str(code) if code else "unknown"
             # 提取代码名: "DiagCode(UndeclaredIdentifier)" -> "UndeclaredIdentifier"
@@ -541,8 +544,8 @@ class SVCompiler:
                 col = sm.getColumnNumber(loc) or 0
                 if fname:
                     loc_str = f"{fname}:{line}:{col}: "
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("source_location 组装失败: %s", e)
         if not loc_str and len(args) >= 2:
             # 回退: 从 args 拿 line/col
             loc_str = f"{args[0]}:{args[1]}: "

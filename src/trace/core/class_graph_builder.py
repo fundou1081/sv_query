@@ -10,11 +10,14 @@
 #   或独立构建后 merge 到 SignalGraph
 # ==============================================================================
 
+import logging
 from dataclasses import dataclass, field
 
 from .base import PyslangAdapter
 from .class_hierarchy import ClassHierarchy
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+
+logger = logging.getLogger(__name__)
 
 # [V6.9] ConstraintVisitor class removed — constraint processing uses adapter
 
@@ -114,8 +117,8 @@ class ClassGraphBuilder:
                         try:
                             for item in node.items:
                                 self.visit(item)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning("class constraint items 遍历失败: %s", e)
                     return
 
                 # 4. ElseConstraintClause (Syntax/Semantic): else { constraints }
@@ -135,8 +138,8 @@ class ClassGraphBuilder:
                     try:
                         for item in node.items:
                             self.visit(item)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("class constraint items 遍历失败: %s", e)
 
                 # Also recurse into constraints (semantic AST field name)
                 constraints = getattr(node, 'constraints', None)
@@ -389,8 +392,8 @@ class ClassGraphBuilder:
             if clist and hasattr(clist, "__iter__"):
                 try:
                     constraint_items = list(clist)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("class constraint list 转换失败: %s", e)
 
             # Fallback: syntax bridge for block.items
             if not constraint_items:
@@ -399,8 +402,8 @@ class ClassGraphBuilder:
                 if syn_items and hasattr(syn_items, "__iter__"):
                     try:
                         constraint_items = list(syn_items)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("class constraint syn_items 转换失败: %s", e)
 
         if not constraint_items:
             return
@@ -1465,8 +1468,8 @@ class ClassGraphBuilder:
                 kind = str(getattr(member, "kind", ""))
                 if "ClassProperty" in kind:
                     props.append(member)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("class property 收集失败: %s", e)
         return props
 
     def _iter_constraints(self, cls) -> list:
@@ -1481,8 +1484,8 @@ class ClassGraphBuilder:
                 kind = str(getattr(member, "kind", ""))
                 if "ConstraintBlock" in kind:
                     constrs.append(member)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("class constraint 收集失败: %s", e)
         return constrs
 
     def _iter_declarators(self, decl):
@@ -1522,8 +1525,8 @@ class ClassGraphBuilder:
             bw = getattr(prop, "bitWidth", None)
             if bw is not None and bw > 0:
                 return (0, bw - 1)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("class property bitWidth 提取失败: %s", e)
 
         # Fallback: 从 syntax declaration 获取
         syntax = getattr(prop, "syntax", None)

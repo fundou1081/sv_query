@@ -95,8 +95,8 @@ class LoadExtractor:
                                     interface_ports[port_name.strip()] = (interface_name, modport_name)
                             elif hasattr(h, "kind") and "VariablePortHeader" in str(h.kind):
                                 port_name = decl.name.value if hasattr(decl.name, "value") else str(decl.name)
-            except (ValueError, AttributeError, TypeError):
-                pass
+            except (ValueError, AttributeError, TypeError) as e:
+                logger.debug("端口名提取失败: %s", e)
 
         return result
 
@@ -245,8 +245,8 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError):
                                                     pass
-                                    except Exception:
-                                        pass
+                                    except Exception as e:
+                                        logger.warning("参数值转换失败: %s", e)
 
                                     left_val = (
                                         self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
@@ -273,8 +273,8 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError):
                                                     pass
-                                    except Exception:
-                                        pass
+                                    except Exception as e:
+                                        logger.warning("参数值转换失败: %s", e)
 
                                     evaluated = self.adapter._evaluate_expression(selector_expr, param_map)
                                     if evaluated is not None:
@@ -297,8 +297,8 @@ class LoadExtractor:
                                             param_map[name] = int(value)
                                         except (ValueError, TypeError):
                                             pass
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning("参数值转换失败: %s", e)
 
                             left_val = self.adapter._evaluate_expression(left_expr, param_map) if left_expr else None
                             right_val = self.adapter._evaluate_expression(right_expr, param_map) if right_expr else None

@@ -1,8 +1,9 @@
+import logging
+
 # ==============================================================================
 # subroutine_expander.py - 函数/任务展开器
 # ==============================================================================
 # [Subroutine Expansion] 专门处理函数/任务调用的展开
-
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,7 +11,7 @@ from trace.core.graph.models import EdgeKind, NodeKind, SignalSource, TraceEdge,
 
 from ..._safe import _safe_attr
 
-
+logger = logging.getLogger(__name__)
 @dataclass
 class BranchInfo:
     """条件分支信息"""
@@ -599,7 +600,8 @@ class SubroutineExpander:
                             numeric_val = re.sub(r"^[dhboDHBO]+", "", val_with_base)
                             return numeric_val
                     return const_str
-            except Exception:
+            except Exception as e:
+                logger.debug("subroutine 常量提取失败: %s", e)
                 pass
 
         # Literal values
@@ -608,7 +610,8 @@ class SubroutineExpander:
                 val = _safe_attr(expr, "value", None)
                 if val is not None:
                     return str(val)
-            except Exception:
+            except Exception as e:
+                logger.debug("subroutine 常量提取失败: %s", e)
                 pass
             try:
                 val = getattr(expr, "constant", None)
@@ -621,7 +624,8 @@ class SubroutineExpander:
                             numeric_val = re.sub(r"^[dhboDHBO]+", "", val_with_base)
                             return numeric_val
                     return const_str
-            except Exception:
+            except Exception as e:
+                logger.debug("subroutine 常量提取失败: %s", e)
                 pass
 
         # Default keyword
@@ -636,7 +640,8 @@ class SubroutineExpander:
                     name = _safe_attr(sym, "name", None)
                     if name:
                         return str(name)
-            except Exception:
+            except Exception as e:
+                logger.debug("subroutine name 提取失败: %s", e)
                 pass
 
         # Fallback
@@ -906,7 +911,8 @@ class ParameterReplacer:
                     new_attr = self.visit(attr)
                     if new_attr is not attr:
                         setattr(node, attr_name, new_attr)
-            except Exception:
+            except Exception as e:
+                logger.debug("subroutine attr 替换失败: %s", e)
                 pass
 
         self._cache[node_id] = node
