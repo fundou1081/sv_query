@@ -108,16 +108,17 @@
 - **产出**: [docs/EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) (7814 bytes, 33 语法 × 5 档)
 - **依赖**: 无
 
-### #4 建 docs/EXTRACTION_FAILURES.md 集中表  ⬜
+### #4 建 docs/EXTRACTION_FAILURES.md 集中表  ✅
 - **ROI**: 🔥 中
 - **工作量**: 1 天
-- **状态**: pending
+- **状态**: ✅ **done (2026-08-28 21:45)** — [iter_046](task_tree/iterations/iter_046_extraction_failures_table.md)
 - **目标**: 集中记录所有已知 fallback 路径 + 触发条件 + 用户如何避免
 - **子任务**:
-  - [ ] grep 全部 silent fallback / try-except-pass / sentinel default 模式
-  - [ ] 分类: API fallback / 端口 fallback / 表达式 fallback / 位宽 fallback / 等等
-  - [ ] 每条写: 位置 / 触发条件 / 行为 / 修复建议
-  - [ ] 跟 Bug #2/#3 (刚修的) 关联
+  - [x] grep 全部 silent fallback / try-except-pass / sentinel default — **113 处 try/except+pass, 121 处 fallback 关键词**
+  - [x] 分类 5 类: A 合规 sentinel / B 吞异常 / C fallback 关键词 / D sentinel 返回 / E getattr default
+  - [x] 每条写: 位置 / 触发条件 / 行为 / 修复建议
+  - [x] 跟 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 关联
+  - [ ] (后续) P0-P3 清理: 4 处 except Exception: pass 优先
 - **依赖**: 无
 
 ### #5 UnifiedTracer 20 步管线 → 依赖图  ⬜
@@ -167,13 +168,13 @@
 | 1 | 拆 driver_extractor | 🔥🔥🔥 | ✅ done | 20:38 | 20:45 (4101→1431 行) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
-| 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
+| 4 | EXTRACTION_FAILURES.md | 🔥 | ✅ done | 08-28 | 21:45 (113+121 处登记) |
 | 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 | 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1 ✅ done**; #2 ✅ done; #3 ✅ done; **#8 ✅ done (2026-08-28 21:30)**; 其他 4 项 pending. **总 4/8 (50%)**.
+**总进度**: **#1/#2/#3/#8 ✅ done**; **#4 ✅ done (2026-08-28 21:45)**; 剩 #5/#6/#7. **总 5/8 (62%)**.
 
 ---
 
@@ -267,3 +268,8 @@
   - **根因**: `get_always_blocks` 不枚举 generate 内 always 块 + `find_assignments` 缺 Timed/Block/List/ExpressionStatement 分支导致 `_genvar_context` 永不填充 + `acc[i]` 无法 substitute
   - **修复**: find_assignments 补 4 分支 + `_iter_children` 加 stmt/list 属性 + get_assignments 保持只返回 continuous + always_extractor 遍历 generate always + genvar 注入 (消费侧真实 id 登记)
   - **验证**: 全套 0 回归 / 6 探针 byte-identical / 新测试 `test_generate_for_dynamic_bitselect` 有效 (revert 修复即失败)
+- **2026-08-28 21:45** — **#4 done** (iter_046). 建 `docs/EXTRACTION_FAILURES.md`.
+  - 扫描: 113 处 try/except+pass / 121 处 fallback 关键词 / 37+ getattr default
+  - 分类 5 类: A 合规 sentinel / B 吞异常 (P0: 4 处 except Exception: pass) / C fallback 关键词 / D sentinel 返回 / E getattr default
+  - 关联 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 正面参考
+  - 清理优先级 P0-P3, 供后续逐步执行
