@@ -14,6 +14,13 @@
 #     _get_all_real_signals, _get_signal, _store_expr_tree, ...),
 #     工程量 1+ 天, 留到 Step 3b 单独处理.
 #
+# [Step 3b 2026-08-28 已完成 — 上面这段估计是错的, 保留作记录]
+#   _create_net_decl_edges 已拆到**同目录的 net_decl_extractor.py**, 实际耗时 0.5 小时。
+#   原估计 "1+ 天 / 需先把 helper 提到 _common" 的前提不成立: 那 6 个直接依赖
+#   (传递闭包 12 个 / 563 行) 是**全文件共享基础设施** (_get_signal 有 35 处调用),
+#   搬走会波及 Step 4-7 尚未拆分的区域。改用 Step 1+2 已验证的 Callable 依赖注入,
+#   helper 定义留在 driver_extractor 即可。详见 iter_037。
+#
 # 行为契约 (必须 1:1 跟原方法一致, 测试保护):
 # - 输入: adapter (有 get_variable_declarations/get_signal_name/clean_name/
 #                extract_data_width/get_source_location), module, result,

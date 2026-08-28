@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 11:40 GMT+8
+> **最后更新**: 2026-08-28 15:20 GMT+8
 
 ---
 
@@ -24,9 +24,8 @@
 
 **任务**: 架构改造 #1 — 拆 driver_extractor (4101 行 → 10 个文件)
 **来源**: `docs/ARCHITECTURE_TODOLIST.md` #1
-**状态**: 🟡 in_progress — 9 步完成 3 步 (#2 已完成, 本任务重新回到当前位)
-**下一步**: **Step 3b 拆 `_create_net_decl_edges`** (~123 行, 依赖 7 个 helper,
-`_build_signal_source` 需先提到 `_common`)
+**状态**: 🟡 in_progress — **9 步完成 4 步** (Step 3b ✅ 完成)
+**下一步**: **Step 4 拆 assign_extractor** (估 1 天, `_create_assign_edges` + 4 个 sub-method)
 
 ### Sub-task 勾选
 
@@ -34,26 +33,13 @@
 - [x] 设计新目录结构 `src/trace/core/extractors/*_extractor.py`
 - [x] Step 1+2 拆 alias_extractor — commit `b6708b5`, 0 regression
 - [x] Step 3 拆 wire_init 核心 — commit `a2dac7c`, 净减 262 行 (-6.4%)
-- [ ] **Step 3b 拆 `_create_net_decl_edges`** (1+ 天) ← **下一步**
-- [ ] Step 4 拆 assign_extractor (1 天)
+- [x] ✅ **Step 3b 拆 `_create_net_decl_edges`** → `net_decl_extractor.py` (实际 0.5h, 非 1+ 天; 3836→3754 行; 0 回归 + byte-identical 验证)
+- [ ] Step 4 拆 assign_extractor (1 天) ← **下一步**
 - [ ] Step 5 拆 statement_flattener (0.5 天)
 - [ ] Step 6 拆 always_extractor (1.5 天, 最高风险)
 - [ ] Step 7 拆 function_extractor (1 天)
 - [ ] Step 8 删 driver_extractor.py 主体 (0.5 天)
 - [ ] Step 9 全套最终回归 (0.5 天)
-
-### ⚠️ 未提交改动 (等方豆确认后提交)
-
-```
- M src/trace/core/bit_select_handler.py        (路径 A 改 semantic API)
- M src/trace/core/extractors/_common.py        (删 silent fallback)
- M src/trace/core/graph_builder.py             (删 silent fallback)
- M CURRENT_TODO.md / docs/ARCHITECTURE_TODOLIST.md
-?? docs/task_tree/iterations/iter_036_bitselect_g3_cleanup.md
-```
-实测 0 回归 (见下方"最近完成" #2 条目)。
-
----
 
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 

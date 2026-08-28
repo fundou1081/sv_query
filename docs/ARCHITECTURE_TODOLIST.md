@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 1+2 alias_extractor ✅ commit b6708b5, 准备 Step 3)**
+- **状态**: 🟡 **in_progress (Step 3b ✅ 2026-08-28, 9 步完成 4 步; 下一步 Step 4 assign_extractor)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -19,8 +19,12 @@
   - [x] G2 计划: 拆文件的具体切割点 + import 链 + 测试覆盖 — G2 plan 完成
   - [x] **Step 1+2: 拆 alias_extractor** (0.5 天, 极低风险) — commit `b6708b5`, 1461 tests 0 regression
   - [x] **Step 3: 拆 wire_init_extractor** (0.3 天, 完成核心) — commit `a2dac7c`, 1461 tests 0 regression. _create_var_nodes (22 行) 已拆, _create_net_decl_edges (~123 行) 依赖 7 个 helper, 留 Step 3b
-  - [ ] **Step 3b: 拆 _create_net_decl_edges** (1+ 天, _build_signal_source 需先提到 _common)
-  - [ ] Step 4: 拆 assign_extractor (1 天)
+  - [x] ✅ **Step 3b: 拆 _create_net_decl_edges → net_decl_extractor.py** (实际 0.5 小时, 非估计的 1+ 天) — 见 [iter_037](task_tree/iterations/iter_037_step3b_net_decl_extractor.md)
+        - **更正原估计的错误前提**: 原写 "_build_signal_source 需先提到 _common"。实测 6 个直接依赖 (传递闭包 12 个 / 563 行) 是**全文件共享基础设施** (_get_signal 35 处调用 / _store_expr_tree 7 / _build_signal_source 6 / _append_edge 6 / _get_all_real_signals 5 / _ensure_signal_node 4), 搬走会波及 Step 4-7 未拆区域 → 改用 Step 1+2 已验证的 **Callable 依赖注入**, helper 定义留在原处
+        - 顺手消除两段近乎逐行重复的循环 → 抽出 `_emit_driver_edges()` 共用
+        - `driver_extractor.py` 3836 → **3754 行** (净减 82)
+        - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (全沙箱所致) / truth 4 passed = **0 回归**; 另写探针对比两条路径 (顶层 net decl + generate-for 展开) 输出 **byte-identical**
+  - [ ] Step 4: 拆 assign_extractor (1 天) ← **下一步**
   - [ ] Step 5: 拆 statement_flattener (0.5 天)
   - [ ] Step 6: 拆 always_extractor (1.5 天, 最高风险)
   - [ ] Step 7: 拆 function_extractor (1 天)
@@ -133,7 +137,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3 ✅ |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b ✅ (4/9) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -141,7 +145,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (9 步完成 3 步); **#2 ✅ done (两条路径均 semantic API, 0 回归)**; #3 done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
+**总进度**: #1 进行中 (**9 步完成 4 步**, Step 3b ✅); #2 ✅ done; #3 done; 其他 4 项 pending. **总 3/7 (43%) + #8 待决策**.
 
 ---
 
@@ -182,3 +186,8 @@
   - **额外修复**: `graph_builder` 那处 silent fallback 是 iter_035 漏标的同类问题.
   - ⚠️ **更正 iter_035 的误判**: `graph_builder.py:442` 的 `import re` 属 `_collect_struct_members()` 拆 `parent.member`, **与位选无关, 保留不删**.
   - **回归 (worktree A/B, 基线 `bec0f51`)**: integration 13→13 (0 回归), cli 23→**20** (0 回归, 另修好 3 个 `test_visualize_graph_source`), unit 13→13 (全沙箱所致), `case27_1to1_truth` 4 passed.
+- **2026-08-28 15:20** — #1 **Step 3b 完成** (iter_037). 拆 `_create_net_decl_edges` (110 行) → `extractors/net_decl_extractor.py`.
+  - **更正遗留估计**: 原注释写 "依赖 7 个 helper, 1+ 天, _build_signal_source 需先提到 _common"。实测直接依赖 6 个 / 传递闭包 12 个 (563 行), 但这些是**全文件共享基础设施** (_get_signal 35 处调用), 搬走会牵动 Step 4-7 未拆区域 → 沿用 Step 1+2 的 **Callable 依赖注入**模式, 实际耗时 **0.5 小时**。
+  - 顺手消除原函数两段近乎逐行重复的循环 (顶层 net decl / generate-for 展开), 抽出 `_emit_driver_edges()`。
+  - `driver_extractor.py` **3836 → 3754 行** (净减 82)。
+  - **验证**: integration 13→13, cli 20→20, unit 13→4 (剩余全部 `Operation not permitted` 沙箱所致), truth 4 passed → **0 回归**。另写探针 A/B 对比两条代码路径输出 **byte-identical**, 特别确认 generate-for 的 3 个 `gen_accum[N].prod` 仍是独立节点 (Plan G3 历史 bug 高发点)。

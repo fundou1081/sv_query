@@ -906,112 +906,30 @@ class DriverExtractor:
         """[REFACTOR 2026-06-26] 处理带初始化器的 Net 声明: wire X = expr; → 创建 DRIVER 边.
         [V6.9] 通过 _build_signal_source 提取 source_op/operand_side/casts,
         使 net-decl 边和 assign 边的 signal source 信息一致。
-        """
-        for net_decl in self.adapter.get_net_declarations(module):
-            # NetSymbol (semantic AST): 有 name + initializer, 没有 declarators
-            # 访问 .name 时可能触发 utf-8 转换 (escape 序列), 需要 try/except
-            try:
-                raw_name = getattr(net_decl, "name", "")
-                lhs_name = self.adapter.clean_name(raw_name or "")
-            except (UnicodeDecodeError, TypeError):
-                lhs_name = "<id:non-utf8>"
-            if not lhs_name or lhs_name in port_names:
-                continue
-            try:
-                init = getattr(net_decl, "initializer", None)
-            except (UnicodeDecodeError, TypeError):
-                init = None
-            if init is None:
-                continue
-            # [Plan G3 2026-08-27 12:35] 每个 net_decl 独立拿 genvar_ctx
-            # wire decl 在 generate-for 内时, e.g. case27 gen_accum.iter[0] 内的
-            # 'wire prod = data * weights[i]' 需要 ctx={'i': 0} 来 substitute weights[i] → weights[0]
-            try:
-                net_decl_ctx = dict(self.adapter.get_genvar_context(net_decl) or {})
-                if genvar_ctx:
-                    net_decl_ctx.update(genvar_ctx)
-            except Exception:
-                net_decl_ctx = dict(genvar_ctx or {})
-            # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
-            # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
-            self._store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=net_decl_ctx)
-            lhs_id = f"{module_name}.{lhs_name}"
-            self._ensure_signal_node(result, lhs_id, lhs_name, module_name)
-            rhs_expr_str = self._get_signal(init) or ""
-            rhs_signals = self._get_all_real_signals(init, module=module, genvar_ctx=genvar_ctx) if init else []
-            for src_name in rhs_signals:
-                src_id = f"{module_name}.{src_name}"
-                self._ensure_signal_node(result, src_id, src_name, module_name)
-                if src_id != lhs_id:
-                    # [V6.9] 通过 _build_signal_source 提取 source_op/operand_side/casts
-                    # 保证 net-decl 边和 assign 边的 signal source 信息一致
-                    ds = self._build_signal_source(src_name, init, rhs_expr_str)
-                    self._append_edge(
-                        result,
-                        src=src_id,
-                        dst=lhs_id,
-                        kind=EdgeKind.DRIVER,
-                        assign_type="continuous",
-                        expression=rhs_expr_str,
-                        source=SignalSource(
-                            signal=src_name,
-                            full_expression=rhs_expr_str,
-                            op=ds.op if ds.op else "",
-                            operand_side=ds.operand_side if ds.operand_side else "",
-                            casts=list(ds.casts) if ds.casts else [],
-                            is_decomposed=True,
-                        ),
-                    )
 
-        # [Plan G3 2026-08-27 13:01] 补 generate-for 内展开的带 init wire decl
-        # 例如 case27 'wire [W-1:0] prod = data * weights[i]' (line 25, 藏在 gen_accum entry 内)
-        # get_net_declarations(module) 只遍历 module.body 顶层, 拿不到这些; 用纯 semantic
-        # get_generate_net_declarations 补上. 每个 entry 有 arrayIndex → genvar_ctx {'i': N},
-        # RHS 信号名 substitute 用 entry 的 ctx (weights[i] → weights[N 的 constant value]).
-        for g_decl in self.adapter.get_generate_net_declarations(module):
-            g_name = g_decl.get("name", "")
-            g_init = g_decl.get("initializer")
-            g_ctx = g_decl.get("genvar_ctx") or {}
-            if not g_name or g_init is None:
-                continue
-            # [Plan G3 2026-08-27 13:20] 用 hierarchicalPath 当 node id — 4 entry 的 prod 是
-            # 4 个独立 symbol (generate_loop.gen_accum[N].prod). 之前用 f"{module_name}.{g_name}"
-            # = 'generate_loop.prod' 全一样, 导致 tree_key max-合并成 1 个 (gap_2 只 1 个 '*').
-            g_hp = g_decl.get("hierarchical_path") or ""
-            if g_hp:
-                # hp 已经是完整路径 (generate_loop.gen_accum[0].prod), 直接用当 node id
-                g_lhs_id = g_hp
-                g_short = g_hp.rsplit(".", 1)[-1] if "." in g_hp else g_hp
-            else:
-                g_hp_fallback = f"{module_name}.gen_accum[{g_decl.get('array_index')}].{g_name}"
-                g_lhs_id = g_hp_fallback
-                g_short = g_name
-            self._ensure_signal_node(result, g_lhs_id, g_short, module_name)
-            # expr tree (换入 entry ctx, weights[i] → 数值), 用 g_lhs_id 当 tree_key 区分
-            self._store_expr_tree(g_lhs_id, g_init, "", result, genvar_ctx=g_ctx)
-            g_rhs_str = self._get_signal(g_init) or ""
-            g_signals = self._get_all_real_signals(g_init, module=module, genvar_ctx=g_ctx) if g_init else []
-            for src_name in g_signals:
-                src_id = f"{module_name}.{src_name}"
-                self._ensure_signal_node(result, src_id, src_name, module_name)
-                if src_id != g_lhs_id:
-                    ds = self._build_signal_source(src_name, g_init, g_rhs_str)
-                    self._append_edge(
-                        result,
-                        src=src_id,
-                        dst=g_lhs_id,
-                        kind=EdgeKind.DRIVER,
-                        assign_type="continuous",
-                        expression=g_rhs_str,
-                        source=SignalSource(
-                            signal=src_name,
-                            full_expression=g_rhs_str,
-                            op=ds.op if ds.op else "",
-                            operand_side=ds.operand_side if ds.operand_side else "",
-                            casts=list(ds.casts) if ds.casts else [],
-                            is_decomposed=True,
-                        ),
-                    )
+        [ARCHITECTURE_TODOLIST #1 Step 3b 2026-08-28] 薄壳, 实际逻辑在
+        extractors/net_decl_extractor.py。保留方法签名 (调用方零改动)。
+        行为 1:1 一致 — 同样的 DRIVER 边、同样的节点、同样的 assign_type="continuous"。
+
+        6 个共享 helper 以 Callable 注入 (沿用 Step 1+2 alias_extractor 模式):
+        这些 helper 是全文件共享的 (如 _get_signal 有 35 处调用), 搬走会波及
+        Step 4-7 尚未拆分的 assign/always/function 部分, 不在 Step 3b 范围。
+        """
+        from .extractors.net_decl_extractor import create_net_decl_edges
+        create_net_decl_edges(
+            adapter=self.adapter,
+            module=module,
+            result=result,
+            module_name=module_name,
+            port_names=port_names,
+            store_expr_tree=self._store_expr_tree,
+            ensure_signal_node=self._ensure_signal_node,
+            get_signal=self._get_signal,
+            get_all_real_signals=self._get_all_real_signals,
+            build_signal_source=self._build_signal_source,
+            append_edge=self._append_edge,
+            genvar_ctx=genvar_ctx,
+        )
 
     def _ensure_signal_node(self, result, node_id, name, module_name, file: str = "", line: int = 0):
         """[REFACTOR 2026-06-26] 确保 result.nodes 包含 node_id 的 SIGNAL TraceNode.
