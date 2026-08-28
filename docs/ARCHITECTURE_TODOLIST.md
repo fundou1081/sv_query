@@ -118,7 +118,8 @@
   - [x] 分类 5 类: A 合规 sentinel / B 吞异常 / C fallback 关键词 / D sentinel 返回 / E getattr default
   - [x] 每条写: 位置 / 触发条件 / 行为 / 修复建议
   - [x] 跟 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 关联
-  - [ ] (后续) P0-P3 清理: 4 处 except Exception: pass 优先
+  - [x] (审查) B/C/E 三类逐点审查 (2026-08-28 21:50): 36 违规 / 55 合规 / 20 边界
+  - [ ] (后续) P0-P3 清理: class_graph_builder 7 处 / graph_builder 6 处 / load_extractor 7 处优先
 - **依赖**: 无
 
 ### #5 UnifiedTracer 20 步管线 → 依赖图  ⬜
@@ -269,6 +270,7 @@
   - **修复**: find_assignments 补 4 分支 + `_iter_children` 加 stmt/list 属性 + get_assignments 保持只返回 continuous + always_extractor 遍历 generate always + genvar 注入 (消费侧真实 id 登记)
   - **验证**: 全套 0 回归 / 6 探针 byte-identical / 新测试 `test_generate_for_dynamic_bitselect` 有效 (revert 修复即失败)
 - **2026-08-28 21:45** — **#4 done** (iter_046). 建 `docs/EXTRACTION_FAILURES.md`.
+- **2026-08-28 21:50** — #4 后续: B/C/E 三类逐点审查 (iter_047). 113 处 try/except+pass → **36 违规/55 合规/20 边界**; C/E 无系统性违规. 清理优先级 P0-P3 更新.
   - 扫描: 113 处 try/except+pass / 121 处 fallback 关键词 / 37+ getattr default
   - 分类 5 类: A 合规 sentinel / B 吞异常 (P0: 4 处 except Exception: pass) / C fallback 关键词 / D sentinel 返回 / E getattr default
   - 关联 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 正面参考
