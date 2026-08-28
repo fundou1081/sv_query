@@ -122,15 +122,16 @@
   - [ ] (后续) P0-P3 清理: class_graph_builder 7 处 / graph_builder 6 处 / load_extractor 7 处优先
 - **依赖**: 无
 
-### #5 UnifiedTracer 20 步管线 → 依赖图  ⬜
+### #5 UnifiedTracer 管线 → 显式 DAG  ✅
 - **ROI**: 🔥 中
 - **工作量**: 2 天
-- **状态**: pending
+- **状态**: ✅ **done (2026-08-28 23:10)** — [iter_049](task_tree/iterations/iter_049_pipeline_dag.md)
 - **目标**: 引入显式依赖声明 (类似 Airflow DAG), 让每步声明 inputs/outputs
 - **子任务**:
-  - [ ] 盘点 20 步的真正依赖关系 (哪些可并行 / 哪些必须串行)
-  - [ ] 设计 PipelineStep 协议 (input_keys / output_keys)
-  - [ ] 重构 UnifiedTracer.build_graph 用 DAG 拓扑排序
+  - [x] 盘点真正依赖关系 — **实际 11 步** (非记录的 20 步)
+  - [x] 设计 PipelineStep 协议 (name/run/inputs/outputs) + Pipeline (validate/拓扑排序/run)
+  - [x] 重构 build_graph 用 DAG — 新建 `src/trace/core/pipeline.py`, 行为 1:1
+  - [x] 独立步骤 (class/bit_select vs module_graph) 结构上可并行
   - [ ] 测试: 故意打乱顺序看是否报错
 - **依赖**: 无
 
@@ -170,12 +171,12 @@
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ✅ done | 08-28 | 21:45 (113+121 处登记) |
-| 5 | 管线 → 依赖图 | 🔥 | ⬜ pending | — | — |
+| 5 | 管线 → 显式 DAG | 🔥 | ✅ done | 08-28 | 23:10 (11 步 DAG) |
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 | 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1/#2/#3/#8 ✅ done**; **#4 ✅ done (2026-08-28 21:45)**; 剩 #5/#6/#7. **总 5/8 (62%)**.
+**总进度**: **#1/#2/#3/#4/#8 ✅ done**; **#5 ✅ done (2026-08-28 23:10)**; 剩 #6/#7. **总 6/8 (75%)**.
 
 ---
 
@@ -275,3 +276,9 @@
   - 分类 5 类: A 合规 sentinel / B 吞异常 (P0: 4 处 except Exception: pass) / C fallback 关键词 / D sentinel 返回 / E getattr default
   - 关联 Bug #2/#3 (warning+extra 模式) + NO_TREE_MARKER 正面参考
   - 清理优先级 P0-P3, 供后续逐步执行
+- **2026-08-28 23:10** — **#5 done** (iter_049). build_graph 重构为显式 DAG.
+  - 新建 `src/trace/core/pipeline.py`: PipelineStep (name/run/inputs/outputs) + Pipeline (validate/拓扑排序/run)
+  - 实际 11 步 (非记录 20 步), 依赖链 compile→adapter→graph→{class,class_member,bit_select,module_graph}→path_resolver→tracers
+  - 独立步骤结构上可并行 (class/bit_select vs module_graph 只依赖 graph)
+  - 实施失误: _step_compile 错写 return ctx["root"] → KeyError → 353 失败, 修复后 0 回归
+  - 验证: 全套 0 回归 / 4 探针 byte-identical / pipeline.py ruff clean
