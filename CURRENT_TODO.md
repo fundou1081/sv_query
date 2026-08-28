@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 20:20 GMT+8
+> **最后更新**: 2026-08-28 20:45 GMT+8
 
 ---
 
@@ -22,30 +22,21 @@
 
 ## 🔥 当前任务
 
-**任务**: 架构改造 #1 — 拆 driver_extractor (4101 行 → 10 个文件)
-**来源**: `docs/ARCHITECTURE_TODOLIST.md` #1
-**状态**: 🟡 in_progress — **8.5/9 步完成** (Step 8 ✅)
-**下一步**: **Step 9 全套最终回归** (0.5 天)
+**任务**: (无 — 架构改造 #1/#2/#3 已完成)
 
-### Sub-task 勾选
+**下一候选** (未启动, 先问方豆):
+- **#8 (新发现)**: 修 generate-for 动态位选不产生 BIT_SELECT 边
+- #4: `docs/EXTRACTION_FAILURES.md` 集中表 (1 天)
+- #5: UnifiedTracer 20 步管线 → 依赖图 (2 天)
+- #6: expression tree 提取独立成 builder (2 天)
+- #7: 迁 pyslang 11.0 native API (1-2 周)
 
-- [x] 盘点 driver_extractor 全部公开方法 — 67 顶层 + 11 嵌套 = 78 def
-- [x] 设计新目录结构 `src/trace/core/extractors/*_extractor.py`
-- [x] Step 1+2 拆 alias_extractor — commit `b6708b5`, 0 regression
-- [x] Step 3 拆 wire_init 核心 — commit `a2dac7c`, 净减 262 行 (-6.4%)
-- [x] ✅ Step 3b 拆 `_create_net_decl_edges` → `net_decl_extractor.py` (commit `15770af`, 3836→3754 行)
-- [x] ✅ Step 4 拆 assign phase (5 方法 + 2 专属 helper, 580 行) → `assign_extractor.py`, 引入 `AssignHelpers` dataclass 打包注入 13 个共享 helper. 3754→3211 行. 4 分支探针 byte-identical.
-- [x] ✅ Step 4b 拆 `_handle_normal_assign` (329 行) → 4 个具名 helper, 主函数 329 → 33 行
-- [x] ✅ Step 5 拆 statement_flattener (8 方法/204 行) → `statement_flattener.py`; 3211→3035 行; flattener 全路径探针 byte-identical
-- [x] ✅ Step 6 拆 always_extractor (9 方法/~790 行) → `always_extractor.py`; 3035→2292 行; always 全路径探针 byte-identical
-- [x] ✅ Step 7 拆 function_extractor (7 方法/648 行) → `function_extractor.py`; 2292→1685 行; function+task 探针 byte-identical
-- [x] ✅ Step 8 删除死代码 (4 方法/255 行) → `driver_extractor.py` 1687→1432 行; 4 探针 byte-identical
-- [ ] Step 9 全套最终回归 (0.5 天) ← **下一步**
-
+---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-08-28 20:45** | **架构改造 #1 — 拆 driver_extractor** | 4101→1431 行, 拆出 7 模块, 9 步全 done, 6 探针 byte-identical, 0 回归. [iter_044](docs/task_tree/iterations/iter_044_step9_final_regression.md) |
 | **2026-08-28 11:40** | **架构改造 #2 — BitSelect 改用 pyslang Semantic API** | 两条路径均消除 regex + silent fallback 清零; **0 回归**, 另修好 3 个 `test_visualize_graph_source`. commit `bec0f51` + 本次未提交改动. 见 [iter_035](docs/task_tree/iterations/iter_035_bitselect_semantic_api_decision.md) / [iter_036](docs/task_tree/iterations/iter_036_bitselect_g3_cleanup.md) |
 | 2026-08-27 23:48 | 架构改造 #3 — EXTRACTION_COVERAGE.md 总表 | `docs/EXTRACTION_COVERAGE.md` (33 语法 × 5 档 × 101 fixture), commit `54e854d` |
 | 2026-08-27 21:33 | 架构改造 #1 Step 3 | commit `a2dac7c` |
