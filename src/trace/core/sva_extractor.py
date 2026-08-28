@@ -490,7 +490,8 @@ class SVAExtractor:
                 try:
                     s = self._extract_signals_from_syntax(child)
                     signals.extend(s)
-                except Exception:
+                except Exception as e:
+                    logger.debug("SVA 提取失败: %s", e)
                     pass
         return list(set(signals))
 
@@ -542,7 +543,8 @@ class SVAExtractor:
         if name:
             try:
                 return str(name).strip()
-            except Exception:
+            except Exception as e:
+                logger.debug("SVA 提取失败: %s", e)
                 pass
         return ""
 
@@ -560,14 +562,16 @@ class SVAExtractor:
         if ident:
             try:
                 return str(ident.value).strip()
-            except Exception:
+            except Exception as e:
+                logger.debug("SVA 提取失败: %s", e)
                 pass
         # 方式2: .name
         name = getattr(node, "name", None)
         if name:
             try:
                 return str(name).strip()
-            except Exception:
+            except Exception as e:
+                logger.debug("SVA 提取失败: %s", e)
                 pass
         # 方式3: 从 syntax 提取
         syntax = getattr(node, "syntax", None)
@@ -576,7 +580,8 @@ class SVAExtractor:
             if token:
                 try:
                     return str(token).strip()
-                except Exception:
+                except Exception as e:
+                    logger.debug("SVA 提取失败: %s", e)
                     pass
         return ""
 

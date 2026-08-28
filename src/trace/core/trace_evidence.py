@@ -1,3 +1,5 @@
+import logging
+
 # ==============================================================================
 # trace_evidence.py - Trace Evidence Resolver (Stage 2)
 #
@@ -14,12 +16,12 @@
 # - snippet 用 offset 切片 (text[start.offset:end.offset]) 而非按行号切割
 # - 借鉴 sv-trace 的 credibility scoring (0-1 量化)
 # ==============================================================================
-
 from dataclasses import dataclass, field
 
 from .coverage_models import SourceLocation, SourceSnippet
 from .graph.models import NodeKind, TraceEdge
 
+logger = logging.getLogger(__name__)
 # ==============================================================================
 # Evidence 数据类
 # ==============================================================================
@@ -572,7 +574,8 @@ class TraceEvidenceResolver:
                     result[0] = node
         try:
             root.visit(visitor)
-        except Exception:
+        except Exception as e:
+            logger.debug("evidence visitor 失败: %s", e)
             pass
         return result[0]
 

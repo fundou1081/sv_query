@@ -8,12 +8,12 @@
 # - AtomicSignal: 原子信号（含位选）
 # - DecompositionResult: 分解结果
 # ==============================================================================
-
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-
+logger = logging.getLogger(__name__)
 @dataclass
 class SourceLocation:
     """源码位置
@@ -236,7 +236,8 @@ class DecompositionResult:
         if hasattr(block, "to_dict") and callable(block.to_dict):
             try:
                 return block.to_dict()
-            except Exception:
+            except Exception as e:
+                logger.debug("block.to_dict 失败, 走 repr fallback: %s", e)
                 pass
         # Fallback: repr 字符串
         return {"repr": str(block)}

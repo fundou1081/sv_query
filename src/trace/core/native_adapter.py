@@ -28,7 +28,7 @@ def _safe_str(value) -> str | None:
         if not s or s == "<id:binary>":
             return None
         return s
-    except (UnicodeDecodeError, TypeError, Exception):
+    except (UnicodeDecodeError, TypeError):
         return None
 
 
@@ -37,7 +37,7 @@ def _safe_hierarchical_path(symbol) -> str | None:
     try:
         hp = symbol.hierarchicalPath
         return _safe_str(hp)
-    except (UnicodeDecodeError, TypeError, Exception):
+    except (UnicodeDecodeError, TypeError):
         return None
 
 
@@ -100,7 +100,7 @@ def _find_target_top(root: pyslang.RootSymbol, target_module: str | None):
         try:
             if top.name == target_module:
                 return top
-        except (UnicodeDecodeError, TypeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             continue
     return None
 
@@ -125,7 +125,7 @@ def _is_user_module(top) -> bool:
                 kind = str(child.kind)
                 if 'Instance' in kind:
                     return True
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 continue
     except Exception:
         return False
@@ -153,7 +153,8 @@ def _walk_instance(
             return
         try:
             _safe_str(inst.name)
-        except (UnicodeDecodeError, TypeError, Exception):
+        except (UnicodeDecodeError, TypeError):
+            # [fix] 原 except 冗余包揽 Exception — 收窄到实际可能的解码/类型错误
             pass
 
         # Get type name (module name) via definition
@@ -162,7 +163,7 @@ def _walk_instance(
         if defn is not None:
             try:
                 type_name = _safe_str(defn.name)
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 type_name = None
 
         # 跟旧实现一致: top-level target 本身不被 emit
@@ -195,7 +196,7 @@ def _walk_instance(
         for child in body:
             try:
                 kind = str(child.kind)
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 continue
 
             if 'Instance' in kind:
@@ -206,7 +207,7 @@ def _walk_instance(
                 _walk_generate_block(child, child_parent, wrappers, root, target_module)
             # Skip ProceduralBlock, Variable, Parameter, etc.
 
-    except (UnicodeDecodeError, TypeError, Exception):
+    except (UnicodeDecodeError, TypeError):
         return
 
 
@@ -220,13 +221,13 @@ def _walk_generate_block_array(
         if entries is None:
             # Fall back: iterate gba directly
             entries = list(gba)
-    except (UnicodeDecodeError, TypeError, Exception):
+    except (UnicodeDecodeError, TypeError):
         return
 
     for entry in entries:
         try:
             kind = str(getattr(entry, 'kind', ''))
-        except (UnicodeDecodeError, TypeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             continue
         if 'GenerateBlock' in kind:
             _walk_generate_block(entry, parent_module, wrappers, root, target_module)
@@ -241,7 +242,7 @@ def _walk_generate_block(
         for child in gb:
             try:
                 kind = str(child.kind)
-            except (UnicodeDecodeError, TypeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 continue
             if 'Instance' in kind:
                 _walk_instance(child, parent_module, wrappers, root, target_module, is_top=False)
@@ -249,7 +250,7 @@ def _walk_generate_block(
                 _walk_generate_block_array(child, parent_module, wrappers, root, target_module)
             elif 'GenerateBlock' in kind:
                 _walk_generate_block(child, parent_module, wrappers, root, target_module)
-    except (UnicodeDecodeError, TypeError, Exception):
+    except (UnicodeDecodeError, TypeError):
         return
 
 

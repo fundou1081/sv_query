@@ -194,7 +194,8 @@ class ConnectionExtractor:
                 _def = getattr(inst, "definition", None)
                 if _def is not None:
                     _def_name = _safe_str(getattr(_def, "name", ""))
-            except Exception:
+            except Exception as e:
+                logger.debug("def_name 提取失败: %s", e)
                 pass
             if _def_name and _def_name != inst_name:
                 inst_module_name = _def_name
@@ -293,7 +294,8 @@ class ConnectionExtractor:
                 _def = getattr(inst, "definition", None)
                 if _def is not None:
                     _def_name = _safe_str(getattr(_def, "name", ""))
-            except Exception:
+            except Exception as e:
+                logger.debug("def_name 提取失败: %s", e)
                 pass
             if _def_name and _def_name != inst_name:
                 inst_module_name = _def_name

@@ -1,14 +1,14 @@
+import logging
+
 # ==============================================================================
 # function_expander.py - 函数展开器
 # ==============================================================================
 # [Expression Node] 函数展开逻辑
-
-
 from typing import Any
 
 from trace.core.graph.models import SignalGraph, TraceEdge
 
-
+logger = logging.getLogger(__name__)
 class FunctionExpander:
     """函数展开器
 
@@ -78,7 +78,8 @@ class FunctionExpander:
                     result = self._find_node(attr, predicate)
                     if result:
                         return result
-            except Exception:
+            except Exception as e:
+                logger.debug("函数展开失败: %s", e)
                 pass
 
         return None

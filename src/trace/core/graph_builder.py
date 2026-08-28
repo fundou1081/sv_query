@@ -252,8 +252,8 @@ class GraphBuilder:
                         if not sig_name:
                             continue
                         self.graph._gen_block_map[sig_name] = gb_name
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("gen_block 映射写入失败: %s", e)
 
             import sys
             if self.graph._gen_block_map:
@@ -301,8 +301,8 @@ class GraphBuilder:
                                     walk(entry, path)
                         elif 'GenerateBlock' in kind:
                             walk(child, path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("gen_block 映射写入失败: %s", e)
 
             walk(target_top, self.target_module)
 
@@ -334,8 +334,8 @@ class GraphBuilder:
                         return top
                 except Exception:
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("generate 遍历失败: %s", e)
         return None
 
     def _drop_literal_nodes(self):
@@ -377,10 +377,10 @@ class GraphBuilder:
                         hp = str(sym.hierarchicalPath)
                         if hp:
                             target_sub_paths.add(hp)
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+                    except Exception as e:
+                        logger.warning("hierarchicalPath 提取失败: %s", e)
+        except Exception as e:
+            logger.warning("子路径遍历失败: %s", e)
 
         # Filter nodes
         nodes_to_drop = []
@@ -418,8 +418,8 @@ class GraphBuilder:
         for node_id in nodes_to_drop:
             try:
                 self.graph.remove_node(node_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("节点删除失败: %s", e)
 
         if nodes_to_drop:
             import sys
