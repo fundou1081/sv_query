@@ -245,12 +245,52 @@ def _handle_binary_invocation_assign(assign, raw_lhs, raw_rhs, module, result, m
 def _handle_normal_assign(assign, module, result, module_name, genvar_ctx: dict | None = None, *, h: 'AssignHelpers') -> None:
     """[REFACTOR 2026-06-26] 5d: 默认 assign 处理 (call/concat/binary-invocation 之外的).
 
-    处理 ScopedName (tb.data), ConditionalOp, bit_slice, 等.
-    这是最大的 sub-method (~197 lines).
+    [Step 4b 2026-08-28] 行为重构 (搬文件结果不变):
+    原实现 329 行内联 4 个阶段 — lhs/dst 准备 / rhs_signals+has_conditional 解析 /
+    conditional 边生成 / 非 conditional 边生成。拆为 4 个具名 helper, 主函数仅保留
+    控制流 (~14 行)。每个 helper 自带 docstring 记录原位置与行为契约,
+    行为 1:1 一致, 探针 byte-identical 验证。
+    """
+    lhs, rhs, rhs_expr, dst_node_id = _prepare_lhs_and_dst(
+        assign, module, result, module_name, genvar_ctx, h=h,
+    )
+    if not (lhs and (rhs or rhs_expr is not None)):
+        return
+    rhs_signals, has_conditional, check_expr, ternary_condition, expr_str = _resolve_rhs_signals(
+        rhs_expr, rhs, module, genvar_ctx, h=h,
+    )
+    if has_conditional:
+        _build_ternary_edge_signals(
+            check_expr, rhs_signals, ternary_condition, expr_str,
+            dst_node_id, module_name, module, result, h=h,
+        )
+    else:
+        _build_simple_edge_signals(
+            rhs_signals, ternary_condition, expr_str, rhs_expr,
+            dst_node_id, module_name, module, result, h=h,
+        )
+    # [REFACTOR 2026-08-07 A计划] 从完整 rhs 构建表达式树 (assign y = rhs)
+    # rhs_expr 是完整 semantic 表达式，.syntax 建整棵树（含三元/嵌套运算）
+    if lhs and rhs_expr is not None:
+        h.store_expr_tree(lhs, rhs_expr, module_name, result, genvar_ctx=genvar_ctx)
+
+
+def _prepare_lhs_and_dst(assign, module, result, module_name, genvar_ctx, *, h: 'AssignHelpers'):
+    """[Step 4b 2026-08-28] 解构 assign + 准备 dst 节点.
+
+    行为 1:1 跟原 _handle_normal_assign 前置块段一致 (原行号 ~251-287)。
+    - 解构 lhs / rhs / rhs_expr (h.parse_assign)
+    - 早返: 若 lhs 为空且 rhs/rhs_expr 均空 → 返回 None 元组
+    - 处理 ScopedName (tb.data) → 在 instance 路径上建所有缺失父节点 (kind=PORT_IN)
+    - 创建 dst TraceNode
+
+    返回 (lhs, rhs, rhs_expr, dst_node_id); 任一为 None 时主函数早返。
     """
     lhs, rhs, rhs_expr = h.parse_assign(assign)
     if not (lhs and (rhs or rhs_expr is not None)):
-        return
+        # 行为 1:1: 原函数此时 `return` (空函数提前返回, 不算 dst_node_id 等后续)。
+        # 主函数检测 lhs 为 None 时早返。
+        return None, None, None, None
     # [FIX] ScopedName: tb.data → 创建 instance 路径上的所有父节点
     if "." in lhs:
         lhs_parts = lhs.split(".")
@@ -285,6 +325,23 @@ def _handle_normal_assign(assign, module, result, module_name, genvar_ctx: dict 
     dst_node_id = f"{module_name}.{lhs}"
     if dst_node_id not in [n.id for n in result.nodes]:
         result.nodes.append(TraceNode(id=dst_node_id, name=lhs, module=module_name, kind=NodeKind.SIGNAL, width=(1, 0)))
+    return lhs, rhs, rhs_expr, dst_node_id
+
+
+def _resolve_rhs_signals(rhs_expr, rhs, module, genvar_ctx, *, h: 'AssignHelpers'):
+    """[Step 4b 2026-08-28] 解析 RHS, 决定是否走 ternary 边生成.
+
+    行为 1:1 跟原 _handle_normal_assign 中段一致 (原行号 ~288-349)。
+    处理 4 类情况:
+      1. EqualsValueClause (枚举常量) → rhs_signals=[]
+      2. 三元 (含 `$signed(ternary)` 解包) → has_conditional=True,
+         check_expr 是解包后的 ConditionalOp
+      3. compile-time 符号 (parameter/localparam) → rhs_signals=[], 不创建 driver
+      4. 普通 RHS → rhs_signals 从 visitor 提取
+
+    Returns:
+        (rhs_signals, has_conditional, check_expr, ternary_condition, expr_str)
+    """
     rhs_kind = str(getattr(rhs_expr, "kind", "")) if rhs_expr else ""
     if "EqualsValueClause" in rhs_kind:
         rhs_signals = []
@@ -346,231 +403,252 @@ def _handle_normal_assign(assign, module, result, module_name, genvar_ctx: dict 
             expr_str = "<expr:non-utf8>"
     else:
         expr_str = rhs or ""
+    return rhs_signals, has_conditional, check_expr, ternary_condition, expr_str
 
-    if has_conditional:
-        # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
-        # (localparam/parameter) from ternary branch signals.
-        # [V6.3+4 2026-07-28] Pass UNWRAPPED check_expr to
-        # get_signals_with_conditions so the visitor sees the
-        # ConditionalOp directly (not the outer ParenthesizedExpression).
-        # This mirrors V6.3+1 fix in _create_always_edges bug #2.
-        #
-        # [V6.9 FIX] semantic_adapter returns list[str] (ALL signals).
-        # Must separate condition signals (g, h) from leaf signals (x0, x1).
-        all_signals = h.signal_visitor._extract_signals_from_expr(check_expr) or []
 
-        # [V6.9] 递归收集所有层的条件信号名
-        # g ? (h ? x0 : x1) : x2 → 条件信号 = {g, h}
-        def _collect_cond_signals(cond_op, acc_set):
-            if cond_op is None:
-                return
-            ck = str(getattr(cond_op, "kind", ""))
-            if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
-                return
-            rc = getattr(cond_op, "conditions", None)
-            if rc:
-                for c in rc:
-                    ce = getattr(c, "expr", None) or getattr(c, "expression", None)
-                    if ce:
-                        for s in (h.signal_visitor._extract_signals_from_expr(ce) or []):
-                            acc_set.add(s)
-            _collect_cond_signals(getattr(cond_op, "left", None), acc_set)
-            _collect_cond_signals(getattr(cond_op, "right", None), acc_set)
-        cond_sig_names = set()
-        _collect_cond_signals(check_expr, cond_sig_names)
+def _build_ternary_edge_signals(
+    check_expr, rhs_signals, ternary_condition, expr_str,
+    dst_node_id, module_name, module, result, *, h: 'AssignHelpers',
+):
+    """[Step 4b 2026-08-28] 为 ternary RHS 生成 DRIVER 边.
 
-        # [FIX 2026-08-09 A方案] 用分支信号作为 leaf_signals, 而不是从 all_signals 排除条件信号.
-        # 原逻辑 'leaf_signals = [s for s in all_signals if s not in cond_sig_names]' 在
-        # 'z = (a > b) ? (a - b) : 8'd0' 这类嵌套表达式 cond 场景下丢边:
-        #   all_signals = {a, b}, cond_sig_names = {a, b} (a、b 同时出现在 cond 和 branch)
-        #   leaf_signals = {} → 0 条边生成 → z 在 viz.edges 里消失 → viz_to_elk 不会为 z
-        #   生成 case 框 → port_out 'z' 在 SVG 里孤儿.
-        # 修复: 递归收集 ternary 分支 (left/right) 里出现的所有信号, 这才是真正的
-        # 'driver 来源信号'. 'cond_sig_names' 仅用于去重/参考, 不作为排除集.
-        branch_sigs = set()
-        def _collect_branch_signals(cond_op):
-            if cond_op is None:
-                return
-            ck = str(getattr(cond_op, "kind", ""))
-            if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
-                return
-            for arm in [getattr(cond_op, "left", None), getattr(cond_op, "right", None)]:
-                if arm is None:
-                    continue
-                ak = str(getattr(arm, "kind", ""))
-                if "ConditionalOp" in ak or "ConditionalExpression" in ak:
-                    _collect_branch_signals(arm)
-                else:
-                    for s in (h.signal_visitor._extract_signals_from_expr(arm) or []):
-                        branch_sigs.add(s)
-        _collect_branch_signals(check_expr)
+    行为 1:1 跟原 _handle_normal_assign 的 `if has_conditional:` then 块段一致
+    (原行号 ~351-517)。包含 3 个原内嵌函数: _collect_cond_signals /
+    _collect_branch_signals / _build_ternary_cond_map (递归构造每条 leaf
+    信号的 cond_path_list)。
 
-        # Leaf signals = 在分支中出现的信号 (包含同时在条件中出现的 — 它们仍然驱动输出)
-        leaf_signals = [s for s in all_signals if s in branch_sigs]
+    每条边走 edge_factory.make_edge (含 sig_cond / condition /
+    condition_chain 三种条件字段, 与 viz 层契约一致)。
+    """
+    # [Phase 8 / Fix F.6 2026-7-15] Filter compile-time symbols
+    # (localparam/parameter) from ternary branch signals.
+    # [V6.3+4 2026-07-28] Pass UNWRAPPED check_expr to
+    # get_signals_with_conditions so the visitor sees the
+    # ConditionalOp directly (not the outer ParenthesizedExpression).
+    # This mirrors V6.3+1 fix in _create_always_edges bug #2.
+    #
+    # [V6.9 FIX] semantic_adapter returns list[str] (ALL signals).
+    # Must separate condition signals (g, h) from leaf signals (x0, x1).
+    all_signals = h.signal_visitor._extract_signals_from_expr(check_expr) or []
 
-        # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
-        # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
-        def _build_ternary_cond_map(cond_op, path=None):
-            result_map = {}
-            if path is None:
-                path = []
-            if cond_op is None:
-                return result_map
-            ck = str(getattr(cond_op, "kind", ""))
-            if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
-                return result_map
+    # [V6.9] 递归收集所有层的条件信号名
+    # g ? (h ? x0 : x1) : x2 → 条件信号 = {g, h}
+    def _collect_cond_signals(cond_op, acc_set):
+        if cond_op is None:
+            return
+        ck = str(getattr(cond_op, "kind", ""))
+        if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+            return
+        rc = getattr(cond_op, "conditions", None)
+        if rc:
+            for c in rc:
+                ce = getattr(c, "expr", None) or getattr(c, "expression", None)
+                if ce:
+                    for s in (h.signal_visitor._extract_signals_from_expr(ce) or []):
+                        acc_set.add(s)
+        _collect_cond_signals(getattr(cond_op, "left", None), acc_set)
+        _collect_cond_signals(getattr(cond_op, "right", None), acc_set)
+    cond_sig_names = set()
+    _collect_cond_signals(check_expr, cond_sig_names)
 
-            # 提取条件文本
-            cond_texts = []
-            raw_c = getattr(cond_op, "conditions", None)
-            if raw_c:
-                for c in raw_c:
-                    ce = getattr(c, "expr", None)
-                    if ce:
-                        ct = h.get_signal(ce) or str(ce).strip()
-                        if ct:
-                            cond_texts.append(ct)
-            cond_str = " && ".join(cond_texts) if cond_texts else ""
+    # [FIX 2026-08-09 A方案] 用分支信号作为 leaf_signals, 而不是从 all_signals 排除条件信号.
+    # 原逻辑 'leaf_signals = [s for s in all_signals if s not in cond_sig_names]' 在
+    # 'z = (a > b) ? (a - b) : 8'd0' 这类嵌套表达式 cond 场景下丢边:
+    #   all_signals = {a, b}, cond_sig_names = {a, b} (a、b 同时出现在 cond 和 branch)
+    #   leaf_signals = {} → 0 条边生成 → z 在 viz.edges 里消失 → viz_to_elk 不会为 z
+    #   生成 case 框 → port_out 'z' 在 SVG 里孤儿.
+    # 修复: 递归收集 ternary 分支 (left/right) 里出现的所有信号, 这才是真正的
+    # 'driver 来源信号'. 'cond_sig_names' 仅用于去重/参考, 不作为排除集.
+    branch_sigs = set()
+    def _collect_branch_signals(cond_op):
+        if cond_op is None:
+            return
+        ck = str(getattr(cond_op, "kind", ""))
+        if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
+            return
+        for arm in [getattr(cond_op, "left", None), getattr(cond_op, "right", None)]:
+            if arm is None:
+                continue
+            ak = str(getattr(arm, "kind", ""))
+            if "ConditionalOp" in ak or "ConditionalExpression" in ak:
+                _collect_branch_signals(arm)
+            else:
+                for s in (h.signal_visitor._extract_signals_from_expr(arm) or []):
+                    branch_sigs.add(s)
+    _collect_branch_signals(check_expr)
 
-            left = getattr(cond_op, "left", None)
-            right = getattr(cond_op, "right", None)
+    # Leaf signals = 在分支中出现的信号 (包含同时在条件中出现的 — 它们仍然驱动输出)
+    leaf_signals = [s for s in all_signals if s in branch_sigs]
 
-            def _extract_arm_signals(arm_expr, cond_path):
-                """Extract all leaf signal names from a ternary arm.
-
-                Returns dict of {signal_name: (cond_list, arm_ast)} where cond_list
-                is the condition path and arm_ast is the original sub-expression AST
-                (preserved for source_op detection).
-                """
-                if arm_expr is None:
-                    return {}
-                ak = str(getattr(arm_expr, "kind", ""))
-                if "ConditionalOp" in ak or "ConditionalExpression" in ak:
-                    return _build_ternary_cond_map(arm_expr, cond_path)
-                # Preserve sub-expression AST for source_op extraction later
-                names = h.signal_visitor._extract_signals_from_expr(arm_expr) or []
-                return {n: (list(cond_path), arm_expr) for n in names if n}
-
-            # 递归 left (true 分支) / right (false 分支)
-            result_map.update(_extract_arm_signals(left, path + [cond_str]))
-            neg_cond = f"!({cond_str})" if cond_str else ""
-            result_map.update(_extract_arm_signals(right, path + [neg_cond]))
-
+    # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
+    # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
+    def _build_ternary_cond_map(cond_op, path=None):
+        result_map = {}
+        if path is None:
+            path = []
+        if cond_op is None:
+            return result_map
+        ck = str(getattr(cond_op, "kind", ""))
+        if "ConditionalOp" not in ck and "ConditionalExpression" not in ck:
             return result_map
 
-        cond_map = _build_ternary_cond_map(check_expr)
-        # cond_map: {signal_name: (cond_path_list, arm_ast)}
-        signal_conditions = [(s, cond_map[s][0], cond_map[s][1]) for s in leaf_signals if s in cond_map]
+        # 提取条件文本
+        cond_texts = []
+        raw_c = getattr(cond_op, "conditions", None)
+        if raw_c:
+            for c in raw_c:
+                ce = getattr(c, "expr", None)
+                if ce:
+                    ct = h.get_signal(ce) or str(ce).strip()
+                    if ct:
+                        cond_texts.append(ct)
+        cond_str = " && ".join(cond_texts) if cond_texts else ""
 
-        signal_conditions = h.filter_signal_conditions_by_module(
-            signal_conditions, module=module
-        )
-        for rhs_name, sig_cond_list, arm_ast in signal_conditions:
-            if not rhs_name:
-                continue
-            sig_cond_str = " && ".join(sig_cond_list) if sig_cond_list else ""
-            bit_slice = ""
-            if "[" in rhs_name and "]" in rhs_name:
-                start = rhs_name.index("[")
-                bit_slice = rhs_name[start:]
-            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                result.edges.append(
-                    h.edge_factory.make_edge(
-                        src=rhs_name,
-                        dst=dst_node_id,
-                        kind=EdgeKind.DRIVER,
-                        assign_type="continuous",
-                        expression=rhs_name,
-                        bit_slice=bit_slice,
-                        sig_cond=sig_cond_str,
-                        condition=sig_cond_str,
-                        condition_chain=sig_cond_list if sig_cond_list else [],
-                    )
-                )
-            else:
-                src_node_id = f"{module_name}.{rhs_name}"
-                if src_node_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(
-                        TraceNode(
-                            id=src_node_id,
-                            name=rhs_name,
-                            module=module_name,
-                            kind=NodeKind.SIGNAL,
-                            width=(1, 0),
-                        )
-                    )
-                # [V6.5] 结构化驱动源 — 用保留下来的子表达式 AST 检测 source_op
-                ds = h.build_signal_source(rhs_name, arm_ast, expr_str)
-                result.edges.append(
-                    h.edge_factory.make_edge(
-                        src=src_node_id,
-                        dst=dst_node_id,
-                        kind=EdgeKind.DRIVER,
-                        assign_type="continuous",
-                        expression=expr_str,
-                        bit_slice=bit_slice,
-                        sig_cond=sig_cond_str,
-                        condition=sig_cond_str,
-                        condition_chain=sig_cond_list if sig_cond_list else [],
-                        source=ds,
-                    )
-                )
-    else:
-        for rhs_name in rhs_signals:
-            if not rhs_name:
-                continue
-            bit_slice = ""
-            if "[" in rhs_name and "]" in rhs_name:
-                start = rhs_name.index("[")
-                bit_slice = rhs_name[start:]
-            if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
-                # [V4] factory 统一入口
-                chain = [ternary_condition] if ternary_condition else []
-                h.append_edge(
-                    result,
+        left = getattr(cond_op, "left", None)
+        right = getattr(cond_op, "right", None)
+
+        def _extract_arm_signals(arm_expr, cond_path):
+            """Extract all leaf signal names from a ternary arm.
+
+            Returns dict of {signal_name: (cond_list, arm_ast)} where cond_list
+            is the condition path and arm_ast is the original sub-expression AST
+            (preserved for source_op detection).
+            """
+            if arm_expr is None:
+                return {}
+            ak = str(getattr(arm_expr, "kind", ""))
+            if "ConditionalOp" in ak or "ConditionalExpression" in ak:
+                return _build_ternary_cond_map(arm_expr, cond_path)
+            # Preserve sub-expression AST for source_op extraction later
+            names = h.signal_visitor._extract_signals_from_expr(arm_expr) or []
+            return {n: (list(cond_path), arm_expr) for n in names if n}
+
+        # 递归 left (true 分支) / right (false 分支)
+        result_map.update(_extract_arm_signals(left, path + [cond_str]))
+        neg_cond = f"!({cond_str})" if cond_str else ""
+        result_map.update(_extract_arm_signals(right, path + [neg_cond]))
+
+        return result_map
+
+    cond_map = _build_ternary_cond_map(check_expr)
+    # cond_map: {signal_name: (cond_path_list, arm_ast)}
+    signal_conditions = [(s, cond_map[s][0], cond_map[s][1]) for s in leaf_signals if s in cond_map]
+
+    signal_conditions = h.filter_signal_conditions_by_module(
+        signal_conditions, module=module
+    )
+    for rhs_name, sig_cond_list, arm_ast in signal_conditions:
+        if not rhs_name:
+            continue
+        sig_cond_str = " && ".join(sig_cond_list) if sig_cond_list else ""
+        bit_slice = ""
+        if "[" in rhs_name and "]" in rhs_name:
+            start = rhs_name.index("[")
+            bit_slice = rhs_name[start:]
+        if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+            result.edges.append(
+                h.edge_factory.make_edge(
                     src=rhs_name,
                     dst=dst_node_id,
                     kind=EdgeKind.DRIVER,
                     assign_type="continuous",
                     expression=rhs_name,
                     bit_slice=bit_slice,
-                    condition=ternary_condition,
-                    condition_chain=chain,
+                    sig_cond=sig_cond_str,
+                    condition=sig_cond_str,
+                    condition_chain=sig_cond_list if sig_cond_list else [],
                 )
-            else:
-                src_node_id = f"{module_name}.{rhs_name}"
-                if src_node_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(
-                        TraceNode(
-                            id=src_node_id,
-                            name=rhs_name,
-                            module=module_name,
-                            kind=NodeKind.SIGNAL,
-                            width=(1, 0),
-                        )
+            )
+        else:
+            src_node_id = f"{module_name}.{rhs_name}"
+            if src_node_id not in [n.id for n in result.nodes]:
+                result.nodes.append(
+                    TraceNode(
+                        id=src_node_id,
+                        name=rhs_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=(1, 0),
                     )
-                # [V6.5] 结构化驱动源
-                ds = h.build_signal_source(rhs_name, rhs_expr, expr_str)
-                # [V4] factory 统一入口
-                chain = [ternary_condition] if ternary_condition else []
-                h.append_edge(
-                    result,
+                )
+            # [V6.5] 结构化驱动源 — 用保留下来的子表达式 AST 检测 source_op
+            ds = h.build_signal_source(rhs_name, arm_ast, expr_str)
+            result.edges.append(
+                h.edge_factory.make_edge(
                     src=src_node_id,
                     dst=dst_node_id,
                     kind=EdgeKind.DRIVER,
                     assign_type="continuous",
                     expression=expr_str,
                     bit_slice=bit_slice,
-                    condition=ternary_condition,
-                    condition_chain=chain,
+                    sig_cond=sig_cond_str,
+                    condition=sig_cond_str,
+                    condition_chain=sig_cond_list if sig_cond_list else [],
                     source=ds,
                 )
+            )
 
-    # [REFACTOR 2026-08-07 A计划] 从完整 rhs 构建表达式树 (assign y = rhs)
-    # rhs_expr 是完整 semantic 表达式，.syntax 建整棵树（含三元/嵌套运算）
-    if lhs and rhs_expr is not None:
-        h.store_expr_tree(lhs, rhs_expr, module_name, result, genvar_ctx=genvar_ctx)
 
+def _build_simple_edge_signals(
+    rhs_signals, ternary_condition, expr_str, rhs_expr,
+    dst_node_id, module_name, module, result, *, h: 'AssignHelpers',
+):
+    """[Step 4b 2026-08-28] 为非 ternary RHS 生成 DRIVER 边.
+
+    行为 1:1 跟原 _handle_normal_assign 的 `else:` 块段一致 (原行号 ~519-567)。
+    区分"lhs 首字符是数字/下划线" (裸常量名, 直接走 edge_factory) 与
+    "普通信号名" (先确保 src 节点存在 + 通过 build_signal_source 提取
+    结构化源信息)。
+    """
+    for rhs_name in rhs_signals:
+        if not rhs_name:
+            continue
+        bit_slice = ""
+        if "[" in rhs_name and "]" in rhs_name:
+            start = rhs_name.index("[")
+            bit_slice = rhs_name[start:]
+        if rhs_name and not rhs_name[0].isalpha() and not rhs_name.startswith("_"):
+            # [V4] factory 统一入口
+            chain = [ternary_condition] if ternary_condition else []
+            h.append_edge(
+                result,
+                src=rhs_name,
+                dst=dst_node_id,
+                kind=EdgeKind.DRIVER,
+                assign_type="continuous",
+                expression=rhs_name,
+                bit_slice=bit_slice,
+                condition=ternary_condition,
+                condition_chain=chain,
+            )
+        else:
+            src_node_id = f"{module_name}.{rhs_name}"
+            if src_node_id not in [n.id for n in result.nodes]:
+                result.nodes.append(
+                    TraceNode(
+                        id=src_node_id,
+                        name=rhs_name,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=(1, 0),
+                    )
+                )
+            # [V6.5] 结构化驱动源
+            ds = h.build_signal_source(rhs_name, rhs_expr, expr_str)
+            # [V4] factory 统一入口
+            chain = [ternary_condition] if ternary_condition else []
+            h.append_edge(
+                result,
+                src=src_node_id,
+                dst=dst_node_id,
+                kind=EdgeKind.DRIVER,
+                assign_type="continuous",
+                expression=expr_str,
+                bit_slice=bit_slice,
+                condition=ternary_condition,
+                condition_chain=chain,
+                source=ds,
+            )
 
 
 def _extract_assign_lr(assign) -> tuple:

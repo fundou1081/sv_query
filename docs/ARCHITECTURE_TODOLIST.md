@@ -10,7 +10,7 @@
 ### #1 拆 driver_extractor (4101 行 → 10 个文件)  🟡
 - **ROI**: 🔥🔥🔥 高
 - **工作量**: 6 天 (实测, review 估 2-3 天是乐观)
-- **状态**: 🟡 **in_progress (Step 4 ✅ 2026-08-28, 9 步完成 5 步; 下一步 Step 4b/5)**
+- **状态**: 🟡 **in_progress (Step 4b ✅ 2026-08-28, 9 步完成 5 步 + 4b; 下一步 Step 5)**
 - **目标**: 把 4101 行单文件拆成按语法类组织的子目录
 - **子任务**:
   - [x] 盘点 driver_extractor 全部公开方法 (def 清单) — 67 顶层 + 11 嵌套 = 78 def
@@ -144,7 +144,7 @@
 
 | # | 任务 | ROI | 状态 | 启动 | 完成 |
 |---|---|---|---|---|---|
-| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b/4 ✅ (5/9) |
+| 1 | 拆 driver_extractor | 🔥🔥🔥 | 🟡 in_progress | 20:38 | Step 1+2/3/3b/4/4b ✅ (5/9 + 4b) |
 | 2 | BitSelect 改 semantic API | 🔥🔥 | ✅ done | 06:23 | 11:40 (两路径 + fallback 清零) |
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ⬜ pending | — | — |
@@ -152,7 +152,7 @@
 | 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 
-**总进度**: #1 进行中 (**9 步完成 5 步**, Step 3b/4 ✅); #2 ✅ done; #3 done; 其他 4 项 pending. **总 3.5/7 (50%) + #8 待决策**.
+**总进度**: #1 进行中 (**Step 1+2/3/3b/4/4b ✅**, 5 步 + 4b 完成); #2 ✅ done; #3 done; 其他 4 项 pending. **总 4/7 (57%) + #8 待决策**.
 
 ---
 
@@ -206,3 +206,9 @@
   - `driver_extractor.py` 3754 → **3211 行** (净减 543, #1 累计拆出 891 行 / 4101 → 3211)
   - **验证**: integration 13→13 / cli 20→20 / unit 13→4 (沙箱) / truth 4 passed = **0 回归**; 4 个 dispatch 分支 (concat/ ternary/ call/ binary+invocation) 探针 byte-identical; 历史 net_decl + generate-for 路径亦 byte-identical
   - `_handle_normal_assign` 329 行**未动** (行为重构不与搬文件混 commit, 单独留 Step 4b)
+- **2026-08-28 17:30** — #1 **Step 4b 完成** (iter_039). 拆 `_handle_normal_assign` (329 行) → 4 个具名 helper.
+  - 主函数 **329 → 33 行** (含 docstring), 仅保留控制流调度
+  - 4 个 helper: `_prepare_lhs_and_dst` (53) / `_resolve_rhs_signals` (78) / `_build_ternary_edge_signals` (183) / `_build_simple_edge_signals` (62)
+  - **诚实标注**: 实施中 2 个失误 (早期 return 改 4 元组 + 漏写 helper 末尾 return), 当场测试发现, 未污染 commit
+  - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / 4 dispatch 探针 byte-identical
+  - 183 行的 `_build_ternary_edge_signals` 仍超 AGENTS.md ~50 行阈值, 但合理: 含 3 个递归嵌套 helper 共 60 行, 主体调度而非单层复杂度

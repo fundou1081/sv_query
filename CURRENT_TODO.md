@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 16:10 GMT+8
+> **最后更新**: 2026-08-28 17:30 GMT+8
 
 ---
 
@@ -24,9 +24,8 @@
 
 **任务**: 架构改造 #1 — 拆 driver_extractor (4101 行 → 10 个文件)
 **来源**: `docs/ARCHITECTURE_TODOLIST.md` #1
-**状态**: 🟡 in_progress — **9 步完成 5 步** (Step 4 ✅ 完成)
-**下一步**: **Step 4b 拆 `_handle_normal_assign` (329 行) + Step 5 statement_flattener**
-(Step 4b 与搬文件分开 commit, Step 5 等 Step 4b 决定)
+**状态**: 🟡 in_progress — **9 步完成 5 步 + Step 4b** (行为重构)
+**下一步**: **Step 5 拆 statement_flattener** (估 0.5 天)
 
 ### Sub-task 勾选
 
@@ -36,7 +35,7 @@
 - [x] Step 3 拆 wire_init 核心 — commit `a2dac7c`, 净减 262 行 (-6.4%)
 - [x] ✅ Step 3b 拆 `_create_net_decl_edges` → `net_decl_extractor.py` (commit `15770af`, 3836→3754 行)
 - [x] ✅ Step 4 拆 assign phase (5 方法 + 2 专属 helper, 580 行) → `assign_extractor.py`, 引入 `AssignHelpers` dataclass 打包注入 13 个共享 helper. 3754→3211 行. 4 分支探针 byte-identical.
-- [ ] ⚠️ Step 4b 拆 `_handle_normal_assign` (329 行, 行为重构独立 commit)
+- [x] ✅ Step 4b 拆 `_handle_normal_assign` (329 行) → 4 个具名 helper, 主函数 329 → 33 行
 - [ ] Step 5 拆 statement_flattener (0.5 天) ← **下一步候选**
 - [ ] Step 6 拆 always_extractor (1.5 天, 最高风险)
 - [ ] Step 7 拆 function_extractor (1 天)
