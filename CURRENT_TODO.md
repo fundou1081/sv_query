@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 21:30 GMT+8
+> **最后更新**: 2026-08-28 21:45 GMT+8
 
 ---
 
@@ -25,8 +25,7 @@
 **任务**: (无 — 架构改造 #1/#2/#3 已完成)
 
 **下一候选** (未启动, 先问方豆):
-- **#4**: `docs/EXTRACTION_FAILURES.md` 集中表 (1 天)
-- #5: UnifiedTracer 20 步管线 → 依赖图 (2 天)
+- **#5**: UnifiedTracer 20 步管线 → 依赖图 (2 天)
 - #6: expression tree 提取独立成 builder (2 天)
 - #7: 迁 pyslang 11.0 native API (1-2 周)
 
@@ -35,6 +34,7 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-08-28 21:45** | **#4 — EXTRACTION_FAILURES.md 集中表** | 登记 113+121 处 fallback, 5 类分类, P0-P3 清理优先级. [iter_046](docs/task_tree/iterations/iter_046_extraction_failures_table.md) |
 | **2026-08-28 21:30** | **#8 — generate-for 动态位选修复** | BIT_SELECT+DRIVER+CLOCK 边全齐, 0 回归, 新测试有效. [iter_045](docs/task_tree/iterations/iter_045_generate_bitselect_fix.md) |
 | **2026-08-28 20:45** | **架构改造 #1 — 拆 driver_extractor** | 4101→1431 行, 拆出 7 模块, 9 步全 done, 6 探针 byte-identical, 0 回归. [iter_044](docs/task_tree/iterations/iter_044_step9_final_regression.md) |
 | **2026-08-28 11:40** | **架构改造 #2 — BitSelect 改用 pyslang Semantic API** | 两条路径均消除 regex + silent fallback 清零; **0 回归**, 另修好 3 个 `test_visualize_graph_source`. commit `bec0f51` + 本次未提交改动. 见 [iter_035](docs/task_tree/iterations/iter_035_bitselect_semantic_api_decision.md) / [iter_036](docs/task_tree/iterations/iter_036_bitselect_g3_cleanup.md) |
