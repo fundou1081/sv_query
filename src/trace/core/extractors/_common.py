@@ -369,3 +369,493 @@ def get_signal(
             if name:
                 return str(name).strip()
     return result_str if result_str else None
+
+# ==============================================================================
+# [ARCHITECTURE_TODOLIST #2 G3 Option 3 2026-08-28 06:38]
+# 共享 pyslang AST 遍历 helper — 替代两套 _create_hierarchical_bit_nodes 的 regex
+#
+# 起源:
+# - review §三.2 标记两套 BitSelect 实现"重复"
+# - G2 实测发现 (commit 78eb602) 边/节点一致, RangeSelect 4 属性漏设
+# - 边界 fixture 实测 (commit 49b475c) 发现 generate-for 内动态位选 + regex 脆弱
+# - 用户指令 [2026-08-28 06:36]: "走 g3 的 3" (用 pyslang API 替代 regex, 治本)
+#
+# 关键事实 (刚才实测确认):
+# - pyslang 11.0 RangeSelectExpression: .left.value (msb), .right.value (lsb)
+# - pyslang 11.0 ElementSelectExpression: .selector.value (index)
+# - root.visit(callback) 是 11.0 真实遍历 API, callback 返回 True/False 控制深入
+# - node.kind == ExpressionKind.RangeSelect / ElementSelect
+# ==============================================================================
+from typing import Any, Iterator, NamedTuple
+
+# [兼容性] pyslang 在测试/lint 环境可能没装 (CI), 优雅 import 失败
+try:
+    from pyslang import ExpressionKind, EvalContext  # type: ignore
+    _HAS_PYSLANG = True
+except ImportError:
+    _HAS_PYSLANG = False
+    # 提供 fallback 让 import 不爆, 但调用方在没 pyslang 时直接走 regex 老路径
+    ExpressionKind = None  # type: ignore
+    EvalContext = None  # type: ignore
+
+
+class BitSelectHit(NamedTuple):
+    """[2026-08-28 07:00] pyslang AST 遍历产出的位选信息 (通用方案 a).
+
+    区别于旧 SelectInfo:
+    - full_id: 完整 hierarchical ID (e.g. 'top.pkt.addr[3:0]'), pyslang InstanceSymbol.hierarchicalPath + base_chain
+    - base_chain: 从顶层到 immediate parent 的信号链 (e.g. ['top.pkt', 'top.pkt.addr']),
+                  GraphBuilder 自取所需 BIT_SELECT 边 (链上每个相邻对都是一条边)
+    - msb/lsb/index: pyslang eval(EvalContext) 后整数 (parameter/fn call 也能 evaluate)
+    - line/col: 源码位置 (来自 .sourceRange)
+    - select_kind: 'RangeSelect' / 'ElementSelect' 字符串
+    """
+    full_id: str
+    base_chain: list[str]
+    msb: int | None
+    lsb: int | None
+    index: int | None
+    select_kind: str
+    line: int
+    col: int
+
+
+def iter_bit_selects(module: Any, instance_path: str = '') -> Iterator[BitSelectHit]:
+    """[2026-08-28 07:00] 遍历 module 找出所有 RangeSelect / ElementSelect 节点 (通用方案 a).
+
+    区别于旧 iter_bit_selects:
+    - instance_path: 顶层 module 的 hierarchical path (e.g. 'top' 或 'cva6')
+                   pyslang InstanceSymbol.hierarchicalPath 拿到
+    - 返回 BitSelectHit namedtuple, 含 base_chain + full_id + line/col
+    - msb/lsb 走 pyslang eval(EvalContext), parameter 能 evaluate
+    - struct field (MemberAccess) 走 base chain 递归提取
+
+    Args:
+        module: pyslang module symbol (有 .visit() 可遍历)
+        instance_path: 顶层 module hierarchical path, e.g. 'top' 或 'cva6'
+
+    Yields:
+        BitSelectHit namedtuple: 每个位选节点的结构化信息
+    """
+    if not _HAS_PYSLANG:
+        return  # 退化: 让调用方走 regex 老路径
+
+    if module is None:
+        return
+
+    walker = _PyslangSelectWalker(instance_path)
+    if hasattr(module, 'visit'):
+        module.visit(walker.callback)
+
+    yield from walker.results
+
+
+class _PyslangSelectWalker:
+    """[2026-08-28 07:00] pyslang AST walker (基于 visit() callback).
+
+    通用方案 a 关键设计:
+    - helper 返回 base_chain (顶层 signal 到 immediate parent 的完整链路)
+      e.g. struct 场景: ['top.pkt', 'top.pkt.addr']
+      e.g. simple 场景: ['top.data']
+    - msb/lsb 走 pyslang eval(EvalContext) 拿真实整数 (parameter/fn call 都能 handle)
+    - 不返回 type-level 节点 (InstanceSymbol.hierarchicalPath 实例化的 module 才输出)
+    - ElementSelect 仅当 selector 是 IntegerLiteral 时产出
+    """
+
+    def __init__(self, instance_path: str = '') -> None:
+        self.results: list[BitSelectHit] = []
+        self.instance_path = instance_path  # e.g. 'top' or 'cva6'
+
+    def callback(self, node: Any) -> bool:
+        """pyslang visit() callback. 返回 True 继续深入, False 停止深入该子树."""
+        if node is None:
+            return True
+
+        kind = getattr(node, 'kind', None)
+        if kind is None:
+            return True
+
+        # RangeSelectExpression: data[msb:lsb]
+        if kind == ExpressionKind.RangeSelect:
+            # 提 base_chain (递归走 RangeSelect -> MemberAccess -> NamedValue)
+            chain = _extract_base_chain(node)
+            if chain:
+                # chain[0] 是顶层 (e.g. 'pkt'), chain[-1] 是 immediate parent 含 sel 后缀 (e.g. 'pkt.addr[3:0]')
+                # 加 instance_path 前缀
+                prefixed = [f"{self.instance_path}.{c}" if self.instance_path else c for c in chain]
+
+                # msb/lsb 走 pyslang eval (parameter/fn call 也能 handle)
+                msb = _eval_to_int(getattr(node, 'left', None))
+                lsb = _eval_to_int(getattr(node, 'right', None))
+
+                # [FIX 2026-08-28 07:24] 从 prefixed[-1] 拆 sel 后缀取 immediate
+                # 修复 'full_id=[3:0]' (空 immediate) 和 doubled 拼接 (如 'top.data[3:0][3:0]')
+                # simple 链 ['top.data', 'top.data[3:0]']: immediate = 'top.data'
+                # struct 链 ['top.pkt', 'top.pkt.addr', 'top.pkt.addr[3:0]']: immediate = 'top.pkt.addr'
+                immediate_full = prefixed[-1]
+                if '[' in immediate_full:
+                    immediate = immediate_full.rsplit('[', 1)[0]
+                else:
+                    immediate = immediate_full
+                if msb is not None and lsb is not None:
+                    full_id = make_range_select_id(immediate, msb, lsb)
+                else:
+                    # parameter 边界不 evaluate, 用 syntax raw text 作 ID
+                    syn = getattr(node, 'syntax', None)
+                    full_id = str(syn).strip() if syn is not None else f"{immediate}[?]"
+
+                # line/col from sourceRange
+                sr = getattr(node, 'sourceRange', None)
+                line = 0
+                col = 0
+                if sr is not None:
+                    start = getattr(sr, 'start', None)
+                    if start is not None:
+                        line = getattr(start, 'line', 0) or 0
+                        col = getattr(start, 'column', 0) or 0
+
+                self.results.append(BitSelectHit(
+                    full_id=full_id,
+                    base_chain=prefixed,
+                    msb=msb,
+                    lsb=lsb,
+                    index=None,
+                    select_kind='RangeSelect',
+                    line=line,
+                    col=col,
+                ))
+            return True
+
+        # ElementSelectExpression: data[idx]
+        if kind == ExpressionKind.ElementSelect:
+            chain = _extract_base_chain(node)
+            if chain:
+                prefixed = [f"{self.instance_path}.{c}" if self.instance_path else c for c in chain]
+                idx = _eval_to_int(getattr(node, 'selector', None))
+                # [FIX 2026-08-28 07:24] 同上拆 sel 后缀
+                immediate_full = prefixed[-1]
+                immediate = immediate_full.rsplit('[', 1)[0] if '[' in immediate_full else immediate_full
+                if idx is not None:
+                    full_id = make_element_select_id(immediate, idx)
+                else:
+                    syn = getattr(node, 'syntax', None)
+                    full_id = str(syn).strip() if syn is not None else f"{immediate}[?]"
+                sr = getattr(node, 'sourceRange', None)
+                line = 0
+                col = 0
+                if sr is not None:
+                    start = getattr(sr, 'start', None)
+                    if start is not None:
+                        line = getattr(start, 'line', 0) or 0
+                        col = getattr(start, 'column', 0) or 0
+                self.results.append(BitSelectHit(
+                    full_id=full_id,
+                    base_chain=prefixed,
+                    msb=None,
+                    lsb=None,
+                    index=idx,
+                    select_kind='ElementSelect',
+                    line=line,
+                    col=col,
+                ))
+            return True
+
+        return True  # 其他节点继续深入
+
+
+def _extract_base_chain(node: Any) -> list[str]:
+    """[2026-08-28 07:00] 从 RangeSelect/ElementSelect 节点提取 base chain (顶层到 immediate parent).
+
+    e.g. data[3:0]            -> ['data', 'data[?:?]']   # immediate 加 sel 后缀
+    e.g. pkt.addr[3:0]        -> ['pkt', 'pkt.addr', 'pkt.addr[?:?]']
+    e.g. arr[0].field[3:0]    -> ['arr', 'arr[0]', 'arr[0].field', 'arr[0].field[?:?]']
+
+    注意: chain 最后一位是 immediate parent (含 sel 后缀),
+    callback 会在外面构造 full_id = immediate + sel_str.
+    调用方只看 chain[:-1] 作为 ancestor chain, chain[-1] 作为 immediate parent.
+
+    Returns:
+        list of base signal ID, 顶层 (NamedValue) 在前
+    """
+    # [FIX 2026-08-28 07:14] 迭代实现, 避免递归循环
+    chain: list[str] = []
+    visited: set[int] = set()  # 防环
+    cur = node
+
+    while cur is not None and hasattr(cur, 'kind') and id(cur) not in visited:
+        visited.add(id(cur))
+        k = cur.kind
+
+        # [FIX 2026-08-28 07:19] 顶层 RangeSelect/ElementSelect: 需先下去到 .value 再往上走
+        # 例如 struct 场景 RangeSelectExpression -> .value (MemberAccess) -> .value (NamedValue)
+        # 没这层的话, 走到 'else: break' 就返回空 chain.
+        # 同时记录 sel_str, 递归返回后拼到 chain 最后一位.
+        if k in (ExpressionKind.ElementSelect, ExpressionKind.RangeSelect):
+            # 拿 sel_str (cur 的边界)
+            if k == ExpressionKind.ElementSelect:
+                sel_v = _eval_to_int(getattr(cur, 'selector', None))
+                sel_str = f"[{sel_v}]" if sel_v is not None else '[?]'
+            else:
+                msb_v = _eval_to_int(getattr(cur, 'left', None))
+                lsb_v = _eval_to_int(getattr(cur, 'right', None))
+                sel_str = f"[{msb_v}:{lsb_v}]" if (msb_v is not None and lsb_v is not None) else '[?:?]'
+            child = getattr(cur, 'value', None)
+            if child is None:
+                break
+            # 递归提 ancestor chain, 然后把 sel_str 拼到最后一位
+            # 但 child 可能是 RangeSelect/ElementSelect (嵌套) — 递归会拿它的 sel 拼上去
+            # 简单情况 child 是 NamedValue/MemberAccess — 它返回 ['pkt', 'pkt.addr'], 我们拼 sel 到 'pkt.addr' => 'pkt.addr[3:0]'
+            child_chain = _extract_base_chain(child)
+            # child_chain 最后一个 entry 已经是 immediate (含 child 的 sel, 如果有)
+            # 我们要把 cur 的 sel_str 加在 child_chain 最后一位之后
+            if child_chain:
+                if not sel_str or sel_str == '[?:?]':
+                    # cur 是顶层 sel, 但 boundary 拿不到 (parameter 等), child_chain 本身已完整
+                    return child_chain
+                last = child_chain[-1]
+                # [FIX 2026-08-28 07:24] 保留 immediate parent (last) 作为独立 chain entry
+                # 同时加 cur 的 sel 作为新末位 — 这样 chain 长度 ≥ 2, GraphBuilder 能创 BIT_SELECT 边
+                new_last = f"{last}{sel_str}"
+                if '[' in last:
+                    # 嵌套: child 是 ElementSelect/RangeSelect
+                    # child_chain 末位是 child 的 immediate (如 'arr[0]'), 加上 cur 的 sel => 'arr[0][3:0]'
+                    # 保留 'arr[0]' 作 immediate parent, 新增 'arr[0][3:0]' 作 leaf
+                    return child_chain + [new_last]
+                else:
+                    # 简单: child 是 NamedValue/MemberAccess
+                    # child_chain 末位是 last (如 'data' 或 'pkt.addr'), 加 cur 的 sel => 'data[3:0]'
+                    # 保留 last 作 immediate parent, 新增 last+sel 作 leaf
+                    return child_chain + [new_last]
+            return child_chain
+
+        # NamedValue: 顶层 (base chain 起点)
+        if k == ExpressionKind.NamedValue:
+            sym = getattr(cur, 'symbol', None)
+            if sym is not None:
+                name = getattr(sym, 'name', None)
+                if name:
+                    chain.append(str(name).strip())
+            break
+
+        # MemberAccess: struct.field (e.g. pkt.addr)
+        if k == ExpressionKind.MemberAccess:
+            mem = getattr(cur, 'member', None)
+            mem_name = getattr(mem, 'name', None) if mem else None
+            # 拿 ancestor (cur.value)
+            ancestor = getattr(cur, 'value', None)
+            # 沿 ancestor 链往上到 NamedValue, 沿途可能有 MemberAccess / ElementSelect / RangeSelect
+            ancestor_chain: list[str] = []
+            acur = ancestor
+            while acur is not None and hasattr(acur, 'kind') and id(acur) not in visited:
+                visited.add(id(acur))
+                ak = acur.kind
+                if ak == ExpressionKind.NamedValue:
+                    asym = getattr(acur, 'symbol', None)
+                    if asym:
+                        aname = getattr(asym, 'name', None)
+                        if aname:
+                            ancestor_chain.append(str(aname).strip())
+                    break
+                elif ak == ExpressionKind.MemberAccess:
+                    amem = getattr(acur, 'member', None)
+                    amem_name = getattr(amem, 'name', None) if amem else None
+                    if ancestor_chain and amem_name:
+                        ancestor_chain.append(f"{ancestor_chain[-1]}.{amem_name}")
+                    break
+                elif ak in (ExpressionKind.ElementSelect, ExpressionKind.RangeSelect):
+                    # 嵌套位选: 先找它的 base, 再加 sel 后缀
+                    nested_chain = _extract_base_chain(acur)
+                    if nested_chain:
+                        if ak == ExpressionKind.ElementSelect:
+                            sel_v = _eval_to_int(getattr(acur, 'selector', None))
+                            sel_str = f"[{sel_v}]" if sel_v is not None else '[?]'
+                        else:
+                            msb_v = _eval_to_int(getattr(acur, 'left', None))
+                            lsb_v = _eval_to_int(getattr(acur, 'right', None))
+                            sel_str = f"[{msb_v}:{lsb_v}]" if (msb_v is not None and lsb_v is not None) else '[?:?]'
+                        # ancestor_chain = nested_chain[:-1] (去掉 nested 的 immediate), nested_chain[-1] + sel_str 是 nested 的 immediate
+                        # 我们需要的是: cur (MemberAccess) 的 ancestor 完整链
+                        ancestor_chain = nested_chain[:-1]
+                        # nested 的 immediate 是 nested_chain[-1] + sel_str
+                        # cur 是 MemberAccess, 它的 immediate 是 nested_immediate + '.' + mem_name
+                        nested_immediate = f"{nested_chain[-1]}{sel_str}"
+                        if mem_name:
+                            chain = ancestor_chain + [nested_immediate, f"{nested_immediate}.{mem_name}"]
+                        else:
+                            chain = ancestor_chain + [nested_immediate]
+                    return chain
+                else:
+                    break
+            # 合并 ancestor_chain + immediate
+            if mem_name and ancestor_chain:
+                chain = ancestor_chain + [f"{ancestor_chain[-1]}.{mem_name}"]
+            elif ancestor_chain:
+                chain = ancestor_chain
+            break
+
+        # ElementSelect / RangeSelect: 顶层进入的情况 (仅当前节点, 没 MemberAccess)
+        if k in (ExpressionKind.ElementSelect, ExpressionKind.RangeSelect):
+            if k == ExpressionKind.ElementSelect:
+                sel_v = _eval_to_int(getattr(cur, 'selector', None))
+                sel_str = f"[{sel_v}]" if sel_v is not None else '[?]'
+            else:
+                msb_v = _eval_to_int(getattr(cur, 'left', None))
+                lsb_v = _eval_to_int(getattr(cur, 'right', None))
+                sel_str = f"[{msb_v}:{lsb_v}]" if (msb_v is not None and lsb_v is not None) else '[?:?]'
+            # 拿 ancestor
+            ancestor = getattr(cur, 'value', None)
+            acur = ancestor
+            ancestor_chain = []
+            while acur is not None and hasattr(acur, 'kind') and id(acur) not in visited:
+                visited.add(id(acur))
+                ak = acur.kind
+                if ak == ExpressionKind.NamedValue:
+                    asym = getattr(acur, 'symbol', None)
+                    if asym:
+                        aname = getattr(asym, 'name', None)
+                        if aname:
+                            ancestor_chain.append(str(aname).strip())
+                    break
+                elif ak == ExpressionKind.MemberAccess:
+                    amem = getattr(acur, 'member', None)
+                    amem_name = getattr(amem, 'name', None) if amem else None
+                    if ancestor_chain and amem_name:
+                        ancestor_chain.append(f"{ancestor_chain[-1]}.{amem_name}")
+                    break
+                else:
+                    break
+            if ancestor_chain:
+                chain = ancestor_chain + [f"{ancestor_chain[-1]}{sel_str}"]
+            break
+
+        # 其他: 跳出
+        break
+
+    return chain
+
+
+def _eval_to_int(expr: Any) -> int | None:
+    """[2026-08-28 07:00] 用 pyslang eval() 把 expression 节点转 int.
+
+    实测 (pyslang 11.0):
+    - IntegerLiteral.value 直接返回 SVInt (不是 int, 但 int(SVInt) 可转)
+    - BinaryOp (e.g. W-1) / NamedValue (e.g. W) 需要 eval(EvalContext)
+    - .constant.value 也是 拿整数路径
+    - 拿不到时返回 None (调用方决定如何处理)
+
+    Returns:
+        int 或 None
+    """
+    if expr is None:
+        return None
+
+    # 快速路径 1: .value 属性 (IntegerLiteral 是 SVInt, 直接转 int)
+    v = getattr(expr, 'value', None)
+    if v is not None:
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            pass
+
+    # 快速路径 2: .constant.value (pyslang 11.0 ConstantValue)
+    const = getattr(expr, 'constant', None)
+    if const is not None:
+        cv = getattr(const, 'value', None)
+        if cv is not None:
+            try:
+                return int(cv)
+            except (TypeError, ValueError):
+                pass
+
+    # 慢路径: 走 pyslang eval (需要 EvalContext)
+    if _HAS_PYSLANG and EvalContext is not None:
+        try:
+            # eval() 需要 EvalContext 参数, 这里拿不到 compilation
+            # 试试看 expr.eval(EvalContext(compilation=...))
+            # 但 helper 是通用的, 调用方应该传 EvalContext
+            # 退化: 试 expr.eval() 看是否某些版本可工作
+            result = expr.eval()
+            iv = getattr(result, 'integerValue', None)
+            if iv is not None:
+                return int(iv)
+        except Exception:
+            pass
+
+    return None
+
+
+def _get_base_name(node: Any) -> str | None:
+    """[2026-08-28 06:38] 从 RangeSelect/ElementSelect 节点提取 base signal name.
+
+    pyslang 11.0 实测:
+    - RangeSelectExpression.value 是 NamedValueExpression
+    - NamedValueExpression.symbol.name 是标识符
+
+    Returns:
+        base name (如 'data') 或 None
+    """
+    base = getattr(node, 'value', None)
+    if base is None:
+        return None
+
+    base_kind = getattr(base, 'kind', None)
+    if base_kind is None:
+        return None
+
+    # NamedValue: simple identifier (e.g. 'data')
+    if str(base_kind) == 'ExpressionKind.NamedValue':
+        sym = getattr(base, 'symbol', None)
+        if sym:
+            name = getattr(sym, 'name', None)
+            if name:
+                return str(name).strip()
+
+    # MemberAccess: struct.field (e.g. 'pkt.addr')
+    if str(base_kind) == 'ExpressionKind.MemberAccess':
+        # MemberAccess 有 .value (member 上一级) 和 .member (字段名)
+        member = getattr(base, 'member', None)
+        if member:
+            mname = getattr(member, 'name', None)
+            if mname:
+                # 上级还可能是结构体本身, 递归取 base
+                parent_base = _get_base_name_from_base(base)
+                if parent_base:
+                    return f"{parent_base}.{mname}"
+                return str(mname).strip()
+
+    # 其他类型: 递归
+    return None
+
+
+def _get_base_name_from_base(base: Any) -> str | None:
+    """从 MemberAccess / HierarchicalReference 等 base 节点递归取 base name."""
+    # base.value 是上一级 expression
+    parent = getattr(base, 'value', None)
+    if parent is None:
+        return None
+    parent_kind = getattr(parent, 'kind', None)
+    if parent_kind is None:
+        return None
+    if str(parent_kind) == 'ExpressionKind.NamedValue':
+        sym = getattr(parent, 'symbol', None)
+        if sym:
+            name = getattr(sym, 'name', None)
+            if name:
+                return str(name).strip()
+    return None
+
+
+def make_range_select_id(parent_id: str, msb: int, lsb: int) -> str:
+    """[2026-08-28 06:38] 构造 RangeSelect 节点 ID.
+
+    与 regex 方案保持兼容: parent_id[msb:lsb]
+    """
+    return f"{parent_id}[{msb}:{lsb}]"
+
+
+def make_element_select_id(parent_id: str, index: int) -> str:
+    """[2026-08-28 06:38] 构造 ElementSelect 节点 ID.
+
+    与 regex 方案保持兼容: parent_id[index]
+    """
+    return f"{parent_id}[{index}]"

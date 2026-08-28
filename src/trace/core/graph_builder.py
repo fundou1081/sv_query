@@ -577,57 +577,135 @@ class GraphBuilder:
 
     def _create_hierarchical_bit_nodes(self):
         """方案C: 为位选择节点创建父子关系
-        - 识别 data[3] 形式的节点
+        - 识别 data[3] / data[3:0] 形式的节点
         - 创建/找到父节点 data
         - 设置 child.parent = data
-        - 创建聚合边 data[3] → data (BIT_SELECT)
-        - 重命名边: 所有引用 data[3] 的边保持不变
+        - 创建聚合边 child → data (BIT_SELECT)
+        - 重命名边: 所有引用 child 的边保持不变
+
+        [ARCHITECTURE_TODOLIST #2 G3 Option 3 (通用方案 a) 2026-08-28 07:23]
+        集成 pyslang native API (`_common.iter_bit_selects` + BitSelectHit).
+        - helper 返回 BitSelectHit (full_id + base_chain + msb/lsb via pyslang eval)
+        - 走 base_chain 创建多条 BIT_SELECT 边 (处理 struct.field.[] 嵌套场景):
+          * chain=['top.data', 'top.data[3:0]'] -> 1 边 (top.data[3:0] -> top.data)
+          * chain=['top.pkt', 'top.pkt.addr', 'top.pkt.addr[3:0]'] -> 2 边:
+            (top.pkt.addr -> top.pkt) + (top.pkt.addr[3:0] -> top.pkt.addr)
+        - 设 RangeSelect 4 属性 (bit_range / parent_bit_start / parent_bit_end / width)
+        - ElementSelect 只创 BIT_SELECT 边, 不设 4 属性 (跟路径 A 一致)
         """
-        import re
+        from trace.core.extractors._common import iter_bit_selects, BitSelectHit
 
-        child_ids = [nid for nid in list(self.graph.nodes()) if "[" in nid and "]" in nid]
+        # [G3 Option 3 2026-08-28] target_module 为空时 (trace_signal 内部 build_graph 无 target),
+        # 用首个 top instance 的实际名字当前缀, 跟 DriverExtractor 的 top.out[0] 前缀一致.
+        # 否则产生 bare 'out[0]' duplicate 节点族, 破坏 driver trace 聚合 (for-loop 回归).
+        instance_path = ''
+        pyslang_root = None
+        adapter_root = getattr(self.adapter, '_root', None)
+        if adapter_root is not None:
+            if hasattr(adapter_root, 'get_root'):
+                pyslang_root = adapter_root.get_root()
+            elif hasattr(adapter_root, 'topInstances'):
+                pyslang_root = adapter_root
 
-        for child_id in child_ids:
-            # 提取父节点名: top.data[3] → top.data
-            parent_id = re.sub(r"\[.*?\]", "", child_id)
+        if pyslang_root is None:
+            return
 
-            if not parent_id or parent_id == child_id:
-                continue
+        if self.target_module:
+            instance_path = self.target_module
+        else:
+            # 无 target: 用第一个 top instance 名当前缀 (匹配 DriverExtractor 行为)
+            toplevel = pyslang_root.topInstances
+            if len(toplevel) > 0:
+                tname = toplevel[0].name
+                instance_path = tname if tname else ''
 
-            # 确保父节点存在
-            if parent_id not in self.graph.nodes():
-                # 从子节点推断父节点属性
-                child_node = self.graph.get_node(child_id)
-                if child_node:
-                    parent_name = re.sub(r"\[.*?\]", "", child_node.name)
-                    # [V6.2 2026-07-20] Inherit file/line from child (bit-select parent)
-                    parent_node = TraceNode(
-                        id=parent_id,
-                        name=parent_name,
-                        module=child_node.module,
-                        kind=child_node.kind,
-                        width=child_node.width,
-                        file=getattr(child_node, 'file', ''),
-                        line=getattr(child_node, 'line', 0),
+        # [G3 Option 3] Step 2: 遍历所有 top instance 拿 BitSelectHit
+        top = pyslang_root.topInstances
+        for i in range(len(top)):
+            mod = top[i]
+
+            for hit in iter_bit_selects(mod, instance_path=instance_path):
+                # [G3 Option 3 2026-08-28] 符号下标 (e.g. for-loop 里 q[i] / generate out[i]):
+                # index=None (变量 i 非字面量), 但仍要走 base_chain 创 BIT_SELECT 边 + 设 parent
+                # (pre-G3 regex helper 无条件为 graph 已有节点反推 parent, 保持对齐).
+                if hit.select_kind == 'RangeSelect' and (hit.msb is None or hit.lsb is None):
+                    # 参数位选边界不 evaluate (节点 ID 用 raw text), 仍走 BIT_SELECT 边
+                    pass
+
+                # base_chain 最后一位是 immediate parent 含 sel 后缀
+                # 前面是 ancestor chain
+                # 走链上每个相邻对创 BIT_SELECT 边
+                chain = hit.base_chain
+                if len(chain) < 2:
+                    # 只有 immediate 没 ancestor (e.g. simple RangeSelect 都在 chain[0])
+                    continue
+
+                # 创各 chain entry 对应的 TraceNode (如果不存在)
+                # 从 ancestor 到 immediate 逐一创节点 + 创 BIT_SELECT 边
+                for j in range(1, len(chain)):
+                    parent_id = chain[j - 1]
+                    child_id = chain[j]
+
+                    # [G3 Option 3 2026-08-28] 符号下标 (e.g. for-loop q[i], i 是变量):
+                    # _extract_base_chain 把 sel 转成 [?] placeholder 但 graph 实际节点是 q[i] (raw text).
+                    # 用 hit.full_id (保留原始 [i]) 覆盖末位 child_id, 才能匹配 DriverExtractor 建的节点.
+                    if j == len(chain) - 1 and hit.full_id:
+                        # full_id 是 'q[i]' (无 instance_path 前缀), child_id 是 'top.q[?]' (有前缀)
+                        # 用 full_id 的 select 文本替换 chain 末位的 placeholder
+                        bracket = hit.full_id.find('[')
+                        if bracket > 0:
+                            sel_text = hit.full_id[bracket:]  # '[i]' or '[3:0]'
+                            base_no_sel = child_id.rsplit('[', 1)[0] if '[' in child_id else child_id
+                            child_id = f"{base_no_sel}{sel_text}"
+
+                    # 确保 parent 节点存在
+                    if parent_id not in self.graph.nodes():
+                        parent_node = TraceNode(
+                            id=parent_id,
+                            name=parent_id.rsplit('.', 1)[-1],
+                            module=instance_path or '',
+                            kind=NodeKind.SIGNAL,
+                            width=None,
+                            file='',
+                            line=0,
+                        )
+                        self.graph.add_trace_node(parent_node)
+
+                    # 确保 child 节点存在
+                    child_node = self.graph.get_node(child_id)
+                    if child_node is None:
+                        child_node = TraceNode(
+                            id=child_id,
+                            name=child_id.rsplit('.', 1)[-1],
+                            module=instance_path or '',
+                            kind=NodeKind.SIGNAL,
+                            width=None,
+                            file='',
+                            line=hit.line,
+                        )
+                        self.graph.add_trace_node(child_node)
+
+                    # 设 child.parent
+                    child_node.parent = parent_id
+
+                    # [G3 Option 3] RangeSelect 4 属性 (只在最末位 child, 即 hit.full_id 对应节点)
+                    if j == len(chain) - 1 and hit.select_kind == 'RangeSelect' and hit.msb is not None and hit.lsb is not None:
+                        msb, lsb = hit.msb, hit.lsb
+                        child_node.bit_range = f"[{msb}:{lsb}]"
+                        child_node.parent_bit_start = min(msb, lsb)
+                        child_node.parent_bit_end = max(msb, lsb)
+                        child_node.width = (max(msb, lsb), min(msb, lsb))
+
+                    if child_node.kind is None:
+                        child_node.kind = NodeKind.SIGNAL
+
+                    # 创 BIT_SELECT 边
+                    agg_edge = TraceEdge(
+                        src=child_id,
+                        dst=parent_id,
+                        kind=EdgeKind.BIT_SELECT,
                     )
-                    self.graph.add_trace_node(parent_node)
-
-            # 设置子节点的 parent
-            child_node = self.graph.get_node(child_id)
-            if child_node:
-                child_node.parent = parent_id
-                # Don't change kind here - it was set during DriverExtractor based on always_ff assignment
-                # Just ensure it has a kind
-                if child_node.kind is None:
-                    child_node.kind = NodeKind.SIGNAL
-
-            # 创建聚合边: child → parent (BIT_SELECT)
-            agg_edge = TraceEdge(
-                src=child_id,
-                dst=parent_id,
-                kind=EdgeKind.BIT_SELECT,
-            )
-            self.graph.add_trace_edge(agg_edge)
+                    self.graph.add_trace_edge(agg_edge)
 
     def get_extractor(self, name: str) -> object | None:
         return self._extractors.get(name)

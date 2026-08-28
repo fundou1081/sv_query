@@ -5,7 +5,7 @@
     "cov_covered": 0,
     "coverage_ratio": 0.0,
     "sva_covered": 0,
-    "total_signals": 26,
+    "total_signals": 32,
     "uncovered_signals": [
       "Call) - 1:0]]",
       "async_i",
@@ -13,12 +13,14 @@
       "empty_o",
       "full_o",
       "mem",
-      "mem]",
+      "mem[rd_ptr_q[$clog2(SIZE)-1:0]]",
+      "mem[wr_ptr_q[$clog2(SIZE)-1:0]]",
       "pop_data_o",
       "pop_i",
       "push_data_i",
       "push_i",
       "rd_ptr_q",
+      "rd_ptr_q[3:0]",
       "rst_ni",
       "rx_data_o",
       "rx_i",
@@ -27,7 +29,8 @@
       "sync1",
       "tx_data_i",
       "tx_o",
-      "wr_ptr_q"
+      "wr_ptr_q",
+      "wr_ptr_q[3:0]"
     ]
   }
 }

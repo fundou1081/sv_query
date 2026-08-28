@@ -28,19 +28,6 @@
       {
         "depth": 2,
         "full_path": [
-          "push_data_i",
-          "Call) - 1:0]]",
-          "mem]"
-        ],
-        "registers": [
-          "Call) - 1:0]]",
-          "mem]"
-        ],
-        "score": 3
-      },
-      {
-        "depth": 2,
-        "full_path": [
           "async_i",
           "sync1",
           "sync0_o"
@@ -52,7 +39,7 @@
         "score": 3
       }
     ],
-    "reg_count": 8,
-    "total_nodes": 33
+    "reg_count": 7,
+    "total_nodes": 39
   }
 }
