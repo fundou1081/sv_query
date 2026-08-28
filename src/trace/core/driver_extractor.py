@@ -39,39 +39,6 @@ logger = logging.getLogger(__name__)
 # [P1 cycle 8/9] ExtractorResult 移到了 extractor_models.py (避免循环 import)
 # 这里 re-export 保持向后兼容 (from trace.core.driver_extractor import ExtractorResult)
 __all__ = ["DriverExtractor", "ExtractorResult"]
-
-
-def _tree_complexity(d: dict) -> int:
-    """计算 tree_dict 的 descendants 总数（含自身）
-
-    用于多分支 case/if 赋值时，选择最复杂的代表表达式。
-    """
-    total = 1
-    for c in d.get('children', []):
-        total += _tree_complexity(c)
-    return total
-
-
-def _collect_from_tree(tree_dict: dict, dst_short: str, const_map: dict, func_info: dict) -> None:
-    """从 expr_tree 树遍历提取 Const 叶子 → const_map，Call 节点 → func_info
-
-    替代旧 regex 从源码文本扫 assign/wire 行的 const_map 提取方式，
-    数据源改为表达式树本身（更准确，旧 regex 在复杂 case 会漏）。
-    """
-    op = tree_dict.get('op')
-    lbl = tree_dict.get('label')
-    if op == 'Const' and lbl:
-        lst = const_map.setdefault(dst_short, [])
-        if lbl not in lst:
-            lst.append(lbl)
-    if op == 'Call' and lbl:
-        if lbl not in func_info:
-            func_info[lbl] = None  # 宽度由 extract() 阶段从 semantic function symbol 补充
-    for c in tree_dict.get('children', []):
-        _collect_from_tree(c, dst_short, const_map, func_info)
-
-
-
 class DriverExtractor:
     """Driver 提取器 — 从 semantic AST 的 always/assign 中提取 driver 边。"""
 
@@ -204,111 +171,15 @@ class DriverExtractor:
         )
 
     def _store_expr_tree(self, lhs_name, rhs_expr, module_name, result, genvar_ctx: dict | None = None) -> None:
-        """从 rhs_expr.syntax 构建 ExpressionTree，存入 result.expr_trees。
+        """[ARCHITECTURE_TODOLIST #6 2026-08-28] 薄壳, 实际逻辑在
+        extractors/expr_tree_builder.py (关注点分离: driver_extractor
+        只负责原始 driver 边, 表达式树/常量/函数信息独立).
 
-        同一 lhs 多 rhs（case/if 多分支）时，收集所有 tree_dict，
-        最后取「最复杂」(descendant count max) 的代表。
-
-        [Plan G2 2026-08-27] genvar_ctx 参数 + post-process substitute:
-        raw AST ExpressionTree._parse_expr emit leaves like 'acc[i]' (literal),
-        即使 generate-for 已经把 LHS 'acc[i+1]' 展开成 'acc[N]'.
-        现在用 ctx={'i': N} 在 graph 层 substitute leaf SignalRef 'acc[i]' → 'acc[N]'.
-        用户 directive: "viz 不要再从 raw ast 拿数据, 仅从 graph 拿需要的数据".
-
-        Args:
-            lhs_name: 被赋值信号名 (不含 module 前缀)
-            rhs_expr: pyslang semantic AST 表达式节点 (BinaryOp/ConditionalOp/Call...)
-            module_name: 模块/实例路径前缀
-            result: ExtractorResult
-            genvar_ctx: {genvar_name: int_value} e.g. {'i': 2} for gen_accum iter 2
+        保留方法签名 (assign/always/net_decl extractor 通过 Helpers 注入,
+        调用方零改动). 行为 1:1 — 相同的 expr_trees/const_map/func_info 写入.
         """
-        if not lhs_name or rhs_expr is None:
-            return
-        # [Plan F2.6 2026-08-13 BUG FIX] unwrap Conversion wrappers
-        # pyslang 在 generate for 块内的 RHS (例如 `a + b`) 会包成
-        # ExpressionKind.Conversion (整数提升 / type cast), .syntax 是 None
-        # 导致 _store_expr_tree 早返. 递归 unwrap Conversion.operand 找到
-        # 真正的 internal expression.
-        cur = rhs_expr
-        for _ in range(10):  # 最多解 10 层防无限循环
-            if cur is None:
-                return
-            sk = str(getattr(cur, 'kind', ''))
-            if 'Conversion' not in sk:
-                break
-            operand = getattr(cur, 'operand', None)
-            if operand is None or operand is cur:
-                break
-            cur = operand
-        syntax = getattr(cur, 'syntax', None)
-        if syntax is None:
-            return
-        try:
-            tokens = list(syntax)
-        except (TypeError, ValueError):
-            return
-        if not tokens:
-            return
-
-        from .graph.viz.expression_tree import ExpressionTree
-        root = ExpressionTree._parse_expr(tokens, 0, len(tokens))
-        if root is None:
-            return
-
-        tree_key = f"{module_name}.{lhs_name}" if module_name else lhs_name
-        tree_dict = ExpressionTree._to_dict(root)
-
-        # [Plan G2 2026-08-27] substitute genvar refs in tree leaves
-        # 'acc[i]' (literal) → 'acc[N]' (展开) where N = ctx['i']
-        if genvar_ctx and tree_dict:
-            tree_dict = DriverExtractor._substitute_genvar_in_tree(tree_dict, genvar_ctx)
-
-        # 多分支合并：已有则保留更复杂的一个
-        existing = result.expr_trees.get(tree_key)
-        if existing is not None and _tree_complexity(tree_dict) <= _tree_complexity(existing):
-            return
-        result.expr_trees[tree_key] = tree_dict
-
-        # 从树遍历提取 Const → const_map, Call → func_info
-        dst_short = lhs_name
-        _collect_from_tree(tree_dict, dst_short, result.const_map, result.func_info)
-
-    @staticmethod
-    def _substitute_genvar_in_tree(tree_dict, ctx):
-        """[Plan G2 2026-08-27] Walk ExpressionTree._to_dict() tree and substitute
-        genvar references in SignalRef leaf labels.
-
-        raw AST ExpressionTree._parse_expr emit leaves like 'acc[i]' (literal),
-        even though ctx={'i': N} is available. viz layer reads these labels
-        directly → SVG has 'acc[i]' literal. 用户 directive: "viz 不要从 raw AST
-        拿数据, 仅从 graph 拿需要的数据" — substitute 发生在 graph 层
-        (driver_extractor._store_expr_tree), 不在 viz.
-
-        Args:
-            tree_dict: ExpressionTree._to_dict(root) — {op, label, children:[...]}
-            ctx: {genvar_name: int_value} (e.g. {'i': 2})
-
-        Returns:
-            New tree_dict with leaf labels substituted (or original if no match).
-        """
-        if not isinstance(tree_dict, dict) or not ctx:
-            return tree_dict
-        op = tree_dict.get("op", "")
-        label = tree_dict.get("label", "")
-        children = tree_dict.get("children", []) or []
-        new_label = label
-        if op in ("SignalRef", "BitSelect") and label:
-            if "[" in label and label.endswith("]"):
-                base, _, idx_str = label[:-1].rpartition("[")
-                if idx_str in ctx:
-                    new_label = f"{base}[{ctx[idx_str]}]"
-            elif label in ctx:
-                new_label = str(ctx[label])
-        new_children = [
-            DriverExtractor._substitute_genvar_in_tree(c, ctx)
-            for c in children if isinstance(c, dict)
-        ]
-        return {**tree_dict, "label": new_label, "children": new_children}
+        from .extractors.expr_tree_builder import build_expr_tree
+        build_expr_tree(lhs_name, rhs_expr, module_name, result, genvar_ctx)
 
     def set_instance_paths(self, instance_paths: list[tuple[str, Any]]) -> None:
         """[Phase 4 2026-07-11] Configure instance-aware signal extraction.

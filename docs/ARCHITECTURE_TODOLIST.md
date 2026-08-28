@@ -135,15 +135,16 @@
   - [ ] 测试: 故意打乱顺序看是否报错
 - **依赖**: 无
 
-### #6 expression tree 提取独立成 builder  ⬜
+### #6 expression tree 提取独立成 builder  ✅
 - **ROI**: 🟡 低中
 - **工作量**: 2 天
-- **状态**: pending
+- **状态**: ✅ **done (2026-08-28 23:40)** — [iter_050](task_tree/iterations/iter_050_expr_tree_builder.md) / [设计](DESIGN_expr_tree_builder.md)
 - **目标**: driver_extractor 只负责"原始 driver 边", 表达式树/常量/函数信息独立
 - **子任务**:
-  - [ ] 找 driver_extractor 里所有写 expr_trees/const_map/func_info 的位置
-  - [ ] 抽到独立 extractor
-  - [ ] ExtractorResult 协议加 build 顺序约束
+  - [x] 找所有写 expr_trees/const_map/func_info 位置 — 唯一写入点 `_store_expr_tree`
+  - [x] 抽到独立 extractor — `extractors/expr_tree_builder.py` (纯函数)
+  - [x] `_store_expr_tree` 改薄壳, 调用方零改动; 删 3 个原 helper; 1431→1302 行
+  - [x] 验证: expr_trees/const_map/func_info **byte-identical** (probe_tree A/B)
   - [ ] 回归
 - **依赖**: 跟 #1 (拆 driver_extractor) 部分重叠, 建议 #1 完成后做
 
@@ -172,11 +173,11 @@
 | 3 | EXTRACTION_COVERAGE.md | 🔥🔥 | ✅ done | 23:48 | 23:48 |
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ✅ done | 08-28 | 21:45 (113+121 处登记) |
 | 5 | 管线 → 显式 DAG | 🔥 | ✅ done | 08-28 | 23:10 (11 步 DAG) |
-| 6 | expression tree 独立 | 🟡 | ⬜ pending | — | — |
+| 6 | expression tree 独立 | 🟡 | ✅ done | 08-28 | 23:40 (expr_tree_builder) |
 | 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
 | 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1/#2/#3/#4/#8 ✅ done**; **#5 ✅ done (2026-08-28 23:10)**; 剩 #6/#7. **总 6/8 (75%)**.
+**总进度**: **#1/#2/#3/#4/#5/#8 ✅ done**; **#6 ✅ done (2026-08-28 23:40)**; 剩 #7. **总 7/8 (87.5%)**.
 
 ---
 
@@ -282,3 +283,8 @@
   - 独立步骤结构上可并行 (class/bit_select vs module_graph 只依赖 graph)
   - 实施失误: _step_compile 错写 return ctx["root"] → KeyError → 353 失败, 修复后 0 回归
   - 验证: 全套 0 回归 / 4 探针 byte-identical / pipeline.py ruff clean
+- **2026-08-28 23:40** — **#6 done** (iter_050). expression tree 提取独立成 builder.
+  - 新建 `extractors/expr_tree_builder.py` (纯函数): build_expr_tree / tree_complexity / collect_from_tree / substitute_genvar_in_tree
+  - `_store_expr_tree` 改薄壳, 调用方零改动; 删 3 个原 helper; 1431→1302 行
+  - 诚实标注: 两次删除错位 (误删 _expr_is_compile_time → 7 测试失败), 改一次性构造列表修复
+  - 验证: 全套 0 回归 / expr_trees/const_map/func_info byte-identical
