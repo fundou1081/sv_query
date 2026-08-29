@@ -189,7 +189,11 @@
         门禁: 10 fixtures = 8 EQUIVALENT + GAP-3/4 两 DIFF。
         benchmark (verilog-axi): **native 2.14x** (641ms→300ms)。
   - [x] ✅ **性能 benchmark (枚举级)** (2026-08-29): verilog-axi native 2.14x
-  - [ ] 子任务 1 前置: 6 项目 strict 编译修复 (cva6/coralnpu/darkriscv/zipcpu/riscv_core/vortex)
+  - [x] 🟡 **子任务 1: 真实项目等价性评估 3/6** (2026-08-29, [iter_058](task_tree/iterations/iter_058_real_projects_equivalence.md))
+        → 解锁 darkriscv (14 文件)/ zipcpu (51)/ riscv_core (18, = riscv 项目) strict 编译:
+        **darkriscv EQUIVALENT**; zipcpu/riscv_core **GAP-4 已接受** — 与 fixture 结论一致。
+        cva6 (179 elaboration 错) + coralnpu ($clog2 宏) = pyslang↔项目语义不兼容, 阻塞;
+        vortex 无编译入口未尝试。工具增强: 子进程隔离 (pyslang 同进程编译污染实证)。
   - [ ] 回归全套 (integration 确认中)
 - **依赖**: MEMORY.md 2026-06-25 用户指示 "先记录下来", 等你后续触发
 
@@ -354,3 +358,11 @@
   - 门禁: 10 fixtures = 8 EQUIVALENT + GAP-3/4 两 DIFF; benchmark: native 2.14x (641→300ms, verilog-axi).
   - 回归: unit+cli 1435 passed + 24 failed (与阶段 1 集合一致) / integration 13 failed (与 baseline 一致) / truth 4 / ruff 全过 — **全套 0 新回归**.
   - 剩余: 子任务 1 (6 项目 strict 编译) + 全管线 benchmark.
+- **2026-08-29** — **#7 子任务 1: 等价性评估 3/6** (iter_058). 方豆 "继续".
+  - 解锁 darkriscv (rtl 14 文件+incdir) / zipcpu (rtl 51 文件) / riscv_core (=riscv 项目, core/riscv 18 文件) strict 编译.
+  - 评估: darkriscv **EQUIVALENT (7/7)**; zipcpu **GAP-4 已接受 (75/75, 37 实例仅 parent)**;
+    riscv_core **GAP-4 已接受 (15/15, 1 实例 genblk1)** — 与 fixture 结论一致.
+  - 阻塞: cva6 (179 elaboration 错) + coralnpu ($clog2 0 参宏) = pyslang 语义不兼容 (超出 sv_query 范围);
+    vortex 无编译入口.
+  - 工具: verify_native_parity.py 子进程隔离 — **pyslang 同进程连续编译会状态污染**
+    (darkriscv 7→6 / riscv 15→14 实证), 每项目独立子进程后恢复正确.

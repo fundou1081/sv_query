@@ -22,22 +22,22 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 G3 **阶段 2 完成** (5 调用方全量 native + 删 SyntaxTree 死代码), 回归确认中
+**任务**: #7 子任务 1 — **真实项目等价性评估 3/6 完成** (darkriscv EQUIVALENT / zipcpu GAP-4 / riscv_core GAP-4; cva6+coralnpu 编译阻塞已定位, vortex 未尝试)
 
-**阶段 2 已完成**:
-- [x] `get_module_instances()` 内部切 native + SemanticInstanceWrapper 包装 (返回类型零变化, 5 调用方统一)
-- [x] **新发现 GAP-6 并修复**: target=None 时只 walk 第一个 top (库风格设计 verilog-axi 165→2 实例) → 改为 walk 所有 topInstances (修复后 165==165)
-- [x] 删 MIG SyntaxTree 死代码 ~920 行 (1110→374 行); build 对 dict 输入显式 TypeError
-- [x] 门禁: 10 fixtures = 8 EQUIVALENT + 2 DIFF (仅 GAP-3/4); 13 parity 单测 passed
-- [x] benchmark (verilog-axi): **native 2.14x** (641ms→300ms)
-- [x] unit+cli 1435 passed + 24 failed (沙箱 artifact, 与阶段 1 集合完全一致)
-- [ ] integration 回归确认 (后台跑着)
+**已完成**:
+- [x] G3 阶段 1+2 (commit `0aecf6a`/`52ba124`): 5 调用方全量 native + 删死代码; GAP-1~6 全修/全接受
+- [x] **子任务 1 探索**: 解锁 darkriscv (14 文件)/ zipcpu (51 文件)/ riscv_core (18 文件, = riscv 项目) strict 编译
+- [x] 等价性: darkriscv **EQUIVALENT**; zipcpu/riscv_core **GAP-4 已接受** — 与 fixture 结论一致
+- [x] 工具增强: 目录展开/incdir/COMPILE_FAILED 显式报告/差异归类/**子进程隔离** (pyslang 同进程编译污染实证)
+- [x] cva6 (179 错) + coralnpu ($clog2 宏) 阻塞原因精确定位
 
-**剩余 #7 子任务**:
-- [ ] 子任务 1: 6 项目 strict 编译前置 (cva6/coralnpu/darkriscv/zipcpu/riscv_core/vortex)
+**剩余 (阻塞, 需方豆决策投入方向)**:
+- [ ] cva6: pyslang↔CVA6 语义不兼容 (179 错) — 修复方向超出 sv_query 范围
+- [ ] coralnpu: $clog2() 0 参宏展开 — 同上
+- [ ] vortex: 需人工整理编译入口 (204 文件)
 - [ ] 全管线 benchmark (tools/benchmark/run_benchmark.py)
 
-**迭代记录**: iter_053~057
+**迭代记录**: iter_053~058
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
