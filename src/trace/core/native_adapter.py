@@ -139,6 +139,7 @@ def _walk_instance(
     root: pyslang.RootSymbol,
     target_module: str | None = None,
     is_top: bool = False,
+    is_array_element: bool = False,
 ) -> None:
     """[Helper] 递归 walk InstanceSymbol, 处理 generate blocks.
 
@@ -146,6 +147,11 @@ def _walk_instance(
     - 每个 instance wrapper: {_symbol, type, parent_module, ...}
     - type is TypeToken-like with .value
     - top-level target 本身不被 emit (跟旧实现一致 — 只 emit sub-instances)
+
+    [GAP-1 fix 2026-08-29] parent_module 对齐递归语义:
+    - 普通实例: parent = hierarchicalPath 去掉最后一段
+      (递归: generate 内实例给 'top.gen_loop[0]', 普通实例给 'top')
+    - 数组元素: parent = 自身 hierarchicalPath (递归 InstanceArray 分支的 child_path 语义)
     """
     try:
         inst_id = _safe_hierarchical_path(inst)
@@ -174,11 +180,18 @@ def _walk_instance(
             # 但继续 recurse into body
             pass
         else:
+            # [GAP-1 fix 2026-08-29] parent = hp 去掉最后一段 (与递归一致),
+            # 不再信任调用方传下来的外层 parent (generate 场景会丢 generate 段)
+            if is_array_element:
+                # 数组元素: 递归 InstanceArray 分支 parent = child_path = 元素自身 hp
+                parent = inst_id
+            else:
+                parent = inst_id[:inst_id.rfind(".")] if "." in inst_id else parent_module
             # Create wrapper
             wrapper = _NativeInstanceWrapper(
                 _symbol=inst,
                 type_name=type_name,
-                parent_module=parent_module,
+                parent_module=parent,
             )
             wrappers.append(wrapper)
 
@@ -199,16 +212,49 @@ def _walk_instance(
             except (UnicodeDecodeError, TypeError):
                 continue
 
-            if 'Instance' in kind:
-                _walk_instance(child, child_parent, wrappers, root, target_module, is_top=False)
-            elif 'GenerateBlockArray' in kind:
+            # [GAP-2 fix 2026-08-29] InstanceArray 分支必须在 'Instance' 检查**之前**:
+            # 'SymbolKind.InstanceArray' 也含 'Instance' 子串, 原实现误匹配成普通实例
+            if 'GenerateBlockArray' in kind:
                 _walk_generate_block_array(child, child_parent, wrappers, root, target_module)
             elif 'GenerateBlock' in kind:
                 _walk_generate_block(child, child_parent, wrappers, root, target_module)
+            elif 'InstanceArray' in kind:
+                _walk_instance_array(child, child_parent, wrappers, root, target_module)
+            elif 'Instance' in kind:
+                _walk_instance(child, child_parent, wrappers, root, target_module, is_top=False)
             # Skip ProceduralBlock, Variable, Parameter, etc.
 
     except (UnicodeDecodeError, TypeError):
         return
+
+
+def _walk_instance_array(
+    iarr, parent_module: str, wrappers: list, root: pyslang.RootSymbol,
+    target_module: str | None = None,
+) -> None:
+    """[GAP-2 fix 2026-08-29] Walk InstanceArraySymbol — 每个元素是完整 InstanceSymbol.
+
+    递归实现 (semantic_adapter.find_instances 的 InstanceArray 分支):
+    - id = 元素 hierarchicalPath (如 'top.u_arr[0]')
+    - parent = child_path (顶层数组 = 元素自身 hp)
+    - type = definition.name (如 'sub')
+    元素还有独立 portConnections / body, 需继续递归.
+    """
+    try:
+        elements = getattr(iarr, 'elements', None)
+        if elements is None:
+            elements = list(iarr)
+    except (UnicodeDecodeError, TypeError):
+        return
+
+    for elem in elements:
+        try:
+            kind = str(getattr(elem, 'kind', ''))
+        except (UnicodeDecodeError, TypeError):
+            continue
+        if 'Instance' in kind:
+            _walk_instance(elem, parent_module, wrappers, root, target_module,
+                           is_top=False, is_array_element=True)
 
 
 def _walk_generate_block_array(
@@ -244,12 +290,16 @@ def _walk_generate_block(
                 kind = str(child.kind)
             except (UnicodeDecodeError, TypeError):
                 continue
-            if 'Instance' in kind:
-                _walk_instance(child, parent_module, wrappers, root, target_module, is_top=False)
-            elif 'GenerateBlockArray' in kind:
+            # [GAP-2 fix 2026-08-29] generate 内也可能直接是 InstanceArray
+            # (如 for 循环里 `sub u_arr[2]()`), 分支顺序同 _walk_instance
+            if 'GenerateBlockArray' in kind:
                 _walk_generate_block_array(child, parent_module, wrappers, root, target_module)
             elif 'GenerateBlock' in kind:
                 _walk_generate_block(child, parent_module, wrappers, root, target_module)
+            elif 'InstanceArray' in kind:
+                _walk_instance_array(child, parent_module, wrappers, root, target_module)
+            elif 'Instance' in kind:
+                _walk_instance(child, parent_module, wrappers, root, target_module, is_top=False)
     except (UnicodeDecodeError, TypeError):
         return
 

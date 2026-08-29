@@ -346,20 +346,18 @@ class TestNativeAdapterParity(unittest.TestCase):
         )
 
     # ========================================================================
-    # [iter_053 2026-08-29] 已知差异显式爆出来 (AGENTS.md 纪律 2.5 精神).
+    # [iter_053/054 2026-08-29] 已知差异显式爆出来 (AGENTS.md 纪律 2.5 精神).
     # tools/verify_native_parity.py 在 MIG 四表层面发现了 3 个差异,
-    # 现有 (id, def_name) 集合对比测不出来。这里用 expectedFailure 固化:
-    #   差异存在 → xfail (可见)
-    #   差异修复 → XPASS (提醒移除标记)
+    # 现有 (id, def_name) 集合对比测不出来。iter_054 修掉 GAP-1/GAP-2 后,
+    # 这两个测试从 expectedFailure 转正为普通断言。
     # ========================================================================
 
-    @unittest.expectedFailure
     def test_generate_block_parent_parity(self):
-        """[GAP-1] generate block 实例的 parent_module 必须一致.
+        """[GAP-1 已修] generate block 实例的 parent_module 必须一致.
 
         递归: parent = 'top.gen_loop[0]' (hierarchicalPath 去掉最后一段)
-        native: parent = 'top' (外层 parent 直接传下去, 不含 generate 段)
-        MIG.build 用 parent_module 填 ModuleInstanceNode.parent, 下游 PathResolver 消费.
+        native (修后): 同一规则 → 一致.
+        MIG.build 用 parent_module 填 ModuleInstanceNode.parent.
         """
         get_native = self._skip_if_no_native()
         adapter = _make_adapter(SOURCES['generate_block'])
@@ -375,35 +373,53 @@ class TestNativeAdapterParity(unittest.TestCase):
         }
         self.assertEqual(old_set, new_set, f"GAP-1 parent mismatch:\nold: {old_set}\nnew: {new_set}")
 
-    @unittest.expectedFailure
     def test_instance_array_parity(self):
-        """[GAP-2] 数组实例化 (InstanceArray) 必须一致.
+        """[GAP-2 已修] 数组实例化 (InstanceArray) 必须一致.
 
-        递归: 3 个实例 top.u_arr[0..2], 类型 'sub'
-        native: 1 个假实例 top.u_arr, 类型 'u_arr' (数组名当模块类型) —
-                因 _walk_instance 用 'Instance' in kind 误匹配 InstanceArray.
+        递归: 3 个实例 top.u_arr[0..2], 类型 'sub', parent = 元素自身 hp
+        native (修后): 显式 InstanceArray 分支 → 一致 (端口表也由 MIG 自动对齐).
         """
         get_native = self._skip_if_no_native()
         adapter = _make_adapter(SOURCES['instance_array'])
         old_set = {
-            (i['id'], i['def_name']) for i in _instances_to_comparable(adapter)
+            (i['id'], i['def_name'], i['parent_module'])
+            for i in _instances_to_comparable(adapter)
         }
         comp = SVCompiler({'test.sv': SOURCES['instance_array']})
         root = comp.get_root()
         new = get_native(root, target_module='top')
         new_set = {
-            (i['id'], i['def_name'])
+            (i['id'], i['def_name'], i['parent_module'])
             for i in _instances_to_comparable_from_native(new)
         }
         self.assertEqual(old_set, new_set, f"GAP-2 array mismatch:\nold: {old_set}\nnew: {new_set}")
 
+    def test_conditional_generate_parent_native_scoped(self):
+        """[已知差异·已接受] conditional generate (if-generate) 的 parent.
+
+        递归: parent = 'top' (GenerateBlock 透明, 丢失 generate 路径)
+        native (修后): parent = 'top.enable_block' (完整作用域路径, 语义更正确)
+
+        与 GAP-3 同一类: native 比递归更正确, 输出会变 — 方豆拍板
+        "按 1 做" (接受 native 修复, G3 计划按此写). 此测试固化 native 行为.
+        """
+        get_native = self._skip_if_no_native()
+        comp = SVCompiler({'test.sv': SOURCES['conditional_generate']})
+        root = comp.get_root()
+        new = get_native(root, target_module='top')
+        items = {
+            (i['id'], i['parent_module'])
+            for i in _instances_to_comparable_from_native(new)
+        }
+        self.assertEqual(items, {('top.enable_block.u_sub', 'top.enable_block')})
+
     def test_nested_generate_native_finds_all(self):
-        """[GAP-3] 嵌套 generate (genvar 套 genvar) native 找全 4 个实例.
+        """[GAP-3 已接受为 bugfix] 嵌套 generate (genvar 套 genvar) native 找全 4 个实例.
 
         递归路径漏掉全部 (GenerateBlockArray 的 entry 内只处理直接 Instance,
         不递归 entry 内层嵌套的 GenerateBlockArray/GenerateBlock)。
-        native 找全 → 切 native 会让 MIG 输出增加实例, 是 bugfix 还是回归
-        由方豆决策 (记入 iter_053)。此测试锁定 native 能力, 防止回退。
+        native 找全 → 切 native 会让 MIG 输出增加实例, 方豆拍板按 bugfix 接受
+        (iter_054)。此测试锁定 native 能力, 防止回退。
         """
         get_native = self._skip_if_no_native()
         comp = SVCompiler({'test.sv': SOURCES['nested_generate']})

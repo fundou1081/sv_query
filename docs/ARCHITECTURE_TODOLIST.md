@@ -151,21 +151,24 @@
 ### #7 迁 pyslang 11.0 native API  ⬜
 - **ROI**: 长期高
 - **工作量**: 1-2 周
-- **状态**: option A 进行中 (diff 验证脚本已完成, 等方豆决策)
+- **状态**: option A 完成 (diff 脚本 + GAP-1/2 修复 + GAP-3/4 拍板), 等 G3 计划
 - **目标**: 用 `inst.hierarchicalPath` / `inst.portConnections` / `inst.body` 替代自建 MIG
 - **子任务**:
   - [ ] 评估 11.0 native API 在 CVA6/coralNPU/darkriscv/zipcpu/riscv_core/vortex 上的等价性
         ⏸ **受阻**: 6 项目 strict 编译全部失败 (pyslang↔CVA6 已知 elaboration 不兼容,
         cva6_full.f timescale / Flist.ariane 65 错 / cva6.f 常量折叠; darkriscv 单文件 leaf;
         coralnpu/zipcpu/riscv_core/vortex 无编译入口)。先解决严格编译才能评估。
-  - [x] ✅ **写 native API vs 自建 MIG 的 diff 验证脚本** (2026-08-29)
+  - [x] ✅ **写 native API vs 自建 MIG 的 diff 验证脚本** (2026-08-29, commit `f129433`)
         → `tools/verify_native_parity.py` (MIG 四表对比) + `test_native_adapter_parity.py`
-        **10 passed + 2 xfailed**。发现 **3 个 MIG 级差异** (现有 parity 测试测不出):
-        **GAP-1** generate block parent_module (`top` vs `top.gen_loop[0]`);
-        **GAP-2** InstanceArray native 提取错 (1 假实例 vs 3 真实例);
-        **GAP-3** 嵌套 generate 递归漏 4 个、native 找全 (**需方豆决策**: bugfix vs 对齐)。
-        详见 [iter_053](task_tree/iterations/iter_053_native_parity_script.md)。
-  - [ ] G3 计划: 替换点 + 风险 + 回退策略 (依赖: GAP-1/GAP-2 修复方案 + GAP-3 方豆决策)
+        **13 passed + 0 xfail**。发现并修复 **2 个 native 缺陷** + **2 个已接受差异**:
+        **GAP-1** generate block parent_module — ✅ 已修 (hp 去最后一段);
+        **GAP-2** InstanceArray native 提取错 — ✅ 已修 (加分支, kind 字符串匹配顺序陷阱);
+        **GAP-3** 嵌套 generate 递归漏 4 个、native 找全 — ✅ 方豆拍板按 bugfix 接受
+        ("按 1 做", 接受下游输出变化);
+        **GAP-4** conditional generate parent 递归丢 generate 段、native 完整 — ✅ 按
+        GAP-3 先例接受。详见 [iter_053](task_tree/iterations/iter_053_native_parity_script.md)
+        / [iter_054](task_tree/iterations/iter_054_fix_native_gap1_gap2.md)。
+  - [ ] G3 计划: 替换点 + 风险 + 回退策略 (输入已齐: GAP-1/2 修复 + GAP-3/4 决策)
   - [ ] 实施 (分批: 先 hierarchicalPath, 再 portConnections, 再 body)
   - [ ] 性能 benchmark (预期 4x speedup)
   - [ ] 回归全套
@@ -303,3 +306,9 @@
     GAP-1 generate parent_module (`top` vs `top.gen_loop[0]`) / GAP-2 InstanceArray native 提取错 / GAP-3 嵌套 generate 递归漏、native 找全.
   - 差异固化进 `test_native_adapter_parity.py` → **10 passed + 2 xfailed** (xfail=已知差异显式可见).
   - 真实项目等价性评估**受阻**: 6 项目 strict 编译全失败 (pyslang↔CVA6 已知不兼容; 余者无编译入口) — 属 #7 子任务 1, 需先解决严格编译.
+- **2026-08-29** — **#7 option A 收尾** (iter_054). 方豆 "按 1 做": GAP-3 按 bugfix 接受 + 修 native GAP-1/GAP-2.
+  - native_adapter.py: GAP-1 parent 改 hp 去最后一段; GAP-2 加 InstanceArray 分支 (kind 匹配顺序陷阱);
+    数组元素 parent = 自身 hp 复刻递归 child_path 语义. **生产代码未接线, 零生产影响**.
+  - 复跑 parity: generate_block / instance_array → EQUIVALENT; **新发现 GAP-4** conditional generate
+    parent 递归丢 generate 段 (`top`)、native 完整 (`top.enable_block`) — 按 GAP-3 先例接受.
+  - 测试: 2 xfail 转正, 13 passed + 0 xfail; unit 1066 passed, 4 failed 为沙箱 cache 既有 artifact, 0 新增.
