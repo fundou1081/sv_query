@@ -178,13 +178,13 @@ class SemanticAdapter:
             try:
                 kind = getattr(node, "kind", None)
                 kind_str = str(kind) if kind else "None"
-            except (UnicodeDecodeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 kind_str = "None"
 
             # 仍然需要 name 用于显示/列表 (有 name 更好, 没 name 用 placeholder)
             try:
                 name = _safe_attr(node, "name", None)
-            except (UnicodeDecodeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 name = None
             if isinstance(name, bytes):
                 try:
@@ -193,7 +193,7 @@ class SemanticAdapter:
                     name = "_bin_"
             try:
                 name_str = self._safe_str(name) if name else "_anon_"
-            except (UnicodeDecodeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 name_str = "_bad_"
 
             # [PR1 2026-06-14] 混合去重: 干净 name 用 name_str 去重 (避免重复),
@@ -459,7 +459,7 @@ class SemanticAdapter:
         """
         try:
             kind_str = str(getattr(module, "kind", ""))
-        except (UnicodeDecodeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             return "_unknown_"
 
         if "Instance" in kind_str:
@@ -472,14 +472,14 @@ class SemanticAdapter:
                     name = _safe_attr(defn, "name", None)
                     if name is not None:
                         return _safe_str(name)
-            except (UnicodeDecodeError, Exception):
+            except (UnicodeDecodeError, TypeError):
                 return "_inst_"
 
         try:
             name = _safe_attr(module, "name", None)
             if name is not None:
                 return _safe_str(name)
-        except (UnicodeDecodeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             return "_bad_"
         return "unknown"
 
@@ -916,7 +916,7 @@ class SemanticAdapter:
             if hasattr(port_decl, "name"):
                 # [Bug-fix 2026-06-13] safe_str() 防 binary garbage
                 name = _safe_str(port_decl.name)
-        except (UnicodeDecodeError, Exception):
+        except (UnicodeDecodeError, TypeError):
             name = None
 
         # 检查端口方向

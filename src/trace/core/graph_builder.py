@@ -263,8 +263,8 @@ class GraphBuilder:
                     file=sys.stderr,
                 )
         except Exception as e:
-            import sys
-            print(f"[V16.11.1] _capture_generate_block_map failed: {e}", file=sys.stderr)
+            # [P0 核实 2026-08-29] 失败显式记录 (原 print 调试残留)
+            logger.warning("_capture_generate_block_map failed: %s", e)
 
     def _configure_instance_paths(self):
         """[Phase 4 2026-07-11] Walk target instance tree, configure extractors.
@@ -318,8 +318,8 @@ class GraphBuilder:
                 file=sys.stderr,
             )
         except Exception as e:
-            import sys
-            print(f"[Phase 4] _configure_instance_paths failed: {e}", file=sys.stderr)
+            # [P0 核实 2026-08-29] 失败显式记录 (原 print 调试残留)
+            logger.warning("_configure_instance_paths failed: %s", e)
 
     def _find_target_top(self, target_module: str):
         """[Phase 4 2026-07-11] Find target in topInstances."""

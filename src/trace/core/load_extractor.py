@@ -50,10 +50,14 @@ class LoadExtractor:
                         try:
                             msb = int(msb) if msb is not None else 0
                         except (ValueError, TypeError):
+                            # [P0 核实 2026-08-29] 位宽值无法转 int (非数字) → 0
+                            # 显式 sentinel: 下游会按 (0,0) 或再 fallback 到 (1,0) 处理,
+                            # 不会静默产出错误位宽.
                             msb = 0
                         try:
                             lsb = int(lsb) if lsb is not None else 0
                         except (ValueError, TypeError):
+                            # 同上: 非数字 lsb → 0 (显式 sentinel)
                             lsb = 0
                         port_width = (msb, lsb)
                     # [V6.2 2026-07-20] Capture source location for jump-to-source
