@@ -88,6 +88,19 @@ class SVAExtractor:
                 if "ConcurrentAssertion" in syntax_kind or "ImmediateAssertion" in syntax_kind:
                     self._parse_assertion_syntax(syntax, graph, prefix)
                     return
+                # [iter_062] ProceduralBlockSyntax → 深挖 block 内的 immediate assertion
+                # (always_comb begin assume(...); cover(...); end 形态:
+                #  ProceduralBlockSyntax.statement = BlockStatementSyntax.items = [...] )
+                self._collect_immediate_assertions(syntax, graph, prefix)
+                return
+
+        # [iter_062] StatementBlock 的 syntax 可能是 ImmediateAssertionStatement
+        # (过程块内 `assert (expr) else $error(...)` / `assume (expr)` / `cover (expr)`)
+        if "StatementBlock" in kind:
+            syntax = getattr(node, "syntax", None)
+            if syntax is not None and "ImmediateAssertion" in type(syntax).__name__:
+                self._parse_immediate_assertion(syntax, graph, prefix)
+                return
 
         if "ConcurrentAssertion" in kind or "ImmediateAssertion" in kind:
             self._parse_assertion(node, graph, prefix)
@@ -222,6 +235,77 @@ class SVAExtractor:
                     message=message,
                 )
             )
+
+    def _collect_immediate_assertions(self, syntax, graph: SVAGraph, prefix: str = ""):
+        """[iter_062] 递归收集 syntax 树中的 ImmediateAssertionStatementSyntax.
+
+        形态: ProceduralBlockSyntax.statement = BlockStatementSyntax,
+              BlockStatementSyntax.items = [ImmediateAssertionStatementSyntax, ...]
+        """
+        if syntax is None:
+            return
+        if "ImmediateAssertionStatementSyntax" in type(syntax).__name__:
+            self._parse_immediate_assertion(syntax, graph, prefix)
+            return
+        # 遍历 statement / items / members
+        for attr in ("statement", "items", "members", "statements"):
+            v = getattr(syntax, attr, None)
+            if v is None:
+                continue
+            try:
+                if hasattr(v, "__iter__") and not isinstance(v, str):
+                    for c in v:
+                        self._collect_immediate_assertions(c, graph, prefix)
+                else:
+                    self._collect_immediate_assertions(v, graph, prefix)
+            except TypeError:
+                continue
+
+    def _parse_immediate_assertion(self, syntax, graph: SVAGraph, prefix: str = ""):
+        """[iter_062] 提取 immediate assertion (过程块内 assert/assume/cover 语句).
+
+        pyslang 呈现: 语义层 StatementBlock.syntax = ImmediateAssertionStatementSyntax,
+        有 keyword (assert/assume/cover) + expr + action (else 分支).
+        """
+        keyword = str(getattr(syntax, "keyword", "")).strip()
+        if not keyword:
+            return
+        kind_map = {"assert": "assert", "assume": "assume", "cover": "cover"}
+        assertion_kind = kind_map.get(keyword.lower())
+        if not assertion_kind:
+            return
+
+        # 提取信号 (从 expr)
+        expr = getattr(syntax, "expr", None)
+        signals = []
+        if expr is not None:
+            signals = self._extract_signals_from_syntax(expr) or []
+
+        # 提取消息 (action: else $error("..."))
+        message = ""
+        action = getattr(syntax, "action", None)
+        if action is not None:
+            msg = self._extract_assertion_message(action)
+            if msg:
+                message = msg
+
+        # [iter_062] 去重: 命名 immediate_assert 会经 StatementBlock 与
+        # BlockStatementSyntax.items 两个路径到达, 避免重复.
+        for existing in graph.assertions:
+            if (existing.kind == assertion_kind
+                    and existing.signals == signals
+                    and existing.message == message):
+                return
+
+        assertion_id = f"{prefix}.assert_{len(graph.assertions)}" if prefix else f"assert_{len(graph.assertions)}"
+        graph.assertions.append(
+            SVAAssertionNode(
+                id=assertion_id,
+                kind=assertion_kind,
+                signals=signals,
+                message=message,
+            )
+        )
 
     def _parse_assertion(self, node, graph: SVAGraph, prefix: str = ""):
         """解析 ConcurrentAssertionMember"""

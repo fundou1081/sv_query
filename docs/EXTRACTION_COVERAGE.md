@@ -82,15 +82,15 @@
 
 ## 🔸 已知缺陷补充 (iter_062 测试缺口分析确认)
 
-| # | 缺陷 | 位置 | 影响 | 备注 |
-|---|---|---|---|---|
-| 34 | `not inside` 约束表达式不生成节点 | constraint 提取 | `val not inside {...}` 无 expr 节点 | pyslang 接受, 提取器只识别 inside 形态 |
-| 35 | soft / dist :/ 不区分 | constraint 提取 | soft 约束与硬约束同节点; `:=` 与 `:/` 同处理 | 语义信息丢失, 影响随机化分析 |
-| 36 | coverpoint/cross 的 `iff` 未建模 | covergroup_extractor | CoverpointInfo 无 iff 字段 | 条件采样信息丢失 |
-| 37 | wildcard / transition bins 浅提取 | covergroup_extractor | 统一当普通 bins (values 保留原始文本) | 类型识别缺失, 文本可后解析 |
-| 38 | 参数化 covergroup 参数不可用 | pyslang 限制 | bins 内引用 covergroup 参数编译失败; 参数化实例化报 not generic class | pyslang 11 限制, 非 sv_query |
-| 39 | expect / immediate assertion 不识别 | sva_extractor | `expect property` / 过程块内 assert/assume 不提取 | pyslang 可解析, 提取器只处理并发断言 |
-| 40 | 数组索引 DRIVER 边缺失 (确认 #20) | driver_extractor | `packed2d[0]` / `mem[idx] <= data` 不生成边 | 与 #20 同源, 实测确认 |
+| # | 缺陷 | 位置 | 状态 (iter_063 修复核实) |
+|---|---|---|---|
+| 34 | `not inside` 约束表达式不生成节点 | constraint 提取 | 🚫 **pyslang 限制** (not inside → InvalidConstraint, 语义层不解析) |
+| 35 | soft / dist :/ 不区分 | constraint 提取 | 🚫 **soft 是 pyslang 限制** (解析成普通 Expression, soft 修饰丢失); dist :/ 可提取 (DistWeight.Kind PerValue/PerRange) 但无消费者, 未建模 |
+| 36 | coverpoint/cross 的 `iff` 未建模 | covergroup_extractor | ✅ **已修** (CoverpointInfo/CoverCrossInfo 加 iff 字段 + 提取) |
+| 37 | wildcard / transition bins 浅提取 | covergroup_extractor | ✅ **已修** (BinsInfo 加 bin_type: wildcard/transition 识别) |
+| 38 | 参数化 covergroup 参数不可用 | pyslang 限制 | 🚫 **pyslang 限制** (bins 内参数编译失败; 参数化实例化 not generic class) |
+| 39 | expect / immediate assertion 不识别 | sva_extractor | 🟡 **immediate 已修** (assert/assume/cover 提取 + 消息); **expect 是 pyslang 限制** (expect 关键字语义层丢失, 呈现为空 Property) |
+| 40 | 数组索引 DRIVER 边缺失 (确认 #20) | driver_extractor | 🚫 **设计约束** (_common.py:474 仅字面量 selector 产出节点; 动态索引 mem[idx] 有意不产出; 字面索引 mem[0] 正常) |
 
 ## 🟢 已确认误报修正（Phase 1A matrix 错误）
 

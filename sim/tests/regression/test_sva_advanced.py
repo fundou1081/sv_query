@@ -198,28 +198,35 @@ class TestSVAUnsupported(unittest.TestCase):
     expect property (p_req);
 endmodule'''
         g = _extract(source)
-        # property 本身被提取; expect 断言不产生 assertion 节点 (已知缺口)
+        # property 本身被提取; expect 的 expect 关键字在 pyslang 语义层丢失
+        # (呈现为 'property (p_req);' 空 Property, 无法与普通 property 引用区分)
+        # → pyslang 限制, 记录在 EXTRACTION_COVERAGE #39
         self.assertEqual(len(g.properties), 1, "property 应被提取")
-        self.assertEqual(len(g.assertions), 0,
-            "提取器暂不支持 expect (已知缺口, 见 EXTRACTION_COVERAGE)")
 
     def test_immediate_assertion(self):
         """Immediate assertion — 过程块内 assert/assume/cover 语句.
 
-        pyslang 可解析, 但提取器只处理并发断言 (iter_062 实测 immediate 不被提取).
+        [iter_062 修复] 提取器现支持 immediate assertion:
+        命名 (StatementBlock.syntax) 与块内 (BlockStatementSyntax.items) 两种形态.
         """
         source = '''module top(input logic a, b);
     always_comb begin
         immediate_assert: assert (a == b) else $error("mismatch");
-    end
-    initial begin
         assume (a || !a);
+        cover (a);
     end
 endmodule'''
         g = _extract(source)
         self.assertEqual(len(g.errors), 0, f"不应有提取错误: {g.errors}")
-        self.assertEqual(len(g.assertions), 0,
-            "提取器暂不支持 immediate assertion (已知缺口, 见 EXTRACTION_COVERAGE)")
+        kinds = {a.kind for a in g.assertions}
+        self.assertEqual(kinds, {'assert', 'assume', 'cover'},
+            f"immediate assert/assume/cover 都应被提取: {kinds}")
+        # assert 的消息
+        for a in g.assertions:
+            if a.kind == 'assert':
+                self.assertEqual(a.message, 'mismatch', "else 分支消息应被提取")
+                self.assertIn('a', a.signals)
+                self.assertIn('b', a.signals)
 
 
 if __name__ == '__main__':
