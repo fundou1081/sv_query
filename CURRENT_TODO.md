@@ -22,20 +22,20 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 — **G3 计划已交付, 等方豆确认 D1-D3 后开工实施**
+**任务**: #7 G3 **阶段 1 (MIG 实例枚举切 native) 已完成, 回归确认中**
 
-**已完成**:
-- [x] option A 验证 (commit `f129433`): verify_native_parity.py + 3 差异发现
-- [x] GAP-1/GAP-2 修复 (commit `2c65511`): 2 xfail 转正, **13 passed, 0 xfail**; GAP-3/4 拍板接受
-- [x] **G3 计划文档** (`docs/architecture/pyslang11_native_api_g3_plan.md`, iter_055):
-      替换点收敛为实例枚举一处; 方案 C (阶段 1 MIG-only → 阶段 2 全量+删死代码); 风险 R1-R6; 回退策略
+**阶段 1 已完成**:
+- [x] R2 核实: `get_module_instances + get_generate_instances` **无重复计数** (D3 无需单独修); 附带发现 get_generate_instances 覆盖率不一致 (记入已知清单)
+- [x] MIG.build 加 `instance_source` 参数 (auto=生产 native / recursive / native 显式验证钩子); 切换 = L136 一处
+- [x] **新发现 GAP-5 并修复**: `_is_user_module` 过滤 (target=None) 误伤"只有 generate 块的合法 top" → MIG 空; 已移除过滤 + 删死代码 + top-skip 补 target=None (6 个 MIG 测试因此转绿)
+- [x] 等价门禁: 切换前后 8 fixtures **逐字节一致**; 新增 no_target_loop_gen (target=None) → EQUIVALENT; 最终 9 fixtures: 7 EQUIVALENT + 2 DIFF (仅 GAP-3/4)
+- [x] MIG 套件 80 passed (1 既有失败); truth 4 passed; ruff 全过
+- [ ] unit+cli 全套回归确认 (后台跑着)
 
-**等方豆确认** (G3 计划 D1-D3):
-- [ ] D1: 方案 C (B 先行 A 后续) 是否同意
-- [ ] D2: 阶段 1 (MIG.build 实例枚举切 native) 是否开工 (接受 R5: 6 项目回归暂不可跑)
-- [ ] D3: R2 (connection_extractor 的 get_module_instances + get_generate_instances 重叠) 是否单独修
+**阶段 2 (待方豆决策)**: `get_module_instances()` 全量切 native (需补 wrapper API) + 删 SyntaxTree 死代码
+**子任务 1 (待推进)**: 6 项目 strict 编译前置
 
-**迭代记录**: iter_053 / iter_054 / iter_055
+**迭代记录**: iter_053~056
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

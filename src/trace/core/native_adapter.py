@@ -66,21 +66,27 @@ def get_module_instances_native(
 
     Strategy:
     1. 找 user target 在 topInstances 里 (or first top if not specified)
-    2. 递归 walk InstanceSymbol.body, 跳过 utility cells
-    3. 处理 GenerateBlockArray + GenerateBlock
+    2. 递归 walk InstanceSymbol.body
+    3. 处理 GenerateBlockArray + GenerateBlock + InstanceArray
     4. 跳过 ProceduralBlock / Variable / Parameter (跟旧实现一致)
+
+    [GAP-5 fix 2026-08-29] 移除 _is_user_module 过滤 (target=None 时):
+    旧实现 (递归) 不过滤任何 top instance; 过滤会把 "只有 generate 块、无直接
+    InstanceSymbol" 的合法 user top (如顶层 generate-for 实例化) 误判为 utility
+    cell 而整棵跳过 → MIG 空。生产 (UnifiedTracer) 默认 target=None, 必须与
+    递归行为一致。utility cell 过滤的诉求 (CVA6) 由 target 参数路径覆盖
+    (指定 target 时只 walk 该子树), 无需启发式。
     """
     wrappers = []
     if root is None:
         return wrappers
 
-    # 找 start point — user target or first user top
+    # 找 start point — user target or first top
     top_to_walk = _find_target_top(root, target_module)
     if top_to_walk is None:
-        # Fall back: walk all top instances
+        # Fall back: walk all top instances (与递归一致, 不过滤)
         for top in root.topInstances:
-            if _is_user_module(top):
-                _walk_instance(top, target_module or top.name, wrappers, root, target_module, is_top=True)
+            _walk_instance(top, target_module or top.name, wrappers, root, target_module, is_top=True)
     else:
         _walk_instance(top_to_walk, target_module, wrappers, root, target_module, is_top=True)
 
@@ -90,10 +96,9 @@ def get_module_instances_native(
 def _find_target_top(root: pyslang.RootSymbol, target_module: str | None):
     """[Helper] 找 user-specified target 在 topInstances 里."""
     if target_module is None:
-        # 没指定 — 返第一个 user module top instance
+        # 没指定 — 返第一个 top instance (与递归一致, 不过滤)
         for top in root.topInstances:
-            if _is_user_module(top):
-                return top
+            return top
         return None
     # 指定了 — 找同名 top
     for top in root.topInstances:
@@ -103,33 +108,6 @@ def _find_target_top(root: pyslang.RootSymbol, target_module: str | None):
         except (UnicodeDecodeError, TypeError):
             continue
     return None
-
-
-def _is_user_module(top) -> bool:
-    """[Helper] 判 top instance 是不是 user module (vs utility cell).
-
-    Utility cell examples (CVA6): cluster_clock_*, fifo, lfsr_8bit, rrarbiter, etc.
-    这些是 vendored libraries 暴露的, 跟 user DUT hierarchy 无关.
-
-    Heuristic: 检查 top instance 的 definition — 如果 definition 在 user source 里,
-    是 user module. 否则 utility cell. 但 sv_query 没 filelist 跟 definition 的 mapping.
-    """
-    # 简化: top instance body 里有 user-named module instance → user module
-    # Utility cells 通常是 leaf (没 sub-instances) 或只有 std cells
-    try:
-        body = getattr(top, 'body', None)
-        if body is None:
-            return False
-        for child in body:
-            try:
-                kind = str(child.kind)
-                if 'Instance' in kind:
-                    return True
-            except (UnicodeDecodeError, TypeError):
-                continue
-    except Exception:
-        return False
-    return False
 
 
 def _walk_instance(
@@ -175,7 +153,9 @@ def _walk_instance(
         # 跟旧实现一致: top-level target 本身不被 emit
         # 旧实现: 如果 node.kind 是 Instance, parent_path 是空 (即顶层), 且
         # hierarchicalPath 是 target module 名字本身 (不含 '.'), 跳过 emit
-        if is_top and inst_id == target_module:
+        # [GAP-5 fix 2026-08-29] target_module=None 时所有 walked top 都是
+        # "顶层目标" — 一律不 emit (与递归一致: 递归对顶层实例只 recurse 不 emit)
+        if is_top and (inst_id == target_module or target_module is None):
             # 跳过 emit target 本身 — 跟旧实现行为一致
             # 但继续 recurse into body
             pass

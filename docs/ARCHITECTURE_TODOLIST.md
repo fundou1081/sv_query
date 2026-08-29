@@ -173,8 +173,13 @@
         替换点收敛为 1 个 (实例枚举; hierarchicalPath/portConnections/body 早已在用);
         方案 C 推荐 (阶段 1 MIG-only 切 native → 阶段 2 全量切 + 删 SyntaxTree 死代码);
         风险 R1-R6 + 回退策略 (单点 revert + verify_native_parity 门禁 + baseline 存档)。
-        **待方豆确认 D1-D3 后开工实施**。
-  - [ ] 实施 — 阶段 1: MIG.build 实例枚举切 native (方案 C; 依赖 D1/D2 确认)
+  - [x] ✅ **实施阶段 1: MIG.build 实例枚举切 native** (2026-08-29, [iter_056](task_tree/iterations/iter_056_g3_stage1_mig_native.md))
+        → MIG.build 加 `instance_source` 参数 (auto=生产 native); 切换 = L136 一处。
+        **新发现 GAP-5 并修复**: `_is_user_module` 过滤 (target=None) 误伤只有
+        generate 块的合法 top → 移除过滤 + 删死代码 (6 个 MIG 测试转绿)。
+        门禁: 切换前后 8 fixtures 逐字节一致; 9 fixtures = 7 EQUIVALENT + GAP-3/4 两 DIFF。
+        R2 核实: get_module_instances + get_generate_instances 无重复计数。
+  - [ ] 实施 — 阶段 2: `get_module_instances()` 全量切 native (需补 wrapper API) + 删 SyntaxTree 死代码 (待方豆决策)
   - [ ] 性能 benchmark (预期 4x speedup; 工具链 tools/benchmark/ 已就绪)
   - [ ] 回归全套
 - **依赖**: MEMORY.md 2026-06-25 用户指示 "先记录下来", 等你后续触发
@@ -323,3 +328,11 @@
     生产调用方, connection_extractor 读 wrapper.instances[0].decl (native wrapper 缺 → 全量切换前置).
   - 交付 `docs/architecture/pyslang11_native_api_g3_plan.md`: 方案 C (阶段 1 MIG-only 切 native →
     阶段 2 全量切 + 删死代码), 风险 R1-R6, 回退策略. **待方豆确认 D1-D3**.
+- **2026-08-29** — **#7 G3 阶段 1 完成** (iter_056). 方豆 "可以, 进行 d1 吧" — MIG.build 实例枚举切 native.
+  - MIG.build 加 instance_source 参数 (auto=生产 native; recursive/native 显式验证钩子); 切换 = L136 一处.
+  - **新发现 GAP-5 并修复**: _is_user_module 过滤 (target=None) 误伤只有 generate 块的合法 top → MIG 空;
+    移除过滤 + 删死代码 + top-skip 补 target=None (6 个 MIG 测试转绿). R2 核实无重复计数.
+  - 门禁: 切换前后 8 fixtures 逐字节一致; 9 fixtures = 7 EQUIVALENT + GAP-3/4 两 DIFF (已接受清单不变).
+  - 回归: MIG 套件 80 passed (1 既有失败) / truth 4 passed / unit+cli 1435 passed + 24 failed (全为沙箱
+    cache artifact, 0 新增). ruff 全过.
+  - 生产 MIG 路径 = native 枚举完成. 阶段 2 (全量切 + 删 SyntaxTree 死代码) 待方豆决策.
