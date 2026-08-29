@@ -137,7 +137,7 @@ elif direction == "unknown":
 | 🟢 合规 | 55 | 防御性遍历 / 可选增强 / 有 sentinel / 有注释 |
 | 🟡 边界 | 20 | 有防御意图但无日志, 建议加 logger.debug |
 
-**处理状态 (2026-08-28 22:30, iter_048)**: 36 违规 → warning/收窄, 20 边界 → debug, 另收窄 23 处冗余 Exception. **全部已落地**, 0 回归.
+**处理状态**: iter_048 (36 违规+20 边界+23 冗余) 已落地; iter_051 再清 10 处 `except Exception: pass` (宽异常). **裸 except Exception: pass 已清零**.
 
 **违规分布** (按文件):
 - `class_graph_builder.py` (7 处): 类约束/成员提取失败静默 — **最高危** (约束数据丢失)

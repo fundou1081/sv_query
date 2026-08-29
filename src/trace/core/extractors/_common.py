@@ -12,7 +12,10 @@
 #                    被调 ~40 次, 是 assign/always/wire_init 都依赖的核心
 #                    helper, 必须共享而非复制.
 # ==============================================================================
+import logging
 from typing import Any, Callable, Optional, Protocol
+
+logger = logging.getLogger(__name__)
 
 # [Step 3] BinaryOperator -> 可读符号映射表
 # 从 driver_extractor.py line 78-109 搬过来. 跟 pyslang AST BinaryOperator enum 对齐.
@@ -787,7 +790,8 @@ def _eval_to_int(expr: Any) -> int | None:
             iv = getattr(result, 'integerValue', None)
             if iv is not None:
                 return int(iv)
-        except Exception:
+        except Exception as e:
+            logger.debug("expr.eval 失败: %s", e)
             pass
 
     return None

@@ -1121,7 +1121,8 @@ class PyslangAdapter:
         if hasattr(expr, "literal") and expr.literal:
             try:
                 return int(expr.literal.valueText)
-            except Exception:
+            except (ValueError, TypeError) as e:
+                logger.debug("literal 转 int 失败: %s", e)
                 pass
 
         # Identifier (参数引用)
@@ -1227,7 +1228,8 @@ class PyslangAdapter:
         if hasattr(expr, "literal") and expr.literal:
             try:
                 return int(expr.literal.valueText)
-            except Exception:
+            except (ValueError, TypeError) as e:
+                logger.debug("literal 转 int 失败: %s", e)
                 pass
 
         # 参数引用: IdentifierName
@@ -1453,7 +1455,8 @@ class PyslangAdapter:
                             find_inst(c, depth + 1)
                     elif hasattr(child, "kind"):
                         find_inst(child, depth + 1)
-                except Exception:
+                except (AttributeError, TypeError) as e:
+                    logger.debug("实例遍历失败: %s", e)
                     pass
 
         root = self.get_root()
