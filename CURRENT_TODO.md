@@ -22,15 +22,20 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — **#7 全部完成, 架构改造 8/8 done**)
+**任务**: (无 — P0 违规清理完成)
 
-**#7 收尾** (commit `3285017` 后):
-- [x] 全管线 benchmark (iter_059): picorv32 nodes 527→708 (+34% GAP-3 图更完整, check_regression 全 PASS); verilog-axi 8221 nodes/51 IM 确定性 100%; baselines 更新
-- [x] #7 全部子任务 done: 等价性 3/6 (3 移出) + diff 脚本 + G3 计划 + 阶段 1/2 实施 + benchmark + 回归
+**P0/P1 清理** (commit `6dd3f93`, iter_060):
+- [x] 核实: P0/P1 大部分已被 iter_048/051/052 清理 (AST 分析 7 文件确认)
+- [x] semantic_adapter 7 处 `(UnicodeDecodeError, Exception)` 冗余 → 收窄 (零回归)
+- [x] load_extractor msb/lsb=0 注释 + graph_builder 失败分支 print→logger.warning
+- [x] EXTRACTION_FAILURES.md 优先级表加状态列 (P0/P1 → 已清理/已核实)
+- [x] 回归: unit 375 passed / truth 4 / ruff 零新增
 
-**ARCHITECTURE_TODOLIST: #1~#8 全部 ✅ done (8/8, 100%)** — 架构改造完成。
+**剩余 (可选, 非 P0)**: P2 边界 logger.debug (大部分已做) / P3 base.py:521 direction warning
 
-**迭代记录**: iter_053~059 (#7 全程)
+**todo 全览**: ARCHITECTURE_TODOLIST 8/8 done; docs/TODO.md V6.9 旧渲染器清理 (候选) + 动态可视化 (候选)
+
+**迭代记录**: iter_060 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
