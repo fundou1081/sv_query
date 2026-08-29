@@ -22,17 +22,22 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 迁 pyslang 11.0 native API — **option A: diff/parity 验证先行** (方豆拍板, 不替换 MIG)
+**任务**: #7 option A 后续 — **GAP-1/GAP-2 已修, GAP-3 已拍板** (方豆 "按 1 做": native 更正确 = bugfix 接受)
 
-**sub-task** (option A 范围):
-- [x] 写 `tools/verify_native_parity.py` — MIG **四表** diff 验证脚本 (instances / port_to_internal / internal_to_port / _module_ports)
-- [x] fixtures 8 项跑通 → **发现 3 个 MIG 级差异** (GAP-1 generate parent / GAP-2 InstanceArray / GAP-3 嵌套 generate)
-- [x] 差异固化进 `test_native_adapter_parity.py` (**10 passed + 2 xfailed** — 修复后 XPASS 提醒)
-- [x] 真实项目评估受阻原因查明: cva6 三种 filelist 均 strict 编译失败 (pyslang↔CVA6 已知不兼容); darkriscv 单文件是 leaf; coralnpu/zipcpu/riscv_core/vortex 无编译入口
-- [ ] **等方豆决策** (G3 计划输入): GAP-3 嵌套 generate 递归漏实例、native 找全 — 当 bugfix 接受输出变化, 还是先对齐?
-- [ ] #7 子任务 1 (真实项目等价性): 前置 = 解决 6 项目 strict 编译
+**sub-task**:
+- [x] 修 GAP-1: native generate block parent 对齐 (hp 去最后一段)
+- [x] 修 GAP-2: native 加 InstanceArray 分支 (元素实例 + 端口表全对齐)
+- [x] 2 xfail → 转正: **13 passed, 0 xfail** (含 parent_module 对比, 比原来更严)
+- [x] verify_native_parity.py 复跑: generate_block / instance_array → EQUIVALENT;
+      **新发现 GAP-4** (conditional generate parent: 递归丢 generate 段, native 完整) — 按 GAP-3 先例接受
+- [x] 回归: unit 1066 passed + 4 failed (沙箱 cache artifact, 0 新增)
+- [ ] **下一步候选** (等方豆): G3 计划文档 / 真实项目 strict 编译前置 (子任务 1)
 
-**迭代记录**: `docs/task_tree/iterations/iter_053_native_parity_script.md`
+**已完成** (option A, commit `f129433` + `iter_054` 修复):
+- [x] `tools/verify_native_parity.py` — MIG 四表 diff, 发现 3 个 MIG 级差异
+- [x] 差异固化进测试 + 修复 native GAP-1/GAP-2 (commit 待提交)
+
+**迭代记录**: `docs/task_tree/iterations/iter_053_native_parity_script.md` / `iter_054_fix_native_gap1_gap2.md`
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
