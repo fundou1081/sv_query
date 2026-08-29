@@ -148,10 +148,10 @@
   - [ ] 回归
 - **依赖**: 跟 #1 (拆 driver_extractor) 部分重叠, 建议 #1 完成后做
 
-### #7 迁 pyslang 11.0 native API  ⬜
+### #7 迁 pyslang 11.0 native API  ✅
 - **ROI**: 长期高
 - **工作量**: 1-2 周
-- **状态**: option A 完成 (diff 脚本 + GAP-1/2 修复 + GAP-3/4 拍板), 等 G3 计划
+- **状态**: **done (2026-08-29)** — 5 调用方全量 native; GAP-1~7 全处理; 等价性 3/6 评估; benchmark 完成
 - **目标**: 用 `inst.hierarchicalPath` / `inst.portConnections` / `inst.body` 替代自建 MIG
 - **子任务**:
   - [ ] 评估 11.0 native API 在 CVA6/coralNPU/darkriscv/zipcpu/riscv_core/vortex 上的等价性
@@ -194,7 +194,12 @@
         **darkriscv EQUIVALENT**; zipcpu/riscv_core **GAP-4 已接受** — 与 fixture 结论一致。
         cva6 (179 elaboration 错) + coralnpu ($clog2 宏) = pyslang↔项目语义不兼容, 阻塞;
         vortex 无编译入口未尝试。工具增强: 子进程隔离 (pyslang 同进程编译污染实证)。
-  - [ ] 回归全套 (integration 确认中)
+  - [x] ✅ **性能 benchmark (全管线)** (2026-08-29, [iter_059](task_tree/iterations/iter_059_benchmark_pipeline.md))
+        → picorv32: nodes 527→708 (+34% = GAP-3 图更完整), check_regression 全 PASS;
+        verilog-axi: 8221 nodes / 9457 edges / 51 IM, 确定性 100% (新 baseline)。
+        枚举级: native 2.14x (verilog-axi)。baselines 更新 (picorv32 native 版 + verilog_axi 新建)。
+  - [x] ✅ 回归全套: unit+cli 1435 passed + 24 failed (沙箱 artifact) / integration 13 failed
+        (baseline 一致) / truth 4 / 0 新回归 — 各阶段均有验证
 - **依赖**: MEMORY.md 2026-06-25 用户指示 "先记录下来", 等你后续触发
 
 ---
@@ -209,10 +214,10 @@
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ✅ done | 08-28 | 21:45 (113+121 处登记) |
 | 5 | 管线 → 显式 DAG | 🔥 | ✅ done | 08-28 | 23:10 (11 步 DAG) |
 | 6 | expression tree 独立 | 🟡 | ✅ done | 08-28 | 23:40 (expr_tree_builder) |
-| 7 | pyslang 11.0 native API | 长期高 | 🟡 option A | 08-29 | — (diff 脚本 done, 等 GAP-3 决策) |
+| 7 | pyslang 11.0 native API | 长期高 | ✅ done | 08-29 | 全量 native + GAP-1~7 + 等价性 + benchmark |
 | 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1/#2/#3/#4/#5/#8 ✅ done**; **#6 ✅ done (2026-08-28 23:40)**; **#7 🟡 option A 进行中** (diff 脚本完成, 3 个 MIG 级差异待决策). **总 7/8 (87.5%)**.
+**总进度**: **#1~#8 全部 ✅ done (2026-08-29)**. **总 8/8 (100%)**.
 
 ---
 
@@ -372,3 +377,9 @@
   - **新发现 GAP-7**: pyslang elaboration 间歇性产生 NUL 垃圾实例名 (u_issue/u_lsu/core0 变体,
     跨进程非确定) → native 跳过含控制字符 hp (递归靠 visited 碰巧跳过); _safe_str 委托 _safe.safe_str.
   - 保留 darkriscv (EQUIVALENT) / zipcpu (GAP-4, 稳定) / riscv_core (GAP-4) — 干净跑结论, 权威门禁 = 10 fixtures.
+- **2026-08-29** — **#7 done (8/8, 100%)** (iter_059). 方豆 "跑#7 吧" — 全管线 benchmark 收尾.
+  - picorv32: nodes 527→708 (+34% = GAP-3 图更完整, 改善非回归), edges 1199→1280, check_regression 全 PASS.
+  - verilog-axi: 8221 nodes / 9457 edges / 51 IM, flakiness 确定性 100% (新 baseline, 12.16s).
+  - 枚举级 (iter_057): native 2.14x. baselines 更新 (picorv32 native 版 + verilog_axi 新建).
+  - #7 全程: iter_053 (option A 验证+3 差异) → 054 (GAP-1/2 修) → 055 (G3 计划) → 056 (阶段 1+GAP-5)
+    → 057 (阶段 2+GAP-6) → 058 (等价性 3/6+GAP-7) → 059 (benchmark). GAP-1~7 全处理.

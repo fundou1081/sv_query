@@ -1,0 +1,144 @@
+{
+  "metadata": {
+    "tool": "sv_query benchmark",
+    "version": "PR5+PR7 2026-06-15",
+    "input_type": "filelist",
+    "project_input": "/tmp/verilog-axi.f",
+    "filelist": "/tmp/verilog-axi.f",
+    "target": "axi_dp_ram",
+    "depth": 4,
+    "include_dirs": null,
+    "timestamp": "2026-08-29T13:42:07.219870",
+    "build_time_seconds": 12.16
+  },
+  "L1_module_extraction": {
+    "target": "axi_dp_ram",
+    "depth": 4,
+    "instance_count": 6,
+    "instances": [
+      {
+        "id": "axi_dp_ram.a_if",
+        "name": "a_if",
+        "def": "axi_ram_wr_rd_if",
+        "depth": 1
+      },
+      {
+        "id": "axi_dp_ram.a_if.axi_ram_wr_if_inst",
+        "name": "axi_ram_wr_if_inst",
+        "def": "axi_ram_wr_if",
+        "depth": 2
+      },
+      {
+        "id": "axi_dp_ram.a_if.axi_ram_rd_if_inst",
+        "name": "axi_ram_rd_if_inst",
+        "def": "axi_ram_rd_if",
+        "depth": 2
+      },
+      {
+        "id": "axi_dp_ram.b_if",
+        "name": "b_if",
+        "def": "axi_ram_wr_rd_if",
+        "depth": 1
+      },
+      {
+        "id": "axi_dp_ram.b_if.axi_ram_wr_if_inst",
+        "name": "axi_ram_wr_if_inst",
+        "def": "axi_ram_wr_if",
+        "depth": 2
+      },
+      {
+        "id": "axi_dp_ram.b_if.axi_ram_rd_if_inst",
+        "name": "axi_ram_rd_if_inst",
+        "def": "axi_ram_rd_if",
+        "depth": 2
+      }
+    ]
+  },
+  "L2_graph_topology": {
+    "nodes": 8221,
+    "edges": 9457,
+    "instantiated_modules": 51,
+    "port_in": 1836,
+    "port_out": 1420,
+    "signal": 4010,
+    "depth_distribution": {
+      "0": 56,
+      "1": 6398,
+      "2": 1072,
+      "3": 547,
+      "4": 40,
+      "5": 94,
+      "6": 14
+    }
+  },
+  "L3_signal_traces": {
+    "axi_dp_ram.s_axi_awvalid": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_dp_ram.m_axi_awvalid": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_dp_ram.s_axi_awready": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_dp_ram.m_axi_awready": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    },
+    "axi_dp_ram.clk_i": {
+      "fanout": 0,
+      "fanin": 0,
+      "fanout_samples": [],
+      "fanin_samples": []
+    }
+  },
+  "L4_cross_instance_edges": {
+    "target": "axi_dp_ram",
+    "depth": 4,
+    "edge_count": 146,
+    "in_scope_count": 146,
+    "top_ports": {
+      "clk": 3,
+      "rst": 3,
+      "s_axi_awid": 2,
+      "s_axi_awaddr": 2,
+      "s_axi_awlen": 2,
+      "s_axi_awsize": 2,
+      "s_axi_awburst": 2,
+      "s_axi_awlock": 2,
+      "s_axi_awcache": 2,
+      "s_axi_awprot": 2
+    }
+  },
+  "flakiness": {
+    "runs": 3,
+    "node_counts": [
+      8221,
+      8221,
+      8221
+    ],
+    "im_counts": [
+      51,
+      51,
+      51
+    ],
+    "node_min": 8221,
+    "node_max": 8221,
+    "node_stdev": 0.0,
+    "im_min": 51,
+    "im_max": 51,
+    "im_stdev": 0.0,
+    "deterministic_ratio_im": 1.0
+  }
+}

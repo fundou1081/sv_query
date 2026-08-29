@@ -22,20 +22,15 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 — **子任务 1 收尾完成** (3/6 保留为测试项, 3 个移出; GAP-7 已修)
+**任务**: (无 — **#7 全部完成, 架构改造 8/8 done**)
 
-**已完成**:
-- [x] G3 阶段 1+2 (commit `0aecf6a`/`52ba124`): 5 调用方全量 native + 删死代码; GAP-1~6 全修/全接受
-- [x] 子任务 1 (commit `ab50df1`/`110cb99`): 按方豆指示"通不过就不作为测试项" —
-      **保留 darkriscv (EQUIVALENT) / zipcpu (GAP-4 稳定) / riscv_core (GAP-4)**;
-      **移出 cva6 (pyslang 语义不兼容) / coralnpu (缺 VLEN define) / vortex (无 filelist)**
-- [x] **GAP-7 修复**: pyslang elaboration 间歇性 NUL 垃圾实例 → native 过滤 hp 含控制字符的实例; _safe_str 委托 _safe.safe_str
+**#7 收尾** (commit `3285017` 后):
+- [x] 全管线 benchmark (iter_059): picorv32 nodes 527→708 (+34% GAP-3 图更完整, check_regression 全 PASS); verilog-axi 8221 nodes/51 IM 确定性 100%; baselines 更新
+- [x] #7 全部子任务 done: 等价性 3/6 (3 移出) + diff 脚本 + G3 计划 + 阶段 1/2 实施 + benchmark + 回归
 
-**#7 剩余 (可选, 非阻塞)**:
-- [ ] 全管线 benchmark (tools/benchmark/run_benchmark.py)
-- [ ] pyslang 非确定性本身 (GAP-7 根因在 pyslang, 超出 sv_query 范围, 记录即可)
+**ARCHITECTURE_TODOLIST: #1~#8 全部 ✅ done (8/8, 100%)** — 架构改造完成。
 
-**迭代记录**: iter_053~058
+**迭代记录**: iter_053~059 (#7 全程)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
