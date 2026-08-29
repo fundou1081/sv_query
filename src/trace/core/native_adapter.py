@@ -76,15 +76,26 @@ def get_module_instances_native(
     cell 而整棵跳过 → MIG 空。生产 (UnifiedTracer) 默认 target=None, 必须与
     递归行为一致。utility cell 过滤的诉求 (CVA6) 由 target 参数路径覆盖
     (指定 target 时只 walk 该子树), 无需启发式。
+
+    [GAP-6 fix 2026-08-29] target=None 时 walk **所有** topInstances:
+    旧实现 (递归) walk self._root 的全部顶层实例 (库风格设计如 verilog-axi 有
+    21 个顶层模块, 递归找 165 实例); 原代码 _find_target_top(None) 返第一个 top
+    就短路, 只 walk 1 个 → 2 实例。stage 2 把 native 接入 connection_extractor
+    后暴露 (test_cross_module_trace 5 失败)。
     """
     wrappers = []
     if root is None:
         return wrappers
 
-    # 找 start point — user target or first top
+    if target_module is None:
+        # [GAP-6 fix] 与递归一致: walk 所有 top instances (不过滤、不短路)
+        for top in root.topInstances:
+            _walk_instance(top, top.name, wrappers, root, None, is_top=True)
+        return wrappers
+
+    # 指定 target: 找同名 top, 找不到则 fallback walk 所有 (与递归一致)
     top_to_walk = _find_target_top(root, target_module)
     if top_to_walk is None:
-        # Fall back: walk all top instances (与递归一致, 不过滤)
         for top in root.topInstances:
             _walk_instance(top, target_module or top.name, wrappers, root, target_module, is_top=True)
     else:
@@ -94,13 +105,9 @@ def get_module_instances_native(
 
 
 def _find_target_top(root: pyslang.RootSymbol, target_module: str | None):
-    """[Helper] 找 user-specified target 在 topInstances 里."""
+    """[Helper] 找 user-specified target 在 topInstances 里 (target 不能为 None)."""
     if target_module is None:
-        # 没指定 — 返第一个 top instance (与递归一致, 不过滤)
-        for top in root.topInstances:
-            return top
         return None
-    # 指定了 — 找同名 top
     for top in root.topInstances:
         try:
             if top.name == target_module:

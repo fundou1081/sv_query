@@ -179,9 +179,18 @@
         generate 块的合法 top → 移除过滤 + 删死代码 (6 个 MIG 测试转绿)。
         门禁: 切换前后 8 fixtures 逐字节一致; 9 fixtures = 7 EQUIVALENT + GAP-3/4 两 DIFF。
         R2 核实: get_module_instances + get_generate_instances 无重复计数。
-  - [ ] 实施 — 阶段 2: `get_module_instances()` 全量切 native (需补 wrapper API) + 删 SyntaxTree 死代码 (待方豆决策)
-  - [ ] 性能 benchmark (预期 4x speedup; 工具链 tools/benchmark/ 已就绪)
-  - [ ] 回归全套
+  - [x] ✅ **实施阶段 2: 全量切 native + 删 SyntaxTree 死代码** (2026-08-29, [iter_057](task_tree/iterations/iter_057_g3_stage2_full_native.md))
+        → `get_module_instances()` 内部切 native + SemanticInstanceWrapper 包装
+        (返回类型零变化, **5 个生产调用方统一**); 递归保留为
+        get_module_instances_recursive() 作验证参照。
+        **新发现 GAP-6 并修复**: target=None 只 walk 第一个 top → 改 walk 所有
+        topInstances (verilog-axi 165==165)。
+        删 MIG SyntaxTree 死代码 ~920 行 (1110→374); build 对 dict 输入显式 TypeError。
+        门禁: 10 fixtures = 8 EQUIVALENT + GAP-3/4 两 DIFF。
+        benchmark (verilog-axi): **native 2.14x** (641ms→300ms)。
+  - [x] ✅ **性能 benchmark (枚举级)** (2026-08-29): verilog-axi native 2.14x
+  - [ ] 子任务 1 前置: 6 项目 strict 编译修复 (cva6/coralnpu/darkriscv/zipcpu/riscv_core/vortex)
+  - [ ] 回归全套 (integration 确认中)
 - **依赖**: MEMORY.md 2026-06-25 用户指示 "先记录下来", 等你后续触发
 
 ---
@@ -336,3 +345,12 @@
   - 回归: MIG 套件 80 passed (1 既有失败) / truth 4 passed / unit+cli 1435 passed + 24 failed (全为沙箱
     cache artifact, 0 新增). ruff 全过.
   - 生产 MIG 路径 = native 枚举完成. 阶段 2 (全量切 + 删 SyntaxTree 死代码) 待方豆决策.
+- **2026-08-29** — **#7 G3 阶段 2 完成** (iter_057). 方豆 "继续" — 5 调用方全量 native + 删 SyntaxTree 死代码.
+  - get_module_instances() 内部切 native + SemanticInstanceWrapper 包装 (返回类型零变化); 递归保留为
+    get_module_instances_recursive() 验证参照.
+  - **新发现 GAP-6 并修复**: target=None 只 walk 第一个 top → 改 walk 所有 topInstances
+    (verilog-axi recursive=165 vs native=2 → 165==165, 5 个 test_cross_module_trace 转绿).
+  - 删 MIG SyntaxTree 死代码 ~920 行 (1110→374); build 对 dict 输入显式 TypeError (不留 silent 路径).
+  - 门禁: 10 fixtures = 8 EQUIVALENT + GAP-3/4 两 DIFF; benchmark: native 2.14x (641→300ms, verilog-axi).
+  - 回归: unit+cli 1435 passed + 24 failed (与阶段 1 集合一致) / integration 13 failed (与 baseline 一致) / truth 4 / ruff 全过 — **全套 0 新回归**.
+  - 剩余: 子任务 1 (6 项目 strict 编译) + 全管线 benchmark.

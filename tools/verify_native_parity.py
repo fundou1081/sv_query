@@ -161,12 +161,32 @@ endmodule
 module sub();
 endmodule
 """,
+    # [GAP-6 探测 2026-08-29] target=None 多 top (库风格): native 必须 walk 所有
+    # topInstances (递归 walk 全部顶层实例), 不能只走第一个 top.
+    # 注意: 此 fixture 在 report_fixture 里用 target=None (见 FIXTURE_TARGETS).
+    "multi_top_library": """
+module mod_a();
+    leaf u_leaf();
+endmodule
+
+module mod_b();
+    leaf u_leaf();
+    leaf u_leaf2();
+endmodule
+
+module mod_c();
+endmodule
+
+module leaf();
+endmodule
+""",
 }
 
-# [GAP-5 2026-08-29] 每个 fixture 的 target_module; 缺省 "top".
-# no_target_loop_gen 走 target=None (生产默认路径), 验证递归/native 都不过滤 top.
+# [GAP-5/6 2026-08-29] 每个 fixture 的 target_module; 缺省 "top".
+# no_target_loop_gen / multi_top_library 走 target=None (生产默认路径).
 FIXTURE_TARGETS: dict[str, str | None] = {
     "no_target_loop_gen": None,
+    "multi_top_library": None,
 }
 
 
