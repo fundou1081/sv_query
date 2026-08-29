@@ -243,7 +243,8 @@ class LoadExtractor:
                                             if name and value is not None:
                                                 try:
                                                     param_map[name] = int(value)
-                                                except (ValueError, TypeError):
+                                                except (ValueError, TypeError) as _e:
+                                                    logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
                                                     pass
                                     except Exception as e:
                                         logger.warning("参数值转换失败: %s", e)
@@ -271,7 +272,8 @@ class LoadExtractor:
                                             if name and value is not None:
                                                 try:
                                                     param_map[name] = int(value)
-                                                except (ValueError, TypeError):
+                                                except (ValueError, TypeError) as _e:
+                                                    logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
                                                     pass
                                     except Exception as e:
                                         logger.warning("参数值转换失败: %s", e)
@@ -295,7 +297,8 @@ class LoadExtractor:
                                     if name and value is not None:
                                         try:
                                             param_map[name] = int(value)
-                                        except (ValueError, TypeError):
+                                        except (ValueError, TypeError) as _e:
+                                            logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
                                             pass
                             except Exception as e:
                                 logger.warning("参数值转换失败: %s", e)

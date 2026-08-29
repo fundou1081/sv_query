@@ -832,7 +832,8 @@ class ModuleInstanceGraph:
             if hasattr(lit, "valueText"):
                 try:
                     return int(lit.valueText)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as _e:
+                    logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
                     pass
         if hasattr(expr, "value"):
             v = expr.value
@@ -1045,11 +1046,13 @@ class PathResolver:
             neighbors = set()
             try:
                 neighbors.update(self.signal_graph.successors(current))
-            except (KeyError, nx.NetworkXError):
+            except (KeyError, nx.NetworkXError) as _e:
+                logger.debug("图无路径 (正常): %s", _e)
                 pass
             try:
                 neighbors.update(self.signal_graph.predecessors(current))
-            except (KeyError, nx.NetworkXError):
+            except (KeyError, nx.NetworkXError) as _e:
+                logger.debug("图无路径 (正常): %s", _e)
                 pass
 
             for neighbor in neighbors:

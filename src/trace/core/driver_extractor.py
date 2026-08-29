@@ -1082,7 +1082,8 @@ class DriverExtractor:
         try:
             float(token)
             return True
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as _e:
+            logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
             pass
 
         # 1-bit SV literals: 1'bx, 1'bz 中拆分出的纯 'x'/'z'

@@ -19,7 +19,11 @@ bit_select_handler.py - Bit Select 节点处理模块
 #   Phase 3 的 constraint 字符串扫描 (_scan_constraint_bit_selects) 自带函数内 import re,
 #   那是对 constraint 表达式**文本**做模式提取, 不是对 AST 结构反推, 属合理用法。
 
+import logging
+
 from trace.core.base import PyslangAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class BitSelectHandler:
@@ -158,7 +162,8 @@ class BitSelectHandler:
             if hasattr(lit, "valueText"):
                 try:
                     return int(lit.valueText)
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as _e:
+                    logger.debug("位宽 int 转换失败: %s", _e)
                     pass
         # 直接的值属性
         if hasattr(expr, "value"):
@@ -169,7 +174,8 @@ class BitSelectHandler:
         if hasattr(expr, "text"):
             try:
                 return int(expr.text)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as _e:
+                logger.debug("位宽 int 转换失败: %s", _e)
                 pass
         return 0
 

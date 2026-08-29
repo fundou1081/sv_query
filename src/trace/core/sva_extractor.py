@@ -54,7 +54,8 @@ class SVAExtractor:
                 try:
                     for child in node.body:
                         self._walk(child, graph, new_prefix)
-                except TypeError:
+                except TypeError as _e:
+                    logger.debug("提取失败 (TypeError): %s", _e)
                     pass
             return
 
@@ -97,7 +98,8 @@ class SVAExtractor:
             try:
                 for child in node:
                     self._walk(child, graph, prefix)
-            except TypeError:
+            except TypeError as _e:
+                logger.debug("提取失败 (TypeError): %s", _e)
                 pass
             return
 
@@ -106,7 +108,8 @@ class SVAExtractor:
             try:
                 for child in node:
                     self._walk(child, graph, prefix)
-            except TypeError:
+            except TypeError as _e:
+                logger.debug("提取失败 (TypeError): %s", _e)
                 pass
             return
 
@@ -114,7 +117,8 @@ class SVAExtractor:
         try:
             for child in node:
                 self._walk(child, graph, prefix)
-        except TypeError:
+        except TypeError as _e:
+            logger.debug("提取失败 (TypeError): %s", _e)
             pass
 
     # =========================================================================
@@ -552,7 +556,8 @@ class SVAExtractor:
         """安全遍历子节点"""
         try:
             yield from node
-        except TypeError:
+        except TypeError as _e:
+            logger.debug("提取失败 (TypeError): %s", _e)
             pass
 
     def _get_identifier_name(self, node) -> str:

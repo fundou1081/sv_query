@@ -1547,6 +1547,7 @@ class ClassGraphBuilder:
                                 left_val = int(str(sel.left.literal))
                                 right_val = int(str(sel.right.literal))
                                 return (left_val, right_val)
-                            except (ValueError, AttributeError):
+                            except (ValueError, AttributeError) as _e:
+                                logger.debug("提取失败 ((ValueError, AttributeError)): %s", _e)
                                 pass
         return (0, 0)

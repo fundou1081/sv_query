@@ -799,7 +799,8 @@ class GraphBuilder:
                                 )
                                 for sig_name, sig_dir in modport_signals.items():
                                     interface_signals[(port_name.strip(), sig_name)] = sig_dir
-            except (ValueError, AttributeError, TypeError):
+            except (ValueError, AttributeError, TypeError) as _e:
+                logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
                 pass
 
             # For each node in the graph that's in this module
