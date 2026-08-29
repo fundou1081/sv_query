@@ -149,10 +149,20 @@ class CovergroupExtractor:
                 if b:
                     bins_list.append(b)
 
+        # [iter_062] 提取 iff 条件 (coverpoint data iff (enable))
+        iff = ""
+        if syntax:
+            iff_syn = getattr(syntax, "iff", None)
+            if iff_syn is not None:
+                iff = str(iff_syn).strip()
+                if iff.startswith("iff"):
+                    iff = iff[3:].strip().strip("()").strip()
+
         return CoverpointInfo(
             name=name,
             signal=signal,
             bins=bins_list,
+            iff=iff,
         )
 
     # =========================================================================
@@ -175,12 +185,26 @@ class CovergroupExtractor:
                 elif "ignore" in keyword_str:
                     kind = "ignore_bins"
 
+        # [iter_062] bin_type: wildcard / transition 识别
+        bin_type = ""
+        if syntax:
+            # wildcard 是 keyword 前的独立修饰 token (keyword 本身不含),
+            # 用 syntax 完整文本判断 "wildcard" 位于 bins 关键字之前
+            syntax_str = str(syntax)
+            keyword_str = str(getattr(syntax, "keyword", "")).strip()
+            kw_pos = syntax_str.find(keyword_str)
+            if kw_pos > 0 and "wildcard" in syntax_str[:kw_pos]:
+                bin_type = "wildcard"
+
         # 提取值
         values = ""
         if syntax:
             initializer = getattr(syntax, "initializer", None)
             if initializer:
                 values = str(initializer).strip()
+                # [iter_062] transition bins: (0 => 1 => 2) 形态
+                if "=>" in values:
+                    bin_type = "transition"
             else:
                 for child in syntax:
                     ck = str(getattr(child, "kind", ""))
@@ -195,6 +219,7 @@ class CovergroupExtractor:
             name=name,
             kind=kind,
             values=values,
+            bin_type=bin_type,
         )
 
     # =========================================================================
@@ -213,7 +238,18 @@ class CovergroupExtractor:
                 if t_name:
                     items.append(t_name)
 
+        # [iter_062] cross 的 iff 条件 (cross addr, mode iff (reset == 0))
+        iff = ""
+        syntax = getattr(node, "syntax", None)
+        if syntax:
+            iff_syn = getattr(syntax, "iff", None)
+            if iff_syn is not None:
+                iff = str(iff_syn).strip()
+                if iff.startswith("iff"):
+                    iff = iff[3:].strip().strip("()").strip()
+
         return CoverCrossInfo(
             name=name,
             items=items,
+            iff=iff,
         )

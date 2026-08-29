@@ -12,6 +12,7 @@ class BinsInfo:
     name: str  # bin 名称
     kind: str  # "bins" | "illegal_bins" | "ignore_bins"
     values: str  # 值描述 (如 "[0:63]", "{1,2,3}")
+    bin_type: str = ""  # [iter_062] "wildcard" | "transition" | "" (普通 bins)
     source_range: str = ""  # 源码位置
 
 
@@ -22,6 +23,7 @@ class CoverpointInfo:
     name: str  # coverpoint 名称 (可能为空)
     signal: str  # 采样信号名
     bins: list[BinsInfo] = field(default_factory=list)
+    iff: str = ""  # [iter_062] iff 条件 (如 "enable"), 无条件为空
     attributes: dict[str, str] = field(default_factory=dict)
 
 

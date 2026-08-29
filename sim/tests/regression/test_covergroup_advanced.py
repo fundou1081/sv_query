@@ -56,6 +56,7 @@ endmodule'''
         self.assertEqual(len(cg.coverpoints), 1)
         cp = cg.coverpoints[0]
         self.assertEqual(cp.signal, 'data')
+        self.assertEqual(cp.iff, 'enable', "[iter_062] iff 条件应被提取")
         self.assertEqual(len(cp.bins), 2, "iff 不应影响 bins 提取")
 
     def test_cross_iff(self):
@@ -73,6 +74,7 @@ endmodule'''
         cg = cgs[0]
         self.assertEqual(len(cg.crosses), 1, "cross 应被提取")
         self.assertEqual(sorted(cg.crosses[0].items), ['addr', 'mode'])
+        self.assertEqual(cg.crosses[0].iff, 'reset == 0', "[iter_062] cross iff 应被提取")
 
     def test_wildcard_bins(self):
         """[Golden] wildcard bins — 通配符 ? 位
@@ -95,6 +97,8 @@ endmodule'''
         self.assertEqual(len(cgs), 1)
         cp = cgs[0].coverpoints[0]
         self.assertEqual(len(cp.bins), 2, "wildcard bins 应被提取")
+        types = {b.bin_type for b in cp.bins}
+        self.assertEqual(types, {'wildcard'}, "[iter_062] wildcard 类型应被识别")
         values = {b.values for b in cp.bins}
         self.assertTrue(any("????" in v for v in values), "通配符值应保留")
 
@@ -118,6 +122,8 @@ endmodule'''
         self.assertEqual(len(cgs), 1)
         cp = cgs[0].coverpoints[0]
         self.assertEqual(len(cp.bins), 2, "transition bins 应被提取")
+        types = {b.bin_type for b in cp.bins}
+        self.assertIn('transition', types, "[iter_062] transition 类型应被识别")
         values = {b.values for b in cp.bins}
         self.assertTrue(any("=>" in v for v in values), "transition 值应保留 =>")
 
