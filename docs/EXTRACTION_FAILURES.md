@@ -137,7 +137,8 @@ elif direction == "unknown":
 | 🟢 合规 | 55 | 防御性遍历 / 可选增强 / 有 sentinel / 有注释 |
 | 🟡 边界 | 20 | 有防御意图但无日志, 建议加 logger.debug |
 
-**处理状态**: iter_048 (36 违规+20 边界+23 冗余) 已落地; iter_051 再清 10 处 `except Exception: pass` (宽异常). **裸 except Exception: pass 已清零**.
+**处理状态**: iter_048 (36 违规+20 边界+23 冗余) / iter_051 (10 宽异常) / iter_052 (**全仓 except: pass 清零**) 已落地.
+**全面禁止 except: pass** (AGENTS.md 核心纪律 2.5): 所有 except: pass 改为 `except X as e: logger...` 或加注释, 全仓计数 = 0.
 
 **违规分布** (按文件):
 - `class_graph_builder.py` (7 处): 类约束/成员提取失败静默 — **最高危** (约束数据丢失)

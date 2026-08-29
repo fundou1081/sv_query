@@ -766,7 +766,8 @@ def _eval_to_int(expr: Any) -> int | None:
     if v is not None:
         try:
             return int(v)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as _e:
+            logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
             pass
 
     # 快速路径 2: .constant.value (pyslang 11.0 ConstantValue)
@@ -776,7 +777,8 @@ def _eval_to_int(expr: Any) -> int | None:
         if cv is not None:
             try:
                 return int(cv)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError) as _e:
+                logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
                 pass
 
     # 慢路径: 走 pyslang eval (某些版本 expr.eval() 无参可用)

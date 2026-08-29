@@ -349,7 +349,8 @@ class ExpressionTree:
                                 node = ExpressionTree._parse_expr(tokens, 0, len(tokens))
                                 if node:
                                     children.append(node)
-                        except (TypeError, ValueError):
+                        except (TypeError, ValueError) as _e:
+                            logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
                             pass
                     else:
                         leaf = ExpressionTree._leaf(expr)

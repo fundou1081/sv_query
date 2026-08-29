@@ -34,11 +34,14 @@
 # 可进一步拆成子函数。但那是**行为重构**, 与本次"搬文件"混在一个 commit 会
 # 难以归因回归。已单独记录, 建议 Step 4b 处理。
 # ==============================================================================
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable
 
 from ..ast_utils import kind_matches, unwrap
 from ..graph.models import EdgeKind, NodeKind, TraceNode
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -707,7 +710,8 @@ def _extract_ternary_condition(expr) -> str:
                             s = str(syntax).strip()
                             if s:
                                 return s
-                        except (UnicodeDecodeError, TypeError):
+                        except (UnicodeDecodeError, TypeError) as _e:
+                            logger.debug("表达式文本提取失败: %s", _e)
                             pass
                     # 尝试获取符号名
                     if hasattr(cond_expr, "symbol"):

@@ -72,7 +72,8 @@ class ASTWalker:
             children = list(node)
             if children:
                 return children
-        except (ValueError, AttributeError, TypeError):
+        except (ValueError, AttributeError, TypeError) as _e:
+            logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
             pass
 
         return []
@@ -334,7 +335,8 @@ class PyslangAdapter:
         try:
             for child in self.iter_children(node):
                 classes.extend(self._extract_classes(child))
-        except (ValueError, AttributeError, TypeError):
+        except (ValueError, AttributeError, TypeError) as _e:
+            logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
             pass
 
         return classes
@@ -350,14 +352,16 @@ class PyslangAdapter:
             if hasattr(node, "kind"):
                 if node.kind == SyntaxKind.InterfaceDeclaration:
                     interfaces.append(node)
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError) as _e:
+            logger.debug("提取失败 ((ValueError, AttributeError)): %s", _e)
             pass
 
         # 递归子节点
         try:
             for child in self.iter_children(node):
                 interfaces.extend(self._extract_interfaces(child))
-        except (ValueError, AttributeError, TypeError):
+        except (ValueError, AttributeError, TypeError) as _e:
+            logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
             pass
 
         return interfaces
@@ -428,7 +432,8 @@ class PyslangAdapter:
                                         if hasattr(child, "ports"):
                                             port_names = str(getattr(child, "ports", ""))
                                             info["ports"] = [p.strip() for p in port_names.split(",")]
-        except (ValueError, AttributeError, TypeError):
+        except (ValueError, AttributeError, TypeError) as _e:
+            logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
             pass
 
         return info
@@ -1326,7 +1331,8 @@ class PyslangAdapter:
         if hasattr(expr, "literal") and expr.literal:
             try:
                 return int(expr.literal.valueText)
-            except (ValueError, AttributeError, TypeError):
+            except (ValueError, AttributeError, TypeError) as _e:
+                logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
                 pass
 
         # 检查是否是参数引用 (Identifier)

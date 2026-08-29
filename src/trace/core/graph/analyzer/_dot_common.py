@@ -12,6 +12,7 @@ Public API:
 """
 from __future__ import annotations
 
+import logging
 import re
 
 from ..models import SignalGraph
@@ -20,6 +21,8 @@ from .signal_classifier import (
     SignalClassification,
     classify_graph,
 )
+
+logger = logging.getLogger(__name__)
 
 # [V5 2026-07-19] 用户反馈: "graph 里要有信号名". pyslang 在拿 array
 # 表达式里的索引名 (例如 generate-for 里的变量) 时, 会返回 AST 节点的
@@ -178,5 +181,5 @@ def render_with_engine(dot_text: str, output_path: str, engine: str = "dot", fmt
         try:
             import os
             os.unlink(tmp_path)
-        except OSError:
-            pass
+        except OSError as _e:
+            logger.debug("临时文件清理失败 (可预期): %s", _e)

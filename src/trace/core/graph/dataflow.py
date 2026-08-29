@@ -539,7 +539,8 @@ class DataFlowGraph:
                                     for sp in sub_paths:
                                         if sp:
                                             return [[from_signal] + sp]
-                                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                                except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
+                                    logger.debug("图无路径 (正常): %s", _e)
                                     pass
 
         # 情况2: to_signal 是成员,检查是否有 struct 赋值到它的父
@@ -560,7 +561,8 @@ class DataFlowGraph:
                                 for sp in sub_paths:
                                     if sp:
                                         return [sp + [dst_parent, to_signal]]
-                            except (nx.NetworkXNoPath, nx.NodeNotFound):
+                            except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
+                                logger.debug("图无路径 (正常): %s", _e)
                                 pass
 
         # [FIX] 情况2b: to_signal 被 struct.member 表达式驱动
@@ -613,7 +615,8 @@ class DataFlowGraph:
                                         if sp:
                                             # 找到了! 路径: from → ... → struct_pred → dst_struct_resolved → to_signal
                                             return [sp + [struct_pred, dst_struct_resolved, to_signal]]
-                                except (nx.NetworkXNoPath, nx.NodeNotFound):
+                                except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
+                                    logger.debug("图无路径 (正常): %s", _e)
                                     pass
 
                             # [FIX] 如果 from_signal 是 struct.member,检查是否能通过 struct 父节点传播
@@ -629,7 +632,8 @@ class DataFlowGraph:
                                         for sp in sub_paths:
                                             if sp:
                                                 return [sp + [dst_struct_resolved, to_signal]]
-                                    except (nx.NetworkXNoPath, nx.NodeNotFound):
+                                    except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
+                                        logger.debug("图无路径 (正常): %s", _e)
                                         pass
 
                                 # 检查 from_signal 的父 struct 是否能到达 struct_pred

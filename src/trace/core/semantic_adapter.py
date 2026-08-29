@@ -496,9 +496,11 @@ class SemanticAdapter:
                                     continue
                                 if "Class" in ck:
                                     classes.append(child)
-                        except (TypeError, UnicodeDecodeError):
+                        except (TypeError, UnicodeDecodeError) as _e:
+                            logger.debug("提取失败 ((TypeError, UnicodeDecodeError)): %s", _e)
                             pass
-            except (TypeError, UnicodeDecodeError):
+            except (TypeError, UnicodeDecodeError) as _e:
+                logger.debug("提取失败 ((TypeError, UnicodeDecodeError)): %s", _e)
                 pass
 
         # 去重（Semantic AST 和 SyntaxTree 可能都找到了同一个 class）
@@ -560,7 +562,8 @@ class SemanticAdapter:
             try:
                 str(_safe_attr(cls, "name", ""))
                 continue
-            except UnicodeDecodeError:
+            except UnicodeDecodeError as _e:
+                logger.debug("提取失败 (UnicodeDecodeError): %s", _e)
                 pass
 
             syntax = getattr(cls, "syntax", None)
@@ -943,7 +946,8 @@ class SemanticAdapter:
                     try:
                         v = int(w.value)
                         return (v, 0, v - 1)
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError) as _e:
+                        logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
                         pass
 
         # 默认 1 位
@@ -1780,7 +1784,8 @@ class SemanticAdapter:
                         try:
                             for s in list(inner):
                                 self._collect_drivers_from_stmt(s, func_name, drivers)
-                        except (TypeError, ValueError):
+                        except (TypeError, ValueError) as _e:
+                            logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
                             pass
                     else:
                         self._collect_drivers_from_stmt(inner, func_name, drivers)
@@ -2024,7 +2029,8 @@ class SemanticAdapter:
                 if member_name.startswith("Symbol("):
                     try:
                         member_name = member_name.split('"')[1]
-                    except (IndexError, AttributeError):
+                    except (IndexError, AttributeError) as _e:
+                        logger.debug("提取失败 ((IndexError, AttributeError)): %s", _e)
                         pass
             if left and member_name:
                 # Recurse into left to get the full dotted path parts

@@ -39,10 +39,13 @@ CLI:
 """
 
 from __future__ import annotations
+import logging
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from lxml import etree
@@ -1060,8 +1063,8 @@ def render_and_check(viz, config: dict | None = None, level: str = 'strict') -> 
         # 简化: 不重跑, 直接 None
         # Layer C 会跳过需要 layout 的 check
         pass
-    except ImportError:
-        pass
+    except ImportError as _e:
+        logger.debug("elk_bridge 可选依赖降级: %s", _e)
     
     report = check_viz_render(viz, layout, svg, level=level)
     return svg, report
