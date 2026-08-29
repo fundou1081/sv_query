@@ -22,20 +22,18 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 子任务 1 — **真实项目等价性评估 3/6 完成** (darkriscv EQUIVALENT / zipcpu GAP-4 / riscv_core GAP-4; cva6+coralnpu 编译阻塞已定位, vortex 未尝试)
+**任务**: #7 — **子任务 1 收尾完成** (3/6 保留为测试项, 3 个移出; GAP-7 已修)
 
 **已完成**:
 - [x] G3 阶段 1+2 (commit `0aecf6a`/`52ba124`): 5 调用方全量 native + 删死代码; GAP-1~6 全修/全接受
-- [x] **子任务 1 探索**: 解锁 darkriscv (14 文件)/ zipcpu (51 文件)/ riscv_core (18 文件, = riscv 项目) strict 编译
-- [x] 等价性: darkriscv **EQUIVALENT**; zipcpu/riscv_core **GAP-4 已接受** — 与 fixture 结论一致
-- [x] 工具增强: 目录展开/incdir/COMPILE_FAILED 显式报告/差异归类/**子进程隔离** (pyslang 同进程编译污染实证)
-- [x] cva6 (179 错) + coralnpu ($clog2 宏) 阻塞原因精确定位
+- [x] 子任务 1 (commit `ab50df1`/`110cb99`): 按方豆指示"通不过就不作为测试项" —
+      **保留 darkriscv (EQUIVALENT) / zipcpu (GAP-4 稳定) / riscv_core (GAP-4)**;
+      **移出 cva6 (pyslang 语义不兼容) / coralnpu (缺 VLEN define) / vortex (无 filelist)**
+- [x] **GAP-7 修复**: pyslang elaboration 间歇性 NUL 垃圾实例 → native 过滤 hp 含控制字符的实例; _safe_str 委托 _safe.safe_str
 
-**剩余 (阻塞, 需方豆决策投入方向)**:
-- [ ] cva6: pyslang↔CVA6 语义不兼容 (179 错) — 修复方向超出 sv_query 范围
-- [ ] coralnpu: $clog2() 0 参宏展开 — 同上
-- [ ] vortex: 需人工整理编译入口 (204 文件)
+**#7 剩余 (可选, 非阻塞)**:
 - [ ] 全管线 benchmark (tools/benchmark/run_benchmark.py)
+- [ ] pyslang 非确定性本身 (GAP-7 根因在 pyslang, 超出 sv_query 范围, 记录即可)
 
 **迭代记录**: iter_053~058
 
