@@ -121,12 +121,19 @@ def _make_adapter(source: str) -> SemanticAdapter:
     return SemanticAdapter(compiler.get_root())
 
 
-def _instances_to_comparable(adapter: SemanticAdapter, target: str = None) -> list:
-    """[Helper] 拿旧实现的 instance list, 转成可比较的 dict list.
+def _instances_to_comparable(
+    adapter: SemanticAdapter,
+    target: str = None,
+    method: str = "get_module_instances_recursive",
+) -> list:
+    """[Helper] 拿实例 list (默认旧递归实现作参照), 转成可比较的 dict list.
+
+    [G3 阶段 2 2026-08-29] 生产 get_module_instances() 已切 native, parity 对比
+    的 "旧" 侧固定用 get_module_instances_recursive() (递归 walk).
 
     Format: [{'id': str, 'name': str, 'def_name': str, 'parent_module': str}, ...]
     """
-    instances = adapter.get_module_instances()
+    instances = getattr(adapter, method)()
     out = []
     for inst in instances:
         # inst is SemanticInstanceWrapper with attributes

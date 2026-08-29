@@ -22,20 +22,22 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 G3 **阶段 1 (MIG 实例枚举切 native) 已完成, 回归确认中**
+**任务**: #7 G3 **阶段 2 完成** (5 调用方全量 native + 删 SyntaxTree 死代码), 回归确认中
 
-**阶段 1 已完成**:
-- [x] R2 核实: `get_module_instances + get_generate_instances` **无重复计数** (D3 无需单独修); 附带发现 get_generate_instances 覆盖率不一致 (记入已知清单)
-- [x] MIG.build 加 `instance_source` 参数 (auto=生产 native / recursive / native 显式验证钩子); 切换 = L136 一处
-- [x] **新发现 GAP-5 并修复**: `_is_user_module` 过滤 (target=None) 误伤"只有 generate 块的合法 top" → MIG 空; 已移除过滤 + 删死代码 + top-skip 补 target=None (6 个 MIG 测试因此转绿)
-- [x] 等价门禁: 切换前后 8 fixtures **逐字节一致**; 新增 no_target_loop_gen (target=None) → EQUIVALENT; 最终 9 fixtures: 7 EQUIVALENT + 2 DIFF (仅 GAP-3/4)
-- [x] MIG 套件 80 passed (1 既有失败); truth 4 passed; ruff 全过
-- [ ] unit+cli 全套回归确认 (后台跑着)
+**阶段 2 已完成**:
+- [x] `get_module_instances()` 内部切 native + SemanticInstanceWrapper 包装 (返回类型零变化, 5 调用方统一)
+- [x] **新发现 GAP-6 并修复**: target=None 时只 walk 第一个 top (库风格设计 verilog-axi 165→2 实例) → 改为 walk 所有 topInstances (修复后 165==165)
+- [x] 删 MIG SyntaxTree 死代码 ~920 行 (1110→374 行); build 对 dict 输入显式 TypeError
+- [x] 门禁: 10 fixtures = 8 EQUIVALENT + 2 DIFF (仅 GAP-3/4); 13 parity 单测 passed
+- [x] benchmark (verilog-axi): **native 2.14x** (641ms→300ms)
+- [x] unit+cli 1435 passed + 24 failed (沙箱 artifact, 与阶段 1 集合完全一致)
+- [ ] integration 回归确认 (后台跑着)
 
-**阶段 2 (待方豆决策)**: `get_module_instances()` 全量切 native (需补 wrapper API) + 删 SyntaxTree 死代码
-**子任务 1 (待推进)**: 6 项目 strict 编译前置
+**剩余 #7 子任务**:
+- [ ] 子任务 1: 6 项目 strict 编译前置 (cva6/coralnpu/darkriscv/zipcpu/riscv_core/vortex)
+- [ ] 全管线 benchmark (tools/benchmark/run_benchmark.py)
 
-**迭代记录**: iter_053~056
+**迭代记录**: iter_053~057
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

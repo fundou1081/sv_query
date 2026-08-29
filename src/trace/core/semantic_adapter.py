@@ -282,10 +282,32 @@ class SemanticAdapter:
     def get_module_instances(self) -> list:
         """获取所有模块实例 (SemanticInstanceWrapper)
 
-        递归遍历所有模块的 body,找出嵌套的实例
+        [G3 阶段 2 2026-08-29] 实例枚举切 native:
+        内部调用 native_adapter.get_module_instances_native (topInstances/body 原生
+        遍历, 含 GenerateBlockArray/GenerateBlock/InstanceArray), 再用
+        SemanticInstanceWrapper 包装 — **返回类型零变化**, 5 个生产调用方
+        (MIG / unified_tracer / graph_builder / connection_extractor) 无需改动。
 
-        Args:
-            trees: 兼容 SyntaxTree 接口,此参数被忽略
+        旧递归实现保留为 get_module_instances_recursive(), 供 verify_native_parity.py
+        做 A/B 等价性验证参照 (GAP-1~5 已修/已接受, iter_053~056)。
+
+        Returns:
+            SemanticInstanceWrapper 列表,包装 InstanceSymbol
+        """
+        from .native_adapter import get_module_instances_native
+
+        native = get_module_instances_native(self._root, self._target_module)
+        return [
+            SemanticInstanceWrapper(w._symbol, parent_module=w.parent_module)
+            for w in native
+        ]
+
+    def get_module_instances_recursive(self) -> list:
+        """[G3 阶段 2 2026-08-29] 旧递归实例枚举 (验证参照, 非生产路径).
+
+        生产 get_module_instances() 已切 native; 本方法保留原递归 walk,
+        供 tools/verify_native_parity.py 与 unit 测试做 A/B 等价性对比
+        (native 必须与递归一致, 除已接受的 GAP-3/4 差异)。
 
         Returns:
             SemanticInstanceWrapper 列表,包装 InstanceSymbol
