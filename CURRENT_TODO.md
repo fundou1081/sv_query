@@ -22,20 +22,18 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — P0 违规清理完成)
+**任务**: (无 — 废弃测试清理完成)
 
-**P0/P1 清理** (commit `6dd3f93`, iter_060):
-- [x] 核实: P0/P1 大部分已被 iter_048/051/052 清理 (AST 分析 7 文件确认)
-- [x] semantic_adapter 7 处 `(UnicodeDecodeError, Exception)` 冗余 → 收窄 (零回归)
-- [x] load_extractor msb/lsb=0 注释 + graph_builder 失败分支 print→logger.warning
-- [x] EXTRACTION_FAILURES.md 优先级表加状态列 (P0/P1 → 已清理/已核实)
-- [x] 回归: unit 375 passed / truth 4 / ruff 零新增
+**测试地图与清理** (commit `8b4fb16` + `79e615e`):
+- [x] TEST_MAP.md: 全量测试地图 (317 文件 3033 测试, 11 区域 + 11 功能域)
+- [x] 核实清理: removed_features 11 文件 (V6.9 skip 尸体 + 收集报错) + sim/ 根 3 golden 孤儿 → 已删, 零回归
 
-**剩余 (可选, 非 P0)**: P2 边界 logger.debug (大部分已做) / P3 base.py:521 direction warning
+**测试地图剩余候选**:
+- [ ] 127 个无 docstring 测试文件 — 补 docstring (可维护性)
+- [ ] truth 层仅 1 文件 (case27) — 可扩展
+- [ ] 按功能域补测试缺口 (待定)
 
-**todo 全览**: ARCHITECTURE_TODOLIST 8/8 done; docs/TODO.md V6.9 旧渲染器清理 (候选) + 动态可视化 (候选)
-
-**迭代记录**: iter_060 (最近)
+**迭代记录**: iter_061 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
