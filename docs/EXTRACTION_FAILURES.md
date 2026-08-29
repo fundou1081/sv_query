@@ -196,16 +196,19 @@ except Exception:
 
 ## 🛠️ 清理优先级建议 (审查后更新)
 
-| 优先级 | 目标 | 理由 |
-|---|---|---|
-| P0 | `class_graph_builder.py` 7 处违规 | 类约束数据静默丢失, 最影响功能正确性 |
-| P0 | `graph_builder.py` 6 处违规 | 图节点/边静默缺失 |
-| P0 | `load_extractor.py` 7 处违规 | 端口/参数提取失败静默 |
-| P0 | `native_adapter.py:156` / `compiler.py` 5 处 | Exception 过宽 + source_location 静默 |
-| P1 | `sva_extractor.py` 5 处违规 | SVA 信号提取失败静默 |
-| P1 | `semantic_adapter.py` 4 处违规 | 端口/成员提取失败 |
-| P2 | 20 处边界 → 加 logger.debug | 低成本提升可观测性 |
-| P3 | `base.py:521` direction 缺省 → warning | 关键字段缺失提示 |
+| 优先级 | 目标 | 理由 | 状态 (2026-08-29 核实) |
+|---|---|---|---|
+| P0 | `class_graph_builder.py` 7 处违规 | 类约束数据静默丢失, 最影响功能正确性 | ✅ **已清理** (iter_048: 10 个 except 全带 logger/raise) |
+| P0 | `graph_builder.py` 6 处违规 | 图节点/边静默缺失 | ✅ **已清理** (iter_048 + 本次: 失败分支 print→logger.warning) |
+| P0 | `load_extractor.py` 7 处违规 | 端口/参数提取失败静默 | ✅ **已清理** (iter_048; 本次: msb/lsb=0 加注释说明 sentinel) |
+| P0 | `native_adapter.py:156` / `compiler.py` 5 处 | Exception 过宽 + source_location 静默 | ✅ **已清理** (iter_051/052 + GAP 系列; compiler 有 print/traceback) |
+| P1 | `sva_extractor.py` 5 处违规 | SVA 信号提取失败静默 | ✅ **已清理** (iter_048: L38 有 errors.append 显式记录) |
+| P1 | `semantic_adapter.py` 4 处违规 | 端口/成员提取失败 | ✅ **本次收窄**: 7 处 `(UnicodeDecodeError, Exception)` 冗余 → `(UnicodeDecodeError, TypeError)` (零回归) |
+| P2 | 20 处边界 → 加 logger.debug | 低成本提升可观测性 | ⚠️ 未全做 (iter_048 已处理大部分; 剩余为可选) |
+| P3 | `base.py:521` direction 缺省 → warning | 关键字段缺失提示 | ⚠️ 未做 (低风险, 可选) |
+
+> **核实结论 (2026-08-29, iter_060)**: P0/P1 全部已清理或已核实合规。
+> 剩余为 P2/P3 可选增强 (可观测性), 非功能正确性问题。
 
 ---
 
