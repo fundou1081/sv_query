@@ -303,6 +303,27 @@ def report_fixture(name: str, source: str, target: str | None = "top") -> dict:
     }
 
 
+def _looks_like_filelist(path: str) -> bool:
+    """[fix 2026-08-29] filelist 内容嗅探 — 后缀不一定是 .f (如 cva6 的 Flist.ariane).
+
+    若首行含 '+incdir' / '-F' / '-f' 或以 .v/.sv 结尾的路径 → 视为 filelist.
+    """
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fp:
+            for line in fp:
+                line = line.strip()
+                if not line or line.startswith("#") or line.startswith("//"):
+                    continue
+                if line.startswith("+incdir+") or line.startswith("-F") or line.startswith("-f"):
+                    return True
+                if line.endswith(".v") or line.endswith(".sv"):
+                    return True
+                return False
+    except OSError:
+        return False
+    return False
+
+
 def report_project(files: list[str], top: str | None, project: str,
                    incdirs: list[str] | None = None) -> dict:
     """对单个真实项目跑 A/B 两条 MIG 路径并报告差异.
@@ -314,7 +335,7 @@ def report_project(files: list[str], top: str | None, project: str,
     for inc in incdirs or []:
         comp.add_include_dir(inc)
     for f in files:
-        if f.endswith(".f") or f.endswith(".filelist"):
+        if f.endswith(".f") or f.endswith(".filelist") or _looks_like_filelist(f):
             comp.add_filelist(f)
         else:
             comp.add_files([f])
@@ -395,17 +416,22 @@ DARKRISCV_RTL = [
 ]
 
 PROJECTS: list[dict] = [
-    # darkriscv: rtl 全量 14 文件 + incdir rtl/ (2026-08-29 验证可 strict 编译)
+    # [iter_058] 已评估可 strict 编译的 3 个项目, 全部与 fixture 结论一致.
+    # darkriscv: rtl 全量 14 文件 + incdir rtl/
     {"project": "darkriscv", "files": DARKRISCV_RTL, "top": None,
      "incdirs": ["darkriscv/rtl"]},
-    # zipcpu: rtl 全量 51 文件 (2026-08-29 验证可 strict 编译)
+    # zipcpu: rtl 全量 51 文件
     {"project": "zipcpu", "files": ["zipcpu/rtl"], "top": None, "incdirs": []},
-    # riscv (riscv_core): core/riscv 18 文件 + incdir (2026-08-29 验证可 strict 编译)
+    # riscv (riscv_core): core/riscv 18 文件 + incdir
     {"project": "riscv_core", "files": ["riscv/core/riscv"], "top": None,
      "incdirs": ["riscv/core/riscv"]},
-    # cva6: Flist.ariane 编译失败 (elaboration 错) → 显式 COMPILE_FAILED 记录阻塞.
-    # 放最后: 失败的编译可能污染 pyslang 全局状态, 影响后续项目 (2026-08-29 实证)
-    {"project": "cva6", "files": ["cva6/Flist.ariane"], "top": None, "incdirs": []},
+    # [方豆指示 2026-08-29] 以下项目 filelist 不完整或编译不通过 → **不作为测试项**:
+    # - cva6:     Flist.ariane (官方 filelist) 完整但 65+ elaboration 错误
+    #             (csr_regfile rvfi_probes_csr_t struct 成员访问, pyslang 语义不兼容)
+    # - coralnpu: 无完整 filelist (.core 依赖链复杂), 且缺 VLEN define 配置
+    #             ($clog2() 0 参 = VLEN 宏未定义; SVCompiler 不支持 -D 宏)
+    # - vortex:   无 filelist (vortex.cfg 是 OpenOCD 配置; .cmake 是工具链配置)
+    # 详见 docs/task_tree/iterations/iter_058_real_projects_equivalence.md
 ]
 
 
