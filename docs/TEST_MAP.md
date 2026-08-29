@@ -16,10 +16,10 @@
 | `sim/tests/integration` | 53 | 384 | 跨模块集成 + 端到端 | ✅ 自动 |
 | `sim/tests/cli` | 46 | 387 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
 | `sim/tests/usage` | 10 | 298 | 真实项目/大型场景 (部分 slow) | ✅ 自动 (慢) |
-| `sim/tests/usage/removed_features` | 11 | 236 | **废弃测试隔离区** (V6.9 移除功能, 全 skip) | ✅ 收集但 skip |
+| ~~`sim/tests/usage/removed_features`~~ | ~~11~~ | ~~236~~ | **已删除** (iter_061: V6.9 移除功能尸体, 全 skip + 收集报错) | ❌ 已清理 |
 | `sim/tests/` (根) | 4 | 22 | truth 层 (SVG 断言) + spec golden | ✅ 自动 |
 | `sim/tests/poc` | 1 | 5 | POC 验证 (native portConnections) | ✅ 自动 |
-| `sim/` (根) | 3 | 5 | **旧金标准 (孤儿, 不在 testpaths)** | ❌ 不收集 |
+| ~~`sim/` (根)~~ | ~~3~~ | ~~5~~ | **已删除** (iter_061: 旧金标准孤儿, 无活引用) | ❌ 已清理 |
 | `scripts/debug` | 2 | 0 | 探索性脚本 (非正式测试) | ❌ 不收集 |
 | `docs/openchip_qa_test.py` | 1 | 1 | QA 脚本 (OpenChip 验证) | ❌ 不收集 |
 
@@ -124,14 +124,14 @@
 
 `test_performance` `test_benchmark_picorv32` `test_benchmark_regression` `test_benchmark_pr5`
 
-### 2.10 废弃/隔离 (筛选重点)
+### 2.10 废弃/隔离 (**已清理 iter_061**)
 
-| 区域 | 文件 | 状态 |
-|---|---|---|
-| `usage/removed_features` (11) | `test_operator_visitor_randomize` `test_operators[skip]` `test_signal_expression_visitor*(7个)` `test_statement_collector_visitor` `test_subroutine_expander_tdd[skip]` `test_system_tasks[skip]` | **V6.9 移除的 SignalExpressionVisitor/operators 测试, 全 skip** — 已废弃, 可考虑删除或归档 |
-| `sim/` 根 (3) | `test_golden` `test_golden_cases` `test_gold_comprehensive` | 旧金标准, **不在 testpaths 收集** — 孤儿, 与 regression/unit 重复, 建议核实后删除 |
-| `scripts/debug` (2) | `test_call_node` `test_function_semantic` | 探索性脚本 (0 测试函数) — 非正式 |
-| `docs/openchip_qa_test.py` | OpenChip QA | QA 脚本, 手动跑 |
+| 区域 | 状态 |
+|---|---|
+| `usage/removed_features` (11) | ✅ **已删除** (iter_061) — V6.9 移除功能的 skip 尸体, 且收集报 11 错 |
+| `sim/` 根 (3 golden) | ✅ **已删除** (iter_061) — 不在 testpaths 的孤儿, 无活引用 |
+| `scripts/debug` (2) | 保留 — 探索性脚本 (0 测试函数), 非正式但可能有用 |
+| `docs/openchip_qa_test.py` | 保留 — QA 脚本, 手动跑 |
 
 ### 2.11 POC/验证
 

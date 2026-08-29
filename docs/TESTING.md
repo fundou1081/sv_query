@@ -85,7 +85,7 @@ PYTHONPATH=src python3 -m pytest sim/tests/unit/ -q  # ~30s
 **关键测试文件:**
 - `test_viz_data.py` — VizData 数据层 (V6.7)
 - `test_graph_models.py` — TraceNode/TraceEdge
-- `test_signal_expression_visitor_*.py` — Visitor handler
+- `test_signal_normalizer.py` / `test_signal_tracer.py` — 信号归一化与追踪 (V6.9 后 SignalExpressionVisitor 已移除)
 - `test_driver_extractor_*.py` — Driver extraction
 
 ### cli/ — CLI 端到端测试
