@@ -64,10 +64,44 @@ riscv_core 对应 `/Users/fundou/my_dv_proj/riscv` 项目 (RV32IM, core/riscv/ �
 3. **cva6/coralnpu 的阻塞是 pyslang 语义不兼容, 非 filelist 问题**: 修复方向是
    改 pyslang 或改项目代码, 超出 sv_query 范围 — 记录为 #7 的已知边界。
 
-## 📌 阻塞清单 (剩余 3 项目)
+## 📌 阻塞清单 (剩余 3 项目, 方豆指示: 通不过就不作为测试项)
 
-| 项目 | 阻塞 | 修复方向 |
+| 项目 | 判定 | 结论 |
 |---|---|---|
-| cva6 | 179 elaboration 错误 | pyslang 语义修复 or CVA6 代码兼容 (超出范围) |
-| coralnpu | $clog2() 0 参宏展开 | pyslang 宏处理 or coralnpu 头文件 (超出范围) |
-| vortex | 无 filelist, 204 文件 | 人工整理编译入口 (可行, 工作量大) |
+| cva6 | Flist.ariane (官方 filelist) 完整, 但 65+ elaboration 错误 (csr_regfile rvfi_probes_csr_t struct 成员访问 = pyslang 语义不兼容) | ❌ **移出测试项** |
+| coralnpu | 无完整 filelist (.core 依赖链复杂); 缺 VLEN define 配置 (`$clog2()` 0 参, SVCompiler 不支持 -D 宏) | ❌ **移出测试项** |
+| vortex | 无 filelist (vortex.cfg = OpenOCD 配置; .cmake = 工具链配置) | ❌ **移出测试项** |
+
+**保留测试项** (verify_native_parity.py PROJECTS): darkriscv / zipcpu / riscv_core。
+
+## 🔬 补充发现: GAP-7 — pyslang elaboration 非确定性 (垃圾实例)
+
+评估 darkriscv/riscv_core 时发现 A/B 结果**跨进程漂移** (同一命令多次跑:
+darkriscv 7/7 → 7/6; riscv_core 15/15 → 15/14 → 10/6):
+
+**根因**: pyslang 11.0 elaboration 间歇性产生 **uninitialized-buffer 垃圾实例名**
+(hp 含 NUL/控制字符, 如 `riscv_core.u_issue.\x00\x00...` / `u_lsu.\V\x00...` /
+darkriscv `core0` 变体)。同一文件集合每次编译可能产生或不产生垃圾 —
+**elaboration 本身非确定**。
+
+**GAP-7 修复 (native_adapter.py)**: `_walk_instance` 跳过 hp 含控制字符的实例
+(垃圾 = elaboration 噪音, 非真实实例)。递归路径靠 visited 去重碰巧跳过,
+native 必须显式过滤。修复后同进程内 A/B 一致 (干净跑 15/15, 垃圾跑 native 14
+recursive 14 — 均一致); 跨进程计数波动 (14 vs 15) 是 pyslang 级现象, 不影响
+A/B 对比语义。
+
+**`_safe_str` 升级**: 委托 `_safe.safe_str` (单一规范实现, 过滤控制字符 —
+原实现只处理 UnicodeDecodeError/TypeError)。
+
+**评估结论修正**: darkriscv/riscv_core 的 verdict 以**干净跑**为准 (EQUIVALENT /
+GAP-4); 垃圾跑偶发 UNEXPECTED 属 pyslang 非确定, 非 sv_query 逻辑问题。
+zipcpu 3/3 稳定 GAP-4。权威门禁 = 10 fixtures (确定性) + zipcpu。
+
+## 📊 最终等价性评估表 (2026-08-29)
+
+| 项目 | 实例数 | 结论 | 稳定性 |
+|---|---|---|---|
+| darkriscv | 7/7 | ✅ EQUIVALENT (干净跑) | ⚠️ pyslang 非确定 |
+| zipcpu | 75/75 | ✅ GAP-4 已接受 | ✅ 稳定 |
+| riscv_core | 15/15 | ✅ GAP-4 已接受 (干净跑) | ⚠️ pyslang 非确定 |
+| cva6 / coralnpu / vortex | — | ❌ 移出测试项 (编译不过/无 filelist) | — |

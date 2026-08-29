@@ -15,21 +15,26 @@ native_adapter.py — pyslang native API for instance extraction.
 
 import pyslang
 
+from .._safe import safe_str  # noqa: E402  (GAP-7: 单一规范实现, 过滤控制字符)
+
 # ----------------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------------
 
 def _safe_str(value) -> str | None:
-    """[Bug-resistant] 跟 sv_query 一样 handle UnicodeDecodeError / binary garbage."""
+    """[GAP-7 fix 2026-08-29] 委托 _safe.safe_str — 过滤 NUL/控制字符.
+
+    原实现只处理 UnicodeDecodeError/TypeError, 不过滤控制字符 → pyslang 的
+    binary garbage (如 'riscv_core.u_issue.\\x00...') 会被当成有效实例 emit,
+    native 枚举因此非确定 (同项目多次跑 B=15 vs B=14)。recursive 用
+    _safe.safe_str (单一规范实现), native 必须一致.
+    """
     if value is None:
         return None
-    try:
-        s = str(value)
-        if not s or s == "<id:binary>":
-            return None
-        return s
-    except (UnicodeDecodeError, TypeError):
+    s = safe_str(value)
+    if not s or s == "<id:binary>":
         return None
+    return s
 
 
 def _safe_hierarchical_path(symbol) -> str | None:
@@ -141,6 +146,12 @@ def _walk_instance(
     try:
         inst_id = _safe_hierarchical_path(inst)
         if not inst_id:
+            return
+        # [GAP-7 fix 2026-08-29] 跳过 elaboration 垃圾实例 (hp 含控制字符/NUL):
+        # pyslang 间歇性产生 uninitialized-buffer 实例名 (如 'riscv_core.u_issue.\x00...'),
+        # 非真实实例。递归路径靠 visited 去重碰巧跳过, native 必须显式过滤,
+        # 否则同进程 A/B 对比不一致 (riscv_core 15 vs 14, iter_058)。
+        if any(ord(c) < 0x20 for c in inst_id):
             return
         try:
             _safe_str(inst.name)

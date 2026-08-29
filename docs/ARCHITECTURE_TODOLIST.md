@@ -366,3 +366,9 @@
     vortex 无编译入口.
   - 工具: verify_native_parity.py 子进程隔离 — **pyslang 同进程连续编译会状态污染**
     (darkriscv 7→6 / riscv 15→14 实证), 每项目独立子进程后恢复正确.
+- **2026-08-29** — **#7 子任务 1 收尾: 3/6 保留 + GAP-7 (方豆指示: 通不过就不作为测试项)**.
+  - cva6/coralnpu/vortex: filelist 不完整或编译不通过 → **移出测试项** (cva6 = pyslang 语义不兼容;
+    coralnpu = 缺 VLEN define; vortex = 无 filelist).
+  - **新发现 GAP-7**: pyslang elaboration 间歇性产生 NUL 垃圾实例名 (u_issue/u_lsu/core0 变体,
+    跨进程非确定) → native 跳过含控制字符 hp (递归靠 visited 碰巧跳过); _safe_str 委托 _safe.safe_str.
+  - 保留 darkriscv (EQUIVALENT) / zipcpu (GAP-4, 稳定) / riscv_core (GAP-4) — 干净跑结论, 权威门禁 = 10 fixtures.
