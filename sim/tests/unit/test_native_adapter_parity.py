@@ -88,6 +88,31 @@ endmodule
 module level3();
 endmodule
 ''',
+
+    # [GAP-2 2026-08-29] 数组实例化: 递归有 InstanceArray 分支, native 缺
+    'instance_array': '''
+module top();
+    sub u_arr[3]();
+endmodule
+
+module sub(input clk = 1'b0);
+endmodule
+''',
+
+    # [GAP-3 2026-08-29] 嵌套 generate: 递归漏实例, native 找全
+    'nested_generate': '''
+module top();
+    genvar i, j;
+    for (i = 0; i < 2; i++) begin: gen_i
+        for (j = 0; j < 2; j++) begin: gen_j
+            sub u_sub();
+        end
+    end
+endmodule
+
+module sub();
+endmodule
+''',
 }
 
 
@@ -318,6 +343,77 @@ class TestNativeAdapterParity(unittest.TestCase):
         self.assertEqual(
             old_set, new_set,
             f"multi-depth parity fail:\nold: {old_set}\nnew: {new_set}",
+        )
+
+    # ========================================================================
+    # [iter_053 2026-08-29] 已知差异显式爆出来 (AGENTS.md 纪律 2.5 精神).
+    # tools/verify_native_parity.py 在 MIG 四表层面发现了 3 个差异,
+    # 现有 (id, def_name) 集合对比测不出来。这里用 expectedFailure 固化:
+    #   差异存在 → xfail (可见)
+    #   差异修复 → XPASS (提醒移除标记)
+    # ========================================================================
+
+    @unittest.expectedFailure
+    def test_generate_block_parent_parity(self):
+        """[GAP-1] generate block 实例的 parent_module 必须一致.
+
+        递归: parent = 'top.gen_loop[0]' (hierarchicalPath 去掉最后一段)
+        native: parent = 'top' (外层 parent 直接传下去, 不含 generate 段)
+        MIG.build 用 parent_module 填 ModuleInstanceNode.parent, 下游 PathResolver 消费.
+        """
+        get_native = self._skip_if_no_native()
+        adapter = _make_adapter(SOURCES['generate_block'])
+        old_set = {
+            (i['id'], i['parent_module']) for i in _instances_to_comparable(adapter)
+        }
+        comp = SVCompiler({'test.sv': SOURCES['generate_block']})
+        root = comp.get_root()
+        new = get_native(root, target_module='top')
+        new_set = {
+            (i['id'], i['parent_module'])
+            for i in _instances_to_comparable_from_native(new)
+        }
+        self.assertEqual(old_set, new_set, f"GAP-1 parent mismatch:\nold: {old_set}\nnew: {new_set}")
+
+    @unittest.expectedFailure
+    def test_instance_array_parity(self):
+        """[GAP-2] 数组实例化 (InstanceArray) 必须一致.
+
+        递归: 3 个实例 top.u_arr[0..2], 类型 'sub'
+        native: 1 个假实例 top.u_arr, 类型 'u_arr' (数组名当模块类型) —
+                因 _walk_instance 用 'Instance' in kind 误匹配 InstanceArray.
+        """
+        get_native = self._skip_if_no_native()
+        adapter = _make_adapter(SOURCES['instance_array'])
+        old_set = {
+            (i['id'], i['def_name']) for i in _instances_to_comparable(adapter)
+        }
+        comp = SVCompiler({'test.sv': SOURCES['instance_array']})
+        root = comp.get_root()
+        new = get_native(root, target_module='top')
+        new_set = {
+            (i['id'], i['def_name'])
+            for i in _instances_to_comparable_from_native(new)
+        }
+        self.assertEqual(old_set, new_set, f"GAP-2 array mismatch:\nold: {old_set}\nnew: {new_set}")
+
+    def test_nested_generate_native_finds_all(self):
+        """[GAP-3] 嵌套 generate (genvar 套 genvar) native 找全 4 个实例.
+
+        递归路径漏掉全部 (GenerateBlockArray 的 entry 内只处理直接 Instance,
+        不递归 entry 内层嵌套的 GenerateBlockArray/GenerateBlock)。
+        native 找全 → 切 native 会让 MIG 输出增加实例, 是 bugfix 还是回归
+        由方豆决策 (记入 iter_053)。此测试锁定 native 能力, 防止回退。
+        """
+        get_native = self._skip_if_no_native()
+        comp = SVCompiler({'test.sv': SOURCES['nested_generate']})
+        root = comp.get_root()
+        new = get_native(root, target_module='top')
+        ids = {i['id'] for i in _instances_to_comparable_from_native(new)}
+        self.assertEqual(len(ids), 4, f"native 应找全嵌套 generate 实例: {ids}")
+        self.assertTrue(
+            all('gen_i[' in x and 'gen_j[' in x for x in ids),
+            f"hierarchicalPath 应含两层 generate 段: {ids}",
         )
 
 
