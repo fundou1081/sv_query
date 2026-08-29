@@ -152,6 +152,16 @@
 
 ---
 
+### 2.12 iter_062 补充测试 (按功能域缺口)
+
+| 文件 | 域 | 覆盖缺口 |
+|---|---|---|
+| `test_module_synth_advanced.py` (7) | module 可综合 | signed 算术移位 / 复合赋值 / enum case 状态机 / 2D packed 数组 / defparam / 数组写索引 / $signed |
+| `test_constraint_advanced.py` (7) | constraint | soft / dist :/ / randc / solve 多变量 / 嵌套 foreach / not inside / this+包引用 |
+| `test_covergroup_advanced.py` (9) | covergroup | iff / wildcard bins / transition bins / 自动+default bins / 参数化 / sample() / 多事件 / ignore+illegal 组合 |
+| `test_sva_advanced.py` (9) | sva | $rose/$past/$onehot 系统函数 / 无界 ##[0:$] / [=n] / iff / property 引用 sequence / expect+immediate (记录缺口) |
+
+工具缺口已登记 EXTRACTION_COVERAGE #34-#40.
 ## 四、值得注意的观察 (供筛选)
 
 1. **removed_features 11 文件 236 测试全 skip** — V6.9 移除功能的尸体, 建议核实是否可删
