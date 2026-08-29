@@ -147,6 +147,26 @@ endmodule
 module sub(input logic clk, input logic [7:0] data);
 endmodule
 """,
+    # [GAP-5 探测 2026-08-29] target=None: top 只有 generate-for 实例 (无直接
+    # InstanceSymbol)。_is_user_module 启发式会把它误判 utility cell → 整棵跳过。
+    # 注意: 此 fixture 在 report_fixture 里用 target=None (见 FIXTURE_TARGETS).
+    "no_target_loop_gen": """
+module top();
+    genvar i;
+    for (i = 0; i < 2; i++) begin: GEN
+        sub u_dut();
+    end
+endmodule
+
+module sub();
+endmodule
+""",
+}
+
+# [GAP-5 2026-08-29] 每个 fixture 的 target_module; 缺省 "top".
+# no_target_loop_gen 走 target=None (生产默认路径), 验证递归/native 都不过滤 top.
+FIXTURE_TARGETS: dict[str, str | None] = {
+    "no_target_loop_gen": None,
 }
 
 
@@ -214,16 +234,19 @@ def diff_snapshots(a: dict, b: dict) -> dict[str, tuple[list, list]]:
     return out
 
 
-def report_fixture(name: str, source: str) -> dict:
-    """对单个 fixture 跑 A/B 两条 MIG 路径并报告差异."""
+def report_fixture(name: str, source: str, target: str | None = "top") -> dict:
+    """对单个 fixture 跑 A/B 两条 MIG 路径并报告差异.
+
+    target: 传给两条枚举路径的 target_module (None = 生产默认, 不过滤 top).
+    """
     comp = SVCompiler({"t.sv": source})
     root = comp.get_root()
 
     mig_a = ModuleInstanceGraph(None)
-    mig_a.build(SemanticAdapter(root, target_module="top"))
+    mig_a.build(SemanticAdapter(root, target_module=target), instance_source="recursive")
 
     mig_b = ModuleInstanceGraph(None)
-    mig_b.build(NativeAdapterShim(root, target_module="top"))
+    mig_b.build(NativeAdapterShim(root, target_module=target), instance_source="native")
 
     snap_a = snapshot_mig(mig_a)
     snap_b = snapshot_mig(mig_b)
@@ -252,10 +275,10 @@ def report_project(files: list[str], top: str | None, project: str) -> dict:
     root = comp.get_root()
 
     mig_a = ModuleInstanceGraph(None)
-    mig_a.build(SemanticAdapter(root, target_module=top))
+    mig_a.build(SemanticAdapter(root, target_module=top), instance_source="recursive")
 
     mig_b = ModuleInstanceGraph(None)
-    mig_b.build(NativeAdapterShim(root, target_module=top))
+    mig_b.build(NativeAdapterShim(root, target_module=top), instance_source="native")
 
     snap_a = snapshot_mig(mig_a)
     snap_b = snapshot_mig(mig_b)
@@ -319,7 +342,8 @@ def main() -> int:
 
     # fixtures
     for name, source in FIXTURES.items():
-        results.append(report_fixture(name, source))
+        target = FIXTURE_TARGETS.get(name, "top")
+        results.append(report_fixture(name, source, target=target))
 
     # 单个真实项目
     if args.project:

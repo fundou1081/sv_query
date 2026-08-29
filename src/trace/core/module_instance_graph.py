@@ -120,7 +120,7 @@ class ModuleInstanceGraph:
             return ".".join(parts)
         return "unknown"
 
-    def build(self, trees: dict[str, Any] | None = None) -> None:
+    def build(self, trees: dict[str, Any] | None = None, instance_source: str = "auto") -> None:
         """构建模块实例图 (三阶段:
         Phase 0: 存储所有模块的端口定义
         Phase 1: 收集所有实例化信息 (全树遍历)
@@ -128,12 +128,35 @@ class ModuleInstanceGraph:
 
         Args:
             trees: SyntaxTree 字典 (旧接口) 或 SemanticAdapter (新接口)
+            instance_source: [G3 阶段 1 2026-08-29] 实例枚举来源, 显式验证钩子
+                (非 fallback — 由调用方显式指定实现):
+                - "auto" (默认): SemanticAdapter 且带 _root → native 枚举
+                  (native_adapter.get_module_instances_native); 否则旧行为
+                - "recursive": 强制 semantic_adapter.get_module_instances() (递归)
+                - "native": 强制 native 枚举
+                tools/verify_native_parity.py 用 recursive/native 做 MIG 四表 A/B diff;
+                生产调用 (unified_tracer) 不传 → auto → native
         """
         # 支持 SemanticAdapter 作为参数
         if hasattr(trees, "get_module_instances"):
             # SemanticAdapter path: 使用适配器获取实例
             adapter = trees
-            instances = adapter.get_module_instances()
+            # [G3 阶段 1 2026-08-29] 实例枚举切 native:
+            # GAP-1/2 已修 (iter_054), GAP-3/4 已拍板接受 — native 与递归等价或更正确.
+            # native wrapper (_NativeInstanceWrapper) 与 SemanticInstanceWrapper 在
+            # MIG.build 用到的接口 (._symbol / .name / .parent_module) 上兼容,
+            # 且 MIG.build 其余代码读 pyslang symbol 本身, 不受枚举来源影响.
+            use_native = (
+                instance_source == "native"
+                or (instance_source == "auto" and hasattr(adapter, "_root"))
+            )
+            if use_native:
+                from .native_adapter import get_module_instances_native
+                instances = get_module_instances_native(
+                    adapter._root, getattr(adapter, "_target_module", None)
+                )
+            else:
+                instances = adapter.get_module_instances()
 
             # 创建实例节点并填充端口映射
             for inst_wrapper in instances:
