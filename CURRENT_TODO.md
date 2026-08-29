@@ -22,22 +22,20 @@
 
 ## 🔥 当前任务
 
-**任务**: #7 option A 后续 — **GAP-1/GAP-2 已修, GAP-3 已拍板** (方豆 "按 1 做": native 更正确 = bugfix 接受)
+**任务**: #7 — **G3 计划已交付, 等方豆确认 D1-D3 后开工实施**
 
-**sub-task**:
-- [x] 修 GAP-1: native generate block parent 对齐 (hp 去最后一段)
-- [x] 修 GAP-2: native 加 InstanceArray 分支 (元素实例 + 端口表全对齐)
-- [x] 2 xfail → 转正: **13 passed, 0 xfail** (含 parent_module 对比, 比原来更严)
-- [x] verify_native_parity.py 复跑: generate_block / instance_array → EQUIVALENT;
-      **新发现 GAP-4** (conditional generate parent: 递归丢 generate 段, native 完整) — 按 GAP-3 先例接受
-- [x] 回归: unit 1066 passed + 4 failed (沙箱 cache artifact, 0 新增)
-- [ ] **下一步候选** (等方豆): G3 计划文档 / 真实项目 strict 编译前置 (子任务 1)
+**已完成**:
+- [x] option A 验证 (commit `f129433`): verify_native_parity.py + 3 差异发现
+- [x] GAP-1/GAP-2 修复 (commit `2c65511`): 2 xfail 转正, **13 passed, 0 xfail**; GAP-3/4 拍板接受
+- [x] **G3 计划文档** (`docs/architecture/pyslang11_native_api_g3_plan.md`, iter_055):
+      替换点收敛为实例枚举一处; 方案 C (阶段 1 MIG-only → 阶段 2 全量+删死代码); 风险 R1-R6; 回退策略
 
-**已完成** (option A, commit `f129433` + `iter_054` 修复):
-- [x] `tools/verify_native_parity.py` — MIG 四表 diff, 发现 3 个 MIG 级差异
-- [x] 差异固化进测试 + 修复 native GAP-1/GAP-2 (commit 待提交)
+**等方豆确认** (G3 计划 D1-D3):
+- [ ] D1: 方案 C (B 先行 A 后续) 是否同意
+- [ ] D2: 阶段 1 (MIG.build 实例枚举切 native) 是否开工 (接受 R5: 6 项目回归暂不可跑)
+- [ ] D3: R2 (connection_extractor 的 get_module_instances + get_generate_instances 重叠) 是否单独修
 
-**迭代记录**: `docs/task_tree/iterations/iter_053_native_parity_script.md` / `iter_054_fix_native_gap1_gap2.md`
+**迭代记录**: iter_053 / iter_054 / iter_055
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

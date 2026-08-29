@@ -168,9 +168,14 @@
         **GAP-4** conditional generate parent 递归丢 generate 段、native 完整 — ✅ 按
         GAP-3 先例接受。详见 [iter_053](task_tree/iterations/iter_053_native_parity_script.md)
         / [iter_054](task_tree/iterations/iter_054_fix_native_gap1_gap2.md)。
-  - [ ] G3 计划: 替换点 + 风险 + 回退策略 (输入已齐: GAP-1/2 修复 + GAP-3/4 决策)
-  - [ ] 实施 (分批: 先 hierarchicalPath, 再 portConnections, 再 body)
-  - [ ] 性能 benchmark (预期 4x speedup)
+  - [x] ✅ **G3 计划文档** (2026-08-29, [iter_055](task_tree/iterations/iter_055_g3_plan.md))
+        → `docs/architecture/pyslang11_native_api_g3_plan.md`:
+        替换点收敛为 1 个 (实例枚举; hierarchicalPath/portConnections/body 早已在用);
+        方案 C 推荐 (阶段 1 MIG-only 切 native → 阶段 2 全量切 + 删 SyntaxTree 死代码);
+        风险 R1-R6 + 回退策略 (单点 revert + verify_native_parity 门禁 + baseline 存档)。
+        **待方豆确认 D1-D3 后开工实施**。
+  - [ ] 实施 — 阶段 1: MIG.build 实例枚举切 native (方案 C; 依赖 D1/D2 确认)
+  - [ ] 性能 benchmark (预期 4x speedup; 工具链 tools/benchmark/ 已就绪)
   - [ ] 回归全套
 - **依赖**: MEMORY.md 2026-06-25 用户指示 "先记录下来", 等你后续触发
 
@@ -312,3 +317,9 @@
   - 复跑 parity: generate_block / instance_array → EQUIVALENT; **新发现 GAP-4** conditional generate
     parent 递归丢 generate 段 (`top`)、native 完整 (`top.enable_block`) — 按 GAP-3 先例接受.
   - 测试: 2 xfail 转正, 13 passed + 0 xfail; unit 1066 passed, 4 failed 为沙箱 cache 既有 artifact, 0 新增.
+- **2026-08-29** — **#7 G3 计划交付** (iter_055). 方豆 "先1, 写 g3 计划文档".
+  - 探索结论: MIG.build 已半 native (hierarchicalPath/portConnections 早已在用) — 真正替换点只剩
+    实例枚举; SyntaxTree path (Phase 0-2 + _iter_children) 是死代码; get_module_instances 有 5 个
+    生产调用方, connection_extractor 读 wrapper.instances[0].decl (native wrapper 缺 → 全量切换前置).
+  - 交付 `docs/architecture/pyslang11_native_api_g3_plan.md`: 方案 C (阶段 1 MIG-only 切 native →
+    阶段 2 全量切 + 删死代码), 风险 R1-R6, 回退策略. **待方豆确认 D1-D3**.
