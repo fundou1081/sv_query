@@ -151,12 +151,21 @@
 ### #7 迁 pyslang 11.0 native API  ⬜
 - **ROI**: 长期高
 - **工作量**: 1-2 周
-- **状态**: pending
+- **状态**: option A 进行中 (diff 验证脚本已完成, 等方豆决策)
 - **目标**: 用 `inst.hierarchicalPath` / `inst.portConnections` / `inst.body` 替代自建 MIG
 - **子任务**:
   - [ ] 评估 11.0 native API 在 CVA6/coralNPU/darkriscv/zipcpu/riscv_core/vortex 上的等价性
-  - [ ] 写 native API vs 自建 MIG 的 diff 验证脚本
-  - [ ] G3 计划: 替换点 + 风险 + 回退策略
+        ⏸ **受阻**: 6 项目 strict 编译全部失败 (pyslang↔CVA6 已知 elaboration 不兼容,
+        cva6_full.f timescale / Flist.ariane 65 错 / cva6.f 常量折叠; darkriscv 单文件 leaf;
+        coralnpu/zipcpu/riscv_core/vortex 无编译入口)。先解决严格编译才能评估。
+  - [x] ✅ **写 native API vs 自建 MIG 的 diff 验证脚本** (2026-08-29)
+        → `tools/verify_native_parity.py` (MIG 四表对比) + `test_native_adapter_parity.py`
+        **10 passed + 2 xfailed**。发现 **3 个 MIG 级差异** (现有 parity 测试测不出):
+        **GAP-1** generate block parent_module (`top` vs `top.gen_loop[0]`);
+        **GAP-2** InstanceArray native 提取错 (1 假实例 vs 3 真实例);
+        **GAP-3** 嵌套 generate 递归漏 4 个、native 找全 (**需方豆决策**: bugfix vs 对齐)。
+        详见 [iter_053](task_tree/iterations/iter_053_native_parity_script.md)。
+  - [ ] G3 计划: 替换点 + 风险 + 回退策略 (依赖: GAP-1/GAP-2 修复方案 + GAP-3 方豆决策)
   - [ ] 实施 (分批: 先 hierarchicalPath, 再 portConnections, 再 body)
   - [ ] 性能 benchmark (预期 4x speedup)
   - [ ] 回归全套
@@ -174,10 +183,10 @@
 | 4 | EXTRACTION_FAILURES.md | 🔥 | ✅ done | 08-28 | 21:45 (113+121 处登记) |
 | 5 | 管线 → 显式 DAG | 🔥 | ✅ done | 08-28 | 23:10 (11 步 DAG) |
 | 6 | expression tree 独立 | 🟡 | ✅ done | 08-28 | 23:40 (expr_tree_builder) |
-| 7 | pyslang 11.0 native API | 长期高 | ⬜ pending | — | — |
+| 7 | pyslang 11.0 native API | 长期高 | 🟡 option A | 08-29 | — (diff 脚本 done, 等 GAP-3 决策) |
 | 8 | generate-for 动态位选 | 🔥 | ✅ done | 08-28 | 21:30 (BIT_SELECT+DRIVER+CLOCK 边) |
 
-**总进度**: **#1/#2/#3/#4/#5/#8 ✅ done**; **#6 ✅ done (2026-08-28 23:40)**; 剩 #7. **总 7/8 (87.5%)**.
+**总进度**: **#1/#2/#3/#4/#5/#8 ✅ done**; **#6 ✅ done (2026-08-28 23:40)**; **#7 🟡 option A 进行中** (diff 脚本完成, 3 个 MIG 级差异待决策). **总 7/8 (87.5%)**.
 
 ---
 
@@ -288,3 +297,9 @@
   - `_store_expr_tree` 改薄壳, 调用方零改动; 删 3 个原 helper; 1431→1302 行
   - 诚实标注: 两次删除错位 (误删 _expr_is_compile_time → 7 测试失败), 改一次性构造列表修复
   - 验证: 全套 0 回归 / expr_trees/const_map/func_info byte-identical
+- **2026-08-29** — **#7 option A 启动** (iter_053). 方豆拍板: 先写 diff/parity 验证脚本, 不替换 MIG.
+  - 交付 `tools/verify_native_parity.py` — MIG **四表** diff (instances / port_to_internal / internal_to_port / _module_ports), 8 fixtures + 真实项目入口.
+  - **发现 3 个 MIG 级差异** (现有 9 个 parity 测试只比 id/def_name, 全部测不出):
+    GAP-1 generate parent_module (`top` vs `top.gen_loop[0]`) / GAP-2 InstanceArray native 提取错 / GAP-3 嵌套 generate 递归漏、native 找全.
+  - 差异固化进 `test_native_adapter_parity.py` → **10 passed + 2 xfailed** (xfail=已知差异显式可见).
+  - 真实项目等价性评估**受阻**: 6 项目 strict 编译全失败 (pyslang↔CVA6 已知不兼容; 余者无编译入口) — 属 #7 子任务 1, 需先解决严格编译.

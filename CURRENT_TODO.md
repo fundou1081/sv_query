@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-28 21:45 GMT+8
+> **最后更新**: 2026-08-29 GMT+8
 
 ---
 
@@ -22,11 +22,17 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — 架构改造 #1/#2/#3 已完成)
+**任务**: #7 迁 pyslang 11.0 native API — **option A: diff/parity 验证先行** (方豆拍板, 不替换 MIG)
 
-**下一候选** (未启动, 先问方豆):
-- **#7**: 迁 pyslang 11.0 native API (1-2 周, 长期高 ROI) — **最后一项**
-- #7: 迁 pyslang 11.0 native API (1-2 周)
+**sub-task** (option A 范围):
+- [x] 写 `tools/verify_native_parity.py` — MIG **四表** diff 验证脚本 (instances / port_to_internal / internal_to_port / _module_ports)
+- [x] fixtures 8 项跑通 → **发现 3 个 MIG 级差异** (GAP-1 generate parent / GAP-2 InstanceArray / GAP-3 嵌套 generate)
+- [x] 差异固化进 `test_native_adapter_parity.py` (**10 passed + 2 xfailed** — 修复后 XPASS 提醒)
+- [x] 真实项目评估受阻原因查明: cva6 三种 filelist 均 strict 编译失败 (pyslang↔CVA6 已知不兼容); darkriscv 单文件是 leaf; coralnpu/zipcpu/riscv_core/vortex 无编译入口
+- [ ] **等方豆决策** (G3 计划输入): GAP-3 嵌套 generate 递归漏实例、native 找全 — 当 bugfix 接受输出变化, 还是先对齐?
+- [ ] #7 子任务 1 (真实项目等价性): 前置 = 解决 6 项目 strict 编译
+
+**迭代记录**: `docs/task_tree/iterations/iter_053_native_parity_script.md`
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
@@ -48,11 +54,7 @@
 
 ## 📋 下一个候选 (未启动, 不要自己开工 — 先问方豆)
 
-- #8 (新发现) — 修 generate-for 动态位选不产生 BIT_SELECT 边 (#2 已完成, 此项独立)
-- #4 — `docs/EXTRACTION_FAILURES.md` 集中表 (1 天)
-- #5 — UnifiedTracer 20 步管线 → 依赖图 (2 天)
-- #6 — expression tree 提取独立成 builder (2 天, 建议 #1 完成后做)
-- #7 — 迁 pyslang 11.0 native API (1-2 周, 长期高 ROI)
+- #7 — 迁 pyslang 11.0 native API (1-2 周, 长期高 ROI) — **当前任务 (option A 进行中)**, 见上方
 
 ---
 
