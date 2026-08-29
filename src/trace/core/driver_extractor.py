@@ -1155,7 +1155,8 @@ class DriverExtractor:
                 module_name = inst_path  # Use instance path as prefix
                 try:
                     self.adapter.get_module_name(module)
-                except Exception:
+                except Exception as e:
+                    logger.warning("get_module_name 失败: %s", e)
                     pass
                 # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
                 self._current_module = module

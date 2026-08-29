@@ -19,12 +19,15 @@ trace.core.module_extractor - 提取 module 级别的 sub-instance 结构
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 
 from .._safe import _safe_attr, _safe_str
 from .graph.models import NodeKind, SignalGraph
 from .semantic_adapter import SemanticAdapter
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -427,8 +430,8 @@ def extract_module_edges_from_mig(
                     w = int_info.width
                     if isinstance(w, tuple) and len(w) == 2:
                         width = abs(int(w[0]) - int(w[1])) + 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("接口位宽提取失败: %s", e)
 
             edges.append({
                 "src": a_inst,  # [PR4 fix] instance, not instance.port

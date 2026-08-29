@@ -19,11 +19,14 @@ ParenthesizedExpression.expression = [a, Star, b]
 """
 
 from __future__ import annotations
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 import re as _re
 
 from pyslang.syntax import SyntaxKind
+
+logger = logging.getLogger(__name__)
 
 
 # ── 安全字符串转换 ──
@@ -42,8 +45,8 @@ def _safe_str(obj) -> str:
             raw = obj.__str__() if hasattr(obj, "__str__") else b""
             if isinstance(raw, bytes):
                 return raw.decode("utf-8", errors="replace")
-        except Exception:
-            pass
+        except (UnicodeDecodeError, TypeError) as e:
+            logger.debug("bytes decode 失败: %s", e)
         return "?"
 
 
