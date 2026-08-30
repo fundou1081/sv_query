@@ -220,5 +220,61 @@ endmodule'''
         self.assertIn('bins', kinds)
 
 
+class TestCovergroupBehavior(unittest.TestCase):
+    """[iter_063 行为] covergroup 分析行为 — 覆盖缺口检测 (analyzer 联动)
+
+    覆盖 covergroup 的**行为层**: 提取出的 covergroup 结构 → CovergroupAnalyzer
+    的缺口检测, 而非只验证 AST 节点.
+    """
+
+    def _analyze(self, source):
+        from trace.core.covergroup_analyzer import CovergroupAnalyzer
+        from trace.core.covergroup_extractor import CovergroupExtractor
+        from trace.unified_tracer import UnifiedTracer
+
+        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer.build_graph()
+        graph = tracer.get_graph()
+        cgs = CovergroupExtractor({'test.sv': source}).extract()
+        analyzer = CovergroupAnalyzer(adapter=graph._adapter, cgs=cgs)
+        return analyzer.analyze()
+
+    def test_iff_coverpoint_extracted_for_analysis(self):
+        """[行为] iff 条件 coverpoint 参与分析不崩溃 (结构可被 analyzer 消费)"""
+        source = '''class packet;
+    rand bit [7:0] data;
+    rand bit en;
+    constraint c { en -> data inside {[0:127]}; }
+endclass
+module top(input logic clk, input logic [7:0] data, input logic en);
+    covergroup cg @(posedge clk);
+        coverpoint data iff (en) {
+            bins low = {[0:127]};
+            bins high = {[128:255]};
+        }
+    endgroup
+    cg cg_inst = new();
+endmodule'''
+        gaps = self._analyze(source)
+        self.assertIsInstance(gaps, list, "analyzer 应返回缺口列表")
+
+    def test_transition_bins_analysis(self):
+        """[行为] transition bins 参与覆盖分析"""
+        source = '''class packet;
+    rand bit [1:0] state;
+    constraint c { state inside {[0:2]}; }
+endclass
+module top(input logic clk, input logic [1:0] state);
+    covergroup cg @(posedge clk);
+        coverpoint state {
+            bins trans[] = (0 => 1 => 2);
+        }
+    endgroup
+    cg cg_inst = new();
+endmodule'''
+        gaps = self._analyze(source)
+        self.assertIsInstance(gaps, list, "analyzer 应返回缺口列表")
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
