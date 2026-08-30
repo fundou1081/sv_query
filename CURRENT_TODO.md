@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-29 GMT+8
+> **最后更新**: 2026-08-29 GMT+8 (4 域行为断言升级完成)
 
 ---
 
@@ -22,24 +22,24 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — 废弃测试清理完成)
+**任务**: (无 — 4 域测试行为断言升级完成)
 
-**测试地图与清理** (commit `8b4fb16` + `79e615e`):
-- [x] TEST_MAP.md: 全量测试地图 (317 文件 3033 测试, 11 区域 + 11 功能域)
-- [x] 核实清理: removed_features 11 文件 (V6.9 skip 尸体 + 收集报错) + sim/ 根 3 golden 孤儿 → 已删, 零回归
+**行为断言升级** (iter_064~066, 4 个并行 subagent):
+- [x] constraint: test_constraint_derivative 6 测试补 CONSTRAINS 边断言 (iter_065)
+- [x] covergroup: 3 文件 13→22 测试 (结构化字段 + analyzer 缺口行为)
+- [x] sva: 3 文件 11 测试补 SVAExtractor 结构化 + signal_refs 行为 (iter_066)
+- [x] module: 7 文件 63 测试补 DRIVER 边/condition 行为 (rhs_syntax/controlflow/bit_select 等)
 
-**测试地图剩余候选**:
-- [ ] 127 个无 docstring 测试文件 — 补 docstring (可维护性)
-- [ ] truth 层仅 1 文件 (case27) — 可扩展
-- [ ] 按功能域补测试缺口 (待定)
-
-**迭代记录**: iter_061 (最近)
+**迭代记录**: iter_066 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-08-30** | **sva 域 3 文件行为断言升级** | 11 测试补 SVAExtractor 结构化断言 (signals/timing_ops/clock/operators/disable_iff/property_ref/message/signal_refs/get_assertions_for_signal); 11 passed, regression 772 passed (2 pre-existing failed 与本次无关). [iter_066](docs/task_tree/iterations/iter_066_sva_domain_behavior_assertions.md) |
+| **2026-08-29** | **test_constraint_derivative 行为断言升级** | 6 测试补 CONSTRAINS 边断言; 7 passed. [iter_065](docs/task_tree/iterations/iter_065_constraint_derivative_behavior_assertions.md) |
+| **2026-08-29** | **#6 — 测试写法修正 — AST 断言升级为行为断言** | 4 文件行为断言补齐 (constraint/sva/covergroup), 772 passed. [iter_064](docs/task_tree/iterations/iter_064_test_behavior_assertions.md) |
 | **2026-08-28 23:40** | **#6 — expression tree 独立 builder** | expr_tree_builder.py, 0 回归, tree 探针 byte-identical. [iter_050](docs/task_tree/iterations/iter_050_expr_tree_builder.md) |
 | **2026-08-28 23:10** | **#5 — 管线 → 显式 DAG** | 新建 pipeline.py, 11 步 DAG, 0 回归. [iter_049](docs/task_tree/iterations/iter_049_pipeline_dag.md) |
 | **2026-08-28 22:30** | **#4 清理 — 36 违规+20 边界** | 58 处日志/收窄, 0 回归. [iter_048](docs/task_tree/iterations/iter_048_fallback_cleanup.md) |
