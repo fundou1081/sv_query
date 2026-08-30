@@ -60,6 +60,12 @@ endmodule'''
         self.assertIn('req', all_signals)
         self.assertIn('gnt', all_signals)
         self.assertIn('data', all_signals)
+        # [iter_063 行为] 信号→断言关联索引 (SVA 分析的核心查询行为)
+        self.assertIn('req', g.signal_refs, "$rose(req) 中的 req 应进 signal_refs")
+        self.assertIn('data', g.signal_refs, "$stable(data) 中的 data 应进 signal_refs")
+        req_assertions = g.get_assertions_for_signal('req')
+        self.assertTrue(any(a.kind == 'assert' for a in req_assertions),
+            f"req 应关联到 assert: {req_assertions}")
 
     def test_past_changed(self):
         """[Golden] $past / $changed — 历史值函数"""
@@ -125,6 +131,10 @@ endmodule'''
         self.assertIn('|->', p.operators)
         self.assertIn('req', p.signals)
         self.assertIn('gnt', p.signals)
+        # [iter_063 行为] 无界范围 property 的 assert 应可经信号反查
+        gnt_assertions = g.get_assertions_for_signal('gnt')
+        self.assertTrue(any(a.kind == 'assert' for a in gnt_assertions),
+            f"gnt 应关联到 assert: {gnt_assertions}")
 
     def test_nonconsecutive_repetition(self):
         """[Golden] non-consecutive exact repetition [=n] (与 goto [->n] 区分)"""
