@@ -50,7 +50,10 @@ a) 接受例外: 记录 TEMPORARY + 理由, 保留行为断言
 b) 移除 generate_real_world 的新行为断言 (回退, 保留原 CLI 断言)
 c) 修 fixture: 补完整 filelist 让 strict 编译过 (工作量大)
 
-## 📌 状态
+## 📌 最终处理 (方豆 "继续" — 按最干净纪律)
 
 - 已提交: 10 个无争议文件 (A 组 6 + B 组 4) — 28 测试全过
-- 待决策: test_generate_real_world.py (strict 冲突)
+- **test_generate_real_world.py 已还原** (git checkout): 移除新增 strict=False
+  断言 (不引入新违规), 恢复原 25 个测试
+- **原文件 --no-strict 遗留** (line 85, Plan F1.5): pre-existing 违规, 已登记
+  EXTRACTION_FAILURES — 待后续单独决策 (修 filelist 或接受)
