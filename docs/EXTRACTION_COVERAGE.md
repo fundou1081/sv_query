@@ -119,6 +119,16 @@
 | minimal / 其他 | 10+ | `sim/tests/fixtures/minimal_*/` | 集成测试 |
 | **总 fixture** | **101** | — | **1461 tests collected** |
 
+## 🔸 已知缺陷补充 (iter_068 测试升级确认)
+
+| # | 缺陷 | 位置 | 备注 |
+|---|---|---|---|
+| 41 | class 方法体内赋值 (`task reset; addr=0;`) 不生成 DRIVER 边 | class_graph_builder | 方法体不建立成员驱动关系 |
+| 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | task 实参映射缺口 |
+| 43 | task 多语句体内部赋值不生成边 | driver_extractor | 同上 |
+| 44 | DPI 调用站点 (`assign result = add(1,2)`) 不生成 DRIVER 边 | driver_extractor | DPI 函数体不可见 (外部接口, 期望行为) |
+| 45 | generate-for 内 wire 声明的 DRIVER 边依赖 strict 编译 | generate 相关 | 见 iter_068 strict 冲突 |
+
 ## 🔗 关联文档
 
 - [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) — SV 语法 → TraceNode/TraceEdge 类型映射 (29 KB)
