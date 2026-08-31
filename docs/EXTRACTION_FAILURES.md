@@ -219,7 +219,3 @@ except Exception:
 3. **新代码** → 遵循 AGENTS.md 核心纪律 #2: 显式报错或 sentinel + warning,
    **禁止** silent fallback
 4. 本表是**活文档**, 随代码库演变持续更新
-- **2026-08-29 (iter_068)** — `test_generate_real_world.py` line 85 用 `--no-strict`
-  (CLI 调用, Plan F1.5 遗留): pre-existing 纪律 #1 违规 — ZipCPU 真实 RTL 含未知
-  子模块, strict 编译失败。已回退新增的 strict=False 断言 (不扩大违规), 原遗留
-  待决策: 补完整 filelist 修根因 / 或标记 TEMPORARY 接受。
