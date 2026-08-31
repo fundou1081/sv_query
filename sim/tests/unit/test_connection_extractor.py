@@ -188,5 +188,86 @@ endmodule'''
                       "错误应指明未定义模块名")
 
 
+class TestConnectionExtractorAdvanced(unittest.TestCase):
+    """[iter_074] 边界场景: 参数化/位置端口/interface/三态"""
+
+    def test_parameterized_instance(self):
+        """[Golden] 参数化实例 #(.W(16)) 端口映射正常"""
+        source = '''module sub #(parameter W = 8) (input logic [W-1:0] d, output logic [W-1:0] q);
+    assign q = d;
+endmodule
+module top;
+    logic [15:0] d16, q16;
+    sub #(.W(16)) u16(.d(d16), .q(q16));
+endmodule'''
+        r = _extract(source)
+        self.assertEqual(r.port_to_module_type.get('top.u16.d'), 'sub.d',
+                         "参数化实例端口应映射到模块端口")
+        self.assertEqual(r.port_to_module_type.get('top.u16.q'), 'sub.q')
+        edges = {(e.src, e.dst) for e in r.edges}
+        self.assertIn(('top.d16', 'top.u16.d'), edges, "参数化实例应有连接边")
+
+    def test_positional_port_connection(self):
+        """[Golden] 位置端口连接 (sub u_pos(d8, q8)) 也能提取"""
+        source = '''module sub(input logic [7:0] d, output logic [7:0] q);
+    assign q = d;
+endmodule
+module top;
+    logic [7:0] d8, q8;
+    sub u_pos(d8, q8);
+endmodule'''
+        r = _extract(source)
+        # 位置端口: 实例端口名是 sub 的端口名 (d/q)
+        self.assertEqual(r.port_to_module_type.get('top.u_pos.d'), 'sub.d',
+                         "位置端口应映射到模块端口名")
+        edges = {(e.src, e.dst) for e in r.edges}
+        self.assertIn(('top.d8', 'top.u_pos.d'), edges, "位置端口应有连接边")
+
+    def test_interface_port(self):
+        """[Golden] interface 实例端口映射"""
+        source = '''interface bus_if(input logic clk);
+    logic req, gnt;
+endinterface
+module top(input logic clk);
+    bus_if ifc(.clk(clk));
+endmodule'''
+        r = _extract(source)
+        self.assertEqual(r.port_to_module_type.get('top.ifc.clk'), 'bus_if.clk',
+                         "interface 端口应映射到 interface 端口")
+
+    def test_tri_state_inout_no_connection(self):
+        """[Golden] 三态 inout 端口: 无 CONNECTION 边 (tri-state 方向特殊)"""
+        source = '''module bufio(inout wire bidir, input wire en, input wire data);
+    assign bidir = en ? data : 1'bz;
+endmodule
+module top;
+    wire bidir, en, data;
+    bufio u_buf(.bidir(bidir), .en(en), .data(data));
+endmodule'''
+        r = _extract(source)
+        edges = {(e.src, e.dst) for e in r.edges}
+        # 普通 input 端口有 CONNECTION
+        self.assertIn(('top.en', 'top.u_buf.en'), edges)
+        self.assertIn(('top.data', 'top.u_buf.data'), edges)
+        # inout bidir 无 CONNECTION 边 (三态, 由 BRANCH 逻辑表达)
+        self.assertNotIn(('top.bidir', 'top.u_buf.bidir'), edges,
+                         "inout 三态不应有普通 CONNECTION 边")
+
+    def test_port_to_internal_value_semantics(self):
+        """[Golden] port_to_internal 值语义: 实例端口映射到同路径 (self 映射)"""
+        source = '''module dut(input logic clk);
+endmodule
+module top;
+    logic clk;
+    dut u_dut(.clk(clk));
+endmodule'''
+        r = _extract(source)
+        internal = r.port_to_internal.get('top.u_dut.clk')
+        self.assertIsNotNone(internal, "port_to_internal 应有该键")
+        # 当前实现: 实例端口 → 自身 (self-loop 语义, 跳过自环边但保留映射)
+        self.assertEqual(internal, 'top.u_dut.clk',
+                         "port_to_internal 当前语义: 实例端口映射到自身")
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
