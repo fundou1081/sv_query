@@ -248,11 +248,20 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
             # [V6.9 fix] 语义 AST 的 Expression 直接有 .kind，不需要 .expr
             #         syntax tree 的 Token（逗号、括号）也有 .kind 但无 .symbol
             #         用 .symbol 区分：语义 AST 的 Expression 有 .symbol
+            # [iter_076 #42 fix] AssignmentExpression (task/function 调用的
+            #         output 实参) 既无 .symbol 也无 .expr — 会被当成
+            #         syntax-tree token 误跳过, 导致 output 实参丢失。
+            #         放行 Assignment 类型 (通过 .left 访问).
             is_semantic = hasattr(expr, "symbol")
-            if not hasattr(expr, "expr") and not is_semantic:
-                continue
             kind_str = str(getattr(expr, "kind", ""))
+            if not hasattr(expr, "expr") and not is_semantic and "Assignment" not in kind_str:
+                continue
             # NamedArgument: .in(a) 格式，name 字段存参数名
+            # [iter_076 #42 fix] pyslang 语义 AST 中 NamedValueExpression.name
+            # 和 AssignmentExpression.name 均为空字符串, 但 hasattr 为 True —
+            # 旧代码无条件 continue 把 output 实参 (AssignmentExpression) 吞掉。
+            # 只有真正的 NamedArgument (name 非空 + arg_expr) 才 continue,
+            # 其余 fall through 到下方 kind 分支继续处理。
             if hasattr(expr, "name"):
                 name = str(getattr(expr, "name", "")).strip()
                 arg_expr = getattr(expr, "expr", None)
@@ -260,7 +269,7 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
                     arg_name = h.get_signal(arg_expr)
                     if arg_name:
                         named_args[name] = arg_name.strip()
-                continue
+                    continue
             if "NamedValue" in kind_str:
                 arg_name = h.get_signal(expr)
                 if arg_name:
@@ -271,6 +280,8 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
                     while hasattr(lhs, "kind") and "Assignment" in str(lhs.kind):
                         lhs = getattr(lhs, "left", None)
                     if lhs and hasattr(lhs, "kind") and "NamedValue" in str(lhs.kind):
+                        # [iter_076 #42 fix] output 实参的 LHS 是 NamedValue —
+                        # get_signal 直接可用 (与 input 实参同一路径, 无 fallback).
                         arg_name = h.get_signal(lhs)
                         if arg_name:
                             call_args.append(arg_name.strip())

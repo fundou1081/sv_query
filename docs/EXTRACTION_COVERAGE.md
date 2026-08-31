@@ -124,8 +124,8 @@
 | # | 缺陷 | 位置 | 备注 |
 |---|---|---|---|
 | 41 | class 方法体内赋值 (`task reset; addr=0;`) 不生成 DRIVER 边 | class_graph_builder | ✅ **已修** (iter_075: 方法体赋值提取 → 成员 DRIVER 边; 含 id() 复用非确定 bug) |
-| 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | task 实参映射缺口 |
-| 43 | task 多语句体内部赋值不生成边 | driver_extractor | 同上 |
+| 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | ✅ **已修** (iter_076: flattener 保留 Call 整体 + `_parse_invocation_call` 放行 AssignmentExpression 实参 → 真边 `din→dout`, 占位边消失) |
+| 43 | task 多语句体内部赋值不生成边 | driver_extractor | ✅ **已修** (iter_076: 同上, 多语句体内部驱动经 `analyze_task_internal_drivers` 独立映射到各 output 实参; 常量赋值无信号边为正确行为) |
 | 44 | DPI 调用站点 (`assign result = add(1,2)`) 不生成 DRIVER 边 | driver_extractor | DPI 函数体不可见 (外部接口, 期望行为) |
 | 45 | generate-only 实例化的模块 (无直接实例) get_modules 收集不到端口定义 → CONNECTION 边缺失 | semantic_adapter.get_modules | pyslang semantic 树不保留仅被 generate 实例化的模块定义; 生成模块通常也有直接实例, 故影响有限 (iter_072 实测) |
 
@@ -139,6 +139,13 @@
 
 ## 🔄 状态变更日志
 
+- **2026-09-01** — iter_076: #42/#43 修复 (task 调用站点完整形参映射)。
+  - 根因: (a) `_parse_invocation_call` 的 token 过滤器把 AssignmentExpression
+    (output 实参, 无 `.symbol`/`.expr`) 当 syntax-tree 杂项跳过; (b) flattener
+    把 Call 拆成 output 占位赋值, 丢失 input 实参关联。
+  - 修复: flattener 保留 Call 整体; `_parse_invocation_call` 放行 Assignment
+    并走 LHS 提取; 命名实参由语义 AST 规范化为位置形式, 无需特判。
+  - #44 DPI 为期望行为 (函数体外部不可见), 维持记录不修。
 - **2026-08-27 23:48** — 初版, 基于 Phase 1A matrix + 实测修正 + 101 fixture 盘点.
   - 修正 2 个 Phase 1A 误报 (alias 方向 / function 递归)
   - 33 种 SV 语法类别 (18✅ / 4⚠️ / 2🔶 / 5❌ / 4🔸)
