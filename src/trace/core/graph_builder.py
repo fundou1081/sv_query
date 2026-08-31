@@ -657,7 +657,12 @@ class GraphBuilder:
                     # [G3 Option 3 2026-08-28] 符号下标 (e.g. for-loop q[i], i 是变量):
                     # _extract_base_chain 把 sel 转成 [?] placeholder 但 graph 实际节点是 q[i] (raw text).
                     # 用 hit.full_id (保留原始 [i]) 覆盖末位 child_id, 才能匹配 DriverExtractor 建的节点.
-                    if j == len(chain) - 1 and hit.full_id:
+                    # [FIX iter_071 2026-08-29] 只在 chain 末位含 '?' placeholder 时覆盖 —
+                    # 多级 ElementSelect (data_o[i][j]) 的 chain 末位已完整 ('top.data_o[2][1]'),
+                    # 无条件下用 full_id 首个 '[' 起的整个 select 文本追加, 会错拼成
+                    # data_o[0][0][0] (多一个维度), 导致 data_o[i][j] → data_o[i] 聚合边缺失
+                    # (test_sub_bytes_genvar_iteration 失败根因).
+                    if j == len(chain) - 1 and hit.full_id and '?' in child_id:
                         # full_id 是 'q[i]' (无 instance_path 前缀), child_id 是 'top.q[?]' (有前缀)
                         # 用 full_id 的 select 文本替换 chain 末位的 placeholder
                         bracket = hit.full_id.find('[')
