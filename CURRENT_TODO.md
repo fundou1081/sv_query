@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-08-29 GMT+8 (4 域行为断言升级完成)
+> **最后更新**: 2026-09-01 GMT+8 (C 组功能缺口 #41-#44 完成)
 
 ---
 
@@ -22,23 +22,23 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — 4 域测试行为断言升级完成)
+**任务**: (无 — C 组功能缺口 #41-#44 完成)
 
-**行为断言升级** (iter_064~066, 4 个并行 subagent):
-- [x] constraint: test_constraint_derivative 6 测试补 CONSTRAINS 边断言 (iter_065)
-- [x] covergroup: 3 文件 13→22 测试 (结构化字段 + analyzer 缺口行为)
-- [x] sva: 3 文件 11 测试补 SVAExtractor 结构化 + signal_refs 行为 (iter_066)
-- [x] module: 7 文件 63 测试补 DRIVER 边/condition 行为 (rhs_syntax/controlflow/bit_select 等)
+**C 组功能缺口修复** (iter_075 + iter_076, 方豆 "一起做"):
+- [x] #41: class 方法体赋值 → 成员 DRIVER 边 (iter_075, commit 738a53d)
+- [x] #42: task 调用站点 output 实参 → 真边 din→dout (iter_076)
+- [x] #43: task 多语句体内部驱动独立映射 (iter_076)
+- [x] #44: DPI 评估 — 期望行为, 记录不修 (iter_075/076)
 
-**迭代记录**: iter_066 (最近)
+**迭代记录**: iter_076 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
-| **2026-08-30** | **sva 域 3 文件行为断言升级** | 11 测试补 SVAExtractor 结构化断言 (signals/timing_ops/clock/operators/disable_iff/property_ref/message/signal_refs/get_assertions_for_signal); 11 passed, regression 772 passed (2 pre-existing failed 与本次无关). [iter_066](docs/task_tree/iterations/iter_066_sva_domain_behavior_assertions.md) |
-| **2026-08-29** | **test_constraint_derivative 行为断言升级** | 6 测试补 CONSTRAINS 边断言; 7 passed. [iter_065](docs/task_tree/iterations/iter_065_constraint_derivative_behavior_assertions.md) |
+| **2026-09-01** | **#42/#43 task 调用站点形参映射** | flattener 保留 Call 整体 + `_parse_invocation_call` 放行 Assignment 实参 → `my_task(din,dout)` 真边 din→dout, 多参数独立映射, EmptyArgument 占位边消失; 2 新测试 + 1 升级, regression 766 passed. [iter_076](docs/task_tree/iterations/iter_076_fix_gap42_43.md) |
+| **2026-08-30** | **#41 class 方法体赋值** | class_graph_builder 方法体赋值提取 → 成员 DRIVER 边; 修 id() 复用非确定 bug; 2 测试, regression 764 passed. [iter_075](docs/task_tree/iterations/iter_075_fix_gap41.md) |
 | **2026-08-29** | **#6 — 测试写法修正 — AST 断言升级为行为断言** | 4 文件行为断言补齐 (constraint/sva/covergroup), 772 passed. [iter_064](docs/task_tree/iterations/iter_064_test_behavior_assertions.md) |
 | **2026-08-28 23:40** | **#6 — expression tree 独立 builder** | expr_tree_builder.py, 0 回归, tree 探针 byte-identical. [iter_050](docs/task_tree/iterations/iter_050_expr_tree_builder.md) |
 | **2026-08-28 23:10** | **#5 — 管线 → 显式 DAG** | 新建 pipeline.py, 11 步 DAG, 0 回归. [iter_049](docs/task_tree/iterations/iter_049_pipeline_dag.md) |

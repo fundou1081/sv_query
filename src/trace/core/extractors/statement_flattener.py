@@ -184,23 +184,10 @@ def _flatten_expression_statement(stmt, result: list, cond_stack: list[str], *, 
     if ek == ExpressionKind.Assignment:
         result.append((expr, condition_chain))
     elif ek == ExpressionKind.Call:
-        # [V6.9] task/function 调用: 将 output 参数映射展开为赋值
-        # t(a, b) → arguments = [NamedValue(a), Assignment(b, ...)]
-        args = getattr(expr, "arguments", None)
-        if args is not None and hasattr(args, "__iter__") and not isinstance(args, str):
-            input_sig = None
-            for arg in args:
-                ak = getattr(arg, "kind", None)
-                if ak == ExpressionKind.Assignment:
-                    # output 参数: 创建 input → output DRIVER
-                    lhs_node = getattr(arg, "left", None)
-                    out_name = get_signal(lhs_node) if lhs_node else None
-                    if input_sig and out_name:
-                        # 构造一个虚拟赋值元组: (output, input_as_string, condition)
-                        result.append((arg, condition_chain))
-                elif ak == ExpressionKind.NamedValue:
-                    # 第一个是 input 参数
-                    input_sig = get_signal(arg)
+        # [iter_076 #42/#43 试验] 不拆 Call — 保留整体, 交给 handle_invocation
+        # 做完整形参映射 (param_map + internal_drivers). 拆分只处理单 input
+        # 单 output, 多参数时 input_sig 覆盖错误.
+        result.append((expr, condition_chain))
 
 
 

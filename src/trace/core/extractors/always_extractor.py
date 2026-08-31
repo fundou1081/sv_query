@@ -202,6 +202,13 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
                     if "Invocation" in ek or "Call" in ek:
                         h.handle_invocation(raw_expr, ctx, module, module_name, result)
                         continue
+                # [iter_076 #42/#43] flattener 保留 Call 整体后, stmt 本身可能是
+                # CallExpression (无 .expr 包装) — 直接调 handle_invocation
+                # 做完整形参映射 (param_map + internal_drivers → output 边).
+                stmt_kind = str(getattr(stmt, "kind", ""))
+                if "Call" in stmt_kind or "Invocation" in stmt_kind:
+                    h.handle_invocation(stmt, ctx, module, module_name, result)
+                    continue
 
             if lhs and (rhs or rhs_expr):
                 # Only upgrade to REG if there's a clock context (always_ff)
