@@ -260,5 +260,52 @@ endmodule'''
         self.assertIn('packet', nodes, "static function 声明的 class 节点应存在")
 
 
+class TestClassMethodAssignmentEdges(unittest.TestCase):
+    """[iter_075 #41] 方法体内赋值 → 成员 DRIVER 边
+
+    此前 class 方法 (task/function) 内 addr = expr 零边 (EXTRACTION_COVERAGE #41).
+    修复后: 方法体内成员间赋值应建驱动边.
+    """
+
+    def _build_graph(self, source):
+        tracer = UnifiedTracer(sources={'test.sv': source})
+        tracer.build_graph()
+        return tracer.get_graph()
+
+    def test_method_member_assignment_edge(self):
+        """[Golden] task 内 data = addr → packet.addr → packet.data DRIVER 边"""
+        source = '''class packet;
+    rand bit [7:0] addr;
+    rand bit [7:0] data;
+    task set_addr(input bit [7:0] a);
+        addr = a;
+        data = addr;
+    endtask
+endclass
+module top; endmodule'''
+        graph = self._build_graph(source)
+        from trace.core.graph.models import EdgeKind
+        edge = graph.get_edge('packet.addr', 'packet.data')
+        self.assertIsNotNone(edge, "方法体内 data = addr 应生成 packet.addr → packet.data 驱动边")
+        self.assertEqual(edge.kind, EdgeKind.DRIVER)
+
+    def test_method_constant_assignment_no_edge(self):
+        """[Golden] 常量赋值 addr = 8'h0 不产生变量驱动边 (RHS 无变量)"""
+        source = '''class packet;
+    rand bit [7:0] addr;
+    function void reset();
+        addr = 8'h0;
+    endfunction
+endclass
+module top; endmodule'''
+        graph = self._build_graph(source)
+        from trace.core.graph.models import EdgeKind
+        drivers = [
+            (u, v) for u, v in graph.edges()
+            if graph.get_edge(u, v) and graph.get_edge(u, v).kind == EdgeKind.DRIVER
+        ]
+        self.assertEqual(len(drivers), 0, f"常量赋值不应有变量驱动边: {drivers}")
+
+
 if __name__ == '__main__':
     unittest.main()
