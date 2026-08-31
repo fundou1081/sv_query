@@ -104,22 +104,25 @@ endmodule'''
         self.assertIsNotNone(edge_tb, "top.clk 应驱动 top.u_tb.clk")
         self.assertIsNotNone(edge_dut, "top.clk 应驱动 top.u_dut.clk")
 
-        # 检查实例内部连接
-        # [FIX 2026-07-08] connection_extractor 治本: child_signal_id 用 inst_path
-        # 之前: tb.clk (短名, flatten) — 多个 instance 合并
-        # 现在: top.u_tb.clk (完整 hierarchy) — 避免合并
-        # 在新 graph 中, inst_port_id (top.u_tb.clk) 和 child_signal_id (top.u_tb.clk) 是同一节点
-        # 所以内部连接变成 self-loop, 实际是 CONNECTION edge 进 out-degree
-        # 但 graph.get_edge 不返回 self-loop, 用 out_edges 验证
-        out_edges_tb = list(graph.out_edges('top.u_tb.clk'))
-        out_edges_dut = list(graph.out_edges('top.u_dut.clk'))
-        self.assertTrue(
-            len(out_edges_tb) > 0,
-            f"top.u_tb.clk 应有内部连接 (out_edges), 实际: {out_edges_tb}"
+        # [iter_071 更新] 实例端口内部连接 (inst_port_id == child_signal_id 的
+        # self-loop) 自 2026-08-13 起被 connection_extractor 有意跳过 —
+        # 原断言 (out_edges > 0) 依赖已移除的 self-loop, 过时。
+        # 跨模块内部连接的正确验证: 模块定义层的内部驱动关系
+        # (实例端口被驱动后, 模块内部信号如何被驱动)。
+        edge_internal_tb = graph.get_edge('tb.clk', 'tb.clk_out')
+        self.assertIsNotNone(
+            edge_internal_tb,
+            "tb 内部 assign clk_out = clk 应生成 tb.clk → tb.clk_out DRIVER 边",
         )
-        self.assertTrue(
-            len(out_edges_dut) > 0,
-            f"top.u_dut.clk 应有内部连接 (out_edges), 实际: {out_edges_dut}"
+        edge_clk_dut = graph.get_edge('dut.clk', 'dut.reg_data')
+        self.assertIsNotNone(
+            edge_clk_dut,
+            "dut 内部 always_ff 应生成 dut.clk → dut.reg_data CLOCK 边",
+        )
+        edge_drv_dut = graph.get_edge('32\'d0', 'dut.reg_data')
+        self.assertIsNotNone(
+            edge_drv_dut,
+            "dut 内部 reg_data <= 0 应生成 32'd0 → dut.reg_data DRIVER 边",
         )
 
 
