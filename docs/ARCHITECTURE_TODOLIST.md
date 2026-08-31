@@ -154,10 +154,11 @@
 - **状态**: **done (2026-08-29)** — 5 调用方全量 native; GAP-1~7 全处理; 等价性 3/6 评估; benchmark 完成
 - **目标**: 用 `inst.hierarchicalPath` / `inst.portConnections` / `inst.body` 替代自建 MIG
 - **子任务**:
-  - [ ] 评估 11.0 native API 在 CVA6/coralNPU/darkriscv/zipcpu/riscv_core/vortex 上的等价性
-        ⏸ **受阻**: 6 项目 strict 编译全部失败 (pyslang↔CVA6 已知 elaboration 不兼容,
-        cva6_full.f timescale / Flist.ariane 65 错 / cva6.f 常量折叠; darkriscv 单文件 leaf;
-        coralnpu/zipcpu/riscv_core/vortex 无编译入口)。先解决严格编译才能评估。
+  - [x] ✅ **评估 11.0 native API 在 6 项目上的等价性** (2026-08-29, iter_058)
+        → darkriscv EQUIVALENT / zipcpu GAP-4 已接受 / riscv_core GAP-4 已接受;
+        **cva6/coralnpu/vortex 按方豆指示移出测试项** (strict 编译不通过或
+        无编译入口 — pyslang↔项目语义不兼容, 非 filelist 问题), 保留测试项 =
+        darkriscv/zipcpu/riscv_core。
   - [x] ✅ **写 native API vs 自建 MIG 的 diff 验证脚本** (2026-08-29, commit `f129433`)
         → `tools/verify_native_parity.py` (MIG 四表对比) + `test_native_adapter_parity.py`
         **13 passed + 0 xfail**。发现并修复 **2 个 native 缺陷** + **2 个已接受差异**:

@@ -55,7 +55,10 @@
 
 ## 📋 下一个候选 (未启动, 不要自己开工 — 先问方豆)
 
-- #7 — 迁 pyslang 11.0 native API (1-2 周, 长期高 ROI) — **当前任务 (option A 进行中)**, 见上方
+- ~~#7 — 迁 pyslang 11.0 native API~~ ✅ **已完成** (2026-08-29, iter_053-059,
+  8/8: 5 调用方全量 native + GAP-1~7 + 等价性 3/6 + benchmark native 2.14x)。
+  遗留: 子任务 1 的 CVA6/coralNPU/vortex 3 项目 strict 编译受阻 (pyslang↔项目
+  语义不兼容), 见 ARCHITECTURE_TODOLIST §#7。
 
 ---
 
