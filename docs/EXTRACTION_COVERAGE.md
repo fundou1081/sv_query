@@ -123,7 +123,7 @@
 
 | # | 缺陷 | 位置 | 备注 |
 |---|---|---|---|
-| 41 | class 方法体内赋值 (`task reset; addr=0;`) 不生成 DRIVER 边 | class_graph_builder | 方法体不建立成员驱动关系 |
+| 41 | class 方法体内赋值 (`task reset; addr=0;`) 不生成 DRIVER 边 | class_graph_builder | ✅ **已修** (iter_075: 方法体赋值提取 → 成员 DRIVER 边; 含 id() 复用非确定 bug) |
 | 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | task 实参映射缺口 |
 | 43 | task 多语句体内部赋值不生成边 | driver_extractor | 同上 |
 | 44 | DPI 调用站点 (`assign result = add(1,2)`) 不生成 DRIVER 边 | driver_extractor | DPI 函数体不可见 (外部接口, 期望行为) |

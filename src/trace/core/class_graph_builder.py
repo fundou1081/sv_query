@@ -286,6 +286,110 @@ class ClassGraphBuilder:
         for constr in self._iter_constraints(cls):
             self._build_constraint_block(graph, constr, cls_name, result)
 
+        # [iter_075 #41/#42/#43] 方法体赋值 → 成员驱动边
+        # (class 方法内 addr = expr 此前零边, 已登记 EXTRACTION_COVERAGE #41)
+        self._build_method_assignments(graph, cls, cls_name, result)
+
+    def _build_method_assignments(self, graph, cls, cls_name: str, result: ClassBuilderResult):
+        """[iter_075 #41/#42/#43] 提取 class 方法体内的赋值 → 成员 DRIVER 边.
+
+        此前 class 方法 (task/function) 内的赋值 (addr = expr) 不生成任何边 —
+        成员驱动关系丢失 (EXTRACTION_COVERAGE #41)。本方法遍历方法 body 的
+        赋值表达式, 建 RHS 变量 → LHS 成员 的 DRIVER 边 (assign_type=blocking).
+
+        覆盖:
+        - 单赋值 (reset: addr = 8'h0)
+        - 多语句 (set_addr: addr = a; data = addr;) — RHS 含方法参数/成员
+        - 嵌套 (if/for 内赋值) — 递归
+        """
+        for member in cls:
+            if 'Subroutine' not in str(getattr(member, 'kind', '')):
+                continue
+            body = getattr(member, 'body', None)
+            if body is None:
+                continue
+            # 递归提取 (lhs_name, [rhs_name...])
+            for lhs_name, rhs_names in self._iter_body_assignments(body):
+                if not lhs_name:
+                    continue
+                prop_id = f"{cls_name}.{lhs_name}"
+                if prop_id not in graph.nodes():
+                    continue  # 非成员赋值 (局部变量), 跳过
+                for rhs in rhs_names:
+                    rhs_id = f"{cls_name}.{rhs}"
+                    if rhs_id not in graph.nodes():
+                        continue  # 方法参数/字面量, 无节点可连
+                    existing = graph.get_edge(rhs_id, prop_id)
+                    if existing is None:
+                        graph.add_trace_edge(
+                            TraceEdge(
+                                src=rhs_id,
+                                dst=prop_id,
+                                kind=EdgeKind.DRIVER,
+                                assign_type="blocking",
+                            )
+                        )
+
+    def _iter_body_assignments(self, node, depth: int = 0):
+        """[iter_075] 递归提取语句体中的赋值表达式 (lhs, [rhs_vars]).
+
+        pyslang 结构: StatementList.list → ExpressionStatement.expression →
+        ExpressionKind.Assignment (left/right). 嵌套语句 (if/for) 递归.
+        """
+        if node is None or depth > 6:
+            return
+        results = []
+
+        def walk(n, d):
+            # [iter_075 fix] 不用 id(n) 做 seen: Python id 复用会导致同层
+            # 语句被误判已访问 (非确定性漏提取, 5 次跑 4 次丢第二条赋值).
+            # depth 限制已足够防环 (语义树无环).
+            if n is None or d > 6:
+                return
+            kind = str(getattr(n, 'kind', ''))
+            if 'Assignment' in kind:
+                left = getattr(n, 'left', None)
+                right = getattr(n, 'right', None)
+                # [iter_075 fix] NamedValueExpression.name 是空 —
+                # 用 adapter._extract_signals_from_expr 提取 (与 constraint 路径一致)
+                lhs_name = ""
+                if left is not None:
+                    lk = str(getattr(left, 'kind', ''))
+                    if 'NamedValue' in lk:
+                        try:
+                            sigs = self.adapter._extract_signals_from_expr(left) or []
+                            lhs_name = sigs[0] if sigs else ""
+                        except Exception:
+                            lhs_name = ""
+                rhs_vars = []
+                if right is not None:
+                    try:
+                        rhs_vars = self.adapter._extract_signals_from_expr(right) or []
+                    except Exception:
+                        rhs_vars = []
+                if lhs_name:
+                    results.append((lhs_name, rhs_vars))
+                return
+            # 遍历子节点
+            for attr in ('list', 'statements', 'members', 'expression', 'body', 'expr'):
+                v = getattr(n, attr, None)
+                if v is None:
+                    continue
+                if hasattr(v, '__iter__') and not isinstance(v, str):
+                    for c in v:
+                        walk(c, d + 1)
+                else:
+                    walk(v, d + 1)
+            # 直接迭代 (语义 symbol 可能支持)
+            try:
+                for c in n:
+                    walk(c, d + 1)
+            except TypeError:
+                pass
+
+        walk(node, depth)
+        return results
+
     def _build_class_property(self, graph, prop, cls_name: str, result: ClassBuilderResult):
         """ "[铁律15] 处理 ClassPropertyDeclaration → CLASS_PROPERTY 节点
 
