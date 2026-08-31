@@ -102,8 +102,8 @@ integration 跨模块 + 本次升级的行为断言 (DRIVER 边/condition/assign
 
 | 底层技术 | 直接测试 | 间接覆盖 | 建议 |
 |---|---|---|---|
-| **connection_extractor** | **0** | 跨模块行为 (间接) | 🔴 补单元测试 (端口连接提取的核心逻辑无直接验证) |
-| **bit_select_handler** | **0** | 行为充分 (diff/regression) | 🟡 补单元测试或接受间接覆盖 |
+| **connection_extractor** | **1** | 跨模块行为 (间接) | ✅ **已补** (iter_073: 8 个单元测试: 端口连接/映射/generate/缺模块) |
+| **bit_select_handler** | **1** | 行为充分 (diff/regression) | ✅ **已补** (iter_074: 8 个单元测试: RangeSelect/LHS/动态索引/层级/constraint) |
 | driver_extractor | 1 | 充分 (f2 系列 + 行为断言) | 🟢 可接受 |
 | module_instance_graph | 1 (validator) | 充分 (mig_generate_block + #7) | 🟢 可接受 |
 | graph_builder | 7 | 充分 | 🟢 可接受 |
