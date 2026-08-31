@@ -52,6 +52,7 @@ sv_query_project/
 | **16** | **07:30** | **L2** | **Reconfirm_picorv32_wb** | **Re-verify after 7h** | **Still passes** | **✅ All pass, fix stable** | **✅** |
 | **17** | **08:50** | **L2** | **iter_064~066 行为断言升级** | **4 域测试行为断言补齐 (4 并行 subagent)** | **103 测试升级** | **✅ constraint 7 / covergroup 22 / sva 11 / module 63 全过; regression 781 passed (2 pre-existing)** | **✅** |
 | **18** | **2026-09-01** | **L2** | **C 组功能缺口 #41-#44 (方豆 "一起做")** | **修 EXTRACTION_COVERAGE #41-#44** | **#41 class 方法体赋值 / #42-#43 task 调用站点形参映射 / #44 DPI 评估** | **✅ #41 (iter_075) + #42/#43 (iter_076) 已修, 2 新测试 + 1 升级, regression 766 passed; #44 期望行为不修** | **✅** |
+| **19** | **2026-09-01** | **L2** | **id() 复用模式全仓扫描 (iter_075 承诺跟进)** | **扫 src/ 找 id(n) seen/key 非确定源** | **7 处模式逐一定性** | **✅ 全部安全 (同一 AST 树存活); 仅 class_graph_builder 是越界案例 (已修); 零代码改动** | **✅** |
 
 ---
 
