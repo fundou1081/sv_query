@@ -127,7 +127,7 @@
 | 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | task 实参映射缺口 |
 | 43 | task 多语句体内部赋值不生成边 | driver_extractor | 同上 |
 | 44 | DPI 调用站点 (`assign result = add(1,2)`) 不生成 DRIVER 边 | driver_extractor | DPI 函数体不可见 (外部接口, 期望行为) |
-| 45 | generate-for 内 wire 声明的 DRIVER 边依赖 strict 编译 | generate 相关 | 见 iter_068 strict 冲突 |
+| 45 | generate-only 实例化的模块 (无直接实例) get_modules 收集不到端口定义 → CONNECTION 边缺失 | semantic_adapter.get_modules | pyslang semantic 树不保留仅被 generate 实例化的模块定义; 生成模块通常也有直接实例, 故影响有限 (iter_072 实测) |
 
 ## 🔗 关联文档
 
