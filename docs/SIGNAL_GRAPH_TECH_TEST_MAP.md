@@ -44,12 +44,12 @@ integration 跨模块 + 本次升级的行为断言 (DRIVER 边/condition/assign
 **行为**: `unit/test_driver_extractor_net_decl.py` `test_f2_expression_tree_injection`
 `test_f2_generate_expression_trees` `test_f2_generate_for_indexed_lhs`
 
-### 2.4 ⚠️ 连接提取 (ConnectionExtractor) — **0 直接测试**
+### 2.4 ✅ 连接提取 (ConnectionExtractor) — 13 直接测试
 
-**缺口**: 全仓无测试直接 import ConnectionExtractor! 仅 `test_cross_module_tracking`
-(3 refs) 和 `test_visualize_chain` 间接涉及。
-**间接覆盖**: 跨模块连接行为 (cross_module_tracking 49 测试) 间接覆盖,
-但连接提取器本身的单元级验证缺失。
+**直接**: `unit/test_connection_extractor.py` (13, iter_073+074b: 端口连接 /
+映射 / generate / 边界 (param / positional / interface / tri-state) /
+missing-module-strict-raises)
+**间接覆盖**: 跨模块连接行为 (cross_module_tracking 49 测试) 间接覆盖。
 
 ### 2.5 模块实例图 (MIG) — 9 文件
 
@@ -59,12 +59,14 @@ integration 跨模块 + 本次升级的行为断言 (DRIVER 边/condition/assign
 **POC**: `poc/test_portconn_native_poc.py`
 **parity**: `unit/test_native_adapter_parity.py` (#7 全程验证)
 
-### 2.6 ⚠️ 位选 (BitSelectHandler) — **0 直接 import**
+### 2.6 ✅ 位选 (BitSelectHandler) — 12 直接测试
 
-**缺口**: 无测试直接 import BitSelectHandler! 
+**直接**: `unit/test_bit_select_handler.py` (12, iter_074+074b: RHS/LHS/dynamic/
+multidim-3level/oob/parameterized/signal_widths; 直接断言 bit_range + parent
+bit_start)
 **间接**: `integration/test_bitselect_handler_diff.py` (路径 A/B diff)
 `regression/test_bit_select(3个)` `unit/test_common_bit_selects`
-`test_f2_walker_bit_range_preservation` — 行为级覆盖充分, 但无单元级直接测试。
+`test_f2_walker_bit_range_preservation` — 行为级覆盖。
 
 ### 2.7 信号追踪 (SignalTracer) — 50 文件
 
@@ -102,8 +104,8 @@ integration 跨模块 + 本次升级的行为断言 (DRIVER 边/condition/assign
 
 | 底层技术 | 直接测试 | 间接覆盖 | 建议 |
 |---|---|---|---|
-| **connection_extractor** | **1** | 跨模块行为 (间接) | ✅ **已补** (iter_073: 8 个单元测试: 端口连接/映射/generate/缺模块) |
-| **bit_select_handler** | **1** | 行为充分 (diff/regression) | ✅ **已补** (iter_074: 8 个单元测试: RangeSelect/LHS/动态索引/层级/constraint) |
+| **connection_extractor** | **13** | 跨模块行为 (间接) | ✅ **已补** (iter_073+074b: 13 单元测试: 端口连接/映射/generate/param/positional/interface/tri-state/缺模块 strict raises) |
+| **bit_select_handler** | **12** | 行为充分 (diff/regression) | ✅ **已补** (iter_074+074b: 12 单元测试: RHS/LHS/动态索引/层级/oob/parameterized/信号宽度; 直接断言 bit_range+parent bit_start) |
 | driver_extractor | 1 | 充分 (f2 系列 + 行为断言) | 🟢 可接受 |
 | module_instance_graph | 1 (validator) | 充分 (mig_generate_block + #7) | 🟢 可接受 |
 | graph_builder | 7 | 充分 | 🟢 可接受 |
