@@ -231,9 +231,9 @@ python3 -m pytest \
 
 **分层说明**:
 - **核心 38 文件**: 全部直接 import/行为覆盖 signal graph 链路, **317 passed / ~19s**
-- **可选扩展** (行为层, 慢/宽): `test_bitselect_handler_diff.py` (含 1 pre-existing 失败
-  `test_nested_diff` — fixture `d[3:0][1:0]` 是非法 SV (range-select 后 chain select),
-  路径 B 用了 `strict=False` 违反纪律, iter_080 已记录) + regression 语法金标准全量 (766)
+- **可选扩展** (行为层, 慢/宽): `test_bitselect_handler_diff.py` (8, ✅ iter_080 修复:
+  fixture `data[3:0][1:0]` 非法 SV → 合法 `data[0][1:0]` (packed array element chain);
+  路径 B 去掉 `strict=False`) + regression 语法金标准全量 (766)
 - **排除**: CLI/可视化/协议握手/修复工具/随机化 (非 signal graph 核心)
 
 **选择依据** (TECH_MAP 实测引用): 8 项底层技术 (graph 模型/构建/driver/connection/mig/

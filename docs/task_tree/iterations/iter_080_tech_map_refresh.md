@@ -88,3 +88,30 @@
 现 15 = 含此 diff 相关 + benchmark/human_output/tree_output 等既有), 非本集引入。
 
 **处置建议**: 单独迭代修 fixture (改合法嵌套写法 + 去 strict=False), 不阻塞核心集。
+
+---
+
+## 🔬 追加 (同日): test_nested_diff 修复 (方豆 "对, 修掉")
+
+### 修复内容 (sim/tests/integration/test_bitselect_handler_diff.py)
+
+1. **fixture 修合法**: `data[3:0][1:0]` (非法, range-select 后 chain select)
+   → `logic [3:0][7:0] data; slice <= data[0][1:0];` (packed array, element-select
+   后 chain — 实测 `d[0][1:0]` strict 编译通过)
+2. **去掉 `strict=False`** (路径 B `_build_graph_builder_only` L147) — 恢复默认
+   strict=True, 消除纪律 #1 违规
+3. 同步更新 test_nested_diff docstring + fixture 注释
+
+### 验证
+
+- 修复后: `test_bitselect_handler_diff` **8 passed**
+- **有效性**: revert fixture 为非法 `data[3:0][1:0]` → strict 拒绝
+  (SelectAfterRangeSelect) → 测试 FAILED; 恢复 → 8 passed
+- ruff: 12 errors 全为 pre-existing (I001 import 排序 / F841 print-only diff /
+  W292), stash 前后一致, 修复未引入新 error
+- integration 全量: 15 failed → **14** (test_nested_diff 转绿)
+
+### 决策
+
+- F841 (diff 变量未用) 是 print-only 测试设计 (diff 输出供人工 review),
+  保留不修 — 不属于本次范围
