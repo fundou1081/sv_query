@@ -8,6 +8,30 @@
 
 ---
 
+## 0. 完整回归测试构成 (回答"完整的回归测试包含什么")
+
+**完整回归 = 6 层全量 (301 文件 / 2997 测试)**, 每层角色不同, 缺一不可:
+
+| 层 | 范围 | 测试数 | 回答什么问题 | 基线 (2026-09-01) |
+|---|---|---|---|---|
+| **unit** (95 文件) | 单模块/单函数 | 1095 | 每个提取器/构建器/分析器**单元**行为正确 | 1091 passed + 4 沙箱 env 失败 |
+| **regression** (94 文件) | SV 语法点金标准 | 766 | 每种**语法** (assign/always/if/case/class/constraint...) 的 DRIVER/CONSTRAINS 边 | **766 passed** |
+| **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 404 passed + 14 pre-existing 失败 |
+| **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | 385 passed + 4 沙箱 env 失败 |
+| **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
+| **truth** (3 文件) | 1:1 金标准 | 22 | SVG 断言 / generate flatten / spec 不支持语法 | 22 passed |
+| **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
+
+**按运行场景选择**:
+- **快速核心回归** (signal graph 链路, ~19s): 38 文件 317 测试 → §3.5
+- **标准回归** (unit+regression, ~1min): 189 文件 1861 测试 — 覆盖"单元 + 语法金标准"
+- **完整回归** (全 6 层, ~5min+): 301 文件 2997 测试 — 含 CLI/集成/真实项目/truth
+
+**各层不可互相替代**: 一个语法点只在 regression 测 (行为断言), 其底层提取逻辑在 unit
+测 (单元), 端到端跨模块在 integration 测, 用户可见行为在 cli 测 — 缺一层 = 该视角无回归保护。
+
+---
+
 ## 一、目录定位总览
 
 | 目录 | 文件 | 测试函数 | 角色 | 收集状态 |

@@ -115,3 +115,51 @@
 
 - F841 (diff 变量未用) 是 print-only 测试设计 (diff 输出供人工 review),
   保留不修 — 不属于本次范围
+
+---
+
+## 🔬 追加 (同日): 完整回归构成 + 覆盖差距 (方豆 "测试太少了, 完整的回归测试包含什么")
+
+### 完整回归 = 6 层全量 (301 文件 / 2997 测试), 已写入 TEST_MAP §0
+
+| 层 | 测试数 | 角色 |
+|---|---|---|
+| unit | 1095 | 单元 (每提取器/构建器行为) |
+| regression | 766 | 语法金标准 (DRIVER/CONSTRAINS 边) |
+| integration | 422 | 跨模块端到端 |
+| cli | 389 | CLI 命令 subprocess |
+| usage | 298 | 真实项目大场景 |
+| truth | 22 | 1:1 SVG 断言 |
+| poc | 5 | native POC |
+
+**实测**: unit+regression = 1857 passed + 4 沙箱 env 失败 (86s); regression 766 全绿;
+integration 404 + 14 pre-existing; cli 385 + 4 沙箱 env。
+
+### 覆盖差距分析 (为什么"感觉测试少")
+
+**语法矩阵 (EXTRACTION_COVERAGE 33 语法 × 5 档) 对照实测**:
+
+| 语法 | 档位 | 直接测试现状 | 结论 |
+|---|---|---|---|
+| #19 always_latch | ⚠️ 部分 | 仅 integration/test_latch (3 测试) | 🟡 **薄** — 无 unit 级 latch 语义测试 |
+| #23/24 generate-if/case wire | 🔶 条件 | integration/test_generate + unit/test_generate_handling (13) | 🟢 可接受 (probe fixture 有) |
+| #26/27 casez/casex | ❌ 不支持 | integration/test_case_stmt + spec_unsupported (有) | 🟢 已测不支持语义 |
+| #30 replication LHS | ❌ 不支持 | regression/test_replication_fix (3) | 🟢 已测 |
+
+**真正偏薄的点** (有实现但测试少):
+1. **regression 语法金标准 vs 语法矩阵**: 33 语法中约一半 (16 种) 是"主路径全覆盖"
+   但**无独立 regression 文件** (靠 integration 顺带测) — 例如 assign/always_comb/wire
+   顶层/net decl — 缺独立行为断言
+2. **integration 14 个 pre-existing 失败** (benchmark/human_output/tree_output) — 不是
+   测试少, 是**有测试但挂了** — 需要修而不是补
+3. **truth 层仅 22 测试** — case27 SVG 断言覆盖窄, 其他模块无 1:1 truth
+
+### 结论
+
+测试总量不少 (2997), 用户"感觉少"的合理来源:
+- 核心回归集 (38 文件 317) 只覆盖 signal graph 链路 → 感觉少 (但那是**快速子集**)
+- **完整回归应跑 unit+regression (1857)** 或 6 层全量 (2997)
+- 真正缺口: 16 种主路径语法无独立 regression 文件 + integration 14 个挂着的测试 + truth 薄
+
+**候选行动** (等方豆拍板): 补 16 种主路径语法的独立行为断言 regression / 修 integration
+14 个 pre-existing / 扩 truth 层。
