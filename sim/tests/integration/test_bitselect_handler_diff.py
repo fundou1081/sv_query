@@ -97,11 +97,15 @@ endmodule
 
 FIXTURE_NESTED = '''
 module top(input clk);
-    logic [7:0] data;
+    // [iter_080 fix] 旧 fixture 用 data[3:0][1:0] (range-select 后 chain select)
+    // 是非法 SV — pyslang strict 拒绝 (SelectAfterRangeSelect)。
+    // 合法的多维嵌套位选 = packed array 的 element-select 后 chain:
+    //   logic [3:0][7:0] data  → data[0] 取元素 (8 位), [1:0] 取其中 2 位.
+    logic [3:0][7:0] data;
     logic [1:0] slice;
 
     always_ff @(posedge clk) begin
-        slice <= data[3:0][1:0];  // 多维位选嵌套: regex 匹配不了
+        slice <= data[0][1:0];  // 多维位选嵌套 (合法): element-select 后 chain
     end
 endmodule
 '''
@@ -141,10 +145,11 @@ def _build_graph_builder_only(source):
     """
     pyslang.SyntaxTree.fromText(source)
     # 正确初始化顺序: SVCompiler(sources=...) -> get_root() (触发 _do_compile) -> SemanticAdapter
+    # [iter_080 fix] 去掉 strict=False (违反纪律 #1) — fixture 全部合法, strict 应通过
     from trace.core.graph_builder import GraphBuilder
     from trace.core.semantic_adapter import SemanticAdapter
     from trace.core.compiler import SVCompiler
-    compiler = SVCompiler(sources={'test.sv': source}, log_level='WARNING', strict=False)
+    compiler = SVCompiler(sources={'test.sv': source}, log_level='WARNING')  # strict=True 默认
     root = compiler.get_root()  # 内部触发 _do_compile()
     adapter = SemanticAdapter(root, compiler=compiler)
     gb = GraphBuilder(adapter)
@@ -297,9 +302,13 @@ class TestBitSelectHandlerDiff(unittest.TestCase):
         # 预期: 节点 ID 含 gen[N].acc[i], gen[N].acc[i+1], regex 可能处理不了 i+1
 
     def test_nested_diff(self):
-        """[嵌套位选] data[3:0][1:0] — 多维位选"""
+        """[嵌套位选] data[0][1:0] — 多维位选 (packed array, element-select 后 chain)
+
+        [iter_080] fixture 从非法的 data[3:0][1:0] 改为合法的 data[0][1:0]
+        (range-select 后 chain select 被 pyslang strict 拒绝).
+        """
         diff = self._run_diff(FIXTURE_NESTED, 'FIXTURE_NESTED')
-        # 预期: 节点 ID 形如 top.data[3:0][1:0], regex 反推可能产生错误 parent_id
+        # 预期: 节点 ID 形如 top.data[0][1:0], regex 反推可能产生错误 parent_id
 
     def test_struct_diff(self):
         """[Struct 字段位选] pkt.addr[3:0] — scoped 位选"""
