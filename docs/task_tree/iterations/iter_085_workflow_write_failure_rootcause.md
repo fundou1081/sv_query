@@ -81,3 +81,40 @@ tool/result:  Error: the user rejected escalating this operation to "danger-full
 - 提交: 本迭代记录
 - 遗留: 若要"子 agent 能写盘", 需方豆在 ~/.dsh/settings.yaml 或 DSH 配置侧调整
   (delegation policy), 本会话无法自行修改 (workspace 外)
+
+---
+
+## 🔬 追加实证 (同日): 真正根因 = 子 agent 误带 escalation 参数 (非硬性禁止)
+
+### 决定性对比 (session 记录)
+
+| agent | write 调用 | sandbox_permissions 参数 | 结果 |
+|---|---|---|---|
+| **主 agent** (5 次抽查) | write(file_path, content) | **无** | ✅ 一次成功 |
+| **子 agent** (repro) | write(file_path, content) | **有** (`"sandbox_permissions": null`) | ❌ escalation → approval never 拒 |
+
+子 agent 的 write 调用带了 `sandbox_permissions` 字段 (值为 null) → 触发沙箱
+escalation 路径 → `approval/policy: never` (delegation) 自动拒。主 agent 从不带
+该参数 → workspace-write 直接写成功。
+
+### 二次验证 (命令子 agent 不带 escalation)
+
+给子 agent 明确指令 "**绝对不要带 sandbox_permissions 参数, 直接 write(file_path, content)**" 后:
+- ✅ write 一次成功, 无任何 sandbox/escalation 错误 (test_repro_workflow2.py 创建成功)
+
+### 最终结论
+
+**子 agent 完全能写文件** — 之前 workflow 9 个全 null 是因为子 agent 在任务执行中
+**误判自己需要权限升级**, 主动带 sandbox_permissions 触发 escalation, 而 delegation
+会话 approval=never 自动拒绝。**不是 DSH 禁止子 agent 写盘**, 是子 agent 行为误解
++ approval never 的组合。
+
+### 解决方案 (零代码改动)
+
+在派给子 agent 的任务指令里明确写:
+```
+你的会话是 workspace-write 沙箱, 写 <workspace>/ 下文件完全允许,
+不需要任何权限升级。绝对不要在 write/edit 工具调用里带 sandbox_permissions
+参数。若收到 "sandbox escalation" 错误说明你误加了权限参数 — 去掉重试。
+```
+或干脆让子 agent 用 bash 写 (`cat > file <<'EOF'`), bash 走同一沙箱无此问题。
