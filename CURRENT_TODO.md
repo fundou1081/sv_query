@@ -28,7 +28,7 @@
 - [x] T1: assign 链基础数据流 (#1/#5) — test_assign_chain_truth 9 passed (iter_088)
 - [x] T2: always_ff + clock/reset (#2) — test_clock_reset_truth 9 passed (iter_089)
 - [x] T3: case 多分支条件边 (#7) — test_case_branch_truth 8 passed (iter_090)
-- [ ] T4: 位选 RHS/LHS (#8/#9) — bit-range 保留
+- [x] T4: 位选 RHS/LHS (#8/#9) — test_bit_select_truth 10 passed (iter_091)
 - [ ] T5: concat LHS/RHS (#10/#11)
 - [ ] T6: function/task 调用 (#13/#14) — 含 iter_076 task 形参映射
 - [ ] T7: parameter/localparam 过滤 (#17) — 反例式 golden
