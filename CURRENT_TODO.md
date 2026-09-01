@@ -40,7 +40,14 @@
 - [x] test_generate_for_chain_truth (6) + test_cross_module_truth (4)
 - [x] 顺带修 spec 幽灵文件 (replication LHS fixture + 断言)
 
-**迭代记录**: iter_086 (最近)
+**迭代记录**: iter_087 (最近)
+
+**附带 (iter_086 全量回归顺带发现, 方豆 "新发现的3个也改一下")** ✅ **完成** (iter_087):
+- [x] models.py to_dict/from_dict 支持 width=None 往返 — cache 序列化根因 (trace fanin/fanout
+      'NoneType' 崩溃); +1 序列化回归测试 (test_snapshot)
+- [x] test_compare_greater_appears 断言更新 (V100 SVG 结构: &gt; op + ?: 标签)
+- [x] test_picorv32_validation / test_visualize_compute 的 --no-strict → --strict (纪律)
+- [x] unit+cli 全量 1484 passed 全绿
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

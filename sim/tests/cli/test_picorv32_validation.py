@@ -36,7 +36,7 @@ class TestStrictUartParses:
     def test_elaborates_without_error(self):
         """strict_uart filelist (3 modules) must parse cleanly."""
         rc, out, err = _run_cli(
-            "stats", "--filelist", str(STRICT_UART_FL), "--no-strict"
+            "stats", "--filelist", str(STRICT_UART_FL), "--strict"
         )
         assert rc == 0, f"stats failed: {err[:300]}"
         assert "Total nodes" in out
@@ -44,7 +44,7 @@ class TestStrictUartParses:
     def test_node_count_in_expected_range(self):
         """strict_uart: 20-60 nodes."""
         rc, out, _ = _run_cli(
-            "stats", "--filelist", str(STRICT_UART_FL), "--no-strict"
+            "stats", "--filelist", str(STRICT_UART_FL), "--strict"
         )
         assert rc == 0
         m = re.search(r"Total nodes:\s+(\d+)", out)
@@ -55,7 +55,7 @@ class TestStrictUartParses:
     def test_driver_edge_count_healthy(self):
         """strict_uart: ≥8 DRIVER edges."""
         rc, out, _ = _run_cli(
-            "stats", "--filelist", str(STRICT_UART_FL), "--no-strict"
+            "stats", "--filelist", str(STRICT_UART_FL), "--strict"
         )
         assert rc == 0
         m = re.search(r"DRIVER:\s+(\d+)", out)
@@ -72,7 +72,7 @@ class TestStrictUartTrace:
         sync_fifo = STRICT_UART_DIR / "fifo.sv"
         rc, out, _ = _run_cli(
             "trace", "fanin", "sync_fifo.push_data_i",
-            "-f", str(sync_fifo), "--no-strict"
+            "-f", str(sync_fifo), "--strict"
         )
         assert rc == 0, f"fanin failed: {out[:200]}"
 
@@ -81,6 +81,6 @@ class TestStrictUartTrace:
         sync_fifo = STRICT_UART_DIR / "fifo.sv"
         rc, out, _ = _run_cli(
             "trace", "fanout", "sync_fifo.pop_data_o",
-            "-f", str(sync_fifo), "--no-strict"
+            "-f", str(sync_fifo), "--strict"
         )
         assert rc == 0, f"fanout failed: {out[:200]}"
