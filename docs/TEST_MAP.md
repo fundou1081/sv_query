@@ -197,7 +197,7 @@
 | 命令 | 范围 | 角色 | 基线状态 (沙箱) |
 |---|---|---|---|
 | `pytest sim/tests/unit sim/tests/cli` | 95+46 | **主回归** | 1091 passed + 4 failed (沙箱 cache artifact, test_trace_include_flags fanout) |
-| `pytest sim/tests/integration` | 52 文件 | 集成 | 404 passed + 15 failed (pre-existing, iter_058 baseline 13 + 2; 详见 iter_080 记录) |
+| `pytest sim/tests/integration` | 52 文件 | 集成 | **417 passed + 5 skipped, 0 failed** (可写 HOME 下实测, iter_082; 沙箱环境 cache 不可写时报告失败为假象) |
 | `pytest sim/tests/regression` | 94 文件 | 语法金标准 | **766 passed** (iter_076 全绿) |
 | `pytest sim/tests/test_case27_1to1_truth.py` | truth | **1:1 truth (SVG 断言)** | 4 passed |
 | `pytest sim/tests/usage` | 10 文件 | 真实项目 (慢) | — |

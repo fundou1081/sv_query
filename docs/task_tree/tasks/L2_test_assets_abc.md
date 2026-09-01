@@ -57,3 +57,17 @@
 ## 状态日志
 
 - **2026-09-01** — 创建任务文件, 记录 A/B/C (方豆 "先记录 A B C, 我们逐个做")
+
+## B 组诊断 (iter_082) — 14 个失败分类
+
+| 文件 | 失败 | 根因 | 处置 |
+|---|---|---|---|
+| test_benchmark_picorv32 | 1 | baseline 断言过时 (nodes 400-700, 实际 708, GAP-3 后) | ✅ 修断言 600-800 |
+| test_benchmark_regression | 1 | variant 值基于旧 baseline 527 (10% drop 变 -33%) | ✅ 修 variant (637/354) |
+| test_human_output | 5 | **sandbox cache 不可写** (~/.svq/cache, HOME 限制) | 🟡 环境问题, 可写 HOME 下 10 passed |
+| test_tree_output | 5 | 同上 (cache 不可写) | 🟡 环境问题, 可写 HOME 下全绿 |
+| test_real_project_viz | 2 | 同上 (cache 不可写) | 🟡 环境问题, 可写 HOME 下全绿 |
+
+**结论**: 14 个失败 = 2 个真实过时断言 (已修) + 12 个 sandbox 环境 artifact
+(测试本身正确, 本机/CI 有可写 cache 即绿)。B 组"修 integration"实际只剩 2 个
+需要改代码, 其余是环境限制 — 已在 TEST_MAP 基线修正。
