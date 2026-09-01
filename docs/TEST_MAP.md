@@ -14,10 +14,10 @@
 
 | 层 | 范围 | 测试数 | 回答什么问题 | 基线 (2026-09-02) |
 |---|---|---|---|---|
-| **unit** (95 文件) | 单模块/单函数 | 1095 | 每个提取器/构建器/分析器**单元**行为正确 | 1091 passed + 4 沙箱 env 失败 |
+| **unit** (95 文件) | 单模块/单函数 | 1095 | 每个提取器/构建器/分析器**单元**行为正确 | **1095 passed** (iter_087: cache 序列化根因修复 + 可写 HOME 下原 4 沙箱 artifact 转绿) |
 | **regression** (104 文件) | SV 语法点金标准 | 808 | 每种**语法** (assign/always/if/case/class/constraint...) 的 DRIVER/CONSTRAINS 边 | **808 passed** (iter_081 +42) |
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 418 passed + 1 failed (picorv32 ELK, 暂缓) + 3 skipped (iter_086) |
-| **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | 385 passed + 4 沙箱 env 失败 |
+| **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | **389 passed** (iter_087: cache 序列化根因修复后全绿) |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
 | **truth** (5 文件) | 1:1 金标准 | 32 | SVG/图 1:1 断言 (case27/generate-for 链/跨模块) + generate flatten + spec 不支持语法 | **32 passed** (iter_082 C 组 +10) |
 | **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
@@ -196,7 +196,7 @@
 
 | 命令 | 范围 | 角色 | 基线状态 (沙箱) |
 |---|---|---|---|
-| `pytest sim/tests/unit sim/tests/cli` | 95+46 | **主回归** | 1091 passed + 4 failed (沙箱 cache artifact, test_trace_include_flags fanout) |
+| `pytest sim/tests/unit sim/tests/cli` | 95+46 | **主回归** | **1484 passed** (iter_087 全绿; 原 4 沙箱 cache artifact 中 test_trace_include_flags 在可写 HOME 下已过) |
 | `pytest sim/tests/integration` | 52 文件 | 集成 | **418 passed + 1 failed + 3 skipped** (iter_086 实测; 1 failed = picorv32 ELK dangling port, 方豆拍板暂缓; 沙箱 cache 不可写时另有假失败) |
 | `pytest sim/tests/regression` | 94 文件 | 语法金标准 | **766 passed** (iter_076 全绿) |
 | `pytest sim/tests/test_case27_1to1_truth.py` | truth | **1:1 truth (SVG 断言)** | 4 passed |

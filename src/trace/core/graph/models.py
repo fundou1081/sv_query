@@ -573,13 +573,16 @@ class SignalGraph(nx.DiGraph):
         for node_id in self.nodes():
             node = self._node_data.get(node_id)
             if node:
+                # [iter_087] width 可为 None (宽度提取失败的合法 sentinel, graph_builder
+                # 显式传 width=None 的内存位选等节点) — list(None) 会 TypeError,
+                # 序列化必须显式保留 None, 不得伪造 (0,0).
                 nodes_data.append(
                     {
                         "id": node.id,
                         "name": node.name,
                         "module": node.module,
                         "kind": node.kind.name if isinstance(node.kind, NodeKind) else str(node.kind),
-                        "width": list(node.width),
+                        "width": list(node.width) if node.width is not None else None,
                         "bit_range": node.bit_range,
                         "file": node.file,
                         "line": node.line,
@@ -649,12 +652,19 @@ class SignalGraph(nx.DiGraph):
             except (KeyError, TypeError):
                 kind = NodeKind.SIGNAL
 
+            # [iter_087] width 显式 null → 恢复 None (to_dict 现在会写 null);
+            # 旧格式缺 width 键 → 保持原 (0,0) 回退, 不改变历史行为.
+            if "width" in node_dict and node_dict["width"] is None:
+                _width: tuple[int, int] | None = None
+            else:
+                _width = tuple(node_dict.get("width", [0, 0]))
+
             node = TraceNode(
                 id=node_dict["id"],
                 name=node_dict.get("name", ""),
                 module=node_dict.get("module", ""),
                 kind=kind,
-                width=tuple(node_dict.get("width", [0, 0])),
+                width=_width,
                 bit_range=node_dict.get("bit_range"),
                 file=node_dict.get("file", ""),
                 line=node_dict.get("line", 0),

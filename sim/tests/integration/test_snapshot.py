@@ -70,6 +70,28 @@ class TestSignalGraphSerialization(unittest.TestCase):
         self.assertIsNotNone(edge_ab)
         self.assertEqual(edge_ab.kind, EdgeKind.DRIVER)
 
+    def test_roundtrip_width_none_preserved(self):
+        """[iter_087] width=None (未知宽度 sentinel) 序列化往返必须保留 None, 不崩溃
+
+        回归: 内存位选节点 (graph_builder 显式传 width=None) 触发 to_dict 的
+        list(node.width) TypeError → 所有开 cache 的 CLI subprocess 测试 rc=1.
+        金标准:
+        1. 含 width=None 节点的图 to_dict() 不抛 TypeError
+        2. 序列化写 null, 反序列化后 width 仍为 None (不被伪造为 (0,0))
+        """
+        nid = "sync_fifo.mem[wr_ptr_q[$clog2(SIZE)-1:0]]"
+        G = SignalGraph()
+        G.add_trace_node(TraceNode(nid, nid, "sync_fifo", NodeKind.SIGNAL, None))
+
+        d = G.to_dict()  # 修复前: TypeError: 'NoneType' object is not iterable
+        self.assertIsNone(d["nodes"][0]["width"])
+
+        G2 = SignalGraph.from_dict(d)
+        n = G2.get_node(nid)
+        self.assertIsNotNone(n)
+        self.assertIsNone(n.width)
+        self.assertEqual(n.kind, NodeKind.SIGNAL)
+
     def test_roundtrip_with_modport(self):
         """[Golden] 带 modport 信息的图序列化还原
 

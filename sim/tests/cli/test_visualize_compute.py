@@ -23,7 +23,7 @@ def _run_compute(dot_path: Path, sv_content: str) -> tuple[int, str]:
 
     try:
         p = subprocess.run(
-            ["sv_query", "visualize", "compute", "-f", sv_path, "--no-strict", "--dot", str(dot_path)],
+            ["sv_query", "visualize", "compute", "-f", sv_path, "--strict", "--dot", str(dot_path)],
             capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
         )
         return p.returncode, dot_path.read_text() if dot_path.exists() else ""
@@ -131,8 +131,11 @@ module cmp(input [7:0] a, b, c, d, output [7:0] y);
     assign y = (a > b) ? c : d;
 endmodule""")
         assert rc == 0
-        # [V100 SVG 2026-08-13] '>' 转义为 &gt;
-        assert "a &gt; b" in dot or "a > b" in dot or "a&gt;b" in dot, f"Compare not found:\n{dot[:500]}"
+        # [iter_087] V100 SVG 渲染: 比较条件被分解为独立 '&gt;' op 节点, 条件信号
+        # 列在 '?: (a, b)' 标签里 (不再是 DOT 时代的连写边标签 'a > b').
+        # 断言跟随同文件约定 (裸 op 符号, 如 '+' / '&amp;').
+        assert "&gt;" in dot, f"Compare &gt; op not found:\n{dot[:500]}"
+        assert "?: (a, b)" in dot, f"ternary cond label not found:\n{dot[:500]}"
 
     # ── 混合运算 ──
 
