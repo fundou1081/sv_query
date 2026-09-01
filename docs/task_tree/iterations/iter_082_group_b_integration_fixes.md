@@ -59,3 +59,19 @@ real_project_viz 2), 与 test_trace_include_flags 4 个 unit 失败同源。
 - ✅ B 组完成: 2 个断言修复 + 12 个环境定性; integration 可写 HOME 下 0 failed
 - 下一步: C 组 (扩 truth 层 1:1 金标准)
 - 提交: 2 测试文件 + TEST_MAP + L2 任务记录 + 本记录
+
+---
+
+## ⚠️ 事后更正 (2026-09-02, iter_086)
+
+**"12 个环境定性" 中有 2 个是误分类** — test_real_project_viz 的 darkriscv/picorv32
+实际是**真实失败**, 不是 cache 环境问题:
+
+- 根因: 本记录的验证用 `HOME=/tmp/svq_home` 重定向, `~/my_dv_proj/picorv32/...`
+  展开到不存在路径 → 这 2 个测试被动态 `pytest.skip('not found')` 跳过,
+  "0 failed" 未包含它们 (假绿)。
+- darkriscv: 断言过时 (`--dot` 写 SVG, 断言查 'digraph') — iter_086 已修
+- picorv32: ELK dangling port (elk_bridge SignalRef 解析 edge 侧/emit 侧不一致) —
+  iter_086 定位根因, 方豆拍板暂缓
+- 教训: **环境定性结论必须核对 skip 清单**; HOME 重定向会坑 `~` 依赖的测试。
+

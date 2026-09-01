@@ -66,11 +66,21 @@
 | test_benchmark_regression | 1 | variant 值基于旧 baseline 527 (10% drop 变 -33%) | ✅ 修 variant (637/354) |
 | test_human_output | 5 | **sandbox cache 不可写** (~/.svq/cache, HOME 限制) | 🟡 环境问题, 可写 HOME 下 10 passed |
 | test_tree_output | 5 | 同上 (cache 不可写) | 🟡 环境问题, 可写 HOME 下全绿 |
-| test_real_project_viz | 2 | 同上 (cache 不可写) | 🟡 环境问题, 可写 HOME 下全绿 |
+| test_real_project_viz | 2 | ~~同上 (cache 不可写)~~ → **❌ iter_082 误分类, 实为真实失败** (iter_086) | 见下 |
 
-**结论**: 14 个失败 = 2 个真实过时断言 (已修) + 12 个 sandbox 环境 artifact
-(测试本身正确, 本机/CI 有可写 cache 即绿)。B 组"修 integration"实际只剩 2 个
-需要改代码, 其余是环境限制 — 已在 TEST_MAP 基线修正。
+**iter_082 结论 (已被 iter_086 部分推翻)**: 14 个失败 = 2 个真实过时断言 (已修) + 12 个
+sandbox 环境 artifact — **其中 real_project_viz 2 个是误分类**: iter_082 用
+`HOME=/tmp/svq_home` 验证时 `~/my_dv_proj/...` 展开到不存在路径 → 这 2 个测试被动态
+`pytest.skip('not found')` 跳过, "0 failed" 没包含它们。
+
+## B 组复查 (iter_086) — real_project_viz 2 个真实失败
+
+| 项目 | 根因 | 处置 |
+|---|---|---|
+| darkriscv | 断言过时: `--dot` 自 V100 起写 **SVG**, 断言还查 `'digraph'` (DOT 时代残留); CLI 本身 strict 模式可过 | ✅ 断言改 SVG 校验 + 删测试内 --no-strict |
+| picorv32 | **真实管线 bug**: ELK JSON edge 引用 `port_picorv32_axi_dot_mem_axi_bvalid` 但从未 emit (只 emit 深一层 `..._axi_adapter_dot_mem_axi_bvalid`)。根因: expr_tree key 模块级路径 vs viz 端口嵌套路径不一致 + edge 侧/emit 侧 SignalRef fallback 规则不一致。测试自引入 (6e8256c) 从未绿过 | ⏸ **暂缓** (方豆 "elk 先不管"), 根因完整记录在 iter_086 |
+
+**当前基线** (2026-09-02 实测): integration = 418 passed + 1 failed (picorv32 ELK) + 3 skipped
 
 ## C 组完成 (iter_082/083) — 扩 truth 层
 

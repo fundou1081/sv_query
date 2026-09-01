@@ -26,9 +26,9 @@ sv_query_project/
         ├── L3: Fix_v2_recursive_existing/  [FAILED ❌, no effect, port nowhere in graph]
         ├── L3: Fix_v3_emit_instance_ports/  [CLOSED ✅, ROOT CAUSE FIX]
         └── L3: Verify_no_regression/  [CLOSED ✅, all projects pass, golden 5/5]
-└── L1: Test_Assets_ABC/  [✅ CLOSED, 方豆 "先记录 A B C, 我们逐个做"]
+└── L1: Test_Assets_ABC/  [🟡 B 复查中, 方豆 "先记录 A B C, 我们逐个做"]
     ├── L2: A_主路径语法独立regression/  [✅ CLOSED, iter_081: 10 文件 42 测试]
-    ├── L2: B_修integration14失败/  [✅ CLOSED, iter_082: 2 修 + 12 环境定性]
+    ├── L2: B_修integration14失败/  [🟡 REOPENED iter_086: 13/14 完成; 剩 picorv32 ELK dangling port 暂缓 (方豆 "elk 先不管")]
     └── L2: C_扩truth层/  [✅ CLOSED, iter_083: 2 文件 10 测试 + spec 修复]
 ```
 
@@ -59,6 +59,7 @@ sv_query_project/
 | **19** | **2026-09-01** | **L2** | **id() 复用模式全仓扫描 (iter_075 承诺跟进)** | **扫 src/ 找 id(n) seen/key 非确定源** | **7 处模式逐一定性** | **✅ 全部安全 (同一 AST 树存活); 仅 class_graph_builder 是越界案例 (已修); 零代码改动** | **✅** |
 | **20** | **2026-09-01** | **L2** | **测试资产梳理 (TEST_MAP 重梳)** | **实测统计 + 功能域分类** | **301 文件 2997 测试** | **✅ TEST_MAP 重写, 引用全验证; TECH_MAP 同步实测口径; 核心回归集 38/317 ~19s; test_nested_diff 修复** | **✅** |
 | **21** | **2026-09-01** | **L1** | **Test_Assets_ABC (方豆 "先记录 A B C")** | **A 主路径语法 regression + B 修 integration + C 扩 truth** | **A: 10 文件 42 测试 (iter_081) / B: 2 断言修复+12 环境定性, integration 0 failed (iter_082) / C: 2 truth 文件 10 测试 + spec 幽灵文件修复 (iter_083)** | **✅ A/B/C 全部完成, regression 808 + truth 28 passed** | **✅** |
+| **22** | **2026-09-02** | **L1** | **B 组复查 (方豆 "确认下状态")** | **验证 iter_082 "0 failed" 是否可信** | **实测 integration 417+2 failed+3 skipped** | **iter_082 误分类: real_project_viz 2 个是真实失败 (HOME 重定向使 ~ 路径失效被动态 skip 造成假绿); darkriscv 断言已修 (--svg), picorv32 ELK 根因定位 (SignalRef 解析不一致) 方豆拍板暂缓** | **⚠️ 部分** |
 
 ---
 
