@@ -22,27 +22,15 @@
 
 ## 🔥 当前任务
 
-**任务**: truth 层扩充 T1-T12(方豆 "按这个顺序来推进吧" — 1:1 golden 缺口补齐)
-详见 [L3_truth_expansion.md](docs/task_tree/tasks/L3_truth_expansion.md)
+**(无 — 最近任务已完成, 见下方归档; 待方豆指示下一个任务)**
 
-- [x] T1: assign 链基础数据流 (#1/#5) — test_assign_chain_truth 9 passed (iter_088)
-- [x] T2: always_ff + clock/reset (#2) — test_clock_reset_truth 9 passed (iter_089)
-- [x] T3: case 多分支条件边 (#7) — test_case_branch_truth 8 passed (iter_090)
-- [x] T4: 位选 RHS/LHS (#8/#9) — test_bit_select_truth 10 passed (iter_091)
-- [x] T5: concat RHS (#10) — test_concat_truth 3 passed (iter_092); LHS 位置映射 bug 已记录
-- [x] T6: function/task 调用 (#13/#14) — test_function_task_truth 6 passed (iter_093) + fixture 32
-- [x] T7: parameter/localparam 过滤 (#17) — test_parameter_filter_truth 5 passed (iter_094) + fixture 33
-- [x] T8: alias 方向语义 (#12) — test_alias_truth 3 passed (iter_095) + fixture 34
-- [x] T9: class OOP (#16) — test_class_oop_truth 4 passed (iter_096) + fixture 35
-- [x] T10: generate-if/case 分支选择 (#23/#24) — test_generate_if_case_truth 6 passed (iter_097)
-- [x] T11: L4 SVG 布局 golden (非 generate) — test_layout_truth 9 passed (iter_098)
-- [x] T12: trace 查询精确 driver 集 — test_query_truth 8 passed (iter_099)
+## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 
-**已完成 (本会话前期, 已 commit)**:
-- B 组复查收尾 (iter_086, 05dcdd4): darkriscv SVG 断言 + 删 --no-strict + 文档更正
-- cli 3 失败修复 (iter_087, 5511c2e): models.py width=None 序列化根因 + SVG 断言 + 纪律
-
----
+| 完成时间 | 任务 | 产出 |
+|---|---|---|
+| **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture (golden_dataflow_32~35), truth 层 32→112 测试 (108 passed + 4 既有 skip) 全绿: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_088~100](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
+| **2026-09-02** | **cli 3 失败修复** | models.py width=None 序列化根因 + SVG 断言 + --no-strict→--strict; unit+cli 1484 passed 全绿. [iter_087](docs/task_tree/iterations/iter_087_cli_3_failures_fix.md) |
+| **2026-09-02** | **B 组复查 (real_project_viz)** | iter_082 误分类纠正; darkriscv SVG 断言修复 + 删 --no-strict; picorv32 ELK 根因定位 (暂缓). [iter_086](docs/task_tree/iterations/iter_086_group_b_recheck_real_project_viz.md) |
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
 
 | 完成时间 | 任务 | 产出 |
