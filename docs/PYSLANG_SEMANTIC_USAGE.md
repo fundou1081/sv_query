@@ -268,7 +268,7 @@ str(getattr(node, "kind", ""))       # kind 转字符串判断 (contains 匹配)
 
 ---
 
-## 7. 未来方向 (用户 2026-06-25 记录, 未实施)
+## 7. 未来方向 (用户 2026-06-25 记录) — ✅ 已实施 (iter_053~059, 2026-08-29)
 
 pyslang 11.0.0 提供完整 native API 可简化很多当前手写逻辑：
 - `root.topInstances`（顶层 InstanceSymbol 列表）
@@ -277,6 +277,19 @@ pyslang 11.0.0 提供完整 native API 可简化很多当前手写逻辑：
 - `inst.portConnections`（端口连接列表，**替代 sv_query 自建 MIG**）
 - `inst.visit(callback)`（visitor pattern）
 
-**预期收益**: 性能 4x+（CVA6 265ms→60ms）、消除 namespace rewrite、代码更简单。
+**实施结果** (ARCHITECTURE_TODOLIST #7, iter_053~059):
+- ✅ `get_module_instances()` 内部切 native 枚举 (`native_adapter.get_module_instances_native`),
+  用 **SemanticInstanceWrapper 包装** (返回类型零变化, 5 个生产调用方零改动)
+- ✅ `MIG.build` 实例枚举切 native (`instance_source="auto"` 默认 native)
+- ✅ 删 SyntaxTree 死代码 ~920 行 (MIG 1110→374)
+- ✅ GAP-1~7 全处理 (generate parent / InstanceArray / target=None 过滤+短路 /
+  elaboration 垃圾实例过滤)
+- ✅ 真实项目等价性 3/6 (darkriscv EQUIVALENT / zipcpu / riscv_core GAP-4 已接受;
+  cva6 / coralnpu / vortex 编译不过 → 按方豆指示移出测试项)
+- ⚠️ **性能实测 2.14x** (verilog-axi 枚举级 641→300ms), 未达 2026-06-25 预估的
+  4x+ (预估基准 CVA6 265→60ms, 但 CVA6 编译不过无法复测); 全管线 build_time
+  受其他改动干扰无法归因 (iter_059 诚实记录)
+- ⚠️ **namespace rewrite 已消除** — 但机制是 `SemanticAdapter(target_module=...)`
+  auto-filter (arch.py, 2026-07-11), 而非 native API 本身
 
-**⚠️ 暂不做，等用户指示**（2026-06-25 21:38 "先记录下来"）。
+**旧记录 (2026-06-25 21:38 "先记录下来")** — 已于 2026-08-29 实施, 见上。
