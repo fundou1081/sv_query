@@ -36,7 +36,7 @@
 - [x] T9: class OOP (#16) — test_class_oop_truth 4 passed (iter_096) + fixture 35
 - [x] T10: generate-if/case 分支选择 (#23/#24) — test_generate_if_case_truth 6 passed (iter_097)
 - [x] T11: L4 SVG 布局 golden (非 generate) — test_layout_truth 9 passed (iter_098)
-- [ ] T12: trace 查询精确 driver 集
+- [x] T12: trace 查询精确 driver 集 — test_query_truth 8 passed (iter_099)
 
 **已完成 (本会话前期, 已 commit)**:
 - B 组复查收尾 (iter_086, 05dcdd4): darkriscv SVG 断言 + 删 --no-strict + 文档更正
