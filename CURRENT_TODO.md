@@ -32,7 +32,7 @@
 - [x] T5: concat RHS (#10) — test_concat_truth 3 passed (iter_092); LHS 位置映射 bug 已记录
 - [x] T6: function/task 调用 (#13/#14) — test_function_task_truth 6 passed (iter_093) + fixture 32
 - [x] T7: parameter/localparam 过滤 (#17) — test_parameter_filter_truth 5 passed (iter_094) + fixture 33
-- [ ] T8: alias 方向语义 (#12)
+- [x] T8: alias 方向语义 (#12) — test_alias_truth 3 passed (iter_095) + fixture 34
 - [ ] T9: class 成员 DRIVER 边 (#16) — C 组遗留
 - [ ] T10: generate-if/case 内 wire (#23/#24)
 - [ ] T11: L4 SVG 布局 golden (非 generate)
