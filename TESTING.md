@@ -63,6 +63,25 @@ python -m pytest sim/tests/unit/ -v
 | ventus 开源项目测试 | 🟡 opensource | pytest marker `opensource`，本地跳过 |
 | picorv32/naplespu 项目测试 | 🟡 opensource | 已有 `skipif` |
 | `/tmp/cdc_test/` fixture 依赖 | 🟡 runtime | conftest.py 可加 fixture setup |
+| `~/.svq/cache` 不可写 (沙箱/受限 HOME) | 🔴 env (iter_082 发现) | CLI subprocess 测试全报 rc=1 假失败; 用 `HOME=/tmp/svq_home` 重定向验证 |
+
+### 沙箱 / 受限环境验证手段 (iter_082 定型)
+
+`ast_cache.py:30` 的 `CACHE_DIR = Path.home() / ".svq" / "cache"` — 当运行环境的
+HOME 不可写 (如沙箱), 所有走 `run_cli.py` subprocess 的测试 (human_output /
+tree_output / real_project_viz / trace_include_flags 等) 会报
+`Operation not permitted: ~/.svq/cache/...` 假失败, **不是代码回归**。
+
+**验证方法** (沙箱内跑 CLI 测试):
+
+```bash
+mkdir -p /tmp/svq_home/.svq/cache
+HOME=/tmp/svq_home python3 -m pytest sim/tests/integration -q
+# → 417 passed + 5 skipped, 0 failed (2026-09-01 实测)
+```
+
+**判定原则**: 失败信息含 `Operation not permitted` / `~/.svq/cache` → 先按环境
+限制排除, 再判断是否为真回归。可写 HOME 下全绿 = 测试正确。
 
 ## 2026-07-29 修复记录
 
