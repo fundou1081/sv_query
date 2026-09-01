@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-02 GMT+8 (B 组复查: 2 个 real_project_viz 实为真实失败, darkriscv 已修)
+> **最后更新**: 2026-09-02 GMT+8 (truth 层扩充 T1-T12 开始)
 
 ---
 
@@ -22,32 +22,25 @@
 
 ## 🔥 当前任务
 
-**任务**: B 组复查收尾 — real_project_viz 2 个真实失败 (方豆 "elk 先不管, 其他的先修")
-详见 [L2_test_assets_abc.md](docs/task_tree/tasks/L2_test_assets_abc.md)
+**任务**: truth 层扩充 T1-T12(方豆 "按这个顺序来推进吧" — 1:1 golden 缺口补齐)
+详见 [L3_truth_expansion.md](docs/task_tree/tasks/L3_truth_expansion.md)
 
-**B — 修 integration 14 个 pre-existing 失败** 🟡 **复查中** (iter_086 重新打开):
-- [x] 2 个真实过时断言已修 (benchmark nodes 400-700→600-800; variant 527→708) — iter_082
-- [x] 10 个 sandbox cache 环境 artifact 已验证 (human_output 5 + tree_output 5, 可写 HOME 下通过) — iter_082 + iter_086 实测复核
-- [x] darkriscv 断言过时已修 (--svg 输出 SVG, 原断言查 'digraph') + 删测试内 --no-strict — iter_086
-- [ ] picorv32 ELK dangling port (elk_bridge SignalRef 解析不一致) — ⏸ 方豆拍板暂缓, 根因已定位 (iter_086)
-- [x] 文档更正: TEST_MAP §0 / TESTING.md 警告 / iter_086 / overview
+- [x] T1: assign 链基础数据流 (#1/#5) — test_assign_chain_truth 9 passed (iter_088)
+- [ ] T2: always_ff + clock/reset (#2) — CLOCK/RESET 边精确结构
+- [ ] T3: case 多分支条件边 (#7) — golden_dataflow_9_case / 16 / 17
+- [ ] T4: 位选 RHS/LHS (#8/#9) — bit-range 保留
+- [ ] T5: concat LHS/RHS (#10/#11)
+- [ ] T6: function/task 调用 (#13/#14) — 含 iter_076 task 形参映射
+- [ ] T7: parameter/localparam 过滤 (#17) — 反例式 golden
+- [ ] T8: alias 方向语义 (#12)
+- [ ] T9: class 成员 DRIVER 边 (#16) — C 组遗留
+- [ ] T10: generate-if/case 内 wire (#23/#24)
+- [ ] T11: L4 SVG 布局 golden (非 generate)
+- [ ] T12: trace 查询精确 driver 集
 
-**A — 补主路径语法独立 regression** ✅ **完成** (iter_081, 10 文件 42 测试):
-- [x] assign / always_comb / wire 顶层 / 拼接 / alias / 三元 / parameter / generate-for 独立文件
-- [x] 每个文件 ≥3 测试 (正例边断言 + 反例 + 有效性)
-
-**C — 扩 truth 层 1:1 金标准** ✅ **完成** (iter_083, commit 7f1b300):
-- [x] test_generate_for_chain_truth (6) + test_cross_module_truth (4)
-- [x] 顺带修 spec 幽灵文件 (replication LHS fixture + 断言)
-
-**迭代记录**: iter_087 (最近)
-
-**附带 (iter_086 全量回归顺带发现, 方豆 "新发现的3个也改一下")** ✅ **完成** (iter_087):
-- [x] models.py to_dict/from_dict 支持 width=None 往返 — cache 序列化根因 (trace fanin/fanout
-      'NoneType' 崩溃); +1 序列化回归测试 (test_snapshot)
-- [x] test_compare_greater_appears 断言更新 (V100 SVG 结构: &gt; op + ?: 标签)
-- [x] test_picorv32_validation / test_visualize_compute 的 --no-strict → --strict (纪律)
-- [x] unit+cli 全量 1484 passed 全绿
+**已完成 (本会话前期, 已 commit)**:
+- B 组复查收尾 (iter_086, 05dcdd4): darkriscv SVG 断言 + 删 --no-strict + 文档更正
+- cli 3 失败修复 (iter_087, 5511c2e): models.py width=None 序列化根因 + SVG 断言 + 纪律
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

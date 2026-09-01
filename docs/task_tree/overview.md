@@ -30,6 +30,8 @@ sv_query_project/
     ├── L2: A_主路径语法独立regression/  [✅ CLOSED, iter_081: 10 文件 42 测试]
     ├── L2: B_修integration14失败/  [🟡 REOPENED iter_086: 13/14 完成; 剩 picorv32 ELK dangling port 暂缓 (方豆 "elk 先不管")]
     └── L2: C_扩truth层/  [✅ CLOSED, iter_083: 2 文件 10 测试 + spec 修复]
+└── L1: Truth_层扩充_T1-T12/  [🟡 ACTIVE, 方豆 "按这个顺序来推进吧"]
+    └── L3: Truth_expansion/  [🟡 ACTIVE, iter_088+ 逐个 T#]
 ```
 
 ---
