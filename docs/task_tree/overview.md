@@ -26,6 +26,10 @@ sv_query_project/
         ├── L3: Fix_v2_recursive_existing/  [FAILED ❌, no effect, port nowhere in graph]
         ├── L3: Fix_v3_emit_instance_ports/  [CLOSED ✅, ROOT CAUSE FIX]
         └── L3: Verify_no_regression/  [CLOSED ✅, all projects pass, golden 5/5]
+└── L1: Test_Assets_ABC/  [ACTIVE 🟡, 方豆 "先记录 A B C, 我们逐个做"]
+    ├── L2: A_主路径语法独立regression/  [🟡 进行中]
+    ├── L2: B_修integration14失败/  [⬜ 待做]
+    └── L2: C_扩truth层/  [⬜ 待做]
 ```
 
 ---
@@ -53,6 +57,8 @@ sv_query_project/
 | **17** | **08:50** | **L2** | **iter_064~066 行为断言升级** | **4 域测试行为断言补齐 (4 并行 subagent)** | **103 测试升级** | **✅ constraint 7 / covergroup 22 / sva 11 / module 63 全过; regression 781 passed (2 pre-existing)** | **✅** |
 | **18** | **2026-09-01** | **L2** | **C 组功能缺口 #41-#44 (方豆 "一起做")** | **修 EXTRACTION_COVERAGE #41-#44** | **#41 class 方法体赋值 / #42-#43 task 调用站点形参映射 / #44 DPI 评估** | **✅ #41 (iter_075) + #42/#43 (iter_076) 已修, 2 新测试 + 1 升级, regression 766 passed; #44 期望行为不修** | **✅** |
 | **19** | **2026-09-01** | **L2** | **id() 复用模式全仓扫描 (iter_075 承诺跟进)** | **扫 src/ 找 id(n) seen/key 非确定源** | **7 处模式逐一定性** | **✅ 全部安全 (同一 AST 树存活); 仅 class_graph_builder 是越界案例 (已修); 零代码改动** | **✅** |
+| **20** | **2026-09-01** | **L2** | **测试资产梳理 (TEST_MAP 重梳)** | **实测统计 + 功能域分类** | **301 文件 2997 测试** | **✅ TEST_MAP 重写, 引用全验证; TECH_MAP 同步实测口径; 核心回归集 38/317 ~19s; test_nested_diff 修复** | **✅** |
+| **21** | **2026-09-01** | **L1** | **Test_Assets_ABC 启动 (方豆 "先记录 A B C")** | **记录 A/B/C 三阶段缺口** | **A 主路径语法独立 regression / B 修 integration 14 失败 / C 扩 truth** | **🟡 已记录, A 进行中** | **🟡** |
 
 ---
 

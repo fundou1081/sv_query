@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-01 GMT+8 (C 组功能缺口 #41-#44 完成)
+> **最后更新**: 2026-09-01 GMT+8 (测试资产补强 A/B/C 启动)
 
 ---
 
@@ -22,15 +22,22 @@
 
 ## 🔥 当前任务
 
-**任务**: (无 — C 组功能缺口 #41-#44 完成)
+**任务**: 测试资产补强 A/B/C (方豆 "先记录 A B C, 我们逐个做")
+详见 [L2_test_assets_abc.md](docs/task_tree/tasks/L2_test_assets_abc.md)
 
-**C 组功能缺口修复** (iter_075 + iter_076, 方豆 "一起做"):
-- [x] #41: class 方法体赋值 → 成员 DRIVER 边 (iter_075, commit 738a53d)
-- [x] #42: task 调用站点 output 实参 → 真边 din→dout (iter_076)
-- [x] #43: task 多语句体内部驱动独立映射 (iter_076)
-- [x] #44: DPI 评估 — 期望行为, 记录不修 (iter_075/076)
+**A — 补主路径语法独立 regression** (进行中):
+- [ ] assign / always_comb / wire 顶层 / 拼接 / alias / 三元 / parameter / generate-for
+      各建独立 regression 行为断言文件 (对齐 constraint/covergroup 密度)
+- [ ] 每个文件 ≥3 测试 (正例边断言 + 反例 + 有效性)
 
-**迭代记录**: iter_076 (最近)
+**B — 修 integration 14 个 pre-existing 失败** (待做):
+- [ ] benchmark_picorv32 / benchmark_regression / human_output(4) / tree_output(5) /
+      real_project_viz(2) 逐个诊断 (fixture/功能/断言 归因顺序)
+
+**C — 扩 truth 层 1:1 金标准** (待做):
+- [ ] case27 之外的模块 1:1 truth
+
+**迭代记录**: iter_080 (最近, A/B/C 记录在 L2_test_assets_abc.md)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
