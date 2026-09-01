@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-01 GMT+8 (测试资产补强 A/B/C 启动)
+> **最后更新**: 2026-09-01 GMT+8 (测试资产补强 A/B/C 全部完成)
 
 ---
 
@@ -30,14 +30,15 @@
       各建独立 regression 行为断言文件 (对齐 constraint/covergroup 密度)
 - [ ] 每个文件 ≥3 测试 (正例边断言 + 反例 + 有效性)
 
-**B — 修 integration 14 个 pre-existing 失败** (待做):
-- [ ] benchmark_picorv32 / benchmark_regression / human_output(4) / tree_output(5) /
-      real_project_viz(2) 逐个诊断 (fixture/功能/断言 归因顺序)
+**B — 修 integration 14 个 pre-existing 失败** ✅ **完成** (iter_082, commit 53cd1b2):
+- [x] 2 个真实过时断言已修 (benchmark nodes 400-700→600-800; variant 527→708)
+- [x] 12 个 sandbox cache 环境 artifact 已定性 (可写 HOME 下 integration 417 passed + 5 skipped, 0 failed)
 
-**C — 扩 truth 层 1:1 金标准** (待做):
-- [ ] case27 之外的模块 1:1 truth
+**C — 扩 truth 层 1:1 金标准** ✅ **完成** (iter_083, commit 7f1b300):
+- [x] test_generate_for_chain_truth (6) + test_cross_module_truth (4)
+- [x] 顺带修 spec 幽灵文件 (replication LHS fixture + 断言)
 
-**迭代记录**: iter_080 (最近, A/B/C 记录在 L2_test_assets_abc.md)
+**迭代记录**: iter_083 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
