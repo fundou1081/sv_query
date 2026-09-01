@@ -2,7 +2,7 @@
 
 > **目的**: 全仓 301 个测试文件的用途地图 — 用于筛选"哪些测试用于哪些目的"。
 > **范围**: 所有测试文件 (含 POC / 探索 / 收集范围外的), 按目录 + 功能域分类。
-> **统计**: 311 文件, 3039 测试函数 (pytest --collect-only 实测, 2026-09-01)。
+> **统计**: 313 文件, 3049 测试函数 (pytest --collect-only 实测, 2026-09-01)。
 > **收集范围**: `pyproject.toml testpaths = ["sim/tests"]` — **sim/ 根、scripts/debug、docs 下的测试不在 pytest 自动收集范围** (手动/特定命令跑)。
 > **版本**: iter_061 初版 (317/3033) → iter_078 重梳 (301/2997, 反映 iter_062~078 行为断言升级 + 新增测试 + 清理)。
 
@@ -19,7 +19,7 @@
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 404 passed + 14 pre-existing 失败 |
 | **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | 385 passed + 4 沙箱 env 失败 |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
-| **truth** (3 文件) | 1:1 金标准 | 22 | SVG 断言 / generate flatten / spec 不支持语法 | 22 passed |
+| **truth** (5 文件) | 1:1 金标准 | 32 | SVG/图 1:1 断言 (case27/generate-for 链/跨模块) + generate flatten + spec 不支持语法 | **32 passed** (iter_082 C 组 +10) |
 | **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
 
 **按运行场景选择**:
@@ -41,7 +41,7 @@
 | `sim/tests/integration` | 52 | 422 | 跨模块集成 + 端到端 | ✅ 自动 |
 | `sim/tests/cli` | 46 | 389 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
 | `sim/tests/usage` | 10 | 298 | 真实项目/大型场景 (部分 slow) | ✅ 自动 (慢) |
-| `sim/tests/` (根, 3 文件) | 3 | 22 | truth 层 (SVG 断言) + spec golden + generate flatten | ✅ 自动 |
+| `sim/tests/` (根, 5 文件) | 5 | 32 | truth 层 (SVG/图 1:1 断言) + spec golden + generate flatten | ✅ 自动 |
 | `sim/tests/poc` | 1 | 5 | POC 验证 (native portConnections, #7 用) | ✅ 自动 |
 | `scripts/debug` | 2 | 0 | 探索性脚本 (非正式测试) | ❌ 不收集 |
 | `docs/openchip_qa_test.py` | 1 | 1 | QA 脚本 (OpenChip 验证) | ❌ 不收集 |

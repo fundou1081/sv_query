@@ -110,12 +110,19 @@ class TestKnownSvStandardForbidden:
     """
 
     def test_replication_lhs_is_sv_illegal(self):
-        """`{4{a}, 4{b}, 4{c}} = q` 是 SV 非法语法 (expression is not allowed as statement)."""
+        """`{4{q}} = q` 是 SV 非法语法 (replication 不能作 LHS).
+
+        [iter_082 fix] 原测试引用 /tmp/spec_probe_repl_lhs.sv (幽灵文件, 从未创建);
+        且断言消息 "expression is not allowed as a statement" 是错误文本 —
+        pyslang 实测报 [ExpressionNotAssignable] / "expression is not assignable".
+        改用 spec_golden/probe_repl_lhs.sv (与 probe_replication_rhs.sv 对称).
+        """
         proc = subprocess.run(
             [sys.executable, 'run_cli.py', 'stats',
-             '--file', '/tmp/spec_probe_repl_lhs.sv', '--json'],
+             '--file', str(FIXTURE_DIR / 'probe_repl_lhs.sv'), '--json'],
             cwd=REPO, capture_output=True, text=True, timeout=60,
         )
-        # 期望: elaboration error, NOT a clean JSON
-        assert 'error: expression is not allowed as a statement' in proc.stderr, \
-            f"期望 SV 标准禁止 Replication-LHS, got stderr: {proc.stderr[-300:]}"
+        # 期望: elaboration error (ExpressionNotAssignable), NOT a clean JSON
+        combined = proc.stderr + proc.stdout
+        assert 'ExpressionNotAssignable' in combined, \
+            f"期望 SV 标准禁止 Replication-LHS (ExpressionNotAssignable), got: {combined[-300:]}"
