@@ -59,3 +59,32 @@
 
 - ✅ SIGNAL_GRAPH_TECH_TEST_MAP.md 刷新完成 (实测口径)
 - 提交: docs/SIGNAL_GRAPH_TECH_TEST_MAP.md + 本迭代记录
+
+---
+
+## 🔬 追加 (同日): Signal Graph 核心回归集筛选 (方豆 "要挑选哪些 test?")
+
+### 筛选方法
+
+按 signal graph 核心链路 (semantic_adapter → extractors (driver/connection/mig/bit_select)
+→ expr_tree → graph_builder → graph models → signal_tracer), 从 TECH_MAP 实测引用中
+挑出每项底层技术 ≥1 个直接测试 + 金标准行为文件, 共 39 文件。
+
+### 验证结果
+
+- **38 文件 / 317 测试全绿 / ~19s** (2026-09-01 实测)
+- 1 个失败隔离: `integration/test_bitselect_handler_diff.py::test_nested_diff`
+
+### 发现: test_nested_diff 双重纪律问题 (pre-existing)
+
+1. **fixture 非法 SV**: `data[3:0][1:0]` — pyslang strict 拒绝
+   (SelectAfterRangeSelect, "cannot chain select expressions after a range select")。
+   实测确认 `d[0][1:0]` (element 后 chain) 合法, `d[3:0][1:0]` (range 后 chain) 非法。
+   测试意图"多维位选嵌套"应该用 element 嵌套写, fixture 本身是语法错误。
+2. **路径 B 用 `strict=False`** (L147) — 违反 AGENTS.md 纪律 #1。
+   文件是 iter_035/036 (#2 BitSelect 改造) 时代遗留, 未在 iter_064 纪律升级时清理。
+
+**影响面**: integration 全量 404 passed + 15 failed (pre-existing; iter_058 记录 baseline 13,
+现 15 = 含此 diff 相关 + benchmark/human_output/tree_output 等既有), 非本集引入。
+
+**处置建议**: 单独迭代修 fixture (改合法嵌套写法 + 去 strict=False), 不阻塞核心集。
