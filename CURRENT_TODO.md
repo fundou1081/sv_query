@@ -33,7 +33,7 @@
 - [x] T6: function/task 调用 (#13/#14) — test_function_task_truth 6 passed (iter_093) + fixture 32
 - [x] T7: parameter/localparam 过滤 (#17) — test_parameter_filter_truth 5 passed (iter_094) + fixture 33
 - [x] T8: alias 方向语义 (#12) — test_alias_truth 3 passed (iter_095) + fixture 34
-- [ ] T9: class 成员 DRIVER 边 (#16) — C 组遗留
+- [x] T9: class OOP (#16) — test_class_oop_truth 4 passed (iter_096) + fixture 35
 - [ ] T10: generate-if/case 内 wire (#23/#24)
 - [ ] T11: L4 SVG 布局 golden (非 generate)
 - [ ] T12: trace 查询精确 driver 集
