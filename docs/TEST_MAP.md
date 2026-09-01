@@ -2,7 +2,7 @@
 
 > **目的**: 全仓 301 个测试文件的用途地图 — 用于筛选"哪些测试用于哪些目的"。
 > **范围**: 所有测试文件 (含 POC / 探索 / 收集范围外的), 按目录 + 功能域分类。
-> **统计**: 301 文件, 2997 测试函数 (pytest --collect-only 实测, 2026-09-01)。
+> **统计**: 311 文件, 3039 测试函数 (pytest --collect-only 实测, 2026-09-01)。
 > **收集范围**: `pyproject.toml testpaths = ["sim/tests"]` — **sim/ 根、scripts/debug、docs 下的测试不在 pytest 自动收集范围** (手动/特定命令跑)。
 > **版本**: iter_061 初版 (317/3033) → iter_078 重梳 (301/2997, 反映 iter_062~078 行为断言升级 + 新增测试 + 清理)。
 
@@ -15,7 +15,7 @@
 | 层 | 范围 | 测试数 | 回答什么问题 | 基线 (2026-09-01) |
 |---|---|---|---|---|
 | **unit** (95 文件) | 单模块/单函数 | 1095 | 每个提取器/构建器/分析器**单元**行为正确 | 1091 passed + 4 沙箱 env 失败 |
-| **regression** (94 文件) | SV 语法点金标准 | 766 | 每种**语法** (assign/always/if/case/class/constraint...) 的 DRIVER/CONSTRAINS 边 | **766 passed** |
+| **regression** (104 文件) | SV 语法点金标准 | 808 | 每种**语法** (assign/always/if/case/class/constraint...) 的 DRIVER/CONSTRAINS 边 | **808 passed** (iter_081 +42) |
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 404 passed + 14 pre-existing 失败 |
 | **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | 385 passed + 4 沙箱 env 失败 |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
@@ -24,7 +24,7 @@
 
 **按运行场景选择**:
 - **快速核心回归** (signal graph 链路, ~19s): 38 文件 317 测试 → §3.5
-- **标准回归** (unit+regression, ~1min): 189 文件 1861 测试 — 覆盖"单元 + 语法金标准"
+- **标准回归** (unit+regression, ~1min): 199 文件 1903 测试 — 覆盖"单元 + 语法金标准"
 - **完整回归** (全 6 层, ~5min+): 301 文件 2997 测试 — 含 CLI/集成/真实项目/truth
 
 **各层不可互相替代**: 一个语法点只在 regression 测 (行为断言), 其底层提取逻辑在 unit
@@ -37,7 +37,7 @@
 | 目录 | 文件 | 测试函数 | 角色 | 收集状态 |
 |---|---|---|---|---|
 | `sim/tests/unit` | 95 | 1095 | 单元测试 — 单模块/单函数级, TDD | ✅ 自动 |
-| `sim/tests/regression` | 94 | 766 | 语法覆盖 + 金标准回归 (铁律13) | ✅ 自动 |
+| `sim/tests/regression` | 104 | 808 | 语法覆盖 + 金标准回归 (铁律13) | ✅ 自动 |
 | `sim/tests/integration` | 52 | 422 | 跨模块集成 + 端到端 | ✅ 自动 |
 | `sim/tests/cli` | 46 | 389 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
 | `sim/tests/usage` | 10 | 298 | 真实项目/大型场景 (部分 slow) | ✅ 自动 (慢) |
