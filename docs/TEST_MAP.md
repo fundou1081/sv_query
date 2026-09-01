@@ -19,7 +19,7 @@
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 418 passed + 1 failed (picorv32 ELK, 暂缓) + 3 skipped (iter_086) |
 | **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | **389 passed** (iter_087: cache 序列化根因修复后全绿) |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
-| **truth** (5 文件) | 1:1 金标准 | 32 | SVG/图 1:1 断言 (case27/generate-for 链/跨模块) + generate flatten + spec 不支持语法 | **32 passed** (iter_082 C 组 +10) |
+| **truth** (17 文件) | 1:1 金标准 | 112 | 1:1 golden: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集 + generate flatten + spec 不支持语法 | **108 passed + 4 既有 skip** (iter_100 T1-T12 全绿) |
 | **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
 
 **按运行场景选择**:
@@ -41,7 +41,7 @@
 | `sim/tests/integration` | 52 | 422 | 跨模块集成 + 端到端 | ✅ 自动 |
 | `sim/tests/cli` | 46 | 389 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
 | `sim/tests/usage` | 10 | 298 | 真实项目/大型场景 (部分 slow) | ✅ 自动 (慢) |
-| `sim/tests/` (根, 5 文件) | 5 | 32 | truth 层 (SVG/图 1:1 断言) + spec golden + generate flatten | ✅ 自动 |
+| `sim/tests/` (根, 17 文件) | 17 | 112 | truth 层 (SVG/图 1:1 断言) + spec golden + generate flatten | ✅ 自动 |
 | `sim/tests/poc` | 1 | 5 | POC 验证 (native portConnections, #7 用) | ✅ 自动 |
 | `scripts/debug` | 2 | 0 | 探索性脚本 (非正式测试) | ❌ 不收集 |
 | `docs/openchip_qa_test.py` | 1 | 1 | QA 脚本 (OpenChip 验证) | ❌ 不收集 |
@@ -187,8 +187,24 @@
 | 文件 | 测试数 | 角色 |
 |---|---|---|
 | `test_case27_1to1_truth.py` | 4 | **1:1 truth** (SVG 断言, case27 金标准) |
+| `test_generate_for_chain_truth.py` | 6 | 1:1 truth — 3 级 generate-for 链精确节点/边 (iter_083) |
+| `test_cross_module_truth.py` | 4 | 1:1 truth — 跨模块端口连接 (iter_083) |
 | `test_d1_generate_flatten_signal_set.py` | 11 | generate flatten 信号集 (D1) |
 | `test_spec_unsupported_syntax.py` | 7 | spec 不支持的语法 (预期失败语义) |
+| `test_assign_chain_truth.py` | 9 | [T1] assign/wire 链精确结构 (iter_088) |
+| `test_clock_reset_truth.py` | 9 | [T2] always_ff + CLOCK/RESET 条件边 (iter_089) |
+| `test_case_branch_truth.py` | 8 | [T3] case 分支条件边 + 字面量归一化 (iter_090) |
+| `test_bit_select_truth.py` | 10 | [T4] BIT_SELECT 回边 + bit_slice (iter_091) |
+| `test_concat_truth.py` | 3 | [T5] RHS 拼接无跨边 (iter_092) |
+| `test_function_task_truth.py` | 6 | [T6] function 调用 + task 形参真边 (iter_093) |
+| `test_parameter_filter_truth.py` | 5 | [T7] parameter 过滤反例式 (iter_094) |
+| `test_alias_truth.py` | 3 | [T8] alias 方向 source→target (iter_095) |
+| `test_class_oop_truth.py` | 4 | [T9] class 三件套 + 方法体成员边 (iter_096) |
+| `test_generate_if_case_truth.py` | 6 | [T10] generate 编译期分支选择 (iter_097) |
+| `test_layout_truth.py` | 9 | [T11] SVG 渲染结构 (op/信号分类) (iter_098) |
+| `test_query_truth.py` | 8 | [T12] fanin/fanout 精确驱动集 (iter_099) |
+
+**合计**: 17 文件 / 112 测试 (iter_100 T1-T12 后: 108 passed + 4 既有 skip)
 
 ---
 

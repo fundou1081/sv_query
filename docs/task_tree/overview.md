@@ -30,8 +30,8 @@ sv_query_project/
     ├── L2: A_主路径语法独立regression/  [✅ CLOSED, iter_081: 10 文件 42 测试]
     ├── L2: B_修integration14失败/  [🟡 REOPENED iter_086: 13/14 完成; 剩 picorv32 ELK dangling port 暂缓 (方豆 "elk 先不管")]
     └── L2: C_扩truth层/  [✅ CLOSED, iter_083: 2 文件 10 测试 + spec 修复]
-└── L1: Truth_层扩充_T1-T12/  [🟡 ACTIVE, 方豆 "按这个顺序来推进吧"]
-    └── L3: Truth_expansion/  [🟡 ACTIVE, iter_088+ 逐个 T#]
+└── L1: Truth_层扩充_T1-T12/  [✅ CLOSED, iter_088~100: 12 文件 + 5 fixture, truth 32→112]
+    └── L3: Truth_expansion/  [✅ CLOSED, 全绿]
 ```
 
 ---
@@ -63,6 +63,7 @@ sv_query_project/
 | **21** | **2026-09-01** | **L1** | **Test_Assets_ABC (方豆 "先记录 A B C")** | **A 主路径语法 regression + B 修 integration + C 扩 truth** | **A: 10 文件 42 测试 (iter_081) / B: 2 断言修复+12 环境定性, integration 0 failed (iter_082) / C: 2 truth 文件 10 测试 + spec 幽灵文件修复 (iter_083)** | **✅ A/B/C 全部完成, regression 808 + truth 28 passed** | **✅** |
 | **22** | **2026-09-02** | **L1** | **B 组复查 (方豆 "确认下状态")** | **验证 iter_082 "0 failed" 是否可信** | **实测 integration 417+2 failed+3 skipped** | **iter_082 误分类: real_project_viz 2 个是真实失败 (HOME 重定向使 ~ 路径失效被动态 skip 造成假绿); darkriscv 断言已修 (--svg), picorv32 ELK 根因定位 (SignalRef 解析不一致) 方豆拍板暂缓** | **⚠️ 部分** |
 | **23** | **2026-09-02** | **L1** | **cli 3 失败修复 (方豆 "新发现的3个也改一下")** | **修 iter_086 顺带发现的 3 个 cli 失败** | **unit+cli 全绿** | **根因: models.py to_dict/from_dict 不支持 width=None → cache 序列化 TypeError (所有开 cache 的 CLI 测试受威胁); test_compare_greater_appears 断言过时 (SVG 结构); 两测试文件 --no-strict→--strict** | **✅ unit+cli 全绿** |
+| **24** | **2026-09-02** | **L1** | **Truth 层扩充 T1-T12 (方豆 "按这个顺序来推进吧")** | **12 项 1:1 golden 缺口补齐** | **truth 32→112 全绿** | **12 文件 + 5 fixture: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集; 顺带发现缺陷 A-F (expression 损坏/位宽忽略/LHS concat 笛卡尔积/localparam ternary/part-select 占位/generate-if shift)** | **✅ 108 passed + 4 既有 skip** |
 
 ---
 
