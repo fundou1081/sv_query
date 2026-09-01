@@ -34,7 +34,7 @@
 - [x] T7: parameter/localparam 过滤 (#17) — test_parameter_filter_truth 5 passed (iter_094) + fixture 33
 - [x] T8: alias 方向语义 (#12) — test_alias_truth 3 passed (iter_095) + fixture 34
 - [x] T9: class OOP (#16) — test_class_oop_truth 4 passed (iter_096) + fixture 35
-- [ ] T10: generate-if/case 内 wire (#23/#24)
+- [x] T10: generate-if/case 分支选择 (#23/#24) — test_generate_if_case_truth 6 passed (iter_097)
 - [ ] T11: L4 SVG 布局 golden (非 generate)
 - [ ] T12: trace 查询精确 driver 集
 
