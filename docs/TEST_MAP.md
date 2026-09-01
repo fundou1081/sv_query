@@ -173,10 +173,71 @@
 | 命令 | 范围 | 角色 | 基线状态 (沙箱) |
 |---|---|---|---|
 | `pytest sim/tests/unit sim/tests/cli` | 95+46 | **主回归** | 1091 passed + 4 failed (沙箱 cache artifact, test_trace_include_flags fanout) |
-| `pytest sim/tests/integration` | 52 文件 | 集成 | 422 全绿 (本机实测) |
+| `pytest sim/tests/integration` | 52 文件 | 集成 | 404 passed + 15 failed (pre-existing, iter_058 baseline 13 + 2; 详见 iter_080 记录) |
 | `pytest sim/tests/regression` | 94 文件 | 语法金标准 | **766 passed** (iter_076 全绿) |
 | `pytest sim/tests/test_case27_1to1_truth.py` | truth | **1:1 truth (SVG 断言)** | 4 passed |
 | `pytest sim/tests/usage` | 10 文件 | 真实项目 (慢) | — |
+
+---
+
+## 3.5 🎯 Signal Graph 核心回归集 (推荐, iter_080 实测)
+
+**用途**: 只回归 signal graph 核心链路 (语义适配 → 提取器 → 图构建 → 图模型 → 追踪),
+不含 CLI/可视化/协议/握手等外围。**38 文件 / 317 测试 / ~19s 全绿** (2026-09-01 实测)。
+
+```bash
+# 推荐命令 (核心集, 一行跑完)
+python3 -m pytest \
+  sim/tests/unit/test_semantic_adapter.py \
+  sim/tests/unit/test_native_adapter_parity.py \
+  sim/tests/unit/test_generate_handling.py \
+  sim/tests/unit/test_driver_extractor_net_decl.py \
+  sim/tests/unit/test_connection_extractor.py \
+  sim/tests/unit/test_bit_select_handler.py \
+  sim/tests/unit/test_common_bit_selects.py \
+  sim/tests/unit/test_mig_generate_block.py \
+  sim/tests/unit/test_mig_validator.py \
+  sim/tests/unit/test_f2_expression_tree_coverage.py \
+  sim/tests/unit/test_f2_expression_tree_injection.py \
+  sim/tests/unit/test_f2_expression_tree_shapes.py \
+  sim/tests/unit/test_f2_generate_expression_trees.py \
+  sim/tests/unit/test_f2_generate_for_indexed_lhs.py \
+  sim/tests/unit/test_f2_walker_bit_range_preservation.py \
+  sim/tests/unit/test_f2_no_string_fallback.py \
+  sim/tests/unit/test_graph_models.py \
+  sim/tests/unit/test_schema_aligns_with_code.py \
+  sim/tests/unit/test_width_tuple_defense.py \
+  sim/tests/unit/test_golden_diff.py \
+  sim/tests/regression/test_edge_creates_node.py \
+  sim/tests/regression/test_edge_semantics.py \
+  sim/tests/regression/test_graph_metrics.py \
+  sim/tests/regression/test_cross_module_tracking.py \
+  sim/tests/unit/test_cross_module_trace.py \
+  sim/tests/unit/test_cross_module_trace_pulp.py \
+  sim/tests/unit/test_pr3_mig_fallback.py \
+  sim/tests/unit/test_pr4_visualize_l2.py \
+  sim/tests/regression/test_port_inout.py \
+  sim/tests/integration/test_port_reg_detection.py \
+  sim/tests/integration/test_instance_connection.py \
+  sim/tests/unit/test_signal_tracer.py \
+  sim/tests/unit/test_localparam_driver_filter.py \
+  sim/tests/regression/test_bit_select.py \
+  sim/tests/regression/test_bit_select_hierarchical.py \
+  sim/tests/regression/test_bit_select_in_always.py \
+  sim/tests/regression/test_class_method.py \
+  sim/tests/regression/test_task_function.py \
+  -q
+```
+
+**分层说明**:
+- **核心 38 文件**: 全部直接 import/行为覆盖 signal graph 链路, **317 passed / ~19s**
+- **可选扩展** (行为层, 慢/宽): `test_bitselect_handler_diff.py` (含 1 pre-existing 失败
+  `test_nested_diff` — fixture `d[3:0][1:0]` 是非法 SV (range-select 后 chain select),
+  路径 B 用了 `strict=False` 违反纪律, iter_080 已记录) + regression 语法金标准全量 (766)
+- **排除**: CLI/可视化/协议握手/修复工具/随机化 (非 signal graph 核心)
+
+**选择依据** (TECH_MAP 实测引用): 8 项底层技术 (graph 模型/构建/driver/connection/mig/
+bit_select/semantic_adapter/tracer) 每项至少 1 个直接测试文件 + 金标准行为文件。
 
 ---
 
