@@ -26,7 +26,7 @@
 详见 [L3_truth_expansion.md](docs/task_tree/tasks/L3_truth_expansion.md)
 
 - [x] T1: assign 链基础数据流 (#1/#5) — test_assign_chain_truth 9 passed (iter_088)
-- [ ] T2: always_ff + clock/reset (#2) — CLOCK/RESET 边精确结构
+- [x] T2: always_ff + clock/reset (#2) — test_clock_reset_truth 9 passed (iter_089)
 - [ ] T3: case 多分支条件边 (#7) — golden_dataflow_9_case / 16 / 17
 - [ ] T4: 位选 RHS/LHS (#8/#9) — bit-range 保留
 - [ ] T5: concat LHS/RHS (#10/#11)
