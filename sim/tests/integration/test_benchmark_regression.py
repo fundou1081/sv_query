@@ -91,7 +91,8 @@ class TestRegressionDetection:
 
     def test_node_drop_50_pct_fails(self):
         """L2 nodes 跌 50% 应该 FAIL."""
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 250})
+        # [iter_082 fix] baseline 708 nodes (native, GAP-3), 50% drop = 354
+        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 354})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode != 0, "should fail on 50% nodes drop"
         assert "❌ L2_nodes" in result.stdout
@@ -118,8 +119,8 @@ class TestAcceptableChange:
 
     def test_10_pct_node_drop_passes(self):
         """L2 nodes 跌 10% (< 30%) 应该 PASS."""
-        # baseline 527 nodes, 10% drop = ~474
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 475})
+        # [iter_082 fix] baseline 708 nodes (native, GAP-3), 10% drop = ~637
+        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 637})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode == 0, (
             f"10% drop should pass: {result.stdout}\n{result.stderr}"

@@ -173,8 +173,9 @@ class TestPicorv32Baseline:
         with open(BASELINE) as f:
             data = json.load(f)
         l2 = data["L2_graph_topology"]
-        # Should be consistent with what we measured
-        assert 400 <= l2["nodes"] <= 700, f"nodes {l2['nodes']} outside 400-700"
+        # [iter_082 fix] native 迁移后 (GAP-3, iter_059) picorv32 nodes 527→708
+        # (图更完整, +34% 是改善非 regression) — 断言范围更新为 600-800.
+        assert 600 <= l2["nodes"] <= 800, f"nodes {l2['nodes']} outside 600-800"
         assert 2 <= l2["instantiated_modules"] <= 10, f"IM {l2['instantiated_modules']} outside 2-10"
 
     def test_baseline_flakiness_stable(self):
