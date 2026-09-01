@@ -1,9 +1,10 @@
-# TEST_MAP.md — 全量测试地图 (2026-08-29)
+# TEST_MAP.md — 全量测试地图 (2026-09-01 重梳)
 
-> **目的**: 全仓 317 个测试文件的用途地图 — 用于筛选"哪些测试用于哪些目的"。
-> **范围**: 所有测试文件 (含废弃 / POC / 探索 / 收集范围外的), 按目录 + 功能域分类。
-> **统计**: 317 文件, 3033 测试函数, 802 测试类。
+> **目的**: 全仓 301 个测试文件的用途地图 — 用于筛选"哪些测试用于哪些目的"。
+> **范围**: 所有测试文件 (含 POC / 探索 / 收集范围外的), 按目录 + 功能域分类。
+> **统计**: 301 文件, 2997 测试函数 (pytest --collect-only 实测, 2026-09-01)。
 > **收集范围**: `pyproject.toml testpaths = ["sim/tests"]` — **sim/ 根、scripts/debug、docs 下的测试不在 pytest 自动收集范围** (手动/特定命令跑)。
+> **版本**: iter_061 初版 (317/3033) → iter_078 重梳 (301/2997, 反映 iter_062~078 行为断言升级 + 新增测试 + 清理)。
 
 ---
 
@@ -11,17 +12,24 @@
 
 | 目录 | 文件 | 测试函数 | 角色 | 收集状态 |
 |---|---|---|---|---|
-| `sim/tests/unit` | 96 | 973 | 单元测试 — 单模块/单函数级, TDD | ✅ 自动 |
-| `sim/tests/regression` | 90 | 722 | 语法覆盖 + 金标准回归 (铁律13) | ✅ 自动 |
-| `sim/tests/integration` | 53 | 384 | 跨模块集成 + 端到端 | ✅ 自动 |
-| `sim/tests/cli` | 46 | 387 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
+| `sim/tests/unit` | 95 | 1095 | 单元测试 — 单模块/单函数级, TDD | ✅ 自动 |
+| `sim/tests/regression` | 94 | 766 | 语法覆盖 + 金标准回归 (铁律13) | ✅ 自动 |
+| `sim/tests/integration` | 52 | 422 | 跨模块集成 + 端到端 | ✅ 自动 |
+| `sim/tests/cli` | 46 | 389 | CLI 命令级测试 (subprocess run_cli) | ✅ 自动 |
 | `sim/tests/usage` | 10 | 298 | 真实项目/大型场景 (部分 slow) | ✅ 自动 (慢) |
-| ~~`sim/tests/usage/removed_features`~~ | ~~11~~ | ~~236~~ | **已删除** (iter_061: V6.9 移除功能尸体, 全 skip + 收集报错) | ❌ 已清理 |
-| `sim/tests/` (根) | 4 | 22 | truth 层 (SVG 断言) + spec golden | ✅ 自动 |
-| `sim/tests/poc` | 1 | 5 | POC 验证 (native portConnections) | ✅ 自动 |
-| ~~`sim/` (根)~~ | ~~3~~ | ~~5~~ | **已删除** (iter_061: 旧金标准孤儿, 无活引用) | ❌ 已清理 |
+| `sim/tests/` (根, 3 文件) | 3 | 22 | truth 层 (SVG 断言) + spec golden + generate flatten | ✅ 自动 |
+| `sim/tests/poc` | 1 | 5 | POC 验证 (native portConnections, #7 用) | ✅ 自动 |
 | `scripts/debug` | 2 | 0 | 探索性脚本 (非正式测试) | ❌ 不收集 |
 | `docs/openchip_qa_test.py` | 1 | 1 | QA 脚本 (OpenChip 验证) | ❌ 不收集 |
+
+**相对 iter_061 的变化**:
+- regression 90→94 文件 / 722→766 测试: iter_064~066 行为断言升级 (4 域) + iter_073~078
+  新增 (class_method 2 / task_function +2 / generate_real_world 重建) + sva/constraint/covergroup 扩充
+- unit 96→95 文件 / 973→1095 测试: **新增 connection_extractor (13) + bit_select_handler (12)** (iter_073/074),
+  其余为既有文件测试函数扩充 (行为断言)
+- integration 53→52 文件 / 384→422 测试
+- cli 46→46 文件 / 387→389 测试
+- removed_features (11 文件 236 测试) 与 sim/ 根 golden 孤儿 (3) 已在 iter_061 删除, 不再计入
 
 ---
 
@@ -30,33 +38,45 @@
 ### 2.1 L1 语法/抽取层 (SV 语法覆盖 + 模块/信号抽取)
 
 **regression 语法金标准** (每个语法点一个文件, 铁律13 先推导再验证):
-`test_basic_syntax_golden` `test_advanced_features(2)` `test_unsupported_syntax`
+`test_basic_syntax_golden` `test_advanced_features(14)` `test_advanced_features2` `test_unsupported_syntax`
 `test_generate(2)` `test_generate_case` `test_generate_enhanced` `test_generate_if`
-`test_generate_real_world` `test_interface(6)` `test_interface_advanced` `test_interface_basic`
+`test_generate_real_world(4)` `test_interface(4)` `test_interface_advanced` `test_interface_basic`
 `test_interface_dot_access` `test_interface_instance` `test_modport_direction` `test_package`
-`test_typedef` `test_constraint(6)` `test_constraint_complete(75)` `test_constraint_deep_parsing(46)`
-`test_covergroup(6)` `test_class(6)` `test_class_constraint_detail` `test_sva(8)`
+`test_typedef` `test_constraint(3)` `test_constraint_complete(75)` `test_constraint_deep_parsing(46)`
+`test_covergroup(5)` `test_class_oop` `test_class_constraint_detail` `test_sva(5)`
 `test_clocking` `test_dpi` `test_fork_join` `test_while_loop` `test_always_ff`
-`test_non_ansi_port` `test_clock_reset_edge` `test_multi_clock_domain` `test_rhs_syntax`
-`test_case_extraction` `test_case_multi_branch(v2)` `test_subroutine_params` `test_task_function`
+`test_non_ansi_port` `test_clock_reset_edge` `test_multi_clock_domain` `test_rhs_syntax(28)`
+`test_case_extraction` `test_case_multi_branch(v2)` `test_subroutine_params(16)` `test_task_function(7)`
 `test_dot_access_enhanced` `test_replication_fix` `test_positional_port_fix` `test_verilog_always`
 
 **unit 抽取器单元**:
-`test_semantic_adapter` `test_sv_extractor(21)` `test_module_extractor(12)` `test_pyslang_type_extraction(39)`
+`test_semantic_adapter` `test_sv_extractor(21)` `test_module_extractor(12)` `test_pyslang_type_extraction(87)`
 `test_parameter_extraction` `test_param_expression_resolution` `test_width_extraction` `test_width_tuple_defense`
 `test_non_ansi_port` `test_issue21_parameter_expression` `test_advanced_sv_features` `test_comment_handling`
 `test_procedural_blocks` `test_instance_name_extraction` `test_ast_utils(38)` `test_ast_expression_evaluator`
+`test_function_expression` `test_generate_handling`
 
-**sim/ 根旧 golden** (孤儿): `test_golden` `test_golden_cases` `test_gold_comprehensive`
+### 2.2 L2 图构建层 (SignalGraph / ModuleInstanceGraph / 连接 / 位选)
 
-### 2.2 L2 图构建层 (SignalGraph / ModuleInstanceGraph)
+**图模型/指标**: `test_graph_models(8)` `test_graph_metrics` `test_graph_diff` `test_graph_diff_health`
+`test_edge_semantics` `test_edge_creates_node` `test_golden_diff(13)`
 
-`test_graph_models` `test_graph_metrics` `test_graph_diff` `test_graph_diff_health` `test_edge_semantics`
-`test_edge_creates_node` `test_instance_hierarchy` `test_module_instance` `test_hierarchy` `test_concat_and_hierarchy`
-`test_mig_generate_block` `test_mig_validator` `test_cross_module_tracking(49)` `test_cross_module_trace`
-`test_cross_module_trace_pulp` `test_connection_tracing` `test_instance_connection` `test_port_inout`
-`test_port_reg_detection` `test_native_adapter_parity(13)` `test_bit_select(3处)` `test_bit_select_hierarchical`
-`test_bit_select_in_always` `test_common_bit_selects` `test_bitselect_handler_diff`
+**实例层级/MIG**: `test_instance_hierarchy` `test_module_instance` `test_hierarchy` `test_concat_and_hierarchy`
+`test_mig_generate_block` `test_mig_validator` `test_pr3_mig_fallback` `test_cross_module_tracking(49)`
+`test_cross_module_trace` `test_cross_module_trace_pulp` `test_connection_tracing` `test_instance_connection`
+`test_port_inout` `test_port_reg_detection` `test_module_hierarchy_fix`
+
+**连接提取 (ConnectionExtractor)** — iter_073/074b 补齐直接单元测试:
+`unit/test_connection_extractor(13)`: 端口连接 / 映射 / generate / 边界
+(param / positional / interface / tri-state) / missing-module-strict-raises
+
+**位选 (BitSelectHandler)** — iter_074/074b 补齐直接单元测试:
+`unit/test_bit_select_handler(12)`: RHS/LHS / 动态索引 / 多维 3 层 / oob / parameterized /
+信号宽度; 直接断言 bit_range + parent bit_start
+`integration/test_bitselect_handler_diff(8)` (路径 A/B diff) `regression/test_bit_select(3处)`
+`test_common_bit_selects` `test_f2_walker_bit_range_preservation`
+
+**native parity (#7)**: `unit/test_native_adapter_parity(13)` `poc/test_portconn_native_poc(5)`
 
 ### 2.3 L3 信号追踪/驱动/分析层
 
@@ -90,7 +110,7 @@
 
 ### 2.5 CLI 命令层 (subprocess run_cli)
 
-**架构/设计**: `test_arch(20)` `test_arch_understand` `test_design` `test_open_source_validation`
+**架构/设计**: `test_arch(20)` `test_arch_understand(7)` `test_design(10)` `test_open_source_validation`
 **覆盖**: `test_coverage_analyze` `test_coverage_gap` `test_coverage_gen_demo(golden)` `test_coverage_generate`
 `test_coverage_generator(179)` `test_coverage_gen_sv_compile`
 **随机化**: `test_randomize(5个)` `test_randomize_reachability(extended)` `test_randomize_trace`
@@ -104,21 +124,21 @@
 
 ### 2.6 编译/预处理/环境
 
-`test_sv_preprocessor(20)` `test_normalize_filelist` `test_pyslang_v11_aliases` `test_pyslang_v11_cli_smoke`
-`test_naplespu_filelist` `test_strict_default_filelist` `test_spec_unsupported_syntax`
+`test_sv_preprocessor(20)` `test_normalize_filelist(36)` `test_pyslang_v11_aliases(23)` `test_pyslang_v11_cli_smoke`
+`test_naplespu_filelist` `test_strict_default_filelist` `test_spec_unsupported_syntax` `test_issue33_literal_edge`
 
 ### 2.7 纪律/结构 (防回归防退化)
 
 `test_discipline_enforced` `test_no_data_models_legacy` `test_no_pyslang_adapter_legacy`
-`test_no_string_fallback` `test_safe(18)` `test_schema_aligns_with_code` `test_structural_hints(46)`
-`test_pattern_learner(31)` `test_signal_classify_yaml` `test_protocol_json_output` `test_schema`
+`test_f2_no_string_fallback` `test_safe(18)` `test_schema_aligns_with_code` `test_structural_hints(46)`
+`test_pattern_learner(31)` `test_signal_classify_yaml` `test_protocol_json_output` `test_protocol_schema`
 
 ### 2.8 真实项目/开源验证
 
 `test_open_source_validation` `test_cdc_risk_open_source(5 projects)` `test_dataflow_*_open_source`
 `test_opentitan_*(4个)` `test_benchmark_picorv32` `test_benchmark_regression` `test_benchmark_pr5`
 `test_subfunction_golden_open_source` `test_real_project_viz` `test_ventus_all_viz_validation`
-`test_ventus_chunk_filelist` `test_ventus_viz_validation`
+`test_ventus_chunk_filelist` `test_ventus_viz_validation` `test_generate_real_world(4)`
 
 ### 2.9 性能
 
@@ -138,35 +158,36 @@
 `sim/tests/poc/test_portconn_native_poc` (native portConnections 验证, #7 用)
 `sim/tests/unit/test_native_adapter_parity` (native vs 递归 parity, #7 用)
 
+### 2.12 truth 层 (sim/tests/ 根)
+
+| 文件 | 测试数 | 角色 |
+|---|---|---|
+| `test_case27_1to1_truth.py` | 4 | **1:1 truth** (SVG 断言, case27 金标准) |
+| `test_d1_generate_flatten_signal_set.py` | 11 | generate flatten 信号集 (D1) |
+| `test_spec_unsupported_syntax.py` | 7 | spec 不支持的语法 (预期失败语义) |
+
 ---
 
 ## 三、关键测试集 (按运行命令分组)
 
 | 命令 | 范围 | 角色 | 基线状态 (沙箱) |
 |---|---|---|---|
-| `pytest sim/tests/unit sim/tests/cli` | 142+46 | **主回归** | 1435 passed + 24 failed (沙箱 cache artifact) |
-| `pytest sim/tests/integration` | 53 文件 | 集成 | 406 passed + 13 failed (既有) |
+| `pytest sim/tests/unit sim/tests/cli` | 95+46 | **主回归** | 1091 passed + 4 failed (沙箱 cache artifact, test_trace_include_flags fanout) |
+| `pytest sim/tests/integration` | 52 文件 | 集成 | 422 全绿 (本机实测) |
+| `pytest sim/tests/regression` | 94 文件 | 语法金标准 | **766 passed** (iter_076 全绿) |
 | `pytest sim/tests/test_case27_1to1_truth.py` | truth | **1:1 truth (SVG 断言)** | 4 passed |
-| `pytest sim/tests/regression` | 90 文件 | 语法金标准 | — |
 | `pytest sim/tests/usage` | 10 文件 | 真实项目 (慢) | — |
 
 ---
 
-### 2.12 iter_062 补充测试 (按功能域缺口)
-
-| 文件 | 域 | 覆盖缺口 |
-|---|---|---|
-| `test_module_synth_advanced.py` (7) | module 可综合 | signed 算术移位 / 复合赋值 / enum case 状态机 / 2D packed 数组 / defparam / 数组写索引 / $signed |
-| `test_constraint_advanced.py` (7) | constraint | soft / dist :/ / randc / solve 多变量 / 嵌套 foreach / not inside / this+包引用 |
-| `test_covergroup_advanced.py` (9) | covergroup | iff / wildcard bins / transition bins / 自动+default bins / 参数化 / sample() / 多事件 / ignore+illegal 组合 |
-| `test_sva_advanced.py` (9) | sva | $rose/$past/$onehot 系统函数 / 无界 ##[0:$] / [=n] / iff / property 引用 sequence / expect+immediate (记录缺口) |
-
-工具缺口已登记 EXTRACTION_COVERAGE #34-#40.
 ## 四、值得注意的观察 (供筛选)
 
-1. **removed_features 11 文件 236 测试全 skip** — V6.9 移除功能的尸体, 建议核实是否可删
-2. **sim/ 根 3 个 golden 孤儿** — 不在收集范围, 与现有测试重复风险
-3. **usage/ 有 4 个 [skipif/slow]** (coverage_gen_sv_compile 等) — 慢测试, CI 是否跑?
-4. **大量无 docstring 文件** (regression 语法类) — 靠文件名定位用途
-5. **truth 层仅 1 个文件** (case27 SVG 断言) — 覆盖面窄, 可扩展
-6. **脚本式 QA** (docs/openchip_qa_test.py, scripts/debug/*) 非 pytest 正式测试
+1. **regression 是最大金标准集** (766 测试) — 语法点逐一文件, 是行为断言升级主战场 (iter_064~078)
+2. **unit 覆盖率上升** — connection_extractor (13) / bit_select_handler (12) 已从"0 直接测试"
+   补齐 (SIGNAL_GRAPH_TECH_TEST_MAP 2.4/2.6 ✅)
+3. **usage/ 有 slow/skipif 测试** (coverage_gen_sv_compile 等) — CI 是否跑需确认
+4. **truth 层 3 文件 22 测试** — case27 SVG 断言 + generate flatten + spec unsupported,
+   覆盖面仍窄, 可扩展
+5. **脚本式 QA** (docs/openchip_qa_test.py, scripts/debug/*) 非 pytest 正式测试
+6. **4 个 unit 失败为沙箱环境 artifact** (`~/.svq/cache` 不可写, test_trace_include_flags
+   fanout 系列) — 非逻辑回归, 本机 (writable cache) 全绿
