@@ -35,7 +35,7 @@
 - [x] T8: alias 方向语义 (#12) — test_alias_truth 3 passed (iter_095) + fixture 34
 - [x] T9: class OOP (#16) — test_class_oop_truth 4 passed (iter_096) + fixture 35
 - [x] T10: generate-if/case 分支选择 (#23/#24) — test_generate_if_case_truth 6 passed (iter_097)
-- [ ] T11: L4 SVG 布局 golden (非 generate)
+- [x] T11: L4 SVG 布局 golden (非 generate) — test_layout_truth 9 passed (iter_098)
 - [ ] T12: trace 查询精确 driver 集
 
 **已完成 (本会话前期, 已 commit)**:
