@@ -8,6 +8,13 @@
 - 验证 ELK layout 不 fail (Plan B Step B1 已修复 "Referenced shape does not exist")
 - 验证 SVG 文件实际生成且内容非空
 
+NOTE (iter_086, 2026-09-02):
+- --svg 自 V100 起直接输出 SVG (--dot 仅保留为 deprecated alias), 断言按 SVG 内容校验;
+  早期版本断言 'digraph' 是 DOT 时代的残留, 已修。
+- picorv32 目前仍挂: ELK 'Referenced shape does not exist: port_picorv32_axi_dot_mem_axi_bvalid'
+  (elk_bridge 的 SignalRef 解析 edge 侧 / emit 侧不一致, 方豆拍板暂缓, 见 iter_086)。
+  不设 xfail — 保持真实失败可见, 待 elk_bridge 根因修复后自然转绿。
+
 用法:
     python3 -m pytest sim/tests/integration/test_real_project_viz.py -v
     python3 -m pytest sim/tests/integration/test_real_project_viz.py -v -k darkriscv
@@ -68,15 +75,16 @@ def test_real_project_svg_generation(name, sv_file, target, tmp_path):
 
     out_dir = tmp_path / name
     out_dir.mkdir()
-    dot_file = out_dir / f'{name}.dot'
+    svg_file = out_dir / f'{name}.svg'
 
     # [Plan B Step B3] Run CLI via subprocess (avoid sys.argv pollution)
+    # [iter_086] 用 --svg 主标志 (--dot 是 V100 起的 deprecated alias); 去掉 --no-strict
+    # (strict 模式实测可通过, 违反 AGENTS.md 硬规则 #1).
     result = subprocess.run(
         ['python3', 'run_cli.py', 'visualize', 'dataflow',
          '--file', str(sv_path),
          '--module', target,
-         '--no-strict',
-         '--dot', str(dot_file)],
+         '--svg', str(svg_file)],
         capture_output=True, text=True, timeout=600,
         cwd=Path(__file__).resolve().parents[3],
     )
@@ -88,20 +96,14 @@ def test_real_project_svg_generation(name, sv_file, target, tmp_path):
         f'stderr: {result.stderr[-1000:]}'
     )
 
-    # [Plan B Step B3] Verify DOT file generated
-    assert dot_file.exists(), f'{name}: DOT file not generated'
-    dot_size = dot_file.stat().st_size
-    assert dot_size > 1000, f'{name}: DOT too small ({dot_size} bytes) — likely empty'
-
-    # [Plan B Step B3] Verify DOT contains expected structure
-    dot_text = dot_file.read_text()
-    assert 'digraph' in dot_text or 'graph' in dot_text, f'{name}: DOT missing digraph'
-    assert target in dot_text, f'{name}: target module {target} not in DOT'
-
-    # [Plan B Step B3] Verify SVG was generated (--dot prefix causes SVG too)
-    svg_file = out_dir / f'{name}.svg'
-    # CLI may or may not generate SVG depending on output path config;
-    # DOT file is the primary artifact for ELK layout success.
+    # [iter_086] --svg 直接写 SVG 文件: 校验 SVG 根元素 + 目标模块出现在文本中
+    # (旧断言 'digraph'/'graph' 是 DOT 输出时代的残留 — --dot 自 V100 起写 SVG).
+    assert svg_file.exists(), f'{name}: SVG file not generated'
+    svg_size = svg_file.stat().st_size
+    assert svg_size > 1000, f'{name}: SVG too small ({svg_size} bytes) — likely empty'
+    svg_text = svg_file.read_text()
+    assert '<svg' in svg_text, f'{name}: output missing <svg> root'
+    assert target in svg_text, f'{name}: target module {target} not in SVG'
 
 
 def test_real_project_viz_smoke():

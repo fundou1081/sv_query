@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-01 GMT+8 (测试资产补强 A/B/C 全部完成)
+> **最后更新**: 2026-09-02 GMT+8 (B 组复查: 2 个 real_project_viz 实为真实失败, darkriscv 已修)
 
 ---
 
@@ -22,23 +22,25 @@
 
 ## 🔥 当前任务
 
-**任务**: 测试资产补强 A/B/C (方豆 "先记录 A B C, 我们逐个做")
+**任务**: B 组复查收尾 — real_project_viz 2 个真实失败 (方豆 "elk 先不管, 其他的先修")
 详见 [L2_test_assets_abc.md](docs/task_tree/tasks/L2_test_assets_abc.md)
 
-**A — 补主路径语法独立 regression** (进行中):
-- [ ] assign / always_comb / wire 顶层 / 拼接 / alias / 三元 / parameter / generate-for
-      各建独立 regression 行为断言文件 (对齐 constraint/covergroup 密度)
-- [ ] 每个文件 ≥3 测试 (正例边断言 + 反例 + 有效性)
+**B — 修 integration 14 个 pre-existing 失败** 🟡 **复查中** (iter_086 重新打开):
+- [x] 2 个真实过时断言已修 (benchmark nodes 400-700→600-800; variant 527→708) — iter_082
+- [x] 10 个 sandbox cache 环境 artifact 已验证 (human_output 5 + tree_output 5, 可写 HOME 下通过) — iter_082 + iter_086 实测复核
+- [x] darkriscv 断言过时已修 (--svg 输出 SVG, 原断言查 'digraph') + 删测试内 --no-strict — iter_086
+- [ ] picorv32 ELK dangling port (elk_bridge SignalRef 解析不一致) — ⏸ 方豆拍板暂缓, 根因已定位 (iter_086)
+- [x] 文档更正: TEST_MAP §0 / TESTING.md 警告 / iter_086 / overview
 
-**B — 修 integration 14 个 pre-existing 失败** ✅ **完成** (iter_082, commit 53cd1b2):
-- [x] 2 个真实过时断言已修 (benchmark nodes 400-700→600-800; variant 527→708)
-- [x] 12 个 sandbox cache 环境 artifact 已定性 (可写 HOME 下 integration 417 passed + 5 skipped, 0 failed)
+**A — 补主路径语法独立 regression** ✅ **完成** (iter_081, 10 文件 42 测试):
+- [x] assign / always_comb / wire 顶层 / 拼接 / alias / 三元 / parameter / generate-for 独立文件
+- [x] 每个文件 ≥3 测试 (正例边断言 + 反例 + 有效性)
 
 **C — 扩 truth 层 1:1 金标准** ✅ **完成** (iter_083, commit 7f1b300):
 - [x] test_generate_for_chain_truth (6) + test_cross_module_truth (4)
 - [x] 顺带修 spec 幽灵文件 (replication LHS fixture + 断言)
 
-**迭代记录**: iter_083 (最近)
+**迭代记录**: iter_086 (最近)
 
 ---
 ## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)

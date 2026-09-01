@@ -65,7 +65,7 @@ python -m pytest sim/tests/unit/ -v
 | `/tmp/cdc_test/` fixture 依赖 | 🟡 runtime | conftest.py 可加 fixture setup |
 | `~/.svq/cache` 不可写 (沙箱/受限 HOME) | 🔴 env (iter_082 发现) | CLI subprocess 测试全报 rc=1 假失败; 用 `HOME=/tmp/svq_home` 重定向验证 |
 
-### 沙箱 / 受限环境验证手段 (iter_082 定型)
+### 沙箱 / 受限环境验证手段 (iter_082 定型, iter_086 补警告)
 
 `ast_cache.py:30` 的 `CACHE_DIR = Path.home() / ".svq" / "cache"` — 当运行环境的
 HOME 不可写 (如沙箱), 所有走 `run_cli.py` subprocess 的测试 (human_output /
@@ -77,8 +77,15 @@ tree_output / real_project_viz / trace_include_flags 等) 会报
 ```bash
 mkdir -p /tmp/svq_home/.svq/cache
 HOME=/tmp/svq_home python3 -m pytest sim/tests/integration -q
-# → 417 passed + 5 skipped, 0 failed (2026-09-01 实测)
+# → 418 passed + 1 failed + 3 skipped (2026-09-02 实测)
+#   1 failed = test_real_project_viz[picorv32] ELK dangling port (方豆拍板暂缓, iter_086)
 ```
+
+⚠️ **HOME 重定向的 `~` 展开副作用 (iter_086 教训)**: 重定向 HOME 后, 测试里
+`~/my_dv_proj/picorv32/...` 等真实项目路径会展开到不存在的位置 → 测试被动态
+`pytest.skip('not found')` 跳过 → **假绿**。iter_082 的 "0 failed" 正是因此漏掉了
+real_project_viz 的 2 个真实失败。**判定时必须数清 skip 数量并与预期对比**,
+或对这些测试改用绝对路径。
 
 **判定原则**: 失败信息含 `Operation not permitted` / `~/.svq/cache` → 先按环境
 限制排除, 再判断是否为真回归。可写 HOME 下全绿 = 测试正确。
