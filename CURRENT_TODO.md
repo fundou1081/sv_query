@@ -30,7 +30,7 @@
 - [x] T3: case 多分支条件边 (#7) — test_case_branch_truth 8 passed (iter_090)
 - [x] T4: 位选 RHS/LHS (#8/#9) — test_bit_select_truth 10 passed (iter_091)
 - [x] T5: concat RHS (#10) — test_concat_truth 3 passed (iter_092); LHS 位置映射 bug 已记录
-- [ ] T6: function/task 调用 (#13/#14) — 含 iter_076 task 形参映射
+- [x] T6: function/task 调用 (#13/#14) — test_function_task_truth 6 passed (iter_093) + fixture 32
 - [ ] T7: parameter/localparam 过滤 (#17) — 反例式 golden
 - [ ] T8: alias 方向语义 (#12)
 - [ ] T9: class 成员 DRIVER 边 (#16) — C 组遗留
