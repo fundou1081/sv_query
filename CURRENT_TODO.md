@@ -29,7 +29,7 @@
 - [x] T2: always_ff + clock/reset (#2) — test_clock_reset_truth 9 passed (iter_089)
 - [x] T3: case 多分支条件边 (#7) — test_case_branch_truth 8 passed (iter_090)
 - [x] T4: 位选 RHS/LHS (#8/#9) — test_bit_select_truth 10 passed (iter_091)
-- [ ] T5: concat LHS/RHS (#10/#11)
+- [x] T5: concat RHS (#10) — test_concat_truth 3 passed (iter_092); LHS 位置映射 bug 已记录
 - [ ] T6: function/task 调用 (#13/#14) — 含 iter_076 task 形参映射
 - [ ] T7: parameter/localparam 过滤 (#17) — 反例式 golden
 - [ ] T8: alias 方向语义 (#12)
