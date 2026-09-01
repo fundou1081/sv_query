@@ -71,3 +71,16 @@
 **结论**: 14 个失败 = 2 个真实过时断言 (已修) + 12 个 sandbox 环境 artifact
 (测试本身正确, 本机/CI 有可写 cache 即绿)。B 组"修 integration"实际只剩 2 个
 需要改代码, 其余是环境限制 — 已在 TEST_MAP 基线修正。
+
+## C 组完成 (iter_082/083) — 扩 truth 层
+
+| 文件 | 测试 | 1:1 锁定的语义 |
+|---|---|---|
+| test_generate_for_chain_truth.py | 6 | 3 级 generate-for 链 (N=4): 索引节点精确存在 (buf1[0..3]/buf2[0..2]/buf3[0..2]) + 链边 (data→buf1[0], stage 间 buf1→buf2[i], buf2→buf3[i], buf3→chain_out) + prod 驱动各 stage + genvar 非信号 |
+| test_cross_module_truth.py | 4 | minimal_3module 跨模块端口连接: 实例节点 (sa1/lp1/la1) + 端口映射边 (clk→lp1.clk, data_i→la1.a, valid_i→lp1.data_i) + 叶子输出回流 (lp1.data_o→leaf_ready, la1.sum→sum_o) + 未实例化模块隔离 |
+
+**顺带修复** (发现于 C 组全量跑):
+- test_spec_unsupported_syntax::test_replication_lhs_is_sv_illegal — 引用
+  /tmp 幽灵文件 (从未创建) + 断言消息错误 (pyslang 实测 ExpressionNotAssignable,
+  非 "expression is not allowed as a statement") → 补 fixture probe_repl_lhs.sv +
+  修正断言。truth 层 28 passed (原 27 + 1 修复)。
