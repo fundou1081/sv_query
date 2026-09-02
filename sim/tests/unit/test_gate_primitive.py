@@ -154,5 +154,67 @@ class TestNoRecursiveGateNodes(unittest.TestCase):
             self.assertNotIn('xor0.xor0', n, f"递归假节点不应存在: {n}")
 
 
+MULTI_TERMINAL = '''module g (input a, b, output o1, o2, o3, o4, o5);
+  wire t;
+  buf u_buf(o1, o2, a);         // NOutput 多输出: a → o1, o2
+  not u_not(o3, b);
+  tran u_tr(t, a);              // Fixed 双向: t ⇄ a
+  bufif1 u_b1(o4, b, a);        // Fixed: Out,In,In
+  supply0 u_s0(o5);             // 常量驱动 (无输入端子)
+endmodule
+'''
+
+UDP_TOP = '''primitive my_and (output y, input a, b);
+  table 0 0 : 0; 0 1 : 0; 1 0 : 0; 1 1 : 1; endtable
+endprimitive
+module top (input a, b, output y);
+  my_and u_udp(y, a, b);
+endmodule
+'''
+
+
+class TestTerminalDirectionModeling(unittest.TestCase):
+    """[iter_115 G-1] 端子方向改善: 多输出 buf / 双向 tran / 常量门 / UDP."""
+
+    def test_buf_multi_output(self):
+        """buf(o1,o2,a): 输入 a 驱动两个输出 (旧位置约定把 o2 误当输入)."""
+        _, g = _graph(MULTI_TERMINAL, target='g')
+        drv = _driver_edges(g)
+        self.assertIn(('g.a', 'g.o1'), drv, "buf 输出 o1 ← a")
+        self.assertIn(('g.a', 'g.o2'), drv, "buf 多输出 o2 ← a (G-1 修复)")
+        self.assertIn(('g.b', 'g.o3'), drv, "not o3 ← b")
+        self.assertNotIn(('g.o2', 'g.o1'), drv, "o2 是输出不是输入")
+
+    def test_bufif1_three_terminal(self):
+        """bufif1(o4,b,a): 固定三端子 Out,In,In — 数据 b 是输出驱动源 (enable a
+        同为门输入端子, 参与门函数 — 与 and 多输入同约定, 不断言禁止)."""
+        _, g = _graph(MULTI_TERMINAL, target='g')
+        drv = _driver_edges(g)
+        self.assertIn(('g.b', 'g.o4'), drv, "bufif1 输出 o4 ← 数据 b")
+        # o4 不应被 o2 (另一门输出) 等无关信号驱动
+        self.assertNotIn(('g.o2', 'g.o4'), drv)
+
+    def test_tran_bidirectional(self):
+        """tran(t,a): 双向 InOut 互驱 t⇄a (旧逻辑 a 不驱动 t)."""
+        _, g = _graph(MULTI_TERMINAL, target='g')
+        drv = _driver_edges(g)
+        self.assertIn(('g.a', 'g.t'), drv, "tran: a 驱动 t")
+        self.assertIn(('g.t', 'g.a'), drv, "tran: t 驱动 a (双向)")
+
+    def test_udp_primitive(self):
+        """UDP my_and(y,a,b): ports 逐端子带方向 → y ← a/b (同内置门语义)."""
+        _, g = _graph(UDP_TOP)
+        drv = _driver_edges(g)
+        self.assertIn(('top.a', 'top.y'), drv, "UDP y ← a")
+        self.assertIn(('top.b', 'top.y'), drv, "UDP y ← b")
+
+    def test_no_input_gate_no_driver(self):
+        """supply0: 无输入端子 → 输出无 DRIVER 源 (常量驱动, 不产生悬空输入边)."""
+        _, g = _graph(MULTI_TERMINAL, target='g')
+        drv = _driver_edges(g)
+        self.assertNotIn(('g.o5', 'g.o5'), drv)
+        self.assertNotIn(('g.a', 'g.o5'), drv, "supply0 不应被 a 驱动")
+
+
 if __name__ == '__main__':
     unittest.main()

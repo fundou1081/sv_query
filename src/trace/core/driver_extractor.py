@@ -683,18 +683,28 @@ class DriverExtractor:
         )
 
     def _create_primitive_edges(self, module, result, module_name):
-        """[iter_112] 门级原语 (GatePrimitiveInstance) 输出 DRIVER 边 — leaf cell 建模.
+        """[iter_112 + iter_115] 门级原语 (GatePrimitiveInstance) 输出 DRIVER 边 — leaf cell.
 
         原语 (and/or/xor/not/nand/nor/xnor/buf/...) 无 definition/body/端口声明,
-        pyslang 给 .primitiveType (门类型) + .portConnections:
-          portConnections[0] = Assignment(left=输出端子) — Verilog 门原语首端子是输出
-          portConnections[1..] = 输入端子 (NamedValue/ElementSelect)
+        pyslang 给 .primitiveType (门类型) + .portConnections。
 
-        语义 = 隐式连续赋值 out = f(in1, in2, ...): 每个输入端子 → 输出端子生成
-        DRIVER 边 — 与现有 assign 二元操作数约定一致 (assign Y = X ^ Z → X,Z 各
-        DRIVER→Y; "谁驱动 S[0]" 答 A[0]/B[0])。端子表达式走 _get_signal 解析成
-        宿主模块作用域信号 id (module_name 前缀, 位选保持 [i] 形态), 与 assign
-        LHS/RHS 同一套解析 — 门输出落在宿主模块 (原语无自身作用域)。
+        [iter_115 G-1] 端子方向判定 (不再用 "conn[0]=输出" 位置约定 — 对多输出
+        buf/not、双向 tran 会错):
+        - slang 把**输出端子 (含双向 InOut) 统一包成 ExpressionKind.Assignment**
+          (.left = 端子表达式), 输入端子是裸表达式 (实测: and/xor/buf/not/
+          bufif1/tran/pulldown/UDP 全类一致)
+        - NInput/NOutput 门 (and/buf 等) 的 primitiveType.ports 是**模板**
+          (len != conns, 如 buf 模板 [Out,In] 但实际 2 输出) — 不可逐端子
+        - Fixed/UDP 门 (bufif1/tran/UDP) ports **逐端子**且带 direction —
+          用 direction 区分双向 (InOut, 如 tran) 与纯输出
+        - 判定: 逐端子门 (len(ports)==len(conns)) 优先用 ports[i].direction;
+          否则 (模板门) 按 Assignment 包裹 = 输出
+
+        语义 = 隐式连续赋值: 每个输入端子 → 每个输出端子 DRIVER 边 (多输出门
+        buf i→o1,o2; 与 assign 操作数约定一致)。双向 InOut 端子 (tran 系):
+        组内两两互驱 (同一通路的 net 互相驱动, 表示 pass-gate 双向性)。
+        端子表达式走 _get_signal 解析成宿主模块作用域信号 id (module_name 前缀),
+        位选保持 [i] 形态 — 门输出落在宿主模块 (原语无自身作用域)。
         """
         try:
             prims = self.adapter.get_primitive_instances(module)
@@ -720,33 +730,86 @@ class DriverExtractor:
             except Exception as e:
                 logger.debug("get_primitive_genvar_context 失败: %s", e)
                 genvar_ctx = {}
-            # 输出端子 = conn[0] (Assignment.left); 防御: 直接 NamedValue 形态
-            out_expr = conns[0]
-            if "Assignment" in str(getattr(out_expr, "kind", "")):
-                out_expr = getattr(out_expr, "left", None) or out_expr
-            out_name = self._get_signal(out_expr, genvar_ctx)
-            if not out_name:
-                logger.debug(
-                    "原语 %s (%s) 输出端子无法解析, 跳过", gate_fn, module_name
-                )
-                continue
-            dst = f"{module_name}.{out_name}"
-            for in_expr in conns[1:]:
+            # [iter_115] ports 逐端子? (Fixed/UDP 门 len==conns; NInput/NOutput
+            # 模板 len!=conns, 不可逐端子)
+            try:
+                ports = list(getattr(pt, "ports", None) or []) if pt is not None else []
+            except Exception:
+                ports = []
+            per_terminal = len(ports) == len(conns) and len(ports) > 0
+
+            outputs = []   # 输出端子名
+            inputs = []    # 输入端子名
+            inouts = []    # 双向端子名 (tran 系)
+
+            for i, conn in enumerate(conns):
+                kind = str(getattr(conn, "kind", ""))
+                is_assign = "Assignment" in kind
+                # 端子角色: 逐端子门用 ports[i].direction; 模板门用 Assign 包裹
+                role = "out" if is_assign else "in"
+                if per_terminal:
+                    d = ""
+                    try:
+                        d = str(getattr(ports[i], "direction", ""))
+                    except Exception:
+                        d = ""
+                    if "InOut" in d or "Inout" in d:
+                        role = "io"
+                    elif "Out" in d:
+                        role = "out"
+                    else:
+                        role = "in"
+                expr = getattr(conn, "left", None) if is_assign else conn
+                if expr is None:
+                    expr = conn
                 try:
-                    in_name = self._get_signal(in_expr, genvar_ctx)
+                    name = self._get_signal(expr, genvar_ctx)
                 except Exception as e:
-                    logger.debug("原语输入端子解析失败: %s", e)
+                    logger.debug("原语端子解析失败: %s", e)
                     continue
-                if not in_name or in_name == out_name:
+                if not name:
+                    logger.debug("原语 %s (%s) 端子无法解析, 跳过", gate_fn, module_name)
                     continue
-                src = f"{module_name}.{in_name}"
-                self._append_edge(
-                    result,
-                    src=src,
-                    dst=dst,
-                    kind=EdgeKind.DRIVER,
-                    assign_type="continuous",
-                )
+                if role == "out":
+                    outputs.append(name)
+                elif role == "io":
+                    inouts.append(name)
+                else:
+                    inputs.append(name)
+
+            # 输入 → 输出 (每个输入驱动每个输出 — 组合函数; 多输出 buf i→o1,o2)
+            for in_name in inputs:
+                for out_name in outputs:
+                    if in_name == out_name:
+                        continue
+                    src = f"{module_name}.{in_name}"
+                    dst = f"{module_name}.{out_name}"
+                    self._append_edge(
+                        result,
+                        src=src,
+                        dst=dst,
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                    )
+            # 双向端子 (tran 系): 组内两两互驱 (pass-gate 同一通路)
+            for a in inouts:
+                for b in inouts:
+                    if a >= b:
+                        continue
+                    self._append_edge(
+                        result,
+                        src=f"{module_name}.{a}",
+                        dst=f"{module_name}.{b}",
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                    )
+                    self._append_edge(
+                        result,
+                        src=f"{module_name}.{b}",
+                        dst=f"{module_name}.{a}",
+                        kind=EdgeKind.DRIVER,
+                        assign_type="continuous",
+                    )
 
     def _find_invocations(self, expr, invocations=None) -> list:
         """[REFACTOR 2026-06-26] 5c-helper: 递归找 Invocation/Call 表达式.
