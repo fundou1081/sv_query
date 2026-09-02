@@ -318,14 +318,20 @@ class ConnectionExtractor:
 
             inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
-            # [iter_109] generate 内实例的信号作用域: 连接信号 (数组元素等) 声明在
-            # generate 段之前的模块作用域 (top.g[2].U → 信号用 top.arr[2], 不是
-            # top.g[2].arr[2]). 从 inst_path 去掉 ".{gen_block}." 段得到模块路径.
+            # [iter_109/110] 连接信号作用域 = 实例的宿主模块路径:
+            # inst_path 去掉末尾实例名 + 所有尾部 "[N]" generate 段.
+            # top.g[2].U → top (信号 top.arr[2]); 嵌套 cordic.g[0].U.g[0].x_shifter
+            # → cordic.g[0].U (rotator 宿主模块, 信号取 rotator 作用域).
+            # (原 iter_109 只剥第一个 generate 段 → 嵌套实例错落到根模块作用域,
+            #  rotator 的 x_i 误连到顶层 x_i)
             _sig_scope = None
-            if gen_block:
-                _sep = f".{gen_block}."
-                if _sep in inst_path:
-                    _sig_scope = inst_path.split(_sep)[0]
+            _segs = inst_path.split(".")
+            if len(_segs) >= 2:
+                _mod_segs = _segs[:-1]           # 去掉实例名
+                while _mod_segs and "[" in _mod_segs[-1]:
+                    _mod_segs.pop()               # 去掉尾部 generate 段 ([N])
+                if _mod_segs:
+                    _sig_scope = ".".join(_mod_segs)
 
             module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
