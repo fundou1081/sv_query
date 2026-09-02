@@ -81,17 +81,19 @@ class TestUnsupportedSyntaxGolden:
         assert edges.get('DRIVER', 0) >= 3, \
             f"unique case 期望 >=3 DRIVER (按普通 case 处理), got {edges}"
 
-    def test_generate_if_wire_needs_hierarchical_name(self):
-        """generate-if 内 wire 必须用 hierarchical name 访问 (g_use1.prod1)."""
+    def test_generate_if_wire_extracted(self):
+        """[iter_107 #23 修复] generate-if 内 wire 声明现在被提取.
+
+        原 limitation (G3): get_generate_net_declarations 只处理 GenerateBlockArray
+        (for/case), generate-if 单块 (GenerateBlock) 的 wire 漏掉 → prod1 节点
+        缺失、driver 边缺失. 修复后: 激活分支 (USE=1 → g_use1) 的
+        `wire prod1 = a * b` 提取 a→prod1, b→prod1 边; 未激活分支
+        (g_use0) 的 prod0 不出现."""
         result = _build_stats(FIXTURE_DIR / 'probe_generate_if_wire.sv')
         assert result['ok']
-        # WidthTruncate warning 是误报 (4bit * 4bit = 8bit 截到 4bit)
-        # edges={} 因为 build 不报错的 assign 引用了 hierarchical name, 但 spec 关心的是:
-        #   wire prod1 = a*b 在 generate-if 内确实创建了节点 (通过 generate_for 路径被覆盖? 或漏掉?)
-        # 实测: 0 个 edges → prod1 节点缺失, driver 边缺失
-        # (G3 仅 GenerateBlockArray, generate-if 是 GenerateBlock 单块, 未走此路径)
-        assert result['result']['edges'] == {}, \
-            f"generate-if wire 期望 0 edges (G3 漏 generate-if), got {result['result']['edges']}"
+        edges = result['result']['edges']
+        assert edges.get('DRIVER', 0) == 2, \
+            f"generate-if 激活分支 wire 期望 2 条 DRIVER (a*b), got {edges}"
 
     def test_replication_rhs_supported(self):
         """RHS replication `{3{q}}` 应正常生成 DRIVER 边 (正例对照 probe_repl_lhs 是 SV 禁止)."""
