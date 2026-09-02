@@ -56,7 +56,7 @@
 | # | SV 语法 | 支持的 | 不支持的 | workaround |
 |---|---|---|---|---|
 | 23 | `generate-if` 内 `wire x = expr;` | `spec_golden/probe_generate_if_wire.sv` | `test_spec_unsupported_syntax` + `test_generate_if_case_truth` | `get_generate_net_declarations` GenerateBlock 分支 | ✅ **iter_107 修复**: GenerateBlock 单块提取 (跳过 isUninstantiated); 激活分支 wire 有 DRIVER 边 |
-| 24 | `generate-case` 内 `wire x = expr;` | GenerateBlockArray 支持 | GenerateBlock 单块未处理 | 同上 |
+| 24 | `generate-case` 内 `wire x = expr;` | `spec_golden/probe_generate_case_wire.sv` | `test_spec_unsupported_syntax` + `test_generate_if_case_truth` | `get_generate_net_declarations` GenerateBlock 分支 | ✅ **iter_107/108**: case item 也是 GenerateBlock, 同 #23 修复覆盖; SEL=2 激活分支 wire 有 DRIVER 边 |
 
 ⚠️ **特殊 fixture**: `spec_golden/probe_generate_if_wire.sv` — 测试 `generate-if` 内 wire, 预期"不生成 driver 边"但**不报错**。
 
