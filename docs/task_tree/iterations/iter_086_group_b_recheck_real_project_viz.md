@@ -76,3 +76,14 @@ CURRENT_TODO 标 B ✅ 完成 (iter_082: 2 断言修复 + 12 环境定性), 但�
 - ⏸ picorv32 ELK 根因修复暂缓 (根因记录如上)
 - ✅ 文档更正: CURRENT_TODO / TEST_MAP §0 / TESTING.md 警告 / L2 任务文件 / overview
 - 新基线: integration = 418 passed + 1 failed (picorv32) + 3 skipped
+
+---
+
+## ✅ 后续修复 (2026-09-02, iter_106)
+
+**picorv32 ELK dangling port 已修** (方豆 "继续" 拍板重启):
+- 修复: elk_bridge `_resolve_emitted_port_id` (短名 fallback 已 emit 优先)
+  + 最终兜底补发 (平铺阶段扫全部边端点)
+- 验证: integration **419 passed + 0 failed** (历史首次全绿);
+  test_real_project_viz 3 passed
+- 根因分析 (本节) 保持有效, 修复细节见 iter_106
