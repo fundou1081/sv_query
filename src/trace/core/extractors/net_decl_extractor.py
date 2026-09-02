@@ -80,6 +80,13 @@ def create_net_decl_edges(
             lhs_name = "<id:non-utf8>"
         if not lhs_name or lhs_name in port_names:
             continue
+
+        # [iter_105] 所有 net 都建节点/补宽度 (含无 init 的 `wire [N:M] x;`) —
+        # 之前只有带 init 的建节点, 无 init 的惰性由 ensure_signal_node 建 (1,0) 假宽度.
+        lhs_id = f"{module_name}.{lhs_name}"
+        _ensure_net_node(result, lhs_id, lhs_name, module_name,
+                         adapter.extract_data_width(net_decl))
+
         try:
             init = getattr(net_decl, "initializer", None)
         except (UnicodeDecodeError, TypeError):
@@ -96,12 +103,6 @@ def create_net_decl_edges(
                 net_decl_ctx.update(genvar_ctx)
         except Exception:
             net_decl_ctx = dict(genvar_ctx or {})
-
-        # [iter_101] 缺陷 B: ensure_signal_node 硬编码 width=(1,0),
-        # `wire [15:0] x` 的声明位宽被忽略 — 用 extract_data_width 建节点.
-        lhs_id = f"{module_name}.{lhs_name}"
-        _ensure_net_node(result, lhs_id, lhs_name, module_name,
-                         adapter.extract_data_width(net_decl))
 
         # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
         # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
@@ -171,10 +172,15 @@ def _ensure_net_node(result, node_id: str, name: str, module_name: str, width) -
 
     ensure_signal_node 硬编码 width=(1,0) — `wire [15:0] x = ...` 的位宽
     被忽略 (下游 width 消费错误). 本 helper 用 extract_data_width 的结果建节点;
-    已存在 (如 var_nodes 已建) 则跳过.
+    已存在则跳过, 但 [iter_105] 若已存在节点是 ensure_signal_node 的 (1,0)
+    假宽度而声明宽度已知 (如无 init 的 `wire [7:0] x;`), 补成真宽度.
     """
-    if node_id in [n.id for n in result.nodes]:
-        return
+    for n in result.nodes:
+        if n.id == node_id:
+            if (width is not None and width != (1, 0)
+                    and n.width == (1, 0)):
+                n.width = width
+            return
     result.nodes.append(
         TraceNode(id=node_id, name=name, module=module_name,
                   kind=NodeKind.SIGNAL, width=width or (1, 0))

@@ -33,11 +33,11 @@
 | 8 | RHS 位选 (`a[7:0]`) | `golden_mini/golden_dataflow_25_array_index.sv` | 全部集成测试 | `_get_signal` (→ _common.py) | 限 5 层嵌套解包装 |
 | 9 | LHS 位选 (`y[3:0] = x`) | `golden_mini/concat_*` | `orphan_regression/orphan_*` | `_handle_normal_assign` | 同上 |
 | 10 | `{a, b}` 拼接赋值 (RHS) | `golden_mini/calc_chain.sv` | 全部集成测试 | `_handle_concat_assign` (driver_extractor.py 待 Step 4 拆) | Concat 识别 |
-| 11 | `{a, b}` 拼接赋值 (LHS) | 同上 | 同上 | 同上 | 同上 |
+| 11 | `{a, b}` 拼接赋值 (LHS) | `golden_mini/golden_dataflow_36_lhs_concat.sv` | `test_concat_truth.py` (iter_092+102) | `_handle_concat_assign` | **iter_102 修复**: 位置对齐映射 zip (原实现笛卡尔积, `{y_hi,y_lo}={a,b}` 错连 4 边) |
 | 12 | `alias b = a;` | `sim/tests/integration/dataflow_fixtures/` 等 | 集成测试 | `alias_extractor.py` ✅ **已拆 (Step 1+2 commit b6708b5)** | 实测 `refs[0]=target (LHS), refs[1]=source` 是 SV 规范 |
 | 13 | `function` 定义 + 调用 | `golden_mini/golden_dataflow_19_function_multi.sv` 等 | 全部集成测试 | `_handle_invocation` (driver_extractor.py 待 Step 7 拆) | SubroutineExpander 不深入函数体 |
 | 14 | `task` 定义 + 调用 | 同上 | 同上 | 同上 | 同上 |
-| 15 | 三元 `?:` (限 5 层) | `golden_mini/ternary_demo.sv` | `orphan_regression/orphan_*ternary*` 32 个 | `_extract_ternary_condition` + `_handle_normal_assign` | 主路径, **🔸 嵌套限 5 层** |
+| 15 | 三元 `?:` (限 5 层) | `golden_mini/ternary_demo.sv` | `orphan_regression/orphan_*ternary*` 32 个 | `_extract_ternary_condition` + `_handle_normal_assign` | 主路径, **🔸 嵌套限 5 层**; iter_102 修复: 分支 localparam/parameter 引用解析为常量值 (原常量边丢失) |
 | 16 | `class` (基础) | `sim/tests/integration/dataflow_fixtures/cva6_alu_pattern.sv` | 集成测试 | semantic_adapter | 仅元数据抽取, 不生成 driver 边 |
 | 17 | `parameter` / `localparam` | 全部 fixture | 全部测试 | `_filter_compile_time_signal_names` (driver_extractor.py:367) | **自动过滤为非信号** (Fix F 2026-7-14) |
 | 18 | `genvar` + `for` (generate-for) | `golden_mini/golden_dataflow_27_generate_loop.sv` | `case27_1to1_truth` (4 个) | semantic_adapter.get_genvar_context + `_get_signal` 的 ctx 参数 | Plan F1 2026-08-12 引入 |
@@ -152,3 +152,17 @@
   - 33 种 SV 语法类别 (18✅ / 4⚠️ / 2🔶 / 5❌ / 4🔸)
   - 101 fixture 路径 + 1461 测试覆盖
   - 下次刷新: 加 driver_extractor 拆分后 (#1 Step 4+) 的"语法→文件"映射
+- **2026-09-02** — iter_101~104: 缺陷 A-F 修复 (truth 层扩充 T1-T12 顺带发现)。
+  - **A** (iter_101): assign/always 边 `expression` 提取损坏 — `get_source_text`
+    返回整个 buffer 而非 sourceRange 片段; 修复: 按 start/end.offset **字节**切片
+    (pyslang offset 是 UTF-8 字节, 非 ASCII 源会错位)。
+  - **B** (iter_101): net-decl wire 显式位宽被忽略 (`wire [15:0] x` → (1,0)) —
+    `ensure_signal_node` 硬编码 + `extract_data_width` 拿不到 NetSymbol 位宽;
+    修复: `declaredType.type.getBitVectorRange()` + `_ensure_net_node`。
+  - **C** (iter_102): **#11 LHS 拼接**位置映射丢失 (笛卡尔积) — zip 对齐修复。
+  - **D** (iter_102): **#15 ternary** 分支 localparam 常量无驱动边 — 常量值解析修复。
+  - **E** (iter_103): 动态 part-select (`bus[{sel,...} +: 8]`) 占位节点 width 假数据
+    (1,0) → None (未知)。
+  - **F** (iter_103): generate-if/else 单块内 always 不提取 → `get_generate_always_blocks`
+    增加 GenerateBlock 分支 (跳过 isUninstantiated); 激活分支 procedural 赋值恢复
+    DRIVER 边 (generate_if_alu)。
