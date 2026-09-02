@@ -28,6 +28,7 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-02** | **#24 + 遍历去重 (iter_108)** | #24 被 #23 GenerateBlock 分支覆盖 (probe 验证 + spec/truth); _iter_generate_children 去重 ~44 行; 全量 2843 passed. [iter_108](docs/task_tree/iterations/iter_108_gen24_and_refactor.md) |
 | **2026-09-02** | **#23 generate-if wire (iter_107)** | GenerateBlock 分支提取 (镜像 F); probe_generate_if_wire 0 边→激活分支 2 DRIVER; spec 测试更新 + T10 +3; 全量 2839 passed. [iter_107](docs/task_tree/iterations/iter_107_generate_if_wire_fix.md) |
 | **2026-09-02** | **picorv32 ELK 修复 (iter_106)** | preference (已 emit 优先) + 最终兜底补发; integration 419 passed + 0 failed 历史首次全绿. [iter_106](docs/task_tree/iterations/iter_106_elk_dangling_fix.md) |
 | **2026-09-02** | **A-F 收尾 (iter_105)** | EXTRACTION_COVERAGE 同步 (#11/#15 + 变更日志) + 无 init net 宽度 (case27 prod (1,0)→(7,0)); 全量 2835 passed + 1 暂缓. [iter_105](docs/task_tree/iterations/iter_105_coverage_sync_net_width.md) |
