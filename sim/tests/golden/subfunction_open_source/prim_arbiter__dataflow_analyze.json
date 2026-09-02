@@ -46,7 +46,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[0]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[0]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -75,7 +94,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[1]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[1]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -104,7 +142,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[2]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[2]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -133,7 +190,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[3]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[3]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -162,7 +238,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[4]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[4]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -191,7 +286,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[5]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[5]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -220,7 +334,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[6]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[6]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       },
       {
         "distance": 2,
@@ -249,7 +382,26 @@
             "to_signal": "prim_arbiter_tree.gnt_o"
           }
         ],
-        "stage_breakdown": []
+        "stage_breakdown": [
+          {
+            "from_kind": "PORT_IN",
+            "from_signal": "prim_arbiter_tree.req_i",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[7]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[7]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       }
     ],
     "paths_count": 8,

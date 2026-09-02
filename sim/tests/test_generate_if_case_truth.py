@@ -123,5 +123,53 @@ class TestGenerateCaseTruth(unittest.TestCase):
                          "generate_case_demo 边集偏离")
 
 
+class TestGenerateIfAluTruth(unittest.TestCase):
+    """[1:1 truth] generate_if_alu: generate-if/else 内 always (缺陷 F 修复)
+
+    TWO_CYCLE_ALU=0 → else 分支 (always @*) 激活; if 分支 (always @(posedge clk))
+    未实例化 (isUninstantiated) — 只提取激活分支, 无 CLOCK 边.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.g = _build_graph("generate_if_alu.sv")
+        cls.m = "generate_if_alu"
+
+    def test_node_set_exact(self):
+        """节点集精确: 9 节点 (参数 TWO_CYCLE_ALU 不在图)."""
+        expected = {f"{self.m}.alu_shl", f"{self.m}.alu_shr", f"{self.m}.clk",
+                    f"{self.m}.instr_sra", f"{self.m}.instr_srai",
+                    f"{self.m}.reg_op1", f"{self.m}.reg_op1[31]",
+                    f"{self.m}.reg_op2", f"{self.m}.reg_op2[4:0]"}
+        self.assertEqual(set(self.g.nodes()), expected, "generate_if_alu 节点集偏离")
+        self.assertNotIn("TWO_CYCLE_ALU", set(self.g.nodes()), "参数不应在图中")
+
+    def test_else_branch_driver_edges(self):
+        """else 分支 (激活) 的 shift 赋值产生 DRIVER 边 (缺陷 F 修复)."""
+        m = self.m
+        drv = {t for t in _edge_triples(self.g) if t[2] == "DRIVER"}
+        self.assertIn((f"{m}.reg_op1", f"{m}.alu_shl", "DRIVER"), drv,
+                      "reg_op1→alu_shl 应在 (else 分支 shift)")
+        self.assertIn((f"{m}.reg_op2[4:0]", f"{m}.alu_shl", "DRIVER"), drv,
+                      "reg_op2[4:0]→alu_shl 应在")
+        self.assertIn((f"{m}.instr_sra", f"{m}.alu_shr", "DRIVER"), drv,
+                      "instr_sra→alu_shr 应在 ($signed concat)")
+
+    def test_no_clock_edges(self):
+        """激活分支是 always @* — 不应有 CLOCK 边 (if 分支未实例化)."""
+        n_clock = sum(1 for s, d in self.g.edges()
+                      for e in self.g._edge_data.get((s, d), [])
+                      if e.kind.name == "CLOCK")
+        self.assertEqual(n_clock, 0, "else 分支 (组合) 不应有 CLOCK 边")
+
+    def test_bit_select_back_edges(self):
+        """位选回边保留: reg_op1[31]→reg_op1, reg_op2[4:0]→reg_op2."""
+        m = self.m
+        bs = {t for t in _edge_triples(self.g) if t[2] == "BIT_SELECT"}
+        self.assertEqual(bs, {(f"{m}.reg_op1[31]", f"{m}.reg_op1", "BIT_SELECT"),
+                              (f"{m}.reg_op2[4:0]", f"{m}.reg_op2", "BIT_SELECT")},
+                         "BIT_SELECT 回边偏离")
+
+
 if __name__ == "__main__":
     unittest.main()

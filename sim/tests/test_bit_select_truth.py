@@ -135,6 +135,8 @@ class TestArrayIndexSliceTruth(unittest.TestCase):
                       "bus[?:?]→part 应存在 (indexed part-select 未解析)")
         n = self.g.get_node(f"{m}.bus[?:?]")
         self.assertIsNotNone(n, "bus[?:?] 节点应存在")
+        # [iter_103] 缺陷 E: 动态 part-select 宽度未知 — 不得伪造 (1,0)
+        self.assertIsNone(n.width, "bus[?:?] 宽度应为 None (动态 base 无法静态解析)")
 
     def test_mux_ternary_structure(self):
         """嵌套 ternary mux: byte3→BRANCH_TRUE, sel→BRANCH_CONDITION, →BRANCH_RESULT."""

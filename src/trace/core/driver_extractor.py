@@ -632,12 +632,16 @@ class DriverExtractor:
     def _ensure_signal_node(self, result, node_id, name, module_name, file: str = "", line: int = 0):
         """[REFACTOR 2026-06-26] 确保 result.nodes 包含 node_id 的 SIGNAL TraceNode.
         [V6.2 2026-07-20] Optional file/line for source-location annotations.
+        [iter_103] 缺陷 E: 动态位选占位 (bus[?:?] / q[?]) 宽度未知 —
+        硬编码 (1,0) 是假数据 (暗示 1 位), 显式置 None (未知).
         """
         if node_id in [n.id for n in result.nodes]:
             return
+        # '?' 是 _extract_base_chain / get_signal 对无法静态解析位选的一致占位标记
+        width = None if ("?" in node_id or "?" in name) else (1, 0)
         result.nodes.append(
             TraceNode(id=node_id, name=name, module=module_name, kind=NodeKind.SIGNAL,
-                      width=(1, 0), file=file, line=line)
+                      width=width, file=file, line=line)
         )
 
     # [REFACTOR 2026-06-26 B-Phase 5] 抽 assign phase: 4 sub-method + dispatch
