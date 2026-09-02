@@ -272,6 +272,19 @@ class GraphBuilder:
         Builds a list of (instance_path, instance_symbol) pairs for all instances
         within the user-specified target. Passes to DriverExtractor so signal
         IDs include full instance paths.
+
+        [iter_113 修复] generate 分支必须真正下钻到 entry 内的实例:
+        旧实现 GenerateBlockArray → walk(entry=GenerateBlock, path), 而 walk 只认
+        inst.body — GenerateBlockSymbol 是 scope 无 .body → 永不下钻 → generate 内
+        实例 (cordic.genblk1[i].U / toplevel.u_cla.generators[i].u_cell4) 从未进
+        driver paths → 实例内部逻辑 (always/assign) 零提取 (CLA 摸底缺口:
+        toplevel.cout 无驱动; inst==type 时 connection 侧再叠递归假节点)。
+        iter_109 的 get_modules collect_instances 只覆盖无-target 旧路径。
+
+        修复: generate 块内实例用 child.hierarchicalPath 作为完整路径 (pyslang
+        自动带 target 前缀 + generate 块名/索引, 如 'cordic.genblk1[0].U' /
+        'toplevel.u_cla.generators[2].u_cell4') — 与 connection extractor
+        (get_module_instances hp 路径) 命名一致, 两边节点才对得上。
         """
         try:
             target_top = self._find_target_top(self.target_module)
@@ -288,21 +301,78 @@ class GraphBuilder:
                 try:
                     for child in body:
                         kind = str(getattr(child, 'kind', ''))
-                        if 'Instance' in kind:
+                        # [iter_112] 门级原语是叶子, 不进 driver paths
+                        if 'PrimitiveInstance' in kind:
+                            continue
+                        # [GAP-2] InstanceArray 含 'Instance' 子串, 须先于普通实例
+                        if 'GenerateBlockArray' in kind:
+                            entries = getattr(child, 'entries', None) or list(child)
+                            for entry in entries:
+                                if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
+                                    _walk_gen_block(entry)
+                        elif 'GenerateBlock' in kind:
+                            _walk_gen_block(child)
+                        elif 'InstanceArray' in kind:
+                            # 数组实例元素各有独立 hp (含 [k]) — 逐个下钻
+                            elements = getattr(child, 'elements', None) or list(child)
+                            for elem in elements:
+                                if 'Instance' in str(getattr(elem, 'kind', '')) \
+                                        and 'PrimitiveInstance' not in str(getattr(elem, 'kind', '')):
+                                    _walk_inst(elem)
+                        elif 'Instance' in kind:
                             try:
                                 name = str(child.name)
                             except Exception:
                                 name = '_anon'
                             walk(child, f"{path}.{name}")
-                        elif 'GenerateBlockArray' in kind:
-                            entries = getattr(child, 'entries', None) or list(child)
-                            for entry in entries:
-                                if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
-                                    walk(entry, path)
-                        elif 'GenerateBlock' in kind:
-                            walk(child, path)
                 except Exception as e:
                     logger.warning("gen_block 映射写入失败: %s", e)
+
+            def _hp(child):
+                """generate 块内实例的完整路径 (hp, 含 generate 块名+索引)."""
+                try:
+                    hp = getattr(child, 'hierarchicalPath', None)
+                    if hp:
+                        return str(hp)
+                except (UnicodeDecodeError, TypeError):
+                    pass
+                try:
+                    return f"{getattr(child, 'name', '_anon')}"
+                except Exception:
+                    return '_anon'
+
+            def _walk_inst(inst_sym):
+                """用 hp 路径下钻实例 (generate entry 内 / 数组元素)."""
+                walk(inst_sym, _hp(inst_sym))
+
+            def _walk_gen_block(block):
+                """下钻 GenerateBlock(Array entry) 的实例 children (含嵌套 generate).
+
+                GenerateBlockSymbol 是 semantic scope, 直接 __iter__ 得成员;
+                实例用其 hierarchicalPath (如 'cordic.genblk1[0].U') 全路径,
+                不再拼 path.name (会丢 generate 块名/索引段)。
+                """
+                try:
+                    for sub in block:
+                        sk = str(getattr(sub, 'kind', ''))
+                        if 'PrimitiveInstance' in sk:
+                            continue
+                        if 'InstanceArray' in sk:
+                            elements = getattr(sub, 'elements', None) or list(sub)
+                            for elem in elements:
+                                if 'Instance' in str(getattr(elem, 'kind', '')) \
+                                        and 'PrimitiveInstance' not in str(getattr(elem, 'kind', '')):
+                                    _walk_inst(elem)
+                        elif 'GenerateBlockArray' in sk:
+                            for entry in (getattr(sub, 'entries', None) or list(sub)):
+                                if 'GenerateBlock' in str(getattr(entry, 'kind', '')):
+                                    _walk_gen_block(entry)
+                        elif 'GenerateBlock' in sk:
+                            _walk_gen_block(sub)
+                        elif 'Instance' in sk:
+                            _walk_inst(sub)
+                except Exception as e:
+                    logger.warning("generate 块下钻失败: %s", e)
 
             walk(target_top, self.target_module)
 

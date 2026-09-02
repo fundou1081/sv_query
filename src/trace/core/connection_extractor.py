@@ -123,6 +123,10 @@ class ConnectionExtractor:
                     # tree key 与实际模块名不匹配,查找包含实例的模块
                     # 找到没有被其他模块实例化的模块(顶层模块)
                     instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
+                    # [iter_113] 保留 legacy 族: 实测移除会让 generate 实例路径加倍
+                    # (top.g[0].g[0].U) — 路径构建依赖两族互补; iter_113 的真根因
+                    # 是 inst_module_name 启发式 (inst==type 时回落 parent → 自环),
+                    # 见下方解析处修复
 
                     # 收集所有被实例化的模块名
                     instantiated_modules = set()
@@ -147,6 +151,7 @@ class ConnectionExtractor:
 
         trees = getattr(self.adapter.parser, "trees", {})
         instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
+        # [iter_113] 保留 legacy 族 (见上; 移除会致 generate 路径加倍)
 
         # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
@@ -199,9 +204,15 @@ class ConnectionExtractor:
             except Exception as e:
                 logger.debug("def_name 提取失败: %s", e)
                 pass
-            if _def_name and _def_name != inst_name:
+            if _def_name:
+                # [iter_113] 去掉 '!= inst_name' 守卫: 实例名 == 模块类型名是惯用法
+                # (cell4 cell4(...)), def_name 权威, 直接采用
                 inst_module_name = _def_name
-            elif inst_type_value and inst_type_value != inst_name:
+            elif inst_type_value:
+                # type token (native wrapper 存 definition.name) = 模块类型, 权威 —
+                # 即使 == inst_name 也直接采用 (旧守卫在 inst==type 时错误回落
+                # parent_module → inst_module_name==parent → get_path 自环递归,
+                # CLA cell4 cell4 复现, 同 iter_112 原语根因型)
                 inst_module_name = inst_type_value
             else:
                 inst_module_name = self._get_parent_module_name(inst)
@@ -306,9 +317,13 @@ class ConnectionExtractor:
             except Exception as e:
                 logger.debug("def_name 提取失败: %s", e)
                 pass
-            if _def_name and _def_name != inst_name:
+            if _def_name:
+                # [iter_113] def_name 权威, 直接采用 (实例名==类型名是惯用法)
                 inst_module_name = _def_name
-            elif inst_type_value and inst_type_value != inst_name:
+            elif inst_type_value:
+                # [iter_113] type token (native wrapper 存 definition.name) = 模块类型,
+                # 权威 — 即使 == inst_name 也采用; 旧守卫 inst==type 时回落 parent →
+                # inst_module_name==parent → get_path 自环递归 (CLA cell4 cell4)
                 inst_module_name = inst_type_value
             else:
                 inst_module_name = self._get_parent_module_name(inst)
