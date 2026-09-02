@@ -28,6 +28,7 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-02** | **picorv32 ELK 修复 (iter_106)** | preference (已 emit 优先) + 最终兜底补发; integration 419 passed + 0 failed 历史首次全绿. [iter_106](docs/task_tree/iterations/iter_106_elk_dangling_fix.md) |
 | **2026-09-02** | **A-F 收尾 (iter_105)** | EXTRACTION_COVERAGE 同步 (#11/#15 + 变更日志) + 无 init net 宽度 (case27 prod (1,0)→(7,0)); 全量 2835 passed + 1 暂缓. [iter_105](docs/task_tree/iterations/iter_105_coverage_sync_net_width.md) |
 | **2026-09-02** | **缺陷 A-F 修复** | expression 字节切片 / net-decl 位宽 / LHS concat zip / ternary 常量值 / part-select 宽度 None / generate-if always; +11 truth 断言; 全量 2835 passed + 1 暂缓 (picorv32 ELK). [iter_101~104](docs/task_tree/iterations/iter_104_defect_af_wrapup.md) |
 | **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture, truth 32→112 测试全绿: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_088~100](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
