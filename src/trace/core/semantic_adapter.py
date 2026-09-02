@@ -1295,38 +1295,81 @@ class SemanticAdapter:
 
         for member in module.body:
             kind = str(getattr(member, "kind", ""))
-            if "GenerateBlockArray" not in kind:
-                continue
-            # genvar 名字 (从 loopVariable, pure semantic)
-            genvar_name = None
-            try:
-                lv = getattr(member, "loopVariable", None)
-                if lv is not None:
-                    genvar_name = str(getattr(lv, "name", "") or "")
-            except Exception:
+            if "GenerateBlockArray" in kind:
+                # genvar 名字 (从 loopVariable, pure semantic)
                 genvar_name = None
-
-            # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
-            try:
-                entries = list(member)
-            except TypeError:
-                entries = getattr(member, "entries", None) or []
-
-            for entry in entries:
-                if getattr(entry, "isUninstantiated", False):
-                    continue
-                arr_idx = getattr(entry, "arrayIndex", None)
-                ctx = {}
-                if genvar_name and arr_idx is not None:
-                    try:
-                        ctx = {genvar_name: int(arr_idx)}
-                    except (TypeError, ValueError):
-                        ctx = {genvar_name: arr_idx}
-                # GenerateBlockSymbol __iter__ → NetSymbol (pure semantic)
                 try:
-                    children = list(entry)
+                    lv = getattr(member, "loopVariable", None)
+                    if lv is not None:
+                        genvar_name = str(getattr(lv, "name", "") or "")
+                except Exception:
+                    genvar_name = None
+
+                # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
+                try:
+                    entries = list(member)
                 except TypeError:
-                    children = self._iter_children(entry)
+                    entries = getattr(member, "entries", None) or []
+
+                for entry in entries:
+                    if getattr(entry, "isUninstantiated", False):
+                        continue
+                    arr_idx = getattr(entry, "arrayIndex", None)
+                    ctx = {}
+                    if genvar_name and arr_idx is not None:
+                        try:
+                            ctx = {genvar_name: int(arr_idx)}
+                        except (TypeError, ValueError):
+                            ctx = {genvar_name: arr_idx}
+                    # GenerateBlockSymbol __iter__ → NetSymbol (pure semantic)
+                    try:
+                        children = list(entry)
+                    except TypeError:
+                        children = self._iter_children(entry)
+                    for child in children:
+                        child_kind = str(getattr(child, "kind", ""))
+                        if "Net" not in child_kind:
+                            continue
+                        try:
+                            nm = getattr(child, "name", "")
+                            nm = str(nm) if nm else ""
+                        except Exception:
+                            nm = ""
+                        if not nm:
+                            continue
+                        init = getattr(child, "initializer", None)
+                        # [Plan G3 2026-08-27 13:20] hierarchicalPath 区分每个 entry 的独立 symbol
+                        # 4 entry 的 prod 是 4 个独立 symbol (generate_loop.gen_accum[N].prod),
+                        # 用 hp 当 node id → 4 个独立 tree/edge (gap_2: 4 个 '*' op)
+                        hp_str = ""
+                        try:
+                            hp = getattr(child, "hierarchicalPath", None)
+                            if hp is not None:
+                                hp_str = str(hp) or ""
+                        except Exception:
+                            hp_str = ""
+                        results.append({
+                            "name": nm,
+                            "initializer": init,
+                            "genvar_ctx": dict(ctx),
+                            "array_index": arr_idx,
+                            "hierarchical_path": hp_str,
+                            "loop_var": genvar_name or "",
+                            # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
+                            "width": self.extract_data_width(child),
+                        })
+            # [iter_107] #23: generate-if/else 单块 (GenerateBlock, 非 Array)
+            # 内的带 init wire 声明 — 镜像 iter_103 缺陷 F (always 单块修复):
+            # 之前只处理 GenerateBlockArray (for/case), 单块 (if/else) 的 wire
+            # 全部丢失 (probe_generate_if_wire 实测 0 节点/0 边). 跳过
+            # isUninstantiated (未激活分支), 只收激活分支.
+            elif "GenerateBlock" in kind:
+                if getattr(member, "isUninstantiated", False):
+                    continue
+                try:
+                    children = list(member)
+                except TypeError:
+                    children = self._iter_children(member)
                 for child in children:
                     child_kind = str(getattr(child, "kind", ""))
                     if "Net" not in child_kind:
@@ -1339,9 +1382,6 @@ class SemanticAdapter:
                     if not nm:
                         continue
                     init = getattr(child, "initializer", None)
-                    # [Plan G3 2026-08-27 13:20] hierarchicalPath 区分每个 entry 的独立 symbol
-                    # 4 entry 的 prod 是 4 个独立 symbol (generate_loop.gen_accum[N].prod),
-                    # 用 hp 当 node id → 4 个独立 tree/edge (gap_2: 4 个 '*' op)
                     hp_str = ""
                     try:
                         hp = getattr(child, "hierarchicalPath", None)
@@ -1352,11 +1392,10 @@ class SemanticAdapter:
                     results.append({
                         "name": nm,
                         "initializer": init,
-                        "genvar_ctx": dict(ctx),
-                        "array_index": arr_idx,
+                        "genvar_ctx": {},
+                        "array_index": None,
                         "hierarchical_path": hp_str,
-                        "loop_var": genvar_name or "",
-                        # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
+                        "loop_var": "",
                         "width": self.extract_data_width(child),
                     })
         return results

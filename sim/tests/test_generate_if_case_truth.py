@@ -10,6 +10,8 @@ Fixtures:
   gen_subtractor 未实例化
 - golden_dataflow_31_generate_case.sv (generate_case_demo): SEL=2 →
   gen_subtractor 激活, gen_adder/gen_default 未实例化
+- spec_golden/probe_generate_if_wire.sv (probe_gen_if_wire): USE=1 → g_use1
+  激活 (wire prod1 = a*b), g_use0 未实例化 (iter_107 #23 修复)
 
 1:1 预期 (实测于 iter_096):
 - generate_if_demo: 5 节点 / 6 边; op1→result 在 (gen_adder), op2→result 不在
@@ -27,10 +29,16 @@ import unittest  # noqa: E402
 from trace.unified_tracer import UnifiedTracer  # noqa: E402
 
 FIXTURE_DIR = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"
+SPEC_DIR = _REPO_ROOT / "sim" / "tests" / "fixtures" / "spec_golden"
 
 
 def _build_graph(fn: str):
     path = FIXTURE_DIR / fn
+    tracer = UnifiedTracer(sources={str(path): path.read_text()}, log_level="ERROR")
+    return tracer.build_graph(use_cache=False)
+
+
+def _build_graph_path(path: Path):
     tracer = UnifiedTracer(sources={str(path): path.read_text()}, log_level="ERROR")
     return tracer.build_graph(use_cache=False)
 
@@ -169,6 +177,35 @@ class TestGenerateIfAluTruth(unittest.TestCase):
         self.assertEqual(bs, {(f"{m}.reg_op1[31]", f"{m}.reg_op1", "BIT_SELECT"),
                               (f"{m}.reg_op2[4:0]", f"{m}.reg_op2", "BIT_SELECT")},
                          "BIT_SELECT 回边偏离")
+
+
+class TestGenerateIfWireTruth(unittest.TestCase):
+    """[1:1 truth] probe_generate_if_wire: generate-if 单块内 wire 声明 (iter_107 #23)"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.g = _build_graph_path(SPEC_DIR / "probe_generate_if_wire.sv")
+        cls.m = "probe_gen_if_wire"
+
+    def test_active_branch_wire_node(self):
+        """激活分支 (USE=1 → g_use1) 的 wire prod1 节点存在 (hierarchical path)."""
+        self.assertIsNotNone(self.g.get_node(f"{self.m}.g_use1.prod1"),
+                             "g_use1.prod1 节点应存在 (#23 修复)")
+
+    def test_active_branch_wire_edges(self):
+        """wire prod1 = a * b → a→prod1, b→prod1 DRIVER 边."""
+        m = self.m
+        drv = {t for t in _edge_triples(self.g) if t[2] == "DRIVER"}
+        self.assertEqual(drv, {
+            (f"{m}.a", f"{m}.g_use1.prod1", "DRIVER"),
+            (f"{m}.b", f"{m}.g_use1.prod1", "DRIVER"),
+        }, "激活分支 wire 驱动边偏离")
+
+    def test_inactive_branch_absent(self):
+        """未实例化分支 (g_use0) 的 prod0 绝不出现在图中."""
+        node_ids = set(self.g.nodes())
+        self.assertNotIn(f"{self.m}.g_use0.prod0", node_ids,
+                         "未实例化分支 wire 不应出现")
 
 
 if __name__ == "__main__":

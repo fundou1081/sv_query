@@ -55,7 +55,7 @@
 
 | # | SV 语法 | 支持的 | 不支持的 | workaround |
 |---|---|---|---|---|
-| 23 | `generate-if` 内 `wire x = expr;` | `get_generate_net_declarations` 只查 GenerateBlockArray（`for`/`case` 展开）| GenerateBlock（`if` 单块）未处理 | 拆 `if` 成 `case` 或加 `_handle_generate_if_wire` |
+| 23 | `generate-if` 内 `wire x = expr;` | `spec_golden/probe_generate_if_wire.sv` | `test_spec_unsupported_syntax` + `test_generate_if_case_truth` | `get_generate_net_declarations` GenerateBlock 分支 | ✅ **iter_107 修复**: GenerateBlock 单块提取 (跳过 isUninstantiated); 激活分支 wire 有 DRIVER 边 |
 | 24 | `generate-case` 内 `wire x = expr;` | GenerateBlockArray 支持 | GenerateBlock 单块未处理 | 同上 |
 
 ⚠️ **特殊 fixture**: `spec_golden/probe_generate_if_wire.sv` — 测试 `generate-if` 内 wire, 预期"不生成 driver 边"但**不报错**。
@@ -152,6 +152,9 @@
   - 33 种 SV 语法类别 (18✅ / 4⚠️ / 2🔶 / 5❌ / 4🔸)
   - 101 fixture 路径 + 1461 测试覆盖
   - 下次刷新: 加 driver_extractor 拆分后 (#1 Step 4+) 的"语法→文件"映射
+- **2026-09-02** — iter_107: **#23 generate-if 单块内 wire 提取** —
+  `get_generate_net_declarations` 增加 GenerateBlock 分支 (镜像 iter_103 缺陷 F),
+  跳过 isUninstantiated; probe_generate_if_wire 从 0 边 → 激活分支 2 条 DRIVER。
 - **2026-09-02** — iter_101~104: 缺陷 A-F 修复 (truth 层扩充 T1-T12 顺带发现)。
   - **A** (iter_101): assign/always 边 `expression` 提取损坏 — `get_source_text`
     返回整个 buffer 而非 sourceRange 片段; 修复: 按 start/end.offset **字节**切片
