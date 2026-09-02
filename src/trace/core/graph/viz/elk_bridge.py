@@ -288,6 +288,20 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 保留旧名 alias, 向后兼容现有调用 (V16.12 → V16.13 优雅重构期过渡)
     _port_id_for_input = lambda full_path: _resolve_port_id(full_path, 'in', input_short_to_fulls, output_short_to_fulls)
     _port_id_for_output = lambda full_path: _resolve_port_id(full_path, 'out', input_short_to_fulls, output_short_to_fulls)
+
+    # [iter_106] 短名 fallback 的"已 emit 优先"解析 (缺陷 E: picorv32 ELK dangling).
+    # _resolve_port_id(short) 取 dedup_map _fulls[0] 任意项; 当同短名多实例且
+    # emit 侧只发了部分 (module 级 expr_tree key vs 实例级 viz 端口路径不一致),
+    # _fulls[0] 可能未 emit → edge 引用悬空 id. 本 helper 优先返回**已 emit** 的
+    # 端口 id, 保证 edge 端点与 shape 一一对应. 无匹配时回退原行为 (保持兼容).
+    # 注意: 定义在 _emitted_port_ids 之前, 但只在 render_tree (emit 之后) 调用.
+    def _resolve_emitted_port_id(short: str, role: str) -> str:
+        _dedup = input_short_to_fulls if role == 'in' else output_short_to_fulls
+        for _full in _dedup.get(short, []):
+            _pid = _resolve_port_id(_full, role, input_short_to_fulls, output_short_to_fulls)
+            if _pid in _emitted_port_ids:
+                return _pid
+        return _resolve_port_id(short, role, input_short_to_fulls, output_short_to_fulls)
     
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
     
@@ -664,10 +678,15 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 if full_path in output_paths:
                     return _resolve_port_id(full_path, 'out', input_short_to_fulls, output_short_to_fulls)
             # Fallback: 短名只在只有一个实例时使用
+            # [iter_106] 缺陷 E (picorv32 ELK dangling): 短名 fallback 的
+            # _resolve_port_id(short) 取 dedup_map _fulls[0] **任意项**, 可能与
+            # emit 侧不一致 → edge 引用未 emit 的 port id → ELK 'Referenced shape
+            # does not exist'. 修复: 优先解析到**已 emit** 的端口 (emit 循环先跑,
+            # _emitted_port_ids 可用); 无匹配才回退原行为.
             if label in input_set:
-                return _resolve_port_id(label, 'in', input_short_to_fulls, output_short_to_fulls)
+                return _resolve_emitted_port_id(label, 'in')
             elif label in output_set:
-                return _resolve_port_id(label, 'out', input_short_to_fulls, output_short_to_fulls)
+                return _resolve_emitted_port_id(label, 'out')
             # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
             # 连接一个带信号名的标签节点（→ sum → 下游引用）
             # expr_trees keys 格式: module.signal → 需要短名匹配
@@ -1004,6 +1023,36 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # 这样 emit 的 sig_scaled_wire 等 wire 节点会被 _wrap_into_clusters 看到, 放进 cluster_target_top
     if viz is not None:
         result = _emit_cross_instance_connection_edges(result, viz)
+
+    # [iter_106] 缺陷 E (picorv32 ELK dangling) 最终兜底: 扫描**全部**边端点,
+    # 引用了未 emit 的 port id → 补发 port shape. 根因是 edge 侧 SignalRef 解析
+    # (短名 fallback 取 dedup _fulls[0] 任意项 / 全路径分支) 与 emit 侧
+    # (_referenced_*_fulls 收集) 可能不一致; _resolve_emitted_port_id 已优先
+    # 复用已 emit 孪生, 此处兜底保证任何路径都不产生 dangling reference.
+    # (注意 _wrap_into_clusters 内的 B1v2 防御只扫顶层 edges, cluster 内边会漏 —
+    # 本处 root_edges 仍是平铺的, 全覆盖.)
+    _missing_refs = set()
+    for _e in result.get('edges', []) or []:
+        for _t in (_e.get('sources', []) or []) + (_e.get('targets', []) or []):
+            if isinstance(_t, str) and _t.startswith('port_') and _t not in _emitted_port_ids:
+                _missing_refs.add(_t)
+    if _missing_refs:
+        for _pid in sorted(_missing_refs):
+            _full_guess = _pid[5:].replace('_dot_', '.')
+            _sn = _full_guess.rsplit('.', 1)[-1]
+            _role_in = _full_guess in input_paths
+            result['children'].append({
+                'id': _pid, 'width': PORT_W, 'height': PORT_H,
+                'labels': [{'text': _sn, 'fontSize': 8, 'fontName': 'Courier'}],
+                'layoutOptions': {'elk.layered.layering.layerConstraint':
+                                  'FIRST' if _role_in else 'LAST'},
+                '_meta': {'kind': 'port_in' if _role_in else 'port_out',
+                          'file': '', 'line': 0, '_defensive': True, '_iter_106': True},
+            })
+            _emitted_port_ids.add(_pid)
+        print(f"[iter_106] defensively emitted {len(_missing_refs)} missing "
+              f"port(s): {sorted(_missing_refs)[:5]}", file=sys.stderr)
+
     # [V14 2026-08-13] 层级模块折叠 cluster 重组
     return _wrap_into_clusters(viz, result)
 

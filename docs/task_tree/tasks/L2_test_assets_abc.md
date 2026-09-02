@@ -78,9 +78,9 @@ sandbox 环境 artifact — **其中 real_project_viz 2 个是误分类**: iter_
 | 项目 | 根因 | 处置 |
 |---|---|---|
 | darkriscv | 断言过时: `--dot` 自 V100 起写 **SVG**, 断言还查 `'digraph'` (DOT 时代残留); CLI 本身 strict 模式可过 | ✅ 断言改 SVG 校验 + 删测试内 --no-strict |
-| picorv32 | **真实管线 bug**: ELK JSON edge 引用 `port_picorv32_axi_dot_mem_axi_bvalid` 但从未 emit (只 emit 深一层 `..._axi_adapter_dot_mem_axi_bvalid`)。根因: expr_tree key 模块级路径 vs viz 端口嵌套路径不一致 + edge 侧/emit 侧 SignalRef fallback 规则不一致。测试自引入 (6e8256c) 从未绿过 | ⏸ **暂缓** (方豆 "elk 先不管"), 根因完整记录在 iter_086 |
+| picorv32 | **真实管线 bug**: ELK JSON edge 引用 `port_picorv32_axi_dot_mem_axi_bvalid` 但从未 emit。根因: expr_tree key 模块级路径 vs viz 端口嵌套路径不一致 + edge 侧/emit 侧 SignalRef fallback 规则不一致 | ✅ **已修** (iter_106: _resolve_emitted_port_id 已 emit 优先 + 最终兜底补发; integration 全绿) |
 
-**当前基线** (2026-09-02 实测): integration = 418 passed + 1 failed (picorv32 ELK) + 3 skipped
+**当前基线** (2026-09-02 iter_106 后): integration = **419 passed + 3 skipped, 0 failed**
 
 ## C 组完成 (iter_082/083) — 扩 truth 层
 
