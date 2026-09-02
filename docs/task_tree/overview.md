@@ -68,6 +68,9 @@ sv_query_project/
 | **24** | **2026-09-02** | **L1** | **Truth 层扩充 T1-T12 (方豆 "按这个顺序来推进吧")** | **12 项 1:1 golden 缺口补齐** | **truth 32→112 全绿** | **12 文件 + 5 fixture: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集; 顺带发现缺陷 A-F** | **✅ 108 passed + 4 既有 skip** |
 | **25** | **2026-09-02** | **L1** | **缺陷 A-F 修复 (方豆 "继续")** | **修 truth 层发现的 6 个缺陷** | **零回归** | **A expression 字节切片 / B net-decl 位宽 / C LHS concat zip / D ternary 常量值 / E part-select 宽度 None / F generate-if always; +11 truth 断言; golden ×4 重生成** | **✅ 2835 passed** |
 | **26** | **2026-09-02** | **L1** | **picorv32 ELK 修复 (方豆 "继续")** | **修 iter_086 暂缓的 dangling port** | **integration 全绿** | **preference (已 emit 优先) + 最终兜底补发; mem_axi_bvalid 复用孪生, resetn 兜底 1 个** | **✅ 2836 passed + 0 failed** |
+| **27** | **2026-09-02** | **L1** | **A-F 收尾 (方豆 "继续")** | **EXTRACTION_COVERAGE 同步 + 无 init net 宽度** | **零回归** | **#11/#15 行更新 + 变更日志; case27 prod (1,0)→(7,0)** | **✅ 2835 passed** |
+| **28** | **2026-09-02** | **L1** | **#23/#24 generate 单块 wire (方豆 "继续")** | **GenerateBlock net 声明提取** | **零回归** | **#23 修复 (镜像 F) + #24 验证 (probe); spec/truth 更新; _iter_generate_children 去重** | **✅ 2843 passed + 0 failed** |
+| **29** | **2026-09-02** | **L1** | **归档 (方豆 "先归档记录")** | **TEST_MAP/CHANGELOG/CURRENT_TODO 同步** | **文档一致** | **truth 130 / 全仓 329 文件 3148 测试; CHANGELOG 2026-09-02 条目; CURRENT_TODO 单表清理; 记录算法模块调研方向** | **✅** |
 
 ---
 

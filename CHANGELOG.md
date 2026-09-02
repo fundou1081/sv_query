@@ -3,6 +3,41 @@
 > 完整历史 changelog. README 短版只展示"为什么用 sv_query" + 5 分钟上手.
 > 详细 release notes 看这里.
 
+## 2026-09-02 (测试资产扩充 + 缺陷修复: truth 32→130, 全层全绿)
+
+### Truth 层扩充 T1-T12 (iter_088~100)
+- 12 个新 truth 文件 + 5 fixture (golden_dataflow_32~36): assign 链 / clock-reset /
+  case 分支 / 位选 / concat / function-task / parameter 过滤 / alias / class /
+  generate-if-case / SVG 布局 / 查询精确驱动集 — 集合相等断言 (多节点/边=偏离)
+- truth 层 32 → 112 测试, 补齐"完整支持"语法无 1:1 锁定的缺口
+
+### 缺陷 A-F 修复 (iter_101~104, truth 层顺带发现)
+- A: assign 边 expression 提取损坏 → get_source_text 按 sourceRange **字节**切片
+  (pyslang offset 是 UTF-8 字节)
+- B: net-decl 显式位宽忽略 → declaredType.type.getBitVectorRange() + _ensure_net_node
+- C: LHS 拼接笛卡尔积 → zip 位置对齐
+- D: ternary 分支 localparam 无常量边 → _resolve_const_value (lookupName→sym.value)
+- E: 动态 part-select 宽度假数据 → '?' 占位 width=None (未知)
+- F: generate-if 单块内 always 不提取 → get_generate_always_blocks + GenerateBlock 分支
+- 无 init net 宽度残留意 (iter_105) + EXTRACTION_COVERAGE 同步
+
+### picorv32 ELK dangling port 修复 (iter_106)
+- elk_bridge: 短名 fallback 已-emit 优先 (_resolve_emitted_port_id) + 最终兜底补发
+- integration **419 passed + 0 failed 历史首次全绿**
+
+### #23/#24 generate-if/case 单块 wire (iter_107~108)
+- get_generate_net_declarations + GenerateBlock 分支 (镜像 F)
+- 遍历去重: _iter_generate_children 共享 helper (~44 行)
+
+### 顺带修复
+- models.py to_dict/from_dict 支持 width=None 往返 (cache 序列化根因, iter_087)
+- test_known_limitations / subfunction golden ×4 更新 (锁定旧 bug 的测试)
+
+### 全量基线 (2026-09-02)
+- 329 文件 / 3148 测试收集; unit+cli+integration+truth = **2843 passed + 0 failed**
+  (usage 层 ventus 14 failed 为外部项目依赖, pre-existing)
+- truth 层 17 文件 130 测试
+
 ## 2026-08-26 (V100: --dot → --svg flag 重命名 + 文档同步修正)
 
 ### V100: --dot flag → --svg (canonical) (commit `7701a4e`)
