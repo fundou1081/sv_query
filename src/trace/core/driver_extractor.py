@@ -682,6 +682,72 @@ class DriverExtractor:
             ),
         )
 
+    def _create_primitive_edges(self, module, result, module_name):
+        """[iter_112] 门级原语 (GatePrimitiveInstance) 输出 DRIVER 边 — leaf cell 建模.
+
+        原语 (and/or/xor/not/nand/nor/xnor/buf/...) 无 definition/body/端口声明,
+        pyslang 给 .primitiveType (门类型) + .portConnections:
+          portConnections[0] = Assignment(left=输出端子) — Verilog 门原语首端子是输出
+          portConnections[1..] = 输入端子 (NamedValue/ElementSelect)
+
+        语义 = 隐式连续赋值 out = f(in1, in2, ...): 每个输入端子 → 输出端子生成
+        DRIVER 边 — 与现有 assign 二元操作数约定一致 (assign Y = X ^ Z → X,Z 各
+        DRIVER→Y; "谁驱动 S[0]" 答 A[0]/B[0])。端子表达式走 _get_signal 解析成
+        宿主模块作用域信号 id (module_name 前缀, 位选保持 [i] 形态), 与 assign
+        LHS/RHS 同一套解析 — 门输出落在宿主模块 (原语无自身作用域)。
+        """
+        try:
+            prims = self.adapter.get_primitive_instances(module)
+        except Exception as e:
+            logger.warning("get_primitive_instances 失败: %s", e)
+            return
+        for prim in prims:
+            try:
+                pt = getattr(prim, "primitiveType", None)
+                gate_fn = str(getattr(pt, "name", "")) if pt is not None else ""
+            except (UnicodeDecodeError, TypeError):
+                gate_fn = ""
+            try:
+                conns = list(getattr(prim, "portConnections", None) or [])
+            except Exception as e:
+                logger.debug("原语 portConnections 读取失败: %s", e)
+                continue
+            if not conns:
+                continue
+            # generate-for 内的门: genvar ctx (同 assign 流, Y[i]→Y[0] 逐 entry 展开)
+            try:
+                genvar_ctx = self.adapter.get_primitive_genvar_context(prim) or {}
+            except Exception as e:
+                logger.debug("get_primitive_genvar_context 失败: %s", e)
+                genvar_ctx = {}
+            # 输出端子 = conn[0] (Assignment.left); 防御: 直接 NamedValue 形态
+            out_expr = conns[0]
+            if "Assignment" in str(getattr(out_expr, "kind", "")):
+                out_expr = getattr(out_expr, "left", None) or out_expr
+            out_name = self._get_signal(out_expr, genvar_ctx)
+            if not out_name:
+                logger.debug(
+                    "原语 %s (%s) 输出端子无法解析, 跳过", gate_fn, module_name
+                )
+                continue
+            dst = f"{module_name}.{out_name}"
+            for in_expr in conns[1:]:
+                try:
+                    in_name = self._get_signal(in_expr, genvar_ctx)
+                except Exception as e:
+                    logger.debug("原语输入端子解析失败: %s", e)
+                    continue
+                if not in_name or in_name == out_name:
+                    continue
+                src = f"{module_name}.{in_name}"
+                self._append_edge(
+                    result,
+                    src=src,
+                    dst=dst,
+                    kind=EdgeKind.DRIVER,
+                    assign_type="continuous",
+                )
+
     def _find_invocations(self, expr, invocations=None) -> list:
         """[REFACTOR 2026-06-26] 5c-helper: 递归找 Invocation/Call 表达式.
 
@@ -1186,6 +1252,9 @@ class DriverExtractor:
 
                 # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
                 self._create_always_edges(module, result, module_name)
+
+                # [iter_112] B-Phase 7: 门级原语输出 DRIVER 边 (leaf cell 建模)
+                self._create_primitive_edges(module, result, module_name)
         else:
             # 旧路径: 遍历所有 modules (兼容行为)
             for module in self.adapter.get_modules():
@@ -1210,6 +1279,9 @@ class DriverExtractor:
 
                 # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
                 self._create_always_edges(module, result, module_name)
+
+                # [iter_112] B-Phase 7: 门级原语输出 DRIVER 边 (leaf cell 建模)
+                self._create_primitive_edges(module, result, module_name)
 
         # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
         # 一次性后处理比每个创建点都填更简洁

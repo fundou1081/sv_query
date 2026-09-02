@@ -33,6 +33,9 @@ sv_query_project/
 └── L1: Truth_层扩充_T1-T12/  [✅ CLOSED, iter_088~100: truth 32→112]
 └── L1: 缺陷_A-F修复/  [✅ CLOSED, iter_101~104: expression/位宽/拼接/ternary 常量/part-select/generate-if 全修]
 └── L1: picorv32_ELK修复/  [✅ CLOSED, iter_106: dangling port 修复, integration 全绿]
+└── L1: openrtl_工业算法摸底与缺口修复/  [🟡 ACTIVE, iter_109~; 门级原语 iter_112 完成]
+    └── L2: generate实例链/嵌套作用域/门级原语/...  [见 iter_109~112, 逐个缺口修复]
+    └── L2: Gate_Primitive_Support/  [✅ CLOSED iter_112: leaf cell 建模, tasks/L2_gate_primitive_support.md]
     └── L3: Truth_expansion/  [✅ CLOSED, 全绿]
 ```
 
@@ -71,6 +74,10 @@ sv_query_project/
 | **27** | **2026-09-02** | **L1** | **A-F 收尾 (方豆 "继续")** | **EXTRACTION_COVERAGE 同步 + 无 init net 宽度** | **零回归** | **#11/#15 行更新 + 变更日志; case27 prod (1,0)→(7,0)** | **✅ 2835 passed** |
 | **28** | **2026-09-02** | **L1** | **#23/#24 generate 单块 wire (方豆 "继续")** | **GenerateBlock net 声明提取** | **零回归** | **#23 修复 (镜像 F) + #24 验证 (probe); spec/truth 更新; _iter_generate_children 去重** | **✅ 2843 passed + 0 failed** |
 | **29** | **2026-09-02** | **L1** | **归档 (方豆 "先归档记录")** | **TEST_MAP/CHANGELOG/CURRENT_TODO 同步** | **文档一致** | **truth 130 / 全仓 329 文件 3148 测试; CHANGELOG 2026-09-02 条目; CURRENT_TODO 单表清理; 记录算法模块调研方向** | **✅** |
+| **30** | **2026-09-02** | **L1** | **generate-for 实例化链提取 (方豆 "继续")** | **iter_109: gen 实例路径带索引 + 连接解包 + #45** | **cordic rotator 进图** | **_get_generate_block_name g[i]; get_modules collect_instances 递归 GenerateBlock{Array}; 实例 CONNECTION ElementSelect/Assignment 解包; truth +6** | **✅ (commit c7e17e3)** |
+| **31** | **2026-09-02** | **L1** | **CORDIC 嵌套作用域 (方豆 "继续")** | **iter_110: 嵌套 generate 连接信号解析到宿主模块** | **cordic DRIVER 25→100** | **_sig_scope 剥掉末尾实例名 + 全部尾部 [N] 段; shifter.Q→g[i].U.x_i_shifted 按正确作用域 (16 entry)** | **✅ (commit 6f005a1)** |
+| **32** | **2026-09-02** | **L1** | **CORDIC 流水线 truth (方豆 "继续")** | **iter_111: 真实工业 fixture 锁 iter_109/110** | **truth +6** | **golden_dataflow_39 (verilog_cordic_core 真实源码) + test_cordic_pipeline_truth (15 rotator / 链 / 作用域); 365 节点 100 DRIVER** | **✅ (commit 329afc3)** |
+| **33** | **2026-09-03** | **L1** | **门级原语 leaf cell 建模 (iter_112, 摸底缺口)** | **KoggeStone xor16.S 全无驱动 + and0.and0 递归** | **门输出 DRIVER 边; 原语不再当模块实例** | **native/generate 三处 PrimitiveInstance 过滤 (parity 对齐); adapter get_primitive_instances (+genvar ctx); driver _create_primitive_edges; connection get_path 防自环; unit 8 + truth 6 (golden_dataflow_40 = 真实 xor16.v)** | **✅ 14 新测试, 全量回归见 CURRENT_TODO** |
 
 ---
 

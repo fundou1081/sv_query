@@ -259,7 +259,14 @@ class ConnectionExtractor:
                         return f"{parent_mod}.{gen_block}.{info['inst_name']}"
                     return f"{parent_mod}.{info['inst_name']}"
                 # parent_mod is a submodule of root, use root_module_name fallback
+                # [iter_112] 防自环: 跳过 other_info is info (自身). 根因是门级原语
+                # inst_module_name 回落成 parent_module → parent 匹配到它自己 →
+                # 无限递归被 depth>20 截断成 `top.and0.and0...` ×21 假节点.
+                # 原语现在在 adapter 层被过滤 (非模块实例), 此 guard 兜底同类
+                # "实例的模块名 == 其父路径" 的自匹配, 保证任何输入不递归自环。
                 for other_info in instances_info:
+                    if other_info is info:
+                        continue
                     if other_info["inst_module_name"] == parent_mod:
                         parent_path = get_path(other_info, depth + 1)
                         if gen_block:

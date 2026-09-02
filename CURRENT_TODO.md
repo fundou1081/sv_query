@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-02 GMT+8 (测试资产与缺陷修复归档; 下一步: 工业算法模块调研)
+> **最后更新**: 2026-09-03 GMT+8 (门级原语 leaf cell 建模进行中, iter_112)
 
 ---
 
@@ -22,8 +22,21 @@
 
 ## 🔥 当前任务
 
-**(无 — 2026-09-02 测试资产与缺陷修复工作已全部完成并归档, 见下方最近完成;
-下一步方向: 工业算法模块开源项目调研, 见"下一个候选")**
+**门级原语 (Gate Primitive) 提取支持 — leaf cell 建模** (✅ 完成, iter_112)
+> KoggeStone 摸底缺口: xor16.S[0..15] 全无 DRIVER + and/xor 触发 connection 无限递归
+> (`and0.and0...` ×21)。方案 A: 原语建模为 leaf cell。
+> [iter_112](docs/task_tree/iterations/iter_112_gate_primitive_support.md) / [任务文件](docs/task_tree/tasks/L2_gate_primitive_support.md)
+
+| sub-task | 状态 |
+|---|---|
+| 1. adapter 层过滤 PrimitiveInstance (native/recursive 同步, parity 不破) | ✅ |
+| 2. DriverExtractor: 原语输出 DRIVER 边 (输入端子→输出, 位选宿主作用域解析) | ✅ |
+| 3. ConnectionExtractor: 不展开原语 + get_path 防自环兜底 | ✅ |
+| 4. 测试: unit test_gate_primitive (8) + truth test_gate_primitive_truth (6, golden_dataflow_40 = 真实 xor16.v) | ✅ 14 passed |
+| 5. 回归: **2869 passed / 0 failed / 7 skipped** (基线 2849 无损) + KoggeStone xor16.S/xor16_1.S 全部可达驱动 | ✅ |
+| 6. 文档: iter_112 + iter_111 补记 + overview (rows 30-33) + 本表 | ✅ |
+
+下一步候选: 摸底扫尾 (fpnew 依赖 / hardware 解析错误 / cvfpu 单文件) — 等方豆指示。
 
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 
@@ -37,9 +50,10 @@
 
 ## 📋 下一个候选 (未启动, 不要自己开工 — 先问方豆)
 
-- **工业算法模块开源项目调研** (方豆 2026-09-02 计划): 找典型工业算法模块
-  (CORDIC / 加法器族 / 乘法器族 / 同级别 DSP 算法) 的开源 RTL 项目,
-  作为 sv_query 之后的潜在测试项目。调研结果待记录 (候选清单)。
+- **工业算法模块开源项目调研** (进行中, 不在本任务内推进): 典型工业算法模块
+  (CORDIC / 加法器族 / 乘法器族 / DSP 算法) 开源 RTL 摸底已 clone 至 `~/my_dv_proj/openrtl/`,
+  REPOS.md 统一登记; 摸底缺口 → 逐个修复 (CORDIC iter_109~111, gate primitive 本任务)。
+  剩余: fpnew/hardware/cvfpu 扫尾。
 - ~~#7 — 迁 pyslang 11.0 native API~~ ✅ **已完成** (2026-08-29, iter_053-059)。
   遗留: CVA6/coralNPU/vortex 3 项目 strict 编译受阻 (pyslang↔项目语义不兼容),
   见 ARCHITECTURE_TODOLIST §#7。
