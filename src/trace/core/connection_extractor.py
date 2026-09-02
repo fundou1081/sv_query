@@ -75,9 +75,11 @@ class ConnectionExtractor:
                 # Look for pattern like .gen[ or .GEN[
                 import re
 
-                match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)\[[0-9]+\]", hp_str)
+                match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)\[([0-9]+)\]", hp_str)
                 if match:
-                    return match.group(1)
+                    # [iter_109] 保留 entry 索引 → generate-for 多实例路径区分
+                    # (原只返回 'g', 4 个 entry 全折叠成 top.g.U; 现返回 'g[2]' → top.g[2].U)
+                    return f"{match.group(1)}[{match.group(2)}]"
 
         return None
 
@@ -316,6 +318,15 @@ class ConnectionExtractor:
 
             inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
+            # [iter_109] generate 内实例的信号作用域: 连接信号 (数组元素等) 声明在
+            # generate 段之前的模块作用域 (top.g[2].U → 信号用 top.arr[2], 不是
+            # top.g[2].arr[2]). 从 inst_path 去掉 ".{gen_block}." 段得到模块路径.
+            _sig_scope = None
+            if gen_block:
+                _sep = f".{gen_block}."
+                if _sep in inst_path:
+                    _sig_scope = inst_path.split(_sep)[0]
+
             module_ports = all_module_ports.get(inst_module_name, {})
             conns = self.adapter.get_instance_connection(inst)
 
@@ -455,7 +466,9 @@ class ConnectionExtractor:
                 parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
 
                 if direction_clean == "input":
-                    parent_sig = f"{parent_path}.{signal_name}"
+                    # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
+                    _sig_parent = _sig_scope if _sig_scope else parent_path
+                    parent_sig = f"{_sig_parent}.{signal_name}"
                     # [FIX 2026-08-13] 跳过 SELFLOOP (SELFLOOP 边不画)。
                     # 当 parent_sig 路径与 inst_path 路径冲突时 (e.g. case26 中
                     # level2_scale u_scale (.din(data_in)) — parent_sig = "golden_hier_top.u_scale.din"
@@ -495,8 +508,12 @@ class ConnectionExtractor:
                     # 边2: instance port -> parent wire (CONNECTION)
                     # [FIX 2026-07-08] 同上, child_signal_id 用 inst_path
                     child_signal_id = f"{inst_path}.{port_name}"
-                    parent_signal = f"{parent_path}.{signal_name}"
+                    # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
+                    _sig_parent2 = _sig_scope if _sig_scope else parent_path
+                    parent_signal = f"{_sig_parent2}.{signal_name}"
                     # 边1: child output -> instance port (DRIVER)
+                    # [FIX 2026-07-08] child_signal_id 用 inst_path — 自环作为"模块内部
+                    # 驱动实例输出"的标记 (test_cross_module_tracking 依赖), 保持原行为.
                     result.edges.append(
                         TraceEdge(src=child_signal_id, dst=inst_port_id, kind=EdgeKind.DRIVER, assign_type="internal")
                     )

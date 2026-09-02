@@ -126,12 +126,15 @@ class TestConnectionExtractorGenerate(unittest.TestCase):
     def test_generate_instance_connections(self):
         """[Golden] generate-for 展开实例有端口 CONNECTION 边
 
-        gen_b[0].u_b 等展开实例应被连接 (top.gen_b.en → top.gen_b.u_b.en).
+        gen_b[0].u_b / gen_b[1].u_b 展开实例应被连接, 实例路径带 entry 索引
+        (top.en → top.gen_b[i].u_b.en).
 
         [iter_072] 注意: generate-only 实例化 (无直接实例) 的模块, pyslang
         semantic 树不保留其端口定义 → get_modules 收集不到 (EXTRACTION_COVERAGE #45).
         测试用 u0 直接实例化 + gen_b 生成实例 (真实模式: 生成模块通常也有直接实例).
-        """
+        [iter_109] 路径从折叠的 top.gen_b.u_b 改为带索引 top.gen_b[i].u_b
+        (多 entry 实例可区分); 连接信号解析到声明作用域 top.en (原 top.gen_b.en
+        引用不存在的作用域)."""
         source = '''module bufio(input wire en, input wire data);
 endmodule
 module top;
@@ -144,9 +147,11 @@ module top;
 endmodule'''
         r = _extract(source)
         edges = {(e.src, e.dst) for e in r.edges}
-        self.assertIn(('top.gen_b.en', 'top.gen_b.u_b.en'), edges,
-                      "generate 展开实例应有端口连接")
-        self.assertIn(('top.gen_b.data', 'top.gen_b.u_b.data'), edges)
+        for i in range(2):
+            self.assertIn((f'top.en', f'top.gen_b[{i}].u_b.en'), edges,
+                          f"generate 展开实例 top.gen_b[{i}].u_b.en 应有端口连接")
+            self.assertIn((f'top.data', f'top.gen_b[{i}].u_b.data'), edges,
+                          f"generate 展开实例 top.gen_b[{i}].u_b.data 应有端口连接")
 
     def test_generate_instance_port_module_type(self):
         """[Golden] generate 内实例的 port_to_module_type
