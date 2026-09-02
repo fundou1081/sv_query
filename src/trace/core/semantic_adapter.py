@@ -232,6 +232,32 @@ class SemanticAdapter:
                 if isinstance(body, pyslang.InstanceBodySymbol):
                     for child in body:
                         collect_instances(child)
+                return
+
+            # [iter_109 #45] 非 Instance 节点也要下钻: generate 块 (GenerateBlockArray
+            # / GenerateBlock) 内含子模块实例 — 之前不递归 → generate-only 实例化的
+            # 模块定义收集不到 (rot 端口定义缺失 → 连接边全灭, verilog_cordic_core 暴露).
+            # 遍历方式镜像 native_adapter._walk_generate_block_array/_walk_generate_block:
+            # GenerateBlockArray 经 __iter__ 拿 GenerateBlock; GenerateBlock 经 __iter__
+            # 拿 Instance/嵌套 Generate.
+            if kind_str == "SymbolKind.GenerateBlockArray":
+                try:
+                    entries = getattr(node, "entries", None)
+                    if entries is None:
+                        entries = list(node)
+                except (UnicodeDecodeError, TypeError):
+                    return
+                for _gb in list(entries):
+                    collect_instances(_gb)
+                return
+            if kind_str == "SymbolKind.GenerateBlock":
+                try:
+                    children = list(node)
+                except (UnicodeDecodeError, TypeError):
+                    children = self._iter_children(node)
+                for _child in children:
+                    collect_instances(_child)
+                return
 
         # 遍历 root.topInstances 获取顶级模块实例
         for inst in self._root.topInstances:
@@ -794,6 +820,119 @@ class SemanticAdapter:
 
         return wrappers
 
+    def _genvar_index_from_hp(self, instance) -> int | None:
+        """[iter_109] 从实例 hierarchicalPath 取 generate entry 索引.
+
+        generate-for 实例每个 entry 是独立 InstanceSymbol, hp 形如 'top.g[2].U'
+        (带 entry 索引); 其端口连接表达式里的 genvar (如 arr[i]) 在符号层仍是
+        NamedValue('i'), 需用 entry 索引替换 → arr[2]. 取最后一个 [N] (最内层
+        generate entry). 非 generate 实例或无索引返回 None.
+        """
+        try:
+            sym = getattr(instance, "_symbol", None) or instance
+            hp = getattr(sym, "hierarchicalPath", None)
+            if hp is None:
+                return None
+            hps = str(hp)
+            import re as _re_gi
+            _m = _re_gi.findall(r"\[(\d+)\]", hps)
+            return int(_m[-1]) if _m else None
+        except Exception:
+            return None
+
+    def _eval_select_index(self, sel, gidx: int | None) -> int | None:
+        """[iter_109] 位选/元素选索引求值 (generate-for 连接表达式).
+
+        支持: Literal (常量) / Conversion (解包) / NamedValue (generate entry 内
+        视为 loop var → gidx) / BinaryOp (+/- 折叠). 求不出返回 None (调用方
+        落 '?' 占位, 不静默丢连接).
+        """
+        if sel is None:
+            return None
+        k = str(getattr(sel, "kind", ""))
+        try:
+            if "Literal" in k:
+                # pyslang IntegerLiteral: str() 是类名, 数值在 .value (SVInt)
+                _v = getattr(sel, "value", None)
+                if _v is not None:
+                    try:
+                        return int(str(_v))
+                    except (ValueError, TypeError):
+                        return None
+                try:
+                    return int(str(sel))
+                except (ValueError, TypeError):
+                    return None
+            if "Conversion" in k:
+                for _a in ("operand", "value", "inner", "expr"):
+                    _v = getattr(sel, _a, None)
+                    if _v is not None:
+                        return self._eval_select_index(_v, gidx)
+                return None
+            if "NamedValue" in k:
+                # generate entry 内 NamedValue selector 视为 loop var → gidx
+                return gidx
+            if "BinaryOp" in k:
+                l = self._eval_select_index(getattr(sel, "left", None), gidx)
+                r = self._eval_select_index(getattr(sel, "right", None), gidx)
+                if l is None or r is None:
+                    return None
+                op = str(getattr(sel, "op", ""))
+                if "Add" in op or "+" in op:
+                    return l + r
+                if "Sub" in op or "-" in op:
+                    return l - r
+                if "Mul" in op or "*" in op:
+                    return l * r
+            return None
+        except Exception:
+            return None
+
+    def _conn_expr_to_signal(self, expr, instance) -> str | None:
+        """[iter_109] 解开实例端口连接表达式 → 信号名 (含数组元素/位选).
+
+        处理: NamedValue (直接信号名) / ElementSelect·RangeSelect (base[sel]).
+        ElementSelect 的 selector 若是 genvar NamedValue ('i'), 用实例 hp 的
+        generate entry 索引替换 (arr[i] → arr[2]); 非 genvar/无法解析 → '?' 占位
+        (保持图节点存在, 不静默丢连接).
+        """
+        if expr is None:
+            return None
+        k = str(getattr(expr, "kind", ""))
+        try:
+            if "ElementSelect" in k or "RangeSelect" in k:
+                val = getattr(expr, "value", None)
+                sel = getattr(expr, "selector", None)
+                # base: value 的 symbol 名 (也可能是嵌套 select → 递归)
+                base = None
+                if val is not None and hasattr(val, "symbol") and val.symbol is not None:
+                    try:
+                        base = str(val.symbol.name)
+                    except (UnicodeDecodeError, TypeError):
+                        base = None
+                if base is None:
+                    base = self._conn_expr_to_signal(val, instance)
+                if base is None:
+                    return None
+                # selector → 索引文本 (支持 genvar i / i±k / 常量; 解析失败 → '?')
+                idx = "?"
+                if sel is not None:
+                    _gi = self._genvar_index_from_hp(instance)
+                    _val = self._eval_select_index(sel, _gi)
+                    if _val is not None:
+                        idx = str(_val)
+                return f"{base}[{idx}]"
+            # NamedValue / Identifier: 直接信号名
+            if "NamedValue" in k or "Identifier" in k:
+                if hasattr(expr, "symbol") and expr.symbol is not None:
+                    try:
+                        return str(expr.symbol.name)
+                    except (UnicodeDecodeError, TypeError):
+                        return None
+            return None
+        except Exception:
+            return None
+
     def get_instance_connection(self, instance) -> list:
         """获取实例的端口连接
 
@@ -835,11 +974,24 @@ class SemanticAdapter:
                 if "Assignment" in expr_kind:
                     # For Assignment expression (.q(signal)), signal is in left side
                     left = getattr(expr, "left", None)
-                    if left and hasattr(left, "symbol"):
-                        try:
-                            signal_name = str(left.symbol.name)
-                        except (UnicodeDecodeError, TypeError):
-                            signal_name = "<id:non-utf8>"
+                    if left:
+                        # [iter_109] left 可能是 ElementSelect (如 .xo(arr[i+1])) —
+                        # 原有 left.symbol 直接取 base 名会丢索引且 ElementSelect 无 symbol.
+                        sig = self._conn_expr_to_signal(left, instance)
+                        if sig:
+                            signal_name = sig
+                        elif hasattr(left, "symbol"):
+                            try:
+                                signal_name = str(left.symbol.name)
+                            except (UnicodeDecodeError, TypeError):
+                                signal_name = "<id:non-utf8>"
+                # [iter_109] 顶层 ElementSelect/RangeSelect (如 .x(arr[i])):
+                # 之前未处理 → signal_name 停留 "?" → 整条 conn 被丢 (generate-for
+                # 数组元素实例连接全灭, verilog_cordic_core 暴露).
+                elif "ElementSelect" in expr_kind or "RangeSelect" in expr_kind:
+                    sig = self._conn_expr_to_signal(expr, instance)
+                    if sig:
+                        signal_name = sig
                 # [V15.2 2026-08-13] 方向 A: pyslang semantic AST 处理 ConcatenationExpression
                 # 当 .port(expr) 的 expr 是 {a, b, c} 时, 原逻辑 (NamedValue/Assignment)
                 # 不命中 → 整条 conn 被丢弃. 现在走 semantic AST 的 ConcatenationExpression.operands,

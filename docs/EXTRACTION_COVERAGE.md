@@ -127,7 +127,7 @@
 | 42 | task 调用输出参数不生成 `din→dout` 边 (生成 EmptyArgument 占位边) | driver_extractor | ✅ **已修** (iter_076: flattener 保留 Call 整体 + `_parse_invocation_call` 放行 AssignmentExpression 实参 → 真边 `din→dout`, 占位边消失) |
 | 43 | task 多语句体内部赋值不生成边 | driver_extractor | ✅ **已修** (iter_076: 同上, 多语句体内部驱动经 `analyze_task_internal_drivers` 独立映射到各 output 实参; 常量赋值无信号边为正确行为) |
 | 44 | DPI 调用站点 (`assign result = add(1,2)`) 不生成 DRIVER 边 | driver_extractor | DPI 函数体不可见 (外部接口, 期望行为) |
-| 45 | generate-only 实例化的模块 (无直接实例) get_modules 收集不到端口定义 → CONNECTION 边缺失 | semantic_adapter.get_modules | pyslang semantic 树不保留仅被 generate 实例化的模块定义; 生成模块通常也有直接实例, 故影响有限 (iter_072 实测) |
+| 45 | generate-only 实例化的模块 (无直接实例) get_modules 收集不到端口定义 → CONNECTION 边缺失 | semantic_adapter.get_modules | ✅ **已修** (iter_109: collect_instances 下钻 GenerateBlockArray/GenerateBlock; 含连接表达式 ElementSelect/Assignment 解包 + genvar 索引折叠 + 实例路径带 entry 索引; verilog_cordic_core 72→337 节点) |
 | 46 | `get_generate_instances` 覆盖率不一致: conditional+loop generate 场景返回 0 (M=2 + G=0) | semantic_adapter.get_generate_instances | iter_056 R2 核实附带发现, 当时承诺"记入已知清单"但未登记 (iter_078 补记); conditional+loop generate 实例可能漏报, 影响 connection_extractor L123/L147 的 generate 实例补集 |
 
 ## 🔗 关联文档
@@ -152,6 +152,9 @@
   - 33 种 SV 语法类别 (18✅ / 4⚠️ / 2🔶 / 5❌ / 4🔸)
   - 101 fixture 路径 + 1461 测试覆盖
   - 下次刷新: 加 driver_extractor 拆分后 (#1 Step 4+) 的"语法→文件"映射
+- **2026-09-02** — iter_109: **#45 generate 实例化链修复** — get_modules 下钻
+  generate 块 + get_instance_connection 解包 ElementSelect/Assignment (genvar 索引
+  折叠自 hierarchicalPath) + 实例路径带 entry 索引 (top.g[2].U); cordic 实例链可见。
 - **2026-09-02** — iter_107: **#23 generate-if 单块内 wire 提取** —
   `get_generate_net_declarations` 增加 GenerateBlock 分支 (镜像 iter_103 缺陷 F),
   跳过 isUninstantiated; probe_generate_if_wire 从 0 边 → 激活分支 2 条 DRIVER。
