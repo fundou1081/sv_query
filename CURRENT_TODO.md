@@ -36,12 +36,26 @@
 | 5. 回归: **2869 passed / 0 failed / 7 skipped** (基线 2849 无损) + KoggeStone xor16.S/xor16_1.S 全部可达驱动 | ✅ |
 | 6. 文档: iter_112 + iter_111 补记 + overview (rows 30-33) + 本表 | ✅ |
 
-**当前**: ✅ openrtl 摸底扫尾完成 (2026-09-03) — fpnew 4961 节点 clean / hardware cpa+msu clean (brent_kung+kogge_stone 是 RTL 默认参数 bug) / cvfpu 环境问题暂缓 (clone 内 common_cells 空 + PACE $fatal)。结果已写入 ~/my_dv_proj/OPENRTL_SURVEY.md (2026-09-03 更新节)。
+**当前**: ✅ **CLA 嵌套 generate 实例缺口修复完成** (iter_113, 方豆 "修这个新发现的generate")
+> [iter_113](docs/task_tree/iterations/iter_113_cla_nested_generate_fix.md) /
+> [任务文件](docs/task_tree/tasks/L2_cla_nested_generate_fix.md)
+> 双根因: ① graph_builder.walk 不下钻 generate (driver paths 无 generate 实例 —
+> cordic 同受其害, "rotator DRIVER 100" 实为 connection 端口自环) → walk 用
+> child.hierarchicalPath 下钻; ② connection inst_module_name 在 inst==type 时回落
+> parent → 自环递归 (iter_112 原语同根因型) → type token 权威, 去 '!= inst_name' 守卫。
+> 验证: 合成复现两命名风格 recursive=0 + 内部 DRIVER 全提取; 真实 CLA
+> (golden_dataflow_41, inst==type 真身) generators[0..3] 内部逻辑可达。
 
-**backlog (按发现序, 未启动)**:
-1. **CLA 嵌套 generate 实例整层丢失** (hardware cpa carry_lookahead_adder): `top.u_cla.generators[i].cell4` 两级实例嵌套 generate — 0 提取 (cout 无驱动); 实例名==类型名时递归假节点。25 行最小复现已隔离 (二分: 仅 inst==type 复发)。修复需 iter_109 同型根因分析 (实例路径/枚举在两实例层级下失效)。**建议下一个修**。
-2. gate 遗留改进 G-1~G-3 (端子方向用 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md
-3. cvfpu 全量覆盖 (需 vendor 其 common_cells + PACE 参数 override) — 家族已由 fpnew 覆盖, 优先级低
+| sub-task | 状态 |
+|---|---|
+| 1. 诊断: 双根因定位 (walk 不下钻 + inst_module_name 回落) | ✅ |
+| 2. 修根因: walk hp 下钻 + connection type token 权威 | ✅ |
+| 3. 测试: unit test_nested_generate_instance (4) + truth test_cla_generate_truth (6, 真实 CLA fixture) | ✅ 10 passed |
+| 4. 回归: 受影响 47 passed 零回归; 全量结果见 commit | ✅ |
+
+**backlog (未启动)**: 1. gate 遗留改进 G-1~G-3 (端子方向 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md; 2. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
+
+**backlog (未启动)**: 2. gate 遗留改进 G-1~G-3 (端子方向 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md; 3. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 

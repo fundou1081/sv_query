@@ -78,6 +78,7 @@ sv_query_project/
 | **31** | **2026-09-02** | **L1** | **CORDIC 嵌套作用域 (方豆 "继续")** | **iter_110: 嵌套 generate 连接信号解析到宿主模块** | **cordic DRIVER 25→100** | **_sig_scope 剥掉末尾实例名 + 全部尾部 [N] 段; shifter.Q→g[i].U.x_i_shifted 按正确作用域 (16 entry)** | **✅ (commit 6f005a1)** |
 | **32** | **2026-09-02** | **L1** | **CORDIC 流水线 truth (方豆 "继续")** | **iter_111: 真实工业 fixture 锁 iter_109/110** | **truth +6** | **golden_dataflow_39 (verilog_cordic_core 真实源码) + test_cordic_pipeline_truth (15 rotator / 链 / 作用域); 365 节点 100 DRIVER** | **✅ (commit 329afc3)** |
 | **33** | **2026-09-03** | **L1** | **门级原语 leaf cell 建模 (iter_112, 摸底缺口)** | **KoggeStone xor16.S 全无驱动 + and0.and0 递归** | **门输出 DRIVER 边; 原语不再当模块实例** | **native/generate 三处 PrimitiveInstance 过滤 (parity 对齐); adapter get_primitive_instances (+genvar ctx); driver _create_primitive_edges; connection get_path 防自环; unit 8 + truth 6 (golden_dataflow_40 = 真实 xor16.v)** | **✅ 14 新测试, 全量回归见 CURRENT_TODO** |
+| **34** | **2026-09-03** | **L1** | **CLA 嵌套 generate 缺口 (iter_113, 方豆 "修这个新发现的generate")** | **top.u_cla.generators[i].cell4 两级实例 generate 0 提取 + inst==type 递归** | **嵌套 generate 内部按索引作用域提取; 递归清零** | **graph_builder.walk generate 下钻 (hp 路径); connection inst_module_name 去 '!= inst_name' 守卫 (type token 权威); cordic 同受 driver 不下钻之害 (truth DRIVER 实为端口自环); unit 4 + truth 6 (golden_dataflow_41 = 真实 CLA)** | **✅ 10 新测试, 全量回归见 CURRENT_TODO** |
 
 ---
 
