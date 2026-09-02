@@ -28,6 +28,13 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-02** | **缺陷 A-F 修复** | expression 字节切片 / net-decl 位宽 / LHS concat zip / ternary 常量值 / part-select 宽度 None / generate-if always; +11 truth 断言; 全量 2835 passed + 1 暂缓 (picorv32 ELK). [iter_101~104](docs/task_tree/iterations/iter_104_defect_af_wrapup.md) |
+| **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture, truth 32→112 测试全绿: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_088~100](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
+| **2026-09-02** | **cli 3 失败修复** | models.py width=None 序列化根因 + SVG 断言 + --no-strict→--strict; unit+cli 1484 passed 全绿. [iter_087](docs/task_tree/iterations/iter_087_cli_3_failures_fix.md) |
+## ✅ 最近完成 (保留 3 条, 更早的看 git log + docs/task_tree/)
+
+| 完成时间 | 任务 | 产出 |
+|---|---|---|
 | **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture (golden_dataflow_32~35), truth 层 32→112 测试 (108 passed + 4 既有 skip) 全绿: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_088~100](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
 | **2026-09-02** | **cli 3 失败修复** | models.py width=None 序列化根因 + SVG 断言 + --no-strict→--strict; unit+cli 1484 passed 全绿. [iter_087](docs/task_tree/iterations/iter_087_cli_3_failures_fix.md) |
 | **2026-09-02** | **B 组复查 (real_project_viz)** | iter_082 误分类纠正; darkriscv SVG 断言修复 + 删 --no-strict; picorv32 ELK 根因定位 (暂缓). [iter_086](docs/task_tree/iterations/iter_086_group_b_recheck_real_project_viz.md) |

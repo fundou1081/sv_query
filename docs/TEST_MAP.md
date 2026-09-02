@@ -19,7 +19,7 @@
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | 418 passed + 1 failed (picorv32 ELK, 暂缓) + 3 skipped (iter_086) |
 | **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | **389 passed** (iter_087: cache 序列化根因修复后全绿) |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
-| **truth** (17 文件) | 1:1 金标准 | 112 | 1:1 golden: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集 + generate flatten + spec 不支持语法 | **108 passed + 4 既有 skip** (iter_100 T1-T12 全绿) |
+| **truth** (17 文件) | 1:1 金标准 | 123 | 1:1 golden: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集 + generate flatten + spec 不支持语法 | **123 passed** (iter_104 A-F 修复后, +11 断言) |
 | **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
 
 **按运行场景选择**:
@@ -204,7 +204,7 @@
 | `test_layout_truth.py` | 9 | [T11] SVG 渲染结构 (op/信号分类) (iter_098) |
 | `test_query_truth.py` | 8 | [T12] fanin/fanout 精确驱动集 (iter_099) |
 
-**合计**: 17 文件 / 112 测试 (iter_100 T1-T12 后: 108 passed + 4 既有 skip)
+**合计**: 17 文件 / 123 测试 (iter_104 缺陷 A-F 修复后: 123 passed; d1 4 skip 为 pyslang mutex 环境限制)
 
 ---
 
