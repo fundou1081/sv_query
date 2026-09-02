@@ -28,6 +28,7 @@
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-02** | **A-F 收尾 (iter_105)** | EXTRACTION_COVERAGE 同步 (#11/#15 + 变更日志) + 无 init net 宽度 (case27 prod (1,0)→(7,0)); 全量 2835 passed + 1 暂缓. [iter_105](docs/task_tree/iterations/iter_105_coverage_sync_net_width.md) |
 | **2026-09-02** | **缺陷 A-F 修复** | expression 字节切片 / net-decl 位宽 / LHS concat zip / ternary 常量值 / part-select 宽度 None / generate-if always; +11 truth 断言; 全量 2835 passed + 1 暂缓 (picorv32 ELK). [iter_101~104](docs/task_tree/iterations/iter_104_defect_af_wrapup.md) |
 | **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture, truth 32→112 测试全绿: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_088~100](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
 | **2026-09-02** | **cli 3 失败修复** | models.py width=None 序列化根因 + SVG 断言 + --no-strict→--strict; unit+cli 1484 passed 全绿. [iter_087](docs/task_tree/iterations/iter_087_cli_3_failures_fix.md) |
