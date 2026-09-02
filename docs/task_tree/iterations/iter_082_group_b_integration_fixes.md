@@ -67,7 +67,7 @@ real_project_viz 2), 与 test_trace_include_flags 4 个 unit 失败同源。
 **"12 个环境定性" 中有 2 个是误分类** — test_real_project_viz 的 darkriscv/picorv32
 实际是**真实失败**, 不是 cache 环境问题:
 
-- 根因: 本记录的验证用 `HOME=/tmp/svq_home` 重定向, `~/my_dv_proj/picorv32/...`
+- 根因: 本记录的验证用 `HOME=/tmp/svq_home` 重定向, `~/my_dv_proj/openrtl/picorv32/...`
   展开到不存在路径 → 这 2 个测试被动态 `pytest.skip('not found')` 跳过,
   "0 failed" 未包含它们 (假绿)。
 - darkriscv: 断言过时 (`--dot` 写 SVG, 断言查 'digraph') — iter_086 已修

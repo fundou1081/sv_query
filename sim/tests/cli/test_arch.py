@@ -52,13 +52,13 @@ class TestArchSummaryMode:
     """--summary 模式生成一段话描述项目架构."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_picorv32_axi_summary(self):
         """picorv32_axi: 2 instances + summary 格式."""
         rc, out, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "-d", "2",
             "--summary",
@@ -131,13 +131,13 @@ class TestArchMermaidOutput:
     """--format mermaid 生成 Mermaid 图表 (GitHub README 友好)."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_picorv32_axi_mermaid(self):
         """picorv32_axi mermaid 包含图节点 + 边."""
         rc, out, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "-d", "2",
             "--format", "mermaid",
@@ -183,13 +183,13 @@ class TestArchDotOutput:
     """--format dot 生成 Graphviz DOT."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_picorv32_axi_dot(self):
         """picorv32_axi DOT 格式正确."""
         rc, out, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "-d", "2",
             "--format", "dot",
@@ -209,14 +209,14 @@ class TestArchHtmlOutput:
     """--format html 生成交互式 HTML (vis.js)."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_picorv32_axi_html(self, tmp_path):
         """picorv32_axi HTML 写入文件 + 包含 vis.js + 数据."""
         outfile = tmp_path / "arch.html"
         rc, _, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "-d", "2",
             "--format", "html",
@@ -260,13 +260,13 @@ class TestArchClusterByType:
     """[v2 2026-06-25] --cluster-by-type 按 module type 合并 cluster."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_cluster_by_type_picorv32(self):
         """picorv32_axi + cluster-by-type → 每 type 一个 cluster."""
         rc, out, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "--cluster-by-type",
             "--format", "dot",
@@ -336,14 +336,14 @@ class TestArchSvgOutput:
     """[v2 2026-06-25] --format svg 调 graphviz 生成 SVG."""
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_svg_generation(self, tmp_path):
         """--format svg 应生成合法 SVG 文件."""
         outfile = tmp_path / "arch.svg"
         rc, _, err = _run_arch(
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-t", "picorv32_axi",
             "--format", "svg",
             "-o", str(outfile),

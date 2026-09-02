@@ -152,7 +152,7 @@ output [29:0] p;   // ✅ 有位宽声明
 ## dual_clock_fifo 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/clacc/dual_clock_fifo.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/clacc/dual_clock_fifo.v`
 
 ---
 
@@ -284,7 +284,7 @@ gray_conv 函数被标记为 SIGNAL
 ## pe 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/clacc/pe.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/clacc/pe.v`
 
 ---
 
@@ -413,7 +413,7 @@ SPAD 连接:
 ## mult_pipe2 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/clacc/mult_pipe2.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/clacc/mult_pipe2.v`
 
 ---
 
@@ -515,7 +515,7 @@ SPAD 连接:
 ## cva6 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/cva6/core/cva6.sv`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/cva6/core/cva6.sv`
 
 ---
 
@@ -672,7 +672,7 @@ SPAD 连接:
 ## serv_top 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/serv/rtl/serv_top.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/serv/rtl/serv_top.v`
 
 ---
 
@@ -802,7 +802,7 @@ SPAD 连接:
 ## gpu (Tiny GPU) 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/tiny-gpu/src/gpu.sv`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/tiny-gpu/src/gpu.sv`
 
 ---
 
@@ -941,7 +941,7 @@ SPAD 连接:
 ## eth_mac_10g 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/verilog-ethernet/rtl/eth_mac_10g.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/verilog-ethernet/rtl/eth_mac_10g.v`
 
 ---
 
@@ -1071,7 +1071,7 @@ SPAD 连接:
 ## Vortex 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/vortex/hw/rtl/Vortex.sv`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/vortex/hw/rtl/Vortex.sv`
 
 ---
 
@@ -1195,7 +1195,7 @@ SPAD 连接:
 ## NV_nvdla (NVDLA Top) 模块测试结果
 
 **测试时间**: 2026-05-17
-**文件**: `/Users/fundou/my_dv_proj/hw/vmod/nvdla/top/NV_nvdla.v`
+**文件**: `/Users/fundou/my_dv_proj/openrtl/hw/vmod/nvdla/top/NV_nvdla.v`
 
 ---
 

@@ -97,7 +97,7 @@ class TestFilelistMode:
             pytest.skip("picorv32.f not available")
         rc, out, err = _run_cli(
             str(fl),  # auto-detect .f
-            "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "mem_addr", "mem_valid",
         )
         assert rc == 0, f"CLI fail: {err}"

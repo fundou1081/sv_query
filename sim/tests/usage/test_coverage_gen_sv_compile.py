@@ -73,35 +73,35 @@ class TestIndustrialProjectCompile:
     """
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists(),
         reason="picorv32 not available",
     )
     def test_picorv32_mem_addr_passes(self):
         """picorv32 mem_addr (32-bit DATA) → PASS."""
         rc, out, err = _run_compile_tool(
             "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f",
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "-s", "mem_addr",
         )
         assert rc == 0, f"FAIL:\nstdout: {out}\nstderr: {err[:500]}"
         assert "PASS" in out
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_max_tree.sv").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv").exists(),
         reason="OpenTitan not available",
     )
     def test_opentitan_max_idx_o_passes(self):
         """OpenTitan prim_max_tree max_idx_o ($clog2(32)=5-bit CONTROL) → PASS."""
         rc, out, err = _run_compile_tool(
             "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/openTitan_prim_max_tree.f",
-            "-f", "/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_max_tree.sv",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv",
             "-s", "max_idx_o",
         )
         assert rc == 0, f"FAIL:\nstdout: {out}\nstderr: {err[:500]}"
         assert "PASS" in out
 
     @pytest.mark.skipif(
-        not Path("/Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv").exists(),
+        not Path("/Users/fundou/my_dv_proj/openrtl/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv").exists(),
         reason="NaplesPU not available",
     )
     @pytest.mark.slow  # [V6.9] flaky in full suite (resource contention), passes in isolation

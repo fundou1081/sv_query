@@ -34,10 +34,10 @@ python -m pytest sim/tests/unit/ -v
 
 | 外部项目 | 本地路径 | 标记文件 |
 |----------|---------|----------|
-| ventus-gpgpu-verilog | `~/my_dv_proj/ventus-gpgpu-verilog` | `test_ventus_*_validation.py` |
-| picorv32 | `~/my_dv_proj/picorv32` | `test_picorv32_validation.py` |
-| darkriscv | `~/my_dv_proj/darkriscv` | `test_dataflow_latency_open_source.py` |
-| OpenTitan | `~/my_dv_proj/opentitan` | `test_coverage_gen_demo_golden.py` |
+| ventus-gpgpu-verilog | `~/my_dv_proj/openrtl/ventus-gpgpu-verilog` | `test_ventus_*_validation.py` |
+| picorv32 | `~/my_dv_proj/openrtl/picorv32` | `test_picorv32_validation.py` |
+| darkriscv | `~/my_dv_proj/openrtl/darkriscv` | `test_dataflow_latency_open_source.py` |
+| OpenTitan | `~/my_dv_proj/openrtl/opentitan` | `test_coverage_gen_demo_golden.py` |
 
 **设计原则**: 测试的核心代码模式从这些项目中抽取，存储为 `sim/tests/integration/dataflow_fixtures/` 下的独立 `.sv` 文件。完整的开源项目使用场景迁移到 `docs/usage/`，不作为回归测试。
 
@@ -82,7 +82,7 @@ HOME=/tmp/svq_home python3 -m pytest sim/tests/integration -q
 ```
 
 ⚠️ **HOME 重定向的 `~` 展开副作用 (iter_086 教训)**: 重定向 HOME 后, 测试里
-`~/my_dv_proj/picorv32/...` 等真实项目路径会展开到不存在的位置 → 测试被动态
+`~/my_dv_proj/openrtl/picorv32/...` 等真实项目路径会展开到不存在的位置 → 测试被动态
 `pytest.skip('not found')` 跳过 → **假绿**。iter_082 的 "0 failed" 正是因此漏掉了
 real_project_viz 的 2 个真实失败。**判定时必须数清 skip 数量并与预期对比**,
 或对这些测试改用绝对路径。

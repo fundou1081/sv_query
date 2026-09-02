@@ -12,8 +12,8 @@ Class & Constraint 深度拆解 - 金标准测试
 3. 强断言验证（验证具体节点/边类型，不只是"不崩溃"）
 
 RTL 来源：
-- sv-tests: ~/my_dv_proj/sv-tests/tests/chapter-18/
-- OpenTitan: ~/my_dv_proj/opentitan/hw/top_earlgrey/ip_autogen/rstmgr/dv/env/seq_lib/rstmgr_base_vseq.sv
+- sv-tests: ~/my_dv_proj/openrtl/sv-tests/tests/chapter-18/
+- OpenTitan: ~/my_dv_proj/openrtl/opentitan/hw/top_earlgrey/ip_autogen/rstmgr/dv/env/seq_lib/rstmgr_base_vseq.sv
 """
 import os
 import sys

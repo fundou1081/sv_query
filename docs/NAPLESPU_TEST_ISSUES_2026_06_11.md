@@ -5,7 +5,7 @@
 
 ## 测试对象
 - **目标项目**: [NaplesPU](https://github.com/AlessandroCilardo/NaplesPU) (SystemVerilog 实现的 manycore 加速器)
-- **位置**: `~/my_dv_proj/NaplesPU/`
+- **位置**: `~/my_dv_proj/openrtl/NaplesPU/`
 - **规模**: 148 个 `.sv`/`.v` 文件,40,006 行代码,SystemVerilog RTL
 - **已抓取资源**:
   - `NaplesPU/` 主仓 (SystemVerilog RTL, 3.0MB, 浅克隆)

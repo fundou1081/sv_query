@@ -113,5 +113,5 @@ module bs_mult (
 
 ## 相关文件
 
-- 问题文件: `/Users/fundou/my_dv_proj/clacc/bs_mult.v`
+- 问题文件: `/Users/fundou/my_dv_proj/openrtl/clacc/bs_mult.v`
 - 记录文档: `docs/ISSUE_17_CASE_BS_MULT.md`

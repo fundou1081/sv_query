@@ -22,7 +22,7 @@ from trace.core.compiler import SVCompiler
 # Fixtures
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT = "/Users/fundou/my_dv_proj"
+PROJECT_ROOT = "/Users/fundou/my_dv_proj/openrtl"  # [openrtl 2026-09-02] 开源 RTL 统一移入 openrtl
 
 
 def _load_darkriscv():

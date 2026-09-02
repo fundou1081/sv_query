@@ -11,7 +11,7 @@
 
 ### 源代码
 - **项目**: OpenTitan
-- **路径**: `~/my_dv_proj/opentitan`
+- **路径**: `~/my_dv_proj/openrtl/opentitan`
 - **测试模块**: `uart_rx`
 - **测试文件**: `hw/ip/uart/rtl/uart_rx.sv`
 - **测试信号**: `uart_rx.rx_data`

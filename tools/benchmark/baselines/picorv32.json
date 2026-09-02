@@ -3,7 +3,7 @@
     "tool": "sv_query benchmark",
     "version": "PR5+PR7 2026-06-15",
     "input_type": "files",
-    "project_input": "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+    "project_input": "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
     "filelist": null,
     "target": "picorv32",
     "depth": 2,

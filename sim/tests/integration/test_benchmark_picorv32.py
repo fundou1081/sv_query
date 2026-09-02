@@ -22,7 +22,7 @@ pytestmark = pytest.mark.opensource
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
 BASELINE = PROJECT_ROOT / "tools" / "benchmark" / "baselines" / "picorv32.json"
-PICO_FILE = "/Users/fundou/my_dv_proj/picorv32/picorv32.v"
+PICO_FILE = "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
 
 
 def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **kwargs) -> dict:

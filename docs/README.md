@@ -23,19 +23,19 @@
 
 | # | 项目 | 方向 | 本地路径 | 状态 | 问题数 |
 |---|------|------|----------|------|--------|
-| 1 | **OpenTitan** | 安全 MCU | `~/my_dv_proj/opentitan/` | ✅ 完成 | 176 题 |
-| 2 | **CVA6** | CPU (工业级) | `~/my_dv_proj/cva6/` | ✅ 完成 | 待定 |
-| 3 | **riscv-boom (BOOM)** | OoO CPU | `~/my_dv_proj/riscv-boom/` | 🆕 新下载 | 待定 |
-| 4 | **rocket-chip** | 完整 SoC | `~/my_dv_proj/rocket-chip/` | 🆕 新下载 | 待定 |
-| 5 | **NVDLA** | GPU/NPU | `~/my_dv_proj/hw/` | ✅ 完成 | 待定 |
-| 6 | **ProNoC** | NoC 互联 | `~/my_dv_proj/ProNoC/` | ✅ 完成 | 待定 |
-| 7 | **verilog-axi** | AXI 协议 | `~/my_dv_proj/verilog-axi/` | ✅ 已有 | 待定 |
-| 8 | **Vortex** | GPU | `~/my_dv_proj/vortex/` | ✅ 已有 | 待定 |
-| 9 | **XiangShan** | CPU (香山) | `~/my_dv_proj/XiangShan/` | ✅ 已有 | 待定 |
+| 1 | **OpenTitan** | 安全 MCU | `~/my_dv_proj/openrtl/opentitan/` | ✅ 完成 | 176 题 |
+| 2 | **CVA6** | CPU (工业级) | `~/my_dv_proj/openrtl/cva6/` | ✅ 完成 | 待定 |
+| 3 | **riscv-boom (BOOM)** | OoO CPU | `~/my_dv_proj/openrtl/riscv-boom/` | 🆕 新下载 | 待定 |
+| 4 | **rocket-chip** | 完整 SoC | `~/my_dv_proj/openrtl/rocket-chip/` | 🆕 新下载 | 待定 |
+| 5 | **NVDLA** | GPU/NPU | `~/my_dv_proj/openrtl/hw/` | ✅ 完成 | 待定 |
+| 6 | **ProNoC** | NoC 互联 | `~/my_dv_proj/openrtl/ProNoC/` | ✅ 完成 | 待定 |
+| 7 | **verilog-axi** | AXI 协议 | `~/my_dv_proj/openrtl/verilog-axi/` | ✅ 已有 | 待定 |
+| 8 | **Vortex** | GPU | `~/my_dv_proj/openrtl/vortex/` | ✅ 已有 | 待定 |
+| 9 | **XiangShan** | CPU (香山) | `~/my_dv_proj/openrtl/XiangShan/` | ✅ 已有 | 待定 |
 | 10 | **openwifi** | WiFi | `~/my_dv_proj/openwifi/` | ✅ 已有 | 待定 |
-| 11 | **verilog-pcie** | PCIe | `~/my_dv_proj/verilog-pcie/` | ✅ 已有 | 待定 |
-| 12 | **Mayoiuta** | NPU | `~/my_dv_proj/Mayoiuta/` | 🆕 新下载 | 待定 |
-| 13 | **clacc** | NPU (Eyeriss-like) | `~/my_dv_proj/clacc/` | 🆕 新下载 | 待定 |
+| 11 | **verilog-pcie** | PCIe | `~/my_dv_proj/openrtl/verilog-pcie/` | ✅ 已有 | 待定 |
+| 12 | **Mayoiuta** | NPU | `~/my_dv_proj/openrtl/Mayoiuta/` | 🆕 新下载 | 待定 |
+| 13 | **clacc** | NPU (Eyeriss-like) | `~/my_dv_proj/openrtl/clacc/` | 🆕 新下载 | 待定 |
 
 **总计：13 个开源项目，覆盖 CPU/GPU/NPU/互联/协议等方向**
 

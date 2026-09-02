@@ -62,7 +62,7 @@
 
 ### Issue 28: 注释混入节点名
 
-**文件**: `~/my_dv_proj/clacc/mult_pipe2.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/mult_pipe2.v`
 
 **现象**:
 ```
@@ -85,7 +85,7 @@
 
 ### Issue 33: 字面量作为节点名
 
-**文件**: `~/my_dv_proj/serv/rtl/serv_top.v`
+**文件**: `~/my_dv_proj/openrtl/serv/rtl/serv_top.v`
 
 **现象**:
 ```
@@ -109,7 +109,7 @@
 
 ### Issue 34: 循环变量出现在节点名
 
-**文件**: `~/my_dv_proj/tiny-gpu/src/gpu.sv`
+**文件**: `~/my_dv_proj/openrtl/tiny-gpu/src/gpu.sv`
 
 **现象**:
 ```
@@ -135,7 +135,7 @@
 
 ### Issue 21: 参数表达式未展开 (ADDR_WIDTH-1)
 
-**文件**: `~/my_dv_proj/clacc/dual_clock_fifo.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/dual_clock_fifo.v`
 
 **现象**:
 ```
@@ -159,7 +159,7 @@
 
 ### Issue 27: 参数未展开 (LVL-1)
 
-**文件**: `~/my_dv_proj/clacc/mult_pipe2.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/mult_pipe2.v`
 
 **现象**:
 ```
@@ -179,7 +179,7 @@
 
 ### Issue 29: 复杂参数未展开 (CVA6Cfg)
 
-**文件**: `~/my_dv_proj/cva6/core/cva6.sv`
+**文件**: `~/my_dv_proj/openrtl/cva6/core/cva6.sv`
 
 **现象**:
 ```
@@ -206,7 +206,7 @@
 
 ### Issue 32: 实例端口无连接边
 
-**文件**: `~/my_dv_proj/serv/rtl/serv_top.v`
+**文件**: `~/my_dv_proj/openrtl/serv/rtl/serv_top.v`
 
 **现象**:
 ```
@@ -238,7 +238,7 @@
 
 ### Issue 38: 实例连接数为0
 
-**文件**: `~/my_dv_proj/vortex/hw/rtl/Vortex.sv`
+**文件**: `~/my_dv_proj/openrtl/vortex/hw/rtl/Vortex.sv`
 
 **现象**:
 ```
@@ -257,7 +257,7 @@
 
 ### Issue 18: LOAD边统计为0
 
-**文件**: `~/my_dv_proj/clacc/bs_mult.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/bs_mult.v`
 
 **现象**:
 ```
@@ -279,7 +279,7 @@
 
 ### Issue 31: 位宽(0,0)
 
-**文件**: `~/my_dv_proj/cva6/core/cva6.sv`
+**文件**: `~/my_dv_proj/openrtl/cva6/core/cva6.sv`
 
 **现象**:
 ```
@@ -305,7 +305,7 @@
 
 ### Issue 22: 函数节点被标记为SIGNAL
 
-**文件**: `~/my_dv_proj/clacc/dual_clock_fifo.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/dual_clock_fifo.v`
 
 **现象**:
 ```
@@ -327,7 +327,7 @@
 
 ### Issue 23: mem存储端口方向缺失
 
-**文件**: `~/my_dv_proj/clacc/dual_clock_fifo.v`
+**文件**: `~/my_dv_proj/openrtl/clacc/dual_clock_fifo.v`
 
 **现象**:
 ```

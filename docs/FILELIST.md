@@ -104,7 +104,7 @@ sv_query 不需要此选项，会被忽略。
 ### Bash/Zsh
 
 ```bash
-export CVA6_REPO_DIR=/Users/fundou/my_dv_proj/cva6
+export CVA6_REPO_DIR=/Users/fundou/my_dv_proj/openrtl/cva6
 export TARGET_CFG=cv64a6_imafdc_sv39
 export HPDCACHE_DIR=/path/to/hpdcache
 
@@ -150,10 +150,10 @@ ${CVA6_REPO_DIR}/core/cvfpu/src/fpnew_pkg.sv
 
 ```bash
 cd ~/my_dv_proj/sv_query
-CVA6_REPO_DIR=/Users/fundou/my_dv_proj/cva6 \
+CVA6_REPO_DIR=/Users/fundou/my_dv_proj/openrtl/cva6 \
 TARGET_CFG=cv64a6_imafdc_sv39 \
   python run_cli.py visualize graph \
-    -f ~/my_dv_proj/cva6/core/cva6.sv \
+    -f ~/my_dv_proj/openrtl/cva6/core/cva6.sv \
     --filelist /tmp/cva6_test.fl \
     --svg /tmp/cva6.svg
 ```
@@ -257,7 +257,7 @@ print(f'Include dirs: {len(c._include_dirs)}')
 
 ```bash
 # 加载后用 git submodule status 验证 vendor 完整性
-cd ~/my_dv_proj/cva6 && git submodule status
+cd ~/my_dv_proj/openrtl/cva6 && git submodule status
 ```
 
 ### 2. 跳过问题文件

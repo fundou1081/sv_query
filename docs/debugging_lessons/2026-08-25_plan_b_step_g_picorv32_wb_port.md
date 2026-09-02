@@ -62,7 +62,7 @@ port_picorv32_wb_dot_picorv32_core_dot_clk
 ## 🔍 What Was Investigated (Mode 2: Trace Evidence)
 
 ### Phase 1: Capture Error
-- Ran `python3 run_cli.py visualize dataflow --file ~/my_dv_proj/picorv32/picorv32.v --module picorv32_wb --no-strict --dot /tmp/picorv32_wb.dot`
+- Ran `python3 run_cli.py visualize dataflow --file ~/my_dv_proj/openrtl/picorv32/picorv32.v --module picorv32_wb --no-strict --dot /tmp/picorv32_wb.dot`
 - Got exact error: `Referenced shape does not exist: port_picorv32_wb_dot_picorv32_core_dot_clk`
 
 ### Phase 2: Trace Code Paths

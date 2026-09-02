@@ -170,7 +170,7 @@ EOF
 ```bash
 # filelist 25 files (openofdm_tx + helpers)
 mkdir -p /tmp/ofdm_tx_fixed
-cp ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
+cp ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
 
 cat > /tmp/ofdm_tx_fix.f << EOF
 EOF
@@ -242,10 +242,10 @@ openofdm_tx (root, AXI4-Lite wrapper)
 ```bash
 # 含 rx_intf + tx_intf + xpu + side_ch (85 files total)
 cat > /tmp/openwifi_full.f << EOF
-+incdir+/Users/fundou/my_dv_proj/openwifi-hw/ip/openofdm_tx/src
-$(ls ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v | sed 's/^/\//')
-+incdir+/Users/fundou/my_dv_proj/openwifi-hw/ip/xpu/src
-$(ls ~/my_dv_proj/openwifi-hw/ip/xpu/src/*.v | sed 's/^/\//')
++incdir+/Users/fundou/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src
+$(ls ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v | sed 's/^/\//')
++incdir+/Users/fundou/my_dv_proj/openrtl/openwifi-hw/ip/xpu/src
+$(ls ~/my_dv_proj/openrtl/openwifi-hw/ip/xpu/src/*.v | sed 's/^/\//')
 # ... + rx_intf + tx_intf + side_ch + board_def.v
 EOF
 

@@ -14,7 +14,7 @@ test_coverage_gen_demo_golden.py - Golden image 回归测试
   - **跨 include 处理 (含 `include "prim_assert.sv"`)**: 验证 sv_query 处理 `\`include` 指令
   - **多 module 编译 (依赖 prim_util_pkg.svh 等 core helper)**: 验证 filelist mode 正确
 
-**Fixture 文件**: `~/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv` (291 行)
+**Fixture 文件**: `~/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv` (291 行)
   - 32-bit DATA (`data_o`): 跨 module output, multi-fan_in
   - 3-bit CONTROL (`idx_o`): winner index of arbitration, parametric width
   - 1-bit CONTROL (`clk_i`): standard clock input
@@ -23,7 +23,7 @@ test_coverage_gen_demo_golden.py - Golden image 回归测试
   OpenTitan 是公开 Apache-2.0 项目, 大小适中 (305M). 用 sub-project (`prim_*`) 中的小模块:
     - scope 小 (单 sub-folder, ~10 个 SV 文件)
     - 通过 `sim/tests/pyslang_type_fixtures/industrial_filelists/opentitan_prim_arbiter_tree.f` 持久化 filelist
-    - 如果 OpenTitan 源码不存在 (`~/my_dv_proj/opentitan/hw/ip/prim/` 不存在), 测试**自动 skip** 而非 fail
+    - 如果 OpenTitan 源码不存在 (`~/my_dv_proj/openrtl/opentitan/hw/ip/prim/` 不存在), 测试**自动 skip** 而非 fail
     - 不污染 sv_query repo (300M+ OpenTitan 树不会 commit)
 
 **Golden 文件存**: `sim/tests/golden/coverage_gen_demo/`
@@ -50,7 +50,7 @@ INDUSTRIAL_FILELISTS = PROJECT_ROOT / "sim" / "tests" / "pyslang_type_fixtures" 
 
 # OpenTitan prim_arbiter_tree.sv fixture (工业 sub-project, sub-folder 大小)
 # scope: 1 个 sub-project (~10 个 SV 文件, ~3000 行)
-OTARB_FIXTURE_PATH = Path("/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv")
+OTARB_FIXTURE_PATH = Path("/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv")
 OTARB_FILELIST_NAME = "opentitan_prim_arbiter_tree.f"
 
 

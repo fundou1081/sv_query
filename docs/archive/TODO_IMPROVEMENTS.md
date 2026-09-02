@@ -131,5 +131,5 @@
 
 ## 📁 相关文件
 
-- 测试用例: `~/my_dv_proj/opentitan/hw/ip/uart/rtl/uart_rx.sv`
+- 测试用例: `~/my_dv_proj/openrtl/opentitan/hw/ip/uart/rtl/uart_rx.sv`
 - 核心模块: `~/my_dv_proj/sv_query/src/trace/`

@@ -42,7 +42,7 @@ if PYSLLANG_BINDINGS_PATH not in sys.path:
 # UVM 源码路径 (自动检测)
 DEFAULT_UVM_SRC = None
 for candidate in [
-    os.path.expanduser("~/my_dv_proj/uvm-1.2/src"),
+    os.path.expanduser("~/my_dv_proj/openrtl/uvm-1.2/src"),
     os.path.expanduser("~/uvm-1.2/src"),
     "/usr/local/uvm-1.2/src",
 ]:

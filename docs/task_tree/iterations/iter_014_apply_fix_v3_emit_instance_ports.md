@@ -29,7 +29,7 @@ Apply Fix v3 based on root cause from iteration 13: in `_emit_cross_instance_con
 
 **Step 2**: Applied Fix v3 via `edit` tool — added ~30 lines emitting `port_in`/`port_out` shapes for each instance port that's referenced by a CONNECTION edge.
 
-**Step 3**: Ran `python3 run_cli.py visualize dataflow --file ~/my_dv_proj/picorv32/picorv32.v --module picorv32_wb --no-strict --dot /tmp/picorv32_wb_v3.dot`:
+**Step 3**: Ran `python3 run_cli.py visualize dataflow --file ~/my_dv_proj/openrtl/picorv32/picorv32.v --module picorv32_wb --no-strict --dot /tmp/picorv32_wb_v3.dot`:
 - Output ends with `<svg>` tag (not error traceback)
 - DOT/SVG file generated: **539813 bytes** (~540KB)
 - picorv32_wb now PASSES

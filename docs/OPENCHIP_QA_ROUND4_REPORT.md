@@ -9,10 +9,10 @@
 
 | 项目 | 路径 | 文件(找到/解析) | 模块数 | 状态 |
 |------|------|-----------------|--------|------|
-| opentitan | ~/my_dv_proj/opentitan/hw/ip | 31/31 | 25 | ✅ |
-| tiny-gpu | ~/my_dv_proj/tiny-gpu/src | 12/12 | 12 | ✅ |
-| verilog-axi | ~/my_dv_proj/verilog-axi/rtl | - | - | ⏳ 超时 |
-| verilog-ethernet | ~/my_dv_proj/verilog-ethernet/rtl | 20/20 | 20 | ✅ |
+| opentitan | ~/my_dv_proj/openrtl/opentitan/hw/ip | 31/31 | 25 | ✅ |
+| tiny-gpu | ~/my_dv_proj/openrtl/tiny-gpu/src | 12/12 | 12 | ✅ |
+| verilog-axi | ~/my_dv_proj/openrtl/verilog-axi/rtl | - | - | ⏳ 超时 |
+| verilog-ethernet | ~/my_dv_proj/openrtl/verilog-ethernet/rtl | 20/20 | 20 | ✅ |
 
 ---
 
@@ -22,7 +22,7 @@
 
 - **文件**: 31/31 解析成功
 - **模块数**: 25
-- **路径**: `/Users/fundou/my_dv_proj/opentitan/hw/ip`
+- **路径**: `/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip`
 
 opentitan 是最大的项目，使用 Bazel 构建系统。RTL 文件分布在多个子目录中。
 
@@ -30,7 +30,7 @@ opentitan 是最大的项目，使用 Bazel 构建系统。RTL 文件分布在�
 
 - **文件**: 12/12 解析成功
 - **模块数**: 12
-- **路径**: `/Users/fundou/my_dv_proj/tiny-gpu/src`
+- **路径**: `/Users/fundou/my_dv_proj/openrtl/tiny-gpu/src`
 
 | 模块 | 参数 | 端口 |
 |------|------|------|
@@ -49,7 +49,7 @@ opentitan 是最大的项目，使用 Bazel 构建系统。RTL 文件分布在�
 
 - **文件**: 20/20 解析成功
 - **模块数**: 20
-- **路径**: `/Users/fundou/my_dv_proj/verilog-ethernet/rtl`
+- **路径**: `/Users/fundou/my_dv_proj/openrtl/verilog-ethernet/rtl`
 
 | 模块 | 参数 | 端口 |
 |------|------|------|

@@ -33,7 +33,7 @@ CURRENT_TODO 标 B ✅ 完成 (iter_082: 2 断言修复 + 12 环境定性), 但�
 
 ### iter_082 "0 failed" 为什么失真
 
-验证用 `HOME=/tmp/svq_home` 重定向 → `~/my_dv_proj/picorv32/...` 展开成
+验证用 `HOME=/tmp/svq_home` 重定向 → `~/my_dv_proj/openrtl/picorv32/...` 展开成
 `/tmp/svq_home/my_dv_proj/...` (不存在) → 这两个测试动态 `pytest.skip('not found')`,
 根本没跑。**HOME 重定向验证法会坑掉 `~` 依赖的真实项目路径测试** — 假绿来源。
 

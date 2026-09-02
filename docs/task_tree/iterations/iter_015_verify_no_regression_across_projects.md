@@ -36,7 +36,7 @@ All projects that worked before should still work. Only picorv32_wb should chang
 | serv | ❌ FileNotFoundError (PRE-EXISTING, not from this fix) | n/a |
 | Golden regression | ✅ 5/5 PASS (no regression) | n/a |
 
-**serv.v FileNotFoundError** is a pre-existing issue — the file isn't at `/Users/fundou/my_dv_proj/serv/serv.v`. This was a problem before my fix and is unrelated to Plan B Step G. Should investigate separately (out of scope for this task).
+**serv.v FileNotFoundError** is a pre-existing issue — the file isn't at `/Users/fundou/my_dv_proj/openrtl/serv/serv.v`. This was a problem before my fix and is unrelated to Plan B Step G. Should investigate separately (out of scope for this task).
 
 ## 💡 Other Valuable Info
 

@@ -36,7 +36,7 @@ class TestP3DesignDecisions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """加载 uart_rx.sv 作为测试文件"""
-        file_path = '/Users/fundou/my_dv_proj/opentitan/hw/ip/uart/rtl/uart_rx.sv'
+        file_path = '/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/uart/rtl/uart_rx.sv'
         with open(file_path) as f:
             cls.source = f.read()
 

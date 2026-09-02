@@ -458,7 +458,7 @@ def main() -> int:
 
     # 单个真实项目
     if args.project:
-        base = "/Users/fundou/my_dv_proj"
+        base = "/Users/fundou/my_dv_proj/openrtl"  # [openrtl 2026-09-02] 开源 RTL 统一移入 openrtl
         files: list[str] = []
         if args.filelist:
             fl = args.filelist if os.path.isabs(args.filelist) else os.path.join(base, args.filelist)
@@ -489,7 +489,7 @@ def main() -> int:
     if args.all:
         import subprocess
 
-        base = "/Users/fundou/my_dv_proj"
+        base = "/Users/fundou/my_dv_proj/openrtl"  # [openrtl 2026-09-02] 开源 RTL 统一移入 openrtl
         for p in PROJECTS:
             rel_files = []
             missing = False

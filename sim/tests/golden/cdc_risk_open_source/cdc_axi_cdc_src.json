@@ -3,7 +3,7 @@
   "ok": true,
   "params": {
     "evidence": false,
-    "file": "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv",
+    "file": "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
     "high_only": false,
     "summary": false
   },

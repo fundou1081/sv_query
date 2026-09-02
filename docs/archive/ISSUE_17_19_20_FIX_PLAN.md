@@ -89,7 +89,7 @@ import pyslang, logging, sys
 logging.disable(logging.CRITICAL)
 sys.path.insert(0, 'src')
 
-path = '/Users/fundou/my_dv_proj/clacc/bs_mult.v'
+path = '/Users/fundou/my_dv_proj/openrtl/clacc/bs_mult.v'
 tree = pyslang.SyntaxTree.fromFile(path)
 tracer = UnifiedTracer(trees={'bs_mult.v': tree}, log_level='ERROR')
 tracer.build_graph()

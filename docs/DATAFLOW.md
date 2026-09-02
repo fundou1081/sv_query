@@ -445,7 +445,7 @@ sv_query -q trace evidence B --no-strict --file x.sv --json
 ### 输入
 
 ```bash
-DARKRISCV=~/my_dv_proj/darkriscv/rtl/darkriscv.v
+DARKRISCV=~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v
 ```
 
 ### 段 1: IF stage - PC 怎么输出
@@ -699,7 +699,7 @@ sv_query -q dataflow analyze darkriscv.IFPC darkriscv.IDATA2 \
 
 ```bash
 # 跑 CPU 5 stage pipeline 5 段
-DARKRISCV=~/my_dv_proj/darkriscv/rtl/darkriscv.v
+DARKRISCV=~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v
 for seg in "IFPC IADDR" "IDATA1 IDATA2" "IDATA2 XIDATA" "XIDATA REGS[0]"; do
   set -- $seg
   echo "=== $1 → $2 ==="
@@ -726,7 +726,7 @@ run_path() {
     jq -r '.result.signals[0].evidence | "    line \(.source_location.line_start): \(.enclosing_if.text // "(no if)")"'
 }
 
-run_path "darkriscv.IFPC" "darkriscv.IDATA2" "~/my_dv_proj/darkriscv/rtl/darkriscv.v"
+run_path "darkriscv.IFPC" "darkriscv.IDATA2" "~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v"
 ```
 
 ### 用 LLM 批量分析 (LLM-friendly schema)

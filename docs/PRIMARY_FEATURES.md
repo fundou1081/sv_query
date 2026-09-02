@@ -178,7 +178,7 @@ sv_query -q visualize pipeline --no-strict --file x.sv --svg pipe.svg
 
 ```bash
 # 跑 4 段 path: PC → IF_reg → ID_reg → EX_reg → WB
-DARKRISCV=~/my_dv_proj/darkriscv/rtl/darkriscv.v
+DARKRISCV=~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v
 for seg in "IFPC IADDR" "IDATA1 IDATA2" "IDATA2 XIDATA" "XIDATA REGS[0]"; do
   set -- $seg
   echo "=== $1 → $2 ==="

@@ -33,7 +33,7 @@ riscv_core/vortex 上的等价性。前置 = 解决 6 项目 strict 编译。
 | **vortex** | 无 filelist (204 文件, OpenCL 混合) | ⏸ 未尝试 (大概率同类阻塞) |
 
 **关键修正**: 之前 (iter_053) 说 "riscv_core 目录为空" 是**误判** — REPOS.md 里
-riscv_core 对应 `/Users/fundou/my_dv_proj/riscv` 项目 (RV32IM, core/riscv/ 有 18 个 .v)。
+riscv_core 对应 `/Users/fundou/my_dv_proj/openrtl/riscv` 项目 (RV32IM, core/riscv/ 有 18 个 .v)。
 
 ### 2. 等价性评估结果 (3/6 完成)
 

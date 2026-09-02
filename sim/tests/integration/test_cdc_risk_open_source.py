@@ -55,7 +55,7 @@ def test_p1_cdc_axi_cdc_src_2_high_risk_paths():
     修后: 1 domain (src_clk_i), 0 paths (所有 instance port 共享同一 physical wire).
     """
     r = _run("-q", "cdc", "analyze", "--no-strict",
-             "--file", "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv", "--json")
+             "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
@@ -69,7 +69,7 @@ def test_p1_cdc_axi_cdc_src_2_high_risk_paths():
 def test_p2_cdc_axi_xbar_2_cdc_paths():
     """P2: axi_xbar 跑 cdc: 0 CDC (单 physical clk, 修算法后 0 false positive)."""
     r = _run("-q", "cdc", "analyze", "--no-strict",
-             "--file", "/Users/fundou/my_dv_proj/axi/src/axi_xbar.sv", "--json")
+             "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_xbar.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     r_data = data["result"]
@@ -112,7 +112,7 @@ def test_p4_cdc_prim_arbiter_single_domain():
 def test_p5_cdc_summary_mode():
     """P5: cdc --summary mode 返 counts (LLM-friendly)."""
     r = _run("-q", "cdc", "analyze", "--no-strict",
-             "--file", "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv",
+             "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
              "--summary", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -198,7 +198,7 @@ def test_p7_risk_prim_arbiter_10_critical_9_high():
 def test_p8_risk_axi_cdc_src():
     """P8: risk axi_cdc_src (4 clk, 27 signals)."""
     r = _run("-q", "risk", "analyze", "--no-strict",
-             "--file", "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv",
+             "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
              "--summary", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -270,7 +270,7 @@ def test_golden_cdc_axi_cdc_src():
     """Golden: cdc axi_cdc_src output 跟 baseline 一致 (2 HIGH risk paths stable)."""
     def gen():
         return _run("-q", "cdc", "analyze", "--no-strict",
-                     "--file", "/Users/fundou/my_dv_proj/axi/src/axi_cdc_src.sv",
+                     "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
                      "--json")
     actual = json.loads(gen().stdout)
     golden = _read_golden("cdc_axi_cdc_src", gen)

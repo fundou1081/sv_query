@@ -72,7 +72,7 @@ def _industrial_available(path: str) -> bool:
 def opentitan_prim_max_tree_filelist() -> Path:
     """OpenTitan prim_max_tree filelist (skip if not available)."""
     p = INDUSTRIAL_FILELISTS / "openTitan_prim_max_tree.f"
-    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_max_tree.sv"):
+    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv"):
         pytest.skip(f"OpenTitan not available at {p}")
     return p
 
@@ -81,7 +81,7 @@ def opentitan_prim_max_tree_filelist() -> Path:
 def naplespu_logger_filelist() -> Path:
     """NaplesPU npu_core_logger filelist (skip if not available)."""
     p = INDUSTRIAL_FILELISTS / "naplespu_logger.f"
-    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv"):
+    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/openrtl/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv"):
         pytest.skip(f"NaplesPU not available at {p}")
     return p
 
@@ -90,6 +90,6 @@ def naplespu_logger_filelist() -> Path:
 def picorv32_filelist() -> Path:
     """PicoRV32 filelist (skip if not available)."""
     p = INDUSTRIAL_FILELISTS / "picorv32.f"
-    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/picorv32/picorv32.v"):
+    if not p.exists() or not _industrial_available("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"):
         pytest.skip(f"PicoRV32 not available at {p}")
     return p

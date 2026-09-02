@@ -582,7 +582,7 @@ a939d68 feat(viz): [Plan B Step F] cycle detection + expression_tree cleanup   �
 cd ~/my_dv_proj/sv_query
 python3 -c "import time; a = bytearray(2 * 1024**3); time.sleep(2); del a"  # 内存回收
 python3 run_cli.py visualize dataflow \
-    --file ~/my_dv_proj/picorv32/picorv32.v \
+    --file ~/my_dv_proj/openrtl/picorv32/picorv32.v \
     --module picorv32_pcpi_mul \
     --no-strict \
     --dot /tmp/test.dot

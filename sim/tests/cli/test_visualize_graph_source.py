@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DARKRISCV_V = PROJECT_ROOT.parent / "darkriscv" / "rtl" / "darkriscv.v"
+DARKRISCV_V = PROJECT_ROOT.parent / "openrtl" / "darkriscv" / "rtl" / "darkriscv.v"  # [openrtl 2026-09-02]
 PYTHONPATH = str(PROJECT_ROOT / "src") + ":" + str(PROJECT_ROOT / "tools")
 
 

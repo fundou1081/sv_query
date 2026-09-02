@@ -55,7 +55,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         """[Regression] `-f <X.v>` still works (single-file path unchanged)."""
         result = subprocess.run(
             ["sv_query", "stats", "-f",
-             "/Users/fundou/my_dv_proj/picorv32/picorv32.v", "--no-strict"],
+             "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v", "--no-strict"],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0)
@@ -66,7 +66,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         # Create a temp .fl file
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".fl", delete=False, mode="w") as f:
-            f.write("/Users/fundou/my_dv_proj/picorv32/picorv32.v\n")
+            f.write("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v\n")
             fl_path = f.name
         try:
             result = subprocess.run(
@@ -84,7 +84,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         """[Bug fix] `.filelist` extension also auto-detected."""
         import tempfile
         with tempfile.NamedTemporaryFile(suffix=".filelist", delete=False, mode="w") as f:
-            f.write("/Users/fundou/my_dv_proj/picorv32/picorv32.v\n")
+            f.write("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v\n")
             fl_path = f.name
         try:
             result = subprocess.run(

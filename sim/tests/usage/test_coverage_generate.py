@@ -103,11 +103,11 @@ class TestCoverageGenerateFilelist:
     def test_filelist_with_include_dir(self):
         """多文件 filelist + -I 路径, 跑出 16-bit 跨文件 data_o."""
         fl = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f"
-        if not fl.exists() or not Path("/Users/fundou/my_dv_proj/picorv32/picorv32.v").exists():
+        if not fl.exists() or not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists():
             pytest.skip("picorv32 not available")
         rc, out, err = _run_cli(
             "coverage", "generate",
-            "-f", "/Users/fundou/my_dv_proj/picorv32/picorv32.v",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "--filelist", str(fl),
             "-s", "mem_addr",
             "-r", "mem_valid",
@@ -121,11 +121,11 @@ class TestCoverageGenerateFilelist:
     def test_clog2_derived_param(self):
         """OpenTitan prim_max_tree: $clog2(32) 派生参数 → 5-bit."""
         fl = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/industrial_filelists/openTitan_prim_max_tree.f"
-        if not fl.exists() or not Path("/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_max_tree.sv").exists():
+        if not fl.exists() or not Path("/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv").exists():
             pytest.skip("OpenTitan not available")
         rc, out, err = _run_cli(
             "coverage", "generate",
-            "-f", "/Users/fundou/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_max_tree.sv",
+            "-f", "/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv",
             "--filelist", str(fl),
             "-s", "max_idx_o",
         )

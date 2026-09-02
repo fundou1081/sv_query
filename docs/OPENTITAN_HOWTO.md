@@ -162,7 +162,7 @@ Detected: AXI4 (AXI4_FULL)  confidence: 0.944
 # Usage: ./generate_opentitan_filelist.sh <opentitan_root> <ip_name>
 
 set -e
-OT_ROOT="${1:-$HOME/my_dv_proj/opentitan}"
+OT_ROOT="${1:-$HOME/my_dv_proj/openrtl/opentitan}"
 IP_NAME="${2:-tlul}"
 STUB_DIR="/tmp/opentitan_stub"
 FLELIST="/tmp/opentitan_${IP_NAME}.f"
@@ -213,7 +213,7 @@ echo "✅ Generated: $FLELIST ($(wc -l < $FLELIST) files)"
 ### Q: 其他 opentitan IP 怎么跑?
 **A**: 改 IP 名就行, 例如:
 ```bash
-./generate_opentitan_filelist.sh ~/my_dv_proj/opentitan prim
+./generate_opentitan_filelist.sh ~/my_dv_proj/openrtl/opentitan prim
 python run_cli.py protocol detect --filelist /tmp/opentitan_prim.f --module prim_fifo_sync
 ```
 
@@ -244,7 +244,7 @@ python run_cli.py stats -f rtl/uart_core.sv \
 **推荐**: 使用项目自己的 build system 生成文件清单, 配合 `run_cli.py --files` 分析:
 ```bash
 # 1. 让 build system 生成 filelist
-./generate_opentitan_filelist.sh ~/my_dv_proj/opentitan prim > /tmp/opentitan_prim.f
+./generate_opentitan_filelist.sh ~/my_dv_proj/openrtl/opentitan prim > /tmp/opentitan_prim.f
 
 # 2. 用 sv_query 分析
 python run_cli.py protocol detect --filelist /tmp/opentitan_prim.f --module prim_fifo_sync

@@ -257,7 +257,7 @@ class ConstraintVisitor:
 
 ### 1. OpenTitan 项目
 
-**路径**: `~/my_dv_proj/opentitan/`
+**路径**: `~/my_dv_proj/openrtl/opentitan/`
 
 用于真实 UVM 序列类场景，特别是 constraint 和 class extends 模式。
 
@@ -276,7 +276,7 @@ class ConstraintVisitor:
 
 ### 2. sv-tests SV 标准库
 
-**路径**: `~/my_dv_proj/sv-tests/tests/chapter-18/`
+**路径**: `~/my_dv_proj/openrtl/sv-tests/tests/chapter-18/`
 
 SystemVerilog 标准语法测试，覆盖所有 constraint 类型。
 

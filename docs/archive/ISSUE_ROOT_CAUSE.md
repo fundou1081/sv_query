@@ -325,7 +325,7 @@ mem[wr_addr] 和 mem[rd_addr] 都是 SIGNAL
 
 **验证方法**:
 ```bash
-ls ~/my_dv_proj/serv/rtl/serv_state.v
+ls ~/my_dv_proj/openrtl/serv/rtl/serv_state.v
 # 如果存在，说明是解析范围问题
 # 如果不存在，说明是文件缺失
 ```
@@ -338,7 +338,7 @@ ls ~/my_dv_proj/serv/rtl/serv_state.v
 
 **验证方法**:
 ```bash
-find ~/my_dv_proj/vortex -name "VX_mem_bus_if*.v" -o -name "VX_mem_bus_if*.sv"
+find ~/my_dv_proj/openrtl/vortex -name "VX_mem_bus_if*.v" -o -name "VX_mem_bus_if*.sv"
 # 检查子模块文件是否存在
 ```
 
@@ -401,7 +401,7 @@ find ~/my_dv_proj/vortex -name "VX_mem_bus_if*.v" -o -name "VX_mem_bus_if*.sv"
 
 ### Issue 32 (serv_top) ✅ 已确认
 
-**文件存在**: `~/my_dv_proj/serv/rtl/serv_state.v` (8699 bytes)
+**文件存在**: `~/my_dv_proj/openrtl/serv/rtl/serv_state.v` (8699 bytes)
 
 **结论**: 子模块文件存在但未解析
 
@@ -413,7 +413,7 @@ find ~/my_dv_proj/vortex -name "VX_mem_bus_if*.v" -o -name "VX_mem_bus_if*.sv"
 
 ### Issue 38 (Vortex) ✅ 已确认
 
-**文件存在**: `~/my_dv_proj/vortex/hw/rtl/mem/VX_mem_bus_if.sv`
+**文件存在**: `~/my_dv_proj/openrtl/vortex/hw/rtl/mem/VX_mem_bus_if.sv`
 
 **结论**: 子模块文件在子目录 (mem/) 中，未被解析
 
