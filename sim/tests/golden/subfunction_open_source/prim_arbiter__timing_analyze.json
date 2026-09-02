@@ -3,7 +3,7 @@
   "ok": true,
   "result": {
     "critical_paths": [],
-    "reg_count": 0,
-    "total_nodes": 275
+    "reg_count": 1,
+    "total_nodes": 276
   }
 }

@@ -9,18 +9,21 @@
       "BRANCH_CONDITION": 10,
       "BRANCH_FALSE": 8,
       "BRANCH_RESULT": 10,
-      "DRIVER": 88
+      "CLOCK": 1,
+      "DRIVER": 90,
+      "RESET": 1
     },
     "elaboration_errors": [],
     "modules": [],
     "nodes": {
-      "CONST": 10,
+      "CONST": 11,
       "OP_TERNARY": 10,
       "PORT_IN": 6,
       "PORT_OUT": 4,
-      "SIGNAL": 245
+      "REG": 1,
+      "SIGNAL": 244
     },
-    "total_edges": 342,
-    "total_nodes": 275
+    "total_edges": 346,
+    "total_nodes": 276
   }
 }

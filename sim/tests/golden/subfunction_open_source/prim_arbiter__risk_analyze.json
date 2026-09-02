@@ -10,7 +10,7 @@
       "critical": 32,
       "high": 16,
       "sva_covered": 0,
-      "total": 273,
+      "total": 274,
       "truncated": true
     },
     "summary_mode": true,
@@ -118,6 +118,23 @@
         "width": 1
       },
       {
+        "fan_in": 12,
+        "fan_out": 9,
+        "func_level": "CRITICAL",
+        "func_score": 99.3,
+        "has_cov": false,
+        "has_sva": false,
+        "is_conv": true,
+        "is_div": true,
+        "is_reg": true,
+        "kind": "NodeKind.REG",
+        "name": "prio_mask_q",
+        "node_id": "prim_arbiter_tree.prio_mask_q",
+        "timing_level": "CRITICAL",
+        "timing_score": 54,
+        "width": 1
+      },
+      {
         "fan_in": 8,
         "fan_out": 18,
         "func_level": "CRITICAL",
@@ -130,23 +147,6 @@
         "kind": "NodeKind.PORT_IN",
         "name": "req_i",
         "node_id": "prim_arbiter_tree.req_i",
-        "timing_level": "HIGH",
-        "timing_score": 31,
-        "width": 1
-      },
-      {
-        "fan_in": 8,
-        "fan_out": 9,
-        "func_level": "CRITICAL",
-        "func_score": 87.3,
-        "has_cov": false,
-        "has_sva": false,
-        "is_conv": true,
-        "is_div": true,
-        "is_reg": false,
-        "kind": "NodeKind.SIGNAL",
-        "name": "prio_mask_q",
-        "node_id": "prim_arbiter_tree.prio_mask_q",
         "timing_level": "HIGH",
         "timing_score": 31,
         "width": 1

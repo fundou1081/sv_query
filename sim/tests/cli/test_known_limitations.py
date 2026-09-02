@@ -72,10 +72,13 @@ class TestGenerateIfLimitation:
                 "this test should be updated."
             )
 
-    def test_generate_if_alu_shr_has_no_drivers(self):
-        """alu_shr inside generate-if/else has no driver edges (same
-        limitation as alu_add_sub etc.). Document this as expected
-        behavior — V6.3+5 cannot fix the pyslang limitation."""
+    def test_generate_if_alu_shr_has_drivers(self):
+        """[iter_103 缺陷 F 修复] generate-if/else 激活分支的 always @*
+        现在被 get_generate_always_blocks 收集 → alu_shr 有 DRIVER 边.
+
+        原 limitation (2026-07-28): generate-if 单块 (GenerateBlock, 非 Array)
+        内的 always 不被遍历, alu_shr 0 驱动边. 修复后 else 分支
+        (TWO_CYCLE_ALU=0 激活) 的赋值正常提取."""
         g = _build_graph(GOLDEN)
         # alu_shr should exist as a node (parameter declaration registers it)
         alu_shr_nodes = [n for n in g.nodes() if n.endswith('alu_shr')]
@@ -83,7 +86,7 @@ class TestGenerateIfLimitation:
             f"expected alu_shr node, got {alu_shr_nodes}"
         )
 
-        # It should have NO incoming DRIVER edges due to the limitation
+        # 修复后: 激活分支 (else, always @*) 的赋值应有 DRIVER 边
         from trace.core.graph.models import EdgeKind
         incoming_drivers = 0
         for u, v in g.edges():
@@ -91,10 +94,9 @@ class TestGenerateIfLimitation:
                 edge = g.get_edge(u, v)
                 if edge and edge.kind == EdgeKind.DRIVER:
                     incoming_drivers += 1
-        assert incoming_drivers == 0, (
-            f"alu_shr should have 0 drivers due to pyslang generate-if "
-            f"limitation, got {incoming_drivers}. If >0, the limitation "
-            f"is now fixed; update this test."
+        assert incoming_drivers > 0, (
+            f"alu_shr 应有 DRIVER 边 (缺陷 F 修复: generate-if else 分支 "
+            f"always @* 被收集), got {incoming_drivers}"
         )
 
     def test_outside_generate_if_still_works(self):

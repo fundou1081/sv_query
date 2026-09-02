@@ -1388,53 +1388,81 @@ class SemanticAdapter:
 
         for member in module.body:
             kind = str(getattr(member, "kind", ""))
-            if "GenerateBlockArray" not in kind:
-                continue
-            # genvar 名字 (从 loopVariable, pure semantic)
-            genvar_name = None
-            try:
-                lv = getattr(member, "loopVariable", None)
-                if lv is not None:
-                    genvar_name = str(getattr(lv, "name", "") or "")
-            except Exception:
+            if "GenerateBlockArray" in kind:
+                # genvar 名字 (从 loopVariable, pure semantic)
                 genvar_name = None
-
-            # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
-            try:
-                entries = list(member)
-            except TypeError:
-                entries = getattr(member, "entries", None) or []
-
-            for entry in entries:
-                if getattr(entry, "isUninstantiated", False):
-                    continue
-                arr_idx = getattr(entry, "arrayIndex", None)
-                ctx = {}
-                if genvar_name and arr_idx is not None:
-                    try:
-                        ctx = {genvar_name: int(arr_idx)}
-                    except (TypeError, ValueError):
-                        ctx = {genvar_name: arr_idx}
-                # GenerateBlockSymbol __iter__ → ProceduralBlockSymbol
                 try:
-                    children = list(entry)
+                    lv = getattr(member, "loopVariable", None)
+                    if lv is not None:
+                        genvar_name = str(getattr(lv, "name", "") or "")
+                except Exception:
+                    genvar_name = None
+
+                # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
+                try:
+                    entries = list(member)
                 except TypeError:
-                    children = self._iter_children(entry)
+                    entries = getattr(member, "entries", None) or []
+
+                for entry in entries:
+                    if getattr(entry, "isUninstantiated", False):
+                        continue
+                    arr_idx = getattr(entry, "arrayIndex", None)
+                    ctx = {}
+                    if genvar_name and arr_idx is not None:
+                        try:
+                            ctx = {genvar_name: int(arr_idx)}
+                        except (TypeError, ValueError):
+                            ctx = {genvar_name: arr_idx}
+                    # GenerateBlockSymbol __iter__ → ProceduralBlockSymbol
+                    try:
+                        children = list(entry)
+                    except TypeError:
+                        children = self._iter_children(entry)
+                    for child in children:
+                        child_kind = str(getattr(child, "kind", ""))
+                        if "ProceduralBlock" not in child_kind:
+                            continue
+                        hp = ""
+                        try:
+                            hp = str(getattr(entry, "hierarchicalPath", "") or "")
+                        except Exception:
+                            hp = ""
+                        results.append({
+                            "always": child,
+                            "genvar_ctx": dict(ctx),
+                            "array_index": arr_idx,
+                            "hierarchical_path": hp,
+                            "loop_var": genvar_name or "",
+                        })
+            # [iter_103] 缺陷 F: generate-if/else 单块 (GenerateBlock, 非 Array)
+            # 内的 always 块 — 之前只处理 GenerateBlockArray (for/case), 单块
+            # (if/else) 的 always 全部丢失 → 激活分支的 procedural 赋值无 DRIVER 边
+            # (generate_if_alu 实测只有 BIT_SELECT 回边). pyslang 用
+            # isUninstantiated 标记未激活分支 (TWO_CYCLE_ALU=0 → IfTrue 未实例化),
+            # 跳过它们, 只收激活分支.
+            elif "GenerateBlock" in kind:
+                if getattr(member, "isUninstantiated", False):
+                    continue
+                try:
+                    children = list(member)
+                except TypeError:
+                    children = self._iter_children(member)
                 for child in children:
                     child_kind = str(getattr(child, "kind", ""))
                     if "ProceduralBlock" not in child_kind:
                         continue
                     hp = ""
                     try:
-                        hp = str(getattr(entry, "hierarchicalPath", "") or "")
+                        hp = str(getattr(member, "hierarchicalPath", "") or "")
                     except Exception:
                         hp = ""
                     results.append({
                         "always": child,
-                        "genvar_ctx": dict(ctx),
-                        "array_index": arr_idx,
+                        "genvar_ctx": {},
+                        "array_index": None,
                         "hierarchical_path": hp,
-                        "loop_var": genvar_name or "",
+                        "loop_var": "",
                     })
         return results
 
