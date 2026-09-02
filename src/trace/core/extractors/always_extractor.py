@@ -324,7 +324,7 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
                 # [P0-2] 计算完整表达式字符串
                 if rhs_expr:
                     try:
-                        expr_str = h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr) or h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)
+                        expr_str = h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)  # [iter_101] 去重复调用
                     except (UnicodeDecodeError, TypeError):
                         expr_str = "<expr:non-utf8>"
                 else:

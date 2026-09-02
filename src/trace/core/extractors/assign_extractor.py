@@ -401,7 +401,7 @@ def _resolve_rhs_signals(rhs_expr, rhs, module, genvar_ctx, *, h: 'AssignHelpers
         rhs_signals = h.filter_compile_time_signal_names(check_expr, rhs_signals, module=module)
     if rhs_expr:
         try:
-            expr_str = h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr) or h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)
+            expr_str = h.signal_visitor.get_source_text(rhs_expr) or str(rhs_expr)  # [iter_101] 去重复调用
         except (UnicodeDecodeError, TypeError):
             expr_str = "<expr:non-utf8>"
     else:
