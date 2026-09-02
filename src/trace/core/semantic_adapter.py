@@ -131,15 +131,18 @@ class SemanticAdapter:
         return (filename, line, col, sr.end.offset)
 
     def get_source_text(self, node) -> str:
-        """[Stage 2] 获取节点所在文件的完整源码
+        """[iter_101] 获取节点 sourceRange 对应的源码片段 (非整份文件)
 
         Args:
             node: semantic AST node (或 syntax node, 有 .sourceRange 即可)
 
         Returns:
-            str: 文件完整源码, 失败返回空字符串
+            str: 节点源码片段 (start.offset → end.offset 切片), 失败返回空字符串
 
-        使用 pyslang SourceManager.getSourceText (避免自己读文件)
+        [缺陷 A 修复 2026-09-02] 原实现 `sm.getSourceText(buf)` 返回整个 buffer
+        的完整源码 (含末尾 \x00), 导致所有 assign/always 边的 expression 字段
+        变成整份文件+空字节 (下游 handshake/dataflow/viz 消费受影响)。
+        修复: 按 sr.start.offset / sr.end.offset 切片取节点源码片段。
         """
         if node is None:
             return ""
@@ -152,7 +155,13 @@ class SemanticAdapter:
             buf = sr.start.buffer
             if buf is None:
                 return ""
-            return sm.getSourceText(buf)
+            text = sm.getSourceText(buf)
+            start = sr.start.offset
+            end = sr.end.offset
+            # [iter_101] pyslang offset 是 UTF-8 **字节**偏移 (非字符) —
+            # 源含非 ASCII (如注释里的 —) 时字符切片会错位, 必须按字节切片再解码.
+            raw = text.encode("utf-8")
+            return raw[start:end].decode("utf-8", errors="replace")
         except Exception:
             return ""
 
@@ -1347,6 +1356,8 @@ class SemanticAdapter:
                         "array_index": arr_idx,
                         "hierarchical_path": hp_str,
                         "loop_var": genvar_name or "",
+                        # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
+                        "width": self.extract_data_width(child),
                     })
         return results
 
@@ -2318,10 +2329,30 @@ class SemanticAdapter:
         支持两种方式:
         1. Semantic AST: 尝试从 declaredType 获取位宽
         2. Syntax Tree: 从 data_decl.type.dimensions[0].specifier.selector 获取位宽
+
+        [iter_101] 缺陷 B 修复: NetSymbol (wire/逻辑网) 的 .syntax 是
+        DeclaratorSyntax (无 .type), 且 declaredType 无 .width — 原两条路径都
+        拿不到 → 返回 (1,0) 默认值, `wire [15:0] x` 全被当成 1 位。
+        新增路径: declaredType.type (pyslang Type, str 如 'logic[15:0]')
+        → getBitVectorRange() 返回 '[msb:lsb]' 字符串解析。
         """
         # Semantic AST: 尝试从 declaredType 获取位宽
         declared_type = getattr(data_decl, "declaredType", None)
         if declared_type:
+            # [iter_101] NetSymbol 主路径: declaredType.type.getBitVectorRange()
+            # → '[15:0]' 字符串 (实测 pyslang 11, 含非零 lsb 也正确)
+            try:
+                dtt = getattr(declared_type, "type", None)
+                if dtt is not None:
+                    has_fixed = getattr(dtt, "hasFixedRange", False)
+                    if has_fixed:
+                        rng_str = str(dtt.getBitVectorRange())
+                        import re as _re_bw
+                        _m = _re_bw.match(r"\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]", rng_str)
+                        if _m:
+                            return (int(_m.group(1)), int(_m.group(2)))
+            except Exception:
+                pass
             if hasattr(declared_type, "width"):
                 w = declared_type.width
                 if hasattr(w, "value"):

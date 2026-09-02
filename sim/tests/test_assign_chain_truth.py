@@ -18,13 +18,12 @@ Fixtures:
 - combined: 节点 {a, b, c, y, sum, prod, prod[15:8]}, 边 6 条
     (a,b→sum DRIVER; c,sum→prod DRIVER; prod[15:8]→prod BIT_SELECT;
      prod[15:8]→y DRIVER slice='[15:8]')
-  net-decl 路径的 expression 干净 ('a + b' / 'sum * c'), 可一并锁定.
+- [iter_101] 缺陷 A 修复后 expression 全路径干净: assign 边 'a + b' / 'a * b'
+  / "prod[15:8] + 8'd128" 均可断言 (此前是整份源文件+空字节)
 
-⚠️ 已知缺陷 (iter_088 发现, 已记录, 不纳入本 golden 断言 — 修好后再补断言):
-- assign 边的 edge.expression 提取为整份源文件+空字节 (下游 handshake/dataflow
-  消费受影响) — 本文件只锁定 net-decl 路径的干净 expression.
-- net-decl wire 显式位宽被忽略 (wire [15:0] x → width=(1,0)) — 宽度断言不纳入
-  truth 层范围 (unit 层 test_width_extraction 覆盖), 待修.
+⚠️ 已知缺陷 (iter_088 发现, 已修于 iter_101): assign 边的 edge.expression 提取
+损坏 (整份源文件) — 缺陷 A 修复 (semantic_adapter.get_source_text 按 sourceRange
+字节切片) 后已正常, 本文件已补 expression 断言。
 """
 import sys
 from pathlib import Path
@@ -92,6 +91,15 @@ class TestSimpleOpAssignTruth(unittest.TestCase):
         """总边数 = 4 (assign 边无重复/无 CLOCK/RESET 误判)."""
         self.assertEqual(len(list(self.g.edges())), 4)
 
+    def test_assign_expressions(self):
+        """[iter_101] 缺陷 A 修复后 assign 边 expression 精确:
+        sum = a + b, prod = a * b (含非 ASCII 注释 fixture 也不偏移)."""
+        g = self.g
+        self.assertEqual(g.get_edge(f"{self.mod}.a", f"{self.mod}.sum").expression,
+                         "a + b", "assign sum = a + b 的 expression")
+        self.assertEqual(g.get_edge(f"{self.mod}.a", f"{self.mod}.prod").expression,
+                         "a * b", "assign prod = a * b 的 expression")
+
 
 class TestCombinedWireAssignTruth(unittest.TestCase):
     """[1:1 truth] golden_dataflow_5_combined: wire 声明链 + assign 位选"""
@@ -122,12 +130,27 @@ class TestCombinedWireAssignTruth(unittest.TestCase):
                          "combined 边集偏离 (wire 链 + assign 位选)")
 
     def test_net_decl_expressions(self):
-        """net-decl 路径 expression 干净: 'a + b' / 'sum * c' (assign 路径有 bug, 不断言)."""
+        """net-decl 路径 expression: 'a + b' / 'sum * c'."""
         g = self.g
         e1 = g.get_edge(f"{self.mod}.a", f"{self.mod}.sum")
         self.assertEqual(e1.expression, "a + b", "wire sum = a + b 的 expression")
         e2 = g.get_edge(f"{self.mod}.sum", f"{self.mod}.prod")
         self.assertEqual(e2.expression, "sum * c", "wire prod = sum * c 的 expression")
+
+    def test_assign_expressions(self):
+        """[iter_101] 缺陷 A 修复后 assign 边 expression 干净可断言."""
+        g = self.g
+        e = g.get_edge(f"{self.mod}.prod[15:8]", f"{self.mod}.y")
+        self.assertEqual(e.expression, "prod[15:8] + 8'd128",
+                         "assign y = prod[15:8] + 8'd128 的 expression")
+
+    def test_net_decl_widths(self):
+        """[iter_101] 缺陷 B 修复: wire [15:0] sum/prod 位宽 = (15,0) (原硬编码 (1,0))."""
+        g = self.g
+        self.assertEqual(g.get_node(f"{self.mod}.sum").width, (15, 0),
+                         "wire [15:0] sum 位宽偏离")
+        self.assertEqual(g.get_node(f"{self.mod}.prod").width, (15, 0),
+                         "wire [15:0] prod 位宽偏离")
 
     def test_slice_edge_bit_range(self):
         """assign y = prod[15:8] + ... 的 DRIVER 边必须带 bit_slice='[15:8]'."""

@@ -30,7 +30,7 @@
 # ==============================================================================
 from typing import Any, Callable
 
-from ..graph.models import EdgeKind, SignalSource
+from ..graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
 
 
 def create_net_decl_edges(
@@ -97,11 +97,15 @@ def create_net_decl_edges(
         except Exception:
             net_decl_ctx = dict(genvar_ctx or {})
 
+        # [iter_101] 缺陷 B: ensure_signal_node 硬编码 width=(1,0),
+        # `wire [15:0] x` 的声明位宽被忽略 — 用 extract_data_width 建节点.
+        lhs_id = f"{module_name}.{lhs_name}"
+        _ensure_net_node(result, lhs_id, lhs_name, module_name,
+                         adapter.extract_data_width(net_decl))
+
         # [REFACTOR 2026-08-07 A计划] 从 netdecl init 构建表达式树 (wire sum = a + b)
         # init 是 semantic BinaryExpression, .syntax 直接可用 (已实证)
         store_expr_tree(lhs_name, init, module_name, result, genvar_ctx=net_decl_ctx)
-        lhs_id = f"{module_name}.{lhs_name}"
-        ensure_signal_node(result, lhs_id, lhs_name, module_name)
         rhs_expr_str = get_signal(init) or ""
         rhs_signals = get_all_real_signals(init, module=module, genvar_ctx=genvar_ctx) if init else []
         edge_count += _emit_driver_edges(
@@ -141,7 +145,8 @@ def create_net_decl_edges(
             g_lhs_id = g_hp_fallback
             g_short = g_name
 
-        ensure_signal_node(result, g_lhs_id, g_short, module_name)
+        # [iter_101] 缺陷 B: generate 内 wire 也用声明位宽建节点 (ensure_signal_node 硬编码 1 位)
+        _ensure_net_node(result, g_lhs_id, g_short, module_name, g_decl.get("width"))
         # expr tree (换入 entry ctx, weights[i] → 数值), 用 g_lhs_id 当 tree_key 区分
         store_expr_tree(g_lhs_id, g_init, "", result, genvar_ctx=g_ctx)
         g_rhs_str = get_signal(g_init) or ""
@@ -159,6 +164,21 @@ def create_net_decl_edges(
         )
 
     return edge_count
+
+
+def _ensure_net_node(result, node_id: str, name: str, module_name: str, width) -> None:
+    """[iter_101] 创建 net 声明节点, 用声明位宽 (缺陷 B 修复).
+
+    ensure_signal_node 硬编码 width=(1,0) — `wire [15:0] x = ...` 的位宽
+    被忽略 (下游 width 消费错误). 本 helper 用 extract_data_width 的结果建节点;
+    已存在 (如 var_nodes 已建) 则跳过.
+    """
+    if node_id in [n.id for n in result.nodes]:
+        return
+    result.nodes.append(
+        TraceNode(id=node_id, name=name, module=module_name,
+                  kind=NodeKind.SIGNAL, width=width or (1, 0))
+    )
 
 
 def _emit_driver_edges(
