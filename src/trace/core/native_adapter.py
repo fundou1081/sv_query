@@ -212,6 +212,11 @@ def _walk_instance(
 
             # [GAP-2 fix 2026-08-29] InstanceArray 分支必须在 'Instance' 检查**之前**:
             # 'SymbolKind.InstanceArray' 也含 'Instance' 子串, 原实现误匹配成普通实例
+            # [iter_112] 'SymbolKind.PrimitiveInstance' (门级原语 and/xor/...)
+            # 也含 'Instance' 子串 — 必须显式排除: 无 definition/body/端口, 不是
+            # 模块实例; recursive 参照实现 (精确匹配) 本就不收, 过滤即对齐 parity。
+            if 'PrimitiveInstance' in kind:
+                continue
             if 'GenerateBlockArray' in kind:
                 _walk_generate_block_array(child, child_parent, wrappers, root, target_module)
             elif 'GenerateBlock' in kind:
@@ -249,6 +254,9 @@ def _walk_instance_array(
         try:
             kind = str(getattr(elem, 'kind', ''))
         except (UnicodeDecodeError, TypeError):
+            continue
+        if 'PrimitiveInstance' in kind:
+            # [iter_112] 数组元素理论上不可能是门原语; 防御: 不收 (parity 对齐)
             continue
         if 'Instance' in kind:
             _walk_instance(elem, parent_module, wrappers, root, target_module,
@@ -290,6 +298,10 @@ def _walk_generate_block(
                 continue
             # [GAP-2 fix 2026-08-29] generate 内也可能直接是 InstanceArray
             # (如 for 循环里 `sub u_arr[2]()`), 分支顺序同 _walk_instance
+            # [iter_112] generate 块内也可能是门级原语 (PrimitiveInstance) — 同
+            # _walk_instance 理由排除, 不收为模块实例 (recursive 参照实现也不收)
+            if 'PrimitiveInstance' in kind:
+                continue
             if 'GenerateBlockArray' in kind:
                 _walk_generate_block_array(child, parent_module, wrappers, root, target_module)
             elif 'GenerateBlock' in kind:

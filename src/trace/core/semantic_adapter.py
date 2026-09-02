@@ -54,6 +54,8 @@ class SemanticAdapter:
         # [Plan F1 2026-08-12] genvar context: assign id → {genvar_name: int}
         # pyslang symbol 不允许 setattr, 不能直接挂 .genvar_ctx
         self._genvar_context = {}  # id(assign) → dict
+        # [iter_112] id(primitive) → genvar ctx (generate-for 内的门, 同 assign 模式)
+        self._primitive_genvar_context = {}
 
     @property
     def root(self) -> object:
@@ -774,7 +776,9 @@ class SemanticAdapter:
                             # [E1.1 2026-08-27] 只收 InstanceSymbol — NetSymbol/Variable 由 driver_extractor 从
                             # assign expression 提取 (Plan F1 已 work). 这里若收 NetSymbol 会被 connection_extractor 当
                             # instance 调 portConnections 触发 AttributeError (NetSymbol 没 portConnections).
-                            if "Instance" in child_kind:
+                            # [iter_112] PrimitiveInstance (门级原语) 也含 'Instance' 子串 — 显式排除:
+                            # 不是模块实例, connection_extractor 展开它会导致 get_path 自环 (iter_112 根因)。
+                            if "Instance" in child_kind and "PrimitiveInstance" not in child_kind:
                                 # 用 hierarchicalPath (semantic API) 拿完整路径
                                 hp = _safe_attr(child, "hierarchicalPath", None)
                                 hp_str = _safe_str(hp) if hp else None
@@ -805,7 +809,7 @@ class SemanticAdapter:
                         continue
                     for child in _safe_iter_body(member):
                         child_kind = str(getattr(child, "kind", ""))
-                        if "Instance" in child_kind:
+                        if "Instance" in child_kind and "PrimitiveInstance" not in child_kind:
                             hp = _safe_attr(child, "hierarchicalPath", None)
                             hp_str = _safe_str(hp) if hp else None
                             if hp_str and hp_str not in visited_paths:
@@ -1267,6 +1271,85 @@ class SemanticAdapter:
                 find_assignments(member)
 
         return assignments
+
+    def get_primitive_instances(self, module) -> list:
+        """[iter_112] 获取模块体中的门级原语实例 (GatePrimitiveInstance).
+
+        Verilog 门级原语 (and/or/xor/not/nand/nor/xnor/buf/...) 在 pyslang 里
+        kind = SymbolKind.PrimitiveInstance — **不是** InstanceSymbol:
+        无 definition / 无 body / 无端口声明, 各 extractor 此前把它们当
+        "有 body 的模块实例"处理 → connection 无限递归 (`and0.and0...`),
+        driver 侧输出永远无人驱动 (KoggeStone-BrentKung xor16.S[0..15] 全空).
+
+        语义信息 (pyslang 11 探查确认):
+        - .primitiveType = Symbol(SymbolKind.Primitive, "and"/"xor"/...)
+        - .portConnections = [Assignment(left=输出端子), NamedValue(输入1), ...]
+          → conn[0].left = 输出, conn[1..] = 输入 (Verilog 门原语首端子是输出)
+
+        遍历与 get_assignments 同构: 下钻 GenerateBlockArray/GenerateBlock
+        (skip uninstantiated), 收集 PrimitiveInstance; 不进入 procedural。
+        generate-for 内的门同步记录 genvar ctx (id(prim) → {genvar: entry 索引},
+        同 get_assignments 的 _genvar_context 模式 — pyslang symbol 不可 setattr)。
+        """
+        primitives = []
+
+        def find_primitives(node: object, genvar_ctx: dict | None = None) -> None:
+            if node is None:
+                return
+            kind = str(getattr(node, "kind", ""))
+            ctx = genvar_ctx if genvar_ctx is not None else {}
+            # 门级原语本身: 收集 + 记 ctx, 不再下钻 (无 body)
+            if "PrimitiveInstance" in kind:
+                self._primitive_genvar_context[id(node)] = dict(ctx)
+                primitives.append(node)
+                return
+            # GenerateBlockArray (generate for): 逐 entry (skip uninstantiated),
+            # entry 的 arrayIndex 作为 genvar substitute value
+            if "GenerateBlockArray" in kind:
+                entries = getattr(node, "entries", None) or []
+                genvar_name = None
+                loop_var = getattr(node, "loopVariable", None)
+                if loop_var is not None:
+                    gn = getattr(loop_var, "name", None)
+                    if gn:
+                        genvar_name = str(gn)
+                for entry in entries:
+                    if getattr(entry, "isUninstantiated", False):
+                        continue
+                    child_ctx = dict(ctx)
+                    if genvar_name:
+                        ai = getattr(entry, "arrayIndex", None)
+                        if ai is not None:
+                            try:
+                                child_ctx[genvar_name] = int(str(ai))
+                            except (ValueError, TypeError):
+                                logger.warning("genvar 索引提取失败: %s", ai)
+                    for child in self._iter_children(entry):
+                        find_primitives(child, child_ctx)
+                return
+            # GenerateBlock (generate if/case): skip uninstantiated branch
+            if "GenerateBlock" in kind:
+                if getattr(node, "isUninstantiated", False):
+                    return
+                for child in self._iter_children(node):
+                    find_primitives(child, ctx)
+                return
+            # 其余 (net/assign/always/...) 不含门原语 — 不下钻
+
+        if hasattr(module, "body") and module.body:
+            for member in module.body:
+                find_primitives(member)
+
+        return primitives
+
+    def get_primitive_genvar_context(self, primitive) -> dict:
+        """[iter_112] 拿门原语所在 generate entry 的 genvar 上下文.
+
+        Returns:
+            dict: {genvar_name: int_value} — 同 get_genvar_context 语义;
+            顶层门返回 {}.
+        """
+        return self._primitive_genvar_context.get(id(primitive), {})
 
     def get_genvar_context(self, assign) -> dict:
         """[Plan F1 2026-08-12] 拿 assign 所在的 generate entry 的 genvar 上下文。
