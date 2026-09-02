@@ -36,7 +36,12 @@
 | 5. 回归: **2869 passed / 0 failed / 7 skipped** (基线 2849 无损) + KoggeStone xor16.S/xor16_1.S 全部可达驱动 | ✅ |
 | 6. 文档: iter_112 + iter_111 补记 + overview (rows 30-33) + 本表 | ✅ |
 
-下一步候选: 摸底扫尾 (fpnew 依赖 / hardware 解析错误 / cvfpu 单文件) — 等方豆指示。
+**当前**: ✅ openrtl 摸底扫尾完成 (2026-09-03) — fpnew 4961 节点 clean / hardware cpa+msu clean (brent_kung+kogge_stone 是 RTL 默认参数 bug) / cvfpu 环境问题暂缓 (clone 内 common_cells 空 + PACE $fatal)。结果已写入 ~/my_dv_proj/OPENRTL_SURVEY.md (2026-09-03 更新节)。
+
+**backlog (按发现序, 未启动)**:
+1. **CLA 嵌套 generate 实例整层丢失** (hardware cpa carry_lookahead_adder): `top.u_cla.generators[i].cell4` 两级实例嵌套 generate — 0 提取 (cout 无驱动); 实例名==类型名时递归假节点。25 行最小复现已隔离 (二分: 仅 inst==type 复发)。修复需 iter_109 同型根因分析 (实例路径/枚举在两实例层级下失效)。**建议下一个修**。
+2. gate 遗留改进 G-1~G-3 (端子方向用 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md
+3. cvfpu 全量覆盖 (需 vendor 其 common_cells + PACE 参数 override) — 家族已由 fpnew 覆盖, 优先级低
 
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 

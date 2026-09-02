@@ -52,3 +52,17 @@
   native 与 recursive 必须同步过滤保 A/B 等价 (GAP 纪律)。
 - **门输出 = 宿主模块作用域信号** (原语无自身作用域): pg2.a0 → top.u1.a0;
   xor16.S[0] (顶层端口位) → xor16.S[0] — 与 assign LHS 位选解析同一套 helper。
+
+---
+
+## 📌 遗留改进项 (未做, 2026-09-03 记录 — 方豆 "先记录下来")
+
+pyslang 对原语的建模 (实测) 提供了比当前实现更完整的端子/门语义, 后续可按需启用:
+
+| # | 改进项 | 现状 | slang 提供的依据 | 动机 |
+|---|---|---|---|---|
+| G-1 | 端子方向判定改 `primitiveType.ports[].direction` | `_create_primitive_edges` 用 "conn[0]=输出" 位置约定 | 内置门端口 name='' 但 direction=Out/In 显式 (PrimitivePortDirection); bufif1 = [Out, In, In] | 对 `tran` 双向门现约定会错 (首端子非输出) |
+| G-2 | drive strength / delay 进图 | 实例 `.delay` (TimingControl) / `.driveStrength` 未用 | PrimitiveInstance 有 delay/driveStrength 属性 | 目前对"谁驱动"查询无影响 |
+| G-3 | UDP 门真值表可视化/语义 | 只当叶子 (leaf) | UDP 定义 kind=Primitive, primitiveKind=UserDefined, `.table` 条目 + 具名 PrimitivePort | 若要做 "UDP 内部逻辑" 可视化需展开 table — 独立功能 |
+
+其余观察 (iter_112 验证中记录): 位级 CONNECTION 展开 (实例输出 → 父总线位) 属独立 cross-module 特性, 不在本任务。
