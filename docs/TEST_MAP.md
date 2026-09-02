@@ -19,13 +19,13 @@
 | **integration** (52 文件) | 跨模块端到端 | 422 | 多模块交互、真实场景链路 | **419 passed + 3 skipped** (iter_106 ELK 修复后全绿) |
 | **cli** (46 文件) | CLI 命令 subprocess | 389 | run_cli 命令行为 (trace/viz/coverage/randomize) | **389 passed** (iter_087: cache 序列化根因修复后全绿) |
 | **usage** (10 文件) | 真实项目大场景 | 298 | 真实 RTL 全量跑 (coverage_generator 179 等) | 慢, 需单独跑 |
-| **truth** (17 文件) | 1:1 金标准 | 123 | 1:1 golden: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集 + generate flatten + spec 不支持语法 | **123 passed** (iter_104 A-F 修复后, +11 断言) |
+| **truth** (17 文件) | 1:1 金标准 | 130 | 1:1 golden: assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集 + generate flatten + spec 不支持语法 | **130 passed** (iter_108: A-F/ELK/#23-24 修复后全绿) |
 | **poc** (1 文件) | POC 验证 | 5 | native portConnections (#7) | 5 passed |
 
 **按运行场景选择**:
 - **快速核心回归** (signal graph 链路, ~19s): 38 文件 317 测试 → §3.5
 - **标准回归** (unit+regression, ~1min): 199 文件 1903 测试 — 覆盖"单元 + 语法金标准"
-- **完整回归** (全 6 层, ~5min+): 301 文件 2997 测试 — 含 CLI/集成/真实项目/truth
+- **完整回归** (全 6 层, ~5min+): 329 文件 3148 测试 — 含 CLI/集成/真实项目/truth (2026-09-02 实测)
 
 **各层不可互相替代**: 一个语法点只在 regression 测 (行为断言), 其底层提取逻辑在 unit
 测 (单元), 端到端跨模块在 integration 测, 用户可见行为在 cli 测 — 缺一层 = 该视角无回归保护。
@@ -204,7 +204,7 @@
 | `test_layout_truth.py` | 9 | [T11] SVG 渲染结构 (op/信号分类) (iter_098) |
 | `test_query_truth.py` | 8 | [T12] fanin/fanout 精确驱动集 (iter_099) |
 
-**合计**: 17 文件 / 123 测试 (iter_104 缺陷 A-F 修复后: 123 passed; d1 4 skip 为 pyslang mutex 环境限制)
+**合计**: 17 文件 / 130 测试 (iter_108: A-F/ELK/#23-24 修复后全绿; d1 4 skip 为 pyslang mutex 环境限制)
 
 ---
 
