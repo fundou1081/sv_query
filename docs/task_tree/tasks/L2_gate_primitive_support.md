@@ -61,7 +61,7 @@ pyslang 对原语的建模 (实测) 提供了比当前实现更完整的端子/�
 
 | # | 改进项 | 现状 | slang 提供的依据 | 动机 |
 |---|---|---|---|---|
-| G-1 | 端子方向判定改 `primitiveType.ports[].direction` | `_create_primitive_edges` 用 "conn[0]=输出" 位置约定 | 内置门端口 name='' 但 direction=Out/In 显式 (PrimitivePortDirection); bufif1 = [Out, In, In] | 对 `tran` 双向门现约定会错 (首端子非输出) |
+| G-1 | 端子方向判定 (多输出/双向) | ✅ **iter_115 完成**: 输出端子 (含 InOut) 判定 = slang Assignment 包裹; NInput/NOutput 模板门按包裹, Fixed/UDP 逐端子 direction | 实测全门类: 输出全包 Assign; 模板 ports len≠conns; Fixed/UDP 逐端子 | buf 多输出 o2 误当输入 / tran 双向 — 已修 (iter_115) |
 | G-2 | drive strength / delay 进图 | 实例 `.delay` (TimingControl) / `.driveStrength` 未用 | PrimitiveInstance 有 delay/driveStrength 属性 | 目前对"谁驱动"查询无影响 |
 | G-3 | UDP 门真值表可视化/语义 | 只当叶子 (leaf) | UDP 定义 kind=Primitive, primitiveKind=UserDefined, `.table` 条目 + 具名 PrimitivePort | 若要做 "UDP 内部逻辑" 可视化需展开 table — 独立功能 |
 

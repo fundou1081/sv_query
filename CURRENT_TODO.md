@@ -55,7 +55,9 @@
 
 **iter_114 完成** (truth target 模式升级): cordic/genfor truth 盲区修复 — generate 实例内部逻辑真断言 (cordic rotator x_1/y_1/z_1×15 驱动 / genfor rot 实例作用域), 旧 'DRIVER>50' 实为 connection 端口自环。见 [iter_114](docs/task_tree/iterations/iter_114_truth_target_mode_upgrade.md)
 
-**backlog (未启动)**: 1. gate 遗留改进 G-1~G-3 (端子方向 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md; 2. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
+**iter_115 完成** (gate 端子方向 G-1): 输出端子判定 = slang Assignment 包裹 (多输出 buf/双向 tran 不再错); buf o2←a / tran t⇄a / UDP 逐端子; unit +5。见 [iter_115](docs/task_tree/iterations/iter_115_gate_terminal_direction.md)
+
+**backlog (未启动)**: 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) — tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115); 2. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 
 
 

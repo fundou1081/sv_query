@@ -81,6 +81,7 @@ sv_query_project/
 | **34** | **2026-09-03** | **L1** | **CLA 嵌套 generate 缺口 (iter_113, 方豆 "修这个新发现的generate")** | **top.u_cla.generators[i].cell4 两级实例 generate 0 提取 + inst==type 递归** | **嵌套 generate 内部按索引作用域提取; 递归清零** | **graph_builder.walk generate 下钻 (hp 路径); connection inst_module_name 去 '!= inst_name' 守卫 (type token 权威); cordic 同受 driver 不下钻之害 (truth DRIVER 实为端口自环); unit 4 + truth 6 (golden_dataflow_41 = 真实 CLA)** | **✅ 10 新测试, 全量回归见 CURRENT_TODO** |
 
 | **35** | **2026-09-03** | **L2** | **truth target 模式升级 (iter_114, iter_113 兑现)** | **cordic/genfor truth 的 driver 盲区 (generate 实例内部从未断言)** | **rotator 内部逻辑真断言** | **builder 切 target; cordic +4 (x_1/y_1/z_1×15 驱动/操作数/输出链/45 内部状态), genfor submodule 断言改实例作用域 (top.g[i].U.x→xo); 旧 'DRIVER>50' 实为 connection 端口自环 120** | **✅ +10 断言, 61 批次 passed** |
+| **36** | **2026-09-03** | **L2** | **gate 端子方向改善 G-1 (iter_115, 方豆 "改善端子方向的改进")** | **多输出 buf/双向 tran 用位置约定会错** | **端子方向权威判定** | **探查: 输出端子 (含 InOut) 全被 slang 包成 Assignment, NInput/NOutput 是模板 ports, Fixed/UDP 逐端子带 direction; 重写解析: 输入→每个输出, tran InOut 互驱, supply0 常量无源; unit +5** | **✅ buf o2←a / tran t⇄a / UDP y←a,b; 61 批次零回归** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
