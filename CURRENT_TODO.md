@@ -53,9 +53,11 @@
 | 3. 测试: unit test_nested_generate_instance (4) + truth test_cla_generate_truth (6, 真实 CLA fixture) | ✅ 10 passed |
 | 4. 回归: 受影响 47 passed 零回归; 全量结果见 commit | ✅ |
 
+**iter_114 完成** (truth target 模式升级): cordic/genfor truth 盲区修复 — generate 实例内部逻辑真断言 (cordic rotator x_1/y_1/z_1×15 驱动 / genfor rot 实例作用域), 旧 'DRIVER>50' 实为 connection 端口自环。见 [iter_114](docs/task_tree/iterations/iter_114_truth_target_mode_upgrade.md)
+
 **backlog (未启动)**: 1. gate 遗留改进 G-1~G-3 (端子方向 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md; 2. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 
-**backlog (未启动)**: 2. gate 遗留改进 G-1~G-3 (端子方向 ports[].direction / drive strength+delay / UDP table) — tasks/L2_gate_primitive_support.md; 3. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
+
 
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 

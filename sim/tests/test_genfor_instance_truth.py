@@ -23,14 +23,20 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import unittest  # noqa: E402
 
-from trace.unified_tracer import UnifiedTracer  # noqa: E402
+# [iter_113] target 模式: 无 target 时 driver 走 type-level 旧路径, generate 实例
+# 内部只在类型作用域 (rot.x→rot.xo) 而非实例作用域 (top.g[i].U.x→xo) — 升级后
+# rot 内部逻辑按 4 个 entry 实例分别断言 (iter_111 盲区同 cordic)
 
 FIXTURE = _REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini" / "golden_dataflow_38_genfor_instance_chain.sv"
 
 
 def _build_graph():
-    tracer = UnifiedTracer(sources={str(FIXTURE): FIXTURE.read_text()}, log_level="ERROR")
-    return tracer.build_graph(use_cache=False)
+    from trace.core.compiler import SVCompiler  # noqa: E402
+    from trace.core.graph_builder import GraphBuilder  # noqa: E402
+    from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+    comp = SVCompiler({str(FIXTURE): FIXTURE.read_text()})
+    adapter = SemanticAdapter(comp.get_root(), target_module="top")
+    return GraphBuilder(adapter, target_module="top").build()
 
 
 def _edge_triples(graph):
@@ -75,9 +81,16 @@ class TestGenForInstanceChainTruth(unittest.TestCase):
                           edges, f"g[{i}].U.xo→arr[{i+1}] 应存在")
 
     def test_submodule_logic(self):
-        """子模块 rot 内部逻辑提取: rot.x→rot.xo DRIVER."""
-        self.assertIn(("rot.x", "rot.xo", "DRIVER"), _edge_triples(self.g),
-                      "rot 内部 assign 应提取")
+        """[iter_113] rot 内部逻辑按 4 个 entry 实例作用域提取:
+        top.g[i].U.x→top.g[i].U.xo (修复前只以类型作用域 rot.x→rot.xo 出现,
+        generate 实例内部 0 提取)."""
+        edges = _edge_triples(self.g)
+        # 类型作用域残留不应存在 (target 过滤)
+        self.assertNotIn(("rot.x", "rot.xo", "DRIVER"), edges,
+                         "rot 内部应落在实例作用域而非类型作用域")
+        for i in range(4):
+            self.assertIn((f"top.g[{i}].U.x", f"top.g[{i}].U.xo", "DRIVER"),
+                          edges, f"g[{i}].U 内部 assign x→xo 应提取")
 
     def test_chain_complete(self):
         """链完整: 头 a→arr[0] + 尾 arr[4]→out + 中间连接齐全."""
