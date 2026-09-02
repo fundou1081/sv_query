@@ -133,7 +133,7 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
             if signals:
                 rhs_signals.extend(signals)
 
-    # 为 LHS 的每个元素创建节点和边
+    # 为 LHS 的每个元素创建节点 (即使 RHS 对应位置是常量, 节点也要存在)
     for lhs_name in lhs_elements:
         dst_node_id = f"{module_name}.{lhs_name}"
         if dst_node_id not in [n.id for n in result.nodes]:
@@ -147,37 +147,41 @@ def _handle_concat_assign(assign, raw_lhs, raw_rhs, module, result, module_name,
                 )
             )
 
-        # 对齐映射: rhs_signals[i] -> lhs_elements[i]
-        for rhs_sig in rhs_signals:
-            if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
-                # [V4] factory 统一入口
-                h.append_edge(
-                    result,
-                    src=rhs_sig,
-                    dst=dst_node_id,
-                    kind=EdgeKind.DRIVER,
-                    assign_type="continuous",
-                )
-            else:
-                src_node_id = f"{module_name}.{rhs_sig}"
-                if src_node_id not in [n.id for n in result.nodes]:
-                    result.nodes.append(
-                        TraceNode(
-                            id=src_node_id,
-                            name=rhs_sig,
-                            module=module_name,
-                            kind=NodeKind.SIGNAL,
-                            width=(1, 0),
-                        )
+    # [iter_101] 缺陷 C 修复: LHS/RHS 拼接按**位置**对齐映射 (zip).
+    # 原实现是嵌套循环 (对每个 lhs 元素遍历全部 rhs_signals) = 笛卡尔积 —
+    # `{y_hi, y_lo} = {a, b}` 产生 4 条边 (a→y_hi, a→y_lo, b→y_hi, b→y_lo),
+    # 位置对应关系 (a→y_hi, b→y_lo) 丢失. 修复后 rhs_signals[i]→lhs_elements[i].
+    for lhs_name, rhs_sig in zip(lhs_elements, rhs_signals):
+        dst_node_id = f"{module_name}.{lhs_name}"
+        if rhs_sig and not rhs_sig[0].isalpha() and not rhs_sig.startswith("_"):
+            # [V4] factory 统一入口 (常量路径, src 是字面量字符串)
+            h.append_edge(
+                result,
+                src=rhs_sig,
+                dst=dst_node_id,
+                kind=EdgeKind.DRIVER,
+                assign_type="continuous",
+            )
+        else:
+            src_node_id = f"{module_name}.{rhs_sig}"
+            if src_node_id not in [n.id for n in result.nodes]:
+                result.nodes.append(
+                    TraceNode(
+                        id=src_node_id,
+                        name=rhs_sig,
+                        module=module_name,
+                        kind=NodeKind.SIGNAL,
+                        width=(1, 0),
                     )
-                # [V4] factory 统一入口
-                h.append_edge(
-                    result,
-                    src=src_node_id,
-                    dst=dst_node_id,
-                    kind=EdgeKind.DRIVER,
-                    assign_type="continuous",
                 )
+            # [V4] factory 统一入口
+            h.append_edge(
+                result,
+                src=src_node_id,
+                dst=dst_node_id,
+                kind=EdgeKind.DRIVER,
+                assign_type="continuous",
+            )
     # [REFACTOR 2026-08-07 A计划] 拼接赋值: assign y = {a, b};
     # raw_rhs 是 Concat semantic 节点，.syntax 构建 Concat 树
     if raw_lhs is not None:
@@ -480,8 +484,30 @@ def _build_ternary_edge_signals(
                     branch_sigs.add(s)
     _collect_branch_signals(check_expr)
 
+    # [iter_101] 缺陷 D: localparam/parameter 引用 → 常量值 (如 'ZERO' → '8'd0').
+    # 提取到函数级, 供 _extract_arm_signals (arm key) 与 leaf 过滤共用.
+    def _resolve_const_value(name: str) -> str | None:
+        """localparam/parameter 名 → 常量值字符串; 非编译期常量返回 None."""
+        try:
+            body = getattr(module, "body", None)
+            if body is None or not hasattr(body, "lookupName"):
+                return None
+            sym = body.lookupName(name)
+            if sym is None:
+                return None
+            sk = str(getattr(sym, "kind", "")).split(".")[-1]
+            if sk not in ("Parameter", "LocalParameter",
+                          "EnumValue", "Specparam", "Genvar"):
+                return None
+            val = getattr(sym, "value", None)
+            vs = str(val).strip() if val is not None else ""
+            return vs or None
+        except Exception:
+            return None
+
     # Leaf signals = 在分支中出现的信号 (包含同时在条件中出现的 — 它们仍然驱动输出)
-    leaf_signals = [s for s in all_signals if s in branch_sigs]
+    # [iter_101] 缺陷 D: leaf 里的编译期常量名解析为常量值, 才能与 cond_map key 对齐
+    leaf_signals = [(_resolve_const_value(s) or s) for s in all_signals if s in branch_sigs]
 
     # [V6.9] 递归遍历 ConditionalOp 为每个 leaf 构建条件文本
     # g ? (h ? x0 : x1) : x2 → x0:"g && h", x1:"g && !h", x2:"!g"
@@ -516,6 +542,10 @@ def _build_ternary_edge_signals(
             Returns dict of {signal_name: (cond_list, arm_ast)} where cond_list
             is the condition path and arm_ast is the original sub-expression AST
             (preserved for source_op detection).
+
+            [iter_101] 缺陷 D: 分支是 localparam/parameter 引用时 (如
+            `? ZERO : ...`), 名字会被 compile-time 过滤 → 常量驱动边丢失.
+            解析为常量值 (ZERO → '8'd0'), 走常量边分支.
             """
             if arm_expr is None:
                 return {}
@@ -524,7 +554,16 @@ def _build_ternary_edge_signals(
                 return _build_ternary_cond_map(arm_expr, cond_path)
             # Preserve sub-expression AST for source_op extraction later
             names = h.signal_visitor._extract_signals_from_expr(arm_expr) or []
-            return {n: (list(cond_path), arm_expr) for n in names if n}
+            resolved = {}
+            for n in names:
+                if not n:
+                    continue
+                # [iter_101] 缺陷 D: 分支 localparam/parameter → 常量值 key
+                cv = _resolve_const_value(n)
+                key = cv if cv is not None else n
+                if key not in resolved:
+                    resolved[key] = (list(cond_path), arm_expr)
+            return resolved
 
         # 递归 left (true 分支) / right (false 分支)
         result_map.update(_extract_arm_signals(left, path + [cond_str]))

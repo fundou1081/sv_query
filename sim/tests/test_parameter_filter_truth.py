@@ -8,13 +8,15 @@ Fixtures:
 - golden_dataflow_33_parameter_filter.sv (param_filter): parameter WIDTH/SAT_VAL
   用于端口位宽 + ternary 条件; localparam ZERO 用于 ternary 真分支
 
-1:1 预期 (实测于 iter_093):
-- 节点: a, b, y, y.ternary_SAT_VAL_a — WIDTH/SAT_VAL/ZERO 均不在图中
+1:1 预期 (实测于 iter_093, iter_101 缺陷 D 修复后更新):
+- 节点: a, b, y, y.ternary_SAT_VAL_a, **8'd0** (ZERO 常量值节点) —
+  WIDTH/SAT_VAL/ZERO 名字均不在图中
 - DRIVER 条件: '!(a > SAT_VAL)' (参数名保留在条件串)
-- ternary 结构: a→ternary BRANCH_CONDITION, ternary→y BRANCH_RESULT
+- [iter_101] ternary 真分支常量边: 8'd0 → y DRIVER cond='a > SAT_VAL'
+  (缺陷 D 修复: localparam 引用解析为常量值)
 
-⚠️ 已知 quirk (iter_093 发现, 记录待定): ternary 真分支 ZERO (localparam 常量)
-不产生常量边 — 局部常量在 ternary 分支中的驱动边缺失, 待方豆定夺。
+⚠️ 缺陷 D (iter_093 发现, **iter_101 已修**): ternary 分支 localparam 引用
+(如 ZERO) 原被 compile-time 过滤 → 常量驱动边丢失; 修复后解析为常量值。
 """
 import sys
 from pathlib import Path
@@ -51,9 +53,9 @@ class TestParameterFilterTruth(unittest.TestCase):
             self.assertNotIn(f"{self.m}.{p}", node_ids, f"{p} 不应出现在图中")
 
     def test_node_set_exact(self):
-        """节点集精确: a, b, y, y.ternary_SAT_VAL_a."""
+        """节点集精确: a, b, y, y.ternary_SAT_VAL_a, 8'd0 (ZERO 常量值节点)."""
         expected = {f"{self.m}.a", f"{self.m}.b", f"{self.m}.y",
-                    f"{self.m}.y.ternary_SAT_VAL_a"}
+                    f"{self.m}.y.ternary_SAT_VAL_a", "8'd0"}
         self.assertEqual(set(self.g.nodes()), expected, "param_filter 节点集偏离")
 
     def test_condition_keeps_param_name(self):
@@ -79,9 +81,23 @@ class TestParameterFilterTruth(unittest.TestCase):
         }, "ternary 结构偏离")
 
     def test_no_param_value_nodes(self):
-        """参数值 8'd255 不产生常量节点 (参数解析不泄漏)."""
+        """参数值 8'd255 不产生常量节点 (条件参数不泄漏); 8'd0 是分支常量值 (D 修复)."""
         node_ids = set(self.g.nodes())
-        self.assertNotIn("8'd255", node_ids, "参数值不应作为常量节点")
+        self.assertNotIn("8'd255", node_ids, "条件参数值不应作为常量节点")
+        self.assertIn("8'd0", node_ids, "分支 localparam 值应物化为常量节点")
+
+    def test_true_branch_constant_edge(self):
+        """[iter_101] 缺陷 D 修复: ternary 真分支 ZERO → 8'd0 常量驱动边."""
+        m = self.m
+        found = False
+        for s, d in self.g.edges():
+            if d == f"{m}.y":
+                for e in self.g._edge_data.get((s, d), []):
+                    if e.kind.name == "DRIVER" and s == "8'd0":
+                        self.assertEqual(e.condition, "a > SAT_VAL",
+                                         "真分支常量边条件偏离")
+                        found = True
+        self.assertTrue(found, "8'd0→y DRIVER 常量边应存在 (缺陷 D 修复)")
 
 
 if __name__ == "__main__":
