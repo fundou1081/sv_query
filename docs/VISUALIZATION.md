@@ -236,7 +236,7 @@ cache.invalidate()     # 清除所有缓存
 **Setup**:
 ```bash
 mkdir -p /tmp/ofdm_tx_fixed
-cp ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
+cp ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
 sv_query fix timescale --filelist /tmp/ofdm_tx_fix.f --apply   # 22 fixed
 cat > /tmp/ofdm_tx_fixed.f << EOF
 +incdir+/tmp/ofdm_tx_fixed

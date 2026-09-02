@@ -28,33 +28,33 @@ import pytest
 REAL_PROJECTS = [
     pytest.param(
         'darkriscv',
-        '~/my_dv_proj/darkriscv/rtl/darkriscv.v',
+        '~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v',
         'darkriscv',
         id='darkriscv',
     ),
     pytest.param(
         'picorv32',
-        '~/my_dv_proj/picorv32/picorv32.v',
+        '~/my_dv_proj/openrtl/picorv32/picorv32.v',
         'picorv32_core',
         id='picorv32',
     ),
     pytest.param(
         'serv',
-        '~/my_dv_proj/serv/serv.v',
+        '~/my_dv_proj/openrtl/serv/serv.v',
         'serv_top',
         id='serv',
         marks=pytest.mark.skip(reason='serv.v may need filelist; skip for now'),
     ),
     pytest.param(
         'neorv32',
-        '~/my_dv_proj/neorv32/rtl/core/neorv32_top.v',
+        '~/my_dv_proj/openrtl/neorv32/rtl/core/neorv32_top.v',
         'neorv32_top',
         id='neorv32',
         marks=pytest.mark.skip(reason='neorv32 may need complex filelist; skip for now'),
     ),
     pytest.param(
         'zipcpu',
-        '~/my_dv_proj/zipcpu/rtl/zipcpu.v',
+        '~/my_dv_proj/openrtl/zipcpu/rtl/zipcpu.v',
         'zipcpu',
         id='zipcpu',
         marks=pytest.mark.skip(reason='zipcpu has very large module; skip for now'),

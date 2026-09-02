@@ -240,7 +240,7 @@
 ## Quick Examples
 
 # picorv32.v (9133行 RISC-V) 是常用 fixture
-sv_query trace fanin picorv32.cpuregs -f ~/my_dv_proj/picorv32/picorv32.v
+sv_query trace fanin picorv32.cpuregs -f ~/openrtl/picorv32/picorv32.v
 
 # OpenTitan filelist 模式
 sv_query cdc analyze --filelist sim/tests/pyslang_type_fixtures/industrial_filelists/openTitan_prim_max_tree.f

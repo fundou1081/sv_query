@@ -63,7 +63,7 @@
 ## 3. Golden Reference 设计
 
 ### G4 = pulp axi_xbar
-**位置**: `~/my_dv_proj/axi/src/axi_xbar.sv` (+ 12 依赖)
+**位置**: `~/my_dv_proj/openrtl/axi/src/axi_xbar.sv` (+ 12 依赖)
 
 **手画架构图** (作为黄金图, 1 box = 1 sub-module):
 

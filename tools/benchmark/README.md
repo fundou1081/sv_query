@@ -32,7 +32,7 @@ python tools/benchmark/run_benchmark.py \
 
 ```bash
 python tools/benchmark/run_benchmark.py \
-  --files ~/my_dv_proj/picorv32/picorv32.v \
+  --files ~/openrtl/picorv32/picorv32.v \
   --target picorv32 \
   --depth 2 \
   --traces picorv32.clk picorv32.resetn \

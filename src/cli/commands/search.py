@@ -5,7 +5,7 @@
 Usage:
   python run_cli.py search "always_ff" -f top.sv
   python run_cli.py search "q1" -f sim/test_cases.sv -n 5
-  python run_cli.py search "clk" -f ~/my_dv_proj/opentitan/hw/ip/aes/rtl/
+  python run_cli.py search "clk" -f ~/my_dv_proj/openrtl/opentitan/hw/ip/aes/rtl/
 
 Reference output to compare with: trace evidence
   python run_cli.py trace evidence test_multi_alway.q1 -f sim/test_cases.sv

@@ -3,7 +3,7 @@
 # to avoid accumulating memory.
 set -e
 
-VENTUS="~/my_dv_proj/ventus-gpgpu-verilog"
+VENTUS="~/openrtl/ventus-gpgpu-verilog"
 PYSV=.
 OUT=/tmp/ventus_core_chunks
 mkdir -p "$OUT"

@@ -254,7 +254,7 @@ python -m pytest sim/tests/cli/test_coverage_generate.py -v
 
 ### 4.3 工业项目测试
 
-很多测试依赖工业项目 (`~/my_dv_proj/picorv32/` 等)。测试会用 `pytest.skip` 自动跳过：
+很多测试依赖工业项目 (`~/my_dv_proj/openrtl/picorv32/` 等)。测试会用 `pytest.skip` 自动跳过：
 - 工业项目**没装** → 自动 skip
 - 工业项目**装了** → 自动跑
 

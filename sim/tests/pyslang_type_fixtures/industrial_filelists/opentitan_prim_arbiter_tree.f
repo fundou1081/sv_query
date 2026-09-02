@@ -10,4 +10,4 @@
 // 它 `include <prim_util_pkg.svh>` 等 core helper SV.
 // (sv_query 会自动 -I include dirs.)
 
-~/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv
+~/openrtl/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv

@@ -4,8 +4,8 @@
 # Usage: ./generate_opentitan_filelist.sh <opentitan_root> <ip_name>
 #
 # Example:
-#   ./generate_opentitan_filelist.sh ~/my_dv_proj/opentitan tlul
-#   ./generate_opentitan_filelist.sh ~/my_dv_proj/opentitan prim
+#   ./generate_opentitan_filelist.sh ~/my_dv_proj/openrtl/opentitan tlul
+#   ./generate_opentitan_filelist.sh ~/my_dv_proj/openrtl/opentitan prim
 #
 # 输出:
 #   /tmp/opentitan_stub/top_pkg.sv    - minimal stub
@@ -16,7 +16,7 @@
 
 set -e
 
-OT_ROOT="${1:-$HOME/my_dv_proj/opentitan}"
+OT_ROOT="${1:-$HOME/my_dv_proj/openrtl/opentitan}"
 IP_NAME="${2:-tlul}"
 STUB_DIR="/tmp/opentitan_stub"
 FILELIST="/tmp/opentitan_${IP_NAME}.f"

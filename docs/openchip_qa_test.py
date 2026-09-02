@@ -136,10 +136,10 @@ def generate_report(results):
 
 def main():
     projects = {
-        'opentitan': '~/my_dv_proj/opentitan/hw/ip',
-        'tiny-gpu': '~/my_dv_proj/tiny-gpu/src',
-        'verilog-axi': '~/my_dv_proj/verilog-axi/rtl',
-        'verilog-ethernet': '~/my_dv_proj/verilog-ethernet/rtl',
+        'opentitan': '~/openrtl/opentitan/hw/ip',
+        'tiny-gpu': '~/openrtl/tiny-gpu/src',
+        'verilog-axi': '~/openrtl/verilog-axi/rtl',
+        'verilog-ethernet': '~/openrtl/verilog-ethernet/rtl',
     }
     
     results = []

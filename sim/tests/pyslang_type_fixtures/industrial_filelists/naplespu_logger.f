@@ -1,5 +1,5 @@
 // NaplesPU npu_core_logger test filelist
 // Exercises: 4-level chained `include (npu_system_defines → npu_defines → npu_user_defines)
 //           + multi-file + parameter package + nested typedef
-+incdir+~/my_dv_proj/NaplesPU/NaplesPU/src/include
-~/my_dv_proj/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv
++incdir+~/openrtl/NaplesPU/NaplesPU/src/include
+~/openrtl/NaplesPU/NaplesPU/src/sc/logger/npu_core_logger.sv

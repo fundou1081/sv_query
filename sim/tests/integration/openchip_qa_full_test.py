@@ -19,19 +19,19 @@ from trace.unified_tracer import UnifiedTracer
 
 # 项目列表 - 使用 filelist 方式配置
 FILENAME_LIST = [
-    {'name': 'clacc', 'path': '~/my_dv_proj/clacc', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'serv', 'path': '~/my_dv_proj/serv', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'cva6', 'path': '~/my_dv_proj/cva6', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'picorv32', 'path': '~/my_dv_proj/picorv32', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'darkriscv', 'path': '~/my_dv_proj/darkriscv', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'neorv32', 'path': '~/my_dv_proj/neorv32', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'zipcpu', 'path': '~/my_dv_proj/zipcpu', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'vortex', 'path': '~/my_dv_proj/vortex', 'description': 'RISC-V GPU', 'file_limit': 50},
-    {'name': 'XiangShan', 'path': '~/my_dv_proj/XiangShan', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'riscv', 'path': '~/my_dv_proj/riscv', 'description': 'RISC-V 处理器', 'file_limit': 50},
-    {'name': 'riscv-boom', 'path': '~/my_dv_proj/riscv-boom', 'description': 'RISC-V BOOM 处理器', 'file_limit': 50},
-    {'name': 'rocket-chip', 'path': '~/my_dv_proj/rocket-chip', 'description': 'RISC-V Rocket 处理器', 'file_limit': 50},
-    {'name': 'ProNoC', 'path': '~/my_dv_proj/ProNoC', 'description': 'NoC 路由器', 'file_limit': 50},
+    {'name': 'clacc', 'path': '~/my_dv_proj/openrtl/clacc', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'serv', 'path': '~/my_dv_proj/openrtl/serv', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'cva6', 'path': '~/my_dv_proj/openrtl/cva6', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'picorv32', 'path': '~/my_dv_proj/openrtl/picorv32', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'darkriscv', 'path': '~/my_dv_proj/openrtl/darkriscv', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'neorv32', 'path': '~/my_dv_proj/openrtl/neorv32', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'zipcpu', 'path': '~/my_dv_proj/openrtl/zipcpu', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'vortex', 'path': '~/my_dv_proj/openrtl/vortex', 'description': 'RISC-V GPU', 'file_limit': 50},
+    {'name': 'XiangShan', 'path': '~/my_dv_proj/openrtl/XiangShan', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'riscv', 'path': '~/my_dv_proj/openrtl/riscv', 'description': 'RISC-V 处理器', 'file_limit': 50},
+    {'name': 'riscv-boom', 'path': '~/my_dv_proj/openrtl/riscv-boom', 'description': 'RISC-V BOOM 处理器', 'file_limit': 50},
+    {'name': 'rocket-chip', 'path': '~/my_dv_proj/openrtl/rocket-chip', 'description': 'RISC-V Rocket 处理器', 'file_limit': 50},
+    {'name': 'ProNoC', 'path': '~/my_dv_proj/openrtl/ProNoC', 'description': 'NoC 路由器', 'file_limit': 50},
 ]
 
 def find_verilog_files(project_path, extensions=None):

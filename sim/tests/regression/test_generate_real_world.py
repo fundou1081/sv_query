@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 from trace.unified_tracer import UnifiedTracer  # noqa: E402
 
-ZIPCPU_RTL = Path("~/my_dv_proj/zipcpu/rtl")
+ZIPCPU_RTL = Path("~/openrtl/zipcpu/rtl")
 
 
 @pytest.fixture(scope="module")

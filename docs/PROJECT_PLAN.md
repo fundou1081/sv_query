@@ -9,19 +9,19 @@
 
 | # | 项目 | 方向 | 本地路径 | 状态 | 问题数 |
 |---|------|------|----------|------|--------|
-| 1 | **OpenTitan** | 安全 MCU | `~/my_dv_proj/opentitan/` | ✅ 完成 | 176 题 |
-| 2 | **verilog-axi** | AXI 协议 | `~/my_dv_proj/verilog-axi/` | 🔄 进行中 | 32 |
-| 3 | **clacc** | NPU (Eyeriss-like) | `~/my_dv_proj/clacc/` | ⏳ 待做 | 16 |
-| 4 | **verilog-ethernet** | Ethernet | `~/my_dv_proj/verilog-ethernet/` | ⏳ 待做 | 24 |
-| 5 | **verilog-pcie** | PCIe | `~/my_dv_proj/verilog-pcie/` | ⏳ 待做 | 16 |
-| 6 | **Mayoiuta** | NPU | `~/my_dv_proj/Mayoiuta/` | ⏳ 待做 | 16 |
-| 7 | **CVA6** | CPU (工业级) | `~/my_dv_proj/cva6/` | ⏳ 待做 | 32 |
-| 8 | **ProNoC** | NoC 互联 | `~/my_dv_proj/ProNoC/` | ⏳ 待做 | 24 |
-| 9 | **Vortex** | GPU | `~/my_dv_proj/vortex/` | ⏳ 待做 | 24 |
-| 10 | **NVDLA** | GPU/NPU | `~/my_dv_proj/hw/` | ⏳ 待做 | 48 |
-| 11 | **XiangShan** | CPU (香山) | `~/my_dv_proj/XiangShan/` | ⏳ 待做 | - |
+| 1 | **OpenTitan** | 安全 MCU | `~/my_dv_proj/openrtl/opentitan/` | ✅ 完成 | 176 题 |
+| 2 | **verilog-axi** | AXI 协议 | `~/my_dv_proj/openrtl/verilog-axi/` | 🔄 进行中 | 32 |
+| 3 | **clacc** | NPU (Eyeriss-like) | `~/my_dv_proj/openrtl/clacc/` | ⏳ 待做 | 16 |
+| 4 | **verilog-ethernet** | Ethernet | `~/my_dv_proj/openrtl/verilog-ethernet/` | ⏳ 待做 | 24 |
+| 5 | **verilog-pcie** | PCIe | `~/my_dv_proj/openrtl/verilog-pcie/` | ⏳ 待做 | 16 |
+| 6 | **Mayoiuta** | NPU | `~/my_dv_proj/openrtl/Mayoiuta/` | ⏳ 待做 | 16 |
+| 7 | **CVA6** | CPU (工业级) | `~/my_dv_proj/openrtl/cva6/` | ⏳ 待做 | 32 |
+| 8 | **ProNoC** | NoC 互联 | `~/my_dv_proj/openrtl/ProNoC/` | ⏳ 待做 | 24 |
+| 9 | **Vortex** | GPU | `~/my_dv_proj/openrtl/vortex/` | ⏳ 待做 | 24 |
+| 10 | **NVDLA** | GPU/NPU | `~/my_dv_proj/openrtl/hw/` | ⏳ 待做 | 48 |
+| 11 | **XiangShan** | CPU (香山) | `~/my_dv_proj/openrtl/XiangShan/` | ⏳ 待做 | - |
 | 12 | **openwifi** | WiFi | `~/my_dv_proj/openwifi/` | ⏳ 待做 | - |
-| 13 | **verilog-pcie** | PCIe | `~/my_dv_proj/verilog-pcie/` | ⏳ 待做 | - |
+| 13 | **verilog-pcie** | PCIe | `~/my_dv_proj/openrtl/verilog-pcie/` | ⏳ 待做 | - |
 
 ---
 
@@ -31,31 +31,31 @@
 
 | 项目 | 本地路径 |
 |------|----------|
-| OpenTitan | `~/my_dv_proj/opentitan/` |
-| CVA6 | `~/my_dv_proj/cva6/` |
+| OpenTitan | `~/my_dv_proj/openrtl/opentitan/` |
+| CVA6 | `~/my_dv_proj/openrtl/cva6/` |
 
 ### 🎮 GPU/NPU/AI加速器
 
 | 项目 | 本地路径 |
 |------|----------|
-| NVDLA | `~/my_dv_proj/hw/` |
-| Vortex | `~/my_dv_proj/vortex/` |
-| Mayoiuta | `~/my_dv_proj/Mayoiuta/` |
-| clacc | `~/my_dv_proj/clacc/` |
+| NVDLA | `~/my_dv_proj/openrtl/hw/` |
+| Vortex | `~/my_dv_proj/openrtl/vortex/` |
+| Mayoiuta | `~/my_dv_proj/openrtl/Mayoiuta/` |
+| clacc | `~/my_dv_proj/openrtl/clacc/` |
 
 ### 🔗 互联/协议
 
 | 项目 | 本地路径 |
 |------|----------|
-| verilog-axi | `~/my_dv_proj/verilog-axi/` |
-| ProNoC | `~/my_dv_proj/ProNoC/` |
+| verilog-axi | `~/my_dv_proj/openrtl/verilog-axi/` |
+| ProNoC | `~/my_dv_proj/openrtl/ProNoC/` |
 
 ### 📡 通信类
 
 | 项目 | 本地路径 | 说明 |
 |------|----------|------|
-| **verilog-ethernet** | `~/my_dv_proj/verilog-ethernet/` | 10G/25G/100G Ethernet IP |
-| **verilog-pcie** | `~/my_dv_proj/verilog-pcie/` | PCIe DMA 引擎 |
+| **verilog-ethernet** | `~/my_dv_proj/openrtl/verilog-ethernet/` | 10G/25G/100G Ethernet IP |
+| **verilog-pcie** | `~/my_dv_proj/openrtl/verilog-pcie/` | PCIe DMA 引擎 |
 | openwifi | `~/my_dv_proj/openwifi/` | WiFi 系统（驱动+FPGA）|
 
 ---

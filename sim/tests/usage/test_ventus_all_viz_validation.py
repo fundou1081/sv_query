@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 
-VENTUS = Path("~/my_dv_proj/ventus-gpgpu-verilog")
+VENTUS = Path("~/openrtl/ventus-gpgpu-verilog")
 
 
 def read_text(path) -> str:

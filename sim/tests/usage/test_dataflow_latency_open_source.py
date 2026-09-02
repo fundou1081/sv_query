@@ -25,9 +25,9 @@ pytestmark = pytest.mark.opensource
 # Test fixtures
 SYNC_FIFO = "/tmp/cdc_test/sync_fifo.sv"
 TWO_FLOP_SYNC = "/tmp/cdc_test/two_flop_sync.sv"
-PRIM_ARBITER = "~/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv"
-CVA6_FILELIST = "~/my_dv_proj/cva6/Flist.ariane"
-DARKRISCV = "~/my_dv_proj/darkriscv/rtl/darkriscv.v"
+PRIM_ARBITER = "~/openrtl/opentitan/hw/ip/prim/rtl/prim_arbiter_tree.sv"
+CVA6_FILELIST = "~/openrtl/cva6/Flist.ariane"
+DARKRISCV = "~/openrtl/darkriscv/rtl/darkriscv.v"
 STRICT_UART_FILELIST = "./sim/tests/fixtures/strict_uart/filelist.f"
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent  # sv_query/ root (from sim/tests/integration/)
@@ -325,7 +325,7 @@ def test_real_opentitan_prim_fifo_sync_passthrough():
     """
     d = _run_dataflow(
         "prim_fifo_sync.wdata_i", "prim_fifo_sync.rdata_o",
-        file_path="~/my_dv_proj/opentitan/hw/ip/prim/rtl/prim_fifo_sync.sv",
+        file_path="~/openrtl/opentitan/hw/ip/prim/rtl/prim_fifo_sync.sv",
     )
     assert d.get("ok")
     r = d["result"]

@@ -27,7 +27,7 @@ openwifi-hw 的 .v 文件 **缺 timescale** (22/25), 跑前先 fix:
 ```bash
 # 1. 复制 .v 到独立目录 (不动原文件)
 mkdir -p /tmp/ofdm_tx_fixed
-cp ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
+cp ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
 
 # 2. 自动修复 timescale
 sv_query fix timescale --filelist /tmp/ofdm_tx_fix.f --apply
@@ -290,7 +290,7 @@ python3 -c "import time; a = bytearray(4 * 1024**3); time.sleep(2); del a"
 ```bash
 # === Setup ===
 mkdir -p /tmp/ofdm_tx_fixed
-cp ~/my_dv_proj/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
+cp ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
 
 cat > /tmp/ofdm_tx_fix.f << EOF
 EOF

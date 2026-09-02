@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 REPO_ROOT = Path(".")
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
-SYNC_SV = "~/my_dv_proj/NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv"
+SYNC_SV = "~/openrtl/NaplesPU/NaplesPU/src/deploy/uart/synchronizer.sv"
 
 
 def _run(*args):
