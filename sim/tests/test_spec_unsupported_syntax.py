@@ -95,6 +95,18 @@ class TestUnsupportedSyntaxGolden:
         assert edges.get('DRIVER', 0) == 2, \
             f"generate-if 激活分支 wire 期望 2 条 DRIVER (a*b), got {edges}"
 
+    def test_generate_case_wire_extracted(self):
+        """[iter_107 #24 验证] generate-case 单块内 wire 声明也被提取.
+
+        #23 修复的 GenerateBlock 分支同样覆盖 generate-case 的 case item
+        (每个 case item 是 GenerateBlockSymbol). SEL=2 → g_use2 激活
+        (wire prod2 = a - b → 2 条 DRIVER) + assign y 假分支 a→y 1 条 = 3."""
+        result = _build_stats(FIXTURE_DIR / 'probe_generate_case_wire.sv')
+        assert result['ok']
+        edges = result['result']['edges']
+        assert edges.get('DRIVER', 0) == 3, \
+            f"generate-case 期望 3 条 DRIVER (prod2×2 + a→y), got {edges}"
+
     def test_replication_rhs_supported(self):
         """RHS replication `{3{q}}` 应正常生成 DRIVER 边 (正例对照 probe_repl_lhs 是 SV 禁止)."""
         result = _build_stats(FIXTURE_DIR / 'probe_replication_rhs.sv')

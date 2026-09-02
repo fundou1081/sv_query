@@ -208,5 +208,39 @@ class TestGenerateIfWireTruth(unittest.TestCase):
                          "未实例化分支 wire 不应出现")
 
 
+class TestGenerateCaseWireTruth(unittest.TestCase):
+    """[1:1 truth] probe_generate_case_wire: generate-case 单块 wire (iter_107 #24)"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.g = _build_graph_path(SPEC_DIR / "probe_generate_case_wire.sv")
+        cls.m = "probe_gen_case_wire"
+
+    def test_active_branch_wire(self):
+        """激活分支 (SEL=2 → g_use2) 的 wire prod2 = a - b 提取."""
+        m = self.m
+        drv = {t for t in _edge_triples(self.g) if t[2] == "DRIVER"}
+        # prod2×2 (wire 声明) + a→y (assign y 假分支) = 3
+        self.assertEqual(drv, {
+            (f"{m}.a", f"{m}.g_use2.prod2", "DRIVER"),
+            (f"{m}.b", f"{m}.g_use2.prod2", "DRIVER"),
+            (f"{m}.a", f"{m}.y", "DRIVER"),
+        }, "激活分支 (g_use2) wire 驱动边偏离")
+
+    def test_inactive_branches_absent(self):
+        """未实例化分支 (g_use1/g_def) 的 prod1/prod_d 不在图中."""
+        node_ids = set(self.g.nodes())
+        for absent in ("g_use1.prod1", "g_def.prod_d"):
+            self.assertNotIn(f"{self.m}.{absent}", node_ids,
+                             f"未实例化分支 {absent} 不应出现")
+
+    def test_ternary_references_activate_wire(self):
+        """ternary 引用解析: prod2 → BRANCH_TRUE (y = SEL==2 ? prod2 : a)."""
+        m = self.m
+        tri = {t for t in _edge_triples(self.g) if t[2].startswith("BRANCH")}
+        self.assertIn((f"{m}.g_use2.prod2", f"{m}.y.ternary_SEL", "BRANCH_TRUE"), tri)
+        self.assertIn((f"{m}.a", f"{m}.y.ternary_SEL", "BRANCH_FALSE"), tri)
+
+
 if __name__ == "__main__":
     unittest.main()

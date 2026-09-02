@@ -1268,31 +1268,18 @@ class SemanticAdapter:
 
         return nets
 
-    def get_generate_net_declarations(self, module) -> list[dict]:
-        """[Plan G3 2026-08-27 13:01] 纯 semantic 收集 generate-for 内展开后的带 init Net decl.
+    def _iter_generate_children(self, module, kind_marker: str):
+        """[iter_108] 共享 generate 遍历 (net_declarations / always_blocks 去重).
 
-        现有 get_net_declarations(module) 只遍历 module.body 顶层, 拿不到 generate-for 块内
-        的 wire decl — 例如 case27 'wire [W-1:0] prod = data * weights[i]' (line 25) 在
-        gen_accum GenerateBlockArraySymbol 每个 entry 内. 顶层有同名 module-level 'prod'
-        (line 18, 无 init), 所以 get_net_declarations 只返回无 init 的那个, init 永远漏掉.
-
-        本方法走 GenerateBlockArraySymbol.entries (pure semantic API, 与 E1 get_generate_instances
-        同模式): 每个 entry 是 GenerateBlockSymbol (semantic scope), 直接 __iter__ 拿 NetSymbol,
-        读其 .initializer. 结合 entry.arrayIndex + gen_block.loopVariable.name 构造 genvar_ctx.
-
-        Returns:
-            list[dict], 每个 dict:
-              name: str                 — 展开后信号名 (如 'prod')
-              initializer: object       — pyslang semantic Expression (BinaryOp)
-              genvar_ctx: dict          — {'i': 0} 之类 (0 = arrayIndex 数值)
-              array_index: int|None
-              hierarchical_path: str    — 'generate_loop.gen_accum[0].prod' (独立 node id)
-              loop_var: str             — genvar 名字 (如 'i')
+        GenerateBlockArray (for/case 展开) entries + GenerateBlock (if/else/case
+        item 单块), 跳过 isUninstantiated. 产出:
+        (child, genvar_ctx, array_index, loop_var, container)
+        - child: 匹配 kind_marker 的成员 (NetSymbol / ProceduralBlockSymbol)
+        - container: entry (array) 或 member (单块) — hierarchicalPath 来源
+          (net 用 child.hp, always 用 container.hp, 保持两函数原行为)
         """
-        results: list[dict] = []
         if not hasattr(module, "body") or not module.body:
-            return results
-
+            return
         for member in module.body:
             kind = str(getattr(member, "kind", ""))
             if "GenerateBlockArray" in kind:
@@ -1304,13 +1291,11 @@ class SemanticAdapter:
                         genvar_name = str(getattr(lv, "name", "") or "")
                 except Exception:
                     genvar_name = None
-
                 # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
                 try:
                     entries = list(member)
                 except TypeError:
                     entries = getattr(member, "entries", None) or []
-
                 for entry in entries:
                     if getattr(entry, "isUninstantiated", False):
                         continue
@@ -1321,49 +1306,15 @@ class SemanticAdapter:
                             ctx = {genvar_name: int(arr_idx)}
                         except (TypeError, ValueError):
                             ctx = {genvar_name: arr_idx}
-                    # GenerateBlockSymbol __iter__ → NetSymbol (pure semantic)
                     try:
                         children = list(entry)
                     except TypeError:
                         children = self._iter_children(entry)
                     for child in children:
-                        child_kind = str(getattr(child, "kind", ""))
-                        if "Net" not in child_kind:
-                            continue
-                        try:
-                            nm = getattr(child, "name", "")
-                            nm = str(nm) if nm else ""
-                        except Exception:
-                            nm = ""
-                        if not nm:
-                            continue
-                        init = getattr(child, "initializer", None)
-                        # [Plan G3 2026-08-27 13:20] hierarchicalPath 区分每个 entry 的独立 symbol
-                        # 4 entry 的 prod 是 4 个独立 symbol (generate_loop.gen_accum[N].prod),
-                        # 用 hp 当 node id → 4 个独立 tree/edge (gap_2: 4 个 '*' op)
-                        hp_str = ""
-                        try:
-                            hp = getattr(child, "hierarchicalPath", None)
-                            if hp is not None:
-                                hp_str = str(hp) or ""
-                        except Exception:
-                            hp_str = ""
-                        results.append({
-                            "name": nm,
-                            "initializer": init,
-                            "genvar_ctx": dict(ctx),
-                            "array_index": arr_idx,
-                            "hierarchical_path": hp_str,
-                            "loop_var": genvar_name or "",
-                            # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
-                            "width": self.extract_data_width(child),
-                        })
-            # [iter_107] #23: generate-if/else 单块 (GenerateBlock, 非 Array)
-            # 内的带 init wire 声明 — 镜像 iter_103 缺陷 F (always 单块修复):
-            # 之前只处理 GenerateBlockArray (for/case), 单块 (if/else) 的 wire
-            # 全部丢失 (probe_generate_if_wire 实测 0 节点/0 边). 跳过
-            # isUninstantiated (未激活分支), 只收激活分支.
+                        if kind_marker in str(getattr(child, "kind", "")):
+                            yield child, dict(ctx), arr_idx, genvar_name or "", entry
             elif "GenerateBlock" in kind:
+                # [iter_107] 单块 (if/else/case item): 跳过 isUninstantiated
                 if getattr(member, "isUninstantiated", False):
                     continue
                 try:
@@ -1371,139 +1322,91 @@ class SemanticAdapter:
                 except TypeError:
                     children = self._iter_children(member)
                 for child in children:
-                    child_kind = str(getattr(child, "kind", ""))
-                    if "Net" not in child_kind:
-                        continue
-                    try:
-                        nm = getattr(child, "name", "")
-                        nm = str(nm) if nm else ""
-                    except Exception:
-                        nm = ""
-                    if not nm:
-                        continue
-                    init = getattr(child, "initializer", None)
-                    hp_str = ""
-                    try:
-                        hp = getattr(child, "hierarchicalPath", None)
-                        if hp is not None:
-                            hp_str = str(hp) or ""
-                    except Exception:
-                        hp_str = ""
-                    results.append({
-                        "name": nm,
-                        "initializer": init,
-                        "genvar_ctx": {},
-                        "array_index": None,
-                        "hierarchical_path": hp_str,
-                        "loop_var": "",
-                        "width": self.extract_data_width(child),
-                    })
+                    if kind_marker in str(getattr(child, "kind", "")):
+                        yield child, {}, None, "", member
+
+
+    def get_generate_net_declarations(self, module) -> list[dict]:
+        """[Plan G3 2026-08-27 13:01] 纯 semantic 收集 generate-for/if/case 内
+        展开后的带 init Net decl.
+
+        [iter_108] 遍历逻辑收敛到 _iter_generate_children (与
+        get_generate_always_blocks 去重); 本方法只做 Net 专属提取
+        (name/initializer/hierarchical_path 用 child 的, 与 G3 原行为一致).
+
+        Returns:
+            list[dict], 每个 dict:
+              name: str                 — 展开后信号名 (如 'prod')
+              initializer: object       — pyslang semantic Expression
+              genvar_ctx: dict          — {'i': 0} 之类 (0 = arrayIndex 数值)
+              array_index: int|None
+              hierarchical_path: str    — 独立 node id (区分多 entry 同短名)
+              loop_var: str             — genvar 名字 (如 'i')
+        """
+        results: list[dict] = []
+        for child, ctx, arr_idx, loop_var, _container in self._iter_generate_children(module, "Net"):
+            try:
+                nm = getattr(child, "name", "")
+                nm = str(nm) if nm else ""
+            except Exception:
+                nm = ""
+            if not nm:
+                continue
+            init = getattr(child, "initializer", None)
+            # hierarchicalPath 用 NetSymbol 自身的 (G3 原行为)
+            hp_str = ""
+            try:
+                hp = getattr(child, "hierarchicalPath", None)
+                if hp is not None:
+                    hp_str = str(hp) or ""
+            except Exception:
+                hp_str = ""
+            results.append({
+                "name": nm,
+                "initializer": init,
+                "genvar_ctx": dict(ctx),
+                "array_index": arr_idx,
+                "hierarchical_path": hp_str,
+                "loop_var": loop_var,
+                # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
+                "width": self.extract_data_width(child),
+            })
         return results
 
+
     def get_generate_always_blocks(self, module) -> list[dict]:
-        """[#8 2026-08-28] 纯 semantic 收集 generate-for 内展开后的 always 块.
+        """[#8 2026-08-28] 纯 semantic 收集 generate-for/if/case 内展开后的 always 块.
 
-        现有 get_always_blocks(module) 只遍历 module.body 顶层, 拿不到 generate-for
-        块内的 always 块 — 例如 `for (i...) begin: gen always_ff @(posedge clk) acc[i] <= data_in; end`
-        的 always 在 gen GenerateBlockArraySymbol 每个 entry 内. 顶层 get_always_blocks
-        返回 0 个, 导致 generate 内所有 procedural 赋值没有 DRIVER 边
-        (G2 计划 #8: generate-for 动态位选不产生 BIT_SELECT/DRIVER 边的一部分).
-
-        本方法走 GenerateBlockArraySymbol.entries (pure semantic API, 与
-        get_generate_net_declarations / get_generate_instances 同模式):
-        每个 entry 是 GenerateBlockSymbol, __iter__ 拿 ProceduralBlockSymbol.
+        [iter_108] 遍历逻辑收敛到 _iter_generate_children (与
+        get_generate_net_declarations 去重); 本方法只做 ProceduralBlock 专属提取
+        (hierarchical_path 用 container 的, 与 #8 原行为一致).
 
         Returns:
             list[dict], 每个 dict:
               always: object             — ProceduralBlockSymbol
               genvar_ctx: dict           — {'i': 0} 之类 (0 = arrayIndex 数值)
               array_index: int|None
-              hierarchical_path: str     — 'top.gen[0]' (generate block 路径, 供 node id)
+              hierarchical_path: str     — generate block 路径 (供 node id)
               loop_var: str              — genvar 名字 (如 'i')
         """
         results: list[dict] = []
-        if not hasattr(module, "body") or not module.body:
-            return results
-
-        for member in module.body:
-            kind = str(getattr(member, "kind", ""))
-            if "GenerateBlockArray" in kind:
-                # genvar 名字 (从 loopVariable, pure semantic)
-                genvar_name = None
-                try:
-                    lv = getattr(member, "loopVariable", None)
-                    if lv is not None:
-                        genvar_name = str(getattr(lv, "name", "") or "")
-                except Exception:
-                    genvar_name = None
-
-                # entries (pure semantic: 直接 __iter__ 或 .entries fallback)
-                try:
-                    entries = list(member)
-                except TypeError:
-                    entries = getattr(member, "entries", None) or []
-
-                for entry in entries:
-                    if getattr(entry, "isUninstantiated", False):
-                        continue
-                    arr_idx = getattr(entry, "arrayIndex", None)
-                    ctx = {}
-                    if genvar_name and arr_idx is not None:
-                        try:
-                            ctx = {genvar_name: int(arr_idx)}
-                        except (TypeError, ValueError):
-                            ctx = {genvar_name: arr_idx}
-                    # GenerateBlockSymbol __iter__ → ProceduralBlockSymbol
-                    try:
-                        children = list(entry)
-                    except TypeError:
-                        children = self._iter_children(entry)
-                    for child in children:
-                        child_kind = str(getattr(child, "kind", ""))
-                        if "ProceduralBlock" not in child_kind:
-                            continue
-                        hp = ""
-                        try:
-                            hp = str(getattr(entry, "hierarchicalPath", "") or "")
-                        except Exception:
-                            hp = ""
-                        results.append({
-                            "always": child,
-                            "genvar_ctx": dict(ctx),
-                            "array_index": arr_idx,
-                            "hierarchical_path": hp,
-                            "loop_var": genvar_name or "",
-                        })
-            # [iter_103] 缺陷 F: generate-if/else 单块 (GenerateBlock, 非 Array)
-            # 内的 always 块 — 之前只处理 GenerateBlockArray (for/case), 单块
-            # (if/else) 的 always 全部丢失 → 激活分支的 procedural 赋值无 DRIVER 边
-            # (generate_if_alu 实测只有 BIT_SELECT 回边). pyslang 用
-            # isUninstantiated 标记未激活分支 (TWO_CYCLE_ALU=0 → IfTrue 未实例化),
-            # 跳过它们, 只收激活分支.
-            elif "GenerateBlock" in kind:
-                if getattr(member, "isUninstantiated", False):
-                    continue
-                try:
-                    children = list(member)
-                except TypeError:
-                    children = self._iter_children(member)
-                for child in children:
-                    child_kind = str(getattr(child, "kind", ""))
-                    if "ProceduralBlock" not in child_kind:
-                        continue
-                    hp = ""
-                    try:
-                        hp = str(getattr(member, "hierarchicalPath", "") or "")
-                    except Exception:
-                        hp = ""
-                    results.append({
-                        "always": child,
-                        "genvar_ctx": {},
-                        "array_index": None,
-                        "hierarchical_path": hp,
-                        "loop_var": "",
-                    })
+        for child, ctx, arr_idx, loop_var, container in self._iter_generate_children(module, "ProceduralBlock"):
+            hp_str = ""
+            try:
+                hp = getattr(container, "hierarchicalPath", None)
+                if hp is not None:
+                    hp_str = str(hp) or ""
+            except Exception:
+                hp_str = ""
+            results.append({
+                "always": child,
+                "genvar_ctx": dict(ctx),
+                "array_index": arr_idx,
+                "hierarchical_path": hp_str,
+                "loop_var": loop_var,
+            })
         return results
+
 
     def get_net_aliases(self, module) -> list:
         """获取模块的 NetAlias (alias 语句)"""
