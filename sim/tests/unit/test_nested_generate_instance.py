@@ -311,5 +311,40 @@ class TestPartSelectConnNaming(unittest.TestCase):
             ("top.u_m1.G1[1].u_m2.G2[1].u_leaf.y", "top.u_m1.G1[1].u_m2.y[3:2]"),
             conn,
             "leaf 输出应连到 m2 的 y[3:2] 切片")
-        # 注: G2[0] 实例在 G1[1] (非折叠 m2) 下是否独立成图待观察 (疑似 slang
-        # 合并相同 generate entry — 与本修复无关, iter_119 记录观察)
+        # [iter_120] per-entry 归属 (key 碰撞修复后成立): 两份 m2 (G1[0]/G1[1])
+        # 各自的 G2[0]/G2[1] leaf 都连到正确切片
+        self.assertIn(
+            ("top.u_m1.G1[0].u_m2.G2[0].u_leaf.y", "top.u_m1.G1[0].u_m2.y[1:0]"),
+            conn, "G1[0].G2[0] → y[1:0]")
+        self.assertIn(
+            ("top.u_m1.G1[1].u_m2.G2[1].u_leaf.y", "top.u_m1.G1[1].u_m2.y[3:2]"),
+            conn, "G1[1].G2[1] → y[3:2]")
+
+    def test_per_entry_attribution_minimal(self):
+        """单级 G2 (legacy 族移除 iter_120): 两 leaf 各自连对应切片, 路径带 root."""
+        src = '''module leafm (input [1:0] a, output [1:0] y);
+  assign y = a;
+endmodule
+module m2m (input [3:0] a, output [3:0] y);
+  genvar j;
+  generate for (j=0;j<2;j=j+1) begin : G2
+    leafm u_leaf (.a(a[j*2+:2]), .y(y[j*2+:2]));
+  end endgenerate
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  m2m u_m2 (.a(a), .y(y));
+endmodule
+'''
+        g = _graph(src, target='top')
+        conn = set()
+        for s, d in g.edges():
+            for e in g._edge_data.get((s, d), []):
+                if e.kind.name == 'CONNECTION':
+                    conn.add((s, d))
+        # iter_120 前: legacy 族 (父路径丢 root) 同 key 覆盖 → 这些边消失/缺 top
+        self.assertIn(("top.u_m2.G2[0].u_leaf.y", "top.u_m2.y[1:0]"), conn)
+        self.assertIn(("top.u_m2.G2[1].u_leaf.y", "top.u_m2.y[3:2]"), conn)
+        self.assertIn(("top.u_m2.a[1:0]", "top.u_m2.G2[0].u_leaf.a"), conn)
+        self.assertIn(("top.u_m2.a[3:2]", "top.u_m2.G2[1].u_leaf.a"), conn)
+        ph = [n for n in g.nodes() if '?' in n]
+        self.assertEqual(ph, [])

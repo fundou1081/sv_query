@@ -79,7 +79,11 @@
 > 新 unit +3; case27 per-index 改善.
 > [iter_118](docs/task_tree/iterations/iter_118_extreme_verify_rhs_index.md)
 
-**当前**: ✅ **connection RangeSelect 连接命名 '?' 修复完成** (iter_119)
+**当前**: ✅ **generate 实例连接 key 碰撞修复完成** (iter_120, "继续" 深挖 iter_119 观察)
+> [iter_120](docs/task_tree/iterations/iter_120_gen_conn_key_collision.md) — 双根因:
+> ① legacy get_generate_instances 嵌套丢 root (iter_117 后冗余 → 移除);
+> ② module_to_path key 无父路径多实例碰撞 → 逐实例 paths_by_info.
+> minimal 0→4 连接 / 4 层 4 条全对; 101 批次零回归; unit 13→14.
 > [iter_119](docs/task_tree/iterations/iter_119_conn_rangeselect_naming.md) — semantic RangeSelect left/right+selectionKind 求值, S2 占位 2→0, 切片 [hi:lo] 命名; unit +3. 观察: slang 合并相同 generate entry 的枚举边角 (G2[0] 归属) 待后续探查.
 > S2 四级嵌套 `.a(a[i*4+:4])` 占位 `u_m2.a[?]` — semantic RangeSelect 无
 > .selector (left/right 在 expr), _eval_select_index 不支持 Multiply.

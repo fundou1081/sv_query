@@ -86,6 +86,7 @@ sv_query_project/
 | **38** | **2026-09-03** | **L2** | **索引段加倍假节点 (iter_117, 方豆 "开工, 修复这个问题")** | **aes U_SUB.ROM[4].ROM[4] ×84 / dblclockfft GENSTAGES[0].GENSTAGES[0] ×63/模块** | **索引段唯一** | **get_path: 父路径已以 [N] 结尾 → gen_block 置 None (hp 正则二次取段是根因); genfor/CLA 正常是 legacy 族同 key 覆盖掩盖 (无 legacy 族即暴露); aes 84→0 / fftmain 63→0; unit +3** | **✅ 真实验证清零, 74 批次零回归** |
 | **39** | **2026-09-03** | **L2** | **极端场景验证 (iter_118, 方豆 "构造极端场景确认正确性")** | **generate RHS 位选丢 genvar 索引 (S8 深链死端; case27 iter_035 起潜伏)** | **per-entry RHS 索引** | **9 类极端场景; _fold_sel ctx 求值 (Literal ConstantValue/op 枚举名踩坑×2); 新 unit +3; chain truth/golden 随修复更新 (prim_arbiter DRIVER 90→118); S2 connection RangeSelect 命名 '?' 记录 backlog** | **✅ case27/链/S8 per-index; 回归处置后见 commit** |
 | **40** | **2026-09-03** | **L2** | **connection RangeSelect 命名 (iter_119, S2 backlog)** | **.+:.a(a[i*4+:4]) 连接命名恒 '?'** | **[hi:lo] 切片命名** | **semantic RangeSelect: left/right 在 expr + selectionKind (IndexedUp/Down/Simple); [base+:width] right 是宽度; _eval_select_index 接入两端; S2 占位 2→0; unit +3** | **✅ y[1:0]/[3:2] 命名; 回归见 commit** |
+| **41** | **2026-09-03** | **L2** | **generate 实例连接 key 碰撞 (iter_120, iter_119 观察深挖)** | **G2[0] 连接缺失 (minimal 0 连接 / 嵌套错挂)** | **per-entry 归属正确** | **双根因: ① legacy get_generate_instances 嵌套丢 root 覆盖 indexed 族 (iter_117 后冗余, 移除) ② module_to_path key 无父路径 → 多实例同名 gen 碰撞 → 逐实例 paths_by_info; minimal 0→4 连接, 4 层 4 条全对; 101 批次零回归; unit +1** | **✅ per-entry 连接全归位** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
