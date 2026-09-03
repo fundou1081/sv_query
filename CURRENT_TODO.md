@@ -59,6 +59,12 @@
 **iter_116 完成** (7 skip 处置): serv 解锁 (filelist+serv_top 747KB SVG), neorv32 (VHDL)/zipcpu (wrapper 重构) 移除, d1 lookupName mutex 收编 (直排 -c 每 case subprocess; 真根因 = 同进程累计查询必崩非 pytest). skip 7→0。见 [iter_116](docs/task_tree/iterations/iter_116_skip_cleanup.md)
 
 
+**backlog (新发现, 建议下一个修)**: **索引段加倍假节点** (iter_116 摸底 target 重扫发现, 多项目真实复现):
+- aes Top_PipelinedCipher: **84** 个 — `U_SUB.ROM[4].ROM[4]` (实例下 InstanceArray 段重复)
+- dblclockfft fftmain/ifftmain: **63** 个/模块 — `p3.STAGES.FOR.GENSTAGES[0].GENSTAGES[0].genmpy` (实例下嵌套 generate 段重复)
+- 对照: genfor (顶层 gen) / CLA (实例下单层 gen) 正常 → 触发 = 索引段在**已含索引的父路径**下被二次拼接 (connection/driver 路径构建). cordic 同型需重验.
+- r22sdf (FFT 1760 节点) / zipcpu-cordic / windowfn / abs_mpy 等 target 重扫 **clean** — 摸底结论升级: 仅 aes/dblclockfft 受此影响.
+
 **backlog (未启动)**: 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) — tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115); 2. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 
 
