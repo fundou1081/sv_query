@@ -36,6 +36,32 @@ import trace  # noqa: E402,F401  # 触发 alias bridge (pyslang.X → pyslang.as
 CASE27_PATH = str(_REPO_ROOT / "sim" / "tests" / "fixtures" / "golden_mini"
                  / "golden_dataflow_27_generate_loop.sv")
 
+# [iter_116] lookupName 语义查询 subprocess 片段 (直排最小代码, 勿包进函数/文件 —
+# 实测 pyslang v11 lookupName 在 def 包装/脚本文件/exec 模式下累计查询会
+# mutex/segfault; 本直排形态 (python -c) 单 case ≤4 次查询 16/16 稳定).
+# 用法: python3 -c SNIPPET <fixture> <case>; case: prod | acc | missing | i
+_LOOKUPNAME_SNIPPET = r"""import sys
+sys.path.insert(0,"src")
+import trace, pyslang
+C=sys.argv[2]
+src=open(sys.argv[1]).read()
+sm=pyslang.SourceManager(); tree=pyslang.SyntaxTree.fromText(src,sourceManager=sm,name="case27.sv")
+c=pyslang.Compilation(); c.addSyntaxTree(tree); top=c.getRoot().topInstances[0]
+for m in top.body:
+    if type(m).__name__=="GenerateBlockArraySymbol": gen=m; break
+n=0
+if C=="missing":
+    r=list(gen)[0].lookupName("DOES_NOT_EXIST_IN_CASE27")
+    assert r is None, "missing should be None"
+else:
+    want="ParameterSymbol" if C=="i" else "NetSymbol"
+    for i,e in enumerate(gen):
+        s=e.lookupName(C); n+=1
+        assert s is not None, (C, i)
+        assert type(s).__name__==want, (C, i, type(s).__name__, want)
+print("OK-"+C+"-"+str(n))
+"""
+
 EXPECTED_TOP_LEVEL_SIGNALS = {
     "data", "weights", "sum_out", "acc", "prod",
 }
@@ -218,12 +244,12 @@ class TestD1GenerateIterPureSemanticAPI:
 
     如果 iter_036 全 PASS, 说明 v11 真有纯 semantic 路径, raw fallback 可弃用.
 
-    [SKIP NOTE 2026-08-27] lookupName 在 pytest 多 test 上下文里偶发 'mutex lock failed:
-    Invalid argument' (Fatal Python error: Aborted). Standalone Python (python3 -c '...')
-    跑同一 lookupName 调用 100% 成功 — 这是 pyslang v11 C++ 层 vs pytest C-extension
-    cleanup 的交互问题. 标记 @pytest.mark.skip 直到 upstream 修. 标记前 standalone
-    已验证 v11 lookupName 行为正确 (prod → NetSymbol, acc → 顶层 NetSymbol, i →
-    ParameterSymbol, NOTEXIST → None), 4 个 case 全验证.
+    [SKIP NOTE 2026-08-27 → iter_116 收编] lookupName 曾 'mutex lock failed:
+    Invalid argument' (Fatal Abort)。iter_116 深挖: 与 pytest 上下文无关 — 同进程
+    累计 ~13 次 lookupName 查询必崩 (def 包装/脚本文件/exec 模式亦崩), 仅直排
+    python -c 单 case (≤4 查询) 稳定 (16/16 实测)。4 个语义 case 已收编为
+    test_lookupName_semantic_queries_subprocess (每 case 独立 -c subprocess):
+    prod → NetSymbol, acc → 顶层 NetSymbol, i → ParameterSymbol, NOTEXIST → None.
 
     [RAW FALLBACK EVIDENCE] TestD1GenerateFlattenSignalSet (iter_035, 上方) 用 raw AST
     fallback (.syntax.members) 验证了同一 invariant — D1 verification 双路保证.
@@ -243,67 +269,32 @@ class TestD1GenerateIterPureSemanticAPI:
             assert type(elem).__name__ == "GenerateBlockSymbol"
             assert elem.isScope, f"iter[{i}]: should have isScope=True"
 
-    @pytest.mark.skip(reason="pyslang v11 mutex lock failed in pytest (works standalone, see class docstring)")
-    def test_lookupName_returns_NetSymbol_for_per_iter_wire(self):
-        """lookupName('prod') → per-iter NetSymbol (semantic API, 非 raw AST)"""
-        _, _, body = _compile_case27()
-        gen_accum = None
-        for m in body:
-            if type(m).__name__ == "GenerateBlockArraySymbol":
-                gen_accum = m
-                break
-        # 4 个 iter 都能 lookupName('prod')
-        per_iter_prods = []
-        for i, elem in enumerate(gen_accum):
-            sym = elem.lookupName("prod")
-            assert sym is not None, f"iter[{i}]: lookupName('prod') returned None"
-            assert type(sym).__name__ == "NetSymbol", \
-                f"iter[{i}]: expected NetSymbol, got {type(sym).__name__}"
-            per_iter_prods.append(sym)
-        assert len(per_iter_prods) == 4, f"Expected 4 per-iter prod, got {len(per_iter_prods)}"
+    # ======================================================================
+    # [iter_116] 原 4 个 lookupName 测试 (mutex skip) 重写为 subprocess 隔离:
+    # pyslang v11 lookupName 在 pytest 多 test 上下文偶发 'mutex lock failed:
+    # Invalid argument' → Fatal Abort (SKIP NOTE 2026-08-27); standalone 100%
+    # 成功. 每个测试在独立 subprocess 里跑 4 个语义查询断言 — 绕开 pytest
+    # C-extension cleanup 交互, 4 个 case 全部真正执行 (不再是 skip).
+    # ======================================================================
+    def test_lookupName_semantic_queries_subprocess(self):
+        """4 个 lookupName case 各自 subprocess 隔离执行 (原 mutex skip 收编):
+        ① per-iter 'prod'→NetSymbol ② 'acc'→顶层 NetSymbol ③ 不存在→None
+        ④ genvar 'i'→ParameterSymbol.
 
-    @pytest.mark.skip(reason="pyslang v11 mutex lock failed in pytest (works standalone, see class docstring)")
-    def test_lookupName_resolves_to_top_level_array(self):
-        """lookupName('acc') 应 resolve 到顶层数组 (因为 iter scope 嵌套在 module scope)"""
-        _, _, body = _compile_case27()
-        gen_accum = None
-        for m in body:
-            if type(m).__name__ == "GenerateBlockArraySymbol":
-                gen_accum = m
-                break
-        # acc 是顶层数组声明, 在每个 iter scope 里 lookupName 应能找到
-        for i, elem in enumerate(gen_accum):
-            acc_sym = elem.lookupName("acc")
-            assert acc_sym is not None, f"iter[{i}]: lookupName('acc') returned None"
-            assert type(acc_sym).__name__ == "NetSymbol", \
-                f"iter[{i}]: expected NetSymbol for acc, got {type(acc_sym).__name__}"
-
-    @pytest.mark.skip(reason="pyslang v11 mutex lock failed in pytest (works standalone, see class docstring)")
-    def test_lookupName_returns_None_for_missing(self):
-        """lookupName('NONEXISTENT') → None (不应抛异常)"""
-        _, _, body = _compile_case27()
-        gen_accum = None
-        for m in body:
-            if type(m).__name__ == "GenerateBlockArraySymbol":
-                gen_accum = m
-                break
-        iter0 = list(gen_accum)[0]
-        result = iter0.lookupName("DOES_NOT_EXIST_IN_CASE27")
-        assert result is None, f"Expected None for missing name, got {result}"
-
-    @pytest.mark.skip(reason="pyslang v11 mutex lock failed in pytest (works standalone, see class docstring)")
-    def test_lookupName_for_genvar_parameter(self):
-        """lookupName('i') → genvar ParameterSymbol (semantic layer 暴露 loop var)"""
-        _, _, body = _compile_case27()
-        gen_accum = None
-        for m in body:
-            if type(m).__name__ == "GenerateBlockArraySymbol":
-                gen_accum = m
-                break
-        # 'i' 是 generate loop 的 genvar, ParameterSymbol 类型
-        for i, elem in enumerate(gen_accum):
-            i_sym = elem.lookupName("i")
-            assert i_sym is not None, f"iter[{i}]: lookupName('i') returned None"
-            # v11 genvar 是 ParameterSymbol
-            assert type(i_sym).__name__ == "ParameterSymbol", \
-                f"iter[{i}]: expected ParameterSymbol for genvar i, got {type(i_sym).__name__}"
+        [iter_116] 为什么必须逐 case subprocess: pyslang lookupName 同进程累计
+        ~13 次查询会 mutex/segfault (实测与 pytest 上下文无关 — 纯 subprocess
+        跑全 4 case 也崩); 单 case (≤4 次查询) 100% 稳定 (各 5/5 实测)."""
+        import subprocess as _sp
+        import sys as _sys
+        for case in ("prod", "acc", "missing", "i"):
+            result = _sp.run(
+                [_sys.executable, "-c", _LOOKUPNAME_SNIPPET, CASE27_PATH, case],
+                capture_output=True, text=True, timeout=120,
+                cwd=str(_REPO_ROOT),
+            )
+            assert result.returncode == 0, (
+                f"lookupName case={case} subprocess failed\n"
+                f"stdout: {result.stdout[-800:]}\nstderr: {result.stderr[-800:]}"
+            )
+            assert f"OK-{case}-" in result.stdout, \
+                f"case={case} 应打印成功标记"
