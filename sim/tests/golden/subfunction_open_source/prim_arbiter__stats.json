@@ -10,7 +10,7 @@
       "BRANCH_FALSE": 8,
       "BRANCH_RESULT": 10,
       "CLOCK": 1,
-      "DRIVER": 90,
+      "DRIVER": 118,
       "RESET": 1
     },
     "elaboration_errors": [],
@@ -23,7 +23,7 @@
       "REG": 1,
       "SIGNAL": 244
     },
-    "total_edges": 346,
+    "total_edges": 374,
     "total_nodes": 276
   }
 }

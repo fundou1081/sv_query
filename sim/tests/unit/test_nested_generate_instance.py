@@ -187,3 +187,72 @@ endmodule
 
 if __name__ == '__main__':
     unittest.main()
+
+
+GEN_ASSIGN_RHS_INDEX = '''module top (input a, output y);
+  wire [14:0] x;
+  assign x[0] = a;
+  genvar i;
+  generate for (i=1;i<15;i=i+1) begin : CH
+    assign x[i] = x[i-1];
+  end endgenerate
+  assign y = x[14];
+endmodule
+'''
+
+
+class TestGenerateAssignRhsIndex(unittest.TestCase):
+    """[iter_118] generate-for 内 assign 的 RHS 位选按 entry 索引求值.
+
+    iter_118 极端场景 (S8 深 fanin 链) 发现: entry 内 `assign x[i] = x[i-1]`
+    的 RHS x[i-1] 被解析成整总线 'x' (selector 是 NamedValue i / BinaryOp i-1,
+    旧逻辑非 Literal/Parameter 直接 fallback base) → fanin 链死端.
+    case27 (iter_035 起) 的 acc[i] RHS 同病, 从未被图级断言捕获.
+    """
+
+    def _chain_ok(self, g):
+        """x[i] 的 DRIVER 源 = x[i-1] (除 x[0]←a)."""
+        for i in range(1, 15):
+            dst = f"top.x[{i}]"
+            srcs = set()
+            for s, d in g.edges():
+                if d == dst:
+                    for e in g._edge_data.get((s, d), []):
+                        if e.kind.name == 'DRIVER':
+                            srcs.add(s)
+            self.assertIn(f"top.x[{i-1}]", srcs,
+                          f"x[{i}] 应由 x[{i-1}] 驱动 (RHS 索引求值)")
+
+    def test_rhs_index_per_entry(self):
+        g = _graph(GEN_ASSIGN_RHS_INDEX, target='top')
+        self._chain_ok(g)
+
+    def test_fanin_reaches_input(self):
+        """x[14] 沿 DRIVER 回溯 14 跳可达 a (深链非死端)."""
+        g = _graph(GEN_ASSIGN_RHS_INDEX, target='top')
+        cur, seen, ok = 'top.x[14]', set(), False
+        while cur not in seen:
+            seen.add(cur)
+            srcs = set()
+            for s, d in g.edges():
+                if d == cur:
+                    for e in g._edge_data.get((s, d), []):
+                        if e.kind.name == 'DRIVER':
+                            srcs.add(s)
+            if 'top.a' in srcs:
+                ok = True
+                break
+            nxt = [s for s in srcs if s.startswith('top.x')]
+            if not nxt:
+                break
+            cur = nxt[0]
+        self.assertTrue(ok, "fanin 应可达 a")
+
+    def test_no_bus_fallback_src(self):
+        """无整总线 'top.x' 作为位驱动源 (修复前 RHS 落总线)."""
+        g = _graph(GEN_ASSIGN_RHS_INDEX, target='top')
+        for s, d in g.edges():
+            for e in g._edge_data.get((s, d), []):
+                if e.kind.name == 'DRIVER' and d.startswith('top.x['):
+                    self.assertNotEqual(s, 'top.x',
+                                        f"{d} 不应由整总线 top.x 驱动")
