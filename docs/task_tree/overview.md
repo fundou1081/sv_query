@@ -83,6 +83,7 @@ sv_query_project/
 | **35** | **2026-09-03** | **L2** | **truth target 模式升级 (iter_114, iter_113 兑现)** | **cordic/genfor truth 的 driver 盲区 (generate 实例内部从未断言)** | **rotator 内部逻辑真断言** | **builder 切 target; cordic +4 (x_1/y_1/z_1×15 驱动/操作数/输出链/45 内部状态), genfor submodule 断言改实例作用域 (top.g[i].U.x→xo); 旧 'DRIVER>50' 实为 connection 端口自环 120** | **✅ +10 断言, 61 批次 passed** |
 | **36** | **2026-09-03** | **L2** | **gate 端子方向改善 G-1 (iter_115, 方豆 "改善端子方向的改进")** | **多输出 buf/双向 tran 用位置约定会错** | **端子方向权威判定** | **探查: 输出端子 (含 InOut) 全被 slang 包成 Assignment, NInput/NOutput 是模板 ports, Fixed/UDP 逐端子带 direction; 重写解析: 输入→每个输出, tran InOut 互驱, supply0 常量无源; unit +5** | **✅ buf o2←a / tran t⇄a / UDP y←a,b; 61 批次零回归** |
 | **37** | **2026-09-03** | **L2** | **7 skip 处置 (iter_116, 方豆 "再看那7个skip是啥")** | **serv/neorv32/zipcpu SVG skip + d1 mutex ×4** | **能去的去掉, 不符目的的重写** | **serv 解锁 (filelist+serv_top, 747KB SVG 4.1s); neorv32 (VHDL)/zipcpu (wrapper 重构) 移除; d1 lookupName 收编 (直排 -c 每 case subprocess, mutex 真根因: 同进程累计查询必崩, 与 pytest 无关)** | **✅ skip 7→0, real_project_viz 4 passed + d1 8 passed** |
+| **38** | **2026-09-03** | **L2** | **索引段加倍假节点 (iter_117, 方豆 "开工, 修复这个问题")** | **aes U_SUB.ROM[4].ROM[4] ×84 / dblclockfft GENSTAGES[0].GENSTAGES[0] ×63/模块** | **索引段唯一** | **get_path: 父路径已以 [N] 结尾 → gen_block 置 None (hp 正则二次取段是根因); genfor/CLA 正常是 legacy 族同 key 覆盖掩盖 (无 legacy 族即暴露); aes 84→0 / fftmain 63→0; unit +3** | **✅ 真实验证清零, 74 批次零回归** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)

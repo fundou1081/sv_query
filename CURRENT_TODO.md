@@ -59,6 +59,19 @@
 **iter_116 完成** (7 skip 处置): serv 解锁 (filelist+serv_top 747KB SVG), neorv32 (VHDL)/zipcpu (wrapper 重构) 移除, d1 lookupName mutex 收编 (直排 -c 每 case subprocess; 真根因 = 同进程累计查询必崩非 pytest). skip 7→0。见 [iter_116](docs/task_tree/iterations/iter_116_skip_cleanup.md)
 
 
+**当前**: ✅ **索引段加倍假节点修复完成** (iter_117, 方豆 "开工, 修复这个问题")
+> [iter_117](docs/task_tree/iterations/iter_117_index_segment_doubling_fix.md) — get_path 父路径含索引段时 gen_block 置 None; aes 84→0 / dblclockfft 63→0; unit +3, 74 批次零回归
+> aes U_SUB.ROM[4].ROM[4] (84) / dblclockfft GENSTAGES[0].GENSTAGES[0] (63/模块):
+> 索引段在已含索引父路径下二次拼接。
+> [tasks/L2_index_segment_doubling_fix.md](docs/task_tree/tasks/L2_index_segment_doubling_fix.md)
+
+| sub-task | 状态 |
+|---|---|
+| 1. 诊断: 两形态最小复现, 定位 driver walk / connection 谁二次拼接 | ⬜ |
+| 2. 修根因 | ⬜ |
+| 3. 测试: unit 两形态 + 真实验证 aes/dblclockfft recursive→0 | ⬜ |
+| 4. 回归 + iter_117 文档 + overview + 提交 | ⬜ |
+
 **backlog (新发现, 建议下一个修)**: **索引段加倍假节点** (iter_116 摸底 target 重扫发现, 多项目真实复现):
 - aes Top_PipelinedCipher: **84** 个 — `U_SUB.ROM[4].ROM[4]` (实例下 InstanceArray 段重复)
 - dblclockfft fftmain/ifftmain: **63** 个/模块 — `p3.STAGES.FOR.GENSTAGES[0].GENSTAGES[0].genmpy` (实例下嵌套 generate 段重复)

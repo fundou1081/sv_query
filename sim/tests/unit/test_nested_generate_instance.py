@@ -100,5 +100,90 @@ class TestNestedGenerateExtraction(unittest.TestCase):
                 "不应出现 generate 再度嵌套的假路径")
 
 
+NESTED_GEN_UNDER_INSTANCE = '''module cellm (input a, output y);
+  assign y = a;
+endmodule
+module longm (input [15:0] a, output [15:0] y);
+  genvar i;
+  generate
+    begin : STAGES
+      if (1) begin : FOR
+        for (i=0;i<4;i=i+1) begin : GENSTAGES
+          cellm genmpy (.a(a[i]), .y(y[i]));
+        end
+      end
+    end
+  endgenerate
+endmodule
+module midm (input [15:0] a, output [15:0] y);
+  longm p3 (.a(a), .y(y));
+endmodule
+module top (input [15:0] a, output [15:0] y);
+  midm u_bfly (.a(a), .y(y));
+endmodule
+'''
+
+
+def _doubled_segment(n):
+    """索引段相邻重复 (iter_116 aes ROM[4].ROM[4] / dblclockfft GENSTAGES[0].GENSTAGES[0])."""
+    segs = n.split('.')
+    return any(segs[i] and segs[i] == segs[i + 1] and '[' in segs[i]
+               for i in range(len(segs) - 1))
+
+
+class TestIndexSegmentDoubling(unittest.TestCase):
+    """[iter_117] 索引段加倍假节点修复 — 实例内嵌套 generate / 数组实例.
+
+    触发: connection get_path 在父路径已含 generate 索引段 (如 ...GENSTAGES[0])
+    时, _get_generate_block_name (hp 正则) 又取一次同段拼上 → 双段假节点.
+    genfor/CLA 曾被 legacy 族同 key 覆盖掩盖; 无 legacy 族 (generate 在嵌套
+    实例内) 即暴露 — aes (84) / dblclockfft (63/模块) 真实复现.
+    """
+
+    def test_no_doubled_segments_nested_gen(self):
+        """实例内嵌套 gen (STAGES→FOR→GENSTAGES): 无 GENSTAGES[i].GENSTAGES[i]."""
+        g = _graph(NESTED_GEN_UNDER_INSTANCE, target='top')
+        bad = [n for n in g.nodes() if _doubled_segment(n)]
+        self.assertEqual(bad, [], f"索引段加倍假节点不应存在: "
+                                  f"{bad[0][:90] if bad else ''}")
+
+    def test_single_indexed_paths_present(self):
+        """genmpy 内部信号落在单索引路径 top.u_bfly.p3.STAGES.FOR.GENSTAGES[i]."""
+        g = _graph(NESTED_GEN_UNDER_INSTANCE, target='top')
+        for i in range(4):
+            prefix = f"top.u_bfly.p3.STAGES.FOR.GENSTAGES[{i}].genmpy"
+            hit = [n for n in g.nodes() if n.startswith(prefix)]
+            self.assertGreater(len(hit), 0,
+                               f"{prefix}.* 节点应存在 (单索引)")
+            for n in hit:
+                self.assertEqual(n.count("GENSTAGES"), 1,
+                                 f"{prefix} 内不应重复 GENSTAGES: {n[:90]}")
+            self.assertFalse(
+                [n for n in g.nodes()
+                 if n.startswith(prefix) and f"GENSTAGES[{i}]" in n.split(".")[n.split(".").index("GENSTAGES[" + str(i) + "]") + 1:]],
+                f"不应有 GENSTAGES 二次拼接")
+
+    def test_legacy_single_level_still_fine(self):
+        """顶层 gen (genfor 形态) 路径仍单索引 — 修复不改顶层行为."""
+        src = '''module rot(input [7:0] x, output [7:0] xo);
+  assign xo = x;
+endmodule
+module top(input [7:0] a, output [7:0] out);
+  wire [7:0] arr [0:2];
+  genvar i;
+  generate for (i=0;i<2;i=i+1) begin : g
+    rot U (.x(arr[i]), .xo(arr[i+1]));
+  end endgenerate
+  assign arr[0] = a; assign out = arr[2];
+endmodule
+'''
+        g = _graph(src, target='top')
+        bad = [n for n in g.nodes() if _doubled_segment(n)]
+        self.assertEqual(bad, [], "顶层 gen 不应加倍")
+        for i in range(2):
+            self.assertIsNotNone(g.get_node(f"top.g[{i}].U"),
+                                 f"top.g[{i}].U 应存在")
+
+
 if __name__ == '__main__':
     unittest.main()

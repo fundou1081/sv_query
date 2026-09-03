@@ -5,6 +5,7 @@
 # ==============================================================================
 
 import logging
+import re  # [iter_117] get_path 父路径索引段检测 (去重 gen_block)
 
 from .._safe import _safe_str
 from .base import PyslangAdapter
@@ -238,6 +239,16 @@ class ConnectionExtractor:
                 return f"{self.root_module_name}.{info['inst_name']}"
             parent_mod = info["parent_module"]
             gen_block = info.get("gen_block")
+
+            # [iter_117] 父路径已含 generate 索引段 → gen_block 已在 parent 里,
+            # 置 None 防二次拼接 (iter_116 摸底: aes U_SUB.ROM[4].ROM[4] ×84 /
+            # dblclockfft ...GENSTAGES[0].GENSTAGES[0] ×63 — 实例在 generate-for
+            # entry 内, 其 hp 父路径 '...GENSTAGES[0]' 已带索引, _get_generate_block_name
+            # 的 hp 正则又取一次 'GENSTAGES[0]' → get_path 拼成双段假节点).
+            # genfor/CLA 没炸是 legacy get_generate_instances 族同 key 覆盖掩盖;
+            # 无 legacy 族 (generate 在嵌套实例内) 即暴露 — 此处去重是根因修。
+            if gen_block and parent_mod and re.search(r"\[\d+\]$", parent_mod):
+                gen_block = None
 
             # Handle '__root__' specially - instance is at top level
             if parent_mod == "__root__":
