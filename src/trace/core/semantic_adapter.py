@@ -904,7 +904,39 @@ class SemanticAdapter:
             return None
         k = str(getattr(expr, "kind", ""))
         try:
-            if "ElementSelect" in k or "RangeSelect" in k:
+            if "RangeSelect" in k:
+                # [iter_119] semantic RangeSelectExpression: left/right 在 expr 上
+                # (无 .selector), selectionKind 区分 +: (IndexedUp) / -: (IndexedDown)
+                # / 普通 [msb:lsb] (Simple). iter_118 S2 四级嵌套 .a(a[i*4+:4]) /
+                # .y(y[j*2+:2]) 因此恒 '?' 占位 — 逐界 _eval_select_index 求值,
+                # +:/ -: 换算成 [hi:lo] (msb:lsb) 命名。
+                val = getattr(expr, "value", None)
+                base = None
+                if val is not None and hasattr(val, "symbol") and val.symbol is not None:
+                    try:
+                        base = str(val.symbol.name)
+                    except (UnicodeDecodeError, TypeError):
+                        base = None
+                if base is None:
+                    base = self._conn_expr_to_signal(val, instance)
+                if base is None:
+                    return None
+                _gi = self._genvar_index_from_hp(instance)
+                a = self._eval_select_index(getattr(expr, "left", None), _gi)
+                b = self._eval_select_index(getattr(expr, "right", None), _gi)
+                if a is None or b is None:
+                    return f"{base}[?]"
+                selkind = str(getattr(expr, "selectionKind", ""))
+                if "IndexedUp" in selkind:
+                    # [base+:width] → 位 [base+width-1 : base]
+                    hi, lo = a + b - 1, a
+                elif "IndexedDown" in selkind:
+                    # [base-:width] → 位 [base : base-width+1]
+                    hi, lo = a, a - b + 1
+                else:
+                    hi, lo = max(a, b), min(a, b)
+                return f"{base}[{hi}:{lo}]"
+            if "ElementSelect" in k:
                 val = getattr(expr, "value", None)
                 sel = getattr(expr, "selector", None)
                 # base: value 的 symbol 名 (也可能是嵌套 select → 递归)

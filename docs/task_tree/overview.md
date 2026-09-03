@@ -85,6 +85,7 @@ sv_query_project/
 | **37** | **2026-09-03** | **L2** | **7 skip 处置 (iter_116, 方豆 "再看那7个skip是啥")** | **serv/neorv32/zipcpu SVG skip + d1 mutex ×4** | **能去的去掉, 不符目的的重写** | **serv 解锁 (filelist+serv_top, 747KB SVG 4.1s); neorv32 (VHDL)/zipcpu (wrapper 重构) 移除; d1 lookupName 收编 (直排 -c 每 case subprocess, mutex 真根因: 同进程累计查询必崩, 与 pytest 无关)** | **✅ skip 7→0, real_project_viz 4 passed + d1 8 passed** |
 | **38** | **2026-09-03** | **L2** | **索引段加倍假节点 (iter_117, 方豆 "开工, 修复这个问题")** | **aes U_SUB.ROM[4].ROM[4] ×84 / dblclockfft GENSTAGES[0].GENSTAGES[0] ×63/模块** | **索引段唯一** | **get_path: 父路径已以 [N] 结尾 → gen_block 置 None (hp 正则二次取段是根因); genfor/CLA 正常是 legacy 族同 key 覆盖掩盖 (无 legacy 族即暴露); aes 84→0 / fftmain 63→0; unit +3** | **✅ 真实验证清零, 74 批次零回归** |
 | **39** | **2026-09-03** | **L2** | **极端场景验证 (iter_118, 方豆 "构造极端场景确认正确性")** | **generate RHS 位选丢 genvar 索引 (S8 深链死端; case27 iter_035 起潜伏)** | **per-entry RHS 索引** | **9 类极端场景; _fold_sel ctx 求值 (Literal ConstantValue/op 枚举名踩坑×2); 新 unit +3; chain truth/golden 随修复更新 (prim_arbiter DRIVER 90→118); S2 connection RangeSelect 命名 '?' 记录 backlog** | **✅ case27/链/S8 per-index; 回归处置后见 commit** |
+| **40** | **2026-09-03** | **L2** | **connection RangeSelect 命名 (iter_119, S2 backlog)** | **.+:.a(a[i*4+:4]) 连接命名恒 '?'** | **[hi:lo] 切片命名** | **semantic RangeSelect: left/right 在 expr + selectionKind (IndexedUp/Down/Simple); [base+:width] right 是宽度; _eval_select_index 接入两端; S2 占位 2→0; unit +3** | **✅ y[1:0]/[3:2] 命名; 回归见 commit** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
