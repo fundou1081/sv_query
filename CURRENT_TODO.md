@@ -79,6 +79,18 @@
 > 新 unit +3; case27 per-index 改善.
 > [iter_118](docs/task_tree/iterations/iter_118_extreme_verify_rhs_index.md)
 
+**当前**: 🟡 **connection RangeSelect 连接命名 '?' 修复** (iter_119, 方豆 "继续")
+> S2 四级嵌套 `.a(a[i*4+:4])` 占位 `u_m2.a[?]` — semantic RangeSelect 无
+> .selector (left/right 在 expr), _eval_select_index 不支持 Multiply.
+> [tasks/L2_conn_rangeselect_naming.md](docs/task_tree/tasks/L2_conn_rangeselect_naming.md)
+
+| sub-task | 状态 |
+|---|---|
+| 1. 诊断: S2 复现 + S1 为何 OK (fold 差异) | ⬜ |
+| 2. 修 RangeSelect 求值 + 乘除 | ⬜ |
+| 3. unit + 回归 | ⬜ |
+| 4. iter_119 文档 + 提交 | ⬜ |
+
 **backlog (新发现, 待修)**: **connection 侧 RangeSelect 连接命名恒 '?'** —
 S2 四级嵌套 `.a(a[i*4+:4])` 出占位 `u_m2.a[?]`; 根因方向: _conn_expr_to_signal
 RangeSelect 取 expr.selector (semantic RangeSelect 无 .selector, left/right 在
