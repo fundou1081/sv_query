@@ -8,12 +8,15 @@
 - 验证 ELK layout 不 fail (Plan B Step B1 已修复 "Referenced shape does not exist")
 - 验证 SVG 文件实际生成且内容非空
 
-NOTE (iter_086, 2026-09-02):
-- --svg 自 V100 起直接输出 SVG (--dot 仅保留为 deprecated alias), 断言按 SVG 内容校验;
-  早期版本断言 'digraph' 是 DOT 时代的残留, 已修。
-- picorv32 目前仍挂: ELK 'Referenced shape does not exist: port_picorv32_axi_dot_mem_axi_bvalid'
-  (elk_bridge 的 SignalRef 解析 edge 侧 / emit 侧不一致, 方豆拍板暂缓, 见 iter_086)。
-  不设 xfail — 保持真实失败可见, 待 elk_bridge 根因修复后自然转绿。
+NOTE (iter_086/106, 2026-09-02): --svg 自 V100 起直接输出 SVG, 断言按 SVG 内容校验。
+picorv32 ELK dangling port 已在 iter_106 修复 (integration 全绿) — 旧 NOTE 过期已删。
+
+NOTE (iter_116, 2026-09-03): 参数化升级为多文件 (filelist) 支持, 原 3 个 skip 处理:
+- **serv 解锁**: openrtl 迁移后路径失效 (serv.v → serv/rtl/serv_top.v, 多文件),
+  实测 rtl/*.v filelist + serv_top 4.1s 出 747KB SVG — 已接入 (多文件走 --filelist)
+- **neorv32 移除**: 当前 clone 是 VHDL (rtl/core/*.vhd) — 不符本测试 SV 目的
+- **zipcpu 移除**: 新版仓库重构 (真核在 rtl/core 子模块, rtl 顶层 zipbones/
+  zipaxil/zipsystem 是纯连线 wrapper, dataflow SVG 内容近空, 无 ELK 验证价值)
 
 用法:
     python3 -m pytest sim/tests/integration/test_real_project_viz.py -v
@@ -25,66 +28,66 @@ from pathlib import Path
 import pytest
 
 # [Plan B Step B3] 真实 SV 项目 (从 ~/my_dv_proj/ 选 5 个有代表性的)
+# [iter_116] 参数化: (name, sources, target) — sources 支持单文件或多文件列表
+# (多文件在测试体里合成临时 filelist 走 --filelist; 单文件走 --file)
 REAL_PROJECTS = [
     pytest.param(
         'darkriscv',
-        '~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v',
+        ['~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v'],
         'darkriscv',
         id='darkriscv',
     ),
     pytest.param(
         'picorv32',
-        '~/my_dv_proj/openrtl/picorv32/picorv32.v',
+        ['~/my_dv_proj/openrtl/picorv32/picorv32.v'],
         'picorv32_core',
         id='picorv32',
     ),
+    # [iter_116] serv 解锁: 顶层 serv_top.v 实例化 rtl/*.v 多文件 → filelist
+    # (openrtl 迁移后原 serv/serv.v 路径失效; 实测 strict 编译 + 747KB SVG 4.1s)
     pytest.param(
         'serv',
-        '~/my_dv_proj/openrtl/serv/serv.v',
+        sorted(str(x) for x in Path(
+            '~/my_dv_proj/openrtl/serv/rtl').expanduser().glob('*.v')),
         'serv_top',
         id='serv',
-        marks=pytest.mark.skip(reason='serv.v may need filelist; skip for now'),
-    ),
-    pytest.param(
-        'neorv32',
-        '~/my_dv_proj/openrtl/neorv32/rtl/core/neorv32_top.v',
-        'neorv32_top',
-        id='neorv32',
-        marks=pytest.mark.skip(reason='neorv32 may need complex filelist; skip for now'),
-    ),
-    pytest.param(
-        'zipcpu',
-        '~/my_dv_proj/openrtl/zipcpu/rtl/zipcpu.v',
-        'zipcpu',
-        id='zipcpu',
-        marks=pytest.mark.skip(reason='zipcpu has very large module; skip for now'),
     ),
 ]
 
 
-@pytest.mark.parametrize('name,sv_file,target', REAL_PROJECTS)
-def test_real_project_svg_generation(name, sv_file, target, tmp_path):
+@pytest.mark.parametrize('name,sources,target', REAL_PROJECTS)
+def test_real_project_svg_generation(name, sources, target, tmp_path):
     """Generate SVG for real project, verify ELK layout succeeds and SVG is non-empty.
 
     [Plan B Step B3] Plan B Step B1 修复后, darkriscv 能生成 SVG (273KB DOT).
                      此测试守住这一进展, 防止未来重构再次 break 真实项目.
+    [iter_116] sources: 单文件列表走 --file; 多文件 (serv) 合成临时 filelist 走
+    --filelist (strict 模式, 无 --no-strict — AGENTS.md 硬规则 #1).
     """
-    sv_path = Path(sv_file).expanduser()
-    if not sv_path.exists():
-        pytest.skip(f'{sv_file} not found')
+    src_paths = [Path(x).expanduser() for x in sources]
+    missing = [str(x) for x in src_paths if not x.exists()]
+    if missing:
+        pytest.skip(f'not found: {missing[:2]}')
 
     out_dir = tmp_path / name
     out_dir.mkdir()
     svg_file = out_dir / f'{name}.svg'
 
+    cmd = ['python3', 'run_cli.py', 'visualize', 'dataflow',
+           '--module', target,
+           '--svg', str(svg_file)]
+    if len(src_paths) == 1:
+        cmd += ['--file', str(src_paths[0])]
+    else:
+        fl = out_dir / 'sources.f'
+        fl.write_text('\n'.join(str(x) for x in src_paths) + '\n')
+        cmd += ['--filelist', str(fl)]
+
     # [Plan B Step B3] Run CLI via subprocess (avoid sys.argv pollution)
     # [iter_086] 用 --svg 主标志 (--dot 是 V100 起的 deprecated alias); 去掉 --no-strict
     # (strict 模式实测可通过, 违反 AGENTS.md 硬规则 #1).
     result = subprocess.run(
-        ['python3', 'run_cli.py', 'visualize', 'dataflow',
-         '--file', str(sv_path),
-         '--module', target,
-         '--svg', str(svg_file)],
+        cmd,
         capture_output=True, text=True, timeout=600,
         cwd=Path(__file__).resolve().parents[3],
     )
