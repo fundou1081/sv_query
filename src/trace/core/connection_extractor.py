@@ -123,11 +123,13 @@ class ConnectionExtractor:
                 else:
                     # tree key 与实际模块名不匹配,查找包含实例的模块
                     # 找到没有被其他模块实例化的模块(顶层模块)
-                    instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
-                    # [iter_113] 保留 legacy 族: 实测移除会让 generate 实例路径加倍
-                    # (top.g[0].g[0].U) — 路径构建依赖两族互补; iter_113 的真根因
-                    # 是 inst_module_name 启发式 (inst==type 时回落 parent → 自环),
-                    # 见下方解析处修复
+                    instances = self.adapter.get_module_instances()
+                    # [iter_120] 不再叠加 legacy get_generate_instances 族:
+                    # iter_117 修了 indexed 族 get_path 的 gen_block 去重后,
+                    # legacy 族 (iter_113 曾因路径加倍而保留) 已非必需 — 且 legacy
+                    # 对嵌套模块取父路径丢 root ('u_m2.G2[0]' 缺 'top') → 同 key
+                    # 覆盖正确 indexed 路径 → 实例连接整条消失 (iter_119 观察).
+                    # 移除后 generate 实例只走 indexed 族 (hp 全路径, iter_109/117)
 
                     # 收集所有被实例化的模块名
                     instantiated_modules = set()
@@ -151,8 +153,8 @@ class ConnectionExtractor:
                     break
 
         trees = getattr(self.adapter.parser, "trees", {})
-        instances = self.adapter.get_module_instances() + self.adapter.get_generate_instances()
-        # [iter_113] 保留 legacy 族 (见上; 移除会致 generate 路径加倍)
+        instances = self.adapter.get_module_instances()
+        # [iter_120] legacy 族移除 (见上; iter_117 后非必需且嵌套时丢 root)
 
         # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
@@ -307,9 +309,15 @@ class ConnectionExtractor:
             else:
                 key = (info["inst_module_name"], info["inst_name"])
             module_to_path[key] = path
+        # [iter_120] path_by_info: 与 instances_info 对齐的逐实例路径 —
+        # module_to_path 的 key (module, name, gen) 不含**父实例路径**, 同一模块
+        # 多实例 (如 G1[0]/G1[1] 各含 m2, m2 内同名 G2 entry) 会 key 碰撞 →
+        # 后写覆盖 → 部分实例的连接丢失/错挂 (iter_119 观察 G2[0] 归属).
+        # 第三阶段用同序索引直接取逐实例路径, 不再查碰撞 key.
+        paths_by_info = [get_path(info) for info in instances_info]
 
         # [FIX] 第三阶段:使用正确路径创建节点和边
-        for inst in instances:
+        for _idx, inst in enumerate(instances):
             inst_name = (
                 inst.instances[0].decl.name.value.strip()
                 if hasattr(inst.instances[0], "decl")
@@ -347,9 +355,9 @@ class ConnectionExtractor:
                 key = (inst_module_name, inst_name)
                 inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
 
-            # [DEBUG] Trace inst_path and module_to_path state
-
-            inst_path = module_to_path.get(key, f"{self.root_module_name}.{inst_name}")
+            # [iter_120] 逐实例路径优先 (paths_by_info 与 instances 同序, 无 key 碰撞)
+            if _idx < len(paths_by_info):
+                inst_path = paths_by_info[_idx]
 
             # [iter_109/110] 连接信号作用域 = 实例的宿主模块路径:
             # inst_path 去掉末尾实例名 + 所有尾部 "[N]" generate 段.
