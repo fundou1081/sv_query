@@ -256,3 +256,60 @@ class TestGenerateAssignRhsIndex(unittest.TestCase):
                 if e.kind.name == 'DRIVER' and d.startswith('top.x['):
                     self.assertNotEqual(s, 'top.x',
                                         f"{d} 不应由整总线 top.x 驱动")
+
+
+NESTED_PART_SELECT_CONN = '''module leafm (input a, output y);
+  assign y = a;
+endmodule
+module m2m (input [3:0] a, output [3:0] y);
+  genvar j;
+  generate for (j=0;j<2;j=j+1) begin : G2
+    leafm u_leaf (.a(a[j*2+:2]), .y(y[j*2+:2]));
+  end endgenerate
+endmodule
+module m1m (input [15:0] a, output [15:0] y);
+  genvar i;
+  generate for (i=0;i<2;i=i+1) begin : G1
+    m2m u_m2 (.a(a[i*4+:4]), .y(y[i*4+:4]));
+  end endgenerate
+endmodule
+module top (input [15:0] a, output [15:0] y);
+  m1m u_m1 (.a(a), .y(y));
+endmodule
+'''
+
+
+class TestPartSelectConnNaming(unittest.TestCase):
+    """[iter_119] connection RangeSelect (+:) 连接命名 — 实例端口切片不再 '?'.
+
+    iter_118 S2 极端场景: 嵌套实例端口 .a(a[i*4+:4]) / .y(y[j*2+:2]) 的连接
+    信号命名恒 '?' (semantic RangeSelect 无 .selector; selectionKind 区分 +:) —
+    修复后按 [hi:lo] (msb:lsb) 求值命名.
+    """
+
+    def test_no_placeholder_slices(self):
+        g = _graph(NESTED_PART_SELECT_CONN, target='top')
+        ph = [n for n in g.nodes() if '?' in n]
+        self.assertEqual(ph, [], f"占位节点不应存在: {ph[:2]}")
+
+    def test_slice_names_present(self):
+        """G1[1] (非折叠 entry) 的 m2 内部切片按 [hi:lo] 命名 (y[1:0]/y[3:2])."""
+        g = _graph(NESTED_PART_SELECT_CONN, target='top')
+        for exp in ("top.u_m1.G1[1].u_m2.y[1:0]",
+                    "top.u_m1.G1[1].u_m2.y[3:2]"):
+            self.assertIsNotNone(g.get_node(exp), f"{exp} 切片节点应存在")
+
+    def test_leaf_connects_to_slice(self):
+        """leaf (2 位) 输出连到 m2 的 y 切片 (G2[1] → y[3:2])."""
+        g = _graph(NESTED_PART_SELECT_CONN, target='top')
+        conn = set()
+        for s, d in g.edges():
+            for e in g._edge_data.get((s, d), []):
+                if e.kind.name == 'CONNECTION':
+                    conn.add((s, d))
+        self.assertIn(
+            ("top.u_m1.G1[1].u_m2.G2[1].u_leaf.y", "top.u_m1.G1[1].u_m2.y[3:2]"),
+            conn,
+            "leaf 输出应连到 m2 的 y[3:2] 切片")
+        # 注: G2[0] 实例在 G1[1] (非折叠 m2) 下是否独立成图待观察 (疑似 slang
+        # 合并相同 generate entry — 与本修复无关, iter_119 记录观察)
