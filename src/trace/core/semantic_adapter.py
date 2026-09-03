@@ -2444,6 +2444,58 @@ class SemanticAdapter:
             signals.extend(self._extract_signals_from_expr(getattr(expr, "operand", None)))
             return signals
 
+        # [iter_118] genvar-ctx 索引求值 (generate-for 内 assign 的 RHS 位选):
+        # slang 对 entry 内 x[i] / x[i-1] 的 selector 保持 NamedValue('i') /
+        # BinaryOp(i-1), 不 fold 成常量 — 旧逻辑 (非 Literal/Parameter) 直接
+        # fallback 返回 base → RHS x[i-1] 错解析成整总线 x (S8 深链死端;
+        # case27 acc[i]+prod 同病, iter_035 起未被图级断言捕获).
+        # 此处用 generate entry 的 genvar ctx 求值: NamedValue→ctx[name],
+        # BinaryOp → 递归折叠 (+ - * /), 求不出返回 None (调用方保持旧行为).
+        def _fold_sel(sel: object):
+            if sel is None:
+                return None
+            sk = str(getattr(sel, "kind", ""))
+            if "Literal" in sk:
+                v = _safe_attr(sel, "constant", None) or _safe_attr(sel, "value", None)
+                if v is not None:
+                    # [iter_118] ConstantValue.integer 是对象不是 int —
+                    # 统一 int(str(...)) 解 (str(SVInt)='1')
+                    try:
+                        iv = v.integer if hasattr(v, "integer") else v
+                        return int(str(iv))
+                    except (ValueError, TypeError):
+                        return None
+                return None
+            if "NamedValue" in sk:
+                sym = _safe_attr(sel, "symbol", None)
+                nm = _safe_attr(sym, "name", None) or getattr(sel, "name", None)
+                if nm is None:
+                    return None
+                nm = str(nm)
+                return ctx.get(nm) if nm in ctx else None
+            if "BinaryOp" in sk:
+                op = getattr(sel, "op", None)
+                opn = str(getattr(op, "name", op)).lower()
+                l = _fold_sel(getattr(sel, "left", None))
+                r = _fold_sel(getattr(sel, "right", None))
+                if l is None or r is None:
+                    return None
+                try:
+                    if opn in ("add", "plus", "+"):
+                        return l + r
+                    if opn in ("subtract", "minus", "-"):
+                        return l - r
+                    if opn in ("multiply", "times", "*"):
+                        return l * r
+                    if opn in ("divide", "div", "/"):
+                        return int(l / r) if r else None
+                except (ValueError, TypeError, ZeroDivisionError):
+                    return None
+                return None
+            if "Conversion" in sk:
+                return _fold_sel(getattr(sel, "operand", None))
+            return None
+
         # ElementSelect: signal[bit] - extract full name signal[bit]
         if "ElementSelect" in kind_str:
             # Get the base signal
@@ -2481,6 +2533,14 @@ class SemanticAdapter:
                         for base in base_signals:
                             signals.append(f"{base}[{sel_val}]")
                         return signals
+                    else:
+                        # [iter_118] genvar-ctx 求值 (NamedValue 'i' / BinaryOp 'i-1'):
+                        # generate-for entry 内 RHS 位选 — 修 x[i-1] 错解析成整总线
+                        fold_idx = _fold_sel(selector)
+                        if fold_idx is not None:
+                            for base in base_signals:
+                                signals.append(f"{base}[{fold_idx}]")
+                            return signals
             # Fallback: just return base signal
             return base_signals
 
@@ -2513,6 +2573,11 @@ class SemanticAdapter:
                         right_val = int(right_val.integer)
                     except Exception:
                         right_val = str(right_val.integer)
+                # [iter_118] genvar-ctx 求值 (generate entry 内 x[i*4+:4] 等范围)
+                if left_val is None:
+                    left_val = _fold_sel(left)
+                if right_val is None:
+                    right_val = _fold_sel(right)
                 for base in base_signals:
                     if left_val is not None and right_val is not None:
                         signals.append(f"{base}[{left_val}:{right_val}]")

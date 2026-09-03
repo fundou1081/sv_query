@@ -72,6 +72,19 @@
 | 3. 测试: unit 两形态 + 真实验证 aes/dblclockfft recursive→0 | ⬜ |
 | 4. 回归 + iter_117 文档 + overview + 提交 | ⬜ |
 
+**当前**: ✅ **极端场景验证完成** (iter_118, 方豆 "构造极端场景确认正确性")
+> 9 类极端场景断言 (深嵌套 gen/门级/多驱动/反馈/0 层/深 fanin):
+> **修 1 缺口**: generate assign RHS 位选丢 genvar 索引 (S8 x[i]=x[i-1] RHS 落总线
+> → fanin 死端; case27 acc[i] 同病, iter_035 起潜伏) — _fold_sel ctx 求值修.
+> 新 unit +3; case27 per-index 改善.
+> [iter_118](docs/task_tree/iterations/iter_118_extreme_verify_rhs_index.md)
+
+**backlog (新发现, 待修)**: **connection 侧 RangeSelect 连接命名恒 '?'** —
+S2 四级嵌套 `.a(a[i*4+:4])` 出占位 `u_m2.a[?]`; 根因方向: _conn_expr_to_signal
+RangeSelect 取 expr.selector (semantic RangeSelect 无 .selector, left/right 在
+expr 上) → '?' 恒; _eval_select_index 不支持 Multiply. 最小复现 S2 已备
+(/tmp/extreme_scan.py), 建议下个修.
+
 **backlog (新发现, 建议下一个修)**: **索引段加倍假节点** (iter_116 摸底 target 重扫发现, 多项目真实复现):
 - aes Top_PipelinedCipher: **84** 个 — `U_SUB.ROM[4].ROM[4]` (实例下 InstanceArray 段重复)
 - dblclockfft fftmain/ifftmain: **63** 个/模块 — `p3.STAGES.FOR.GENSTAGES[0].GENSTAGES[0].genmpy` (实例下嵌套 generate 段重复)

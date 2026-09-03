@@ -12,8 +12,11 @@ Fixture: golden_dataflow_29_generate_for_chain.sv (3 级 generate-for 链, N=4)
 
 1:1 预期 (实测于 iter_082):
 - 节点: buf1[0..3] (4 索引) / buf2[0..2] (3) / buf3[0..2] (3) + 各 base 节点
-- 边: data→buf1[0]; buf1[i+1]→buf1 (3 条); buf1→buf2[i] (3); buf2→buf3[i] (3);
+- 边: data→buf1[0]; buf1[i]→buf1[i+1] (stage1 RHS per-entry);
+      buf1[i+1]→buf2[i] (stage2); buf2[i]→buf3[i] (stage3); prod→各级展开;
       buf3→chain_out; buf1[0]→buf1 等索引→base 回边
+      [iter_118] stage 链 RHS 由整总线修正为 per-entry 索引 (generate RHS
+      genvar-ctx 求值修复 — 原 buf1→buf2[i] 总线源是 iter_118 修的 bug 形态)
 """
 import sys
 from pathlib import Path
@@ -76,16 +79,19 @@ class TestGenerateForChainTruth(unittest.TestCase):
                              "buf1[0]→buf1 应存在")
 
     def test_edge_stage_chain(self):
-        """级间链: buf1→buf2[i] 和 buf2→buf3[i] (每级 3 条)."""
+        """[iter_118] 级间链 RHS per-entry 索引 (修复前是整总线 buf1→buf2[i],
+        是 iter_118 修的 generate RHS 丢索引 bug 形态): 
+        stage2 buf2[i]=buf1[i+1]+prod → buf1[i+1]→buf2[i];
+        stage3 buf3[i]=buf2[i]+prod → buf2[i]→buf3[i]."""
         g = self.graph
         for i in range(3):
             self.assertIsNotNone(
-                g.get_edge(f"{MOD}.buf1", f"{MOD}.buf2[{i}]"),
-                f"buf1→buf2[{i}] 应存在 (stage1→2)",
+                g.get_edge(f"{MOD}.buf1[{i+1}]", f"{MOD}.buf2[{i}]"),
+                f"buf1[{i+1}]→buf2[{i}] 应存在 (stage2 RHS per-entry)",
             )
             self.assertIsNotNone(
-                g.get_edge(f"{MOD}.buf2", f"{MOD}.buf3[{i}]"),
-                f"buf2→buf3[{i}] 应存在 (stage2→3)",
+                g.get_edge(f"{MOD}.buf2[{i}]", f"{MOD}.buf3[{i}]"),
+                f"buf2[{i}]→buf3[{i}] 应存在 (stage3 RHS per-entry)",
             )
 
     def test_edge_prod_drives_stages(self):
