@@ -420,5 +420,64 @@ endmodule
         self.assertGreaterEqual(r.paths_count, 1)
 
 
+class TestGeneratePerEntryFaninIsolation(unittest.TestCase):
+    """iter_132: generate per-entry fanin 位隔离 (wrapper cross 守卫).
+
+    回归: fanin(top.y[3]) 串入 G[0..2] (G[0].u_leaf.y / top.a[1] 等假源)。
+    双根因: ① A2 位提升在"位节点有 incoming CONNECTION"时仍触发 → 提升到
+    bus y 全 entry 串; ② PORT_OUT via CONNECTION 的 wrapper cross-instance
+    展开无条件跨到 ptt 同 short-name 的所有实例端口 (leaf 4 实例全串)。
+    """
+
+    GENFOR = '''module leaf (input a, output y);
+  assign y = a;
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  genvar i;
+  generate for (i=0;i<4;i=i+1) begin : G
+    leaf u_leaf (.a(a[i]), .y(y[i]));
+  end endgenerate
+endmodule
+'''
+
+    def test_bit_fanin_isolated_to_own_entry(self):
+        tr = UnifiedTracer(sources={'test.sv': self.GENFOR}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        for i in range(4):
+            ids = {r.id for r in tr.trace_fanin(f'top.y[{i}]')}
+            self.assertEqual(ids, {f'top.G[{i}].u_leaf.y'},
+                             f"y[{i}] fanin 应只含本 entry G[{i}], 实际 {ids}")
+
+    def test_bus_fanin_still_aggregates(self):
+        # bus 级 fanin 仍聚合 4 entry (不受隔离影响)
+        tr = UnifiedTracer(sources={'test.sv': self.GENFOR}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.y')}
+        self.assertEqual(ids, {f'top.G[{i}].u_leaf.y' for i in range(4)},
+                         f"bus fanin 应聚合 4 entry, 实际 {ids}")
+
+    def test_wrapper_cross_still_works(self):
+        # wrapper passthrough (0 internal driver) 跨 instance 不被守卫误伤:
+        # 两个实例端口共享 short-name, 但无内部驱动 → 仍跨
+        src = '''module inner (input logic a, output logic y);
+  assign y = a;
+endmodule
+module outer (input logic a, output logic y);
+  inner u_inner (.a(a), .y(y));
+endmodule
+module top (input logic a0, a1, output logic y0, y1);
+  outer u0 (.a(a0), .y(y0));
+  outer u1 (.a(a1), .y(y1));
+endmodule
+'''
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        # u0.y 由 outer 内部 inner.y 驱动 (非跨实例) — 有内部驱动链
+        ids = {r.id for r in tr.trace_fanin('top.u0.y')}
+        self.assertTrue(ids, "u0.y 应有驱动")
+        self.assertNotIn('top.u1', ' '.join(ids),
+                         f"u0.y fanin 不应跨到 u1, 实际 {ids}")
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -180,7 +180,21 @@ class SignalTracer:
         #     位 data[0], 导致 y 主循环真源被过滤 (fanin(y) 丢 data[0])
         #   原 iter_126 只查 not drivers: struct 根查询 (drivers 空) 误提升 →
         #   p.data 泄漏; 只查 not has_driver_edge: data[7] 中间递归误提升 → 污染
-        if (not has_driver_edge and not drivers and ":" not in signal_id):
+        # [iter_132] 再加 not has_incoming_connection: generate per-entry 位节点
+        #   (top.y[3]) 有 incoming CONNECTION (实例输出 PORT_OUT G[3].u_leaf.y →
+        #   top.y[3]) 时, 它是**有真实驱动源**的位 — 应走主循环 CONNECTION/
+        #   PORT_OUT 处理 (append G[3].u_leaf.y + 递归其内部驱动), 而非提升到
+        #   父总线 top.y (会把 4 个 generate entry 全串进来, fanin(y[3]) 假源:
+        #   G[0].u_leaf.y / a[1]/a[2] 等)。提升只用于**完全无 incoming** 的
+        #   叶子位。
+        _has_incoming_conn = any(
+            dst == signal_id
+            and (e := self.graph.get_edge(src, dst)) is not None
+            and e.kind == EdgeKind.CONNECTION
+            for src, dst in list(self.graph.edges())
+        )
+        if (not has_driver_edge and not _has_incoming_conn
+                and not drivers and ":" not in signal_id):
             # [iter_129 候选3] 提升目标限 data 类节点 (SIGNAL/PORT_OUT/REG):
             # interface 成员 (bf.addr) 的 BIT_SELECT 父是 **模块实例节点**
             # (top.bf, INSTANTIATED_MODULE) — 不是父总线, 提升会把 interface
@@ -343,8 +357,25 @@ class SignalTracer:
                                 )
                                 # semantic short name (eg axi_ram_wr_rd_if.s_axi_awready)
                                 def_port_short = ptt_for_cross.get(src)
+                                # [iter_132] wrapper cross 守卫: 仅当 src 端口
+                                # **无内部驱动** 才跨到其他同 short-name instance —
+                                # 设计意图 (注释) 是 wrapper (0 internal driver)
+                                # passthrough 场景 (axi_dp_ram.a_if ← b_if deep
+                                # driver); 实现漏了该检查 → generate per-entry 位
+                                # 查询串扰: fanin(top.y[3]) 沿 G[3].u_leaf.y (leaf,
+                                # 有内部 assign y=a) cross 到 G[0..2].u_leaf.y →
+                                # 4 entry 全串 (G[0].u_leaf.a / top.a[1] 等假源)。
+                                # 有内部驱动的端口 = 真实逻辑实例, 无 wrapper
+                                # passthrough 语义, 不跨。
+                                _src_has_internal_driver = any(
+                                    (e2 := self.graph.get_edge(p, src)) is not None
+                                    and e2.kind == EdgeKind.DRIVER
+                                    and e2.assign_type != "internal"
+                                    for p, _d in list(self.graph.edges())
+                                    if _d == src
+                                )
                                 cross_targets = set()
-                                if def_port_short:
+                                if def_port_short and not _src_has_internal_driver:
                                     for k, v in ptt_for_cross.items():
                                         if v == def_port_short and k != src:
                                             cross_targets.add(k)
