@@ -24,6 +24,13 @@
 
 **等待方豆指示** (最近完成: iter_126~129 审计修复 + iter_130 真实验证零副作用)
 
+**iter_133 (2026-09-05)**: iter_131/132 真实项目复验 (aes 4834 节点/272
+实例) — fanin 位隔离零跨 entry 生效; dataflow 已知限制区分。复验暴露
+**嵌套 generate 深层重复段假节点 backlog** (aes 型 351/4834: ROUND[1].
+U_ROUND.ROUND[1].U_SUB, 内层重复外层段; baseline 既有, fanin 主链 0 污染)
+已登记 audit 🐛 区。
+[iter_133](docs/task_tree/iterations/iter_133_real_verify.md)
+
 **iter_132 (2026-09-05)**: generate per-entry fanin 位隔离 — fanin(top.y[3])
 串入 G[0..2] 双根因修: A2 提升加 incoming-CONNECTION 守卫 (有实例输出源不
 提升) + wrapper cross 加"无内部驱动才跨" (注释意图漏实现)。fanin(y[i]) 恰
@@ -71,6 +78,8 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
   归属需专项拍板
 
 **backlog (未启动, 按序)**:
+0. 嵌套 generate 深层路径重复段假节点 (aes 型, iter_133 登记) — 实例路径
+   拼接逐层段归属去重 (iter_117 通用化), 图污染 7.3% 清理
 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
@@ -86,6 +95,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **iter_131/132 真实复验 (iter_133)** | aes 4834 节点/272 实例复验: fanin 位隔离零跨 entry; dataflow 已知限制区分; 暴露嵌套 generate 深层重复段假节点 (351/4834, baseline 既有) 登记 audit backlog. [iter_133](docs/task_tree/iterations/iter_133_real_verify.md) |
 | **2026-09-05** | **generate per-entry fanin 位隔离 (iter_132)** | fanin(top.y[3]) 串入 G[0..2] 双根因: A2 提升忽略 incoming CONNECTION + wrapper cross 无条件跨; 修后 y[i] fanin 恰 [G[i].u_leaf.y]; bus 聚合/纯直通/xor/wrapper 全保; unit +3; 全量 **2934 passed**. [iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md) |
 | **2026-09-04** | **dataflow bus 聚合修复 + usage 债务清理 (iter_131)** | 真回归: _find_paths 首个非空候选组合即返 (iter_118 per-entry 后 bus 查询丢位, arbiter 40→8→1) → 合并所有候选组合, 8 paths 恢复; golden 40→8; 3 测试债务 (p6/m12/factory) 清理; unit +3; 主全量 2928 passed. [iter_131](docs/task_tree/iterations/iter_131_dataflow_bus_agg_fix.md) |
 | **2026-09-04** | **inout + interface 建模 (iter_129)** | inout 跨模块连接修复 (connection_extractor inout 分支, output 式同线 CONNECTION, fanin 穿透实例三态链); interface 成员级桥 (收集 InterfacePortSymbol links + 后处理按驱动方向单向桥) + A2 提升目标限 data 类消假驱动; unit +7; 全量 **2928 passed**. [iter_129](docs/task_tree/iterations/iter_129_iface_inout_modeling.md) |
