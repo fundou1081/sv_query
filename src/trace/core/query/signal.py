@@ -240,6 +240,23 @@ class SignalTracer:
             if dst == signal_id:
                 # [NEW] 自环 (state = state) 应该被记录为驱动
                 if src == dst:
+                    # [iter_127 A3] 区分两类自环:
+                    # ① assign_type="internal" DRIVER 自环 = 实例输出端口
+                    #    "模块内部驱动"标记 (connection_extractor output 边1,
+                    #    child_signal_id==inst_port_id 恒成立) — 不是真实驱动源,
+                    #    fanin 列它会污染集合 (truth 断言被迫手动排除), 跳过。
+                    #    真实驱动由同节点其他 DRIVER 边 (continuous 等) 或
+                    #    forward-lookup 提供。
+                    # ② 其他自环 (nonblocking/continuous, 如 state<=state+1 的
+                    #    nonblocking src==dst) — 操作数真含自身的驱动语义, 保留。
+                    _loop_edges = self.graph.get_edges(src, dst)
+                    _is_internal_marker = any(
+                        getattr(e, "assign_type", "") == "internal"
+                        and e.kind == EdgeKind.DRIVER
+                        for e in _loop_edges
+                    )
+                    if _is_internal_marker:
+                        continue
                     node = self.graph.get_node(src)
                     if node:
                         drivers.append(node)
@@ -359,6 +376,16 @@ class SignalTracer:
         drivers = []
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
+                # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
+                # 实例输出端口 "模块内部驱动" internal 自环标记 (非真实源).
+                if src == dst:
+                    _loop_edges = self.graph.get_edges(src, dst)
+                    if any(
+                        getattr(e, "assign_type", "") == "internal"
+                        and e.kind == EdgeKind.DRIVER
+                        for e in _loop_edges
+                    ):
+                        continue
                 node = self.graph.get_node(src)
                 if node:
                     drivers.append(node)
