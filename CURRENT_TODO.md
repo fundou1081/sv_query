@@ -31,6 +31,12 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 但受 pyslang import-order env bug 制约。维护:
 [决策文档](docs/architecture/inline_constraint_semantic_unavailable.md) (含未来改善观察)
 
+**准确性审计产出 (2026-09-03)**: [signal_graph_accuracy_audit.md](docs/architecture/signal_graph_accuracy_audit.md)
+- A1 无 target_module → generate 实例内部缺失 (graph_builder.py:68 / driver_extractor.py:1287)
+- A2 子模块输出总线直连顶层位 → 顶层位无 DRIVER (connection_extractor.py:567-577)
+- A3 端口 DRIVER 自环计入源 (轻微设计标记)
+建议修复序: A1 (默认 target) → A2 (总线位展开/查询一跳)。
+
 **backlog (未启动, 按序)**:
 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
