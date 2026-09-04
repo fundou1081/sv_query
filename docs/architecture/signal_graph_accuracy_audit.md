@@ -80,6 +80,26 @@ depth=1 `['top.u_sub.a']`; no-target `['sub.a']`; `state<=state+1` 自环保留�
 
 ---
 
+## 🐛 已知缺口 (iter_133 复验登记)
+
+### 嵌套 generate 深层路径重复段假节点 (aes 型, 中)
+
+**现象**: 3+ 层 generate 嵌套 (wrapper→aes_top.ROUND[i]→Round→U_SUB→
+ROM[i]→ROM) 时, 内层实例路径重复拼入外层 generate 段:
+`aes_top.ROUND[1].U_ROUND.ROUND[1].U_SUB` (正确应为
+`ROUND[1].U_ROUND.U_SUB`)。aes 实测 351/4834 节点 (7.3%) 含重复段
+(`ROUND[i]` 段名二次出现)。
+**证据**: aes_top_buffered_wrapper target 模式, iter_132 baseline 同现
+(非 iter_131/132 引入); 正常路径 U_SUB 有 4377 边, 假路径仅 14 边
+(connection 与 driver 层 namespace 部分分裂)。
+**源码位置**: driver/connection 实例路径拼接 (get_path/instance-path 构造),
+iter_109/110 宿主作用域处理的更深嵌套边界 (Round 模块内部实例路径
+拼接时 context 又带外层 generate 段)。
+**影响**: fanin 主链不受扰 (实测 U_SUB.data_out fanin 19 源 0 重复段),
+但重复段节点污染图 (7.3%), 潜在查询落假节点风险。
+**修复方向**: 实例路径拼接时宿主 generate ctx 去重 (iter_117 索引段
+去重的通用化 — 嵌套多层时逐层校验段归属)。待专项。
+
 ## ✅ 已修复 (历史, 防止复发复登)
 
 | 条目 | 修复迭代 | 位置 |
