@@ -7,12 +7,13 @@
 
 ---
 
-## ✅ 已修复 (iter_126, 2026-09-04 收窄后)
+## ✅ 已修复 (iter_126/127, 2026-09-04)
 | 条目 | 修复 | 位置 |
 |---|---|---|
 | A1 无 target 盲区 | **CLI 设计视图入口** (build_viz_tracer, 无 `--module` 时) 自动单 top target: 库默认 `build_graph()` 保持无 target 类型级多模块契约 (cross_module/boundary 等测试锁定 mixed-namespace 语义), 需要的调用方显式传 `auto_target_single_top=True` | `_viz_common.py` build_viz_tracer + `unified_tracer.py` build_graph 新参数 (≈435); 证据 cordic CLI 无 module 365→542 节点 / 667 rects, `genblk1[0].U.x_shifter` 出现 |
 | A2 总线直连位查询空答 | query/signal.py: 位节点不存在 → 提升父总线 (总线粒度); 存在位节点无驱动 → BIT_SELECT 出边提升 | `_trace_drivers_recursive` (≈74-165) |
 | A2 粒度说明 | 结果总线粒度 (top.y[3] → u_sub.y); 位对位折算 = 后续项 | — |
+| A3 端口 DRIVER 自环计入源 | 查询层跳过 `assign_type=="internal"` 自环 (实例输出端口标记, 恒 src==dst); nonblocking 真自环 (`state<=state+1`) 保留 | query/signal.py `_trace_drivers_recursive` + `_find_drivers`; fanin(top.u_sub.y) `[a, 自身] → [a]` |
 
 ## 🐛 未修复
 
@@ -59,15 +60,23 @@
 (或查询层把 bus CONNECTION + 位宽传播作为 fanin 一跳)。
 **影响**: "顶层输出总线某位谁驱动" 回答为空 — 门级/总线直连真实设计 (KS 加法器等)。
 
-### A3. 端口 DRIVER 自环计入驱动源 (轻微, 设计标记)
+### A3. (✅ iter_127) 端口 DRIVER 自环计入驱动源 (轻微, 设计标记)
 
 **现象**: 实例输出端口节点自带 DRIVER 自环 (`...u_sub.y -DRIVER-> ...u_sub.y`,
 "模块内部驱动"标记 [FIX 2026-07-08])。fanin(端口) 会把它自身列为一个源;
 按 DRIVER 集合相等断言的场景需手动排除 (本项目 truth 测试都写了排除)。
-**源码位置**: connection/driver 端口处理 — 自环标记 (connection_extractor 边1
-`src=child_signal_id dst=inst_port_id DRIVER internal` 邻域 / port 自环创建处)。
-**性质**: 设计内 (标记内部驱动存在), 但作为"驱动源"语义易误读 — 建议查询层
-排除自环或改走独立 marker 边。
+**源码位置**: connection/driver 端口处理 — 自环标记 (connection_extractor output
+边1 `src=child_signal_id dst=inst_port_id DRIVER internal`, 恒 src==dst —
+connection_extractor.py:564-566)。
+**修复 (iter_127)**: 查询层区分两类自环 —
+- `assign_type=="internal"` DRIVER 自环 (实例输出端口标记) → **跳过**, 不计为
+  驱动源 (真实驱动由同节点其他 DRIVER 边或 forward-lookup 提供)
+- 其他自环 (nonblocking `state<=state+1` 等真操作数自环) → **保留**
+位置: `query/signal.py` `_trace_drivers_recursive` (主循环) + `_find_drivers`
+(depth=1 路径) 两处同规则。
+**证据**: fanin(top.u_sub.y) `['top.a','top.u_sub.y'] → ['top.a']` (target 模式);
+depth=1 `['top.u_sub.a']`; no-target `['sub.a']`; `state<=state+1` 自环保留。
+图结构不改 (internal 自环边仍在图中, 供 out_edges/可视化使用)。
 
 ---
 

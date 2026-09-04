@@ -112,5 +112,61 @@ endmodule
                         f"位查询应含 a,b 实际 {ids}")
 
 
+class TestA3SelfLoopNotDriverSource(unittest.TestCase):
+    """A3: 实例输出端口 internal 自环标记不计为驱动源 (iter_127).
+
+    区分两类自环:
+    - assign_type="internal" 自环 = connection_extractor output 边1
+      (child_signal_id==inst_port_id 恒成立, "模块内部驱动"标记) — 非真实源
+    - nonblocking 自环 (state<=state+1) = 真操作数自环 — 保留
+    """
+
+    BUSFIX = '''module sub (input a, output y);
+  assign y = a;
+endmodule
+module top (input a, output y);
+  sub u_sub (.a(a), .y(y));
+endmodule
+'''
+
+    SELFFIX = '''module top(input clk, output reg [1:0] state);
+    always_ff @(posedge clk) state <= state + 1;
+endmodule
+'''
+
+    def test_port_selfloop_excluded_from_fanin(self):
+        tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        # depth=None 递归: 真实源 top.a; 自身 top.u_sub.y 不应出现
+        ids = {r.id for r in tr.trace_fanin('top.u_sub.y')}
+        self.assertEqual(ids, {'top.a'},
+                        f"fanin 不应含 internal 自环自身 (A3), 实际 {ids}")
+
+    def test_port_selfloop_excluded_depth1(self):
+        tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.u_sub.y', depth=1)}
+        self.assertEqual(ids, {'top.u_sub.a'},
+                        f"depth=1 直接驱动不应含自身, 实际 {ids}")
+
+    def test_state_self_update_kept(self):
+        # nonblocking 自环 (真操作数 state<=state+1) 保留为驱动源
+        tr = UnifiedTracer(sources={'test.sv': self.SELFFIX}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.state')}
+        self.assertIn('top.state', ids,
+                      "时序自更新 state 自环应保留 (A3 只排除 internal 标记)")
+
+    def test_graph_edge_kept_for_other_tools(self):
+        # 图结构不改: internal 自环边仍在图中 (out_edges/可视化使用)
+        tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        loops = [1 for s, d in g.edges()
+                 if s == d == 'top.u_sub.y'
+                 and any(getattr(e, 'assign_type', '') == 'internal'
+                         for e in g._edge_data.get((s, d), []))]
+        self.assertTrue(loops, "internal 自环边应保留在图 (A3 只改查询层)")
+
+
 if __name__ == '__main__':
     unittest.main()
