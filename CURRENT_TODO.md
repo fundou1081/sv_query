@@ -41,11 +41,13 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
   → 提升父总线 (总线粒度; 位对位折算 = 后续项)
 - ✅ A3 端口 DRIVER 自环计入源 (iter_127): 查询层跳过 assign_type="internal"
   自环 (实例输出端口标记); nonblocking 真自环 (state<=state+1) 保留
-- ✅ 待验证候选实测 (iter_128): struct 字段驱动正确; 派生时钟域 CLOCK 提取
-  正确 + fanin CLOCK 假驱动修复; 顶层输入空 fanin = 预期锁定
-- 🐛 候选缺口 (iter_128 登记, 建模决策待拍板): inout 跨模块连接缺失
-  (connection_extractor 仅 input/output 分支) + interface 成员级连接无桥
-  (bf.addr ← writer.b.addr 断; fanin 假驱动串扰)
+- ✅ 待验证候选 5 项全闭环 (iter_128/129): struct 字段正确; 派生时钟域
+  CLOCK 提取正确 + fanin CLOCK 假驱动修复; 顶层输入空 fanin = 预期锁定;
+  inout 跨模块连接修复 (output 式同线 CONNECTION); interface 成员级桥修复
+  (单向按驱动方向: writer/slave) + fanin 假驱动消除 (A2 提升目标限 data 类)
+- ⏳ 更深语义 backlog (iter_129 记录): inout 双向多驱动归属 (i2c 开漏) /
+  interface master+slave 同线多写共享语义 — 当前单向链逐层可追, 多驱动
+  归属需专项拍板
 
 **backlog (未启动, 按序)**:
 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
@@ -54,15 +56,16 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
    见决策文档 D3 (业务改善信号触发)
 3. slang generate-entry 合并枚举观察 (iter_119 记录)
 4. A2 位对位折算 (总线粒度 → 位粒度跨实例桥) — 审计文档后续项
-5. inout 跨模块连接建模 (双向驱动归属: open-drain 多驱动哪边算源) —
-   iter_128 候选1 缺口, 需方豆拍板方案
-6. interface/modport 成员级连接建模 (bf.addr←writer.b.addr 桥 +
-   modport 方向传播; 含 fanin 假驱动串扰修复) — iter_128 候选3 缺口
+5. inout 双向多驱动归属 (i2c 开漏: 外部+实例同时驱动哪边算源) —
+   iter_129 单向链已通, 多驱动归属专项
+6. interface master+slave 同线多写共享语义 (多实例同时驱动 interface 成员
+   的归属/合并) — iter_129 成员桥已建, 共享语义专项
 7. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-04** | **inout + interface 建模 (iter_129)** | inout 跨模块连接修复 (connection_extractor inout 分支, output 式同线 CONNECTION, fanin 穿透实例三态链); interface 成员级桥 (收集 InterfacePortSymbol links + 后处理按驱动方向单向桥) + A2 提升目标限 data 类消假驱动; unit +7; 全量 **2928 passed**. [iter_129](docs/task_tree/iterations/iter_129_iface_inout_modeling.md) |
 | **2026-09-04** | **审计待验证候选实测 (iter_128)** | 5 候选实测: 修 fanin CLOCK/RESET 假驱动 (跨模块时钟链) + A2 位提升条件双修 (struct 字段泄漏/位选 seen 污染); 登记 inout 跨模块连接 + interface 成员级缺口 (建模待拍板); 顶层输入空 fanin 预期锁定; unit +8; 全量 **2921 passed**. [iter_128](docs/task_tree/iterations/iter_128_audit_candidates_verify.md) |
 | **2026-09-04** | **准确性审计 A3 修复 (iter_127)** | 实例输出端口 internal DRIVER 自环不计为 fanin 驱动源: 查询层 (主循环 + _find_drivers depth=1) 跳过 assign_type="internal" 自环, nonblocking 真自环 (state<=state+1) 保留; 图结构不改; unit +4; 全量 **2913 passed / 0 failed**. [iter_127](docs/task_tree/iterations/iter_127_accuracy_a3.md) |
 | **2026-09-04** | **准确性审计 A1/A2 修复 (iter_126)** | A1 收窄: 库默认保留无 target 类型级契约 (8 回归恢复), CLI visualize 入口 (build_viz_tracer 无 --module) 自动单 top target — cordic 365→542 节点 genblk 内部真实 assign 恢复; A2 总线直连位查询提升非空; A1 测试弱断言 (self-loop) 重写为非自环; 全量 **2913 passed / 0 failed**. [iter_126](docs/task_tree/iterations/iter_126_accuracy_a1_a2.md) |

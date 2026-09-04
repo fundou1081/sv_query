@@ -819,9 +819,77 @@ class GraphBuilder:
                 self.graph._const_map.update(result.const_map)
             if getattr(result, 'func_info', None):
                 self.graph._func_info.update(result.func_info)
+            # [iter_129] interface 成员桥需要 connection 结果里的端口连接信息
+            if getattr(result, 'interface_links', None):
+                if not hasattr(self.graph, "_interface_links"):
+                    self.graph._interface_links = []
+                self.graph._interface_links.extend(result.interface_links)
 
         # [P0-3] 设置 interface 信号的 modport_dir
         self._set_interface_modport_dirs()
+        # [iter_129] interface 成员级桥 (实例端口成员 ↔ interface 实例成员)
+        self._bridge_interface_member_signals()
+
+    def _bridge_interface_member_signals(self):
+        """[iter_129 候选3] interface 成员级连接桥.
+
+        connection_extractor 收集 interface 端口连接 (interface_links):
+        (inst_path, port_name, iface_name, members, parent_member_prefix).
+        例: writer u_w(.b(bf)) → ('top.u_w', 'b', 'bus_if', ['addr','data'],
+        'top.bf')。
+
+        此 pass 在 driver 边全部就绪后执行, 对每个成员信号建**单向桥**:
+        - 实例内部驱动该成员 (实例侧成员有 incoming DRIVER, e.g. writer 内
+          assign b.addr=a → top.u_w.b.addr ← top.u_w.a) → 桥方向
+          实例成员 → interface 实例成员 (top.u_w.b.addr → top.bf.addr),
+          fanin(top.bf.addr) 能穿透到 writer 内部驱动链。
+        - 实例只读该成员 (无 incoming DRIVER, e.g. slave assign l=b.addr) →
+          桥方向 interface 实例成员 → 实例成员 (top.bf.addr → top.u_slv.b.addr),
+          fanin(实例内部读方) 能跨回 interface 线。
+        双向线本质: 两侧都建会让 fanin(端口成员) 把无驱动的 interface 线当
+        假源 (实测 [a, bf.addr, u_w.a]); 按"谁驱动谁"单向建模与普通端口一致。
+        """
+        from trace.core.graph.models import EdgeKind, TraceEdge
+
+        links = getattr(self.graph, "_interface_links", [])
+        for (inst_path, port_name, _iface_name, members, parent_prefix) in links:
+            inst_member_base = f"{inst_path}.{port_name}"
+            for member in members:
+                inst_member_id = f"{inst_member_base}.{member}"
+                parent_member_id = f"{parent_prefix}.{member}"
+                if inst_member_id not in self.graph._node_data:
+                    continue
+                # 实例侧成员是否被实例内部驱动 (非自环 DRIVER incoming)
+                inst_driven = any(
+                    (src, dst) != (inst_member_id, inst_member_id)
+                    and any(e.kind == EdgeKind.DRIVER and e.assign_type != "internal"
+                            for e in self.graph._edge_data.get((src, dst), []))
+                    for src, dst in list(self.graph.edges())
+                    if dst == inst_member_id
+                )
+                if parent_member_id not in self.graph._node_data:
+                    # 占位: 未出现的 interface 实例成员 (顶层未引用) 也建,
+                    # 让桥稳定存在 (只读方 fanin 需要目标节点)
+                    from trace.core.graph.models import NodeKind, TraceNode
+                    self.graph.add_trace_node(TraceNode(
+                        id=parent_member_id,
+                        name=member,
+                        module=parent_prefix,
+                        kind=NodeKind.SIGNAL,
+                    ))
+                # 单向桥: 驱动方 → 观察方
+                if inst_driven:
+                    # 实例内部驱动成员 (writer 型): 实例成员 → interface 成员
+                    if (inst_member_id, parent_member_id) not in self.graph._edge_data:
+                        self.graph.add_trace_edge(TraceEdge(
+                            src=inst_member_id, dst=parent_member_id,
+                            kind=EdgeKind.CONNECTION, assign_type="connection"))
+                else:
+                    # 实例只读 (slave 型): interface 成员 → 实例成员
+                    if (parent_member_id, inst_member_id) not in self.graph._edge_data:
+                        self.graph.add_trace_edge(TraceEdge(
+                            src=parent_member_id, dst=inst_member_id,
+                            kind=EdgeKind.CONNECTION, assign_type="connection"))
 
     def _set_interface_modport_dirs(self):
         """设置 interface 信号的 modport_dir 属性

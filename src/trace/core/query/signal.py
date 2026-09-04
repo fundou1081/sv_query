@@ -181,15 +181,23 @@ class SignalTracer:
         #   原 iter_126 只查 not drivers: struct 根查询 (drivers 空) 误提升 →
         #   p.data 泄漏; 只查 not has_driver_edge: data[7] 中间递归误提升 → 污染
         if (not has_driver_edge and not drivers and ":" not in signal_id):
-            # [iter_126] 仅单 bit 提升 (range [a:b] 无驱动 = 空答, 语义锁定)
+            # [iter_129 候选3] 提升目标限 data 类节点 (SIGNAL/PORT_OUT/REG):
+            # interface 成员 (bf.addr) 的 BIT_SELECT 父是 **模块实例节点**
+            # (top.bf, INSTANTIATED_MODULE) — 不是父总线, 提升会把 interface
+            # 实例的全部成员驱动 + 其 PORT_IN (bf.clk←top.clk CONNECTION) 当源
+            # 收进结果 (fanin(bf.addr) 含 top.clk 假驱动)。只有 data 信号容器
+            # 才承载 "总线由位驱动" 语义。
+            _LIFTABLE = {"SIGNAL", "PORT_OUT", "PORT_IN", "REG"}
             for src, dst in list(self.graph.edges()):
                 if src == signal_id and dst != signal_id and dst not in seen_ids:
                     edge = self.graph.get_edge(src, dst)
                     if edge and edge.kind == EdgeKind.BIT_SELECT:
-                        self._trace_drivers_recursive(
-                            dst, drivers, seen_ids, current_depth + 1, max_depth)
-                        if drivers:
-                            break
+                        _dst_node = self.graph.get_node(dst)
+                        if _dst_node and _dst_node.kind.name in _LIFTABLE:
+                            self._trace_drivers_recursive(
+                                dst, drivers, seen_ids, current_depth + 1, max_depth)
+                            if drivers:
+                                break
 
         # [FIX 2026-06-11] 跨 module boundary: 当 target 是 module def PORT_OUT
         # 且 0 driver 时, wrapper module 实际是 port mapping, 没内部 assign.

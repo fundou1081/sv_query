@@ -91,13 +91,13 @@ depth=1 `['top.u_sub.a']`; no-target `['sub.a']`; `state<=state+1` 自环保留�
 
 ---
 
-## 🔭 待验证候选 (实测于 iter_128)
+## 🔭 待验证候选 (实测于 iter_128/129)
 
 | 候选 | 实测结果 | 判定 |
 |---|---|---|
-| inout 双向端口 | `PORT_INOUT` kind 正确; **跨模块 inout 连接缺失** — connection_extractor 只处理 input/output 分支 (connection_extractor.py:515-577), inout 无连接边 → top.sda ↔ u_io.sda 无桥, fanin 空答 | 🐛 缺口 (建模决策: 双向驱动归属) |
+| inout 双向端口 | **✅ 修复 (iter_129)**: PORT_INOUT kind 正确; connection_extractor 补 inout 分支 (output 式 CONNECTION inst_port→parent, 父↔实例同线无方向归属); fanin(顶层 inout) 穿透到实例内部三态驱动链 (top.sda 空答 → [u_io.data]) | ✅ 修复 |
 | struct/union 字段 | 字段驱动正确 (p.addr←a + member→struct BIT_SELECT); **A2 提升条件 bug 已修**: 根查询有直接 DRIVER 误提升 → 兄弟字段泄漏 (fanin(p.addr) 含 p.data) | ✅ 修复 (iter_128) |
-| interface/modport | 整体实例 CONNECTION 有 (top.bf→u_slv.b); **成员级连接无桥** (bf.addr ← writer.b.addr 断) + fanin 假驱动 (bf.addr fanin 含 top.clk, BIT_SELECT 提升串扰) | 🐛 缺口 (建模决策: 成员方向传播) |
+| interface/modport | **✅ 修复 (iter_129)**: 成员级桥 (实例端口成员 ↔ interface 实例成员, 单向按"实例内部是否驱动成员"定方向: writer 驱动 u_w.b.addr→bf.addr / slave 只读 bf.addr→u_s.b.addr); fanin 假驱动修 (A2 提升目标限 data 类节点, 禁模块实例 top.bf) | ✅ 修复 |
 | 派生时钟/多时钟域 | CLOCK/RESET 边提取正确 (div2→cnt_b); **fanin 假驱动已修**: CLOCK/RESET 边被当数据源递归追 (跨模块链 div2←u_div.clk←top.clk 混入) | ✅ 修复 (iter_128) |
 | 顶层输入 fanin | 空答 + confidence=uncertain = **预期语义** (外部驱动, 图内无源) | ✅ 预期, 测试锁定 |
 
