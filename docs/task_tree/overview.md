@@ -87,6 +87,7 @@ sv_query_project/
 | **39** | **2026-09-03** | **L2** | **极端场景验证 (iter_118, 方豆 "构造极端场景确认正确性")** | **generate RHS 位选丢 genvar 索引 (S8 深链死端; case27 iter_035 起潜伏)** | **per-entry RHS 索引** | **9 类极端场景; _fold_sel ctx 求值 (Literal ConstantValue/op 枚举名踩坑×2); 新 unit +3; chain truth/golden 随修复更新 (prim_arbiter DRIVER 90→118); S2 connection RangeSelect 命名 '?' 记录 backlog** | **✅ case27/链/S8 per-index; 回归处置后见 commit** |
 | **40** | **2026-09-03** | **L2** | **connection RangeSelect 命名 (iter_119, S2 backlog)** | **.+:.a(a[i*4+:4]) 连接命名恒 '?'** | **[hi:lo] 切片命名** | **semantic RangeSelect: left/right 在 expr + selectionKind (IndexedUp/Down/Simple); [base+:width] right 是宽度; _eval_select_index 接入两端; S2 占位 2→0; unit +3** | **✅ y[1:0]/[3:2] 命名; 回归见 commit** |
 | **41** | **2026-09-03** | **L2** | **generate 实例连接 key 碰撞 (iter_120, iter_119 观察深挖)** | **G2[0] 连接缺失 (minimal 0 连接 / 嵌套错挂)** | **per-entry 归属正确** | **双根因: ① legacy get_generate_instances 嵌套丢 root 覆盖 indexed 族 (iter_117 后冗余, 移除) ② module_to_path key 无父路径 → 多实例同名 gen 碰撞 → 逐实例 paths_by_info; minimal 0→4 连接, 4 层 4 条全对; 101 批次零回归; unit +1** | **✅ per-entry 连接全归位** |
+| **42** | **2026-09-03** | **L2** | **SVA 对抗缺口 (iter_121, 方豆 "constraint covergroup sva 对抗")** | **formal 泄漏/序列不展开/局部/函数/generate 0 断言/option 污染** | **6 缺口全修** | **syntax 语境区分 (容器 Token/Invocation callee/IdentifierSelectName base); post-pass 引用展开+实参并入; kind 精确匹配; generate 下钻+member 解包; 对抗 6 场景全绿** | **✅ unit +8, SVA 83 零回归** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
