@@ -24,6 +24,13 @@
 
 **等待方豆指示** (最近完成: iter_126~129 审计修复 + iter_130 真实验证零副作用)
 
+**iter_134 (2026-09-05)**: 嵌套 generate 深层重复段假节点清理 — gen_block
+只取直接宿主 generate 段 (hp 紧邻实例名前段 name[N]); aes 假节点
+279/1116→0, cordic 105→0 (truth 更新); 连带修 wrapper cross get_edges
+全查 + PORT_OUT 内部驱动自递归 (test_deep 回归)。unit +3; 全量
+2937 passed。
+[iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md)
+
 **iter_133 (2026-09-05)**: iter_131/132 真实项目复验 (aes 4834 节点/272
 实例) — fanin 位隔离零跨 entry 生效; dataflow 已知限制区分。复验暴露
 **嵌套 generate 深层重复段假节点 backlog** (aes 型 351/4834: ROUND[1].
@@ -78,8 +85,6 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
   归属需专项拍板
 
 **backlog (未启动, 按序)**:
-0. 嵌套 generate 深层路径重复段假节点 (aes 型, iter_133 登记) — 实例路径
-   拼接逐层段归属去重 (iter_117 通用化), 图污染 7.3% 清理
 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
@@ -95,6 +100,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **嵌套 generate 假节点清理 (iter_134)** | gen_block 直接宿主判定修深层嵌套假路径 (aes 279/1116→0, cordic 105→0); wrapper cross get_edges + PORT_OUT 自递归连带修; unit +3; 全量 **2937 passed**. [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md) |
 | **2026-09-05** | **iter_131/132 真实复验 (iter_133)** | aes 4834 节点/272 实例复验: fanin 位隔离零跨 entry; dataflow 已知限制区分; 暴露嵌套 generate 深层重复段假节点 (351/4834, baseline 既有) 登记 audit backlog. [iter_133](docs/task_tree/iterations/iter_133_real_verify.md) |
 | **2026-09-05** | **generate per-entry fanin 位隔离 (iter_132)** | fanin(top.y[3]) 串入 G[0..2] 双根因: A2 提升忽略 incoming CONNECTION + wrapper cross 无条件跨; 修后 y[i] fanin 恰 [G[i].u_leaf.y]; bus 聚合/纯直通/xor/wrapper 全保; unit +3; 全量 **2934 passed**. [iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md) |
 | **2026-09-04** | **dataflow bus 聚合修复 + usage 债务清理 (iter_131)** | 真回归: _find_paths 首个非空候选组合即返 (iter_118 per-entry 后 bus 查询丢位, arbiter 40→8→1) → 合并所有候选组合, 8 paths 恢复; golden 40→8; 3 测试债务 (p6/m12/factory) 清理; unit +3; 主全量 2928 passed. [iter_131](docs/task_tree/iterations/iter_131_dataflow_bus_agg_fix.md) |
