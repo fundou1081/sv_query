@@ -91,10 +91,17 @@ depth=1 `['top.u_sub.a']`; no-target `['sub.a']`; `state<=state+1` 自环保留�
 
 ---
 
-## 🔭 待验证候选 (未实测, 勿当结论)
+## 🔭 待验证候选 (实测于 iter_128)
 
-- inout / 双向端口建模 (驱动器归属)
-- struct/union 字段驱动 (member-level)
-- interface/modport 信号 (iter_121 option 污染同区, 信号侧未审)
-- 派生时钟 / 多时钟域提取 (clock domain)
-- 顶层输入端口 fanin 语义 (外部驱动, 图内无源 — 属预期但需文档)
+| 候选 | 实测结果 | 判定 |
+|---|---|---|
+| inout 双向端口 | `PORT_INOUT` kind 正确; **跨模块 inout 连接缺失** — connection_extractor 只处理 input/output 分支 (connection_extractor.py:515-577), inout 无连接边 → top.sda ↔ u_io.sda 无桥, fanin 空答 | 🐛 缺口 (建模决策: 双向驱动归属) |
+| struct/union 字段 | 字段驱动正确 (p.addr←a + member→struct BIT_SELECT); **A2 提升条件 bug 已修**: 根查询有直接 DRIVER 误提升 → 兄弟字段泄漏 (fanin(p.addr) 含 p.data) | ✅ 修复 (iter_128) |
+| interface/modport | 整体实例 CONNECTION 有 (top.bf→u_slv.b); **成员级连接无桥** (bf.addr ← writer.b.addr 断) + fanin 假驱动 (bf.addr fanin 含 top.clk, BIT_SELECT 提升串扰) | 🐛 缺口 (建模决策: 成员方向传播) |
+| 派生时钟/多时钟域 | CLOCK/RESET 边提取正确 (div2→cnt_b); **fanin 假驱动已修**: CLOCK/RESET 边被当数据源递归追 (跨模块链 div2←u_div.clk←top.clk 混入) | ✅ 修复 (iter_128) |
+| 顶层输入 fanin | 空答 + confidence=uncertain = **预期语义** (外部驱动, 图内无源) | ✅ 预期, 测试锁定 |
+
+### 新增修复 (iter_128, 候选验证连带发现)
+
+- **fanin CLOCK/RESET 边守卫** (query/signal.py 主循环): CLOCK/RESET 是时序采样关系非数据驱动 — 不 append 不递归。此前"其他边类型递归"把时钟链当数据源 (多模块: cnt_b ←CLOCK div2 ←CONNECTION u_div.clk ←CONNECTION top.clk → fanin(cnt_b) 含 top.clk 假驱动)。数据用 clk (assign out=clk, DRIVER continuous) 不受影响。
+- **A2 提升条件修正** (query/signal.py ~174): `not drivers` → `not has_driver_edge and not drivers`。原条件 drivers 在下方主循环前几乎恒空, 根查询有直接 DRIVER 也误提升 (struct 字段 p.addr←a 升到父 struct p → 泄漏兄弟 p.data); 加 has_driver_edge 后若只查此 (无 not drivers) 又会让中间递归位 (data[7] 作 y 源被追自身驱动, 顶层输入位) 误提升 → 父总线子节点探索 seen 污染兄弟位 data[0] (fanin(y) 丢源)。两条件都需: 有直接驱动不升 (字段), 递归中间不升 (输入位)。
