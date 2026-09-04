@@ -98,53 +98,12 @@
 
 **当前**: 等待方豆指示 (iter_122 #8 ✅ / #7 专项尝试已回退, 阻塞记录)
 > #8 covergroup cross 匿名名合成 ✅ (iter_122, covergroup 28 passed)
-> #7 inline-with 专项 (iter_123 探索) 已回退: 语义过程体是 Statement 包装
-
-**iter_124 新诊断 (pyslang 环境脆弱性)**: 同一源码 CompilationUnit.syntax 全语法扫,
-结果依赖进程内 import 顺序 — 直接 import trace.core.semantic_adapter 后扫=0,
-不 import 或仅 import unified_tracer 时=1 (alias bridge 注册时序影响 syntax 遍历;
-与 d1 mutex 同族环境问题). #7 修复依赖该稳定性 → 维持 backlog, 建议后续
-隔离 subprocess 验证 pyslang syntax 路径.
-> (BlockStatement 不可迭代), 全语法扫经 UnifiedTracer adapter.root 后 syntax
-> 可达性不一致 (疑似 tracer 重建/缓存路径差异) — 需 UnifiedTracer 把
-> compiler/syntax 传入 ClassGraphBuilder 的专项改造 + statement 包装 attr 下钻.
-> 复现 CONSTRAINT-inline (/tmp/adv_verify.py)。见 iter_122 文档.
-> [iter_121](docs/task_tree/iterations/iter_121_sva_adversarial_fix.md) — 6 缺口全修
-> (formal 参数替换/sequence 展开/local var/函数/generate 内断言/option 污染);
-> 对抗 6 场景全绿, unit +8, SVA 83 零回归。
-> **下一个**: iter_122 — backlog 7-8 (constraint randomize-with inline 约束节点 /
-> covergroup cross name 空串)
-> 修 backlog 对抗发现 1-6 (formal 参数替换 / sequence 展开 / local var / 函数 /
-> generate 内 assert / option 污染)。次要 7-8 (constraint inline / covergroup cross)
-> 排 iter_122。复现: /tmp/adv_verify.py
-
-| sub-task | 状态 |
-|---|---|
-| 1-4: SVA 语义 (参数/序列/局部/函数) | ⬜ |
-| 5-6: generate-sva + option 污染 | ⬜ |
-| 测试 + 回归 + iter_121 文档 | ⬜ |
-
-**对抗验证发现 (方豆 "constraint covergroup sva 对抗")** — 待修 backlog, 建议按序处理:
-
-**SVA 提取器 (SVAExtractor) — 4 个语义缺口** (全有最小复现):
-1. **formal 参数未替换**: `property p_arg(x,y); ... endproperty; assert property(p_arg(a,b))` —
-   signals 提取成形式参 x/y + 序列名 s_arg, 实际信号 a/b 丢失
-2. **sequence 引用不展开**: property 引用 sequence (多时钟/局部变量 case) —
-   sequence 内信号 (a,b) 不进 signals (只列 s_seq 名); 多时钟 case clk2 在列 clk 不在
-3. **局部变量当信号**: `(a, tmp = b)` 的 local var tmp 被列进 signals
-4. **用户函数当信号**: $countones({b, f(data)}) 里自定义函数 f 被列进 signals
-
-**SVA 结构性缺口**:
-5. **generate-for 内 assert property 0 提取** (per-entry 断言全丢)
-6. **covergroup 的 option/type_option 被 SVA 当 property** (interface 内 cg → prop_names
-   含 top.u_bus.option/type_option — 跨域污染)
-
-**constraint / covergroup 次要**:
-7. constraint `randomize() with {}` inline 约束不产 CONSTRAINT 节点 (全家桶 8 类正常:
-   inside/dist/if/imp/foreach/solve/unique/soft 全在)
-8. covergroup cross 的 name 为空串 (coverpoint/bins 正常; generate 内 cg 按迭代重复但无索引)
-
-无崩溃/占位/加倍 — 属提取"内容正确性"缺口。复现: /tmp/adv_verify.py + /tmp/adv_probe.py
+**#7 已决策: 暂缓不做 inline 约束分析** (iter_125, 方豆拍板) — 确认 semantic
+侧不可达: pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with inline 约束
+无符号"是固有不对称 (SymbolKind.ConstraintBlock 只计 named; 语句是 StatementKind
+非 SymbolKind)。syntax 唯一入口但受 pyslang import-order env bug 制约。结论维护:
+[决策文档](docs/architecture/inline_constraint_semantic_unavailable.md) +
+未来改善观察 (pyslang 升级 / env bug 修复 / semantic 消歧分层 / iter_121 补丁重构)。
 
 **backlog (新发现, 待修)**: **connection 侧 RangeSelect 连接命名恒 '?'** —
 S2 四级嵌套 `.a(a[i*4+:4])` 出占位 `u_m2.a[?]`; 根因方向: _conn_expr_to_signal

@@ -89,6 +89,7 @@ sv_query_project/
 | **41** | **2026-09-03** | **L2** | **generate 实例连接 key 碰撞 (iter_120, iter_119 观察深挖)** | **G2[0] 连接缺失 (minimal 0 连接 / 嵌套错挂)** | **per-entry 归属正确** | **双根因: ① legacy get_generate_instances 嵌套丢 root 覆盖 indexed 族 (iter_117 后冗余, 移除) ② module_to_path key 无父路径 → 多实例同名 gen 碰撞 → 逐实例 paths_by_info; minimal 0→4 连接, 4 层 4 条全对; 101 批次零回归; unit +1** | **✅ per-entry 连接全归位** |
 | **42** | **2026-09-03** | **L2** | **SVA 对抗缺口 (iter_121, 方豆 "constraint covergroup sva 对抗")** | **formal 泄漏/序列不展开/局部/函数/generate 0 断言/option 污染** | **6 缺口全修** | **syntax 语境区分 (容器 Token/Invocation callee/IdentifierSelectName base); post-pass 引用展开+实参并入; kind 精确匹配; generate 下钻+member 解包; 对抗 6 场景全绿** | **✅ unit +8, SVA 83 零回归** |
 | **43** | **2026-09-03** | **L2** | **对抗 7-8 (iter_122)** | **cross 匿名名空串 / inline-with 无节点** | **#8 修 + #7 诊断** | **cross 合成名 cross_items; inline-with: 语义树过程体无约束符号落点, receiver 类解析需专项 (backlog)** | **⚠️ #8 ✅ covergroup 28 passed; #7 记录** |
+| **44** | **2026-09-03** | **L2** | **inline 约束语义决策 (iter_125, 方豆 "先确认 semantic")** | **#7 该不该用 syntax** | **决策落档** | **验证: 语义树 StatementKind≠SymbolKind, ConstraintBlock 只计 named → inline 语义不可达 (固有不对称); 方豆拍板暂缓 + 文档维护 (未来改善观察项); iter_121 补丁定性为 syntax 症状修 (semantic 消歧重构待改进)** | **✅ 决策文档 + 无代码变更** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
