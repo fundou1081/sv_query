@@ -171,7 +171,16 @@ class SignalTracer:
         # 时, 沿 BIT_SELECT **出边** (bit→bus) 提升到父总线 (top.y), 追总线级
         # 驱动 — 修 "子模块输出总线直连顶层位" 空答 (审计 A2; 结果总线粒度,
         # 位对位折算留待后续, 见 signal_graph_accuracy_audit.md)
-        if not drivers and ":" not in signal_id:
+        # [iter_128 候选2/位选 fix] 提升条件必须同时满足:
+        #   not has_driver_edge — 有直接 incoming DRIVER (struct 字段 p.addr←a)
+        #     则不该绕路提升到父 struct p (会把兄弟字段驱动 p.data 带回, 假源)
+        #   not drivers       — 递归中间节点 (data[7] 作为 y 的驱动源被递归追
+        #     它自己的驱动时, drivers 已含 data[7]) 不该提升: 顶层输入位升到
+        #     父总线 data 无意义 (输入总线也无驱动), 且副作用会 seen 污染兄弟
+        #     位 data[0], 导致 y 主循环真源被过滤 (fanin(y) 丢 data[0])
+        #   原 iter_126 只查 not drivers: struct 根查询 (drivers 空) 误提升 →
+        #   p.data 泄漏; 只查 not has_driver_edge: data[7] 中间递归误提升 → 污染
+        if (not has_driver_edge and not drivers and ":" not in signal_id):
             # [iter_126] 仅单 bit 提升 (range [a:b] 无驱动 = 空答, 语义锁定)
             for src, dst in list(self.graph.edges()):
                 if src == signal_id and dst != signal_id and dst not in seen_ids:
@@ -273,6 +282,14 @@ class SignalTracer:
                         edge = driver_edge
                 # [FIX] 只接受 DRIVER 边作为驱动
                 if edge and edge.kind != EdgeKind.DRIVER:
+                    # [iter_128 候选4] CLOCK/RESET 边是时序采样关系, 不是数据
+                    # 驱动源 — 不 append 也不递归。此前落到下方 "其他边类型继续
+                    # 递归追溯", 会把时钟链当数据源追 (多模块: cnt_b ←CLOCK div2
+                    # ←CONNECTION u_div.clk ←CONNECTION top.clk → fanin(cnt_b)
+                    # 含 top.clk, 假驱动)。数据用 clk 场景 (assign out=clk) 走
+                    # DRIVER continuous, 不受影响。
+                    if edge.kind in (EdgeKind.CLOCK, EdgeKind.RESET):
+                        continue
                     # CONNECTION 边:检查 src 是否是实例端口
                     if edge.kind == EdgeKind.CONNECTION:
                         node = self.graph.get_node(src)

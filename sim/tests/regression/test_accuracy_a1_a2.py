@@ -137,10 +137,13 @@ endmodule
     def test_port_selfloop_excluded_from_fanin(self):
         tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
         tr.build_graph(use_cache=False, target_module='top')
-        # depth=None 递归: 真实源 top.a; 自身 top.u_sub.y 不应出现
+        # depth=None 递归: 直接驱动 u_sub.a (模块内部 assign) + 递归源 top.a;
+        # 自身 top.u_sub.y 不应出现 (A3 核心: internal 自环标记不计源)
         ids = {r.id for r in tr.trace_fanin('top.u_sub.y')}
-        self.assertEqual(ids, {'top.a'},
+        self.assertNotIn('top.u_sub.y', ids,
                         f"fanin 不应含 internal 自环自身 (A3), 实际 {ids}")
+        self.assertIn('top.u_sub.a', ids, "直接驱动 u_sub.a 应在")
+        self.assertIn('top.a', ids, "递归源 top.a 应在")
 
     def test_port_selfloop_excluded_depth1(self):
         tr = UnifiedTracer(sources={'test.sv': self.BUSFIX}, log_level='ERROR')
@@ -166,6 +169,73 @@ endmodule
                  and any(getattr(e, 'assign_type', '') == 'internal'
                          for e in g._edge_data.get((s, d), []))]
         self.assertTrue(loops, "internal 自环边应保留在图 (A3 只改查询层)")
+
+
+class TestAuditCandidates(unittest.TestCase):
+    """iter_128 待验证候选实测修复锁定:
+    - 候选2: struct 字段 fanin 不泄漏兄弟字段 (A2 提升条件 has_driver_edge)
+    - 候选4: CLOCK/RESET 边不当作数据驱动源 (跨模块时钟链假驱动)
+    - 候选5: 顶层输入 fanin 空答属预期 (外部驱动图内无源)
+    """
+
+    STRUCT = '''typedef struct packed {
+  logic [7:0] addr;
+  logic [7:0] data;
+} pkt_t;
+module top (input logic [7:0] a, d, output pkt_t p);
+  assign p.addr = a;
+  assign p.data = d;
+endmodule
+'''
+
+    CLKDIV = '''module clkdiv (input clk, output reg div2);
+  always @(posedge clk) div2 <= ~div2;
+endmodule
+module top (input clk, output reg [3:0] cnt_b);
+  wire div2;
+  clkdiv u_div (.clk(clk), .div2(div2));
+  always_ff @(posedge div2)
+    cnt_b <= cnt_b + 1;
+endmodule
+'''
+
+    def test_struct_field_fanin_no_sibling_leak(self):
+        # 候选2: p.addr ← a (直接 DRIVER), 不应沿 BIT_SELECT 提升到 p 带回 p.data
+        tr = UnifiedTracer(sources={'test.sv': self.STRUCT}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertEqual({r.id for r in tr.trace_fanin('top.p.addr')},
+                         {'top.a'},
+                         "struct 字段 fanin 不应含兄弟字段 (A2 提升误判)")
+        self.assertEqual({r.id for r in tr.trace_fanin('top.p')},
+                         {'top.a', 'top.d'},
+                         "父 struct fanin 应含全部字段驱动")
+
+    def test_clock_edge_not_data_driver(self):
+        # 候选4: cnt_b<=cnt_b+1 的数据驱动只有自身; clk/div2 是时序采样边,
+        # 不应经跨模块链 (div2←u_div.clk←top.clk) 混入 fanin
+        tr = UnifiedTracer(sources={'test.sv': self.CLKDIV}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.cnt_b')}
+        self.assertEqual(ids, {'top.cnt_b'},
+                        f"fanin(cnt_b) 不应含时钟链 (假驱动), 实际 {ids}")
+
+    def test_clock_as_data_kept(self):
+        # assign out = clk: clk 作为数据 (DRIVER continuous) 仍应是驱动源
+        src = 'module top (input clk, output out);\n  assign out = clk;\nendmodule\n'
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertIn('top.clk', {r.id for r in tr.trace_fanin('top.out')},
+                      "数据用 clk (assign out=clk) 驱动应保留")
+
+    def test_top_input_fanin_empty_is_expected(self):
+        # 候选5: 顶层输入端口 = 外部驱动, 图内无源 → fanin 空是预期语义
+        src = 'module top (input a, output y);\n  assign y = a;\nendmodule\n'
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertEqual(list(tr.trace_fanin('top.a')), [],
+                         "顶层输入 fanin 空 = 外部驱动 (预期, 文档化)")
+        # 但它的负载 y 应可追踪 (a 作为源在 fanin(y) 中)
+        self.assertIn('top.a', {r.id for r in tr.trace_fanin('top.y')})
 
 
 if __name__ == '__main__':
