@@ -96,6 +96,22 @@
 | 3. unit + 回归 | ⬜ |
 | 4. iter_119 文档 + 提交 | ⬜ |
 
+**当前**: ✅ **SVA 对抗缺口修复完成** (iter_121, 方豆 "开工进行吧")
+> [iter_121](docs/task_tree/iterations/iter_121_sva_adversarial_fix.md) — 6 缺口全修
+> (formal 参数替换/sequence 展开/local var/函数/generate 内断言/option 污染);
+> 对抗 6 场景全绿, unit +8, SVA 83 零回归。
+> **下一个**: iter_122 — backlog 7-8 (constraint randomize-with inline 约束节点 /
+> covergroup cross name 空串)
+> 修 backlog 对抗发现 1-6 (formal 参数替换 / sequence 展开 / local var / 函数 /
+> generate 内 assert / option 污染)。次要 7-8 (constraint inline / covergroup cross)
+> 排 iter_122。复现: /tmp/adv_verify.py
+
+| sub-task | 状态 |
+|---|---|
+| 1-4: SVA 语义 (参数/序列/局部/函数) | ⬜ |
+| 5-6: generate-sva + option 污染 | ⬜ |
+| 测试 + 回归 + iter_121 文档 | ⬜ |
+
 **对抗验证发现 (方豆 "constraint covergroup sva 对抗")** — 待修 backlog, 建议按序处理:
 
 **SVA 提取器 (SVAExtractor) — 4 个语义缺口** (全有最小复现):
