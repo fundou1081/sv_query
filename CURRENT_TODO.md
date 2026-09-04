@@ -31,11 +31,16 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 但受 pyslang import-order env bug 制约。维护:
 [决策文档](docs/architecture/inline_constraint_semantic_unavailable.md) (含未来改善观察)
 
-**准确性审计产出 (2026-09-03)**: [signal_graph_accuracy_audit.md](docs/architecture/signal_graph_accuracy_audit.md)
-- A1 无 target_module → generate 实例内部缺失 (graph_builder.py:68 / driver_extractor.py:1287)
-- A2 子模块输出总线直连顶层位 → 顶层位无 DRIVER (connection_extractor.py:567-577)
-- A3 端口 DRIVER 自环计入源 (轻微设计标记)
-建议修复序: A1 (默认 target) → A2 (总线位展开/查询一跳)。
+**准确性审计 (2026-09-03/04)**: [signal_graph_accuracy_audit.md](docs/architecture/signal_graph_accuracy_audit.md)
+- ✅ A1 无 target_module → generate 嵌套实例内部缺失 (iter_126, 收窄后):
+  库默认保留无 target 类型级多模块契约; CLI 可视化入口 (build_viz_tracer 无
+  --module) 自动单 top target — cordic 365→542 节点/667 rects, genblk
+  实例内部真实 assign 出现。`build_graph(..., auto_target_single_top=True)`
+  供库调用方 opt-in
+- ✅ A2 子模块输出总线直连顶层位 → 位查询空答 (iter_126): 位节点不存在/无驱动
+  → 提升父总线 (总线粒度; 位对位折算 = 后续项)
+- ⏳ A3 端口 DRIVER 自环计入源 (轻微设计标记) — 待修
+- ⏳ 待验证候选: inout / struct / interface / 时钟域
 
 **backlog (未启动, 按序)**:
 1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
@@ -43,11 +48,13 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
    见决策文档 D3 (业务改善信号触发)
 3. slang generate-entry 合并枚举观察 (iter_119 记录)
-4. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
+4. A2 位对位折算 (总线粒度 → 位粒度跨实例桥) — 审计文档后续项
+5. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-04** | **准确性审计 A1/A2 修复 (iter_126)** | A1 收窄: 库默认保留无 target 类型级契约 (8 回归恢复), CLI visualize 入口 (build_viz_tracer 无 --module) 自动单 top target — cordic 365→542 节点 genblk 内部真实 assign 恢复; A2 总线直连位查询提升非空; A1 测试弱断言 (self-loop) 重写为非自环; 全量 **2913 passed / 0 failed**. [iter_126](docs/task_tree/iterations/iter_126_accuracy_a1_a2.md) |
 | **2026-09-02** | **测试资产扩充 + 缺陷修复收尾 (iter_086~108)** | truth 层 32→130 测试 (T1-T12 扩充 + A-F 修复断言); 缺陷 A-F (expression 字节切片 / net-decl 位宽 / LHS concat zip / ternary 常量 / part-select 宽度 / generate-if always) + ELK dangling + #23/#24 generate 单块 wire 全修; integration 419+0 历史首次全绿; 全量 2843 passed. 迭代记录 iter_086~108 |
 | **2026-09-02** | **Truth 层扩充 T1-T12** | 12 文件 + 5 fixture, 集合相等断言; assign/clock-reset/case/位选/concat/function-task/parameter/alias/class/generate-if-case/SVG 布局/查询精确集. [iter_100 汇总](docs/task_tree/iterations/iter_100_t1_t12_wrapup.md) |
 | **2026-09-02** | **B 组复查 + cli 3 失败修复** | iter_082 误分类纠正 (darkriscv SVG 断言 + 删 --no-strict); models.py width=None 序列化根因; unit+cli 1484 passed. [iter_086](docs/task_tree/iterations/iter_086_group_b_recheck_real_project_viz.md) / [iter_087](docs/task_tree/iterations/iter_087_cli_3_failures_fix.md) |

@@ -432,7 +432,9 @@ class UnifiedTracer:
         """获取 Compilation 对象"""
         return self._get_compiler().get_compilation()
 
-    def build_graph(self, force: bool = False, use_cache: bool = False, target_module: str | None = None) -> SignalGraph:
+    def build_graph(self, force: bool = False, use_cache: bool = False,
+                    target_module: str | None = None,
+                    auto_target_single_top: bool = False) -> SignalGraph:
         """构建信号流图
 
         Args:
@@ -473,22 +475,37 @@ class UnifiedTracer:
             from .core.pipeline import Pipeline, PipelineStep
 
             def _step_compile(ctx):
-                # [fix] 原错写 return ctx["root"] — compile 步应**产出** root
-                return self._get_compiler().get_root()
+                # [iter_126 A1] compile 成功后才探测: target_module=None 且仅 1 个
+                # top 时自动以该 top 为 target (修无 target 时 generate 实例内部
+                # 缺失: graph_builder.py:68 gate + driver_extractor.py:1287 旧路径).
+                # 多 top 库保持全图 (用户显式 --module 选域)。只在成功 root 上做,
+                # 避免对 broken/strict 编译的二次 get_root (消耗性, root→None)。
+                root = self._get_compiler().get_root()
+                if (auto_target_single_top and target_module is None
+                        and root is not None):
+                    try:
+                        tops = list(root.topInstances)
+                        if len(tops) == 1:
+                            ctx["target"] = str(tops[0].name)
+                    except Exception as e:
+                        _main_logger.warning("自动 target 检测失败: %s", e)
+                return root
 
             def _step_adapter(ctx):
                 from .core.semantic_adapter import SemanticAdapter
 
                 compiler = ctx["compiler"]
                 semantic_adapter = SemanticAdapter(
-                    ctx["root"], compiler, target_module=target_module
+                    ctx["root"], compiler,
+                    target_module=ctx.get("target", target_module),
                 )
                 self._adapter = semantic_adapter  # Store for later access by _get_adapter()
                 return semantic_adapter
 
             def _step_graph(ctx):
                 semantic_adapter = ctx["adapter"]
-                builder = GraphBuilder(semantic_adapter, target_module=target_module)
+                builder = GraphBuilder(semantic_adapter,
+                                       target_module=ctx.get("target", target_module))
                 graph = builder.build()
                 # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
                 # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast

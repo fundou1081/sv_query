@@ -101,7 +101,16 @@ def build_viz_tracer(
         strict=strict,
         include_dirs=include_dirs,
     )
-    graph = tracer.build_graph(target_module=target_module, use_cache=use_cache)
+    # [iter_126 A1 收窄 2026-09-04] 自动单 top target 只在 CLI 设计视图入口启用:
+    # 用户无 --module 看整个设计时, generate 嵌套实例内部不再整块缺失
+    # (cordic 365→542 节点)。库 API build_graph() 默认保持无 target 类型级
+    # 多模块契约 (cross_module/boundary 等测试锁定的 mixed-namespace 语义),
+    # 需要的库调用方显式传 auto_target_single_top=True。
+    graph = tracer.build_graph(
+        target_module=target_module,
+        use_cache=use_cache,
+        auto_target_single_top=(target_module is None),
+    )
     return tracer, graph
 
 
