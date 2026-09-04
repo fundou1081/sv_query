@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-03 GMT+8 (门级原语 leaf cell 建模进行中, iter_112)
+> **最后更新**: 2026-09-05 GMT+8 (iter_134 嵌套 generate 假节点清理, 全量回归 3048 passed)
 
 ---
 
@@ -27,8 +27,9 @@
 **iter_134 (2026-09-05)**: 嵌套 generate 深层重复段假节点清理 — gen_block
 只取直接宿主 generate 段 (hp 紧邻实例名前段 name[N]); aes 假节点
 279/1116→0, cordic 105→0 (truth 更新); 连带修 wrapper cross get_edges
-全查 + PORT_OUT 内部驱动自递归 (test_deep 回归)。unit +3; 全量
-2937 passed。
+全查 + PORT_OUT 内部驱动自递归 (test_deep 回归)。unit +3; 全量非
+opensource 3048 passed (22 env/既有 skip; serv 1 假失败 = HOME 重定向
+空 filelist, 真实 HOME 单跑通过)。
 [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md)
 
 **iter_133 (2026-09-05)**: iter_131/132 真实项目复验 (aes 4834 节点/272
@@ -76,6 +77,9 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
   → 提升父总线 (总线粒度; 位对位折算 = 后续项)
 - ✅ A3 端口 DRIVER 自环计入源 (iter_127): 查询层跳过 assign_type="internal"
   自环 (实例输出端口标记); nonblocking 真自环 (state<=state+1) 保留
+- ✅ iter_133 backlog 嵌套 generate 深层假节点清零 (iter_134): gen_block
+  直接宿主判定 (hp 末段前段 name[N]) — aes 279/1116→0 / cordic 105→0;
+  wrapper cross 守卫 get_edges 全查 + wrapper_passthrough 自递归连带修
 - ✅ 待验证候选 5 项全闭环 (iter_128/129): struct 字段正确; 派生时钟域
   CLOCK 提取正确 + fanin CLOCK 假驱动修复; 顶层输入空 fanin = 预期锁定;
   inout 跨模块连接修复 (output 式同线 CONNECTION); interface 成员级桥修复
@@ -100,7 +104,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
-| **2026-09-05** | **嵌套 generate 假节点清理 (iter_134)** | gen_block 直接宿主判定修深层嵌套假路径 (aes 279/1116→0, cordic 105→0); wrapper cross get_edges + PORT_OUT 自递归连带修; unit +3; 全量 **2937 passed**. [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md) |
+| **2026-09-05** | **嵌套 generate 假节点清理 (iter_134)** | gen_block 直接宿主判定修深层嵌套假路径 (aes 279/1116→0, cordic 105→0); wrapper cross get_edges + PORT_OUT 自递归连带修; unit +3; 全量非 opensource **3048 passed** (22 env/既有 skip; serv 1 假失败 = HOME 重定向, 真实 HOME 通过). [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md) |
 | **2026-09-05** | **iter_131/132 真实复验 (iter_133)** | aes 4834 节点/272 实例复验: fanin 位隔离零跨 entry; dataflow 已知限制区分; 暴露嵌套 generate 深层重复段假节点 (351/4834, baseline 既有) 登记 audit backlog. [iter_133](docs/task_tree/iterations/iter_133_real_verify.md) |
 | **2026-09-05** | **generate per-entry fanin 位隔离 (iter_132)** | fanin(top.y[3]) 串入 G[0..2] 双根因: A2 提升忽略 incoming CONNECTION + wrapper cross 无条件跨; 修后 y[i] fanin 恰 [G[i].u_leaf.y]; bus 聚合/纯直通/xor/wrapper 全保; unit +3; 全量 **2934 passed**. [iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md) |
 | **2026-09-04** | **dataflow bus 聚合修复 + usage 债务清理 (iter_131)** | 真回归: _find_paths 首个非空候选组合即返 (iter_118 per-entry 后 bus 查询丢位, arbiter 40→8→1) → 合并所有候选组合, 8 paths 恢复; golden 40→8; 3 测试债务 (p6/m12/factory) 清理; unit +3; 主全量 2928 passed. [iter_131](docs/task_tree/iterations/iter_131_dataflow_bus_agg_fix.md) |
