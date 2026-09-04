@@ -96,10 +96,13 @@
 | 3. unit + 回归 | ⬜ |
 | 4. iter_119 文档 + 提交 | ⬜ |
 
-**当前**: ✅ **对抗缺口 7-8 处置完成** (iter_122, 方豆 "继续")
+**当前**: 等待方豆指示 (iter_122 #8 ✅ / #7 专项尝试已回退, 阻塞记录)
 > #8 covergroup cross 匿名名合成 ✅ (iter_122, covergroup 28 passed)
-> #7 constraint inline-with: 诊断完成 — inline 约束不在 class 成员层, receiver
-> 类解析需专项设计 → backlog 待修。见 [iter_122](docs/task_tree/iterations/iter_122_cross_name_inline_constraint.md)
+> #7 inline-with 专项 (iter_123 探索) 已回退: 语义过程体是 Statement 包装
+> (BlockStatement 不可迭代), 全语法扫经 UnifiedTracer adapter.root 后 syntax
+> 可达性不一致 (疑似 tracer 重建/缓存路径差异) — 需 UnifiedTracer 把
+> compiler/syntax 传入 ClassGraphBuilder 的专项改造 + statement 包装 attr 下钻.
+> 复现 CONSTRAINT-inline (/tmp/adv_verify.py)。见 iter_122 文档.
 > [iter_121](docs/task_tree/iterations/iter_121_sva_adversarial_fix.md) — 6 缺口全修
 > (formal 参数替换/sequence 展开/local var/函数/generate 内断言/option 污染);
 > 对抗 6 场景全绿, unit +8, SVA 83 零回归。
