@@ -96,6 +96,28 @@
 | 3. unit + 回归 | ⬜ |
 | 4. iter_119 文档 + 提交 | ⬜ |
 
+**对抗验证发现 (方豆 "constraint covergroup sva 对抗")** — 待修 backlog, 建议按序处理:
+
+**SVA 提取器 (SVAExtractor) — 4 个语义缺口** (全有最小复现):
+1. **formal 参数未替换**: `property p_arg(x,y); ... endproperty; assert property(p_arg(a,b))` —
+   signals 提取成形式参 x/y + 序列名 s_arg, 实际信号 a/b 丢失
+2. **sequence 引用不展开**: property 引用 sequence (多时钟/局部变量 case) —
+   sequence 内信号 (a,b) 不进 signals (只列 s_seq 名); 多时钟 case clk2 在列 clk 不在
+3. **局部变量当信号**: `(a, tmp = b)` 的 local var tmp 被列进 signals
+4. **用户函数当信号**: $countones({b, f(data)}) 里自定义函数 f 被列进 signals
+
+**SVA 结构性缺口**:
+5. **generate-for 内 assert property 0 提取** (per-entry 断言全丢)
+6. **covergroup 的 option/type_option 被 SVA 当 property** (interface 内 cg → prop_names
+   含 top.u_bus.option/type_option — 跨域污染)
+
+**constraint / covergroup 次要**:
+7. constraint `randomize() with {}` inline 约束不产 CONSTRAINT 节点 (全家桶 8 类正常:
+   inside/dist/if/imp/foreach/solve/unique/soft 全在)
+8. covergroup cross 的 name 为空串 (coverpoint/bins 正常; generate 内 cg 按迭代重复但无索引)
+
+无崩溃/占位/加倍 — 属提取"内容正确性"缺口。复现: /tmp/adv_verify.py + /tmp/adv_probe.py
+
 **backlog (新发现, 待修)**: **connection 侧 RangeSelect 连接命名恒 '?'** —
 S2 四级嵌套 `.a(a[i*4+:4])` 出占位 `u_m2.a[?]`; 根因方向: _conn_expr_to_signal
 RangeSelect 取 expr.selector (semantic RangeSelect 无 .selector, left/right 在
