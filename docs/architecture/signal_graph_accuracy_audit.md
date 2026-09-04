@@ -7,14 +7,22 @@
 
 ---
 
+## ✅ 已修复 (iter_126, 2026-09-04 收窄后)
+| 条目 | 修复 | 位置 |
+|---|---|---|
+| A1 无 target 盲区 | **CLI 设计视图入口** (build_viz_tracer, 无 `--module` 时) 自动单 top target: 库默认 `build_graph()` 保持无 target 类型级多模块契约 (cross_module/boundary 等测试锁定 mixed-namespace 语义), 需要的调用方显式传 `auto_target_single_top=True` | `_viz_common.py` build_viz_tracer + `unified_tracer.py` build_graph 新参数 (≈435); 证据 cordic CLI 无 module 365→542 节点 / 667 rects, `genblk1[0].U.x_shifter` 出现 |
+| A2 总线直连位查询空答 | query/signal.py: 位节点不存在 → 提升父总线 (总线粒度); 存在位节点无驱动 → BIT_SELECT 出边提升 | `_trace_drivers_recursive` (≈74-165) |
+| A2 粒度说明 | 结果总线粒度 (top.y[3] → u_sub.y); 位对位折算 = 后续项 | — |
+
 ## 🐛 未修复
 
-### A1. 无 target_module 时 generate 实例内部逻辑缺失 (严重)
+### A1. (✅ iter_126 收窄: CLI 入口启用) 无 target_module 时 generate 实例内部逻辑缺失 (严重)
 
 **现象**: `build_graph(target_module=None)` (CLI `--module` 缺省) 时, generate-for
 实例内部的 assign/always 不提取 — 实例内部信号只在 connection 层 (端口自环)。
 **证据** (cordic fixture `golden_dataflow_39`):
-- `target=None`: 542→365 节点, rotator 内部 DRIVER 150→75 (75 全是 connection 端口自环, 真内部 0)
+- `target=None`: 365 节点 (auto 后 542), rotator 实例内部信号整块缺失
+  (auto 后出现 `cordic.genblk1[0].U.x_shifter.D` 等实例路径节点)
 **源码位置**:
 - `src/trace/core/graph_builder.py:68` — `_configure_instance_paths` 仅在
   `if self.target_module:` 下跑; None 时 driver 无实例路径
@@ -22,11 +30,19 @@
   else 旧路径按模块类型名提取 (generate 内实例从不作为 (path,module) 处理)
 **触发**: CLI `visualize dataflow` 不传 `--module` (默认 None,
 `src/cli/commands/visualize.py:260`)、或任何 API 调用不设 target。
-**修复方向**: target=None 时自动选首 top 作为 target (等价 `target_module=tops[0]`),
-或 CLI 缺省补 module。已在 iter_113/114 修 driver 下钻, 只差"默认启用"。
-**影响**: 真实项目无 module 参数时, 图缺整棵子实例内部逻辑 (darkriscv/picorv32 等)。
+**修复 (2026-09-04 定稿)**: 库 API 默认**不**自动 target — 无 target 类型级
+多模块图是既有契约 (cross_module_tracking/boundary/module_synth/stats 等 8+
+测试锁定 mixed-namespace: `top.u_tb.clk` 实例端口 + `tb.clk_out` 类型级并存)。
+改为:
+- `unified_tracer.build_graph(..., auto_target_single_top=False)` 新参数, 默认关
+- CLI 用户入口 `build_viz_tracer` (src/cli/_viz_common.py) 在无 `--module` 时传
+  `auto_target_single_top=True` — 单 top 设计自动聚焦, 多 top 库保持全图
+- iter_113-120 已让**直接** generate 实例 (leaf 在 top 内 generate-for) 在无
+  target 下也有实例路径; flag 补齐的是**嵌套实例内部真实 assign** (cordic 型)
+**影响**: 真实项目无 module 参数跑 CLI 可视化时, 图不再缺整棵子实例内部逻辑
+(darkriscv/picorv32 等)。库 API 调用方需要实例级视图时显式传 flag。
 
-### A2. 子模块输出总线直连顶层总线位时, 顶层位无 DRIVER (中)
+### A2. (✅ iter_126, 总线粒度) 子模块输出总线直连顶层总线位时, 顶层位无 DRIVER (中)
 
 **现象**: `sub u_sub(.y(y))` 且 sub 输出总线位由内部 assign 驱动, 顶层 `y[3]`
 查询"谁驱动" = ∅ (真源 `top.a[3]` 链: a[3]→u_sub.a[3]→(assign)→u_sub.y[3]→

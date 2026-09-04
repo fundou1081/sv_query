@@ -114,6 +114,18 @@ class SignalTracer:
             return
 
         if signal_id not in self.graph.nodes():
+            if ":" in signal_id:
+                return  # [iter_126] part-select 范围 [a:b] 保持空答 (locked truth)
+            # [iter_126 A2] 位查询落到不存在位节点的总线: 纯总线直连
+            # (sub .y(y)) 无 per-bit 逻辑 → 无 bit 节点; 查询 top.y[3] 提升到
+            # 父总线 top.y 追总线级驱动 (粒度 bus; 位对位折算留待后续).
+            import re as _re
+            m = _re.match(r"^(.*)\[\d+\]$", signal_id)
+            if m:
+                base = m.group(1)
+                if base in self.graph.nodes() and base not in seen_ids:
+                    self._trace_drivers_recursive(
+                        base, drivers, seen_ids, current_depth, max_depth)
             return
 
         # [FIX 2026-07-09] 防无限循环: 进入递归时立即添加 signal_id 到 seen_ids,
@@ -154,6 +166,21 @@ class SignalTracer:
                         # 子节点有驱动
                         if src not in seen_ids:
                             self._trace_drivers_recursive(src, drivers, seen_ids, current_depth, max_depth)
+
+        # [iter_126 A2] 位级查询提升: 叶子位节点 (top.y[3]) 无 incoming driver
+        # 时, 沿 BIT_SELECT **出边** (bit→bus) 提升到父总线 (top.y), 追总线级
+        # 驱动 — 修 "子模块输出总线直连顶层位" 空答 (审计 A2; 结果总线粒度,
+        # 位对位折算留待后续, 见 signal_graph_accuracy_audit.md)
+        if not drivers and ":" not in signal_id:
+            # [iter_126] 仅单 bit 提升 (range [a:b] 无驱动 = 空答, 语义锁定)
+            for src, dst in list(self.graph.edges()):
+                if src == signal_id and dst != signal_id and dst not in seen_ids:
+                    edge = self.graph.get_edge(src, dst)
+                    if edge and edge.kind == EdgeKind.BIT_SELECT:
+                        self._trace_drivers_recursive(
+                            dst, drivers, seen_ids, current_depth + 1, max_depth)
+                        if drivers:
+                            break
 
         # [FIX 2026-06-11] 跨 module boundary: 当 target 是 module def PORT_OUT
         # 且 0 driver 时, wrapper module 实际是 port mapping, 没内部 assign.

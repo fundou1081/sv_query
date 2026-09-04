@@ -90,6 +90,7 @@ sv_query_project/
 | **42** | **2026-09-03** | **L2** | **SVA 对抗缺口 (iter_121, 方豆 "constraint covergroup sva 对抗")** | **formal 泄漏/序列不展开/局部/函数/generate 0 断言/option 污染** | **6 缺口全修** | **syntax 语境区分 (容器 Token/Invocation callee/IdentifierSelectName base); post-pass 引用展开+实参并入; kind 精确匹配; generate 下钻+member 解包; 对抗 6 场景全绿** | **✅ unit +8, SVA 83 零回归** |
 | **43** | **2026-09-03** | **L2** | **对抗 7-8 (iter_122)** | **cross 匿名名空串 / inline-with 无节点** | **#8 修 + #7 诊断** | **cross 合成名 cross_items; inline-with: 语义树过程体无约束符号落点, receiver 类解析需专项 (backlog)** | **⚠️ #8 ✅ covergroup 28 passed; #7 记录** |
 | **44** | **2026-09-03** | **L2** | **inline 约束语义决策 (iter_125, 方豆 "先确认 semantic")** | **#7 该不该用 syntax** | **决策落档** | **验证: 语义树 StatementKind≠SymbolKind, ConstraintBlock 只计 named → inline 语义不可达 (固有不对称); 方豆拍板暂缓 + 文档维护 (未来改善观察项); iter_121 补丁定性为 syntax 症状修 (semantic 消歧重构待改进)** | **✅ 决策文档 + 无代码变更** |
+| **45** | **2026-09-04** | **L2** | **准确性审计 A1/A2 (iter_126)** | **A1 无 target generate 嵌套实例内部缺失 / A2 总线直连位查询空答** | **A1 CLI 入口 opt-in; A2 位提升** | **A1 首版默认自动 target → 8 回归失败 (库无 target 类型级全模块契约被锁定) → 收窄: build_graph 新参 auto_target_single_top (默认关) + build_viz_tracer 无 --module 时启用; cordic CLI 365→542/667 rects genblk 内部出现; A2 位提升非空 (top.y[3]→u_sub.y); 原 A1 测试弱断言 (self-loop s==d) 重写为非自环真实驱动** | **✅ unit 5; 全量 2913 passed / 0 failed** |
 ---
 
 ## 🔥 Active Task: Plan B Step G (Cross-Module Port Edge)
