@@ -159,13 +159,27 @@ class ConnectionExtractor:
         # 收集所有模块的端口定义 (方向和位宽)
         all_module_ports = {}
         all_module_widths = {}
+        # [iter_129] interface 类型端口: module_name → {port_name: (interface_def_name, members)}
+        all_interface_ports: dict[str, dict[str, tuple[str, list[str]]]] = {}
         for module in self.adapter.get_modules():
             module_name = self.adapter.get_module_name(module)
             port_dirs = {}
             port_widths = {}
+            iface_ports: dict[str, tuple[str, list[str]]] = {}
             for port in self.adapter.get_port_declarations(module):
                 name, direction = self.adapter.get_port_name_and_direction(port)
                 port_dirs[name] = direction.strip()
+                # [iter_129] InterfacePortSymbol (kind=SymbolKind.InterfacePort,
+                # 有 interfaceDef): 收集接口名 + 成员信号, 供实例层成员桥
+                _idef = getattr(port, "interfaceDef", None)
+                if _idef is not None:
+                    try:
+                        iface_name = str(getattr(_idef, "name", "")) or ""
+                        members = self.adapter.get_interface_members(port)
+                        if iface_name and members:
+                            iface_ports[name] = (iface_name, list(members))
+                    except Exception as _e:
+                        logger.debug("interface 端口收集失败: %s", _e)
                 # 获取位宽 (传入 module 作为 scope 以解析参数)
                 width = self.adapter.extract_port_width(port, scope=module)
                 # extract_port_width with scope returns dict, convert to tuple for compatibility
@@ -184,6 +198,8 @@ class ConnectionExtractor:
                 port_widths[name] = width
             all_module_ports[module_name] = port_dirs
             all_module_widths[module_name] = port_widths
+            if iface_ports:
+                all_interface_ports[module_name] = iface_ports
 
         # [FIX] 第一阶段:收集所有实例信息
         instances_info = []  # [(inst_module_name, inst_name, parent_module)]
@@ -439,6 +455,22 @@ class ConnectionExtractor:
                 signal_name = self.adapter.clean_name(signal_name)
 
                 direction = module_ports.get(port_name, "unknown").strip()
+                # [iter_129] interface 类型端口 (模块端口声明 bus_if b):
+                # 收集成员级连接信息 (inst_path, port_name, iface, members,
+                # parent 前缀), 供 graph_builder 后处理建成员桥。节点仍创建
+                # (PORT_IN kind, 兼容既有查询), 但跳过普通 input/output/inout
+                # 方向边 — interface 是共享总线, 方向由实例内部是否驱动成员
+                # 决定 (后处理检测 incoming DRIVER)。
+                _iface_info = (all_interface_ports.get(inst_module_name, {})
+                               .get(port_name))
+                if _iface_info is not None:
+                    _iface_name, _iface_members = _iface_info
+                    _iface_parent_scope = _sig_scope if _sig_scope else parent_path
+                    result.interface_links.append(
+                        (inst_path, port_name, _iface_name,
+                         list(_iface_members),
+                         f"{_iface_parent_scope}.{signal_name}")
+                    )
 
                 inst_port_id = f"{inst_path}.{port_name}"
                 # [FIX 2026-08-27 18:56] Bug #2: 端口方向未识别不再静默 fallback
@@ -512,6 +544,10 @@ class ConnectionExtractor:
                 direction_clean = direction.strip()
                 parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else "top"
 
+                # [iter_129] interface 端口跳过普通方向建模 (节点已建, link 已收集)
+                if _iface_info is not None:
+                    continue
+
                 if direction_clean == "input":
                     # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
                     _sig_parent = _sig_scope if _sig_scope else parent_path
@@ -574,6 +610,29 @@ class ConnectionExtractor:
                         )
                     # 同步构建 port_to_internal (full path) + port_to_module_type (short)
                     result.port_to_internal[inst_port_id] = child_signal_id
+                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
+                elif "inout" in direction_clean:
+                    # [iter_129 候选1] inout 双向端口: 父信号与实例端口是**同一根线**
+                    # (物理连接, 无方向归属 — 谁驱动取决于上下文: 外部拉 or 实例
+                    # 内部三态驱动)。此前完全无 inout 分支 → 无任何边 → 跨模块
+                    # fanin 空答 (top.sda ← u_io.sda 断)。
+                    # 建模: 建 output 式 CONNECTION inst_port → parent_signal,
+                    # fanin(父线) 沿它穿透到实例端口, 再追实例内部驱动链
+                    # (三态 assign 的 DRIVER/BRANCH 边)。不建 input 式
+                    # (parent → inst_port), 避免双向边让 fanin 把"外部线"当
+                    # 实例端口驱动源 (i2c 开漏多驱动归属 = 更深语义, 待专项)。
+                    _inout_parent = f"{_sig_scope if _sig_scope else parent_path}.{signal_name}"
+                    if _inout_parent != inst_port_id:
+                        result.edges.append(
+                            TraceEdge(
+                                src=inst_port_id,
+                                dst=_inout_parent,
+                                kind=EdgeKind.CONNECTION,
+                                assign_type="connection",
+                            )
+                        )
+                    # port_to_internal 同 output 语义: 实例端口 → 内部 (self 同路径)
+                    result.port_to_internal[inst_port_id] = f"{inst_path}.{port_name}"
                     result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
 
         # [FIX] 后处理:修复实例端口的位宽

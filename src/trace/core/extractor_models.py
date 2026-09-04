@@ -35,3 +35,7 @@ class ExtractorResult:
     expr_trees: dict[str, dict] = field(default_factory=dict)   # {dst_key → tree_dict} (含多分支 max 合并)
     const_map: dict[str, list] = field(default_factory=dict)    # {dst_short → [const_str,...]} 从 expr_trees 树遍历提取
     func_info: dict[str, tuple | None] = field(default_factory=dict)  # {func_name → (msb,lsb)|None} 从 semantic function symbol 提取
+    # [iter_129] interface 端口连接信息: (inst_path, port_name, interface_def_name,
+    # members, parent_member_prefix) — graph_builder 后处理据此建成员级桥。
+    # 例: writer u_w(.b(bf)) → ('top.u_w', 'b', 'bus_if', ['addr','data'], 'top.bf')
+    interface_links: list[tuple] = field(default_factory=list)

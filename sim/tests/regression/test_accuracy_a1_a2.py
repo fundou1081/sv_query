@@ -238,5 +238,128 @@ endmodule
         self.assertIn('top.a', {r.id for r in tr.trace_fanin('top.y')})
 
 
+class TestInoutCrossModule(unittest.TestCase):
+    """iter_129 候选1: inout 跨模块连接 (父线 ↔ 实例端口同线)."""
+
+    SRC = '''module bidir_io (inout wire sda, input wire en, input wire data);
+  assign sda = en ? data : 1'bz;
+endmodule
+module top (inout wire sda, input wire en, input wire data);
+  bidir_io u_io (.sda(sda), .en(en), .data(data));
+endmodule
+'''
+
+    def test_inout_connection_edge(self):
+        # 实例 inout 端口 → 父线 CONNECTION (同线, output 式)
+        tr = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        conns = [1 for s, d in g.edges()
+                 if s == 'top.u_io.sda' and d == 'top.sda'
+                 and any(e.kind.name == 'CONNECTION'
+                         for e in g._edge_data.get((s, d), []))]
+        self.assertTrue(conns, "inout 实例端口→父线应有 CONNECTION (iter_129)")
+
+    def test_inout_fanin_reaches_instance_driver(self):
+        # fanin(顶层 inout) 穿透到实例内部三态驱动链 (修复前空答)
+        tr = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.sda')}
+        self.assertTrue(ids, "顶层 inout fanin 不应空 (iter_129 修复前空答)")
+        self.assertIn('top.u_io.data', ids,
+                      "应含实例内部驱动源 u_io.data (三态 assign)")
+
+    def test_inout_port_node_kind(self):
+        # 回归: PORT_INOUT kind 保持 (不破坏 iter_064 断言)
+        tr = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        nd = g.get_node('top.u_io.sda')
+        self.assertIsNotNone(nd)
+        self.assertEqual(nd.kind.name, 'PORT_INOUT')
+
+
+class TestInterfaceMemberBridge(unittest.TestCase):
+    """iter_129 候选3: interface 成员级桥 (实例端口成员 ↔ interface 实例成员)."""
+
+    WRITER = '''interface bus_if;
+  logic [7:0] addr;
+endinterface
+module writer (bus_if b, input logic [7:0] a);
+  assign b.addr = a;
+endmodule
+module top (input logic [7:0] a);
+  bus_if bf();
+  writer u_w (.b(bf), .a(a));
+endmodule
+'''
+
+    COMBINED = '''interface bus_if;
+  logic [7:0] addr;
+endinterface
+module writer (bus_if b, input logic [7:0] a);
+  assign b.addr = a;
+endmodule
+module slave (bus_if b, output logic [7:0] o);
+  assign o = b.addr;
+endmodule
+module top (input logic [7:0] a, output logic [7:0] o);
+  bus_if bf();
+  writer u_w (.b(bf), .a(a));
+  slave u_s (.b(bf), .o(o));
+endmodule
+'''
+
+    def test_writer_member_bridge_edge(self):
+        # 实例驱动成员 (writer assign b.addr=a) → 桥 u_w.b.addr → bf.addr
+        tr = UnifiedTracer(sources={'test.sv': self.WRITER}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        conns = [1 for s, d in g.edges()
+                 if s == 'top.u_w.b.addr' and d == 'top.bf.addr'
+                 and any(e.kind.name == 'CONNECTION'
+                         for e in g._edge_data.get((s, d), []))]
+        self.assertTrue(conns, "writer 成员驱动桥应存在 (u_w.b.addr→bf.addr)")
+
+    def test_writer_member_fanin_reaches_internal(self):
+        # fanin(interface 实例成员) → 实例端口成员 → 内部驱动
+        tr = UnifiedTracer(sources={'test.sv': self.WRITER}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids1 = {r.id for r in tr.trace_fanin('top.bf.addr')}
+        self.assertEqual(ids1, {'top.u_w.b.addr'},
+                         "bf.addr 直接驱动 = writer 端口成员 (粒度层)")
+        ids2 = {r.id for r in tr.trace_fanin('top.u_w.b.addr')}
+        self.assertTrue({'top.u_w.a', 'top.a'} <= ids2,
+                        f"writer 端口成员 fanin 应达 a, 实际 {ids2}")
+
+    def test_slave_read_bridge_direction(self):
+        # 只读方 (slave) 桥反向: bf.addr → u_s.b.addr
+        tr = UnifiedTracer(sources={'test.sv': self.COMBINED}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        conns = [1 for s, d in g.edges()
+                 if s == 'top.bf.addr' and d == 'top.u_s.b.addr'
+                 and any(e.kind.name == 'CONNECTION'
+                         for e in g._edge_data.get((s, d), []))]
+        self.assertTrue(conns, "slave 只读方桥应反向 (bf.addr→u_s.b.addr)")
+        # slave 读方 fanin 跨回 interface 线
+        ids = {r.id for r in tr.trace_fanin('top.u_s.b.addr')}
+        self.assertEqual(ids, {'top.bf.addr'},
+                         "slave 端口成员 fanin = interface 实例成员 (粒度层)")
+        # 全链: o → u_s.o? (输出端口粒度) → b.addr → bf.addr → u_w.b.addr → a
+        ids_o = {r.id for r in tr.trace_fanin('top.u_s.o')}
+        self.assertTrue(ids_o, "slave 内部输出应有驱动")
+
+    def test_interface_object_no_fake_clk(self):
+        # iter_128 遗留: 无驱动 interface 成员不应有假驱动 (含 clk)
+        src = '''interface bus_if (input logic clk);
+  logic [7:0] addr;
+endinterface
+module top (input logic clk);
+  bus_if bf (.clk(clk));
+endmodule
+'''
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertEqual(list(tr.trace_fanin('top.bf.addr')), [],
+                         "无驱动 interface 成员 fanin 应空 (无假 clk)")
+
+
 if __name__ == '__main__':
     unittest.main()
