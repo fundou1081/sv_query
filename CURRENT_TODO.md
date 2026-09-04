@@ -20,7 +20,15 @@
 
 ---
 
-## 🔥 当前任务## 🔥 当前任务
+## 🔥 当前任务
+
+**等待方豆指示** (最近完成: iter_126~129 审计修复 + iter_130 真实验证零副作用)
+
+**iter_130 真实验证结论 (2026-09-04)**: iter_126~129 改动在真实设计
+(aes 11292 nodes / CORDIC / minimal_3module CLI) 零副作用; usage 套件
+4 失败全部基线既有 (worktree f006ae4 复跑同失败) — 属 opensource/
+--no-strict 历史债务, 与图逻辑无关。push 12 commits 至 backup 完成。
+[iter_130](docs/task_tree/iterations/iter_130_real_verify_wrapup.md)## 🔥 当前任务
 
 **当前**: 等待方豆指示 (最近完成: iter_121 SVA 6 缺口 / iter_122 covergroup cross /
 iter_125 inline 约束决策 — 见 overview rows 42-44)
