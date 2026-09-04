@@ -55,3 +55,5 @@ SubBytes→ROM[i]→ROM) 的路径拼接边界:
 - ✅ iter_131/132 真实复验通过 (fanin 隔离 / dataflow 聚合)
 - 🐛 新 backlog: 嵌套 generate 深层重复段假节点 (aes 型, 351/4834)
   登记 audit — 修复方向: 路径段逐层去重
+- ✅ **backlog 已闭环**: iter_134 以 gen_block 直接宿主判定修复
+  (aes 279/1116→0, cordic 105→0) — 见 iter_134 记录

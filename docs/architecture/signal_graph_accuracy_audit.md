@@ -80,30 +80,16 @@ depth=1 `['top.u_sub.a']`; no-target `['sub.a']`; `state<=state+1` 自环保留�
 
 ---
 
-## 🐛 已知缺口 (iter_133 复验登记)
+## 🐛 已知缺口 (待专项)
 
-### 嵌套 generate 深层路径重复段假节点 (aes 型, 中)
-
-**现象**: 3+ 层 generate 嵌套 (wrapper→aes_top.ROUND[i]→Round→U_SUB→
-ROM[i]→ROM) 时, 内层实例路径重复拼入外层 generate 段:
-`aes_top.ROUND[1].U_ROUND.ROUND[1].U_SUB` (正确应为
-`ROUND[1].U_ROUND.U_SUB`)。aes 实测 351/4834 节点 (7.3%) 含重复段
-(`ROUND[i]` 段名二次出现)。
-**证据**: aes_top_buffered_wrapper target 模式, iter_132 baseline 同现
-(非 iter_131/132 引入); 正常路径 U_SUB 有 4377 边, 假路径仅 14 边
-(connection 与 driver 层 namespace 部分分裂)。
-**源码位置**: driver/connection 实例路径拼接 (get_path/instance-path 构造),
-iter_109/110 宿主作用域处理的更深嵌套边界 (Round 模块内部实例路径
-拼接时 context 又带外层 generate 段)。
-**影响**: fanin 主链不受扰 (实测 U_SUB.data_out fanin 19 源 0 重复段),
-但重复段节点污染图 (7.3%), 潜在查询落假节点风险。
-**修复方向**: 实例路径拼接时宿主 generate ctx 去重 (iter_117 索引段
-去重的通用化 — 嵌套多层时逐层校验段归属)。待专项。
+(当前无活跃缺口 — 最新登记项见下方 已修复/backlog 文档; 深层语义项
+inout 双向多驱动 / interface 多写共享 见 iter_129 记录与 CURRENT_TODO)
 
 ## ✅ 已修复 (历史, 防止复发复登)
 
 | 条目 | 修复迭代 | 位置 |
 |---|---|---|
+| 嵌套 generate 深层路径重复段假节点 (aes 型 ×351 / cordic ×105) | iter_134 | connection_extractor `_get_generate_block_name` 直接宿主判定 (hp 末段前一段 name[N]) + query wrapper cross 守卫 get_edges 全查 + wrapper_passthrough 自递归 |
 | generate RHS 位选丢索引 (总线当源) | iter_118 | semantic_adapter `_extract_signals_from_expr` |
 | 索引段加倍假节点 | iter_117 | connection_extractor `get_path` gen_block 去重 |
 | generate 实例连接 per-entry 丢失 (legacy 覆盖/key 碰撞) | iter_119/120 | connection_extractor 逐实例路径 |

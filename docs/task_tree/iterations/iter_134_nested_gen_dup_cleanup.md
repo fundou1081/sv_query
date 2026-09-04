@@ -71,7 +71,13 @@ mid 嵌套 fixture 验证: y[2] fanin 含 G[2].u_mid.y + u_leaf.a (递归到位)
 - 更新 cordic truth (test_rotator_internal_scope 假路径→真路径 + 无假节点断言)
 - 新 unit 3 (TestNestedGeneratePathCleanup: 无重复段 / leaf 路径正确 /
   mid fanin 无跨 entry)
-- 全量主回归: 见 commit (预计 2934+ 无新增失败)
+- 全量主回归 (2026-09-05 实测, `pytest sim/tests/ -m "not opensource"`):
+  **3048 passed / 22 skipped** — 22 skip 全为 env (HOME 重定向路径) + 既有
+  (coverage_generator 已删 visitor / deadlock OpenTitan); 唯一 fail
+  [serv] 为 HOME 重定向假失败 (serv sources 走 glob, rtl 缺失 → 空 filelist
+  → rc≠0; darkriscv/picorv32 显式路径正常 skip), 真实 HOME 单跑通过
+  (1 passed in 10.62s)。零代码回归。
+- unit + cli + case27 1to1 truth 均包含在上列通过集内 (AGENTS.md 要求)
 
 ## 💡 关键发现
 
@@ -88,4 +94,4 @@ mid 嵌套 fixture 验证: y[2] fanin 含 G[2].u_mid.y + u_leaf.a (递归到位)
 
 - ✅ 嵌套 generate 假节点清零 (aes 279/1116→0, cordic 105→0)
 - ✅ wrapper cross 守卫 get_edges 修复 (嵌套 fixture 跨 entry 消除)
-- unit +3 + cordic truth 更新; 全量回归见 commit
+- ✅ unit +3 + cordic truth 更新; 全量 3048 passed (serv 1 env 假失败 → 真实 HOME 通过)
