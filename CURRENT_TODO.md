@@ -24,6 +24,12 @@
 
 **等待方豆指示** (最近完成: iter_126~129 审计修复 + iter_130 真实验证零副作用)
 
+**iter_132 (2026-09-05)**: generate per-entry fanin 位隔离 — fanin(top.y[3])
+串入 G[0..2] 双根因修: A2 提升加 incoming-CONNECTION 守卫 (有实例输出源不
+提升) + wrapper cross 加"无内部驱动才跨" (注释意图漏实现)。fanin(y[i]) 恰
+[G[i].u_leaf.y], bus 聚合/wrapper/纯直通/xor 全保; unit +3; 全量 2934 passed。
+[iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md)
+
 **iter_131 (2026-09-04)**: usage 4 失败深挖 — 1 个真回归 + 3 测试债务。
 真回归: dataflow _find_paths bus 查询首个非空候选组合即 return (iter_118
 per-entry 后丢 req_i[1..7], arbiter 40→8→1) — 修复为合并所有候选组合,
@@ -80,6 +86,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **generate per-entry fanin 位隔离 (iter_132)** | fanin(top.y[3]) 串入 G[0..2] 双根因: A2 提升忽略 incoming CONNECTION + wrapper cross 无条件跨; 修后 y[i] fanin 恰 [G[i].u_leaf.y]; bus 聚合/纯直通/xor/wrapper 全保; unit +3; 全量 **2934 passed**. [iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md) |
 | **2026-09-04** | **dataflow bus 聚合修复 + usage 债务清理 (iter_131)** | 真回归: _find_paths 首个非空候选组合即返 (iter_118 per-entry 后 bus 查询丢位, arbiter 40→8→1) → 合并所有候选组合, 8 paths 恢复; golden 40→8; 3 测试债务 (p6/m12/factory) 清理; unit +3; 主全量 2928 passed. [iter_131](docs/task_tree/iterations/iter_131_dataflow_bus_agg_fix.md) |
 | **2026-09-04** | **inout + interface 建模 (iter_129)** | inout 跨模块连接修复 (connection_extractor inout 分支, output 式同线 CONNECTION, fanin 穿透实例三态链); interface 成员级桥 (收集 InterfacePortSymbol links + 后处理按驱动方向单向桥) + A2 提升目标限 data 类消假驱动; unit +7; 全量 **2928 passed**. [iter_129](docs/task_tree/iterations/iter_129_iface_inout_modeling.md) |
 | **2026-09-04** | **审计待验证候选实测 (iter_128)** | 5 候选实测: 修 fanin CLOCK/RESET 假驱动 (跨模块时钟链) + A2 位提升条件双修 (struct 字段泄漏/位选 seen 污染); 登记 inout 跨模块连接 + interface 成员级缺口 (建模待拍板); 顶层输入空 fanin 预期锁定; unit +8; 全量 **2921 passed**. [iter_128](docs/task_tree/iterations/iter_128_audit_candidates_verify.md) |
