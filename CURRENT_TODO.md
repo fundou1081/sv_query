@@ -96,7 +96,10 @@
 | 3. unit + 回归 | ⬜ |
 | 4. iter_119 文档 + 提交 | ⬜ |
 
-**当前**: ✅ **SVA 对抗缺口修复完成** (iter_121, 方豆 "开工进行吧")
+**当前**: ✅ **对抗缺口 7-8 处置完成** (iter_122, 方豆 "继续")
+> #8 covergroup cross 匿名名合成 ✅ (iter_122, covergroup 28 passed)
+> #7 constraint inline-with: 诊断完成 — inline 约束不在 class 成员层, receiver
+> 类解析需专项设计 → backlog 待修。见 [iter_122](docs/task_tree/iterations/iter_122_cross_name_inline_constraint.md)
 > [iter_121](docs/task_tree/iterations/iter_121_sva_adversarial_fix.md) — 6 缺口全修
 > (formal 参数替换/sequence 展开/local var/函数/generate 内断言/option 污染);
 > 对抗 6 场景全绿, unit +8, SVA 83 零回归。

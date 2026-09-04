@@ -152,6 +152,10 @@ endmodule'''
         self.assertIn('addr', cross.items)
         self.assertIn('data', cross.items)
 
+        # [iter_122] 匿名 cross (无 label) semantic name 恒空 → 合成可读名
+        self.assertEqual(cross.name, 'cross_addr_data',
+                         f"匿名 cross 应合成名, 实得 {cross.name!r}")
+
         # [iter_065 行为断言] cross.items 应**正好**包含 addr 和 data (不多不少)
         self.assertEqual(sorted(cross.items), ['addr', 'data'],
                          f"cross.items 应为 ['addr', 'data'], 实得 {cross.items}")

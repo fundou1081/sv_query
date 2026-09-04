@@ -227,7 +227,12 @@ class CovergroupExtractor:
     # =========================================================================
 
     def _parse_cover_cross(self, node) -> CoverCrossInfo | None:
-        """解析 CoverCross"""
+        """解析 CoverCross
+
+        [iter_122] 匿名 cross (cross cp_a, cp_b {...} 无 label 合法) 的
+        semantic name 恒空 — 合成可读名 'cross_<item1>_<item2>...' (对抗发现
+        name 空串). 具名 cross 若 semantic 仍空也走合成兜底.
+        """
         name = str(getattr(node, "name", "")).strip()
 
         items = []
@@ -237,6 +242,10 @@ class CovergroupExtractor:
                 t_name = str(getattr(t, "name", "")).strip()
                 if t_name:
                     items.append(t_name)
+
+        # [iter_122] 匿名 cross → 合成名 (有 label 时不覆盖)
+        if not name and items:
+            name = "cross_" + "_".join(items)
 
         # [iter_062] cross 的 iff 条件 (cross addr, mode iff (reset == 0))
         iff = ""
