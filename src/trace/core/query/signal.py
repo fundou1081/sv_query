@@ -367,12 +367,24 @@ class SignalTracer:
                                 # 4 entry 全串 (G[0].u_leaf.a / top.a[1] 等假源)。
                                 # 有内部驱动的端口 = 真实逻辑实例, 无 wrapper
                                 # passthrough 语义, 不跨。
+                                # [iter_134] 守卫必须遍历 (p, src) 的**全部**边:
+                                # get_edge 只返第一条 — u_leaf.y→u_mid.y 同时有
+                                # CONNECTION + wrapper_passthrough DRIVER 时,
+                                # get_edge 返 CONNECTION → 误判无内部驱动 → 仍
+                                # cross (G[2]→G[1] 串扰, 嵌套 generate fixture)。
+                                # wrapper_passthrough (graph_builder 后处理加的
+                                # "本实例内有 deep 驱动" 标记) 也算内部驱动 —
+                                # a_if.axi_ram_wr_if_inst.s_axi_awready→a_if.
+                                # s_axi_awready 表示 wrapper 实例内 reg 驱动,
+                                # 递归本实例即可达, 不需 cross (cross 仅给
+                                # 0 内部驱动的真 wrapper; test_deep_hierarchy
+                                # 依赖此拦截防止跨 b_if 长路径 depth 截断)。
                                 _src_has_internal_driver = any(
-                                    (e2 := self.graph.get_edge(p, src)) is not None
-                                    and e2.kind == EdgeKind.DRIVER
+                                    e2.kind == EdgeKind.DRIVER
                                     and e2.assign_type != "internal"
                                     for p, _d in list(self.graph.edges())
                                     if _d == src
+                                    for e2 in self.graph.get_edges(p, src)
                                 )
                                 cross_targets = set()
                                 if def_port_short and not _src_has_internal_driver:
@@ -387,6 +399,27 @@ class SignalTracer:
                                                 k, drivers, seen_ids,
                                                 current_depth + 1, max_depth
                                             )
+                                elif _src_has_internal_driver:
+                                    # [iter_134] src 端口有 wrapper_passthrough
+                                    # 驱动 (graph_builder 后处理: wrapper def port
+                                    # ← 内部 deep 实例端口): 顶层 CONNECTION 追到
+                                    # PORT_OUT 后须继续追内部 deep — 递归
+                                    # wrapper_passthrough 源 (a_if.axi_ram_wr_if_inst
+                                    # .s_axi_awready → reg)。
+                                    # 仅 wrapper_passthrough 触发 (continuous/
+                                    # nonblocking = 真模块内部 assign, leaf 场景
+                                    # 粒度停在此端口, iter_132 语义保持)。
+                                    for _ps, _pd in list(self.graph.edges()):
+                                        if _pd == src:
+                                            for _pe in self.graph.get_edges(_ps, _pd):
+                                                if (_pe.kind == EdgeKind.DRIVER
+                                                        and _pe.assign_type == "wrapper_passthrough"
+                                                        and _ps in self.graph.nodes()
+                                                        and _ps not in seen_ids):
+                                                    self._trace_drivers_recursive(
+                                                        _ps, drivers, seen_ids,
+                                                        current_depth + 1, max_depth
+                                                    )
                                 continue
                             # PORT_IN via CONNECTION: 只有外部输入端口(无predecessors)才添加
                             if node.kind.name == "PORT_IN":

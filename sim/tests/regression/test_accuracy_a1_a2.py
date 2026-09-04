@@ -479,5 +479,67 @@ endmodule
                          f"u0.y fanin 不应跨到 u1, 实际 {ids}")
 
 
+class TestNestedGeneratePathCleanup(unittest.TestCase):
+    """iter_134: 嵌套 generate 深层重复段假节点清理.
+
+    回归: 3+ 层 generate (top→G[i]→mid→leaf) 内层实例 (leaf) 的 hp 含祖先
+    generate 段 (top.G[i].u_mid.u_leaf), _get_generate_block_name 正则误取
+    祖先 G[i] 为 gen_block → get_path 拼出假节点 u_mid.G[i].u_leaf
+    (aes ROUND[1].U_ROUND.ROUND[1].U_SUB ×351 / cordic U.genblk1[i] ×105)。
+    修复: gen_block 只取 hp 中紧邻实例名的直接宿主 generate 段。
+    """
+
+    NESTED = '''module leaf (input a, output y);
+  assign y = a;
+endmodule
+module mid (input a, output y);
+  leaf u_leaf (.a(a), .y(y));
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  genvar i;
+  generate for (i=0;i<4;i=i+1) begin : G
+    mid u_mid (.a(a[i]), .y(y[i]));
+  end endgenerate
+endmodule
+'''
+
+    def test_no_dup_generate_segment(self):
+        # 内层实例路径不应重复外层 generate 段 (u_mid.G[i].u_leaf 假节点)
+        tr = UnifiedTracer(sources={'test.sv': self.NESTED}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        dups = [n for n in g.nodes() if '.u_mid.G[' in n]
+        self.assertEqual(dups, [],
+                         f"不应有 u_mid.G[i] 重复段假节点, got {dups[:4]}")
+
+    def test_inner_leaf_path_correct(self):
+        # leaf 正确路径: top.G[i].u_mid.u_leaf (无 G[i] 段)
+        tr = UnifiedTracer(sources={'test.sv': self.NESTED}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        self.assertTrue(
+            any(n.startswith('top.G[2].u_mid.u_leaf.')
+                for n in g.nodes()),
+            "leaf 应挂在 top.G[i].u_mid.u_leaf (直接宿主链)")
+
+    def test_mid_fanin_reaches_leaf_driver(self):
+        # 链可达且无跨 entry: y[2] fanin 全在 G[2] 内 (u_mid.y + 内部 leaf
+        # 链 + top.a[2]), G[0]/G[1]/G[3] 绝不应出现。
+        # [iter_134] wrapper_passthrough 自递归: u_mid.y 由内部 u_leaf.y
+        # passthrough 驱动 → 递归追到 leaf.a / top.a[2] (非粒度停)。
+        tr = UnifiedTracer(sources={'test.sv': self.NESTED}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.y[2]')}
+        self.assertIn('top.G[2].u_mid.y', ids,
+                      "y[2] fanin 应含 G[2] 内 mid 输出")
+        self.assertIn('top.G[2].u_mid.u_leaf.a', ids,
+                      f"应递归到 G[2] 内 leaf 驱动 (u_leaf.a), 实际 {ids}")
+        for i in (0, 1, 3):
+            cross = {x for x in ids if f'.G[{i}].' in x}
+            self.assertEqual(cross, set(), f"不应含 G[{i}] (跨 entry), got {cross}")
+        # 逐层到底
+        deep = {r.id for r in tr.trace_fanin('top.G[2].u_mid.u_leaf.y')}
+        self.assertTrue(deep, "leaf.y fanin 应有内部驱动")
+        self.assertNotIn('top.y[3]', ' '.join(deep))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -72,17 +72,31 @@ class ConnectionExtractor:
                     hp_str = str(hp)
                 except (UnicodeDecodeError, TypeError):
                     hp_str = ""
-                # Pattern: top.GEN[INDEX].instance -> extract GEN
-                # Look for pattern like .gen[ or .GEN[
-                import re
-
-                match = re.search(r"\.([a-zA-Z_][a-zA-Z0-9_]*)\[([0-9]+)\]", hp_str)
-                if match:
-                    # [iter_109] 保留 entry 索引 → generate-for 多实例路径区分
-                    # (原只返回 'g', 4 个 entry 全折叠成 top.g.U; 现返回 'g[2]' → top.g[2].U)
-                    return f"{match.group(1)}[{match.group(2)}]"
-
-        return None
+                # [iter_134 fix] gen_block 必须来自实例的**直接宿主** generate,
+                # 而非 hp 里任意 [N] 段。hp 格式 `...<gen>[<i>].<inst>` 时
+                # gen 是直接宿主 (generate entry 内实例, e.g. aes_top.ROUND[0].
+                # U_ROUND → ROUND[0] 是 U_ROUND 宿主);
+                # 但 hp `...ROUND[0].U_ROUND.U_SUB` 时 U_SUB 的直接宿主是
+                # Round 模块 (非 generate) — ROUND[0] 只是**祖先** generate
+                # (Round 被 ROUND[0] 实例化的展开路径), 取它会让 get_path
+                # 拼出假节点 U_ROUND.ROUND[0].U_SUB (aes 351 假节点根因)。
+                # 判据: 实例名 = hp 最后一段; 其前一段若形如 name[i] 才是
+                # 直接宿主 generate; 否则 (前段是普通实例名/模块路径) → None。
+                import re as _re
+                _hp_segs = hp_str.split(".")
+                if len(_hp_segs) >= 2:
+                    _inst_seg = _hp_segs[-1]       # e.g. U_ROUND / U_SUB
+                    _prev_seg = _hp_segs[-2]       # 直接宿主候选
+                    # 前段形如 name[<digits>] → generate-for entry 直接宿主
+                    _m = _re.fullmatch(r"([a-zA-Z_][a-zA-Z0-9_]*)\[(\d+)\]", _prev_seg)
+                    if _m and not _re.search(r"\[\d+\]$", _inst_seg):
+                        # 确认 inst 不在 generate 内? (inst 名自身带 [i] 是数组
+                        # 实例, 前段可能是其 generate; 保守: 仅当 inst 名无 [i])
+                        return f"{_m.group(1)}[{_m.group(2)}]"
+                # 旧逻辑: hp 里任意第一个 [N] 段 — 保留仅当 inst 名本身带
+                # 数组索引且其父是 generate 的兼容路径由上方覆盖; 其余不再
+                # 取祖先 generate (iter_134: aes 嵌套 generate 假节点根因).
+                return None
 
     def _missing_module_warning(self, inst_module_name: str, inst_name: str):
         """输出可能缺少文件的警告信息"""

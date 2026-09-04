@@ -81,7 +81,14 @@ class TestCordicPipelineTruth(unittest.TestCase):
                           f"rotator[{i}].x_o→x[{i+1}] 应存在")
 
     def test_rotator_internal_scope(self):
-        """rotator 内部 shifter 输出连到本实例作用域 wire (iter_110 作用域修正)."""
+        """rotator 内部 shifter 输出连到本实例作用域 wire (iter_110 作用域修正).
+
+        [iter_134 fix] 旧断言锁假路径 `U.genblk1[i].x_shifter` — rotator 内部
+        x_shifter 直接实例化 (rotator 模块无 generate), hp 中 genblk1[i] 是
+        **祖先** generate (rotator 被 cordic.genblk1[i] 实例化) 非直接宿主;
+        _get_generate_block_name 正则误取祖先段 → 105 个假节点。正确形态
+        `U.x_shifter` (与 aes 嵌套 generate 同根因, iter_134 已修)。
+        """
         edges = set()
         for s, d in self.g.edges():
             for e in self.g._edge_data.get((s, d), []):
@@ -89,13 +96,17 @@ class TestCordicPipelineTruth(unittest.TestCase):
                     edges.add((s, d))
         for i in (0, 7, 14):
             self.assertIn(
-                (f"cordic.genblk1[{i}].U.genblk1[{i}].x_shifter.Q",
+                (f"cordic.genblk1[{i}].U.x_shifter.Q",
                  f"cordic.genblk1[{i}].U.x_i_shifted"), edges,
                 f"rotator[{i}] 内部 shifter.Q→x_i_shifted 应在本实例作用域")
             self.assertIn(
-                (f"cordic.genblk1[{i}].U.genblk1[{i}].y_shifter.Q",
+                (f"cordic.genblk1[{i}].U.y_shifter.Q",
                  f"cordic.genblk1[{i}].U.y_i_shifted"), edges,
                 f"rotator[{i}] 内部 y_shifter.Q→y_i_shifted 应在本实例作用域")
+        # [iter_134] 无假路径残留 (祖先 generate 段二次拼入内层实例)
+        for n in self.g.nodes():
+            self.assertNotIn(".U.genblk1[", n,
+                             f"内层实例不应含祖先 genblk1 段 (假节点): {n}")
 
     def test_no_placeholder(self):
         """无 '?' 占位节点."""
