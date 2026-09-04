@@ -145,10 +145,11 @@ def test_m11_dataflow_filelist():
 
 def test_m12_visualize_filelist():
     """visualize graph: DOT 应生成 (V6.7 dropped HTML output)"""
+    import os
+    os.makedirs("/tmp/naples_full", exist_ok=True)  # [iter_131] 单跑时目录不存在
     out_dot = "/tmp/naples_full/viz_test.dot"
     r = _run("visualize", "graph", "--no-strict", "--dot", out_dot, "--filelist", FILELIST_PATH)
     assert r.returncode == 0, f"visualize 应 exit 0, got {r.returncode}, stderr={r.stderr[:500]}"
-    import os
     assert os.path.exists(out_dot), f"DOT 应生成: {out_dot}"
     assert os.path.getsize(out_dot) > 100, f"DOT 应 > 100B, got {os.path.getsize(out_dot)}"
     print(f"✅ visualize on minimal_3module: DOT {os.path.getsize(out_dot)} bytes")

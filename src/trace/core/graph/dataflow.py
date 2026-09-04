@@ -489,20 +489,34 @@ class DataFlowGraph:
             if parent not in candidates_to:
                 candidates_to.append(parent)
 
-        # 尝试所有候选组合
+        # 尝试所有候选组合 — [iter_131 fix] 收集并合并所有组合的路径,
+        # 而非首个非空即 return: iter_118 per-entry 后 bus→bus 查询
+        # (req_i → gnt_o) 不再有直接 bus 边 (DRIVER 变成 req_i[i]→gnt_o[i]
+        # per-index), 需逐个 (req_i[i], gnt_o) 组合枚举; 旧逻辑首个 req_i[0]
+        # 命中即停 → 丢 req_i[1..7] (arbiter golden 40→8→1 根因, prim_arbiter
+        # usage 测试暴露). 合并后 bus 查询 = 各 bit 路径聚合 (与 iter_118 前
+        # bus 粒度 8 条语义一致).
+        all_paths: list[list[str]] = []
+        seen_paths: set[tuple[str, ...]] = set()
         for from_candidate in candidates_from:
             for to_candidate in candidates_to:
                 if from_candidate not in nx_graph.nodes():
                     continue
                 if to_candidate not in nx_graph.nodes():
                     continue
-
                 try:
                     paths = list(nx.all_simple_paths(nx_graph, from_candidate, to_candidate, cutoff=cutoff))
-                    if paths:
-                        return paths
                 except (nx.NetworkXNoPath, nx.NodeNotFound):
                     continue
+                for p in paths:
+                    if not p:
+                        continue
+                    key = tuple(p)
+                    if key not in seen_paths:
+                        seen_paths.add(key)
+                        all_paths.append(p)
+        if all_paths:
+            return all_paths
 
         # [FIX] 处理 struct 成员传播的完整路径
         # 例如: data_in → pkt1.data → pkt1 → pkt2 → pkt2.data → data_out

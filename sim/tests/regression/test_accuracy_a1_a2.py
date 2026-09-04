@@ -361,5 +361,64 @@ endmodule
                          "无驱动 interface 成员 fanin 应空 (无假 clk)")
 
 
+class TestDataflowBusAggregation(unittest.TestCase):
+    """iter_131: dataflow bus→bus 查询聚合所有 per-entry 候选路径.
+
+    回归: _find_paths 找到首个非空候选组合即 return — iter_118 per-entry
+    (DRIVER 边 req_i[i]→gnt_o[i]) 后, bus 查询 (req_i → gnt_o) 只枚举
+    req_i[0] 一条, 丢 7 位 (arbiter usage golden 40→8→1 暴露). 修复:
+    收集并合并所有 (from_candidate × to_candidate) 组合的路径。
+    """
+
+    GENFOR = '''module leaf (input a, output y);
+  assign y = a;
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  genvar i;
+  generate for (i=0;i<4;i=i+1) begin : G
+    leaf u_leaf (.a(a[i]), .y(y[i]));
+  end endgenerate
+endmodule
+'''
+
+    def _df(self, src):
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        from trace.core.graph.dataflow import DataFlowGraph
+        return DataFlowGraph(g, getattr(tr, '_module_graph', None))
+
+    def test_genfor_bus_aggregates_all_entries(self):
+        # bus a→y: 4 个 generate entry 各一条路径 (修复前只 a[0]→y[0] 1 条)
+        df = self._df(self.GENFOR)
+        r = df.analyze('top.a', 'top.y')
+        self.assertEqual(r.paths_count, 4,
+                         f"bus 查询应聚合 4 entry, got {r.paths_count}")
+        tos = sorted({s.to_signal for p in r.paths for s in p.segments
+                      if s.to_signal.startswith('top.y[')})
+        self.assertEqual(tos, [f'top.y[{i}]' for i in range(4)],
+                         f"应覆盖全部输出位, got {tos}")
+
+    def test_bus_passthrough_still_one_path(self):
+        # 纯总线直连无分叉: 1 path 不变 (非 bus 多 entry 场景)
+        src = '''module sub (input [3:0] a, output [3:0] y);
+  assign y = a;
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  sub u_sub (.a(a), .y(y));
+endmodule
+'''
+        df = self._df(src)
+        r = df.analyze('top.a', 'top.y')
+        self.assertEqual(r.paths_count, 1,
+                         f"纯直连应 1 path, got {r.paths_count}")
+
+    def test_single_bit_query_unchanged(self):
+        # per-bit 查询语义不变
+        df = self._df(self.GENFOR)
+        r = df.analyze('top.a[2]', 'top.y[2]')
+        self.assertTrue(r.is_reachable)
+        self.assertGreaterEqual(r.paths_count, 1)
+
+
 if __name__ == '__main__':
     unittest.main()
