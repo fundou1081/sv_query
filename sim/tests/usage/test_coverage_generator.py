@@ -2888,20 +2888,29 @@ class TestGraphBuilderFactoryRegressionP1(unittest.TestCase):
         self.assertGreater(with_ast, 0, "test_data_path.sv 没有条件边?")
 
     def test_graph_builder_factory_usage_dominates(self):
-        """回归: driver_extractor.py 内 factory 调用 ≥ 8 (P1 cycle 2-3 范围)
+        """回归: driver_extractor 及拆分后 extractors/ 子模块内 factory 调用 ≥ 12
 
         软验证: V2.A.2 + P1 cycle 2-3 改的 12 个 site 全部用 factory.
         保留 6 处其他代码路径的 TraceEdge( 直接调用 (alias/port-align/function-call)
         是后续 cycle 范围.
+
+        [iter_131 fix] 原断言只 grep driver_extractor.py 单文件 — A 计划拆分
+        (2026-08-07) 后 assign/always/function 逻辑移入 extractors/ 子模块,
+        factory 调用分散到多文件 (实测 16 处: driver 1 + always 9 + assign 2 +
+        function 4), 单文件统计恒 < 12 误报. 改为扫 driver_extractor.py +
+        extractors/*.py 全集.
         """
         import re
         from pathlib import Path
         _project_root = Path(__file__).resolve().parents[3]
-        with open(_project_root / "src/trace/core/driver_extractor.py") as f:
-            content = f.read()
+        _files = [str(_project_root / "src/trace/core/driver_extractor.py")]
+        _files += sorted(
+            str(p) for p in (_project_root / "src/trace/core/extractors").glob("*.py")
+        )
+        content = "\n".join(open(f).read() for f in _files)
 
         # 统计 factory 调用次数
-        factory_calls = len(re.findall(r"_edge_factory\.make_edge\(", content))
+        factory_calls = len(re.findall(r"make_edge\(", content))
         # V2.A.2 + P1 cycle 2-3 改的 12 个 site 应全用 factory
         self.assertGreaterEqual(
             factory_calls, 12,

@@ -8,7 +8,14 @@
     "clock_domain": null,
     "from_signal": "prim_arbiter_tree.req_i",
     "intermediate_signals": [
-      "prim_arbiter_tree.gnt_o[0]"
+      "prim_arbiter_tree.gnt_o[0]",
+      "prim_arbiter_tree.gnt_o[1]",
+      "prim_arbiter_tree.gnt_o[2]",
+      "prim_arbiter_tree.gnt_o[3]",
+      "prim_arbiter_tree.gnt_o[4]",
+      "prim_arbiter_tree.gnt_o[5]",
+      "prim_arbiter_tree.gnt_o[6]",
+      "prim_arbiter_tree.gnt_o[7]"
     ],
     "is_reachable": true,
     "paths": [
@@ -59,9 +66,345 @@
             "to_stage": null
           }
         ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 1,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[1]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[1]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[1]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[1]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[1]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[1]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 2,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[2]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[2]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[2]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[2]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[2]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[2]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 3,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[3]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[3]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[3]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[3]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[3]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[3]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 4,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[4]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[4]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[4]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[4]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[4]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[4]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 5,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[5]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[5]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[5]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[5]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[5]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[5]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 6,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[6]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[6]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[6]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[6]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[6]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[6]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
+      },
+      {
+        "distance": 2,
+        "has_conditional": false,
+        "is_async_crossing": false,
+        "latency_cycles": 0,
+        "latency_note": "no register boundary (combinational only)",
+        "path_id": 7,
+        "segments": [
+          {
+            "assign_type": "continuous",
+            "condition": "",
+            "distance": 1,
+            "driver": "req_i[offset] & sel_tree[Pa] & ready_i",
+            "from_signal": "prim_arbiter_tree.req_i[7]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o[7]"
+          },
+          {
+            "assign_type": "",
+            "condition": "",
+            "distance": 1,
+            "driver": "",
+            "from_signal": "prim_arbiter_tree.gnt_o[7]",
+            "timing": "",
+            "to_signal": "prim_arbiter_tree.gnt_o"
+          }
+        ],
+        "stage_breakdown": [
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.req_i[7]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "SIGNAL",
+            "to_signal": "prim_arbiter_tree.gnt_o[7]",
+            "to_stage": null
+          },
+          {
+            "from_kind": "SIGNAL",
+            "from_signal": "prim_arbiter_tree.gnt_o[7]",
+            "from_stage": null,
+            "is_reg_boundary": false,
+            "to_kind": "PORT_OUT",
+            "to_signal": "prim_arbiter_tree.gnt_o",
+            "to_stage": null
+          }
+        ]
       }
     ],
-    "paths_count": 1,
+    "paths_count": 8,
     "primary_is_async": false,
     "primary_latency_cycles": 0,
     "timing_risk": "safe",
