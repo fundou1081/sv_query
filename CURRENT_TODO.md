@@ -99,6 +99,12 @@
 **当前**: 等待方豆指示 (iter_122 #8 ✅ / #7 专项尝试已回退, 阻塞记录)
 > #8 covergroup cross 匿名名合成 ✅ (iter_122, covergroup 28 passed)
 > #7 inline-with 专项 (iter_123 探索) 已回退: 语义过程体是 Statement 包装
+
+**iter_124 新诊断 (pyslang 环境脆弱性)**: 同一源码 CompilationUnit.syntax 全语法扫,
+结果依赖进程内 import 顺序 — 直接 import trace.core.semantic_adapter 后扫=0,
+不 import 或仅 import unified_tracer 时=1 (alias bridge 注册时序影响 syntax 遍历;
+与 d1 mutex 同族环境问题). #7 修复依赖该稳定性 → 维持 backlog, 建议后续
+隔离 subprocess 验证 pyslang syntax 路径.
 > (BlockStatement 不可迭代), 全语法扫经 UnifiedTracer adapter.root 后 syntax
 > 可达性不一致 (疑似 tracer 重建/缓存路径差异) — 需 UnifiedTracer 把
 > compiler/syntax 传入 ClassGraphBuilder 的专项改造 + statement 包装 attr 下钻.
