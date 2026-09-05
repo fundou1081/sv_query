@@ -269,9 +269,8 @@ montage /tmp/v16_32cases/*.png \
 - `diff compare` — 版本对比
 - `protocol detect/show/semantics` — 总线协议
 
-### 🟡 实验功能 (Experimental)
+### 🟡 实验功能 (Experimental) — 以 `--help` 为准，不承诺稳定性
 
-- `cdc analyze` / `timing analyze` / `risk analyze`
 - `coverage generate/gap` / `verify gap`
 - `fix timescale/report/imports/widths`
 
@@ -287,7 +286,6 @@ montage /tmp/v16_32cases/*.png \
 | `dataflow` | 数据流路径分析 |
 | `controlflow` | 控制流条件分析 |
 | `stats/search` | 统计/搜索 |
-| `cdc/timing/risk` | 跨时钟域/时序/风险 |
 | `sva/coverage/verify` | SVA 提取/覆盖率/验证 |
 | `protocol/handshake` | 总线/握手协议 |
 | `snapshot/diff` | 快照/版本对比 |
@@ -387,6 +385,7 @@ python -m pytest sim/tests/ -q
 
 - [架构文档](docs/ARCHITECTURE.md)
 - [准确性审计 + Accuracy Claim](docs/architecture/signal_graph_accuracy_audit.md)
+- [实验性功能声明 (不承诺稳定)](docs/EXPERIMENTAL_FEATURES.md)
 - [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
 - [可视化设计规范](docs/VIZ_DESIGN_SPEC.md)
 - [文档索引](docs/INDEX.md)
