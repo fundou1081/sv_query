@@ -2,20 +2,33 @@
 
 **让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
 
-> 3131 测试 | Python 3.11+ | pyslang AST | NetworkX graph | 开源项目验证
+> 3071 测试 (非 opensource 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
 
-> 更新日期: 2026-08-26
+> 更新日期: 2026-09-05
 
 ---
 
 ## 为什么用 sv_query
 
-- **位精确追踪**: V6.5 `SignalSource` 结构化存储 bit_range + op + casts，知道信号 `[7:0]` 确切来源
-- **穿透子模块**: 跨 wrapper port passthrough，追踪真实物理连接 (MIG 跨模块)
-- **数据可信**: [pyslang](https://github.com/MikePopoloski/pyslang) 语义 AST，不是正则匹配
-- **开源项目验证**: picorv32, darkriscv, CVA6, OpenTitan, XiangShan, verilog-axi (本机 `~/my_dv_proj/` 实际存在)
+- **位精确追踪**: `SignalSource` 结构化存储 bit_range + op + casts，知道信号 `[7:0]` 确切来源；位对位跨模块贯通 (顶层位查询 == 模块内位查询)
+- **穿透子模块**: 跨 wrapper port passthrough + bus 位桥（同构直连 / 切片偏移 .y(y[7:4])），追踪真实物理连接
+- **数据可信**: [pyslang](https://github.com/MikePopoloski/pyslang) 语义 AST，不是正则匹配；无 string fallback（纪律：失败显式可见，不静默出假数据）
+- **真实项目验证**: aes / cordic / serv / verilog-axi 抽查 + CVA6 core strict 编译 (本机 `~/my_dv_proj/`)，见下方准确性声明
 - **架构可视化**: `arch show` 一键生成项目架构图 (DOT/Mermaid/HTML/summary)
-- **数据与渲染解耦**: V6.7 VizData 统一可视化数据层
+- **数据与渲染解耦**: VizData 统一可视化数据层
+
+### 📜 准确性声明 (Accuracy Claim)
+
+"图是否 = 代码的准确映射？" 的答案按层声明、可核查 — 详见
+[`docs/architecture/signal_graph_accuracy_audit.md`](docs/architecture/signal_graph_accuracy_audit.md)：
+
+| 层 | 承诺 | 状态 |
+|---|---|---|
+| **L1 结构层** (节点/边存在性) | 实例路径、端口连接、驱动不缺失、不造假节点 | ✅ 已验证设计域内 (假节点/静默丢连接/解码崩溃均已修, 测试锁定) |
+| **L2 查询层** (fanin/驱动答案) | 查询结果正确 | ✅ 限建模粒度语义内 (位级贯通 / 端口停靠 / 时钟·控制信号排除) |
+| **L3 深层语义层** (多驱动归属/共享合并) | 归属单点语义 | 🕐 边界已澄清 (inout/interface = 静态可能源集合); gate strength / SVA 消歧重构 = 暂缓有触发条件 |
+
+> 反例表 7 项 → 全闭环或暂缓。**不能无限制说"一定准确"**：语义域外 (SVA/inline)、语料非穷举、上游 pyslang 边界 — 每处不准/不全都有文档登记 + 失败可见。
 
 ---
 
@@ -329,7 +342,7 @@ sv_query/
 │   │   ├── graph_builder.py     # 图构建器
 │   │   └── visitors/            # AST Visitor (~10K 行)
 │   └── cli/commands/            # 23 CLI 命令
-├── sim/tests/              # 3131 测试 (305+ 文件)
+├── sim/tests/              # 3071 测试 (非 opensource 主回归, 305+ 文件)
 ├── docs/                   # 文档
 └── tools/                  # 独立工具
 ```
@@ -352,7 +365,7 @@ python -m pytest sim/tests/ -m opensource -v
 
 # 全量
 python -m pytest sim/tests/ -q
-# 3131 tests (2026-08-26 更新)
+# 3071 tests (非 opensource 主回归, 2026-09-05 更新)
 ```
 
 详见 [测试指南](docs/TESTING.md)
@@ -373,6 +386,8 @@ python -m pytest sim/tests/ -q
 ## 相关文档
 
 - [架构文档](docs/ARCHITECTURE.md)
+- [准确性审计 + Accuracy Claim](docs/architecture/signal_graph_accuracy_audit.md)
+- [开发纪律](AGENTS.md) · [当前任务](CURRENT_TODO.md)
 - [可视化设计规范](docs/VIZ_DESIGN_SPEC.md)
 - [文档索引](docs/INDEX.md)
 - [已知限制](docs/KNOWN_LIMITATIONS.md)
