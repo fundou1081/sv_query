@@ -153,6 +153,10 @@ class SVCompiler:
         self._log_level = self._parse_log_level(log_level)
         self._include_dirs: list[str] = []  # [铁律1] include 搜索路径
         self._strict = strict  # [FIX 2026-06-11] False 时不对 elaboration error raise
+        # [iter_140] paramOverride orphan 假错重试计数 (见 _do_compile)
+        self._override_orphan_retry = 0
+        # [iter_140] 已确认 drop 的 override 模块 (重建时不再注入, 避免假错循环)
+        self._override_orphan_modules: set[str] = set()
 
     def _parse_log_level(self, level: str) -> int:
         """将日志级别字符串转换为 logging 常量"""
@@ -365,6 +369,11 @@ class SVCompiler:
         if any('stream_arbiter.sv' in f for f in self._sources.keys()):
             _overrides.append('stream_arbiter.N_INP=4')
         if _overrides:
+            # [iter_140] 排除已确认 drop 的 override 模块 (free-floating pre-elab
+            # 被 pyslang drop, override 指向它只会产生 CouldNotResolveHierarchicalPath 假错)
+            if self._override_orphan_modules:
+                _overrides = [o for o in _overrides
+                              if o.split('.', 1)[0] not in self._override_orphan_modules]
             self._comp.options.paramOverrides = self._comp.options.paramOverrides + _overrides
 
         # 设置 include 搜索路径
@@ -417,6 +426,16 @@ class SVCompiler:
                 import sys as _sys
                 print(f"[sv_query] {len(errors)} error(s), continuing in non-strict mode (partial AST)", file=_sys.stderr)
             else:
+                # [iter_140] paramOverride orphan 假错重试: pyslang 对 free-floating
+                # (未被实例化) 参数化模块用默认参数 pre-elab; 某模块在全集上下文被
+                # drop (实例化处都带真实参数, 如 CVA6 stream_arbiter) 时, paramOverride
+                # 指向它 → <command-line> 位置 CouldNotResolveHierarchicalPath。
+                # override 仅为 pre-elab 默认值兜底 (见 _do_compile 中 pulp axi 注释),
+                # 模块被 drop = override 无用, 此错无害 (真实实例自带参数) —
+                # strict 下不应 fatal。识别: 全部错误都来自 <command-line> 且
+                # identifier 匹配某 override 模块 → 移除该 override 重建重编 (限次)。
+                if self._try_retry_override_orphan(errors):
+                    return
                 raise CompilationError(f"Elaboration errors:\n{report}") from None
         else:
             self._elaboration_errors = []
@@ -464,6 +483,43 @@ class SVCompiler:
             ]
         """
         return list(self._elaboration_errors)
+
+    def _try_retry_override_orphan(self, errors: list) -> bool:
+        """[iter_140] paramOverride orphan 假错 → 移除对应 override 重建重编.
+
+        识别: 所有 error 都来自 '<command-line>' (paramOverride 注入点) 且
+        identifier 匹配某个 paramOverrides 的模块前缀。此时 pyslang 因该
+        override 模块在 free-floating pre-elab 被 drop 而报假错 — override
+        仅兜底 pre-elab 默认参数, 真实实例自带参数, 移除无害。
+        """
+        if self._override_orphan_retry >= 4:
+            return False
+        fmt = self._format_elaboration_errors(errors)
+        cmdline_only = bool(fmt) and all(
+            (er.get('file') or '').startswith('<command-line>') for er in fmt
+        )
+        if not cmdline_only:
+            return False
+        overrides = list(getattr(self._comp.options, 'paramOverrides', None) or [])
+        if not overrides:
+            return False
+        # override 模块前缀: 'MODULE.PARAM=VALUE' → 'MODULE'
+        override_mods = {o.split('.', 1)[0] for o in overrides if '.' in o}
+        orphans = {er.get('identifier') for er in fmt} & override_mods
+        if not orphans:
+            return False
+        self._override_orphan_modules |= orphans
+        logger.debug("paramOverride orphan 假错 (%s): 跳过这些 override 模块, 重试", sorted(orphans))
+        self._override_orphan_retry += 1
+        # 重建编译单元: 置 None 让 _do_compile 重建 (若新建 Compilation() 非 None,
+        # _do_compile 开头 `if self._comp is not None: return` 会直接返回 →
+        # 0 SyntaxTree 空编译, getRoot=None)
+        self._comp = None
+        self._root = None
+        self._diagnostics = []
+        self._elaboration_errors = []
+        self._do_compile()
+        return True
 
     def _format_elaboration_errors(self, errors: list) -> list[dict]:
         """[FIX 2026-06-11 Issue 17] 把 pyslang 诊断转结构化 dict

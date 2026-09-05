@@ -2327,9 +2327,15 @@ class SemanticAdapter:
                         signals.append(f"{ls}.{member_name}")
                 else:
                     # [V6.9] left might be a NamedValueExpression
+                    # [iter_140 CVA6] _safe_attr(left,'symbol') 返回 symbol 对象
+                    # 非 str — f-string 拼接时 pyslang name 解码可能 UnicodeDecodeError
+                    # (大设计非 utf8 identifier) → safe_str 防护 (失败显式返回 '')
                     lname = _safe_attr(left, "symbol", None) or str(getattr(left, "name", "")).strip()
                     if lname:
-                        signals.append(f"{lname}.{member_name}")
+                        lname_s = safe_str(lname)
+                        member_s = safe_str(member_name)
+                        if lname_s and member_s:
+                            signals.append(f"{lname_s}.{member_s}")
             return signals
 
         # Concatenation: {a, b, c}

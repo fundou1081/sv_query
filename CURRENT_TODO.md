@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_139 条件控制信号排除 — 3058 passed)
+> **最后更新**: 2026-09-05 GMT+8 (iter_140 CVA6 编译配方 + override/解码修复)
 
 ---
 
@@ -22,7 +22,19 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (最近完成: iter_139 条件控制排除 + iter_138 inout 诊断)
+**等待方豆指示** — ⏳ 续修点: iter_140 CVA6 建图剩余解码点 (iter_141)
+
+**iter_140 (2026-09-05)**: CVA6 strict 编译 (Claim L3 #7) — 特征代码法:
+①44 错根因 = cvxif_example **未实例化 type-param free-floating 模块**
+(pyslang 用默认 type=logic 检查 body → 成员访问 InvalidMemberAccess;
+Verilator 只 elaborate 实例树不报) — 最小复现确认, filelist 剔 3 示例文件
+②**compiler.py override-orphan 假错修复** (override 指向被 drop 模块 →
+CouldNotResolveHierarchicalPath 假错不该 fatal; 跳过重编; 重建须置
+_comp=None 否则 0 SyntaxTree 空编译) ③解码健壮性 ×2 (_common.get_signal /
+semantic_adapter MemberAccess — CVA6 大设计暴露非 utf8 identifier 崩溃)。
+CVA6 core **编译通过** (root 含 cva6); 完整建图剩解码点 (always_extractor
+hasattr 等) — iter_141 续。unit+cli 1514 / unit+integration 1543 passed。
+[iter_140](docs/task_tree/iterations/iter_140_cva6_compile.md)
 
 **iter_139 (2026-09-05)**: iter_138 方案 2 实施 (方豆拍板 "condition 已记录
 不需 driver 重复") — 条件/分支边族 (BRANCH_*/CASE_*) 与 CLOCK/RESET 同规则
@@ -145,6 +157,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **CVA6 编译配方 + 修复 (iter_140)** | 特征代码法: 44 错 = 未实例化 type-param free-floating 模块 (pyslang 预 elab, filelist 剔 3 示例); compiler.py override-orphan 假错修复 (drop 模块 override 不 fatal); 解码健壮性 ×2 (非 utf8 identifier); CVA6 core 编译通过; 建图剩解码点 (iter_141). [iter_140](docs/task_tree/iterations/iter_140_cva6_compile.md) |
 | **2026-09-05** | **条件控制信号排除 (iter_139)** | 三态/三目/case 的 en/sel 控制信号不进数据 fanin (与 CLOCK 同规则; condition 字段保留, detailed 可查); i2c 双驱动 en 杂音清除且双侧对称, ternary/case 数据源保持; unit +4; 全量 **3058 passed**. [iter_139](docs/task_tree/iterations/iter_139_cond_signal_exclusion.md) |
 | **2026-09-05** | **inout 多驱动诊断 (iter_138)** | i2c 6 场景实测: 多源集合/穿透/方向均正确 — "归属单点"定性为静态语义边界 (依赖运行时 en); en 杂音小缺陷 (iter_139 修); Claim L3 #1 闭环. [iter_138](docs/task_tree/iterations/iter_138_inout_multidriver_diag.md) |
 | **2026-09-05** | **A2 位对位同构直连 (iter_137)** | bus↔bus 同宽直连位查询贯通到位级: graph_builder 位桥边 (仅两侧位节点存在, 不造假节点; 纯 bus 直通保持总线粒度) + 查询位桥出口递归; fanin(top.y[3]) == fanin(top.u_sub.y[3]); unit +3; 全量 **3054 passed**. [iter_137](docs/task_tree/iterations/iter_137_a2_bit_bridge.md) |
