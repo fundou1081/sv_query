@@ -1,9 +1,60 @@
-# Signal Graph 准确性审计清单 (2026-09-03)
+# Signal Graph 准确性审计清单 (2026-09-03, 声明版 2026-09-05)
 
 > **维护**: 在语义边界前提 (Semantic-only 限 RTL 顶层域; SVA/procedural/inline =
 > hybrid 例外域, 见 `inline_constraint_semantic_unavailable.md`) 下, 逐条验证
 > signal graph 结果不准确处。**每条 = 可复现现象 + 源码位置**。
 > **规则**: 修复后把条目移到"已修复"并注明迭代; 新发现在此登记。
+> **对外答案**: 先看下方 `📜 Accuracy Claim` (分层声明), 本文件其余部分是它的证据。
+
+---
+
+## 📜 Accuracy Claim — 分层准确性声明 (2026-09-05, 方豆问询落档)
+
+> **问题**: "能否说 signal graph 产生的图一定是代码的准确映射?"
+> **一句话答案**: **不能无限制地说**。图是建模决策的产物、受范围限定、
+> 且有已知反例。可核查的说法是下面的**分层声明** — 每层能承诺什么、
+> 在什么范围内、反例是什么, 逐项对照。
+
+### 1. 为什么不是"字面准确": 建模决策 (刻意抽象, 非 bug)
+
+| 抽象点 | 决策 | 语义影响 |
+|---|---|---|
+| 粒度 | A2 = 总线粒度 (位查询空答 → 提升父总线; 位对位 = backlog) | 查询答案可能粗于位级 |
+| 端口边界 | fanin 停在"有内部逻辑的模块端口" (iter_132); 纯直通 wrapper 穿透 (iter_134) | 答案粒度 = 端口/实例级, 不塌缩到 assign 操作数 |
+| 自环 | internal 标记自环排除出驱动源 (iter_127); nonblocking 真自环保留 | 驱动源集合不含"模块内部驱动"标记 |
+| 时钟/复位 | CLOCK/RESET = 采样关系, 非数据驱动源 (iter_128) | 数据 fanin 不含时钟链 (assign out=clk 例外, 走 DRIVER) |
+| 顶层输入 | 空 fanin = 预期 (外部驱动在图外) | 图内无源, 查询返回 uncertain |
+| 双向/共享 | inout / interface 成员 = 单向建模, 方向拍板 (iter_129) | 多驱动归属不承诺 (见 L3) |
+
+### 2. 分层声明
+
+| 层 | 承诺内容 | 状态 |
+|---|---|---|
+| **L1 结构层** | 节点/边存在性正确: 实例路径、端口连接 (CONNECTION)、驱动 (DRIVER) 不缺失、不造假节点 | ✅ **已验证设计域内可宣称** — iter_117~134 修复后 (假节点/假驱动清零均有可复现证据), 3048 tests 锁定 |
+| **L2 查询层** | fanin / 驱动答案正确 | ✅ **限"建模粒度语义"内可宣称**: 总线粒度 (A2)、端口/实例粒度 (iter_132/134 停靠规则)、自环/时钟排除规则。超出粒度的问题 (如要位级归属) 不承诺 |
+| **L3 深层语义层** | 多驱动归属 / 双向 / 共享合并语义 | ❌ **不承诺** — 命中下方反例即图在该点不准 |
+
+### 3. 范围限定 (声明仅在以下前提成立)
+
+- **语义域**: RTL 组合/时序连接、generate 各形态 (for/if/case/嵌套)、bus/位选、
+  inout/interface 单向、门级端子方向。SVA / procedural / inline 约束 = hybrid
+  例外域, 不在 signal graph 承诺内。
+- **验证语料**: 3048 pytest (fixture 抽取自真实项目模式) + 真实设计抽查
+  (aes 4834 节点 / cordic / serv / verilog-axi / minimal_3module)。
+- **上游依赖**: 正确性上限受 pyslang elaboration 影响; strict 编译受阻的设计
+  (CVA6 / coralNPU / vortex) 图无法建立。
+
+### 4. L3 已知反例 (命中 = 图在该点不准; 逐项 = backlog, 修一项移一项)
+
+| # | 反例 | 出处 |
+|---|---|---|
+| 1 | inout 双向多驱动归属 (i2c 开漏: 外部+实例同驱, 哪边算源) | CURRENT_TODO backlog |
+| 2 | interface master+slave 同线多写共享语义 (多实例同驱成员) | CURRENT_TODO backlog |
+| 3 | A2 位对位折算: 跨实例桥为总线粒度, 非位粒度 | 本文件 A2 后续项 |
+| 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |
+| 5 | slang generate-entry 合并枚举 (iter_119 观察) | CURRENT_TODO backlog |
+| 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3 |
+| 7 | CVA6/coralNPU/vortex strict 编译受阻 — 图建不出来 | ARCHITECTURE_TODOLIST §#7 |
 
 ---
 
