@@ -48,7 +48,7 @@
 
 | # | 反例 | 出处 |
 |---|---|---|
-| 1 | inout 双向多驱动归属 (i2c 开漏: 外部+实例同驱, 哪边算源) | CURRENT_TODO backlog |
+| ~~1~~ | ~~inout 双向多驱动归属 (i2c 开漏)~~ — **✅ 定性闭环 (iter_138/139)**: ①语义澄清 — 开漏总线"谁在驱动"依赖运行时 en, 静态只能给**可能驱动方集合** (fanin 已实现, 正确语义; 归属单点超出承诺域); ②真缺陷已修 — 三态使能 en 经 BRANCH 链混入数据 fanin 的不对称杂音 (iter_139: BRANCH_*/CASE_* 与 CLOCK 同规则排除, en 保留在 DRIVER.condition) | iter_138/139 |
 | 2 | interface master+slave 同线多写共享语义 (多实例同驱成员) | CURRENT_TODO backlog |
 | ~~3~~ | ~~A2 位对位折算: 跨实例桥为总线粒度~~ — **✅ 同构直连已通 (iter_137)**: bus↔bus 同宽直连的位查询贯通到位级 (顶层位 == 模块内位查询一致); **残留 (更窄)**: 切片/非零 base 位偏移映射 (.y(y[7:4]) 型) 仍 bus 粒度 | 本文件 A2 后续项 |
 | 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |

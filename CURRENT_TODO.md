@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_138 inout 多驱动诊断完成 — 方案待方豆拍板)
+> **最后更新**: 2026-09-05 GMT+8 (iter_139 条件控制信号排除 — 3058 passed)
 
 ---
 
@@ -22,15 +22,22 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** — ⏳ **拍板点: iter_138 inout 多驱动归属方案** (见下; 推荐方案 1+2)
+**等待方豆指示** (最近完成: iter_139 条件控制排除 + iter_138 inout 诊断)
+
+**iter_139 (2026-09-05)**: iter_138 方案 2 实施 (方豆拍板 "condition 已记录
+不需 driver 重复") — 条件/分支边族 (BRANCH_*/CASE_*) 与 CLOCK/RESET 同规则
+**不进数据 fanin** (query/signal.py; 控制信号保留在 DRIVER.condition +
+条件边, detailed 可查)。i2c 双驱动 fanin(sda) = {data_master, data_slave,
+u_slave.data} — en 不对称杂音清除 (双侧对称); ternary/case 数据源保持
+({a,b} / {a,b,c})。unit +4; 全量 3058 passed。
+[iter_139](docs/task_tree/iterations/iter_139_cond_signal_exclusion.md)
 
 **iter_138 (2026-09-05)**: i2c 开漏多驱动归属诊断 (iter_129 backlog / Claim
 L3 #1) — 6 场景实测: iter_129 单向建模已覆盖主要形态 (双器件多源集合 /
 外部驱动+只读无反向污染 / 级联穿透); 定性: "归属单点"依赖运行时 en =
 **静态语义边界** (fanin = 可能驱动方集合, 已实现), 非连接缺失。发现小
-缺陷: 三态 en 控制信号 fanin 不对称杂音 (顶层缺/实例进)。**方案候选**:
-1 语义文档化 (零代码) / 2 en 从 fanin 排除 (与 CLOCK 同规则, 推荐) /
-3 多驱动标注。**待方豆拍板**。
+缺陷: 三态 en 控制信号 fanin 不对称杂音 (顶层缺/实例进) — **iter_139 已修
+(方案 2)**。Claim L3 #1 闭环 (语义澄清 + 缺陷修复)。
 [iter_138](docs/task_tree/iterations/iter_138_inout_multidriver_diag.md)
 
 **iter_137 (2026-09-05)**: A2 位对位折算 (audit 后续项 / Claim L3 #3) —
@@ -138,6 +145,8 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **条件控制信号排除 (iter_139)** | 三态/三目/case 的 en/sel 控制信号不进数据 fanin (与 CLOCK 同规则; condition 字段保留, detailed 可查); i2c 双驱动 en 杂音清除且双侧对称, ternary/case 数据源保持; unit +4; 全量 **3058 passed**. [iter_139](docs/task_tree/iterations/iter_139_cond_signal_exclusion.md) |
+| **2026-09-05** | **inout 多驱动诊断 (iter_138)** | i2c 6 场景实测: 多源集合/穿透/方向均正确 — "归属单点"定性为静态语义边界 (依赖运行时 en); en 杂音小缺陷 (iter_139 修); Claim L3 #1 闭环. [iter_138](docs/task_tree/iterations/iter_138_inout_multidriver_diag.md) |
 | **2026-09-05** | **A2 位对位同构直连 (iter_137)** | bus↔bus 同宽直连位查询贯通到位级: graph_builder 位桥边 (仅两侧位节点存在, 不造假节点; 纯 bus 直通保持总线粒度) + 查询位桥出口递归; fanin(top.y[3]) == fanin(top.u_sub.y[3]); unit +3; 全量 **3054 passed**. [iter_137](docs/task_tree/iterations/iter_137_a2_bit_bridge.md) |
 | **2026-09-05** | **input Conversion 壳剥壳修复 (iter_136)** | iter_119 "slang 合并" 观察闭环: 真身 = input 位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (nested 4/4 a 侧缺, y 侧 iter_120 已修); get_instance_connection Conversion 链式剥壳; unit +3; 全量 **3051 passed**. [iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md) |
 | **2026-09-05** | **input Conversion 壳剥壳修复 (iter_136)** | iter_119 "slang 合并" 观察闭环: 真身 = input 位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (nested 4/4 a 侧缺, y 侧 iter_120 已修); get_instance_connection Conversion 链式剥壳; unit +3; 全量 **3051 passed**. [iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md) |
