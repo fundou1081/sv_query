@@ -332,6 +332,81 @@ endmodule
         self.assertEqual(nd.kind.name, 'PORT_INOUT')
 
 
+class TestInoutTriStateControlExclusion(unittest.TestCase):
+    """[iter_139 方案2, 方豆拍板] 三态/条件控制信号 (en/sel) 不进数据 fanin.
+
+    根因 (iter_138 诊断): 三态 `sda = en ? data : z` 的 en 记录在
+    data→sda DRIVER.condition 字段 (铁律16) + BRANCH_CONDITION 边;
+    fanin 对 BRANCH 链 fallthrough 递归会把使能当数据源 — i2c 双驱动
+    场景 en_slave (经实例 PORT_IN→CONNECTION→顶层输入) 混入而
+    en_master (顶层直接条件) 缺, 不对称杂音。
+    修: BRANCH_*/CASE_* 与 CLOCK/RESET 同规则 — 控制边不 append 不递归。
+    """
+
+    I2C = '''module bidir_io (inout wire sda, input wire en, input wire data);
+  assign sda = en ? data : 1'bz;
+endmodule
+module top (inout wire sda,
+            input wire en_master, data_master,
+            input wire en_slave, data_slave);
+  assign sda = en_master ? data_master : 1'bz;
+  bidir_io u_slave (.sda(sda), .en(en_slave), .data(data_slave));
+endmodule
+'''
+
+    TERNARY = '''module top (input a, b, sel, output y);
+  assign y = sel ? a : b;
+endmodule
+'''
+
+    CASE = '''module top (input [1:0] sel, input a, b, c, output reg y);
+  always @(*) begin
+    case (sel)
+      2'd0: y = a;
+      2'd1: y = b;
+      default: y = c;
+    endcase
+  end
+endmodule
+'''
+
+    def _fanin(self, src, q):
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        return {r.id for r in tr.trace_fanin(q)}
+
+    def test_i2c_multidriver_no_en_noise(self):
+        """开漏双驱动: 数据源都在, 使能 (en_master/en_slave) 一律不混入."""
+        ids = self._fanin(self.I2C, 'top.sda')
+        self.assertTrue({'top.data_master', 'top.data_slave',
+                         'top.u_slave.data'} <= ids,
+                        f"双器件数据源应在, 实际 {ids}")
+        self.assertNotIn('top.en_master', ids, "master 使能不应作数据源")
+        self.assertNotIn('top.en_slave', ids,
+                         f"slave 使能不应作数据源 (iter_138 杂音), 实际 {ids}")
+
+    def test_ternary_condition_not_data_source(self):
+        """纯三目: fanin 数据源 {a,b}, 条件 sel 不进."""
+        ids = self._fanin(self.TERNARY, 'top.y')
+        self.assertEqual(ids, {'top.a', 'top.b'},
+                         f"ternary fanin 应只含数据分支, 实际 {ids}")
+
+    def test_case_select_not_data_source(self):
+        """case: 各分支数据源 {a,b,c}, 选择信号 sel 不进."""
+        ids = self._fanin(self.CASE, 'top.y')
+        self.assertEqual(ids, {'top.a', 'top.b', 'top.c'},
+                         f"case fanin 应只含分支数据, 实际 {ids}")
+
+    def test_detailed_keeps_condition(self):
+        """条件仍可在 DRIVER.condition 查 (fanin_detailed), 不丢失."""
+        tr = UnifiedTracer(sources={'test.sv': self.TERNARY}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        conds = {r.id: getattr(r, 'condition', '') for r in tr.trace_fanin_detailed('top.y')}
+        self.assertEqual(conds.get('top.a'), 'sel',
+                         f"a 的 DRIVER 应带 condition='sel', 实际 {conds}")
+        self.assertEqual(conds.get('top.b'), '!(sel)')
+
+
 class TestInterfaceMemberBridge(unittest.TestCase):
     """iter_129 候选3: interface 成员级桥 (实例端口成员 ↔ interface 实例成员)."""
 

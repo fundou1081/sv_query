@@ -310,7 +310,25 @@ class SignalTracer:
                     # ←CONNECTION u_div.clk ←CONNECTION top.clk → fanin(cnt_b)
                     # 含 top.clk, 假驱动)。数据用 clk 场景 (assign out=clk) 走
                     # DRIVER continuous, 不受影响。
-                    if edge.kind in (EdgeKind.CLOCK, EdgeKind.RESET):
+                    # [iter_139 方案2, 方豆拍板] 条件/分支边 (BRANCH_*/CASE_* =
+                    # 三目/条件赋值/三态使能的控制语义) 同规则 — 不 append 不
+                    # 递归。三态 `sda = en ? data : z` 的 en 是**门控控制信号**
+                    # (已记录在 data→sda DRIVER 的 condition 字段, 见铁律16),
+                    # 不是数据驱动源: BRANCH 链 fallthrough 递归会把顶层/实例
+                    # 输入使能当源 (i2c 场景 en_slave 混入 fanin 而 en_master 缺,
+                    # 不对称杂音)。数据分支本身 (a/b, data) 走各自 DRIVER 边
+                    # (cond=sel/en), 不受影响 (纯 ternary fanin(y)={a,b} 保持)。
+                    if edge.kind in (
+                            EdgeKind.CLOCK,
+                            EdgeKind.RESET,
+                            EdgeKind.BRANCH_CONDITION,
+                            EdgeKind.BRANCH_TRUE,
+                            EdgeKind.BRANCH_FALSE,
+                            EdgeKind.BRANCH_RESULT,
+                            EdgeKind.CASE_SELECT,
+                            EdgeKind.CASE_ITEM,
+                            EdgeKind.CASE_RESULT,
+                    ):
                         continue
                     # CONNECTION 边:检查 src 是否是实例端口
                     if edge.kind == EdgeKind.CONNECTION:
