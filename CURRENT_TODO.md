@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (gate/SVA 拍板暂缓记录)
+> **最后更新**: 2026-09-05 GMT+8 (iter_145 benchmark 环境修复 + topModules — 3071 passed)
 
 ---
 
@@ -22,7 +22,17 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** — ⏳ backlog 剩 gate G-2/G-3 + SVA semantic 消歧 (**方豆拍板暂缓**, 见 audit L3 #4/#6 触发条件)
+**等待方豆指示** (backlog: gate/SVA 暂缓见 audit L3 #4/#6; pr5 wrapper 深度基准 TODO)
+
+**iter_145 (2026-09-05)**: benchmark 测试环境修复 (方豆 "先处理 1") — 真因三层:
+①/tmp filelist 缺失 (误判 HOME env 数月) ②axi repo 版本演进 (target
+axi_xbar_dp_ram 不存在) ③free-floating type-param 预 elab (axi_demux,
+CVA6 cvxif 同款)。修: **SVCompiler/UnifiedTracer top_modules 参数** (pyslang
+options.topModules — 只 elaborate 目标树, iter_140 弃用方案落地) +
+GenericClassDefSymbol 防崩 (真 bug) + pr5 filelist 自动生成 + 断言按真实
+数据修正。pr5 11 skip → **10 passed**; picorv32 benchmark 11 passed
+(数据更准: IM 0 = 自包含真实); 全量 3071 passed。
+[iter_145](docs/task_tree/iterations/iter_145_benchmark_env_fix.md)
 
 **iter_144 (2026-09-05)**: 方豆 "gate 和 sva 就先不做了, 用文档记录" —
 L3 剩余 2 项拍板暂缓: #4 gate G-2/G-3 (增强型, 对查询无影响, 需
@@ -189,6 +199,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **benchmark 环境修复 + topModules (iter_145)** | 真因三层 (filelist 缺失 / axi 版本演进 / free-floating type-param); SVCompiler+UnifiedTracer top_modules; GenericClassDefSymbol 防崩; pr5 filelist 自动生成 + 断言修正; pr5 11 skip→10 passed, picorv32 11 passed; 全量 **3071 passed**. [iter_145](docs/task_tree/iterations/iter_145_benchmark_env_fix.md) |
 | **2026-09-05** | **A2 切片偏移位桥 (iter_143)** | bus↔切片 CONNECTION 位桥 (声明序低位对齐 + 切片位节点创建, 无聚合边防污染); 双向位级贯通 (y[7]↔a[3] 偏移4); 悬空位干净; unit +3; 全量 **3061 passed**; A2 位对位全闭环. [iter_143](docs/task_tree/iterations/iter_143_a2_slice_bridge.md) |
 | **2026-09-05** | **interface 多写诊断闭环 (iter_142)** | 7 场景实测 iter_129 单向桥正确 (多源集合/读不反向/方向逐实例独立); 无真缺陷; 反例 #2 闭环; Claim 文档演进标注; 无代码改动. [iter_142](docs/task_tree/iterations/iter_142_iface_multiwrite_diag.md) |
 | **2026-09-05** | **解码健壮性批量修复 (iter_141)** | CVA6 暴露的非 utf8 identifier 解码崩溃 ~15 点 (6 文件) 全换 safe_attr/safe_str + safe_symbol_name; 崩溃→warning; CVA6 建图 = 8GB 内存/原生 segfault 边界 (环境项); unit+integration **1543 passed**. [iter_141](docs/task_tree/iterations/iter_141_decode_robustness.md) |

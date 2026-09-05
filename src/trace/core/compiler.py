@@ -135,7 +135,8 @@ class SVCompiler:
         comp = compiler.get_compilation()  # Compilation 对象
     """
 
-    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING", strict: bool = True):
+    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING", strict: bool = True,
+                 top_modules: list[str] | None = None):
         """
         初始化编译器
 
@@ -144,6 +145,12 @@ class SVCompiler:
             log_level: 诊断输出级别 (DEBUG/INFO/WARNING/ERROR/NONE)
             strict: True (默认) 时 elaboration error 会 raise;
                     False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
+            top_modules: [iter_145] 指定 top module 列表 → pyslang options.topModules,
+                    只 elaborate 这些 top 的实例树。None (默认) = 现状: pyslang 预
+                    elaborate 所有 free-floating 模块 — 含 type-param (axi_req_t =
+                    logic) 成员访问的 free-floating 会报 InvalidMemberAccess (CVA6
+                    cvxif / axi_demux 同款, iter_140/145)。设 top 后 free-floating
+                    被忽略 — 是 "库 filelist + 显式 top" 场景 (benchmark/CVA6) 的正解。
         """
         self._sources = sources or {}
         self._comp: pyslang.Compilation | None = None
@@ -153,6 +160,7 @@ class SVCompiler:
         self._log_level = self._parse_log_level(log_level)
         self._include_dirs: list[str] = []  # [铁律1] include 搜索路径
         self._strict = strict  # [FIX 2026-06-11] False 时不对 elaboration error raise
+        self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
         # [iter_140] paramOverride orphan 假错重试计数 (见 _do_compile)
         self._override_orphan_retry = 0
         # [iter_140] 已确认 drop 的 override 模块 (重建时不再注入, 避免假错循环)
@@ -329,6 +337,11 @@ class SVCompiler:
             return
 
         self._comp = pyslang.Compilation()
+        # [iter_145] 显式 top: 只 elaborate 指定 top 的实例树, free-floating
+        # (未被实例化) 模块忽略 — 避免 type-param free-floating 预 elab
+        # InvalidMemberAccess (CVA6 cvxif / axi_demux 同款)
+        if self._top_modules:
+            self._comp.options.topModules = set(self._top_modules)
         # [PR1 2026-06-14] 提高 generate loop step 限制 (默认 64 不够 lzc/rr_arb_tree)
         # lzc.sv 用 `for (level = 0; level < NumLevels; level++)` 加嵌套循环
         # NumLevels = 2**WIDTH, lzc WIDTH 默认 2 → 4 levels, 但 lzc 还嵌套 g_index_lut
