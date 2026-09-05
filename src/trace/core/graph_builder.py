@@ -148,6 +148,72 @@ class GraphBuilder:
                     assign_type=getattr(conn_e, "assign_type", "connection"),
                 ))
                 added += 1
+
+        # [iter_143 A2 切片偏移桥] 一端 bus 一端切片 (.y(y[7:4]) / [k]) 的
+        # CONNECTION: 切片连接隐含每 bit 真实驱动 — bus 侧位节点存在时,
+        # 按声明序低位对齐建 bus[blo+off] ↔ slice[slo+off] 位桥 (偏移映射);
+        # 切片侧单 bit 节点缺失则创建 (真实位: 由切片连接驱动, 非造假 —
+        # iter_137 '不造假节点' 指 bus 直通无真实位逻辑, 与此不同)。
+        # 位宽不匹配 (leaf 1 位接 2 位切片等, iter_136 场景) → skip。
+        import re as _re
+        for src, dst in list(self.graph.edges()):
+            s_br = "[" in src
+            d_br = "[" in dst
+            if s_br == d_br:
+                continue  # bus↔bus (上段) 或 bit↔bit
+            bus, sl_id = (dst, src) if s_br else (src, dst)
+            bnode = self.graph.get_node(bus)
+            if bnode is None or bnode.width is None:
+                continue
+            blo, bhi = min(bnode.width), max(bnode.width)
+            _m = _re.match(r"^(.*)\[(\d+):(\d+)\]$", sl_id)
+            if _m:
+                base, slo, shi = (_m.group(1), int(_m.group(2)),
+                                  int(_m.group(3)))
+                slo, shi = min(slo, shi), max(slo, shi)
+            else:
+                _m2 = _re.match(r"^(.*)\[(\d+)\]$", sl_id)
+                if not _m2:
+                    continue
+                base = _m2.group(1)
+                slo = shi = int(_m2.group(2))
+            if (bhi - blo) != (shi - slo):
+                continue  # 宽度不匹配 → 不能序对齐 (防错桥)
+            edges = self.graph.get_edges(src, dst)
+            conn_e = next((e for e in edges
+                           if e.kind == EdgeKind.CONNECTION), None)
+            if conn_e is None:
+                continue
+            for off in range(0, bhi - blo + 1):
+                bus_i = f"{bus}[{blo + off}]"
+                if bus_i not in self.graph.nodes():
+                    continue  # bus 侧无位节点 → 不造 (bus 直通保持粒度)
+                sl_i = f"{base}[{slo + off}]"
+                if sl_i not in self.graph.nodes():
+                    if base not in self.graph.nodes():
+                        continue
+                    # 只建位节点作查询落点, **不建 BIT_SELECT → base 聚合边**:
+                    # 聚合边会让 bus 提升查询 (悬空位 top.y[3] → bus top.y →
+                    # BIT_SELECT 子递归) 收到这些位驱动 → 污染 (iter_143 实测
+                    # top.y[3] 悬空位 fanin 串入 a[0..3])。位查询本身经桥可达,
+                    # 无需聚合边。
+                    self.graph.add_trace_node(TraceNode(
+                        id=sl_i,
+                        name=sl_i.rsplit(".", 1)[-1],
+                        module=(base.rsplit(".", 1)[0]
+                                if "." in base
+                                else (self.target_module or "")),
+                        kind=NodeKind.SIGNAL,
+                        width=None,
+                    ))
+                # 桥方向 = 原 CONNECTION 方向 (切片 src → bus dst, 反之亦然)
+                e_src, e_dst = ((sl_i, bus_i) if s_br else (bus_i, sl_i))
+                if self.graph.get_edge(e_src, e_dst) is None:
+                    self.graph.add_trace_edge(TraceEdge(
+                        src=e_src, dst=e_dst, kind=EdgeKind.CONNECTION,
+                        assign_type=getattr(conn_e, "assign_type", "connection"),
+                    ))
+                    added += 1
         if added:
             logger.debug(f"_expand_bus_conn_bit_bridges: added {added} bit edges")
 

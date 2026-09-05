@@ -167,6 +167,64 @@ class TestA2BitBridge(unittest.TestCase):
                          f"无位节点不建位桥 (不造假节点), 实际 {ids}")
 
 
+SLICE_OUT = '''module sub (input [3:0] a, output [3:0] y);
+  assign y[0] = ~a[0]; assign y[1] = ~a[1]; assign y[2] = ~a[2]; assign y[3] = ~a[3];
+endmodule
+module top (input [3:0] a, output [7:0] y);
+  sub u_sub (.a(a), .y(y[7:4]));
+endmodule
+'''
+
+SLICE_IN = '''module sub (input [3:0] a, output [3:0] y);
+  assign y[0] = a[0]; assign y[1] = a[1]; assign y[2] = a[2]; assign y[3] = a[3];
+endmodule
+module top (input [7:0] a, output [3:0] y);
+  sub u_sub (.a(a[7:4]), .y(y));
+endmodule
+'''
+
+
+class TestA2SliceBridge(unittest.TestCase):
+    """[iter_143] A2 位对位: 切片/偏移连接 (.y(y[7:4])) 的位级贯通.
+
+    iter_137 同构直连 (bit i ↔ bit i) 后残留: bus↔切片 CONNECTION
+    (u_sub.y → top.y[7:4]) 无位桥 — 顶层位 top.y[7] 查询停 bus 粒度。
+    修: 位桥第二段处理一端 bus 一端切片 — 声明序低位对齐
+    (bus[blo+off] ↔ slice[slo+off]); bus 侧位节点存在时, 切片侧单 bit
+    节点缺失则创建 (真实位, 由切片连接驱动); **不建 BIT_SELECT 聚合边**
+    (避免 bus 提升查询收位驱动污染, 悬空位 top.y[3] 保持干净)。
+    """
+
+    def _fanin(self, src, q):
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        return {r.id for r in tr.trace_fanin(q)}
+
+    def test_output_slice_offset_maps_bits(self):
+        """输出切片 y[7:4]: top.y[4+k] fanin == sub y[k] 源 (偏移映射)."""
+        for k, exp_a in ((0, 'top.a[0]'), (1, 'top.a[1]'),
+                         (2, 'top.a[2]'), (3, 'top.a[3]')):
+            ids = self._fanin(SLICE_OUT, f'top.y[{4 + k}]')
+            self.assertIn(exp_a, ids,
+                          f"y[{4+k}] 应跨切片偏移到 a[{k}], 实际 {ids}")
+            self.assertNotIn(f'top.a[{(k + 1) % 4}]', ids,
+                             "不应串相邻位")
+
+    def test_output_slice_dangling_bit_clean(self):
+        """非切片区悬空位 top.y[3]: bus 粒度且不串切片位驱动 (无污染)."""
+        ids = self._fanin(SLICE_OUT, 'top.y[3]')
+        self.assertEqual(ids, {'top.u_sub.y'},
+                         f"悬空位应保持 bus 粒度且不串位, 实际 {ids}")
+
+    def test_input_slice_offset_maps_bits(self):
+        """输入切片 a[7:4]: sub 内 y[k] fanin 跨切片到 top.a[4+k]."""
+        for k, exp_a in ((0, 'top.a[4]'), (1, 'top.a[5]'),
+                         (2, 'top.a[6]'), (3, 'top.a[7]')):
+            ids = self._fanin(SLICE_IN, f'top.u_sub.a[{k}]')
+            self.assertEqual(ids, {exp_a},
+                             f"u_sub.a[{k}] 应跨输入切片到 {exp_a}, 实际 {ids}")
+
+
 class TestA3SelfLoopNotDriverSource(unittest.TestCase):
     """A3: 实例输出端口 internal 自环标记不计为驱动源 (iter_127).
 

@@ -57,7 +57,7 @@
 |---|---|---|
 | ~~1~~ | ~~inout 双向多驱动归属 (i2c 开漏)~~ — **✅ 定性闭环 (iter_138/139)**: ①语义澄清 — 开漏总线"谁在驱动"依赖运行时 en, 静态只能给**可能驱动方集合** (fanin 已实现, 正确语义; 归属单点超出承诺域); ②真缺陷已修 — 三态使能 en 经 BRANCH 链混入数据 fanin 的不对称杂音 (iter_139: BRANCH_*/CASE_* 与 CLOCK 同规则排除, en 保留在 DRIVER.condition) | iter_138/139 |
 | ~~2~~ | ~~interface master+slave 同线多写共享语义~~ — **✅ 诊断闭环 (iter_142)**: 7 场景实测 (双 writer / writer+reader / top 直驱 / master 写+slave 读 / 双写+读 / modport / 同成员回读) — iter_129 单向桥方向 (实例内部有 incoming DRIVER = 写方, 否则读方) 逐实例独立判定, 多写给多源集合、读不反向、外部直驱并入, **无真缺陷**; "归属单点"依赖协议时序 = 语义边界 (与 #1 同构) | iter_142 |
-| ~~3~~ | ~~A2 位对位折算: 跨实例桥为总线粒度~~ — **✅ 同构直连已通 (iter_137)**: bus↔bus 同宽直连的位查询贯通到位级 (顶层位 == 模块内位查询一致); **残留 (更窄)**: 切片/非零 base 位偏移映射 (.y(y[7:4]) 型) 仍 bus 粒度 | 本文件 A2 后续项 |
+| ~~3~~ | ~~A2 位对位折算: 跨实例桥为总线粒度~~ — **✅ 全闭环 (iter_137 同构直连 + iter_143 切片偏移)**: bus↔bus 同宽直连位查询贯通 (顶层位 == 模块内位一致, iter_137); bus↔切片连接 (.y(y[7:4]) 偏移映射, iter_143: 声明序低位对齐位桥 + 切片侧位节点创建 + 悬空位无污染) — A2 位对位全粒度闭环 | iter_137/143 |
 | 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |
 | ~~5~~ | ~~slang generate-entry 合并枚举 (iter_119 观察)~~ — **✅ 闭环 (iter_136)**: 复现证明观察真身 = input 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (y 侧 iter_120 已修 / a 侧 iter_136 修), 非 slang 合并 | — |
 | 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3 |
@@ -70,7 +70,7 @@
 |---|---|---|
 | A1 无 target 盲区 | **CLI 设计视图入口** (build_viz_tracer, 无 `--module` 时) 自动单 top target: 库默认 `build_graph()` 保持无 target 类型级多模块契约 (cross_module/boundary 等测试锁定 mixed-namespace 语义), 需要的调用方显式传 `auto_target_single_top=True` | `_viz_common.py` build_viz_tracer + `unified_tracer.py` build_graph 新参数 (≈435); 证据 cordic CLI 无 module 365→542 节点 / 667 rects, `genblk1[0].U.x_shifter` 出现 |
 | A2 总线直连位查询空答 | query/signal.py: 位节点不存在 → 提升父总线 (总线粒度); 存在位节点无驱动 → BIT_SELECT 出边提升 | `_trace_drivers_recursive` (≈74-165) |
-| A2 粒度说明 | iter_126: 结果总线粒度 (top.y[3] → u_sub.y)。**iter_137 位对位 (同构直连)**: bus↔bus 同宽 CONNECTION 补位桥边 (仅两侧位节点存在) + 查询位桥出口递归 → fanin(top.y[3]) 贯通到 sub 内部位逻辑源 (== fanin(top.u_sub.y[3])); 纯 bus 直通 (无位节点) 保持总线粒度 (不造假节点)。**残留**: 切片/非零 base 位偏移映射 (.y(y[7:4])) | `graph_builder._expand_bus_conn_bit_bridges` + query/signal.py CONNECTION-SIGNAL 分支 |
+| A2 粒度说明 | iter_126: 结果总线粒度 (top.y[3] → u_sub.y)。**iter_137 位对位 (同构直连)**: bus↔bus 同宽 CONNECTION 补位桥边 (仅两侧位节点存在) + 查询位桥出口递归 → fanin(top.y[3]) 贯通到 sub 内部位逻辑源 (== fanin(top.u_sub.y[3])); 纯 bus 直通 (无位节点) 保持总线粒度 (不造假节点)。**iter_143 切片偏移**: bus↔切片 (.y(y[7:4])) 声明序低位对齐位桥 + 切片侧位节点创建 (无 BIT_SELECT 聚合边防 bus 提升污染) → 双向位级贯通 | `graph_builder._expand_bus_conn_bit_bridges` + query/signal.py CONNECTION-SIGNAL 分支 |
 | A3 端口 DRIVER 自环计入源 | 查询层跳过 `assign_type=="internal"` 自环 (实例输出端口标记, 恒 src==dst); nonblocking 真自环 (`state<=state+1`) 保留 | query/signal.py `_trace_drivers_recursive` + `_find_drivers`; fanin(top.u_sub.y) `[a, 自身] → [a]` |
 
 ## 🐛 未修复
