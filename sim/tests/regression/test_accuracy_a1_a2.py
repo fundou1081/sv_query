@@ -112,6 +112,61 @@ endmodule
                         f"位查询应含 a,b 实际 {ids}")
 
 
+BITSUB = '''module sub (input [3:0] a, b, output [3:0] y);
+  assign y[0] = a[0] & b[0];
+  assign y[1] = a[1] & b[1];
+  assign y[2] = a[2] & b[2];
+  assign y[3] = a[3] & b[3];
+endmodule
+module top (input [3:0] a, b, output [3:0] y);
+  sub u_sub (.a(a), .b(b), .y(y));
+endmodule
+'''
+
+
+class TestA2BitBridge(unittest.TestCase):
+    """[iter_137] A2 位对位折算 — 跨实例 bus 桥的位索引贯通.
+
+    iter_126 后 bus 粒度: 子模块输出总线直连顶层位时 fanin(top.y[3]) 停在
+    u_sub.y (总线粒度)。iter_137 补同宽同构 bus CONNECTION 的位桥边
+    (graph_builder._expand_bus_conn_bit_bridges, 仅两侧位节点都存在时) +
+    查询层位桥出口递归 → 顶层位查询贯通到 sub 内部位逻辑。
+    纯 bus 直通 (BUSFIX, 无位节点) 保持总线粒度 (不造假节点)。
+    """
+
+    def _fanin(self, src, q):
+        tr = UnifiedTracer(sources={'test.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        return {r.id for r in tr.trace_fanin(q)}
+
+    def test_bit_level_sub_consistent_with_internal(self):
+        """顶层位查询 == sub 内位查询 (位对位贯通): 均含 sub 输入端口位 + 顶层输入位."""
+        top_q = self._fanin(BITSUB, 'top.y[3]')
+        inner_q = self._fanin(BITSUB, 'top.u_sub.y[3]')
+        self.assertEqual(top_q, inner_q,
+                         "fanin(top.y[3]) 应跨桥后与 fanin(u_sub.y[3]) 一致")
+        self.assertTrue({'top.a[3]', 'top.b[3]',
+                         'top.u_sub.a[3]', 'top.u_sub.b[3]'} <= top_q,
+                        f"应贯通到 a[3]/b[3] (输入跨桥到顶层), 实际 {top_q}")
+        self.assertNotIn('top.u_sub.y', top_q,
+                         "位粒度答案不应含 bus 粒度 u_sub.y")
+        self.assertNotIn('top.u_sub.y[3]', top_q,
+                         "位桥中间节点不应作为源 (递归其内部驱动)")
+
+    def test_other_bits_per_entry(self):
+        """每位的答案按各自索引 (y[0]/y[2] 不串)."""
+        for i, exp in ((0, 'top.a[0]'), (2, 'top.b[2]')):
+            ids = self._fanin(BITSUB, f'top.y[{i}]')
+            self.assertIn(exp, ids, f"y[{i}] 应含 {exp}, 实际 {ids}")
+            self.assertNotIn(f'top.a[{3 - i}]', ids, "不应串其他位")
+
+    def test_bus_passthrough_stays_bus_granularity(self):
+        """纯 bus 直通 (BUSFIX, sub assign y=a 无位节点): 保持总线粒度 (iter_126)."""
+        ids = self._fanin(BUSFIX, 'top.y[3]')
+        self.assertEqual(ids, {'top.u_sub.y'},
+                         f"无位节点不建位桥 (不造假节点), 实际 {ids}")
+
+
 class TestA3SelfLoopNotDriverSource(unittest.TestCase):
     """A3: 实例输出端口 internal 自环标记不计为驱动源 (iter_127).
 

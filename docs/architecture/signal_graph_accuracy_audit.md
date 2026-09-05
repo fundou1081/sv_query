@@ -50,7 +50,7 @@
 |---|---|---|
 | 1 | inout 双向多驱动归属 (i2c 开漏: 外部+实例同驱, 哪边算源) | CURRENT_TODO backlog |
 | 2 | interface master+slave 同线多写共享语义 (多实例同驱成员) | CURRENT_TODO backlog |
-| 3 | A2 位对位折算: 跨实例桥为总线粒度, 非位粒度 | 本文件 A2 后续项 |
+| ~~3~~ | ~~A2 位对位折算: 跨实例桥为总线粒度~~ — **✅ 同构直连已通 (iter_137)**: bus↔bus 同宽直连的位查询贯通到位级 (顶层位 == 模块内位查询一致); **残留 (更窄)**: 切片/非零 base 位偏移映射 (.y(y[7:4]) 型) 仍 bus 粒度 | 本文件 A2 后续项 |
 | 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |
 | ~~5~~ | ~~slang generate-entry 合并枚举 (iter_119 观察)~~ — **✅ 闭环 (iter_136)**: 复现证明观察真身 = input 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (y 侧 iter_120 已修 / a 侧 iter_136 修), 非 slang 合并 | — |
 | 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3 |
@@ -63,7 +63,7 @@
 |---|---|---|
 | A1 无 target 盲区 | **CLI 设计视图入口** (build_viz_tracer, 无 `--module` 时) 自动单 top target: 库默认 `build_graph()` 保持无 target 类型级多模块契约 (cross_module/boundary 等测试锁定 mixed-namespace 语义), 需要的调用方显式传 `auto_target_single_top=True` | `_viz_common.py` build_viz_tracer + `unified_tracer.py` build_graph 新参数 (≈435); 证据 cordic CLI 无 module 365→542 节点 / 667 rects, `genblk1[0].U.x_shifter` 出现 |
 | A2 总线直连位查询空答 | query/signal.py: 位节点不存在 → 提升父总线 (总线粒度); 存在位节点无驱动 → BIT_SELECT 出边提升 | `_trace_drivers_recursive` (≈74-165) |
-| A2 粒度说明 | 结果总线粒度 (top.y[3] → u_sub.y); 位对位折算 = 后续项 | — |
+| A2 粒度说明 | iter_126: 结果总线粒度 (top.y[3] → u_sub.y)。**iter_137 位对位 (同构直连)**: bus↔bus 同宽 CONNECTION 补位桥边 (仅两侧位节点存在) + 查询位桥出口递归 → fanin(top.y[3]) 贯通到 sub 内部位逻辑源 (== fanin(top.u_sub.y[3])); 纯 bus 直通 (无位节点) 保持总线粒度 (不造假节点)。**残留**: 切片/非零 base 位偏移映射 (.y(y[7:4])) | `graph_builder._expand_bus_conn_bit_bridges` + query/signal.py CONNECTION-SIGNAL 分支 |
 | A3 端口 DRIVER 自环计入源 | 查询层跳过 `assign_type=="internal"` 自环 (实例输出端口标记, 恒 src==dst); nonblocking 真自环 (`state<=state+1`) 保留 | query/signal.py `_trace_drivers_recursive` + `_find_drivers`; fanin(top.u_sub.y) `[a, 自身] → [a]` |
 
 ## 🐛 未修复
