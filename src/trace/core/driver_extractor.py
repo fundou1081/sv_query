@@ -24,11 +24,13 @@ from pyslang.pyslang.ast import (
     BinaryOperator,  # [V6.9] semantic AST only (ExpressionKind/StatementKind 已随 Step 5/6 拆走)
 )
 
+from .._safe import safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
 from .ast_utils import unwrap  # [V6.3+3 2026-07-27] (kind_matches 已随 Step 6 always 拆走)
 from .base import PyslangAdapter
 from .builder.subroutine_expander import SubroutineExpander  # [Step 7] CallSiteInfo 已随 function_extractor 拆走
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
+from .extractors._common import safe_symbol_name  # [iter_141] symbol 名安全提取
 from .graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
 
 # [V6.9] SignalExpressionVisitor removed — using semantic_adapter
@@ -463,20 +465,21 @@ class DriverExtractor:
                 if "negedge" in edge_str.lower() or "NegEdge" in edge_str:
                     ce = getattr(expr, "expr", None)
                     if ce and hasattr(ce, "symbol"):
-                        sym = getattr(ce, "symbol", None)
-                        if sym and hasattr(sym, "name"):
-                            return str(sym.name).strip()
+                        # [iter_141] hasattr/str(sym.name) 非 utf8 identifier
+                        # pybind UnicodeDecodeError (CVA6) → safe_symbol_name
+                        _cn = safe_symbol_name(getattr(ce, "symbol", None))
+                        if _cn:
+                            return _cn
                     return str(ce).strip() if ce else ""
                 # posedge is clock, not reset
                 return ""
             # [FIX] NamedValueExpression with symbol - extract name directly, but only if it's a reset signal
             if hasattr(expr, "symbol"):
-                sym = getattr(expr, "symbol", None)
-                if sym and hasattr(sym, "name"):
-                    name = str(sym.name).strip()
+                _cn = safe_symbol_name(getattr(expr, "symbol", None))
+                if _cn:
                     # Only return if it looks like a reset signal
-                    if "rst" in name.lower() or "reset" in name.lower():
-                        return name
+                    if "rst" in _cn.lower() or "reset" in _cn.lower():
+                        return _cn
                 return ""
             if hasattr(expr, "left") and hasattr(expr, "right"):
                 left = find_reset(expr.left)
@@ -487,9 +490,9 @@ class DriverExtractor:
             if "negedge" in edge_str.lower() or "NegEdge" in edge_str:
                 ce = getattr(expr, "expr", None)
                 if ce and hasattr(ce, "symbol"):
-                    sym = getattr(ce, "symbol", None)
-                    if sym and hasattr(sym, "name"):
-                        return str(sym.name).strip()
+                    _cn = safe_symbol_name(getattr(ce, "symbol", None))
+                    if _cn:
+                        return _cn
                 return str(ce).strip() if ce else ""
             return ""
 
@@ -931,9 +934,10 @@ class DriverExtractor:
             # Fallback: .syntax 文本匹配
             if not side_signals:
                 syntax_node = getattr(side, "syntax", None)
-                name = str(syntax_node).strip() if syntax_node else ""
+                # [iter_141 CVA6] str(pyslang node) 非 utf8 解码炸 → safe_str
+                name = safe_str(syntax_node).strip() if syntax_node else ""
                 if not name:
-                    name = self._signal_visitor.get_source_text(side) or str(side)
+                    name = self._signal_visitor.get_source_text(side) or safe_str(side)
                 if name and signal == name:
                     operand_side = side_name
                     break

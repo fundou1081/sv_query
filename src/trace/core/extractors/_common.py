@@ -15,6 +15,8 @@
 import logging
 from typing import Any, Callable, Optional, Protocol
 
+from ..._safe import safe_attr, safe_str  # [iter_141] 非 utf8 pyslang 属性防崩
+
 logger = logging.getLogger(__name__)
 
 # [Step 3] BinaryOperator -> 可读符号映射表
@@ -135,7 +137,7 @@ def fold_constant(expr: Any, ctx: Optional[dict] = None) -> Optional[int]:
     if "NamedValue" in sk:
         sym = getattr(expr, "symbol", None)
         if sym:
-            name = getattr(sym, "name", None)
+            name = safe_attr(sym, "name", None)
             if name and str(name) in ctx:
                 return int(ctx[str(name)])
 
@@ -180,6 +182,27 @@ def fold_constant(expr: Any, ctx: Optional[dict] = None) -> Optional[int]:
     return None
 
 
+def safe_symbol_name(sym: Any) -> Optional[str]:
+    """[iter_141] 安全提取 pyslang symbol 名.
+
+    hasattr(sym, 'name') / str(sym.name) 在非 utf8 identifier (大设计如
+    CVA6) 触发 pybind getter UnicodeDecodeError — 用 try 防护, 失败返
+    None (显式 sentinel, 调用方按 '?'/跳过处理, 不 crash 整图).
+    """
+    if sym is None:
+        return None
+    try:
+        if not hasattr(sym, "name"):
+            return None
+        n = sym.name
+        if n is None:
+            return None
+        s = str(n).strip()
+        return s or None
+    except (UnicodeDecodeError, TypeError):
+        return None
+
+
 def get_signal(
     signal: Any,
     ctx: Optional[dict] = None,
@@ -212,7 +235,7 @@ def get_signal(
         if sym:
             name = None
             try:
-                name = getattr(sym, "name", None)
+                name = safe_attr(sym, "name", None)
             except UnicodeDecodeError:
                 # [iter_140 CVA6] pyslang symbol name 解码失败 (binary garbage,
                 # 大设计非 utf8 identifier) — 不可静默继续, 返回 None 让调用方
@@ -275,9 +298,9 @@ def get_signal(
             elif "NamedValue" in ok:
                 return get_signal(operand, ctx, current_module)
             elif "Call" in ok or "Invocation" in ok:
-                sub = getattr(operand, "subroutine", None) or getattr(operand, "name", None)
+                sub = getattr(operand, "subroutine", None) or safe_attr(operand, "name", None)
                 if sub:
-                    sname = getattr(sub, "name", None)
+                    sname = safe_attr(sub, "name", None)
                     if sname:
                         return str(sname)
                     return str(sub).strip()
@@ -335,7 +358,7 @@ def get_signal(
     if "MemberAccess" in sk:
         base = getattr(signal, "value", None) or getattr(signal, "base", None)
         member = getattr(signal, "member", None)
-        member_str = str(getattr(member, "name", member)) if member else ""
+        member_str = safe_str(safe_attr(member, "name")) if member else ""
         base_name = get_signal(base, ctx, current_module) if base else None
         if base_name and member_str:
             return f"{base_name}.{member_str}"
@@ -344,27 +367,27 @@ def get_signal(
     if "HierarchicalValue" in sk:
         sym = getattr(signal, "symbol", None)
         if sym:
-            sname = str(getattr(sym, "name", "")).strip()
+            sname = safe_str(safe_attr(sym, "name")).strip()
             if sname:
                 dd = getattr(sym, "declaringDefinition", None)
-                defn_type = str(getattr(dd, "name", "")).strip() if dd else ""
+                defn_type = safe_str(safe_attr(dd, "name")).strip() if dd else ""
                 if defn_type and current_module:
                     body = getattr(current_module, "body", None)
                     if body:
                         for port in body:
                             pk = str(getattr(port, "kind", ""))
-                            pn = str(getattr(port, "name", "")).strip()
+                            pn = safe_str(safe_attr(port, "name")).strip()
                             if "InterfacePort" in pk:
                                 idf = getattr(port, "interfaceDef", None)
-                                if idf and str(getattr(idf, "name", "")) == defn_type:
+                                if idf and safe_str(safe_attr(idf, "name")) == defn_type:
                                     return f"{pn}.{sname}"
                             elif "Instance" in pk and getattr(port, "isInterface", False):
                                 idef = getattr(port, "definition", None)
-                                if idef and str(getattr(idef, "name", "")) == defn_type:
+                                if idef and safe_str(safe_attr(idef, "name")) == defn_type:
                                     return f"{pn}.{sname}"
                             elif "Instance" in pk:
                                 idef = getattr(port, "definition", None)
-                                if idef and str(getattr(idef, "name", "")) == defn_type:
+                                if idef and safe_str(safe_attr(idef, "name")) == defn_type:
                                     return f"{pn}.{sname}"
                     return sname
     # fallback: str() + strip()
@@ -378,7 +401,7 @@ def get_signal(
                 return vs
         sym = getattr(signal, "symbol", None)
         if sym:
-            name = getattr(sym, "name", None)
+            name = safe_attr(sym, "name", None)
             if name:
                 return str(name).strip()
     return result_str if result_str else None
@@ -523,8 +546,10 @@ class _PyslangSelectWalker:
                     full_id = make_range_select_id(immediate, msb, lsb)
                 else:
                     # parameter 边界不 evaluate, 用 syntax raw text 作 ID
+                    # [iter_141 CVA6] str(pyslang syntax node) 非 utf8 解码炸 → safe_str
                     syn = getattr(node, 'syntax', None)
-                    full_id = str(syn).strip() if syn is not None else f"{immediate}[?]"
+                    full_id = (safe_str(syn).strip()
+                               if syn is not None else f"{immediate}[?]")
 
                 # line/col from sourceRange
                 sr = getattr(node, 'sourceRange', None)
@@ -654,7 +679,7 @@ def _extract_base_chain(node: Any) -> list[str]:
         if k == ExpressionKind.NamedValue:
             sym = getattr(cur, 'symbol', None)
             if sym is not None:
-                name = getattr(sym, 'name', None)
+                name = safe_attr(sym, 'name', None)
                 if name:
                     chain.append(str(name).strip())
             break
@@ -662,7 +687,7 @@ def _extract_base_chain(node: Any) -> list[str]:
         # MemberAccess: struct.field (e.g. pkt.addr)
         if k == ExpressionKind.MemberAccess:
             mem = getattr(cur, 'member', None)
-            mem_name = getattr(mem, 'name', None) if mem else None
+            mem_name = safe_attr(mem, 'name', None) if mem else None
             # 拿 ancestor (cur.value)
             ancestor = getattr(cur, 'value', None)
             # 沿 ancestor 链往上到 NamedValue, 沿途可能有 MemberAccess / ElementSelect / RangeSelect
@@ -674,13 +699,13 @@ def _extract_base_chain(node: Any) -> list[str]:
                 if ak == ExpressionKind.NamedValue:
                     asym = getattr(acur, 'symbol', None)
                     if asym:
-                        aname = getattr(asym, 'name', None)
+                        aname = safe_attr(asym, 'name', None)
                         if aname:
                             ancestor_chain.append(str(aname).strip())
                     break
                 elif ak == ExpressionKind.MemberAccess:
                     amem = getattr(acur, 'member', None)
-                    amem_name = getattr(amem, 'name', None) if amem else None
+                    amem_name = safe_attr(amem, 'name', None) if amem else None
                     if ancestor_chain and amem_name:
                         ancestor_chain.append(f"{ancestor_chain[-1]}.{amem_name}")
                     break
@@ -734,13 +759,13 @@ def _extract_base_chain(node: Any) -> list[str]:
                 if ak == ExpressionKind.NamedValue:
                     asym = getattr(acur, 'symbol', None)
                     if asym:
-                        aname = getattr(asym, 'name', None)
+                        aname = safe_attr(asym, 'name', None)
                         if aname:
                             ancestor_chain.append(str(aname).strip())
                     break
                 elif ak == ExpressionKind.MemberAccess:
                     amem = getattr(acur, 'member', None)
-                    amem_name = getattr(amem, 'name', None) if amem else None
+                    amem_name = safe_attr(amem, 'name', None) if amem else None
                     if ancestor_chain and amem_name:
                         ancestor_chain.append(f"{ancestor_chain[-1]}.{amem_name}")
                     break
@@ -831,7 +856,7 @@ def _get_base_name(node: Any) -> str | None:
     if str(base_kind) == 'ExpressionKind.NamedValue':
         sym = getattr(base, 'symbol', None)
         if sym:
-            name = getattr(sym, 'name', None)
+            name = safe_attr(sym, 'name', None)
             if name:
                 return str(name).strip()
 
@@ -840,7 +865,7 @@ def _get_base_name(node: Any) -> str | None:
         # MemberAccess 有 .value (member 上一级) 和 .member (字段名)
         member = getattr(base, 'member', None)
         if member:
-            mname = getattr(member, 'name', None)
+            mname = safe_attr(member, 'name', None)
             if mname:
                 # 上级还可能是结构体本身, 递归取 base
                 parent_base = _get_base_name_from_base(base)
@@ -864,7 +889,7 @@ def _get_base_name_from_base(base: Any) -> str | None:
     if str(parent_kind) == 'ExpressionKind.NamedValue':
         sym = getattr(parent, 'symbol', None)
         if sym:
-            name = getattr(sym, 'name', None)
+            name = safe_attr(sym, 'name', None)
             if name:
                 return str(name).strip()
     return None

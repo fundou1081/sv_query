@@ -36,6 +36,7 @@ from pyslang.pyslang.ast import StatementKind  # [V6.9] semantic AST only
 
 from ..ast_utils import kind_matches, unwrap
 from ..graph.models import EdgeKind, NodeKind, TraceNode
+from ._common import safe_symbol_name  # [iter_141] symbol 名安全提取 (非 utf8 防护)
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +108,11 @@ def _extract_clock_from_event_ctrl(n, *, h: 'AlwaysHelpers') -> str:
         # [FIX] NamedValueExpression with symbol - extract name directly
         if hasattr(expr, "symbol"):
             sym = getattr(expr, "symbol", None)
-            if sym and hasattr(sym, "name"):
-                return str(sym.name).strip()
+            # [iter_141] hasattr/str(sym.name) 在非 utf8 identifier 触发 pybind
+            # UnicodeDecodeError (CVA6) — safe_symbol_name 防护 (失败返 "")
+            _cn = safe_symbol_name(sym)
+            if _cn:
+                return _cn
         if hasattr(expr, "left") and hasattr(expr, "right"):
             left_res = find_clock(expr.left)
             return left_res if left_res else find_clock(expr.right)
@@ -118,8 +122,9 @@ def _extract_clock_from_event_ctrl(n, *, h: 'AlwaysHelpers') -> str:
             ce = getattr(expr, "expr", None)
             if ce and hasattr(ce, "symbol"):
                 sym = getattr(ce, "symbol", None)
-                if sym and hasattr(sym, "name"):
-                    return str(sym.name).strip()
+                _cn = safe_symbol_name(sym)
+                if _cn:
+                    return _cn
             return str(ce).strip() if ce else ""
         return ""
 

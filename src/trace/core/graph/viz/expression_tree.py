@@ -392,7 +392,10 @@ class ExpressionTree:
         for i in range(start + 1, end - 1):  # skip { and }
             token = tokens[i]
             kind = str(getattr(token, 'kind', ''))
-            if 'Comma' in kind or 'Comma' in str(token):
+            # [iter_141 CVA6] 原 'Comma' in str(token) 冗余双重检查 — str(token)
+            # 在非 utf8 identifier 上 pybind UnicodeDecodeError (大设计); kind
+            # (token.kind) 已权威覆盖 Comma 判断, 删掉 str() 解码路径
+            if 'Comma' in kind:
                 continue
             e = ExpressionTree._leaf(token)
             if e:

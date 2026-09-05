@@ -12,7 +12,7 @@ from typing import Callable, Iterator
 
 logger = logging.getLogger(__name__)
 
-from .._safe import _safe_attr, _safe_str, safe_str
+from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
 from .._safe import clean_name as _clean_name_fn
 
 # 确保 pyslang bindings 在 path 中
@@ -1248,9 +1248,13 @@ class SemanticAdapter:
                 genvar_name = None
                 loop_var = getattr(node, "loopVariable", None)
                 if loop_var is not None:
-                    gn = getattr(loop_var, "name", None)
-                    if gn:
-                        genvar_name = str(gn)
+                    # [iter_141 CVA6] loopVariable.name 属性 getter 在非 utf8
+                    # identifier 抛 UnicodeDecodeError (pybind) — safe_str 防护
+                    try:
+                        gn = getattr(loop_var, "name", None)
+                        genvar_name = str(gn) if gn else None
+                    except UnicodeDecodeError:
+                        genvar_name = None
                 for entry in entries:
                     # [Plan F1.2 2026-08-12] Skip uninstantiated entries
                     if getattr(entry, 'isUninstantiated', False):
@@ -1501,11 +1505,12 @@ class SemanticAdapter:
 
     def get_task_name(self, task) -> str:
         """获取 task 名称"""
-        return str(getattr(task, "name", "unknown"))
+        # [iter_141 CVA6] getattr 属性 getter 非 utf8 解码炸 (pybind) → safe_attr
+        return safe_attr(task, "name", "unknown")
 
     def get_function_name(self, func) -> str:
         """获取 function 名称"""
-        return str(getattr(func, "name", "unknown"))
+        return safe_attr(func, "name", "unknown")
 
     # =========================================================================
     # 参数相关
@@ -2310,7 +2315,10 @@ class SemanticAdapter:
             member_name = None
             if member:
                 # ClassPropertySymbol: .name gives the property name
-                member_name = _safe_attr(member, "name", None) or _safe_attr(member, "value", None) or str(member).strip()
+                # [iter_141 CVA6] str(member) 兜底在非 utf8 时 pybind 解码炸 → safe_str
+                member_name = (_safe_attr(member, "name", None)
+                               or _safe_attr(member, "value", None)
+                               or safe_str(member).strip())
                 # Strip pyslang Symbol(...) wrapper if present
                 if member_name.startswith("Symbol("):
                     try:
