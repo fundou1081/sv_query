@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_142 interface 多写诊断闭环 + Claim 演进)
+> **最后更新**: 2026-09-05 GMT+8 (iter_143 A2 切片偏移位桥 — 3061 passed)
 
 ---
 
@@ -22,7 +22,16 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (最近: iter_142 interface 诊断闭环 + iter_141 解码健壮性)
+**等待方豆指示** (最近: iter_143 A2 切片偏移位桥 + iter_142 interface 诊断)
+
+**iter_143 (2026-09-05)**: A2 位对位**切片偏移** (iter_137 残留 / Claim L3 #3
+收窄) — bus↔切片 CONNECTION (.y(y[7:4])) 位桥第二段: 声明序低位对齐
+(bus[blo+off] ↔ slice[slo+off]), bus 侧位节点存在才建 + 切片侧单 bit
+节点缺失则创建 (**不建 BIT_SELECT 聚合边** — 避免 bus 提升查询收位驱动
+污染悬空位); 双向贯通: fanin(top.y[7]) = {a[3] 链} (偏移 4),
+fanin(u_sub.a[3]) = {top.a[7]}; 悬空位保持 bus 粒度干净; 宽度不匹配不
+瞎桥。unit +3; 全量 3061 passed。A2 位对位 (同构+切片) 全闭环。
+[iter_143](docs/task_tree/iterations/iter_143_a2_slice_bridge.md)
 
 **iter_142 (2026-09-05)**: interface 多写共享诊断 (Claim L3 #2) — 7 场景
 实测 (双 writer / writer+reader / top 直驱 / master 写+slave 读 / 双写+
@@ -165,15 +174,14 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
    见决策文档 D3 (业务改善信号触发)
-3. A2 位对位**切片偏移**映射 (bus 直连带切片 .y(y[7:4]) / 非零 base 端口 —
-   同构直连 iter_137 已通, 偏移位映射 = 残留档) — 审计文档 A2 后续项
-4. inout 双向多驱动归属 (i2c 开漏) — iter_138 已澄清为静态可能源集合
+3. inout 双向多驱动归属 (i2c 开漏) — iter_138 已澄清为静态可能源集合
    (正确语义); 归属单点依赖时序超出承诺域, 无需代码专项 (closed)
 5. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **A2 切片偏移位桥 (iter_143)** | bus↔切片 CONNECTION 位桥 (声明序低位对齐 + 切片位节点创建, 无聚合边防污染); 双向位级贯通 (y[7]↔a[3] 偏移4); 悬空位干净; unit +3; 全量 **3061 passed**; A2 位对位全闭环. [iter_143](docs/task_tree/iterations/iter_143_a2_slice_bridge.md) |
 | **2026-09-05** | **interface 多写诊断闭环 (iter_142)** | 7 场景实测 iter_129 单向桥正确 (多源集合/读不反向/方向逐实例独立); 无真缺陷; 反例 #2 闭环; Claim 文档演进标注; 无代码改动. [iter_142](docs/task_tree/iterations/iter_142_iface_multiwrite_diag.md) |
 | **2026-09-05** | **解码健壮性批量修复 (iter_141)** | CVA6 暴露的非 utf8 identifier 解码崩溃 ~15 点 (6 文件) 全换 safe_attr/safe_str + safe_symbol_name; 崩溃→warning; CVA6 建图 = 8GB 内存/原生 segfault 边界 (环境项); unit+integration **1543 passed**. [iter_141](docs/task_tree/iterations/iter_141_decode_robustness.md) |
 | **2026-09-05** | **CVA6 编译配方 + 修复 (iter_140)** | 特征代码法: 44 错 = 未实例化 type-param free-floating 模块 (pyslang 预 elab, filelist 剔 3 示例); compiler.py override-orphan 假错修复 (drop 模块 override 不 fatal); 解码健壮性 ×2 (非 utf8 identifier); CVA6 core 编译通过; 建图剩解码点 (iter_141). [iter_140](docs/task_tree/iterations/iter_140_cva6_compile.md) |
