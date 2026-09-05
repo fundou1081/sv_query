@@ -431,6 +431,30 @@ class SignalTracer:
                                 continue
                             # SIGNAL via CONNECTION: 中间线网,添加为驱动
                             if node.kind.name == "SIGNAL":
+                                # [iter_137 A2 位对位] CONNECTION src 是实例
+                                # 输出端口的**位** (位桥边 u_sub.y[i]→top.y[i],
+                                # graph_builder._expand_bus_conn_bit_bridges):
+                                # 它是桥中间节点, 不 append 进结果 (粒度答案
+                                # 不含桥), 递归追其内部驱动 — 与直接查询
+                                # u_sub.y[i] 同语义 (fanin(top.y[3]) 贯通到
+                                # sub 内部 y[3] 逻辑源 a[3]/b[3], 对齐
+                                # fanin(top.u_sub.y[3]))。判据: src 位节点的
+                                # **bus 父** (剥 [N]) kind==PORT_OUT (driver 建
+                                # 的位节点 parent 属性常为 None, 不能依赖)。
+                                # 普通中间线网位 (bus 父非 PORT_OUT) 保持
+                                # append+stop (iter_132 粒度停靠不变)。
+                                _bpn = (src.rsplit('[', 1)[0]
+                                        if '[' in src else None)
+                                _bpnode = (self.graph.get_node(_bpn)
+                                           if _bpn else None)
+                                if (_bpnode is not None
+                                        and _bpnode.kind.name == "PORT_OUT"
+                                        and src in self.graph.nodes()
+                                        and src not in seen_ids):
+                                    self._trace_drivers_recursive(
+                                        src, drivers, seen_ids,
+                                        current_depth + 1, max_depth)
+                                    continue
                                 if node.id not in seen_ids:
                                     drivers.append(node)
                                     seen_ids.add(node.id)

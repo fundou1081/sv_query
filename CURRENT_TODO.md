@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_136 input Conversion 连接修复 — 3051 passed)
+> **最后更新**: 2026-09-05 GMT+8 (iter_137 A2 位对位同构直连 — 3054 passed)
 
 ---
 
@@ -22,7 +22,17 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (最近完成: iter_136 input Conversion 连接修复 + iter_135 Accuracy Claim)
+**等待方豆指示** (最近完成: iter_137 A2 位对位 + iter_136 Conversion 修复)
+
+**iter_137 (2026-09-05)**: A2 位对位折算 (audit 后续项 / Claim L3 #3) —
+bus↔bus **同宽同构直连**的位查询贯通: graph_builder 补位桥边
+(_expand_bus_conn_bit_bridges: 仅两侧位节点都存在时, 不造假节点 —
+纯 bus 直通保持总线粒度, iter_126 truth 不变) + 查询位桥出口递归
+(CONNECTION src 位节点的 bus 父是 PORT_OUT → 不 append 桥中间节点,
+递归其内部驱动)。fanin(top.y[3]) == fanin(top.u_sub.y[3]) (顶层位 ==
+sub 内位一致, 贯通到 sub 内 y[3] 源 + 输入跨桥到顶层位)。unit +3;
+全量 3054 passed。残留: 切片/非零 base 位偏移映射 (.y(y[7:4]))。
+[iter_137](docs/task_tree/iterations/iter_137_a2_bit_bridge.md)
 
 **iter_136 (2026-09-05)**: iter_119 "slang 合并" 观察复现 → 真身 = **input
 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢** (leafm 1 位接 2 位切片,
@@ -108,7 +118,8 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
    见决策文档 D3 (业务改善信号触发)
-3. A2 位对位折算 (总线粒度 → 位粒度跨实例桥) — 审计文档后续项
+3. A2 位对位**切片偏移**映射 (bus 直连带切片 .y(y[7:4]) / 非零 base 端口 —
+   同构直连 iter_137 已通, 偏移位映射 = 残留档) — 审计文档 A2 后续项
 4. inout 双向多驱动归属 (i2c 开漏: 外部+实例同时驱动哪边算源) —
    iter_129 单向链已通, 多驱动归属专项
 5. interface master+slave 同线多写共享语义 (多实例同时驱动 interface 成员
@@ -118,6 +129,8 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **A2 位对位同构直连 (iter_137)** | bus↔bus 同宽直连位查询贯通到位级: graph_builder 位桥边 (仅两侧位节点存在, 不造假节点; 纯 bus 直通保持总线粒度) + 查询位桥出口递归; fanin(top.y[3]) == fanin(top.u_sub.y[3]); unit +3; 全量 **3054 passed**. [iter_137](docs/task_tree/iterations/iter_137_a2_bit_bridge.md) |
+| **2026-09-05** | **input Conversion 壳剥壳修复 (iter_136)** | iter_119 "slang 合并" 观察闭环: 真身 = input 位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (nested 4/4 a 侧缺, y 侧 iter_120 已修); get_instance_connection Conversion 链式剥壳; unit +3; 全量 **3051 passed**. [iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md) |
 | **2026-09-05** | **input Conversion 壳剥壳修复 (iter_136)** | iter_119 "slang 合并" 观察闭环: 真身 = input 位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (nested 4/4 a 侧缺, y 侧 iter_120 已修); get_instance_connection Conversion 链式剥壳; unit +3; 全量 **3051 passed**. [iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md) |
 | **2026-09-05** | **Accuracy Claim 落档 (iter_135)** | 审计文档头部分层声明: L1 结构 ✅ / L2 查询 ✅ 限粒度 / L3 深层 ❌ 不承诺 + 7 反例表 (修一项移一项); 纯文档. [iter_135](docs/task_tree/iterations/iter_135_accuracy_claim.md) |
 | **2026-09-05** | **嵌套 generate 假节点清理 (iter_134)** | gen_block 直接宿主判定修深层嵌套假路径 (aes 279/1116→0, cordic 105→0); wrapper cross get_edges + PORT_OUT 自递归连带修; unit +3; 全量非 opensource **3048 passed** (22 env/既有 skip; serv 1 假失败 = HOME 重定向, 真实 HOME 通过). [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md) |

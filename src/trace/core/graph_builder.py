@@ -88,11 +88,68 @@ class GraphBuilder:
         if self.target_module:
             self._filter_by_target()
 
+        # [iter_137 A2 位对位] 位桥展开须在 _filter_by_target 之后 —
+        # 遍历的是最终保留节点, 不会给将被删除的 type-level 节点建悬空边.
+        self._expand_bus_conn_bit_bridges()
+
         # [V16.11 2026-08-18] 抓 pyslang GenerateBlock{Array} → assign LHS base signal 映射
         # 替代 V16.10.3 的启发式: 直接从源码读 generate block 真实 label
         self._capture_generate_block_map()
 
         return self.graph
+
+    def _expand_bus_conn_bit_bridges(self):
+        """[iter_137 A2 位对位] 同宽同构 bus↔bus CONNECTION 的位级桥边.
+
+        iter_126 A2 后: 子模块输出总线直连顶层位时 fanin(top.y[3]) 停在总线
+        粒度 (top.u_sub.y) — bus CONNECTION (u_sub.y→top.y) 无位级桥, 顶层位
+        top.y[3] 只有 BIT_SELECT 出边, 无 incoming 驱动链到 sub 内部位逻辑
+        (u_sub.y[3] 由 driver 层按 RTL 位选建的位节点及其 DRIVER 存在, 但
+        查询跨不过 bus 边界)。
+
+        修: 对 bus↔bus CONNECTION 边 (两端无 [N]、宽度相等), 若**两侧位节点
+        都存在** (driver/_create_hierarchical_bit_nodes 按 RTL 真实位选建的),
+        补位级 CONNECTION 边 (u_sub.y[i]→top.y[i]; 输入侧 top.a[i]→
+        u_sub.a[i] 同规则)。位节点不存在 (纯 bus 直通, BUSFIX 型) 不建 —
+        保持 iter_126 总线粒度契约, 不造假节点 (AGENTS.md §2)。
+        切片连接 (.y(y[7:4]) 偏移位映射) 不在本版 — audit 后续项。
+        """
+        added = 0
+        for src, dst in list(self.graph.edges()):
+            if "[" in src or "[" in dst:
+                continue  # 已位/切片粒度
+            snode = self.graph.get_node(src)
+            dnode = self.graph.get_node(dst)
+            if snode is None or dnode is None:
+                continue
+            if snode.width is None or dnode.width is None:
+                continue
+            if snode.width != dnode.width:
+                continue  # 非同宽 → 位映射不可同构推断, 跳过 (防错桥)
+            # width=(msb,lsb) 方向不定 → min/max 枚举
+            lo, hi = min(snode.width), max(snode.width)
+            if hi <= lo:
+                continue  # 1 位 bus (单 bit) 无需桥
+            edges = self.graph.get_edges(src, dst)
+            if not any(e.kind == EdgeKind.CONNECTION for e in edges):
+                continue
+            for i in range(lo, hi + 1):
+                src_i = f"{src}[{i}]"
+                dst_i = f"{dst}[{i}]"
+                if (src_i not in self.graph.nodes()
+                        or dst_i not in self.graph.nodes()):
+                    continue  # 任一侧无位节点 → 不建 (不造假节点)
+                if self.graph.get_edge(src_i, dst_i) is not None:
+                    continue  # 已有
+                conn_e = next((e for e in edges
+                               if e.kind == EdgeKind.CONNECTION), None)
+                self.graph.add_trace_edge(TraceEdge(
+                    src=src_i, dst=dst_i, kind=EdgeKind.CONNECTION,
+                    assign_type=getattr(conn_e, "assign_type", "connection"),
+                ))
+                added += 1
+        if added:
+            logger.debug(f"_expand_bus_conn_bit_bridges: added {added} bit edges")
 
     def _capture_generate_block_map(self):
         """[V16.11.1 2026-08-18] Capture pyslang GenerateBlockArray/GenerateBlock.name → LHS base signal mapping.
