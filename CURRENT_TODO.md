@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_145 benchmark 环境修复 + topModules — 3071 passed)
+> **最后更新**: 2026-09-05 GMT+8 (iter_146 stale skip 测试清理)
 
 ---
 
@@ -22,7 +22,12 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (backlog: gate/SVA 暂缓见 audit L3 #4/#6; pr5 wrapper 深度基准 TODO)
+**等待方豆指示** (backlog: gate/SVA 暂缓; pr5 wrapper 深度基准 TODO; cvfpu 低优先)
+
+**iter_146 (2026-09-05)**: coverage_generator stale skip 测试清理 (2 个
+V6.9 visitor 删除遗留) — AST 级精确删除, 路径已由新测试覆盖; 套件
+2 skip → 0, 177 passed。无代码改动。
+[iter_146](docs/task_tree/iterations/iter_146_stale_skip_cleanup.md)
 
 **iter_145 (2026-09-05)**: benchmark 测试环境修复 (方豆 "先处理 1") — 真因三层:
 ①/tmp filelist 缺失 (误判 HOME env 数月) ②axi repo 版本演进 (target
