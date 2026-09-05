@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_147 README 同步)
+> **最后更新**: 2026-09-05 GMT+8 (iter_148 README 超能力宣传校对)
 
 ---
 
@@ -23,6 +23,12 @@
 ## 🔥 当前任务
 
 **等待方豆指示** (backlog: gate/SVA 暂缓; pr5 wrapper 深度基准 TODO; cvfpu 低优先)
+
+**iter_148 (2026-09-05)**: README 超能力宣传校对 (方豆 "cdc 描述先去掉") —
+cdc/timing/risk 命令标 EXPERIMENTAL 却被 README 当能力列 → 从 Experimental
+节 + CLI 能力表去除; 补 EXPERIMENTAL_FEATURES.md 链接; sva timing 真实
+保留。无代码改动。
+[iter_148](docs/task_tree/iterations/iter_148_readme_scope_fix.md)
 
 **iter_147 (2026-09-05)**: README 同步 (方豆 "readme 是不是可以更新?") —
 日期 2026-09-05 / 测试数 3071; 新增 📜 Accuracy Claim 三层声明节;
