@@ -52,7 +52,7 @@
 | 2 | interface master+slave 同线多写共享语义 (多实例同驱成员) | CURRENT_TODO backlog |
 | 3 | A2 位对位折算: 跨实例桥为总线粒度, 非位粒度 | 本文件 A2 后续项 |
 | 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |
-| 5 | slang generate-entry 合并枚举 (iter_119 观察) | CURRENT_TODO backlog |
+| ~~5~~ | ~~slang generate-entry 合并枚举 (iter_119 观察)~~ — **✅ 闭环 (iter_136)**: 复现证明观察真身 = input 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (y 侧 iter_120 已修 / a 侧 iter_136 修), 非 slang 合并 | — |
 | 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3 |
 | 7 | CVA6/coralNPU/vortex strict 编译受阻 — 图建不出来 | ARCHITECTURE_TODOLIST §#7 |
 
@@ -140,6 +140,7 @@ inout 双向多驱动 / interface 多写共享 见 iter_129 记录与 CURRENT_TO
 
 | 条目 | 修复迭代 | 位置 |
 |---|---|---|
+| input 端口位宽不匹配连接静默丢 (Conversion 壳未剥, iter_119 观察真身) | iter_136 | semantic_adapter `get_instance_connection` Conversion 剥壳 |
 | 嵌套 generate 深层路径重复段假节点 (aes 型 ×351 / cordic ×105) | iter_134 | connection_extractor `_get_generate_block_name` 直接宿主判定 (hp 末段前一段 name[N]) + query wrapper cross 守卫 get_edges 全查 + wrapper_passthrough 自递归 |
 | generate RHS 位选丢索引 (总线当源) | iter_118 | semantic_adapter `_extract_signals_from_expr` |
 | 索引段加倍假节点 | iter_117 | connection_extractor `get_path` gen_block 去重 |
