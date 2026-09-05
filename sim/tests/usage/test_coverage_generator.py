@@ -1044,65 +1044,6 @@ class TestASTParsing(unittest.TestCase):
         self.assertIn("a", names)
         self.assertIn("b", names)
 
-    @unittest.skip("[V6.9] SignalExpressionVisitor 已删除，改用 _get_signal")
-    def test_parse_via_real_pyslang_ast(self):
-        """真实 pyslang AST 解析 (集成测试)"""
-        import pyslang
-        from trace.core.semantic_adapter import SemanticAdapter
-
-        # 用简单 SV 创建一个 expression AST
-        source = """
-        module test(input a, b, output [3:0] c);
-            assign c = a & b;
-        endmodule
-        """
-        tree = pyslang.SyntaxTree.fromText(source)
-        root = tree.root
-
-        # 递归找 ContinuousAssign
-        assign_node = None
-
-        def find(node):
-            s = str(node.kind)
-            if "ContinuousAssign" in s:
-                return node
-            if hasattr(node, "__iter__") and not isinstance(node, str):
-                try:
-                    for c in node:
-                        r = find(c)
-                        if r is not None:
-                            return r
-                except Exception:
-                    pass
-            return None
-
-        assign_node = find(root)
-        if assign_node is None:
-            self.fail("Could not find ContinuousAssign")
-
-        # Get the assignment expression (a & b)
-        # ContinuousAssignSyntax has 'assignments' (list of AssignmentExpression)
-        assignments = assign_node.assignments
-        if not assignments:
-            self.fail("ContinuousAssign has no assignments")
-
-        assign_expr = assignments[0]  # AssignmentExpression
-        if "AssignmentExpression" not in str(assign_expr.kind):
-            self.fail(f"Expected AssignmentExpression, got {assign_expr.kind}")
-
-        rhs = assign_expr.right  # BinaryExpression (a & b)
-
-        # 测试解析
-        comp = pyslang.Compilation()
-        comp.addSyntaxTree(tree)
-        adapter = SemanticAdapter(root, comp)
-        visitor = SignalExpressionVisitor(adapter)
-        result = visitor.extract(rhs)
-        self.assertIsNotNone(result)
-        # 应该有 a 和 b
-        self.assertIn("a", result.all_signals)
-        self.assertIn("b", result.all_signals)
-
 
 # ==============================================================================
 # V2 Cycle 11: AST 集成 - TraceEdge.condition_ast 字段
@@ -1168,52 +1109,6 @@ class TestASTConditionExtraction(unittest.TestCase):
         result = gen._extract_atomics_from_ast(None)
         self.assertEqual(result, [])
 
-    @unittest.skip("[V6.9] SignalExpressionVisitor 已删除，改用 _get_signal")
-    def test_extract_via_real_pyslang_ast(self):
-        """真实 pyslang AST 解析"""
-        import pyslang
-        from trace.core.semantic_adapter import SemanticAdapter
-
-        source = """
-        module test(input a, b, c, output [3:0] d);
-            assign d = a & b | c;
-        endmodule
-        """
-        tree = pyslang.SyntaxTree.fromText(source)
-        root = tree.root
-
-        # 找 BinaryExpression (a & b | c, 从左到右解析为 ((a & b) | c))
-        def find_binary(node):
-            s = str(node.kind)
-            if "Binary" in s and "Expression" in s:
-                return node
-            if hasattr(node, "__iter__") and not isinstance(node, str):
-                try:
-                    for c in node:
-                        r = find_binary(c)
-                        if r is not None:
-                            return r
-                except Exception:
-                    pass
-            return None
-
-        binary = find_binary(root)
-        self.assertIsNotNone(binary, "Should find a Binary expression")
-
-        comp = pyslang.Compilation()
-        comp.addSyntaxTree(tree)
-        adapter = SemanticAdapter(root, comp)
-        visitor = SignalExpressionVisitor(adapter)
-        sr = visitor.extract(binary)
-
-        gen = self._make_gen()
-        atomics = gen._extract_atomics_from_ast(binary)
-        names = {s.name for s in atomics}
-
-        # 字符串解析 (_parse_expression_to_atomics) 已经能处理
-        # 但 AST 路径应该返回相同结果
-        for expected in ("a", "b", "c"):
-            self.assertIn(expected, names)
 
     def test_extract_ast_path_preferred(self):
         """[Plan F3 2026-08-13] 当 condition_ast 可用时, _extract_condition_atomic
