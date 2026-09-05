@@ -302,7 +302,14 @@ class ClassGraphBuilder:
         - 多语句 (set_addr: addr = a; data = addr;) — RHS 含方法参数/成员
         - 嵌套 (if/for 内赋值) — 递归
         """
-        for member in cls:
+        # [iter_145] GenericClassDefSymbol (参数化 class, common_cells 泛型
+        # 队列等) 不可迭代 (模板无展开 body) → 方法赋值提取跳过 (泛型方法体
+        # 无具体赋值; 具体实例化类走 ClassSymbol)。防 TypeError crash 整图。
+        try:
+            members = list(cls)
+        except TypeError:
+            return
+        for member in members:
             if 'Subroutine' not in str(getattr(member, 'kind', '')):
                 continue
             body = getattr(member, 'body', None)

@@ -331,6 +331,7 @@ class UnifiedTracer:
         include_dirs: list[str] = None,
         strict: bool = True,
         preprocess_macros: bool = True,
+        top_modules: list[str] = None,
     ):
         """初始化 UnifiedTracer
 
@@ -345,6 +346,9 @@ class UnifiedTracer:
                     False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
             preprocess_macros: True (默认) 时跑 sv_preprocessor.preprocess_macros
                               跨文件展开 `MACRO 引用. False 则跳过 (信任 pyslang 内置).
+            top_modules: [iter_145] 指定 top module 列表 → SVCompiler.top_modules
+                    (只 elaborate 这些 top, free-floating 忽略 — 库 filelist +
+                    显式 top 场景如 axi_xbar benchmark / CVA6)
         """
         if sources is None:
             sources = {}
@@ -363,6 +367,7 @@ class UnifiedTracer:
         self._strict = strict  # [FIX 2026-06-11] False = 优雅降级
         self._preprocess_macros = preprocess_macros  # [Req-20 2026-06-12] 默认跨文件宏展开
         self._preprocessed = False  # 标记是否已 preprocess
+        self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
 
         # 日志级别控制
         if log_level is not None:
@@ -407,7 +412,9 @@ class UnifiedTracer:
         """获取 SVCompiler (Semantic AST 编译入口)"""
         if self._compiler is None:
             self._ensure_preprocessed()  # [Req-20 2026-06-12] 宏展开在 compiler 前
-            self._compiler = SVCompiler(self._sources, log_level=self._log_level, strict=self._strict)
+            self._compiler = SVCompiler(self._sources, log_level=self._log_level,
+                                        strict=self._strict,
+                                        top_modules=self._top_modules)  # [iter_145]
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)
             if self._files:

@@ -107,12 +107,14 @@ class TestPicorv32Benchmark:
         l2 = data["L2_graph_topology"]
         assert l2["nodes"] >= 400, f"expected >= 400 nodes, got {l2['nodes']}"
 
-    def test_picorv32_l2_im_count_at_least_2(self):
-        """picorv32 至少有 2 INSTANTIATED_MODULE (clk_gen, mem)."""
+    def test_picorv32_l2_im_zero_subinstances(self):
+        """[iter_145] picorv32 自包含 (无子模块实例, IM=0) — top_modules 编译后
+        free-floating 不再虚高 (旧 >=2 靠文件里未实例化模块凑数)."""
         data = _run_bench()
         l2 = data["L2_graph_topology"]
-        assert l2["instantiated_modules"] >= 2, (
-            f"expected >= 2 IM, got {l2['instantiated_modules']}"
+        assert "instantiated_modules" in l2, f"missing im in {list(l2.keys())}"
+        assert l2["instantiated_modules"] == 0, (
+            f"picorv32 无子实例, got {l2['instantiated_modules']}"
         )
 
     def test_picorv32_l3_traces_work(self):
@@ -135,10 +137,11 @@ class TestPicorv32Benchmark:
         with open(out) as f:
             data = json.load(f)
         l3 = data["L3_signal_traces"]
-        # clk should have some fanout (drives many internal regs)
-        if "error" not in l3.get("picorv32.clk", {}):
-            clk = l3["picorv32.clk"]
-            assert clk["fanout"] >= 1, f"clk fanout >= 1, got {clk['fanout']}"
+        # [iter_145] clk 无子实例 fanout 0 (L3 fanout = 跨实例); 用 mem_busy
+        # fanin (内部驱动链贯通, 实测 17) 证明 L3 trace 真实工作
+        mb = l3.get("picorv32.mem_busy", {})
+        if "error" not in mb:
+            assert mb.get("fanin", 0) >= 1, f"mem_busy fanin >= 1, got {mb}"
 
 
 class TestPicorv32Baseline:

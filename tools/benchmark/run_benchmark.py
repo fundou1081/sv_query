@@ -273,12 +273,16 @@ def main():
     include_dirs = args.include.split(",") if args.include else None
     print("Building tracer...")
     t0 = time.time()
+    # [iter_145] top_modules=[args.target]: 只 elaborate 目标 top 实例树 —
+    # free-floating 模块 (axi_demux 等 type-param axi_req_t) 被 pyslang 预
+    # elab 报 InvalidMemberAccess (CVA6 cvxif 同款), 显式 top 可避开。
     if args.filelist:
         t = UnifiedTracer(
             filelist=args.filelist,
             include_dirs=include_dirs,
             strict=args.strict,
             log_level="ERROR",
+            top_modules=[args.target],
         )
         project_input = args.filelist
     else:  # args.files (PR7)
@@ -287,6 +291,7 @@ def main():
             include_dirs=include_dirs,
             strict=args.strict,
             log_level="ERROR",
+            top_modules=[args.target],
         )
         project_input = " ".join(args.files)
     t.build_graph()
