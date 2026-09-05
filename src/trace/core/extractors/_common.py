@@ -210,9 +210,19 @@ def get_signal(
     if "NamedValue" in sk:
         sym = getattr(signal, "symbol", None)
         if sym:
-            name = getattr(sym, "name", None)
+            name = None
+            try:
+                name = getattr(sym, "name", None)
+            except UnicodeDecodeError:
+                # [iter_140 CVA6] pyslang symbol name 解码失败 (binary garbage,
+                # 大设计非 utf8 identifier) — 不可静默继续, 返回 None 让调用方
+                # 按 '?' 占位/跳过处理 (不 crash 整图)
+                return None
             if name:
-                name_str = str(name).strip()
+                try:
+                    name_str = str(name).strip()
+                except UnicodeDecodeError:
+                    return None
                 # [Plan F1] genvar substitute
                 if name_str in ctx:
                     return str(ctx[name_str])
