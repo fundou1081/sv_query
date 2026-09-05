@@ -1028,6 +1028,22 @@ class SemanticAdapter:
                     sig = self._conn_expr_to_signal(expr, instance)
                     if sig:
                         signal_name = sig
+                # [iter_136] Conversion 壳 (端口位宽 ≠ 连接位宽 / 类型转换时,
+                # pyslang 给 input 表达式包 Conversion, operand 才是真表达式):
+                # 不剥壳 → signal_name 停留 "?" → 整条 conn 静默丢 (无 warning,
+                # 违反 AGENTS.md §2) — iter_119 观察真身: leafm `input a` 1 位接
+                # a[j*2+:2] 2 位切片, 嵌套 fixture 4/4 input 连接全缺, fanin 断
+                # 在 u_leaf.a。output 侧是 Assignment(left=RangeSelect) 不受影响。
+                elif "Conversion" in expr_kind:
+                    operand = getattr(expr, "operand", None)
+                    # 链式剥壳 (防 Conversion(Conversion(...)))
+                    while (operand is not None
+                           and "Conversion" in str(getattr(operand, "kind", ""))):
+                        operand = getattr(operand, "operand", None)
+                    if operand is not None:
+                        sig = self._conn_expr_to_signal(operand, instance)
+                        if sig:
+                            signal_name = sig
                 # [V15.2 2026-08-13] 方向 A: pyslang semantic AST 处理 ConcatenationExpression
                 # 当 .port(expr) 的 expr 是 {a, b, c} 时, 原逻辑 (NamedValue/Assignment)
                 # 不命中 → 整条 conn 被丢弃. 现在走 semantic AST 的 ConcatenationExpression.operands,

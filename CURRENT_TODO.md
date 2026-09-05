@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_135 Accuracy Claim 落档 — 审计文档头部分层声明)
+> **最后更新**: 2026-09-05 GMT+8 (iter_136 input Conversion 连接修复 — 3051 passed)
 
 ---
 
@@ -22,7 +22,15 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (最近完成: iter_134 假节点清理 + iter_135 Accuracy Claim 落档)
+**等待方豆指示** (最近完成: iter_136 input Conversion 连接修复 + iter_135 Accuracy Claim)
+
+**iter_136 (2026-09-05)**: iter_119 "slang 合并" 观察复现 → 真身 = **input
+端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢** (leafm 1 位接 2 位切片,
+nested 4/4 input 连接缺, fanin 断 u_leaf.a; output 侧 Assignment 不受影响
+故 iter_120 后 y 侧 OK / a 侧残留, 且无断言覆盖)。修: get_instance_connection
+Conversion 链式剥壳 → operand 交 _conn_expr_to_signal; unit +3; 全量
+3051 passed (serv 1 env 假失败同前)。slang 观察闭环, 非 slang 合并。
+[iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md)
 
 **iter_135 (2026-09-05)**: 方豆问询"图是否 = 代码准确映射" → 结论落档:
 **不能无限制说** — 图 = 建模决策产物 + 范围限定 + 已知反例。审计文档头部
@@ -100,17 +108,18 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
    tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
 2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
    见决策文档 D3 (业务改善信号触发)
-3. slang generate-entry 合并枚举观察 (iter_119 记录)
-4. A2 位对位折算 (总线粒度 → 位粒度跨实例桥) — 审计文档后续项
-5. inout 双向多驱动归属 (i2c 开漏: 外部+实例同时驱动哪边算源) —
+3. A2 位对位折算 (总线粒度 → 位粒度跨实例桥) — 审计文档后续项
+4. inout 双向多驱动归属 (i2c 开漏: 外部+实例同时驱动哪边算源) —
    iter_129 单向链已通, 多驱动归属专项
-6. interface master+slave 同线多写共享语义 (多实例同时驱动 interface 成员
+5. interface master+slave 同线多写共享语义 (多实例同时驱动 interface 成员
    的归属/合并) — iter_129 成员桥已建, 共享语义专项
-7. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
+6. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
 ## ✅ 最近完成 (保留 3 条汇总, 逐项细节看 git log + docs/task_tree/iterations/)
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **input Conversion 壳剥壳修复 (iter_136)** | iter_119 "slang 合并" 观察闭环: 真身 = input 位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (nested 4/4 a 侧缺, y 侧 iter_120 已修); get_instance_connection Conversion 链式剥壳; unit +3; 全量 **3051 passed**. [iter_136](docs/task_tree/iterations/iter_136_conn_conversion_shell.md) |
+| **2026-09-05** | **Accuracy Claim 落档 (iter_135)** | 审计文档头部分层声明: L1 结构 ✅ / L2 查询 ✅ 限粒度 / L3 深层 ❌ 不承诺 + 7 反例表 (修一项移一项); 纯文档. [iter_135](docs/task_tree/iterations/iter_135_accuracy_claim.md) |
 | **2026-09-05** | **嵌套 generate 假节点清理 (iter_134)** | gen_block 直接宿主判定修深层嵌套假路径 (aes 279/1116→0, cordic 105→0); wrapper cross get_edges + PORT_OUT 自递归连带修; unit +3; 全量非 opensource **3048 passed** (22 env/既有 skip; serv 1 假失败 = HOME 重定向, 真实 HOME 通过). [iter_134](docs/task_tree/iterations/iter_134_nested_gen_dup_cleanup.md) |
 | **2026-09-05** | **iter_131/132 真实复验 (iter_133)** | aes 4834 节点/272 实例复验: fanin 位隔离零跨 entry; dataflow 已知限制区分; 暴露嵌套 generate 深层重复段假节点 (351/4834, baseline 既有) 登记 audit backlog. [iter_133](docs/task_tree/iterations/iter_133_real_verify.md) |
 | **2026-09-05** | **generate per-entry fanin 位隔离 (iter_132)** | fanin(top.y[3]) 串入 G[0..2] 双根因: A2 提升忽略 incoming CONNECTION + wrapper cross 无条件跨; 修后 y[i] fanin 恰 [G[i].u_leaf.y]; bus 聚合/纯直通/xor/wrapper 全保; unit +3; 全量 **2934 passed**. [iter_132](docs/task_tree/iterations/iter_132_genfor_fanin_isolation.md) |

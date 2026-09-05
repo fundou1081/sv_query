@@ -348,3 +348,78 @@ endmodule
         self.assertIn(("top.u_m2.a[3:2]", "top.u_m2.G2[1].u_leaf.a"), conn)
         ph = [n for n in g.nodes() if '?' in n]
         self.assertEqual(ph, [])
+
+
+class TestConversionShellInputConn(unittest.TestCase):
+    """[iter_136] Conversion 壳剥壳 — 端口位宽 ≠ 连接位宽时 input 连接静默丢失.
+
+    复现 (iter_119 观察真身): leafm `input a` (1 位) 接 a[j*2+:2] (2 位切片)
+    时, pyslang 给 input 表达式包 ExpressionKind.Conversion (operand 才是
+    RangeSelect); get_instance_connection 无 Conversion 分支 → signal_name
+    停留 '?' → 整条 conn 静默丢 (无 warning) → u_m2.a → G2[j].u_leaf.a
+    输入连接缺失, fanin 断在 u_leaf.a。output 侧 (Assignment left) 不受影响,
+    故 iter_120 后 y 侧 OK / a 侧残留。修复: Conversion 链式剥壳 → operand
+    交 _conn_expr_to_signal (RangeSelect → a[1:0] 命名)。
+    """
+
+    SINGLE_1BIT = '''module leafm (input a, output y);
+  assign y = a;
+endmodule
+module m2m (input [3:0] a, output [3:0] y);
+  genvar j;
+  generate for (j=0;j<2;j=j+1) begin : G2
+    leafm u_leaf (.a(a[j*2+:2]), .y(y[j*2+:2]));
+  end endgenerate
+endmodule
+module top (input [3:0] a, output [3:0] y);
+  m2m u_m2 (.a(a), .y(y));
+endmodule
+'''
+
+    def _conns(self, src, target='top'):
+        g = _graph(src, target=target)
+        conn = set()
+        for s, d in g.edges():
+            for e in g._edge_data.get((s, d), []):
+                if e.kind.name == 'CONNECTION':
+                    conn.add((s, d))
+        return conn
+
+    def test_nested_input_conns_restored(self):
+        """NESTED_PART_SELECT_CONN (leafm 1 位): 4 个 u_leaf 的 input a 连接全在."""
+        conn = self._conns(NESTED_PART_SELECT_CONN)
+        expect = [
+            ("top.u_m1.G1[0].u_m2.a[1:0]", "top.u_m1.G1[0].u_m2.G2[0].u_leaf.a"),
+            ("top.u_m1.G1[0].u_m2.a[3:2]", "top.u_m1.G1[0].u_m2.G2[1].u_leaf.a"),
+            ("top.u_m1.G1[1].u_m2.a[1:0]", "top.u_m1.G1[1].u_m2.G2[0].u_leaf.a"),
+            ("top.u_m1.G1[1].u_m2.a[3:2]", "top.u_m1.G1[1].u_m2.G2[1].u_leaf.a"),
+        ]
+        for s, d in expect:
+            self.assertIn((s, d), conn,
+                          f"[iter_136] input 连接应存在 (Conversion 剥壳): {s} -> {d}")
+
+    def test_single_level_input_conn_restored(self):
+        """单级 (leafm 1 位, 无 m1m 层): 同样恢复."""
+        conn = self._conns(self.SINGLE_1BIT)
+        self.assertIn(("top.u_m2.a[1:0]", "top.u_m2.G2[0].u_leaf.a"), conn,
+                      "单级 1 位端口 input 连接应存在")
+        self.assertIn(("top.u_m2.a[3:2]", "top.u_m2.G2[1].u_leaf.a"), conn)
+
+    def test_adapter_conns_not_silently_dropped(self):
+        """adapter 层 get_instance_connection 不再静默丢 input (含 Conversion)."""
+        comp = SVCompiler({'t.sv': self.SINGLE_1BIT})
+        adapter = SemanticAdapter(comp.get_root(), target_module='top')
+        found = False
+        for inst in adapter.get_module_instances():
+            sym = getattr(inst, "_symbol", None)
+            if sym is None:
+                continue
+            hp = str(sym.hierarchicalPath)
+            if not hp.endswith(".u_leaf"):
+                continue
+            found = True
+            conns = dict(adapter.get_instance_connection(inst))
+            expect_a = 'a[1:0]' if 'G2[0]' in hp else 'a[3:2]'
+            self.assertEqual(conns.get('a'), expect_a,
+                             f"{hp} input a 应解析为 {expect_a} (Conversion 剥壳)")
+        self.assertTrue(found, "应枚举到 u_leaf 实例")
