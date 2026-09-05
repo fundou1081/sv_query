@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_146 stale skip 测试清理)
+> **最后更新**: 2026-09-05 GMT+8 (iter_147 README 同步)
 
 ---
 
@@ -23,6 +23,12 @@
 ## 🔥 当前任务
 
 **等待方豆指示** (backlog: gate/SVA 暂缓; pr5 wrapper 深度基准 TODO; cvfpu 低优先)
+
+**iter_147 (2026-09-05)**: README 同步 (方豆 "readme 是不是可以更新?") —
+日期 2026-09-05 / 测试数 3071; 新增 📜 Accuracy Claim 三层声明节;
+位对位/无 string fallback/CVA6 编译验证描述; 文档链接补审计+纪律。
+无代码改动。
+[iter_147](docs/task_tree/iterations/iter_147_readme_update.md)
 
 **iter_146 (2026-09-05)**: coverage_generator stale skip 测试清理 (2 个
 V6.9 visitor 删除遗留) — AST 级精确删除, 路径已由新测试覆盖; 套件
