@@ -58,9 +58,9 @@
 | ~~1~~ | ~~inout 双向多驱动归属 (i2c 开漏)~~ — **✅ 定性闭环 (iter_138/139)**: ①语义澄清 — 开漏总线"谁在驱动"依赖运行时 en, 静态只能给**可能驱动方集合** (fanin 已实现, 正确语义; 归属单点超出承诺域); ②真缺陷已修 — 三态使能 en 经 BRANCH 链混入数据 fanin 的不对称杂音 (iter_139: BRANCH_*/CASE_* 与 CLOCK 同规则排除, en 保留在 DRIVER.condition) | iter_138/139 |
 | ~~2~~ | ~~interface master+slave 同线多写共享语义~~ — **✅ 诊断闭环 (iter_142)**: 7 场景实测 (双 writer / writer+reader / top 直驱 / master 写+slave 读 / 双写+读 / modport / 同成员回读) — iter_129 单向桥方向 (实例内部有 incoming DRIVER = 写方, 否则读方) 逐实例独立判定, 多写给多源集合、读不反向、外部直驱并入, **无真缺陷**; "归属单点"依赖协议时序 = 语义边界 (与 #1 同构) | iter_142 |
 | ~~3~~ | ~~A2 位对位折算: 跨实例桥为总线粒度~~ — **✅ 全闭环 (iter_137 同构直连 + iter_143 切片偏移)**: bus↔bus 同宽直连位查询贯通 (顶层位 == 模块内位一致, iter_137); bus↔切片连接 (.y(y[7:4]) 偏移映射, iter_143: 声明序低位对齐位桥 + 切片侧位节点创建 + 悬空位无污染) — A2 位对位全粒度闭环 | iter_137/143 |
-| 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md |
+| 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md。**🕐 方豆拍板暂缓 (2026-09-05)**: 增强型 — 对"谁驱动"查询**无影响** (驱动答案已正确), 属门级语义完整化; 触发条件: 需要门级 delay/strength 分析 (timing 类) 或 UDP 内部逻辑可视化时再启动 |
 | ~~5~~ | ~~slang generate-entry 合并枚举 (iter_119 观察)~~ — **✅ 闭环 (iter_136)**: 复现证明观察真身 = input 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (y 侧 iter_120 已修 / a 侧 iter_136 修), 非 slang 合并 | — |
-| 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3 |
+| 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3。**🕐 方豆拍板暂缓 (2026-09-05)**: 架构整洁型 — 无用户可见收益, 动 SVA 83 测试风险高; 触发条件: SVA 提取再次出现 syntax 症状修堆叠 / 语义消歧新需求时再启动 |
 | 7 | CVA6/coralNPU/vortex strict 编译受阻 — 图建不出来 | ARCHITECTURE_TODOLIST §#7。**iter_140/141**: CVA6 core strict **编译已通** (剔 cvxif_example 未实例化 type-param 示例 + compiler override-orphan 修复); 解码健壮性批量修复 ~15 点 (非 utf8 identifier 崩溃 → warning); 完整建图 = **8GB 内存/原生 segfault 环境边界** (iter_059 先例, 大内存机器可验)。coralNPU ($clog2 宏) / vortex (无编译入口) 未动 |
 
 ---

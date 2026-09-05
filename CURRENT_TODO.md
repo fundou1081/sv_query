@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_143 A2 切片偏移位桥 — 3061 passed)
+> **最后更新**: 2026-09-05 GMT+8 (gate/SVA 拍板暂缓记录)
 
 ---
 
@@ -22,7 +22,14 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (最近: iter_143 A2 切片偏移位桥 + iter_142 interface 诊断)
+**等待方豆指示** — ⏳ backlog 剩 gate G-2/G-3 + SVA semantic 消歧 (**方豆拍板暂缓**, 见 audit L3 #4/#6 触发条件)
+
+**iter_144 (2026-09-05)**: 方豆 "gate 和 sva 就先不做了, 用文档记录" —
+L3 剩余 2 项拍板暂缓: #4 gate G-2/G-3 (增强型, 对查询无影响, 需
+delay/strength 分析时再启) / #6 iter_121 SVA semantic 消歧重构 (架构
+整洁型, 无用户可见收益, SVA 补丁堆叠时再启)。audit 反例表 + backlog
+标注 🕐 暂缓 + 触发条件。无代码改动。
+[iter_144](docs/task_tree/iterations/iter_144_defer_gate_sva.md)
 
 **iter_143 (2026-09-05)**: A2 位对位**切片偏移** (iter_137 残留 / Claim L3 #3
 收窄) — bus↔切片 CONNECTION (.y(y[7:4])) 位桥第二段: 声明序低位对齐
@@ -170,10 +177,11 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
   归属需专项拍板
 
 **backlog (未启动, 按序)**:
-1. gate 遗留改进 G-2 (drive strength/delay 进图) + G-3 (UDP table 可视化) —
-   tasks/L2_gate_primitive_support.md (G-1 ✅ iter_115)
-2. iter_121 补丁 semantic 消歧重构 (syntax 取标识符 + symbol kind 消歧) —
-   见决策文档 D3 (业务改善信号触发)
+1. ~~gate G-2 (drive strength/delay) + G-3 (UDP table)~~ — 🕐 方豆拍板暂缓
+   (2026-09-05): 增强型对查询无影响; tasks/L2_gate_primitive_support.md
+   (G-1 ✅ iter_115); 触发: 需 delay/strength/UDP 分析时
+2. ~~iter_121 补丁 semantic 消歧重构~~ — 🕐 方豆拍板暂缓 (2026-09-05):
+   架构整洁型无用户可见收益; 触发: SVA syntax 症状修堆叠时
 3. inout 双向多驱动归属 (i2c 开漏) — iter_138 已澄清为静态可能源集合
    (正确语义); 归属单点依赖时序超出承诺域, 无需代码专项 (closed)
 5. cvfpu 全量覆盖 (vendor common_cells + PACE override) — 家族已由 fpnew 覆盖, 低优先
