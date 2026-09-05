@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_140 CVA6 编译配方 + override/解码修复)
+> **最后更新**: 2026-09-05 GMT+8 (iter_141 解码健壮性批量修复; CVA6 建图 = 内存边界)
 
 ---
 
@@ -22,7 +22,17 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** — ⏳ 续修点: iter_140 CVA6 建图剩余解码点 (iter_141)
+**等待方豆指示** (最近: iter_141 解码健壮性 + iter_140 CVA6 编译)
+
+**iter_141 (2026-09-05)**: iter_140 续 — 解码健壮性**批量修复** (~15 点,
+6 文件): pyslang pybind 属性/str() 在非 utf8 identifier 抛
+UnicodeDecodeError 的系统性点全换 safe_attr/safe_str + 新 helper
+safe_symbol_name (always/driver/function/semantic_adapter/_common/
+expression_tree) — 崩溃 → warning (提取路径不再整图崩)。CVA6 完整建图
+推进后 **Segmentation fault = 8GB 内存/原生边界** (iter_059 先例, 非
+代码 bug, 大内存机器可验); core 编译已通 (iter_140)。unit+integration
+1543 passed。
+[iter_141](docs/task_tree/iterations/iter_141_decode_robustness.md)
 
 **iter_140 (2026-09-05)**: CVA6 strict 编译 (Claim L3 #7) — 特征代码法:
 ①44 错根因 = cvxif_example **未实例化 type-param free-floating 模块**
@@ -157,6 +167,7 @@ pyslang 语义模型对"声明级约束有符号 / 调用点 randomize-with 无�
 
 | 完成时间 | 任务 | 产出 |
 |---|---|---|
+| **2026-09-05** | **解码健壮性批量修复 (iter_141)** | CVA6 暴露的非 utf8 identifier 解码崩溃 ~15 点 (6 文件) 全换 safe_attr/safe_str + safe_symbol_name; 崩溃→warning; CVA6 建图 = 8GB 内存/原生 segfault 边界 (环境项); unit+integration **1543 passed**. [iter_141](docs/task_tree/iterations/iter_141_decode_robustness.md) |
 | **2026-09-05** | **CVA6 编译配方 + 修复 (iter_140)** | 特征代码法: 44 错 = 未实例化 type-param free-floating 模块 (pyslang 预 elab, filelist 剔 3 示例); compiler.py override-orphan 假错修复 (drop 模块 override 不 fatal); 解码健壮性 ×2 (非 utf8 identifier); CVA6 core 编译通过; 建图剩解码点 (iter_141). [iter_140](docs/task_tree/iterations/iter_140_cva6_compile.md) |
 | **2026-09-05** | **条件控制信号排除 (iter_139)** | 三态/三目/case 的 en/sel 控制信号不进数据 fanin (与 CLOCK 同规则; condition 字段保留, detailed 可查); i2c 双驱动 en 杂音清除且双侧对称, ternary/case 数据源保持; unit +4; 全量 **3058 passed**. [iter_139](docs/task_tree/iterations/iter_139_cond_signal_exclusion.md) |
 | **2026-09-05** | **inout 多驱动诊断 (iter_138)** | i2c 6 场景实测: 多源集合/穿透/方向均正确 — "归属单点"定性为静态语义边界 (依赖运行时 en); en 杂音小缺陷 (iter_139 修); Claim L3 #1 闭环. [iter_138](docs/task_tree/iterations/iter_138_inout_multidriver_diag.md) |

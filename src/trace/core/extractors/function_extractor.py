@@ -31,6 +31,7 @@ from typing import Any, Callable
 
 from ..builder.subroutine_expander import CallSiteInfo
 from ..graph.models import EdgeKind, NodeKind, SignalSource, TraceNode
+from ..._safe import safe_attr, safe_str  # [iter_141] 非 utf8 防崩
 
 
 @dataclass
@@ -215,14 +216,14 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
     callee = getattr(invocation, "left", None)
     call_name = None
     if callee:
-        call_name = str(callee).strip()
+        call_name = safe_str(callee).strip()
     if not call_name:
         # Try Semantic AST path: .subroutineName or .subroutine
-        call_name = getattr(invocation, "subroutineName", None)
+        call_name = safe_attr(invocation, "subroutineName", None)  # [iter_141] 非 utf8 防崩
         if not call_name:
             subroutine = getattr(invocation, "subroutine", None)
             if subroutine:
-                call_name = getattr(subroutine, "name", None)
+                call_name = safe_attr(subroutine, "name", None)
         if call_name:
             call_name = str(call_name).strip()
     if not call_name:
@@ -263,7 +264,7 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
             # 只有真正的 NamedArgument (name 非空 + arg_expr) 才 continue,
             # 其余 fall through 到下方 kind 分支继续处理。
             if hasattr(expr, "name"):
-                name = str(getattr(expr, "name", "")).strip()
+                name = safe_str(safe_attr(expr, "name")).strip()
                 arg_expr = getattr(expr, "expr", None)
                 if name and arg_expr:
                     arg_name = h.get_signal(arg_expr)
@@ -311,7 +312,7 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
                         if arg_name:
                             call_args.append(arg_name.strip())
                 elif "NamedArgument" in arg_kind:
-                    name = getattr(arg, "name", None)
+                    name = safe_attr(arg, "name", None)
                     expr = getattr(arg, "expr", None)
                     if name and expr:
                         name_str = str(name).strip()
@@ -354,7 +355,7 @@ def _find_task_definition(module, call_name, *, h: 'FunctionHelpers') -> tuple:
                     if hasattr(member, "kind") and "Function" in str(member.kind):
                         proto = getattr(member, "prototype", None)
                         if proto:
-                            name = getattr(proto, "name", None)
+                            name = safe_attr(proto, "name", None)
                             if name:
                                 # name 是 IdentifierNameSyntax,需要转成字符串再 strip
                                 name_val = str(name).strip()
