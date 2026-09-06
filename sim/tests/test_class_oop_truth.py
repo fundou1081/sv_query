@@ -437,3 +437,88 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassMethodExtras(unittest.TestCase):
+    """[iter_157] class 方法缺口修复回归 — E7 继承 / E8 数组 / E3 跨实例参数.
+
+    E7: sub_packet extends packet, 子类实例调父类 set → 沿 extends 链查找
+    E8: class 数组 arr[0].set(d0) → 数组元素实例隔离
+    E3: p1.copy(p2) (data = other.data) → 跨实例成员实参映射
+    """
+
+    def test_inherited_method_lookup(self):
+        """E7: 父类方法经 extends 链可查 (子类实例调用)."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+endclass
+class sub_packet extends packet;
+  bit [7:0] extra;
+endclass
+module top (input bit clk, input bit [7:0] d);
+  sub_packet p = new();
+  always_ff @(posedge clk) begin
+    p.set(d);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertIn('top.d', {r.id for r in tr.trace_fanin('top.p.data')},
+                      "继承方法 (父类 set) 应展开到子类实例属性")
+
+    def test_class_array_element_isolation(self):
+        """E8: arr[0].set(d0) / arr[1].set(d1) 各驱动各元素."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d0, d1);
+  packet arr[2];
+  always_ff @(posedge clk) begin
+    arr[0].set(d0);
+    arr[1].set(d1);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids0 = {r.id for r in tr.trace_fanin('top.arr[0].data')}
+        ids1 = {r.id for r in tr.trace_fanin('top.arr[1].data')}
+        self.assertIn('top.d0', ids0)
+        self.assertNotIn('top.d1', ids0)
+        self.assertIn('top.d1', ids1)
+        self.assertNotIn('top.d0', ids1)
+
+    def test_cross_instance_member_arg(self):
+        """E3: p1.copy(p2) (data = other.data) → p1.data ← p2.data ← d."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void copy(input packet other);
+    data = other.data;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d);
+  packet p1 = new();
+  packet p2 = new();
+  always_ff @(posedge clk) begin
+    p2.data <= d;
+    p1.copy(p2);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids1 = {r.id for r in tr.trace_fanin('top.p1.data')}
+        self.assertIn('top.p2.data', ids1,
+                      "copy 应展开 other.data → 实参 p2.data")
+        self.assertIn('top.d', ids1, "链到底应到 d")
+
+
+if __name__ == "__main__":
+    unittest.main()

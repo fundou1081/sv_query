@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_156 class 对抗 — 2 真 bug 修 + 6 缺口登记)
+> **最后更新**: 2026-09-06 GMT+8 (iter_157 缺口修 E7/E8/E3 — 2008 passed)
 
 ---
 
@@ -22,12 +22,16 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — C1~C5 闭环 + 对抗 (iter_156)。
-**backlog (class 方法调用扩展, iter_156 对抗登记)**:
-- E7 继承方法查找 (extends 链) / E8 class 数组 receiver (arr[0].set) /
-  E3 跨实例成员参数 (p1.copy(p2): other.data) / E5+E13 方法内嵌套调用与
-  成员链 (data=tmp, helper(d)) / E15 默认参数无实参
-covergroup 单独规划 (待启动)。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — 对抗缺口**逐个修中** (iter_157
+E7/E8/E3 ✅)。**遗留 backlog**: E5/E13 方法内嵌套调用 (隐式 this 传递 —
+架构级专项) / E15 默认参数无实参 (低价值)。covergroup 单独规划。可视化后置。
+
+**iter_157 (2026-09-06)**: class 缺口修轮 1 (方豆 "逐个修") — E7 继承方法
+(_find_class_method 沿 extends 链递归父类) / E8 class 数组 receiver
+(ElementSelect: arr[0] → value+selector, 类型剥 elementType; 元素隔离) /
+E3 跨实例成员参数 (rhs other.data: class 形参 → 实参替换 top.p2.data);
+E5/E13 (隐式 this) + E15 (默认参数) 登记遗留。unit +3; 回归 2008 passed。
+[iter_157](docs/task_tree/iterations/iter_157_class_gap_fix1.md)
 
 **iter_156 (2026-09-06)**: class **对抗测试** (方豆 "构造极端用例找问题") —
 19 场景: 12 通过 (多实例隔离/成员交叉/条件体/package/命名参数/位选/

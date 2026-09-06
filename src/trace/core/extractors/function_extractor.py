@@ -182,20 +182,57 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
     call_name, call_args, named_args = call_info
 
     # [iter_151 C1 class 方法调用] receiver (thisClass) 解析: p.set(x) 的
-    # receiver = p (class 实例) — module task/function 无 thisClass。
+    # receiver = p (class 实例); arr[0].set(x) 的 receiver = 数组元素
+    # (ElementSelect, iter_156 E8) — module task/function 无 thisClass。
     receiver_id = None
     receiver_class_name = None
     this_cls = getattr(invocation, "thisClass", None)
     if this_cls is not None:
-        # thisClass = NamedValueExpression (p); symbol → VariableSymbol → type
+        # thisClass 形态: NamedValue (p) 或 ElementSelect (arr[0], E8)
+        _tc_kind = str(getattr(this_cls, "kind", ""))
         rcvr_sym = getattr(this_cls, "symbol", None)
+        _arr_suffix = ""
+        _type_src = this_cls
+        if "ElementSelect" in _tc_kind:
+            # 数组元素 receiver: value (NamedValue arr) + selector (常量 idx)
+            val = getattr(this_cls, "value", None)
+            rcvr_sym = getattr(val, "symbol", None)
+            sel = getattr(this_cls, "selector", None)
+            if sel is not None:
+                # IntegerLiteral: 尝试 value / toString
+                _iv = None
+                for _a in ("value", "toString"):
+                    _v = getattr(sel, _a, None)
+                    if _v is not None:
+                        _iv = _v
+                        break
+                if _iv is None:
+                    try:
+                        _iv = int(str(sel))
+                    except (ValueError, TypeError):
+                        _iv = None
+                if _iv is not None:
+                    _arr_suffix = f"[{_iv}]"
+            _type_src = val
         if rcvr_sym is not None:
             try:
                 rcvr_name = safe_str(safe_attr(rcvr_sym, "name"))
                 if rcvr_name:
-                    receiver_id = f"{module_name}.{rcvr_name}"
-                rcvr_type = getattr(rcvr_sym, "type", None)
-                tname = safe_str(safe_attr(rcvr_type, "name")) if rcvr_type else ""
+                    receiver_id = f"{module_name}.{rcvr_name}{_arr_suffix}"
+                # type: 数组 (arr) 需剥 elementType → class 名
+                rcvr_type = getattr(_type_src, "type", None) \
+                    or getattr(rcvr_sym, "type", None)
+                if rcvr_type is None and _type_src is not this_cls:
+                    rcvr_type = getattr(rcvr_sym, "type", None)
+                tname = ""
+                _t = rcvr_type
+                while _t is not None:
+                    _tk = str(getattr(_t, "kind", ""))
+                    if "ClassType" in _tk:
+                        tname = safe_str(safe_attr(_t, "name"))
+                        break
+                    _t = (getattr(_t, "elementType", None)
+                          or getattr(_t, "arrayElementType", None))
                 if tname:
                     receiver_class_name = tname
             except (UnicodeDecodeError, TypeError):
@@ -225,30 +262,55 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
 
 
 def _find_class_method(class_name: str, method_name: str, *, h: 'FunctionHelpers'):
-    """[iter_151 C1] 找 class 方法定义 (SubroutineSymbol).
+    """[iter_151 C1 / iter_156 E7] 找 class 方法定义 (SubroutineSymbol).
 
     receiver 类型名 (packet) → adapter.get_classes() 匹配 ClassSymbol →
-    body 找 Subroutine 名 == method_name (set)。找不到返回 None (显式,
-    不静默 — 调用方无定义则不展开, 保持现状)。
+    迭代成员找 Subroutine == method_name (set)。**E7: 找不到时沿 extends
+    链递归父类** (sub_packet extends packet, set 在父类 — 子类实例调用
+    继承方法)。找不到返回 None (显式, 不静默)。
     """
     try:
         classes = h.adapter.get_classes()
     except Exception as e:
         logger.warning("class 枚举失败: %s", e)
         return None
+    by_name: dict = {}
     for cls in classes:
         try:
             cname = safe_str(safe_attr(cls, "name"))
         except (UnicodeDecodeError, TypeError):
             continue
-        if cname != class_name:
-            continue
-        # [iter_151 C1] ClassSymbol 成员在**迭代**里 (非 .body — 实测 body 空)
-        # (class_graph_builder._iter_class_properties 同模式)
+        if cname and cname not in by_name:
+            by_name[cname] = cls
+
+    def _extends_of(cls) -> str | None:
+        """父类名 (baseClass.name 或 syntax extendsClause)."""
+        base = getattr(cls, "baseClass", None)
+        if base is not None:
+            try:
+                return safe_str(safe_attr(base, "name")) or None
+            except (UnicodeDecodeError, TypeError):
+                return None
+        syntax = getattr(cls, "syntax", None)
+        ec = getattr(syntax, "extendsClause", None) if syntax is not None else None
+        if ec is None:
+            return None
+        text = safe_str(ec).strip()
+        if text.startswith("extends"):
+            return text[len("extends"):].strip().split()[0]
+        return None
+
+    seen = set()
+    cur = class_name
+    while cur and cur not in seen:
+        seen.add(cur)
+        cls = by_name.get(cur)
+        if cls is None:
+            return None
         try:
             members = list(cls)
         except TypeError:
-            continue
+            return None
         for member in members:
             if 'Subroutine' not in str(getattr(member, 'kind', '')):
                 continue
@@ -258,6 +320,7 @@ def _find_class_method(class_name: str, method_name: str, *, h: 'FunctionHelpers
                 continue
             if mname == method_name:
                 return member
+        cur = _extends_of(cls)  # E7: 沿继承链找父类方法
     return None
 
 
@@ -841,10 +904,22 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
                     if not rhs_src or rhs_src.isdigit():
                         continue  # 字面量 (如 d+1 的 '1')
                     base_signal = rhs_src.split("[")[0] if "[" in rhs_src else rhs_src
-                    call_arg = param_map.get(base_signal)
-                    if not call_arg:
-                        continue  # 形参外 rhs (成员/常量表达式) — 本版不展开
-                    src_id = f"{module_name}.{call_arg}"
+                    if "." in base_signal:
+                        # [iter_156 E3] 跨实例成员 rhs (other.data): other 是
+                        # class 型形参 → 实参替换 (copy(p2): other→p2,
+                        # src = top.p2.data)。非形参成员引用不展开。
+                        _head, _, _tail = base_signal.partition(".")
+                        _arg = param_map.get(_head)
+                        if not _arg:
+                            continue
+                        src_id = f"{module_name}.{_arg}.{_tail}"
+                        _src_name = rhs_src
+                    else:
+                        call_arg = param_map.get(base_signal)
+                        if not call_arg:
+                            continue  # 形参外 rhs (成员/常量表达式) — 不展开
+                        src_id = f"{module_name}.{call_arg}"
+                        _src_name = call_arg
                     if dst_id == src_id:
                         continue  # 自环防护
                     if src_id not in [n.id for n in result.nodes]:
