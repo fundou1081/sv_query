@@ -183,8 +183,24 @@ class ClassGraphBuilder:
             self.hierarchy.add_class(cls_name, extends=extends)
 
         # 3. 遍历每个 class，建节点和边
+        # [iter_154 C4-C / 架构决策 D5] 同名类型级 class 冲突检测: SV 允许
+        # 跨文件/跨 scope 定义同名 class — 图节点 id = 类名 (packet), 多定义
+        # 会叠加/后者静默丢成员 (C4 实证: 两个 packet 定义, 第二个的成员
+        # packet.b 静默缺失)。冲突**显式告警** (禁止静默, AGENTS.md §2) —
+        # 首定义保留, 后续定义跳过并记来源; 处理策略 (按 package/scope
+        # 命名空间区分) 待专项。
+        seen_class_names = set()
         for cls in classes:
             cls_name = self._class_name(cls)
+            if cls_name in seen_class_names:
+                logger.warning(
+                    "[class] 同名 class 定义冲突: '%s' 已存在 — 当前保留首定义,"
+                    " 跳过此定义 (跨文件/scope 同名; 命名空间区分待专项, 见"
+                    " architecture/class_tracing_architecture_decision.md D5)",
+                    cls_name,
+                )
+                continue
+            seen_class_names.add(cls_name)
             self._build_class_nodes(graph, cls, cls_name, result)
 
         # 4. 继承传播：将父类的约束复制到子类

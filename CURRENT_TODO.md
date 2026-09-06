@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_153 C3 constraint tracer 完成 — C4 下一步)
+> **最后更新**: 2026-09-06 GMT+8 (iter_154 C4 kind/namespace/冲突检测完成 — C5 下一步)
 
 ---
 
@@ -22,9 +22,18 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — C3 完成 (iter_153), **下一步
-C4** (查询层 class kind 收束 + namespace 规则 + 冲突检测, 按 D5)。
-covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — C4 完成 (iter_154), **下一步
+C5** (Accuracy Claim hybrid 域转正 — class 追踪域稳定)。covergroup 单独
+规划。可视化后置。
+
+**iter_154 (2026-09-06)**: **C4 kind 收束 + namespace + 冲突检测** (D5) —
+实证隐患: 类型级 fanin(packet.data)={packet.addr} (模板驱动被当答案) +
+同名 class 静默丢 (get_classes 按 name 去重源头杀定义, 冲突检测形同虚设)。
+修: A 类型级 CLASS_PROPERTY fanin 守卫 (主循环+depth1, 模板不作实例答案,
+实例保持) / B namespace 注释 (类型级 filter 后加入=显式保留) / C 冲突检测
+(get_classes 改对象身份去重 — 根因修 + class_graph_builder 同名告警首保)。
+unit +3; 回归 1999 passed。
+[iter_154](docs/task_tree/iterations/iter_154_c4_kind_namespace_conflict.md)
 
 **iter_153 (2026-09-06)**: **C3 constraint 语义查询** (D4) — 约束图已全
 (CONSTRAINS/HAS_LHS/HAS_CONDITION/HAS_CONSEQUENT/HAS_ALTERNATE); 新建

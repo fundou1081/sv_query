@@ -522,6 +522,12 @@ class UnifiedTracer:
                 return graph
 
             def _step_class(ctx):
+                # [iter_154 C4-B / D5 namespace 规则] class 类型级节点
+                # (packet.*) 在 GraphBuilder._filter_by_target **之后**加入图 —
+                # 即**显式保留** (与 module 定义同级语义: 全局定义, 结构
+                # 需要, 不受 target 过滤); 实例节点 (top.p.*) 天然在 target
+                # 树内。此加入时机 = 规则本身 (勿移到 filter 前, 否则类型级
+                # 会被当 target 外节点 drop)。
                 class_builder = ClassGraphBuilder(ctx["adapter"])
                 class_builder.build(ctx["graph"])
                 return None

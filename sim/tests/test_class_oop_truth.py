@@ -281,3 +281,74 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassKindSemantics(unittest.TestCase):
+    """[iter_154 C4] 查询层 class kind 语义 + 冲突检测 (架构决策 D5).
+
+    - 类型级 CLASS_PROPERTY = 结构宿主非数据端点: fanin 空 (模板方法体
+      DRIVER 不作实例驱动答案), 实例数据流不受影响
+    - 同名类型级 class 定义 (跨文件): 冲突显式告警 + 首定义保留
+    - get_classes 按对象身份去重 (同名不同定义暴露给冲突检测)
+    """
+
+    SRC = '''class packet;
+  bit [7:0] addr;
+  bit [7:0] data;
+  function void copy();
+    data = addr;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] din);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.addr <= din;
+  end
+endmodule
+'''
+
+    def setUp(self):
+        self.tr = UnifiedTracer(sources={'t.sv': self.SRC}, log_level='ERROR')
+        self.tr.build_graph(use_cache=False, target_module='top')
+
+    def test_type_prop_fanin_empty(self):
+        """类型级属性非数据端点 (D3): fanin(packet.data) 空 (模板驱动不作答)."""
+        self.assertEqual(self.tr.trace_fanin('packet.data'), [],
+                         "类型级属性 fanin 应空 (模板非实例驱动)")
+        self.assertEqual(self.tr.trace_fanin('packet.data', depth=1), [])
+
+    def test_instance_fanin_kept(self):
+        """实例数据流不受类型级守卫影响."""
+        ids = {r.id for r in self.tr.trace_fanin('top.p.addr')}
+        self.assertIn('top.din', ids)
+
+    def test_duplicate_class_warns_and_keeps_first(self):
+        """同名 class 跨文件: 冲突告警 + 首定义保留 (D5 禁止静默)."""
+        import io
+        import logging
+        from trace.unified_tracer import UnifiedTracer as UT
+        src2 = '''class packet;
+  bit [15:0] b;
+endclass
+'''
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        root = logging.getLogger()
+        old_lvl = root.level
+        root.setLevel(logging.WARNING)
+        root.addHandler(handler)
+        try:
+            tr = UT(sources={'a.sv': self.SRC, 'b.sv': src2},
+                    log_level='WARNING')
+            g = tr.build_graph(use_cache=False, target_module='top')
+        finally:
+            root.removeHandler(handler)
+            root.setLevel(old_lvl)
+        self.assertIn("同名 class 定义冲突", stream.getvalue(),
+                      "冲突应显式告警 (非静默)")
+        self.assertIn('packet.addr', g.nodes(), "首定义成员保留")
+        self.assertNotIn('packet.b', g.nodes(), "第二定义被跳过 (告警可见)")
+
+
+if __name__ == "__main__":
+    unittest.main()
