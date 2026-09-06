@@ -180,14 +180,76 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
     if not call_info:
         return
     call_name, call_args, named_args = call_info
+
+    # [iter_151 C1 class 方法调用] receiver (thisClass) 解析: p.set(x) 的
+    # receiver = p (class 实例) — module task/function 无 thisClass。
+    receiver_id = None
+    receiver_class_name = None
+    this_cls = getattr(invocation, "thisClass", None)
+    if this_cls is not None:
+        # thisClass = NamedValueExpression (p); symbol → VariableSymbol → type
+        rcvr_sym = getattr(this_cls, "symbol", None)
+        if rcvr_sym is not None:
+            try:
+                rcvr_name = safe_str(safe_attr(rcvr_sym, "name"))
+                if rcvr_name:
+                    receiver_id = f"{module_name}.{rcvr_name}"
+                rcvr_type = getattr(rcvr_sym, "type", None)
+                tname = safe_str(safe_attr(rcvr_type, "name")) if rcvr_type else ""
+                if tname:
+                    receiver_class_name = tname
+            except (UnicodeDecodeError, TypeError):
+                receiver_id = None
+
     task_def = _find_task_definition(module, call_name, h=h)
+    if not task_def and receiver_class_name:
+        # class 方法: 按 receiver 类型找 class 定义 → 方法 SubroutineSymbol
+        task_def = _find_class_method(receiver_class_name, call_name, h=h)
     if not task_def:
         return
     # [HANDOFF] def_params 由 _create_invocation_edges 内部根据 task kind 计算
     _create_invocation_edges(
         invocation, ctx, module, module_name, result, lhs_name,
-        call_name, call_args, named_args, task_def, h=h
-)
+        call_name, call_args, named_args, task_def, h=h,
+        receiver_id=receiver_id,
+    )
+
+
+def _find_class_method(class_name: str, method_name: str, *, h: 'FunctionHelpers'):
+    """[iter_151 C1] 找 class 方法定义 (SubroutineSymbol).
+
+    receiver 类型名 (packet) → adapter.get_classes() 匹配 ClassSymbol →
+    body 找 Subroutine 名 == method_name (set)。找不到返回 None (显式,
+    不静默 — 调用方无定义则不展开, 保持现状)。
+    """
+    try:
+        classes = h.adapter.get_classes()
+    except Exception as e:
+        logger.warning("class 枚举失败: %s", e)
+        return None
+    for cls in classes:
+        try:
+            cname = safe_str(safe_attr(cls, "name"))
+        except (UnicodeDecodeError, TypeError):
+            continue
+        if cname != class_name:
+            continue
+        # [iter_151 C1] ClassSymbol 成员在**迭代**里 (非 .body — 实测 body 空)
+        # (class_graph_builder._iter_class_properties 同模式)
+        try:
+            members = list(cls)
+        except TypeError:
+            continue
+        for member in members:
+            if 'Subroutine' not in str(getattr(member, 'kind', '')):
+                continue
+            try:
+                mname = safe_str(safe_attr(member, "name"))
+            except (UnicodeDecodeError, TypeError):
+                continue
+            if mname == method_name:
+                return member
+    return None
 
 
 
@@ -196,19 +258,6 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
     """[REFACTOR 2026-06-26] 解析 invocation → (call_name, call_args, named_args).
 
     Returns None if call_name / args 缺失.
-    """
-
-    """
-    处理 task/function 调用
-    建立参数映射并添加边
-
-    Args:
-    invocation: InvocationExpression AST 节点
-    ctx: 上下文(时钟、复位等)
-    module: 模块 AST 节点
-    module_name: 模块名
-    result: TraceResult 用于收集节点和边
-    lhs_name: 可选,函数调用的目标信号名(ContinuousAssign 的 LHS)
     """
     # 获取调用名称
     # Semantic AST: CallExpression uses .subroutine or .subroutineName
@@ -374,8 +423,13 @@ def _find_task_definition(module, call_name, *, h: 'FunctionHelpers') -> tuple:
 
 
 def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_name,
-                                 call_name, call_args, named_args, task_def, *, h: 'FunctionHelpers'):
-    """[REFACTOR 2026-06-26] 建 invocation 边 (含 def_params + param_map + function + output)."""
+                                 call_name, call_args, named_args, task_def, *, h: 'FunctionHelpers',
+                                 receiver_id=None):
+    """[REFACTOR 2026-06-26] 建 invocation 边 (含 def_params + param_map + function + output).
+
+    receiver_id: [iter_151 C1] class 方法调用 (p.set) 的 receiver 实例路径
+    (top.p); None = module task/function 调用。
+    """
     try:
         # 内部计算 def_params
         if "Task" in str(getattr(task_def, "kind", "")):
@@ -725,6 +779,42 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
                             kind=EdgeKind.DRIVER,
                             assign_type="nonblocking",
                             ctx=ctx,
+                        )
+                    )
+
+        # [iter_151 C1 class 方法调用] receiver_id 非 None (p.set(x) 型):
+        # 方法体内**成员赋值** (data = d / addr = d + 1) 展开为调用点作用域
+        # DRIVER 边 — 实参信号 → 实例属性 (receiver_id.member)。
+        # module task/function 的 output 参数路径不适用 (class 成员非参数;
+        # 成员是实例状态, 目标 = receiver 的实例属性节点)。
+        if receiver_id:
+            for member_name, rhs_sources in internal_drivers.items():
+                # 跳过形参 (output 参数已处理) 与函数名 (返回值路径)
+                if member_name == func_name:
+                    continue
+                dst_id = f"{receiver_id}.{member_name}"
+                for rhs_src in rhs_sources:
+                    if not rhs_src or rhs_src.isdigit():
+                        continue  # 字面量 (如 d+1 的 '1')
+                    base_signal = rhs_src.split("[")[0] if "[" in rhs_src else rhs_src
+                    call_arg = param_map.get(base_signal)
+                    if not call_arg:
+                        continue  # 形参外 rhs (成员/常量表达式) — 本版不展开
+                    src_id = f"{module_name}.{call_arg}"
+                    if dst_id == src_id:
+                        continue  # 自环防护
+                    if src_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=src_id, name=call_arg, module=module_name,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    if dst_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=dst_id, name=member_name, module=receiver_id,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    result.edges.append(
+                        h.edge_factory.make_edge(
+                            src=src_id, dst=dst_id, kind=EdgeKind.DRIVER,
+                            assign_type="blocking", ctx=ctx,
                         )
                     )
         # [REFACTOR 2026-06-26] silent (preserve original except: pass behavior)

@@ -76,3 +76,84 @@ class TestClassOopTruth(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassMethodCallChain(unittest.TestCase):
+    """[iter_151 C1] class 方法调用链 — 方法体成员赋值展开到实例属性.
+
+    架构决策 D2: 复用 module task/function 调用机制 (receiver 解析 +
+    _find_class_method + internal_drivers 成员展开), 无第二套调用语义。
+    p.set(din) (always_ff 内) → 方法体 data=d → DRIVER din→top.p.data。
+    """
+
+    SRC = '''class packet;
+  bit [7:0] addr;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+    addr = d + 1;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] din);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set(din);
+  end
+endmodule
+'''
+
+    def _tracer(self, src):
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        return tr
+
+    def test_method_call_drives_instance_property(self):
+        """p.set(din) → 方法体 data=d → fanin(p.data) 含 din (C1 前为空)."""
+        tr = self._tracer(self.SRC)
+        ids = {r.id for r in tr.trace_fanin('top.p.data')}
+        self.assertIn('top.din', ids,
+                      f"方法调用实参应驱动实例属性, 实际 {ids}")
+
+    def test_multi_member_assignment(self):
+        """方法体内多成员 (data/addr) 都展开 (addr = d+1 → din)."""
+        tr = self._tracer(self.SRC)
+        ids = {r.id for r in tr.trace_fanin('top.p.addr')}
+        self.assertIn('top.din', ids,
+                      f"addr (d+1) 也应追到 din, 实际 {ids}")
+
+    def test_uninvoked_method_no_edges(self):
+        """方法定义但**不被调用** → 不展开 (实例属性无方法驱动)."""
+        src = self.SRC.replace(
+            "  always_ff @(posedge clk) begin\n    p.set(din);\n  end\nendmodule",
+            "endmodule")
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        # data 仍无驱动 (方法没被调用)
+        # (若 RTL 无其他赋值 → fanin 空; 有约束等但非数据源)
+        has_driver = any(
+            d == 'top.p.data'
+            and any(e.kind.name == 'DRIVER' and e.assign_type == 'blocking'
+                   for e in g._edge_data.get((s, d), []))
+            for s, d in g.edges())
+        self.assertFalse(has_driver,
+                         "未调用的方法不应展开成员驱动边")
+
+    def test_module_function_still_works(self):
+        """module task/function 调用路径不回归 (receiver=None)."""
+        src = '''module top (input bit [7:0] din, output bit [7:0] out);
+  function void set_data(input bit [7:0] d, output bit [7:0] o);
+    o = d;
+  endfunction
+  always_comb begin
+    set_data(din, out);
+  end
+endmodule
+'''
+        tr = self._tracer(src)
+        ids = {r.id for r in tr.trace_fanin('top.out')}
+        self.assertIn('top.din', ids,
+                      f"module function output 参数链应保持, 实际 {ids}")
+
+
+if __name__ == "__main__":
+    unittest.main()

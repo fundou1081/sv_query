@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_150 class 追踪架构决策落档 — C1 待开工)
+> **最后更新**: 2026-09-06 GMT+8 (iter_151 C1 class 方法调用链完成 — C2 下一步)
 
 ---
 
@@ -22,9 +22,17 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — 规划 (iter_149) + 架构决策
-(iter_150) 已落档, **下一步 C1** (class 方法调用链, 按 D2 复用 expander)。
-covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — C1 完成 (iter_151), **下一步
+C2** (实例↔类型级桥 + 查询语义, 按 D3)。covergroup 单独规划。可视化后置。
+
+**iter_151 (2026-09-06)**: **C1 class 方法调用链** (按架构决策 D2) —
+语义形态: Call.thisClass (receiver) + SubroutineSymbol; ClassSymbol 成员在
+迭代 (body 空); 实现: _handle_invocation receiver 解析 → _find_class_method
+(get_classes 按 receiver 类型匹配) → _create_invocation_edges class 成员
+展开 (internal_drivers 非形参目标 → 实例属性, rhs 经 param_map);
+fanin(top.p.data) = {din} (p.set(din), C1 前空); 未调用不展开; module
+调用不回归; unit +4; 回归 1157 passed。
+[iter_151](docs/task_tree/iterations/iter_151_c1_class_method_call.md)
 
 **iter_150 (2026-09-05)**: class 追踪架构决策落档 (方豆 "从未来可维护性
 考虑" + 拍板) — 5 决策: D1 单图分层 (不拆隔离, 图基建一份) / D2 方法调用
