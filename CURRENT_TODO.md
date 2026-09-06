@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_154 C4 kind/namespace/冲突检测完成 — C5 下一步)
+> **最后更新**: 2026-09-06 GMT+8 (iter_155 C5 声明转正 — class 追踪 C1~C5 全闭环)
 
 ---
 
@@ -22,9 +22,15 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — C4 完成 (iter_154), **下一步
-C5** (Accuracy Claim hybrid 域转正 — class 追踪域稳定)。covergroup 单独
-规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — **C1~C5 全闭环** (iter_151~155),
+Accuracy Claim class/constraint 追踪域转正。covergroup 单独规划 (待启动)。
+可视化后置。
+
+**iter_155 (2026-09-06)**: **C5 Accuracy Claim 转正** (无代码) — audit Claim:
+class/constraint 从 hybrid 例外域转正为追踪承诺域 (语义域/L1 结构/L2 查询
++建模决策表 class 类型级·约束行); 仍例外: covergroup/SVA/procedural/inline;
+README 同步 class 追踪能力。主全量 **3085 passed** (class C1~C4 后零回归)。
+[iter_155](docs/task_tree/iterations/iter_155_c5_claim_promotion.md)
 
 **iter_154 (2026-09-06)**: **C4 kind 收束 + namespace + 冲突检测** (D5) —
 实证隐患: 类型级 fanin(packet.data)={packet.addr} (模板驱动被当答案) +
