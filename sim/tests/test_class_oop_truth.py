@@ -218,3 +218,66 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConstraintTracing(unittest.TestCase):
+    """[iter_153 C3] constraint 语义查询 (架构决策 D4: 独立 tracer).
+
+    约束 = 声明式关系 (CONSTRAINS/HAS_*), 不走数据 fanin —
+    trace_constraints(prop) 回答 "属性受哪些约束 / 约束涉及哪些变量"。
+    """
+
+    SRC = '''class packet;
+  rand bit [7:0] addr;
+  rand bit [7:0] data;
+  bit [3:0] tag;
+  constraint c_addr { addr inside {[0:15]}; addr != data; }
+  constraint c_data_if { if (tag > 3) data < 200; else data > 10; }
+  constraint c_range { addr > 0; }
+endclass
+module top (input bit clk, input bit [7:0] din);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.addr <= din;
+  end
+endmodule
+'''
+
+    def setUp(self):
+        self.tr = UnifiedTracer(sources={'t.sv': self.SRC}, log_level='ERROR')
+        self.tr.build_graph(use_cache=False, target_module='top')
+
+    def test_type_prop_constraints(self):
+        """packet.addr 受 c_addr (含 data 交叉引用) + c_range."""
+        res = self.tr.trace_constraints('packet.addr')
+        blocks = {r.block_id for r in res}
+        self.assertEqual(blocks, {'packet.c_addr', 'packet.c_range'})
+        c_addr = next(r for r in res if r.block_id == 'packet.c_addr')
+        self.assertIn('packet.addr', c_addr.vars)
+        self.assertIn('packet.data', c_addr.vars)  # addr != data 交叉
+
+    def test_if_constraint_condition_var(self):
+        """c_data_if: data 受约束且条件变量 tag 识别."""
+        res = self.tr.trace_constraints('packet.data')
+        c_if = next((r for r in res if r.block_id == 'packet.c_data_if'), None)
+        self.assertIsNotNone(c_if, "data 应受 c_data_if 约束")
+        self.assertIn('packet.data', c_if.vars)
+        self.assertIn('packet.tag', c_if.conditions)
+
+    def test_instance_prop_resolves_to_type(self):
+        """实例属性 top.p.addr (REG) 自动解析类型级约束 (D3: 约束在类型作用于实例)."""
+        res = self.tr.trace_constraints('top.p.addr')
+        blocks = {r.block_id for r in res}
+        self.assertEqual(blocks, {'packet.c_addr', 'packet.c_range'},
+                         "实例属性应查得同类型级约束")
+
+    def test_constraint_not_data_fanin(self):
+        """约束关系不进数据 fanin (D4/iter_139): fanin(p.addr) 只含数据源."""
+        ids = {r.id for r in self.tr.trace_fanin('top.p.addr')}
+        self.assertNotIn('packet.c_addr', ids,
+                         "约束块不应作为数据驱动源")
+        self.assertIn('top.din', ids)
+
+
+if __name__ == "__main__":
+    unittest.main()

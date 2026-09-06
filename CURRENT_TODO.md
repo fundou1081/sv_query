@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_152 C2 实例↔类型桥完成 — C3 下一步)
+> **最后更新**: 2026-09-06 GMT+8 (iter_153 C3 constraint tracer 完成 — C4 下一步)
 
 ---
 
@@ -22,8 +22,16 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — C2 完成 (iter_152), **下一步
-C3** (constraint 语义查询, 按 D4)。covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — C3 完成 (iter_153), **下一步
+C4** (查询层 class kind 收束 + namespace 规则 + 冲突检测, 按 D5)。
+covergroup 单独规划。可视化后置。
+
+**iter_153 (2026-09-06)**: **C3 constraint 语义查询** (D4) — 约束图已全
+(CONSTRAINS/HAS_LHS/HAS_CONDITION/HAS_CONSEQUENT/HAS_ALTERNATE); 新建
+query/constraint.py ConstraintTracer.trace(prop) → 约束块/vars/条件 (类型级
++ 实例属性自动解析: MEMBER_SELECT 反向 + REG fallback 经实例 IS_INSTANCE_OF);
+约束不进数据 fanin; unit +4。
+[iter_153](docs/task_tree/iterations/iter_153_c3_constraint_tracer.md)
 
 **iter_152 (2026-09-06)**: **C2 实例↔类型级桥 + 查询语义** (D3) — 实证:
 实例成员节点按需创建 (p1.data 建 / p2.data 未用不建); 实现 unified_tracer
