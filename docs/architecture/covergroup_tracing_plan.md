@@ -4,7 +4,7 @@
 > **背景**: 方豆方向 — covergroup 需要和 **signal** 联系起来, 或和
 > **class random var** 联系起来 (在 class 追踪体系 (C1~C5) 转正后, covergroup
 > 是下一块例外域)。
-> **状态**: 规划稿, 待方豆确认。
+> **状态**: ✅ 方案 B 已拍板 (2026-09-06 方豆 "按b 先更新文档, 再开始做") — G1 开工中 (iter_161~)。
 
 ---
 
@@ -36,10 +36,40 @@ covergroup 采样 = **观察声明** (非数据流, 类比约束 iter_153 D4):
 | 方案 | 内容 | 利 | 弊 |
 |---|---|---|---|
 | A. 图节点+采样边 | covergroup/coverpoint 进主图 + SAMPLED_BY 观察边 (signal → cp) | 统一图基础设施 | 图混合观察节点; 需查询层守卫 (观察边非数据) |
-| B. 独立结构 + 查询桥 (建议) | CovergroupExtractor 增强 (signal 解析成图 id + class 覆盖) + **独立查询 API** 关联图/class (复用 D4 范式: query/covergroup.py) | 观察域隔离; 数据 fanin 零污染; pattern 复用 (constraint tracer) | 两套结构 (covergroup + graph) — 查询桥逻辑 |
+| B. 独立结构 + 查询桥 (**✅ 拍板**) | CovergroupExtractor 增强 (signal 解析成图 id + class 覆盖) + **独立查询 API** 关联图/class (复用 D4 范式: query/covergroup.py) | 观察域隔离; 数据 fanin 零污染; pattern 复用 (constraint tracer) | 两套结构 (covergroup + graph) — 查询桥逻辑 |
 
 **建议 B**: covergroup 是覆盖率观察域 — 独立 tracer (像 constraint), 查询时
 经解析后的 signal id 桥接主图 (fanin) 与 class 结构 (约束/rand)。
+
+### 为何 B 维护性更好 (2026-09-06 方豆问询 "哪个方案维护性更好" → 拍板 B)
+
+代码实证 (全仓 grep):
+
+1. **8 个现有消费方全部读独立结构** — `cli/commands/{verify,visualize,risk,
+   sva,coverage,randomize,trace}.py` + `signal_graph_viewer.py` + 
+   `covergroup_analyzer.py` (coverage gap) 全走 `CovergroupExtractor() →
+   list[CovergroupInfo]`,不进主图。选 A 只有两条路: ①消费方继续调
+   Extractor → 主图节点 + 独立结构**双份表示**要同步,必漂移;
+   ②迁移 8 消费方走图查询 → 大面积返工。选 B: 消费方零改动,
+   只在 `CovergroupInfo` 加"已解析信号目标"字段 + 新增查询模块 — 涟漪限
+   在一个新文件。
+2. **主图节点 kind 守卫已饱和** — `query/signal.py` 单文件 ~15 处 kind
+   判断 (CLASS_PROPERTY / PORT_OUT / PORT_IN / SIGNAL / CONST...),
+   iter_154 加 CLASS_PROPERTY 的教训 = 新增一种节点 kind → 所有遍历/查询/
+   viewer 过一遍守卫。A 再加 coverpoint/covergroup 观察节点 → 守卫扩散面
+   再翻一轮; B 不碰主图,守卫面零变化。
+3. **数据 fanin 单一实现原则** — Q1 终点 ("采样信号谁驱动") 的 fanin 逻辑
+   已存在且成熟 (signal.py, iter_154 打磨)。B 的查询桥直接**委托**;
+   A 要在图遍历上加观察边豁免,两套语义搅在一起。
+4. **G4 Claim 故事干净** — B: covergroup = 观察域,独立于数据流域,声明
+   边界清晰; A: "图里混着例外节点",Accuracy Claim 的 hybrid 例外永久化。
+
+**诚实的成本 (B 的两点)**:
+- 约束 (D4) 的 CONSTRAINS 边实际存在主图 (class_graph_builder 建, 惰性
+  边种, 数据 walker 按 EdgeKind 过滤天然不碰) — 若 L4 可视化需要原生图
+  查询,可照此补惰性边种 — **YAGNI, 现不做**。
+- Q2 反向 (信号 → 谁采样) 需 tracer 内部反向索引 (或扫描) — 一个模块内
+  的局部成本; A 的成本摊在**每个通用遍历**上。局部 < 全局。
 
 ## 4. 差距清单 + 迭代路线
 
@@ -50,18 +80,19 @@ covergroup 采样 = **观察声明** (非数据流, 类比约束 iter_153 D4):
 | **G3** | **查询 API** (query/covergroup.py, D4 范式): `trace_coverpoints(signal)` 反向 (Q2) / `trace_sampling_chain(cp)` → 采样信号 fanin (Q1) / `trace_rand_linkage(cp)` → rand 属性 + 约束 (Q3) | Q1-Q3 可查 |
 | **G4** | Accuracy Claim covergroup **转正** (观察域: 采样关系独立于数据流; 仍边界: bins 命中语义不建模 — 运行时) | 文档 |
 
-## 5. 设计决策点 (待拍板)
+## 5. 设计决策点 (待拍板 → 2026-09-06 已定 1/3, 2/4 开工默认)
 
-1. **signal 解析作用域**: coverpoint.signal 在**定义处**解析 (module 顶层 → top 域;
-   class 内 → 该 class 的 this 成员) — 与实例绑定 (G2) 组合成实例路径?
-   确认: class 内 cg 的 cp_addr (addr) 应联系**类型级** packet.addr (结构, D3 同)
-   还是实例 p.addr (绑定)? — 建议: 类型级 (观察声明在类型), 实例经绑定。
-2. **表达式 coverpoint** ({din,en} / din[3:0]): 采样表达式 → 关联每个信号
-   (多信号观察)? bins 表达式 (transitions) 不拆 (运行时语义)。
-3. **动态边界**: covergroup 实例化时机/条件 (例: if (en) cg_inst = new()) —
-   编译期可定 = 静态绑定声明; 条件实例化 = 文档标记 (同 class 动态原则)。
-4. 与现有 coverage generate/gap (EXTRACTION_COVERAGE 域) 的衔接: 联系后
-   signal 链增强覆盖分析 — 复用而非新域。
+1. **signal 解析作用域** ✅ **定: 类型级为主** (与 class D3 一致 — cp_addr
+   联系 packet.addr 结构, 实例 p.addr 经 G2 绑定得出)。class 内 cg 采样
+   class 属性 → 类型级结构宿主; module 顶层 → top 域信号。
+2. **表达式 coverpoint** ({din,en} / din[3:0]) — 默认拆到每个信号 (多信号
+   观察, Q1/Q2 不漏信号); bins 表达式 (transitions) 不拆 (运行时语义)。
+   G1 落地遇冲突再议。
+3. **动态边界** ✅ **定: 编译期可定 = 静态绑定声明; 条件实例化
+   (if (en) cg_inst = new()) = 文档标记** (同 class 动态分派原则 — 不硬猜)。
+4. 与现有 coverage generate/gap (EXTRACTION_COVERAGE 域) 的衔接 — 默认
+   **复用**: CovergroupInfo 增字段不影响 8 消费方; signal 链增强留给
+   G3 查询 API 之后 (不新建域)。
 
 ## 6. 关联
 
