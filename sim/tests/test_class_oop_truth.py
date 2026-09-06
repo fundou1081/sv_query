@@ -352,3 +352,88 @@ endclass
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassMethodAdversarial(unittest.TestCase):
+    """[iter_156] class 对抗回归 — 多实例隔离 / module 同名优先 / 函数返回.
+
+    E1: p1/p2 同方法各驱动各属性 (实例隔离)
+    E11: module 同名 function 不抢 class 方法 (receiver 优先)
+    E4: 函数返回值 (assign out = p.get(); return data → receiver.data)
+    """
+
+    def test_multi_instance_isolation(self):
+        """E1: p1.set(d1)/p2.set(d2) 各隔离."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d1, d2);
+  packet p1 = new();
+  packet p2 = new();
+  always_ff @(posedge clk) begin
+    p1.set(d1);
+    p2.set(d2);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertIn('top.d1', {r.id for r in tr.trace_fanin('top.p1.data')})
+        self.assertNotIn('top.d2', {r.id for r in tr.trace_fanin('top.p1.data')})
+        self.assertIn('top.d2', {r.id for r in tr.trace_fanin('top.p2.data')})
+
+    def test_module_same_name_not_steal_class_method(self):
+        """E11: module 同名 function 不抢 class 方法 (iter_156 修)."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d);
+  packet p = new();
+  function void set(input bit [7:0] x); endfunction
+  always_ff @(posedge clk) begin
+    p.set(d);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        self.assertIn('top.d', {r.id for r in tr.trace_fanin('top.p.data')},
+                      "class 方法调用应优先 class 方法 (receiver 明确)")
+
+    def test_function_return_drives_lhs(self):
+        """E4: assign out = p.get() (return data) → out 由 p.data 驱动 (无假节点)."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+  function bit [7:0] get();
+    return data;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d, output bit [7:0] out);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set(d);
+  end
+  assign out = p.get();
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.out')}
+        self.assertIn('top.p.data', ids,
+                      f"函数返回值应连 receiver 成员, 实际 {ids}")
+        self.assertIn('top.d', ids, "链到底应到 d")
+        self.assertNotIn('top.get', {s for s, _ in tr._graph.edges()},
+                         "不应有 module 隐式返回假节点 top.get")
+
+
+if __name__ == "__main__":
+    unittest.main()

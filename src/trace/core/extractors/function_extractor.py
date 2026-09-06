@@ -201,10 +201,19 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
             except (UnicodeDecodeError, TypeError):
                 receiver_id = None
 
-    task_def = _find_task_definition(module, call_name, h=h)
-    if not task_def and receiver_class_name:
-        # class 方法: 按 receiver 类型找 class 定义 → 方法 SubroutineSymbol
+    task_def = None
+    # [iter_156 对抗 E11] class 方法调用 (receiver 已知) 必须**优先**解析
+    # class 方法: module 若有同名 function/task, 旧顺序先命中 module 定义 →
+    # class 方法链断 (E11 实测)。receiver_class_name 存在 = thisClass 明确
+    # 指向 class 实例, 方法定义在 class (或父类, E7 backlog) 域。
+    if receiver_class_name:
         task_def = _find_class_method(receiver_class_name, call_name, h=h)
+    if not task_def:
+        task_def = _find_task_definition(module, call_name, h=h)
+    if not task_def and receiver_class_name:
+        # E7 backlog: 继承方法 (sub_packet extends packet, set 在父类) —
+        # _find_class_method 需沿 extends 链; 现未支持, 显式记录
+        pass
     if not task_def:
         return
     # [HANDOFF] def_params 由 _create_invocation_edges 内部根据 task kind 计算
@@ -549,7 +558,10 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
                 # Function return value is the function name itself (implicit in SystemVerilog)
                 # e.g., assign out = gray_conv(in); should have: gray_conv -> out
                 # 注意:这段代码应该在 if rhs_ast: 块之外,这样才能处理 ReturnStatement 形式的函数
-                if is_function and lhs_name:
+                # [iter_156 E4] class 函数 (receiver_id) 的 module 隐式返回假节点
+                # (func_return_id = module_name.func_name, e.g. top.get) 不适用 —
+                # class 返回值 = return 语句表达式 (成员), 走下方 class 返回展开。
+                if is_function and lhs_name and not receiver_id:
                     func_return_id = f"{module_name}.{func_name}"
                     dst_id = f"{module_name}.{lhs_name}"
                     if func_return_id != dst_id:  # Avoid self-loop
@@ -788,6 +800,38 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
         # module task/function 的 output 参数路径不适用 (class 成员非参数;
         # 成员是实例状态, 目标 = receiver 的实例属性节点)。
         if receiver_id:
+            # [iter_156 E4] class **函数返回值** (assign out = p.get()):
+            # internal_drivers[func_name] = [return 表达式] (e.g. {'get':
+            # ['data']}) — return 成员 → receiver 实例属性 (receiver.data)。
+            # 不走 module 隐式返回假节点 (top.get, 上面已跳过)。
+            if is_function and lhs_name and func_name in internal_drivers:
+                dst_id = f"{module_name}.{lhs_name}"
+                for _ret_src in internal_drivers[func_name]:
+                    if not _ret_src or _ret_src.isdigit():
+                        continue
+                    _base = _ret_src.split("[")[0]
+                    if "." in _base:
+                        continue  # 跨实例成员返回 (E3 backlog)
+                    # 成员 (data) → receiver.data; 形参 → param_map
+                    if _base in param_map:
+                        _src_id = f"{module_name}.{param_map[_base]}"
+                    else:
+                        _src_id = f"{receiver_id}.{_base}"
+                    if _src_id == dst_id:
+                        continue
+                    if _src_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=_src_id, name=_base, module=receiver_id,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    if dst_id not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=dst_id, name=lhs_name, module=module_name,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    result.edges.append(
+                        h.edge_factory.make_edge(
+                            src=_src_id, dst=dst_id, kind=EdgeKind.DRIVER,
+                            assign_type="continuous", ctx=ctx,
+                        ))
             for member_name, rhs_sources in internal_drivers.items():
                 # 跳过形参 (output 参数已处理) 与函数名 (返回值路径)
                 if member_name == func_name:

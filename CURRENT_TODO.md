@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_155 C5 声明转正 — class 追踪 C1~C5 全闭环)
+> **最后更新**: 2026-09-06 GMT+8 (iter_156 class 对抗 — 2 真 bug 修 + 6 缺口登记)
 
 ---
 
@@ -22,9 +22,21 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — **C1~C5 全闭环** (iter_151~155),
-Accuracy Claim class/constraint 追踪域转正。covergroup 单独规划 (待启动)。
-可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — C1~C5 闭环 + 对抗 (iter_156)。
+**backlog (class 方法调用扩展, iter_156 对抗登记)**:
+- E7 继承方法查找 (extends 链) / E8 class 数组 receiver (arr[0].set) /
+  E3 跨实例成员参数 (p1.copy(p2): other.data) / E5+E13 方法内嵌套调用与
+  成员链 (data=tmp, helper(d)) / E15 默认参数无实参
+covergroup 单独规划 (待启动)。可视化后置。
+
+**iter_156 (2026-09-06)**: class **对抗测试** (方豆 "构造极端用例找问题") —
+19 场景: 12 通过 (多实例隔离/成员交叉/条件体/package/命名参数/位选/
+solve-before 约束/空类/实例名==类名); **修 2 真 bug**: E11 module 同名
+function 抢 class 方法 (receiver 优先序) + E4 class 函数返回值 (top.get
+假节点 → receiver.data, module 隐式返回跳过); 登记 6 缺口 (E7 继承/E8
+数组/E3 跨实例参数/E5·13 方法内嵌套/E15 默认参数)。unit +3; 回归
+1150 passed。
+[iter_156](docs/task_tree/iterations/iter_156_class_adversarial.md)
 
 **iter_155 (2026-09-06)**: **C5 Accuracy Claim 转正** (无代码) — audit Claim:
 class/constraint 从 hybrid 例外域转正为追踪承诺域 (语义域/L1 结构/L2 查询
