@@ -8,7 +8,13 @@
 import logging
 
 from .compiler import SVCompiler
-from .graph.covergroup_models import BinsInfo, CoverCrossInfo, CovergroupInfo, CoverpointInfo
+from .graph.covergroup_models import (
+    BinsInfo,
+    CoverCrossInfo,
+    CovergroupInfo,
+    CoverpointInfo,
+    SampledSignal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,38 +46,57 @@ class CovergroupExtractor:
     # 遍历
     # =========================================================================
 
-    def _find_covergroups(self, node, results: list[CovergroupInfo]):
-        """递归查找 CovergroupType"""
+    def _find_covergroups(self, node, results: list[CovergroupInfo], scope_class: str = ""):
+        """递归查找 CovergroupType.
+
+        scope_class: 当前所在的 class 定义名 (G1 iter_162 — 归属 CovergroupInfo.
+        in_class; 语义树 CovergroupType 嵌在 ClassType 下, 旧遍历不记录父 class
+        → in_class 恒空, coverage.py --class 过滤/randomize 显示静默失效).
+        """
         kind = str(getattr(node, "kind", ""))
 
         if "CovergroupType" in kind:
-            cg = self._parse_covergroup(node)
+            cg = self._parse_covergroup(node, scope_class)
             if cg:
                 results.append(cg)
             # 继续遍历 body (可能有嵌套)
+
+        # [G1 iter_162] class 定义 → 其成员归属该 class (嵌套 class 覆盖外层)
+        new_scope = scope_class
+        if "ClassType" in kind:
+            cls_name = self._sym_name(node)
+            if cls_name:
+                new_scope = cls_name
 
         # 遍历 Instance body 或 CompilationUnit
         if hasattr(node, "body"):
             try:
                 for child in node.body:
-                    self._find_covergroups(child, results)
+                    self._find_covergroups(child, results, new_scope)
             except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
                 logger.debug("Token 遍历跳过: %s", _e)
-                pass
 
         # 遍历 root 的子节点
         try:
             for child in node:
-                self._find_covergroups(child, results)
+                self._find_covergroups(child, results, new_scope)
         except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
             logger.debug("Token 遍历跳过: %s", _e)
-            pass
+
+    @staticmethod
+    def _sym_name(node) -> str:
+        """symbol 名安全读取 (iter_141 教训: 非 utf8 identifier str() 抛
+        UnicodeDecodeError — 归属失败不崩整图)."""
+        try:
+            return str(getattr(node, "name", "")).strip()
+        except Exception as _e:  # UnicodeDecodeError 等
+            return ""
 
     # =========================================================================
     # Covergroup 解析
     # =========================================================================
 
-    def _parse_covergroup(self, node) -> CovergroupInfo | None:
+    def _parse_covergroup(self, node, scope_class: str = "") -> CovergroupInfo | None:
         """解析 CovergroupType"""
         name = str(getattr(node, "name", "")).strip()
         # class 内的 covergroup name 可能为空，从 syntax 获取
@@ -108,7 +133,7 @@ class CovergroupExtractor:
             if "Token" in ck:
                 continue
             if "Coverpoint" in ck and "Cross" not in ck:
-                cp = self._parse_coverpoint(child)
+                cp = self._parse_coverpoint(child, scope_class)
                 if cp:
                     coverpoints.append(cp)
             elif "CoverCross" in ck:
@@ -121,13 +146,14 @@ class CovergroupExtractor:
             clock=clock,
             coverpoints=coverpoints,
             crosses=crosses,
+            in_class=scope_class,  # [G1 iter_162] 归属所在 class (无 = "")
         )
 
     # =========================================================================
     # Coverpoint 解析
     # =========================================================================
 
-    def _parse_coverpoint(self, node) -> CoverpointInfo | None:
+    def _parse_coverpoint(self, node, scope_class: str = "") -> CoverpointInfo | None:
         """解析 CoverpointSymbol"""
         name = str(getattr(node, "name", "")).strip()
 
@@ -138,6 +164,26 @@ class CovergroupExtractor:
             expr = getattr(syntax, "expr", None)
             if expr:
                 signal = str(expr).strip()
+
+        # [G1 iter_162] 采样信号结构化解析: signal 原文保留 (8 消费方),
+        # sampled 为结构化引用 (表达式拆到每个信号, 决策点 2)
+        sampled = []
+        if syntax:
+            expr = getattr(syntax, "expr", None)
+            if expr is not None:
+                seen = set()
+                for path, sel, raw in self._collect_signal_refs(expr):
+                    key = (path, sel)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    sampled.append(SampledSignal(
+                        name=path,
+                        kind="class_prop" if scope_class else "module",
+                        host=scope_class,  # class_prop → 所在 class (类型级, D3)
+                        select=sel,
+                        raw=raw,
+                    ))
 
         bins_list = []
         for child in node:
@@ -163,7 +209,117 @@ class CovergroupExtractor:
             signal=signal,
             bins=bins_list,
             iff=iff,
+            sampled=sampled,
         )
+
+    # -------------------------------------------------------------------------
+    # [G1 iter_162] 采样信号引用走查 (syntax 表达式树 → (path, select, raw))
+    #
+    # 铁律: 非 string fallback — 走 coverpoint syntax.expr 的 AST 子树
+    # (extractor 现取 signal/iff 同源)。实证形态 (2026-09-06):
+    #   IdentifierNameSyntax        'din'
+    #   IdentifierSelectNameSyntax  'din[3:0]'   (base Token + ElementSelectSyntax)
+    #   ScopedNameSyntax            's.x'        (标识符段 + '.' Token 平铺)
+    #   Concatenation/Binary/Conditional → 组合: 逐子递归, 每个名字类子节点
+    #   独立成引用 (多信号观察)。
+    # 边界: 函数调用 callee 跳过 (procedural 域), 实参引用保留; 中段 select
+    # 链 (a[0].b) 内嵌到 path (近似, 罕见形态 — models 注释已标)。
+    # -------------------------------------------------------------------------
+
+    _NAME_LIKE = ("IdentifierNameSyntax", "IdentifierSelectNameSyntax", "ScopedNameSyntax")
+
+    def _collect_signal_refs(self, syn) -> list[tuple[str, str, str]]:
+        """表达式 → [(path, select, raw)]; 调用方负责去重."""
+        out: list[tuple[str, str, str]] = []
+        self._expr_walk(syn, out)
+        return out
+
+    def _expr_walk(self, syn, out: list):
+        if syn is None:
+            return
+        cls = type(syn).__name__
+        if cls == "Token":
+            return
+        merged = self._merge_ref(syn)
+        if merged is not None:
+            out.append(merged)
+            return
+        try:
+            kids = list(syn)
+        except TypeError:
+            return
+        # 函数/方法调用 (CallExpressionSyntax / InvocationExpressionSyntax):
+        # callee = 首个子节点 (非信号, procedural 域), 实参引用保留
+        if ("Call" in cls or "Invocation" in cls) and kids:
+            kids = kids[1:]
+        for ch in kids:
+            self._expr_walk(ch, out)
+
+    def _merge_ref(self, syn) -> tuple[str, str, str] | None:
+        """名字类节点 → 单个 (path, select, raw); 非名字类 → None.
+
+        path = 去 select 的标识符点路径; select = 末尾切片/位选原文
+        (多段拼 '[...][...]'); 中段 select (a[0].b) 内嵌进 path.
+        """
+        cls = type(syn).__name__
+        if cls == "IdentifierNameSyntax":
+            t = str(syn).strip()
+            return (t, "", t) if t else None
+        if cls == "IdentifierSelectNameSyntax":
+            base = ""
+            sel = ""
+            for ch in syn:
+                ccls = type(ch).__name__
+                if ccls == "Token" and not base:
+                    base = str(ch).strip()
+                elif ccls == "ElementSelectSyntax":
+                    sel += str(ch).strip()
+            if not base:
+                return None
+            return (base, sel, str(syn).strip())
+        if cls == "ScopedNameSyntax":
+            frags: list[tuple[str, str]] = []  # ('n', path段) / ('s', select原文)
+            for ch in syn:
+                ccls = type(ch).__name__
+                if ccls == "Token":
+                    continue
+                if ccls in self._NAME_LIKE:
+                    sub = self._merge_ref(ch)
+                    if sub:
+                        path, sel, _raw = sub
+                        if path:
+                            frags.append(("n", path))
+                        if sel:
+                            frags.append(("s", sel))
+            path, tail_sel = self._fold_scoped(frags)
+            raw = str(syn).strip()
+            return (path, tail_sel, raw) if path else None
+        return None
+
+    @staticmethod
+    def _fold_scoped(frags: list[tuple[str, str]]) -> tuple[str, str]:
+        """折叠 ScopedName 片段: select 后还有 name → 内嵌 (a[0].b);
+        否则收尾 (s.x[1] → path 's.x', sel '[1]')."""
+        out: list[str] = []
+        tail_sel = ""
+        i = 0
+        n = len(frags)
+        while i < n:
+            kind, text = frags[i]
+            if kind == "s":
+                tail_sel += text  # 悬空 select (前无 name) → 收尾
+                i += 1
+                continue
+            out.append(text)
+            i += 1
+            while i < n and frags[i][0] == "s":
+                has_more_name = any(f[0] == "n" for f in frags[i + 1:])
+                if has_more_name:
+                    out[-1] += frags[i][1]
+                else:
+                    tail_sel += frags[i][1]
+                i += 1
+        return ".".join(out), tail_sel
 
     # =========================================================================
     # Bins 解析

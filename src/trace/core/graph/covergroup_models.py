@@ -17,14 +17,37 @@ class BinsInfo:
 
 
 @dataclass
+class SampledSignal:
+    """coverpoint 采样的单个信号引用 (G1 结构化解析, iter_162).
+
+    coverpoint.signal 保留 syntax 原文 (8 消费方兼容); sampled 是结构化
+    引用 — 按 scope 分类 (module 信号 / class 属性), G3 查询桥据此映射
+    主图 id (fanin) 与 class 结构 (约束/rand)。
+
+    边界 (文档标记, 非 G1 承诺):
+    - 中段 select 链 (a[0].b) select 归并到 path 后段 (近似, 罕见形态)
+    - 函数调用表达式不解析 callee (procedural 域), 实参引用保留
+    - 分类 = 所在 scope (class → class_prop), 跨域引用 (class 内采样
+      module 层次名) 分类近似 — G3 桥按图解析纠正
+    """
+
+    name: str  # 路径名 'din' / 's.x' (不含 select)
+    kind: str  # 'module' | 'class_prop'
+    host: str = ""  # class_prop → 所在 class 名; module → '' (G2 实例绑定)
+    select: str = ""  # '[3:0]' / '[1]' / 多维拼接; 无 = ''
+    raw: str = ""  # 该引用原文 (含 select, 如 'din[3:0]')
+
+
+@dataclass
 class CoverpointInfo:
     """单个 coverpoint 的信息"""
 
     name: str  # coverpoint 名称 (可能为空)
-    signal: str  # 采样信号名
+    signal: str  # 采样信号名 (syntax 原文, 兼容保留)
     bins: list[BinsInfo] = field(default_factory=list)
     iff: str = ""  # [iter_062] iff 条件 (如 "enable"), 无条件为空
     attributes: dict[str, str] = field(default_factory=dict)
+    sampled: list[SampledSignal] = field(default_factory=list)  # [G1 iter_162]
 
 
 @dataclass

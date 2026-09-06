@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_161: covergroup 方案 B 拍板落档 — G1 开工)
+> **最后更新**: 2026-09-06 GMT+8 (iter_162: covergroup G1 完成 — in_class 归属 + signal 结构化)
 
 ---
 
@@ -22,21 +22,21 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: covergroup 联系规划 → **方案 B 已拍板, G1 开工**
-(iter_161)。class 追踪已全闭环 (C1~C5 + 对抗 E1~E15)。可视化后置。
+**当前任务 (方豆方向)**: covergroup 联系 — **G1 ✅ 完成 (iter_162)**;
+下一步 G2 (实例化绑定) 待方豆确认开工。class 追踪已全闭环 (C1~C5 + 对抗
+E1~E15)。可视化后置。
 
-**G1 sub-task 勾选** (任务文件: `docs/task_tree/tasks/L1_covergroup_linkage.md`):
-- [x] iter_160 规划 (现状实证 + 方案对比) — commit de93489
-- [x] iter_161 方案 B 拍板 (方豆 "哪个方案维护性更好" → "按b") — 维护性判据
-      落档 plan 第 3 节 (8 消费方零涟漪 / kind 守卫饱和 / 单一 fanin /
-      Claim 干净); 决策点 1/3 定 (类型级为主 / 动态=文档标记)
-- [ ] G1a 场景实证: class 内 covergroup 提取缺失根因定位
-- [ ] G1b class 内 covergroup 提取 (递归 class body, in_class 归属)
-- [ ] G1c coverpoint.signal 结构化解析 (module 顶层 / class 属性 / 表达式拆信号)
-- [ ] G1 测试 (场景 1/2 + 解析正确) + 回归
-- [ ] 迭代记录 + 文档同步 + commit
+**G1 (iter_162) 总结**: 实证推翻 plan "class 内提取缺失" 前提 (遍历可达,
+真缺口 = in_class 恒空 + signal 原始串); in_class 归属 (遍历带 scope_class)
++ SampledSignal 结构化解析 (module/class_prop 类型级/select; 表达式拆到
+每信号; syntax 走查器 — 调用 callee 跳过, Invocation 无 "Call" 字样坑);
+signal 原文保留 8 消费方零改动; 测试 24 + covergroup 72 + CLI 67 passed。
+[iter_162](docs/task_tree/iterations/iter_162_covergroup_g1_refs.md)
 
-[规划](docs/architecture/covergroup_tracing_plan.md) (方案 B ✅ 2026-09-06)
+**G2 (待启)**: 实例化绑定 — cg 实例 (module 变量 / class 成员) 与定义关联 +
+绑定上下文 (实例路径), 验收 Q4: p.cg 采样 p.addr。
+
+[规划](docs/architecture/covergroup_tracing_plan.md) (方案 B ✅ / G1 ✅ iter_162)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案

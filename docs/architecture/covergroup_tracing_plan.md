@@ -4,7 +4,8 @@
 > **背景**: 方豆方向 — covergroup 需要和 **signal** 联系起来, 或和
 > **class random var** 联系起来 (在 class 追踪体系 (C1~C5) 转正后, covergroup
 > 是下一块例外域)。
-> **状态**: ✅ 方案 B 已拍板 (2026-09-06 方豆 "按b 先更新文档, 再开始做") — G1 开工中 (iter_161~)。
+> **状态**: ✅ 方案 B 已拍板 (2026-09-06 方豆 "按b 先更新文档, 再开始做");
+> **G1 ✅ 完成 (iter_162)** — G2 待启动。
 
 ---
 
@@ -21,10 +22,11 @@
 
 | 域 | 状态 | 证据 |
 |---|---|---|
-| CovergroupExtractor (独立, 不进主图/追踪体系) | ✅ 提取 module 顶层 covergroup: name/clock/coverpoints/crosses/iff | 场景 1 (module 顶层) 输出正常 |
+| CovergroupExtractor (独立, 不进主图/追踪体系) | ✅ 提取 covergroup: name/clock/coverpoints/crosses/iff (含 class 内, 遍历可达) | 场景 1/2 均输出正常 (iter_162 复证) |
 | **Coverpoint.signal** | ⚠️ = syntax **原始字符串** (无结构化/作用域解析): 'din' / '{din[3:0],en}' — 分不清 module 信号/class 属性/表达式 | CovergroupInfo.signal='din' 等 |
-| **class 内 covergroup** | ❌ **提取缺失** (场景 2: class body 的 covergroup 返回空) | CovergroupExtractor 未递归 class |
-| covergroup 实例化 (cg cg_inst = new()) | ❌ 未建模 (定义 vs 实例/绑定目标) | — |
+| **class 内 covergroup 归属** | ❌ **in_class 恒空** — 语义树 CovergroupType 嵌 ClassType 下, 旧遍历不记父 class (extraction 可达 ≠ 归属) | coverage.py --class 过滤/randomize 显示静默失效 (iter_162 修) |
+| **采样信号结构化** | ❌ 无 — signal 原文仅供显示, 无法桥接主图 fanin / class 结构 | iter_162 新增 SampledSignal (module/class_prop/select) |
+| covergroup 实例化 (cg cg_inst = new()) | ❌ 未建模 (定义 vs 实例/绑定目标) | — (G2) |
 | cross / iff / bins | ✅ 提取 (iter_062/122) | cross_items 合成名 |
 | Accuracy Claim | covergroup 仍 **hybrid 例外域** | Claim 范围限定 |
 
@@ -75,7 +77,7 @@ covergroup 采样 = **观察声明** (非数据流, 类比约束 iter_153 D4):
 
 | 迭代 | 内容 | 验收 |
 |---|---|---|
-| **G1** | 提取补全: class 内 covergroup (递归 class body) + **signal 结构化解析** (coverpoint 表达式 → 图 id: 顶层信号 top.din / 实例属性 top.p.addr / this 成员 / 表达式信号集) | 场景 1/2 提取 + signal 解析正确 |
+| **G1** ✅ (iter_162) | 提取实证修正 (class 内 cg 遍历可达 — 原"提取缺失"前提错误) + **in_class 归属** (遍历记父 class) + **signal 结构化解析** (coverpoint 表达式 → SampledSignal: module 信号 top.din / class 属性 packet.addr (类型级) / 表达式拆到每信号 / select 单列) | ✅ 场景 1/2 提取 + in_class 归属正确 + 解析正确 (24 新测试: identifier/select/concat/member/ternary/bitwise/array/array-of-struct/函数调用 callee 不泄漏/常量跳过/去重/继承成员/匿名 cp 不崩) |
 | **G2** | **实例化绑定**: covergroup 实例 (module 变量 / class 成员) 与定义关联 + 绑定上下文 (实例路径) | Q4: p.cg 采样 p.addr |
 | **G3** | **查询 API** (query/covergroup.py, D4 范式): `trace_coverpoints(signal)` 反向 (Q2) / `trace_sampling_chain(cp)` → 采样信号 fanin (Q1) / `trace_rand_linkage(cp)` → rand 属性 + 约束 (Q3) | Q1-Q3 可查 |
 | **G4** | Accuracy Claim covergroup **转正** (观察域: 采样关系独立于数据流; 仍边界: bins 命中语义不建模 — 运行时) | 文档 |

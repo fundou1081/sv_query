@@ -1,7 +1,7 @@
 # L1: Covergroup 联系 (covergroup ↔ signal / class rand var)
 
 > **Created**: 2026-09-06 GMT+8
-> **Status**: 🟡 ACTIVE — G1 开工中 (iter_161~)
+> **Status**: 🟡 ACTIVE — **G1 ✅ (iter_162)**; G2 待启动
 > **方豆指令**: "来规划一下 covergroup 的问题。主要是要能和signal 联系起来,
 > 或能和 class random var 联系起来。你整体看看。" → "哪个方案维护性更好"
 > → "按b 先更新文档, 在开始做吧。"
@@ -29,18 +29,21 @@ class 追踪体系 (C1~C5) 转正后, covergroup 是下一个例外域。目标:
 
 | 迭代 | 内容 | 状态 |
 |---|---|---|
-| G1 | 提取补全: class 内 covergroup (递归 class body) + signal 结构化解析 (coverpoint 表达式 → 图 id / class 属性 / 表达式信号集) | 🟡 iter_161~ |
+| G1 | 提取实证修正 (class 内 cg 遍历可达 — 原"提取缺失"前提错误, iter_162 复证) + **in_class 归属** (遍历记父 class) + **signal 结构化解析** (SampledSignal: module/class_prop 类型级/select; 表达式拆到每信号) | ✅ iter_162 (24 新测试) |
 | G2 | 实例化绑定: cg 实例 (module 变量 / class 成员) 与定义关联 + 绑定上下文 (实例路径) | 待 |
 | G3 | 查询 API (query/covergroup.py, D4 范式): trace_coverpoints(signal) 反向 / trace_sampling_chain(cp) / trace_rand_linkage(cp) | 待 |
 | G4 | Accuracy Claim covergroup 转正 (观察域; bins 命中语义 = 运行时, 仍边界) | 待 |
 
 ## 子任务 (G1)
 
-- [ ] 场景实证: class 内 covergroup 提取缺失根因定位
-- [ ] class 内 covergroup 提取 (递归 class body, in_class 归属)
-- [ ] coverpoint.signal 结构化解析 (module 顶层 / class 属性 / 表达式拆信号)
-- [ ] 测试 (场景 1/2 + 解析正确) + 回归
-- [ ] 文档同步 + commit
+- [x] 场景实证: class 内 cg 遍历可达 (提取缺失前提错误 — 修正 plan §2);
+      真缺口 = in_class 恒空 (coverage.py --class 过滤静默失效) + signal 原始串
+- [x] in_class 归属: _find_covergroups 带 scope_class, ClassType 下钻记父 class
+- [x] signal 结构化解析: SampledSignal (name/kind/host/select/raw) +
+      syntax 走查器 (非 string fallback): identifier/select/concat/member/
+      ternary/bitwise/array/array-of-struct/调用 callee 跳过/常量跳过/去重
+- [x] 测试 24 (test_covergroup_signal_refs.py) + 回归 (covergroup 72 + CLI 67)
+- [ ] 文档同步 (plan §2/§4 + iter 记录) + commit ← 本步
 
 ## 关联
 
