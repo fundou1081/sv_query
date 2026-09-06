@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_157 缺口修 E7/E8/E3 — 2008 passed)
+> **最后更新**: 2026-09-06 GMT+8 (iter_158 E5/E13 嵌套调用修 — 2011 passed)
 
 ---
 
@@ -22,9 +22,18 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — 对抗缺口**逐个修中** (iter_157
-E7/E8/E3 ✅)。**遗留 backlog**: E5/E13 方法内嵌套调用 (隐式 this 传递 —
-架构级专项) / E15 默认参数无实参 (低价值)。covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — 对抗缺口 E7/E8/E3 (iter_157) +
+E5/E13 (iter_158) 已修。**遗留**: 数组成员 receiver (组合数组) / E15 默认
+参数 (低价值)。covergroup 单独规划。可视化后置。
+
+**iter_158 (2026-09-06)**: **E5/E13 方法内嵌套调用** (方豆 "继续做 e5 e13",
+静态限定: 动态分派文档标记) — _expand_nested_class_calls: 方法体遍历找
+Call (StatementList body.list, 收敛 attr); receiver 编译期定 (隐式 this →
+外层实例 / 显式成员 i → receiver.i); 实参经 param_map (symbol.name 修复
+垃圾节点); 递归 depth≤3。坑: list(StatementList) 异常静默吞 → 删;
+symbol 对象 str 垃圾。E5 fanin(p.data)={d,p.tmp} / E13 fanin(p.i.val)={d};
+unit +2; 回归 2011 passed。
+[iter_158](docs/task_tree/iterations/iter_158_e5e13_nested_calls.md)
 
 **iter_157 (2026-09-06)**: class 缺口修轮 1 (方豆 "逐个修") — E7 继承方法
 (_find_class_method 沿 extends 链递归父类) / E8 class 数组 receiver

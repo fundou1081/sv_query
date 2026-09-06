@@ -258,6 +258,7 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
         invocation, ctx, module, module_name, result, lhs_name,
         call_name, call_args, named_args, task_def, h=h,
         receiver_id=receiver_id,
+        receiver_class_name=receiver_class_name,
     )
 
 
@@ -494,13 +495,235 @@ def _find_task_definition(module, call_name, *, h: 'FunctionHelpers') -> tuple:
 
 
 
+def _is_class_member(class_name: str, member_name: str, *, h: 'FunctionHelpers') -> bool:
+    """[iter_157 E5] receiver class 是否有该成员 (CLASS_PROPERTY) — 编译期
+    确定 (静态限定: 成员名存在于类型定义才映射, 防拼假节点)."""
+    try:
+        classes = h.adapter.get_classes()
+    except Exception:
+        return False
+    for cls in classes:
+        try:
+            cname = safe_str(safe_attr(cls, "name"))
+        except (UnicodeDecodeError, TypeError):
+            continue
+        if cname != class_name:
+            continue
+        try:
+            members = list(cls)
+        except TypeError:
+            return False
+        for m in members:
+            if 'ClassProperty' not in str(getattr(m, 'kind', '')):
+                continue
+            try:
+                if safe_str(safe_attr(m, "name")) == member_name:
+                    return True
+            except (UnicodeDecodeError, TypeError):
+                continue
+        return False
+    return False
+
+
+def _expand_nested_class_calls(method_def, receiver_id, receiver_class_name,
+                               param_map, module_name, ctx, result, *, h,
+                               depth: int = 0):
+    """[iter_157 E5/E13] 方法体内**嵌套调用**展开 (静态限定, 方豆提醒).
+
+    编译期可确定的 receiver:
+    - 隐式 this (helper(d) 无 receiver) → 外层 receiver (同类方法)
+    - 显式成员 receiver (i.set(v), i 是外层实例的 class 成员) → 外层
+      receiver.i (成员类型定 class)
+    实参经外层 param_map 传递 (嵌套形参 ← 实参 ← 调用点信号)。
+
+    不建模 (动态分派, 文档标记 — class_tracing_plan E5/E13 注):
+    - virtual 方法 override 实际分派 (运行时对象类型未知)
+    - 句柄运行时重指向 (p.i 被重新 new 到别实例)
+    - 遍历句柄集合的动态调用
+    depth ≤ 3 防自/互递归静态展开无界。
+    """
+    if depth > 3 or method_def is None:
+        return
+    body = getattr(method_def, "body", None)
+    if body is None:
+        return
+
+    # 遍历方法体语句找 Call (语义: List/SequentialBlock 可迭代, 语句走
+    # expr/stmt 树)
+    def _walk(node, found):
+        if node is None:
+            return
+        k = str(getattr(node, 'kind', ''))
+        sk = str(getattr(node, 'statementKind', ''))
+        if 'Call' in k or 'Invocation' in k:
+            found.append(node)
+            return
+        # [iter_157 E5] 收敛 attr 集 (expr/stmt/list/statements/body):
+        # 避免 expression 对象上访问无关 attr (condition/thenBlock 等) 触发
+        # 深层/循环递归 (RecursionError 被外层 except 静默吞 → 找不到 call)
+        for attr in ('stmt', 'expr', 'list', 'statements', 'body', 'items'):
+            v = getattr(node, attr, None)
+            if v is None:
+                continue
+            if isinstance(v, list):
+                for c in v:
+                    _walk(c, found)
+            else:
+                _walk(v, found)
+
+    calls = []
+    _walk(body, calls)
+    for inv in calls:
+        try:
+            cname = safe_attr(inv, "subroutineName", None) or ""
+            if not cname:
+                continue
+            # receiver: thisClass (显式成员 i) / None (隐式 this)
+            recv_id2, recv_cls2 = receiver_id, receiver_class_name
+            tc = getattr(inv, "thisClass", None)
+            if tc is not None:
+                tc_k = str(getattr(tc, 'kind', ''))
+                if 'ElementSelect' in tc_k:
+                    continue  # 数组成员 receiver — 组合数组专项 (backlog)
+                sym = getattr(tc, 'symbol', None)
+                mname = safe_str(safe_attr(sym, 'name')) if sym is not None else ""
+                if not mname:
+                    continue
+                # 成员 receiver: i 须是外层实例成员 (class 型) — 静态限定
+                if _is_class_member(receiver_class_name or "", mname, h=h):
+                    # 成员 i 的 class 类型名
+                    mcls = _member_class_name(receiver_class_name or "", mname, h=h)
+                    if not mcls:
+                        continue
+                    recv_id2 = f"{receiver_id}.{mname}"
+                    recv_cls2 = mcls
+                else:
+                    continue  # 非成员 receiver (局部句柄等) — 静态不可定, 跳过
+            # 找方法定义 (含继承)
+            method2 = _find_class_method(recv_cls2 or "", cname, h=h)
+            if method2 is None:
+                continue
+            # 形参映射: def_params ↔ 实参 (实参信号经外层 param_map)
+            try:
+                params = h.adapter.get_function_params(method2)
+            except Exception:
+                params = []
+            args = list(getattr(inv, 'arguments', None) or [])
+            pmap2 = {}
+            for i, pe in enumerate(params):
+                if isinstance(pe, dict):
+                    pname = pe.get('name')
+                else:
+                    pname = pe[1] if len(pe) > 1 else None
+                if not pname or i >= len(args):
+                    continue
+                a = args[i]
+                ak = str(getattr(a, 'kind', ''))
+                if 'NamedValue' in ak:
+                    # 实参符号名 = symbol.name (safe_attr(a,'symbol') 返回
+                    # 对象, 直接 str 得 'Symbol(...)' 垃圾 — iter_157 实测)
+                    _asym = safe_attr(a, 'symbol', None)
+                    asig = (safe_str(safe_attr(_asym, 'name'))
+                            if _asym is not None else None)
+                    # 实参: 外层形参 (param_map) 或顶层信号
+                    if asig and asig in param_map:
+                        pmap2[pname] = param_map[asig]
+                    elif asig and receiver_id:
+                        pmap2[pname] = f"{module_name}.{asig}"
+                # 常量/复杂表达式 → 无映射 (默认参数等不展开)
+            # 展开 method2 成员赋值 (analyze → 实例属性边, 同 C1 规则)
+            try:
+                idr = h.adapter.analyze_task_internal_drivers(method2)
+            except Exception:
+                idr = {}
+            fname2 = safe_str(safe_attr(method2, 'name'))
+            for member2, rhss in idr.items():
+                if member2 == fname2:
+                    continue
+                dst2 = f"{recv_id2}.{member2}"
+                for r2 in rhss:
+                    if not r2 or r2.isdigit():
+                        continue
+                    b2 = r2.split('[')[0]
+                    src2 = None
+                    if "." in b2:
+                        hd, _, tl = b2.partition(".")
+                        if hd in pmap2:
+                            src2 = f"{module_name}.{pmap2[hd]}.{tl}"
+                    elif b2 in pmap2:
+                        src2 = f"{module_name}.{pmap2[b2]}"
+                    elif (recv_cls2 and _is_class_member(recv_cls2, b2, h=h)):
+                        src2 = f"{recv_id2}.{b2}"
+                    if not src2 or src2 == dst2:
+                        continue
+                    if src2 not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=src2, name=b2, module=module_name,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    if dst2 not in [n.id for n in result.nodes]:
+                        result.nodes.append(TraceNode(
+                            id=dst2, name=member2, module=recv_id2,
+                            kind=NodeKind.SIGNAL, width=(1, 0)))
+                    result.edges.append(
+                        h.edge_factory.make_edge(
+                            src=src2, dst=dst2, kind=EdgeKind.DRIVER,
+                            assign_type="blocking", ctx=ctx,
+                        ))
+            # 递归: method2 内再嵌套
+            _expand_nested_class_calls(
+                method2, recv_id2, recv_cls2, pmap2, module_name, ctx,
+                result, h=h, depth=depth + 1)
+        except (UnicodeDecodeError, TypeError):
+            continue
+
+
+def _member_class_name(class_name: str, member_name: str, *, h: 'FunctionHelpers') -> str | None:
+    """[iter_157 E13] class 成员 (i) 的类型名 — 成员是 class 实例 (inner)."""
+    try:
+        classes = h.adapter.get_classes()
+    except Exception:
+        return None
+    for cls in classes:
+        try:
+            cname = safe_str(safe_attr(cls, "name"))
+        except (UnicodeDecodeError, TypeError):
+            continue
+        if cname != class_name:
+            continue
+        try:
+            members = list(cls)
+        except TypeError:
+            return None
+        for m in members:
+            if 'ClassProperty' not in str(getattr(m, 'kind', '')):
+                continue
+            try:
+                if safe_str(safe_attr(m, 'name')) != member_name:
+                    continue
+            except (UnicodeDecodeError, TypeError):
+                continue
+            # 成员 type → ClassType name (剥 elementType)
+            t = getattr(m, 'type', None)
+            while t is not None:
+                tk = str(getattr(t, 'kind', ''))
+                if 'ClassType' in tk:
+                    return safe_str(safe_attr(t, 'name')) or None
+                t = (getattr(t, 'elementType', None)
+                     or getattr(t, 'arrayElementType', None))
+            return None
+        return None
+    return None
+
+
 def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_name,
                                  call_name, call_args, named_args, task_def, *, h: 'FunctionHelpers',
-                                 receiver_id=None):
+                                 receiver_id=None, receiver_class_name=None):
     """[REFACTOR 2026-06-26] 建 invocation 边 (含 def_params + param_map + function + output).
 
     receiver_id: [iter_151 C1] class 方法调用 (p.set) 的 receiver 实例路径
     (top.p); None = module task/function 调用。
+    receiver_class_name: [iter_157 E5/E13] receiver 的类型名 (嵌套调用解析
+    成员 receiver 用), None = module 调用。
     """
     try:
         # 内部计算 def_params
@@ -917,14 +1140,26 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
                     else:
                         call_arg = param_map.get(base_signal)
                         if not call_arg:
-                            continue  # 形参外 rhs (成员/常量表达式) — 不展开
-                        src_id = f"{module_name}.{call_arg}"
-                        _src_name = call_arg
+                            # [iter_157 E5] rhs 是**本实例成员** (data=tmp,
+                            # tmp 由嵌套 helper 设置) — 非形参非跨实例 →
+                            # 映射 receiver 成员 (src = receiver.tmp)。
+                            # 仅当 receiver class 确有该成员 (编译期可确定;
+                            # 虚方法/动态分派不建模 — 静态限定, 方豆提醒)。
+                            if (receiver_class_name
+                                    and _is_class_member(receiver_class_name,
+                                                         base_signal, h=h)):
+                                src_id = f"{receiver_id}.{base_signal}"
+                                _src_name = base_signal
+                            else:
+                                continue
+                        else:
+                            src_id = f"{module_name}.{call_arg}"
+                            _src_name = call_arg
                     if dst_id == src_id:
                         continue  # 自环防护
                     if src_id not in [n.id for n in result.nodes]:
                         result.nodes.append(TraceNode(
-                            id=src_id, name=call_arg, module=module_name,
+                            id=src_id, name=_src_name, module=module_name,
                             kind=NodeKind.SIGNAL, width=(1, 0)))
                     if dst_id not in [n.id for n in result.nodes]:
                         result.nodes.append(TraceNode(
@@ -936,6 +1171,18 @@ def _create_invocation_edges(invocation, ctx, module, module_name, result, lhs_n
                             assign_type="blocking", ctx=ctx,
                         )
                     )
+            # [iter_157 E5/E13] 方法体内嵌套调用展开 (helper(d) / i.set(v)):
+            # 静态可定 receiver (隐式 this / 成员), 递归防环 depth≤3
+            if receiver_id and receiver_class_name:
+                try:
+                    _expand_nested_class_calls(
+                        task_def, receiver_id, receiver_class_name, param_map,
+                        module_name, ctx, result, h=h, depth=0,
+                    )
+                except Exception as _ne:
+                    import traceback as _tb
+                    logger.warning("nested class call expand failed: %s",
+                                   _tb.format_exc(limit=4))
         # [REFACTOR 2026-06-26] silent (preserve original except: pass behavior)
         return
     except Exception:

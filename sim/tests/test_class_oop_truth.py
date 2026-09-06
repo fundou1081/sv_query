@@ -522,3 +522,74 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNestedMethodCall(unittest.TestCase):
+    """[iter_158] E5/E13 方法内嵌套调用展开 (静态限定).
+
+    E5: set 内调 helper(d) (隐式 this) + 成员链 data=tmp → 全链到底
+    E13: set_inner 内调 i.set(v) (成员 receiver, 组合 class) → p.i.val
+    不建模 (动态): virtual override / 句柄运行时重指向 (文档标记).
+    """
+
+    def test_nested_implicit_this_call(self):
+        """E5: helper(d) 隐式 this → p.tmp ← d; data=tmp 成员链 → p.data."""
+        src = '''class packet;
+  bit [7:0] data;
+  bit [7:0] tmp;
+  function void helper(input bit [7:0] x);
+    tmp = x;
+  endfunction
+  function void set(input bit [7:0] d);
+    helper(d);
+    data = tmp;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set(d);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids_data = {r.id for r in tr.trace_fanin('top.p.data')}
+        self.assertIn('top.d', ids_data,
+                      f"data 应经成员链+helper 到底, 实际 {ids_data}")
+        ids_tmp = {r.id for r in tr.trace_fanin('top.p.tmp')}
+        self.assertIn('top.d', ids_tmp, "helper 展开应驱动 tmp")
+        # 无垃圾节点 (symbol 对象 str)
+        self.assertFalse(any('Symbol(' in x for x in ids_data | ids_tmp),
+                         "不应有 symbol 对象垃圾节点")
+
+    def test_nested_member_receiver_call(self):
+        """E13: i.set(v) — receiver 是外层实例的 class 成员 (组合)."""
+        src = '''class inner;
+  bit [7:0] val;
+  function void set(input bit [7:0] v);
+    val = v;
+  endfunction
+endclass
+class packet;
+  inner i;
+  function void set_inner(input bit [7:0] v);
+    i.set(v);
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set_inner(d);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.p.i.val')}
+        self.assertIn('top.d', ids,
+                      f"组合成员 i.set 应链到底, 实际 {ids}")
+
+
+if __name__ == "__main__":
+    unittest.main()
