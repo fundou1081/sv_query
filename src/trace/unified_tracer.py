@@ -1192,6 +1192,17 @@ class UnifiedTracer:
                 out.append(nd)
         return out
 
+    def trace_constraints(self, prop_id: str) -> list:
+        """[iter_153 C3] 属性受哪些约束 (ConstraintTracer, 架构决策 D4).
+
+        约束 = 声明式关系 (CONSTRAINS/HAS_* 边), 独立 tracer — 不走数据
+        fanin。prop_id 支持类型级 (packet.addr) 与实例 (top.p.addr,
+        自动解析类型级 — 约束定义在类型作用于所有实例)。
+        """
+        self.build_graph()
+        from .core.query.constraint import ConstraintTracer
+        return ConstraintTracer(self._graph).trace(prop_id)
+
     # =========================================================================
     # 时钟域追踪 API
     # =========================================================================
