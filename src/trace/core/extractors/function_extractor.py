@@ -584,21 +584,52 @@ def _expand_nested_class_calls(method_def, receiver_id, receiver_class_name,
             if tc is not None:
                 tc_k = str(getattr(tc, 'kind', ''))
                 if 'ElementSelect' in tc_k:
-                    continue  # 数组成员 receiver — 组合数组专项 (backlog)
-                sym = getattr(tc, 'symbol', None)
-                mname = safe_str(safe_attr(sym, 'name')) if sym is not None else ""
-                if not mname:
-                    continue
-                # 成员 receiver: i 须是外层实例成员 (class 型) — 静态限定
-                if _is_class_member(receiver_class_name or "", mname, h=h):
-                    # 成员 i 的 class 类型名
+                    # [iter_158 组合数组] 数组成员 receiver (bus[0].set):
+                    # value = 外层实例成员 (bus, class 数组), selector = 常量
+                    val = getattr(tc, 'value', None)
+                    vsym = getattr(val, 'symbol', None)
+                    mname = (safe_str(safe_attr(vsym, 'name'))
+                             if vsym is not None else "")
+                    if not mname:
+                        continue
+                    if not _is_class_member(receiver_class_name or "", mname, h=h):
+                        continue  # 非外层成员数组 (局部数组等) — 跳过
+                    # 索引常量
+                    sel = getattr(tc, 'selector', None)
+                    _iv = None
+                    for _a in ('value', 'toString'):
+                        _vv = getattr(sel, _a, None) if sel is not None else None
+                        if _vv is not None:
+                            _iv = _vv
+                            break
+                    if _iv is None and sel is not None:
+                        try:
+                            _iv = int(str(sel))
+                        except (ValueError, TypeError):
+                            _iv = None
+                    if _iv is None:
+                        continue  # 变量索引 (generate/循环) — 动态, 跳过
                     mcls = _member_class_name(receiver_class_name or "", mname, h=h)
                     if not mcls:
                         continue
-                    recv_id2 = f"{receiver_id}.{mname}"
+                    recv_id2 = f"{receiver_id}.{mname}[{_iv}]"
                     recv_cls2 = mcls
+                    # 跳过后方普通成员处理
                 else:
-                    continue  # 非成员 receiver (局部句柄等) — 静态不可定, 跳过
+                    sym = getattr(tc, 'symbol', None)
+                    mname = safe_str(safe_attr(sym, 'name')) if sym is not None else ""
+                    if not mname:
+                        continue
+                    # 成员 receiver: i 须是外层实例成员 (class 型) — 静态限定
+                    if _is_class_member(receiver_class_name or "", mname, h=h):
+                        # 成员 i 的 class 类型名
+                        mcls = _member_class_name(receiver_class_name or "", mname, h=h)
+                        if not mcls:
+                            continue
+                        recv_id2 = f"{receiver_id}.{mname}"
+                        recv_cls2 = mcls
+                    else:
+                        continue  # 非成员 receiver (局部句柄等) — 静态不可定, 跳过
             # 找方法定义 (含继承)
             method2 = _find_class_method(recv_cls2 or "", cname, h=h)
             if method2 is None:
