@@ -1132,6 +1132,67 @@ class UnifiedTracer:
         return self._module_tracer.find_connected_modules(module)
 
     # =========================================================================
+    # Class 关系查询 API (iter_152 C2 — 架构决策 D3: 类型级=结构参考)
+    # =========================================================================
+    def trace_class_members(self, class_name: str) -> list:
+        """[iter_152 C2] class 类型级成员 (结构参考, D3).
+
+        返回 CLASS_PROPERTY / CONSTRAINT_BLOCK / 方法等**结构节点** —
+        类型级定义不是数据端点 (数据端点 = 实例属性); 查询成员关系用此 API,
+        查"谁驱动属性"用实例路径 (top.p.data) 走 fanin。
+        """
+        self.build_graph()
+        g = self._graph
+        out = []
+        for node_id in g.nodes():
+            if not node_id.startswith(f"{class_name}."):
+                continue
+            nd = g.get_node(node_id)
+            if nd and nd.id not in [x.id for x in out]:
+                out.append(nd)
+        return out
+
+    def trace_class_instances(self, class_name: str) -> list:
+        """[iter_152 C2] 类型 → 实例: 所有 IS_INSTANCE_OF 该 class 的实例节点.
+
+        反向遍历 (IS_INSTANCE_OF: 实例 → 类型), 图不变 (不建反向边)。
+        """
+        self.build_graph()
+        g = self._graph
+        from .core.graph.models import EdgeKind as _EK
+        out = []
+        for s, d in g.edges():
+            if d != class_name:
+                continue
+            for e in g.get_edges(s, d):
+                if e.kind == _EK.IS_INSTANCE_OF:
+                    nd = g.get_node(s)
+                    if nd and nd.id not in [x.id for x in out]:
+                        out.append(nd)
+        return out
+
+    def trace_member_instances(self, type_prop_id: str) -> list:
+        """[iter_152 C2] 类型属性 (packet.data) → 已建的实例属性节点.
+
+        packet.data → (IS_INSTANCE_OF 实例 p1/p2) → p1.data / p2.data
+        (仅返回图内**已存在**的实例成员节点 — 数据端点按需创建, 未使用
+        的实例成员不臆造, 见 C2 实证)。
+        """
+        self.build_graph()
+        g = self._graph
+        if "." not in type_prop_id:
+            return []
+        class_name, member = type_prop_id.rsplit(".", 1)
+        insts = self.trace_class_instances(class_name)
+        out = []
+        for inst in insts:
+            prop_id = f"{inst.id}.{member}"
+            nd = g.get_node(prop_id)
+            if nd:
+                out.append(nd)
+        return out
+
+    # =========================================================================
     # 时钟域追踪 API
     # =========================================================================
     def trace_clock_domain(self, clock: str) -> ClockDomainTrace:
