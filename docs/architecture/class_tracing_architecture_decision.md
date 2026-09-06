@@ -66,13 +66,27 @@ this←实例绑定, 展开落实例属性。
 
 ### D5. kind 守卫与 namespace — 集中化
 
+**背景 (维护性隐患, 2026-09-05 方豆追问展开)**: class 节点由
+ClassGraphBuilder 在 `_filter_by_target` **之后**加入图 — 类型级 (packet.*)
+与实例节点 (top.p.*) 从未被 target 过滤检查, 目前"碰巧"保留/正确。隐患:
+①同名 class 多点定义 → packet.addr 单节点被多定义叠加 (静默合并错乱)
+②target 语义漂移 (--module top2 仍带 top 的 packet.*) ③C1 方法展开若
+假设类型级属当前 target 会错挂 ④含 class 的 RTL truth 节点集无规则可依
+⑤渲染/序列化需重复 kind 过滤。
+
 **决策**:
 - graph 提供集中 helper (`is_data_node(kind)` / `is_class_structural(kind)`),
   查询层调用 — 收口现在 signal.py 已开始分散的 kind 判断
 - **namespace 规则落文档**: class 类型级节点 (packet.*) = 全局定义 (与
   module 定义同级), 实例节点 (top.p.*) 在 target 树内; filter_by_target
   显式保留类型级 (结构需要) — 消除当前"未定义行为"
-**理由 (维护性)**: 一处定义, 扩展新域 (covergroup/SVA) 只加不改。
+- **⚠️ 冲突检测 (方豆拍板纳入)**: 同名**类型级** class 定义 (跨文件/
+  跨 scope) 合并到同一图节点前, 检测定义来源 — 冲突时**显式告警** +
+  处理策略 (按迭代 C4 定: 多定义同名 = 按包/scope 命名空间区分 or
+  告警后首个保留)。禁止静默叠加 (AGENTS.md §2 精神: 失败/冲突可见)
+**理由 (维护性)**: 一处定义, 扩展新域 (covergroup/SVA) 只加不改; 冲突
+检测防"静默合并"类数据错乱 (iter_117 legacy 覆盖 / iter_120 key 碰撞
+同族教训)。
 
 ---
 
