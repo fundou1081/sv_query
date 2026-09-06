@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-05 GMT+8 (iter_148 README 超能力宣传校对)
+> **最后更新**: 2026-09-05 GMT+8 (iter_149 class 追踪规划 — 待方豆确认起点)
 
 ---
 
@@ -22,7 +22,17 @@
 
 ## 🔥 当前任务
 
-**等待方豆指示** (backlog: gate/SVA 暂缓; pr5 wrapper 深度基准 TODO; cvfpu 低优先)
+**当前任务 (方豆方向)**: class 纳入信号追踪 — 规划已出 (iter_149,
+C1~C5 迭代路线), **待方豆确认起点** (建议 C1 class 方法调用链)。
+covergroup 单独规划。可视化后置。
+
+**iter_149 (2026-09-05)**: class 追踪整体规划 (方豆 "先整体规划 class 相关,
+covergroup 单独") — 现状实证: class 图结构/约束/继承/方法赋值 ✅; 实例属性
+追踪 ✅ (fanin(p.addr)={din}); **差距**: 方法调用链断 (p.set(x)→data 无驱动,
+最大缺口) / 实例↔类型级桥 / constraint 语义查询 / 查询层 class kind。
+规划文档 C1~C5 迭代路线 (方法调用链 → 实例↔类型桥 → 约束查询 → kind 收束
+→ 声明转正)。
+[规划](docs/architecture/class_tracing_plan.md)
 
 **iter_148 (2026-09-05)**: README 超能力宣传校对 (方豆 "cdc 描述先去掉") —
 cdc/timing/risk 命令标 EXPERIMENTAL 却被 README 当能力列 → 从 Experimental
