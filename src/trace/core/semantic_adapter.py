@@ -562,17 +562,15 @@ class SemanticAdapter:
                 logger.debug("提取失败 ((TypeError, UnicodeDecodeError)): %s", _e)
                 pass
 
-        # 去重（Semantic AST 和 SyntaxTree 可能都找到了同一个 class）
+        # 去重（Semantic AST 和 SyntaxTree 可能都找到**同一个** class 对象）
+        # [iter_154 C4-C / D5] 按**对象身份**去重 (id) — 同名不同定义是合法
+        # SV (跨文件/scope), 必须保留给 class_graph_builder 冲突检测;
+        # 旧按 name 去重会静默杀掉第二个定义 (C4 实证: 冲突检测形同虚设)。
         seen = set()
         unique_classes = []
         for c in classes:
-            try:
-                name = str(_safe_attr(c, "name", "")).strip()
-            except UnicodeDecodeError:
-                unique_classes.append(c)
-                continue
-            if name not in seen:
-                seen.add(name)
+            if id(c) not in seen:
+                seen.add(id(c))
                 unique_classes.append(c)
         classes = unique_classes
 
@@ -583,11 +581,9 @@ class SemanticAdapter:
         seen = set()
         unique_classes = []
         for c in classes:
-            name = self.get_class_name(c)
-            if name and name not in seen:
-                seen.add(name)
-                unique_classes.append(c)
-            elif not name:
+            # [iter_154 C4-C] 按对象身份去重 (同名不同定义保留给冲突检测)
+            if id(c) not in seen:
+                seen.add(id(c))
                 unique_classes.append(c)
 
         return unique_classes

@@ -132,6 +132,18 @@ class SignalTracer:
         # 这样后续能防止递归到 same signal_id (self-loop 等场景).
         seen_ids.add(signal_id)
 
+        # [iter_154 C4-A / 架构决策 D3] 类型级 class 属性 (packet.data,
+        # kind=CLASS_PROPERTY) = **结构宿主非数据端点** — 数据 fanin 不适用。
+        # 类型级方法体 DRIVER (packet.addr→packet.data, iter_075 结构建模)
+        # 是"定义内模板依赖", 非任何实例的真实驱动 (真实驱动在实例:
+        # top.p.data, C1 展开) — 作为 fanin 答案会误导 (模板驱动 ≠ 实例驱动)。
+        # 用户查类型级关系走 trace_class_members / trace_constraints;
+        # 实例级 (CLASS_INSTANCE_PROPERTY / REG 化实例属性) 数据流不受影响。
+        _kind_guard = self.graph.get_node(signal_id)
+        if (_kind_guard is not None
+                and _kind_guard.kind.name == "CLASS_PROPERTY"):
+            return
+
         # [FIX 2026-07-08] 治本后, instance port 也需要 forward-lookup 到 module def port,
         # 这样可以跨 wrapper 的内部 assign (e.g. axi_ram_wr_if.s_axi_awready_reg → axi_ram_wr_if.s_axi_awready).
         # 适用于 has_driver_edge=True (自环/internal DRIVER) 和 False 两个场景.
@@ -502,6 +514,10 @@ class SignalTracer:
     def _find_drivers(self, signal_id: str) -> list[TraceNode]:
         """[兼容] 直接驱动"""
         if signal_id not in self.graph.nodes():
+            return []
+        # [iter_154 C4-A] 类型级 class 属性非数据端点 (D3) — depth=1 同守卫
+        _kn = self.graph.get_node(signal_id)
+        if _kn is not None and _kn.kind.name == "CLASS_PROPERTY":
             return []
 
         drivers = []
