@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_151 C1 class 方法调用链完成 — C2 下一步)
+> **最后更新**: 2026-09-06 GMT+8 (iter_152 C2 实例↔类型桥完成 — C3 下一步)
 
 ---
 
@@ -22,8 +22,15 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — C1 完成 (iter_151), **下一步
-C2** (实例↔类型级桥 + 查询语义, 按 D3)。covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: class 纳入信号追踪 — C2 完成 (iter_152), **下一步
+C3** (constraint 语义查询, 按 D4)。covergroup 单独规划。可视化后置。
+
+**iter_152 (2026-09-06)**: **C2 实例↔类型级桥 + 查询语义** (D3) — 实证:
+实例成员节点按需创建 (p1.data 建 / p2.data 未用不建); 实现 unified_tracer
+3 关系 API (trace_class_members 结构参考 / trace_class_instances 反向 /
+trace_member_instances 仅已建); 桥 = 查询遍历非反向边 (图不变);
+fanin 数据端点语义保持; unit +4。
+[iter_152](docs/task_tree/iterations/iter_152_c2_instance_type_bridge.md)
 
 **iter_151 (2026-09-06)**: **C1 class 方法调用链** (按架构决策 D2) —
 语义形态: Call.thisClass (receiver) + SubroutineSymbol; ClassSymbol 成员在

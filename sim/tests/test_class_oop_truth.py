@@ -157,3 +157,64 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassInstanceTypeBridge(unittest.TestCase):
+    """[iter_152 C2] 实例↔类型级桥 + 查询语义 (架构决策 D3).
+
+    D3: 类型级 (packet.data) = 结构宿主 (trace_class_members), 实例级
+    (top.p1.data) = 数据端点 (fanin); 桥 = IS_INSTANCE_OF 反向查询
+    (trace_class_instances) + 成员实例 (trace_member_instances, 仅图内
+    已建节点 — 未使用实例成员不臆造)。
+    """
+
+    SRC = '''class packet;
+  rand bit [7:0] addr;
+  bit [7:0] data;
+  constraint c_addr { addr < 16; }
+  function void set(input bit [7:0] d);
+    data = d;
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] din);
+  packet p1 = new();
+  packet p2 = new();
+  always_ff @(posedge clk) begin
+    p1.set(din);
+  end
+endmodule
+'''
+
+    def setUp(self):
+        self.tr = UnifiedTracer(sources={'t.sv': self.SRC}, log_level='ERROR')
+        self.tr.build_graph(use_cache=False, target_module='top')
+
+    def test_type_level_members_structural(self):
+        """类型级成员 = 结构参考 (属性/约束块/表达式)."""
+        ids = {n.id for n in self.tr.trace_class_members('packet')}
+        self.assertIn('packet.addr', ids)
+        self.assertIn('packet.data', ids)
+        self.assertIn('packet.c_addr', ids)
+
+    def test_class_instances_reverse(self):
+        """类型 → 实例 (IS_INSTANCE_OF 反向): p1/p2 都在."""
+        ids = {n.id for n in self.tr.trace_class_instances('packet')}
+        self.assertEqual(ids, {'top.p1', 'top.p2'})
+
+    def test_member_instances_only_built(self):
+        """类型属性 → 已建实例属性: p1.data 在 (被 set 使用), p2.data 不臆造."""
+        ids = {n.id for n in self.tr.trace_member_instances('packet.data')}
+        self.assertEqual(ids, {'top.p1.data'},
+                         "仅返回图内已存在的实例成员节点")
+        # addr 未被 RTL 使用 → 无实例成员节点
+        self.assertEqual(self.tr.trace_member_instances('packet.addr'), [])
+
+    def test_data_endpoint_is_instance(self):
+        """D3: 数据端点 = 实例 (fanin(p1.data) 通); 类型级是结构非数据."""
+        ids = {r.id for r in self.tr.trace_fanin('top.p1.data')}
+        self.assertIn('top.din', ids,
+                      "实例属性数据流应通 (方法调用链 C1)")
+
+
+if __name__ == "__main__":
+    unittest.main()
