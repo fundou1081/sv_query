@@ -593,3 +593,65 @@ endmodule
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCompositeArrayAndDefaults(unittest.TestCase):
+    """[iter_159] 组合数组 receiver + 默认参数语义.
+
+    - 组合数组: packet.bus[2] (inner 数组), set_bus 内 bus[0].set(v) →
+      静态 receiver (成员数组 + 常量索引) → p.bus[0].val 链到底
+    - 默认参数无实参 (p.set()): 数据源为默认常量 — 无信号可追, 查询空
+      (常量驱动不建假信号源), 不崩
+    """
+
+    def test_composite_array_member_receiver(self):
+        src = '''class inner;
+  bit [7:0] val;
+  function void set(input bit [7:0] v);
+    val = v;
+  endfunction
+endclass
+class packet;
+  inner bus[2];
+  function void set_bus(input bit [7:0] v);
+    bus[0].set(v);
+  endfunction
+endclass
+module top (input bit clk, input bit [7:0] d);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set_bus(d);
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.p.bus[0].val')}
+        self.assertIn('top.d', ids,
+                      f"组合数组元素 receiver 应链到底, 实际 {ids}")
+
+    def test_default_param_no_arg_no_crash(self):
+        """E15: p.set() 无实参用默认常量 — 不崩; 常量源无信号可追 (空答合理)."""
+        src = '''class packet;
+  bit [7:0] data;
+  function void set(input bit [7:0] d = 8'h5);
+    data = d;
+  endfunction
+endclass
+module top (input bit clk);
+  packet p = new();
+  always_ff @(posedge clk) begin
+    p.set();
+  end
+endmodule
+'''
+        tr = UnifiedTracer(sources={'t.sv': src}, log_level='ERROR')
+        g = tr.build_graph(use_cache=False, target_module='top')
+        # data 由默认常量驱动 — 无信号源; 且无垃圾节点 (Symbol(...) 等)
+        ids = {r.id for r in tr.trace_fanin('top.p.data')}
+        for n in g.nodes():
+            self.assertNotIn('Symbol(', n, f"不应有 symbol 垃圾节点: {n}")
+
+
+if __name__ == "__main__":
+    unittest.main()
