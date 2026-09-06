@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_159 组合数组+E15 收尾 — class 缺口全闭环)
+> **最后更新**: 2026-09-06 GMT+8 (iter_160 covergroup 联系规划 — 待方豆确认)
 
 ---
 
@@ -22,9 +22,18 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: class 纳入信号追踪 — **对抗缺口全清单闭环**
-(iter_156~159: E11/E4/E7/E8/E3/E5/E13/E15 + 组合数组)。动态分派
-(virtual/句柄) = 文档标记。covergroup 单独规划。可视化后置。
+**当前任务 (方豆方向)**: covergroup 联系规划 (iter_160) — 与 signal /
+class rand var 联系; **待方豆确认方案** (建议 B: 独立结构+查询桥, D4 范式;
+迭代 G1 提取补全 → G2 实例绑定 → G3 查询 API → G4 声明转正)。
+class 追踪已全闭环 (C1~C5 + 对抗 E1~E15)。可视化后置。
+
+**iter_160 (2026-09-06)**: covergroup 联系规划 (方豆 "规划 covergroup, 要和
+signal/class rand var 联系") — 现状: CovergroupExtractor 独立, Coverpoint.
+signal = syntax 原始字符串 (无解析), class 内 covergroup 提取缺失, 实例化
+未建模。规划 G1~G4 (提取补全+signal 解析 / 实例绑定 / 查询 API (Q1-Q4) /
+声明转正); 方案 B (独立结构+查询桥 — 采样=观察声明非数据流, D4 范式);
+4 决策点待拍板。
+[规划](docs/architecture/covergroup_tracing_plan.md)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案
