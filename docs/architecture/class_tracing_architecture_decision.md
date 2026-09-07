@@ -103,7 +103,7 @@ ClassGraphBuilder 在 `_filter_by_target` **之后**加入图 — 类型级 (pac
 ## 影响 / 关联
 
 - **Accuracy Claim**: class/constraint 追踪域稳定后 (C 迭代), hybrid 例外
-  域声明收窄 (class 转正; covergroup/SVA 仍例外) — C5
+  域声明收窄 (class 转正; covergroup/SVA 仍例外) — C5 (演进注: covergroup 已于 iter_166 转正为观察域, SVA 仍例外)
 - **迭代路线** (class_tracing_plan.md): C1 (方法展开, 按 D2) → C2 (实例↔
   类型桥/查询语义, 按 D3) → C3 (约束 tracer, 按 D4) → C4 (kind 收束 +
   namespace, 按 D5) → C5 (声明转正)
@@ -115,4 +115,4 @@ ClassGraphBuilder 在 `_filter_by_target` **之后**加入图 — 类型级 (pac
   显式降级 (不静默)
 - class 方法体对实例状态 (p.data) 展开 vs 类型级共享: 展开 = 复制 DRIVER
   到实例属性 — 图略增, truth 更新随 C1 验证
-- 本决策不覆盖 covergroup (后置单独规划, 可套 D4 范式)
+- 本决策不覆盖 covergroup (后置单独规划, 可套 D4 范式 — 已兑现: covergroup 查询桥即 D4 范式, iter_165)
