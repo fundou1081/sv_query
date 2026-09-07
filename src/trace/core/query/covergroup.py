@@ -72,21 +72,56 @@ class CovergroupTracer:
         self._cgs = cgs
         self._tr = tracer
         self._inst_cache: dict[str, list[str]] = {}  # class → 实例路径
+        self._class_names: set[str] | None = None
 
     # =========================================================================
     # 内部
     # =========================================================================
 
+    def _all_class_names(self) -> set[str]:
+        """编译域 class 名集 (槽展开判定; 惰性)."""
+        if self._class_names is None:
+            try:
+                self._class_names = set(self._tr.list_classes())
+            except Exception as e:
+                logger.warning("class 名枚举失败: %s", e)
+                self._class_names = set()
+        return self._class_names
+
     def _class_instances(self, class_name: str) -> list[str]:
-        """class 实例路径 (主图 trace_class_instances, 惰性缓存)."""
+        """class **对象**实例路径 (主图 trace_class_instances + 槽展开, 缓存).
+
+        [iter_167 M8] 真实场景盲点: class 被实例化为**另一 class 的成员**
+        (env.p) 时, 图的 IS_INSTANCE_OF 指向**类型级成员槽** ('tb_env.p'),
+        非每个容器的活对象 (top.e.p)。展开: 槽首段 = owner class 名 →
+        owner 对象 × 成员后缀, 递归至模块层对象 (首段非 class 名)。
+        """
         if class_name not in self._inst_cache:
             try:
-                nodes = self._tr.trace_class_instances(class_name)
-                self._inst_cache[class_name] = [n.id for n in nodes]
+                base = [n.id for n in self._tr.trace_class_instances(class_name)]
             except Exception as e:
                 logger.warning("class 实例枚举失败 (%s): %s", class_name, e)
-                self._inst_cache[class_name] = []
+                base = []
+            self._inst_cache[class_name] = self._expand_slots(class_name, base, 0)
         return self._inst_cache[class_name]
+
+    def _expand_slots(self, class_name: str, ids: list[str], depth: int) -> list[str]:
+        """成员槽 → 活对象路径 (深度守卫防环)."""
+        if depth > 6 or not ids:
+            return list(ids)
+        classes = self._all_class_names()
+        out: list[str] = []
+        for iid in ids:
+            head = iid.split(".")[0]
+            if head not in classes:
+                out.append(iid)  # 模块层对象 (首段 = 实例路径, 非 class)
+                continue
+            # 成员槽: head = owner class; 展开 owner 对象 × 成员后缀
+            rest = iid[len(head) + 1:]
+            owner_objs = self._expand_slots(head, self._class_instances(head), depth + 1)
+            for o in owner_objs:
+                out.append(f"{o}.{rest}")
+        return out
 
     @staticmethod
     def _resolve_instance(cg, instance: str | None, instances: list[str]) -> str:

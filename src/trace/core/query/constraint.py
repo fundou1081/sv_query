@@ -60,13 +60,15 @@ class ConstraintTracer:
 
     # ------------------------------------------------------------------
     def _resolve_type_prop(self, prop_id: str) -> str | None:
-        """实例属性 (top.p.addr) → 类型属性 (packet.addr).
+        """实例属性 (top.p.addr / top.e.p.addr) → 类型属性 (packet.addr).
 
         路径 1: 反向 MEMBER_SELECT (CLASS_INSTANCE_PROPERTY 有出边到类型成员,
-        iter_152 实证)。路径 2 (fallback): 剥成员名 → 实例 (top.p) →
-        IS_INSTANCE_OF → 类型 (packet) → 类型属性 (packet.addr)。
-        REG 化的实例属性 (被 always_ff 驱动, kind=REG) 可能无 MEMBER_SELECT
-        出边 — 路径 2 兜底。
+        iter_152 实证)。路径 2 (fallback): 实例前缀 → IS_INSTANCE_OF → 类 →
+        成员链走类型 (iter_153 单级 top.p.addr; **iter_168 嵌套
+        top.e.p.addr**: 逐级实例前缀 (最长优先) + class 类型成员递归 —
+        env.p 成员槽 tb_env.p 经 IS_INSTANCE_OF → packet, 续 addr →
+        packet.addr)。REG 化的实例属性 (被 always_ff 驱动, kind=REG) 可能
+        无 MEMBER_SELECT 出边 — 路径 2 兜底。
         """
         node = self.graph.get_node(prop_id)
         if node is not None and node.kind.name == "CLASS_PROPERTY":
@@ -81,18 +83,48 @@ class ConstraintTracer:
                 nd = self.graph.get_node(d)
                 if nd and nd.kind.name == "CLASS_PROPERTY":
                     return d
-        # 路径 2: prop_id = <inst_path>.<member> → 实例 → IS_INSTANCE_OF → class
-        if "." in prop_id:
-            inst_id, member = prop_id.rsplit(".", 1)
-            for s, d in self.graph.edges():
-                if s != inst_id:
-                    continue
-                for e in self.graph.get_edges(s, d):
-                    if e.kind != EdgeKind.IS_INSTANCE_OF:
-                        continue
-                    type_prop = f"{d}.{member}"
-                    if self.graph.get_node(type_prop) is not None:
-                        return type_prop
+        # 路径 2: <实例前缀>.<成员链> — 逐级前缀 (最长优先) 解析实例类,
+        # 成员链沿 class 类型递归 (嵌套实例 top.e.p.addr)。
+        parts = prop_id.split(".")
+        for k in range(len(parts) - 1, 0, -1):
+            inst_id = ".".join(parts[:k])
+            cls = self._isa_class(inst_id)
+            if not cls:
+                continue
+            type_member = self._walk_member_type(cls, parts[k:])
+            if type_member:
+                return type_member
+        return None
+
+    def _isa_class(self, inst_id: str) -> str | None:
+        """实例节点 → IS_INSTANCE_OF 类型 (无实例节点/非实例 → None)."""
+        nd = self.graph.get_node(inst_id)
+        if nd is None or nd.kind.name != "CLASS_INSTANCE":
+            return None
+        for s, d in self.graph.edges():
+            if s != inst_id:
+                continue
+            for e in self.graph.get_edges(s, d):
+                if e.kind == EdgeKind.IS_INSTANCE_OF:
+                    return d
+        return None
+
+    def _walk_member_type(self, cls: str, parts: list[str]) -> str | None:
+        """类型成员链: packet + ['addr'] → packet.addr; env 成员 p 是 class
+        类型 → 经 tb_env.p IS_INSTANCE_OF 续下一段 (嵌套 top.e.p.addr)."""
+        if not parts:
+            return None
+        head, rest = parts[0], parts[1:]
+        nid = f"{cls}.{head}"
+        nd = self.graph.get_node(nid)
+        if nd is None:
+            return None
+        if nd.kind.name == "CLASS_PROPERTY" and not rest:
+            return nid
+        if nd.kind.name == "CLASS_INSTANCE" and rest:
+            sub_cls = self._isa_class(nid)
+            if sub_cls:
+                return self._walk_member_type(sub_cls, rest)
         return None
 
     def _analyze_block(self, block_id: str) -> ConstraintInfo | None:
