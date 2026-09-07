@@ -38,6 +38,7 @@ class CovergroupExtractor:
             compiler = SVCompiler(sources=self._sources, strict=self._strict)
             root = compiler.get_root()
             self._find_covergroups(root, results)
+            self._attach_instance_rules(root, results)
         except Exception as e:
             logger.warning(f"编译失败: {e}")
         return results
@@ -91,6 +92,103 @@ class CovergroupExtractor:
             return str(getattr(node, "name", "")).strip()
         except Exception as _e:  # UnicodeDecodeError 等
             return ""
+
+    # =========================================================================
+    # [G2 iter_163] 实例化规则 (CovergroupInfo.instance_rule)
+    # =========================================================================
+
+    def _attach_instance_rules(self, root, results: list[CovergroupInfo]):
+        """后处理: 给每个 cg 定 instance_rule.
+
+        - module 顶层 cg → 'module_scope' (采样 = module 作用域信号, 实例无关)
+        - class 内 cg → 'ctor_new' / 'uninstantiated': class 内 covergroup 的
+          实例 = embedded covergroup 变量, 只能在新方法 (构造函数) 里赋值
+          (LRM; slang 语义也证实: 成员 = 同名 ClassProperty, ctor 语句只在
+          syntax 层) — ctor syntax 含 `cg = new()` → 每个类实例携带该实例。
+        """
+        ctor_new = self._collect_ctor_new_targets(root)
+        for cg in results:
+            if cg.in_class:
+                names = ctor_new.get(cg.in_class, set())
+                cg.instance_rule = "ctor_new" if cg.name in names else "uninstantiated"
+            else:
+                cg.instance_rule = "module_scope"
+
+    def _collect_ctor_new_targets(self, root) -> dict[str, set[str]]:
+        """class 名 → ctor 中 `X = new()` 的赋值目标名集合 (G2)."""
+        out: dict[str, set[str]] = {}
+
+        def walk(node, cur_class: str = ""):
+            kind = str(getattr(node, "kind", ""))
+            if "ClassType" in kind:
+                cls = self._sym_name(node)
+                if cls:
+                    cur_class = cls
+            if "Subroutine" in kind and cur_class and self._sym_name(node) == "new":
+                syn = getattr(node, "syntax", None)
+                if syn is not None:
+                    targets: set[str] = set()
+                    self._collect_new_assign_targets(syn, targets)
+                    out.setdefault(cur_class, set()).update(targets)
+            # 语义树遍历 (body 优先 + 自身迭代, 同 _find_covergroups)
+            body = getattr(node, "body", None)
+            if body is not None:
+                try:
+                    for child in body:
+                        walk(child, cur_class)
+                except TypeError:
+                    pass
+            try:
+                for child in node:
+                    walk(child, cur_class)
+            except TypeError:
+                pass
+
+        walk(root, "")
+        return out
+
+    def _collect_new_assign_targets(self, syn, out: set[str]):
+        """syntax 递归: 找 `X = new()` 赋值的 X (NewClassExpression RHS).
+
+        条件化 (if (en) cg = new()) 的赋值在嵌套语句里 — 递归仍可达;
+        分支语义 = 运行时边界 → 存在即记 'ctor_new' (models 文档标记).
+        """
+        cls = type(syn).__name__
+        if cls == "Token":
+            return
+        if cls == "BinaryExpressionSyntax":
+            kids = list(syn)
+            if any(type(c).__name__ == "NewClassExpressionSyntax" for c in kids):
+                lhs = kids[0] if kids else None
+                tgt = self._last_identifier_name(lhs)
+                if tgt:
+                    out.add(tgt)
+        try:
+            for ch in syn:
+                self._collect_new_assign_targets(ch, out)
+        except TypeError:
+            pass
+
+    @staticmethod
+    def _last_identifier_name(syn) -> str:
+        """syntax 节点子树里最后一个标识符文本 ('cg' / 'this.cg' → 'cg')."""
+        found = ""
+        if syn is None:
+            return ""
+        cls = type(syn).__name__
+        if cls == "IdentifierNameSyntax":
+            try:
+                return str(syn).strip()
+            except Exception:
+                return ""
+        try:
+            for ch in syn:
+                n = CovergroupExtractor._last_identifier_name(ch)
+                if n:
+                    found = n
+        except TypeError:
+            pass
+        return found
 
     # =========================================================================
     # Covergroup 解析

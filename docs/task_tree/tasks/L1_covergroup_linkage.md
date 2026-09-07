@@ -1,7 +1,7 @@
 # L1: Covergroup 联系 (covergroup ↔ signal / class rand var)
 
 > **Created**: 2026-09-06 GMT+8
-> **Status**: 🟡 ACTIVE — **G1 ✅ (iter_162)**; G2 待启动
+> **Status**: 🟡 ACTIVE — **G1 ✅ (iter_162) / G2 ✅ (iter_163)**; G3 待启动
 > **方豆指令**: "来规划一下 covergroup 的问题。主要是要能和signal 联系起来,
 > 或能和 class random var 联系起来。你整体看看。" → "哪个方案维护性更好"
 > → "按b 先更新文档, 在开始做吧。"
@@ -30,9 +30,21 @@ class 追踪体系 (C1~C5) 转正后, covergroup 是下一个例外域。目标:
 | 迭代 | 内容 | 状态 |
 |---|---|---|
 | G1 | 提取实证修正 (class 内 cg 遍历可达 — 原"提取缺失"前提错误, iter_162 复证) + **in_class 归属** (遍历记父 class) + **signal 结构化解析** (SampledSignal: module/class_prop 类型级/select; 表达式拆到每信号) | ✅ iter_162 (24 新测试) |
-| G2 | 实例化绑定: cg 实例 (module 变量 / class 成员) 与定义关联 + 绑定上下文 (实例路径) | 待 |
+| G2 | 实例化绑定: instance_rule (module_scope/ctor_new/uninstantiated, LRM embedded 只能新方法赋值) + bind_class_covergroups 纯映射 (class cg × 主图实例 → p.cg 采样 p.addr); 条件 new = 运行时边界 | ✅ iter_163 (12 测试) |
 | G3 | 查询 API (query/covergroup.py, D4 范式): trace_coverpoints(signal) 反向 / trace_sampling_chain(cp) / trace_rand_linkage(cp) | 待 |
 | G4 | Accuracy Claim covergroup 转正 (观察域; bins 命中语义 = 运行时, 仍边界) | 待 |
+
+## 子任务 (G2)
+
+- [x] 实证: class 内 cg = CovergroupType + 同名 ClassProperty; ctor 语句只在
+      syntax 层; embedded cg 只能新方法赋值 (LRM)
+- [x] instance_rule 提取 (module_scope / ctor_new / uninstantiated;
+      this.cg + 条件 new() 均识别)
+- [x] covergroup_binding.py: bind_class_covergroups 纯映射 (B 隔离不建图),
+      class_prop ref → p.addr (Q4)
+- [x] 测试 12 (rules/binding/Q4 端到端) + 回归
+- [x] 文档同步 (plan G2 ✅ / iter_163 / overview) + commit
+- [ ] G3 (查询 API) 待方豆确认
 
 ## 子任务 (G1)
 

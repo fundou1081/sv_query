@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_162: covergroup G1 完成 — in_class 归属 + signal 结构化)
+> **最后更新**: 2026-09-06 GMT+8 (iter_163: covergroup G2 完成 — instance_rule + 绑定)
 
 ---
 
@@ -22,21 +22,23 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: covergroup 联系 — **G1 ✅ 完成 (iter_162)**;
-下一步 G2 (实例化绑定) 待方豆确认开工。class 追踪已全闭环 (C1~C5 + 对抗
-E1~E15)。可视化后置。
+**当前任务 (方豆方向)**: covergroup 联系 — **G2 ✅ 完成 (iter_163)**;
+下一步 G3 (查询 API) 待方豆确认开工。G1 ✅ (iter_162)。class 追踪已全闭环
+(C1~C5 + 对抗 E1~E15)。可视化后置。
 
-**G1 (iter_162) 总结**: 实证推翻 plan "class 内提取缺失" 前提 (遍历可达,
-真缺口 = in_class 恒空 + signal 原始串); in_class 归属 (遍历带 scope_class)
-+ SampledSignal 结构化解析 (module/class_prop 类型级/select; 表达式拆到
-每信号; syntax 走查器 — 调用 callee 跳过, Invocation 无 "Call" 字样坑);
-signal 原文保留 8 消费方零改动; 测试 24 + covergroup 72 + CLI 67 passed。
-[iter_162](docs/task_tree/iterations/iter_162_covergroup_g1_refs.md)
+**G2 (iter_163) 总结**: instance_rule 提取 (module_scope / ctor_new /
+uninstantiated — embedded covergroup 只能新方法赋值 (LRM), slang 实证:
+class 内 cg = CovergroupType + 同名 ClassProperty, ctor 语句只在 syntax 层;
+this.cg 形态 + 条件 new() 均识别) + bind_class_covergroups 纯映射 (class
+cg × 实例路径 → BoundCovergroupInstance, class_prop ref → p.addr, Q4);
+12 新测试 (含 Q4 端到端: 绑定 top.p.cg → top.p.addr, fanin 经 p.set(din) 贯通)。
+发现 class 域既有隐患: 方法调用实参 logic 4 态 → 展开断 (bit 通), 已登记。
+[iter_163](docs/task_tree/iterations/iter_163_covergroup_g2_binding.md)
 
-**G2 (待启)**: 实例化绑定 — cg 实例 (module 变量 / class 成员) 与定义关联 +
-绑定上下文 (实例路径), 验收 Q4: p.cg 采样 p.addr。
+**G3 (待启)**: 查询 API (query/covergroup.py, D4 范式): trace_coverpoints(signal)
+反向 (Q2) / trace_sampling_chain(cp) → fanin (Q1) / trace_rand_linkage(cp) (Q3)。
 
-[规划](docs/architecture/covergroup_tracing_plan.md) (方案 B ✅ / G1 ✅ iter_162)
+[规划](docs/architecture/covergroup_tracing_plan.md) (方案 B ✅ / G1 ✅ / G2 ✅)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案
