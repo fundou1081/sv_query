@@ -26,16 +26,21 @@ class CovergroupExtractor:
     [铁律1] 通过 SVCompiler 获取编译后 AST，不使用 SyntaxTree.fromText。
     """
 
-    def __init__(self, sources: dict[str, str], strict: bool = True):
+    def __init__(self, sources: dict[str, str], strict: bool = True,
+                 compiler: 'SVCompiler | None' = None):
         # [FIX 2026-06-12 Req-15] strict 参数跟 caller 一致 (默认 True, CLI 可传 False)
+        # [G3 iter_165] compiler 可选注入: 复用调用方已编译的 SVCompiler
+        # (UnifiedTracer 查询桥 — 避免同源双编译; get_root 缓存, 不重编)
         self._sources = sources
         self._strict = strict
+        self._compiler = compiler
 
     def extract(self) -> list[CovergroupInfo]:
         """提取所有 covergroup"""
         results = []
         try:
-            compiler = SVCompiler(sources=self._sources, strict=self._strict)
+            compiler = self._compiler or SVCompiler(sources=self._sources,
+                                                    strict=self._strict)
             root = compiler.get_root()
             self._find_covergroups(root, results)
             self._attach_instance_rules(root, results)
@@ -47,17 +52,22 @@ class CovergroupExtractor:
     # 遍历
     # =========================================================================
 
-    def _find_covergroups(self, node, results: list[CovergroupInfo], scope_class: str = ""):
+    def _find_covergroups(self, node, results: list[CovergroupInfo], scope_class: str = "",
+                          scope_path: str = ""):
         """递归查找 CovergroupType.
 
         scope_class: 当前所在的 class 定义名 (G1 iter_162 — 归属 CovergroupInfo.
         in_class; 语义树 CovergroupType 嵌在 ClassType 下, 旧遍历不记录父 class
         → in_class 恒空, coverage.py --class 过滤/randomize 显示静默失效).
+        scope_path: [G3 iter_165] 当前 instance 路径 (top / top.u_sub) — module
+        顶层 cg 的宿主锚点 (CovergroupInfo.host_module, Q1 采样信号 → 图 id
+        需要模块前缀; 非 class 时记录)。
         """
         kind = str(getattr(node, "kind", ""))
 
         if "CovergroupType" in kind:
-            cg = self._parse_covergroup(node, scope_class)
+            host_module = scope_path if not scope_class else ""
+            cg = self._parse_covergroup(node, scope_class, host_module)
             if cg:
                 results.append(cg)
             # 继续遍历 body (可能有嵌套)
@@ -69,18 +79,25 @@ class CovergroupExtractor:
             if cls_name:
                 new_scope = cls_name
 
+        # [G3 iter_165] Instance → 宿主路径下钻 (嵌套实例 top.u_sub)
+        new_path = scope_path
+        if "Instance" in kind:
+            inst_name = self._sym_name(node)
+            if inst_name:
+                new_path = f"{scope_path}.{inst_name}" if scope_path else inst_name
+
         # 遍历 Instance body 或 CompilationUnit
         if hasattr(node, "body"):
             try:
                 for child in node.body:
-                    self._find_covergroups(child, results, new_scope)
+                    self._find_covergroups(child, results, new_scope, new_path)
             except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
                 logger.debug("Token 遍历跳过: %s", _e)
 
         # 遍历 root 的子节点
         try:
             for child in node:
-                self._find_covergroups(child, results, new_scope)
+                self._find_covergroups(child, results, new_scope, new_path)
         except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
             logger.debug("Token 遍历跳过: %s", _e)
 
@@ -194,7 +211,8 @@ class CovergroupExtractor:
     # Covergroup 解析
     # =========================================================================
 
-    def _parse_covergroup(self, node, scope_class: str = "") -> CovergroupInfo | None:
+    def _parse_covergroup(self, node, scope_class: str = "",
+                          host_module: str = "") -> CovergroupInfo | None:
         """解析 CovergroupType"""
         name = str(getattr(node, "name", "")).strip()
         # class 内的 covergroup name 可能为空，从 syntax 获取
@@ -245,6 +263,7 @@ class CovergroupExtractor:
             coverpoints=coverpoints,
             crosses=crosses,
             in_class=scope_class,  # [G1 iter_162] 归属所在 class (无 = "")
+            host_module=host_module,  # [G3 iter_165] module cg 宿主实例路径
         )
 
     # =========================================================================

@@ -359,6 +359,7 @@ class UnifiedTracer:
         self._filelist = filelist
         self._adapter = None
         self._graph: SignalGraph | None = None
+        self._covergroup_cgs = None  # [G3 iter_165] 惰性 covergroup 定义
         self._signal_tracer: SignalTracer | None = None
         self._module_tracer: ModuleTracer | None = None
         self._clock_tracer: ClockDomainTracer | None = None
@@ -1208,6 +1209,67 @@ class UnifiedTracer:
         self.build_graph()
         from .core.query.constraint import ConstraintTracer
         return ConstraintTracer(self._graph).trace(prop_id)
+
+    # =========================================================================
+    # Covergroup 联系查询 (G3 iter_165, 方案 B / D4 范式)
+    #
+    # covergroup = 观察域, 定义独立 (CovergroupExtractor, 惰性提取一次,
+    # 复用本 tracer compiler — 不双编译); 查询桥委托: Q1 fanin /
+    # Q3 约束 (数据 fanin 单一实现)。
+    # =========================================================================
+
+    def _get_covergroup_cgs(self) -> list:
+        """惰性 covergroup 定义 (与主图同一编译器 root — 语义一致)."""
+        if self._covergroup_cgs is None:
+            from .core.covergroup_extractor import CovergroupExtractor
+            try:
+                self._covergroup_cgs = CovergroupExtractor(
+                    sources=self._sources,
+                    strict=self._strict,
+                    compiler=self._get_compiler(),  # [G3] 复用编译, 不双编
+                ).extract()
+            except Exception as e:
+                _main_logger.warning("covergroup 定义提取失败: %s", e)
+                self._covergroup_cgs = []
+        return self._covergroup_cgs
+
+    def trace_covergroup_sampling(self, cg_name: str, cp_name: str | None = None,
+                                  instance: str | None = None) -> list:
+        """[iter_165 G3 Q1] cg 的 cp 采样什么信号 → 谁驱动 (fanin).
+
+        cg_name: covergroup 定义名; instance: class cg 的实例路径 (top.p,
+        D3 数据端点 — 缺省单实例自动取, 多实例须显式); module cg 免。
+        返回 list[query.covergroup.SamplingInfo]。
+        """
+        self.build_graph()
+        from .core.query.covergroup import CovergroupTracer
+        return CovergroupTracer(self._get_covergroup_cgs(), self).trace_sampling_chain(
+            cg_name, cp_name, instance)
+
+    def trace_coverpoints(self, signal_id: str) -> list:
+        """[iter_165 G3 Q2] 信号 X 被哪些 covergroup/coverpoint 采样.
+
+        signal_id 域: module 顶层 (top.din) / class 类型级 (packet.addr) /
+        实例级 (top.p.addr)。返回 list[query.covergroup.CoverpointRef]。
+        """
+        self.build_graph()
+        from .core.query.covergroup import CovergroupTracer
+        return CovergroupTracer(self._get_covergroup_cgs(), self).trace_coverpoints(
+            signal_id)
+
+    def trace_covergroup_rand_linkage(self, cg_name: str,
+                                      cp_name: str | None = None,
+                                      instance: str | None = None) -> list:
+        """[iter_165 G3 Q3] class cg 采样 (rand) 属性 → 受哪些约束.
+
+        prop_id: instance 给出 → 实例 (top.p.addr, 自动解析类型级);
+        否则类型级 (packet.addr)。返回 list[query.covergroup.RandLinkage]
+        (constraints = query.constraint.ConstraintInfo)。
+        """
+        self.build_graph()
+        from .core.query.covergroup import CovergroupTracer
+        return CovergroupTracer(self._get_covergroup_cgs(), self).trace_rand_linkage(
+            cg_name, cp_name, instance)
 
     # =========================================================================
     # 时钟域追踪 API
