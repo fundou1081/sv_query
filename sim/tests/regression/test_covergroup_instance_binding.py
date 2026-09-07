@@ -187,10 +187,8 @@ class TestQ4EndToEnd(unittest.TestCase):
     × UnifiedTracer.trace_class_instances (top.p) → 绑定 top.p.cg →
     top.p.addr (图内数据端点, fanin 由 p.set(din) 方法体驱动).
 
-    ⚠️ 已知 (class 域既有, 非 G2): 方法调用的实参端口为 logic 4 态时方法
-    展开不建实例成员 (din bit → 通 / logic → 断; 与 covergroup 无关, 实证
-    iter_163) — 已登记 class 域 backlog; 本 fixture 用 bit 对齐 class 域
-    已验证能力。
+    ⚠️ logic 实参 (4 态→bit 形参 Conversion 壳丢实参) 已在 iter_164 修复 —
+    本 fixture 用 logic 端口即该修复的回归覆盖 (原用 bit 规避)。
     """
 
     SRC = '''class packet;
@@ -203,7 +201,7 @@ class TestQ4EndToEnd(unittest.TestCase):
       addr = d;
     endfunction
   endclass
-  module top(input bit clk, input bit [7:0] din);
+  module top(input logic clk, input logic [7:0] din);
     packet p = new();
     always_ff @(posedge clk) begin
       p.set(din);
@@ -211,17 +209,16 @@ class TestQ4EndToEnd(unittest.TestCase):
   endmodule'''
 
     def test_q4_chain(self):
-        # 注意: 同一 UnifiedTracer 连续 build_graph (中间插查询) 会状态性
-        # 退化 (target 重建不再展开实例成员 — class 域既有隐患, class 测试
-        # 单 build 未暴露) → 类实例与 fanin 用独立 tracer 隔离.
-        tr_inst = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
+        # 单 tracer 顺序: 先无 target 查询 (内部建图), 再 target 建图, 再
+        # fanin — iter_164 复测: 连续 build 无状态退化 (P2 原报告系 logic
+        # 实参 P1 混淆; P1 修复后本链单 tracer 全程稳定).
+        tr = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
         cgs = CovergroupExtractor({'test.sv': self.SRC}).extract()
 
         cg = [c for c in cgs if c.name == 'cg'][0]
         self.assertEqual((cg.in_class, cg.instance_rule), ('packet', 'ctor_new'))
 
-        insts = {cid: [n.id for n in tr_inst.trace_class_instances(cid)]
-                 for cid in ['packet']}
+        insts = {cid: [n.id for n in tr.trace_class_instances(cid)] for cid in ['packet']}
         self.assertEqual(insts, {'packet': ['top.p']})
 
         bounds = bind_class_covergroups(cgs, insts)
@@ -232,10 +229,9 @@ class TestQ4EndToEnd(unittest.TestCase):
         self.assertEqual(b.coverpoints[0].cp_name, 'cp_addr')
         self.assertEqual([s.name for s in b.coverpoints[0].sampled], ['top.p.addr'])
 
-        # 贯通: p.addr 是图内实例属性数据端点, 方法体驱动 din → fanin 通
-        tr_g = UnifiedTracer(sources={'test.sv': self.SRC}, log_level='ERROR')
-        tr_g.build_graph(use_cache=False, target_module='top')
-        ids = {r.id for r in tr_g.trace_fanin('top.p.addr')}
+        # 贯通: target 建图 (展开方法调用) → p.addr 是图内实例属性数据端点
+        tr.build_graph(use_cache=False, target_module='top')
+        ids = {r.id for r in tr.trace_fanin('top.p.addr')}
         self.assertIn('top.din', ids, "p.set(din) 方法体赋值应驱动 p.addr")
 
 

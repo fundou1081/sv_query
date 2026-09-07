@@ -375,6 +375,16 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
             #         output 实参) 既无 .symbol 也无 .expr — 会被当成
             #         syntax-tree token 误跳过, 导致 output 实参丢失。
             #         放行 Assignment 类型 (通过 .left 访问).
+            # [iter_164 P1 fix] 剥 Conversion 壳: logic 实参 → bit 形参
+            # (4→2 态隐式转换, slang 插 ExpressionKind.Conversion — iter_136
+            # 端口同款壳, 此处调用实参)。Conversion 无 .expr/.symbol →
+            # 下方守卫 continue 静默丢实参 (class 方法展开断: bit 通 /
+            # logic 断, iter_163 实证)。剥到 operand 再走标准 kind 分派。
+            while "Conversion" in str(getattr(expr, "kind", "")):
+                _operand = getattr(expr, "operand", None)
+                if _operand is None:
+                    break
+                expr = _operand
             is_semantic = hasattr(expr, "symbol")
             kind_str = str(getattr(expr, "kind", ""))
             if not hasattr(expr, "expr") and not is_semantic and "Assignment" not in kind_str:
@@ -409,6 +419,9 @@ def _parse_invocation_call(invocation, *, h: 'FunctionHelpers') -> tuple | None:
                         if arg_name:
                             call_args.append(arg_name.strip())
                 rhs = getattr(expr, "right", None)
+                # [iter_164 P1] rhs 也可能 Conversion 壳 (logic → bit)
+                while rhs is not None and "Conversion" in str(getattr(rhs, "kind", "")):
+                    rhs = getattr(rhs, "operand", None)
                 if rhs and hasattr(rhs, "kind") and "NamedValue" in str(rhs.kind):
                     arg_name = h.get_signal(rhs)
                     if arg_name:
