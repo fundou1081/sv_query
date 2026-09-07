@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_163: covergroup G2 完成 — instance_rule + 绑定)
+> **最后更新**: 2026-09-06 GMT+8 (iter_164: class 域 P1 修复完成 — G3 待启)
 
 ---
 
@@ -22,23 +22,20 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: covergroup 联系 — **G2 ✅ 完成 (iter_163)**;
-下一步 G3 (查询 API) 待方豆确认开工。G1 ✅ (iter_162)。class 追踪已全闭环
-(C1~C5 + 对抗 E1~E15)。可视化后置。
+**当前任务 (方豆方向)**: covergroup 联系 — **G3 查询 API 待启** (class 域
+P1 已修 iter_164)。G1/G2 ✅ (iter_162/163)。
 
-**G2 (iter_163) 总结**: instance_rule 提取 (module_scope / ctor_new /
-uninstantiated — embedded covergroup 只能新方法赋值 (LRM), slang 实证:
-class 内 cg = CovergroupType + 同名 ClassProperty, ctor 语句只在 syntax 层;
-this.cg 形态 + 条件 new() 均识别) + bind_class_covergroups 纯映射 (class
-cg × 实例路径 → BoundCovergroupInstance, class_prop ref → p.addr, Q4);
-12 新测试 (含 Q4 端到端: 绑定 top.p.cg → top.p.addr, fanin 经 p.set(din) 贯通)。
-发现 class 域既有隐患: 方法调用实参 logic 4 态 → 展开断 (bit 通), 已登记。
-[iter_163](docs/task_tree/iterations/iter_163_covergroup_g2_binding.md)
+**iter_164 (class 域 P1) 总结**: 方法实参 logic→bit 形参 (4→2 态) 隐式
+Conversion 壳无 .expr/.symbol → _parse_invocation_call 守卫静默丢实参 →
+展开断 (插桩定位); 修: 实参 + Assignment rhs 剥壳; 6 测试 + Q4 fixture 升级
+logic 回归。**P2 (连续 build 退化) = P1 混淆, 不存在** (bit fixture 复测
+稳定, 如实修正 iter_163 记录)。unified_tracer 零改动。
+[iter_164](docs/task_tree/iterations/iter_164_class_logic_arg_fix.md)
 
 **G3 (待启)**: 查询 API (query/covergroup.py, D4 范式): trace_coverpoints(signal)
 反向 (Q2) / trace_sampling_chain(cp) → fanin (Q1) / trace_rand_linkage(cp) (Q3)。
 
-[规划](docs/architecture/covergroup_tracing_plan.md) (方案 B ✅ / G1 ✅ / G2 ✅)
+[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1/G2 ✅)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案

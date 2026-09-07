@@ -59,9 +59,8 @@ p.set(din) 贯通)。
   与 covergroup/ctor 完全无关 — plain fixture 复现)。class truth 全部用 bit
   端口所以从未暴露。登记 class 域 backlog (诊断: 方法实参解析路径对 4 态
   端口的敏感点), G2 不修 (跨域)。
-- **unified_tracer 连续重建状态性退化**: 同一 tracer 内 build → 查询 → 再
-  target build, 第二次不再展开实例成员 (class 测试单 build 未暴露)。测试用
-  独立 tracer 隔离; 建议 class 域后续专项 (build 幂等性)。
+- ~~unified_tracer 连续重建状态性退化~~ — **iter_164 复测 = P1 混淆 (不存在)**
+  (当时 fixture 全 logic 端口; bit fixture 连续 build 全程稳定)。如实修正。
 - 条件 new() 的"活/死实例"判定 = 运行时 → 决策点 3 已定文档标记, 不硬猜。
 - module 级 cg 的多实例命名 (cg cg_inst = new()) 不影响采样信号映射
   (module 作用域) — 实例粒度留给 G3 Q1 (module 实例路径展开)。
