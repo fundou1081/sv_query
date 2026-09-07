@@ -369,6 +369,11 @@ class CovergroupExtractor:
         # callee = 首个子节点 (非信号, procedural 域), 实参引用保留
         if ("Call" in cls or "Invocation" in cls) and kids:
             kids = kids[1:]
+        # [iter_167 A2] cast (CastExpressionSyntax): 类型 = 首个子节点
+        # (用户类型 my_t 是 IdentifierName — 非信号! 关键字 cast 是 Token
+        # 本就跳过), 操作数引用保留
+        if "Cast" in cls and kids:
+            kids = kids[1:]
         for ch in kids:
             self._expr_walk(ch, out)
 

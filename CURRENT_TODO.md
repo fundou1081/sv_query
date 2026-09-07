@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_166: covergroup G1-G4 全闭环)
+> **最后更新**: 2026-09-06 GMT+8 (iter_167: covergroup 对抗轮完成 — 2 真 bug 修 + 边界登记)
 
 ---
 
@@ -22,19 +22,18 @@
 
 ## 🔥 当前任务
 
-**✅ 最近完成 — covergroup 联系全闭环 (G1-G4, iter_162~166)**: 方案 B
-(观察域独立 + 查询桥): G1 归属+采样引用结构化 / G2 实例绑定 (Q4) /
-G3 查询 API (Q1-Q3) / G4 Accuracy Claim 转正 (观察域承诺, bins 命中 =
-运行时边界)。47 新测试, 全量 2009 passed。class 域 P1 (logic 实参
-Conversion) 修复 iter_164。
-[iter_162](docs/task_tree/iterations/iter_162_covergroup_g1_refs.md)
-[iter_163](docs/task_tree/iterations/iter_163_covergroup_g2_binding.md)
-[iter_165](docs/task_tree/iterations/iter_165_covergroup_g3_query_api.md)
-[iter_166](docs/task_tree/iterations/iter_166_covergroup_g4_claim.md)
+**当前任务 (方豆方向)**: **covergroup 对抗轮 ✅ 完成** (iter_167, 方豆 "先来
+再做一些对抗性测试")。**修 2 真 bug**: A2 自定义类型 cast (my_t'(w) 类型名
+当信号 — CastExpressionSyntax 跳类型子节点) / C4 查询错实例静默 bogus id
+(校验实例集 → missing)。**登记边界 6**: A5 变量索引非采样数据 / A8 $root
+层次引用 / B1 extends auto 实例枚举缺 (显式可查) / B6 同名 class 跨 package
+(D5 同源) / C5 同名 cg 查询全部。**验证 6 通过**: 匿名 cp / 嵌套调用 /
+interface cg / iff 排除 / 子模块 host Q1+Q2 / select-id 空答 / extends 约束。
+12 新对抗测试; 回归待确认。
 
-**下一步候选 (待方豆指示)**: push / 可视化 L4 启动 / 其他。
+**已闭环 (iter_162~166)**: covergroup G1-G4 (47 测试); class 域 P1 (iter_164)。
 
-[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1-G4 ✅ 闭环)
+[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1-G4 ✅)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案
