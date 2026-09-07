@@ -16,8 +16,10 @@
 > 在什么范围内、反例是什么, 逐项对照。
 > **演进 (2026-09-05~06)**: iter_136~141 (修复轮) + **iter_151~155 class 追踪转正轮**
 > (class 从 hybrid 例外域转正为追踪承诺域 — C1 方法链 / C2 实例↔类型桥 /
-> C3 约束查询 / C4 kind+冲突检测)。每轮让声明更强但非绝对; 修一处记一处,
-> 反例逐项收窄; "图不全"始终可见, "图不准"始终登记。
+> C3 约束查询 / C4 kind+冲突检测) + **iter_162~166 covergroup 联系转正轮**
+> (covergroup 从 hybrid 例外域转正为**观察域** — G1 归属+采样引用结构化 /
+> G2 实例化绑定 / G3 联系查询 Q1-Q4 / G4 本声明)。每轮让声明更强但非绝对;
+> 修一处记一处, 反例逐项收窄; "图不全"始终可见, "图不准"始终登记。
 
 ### 1. 为什么不是"字面准确": 建模决策 (刻意抽象, 非 bug)
 
@@ -32,24 +34,32 @@
 | 双向/共享 | inout / interface 成员 = 单向建模, 方向拍板 (iter_129); inout 多驱动 = 静态可能源集合 (iter_138 澄清) | 多驱动归属/共享合并语义不承诺 (见 L3 #2) |
 | class 类型级 | 类型级属性 (packet.data) = 结构宿主非数据端点 (D3, iter_154): fanin 空; 数据端点 = 实例级 | 查驱动走实例 (top.p.data); 类型级查 trace_class_members/constraints |
 | class 约束 | 约束 = 声明式关系 (CONSTRAINS/HAS_*), 独立 tracer 不走数据 fanin (D4, iter_153) | trace_constraints 回答"受哪些约束"; fanin 不含约束 |
+| covergroup 观察域 | 采样 = **观察声明非数据流** — covergroup/coverpoint **不进主图** (方案 B, iter_160~165): 定义独立 (CovergroupExtractor), 采样引用结构化 (SampledSignal: module/class_prop/select), 实例化规则静态定 (instance_rule: module_scope / ctor_new / uninstantiated — embedded cg 只能新方法赋值, LRM), 实例绑定纯映射 (G2) | 主图数据 fanin 零污染 (无观察节点/边); 联系经查询桥 (Q1-Q4) — 数据 fanin 单一实现 (委托 signal tracer) |
+| covergroup class 数据端点 | class cg 采样的属性数据端点 = **实例** (D3 同 class): 类型级 packet.addr 无驱动; p.addr 经实例绑定 (G2/iter_163) | Q1/Q3 查实例 (单实例自动/多实例显式); 类型级查结构 (Q2/Q3 模板) |
+| covergroup bins 命中 | bins/交叉命中的**语义不建模** = 运行时 (工具无法静态知道谁命中) | bins 结构可查 (name/values/kind), 命中率/是否覆盖 = 运行时域 (不承诺) |
 
 ### 2. 分层声明
 
 | 层 | 承诺内容 | 状态 |
 |---|---|---|
-| **L1 结构层** | 节点/边存在性正确: 实例路径、端口连接 (CONNECTION)、驱动 (DRIVER) 不缺失、不造假节点; **class 结构** (类型/实例属性/约束块/方法体赋值) 建模正确 | ✅ **已验证设计域内可宣称** — iter_117~141 修复 + class 结构 truth (iter_151~154: 方法链/类型级/约束图); 同名 class 冲突显式告警 (非静默叠加, iter_154) |
-| **L2 查询层** | fanin / 驱动答案正确 (+ class 实例属性追踪) | ✅ **限"建模粒度语义"内可宣称**: RTL 位级贯通/端口停靠/时钟·控制排除 (iter_137~139); **class 实例属性数据流** (直接赋值 + 方法调用链 iter_151)、类型↔实例关系查询 (iter_152)、约束查询 (iter_153)。类型级属性非数据端点 (fanin 空 = 设计, D3) |
+| **L1 结构层** | 节点/边存在性正确: 实例路径、端口连接 (CONNECTION)、驱动 (DRIVER) 不缺失、不造假节点; **class 结构** (类型/实例属性/约束块/方法体赋值) 建模正确; **covergroup 观察结构** (iter_162~165): 定义/coverpoint/bins/cross 提取、采样引用结构化 (SampledSignal)、class 归属 (in_class)、module 宿主锚 (host_module)、实例化规则 (instance_rule) | ✅ **已验证设计域内可宣称** — iter_117~141 修复 + class 结构 truth (iter_151~154: 方法链/类型级/约束图) + covergroup 提取 truth (iter_162~165: 24+12+11 测试); 同名 class 冲突显式告警 (非静默叠加, iter_154) |
+| **L2 查询层** | fanin / 驱动答案正确 (+ class 实例属性追踪; **covergroup 联系查询**) | ✅ **限"建模粒度语义"内可宣称**: RTL 位级贯通/端口停靠/时钟·控制排除 (iter_137~139); **class 实例属性数据流** (直接赋值 + 方法调用链 iter_151)、类型↔实例关系查询 (iter_152)、约束查询 (iter_153); **covergroup 联系查询** (iter_165 Q1 采样链→fanin / Q2 反向三域 / Q3 rand-约束委托; iter_163 Q4 实例绑定) — 观察域独立于数据流 (方案 B), 数据 fanin 不含观察边。类型级属性非数据端点 (fanin 空 = 设计, D3) |
 | **L3 深层语义层** | 多驱动归属 / 双向 / 共享合并语义 | ❌ **不承诺** — 命中下方反例即图在该点不准 (当前 3 项 + 1 项重构待办) |
 
 ### 3. 范围限定 (声明仅在以下前提成立)
 
 - **语义域**: RTL 组合/时序连接、generate 各形态、bus/位选、inout/interface
   单向、门级端子方向 + **class/constraint 追踪域** (iter_151~155 转正):
-  实例属性数据流 (含方法调用) / 类型↔实例关系 / 约束关系查询。
-  仍 hybrid 例外: covergroup (单独规划) / SVA / procedural / inline 约束。
+  实例属性数据流 (含方法调用) / 类型↔实例关系 / 约束关系查询 +
+  **covergroup 观察域** (iter_162~166 转正): 采样结构提取 / 实例化绑定 /
+  联系查询 (Q1-Q4), 独立于数据流 (观察边不进主图 — 方案 B)。
+  仍 hybrid 例外: SVA / procedural / inline 约束。
+  **运行时边界 (观察域不承诺)**: covergroup 实例活/死 (条件 new() 分支)、
+  bins 命中语义/覆盖率 — 工具静态不可知, 不建模 (决策点 3 文档标记)。
 - **验证语料**: 3058 pytest (fixture 抽取自真实项目模式) + 真实设计抽查
   (aes 4834 节点 / cordic / serv / verilog-axi / minimal_3module; CVA6 core
-  strict 编译 iter_140 已通)。语料非穷举 — 大设计仍可能暴露未见解析边界
+  strict 编译 iter_140 已通; 2026-09-06 covergroup G1-G3 测试 47 增量,
+  全量 2009 passed)。语料非穷举 — 大设计仍可能暴露未见解析边界
   (iter_141 教训), 故失败必须可见 (warning/sentinel), "图不全"可检测。
 - **上游/环境依赖**: 正确性上限受 pyslang elaboration 影响; CVA6 完整建图
   在 8GB 机器 = 内存/原生 segfault 边界 (大内存可验); coralNPU ($clog2 宏) /

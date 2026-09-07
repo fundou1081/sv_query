@@ -1,7 +1,7 @@
 # L1: Covergroup 联系 (covergroup ↔ signal / class rand var)
 
 > **Created**: 2026-09-06 GMT+8
-> **Status**: 🟡 ACTIVE — **G1 ✅ (iter_162) / G2 ✅ (iter_163) / G3 ✅ (iter_165)**; G4 待启动
+> **Status**: ✅ CLOSED — **G1-G4 全闭环 (iter_162~166)** — covergroup 联系转正 (观察域)
 > **方豆指令**: "来规划一下 covergroup 的问题。主要是要能和signal 联系起来,
 > 或能和 class random var 联系起来。你整体看看。" → "哪个方案维护性更好"
 > → "按b 先更新文档, 在开始做吧。"
@@ -32,7 +32,7 @@ class 追踪体系 (C1~C5) 转正后, covergroup 是下一个例外域。目标:
 | G1 | 提取实证修正 (class 内 cg 遍历可达 — 原"提取缺失"前提错误, iter_162 复证) + **in_class 归属** (遍历记父 class) + **signal 结构化解析** (SampledSignal: module/class_prop 类型级/select; 表达式拆到每信号) | ✅ iter_162 (24 新测试) |
 | G2 | 实例化绑定: instance_rule (module_scope/ctor_new/uninstantiated, LRM embedded 只能新方法赋值) + bind_class_covergroups 纯映射 (class cg × 主图实例 → p.cg 采样 p.addr); 条件 new = 运行时边界 | ✅ iter_163 (12 测试) |
 | G3 | 查询 API (query/covergroup.py, D4 范式): trace_covergroup_sampling (Q1 fanin) / trace_coverpoints(signal) 反向三域 (Q2) / trace_covergroup_rand_linkage (Q3 约束委托) | ✅ iter_165 (11 测试) |
-| G4 | Accuracy Claim covergroup 转正 (观察域; bins 命中语义 = 运行时, 仍边界) | 待 |
+| G4 | Accuracy Claim covergroup 转正 (观察域: 采样结构/绑定/联系查询承诺 L1/L2; bins 命中语义 = 运行时边界; 观察边不进主图) | ✅ iter_166 (纯文档) |
 
 ## 子任务 (G2)
 
@@ -52,7 +52,19 @@ class 追踪体系 (C1~C5) 转正后, covergroup 是下一个例外域。目标:
 - [x] UnifiedTracer 薄委托 ×3 + 惰性 cgs (复用 compiler)
 - [x] 测试 11 (module/class/多实例歧义) + 回归
 - [x] 文档同步 (plan G3 ✅ / iter_165 / overview) + commit
-- [ ] G4 (Accuracy Claim covergroup 转正) 待方豆确认
+## 子任务 (G4)
+
+- [x] audit §1 建模决策 +3 行 / §2 L1+L2 观察域承诺 / §3 范围移出例外 +
+      运行时边界 / 演进注 — covergroup 转正观察域
+- [x] 关联: plan G4 ✅ / README 追踪范围 / class 决策历史注 (演进不改原句)
+- [x] iter_166 + overview + CURRENT_TODO + commit
+
+## 闭环总结 (G1-G4, iter_162~166)
+
+covergroup 联系从 hybrid 例外 → **观察域追踪承诺** (方案 B): 提取归属 +
+采样引用结构化 (G1) → 实例化绑定 Q4 (G2) → 查询 API Q1-Q3 (G3) → Claim
+转正 (G4)。数据 fanin 零污染 (观察边不进主图), 运行时边界文档标记。
+47 新测试, 全量 2009 passed。
 
 ## 子任务 (G2)
 

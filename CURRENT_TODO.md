@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_165: covergroup G3 完成 — Q1-Q3 可查)
+> **最后更新**: 2026-09-06 GMT+8 (iter_166: covergroup G1-G4 全闭环)
 
 ---
 
@@ -22,22 +22,19 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: covergroup 联系 — **G3 ✅ 完成 (iter_165)**;
-下一步 G4 (Accuracy Claim covergroup 转正) 待方豆确认。G1/G2 ✅ (iter_162/
-163); class 域 P1 修复 ✅ (iter_164)。
-
-**G3 (iter_165) 总结**: query/covergroup.py (D4 范式, 观察域独立) —
-Q1 trace_covergroup_sampling (采样信号 → fanin 委托, class 数据端点 =
-实例 D3, 单实例自动/多实例显式) / Q2 trace_coverpoints (反向三域: module
-顶层宿主锚 / class 类型级 / 实例级) / Q3 trace_covergroup_rand_linkage
-(rand 属性 → 约束委托 ConstraintTracer); UnifiedTracer 薄委托 ×3 + 惰性
-cgs (复用主图编译器不双编); extractor host_module 锚点; 11 测试。
+**✅ 最近完成 — covergroup 联系全闭环 (G1-G4, iter_162~166)**: 方案 B
+(观察域独立 + 查询桥): G1 归属+采样引用结构化 / G2 实例绑定 (Q4) /
+G3 查询 API (Q1-Q3) / G4 Accuracy Claim 转正 (观察域承诺, bins 命中 =
+运行时边界)。47 新测试, 全量 2009 passed。class 域 P1 (logic 实参
+Conversion) 修复 iter_164。
+[iter_162](docs/task_tree/iterations/iter_162_covergroup_g1_refs.md)
+[iter_163](docs/task_tree/iterations/iter_163_covergroup_g2_binding.md)
 [iter_165](docs/task_tree/iterations/iter_165_covergroup_g3_query_api.md)
+[iter_166](docs/task_tree/iterations/iter_166_covergroup_g4_claim.md)
 
-**G4 (待启)**: Accuracy Claim covergroup **转正** (观察域: 采样关系独立于
-数据流; bins 命中语义不建模 — 运行时边界) — 纯文档。
+**下一步候选 (待方豆指示)**: push / 可视化 L4 启动 / 其他。
 
-[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1/G2/G3 ✅)
+[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1-G4 ✅ 闭环)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案
