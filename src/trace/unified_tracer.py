@@ -1178,6 +1178,28 @@ class UnifiedTracer:
                         out.append(nd)
         return out
 
+    def list_classes(self) -> list:
+        """[iter_167] 编译域 class 名列表 (查询层槽展开判定用).
+
+        class 成员槽 id ('tb_env.p') 首段 = owner class 名 — 判定是否需要
+        展开到容器实例 (CovergroupTracer._class_instances)。
+        """
+        self.build_graph()
+        try:
+            adapter = self._get_adapter()
+            names = []
+            for cls in adapter.get_classes():
+                try:
+                    n = cls.name
+                except Exception:
+                    continue
+                if n:
+                    names.append(str(n))
+            return names
+        except Exception as e:
+            _main_logger.warning("class 名枚举失败: %s", e)
+            return []
+
     def trace_member_instances(self, type_prop_id: str) -> list:
         """[iter_152 C2] 类型属性 (packet.data) → 已建的实例属性节点.
 
