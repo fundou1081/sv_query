@@ -90,8 +90,15 @@ class CovergroupTracer:
 
     @staticmethod
     def _resolve_instance(cg, instance: str | None, instances: list[str]) -> str:
-        """class cg 的数据端点实例: 显式 / 唯一自动 / 否则空 (歧义须显式)."""
+        """class cg 的数据端点实例: 显式 / 唯一自动 / 否则空 (歧义须显式).
+
+        [iter_167 C4] 显式 instance 校验: 不在该类实例集 → 空 (missing),
+        不静默造 bogus id (如 'top.nope.addr'); 实例集为空 (图未枚举, 如
+        extends 子类实例直查父类 cg) 时不拦 — 显式路径放行 (B1 边界)。
+        """
         if instance:
+            if instances and instance not in instances:
+                return ""  # 非该类实例 → 查询方 missing (文档标记)
             return instance
         if len(instances) == 1:
             return instances[0]
