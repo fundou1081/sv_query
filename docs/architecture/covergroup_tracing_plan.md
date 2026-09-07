@@ -78,7 +78,7 @@ covergroup 采样 = **观察声明** (非数据流, 类比约束 iter_153 D4):
 | 迭代 | 内容 | 验收 |
 |---|---|---|
 | **G1** ✅ (iter_162) | 提取实证修正 (class 内 cg 遍历可达 — 原"提取缺失"前提错误) + **in_class 归属** (遍历记父 class) + **signal 结构化解析** (coverpoint 表达式 → SampledSignal: module 信号 top.din / class 属性 packet.addr (类型级) / 表达式拆到每信号 / select 单列) | ✅ 场景 1/2 提取 + in_class 归属正确 + 解析正确 (24 新测试: identifier/select/concat/member/ternary/bitwise/array/array-of-struct/函数调用 callee 不泄漏/常量跳过/去重/继承成员/匿名 cp 不崩) |
-| **G2** | **实例化绑定**: covergroup 实例 (module 变量 / class 成员) 与定义关联 + 绑定上下文 (实例路径) | Q4: p.cg 采样 p.addr |
+| **G2** ✅ (iter_163) | **实例化绑定**: instance_rule 提取 (module_scope / ctor_new / uninstantiated — embedded cg 只能新方法赋值 (LRM), slang 实证: ctor 语句只在 syntax 层) + bind_class_covergroups 纯映射 (class cg × 主图实例 → BoundCovergroupInstance, G1 class_prop ref → p.addr); 条件 new() = 运行时边界 (决策 3 文档标记) | ✅ Q4: p.cg 采样 p.addr (12 测试; Q4 端到端绑定 + fanin 贯通; 顺带实证 class 域 logic-实参方法展开断 = 既有隐患登记) |
 | **G3** | **查询 API** (query/covergroup.py, D4 范式): `trace_coverpoints(signal)` 反向 (Q2) / `trace_sampling_chain(cp)` → 采样信号 fanin (Q1) / `trace_rand_linkage(cp)` → rand 属性 + 约束 (Q3) | Q1-Q3 可查 |
 | **G4** | Accuracy Claim covergroup **转正** (观察域: 采样关系独立于数据流; 仍边界: bins 命中语义不建模 — 运行时) | 文档 |
 

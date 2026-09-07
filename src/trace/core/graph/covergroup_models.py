@@ -69,6 +69,21 @@ class CovergroupInfo:
     crosses: list[CoverCrossInfo] = field(default_factory=list)
     attributes: dict[str, str] = field(default_factory=dict)
     in_class: str = ""  # 所在 class 名称 (如有)
+    instance_rule: str = ""  # [G2 iter_163] 实例化规则 (见下)
     source_file: str = ""  # 源文件名
     source_line: int = 0  # 源码行号
     errors: list[str] = field(default_factory=list)  # 解析错误
+
+    # instance_rule (G2, 2026-09-06):
+    # - 'module_scope'    — module 顶层 covergroup: 实例化在模块作用域, 采样 =
+    #   module 作用域信号 (实例无关 — 逐模块实例的 cg 存在性 = 运行时边界,
+    #   不影响采样信号映射, 文档标记)
+    # - 'ctor_new'        — class 内 covergroup: 类构造函数对成员 cg 无条件
+    #   new() → 每个类实例 p 携带 p.<cg> 实例 (静态绑定; 条件化 new() 的
+    #   分支语义 = 运行时边界 — 存在即绑定, 文档标记)
+    # - 'uninstantiated'  — class 内 covergroup: 构造函数未 new() 该成员
+    #   (embedded covergroup 变量只能在新方法里赋值 — LRM; 无 new = 实例
+    #   不活, 不静态绑定)
+    # 依据: slang 语义 — class 内 covergroup 声明 = CovergroupType + 同名
+    # ClassProperty (类型 <unnamed covergroup>); new() 调用只在 ctor syntax
+    # 层 (语义子树无语句)。
