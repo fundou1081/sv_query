@@ -69,6 +69,10 @@ class CovergroupInfo:
     crosses: list[CoverCrossInfo] = field(default_factory=list)
     attributes: dict[str, str] = field(default_factory=dict)
     in_class: str = ""  # 所在 class 名称 (如有)
+    host_module: str = ""  # [G3 iter_165] module 顶层 cg 的宿主实例路径
+    # (elaboration 锚点: 'top' / 'top.u_sub'; Q1 采样信号 → 图 id 需模块
+    # 前缀。class cg = '' — 类型级锚点在 in_class)。多实例模块 → 逐实例
+    # 记录 (每 elaboration 一份, 定义级去重 = 未来项)。
     instance_rule: str = ""  # [G2 iter_163] 实例化规则 (见下)
     source_file: str = ""  # 源文件名
     source_line: int = 0  # 源码行号

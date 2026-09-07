@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_164: class 域 P1 修复完成 — G3 待启)
+> **最后更新**: 2026-09-06 GMT+8 (iter_165: covergroup G3 完成 — Q1-Q3 可查)
 
 ---
 
@@ -22,20 +22,22 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: covergroup 联系 — **G3 查询 API 待启** (class 域
-P1 已修 iter_164)。G1/G2 ✅ (iter_162/163)。
+**当前任务 (方豆方向)**: covergroup 联系 — **G3 ✅ 完成 (iter_165)**;
+下一步 G4 (Accuracy Claim covergroup 转正) 待方豆确认。G1/G2 ✅ (iter_162/
+163); class 域 P1 修复 ✅ (iter_164)。
 
-**iter_164 (class 域 P1) 总结**: 方法实参 logic→bit 形参 (4→2 态) 隐式
-Conversion 壳无 .expr/.symbol → _parse_invocation_call 守卫静默丢实参 →
-展开断 (插桩定位); 修: 实参 + Assignment rhs 剥壳; 6 测试 + Q4 fixture 升级
-logic 回归。**P2 (连续 build 退化) = P1 混淆, 不存在** (bit fixture 复测
-稳定, 如实修正 iter_163 记录)。unified_tracer 零改动。
-[iter_164](docs/task_tree/iterations/iter_164_class_logic_arg_fix.md)
+**G3 (iter_165) 总结**: query/covergroup.py (D4 范式, 观察域独立) —
+Q1 trace_covergroup_sampling (采样信号 → fanin 委托, class 数据端点 =
+实例 D3, 单实例自动/多实例显式) / Q2 trace_coverpoints (反向三域: module
+顶层宿主锚 / class 类型级 / 实例级) / Q3 trace_covergroup_rand_linkage
+(rand 属性 → 约束委托 ConstraintTracer); UnifiedTracer 薄委托 ×3 + 惰性
+cgs (复用主图编译器不双编); extractor host_module 锚点; 11 测试。
+[iter_165](docs/task_tree/iterations/iter_165_covergroup_g3_query_api.md)
 
-**G3 (待启)**: 查询 API (query/covergroup.py, D4 范式): trace_coverpoints(signal)
-反向 (Q2) / trace_sampling_chain(cp) → fanin (Q1) / trace_rand_linkage(cp) (Q3)。
+**G4 (待启)**: Accuracy Claim covergroup **转正** (观察域: 采样关系独立于
+数据流; bins 命中语义不建模 — 运行时边界) — 纯文档。
 
-[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1/G2 ✅)
+[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1/G2/G3 ✅)
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案
