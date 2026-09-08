@@ -51,6 +51,9 @@ class SemanticAdapter:
         self._compiler = compiler
         self._target_module = target_module  # [NEW 2026-07-11]
         self._fixed_names = {}  # id(cls) -> name (pyslang Unicode bug workaround)
+        # [iter_170 参数化 class] GenericClassDef 无成员面 → 特化符号成员缓存
+        # {class_name: [成员符号]} (从 class 类型变量/成员属性的特化 ClassType 扫)
+        self._spec_members: dict[str, list] | None = None
         # [Plan F1 2026-08-12] genvar context: assign id → {genvar_name: int}
         # pyslang symbol 不允许 setattr, 不能直接挂 .genvar_ctx
         self._genvar_context = {}  # id(assign) → dict
@@ -587,6 +590,108 @@ class SemanticAdapter:
                 unique_classes.append(c)
 
         return unique_classes
+
+    # ------------------------------------------------------------------
+    # [iter_170 参数化 class] 统一成员访问面
+    # ------------------------------------------------------------------
+    def get_class_members(self, cls) -> list:
+        """class 成员符号列表 (语义面, iter_170 参数化支持).
+
+        - ClassType (普通 class): 迭代 def 符号本身 (原行为)。
+        - GenericClassDef (参数化 class 定义): 定义符号**无成员面**
+          (不可迭代/无 body — iter_169 实证) → 用**特化符号**成员
+          (实例变量/成员属性的特化 ClassType — 有完整语义成员:
+          Parameter/ClassProperty/CovergroupType/Subroutine)。未实例化
+          的参数化 class 无特化 → [] (显式, 无静默假成员)。
+        调用方: class_graph_builder (_iter_class_properties/_iter_constraints/
+        _build_method_assignments) / function_extractor._find_class_method /
+        covergroup_extractor (提取走特化成员)。
+        """
+        try:
+            kind = str(getattr(cls, "kind", ""))
+        except (UnicodeDecodeError, TypeError):
+            return []
+        if "GenericClassDef" in kind:
+            try:
+                name = str(getattr(cls, "name", "")).strip()
+            except (UnicodeDecodeError, TypeError):
+                return []
+            if not name:
+                return []
+            if self._spec_members is None:
+                self._spec_members = self._scan_class_specializations()
+            return list(self._spec_members.get(name, []))
+        try:
+            return list(cls)
+        except TypeError:
+            return []
+        except Exception as e:
+            logger.warning("class 成员迭代失败: %s", e)
+            return []
+
+    def _scan_class_specializations(self) -> dict[str, list]:
+        """扫全树 class 类型变量/成员属性 → {特化类名: [成员符号]} (首见保).
+
+        特化 ClassType (packet#(16) 实例化后) 挂在变量/属性的 .type 上 —
+        定义 (GenericClassDef) 无成员面, 实例化符号才有。
+        """
+        out: dict[str, list] = {}
+
+        def record_spec(t):
+            """记录特化成员 + 沿 baseClass 链收录父类特化
+            (参数化父类只被继承无实例变量 → 实例符号的 baseClass 才有成员)."""
+            try:
+                tname = str(getattr(t, "name", "")).strip()
+                tkind = str(getattr(t, "kind", ""))
+            except Exception:
+                return
+            if "ClassType" not in tkind:
+                return
+            try:
+                kids = list(t)
+            except (TypeError, UnicodeDecodeError):
+                kids = []
+            if tname and kids and tname not in out:
+                out[tname] = kids
+            try:
+                bc = getattr(t, "baseClass", None)
+            except Exception:
+                bc = None
+            if bc is not None:
+                record_spec(bc)
+
+        def walk(node):
+            if node is None:
+                return
+            try:
+                kind = str(getattr(node, "kind", ""))
+            except Exception:
+                return
+            if "Variable" in kind or "ClassProperty" in kind:
+                t = getattr(node, "type", None)
+                if t is not None:
+                    try:
+                        tk = str(getattr(t, "kind", ""))
+                    except Exception:
+                        tk = ""
+                    if "ClassType" in tk:
+                        record_spec(t)
+            body = getattr(node, "body", None)
+            if body is not None:
+                try:
+                    for c in body:
+                        walk(c)
+                except TypeError:
+                    pass
+            try:
+                for c in node:
+                    walk(c)
+            except TypeError:
+                pass
+
+        for top in self._root:
+            walk(top)
+        return out
 
     def get_class_name(self, cls) -> str:
         """获取 class 名称（处理 Unicode bug）"""
