@@ -22,18 +22,19 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **参数化/高级形态对抗 ⚠️ 扫描完成** (iter_169) —
-验证 6 高级形态通过 (typedef 前置/option 语句/class cross/$rose/enum/
-static 显式, +6 测试锁); **发现真缺口 = 参数化 class** (语义 = GenericClassDef,
-不可迭代无 body — 提取/图/方法全断, 支持 = class 域独立小项目) → **决策待
-方豆** (开专项 vs 登记边界文档)。
+**当前任务 (方豆方向)**: **参数化 class 专项 ✅ 完成** (iter_170) — 突破:
+实例特化 ClassType 可迭代 (defaultSpecialization 坏绑定绕行); 统一成员访问
+面 get_class_members (GenericClassDef → 特化成员 + baseClass 链); 改造 4 处
+(class_graph_builder ×3 / function_extractor / covergroup_extractor);
+P1 宽度参数 / P2 多特化逐实例 / P3 参数 extends 继承约束全通; 11 测试 +
+class/covergroup 159 passed; 边界: 类型级宽度取首见特化 (逐特化宽度 =
+未来项)。
+[iter_170](docs/task_tree/iterations/iter_170_class_param_support.md)
 
-**iter_169 结果**: [iter_169](docs/task_tree/iterations/iter_169_covergroup_param_class_gap.md)
+**下一步候选**: 全量回归确认 / push / 后续。
 
-**已闭环**: 混合对抗 (iter_168, 2031) / 单域对抗 (iter_167) / G1-G4
-(iter_162~166, 47 测试) / class 域 P1 (iter_164)。
-
-[covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1-G4 ✅)
+**已闭环**: 高级形态+GenericClassDef 缺口 (iter_169) / 混合对抗 (iter_168) /
+单域对抗 (iter_167) / G1-G4 (iter_162~166) / class 域 P1 (iter_164)。
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
 bus[0] + 常量索引 → p.bus[0]; 变量索引动态跳过) + E15 默认参数语义定案

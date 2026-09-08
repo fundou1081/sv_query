@@ -318,13 +318,10 @@ class ClassGraphBuilder:
         - 多语句 (set_addr: addr = a; data = addr;) — RHS 含方法参数/成员
         - 嵌套 (if/for 内赋值) — 递归
         """
-        # [iter_145] GenericClassDefSymbol (参数化 class, common_cells 泛型
-        # 队列等) 不可迭代 (模板无展开 body) → 方法赋值提取跳过 (泛型方法体
-        # 无具体赋值; 具体实例化类走 ClassSymbol)。防 TypeError crash 整图。
-        try:
-            members = list(cls)
-        except TypeError:
-            return
+        # [iter_145] GenericClassDefSymbol (参数化 class) 曾不可迭代 → 跳过;
+        # [iter_170] 参数化支持: adapter 统一成员入口 — GenericClassDef 走
+        # 特化符号成员 (实例化后方法体可提取; 未实例化 → [] 显式跳过)
+        members = self.adapter.get_class_members(cls)
         for member in members:
             if 'Subroutine' not in str(getattr(member, 'kind', '')):
                 continue
@@ -1589,14 +1586,13 @@ class ClassGraphBuilder:
         直接遍历 semantic ClassType 的 member symbols，
         找到 SymbolKind.ClassProperty 即可。
         """
+        # [iter_170 参数化] GenericClassDef 无成员面 → adapter 统一入口
+        # (特化符号成员); ClassType 迭代 def 本身 (原行为)
         props = []
-        try:
-            for member in cls:
-                kind = str(getattr(member, "kind", ""))
-                if "ClassProperty" in kind:
-                    props.append(member)
-        except Exception as e:
-            logger.warning("class property 收集失败: %s", e)
+        for member in self.adapter.get_class_members(cls):
+            kind = str(getattr(member, "kind", ""))
+            if "ClassProperty" in kind:
+                props.append(member)
         return props
 
     def _iter_constraints(self, cls) -> list:
@@ -1605,14 +1601,12 @@ class ClassGraphBuilder:
         直接遍历 semantic ClassType 的 member symbols，
         找到 SymbolKind.ConstraintBlock 即可。
         """
+        # [iter_170 参数化] 同 _iter_class_properties — 统一成员入口
         constrs = []
-        try:
-            for member in cls:
-                kind = str(getattr(member, "kind", ""))
-                if "ConstraintBlock" in kind:
-                    constrs.append(member)
-        except Exception as e:
-            logger.warning("class constraint 收集失败: %s", e)
+        for member in self.adapter.get_class_members(cls):
+            kind = str(getattr(member, "kind", ""))
+            if "ConstraintBlock" in kind:
+                constrs.append(member)
         return constrs
 
     def _iter_declarators(self, decl):

@@ -34,6 +34,7 @@ class CovergroupExtractor:
         self._sources = sources
         self._strict = strict
         self._compiler = compiler
+        self._spec_members: dict[str, list] = {}  # [iter_170] 特化成员 (extract 填)
 
     def extract(self) -> list[CovergroupInfo]:
         """提取所有 covergroup"""
@@ -42,11 +43,81 @@ class CovergroupExtractor:
             compiler = self._compiler or SVCompiler(sources=self._sources,
                                                     strict=self._strict)
             root = compiler.get_root()
+            # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
+            # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)
+            self._spec_members = self._scan_class_specializations(root)
             self._find_covergroups(root, results)
             self._attach_instance_rules(root, results)
         except Exception as e:
             logger.warning(f"编译失败: {e}")
         return results
+
+    def _scan_class_specializations(self, root) -> dict[str, list]:
+        """扫全树 class 类型变量/成员属性 → {特化类名: [成员符号]} (首见保).
+
+        同 semantic_adapter._scan_class_specializations — extractor 独立编译
+        场景 (无 adapter) 自扫; compiler 注入场景两处结果一致。
+        """
+        out: dict[str, list] = {}
+
+        def record_spec(t):
+            """记录特化成员 + 沿 baseClass 链收录父类特化
+            (参数化父类只被继承无实例变量 → 实例符号的 baseClass 才有成员)."""
+            try:
+                tname = str(getattr(t, "name", "")).strip()
+                tkind = str(getattr(t, "kind", ""))
+            except Exception:
+                return
+            if "ClassType" not in tkind:
+                return
+            try:
+                kids = list(t)
+            except (TypeError, UnicodeDecodeError):
+                kids = []
+            if tname and kids and tname not in out:
+                out[tname] = kids
+            try:
+                bc = getattr(t, "baseClass", None)
+            except Exception:
+                bc = None
+            if bc is not None:
+                record_spec(bc)
+
+        def walk(node):
+            if node is None:
+                return
+            try:
+                kind = str(getattr(node, "kind", ""))
+            except Exception:
+                return
+            if "Variable" in kind or "ClassProperty" in kind:
+                t = getattr(node, "type", None)
+                if t is not None:
+                    try:
+                        tk = str(getattr(t, "kind", ""))
+                    except Exception:
+                        tk = ""
+                    if "ClassType" in tk:
+                        record_spec(t)
+            body = getattr(node, "body", None)
+            if body is not None:
+                try:
+                    for c in body:
+                        walk(c)
+                except TypeError:
+                    pass
+            try:
+                for c in node:
+                    walk(c)
+            except TypeError:
+                pass
+
+        try:
+            for top in root:
+                walk(top)
+        except TypeError:
+            pass
+        return out
 
     # =========================================================================
     # 遍历
@@ -73,11 +144,17 @@ class CovergroupExtractor:
             # 继续遍历 body (可能有嵌套)
 
         # [G1 iter_162] class 定义 → 其成员归属该 class (嵌套 class 覆盖外层)
+        # [iter_170 参数化] GenericClassDef (参数化 class 定义): 同 ClassType
+        # 归属, 但定义无成员面 → 特化成员 (实例化符号) 里找 cg
         new_scope = scope_class
-        if "ClassType" in kind:
+        if "ClassType" in kind or "GenericClassDef" in kind:
             cls_name = self._sym_name(node)
             if cls_name:
                 new_scope = cls_name
+            if "GenericClassDef" in kind and cls_name:
+                for mem in self._spec_members.get(cls_name, []):
+                    self._find_covergroups(mem, results, new_scope, scope_path)
+                return  # 定义本身无成员可走 (通用递归无果)
 
         # [G3 iter_165] Instance → 宿主路径下钻 (嵌套实例 top.u_sub)
         new_path = scope_path
@@ -137,10 +214,16 @@ class CovergroupExtractor:
 
         def walk(node, cur_class: str = ""):
             kind = str(getattr(node, "kind", ""))
-            if "ClassType" in kind:
+            if "ClassType" in kind or "GenericClassDef" in kind:
                 cls = self._sym_name(node)
                 if cls:
                     cur_class = cls
+                # [iter_170 参数化] GenericClassDef 定义无成员 → 特化成员里
+                # 找 ctor (Subroutine 'new' syntax 含 cg = new())
+                if "GenericClassDef" in kind and cls:
+                    for mem in self._spec_members.get(cls, []):
+                        walk(mem, cur_class)
+                    return
             if "Subroutine" in kind and cur_class and self._sym_name(node) == "new":
                 syn = getattr(node, "syntax", None)
                 if syn is not None:

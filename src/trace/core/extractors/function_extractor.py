@@ -308,11 +308,9 @@ def _find_class_method(class_name: str, method_name: str, *, h: 'FunctionHelpers
         cls = by_name.get(cur)
         if cls is None:
             return None
-        try:
-            members = list(cls)
-        except TypeError:
-            return None
-        for member in members:
+        # [iter_170 参数化] GenericClassDef 无成员面 → adapter 统一入口
+        # (特化符号成员); ClassType 迭代 def (原行为)
+        for member in h.adapter.get_class_members(cls):
             if 'Subroutine' not in str(getattr(member, 'kind', '')):
                 continue
             try:
