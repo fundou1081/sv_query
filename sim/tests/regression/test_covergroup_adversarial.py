@@ -215,5 +215,121 @@ class TestQueryAdversarial(unittest.TestCase):
         self.assertEqual(infos[0].sampled, [])
 
 
+class TestAdvancedForms(unittest.TestCase):
+    """X 组 (iter_169): 高级形态验证 — typedef 前置 / option 语句 / class
+    cross / $rose 边沿 / enum 成员 / static 成员"""
+
+    def test_typedef_forward_decl_class(self):
+        """typedef fwd + 后定义: 全链 (提取/图/方法调用/Q1) 正常"""
+        src = (
+            "typedef class packet;\n"
+            "class packet;\n"
+            "  rand bit [7:0] data;\n"
+            "  covergroup cg;\n"
+            "    cp: coverpoint data;\n"
+            "  endgroup\n"
+            "  function new(); cg = new(); endfunction\n"
+            "  function void set(input bit [7:0] d);\n"
+            "    data = d;\n"
+            "  endfunction\n"
+            "endclass\n"
+            "module top(input bit clk, input bit [7:0] din);\n"
+            "  packet p = new();\n"
+            "  always_ff @(posedge clk) p.set(din);\n"
+            "endmodule\n")
+        tr = _tracer(src)
+        infos = tr.trace_covergroup_sampling('cg')
+        self.assertEqual(infos[0].sampled, ['top.p.data'])
+        self.assertIn('top.din', infos[0].drivers)
+
+    def test_option_statements_in_cg_body(self):
+        """cg 体内 option/type_option 语句: 不产生幽灵 cp, 采样正常"""
+        src = (
+            "module top(input logic clk, input logic [7:0] din);\n"
+            "  covergroup cg @(posedge clk);\n"
+            "    option.auto_bin_max = 2;\n"
+            "    type_option.weight = 1;\n"
+            "    cp: coverpoint din { bins hi[] = {[128:255]}; }\n"
+            "  endgroup\n"
+            "endmodule\n")
+        cg = _cgs(src)[0]
+        self.assertEqual(len(cg.coverpoints), 1)
+        self.assertEqual([s.name for s in cg.coverpoints[0].sampled], ['din'])
+
+    def test_class_cross_no_crash(self):
+        """class 内 cross: 提取正常不崩"""
+        src = (
+            "class packet;\n"
+            "  rand bit [7:0] addr;\n"
+            "  rand bit [1:0] mode;\n"
+            "  covergroup cg;\n"
+            "    cp_a: coverpoint addr;\n"
+            "    cp_m: coverpoint mode;\n"
+            "    cross cp_a, cp_m;\n"
+            "  endgroup\n"
+            "  function new(); cg = new(); endfunction\n"
+            "endclass\n"
+            "module top; packet p = new(); endmodule\n")
+        cgs = _cgs(src)
+        cg = [c for c in cgs if c.name == 'cg'][0]
+        self.assertEqual([cp.name for cp in cg.coverpoints], ['cp_a', 'cp_m'])
+        self.assertTrue(cg.crosses)
+
+    def test_edge_expr_coverpoint(self):
+        """$rose(din) 边沿表达式: 采样引用 = din (edge 函数不泄漏)"""
+        src = (
+            "module top(input logic clk, input logic [7:0] din);\n"
+            "  covergroup cg @(posedge clk);\n"
+            "    cp: coverpoint $rose(din);\n"
+            "  endgroup\n"
+            "endmodule\n")
+        cp = _cgs(src)[0].coverpoints[0]
+        self.assertEqual([s.name for s in cp.sampled], ['din'])
+
+    def test_enum_member_sampling(self):
+        """enum 类型成员采样: class_prop 引用正确"""
+        src = (
+            "class packet;\n"
+            "  typedef enum { IDLE, RUN, DONE } state_t;\n"
+            "  state_t st;\n"
+            "  covergroup cg;\n"
+            "    cp: coverpoint st;\n"
+            "  endgroup\n"
+            "  function new(); cg = new(); endfunction\n"
+            "endclass\n"
+            "module top; packet p = new(); endmodule\n")
+        cgs = _cgs(src)
+        cg = [c for c in cgs if c.name == 'cg'][0]
+        self.assertEqual([(s.name, s.kind, s.host) for s in cg.coverpoints[0].sampled],
+                         [('st', 'class_prop', 'packet')])
+
+    def test_static_member_explicit_instance(self):
+        """static 成员 + 多实例: auto 歧义 missing (正确), 显式实例可用"""
+        src = (
+            "class packet;\n"
+            "  static int count;\n"
+            "  rand bit [7:0] data;\n"
+            "  covergroup cg;\n"
+            "    cp: coverpoint data;\n"
+            "  endgroup\n"
+            "  function new(); cg = new(); endfunction\n"
+            "  function void set(input bit [7:0] d);\n"
+            "    data = d;\n"
+            "    count++;\n"
+            "  endfunction\n"
+            "endclass\n"
+            "module top(input bit clk, input bit [7:0] din);\n"
+            "  packet p1 = new();\n"
+            "  packet p2 = new();\n"
+            "  always_ff @(posedge clk) p1.set(din);\n"
+            "endmodule\n")
+        tr = _tracer(src)
+        infos = tr.trace_covergroup_sampling('cg')
+        self.assertEqual(infos[0].sampled, [], "双实例歧义 → auto missing")
+        infos = tr.trace_covergroup_sampling('cg', instance='top.p1')
+        self.assertEqual(infos[0].sampled, ['top.p1.data'])
+        self.assertIn('top.din', infos[0].drivers)
+
+
 if __name__ == '__main__':
     unittest.main()
