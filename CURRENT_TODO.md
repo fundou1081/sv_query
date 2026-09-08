@@ -22,16 +22,16 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **covergroup 对抗轮 ✅ 完成** (iter_167, 方豆 "先来
-再做一些对抗性测试")。**修 2 真 bug**: A2 自定义类型 cast (my_t'(w) 类型名
-当信号 — CastExpressionSyntax 跳类型子节点) / C4 查询错实例静默 bogus id
-(校验实例集 → missing)。**登记边界 6**: A5 变量索引非采样数据 / A8 $root
-层次引用 / B1 extends auto 实例枚举缺 (显式可查) / B6 同名 class 跨 package
-(D5 同源) / C5 同名 cg 查询全部。**验证 6 通过**: 匿名 cp / 嵌套调用 /
-interface cg / iff 排除 / 子模块 host Q1+Q2 / select-id 空答 / extends 约束。
-12 新对抗测试; 回归待确认。
+**当前任务 (方豆方向)**: **参数化/高级形态对抗 ⚠️ 扫描完成** (iter_169) —
+验证 6 高级形态通过 (typedef 前置/option 语句/class cross/$rose/enum/
+static 显式, +6 测试锁); **发现真缺口 = 参数化 class** (语义 = GenericClassDef,
+不可迭代无 body — 提取/图/方法全断, 支持 = class 域独立小项目) → **决策待
+方豆** (开专项 vs 登记边界文档)。
 
-**已闭环 (iter_162~166)**: covergroup G1-G4 (47 测试); class 域 P1 (iter_164)。
+**iter_169 结果**: [iter_169](docs/task_tree/iterations/iter_169_covergroup_param_class_gap.md)
+
+**已闭环**: 混合对抗 (iter_168, 2031) / 单域对抗 (iter_167) / G1-G4
+(iter_162~166, 47 测试) / class 域 P1 (iter_164)。
 
 [covergroup 规划](docs/architecture/covergroup_tracing_plan.md) (G1-G4 ✅)
 
