@@ -120,14 +120,6 @@ def test_semantic_adapter_clean_name_uses_canonical():
     assert adapter.clean_name("hello\x00world") == "helloworld"
 
 
-def test_base_pyslang_adapter_clean_name_uses_canonical():
-    """[P0-1] PyslangAdapter.clean_name delegates to _safe.clean_name"""
-    from trace.core.base import PyslangAdapter
-    # Try to instantiate without going through full init
-    try:
-        adapter = PyslangAdapter.__new__(PyslangAdapter)
-    except Exception:
-        pytest.skip("PyslangAdapter cannot be instantiated without compiler")
-
-    assert adapter.clean_name("hello") == "hello"
-    assert adapter.clean_name(None) == ""
+# [iter_174] test_base_pyslang_adapter_clean_name_uses_canonical 已退役:
+# legacy PyslangAdapter (core/base.py) 移出 src/ → docs 记录; canonical clean_name
+# 由上方 test_semantic_adapter_clean_name_uses_canonical 覆盖 (同一实现)

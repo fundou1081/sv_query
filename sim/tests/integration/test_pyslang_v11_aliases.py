@@ -92,10 +92,17 @@ class TestImportPaths:
         from trace.core.compiler import compile_sources
         assert compile_sources is not None
 
-    def test_base(self):
-        from trace.core.base import ASTWalker, PyslangAdapter
-        assert ASTWalker is not None
-        assert PyslangAdapter is not None
+    def test_base_legacy_layer_moved_out(self):
+        """[iter_174] legacy adapter 层 (core/base.py) 已移出 src/ → legacy/
+
+        runtime adapter 唯一 = SemanticAdapter; 若本测试失败说明 legacy 层
+        被重新引入 (参见 tests/unit/test_no_pyslang_adapter_legacy.py 守卫)。
+        """
+        import os
+        repo = os.path.join(os.path.dirname(__file__), '..', '..', '..')
+        assert not os.path.exists(os.path.join(repo, 'src', 'trace', 'core', 'base.py'))
+        from trace.core.semantic_adapter import SemanticAdapter
+        assert SemanticAdapter is not None
 
     def test_mig_validator(self):
         # mig_validator 导出的是 compare_with_extract_module + verify_specific_port

@@ -21,7 +21,7 @@ bit_select_handler.py - Bit Select 节点处理模块
 
 import logging
 
-from trace.core.base import PyslangAdapter
+from trace.core.semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 class BitSelectHandler:
     """位选节点处理器"""
 
-    def __init__(self, adapter: PyslangAdapter, graph):
+    def __init__(self, adapter: SemanticAdapter, graph):
         """
         Args:
-            adapter: PyslangAdapter 实例
+            adapter: SemanticAdapter 实例
             graph: SignalGraph 实例
         """
         self.adapter = adapter
