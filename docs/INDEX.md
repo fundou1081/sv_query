@@ -14,8 +14,9 @@
 |---|---|---|
 | 源码规模 | 154 文件 / 64,895 行 | `find src -name "*.py"` |
 | 测试规模 | 344 测试文件 / 76,684 行 + 109 SV fixture | `sim/tests/` |
-| 回归基线 | **2048 passed** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 |
-| CLI / integration | 各 355 passed (沙箱内 19/10 例因 `~/.svq/cache` 不可写失败 — 环境项, 非代码回归) | 同上 |
+| 回归基线 | **2059 passed** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 |
+| CLI / integration | **739 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (缓存目录修复 iter_172 后沙箱内全绿) |
+| 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
 | 迭代记录 | `docs/task_tree/iterations/` (159+ 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 
