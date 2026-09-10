@@ -342,7 +342,7 @@ dot -Tpng /tmp/ifft_graph.dot -o docs/images/openwifi_ifft_graph.png
 ## 9. 相关文档
 
 - [ARCH_EXAMPLES.md](ARCH_EXAMPLES.md) — `arch` 命令的 5 个开源项目实测 (含 openwifi-hw openofdm_tx)
-- [ARCH_VISUALIZATION.md](ARCH_VISUALIZATION.md) — arch + visualize 总览
+- [ARCH_VISUALIZATION.md](archive/2026-09-08-cleanup/ARCH_VISUALIZATION.md) — arch + visualize 总览
 - [VISUALIZATION.md](VISUALIZATION.md) — `visualize graph/dataflow/pipeline/gap` 详解
 - [USER_GUIDE.md](USER_GUIDE.md) — sv_query 完整 user guide
 - [PYSLANG_MEMORY_ISSUE.md](PYSLANG_MEMORY_ISSUE.md) — 8GB 机器 pyslang elaboration 坑

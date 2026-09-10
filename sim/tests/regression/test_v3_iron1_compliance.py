@@ -3,7 +3,7 @@
 # Purpose: 守卫 uvm_testbench_extractor 满足铁律1 (AST 唯一数据源)
 #          严禁直接用 SyntaxTree.fromText(file).root 跳过 Compilation.
 #
-# Per docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md, basic components must be
+# Per docs/archive/2026-09-08-cleanup/CODE_DISCIPLINE_FIX_COMPLETENESS.md, basic components must be
 # completely fixed. This test guards against re-introducing the SyntaxTree.fromText
 # direct call that was in the original code.
 

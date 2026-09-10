@@ -3,7 +3,7 @@
 > **创建日期**: 2026-08-28 21:45
 > **维护人**: 方豆 + AI 助手
 > **状态**: 持续维护 — 发现新的 fallback / sentinel / 吞异常模式时**必须**登记到这里
-> **关联**: [ARCHITECTURE_REVIEW_2026-08-27.md §三.7](ARCHITECTURE_REVIEW_2026-08-27.md) / [ARCHITECTURE_TODOLIST #4](ARCHITECTURE_TODOLIST.md) / [AGENTS.md 核心纪律 #2](../AGENTS.md)
+> **关联**: [ARCHITECTURE_REVIEW_2026-08-27.md §三.7](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) / [ARCHITECTURE_TODOLIST #4](ARCHITECTURE_TODOLIST.md) / [AGENTS.md 核心纪律 #2](../AGENTS.md)
 
 ---
 

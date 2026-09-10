@@ -4,7 +4,7 @@
 > 状态: 活跃维护
 > 目的: **建立「SV 语法 → pyslang semantic 识别 → SignalGraph node/edge」的准确对应表**，让验证工程师/开发者一眼看清每种真实 SV 语法在 graph 里长什么样、怎么被识别。
 > 任务来源: [task 3] 用户 2026-08-27 13:28 — "也缺少对sv语法识别的准确探索和对应"
-> 配套: `docs/SYNTAX_KIND_HANDLER_MAP.md`（976 个 SyntaxKind → handler 的完整枚举, syntax 层）;
+> 配套: `docs/EXTRACTION_COVERAGE.md`（976 个 SyntaxKind → handler 的完整枚举, syntax 层）;
 >       `docs/PYSLANG_SEMANTIC_USAGE.md`（pyslang semantic 使用模式）;
 >       `docs/SIGNAL_GRAPH_SPEC.md`（SignalGraph 输入输出 spec）。
 

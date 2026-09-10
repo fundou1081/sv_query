@@ -460,9 +460,9 @@ PYTHONPATH=src:tools python3 -m pytest \
 
 - `docs/VISUALIZATION.md` — 旧版 API 总览 (V5 era, 仍可参考基础概念)
 - `docs/VIZ_DESIGN_SPEC.md` — V6.0 `teach` 设计 spec
-- `docs/VIZ_UNDERSTANDING_CRITERIA.md` — V6 self-eval 评分卡 (v6 怎么算"有用")
+- `docs/VISUALIZATION.md` — V6 self-eval 评分卡 (v6 怎么算"有用")
 - `docs/CLI_COMMAND_CHEATSHEET.md` — 全部命令 cheat sheet
-- `docs/ARCH_VISUALIZATION.md` — arch 命令专属文档
+- `docs/VISUALIZATION.md` — arch 命令专属文档
 
 ---
 

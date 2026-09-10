@@ -205,7 +205,7 @@ class TestSignalRHSStillAppears:
 # _handle_normal_assign goes through _signal_visitor.get_signals_with_conditions
 # which returns string tuples, not AST nodes. The compile-time filter doesn't apply.
 #
-# Per docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md, this MUST be fixed (no known
+# Per docs/archive/2026-09-08-cleanup/CODE_DISCIPLINE_FIX_COMPLETENESS.md, this MUST be fixed (no known
 # limitations). Test below asserts the CORRECT behavior; will fail until fixed.
 # =============================================================================
 

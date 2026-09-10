@@ -77,7 +77,7 @@ tree_output / real_project_viz / trace_include_flags 等) 会报
 ```bash
 mkdir -p /tmp/svq_home/.svq/cache
 HOME=/tmp/svq_home python3 -m pytest sim/tests/integration -q
-# → 418 passed + 1 failed + 3 skipped (2026-09-02 实测)
+# → integration 套件 (计数见 docs/INDEX.md 基线; 沙箱内 ~/.svq/cache 不可写会假失败)
 #   1 failed = test_real_project_viz[picorv32] ELK dangling port (方豆拍板暂缓, iter_086)
 ```
 

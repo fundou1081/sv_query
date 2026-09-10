@@ -3,7 +3,7 @@
 > 用户文档
 > 创建时间: 2026-06-02
 > 状态: V1 实现完成 (8 个 TDD cycle)
-> 关联: [实施计划](COVERAGE_GENERATOR_PLAN.md)
+> 关联: [抽取覆盖总表](EXTRACTION_COVERAGE.md)
 
 ---
 
@@ -440,8 +440,7 @@ python run_cli.py coverage suggest \
 
 ## 10. 相关文档
 
-- [实施计划](COVERAGE_GENERATOR_PLAN.md) - V1 设计细节
-- [DOC_IMPL_GAP.md](DOC_IMPL_GAP.md) - 文档与实现差异
+- [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) - 抽取覆盖总表 (文档/实现差异同看此表)
 - [主 README](../README.md) - sv_query 总览
 - [USER_GUIDE.md](USER_GUIDE.md) - sv_query 用户指南
 

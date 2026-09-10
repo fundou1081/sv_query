@@ -1,5 +1,5 @@
 # ControlFlow 数据模型
-# 基于 docs/CONTROL_FLOW_DESIGN.md 设计
+# 基于 docs/CONTROL_FLOW.md 设计
 
 from dataclasses import dataclass, field
 from enum import Enum, auto

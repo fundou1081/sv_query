@@ -259,7 +259,7 @@
 
 - 1501/1501 全过在 pyslang 10.0.0 和 11.0.0
 - v11 拆了 submodule + 改了 4 个语义点
-- 详见 [docs/PYSLANG_COMPAT.md](docs/PYSLANG_COMPAT.md)
+- 详见 [docs/PYSLANG_V11.md](docs/PYSLANG_V11.md)
 
 ### Evidence 召回扩展 (2026-06-04)
 
@@ -269,4 +269,4 @@
 
 ## 早期版本
 
-完整历史看 [docs/DOC_IMPL_GAP.md#更新日志](docs/DOC_IMPL_GAP.md#更新日志)
+完整历史看本文件下方更新日志

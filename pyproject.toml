@@ -39,7 +39,7 @@ requires-python = ">=3.11"
 dependencies = [
     "networkx>=3.0",
     "typer>=0.9",
-    # [Stage 6] pyslang 10.0.0+ 和 11.0.0+ 都支持 (v11 有 submodule 重构 + semantic 变化, 在 _pyslang_compat.py 兼容)
+    # pyslang: 现行按 v11 API 编写 (D5 v11-only, 见 docs/PYSLANG_V11.md); 兼容 shim _pyslang_compat.py 已删除
     "pyslang>=10.0.0,<12.0.0",
 ]
 

@@ -285,7 +285,7 @@ TARGET_CFG=cv64a6_imafdc_sv39 \
 - `docs/ARCHITECTURE.md` - 整体架构
 - `docs/README.md` - 可视化命令
 - `docs/USER_GUIDE.md` - 用户使用指南
-- `docs/DISCIPLINE_VIOLATIONS.md` - pyslang 限制记录
+- `AGENTS.md` - pyslang 限制记录
 
 ---
 
