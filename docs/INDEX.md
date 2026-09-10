@@ -73,6 +73,7 @@
 | [inline_constraint_semantic_unavailable.md](architecture/inline_constraint_semantic_unavailable.md) | inline 约束语义不可达 (暂缓决策) |
 | [pyslang11_native_api_g3_plan.md](architecture/pyslang11_native_api_g3_plan.md) | pyslang 11 native API 替换 (G3) |
 | [signal_graph_mig_port_to_internal.md](architecture/signal_graph_mig_port_to_internal.md) | MIG port_to_internal 架构 |
+| [semantic_adapter_split_plan.md](architecture/semantic_adapter_split_plan.md) | **方案 (待讨论)**: adapter 层拆解 (base.py 死层 + SemanticAdapter 分域) + 回归测试计划 |
 | [GRAPH_DIFF_DESIGN.md](architecture/GRAPH_DIFF_DESIGN.md) | graph diff 查询模式 |
 | [CORE_RESTRUCTURE.md](architecture/CORE_RESTRUCTURE.md) | core/ 目录重组方案 |
 | [CONNECTION_vs_MIG_analysis.md](architecture/CONNECTION_vs_MIG_analysis.md) | ConnectionExtractor vs MIG 分析 |
