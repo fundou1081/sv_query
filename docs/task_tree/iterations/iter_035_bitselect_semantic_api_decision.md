@@ -130,7 +130,7 @@ WIP 只改造了**路径 B** (`graph_builder._create_hierarchical_bit_nodes`)。
 07:46 我用 `sim/tests/unit + cli` 做 A/B 对照, 得出 "WIP 引入 0 回归"。
 **但我没跑 `sim/tests/integration/`** — 而回归恰恰全在那里。这是我的**覆盖面失误**。
 
-期间另一 agent (QClaw) 并行完成了 G3 实现并产出 `docs/BITSELECT_HANDLER_G3_OPTION3_REPORT.md`,
+期间另一 agent (QClaw) 并行完成了 G3 实现并产出 `docs/archive/2026-09-08-cleanup/BITSELECT_HANDLER_G3_OPTION3_REPORT.md`,
 报告 8 个 regression。**我重新用 git stash 做了 integration 的 A/B 对照**:
 
 | 测试套 | 带 WIP | 干净 HEAD | 净引入 |

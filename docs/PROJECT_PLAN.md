@@ -1,7 +1,7 @@
 # 开源 RTL 验证问题生成计划
 
 > 更新日期: 2026-08-26 (V6+V6.7+design+backpressure+handshake 同步)
-> 状态: 测试框架已稳定 (1267 passed, 0 failed)
+> 状态: 测试框架已稳定 (计数见 [INDEX.md 基线](INDEX.md#-当前基线-单一真相源--计数只写在这里); 本文件为独立工作流计划)
 
 ---
 

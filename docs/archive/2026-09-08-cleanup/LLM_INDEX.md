@@ -152,7 +152,7 @@
 | 索引 | 受众 | 何时用 |
 |------|------|--------|
 | **本文 (LLM_INDEX.md)** | LLM agent 扩展/理解 sv_query | 改 sv_query 前 |
-| [INDEX.md](INDEX.md) | 人类浏览 (按类别) | 找特定 doc |
+| [INDEX.md](../../INDEX.md) | 人类浏览 (按类别) | 找特定 doc |
 | [DOC_INDEX.md](DOC_INDEX.md) | 文档维护者 (归档管理) | 整理 docs 时 |
 | `~/.openclaw/workspace/skills/sv-query/SKILL.md` | LLM agent 使用 sv_query | 用户想跑 sv_query 时 |
 

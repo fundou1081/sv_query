@@ -112,7 +112,7 @@ core/visitors/constraint_visitor.py  # 543行
 | `docs/architecture/architecture.md` | 🔴 重大更新 | 三层分离架构 |
 | `docs/REFACTOR_GUIDE_v2.md` | 🔴 重大更新 | 新方案替代旧方案 |
 | `docs/REFACTOR_GUIDE.md` | 🗑️ 废弃 | 可删除或保留旧版 |
-| `docs/ISSUES_SUMMARY.md` | 📝 补充 | 添加新方案说明 |
+| `docs/archive/2026-09-08-cleanup/ISSUES_SUMMARY.md` | 📝 补充 | 添加新方案说明 |
 
 ---
 

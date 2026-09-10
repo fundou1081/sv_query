@@ -15,7 +15,7 @@
 用户指令: **"先 c"** → 按方案 C (先设计文档) 推进 #6:
 expression tree 提取独立成 builder。
 
-设计文档: [DESIGN_expr_tree_builder.md](DESIGN_expr_tree_builder.md)
+设计文档: [DESIGN_expr_tree_builder.md](../../DESIGN_expr_tree_builder.md)
 
 ---
 

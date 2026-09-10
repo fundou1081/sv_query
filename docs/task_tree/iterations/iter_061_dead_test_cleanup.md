@@ -41,7 +41,7 @@
 
 - `git rm -r sim/tests/usage/removed_features/` (11 测试 + __init__.py)
 - `git rm sim/test_golden.py sim/test_golden_cases.py sim/test_gold_comprehensive.py`
-- 更新 docs/TESTING.md (删 test_signal_expression_visitor_*.py 引用,
+- 更新 docs/archive/2026-09-08-cleanup/TESTING.md (删 test_signal_expression_visitor_*.py 引用,
   替换为 signal_normalizer/signal_tracer)
 - 更新 docs/TEST_MAP.md (清理状态标注)
 

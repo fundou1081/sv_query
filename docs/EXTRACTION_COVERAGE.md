@@ -117,7 +117,7 @@
 | spec_golden 边界 probe | 6 | `sim/tests/fixtures/spec_golden/probe_*.sv` | `test_spec_unsupported_syntax.py` 7 个 |
 | 集成 dataflow fixture | 10+ | `sim/tests/integration/dataflow_fixtures/*.sv` | 集成测试 |
 | minimal / 其他 | 10+ | `sim/tests/fixtures/minimal_*/` | 集成测试 |
-| **总 fixture** | **101** | — | **1461 tests collected** |
+| **总 fixture** | **109** | — | 测试计数见 [INDEX.md 基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) |
 
 ## 🔸 已知缺陷补充 (iter_068 测试升级确认)
 
@@ -135,7 +135,7 @@
 - [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) — SV 语法 → TraceNode/TraceEdge 类型映射 (29 KB)
 - [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) — pyslang 11.0 API 在 sv_query 的用法 (16 KB)
 - [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) — SignalGraph 数据模型 spec (3.6 KB)
-- [ARCHITECTURE_REVIEW_2026-08-27.md](ARCHITECTURE_REVIEW_2026-08-27.md) — 架构 review (8.8 KB)
+- [ARCHITECTURE_REVIEW_2026-08-27.md](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) — 架构 review (8.8 KB)
 - [ARCHITECTURE_TODOLIST.md](ARCHITECTURE_TODOLIST.md) — 7 项改造任务追踪
 
 ## 🔄 状态变更日志

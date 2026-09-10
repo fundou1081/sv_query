@@ -10,7 +10,7 @@
 #     ...
 #     必须保证 schema 与代码完全对齐.
 #
-# Per docs/ARCHITECTURE_REVIEW_2026-07-15.md (V1).
+# Per docs/archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-07-15.md (V1).
 
 import json
 import os

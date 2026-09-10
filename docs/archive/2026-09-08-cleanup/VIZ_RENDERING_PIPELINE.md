@@ -265,6 +265,6 @@ elkjs-svg 是 ELK 官方提供的 SVG 渲染包, 但它**不支持我们的中�
 
 - [ELK_JS_GUIDE.md](./ELK_JS_GUIDE.md) — ELK.js 0.12 API 详细参考 (输入 JSON 结构, layoutOptions 列表)
 - [VIZ_DATA_SVG_SPEC.md](./VIZ_DATA_SVG_SPEC.md) — VizData 数据结构 + SVG 输出规范
-- [VIZ_DESIGN_SPEC.md](./VIZ_DESIGN_SPEC.md) — 可视化设计 spec
-- [VIZ_COMMANDS.md](./VIZ_COMMANDS.md) — 用户命令接口
-- [DATAFLOW.md](./DATAFLOW.md) — dataflow 功能概述
+- [VIZ_DESIGN_SPEC.md](../../VIZ_DESIGN_SPEC.md) — 可视化设计 spec
+- [VIZ_COMMANDS.md](../../VIZ_COMMANDS.md) — 用户命令接口
+- [DATAFLOW.md](../../DATAFLOW.md) — dataflow 功能概述

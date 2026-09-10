@@ -782,7 +782,7 @@ sv_query -q dataflow-controlflow analyze A B --no-strict --file x.sv --json
 
 - `docs/CONTROL_FLOW_ANALYSIS.md` - controlflow 详细原理
 - `docs/DATAFLOW_ANALYSIS_ARCHITECTURE.md` - dataflow 架构
-- `docs/CDC_ANALYSIS.md` - 跨 clk 检测
+- `docs/EXPERIMENTAL_FEATURES.md` - 跨 clk 检测
 - `docs/CONTROL_FLOW_DESIGN.md` - controlflow 设计意图
 - `sim/tests/integration/test_dataflow_latency_open_source.py` - 13 tests + 1 golden (金标准验证)
 

@@ -58,7 +58,7 @@
 ## 📌 状态
 
 - ✅ SIGNAL_GRAPH_TECH_TEST_MAP.md 刷新完成 (实测口径)
-- 提交: docs/SIGNAL_GRAPH_TECH_TEST_MAP.md + 本迭代记录
+- 提交: docs/archive/2026-09-08-cleanup/SIGNAL_GRAPH_TECH_TEST_MAP.md + 本迭代记录
 
 ---
 

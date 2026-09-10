@@ -3,7 +3,7 @@
 > **Created**: 2026-09-06 GMT+8
 > **Status**: ✅ CLOSED (iter_170) — P1-P3 全通 (统一成员访问面)
 > **方豆**: "按A，开专项做" (iter_169 发现 → 专项支持)
-> **规划**: [class_parameterized_plan.md](../../architecture/class_parameterized_plan.md)
+> **结果**: [iter_170](../iterations/iter_170_class_param_support.md)
 
 ## 背景
 

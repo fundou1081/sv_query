@@ -1,12 +1,12 @@
 # TODO — sv_query
 
-> 更新: 2026-07-29
+> 更新: 2026-09-08 (计数改为引用 INDEX 基线)
 
 ---
 
 ## 当前状态
 
-- **2958 测试**, 2876 passed (97.1%)
+- 测试计数以 [INDEX.md 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) 为准 (不在本文件写死)
 - V6.7: VizData 统一可视化层已完成
 - V6.6: SignalSource 改名 + DriverInfo 重构完成
 - V6.5: 位精确 binary decomposition 完成
@@ -18,7 +18,7 @@
 ### V6.8: Visitor 体系清理
 - 删除 `[NOT TESTED]` handler (~40 个在 operator_visitor)
 - 删除 `_dispatch_enabled` 双轨开关和旧 fallback
-- 风险: 🔴 HIGH (2958 回归)
+- 风险: 🔴 HIGH (全量回归)
 
 ### V6.9: 旧渲染器清理
 - 删除 `signal_graph_viewer.render_html/render_mermaid`

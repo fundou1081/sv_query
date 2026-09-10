@@ -3,7 +3,7 @@
 > 创建日期: 2026-07-07
 > 来源: 方豆回顾 randomize/covergroup 现状后指示
 > 状态: 待评审
-> 关联: `memory/2026-07-07-req.md`, `docs/COVERAGE_GEN.md`, `docs/REQUIREMENT_COVERGROUP_ANALYSIS.md`
+> 关联: `memory/2026-07-07-req.md`, `docs/COVERAGE_GENERATOR.md`, `memory/` 内 coverage 需求分析 (已归档)
 
 ---
 
@@ -318,10 +318,10 @@ sv_query uvm align -f my_env.sv
 ## 6. 关联文档
 
 - [memory/2026-07-07-req.md](https://github.com/fundou1081/sv_query) (IP-Level Design Understanding 需求)
-- [COVERAGE_GEN.md](COVERAGE_GEN.md) — coverage generator 设计
-- [REQUIREMENT_COVERGROUP_ANALYSIS.md](REQUIREMENT_COVERGROUP_ANALYSIS.md) — covergroup ↔ constraint 一致性需求
-- [DESIGN_COVERGROUP_EXTRACTION.md](DESIGN_COVERGROUP_EXTRACTION.md) — covergroup 提取设计
-- [SYNTAX_KIND_HANDLER_MAP.md](SYNTAX_KIND_HANDLER_MAP.md) — 含 randomize kind handlers
+- [COVERAGE_GENERATOR.md](COVERAGE_GENERATOR.md) — coverage generator 设计
+- [REQUIREMENT_COVERGROUP_ANALYSIS.md](archive/2026-09-08-cleanup/REQUIREMENT_COVERGROUP_ANALYSIS.md) — covergroup ↔ constraint 一致性需求
+- [DESIGN_COVERGROUP_EXTRACTION.md](archive/2026-09-08-cleanup/DESIGN_COVERGROUP_EXTRACTION.md) — covergroup 提取设计
+- [SYNTAX_KIND_HANDLER_MAP.md](archive/2026-09-08-cleanup/SYNTAX_KIND_HANDLER_MAP.md) — 含 randomize kind handlers
 - [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) — example 文档风格参考
 
 ---
@@ -732,15 +732,14 @@ constraints = getattr(node, "constraints", None) or getattr(node, "with", None) 
 | 没有 constraint space 可视化 | 跟 coverage gap 集成 |
 | pre_randomize / post_randomize 只显示名字, 不显示 body | 加 body extraction |
 
-Phase 2 已在 `docs/RANDOMIZE_COVERGROUP_DEV_PLAN.md` 规划.
+Phase 2 规划稿未留档 (历史).
 
 ---
 
 ## 7. 相关文档
 
-- [RANDOMIZE_COVERGROUP_DEV_PLAN.md](RANDOMIZE_COVERGROUP_DEV_PLAN.md) — 开发计划 (Phase 1-3)
-- [COVERAGE_GEN.md](COVERAGE_GEN.md) — coverage generator 设计
-- [REQUIREMENT_COVERGROUP_ANALYSIS.md](REQUIREMENT_COVERGROUP_ANALYSIS.md) — covergroup ↔ constraint 一致性需求
+- [COVERAGE_GENERATOR.md](COVERAGE_GENERATOR.md) — coverage generator 设计
+- [REQUIREMENT_COVERGROUP_ANALYSIS.md](archive/2026-09-08-cleanup/REQUIREMENT_COVERGROUP_ANALYSIS.md) — covergroup ↔ constraint 一致性需求
 - [CLI_COMMAND_CHEATSHEET.md](CLI_COMMAND_CHEATSHEET.md) — 全部 21 顶层 + 50 subcommand 速查
 - [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) — 文档风格参考
 ---

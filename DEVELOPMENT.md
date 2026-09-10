@@ -1103,7 +1103,7 @@ grep -n "def _get_scoped_parts" src/trace/core/
 
 > **生效日期**: 2026-07-15
 > **触发事件**: `_handle_normal_assign` ternary localparam 泄漏
-> **详细文档**: `docs/CODE_DISCIPLINE_FIX_COMPLETENESS.md`
+> **详细文档**: `AGENTS.md`
 
 #### 原则
 

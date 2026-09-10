@@ -2,7 +2,7 @@
 
 > **创建日期**: 2026-08-27 20:36
 > **维护人**: QClaw Agent + 方豆
-> **来源**: [ARCHITECTURE_REVIEW_2026-08-27.md](ARCHITECTURE_REVIEW_2026-08-27.md) §五
+> **来源**: [ARCHITECTURE_REVIEW_2026-08-27.md](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) §五
 > **状态字段**: ⬜ pending / 🟡 in_progress / ✅ done / ⚠️ blocked / 🚫 won't_fix
 
 ## 🎯 7 项改造任务 (按 ROI 排序)
@@ -91,7 +91,7 @@
   3. **用 pyslang API 替代 regex (1-2 天)** — 治本, 但风险高
   4. 纯文档说明 (0.1 天) — 不修 bug
   5. **选项 1 + 新建 #8 修 generate-for 动态位选** (推荐, #2 0.5 天 + #8 1+ 天)
-- **产出**: [docs/BITSELECT_HANDLER_G2_PLAN.md](BITSELECT_HANDLER_G2_PLAN.md)
+- **产出**: [architecture/bitselect_semantic_api_decision.md](archive/2026-09-08-cleanup/BITSELECT_HANDLER_G2_PLAN.md)
 - **依赖**: 无
 
 ### #3 建 EXTRACTION_COVERAGE.md 总表  ✅

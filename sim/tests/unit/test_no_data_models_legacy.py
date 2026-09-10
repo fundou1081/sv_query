@@ -1,6 +1,6 @@
 # test_no_data_models_legacy.py - 防止 legacy data_models.py 重新引入
 #
-# [V5 of docs/ARCHITECTURE_REVIEW_2026-07-15.md]
+# [V5 of docs/archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-07-15.md]
 #
 # src/trace/core/data_models.py (171 行, 13 classes) 自 2026-06-26 起完全未被 import.
 # 所有需要的类 (SignalChain, ModuleConnections, StateTransition, ClockDomainResult) 已在

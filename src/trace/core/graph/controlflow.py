@@ -1,5 +1,5 @@
 # ControlFlow Graph - 控制流图
-# 基于 docs/CONTROL_FLOW_DESIGN.md 设计
+# 基于 docs/CONTROL_FLOW.md 设计
 
 from dataclasses import asdict
 

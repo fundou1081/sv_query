@@ -4,7 +4,7 @@
 > **维护人**: QClaw Agent + 方豆
 > **状态**: 🟡 in_progress (G2 计划 + diff 验证脚本完成, G3 待决策)
 > **来源**: [ARCHITECTURE_REVIEW_2026-08-27.md §三.2](ARCHITECTURE_REVIEW_2026-08-27.md) + 实测数据
-> **关联**: [ARCHITECTURE_TODOLIST #2](ARCHITECTURE_TODOLIST.md)
+> **关联**: [ARCHITECTURE_TODOLIST #2](../../ARCHITECTURE_TODOLIST.md)
 
 ## 📋 背景
 

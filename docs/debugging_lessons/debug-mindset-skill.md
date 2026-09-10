@@ -179,7 +179,7 @@ pytest sim/tests/integration/
 # 创建文档
 docs/debugging_lessons/<date>_<bug-name>.md
 # 更新索引
-docs/DOC_INDEX.md (+引用)
+docs/INDEX.md (+引用)
 # 更新 memory
 MEMORY.md (+摘要 + 链接)
 memory/<date>.md (daily note)

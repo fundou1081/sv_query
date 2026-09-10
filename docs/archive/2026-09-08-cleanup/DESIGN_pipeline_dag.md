@@ -3,7 +3,7 @@
 > **状态**: 设计定稿 (方案 C — 先设计文档, 后实施)
 > **创建**: 2026-08-28 23:50
 > **实施**: 已提交 `04a882f` (行为 1:1, 0 回归)
-> **关联**: [ARCHITECTURE_TODOLIST #5](ARCHITECTURE_TODOLIST.md) / [iter_049](task_tree/iterations/iter_049_pipeline_dag.md)
+> **关联**: [ARCHITECTURE_TODOLIST #5](../../ARCHITECTURE_TODOLIST.md) / [iter_049](../../task_tree/iterations/iter_049_pipeline_dag.md)
 
 ---
 

@@ -1114,7 +1114,7 @@ P0-1 (Condition 提取) 和 P0-2 (Driver Expression 提取) 已完成，文档�
 | UnicodeDecodeError 防护 | CVA6 触发的 pyslang bug | ❌ 未文档化 |
 | 占位符 `_inst_`, `_bad_`, `_unknown_` | 优雅降级 | ❌ 未文档化 |
 
-**应更新**: `docs/DISCIPLINE_VIOLATIONS.md`, `docs/CODE_DISCIPLINE_REVIEW.md`
+**应更新**: `docs/archive/2026-09-08-cleanup/DISCIPLINE_VIOLATIONS.md`, `docs/archive/2026-09-08-cleanup/CODE_DISCIPLINE_REVIEW.md`
 
 ### 5. 可视化改进 (signal_graph_viewer.py)
 
@@ -1156,8 +1156,8 @@ P0-1 (Condition 提取) 和 P0-2 (Driver Expression 提取) 已完成，文档�
 ### 优先级 P1
 
 5. **更新 `docs/ARCHITECTURE.md`** - mention `include_dirs` 参数
-6. **更新 `docs/DISCIPLINE_VIOLATIONS.md`** - 添加 UnicodeDecodeError 处理
-7. **更新 `docs/SIGNAL_GRAPH_ANALYSIS_REQUIREMENTS.md`** - 反映 CVA6 经验
+6. **更新 `docs/archive/2026-09-08-cleanup/DISCIPLINE_VIOLATIONS.md`** - 添加 UnicodeDecodeError 处理
+7. **更新 `docs/archive/2026-09-08-cleanup/SIGNAL_GRAPH_ANALYSIS_REQUIREMENTS.md`** - 反映 CVA6 经验
 
 ### 优先级 P2
 

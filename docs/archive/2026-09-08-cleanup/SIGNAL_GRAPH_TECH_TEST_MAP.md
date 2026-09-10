@@ -3,8 +3,8 @@
 > **创建**: 2026-08-29 (iter_072) / **刷新**: 2026-09-01 (iter_080, 实测口径统一)
 > **目的**: 找出所有与 signal graph 及其底层技术相关的测试, 评估每项底层技术的直接测试覆盖。
 > **方法**: 全仓扫描测试文件对底层模块的**内容引用** (import + 符号名 + 字符串, 实测
-> `python` 扫描 301 个测试文件, 2026-09-01) — 与 [TEST_MAP.md](TEST_MAP.md) (301/2997) 对齐。
-> **关联**: [TEST_MAP.md](TEST_MAP.md) (全量测试地图) / [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md)
+> `python` 扫描 301 个测试文件, 2026-09-01) — 与 [TEST_MAP.md](../../TEST_MAP.md) (301/2997) 对齐。
+> **关联**: [TEST_MAP.md](../../TEST_MAP.md) (全量测试地图) / [SIGNAL_GRAPH_SPEC.md](../../SIGNAL_GRAPH_SPEC.md)
 
 ---
 

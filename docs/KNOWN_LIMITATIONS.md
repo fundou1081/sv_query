@@ -1,7 +1,7 @@
 # 已知限制
 
 > 更新: 2026-08-26 23:00 GMT+8 (case27 架构决策生效)
-> 测试状态: 2958 tests, 2876 passed (97.1%), 55 pre-existing failures, 0 new
+> 测试状态: 见 [INDEX.md 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里)
 >
 > **架构决策**: `docs/architecture/case27_signal_graph_completeness_decision.md` (D1-D5 锁定, 含 v11-only)
 

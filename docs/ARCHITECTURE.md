@@ -264,7 +264,7 @@ src/trace/core/graph/viz/
 | 数据类 | dataclass + Enum + auto() |
 | VISITOR | @on 装饰器 handler 注册 |
 | CLI | Typer |
-| 测试 | pytest (2958 tests, 97.1% pass) |
+| 测试 | pytest — 计数/基线见 [INDEX.md 当前基线](INDEX.md#-当前基线-单一真相源--计数只写在这里) |
 | 渲染 | Graphviz DOT + `dot -Tpng/svg` |
 
 ---

@@ -135,7 +135,7 @@ sv_query visualize dataflow -f top.sv --dot output.svg
 
 ### V16 Plan 重大改进（V16.1 → V16.6）
 
-V16 Plan 完整故事线见 [`docs/VIZ_V16_PLAN.md`](docs/VIZ_V16_PLAN.md)，6 个 phase 解决的问题：
+V16 Plan 完整故事线见 [`docs/VISUALIZATION.md`](docs/VISUALIZATION.md)，6 个 phase 解决的问题：
 
 #### V16.1 — const / sig 节点归位 + 紫色 stroke 修复 (commit `73b16ec`)
 
@@ -366,10 +366,10 @@ python -m pytest sim/tests/ -m opensource -v
 
 # 全量
 python -m pytest sim/tests/ -q
-# 3071 tests (非 opensource 主回归, 2026-09-05 更新)
+# 测试: 计数与基线见 docs/INDEX.md 「当前基线」(单一真相源)
 ```
 
-详见 [测试指南](docs/TESTING.md)
+详见 [测试指南](TESTING.md)
 
 ---
 
