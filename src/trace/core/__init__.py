@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # 也导出 base 模块
-from .base import ASTWalker, PyslangAdapter
+# [iter_174] legacy adapter 层 (base.py: ASTWalker/PyslangAdapter) 已移出 src/
 from .graph import (
     EdgeKind,
     GraphDiff,
@@ -66,6 +66,4 @@ __all__ = [
     "ClockDomainTrace",
     "CrossingRisk",
     # Syntax Layer
-    "PyslangAdapter",
-    "ASTWalker",
 ]

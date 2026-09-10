@@ -8,7 +8,7 @@ import logging
 
 import pyslang
 
-from .base import PyslangAdapter
+from .semantic_adapter import SemanticAdapter
 from .builder.subroutine_expander import SubroutineExpander
 from .clock_domain_extractor import ClockDomainExtractor  # [P1 cycle 9c] re-export 保兼容
 from .connection_extractor import ConnectionExtractor  # [P1 cycle 9b] re-export 保兼容
@@ -31,11 +31,11 @@ __all__ = [
 ]
 
 class GraphBuilder:
-    def __init__(self, adapter: PyslangAdapter, target_module: str | None = None):
+    def __init__(self, adapter: SemanticAdapter, target_module: str | None = None):
         """[Phase 3 2026-07-11] GraphBuilder + target_module filter.
 
         Args:
-            adapter: PyslangAdapter (semantic AST)
+            adapter: SemanticAdapter (semantic AST)
             target_module: [NEW] If set, extractors use this as root_module_name
                            instead of auto-detected first top instance. This ensures
                            instance paths in SignalGraph use user-specified target.

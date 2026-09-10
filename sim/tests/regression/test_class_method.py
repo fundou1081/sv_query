@@ -28,7 +28,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.base import PyslangAdapter
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -43,31 +42,35 @@ class TestClassMethod(unittest.TestCase):
     """Class 方法测试"""
 
     def _get_classes(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        class FP:
-            def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test.sv': tree}))
-        return adapter.get_classes()
+        """[iter_174] semantic adapter (legacy PyslangAdapter 已移出 src/)
+
+        同时把 adapter 存到 self._adapter 供 _get_class_methods 复用。
+        """
+        from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        comp = SVCompiler(sources={'test.sv': source})
+        self._adapter = SemanticAdapter(comp.get_root())
+        return self._adapter.get_classes()
 
     def _get_class_methods(self, cls):
-        """获取类方法 (ClassMethodDeclaration + ClassMethodPrototype)"""
-        methods = []
-        if cls is None:
-            return methods
+        """[iter_174] semantic 成员枚举 → 类方法名列表.
 
-        if hasattr(cls, 'items'):
-            items = cls.items
-            if items and hasattr(items, '__iter__'):
-                for item in items:
-                    try:
-                        kind = getattr(item, 'kind', None)
-                        # ClassMethodDeclaration (function/task 定义)
-                        # ClassMethodPrototype (extern/pure 声明)
-                        if kind and ('ClassMethod' in str(kind)):
-                            methods.append(item)
-                    except (ValueError, AttributeError):
-                        pass
-        return methods
+        旧实现走 syntax 层 (cls.items / ClassMethodDeclaration|Prototype);
+        legacy PyslangAdapter 移出后改用 semantic 成员 (Subroutine 定义 —
+        普通 function/task 与 extern/static 原型都在成员表里, 语义等价)。
+        """
+        adapter = getattr(self, '_adapter', None)
+        if cls is None or adapter is None:
+            return []
+        names = []
+        for member in adapter.get_class_members(cls):
+            kind = str(getattr(member, 'kind', ''))
+            if 'Subroutine' in kind:
+                try:
+                    names.append(str(getattr(member, 'name', '')).strip())
+                except Exception:
+                    continue
+        return [n for n in names if n]
 
     def test_class_function(self):
         """[Golden] Class function 定义
@@ -96,16 +99,7 @@ endmodule'''
         self.assertEqual(len(classes), 1)
         methods = self._get_class_methods(classes[0])
         self.assertGreaterEqual(len(methods), 1, "No methods found")
-
-        # 检查方法名
-        method = methods[0]
-        decl = getattr(method, 'declaration', None)
-        if decl:
-            proto = getattr(decl, 'prototype', None)
-            if proto:
-                name = getattr(proto, 'name', None)
-                name_str = name.value.strip() if hasattr(name, 'value') else str(name).strip()
-                self.assertEqual(name_str, 'get_id')
+        self.assertIn('get_id', methods, "class function 名应被识别")
 
         # [iter_064] 行为断言: class 节点 packet 在 graph 中存在
         graph = _build_graph(source)
@@ -210,10 +204,10 @@ endmodule'''
 endclass
 module top();
 endmodule'''
-        tree = pyslang.SyntaxTree.fromText(source)
-        class FP:
-            def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test.sv': tree}))
+        from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        comp = SVCompiler(sources={'test.sv': source})
+        adapter = SemanticAdapter(comp.get_root())
         classes = adapter.get_classes()
 
         self.assertEqual(len(classes), 1)

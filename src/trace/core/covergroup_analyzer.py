@@ -31,7 +31,7 @@ class CovergroupAnalyzer:
     """Covergroup ↔ Constraint 一致性分析器（semantic API 版）
 
     输入:
-    - adapter: PyslangAdapter (semantic AST)
+    - adapter: SemanticAdapter (semantic AST)
     - cgs: CovergroupInfo 列表
 
     输出:

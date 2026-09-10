@@ -26,7 +26,7 @@ from pyslang.pyslang.ast import (
 
 from .._safe import safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
 from .ast_utils import unwrap  # [V6.3+3 2026-07-27] (kind_matches 已随 Step 6 always 拆走)
-from .base import PyslangAdapter
+from .semantic_adapter import SemanticAdapter
 from .builder.subroutine_expander import SubroutineExpander  # [Step 7] CallSiteInfo 已随 function_extractor 拆走
 from .edge_factory import TraceEdgeFactory
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享
@@ -76,7 +76,7 @@ class DriverExtractor:
         BinaryOperator.WildcardInequality: "!=?",
     }
 
-    def __init__(self, adapter: PyslangAdapter):
+    def __init__(self, adapter: SemanticAdapter):
         self.adapter = adapter
         # [铁律29] 使用 Visitor 替代旧实现，保留 fallback
         # [V6.9] SignalExpressionVisitor removed — adapter handles signal extraction directly

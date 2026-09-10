@@ -23,7 +23,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.base import PyslangAdapter
 from trace.core.graph.models import NodeKind
 from trace.unified_tracer import UnifiedTracer
 
@@ -317,11 +316,11 @@ class TestClassExtendsHierarchy(unittest.TestCase):
     """
 
     def _get_classes(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        class FP:
-            def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test.sv': tree}))
-        return adapter.get_classes()
+        """[iter_174] semantic adapter (legacy PyslangAdapter 已移出 src/)"""
+        from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        comp = SVCompiler(sources={'test.sv': source})
+        return SemanticAdapter(comp.get_root()).get_classes()
 
     def test_extends_hierarchy(self):
         """[Golden] class extends 继承
@@ -356,7 +355,7 @@ endclass'''
         self.assertEqual(len(classes), 2, "应有 2 个 class")
 
         # 按名称排序
-        class_names = sorted([c.name.value for c in classes])
+        class_names = sorted([str(c.name) for c in classes])
         self.assertEqual(class_names, ['a', 'a2'], "class 名称应为 a, a2")
 
     def test_simple_extends(self):
@@ -367,7 +366,7 @@ class child extends parent;
 endclass'''
         classes = self._get_classes(source)
         self.assertEqual(len(classes), 2, "应有 parent 和 child 两个 class")
-        class_names = sorted([c.name.value for c in classes])
+        class_names = sorted([str(c.name) for c in classes])
         self.assertEqual(class_names, ['child', 'parent'], "class 名称应为 child, parent")
 
 

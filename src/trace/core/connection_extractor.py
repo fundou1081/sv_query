@@ -8,7 +8,7 @@ import logging
 import re  # [iter_117] get_path 父路径索引段检测 (去重 gen_block)
 
 from .._safe import _safe_str
-from .base import PyslangAdapter
+from .semantic_adapter import SemanticAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConnectionExtractor:
-    def __init__(self, adapter: PyslangAdapter, root_module_name: str | None = None):
+    def __init__(self, adapter: SemanticAdapter, root_module_name: str | None = None):
         self.adapter = adapter
         # [Phase 3 2026-07-11] Accept target_module as initial root_module_name.
         # If None (legacy), falls back to auto-detect first top instance.

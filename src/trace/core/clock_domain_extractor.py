@@ -6,7 +6,7 @@
 
 import logging
 
-from .base import PyslangAdapter
+from .semantic_adapter import SemanticAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import NodeKind, TraceNode
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClockDomainExtractor:
-    def __init__(self, adapter: PyslangAdapter):
+    def __init__(self, adapter: SemanticAdapter):
         self.adapter = adapter
 
     def extract(self) -> ExtractorResult:

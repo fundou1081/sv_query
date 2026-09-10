@@ -22,26 +22,21 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线第三项 — adapter 层拆解 (方案讨论中)**。
-方豆 "接下来拆 semantic，做好方案和我讨论。包括回归测试计划。"
-📋 **方案稿已就绪, 待拍板 D1-D4**: [semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
-任务文件: `docs/task_tree/tasks/L1_adapter_split.md`
+**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 (执行中)**。方豆
+"用移出代替删除，这样可以恢复。去做吧" — 方案: [semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
 
-**方案要点 (实测诊断)**: ① **意外发现** — `core/base.py` (2,341 行 legacy
-PyslangAdapter/ASTWalker/3 Collector) 在 src/ **从未实例化** (仅 8 处类型注解 +
-4 个回归测试直接实例化 1,546 行), 2026-07-15 的 V2 清理漏了它 → 先清死层
-(-2,341 行源) 再拆活代码 ② `semantic_adapter.py` (3,049 行 / 77 方法 / 42 外部
-调用) 按 6 域 mixin 拆 (调用方零改动) ③ 474 行 `_extract_signals_from_expr`
-单独拆 ④ **Step 0 先建 API 面冻结测试** (名字+签名) 作安全网。
-回归计划: 基线 unit 1112 / unit+regression 2059 / cli+integration 739 / truth 19
-文件; 每步固定 gate (域快测 → 全量两套 → API 面比对 → 文档检查); 计数只增不减,
-golden 需重生成即停。
+**进度**: ✅ Step 0 API 面冻结测试 (65 方法+签名, 4 测试) →
+✅ Step 1 legacy 等价矩阵 (4 文件逐条核对, 零覆盖损失) →
+✅ Step 2 `base.py` **移出** → `legacy/base_pyslang_adapter.py` (-2,341 行 src,
+8 处注解改 SemanticAdapter, 守卫测试扩展, legacy/README 记恢复步骤) →
+⏳ Step 3 拆 474 行 `_extract_signals_from_expr` → Step 4-9 六域 mixin →
+Step 10 死 API 清理。
+Gate: unit+regression 2,064 / cli+integration 739 / truth 164 / API 面一致 /
+check_docs ✅ (Step 2 全过)。
+[iter_174](docs/task_tree/iterations/iter_174_step2_legacy_layer_moved_out.md)
 
-**待拍板**: D1 删 base.py 死层? (建议删) / D2 mixin vs 显式依赖 (建议 mixin) /
-D3 巨函数一并拆? (建议) / D4 opensource 套件 gate 位置 (建议 Step 2 + 收尾)。
-
-**已闭环**: 缓存目录 (iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) /
-G1-G4 covergroup (iter_162~166) 等。
+**已闭环**: adapter 方案稿 (iter_173) / 缓存目录 (iter_172) / 文档清理 (iter_171) /
+参数化 class (iter_170) / G1-G4 covergroup (iter_162~166) 等。
 
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组

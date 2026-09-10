@@ -30,7 +30,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.base import PyslangAdapter
 from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
 
@@ -70,11 +69,15 @@ class TestConstraintDerivative(unittest.TestCase):
         return UnifiedTracer(sources={'test.sv': source})
 
     def _get_classes(self, source):
-        tree = pyslang.SyntaxTree.fromText(source)
-        class FP:
-            def __init__(self, t): self.trees = t
-        adapter = PyslangAdapter(FP({'test.sv': tree}))
-        return adapter.get_classes()
+        """[iter_174] semantic adapter (legacy PyslangAdapter 已移出 src/)
+
+        同时把 adapter 存到 self._adapter 供成员判定复用。
+        """
+        from trace.core.compiler import SVCompiler
+        from trace.core.semantic_adapter import SemanticAdapter
+        comp = SVCompiler(sources={'test.sv': source})
+        self._adapter = SemanticAdapter(comp.get_root())
+        return self._adapter.get_classes()
 
     def test_constraint_inside(self):
         """[Golden] inside 约束
@@ -96,9 +99,10 @@ endmodule'''
 
         self.assertEqual(len(classes), 1)
         cls = classes[0]
-        members = cls.items if hasattr(cls, 'items') else []
-        has_constraint = any('Constraint' in str(getattr(m, 'kind', None)) for m in members)
-        self.assertTrue(has_constraint, "ConstraintDeclaration not found")
+        # [iter_174] semantic 成员判定 (原 syntax cls.items / ConstraintDeclaration)
+        has_constraint = any('ConstraintBlock' in str(getattr(m, 'kind', ''))
+                             for m in self._adapter.get_class_members(cls))
+        self.assertTrue(has_constraint, "ConstraintBlock 成员未找到")
 
         # [iter_065] 行为断言: 约束块 → 被约束变量的 CONSTRAINS 边
         graph = _build_graph(source)
@@ -126,9 +130,10 @@ endmodule'''
         classes = self._get_classes(source)
 
         self.assertEqual(len(classes), 1)
-        self.assertTrue(any('Constraint' in str(getattr(m, 'kind', None))
-                            for m in (classes[0].items if hasattr(classes[0], 'items') else [])),
-                        "ConstraintDeclaration not found")
+        # [iter_174] semantic 成员判定
+        self.assertTrue(any('ConstraintBlock' in str(getattr(m, 'kind', ''))
+                            for m in self._adapter.get_class_members(classes[0])),
+                        "ConstraintBlock 成员未找到")
 
         # [iter_065] 行为断言: 约束块 → 条件变量 + 被约束值
         graph = _build_graph(source)

@@ -13,7 +13,7 @@
 import logging
 from dataclasses import dataclass, field
 
-from .base import PyslangAdapter
+from .semantic_adapter import SemanticAdapter
 from .class_hierarchy import ClassHierarchy
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
 
@@ -47,7 +47,7 @@ class ClassGraphBuilder:
     - 不处理 p.addr 追踪（Phase 3）
     """
 
-    def __init__(self, adapter: PyslangAdapter):
+    def __init__(self, adapter: SemanticAdapter):
         self.adapter = adapter
         self.hierarchy = ClassHierarchy()
 

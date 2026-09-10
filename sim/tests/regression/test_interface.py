@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import pyslang
 
-from trace.core.base import PyslangAdapter
 from trace.unified_tracer import UnifiedTracer
 
 
@@ -26,11 +25,6 @@ class TestInterface(unittest.TestCase):
     def _make_tracer(self, source):
         pyslang.SyntaxTree.fromText(source)
         return UnifiedTracer(sources={'test.sv': source})
-
-    def _get_adapter(self, source):
-        class FP:
-            def __init__(self, t): self.trees = t
-        return PyslangAdapter(FP({'test.sv': source}))
 
     def test_interface_declaration(self):
         """[Golden] interface 声明

@@ -43,7 +43,7 @@ def create_var_nodes(
     为非端口变量/网表声明创建 SIGNAL TraceNode.
 
     Args:
-        adapter: PyslangAdapter 实例 (提供 get_variable_declarations 等)
+        adapter: SemanticAdapter 实例 (提供 get_variable_declarations 等)
         module: pyslang module symbol
         result: ExtractorResult 累积目标
         module_name: 完整 hierarchy path (e.g. "top.u_dut")
