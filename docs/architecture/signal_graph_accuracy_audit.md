@@ -59,7 +59,7 @@
 - **验证语料**: 3058 pytest (fixture 抽取自真实项目模式) + 真实设计抽查
   (aes 4834 节点 / cordic / serv / verilog-axi / minimal_3module; CVA6 core
   strict 编译 iter_140 已通; 2026-09-06 covergroup G1-G3 测试 47 增量,
-  全量 2048 passed)。语料非穷举 — 大设计仍可能暴露未见解析边界
+  全量回归见 docs/INDEX.md 基线)。语料非穷举 — 大设计仍可能暴露未见解析边界
   (iter_141 教训), 故失败必须可见 (warning/sentinel), "图不全"可检测。
 - **上游/环境依赖**: 正确性上限受 pyslang elaboration 影响; CVA6 完整建图
   在 8GB 机器 = 内存/原生 segfault 边界 (大内存可验); coralNPU ($clog2 宏) /

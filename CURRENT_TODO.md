@@ -22,22 +22,22 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线 (巩固优先) — 文档清理 ✅ 完成 (iter_171)**;
-下一项待命: ① 拆 `semantic_adapter.py` (3049 行, 全仓最大) ② 参数化残留 2 处
-`list(cls)` 统一 (`function_extractor._is_class_member` / `_member_class_name`)
-③ 缓存目录 `~/.svq/cache` 可配置 (沙箱/CI 假失败根因)。
+**当前任务 (方豆方向)**: **A 路线 (巩固优先)** — ✅ 文档清理 (iter_171) /
+✅ 缓存目录可配置 (iter_172); 下一项待命: ① 拆 `semantic_adapter.py`
+(3049 行, 全仓最大) ② 参数化残留 2 处 `list(cls)` 统一
+(`function_extractor._is_class_member` / `_member_class_name`)。
 
-**iter_171 (文档清理) 总结**: 归档 63 份过期/重复稿 → `docs/archive/2026-09-08-
-cleanup/` (git mv, 9 类原因入 README); `docs/INDEX.md` 重建为唯一入口 + 计数
-单一真相源 (原 INDEX/DOC_INDEX/LLM_INDEX 三合一); 新增 `tools/check_docs.py`
-4 项检查 (死链/归档越界/未登记/计数漂移) — 收敛后 37→0 / 18→0 / 36→0 / 33→0;
-AGENTS.md v1.5 新增"🧹 文档卫生"5 条规则; 顺带修 4 处既有错误引用 (含
-CONTROL_FLOW_DESIGN.md 从不存在、pyproject 注释引用已删文件、我自己的悬空引用)。
-[iter_171](docs/task_tree/iterations/iter_171_docs_cleanup.md)
+**iter_172 (缓存目录) 总结**: 缓存是优化 → 不可写不得致命。`resolve_cache_dir()`
+解析 显式 > `SVQ_CACHE_DIR` > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`;
+构造/写盘失败降级内存缓存 + warning (含修复提示, 不刷屏); `list_cache` 裸
+except 收窄 (AGENTS §2.5); 11 新测试 (含子进程 CLI 端到端)。
+**端到端验证: 沙箱内 cli+integration 从 19+10 假失败 → 739 passed / 0 failed**;
+全量 unit+regression 2059 passed。
+[iter_172](docs/task_tree/iterations/iter_172_cache_dir_config.md)
 
-**已闭环**: 参数化 class 专项 (iter_170) / 高级形态+GenericClassDef 缺口
-(iter_169) / 混合对抗 (iter_168) / 单域对抗 (iter_167) / G1-G4 (iter_162~166) /
-class 域 P1 (iter_164)。
+**已闭环**: 文档清理 (iter_171) / 参数化 class 专项 (iter_170) / 高级形态+
+GenericClassDef 缺口 (iter_169) / 混合对抗 (iter_168) / 单域对抗 (iter_167) /
+G1-G4 (iter_162~166) / class 域 P1 (iter_164)。
 
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组

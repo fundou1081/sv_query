@@ -250,11 +250,27 @@ $HOME/module.sv
 
 | 变量 | 用途 |
 |------|------|
+| `SVQ_CACHE_DIR` | **缓存目录** (默认 `~/.svq/cache`; 见下方说明) |
+| `XDG_CACHE_HOME` | 遵循 XDG 惯例时用作缓存根 (`$XDG_CACHE_HOME/svq`) |
 | `CVA6_REPO_DIR` | CVA6 仓库根目录 |
 | `HPDCACHE_DIR` | HPDCACHE 路径 |
 | `TARGET_CFG` | 配置包名 (e.g. `cv64a6_imafdc_sv39`) |
 | `VCS_HOME` | VCS 工具路径 |
 | `UVM_HOME` | UVM 库路径 |
+
+**缓存目录解析顺序** (iter_172):
+1. 显式参数 (`ASTCache(cache_dir=...)`)
+2. 环境变量 `SVQ_CACHE_DIR`
+3. `$XDG_CACHE_HOME/svq`
+4. `~/.svq/cache` (历史默认, 向后兼容)
+
+**只读 HOME / 容器 / CI 场景**: 缓存只是**加速手段**, 目录不可写时工具
+**自动降级为内存缓存并打 warning**, 分析结果与退出码不受影响。若想保留
+跨次运行的缓存, 显式指向可写目录:
+
+```bash
+export SVQ_CACHE_DIR=/tmp/svq-cache     # 或 CI 的 workspace 缓存目录
+```
 
 **详细文档**: 参考 `docs/FILELIST.md`
 
