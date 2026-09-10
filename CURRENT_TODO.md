@@ -25,15 +25,14 @@
 **当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 (执行中)**。方豆
 "用移出代替删除，这样可以恢复。去做吧" — 方案: [semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
 
-**进度**: ✅ Step 0 API 面冻结测试 (65 方法+签名, 4 测试) →
-✅ Step 1 legacy 等价矩阵 (4 文件逐条核对, 零覆盖损失) →
-✅ Step 2 `base.py` **移出** → `legacy/base_pyslang_adapter.py` (-2,341 行 src,
-8 处注解改 SemanticAdapter, 守卫测试扩展, legacy/README 记恢复步骤) →
-⏳ Step 3 拆 474 行 `_extract_signals_from_expr` → Step 4-9 六域 mixin →
-Step 10 死 API 清理。
-Gate: unit+regression 2,064 / cli+integration 739 / truth 164 / API 面一致 /
-check_docs ✅ (Step 2 全过)。
+**进度**: ✅ Step 0 API 冻结 (65 方法) → ✅ Step 1 legacy 等价矩阵 (零覆盖损失) →
+✅ Step 2 `base.py` 移出 → `legacy/base_pyslang_adapter.py` (-2,341 行) →
+✅ **Step 3 拆 474 行巨函数** → 70 行分派器 + 16 个 `_expr_*` 处理器 + 折叠 helper
+(**顺带修 1 latent UnboundLocalError**: 嵌套 def 在死分支内却被活路径调用) →
+⏳ Step 4-9 六域 mixin 搬迁 → Step 10 死 API 清理。
+Gate: unit+regression+truth **2,243** / cli+integration **739** / API 面一致 / docs ✅。
 [iter_174](docs/task_tree/iterations/iter_174_step2_legacy_layer_moved_out.md)
+[iter_175](docs/task_tree/iterations/iter_175_step3_expr_dispatch_split.md)
 
 **已闭环**: adapter 方案稿 (iter_173) / 缓存目录 (iter_172) / 文档清理 (iter_171) /
 参数化 class (iter_170) / G1-G4 covergroup (iter_162~166) 等。
