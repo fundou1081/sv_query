@@ -18,6 +18,7 @@ case27 generate-loop (gen_accum, 4 iterations) 的所有 signal 在 AST 里都�
 如果这个 test pass → D1 "信息完整" 的 API 能力 verified.
 如果这个 test fail → v11 semantic API 对 generate flatten 不再有效, 需要重新评估.
 """
+import gc
 import sys
 from pathlib import Path
 
@@ -67,6 +68,15 @@ EXPECTED_TOP_LEVEL_SIGNALS = {
 }
 
 
+# [iter_186] 本 helper 返回的符号 (top / body / 其子符号) 的**名字与 token 文本**
+# 是指向 SourceManager 持有的源文件 buffer 的 string_view。manager 一旦被回收,
+# 这些名字就读到释放内存里的字节 (随机 UnicodeDecodeError / 乱码) — iter_185 在
+# SVCompiler 里就是这个 bug (局部变量持有 manager)。这里把 manager 登记进模块级
+# 列表, 保证它活到本模块的符号全部用完 (与 SVCompiler 持有 self._source_manager
+# 是同一个不变量)。
+_LIVE_SOURCE_MANAGERS: list = []
+
+
 def _compile_case27():
     """编译 case27 + 返回 (root, top_instance, top_body)"""
     with open(CASE27_PATH) as f:
@@ -79,6 +89,7 @@ def _compile_case27():
     assert len(root.topInstances) == 1, f"Expected 1 top, got {len(root.topInstances)}"
     top = root.topInstances[0]
     assert top.name == "generate_loop", f"Expected top=generate_loop, got {top.name}"
+    _LIVE_SOURCE_MANAGERS.append(sm)  # [iter_186] buffer 必须比返回的符号活得久
     return root, top, top.body
 
 
@@ -152,6 +163,37 @@ class TestD1GenerateFlattenSignalSet:
         assert root is not None
         assert top.name == "generate_loop"
         assert type(body).__name__ == "InstanceBodySymbol"
+
+    def test_compile_helper_keeps_source_manager_alive(self):
+        """[iter_186] 回归锁 (确定性): helper 必须把 SourceManager 交给长生命周期
+        持有者 — 否则返回的符号名指向已释放 buffer (iter_185 同族 bug)。
+        """
+        before = len(_LIVE_SOURCE_MANAGERS)
+        _root, _top, _body = _compile_case27()
+        assert len(_LIVE_SOURCE_MANAGERS) == before + 1, (
+            "helper 未登记 SourceManager — 返回的符号名会随 buffer 释放而变垃圾"
+        )
+
+    def test_symbol_names_readable_after_gc_churn(self):
+        """[iter_186] 回归锁 (经验性): GC + 内存复用后符号名仍可读。
+
+        制造大量分配/释放以复用被释放的内存, 放大悬垂 string_view 的可见性
+        (修复前实测 top.name 直接 UnicodeDecodeError)。
+        """
+        _root, top, body = _compile_case27()
+        assert top.name == "generate_loop"
+
+        junk = [bytearray(256) for _ in range(200_000)]
+        junk2 = [str(i) for i in range(200_000)]
+        del junk, junk2
+        gc.collect()
+
+        assert top.name == "generate_loop", f"churn 后 top 名坏掉: {top.name!r}"
+        names = _walk_signals(body)
+        assert names, "churn 后 body 里读不到任何 signal"
+        assert all(n == "" or (n.isprintable() and n.isascii()) for n in names), (
+            f"churn 后出现乱码节点名: {sorted(names)[:10]}"
+        )
 
     def test_top_level_signals_complete(self):
         """D1 信息完整 (part 1): 顶层 5 个 signal 全部可见"""

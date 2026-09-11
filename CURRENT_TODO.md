@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~185)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~186)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -38,9 +38,12 @@ top 名 `UnicodeDecodeError`; 保留引用 → 正常。
 且 3/3 完全一致** / clk fanout →**445** / flakiness `--runs 3` **stdev=0.0** /
 pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放宽的断言
 已收紧 (nodes≥4,000 / IM≥400 / 深度≥12 / clk≥300)。
-unit+regression **2111 passed + 35 subtests** / truth+cli+integration
-**814 passed**。
+unit+regression **2113 passed + 35 subtests** / 全量 canonical
+`sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_186 (同族隐患排查 — 方豆 "继续")**: 按 iter_185 建议做 7 类模式全仓扫描 → 又修 2 处真实/潜在隐患: ① `sim/tests/test_d1_generate_flatten_signal_set.py::_compile_case27` 把 SourceManager 丢在函数帧里却返回符号 → 隔离实测 `top.name` **3/3 UnicodeDecodeError** (套件"8 passed"只是内存未被覆写的运气; 即 iter_158 记的 "symbol 对象 str 垃圾" 来源) → 模块级 `_LIVE_SOURCE_MANAGERS` 登记 manager ② `uvm_testbench_extractor._class_defs` 存 syntax node 逃出帧 → 显式持有 manager+compilation 至遍历结束, 并更正 "SVCompiler 污染 token.name" 错误注释 ③ `PYSLLANG_BINDINGS_PATH` 死路径 (目录不存在却无条件 插 sys.path) → 改为存在性判定。**新增 4 个回归锁并做红/绿双向验证** (去掉修复全红: d1 版实测 top.name 变成一片空格)。自伤如实记录: 红/绿验证时用 `git checkout --` 抹掉了该文件未提交的改动, 已重做并改用 /tmp 自备份。
+[iter_186](docs/task_tree/iterations/iter_186_ownership_hazard_sweep.md)
 
 **iter_184 (getter 残余点 + 部分 elaboration 记录 — 归因已被 iter_185 更正)**:
 `graph_builder.py:822` / `bit_select_handler.py:330` 两处 getter 守护; 记的
