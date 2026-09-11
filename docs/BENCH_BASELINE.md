@@ -39,13 +39,42 @@ python3 tools/benchmark/run_benchmark.py \
 L2 nodes ≥1,000 / instantiated_modules ≥100 / 最大深度 ≥10;
 L3 clk fanout ≥50。
 
+## ⚠️ 跨次波动 (2026-09-08 iter_181 实测, 未解决)
+
+同一条命令多次运行, wrapper 基准指标**不稳定**:
+
+| 次 | L1 实例 | L2 nodes | L2 IM | clk fanout |
+|---|---|---|---|---|
+| 1 | 2 | 2,814 | 271 | 187 |
+| 2 | 2 | 1,945 | 207 | 88 |
+| 3 | 2 | 1,778 | — | — |
+| 4 | 2 | 3,057 | — | — |
+| (runs=2 的一次) | **0** | 3,915 | 54 | 0 |
+| (某次) | — | — | — | **无输出** (子进程崩溃) |
+
+**根因 (定位到族)**: `filelist` 中的 axi 测试文件含**非 UTF-8 identifier**,
+pyslang 属性 getter (`obj.name`) **取值本身抛 `UnicodeDecodeError`** —
+命中点随 elaboration 顺序/内存压力变化 → 有的次崩溃 (无输出)、有的次
+部分 elaboration (节点数偏少)。已修 2 点 (`native_adapter` walk 的两处
+`top.name` → `safe_attr`), 但同类点仍存在 (实测另见 `toplevel[0].name`)。
+
+**关键区分 (教训)**: 这类崩溃必须用 **`safe_attr(obj, "name", default)`**
+(getter 级防护);`safe_str(...)` 救不了 — 实参求值即炸。
+
+**系统化修复 (backlog)**: 对 `src/` 中所有 pyslang 符号的 `.name`/`.type`
+等属性读取做一次 AST 扫描 + `safe_attr` 包装 (iter_141 同类, 但作用于
+**属性 getter** 而非 `str()` 转换)。
+
+**当前对策**: wrapper 结构基准断言取**结构性下限** (nodes ≥800 / IM ≥80 /
+clk ≥30 / 深度 ≥10) — 仍能可靠区分"深结构 vs 空壳退化 (168 nodes / clk 0)",
+但不作为精确基准; 精确基准需等上述系统化修复。
+
 ## 已知限制 (登记, 非静默)
 
 1. **flakiness 阶段对该 wrapper 失败**: flakiness 按整份 filelist 编译 (不带
    `top_modules`) → free-floating type-param 模块报
    `CouldNotResolveHierarchicalPath` (iter_145 同类) → rc≠0。结构基准因此用
    `--skip-flakiness` (结构 ≠ 抖动基准)。
-2. **`--runs > 1` 复跑结果退化 (新发现, 待专项)**: 同命令 `runs=1` → 2 实例 /
-   2,814 nodes / clk 187;`runs=2` → 0 实例 / 3,915 nodes / clk 0。疑同进程内
-   二次 build 状态泄漏 (与 iter_164 P2 观察同类但此处可复现)。**benchmark 复跑
-   稳定性 = 独立 backlog 项**。
+2. **`--runs > 1` 复跑**: iter_181 已修 flakiness 子进程缺 `top_modules` 的
+   一致性问题 (与主测量对齐); 残余波动见上节 (根因 = 非 utf8 identifier 属性
+   getter 崩溃族), 已登记系统化修复 backlog。
