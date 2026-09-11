@@ -165,3 +165,57 @@ class TestParamExtends(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# ── iter_178: 参数化 class 的成员解析 helper (_is_class_member /
+#    _member_class_name 曾直接 list(cls) → GenericClassDef 不可迭代 → 静默 False)
+P5_INNER_MEMBER_SRC = '''class inner #(int W = 8);
+    bit [W-1:0] val;
+    function void set(input bit [W-1:0] v);
+      val = v;
+    endfunction
+  endclass
+  class packet #(int W = 8);
+    inner #(W) i;
+    function new(); i = new(); endfunction
+    function void drive(input bit [W-1:0] v);
+      i.set(v);
+    endfunction
+  endclass
+  module top(input bit clk, input bit [7:0] din);
+    packet #(8) p = new();
+    always_ff @(posedge clk) p.drive(din);
+  endmodule'''
+
+P6_THIS_MEMBER_RHS_SRC = '''class packet #(int W = 8);
+    bit [W-1:0] data;
+    bit [W-1:0] tmp;
+    function void helper(input bit [W-1:0] v);
+      tmp = v;
+    endfunction
+    function void set(input bit [W-1:0] d);
+      helper(d);
+      data = tmp;
+    endfunction
+  endclass
+  module top(input bit clk, input bit [7:0] din);
+    packet #(8) p = new();
+    always_ff @(posedge clk) p.set(din);
+  endmodule'''
+
+
+class TestParameterizedMemberHelpers(unittest.TestCase):
+    """iter_178: 参数化 class 的成员解析 (原 _is_class_member/_member_class_name
+    直接 list(cls) → GenericClassDef 不可迭代 → 静默 False/None)"""
+
+    def test_inner_class_member_chain(self):
+        """E13 形态 + 参数化: 成员 i (class 类型) → i.set(v) 展开到 i.val"""
+        tr = _tracer(P5_INNER_MEMBER_SRC)
+        ids = {r.id for r in tr.trace_fanin('top.p.i.val')}
+        self.assertIn('top.din', ids, f"参数化成员实例链应贯通, 实际 {ids}")
+
+    def test_this_member_rhs(self):
+        """E5 形态 + 参数化: data = tmp (本实例成员) → tmp 由 helper 驱动"""
+        tr = _tracer(P6_THIS_MEMBER_RHS_SRC)
+        ids = {r.id for r in tr.trace_fanin('top.p.data')}
+        self.assertIn('top.din', ids, f"参数化 this 成员链应贯通, 实际 {ids}")

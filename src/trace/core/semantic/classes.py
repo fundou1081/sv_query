@@ -158,6 +158,24 @@ class ClassesMixin:
                 bc = None
             if bc is not None:
                 record_spec(bc)
+            # [iter_178] 下钻特化成员里的嵌套 class 成员 (参数化 class 内嵌另一个
+            # 参数化 class: packet#(W) 的成员 i 类型 inner#(W)) — 否则内层特化
+            # 不进入映射 → 内层成员节点/方法链缺失
+            for mem in kids:
+                try:
+                    mk = str(getattr(mem, "kind", ""))
+                except Exception:
+                    continue
+                if "Variable" not in mk and "ClassProperty" not in mk:
+                    continue
+                mt = getattr(mem, "type", None)
+                if mt is None:
+                    continue
+                try:
+                    if "ClassType" in str(getattr(mt, "kind", "")):
+                        record_spec(mt)
+                except Exception:
+                    continue
 
         def walk(node):
             if node is None:
