@@ -168,6 +168,13 @@ def extract_module(
     """[PR1] 主入口: 从 semantic AST 提取 (备用, graph 失败时用)."""
     target_mod = _find_module(adapter, target_module)
     if target_mod is None:
+        # [iter_185] 不静默: 目标模块不在语义树中 = 调用方拿不到任何实例, 必须
+        # 可见。此前静默返回空 → benchmark 只报 instance_count=0, 掩盖了
+        # SourceManager 生命周期 bug 造成的乱码名/"找不到模块" (iter_185)。
+        logger.warning(
+            "extract_module: 目标模块 '%s' 不在语义树中 (语义树模块数 %d) — 返回空提取",
+            target_module, len(adapter.get_modules()),
+        )
         return ModuleExtraction(top_module=target_module)
 
     result = ModuleExtraction(top_module=target_module)

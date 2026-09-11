@@ -1,5 +1,12 @@
 # Iteration 182: pyslang 属性读取 safe_attr 系统化收敛 (热路径 70 点)
 
+> ⚠️ **iter_185 更正 (2026-09-08)**: 本记录里 "语料含非 UTF-8
+> identifier / 内存压力导致部分 elaboration" 的归因 **已被证伪**。
+> 真因 = `SVCompiler` 的 `SourceManager` 生命周期 (局部变量被 GC →
+> 源文件 buffer 释放 → 符号名是指向释放内存的 `string_view`)。
+> 见 `iter_185_slang_sourcemanager_lifetime.md`。本记录作为时间点
+> 快照保留, 不修改当时观测数据。
+
 **Metadata**:
 - **Iteration #**: 182
 - **Task Tree Level**: L1

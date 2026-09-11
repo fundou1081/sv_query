@@ -260,13 +260,20 @@ class TestBenchmarkWrapperDepth:
     clk fanout 0), 原测试结构断言只能弱化。本类用**真实 Cfg** 的 wrapper
     (`sim/tests/fixtures/bench_wrappers/pr5_wrap.sv`) 恢复深结构断言。
 
-    基准 (2026-09-08 实测, depth=4):
+    基准 (2026-09-08 iter_185 实测, depth=4, 3 次同一值):
       L1  instance_count = 2  (pr5_wrap.i_xbar → axi_xbar_intf;
                                pr5_wrap.i_xbar.i_xbar → axi_xbar)
-      L2  nodes = 2,814 / edges = 3,114 / instantiated_modules = 271
-          depth_distribution 最深 11 (depth 8 处 785 节点)
-      L3  pr5_wrap.clk_i fanout = 187  ← 空壳时 0 (iter_145 TODO 链断言恢复)
+      L2  nodes = 4,946 / edges = 5,808 / instantiated_modules = 516
+          depth_distribution 最深 14; flakiness 3 次 stdev = 0.0
+      L3  pr5_wrap.clk_i fanout = 445  ← 空壳 168 nodes 且 clk=2
       L4  edge_count = 0 (wrapper 顶层只暴露 clk/rst, 无 AXI 端口 — 预期)
+
+    ⚠️ iter_185 更正: iter_180/181/184 记的 "非 UTF-8 identifier → 部分
+    elaboration / 跨次波动 (nodes 2,814→1,778~3,408, clk 187→0)" **不是**
+    语料问题 — 真因是 `SVCompiler` 把 `SourceManager` 存成局部变量, parse
+    循环结束后被 GC → 源文件 buffer 释放 → 符号名/ token 是指向释放内存的
+    string_view。修好 manager 生命周期后同一命令 3 次完全一致 (见
+    docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)。
     """
 
     @classmethod
@@ -274,19 +281,11 @@ class TestBenchmarkWrapperDepth:
         """pytest xunit-style 钩子 (纯 pytest 类不认 unittest 的 setUpClass)"""
         if not WRAPPER.exists():
             pytest.skip(f"wrapper fixture 缺失: {WRAPPER}")
-        # runs=1: 基准锁定单次结果 — 实测 runs>1 复跑在同一进程内结果退化
-        # (L1 实例 2→0 / L2 节点 2814→3915 / clk fanout 187→0), 已登记
-        # iter_180 发现 (benchmark 复跑不稳定), 待专项修; 本基准用单次值
-        # skip_flakiness: flakiness 阶段按整份 filelist 编译 (无 top_modules)
-        # → free-floating type-param 模块报 CouldNotResolveHierarchicalPath
-        # (iter_145 同类), rc≠0 会让结构基准被误 skip。结构基准只需单次结构数据。
+        # runs=1 + skip_flakiness: 结构基准只需单次结构数据 (flakiness 阶段
+        # 单独由 TestBenchmarkStability 测)。iter_185 起复跑退化已消失。
         cls.data = _try_benchmark(WRAP_TARGET, depth=4, runs=1, attempts=3)
         if cls.data is None:
-            pytest.skip(
-                "wrapper benchmark 3 次均失败 — 已知根因: 该语料含非 utf8 "
-                "identifier, pyslang 属性 getter 间歇性 UnicodeDecodeError "
-                "(iter_181 定位; 系统化 safe_attr 修复见 docs/BENCH_BASELINE.md)"
-            )
+            pytest.skip("wrapper benchmark 3 次均失败 (rc≠0 或无输出)")
 
     def test_l1_instance_chain(self):
         l1 = self.data["L1_module_extraction"]
@@ -296,25 +295,27 @@ class TestBenchmarkWrapperDepth:
         assert "axi_xbar" in defs, f"wrapper 应展开到 axi_xbar (深链), got {defs}"
 
     def test_l2_deep_structure(self):
-        """深结构下限 (抗跨次波动).
+        """深结构断言 (iter_185 起确定性, 阈值回到真实值的结构性下限)。
 
-        [iter_181 实测] 同命令多次运行 nodes 在 **1,778 ~ 3,057** 之间波动
-        (非 utf8 identifier 属性 getter 崩溃 + 内存压力 → elaboration 完整度
-        不同), 故断言取**结构性下限**: 空壳 = 168 nodes, wrapper 波动下限
-        ~1,778 → 阈值 800 仍能可靠区分"深结构 vs 空壳退化"。
+        [iter_185 实测 3/3 同一值] nodes = 4,946 / IM = 516 / 最深 14;
+        空壳 (默认 Cfg) = 168 nodes / IM = 2 / clk = 2。
+        断言留 ~20% 余量以容忍 pyslang 版本差异, 但仍远高于空壳。
         """
         l2 = self.data["L2_graph_topology"]
-        assert l2["nodes"] >= 800, f"深结构节点数应 >= 800 (空壳 168), got {l2['nodes']}"
-        assert l2["instantiated_modules"] >= 80, f"实例模块应 >= 80, got {l2}"
+        assert l2["nodes"] >= 4000, f"深结构节点数应 >= 4000 (空壳 168), got {l2['nodes']}"
+        assert l2["instantiated_modules"] >= 400, f"实例模块应 >= 400, got {l2}"
         depths = [int(k) for k in l2["depth_distribution"]]
-        assert max(depths) >= 10, f"层次深度应 >= 10, got {max(depths)}"
+        assert max(depths) >= 12, f"层次深度应 >= 12, got {max(depths)}"
 
     def test_l3_clock_fanout_restored(self):
-        """clk fanout: 空壳 0 → wrapper 深结构下 >= 50 (恢复链断言)"""
+        """clk fanout: 空壳 2 → wrapper 深结构下 445 (恢复链断言)。
+
+        [iter_180] 原始断言 (fanout >= 50) 曾因 "跨次 0~137 波动" 被放宽为
+        "深结构 OR clk 恢复"; iter_185 定位真因 (SourceManager 生命周期) 后
+        波动消失, 断言收回到真实值下限。
+        """
         l3 = self.data["L3_signal_traces"]
         clk = l3.get(f"{WRAP_TARGET}.clk_i")
         assert clk is not None, f"wrapper clk_i 未采集, got {list(l3)[:5]}"
-        # [iter_181 实测] clk fanout 跨次 88 ~ 205; 空壳 = 0 → 阈值 30 可靠区分
-        assert clk.get("fanout", 0) >= 30, (
-            f"深结构下 clk fanout 应 >= 30 (空壳时 0), got {clk}"
-        )
+        fanout = clk.get("fanout", 0)
+        assert fanout >= 300, f"clk fanout 应 >= 300 (空壳 2, iter_185 实测 445), got {fanout}"

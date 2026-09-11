@@ -75,7 +75,7 @@
 | 4 | gate G-2/G-3: drive strength/delay 未进图, UDP table 可视化缺 | tasks/L2_gate_primitive_support.md。**🕐 方豆拍板暂缓 (2026-09-05)**: 增强型 — 对"谁驱动"查询**无影响** (驱动答案已正确), 属门级语义完整化; 触发条件: 需要门级 delay/strength 分析 (timing 类) 或 UDP 内部逻辑可视化时再启动 |
 | ~~5~~ | ~~slang generate-entry 合并枚举 (iter_119 观察)~~ — **✅ 闭环 (iter_136)**: 复现证明观察真身 = input 端口位宽不匹配时 Conversion 壳未剥 → 连接静默丢 (y 侧 iter_120 已修 / a 侧 iter_136 修), 非 slang 合并 | — |
 | 6 | iter_121 SVA 补丁 = syntax 症状修, semantic 消歧重构未做 | 决策文档 D3。**🕐 方豆拍板暂缓 (2026-09-05)**: 架构整洁型 — 无用户可见收益, 动 SVA 83 测试风险高; 触发条件: SVA 提取再次出现 syntax 症状修堆叠 / 语义消歧新需求时再启动 |
-| 7 | CVA6/coralNPU/vortex strict 编译受阻 — 图建不出来 | ARCHITECTURE_TODOLIST §#7。**iter_140/141**: CVA6 core strict **编译已通** (剔 cvxif_example 未实例化 type-param 示例 + compiler override-orphan 修复); 解码健壮性批量修复 ~15 点 (非 utf8 identifier 崩溃 → warning); 完整建图 = **8GB 内存/原生 segfault 环境边界** (iter_059 先例, 大内存机器可验)。coralNPU ($clog2 宏) / vortex (无编译入口) 未动 |
+| 7 | CVA6/coralNPU/vortex strict 编译受阻 — 图建不出来 | ARCHITECTURE_TODOLIST §#7。**iter_140/141**: CVA6 core strict **编译已通** (剔 cvxif_example 未实例化 type-param 示例 + compiler override-orphan 修复); 解码健壮性批量修复 ~15 点 (当时归因 "非 utf8 identifier", **iter_185 更正**: 真因 = `SourceManager` 生命周期 → 符号名悬垂 `string_view`, 已修, 见 `../task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`); 完整建图 = **8GB 内存/原生 segfault 环境边界** (iter_059 先例, 大内存机器可验)。coralNPU ($clog2 宏) / vortex (无编译入口) 未动 |
 
 ---
 
