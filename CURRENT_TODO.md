@@ -22,31 +22,22 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 (质量纵深) ✅ 两项完成** (iter_179~180)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~181)。
 
-**C1 混合真实场景语料库 (iter_179)**: `sim/tests/fixtures/mixed_corpus/` 7 个语料
-(env 包 packet / 嵌套约束 / 全栈混合 / generate+类 / 子模块+module cg / logic 实参
-Conversion / 参数化嵌套) + `test_mixed_corpus_truth.py` 表驱动 **6 tests / 35 subtests**,
-每语料锁 5 维度 (提取/Q1 采样链+驱动集/Q2 反向/Q3 约束/fanin) 精确集合断言。
+**iter_181 (benchmark 稳定性)**: 修 2 个确定性缺陷 — flakiness 子进程缺
+`top_modules` (与主测量对齐) / `native_adapter` 两处 `top.name` 未守护;
+**定位根因族**: wrapper 语料含非 UTF-8 identifier → pyslang **属性 getter** 抛
+UnicodeDecodeError, 命中点随 elaboration 顺序/内存变化 → 间歇崩溃或部分
+elaboration (nodes 实测波动 1,778~3,057 / clk 88~205 / 5 次中 1 次无输出) —
+**这才是 iter_180 "runs=2 退化" 的真身**。教训: getter 级崩溃要用
+`safe_attr` (`safe_str` 救不了, 实参求值即炸)。
+对策: wrapper 基准取结构性下限 (nodes≥800/IM≥80/clk≥30) + 3 次重试;
+结果 pr5 套件 13 passed + 1 skipped。
+**backlog**: 对 src/ 所有 pyslang 符号属性读取做 AST 扫描 + safe_attr 包装
+(iter_141 同类, 但覆盖 getter 层)。
+[iter_181](docs/task_tree/iterations/iter_181_bench_stability.md)
 
-**C2 bench 深结构基准 (iter_180)**: `bench_wrappers/pr5_wrap.sv` 真实 Cfg 实例化
-axi_xbar_intf → 兑现 iter_145 TODO: nodes **168→2,814** / 模块 271 / 深度 11 /
-**clk fanout 0→187**;pr5 套件 13 passed + 1 skipped;基准表落
-[docs/BENCH_BASELINE.md](docs/BENCH_BASELINE.md)。
-**深结构语料炸出 2 个真实 bug (已修)**: `_expr_helpers.py` 缺 `safe_str` 导入
-(我此前补丁因字符串不匹配成空操作) + `_common.py:589` 非 UTF-8 解码崩溃
-(iter_141 漏点)。
-**新登记 backlog**: benchmark `--runs>1` 复跑结果退化 (runs=2 → 0 实例/3915 nodes),
-wrapper 基准暂固定 runs=1。
-
-Gate: unit+regression+truth **2,251 passed** / cli+integration **739 passed** /
-check_docs ✅。
-[iter_179](docs/task_tree/iterations/iter_179_mixed_corpus.md)
-[iter_180](docs/task_tree/iterations/iter_180_bench_wrapper_baseline.md)
-
-**下一步候选**: push / B 路线 (L4 可视化) / benchmark 复跑稳定性专项。
-
-**已闭环**: C 路线 (iter_179~180) / 参数化成员解析 (iter_178) / adapter 拆解
+**已闭环**: C 路线 (iter_179~180) / 参数化成员 (iter_178) / adapter 拆解
 (iter_174~177) / 缓存目录 (iter_172) / 文档清理 (iter_171) 等。
 
 

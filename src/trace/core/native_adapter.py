@@ -15,7 +15,7 @@ native_adapter.py — pyslang native API for instance extraction.
 
 import pyslang
 
-from .._safe import safe_str  # noqa: E402  (GAP-7: 单一规范实现, 过滤控制字符)
+from .._safe import safe_attr, safe_str  # noqa: E402  (GAP-7: 单一规范实现)
 
 # ----------------------------------------------------------------------------
 # Helpers
@@ -95,14 +95,16 @@ def get_module_instances_native(
     if target_module is None:
         # [GAP-6 fix] 与递归一致: walk 所有 top instances (不过滤、不短路)
         for top in root.topInstances:
-            _walk_instance(top, top.name, wrappers, root, None, is_top=True)
+            # [iter_181] safe_attr: 非 utf8 identifier 下 **属性 getter 本身**
+            # 抛 UnicodeDecodeError (safe_str 救不了 — 实参求值即炸)
+            _walk_instance(top, safe_str(safe_attr(top, "name", "")), wrappers, root, None, is_top=True)
         return wrappers
 
     # 指定 target: 找同名 top, 找不到则 fallback walk 所有 (与递归一致)
     top_to_walk = _find_target_top(root, target_module)
     if top_to_walk is None:
         for top in root.topInstances:
-            _walk_instance(top, target_module or top.name, wrappers, root, target_module, is_top=True)
+            _walk_instance(top, target_module or safe_str(safe_attr(top, "name", "")), wrappers, root, target_module, is_top=True)
     else:
         _walk_instance(top_to_walk, target_module, wrappers, root, target_module, is_top=True)
 

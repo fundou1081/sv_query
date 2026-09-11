@@ -172,7 +172,8 @@ def collect_l4(tracer, target: str, depth: int) -> dict:
 
 
 def measure_flakiness(
-    filelist: str = None, files: list = None, include_dirs: list = None, strict: bool = True, runs: int = 5
+    filelist: str = None, files: list = None, include_dirs: list = None, strict: bool = True,
+    runs: int = 5, top_modules: list = None,
 ) -> dict:
     """[PR5+PR7] 跑 N 次 build_graph, 算总节点数变异."""
     counts = []
@@ -198,6 +199,7 @@ from trace.core.graph.models import NodeKind
     include_dirs={include_dirs!r},
     strict={strict},
     log_level='ERROR',
+    top_modules={top_modules!r},
 )
 g = t.build_graph()
 n_im = sum(1 for nid in g.nodes() if (n := g.get_node(nid)) and n.kind == NodeKind.INSTANTIATED_MODULE)
@@ -338,6 +340,10 @@ def main():
             include_dirs=include_dirs or [],
             strict=args.strict,
             runs=args.runs,
+            # [iter_181] 与主测量一致: 只 elaborate 目标树; 缺此参数时
+            # free-floating type-param 模块 (axi_demux 等) 报
+            # CouldNotResolveHierarchicalPath → 全部 run 失败 → rc≠0
+            top_modules=[args.target],
         )
         if "error" not in flakiness:
             print(f"  Node range: {flakiness['node_min']}-{flakiness['node_max']} (stdev={flakiness['node_stdev']:.1f})")
