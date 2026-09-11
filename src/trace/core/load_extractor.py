@@ -96,7 +96,8 @@ class LoadExtractor:
                                 modport_name = None
                                 if hasattr(h, "modport") and hasattr(h.modport, "member"):
                                     member_val = h.modport.member
-                                    modport_name = member_val.name if hasattr(member_val, "name") else str(member_val)
+                                    # [iter_183] safe_attr (hasattr 不吞 UnicodeDecodeError)
+                                modport_name = safe_str(safe_attr(member_val, "name", "")) or str(member_val)
                                 if port_name and interface_name:
                                     interface_ports[port_name.strip()] = (interface_name, modport_name)
                             elif hasattr(h, "kind") and "VariablePortHeader" in str(h.kind):

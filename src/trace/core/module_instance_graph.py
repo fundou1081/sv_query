@@ -20,7 +20,7 @@ from typing import Any
 
 import networkx as nx
 
-from .._safe import _safe_attr, _safe_str, safe_attr
+from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
 
 logger = logging.getLogger(__name__)
 
@@ -179,8 +179,10 @@ class ModuleInstanceGraph:
 
                                 # 获取端口位宽
                                 width = (0, 0)
-                                if hasattr(port_sym, "type") and port_sym.type:
-                                    port_type = port_sym.type
+                                # [iter_183] safe_attr: .type getter 在非 utf8
+                                # identifier 下抛 (hasattr 也不安全 — 只吞 AttributeError)
+                                port_type = safe_attr(port_sym, "type", None)
+                                if port_type:
                                     # 尝试从 fixedRange 获取位宽
                                     if hasattr(port_type, "fixedRange") and port_type.fixedRange:
                                         fr = port_type.fixedRange

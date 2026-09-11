@@ -38,6 +38,12 @@ elaboration (nodes 实测波动 1,778~3,057 / clk 88~205 / 5 次中 1 次无输�
 安全默认值: `.name`→""、`.type`→None、`.body`→[]); 剩余 56 点 (可视化/CLI 等
 非抽取路径) 登记。自伤如实记录: 导入深度写错 → 7 模块 ImportError, 已修。
 [iter_182](docs/task_tree/iterations/iter_182_safe_attr_sweep.md)
+**iter_183 (续)**: scanner 跳过 Store 上下文 (74→70); 逐点定性: **~60 处是我们
+自己 dataclass 的误报**, 真实点仅 **5 处** (port_sym.type ×2 / _symbol.name /
+member_val.name ×2 / node.body) 已修。**关键发现**: `hasattr(x,"name")` 在 pyslang
+上**不安全** (只吞 AttributeError, UnicodeDecodeError 穿透) → 属性探测应用
+`safe_attr(x,"name",None) is not None`。
+[iter_183](docs/task_tree/iterations/iter_183_safe_attr_genuine_sites.md)
 [iter_181](docs/task_tree/iterations/iter_181_bench_stability.md)
 
 **已闭环**: C 路线 (iter_179~180) / 参数化成员 (iter_178) / adapter 拆解
