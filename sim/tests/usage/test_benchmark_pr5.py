@@ -35,33 +35,13 @@ TARGET = "axi_xbar_intf"
 WRAPPER = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "bench_wrappers" / "pr5_wrap.sv"
 WRAP_TARGET = "pr5_wrap"
 
-_AXI = Path(os.path.expanduser("~/my_dv_proj/openrtl/axi"))
-_CC = Path(os.path.expanduser("~/my_dv_proj/openrtl/common_cells"))
+# [iter_187] 输入构建统一走 tools/benchmark/inputs.py (与 regen_baselines.py
+# 同一份逻辑) — 过去测试自带 _ensure_filelist + /tmp 手工文件, 导致 baseline
+# 与测试可能吃不同输入、baseline 无法复现。
+sys.path.insert(0, str(PROJECT_ROOT / "tools" / "benchmark"))
+import inputs  # noqa: E402
 
-
-def _ensure_filelist() -> None:
-    """[iter_145] 从现成 axi + common_cells 源码生成 benchmark filelist.
-
-    含 deprecated/ (旧版模块名 stream_register/spill_register/rr_arb_tree,
-    axi 现版仍引用)。源缺失 (openrtl 未 clone) 时静默跳过 → 测试照旧 skip。
-    """
-    if Path(FILENAME_LIST).exists():
-        return
-    if not (_AXI / "src").exists() or not (_CC / "src").exists():
-        return
-    lines = [f"+incdir+{_AXI}/include/", f"+incdir+{_CC}/include/"]
-    lines += sorted(str(p) for p in (_AXI / "src").glob("*.sv"))
-    lines += sorted(str(p) for p in (_CC / "src").glob("*.sv")
-                    if not p.name.endswith("_tb.sv"))
-    dep = _CC / "src" / "deprecated"
-    if dep.exists():
-        lines += sorted(str(p) for p in dep.glob("*.sv"))
-    # [iter_180] 深结构基准 wrapper (真实 Cfg 实例化 axi_xbar_intf)
-    lines.append(str(WRAPPER))
-    Path(FILENAME_LIST).write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-_ensure_filelist()
+FILENAME_LIST = inputs.ensure_pr5_wrap_filelist() or FILENAME_LIST
 
 
 def _run_benchmark(runs: int = 1, skip_flakiness: bool = False, target: str = TARGET, depth: int = 4, output: Path = None) -> dict:
@@ -226,11 +206,12 @@ class TestMarkdownOutput:
 
 def _try_benchmark(target: str, depth: int = 4, runs: int = 1,
                    skip_flakiness: bool = True, attempts: int = 3):
-    """[iter_181] 容错版 benchmark 调用: 失败返回 None (不 skip).
+    """容错版 benchmark 调用: 失败返回 None (不 skip)。
 
-    背景: 该 wrapper 语料含非 utf8 identifier → pyslang 属性 getter 崩溃
-    **间歇性**发生 (实测 5 次中 1 次子进程无输出)。结构基准因此重试 attempts
-    次, 取首次成功结果; 全部失败才 skip (并在 skip 信息里带已知根因)。
+    [iter_181 加 / iter_185 更正归因] 重试是为了抗**环境性**失败 (子进程 OOM /
+    超时), 不是抗语料解码问题 —— 原注释归因 "非 utf8 identifier 间歇崩溃" 已被
+    iter_185 证伪 (真因 = SourceManager 生命周期, 已修); 修复后同一命令 3/3
+    完全一致。保留 attempts 作为环境兜底。
     """
     out = Path("/tmp/bench_pr5_wrap.json")
     for i in range(attempts):

@@ -25,6 +25,18 @@ BASELINE = PROJECT_ROOT / "tools" / "benchmark" / "baselines" / "picorv32.json"
 PICO_FILE = "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"
 
 
+def _baseline() -> dict:
+    """读 baseline JSON (唯一真相源: tools/benchmark/baselines/picorv32.json)。
+
+    [iter_187] baseline 由 `tools/benchmark/regen_baselines.py` 生成, 与当前行为
+    必须一致 — 过去的 baseline 采集于 iter_145 (top_modules) 之前, nodes/IM 被
+    free-floating elaboration 虚高 (708/2 → 实测 438/0), 会让 check_regression
+    报假 regression。本文件的测试现在**直接对比活体运行与 baseline**。
+    """
+    with open(BASELINE) as f:
+        return json.load(f)
+
+
 def _run_bench(target: str = "picorv32", depth: int = 2, output: Path = None, **kwargs) -> dict:
     """Run benchmark with --files flag."""
     if output is None:
@@ -101,11 +113,19 @@ class TestPicorv32Benchmark:
         assert data is not None
         assert data["metadata"]["target"] == "picorv32"
 
-    def test_picorv32_l2_node_count_above_400(self):
-        """picorv32.v (3049 行) 应该有 >= 400 nodes."""
+    def test_picorv32_l2_node_count_matches_baseline(self):
+        """[iter_187] 活体 nodes 必须与 baseline 完全一致 (iter_185 后确定性)。
+
+        原先只能断言 ">= 400" (当时数值跨次漂移 1,076~3,408 类症状的同一时期);
+        真因修复后实测 3/3 同一值, 故收紧为等值比较 — baseline 一漂就有测试红。
+        """
         data = _run_bench()
         l2 = data["L2_graph_topology"]
-        assert l2["nodes"] >= 400, f"expected >= 400 nodes, got {l2['nodes']}"
+        want = _baseline()["L2_graph_topology"]["nodes"]
+        assert l2["nodes"] == want, (
+            f"活体 nodes={l2['nodes']} != baseline {want} — "
+            f"要么行为变了 (需 regen_baselines.py + 评审), 要么 baseline 过时"
+        )
 
     def test_picorv32_l2_im_zero_subinstances(self):
         """[iter_145] picorv32 自包含 (无子模块实例, IM=0) — top_modules 编译后
@@ -169,17 +189,24 @@ class TestPicorv32Baseline:
             data = json.load(f)
         assert data["metadata"]["input_type"] == "files"
 
-    def test_baseline_l2_values_reasonable(self):
-        """baseline L2 数据在合理范围."""
+    def test_baseline_matches_current_behavior(self):
+        """[iter_187] baseline 必须等于活体行为 (防 baseline 悄悄过时)。
+
+        baseline 曾长期停在 iter_145 之前的虚高值 (nodes 708 / IM 2, 实测 438/0),
+        而旧断言 `600 <= nodes <= 800` 只检查**文件本身**, 于是"过时 baseline"
+        一路绿灯 → 用户侧 regression check 报假 regression。现在 baseline 与活体
+        双向锁死: 行为变了必须用 regen_baselines.py 重生成并评审。
+        """
         if not BASELINE.exists():
             pytest.skip("baseline not found")
-        with open(BASELINE) as f:
-            data = json.load(f)
-        l2 = data["L2_graph_topology"]
-        # [iter_082 fix] native 迁移后 (GAP-3, iter_059) picorv32 nodes 527→708
-        # (图更完整, +34% 是改善非 regression) — 断言范围更新为 600-800.
-        assert 600 <= l2["nodes"] <= 800, f"nodes {l2['nodes']} outside 600-800"
-        assert 2 <= l2["instantiated_modules"] <= 10, f"IM {l2['instantiated_modules']} outside 2-10"
+        live = _run_bench()["L2_graph_topology"]
+        base = _baseline()["L2_graph_topology"]
+        for key in ("nodes", "edges", "instantiated_modules"):
+            assert live[key] == base[key], (
+                f"L2.{key}: 活体={live[key]} != baseline={base[key]} — "
+                f"baseline 过时或行为变更 (regen_baselines.py)"
+            )
+        assert base["instantiated_modules"] == 0, "picorv32 自包含, IM 应为 0"
 
     def test_baseline_flakiness_stable(self):
         """baseline flakiness 应该 deterministic_ratio_im >= 0.9 (内存回收后)."""
@@ -188,6 +215,12 @@ class TestPicorv32Baseline:
         with open(BASELINE) as f:
             data = json.load(f)
         flk = data["flakiness"]
-        assert flk["deterministic_ratio_im"] >= 0.9, (
-            f"IM deterministic only {flk['deterministic_ratio_im']*100:.0f}%, expected >= 90%"
+        # [iter_187] iter_185 修复后同一输入 3 次完全一致 (stdev 0) — 原断言
+        # ">= 0.9 + 内存回收后" 反映的是当时不可解释的波动, 现收紧为完全确定。
+        assert flk["deterministic_ratio_im"] == 1.0, (
+            f"IM deterministic only {flk['deterministic_ratio_im']*100:.0f}%, expected 100%"
+        )
+        assert flk["node_stdev"] == 0.0, (
+            f"nodes 跨次波动 stdev={flk['node_stdev']} (期望 0.0; "
+            f"counts={flk['node_counts']})"
         )

@@ -8,8 +8,8 @@
     "target": "picorv32",
     "depth": 2,
     "include_dirs": null,
-    "timestamp": "2026-08-29T13:41:29.394559",
-    "build_time_seconds": 0.96
+    "timestamp": "2026-09-11T22:53:59.336127",
+    "build_time_seconds": 0.81
   },
   "L1_module_extraction": {
     "target": "picorv32",
@@ -18,48 +18,44 @@
     "instances": []
   },
   "L2_graph_topology": {
-    "nodes": 708,
-    "edges": 1280,
-    "instantiated_modules": 2,
-    "port_in": 72,
-    "port_out": 76,
-    "signal": 320,
+    "nodes": 438,
+    "edges": 1096,
+    "instantiated_modules": 0,
+    "port_in": 9,
+    "port_out": 7,
+    "signal": 200,
     "depth_distribution": {
-      "0": 21,
-      "1": 603,
-      "2": 84
+      "0": 19,
+      "1": 383,
+      "2": 36
     }
   },
   "L3_signal_traces": {
-    "picorv32.s_axi_awvalid": {
+    "picorv32.clk": {
       "fanout": 0,
       "fanin": 0,
       "fanout_samples": [],
       "fanin_samples": []
     },
-    "picorv32.m_axi_awvalid": {
-      "fanout": 0,
+    "picorv32.resetn": {
+      "fanout": 7,
       "fanin": 0,
-      "fanout_samples": [],
+      "fanout_samples": [
+        "picorv32.mem_done",
+        "picorv32.decoder_trigger",
+        "picorv32.launch_next_insn"
+      ],
       "fanin_samples": []
     },
-    "picorv32.s_axi_awready": {
+    "picorv32.mem_busy": {
       "fanout": 0,
-      "fanin": 0,
+      "fanin": 17,
       "fanout_samples": [],
-      "fanin_samples": []
-    },
-    "picorv32.m_axi_awready": {
-      "fanout": 0,
-      "fanin": 0,
-      "fanout_samples": [],
-      "fanin_samples": []
-    },
-    "picorv32.clk_i": {
-      "fanout": 0,
-      "fanin": 0,
-      "fanout_samples": [],
-      "fanin_samples": []
+      "fanin_samples": [
+        "picorv32.mem_do_prefetch",
+        "picorv32.instr_jalr",
+        "picorv32.mem_rdata_latched[6:0]"
+      ]
     }
   },
   "L4_cross_instance_edges": {
@@ -72,20 +68,20 @@
   "flakiness": {
     "runs": 3,
     "node_counts": [
-      708,
-      708,
-      708
+      438,
+      438,
+      438
     ],
     "im_counts": [
-      2,
-      2,
-      2
+      0,
+      0,
+      0
     ],
-    "node_min": 708,
-    "node_max": 708,
+    "node_min": 438,
+    "node_max": 438,
     "node_stdev": 0.0,
-    "im_min": 2,
-    "im_max": 2,
+    "im_min": 0,
+    "im_max": 0,
     "im_stdev": 0.0,
     "deterministic_ratio_im": 1.0
   }

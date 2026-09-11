@@ -19,9 +19,15 @@
   - L2 nodes: 不能跌 > 30%
   - L2 edges: 不能跌 > 30%
   - L2 IM: 不能跌 > 30% (允许 ±20% 波动)
-  - L1 instances: 不能跌 > 50% (AST 路径, 容易受 flakiness 影响)
-  - L4 edges: 不能跌 > 50% (同上)
+  - L1 instances: 不能跌 > 50% (AST 路径)
+  - L4 edges: 不能跌 > 50%
   - Flakiness: deterministic_ratio_im 不能低于 0.7
+
+[iter_187 说明] L1/L4 的 50% 与 flakiness 的 0.7 是 PR6 时代按 "AST 容易受
+flakiness 影响" 定的 — 那个 flakiness 的真因 (SourceManager 生命周期) 已在
+iter_185 修复, 实测同一输入 3 次 stdev=0.0 / deterministic_ratio=1.0。因此这些
+阈值现在**偏松**; 是否收紧 (e.g. L1/L4 30%, flakiness 1.0) 需方豆拍板 —
+它直接改变用户 CI 的判定结果。
 """
 import argparse
 import json

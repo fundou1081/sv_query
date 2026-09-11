@@ -25,6 +25,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CHECK = PROJECT_ROOT / "tools" / "benchmark" / "check_regression.py"
 BASELINE_DIR = PROJECT_ROOT / "tools" / "benchmark" / "baselines"
 PICO_BASELINE = BASELINE_DIR / "picorv32.json"
+# [iter_187] picorv32 自包含 → IM=0, "IM 下跌" 场景在它上退化 (0 的 50% 还是 0)。
+# 需要非零 IM 的 baseline 来做比例派生 → 用 verilog-axi (IM=6) / pr5_wrap (IM=516)。
+VERILOG_AXI_BASELINE = BASELINE_DIR / "verilog_axi.json"
 
 
 def _make_variant(baseline_path: Path, **overrides) -> Path:
@@ -38,6 +41,28 @@ def _make_variant(baseline_path: Path, **overrides) -> Path:
             cur = cur[k]
         cur[keys[-1]] = value
     out = Path("/tmp/bench_variant.json")
+    with open(out, "w") as f:
+        json.dump(data, f, indent=2)
+    return out
+
+
+def _make_scaled_variant(baseline_path: Path, **factors: float) -> Path:
+    """[iter_187] 按 baseline 的**比例**派生 variant (不再硬编码旧数值)。
+
+    过去这里写死 "baseline 708 nodes → 354" 之类, baseline 一重生成数值就全错
+    (实测: baseline 更新到 438 后, 写死的 354 变成 -19% 而非 -50% → 测试假失败)。
+    比例派生让测试只依赖"阈值语义", 不依赖当时的具体数值。
+    """
+    with open(baseline_path) as f:
+        data = json.load(f)
+    for path, factor in factors.items():
+        keys = path.split(".")
+        cur = data
+        for k in keys[:-1]:
+            cur = cur[k]
+        orig = cur[keys[-1]]
+        cur[keys[-1]] = max(0, int(round(orig * factor)))
+    out = Path("/tmp/bench_variant_scaled.json")
     with open(out, "w") as f:
         json.dump(data, f, indent=2)
     return out
@@ -90,20 +115,24 @@ class TestRegressionDetection:
     """Regression 检测 (FAIL 场景)."""
 
     def test_node_drop_50_pct_fails(self):
-        """L2 nodes 跌 50% 应该 FAIL."""
-        # [iter_082 fix] baseline 708 nodes (native, GAP-3), 50% drop = 354
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 354})
+        """L2 nodes 跌 50% 应该 FAIL (阈值 30%)。"""
+        variant = _make_scaled_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 0.5})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode != 0, "should fail on 50% nodes drop"
         assert "❌ L2_nodes" in result.stdout
         assert "Some checks FAILED" in result.stdout
 
     def test_im_drop_50_pct_fails(self):
-        """L2 IM 跌 50% 应该 FAIL."""
-        # baseline IM is 2, so 50% drop = 1
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.instantiated_modules": 1})
-        result = _run_check(variant, baseline=PICO_BASELINE)
-        assert result.returncode != 0, "should fail on IM drop to 1"
+        """L2 IM 跌 50% 应该 FAIL (阈值 30%)。
+
+        [iter_187] 用 verilog-axi baseline (IM=6→3): picorv32 的 IM=0, "跌 50%"
+        在它上面退化 (0→0), 测不出检测能力。
+        """
+        variant = _make_scaled_variant(
+            VERILOG_AXI_BASELINE, **{"L2_graph_topology.instantiated_modules": 0.5}
+        )
+        result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
+        assert result.returncode != 0, "should fail on IM drop 50%"
         assert "❌ L2_im" in result.stdout
 
     def test_flakiness_drop_below_threshold_fails(self):
@@ -118,9 +147,8 @@ class TestAcceptableChange:
     """Acceptable change (PASS 场景)."""
 
     def test_10_pct_node_drop_passes(self):
-        """L2 nodes 跌 10% (< 30%) 应该 PASS."""
-        # [iter_082 fix] baseline 708 nodes (native, GAP-3), 10% drop = ~637
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 637})
+        """L2 nodes 跌 10% (< 30%) 应该 PASS。"""
+        variant = _make_scaled_variant(PICO_BASELINE, **{"L2_graph_topology.nodes": 0.9})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode == 0, (
             f"10% drop should pass: {result.stdout}\n{result.stderr}"
@@ -128,8 +156,8 @@ class TestAcceptableChange:
         assert "✅ L2_nodes" in result.stdout
 
     def test_25_pct_edge_drop_passes(self):
-        """L2 edges 跌 25% (< 30%) 应该 PASS."""
-        variant = _make_variant(PICO_BASELINE, **{"L2_graph_topology.edges": 900})
+        """L2 edges 跌 25% (< 30%) 应该 PASS。"""
+        variant = _make_scaled_variant(PICO_BASELINE, **{"L2_graph_topology.edges": 0.75})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode == 0, (
             f"25% edge drop should pass: {result.stdout}\n{result.stderr}"
