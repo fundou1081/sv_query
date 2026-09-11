@@ -1,0 +1,107 @@
+{
+  "metadata": {
+    "tool": "sv_query benchmark",
+    "version": "PR5+PR7 2026-06-15",
+    "input_type": "filelist",
+    "project_input": "/tmp/pr5_wrap.f",
+    "filelist": "/tmp/pr5_wrap.f",
+    "target": "pr5_wrap",
+    "depth": 4,
+    "include_dirs": null,
+    "timestamp": "2026-09-11T22:54:37.642833",
+    "build_time_seconds": 5.11
+  },
+  "L1_module_extraction": {
+    "target": "pr5_wrap",
+    "depth": 4,
+    "instance_count": 2,
+    "instances": [
+      {
+        "id": "pr5_wrap.i_xbar",
+        "name": "i_xbar",
+        "def": "axi_xbar_intf",
+        "depth": 1
+      },
+      {
+        "id": "pr5_wrap.i_xbar.i_xbar",
+        "name": "i_xbar",
+        "def": "axi_xbar",
+        "depth": 2
+      }
+    ]
+  },
+  "L2_graph_topology": {
+    "nodes": 4946,
+    "edges": 5808,
+    "instantiated_modules": 516,
+    "port_in": 3587,
+    "port_out": 0,
+    "signal": 798,
+    "depth_distribution": {
+      "0": 14,
+      "1": 382,
+      "2": 222,
+      "3": 259,
+      "4": 17,
+      "5": 37,
+      "6": 196,
+      "7": 575,
+      "8": 1003,
+      "9": 539,
+      "10": 176,
+      "11": 180,
+      "12": 210,
+      "13": 556,
+      "14": 580
+    }
+  },
+  "L3_signal_traces": {
+    "pr5_wrap.clk_i": {
+      "fanout": 445,
+      "fanin": 0,
+      "fanout_samples": [
+        "pr5_wrap.i_xbar.clk_i",
+        "pr5_wrap.i_xbar.i_xbar.clk_i",
+        "pr5_wrap.i_xbar.i_xbar.i_xbar_unmuxed.clk_i"
+      ],
+      "fanin_samples": []
+    },
+    "pr5_wrap.rst_ni": {
+      "fanout": 445,
+      "fanin": 0,
+      "fanout_samples": [
+        "pr5_wrap.i_xbar.rst_ni",
+        "pr5_wrap.i_xbar.i_xbar.rst_ni",
+        "pr5_wrap.i_xbar.i_xbar.i_xbar_unmuxed.rst_ni"
+      ],
+      "fanin_samples": []
+    }
+  },
+  "L4_cross_instance_edges": {
+    "target": "pr5_wrap",
+    "depth": 4,
+    "edge_count": 0,
+    "in_scope_count": 0,
+    "top_ports": {}
+  },
+  "flakiness": {
+    "runs": 3,
+    "node_counts": [
+      4946,
+      4946,
+      4946
+    ],
+    "im_counts": [
+      516,
+      516,
+      516
+    ],
+    "node_min": 4946,
+    "node_max": 4946,
+    "node_stdev": 0.0,
+    "im_min": 516,
+    "im_max": 516,
+    "im_stdev": 0.0,
+    "deterministic_ratio_im": 1.0
+  }
+}

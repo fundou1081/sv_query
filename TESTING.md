@@ -55,15 +55,17 @@ python -m pytest sim/tests/unit/ -v
 - Python 3.11 / 3.12
 - pyslang via GitHub source install
 
-## 已知限制 (2026-07-29)
+## 已知限制 (2026-07-29, iter_187 更新)
 
 | 限制 | 状态 | 处理方式 |
 |------|------|---------|
 | pyslang 11.0+ 不再报 MissingTimeScale | 🔴 blocked | `test_fix_timescale.py` 相关 5 tests skipped |
 | ventus 开源项目测试 | 🟡 opensource | pytest marker `opensource`，本地跳过 |
+| `test_ventus_all_viz_validation.py` (opensource 集内) | 🔴 **14 failed (iter_187 发现, 待立项)** | `--dot` 自 V100 起是 `--svg` 别名 (输出 SVG), 测试仍按旧 DOT 语义断言; 且 `_ensure_sched_dots()` 不生成 `sched_d1.dot`/`r15*.dot`/PNG 等 artifact; 该文件还用了被禁的 `--no-strict` 且忽略 returncode。见 `docs/task_tree/iterations/iter_187_baseline_drift_cleanup.md` |
 | picorv32/naplespu 项目测试 | 🟡 opensource | 已有 `skipif` |
+| benchmark baseline 漂移 | ✅ 已修 (iter_187) | 3 个 baseline 曾全部与当前行为不符且不可复现 → 已重生成 + `regen_baselines.py --check` (rc=2) + "活体==baseline" 守卫测试 |
 | `/tmp/cdc_test/` fixture 依赖 | 🟡 runtime | conftest.py 可加 fixture setup |
-| `~/.svq/cache` 不可写 (沙箱/受限 HOME) | 🔴 env (iter_082 发现) | CLI subprocess 测试全报 rc=1 假失败; 用 `HOME=/tmp/svq_home` 重定向验证 |
+| `~/.svq/cache` 不可写 (沙箱/受限 HOME) | ✅ 已修 (iter_172) | 缓存目录可用 `SVQ_CACHE_DIR` 覆盖 (显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`), 不可写自动降级内存缓存 + 告警 → **不再需要 HOME 重定向**; 下方 2026-07-29 原文保留为历史 |
 
 ### 沙箱 / 受限环境验证手段 (iter_082 定型, iter_086 补警告)
 
