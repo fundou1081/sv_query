@@ -22,24 +22,32 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线 ✅ 全部完成** (文档清理 iter_171 / 缓存目录
-iter_172 / adapter 拆解 iter_174~177 / 参数化成员解析收尾 iter_178)。
+**当前任务 (方豆方向)**: **C 路线 (质量纵深) ✅ 两项完成** (iter_179~180)。
 
-**iter_178 (最后一项) 总结**: 参数化残留 2 处 `list(cls)` → 统一 `_class_members_by_name`
-(走 `adapter.get_class_members`, 参数化用特化成员); 修完后暴露并修复**嵌套参数化
-class 特化收录缺口** (packet#(W) 成员 i 为 inner#(W) → 扫描器下钻成员类型);
-两处扫描器同步修 (adapter 侧 `semantic/classes.py` + `covergroup_extractor.py`);
-先写会失败的参数化测试证明缺口 → 修完 2,245 + 739 全绿。
-[iter_178](docs/task_tree/iterations/iter_178_param_member_helpers.md)
+**C1 混合真实场景语料库 (iter_179)**: `sim/tests/fixtures/mixed_corpus/` 7 个语料
+(env 包 packet / 嵌套约束 / 全栈混合 / generate+类 / 子模块+module cg / logic 实参
+Conversion / 参数化嵌套) + `test_mixed_corpus_truth.py` 表驱动 **6 tests / 35 subtests**,
+每语料锁 5 维度 (提取/Q1 采样链+驱动集/Q2 反向/Q3 约束/fanin) 精确集合断言。
 
-**A 路线成果总览**: 文档 370→361 (归档 63, 唯一索引 + 检查工具); 缓存目录可配置
-(29 假失败清零); adapter 3,049 行单文件 → 123 行 facade + 6 mixin (+2,341 行死层
-移出 legacy); 巨函数 474→70 行; 5 死方法归档; 净增测试 ~40。
+**C2 bench 深结构基准 (iter_180)**: `bench_wrappers/pr5_wrap.sv` 真实 Cfg 实例化
+axi_xbar_intf → 兑现 iter_145 TODO: nodes **168→2,814** / 模块 271 / 深度 11 /
+**clk fanout 0→187**;pr5 套件 13 passed + 1 skipped;基准表落
+[docs/BENCH_BASELINE.md](docs/BENCH_BASELINE.md)。
+**深结构语料炸出 2 个真实 bug (已修)**: `_expr_helpers.py` 缺 `safe_str` 导入
+(我此前补丁因字符串不匹配成空操作) + `_common.py:589` 非 UTF-8 解码崩溃
+(iter_141 漏点)。
+**新登记 backlog**: benchmark `--runs>1` 复跑结果退化 (runs=2 → 0 实例/3915 nodes),
+wrapper 基准暂固定 runs=1。
 
-**下一步候选**: push (8+ commits) / B 路线 (L4 可视化) / C 路线 (对抗语料常态化)。
+Gate: unit+regression+truth **2,251 passed** / cli+integration **739 passed** /
+check_docs ✅。
+[iter_179](docs/task_tree/iterations/iter_179_mixed_corpus.md)
+[iter_180](docs/task_tree/iterations/iter_180_bench_wrapper_baseline.md)
 
-**已闭环**: 参数化成员解析 (iter_178) / adapter 拆解 (iter_174~177) / 缓存目录
-(iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) / G1-G4 (iter_162~166)。
+**下一步候选**: push / B 路线 (L4 可视化) / benchmark 复跑稳定性专项。
+
+**已闭环**: C 路线 (iter_179~180) / 参数化成员解析 (iter_178) / adapter 拆解
+(iter_174~177) / 缓存目录 (iter_172) / 文档清理 (iter_171) 等。
 
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组

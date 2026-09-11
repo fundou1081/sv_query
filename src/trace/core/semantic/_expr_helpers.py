@@ -7,7 +7,7 @@
 import logging
 
 logger = logging.getLogger(__name__)
-from ..._safe import _safe_attr, _safe_str  # noqa: F401  (供 helper 使用)
+from ..._safe import _safe_attr, _safe_str, safe_attr, safe_str  # noqa: F401
 
 
 

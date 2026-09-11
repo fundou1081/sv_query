@@ -115,6 +115,7 @@
 | [SIGNAL_TRACING_EXAMPLES.md](SIGNAL_TRACING_EXAMPLES.md) | 信号追踪实战案例 |
 | [FILELIST.md](FILELIST.md) | filelist 格式支持 |
 | [TEST_MAP.md](TEST_MAP.md) | 全量测试地图 |
+| [BENCH_BASELINE.md](BENCH_BASELINE.md) | bench 深结构基准 (pr5_wrap: 真实 Cfg wrapper + 指标表 + 已知限制) |
 | [OPENTITAN_HOWTO.md](OPENTITAN_HOWTO.md) | OpenTitan 跑通 HOWTO |
 | [NAPLESPU_HOWTO.md](NAPLESPU_HOWTO.md) | NaplesPU 跑通 HOWTO |
 | [PROJECT_PLAN.md](PROJECT_PLAN.md) | 开源 RTL 验证问题生成计划 (独立工作流) |

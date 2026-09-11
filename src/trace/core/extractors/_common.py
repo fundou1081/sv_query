@@ -586,7 +586,13 @@ class _PyslangSelectWalker:
                     full_id = make_element_select_id(immediate, idx)
                 else:
                     syn = getattr(node, 'syntax', None)
-                    full_id = str(syn).strip() if syn is not None else f"{immediate}[?]"
+                    # [iter_180] safe_str: 非 utf8 identifier 下 str(syn) 抛
+                    # UnicodeDecodeError (iter_141 批量修复漏点; pr5_wrap 深结构
+                    # 基准实测暴露) → 解不出时退回 "{immediate}[?]" 显式占位
+                    if syn is not None:
+                        full_id = (safe_str(syn).strip() or f"{immediate}[?]")
+                    else:
+                        full_id = f"{immediate}[?]"
                 sr = getattr(node, 'sourceRange', None)
                 line = 0
                 col = 0
