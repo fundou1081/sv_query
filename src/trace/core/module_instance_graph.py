@@ -20,7 +20,7 @@ from typing import Any
 
 import networkx as nx
 
-from .._safe import _safe_attr, _safe_str
+from .._safe import _safe_attr, _safe_str, safe_attr
 
 logger = logging.getLogger(__name__)
 

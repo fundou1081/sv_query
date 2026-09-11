@@ -24,7 +24,7 @@ from pyslang.pyslang.ast import (
     BinaryOperator,  # [V6.9] semantic AST only (ExpressionKind/StatementKind 已随 Step 5/6 拆走)
 )
 
-from .._safe import safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
+from .._safe import safe_attr, safe_str, safe_str  # [iter_141] pyslang 对象安全 str (非 utf8 防崩)
 from .ast_utils import unwrap  # [V6.3+3 2026-07-27] (kind_matches 已随 Step 6 always 拆走)
 from .semantic_adapter import SemanticAdapter
 from .builder.subroutine_expander import SubroutineExpander  # [Step 7] CallSiteInfo 已随 function_extractor 拆走
@@ -201,7 +201,7 @@ class DriverExtractor:
         Returns True if the expression evaluates to a compile-time constant.
 
         [FIX 2026-7-15] Handle Syntax AST nodes (IdentifierNameSyntax etc.) which don't have
-        a .symbol attribute. Use module.body.lookupName() to resolve them.
+        a .symbol attribute. Use safe_attr(module, "body", []).lookupName() to resolve them.
         """
         if ast_node is None:
             return False
@@ -247,7 +247,7 @@ class DriverExtractor:
         Returning them as drivers would pollute trace_fanin results.
 
         [FIX 2026-7-15] `module` enables resolution of Syntax AST nodes (IdentifierNameSyntax)
-        via module.body.lookupName().
+        via safe_attr(module, "body", []).lookupName().
         """
         if signal is None:
             return []
@@ -258,7 +258,7 @@ class DriverExtractor:
     def _filter_compile_time_signal_names(self, ast_node, names: list[str], module=None) -> list[str]:
         """Walk AST and collect names whose symbol.kind is NOT compile-time.
 
-        [FIX 2026-7-15] Add module parameter to enable Syntax AST lookup via module.body.lookupName.
+        [FIX 2026-7-15] Add module parameter to enable Syntax AST lookup via safe_attr(module, "body", []).lookupName.
         [V6.9] Also filter out ternary condition signals (g, h from g ? h ? x0 : x1 : x2).
         """
         if ast_node is None or not names:
@@ -301,14 +301,14 @@ class DriverExtractor:
                 sym = getattr(node, "symbol", None)
                 if sym is not None:
                     try:
-                        sym_name = sym.name
+                        sym_name = safe_str(safe_attr(sym, "name", ""))
                     except (UnicodeDecodeError, Exception):
                         sym_name = None
                     if sym_name and isinstance(sym_name, str):
                         sym_kind = str(getattr(sym, "kind", "")).split(".")[-1]
                         symbol_kinds[sym_name.strip()] = sym_kind
                     return  # No need to recurse into NamedValue
-            # [NEW 2026-7-15] IdentifierNameSyntax: resolve via module.body.lookupName
+            # [NEW 2026-7-15] IdentifierNameSyntax: resolve via safe_attr(module, "body", []).lookupName
             if module is not None and hasattr(node, "identifier"):
                 id_attr = getattr(node, "identifier", None)
                 if id_attr is not None:
@@ -370,12 +370,12 @@ class DriverExtractor:
         The compile-time filter on AST nodes therefore misses localparam
         references inside ternary branches.
 
-        This helper resolves each name via module.body.lookupName() and drops
+        This helper resolves each name via safe_attr(module, "body", []).lookupName() and drops
         any whose symbol kind is Parameter/EnumValue/etc.
 
         Args:
             signal_conditions: [(signal_name, condition_str), ...]
-            module: Module InstanceBody (for module.body.lookupName)
+            module: Module InstanceBody (for safe_attr(module, "body", []).lookupName)
 
         Returns:
             Filtered list with compile-time symbols removed.
@@ -403,7 +403,7 @@ class DriverExtractor:
                 continue
             if self._is_sv_literal_token(sig_name):
                 continue
-            # Resolve via module.body.lookupName
+            # Resolve via safe_attr(module, "body", []).lookupName
             try:
                 sym = body.lookupName(sig_name)
             except Exception:
@@ -465,7 +465,7 @@ class DriverExtractor:
                 if "negedge" in edge_str.lower() or "NegEdge" in edge_str:
                     ce = getattr(expr, "expr", None)
                     if ce and hasattr(ce, "symbol"):
-                        # [iter_141] hasattr/str(sym.name) 非 utf8 identifier
+                        # [iter_141] hasattr/str(safe_str(safe_attr(sym, "name", ""))) 非 utf8 identifier
                         # pybind UnicodeDecodeError (CVA6) → safe_symbol_name
                         _cn = safe_symbol_name(getattr(ce, "symbol", None))
                         if _cn:

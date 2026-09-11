@@ -212,7 +212,7 @@ class ModulesMixin:
             kind = getattr(node, "kind", None)
             kind_str = str(kind) if kind else "None"
             try:
-                name = node.name
+                name = safe_str(safe_attr(node, "name", ""))
             except (UnicodeDecodeError, TypeError):
                 name = None
             name_str = self._safe_str(name) if name else "_anon_"
@@ -335,7 +335,7 @@ class ModulesMixin:
             return None
         for top in self._root.topInstances:
             try:
-                if str(top.name) == target_module:
+                if str(safe_str(safe_attr(top, "name", ""))) == target_module:
                     return top
             except (UnicodeDecodeError, TypeError):
                 continue
@@ -465,8 +465,8 @@ class ModulesMixin:
                 return
             # 其余 (net/assign/always/...) 不含门原语 — 不下钻
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 find_primitives(member)
 
         return primitives
@@ -491,8 +491,8 @@ class ModulesMixin:
         """获取模块的参数声明"""
         params = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 if "Parameter" in kind:
                     # 返回 dict 格式以兼容现有代码
@@ -519,9 +519,9 @@ class ModulesMixin:
         - container: entry (array) 或 member (单块) — hierarchicalPath 来源
           (net 用 child.hp, always 用 container.hp, 保持两函数原行为)
         """
-        if not hasattr(module, "body") or not module.body:
+        if not hasattr(module, "body") or not safe_attr(module, "body", []):
             return
-        for member in module.body:
+        for member in safe_attr(module, "body", []):
             kind = str(getattr(member, "kind", ""))
             if "GenerateBlockArray" in kind:
                 # genvar 名字 (从 loopVariable, pure semantic)

@@ -33,8 +33,11 @@ elaboration (nodes 实测波动 1,778~3,057 / clk 88~205 / 5 次中 1 次无输�
 `safe_attr` (`safe_str` 救不了, 实参求值即炸)。
 对策: wrapper 基准取结构性下限 (nodes≥800/IM≥80/clk≥30) + 3 次重试;
 结果 pr5 套件 13 passed + 1 skipped。
-**backlog**: 对 src/ 所有 pyslang 符号属性读取做 AST 扫描 + safe_attr 包装
-(iter_141 同类, 但覆盖 getter 层)。
+**iter_182 (backlog 兑现)**: `tools/scan_pyslang_attrs.py` 扫描全仓 **126 处**
+未保护属性读取 (getter 级崩溃族); **热路径收敛 70 点** (8 文件, 按属性给语义
+安全默认值: `.name`→""、`.type`→None、`.body`→[]); 剩余 56 点 (可视化/CLI 等
+非抽取路径) 登记。自伤如实记录: 导入深度写错 → 7 模块 ImportError, 已修。
+[iter_182](docs/task_tree/iterations/iter_182_safe_attr_sweep.md)
 [iter_181](docs/task_tree/iterations/iter_181_bench_stability.md)
 
 **已闭环**: C 路线 (iter_179~180) / 参数化成员 (iter_178) / adapter 拆解

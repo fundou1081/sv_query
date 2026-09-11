@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import logging
 
+from .._safe import safe_attr, safe_str, safe_str  # [iter_182]
+
 import pyslang
 
 from .semantic_adapter import SemanticAdapter
@@ -398,7 +400,7 @@ class GraphBuilder:
 
         [iter_113 修复] generate 分支必须真正下钻到 entry 内的实例:
         旧实现 GenerateBlockArray → walk(entry=GenerateBlock, path), 而 walk 只认
-        inst.body — GenerateBlockSymbol 是 scope 无 .body → 永不下钻 → generate 内
+        safe_attr(inst, "body", []) — GenerateBlockSymbol 是 scope 无 .body → 永不下钻 → generate 内
         实例 (cordic.genblk1[i].U / toplevel.u_cla.generators[i].u_cell4) 从未进
         driver paths → 实例内部逻辑 (always/assign) 零提取 (CLA 摸底缺口:
         toplevel.cout 无驱动; inst==type 时 connection 侧再叠递归假节点)。
@@ -523,7 +525,7 @@ class GraphBuilder:
                 return None
             for top in root.topInstances:
                 try:
-                    if str(top.name) == target_module:
+                    if str(safe_str(safe_attr(top, "name", ""))) == target_module:
                         return top
                 except Exception:
                     continue
@@ -1030,8 +1032,8 @@ class GraphBuilder:
                 # [FIX] Navigate through InstanceSymbol -> body -> definition -> syntax
                 # InstanceSymbol doesn't have direct 'header' attribute
                 module_header = None
-                if hasattr(module, "body") and module.body:
-                    definition = getattr(module.body, "definition", None)
+                if hasattr(module, "body") and safe_attr(module, "body", []):
+                    definition = getattr(safe_attr(module, "body", []), "definition", None)
                     if definition and hasattr(definition, "syntax") and definition.syntax:
                         module_header = getattr(definition.syntax, "header", None)
 
@@ -1047,7 +1049,7 @@ class GraphBuilder:
                         if h is None or decl is None:
                             continue
                         if hasattr(h, "kind") and "InterfacePortHeader" in str(h.kind):
-                            port_name = decl.name.value if hasattr(decl.name, "value") else str(decl.name)
+                            port_name = safe_str(safe_attr(decl, "name", "")).value if hasattr(safe_str(safe_attr(decl, "name", "")), "value") else str(safe_str(safe_attr(decl, "name", "")))
                             interface_name = None
                             if hasattr(h, "nameOrKeyword"):
                                 nk = h.nameOrKeyword
@@ -1243,7 +1245,7 @@ class GraphBuilder:
 
     def _mark_special_signals(self):
         for _node_id, node in self.graph._node_data.items():
-            name_lower = node.name.lower()
+            name_lower = safe_str(safe_attr(node, "name", "")).lower()
 
             if "clk" in name_lower or "clock" in name_lower:
                 node.is_clock = True
