@@ -22,27 +22,24 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 ✅ 全闭环 (iter_174~177)**。
-方豆: "用移出代替删除，这样可以恢复。去做吧" — 方案与回归计划:
-[semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
+**当前任务 (方豆方向)**: **A 路线 ✅ 全部完成** (文档清理 iter_171 / 缓存目录
+iter_172 / adapter 拆解 iter_174~177 / 参数化成员解析收尾 iter_178)。
 
-**成果**: `base.py` 2,341 行 legacy 层 → `legacy/base_pyslang_adapter.py`;
-巨函数 474 → 70 行;单文件 **3,049 → 123 行 facade + 6 域 mixin**
-(`core/semantic/`: source_core 198 / modules 716 / ports_ifaces 414 /
-connections 302 / exprs_drivers 812 / classes 249 + `_expr_helpers` 399 +
-`_wrappers` 115);5 个零调用方法 → `legacy/dead_semantic_adapter_methods.py`;
-顺带修 1 latent bug (`_fold_sel` 死分支内定义/活路径调用) + 3 处文档漂移。
-**Gate (每步均过)**: unit+regression+truth **2,243** / cli+integration **739** /
-API 面冻结一致 (MRO-wide; Step 10 收缩 5 项已记录) / check_docs ✅。
-[iter_174](docs/task_tree/iterations/iter_174_step2_legacy_layer_moved_out.md)
-[iter_175](docs/task_tree/iterations/iter_175_step3_expr_dispatch_split.md)
-[iter_176](docs/task_tree/iterations/iter_176_step4_9_mixin_split.md)
-[iter_177](docs/task_tree/iterations/iter_177_step10_dead_api_cleanup.md)
+**iter_178 (最后一项) 总结**: 参数化残留 2 处 `list(cls)` → 统一 `_class_members_by_name`
+(走 `adapter.get_class_members`, 参数化用特化成员); 修完后暴露并修复**嵌套参数化
+class 特化收录缺口** (packet#(W) 成员 i 为 inner#(W) → 扫描器下钻成员类型);
+两处扫描器同步修 (adapter 侧 `semantic/classes.py` + `covergroup_extractor.py`);
+先写会失败的参数化测试证明缺口 → 修完 2,245 + 739 全绿。
+[iter_178](docs/task_tree/iterations/iter_178_param_member_helpers.md)
 
-**下一步候选**: push / A 路线剩余项 (参数化残留 2 处 `list(cls)` 统一) / 其他方向。
+**A 路线成果总览**: 文档 370→361 (归档 63, 唯一索引 + 检查工具); 缓存目录可配置
+(29 假失败清零); adapter 3,049 行单文件 → 123 行 facade + 6 mixin (+2,341 行死层
+移出 legacy); 巨函数 474→70 行; 5 死方法归档; 净增测试 ~40。
 
-**已闭环**: 缓存目录 (iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) /
-G1-G4 covergroup (iter_162~166) 等。
+**下一步候选**: push (8+ commits) / B 路线 (L4 可视化) / C 路线 (对抗语料常态化)。
+
+**已闭环**: 参数化成员解析 (iter_178) / adapter 拆解 (iter_174~177) / 缓存目录
+(iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) / G1-G4 (iter_162~166)。
 
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组

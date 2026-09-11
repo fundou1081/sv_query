@@ -506,33 +506,43 @@ def _find_task_definition(module, call_name, *, h: 'FunctionHelpers') -> tuple:
 
 
 
-def _is_class_member(class_name: str, member_name: str, *, h: 'FunctionHelpers') -> bool:
-    """[iter_157 E5] receiver class 是否有该成员 (CLASS_PROPERTY) — 编译期
-    确定 (静态限定: 成员名存在于类型定义才映射, 防拼假节点)."""
+def _class_members_by_name(class_name: str, *, h: 'FunctionHelpers') -> list:
+    """[iter_178] 按名取 class 成员符号 (统一入口).
+
+    走 `adapter.get_class_members` — 普通 ClassType 迭代定义本身; **参数化
+    class (GenericClassDef) 用特化成员**。旧实现在本文件内直接 `list(cls)`,
+    对 GenericClassDef 抛 TypeError → 静默 False/None (参数化场景成员解析失效;
+    iter_178 新增参数化成员链测试实证失败后修复)。
+    """
     try:
         classes = h.adapter.get_classes()
-    except Exception:
-        return False
+    except Exception as e:
+        logger.warning("class 枚举失败: %s", e)
+        return []
     for cls in classes:
         try:
             cname = safe_str(safe_attr(cls, "name"))
         except (UnicodeDecodeError, TypeError):
             continue
-        if cname != class_name:
+        if cname == class_name:
+            return h.adapter.get_class_members(cls)
+    return []
+
+
+def _is_class_member(class_name: str, member_name: str, *, h: 'FunctionHelpers') -> bool:
+    """[iter_157 E5 / iter_178] receiver class 是否有该成员 (CLASS_PROPERTY).
+
+    编译期确定 (静态限定: 成员名存在于类型定义才映射, 防拼假节点)。
+    [iter_178] 成员枚举统一走 `_class_members_by_name` (参数化 class 也可解析)。
+    """
+    for m in _class_members_by_name(class_name, h=h):
+        if 'ClassProperty' not in str(getattr(m, 'kind', '')):
             continue
         try:
-            members = list(cls)
-        except TypeError:
-            return False
-        for m in members:
-            if 'ClassProperty' not in str(getattr(m, 'kind', '')):
-                continue
-            try:
-                if safe_str(safe_attr(m, "name")) == member_name:
-                    return True
-            except (UnicodeDecodeError, TypeError):
-                continue
-        return False
+            if safe_str(safe_attr(m, "name")) == member_name:
+                return True
+        except (UnicodeDecodeError, TypeError):
+            continue
     return False
 
 
@@ -720,39 +730,26 @@ def _expand_nested_class_calls(method_def, receiver_id, receiver_class_name,
 
 
 def _member_class_name(class_name: str, member_name: str, *, h: 'FunctionHelpers') -> str | None:
-    """[iter_157 E13] class 成员 (i) 的类型名 — 成员是 class 实例 (inner)."""
-    try:
-        classes = h.adapter.get_classes()
-    except Exception:
-        return None
-    for cls in classes:
+    """[iter_157 E13 / iter_178] class 成员 (i) 的类型名 — 成员是 class 实例 (inner).
+
+    [iter_178] 成员枚举统一走 `_class_members_by_name` (参数化 class 也可解析)。
+    """
+    for m in _class_members_by_name(class_name, h=h):
+        if 'ClassProperty' not in str(getattr(m, 'kind', '')):
+            continue
         try:
-            cname = safe_str(safe_attr(cls, "name"))
+            if safe_str(safe_attr(m, "name")) != member_name:
+                continue
         except (UnicodeDecodeError, TypeError):
             continue
-        if cname != class_name:
-            continue
-        try:
-            members = list(cls)
-        except TypeError:
-            return None
-        for m in members:
-            if 'ClassProperty' not in str(getattr(m, 'kind', '')):
-                continue
-            try:
-                if safe_str(safe_attr(m, 'name')) != member_name:
-                    continue
-            except (UnicodeDecodeError, TypeError):
-                continue
-            # 成员 type → ClassType name (剥 elementType)
-            t = getattr(m, 'type', None)
-            while t is not None:
-                tk = str(getattr(t, 'kind', ''))
-                if 'ClassType' in tk:
-                    return safe_str(safe_attr(t, 'name')) or None
-                t = (getattr(t, 'elementType', None)
-                     or getattr(t, 'arrayElementType', None))
-            return None
+        # 成员 type → ClassType name (剥 elementType)
+        t = getattr(m, 'type', None)
+        while t is not None:
+            tk = str(getattr(t, 'kind', ''))
+            if 'ClassType' in tk:
+                return safe_str(safe_attr(t, "name")) or None
+            t = (getattr(t, 'elementType', None)
+                 or getattr(t, 'arrayElementType', None))
         return None
     return None
 
