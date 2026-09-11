@@ -31,6 +31,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 BENCH = PROJECT_ROOT / "tools" / "benchmark" / "run_benchmark.py"
 FILENAME_LIST = "/tmp/pulp_axi_xbar_pr2.f"
 TARGET = "axi_xbar_intf"
+# [iter_180] 深结构基准 (真实 Cfg: 4 slv / 3 mst / 32b addr / 64b data)
+WRAPPER = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "bench_wrappers" / "pr5_wrap.sv"
+WRAP_TARGET = "pr5_wrap"
 
 _AXI = Path(os.path.expanduser("~/my_dv_proj/openrtl/axi"))
 _CC = Path(os.path.expanduser("~/my_dv_proj/openrtl/common_cells"))
@@ -53,6 +56,8 @@ def _ensure_filelist() -> None:
     dep = _CC / "src" / "deprecated"
     if dep.exists():
         lines += sorted(str(p) for p in dep.glob("*.sv"))
+    # [iter_180] 深结构基准 wrapper (真实 Cfg 实例化 axi_xbar_intf)
+    lines.append(str(WRAPPER))
     Path(FILENAME_LIST).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -217,3 +222,58 @@ class TestMarkdownOutput:
             assert f"## {section}" in content or "# L1" in content or section in content, (
                 f"markdown missing L* section: {section}"
             )
+
+
+class TestBenchmarkWrapperDepth:
+    """[iter_180] pr5_wrap 深结构基准 (iter_145 登记的 wrapper TODO 兑现).
+
+    背景: `axi_xbar_intf` 默认参数 `Cfg = '0` → 空壳树 (2 实例 / 168 nodes,
+    clk fanout 0), 原测试结构断言只能弱化。本类用**真实 Cfg** 的 wrapper
+    (`sim/tests/fixtures/bench_wrappers/pr5_wrap.sv`) 恢复深结构断言。
+
+    基准 (2026-09-08 实测, depth=4):
+      L1  instance_count = 2  (pr5_wrap.i_xbar → axi_xbar_intf;
+                               pr5_wrap.i_xbar.i_xbar → axi_xbar)
+      L2  nodes = 2,814 / edges = 3,114 / instantiated_modules = 271
+          depth_distribution 最深 11 (depth 8 处 785 节点)
+      L3  pr5_wrap.clk_i fanout = 187  ← 空壳时 0 (iter_145 TODO 链断言恢复)
+      L4  edge_count = 0 (wrapper 顶层只暴露 clk/rst, 无 AXI 端口 — 预期)
+    """
+
+    @classmethod
+    def setup_class(cls):
+        """pytest xunit-style 钩子 (纯 pytest 类不认 unittest 的 setUpClass)"""
+        if not WRAPPER.exists():
+            pytest.skip(f"wrapper fixture 缺失: {WRAPPER}")
+        # runs=1: 基准锁定单次结果 — 实测 runs>1 复跑在同一进程内结果退化
+        # (L1 实例 2→0 / L2 节点 2814→3915 / clk fanout 187→0), 已登记
+        # iter_180 发现 (benchmark 复跑不稳定), 待专项修; 本基准用单次值
+        # skip_flakiness: flakiness 阶段按整份 filelist 编译 (无 top_modules)
+        # → free-floating type-param 模块报 CouldNotResolveHierarchicalPath
+        # (iter_145 同类), rc≠0 会让结构基准被误 skip。结构基准只需单次结构数据。
+        cls.data = _run_benchmark(target=WRAP_TARGET, depth=4, runs=1,
+                                  skip_flakiness=True,
+                                  output=Path("/tmp/bench_pr5_wrap.json"))
+
+    def test_l1_instance_chain(self):
+        l1 = self.data["L1_module_extraction"]
+        assert l1["instance_count"] >= 2, l1
+        defs = {i.get("def") for i in l1["instances"]}
+        assert "axi_xbar_intf" in defs, f"应有 axi_xbar_intf 实例, got {defs}"
+        assert "axi_xbar" in defs, f"wrapper 应展开到 axi_xbar (深链), got {defs}"
+
+    def test_l2_deep_structure(self):
+        l2 = self.data["L2_graph_topology"]
+        assert l2["nodes"] >= 1000, f"深结构节点数应 >= 1000, got {l2['nodes']}"
+        assert l2["instantiated_modules"] >= 100, l2
+        depths = [int(k) for k in l2["depth_distribution"]]
+        assert max(depths) >= 10, f"层次深度应 >= 10, got {max(depths)}"
+
+    def test_l3_clock_fanout_restored(self):
+        """clk fanout: 空壳 0 → wrapper 深结构下 >= 50 (恢复链断言)"""
+        l3 = self.data["L3_signal_traces"]
+        clk = l3.get(f"{WRAP_TARGET}.clk_i")
+        assert clk is not None, f"wrapper clk_i 未采集, got {list(l3)[:5]}"
+        assert clk.get("fanout", 0) >= 50, (
+            f"深结构下 clk fanout 应 >= 50 (空壳时 0), got {clk}"
+        )
