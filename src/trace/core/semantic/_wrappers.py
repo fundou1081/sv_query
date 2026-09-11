@@ -3,6 +3,8 @@
 # 供 modules 域 mixin 使用; semantic_adapter.py 保留同名再导出 (兼容)。
 import logging
 
+from ..._safe import safe_attr, safe_str, safe_str  # [iter_182]
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +42,7 @@ class SemanticInstanceWrapper:
         self.type = type("TypeToken", (), {"value": self._get_module_type()})()
         self.parent_module = parent_module  # 父模块名
 
-        # 构造 .instances[0].decl.name 结构供 GraphBuilder 使用
+        # 构造 .instances[0].safe_str(safe_attr(decl, "name", "")) 结构供 GraphBuilder 使用
         self.instances = [SemanticInstanceDeclWrapper(instance_symbol)]
 
     def __str__(self):
@@ -54,7 +56,7 @@ class SemanticInstanceWrapper:
         if hasattr(self._symbol, "definition"):
             defn = self._symbol.definition
             try:
-                name_str = str(defn.name)
+                name_str = str(safe_str(safe_attr(defn, "name", "")))
             except (UnicodeDecodeError, TypeError):
                 name_str = None
             if name_str:

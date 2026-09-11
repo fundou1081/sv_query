@@ -163,8 +163,8 @@ class ExprsDriversMixin:
                     find_assignments(expr, ctx)
                 return
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 find_assignments(member)
 
         return assignments
@@ -209,8 +209,8 @@ class ExprsDriversMixin:
         """
         always_blocks = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 if "ProceduralBlock" in kind:
                     always_blocks.append(member)
@@ -227,8 +227,8 @@ class ExprsDriversMixin:
         """获取模块的 task 声明"""
         tasks = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 # Semantic AST: SubroutineSymbol has kind=SymbolKind.Subroutine
                 # Use subroutineKind to determine if it's a Task or Function
@@ -255,8 +255,8 @@ class ExprsDriversMixin:
         """获取模块的 function 声明"""
         funcs = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 # Semantic AST: SubroutineSymbol with subroutineKind=Function
                 if "Subroutine" in kind:
@@ -311,8 +311,8 @@ class ExprsDriversMixin:
         """获取模块的 net/wire 声明"""
         nets = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 if "Net" in kind:
                     nets.append(member)
@@ -375,8 +375,8 @@ class ExprsDriversMixin:
         """获取模块的 NetAlias (alias 语句)"""
         aliases = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 if "NetAlias" in kind:
                     aliases.append(member)
@@ -389,12 +389,12 @@ class ExprsDriversMixin:
         """获取模块的变量声明
 
         返回 DataDeclaration 语法节点（用于位宽提取），而不是 VariableSymbol 对象。
-        遍历 module.body.definition.syntax.members 获取 DataDeclaration 节点。
+        遍历 safe_attr(module, "body", []).definition.syntax.members 获取 DataDeclaration 节点。
         """
         decls = []
 
-        if hasattr(module, "body") and module.body:
-            definition = getattr(module.body, "definition", None)
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            definition = getattr(safe_attr(module, "body", []), "definition", None)
             if definition and hasattr(definition, "syntax"):
                 syntax = definition.syntax
                 if hasattr(syntax, "members"):
@@ -411,8 +411,8 @@ class ExprsDriversMixin:
         """获取模块的数据声明 (wire, reg, logic 等)"""
         decls = []
 
-        if hasattr(module, "body") and module.body:
-            for member in module.body:
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
                 kind = str(getattr(member, "kind", ""))
                 if "DataDeclaration" in kind or "Net" in kind or "Variable" in kind:
                     decls.append(member)
@@ -735,7 +735,7 @@ class ExprsDriversMixin:
 
         支持两种方式:
         1. Semantic AST: 尝试从 declaredType 获取位宽
-        2. Syntax Tree: 从 data_decl.type.dimensions[0].specifier.selector 获取位宽
+        2. Syntax Tree: 从 safe_attr(data_decl, "type", None).dimensions[0].specifier.selector 获取位宽
 
         [iter_101] 缺陷 B 修复: NetSymbol (wire/逻辑网) 的 .syntax 是
         DeclaratorSyntax (无 .type), 且 declaredType 无 .width — 原两条路径都
@@ -766,9 +766,9 @@ class ExprsDriversMixin:
                     return (int(w.value), 0)
 
         # Syntax Tree: 从 type.dimensions 获取位宽
-        # 数据声明结构: data_decl.type.dimensions[0].specifier.selector.left/right
-        if hasattr(data_decl, "type") and data_decl.type:
-            dt = data_decl.type
+        # 数据声明结构: safe_attr(data_decl, "type", None).dimensions[0].specifier.selector.left/right
+        if hasattr(data_decl, "type") and safe_attr(data_decl, "type", None):
+            dt = safe_attr(data_decl, "type", None)
             if hasattr(dt, "dimensions") and dt.dimensions:
                 dims = dt.dimensions
                 # Handle both iterable and single dimension

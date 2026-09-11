@@ -6,6 +6,8 @@
 
 import logging
 
+from .._safe import safe_attr, safe_str, safe_str  # [iter_182]
+
 import pyslang
 
 from .semantic_adapter import SemanticAdapter
@@ -86,7 +88,7 @@ class LoadExtractor:
                             if h is None or decl is None:
                                 continue
                             if hasattr(h, "kind") and "InterfacePortHeader" in str(h.kind):
-                                port_name = decl.name.value if hasattr(decl.name, "value") else str(decl.name)
+                                port_name = safe_str(safe_attr(decl, "name", "")).value if hasattr(safe_str(safe_attr(decl, "name", "")), "value") else str(safe_str(safe_attr(decl, "name", "")))
                                 interface_name = None
                                 if hasattr(h, "nameOrKeyword"):
                                     nk = h.nameOrKeyword
@@ -98,7 +100,7 @@ class LoadExtractor:
                                 if port_name and interface_name:
                                     interface_ports[port_name.strip()] = (interface_name, modport_name)
                             elif hasattr(h, "kind") and "VariablePortHeader" in str(h.kind):
-                                port_name = decl.name.value if hasattr(decl.name, "value") else str(decl.name)
+                                port_name = safe_str(safe_attr(decl, "name", "")).value if hasattr(safe_str(safe_attr(decl, "name", "")), "value") else str(safe_str(safe_attr(decl, "name", "")))
             except (ValueError, AttributeError, TypeError) as e:
                 logger.debug("端口名提取失败: %s", e)
 

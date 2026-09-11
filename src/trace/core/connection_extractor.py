@@ -7,7 +7,7 @@
 import logging
 import re  # [iter_117] get_path 父路径索引段检测 (去重 gen_block)
 
-from .._safe import _safe_str
+from .._safe import _safe_str, safe_attr
 from .semantic_adapter import SemanticAdapter
 from .extractor_models import ExtractorResult
 from .graph.models import EdgeKind, NodeKind, TraceEdge, TraceNode
@@ -33,7 +33,7 @@ class ConnectionExtractor:
                 if hasattr(node, "header") and hasattr(node.header, "name"):
                     return node.header.name.rawText.strip()
                 elif hasattr(node, "name"):
-                    return node.name.rawText.strip()
+                    return safe_str(safe_attr(node, "name", "")).rawText.strip()
         # Fallback: use parent_module if it's a string (actual parent module name)
         # For top-level instances (parent_module is None), return '__root__'
         if hasattr(inst, "parent_module"):
@@ -42,8 +42,8 @@ class ConnectionExtractor:
             if isinstance(inst.parent_module, str) and inst.parent_module:
                 return inst.parent_module
         # Fallback to type.value or inst_name
-        if hasattr(inst, "type") and hasattr(inst.type, "value") and inst.type.value:
-            return inst.type.value
+        if hasattr(inst, "type") and hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value:
+            return safe_attr(inst, "type", None).value
         return getattr(inst, "name", "unknown") or "unknown"
 
     def _get_generate_block_name(self, inst) -> str:
@@ -148,8 +148,8 @@ class ConnectionExtractor:
                     # 收集所有被实例化的模块名
                     instantiated_modules = set()
                     for inst in instances:
-                        if hasattr(inst, "type") and hasattr(inst.type, "value"):
-                            instantiated_modules.add(inst.type.value.strip())
+                        if hasattr(inst, "type") and hasattr(safe_attr(inst, "type", None), "value"):
+                            instantiated_modules.add(safe_attr(inst, "type", None).value.strip())
 
                     # 找到没有被实例化的模块(顶层模块)
                     for mod in self.adapter.get_modules():
@@ -220,14 +220,14 @@ class ConnectionExtractor:
 
         for inst in instances:
             inst_name = (
-                inst.instances[0].decl.name.value.strip()
+                inst.instances[0].safe_str(safe_attr(decl, "name", "")).value.strip()
                 if hasattr(inst.instances[0], "decl")
                 and hasattr(inst.instances[0].decl, "name")
-                and inst.instances[0].decl.name.value
+                and inst.instances[0].safe_str(safe_attr(decl, "name", "")).value
                 else str(inst).split("(")[0].strip()
             )
 
-            inst_type_value = inst.type.value.strip() if hasattr(inst.type, "value") and inst.type.value else ""
+            inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
             # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
             _def_name = ""
             try:
@@ -349,14 +349,14 @@ class ConnectionExtractor:
         # [FIX] 第三阶段:使用正确路径创建节点和边
         for _idx, inst in enumerate(instances):
             inst_name = (
-                inst.instances[0].decl.name.value.strip()
+                inst.instances[0].safe_str(safe_attr(decl, "name", "")).value.strip()
                 if hasattr(inst.instances[0], "decl")
                 and hasattr(inst.instances[0].decl, "name")
-                and inst.instances[0].decl.name.value
+                and inst.instances[0].safe_str(safe_attr(decl, "name", "")).value
                 else str(inst).split("(")[0].strip()
             )
 
-            inst_type_value = inst.type.value.strip() if hasattr(inst.type, "value") and inst.type.value else ""
+            inst_type_value = safe_attr(inst, "type", None).value.strip() if hasattr(safe_attr(inst, "type", None), "value") and safe_attr(inst, "type", None).value else ""
             # [PR1 2026-06-14] 优先用 inst.definition.name (真实 def_name)
             _def_name = ""
             try:
