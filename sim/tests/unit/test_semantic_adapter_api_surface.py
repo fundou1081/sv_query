@@ -93,14 +93,21 @@ class TestSemanticAdapterApiSurface(unittest.TestCase):
     """adapter 公开面冻结 — 重构期间只允许"函数体搬家", 不允许改名/改签名"""
 
     def _live_methods(self):
+        """沿 MRO 采集 (iter_176 分域 mixin 后方法定义在 mixin 类中).
+
+        有效 API 面 = 实例可调用的全部方法 — 与拆分前等价; 口径改为 MRO-wide。
+        """
         out = {}
-        for name, obj in vars(SemanticAdapter).items():
-            if callable(obj) and not isinstance(obj, property):
-                try:
-                    sig = str(inspect.signature(obj))
-                except (TypeError, ValueError):
-                    sig = "<no-sig>"
-                out[name] = sig
+        for klass in SemanticAdapter.__mro__:
+            if klass is object:
+                continue
+            for name, obj in vars(klass).items():
+                if callable(obj) and not isinstance(obj, property):
+                    try:
+                        sig = str(inspect.signature(obj))
+                    except (TypeError, ValueError):
+                        sig = "<no-sig>"
+                    out.setdefault(name, sig)
         return out
 
     def test_method_set_unchanged(self):
@@ -116,8 +123,12 @@ class TestSemanticAdapterApiSurface(unittest.TestCase):
         self.assertEqual(diffs, {}, "签名变化 → 调用方 (42 方法/150 处) 可能静默出错")
 
     def test_properties_unchanged(self):
-        live = sorted(n for n, o in vars(SemanticAdapter).items() if isinstance(o, property))
-        self.assertEqual(live, FROZEN_PROPERTIES)
+        live = set()
+        for klass in SemanticAdapter.__mro__:
+            if klass is object:
+                continue
+            live |= {n for n, o in vars(klass).items() if isinstance(o, property)}
+        self.assertEqual(sorted(live), FROZEN_PROPERTIES)
 
     def test_facade_contract_smoke(self):
         """构造 + 关键属性 + 一个真实查询 (搬迁后行为不变的最小证据)"""
