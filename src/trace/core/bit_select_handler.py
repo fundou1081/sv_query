@@ -21,6 +21,8 @@ bit_select_handler.py - Bit Select 节点处理模块
 
 import logging
 
+from .._safe import safe_attr, safe_str  # [iter_184]
+
 from trace.core.semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
@@ -327,7 +329,9 @@ class BitSelectHandler:
         found: list[tuple[str, str, int, int]] = []
         for i in range(len(pyslang_root.topInstances)):
             mod = pyslang_root.topInstances[i]
-            instance_path = mod.name or ''
+            # [iter_184 加, iter_185 定性] safe_attr 兜住 name getter 异常。真因
+            # 是 SourceManager 生命周期 (iter_185) 已修, 此处保留为廉价防御。
+            instance_path = safe_str(safe_attr(mod, "name", "")) or ''
             for hit in iter_bit_selects(mod, instance_path=instance_path):
                 if hit.select_kind != 'RangeSelect':
                     continue

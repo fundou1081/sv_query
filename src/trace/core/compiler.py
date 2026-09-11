@@ -154,6 +154,16 @@ class SVCompiler:
         """
         self._sources = sources or {}
         self._comp: pyslang.Compilation | None = None
+        # [iter_185] SourceManager 必须活到 Compilation 生命周期结束 — 它持有
+        # 所有源文件 buffer, 而符号名/ token 文本都是指向 buffer 的 string_view。
+        # 只在 parse 循环里持有局部变量 = 循环结束后 manager 被 GC → buffer 释放
+        # → 符号名变成释放内存的垃圾字节 (iter_185 最小复现: 症状是随机的
+        # UnicodeDecodeError / 乱码 instance 名 / partial elaboration)。
+        self._source_manager: pyslang.SourceManager | None = None
+        # [iter_185] 同理: options.topModules/paramOverrides 是 slang 侧的
+        # string_view 容器, view 指向 Python str 的 buffer — 必须保证 str 活到
+        # Compilation 生命周期结束。
+        self._param_overrides: list[str] = []
         self._root = None
         self._diagnostics = []
         self._elaboration_errors = []  # [FIX 2026-06-11 Issue 17] 存解析出的错误, 非 strict 模式可被 snapshot 读取
@@ -387,6 +397,11 @@ class SVCompiler:
             if self._override_orphan_modules:
                 _overrides = [o for o in _overrides
                               if o.split('.', 1)[0] not in self._override_orphan_modules]
+            # [iter_185] slang 侧 `paramOverrides` 是 `vector<string_view>` — view
+            # 指向 Python str 的 buffer。当前全是字面量 (常驻, 不会死), 但持有
+            # 一份引用 = 未来动态拼 override 时不会变成悬垂 view (同类事故见
+            # iter_185 SourceManager 生命周期)。
+            self._param_overrides = list(_overrides)
             self._comp.options.paramOverrides = self._comp.options.paramOverrides + _overrides
 
         # 设置 include 搜索路径
@@ -407,6 +422,12 @@ class SVCompiler:
             sm = pyslang.SourceManager()
             for d in include_dirs:
                 sm.addUserDirectories(d)
+            # [iter_185] 关键: 把 manager 的所有权交给 compiler (见 __init__ 注释)。
+            # pyslang 的 py::keep_alive<0,2> 只保证 "tree wrapper 活着时 manager 活着",
+            # 而下面的 `tree` 是循环内局部变量 (C++ 侧 Compilation 持有 shared_ptr
+            # <SyntaxTree>, tree 对象的 C++ 落点存活, 但 Python wrapper 每轮被回收)
+            # → 不显式持有 manager, buffer 会在 parse 循环结束后被释放。
+            self._source_manager = sm
 
         for fname, source in self._sources.items():
             try:
@@ -529,6 +550,9 @@ class SVCompiler:
         # 0 SyntaxTree 空编译, getRoot=None)
         self._comp = None
         self._root = None
+        # [iter_185] 旧 compilation 的 SourceManager 一并释放 (新的一次编译会
+        # 在 _do_compile 里重新持有) — 否则旧 buffer 白占内存。
+        self._source_manager = None
         self._diagnostics = []
         self._elaboration_errors = []
         self._do_compile()

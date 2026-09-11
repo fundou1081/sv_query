@@ -819,7 +819,9 @@ class GraphBuilder:
             # 无 target: 用第一个 top instance 名当前缀 (匹配 DriverExtractor 行为)
             toplevel = pyslang_root.topInstances
             if len(toplevel) > 0:
-                tname = toplevel[0].name
+                # [iter_184 加, iter_185 定性] safe_attr 兜住 name getter 异常 —
+                # 真因 (SourceManager 生命周期, iter_185) 已修, 此处保留为廉价防御。
+                tname = safe_str(safe_attr(toplevel[0], "name", ""))
                 instance_path = tname if tname else ''
 
         # [G3 Option 3] Step 2: 遍历所有 top instance 拿 BitSelectHit

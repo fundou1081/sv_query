@@ -22,17 +22,37 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~181)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~185)。
+
+**⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
+`test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
+"语料含非 UTF-8 identifier" (axi/common_cells **0 个**非 UTF-8 文件),
+真因 = **`SVCompiler._do_compile()` 把 `pyslang.SourceManager` 存成局部变量**,
+parse 循环结束后被 GC → 源文件 buffer 释放 → 符号名/token 是指向释放内存的
+`string_view` → 乱码名 / getter 抛 `UnicodeDecodeError` / elaboration 不完整 /
+**指标跨次漂移** (内存复用模式决定症状)。最小复现: 私有 manager 丢弃引用 →
+top 名 `UnicodeDecodeError`; 保留引用 → 正常。
+**修复**: compiler 持有 `self._source_manager` (+ `self._param_overrides`
+同类加固; slang 侧 `topModules`/`paramOverrides` 都是 `string_view` 容器)。
+**效果**: 可遍历符号 10,957→23,567 / 乱码名 3,349→**0** / nodes 2,275→**4,946
+且 3/3 完全一致** / clk fanout →**445** / flakiness `--runs 3` **stdev=0.0** /
+pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放宽的断言
+已收紧 (nodes≥4,000 / IM≥400 / 深度≥12 / clk≥300)。
+unit+regression **2111 passed + 35 subtests** / truth+cli+integration
+**814 passed**。
+[iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_184 (getter 残余点 + 部分 elaboration 记录 — 归因已被 iter_185 更正)**:
+`graph_builder.py:822` / `bit_select_handler.py:330` 两处 getter 守护; 记的
+"非 UTF-8 → 部分 elaboration" 结论 **❌ 错误**, 保留为历史。
+[iter_184](docs/task_tree/iterations/iter_184_getter_sites_and_partial_elab.md)
 
 **iter_181 (benchmark 稳定性)**: 修 2 个确定性缺陷 — flakiness 子进程缺
 `top_modules` (与主测量对齐) / `native_adapter` 两处 `top.name` 未守护;
-**定位根因族**: wrapper 语料含非 UTF-8 identifier → pyslang **属性 getter** 抛
-UnicodeDecodeError, 命中点随 elaboration 顺序/内存变化 → 间歇崩溃或部分
-elaboration (nodes 实测波动 1,778~3,057 / clk 88~205 / 5 次中 1 次无输出) —
-**这才是 iter_180 "runs=2 退化" 的真身**。教训: getter 级崩溃要用
-`safe_attr` (`safe_str` 救不了, 实参求值即炸)。
-对策: wrapper 基准取结构性下限 (nodes≥800/IM≥80/clk≥30) + 3 次重试;
-结果 pr5 套件 13 passed + 1 skipped。
+**当时定位的"根因族" (wrapper 语料含非 UTF-8 identifier → getter 抛
+UnicodeDecodeError) 已被 iter_185 证伪** — 真因是 SourceManager 生命周期。
+保留的教训: getter 级崩溃要用 `safe_attr` (`safe_str` 救不了, 实参求值即炸)。
+[iter_181](docs/task_tree/iterations/iter_181_bench_stability.md)
 **iter_182 (backlog 兑现)**: `tools/scan_pyslang_attrs.py` 扫描全仓 **126 处**
 未保护属性读取 (getter 级崩溃族); **热路径收敛 70 点** (8 文件, 按属性给语义
 安全默认值: `.name`→""、`.type`→None、`.body`→[]); 剩余 56 点 (可视化/CLI 等
