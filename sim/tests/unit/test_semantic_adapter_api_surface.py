@@ -17,7 +17,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 
-# ── 冻结表 (2026-09-08 实测, 重构前) ─────────────────────────────────────
+# ── 冻结表 (2026-09-08 分域拆分后实测) ───────────────────────────────────
+# 演进:
+#   iter_174 建表 (65 方法, 拆分前基线)
+#   iter_176 采集口径改 MRO-wide (方法定义在 mixin 类中; 有效 API 面等价)
+#   iter_177 Step 10 移出 5 个零调用方法 → legacy/dead_semantic_adapter_methods.py
+#     (get_generate_instances / iter_modules / visit_module / get_class_name /
+#      get_definition) — **API 收缩**: 全仓 (src+tests) 零调用, AST+grep 双证
 FROZEN_METHODS = {
     '__init__': '(self, root, compiler=None, target_module=None)',
     '_collect_drivers_from_stmt': '(self, stmt, func_name, drivers)',
@@ -39,17 +45,14 @@ FROZEN_METHODS = {
     'get_always_blocks': '(self, module) -> list',
     'get_assignments': '(self, module) -> list',
     'get_class_members': '(self, cls) -> list',
-    'get_class_name': '(self, cls) -> str',
     'get_classes': '(self) -> list',
     'get_data_declarations': '(self, module) -> list',
-    'get_definition': '(self, name: str) -> object',
     'get_drivers': '(self, signal_name: str) -> list',
     'get_function_declarations': '(self, module) -> list',
     'get_function_name': '(self, func) -> str',
     'get_function_params': '(self, func) -> list',
     'get_function_width': '(self, func) -> tuple[int, int] | None',
     'get_generate_always_blocks': '(self, module) -> list[dict]',
-    'get_generate_instances': '(self) -> list',
     'get_generate_net_declarations': '(self, module) -> list[dict]',
     'get_genvar_context': '(self, assign) -> dict',
     'get_instance_connection': '(self, instance) -> list',
@@ -81,9 +84,7 @@ FROZEN_METHODS = {
     'get_top_level_subroutines': '(self) -> list',
     'get_variable_declarations': '(self, module) -> list',
     'items': '(self) -> object',
-    'iter_modules': '(self) -> Iterator',
     'visit': '(self, callback: Callable) -> None',
-    'visit_module': '(self, module: object, callback: Callable) -> None',
 }
 
 FROZEN_PROPERTIES = ['parser', 'root', 'trees']

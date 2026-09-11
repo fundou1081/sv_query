@@ -295,3 +295,28 @@ src/trace/core/graph/viz/
 | 2026-06-25 | PR1-7 | Module-level抽取+L2跨模块+L3内部信号+L4可视化+L5 benchmark+L6 CI+L7 picorv32 |
 | 2026-06-15 | 1.0+ | Evidence/Snapshot/Verify/Dataflow/Controlflow 全套 |
 | 2026-05-26 | 1.0 | 初始架构 + 996 tests |
+
+---
+
+## 🔧 adapter 层结构 (2026-09-08, iter_174~177)
+
+`SemanticAdapter` 曾为 3,049 行单类;现按域拆分为 **facade + 6 mixin**
+(方法名/签名不变, 调用方零改动;API 面由 `sim/tests/unit/test_semantic_adapter_api_surface.py`
+MRO-wide 冻结):
+
+| 模块 | 职责 |
+|---|---|
+| `core/semantic_adapter.py` (≈123 行) | facade: `__init__`/状态/property + mixin 组合 + 兼容再导出 |
+| `core/semantic/source_core.py` | 源位置/文本/子节点/名字清洗 |
+| `core/semantic/modules.py` | module/instance/generate/primitive 导航 |
+| `core/semantic/ports_ifaces.py` | 端口/接口/modport |
+| `core/semantic/connections.py` | 实例连接/表达式→信号名/索引求值 |
+| `core/semantic/exprs_drivers.py` | 赋值/数据声明/驱动/任务函数参数 (+表达式分派器) |
+| `core/semantic/classes.py` | class/约束/参数化特化 |
+| `core/semantic/_expr_helpers.py` | 表达式信号抽取 16 个 kind 处理器 |
+| `core/semantic/_wrappers.py` | instance 包装类 (modules 域使用) |
+
+历史 legacy 层 (`ASTWalker` + 旧 `PyslangAdapter` + 3 Collector, 2,341 行,
+运行时从未实例化) 已移出 → `legacy/base_pyslang_adapter.py`;
+零调用方法归档 → `legacy/dead_semantic_adapter_methods.py` (可恢复)。
+方案与回归计划: [architecture/semantic_adapter_split_plan.md](architecture/semantic_adapter_split_plan.md)

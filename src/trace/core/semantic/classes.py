@@ -194,18 +194,6 @@ class ClassesMixin:
 
 
 
-    def get_class_name(self, cls) -> str:
-        """获取 class 名称（处理 Unicode bug）"""
-        fixed = self._fixed_names.get(id(cls))
-        if fixed:
-            return fixed
-        try:
-            return str(_safe_attr(cls, "name", "")).strip()
-        except UnicodeDecodeError:
-            return ""
-
-
-
     def _fix_unicode_class_names(self, classes: list):
         """修复 pyslang Unicode bug 导致的类名损坏
 

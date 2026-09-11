@@ -1,7 +1,7 @@
 # 方案: adapter 层拆解 (base.py 死层 + SemanticAdapter 分域) — 待方豆讨论
 
 > **创建**: 2026-09-08 GMT+8 (iter_173)
-> **状态**: 📋 **方案稿, 待拍板** (方豆: "接下来拆 semantic，做好方案和我讨论。包括回归测试计划。")
+> **状态**: ✅ **已执行完毕 (iter_174~177, Step 0-10 全绿)** — 结果见下方"执行结果"节; 方豆拍板: 移出代替删除。
 > **A 路线第三项** (前两项: iter_171 文档清理 / iter_172 缓存目录)
 
 ---
@@ -176,3 +176,21 @@ CLI (`arch` / `visualize` / `trace`)。
 | **D4** | opensource/真实项目套件纳入哪些 gate? | Step 2 + 收尾各跑一次; 中途步只跑快 gate (控时) |
 
 **工作量**: Step 0-10 合计约 **2 天量级** (含每步验证); 若只做 D1+D3+B1 主干 (Step 0/1/2/3 + 4~9) 约 1.5 天。
+
+---
+
+## ✅ 执行结果 (iter_174~177, 全部完成)
+
+| Step | 结果 | 提交 |
+|---|---|---|
+| 0 | API 面冻结测试 (65 方法 + 签名 + property) | cdba3ca |
+| 1 | legacy 等价矩阵 (4 文件逐条核对 → 零覆盖损失) | cdba3ca |
+| 2 | `base.py` 2,341 行 → `legacy/base_pyslang_adapter.py` (移出非删除) | cdba3ca |
+| 3 | 474 行巨函数 → 70 行分派器 + 16 处理器 (+修 latent UnboundLocalError) | 70ed162 |
+| 4-9 | 六域 mixin: facade 3,036 → **123 行**; 62 方法进 `core/semantic/` | 3ccbfc2 |
+| 10 | 移出 5 个零调用方法 → `legacy/dead_semantic_adapter_methods.py`; 文档漂移修正 | (本迭代) |
+
+**最终基线 (与拆分前一致, 无行为变化)**: unit+regression+truth **2,243 passed** /
+cli+integration **739 passed / 0 failed** / API 面冻结一致 (60 方法, 5 个零调用方法
+已按流程收缩并记录) / `check_docs.py` ✅。
+

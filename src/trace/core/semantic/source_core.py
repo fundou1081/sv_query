@@ -188,11 +188,3 @@ class SourceCoreMixin:
     def _safe_str(obj) -> str:
         """DEPRECATED: 委托给 _safe.safe_str (单一规范实现)。"""
         return safe_str(obj)
-
-
-    def get_definition(self, name: str) -> object:
-        """获取模块/类定义"""
-        for item in self._root:
-            if hasattr(item, "name") and item.name == name:
-                return item
-        return None
