@@ -22,20 +22,21 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 (执行中)**。方豆
+**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 (收尾中)**。方豆
 "用移出代替删除，这样可以恢复。去做吧" — 方案: [semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
 
-**进度**: ✅ Step 0 API 冻结 (65 方法) → ✅ Step 1 legacy 等价矩阵 (零覆盖损失) →
-✅ Step 2 `base.py` 移出 → `legacy/base_pyslang_adapter.py` (-2,341 行) →
-✅ **Step 3 拆 474 行巨函数** → 70 行分派器 + 16 个 `_expr_*` 处理器 + 折叠 helper
-(**顺带修 1 latent UnboundLocalError**: 嵌套 def 在死分支内却被活路径调用) →
-⏳ Step 4-9 六域 mixin 搬迁 → Step 10 死 API 清理。
-Gate: unit+regression+truth **2,243** / cli+integration **739** / API 面一致 / docs ✅。
+**进度**: ✅ Step 0 安全网 → ✅ Step 1 legacy 等价矩阵 → ✅ Step 2 `base.py` 移出
+legacy/ (-2,341 行) → ✅ Step 3 拆 474 行巨函数 (70 行分派器 + 16 处理器, 顺带修
+latent UnboundLocalError) → ✅ **Step 4-9 六域 mixin 拆分** (facade 3,036 → **227 行**;
+62 方法进 `core/semantic/` 六模块) → ⏳ Step 10 死 API 清理 + 文档收尾。
+Gate: unit+regression+truth **2,243** / cli+integration **739** / API 面一致 /
+check_docs ✅ — 与拆分前基线完全一致。
 [iter_174](docs/task_tree/iterations/iter_174_step2_legacy_layer_moved_out.md)
 [iter_175](docs/task_tree/iterations/iter_175_step3_expr_dispatch_split.md)
+[iter_176](docs/task_tree/iterations/iter_176_step4_9_mixin_split.md)
 
-**已闭环**: adapter 方案稿 (iter_173) / 缓存目录 (iter_172) / 文档清理 (iter_171) /
-参数化 class (iter_170) / G1-G4 covergroup (iter_162~166) 等。
+**已闭环**: 缓存目录 (iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) /
+G1-G4 covergroup (iter_162~166) 等。
 
 
 **iter_159 (2026-09-06)**: 组合数组 receiver (嵌套 ElementSelect: 成员数组
