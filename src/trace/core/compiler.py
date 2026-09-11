@@ -34,9 +34,12 @@ def set_quiet(quiet: bool = True) -> None:
     global _QUIET
     _QUIET = quiet
 
-# pyslang  bindings 路径
-PYSLLANG_BINDINGS_PATH = "/Users/fundou/my_dv_proj/slang/build/bindings"
-if PYSLLANG_BINDINGS_PATH not in sys.path:
+# [iter_186] pyslang bindings 覆盖路径 (仅当**存在**时才插入 sys.path)。
+# 原实现把开发机绝对路径无条件插进 sys.path — 该目录在正常安装环境并不存在,
+# 属于死路径 + 个人路径硬编码 (换机器/开源环境会误导排查)。只有当用户自己
+# clone 了 slang 并构建了 bindings 时才生效。
+PYSLLANG_BINDINGS_PATH = os.path.expanduser("~/my_dv_proj/slang/build/bindings")
+if os.path.isdir(PYSLLANG_BINDINGS_PATH) and PYSLLANG_BINDINGS_PATH not in sys.path:
     sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
 # UVM 源码路径 (自动检测)

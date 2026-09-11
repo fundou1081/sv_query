@@ -54,6 +54,12 @@ class UVMTestbenchExtractor:
         self._config_entries: list[ConfigDBEntry] = []
         self._class_hierarchy: dict[str, str] = {}
         self._class_defs: dict[str, object] = {}  # class_name → syntax node
+        # [iter_186] 下面两个只在 extract() 期间持有: _class_defs 里存的是
+        # **syntax node**, 它们的 token 文本指向 SourceManager 的源文件 buffer。
+        # 若 manager / Compilation 先被回收, 节点名就是释放内存里的字节
+        # (iter_185 同族 bug: SVCompiler 局部变量持有 SourceManager)。
+        self._uvm_source_manager = None
+        self._uvm_compilation = None
 
     def extract(self) -> UVMTestbench:
         """提取 UVM testbench 结构
@@ -75,9 +81,12 @@ class UVMTestbenchExtractor:
 
         try:
             # [铁律1] 通过 Compilation + addSyntaxTree 入口
-            # 直接用 Compilation 而不是 SVCompiler，因为 SVCompiler 的 full pipeline
-            # 会污染 parameterized UVM 类的 token.name.value (内部 getRoot 后会有
-            # 非 UTF-8 bytes). Compilation 是铁律1 允许的统一数据源。
+            # 直接用 Compilation 而不是 SVCompiler — 架构选择 (UVM sources 不需要
+            # SVCompiler 的 filelist/预处理管线; 且这些 sources 是语法级分析)。
+            # 注: 原注释称 "SVCompiler full pipeline 会污染 token.name.value
+            # (非 UTF-8 bytes)" — iter_185 已证明那是 **SourceManager 生命周期**
+            # bug (buffer 提前释放 → 名字悬垂), 不是 SVCompiler 的语义副作用;
+            # 该 bug 已修 (compiler.py 持有 self._source_manager)。
             source_manager = pyslang.SourceManager()
             compilation = _PyslangCompilation()
             for fname, source in self._sources.items():
@@ -86,6 +95,10 @@ class UVMTestbenchExtractor:
                 )
                 compilation.addSyntaxTree(tree)
 
+            # [iter_186] 显式持有到遍历结束 (见 __init__ 注释): _class_defs 会存
+            # syntax node, buffer 必须活得一样久。
+            self._uvm_source_manager = source_manager
+            self._uvm_compilation = compilation
             syntax_trees = compilation.getSyntaxTrees()
         except Exception as e:
             logger.warning(f"编译 UVM sources 失败 (跳过提取): {e}")
@@ -106,6 +119,11 @@ class UVMTestbenchExtractor:
             except Exception as e:
                 # 拿到 tree 但遍历失败 -- 记录后继续
                 logger.warning(f"遍历 SyntaxTree 失败 (跳过): {e}")
+
+        # [iter_186] 遍历结束 → 释放承接 (syntax node 不得逃出 extract();
+        # _class_defs 只在本方法内被 _find_var_type 使用)
+        self._uvm_source_manager = None
+        self._uvm_compilation = None
 
         return UVMTestbench(
             components=self._components,

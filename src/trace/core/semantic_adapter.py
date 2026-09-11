@@ -7,6 +7,7 @@
 # ==============================================================================
 
 import logging
+import os
 import sys
 from typing import Callable, Iterator
 
@@ -47,9 +48,9 @@ from .semantic._expr_helpers import (  # noqa: E402,F401  向后兼容再导出
 from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
 from .._safe import clean_name as _clean_name_fn
 
-# 确保 pyslang bindings 在 path 中
-PYSLLANG_BINDINGS_PATH = "/Users/fundou/my_dv_proj/slang/build/bindings"
-if PYSLLANG_BINDINGS_PATH not in sys.path:
+# 确保 pyslang bindings 在 path 中 (仅当存在; 见 compiler.py 同名单 [iter_186])
+PYSLLANG_BINDINGS_PATH = os.path.expanduser("~/my_dv_proj/slang/build/bindings")
+if os.path.isdir(PYSLLANG_BINDINGS_PATH) and PYSLLANG_BINDINGS_PATH not in sys.path:
     sys.path.insert(0, PYSLLANG_BINDINGS_PATH)
 
 import pyslang
