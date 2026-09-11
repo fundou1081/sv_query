@@ -43,6 +43,10 @@ class Scanner(ast.NodeVisitor):
         self.trys.pop()
 
     def visit_Attribute(self, node):
+        # Store 上下文 (self.name = ...) 不是读取, 不可能触发 getter 崩溃
+        if isinstance(node.ctx, ast.Store):
+            self.generic_visit(node)
+            return
         if node.attr in RISKY:
             protected = any(("UnicodeDecodeError" in g or "Exception" in g) for g in self.trys)
             val = node.value

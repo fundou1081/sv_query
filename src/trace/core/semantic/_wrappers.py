@@ -114,4 +114,5 @@ class SemanticInstanceDeclWrapper:
             def __init__(self, val: str) -> None:
                 self.value = val
 
-        return TokenValue(self._symbol.name)
+        # [iter_183] safe_attr: 非 utf8 identifier 下属性 getter 抛
+        return TokenValue(safe_str(safe_attr(self._symbol, "name", "")))

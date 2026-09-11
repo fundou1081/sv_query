@@ -6,6 +6,8 @@
 # [铁律3] 不可信则不输出
 
 import logging
+
+from .._safe import safe_attr, safe_str  # [iter_183]
 import re
 
 from .compiler import SVCompiler
@@ -61,9 +63,10 @@ class SVAExtractor:
         if "Instance" in kind:
             name = str(getattr(node, "name", "")).strip()
             new_prefix = f"{prefix}.{name}" if prefix else name
-            if hasattr(node, "body"):
+            _body = safe_attr(node, "body", None)  # [iter_183] getter 级防护
+            if _body is not None:
                 try:
-                    for child in node.body:
+                    for child in _body:
                         self._walk(child, graph, new_prefix)
                 except TypeError as _e:
                     logger.debug("提取失败 (TypeError): %s", _e)
