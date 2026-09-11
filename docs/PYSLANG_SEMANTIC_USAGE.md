@@ -222,7 +222,7 @@ str(getattr(node, "kind", ""))       # kind 转字符串判断 (contains 匹配)
 | `get_function_name` | driver_extractor | 仅 function/task name 提取 |
 | `parser` (@property) | connection_extractor (L112, L146) | 兼容性 wrapper，返回 self |
 | `get_modport_info` | interface regression test |  |
-| `get_generate_instances` | connection_extractor (L123, L147) | 与 `get_module_instances` 联用 |
+| ~~`get_generate_instances`~~ | ⛔ **已移出 (iter_177)** — 原记 connection_extractor 使用, 实测该调用早已不存在 (文档漂移); 归档于 `legacy/dead_semantic_adapter_methods.py` | — |
 | `get_function_declarations` | driver_extractor (L3318, L3716) |  |
 | `get_task_params` | driver_extractor |  |
 | `get_interface_modport_signals` | graph_builder (L711, L737) |  |
@@ -247,7 +247,7 @@ str(getattr(node, "kind", ""))       # kind 转字符串判断 (contains 匹配)
 |------|------|------|
 | `get_visit` | ⛔ UNUSED | 文档列了但**完全未调用** |
 | `get_top_level_subroutines` | ⛔ UNUSED | **完全未调用** |
-| `get_class_name` | ⛔ UNUSED | **完全未调用** |
+| ~~`get_class_name`~~ | ⛔ **已移出 (iter_177)** — 零调用 (AST+grep 双证), 归档 legacy | — |
 | `items` | ⛔ 兼容性 stub | 注释明示"返回空迭代器"；唯一 .items 调用是 `dict.items()` 链 |
 | `trees` | ⛔ 兼容性 stub | 同 items |
 | `get_port_name` | ⚠️ 已被替代 | 现有调用点建议改用 `get_port_name_and_direction` |

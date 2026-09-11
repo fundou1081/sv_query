@@ -1,7 +1,7 @@
 # L1: adapter 层拆解 (base.py 死层 + SemanticAdapter 分域)
 
 > **Created**: 2026-09-08 GMT+8
-> **Status**: 📋 **方案待讨论** (iter_173) — 方豆 "接下来拆 semantic，做好方案和我讨论。包括回归测试计划。"
+> **Status**: ✅ **CLOSED (iter_174~177)** — Step 0-10 全部完成; 移出代替删除 — 方豆 "接下来拆 semantic，做好方案和我讨论。包括回归测试计划。"
 > **方案文档**: [semantic_adapter_split_plan.md](../../architecture/semantic_adapter_split_plan.md)
 
 ## 诊断要点 (实测)

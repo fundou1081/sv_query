@@ -22,18 +22,24 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 (收尾中)**。方豆
-"用移出代替删除，这样可以恢复。去做吧" — 方案: [semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
+**当前任务 (方豆方向)**: **A 路线第三项 — adapter 拆解 ✅ 全闭环 (iter_174~177)**。
+方豆: "用移出代替删除，这样可以恢复。去做吧" — 方案与回归计划:
+[semantic_adapter_split_plan.md](docs/architecture/semantic_adapter_split_plan.md)
 
-**进度**: ✅ Step 0 安全网 → ✅ Step 1 legacy 等价矩阵 → ✅ Step 2 `base.py` 移出
-legacy/ (-2,341 行) → ✅ Step 3 拆 474 行巨函数 (70 行分派器 + 16 处理器, 顺带修
-latent UnboundLocalError) → ✅ **Step 4-9 六域 mixin 拆分** (facade 3,036 → **227 行**;
-62 方法进 `core/semantic/` 六模块) → ⏳ Step 10 死 API 清理 + 文档收尾。
-Gate: unit+regression+truth **2,243** / cli+integration **739** / API 面一致 /
-check_docs ✅ — 与拆分前基线完全一致。
+**成果**: `base.py` 2,341 行 legacy 层 → `legacy/base_pyslang_adapter.py`;
+巨函数 474 → 70 行;单文件 **3,049 → 123 行 facade + 6 域 mixin**
+(`core/semantic/`: source_core 198 / modules 716 / ports_ifaces 414 /
+connections 302 / exprs_drivers 812 / classes 249 + `_expr_helpers` 399 +
+`_wrappers` 115);5 个零调用方法 → `legacy/dead_semantic_adapter_methods.py`;
+顺带修 1 latent bug (`_fold_sel` 死分支内定义/活路径调用) + 3 处文档漂移。
+**Gate (每步均过)**: unit+regression+truth **2,243** / cli+integration **739** /
+API 面冻结一致 (MRO-wide; Step 10 收缩 5 项已记录) / check_docs ✅。
 [iter_174](docs/task_tree/iterations/iter_174_step2_legacy_layer_moved_out.md)
 [iter_175](docs/task_tree/iterations/iter_175_step3_expr_dispatch_split.md)
 [iter_176](docs/task_tree/iterations/iter_176_step4_9_mixin_split.md)
+[iter_177](docs/task_tree/iterations/iter_177_step10_dead_api_cleanup.md)
+
+**下一步候选**: push / A 路线剩余项 (参数化残留 2 处 `list(cls)` 统一) / 其他方向。
 
 **已闭环**: 缓存目录 (iter_172) / 文档清理 (iter_171) / 参数化 class (iter_170) /
 G1-G4 covergroup (iter_162~166) 等。
