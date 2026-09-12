@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~191)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~192)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_192 (filelist 双基准解析 — 方豆 "继续")**: 兑现 iter_190 未决项 —— 实测两套 filelist 加载器相对路径规则不同 (tracer 侧按 filelist 目录 / CLI 侧按 base_dir) → 同一 filelist 两侧结果不一致, 且 CLI 侧对**实际存在**的文件误报"条目不存在"(告警变噪声); 仓库内两种约定**并存** (industrial_filelists 用仓库根相对) → 改为**多候选解析** (filelist 目录优先 → base_dir, 都不中才告警并列出候选基准): filelist 目录相对 CLI 0→1, 仓库根相对 0→1; 新增 4 测试把两种约定 + 缺失情形钉死 (两套加载器统一时的安全网)。
+[iter_192](docs/task_tree/iterations/iter_192_filelist_resolution_bases.md)
 
 **iter_191 (CLI 错误格式化 — 方豆 "继续")**: iter_189 解决"崩进程"、iter_190 解决"静默"之后, 本轮解决"用户读不懂" —— 非法输入过去甩原始 traceback。新增 `src/cli/main.py::run()` 统一入口 (只格式化 OSError 家族 + UnicodeDecodeError + CompilationError; 其他异常照旧抛**不掩盖真 bug**; `SVQ_DEBUG=1` 恢复完整栈), `run_cli.py` 与 console script 共用。结果: 二进制/UTF-16/目录/不存在/filelist 当源码 → 全部 `sv_query: error: <一行原因>` + rc=1, traceback 消失; 新增 40 个回归测试(`test_cli_hostile_input.py`, 含"合法极端输入必须成功"的反向断言)。
 [iter_191](docs/task_tree/iterations/iter_191_cli_error_formatting.md)

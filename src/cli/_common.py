@@ -201,24 +201,33 @@ def _read_filelist_recursive(
                 if line.startswith("+") or line.startswith("-"):
                     continue
                 # 现在 line 是文件路径
-                # 解析为绝对路径 (相对 base_dir 还是 filelist 所在目录? 用 base_dir)
-                if not Path(line).is_absolute():
-                    full = (base_dir / line).resolve()
+                # [iter_192] 相对路径按**两个候选基准**解析 (都不是就告警):
+                #   ① filelist 所在目录 (tracer 侧 `SVCompiler.add_filelist` 的规则)
+                #   ② base_dir (cwd / 项目根; 仓库内 industrial_filelists 用的规则)
+                # 过去只按 ② → 与 tracer 侧结果不一致, 且对实际存在的文件误报
+                # "条目不存在" (iter_190 加的告警噪声)。
+                if Path(line).is_absolute():
+                    candidates = [Path(line).resolve()]
                 else:
-                    full = Path(line).resolve()
-                if full.exists() and full.is_file():
-                    try:
-                        sources[str(full)] = full.read_text(encoding="utf-8", errors="replace")
-                    except OSError as e:
-                        # [iter_190] 读失败必须可见 (原 `except Exception: pass` 是
-                        # AGENTS 纪律 2.5 禁止的静默吞掉写法)
-                        logger.warning("filelist 条目读取失败, 跳过: %s (%s)", full, e)
-                        missing_entries.append(f"{line} (读取失败: {e})")
-                else:
+                    candidates = [
+                        (filelist_path.parent / line).resolve(),
+                        (base_dir / line).resolve(),
+                    ]
+                full = next((c for c in candidates if c.exists() and c.is_file()), None)
+                if full is None:
                     # [iter_190] 缺失条目**不再静默跳过**: 过去 filelist 里写错的
                     # 路径会被无声忽略 → 用户拿到"少了几个文件的图"却以为完整。
-                    logger.warning("filelist 条目不存在, 跳过: %s", line)
+                    logger.warning("filelist 条目不存在, 跳过: %s (候选基准: %s)",
+                                   line, ", ".join(str(c.parent) for c in candidates))
                     missing_entries.append(line)
+                    continue
+                try:
+                    sources[str(full)] = full.read_text(encoding="utf-8", errors="replace")
+                except OSError as e:
+                    # [iter_190] 读失败必须可见 (原 `except Exception: pass` 是
+                    # AGENTS 纪律 2.5 禁止的静默吞掉写法)
+                    logger.warning("filelist 条目读取失败, 跳过: %s (%s)", full, e)
+                    missing_entries.append(f"{line} (读取失败: {e})")
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Filelist not found: {filelist_path}") from e
 
