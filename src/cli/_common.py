@@ -143,7 +143,15 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
     """
     from trace.core.filelist import parse_filelist
 
-    spec = parse_filelist(filelist_path, base_dirs=[base_dir])
+    # [iter_194] 候选基准 = 调用方给的 base_dir **再加上 cwd**:
+    # 仓库内 industrial_filelists 用的是"仓库根相对"路径, 而调用方给的 base_dir 可能
+    # 就是 filelist 目录本身 → 只有 filelist 目录一个候选时会误判缺失 (实测
+    # test_naplespu_4_level_chained_include 因此失败)。tracer 侧的第二基准固定是
+    # cwd, 这里补齐以保证两侧候选集合一致。
+    base_dirs = [base_dir]
+    if Path.cwd() != Path(base_dir).resolve():
+        base_dirs.append(Path.cwd())
+    spec = parse_filelist(filelist_path, base_dirs=base_dirs)
     sources: dict[str, str] = {}
     for f in spec.files:
         try:
@@ -153,9 +161,14 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
     spec.warn_missing(filelist_path)
     # 注: 这里**不**因"零文件"硬失败 — 本函数只是 CLI 侧辅助加载器 (供需要 sources
     # dict 的命令用), 真正编译入口是 tracer; 两者解析规则现已一致, 但调用方语义不同。
+    # [iter_194] 一个文件都没解析出来 → 明确报错。解析规则已与 tracer 侧统一
+    # (iter_193), 所以"空"就是真的空; 过去只告警 → 命令继续跑并输出空图 (rc=0),
+    # 用户以为成功。这是"输入无效", 必须可见且非 0。
     if not sources:
-        logger.warning("filelist %s 未加载到任何源文件 (%d 个条目缺失/不可读)",
-                       filelist_path, len(spec.missing))
+        raise CompilationError(
+            f"filelist {filelist_path} 没有解析到任何源文件 "
+            f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录"
+        )
     return sources
 
 
