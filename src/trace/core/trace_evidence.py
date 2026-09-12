@@ -576,7 +576,6 @@ class TraceEvidenceResolver:
             root.visit(visitor)
         except Exception as e:
             logger.debug("evidence visitor 失败: %s", e)
-            pass
         return result[0]
 
     def _get_syn_name(self, syn) -> str:

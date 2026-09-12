@@ -179,7 +179,6 @@ def _expr_member_access(adapter: "SemanticAdapter", expr, ctx: dict) -> list[str
                 member_name = member_name.split('"')[1]
             except (IndexError, AttributeError) as _e:
                 logger.debug("提取失败 ((IndexError, AttributeError)): %s", _e)
-                pass
     if left and member_name:
         # Recurse into left to get the full dotted path parts
         # [G1 iter_038] recursion 传 ctx

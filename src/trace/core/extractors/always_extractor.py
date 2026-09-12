@@ -169,7 +169,6 @@ def _create_always_edges(module, result, module_name, genvar_ctx: dict | None = 
                     h.adapter._genvar_context[id(stmt)] = dict(gv)
                 except Exception as e:
                     logger.debug("genvar 登记失败: %s", e)
-                    pass
 
             # 如果是 invocation,暂不处理赋值
             if False:  # [V6.9] ItemType removed
@@ -665,7 +664,6 @@ def _add_condition_drivers(dst_node_id: str,
             _collect_signals_from_ast(ast_node, cond_signals, h=h)
         except Exception as e:
             logger.warning("条件信号收集失败: %s", e)
-            pass
 
     # Fallback string scan (Fix E.1 filter applied, but no DRIVER edge written)
     if not cond_signals:

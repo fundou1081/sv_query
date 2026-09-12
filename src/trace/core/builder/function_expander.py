@@ -80,7 +80,6 @@ class FunctionExpander:
                         return result
             except Exception as e:
                 logger.debug("函数展开失败: %s", e)
-                pass
 
         return None
 

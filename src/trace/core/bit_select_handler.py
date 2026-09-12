@@ -166,7 +166,6 @@ class BitSelectHandler:
                     return int(lit.valueText)
                 except (ValueError, TypeError) as _e:
                     logger.debug("位宽 int 转换失败: %s", _e)
-                    pass
         # 直接的值属性
         if hasattr(expr, "value"):
             v = expr.value
@@ -178,7 +177,6 @@ class BitSelectHandler:
                 return int(expr.text)
             except (ValueError, TypeError) as _e:
                 logger.debug("位宽 int 转换失败: %s", _e)
-                pass
         return 0
 
     def _get_data_decl_names(self, data_decl) -> list[str]:

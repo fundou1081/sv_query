@@ -236,7 +236,6 @@ class ConnectionExtractor:
                     _def_name = _safe_str(getattr(_def, "name", ""))
             except Exception as e:
                 logger.debug("def_name 提取失败: %s", e)
-                pass
             if _def_name:
                 # [iter_113] 去掉 '!= inst_name' 守卫: 实例名 == 模块类型名是惯用法
                 # (cell4 cell4(...)), def_name 权威, 直接采用
@@ -365,7 +364,6 @@ class ConnectionExtractor:
                     _def_name = _safe_str(getattr(_def, "name", ""))
             except Exception as e:
                 logger.debug("def_name 提取失败: %s", e)
-                pass
             if _def_name:
                 # [iter_113] def_name 权威, 直接采用 (实例名==类型名是惯用法)
                 inst_module_name = _def_name

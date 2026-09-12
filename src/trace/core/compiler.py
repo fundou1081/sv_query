@@ -124,8 +124,8 @@ def _check_memory_pressure():
                 "                 (3) 在 16GB+ RAM 的机器上重跑。",
                 file=_sys.stderr,
             )
-    except Exception:
-        pass  # 检测失败不影响正常编译
+    except Exception as e:
+        logger.debug("%s: 忽略 Exception: %s", __name__, e)  # 检测失败不影响正常编译
 
 
 def _reject_non_design_unit(tree: object, fname: str) -> None:
@@ -263,7 +263,9 @@ class SVCompiler:
                 self._sources[os.path.basename(path)] = f.read()
         self._comp = None
 
-    def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None, already_loaded: set | None = None) -> None:
+    def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None,
+                     already_loaded: set | None = None,
+                     missing_entries: list | None = None) -> None:
         """从文件列表加载源文件
 
         支持以下语法（Verilator/Modelsim 风格）:
@@ -286,6 +288,9 @@ class SVCompiler:
             already_loaded = set()
         if env is None:
             env = {}
+        # [iter_190] 缺失/读失败的条目收集器 (跨递归共享, 最后汇总一条 warning)
+        if missing_entries is None:
+            missing_entries = []
 
         filelist_path = os.path.abspath(filelist_path)
         if filelist_path in already_loaded:
@@ -338,10 +343,18 @@ class SVCompiler:
                 if line.startswith("-F") or line.startswith("-f"):
                     parts = line.split(None, 1)
                     if len(parts) < 2:
+                        # [iter_190] 不静默: 语法错误的嵌套引用必须可见
+                        logger.warning("filelist %s: 无法解析嵌套引用行 %r", filelist_path, line)
                         continue
                     sub_filelist = parts[1].strip()
                     if os.path.isfile(sub_filelist):
-                        self.add_filelist(sub_filelist, env=full_env, already_loaded=already_loaded)
+                        self.add_filelist(sub_filelist, env=full_env,
+                                          already_loaded=already_loaded,
+                                          missing_entries=missing_entries)
+                    else:
+                        logger.warning("filelist %s: 嵌套 filelist 不存在, 跳过 %s",
+                                       filelist_path, sub_filelist)
+                        missing_entries.append(f"-f {sub_filelist}")
                     continue
 
                 # 其他以 + 或 - 开头的行：跳过
@@ -354,7 +367,17 @@ class SVCompiler:
                     line = os.path.join(dir_path, line)
                 if os.path.isfile(line):
                     self.add_files([line])
+                else:
+                    # [iter_190] 缺失条目不再静默跳过 (过去会产出"少文件的图")
+                    logger.warning("filelist %s: 文件不存在, 跳过 %s", filelist_path, line)
+                    missing_entries.append(line)
 
+        # [iter_190] 汇总一条 (缺失条目多时只列前 5 个)
+        if missing_entries:
+            head = ", ".join(missing_entries[:5])
+            more = f" (共 {len(missing_entries)} 个)" if len(missing_entries) > 5 else ""
+            logger.warning("filelist %s 有 %d 个条目未加载: %s%s",
+                           filelist_path, len(missing_entries), head, more)
         self._comp = None
 
     def _expand_env(self, text: str, env: dict[str, str]) -> str:

@@ -22,6 +22,9 @@ import typer
 
 from trace.core.compiler import CompilationError
 from trace.unified_tracer import UnifiedTracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
 # 1. tracer 构建 (核心 helper, 所有 --file 命令复用)
@@ -142,7 +145,24 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
     base_dir = base_dir.resolve()
     # 嵌套 filelist 跟踪, 防止循环
     seen_filelists: set[Path] = set()
-    _read_filelist_recursive(Path(filelist_path).resolve(), base_dir, sources, seen_filelists)
+    missing_entries: list[str] = []
+    _read_filelist_recursive(Path(filelist_path).resolve(), base_dir, sources,
+                             seen_filelists, missing_entries)
+
+    # [iter_190] 缺失/读失败的条目必须可见 (原实现静默跳过): 汇总一条 warning。
+    # 若一个文件都没加载出来 → 直接报错, 而不是让用户看到"空图"却不知为何。
+    if missing_entries:
+        head = ", ".join(missing_entries[:5])
+        more = f" (共 {len(missing_entries)} 个)" if len(missing_entries) > 5 else ""
+        logger.warning("filelist %s 有 %d 个条目未加载: %s%s",
+                       filelist_path, len(missing_entries), head, more)
+    # 注: 这里**不**因"零文件"硬失败 — 本函数只是 CLI 侧辅助加载器 (供 SVA/
+    # coverage 等需要 sources dict 的命令用), 真正的编译入口是 tracer, 它按
+    # filelist 所在目录解析相对路径 (`SVCompiler.add_filelist`), 两者解析基准
+    # 不同 (iter_190 实测: industrial_filelists 里的相对路径只有 tracer 侧能解析)。
+    if not sources:
+        logger.warning("filelist %s 未加载到任何源文件 (%d 个条目缺失/不可读)",
+                       filelist_path, len(missing_entries))
     return sources
 
 
@@ -151,6 +171,7 @@ def _read_filelist_recursive(
     base_dir: Path,
     sources: dict[str, str],
     seen_filelists: set,
+    missing_entries: list,
 ) -> None:
     if filelist_path in seen_filelists:
         return
@@ -174,7 +195,7 @@ def _read_filelist_recursive(
                     if len(parts) >= 2:
                         sub = (filelist_path.parent / parts[1].strip()).resolve()
                         if sub.exists():
-                            _read_filelist_recursive(sub, base_dir, sources, seen_filelists)
+                            _read_filelist_recursive(sub, base_dir, sources, seen_filelists, missing_entries)
                     continue
                 # +incdir+ / +define+ / +libext+ / 其他 + - 开头: 跳过 (本 helper 不处理)
                 if line.startswith("+") or line.startswith("-"):
@@ -188,11 +209,18 @@ def _read_filelist_recursive(
                 if full.exists() and full.is_file():
                     try:
                         sources[str(full)] = full.read_text(encoding="utf-8", errors="replace")
-                    except Exception:
-                        # 读失败的文件跳过, 不静默吞
-                        pass
-    except FileNotFoundError:
-        return
+                    except OSError as e:
+                        # [iter_190] 读失败必须可见 (原 `except Exception: pass` 是
+                        # AGENTS 纪律 2.5 禁止的静默吞掉写法)
+                        logger.warning("filelist 条目读取失败, 跳过: %s (%s)", full, e)
+                        missing_entries.append(f"{line} (读取失败: {e})")
+                else:
+                    # [iter_190] 缺失条目**不再静默跳过**: 过去 filelist 里写错的
+                    # 路径会被无声忽略 → 用户拿到"少了几个文件的图"却以为完整。
+                    logger.warning("filelist 条目不存在, 跳过: %s", line)
+                    missing_entries.append(line)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Filelist not found: {filelist_path}") from e
 
 
 # ----------------------------------------------------------------------------

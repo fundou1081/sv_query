@@ -131,7 +131,6 @@ class CallGraphBuilder:
                 self._collect_definitions_semantic(child, class_name)
         except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
             logger.debug("Token 遍历跳过: %s", _e)
-            pass
 
     # =========================================================================
     # 收集定义 (Syntax Tree - legacy)
@@ -151,7 +150,6 @@ class CallGraphBuilder:
                     self._collect_definitions(child, fname)
             except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
                 logger.debug("Token 遍历跳过: %s", _e)
-                pass
 
     def _collect_subroutine(self, node):
         """收集单个函数/任务定义"""
@@ -251,7 +249,6 @@ class CallGraphBuilder:
                     self._extract_calls(child, parent_node, class_name)
             except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
                 logger.debug("Token 遍历跳过: %s", _e)
-                pass
 
     def _build_fork_node(self, node, caller: str, class_name: str) -> CallNode | None:
         """构建 fork 节点"""
@@ -304,7 +301,6 @@ class CallGraphBuilder:
                         return result
             except TypeError as _e:  # pyslang Token 对象不可迭代，跳过
                 logger.debug("Token 遍历跳过: %s", _e)
-                pass
         return None
 
     def _process_invocation(self, node, caller: str, class_name: str) -> CallNode | None:

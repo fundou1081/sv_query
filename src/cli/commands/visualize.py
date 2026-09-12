@@ -49,6 +49,9 @@ from trace.core.graph.analyzer._dot_common import (
 # [V6.7] SignalGraphViewer removed — use trace.core.graph.viz instead
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with data flow edges")
 
@@ -1634,8 +1637,8 @@ def module(
         from trace.core.semantic_adapter import SemanticAdapter
         semantic_adapter = SemanticAdapter(tracer._get_compiler().get_root())
         ast_result = extract_module(semantic_adapter, target, max_depth=depth)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
     # 如果 AST 有结果, 优先用 AST. 否则用 graph.
     if ast_result and len(ast_result.instances) > 0:

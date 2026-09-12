@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~189)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~190)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_190 (`except: pass` 清算 — 方豆 "继续")**: 查 CLI 敌意输入时在 filelist 加载器发现被禁写法 → 全仓量化: **AGENTS v1.4 声称"计数=0", 实测 52 处** (25 处 `except Exception: pass`)。全部改为可见日志 (核心路径 debug / CLI warning, 保留理由注释, 9 文件补 logger) → **AST 扫描归零**; 新增 `tools/check_except_pass.py` (**写进 AGENTS 提交前清单**) + `test_discipline_except_pass.py` (含检查器自检); 连带修 filelist **静默缺陷**: 缺失条目 / 读失败 / 嵌套 filelist 缺失 / 语法错误 `-f` 行 → 全部可见告警 (过去会得到"少文件的图"却以为完整)。
+[iter_190](docs/task_tree/iterations/iter_190_except_pass_cleanup.md)
 
 **iter_189 (pyslang addSyntaxTree SIGTRAP — 方豆 "继续")**: 把 iter_188 发现的 `visualize module` 崩溃查到底 —— **纯 pyslang 5 行最小复现**: `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时原生 SIGTRAP (filelist 内容被 slang script 模式解析成 `DivideExpression`); 逐步二分证明只有 `addSyntaxTree` 崩 (faulthandler 对 SIGTRAP 无效)。合法根类型实测: `CompilationUnit`(空/注释/define/多成员) / `ModuleDeclaration`(单 module) / `ClassDeclaration`。修复: `SVCompiler._reject_non_design_unit` 只拒"表达式根"(不误伤合法输入) → `visualize module -f <filelist>` 从 **rc=-5 无输出** 变为 **rc=1 + 可行动错误提示**; 回归锁 11 测试 (守卫失效时 pytest 自己 exit=133)。
 [iter_189](docs/task_tree/iterations/iter_189_addsyntaxtree_sigtrap_guard.md)

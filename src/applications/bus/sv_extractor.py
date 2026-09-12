@@ -34,6 +34,9 @@ from pathlib import Path
 
 from .normalize import NormalizeConfig, SignalNormalizer
 from .structural import SignalContext
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # 数据结构
@@ -185,8 +188,8 @@ class SVSignalExtractor:
                         modules[name] = mod
                 if modules:
                     return modules
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)
 
         return modules
 
@@ -238,8 +241,8 @@ class SVSignalExtractor:
         if hasattr(adapter, "get_port_declarations"):
             try:
                 return list(adapter.get_port_declarations(mod))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)
         return []
 
     def _get_port_width(self, adapter, port, mod) -> int:
@@ -259,8 +262,8 @@ class SVSignalExtractor:
                         bw = inner.bitWidth
                         if isinstance(bw, int) and bw > 0:
                             return bw
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("%s: 忽略 Exception: %s", __name__, e)
 
         # 备用路径: adapter.extract_port_width
         try:
@@ -276,8 +279,8 @@ class SVSignalExtractor:
                 if isinstance(msb, int) and isinstance(lsb, int):
                     return max(1, msb - lsb + 1)
                 return 1
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("%s: 忽略 Exception: %s", __name__, e)
         return 1
 
     def _infer_paired_signals(
@@ -349,8 +352,8 @@ class SVSignalExtractor:
             name_attr = getattr(mod, "name", None)
             if name_attr:
                 return getattr(name_attr, "value", str(name_attr))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("%s: 忽略 Exception: %s", __name__, e)
         return None
 
     def _module_file(self, mod) -> str:
@@ -359,6 +362,6 @@ class SVSignalExtractor:
             loc = getattr(mod, "location", None)
             if loc:
                 return getattr(loc, "file", "") or ""
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("%s: 忽略 Exception: %s", __name__, e)
         return ""

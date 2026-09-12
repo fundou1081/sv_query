@@ -310,9 +310,9 @@ def _collect_instances_from_stmt(adapter, stmt) -> list[tuple]:
             try:
                 for child in body:
                     results.extend(_collect_instances_from_stmt(adapter, child))
-            except TypeError:
+            except TypeError as e:
                 # body 不可迭代, 尝试 child 属性
-                pass
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
     return results
 
 

@@ -547,7 +547,6 @@ class ExprsDriversMixin:
                                 self._collect_drivers_from_stmt(s, func_name, drivers)
                         except (TypeError, ValueError) as _e:
                             logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
-                            pass
                     else:
                         self._collect_drivers_from_stmt(inner, func_name, drivers)
             else:
@@ -758,8 +757,8 @@ class ExprsDriversMixin:
                         _m = _re_bw.match(r"\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]", rng_str)
                         if _m:
                             return (int(_m.group(1)), int(_m.group(2)))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)
             if hasattr(declared_type, "width"):
                 w = declared_type.width
                 if hasattr(w, "value"):

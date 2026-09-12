@@ -35,6 +35,9 @@ from pathlib import Path
 """
 
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # 行尾单行注释剥离
@@ -119,8 +122,8 @@ def preprocess_macros(sources: dict[str, str]) -> dict[str, str]:
             r = _resolve_macro_recursive(n, all_macros)
             if r is not None and not r.startswith("`"):
                 resolved[n] = r
-        except RecursionError:
-            pass  # 跳过循环引用
+        except RecursionError as e:
+            logger.debug("%s: 忽略 RecursionError: %s", __name__, e)  # 跳过循环引用
 
     # 3. 跨文件替换
     out: dict[str, str] = {}

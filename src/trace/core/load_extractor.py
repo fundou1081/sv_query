@@ -252,7 +252,6 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError) as _e:
                                                     logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
-                                                    pass
                                     except Exception as e:
                                         logger.warning("参数值转换失败: %s", e)
 
@@ -281,7 +280,6 @@ class LoadExtractor:
                                                     param_map[name] = int(value)
                                                 except (ValueError, TypeError) as _e:
                                                     logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
-                                                    pass
                                     except Exception as e:
                                         logger.warning("参数值转换失败: %s", e)
 
@@ -306,7 +304,6 @@ class LoadExtractor:
                                             param_map[name] = int(value)
                                         except (ValueError, TypeError) as _e:
                                             logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
-                                            pass
                             except Exception as e:
                                 logger.warning("参数值转换失败: %s", e)
 

@@ -30,6 +30,9 @@ import typer
 
 from cli._common import _build_tracer, handle_compilation_error
 from trace.core.compiler import CompilationError
+import logging
+
+logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore")
 
@@ -54,8 +57,8 @@ def _walk_subroutines(root):
             try:
                 for child in node:
                     walk(child, class_name)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.warning("%s: 忽略 TypeError: %s", __name__, e)
             return
         if "Subroutine" in kind:
             name = str(getattr(node, "name", "")).strip()
@@ -66,8 +69,8 @@ def _walk_subroutines(root):
         try:
             for child in node:
                 walk(child, class_name)
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
     walk(root)
     return results
@@ -89,8 +92,8 @@ def _find_classes(root):
         try:
             for child in node:
                 walk(child)
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
     walk(root)
     return classes
@@ -136,8 +139,8 @@ def _find_randomize_calls(task_syntax, class_name, task_name):
         if sr:
             try:
                 return sr.start.line
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("%s: 忽略 Exception: %s", __name__, e)
         return 0
 
     def get_text(node):
@@ -179,8 +182,8 @@ def _find_randomize_calls(task_syntax, class_name, task_name):
         try:
             for child in node:
                 walk_expr(child)
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
     # 走 task syntax.items 找 ExpressionStatement
     items = getattr(task_syntax, "items", [])
@@ -651,8 +654,8 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
             try:
                 for item in class_node.items:
                     visit_class_member(item)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
         # Also try via syntax bridge for method bodies
         syntax = getattr(class_node, 'syntax', None)
@@ -669,8 +672,8 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
                                ("Function" in inner_kind and "Declaration" in inner_kind):
                                 process_task_or_fn_syntax(inner, inner_kind,
                                     str(getattr(inner, "name", "")).strip(), class_name)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
     def process_subroutine(sub_node, sub_name: str, class_name: str):
         """Process a SubroutineSymbol from semantic AST."""
@@ -679,8 +682,8 @@ def _scan_references_semantic(tracer, target_signal: str) -> list[dict]:
             try:
                 for stmt in sub_node.items:
                     process_statement(stmt, class_name, f"task/function {sub_name}()")
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.warning("%s: 忽略 TypeError: %s", __name__, e)
 
     def process_statement(stmt, class_name: str, ctx: str):
         """Extract signals from a statement node."""

@@ -122,19 +122,19 @@ class CovergroupExtractor:
                 try:
                     for c in body:
                         walk(c)
-                except TypeError:
-                    pass
+                except TypeError as e:
+                    logger.debug("%s: 忽略 TypeError: %s", __name__, e)
             try:
                 for c in node:
                     walk(c)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         try:
             for top in root:
                 walk(top)
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.debug("%s: 忽略 TypeError: %s", __name__, e)
         return out
 
     # =========================================================================
@@ -254,13 +254,13 @@ class CovergroupExtractor:
                 try:
                     for child in body:
                         walk(child, cur_class)
-                except TypeError:
-                    pass
+                except TypeError as e:
+                    logger.debug("%s: 忽略 TypeError: %s", __name__, e)
             try:
                 for child in node:
                     walk(child, cur_class)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         walk(root, "")
         return out
@@ -284,8 +284,8 @@ class CovergroupExtractor:
         try:
             for ch in syn:
                 self._collect_new_assign_targets(ch, out)
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
     @staticmethod
     def _last_identifier_name(syn) -> str:
@@ -304,8 +304,8 @@ class CovergroupExtractor:
                 n = CovergroupExtractor._last_identifier_name(ch)
                 if n:
                     found = n
-        except TypeError:
-            pass
+        except TypeError as e:
+            logger.debug("%s: 忽略 TypeError: %s", __name__, e)
         return found
 
     # =========================================================================

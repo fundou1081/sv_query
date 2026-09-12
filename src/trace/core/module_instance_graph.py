@@ -318,12 +318,10 @@ class PathResolver:
                 neighbors.update(self.signal_graph.successors(current))
             except (KeyError, nx.NetworkXError) as _e:
                 logger.debug("图无路径 (正常): %s", _e)
-                pass
             try:
                 neighbors.update(self.signal_graph.predecessors(current))
             except (KeyError, nx.NetworkXError) as _e:
                 logger.debug("图无路径 (正常): %s", _e)
-                pass
 
             for neighbor in neighbors:
                 if neighbor in visited:

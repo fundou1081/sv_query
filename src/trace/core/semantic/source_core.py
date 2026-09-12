@@ -127,7 +127,6 @@ class SourceCoreMixin:
                     children.append(child)
             except TypeError as e:
                 logger.debug("子节点迭代失败: %s", e)
-                pass
 
         # 处理常见属性
         for attr in [

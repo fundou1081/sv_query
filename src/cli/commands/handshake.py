@@ -27,6 +27,9 @@ from trace.core.handshake_detector import (
 )
 from trace.core.query.signal import SignalTracer
 from trace.unified_tracer import UnifiedTracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 handshake_app = typer.Typer(help="Bus handshake semantic analysis: AXI/TL-UL ready/valid classification (Phase B)")
 
@@ -289,8 +292,8 @@ def _scan_internal(file, filelist, include, channel, max_signals, strict):
         try:
             hi = detect_from_signal_pair(st, valid, ready)
             results.append(hi)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
     _print_scan_table(results, filter_channels)
 

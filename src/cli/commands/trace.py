@@ -34,6 +34,9 @@ from trace.core.covergroup_extractor import CovergroupExtractor
 from trace.core.graph.models import EdgeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # JSON 输出格式化函数
@@ -1663,8 +1666,8 @@ def overview(
         try:
             ev = evidence_resolver.resolve(sig)
             ev_data[sig] = evidence_to_dict(ev)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
     # ── 汇编输出 ──
     data = {

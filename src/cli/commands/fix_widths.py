@@ -30,6 +30,9 @@ import pyslang
 import typer
 
 from cli._common import _build_tracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
 # 核心算法
@@ -55,10 +58,10 @@ def _get_syntax_trees_typedefs(tracer) -> list:
                         for m in node.members:
                             walk(m)
                 walk(st.root)
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as e:
+                logger.warning("%s: 忽略 Exception: %s", __name__, e)
+    except Exception as e:
+        logger.warning("%s: 忽略 Exception: %s", __name__, e)
     return all_typedefs
 
 
@@ -184,8 +187,8 @@ def fix_widths_cmd(
         if path.is_file():
             try:
                 sources[line] = path.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
     # 跑 UnifiedTracer 拿 syntax trees
     try:
