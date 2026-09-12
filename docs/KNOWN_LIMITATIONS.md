@@ -35,13 +35,35 @@ D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 
 `arr[N]` 被 pyslang `_get_signal` 解析为两个独立信号，位索引丢失。
 
-### 3. pyslang 内存不足问题
+### 3. pyslang 内存不足问题 — **归因已更正 (iter_185)**
 
-8GB MBA 上 pyslang elaboration 内存不足时静默失败（UnicodeDecodeError / 随机 graph 大小）。
+> ⚠️ 2026-09-08 iter_185: "内存不足导致 elaboration 静默失败" 的归因**已被证伪** —
+> 真因是 `SVCompiler` 的 `SourceManager` 生命周期 bug (buffer 提前释放 → 符号名悬垂
+> `string_view`), 已修复。修复后同一输入 3 次完全一致 (stdev = 0.0)。
+> 内存压力仍然会让 pyslang 变慢/失败, 但不再产生乱码名与结果漂移。
 
-**修复**: 跑 `python3 -c "import time; a = bytearray(4*1024**3); time.sleep(3); del a"` 再跑 sv_query。
+**文档**: `docs/PYSLANG_MEMORY_ISSUE.md` (已按真因改写),
+`docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`
 
-**文档**: `docs/PYSLANG_MEMORY_ISSUE.md`
+### 3.1 pyslang 非设计单元输入 → 原生 SIGTRAP (iter_189, 已在我们层加守卫)
+
+`pyslang`/`slang` 的 `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时
+**直接 SIGTRAP** (exit 133, 无输出、无 Python 异常可捕获)。触发条件: 输入文本不是
+SystemVerilog 设计单元 → slang 走 script 模式解析成表达式。最典型事故是**把
+filelist 当源码传**:
+
+```bash
+sv_query visualize module -f project.f     # 曾经直接崩 (filelist 内容被当 SV 源码)
+```
+
+**我们层的守卫** (`src/trace/core/compiler.py::_reject_non_design_unit`): 在
+`addSyntaxTree` 之前检查根节点类型, 表达式根 → 抛可行动的 `CompilationError`
+(提示"是否把 filelist 当源码传入")。合法输入 (根节点 `CompilationUnit` /
+`ModuleDeclaration` / `ClassDeclaration` / 空文件 / 仅 `define`) 不受影响。
+
+**上游建议**: pyslang 应在 `addSyntaxTree` 里拒绝非设计单元树 (返回错误), 而不是 trap。
+回归测试: `sim/tests/unit/test_compiler_non_design_unit_guard.py` (守卫失效时测试进程
+会以 exit 133 死掉, 信号明确)。
 
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
