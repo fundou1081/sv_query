@@ -1221,7 +1221,6 @@ class DriverExtractor:
             return True
         except (ValueError, TypeError) as _e:
             logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
-            pass
 
         # 1-bit SV literals: 1'bx, 1'bz 中拆分出的纯 'x'/'z'
         # 但单字母信号名 'x'/'z' 是真实信号，不能在此过滤。
@@ -1295,7 +1294,6 @@ class DriverExtractor:
                     self.adapter.get_module_name(module)
                 except Exception as e:
                     logger.warning("get_module_name 失败: %s", e)
-                    pass
                 # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
                 self._current_module = module
                 # [P1-3] 获取当前模块的源文件位置
@@ -1365,8 +1363,8 @@ class DriverExtractor:
                     edge.source_location = SourceLocation(
                         file=loc[0], line_start=loc[1], line_end=loc[1], column=loc[2]
                     )
-            except Exception:
-                pass  # source_location 失败不影响 edge
+            except Exception as e:
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)  # source_location 失败不影响 edge
 
         # [REFACTOR 2026-08-07 A计划] 收集 function 宽度到 func_info
         # _store_expr_tree 的 _collect_from_tree 只记录了 Call 节点名 (func_info[name]=None)

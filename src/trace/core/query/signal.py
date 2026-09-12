@@ -590,7 +590,6 @@ class SignalTracer:
                             seen.add(inst_port)
         except Exception as e:
             logger.debug("load/driver 收集失败: %s", e)
-            pass
 
         return loads
 

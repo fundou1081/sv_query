@@ -238,7 +238,6 @@ class DecompositionResult:
                 return block.to_dict()
             except Exception as e:
                 logger.debug("block.to_dict 失败, 走 repr fallback: %s", e)
-                pass
         # Fallback: repr 字符串
         return {"repr": str(block)}
 

@@ -751,7 +751,6 @@ def _extract_ternary_condition(expr) -> str:
                                 return s
                         except (UnicodeDecodeError, TypeError) as _e:
                             logger.debug("表达式文本提取失败: %s", _e)
-                            pass
                     # 尝试获取符号名
                     if hasattr(cond_expr, "symbol"):
                         sym = getattr(cond_expr, "symbol", None)

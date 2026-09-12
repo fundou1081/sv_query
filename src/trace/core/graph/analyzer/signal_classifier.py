@@ -24,6 +24,9 @@ from enum import Enum, auto
 from pathlib import Path
 
 from ..models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SignalClass(Enum):
@@ -116,9 +119,9 @@ def _auto_load_default_config() -> None:
         if path.exists():
             try:
                 load_config(path)
-            except Exception:
+            except Exception as e:
                 # 静默降级到 builtin (避免背景 noise)
-                pass
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)
             return
 
 

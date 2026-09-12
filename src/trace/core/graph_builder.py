@@ -459,8 +459,8 @@ class GraphBuilder:
                     hp = getattr(child, 'hierarchicalPath', None)
                     if hp:
                         return str(hp)
-                except (UnicodeDecodeError, TypeError):
-                    pass
+                except (UnicodeDecodeError, TypeError) as e:
+                    logger.debug("%s: 忽略 (UnicodeDecodeError, TypeError): %s", __name__, e)
                 try:
                     return f"{getattr(child, 'name', '_anon')}"
                 except Exception:
@@ -1072,7 +1072,6 @@ class GraphBuilder:
                                     interface_signals[(port_name.strip(), sig_name)] = sig_dir
             except (ValueError, AttributeError, TypeError) as _e:
                 logger.debug("提取失败 ((ValueError, AttributeError, TypeError)): %s", _e)
-                pass
 
             # For each node in the graph that's in this module
             existing_interface_signals = set()

@@ -70,7 +70,6 @@ class SVAExtractor:
                         self._walk(child, graph, new_prefix)
                 except TypeError as _e:
                     logger.debug("提取失败 (TypeError): %s", _e)
-                    pass
             return
 
         if "ClassType" in kind:
@@ -148,7 +147,6 @@ class SVAExtractor:
                     self._walk(child, graph, prefix)
             except TypeError as _e:
                 logger.debug("提取失败 (TypeError): %s", _e)
-                pass
             return
 
         # 遍历 Package
@@ -158,7 +156,6 @@ class SVAExtractor:
                     self._walk(child, graph, prefix)
             except TypeError as _e:
                 logger.debug("提取失败 (TypeError): %s", _e)
-                pass
             return
 
         # 遍历子节点
@@ -167,7 +164,6 @@ class SVAExtractor:
                 self._walk(child, graph, prefix)
         except TypeError as _e:
             logger.debug("提取失败 (TypeError): %s", _e)
-            pass
 
     # =========================================================================
     # Sequence 解析
@@ -705,7 +701,6 @@ class SVAExtractor:
                     signals.extend(s)
                 except Exception as e:
                     logger.debug("SVA 提取失败: %s", e)
-                    pass
         return list(set(signals))
 
     # =========================================================================
@@ -758,7 +753,6 @@ class SVAExtractor:
                 return str(name).strip()
             except Exception as e:
                 logger.debug("SVA 提取失败: %s", e)
-                pass
         return ""
 
     def _iter_children(self, node):
@@ -767,7 +761,6 @@ class SVAExtractor:
             yield from node
         except TypeError as _e:
             logger.debug("提取失败 (TypeError): %s", _e)
-            pass
 
     def _get_identifier_name(self, node) -> str:
         """获取标识符名称"""
@@ -778,7 +771,6 @@ class SVAExtractor:
                 return str(ident.value).strip()
             except Exception as e:
                 logger.debug("SVA 提取失败: %s", e)
-                pass
         # 方式2: .name
         name = getattr(node, "name", None)
         if name:
@@ -786,7 +778,6 @@ class SVAExtractor:
                 return str(name).strip()
             except Exception as e:
                 logger.debug("SVA 提取失败: %s", e)
-                pass
         # 方式3: 从 syntax 提取
         syntax = getattr(node, "syntax", None)
         if syntax:
@@ -796,7 +787,6 @@ class SVAExtractor:
                     return str(token).strip()
                 except Exception as e:
                     logger.debug("SVA 提取失败: %s", e)
-                    pass
         return ""
 
     def _collect_decl_identifiers(self, syntax) -> set:
@@ -836,8 +826,8 @@ class SVAExtractor:
             try:
                 for c in n:
                     walk(c)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         walk(syntax)
         return out
@@ -861,8 +851,8 @@ class SVAExtractor:
             try:
                 for c in n:
                     idents_under(c, acc)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         def walk(n):
             if n is None:
@@ -885,8 +875,8 @@ class SVAExtractor:
             try:
                 for c in n:
                     walk(c)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         walk(syntax_node)
 

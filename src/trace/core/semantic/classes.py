@@ -55,10 +55,8 @@ class ClassesMixin:
                                     classes.append(child)
                         except (TypeError, UnicodeDecodeError) as _e:
                             logger.debug("提取失败 ((TypeError, UnicodeDecodeError)): %s", _e)
-                            pass
             except (TypeError, UnicodeDecodeError) as _e:
                 logger.debug("提取失败 ((TypeError, UnicodeDecodeError)): %s", _e)
-                pass
 
         # 去重（Semantic AST 和 SyntaxTree 可能都找到**同一个** class 对象）
         # [iter_154 C4-C / D5] 按**对象身份**去重 (id) — 同名不同定义是合法
@@ -198,13 +196,13 @@ class ClassesMixin:
                 try:
                     for c in body:
                         walk(c)
-                except TypeError:
-                    pass
+                except TypeError as e:
+                    logger.debug("%s: 忽略 TypeError: %s", __name__, e)
             try:
                 for c in node:
                     walk(c)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         for top in self._root:
             walk(top)
@@ -233,7 +231,6 @@ class ClassesMixin:
                 continue
             except UnicodeDecodeError as _e:
                 logger.debug("提取失败 (UnicodeDecodeError): %s", _e)
-                pass
 
             syntax = getattr(cls, "syntax", None)
             if not syntax:

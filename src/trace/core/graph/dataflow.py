@@ -555,7 +555,6 @@ class DataFlowGraph:
                                             return [[from_signal] + sp]
                                 except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                     logger.debug("图无路径 (正常): %s", _e)
-                                    pass
 
         # 情况2: to_signal 是成员,检查是否有 struct 赋值到它的父
         if dst_member and dst_parent in nx_graph.nodes():
@@ -577,7 +576,6 @@ class DataFlowGraph:
                                         return [sp + [dst_parent, to_signal]]
                             except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                 logger.debug("图无路径 (正常): %s", _e)
-                                pass
 
         # [FIX] 情况2b: to_signal 被 struct.member 表达式驱动
         # 例如: data_out 由 pkt2.data 驱动,需要追踪 pkt2 的来源
@@ -631,7 +629,6 @@ class DataFlowGraph:
                                             return [sp + [struct_pred, dst_struct_resolved, to_signal]]
                                 except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                     logger.debug("图无路径 (正常): %s", _e)
-                                    pass
 
                             # [FIX] 如果 from_signal 是 struct.member,检查是否能通过 struct 父节点传播
                             # 例如: from_signal = pkt1.data, struct_pred = pkt1
@@ -648,7 +645,6 @@ class DataFlowGraph:
                                                 return [sp + [dst_struct_resolved, to_signal]]
                                     except (nx.NetworkXNoPath, nx.NodeNotFound) as _e:
                                         logger.debug("图无路径 (正常): %s", _e)
-                                        pass
 
                                 # 检查 from_signal 的父 struct 是否能到达 struct_pred
                                 if src_parent_candidate in nx_graph.nodes():

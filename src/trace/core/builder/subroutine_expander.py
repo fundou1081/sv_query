@@ -602,7 +602,6 @@ class SubroutineExpander:
                     return const_str
             except Exception as e:
                 logger.debug("subroutine 常量提取失败: %s", e)
-                pass
 
         # Literal values
         if "Literal" in kind or "Integer" in kind:
@@ -612,7 +611,6 @@ class SubroutineExpander:
                     return str(val)
             except Exception as e:
                 logger.debug("subroutine 常量提取失败: %s", e)
-                pass
             try:
                 val = getattr(expr, "constant", None)
                 if val is not None:
@@ -626,7 +624,6 @@ class SubroutineExpander:
                     return const_str
             except Exception as e:
                 logger.debug("subroutine 常量提取失败: %s", e)
-                pass
 
         # Default keyword
         if "Default" in kind:
@@ -642,7 +639,6 @@ class SubroutineExpander:
                         return str(name)
             except Exception as e:
                 logger.debug("subroutine name 提取失败: %s", e)
-                pass
 
         # Fallback
         return self._condition_to_string(expr)
@@ -913,7 +909,6 @@ class ParameterReplacer:
                         setattr(node, attr_name, new_attr)
             except Exception as e:
                 logger.debug("subroutine attr 替换失败: %s", e)
-                pass
 
         self._cache[node_id] = node
         return node

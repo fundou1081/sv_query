@@ -404,8 +404,8 @@ class ClassGraphBuilder:
             try:
                 for c in n:
                     walk(c, d + 1)
-            except TypeError:
-                pass
+            except TypeError as e:
+                logger.debug("%s: 忽略 TypeError: %s", __name__, e)
 
         walk(node, depth)
         return results
@@ -1670,5 +1670,4 @@ class ClassGraphBuilder:
                                 return (left_val, right_val)
                             except (ValueError, AttributeError) as _e:
                                 logger.debug("提取失败 ((ValueError, AttributeError)): %s", _e)
-                                pass
         return (0, 0)

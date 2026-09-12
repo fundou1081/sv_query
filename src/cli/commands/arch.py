@@ -36,6 +36,9 @@ from pathlib import Path
 import typer
 
 from src.cli._common import _build_tracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 arch_app = typer.Typer(help="Project architecture visualization (L1 + L2 overview)")
 
@@ -532,8 +535,8 @@ def _render_svg(dot_text: str, target_module: str, output: str | None) -> str:
     finally:
         try:
             Path(tmp_dot).unlink()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
 
 def _render_html(instances, edges, target_module: str, with_ports: bool) -> str:

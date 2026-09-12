@@ -809,7 +809,6 @@ def _eval_to_int(expr: Any) -> int | None:
             return int(v)
         except (TypeError, ValueError) as _e:
             logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
-            pass
 
     # 快速路径 2: .constant.value (pyslang 11.0 ConstantValue)
     const = getattr(expr, 'constant', None)
@@ -820,7 +819,6 @@ def _eval_to_int(expr: Any) -> int | None:
                 return int(cv)
             except (TypeError, ValueError) as _e:
                 logger.debug("提取失败 ((TypeError, ValueError)): %s", _e)
-                pass
 
     # 慢路径: 走 pyslang eval (某些版本 expr.eval() 无参可用)
     # [2026-08-28] `_HAS_PYSLANG` 开关已删 (pyslang 是核心依赖, 见文件头说明)。
@@ -835,7 +833,6 @@ def _eval_to_int(expr: Any) -> int | None:
                 return int(iv)
         except Exception as e:
             logger.debug("expr.eval 失败: %s", e)
-            pass
 
     return None
 

@@ -32,8 +32,8 @@ def _apply_quiet_flag() -> None:
         try:
             from trace.core.compiler import set_quiet
             set_quiet(True)
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.debug("%s: 忽略 ImportError: %s", __name__, e)
         # 从 argv 中移除 --quiet / -q (Typer 不识别全局 flag)
         sys.argv[:] = [a for a in sys.argv if a not in quiet_signals]
 
@@ -73,6 +73,9 @@ from src.cli.commands.timing import timing_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(
     name="svq",

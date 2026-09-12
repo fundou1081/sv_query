@@ -221,7 +221,6 @@ class PortsIfacesMixin:
                         return (v, 0, v - 1)
                     except (ValueError, TypeError) as _e:
                         logger.debug("提取失败 ((ValueError, TypeError)): %s", _e)
-                        pass
 
         # 默认 1 位
         return (1, 0, 0)

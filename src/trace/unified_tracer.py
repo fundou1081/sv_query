@@ -49,8 +49,8 @@ def reclaim_memory_if_needed() -> None:
                     f"(2) 用更小 filelist 按模块逐个分析.",
                     file=sys.stderr,
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("%s: 忽略 Exception: %s", __name__, e)
 
 
 # [C-Flaky-3b 2026-06-27] 向后兼容旧名
@@ -612,8 +612,8 @@ class UnifiedTracer:
             # 触发编译
             try:
                 self._get_compiler()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s: 忽略 Exception: %s", __name__, e)
         if self._compiler is None:
             return []
         return self._compiler.get_elaboration_errors()
@@ -863,7 +863,7 @@ class UnifiedTracer:
                                 ))
                         except Exception as e:
                             # [FIX 2026-08-21] 不让错误中断 build_graph 主流程
-                            pass
+                            logger.debug("%s: 忽略 Exception: %s", __name__, e)
                 elif op in OP_CASE_OPS:
                     cond_sigs = []
                     children = node.get("children", []) or []
@@ -923,8 +923,8 @@ class UnifiedTracer:
                                     src=op_node_id, dst=lhs_full,
                                     kind=EdgeKind.CASE_RESULT,
                                 ))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("%s: 忽略 Exception: %s", __name__, e)
                 for c in node.get("children", []) or []:
                     _walk(c, path + [node])
 

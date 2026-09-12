@@ -16,6 +16,9 @@ native_adapter.py — pyslang native API for instance extraction.
 import pyslang
 
 from .._safe import safe_attr, safe_str  # noqa: E402  (GAP-7: 单一规范实现)
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
 # Helpers
@@ -157,9 +160,9 @@ def _walk_instance(
             return
         try:
             _safe_str(inst.name)
-        except (UnicodeDecodeError, TypeError):
+        except (UnicodeDecodeError, TypeError) as e:
             # [fix] 原 except 冗余包揽 Exception — 收窄到实际可能的解码/类型错误
-            pass
+            logger.debug("%s: 忽略 (UnicodeDecodeError, TypeError): %s", __name__, e)
 
         # Get type name (module name) via definition
         defn = getattr(inst, 'definition', None)

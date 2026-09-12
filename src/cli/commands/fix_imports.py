@@ -32,6 +32,9 @@ from pathlib import Path
 import typer
 
 from cli._common import _build_tracer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
 # 核心算法: 扫项目找含 identifier 定义的文件
@@ -199,8 +202,8 @@ def fix_imports_cmd(
                 if line.endswith(".sv") or line.endswith(".svh"):
                     first_sv = Path(line).resolve()
                     break
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
         if first_sv:
             # 从 first_sv 开始, 向上找含 src/ 的父级

@@ -94,8 +94,8 @@ def save(
                     subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL)
                     .decode().strip()[:8]
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
         # 构建 tracer
         if filelist:
@@ -286,8 +286,8 @@ def compare(
                     try:
                         if len(edge) >= 2:
                             print(f"    + {edge[0]} → {edge[1]}")
-                    except TypeError:
-                        pass
+                    except TypeError as e:
+                        logger.warning("%s: 忽略 TypeError: %s", __name__, e)
                 if len(edges) > top:
                     print(f"    ... ({len(edges) - top} more)")
         if "removed_edges" in result:
@@ -298,8 +298,8 @@ def compare(
                     try:
                         if len(edge) >= 2:
                             print(f"    - {edge[0]} → {edge[1]}")
-                    except TypeError:
-                        pass
+                    except TypeError as e:
+                        logger.warning("%s: 忽略 TypeError: %s", __name__, e)
                 if len(edges) > top:
                     print(f"    ... ({len(edges) - top} more)")
 
