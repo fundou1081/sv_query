@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~190)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~191)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_191 (CLI 错误格式化 — 方豆 "继续")**: iter_189 解决"崩进程"、iter_190 解决"静默"之后, 本轮解决"用户读不懂" —— 非法输入过去甩原始 traceback。新增 `src/cli/main.py::run()` 统一入口 (只格式化 OSError 家族 + UnicodeDecodeError + CompilationError; 其他异常照旧抛**不掩盖真 bug**; `SVQ_DEBUG=1` 恢复完整栈), `run_cli.py` 与 console script 共用。结果: 二进制/UTF-16/目录/不存在/filelist 当源码 → 全部 `sv_query: error: <一行原因>` + rc=1, traceback 消失; 新增 40 个回归测试(`test_cli_hostile_input.py`, 含"合法极端输入必须成功"的反向断言)。
+[iter_191](docs/task_tree/iterations/iter_191_cli_error_formatting.md)
 
 **iter_190 (`except: pass` 清算 — 方豆 "继续")**: 查 CLI 敌意输入时在 filelist 加载器发现被禁写法 → 全仓量化: **AGENTS v1.4 声称"计数=0", 实测 52 处** (25 处 `except Exception: pass`)。全部改为可见日志 (核心路径 debug / CLI warning, 保留理由注释, 9 文件补 logger) → **AST 扫描归零**; 新增 `tools/check_except_pass.py` (**写进 AGENTS 提交前清单**) + `test_discipline_except_pass.py` (含检查器自检); 连带修 filelist **静默缺陷**: 缺失条目 / 读失败 / 嵌套 filelist 缺失 / 语法错误 `-f` 行 → 全部可见告警 (过去会得到"少文件的图"却以为完整)。
 [iter_190](docs/task_tree/iterations/iter_190_except_pass_cleanup.md)
