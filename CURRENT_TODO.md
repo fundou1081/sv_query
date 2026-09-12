@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~187)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~188)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_188 (Ventus viz 套件分诊 — 方豆 "继续")**: opensource 集里唯一常红文件 `test_ventus_all_viz_validation.py` 14 failed → **0 failed** (15 passed / 13 明确 skip)。四类根因: ① `--dot` 自 V100 起是 `--svg` 别名 (输出 SVG), 断言仍按旧 DOT 语义 (实测 SVG 无 rankdir/digraph/cluster) → `_read_dot()` 内容判定 + 明确 skip 原因; ② trace 子命令无 `--dot` (正确: `--format dot --output`); ③ `_ensure_sched_dots()` 静默吞 rc **且全程用被禁的 `--no-strict`** (10 处 → 0) → 记录失败原因并上抛到 skip; ④ **新发现真 bug: `visualize module` 原生崩溃 SIGTRAP** (rc=-5 / 无输出 / 任意 target) — 已用 `git worktree` 在 iter_183 (f639ed6) 复现, **非 iter_184~187 引入**, 待立项 native 调试。opensource 子集 111 passed / 14 skipped / 0 failed。
+[iter_188](docs/task_tree/iterations/iter_188_ventus_viz_suite_triage.md)
 
 **iter_187 (baseline 漂移清算 — 方豆 "继续")**: 回审"为掩盖 flaky 而加的补偿措施" → 挖出结构性缺陷: 3 个 baseline 全部与当前行为不符 **且不可复现** (都采集于 iter_145 top_modules 之前): picorv32 708→**438** / IM 2→**0**; verilog-axi 8,221→**715** / IM 51→**6**; `pulp_axi_xbar` 的 target 已不存在。旧断言 `600<=nodes<=800` 只查文件自身 → 过时 baseline 一路绿灯 → `check_regression` 对用户报**假 regression**。修复: 新增 `tools/benchmark/inputs.py` (唯一输入构建点) + `regen_baselines.py` (重生成 / `--check` rc=2 漂移检测), 重生成 3 个 baseline (flakiness stdev 全 **0.0**), 并加"活体 == baseline"守卫测试; 连带修 `test_benchmark_regression` 里硬编码的旧数值 (改按比例派生)。
 [iter_187](docs/task_tree/iterations/iter_187_baseline_drift_cleanup.md)
