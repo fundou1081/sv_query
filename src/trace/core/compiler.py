@@ -9,6 +9,7 @@
 import logging
 import os
 import sys
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -266,118 +267,30 @@ class SVCompiler:
     def add_filelist(self, filelist_path: str, env: dict[str, str] | None = None,
                      already_loaded: set | None = None,
                      missing_entries: list | None = None) -> None:
-        """从文件列表加载源文件
+        """从 filelist 加载源文件 (解析统一走 `trace.core.filelist.parse_filelist`)。
 
-        支持以下语法（Verilator/Modelsim 风格）:
-        - 每行一个文件路径
-        - +incdir+DIR        添加 include 搜索路径
-        - -F FILELIST         嵌套加载另一个 filelist
-        - -f FILELIST         同上 (小写)
-        - +define+VAR=VAL     添加宏定义（部分支持：仅记入环境变量）
-        - +libext+EXT         库扩展名（未使用，跳过）
-        - ${VAR} 或 $VAR      环境变量展开
-        - // 或 # 开头       注释行
-        - 空行                跳过
+        [iter_193] 本方法过去自带一套解析实现 (与 `cli._common._read_filelist`
+        规则不一致: 相对路径基准/嵌套解析不同) → 现在只做**应用**:
+          - `+incdir+` → `add_include_dir`
+          - 文件 → `add_files`
+          - 缺失条目 → 汇总告警 (调用方也可通过 missing_entries 取走)
 
-        Args:
-            filelist_path: .fl / .f / .filelist 文件路径
-            env: 额外环境变量字典（会与 os.environ 合并）
-            already_loaded: 已加载的 filelist 路径集合（防止循环引用）
+        支持语法与相对路径候选规则见 `trace/core/filelist.py` 模块文档。
         """
-        if already_loaded is None:
-            already_loaded = set()
-        if env is None:
-            env = {}
-        # [iter_190] 缺失/读失败的条目收集器 (跨递归共享, 最后汇总一条 warning)
-        if missing_entries is None:
-            missing_entries = []
+        from .filelist import parse_filelist
 
-        filelist_path = os.path.abspath(filelist_path)
-        if filelist_path in already_loaded:
-            return  # 防止循环引用
-        already_loaded.add(filelist_path)
-
-        # 合并环境变量 (用户 env 覆盖系统 env)
-        full_env = dict(os.environ)
-        full_env.update(env)
-
-        with open(filelist_path, encoding="utf-8") as f:
-            for line in f:
-                # 去除行尾注释 (// 之后到行尾的内容)
-                # 但不要在 // 是路径一部分时切割
-                # 简单处理：只在 // 前有空格时认为是注释
-                line = line.strip()
-
-                if not line:
-                    continue
-                if line.startswith("//") or line.startswith("#"):
-                    continue
-
-                # 展开环境变量 ${VAR} 或 $VAR
-                line = self._expand_env(line, full_env)
-                # 展开用户主目录
-                line = os.path.expanduser(line)
-
-                # +incdir+DIR - 添加 include 搜索路径
-                if line.startswith("+incdir+"):
-                    inc_dir = line[len("+incdir+") :].strip()
-                    if os.path.isdir(inc_dir):
-                        self.add_include_dir(inc_dir)
-                    continue
-
-                # +define+VAR=VAL - 宏定义（仅记入环境）
-                if line.startswith("+define+"):
-                    define = line[len("+define+") :].strip()
-                    if "=" in define:
-                        k, v = define.split("=", 1)
-                        full_env[k.strip()] = v.strip()
-                    else:
-                        full_env[define] = "1"
-                    continue
-
-                # +libext+EXT - 库扩展名（占位，跳过）
-                if line.startswith("+libext+"):
-                    continue
-
-                # -F FILELIST 或 -f FILELIST - 嵌套 filelist
-                if line.startswith("-F") or line.startswith("-f"):
-                    parts = line.split(None, 1)
-                    if len(parts) < 2:
-                        # [iter_190] 不静默: 语法错误的嵌套引用必须可见
-                        logger.warning("filelist %s: 无法解析嵌套引用行 %r", filelist_path, line)
-                        continue
-                    sub_filelist = parts[1].strip()
-                    if os.path.isfile(sub_filelist):
-                        self.add_filelist(sub_filelist, env=full_env,
-                                          already_loaded=already_loaded,
-                                          missing_entries=missing_entries)
-                    else:
-                        logger.warning("filelist %s: 嵌套 filelist 不存在, 跳过 %s",
-                                       filelist_path, sub_filelist)
-                        missing_entries.append(f"-f {sub_filelist}")
-                    continue
-
-                # 其他以 + 或 - 开头的行：跳过
-                if line.startswith("+") or line.startswith("-"):
-                    continue
-
-                # 现在 line 应该是一个文件路径
-                if not os.path.isabs(line):
-                    dir_path = os.path.dirname(filelist_path)
-                    line = os.path.join(dir_path, line)
-                if os.path.isfile(line):
-                    self.add_files([line])
-                else:
-                    # [iter_190] 缺失条目不再静默跳过 (过去会产出"少文件的图")
-                    logger.warning("filelist %s: 文件不存在, 跳过 %s", filelist_path, line)
-                    missing_entries.append(line)
-
-        # [iter_190] 汇总一条 (缺失条目多时只列前 5 个)
-        if missing_entries:
-            head = ", ".join(missing_entries[:5])
-            more = f" (共 {len(missing_entries)} 个)" if len(missing_entries) > 5 else ""
-            logger.warning("filelist %s 有 %d 个条目未加载: %s%s",
-                           filelist_path, len(missing_entries), head, more)
+        spec = parse_filelist(filelist_path, base_dirs=[Path.cwd()],
+                              env=env, already_loaded=already_loaded)
+        for d in spec.include_dirs:
+            # 一个 +incdir+ 行可能含逗号分隔的多目录 (parse_filelist 已展开为逗号串)
+            for one in d.split(","):
+                if one:
+                    self.add_include_dir(one)
+        for f in spec.files:
+            self.add_files([f])
+        spec.warn_missing(filelist_path)
+        if missing_entries is not None:
+            missing_entries.extend(spec.missing)
         self._comp = None
 
     def _expand_env(self, text: str, env: dict[str, str]) -> str:

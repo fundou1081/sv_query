@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~192)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~193)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_193 (合并 filelist 加载器 — 方豆 "先合并 filelist")**: 抽出唯一解析实现 `trace/core/filelist.py::parse_filelist()` (结构化 `FilelistSpec`), tracer 与 CLI 两个消费方变薄封装; 实测差异为**两处** (相对路径基准 + 嵌套 `-f` 基准) → 统一为 "filelist 目录 → base_dirs" 候选; 新增 parity 测试 5 个 (两侧文件集必须一致 = 不变量); ADR: `docs/architecture/filelist_loader_unification.md`。
+[iter_193](docs/task_tree/iterations/iter_193_filelist_loader_merge.md)
 
 **iter_192 (filelist 双基准解析 — 方豆 "继续")**: 兑现 iter_190 未决项 —— 实测两套 filelist 加载器相对路径规则不同 (tracer 侧按 filelist 目录 / CLI 侧按 base_dir) → 同一 filelist 两侧结果不一致, 且 CLI 侧对**实际存在**的文件误报"条目不存在"(告警变噪声); 仓库内两种约定**并存** (industrial_filelists 用仓库根相对) → 改为**多候选解析** (filelist 目录优先 → base_dir, 都不中才告警并列出候选基准): filelist 目录相对 CLI 0→1, 仓库根相对 0→1; 新增 4 测试把两种约定 + 缺失情形钉死 (两套加载器统一时的安全网)。
 [iter_192](docs/task_tree/iterations/iter_192_filelist_resolution_bases.md)

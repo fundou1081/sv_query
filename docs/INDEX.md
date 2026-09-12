@@ -15,10 +15,10 @@
 | 源码规模 | 162 文件 / 62,871 行 | `find src -name "*.py"` |
 | 测试规模 | 362 测试文件 / 78,383 行 + 117 SV fixture | `sim/tests/` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **3297 passed / 0 failed** (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-08 实测 (iter_192 gate, 唯一全量口径见 `TESTING.md`) |
+| 全量 (canonical) | **3302 passed / 0 failed** (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-08 实测 (iter_193 gate, 唯一全量口径见 `TESTING.md`) |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (181 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (182 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -60,6 +60,7 @@
 | [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) | SignalGraph 输入输出 Spec |
 | [SV_SYNTAX_MAPPING.md](SV_SYNTAX_MAPPING.md) | SV 语法 ↔ 图节点/边 对应 |
 | [PYSLANG_SEMANTIC_USAGE.md](PYSLANG_SEMANTIC_USAGE.md) | pyslang semantic API 使用模式 |
+| [architecture/filelist_loader_unification.md](architecture/filelist_loader_unification.md) | filelist 加载器合并决策 (iter_193, 单一解析实现) |
 | [PYSLANG_V11.md](PYSLANG_V11.md) | pyslang v11-only 策略 (D5) |
 | [PYSLANG_MEMORY_ISSUE.md](PYSLANG_MEMORY_ISSUE.md) | pyslang 内存边界 (大设计) |
 
