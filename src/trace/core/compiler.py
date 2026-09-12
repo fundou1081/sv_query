@@ -281,6 +281,13 @@ class SVCompiler:
 
         spec = parse_filelist(filelist_path, base_dirs=[Path.cwd()],
                               env=env, already_loaded=already_loaded)
+        # [iter_194] filelist 一个文件都没解析出来 → 明确报错 (过去是静默编译出空图 /
+        # 报一个与根因无关的下游错误)。这不是 fallback: 只是把"输入无效"讲清楚。
+        if not spec.files:
+            raise CompilationError(
+                f"filelist {filelist_path} 没有解析到任何源文件 "
+                f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录"
+            )
         for d in spec.include_dirs:
             # 一个 +incdir+ 行可能含逗号分隔的多目录 (parse_filelist 已展开为逗号串)
             for one in d.split(","):

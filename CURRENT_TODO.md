@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~193)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~194)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_194 (空 filelist 报错 + reclaim opt-in — 方豆 "继续")**: ① 空 filelist 过去只告警 → 输出**空图且 rc=0** (静默失败); iter_193 统一解析规则后两侧消费方均改抛 `CompilationError` → 实测 rc=0 空图 → **rc=1 + 一行错误**; ② `run_benchmark.py::reclaim_memory()` (4GB 技巧) 默认关闭、保留 `--reclaim` (iter_185 后不再必要, 每次省 ~3s)。
+[iter_194](docs/task_tree/iterations/iter_194_empty_filelist_and_reclaim.md)
 
 **iter_193 (合并 filelist 加载器 — 方豆 "先合并 filelist")**: 抽出唯一解析实现 `trace/core/filelist.py::parse_filelist()` (结构化 `FilelistSpec`), tracer 与 CLI 两个消费方变薄封装; 实测差异为**两处** (相对路径基准 + 嵌套 `-f` 基准) → 统一为 "filelist 目录 → base_dirs" 候选; 新增 parity 测试 5 个 (两侧文件集必须一致 = 不变量); ADR: `docs/architecture/filelist_loader_unification.md`。
 [iter_193](docs/task_tree/iterations/iter_193_filelist_loader_merge.md)

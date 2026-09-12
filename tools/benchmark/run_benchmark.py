@@ -258,6 +258,9 @@ def main():
     parser.add_argument("--output", "-o", default="/tmp/benchmark.json", help="JSON output path")
     parser.add_argument("--markdown", action="store_true", help="Also output Markdown report")
     parser.add_argument("--skip-flakiness", action="store_true", help="Skip flakiness measurement")
+    parser.add_argument("--reclaim", action="store_true",
+                        help="[iter_194] 跑前执行 4GB 'reclaim inactive pages' 技巧 "
+                             "(iter_185 后默认不再需要; 内存紧张的机器可开)")
     parser.add_argument("--strict", action="store_true", default=True, help="Strict mode (default ON)")
     args = parser.parse_args()
 
@@ -267,9 +270,13 @@ def main():
     print(f"Depth: {args.depth}")
     print()
 
-    # Reclaim memory first (user-proven method, 4GB allocation)
-    print("Reclaiming memory (4GB allocation trick)...")
-    reclaim_memory()
+    # [iter_194] 4GB "reclaim inactive pages" 技巧默认**关闭**:
+    # 它当年是为掩盖 SourceManager 生命周期 bug 造成的 partial elaboration 而加的
+    # (见 docs/PYSLANG_MEMORY_ISSUE.md / iter_185), 真因修复后同一输入 3 次 stdev=0.0,
+    # 该技巧只剩 +3s 开销。内存紧张的机器仍可用 --reclaim 显式打开。
+    if args.reclaim:
+        print("Reclaiming memory (4GB allocation trick)...")
+        reclaim_memory()
 
     # Build tracer
     include_dirs = args.include.split(",") if args.include else None
