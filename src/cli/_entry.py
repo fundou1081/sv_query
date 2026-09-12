@@ -43,7 +43,7 @@ _SRC_DIR = _THIS_FILE.parent.parent  # src/cli/_entry.py -> src/
 # 总是 insert (不 guard): 确保 src/ 在 sys.path[0], 优先于 .pth + stdlib
 sys.path.insert(0, str(_SRC_DIR))
 
-from .main import app
+from .main import app, run  # noqa: F401  (run = 统一入口, app 供兼容导入)
 
 
 def main():
@@ -53,5 +53,8 @@ def main():
     stats, search, trace, diff, snapshot, dataflow, controlflow, risk,
     sva, timing, cdc, coverage, verify, backpressure, handshake,
     protocol, regression, benchmark, arch
+
+    [iter_191] 实际执行 `main.run()` — 统一把输入类错误格式化成一行提示 (rc=1),
+    不再向用户抛原始 traceback。
     """
-    app()
+    run()

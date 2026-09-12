@@ -366,5 +366,35 @@ def main(ctx: typer.Context) -> None:
         typer.echo(ctx.get_help())
 
 
+# ==============================================================================
+# [iter_191] CLI 入口统一错误格式化 — 输入错误只给一行提示, 不甩 traceback
+# ==============================================================================
+# 背景: 用户给垃圾/错误输入时 (路径不存在 / 目录当文件 / 二进制当源码 / filelist
+# 无有效条目), 各子命令会抛出**合理**的异常 (FileNotFoundError /
+# IsADirectoryError / PermissionError / UnicodeDecodeError / CompilationError),
+# 但没人接 → Python 打印原始 traceback (rc=1, 满屏内部栈帧, 对用户零价值)。
+#
+# 与 AGENTS "禁止静默 fallback" 不冲突: 这里只**格式化**, 不吞错 —
+#   - 只处理输入/环境类异常; 其他异常照旧抛 (真 bug 必须留 traceback);
+#   - stderr 一行 `sv_query: error: <原因>` + 退出码 1;
+#   - `SVQ_DEBUG=1` 时 re-raise, 保留完整 traceback 供开发定位。
+def run() -> None:
+    """CLI 统一入口 (console script `sv_query` 与 `run_cli.py` 共用)。"""
+    from trace.core.compiler import CompilationError  # 延迟 import: 入口期不加载分析栈
+
+    try:
+        app()
+    except (CompilationError, OSError, UnicodeDecodeError) as e:
+        if os.environ.get("SVQ_DEBUG", "").lower() in ("1", "true", "yes"):
+            raise
+        msg = str(e).strip() or type(e).__name__
+        lines = msg.splitlines()          # elaboration 报告常是多行: 只留前 5 行
+        head = "\n".join(lines[:5])
+        if len(lines) > 5:
+            head += f"\n  ... (共 {len(lines)} 行; 完整内容: SVQ_DEBUG=1)"
+        print(f"sv_query: error: {head}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 if __name__ == "__main__":
     app()
