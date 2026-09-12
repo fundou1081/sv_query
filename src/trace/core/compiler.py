@@ -128,6 +128,38 @@ def _check_memory_pressure():
         pass  # 检测失败不影响正常编译
 
 
+def _reject_non_design_unit(tree: object, fname: str) -> None:
+    """[iter_189] 拒绝"非设计单元"的语法树 — 否则 pyslang 会**原生崩溃**。
+
+    pyslang/slang 的 `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时
+    `SIGTRAP` (无输出、无异常、Python 侧无法捕获)。触发条件 (实测): 输入文本不是
+    SystemVerilog 设计单元时, slang 走 script 模式把它解析成一个表达式, 例如把
+    **filelist 当源码传进来**:
+
+        content "/path/to/mod.sv\\n"  → 根节点 SyntaxKind.DivideExpression → trap
+        content "1 + 2"              → 根节点 SyntaxKind.AddExpression    → trap
+
+    合法输入 (实测) 的根节点是:`CompilationUnit` (多成员文件/空文件/仅注释/
+    仅 `define`)、`ModuleDeclaration` (单 module 文件)、`ClassDeclaration` 等
+    单个设计单元。因此这里只拒绝**表达式根** (范围最小, 不误伤设计单元),
+    并抛出可行动的 `CompilationError` (而不是让进程被信号打死)。
+
+    最小复现 (纯 pyslang, 不需要本项目代码):
+        tree = pyslang.syntax.SyntaxTree.fromText(open("filelist.f").read(), name="x.sv")
+        comp.addSyntaxTree(tree)   # ← SIGTRAP (exit 133)
+    """
+    try:
+        kind = str(getattr(getattr(tree, "root", None), "kind", ""))
+    except (UnicodeDecodeError, TypeError):
+        return  # 读不出 kind 就不在这里判断 (后续 addSyntaxTree 自己会报错)
+    if "Expression" in kind:
+        raise CompilationError(
+            f"{fname}: 解析结果的根节点是 {kind} (SystemVerilog 表达式), 不是设计"
+            f"单元 — pyslang 在此情况会原生 SIGTRAP (addSyntaxTree)。"
+            f"常见原因: 把 filelist/文本文件当源码传入 (请用 --filelist 传 .f)。"
+        )
+
+
 class SVCompiler:
     """
     SystemVerilog 编译器 - 提供 Semantic AST 访问
@@ -438,7 +470,10 @@ class SVCompiler:
                     tree = pyslang.SyntaxTree.fromText(source, sourceManager=sm, name=fname)
                 else:
                     tree = pyslang.SyntaxTree.fromText(source, fname)
+                _reject_non_design_unit(tree, fname)  # [iter_189] 见 helper 注释
                 self._comp.addSyntaxTree(tree)
+            except CompilationError:
+                raise
             except Exception as e:
                 raise CompilationError(f"Failed to parse {fname}: {e}") from None
 

@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~188)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~189)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_189 (pyslang addSyntaxTree SIGTRAP — 方豆 "继续")**: 把 iter_188 发现的 `visualize module` 崩溃查到底 —— **纯 pyslang 5 行最小复现**: `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时原生 SIGTRAP (filelist 内容被 slang script 模式解析成 `DivideExpression`); 逐步二分证明只有 `addSyntaxTree` 崩 (faulthandler 对 SIGTRAP 无效)。合法根类型实测: `CompilationUnit`(空/注释/define/多成员) / `ModuleDeclaration`(单 module) / `ClassDeclaration`。修复: `SVCompiler._reject_non_design_unit` 只拒"表达式根"(不误伤合法输入) → `visualize module -f <filelist>` 从 **rc=-5 无输出** 变为 **rc=1 + 可行动错误提示**; 回归锁 11 测试 (守卫失效时 pytest 自己 exit=133)。
+[iter_189](docs/task_tree/iterations/iter_189_addsyntaxtree_sigtrap_guard.md)
 
 **iter_188 (Ventus viz 套件分诊 — 方豆 "继续")**: opensource 集里唯一常红文件 `test_ventus_all_viz_validation.py` 14 failed → **0 failed** (15 passed / 13 明确 skip)。四类根因: ① `--dot` 自 V100 起是 `--svg` 别名 (输出 SVG), 断言仍按旧 DOT 语义 (实测 SVG 无 rankdir/digraph/cluster) → `_read_dot()` 内容判定 + 明确 skip 原因; ② trace 子命令无 `--dot` (正确: `--format dot --output`); ③ `_ensure_sched_dots()` 静默吞 rc **且全程用被禁的 `--no-strict`** (10 处 → 0) → 记录失败原因并上抛到 skip; ④ **新发现真 bug: `visualize module` 原生崩溃 SIGTRAP** (rc=-5 / 无输出 / 任意 target) — 已用 `git worktree` 在 iter_183 (f639ed6) 复现, **非 iter_184~187 引入**, 待立项 native 调试。opensource 子集 111 passed / 14 skipped / 0 failed。
 [iter_188](docs/task_tree/iterations/iter_188_ventus_viz_suite_triage.md)
