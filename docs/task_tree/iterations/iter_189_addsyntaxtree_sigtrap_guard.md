@@ -124,6 +124,40 @@ x.sv: 解析结果的根节点是 SyntaxKind.DivideExpression (SystemVerilog 表
 | 2 | 是否向上游 pyslang 报此 trap | 有最小复现, 可直接提 issue (addSyntaxTree 应返回错误而非 trap) | 小 |
 | 3 | iter_188 遗留的 13 个 SVG 语义 skip | 需方豆确认可视化语义后重写断言 | 中 |
 
+## 📋 可直接提给上游的 issue 文本 (iter_195 整理, 待方豆决定是否提交)
+
+**Title**: `Compilation.addSyntaxTree()` traps (SIGTRAP) when the tree root is an expression (script-mode parse)
+
+**Environment**: pyslang 11.0.0 (macOS arm64, Python 3.11)
+
+**Summary**: Adding a syntax tree whose root is not a design unit (e.g. slang parsed the
+text in script mode into an expression) kills the process with SIGTRAP — no Python
+exception, no diagnostic, nothing catchable from Python.
+
+**Minimal repro** (5 lines, no third-party code):
+
+```python
+import pyslang
+src = "/path/to/mod.sv\n"          # 例如误把 filelist 当源码传入
+tree = pyslang.syntax.SyntaxTree.fromText(src, name="x.sv")
+assert str(tree.root.kind) == "SyntaxKind.DivideExpression"   # 被解析成表达式
+comp = pyslang.ast.Compilation()
+comp.addSyntaxTree(tree)           # ← SIGTRAP (exit 133), 无输出
+```
+
+**Expected**: `addSyntaxTree` should either accept the tree and let diagnostics report
+"no design units", or return/raise a proper error identifying the offending tree.
+**Actual**: native trap (SIGTRAP) — `faulthandler` cannot capture it (SIGTRAP isn't in
+its default set), so users see a silent process death.
+
+**Notes**: `SyntaxTree.fromText` + `getParseDiagnostics` + `getSemanticDiagnostics` all
+work; only `addSyntaxTree` traps. Root kinds observed for valid inputs: `CompilationUnit`
+(empty/multi-member), `ModuleDeclaration` (single module), `ClassDeclaration`; the trap
+happens for expression roots (`DivideExpression`, `AddExpression`).
+
+**Workaround in our project**: we reject expression-root trees before `addSyntaxTree`
+(`_reject_non_design_unit`), but that's a workaround, not a fix.
+
 ## 📎 关联
 
 - 修复: `src/trace/core/compiler.py` (`_reject_non_design_unit`)
