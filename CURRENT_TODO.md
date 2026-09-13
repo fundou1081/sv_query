@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~194)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~195)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +41,9 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_195 (viz 断言迁移决策就绪 — 方豆 "继续")**: 对 iter_188 的 13 个 skip 逐条实测"原断言意图 vs 当前 SVG 能否验证", 产出可拍板的表 (`docs/architecture/ventus_viz_assertion_migration.md`): 可直接迁移 3~4 条 / 需先定产品语义 7~8 条 / 需先补 CLI 能力 2 条; **额外发现原 `rankdir=LR` 断言早已不成立** (实测宽高比 0.28 竖版); 根因 = `--dot` 在同一 CLI 内三种语义。同时在 iter_189 记录里追加"可直接提给上游的 issue 文本"。**未改任何断言** (迁移属产品语义)。
+[iter_195](docs/task_tree/iterations/iter_195_viz_assertion_migration_decision.md)
 
 **iter_194 (空 filelist 报错 + reclaim opt-in — 方豆 "继续")**: ① 空 filelist 过去只告警 → 输出**空图且 rc=0** (静默失败); iter_193 统一解析规则后两侧消费方均改抛 `CompilationError` → 实测 rc=0 空图 → **rc=1 + 一行错误**; ② `run_benchmark.py::reclaim_memory()` (4GB 技巧) 默认关闭、保留 `--reclaim` (iter_185 后不再必要, 每次省 ~3s)。
 [iter_194](docs/task_tree/iterations/iter_194_empty_filelist_and_reclaim.md)
