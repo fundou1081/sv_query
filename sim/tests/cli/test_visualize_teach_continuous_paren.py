@@ -49,7 +49,7 @@ def _render_focus(target_signal: str, depth: int = 5) -> str:
            "--upstream",
            "--depth", str(depth),
            "--show-source", "--no-strict",
-           "--dot", out_path]
+           "--emit-dot", out_path]
     p = subprocess.run(cmd, capture_output=True, text=True, timeout=60,
                        cwd=str(PROJECT_ROOT), env=env)
     assert p.returncode == 0, p.stderr

@@ -382,7 +382,7 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
              "-f", "sim/tests/fixtures/golden_chain/x_driver/filelist.f",
              "--target", "x_driver",
              "--auto", "--max-edges", "30",
-             "--dot", "/tmp/r15.dot"],
+             "--svg", "/tmp/r15.dot"],
             capture_output=True, text=True, timeout=120,
         )
         # Anomaly summary should be in stderr
@@ -404,7 +404,7 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
              "-f", "sim/tests/fixtures/golden_chain/x_driver/filelist.f",
              "--target", "x_driver",
              "--auto", "--max-edges", "30",
-             "--dot", "/tmp/r15_xd.dot"],
+             "--svg", "/tmp/r15_xd.dot"],
             capture_output=True, text=True, timeout=120,
         )
         dot = _read_dot("/tmp/r15_xd.dot")
@@ -425,7 +425,7 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
              "-f", "sim/tests/fixtures/golden_chain/dangling/filelist.f",
              "--target", "dangling",
              "--auto", "--max-edges", "30",
-             "--dot", "/tmp/r15_d.dot"],
+             "--svg", "/tmp/r15_d.dot"],
             capture_output=True, text=True, timeout=120,
         )
         dot = _read_dot("/tmp/r15_d.dot")
@@ -445,7 +445,7 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
              "-f", "sim/tests/fixtures/golden_chain/combined/filelist.f",
              "--target", "combined",
              "--auto", "--max-edges", "30",
-             "--dot", "/tmp/r15_c.dot"],
+             "--svg", "/tmp/r15_c.dot"],
             capture_output=True, text=True, timeout=120,
         )
         dot = _read_dot("/tmp/r15_c.dot")
@@ -462,7 +462,7 @@ class TestVentusChainAnomalyP1Fix(unittest.TestCase):
              "-f", "sim/tests/fixtures/golden_chain/normal/filelist.f",
              "--target", "normal",
              "--auto", "--max-edges", "30",
-             "--dot", "/tmp/r15_n.dot"],
+             "--svg", "/tmp/r15_n.dot"],
             capture_output=True, text=True, timeout=120,
         )
         dot = _read_dot("/tmp/r15_n.dot")
@@ -504,14 +504,14 @@ def _ensure_sched_dots():
 
     base = ["visualize", "pipeline", "--filelist", filelist, "--module", module]
     # Pipeline variants
-    run_cli(base + ["--dot", "/tmp/sched_pipeline.dot"])
-    run_cli(base + ["--dot", "/tmp/sched_pipeline_fixed.dot"])
+    run_cli(base + ["--svg", "/tmp/sched_pipeline.dot"])
+    run_cli(base + ["--svg", "/tmp/sched_pipeline_fixed.dot"])
     # [iter_188] 实测 `visualize pipeline` **不支持 --png** (只有 chain 支持) →
     # 不在这里调用; 依赖 PNG 的断言会 skip 并说明 (见 _read_png / iter_188 记录)。
     run_cli(base + ["--max-control-nodes", "0", "--svg", "/tmp/sched_pipeline_nocontrol.svg"])
     run_cli(base + ["--svg", "/tmp/sched_pipeline_fixed.svg"])
     # Timing
-    run_cli(base + ["--timing", "--dot", "/tmp/sched_timing.dot"])
+    run_cli(base + ["--timing", "--svg", "/tmp/sched_timing.dot"])
     # Trace
     # [iter_188] trace 子命令没有 --dot/--svg; 当前正确用法是
     # `--format dot --output <file>` (src/cli/commands/trace.py:611)
@@ -523,7 +523,7 @@ def _ensure_sched_dots():
     # [iter_188] chain 需要 --auto (或 --from/--to) — 缺 --auto 会 rc=1:
     # "need --from and --to, OR --auto with --target"
     run_cli(["visualize", "chain", "--filelist", filelist, "--target", module, "--auto",
-             "--dot", "/tmp/sched_chain.dot"])
+             "--svg", "/tmp/sched_chain.dot"])
 
 
 

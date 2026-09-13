@@ -48,7 +48,7 @@ def test_show_source_makes_file_line_visible_in_label():
         "--no-strict",
         "--target", "if_demo",
         "--show-source",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     content = dot.read_text()
@@ -68,7 +68,7 @@ def test_show_source_adds_dot_url_attribute():
         "--no-strict",
         "--target", "if_demo",
         "--show-source",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     content = dot.read_text()
@@ -84,7 +84,7 @@ def test_no_show_source_no_url_attribute():
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
         "--no-strict",
         "--target", "if_demo",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     content = dot.read_text()
@@ -101,7 +101,7 @@ def test_focus_mode_with_show_source():
         "--focus", "y",
         "--depth", "2",
         "--show-source",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     content = dot.read_text()

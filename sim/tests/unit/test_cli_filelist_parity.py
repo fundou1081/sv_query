@@ -268,8 +268,8 @@ def test_visualize_file_vs_filelist_parity():
     html_fl = Path(tmpdir) / "out_fl.html"
     # [V6.9 2026-07-29] V6.7 重构后 visualize graph 不再生成独立 HTML 文件,
     # --html 参数改为输出 HTML-wrapped DOT。改为比较 DOT 输出一致性。
-    r1 = _run("visualize", "graph", "-f", str(sv), "--dot", str(html_f), cwd=tmpdir)
-    r2 = _run("visualize", "graph", "--filelist", str(fl), "--dot", str(html_fl), cwd=tmpdir)
+    r1 = _run("visualize", "graph", "-f", str(sv), "--svg", str(html_f), cwd=tmpdir)
+    r2 = _run("visualize", "graph", "--filelist", str(fl), "--svg", str(html_fl), cwd=tmpdir)
     assert r1.returncode == 0
     assert r2.returncode == 0
     assert html_f.exists(), f"DOT not generated: {html_f}"

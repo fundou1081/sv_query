@@ -149,7 +149,7 @@ sv_query/docs/
 
 ```bash
 # 生成 DOT 文件（用于 Graphviz 渲染）
-python run_cli.py visualize graph -f <file.sv> --dot output.dot
+python run_cli.py visualize graph -f <file.sv> --svg output.dot
 
 # 生成 PNG 图片（正方形比例）
 dot -Tpng -Gsize=10 -Gratio=compress output.dot -o output.png
@@ -194,7 +194,7 @@ $HOME/my_project/module.sv
 
 ```bash
 # 可视化高风险但无 SVA/Coverage 的信号
-python run_cli.py visualize gap -f <file.sv> --dot gap.dot --png --min-risk 25
+python run_cli.py visualize gap -f <file.sv> --svg gap.dot --png --min-risk 25
 ```
 
 ---

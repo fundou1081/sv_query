@@ -62,7 +62,7 @@ def test_y_simple_if_then_branch_has_sel_label(tmp_path):
         "--focus", "y_simple_if",
         "--upstream", "--depth", "3",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -85,7 +85,7 @@ def test_y_case_each_branch_shows_selector_and_value(tmp_path):
         "--focus", "y_case",
         "--upstream", "--depth", "3",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -121,7 +121,7 @@ def test_y_tern_branches_have_inverted_conditions(tmp_path):
         "--focus", "y_tern",
         "--upstream", "--depth", "3",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -144,7 +144,7 @@ def test_y_deep_compound_conditions_use_and(tmp_path):
         "--focus", "y_deep",
         "--upstream", "--depth", "5",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     text = out.read_text()
@@ -170,7 +170,7 @@ def test_all_nodes_have_source_location(tmp_path):
         "--focus", "y_case",
         "--upstream", "--depth", "3",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     text = out.read_text()
@@ -201,7 +201,7 @@ def test_y_nested_compound_conditions_use_and(tmp_path):
         "--focus", "y_nested",
         "--upstream", "--depth", "3",
         "--show-source", "--no-strict",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     text = out.read_text()

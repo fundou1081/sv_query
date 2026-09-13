@@ -74,7 +74,7 @@ class TestChainFromTo(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--from", "wrapper_chain.bram_din_i",
                 "--to", "wrapper_chain.bram_dout_o",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             # DOT 文件应该被创建且非空
@@ -107,7 +107,7 @@ class TestChainAutoMode(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
@@ -165,7 +165,7 @@ class TestChainMaxEdges(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "5",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
@@ -198,7 +198,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
                 "--auto",
                 "--max-edges", "30",
                 "--no-strict",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
@@ -228,7 +228,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
                 "--auto",
                 "--max-edges", "30",
                 "--no-strict",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
@@ -272,7 +272,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--dot", dot_path,
+                "--svg", dot_path,
             ])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
@@ -299,7 +299,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
 
     def _run_chain_dot(self, args, dot_path):
         """运行 sv_query visualize chain, 返回 DOT 文本."""
-        full_args = ["visualize", "chain", "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f", "--no-strict"] + args + ["--dot", dot_path]
+        full_args = ["visualize", "chain", "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f", "--no-strict"] + args + ["--svg", dot_path]
         result = _run_svq(full_args)
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}\nstdout: {result.stdout}")
         return Path(dot_path).read_text()

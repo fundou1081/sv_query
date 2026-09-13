@@ -23,7 +23,7 @@ def _run_compute(dot_path: Path, sv_content: str) -> tuple[int, str]:
 
     try:
         p = subprocess.run(
-            ["sv_query", "visualize", "compute", "-f", sv_path, "--strict", "--dot", str(dot_path)],
+            ["sv_query", "visualize", "compute", "-f", sv_path, "--strict", "--svg", str(dot_path)],
             capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
         )
         return p.returncode, dot_path.read_text() if dot_path.exists() else ""

@@ -56,7 +56,7 @@ def gap(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     top_n: int = typer.Option(20, "--top", "-n", help="Show top N high-risk signals"),
     min_risk: float = typer.Option(20.0, "--min-risk", "-r", help="Minimum risk score threshold"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="Output DOT file path"),
+    dot_output: str = typer.Option(None, "--emit-dot", "-d", help="Output DOT file path (raw DOT)"),
     mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file path"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each signal (optional)"),
 ) -> None:

@@ -31,7 +31,7 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 | `test_timing_dot_has_paths` / `critical_path_highlighted` / `includes_mem_core_path` | `critical` 文本 / 高亮边 | ❌ 当前 SVG **无** "critical" 文本 | 需产品确认高亮表现 (颜色/边宽) 后重写 |
 | `test_trace_fanout_top_level_signal_returns_empty` | 文件里含 `0 loads` | ❌ 该文本来自 **CLI stdout**, 不在产物里 | **改为断言 stdout** (最简且更正确) |
 | `test_trace_fanin_returns_digraph` | `digraph trace` | ❌ trace 已改 `--format dot --output` 产 DOT | 改用 `--format dot` 并断言 DOT (⚠️ 与全局"产物是 SVG"不一致, 需一并决定) |
-| `test_d1_arch_has_correct_sub_instances` | `sched_d1.dot` 里子实例 | ⚠️ `visualize module --dot` **仍输出 DOT** (iter_189 曾因其对 filelist 崩而无法生成, 已修) | 重新生成 + 保留 DOT 断言 |
+| `test_d1_arch_has_correct_sub_instances` | `sched_d1.dot` 里子实例 | ⚠️ `visualize module --emit-dot` **仍输出 DOT** (iter_189 曾因其对 filelist 崩而无法生成, 已修) | 重新生成 + 保留 DOT 断言 |
 | `test_pipeline_png_size_reduced` / `test_timing_png_size_reasonable` | PNG 高度 | ❌ `visualize pipeline` **没有 `--png`** (只有 chain 有) | 要么给 pipeline 加 `--png`, 要么改断 SVG 宽高 |
 
 **统计**: 可**直接迁移** 3~4 条 (chain 异常类 + trace stdout); **必须先定产品语义** 7~8 条
@@ -52,7 +52,7 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 |---|---|---|
 | pipeline / timing 的验收标准 | **文本结构化输出** (JSON/text), 不是可视化产物 | 这两个命令的测试方向改为断言结构化字段; 现有 7~8 条 DOT/SVG 断言**冻结** (保持 skip), 不迁移 |
 | PNG / SVG 断言 | **现阶段不处理** | 保持 iter_188 的 skip; 不再投入 |
-| 可视化 flag | **统一为 `--svg`; 不再支持 `--dot`** | `visualize graph/dataflow/pipeline/compute/timed/gap/chain` 的 `--svg/--dot` 别名要收敛为 `--svg` |
+| 可视化 flag | **统一为 `--svg`; 不再支持 `--dot`** | `visualize graph/dataflow/pipeline/compute/timed/gap/chain` 的 `--svg/--svg` 别名要收敛为 `--svg` |
 | 恢复可视化工作时机 | 文本输出稳定可靠之后 | 在那之前不新增可视化功能断言 |
 
 ### 改名影响面 (实测, 待执行 — 见下"未完成说明")
@@ -65,9 +65,9 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 | 试跑结果 | **52 failed** | 改名后未同步测试 → 说明必须"改名 + 测试同步 + 全量验证"一次做完 |
 | 附带发现 | — | 受影响的测试文件里有多个还在用**被禁的 `--no-strict`** (AGENTS 纪律 1) → 建议同一次清理 |
 
-**真 DOT 输出、与"不再支持 dot"冲突的 flag (待定)**: `visualize module --dot`
-(`visualize.py:1572`)、`visualize teach --dot` (1868)、`visualize datapath --dot` (2268)、
-`timing --dot` (`timing.py:44`)、独立工具 `signal_graph_viewer.py --dot` (848)。
+**真 DOT 输出、与"不再支持 dot"冲突的 flag (待定)**: `visualize module --emit-dot`
+(`visualize.py:1572`)、`visualize teach --emit-dot` (1868)、`visualize datapath --emit-dot` (2268)、
+`timing --emit-dot` (`timing.py:44`)、独立工具 `signal_graph_viewer.py --dot` (848)。
 这些命令当前**不产出 SVG**, 所以不能简单把 flag 名改成 `--svg` (会名不符实)。
 
 ## 需要方豆决定的三件事
