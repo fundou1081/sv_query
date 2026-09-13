@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_199 (timing analyze --json 补测 — 方豆 "按你的推荐，补测吧")**: 用 iter_198 同一模板补上 8 条字段级验收测试 (`sim/tests/cli/test_timing_analyze_json.py`): 纯 stdout / 信封与 pipeline 一致 / result 与 critical_paths 字段固定 / reg_count<=total_nodes / 每 path depth,score>=1 且 registers⊆full_path / --max-paths 生效 / reg_count==0 时 critical_paths 为空; **不把具体数值写死** (吸取 iter_195 `rankdir=LR` 教训)。两个命令信封现已统一。
+[iter_199](docs/task_tree/iterations/iter_199_timing_json_tests.md)
+
 **iter_198 (pipeline --json 落地 — 方豆 "嗯，去做吧")**: `sv_query visualize pipeline --json` 已实现 (导出 `PipelineInfo`, 信封与 `timing analyze --json` 一致, 诊断走 stderr 保证 stdout 纯 JSON), **不渲染可视化** (按决策冻结); 新增 7 条**字段级验收测试** (`sim/tests/cli/test_visualize_pipeline_json.py`): stdout 纯 JSON / 信封一致 / result 与 stages 字段固定 / 寄存器三分类互斥 / stage_count 与 latency 一致性 / 深链 latency 不变量。
 [iter_198](docs/task_tree/iterations/iter_198_pipeline_json_output.md)
 
