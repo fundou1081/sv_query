@@ -329,6 +329,12 @@ def pipeline(
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
     strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file"),
+    json_output: bool = typer.Option(
+        False, "--json", "-j",
+        help="[iter_198] 输出**结构化 JSON** (PipelineInfo: stages/延迟/寄存器分类) 到 stdout, "
+             "不渲染可视化。诊断与告警仍走 stderr (stdout 为纯 JSON)。"
+             "文本结构化输出是 pipeline 的验收标准 (可视化暂冻结)。",
+    ),
     max_comb_per_stage: int = typer.Option(8, "--max-comb-per-stage", help="[P0 fix 2026-07-10] Max combinational nodes per stage (default 8)"),
     max_control_nodes: int = typer.Option(12, "--max-control-nodes", help="[P0 fix 2026-07-17] Max control signals in header row (default 12, was 8). 0 = hide all."),
     unfold: bool = typer.Option(False, "--unfold", help="[Phase 6.2 2026-07-12] Disable stage folding, show all stages individually"),
@@ -374,6 +380,29 @@ def pipeline(
     typer.echo(f"  Control regs: {len(info.control_regs)}", err=True)
     typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
     typer.echo(f"  Stages: {info.total_latency}", err=True)
+
+    # [iter_198] --json: 结构化输出是 pipeline 的验收标准 → 只导数据, 不渲染可视化。
+    # 信封与 `sv_query timing analyze --json` 对齐 ({ok, command, result}),
+    # 便于统一消费/断言; 诊断 (上面几行) 走 stderr → stdout 保持纯 JSON。
+    if json_output:
+        import dataclasses
+        import json as _json
+
+        payload = {
+            "ok": True,
+            "command": "visualize pipeline",
+            "result": {
+                "module": info.module_name,
+                "total_latency": info.total_latency,
+                "stage_count": len(info.stages),
+                "pipeline_regs": list(info.pipeline_regs),
+                "control_regs": list(info.control_regs),
+                "state_regs": list(info.state_regs),
+                "stages": [dataclasses.asdict(st) for st in info.stages],
+            },
+        }
+        typer.echo(_json.dumps(payload, ensure_ascii=False, indent=2))
+        return
 
     # [V6.7] 统一 VizData 渲染管线 — pipeline stages
     # stage_map: pipeline regs + comb nodes + state regs (FSM) + control inputs

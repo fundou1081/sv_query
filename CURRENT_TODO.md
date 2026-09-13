@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_198 (pipeline --json 落地 — 方豆 "嗯，去做吧")**: `sv_query visualize pipeline --json` 已实现 (导出 `PipelineInfo`, 信封与 `timing analyze --json` 一致, 诊断走 stderr 保证 stdout 纯 JSON), **不渲染可视化** (按决策冻结); 新增 7 条**字段级验收测试** (`sim/tests/cli/test_visualize_pipeline_json.py`): stdout 纯 JSON / 信封一致 / result 与 stages 字段固定 / 寄存器三分类互斥 / stage_count 与 latency 一致性 / 深链 latency 不变量。
+[iter_198](docs/task_tree/iterations/iter_198_pipeline_json_output.md)
+
 **iter_197 (文本结构化输出审计 — 方豆 "继续")**: 按新验收标准审计 —— `sv_query timing analyze` **已有 `--json`** (信封 `{ok, command, result}`), 而 `visualize pipeline` **完全没有结构化输出** (只有 stderr 的人类可读行) → 主要缺口。实现路径已定位且不需新分析逻辑: `pipeline_viz.detect_pipeline()` 已返回 `PipelineInfo` (stages/total_latency/pipeline_regs/control_regs/state_regs) → 加 `--json` = asdict + 对齐 timing 信封 (诊断走 stderr)。**下一步就是落地它**。
 [iter_197](docs/task_tree/iterations/iter_197_text_output_audit.md)
 
