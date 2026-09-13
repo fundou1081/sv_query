@@ -40,6 +40,36 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 在 `trace` 不存在 (改 `--format dot --output`) —— **同一 CLI 内三种语义**, 是这批断言
 集体失效的根因, 建议一并决定是否统一。
 
+## ✅ 方豆决策 (2026-09-08, 原话)
+
+> "pipeline timing 现在所有输出都以**文本结构化输出为检查标准**。先不考虑可视化。
+>  可视化 flag 统一改为 **svg**，不再支持 **dot**。现阶段先不处理 png svg 断言。
+>  等到所有文本输出都稳定可靠，再来看可视化功能。"
+
+决策落地后的口径:
+
+| 项 | 决策 | 影响 |
+|---|---|---|
+| pipeline / timing 的验收标准 | **文本结构化输出** (JSON/text), 不是可视化产物 | 这两个命令的测试方向改为断言结构化字段; 现有 7~8 条 DOT/SVG 断言**冻结** (保持 skip), 不迁移 |
+| PNG / SVG 断言 | **现阶段不处理** | 保持 iter_188 的 skip; 不再投入 |
+| 可视化 flag | **统一为 `--svg`; 不再支持 `--dot`** | `visualize graph/dataflow/pipeline/compute/timed/gap/chain` 的 `--svg/--dot` 别名要收敛为 `--svg` |
+| 恢复可视化工作时机 | 文本输出稳定可靠之后 | 在那之前不新增可视化功能断言 |
+
+### 改名影响面 (实测, 待执行 — 见下"未完成说明")
+
+| 面 | 数量 | 说明 |
+|---|---|---|
+| CLI flag 定义点 | **7 处** | `visualize.py` 的 graph/dataflow/pipeline/compute/timed/gap/chain (`"--svg", "--dot", "-d"` → `--svg`) |
+| 内部调用方 | **2 处** | `design.py:220/237` 传 `--dot` → 改 `--svg` |
+| 测试引用 `--dot` | **57 处 / ≥12 文件** | 需按**命令边界**分别处理: 属于上面 7 个命令的 → 改 `--svg`; 属于 `teach`/`module`/`datapath`/`timing` 的 → **保持** (它们是真 DOT 输出) |
+| 试跑结果 | **52 failed** | 改名后未同步测试 → 说明必须"改名 + 测试同步 + 全量验证"一次做完 |
+| 附带发现 | — | 受影响的测试文件里有多个还在用**被禁的 `--no-strict`** (AGENTS 纪律 1) → 建议同一次清理 |
+
+**真 DOT 输出、与"不再支持 dot"冲突的 flag (待定)**: `visualize module --dot`
+(`visualize.py:1572`)、`visualize teach --dot` (1868)、`visualize datapath --dot` (2268)、
+`timing --dot` (`timing.py:44`)、独立工具 `signal_graph_viewer.py --dot` (848)。
+这些命令当前**不产出 SVG**, 所以不能简单把 flag 名改成 `--svg` (会名不符实)。
+
 ## 需要方豆决定的三件事
 
 1. **pipeline / timing 图的产品契约**: 阶段划分、控制信号簇、critical path 高亮分别
