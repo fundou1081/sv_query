@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_197 (文本结构化输出审计 — 方豆 "继续")**: 按新验收标准审计 —— `sv_query timing analyze` **已有 `--json`** (信封 `{ok, command, result}`), 而 `visualize pipeline` **完全没有结构化输出** (只有 stderr 的人类可读行) → 主要缺口。实现路径已定位且不需新分析逻辑: `pipeline_viz.detect_pipeline()` 已返回 `PipelineInfo` (stages/total_latency/pipeline_regs/control_regs/state_regs) → 加 `--json` = asdict + 对齐 timing 信封 (诊断走 stderr)。**下一步就是落地它**。
+[iter_197](docs/task_tree/iterations/iter_197_text_output_audit.md)
+
 **iter_196 (可视化 flag 统一 — 方豆决策执行)**: `--dot` 已在 **src + sim/tests 全仓清零**; 7 个 SVG 子命令收敛为 `--svg`, 5 个真 DOT 命令改 `--emit-dot` (换名保留能力); 测试按命令边界映射 57 处; **顺带发现真缺陷**: chain 的 `--svg` 被声明两次 (内部渲染器 vs 外部 graphviz), 旧代码把 `--svg` 绑到后者, 测试靠 deprecated `--dot` 别名才走通 → graphviz 那条改名 `--svg-graphviz`; 全量 3302 passed / 0 failed。
 [iter_196](docs/task_tree/iterations/iter_196_viz_flag_unification.md)
 
