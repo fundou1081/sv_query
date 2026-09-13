@@ -65,7 +65,7 @@ sv_query arch show -f top.sv -t top --summary
 ```bash
 brew install graphviz  # macOS
 # 生成 PNG:
-sv_query visualize graph -f top.sv --dot /tmp/g.dot && dot -Tpng /tmp/g.dot -o /tmp/g.png
+sv_query visualize graph -f top.sv --svg /tmp/g.dot && dot -Tpng /tmp/g.dot -o /tmp/g.png
 ```
 
 ---
@@ -90,8 +90,8 @@ sv_query visualize dataflow -f top.sv
 # 指定模块
 sv_query visualize dataflow -f top.sv -m counter
 
-# 导出 SVG（--dot 参数复用为 SVG 输出，兼容旧接口）
-sv_query visualize dataflow -f top.sv --dot output.svg
+# 导出 SVG（可视化统一用 --svg；--dot 已不再支持，真 DOT 输出见 --emit-dot）
+sv_query visualize dataflow -f top.sv --svg output.svg
 ```
 
 ### 效果展示

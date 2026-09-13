@@ -33,7 +33,7 @@ def run_chain(target: str, tc_dir: str, max_edges: int = 30) -> dict:
          "-f", str(filelist), "--no-strict",
          "--target", target, "--auto",
          "--max-edges", str(max_edges),
-         "--dot", str(dot_out)],
+         "--svg", str(dot_out)],
         capture_output=True, text=True, timeout=120,
     )
     # Parse anomaly counts from stderr
@@ -183,7 +183,7 @@ class TestChainAnomalyVisualization(unittest.TestCase):
             ["sv_query", "visualize", "chain",
              "-f", str(filelist), "--no-strict",
              "--target", target, "--auto",
-             "--max-edges", "30", "--dot", str(dot_out)],
+             "--max-edges", "30", "--svg", str(dot_out)],
             capture_output=True, text=True, timeout=120,
         )
         return dot_out.read_text()
@@ -252,7 +252,7 @@ class TestTimingAnomalyDetection(unittest.TestCase):
             ["sv_query", "timing", "analyze",
              "-f", str(filelist), "--no-strict",
              "--max-paths", str(max_paths),
-             "--dot", str(dot_out)],
+             "--emit-dot", str(dot_out)],
             capture_output=True, text=True, timeout=120,
         )
         return dot_out.read_text(), result.stderr
@@ -384,7 +384,7 @@ class TestLowConfidenceWarning(unittest.TestCase):
             ["sv_query", "visualize", "chain",
              "-f", "sim/tests/fixtures/golden_chain/dangling/filelist.f",
              "--no-strict", "--target", "dangling", "--auto",
-             "--max-edges", "30", "--dot", "/tmp/_lc.dot"],
+             "--max-edges", "30", "--svg", "/tmp/_lc.dot"],
             capture_output=True, text=True, timeout=120,
         )
         # When SWAP > 2GB (which is true on 8GB MBA), should add low confidence

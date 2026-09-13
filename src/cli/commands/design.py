@@ -217,7 +217,7 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["-f", file])
     if not strict:
         args.append("--no-strict")
-    args.extend(["--dot", svg_path])
+    args.extend(["--svg", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["dataflow"] = {
         "svg_path": svg_path if os.path.exists(svg_path) else None,
@@ -234,7 +234,7 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["-f", file])
     if not strict:
         args.append("--no-strict")
-    args.extend(["--dot", svg_path])
+    args.extend(["--svg", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["pipeline"] = {
         "svg_path": svg_path if os.path.exists(svg_path) else None,

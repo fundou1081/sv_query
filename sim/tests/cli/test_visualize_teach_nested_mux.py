@@ -93,7 +93,7 @@ def _render_focus(target_signal: str, depth: int = 5) -> str:
         "--upstream",
         "--depth", str(depth),
         "--show-source", "--no-strict",
-        "--dot", out_path,
+        "--emit-dot", out_path,
     )
     assert rc == 0, err
     return Path(out_path).read_text()

@@ -43,7 +43,7 @@ def test_graph_show_source_adds_file_line_to_label(tmp_path):
         "--no-strict",
         "--module-only",
         "--show-source",
-        "--dot", str(out),
+        "--svg", str(out),
     )
     assert rc == 0, err
     text = out.read_text()
@@ -60,7 +60,7 @@ def test_graph_show_source_adds_url_attribute(tmp_path):
         "--no-strict",
         "--module-only",
         "--show-source",
-        "--dot", str(out),
+        "--svg", str(out),
     )
     assert rc == 0, err
     text = out.read_text()
@@ -76,7 +76,7 @@ def test_graph_without_show_source_has_no_url(tmp_path):
         "-f", str(DARKRISCV_V),
         "--no-strict",
         "--module-only",
-        "--dot", str(out),
+        "--svg", str(out),
     )
     assert rc == 0, err
     text = out.read_text()

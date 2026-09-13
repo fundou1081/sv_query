@@ -48,7 +48,7 @@ def test_teach_overview_emits_summary():
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
         "--no-strict",
         "--target", "if_demo",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     assert "Teach Summary" in err or "Teach Summary" in out
@@ -65,7 +65,7 @@ def test_teach_focus_finds_downstream():
         "--target", "pipeline_demo",
         "--focus", "s1",
         "--depth", "2",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     # s1 -> s2 -> dout should all be present
@@ -84,7 +84,7 @@ def test_teach_focus_unknown_signal_returns_error():
         "--target", "if_demo",
         "--focus", "nonexistent_signal_xyz",
         "--depth", "2",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     # typer.Exit code 1 expected
     assert rc != 0
@@ -99,7 +99,7 @@ def test_teach_show_coverage_marks_uncovered():
         "--no-strict",
         "--target", "if_demo",
         "--show-coverage",
-        "--dot", str(dot),
+        "--emit-dot", str(dot),
     )
     assert rc == 0, err
     content = dot.read_text()

@@ -31,7 +31,7 @@ apt install graphviz  # Ubuntu/Debian
 
 ```bash
 # 生成信号图
-python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
+python run_cli.py visualize graph -f top.sv --svg /tmp/graph.dot
 
 # 渲染为 PNG
 dot -Tpng /tmp/graph.dot -o graph.png
@@ -41,13 +41,13 @@ dot -Tpng /tmp/graph.dot -o graph.png
 
 ```bash
 # 显示驱动条件
-python run_cli.py visualize graph -f top.sv --show-conditions --dot /tmp/graph.dot
+python run_cli.py visualize graph -f top.sv --show-conditions --svg /tmp/graph.dot
 
 # 只看数据流（排除时钟/复位边）
-python run_cli.py visualize graph -f top.sv --exclude-clock --exclude-reset --dot /tmp/graph.dot
+python run_cli.py visualize graph -f top.sv --exclude-clock --exclude-reset --svg /tmp/graph.dot
 
 # 限制边数量（适用于大模块）
-python run_cli.py visualize graph -f top.sv --max-edges 100 --dot /tmp/graph.dot
+python run_cli.py visualize graph -f top.sv --max-edges 100 --svg /tmp/graph.dot
 
 # 输出 Mermaid 格式（用于 Markdown 预览）
 python run_cli.py visualize graph -f top.sv --mmd /tmp/graph.mmd
@@ -141,7 +141,7 @@ stage1 ─────────────────→ stage2_data
 
 ```bash
 # 生成验证缺口图
-python run_cli.py verify gap -f top.sv --dot /tmp/gap.dot --mmd /tmp/gap.mmd
+python run_cli.py verify gap -f top.sv --emit-dot /tmp/gap.dot --mmd /tmp/gap.mmd
 
 # 渲染
 dot -Tpng /tmp/gap.dot -o gap.png
@@ -170,10 +170,10 @@ AST 缓存用于避免重复解析未变化的源文件。基于源文件内容�
 
 ```bash
 # 第一次运行（无缓存）
-python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot
+python run_cli.py visualize graph -f top.sv --svg /tmp/graph.dot
 
 # 第二次运行（使用缓存）
-python run_cli.py visualize graph -f top.sv --dot /tmp/graph.dot --cache
+python run_cli.py visualize graph -f top.sv --svg /tmp/graph.dot --cache
 
 # 强制重建缓存
 python run_cli.py visualize graph -f top.sv --cache --rebuild

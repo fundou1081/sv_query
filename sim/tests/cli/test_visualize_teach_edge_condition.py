@@ -52,7 +52,7 @@ def test_if_demo_then_branch_has_sel_condition(tmp_path):
         "--focus", "if_demo.y",
         "--upstream",
         "--depth", "2",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -74,7 +74,7 @@ def test_if_demo_clock_edge_has_no_condition_label(tmp_path):
         "--focus", "if_demo.y",
         "--upstream",
         "--depth", "2",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -95,7 +95,7 @@ def test_case_demo_each_branch_has_op_eq_value(tmp_path):
         "--focus", "case_demo.y",
         "--upstream",
         "--depth", "2",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())
@@ -124,7 +124,7 @@ def test_ternary_demo_branches_have_inverted_conditions(tmp_path):
         "--focus", "ternary_demo.y",
         "--upstream",
         "--depth", "2",
-        "--dot", str(out),
+        "--emit-dot", str(out),
     )
     assert rc == 0, err
     edges = _read_edges(out.read_text())

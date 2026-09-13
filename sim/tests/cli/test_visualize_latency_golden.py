@@ -42,7 +42,7 @@ def _run_chain(sv_path, dot_path, target=None, max_edges=20):
         "-f", str(sv_path),
         "--no-strict",
         "--auto",
-        "--dot", dot_path,
+        "--svg", dot_path,
         "--max-edges", str(max_edges),
         "--target", target or "top",
     ]

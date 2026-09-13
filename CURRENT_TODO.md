@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~195; 待执行: viz flag 改名 + 文本输出验收标准)。
+**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 下一步主线: 文本结构化输出审计)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -42,7 +42,10 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
-**方豆决策 (2026-09-08, 待执行)**: ① pipeline/timing 的验收标准改为**文本结构化输出**, 可视化暂时冻结; ② 可视化 flag 统一为 `--svg`、**不再支持 `--dot`**; ③ PNG/SVG 断言现阶段不处理; ④ 文本输出稳定后再看可视化。改名影响面实测: CLI 7 处 + 内部调用 2 处 + 测试引用 **57 处/≥12 文件** (试跑 52 failed) → 必须一次做完"改名 + 测试同步 + 全量验证", 且同批清理受影响文件里被禁的 `--no-strict`。**已在本地试做后回退** (不提交半成品/半红套件), 等方豆确认真 DOT 命令 (`visualize module`/`teach`/`datapath` + `timing`) 的处置方式后执行。
+**iter_196 (可视化 flag 统一 — 方豆决策执行)**: `--dot` 已在 **src + sim/tests 全仓清零**; 7 个 SVG 子命令收敛为 `--svg`, 5 个真 DOT 命令改 `--emit-dot` (换名保留能力); 测试按命令边界映射 57 处; **顺带发现真缺陷**: chain 的 `--svg` 被声明两次 (内部渲染器 vs 外部 graphviz), 旧代码把 `--svg` 绑到后者, 测试靠 deprecated `--dot` 别名才走通 → graphviz 那条改名 `--svg-graphviz`; 全量 3302 passed / 0 failed。
+[iter_196](docs/task_tree/iterations/iter_196_viz_flag_unification.md)
+
+**方豆决策 (2026-09-08)**: ① pipeline/timing 的验收标准改为**文本结构化输出**, 可视化暂时冻结; ② 可视化 flag 统一为 `--svg`、**不再支持 `--dot`**; ③ PNG/SVG 断言现阶段不处理; ④ 文本输出稳定后再看可视化。改名影响面实测: CLI 7 处 + 内部调用 2 处 + 测试引用 **57 处/≥12 文件** (试跑 52 failed) → 必须一次做完"改名 + 测试同步 + 全量验证", 且同批清理受影响文件里被禁的 `--no-strict`。**已在本地试做后回退** (不提交半成品/半红套件), 等方豆确认真 DOT 命令 (`visualize module`/`teach`/`datapath` + `timing`) 的处置方式后执行。
 [决策记录](docs/architecture/ventus_viz_assertion_migration.md)
 
 **iter_195 (viz 断言迁移决策就绪 — 方豆 "继续")**: 对 iter_188 的 13 个 skip 逐条实测"原断言意图 vs 当前 SVG 能否验证", 产出可拍板的表 (`docs/architecture/ventus_viz_assertion_migration.md`): 可直接迁移 3~4 条 / 需先定产品语义 7~8 条 / 需先补 CLI 能力 2 条; **额外发现原 `rankdir=LR` 断言早已不成立** (实测宽高比 0.28 竖版); 根因 = `--dot` 在同一 CLI 内三种语义。同时在 iter_189 记录里追加"可直接提给上游的 issue 文本"。**未改任何断言** (迁移属产品语义)。

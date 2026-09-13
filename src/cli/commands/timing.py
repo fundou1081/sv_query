@@ -41,7 +41,7 @@ def analyze(
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     max_paths: int = typer.Option(5, "--max-paths", help="Max number of paths to report"),
-    dot_output: str = typer.Option(None, "--dot", "-d", help="[P1 fix 2026-07-10] Output DOT file visualizing critical paths"),
+    dot_output: str = typer.Option(None, "--emit-dot", "-d", help="[P1 fix 2026-07-10] Output DOT file visualizing critical paths (raw DOT)"),
 ) -> None:
     """Analyze timing critical paths"""
     from trace.core.graph.models import NodeKind
