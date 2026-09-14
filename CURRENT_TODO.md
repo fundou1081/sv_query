@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_202 (对抗第二轮: --quiet 契约 — 方豆 "继续")**: 换面打 quiet × JSON × stdout 纯净性 + `-j` + 退出码一致性 → 通过项若干, **发现 F5: `--quiet` 实测残留 6 行 stderr** (Phase 3/4 + pipeline 摘要, 都绕过日志系统直接 print) 违背"抑制所有 stderr"契约; 修复: 新增 `compiler.is_quiet()` 供输出点自门控 + 6 行加门控 → stderr 从 225 → **0 字节** (默认模式诊断不变); 追加 3 条回归测试 (quiet 必须空 / quiet 不吞错误 / quiet+-j 纯 JSON)。
+[iter_202](docs/task_tree/iterations/iter_202_adversarial_quiet_contract.md)
+
 **iter_201 (JSON 契约 F1~F4 修复 — 方豆 "先把这几个修了")**: F1 错误路径也输出结构化信封 `{ok:false, command, error:{type,message}}` (**两层挂载**: 命令内 except + CLI 顶层, 因为文件/编码错误会逃到顶层); F2/F3 `--json` 与 `--svg/--timing` 等组合时显式告警且不产出文件; F4 `--max-paths` 负值报错 (0 仍合法); 新增 8 条对抗回归测试。
 [iter_201](docs/task_tree/iterations/iter_201_json_contract_fixes.md)
 

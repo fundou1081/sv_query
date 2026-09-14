@@ -91,3 +91,30 @@ def test_f4_zero_max_paths_is_valid():
     assert r.returncode == 0, r.stderr[-300:]
     payload = _json_or_none(r.stdout)
     assert payload and payload["result"]["critical_paths"] == []
+
+
+# ── F5 (iter_202): --quiet 契约必须真的安静 ─────────────────────────────────
+def test_f5_quiet_suppresses_all_stderr():
+    """F5: `--quiet` 的契约是抑制所有 stderr (给 LLM 消费方)。
+
+    iter_202 对抗测试发现: 实测仍泄漏 6 行 (Phase 3/4 进度 + pipeline 摘要)。
+    """
+    r = _run(["visualize", "pipeline", "-f", str(CORDIC), "--quiet"])
+    assert r.returncode == 0, r.stderr[-300:]
+    assert r.stderr.strip() == "", f"--quiet 下 stderr 必须为空, 实际: {r.stderr[:300]!r}"
+
+
+def test_f5_quiet_keeps_errors_visible():
+    """F5 反向: --quiet 不能把**错误**也吞掉 (失败仍要可见)。"""
+    r = _run(["visualize", "pipeline", "-f", str(BINARY), "--quiet"])
+    assert r.returncode != 0
+    assert r.stderr.strip(), "错误信息不应被 --quiet 吞掉"
+
+
+def test_f5_quiet_with_json_keeps_stdout_pure():
+    """F5: --quiet + -j → stderr 全空, stdout 仍是纯 JSON。"""
+    r = _run(["visualize", "pipeline", "-f", str(CORDIC), "--quiet", "-j"])
+    assert r.returncode == 0, r.stderr[-300:]
+    assert r.stderr.strip() == "", r.stderr[:300]
+    payload = _json_or_none(r.stdout)
+    assert payload is not None and payload["ok"] is True, r.stdout[:200]

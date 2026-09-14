@@ -385,10 +385,12 @@ def pipeline(
         "--unfold": unfold,
     })
 
-    typer.echo(f"  Pipeline regs: {len(info.pipeline_regs)}", err=True)
-    typer.echo(f"  Control regs: {len(info.control_regs)}", err=True)
-    typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
-    typer.echo(f"  Stages: {info.total_latency}", err=True)
+    from trace.core.compiler import is_quiet as _is_quiet  # [iter_202]
+    if not _is_quiet():
+        typer.echo(f"  Pipeline regs: {len(info.pipeline_regs)}", err=True)
+        typer.echo(f"  Control regs: {len(info.control_regs)}", err=True)
+        typer.echo(f"  State regs: {len(info.state_regs)}", err=True)
+        typer.echo(f"  Stages: {info.total_latency}", err=True)
 
     # [iter_198] --json: 结构化输出是 pipeline 的验收标准 → 只导数据, 不渲染可视化。
     # 信封与 `sv_query timing analyze --json` 对齐 ({ok, command, result}),
