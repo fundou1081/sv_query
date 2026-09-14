@@ -118,3 +118,35 @@ def test_f5_quiet_with_json_keeps_stdout_pure():
     assert r.stderr.strip() == "", r.stderr[:300]
     payload = _json_or_none(r.stdout)
     assert payload is not None and payload["ok"] is True, r.stdout[:200]
+
+
+# ── F6 (iter_203): `--format json` 必须给结构化 JSON ───────────────────────
+ADV = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "macro_inst.sv"
+
+
+@pytest.mark.parametrize("mode", ["fanin", "fanout"])
+def test_f6_format_json_is_structured(mode):
+    """F6: `--format json` 过去落到 text 分支 → stdout 是被 JSON 转义的**字符串**。
+
+    实测 (修复前): `"Fanin of 'macro_top.a_q_q':\\n  (no drivers)\\n"`
+    (一个 JSON 字符串, 不是对象) → 消费者无法取字段。
+    """
+    if not ADV.exists():
+        pytest.skip(f"fixture 缺失: {ADV}")
+    r = _run(["trace", mode, "macro_top.a_q_q", "-f", str(ADV), "--format", "json"])
+    assert r.returncode == 0, r.stderr[-300:]
+    payload = _json_or_none(r.stdout)
+    assert payload is not None, f"--format json 必须是 JSON: {r.stdout[:200]!r}"
+    assert isinstance(payload, dict), f"必须是 JSON 对象, 不是字符串: {type(payload).__name__}"
+    assert payload.get("ok") is True and "command" in payload, payload
+
+
+def test_f6_format_json_matches_json_flag():
+    """F6: `--format json` 与 `--json` 必须给出同一结构 (单一实现)。"""
+    if not ADV.exists():
+        pytest.skip(f"fixture 缺失: {ADV}")
+    a = _run(["trace", "fanin", "macro_top.a_q_q", "-f", str(ADV), "--format", "json"])
+    b = _run(["trace", "fanin", "macro_top.a_q_q", "-f", str(ADV), "--json"])
+    pa, pb = _json_or_none(a.stdout), _json_or_none(b.stdout)
+    assert pa and pb
+    assert set(pa.keys()) == set(pb.keys()), (sorted(pa), sorted(pb))

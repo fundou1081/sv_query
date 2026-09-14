@@ -755,6 +755,11 @@ def fanin(
                 typer.echo(f"✓ DOT written: {output}")
             else:
                 typer.echo(dot_content)
+        elif format == "json":
+            # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
+            # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
+            # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
+            output_json(data)
         else:
             output_text(data, human=human, tree=tree)
 
@@ -942,6 +947,11 @@ def fanout(
                 typer.echo(f"✓ DOT written: {output}")
             else:
                 typer.echo(dot_content)
+        elif format == "json":
+            # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
+            # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
+            # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
+            output_json(data)
         else:
             output_text(data, human=human, tree=tree)
 
@@ -1088,6 +1098,11 @@ def impact(
 
         if json_output:
             output_json(data, pretty)
+        elif format == "json":
+            # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
+            # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
+            # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
+            output_json(data)
         else:
             output_text(data, human=human, tree=tree)
 

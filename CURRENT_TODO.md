@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_203 (对抗第三轮: 分析层 + F6 — 方豆 "继续")**: 打分析层 10 用例 (generate 双 genvar / 参数化 class extends + interface / 宏拼接名 / 重复 module / 多语言料) → **分析层健壮**; 但启发式标记追出 **F6: `trace --format json` 打印被 JSON 转义的字符串** (不是对象), 而 `--json` 正确 → 别名未收敛; 修复: 三处 dispatch 补 json 分支 (与 --json 同实现) + 3 条回归测试 (断言**类型**为 dict, 不只"能否解析")。
+[iter_203](docs/task_tree/iterations/iter_203_adversarial_analysis_layer.md)
+
 **iter_202 (对抗第二轮: --quiet 契约 — 方豆 "继续")**: 换面打 quiet × JSON × stdout 纯净性 + `-j` + 退出码一致性 → 通过项若干, **发现 F5: `--quiet` 实测残留 6 行 stderr** (Phase 3/4 + pipeline 摘要, 都绕过日志系统直接 print) 违背"抑制所有 stderr"契约; 修复: 新增 `compiler.is_quiet()` 供输出点自门控 + 6 行加门控 → stderr 从 225 → **0 字节** (默认模式诊断不变); 追加 3 条回归测试 (quiet 必须空 / quiet 不吞错误 / quiet+-j 纯 JSON)。
 [iter_202](docs/task_tree/iterations/iter_202_adversarial_quiet_contract.md)
 
