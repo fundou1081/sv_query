@@ -81,6 +81,39 @@ filelist 两条路径行为不一致**。症状表现为什么"token paste 不�
 **下一步 (建议顺序)**: ① 先修 R4-4 (测试隔离) → 它能解释为什么这个文件必须依赖
 全量套件才绿; ② 再落地 R4-3 修复 (方案已验证); ③ 然后 R4-1 (误用提示)。
 
+## R4-4 追加诊断 (本轮进展 + 交接)
+
+| 观察 | 结果 |
+|---|---|
+| 该文件单独跑 (`-x`) | **1 failed** (首个 parity 断言: `--file` 输出 `/var/...` vs `--filelist` 输出 `/private/var/...`) |
+| 该文件单独跑 (完整) | **9 failed / 6 passed** |
+| 与相邻 unit 文件一起跑 | **9 failed / 17 passed** (未恢复) |
+| 全量 canonical (`-m "not opensource"`) | **0 failed** (同代码) |
+| `sim/tests/` 内 `tempfile.tempdir` / `TMPDIR` 赋值 | **未找到** (所以泄漏源不在这两处) |
+
+**结论**: 差异来自**跨目录的全局状态/顺序依赖** (单文件与该 unit 文件一起跑都失败,
+只有放进全量套件才过)。**未定位到具体泄漏源** —— 需要按目录二分。
+
+**交接: 定位泄漏源的二分步骤** (bounded, 约 15 分钟):
+
+```bash
+# 1) 先确认基线: 全量绿
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly | tail -2
+# 2) 单独跑目标文件 → 复现 9 failed
+python3 -m pytest sim/tests/unit/test_cli_filelist_parity.py -q -p no:randomly | tail -2
+# 3) 逐目录加入, 找到让结果"由红转绿"的那一批 (重点怀疑 conftest / 全局缓存):
+for d in cli regression usage integration truth; do
+  python3 -m pytest sim/tests/$d sim/tests/unit/test_cli_filelist_parity.py -q -p no:randomly | tail -1
+done
+# 4) 命中的目录内再二分文件; 找到后检查它是否修改了
+#    tempfile.tempdir / os.environ['TMPDIR'] / Path.resolve 的 monkeypatch / 全局缓存
+```
+
+**为什么必须先修 R4-4**: ① 它是"测试只在全量下绿"的隐患 (CI 局部跑会误报);
+② R4-3 的修复 (已验证有效) 与它纠缠 —— 无法区分"修复引入"还是"既有缺陷";
+③ 顺带可能揭示产品层的路径形态不一致 (`/var` vs `/private/var`): 这正是 R4-3 修复
+要一并解决的 (`--file` 与 `--filelist` 应给同一形态)。
+
 ## 📢 后续
 
 R4-1 提示退化 (小) / push (34 commit) / 199 处 `--no-strict` 分层清单 /
