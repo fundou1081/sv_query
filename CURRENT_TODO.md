@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_205 (R4-3 修复: filelist +incdir+ 被丢弃 — 方豆 先修吧)**: 修 R4-2 过程里真因转向 — 纯 pyslang 0 错误、我们的编译器(原文/预处理)都通过, 但 `graph/stats --filelist` 失败而 `trace --filelist` 正常 -> `_build_tracer` 的 filelist 路径只取 sources, 丢弃了 `+incdir+` (iter_193 解析器已给出 spec.include_dirs) -> 头文件宏无法展开 -> 级联报错。修复: `_read_filelist_full()` + `_build_tracer` 合并 incdir; graph/stats rc=1->0; 但全量门禁出现 9 个 parity 失败 -> 回退后**仍失败** = **R4-4 测试隔离缺陷** (parity 测试单独跑 9 failed, 全量套件里绿) -> **修复已回退**; R4-2 结论更正 (含参宏由 pyslang 展开, 不构成 bug); 下一步: 先修 R4-4 再落地 R4-3; R4-1 仍待修。
+[iter_205](docs/task_tree/iterations/iter_205_r4_3_filelist_incdir.md)
+
 **iter_204 (对抗第四轮: 跨文件 include/宏 — 方豆 "继续")**: 通过项: include+incdir / 跨文件 define / 嵌套 filelist / 缺失条目 / 自包含 include 循环; **R4-2 真 bug: 宏 token paste (`nm``_q`) 不生效** → 3 行最小复现 + 对照实验 (同链路不含 `` → rc=0) 定位到**宏展开层** (非 include); **R4-1 UX 缺口: `-f <filelist>` 误用不再触发 iter_189 守卫的清晰提示** (判据只覆盖"表达式根") → 退化成下游错误 + "Use --no-strict" 误导。修复方案已列待拍板。
 [iter_204](docs/task_tree/iterations/iter_204_adversarial_include_macro.md)
 
