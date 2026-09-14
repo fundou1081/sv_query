@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_204 (对抗第四轮: 跨文件 include/宏 — 方豆 "继续")**: 通过项: include+incdir / 跨文件 define / 嵌套 filelist / 缺失条目 / 自包含 include 循环; **R4-2 真 bug: 宏 token paste (`nm``_q`) 不生效** → 3 行最小复现 + 对照实验 (同链路不含 `` → rc=0) 定位到**宏展开层** (非 include); **R4-1 UX 缺口: `-f <filelist>` 误用不再触发 iter_189 守卫的清晰提示** (判据只覆盖"表达式根") → 退化成下游错误 + "Use --no-strict" 误导。修复方案已列待拍板。
+[iter_204](docs/task_tree/iterations/iter_204_adversarial_include_macro.md)
+
 **iter_203 (对抗第三轮: 分析层 + F6 — 方豆 "继续")**: 打分析层 10 用例 (generate 双 genvar / 参数化 class extends + interface / 宏拼接名 / 重复 module / 多语言料) → **分析层健壮**; 但启发式标记追出 **F6: `trace --format json` 打印被 JSON 转义的字符串** (不是对象), 而 `--json` 正确 → 别名未收敛; 修复: 三处 dispatch 补 json 分支 (与 --json 同实现) + 3 条回归测试 (断言**类型**为 dict, 不只"能否解析")。
 [iter_203](docs/task_tree/iterations/iter_203_adversarial_analysis_layer.md)
 
