@@ -20,7 +20,7 @@ import warnings
 
 import typer
 
-from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli._common import _build_tracer, emit_json_error, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 warnings.filterwarnings("ignore")
@@ -50,6 +50,10 @@ def analyze(
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
 
+    # [iter_201 F4] 负值过去被静默当成 0 → 应报错 (0 = 不输出路径)
+    if max_paths < 0:
+        raise typer.BadParameter("--max-paths 不能为负 (0 = 不输出路径)")
+
     try:
         tracer = _build_tracer(
             file=Path(file) if file else None,
@@ -61,6 +65,9 @@ def analyze(
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
         graph = tracer.build_graph(target_module=module)
     except CompilationError as e:
+        # [iter_201 F1] --json 模式下错误也要是结构化 JSON
+        if json_output:
+            emit_json_error("timing analyze", e)
         handle_compilation_error(e, strict=strict)
         return
     analyzer = TimingAnalyzer(graph)

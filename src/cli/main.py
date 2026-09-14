@@ -385,6 +385,12 @@ def run() -> None:
     try:
         app()
     except (CompilationError, OSError, UnicodeDecodeError) as e:
+        # [iter_201 F1] 请求了 --json 却逃到顶层的错误 (文件不存在/编码/编译失败)
+        # 也必须给出**结构化错误信封** (过去 stdout 为空, 消费者拿不到 JSON)。
+        if any(a in ("--json", "-j") for a in sys.argv[1:]):
+            from cli._common import emit_json_error
+            tokens = [a for a in sys.argv[1:] if not a.startswith("-")]
+            emit_json_error(" ".join(tokens[:2]) or "sv_query", e)
         if os.environ.get("SVQ_DEBUG", "").lower() in ("1", "true", "yes"):
             raise
         msg = str(e).strip() or type(e).__name__

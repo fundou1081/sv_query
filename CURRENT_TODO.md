@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_201 (JSON 契约 F1~F4 修复 — 方豆 "先把这几个修了")**: F1 错误路径也输出结构化信封 `{ok:false, command, error:{type,message}}` (**两层挂载**: 命令内 except + CLI 顶层, 因为文件/编码错误会逃到顶层); F2/F3 `--json` 与 `--svg/--timing` 等组合时显式告警且不产出文件; F4 `--max-paths` 负值报错 (0 仍合法); 新增 8 条对抗回归测试。
+[iter_201](docs/task_tree/iterations/iter_201_json_contract_fixes.md)
+
 **iter_200 (对抗性测试: JSON 契约 — 方豆 "来做一些对抗性测试，找到现有功能的问题")**: 14 组对抗组合 + 3 项静默行为验证 → **4 个问题**: F1 `--json` 错误路径 stdout 空 (成功信封有 `ok` 却无错误信封, 4 用例命中); F2 `--json --svg X` 静默丢弃 SVG; F3 `--json --timing` 静默忽略 timing; F4 `--max-paths -1` 静默当 0。根因: 成功契约≠完整契约 + 模式互斥无校验 + 参数校验缺失。**修复方案已列待拍板** (错误信封 / 互斥 flag 告警 / 负值报错 / 矩阵固化为回归测试)。
 [iter_200](docs/task_tree/iterations/iter_200_adversarial_json_contract.md)
 
