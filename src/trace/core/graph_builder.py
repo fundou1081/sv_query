@@ -506,12 +506,14 @@ class GraphBuilder:
             if driver is not None and hasattr(driver, 'set_instance_paths'):
                 driver.set_instance_paths(paths)
 
-            import sys
-            print(
-                f"[Phase 4] target={self.target_module!r}: "
-                f"configured {len(paths)} instance paths for DriverExtractor",
-                file=sys.stderr,
-            )
+            from .compiler import is_quiet
+            if not is_quiet():                      # [iter_202] --quiet 必须真的安静
+                import sys
+                print(
+                    f"[Phase 4] target={self.target_module!r}: "
+                    f"configured {len(paths)} instance paths for DriverExtractor",
+                    file=sys.stderr,
+                )
         except Exception as e:
             # [P0 核实 2026-08-29] 失败显式记录 (原 print 调试残留)
             logger.warning("_configure_instance_paths failed: %s", e)
@@ -617,13 +619,15 @@ class GraphBuilder:
                 logger.warning("节点删除失败: %s", e)
 
         if nodes_to_drop:
-            import sys
-            print(
-                f"[Phase 3] target={target!r}: filtered {len(nodes_to_drop)} "
-                f"out-of-target nodes (kept {len(list(self.graph.nodes()))} "
-                f"within target)",
-                file=sys.stderr,
-            )
+            from .compiler import is_quiet
+            if not is_quiet():                      # [iter_202] --quiet 必须真的安静
+                import sys
+                print(
+                    f"[Phase 3] target={target!r}: filtered {len(nodes_to_drop)} "
+                    f"out-of-target nodes (kept {len(list(self.graph.nodes()))} "
+                    f"within target)",
+                    file=sys.stderr,
+                )
 
     def _collect_struct_members(self):
         """收集所有 struct 变量的成员信息

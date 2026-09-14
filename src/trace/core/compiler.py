@@ -22,6 +22,16 @@ _QUIET = False
 _ELABORATION_INCOMPLETE = False
 
 
+def is_quiet() -> bool:
+    """[iter_202] 查询 quiet 模式 (供诊断性 stderr 输出自行门控)。
+
+    背景: `--quiet` 的契约是"抑制所有 stderr 输出"(给 LLM 消费方), 但实测
+    `visualize pipeline --quiet` 仍会泄漏 Phase 3/4 进度与 pipeline 摘要 6 行
+    (iter_202 对抗测试发现) → 这些点必须自己查 quiet 状态。
+    """
+    return _QUIET
+
+
 def set_quiet(quiet: bool = True) -> None:
     """Set global quiet mode for LLM consumption.
 
