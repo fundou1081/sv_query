@@ -355,7 +355,7 @@ def pipeline(
 
     [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
     """
-    from cli._common import handle_compilation_error
+    from cli._common import emit_json_error, handle_compilation_error, warn_flags_ignored_by_json
     from trace.core.compiler import CompilationError
     from trace.core.graph.analyzer.pipeline_viz import detect_pipeline
     from trace.core.graph.analyzer.signal_classifier import classify_graph
@@ -369,12 +369,21 @@ def pipeline(
             strict=strict, target_module=module,
         )
     except CompilationError as e:
+        # [iter_201 F1] --json 模式下错误也要是结构化 JSON (stdout), 不只 stderr
+        if json_output:
+            emit_json_error("visualize pipeline", e)
         handle_compilation_error(e, strict=strict)
         return
 
     classification = classify_graph(graph)
     info = detect_pipeline(graph, classification)
     info.module_name = module or file or filelist or ""
+
+    # [iter_201 F2/F3] --json 下被忽略的输出/模式 flag 必须显式告警 (过去静默丢弃)
+    warn_flags_ignored_by_json(json_output, {
+        "--svg": dot_output, "--timing": timing, "--load-path": load_path,
+        "--unfold": unfold,
+    })
 
     typer.echo(f"  Pipeline regs: {len(info.pipeline_regs)}", err=True)
     typer.echo(f"  Control regs: {len(info.control_regs)}", err=True)

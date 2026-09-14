@@ -176,6 +176,52 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
 # 2. elaboration 错误统一 catch (任务3, 给 CLI 干净错误)
 # ----------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------
+# [iter_201] 结构化 (JSON) 模式的契约工具
+# ----------------------------------------------------------------------------
+# 背景 (iter_200 对抗测试 F1~F4): `--json` 的成功信封是 {ok, command, result},
+# 但**错误路径 stdout 为空** (只有人读 stderr) → 消费者在最需要结构化时拿不到 JSON。
+# 另外 `--json` 与输出类 flag 组合会静默失效, `--max-paths` 负值被静默当 0。
+
+def json_requested(argv: list[str] | None = None) -> bool:
+    """命令行是否请求了结构化 JSON 输出 (`--json` / `-j`)。"""
+    import sys as _sys
+    args = argv if argv is not None else _sys.argv[1:]
+    return "--json" in args or "-j" in args
+
+
+def emit_json_error(command: str, e: BaseException) -> None:
+    """[iter_201 F1] 把错误也变成**结构化 JSON** 打到 stdout (与成功信封对称)。
+
+    形状: `{"ok": false, "command": ..., "error": {"type", "message"}}`
+    — stderr 仍保留原有的人读文本 (调用方照常输出), 不丢信息。
+    """
+    import json as _json
+    payload = {
+        "ok": False,
+        "command": command,
+        "error": {"type": type(e).__name__, "message": str(e)},
+    }
+    print(_json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def warn_flags_ignored_by_json(json_output: bool, flags: dict[str, object]) -> None:
+    """[iter_201 F2/F3] `--json` 模式下被忽略的输出/模式 flag 必须**显式告警**。
+
+    过去静默丢弃 (实测 `--json --svg X` → SVG 未生成且无提示), 与项目
+    "不静默" 原则冲突。
+    """
+    if not json_output:
+        return
+    ignored = [name for name, value in flags.items() if value not in (None, False, "", 0)]
+    if ignored:
+        print(
+            "⚠️  --json 已启用: 以下输出/模式选项被忽略 (不产出对应产物): "
+            + ", ".join(ignored),
+            file=sys.stderr,
+        )
+
+
 def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
     """[ADD 2026-06-11 任务3] 统一处理 CompilationError, 不暴露 Python traceback
 
