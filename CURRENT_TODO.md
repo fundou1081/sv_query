@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_208 (R4-1 尝试与回退 — 方豆 可以，继续做吧)**: R4-1 原场景已被 iter_207 的 R4-3 顺带修好; 剩余"非 .f filelist 经 -f 传入"仍误导。守卫扩展尝试**未生效已回退**, 留三条线索: ① 判据不能只看首行 (预处理器注入 `timescale) ② 裸路径判据要收紧 (endswith(.v) 误判行尾注释) ③ **守卫消息被 `handle_compilation_error` 格式化吞掉** → 修 R4-1 必须先修该格式函数 (或把检测放到 CLI 层)。
+[iter_208](docs/task_tree/iterations/iter_208_r4_1_attempt.md)
+
 **iter_207 (R4-3 落地: filelist +incdir+ — 方豆 按这个来做)**: 新增 `_read_filelist_full()` 交出 `spec.include_dirs` + `_build_tracer` 合并 incdir; 实测 `graph/stats --filelist` 从 rc=1(Undeclared 级联) → **rc=0**, trace/简单 include 无回归; 追加 2 条回归测试。顺序验证: **先修 R4-4 再落地 R4-3** 是对的 (iter_205 卡在既有红上分不清新旧)。剩余: R4-1。
 [iter_207](docs/task_tree/iterations/iter_207_r4_3_landed.md)
 
