@@ -44,7 +44,6 @@ def analyze(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
     include: str = typer.Option(None, "--include", "-I", help="Include directories (comma-separated, e.g. /path/inc1,/path/inc2). 对齐 backpressure/handshake/protocol/visualize 已有 -I flag"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -73,17 +72,17 @@ def analyze(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             include_dirs=include_dirs,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
-        sva = SVAExtractor(sources, strict=strict).extract()
-        cov_list = CovergroupExtractor(sources, strict=strict).extract()
+        sva = SVAExtractor(sources, strict=True).extract()
+        cov_list = CovergroupExtractor(sources, strict=True).extract()
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
 
     # 覆盖信号
     sva_signals = set()

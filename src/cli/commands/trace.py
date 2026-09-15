@@ -317,7 +317,7 @@ def _load_tracer_from_snapshot(
 
     # Stub tracer: pre-populate _graph + _signal_tracer
     tracer = UnifiedTracer(
-        sources={}, log_level=log_level, strict=strict, preprocess_macros=preprocess_macros,
+        sources={}, log_level=log_level, strict=True, preprocess_macros=preprocess_macros,
     )
     tracer._graph = graph
     tracer._signal_tracer = SignalTracer(graph, mig=None, use_mig=False)
@@ -599,7 +599,6 @@ def fanin(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
@@ -630,15 +629,15 @@ def fanin(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
@@ -789,7 +788,6 @@ def fanout(
     include_clock: bool = typer.Option(False, "--include-clock", help="[Req-12] Include CLOCK edges (sensitivity list)"),
     include_reset: bool = typer.Option(False, "--include-reset", help="[Req-12] Include RESET edges"),
     include_control: bool = typer.Option(False, "--include-control", help="[Req-12] Include CONTROL edges (always block refs)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     max_results: int | None = typer.Option(None, "--max-results", "-N", help="[C1 2026-06-28 LLM] Cap number of results per signal (None=unlimited). Returns truncated=true if any signal capped."),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
@@ -818,15 +816,15 @@ def fanout(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode
@@ -980,7 +978,6 @@ def impact(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
@@ -1003,15 +1000,15 @@ def impact(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=strict, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph(use_cache=not no_cache)
 
         # 提取 SVA 和 Coverage 信息 (shared across batch)
@@ -1344,7 +1341,6 @@ def evidence(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly tree output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments"),
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
@@ -1359,7 +1355,7 @@ def evidence(
     try:
         signals = _collect_signals(signal, batch_file, batch)
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
-        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=strict, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
+        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=True, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
 
         # [B1 2026-07-03] Batch mode
         # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
@@ -1537,7 +1533,6 @@ def overview(
     to_signal: str = typer.Argument(..., help="Target signal (e.g., top.b)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default)"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum dataflow paths"),
@@ -1573,13 +1568,13 @@ def overview(
     try:
         tracer = _bt(
             file=file, filelist=filelist,
-            strict=strict, log_level=log_level,
+            strict=True, log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
@@ -1634,7 +1629,7 @@ def overview(
     cf_data = {}
     cf_errors = []
 
-    compiler = SVCompiler(sources, strict=strict)
+    compiler = SVCompiler(sources, strict=True)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
     graph_builder = GraphBuilder(semantic_adapter)
     graph_builder.graph = graph

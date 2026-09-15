@@ -42,7 +42,7 @@ class SVAExtractor:
 
         try:
             # [FIX 2026-06-12 Req-15] 传 strict=跟 caller 一致, 避免 non-strict CLI 仍报"编译失败"
-            compiler = SVCompiler(sources=self._sources, log_level="NONE", strict=self._strict)
+            compiler = SVCompiler(sources=self._sources, log_level="NONE", strict=True)
             root = compiler.get_root()
             self._walk(root, graph)
         except Exception as e:

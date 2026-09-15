@@ -146,10 +146,10 @@ def _build_tracer(filelist: str | None, file: str | None, include: str | None, s
     include_dirs = include.split(",") if include else None
     try:
         if filelist:
-            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs, strict=strict)
+            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs, strict=True)
         with open(file) as f:
             sources = {file: f.read()}
-        return UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=strict)
+        return UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=True)
     except Exception as e:
         print(f"Error building tracer: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -255,7 +255,7 @@ def _scan_internal(file, filelist, include, channel, max_signals, strict):
         max_signals: Max pairs to analyze
         strict: Strict mode flag
     """
-    tracer = _build_tracer(filelist, file, include, strict=strict)
+    tracer = _build_tracer(filelist, file, include, strict=True)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
     filter_channels = [c.strip().upper() for c in channel.split(",")] if channel else []
@@ -305,7 +305,6 @@ def scan(
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     channel: str = typer.Option(None, "--channel", "-c", help="Filter by bus channel: AW|W|B|AR|R|A|D (comma-separated)"),
     max_signals: int = typer.Option(40, "--max-signals", "-n", help="Max pairs to analyze"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
 ) -> None:
     """Scan all ready/valid signal pairs and classify handshake semantics"""
     # [FIX 2026-07-06] 提取为 _scan_internal helper 让 scan 和 analyze 共用
@@ -322,10 +321,9 @@ def analyze(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist for multi-file projects"),
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     signal: str = typer.Option(None, "--signal", "-s", help="Ready signal to analyze (e.g. axi_adapter.s_axi_awready)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
 ) -> None:
     """Analyze a single ready signal's handshake semantics"""
-    tracer = _build_tracer(filelist, file, include, strict=strict)
+    tracer = _build_tracer(filelist, file, include, strict=True)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 
@@ -334,7 +332,7 @@ def analyze(
         # [FIX 2026-07-06] 之前 scan.callback 是 typo (function 没 .callback attribute)
         # 改用 _scan_internal helper
         _scan_internal(
-            file=file, filelist=filelist, include=include, channel=None, max_signals=40, strict=strict,
+            file=file, filelist=filelist, include=include, channel=None, max_signals=40, strict=True,
         )
         return
 
@@ -382,7 +380,6 @@ def pair(
     include: str = typer.Option(None, "--include", "-I", help="Include directory (comma-separated)"),
     valid: str = typer.Option(None, "--valid", help="Valid signal (e.g. axi_adapter.s_axi_awvalid)"),
     ready: str = typer.Option(..., "--ready", help="Ready signal (e.g. axi_adapter.s_axi_awready)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
 ) -> None:
     """Analyze a (valid, ready) pair's handshake type"""
     if not valid:
@@ -393,7 +390,7 @@ def pair(
                   file=sys.stderr)
             raise typer.Exit(code=1)
 
-    tracer = _build_tracer(filelist, file, include, strict=strict)
+    tracer = _build_tracer(filelist, file, include, strict=True)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 

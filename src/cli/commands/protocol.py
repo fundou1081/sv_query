@@ -68,9 +68,6 @@ def detect(
     no_trace: bool = typer.Option(
         False, "--no-trace", help="Skip Phase B trace (use name-based only)"
     ),
-    strict: bool = typer.Option(
-        True, "--strict/--no-strict", help="Strict mode (default): 编译出错时 raise. Use --no-strict 优雅降级存部分图"
-    ),
 ):
     """检测模块的 bus 协议.
 
@@ -118,9 +115,9 @@ def detect(
         include_dirs = include.split(",") if include else None
         try:
             if filelist:
-                ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs, strict=strict)
+                ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs, strict=True)
             else:
-                ext = SVSignalExtractor.from_file(file, include_dirs=include_dirs, strict=strict)
+                ext = SVSignalExtractor.from_file(file, include_dirs=include_dirs, strict=True)
             mods = ext.extract_all_modules()
             if module:
                 mod = mods.get(module)

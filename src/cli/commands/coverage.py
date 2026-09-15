@@ -46,7 +46,6 @@ coverage_app = typer.Typer(
 def suggest(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -72,7 +71,7 @@ def suggest(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=tracer_log_level,
 
             preprocess_macros=preprocess_macros,
@@ -116,7 +115,6 @@ def suggest(
 def gap(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     class_filter: str = typer.Option(None, "--class", "-c", help="Filter analysis to a specific class (e.g. packet)"),
@@ -142,7 +140,7 @@ def gap(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=tracer_log_level,
             preprocess_macros=preprocess_macros,
         )
@@ -150,7 +148,7 @@ def gap(
 
         # 1. 提取 covergroups (使用 tracer 的 sources, 跟 graph 保持一致)
         sources = tracer.sources if hasattr(tracer, "sources") else {}
-        extractor = CovergroupExtractor(sources=sources, strict=strict)
+        extractor = CovergroupExtractor(sources=sources, strict=True)
         covergroups = extractor.extract()
 
         # 2. 一致性分析
@@ -229,7 +227,6 @@ def generate(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     include: str = typer.Option(None, "--include", "-I", help="Include directories (comma-separated)"),
     module: str = typer.Option(None, "--module", help="限定 multi-module 文件里具体 module name"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict, 适合工业多文件项目)"),
     output: str = typer.Option(None, "--output", "-o", help="Write covergroup to .sv file (default: stdout)"),
     no_header: bool = typer.Option(False, "--no-header", help="Skip 元信息 header (for golden image diff)"),
 ) -> None:
@@ -257,7 +254,7 @@ def generate(
             related_signals=related,
             filelist=filelist,
             module_name=module,
-            strict=strict,
+            strict=True,
         )
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -292,7 +289,6 @@ def generate(
 def analyze(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
     cls_filter: str = typer.Option(None, "--class", "-c", help="Filter to a specific class"),
     json_output: bool = typer.Option(False, "--json", "-j", help="JSON output"),
 ) -> None:
@@ -313,15 +309,15 @@ def analyze(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         raise typer.Exit(code=1) from e
 
     sources = tracer.sources if hasattr(tracer, "sources") else {}
 
-    extractor = CovergroupExtractor(sources=sources, strict=strict)
+    extractor = CovergroupExtractor(sources=sources, strict=True)
     covergroups = extractor.extract()
 
     # filter

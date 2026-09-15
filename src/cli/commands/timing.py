@@ -35,7 +35,6 @@ def analyze(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
     module: str = typer.Option(None, "--module", "-m", help="[Phase 3 2026-07-11] Target module (focus SignalGraph on this module's hierarchy)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -58,7 +57,7 @@ def analyze(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
@@ -68,7 +67,7 @@ def analyze(
         # [iter_201 F1] --json 模式下错误也要是结构化 JSON
         if json_output:
             emit_json_error("timing analyze", e)
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
     analyzer = TimingAnalyzer(graph)
 

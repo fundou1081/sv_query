@@ -92,7 +92,7 @@ class SVSignalExtractor:
         """从单文件构造."""
         with open(file) as f:
             sources = {file: f.read()}
-        return cls(sources=sources, include_dirs=include_dirs, strict=strict)
+        return cls(sources=sources, include_dirs=include_dirs, strict=True)
 
     @classmethod
     def from_filelist(
@@ -102,7 +102,7 @@ class SVSignalExtractor:
         strict: bool = True,
     ) -> SVSignalExtractor:
         """从 filelist (.f/.fl) 构造."""
-        return cls(filelist=filelist, include_dirs=include_dirs, strict=strict)
+        return cls(filelist=filelist, include_dirs=include_dirs, strict=True)
 
     # ----- 提取 -----
 

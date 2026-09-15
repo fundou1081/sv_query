@@ -414,7 +414,7 @@ class UnifiedTracer:
         if self._compiler is None:
             self._ensure_preprocessed()  # [Req-20 2026-06-12] 宏展开在 compiler 前
             self._compiler = SVCompiler(self._sources, log_level=self._log_level,
-                                        strict=self._strict,
+                                        strict=True,
                                         top_modules=self._top_modules)  # [iter_145]
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)
@@ -1247,7 +1247,7 @@ class UnifiedTracer:
             try:
                 self._covergroup_cgs = CovergroupExtractor(
                     sources=self._sources,
-                    strict=self._strict,
+                    strict=True,
                     compiler=self._get_compiler(),  # [G3] 复用编译, 不双编
                 ).extract()
             except Exception as e:

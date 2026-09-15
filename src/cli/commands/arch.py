@@ -168,7 +168,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             tracer = _build_tracer(
                 filelist=filelist,
                 include_dirs=include_dirs,
-                strict=strict,
+                strict=True,
             )
         else:
             with open(file) as f:
@@ -176,7 +176,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             tracer = _build_tracer(
                 file=Path(file),
                 include_dirs=include_dirs,
-                strict=strict,
+                strict=True,
             )
     except Exception as e:
         typer.echo(f"Error building tracer: {e}", err=True)
@@ -894,7 +894,6 @@ def show(
     output: str | None = typer.Option(None, "--output", "-o", help="Write to file (default: stdout)"),
     cluster_by_type: bool = typer.Option(False, "--cluster-by-type", help="[v2] Group same-type instances into clusters + hash-colored"),
     max_nodes: int = typer.Option(100, "--max-nodes", help="[v2] Maximum nodes to render (default: 100). Excess collapsed with note."),
-    strict: bool = typer.Option(False, "--strict/--no-strict"),
     understand: bool = typer.Option(False, "--understand", help="[Design Understanding A 2026-07-08] Add IP-level understanding section (module purpose, clock domains, signal classification)"),
     show_anomalies: bool = typer.Option(False, "--show-anomalies", help="[ADD 2026-07-10] Detect and display RTL anomalies in the target module (X_DRIVER, DANGLING, ORPHAN)"),
 ):
@@ -924,7 +923,7 @@ def show(
         target=target,
         depth=depth,
         include_dirs=include_dirs,
-        strict=strict,
+        strict=True,
     )
 
     # Step 2: 渲染

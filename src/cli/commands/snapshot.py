@@ -50,7 +50,7 @@ def _get_tracer_from_file(file_path, strict=False):
             logger.warning(f"Failed to read {f}: {e}")
             continue
 
-    tracer = UnifiedTracer(sources=sources_dict, strict=strict)
+    tracer = UnifiedTracer(sources=sources_dict, strict=True)
     tracer.build_graph()
     return tracer, [str(f) for f in sv_files]
 
@@ -61,7 +61,7 @@ def _get_tracer_from_filelist(filelist, strict=False, preprocess_macros=True):
     [FIX 2026-07-04 B4] Use `UnifiedTracer(filelist=...)` instead of pre-reading
     sources via _read_filelist (which had base_dir bug causing 0 sources).
     """
-    tracer = UnifiedTracer(filelist=filelist, strict=strict, preprocess_macros=preprocess_macros)
+    tracer = UnifiedTracer(filelist=filelist, strict=True, preprocess_macros=preprocess_macros)
     tracer.build_graph()
     # [B4] Get file paths from the tracer for the snapshot metadata
     file_paths_list = list(tracer._compiler._sources.keys()) if hasattr(tracer, '_compiler') and tracer._compiler else []
@@ -73,9 +73,6 @@ def save(
     path: Path = typer.Argument(..., help="File or directory to snapshot"),
     tag: str = typer.Option("", "--tag", "-t", help="Snapshot tag (e.g., v1.2.3)"),
     git: bool = typer.Option(False, "--git", "-g", help="Auto-capture git commit hash"),
-    strict: bool = typer.Option(
-        False, "--strict/--no-strict", help="Strict mode (default OFF): elaboration error 时不存快照直接报错. Use --strict 启用严格模式"
-    ),
     filelist: str = typer.Option(None, "--filelist", help="[Req-20 2026-06-12] Path to filelist (.f/.fl) for multi-file projects"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="[Req-20] 跨文件 `MACRO 展开"),
 ):
@@ -99,9 +96,9 @@ def save(
 
         # 构建 tracer
         if filelist:
-            tracer, files = _get_tracer_from_filelist(filelist, strict=strict, preprocess_macros=preprocess_macros)
+            tracer, files = _get_tracer_from_filelist(filelist, strict=True, preprocess_macros=preprocess_macros)
         else:
-            tracer, files = _get_tracer_from_file(path, strict=strict)
+            tracer, files = _get_tracer_from_file(path, strict=True)
         graph = tracer.get_graph()
 
         # 获取 elaboration 错误
