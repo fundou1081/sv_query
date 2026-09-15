@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_217 (批次 3 API 形参尝试 → 已回退 — 方豆: 继续推进)**: 3a (CLI helper 去 `strict` 形参 + 删 88 处死传参 + `handle_compilation_error` 去形参) **冒烟全绿**, 但遗漏**行内**形态 (`strict=True, other=...`) → `TypeError` → **265 failed / 6 errors** → 从备份**回退**到批次 2 状态 (34 failed / 3282 passed; 复核 stats/trace rc=0 / test_design 10 passed)。教训 (第 3 次同类): 删命名参数必须穷举三种写法并 `grep -c` 对账; 且核心层 `self._strict` 是**语义分支** (raise vs partial AST) 而非传参 → 需单独立项。
+[iter_217](docs/task_tree/iterations/iter_217_remove_strict_batch3_attempt_reverted.md)
+
 **iter_216 (彻底移除 strict 批次 2: 34 个 CLI 选项 — 方豆: 推进批次2, 全部移除)**: 删全部 `--strict/--no-strict` 选项定义 + `STRICT_OPTION` 常量 + 20+ 文件 import/参数行 + 114 处 `strict=strict` → `strict=True`; 三次自伤纠正 (常量删除 → ImportError → CLI 套件 342 failed; 测试显式传 `--strict` → 19 failed) 均已修; 采样命令 `--help` 已无 strict, `stats`/`trace` 冒烟 rc=0。**全量 canonical 34 failed / 3282 passed** (16 可视化按指示暂缓 + 一批 fixture 在严格模式下暴露真错, 如 snapshot 组) —— 按"失败先保留, 之后一起修"记录。待批 3 (API 形参) / 4 (生产 `strict=False`) / 5 (测试 API 级 29 处 + 暴露的 fixture)。
 [iter_216](docs/task_tree/iterations/iter_216_remove_strict_batch2_cli_options.md)
 
