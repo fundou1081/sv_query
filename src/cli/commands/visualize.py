@@ -32,7 +32,6 @@ from cli._viz_common import (
     FILELIST_OPTION,
     INCLUDE_OPTION,
     SHOW_SOURCE_OPTION,
-    STRICT_OPTION,
     build_viz_tracer,
     get_viz_sources,
 )
@@ -191,7 +190,6 @@ def graph(
     file: str = FILE_OPTION,
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
-    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file"),
     mmd_output: str = typer.Option(None, "--mmd", "-m", help="Output Mermaid file"),
     html_output: str = typer.Option(None, "--html", help="Output HTML file"),
@@ -227,10 +225,10 @@ def graph(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, use_cache=cache,
+            strict=True, use_cache=cache,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     # [V12] 统一 ELK.js 渲染管线
@@ -261,7 +259,6 @@ def dataflow(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module (filter edges to this module's signals)"),
-    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file. Prefix when --split-by-module."),
     include_clk_rst: bool = typer.Option(False, "--with-clk-rst", help="Include clock/reset nodes"),
     split_by_module: bool = typer.Option(False, "--split-by-module", help="[Phase 6.1 2026-07-12] Generate one DOT per sub-instance (e.g. darksocv.bridge0). Output: <prefix>_<sub>.dot"),
@@ -289,10 +286,10 @@ def dataflow(
         # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=module,
+            strict=True, target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     classification = classify_graph(graph)
@@ -327,7 +324,6 @@ def pipeline(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Focus on specific module"),
-    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file"),
     json_output: bool = typer.Option(
         False, "--json", "-j",
@@ -366,13 +362,13 @@ def pipeline(
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=module,
+            strict=True, target_module=module,
         )
     except CompilationError as e:
         # [iter_201 F1] --json 模式下错误也要是结构化 JSON (stdout), 不只 stderr
         if json_output:
             emit_json_error("visualize pipeline", e)
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     classification = classify_graph(graph)
@@ -449,7 +445,6 @@ def compute(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Target module"),
-    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file"),
 ) -> None:
     """运算架构图: 边上直接显示运算符 (+, -, &, >>, ==, etc.)
@@ -471,10 +466,10 @@ def compute(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=module,
+            strict=True, target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     # [V12] 运算架构图: ELK.js 渲染
@@ -500,7 +495,6 @@ def timed(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     module: str = typer.Option(None, "--module", "-m", help="Target module"),
-    strict: bool = STRICT_OPTION,
     dot_output: str = typer.Option(None, "--svg", "-d", help="Output SVG file"),
 ) -> None:
     """时间轴运算架构图: 从左到右时间轴 + 运算作为圆形节点
@@ -522,10 +516,10 @@ def timed(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=module,
+            strict=True, target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     classification = classify_graph(graph)
@@ -604,7 +598,6 @@ def chain(
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
     target: str = typer.Option(None, "--target", "-t", help="Target module (focus scope)"),
-    strict: bool = STRICT_OPTION,
     from_signals: list[str] = typer.Option([], "--from", help="Source signal(s) (e.g. dot11_tx.phy_tx_start). Can pass multiple."),
     to_signals: list[str] = typer.Option([], "--to", help="Target signal(s) (e.g. dot11_tx.result_i). Can pass multiple."),
     auto: bool = typer.Option(False, "--auto", help="Auto-detect all input ports -> output ports paths in --target module"),
@@ -644,10 +637,10 @@ def chain(
         # [FIX 2026-07-17] Pass target_module to build_graph if provided.
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=target if target else None,
+            strict=True, target_module=target if target else None,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     # 决定 from/to signals
@@ -1448,7 +1441,7 @@ def _run_graph_visualization(
         with open(file) as f:
             sources = {file: f.read()}
 
-    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist, strict=strict)
+    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist, strict=True)
     graph = tracer.build_graph(use_cache=cache)
 
     # SVA/Covergroup 提取需要源码
@@ -1459,8 +1452,8 @@ def _run_graph_visualization(
         sva = SVAExtractor(sources_for_extractors).extract()
         cov_list = CovergroupExtractor(sources_for_extractors).extract()
     elif sources:
-        sva = SVAExtractor(sources, strict=strict).extract()
-        cov_list = CovergroupExtractor(sources, strict=strict).extract()
+        sva = SVAExtractor(sources, strict=True).extract()
+        cov_list = CovergroupExtractor(sources, strict=True).extract()
     else:
         sva = None
         cov_list = []
@@ -1595,7 +1588,6 @@ def module(
     file: str = FILE_OPTION,
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
-    strict: bool = STRICT_OPTION,
     target: str = typer.Option(
         "top", "--target", "-t",
         help="Target module name to visualize (e.g. axi_xbar_intf)",
@@ -1647,13 +1639,13 @@ def module(
     try:
         if filelist:
             tracer = UnifiedTracer(
-                filelist=filelist, include_dirs=include_dirs, strict=strict,
+                filelist=filelist, include_dirs=include_dirs, strict=True,
             )
         else:
             with open(file) as f:
                 sources = {file: f.read()}
             tracer = UnifiedTracer(
-                sources=sources, include_dirs=include_dirs, strict=strict,
+                sources=sources, include_dirs=include_dirs, strict=True,
             )
     except Exception as e:
         # [FIX 2026-06-26] safe print: e may contain binary garbage from pyslang
@@ -1869,7 +1861,6 @@ def teach(
     file: str = FILE_OPTION,
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
-    strict: bool = STRICT_OPTION,
     target: str = typer.Option(
         "top", "--target", "-t",
         help="Target module to teach (e.g. uart_top, fifo, scheduler_minimal)",
@@ -1935,13 +1926,13 @@ def teach(
     try:
         tracer, graph_obj = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=strict, target_module=target,
+            strict=True, target_module=target,
         )
         sources = get_viz_sources(tracer, file, filelist)
         sva = SVAExtractor(sources).extract()
         cov_list = CovergroupExtractor(sources).extract()
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     # Coverage + SVA -> signal sets (for D)
@@ -2282,7 +2273,6 @@ def datapath(
     file: str = FILE_OPTION,
     filelist: str = FILELIST_OPTION,
     include: str = INCLUDE_OPTION,
-    strict: bool = STRICT_OPTION,
     target: str = typer.Option(
         "top", "--target", "-t",
         help="Target module",
@@ -2325,7 +2315,7 @@ def datapath(
     """
     tracer, graph = build_viz_tracer(
         file=file, filelist=filelist, include=include,
-        strict=strict,
+        strict=True,
     )
 
     # Build VizData

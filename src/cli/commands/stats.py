@@ -15,7 +15,6 @@ from cli._common import (
     FILELIST_OPTION,
     LOG_LEVEL_OPTION,
     PREPROCESS_OPTION,
-    STRICT_OPTION,
     _build_tracer,
     handle_compilation_error,
 )
@@ -100,7 +99,6 @@ def output_fanout_rank(data: dict, top_n: int = 20) -> None:
 def stats(
     file: Path = FILE_OPTION,
     filelist: str = FILELIST_OPTION,
-    strict: bool = STRICT_OPTION,
     log_level: str = LOG_LEVEL_OPTION,
     preprocess_macros: bool = PREPROCESS_OPTION,
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
@@ -117,7 +115,7 @@ def stats(
         if not file and not filelist:
             raise ValueError("Either --file or --filelist must be provided")
         tracer = _build_tracer(
-            file=file, filelist=filelist, strict=strict, log_level=log_level, preprocess_macros=preprocess_macros
+            file=file, filelist=filelist, strict=True, log_level=log_level, preprocess_macros=preprocess_macros
         )
         graph = tracer.build_graph()
 
@@ -175,7 +173,7 @@ def stats(
 
     except CompilationError as e:
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
     except Exception as e:
         data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:

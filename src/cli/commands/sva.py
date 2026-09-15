@@ -37,7 +37,6 @@ sva_app = typer.Typer(help="SVA (SystemVerilog Assertions) analysis: extract pro
 def extract(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -55,7 +54,7 @@ def extract(
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
 
-    sva = SVAExtractor(sources, strict=strict).extract()
+    sva = SVAExtractor(sources, strict=True).extract()
 
     if json_output:
         import json
@@ -138,7 +137,6 @@ def extract(
 def coverage(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
 
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -153,17 +151,17 @@ def coverage(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
-    sva = SVAExtractor(sources, strict=strict).extract()
-    cov_list = CovergroupExtractor(sources, strict=strict).extract()
+    sva = SVAExtractor(sources, strict=True).extract()
+    cov_list = CovergroupExtractor(sources, strict=True).extract()
 
     # SVA 覆盖信号
     sva_signals = set()
@@ -245,7 +243,6 @@ def coverage(
 def timing(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
 
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -305,16 +302,16 @@ def timing(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
-    sva = SVAExtractor(sources, strict=strict).extract()
+    sva = SVAExtractor(sources, strict=True).extract()
 
     results = []
     for pid, prop in sva.properties.items():

@@ -97,7 +97,6 @@ def analyze(
     signal: str = typer.Argument(..., help="Signal to analyze (e.g., top.q)"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理 (供不跨文件 define 的小项目用)"),
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -116,14 +115,14 @@ def analyze(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     # Build GraphBuilder for analyzer
@@ -131,7 +130,7 @@ def analyze(
     from trace.core.semantic_adapter import SemanticAdapter
 
     # [FIX 2026-06-12 Req-15] 跟 caller 的 strict 一致, 避免 non-strict 仍报 CompilationError
-    compiler = SVCompiler(sources, strict=strict)
+    compiler = SVCompiler(sources, strict=True)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -197,7 +196,6 @@ def analyze(
 def list_conditioned(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
 
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -213,20 +211,20 @@ def list_conditioned(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, strict=strict)
+    compiler = SVCompiler(sources, strict=True)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -262,7 +260,6 @@ def get_conditions(
     signal: str = typer.Argument(..., help="Signal to get conditions for"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图 (供分析不完整项目用)"),
 
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
@@ -278,20 +275,20 @@ def get_conditions(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, strict=strict)
+    compiler = SVCompiler(sources, strict=True)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)

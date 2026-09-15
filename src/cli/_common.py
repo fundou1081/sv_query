@@ -91,7 +91,7 @@ def _build_tracer(
             sources=sources,
             log_level=log_level,
             include_dirs=_merged,
-            strict=strict,
+            strict=True,
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     elif _resolved_file is not None:
@@ -103,7 +103,7 @@ def _build_tracer(
             sources={str(Path(_resolved_file).resolve()): source},  # [iter_206] 与 filelist 路径同形态
             log_level=log_level,
             include_dirs=include_dirs or [],
-            strict=strict,
+            strict=True,
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     else:
@@ -276,12 +276,6 @@ FILE_OPTION = typer.Option(
 )
 FILELIST_OPTION = typer.Option(
     None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"
-)
-STRICT_OPTION = typer.Option(
-    True,
-    "--strict/--no-strict",
-    help="Strict mode (default): elaboration error 立即 raise, exit 1. "
-         "Use --no-strict 优雅降级存部分图 (供分析不完整项目用, e.g. OpenTitan/NaplesPU)",
 )
 LOG_LEVEL_OPTION = typer.Option(
     "WARNING", "--log-level", help="编译器日志级别 (DEBUG/INFO/WARNING/ERROR)"

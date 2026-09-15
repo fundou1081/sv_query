@@ -119,7 +119,6 @@ app.add_typer(graph_app, name="graph")
 def stats_callback(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode (default): elaboration error 立即 raise. Use --no-strict 优雅降级存部分图"),
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
@@ -141,7 +140,7 @@ def stats_callback(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
             log_level=log_level,
         )
         graph = tracer.build_graph()
@@ -222,7 +221,7 @@ def stats_callback(
                     print(f"    - {m}")
     except CompilationError as e:
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
 
 
 def _compute_fanout_rank(graph) -> dict:

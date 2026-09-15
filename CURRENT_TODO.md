@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_216 (彻底移除 strict 批次 2: 34 个 CLI 选项 — 方豆: 推进批次2, 全部移除)**: 删全部 `--strict/--no-strict` 选项定义 + `STRICT_OPTION` 常量 + 20+ 文件 import/参数行 + 114 处 `strict=strict` → `strict=True`; 三次自伤纠正 (常量删除 → ImportError → CLI 套件 342 failed; 测试显式传 `--strict` → 19 failed) 均已修; 采样命令 `--help` 已无 strict, `stats`/`trace` 冒烟 rc=0。**全量 canonical 34 failed / 3282 passed** (16 可视化按指示暂缓 + 一批 fixture 在严格模式下暴露真错, 如 snapshot 组) —— 按"失败先保留, 之后一起修"记录。待批 3 (API 形参) / 4 (生产 `strict=False`) / 5 (测试 API 级 29 处 + 暴露的 fixture)。
+[iter_216](docs/task_tree/iterations/iter_216_remove_strict_batch2_cli_options.md)
+
 **iter_215 (彻底移除 strict 批次 1: design.py — 方豆: 去除默认值, 彻底移除 strict)**: 删 7 处 `args.append("--no-strict")` + 7 个辅助函数 `strict` 形参 + 顶层 `strict` 选项 + 残留位置参数; JSON `"strict"` 字段保留恒 `True` (兼容下游); 验证 `design show` rc=0 + `test_design.py` **10 passed**; **全仓 `src/**` 的 `--no-strict` 用法 = 0**。剩余批次 2~5 (CLI 默认值 / API 形参 / 生产调用点 / 测试 29 处) 待做; 可视化 16 个暂缓。
 [iter_215](docs/task_tree/iterations/iter_215_remove_strict_batch1_design.md)
 

@@ -14,14 +14,12 @@ After this file:
 
 When adding a NEW subcommand (e.g. `visualize control-flow`):
     from cli._viz_common import (
-        FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, STRICT_OPTION,
-        build_viz_tracer,
+        FILE_OPTION, FILELIST_OPTION, INCLUDE_OPTION, build_viz_tracer,
     )
     def controlflow(
         file: str = FILE_OPTION,
         filelist: str = FILELIST_OPTION,
         include: str = INCLUDE_OPTION,
-        strict: bool = STRICT_OPTION,
         ...
     ):
         tracer, graph, sources = build_viz_tracer(file, filelist, include, strict)
@@ -47,10 +45,6 @@ FILELIST_OPTION = typer.Option(
 INCLUDE_OPTION = typer.Option(
     None, "--include", "-I",
     help="Include directory (comma-separated)",
-)
-STRICT_OPTION = typer.Option(
-    True, "--strict/--no-strict",
-    help="Strict mode (default): raise on elaboration error. Use --no-strict for partial AST.",
 )
 SHOW_SOURCE_OPTION = typer.Option(
     False, "--show-source",
@@ -98,7 +92,7 @@ def build_viz_tracer(
     tracer = _build_tracer(
         file=file_path,
         filelist=filelist,
-        strict=strict,
+        strict=True,
         include_dirs=include_dirs,
     )
     # [iter_126 A1 收窄 2026-09-04] 自动单 top target 只在 CLI 设计视图入口启用:

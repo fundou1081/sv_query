@@ -41,7 +41,7 @@ class CovergroupExtractor:
         results = []
         try:
             compiler = self._compiler or SVCompiler(sources=self._sources,
-                                                    strict=self._strict)
+                                                    strict=True)
             root = compiler.get_root()
             # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
             # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)

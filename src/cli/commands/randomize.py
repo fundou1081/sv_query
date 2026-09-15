@@ -203,7 +203,6 @@ def list_cmd(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     cls_filter: str = typer.Option(None, "--class", help="Filter to specific class"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ):
     """[Phase 1 2026-07-07] 列出 rand/randc 变量 + randomize() 调用点 + pre/post_randomize 函数
@@ -217,10 +216,10 @@ def list_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -350,7 +349,6 @@ def extract_cmd(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     cls_filter: str = typer.Option(None, "--class", help="Filter to specific class"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ):
     """[Phase 1 2026-07-07] 提取 randomize() 的 inline constraint 表达式 + 影响的 rand 变量
@@ -363,10 +361,10 @@ def extract_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -437,7 +435,6 @@ def trace_cmd(
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     cls_filter: str = typer.Option(..., "--class", help="Entry class name (e.g. my_seq)"),
     method: str = typer.Option(..., "--method", help="Entry method name (e.g. body)"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ):
     """[Phase 2 Day 3 2026-07-07] 追踪 randomize() 调用图 + 影响的 rand 变量
@@ -453,10 +450,10 @@ def trace_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -766,7 +763,6 @@ def reachability_cmd(
     file: str = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     cls_filter: str = typer.Option(..., "--class", help="Target class name"),
-    strict: bool = typer.Option(True, "--strict/--no-strict", help="Strict mode"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ):
     """[Phase 3 Day 1 2026-07-07] 分析 rand 变量 reachability (检测 dead randomize)
@@ -786,10 +782,10 @@ def reachability_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=strict,
+            strict=True,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=strict)
+        handle_compilation_error(e, strict=True)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -839,7 +835,7 @@ def reachability_cmd(
     # 跨 class 找 covergroup sample (走 CovergroupExtractor)
     from trace.core.covergroup_extractor import CovergroupExtractor
     sources = tracer.sources if hasattr(tracer, "sources") else {}
-    extractor = CovergroupExtractor(sources=sources, strict=strict)
+    extractor = CovergroupExtractor(sources=sources, strict=True)
     covergroups = extractor.extract()
 
     # Analyze reachability for each rand var
