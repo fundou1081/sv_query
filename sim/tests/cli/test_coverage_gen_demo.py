@@ -114,7 +114,7 @@ class TestNoStrictFlag:
     def test_no_strict_compiles_with_rtl_warnings(self):
         """test_comprehensive.sv 有 wire 用 <= 错误, --no-strict 应仍能跑."""
         rc, out, err = _run_cli(
-            "sim/test_comprehensive.sv", "q1", "din", "--no-strict"
+            "sim/test_comprehensive.sv", "q1", "din"
         )
         assert rc == 0, f"CLI fail: {err}"
         assert "covergroup cg_q1" in out
@@ -130,7 +130,7 @@ class TestModuleFlag:
         """--module=seq_basic 在 test_comprehensive.sv 里选 seq_basic 的 q."""
         rc, out, err = _run_cli(
             "sim/test_comprehensive.sv", "q", "d",
-            "--no-strict", "--module=seq_basic",
+            "--module=seq_basic",
         )
         assert rc == 0, f"CLI fail: {err}"
         assert "covergroup cg_q" in out

@@ -15,7 +15,7 @@ STRICT_UART_FL = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart"
 
 def _run_pipeline() -> tuple[int, str, str]:
     p = subprocess.run(
-        ["sv_query", "visualize", "pipeline", "--filelist", STRICT_UART_FL, "--no-strict"],
+        ["sv_query", "visualize", "pipeline", "--filelist", STRICT_UART_FL],
         capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
     )
     return p.returncode, p.stdout, p.stderr
@@ -46,7 +46,7 @@ class TestPipelineVizData:
         """[V6.9] Pipeline output contains stage/reg elements."""
         p = subprocess.run(
             ["sv_query", "visualize", "pipeline", "--filelist", STRICT_UART_FL,
-             "--no-strict"],
+             ],
             capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT),
         )
         if p.returncode != 0:

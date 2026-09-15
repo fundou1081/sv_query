@@ -118,7 +118,7 @@ class TestNoSwapReclaimDiscipline(unittest.TestCase):
         result = subprocess.run(
             ["sv_query", "stats", "-f",
              f"{REPO}/sim/tests/pyslang_type_fixtures/industrial_filelists/picorv32.f",
-             "--no-strict"],
+             ],
             capture_output=True, text=True,
         )
         # Filelist path with .f extension should auto-route to filelist

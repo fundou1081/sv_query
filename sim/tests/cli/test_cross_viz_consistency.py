@@ -147,15 +147,15 @@ class TestCrossVizConsistency(unittest.TestCase):
         """Run arch + chain + pipeline + timing on same target."""
         arch = run_sv(["arch", "show", "-f", filelist,
                        "--target", target, "--depth", "1",
-                       "--no-strict", "--format", "summary"])
+                       "--format", "summary"])
         chain = run_sv(["visualize", "chain", "-f", filelist,
-                        "--no-strict", "--target", target, "--auto",
+                        "--target", target, "--auto",
                         "--max-edges", "30", "--svg", "/tmp/_chain.dot"])
         pipeline = run_sv(["visualize", "pipeline", "-f", filelist,
-                          "--no-strict", "--module", target,
+                          "--module", target,
                           "--svg", "/tmp/_pipeline.dot"])
         timing = run_sv(["timing", "analyze", "-f", filelist,
-                         "--no-strict", "--max-paths", "5"])
+                         "--max-paths", "5"])
         return {
             "arch": parse_arch_summary(arch["text"]),
             "chain": parse_chain(chain["text"]),
@@ -199,7 +199,7 @@ class TestCrossVizAnomalyConsistency(unittest.TestCase):
         arch = run_sv(["arch", "show", "-f",
                        str(GOLDEN_DIR / "combined" / "filelist.f"),
                        "--target", "combined", "--depth", "1",
-                       "--no-strict", "--format", "summary"])
+                       "--format", "summary"])
         arch_info = parse_arch_summary(arch["text"])
         self.assertEqual(arch_info["total_instances"], 0,
                         "combined has no sub-instances (top-level only)")
@@ -207,7 +207,7 @@ class TestCrossVizAnomalyConsistency(unittest.TestCase):
         # chain on combined — should find isolated_a, isolated_b, chain_wire
         chain = run_sv(["visualize", "chain", "-f",
                         str(GOLDEN_DIR / "combined" / "filelist.f"),
-                        "--no-strict", "--target", "combined", "--auto",
+                        "--target", "combined", "--auto",
                         "--max-edges", "30", "--svg", "/tmp/_combined.dot"])
         chain_info = parse_chain(chain["text"])
 
@@ -230,7 +230,7 @@ class TestCrossVizAnomalyConsistency(unittest.TestCase):
         """[Cross 4] chain's DANGLING on unused_reg should agree with source code."""
         chain = run_sv(["visualize", "chain", "-f",
                         str(GOLDEN_DIR / "dangling" / "filelist.f"),
-                        "--no-strict", "--target", "dangling", "--auto",
+                        "--target", "dangling", "--auto",
                         "--max-edges", "30", "--svg", "/tmp/_dangling.dot"])
         chain_info = parse_chain(chain["text"])
 
@@ -251,16 +251,16 @@ class TestCrossVizHelpEachOther(unittest.TestCase):
 
         arch = run_sv(["arch", "show", "-f", filelist,
                        "--target", "x_driver", "--depth", "1",
-                       "--no-strict", "--format", "summary"])
+                       "--format", "summary"])
         arch_info = parse_arch_summary(arch["text"])
 
         pipeline = run_sv(["visualize", "pipeline", "-f", filelist,
-                          "--no-strict", "--module", "x_driver",
+                          "--module", "x_driver",
                           "--svg", "/tmp/_xpipe.dot"])
         pipe_info = parse_pipeline(pipeline["text"])
 
         chain = run_sv(["visualize", "chain", "-f", filelist,
-                        "--no-strict", "--target", "x_driver", "--auto",
+                        "--target", "x_driver", "--auto",
                         "--max-edges", "30", "--svg", "/tmp/_xchain.dot"])
         chain_info = parse_chain(chain["text"])
 
@@ -286,10 +286,10 @@ class TestCrossVizHelpEachOther(unittest.TestCase):
             with self.subTest(tc=tc):
                 filelist = str(GOLDEN_DIR / tc / "filelist.f")
                 pipe = run_sv(["visualize", "pipeline", "-f", filelist,
-                              "--no-strict", "--module", tc,
+                              "--module", tc,
                               "--svg", f"/tmp/_pipe_{tc}.dot"])
                 time = run_sv(["timing", "analyze", "-f", filelist,
-                              "--no-strict", "--max-paths", "5"])
+                              "--max-paths", "5"])
                 pipe_info = parse_pipeline(pipe["text"])
                 time_info = parse_timing(time["text"])
 
