@@ -76,6 +76,46 @@ iter_211 只清了**命令行字符串**, 这些是**直接调 Python API** 时�
 **建议**: 从 **步 1 (CLI 默认值)** 开始 —— 面最小、最"用户可见"、最符合纪律本意
 ("strict 是默认"), 且能顺带把它们背后的真 fixture 问题挖出来。
 
+## ⚠️ 追加发现 (同一轮, 更严重): 生产代码仍在**主动追加 `--no-strict`**
+
+准备"彻底移除 strict"的第一批时发现: `src/cli/commands/design.py` 有 **7 处**
+`args.append("--no-strict")` (在 `_run_cdc` / `_run_protocol` / `_run_handshake` /
+`_run_backpressure` ... 这些辅助函数里, 按 `strict` 参数决定是否追加)。
+
+**修正我此前的说法**: iter_211 宣称"sim/tests 与 tools 的用法归零"—— 那是**限定范围**
+的结论; **`src/` 里仍有 7 处 flag 用法** (生产代码内部拼接命令行并传给子进程)。
+纪律 1 禁止的是"在 `run_cli.py` / 测试 / 脚本中使用", 生产代码**替用户**追加同样
+属于把降级当默认行为 → 必须一并移除。
+
+**总计待处理 (rerun 后的准确版)**:
+| 类别 | 数量 |
+|---|---|
+| `src/` 内 `--no-strict` **flag 用法** (design.py) | **7** |
+| CLI 选项默认非严格 (A) | 4 |
+| API 默认 `strict=False` (B) | 2 |
+| 生产/脚本 `strict=False` 调用点 (C) | 9 (含 design.py 的 7 处相关辅助) |
+| 测试 API 级降级 (D) | 29 |
+| **合计** | **≈ 51 处** |
+
+## 🧭 "彻底移除 strict" 的执行方案 (方豆已定方向)
+
+**目标**: 删除 `strict` 参数与 `--strict/--no-strict` 选项, 工具**恒定严格**,
+不存在任何降级通道。
+
+| 批次 | 内容 | 风险/影响 |
+|---|---|---|
+| **1** | `src/cli/commands/design.py`: 删 7 处 `args.append("--no-strict")` + 相关 `strict` 参数/分支 | 中 (design 的 5 个子分析会走严格模式) |
+| **2** | 4 个 CLI 默认值命令 (arch/backpressure/coverage/design): 删除 `strict` 选项 + 内部传参 | 高 (用户可见的 CLI 变化; 会暴露真 fixture 错误) |
+| **3** | API 层: `_evidence_helpers.build_resolver` / `tools/coverage_gen_demo.generate_covergroup` 去掉 `strict` 形参 | 中 (牵动全部调用方) |
+| **4** | 9 处生产/脚本 `strict=False` 调用点 | 低 |
+| **5** | 29 处测试 API 级降级 + 随批次 2/4 暴露的 fixture 修复 | 高 (预计再暴露一批"假绿") |
+| **6** | 可视化 16 个失败 (暂缓) | — |
+
+**每批纪律**: 删参数 → `ast.parse` 校验 → 跑该批相关测试 → 记录新暴露的 fixture 问题
+(按方豆"失败先保留, 之后一起修"的原则, 允许批次内红, 但必须**如实记录红在哪**)。
+**收口**: 全仓 `grep -rn "strict" src tools sim/tests` 应只剩**无降级语义**的用法
+(如 pydantic/其它库的 strict 关键字), 且全量门禁恢复到只剩可视化 16 个。
+
 ## 📎 关联
 
 - 前序: `iter_211_no_strict_all_removed.md` (用法清零) /
