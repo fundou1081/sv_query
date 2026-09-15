@@ -30,7 +30,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         After fix: exit 0, normal stats output.
         """
         result = subprocess.run(
-            ["sv_query", "stats", "-f", PICORV32_F, "--no-strict"],
+            ["sv_query", "stats", "-f", PICORV32_F],
             capture_output=True, text=True,
         )
         self.assertEqual(
@@ -45,7 +45,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
     def test_filelist_explicit_still_works(self):
         """[Regression] `--filelist <X.f>` still works after auto-detect fix."""
         result = subprocess.run(
-            ["sv_query", "stats", "--filelist", PICORV32_F, "--no-strict"],
+            ["sv_query", "stats", "--filelist", PICORV32_F],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0)
@@ -55,7 +55,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
         """[Regression] `-f <X.v>` still works (single-file path unchanged)."""
         result = subprocess.run(
             ["sv_query", "stats", "-f",
-             "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v", "--no-strict"],
+             "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v"],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0)
@@ -70,7 +70,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
             fl_path = f.name
         try:
             result = subprocess.run(
-                ["sv_query", "stats", "-f", fl_path, "--no-strict"],
+                ["sv_query", "stats", "-f", fl_path],
                 capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0,
@@ -88,7 +88,7 @@ class TestFFlagFilelistAutoDetect(unittest.TestCase):
             fl_path = f.name
         try:
             result = subprocess.run(
-                ["sv_query", "stats", "-f", fl_path, "--no-strict"],
+                ["sv_query", "stats", "-f", fl_path],
                 capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0,

@@ -54,7 +54,7 @@ def test_p1_cdc_axi_cdc_src_2_high_risk_paths():
     wire 在不同 module 层级报成不同 domain, 制造 4 domains + 2 HIGH risk false positive.
     修后: 1 domain (src_clk_i), 0 paths (所有 instance port 共享同一 physical wire).
     """
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -68,7 +68,7 @@ def test_p1_cdc_axi_cdc_src_2_high_risk_paths():
 
 def test_p2_cdc_axi_xbar_2_cdc_paths():
     """P2: axi_xbar 跑 cdc: 0 CDC (单 physical clk, 修算法后 0 false positive)."""
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_xbar.sv", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -85,7 +85,7 @@ def test_p3_cdc_tlul_4_domains_0_cdc():
     之前 cdc bug 把 sub-module clk_i 当独立 domain, 报 4 domains + 0 CDC.
     修后: 1 domain (所有 sub-module 共享 clk_i).
     """
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_tlul.f"), "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -99,7 +99,7 @@ def test_p3_cdc_tlul_4_domains_0_cdc():
 
 def test_p4_cdc_prim_arbiter_single_domain():
     """P4: OpenTitan prim_arbiter_tree 1 clk → 1 domain, 0 CDC (正确)."""
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_prim_arbiter_tree.f"), "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -111,7 +111,7 @@ def test_p4_cdc_prim_arbiter_single_domain():
 
 def test_p5_cdc_summary_mode():
     """P5: cdc --summary mode 返 counts (LLM-friendly)."""
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
              "--summary", "--json")
     assert r.returncode == 0
@@ -132,7 +132,7 @@ def test_p5_cdc_summary_mode():
 
 def test_n1_cdc_nonexistent_file():
     """N1: cdc nonexistent file → 友好错误."""
-    r = _run("cdc", "analyze", "--no-strict", "--file", "/tmp/nonexistent.sv")
+    r = _run("cdc", "analyze", "--file", "/tmp/nonexistent.sv")
     assert r.returncode != 0
     err = r.stderr + r.stdout
     assert "not found" in err.lower() or "no such file" in err.lower() or "error" in err.lower()
@@ -145,7 +145,7 @@ def test_n2_cdc_strict_uart_4_high_risk():
     [FIX 2026-07-04] 之前 cdc bug 报 4 domains + 4 CDC paths 全 HIGH (false positive).
     修后: strict_uart 4 sub-module 共享 clk_i (同 physical wire), 0 CDC.
     """
-    r = _run("-q", "cdc", "analyze", "--no-strict",
+    r = _run("-q", "cdc", "analyze",
              "--filelist", str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"),
              "--json")
     assert r.returncode == 0
@@ -164,7 +164,7 @@ def test_n2_cdc_strict_uart_4_high_risk():
 
 def test_p6_risk_strict_uart_8_critical_5_high():
     """P6: risk strict_uart: 25 data signals, 8 critical + 5 high (0 SVA, 0 cov)."""
-    r = _run("-q", "risk", "analyze", "--no-strict",
+    r = _run("-q", "risk", "analyze",
              "--filelist", str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"),
              "--summary", "--json")
     assert r.returncode == 0
@@ -182,7 +182,7 @@ def test_p6_risk_strict_uart_8_critical_5_high():
 
 def test_p7_risk_prim_arbiter_10_critical_9_high():
     """P7: risk prim_arbiter_tree: 33 signals, 10 critical + 9 high."""
-    r = _run("-q", "risk", "analyze", "--no-strict",
+    r = _run("-q", "risk", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_prim_arbiter_tree.f"),
              "--summary", "--json")
     assert r.returncode == 0
@@ -197,7 +197,7 @@ def test_p7_risk_prim_arbiter_10_critical_9_high():
 
 def test_p8_risk_axi_cdc_src():
     """P8: risk axi_cdc_src (4 clk, 27 signals)."""
-    r = _run("-q", "risk", "analyze", "--no-strict",
+    r = _run("-q", "risk", "analyze",
              "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
              "--summary", "--json")
     assert r.returncode == 0
@@ -209,7 +209,7 @@ def test_p8_risk_axi_cdc_src():
 
 def test_p9_risk_summary_mode():
     """P9: risk --summary 返 counts (LLM-friendly)."""
-    r = _run("-q", "risk", "analyze", "--no-strict",
+    r = _run("-q", "risk", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_prim_arbiter_tree.f"),
              "--summary", "--json")
     assert r.returncode == 0
@@ -231,7 +231,7 @@ def test_p9_risk_summary_mode():
 
 def test_n3_risk_nonexistent_file():
     """N3: risk nonexistent file → 友好错误."""
-    r = _run("risk", "analyze", "--no-strict", "--file", "/tmp/nonexistent.sv")
+    r = _run("risk", "analyze", "--file", "/tmp/nonexistent.sv")
     assert r.returncode != 0
     print("✅ N3 risk: nonexistent file → 友好错误")
 
@@ -239,7 +239,7 @@ def test_n3_risk_nonexistent_file():
 def test_n4_risk_broken_sv_no_strict():
     """N4: risk broken SV + --no-strict → 跑通 + 0 critical (partial AST 容忍)."""
     # 用 tlul (37 errors, no-strict 仍跑)
-    r = _run("-q", "risk", "analyze", "--no-strict",
+    r = _run("-q", "risk", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_tlul.f"),
              "--summary", "--json")
     assert r.returncode == 0
@@ -269,7 +269,7 @@ def _read_golden(name: str, generator) -> dict:
 def test_golden_cdc_axi_cdc_src():
     """Golden: cdc axi_cdc_src output 跟 baseline 一致 (2 HIGH risk paths stable)."""
     def gen():
-        return _run("-q", "cdc", "analyze", "--no-strict",
+        return _run("-q", "cdc", "analyze",
                      "--file", "/Users/fundou/my_dv_proj/openrtl/axi/src/axi_cdc_src.sv",
                      "--json")
     actual = json.loads(gen().stdout)
@@ -285,7 +285,7 @@ def test_golden_cdc_axi_cdc_src():
 def test_golden_risk_strict_uart():
     """Golden: risk strict_uart summary 跟 baseline 一致 (8 critical + 5 high)."""
     def gen():
-        return _run("-q", "risk", "analyze", "--no-strict",
+        return _run("-q", "risk", "analyze",
                      "--filelist", str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f"),
                      "--summary", "--json")
     actual = json.loads(gen().stdout)

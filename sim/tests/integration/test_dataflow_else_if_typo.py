@@ -25,7 +25,7 @@ PRJ_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
 
 def _run_dataflow(fr, to, f):
     r = subprocess.run(
-        ["sv_query", "-q", "dataflow", "analyze", fr, to, "--no-strict",
+        ["sv_query", "-q", "dataflow", "analyze", fr, to,
          "--file", f, "--json"],
         capture_output=True, text=True, timeout=30, cwd=PRJ_ROOT,
     )

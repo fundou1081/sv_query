@@ -37,7 +37,7 @@ FIXTURE_CASE   = GOLDEN_MINI / "golden_dataflow_31_generate_case.sv"
 def _run_viz_on_fixture(sv_path: Path) -> tuple[int, str, str]:
     """跑 sv_query visualize dataflow 在给的 SV file, 返 (rc, stdout, stderr)."""
     p = subprocess.run(
-        ["sv_query", "visualize", "dataflow", "--file", str(sv_path), "--no-strict"],
+        ["sv_query", "visualize", "dataflow", "--file", str(sv_path)],
         capture_output=True, text=True, timeout=60,
         cwd=str(PROJECT_ROOT),
     )
@@ -174,7 +174,7 @@ class TestCliVisualizeGenerateVsStrictUart:
     def test_strict_uart_no_regression(self):
         """确保加 generate 测试后, strict_uart 还跑得动 (SVG 输出)"""
         p = subprocess.run(
-            ["sv_query", "visualize", "dataflow", "--filelist", str(STRICT_UART_FL), "--no-strict"],
+            ["sv_query", "visualize", "dataflow", "--filelist", str(STRICT_UART_FL)],
             capture_output=True, text=True, timeout=60,
             cwd=str(PROJECT_ROOT),
         )

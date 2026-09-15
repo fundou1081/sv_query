@@ -67,7 +67,7 @@ def _save_test_snapshot() -> None:
         return
     r = subprocess.run(
         ["sv_query", "snapshot", "save", STRICT_UART_FILELIST,
-         "--tag", TEST_SNAPSHOT_TAG, "--no-strict", "--filelist", STRICT_UART_FILELIST],
+         "--tag", TEST_SNAPSHOT_TAG, "--filelist", STRICT_UART_FILELIST],
         capture_output=True, text=True, timeout=60,
         cwd=str(PROJECT_ROOT),
     )
@@ -96,7 +96,7 @@ def ensure_snapshot():
 def test_p1_fanin_from_snapshot_matches_file():
     """P1: fanin --from-snapshot 跟 --filelist 输出一致 (drivers count + 内容)."""
     # Run with --filelist (parse SV)
-    r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--no-strict", "--json")
+    r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
     assert r1.returncode == 0
     data1 = json.loads(r1.stdout)
     # Run with --from-snapshot (no parse)
@@ -118,7 +118,7 @@ def test_p1_fanin_from_snapshot_matches_file():
 
 def test_p2_fanout_from_snapshot():
     """P2: fanout --from-snapshot 跟 --filelist 一致."""
-    r1 = _run("fanout", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--no-strict", "--json")
+    r1 = _run("fanout", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
     r2 = _run("fanout", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r1.returncode == 0 and r2.returncode == 0
     data1 = json.loads(r1.stdout)
@@ -130,7 +130,7 @@ def test_p2_fanout_from_snapshot():
 
 def test_p3_impact_from_snapshot():
     """P3: impact --from-snapshot 跟 --filelist 一致 (paths count)."""
-    r1 = _run("impact", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--no-strict", "--json")
+    r1 = _run("impact", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
     r2 = _run("impact", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r1.returncode == 0 and r2.returncode == 0
     json.loads(r1.stdout)
@@ -183,7 +183,7 @@ def test_p6_from_snapshot_with_filter():
 def test_p7_from_snapshot_no_strict():
     """P7: --from-snapshot --no-strict (snapshot 模式 strict 不影响, 因为没 parse)."""
     r = _run("fanin", "sync_fifo.count_q",
-             "--from-snapshot", TEST_SNAPSHOT_TAG, "--no-strict", "--json")
+             "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0
     print("✅ P7 --from-snapshot --no-strict: works (strict doesn't affect snapshot mode)")
 

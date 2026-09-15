@@ -49,7 +49,7 @@ class TestCoverageGenerateCommand:
         assert rc == 0
         for flag in ["--file", "-f", "--signal", "-s", "--related", "-r",
                      "--filelist", "--include", "-I", "--module",
-                     "--no-strict", "--strict",
+                     "--strict",
                      "--output", "-o", "--no-header"]:
             assert flag in out, f"Missing flag: {flag}"
 

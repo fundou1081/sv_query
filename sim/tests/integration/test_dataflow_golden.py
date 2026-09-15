@@ -36,7 +36,7 @@ GOLDEN_MUX5_FILE = "/tmp/cdc_test/golden_mux5.sv"
 def svq_dataflow(from_sig: str, to_sig: str, file_path: str = GOLDEN_SV) -> list[str]:
     """Run sv_query dataflow and return all_conditions"""
     r = subprocess.run(
-        ["sv_query", "-q", "dataflow", "analyze", from_sig, to_sig, "--no-strict",
+        ["sv_query", "-q", "dataflow", "analyze", from_sig, to_sig,
          "--file", file_path, "--json"],
         capture_output=True, text=True, timeout=30, cwd=PROJ,
     )

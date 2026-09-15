@@ -30,7 +30,7 @@ def run_chain(target: str, tc_dir: str, max_edges: int = 30) -> dict:
     dot_out = Path(f"/tmp/golden_{tc_dir}.dot")
     result = subprocess.run(
         ["sv_query", "visualize", "chain",
-         "-f", str(filelist), "--no-strict",
+         "-f", str(filelist),
          "--target", target, "--auto",
          "--max-edges", str(max_edges),
          "--svg", str(dot_out)],
@@ -181,7 +181,7 @@ class TestChainAnomalyVisualization(unittest.TestCase):
         dot_out = Path(f"/tmp/_viz_test_{tc_dir}.dot")
         subprocess.run(
             ["sv_query", "visualize", "chain",
-             "-f", str(filelist), "--no-strict",
+             "-f", str(filelist),
              "--target", target, "--auto",
              "--max-edges", "30", "--svg", str(dot_out)],
             capture_output=True, text=True, timeout=120,
@@ -250,7 +250,7 @@ class TestTimingAnomalyDetection(unittest.TestCase):
         dot_out = Path(f"/tmp/_timing_{tc_dir}.dot")
         result = subprocess.run(
             ["sv_query", "timing", "analyze",
-             "-f", str(filelist), "--no-strict",
+             "-f", str(filelist),
              "--max-paths", str(max_paths),
              "--emit-dot", str(dot_out)],
             capture_output=True, text=True, timeout=120,
@@ -383,7 +383,7 @@ class TestLowConfidenceWarning(unittest.TestCase):
         result = subprocess.run(
             ["sv_query", "visualize", "chain",
              "-f", "sim/tests/fixtures/golden_chain/dangling/filelist.f",
-             "--no-strict", "--target", "dangling", "--auto",
+             "--target", "dangling", "--auto",
              "--max-edges", "30", "--svg", "/tmp/_lc.dot"],
             capture_output=True, text=True, timeout=120,
         )

@@ -101,43 +101,43 @@ def _make_runner(args_func):
 # Define runners for each sub-function
 _GOLDEN_RUNNERS = {
     "stats": _make_runner(lambda p: [
-        "stats", "--no-strict",
+        "stats",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "sva_extract": _make_runner(lambda p: [
-        "sva", "extract", "--no-strict",
+        "sva", "extract",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "sva_coverage": _make_runner(lambda p: [
-        "sva", "coverage", "--no-strict",
+        "sva", "coverage",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "timing_analyze": _make_runner(lambda p: [
-        "timing", "analyze", "--no-strict",
+        "timing", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "cdc_analyze": _make_runner(lambda p: [
-        "cdc", "analyze", "--no-strict",
+        "cdc", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "risk_analyze": _make_runner(lambda p: [
-        "risk", "analyze", "--no-strict",
+        "risk", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--summary", "--json",
     ]),
     "controlflow_analyze": _make_runner(lambda p: [
-        "controlflow", "analyze", "--no-strict",
+        "controlflow", "analyze",
         "synchronizer.sync0" if p == "strict_uart" else "prim_arbiter_tree.req_i",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json",
     ]),
     "dataflow_analyze": _make_runner(lambda p: [
-        "dataflow", "analyze", "--no-strict",
+        "dataflow", "analyze",
         *("sync_fifo.clk_i sync_fifo.count_q".split() if p == "strict_uart"
           else "prim_arbiter_tree.req_i prim_arbiter_tree.gnt_o".split()),
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
@@ -192,9 +192,9 @@ def test_n1_nonexistent_filelist_all_8_subfunctions():
         cmd_name = parts[0]
         sub_name = parts[1] if len(parts) > 1 else None
         if sub_name:
-            args = [cmd_name, sub_name, "--no-strict", "--filelist", "/tmp/nonexistent.f", "--json"]
+            args = [cmd_name, sub_name, "--filelist", "/tmp/nonexistent.f", "--json"]
         else:
-            args = [cmd_name, "--no-strict", "--filelist", "/tmp/nonexistent.f", "--json"]
+            args = [cmd_name, "--filelist", "/tmp/nonexistent.f", "--json"]
         r = _run("-q", *args)
         # 不 crash: 没 Python traceback leak
         # (不要求 friendly 错误, 一些 sub 是 forgiving)
@@ -221,9 +221,9 @@ def test_n2_strict_uart_partial_graph_all_8_subfunctions():
         else:
             extra = []
         if sub_name:
-            args = [cmd_name, sub_name, "--no-strict"] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
+            args = [cmd_name, sub_name] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
         else:
-            args = [cmd_name, "--no-strict"] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
+            args = [cmd_name] + extra + ["--filelist", STRICT_UART_FILELIST, "--json"]
         r = _run("-q", *args)
         assert r.returncode == 0, f"{sub} failed on strict_uart: {r.stderr[:200]}"
         data = json.loads(r.stdout)

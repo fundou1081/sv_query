@@ -28,7 +28,7 @@ def _run_timed(tmp_path, sv_content: str) -> tuple[int, str]:
     sv.write_text(sv_content)
     dot = tmp_path / "out.dot"
     p = subprocess.run(
-        ["sv_query", "visualize", "timed", "-f", str(sv), "--module", "timed", "--no-strict", "--svg", str(dot)],
+        ["sv_query", "visualize", "timed", "-f", str(sv), "--module", "timed", "--svg", str(dot)],
         capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
     )
     return p.returncode, dot.read_text() if dot.exists() else ""

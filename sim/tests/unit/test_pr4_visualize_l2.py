@@ -226,7 +226,7 @@ class TestCLIIntegration:
             "python3", str(RUN_CLI), "visualize", "module",
             "--filelist", STRICT_UART_FILELIST,
             "--target", target,
-            "--depth", str(depth), "--no-strict",
+            "--depth", str(depth),
             "--output-json", str(output_json),
         ]
         if extra_args:
@@ -283,7 +283,7 @@ class TestBackwardCompat:
             "python3", str(RUN_CLI), "visualize", "module",
             "--filelist", STRICT_UART_FILELIST,
             "--target", target,
-            "--depth", str(depth), "--no-strict",
+            "--depth", str(depth),
             "--output-json", str(output_json),
         ]
         if extra_args:

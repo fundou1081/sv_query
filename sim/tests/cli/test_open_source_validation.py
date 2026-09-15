@@ -23,7 +23,7 @@ STRICT_UART_FL = PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "
 def _stats(filelist_path: Path) -> tuple[bool, dict]:
     """Run sv_query stats, return (ok, data_dict)."""
     p = subprocess.run(
-        ["sv_query", "-q", "stats", "--filelist", str(filelist_path), "--no-strict"],
+        ["sv_query", "-q", "stats", "--filelist", str(filelist_path)],
         capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT),
     )
     data = {}

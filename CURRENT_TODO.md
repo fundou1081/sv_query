@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_210 (清理测试 --no-strict 第一批 — 方豆: 不可接受, 必须更改)**: 实测 `sim/tests` **202 处 / 41 文件**; 本轮机械清理 **25 文件 111 处** (逐文件 `ast.parse` 校验后才写回, 12 个复杂文件安全跳过) → 撤后 unit+cli 暴露 **16 failed 全集中在一个文件** (`test_visualize_teach_nested_mux.py`, 过去靠 flag 容忍 fixture 的真实 elaboration 错误) → **回退该文件**并登记待修 fixture; 其余 24 文件撤后全绿 (证明 flag 本来多余); 全量 canonical **3337 passed / 0 failed**。剩余 91 处/22 文件 (含 3 个"专测 flag 行为"的文件, 建议归档)。
+[iter_210](docs/task_tree/iterations/iter_210_no_strict_removal_batch1.md)
+
 **iter_209 (R4-1 落地 — 方豆 好，去做吧)**: **推翻上轮结论** —— 守卫当时就生效, "只看到路径"是我调试打印 `l[:100]` 的假象 (路径 ~100 字符); `handle_compilation_error` 也没吞消息。真正问题: 提示自相矛盾 → 按错误类型分支 (输入类型错误不再建议 --no-strict); 判据含 iter_208 两条教训; 3 条回归测试, 合法 .v/.sv 语料不误判。**四轮对抗的发现 (F1~F6 / R4-1 / R4-3 / R4-4) 至此全部闭环**。
 [iter_209](docs/task_tree/iterations/iter_209_r4_1_landed.md)
 

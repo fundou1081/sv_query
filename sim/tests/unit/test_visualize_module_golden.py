@@ -45,7 +45,7 @@ def _run_cli_module(filelist: str, target: str, depth: int, output_json: Path) -
             "visualize", "module",
             "--filelist", filelist,
             "--target", target,
-            "--depth", str(depth), "--no-strict",
+            "--depth", str(depth),
             "--output-json", str(output_json),
         ],
         capture_output=True, text=True, timeout=60, cwd=PROJECT_ROOT,
