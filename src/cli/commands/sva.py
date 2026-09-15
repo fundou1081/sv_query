@@ -21,7 +21,7 @@ import warnings
 
 import typer
 
-from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli._common import display_path, _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 warnings.filterwarnings("ignore")
@@ -102,7 +102,7 @@ def extract(
         return
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
-    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    display_file = display_path(file, sources, filelist)  # [iter_206]
     print(f"{'=' * 80}")
     print(f"SVA 提取: {display_file}")
     print(f"{'=' * 80}")
@@ -218,7 +218,7 @@ def coverage(
         return
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
-    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    display_file = display_path(file, sources, filelist)  # [iter_206]
     print(f"{'=' * 80}")
     print(f"SVA 覆盖分析: {display_file}")
     print(f"{'=' * 80}")
@@ -342,7 +342,7 @@ def timing(
         return
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
-    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    display_file = display_path(file, sources, filelist)  # [iter_206]
     print(f"{'=' * 80}")
     print(f"SVA 时序比对: {display_file}")
     print(f"{'=' * 80}")

@@ -24,7 +24,7 @@ import warnings
 
 import typer
 
-from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli._common import display_path, _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 warnings.filterwarnings("ignore")
@@ -231,7 +231,7 @@ def gap(
 
     # ===== 6. 文本输出 =====
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式输出
-    display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
+    display_file = display_path(file, tracer._sources, filelist)  # [iter_206]
     print(f"{'=' * 80}")
     print(f"验证缺口分析: {display_file}")
     print(f"{'=' * 80}")

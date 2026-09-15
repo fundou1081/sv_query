@@ -219,7 +219,13 @@ def analyze(
 
     # 文本输出
     # [ADD 2026-06-11 Req-9] file/filelist 模式都显示实际被分析的文件名, 行为一致
-    display_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    # [iter_206] 路径形态必须与 filelist 模式一致: filelist 模式显示 sources key
+    # (parse_filelist 已 resolve, macOS /var → /private/var), 而 --file 直接显示原始
+    # 参数 → 同一文件两种模式输出不同字符串 (parity 测试实测: /var/... vs /private/var/...)。
+    display_file = (
+        str(Path(file).resolve()) if file
+        else (list(sources.keys())[0] if sources else filelist)
+    )
     print(f"{'=' * 80}")
     print(f"风险分析: {display_file}")
     print(f"{'=' * 80}")

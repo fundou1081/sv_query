@@ -94,7 +94,7 @@ def _build_tracer(
         with open(str(_resolved_file)) as f:
             source = f.read()
         tracer = UnifiedTracer(
-            sources={str(_resolved_file): source},
+            sources={str(Path(_resolved_file).resolve()): source},  # [iter_206] 与 filelist 路径同形态
             log_level=log_level,
             include_dirs=include_dirs or [],
             strict=strict,
@@ -182,6 +182,23 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
 # 背景 (iter_200 对抗测试 F1~F4): `--json` 的成功信封是 {ok, command, result},
 # 但**错误路径 stdout 为空** (只有人读 stderr) → 消费者在最需要结构化时拿不到 JSON。
 # 另外 `--json` 与输出类 flag 组合会静默失效, `--max-paths` 负值被静默当 0。
+
+def display_path(file, sources, filelist) -> str:
+    """[iter_206] 统一"被分析文件"的显示路径形态。
+
+    `--file` 与 `--filelist` 必须显示**同一个**文件路径字符串: filelist 模式用的是
+    `parse_filelist` 解析出的 key (已 resolve, macOS `/var` → `/private/var`),
+    而 `--file` 模式过去直接显示 CLI 原始参数 → 同一文件两种模式输出不同字符串
+    (parity 测试实测: `/var/...` vs `/private/var/...`, 9 个测试因此长期失败)。
+
+    5+ 处命令 (risk / cdc / sva / ...) 曾各自复制这段逻辑 → 收敛到这里。
+    """
+    if file:
+        return str(Path(file).resolve())
+    if sources:
+        return list(sources.keys())[0]
+    return filelist or ""
+
 
 def json_requested(argv: list[str] | None = None) -> bool:
     """命令行是否请求了结构化 JSON 输出 (`--json` / `-j`)。"""
