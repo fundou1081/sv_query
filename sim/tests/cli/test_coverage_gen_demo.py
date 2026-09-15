@@ -22,8 +22,7 @@ def _run_cli(*args, cwd=None, timeout=60):
     p = subprocess.run(
         [sys.executable, str(CLI_SCRIPT), *args],
         capture_output=True, text=True, timeout=timeout,
-        cwd=cwd or str(PROJECT_ROOT),
-    )
+        cwd=cwd or str(PROJECT_ROOT))
     return p.returncode, p.stdout, p.stderr
 
 
@@ -85,8 +84,7 @@ class TestFilelistMode:
         rc, out, err = _run_cli(
             f"--filelist={fl}",
             f"{PROJECT_ROOT}/sim/tests/integration/dataflow_fixtures/sync_fifo.sv",
-            "count_q",
-        )
+            "count_q")
         assert rc == 0, f"CLI fail: {err}"
         assert "covergroup" in out
 
@@ -98,21 +96,20 @@ class TestFilelistMode:
         rc, out, err = _run_cli(
             str(fl),  # auto-detect .f
             "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
-            "mem_addr", "mem_valid",
-        )
+            "mem_addr", "mem_valid")
         assert rc == 0, f"CLI fail: {err}"
         assert "covergroup cg_mem_addr" in out
         assert "32-bit" in out
 
 
 # ============================================================================
-# Test 3: --no-strict flag (graceful RTL 错误)
+# Test 3:  flag (graceful RTL 错误)
 # ============================================================================
 class TestNoStrictFlag:
-    """--no-strict: sv_query 优雅降级 RTL 错误."""
+    """: sv_query 优雅降级 RTL 错误."""
 
     def test_no_strict_compiles_with_rtl_warnings(self):
-        """test_comprehensive.sv 有 wire 用 <= 错误, --no-strict 应仍能跑."""
+        """test_comprehensive.sv 有 wire 用 <= 错误,  应仍能跑."""
         rc, out, err = _run_cli(
             "sim/test_comprehensive.sv", "q1", "din"
         )
@@ -130,8 +127,7 @@ class TestModuleFlag:
         """--module=seq_basic 在 test_comprehensive.sv 里选 seq_basic 的 q."""
         rc, out, err = _run_cli(
             "sim/test_comprehensive.sv", "q", "d",
-            "--module=seq_basic",
-        )
+            "--module=seq_basic")
         assert rc == 0, f"CLI fail: {err}"
         assert "covergroup cg_q" in out
         # seq_basic 用 clk/rst_n (不是 clk_i/rst_ni)
@@ -164,8 +160,7 @@ class TestCliErrorHandling:
         # 用 tmp_path 之外的文件
         rc, out, err = _run_cli(
             f"--filelist={fl}",
-            "sim/openTitan_validation.sv", "nonexistent_signal_xyz",
-        )
+            "sim/openTitan_validation.sv", "nonexistent_signal_xyz")
         # risk analyze 找不到 signal → 仍返回 valid JSON (但 empty)
         # 工具用 fallback width 1-bit → 仍跑出 covergroup (但内容不可靠)
         # 接受 exit 0 (跑了), 或 1 (跑不动) — 至少不 crash

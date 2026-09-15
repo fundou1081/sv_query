@@ -92,10 +92,9 @@ def main():
 
     # Sample inputs for each command
     samples = [
-        ("stats", ["stats", "-f", "/tmp/tiny.sv", "--no-strict"]),
-        ("trace_fanin", ["trace", "fanin", "clk", "-f", "/tmp/tiny.sv", "--no-strict"]),
-        ("trace_fanout", ["trace", "fanout", "clk", "-f", "/tmp/tiny.sv", "--no-strict"]),
-    ]
+        ("stats", ["stats", "-f", "/tmp/tiny.sv"]),
+        ("trace_fanin", ["trace", "fanin", "clk", "-f", "/tmp/tiny.sv"]),
+        ("trace_fanout", ["trace", "fanout", "clk", "-f", "/tmp/tiny.sv"])]
 
     # Ensure test file exists
     Path("/tmp/tiny.sv").write_text("""

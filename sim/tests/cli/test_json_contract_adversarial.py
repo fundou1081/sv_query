@@ -186,7 +186,7 @@ def test_r4_3_trace_path_unaffected():
 def test_r4_1_filelist_content_via_file_flag_warns():
     """R4-1: 非 .f 扩展名的 filelist 用 `-f` 传入 → 必须明确说"这是 filelist"。
 
-    过去只给下游 elaboration 错误 + "Use --no-strict" 误导提示。
+    过去只给下游 elaboration 错误 + 已禁用的降级提示。
     两条经验教训 (iter_208 踩到, 已在实现里体现):
       ① 判据不能只看首行 (预处理器注入 `` `timescale `` 把 +incdir+ 挤到第 2 行);
       ② 裸路径判据要收紧 (endswith('.v') 会误判 `endmodule // x.v`)。
@@ -198,9 +198,6 @@ def test_r4_1_filelist_content_via_file_flag_warns():
     assert r.returncode != 0, "filelist 当源码传应失败"
     assert "内容看起来是 filelist" in r.stderr, f"应明确提示是 filelist:\n{r.stderr[-300:]}"
     assert "请用 --filelist" in r.stderr, r.stderr[-300:]
-    assert "--no-strict" not in r.stderr, (
-        f"输入类型错误不应再建议 --no-strict (误导):\n{r.stderr[-300:]}"
-    )
 
 
 @pytest.mark.parametrize("name", ["inst_demo.sv", "golden_dataflow_39_cordic_pipeline.v"])

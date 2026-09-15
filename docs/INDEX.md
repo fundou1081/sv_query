@@ -15,10 +15,10 @@
 | 源码规模 | 162 文件 / 62,871 行 | `find src -name "*.py"` |
 | 测试规模 | 362 测试文件 / 78,383 行 + 117 SV fixture | `sim/tests/` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **3337 passed / 0 failed** (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-08 实测 (iter_209 gate, 唯一全量口径见 `TESTING.md`) |
+| 全量 (canonical) | **3298 passed / 18 failed** ⚠️ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-09 实测 (iter_211: 清除全部 `--no-strict` 用法后遗留 18 个失败, 集中在 2 文件, 待统一修复; 见 `docs/task_tree/iterations/iter_211_no_strict_all_removed.md`) |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (199 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (200 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 

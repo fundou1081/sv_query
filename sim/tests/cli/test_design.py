@@ -33,8 +33,7 @@ def _run_svq(args):
     return subprocess.run(
         ["sv_query"] + args,
         capture_output=True,
-        text=True,
-    )
+        text=True)
 
 
 def _run_design(target="wrapper_chain", args=None):
@@ -43,7 +42,7 @@ def _run_design(target="wrapper_chain", args=None):
     if args is None:
         args = []
     full_args.extend(args)
-    full_args.extend(["--filelist", OPENOFDM_TX_FILELIST, "--target", target, "--no-strict"])
+    full_args.extend(["--filelist", OPENOFDM_TX_FILELIST, "--target", target])
     result = _run_svq(full_args)
     return result.returncode, result.stdout, result.stderr
 
@@ -176,9 +175,7 @@ class TestDesignJson(unittest.TestCase):
             "design", "show",
             "--filelist", OPENOFDM_TX_FILELIST,
             "--target", "wrapper_chain",
-            "--no-strict",
-            "--json",
-        ])
+            "--json"])
         # 即使 --json 没实现, 也不应该 crash sv_query
         # 先 sanity check
         # 然后试着 parse stdout
@@ -196,8 +193,7 @@ class TestDesignGraph(unittest.TestCase):
     def test_design_graph_flag_exists(self):
         """[金标准] --graph flag 应该存在"""
         result = _run_svq([
-            "design", "show", "--help",
-        ])
+            "design", "show", "--help"])
         self.assertIn("--graph", result.stdout)
 
     def test_design_graph_generates_pngs(self):
@@ -217,10 +213,8 @@ class TestDesignGraph(unittest.TestCase):
                 "design", "show",
                 "--filelist", OPENOFDM_TX_FILELIST,
                 "--target", "wrapper_chain",
-                "--no-strict",
                 "--graph",
-                "--graph-dir", tmpdir,
-            ])
+                "--graph-dir", tmpdir])
             # command 应该跑通
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr[:500]}")
             # dataflow/pipeline/backpressure 至少生成一个 SVG

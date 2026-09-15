@@ -37,8 +37,7 @@ def _run_svq(args):
     return subprocess.run(
         ["sv_query"] + args,
         capture_output=True,
-        text=True,
-    )
+        text=True)
 
 
 class TestChainCommandExists(unittest.TestCase):
@@ -70,12 +69,10 @@ class TestChainFromTo(unittest.TestCase):
             result = _run_svq([
                 "visualize", "chain",
                 "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
-                "--no-strict",
                 "--target", "wrapper_chain",
                 "--from", "wrapper_chain.bram_din_i",
                 "--to", "wrapper_chain.bram_dout_o",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             # DOT 文件应该被创建且非空
             content = Path(dot_path).read_text()
@@ -103,12 +100,10 @@ class TestChainAutoMode(unittest.TestCase):
             result = _run_svq([
                 "visualize", "chain",
                 "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
-                "--no-strict",
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
             self.assertGreater(len(content), 100, f"DOT too short: {content[:200]}")
@@ -131,14 +126,12 @@ class TestChainLayout(unittest.TestCase):
             result = _run_svq([
                 "visualize", "chain",
                 "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
-                "--no-strict",
                 "--target", "wrapper_chain",
                 "--from", "wrapper_chain.bram_din_i",
                 "--to", "wrapper_chain.bram_dout_o",
                 "--layout", "LR",
                 "--layout-engine", "neato",
-                "--png", png_path,
-            ])
+                "--png", png_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             # PNG 应该存在
             self.assertTrue(Path(png_path).exists(), f"PNG not created: {result.stdout}")
@@ -161,12 +154,10 @@ class TestChainMaxEdges(unittest.TestCase):
             result = _run_svq([
                 "visualize", "chain",
                 "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
-                "--no-strict",
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "5",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
             # 数 edges (line with ->)
@@ -197,9 +188,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--no-strict",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
             # 必须有 subgraph cluster
@@ -227,9 +216,7 @@ class TestChainSubModuleClusters(unittest.TestCase):
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--no-strict",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
             # [FIX 验证] 应该看到完整 hierarchy path in node IDs.
@@ -268,12 +255,10 @@ class TestChainSubModuleClusters(unittest.TestCase):
             result = _run_svq([
                 "visualize", "chain",
                 "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f",
-                "--no-strict",
                 "--target", "wrapper_chain",
                 "--auto",
                 "--max-edges", "30",
-                "--svg", dot_path,
-            ])
+                "--svg", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = Path(dot_path).read_text()
             # input 是绿色 (#22aa55), output 是红色 (#cc3333), intermediate 是蓝色 (#3366cc)
@@ -299,7 +284,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
 
     def _run_chain_dot(self, args, dot_path):
         """运行 sv_query visualize chain, 返回 DOT 文本."""
-        full_args = ["visualize", "chain", "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f", "--no-strict"] + args + ["--svg", dot_path]
+        full_args = ["visualize", "chain", "--filelist=/Users/fundou/my_dv_proj/sv_query/sim/tests/fixtures/wrapper_chain/filelist.f"] + args + ["--svg", dot_path]
         result = _run_svq(full_args)
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}\nstdout: {result.stdout}")
         return Path(dot_path).read_text()
@@ -313,8 +298,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             content = self._run_chain_dot([
                 "--target", "wrapper_chain",
                 "--auto",
-                "--max-edges", "30",
-            ], dot_path)
+                "--max-edges", "30"], dot_path)
             # 检查有 REG 类型的节点标了 [cycle=N]
             # pattern: REG shape with cycle label
             import re
@@ -335,8 +319,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             content = self._run_chain_dot([
                 "--target", "wrapper_chain",
                 "--auto",
-                "--max-edges", "30",
-            ], dot_path)
+                "--max-edges", "30"], dot_path)
             # 检查边标了 +N cycle
             import re
             edge_cycles = re.findall(r'label="\+(\d+) cycle', content)
@@ -356,8 +339,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             content = self._run_chain_dot([
                 "--target", "wrapper_chain",
                 "--auto",
-                "--max-edges", "30",
-            ], dot_path)
+                "--max-edges", "30"], dot_path)
             # output 节点应该标 total cycles
             self.assertIn(
                 "total cycles",
@@ -376,8 +358,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             content = self._run_chain_dot([
                 "--target", "wrapper_chain",
                 "--auto",
-                "--max-edges", "30",
-            ], dot_path)
+                "--max-edges", "30"], dot_path)
             # critical path 颜色 = #dd2222 附近 (亮红)
             # normal intermediate = #3366cc (蓝)
             # 至少有一个 critical (red) 颜色
@@ -401,8 +382,7 @@ class TestChainCycleAnnotation(unittest.TestCase):
             content = self._run_chain_dot([
                 "--target", "wrapper_chain",
                 "--auto",
-                "--max-edges", "30",
-            ], dot_path)
+                "--max-edges", "30"], dot_path)
             import re
             # cycle 数值都在合理范围 (1..max_cycles)
             cycle_vals = [int(m.group(1)) for m in re.finditer(r'\[cycle=(\d+)\]', content)]

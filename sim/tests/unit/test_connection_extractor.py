@@ -77,8 +77,7 @@ endmodule'''
         self.assertTrue(
             any(s == 'top.u_dut.out' and k == EdgeKind.DRIVER
                 for (s, d), k in edges.items()),
-            "实例输出端口应有 DRIVER 边 (模块内部驱动)",
-        )
+            "实例输出端口应有 DRIVER 边 (模块内部驱动)")
 
     def test_port_to_internal_mapping(self):
         """[Golden] port_to_internal 映射 (实例端口 → 内部信号路径)"""
@@ -181,7 +180,7 @@ class TestConnectionExtractorWarnings(unittest.TestCase):
     def test_missing_module_strict_raises(self):
         """[Golden] 实例引用未定义模块 → strict 编译显式报错 (纪律 #1)
 
-        未定义模块是真实错误, 不应静默容错 (AGENTS.md 禁 --no-strict).
+        未定义模块是真实错误, 不应静默容错 (AGENTS.md 禁 ).
         """
         source = '''module top;
     logic clk;

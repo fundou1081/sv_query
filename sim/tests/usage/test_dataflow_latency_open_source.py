@@ -37,9 +37,7 @@ def _run_dataflow(from_signal, to_signal, file_path=None, filelist=None):
     """跑 dataflow analyze 命令, 返回 parsed JSON"""
     cmd = [
         "sv_query", "-q", "dataflow", "analyze",
-        from_signal, to_signal,
-        "--no-strict",
-    ]
+        from_signal, to_signal]
     if filelist:
         cmd += ["--filelist", filelist]
     else:
@@ -48,8 +46,7 @@ def _run_dataflow(from_signal, to_signal, file_path=None, filelist=None):
 
     result = subprocess.run(
         cmd, capture_output=True, text=True, timeout=60,
-        cwd=PROJECT_ROOT,
-    )
+        cwd=PROJECT_ROOT)
     if result.returncode != 0:
         return {"ok": False, "stderr": result.stderr, "stdout": result.stdout}
     try:
@@ -87,8 +84,7 @@ def test_p2_latency_prim_arbiter_tree_0_cycle_combinational():
     """OpenTitan prim_arbiter_tree: req_i → gnt_o 应该 0 cycle (纯组合 arbiter)."""
     d = _run_dataflow(
         "prim_arbiter_tree.req_i", "prim_arbiter_tree.gnt_o",
-        file_path=PRIM_ARBITER,
-    )
+        file_path=PRIM_ARBITER)
     assert d.get("ok"), f"dataflow failed: {d.get('stderr', d.get('error'))}"
 
     r = d["result"]
@@ -109,8 +105,7 @@ def test_p3_latency_cva6_alu_0_cycle_combinational():
     """CVA6 alu: operand_a → result_o 应该 0 cycle (组合 ALU)."""
     d = _run_dataflow(
         "alu.operand_a", "alu.result_o",
-        filelist=CVA6_FILELIST,
-    )
+        filelist=CVA6_FILELIST)
     assert d.get("ok"), f"dataflow failed: {d.get('stderr', d.get('error'))}"
 
     r = d["result"]
@@ -131,8 +126,7 @@ def test_p4_latency_darkriscv_1_cycle_id_ex():
     """darkriscv: IDATA2 → XIDATA 应该 1 cycle latency (ID/EX pipeline REG)."""
     d = _run_dataflow(
         "darkriscv.IDATA2", "darkriscv.XIDATA",
-        file_path=DARKRISCV,
-    )
+        file_path=DARKRISCV)
     assert d.get("ok"), f"dataflow failed: {d.get('stderr', d.get('error'))}"
 
     r = d["result"]
@@ -193,8 +187,7 @@ def test_n1_latency_two_flop_sync_async_crossing():
     """two_flop_sync: sub_a.data_a_i → sub_b.data_b_o 应该 null latency (跨 clk)."""
     d = _run_dataflow(
         "sub_a.data_a_i", "sub_b.data_b_o",
-        file_path=TWO_FLOP_SYNC,
-    )
+        file_path=TWO_FLOP_SYNC)
     assert d.get("ok"), f"dataflow failed: {d.get('stderr', d.get('error'))}"
 
     r = d["result"]
@@ -308,8 +301,7 @@ def test_real_opentitan_prim_arbiter_combinational():
     """[Real] OpenTitan prim_arbiter_tree: req → gnt 0 cycle (combinational 4 hops)."""
     d = _run_dataflow(
         "prim_arbiter_tree.req_i", "prim_arbiter_tree.gnt_o",
-        file_path=PRIM_ARBITER,
-    )
+        file_path=PRIM_ARBITER)
     assert d.get("ok")
     r = d["result"]
     assert r["is_reachable"]
@@ -325,8 +317,7 @@ def test_real_opentitan_prim_fifo_sync_passthrough():
     """
     d = _run_dataflow(
         "prim_fifo_sync.wdata_i", "prim_fifo_sync.rdata_o",
-        file_path="/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_fifo_sync.sv",
-    )
+        file_path="/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_fifo_sync.sv")
     assert d.get("ok")
     r = d["result"]
     assert r["is_reachable"]

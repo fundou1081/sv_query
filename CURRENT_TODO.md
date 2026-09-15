@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_211 (清除全部 --no-strict 用法 — 方豆: 先清掉所有, 然后再修)**: `sim/tests` 与 `tools` 的**用法归零**; 3 个"专测该 flag"的测试文件**移出归档** (`docs/archive/2026-09-09-nostrict-cleanup/` + README); CLI 选项保留 (用户逃生舱)。全量 canonical **18 failed / 3298 passed** (按指示保留失败状态): 失败集中在 2 文件 — `test_visualize_teach_nested_mux.py`(16, fixture 有真实 elaboration 错误, 过去靠 flag 优雅降级"假绿") 与 `test_coverage_gen_demo.py`(2)。**下一步: 统一修这 18 个** (先修 fixture 的 SV)。
+[iter_211](docs/task_tree/iterations/iter_211_no_strict_all_removed.md)
+
 **iter_210 (清理测试 --no-strict 第一批 — 方豆: 不可接受, 必须更改)**: 实测 `sim/tests` **202 处 / 41 文件**; 本轮机械清理 **25 文件 111 处** (逐文件 `ast.parse` 校验后才写回, 12 个复杂文件安全跳过) → 撤后 unit+cli 暴露 **16 failed 全集中在一个文件** (`test_visualize_teach_nested_mux.py`, 过去靠 flag 容忍 fixture 的真实 elaboration 错误) → **回退该文件**并登记待修 fixture; 其余 24 文件撤后全绿 (证明 flag 本来多余); 全量 canonical **3337 passed / 0 failed**。剩余 91 处/22 文件 (含 3 个"专测 flag 行为"的文件, 建议归档)。
 [iter_210](docs/task_tree/iterations/iter_210_no_strict_removal_batch1.md)
 

@@ -24,8 +24,7 @@ def _run_svq(args):
     return subprocess.run(
         ["sv_query"] + args,
         capture_output=True,
-        text=True,
-    )
+        text=True)
 
 
 def _read_dot(path):
@@ -40,12 +39,10 @@ def _run_chain(sv_path, dot_path, target=None, max_edges=20):
     args = [
         "visualize", "chain",
         "-f", str(sv_path),
-        "--no-strict",
         "--auto",
         "--svg", dot_path,
         "--max-edges", str(max_edges),
-        "--target", target or "top",
-    ]
+        "--target", target or "top"]
     return _run_svq(args)
 
 
@@ -54,10 +51,8 @@ def _run_trace_fanin(sv_path, signal, dot_path):
     return _run_svq([
         "trace", "fanin", signal,
         "-f", str(sv_path),
-        "--no-strict",
         "--format", "dot",
-        "--output", dot_path,
-    ])
+        "--output", dot_path])
 
 
 def _count_regs_in_trace_dot(dot_content):
@@ -277,10 +272,8 @@ class TestTraceLatencyGolden(unittest.TestCase):
             result = _run_svq([
                 "trace", "fanout", "top.a",
                 "-f", str(sv_path),
-                "--no-strict",
                 "--format", "dot",
-                "--output", dot_path,
-            ])
+                "--output", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = _read_dot(dot_path)
             # source = top.a (中央), loads 应该是 top.q1 和 top.q2
@@ -308,10 +301,8 @@ class TestTraceLatencyGolden(unittest.TestCase):
             result = _run_svq([
                 "trace", "fanout", "top.d",
                 "-f", str(sv_path),
-                "--no-strict",
                 "--format", "dot",
-                "--output", dot_path,
-            ])
+                "--output", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = _read_dot(dot_path)
             # source = top.d, load = top.q (1 edge, +1 cycle)
@@ -386,10 +377,8 @@ class TestTraceLatencyGoldenV2(unittest.TestCase):
             result = _run_svq([
                 "trace", "fanout", "top.a",
                 "-f", str(sv_path),
-                "--no-strict",
                 "--format", "dot",
-                "--output", dot_path,
-            ])
+                "--output", dot_path])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             content = _read_dot(dot_path)
             # source = top.a (中央), loads 应该是 top.q1 和 top.q2

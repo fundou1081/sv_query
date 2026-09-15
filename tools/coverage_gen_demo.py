@@ -25,11 +25,9 @@ coverage_gen_demo.py — Phase 1 POC
   # filelist 也能用 .f/.fl 作第一个 positional (auto-detect)
   python tools/coverage_gen_demo.py <project.f> <top.sv> <signal> [<related> ...]
 
-  # RTL 错误时用 --no-strict (sv_query graceful degradation)
-  python tools/coverage_gen_demo.py sim/test_comprehensive.sv q d --no-strict
+  # RTL 有错时先修源码 (AGENTS 纪律 1: 禁止 --no-strict)
 
   # 多 module 文件限定到具体 module
-  python tools/coverage_gen_demo.py sim/test_comprehensive.sv q d --no-strict --module=seq_basic
 
   # 多文件 + +incdir+ (Verilator 风格, 从 filelist 自动提)
   # 依赖 sv_query 0.6+ (risk analyze 支持 --include/-I flag)
@@ -149,7 +147,7 @@ def query_risk_json(
     #   文件) → prim_assert.sv 的 include 链展开内存暴增 → 8GB MBA 内存不足 →
     #   pyslang 静默失败 (str() 返回非法 UTF-8) → UnicodeDecodeError 崩溃.
     if not strict:
-        args.append("--no-strict")
+        pass  # [iter_211] --no-strict 已禁用 (AGENTS 纪律 1)
     last_err = ""
     for attempt in range(3):
         out = subprocess.run(
@@ -968,7 +966,7 @@ def main():
     file = None
     positional = []
     for a in args:
-        if a == "--no-strict":
+        if False:  # [iter_211] --no-strict 已禁用 (AGENTS 纪律 1)
             strict = False
         elif a.startswith("--module="):
             module_name = a.split("=", 1)[1]

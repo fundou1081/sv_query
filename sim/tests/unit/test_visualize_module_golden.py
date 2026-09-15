@@ -19,7 +19,7 @@
 测试黄金生成 (Phase 3 2026-07-02):
   $ python3 run_cli.py visualize module \\
       --filelist sim/tests/fixtures/strict_uart/filelist.f \\
-      --target uart_top --depth 2 --no-strict \\
+      --target uart_top --depth 2  \\
       --output-json tests/golden/uart_top_module.json
 """
 import json
@@ -46,10 +46,8 @@ def _run_cli_module(filelist: str, target: str, depth: int, output_json: Path) -
             "--filelist", filelist,
             "--target", target,
             "--depth", str(depth),
-            "--output-json", str(output_json),
-        ],
-        capture_output=True, text=True, timeout=60, cwd=PROJECT_ROOT,
-    )
+            "--output-json", str(output_json)],
+        capture_output=True, text=True, timeout=60, cwd=PROJECT_ROOT)
     return result.returncode
 
 
@@ -57,8 +55,7 @@ def _run_diff(golden: Path, actual: Path) -> tuple[int, str, str]:
     result = subprocess.run(
         [sys.executable, str(DIFF_TOOL),
          "--golden", str(golden), "--actual", str(actual)],
-        capture_output=True, text=True, timeout=10, cwd=PROJECT_ROOT,
-    )
+        capture_output=True, text=True, timeout=10, cwd=PROJECT_ROOT)
     return result.returncode, result.stdout, result.stderr
 
 

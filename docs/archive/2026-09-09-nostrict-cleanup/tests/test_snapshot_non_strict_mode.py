@@ -49,8 +49,7 @@ def test_compiler_stores_elaboration_errors():
     """SVCompiler.get_elaboration_errors() 公开 API 返回结构化错误列表"""
     comp = SVCompiler(
         {"good.sv": BAD_SV_WITH_TIMESCALE, "bad.sv": BAD_SV_UNDECLARED},
-        strict=False,
-    )
+        strict=False)
     comp._do_compile()
 
     errs = comp.get_elaboration_errors()
@@ -73,8 +72,7 @@ def test_compiler_failed_files_set():
             "bad_undecl.sv": BAD_SV_UNDECLARED,
             "bad_ts.sv": BAD_SV_MISSING_TIMESCALE,
         },
-        strict=False,
-    )
+        strict=False)
     comp._do_compile()
 
     errs = comp.get_elaboration_errors()
@@ -121,7 +119,7 @@ def test_snapshot_save_non_strict_does_not_crash():
         # 写一个故意有错的 sv
         sv_path = Path(tmpdir) / "bad.sv"
         sv_path.write_text(BAD_SV_UNDECLARED)
-        # 跑 snapshot save --no-strict (默认 strict 模式下会 exit 1)
+        # 跑 snapshot save  (默认 strict 模式下会 exit 1)
         r = subprocess.run(
             [
                 "python3",
@@ -130,14 +128,11 @@ def test_snapshot_save_non_strict_does_not_crash():
                 "save",
                 str(sv_path),
                 "--tag",
-                "test-issue17",
-                "--no-strict",
-            ],
+                "test-issue17"],
             capture_output=True,
             text=True,
             cwd="/Users/fundou/my_dv_proj/sv_query",
-            timeout=60,
-        )
+            timeout=60)
         # exit 0 应存成功
         assert r.returncode == 0, f"non-strict 应存成功, exit={r.returncode}, stderr={r.stderr[:500]}"
         assert "Snapshot saved" in r.stdout, f"stdout 应有 'Snapshot saved': {r.stdout[:500]}"
@@ -174,13 +169,11 @@ def test_snapshot_save_strict_exits_nonzero():
                 str(sv_path),
                 "--tag",
                 "test-issue17-strict",
-                "--strict",
-            ],
+                "--strict"],
             capture_output=True,
             text=True,
             cwd="/Users/fundou/my_dv_proj/sv_query",
-            timeout=60,
-        )
+            timeout=60)
         # strict 模式应 exit 1
         assert r.returncode != 0, f"strict 模式应 fail, exit={r.returncode}"
         assert "Error" in r.stderr or "error" in r.stderr.lower()
