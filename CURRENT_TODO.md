@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_219 (AST 扫描工具 scan_strict.py — 方豆: 可以，去做吧)**: 换方法落地 —— 新增只读工具, AST 分类统计出 **202 处/61 文件** (形参 22 / 关键字实参 160 / **位置实参 1**: `handshake.py:311` / 裸引用 12 / `self._strict` 7), 并与 grep (471 行, 超集) 对账。**关键结论: 唯一 1 处位置实参就足以解释 iter_218 的 116 failed** (删形参 → 位置整体错位 → 静默行为错) —— 正则看不见它。下一步: 先清位置实参 → 逐文件删形参与实参 (每文件跑工具复测 + 相关用例) → 核心层单独立项。
+[iter_219](docs/task_tree/iterations/iter_219_ast_scan_strict_tool.md)
+
 **iter_218 (批次 3a: 冒烟过但全量恶化 → 回退 + 换方法 — 方豆: 按这个继续做)**: 第二次限定 `src/cli/**` (「strict=True」111→0) **冒烟 5/5 rc=0**, 但全量 **116 failed** (批次 2 为 34, 恶化 82) → 回退。**第 4 次同类教训**: 冒烟≠安全, 改签名必须跑全量; 根因 = 我用正则做本应逐点审查的调用点改造 → **下次改用 AST 枚举形参/实参 (含位置传参) + 逐文件验证 + 只在全量绿时提交**。
 [iter_218](docs/task_tree/iterations/iter_218_batch3a_smoke_ok_gate_regressed_reverted.md)
 
