@@ -22,7 +22,7 @@ module seq_basic (
     input  wire clk,
     input  wire rst_n,
     input  wire d,
-    output wire q
+    output logic q
 );
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -40,7 +40,7 @@ module seq_async_rst (
     input  wire clk,
     input  wire rst_n,
     input  wire d,
-    output wire q
+    output logic q
 );
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -58,7 +58,7 @@ module seq_sync_rst (
     input  wire clk,
     input  wire rst_n,
     input  wire d,
-    output wire q
+    output logic q
 );
     always_ff @(posedge clk) begin
         if (!rst_n)
@@ -75,7 +75,7 @@ endmodule
 module combo_always (
     input  wire a,
     input  wire b,
-    output wire q
+    output logic q
 );
     always_comb begin
         q = a & b;
@@ -92,7 +92,7 @@ module seq_mux (
     input  wire a,
     input  wire b,
     input  wire sel,
-    output wire q
+    output logic q
 );
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
@@ -112,8 +112,8 @@ module seq_internal (
     input  wire clk,
     input  wire rst_n,
     input  wire din,
-    output wire q1,
-    output wire q2
+    output logic q1,
+    output logic q2
 );
     wire internal;
     
@@ -137,7 +137,7 @@ endmodule
 module sub_pipe (
     input  wire clk,
     input  wire d,
-    output wire q
+    output logic q
 );
     always_ff @(posedge clk)
         q <= d;
@@ -166,8 +166,8 @@ module dual_clk (
     input  wire rst_n,
     input  wire da,
     input  wire db,
-    output wire qa,
-    output wire qb
+    output logic qa,
+    output logic qb
 );
     always_ff @(posedge clk_a or negedge rst_n) begin
         if (!rst_n)
