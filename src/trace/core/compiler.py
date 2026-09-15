@@ -139,7 +139,7 @@ def _check_memory_pressure():
         logger.debug("%s: 忽略 Exception: %s", __name__, e)  # 检测失败不影响正常编译
 
 
-def _reject_non_design_unit(tree: object, fname: str) -> None:
+def _reject_non_design_unit(tree: object, fname: str, source: str = "") -> None:
     """[iter_189] 拒绝"非设计单元"的语法树 — 否则 pyslang 会**原生崩溃**。
 
     pyslang/slang 的 `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时
@@ -169,6 +169,31 @@ def _reject_non_design_unit(tree: object, fname: str) -> None:
             f"单元 — pyslang 在此情况会原生 SIGTRAP (addSyntaxTree)。"
             f"常见原因: 把 filelist/文本文件当源码传入 (请用 --filelist 传 .f)。"
         )
+
+    # [iter_209 R4-1] filelist 内容识别: 非 .f 扩展名的 filelist 经 `-f` 传入时,
+    # CLI 的"后缀提升"不生效 → 被当源码解析 → 用户只看到下游 elaboration 错误。
+    # 判据 (最小, 两条经验教训): ① 扫描**前若干有效行**而非只看首行 —— 预处理器
+    # 会在文件顶部注入 `` `timescale ``; ② "裸路径"必须是**无空白且无分号**,
+    # 否则 `endmodule // top.v` 这类行尾注释会被误判 (iter_208 实测误报)。
+    _MARKERS = ("+incdir+", "+define+", "+libext+", "-f ", "-F ", "-y ", "-v ")
+    checked = 0
+    for raw in source.splitlines():
+        line = raw.strip()
+        if not line or line.startswith(("//", "#", "`")):
+            continue                      # 空 / 注释 / 编译器指令 (`timescale 等)
+        checked += 1
+        _is_bare_path = (
+            not any(ch.isspace() for ch in line)
+            and ";" not in line
+            and line.endswith((".sv", ".svh", ".v", ".f", ".fl", ".filelist"))
+        )
+        if line.startswith(_MARKERS) or _is_bare_path:
+            raise CompilationError(
+                f"{fname}: 内容看起来是 filelist (特征行 {line[:60]!r}), "
+                f"不是 SystemVerilog 源码 — 请用 --filelist 传入该文件"
+            )
+        if checked >= 20:
+            break
 
 
 class SVCompiler:
@@ -423,7 +448,7 @@ class SVCompiler:
                     tree = pyslang.SyntaxTree.fromText(source, sourceManager=sm, name=fname)
                 else:
                     tree = pyslang.SyntaxTree.fromText(source, fname)
-                _reject_non_design_unit(tree, fname)  # [iter_189] 见 helper 注释
+                _reject_non_design_unit(tree, fname, source)  # [iter_189/209]
                 self._comp.addSyntaxTree(tree)
             except CompilationError:
                 raise
