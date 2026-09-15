@@ -29,7 +29,7 @@ from pathlib import Path
 import pyslang
 import typer
 
-from cli._common import _build_tracer
+from cli._common import collect_elaboration_diagnostics
 import logging
 
 logger = logging.getLogger(__name__)
@@ -191,12 +191,11 @@ def fix_widths_cmd(
                 logger.warning("%s: 忽略 Exception: %s", __name__, e)
 
     # 跑 UnifiedTracer 拿 syntax trees
-    try:
-        tracer = _build_tracer(filelist=filelist, log_level=log_level)
-        _ = tracer.build_graph()
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1) from None
+    # [iter_225] 本命令只用**语法树** (TypedefDeclarationSyntax + $clog2), 不需要
+    # elaboration 成功 → 走结构化诊断入口; 若编译连解析都没走到 (无 syntax tree),
+    # 下面的 typedefs 空判断会明确报错退出 (不静默)。
+    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    tracer = diag.tracer
 
     typedefs = _get_syntax_trees_typedefs(tracer)
     if not typedefs:

@@ -16,6 +16,7 @@ CLI 公共 helper
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import typer
@@ -222,6 +223,56 @@ def warn_flags_ignored_by_json(json_output: bool, flags: dict[str, object]) -> N
             + ", ".join(ignored),
             file=sys.stderr,
         )
+
+
+@dataclass
+class ElaborationDiagnostics:
+    """[iter_225] fix 类命令的编译诊断结果 (恒定严格下的显式契约).
+
+    Attributes:
+        tracer: 已构建的 UnifiedTracer (语法树仍可读)
+        errors: 结构化诊断列表 [{"file", "line", "column", "code", "message"}, ...]
+        compile_failed: 编译是否因 elaboration error 抛错
+        failure: 抛错时的异常文本 (供 compile_failed 且无诊断时上报)
+    """
+    tracer: UnifiedTracer
+    errors: list[dict] = field(default_factory=list)
+    compile_failed: bool = False
+    failure: str = ""
+
+
+def collect_elaboration_diagnostics(
+    file: Path | None = None,
+    filelist: str | None = None,
+    log_level: str = "ERROR",
+) -> ElaborationDiagnostics:
+    """[iter_225] fix 类命令专用: "编译失败" 是预期输入, 不是异常.
+
+    恒定严格 (iter_224) 下, 输入本身就带 elaboration 错的项目必然让
+    ``build_graph()`` 抛 CompilationError —— 而 ``fix report`` / ``fix imports``
+    / ``fix timescale`` / ``fix widths`` 的职责**正是**报告/修复这些错误。
+
+    因此这里显式声明契约 (不是 silent fallback):
+    - 只捕获 ``CompilationError`` (其它异常照常抛出)
+    - 编译失败后读取编译器已收集的**结构化诊断** (``get_elaboration_errors()``),
+      不解析报错文本, 也不把 partial AST 当作"成功"返回给上层
+    - 若一个诊断都拿不到 → 重新抛出 (拿不到失败原因 = 真异常, 不能吞)
+
+    Returns:
+        ElaborationDiagnostics
+    """
+    tracer = _build_tracer(file=file, filelist=filelist, log_level=log_level)
+    try:
+        tracer.build_graph()
+    except CompilationError as e:
+        errors = tracer.get_elaboration_errors()
+        if not errors:
+            raise
+        logger.debug("%s: 编译失败 (预期: fix 命令就是来诊断它的): %s", __name__, e)
+        return ElaborationDiagnostics(
+            tracer=tracer, errors=errors, compile_failed=True, failure=str(e),
+        )
+    return ElaborationDiagnostics(tracer=tracer, errors=tracer.get_elaboration_errors())
 
 
 def handle_compilation_error(e: CompilationError, ) -> None:
