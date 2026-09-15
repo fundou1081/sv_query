@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_223 (POC 语料补全 — 5 个新失败清零, goal 轮 1)**: 用 **worktree 对照法** (`git worktree add f78e7d2` + FAILED 差集) 精确定位: 5 个新失败全在 `poc/test_portconn_native_poc.py`; 真因 = 测试语料清单不全 (`darkspi.v` 实例化 `spi_master`, 定义在同语料 `rtl/lib/spi/spi_master.v`), 过去靠 API 级 `strict=False` 吞掉 → 补全清单后该文件 **5 passed**; 全量 **32 failed / 3283 passed**, 与基线持平。下一步: 核心层 `self._strict` (剩余 27 处/7 文件)。
+[iter_223](docs/task_tree/iterations/iter_223_poc_fixture_fix.md)
+
 **iter_222 (逐文件工具 + 全量改写 202→27 — 方豆: 继续做直到全部完成)**: 新增 `tools/remove_strict_in_file.py` (单文件 AST 精确改写: 形参 / 关键字实参 / **位置实参** / if 分支; 默认拒绝核心 `self._strict`); **改写 80 文件**, 202 → **27 处** (位置实参 0); 冒烟 10 命令 **9/10 rc=0**; 全量 **37 failed / 3278 passed**(32→37 恶化 5)。按"全改 + 失败先保留"保留并提交, **下一步: 定位并修这 5 个新失败** (很可能是某命令的 `if not strict:` 语义被反转), 然后核心层 `self._strict` 单独立项。
 [iter_222](docs/task_tree/iterations/iter_222_perfile_mass_rewrite.md)
 

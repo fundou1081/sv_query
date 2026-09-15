@@ -31,7 +31,11 @@ def _load_darkriscv():
     files = [
         'darkriscv.v', 'darkuart.v', 'darkspi.v', 'darkio.v',
         'darkbridge.v', 'darkcache.v', 'darkmac.v', 'darkpll.v',
-        'darkram.v', 'darksocv.v'
+        'darkram.v', 'darksocv.v',
+        # [iter_223] darkspi.v 实例化 spi_master (定义在 lib/spi/) —— 过去靠
+        # API 级 strict=False 容忍 "unknown module", 现已移除 strict →
+        # 必须提供完整源文件 (真修 fixture, 不是降级)
+        'lib/spi/spi_master.v',
     ]
     sources = {}
     for f in files:
