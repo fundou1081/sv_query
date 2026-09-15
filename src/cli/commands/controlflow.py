@@ -8,7 +8,7 @@ from pathlib import Path
 
 import typer
 
-from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli._common import display_path, _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -171,7 +171,7 @@ def analyze(
         )
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
-    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    params_file = display_path(file, sources, filelist)  # [iter_206]
     data = {
         "ok": True,
         "command": "controlflow",
@@ -237,7 +237,7 @@ def list_conditioned(
     signals = analyzer.find_conditioned_signals()
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
-    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    params_file = display_path(file, sources, filelist)  # [iter_206]
     data = {
         "ok": True,
         "command": "controlflow",
@@ -302,7 +302,7 @@ def get_conditions(
     conditions = analyzer.get_conditions_for_signal(signal)
 
     # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
-    params_file = file if file else (list(sources.keys())[0] if sources else filelist)
+    params_file = display_path(file, sources, filelist)  # [iter_206]
     data = {
         "ok": True,
         "command": "controlflow",

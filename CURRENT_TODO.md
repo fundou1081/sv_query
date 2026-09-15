@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_206 (R4-4 修复: 输入路径显示形态 — 方豆 好，push完再继续)**: 更正上轮判断 —— 全量 canonical 实测**同样 9 failed**, 所以不是测试隔离而是 HEAD 真实既有失败 (`--file` 显示 `/var/...` 而 `--filelist` 显示 `/private/var/...`); 通用修复: 新增 `cli._common.display_path()` 并收敛 **11 处**重复显示逻辑 (risk/cdc/sva/timing/verify/controlflow), 断言未动; 该文件 **9 failed → 15 passed**。下一步: 落地 R4-3 (障碍已除) → R4-1。
+[iter_206](docs/task_tree/iterations/iter_206_r4_4_display_path.md)
+
 **iter_205 (R4-3 修复: filelist +incdir+ 被丢弃 — 方豆 先修吧)**: 修 R4-2 过程里真因转向 — 纯 pyslang 0 错误、我们的编译器(原文/预处理)都通过, 但 `graph/stats --filelist` 失败而 `trace --filelist` 正常 -> `_build_tracer` 的 filelist 路径只取 sources, 丢弃了 `+incdir+` (iter_193 解析器已给出 spec.include_dirs) -> 头文件宏无法展开 -> 级联报错。修复: `_read_filelist_full()` + `_build_tracer` 合并 incdir; graph/stats rc=1->0; 但全量门禁出现 9 个 parity 失败 -> 回退后**仍失败** = **R4-4 测试隔离缺陷** (parity 测试单独跑 9 failed, 全量套件里绿) -> **修复已回退**; R4-2 结论更正 (含参宏由 pyslang 展开, 不构成 bug); 下一步: 先修 R4-4 再落地 R4-3; R4-1 仍待修。
 [iter_205](docs/task_tree/iterations/iter_205_r4_3_filelist_incdir.md)
 

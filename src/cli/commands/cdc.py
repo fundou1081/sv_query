@@ -60,7 +60,7 @@ def analyze(
     [ADD 2026-06-11 Req-9] 支持 --filelist 跑多文件项目.
     [ADD 2026-06-11 任务3] elaboration error 统一 catch.
     """
-    from cli._common import _build_tracer, handle_compilation_error
+    from cli._common import display_path, _build_tracer, handle_compilation_error
     from trace.core.compiler import CompilationError
 
     if not file and not filelist:
@@ -142,7 +142,7 @@ def analyze(
         paths_to_show = report["paths"]
         if high_only:
             paths_to_show = [p for p in paths_to_show if p["risk"] == "HIGH"]
-        display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
+        display_file = display_path(file, tracer._sources, filelist)  # [iter_206]
         print(f"CDC 检测报告: {display_file}")
         print(f"  时钟域: {len(report['domains'])}, 总计: {report['total_cdc']}, "
               f"高风险: {report['high_risk']}, 低风险: {report['low_risk']}")
@@ -150,7 +150,7 @@ def analyze(
         print(_format_cdc_human(paths_to_show, tree=tree))
         return
 
-    display_file = file if file else (list(tracer._sources.keys())[0] if tracer._sources else filelist)
+    display_file = display_path(file, tracer._sources, filelist)  # [iter_206]
     print(f"{'=' * 70}")
     print(f"CDC 检测报告: {display_file}")
     print(f"{'=' * 70}")
