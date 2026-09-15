@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_214 (strict 降级全仓扫描 — 方豆: 好，先扫)**: 出**44 处地图** (未改代码): ① CLI 选项默认非严格 **4 处** (`arch:897` / `backpressure:351` / `coverage:232` / `design:372` —— help 里甚至写明 default non-strict); ② API 默认 `strict=False` **2 处**; ③ 生产/脚本调用点 **9 处**; ④ **测试里 API 级降级 29 处** (iter_211 只清了命令行字符串, 这些直调 API 同属违规); ⑤ 误报 4 处。**关键认识: 不传 flag 就是降级 (4 个命令) 比显式用法更危险**。建议从步 1 (CLI 默认值) 开始清。
+[iter_214](docs/task_tree/iterations/iter_214_strict_default_scan.md)
+
 **iter_213 (fixture 修好 + 定位"降级默认值"桶 — 方豆: 可以, 做吧)**: fixture `sim/test_comprehensive.sv` 改 `output logic` (10 处) → 19 个 AssignToNet 清零; 原 `TestNoStrictFlag` 改写为**正向断言** → `test_coverage_gen_demo` + `test_coverage_generate` **28 passed**。**澄清 iter_212 的误判**: "24 个新失败"不是 fixture 引起 (仅 1 文件引用它), 而是**默认值层** —— `src/cli/commands/coverage.py:232` 的 `strict=False` CLI 默认 + tools 脚本默认; 改严格后 15 failed (其 fixture 在严格模式下有错) → 回退并登记为下一桶。**违规三形态**: 用法(已清零)/默认值(新发现)/空转参数。
 [iter_213](docs/task_tree/iterations/iter_213_fixture_fixed_dependent_defaults_recorded.md)
 
