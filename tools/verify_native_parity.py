@@ -395,7 +395,7 @@ def print_report(result: dict, verbose: bool = False) -> None:
 # 真实项目注册表 (ARCHITECTURE_TODOLIST #7 子任务 1: 等价性评估对象)
 # 只登记 **已验证存在** 的编译入口 (filelist 或 单文件).
 # 编译不过的项目 (cva6) 也登记 — 脚本显式报 [COMPILE_FAILED] 并记录原因,
-# 这是子任务 1 的阻塞清单 (strict 编译修复的待办).
+# 这是子任务 1 的阻塞清单 (编译修复的待办).
 # 待发现入口 (需要人工整理 filelist, 记入迭代记录):
 #   - coralnpu: 无顶层 rtl filelist (hdl/ 分散, chisel+verilog)
 #   - zipcpu:   rtl/ 分 core/ex/peripherals, 无现成 filelist
@@ -416,7 +416,7 @@ DARKRISCV_RTL = [
 ]
 
 PROJECTS: list[dict] = [
-    # [iter_058] 已评估可 strict 编译的 3 个项目, 全部与 fixture 结论一致.
+    # [iter_058] 已评估可编译的 3 个项目, 全部与 fixture 结论一致.
     # darkriscv: rtl 全量 14 文件 + incdir rtl/
     {"project": "darkriscv", "files": DARKRISCV_RTL, "top": None,
      "incdirs": ["darkriscv/rtl"]},

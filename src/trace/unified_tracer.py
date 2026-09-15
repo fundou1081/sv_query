@@ -329,7 +329,6 @@ class UnifiedTracer:
         filelist: str = None,
         log_level: str = None,
         include_dirs: list[str] = None,
-        strict: bool = True,
         preprocess_macros: bool = True,
         top_modules: list[str] = None,
     ):
@@ -342,8 +341,6 @@ class UnifiedTracer:
             log_level: 日志级别 (DEBUG/INFO/WARNING/ERROR)
                       默认为环境变量 SV_QUERY_LOG_LEVEL 的值
             include_dirs: include 搜索路径列表
-            strict: True (默认) 时 elaboration error 会 raise;
-                    False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
             preprocess_macros: True (默认) 时跑 sv_preprocessor.preprocess_macros
                               跨文件展开 `MACRO 引用. False 则跳过 (信任 pyslang 内置).
             top_modules: [iter_145] 指定 top module 列表 → SVCompiler.top_modules
@@ -365,7 +362,6 @@ class UnifiedTracer:
         self._clock_tracer: ClockDomainTracer | None = None
         self._load_tracer: LoadTracer | None = None
         self._include_dirs = include_dirs or []
-        self._strict = strict  # [FIX 2026-06-11] False = 优雅降级
         self._preprocess_macros = preprocess_macros  # [Req-20 2026-06-12] 默认跨文件宏展开
         self._preprocessed = False  # 标记是否已 preprocess
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
@@ -414,7 +410,6 @@ class UnifiedTracer:
         if self._compiler is None:
             self._ensure_preprocessed()  # [Req-20 2026-06-12] 宏展开在 compiler 前
             self._compiler = SVCompiler(self._sources, log_level=self._log_level,
-                                        strict=True,
                                         top_modules=self._top_modules)  # [iter_145]
             for d in self._include_dirs:
                 self._compiler.add_include_dir(d)
@@ -487,7 +482,7 @@ class UnifiedTracer:
                 # top 时自动以该 top 为 target (修无 target 时 generate 实例内部
                 # 缺失: graph_builder.py:68 gate + driver_extractor.py:1287 旧路径).
                 # 多 top 库保持全图 (用户显式 --module 选域)。只在成功 root 上做,
-                # 避免对 broken/strict 编译的二次 get_root (消耗性, root→None)。
+                # 避免对编译失败的二次 get_root (消耗性, root→None)。
                 root = self._get_compiler().get_root()
                 if (auto_target_single_top and target_module is None
                         and root is not None):
@@ -1247,7 +1242,6 @@ class UnifiedTracer:
             try:
                 self._covergroup_cgs = CovergroupExtractor(
                     sources=self._sources,
-                    strict=True,
                     compiler=self._get_compiler(),  # [G3] 复用编译, 不双编
                 ).extract()
             except Exception as e:

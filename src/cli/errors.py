@@ -49,7 +49,7 @@ class ErrorCode(StrEnum):
 
     # 数据类
     E_NO_DATA = "E_NO_DATA"  # 命令成功但无结果
-    E_PARTIAL_RESULT = "E_PARTIAL_RESULT"  # 部分完成 (非 strict mode)
+    E_PARTIAL_RESULT = "E_PARTIAL_RESULT"  # 部分完成 (图不完整)
 
 
 # 异常类型 → error code 映射 (供各 command 用)

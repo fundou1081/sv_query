@@ -125,7 +125,7 @@ def detect(
                     sigs = mod.signals
                 else:
                     # [FIX 2026-06-11] module 找不到 (elaboration 错等) → fallback mock.
-                    # 跟 strict=False 配合: compile 错返回部分 modules, 缺的走 mock.
+                    # [iter_224] 缺 module 时的显式降级路径 (非 silent: 下面会打 warning).
                     typer.echo(f"Module '{module}' not found in extracted modules (elaboration may have failed).", err=True)
                     typer.echo("  Falling back to demo signals based on path heuristics...", err=True)
                     mock = True

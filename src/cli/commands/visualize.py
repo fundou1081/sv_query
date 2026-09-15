@@ -274,7 +274,7 @@ def dataflow(
 
     [Phase 6.1] Use --split-by-module to split into per-instance DOTs when graph is large.
 
-    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
+    [Phase B 2026-07-17] --file/--filelist/--include via shared options.
     """
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
@@ -349,7 +349,7 @@ def pipeline(
     [P0 fix 2026-07-10] 控制节点不再堆成 31k PNG, 默认限制每 stage 8 个组合节点 +
     控制信号区最多 30 个节点。用 --max-control-nodes 0 隐藏控制信号区。
 
-    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
+    [Phase B 2026-07-17] --file/--filelist/--include via shared options.
     """
     from cli._common import emit_json_error, handle_compilation_error, warn_flags_ignored_by_json
     from trace.core.compiler import CompilationError
@@ -615,16 +615,16 @@ def chain(
 
     例子:
       # 手动指定 from/to
-      sv_query visualize chain -f dot11_tx.v --no-strict \\
+      sv_query visualize chain -f dot11_tx.v \\
         --from dot11_tx.phy_tx_start --to dot11_tx.result_i \\
         --layout LR --layout-engine neato --png /tmp/chain.png
 
       # Auto mode: 自动从 target module 的所有 input ports 找 path 到所有 output ports
-      sv_query visualize chain -f dot11_tx.v --no-strict \\
+      sv_query visualize chain -f dot11_tx.v \\
         --target dot11_tx --auto --max-edges 20 \\
         --layout LR --layout-engine neato --png /tmp/chain.png
 
-    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
+    [Phase B 2026-07-17] --file/--filelist/--include via shared options.
     """
     from cli._common import handle_compilation_error
     from trace.core.compiler import CompilationError
@@ -1621,7 +1621,7 @@ def module(
     1 box = 1 sub-module instance. PR4 加 instance-to-instance port 边 (MIG).
     用于项目架构 review.
 
-    [Phase B 2026-07-17] --file/--filelist/--include/--strict via shared options.
+    [Phase B 2026-07-17] --file/--filelist/--include via shared options.
     [Phase B] Module 命令不走 build_viz_tracer 因为它需要 AST path (semantic_adapter)
     不是单纯 graph. 直接用 UnifiedTracer 构造, 保留原有的二进制垃圾-safe except.
     """

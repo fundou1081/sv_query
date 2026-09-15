@@ -26,13 +26,11 @@ class CovergroupExtractor:
     [铁律1] 通过 SVCompiler 获取编译后 AST，不使用 SyntaxTree.fromText。
     """
 
-    def __init__(self, sources: dict[str, str], strict: bool = True,
+    def __init__(self, sources: dict[str, str],
                  compiler: 'SVCompiler | None' = None):
-        # [FIX 2026-06-12 Req-15] strict 参数跟 caller 一致 (默认 True, CLI 可传 False)
         # [G3 iter_165] compiler 可选注入: 复用调用方已编译的 SVCompiler
         # (UnifiedTracer 查询桥 — 避免同源双编译; get_root 缓存, 不重编)
         self._sources = sources
-        self._strict = strict
         self._compiler = compiler
         self._spec_members: dict[str, list] = {}  # [iter_170] 特化成员 (extract 填)
 
@@ -40,8 +38,7 @@ class CovergroupExtractor:
         """提取所有 covergroup"""
         results = []
         try:
-            compiler = self._compiler or SVCompiler(sources=self._sources,
-                                                    strict=True)
+            compiler = self._compiler or SVCompiler(sources=self._sources)
             root = compiler.get_root()
             # [iter_170 参数化] GenericClassDef 定义无成员面 → 预扫特化
             # 符号成员 (实例变量/属性的特化 ClassType, 有语义成员)

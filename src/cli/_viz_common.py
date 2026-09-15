@@ -2,7 +2,7 @@
 
 Phase B refactor (2026-07-17): collapse boilerplate across graph/dataflow/
 pipeline/chain/module. Before this file:
-  - 5 subcommands each defined --file/--filelist/--include/--strict independently
+  - 5 subcommands each defined --file/--filelist/--include independently
     (4–5 lines × 5 = ~25 lines of duplicated option declarations)
   - 5 subcommands each wrote the same `if not file and not filelist ... raise Exit`
     plus include_dirs split and CompilationError handling (~12 lines × 5 = ~60 lines)
@@ -22,7 +22,7 @@ When adding a NEW subcommand (e.g. `visualize control-flow`):
         include: str = INCLUDE_OPTION,
         ...
     ):
-        tracer, graph, sources = build_viz_tracer(file, filelist, include, strict)
+        tracer, graph, sources = build_viz_tracer(file, filelist, include)
         ...
 """
 from pathlib import Path
@@ -69,7 +69,7 @@ def build_viz_tracer(
         - Splits --include comma-separated paths into a list.
         - Invokes _build_tracer and tracer.build_graph.
         - CompilationError propagates naturally — caller decides what to do
-          (typer.Exit on strict, or partial-graph analysis on non-strict).
+          (typer.Exit — 工具恒定严格, 无 partial-graph 降级路径).
 
     Returns:
         (tracer, graph) — sources for SVA / Covergroup extractors are
@@ -113,7 +113,7 @@ def get_viz_sources(tracer, file: str | None, filelist: str | None) -> dict:
     Single-file mode uses tracer._sources directly. Filelist mode needs to
     pull from the underlying compiler (its _sources is populated by the
     filelist loader). If the compiler hasn't been instantiated yet (rare,
-    e.g. non-strict edge case), lazily build it.
+    e.g. 编译尚未被触发时), lazily build it.
     """
     if filelist:
         return tracer._get_compiler()._sources

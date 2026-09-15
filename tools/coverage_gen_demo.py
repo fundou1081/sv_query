@@ -25,7 +25,7 @@ coverage_gen_demo.py — Phase 1 POC
   # filelist 也能用 .f/.fl 作第一个 positional (auto-detect)
   python tools/coverage_gen_demo.py <project.f> <top.sv> <signal> [<related> ...]
 
-  # RTL 有错时先修源码 (AGENTS 纪律 1: 禁止 --no-strict)
+  # RTL 有错时先修源码 (AGENTS 纪律 1: 无降级逃生舱)
 
   # 多 module 文件限定到具体 module
 
@@ -145,8 +145,6 @@ def query_risk_json(
     #   显式传 include_dirs → addUserDirectories 加载整个目录 (e.g. 171 个 OpenTitan
     #   文件) → prim_assert.sv 的 include 链展开内存暴增 → 8GB MBA 内存不足 →
     #   pyslang 静默失败 (str() 返回非法 UTF-8) → UnicodeDecodeError 崩溃.
-    if False:  # [iter_222] 恒定严格
-        pass  # [iter_211] --no-strict 已禁用 (AGENTS 纪律 1)
     last_err = ""
     for attempt in range(3):
         out = subprocess.run(
@@ -958,20 +956,19 @@ def generate_covergroup(
 def main():
     # 解析 flags
     args = sys.argv[1:]
-    strict = False  # default: relaxed mode (工业多文件项目常见 UnknownModule)
     module_name = None
     filelist = None
     file = None
     positional = []
     for a in args:
-        if False:  # [iter_211] --no-strict 已禁用 (AGENTS 纪律 1)
-            strict = False
+        if a in ("--strict", "--no-strict"):
+            # [iter_224] 显式拒绝而不是静默忽略: 该 flag 已彻底移除 (AGENTS 纪律 1)
+            print(f"Error: {a} 已移除 — 全工具恒定严格, 请修根因 (fixture / src / filelist)", file=sys.stderr)
+            sys.exit(2)
         elif a.startswith("--module="):
             module_name = a.split("=", 1)[1]
         elif a.startswith("--filelist="):
             filelist = a.split("=", 1)[1]
-        elif a == "--strict":
-            pass
         else:
             positional.append(a)
     if len(positional) < 2:
