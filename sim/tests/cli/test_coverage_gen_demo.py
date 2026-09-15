@@ -105,15 +105,18 @@ class TestFilelistMode:
 # ============================================================================
 # Test 3:  flag (graceful RTL 错误)
 # ============================================================================
-class TestNoStrictFlag:
-    """: sv_query 优雅降级 RTL 错误."""
+class TestStrictModeFixture:
+    """[iter_213] fixture 必须在**严格模式**下编译通过 (纪律 1: 不靠降级跑通).
 
-    def test_no_strict_compiles_with_rtl_warnings(self):
-        """test_comprehensive.sv 有 wire 用 <= 错误,  应仍能跑."""
-        rc, out, err = _run_cli(
-            "sim/test_comprehensive.sv", "q1", "din"
-        )
-        assert rc == 0, f"CLI fail: {err}"
+    原为 `TestNoStrictFlag`: 断言 "test_comprehensive.sv 有 wire 用 <= 错误仍能跑"
+    —— 依赖被禁的 `--no-strict`。真正问题是 fixture 把输出端口写成隐式 wire
+    (`output wire q`) 却用 `always_ff` 过程赋值 (slang: AssignToNet)。
+    已修 fixture (`output logic q`) → 本测试改为正向断言。
+    """
+
+    def test_fixture_compiles_in_strict_mode(self):
+        rc, out, err = _run_cli("sim/test_comprehensive.sv", "q1", "din")
+        assert rc == 0, f"严格模式下应编译通过 (fixture 必须保持干净): {err}"
         assert "covergroup cg_q1" in out
 
 
