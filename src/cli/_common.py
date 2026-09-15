@@ -249,16 +249,20 @@ def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
             print("\n".join(detail_lines), file=sys.stderr)
             if len(lines) > 11:
                 print(f"  ... ({len(lines) - 11} more lines, see logs)", file=sys.stderr)
-        # 推荐先检查 filelist
-        # (错误代码在上面的 [ERROR] 行里, user 可以自己看)
-        print(
-            "\nHint: First check your filelist is complete (missing modules? missing includes?).",
-            file=sys.stderr,
-        )
-        print(
-            "      Use --no-strict to analyze the partial AST only as a last resort.",
-            file=sys.stderr,
-        )
+        # [iter_209] 输入类型错误 (例如把 filelist 当源码传) 不该再建议 --no-strict:
+        # 那是"RTL 不完整"场景的提示, 对"传错文件类型"是误导 (实测用户看到
+        # "看起来是 filelist" 之后又被建议 --no-strict, 自相矛盾)。
+        _is_input_type_error = "请用 --filelist" in msg
+        if not _is_input_type_error:
+            # 推荐先检查 filelist (错误代码在上面的 [ERROR] 行里, user 可以自己看)
+            print(
+                "\nHint: First check your filelist is complete (missing modules? missing includes?).",
+                file=sys.stderr,
+            )
+            print(
+                "      Use --no-strict to analyze the partial AST only as a last resort.",
+                file=sys.stderr,
+            )
     raise typer.Exit(code=1) from None
 
 

@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_209 (R4-1 落地 — 方豆 好，去做吧)**: **推翻上轮结论** —— 守卫当时就生效, "只看到路径"是我调试打印 `l[:100]` 的假象 (路径 ~100 字符); `handle_compilation_error` 也没吞消息。真正问题: 提示自相矛盾 → 按错误类型分支 (输入类型错误不再建议 --no-strict); 判据含 iter_208 两条教训; 3 条回归测试, 合法 .v/.sv 语料不误判。**四轮对抗的发现 (F1~F6 / R4-1 / R4-3 / R4-4) 至此全部闭环**。
+[iter_209](docs/task_tree/iterations/iter_209_r4_1_landed.md)
+
 **iter_208 (R4-1 尝试与回退 — 方豆 可以，继续做吧)**: R4-1 原场景已被 iter_207 的 R4-3 顺带修好; 剩余"非 .f filelist 经 -f 传入"仍误导。守卫扩展尝试**未生效已回退**, 留三条线索: ① 判据不能只看首行 (预处理器注入 `timescale) ② 裸路径判据要收紧 (endswith(.v) 误判行尾注释) ③ **守卫消息被 `handle_compilation_error` 格式化吞掉** → 修 R4-1 必须先修该格式函数 (或把检测放到 CLI 层)。
 [iter_208](docs/task_tree/iterations/iter_208_r4_1_attempt.md)
 

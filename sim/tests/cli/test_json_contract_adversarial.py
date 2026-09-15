@@ -180,3 +180,35 @@ def test_r4_3_trace_path_unaffected():
     assert r.returncode == 0, r.stderr[-400:]
     payload = _json_or_none(r.stdout)
     assert payload and payload.get("ok") is True, r.stdout[:200]
+
+
+# ── R4-1 (iter_209): filelist 内容经 `-f` 传入必须给明确提示 ───────────────
+def test_r4_1_filelist_content_via_file_flag_warns():
+    """R4-1: 非 .f 扩展名的 filelist 用 `-f` 传入 → 必须明确说"这是 filelist"。
+
+    过去只给下游 elaboration 错误 + "Use --no-strict" 误导提示。
+    两条经验教训 (iter_208 踩到, 已在实现里体现):
+      ① 判据不能只看首行 (预处理器注入 `` `timescale `` 把 +incdir+ 挤到第 2 行);
+      ② 裸路径判据要收紧 (endswith('.v') 会误判 `endmodule // x.v`)。
+    """
+    fl = INCDIR_CASE / "list_noext.txt"
+    if not fl.exists():
+        pytest.skip(f"fixture 缺失: {fl}")
+    r = _run(["stats", "-f", str(fl)])
+    assert r.returncode != 0, "filelist 当源码传应失败"
+    assert "内容看起来是 filelist" in r.stderr, f"应明确提示是 filelist:\n{r.stderr[-300:]}"
+    assert "请用 --filelist" in r.stderr, r.stderr[-300:]
+    assert "--no-strict" not in r.stderr, (
+        f"输入类型错误不应再建议 --no-strict (误导):\n{r.stderr[-300:]}"
+    )
+
+
+@pytest.mark.parametrize("name", ["inst_demo.sv", "golden_dataflow_39_cordic_pipeline.v"])
+def test_r4_1_legit_sources_not_misjudged(name):
+    """R4-1 反向: 合法源码 (含 .v 语料与行尾注释) 不得被误判成 filelist。"""
+    sv = REPO / "sim" / "tests" / "fixtures" / "golden_mini" / name
+    if not sv.exists():
+        pytest.skip(f"fixture 缺失: {sv}")
+    r = _run(["stats", "-f", str(sv)])
+    assert "内容看起来是" not in r.stderr, f"{name} 被误判:\n{r.stderr[-200:]}"
+    assert r.returncode == 0, f"{name}: rc={r.returncode}\n{r.stderr[-300:]}"
