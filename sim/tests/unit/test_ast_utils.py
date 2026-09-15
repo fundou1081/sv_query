@@ -303,7 +303,7 @@ class TestRealPyslangIntegration:
           assign y = (g ? a : b);
         endmodule
         """
-        tracer = UnifiedTracer(sources={'m.sv': src_text}, strict=False)
+        tracer = UnifiedTracer(sources={'m.sv': src_text}, )
         tracer.build_graph()
 
         # Walk to find a ConditionalOp / ConditionalExpression in any module.

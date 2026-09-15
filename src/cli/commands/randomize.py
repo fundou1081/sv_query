@@ -216,10 +216,10 @@ def list_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -361,10 +361,10 @@ def extract_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -450,10 +450,10 @@ def trace_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -782,10 +782,10 @@ def reachability_cmd(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -835,7 +835,7 @@ def reachability_cmd(
     # 跨 class 找 covergroup sample (走 CovergroupExtractor)
     from trace.core.covergroup_extractor import CovergroupExtractor
     sources = tracer.sources if hasattr(tracer, "sources") else {}
-    extractor = CovergroupExtractor(sources=sources, strict=True)
+    extractor = CovergroupExtractor(sources=sources, )
     covergroups = extractor.extract()
 
     # Analyze reachability for each rand var

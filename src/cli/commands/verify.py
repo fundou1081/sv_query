@@ -74,17 +74,17 @@ def gap(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
     sources = tracer._sources
-    sva = SVAExtractor(sources, strict=True).extract()
-    cov_list = CovergroupExtractor(sources, strict=True).extract()
+    sva = SVAExtractor(sources, ).extract()
+    cov_list = CovergroupExtractor(sources, ).extract()
 
     # ===== 1. 收集覆盖信息 =====
     sva_signals = set()

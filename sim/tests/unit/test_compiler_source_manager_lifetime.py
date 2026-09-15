@@ -71,7 +71,7 @@ def _compile(tmp_path) -> tuple[SVCompiler, object]:
     comp = SVCompiler(
         {"sm_top.sv": TOP_SV, "sm_sub.sv": SUB_SV},
         log_level="ERROR",
-        strict=True,
+        
         top_modules=["sm_top"],
     )
     comp.add_include_dir(str(incdir))

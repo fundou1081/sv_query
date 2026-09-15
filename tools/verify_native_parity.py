@@ -331,7 +331,7 @@ def report_project(files: list[str], top: str | None, project: str,
     编译失败 → 显式返回 compile_error 条目 (不静默跳过, 遵守 AGENTS.md 纪律 2/2.5),
     打印 [COMPILE_FAILED] 并记录原因 — 这正是 #7 子任务 1 要解决的阻塞清单.
     """
-    comp = SVCompiler(log_level="WARNING", strict=True)
+    comp = SVCompiler(log_level="WARNING", )
     for inc in incdirs or []:
         comp.add_include_dir(inc)
     for f in files:

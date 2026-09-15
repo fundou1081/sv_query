@@ -20,7 +20,7 @@ snapshot_app = typer.Typer(help="Snapshot management for graph diff")
 logger = logging.getLogger(__name__)
 
 
-def _get_tracer_from_file(file_path, strict=False):
+def _get_tracer_from_file(file_path, ):
     """从文件构建 UnifiedTracer"""
     import os
     # 收集所有 .sv 文件
@@ -50,18 +50,18 @@ def _get_tracer_from_file(file_path, strict=False):
             logger.warning(f"Failed to read {f}: {e}")
             continue
 
-    tracer = UnifiedTracer(sources=sources_dict, strict=True)
+    tracer = UnifiedTracer(sources=sources_dict, )
     tracer.build_graph()
     return tracer, [str(f) for f in sv_files]
 
 
-def _get_tracer_from_filelist(filelist, strict=False, preprocess_macros=True):
+def _get_tracer_from_filelist(filelist, preprocess_macros=True):
     """[Req-20 2026-06-12] 从 filelist 构建 UnifiedTracer (snapshot filelist 模式)
 
     [FIX 2026-07-04 B4] Use `UnifiedTracer(filelist=...)` instead of pre-reading
     sources via _read_filelist (which had base_dir bug causing 0 sources).
     """
-    tracer = UnifiedTracer(filelist=filelist, strict=True, preprocess_macros=preprocess_macros)
+    tracer = UnifiedTracer(filelist=filelist, preprocess_macros=preprocess_macros)
     tracer.build_graph()
     # [B4] Get file paths from the tracer for the snapshot metadata
     file_paths_list = list(tracer._compiler._sources.keys()) if hasattr(tracer, '_compiler') and tracer._compiler else []
@@ -96,9 +96,9 @@ def save(
 
         # 构建 tracer
         if filelist:
-            tracer, files = _get_tracer_from_filelist(filelist, strict=True, preprocess_macros=preprocess_macros)
+            tracer, files = _get_tracer_from_filelist(filelist, preprocess_macros=preprocess_macros)
         else:
-            tracer, files = _get_tracer_from_file(path, strict=True)
+            tracer, files = _get_tracer_from_file(path, )
         graph = tracer.get_graph()
 
         # 获取 elaboration 错误

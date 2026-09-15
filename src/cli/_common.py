@@ -33,8 +33,7 @@ logger = logging.getLogger(__name__)
 def _build_tracer(
     file: Path | None = None,
     filelist: str | None = None,
-    strict: bool = True,
-    log_level: str = "WARNING",
+        log_level: str = "WARNING",
     include_dirs: list | None = None,
     preprocess_macros: bool = True,
 ) -> UnifiedTracer:
@@ -91,7 +90,7 @@ def _build_tracer(
             sources=sources,
             log_level=log_level,
             include_dirs=_merged,
-            strict=True,
+            
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     elif _resolved_file is not None:
@@ -103,7 +102,7 @@ def _build_tracer(
             sources={str(Path(_resolved_file).resolve()): source},  # [iter_206] 与 filelist 路径同形态
             log_level=log_level,
             include_dirs=include_dirs or [],
-            strict=True,
+            
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
     else:
@@ -226,7 +225,7 @@ def warn_flags_ignored_by_json(json_output: bool, flags: dict[str, object]) -> N
         )
 
 
-def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
+def handle_compilation_error(e: CompilationError, ) -> None:
     """[ADD 2026-06-11 任务3] 统一处理 CompilationError, 不暴露 Python traceback
 
     [ADD 2026-06-12 Req-15 后续] 加 hint: 提示用户先修 filelist (正解),
@@ -242,7 +241,7 @@ def handle_compilation_error(e: CompilationError, strict: bool = True) -> None:
     lines = msg.split("\n")
     header = lines[0] if lines else "Compilation failed"
     print(f"Error: {header}", file=sys.stderr)
-    if strict:
+    if True:  # [iter_222] 恒定严格
         # 简洁输出前 10 行, 不暴露 Python stack
         detail_lines = [line for line in lines[1:] if line.strip()][:10]
         if detail_lines:

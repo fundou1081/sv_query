@@ -70,7 +70,7 @@ class TestVizDataExport:
                 else y <= b;
             end
         endmodule"""
-        tracer = UnifiedTracer(sources={"_test.sv": src}, strict=False)
+        tracer = UnifiedTracer(sources={"_test.sv": src}, )
         tracer.trace_module("test")
         g = tracer.get_graph()
 

@@ -115,7 +115,7 @@ def stats(
         if not file and not filelist:
             raise ValueError("Either --file or --filelist must be provided")
         tracer = _build_tracer(
-            file=file, filelist=filelist, strict=True, log_level=log_level, preprocess_macros=preprocess_macros
+            file=file, filelist=filelist, log_level=log_level, preprocess_macros=preprocess_macros
         )
         graph = tracer.build_graph()
 
@@ -173,7 +173,7 @@ def stats(
 
     except CompilationError as e:
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
     except Exception as e:
         data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:

@@ -225,10 +225,10 @@ def graph(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, use_cache=cache,
+            use_cache=cache,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     # [V12] 统一 ELK.js 渲染管线
@@ -286,10 +286,10 @@ def dataflow(
         # [Phase 3 2026-07-11] Pass --module as target_module so SignalGraph uses user namespace
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=module,
+            target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     classification = classify_graph(graph)
@@ -362,13 +362,13 @@ def pipeline(
         # [Phase 3 2026-07-11] Pass --module as target_module for correct namespace
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=module,
+            target_module=module,
         )
     except CompilationError as e:
         # [iter_201 F1] --json 模式下错误也要是结构化 JSON (stdout), 不只 stderr
         if json_output:
             emit_json_error("visualize pipeline", e)
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     classification = classify_graph(graph)
@@ -466,10 +466,10 @@ def compute(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=module,
+            target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     # [V12] 运算架构图: ELK.js 渲染
@@ -516,10 +516,10 @@ def timed(
     try:
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=module,
+            target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     classification = classify_graph(graph)
@@ -637,10 +637,10 @@ def chain(
         # [FIX 2026-07-17] Pass target_module to build_graph if provided.
         tracer, graph = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=target if target else None,
+            target_module=target if target else None,
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     # 决定 from/to signals
@@ -1424,8 +1424,7 @@ def _run_graph_visualization(
     filelist=None,
     sources=None,
     module_only=False,
-    strict=True,
-    show_source=False,
+        show_source=False,
 ):
     """可视化信号图（包含数据流关系）
 
@@ -1441,7 +1440,7 @@ def _run_graph_visualization(
         with open(file) as f:
             sources = {file: f.read()}
 
-    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist, strict=True)
+    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist, )
     graph = tracer.build_graph(use_cache=cache)
 
     # SVA/Covergroup 提取需要源码
@@ -1452,8 +1451,8 @@ def _run_graph_visualization(
         sva = SVAExtractor(sources_for_extractors).extract()
         cov_list = CovergroupExtractor(sources_for_extractors).extract()
     elif sources:
-        sva = SVAExtractor(sources, strict=True).extract()
-        cov_list = CovergroupExtractor(sources, strict=True).extract()
+        sva = SVAExtractor(sources, ).extract()
+        cov_list = CovergroupExtractor(sources, ).extract()
     else:
         sva = None
         cov_list = []
@@ -1639,13 +1638,13 @@ def module(
     try:
         if filelist:
             tracer = UnifiedTracer(
-                filelist=filelist, include_dirs=include_dirs, strict=True,
+                filelist=filelist, include_dirs=include_dirs, 
             )
         else:
             with open(file) as f:
                 sources = {file: f.read()}
             tracer = UnifiedTracer(
-                sources=sources, include_dirs=include_dirs, strict=True,
+                sources=sources, include_dirs=include_dirs, 
             )
     except Exception as e:
         # [FIX 2026-06-26] safe print: e may contain binary garbage from pyslang
@@ -1926,13 +1925,13 @@ def teach(
     try:
         tracer, graph_obj = build_viz_tracer(
             file=file, filelist=filelist, include=include,
-            strict=True, target_module=target,
+            target_module=target,
         )
         sources = get_viz_sources(tracer, file, filelist)
         sva = SVAExtractor(sources).extract()
         cov_list = CovergroupExtractor(sources).extract()
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     # Coverage + SVA -> signal sets (for D)
@@ -2315,7 +2314,7 @@ def datapath(
     """
     tracer, graph = build_viz_tracer(
         file=file, filelist=filelist, include=include,
-        strict=True,
+        
     )
 
     # Build VizData

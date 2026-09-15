@@ -285,8 +285,7 @@ def _apply_filters(
 def _load_tracer_from_snapshot(
     tag: str,
     log_level: str = "ERROR",
-    strict: bool = True,
-    preprocess_macros: bool = True,
+        preprocess_macros: bool = True,
 ) -> "UnifiedTracer":
     """[B4 2026-07-03] Build UnifiedTracer from saved snapshot, skip SV parse.
 
@@ -317,7 +316,7 @@ def _load_tracer_from_snapshot(
 
     # Stub tracer: pre-populate _graph + _signal_tracer
     tracer = UnifiedTracer(
-        sources={}, log_level=log_level, strict=True, preprocess_macros=preprocess_macros,
+        sources={}, log_level=log_level, preprocess_macros=preprocess_macros,
     )
     tracer._graph = graph
     tracer._signal_tracer = SignalTracer(graph, mig=None, use_mig=False)
@@ -629,15 +628,15 @@ def fanin(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", preprocess_macros=preprocess_macros)
         _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode: 1 tracer parse, N signals trace
@@ -816,15 +815,15 @@ def fanout(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", preprocess_macros=preprocess_macros)
         _ = tracer.build_graph(use_cache=not no_cache)
 
         # [B1 2026-07-03] Batch mode
@@ -1000,15 +999,15 @@ def impact(
         if from_snapshot and (file or filelist):
             raise ValueError("--from-snapshot is mutually exclusive with --file/--filelist")
         if from_snapshot:
-            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = _load_tracer_from_snapshot(from_snapshot, log_level="ERROR", preprocess_macros=preprocess_macros)
         elif filelist:
-            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(filelist=filelist, log_level="ERROR", preprocess_macros=preprocess_macros)
         else:
             if file is None:
                 raise ValueError("Either --file, --filelist, or --from-snapshot must be provided")
             with open(str(file)) as f:
                 source = f.read()
-            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", strict=True, preprocess_macros=preprocess_macros)
+            tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", preprocess_macros=preprocess_macros)
         graph = tracer.build_graph(use_cache=not no_cache)
 
         # 提取 SVA 和 Coverage 信息 (shared across batch)
@@ -1355,7 +1354,7 @@ def evidence(
     try:
         signals = _collect_signals(signal, batch_file, batch)
         # [Stage 5] 用公共 helper build resolver (其他 4 个命令也共用)
-        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, strict=True, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
+        resolver, _graph, _sem = _build_evidence_resolver(file=file, filelist=filelist, preprocess_macros=preprocess_macros, from_snapshot=from_snapshot)
 
         # [B1 2026-07-03] Batch mode
         # [A3 2026-07-04] Per-signal try/except: failed signals go to errors[], continue on others
@@ -1568,13 +1567,13 @@ def overview(
     try:
         tracer = _bt(
             file=file, filelist=filelist,
-            strict=True, log_level=log_level,
+            log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
@@ -1629,7 +1628,7 @@ def overview(
     cf_data = {}
     cf_errors = []
 
-    compiler = SVCompiler(sources, strict=True)
+    compiler = SVCompiler(sources, )
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
     graph_builder = GraphBuilder(semantic_adapter)
     graph_builder.graph = graph

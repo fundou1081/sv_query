@@ -246,7 +246,7 @@ def fix_imports_cmd(
 
     # 拿 elaboration errors
     try:
-        tracer = _build_tracer(filelist=filelist, strict=False, log_level=log_level)
+        tracer = _build_tracer(filelist=filelist, log_level=log_level)
         _ = tracer.build_graph()
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

@@ -18,7 +18,7 @@ def _build_graph(src: str, target: str | None = None):
     from trace.unified_tracer import UnifiedTracer
 
     fname = f"_test_ds_{hash(src) & 0xFFFFFFFF}.sv"
-    tracer = UnifiedTracer(sources={fname: src}, strict=False)
+    tracer = UnifiedTracer(sources={fname: src}, )
     if target:
         tracer.trace_module(target)
     else:

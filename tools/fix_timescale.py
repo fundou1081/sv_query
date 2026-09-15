@@ -51,7 +51,7 @@ def find_files_needing_fix(filelist_path: str, include_headers: bool = False):
     from cli._common import _build_tracer
     from collections import defaultdict
 
-    tracer = _build_tracer(filelist=filelist_path, strict=False, log_level="ERROR")
+    tracer = _build_tracer(filelist=filelist_path, log_level="ERROR")
     _ = tracer.build_graph()
     elaboration_errors = tracer.get_elaboration_errors()
 

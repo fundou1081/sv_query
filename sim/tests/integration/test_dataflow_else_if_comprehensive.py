@@ -83,7 +83,7 @@ def truth_table_equiv(expr1: str, expr2: str, vars_list: list[str]) -> bool:
 
     try:
         for vals in itertools.product([False, True], repeat=len(vars_list)):
-            env = dict(zip(vars_list, vals, strict=False))
+            env = dict(zip(vars_list, vals, ))
             v1 = eval(to_py(expr1), {"__builtins__": {}}, env)
             v2 = eval(to_py(expr2), {"__builtins__": {}}, env)
             if v1 != v2:
