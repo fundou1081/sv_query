@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_215 (彻底移除 strict 批次 1: design.py — 方豆: 去除默认值, 彻底移除 strict)**: 删 7 处 `args.append("--no-strict")` + 7 个辅助函数 `strict` 形参 + 顶层 `strict` 选项 + 残留位置参数; JSON `"strict"` 字段保留恒 `True` (兼容下游); 验证 `design show` rc=0 + `test_design.py` **10 passed**; **全仓 `src/**` 的 `--no-strict` 用法 = 0**。剩余批次 2~5 (CLI 默认值 / API 形参 / 生产调用点 / 测试 29 处) 待做; 可视化 16 个暂缓。
+[iter_215](docs/task_tree/iterations/iter_215_remove_strict_batch1_design.md)
+
 **iter_214 (strict 降级全仓扫描 — 方豆: 好，先扫)**: 出**44 处地图** (未改代码): ① CLI 选项默认非严格 **4 处** (`arch:897` / `backpressure:351` / `coverage:232` / `design:372` —— help 里甚至写明 default non-strict); ② API 默认 `strict=False` **2 处**; ③ 生产/脚本调用点 **9 处**; ④ **测试里 API 级降级 29 处** (iter_211 只清了命令行字符串, 这些直调 API 同属违规); ⑤ 误报 4 处。**关键认识: 不传 flag 就是降级 (4 个命令) 比显式用法更危险**。建议从步 1 (CLI 默认值) 开始清。
 [iter_214](docs/task_tree/iterations/iter_214_strict_default_scan.md)
 **⚠️ 追加发现**: `src/cli/commands/design.py` 有 **7 处 `args.append("--no-strict")`** —— 我此前"用法清零"的结论只覆盖 `sim/tests`+`tools`, **生产代码仍在主动降级**; 待处理总计 ≈51 处。方豆已定方向: **彻底移除 strict** (删参数+选项, 工具恒定严格), 执行方案分 6 批 (见 iter_214 文档)。

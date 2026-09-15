@@ -70,15 +70,13 @@ def _call_subcommand(args: list[str], timeout: int = 60, prepend_svq: bool = Tru
         return -2, "", f"[ERROR: {e}]"
 
 
-def _run_cdc(file: str | None, filelist: str | None, target: str, strict: bool) -> dict:
+def _run_cdc(file: str | None, filelist: str | None, target: str) -> dict:
     """调用 cdc analyze, 返回 summary dict."""
     args = ["cdc", "analyze"]
     if filelist:
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -88,7 +86,7 @@ def _run_cdc(file: str | None, filelist: str | None, target: str, strict: bool) 
     }
 
 
-def _run_protocol(file: str | None, filelist: str | None, target: str, strict: bool) -> dict:
+def _run_protocol(file: str | None, filelist: str | None, target: str) -> dict:
     """调用 protocol detect."""
     args = ["protocol", "detect"]
     if filelist:
@@ -96,8 +94,6 @@ def _run_protocol(file: str | None, filelist: str | None, target: str, strict: b
     elif file:
         args.extend(["-f", file])
     args.extend(["--module", target])
-    if not strict:
-        args.append("--no-strict")
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -107,15 +103,13 @@ def _run_protocol(file: str | None, filelist: str | None, target: str, strict: b
     }
 
 
-def _run_handshake(file: str | None, filelist: str | None, target: str, strict: bool) -> dict:
+def _run_handshake(file: str | None, filelist: str | None, target: str) -> dict:
     """调用 handshake scan."""
     args = ["handshake", "scan"]
     if filelist:
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -125,17 +119,17 @@ def _run_handshake(file: str | None, filelist: str | None, target: str, strict: 
     }
 
 
-def _run_backpressure(file: str | None, filelist: str | None, target: str, strict: bool) -> dict:
+def _run_backpressure(file: str | None, filelist: str | None, target: str) -> dict:
     """调用 backpressure analyze (不需 --module, 自动 scan).
 
-    Note: backpressure analyze 不支持 --no-strict, 所以不管 strict 传不传都跳过.
+    Note: [iter_215] 全工具已恒定严格 (strict 概念已移除), backpressure 分支按需跳过.
     """
     args = ["backpressure", "analyze"]
     if filelist:
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    # backpressure analyze 不接受 --no-strict
+    # [iter_215] backpressure 分支不参与 (恒定严格模式下无降级)
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -145,7 +139,7 @@ def _run_backpressure(file: str | None, filelist: str | None, target: str, stric
     }
 
 
-def _run_dataflow(file: str | None, filelist: str | None, target: str, strict: bool,
+def _run_dataflow(file: str | None, filelist: str | None, target: str,
                   from_signal: str = "", to_signal: str = "") -> dict:
     """调用 dataflow analyze (需要 FROM/TO signal).
 
@@ -161,8 +155,6 @@ def _run_dataflow(file: str | None, filelist: str | None, target: str, strict: b
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -174,15 +166,13 @@ def _run_dataflow(file: str | None, filelist: str | None, target: str, strict: b
     }
 
 
-def _run_timing(file: str | None, filelist: str | None, target: str, strict: bool) -> dict:
+def _run_timing(file: str | None, filelist: str | None, target: str) -> dict:
     """调用 timing analyze."""
     args = ["timing", "analyze"]
     if filelist:
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     rc, out, err = _call_subcommand(args, timeout=120)
     return {
         "available": rc == 0,
@@ -192,7 +182,7 @@ def _run_timing(file: str | None, filelist: str | None, target: str, strict: boo
     }
 
 
-def _generate_graphs(file: str | None, filelist: str | None, target: str, strict: bool,
+def _generate_graphs(file: str | None, filelist: str | None, target: str,
                      output_dir: str) -> dict:
     """[Plan B 2026-07-08] 生成可视化图 (dataflow / pipeline / backpressure).
 
@@ -215,8 +205,6 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     args.extend(["--svg", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["dataflow"] = {
@@ -232,8 +220,6 @@ def _generate_graphs(file: str | None, filelist: str | None, target: str, strict
         args.extend(["--filelist", filelist])
     elif file:
         args.extend(["-f", file])
-    if not strict:
-        args.append("--no-strict")
     args.extend(["--svg", svg_path])
     rc, out, err = _call_subcommand(args, timeout=180)
     graphs["pipeline"] = {
@@ -369,7 +355,6 @@ def show(
     file: str | None = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str | None = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects"),
     target: str = typer.Option("top", "--target", "-t", help="Target module name (default: top)"),
-    strict: bool = typer.Option(False, "--strict/--no-strict", help="Strict mode (default: --no-strict for partial AST)"),
     output_json: bool = typer.Option(False, "--json", help="Output JSON format (programmatic access)"),
     graph: bool = typer.Option(False, "--graph", help="[Plan B+ 2026-07-08] Auto-generate visualization graphs (dataflow/pipeline/backpressure)"),
     graph_dir: str = typer.Option("/tmp/sv_query_design_graphs", "--graph-dir", help="Output directory for --graph images"),
@@ -380,7 +365,7 @@ def show(
 
     例子:
       sv_query design show -f top.sv --target <top>
-      sv_query design show --filelist=project.f --target <top> --no-strict
+      sv_query design show --filelist=project.f --target <top>
       sv_query design show --filelist=project.f --target <top> --json
       sv_query design show -f top.sv --target <top> --skip cdc --skip timing
     """
@@ -396,31 +381,30 @@ def show(
         print(_section_header("IP-Level Design Understanding"))
         print(f"  Target:    {target}")
         print(f"  Source:    {source_label}")
-        print(f"  Strict:    {strict}")
         print(f"  Skip:      {', '.join(sorted(skip_set)) if skip_set else 'none'}")
 
     # ============ 跑 sub-commands ============
     results = {}
 
     if "cdc" not in skip_set:
-        results["cdc"] = _run_cdc(file, filelist, target, strict)
+        results["cdc"] = _run_cdc(file, filelist, target)
     if "protocol" not in skip_set:
-        results["protocol"] = _run_protocol(file, filelist, target, strict)
+        results["protocol"] = _run_protocol(file, filelist, target)
     if "handshake" not in skip_set:
-        results["handshake"] = _run_handshake(file, filelist, target, strict)
+        results["handshake"] = _run_handshake(file, filelist, target)
     if "backpressure" not in skip_set:
-        results["backpressure"] = _run_backpressure(file, filelist, target, strict)
+        results["backpressure"] = _run_backpressure(file, filelist, target)
     if "dataflow" not in skip_set:
-        results["dataflow"] = _run_dataflow(file, filelist, target, strict)
+        results["dataflow"] = _run_dataflow(file, filelist, target)
     if "timing" not in skip_set:
-        results["timing"] = _run_timing(file, filelist, target, strict)
+        results["timing"] = _run_timing(file, filelist, target)
 
     if output_json:
         # JSON 模式: 输出 raw_output + summary
         output = {
             "target": target,
             "source": source_label,
-            "strict": strict,
+            "strict": True,  # [iter_215] 恒定严格
             "skipped": sorted(skip_set),
             "results": {
                 k: {
@@ -433,7 +417,7 @@ def show(
             },
         }
         if graph:
-            output["graphs"] = _generate_graphs(file, filelist, target, strict, graph_dir)
+            output["graphs"] = _generate_graphs(file, filelist, target, graph_dir)
         print(json.dumps(output, indent=2, ensure_ascii=False))
     else:
         # Human-readable 模式
@@ -464,7 +448,7 @@ def show(
         if graph:
             print(_section_header("Generating Visualization Graphs"))
             print(f"  Output dir: {graph_dir}")
-            graphs = _generate_graphs(file, filelist, target, strict, graph_dir)
+            graphs = _generate_graphs(file, filelist, target, graph_dir)
             for gname, ginfo in graphs.items():
                 if ginfo.get("exit_code") != 0:
                     print(f"  ⚠️  {gname}: sub-command failed (exit={ginfo['exit_code']})")
