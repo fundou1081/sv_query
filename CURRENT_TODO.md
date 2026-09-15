@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_218 (批次 3a: 冒烟过但全量恶化 → 回退 + 换方法 — 方豆: 按这个继续做)**: 第二次限定 `src/cli/**` (「strict=True」111→0) **冒烟 5/5 rc=0**, 但全量 **116 failed** (批次 2 为 34, 恶化 82) → 回退。**第 4 次同类教训**: 冒烟≠安全, 改签名必须跑全量; 根因 = 我用正则做本应逐点审查的调用点改造 → **下次改用 AST 枚举形参/实参 (含位置传参) + 逐文件验证 + 只在全量绿时提交**。
+[iter_218](docs/task_tree/iterations/iter_218_batch3a_smoke_ok_gate_regressed_reverted.md)
+
 **iter_217 (批次 3 API 形参尝试 → 已回退 — 方豆: 继续推进)**: 3a (CLI helper 去 `strict` 形参 + 删 88 处死传参 + `handle_compilation_error` 去形参) **冒烟全绿**, 但遗漏**行内**形态 (`strict=True, other=...`) → `TypeError` → **265 failed / 6 errors** → 从备份**回退**到批次 2 状态 (34 failed / 3282 passed; 复核 stats/trace rc=0 / test_design 10 passed)。教训 (第 3 次同类): 删命名参数必须穷举三种写法并 `grep -c` 对账; 且核心层 `self._strict` 是**语义分支** (raise vs partial AST) 而非传参 → 需单独立项。
 [iter_217](docs/task_tree/iterations/iter_217_remove_strict_batch3_attempt_reverted.md)
 
