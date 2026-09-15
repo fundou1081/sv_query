@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_220 (AST 驱动彻底改造尝试 → 第 5 次回退 + 战略结论 — 方豆: 进行彻底改造)**: 技术上是**最正确的一次** (AST 精确区间删 120 关键字实参 + 18 形参 + **1 位置实参**, 复测**位置实参 1→0**), 但冒烟 5/6 rc=1 → 回退。根因: 删形参后**函数体仍引用 `strict`** (裸引用 12 / `self._strict` 7) 与**多层包装调用链未同步** → 运行时才暴露。**战略结论: `strict` 是横切关注点, "一次改一层"必然留未覆盖路径 → 改为"一个文件一次提交" (每文件: scan_strict 复测 + 该文件用例 + 全量门禁, 绿才提交); 或先修 34 个失败 (严格模式暴露的 fixture 真错) 再移除 strict。
+[iter_220](docs/task_tree/iterations/iter_220_ast_pass_attempt_reverted.md)
+
 **iter_219 (AST 扫描工具 scan_strict.py — 方豆: 可以，去做吧)**: 换方法落地 —— 新增只读工具, AST 分类统计出 **202 处/61 文件** (形参 22 / 关键字实参 160 / **位置实参 1**: `handshake.py:311` / 裸引用 12 / `self._strict` 7), 并与 grep (471 行, 超集) 对账。**关键结论: 唯一 1 处位置实参就足以解释 iter_218 的 116 failed** (删形参 → 位置整体错位 → 静默行为错) —— 正则看不见它。下一步: 先清位置实参 → 逐文件删形参与实参 (每文件跑工具复测 + 相关用例) → 核心层单独立项。
 [iter_219](docs/task_tree/iterations/iter_219_ast_scan_strict_tool.md)
 
