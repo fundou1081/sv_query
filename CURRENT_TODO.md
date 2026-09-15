@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_221 (逐文件改造 文件 1/N: handshake.py — 方豆: 逐文件修改, 全改)**: 方案 A 首个文件 (含全仓唯一位置实参): AST 精确删 2 形参 + 6 关键字实参 + **1 位置实参**; 五层验证全过 (ast.parse / `scan_strict` 该文件 0 / 冒烟 `handshake scan`+`analyze` rc=0 / 相关测试 **297 passed** / **全量 32 failed / 3284 passed**) —— 比批次 2 的 34 failed **改善 2**。下一个文件按 Top 列表: `visualize.py` → `trace.py` → ... → 最后 `src/trace` 核心 `self._strict`。
+[iter_221](docs/task_tree/iterations/iter_221_perfile_handshake.md)
+
 **iter_220 (AST 驱动彻底改造尝试 → 第 5 次回退 + 战略结论 — 方豆: 进行彻底改造)**: 技术上是**最正确的一次** (AST 精确区间删 120 关键字实参 + 18 形参 + **1 位置实参**, 复测**位置实参 1→0**), 但冒烟 5/6 rc=1 → 回退。根因: 删形参后**函数体仍引用 `strict`** (裸引用 12 / `self._strict` 7) 与**多层包装调用链未同步** → 运行时才暴露。**战略结论: `strict` 是横切关注点, "一次改一层"必然留未覆盖路径 → 改为"一个文件一次提交" (每文件: scan_strict 复测 + 该文件用例 + 全量门禁, 绿才提交); 或先修 34 个失败 (严格模式暴露的 fixture 真错) 再移除 strict。
 [iter_220](docs/task_tree/iterations/iter_220_ast_pass_attempt_reverted.md)
 

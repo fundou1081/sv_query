@@ -137,7 +137,7 @@ def _strip_suffix(sig: str) -> str:
     return s
 
 
-def _build_tracer(filelist: str | None, file: str | None, include: str | None, strict: bool = True):
+def _build_tracer(filelist: str | None, file: str | None, include: str | None, ):
     """构造 UnifiedTracer，统一错误处理"""
     if not file and not filelist:
         print("Error: Either --file or --filelist must be provided", file=sys.stderr)
@@ -146,10 +146,10 @@ def _build_tracer(filelist: str | None, file: str | None, include: str | None, s
     include_dirs = include.split(",") if include else None
     try:
         if filelist:
-            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs, strict=True)
+            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs, )
         with open(file) as f:
             sources = {file: f.read()}
-        return UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=True)
+        return UnifiedTracer(sources=sources, include_dirs=include_dirs, )
     except Exception as e:
         print(f"Error building tracer: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -244,7 +244,7 @@ def _print_scan_table(results, filter_channels: list):
 # 子命令：scan（扫所有 ready/valid 配对）
 # ==============================================================================
 
-def _scan_internal(file, filelist, include, channel, max_signals, strict):
+def _scan_internal(file, filelist, include, channel, max_signals, ):
     """[FIX 2026-07-06] 提取 scan 内部逻辑为 helper, 让 scan 和 analyze 共用
 
     Args:
@@ -255,7 +255,7 @@ def _scan_internal(file, filelist, include, channel, max_signals, strict):
         max_signals: Max pairs to analyze
         strict: Strict mode flag
     """
-    tracer = _build_tracer(filelist, file, include, strict=True)
+    tracer = _build_tracer(filelist, file, include, )
     graph = tracer.build_graph()
     st = SignalTracer(graph)
     filter_channels = [c.strip().upper() for c in channel.split(",")] if channel else []
@@ -308,7 +308,7 @@ def scan(
 ) -> None:
     """Scan all ready/valid signal pairs and classify handshake semantics"""
     # [FIX 2026-07-06] 提取为 _scan_internal helper 让 scan 和 analyze 共用
-    _scan_internal(file, filelist, include, channel, max_signals, strict)
+    _scan_internal(file, filelist, include, channel, max_signals,)
 
 
 # ==============================================================================
@@ -323,7 +323,7 @@ def analyze(
     signal: str = typer.Option(None, "--signal", "-s", help="Ready signal to analyze (e.g. axi_adapter.s_axi_awready)"),
 ) -> None:
     """Analyze a single ready signal's handshake semantics"""
-    tracer = _build_tracer(filelist, file, include, strict=True)
+    tracer = _build_tracer(filelist, file, include, )
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 
@@ -332,7 +332,7 @@ def analyze(
         # [FIX 2026-07-06] 之前 scan.callback 是 typo (function 没 .callback attribute)
         # 改用 _scan_internal helper
         _scan_internal(
-            file=file, filelist=filelist, include=include, channel=None, max_signals=40, strict=True,
+            file=file, filelist=filelist, include=include, channel=None, max_signals=40, 
         )
         return
 
@@ -390,7 +390,7 @@ def pair(
                   file=sys.stderr)
             raise typer.Exit(code=1)
 
-    tracer = _build_tracer(filelist, file, include, strict=True)
+    tracer = _build_tracer(filelist, file, include, )
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 
