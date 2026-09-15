@@ -65,8 +65,7 @@ def _run(*args, timeout=60):
     p = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
-        env=env,
-    )
+        env=env)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -92,9 +91,8 @@ def _render_focus(target_signal: str, depth: int = 5) -> str:
         "--focus", target_signal,
         "--upstream",
         "--depth", str(depth),
-        "--show-source", "--no-strict",
-        "--emit-dot", out_path,
-    )
+        "--show-source",
+        "--emit-dot", out_path)
     assert rc == 0, err
     return Path(out_path).read_text()
 

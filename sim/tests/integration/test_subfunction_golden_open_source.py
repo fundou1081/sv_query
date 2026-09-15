@@ -39,8 +39,7 @@ def _run(*args, timeout=60) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["sv_query", *args],
         capture_output=True, text=True, timeout=timeout,
-        cwd=str(PROJECT_ROOT),
-    )
+        cwd=str(PROJECT_ROOT))
 
 
 # ============================================================================
@@ -103,54 +102,45 @@ _GOLDEN_RUNNERS = {
     "stats": _make_runner(lambda p: [
         "stats",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "sva_extract": _make_runner(lambda p: [
         "sva", "extract",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "sva_coverage": _make_runner(lambda p: [
         "sva", "coverage",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "timing_analyze": _make_runner(lambda p: [
         "timing", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "cdc_analyze": _make_runner(lambda p: [
         "cdc", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "risk_analyze": _make_runner(lambda p: [
         "risk", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--summary", "--json",
-    ]),
+        "--summary", "--json"]),
     "controlflow_analyze": _make_runner(lambda p: [
         "controlflow", "analyze",
         "synchronizer.sync0" if p == "strict_uart" else "prim_arbiter_tree.req_i",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
     "dataflow_analyze": _make_runner(lambda p: [
         "dataflow", "analyze",
         *("sync_fifo.clk_i sync_fifo.count_q".split() if p == "strict_uart"
           else "prim_arbiter_tree.req_i prim_arbiter_tree.gnt_o".split()),
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
-        "--json",
-    ]),
+        "--json"]),
 }
 
 
 # 正面测试: 8 sub × 2 fixture
 @pytest.mark.parametrize("sub_function", [
     "stats", "sva_extract", "sva_coverage", "timing_analyze",
-    "cdc_analyze", "risk_analyze", "controlflow_analyze", "dataflow_analyze",
-])
+    "cdc_analyze", "risk_analyze", "controlflow_analyze", "dataflow_analyze"])
 @pytest.mark.parametrize("project", ["strict_uart", "prim_arbiter"])
 def test_golden_subfunction(sub_function, project):
     """Golden: {sub_function} 在 {project} 上 跟 baseline 一致 (增强健壮性)."""
@@ -169,8 +159,7 @@ def test_golden_subfunction(sub_function, project):
             lineterm="",
             fromfile="golden",
             tofile="actual",
-            n=3,
-        ))
+            n=3))
         pytest.fail(f"Golden mismatch ({sub_function} on {project}):\n{diff[:2000]}")
     print(f"✅ Golden {sub_function} on {project}: stable ({len(golden)} keys)")
 
@@ -228,7 +217,7 @@ def test_n2_strict_uart_partial_graph_all_8_subfunctions():
         assert r.returncode == 0, f"{sub} failed on strict_uart: {r.stderr[:200]}"
         data = json.loads(r.stdout)
         assert data["ok"] is True
-    print("✅ N2 8 sub-functions on strict_uart (2 warnings, --no-strict): all rc=0")
+    print("✅ N2 8 sub-functions on strict_uart (2 warnings, ): all rc=0")
 
 
 if __name__ == "__main__":

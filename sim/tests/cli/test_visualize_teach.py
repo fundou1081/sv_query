@@ -22,13 +22,11 @@ def _run_teach(*args, timeout=60):
     env = os.environ.copy()
     env["PYTHONPATH"] = PYTHONPATH
     cmd = [
-        "python3", "-m", "cli.main", "visualize", "teach",
-    ] + list(args)
+        "python3", "-m", "cli.main", "visualize", "teach"] + list(args)
     p = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
-        env=env,
-    )
+        env=env)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -46,10 +44,8 @@ def test_teach_overview_emits_summary():
     dot = _dot_path("overview")
     rc, out, err = _run_teach(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     assert "Teach Summary" in err or "Teach Summary" in out
     assert "Pipeline regs" in err or "Pipeline regs" in out
@@ -61,12 +57,10 @@ def test_teach_focus_finds_downstream():
     dot = _dot_path("focus_down")
     rc, out, err = _run_teach(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/pipeline_demo.sv"),
-        "--no-strict",
         "--target", "pipeline_demo",
         "--focus", "s1",
         "--depth", "2",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     # s1 -> s2 -> dout should all be present
     content = dot.read_text()
@@ -80,12 +74,10 @@ def test_teach_focus_unknown_signal_returns_error():
     dot = _dot_path("focus_unknown")
     rc, out, err = _run_teach(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
         "--focus", "nonexistent_signal_xyz",
         "--depth", "2",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     # typer.Exit code 1 expected
     assert rc != 0
     assert "not found" in err.lower() or "not found" in out.lower()
@@ -96,11 +88,9 @@ def test_teach_show_coverage_marks_uncovered():
     dot = _dot_path("coverage")
     rc, out, err = _run_teach(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
         "--show-coverage",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     content = dot.read_text()
     # If no SVA signals, all are uncovered -> mark exists

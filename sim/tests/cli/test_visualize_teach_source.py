@@ -25,8 +25,7 @@ def _run(*args, timeout=60):
     p = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
-        env=env,
-    )
+        env=env)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -45,11 +44,9 @@ def test_show_source_makes_file_line_visible_in_label():
     dot = _dot_path("show_source_label")
     rc, _, err = _run(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
         "--show-source",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     content = dot.read_text()
     # if_demo.clk is on line 2 of if_demo.sv
@@ -65,11 +62,9 @@ def test_show_source_adds_dot_url_attribute():
     dot = _dot_path("show_source_url")
     rc, _, err = _run(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
         "--show-source",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     content = dot.read_text()
     # URL should contain file path + # + line, e.g. URL=".../if_demo.sv#2"
@@ -82,10 +77,8 @@ def test_no_show_source_no_url_attribute():
     dot = _dot_path("no_show_source")
     rc, _, err = _run(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/if_demo.sv"),
-        "--no-strict",
         "--target", "if_demo",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     content = dot.read_text()
     assert 'URL="' not in content, "URL= should not appear without --show-source"
@@ -96,13 +89,11 @@ def test_focus_mode_with_show_source():
     dot = _dot_path("focus_source")
     rc, _, err = _run(
         "--file", str(PROJECT_ROOT / "sim/tests/fixtures/golden_mini/case_demo.sv"),
-        "--no-strict",
         "--target", "case_demo",
         "--focus", "y",
         "--depth", "2",
         "--show-source",
-        "--emit-dot", str(dot),
-    )
+        "--emit-dot", str(dot))
     assert rc == 0, err
     content = dot.read_text()
     # case_demo.y should be focus (yellow, line 2)

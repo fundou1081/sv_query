@@ -30,8 +30,7 @@ def _run_svq(args, cwd=None):
         ["sv_query"] + args,
         capture_output=True,
         text=True,
-        cwd=cwd,
-    )
+        cwd=cwd)
 
 
 class TestRandomizeTraceCLI(unittest.TestCase):
@@ -49,8 +48,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
-            "--method", "body",
-        ])
+            "--method", "body"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("req.randomize", result.stdout)
         # 应该 3 个 (1 bare + 2 with constraint)
@@ -62,8 +60,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
-            "--method", "body",
-        ])
+            "--method", "body"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("Pre-randomize", result.stdout)
         self.assertIn("Post-randomize", result.stdout)
@@ -77,8 +74,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
-            "--method", "body",
-        ])
+            "--method", "body"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # inline constraint 文本
         self.assertIn("addr", result.stdout)
@@ -93,8 +89,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body",
-            "--json",
-        ])
+            "--json"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         data = json.loads(result.stdout)
         self.assertIn("entry", data)
@@ -109,8 +104,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body",
-            "--json",
-        ])
+            "--json"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         data = json.loads(result.stdout)
         self.assertEqual(len(data["randomize_calls"]), 3)
@@ -124,21 +118,18 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "nonexistent",
-            "--method", "body",
-        ])
+            "--method", "body"])
         # 应该 exit 非 0 或有 warning/errors
         # 不 crash 就 OK
         self.assertNotEqual(result.returncode, 0, f"stderr: {result.stderr}")
 
     def test_randomize_trace_no_strict(self):
-        """测试 randomize trace --no-strict 工作"""
+        """测试 randomize trace  工作"""
         result = _run_svq([
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
-            "--method", "body",
-            "--no-strict",
-        ])
+            "--method", "body"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("req.randomize", result.stdout)
 
@@ -148,8 +139,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
             "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
-            "--method", "body",
-        ])
+            "--method", "body"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("Summary:", result.stdout)
         self.assertIn("randomize calls", result.stdout)
@@ -178,8 +168,7 @@ endclass
             "randomize", "trace",
             "-f", self.tmpfile.name,
             "--class", "simple",
-            "--method", "do_something",
-        ])
+            "--method", "do_something"])
         # 应该 exit 0 (没 randomize 是 valid case)
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("(no randomize() calls in this call graph)", result.stdout)

@@ -34,8 +34,7 @@ def _run(*args, timeout=60):
     p = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
-        env=env,
-    )
+        env=env)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -61,9 +60,8 @@ def test_y_simple_if_then_branch_has_sel_label(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_simple_if",
         "--upstream", "--depth", "3",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     then_edge = next(ln for ln in edges if 'mux_demo.a" -> "mux_demo.y_simple_if"' in ln)
@@ -84,16 +82,14 @@ def test_y_case_each_branch_shows_selector_and_value(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_case",
         "--upstream", "--depth", "3",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     expected = [
         ('mux_demo.c" -> "mux_demo.y_case"', "sel_b == 2'b0"),
         ('mux_demo.d" -> "mux_demo.y_case"', "sel_b == 2'b1"),
-        ('mux_demo.e" -> "mux_demo.y_case"', "sel_b == 2'b10"),
-    ]
+        ('mux_demo.e" -> "mux_demo.y_case"', "sel_b == 2'b10")]
     for substr, label in expected:
         e = next(ln for ln in edges if substr in ln)
         assert f'label="{label}"' in e, f"expected {label}: {e}"
@@ -120,9 +116,8 @@ def test_y_tern_branches_have_inverted_conditions(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_tern",
         "--upstream", "--depth", "3",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     edges = _read_edges(out.read_text())
     then_edge = next(ln for ln in edges if 'mux_demo.g" -> "mux_demo.y_tern"' in ln)
@@ -143,9 +138,8 @@ def test_y_deep_compound_conditions_use_and(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_deep",
         "--upstream", "--depth", "5",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     text = out.read_text()
     # [V6.9] pyslang expands all case values to concrete compound conditions,
@@ -169,9 +163,8 @@ def test_all_nodes_have_source_location(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_case",
         "--upstream", "--depth", "3",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     text = out.read_text()
     # Every node should have mux_demo.sv:N annotation
@@ -200,9 +193,8 @@ def test_y_nested_compound_conditions_use_and(tmp_path):
         "--target", "mux_demo",
         "--focus", "y_nested",
         "--upstream", "--depth", "3",
-        "--show-source", "--no-strict",
-        "--emit-dot", str(out),
-    )
+        "--show-source",
+        "--emit-dot", str(out))
     assert rc == 0, err
     text = out.read_text()
     # [V6.9] pyslang 展开 case 的 3 个分支 (2'b0/2'b1/2'b10) × ternary 的 2 个分支 = 6 edges.
@@ -231,9 +223,7 @@ def test_y_nested_path_from_input_now_exists():
         "-f", str(GOLDEN),
         "--target", "mux_demo",
         "--focus", "y_nested",
-        "--upstream", "--depth", "3",
-        "--no-strict",
-    )
+        "--upstream", "--depth", "3")
     # Just verify the run succeeded; detailed path assertion is done
     # implicitly via the DOT edge assertions above.
     assert rc == 0, err or "no output"

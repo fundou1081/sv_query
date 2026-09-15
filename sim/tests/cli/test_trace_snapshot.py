@@ -18,7 +18,7 @@ test_trace_snapshot.py - Tests for trace --from-snapshot option (B4)
   - P4: evidence --from-snapshot
   - P5: --from-snapshot + --batch 组合
   - P6: --from-snapshot + --type filter
-  - P7: --from-snapshot + --no-strict (no SV parse, 所以 strict 不影响)
+  - P7: --from-snapshot +  (no SV parse, 所以 strict 不影响)
 - 反面 (negative):
   - N1: --from-snapshot 无效 tag → E_INVALID_INPUT
   - N2: --from-snapshot + --file 互斥 → E_INVALID_INPUT
@@ -69,8 +69,7 @@ def _save_test_snapshot() -> None:
         ["sv_query", "snapshot", "save", STRICT_UART_FILELIST,
          "--tag", TEST_SNAPSHOT_TAG, "--filelist", STRICT_UART_FILELIST],
         capture_output=True, text=True, timeout=60,
-        cwd=str(PROJECT_ROOT),
-    )
+        cwd=str(PROJECT_ROOT))
     if r.returncode != 0:
         pytest.skip(f"Could not save test snapshot: {r.stderr[:200]}")
 
@@ -79,8 +78,7 @@ def _run(*args, timeout=60) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["sv_query", "trace", *args],
         capture_output=True, text=True, timeout=timeout,
-        cwd=str(PROJECT_ROOT),
-    )
+        cwd=str(PROJECT_ROOT))
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -181,11 +179,11 @@ def test_p6_from_snapshot_with_filter():
 
 
 def test_p7_from_snapshot_no_strict():
-    """P7: --from-snapshot --no-strict (snapshot 模式 strict 不影响, 因为没 parse)."""
+    """P7: --from-snapshot  (snapshot 模式 strict 不影响, 因为没 parse)."""
     r = _run("fanin", "sync_fifo.count_q",
              "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0
-    print("✅ P7 --from-snapshot --no-strict: works (strict doesn't affect snapshot mode)")
+    print("✅ P7 --from-snapshot : works (strict doesn't affect snapshot mode)")
 
 
 # ============================================================================
@@ -294,8 +292,7 @@ def test_golden_snapshot_fanin_with_filter():
             lineterm="",
             fromfile="golden",
             tofile="actual",
-            n=3,
-        ))
+            n=3))
         pytest.fail(f"Golden mismatch:\n{diff[:2000]}")
     print("✅ Golden: --from-snapshot fanin + filter matches baseline")
 

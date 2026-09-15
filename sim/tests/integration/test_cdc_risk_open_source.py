@@ -39,8 +39,7 @@ def _run(*args, timeout=90) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["sv_query", *args],
         capture_output=True, text=True, timeout=timeout,
-        cwd=str(PROJECT_ROOT),
-    )
+        cwd=str(PROJECT_ROOT))
 
 
 # ============================================================================
@@ -237,7 +236,7 @@ def test_n3_risk_nonexistent_file():
 
 
 def test_n4_risk_broken_sv_no_strict():
-    """N4: risk broken SV + --no-strict → 跑通 + 0 critical (partial AST 容忍)."""
+    """N4: risk broken SV +  → 跑通 + 0 critical (partial AST 容忍)."""
     # 用 tlul (37 errors, no-strict 仍跑)
     r = _run("-q", "risk", "analyze",
              "--filelist", str(FILELIST_DIR / "opentitan_tlul.f"),
@@ -247,7 +246,7 @@ def test_n4_risk_broken_sv_no_strict():
     s = data["result"].get("summary", {})
     # tlul 37 errors → partial graph → 0 data signals
     assert s.get("total", 0) >= 0
-    print(f"✅ N4 risk tlul (37 errors, --no-strict): {s['total']} data (partial AST 容忍)")
+    print(f"✅ N4 risk tlul (37 errors, ): {s['total']} data (partial AST 容忍)")
 
 
 # ============================================================================

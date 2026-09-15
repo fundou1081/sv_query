@@ -35,14 +35,12 @@ REAL_PROJECTS = [
         'darkriscv',
         ['~/my_dv_proj/openrtl/darkriscv/rtl/darkriscv.v'],
         'darkriscv',
-        id='darkriscv',
-    ),
+        id='darkriscv'),
     pytest.param(
         'picorv32',
         ['~/my_dv_proj/openrtl/picorv32/picorv32.v'],
         'picorv32_core',
-        id='picorv32',
-    ),
+        id='picorv32'),
     # [iter_116] serv 解锁: 顶层 serv_top.v 实例化 rtl/*.v 多文件 → filelist
     # (openrtl 迁移后原 serv/serv.v 路径失效; 实测 strict 编译 + 747KB SVG 4.1s)
     pytest.param(
@@ -50,9 +48,7 @@ REAL_PROJECTS = [
         sorted(str(x) for x in Path(
             '~/my_dv_proj/openrtl/serv/rtl').expanduser().glob('*.v')),
         'serv_top',
-        id='serv',
-    ),
-]
+        id='serv')]
 
 
 @pytest.mark.parametrize('name,sources,target', REAL_PROJECTS)
@@ -62,7 +58,7 @@ def test_real_project_svg_generation(name, sources, target, tmp_path):
     [Plan B Step B3] Plan B Step B1 修复后, darkriscv 能生成 SVG (273KB DOT).
                      此测试守住这一进展, 防止未来重构再次 break 真实项目.
     [iter_116] sources: 单文件列表走 --file; 多文件 (serv) 合成临时 filelist 走
-    --filelist (strict 模式, 无 --no-strict — AGENTS.md 硬规则 #1).
+    --filelist (strict 模式, 无  — AGENTS.md 硬规则 #1).
     """
     src_paths = [Path(x).expanduser() for x in sources]
     missing = [str(x) for x in src_paths if not x.exists()]
@@ -84,13 +80,12 @@ def test_real_project_svg_generation(name, sources, target, tmp_path):
         cmd += ['--filelist', str(fl)]
 
     # [Plan B Step B3] Run CLI via subprocess (avoid sys.argv pollution)
-    # [iter_086] 用 --svg 主标志 (--dot 是 V100 起的 deprecated alias); 去掉 --no-strict
+    # [iter_086] 用 --svg 主标志 (--dot 是 V100 起的 deprecated alias); 去掉 
     # (strict 模式实测可通过, 违反 AGENTS.md 硬规则 #1).
     result = subprocess.run(
         cmd,
         capture_output=True, text=True, timeout=600,
-        cwd=Path(__file__).resolve().parents[3],
-    )
+        cwd=Path(__file__).resolve().parents[3])
 
     # [Plan B Step B3] Verify ELK layout didn't fail
     assert result.returncode == 0, (

@@ -1,5 +1,5 @@
 # test_generate_real_world.py — Real-world generate 覆盖 (iter_069 重建版)
-# [iter_069 2026-08-29] 原文件依赖 ZipCPU 单文件 + --no-strict (UnknownModule),
+# [iter_069 2026-08-29] 原文件依赖 ZipCPU 单文件 +  (UnknownModule),
 # 违反纪律 #1 已删除。重建: 用 ZipCPU **全 rtl (51 文件)** — iter_058 验证可
 # **strict 编译** — 修正原测试"单文件缺依赖"的方式错误 (方豆: "修复语法错误,
 # 让编译通过。可能本来测试目的也有不对的")。
@@ -11,7 +11,7 @@
 [Plan F1.5 2026-08-12 + iter_069 重建] Real-world generate 覆盖
 
 用 ZipCPU (Gisselquist Tech, GPL) 全 rtl 验证真实 generate-heavy RTL:
-- 51 文件 (rtl/**/*.v), strict 编译 (无 --no-strict, 纪律 #1)
+- 51 文件 (rtl/**/*.v), strict 编译 (无 , 纪律 #1)
 - wbxbar (49 generate lines) / idecode (25) / zipcore / axi2axilite 等
 - 验证: strict 编译成功 + 图规模下限 + 关键 generate 信号存在
 

@@ -24,8 +24,7 @@ def _run(*args, timeout=60):
     p = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT),
-        env=env,
-    )
+        env=env)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -40,11 +39,9 @@ def test_graph_show_source_adds_file_line_to_label(tmp_path):
     out = tmp_path / "g.dot"
     rc, _, err = _run(
         "-f", str(DARKRISCV_V),
-        "--no-strict",
         "--module-only",
         "--show-source",
-        "--svg", str(out),
-    )
+        "--svg", str(out))
     assert rc == 0, err
     text = out.read_text()
     # Expect a rendered port to have source line annotation.
@@ -57,11 +54,9 @@ def test_graph_show_source_adds_url_attribute(tmp_path):
     out = tmp_path / "g.dot"
     rc, _, err = _run(
         "-f", str(DARKRISCV_V),
-        "--no-strict",
         "--module-only",
         "--show-source",
-        "--svg", str(out),
-    )
+        "--svg", str(out))
     assert rc == 0, err
     text = out.read_text()
     # URL is full path (tooling-friendly), line is appended as fragment
@@ -74,10 +69,8 @@ def test_graph_without_show_source_has_no_url(tmp_path):
     out = tmp_path / "g.dot"
     rc, _, err = _run(
         "-f", str(DARKRISCV_V),
-        "--no-strict",
         "--module-only",
-        "--svg", str(out),
-    )
+        "--svg", str(out))
     assert rc == 0, err
     text = out.read_text()
     # Without --show-source, no URL attribute should be emitted
