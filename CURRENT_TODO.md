@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_212 (修 fixture 尝试 → 已回退 — 方豆: 先不处理可视化相关的)**: 真因确认 (`sim/test_comprehensive.sv` 的 `output wire q` 被 `always_ff` 过程赋值 → 19 个 AssignToNet; 修成 `output logic` 后 rc=1→0, 方向正确), 但**全量门禁 18 → 40 failed** —— 新增 24 个失败集中在 `usage/test_coverage_generate.py`: **那批测试的期望值固化了 partial AST 的输出** (假绿有"记忆")。按纪律**回退**到 18 failed 已知状态, 登记为专门批次 (修 fixture + 同批更新依赖断言)。
+[iter_212](docs/task_tree/iterations/iter_212_fixture_fix_attempt_reverted.md)
+
 **iter_211 (清除全部 --no-strict 用法 — 方豆: 先清掉所有, 然后再修)**: `sim/tests` 与 `tools` 的**用法归零**; 3 个"专测该 flag"的测试文件**移出归档** (`docs/archive/2026-09-09-nostrict-cleanup/` + README); CLI 选项保留 (用户逃生舱)。全量 canonical **18 failed / 3298 passed** (按指示保留失败状态): 失败集中在 2 文件 — `test_visualize_teach_nested_mux.py`(16, fixture 有真实 elaboration 错误, 过去靠 flag 优雅降级"假绿") 与 `test_coverage_gen_demo.py`(2)。**下一步: 统一修这 18 个** (先修 fixture 的 SV)。
 [iter_211](docs/task_tree/iterations/iter_211_no_strict_all_removed.md)
 
