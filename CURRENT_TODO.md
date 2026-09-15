@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_207 (R4-3 落地: filelist +incdir+ — 方豆 按这个来做)**: 新增 `_read_filelist_full()` 交出 `spec.include_dirs` + `_build_tracer` 合并 incdir; 实测 `graph/stats --filelist` 从 rc=1(Undeclared 级联) → **rc=0**, trace/简单 include 无回归; 追加 2 条回归测试。顺序验证: **先修 R4-4 再落地 R4-3** 是对的 (iter_205 卡在既有红上分不清新旧)。剩余: R4-1。
+[iter_207](docs/task_tree/iterations/iter_207_r4_3_landed.md)
+
 **iter_206 (R4-4 修复: 输入路径显示形态 — 方豆 好，push完再继续)**: 更正上轮判断 —— 全量 canonical 实测**同样 9 failed**, 所以不是测试隔离而是 HEAD 真实既有失败 (`--file` 显示 `/var/...` 而 `--filelist` 显示 `/private/var/...`); 通用修复: 新增 `cli._common.display_path()` 并收敛 **11 处**重复显示逻辑 (risk/cdc/sva/timing/verify/controlflow), 断言未动; 该文件 **9 failed → 15 passed**。下一步: 落地 R4-3 (障碍已除) → R4-1。
 [iter_206](docs/task_tree/iterations/iter_206_r4_4_display_path.md)
 

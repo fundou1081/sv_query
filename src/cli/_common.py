@@ -80,11 +80,17 @@ def _build_tracer(
         # Heuristic: 用 filelist 中第一个 relative path 的最长公共前缀作为 base_dir.
         filelist_path = Path(_resolved_filelist).resolve()
         base_dir = _detect_filelist_base_dir(filelist_path, fallback=Path.cwd())
-        sources = _read_filelist(filelist_path, base_dir=base_dir)
+        sources, _fl_incdirs = _read_filelist_full(filelist_path, base_dir=base_dir)
+        # [iter_207 R4-3] 合并 filelist 的 +incdir+ (过去丢弃 → 同一 filelist 在
+        # graph/stats 失败而在 trace 正常)
+        _merged = list(include_dirs or [])
+        for _d in _fl_incdirs:
+            if _d not in _merged:
+                _merged.append(_d)
         tracer = UnifiedTracer(
             sources=sources,
             log_level=log_level,
-            include_dirs=include_dirs or [],
+            include_dirs=_merged,
             strict=strict,
             preprocess_macros=preprocess_macros,  # [Req-20 2026-06-12]
         )
@@ -128,26 +134,17 @@ def _detect_filelist_base_dir(filelist_path: Path, fallback: Path) -> Path:
     return filelist_path.parent.resolve()
 
 
-def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
-    """读 filelist 把所有源文件读成 sources dict (供 SVA/coverage 等需要内容的命令)。
+def _read_filelist_full(filelist_path: str, base_dir: Path) -> tuple[dict[str, str], list[str]]:
+    """[iter_207 R4-3] 读 filelist → (sources, include_dirs)。
 
-    [iter_193] 解析统一走 `trace.core.filelist.parse_filelist` — 与编译入口
-    (`SVCompiler.add_filelist`) **同一份实现**, 因此:
-      - 相对路径候选规则一致 (filelist 所在目录 → base_dir), 不再出现
-        "两侧结果不同 / 对存在的文件误报缺失" (iter_190/192 的问题);
-      - 缺失条目由解析器统一告警 (不静默跳过);
-      - filelist 本身不存在 → FileNotFoundError("Filelist not found: ...")。
-
-    Returns:
-        {绝对路径: 文件内容}; 读单个文件失败时告警并跳过该文件。
+    过去只返回 sources, **`+incdir+` 被丢弃** → `stats` / `visualize *` 走
+    `_build_tracer(sources=...)` 时 include 目录丢失: 依赖 `+incdir+` 的
+    `` `include `` 失败 → 头文件里的宏不展开 → `UndeclaredIdentifier` 级联;
+    而同一 filelist 用 `trace` (走 `SVCompiler.add_filelist`) 却正常 —— 两条路径
+    行为不一致。iter_193 的解析器本就有 `spec.include_dirs`, 这里把它交出去。
     """
     from trace.core.filelist import parse_filelist
 
-    # [iter_194] 候选基准 = 调用方给的 base_dir **再加上 cwd**:
-    # 仓库内 industrial_filelists 用的是"仓库根相对"路径, 而调用方给的 base_dir 可能
-    # 就是 filelist 目录本身 → 只有 filelist 目录一个候选时会误判缺失 (实测
-    # test_naplespu_4_level_chained_include 因此失败)。tracer 侧的第二基准固定是
-    # cwd, 这里补齐以保证两侧候选集合一致。
     base_dirs = [base_dir]
     if Path.cwd() != Path(base_dir).resolve():
         base_dirs.append(Path.cwd())
@@ -159,29 +156,19 @@ def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
         except OSError as e:
             logger.warning("filelist 条目读取失败, 跳过: %s (%s)", f, e)
     spec.warn_missing(filelist_path)
-    # 注: 这里**不**因"零文件"硬失败 — 本函数只是 CLI 侧辅助加载器 (供需要 sources
-    # dict 的命令用), 真正编译入口是 tracer; 两者解析规则现已一致, 但调用方语义不同。
-    # [iter_194] 一个文件都没解析出来 → 明确报错。解析规则已与 tracer 侧统一
-    # (iter_193), 所以"空"就是真的空; 过去只告警 → 命令继续跑并输出空图 (rc=0),
-    # 用户以为成功。这是"输入无效", 必须可见且非 0。
     if not sources:
         raise CompilationError(
             f"filelist {filelist_path} 没有解析到任何源文件 "
             f"({len(spec.missing)} 个条目缺失/不可解析) — 请检查路径与基准目录"
         )
+    return sources, list(spec.include_dirs)
+
+
+def _read_filelist(filelist_path: str, base_dir: Path) -> dict[str, str]:
+    """读 filelist → sources dict (兼容 API; 需要 include dirs 用 `_read_filelist_full`)。"""
+    sources, _incdirs = _read_filelist_full(filelist_path, base_dir)
     return sources
 
-
-# ----------------------------------------------------------------------------
-# 2. elaboration 错误统一 catch (任务3, 给 CLI 干净错误)
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# [iter_201] 结构化 (JSON) 模式的契约工具
-# ----------------------------------------------------------------------------
-# 背景 (iter_200 对抗测试 F1~F4): `--json` 的成功信封是 {ok, command, result},
-# 但**错误路径 stdout 为空** (只有人读 stderr) → 消费者在最需要结构化时拿不到 JSON。
-# 另外 `--json` 与输出类 flag 组合会静默失效, `--max-paths` 负值被静默当 0。
 
 def display_path(file, sources, filelist) -> str:
     """[iter_206] 统一"被分析文件"的显示路径形态。

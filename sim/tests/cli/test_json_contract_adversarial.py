@@ -150,3 +150,33 @@ def test_f6_format_json_matches_json_flag():
     pa, pb = _json_or_none(a.stdout), _json_or_none(b.stdout)
     assert pa and pb
     assert set(pa.keys()) == set(pb.keys()), (sorted(pa), sorted(pb))
+
+
+# ── R4-3 (iter_207): filelist 的 +incdir+ 必须传给编译器 ────────────────────
+INCDIR_CASE = REPO / "sim" / "tests" / "fixtures" / "hostile_input" / "incdir_case"
+
+
+@pytest.mark.parametrize("cmd", [["stats"], ["visualize", "graph"]])
+def test_r4_3_filelist_incdir_applied(cmd):
+    """R4-3: `--filelist` 的 `+incdir+` 过去被丢弃 → `include 失败 → 宏不展开。
+
+    症状伪装成"宏 token paste 不生效"; 真因是 include 目录没传进编译器
+    (iter_205 调查链证明); trace 路径 (走 SVCompiler.add_filelist) 一直正常。
+    """
+    fl = INCDIR_CASE / "fl_incdir.f"
+    if not fl.exists():
+        pytest.skip(f"fixture 缺失: {fl}")
+    r = _run([*cmd, "--filelist", str(fl)])
+    assert "Undeclared" not in r.stderr, f"{cmd}: +incdir+ 未生效\n{r.stderr[-400:]}"
+    assert r.returncode == 0, f"{cmd}: rc={r.returncode}\n{r.stderr[-400:]}"
+
+
+def test_r4_3_trace_path_unaffected():
+    """R4-3 回归: trace 路径 (走 add_filelist) 不因本次改动而坏。"""
+    fl = INCDIR_CASE / "fl_incdir.f"
+    if not fl.exists():
+        pytest.skip(f"fixture 缺失: {fl}")
+    r = _run(["trace", "fanin", "top_inc.data_q", "--filelist", str(fl), "--json"])
+    assert r.returncode == 0, r.stderr[-400:]
+    payload = _json_or_none(r.stdout)
+    assert payload and payload.get("ok") is True, r.stdout[:200]
