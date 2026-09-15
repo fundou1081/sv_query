@@ -66,6 +66,29 @@ Hint: First check your filelist is complete (missing modules? missing includes?)
 3. 或者更简单: 在 `_build_tracer` 的 `--file` 分支做"filelist 内容检测"
    (closer to the CLI, 不受 compiler 层格式影响)。
 
+## 🔎 追加线索 (iter_208 末): `stats` 有**两个**错误分支
+
+```python
+# src/cli/commands/stats.py:176
+except CompilationError as e:
+    handle_compilation_error(e, strict=strict)      # 打印 Error: <header> + 前 10 行
+except Exception as e:                              # 179
+    data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
+    ...
+    print(f"Error: {e}", file=sys.stderr)           # 184 ← 只打印异常字符串
+```
+
+实测误用场景里 stderr 只有 `Error: <filelist 路径>` + 通用 Hint —— **匹配第二个分支**
+(`print(f"Error: {e}")`), 而不是 `handle_compilation_error` 的格式 (后者会带前 10 行细节)。
+
+→ 说明守卫抛出的 `CompilationError` 在场某处**被包装/替换成了普通异常**(或走了另一条
+路径), 因此消息正文丢失。**下一步 (5 分钟可验证)**: 重新加上守卫, 在 `stats.py:179`
+的通用分支打印 `type(e)`/`repr(e)`, 看异常到底是谁 —— 定位后再决定消息怎么传。
+
+`handle_compilation_error` 本身的行为已确认无问题: 单行消息会**完整**打印
+(`header = lines[0]`), 多行消息打前 10 行 —— 所以"格式化吞消息"的判断**需要修正**:
+真正的问题在**异常类型/包装**, 不在格式化函数。
+
 ## 📎 关联
 
 - 相关: `iter_189_addsyntaxtree_sigtrap_guard.md` (守卫) / `iter_204` (R4-1 发现) /
