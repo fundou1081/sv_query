@@ -206,7 +206,7 @@ class SVCompiler:
         comp = compiler.get_compilation()  # Compilation 对象
     """
 
-    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING", strict: bool = True,
+    def __init__(self, sources: dict[str, str] | None = None, log_level: str = "WARNING",
                  top_modules: list[str] | None = None):
         """
         初始化编译器
@@ -214,8 +214,6 @@ class SVCompiler:
         Args:
             sources: {filename: source_code} 字典
             log_level: 诊断输出级别 (DEBUG/INFO/WARNING/ERROR/NONE)
-            strict: True (默认) 时 elaboration error 会 raise;
-                    False 时优雅降级, 仍返回 partial AST (供 visualize/partial 分析用)
             top_modules: [iter_145] 指定 top module 列表 → pyslang options.topModules,
                     只 elaborate 这些 top 的实例树。None (默认) = 现状: pyslang 预
                     elaborate 所有 free-floating 模块 — 含 type-param (axi_req_t =
@@ -237,10 +235,9 @@ class SVCompiler:
         self._param_overrides: list[str] = []
         self._root = None
         self._diagnostics = []
-        self._elaboration_errors = []  # [FIX 2026-06-11 Issue 17] 存解析出的错误, 非 strict 模式可被 snapshot 读取
+        self._elaboration_errors = []  # [FIX 2026-06-11 Issue 17] 存解析出的错误, 供 UnifiedTracer / snapshot 读取
         self._log_level = self._parse_log_level(log_level)
         self._include_dirs: list[str] = []  # [铁律1] include 搜索路径
-        self._strict = strict  # [FIX 2026-06-11] False 时不对 elaboration error raise
         self._top_modules = list(top_modules) if top_modules else None  # [iter_145]
         # [iter_140] paramOverride orphan 假错重试计数 (见 _do_compile)
         self._override_orphan_retry = 0
@@ -465,28 +462,22 @@ class SVCompiler:
         errors = [d for d in self._diagnostics if d.isError()]
         if errors:
             report = DiagnosticEngine.reportAll(self._comp.sourceManager, errors)
-            # [FIX 2026-06-11] strict=False 时优雅降级: 输出错误但仍返回 partial AST
-            # 让 visualize / protocol detect 在缺依赖的 opentitan 等项目仍能 work
             # [FIX 2026-06-11 Issue 17] 把 elaboration 错误存到 self._elaboration_errors
             # 供 UnifiedTracer / snapshot 读取, 标记哪些文件失败
             self._elaboration_errors = self._format_elaboration_errors(errors)
-            if not self._strict:
-                # [FIX 2026-06-11 Req-10] 改成不重复提示 — 错误明细已走 [ERROR] 行输出
-                # stats 等 CLI 会另外接 result.elaboration_errors 输出 partial 提示
-                import sys as _sys
-                print(f"[sv_query] {len(errors)} error(s), continuing in non-strict mode (partial AST)", file=_sys.stderr)
-            else:
-                # [iter_140] paramOverride orphan 假错重试: pyslang 对 free-floating
-                # (未被实例化) 参数化模块用默认参数 pre-elab; 某模块在全集上下文被
-                # drop (实例化处都带真实参数, 如 CVA6 stream_arbiter) 时, paramOverride
-                # 指向它 → <command-line> 位置 CouldNotResolveHierarchicalPath。
-                # override 仅为 pre-elab 默认值兜底 (见 _do_compile 中 pulp axi 注释),
-                # 模块被 drop = override 无用, 此错无害 (真实实例自带参数) —
-                # strict 下不应 fatal。识别: 全部错误都来自 <command-line> 且
-                # identifier 匹配某 override 模块 → 移除该 override 重建重编 (限次)。
-                if self._try_retry_override_orphan(errors):
-                    return
-                raise CompilationError(f"Elaboration errors:\n{report}") from None
+            # [iter_224] 恒定严格: 已删除 "非严格模式返回 partial AST" 的降级分支
+            # (过去 strict=False 会打一行后继续, 让上层拿到残缺 AST 却以为成功)
+            # [iter_140] paramOverride orphan 假错重试: pyslang 对 free-floating
+            # (未被实例化) 参数化模块用默认参数 pre-elab; 某模块在全集上下文被
+            # drop (实例化处都带真实参数, 如 CVA6 stream_arbiter) 时, paramOverride
+            # 指向它 → <command-line> 位置 CouldNotResolveHierarchicalPath。
+            # override 仅为 pre-elab 默认值兜底 (见 _do_compile 中 pulp axi 注释),
+            # 模块被 drop = override 无用, 此错无害 (真实实例自带参数) —
+            # 恒定严格下也不应 fatal。识别: 全部错误都来自 <command-line> 且
+            # identifier 匹配某 override 模块 → 移除该 override 重建重编 (限次)。
+            if self._try_retry_override_orphan(errors):
+                return
+            raise CompilationError(f"Elaboration errors:\n{report}") from None
         else:
             self._elaboration_errors = []
 

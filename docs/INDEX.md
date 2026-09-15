@@ -12,13 +12,13 @@
 
 | 项 | 值 | 说明 |
 |---|---|---|
-| 源码规模 | 162 文件 / 62,871 行 | `find src -name "*.py"` |
-| 测试规模 | 362 测试文件 / 78,383 行 + 117 SV fixture | `sim/tests/` |
+| 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
+| 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **3283 passed / 32 failed** ⚠️ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-08 实测 (iter_216): **彻底移除 strict** 批次 2 后 34 个失败 — 16 个可视化 (`test_visualize_teach_nested_mux.py`, 按方豆指示暂缓) + 一批 fixture 在严格模式下暴露真错 (如 `test_snapshot_compare_flags.py`); 待批 3/4/5 修完 |
+| 全量 (canonical) | **3288 passed / 28 failed** (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-09 实测 (iter_224): 彻底移除 strict 收尾, 全仓 strict = 0 (27→0 处)。28 红 = 16 可视化 (`test_visualize_teach_nested_mux.py`, 按方豆指示暂缓) + 12 fixture 在严格模式下暴露真错 (`test_fix_report` 4 / `test_fix_imports` 4 / `test_pyslang_type_extraction` 3 / `test_f2_generate_expression_trees` 1); 比基线 32 改善 4 (snapshot 组 NameError 真修) |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (211 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (212 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 

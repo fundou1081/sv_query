@@ -23,10 +23,8 @@ class SVAExtractor:
     [铁律1] 通过 SVCompiler 获取编译后 AST。
     """
 
-    def __init__(self, sources: dict[str, str], strict: bool = True):
-        # [FIX 2026-06-12 Req-15] strict 默认 True 跟原语义一致, 但 CLI caller 可传 False
+    def __init__(self, sources: dict[str, str]):
         self._sources = sources
-        self._strict = strict
         # [iter_121] 解析期元数据 (每次 extract 重建):
         #   _decl_names[id] = 声明的 formal/local 名 (非信号, 从信号集剔除)
         #   _inst_args[name] = 该 property/sequence 被实例化时的实参标识符集
@@ -41,8 +39,7 @@ class SVAExtractor:
         self._inst_args = {}
 
         try:
-            # [FIX 2026-06-12 Req-15] 传 strict=跟 caller 一致, 避免 non-strict CLI 仍报"编译失败"
-            compiler = SVCompiler(sources=self._sources, log_level="NONE", strict=True)
+            compiler = SVCompiler(sources=self._sources, log_level="NONE")
             root = compiler.get_root()
             self._walk(root, graph)
         except Exception as e:

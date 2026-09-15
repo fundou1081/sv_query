@@ -2,14 +2,14 @@
 """
 fix.py - 自动修复 elaboration 问题
 
-[ADD 2026-06-12] 配合 strict=True 默认 (Req-15 后续) 提供修复工具.
+[ADD 2026-06-12] 配合恒定严格编译提供修复工具.
 当用户跑 `stats` 看到 MissingTimeScale 错, 可以直接:
   python run_cli.py fix timescale --filelist project.f
 列出会改哪些文件 (dry-run), 加 --apply 才真改.
 
 设计原则:
-- 跟 strict=True 默认一脉相承: '从 filelist 入手解决问题', 不是 bypass
-- 复用 sv_query 的 pyslang 编译器检测, 跟 strict default 行为一致
+- '从 filelist 入手解决问题' 是唯一路径 (工具无 bypass 逃生舱)
+- 复用 sv_query 的 pyslang 编译器检测, 与主链路行为一致
 - 默认 dry-run (防止误改)
 - idempotent: 文件已有 timescale 跳过, 不会重复加
 - 备份: --apply 默认备份原文件到 .bak
@@ -116,7 +116,7 @@ def fix_timescale(
         typer.echo(f"Error: filelist not found: {filelist}", err=True)
         raise typer.Exit(code=1)
 
-    # 用 non-strict 模式获取 errors (不抛异常)
+    # [iter_224] 恒定严格: 编译失败即抛错, 由 get_elaboration_errors() 收集
     try:
         tracer = _build_tracer(filelist=filelist, log_level=log_level)
         _ = tracer.build_graph()

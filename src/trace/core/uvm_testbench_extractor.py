@@ -66,8 +66,8 @@ class UVMTestbenchExtractor:
 
         [铁律1] AST 唯一数据源 (2026-07-15 fix)
         通过 SVCompiler 编译 sources, 从 compilation.getSyntaxTrees() 拿到语法树.
-        strict=False 处理 UVM 宏 (type_id::create, uvm_component_utils) 的 Semantic errors
-        -- graceful degradation: 输出错误但仍返回 partial AST.
+        [iter_224] 本提取器走语法树 (不做 elaboration), 因此不存在 strict/降级概念 ——
+        工具恒定严格, 语义层错误由主链路 (SVCompiler) 负责 raise.
         """
         if not self._sources:
             return UVMTestbench(

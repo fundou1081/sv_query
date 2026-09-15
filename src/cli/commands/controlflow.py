@@ -129,7 +129,6 @@ def analyze(
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    # [FIX 2026-06-12 Req-15] 跟 caller 的 strict 一致, 避免 non-strict 仍报 CompilationError
     compiler = SVCompiler(sources, )
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 

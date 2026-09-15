@@ -196,7 +196,6 @@ from trace.unified_tracer import UnifiedTracer
 from trace.core.graph.models import NodeKind
 {init_code}
     include_dirs={include_dirs!r},
-    strict={strict},
     log_level='ERROR',
     top_modules={top_modules!r},
 )
@@ -260,7 +259,6 @@ def main():
     parser.add_argument("--reclaim", action="store_true",
                         help="[iter_194] 跑前执行 4GB 'reclaim inactive pages' 技巧 "
                              "(iter_185 后默认不再需要; 内存紧张的机器可开)")
-    parser.add_argument("--strict", action="store_true", default=True, help="Strict mode (default ON)")
     args = parser.parse_args()
 
     print(f"=== [PR5] sv_query benchmark ===")

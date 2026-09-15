@@ -78,7 +78,8 @@ def save(
 ):
     """Save current code state as a snapshot
 
-    [FIX 2026-06-11 Issue 17] 默认 non-strict: 即使有 elaboration error 仍存部分图
+    [iter_224] 恒定严格: elaboration error 会 raise; 已解析到的 elaboration 错误
+    仍随图存下 (供 fix/snapshot compare 用)。
     [ADD 2026-06-12 Req-20] 支持 --filelist 跑多文件项目
     """
     try:
@@ -119,7 +120,7 @@ def save(
         graph_data = graph.to_dict()
         graph_data["elaboration_errors"] = elaboration_errors
         graph_data["failed_files"] = failed_files
-        graph_data["strict_mode"] = strict
+        graph_data["strict_mode"] = True  # [iter_224] strict 已彻底移除, 语义恒为 True
         if files is None:
             files = []
         saved_path = manager.save(tag, graph_data, git_commit=git_commit, files=files)
@@ -132,7 +133,7 @@ def save(
         if elaboration_errors:
             n_errors = len(elaboration_errors)
             n_files = len(failed_files)
-            print(f"   ⚠️  Elaboration: {n_errors} error(s) in {n_files} file(s) (non-strict)")
+            print(f"   ⚠️  Elaboration: {n_errors} error(s) in {n_files} file(s)")
             from collections import Counter
             code_counts = Counter(e["code"] for e in elaboration_errors)
             for code, cnt in code_counts.most_common(5):

@@ -253,7 +253,6 @@ def _scan_internal(file, filelist, include, channel, max_signals, ):
         include: Include directory paths
         channel: Bus channel filter (AW|W|B|AR|R|A|D)
         max_signals: Max pairs to analyze
-        strict: Strict mode flag
     """
     tracer = _build_tracer(filelist, file, include, )
     graph = tracer.build_graph()

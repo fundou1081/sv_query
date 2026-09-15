@@ -42,6 +42,20 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_224 (彻底移除 strict 收尾: 核心层 `self._strict` 清零 — goal 轮 1)**: **全仓 strict = 0** ——
+`scan_strict.py` 从 **27 处/7 文件 → 0 处/0 文件** (形参/关键字实参/位置实参/裸引用/`self._strict` 全 0)。
+删 `compiler.py` 的 `strict` 形参 + 字段 + **`if not self._strict:` 降级分支** (原 468 行 "continuing in
+non-strict mode (partial AST)")、`unified_tracer.py` 形参/字段/2 实参、`covergroup_extractor` / `sva_extractor` /
+`sv_extractor` 的实参与形参、`run_benchmark` 的 argparse `--strict`; 另清理 16 处描述"已不存在降级路径"的
+注释/docstring + `coverage_gen_demo.py` 死代码 (并把 `--no-strict` 改成**显式拒绝**而非静默忽略)。
+**顺带修 1 个真 bug**: `snapshot save` 里 `graph_data["strict_mode"] = strict` 是批次 2 残留的 **NameError**
+(被 broad `except Exception` 伪装成一行提示) → 改恒 `True`。
+**全量 canonical: 28 failed / 3288 passed** (基线 32/3283) —— **改善 4 且 0 新增** (来自 `test_snapshot_compare_flags.py`
+4 个失败真正修好, 此前被误归因为 fixture 真错)。
+**新发现**: worktree 对照法对**子进程型测试无效** (该测试硬编码 `REPO_ROOT` 到主树 → worktree 里跑等于跑主树代码);
+扫描器有字典键形态盲点 (`{"strict": True}` / `kwargs["strict"]`)。下一步: 修 12 个非可视化 fixture 真错。
+[iter_224](docs/task_tree/iterations/iter_224_strict_core_layer_removed.md) / [任务文件](docs/task_tree/tasks/L1_remove_strict.md)
+
 **iter_223 (POC 语料补全 — 5 个新失败清零, goal 轮 1)**: 用 **worktree 对照法** (`git worktree add f78e7d2` + FAILED 差集) 精确定位: 5 个新失败全在 `poc/test_portconn_native_poc.py`; 真因 = 测试语料清单不全 (`darkspi.v` 实例化 `spi_master`, 定义在同语料 `rtl/lib/spi/spi_master.v`), 过去靠 API 级 `strict=False` 吞掉 → 补全清单后该文件 **5 passed**; 全量 **32 failed / 3283 passed**, 与基线持平。下一步: 核心层 `self._strict` (剩余 27 处/7 文件)。
 [iter_223](docs/task_tree/iterations/iter_223_poc_fixture_fix.md)
 
