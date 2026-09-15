@@ -22,7 +22,15 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 下一步主线: 文本结构化输出审计)。
+**当前任务 (方豆方向)**: **彻底移除 strict (L1, 恒定严格) ✅ 完成** — iter_215~225 全闭环,
+全仓 strict = 0, 全量门禁只余按方豆指示暂缓的可视化 16 红 (`test_visualize_teach_nested_mux.py`)。
+任务文件: `docs/task_tree/tasks/L1_remove_strict.md`。
+
+**下一步候选 (待方豆拍板)**: ① 解冻可视化 16 红 (fixture 有真实 elaboration 错误);
+② `check_regression.py` 阈值收紧 (50%/0.7 → 30%/1.0); ③ 上游 pyslang `addSyntaxTree` SIGTRAP
+问题立项 (5 行最小复现见 iter_189); ④ 13 个冻结的可视化断言 skip 是否转正。
+
+**历史任务 (参考)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 文本结构化输出审计)。
 
 **⚠️ iter_185 (真根因, 推翻了 iter_181~184 的归因)**: pr5 wrapper 的
 `test_l1_instance_chain` 失败 (instance_count=0) → 按纪律查根因, 证伪
@@ -41,6 +49,22 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_225 (严格模式暴露的 12 个失败清零 — goal 轮 2)**: 28 failed → **16 failed / 3300 passed**,
+只剩方豆指示暂缓的可视化项 → **L1 "彻底移除 strict" 目标态达成**。三个不同根因分别处理:
+① **语料缺依赖** (3 个, 与 iter_223 同类): NaplesPU filelist 只有 `npu_core_logger.sv`,
+它实例化 `memory_bank_1r1w`, 定义在同仓库 `src/common/` → 补全 filelist (不改编写断言, 不恢复非严格)
+→ `test_pyslang_type_extraction.py` **87 passed**;
+② **fix 类命令契约缺失** (8 个): `fix report`/`fix imports` 的职责就是诊断"坏项目", 恒定严格下
+`build_graph()` 抛错被 `except Exception → exit 1` 当成致命错误 → 新增结构化诊断入口
+`_common.collect_elaboration_diagnostics()` (只捕获 CompilationError / 读 `get_elaboration_errors()`
+结构化诊断 / 拿不到诊断就 raise; **不解析报错文本, 不把 partial AST 当成功**), report/imports/
+timescale/widths 四个命令统一改用它 → `test_fix_*` **35 passed**;
+③ **用例锁定降级语义** (1 个): generate `case(sel)` 非 const sel = 非法 SV, 旧用例断言"0 边 0 tree"
+(降级产物) → 改写为 `assertRaises(CompilationError)` + 校验结构化诊断码 `ConstEvalNonConstVariable`
+→ **5 passed**。
+**教训**: `strict=False` 的"假绿"有三层 (语料不完备 / 工具契约缺失 / 用例锁降级行为), 移除时必须三层都清。
+[iter_225](docs/task_tree/iterations/iter_225_strict_unmasked_failures_cleared.md)
 
 **iter_224 (彻底移除 strict 收尾: 核心层 `self._strict` 清零 — goal 轮 1)**: **全仓 strict = 0** ——
 `scan_strict.py` 从 **27 处/7 文件 → 0 处/0 文件** (形参/关键字实参/位置实参/裸引用/`self._strict` 全 0)。

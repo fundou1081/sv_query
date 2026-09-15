@@ -24,7 +24,7 @@ from pathlib import Path
 import typer
 
 # [ADD 2026-06-12] 复用 _common
-from cli._common import _build_tracer
+from cli._common import collect_elaboration_diagnostics
 
 # [ADD 2026-06-12] fix imports 子命令
 from cli.commands.fix_imports import fix_imports_cmd
@@ -116,15 +116,13 @@ def fix_timescale(
         typer.echo(f"Error: filelist not found: {filelist}", err=True)
         raise typer.Exit(code=1)
 
-    # [iter_224] 恒定严格: 编译失败即抛错, 由 get_elaboration_errors() 收集
-    try:
-        tracer = _build_tracer(filelist=filelist, log_level=log_level)
-        _ = tracer.build_graph()
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1) from None
-
-    elaboration_errors = tracer.get_elaboration_errors()
+    # [iter_225] fix 的输入就是"有 elab 错的项目" —— 编译失败是预期路径,
+    # 用结构化诊断入口 (不解析报错文本, 也不把 partial AST 当成功)。
+    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    if diag.compile_failed and not diag.errors:
+        typer.echo(f"Error: {diag.failure}", err=True)
+        raise typer.Exit(code=1)
+    elaboration_errors = diag.errors
 
     # 找所有 MissingTimeScale 错误, 按文件分组
     from collections import defaultdict
@@ -269,15 +267,12 @@ def fix_report(
         typer.echo(f"Error: filelist not found: {filelist}", err=True)
         raise typer.Exit(code=1)
 
-    # 拿 elaboration errors
-    try:
-        tracer = _build_tracer(filelist=filelist, log_level=log_level)
-        _ = tracer.build_graph()
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1) from None
-
-    elaboration_errors = tracer.get_elaboration_errors()
+    # 拿 elaboration errors (fix 的输入就是有错的项目, 见 helper 契约)
+    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    if diag.compile_failed and not diag.errors:
+        typer.echo(f"Error: {diag.failure}", err=True)
+        raise typer.Exit(code=1)
+    elaboration_errors = diag.errors
     if not elaboration_errors:
         typer.echo("✅ No elaboration errors found. Project is clean!")
         raise typer.Exit(code=0)

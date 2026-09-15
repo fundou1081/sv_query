@@ -31,7 +31,7 @@ from pathlib import Path
 
 import typer
 
-from cli._common import _build_tracer
+from cli._common import collect_elaboration_diagnostics
 import logging
 
 logger = logging.getLogger(__name__)
@@ -244,14 +244,12 @@ def fix_imports_cmd(
         typer.echo(f"Error: read filelist failed: {e}", err=True)
         raise typer.Exit(code=1) from e
 
-    # 拿 elaboration errors
-    try:
-        tracer = _build_tracer(filelist=filelist, log_level=log_level)
-        _ = tracer.build_graph()
-    except Exception as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1) from None
-    elaboration_errors = tracer.get_elaboration_errors()
+    # 拿 elaboration errors (fix 的输入就是有错的项目, 见 helper 契约)
+    diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
+    if diag.compile_failed and not diag.errors:
+        typer.echo(f"Error: {diag.failure}", err=True)
+        raise typer.Exit(code=1)
+    elaboration_errors = diag.errors
 
     # 收集
     result = _build_suggestions(elaboration_errors, project_root, existing_files)

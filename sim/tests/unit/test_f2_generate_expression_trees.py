@@ -18,8 +18,11 @@ F1 (generate for/if/case 支持) + F2 (ExpressionTree 注入) 的连接测试.
 - generate for 块内的 `assign y[i] = a + b;` → 边建了 (`top.a → top.y[0]`)
   但 `_expr_trees` 是空 dict. driver_extractor 用的 key 是 `{module}.{lhs_name}`,
   对 generate for 的 LHS (`y[0]`) 没正确建立 tree.
-- generate case 在 strict=False 下仍报 [ConstEvalNonConstVariable] —
-  pyslang 11 对 generate case + 非 const sel 不展开.
+- generate case + 非 const sel 是**非法 SystemVerilog** (generate case 的 sel
+  必须是常量表达式) → pyslang 11 报 [ConstEvalNonConstVariable].
+  [iter_225 恒定严格] 过去走 strict=False 降级: 报了错仍继续跑 partial AST,
+  测试锁定的是"降级后 0 边 0 tree"; 现在非法源码必须以 CompilationError
+  暴露 (不产出空图让人误判) → 该用例改为断言拒绝.
 
 这两个是 F1+F2 真实 gap — 不是我们 ExpressionTree 的 bug, 是 driver_extractor
 跟 generate for 的 LHS 索引语法 (`y[i]`) 配合缺处理.
@@ -35,6 +38,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 from trace.unified_tracer import UnifiedTracer
+from trace.core.compiler import CompilationError
 
 
 def _tracer_for(src: str, name: str = 'test.sv'):
@@ -164,15 +168,21 @@ endmodule'''
 
 
 class TestF2GenerateCaseLimitation(unittest.TestCase):
-    """[Plan F2.4.4 LIMITATION 记录] generate case + 非 const sel 不展开
+    """[iter_225 恒定严格] generate case + 非 const sel = 非法 SV (明确拒绝)
 
-    [NOTE 2026-08-13 pyslang 限制] generate case 的 sel 必须是 const 表达式.
-    输入端口 `sel` 不是 const → pyslang 报 [ConstEvalNonConstVariable] →
-    case body 不展开 → 没边没 tree.
+    [NOTE 2026-08-13 pyslang 限制 / iter_224 前] generate case 的 sel 必须是
+    const 表达式; 输入端口 `sel` 不是 → pyslang 报 [ConstEvalNonConstVariable]。
+    当时工具走 strict=False 降级 (报错仍返回 partial AST), 用例锁定 "0 边 0 tree"。
+    恒定严格后降级路径已删除 → 断言改为"拒绝 + 结构化诊断码"。
     """
 
-    def test_generate_case_runtime_sel_limitation(self):
-        """[LIMITATION] generate case + 非 const sel → 无边无 tree (pyslang)"""
+    def test_generate_case_runtime_sel_rejected(self):
+        """[iter_225 恒定严格] generate case + 非 const sel = 非法 SV → 明确拒绝
+
+        [原用例 test_generate_case_runtime_sel_limitation] 锁定的是降级语义
+        (strict=False 下报错仍继续, 得到 0 边 0 tree)。恒定严格后 "继续跑
+        partial AST" 这条路已删除: 非法源码必须结构化报错, 而不是给一张空图。
+        """
         src = '''module top(input [1:0] sel, input [7:0] a, b, c, d, output [7:0] y);
     generate
         case (sel)
@@ -188,19 +198,14 @@ class TestF2GenerateCaseLimitation(unittest.TestCase):
         endcase
     endgenerate
 endmodule'''
-        g = _tracer_for(src)
-        edges = list(g.edges())
-        expr_trees = getattr(g, '_expr_trees', {})
+        tracer = UnifiedTracer(sources={'test.sv': src}, )
+        with self.assertRaises(CompilationError):
+            tracer.build_graph()
 
-        # pyslang 11 + 非 const sel: case 不展开, 无边无 tree
-        # 这是 pyslang 限制 — 锁定 limitation
-        # 如果未来支持, 验证展开后有边有 tree
-        self.assertEqual(len(edges), 0,
-                         f"[F1+] Generate case with runtime sel was fixed! "
-                         f"Edges: {edges}. Update test.")
-        self.assertEqual(len(expr_trees), 0,
-                         f"[F2.5+] Generate case with runtime sel tree was fixed! "
-                         f"Trees: {expr_trees}. Update test.")
+        # 拒绝之外, 还要给出**结构化**诊断码 (供 fix 类命令消费, 不解析报错文本)
+        codes = [e.get("code") for e in tracer.get_elaboration_errors()]
+        self.assertIn("ConstEvalNonConstVariable", codes,
+                      f"结构化诊断码缺失: {codes}")
 
 
 class TestF2GenerateKeyConsistency(unittest.TestCase):
