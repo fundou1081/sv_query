@@ -23,7 +23,7 @@ class TestIterBitSelects(unittest.TestCase):
     """[2026-08-28 07:00] pyslang API helper 单测 (通用方案 a 重构后)."""
 
     def _get_modules(self, source):
-        compiler = SVCompiler(sources={'test.sv': source}, log_level='NONE', strict=False)
+        compiler = SVCompiler(sources={'test.sv': source}, log_level='NONE', )
         root = compiler.get_root()
         tops = root.topInstances
         return [tops[i] for i in range(len(tops))]

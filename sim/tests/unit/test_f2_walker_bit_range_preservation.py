@@ -34,7 +34,7 @@ from trace.core.coverage_generator import ControlCoverageGenerator
 
 def _walker_for(src: str):
     """直接拿 walker 实例 (不需要 graph 完整 build)"""
-    t = UnifiedTracer(sources={'test.sv': src}, strict=False)
+    t = UnifiedTracer(sources={'test.sv': src}, )
     t.build_graph()
     g = t.get_graph()
     trees = getattr(g, '_expr_trees', {})

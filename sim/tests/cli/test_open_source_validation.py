@@ -56,7 +56,7 @@ def _conditioned_driver_count(filelist_path: Path) -> int:
                 if path.exists():
                     sources[str(path)] = path.read_text()
 
-    tracer = UnifiedTracer(sources=sources, strict=False)
+    tracer = UnifiedTracer(sources=sources, )
     g = tracer.build_graph()
     count = 0
     for u, v in g.edges():

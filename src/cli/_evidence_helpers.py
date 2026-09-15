@@ -25,7 +25,7 @@ from trace.unified_tracer import UnifiedTracer
 # 1. resolver 构建: 每个命令入口 build 一次,后续 resolve() 共享 graph + adapter
 # ----------------------------------------------------------------------------
 
-def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, strict: bool = False, preprocess_macros: bool = True, from_snapshot: str = None) -> tuple[TraceEvidenceResolver, Any, Any]:
+def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = None, preprocess_macros: bool = True, from_snapshot: str = None) -> tuple[TraceEvidenceResolver, Any, Any]:
     """读取 SV 源文件 -> build graph + adapter + resolver
 
     Args:
@@ -44,7 +44,7 @@ def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = 
     if from_snapshot:
         # [B4 2026-07-03] Build tracer from snapshot (no SV parse, no real adapter)
         from src.cli.commands.trace import _load_tracer_from_snapshot
-        tracer = _load_tracer_from_snapshot(from_snapshot, log_level=log_level, strict=True, preprocess_macros=preprocess_macros)
+        tracer = _load_tracer_from_snapshot(from_snapshot, log_level=log_level, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
         # Snapshot 没有真 semantic adapter; 构造一个空 adapter (resolver 走 fallback)
         class _NullAdapter:
@@ -52,13 +52,13 @@ def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = 
             def get_root(self, *a, **kw): return None
         adapter = _NullAdapter()
     elif filelist:
-        tracer = UnifiedTracer(filelist=filelist, log_level=log_level, strict=True, preprocess_macros=preprocess_macros)
+        tracer = UnifiedTracer(filelist=filelist, log_level=log_level, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
         adapter = tracer._get_adapter()
     elif file:
         with open(str(file)) as f:
             source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source}, log_level=log_level, strict=True, preprocess_macros=preprocess_macros)
+        tracer = UnifiedTracer(sources={str(file): source}, log_level=log_level, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
         adapter = tracer._get_adapter()
     else:

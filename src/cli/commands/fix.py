@@ -118,7 +118,7 @@ def fix_timescale(
 
     # 用 non-strict 模式获取 errors (不抛异常)
     try:
-        tracer = _build_tracer(filelist=filelist, strict=False, log_level=log_level)
+        tracer = _build_tracer(filelist=filelist, log_level=log_level)
         _ = tracer.build_graph()
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
@@ -271,7 +271,7 @@ def fix_report(
 
     # 拿 elaboration errors
     try:
-        tracer = _build_tracer(filelist=filelist, strict=False, log_level=log_level)
+        tracer = _build_tracer(filelist=filelist, log_level=log_level)
         _ = tracer.build_graph()
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)

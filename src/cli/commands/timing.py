@@ -57,7 +57,7 @@ def analyze(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
@@ -67,7 +67,7 @@ def analyze(
         # [iter_201 F1] --json 模式下错误也要是结构化 JSON
         if json_output:
             emit_json_error("timing analyze", e)
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
     analyzer = TimingAnalyzer(graph)
 

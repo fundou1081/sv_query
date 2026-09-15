@@ -72,7 +72,7 @@ def _arch_default(
     include_dirs = None
     instances, edges, _, _ = _build_arch_graph(
         file=file, filelist=filelist, target=target, depth=depth,
-        include_dirs=include_dirs, strict=False,
+        include_dirs=include_dirs, 
     )
     output_format = "summary" if summary else format
     if output_format == "summary":
@@ -84,7 +84,7 @@ def _arch_default(
     if show_anomalies and output_format == "dot":
         try:
             from trace.core.graph.models import NodeKind as _NK  # noqa: N814
-            tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist, strict=False)
+            tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist, )
             _graph = tracer_obj.build_graph()
             target_prefix = f"{target}."
             for nid in _graph.nodes():
@@ -152,7 +152,7 @@ def _arch_default(
         typer.echo(content)
 
 
-def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
+def _build_arch_graph(file, filelist, target, depth, include_dirs, ):
     """共用: 跑 tracer + 抽 MIG + 抽 L2 端口边.
 
     返回: (instances, edges, mig, tracer) 或 raise.
@@ -168,7 +168,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             tracer = _build_tracer(
                 filelist=filelist,
                 include_dirs=include_dirs,
-                strict=True,
+                
             )
         else:
             with open(file) as f:
@@ -176,7 +176,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, strict):
             tracer = _build_tracer(
                 file=Path(file),
                 include_dirs=include_dirs,
-                strict=True,
+                
             )
     except Exception as e:
         typer.echo(f"Error building tracer: {e}", err=True)
@@ -923,7 +923,7 @@ def show(
         target=target,
         depth=depth,
         include_dirs=include_dirs,
-        strict=True,
+        
     )
 
     # Step 2: 渲染

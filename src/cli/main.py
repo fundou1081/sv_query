@@ -140,7 +140,7 @@ def stats_callback(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
         )
         graph = tracer.build_graph()
@@ -221,7 +221,7 @@ def stats_callback(
                     print(f"    - {m}")
     except CompilationError as e:
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
 
 
 def _compute_fanout_rank(graph) -> dict:

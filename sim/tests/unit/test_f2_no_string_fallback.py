@@ -32,7 +32,7 @@ from trace.core.coverage_generator import (
 
 
 def _tracer_for(src: str, name: str = 'test.sv'):
-    tracer = UnifiedTracer(sources={name: src}, strict=False)
+    tracer = UnifiedTracer(sources={name: src}, )
     tracer.build_graph()
     return tracer.get_graph()
 

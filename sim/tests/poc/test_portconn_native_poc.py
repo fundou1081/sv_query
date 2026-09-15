@@ -38,7 +38,7 @@ def _load_darkriscv():
         path = os.path.join(proj_path, f)
         with open(path, errors='replace') as fp:
             sources[f] = fp.read()
-    compiler = SVCompiler(sources=sources, strict=False, log_level='ERROR')
+    compiler = SVCompiler(sources=sources, log_level='ERROR')
     compiler.add_include_dir(proj_path)
     return compiler, "darksocv"
 

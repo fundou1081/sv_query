@@ -522,7 +522,7 @@ endmodule
         from cli._common import _build_tracer
         tracer = _build_tracer(
             filelist=str(filelist),
-            strict=False,
+            
             log_level="ERROR",
         )
         tracer.build_graph()  # 不应 raise

@@ -33,7 +33,7 @@ def strict_uart_graph():
         shutil.rmtree(p, ignore_errors=True)
     from trace.unified_tracer import UnifiedTracer
     src = SYNCHRONIZER.read_text()
-    tracer = UnifiedTracer(sources={"synchronizer.sv": src}, strict=False)
+    tracer = UnifiedTracer(sources={"synchronizer.sv": src}, )
     return tracer.build_graph()
 
 

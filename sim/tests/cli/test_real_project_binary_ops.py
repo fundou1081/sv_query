@@ -30,7 +30,7 @@ def _build_graph():
     _strip_pycache()
     from trace.unified_tracer import UnifiedTracer
     src = ALU_PATTERN.read_text()
-    tracer = UnifiedTracer(sources={ALU_PATTERN.name: src}, strict=False)
+    tracer = UnifiedTracer(sources={ALU_PATTERN.name: src}, )
     return tracer.build_graph()
 
 

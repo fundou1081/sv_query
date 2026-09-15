@@ -115,9 +115,9 @@ def detect(
         include_dirs = include.split(",") if include else None
         try:
             if filelist:
-                ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs, strict=True)
+                ext = SVSignalExtractor.from_filelist(filelist, include_dirs=include_dirs, )
             else:
-                ext = SVSignalExtractor.from_file(file, include_dirs=include_dirs, strict=True)
+                ext = SVSignalExtractor.from_file(file, include_dirs=include_dirs, )
             mods = ext.extract_all_modules()
             if module:
                 mod = mods.get(module)

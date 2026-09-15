@@ -42,7 +42,7 @@ LEGIT_INPUTS = {
 @pytest.mark.parametrize("name,src", sorted(EXPRESSION_INPUTS.items()))
 def test_expression_root_rejected_not_crash(name, src):
     """表达式根 → 明确报错 (而不是 SIGTRAP)。"""
-    comp = SVCompiler({"x.sv": src}, log_level="NONE", strict=True)
+    comp = SVCompiler({"x.sv": src}, log_level="NONE", )
     with pytest.raises(CompilationError) as ei:
         comp.get_root()
     msg = str(ei.value)
@@ -53,7 +53,7 @@ def test_expression_root_rejected_not_crash(name, src):
 @pytest.mark.parametrize("name,src", sorted(LEGIT_INPUTS.items()))
 def test_legit_inputs_unaffected(name, src):
     """守卫不能误伤合法输入 (含空文件/仅注释/仅 define 这些"没有设计单元"的文件)。"""
-    comp = SVCompiler({"x.sv": src}, log_level="NONE", strict=True)
+    comp = SVCompiler({"x.sv": src}, log_level="NONE", )
     root = comp.get_root()  # 不抛异常即通过 (空/注释/define 文件 tops=0 是合法的)
     assert root is not None, f"{name}: root 不应为 None"
 
@@ -61,7 +61,7 @@ def test_legit_inputs_unaffected(name, src):
 def test_module_only_file_still_compiles():
     """最常见的单文件场景 (根节点是 ModuleDeclaration) 必须照常工作。"""
     src = "module top(input logic a, output logic b); assign b = a; endmodule\n"
-    comp = SVCompiler({"top.sv": src}, log_level="NONE", strict=True,
+    comp = SVCompiler({"top.sv": src}, log_level="NONE", 
                       top_modules=["top"])
     root = comp.get_root()
     tops = list(root.topInstances)

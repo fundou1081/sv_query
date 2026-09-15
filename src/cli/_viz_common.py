@@ -59,8 +59,7 @@ def build_viz_tracer(
     file: str | None,
     filelist: str | None,
     include: str | None,
-    strict: bool,
-    target_module: str | None = None,
+        target_module: str | None = None,
     use_cache: bool = False,
 ):
     """Build a tracer + graph for any visualize subcommand.
@@ -92,7 +91,7 @@ def build_viz_tracer(
     tracer = _build_tracer(
         file=file_path,
         filelist=filelist,
-        strict=True,
+        
         include_dirs=include_dirs,
     )
     # [iter_126 A1 收窄 2026-09-04] 自动单 top target 只在 CLI 设计视图入口启用:

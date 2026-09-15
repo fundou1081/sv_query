@@ -30,7 +30,7 @@ class TestF2ExpressionTreeInjection(unittest.TestCase):
     """[Plan F2.4.2] DriverInfo.expression_tree 注入验证"""
 
     def _make_tracer(self, source):
-        return UnifiedTracer(sources={'test.sv': source}, strict=False)
+        return UnifiedTracer(sources={'test.sv': source}, )
 
     def test_simple_assignment_injects_expression_tree(self):
         """`assign y = a + b` → 2 driver 都拿到 Add(a, b) expression tree"""

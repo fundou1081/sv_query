@@ -125,8 +125,7 @@ def query_risk_json(
     file: str | None = None,
     filelist: str | None = None,
     include_dirs: list[str] | None = None,
-    strict: bool = True,
-) -> dict:
+    ) -> dict:
     import subprocess
     import sys as _sys
     # [FIX 2026-08-13] 移除废弃的 2GB bytearray 内存回收 hack.
@@ -146,7 +145,7 @@ def query_risk_json(
     #   显式传 include_dirs → addUserDirectories 加载整个目录 (e.g. 171 个 OpenTitan
     #   文件) → prim_assert.sv 的 include 链展开内存暴增 → 8GB MBA 内存不足 →
     #   pyslang 静默失败 (str() 返回非法 UTF-8) → UnicodeDecodeError 崩溃.
-    if not strict:
+    if False:  # [iter_222] 恒定严格
         pass  # [iter_211] --no-strict 已禁用 (AGENTS 纪律 1)
     last_err = ""
     for attempt in range(3):
@@ -323,7 +322,7 @@ def _resolve_to_canonical_type(
         tracer = _build_tracer(
             file=P(file) if file else None,
             filelist=filelist,
-            strict=False,
+            
             include_dirs=include_dirs,
             log_level="NONE",  # 不重复输出 WARNING 到 stdout (避免重复 warnings)
         )
@@ -422,7 +421,7 @@ def parse_width_from_pyslang(
         tracer = _build_tracer(
             file=P(file) if file else None,
             filelist=filelist,
-            strict=False,
+            
             include_dirs=include_dirs,
         )
         tracer.build_graph()
@@ -828,8 +827,7 @@ def generate_covergroup(
     related_signals: list[str] = None,
     filelist: str | None = None,
     module_name: str | None = None,
-    strict: bool = False,
-) -> str:
+    ) -> str:
     related_signals = related_signals or []
     if not target_signal:
         raise ValueError("target_signal is required")
@@ -839,7 +837,7 @@ def generate_covergroup(
 
     # sv_query risk analyze: 用 filelist (如果给) 否则用 file
     risk = query_risk_json(
-        file=file, filelist=filelist, include_dirs=include_dirs, strict=strict,
+        file=file, filelist=filelist, include_dirs=include_dirs, 
     )
     # 多 module 文件: 只看指定 module (或第一个 module)
     if module_name:
@@ -1007,7 +1005,7 @@ def main():
         related_signals=related,
         filelist=filelist,
         module_name=module_name,
-        strict=strict,
+        
     )
     print(cg)
 

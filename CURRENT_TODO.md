@@ -42,6 +42,9 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_222 (逐文件工具 + 全量改写 202→27 — 方豆: 继续做直到全部完成)**: 新增 `tools/remove_strict_in_file.py` (单文件 AST 精确改写: 形参 / 关键字实参 / **位置实参** / if 分支; 默认拒绝核心 `self._strict`); **改写 80 文件**, 202 → **27 处** (位置实参 0); 冒烟 10 命令 **9/10 rc=0**; 全量 **37 failed / 3278 passed**(32→37 恶化 5)。按"全改 + 失败先保留"保留并提交, **下一步: 定位并修这 5 个新失败** (很可能是某命令的 `if not strict:` 语义被反转), 然后核心层 `self._strict` 单独立项。
+[iter_222](docs/task_tree/iterations/iter_222_perfile_mass_rewrite.md)
+
 **iter_221 (逐文件改造 文件 1/N: handshake.py — 方豆: 逐文件修改, 全改)**: 方案 A 首个文件 (含全仓唯一位置实参): AST 精确删 2 形参 + 6 关键字实参 + **1 位置实参**; 五层验证全过 (ast.parse / `scan_strict` 该文件 0 / 冒烟 `handshake scan`+`analyze` rc=0 / 相关测试 **297 passed** / **全量 32 failed / 3284 passed**) —— 比批次 2 的 34 failed **改善 2**。下一个文件按 Top 列表: `visualize.py` → `trace.py` → ... → 最后 `src/trace` 核心 `self._strict`。
 [iter_221](docs/task_tree/iterations/iter_221_perfile_handshake.md)
 

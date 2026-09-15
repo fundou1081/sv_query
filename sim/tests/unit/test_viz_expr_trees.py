@@ -26,7 +26,7 @@ from trace.unified_tracer import UnifiedTracer
 def _build_graph(src: str, target: str | None = None):
     tracer = UnifiedTracer(
         sources={f"_test_f2_{hash(src) & 0xFFFFFFFF}.sv": src},
-        strict=False,
+        
     )
     if target:
         tracer.trace_module(target)

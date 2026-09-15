@@ -35,7 +35,7 @@ def _build_graph(file_path: Path, target: str = "generate_if_alu"):
     _strip_pycache()
     from trace.unified_tracer import UnifiedTracer
     src = file_path.read_text()
-    tracer = UnifiedTracer(sources={file_path.name: src}, strict=False)
+    tracer = UnifiedTracer(sources={file_path.name: src}, )
     return tracer.build_graph()
 
 

@@ -33,7 +33,7 @@ class TestF2ExpressionTreeCoverage(unittest.TestCase):
     """[Plan F2.4.3] coverage_generator 用 ExpressionTree 抽 atomic"""
 
     def _make_tracer_and_graph(self, source: str, name: str = 'test.sv'):
-        tracer = UnifiedTracer(sources={name: source}, strict=False)
+        tracer = UnifiedTracer(sources={name: source}, )
         tracer.build_graph()
         return tracer.get_graph()
 

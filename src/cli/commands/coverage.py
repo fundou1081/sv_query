@@ -71,7 +71,7 @@ def suggest(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
             log_level=tracer_log_level,
 
             preprocess_macros=preprocess_macros,
@@ -140,7 +140,7 @@ def gap(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
             log_level=tracer_log_level,
             preprocess_macros=preprocess_macros,
         )
@@ -148,7 +148,7 @@ def gap(
 
         # 1. 提取 covergroups (使用 tracer 的 sources, 跟 graph 保持一致)
         sources = tracer.sources if hasattr(tracer, "sources") else {}
-        extractor = CovergroupExtractor(sources=sources, strict=True)
+        extractor = CovergroupExtractor(sources=sources, )
         covergroups = extractor.extract()
 
         # 2. 一致性分析
@@ -254,7 +254,7 @@ def generate(
             related_signals=related,
             filelist=filelist,
             module_name=module,
-            strict=True,
+            
         )
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -309,15 +309,15 @@ def analyze(
         tracer = _build_tracer(
             file=Path(file) if file else None,
             filelist=filelist,
-            strict=True,
+            
         )
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         raise typer.Exit(code=1) from e
 
     sources = tracer.sources if hasattr(tracer, "sources") else {}
 
-    extractor = CovergroupExtractor(sources=sources, strict=True)
+    extractor = CovergroupExtractor(sources=sources, )
     covergroups = extractor.extract()
 
     # filter

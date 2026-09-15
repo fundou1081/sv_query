@@ -115,14 +115,14 @@ def analyze(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     # Build GraphBuilder for analyzer
@@ -130,7 +130,7 @@ def analyze(
     from trace.core.semantic_adapter import SemanticAdapter
 
     # [FIX 2026-06-12 Req-15] 跟 caller 的 strict 一致, 避免 non-strict 仍报 CompilationError
-    compiler = SVCompiler(sources, strict=True)
+    compiler = SVCompiler(sources, )
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -211,20 +211,20 @@ def list_conditioned(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, strict=True)
+    compiler = SVCompiler(sources, )
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -275,20 +275,20 @@ def get_conditions(
         tracer = _build_tracer(
             file=file,
             filelist=filelist,
-            strict=True,
+            
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, strict=True)
+        handle_compilation_error(e, )
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, strict=True)
+    compiler = SVCompiler(sources, )
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)

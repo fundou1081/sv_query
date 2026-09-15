@@ -374,11 +374,11 @@ def deadlock(
     include_dirs = include.split(",") if include else None
     try:
         if filelist:
-            tracer = UnifiedTracer(filelist=filelist, include_dirs=include_dirs, strict=True)
+            tracer = UnifiedTracer(filelist=filelist, include_dirs=include_dirs, )
         else:
             with open(file) as f:
                 sources = {file: f.read()}
-            tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, strict=True)
+            tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, )
     except Exception as e:
         typer.echo(f"Error building tracer: {e}", err=True)
         raise typer.Exit(1) from e

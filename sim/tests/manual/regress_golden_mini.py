@@ -58,7 +58,7 @@ def _run_case(fix: Path, level: str, dump_dir: Path | None = None) -> tuple[bool
     try:
         _, graph = build_viz_tracer(
             file=str(fix), filelist=None, include=None,
-            strict=True, target_module=target)
+            target_module=target)
         classification = classify_graph(graph)
         viz = build_viz_data(graph, VizBuildOptions(
             target_module=target, include_edge_expression=True,

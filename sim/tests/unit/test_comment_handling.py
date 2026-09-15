@@ -304,7 +304,7 @@ module mod_d(input wire clk); endmodule
         inst_names = [inst.name for inst in instances]
         expected_names = ['inst_a', 'inst_b', 'inst_c', 'inst_d']
 
-        for expected, actual in zip(expected_names, inst_names, strict=False):
+        for expected, actual in zip(expected_names, inst_names, ):
             self.assertEqual(actual, expected,
                 f"实例名称应为 '{expected}'，实际为 '{actual}'")
 

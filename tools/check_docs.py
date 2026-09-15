@@ -79,7 +79,7 @@ def check_index_registration():
     return index_txt, missing
 
 
-def check_stale_counts(index_txt, strict=False):
+def check_stale_counts(index_txt, ):
     """文档内硬编码测试计数 vs INDEX.md 基准 (警告级)."""
     if index_txt is None:
         return []

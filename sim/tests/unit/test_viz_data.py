@@ -14,7 +14,7 @@ def _build_graph(src: str, target: str | None = None):
     """编译 SV 源码并提取 SignalGraph"""
     tracer = UnifiedTracer(
         sources={f"_test_viz_{hash(src) & 0xFFFFFFFF}.sv": src},
-        strict=False,
+        
     )
     if target:
         tracer.trace_module(target)

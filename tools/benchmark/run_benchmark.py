@@ -172,8 +172,7 @@ def collect_l4(tracer, target: str, depth: int) -> dict:
 
 
 def measure_flakiness(
-    filelist: str = None, files: list = None, include_dirs: list = None, strict: bool = True,
-    runs: int = 5, top_modules: list = None,
+    filelist: str = None, files: list = None, include_dirs: list = None,     runs: int = 5, top_modules: list = None,
 ) -> dict:
     """[PR5+PR7] 跑 N 次 build_graph, 算总节点数变异."""
     counts = []
@@ -289,7 +288,7 @@ def main():
         t = UnifiedTracer(
             filelist=args.filelist,
             include_dirs=include_dirs,
-            strict=args.strict,
+            
             log_level="ERROR",
             top_modules=[args.target],
         )
@@ -298,7 +297,7 @@ def main():
         t = UnifiedTracer(
             files=args.files,
             include_dirs=include_dirs,
-            strict=args.strict,
+            
             log_level="ERROR",
             top_modules=[args.target],
         )
@@ -345,7 +344,7 @@ def main():
             filelist=args.filelist,
             files=args.files,
             include_dirs=include_dirs or [],
-            strict=args.strict,
+            
             runs=args.runs,
             # [iter_181] 与主测量一致: 只 elaborate 目标树; 缺此参数时
             # free-floating type-param 模块 (axi_demux 等) 报

@@ -165,7 +165,7 @@ class TestUnifiedTracerPreprocess:
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }
-        t = UnifiedTracer(sources=sources, log_level="ERROR", strict=False, preprocess_macros=False)
+        t = UnifiedTracer(sources=sources, log_level="ERROR", preprocess_macros=False)
         # 检查 _sources 没被改
         assert "`FOO-1" in t.sources["a.sv"]
         assert t._preprocessed is False
@@ -176,7 +176,7 @@ class TestUnifiedTracerPreprocess:
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }
-        t = UnifiedTracer(sources=sources, log_level="ERROR", strict=False, preprocess_macros=True)
+        t = UnifiedTracer(sources=sources, log_level="ERROR", preprocess_macros=True)
         # 触发 preprocess
         t._ensure_preprocessed()
         # source 被替换
@@ -189,7 +189,7 @@ class TestUnifiedTracerPreprocess:
         sources = {
             "a.sv": "`define FOO 4\nlogic [`FOO-1:0] x;\n"
         }
-        t = UnifiedTracer(sources=sources, log_level="ERROR", strict=False, preprocess_macros=True)
+        t = UnifiedTracer(sources=sources, log_level="ERROR", preprocess_macros=True)
         t._ensure_preprocessed()
         first = t.sources["a.sv"]
         t._ensure_preprocessed()
