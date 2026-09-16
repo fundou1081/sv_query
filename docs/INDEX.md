@@ -18,7 +18,7 @@
 | 全量 (canonical) | **3317 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 166 deselected) | 2026-09-09 实测 (iter_226): 彻底移除 strict 全闭环 (全仓 strict = 0) + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 (fixture `nested_mux_demo.sv` 的 `output` 缺 `reg`) |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (217 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (218 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -54,7 +54,9 @@
 
 | 文档 | 作用 |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 架构总览 (四层 L1-L4) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 架构总览 (四层 L1-L4) ⚠️ **部分过期**, 见 `CLI_SURFACE.md`/iter_230 |
+| [CLI_SURFACE.md](CLI_SURFACE.md) | **CLI 能力清单 (生成物, 勿手改)** — 分层/契约/成本/`--json`/filelist; `tools/gen_cli_surface.py` 重新生成 |
+| [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | **exp 降级区政策** — 五条硬约束 + 晋升门槛 (含 cdc/timing 专项) |
 | [ARCHITECTURE_EVOLUTION.md](ARCHITECTURE_EVOLUTION.md) | 架构演进历史 |
 | [ARCHITECTURE_TODOLIST.md](ARCHITECTURE_TODOLIST.md) | 架构改造 7 项长期追踪 |
 | [SIGNAL_GRAPH_SPEC.md](SIGNAL_GRAPH_SPEC.md) | SignalGraph 输入输出 Spec |
