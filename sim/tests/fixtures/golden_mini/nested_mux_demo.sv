@@ -41,7 +41,7 @@ module nested_mux_demo(
     output reg [7:0] y_concat_in_mux,
     output reg [7:0] y_default_chain,
     output     [7:0] y_inside_func_call,
-    output     [7:0] y_array_index_mux
+    output reg [7:0] y_array_index_mux
 );
 
     // ----------------------------------------------------------------------
