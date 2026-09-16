@@ -45,23 +45,29 @@ D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 **文档**: `docs/PYSLANG_MEMORY_ISSUE.md` (已按真因改写),
 `docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md`
 
-### 3.1 pyslang 非设计单元输入 → 原生 SIGTRAP (iter_189, 已在我们层加守卫)
+### 3.1 `-f` / `--file` 传 filelist → 原生 SIGTRAP (用法不一致, 不是上游缺陷)
 
-`pyslang`/`slang` 的 `Compilation.addSyntaxTree()` 在语法树根节点是**表达式**时
-**直接 SIGTRAP** (exit 133, 无输出、无 Python 异常可捕获)。触发条件: 输入文本不是
-SystemVerilog 设计单元 → slang 走 script 模式解析成表达式。最典型事故是**把
-filelist 当源码传**:
+> **方豆判定 (2026-09-09)**: 这是**用法不一致**问题 —— **不向上游 pyslang 报 issue**,
+> 记录清楚并**避免这样使用**即可 (见 `AGENTS.md` 核心纪律 4)。
+
+**正确用法**: `-f` / `--file` 只接受 SystemVerilog **源码**; filelist 一律用 `--filelist`。
 
 ```bash
-sv_query visualize module -f project.f     # 曾经直接崩 (filelist 内容被当 SV 源码)
+sv_query visualize module -f project.f          # ❌ 禁止 (用法错)
+sv_query visualize module --filelist project.f --target top   # ✅
+sv_query stats -f design.sv                     # ✅ 单文件源码
 ```
 
-**我们层的守卫** (`src/trace/core/compiler.py::_reject_non_design_unit`): 在
-`addSyntaxTree` 之前检查根节点类型, 表达式根 → 抛可行动的 `CompilationError`
-(提示"是否把 filelist 当源码传入")。合法输入 (根节点 `CompilationUnit` /
+**为什么会崩 (机制)**: filelist 的内容 (如 `/path/to/mod.sv`) 被当源码解析 →
+slang 走 script 模式 → 根节点成了**表达式** (`DivideExpression`, 因为路径里有 `/`) →
+`pyslang` 的 `Compilation.addSyntaxTree()` **直接 SIGTRAP** (exit 133, 无输出、
+无 Python 异常可捕获, `faulthandler` 也拿不到栈)。
+
+**本项目已加的守卫 (机械保障)**: `src/trace/core/compiler.py::_reject_non_design_unit`
+在 `addSyntaxTree` 之前检查根节点类型, 表达式根 → 抛可行动的 `CompilationError`
+(提示"请用 `--filelist`")。合法输入 (根节点 `CompilationUnit` /
 `ModuleDeclaration` / `ClassDeclaration` / 空文件 / 仅 `define`) 不受影响。
 
-**上游建议**: pyslang 应在 `addSyntaxTree` 里拒绝非设计单元树 (返回错误), 而不是 trap。
 回归测试: `sim/tests/unit/test_compiler_non_design_unit_guard.py` (守卫失效时测试进程
 会以 exit 133 死掉, 信号明确)。
 

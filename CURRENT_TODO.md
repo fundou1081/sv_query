@@ -27,10 +27,15 @@
 **全量 canonical 3317 passed / 0 failed**。
 任务文件: `docs/task_tree/tasks/L1_remove_strict.md` + `tasks/L1_zero_red_and_policy_followups.md`。
 
-**下一步候选 (待方豆拍板)**: ① 上游 pyslang `addSyntaxTree` 原生 SIGTRAP 是否提 issue
-(最小复现 + issue 文本已备好, 见 iter_189 §"可直接提给上游的 issue 文本"); ② 12 个可视化 skip
-**方豆已定: 先不转正** (需按 SVG 语义重写断言)。
-**已闭环**: strict 全移除 / 全量 0 failed / L1L4 硬失败 (iter_228)。
+**已闭环**: strict 全移除 / 全量 0 failed / L1L4 硬失败 (iter_228) /
+`-f` 用法纪律立规 (iter_229)。
+
+**待方豆拍板**: 无 —— 12 个可视化 skip **已定: 先不转正**;
+上游 pyslang SIGTRAP **已定: 不提 issue (用法不一致)**, 改为立纪律避免误用。
+
+**下一步方向候选 (未拍板, 需要时提)**: ① `docs/ARCHITECTURE_TODOLIST.md` 的架构改造 7 项;
+② `docs/TODO.md` 的版本级功能待办; ③ `-f` 是否同时接受 filelist (iter_189 曾列为方案 B,
+方豆本轮选择"记录避免误用"而非改语义)。
 
 **历史任务 (参考)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 文本结构化输出审计)。
 
@@ -51,6 +56,16 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_229 (`-f` / `--filelist` 用法纪律落地 — 方豆: 这是用法的不一致不算 issue, 记录好避免这样使用)**:
+`AGENTS.md` 新增**核心纪律 4** (v1.7): `-f`/`--file` 只接**源码**, filelist 一律用 `--filelist` +
+自我审视清单对应一条。写清三件事: ① 为什么容易错 (本项目 `-f`=`--file`, 很多工具 `-f` 是 filelist);
+② 错了会怎样 (filelist 内容被当 script 解析 → 表达式根 → `addSyntaxTree` 原生 SIGTRAP, exit 133 不可捕获);
+③ 已有机械保障 (守卫 + 回归测试)。**方豆判定: 不提上游 issue —— 定性为用法不一致, 动作是记录+避免误用**。
+同步: `docs/KNOWN_LIMITATIONS.md` §3.1 标题/正文改写 (删掉与原判定冲突的"上游建议"),
+`TESTING.md` 已知限制行补"已立为纪律", `iter_189` 的三行待决全部回填决定 + issue 正文标注
+"不提交, 仅作技术档案" (保留原文不删)。本轮**无代码改动** (守卫与测试 iter_189 已存在)。
+[iter_229](docs/task_tree/iterations/iter_229_file_flag_usage_discipline.md)
 
 **iter_228 (L1/L4 回归判定改硬失败 — 方豆拍板)**: 方豆决策 **"1 改成硬失败"**。
 `check_regression.py` 的 L1/L4 越界从 ⚠️ 警告 (不改退出码) 改为 **❌ 硬失败 (exit 1)** ——

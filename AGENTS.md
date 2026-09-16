@@ -92,6 +92,40 @@ python3 tools/check_except_pass.py     # 必须 ✅ (非 0 = 违规, 提交前�
 
 **禁止**在第 5 步之前用 `--no-strict` / 加 `try/except` 兜底 / 改 return type 让它"能跑"。
 
+### 4. 禁止用 `-f` / `--file` 传 filelist (2026-09-09 新增)
+
+**`-f` / `--file` 只接受 SystemVerilog 源码; filelist 一律用 `--filelist`。**
+
+**理由**: 这是**用法不一致**的问题, 不是上游 bug —— 本项目 `-f` = `--file` (单文件),
+而很多其他工具 `-f` 就是 filelist, 习惯迁移过来就会写错。写错的后果不是普通报错:
+
+```
+sv_query visualize module -f project.f     # ← 禁止
+```
+
+filelist 的内容 (如 `/path/to/mod.sv`) 被当源码解析 → slang 走 script 模式 →
+根节点成了**表达式** (`DivideExpression`, 因为路径里有 `/`) →
+`pyslang` 的 `Compilation.addSyntaxTree()` **原生 SIGTRAP** (exit 133, 无输出、
+无 Python 异常可捕获, `faulthandler` 也拿不到栈)。
+
+**机械保障** (已有):
+- `SVCompiler._reject_non_design_unit()` 在 `addSyntaxTree` 之前拒绝表达式根,
+  抛可行动的 `CompilationError` (提示"请用 --filelist")
+- 回归测试 `sim/tests/unit/test_compiler_non_design_unit_guard.py`
+  (守卫失效时 pytest 会以 exit 133 崩 —— 最原始的报警方式)
+- 详见 `docs/KNOWN_LIMITATIONS.md` §3.1
+
+**方豆决定 (2026-09-09)**: **不向上游 pyslang 报 issue** —— 判定为"用法不一致",
+正确做法是**记录清楚并避免这样使用** (即本条纪律), 而不是把用户误用当成上游缺陷。
+
+**正确写法**:
+
+```bash
+sv_query stats --filelist project.f          # ✅ filelist
+sv_query stats -f design.sv                 # ✅ 单文件源码
+sv_query visualize module --filelist project.f --target top   # ✅
+```
+
 ---
 
 ## 📐 工作流规范
@@ -414,6 +448,7 @@ docs/task_tree/
 ## 🔍 自我审视清单 (每完成一个 sub-task)
 
 - [ ] 我有没有用 `--no-strict`? → 如果有, 立刻删除, 改诊断根因
+- [ ] 我有没有用 `-f` / `--file` 传 filelist? → 如果有, 改成 `--filelist` (核心纪律 4)
 - [ ] 我有没有 silent fallback? → 如果有, 改成显式错误 + sentinel
 - [ ] 我有没有为通过测试改 assertion / fixture 而不修功能? → 如果有, revert
 - [ ] 我有没有改 src/ 让一个本来失败的 case "意外通过"? → 如果有, 仔细 review
@@ -478,4 +513,10 @@ docs/task_tree/
   → 全部改为可见日志 + 新增 `tools/check_except_pass.py` (提交前必跑, 见 🧹 文档卫生
   第 6 条) + 回归测试含"检查器能检出违规"自检。
   方豆指示 "继续" (查 CLI 敌意输入时发现)。
+- v1.7 (2026-09-09 iter_229) — 新增核心纪律 **4. 禁止用 `-f` / `--file` 传 filelist**
+  (`-f` 只接源码, filelist 一律 `--filelist`) + 自我审视清单对应一条;
+  方豆判定: 这是**用法不一致**, **不向上游 pyslang 报 issue**, 记录清楚避免这样使用。
+  背景: 误用时 slang 把 filelist 内容当 script 解析成表达式根 →
+  `Compilation.addSyntaxTree()` 原生 SIGTRAP (exit 133, 无输出、不可捕获);
+  已有守卫 + 回归测试 (iter_189)。
 

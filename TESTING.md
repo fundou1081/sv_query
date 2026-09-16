@@ -62,7 +62,7 @@ python -m pytest sim/tests/unit/ -v
 | pyslang 11.0+ 不再报 MissingTimeScale | 🔴 blocked | `test_fix_timescale.py` 相关 5 tests skipped |
 | ventus 开源项目测试 | 🟡 opensource | pytest marker `opensource`，本地跳过 |
 | `test_ventus_all_viz_validation.py` (opensource 集内) | ✅ **0 failed (iter_188 分诊: 15 passed / 13 明确 skip)** | 原 14 failed 系四类根因: ①`--dot` 自 V100 起是 `--svg` 别名(输出 SVG)而断言基于旧 DOT 语义 → 改 `_read_dot()` 内容判定后 skip 并说明; ②trace 子命令无 `--dot`, 正确用法 `--format dot --output`; ③生成器静默+用了被禁的 `--no-strict` (已全去) → 现在记录 rc≠0 原因并上抛到 skip 原因; ④相邻发现: `visualize module` **原生崩溃 (SIGTRAP)**。见 `docs/task_tree/iterations/iter_188_ventus_viz_suite_triage.md` |
-| `visualize module -f <非设计单元>` 原生崩溃 | ✅ **已修 (iter_189)** | 根因 = pyslang `Compilation.addSyntaxTree()` 对**表达式根**语法树 SIGTRAP (把 filelist 当 `--file` 传入即触发); 已在 `SVCompiler` 加守卫 → 现在报可行动的 `CompilationError` (rc=1)。回归测试 `sim/tests/unit/test_compiler_non_design_unit_guard.py`; 见 `docs/KNOWN_LIMITATIONS.md` §3.1 |
+| `-f/--file` 传 filelist (非设计单元) | ✅ **已修 (iter_189)** + **已立为纪律 (iter_229)** | 根因 = pyslang `Compilation.addSyntaxTree()` 对**表达式根**语法树 SIGTRAP (把 filelist 当 `--file` 传入即触发); 已在 `SVCompiler` 加守卫 → 现在报可行动的 `CompilationError` (rc=1)。**方豆判定 (2026-09-09): 这是用法不一致, 不向上游报 issue; 已写入 `AGENTS.md` 核心纪律 4 — `-f` 只接源码, filelist 一律 `--filelist`**。回归测试 `sim/tests/unit/test_compiler_non_design_unit_guard.py`; 见 `docs/KNOWN_LIMITATIONS.md` §3.1 |
 | picorv32/naplespu 项目测试 | 🟡 opensource | 已有 `skipif` |
 | benchmark baseline 漂移 | ✅ 已修 (iter_187) | 3 个 baseline 曾全部与当前行为不符且不可复现 → 已重生成 + `regen_baselines.py --check` (rc=2) + "活体==baseline" 守卫测试 |
 | `/tmp/cdc_test/` fixture 依赖 | 🟡 runtime | conftest.py 可加 fixture setup |

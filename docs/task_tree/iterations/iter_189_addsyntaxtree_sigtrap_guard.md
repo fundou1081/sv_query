@@ -118,13 +118,16 @@ x.sv: 解析结果的根节点是 SyntaxKind.DivideExpression (SystemVerilog 表
 
 ## 📢 待方豆决定
 
-| # | 事 | 建议 | 代价 |
-|---|---|---|---|
-| 1 | `-f` 歧义 (本项目 `-f`=`--file`) | 可选: `-f` 同时接受 filelist (按内容/扩展名判定) 或给 `.f` 内容加显式提示 | 小 |
-| 2 | 是否向上游 pyslang 报此 trap | 有最小复现, 可直接提 issue (addSyntaxTree 应返回错误而非 trap) | 小 |
-| 3 | iter_188 遗留的 13 个 SVG 语义 skip | 需方豆确认可视化语义后重写断言 | 中 |
+| # | 事 | 方豆决定 (2026-09-09) |
+|---|---|---|
+| 1 | `-f` 歧义 (本项目 `-f`=`--file`) | ✅ **记录下来避免这样使用** —— 已写入 `AGENTS.md` **核心纪律 4**: `-f`/`--file` 只接源码, filelist 一律 `--filelist` (+ 自我审视清单一条); `docs/KNOWN_LIMITATIONS.md` §3.1 改写为"用法不一致" |
+| 2 | 是否向上游 pyslang 报此 trap | ❌ **不提 issue** —— 判定为**用法不一致**, 不是上游缺陷; 正确做法是记录清楚 + 避免误用 |
+| 3 | iter_188 遗留的 13 个 SVG 语义 skip | ✅ 已定: **先不转正** (iter_226 已把其中 1 个真正转正: arch d=1 artifact 此前从未生成) |
 
-## 📋 可直接提给上游的 issue 文本 (iter_195 整理, 待方豆决定是否提交)
+## 📋 可直接提给上游的 issue 文本 (iter_195 整理)
+
+> **⚠️ 2026-09-09 方豆决定: 不提交** —— 判定为**用法不一致**, 不作为上游缺陷上报。
+> 本节仅作为技术档案保留 (若将来上游主动询问或同类 trap 出现在合法输入上, 可直接引用)。
 
 **Title**: `Compilation.addSyntaxTree()` traps (SIGTRAP) when the tree root is an expression (script-mode parse)
 
