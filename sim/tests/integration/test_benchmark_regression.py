@@ -9,6 +9,7 @@ PR6 目标: check_regression.py 对比 current vs baseline JSON, 输出 regressi
 - 同样的数据自己比自己 PASS
 - 模拟 regression (50% nodes drop) FAIL
 - 模拟 flakiness (deterministic_ratio 降到 0.5) FAIL
+- [iter_226] 新增: L1/L4 跌 35% (> 30% 新阈值) 触发 ⚠️ 警告 (退出码仍 0 — 本工具历史语义)
 - 模拟 acceptable drop (10% nodes) PASS
 """
 
@@ -136,7 +137,7 @@ class TestRegressionDetection:
         assert "❌ L2_im" in result.stdout
 
     def test_flakiness_drop_below_threshold_fails(self):
-        """deterministic_ratio 降到 0.5 应该 FAIL (threshold 0.7)."""
+        """deterministic_ratio 降到 0.5 应该 FAIL (iter_226 阈值 = 1.0)."""
         variant = _make_variant(PICO_BASELINE, **{"flakiness.deterministic_ratio_im": 0.5})
         result = _run_check(variant, baseline=PICO_BASELINE)
         assert result.returncode != 0, "should fail on flakiness drop"
@@ -163,12 +164,31 @@ class TestAcceptableChange:
             f"25% edge drop should pass: {result.stdout}\n{result.stderr}"
         )
 
-    def test_l1_40_pct_drop_warns_only(self):
-        """L1 instances 跌 40% (< 50%) 应该 WARN 但 PASS (AST 容易 flakiness)."""
-        # L1 baseline has 0 instances, so this doesn't really apply.
-        # Use a baseline with > 0 L1.
-        # (picorv32 has L1=0, so no regression to check)
-        # Just verify that L1 doesn't cause hard fail.
+    def test_l1_35_pct_drop_warns_with_tightened_threshold(self):
+        """[iter_226] L1 跌 35% (> 30% 新阈值, 旧阈值 50% 下不会报) → ⚠️ 警告, 退出码 0.
+
+        verilog_axi 的 L1 instance_count=6 (>0), 用它派生 65% 变体。
+        ⚠️ 本工具的 L1/L4 越界**只警告不改退出码** (历史语义: 当年受 flakiness
+        影响, 误报会打断 CI) — 这里同时锁定"新阈值生效"和"仍是警告级"。
+        """
+        variant = _make_scaled_variant(
+            VERILOG_AXI_BASELINE, **{"L1_module_extraction.instance_count": 0.65})
+        result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
+        assert "⚠️  L1_instances: dropped" in result.stdout, result.stdout
+        assert "max_drop=30.0%" in result.stdout, result.stdout
+        assert result.returncode == 0, "L1 越界历史上只警告, 不应改退出码"
+
+    def test_l4_35_pct_drop_warns_with_tightened_threshold(self):
+        """[iter_226] L4 跌 35% (> 30%) → ⚠️ 警告 (同上, verilog_axi L4=146)."""
+        variant = _make_scaled_variant(
+            VERILOG_AXI_BASELINE, **{"L4_cross_instance_edges.edge_count": 0.65})
+        result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
+        assert "⚠️  L4_edges: dropped" in result.stdout, result.stdout
+        assert "max_drop=30.0%" in result.stdout, result.stdout
+        assert result.returncode == 0
+
+    def test_l1_self_compare_passes(self):
+        """picorv32 L1=0 → 该维度跳过, 自比照常 PASS (原 test_l1_40_pct_drop_warns_only 的本意)."""
         result = _run_check(PICO_BASELINE, baseline=PICO_BASELINE)
         assert result.returncode == 0
 

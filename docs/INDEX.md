@@ -15,10 +15,10 @@
 | 源码规模 | 163 文件 / 63,146 行 | `find src -name "*.py"` |
 | 测试规模 | 368 测试文件 / 78,847 行 + 117 SV fixture | `find sim/tests -name "*.py"` |
 | 回归基线 | **2129 passed + 35 subtests** (unit + regression, `-m "not opensource"`) | 2026-09-08 实测 (iter_190 后) |
-| 全量 (canonical) | **3300 passed / 16 failed** (`sim/tests/`, `-m "not opensource"`; 8 skipped / 164 deselected) | 2026-09-09 实测 (iter_225): 彻底移除 strict 全闭环 (全仓 strict = 0) + 严格模式暴露的 12 个失败清零。**16 红全部是 `test_visualize_teach_nested_mux.py`** (fixture 有真实 elaboration 错误, 按方豆指示暂缓解冻) |
+| 全量 (canonical) | **3317 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 166 deselected) | 2026-09-09 实测 (iter_226): 彻底移除 strict 全闭环 (全仓 strict = 0) + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 (fixture `nested_mux_demo.sv` 的 `output` 缺 `reg`) |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (213 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (214 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 

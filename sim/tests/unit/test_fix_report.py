@@ -9,6 +9,7 @@ TDD: fix report CLI 命令 (Req-16 续)
 2. 输出: 总数 / 受影响文件数 / 每个 category 详情 / fix command
 3. JSON 输出含 by_category / by_code / auto_fixable count
 4. 无错时报 'Project is clean'
+4b. [iter_226] 拿不到任何结构化诊断时**必须非零退出** (不得伪装成 clean)
 5. help 文档化
 """
 import json
@@ -128,6 +129,28 @@ def test_fix_report_clean_project():
     assert r.returncode == 0
     assert "Project is clean" in r.stdout
     print("✅ fix report: 完整无错 SV → 'Project is clean'")
+
+
+def test_fix_report_unresolvable_filelist_fails_loudly():
+    """[iter_226] 拿不到任何结构化诊断 → 非零退出 + 说清原因 (不得报 clean)。
+
+    构造: filelist 里只有一个不存在的文件 → SVCompiler 抛 CompilationError,
+    但 `_elaboration_errors` 仍为空 (这是"输入无效", 不是"RTL 有错")。
+    collect_elaboration_diagnostics 的契约: 这种情况必须**重新抛出**, 让命令
+    以 rc=1 结束 —— 绝不能因为"诊断列表为空"就报 'Project is clean' 把失败
+    伪装成成功 (AGENTS 纪律 2: 无 silent fallback)。
+    """
+    tmpdir = tempfile.mkdtemp()
+    fl = Path(tmpdir) / "empty.f"
+    fl.write_text(f"{Path(tmpdir) / 'does_not_exist.sv'}\n")
+
+    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+
+    assert r.returncode != 0, f"应非零退出, 实际 rc=0\nstdout={r.stdout}"
+    assert "Project is clean" not in r.stdout, "不得把'输入无效'报成 clean"
+    combined = r.stdout + r.stderr
+    assert "没有解析到任何源文件" in combined, f"应说明根因, 实际: {combined[:400]}"
+    print("✅ fix report: 无诊断可拿 → 非零退出 + 根因可见")
 
 
 def test_fix_report_counts_auto_vs_manual():

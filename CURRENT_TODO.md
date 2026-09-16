@@ -22,13 +22,14 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **彻底移除 strict (L1, 恒定严格) ✅ 完成** — iter_215~225 全闭环,
-全仓 strict = 0, 全量门禁只余按方豆指示暂缓的可视化 16 红 (`test_visualize_teach_nested_mux.py`)。
-任务文件: `docs/task_tree/tasks/L1_remove_strict.md`。
+**当前任务 (方豆方向)**: **全量归零 ✅ 完成** — iter_215~226: 彻底移除 strict (全仓 strict = 0)
++ 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
+**全量 canonical 3317 passed / 0 failed**。
+任务文件: `docs/task_tree/tasks/L1_remove_strict.md` + `tasks/L1_zero_red_and_policy_followups.md`。
 
-**下一步候选 (待方豆拍板)**: ① 解冻可视化 16 红 (fixture 有真实 elaboration 错误);
-② `check_regression.py` 阈值收紧 (50%/0.7 → 30%/1.0); ③ 上游 pyslang `addSyntaxTree` SIGTRAP
-问题立项 (5 行最小复现见 iter_189); ④ 13 个冻结的可视化断言 skip 是否转正。
+**下一步候选 (待方豆拍板)**: ① `check_regression.py` 的 L1/L4 是否从"仅警告"改为**硬失败**
+(阈值已收紧到 30%, 但警告不改退出码 — 见 iter_226); ② 12 个可视化 skip 转正 (= 按 SVG 语义重写断言,
+方豆决策 ③ 现阶段不处理); ③ 上游 pyslang `addSyntaxTree` SIGTRAP 立项 (5 行最小复现见 iter_189)。
 
 **历史任务 (参考)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 文本结构化输出审计)。
 
@@ -49,6 +50,25 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_226 (全量归零 + 策略收尾 — 方豆: 去做吧)**: **16 failed → 0 failed / 3317 passed**。
+① **最后 16 个可视化红 = 一个词的 fixture 错误**: `nested_mux_demo.sv:44` 的
+`output [7:0] y_array_index_mux` 是 net, 却在 `always` 里用 `<=` 赋值 → 4 个 [AssignToNet]
+→ 改 `output reg` 后 **16 passed** (与 iter_213 `sim/test_comprehensive.sv` 同类: 过程赋值必须声明变量);
+② **尾随逗号清理尝试失败并回退**: AST 脚本 (`end_col_offset` 当字符下标用 → 中文注释项目里是**字节偏移**,
+先崩 IndexError) 修正后误删 **1-tuple** 的逗号 (`outputs=("root",)` → `("root")`, 语义从 tuple 变 str)
+→ `git checkout --` 立即回退 + 全仓 ast 复核; **决策: 保持原样** (语法合法无影响, 收益 << 风险) ——
+讽刺的是这正是 iter_224 文档里我自己写下的警告;
+③ **回归阈值收紧**: `check_regression.py` L1/L4 50%→30%, flakiness 0.7→**1.0** (硬失败);
+**如实说明: L1/L4 越界历来只警告不改退出码 → 真正改变 CI 判定的是 flakiness 1.0**;
+测试同步 (原 `test_l1_40_pct_drop_warns_only` 名不副实 → 拆为 3 个诚实用例, 锁 30% 新阈值 + 警告级语义) → 14 passed;
+④ **13 个冻结 skip 分诊**: `/tmp/sched_d1.dot` **从未被生成** (真来源是 `arch show --format dot --output`)
+→ 补生成后断言真跑 → **15→16 passed / 13→12 skipped**; 另修 `sched_pipeline_nocontrol` 生成写 `.svg`
+而断言读 `.dot` 的路径错配 (skip 理由从"artifact 缺失"变准确); 余 12 个 = 10 SVG 语义 + 2 PNG,
+按决策 ③ 继续暂缓;
+⑤ **证伪我上轮的"不可达"判断**: `CompilationError` 有多条**不产生诊断**的路径 (filelist 解析为空等)
+→ 补回归测试 `test_fix_report_unresolvable_filelist_fails_loudly` (rc≠0 + 不得报 clean) → test_fix_report 8 passed。
+[iter_226](docs/task_tree/iterations/iter_226_zero_red_and_policy_followups.md) / [任务文件](docs/task_tree/tasks/L1_zero_red_and_policy_followups.md)
 
 **iter_225 (严格模式暴露的 12 个失败清零 — goal 轮 2)**: 28 failed → **16 failed / 3300 passed**,
 只剩方豆指示暂缓的可视化项 → **L1 "彻底移除 strict" 目标态达成**。三个不同根因分别处理:

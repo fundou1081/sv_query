@@ -47,13 +47,14 @@ partial AST, 上层拿到"残缺图"继续跑。
 **最终状态 (iter_224 + iter_225 验收)**: `tools/scan_strict.py` = **0 处 / 0 文件**,
 全仓 (src + tools + sim/tests) 的 `--strict` / `--no-strict` **用法 = 0**,
 `SVCompiler` / `UnifiedTracer` / `SVSignalExtractor` 不再有 `strict` 形参或字段;
-**全量门禁 3300 passed / 16 failed** —— 16 红全是方豆指示暂缓的
-`test_visualize_teach_nested_mux.py` (fixture 有真实 elaboration 错误), 目标态达成。
+**全量门禁 3317 passed / 0 failed** —— 暂缓的 16 个可视化红已在 iter_226 清零
+(fixture `nested_mux_demo.sv:44` 的 `output` 缺 `reg`: net 不能在 always 里赋值), 目标态达成。
 
 | 收尾批次 | 范围 | 迭代 | 结果 |
 |---|---|---|---|
 | 6a | 核心层 `self._strict` + 降级分支 + 全部残留实参 | iter_224 | ✅ 27 处 → 0 |
 | 6b | 严格模式暴露的 12 个失败 (语料缺依赖 / fix 命令契约 / 用例锁降级语义) | iter_225 | ✅ 28 → 16 failed |
+| 收尾 | 最后 16 个可视化红 (fixture `output` 缺 `reg`) → 全量归零 | iter_226 | ✅ 16 → **0 failed** |
 
 **移除降级开关的必然代价 (两次实测)**: `strict=False` 时代留下的测试语料普遍**不完整**
 (iter_223 darkriscv 缺 `spi_master`, iter_225 NaplesPU 缺 `memory_bank_1r1w`),

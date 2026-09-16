@@ -141,10 +141,14 @@ self.assertIn("ConstEvalNonConstVariable", codes)   # 结构化诊断码
    关键区分: **是否把失败伪装成成功**。这里失败仍以结构化诊断 + 非零态可见。
 3. **同类坑会重复出现**: 语料缺依赖 (darkriscv `spi_master` → NaplesPU
    `memory_bank_1r1w`)。下次移除降级开关时, 应先全量补全语料再撤开关。
-4. **覆盖缺口 (主动登记)**: `collect_elaboration_diagnostics` 的
-   "CompilationError 但诊断为空 → raise" 分支**没有测试** —— 构造该状态需要
-   "编译抛错却不产生任何诊断", 实际不可达 (解析/elaboration 错都会进诊断列表),
-   属防御性分支。若将来发现可构造路径, 再补 `test_common_diagnostics.py`。
+4. ~~**覆盖缺口 (主动登记)**: `collect_elaboration_diagnostics` 的
+   "CompilationError 但诊断为空 → raise" 分支没有测试, **实际不可达**。~~
+   **⚠️ iter_226 更正: 我判断错了** —— `CompilationError` 有多条**不产生诊断**的路径
+   (`compiler.py:167/191` 输入内容守卫 / `:319` filelist 一个源文件都没解析出来 /
+   `:453` 解析失败)。实测 `fix report --filelist <全是不存在文件的 .f>` → rc=1 +
+   `filelist ... 没有解析到任何源文件`, 已补回归测试
+   `test_fix_report_unresolvable_filelist_fails_loudly` (iter_226)。
+   教训: "不可达"是假设, 必须 `grep raise` 把路径走一遍再说。
 
 ## 📎 产物
 

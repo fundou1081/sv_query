@@ -502,13 +502,21 @@ def _ensure_sched_dots():
             )
         return r
 
+    # [iter_226] arch show --format dot 是**真 DOT** (unfreeze: 该 artifact 此前
+    # 从未被生成, test_d1_arch_has_correct_sub_instances 一直因"artifact 缺失"skip)。
+    # 注意 `visualize *` 的 --svg 才输出 SVG; arch 走 --format/--output。
+    run_cli(["arch", "show", "--filelist", filelist, "--target", module,
+             "--depth", "1", "--format", "dot", "--output", "/tmp/sched_d1.dot"])
+
     base = ["visualize", "pipeline", "--filelist", filelist, "--module", module]
     # Pipeline variants
     run_cli(base + ["--svg", "/tmp/sched_pipeline.dot"])
     run_cli(base + ["--svg", "/tmp/sched_pipeline_fixed.dot"])
     # [iter_188] 实测 `visualize pipeline` **不支持 --png** (只有 chain 支持) →
     # 不在这里调用; 依赖 PNG 的断言会 skip 并说明 (见 _read_png / iter_188 记录)。
-    run_cli(base + ["--max-control-nodes", "0", "--svg", "/tmp/sched_pipeline_nocontrol.svg"])
+    # [iter_226] 路径对齐: 断言读的是 /tmp/sched_pipeline_nocontrol.dot (见 :270),
+    # 之前生成写的是 .svg → skip 理由是"artifact 缺失"(误导, 其实是语义不匹配)。
+    run_cli(base + ["--max-control-nodes", "0", "--svg", "/tmp/sched_pipeline_nocontrol.dot"])
     run_cli(base + ["--svg", "/tmp/sched_pipeline_fixed.svg"])
     # Timing
     run_cli(base + ["--timing", "--svg", "/tmp/sched_timing.dot"])
