@@ -15,24 +15,21 @@
   # 自动找 baseline (按 current.metadata.target 匹配)
   python tools/benchmark/check_regression.py --current bench.json --baseline-dir tools/benchmark/baselines/
 
-阈值 (iter_226 收紧):
-  - L2 nodes: 不能跌 > 30%          → 硬失败
+阈值 (iter_226 收紧 / iter_228 全部改为硬失败):
+  - L2 nodes: 不能跌 > 30%          → 硬失败 (exit 1)
   - L2 edges: 不能跌 > 30%          → 硬失败
   - L2 IM: 不能跌 > 30%             → 硬失败
-  - L1 instances: 不能跌 > 30%      → ⚠️ 警告 (不影响退出码, 见下)
-  - L4 edges: 不能跌 > 30%          → ⚠️ 警告 (同上)
+  - L1 instances: 不能跌 > 30%      → **硬失败** (iter_228; 此前仅警告)
+  - L4 edges: 不能跌 > 30%          → **硬失败** (iter_228; 此前仅警告)
   - Flakiness: deterministic_ratio_im 不能低于 1.0   → 硬失败
 
-[iter_187 → iter_226 沿革] L1/L4 的 50% 与 flakiness 的 0.7 是 PR6 时代按
-"AST 容易受 flakiness 影响" 定的 — 那个 flakiness 的真因 (SourceManager 生命周期)
-已在 iter_185 修复, 实测同一输入 3 次 stdev=0.0 / deterministic_ratio=1.0。
-iter_226 按方豆拍板收紧到 L1/L4 30% + flakiness 1.0。
-
-⚠️ 生效范围说明 (如实记录, 避免误解): 本工具的 **L1/L4 越界只产生警告,
-不改变退出码** (历史原因: 当时它们受 flakiness 影响, 误报会打断 CI)。
-因此本次收紧中**真正改变 CI 判定的是 flakiness 0.7 → 1.0** (硬失败);
-L1/L4 从 50% → 30% 只让警告更早出现。是否把 L1/L4 也改成硬失败
-(= 真正的"收紧") 需方豆单独拍板。
+[沿革] L1/L4 的 50% 与 flakiness 的 0.7 是 PR6 时代按 "AST 容易受 flakiness
+影响" 定的 — 那个 flakiness 的真因 (SourceManager 生命周期) 已在 iter_185 修复,
+实测同一输入 3 次 stdev=0.0 / deterministic_ratio=1.0。
+- iter_226: 阈值收紧到 L1/L4 30% + flakiness 1.0 (当时 L1/L4 仍只是警告)。
+- **iter_228: 按方豆拍板, L1/L4 越界也改为硬失败** —— 它们当初只警告是因为
+  受 flakiness 影响会误报, 而该真因已修; 继续"只警告"会让真实回归从 CI 溜过。
+  现在六个维度语义统一: 越界 = exit 1。
 """
 import argparse
 import json
@@ -45,8 +42,8 @@ DEFAULT_THRESHOLDS = {
     "L2_nodes": {"max_drop_pct": 30.0},        # 节点数不能跌 30%
     "L2_edges": {"max_drop_pct": 30.0},       # 边数不能跌 30%
     "L2_im": {"max_drop_pct": 30.0},          # IM 数不能跌 30%
-    "L1_instances": {"max_drop_pct": 30.0},  # [iter_226] 50 -> 30
-    "L4_edges": {"max_drop_pct": 30.0},       # [iter_226] 50 -> 30
+    "L1_instances": {"max_drop_pct": 30.0},  # [iter_226] 50->30; [iter_228] 警告->硬失败
+    "L4_edges": {"max_drop_pct": 30.0},       # [iter_226] 50->30; [iter_228] 警告->硬失败
     "flakiness_im_det_ratio": {"min": 1.0},   # [iter_226] 0.7 -> 1.0
 }
 
@@ -110,10 +107,11 @@ def check_single(
             drop_pct = (base_v - curr_v) / base_v * 100
             max_drop = thresholds["L1_instances"]["max_drop_pct"]
             if drop_pct > max_drop:
+                passed = False
                 messages.append(
-                    f"⚠️  L1_instances: dropped {drop_pct:.1f}% "
+                    f"❌ L1_instances: dropped {drop_pct:.1f}% "
                     f"(baseline={base_v}, current={curr_v}, max_drop={max_drop}%) — "
-                    f"may be memory flakiness, manual review needed"
+                    f"非预期下跌; 若确认是输入/配置变化, 请重生成 baseline"
                 )
             else:
                 messages.append(
@@ -131,10 +129,11 @@ def check_single(
             drop_pct = (base_v - curr_v) / base_v * 100
             max_drop = thresholds["L4_edges"]["max_drop_pct"]
             if drop_pct > max_drop:
+                passed = False
                 messages.append(
-                    f"⚠️  L4_edges: dropped {drop_pct:.1f}% "
+                    f"❌ L4_edges: dropped {drop_pct:.1f}% "
                     f"(baseline={base_v}, current={curr_v}, max_drop={max_drop}%) — "
-                    f"may be memory flakiness, manual review needed"
+                    f"非预期下跌; 若确认是输入/配置变化, 请重生成 baseline"
                 )
             else:
                 messages.append(

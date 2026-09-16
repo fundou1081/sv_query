@@ -108,7 +108,10 @@ python3 tools/benchmark/regen_baselines.py --check    # 只对比: rc=2 表示�
 > iter_145 之前 + 长期未重测。已全部重生成, 并由
 > `sim/tests/integration/test_benchmark_picorv32.py` 的 "baseline == 活体" 测试锁死。
 
-CI regression check (PR6) 应该 focus 在 L2 数据 (节点数, IM 数), L1/L3/L4 作为辅助参考.
+> **2026-09-09 iter_228 更新**: 上面这句"L1/L3/L4 作为辅助参考"已经**过期**。
+> `check_regression.py` 现在对 **L2 nodes/edges/IM + L1 instances + L4 edges +
+> flakiness** 六个维度**全部硬失败** (越界 → exit 1)。L1/L4 过去只警告是因为
+> 受 flakiness 影响会误报, 该真因 (SourceManager 生命周期) 已在 iter_185 修复。
 
 ## 关于"结果不稳定" — 真因已修 (iter_185)
 

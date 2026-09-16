@@ -27,9 +27,10 @@
 **全量 canonical 3317 passed / 0 failed**。
 任务文件: `docs/task_tree/tasks/L1_remove_strict.md` + `tasks/L1_zero_red_and_policy_followups.md`。
 
-**下一步候选 (待方豆拍板)**: ① `check_regression.py` 的 L1/L4 是否从"仅警告"改为**硬失败**
-(阈值已收紧到 30%, 但警告不改退出码 — 见 iter_226); ② 12 个可视化 skip 转正 (= 按 SVG 语义重写断言,
-方豆决策 ③ 现阶段不处理); ③ 上游 pyslang `addSyntaxTree` SIGTRAP 立项 (5 行最小复现见 iter_189)。
+**下一步候选 (待方豆拍板)**: ① 上游 pyslang `addSyntaxTree` 原生 SIGTRAP 是否提 issue
+(最小复现 + issue 文本已备好, 见 iter_189 §"可直接提给上游的 issue 文本"); ② 12 个可视化 skip
+**方豆已定: 先不转正** (需按 SVG 语义重写断言)。
+**已闭环**: strict 全移除 / 全量 0 failed / L1L4 硬失败 (iter_228)。
 
 **历史任务 (参考)**: **C 路线 + benchmark 稳定性专项 ✅ 完成** (iter_179~196; 文本结构化输出审计)。
 
@@ -50,6 +51,19 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_228 (L1/L4 回归判定改硬失败 — 方豆拍板)**: 方豆决策 **"1 改成硬失败"**。
+`check_regression.py` 的 L1/L4 越界从 ⚠️ 警告 (不改退出码) 改为 **❌ 硬失败 (exit 1)** ——
+六个维度语义统一 (L2 nodes/edges/IM + L1 + L4 + flakiness)。
+理由: L1/L4 当初只警告是因为受 flakiness 影响会误报, 而该真因 (SourceManager 生命周期) 已在
+iter_185 修掉 (实测 stdev=0.0 / ratio=1.0) —— 继续"只警告"会让真实回归从 CI 溜过。
+同时把提示语里的"may be memory flakiness"改为"非预期下跌, 请重生成 baseline";
+`tools/benchmark/README.md` 里过期的"L1/L3/L4 作为辅助参考"已更正。
+测试: 2 个硬失败断言 (35% 下跌 → ❌ + rc=1) + **新增下界测试** (20% 下跌仍 PASS, 防过度触发)
+→ benchmark regression **15 passed**; 全量 canonical **3317 passed / 0 failed**。
+**注意**: 该工具与其测试都是 `opensource` 标记, 不在 canonical 选择集内 → 必须 `-m opensource` 定向跑。
+方豆另决定 **12 个可视化 skip 先不转正**。
+[iter_228](docs/task_tree/iterations/iter_228_regression_l1_l4_hard_fail.md)
 
 **iter_227 (尾随逗号清理 — 补 AST 等价闸后重做成功)**: iter_226 记为"失败+保持原样"的这一项,
 本轮**重做成功**: 46 处 → **0 处** (19 文件), 0 拒绝。关键 = 补上**机械保障**:
