@@ -84,7 +84,7 @@ def _arch_default(
     if show_anomalies and output_format == "dot":
         try:
             from trace.core.graph.models import NodeKind as _NK  # noqa: N814
-            tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist, )
+            tracer_obj = _build_tracer(file=Path(file) if file else None, filelist=filelist)
             _graph = tracer_obj.build_graph()
             target_prefix = f"{target}."
             for nid in _graph.nodes():

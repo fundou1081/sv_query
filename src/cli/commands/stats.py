@@ -173,7 +173,7 @@ def stats(
 
     except CompilationError as e:
         # [ADD 2026-06-11 任务3] 统一 catch, 不暴露 Python traceback
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
     except Exception as e:
         data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:

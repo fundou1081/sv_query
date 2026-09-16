@@ -148,7 +148,7 @@ def gap(
 
         # 1. 提取 covergroups (使用 tracer 的 sources, 跟 graph 保持一致)
         sources = tracer.sources if hasattr(tracer, "sources") else {}
-        extractor = CovergroupExtractor(sources=sources, )
+        extractor = CovergroupExtractor(sources=sources)
         covergroups = extractor.extract()
 
         # 2. 一致性分析
@@ -312,12 +312,12 @@ def analyze(
             
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         raise typer.Exit(code=1) from e
 
     sources = tracer.sources if hasattr(tracer, "sources") else {}
 
-    extractor = CovergroupExtractor(sources=sources, )
+    extractor = CovergroupExtractor(sources=sources)
     covergroups = extractor.extract()
 
     # filter

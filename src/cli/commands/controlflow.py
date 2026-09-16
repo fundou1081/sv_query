@@ -122,14 +122,14 @@ def analyze(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     # Build GraphBuilder for analyzer
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, )
+    compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -217,13 +217,13 @@ def list_conditioned(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, )
+    compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)
@@ -281,13 +281,13 @@ def get_conditions(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     from trace.core.compiler import SVCompiler
     from trace.core.semantic_adapter import SemanticAdapter
 
-    compiler = SVCompiler(sources, )
+    compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
 
     graph_builder = GraphBuilder(semantic_adapter)

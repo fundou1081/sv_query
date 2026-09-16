@@ -22,7 +22,7 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **全量归零 ✅ 完成** — iter_215~226: 彻底移除 strict (全仓 strict = 0)
+**当前任务 (方豆方向)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~227: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
 **全量 canonical 3317 passed / 0 failed**。
 任务文件: `docs/task_tree/tasks/L1_remove_strict.md` + `tasks/L1_zero_red_and_policy_followups.md`。
@@ -50,6 +50,18 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_227 (尾随逗号清理 — 补 AST 等价闸后重做成功)**: iter_226 记为"失败+保持原样"的这一项,
+本轮**重做成功**: 46 处 → **0 处** (19 文件), 0 拒绝。关键 = 补上**机械保障**:
+删尾随逗号**不应改变 AST** (Call 实参的尾随逗号删掉后 `ast.dump` 完全一致; 而 1-tuple 的逗号
+删掉会让 `Tuple` 节点消失 → `ast.dump` 变化) → 每文件改完做 `ast.dump(before) != ast.dump(after)`
+**硬拒绝**。定位同时修正两处缺陷: `end_col_offset - 2` 取错括号 (应 `-1`)、`col_offset` 是
+**UTF-8 字节偏移** (中文注释项目必须 `len(line.encode()[:n].decode('utf-8','ignore'))` 转换)。
+唯一残留匹配 `__slots__ = ("_original",)` 是**合法 1-tuple**, 正确未动。
+验证: 全仓 ast 无错 / `outputs=("root",)` 保全 / CLI 套件 409 passed / 全量 **3317 passed / 0 failed**。
+**教训 (与 iter_190 同型)**: 描述性警告挡不住脚本, 只有机械闸挡得住 —— iter_224 文档里我自己写过
+1-tuple 警告, iter_226 的脚本照样踩; 加闸后一次做对。
+[iter_227](docs/task_tree/iterations/iter_227_trailing_commas_removed_with_ast_guard.md)
 
 **iter_226 (全量归零 + 策略收尾 — 方豆: 去做吧)**: **16 failed → 0 failed / 3317 passed**。
 ① **最后 16 个可视化红 = 一个词的 fixture 错误**: `nested_mux_demo.sv:44` 的

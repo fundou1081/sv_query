@@ -228,7 +228,7 @@ def graph(
             use_cache=cache,
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     # [V12] 统一 ELK.js 渲染管线
@@ -289,7 +289,7 @@ def dataflow(
             target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     classification = classify_graph(graph)
@@ -368,7 +368,7 @@ def pipeline(
         # [iter_201 F1] --json 模式下错误也要是结构化 JSON (stdout), 不只 stderr
         if json_output:
             emit_json_error("visualize pipeline", e)
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     classification = classify_graph(graph)
@@ -469,7 +469,7 @@ def compute(
             target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     # [V12] 运算架构图: ELK.js 渲染
@@ -519,7 +519,7 @@ def timed(
             target_module=module,
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     classification = classify_graph(graph)
@@ -640,7 +640,7 @@ def chain(
             target_module=target if target else None,
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     # 决定 from/to signals
@@ -1440,7 +1440,7 @@ def _run_graph_visualization(
         with open(file) as f:
             sources = {file: f.read()}
 
-    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist, )
+    tracer = UnifiedTracer(sources=sources, include_dirs=include_dirs, filelist=filelist)
     graph = tracer.build_graph(use_cache=cache)
 
     # SVA/Covergroup 提取需要源码
@@ -1451,8 +1451,8 @@ def _run_graph_visualization(
         sva = SVAExtractor(sources_for_extractors).extract()
         cov_list = CovergroupExtractor(sources_for_extractors).extract()
     elif sources:
-        sva = SVAExtractor(sources, ).extract()
-        cov_list = CovergroupExtractor(sources, ).extract()
+        sva = SVAExtractor(sources).extract()
+        cov_list = CovergroupExtractor(sources).extract()
     else:
         sva = None
         cov_list = []
@@ -1931,7 +1931,7 @@ def teach(
         sva = SVAExtractor(sources).extract()
         cov_list = CovergroupExtractor(sources).extract()
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     # Coverage + SVA -> signal sets (for D)

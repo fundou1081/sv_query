@@ -147,7 +147,7 @@ def analyze(
         )
         _ = tracer.build_graph()
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
