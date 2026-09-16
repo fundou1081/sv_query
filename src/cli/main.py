@@ -62,6 +62,7 @@ from src.cli.commands.diff import diff_app
 from src.cli.commands.expression import expression_app
 from src.cli.commands.fix import fix_app
 from src.cli.commands.graph import graph_app
+from src.cli.commands.capabilities import capabilities
 from src.cli.commands.handshake import handshake_app
 from src.cli.commands.protocol import protocol_app
 from src.cli.commands.randomize import randomize_app
@@ -111,6 +112,9 @@ app.add_typer(expression_app, name="expression")
 # [FIX 2026-07-06] graph 是早期写但从未注册的 Typer app (dump/nodes/edges/find 4 commands)
 # 修 dump 的 TraceNode attribute bug 之后, 重新启用
 app.add_typer(graph_app, name="graph")
+
+# [iter_230] 能力清单 (agent 的工具面真相源; 只读 + JSON)。普通顶层命令
+app.command("capabilities")(capabilities)
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖

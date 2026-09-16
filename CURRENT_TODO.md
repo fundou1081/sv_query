@@ -22,7 +22,12 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~227: 彻底移除 strict (全仓 strict = 0)
+**当前任务 (方豆方向)**: **CLI 分层与专注化** (L1, 🟡 P0 完成 / P1~P6 待做) —— 64 个平铺命令 → 分层能力面。
+任务文件: `docs/task_tree/tasks/L1_cli_layering.md`; 生成物清单: `docs/CLI_SURFACE.md`; 降级政策: `docs/EXP_NAMESPACE.md`。
+**P0 已交付**: `_registry.py`(单一真相源) + `svq capabilities`(agent 工具面) + `tools/check_cli_layers.py`(R1~R6 机械检查) + `tools/gen_cli_surface.py`(清单生成物)。
+**下一步 P1**: 目录分层 `core/view/exp/dev` + 老命令名 alias + 补 3 条 `--json`(`search`/`snapshot save`/`snapshot delete`) + `fanin→drivers`/`fanout→loads`。
+
+**历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
 **全量 canonical 3317 passed / 0 failed**。
 任务文件: `docs/task_tree/tasks/L1_remove_strict.md` + `tasks/L1_zero_red_and_policy_followups.md`。
@@ -56,6 +61,20 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_230 (CLI 分层专注化 P0 — 方豆: 你来给一些建议 → 逐条拍板)**: 把"分层"从讨论变成**可机械校验的代码事实**。
+① `src/cli/_registry.py`: 层规范 + **65 条命令分类** (core=23 / view=13 / exp=24 / dev=3 / out=2; core 内 semantic/locate/state/diagnose),
+含 `planned_name`(已定改名) 与 `NEW_PLANNED`(instance 查询 4 个新命令 + 复用哪个已有 API);
+② `svq capabilities [--json] [--recommended] [--include-exp]` —— agent 的工具面真相源 (默认 core+view, 按方豆决定);
+③ `tools/check_cli_layers.py` —— R1 未分层 / R2 反向依赖 / R3 **隐式改文件** / R4 core 缺 JSON / R5 exp 名污染 / R6 exp 进默认清单;
+**首次运行即抓出真问题**: R3 mutation 3 处 (`fix.py`×2 原地改 RTL, `fix_imports.py` 写 filelist), R4 3 条 (`search`/`snapshot save`/`snapshot delete` 缺 `--json`);
+**已知基线机制** (6 条, 各写明消除批次) 让检查器现在就能"防新增", 不必等 P2 清完;
+④ `tools/gen_cli_surface.py` + `docs/CLI_SURFACE.md` (生成物, `--check` 防漂移) —— 清单不再手写
+(动机: `ARCHITECTURE.md` 就烂过: 写"23 commands"实际 64 个)。
+**自查出两个自己的错误**: 检查器 v1 把 `str.replace` 误判成写文件 (20+ 误报); R3 判据 v1 把 `visualize teach`/`design show` 的**产物输出**误判成违规
+→ 改三分类 `mutation`/`artifact`/`helper-review`。**P0 刻意不改任何现有命令行为**, 全量 **3317 passed / 0 failed** (0 退化)。
+新增文档: `docs/EXP_NAMESPACE.md` (降级五条硬约束 + 晋升门槛, 含 cdc/timing 专项)。
+[iter_230](docs/task_tree/iterations/iter_230_cli_layering_p0.md) / [任务文件](docs/task_tree/tasks/L1_cli_layering.md)
 
 **iter_229 (`-f` / `--filelist` 用法纪律落地 — 方豆: 这是用法的不一致不算 issue, 记录好避免这样使用)**:
 `AGENTS.md` 新增**核心纪律 4** (v1.7): `-f`/`--file` 只接**源码**, filelist 一律用 `--filelist` +
