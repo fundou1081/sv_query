@@ -9,7 +9,8 @@ PR6 目标: check_regression.py 对比 current vs baseline JSON, 输出 regressi
 - 同样的数据自己比自己 PASS
 - 模拟 regression (50% nodes drop) FAIL
 - 模拟 flakiness (deterministic_ratio 降到 0.5) FAIL
-- [iter_226] 新增: L1/L4 跌 35% (> 30% 新阈值) 触发 ⚠️ 警告 (退出码仍 0 — 本工具历史语义)
+- [iter_226] L1/L4 跌 35% (> 30% 新阈值) 触发警告
+- [iter_228] L1/L4 已改为**硬失败**: 越界 -> ❌ + exit 1 (方豆拍板)
 - 模拟 acceptable drop (10% nodes) PASS
 """
 
@@ -164,28 +165,39 @@ class TestAcceptableChange:
             f"25% edge drop should pass: {result.stdout}\n{result.stderr}"
         )
 
-    def test_l1_35_pct_drop_warns_with_tightened_threshold(self):
-        """[iter_226] L1 跌 35% (> 30% 新阈值, 旧阈值 50% 下不会报) → ⚠️ 警告, 退出码 0.
+    def test_l1_35_pct_drop_fails(self):
+        """[iter_228] L1 跌 35% (> 30%) → ❌ 硬失败 exit 1 (此前只警告).
 
-        verilog_axi 的 L1 instance_count=6 (>0), 用它派生 65% 变体。
-        ⚠️ 本工具的 L1/L4 越界**只警告不改退出码** (历史语义: 当年受 flakiness
-        影响, 误报会打断 CI) — 这里同时锁定"新阈值生效"和"仍是警告级"。
+        verilog_axi 的 L1 instance_count=6 (>0) → 派生 65% 变体 (跌 33%)。
+        L1/L4 当初只警告是因为受 flakiness 影响会误报; 真因 (SourceManager
+        生命周期) 已在 iter_185 修掉, 故 iter_228 按方豆拍板改为硬失败。
         """
         variant = _make_scaled_variant(
             VERILOG_AXI_BASELINE, **{"L1_module_extraction.instance_count": 0.65})
         result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
-        assert "⚠️  L1_instances: dropped" in result.stdout, result.stdout
+        assert "❌ L1_instances: dropped" in result.stdout, result.stdout
         assert "max_drop=30.0%" in result.stdout, result.stdout
-        assert result.returncode == 0, "L1 越界历史上只警告, 不应改退出码"
+        assert result.returncode == 1, f"L1 越界应 exit 1: {result.stdout}"
 
-    def test_l4_35_pct_drop_warns_with_tightened_threshold(self):
-        """[iter_226] L4 跌 35% (> 30%) → ⚠️ 警告 (同上, verilog_axi L4=146)."""
+    def test_l4_35_pct_drop_fails(self):
+        """[iter_228] L4 跌 35% (> 30%) → ❌ 硬失败 exit 1 (verilog_axi L4=146)."""
         variant = _make_scaled_variant(
             VERILOG_AXI_BASELINE, **{"L4_cross_instance_edges.edge_count": 0.65})
         result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
-        assert "⚠️  L4_edges: dropped" in result.stdout, result.stdout
+        assert "❌ L4_edges: dropped" in result.stdout, result.stdout
         assert "max_drop=30.0%" in result.stdout, result.stdout
-        assert result.returncode == 0
+        assert result.returncode == 1, f"L4 越界应 exit 1: {result.stdout}"
+
+    def test_l1_l4_within_threshold_still_pass(self):
+        """[iter_228] 硬失败不应过度触发: L1/L4 各跌 ~20% (< 30%) → 仍 PASS."""
+        variant = _make_scaled_variant(
+            VERILOG_AXI_BASELINE,
+            **{"L1_module_extraction.instance_count": 0.8,
+               "L4_cross_instance_edges.edge_count": 0.8})
+        result = _run_check(variant, baseline=VERILOG_AXI_BASELINE)
+        assert "✅ L1_instances" in result.stdout, result.stdout
+        assert "✅ L4_edges" in result.stdout, result.stdout
+        assert result.returncode == 0, f"20% 下跌应放行: {result.stdout}"
 
     def test_l1_self_compare_passes(self):
         """picorv32 L1=0 → 该维度跳过, 自比照常 PASS (原 test_l1_40_pct_drop_warns_only 的本意)."""
