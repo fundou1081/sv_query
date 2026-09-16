@@ -76,7 +76,7 @@ def analyze(
         )
         graph = tracer.build_graph()
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
     cdc = CDCAnalyzer(graph)
     cdc.identify_clock_domains()

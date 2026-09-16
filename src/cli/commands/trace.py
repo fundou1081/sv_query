@@ -1573,7 +1573,7 @@ def overview(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
 
     evidence_resolver = _make_evidence_resolver(graph, tracer._get_adapter())
@@ -1628,7 +1628,7 @@ def overview(
     cf_data = {}
     cf_errors = []
 
-    compiler = SVCompiler(sources, )
+    compiler = SVCompiler(sources)
     semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
     graph_builder = GraphBuilder(semantic_adapter)
     graph_builder.graph = graph

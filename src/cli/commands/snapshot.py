@@ -50,7 +50,7 @@ def _get_tracer_from_file(file_path, ):
             logger.warning(f"Failed to read {f}: {e}")
             continue
 
-    tracer = UnifiedTracer(sources=sources_dict, )
+    tracer = UnifiedTracer(sources=sources_dict)
     tracer.build_graph()
     return tracer, [str(f) for f in sv_files]
 
@@ -99,7 +99,7 @@ def save(
         if filelist:
             tracer, files = _get_tracer_from_filelist(filelist, preprocess_macros=preprocess_macros)
         else:
-            tracer, files = _get_tracer_from_file(path, )
+            tracer, files = _get_tracer_from_file(path)
         graph = tracer.get_graph()
 
         # 获取 elaboration 错误

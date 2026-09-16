@@ -80,11 +80,11 @@ def gap(
         )
         graph = tracer.build_graph()
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
     sources = tracer._sources
-    sva = SVAExtractor(sources, ).extract()
-    cov_list = CovergroupExtractor(sources, ).extract()
+    sva = SVAExtractor(sources).extract()
+    cov_list = CovergroupExtractor(sources).extract()
 
     # ===== 1. 收集覆盖信息 =====
     sva_signals = set()

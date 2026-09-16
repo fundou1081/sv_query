@@ -54,7 +54,7 @@ def extract(
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
 
-    sva = SVAExtractor(sources, ).extract()
+    sva = SVAExtractor(sources).extract()
 
     if json_output:
         import json
@@ -158,10 +158,10 @@ def coverage(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
-    sva = SVAExtractor(sources, ).extract()
-    cov_list = CovergroupExtractor(sources, ).extract()
+    sva = SVAExtractor(sources).extract()
+    cov_list = CovergroupExtractor(sources).extract()
 
     # SVA 覆盖信号
     sva_signals = set()
@@ -309,9 +309,9 @@ def timing(
         graph = tracer.build_graph()
         sources = tracer._sources
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         return
-    sva = SVAExtractor(sources, ).extract()
+    sva = SVAExtractor(sources).extract()
 
     results = []
     for pid, prop in sva.properties.items():

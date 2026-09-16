@@ -79,10 +79,10 @@ def analyze(
         )
         graph = tracer.build_graph()
         sources = tracer._sources
-        sva = SVAExtractor(sources, ).extract()
-        cov_list = CovergroupExtractor(sources, ).extract()
+        sva = SVAExtractor(sources).extract()
+        cov_list = CovergroupExtractor(sources).extract()
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
 
     # 覆盖信号
     sva_signals = set()

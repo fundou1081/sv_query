@@ -219,7 +219,7 @@ def list_cmd(
             
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -364,7 +364,7 @@ def extract_cmd(
             
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -453,7 +453,7 @@ def trace_cmd(
             
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -785,7 +785,7 @@ def reachability_cmd(
             
         )
     except CompilationError as e:
-        handle_compilation_error(e, )
+        handle_compilation_error(e)
         raise typer.Exit(code=1) from e
 
     if not tracer.compilation:
@@ -835,7 +835,7 @@ def reachability_cmd(
     # 跨 class 找 covergroup sample (走 CovergroupExtractor)
     from trace.core.covergroup_extractor import CovergroupExtractor
     sources = tracer.sources if hasattr(tracer, "sources") else {}
-    extractor = CovergroupExtractor(sources=sources, )
+    extractor = CovergroupExtractor(sources=sources)
     covergroups = extractor.extract()
 
     # Analyze reachability for each rand var

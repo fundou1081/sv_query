@@ -146,10 +146,10 @@ def _build_tracer(filelist: str | None, file: str | None, include: str | None, )
     include_dirs = include.split(",") if include else None
     try:
         if filelist:
-            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs, )
+            return UnifiedTracer(filelist=filelist, include_dirs=include_dirs)
         with open(file) as f:
             sources = {file: f.read()}
-        return UnifiedTracer(sources=sources, include_dirs=include_dirs, )
+        return UnifiedTracer(sources=sources, include_dirs=include_dirs)
     except Exception as e:
         print(f"Error building tracer: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -254,7 +254,7 @@ def _scan_internal(file, filelist, include, channel, max_signals, ):
         channel: Bus channel filter (AW|W|B|AR|R|A|D)
         max_signals: Max pairs to analyze
     """
-    tracer = _build_tracer(filelist, file, include, )
+    tracer = _build_tracer(filelist, file, include)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
     filter_channels = [c.strip().upper() for c in channel.split(",")] if channel else []
@@ -307,7 +307,7 @@ def scan(
 ) -> None:
     """Scan all ready/valid signal pairs and classify handshake semantics"""
     # [FIX 2026-07-06] 提取为 _scan_internal helper 让 scan 和 analyze 共用
-    _scan_internal(file, filelist, include, channel, max_signals,)
+    _scan_internal(file, filelist, include, channel, max_signals)
 
 
 # ==============================================================================
@@ -322,7 +322,7 @@ def analyze(
     signal: str = typer.Option(None, "--signal", "-s", help="Ready signal to analyze (e.g. axi_adapter.s_axi_awready)"),
 ) -> None:
     """Analyze a single ready signal's handshake semantics"""
-    tracer = _build_tracer(filelist, file, include, )
+    tracer = _build_tracer(filelist, file, include)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 
@@ -389,7 +389,7 @@ def pair(
                   file=sys.stderr)
             raise typer.Exit(code=1)
 
-    tracer = _build_tracer(filelist, file, include, )
+    tracer = _build_tracer(filelist, file, include)
     graph = tracer.build_graph()
     st = SignalTracer(graph)
 
