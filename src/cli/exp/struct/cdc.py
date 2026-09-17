@@ -11,12 +11,8 @@ Usage:
 import sys
 from pathlib import Path
 
-_current_file = Path(__file__).resolve()
-_src_dir = _current_file.parent
-_project_root = _src_dir.parent.parent
-
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+from cli._paths import ensure_on_path, SRC_DIR  # noqa: E402
+ensure_on_path(SRC_DIR)
 import warnings
 
 import typer

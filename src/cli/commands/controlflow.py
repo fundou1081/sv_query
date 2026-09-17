@@ -11,7 +11,8 @@ import typer
 from cli._common import display_path, _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+ensure_on_path(PROJECT_ROOT)
 
 from cli._evidence_helpers import (
     evidence_summary_indented,

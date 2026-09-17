@@ -74,7 +74,7 @@ def test_analyzing_message_on_stderr():
 def test_result_to_dict_helper():
     """[P1-6] _result_to_dict 应该返回合法 dict, 包含所有必要字段."""
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
-    from cli.commands.protocol import _result_to_dict
+    from cli.exp.bus.protocol import _result_to_dict
     # 构造一个 mock match
     class MockMatch:
         protocol = "TL-UL"

@@ -17,7 +17,7 @@ import warnings
 warnings.filterwarnings('ignore')
 sys.path.insert(0, 'src')
 
-from cli.commands.handshake import _is_ready_or_valid, _strip_suffix
+from cli.exp.bus.handshake import _is_ready_or_valid, _strip_suffix
 
 # ==============================================================================
 # AXI sub-channels and AXI-Stream variants (from axi/ project)

@@ -37,8 +37,7 @@ from pathlib import Path
 # stdlib 'trace' (at site-packages). 冲突.
 # 如果加 src/ (/Users/fundou/my_dv_proj/sv_query/src), Python 找 'import trace'
 # 会在 src/ 下找到 src/trace/ (含 __init__.py), 优先于 stdlib. 正确.
-_THIS_FILE = Path(__file__).resolve()
-_SRC_DIR = _THIS_FILE.parent.parent  # src/cli/_entry.py -> src/
+from cli._paths import SRC_DIR as _SRC_DIR  # [iter_232] 路径锚点单一真相源
 
 # 总是 insert (不 guard): 确保 src/ 在 sys.path[0], 优先于 .pth + stdlib
 sys.path.insert(0, str(_SRC_DIR))

@@ -733,9 +733,9 @@ class TraceEdge:
 
 **预估**: 80-100 行
 
-### Step 4: CLI 入口 (`cli/commands/coverage.py`)
+### Step 4: CLI 入口 (`cli/exp/verif/coverage.py`)
 
-**文件**: `src/cli/commands/coverage.py`
+**文件**: `src/cli/exp/verif/coverage.py`
 
 包含:
 - `coverage_app = typer.Typer(...)`
@@ -782,7 +782,7 @@ class TraceEdge:
 | `src/trace/core/coverage_generator.py` | 新建 | 400-600 |
 | `src/trace/core/data_models.py` | 修改 | +20 |
 | `src/trace/core/graph_builder.py` | 修改 | +80 |
-| `src/cli/commands/coverage.py` | 新建 | 100-150 |
+| `src/cli/exp/verif/coverage.py` | 新建 | 100-150 |
 | `src/cli/main.py` | 修改 | +5 |
 | `sim/tests/unit/test_coverage_generator.py` | 新建 | 300-400 |
 | `docs/COVERAGE_GENERATOR.md` | 新建 | 200-300 |
@@ -1278,7 +1278,7 @@ class DecompositionResult:
 ### 4.2 CLI 改动
 
 ```python
-# src/cli/commands/coverage.py
+# src/cli/exp/verif/coverage.py
 if json_output:
     print(result.to_json(indent=2))
     if result.truncated or result.error:
@@ -1291,7 +1291,7 @@ if json_output:
 | 文件 | 类型 | 行数估计 |
 |------|------|----------|
 | `src/trace/core/coverage_models.py` | 修改 | +60 (4 个 to_dict + 1 个 to_json) |
-| `src/cli/commands/coverage.py` | 修改 | -5 / +10 |
+| `src/cli/exp/verif/coverage.py` | 修改 | -5 / +10 |
 | `sim/tests/unit/test_coverage_generator.py` | 修改 | +80 (新 JSON 测试) |
 | **总计** | | **~150 行** |
 

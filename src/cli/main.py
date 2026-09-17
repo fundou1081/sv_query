@@ -12,12 +12,8 @@ from pathlib import Path
 
 # 设置 sys.path - 允许直接运行或作为模块运行
 # 找到 src/ 目录的父目录并添加到 path
-_current_file = Path(__file__).resolve()
-_src_dir = _current_file.parent  # src/cli/
-_project_root = _src_dir.parent.parent  # 项目根目录
-
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+from cli._paths import ensure_on_path, PROJECT_ROOT, SRC_DIR  # noqa: E402
+ensure_on_path(SRC_DIR, PROJECT_ROOT)
 
 # [A3 2026-06-28] Global --quiet support for LLM consumers.
 # 在 Typer 启动前检查 sys.argv, 如果有 --quiet / -q / SVQ_QUIET env,
@@ -52,10 +48,10 @@ from src.cli._common import (
     handle_compilation_error,
 )
 from src.cli.commands.arch import arch_app
-from src.cli.commands.backpressure import backpressure_app
-from src.cli.commands.cdc import cdc_app
+from src.cli.exp.bus.backpressure import backpressure_app
+from src.cli.exp.struct.cdc import cdc_app
 from src.cli.commands.controlflow import controlflow_app
-from src.cli.commands.coverage import coverage_app
+from src.cli.exp.verif.coverage import coverage_app
 from src.cli.commands.dataflow import dataflow_app
 from src.cli.commands.design import design_app
 from src.cli.commands.diff import diff_app
@@ -63,17 +59,17 @@ from src.cli.commands.expression import expression_app
 from src.cli.commands.fix import fix_app
 from src.cli.commands.graph import graph_app
 from src.cli.commands.capabilities import capabilities
-from src.cli.commands.handshake import handshake_app
-from src.cli.commands.protocol import protocol_app
-from src.cli.commands.randomize import randomize_app
-from src.cli.commands.risk import risk_app
+from src.cli.exp.bus.handshake import handshake_app
+from src.cli.exp.bus.protocol import protocol_app
+from src.cli.exp.verif.randomize import randomize_app
+from src.cli.exp.verif.risk import risk_app
 from src.cli.commands.search import search
 from src.cli.commands.snapshot import snapshot_app
-from src.cli.commands.sva import sva_app
-from src.cli.commands.timing import timing_app
+from src.cli.exp.verif.sva import sva_app
+from src.cli.exp.struct.timing import timing_app
 from src.cli.commands.trace import trace_app
 from src.cli.commands.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
-from src.cli.commands.verify import verify_app
+from src.cli.exp.verif.verify import verify_app
 from src.cli.commands.visualize import vis_app
 import logging
 

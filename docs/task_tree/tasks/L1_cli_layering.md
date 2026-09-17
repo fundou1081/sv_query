@@ -56,7 +56,9 @@ src/cli/
 |---|---|---|
 | **P0** | `_registry.py` + `capabilities` 命令 + `check_cli_layers.py`(R1~R6) + `gen_cli_surface.py` + `docs/CLI_SURFACE.md` | ✅ **完成** |
 | **P1a** | 规范入口 `drivers`/`loads` (顶层, 方案 a) + 同实现别名 + 补 3 条 `--json` + 检查器 R7 | ✅ **完成 (iter_231)** |
-| P1b | 目录分层 `src/cli/{core,view,exp,dev}/` + auto-discovery 挂载 (26 命令文件搬迁) | 待做 |
+| **P1b-1** | `exp/` 层目录落地 (`src/cli/exp/{bus,verif,struct}/`, 9 文件) + `_paths.py` 锚点 + R8 + 引用扫描工具 | ✅ **完成 (iter_232)** |
+| P1b-2 | `dev/` + `core/{locate,state,semantic}/` + `view/` 整文件搬迁 (fix*.py 留 P2) | 待做 |
+| P1b-3 | 拆分 `trace.py` (core signal + view overview) 与 `visualize.py` (10 个 view 命令) | 待做 |
 | P2 | 只读落地: `fix timescale --apply` / `fix imports --write` 移出到 `tools/`; `snapshot` 默认目录迁 `$SVQ_CACHE_DIR`; 只读证明测试 (目录树 hash 不变) | 待做 |
 | P3 | `exp` 收纳 (bus/verif/struct 三域) + capabilities 分层过滤生效 | 待做 |
 | P4 | 域内合并: bus 9→4; verif 13→~8; `diff compare` 并入 `snapshot compare` | 待做 |
@@ -67,8 +69,9 @@ src/cli/
 
 | 工具 | 作用 | 现状 |
 |---|---|---|
-| `python3 tools/check_cli_layers.py` | R1 未分层(含别名) / R2 反向依赖 / R3 隐式改文件 / R4 core 缺 JSON / R5 exp 名污染 / R6 exp 进默认清单 / **R7 builtin 遮蔽** | ✅ rc=0 (6 条已知基线不阻塞, 新违规即失败) |
+| `python3 tools/check_cli_layers.py` | R1 未分层(含别名) / R2 反向依赖 / R3 隐式改文件 / R4 core 缺 JSON / R5 exp 名污染 / R6 exp 进默认清单 / **R7 builtin 遮蔽** / **R8 `__file__` 深度运算** | ✅ rc=0 (6 条已知基线不阻塞, 新违规即失败) |
 | `python3 tools/gen_cli_surface.py [--check]` | 生成/校验 `docs/CLI_SURFACE.md` (清单不再手写) | ✅ 一致 |
+| `python3 tools/find_module_refs.py <模块>` | **搬目录前**的引用扫描单 (import-dotted / from-import / 路径串 / `__file__` 深度运算) | ✅ 新增 (iter_232) |
 | `svq capabilities [--json] [--recommended] [--include-exp]` | agent 的工具面真相源 | ✅ |
 
 ## 📎 相关
