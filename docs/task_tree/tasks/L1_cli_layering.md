@@ -32,7 +32,7 @@
 | 7 | **cdc/timing 算法不可靠 → 待定** | 暂放 `exp/struct`, 配可量化晋升门槛 (见 `docs/EXP_NAMESPACE.md`) |
 | 8 | **snapshot/diff 放 core** | "比较的是 graph" → `core/state` (`stateful=True`) |
 | 9 | **capabilities 默认包含 view** | 默认列出 core+view; `--recommended` 给 agent 最小集; `--include-exp` 才列降级区 |
-| 10 | **fanin/fanout 改名** | `trace fanin` → `drivers`, `trace fanout` → `loads` (P1; 老名保留 alias) |
+| 10 | **fanin/fanout 改名 (方案 a: 顶层)** | ✅ `svq drivers` / `svq loads` 顶层; 老名保留为同实现别名 (iter_231 完成) |
 
 ## 🎯 目标结构
 
@@ -55,7 +55,8 @@ src/cli/
 | 批 | 内容 | 状态 |
 |---|---|---|
 | **P0** | `_registry.py` + `capabilities` 命令 + `check_cli_layers.py`(R1~R6) + `gen_cli_surface.py` + `docs/CLI_SURFACE.md` | ✅ **完成** |
-| P1 | 目录分层 (`core/view/exp/dev`) + 命名空间 + alias (老命令名全保留) + `search`/`snapshot save`/`snapshot delete` 补 `--json` + `fanin→drivers`/`fanout→loads` | 待做 |
+| **P1a** | 规范入口 `drivers`/`loads` (顶层, 方案 a) + 同实现别名 + 补 3 条 `--json` + 检查器 R7 | ✅ **完成 (iter_231)** |
+| P1b | 目录分层 `src/cli/{core,view,exp,dev}/` + auto-discovery 挂载 (26 命令文件搬迁) | 待做 |
 | P2 | 只读落地: `fix timescale --apply` / `fix imports --write` 移出到 `tools/`; `snapshot` 默认目录迁 `$SVQ_CACHE_DIR`; 只读证明测试 (目录树 hash 不变) | 待做 |
 | P3 | `exp` 收纳 (bus/verif/struct 三域) + capabilities 分层过滤生效 | 待做 |
 | P4 | 域内合并: bus 9→4; verif 13→~8; `diff compare` 并入 `snapshot compare` | 待做 |
@@ -66,7 +67,7 @@ src/cli/
 
 | 工具 | 作用 | 现状 |
 |---|---|---|
-| `python3 tools/check_cli_layers.py` | R1 未分层 / R2 反向依赖 / R3 隐式改文件 / R4 core 缺 JSON / R5 exp 名污染 / R6 exp 进默认清单 | ✅ rc=0 (6 条已知基线不阻塞, 新违规即失败) |
+| `python3 tools/check_cli_layers.py` | R1 未分层(含别名) / R2 反向依赖 / R3 隐式改文件 / R4 core 缺 JSON / R5 exp 名污染 / R6 exp 进默认清单 / **R7 builtin 遮蔽** | ✅ rc=0 (6 条已知基线不阻塞, 新违规即失败) |
 | `python3 tools/gen_cli_surface.py [--check]` | 生成/校验 `docs/CLI_SURFACE.md` (清单不再手写) | ✅ 一致 |
 | `svq capabilities [--json] [--recommended] [--include-exp]` | agent 的工具面真相源 | ✅ |
 

@@ -588,7 +588,6 @@ def _output_impact_human(data: dict, tree: bool = False) -> None:
 trace_app = typer.Typer(help="Trace signal drivers (fanin), loads (fanout), or impact analysis")
 
 
-@trace_app.command()
 def fanin(
     signal: str = typer.Argument(None, help="Signal to trace (e.g., top.clk). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -612,9 +611,13 @@ def fanin(
     format: str = typer.Option("text", "--format", help="[Phase 2 2026-07-09] Output format: text/json/dot (dot = generate DOT graph)"),
     output: str = typer.Option(None, "--output", "-o", help="[Phase 2 2026-07-09] Output file path (for --format dot)"),
 ) -> None:
-    """Trace signal drivers (fanin)
+    """谁驱动这个信号 —— 上游 drivers (DRIVER 边反向遍历)
 
-    Single signal: sv_query trace fanin top.clk -f top.sv
+    [iter_231 P1] 规范入口: `svq drivers` (顶层)。
+    `svq trace fanin` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
+
+    单信号: sv_query drivers top.clk -f top.sv
+            (等价老写法: sv_query trace fanin top.clk -f top.sv)
     Batch:        sv_query trace fanin --batch 'top.clk,top.rst_n' -f top.sv
                   sv_query trace fanin --batch-file signals.txt -f top.sv
 
@@ -774,7 +777,6 @@ def fanin(
         raise typer.Exit(code=1) from None
 
 
-@trace_app.command()
 def fanout(
     signal: str = typer.Argument(None, help="Signal to trace (e.g., top.data). Optional when --batch or --batch-file is used."),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
@@ -801,7 +803,10 @@ def fanout(
     format: str = typer.Option("text", "--format", help="[Phase 2 2026-07-09] Output format: text/json/dot (dot = generate DOT graph)"),
     output: str = typer.Option(None, "--output", "-o", help="[Phase 2 2026-07-09] Output file path (for --format dot)"),
 ) -> None:
-    """Trace signal loads (fanout)
+    """这个信号被谁使用 —— 下游 loads (DRIVER 边正向遍历)
+
+    [iter_231 P1] 规范入口: `svq loads` (顶层)。
+    `svq trace fanout` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
 
     [ADD 2026-06-11 Req-12 Issue 19] 默认只走 DRIVER+CONNECTION 边, 不含 CLOCK/RESET/CONTROL.
     用 --include-clock/reset/control flag 可加入. 完整视图请用 'visualize graph'.
@@ -1817,3 +1822,12 @@ def _output_overview_text(data: dict, human: bool = False) -> None:
         for e in errors[:5]:
             print(f"  - {e}")
     print(f"{'='*60}")
+
+
+# ==============================================================================
+# [iter_231 P1] 命令注册: 规范入口在顶层 (`svq drivers` / `svq loads`, 方豆 2026-09-09 方案 a),
+# 老名 `trace fanin` / `trace fanout` 作为**兼容别名**保留 —— 同一个函数对象, 无双份实现/双份签名。
+# 顶层注册见 src/cli/main.py (app.command("drivers")(fanin))。
+# ==============================================================================
+trace_app.command("fanin")(fanin)
+trace_app.command("fanout")(fanout)

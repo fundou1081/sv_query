@@ -13,6 +13,7 @@ check_cli_layers.py — [iter_230 P0] CLI 分层的机械保障
   R4 core 层命令必须支持 --json (agent 契约)
   R5 exp 层命令名不得出现在 core/view 的帮助文本里 (防止误导 agent)
   R6 exp 不得出现在 capabilities 默认输出 (须 --include-exp)
+  R7 模块级不得定义与 builtin 同名的函数/类 (会劫持同模块的 builtin 调用)
 
 INFO (不算违规, 但列出来当待办):
   - 只支持 --file 单文件、不支持 --filelist 的命令 (真实项目用不了)
@@ -167,6 +168,28 @@ def classify_write(path: Path, lineno: int, spans, node) -> str:
     return "helper-review"
 
 
+def builtin_shadows(path: Path) -> list[tuple[int, str]]:
+    """R7: 模块级定义与 builtin 同名的函数/类 —— 会遮蔽 builtin。
+
+    实例 (iter_231 实测): `snapshot.py` 里 `def list(...)` (快照 list 命令) 遮蔽 builtin
+    `list` → 同模块 `list(sources.keys())` 变成"执行 list 命令": 返回 None + 打印
+    55,577 行快照表 (实测), 导致 `snapshot save --filelist` 的 file 元数据一直为空。
+    修法: 命令函数改名 (`list_cmd`) + 显式 `@app.command("list")`。
+    """
+    import builtins as _b
+    names = set(dir(_b))
+    out: list[tuple[int, str]] = []
+    try:
+        tree = ast.parse(path.read_text())
+    except SyntaxError:
+        return out
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) \
+                and node.name in names:
+            out.append((node.lineno, node.name))
+    return out
+
+
 def import_edges(path: Path, all_modules: dict[str, Path]) -> list[tuple[str, str]]:
     """返回该文件的 (它 → 它 import 的 cli 模块) 边。"""
     edges: list[tuple[str, str]] = []
@@ -197,9 +220,6 @@ def import_edges(path: Path, all_modules: dict[str, Path]) -> list[tuple[str, st
 KNOWN: list[tuple[str, str, str]] = [
     ("R3", "src/cli/commands/fix.py", "原地改 RTL (--apply) → P2 移出到 tools/fix_timescale.py"),
     ("R3", "src/cli/commands/fix_imports.py", "写 filelist (--write) → P2 移出到 tools/"),
-    ("R4", "`search`", "缺 --json → P1 补结构化输出"),
-    ("R4", "`snapshot save`", "缺 --json → P1 补 (core 契约)"),
-    ("R4", "`snapshot delete`", "缺 --json → P1 补 (core 契约)"),
 ]
 
 
@@ -215,7 +235,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="机器可读输出")
     args = ap.parse_args()
 
-    from cli._registry import (COMMANDS, LAYERS, spec_for)  # noqa: E402
+    from cli._registry import (ALIASES, COMMANDS, LAYERS, canonical, spec_for)  # noqa: E402
 
     errors: list[str] = []
     infos: list[str] = []
@@ -237,14 +257,22 @@ def main() -> int:
 
     _walk(root, "")
 
-    # ---- R1: 每个命令必须登记 ----
+    # ---- R1: 每个命令必须登记 (规范名 或 已声明的兼容别名) ----
     registered = {c.key for c in COMMANDS}
     for key in sorted(leaves):
-        if key not in registered:
-            errors.append(f"R1 未分层: `{key}` 不在 cli/_registry.py 中")
+        if key in registered or key in ALIASES:
+            continue
+        errors.append(f"R1 未分层: `{key}` 不在 cli/_registry.py 中 (也不是已声明别名)")
     for key in sorted(registered - set(leaves)):
         errors.append(f"R1 幽灵登记: `{key}` 在注册表里但 CLI 上不存在 "
                       f"(改名/删除后忘了同步?)")
+    for alias, canon in sorted(ALIASES.items()):
+        if alias not in leaves:
+            errors.append(f"R1 别名不存在: `{alias}` → `{canon}` 但 CLI 上没有 `{alias}`")
+        if canon not in registered:
+            errors.append(f"R1 别名指向未登记命令: `{alias}` → `{canon}`")
+    if ALIASES:
+        infos.append("兼容别名: " + ", ".join(f"`{a}` → `{c}`" for a, c in sorted(ALIASES.items())))
 
     # ---- R2: 层间依赖方向 ----
     all_modules = {str(p.relative_to(ROOT)): p for p in iter_cli_py()}
@@ -277,9 +305,15 @@ def main() -> int:
             else:
                 infos.append(f"产物写出 (允许): {node['file']}:{lineno} {what}")
 
+    # ---- R7: 模块级遮蔽 builtin ----
+    for path in iter_cli_py():
+        for lineno, name in builtin_shadows(path):
+            errors.append(f"R7 遮蔽 builtin: {path.relative_to(ROOT)}:{lineno} "
+                          f"def {name}(...) —— 同模块内 builtin 调用会被劫持")
+
     # ---- R4: core 必须 --json ----
     for key, cmd in sorted(leaves.items()):
-        spec = spec_for(key)
+        spec = spec_for(key) or spec_for(canonical(key))
         if spec is None or spec.layer != "core":
             continue
         has_json = any(getattr(p, "name", "") in ("json_output", "json") for p in cmd.params)
@@ -291,7 +325,7 @@ def main() -> int:
     # ---- R5: exp 命令名不得出现在 core/view 的帮助里 ----
     exp_names = {c.key.split()[-1] for c in COMMANDS if c.layer == "exp"}
     for key, cmd in sorted(leaves.items()):
-        spec = spec_for(key)
+        spec = spec_for(key) or spec_for(canonical(key))
         if spec is None or spec.layer not in ("core", "view"):
             continue
         text = (cmd.help or "")

@@ -127,10 +127,10 @@ def _o(key, note="") -> CommandSpec:
 
 COMMANDS: list[CommandSpec] = [
     # ---- core / semantic (agent 主力) ----
-    _c("trace fanin", "semantic", planned="drivers", recommended=True, cost="medium",
-       note="谁驱动这个信号 (上游; DRIVER 边反向遍历)"),
-    _c("trace fanout", "semantic", planned="loads", recommended=True, cost="medium",
-       note="这个信号被谁使用 (下游; DRIVER 边正向遍历)"),
+    _c("drivers", "semantic", recommended=True, cost="medium",
+       note="[规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin"),
+    _c("loads", "semantic", recommended=True, cost="medium",
+       note="[规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout"),
     _c("trace impact", "semantic", recommended=True, cost="expensive",
        note="传递影响 + 风险分级"),
     _c("trace evidence", "semantic", recommended=True, note="源码证据 (always/if 块原文)"),
@@ -142,8 +142,8 @@ COMMANDS: list[CommandSpec] = [
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),
-    _c("search", "locate", kind="primitive", cost="cheap", json=False,
-       note="[缺口] 无 --json; 文本 grep"),
+    _c("search", "locate", kind="primitive", cost="cheap",
+       note="文本/正则搜索; [iter_231] 已补 --json"),
     _c("graph nodes", "locate", kind="primitive", cost="cheap",
        note="[缺口] 只支持 --file 单文件, 真实项目(filelist)不可用"),
     _c("graph edges", "locate", kind="primitive", cost="cheap",
@@ -156,13 +156,14 @@ COMMANDS: list[CommandSpec] = [
        note="本清单自身 (agent 应先读它再决定调什么)"),
 
     # ---- core / state (你已定: graph 比较算 core) ----
-    _c("snapshot save", "state", kind="state", cost="medium", json=False, stateful=True,
-       note="[缺口] 无 --json; 默认写 .svq/ (应迁 $SVQ_CACHE_DIR)"),
+    _c("snapshot save", "state", kind="state", cost="medium", stateful=True,
+       note="[iter_231] 已补 --json; 默认写 .svq/ (P2 迁 $SVQ_CACHE_DIR)"),
     _c("snapshot list", "state", kind="state", cost="cheap", stateful=True),
     _c("snapshot show", "state", kind="state", cost="cheap", stateful=True),
     _c("snapshot compare", "state", kind="state", cost="medium", stateful=True,
        recommended=True, note="graph 差异 (diff compare 计划并入这里)"),
-    _c("snapshot delete", "state", kind="state", cost="cheap", json=False, stateful=True),
+    _c("snapshot delete", "state", kind="state", cost="cheap", stateful=True,
+       note="[iter_231] 已补 --json"),
     _c("diff compare", "state", kind="state", cost="medium", stateful=True,
        note="[计划] 并入 snapshot compare"),
 
@@ -217,6 +218,26 @@ COMMANDS: list[CommandSpec] = [
 
 COMMANDS_BY_KEY: dict[str, CommandSpec] = {c.key: c for c in COMMANDS}
 
+# ---------------------------------------------------------------------------
+# 兼容别名 (老命令名 → 规范名)
+#   [iter_231 P1] 方豆决定方案 (a): 语义 core 的规范入口是**顶层关系名**
+#   (`svq drivers` / `svq loads`), 老名在 `trace` 组内保留为兼容别名。
+#   别名与规范名是**同一个函数对象** (无第二份实现/签名) → 输出必然一致。
+# ---------------------------------------------------------------------------
+ALIASES: dict[str, str] = {
+    "trace fanin": "drivers",
+    "trace fanout": "loads",
+}
+
+
+def canonical(key: str) -> str:
+    """别名 → 规范名; 规范名原样返回。"""
+    return ALIASES.get(key, key)
+
+
+def aliases_of(canonical_key: str) -> list[str]:
+    return sorted(a for a, c in ALIASES.items() if c == canonical_key)
+
 # 计划新增 (P1+, 语义 core 缺口): instance 查询
 NEW_PLANNED: list[dict] = [
     {"name": "instances", "layer": "core", "group": "semantic",
@@ -270,6 +291,7 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
         cmds.append({
             "name": c.key,
             "planned_name": c.planned_name,
+            "aliases": aliases_of(c.key),
             "layer": c.layer,
             "group": c.group,
             "kind": c.kind,

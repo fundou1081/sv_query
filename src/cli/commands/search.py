@@ -11,6 +11,7 @@ Reference output to compare with: trace evidence
   python run_cli.py trace evidence test_multi_alway.q1 -f sim/test_cases.sv
 """
 
+import json as _json
 import re
 import sys
 from pathlib import Path
@@ -31,8 +32,10 @@ def search(
     case_insensitive: bool = typer.Option(False, "-i", "--ignore-case", help="Case-insensitive search"),
     max_results: int = typer.Option(50, "-n", "--max-results", help="Max number of results"),
     line_numbers: bool = typer.Option(True, "-l", "--line-numbers", help="Show line numbers"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="[iter_231] Output JSON (结构化契约, agent 用)"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print"),
 ) -> None:
-    """Grep-like search across .sv/.v files"""
+    """Grep-like search across .sv/.v files (文本或 --json)"""
 
     target = Path(file).expanduser().resolve()
 
@@ -59,6 +62,7 @@ def search(
         pattern = re.compile(re.escape(keyword), flags)
 
     total_matches = 0
+    results: list[dict] = []   # [iter_231] --json 的结构化结果
     for filepath in sorted(files):
         try:
             with open(filepath, encoding="utf-8", errors="ignore") as f:
@@ -74,8 +78,22 @@ def search(
         if not matches:
             continue
 
-        # Header
         rel = filepath.relative_to(target.parent) if target.is_dir() else filepath.name
+        results.append({
+            "file": str(rel),
+            "match_count": len(matches),
+            "lines": [
+                {"line": ln, "text": lines[ln - 1].rstrip()}
+                for ln in matches[:max_results]
+            ],
+            "truncated": len(matches) > max_results,
+        })
+        total_matches += len(matches)
+
+        if json_output:
+            continue
+
+        # Header (文本模式)
         print(f"\n{'='*60}")
         print(f"  {rel}")
         print(f"  {len(matches)} match(es) in {len(lines)} lines")
@@ -93,7 +111,17 @@ def search(
                 print(f"\n  ... and {len(matches) - max_results} more matches")
                 break
 
-        total_matches += len(matches)
+    if json_output:
+        print(_json.dumps({
+            "keyword": keyword,
+            "target": str(target),
+            "regex": bool(regex),
+            "case_insensitive": bool(case_insensitive),
+            "total_matches": total_matches,
+            "file_count": len(results),
+            "files": results,
+        }, indent=2 if pretty else None, ensure_ascii=False))
+        return
 
     print(f"\n{'='*60}")
     print(f"Total: {total_matches} match(es) across {len(files)} file(s)")
