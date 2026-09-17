@@ -98,7 +98,7 @@ COMMON_DOT_DEFAULTS = [
 
 
 # ---------------------------------------------------------------------------
-# Phase B (2026-07-17) — moved from cli/commands/visualize.py so all viz
+# Phase B (2026-07-17) — moved from cli/view/visualize.py so all viz
 # subcommands can share them.
 # ---------------------------------------------------------------------------
 

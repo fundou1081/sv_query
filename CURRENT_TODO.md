@@ -33,7 +33,12 @@
 **CLI 表面 md5 完全不变** (`8df6276e…`, 强证明纯搬迁);
 顺带根因修复: 新增 `src/cli/_paths.py` 路径锚点 (搬目录导致 `__file__` 深度运算错位 → coverage 16 红),
 检查器加 **R8** + 新增 `tools/find_module_refs.py` (搬前引用扫描单: `from X import Y` / 按路径读源码 / `__file__` 深度运算三类易漏引用)。
-**下一步 P1b-2**: `dev/` + `core/{locate,state,semantic}/` + `view/` 整文件搬迁 (fix*.py 留到 P2 一起拆)。
+**P1b-2 ✅ 完成 (iter_233)**: `core/{locate,state,semantic}/` + `view/` + `dev/` 三层落地 (13 文件 `git mv`),
+**稳定指纹不变** (`045f029e…`, 新加 `gen_cli_surface.py --fingerprint` 作为纯搬迁证据);
+引用清单靠 `find_module_refs.py` 一次扫清 (含上一轮漏掉的 `.sh` 脚本引用)。
+`commands/` 只剩 `fix.py`/`fix_imports.py`/`fix_widths.py` (P2 拆分: 只读 → `core/diagnose`, 会写文件的 → `tools/`)。
+**下一步 P1b-3** (风险最高, 需动函数体): 拆 `trace.py` (1819 行, core signal + view overview) 与
+`visualize.py` (2380 行, 10 个 view 命令各自成文件); 之后 P2 (fix 拆分 + snapshot 目录迁缓存) / P3 (`svq exp` 前缀 + 别名)。
 
 **历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
@@ -69,6 +74,17 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_233 (CLI 分层 P1b-2: core/view/dev 目录落地 + 稳定指纹 — 方豆: 继续)**: 延续"一次一层 + 表面零变化 + 全量门禁"节奏,
+把 `core/{locate,state,semantic}/` + `view/` + `dev/` 共 **13 文件** `git mv` 到位 (每层 `__init__.py` 声明 LAYER)。
+**搬前跑上一轮新装的 `tools/find_module_refs.py`** → 引用清单很短 (3 处代码 + 3 处注释 + 1 处脚本/文档), 一次性扫清,
+含上一轮漏掉的 **`.sh` 脚本**引用 (`manual_ventus_chunk.sh`)。`trace.py` 暂整文件放 `core/semantic/` (含 view 的 overview) —— 先搬后拆, 拆分为 P1b-3。
+**新增 `gen_cli_surface.py --fingerprint` (稳定指纹)**: 上一轮用 `--json` 的 md5 证明纯搬迁, 本轮它**假警报**了
+(md5 变了但 `--check` ✅) —— 原因是 `--json` 含 `generated_at` 日期且检查期间**跨天**。指纹只对命令面取 sha256 (排除易变字段):
+`045f029ede3ada43686d5bf3055360452b1f1e459da1459fb4fff5b63352a1fb` (搬前搬后一致 = 纯搬迁证明)。
+**教训**: 用含易变字段的指纹做等价性证明 = 每天赌运气; **先让证据稳定, 再下结论**。
+结果: `--check` ✅ / `check_cli_layers` rc=0 (R1~R8) / 全 CLI 模块导入 0 失败 / 定向 214 passed / 全量 **3334 passed / 0 failed**。
+[iter_233](docs/task_tree/iterations/iter_233_core_view_dev_layers.md)
 
 **iter_232 (CLI 分层 P1b-1: `exp/` 层目录落地 — 方豆: 开始吧, 保险一些的做法)**: 按"**一次搬一层 + 表面零变化 + 每层全量门禁**"的保守节奏,
 先搬最独立的 `exp/` (`src/cli/exp/{bus,verif,struct}/`, 9 文件 `git mv`; 9 文件之间零交叉 import, 只依赖共享层)。

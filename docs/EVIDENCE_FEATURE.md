@@ -84,7 +84,7 @@
 **目标**: `run_cli.py trace evidence` 端到端可用
 
 **改动**:
-- `cli/commands/trace.py`: 新 `evidence` 子命令
+- `cli/core/semantic/trace.py`: 新 `evidence` 子命令
   - 默认: 人友好文本输出
   - `--json`: JSON 输出(程序消费)
   - `--chain`: 递归 driver 链

@@ -8,7 +8,7 @@
 
 ## 背景
 
-`src/cli/commands/visualize.py:192` 起 `--svg` / `--dot` 是同一选项且**输出 SVG**
+`src/cli/view/visualize.py:192` 起 `--svg` / `--dot` 是同一选项且**输出 SVG**
 ("was DOT before V100"), 而 `sim/tests/usage/test_ventus_all_viz_validation.py` 的历史
 断言基于 DOT 文本 (`digraph` / `rankdir=LR` / `subgraph cluster_stage*` / `shape=diamond`)。
 iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原因 (不假装绿)。
@@ -81,5 +81,5 @@ iter_188 的处理: artifact 内容判定为 SVG → `pytest.skip` 并说明原�
 ## 前置与关联
 
 - `sim/tests/usage/test_ventus_all_viz_validation.py` (13 skip, 0 failed, iter_188)
-- CLI 语义: `src/cli/commands/visualize.py:192`、`src/cli/commands/trace.py:611`
+- CLI 语义: `src/cli/view/visualize.py:192`、`src/cli/commands/trace.py:611`
 - 相关记录: `docs/task_tree/iterations/iter_188_ventus_viz_suite_triage.md`

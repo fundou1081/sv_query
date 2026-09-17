@@ -374,7 +374,7 @@ class TestArchHelpers:
         """同 name 同 color."""
         import sys as _sys
         _sys.path.insert(0, str(PROJECT_ROOT / "src"))
-        from cli.commands.arch import _hash_color
+        from cli.view.arch import _hash_color
         c1 = _hash_color("axi_master_xbar")
         c2 = _hash_color("axi_master_xbar")
         assert c1 == c2
@@ -384,14 +384,14 @@ class TestArchHelpers:
 
     def test_hash_color_different(self):
         """不同 name 应该有不同 color."""
-        from cli.commands.arch import _hash_color
+        from cli.view.arch import _hash_color
         c1 = _hash_color("type_a")
         c2 = _hash_color("type_b")
         assert c1 != c2
 
     def test_collapse_instances_no_collapse(self):
         """len ≤ max 不折叠."""
-        from cli.commands.arch import _collapse_instances
+        from cli.view.arch import _collapse_instances
         inst = [("a", "t", 1), ("b", "t", 1)]
         vis, note = _collapse_instances(inst, max_nodes=10)
         assert vis == inst
@@ -399,7 +399,7 @@ class TestArchHelpers:
 
     def test_collapse_instances_folds(self):
         """5 instances (3 unique type) + max_nodes=2 → 折叠 1 type."""
-        from cli.commands.arch import _collapse_instances
+        from cli.view.arch import _collapse_instances
         inst = [
             ("a", "type_a", 1),
             ("b", "type_a", 1),
@@ -416,6 +416,6 @@ class TestArchHelpers:
 
     def test_safe_cluster_name(self):
         """DOT cluster 名不能含 -."""
-        from cli.commands.arch import _safe_cluster_name
+        from cli.view.arch import _safe_cluster_name
         assert _safe_cluster_name("axi_master_xbar") == "cluster_axi_master_xbar"
         assert _safe_cluster_name("u_middle.u_sub") == "cluster_u_middle_u_sub"

@@ -14,7 +14,7 @@
 # - graph_builder.py 加 re-export, 现有 import `from trace.core.graph_builder
 #   import DriverExtractor` 仍工作
 # - trace.core.__init__.py 通过 graph_builder 间接 re-export
-# - cli/commands/expression.py 直接 import graph_builder, 仍工作
+# - cli/dev/expression.py 直接 import graph_builder, 仍工作
 # ==============================================================================
 
 import logging
