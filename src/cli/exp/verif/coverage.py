@@ -18,12 +18,8 @@ V1 范围:
 import sys
 from pathlib import Path
 
-_current_file = Path(__file__).resolve()
-_src_dir = _current_file.parent
-_project_root = _src_dir.parent.parent
-
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+from cli._paths import ensure_on_path, SRC_DIR  # noqa: E402
+ensure_on_path(SRC_DIR)
 import warnings
 
 import typer
@@ -240,7 +236,8 @@ def generate(
         svq coverage generate --filelist=project.f -f top.sv -s data_o -I /path/inc
         svq coverage generate -f sim/openTitan_validation.sv -s state_q -o cg_state.sv
     """
-    _tools_dir = Path(__file__).resolve().parents[3] / "tools"
+    from cli._paths import TOOLS_DIR  # noqa: E402
+    _tools_dir = TOOLS_DIR
     if str(_tools_dir) not in sys.path:
         sys.path.insert(0, str(_tools_dir))
     from coverage_gen_demo import generate_covergroup

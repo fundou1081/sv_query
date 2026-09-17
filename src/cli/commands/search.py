@@ -18,10 +18,9 @@ from pathlib import Path
 
 import typer
 
-# Add project root to path
-_project_root = Path(__file__).parent.parent.parent.parent
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+# Add project root to path (锚点见 cli/_paths.py; 不用 __file__ 深度运算)
+from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+ensure_on_path(PROJECT_ROOT)
 
 
 def search(

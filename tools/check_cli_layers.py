@@ -14,6 +14,7 @@ check_cli_layers.py — [iter_230 P0] CLI 分层的机械保障
   R5 exp 层命令名不得出现在 core/view 的帮助文本里 (防止误导 agent)
   R6 exp 不得出现在 capabilities 默认输出 (须 --include-exp)
   R7 模块级不得定义与 builtin 同名的函数/类 (会劫持同模块的 builtin 调用)
+  R8 不得用 __file__ 做路径深度运算 (搬目录即错位) —— 一律用 cli/_paths.py 锚点
 
 INFO (不算违规, 但列出来当待办):
   - 只支持 --file 单文件、不支持 --filelist 的命令 (真实项目用不了)
@@ -190,6 +191,34 @@ def builtin_shadows(path: Path) -> list[tuple[int, str]]:
     return out
 
 
+def file_depth_math(path: Path) -> list[tuple[int, str]]:
+    """R8: 找出 `__file__` 路径深度运算 (搬目录即错位)。
+
+    实例 (iter_232 实测): `commands/coverage.py` 搬到 `exp/verif/` 后,
+    `Path(__file__).resolve().parents[3] / "tools"` 由 `<repo>/tools` 变成 `src/tools`
+    → `import coverage_gen_demo` ImportError (16 个测试红)。
+    规则: 一律用 `cli/_paths.py` 的 PROJECT_ROOT / SRC_DIR / TOOLS_DIR。
+    """
+    out: list[tuple[int, str]] = []
+    try:
+        src = path.read_text()
+        tree = ast.parse(src)
+    except SyntaxError:
+        return out
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        # Path(__file__)...parent 链 或 .resolve().parents[N]
+        seg = ast.get_source_segment(src, node) or ""
+        if "__file__" not in seg:
+            continue
+        parents = seg.count(".parent")
+        if parents >= 2 or "parents[" in seg:
+            out.append((node.lineno, seg[:70]))
+    return out
+
+
 def import_edges(path: Path, all_modules: dict[str, Path]) -> list[tuple[str, str]]:
     """返回该文件的 (它 → 它 import 的 cli 模块) 边。"""
     edges: list[tuple[str, str]] = []
@@ -310,6 +339,14 @@ def main() -> int:
         for lineno, name in builtin_shadows(path):
             errors.append(f"R7 遮蔽 builtin: {path.relative_to(ROOT)}:{lineno} "
                           f"def {name}(...) —— 同模块内 builtin 调用会被劫持")
+
+    # ---- R8: 禁止 __file__ 路径深度运算 ----
+    for path in iter_cli_py():
+        if path.name == "_paths.py":
+            continue
+        for lineno, seg in file_depth_math(path):
+            errors.append(f"R8 __file__ 深度运算: {path.relative_to(ROOT)}:{lineno} {seg} "
+                          f"—— 改用 cli/_paths.py 锚点")
 
     # ---- R4: core 必须 --json ----
     for key, cmd in sorted(leaves.items()):

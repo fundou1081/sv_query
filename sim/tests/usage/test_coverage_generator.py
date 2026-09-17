@@ -965,7 +965,7 @@ class TestCLICoverageSuggest(unittest.TestCase):
     def test_cli_module_imports(self):
         """coverage 模块能正常导入"""
         try:
-            from src.cli.commands import coverage  # noqa: F401
+            from src.cli.exp.verif import coverage  # noqa: F401
             self.assertTrue(hasattr(coverage, "coverage_app"))
         except ImportError as e:
             self.fail(f"Failed to import coverage module: {e}")

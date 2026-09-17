@@ -9,7 +9,8 @@ from pathlib import Path
 
 import typer
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+ensure_on_path(PROJECT_ROOT)
 
 
 from trace.core.snapshot_manager import SnapshotManager

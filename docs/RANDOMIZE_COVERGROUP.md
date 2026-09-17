@@ -255,7 +255,7 @@ sv_query uvm align -f my_env.sv
 - 全过 → 移除 `[NOT TESTED]` 标记
 
 **Day 1 下午**: 实现 `sv_query randomize list` CLI
-- 新增 `src/cli/commands/randomize.py`
+- 新增 `src/cli/exp/verif/randomize.py`
 - 走现有 UnifiedTracer + visitor 收集:
   - `rand` / `randc` 变量 (从 DeclarationVisitor 拿)
   - `randomize()` 调用点 (从 ExpressionVisitor 拿, 已实现但 [NOT TESTED])

@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from src.cli.commands.backpressure import (
+from src.cli.exp.bus.backpressure import (
     _BACKPRESSURE_RELEVANT,
     _PASSTHROUGH_TYPES,
     backpressure_app,

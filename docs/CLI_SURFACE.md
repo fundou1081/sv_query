@@ -1,7 +1,7 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-09-17  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-09-18  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览

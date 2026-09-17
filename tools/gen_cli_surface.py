@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -152,6 +153,16 @@ def render(data: dict) -> str:
     return "\n".join(L) + "\n"
 
 
+def _strip_volatile(text: str) -> str:
+    """比对时忽略**易变字段** (生成日期)。
+
+    [iter_232 自证] 第一版 `--check` 直接比全文 → 跨天后必然误报
+    ("命令/分层/选项有变", 实则只差日期)。漂移检查必须只比稳定内容。
+    """
+    return re.sub(r"^> \*\*生成日期\*\*: .*$", "> **生成日期**: <date>",
+                  text, flags=re.MULTILINE)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="生成 CLI 能力清单 (iter_230)")
     ap.add_argument("--check", action="store_true", help="只校验漂移, 不写文件")
@@ -168,7 +179,7 @@ def main() -> int:
         if not OUT.exists():
             print(f"❌ {OUT.relative_to(ROOT)} 不存在 — 跑 `python3 tools/gen_cli_surface.py`")
             return 1
-        if OUT.read_text() != text:
+        if _strip_volatile(OUT.read_text()) != _strip_volatile(text):
             print(f"❌ {OUT.relative_to(ROOT)} 与代码不一致 (命令/分层/选项有变) — 重新生成")
             return 1
         print(f"✅ {OUT.relative_to(ROOT)} 与代码一致")

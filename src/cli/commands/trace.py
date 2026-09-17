@@ -15,7 +15,8 @@ from pathlib import Path
 import typer
 
 # 添加 src 到 path 以便 import trace
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+ensure_on_path(PROJECT_ROOT)
 
 # [Stage 5] evidence helper (cdc/verify/risk/dataflow/controlflow 复用)
 from cli._evidence_helpers import (  # noqa: E402

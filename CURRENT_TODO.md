@@ -29,7 +29,11 @@
 + 补 3 条 `--json` (`search`/`snapshot save`/`snapshot delete`) + 检查器新增 **R7 (builtin 遮蔽)** + 17 条新测试。
 **P1a 顺带抓出 1 个 pre-existing 真 bug**: `snapshot.py` 的 `def list(...)` 遮蔽 builtin `list` →
 `snapshot save --filelist` 的 `files` 元数据永远为空 + stdout 被污染 **55,577 行** (实测) → 改名 `list_cmd` 根因修复。
-**下一步 P1b**: 目录分层 `src/cli/{core,view,exp,dev}/` (26 个命令文件搬迁 + auto-discovery 挂载)。
+**P1b-1 ✅ 完成 (iter_232)**: `exp/` 层落地 —— `src/cli/exp/{bus,verif,struct}/` (9 文件 `git mv`),
+**CLI 表面 md5 完全不变** (`8df6276e…`, 强证明纯搬迁);
+顺带根因修复: 新增 `src/cli/_paths.py` 路径锚点 (搬目录导致 `__file__` 深度运算错位 → coverage 16 红),
+检查器加 **R8** + 新增 `tools/find_module_refs.py` (搬前引用扫描单: `from X import Y` / 按路径读源码 / `__file__` 深度运算三类易漏引用)。
+**下一步 P1b-2**: `dev/` + `core/{locate,state,semantic}/` + `view/` 整文件搬迁 (fix*.py 留到 P2 一起拆)。
 
 **历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
@@ -65,6 +69,19 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_232 (CLI 分层 P1b-1: `exp/` 层目录落地 — 方豆: 开始吧, 保险一些的做法)**: 按"**一次搬一层 + 表面零变化 + 每层全量门禁**"的保守节奏,
+先搬最独立的 `exp/` (`src/cli/exp/{bus,verif,struct}/`, 9 文件 `git mv`; 9 文件之间零交叉 import, 只依赖共享层)。
+**用"表面黄金快照"证明是纯搬迁**: `gen_cli_surface.py --json` 的 md5 搬前搬后**完全一致** (`8df6276e…`), rows/别名/命令数全等。
+**全量门禁第一次就抓到 3 类搬迁盲点** (我搬前只 grep 了 `import cli.commands.X` 一种形式):
+① `from src.cli.commands import coverage` (**from-import 形式**) → ImportError;
+② 测试**按路径读源码** `open(src/cli/commands/handshake.py)` → 收集期 FileNotFoundError;
+③ 文件内 `Path(__file__)` **深度运算**搬一层即错位 → `coverage.py` 的 `parents[3]/"tools"` 变成 `src/tools` → **16 红**。
+**根因修复**: 新增 `src/cli/_paths.py` 锚点 (`CLI_DIR/SRC_DIR/PROJECT_ROOT/TOOLS_DIR` + `ensure_on_path`), `src/cli/**` 全部改用它 (含 main/_entry);
+另修正我自己的一次误改 (脚本把 main.py 的 PROJECT_ROOT 误换成 SRC_DIR → 控制台脚本会挂, 已恢复+冒烟)。
+**新增机械保障**: 检查器 **R8** (禁止 `__file__` 深度运算) + `tools/find_module_refs.py` (搬前引用扫描单, 三类易漏引用一次列出)。
+结果: CLI 表面 md5 不变 / `check_cli_layers` rc=0 (R1~R8) / 定向 43 passed / 之前 17 红 → 196 passed / 全量 **3334 passed / 0 failed**。
+[iter_232](docs/task_tree/iterations/iter_232_exp_layer_directory.md)
 
 **iter_231 (CLI 分层 P1a: 规范入口 + 别名 + 补 JSON — 方豆: 以 a 来做)**: 语义 core 的规范入口改为**顶层关系名**:
 `svq drivers`(谁驱动这个信号, 上游) / `svq loads`(被谁使用, 下游); 老名 `trace fanin`/`trace fanout` 保留为**兼容别名**

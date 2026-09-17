@@ -30,7 +30,8 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 # import READY_VALID_PATTERNS + _is_ready_or_valid from handshake.py
-_handshake_path = project_root / "src" / "cli" / "commands" / "handshake.py"
+# [iter_232] handshake 已迁到 exp/bus 层 (目录体现分层); 路径同步
+_handshake_path = project_root / "src" / "cli" / "exp" / "bus" / "handshake.py"
 _spec = importlib.util.spec_from_file_location("_hsk", _handshake_path)
 # 不实际执行模块, 只读其 globals 中的简单常量
 _hsk_globals = {}

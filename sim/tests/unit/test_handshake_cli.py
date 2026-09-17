@@ -2,7 +2,7 @@
 # test_handshake_cli.py - handshake CLI command tests
 # ==============================================================================
 """
-Tests for src/cli/commands/handshake.py
+Tests for src/cli/exp/bus/handshake.py
 Uses typer.testing.CliRunner to invoke commands end-to-end.
 """
 
@@ -14,7 +14,7 @@ from typer.testing import CliRunner
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from src.cli.commands.handshake import handshake_app
+from src.cli.exp.bus.handshake import handshake_app
 
 runner = CliRunner()
 
