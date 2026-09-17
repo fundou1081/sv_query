@@ -43,7 +43,7 @@ def build_resolver(file: Path = None, log_level: str = "ERROR", filelist: str = 
         raise ValueError("from_snapshot is mutually exclusive with file/filelist")
     if from_snapshot:
         # [B4 2026-07-03] Build tracer from snapshot (no SV parse, no real adapter)
-        from src.cli.commands.trace import _load_tracer_from_snapshot
+        from cli.core.semantic.trace import _load_tracer_from_snapshot
         tracer = _load_tracer_from_snapshot(from_snapshot, log_level=log_level, preprocess_macros=preprocess_macros)
         graph = tracer.build_graph()
         # Snapshot 没有真 semantic adapter; 构造一个空 adapter (resolver 走 fallback)

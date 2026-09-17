@@ -3054,7 +3054,7 @@ class TestTraceEvidenceCLIV2(unittest.TestCase):
 
     def test_evidence_command_exists(self):
         """evidence CLI 命令存在 (在 trace_app 下)"""
-        from src.cli.commands.trace import trace_app
+        from src.cli.core.semantic.trace import trace_app
         # typer 的 registered_commands 是 list of CommandInfo
         # name 属性可能是 None, 用 callback.__name__ 拿
         names = [c.callback.__name__ for c in trace_app.registered_commands if c.callback]

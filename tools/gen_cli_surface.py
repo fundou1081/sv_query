@@ -167,9 +167,23 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="生成 CLI 能力清单 (iter_230)")
     ap.add_argument("--check", action="store_true", help="只校验漂移, 不写文件")
     ap.add_argument("--json", action="store_true", help="stdout JSON")
+    ap.add_argument("--fingerprint", action="store_true",
+                    help="打印**稳定指纹** (只含命令面, 不含日期) —— 搬目录时用它证明纯搬迁")
     args = ap.parse_args()
 
     data = collect()
+    if args.fingerprint:
+        # [iter_233] 搬目录的"纯搬迁"证明: 只对命令面取指纹, 排除易变字段 (日期)。
+        import hashlib
+        stable = {
+            "counts": data["counts"],
+            "aliases": data["aliases"],
+            "layers": data["layers"],
+            "rows": data["rows"],
+        }
+        payload = json.dumps(stable, sort_keys=True, ensure_ascii=False)
+        print(hashlib.sha256(payload.encode()).hexdigest())
+        return 0
     if args.json:
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0

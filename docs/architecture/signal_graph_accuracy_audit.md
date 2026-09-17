@@ -102,7 +102,7 @@
 - `src/trace/core/driver_extractor.py:1287` — `if self._instance_paths:` 为假 →
   else 旧路径按模块类型名提取 (generate 内实例从不作为 (path,module) 处理)
 **触发**: CLI `visualize dataflow` 不传 `--module` (默认 None,
-`src/cli/commands/visualize.py:260`)、或任何 API 调用不设 target。
+`src/cli/view/visualize.py:260`)、或任何 API 调用不设 target。
 **修复 (2026-09-04 定稿)**: 库 API 默认**不**自动 target — 无 target 类型级
 多模块图是既有契约 (cross_module_tracking/boundary/module_synth/stats 等 8+
 测试锁定 mixed-namespace: `top.u_tb.clk` 实例端口 + `tb.clk_out` 类型级并存)。

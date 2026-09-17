@@ -47,30 +47,30 @@ from src.cli._common import (
     _build_tracer,
     handle_compilation_error,
 )
-from src.cli.commands.arch import arch_app
+from cli.view.arch import arch_app
 from src.cli.exp.bus.backpressure import backpressure_app
 from src.cli.exp.struct.cdc import cdc_app
-from src.cli.commands.controlflow import controlflow_app
+from cli.core.semantic.controlflow import controlflow_app
 from src.cli.exp.verif.coverage import coverage_app
-from src.cli.commands.dataflow import dataflow_app
-from src.cli.commands.design import design_app
-from src.cli.commands.diff import diff_app
-from src.cli.commands.expression import expression_app
+from cli.core.semantic.dataflow import dataflow_app
+from cli.view.design import design_app
+from cli.core.state.diff import diff_app
+from cli.dev.expression import expression_app
 from src.cli.commands.fix import fix_app
-from src.cli.commands.graph import graph_app
-from src.cli.commands.capabilities import capabilities
+from cli.core.locate.graph import graph_app
+from cli.core.locate.capabilities import capabilities
 from src.cli.exp.bus.handshake import handshake_app
 from src.cli.exp.bus.protocol import protocol_app
 from src.cli.exp.verif.randomize import randomize_app
 from src.cli.exp.verif.risk import risk_app
-from src.cli.commands.search import search
-from src.cli.commands.snapshot import snapshot_app
+from cli.core.locate.search import search
+from cli.core.state.snapshot import snapshot_app
 from src.cli.exp.verif.sva import sva_app
 from src.cli.exp.struct.timing import timing_app
-from src.cli.commands.trace import trace_app
-from src.cli.commands.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
+from cli.core.semantic.trace import trace_app
+from cli.core.semantic.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
 from src.cli.exp.verif.verify import verify_app
-from src.cli.commands.visualize import vis_app
+from cli.view.visualize import vis_app
 import logging
 
 logger = logging.getLogger(__name__)

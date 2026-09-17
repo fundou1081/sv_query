@@ -522,7 +522,7 @@ def _ensure_sched_dots():
     run_cli(base + ["--timing", "--svg", "/tmp/sched_timing.dot"])
     # Trace
     # [iter_188] trace 子命令没有 --dot/--svg; 当前正确用法是
-    # `--format dot --output <file>` (src/cli/commands/trace.py:611)
+    # `--format dot --output <file>` (src/cli/core/semantic/trace.py:611)
     run_cli(["trace", "fanout", "clk", "--filelist", filelist,
              "--format", "dot", "--output", "/tmp/sched_fanout.dot"])
     run_cli(["trace", "fanin", "clk", "--filelist", filelist,
