@@ -72,6 +72,7 @@ from src.cli.commands.snapshot import snapshot_app
 from src.cli.commands.sva import sva_app
 from src.cli.commands.timing import timing_app
 from src.cli.commands.trace import trace_app
+from src.cli.commands.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
 from src.cli.commands.verify import verify_app
 from src.cli.commands.visualize import vis_app
 import logging
@@ -86,6 +87,11 @@ app = typer.Typer(
 
 # 注册子命令组
 app.add_typer(trace_app, name="trace")
+
+# [iter_231 P1] 语义 core 的规范入口 (顶层): 关系名而非方向名 —— agent 更易选对。
+# 老名 `trace fanin` / `trace fanout` 保留为兼容别名 (同一实现)。
+app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游 drivers; 兼容别名: trace fanin)")(_fanin_cmd)
+app.command("loads", help="[规范入口] 这个信号被谁使用 (下游 loads; 兼容别名: trace fanout)")(_fanout_cmd)
 app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")

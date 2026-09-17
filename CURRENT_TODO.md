@@ -25,7 +25,11 @@
 **当前任务 (方豆方向)**: **CLI 分层与专注化** (L1, 🟡 P0 完成 / P1~P6 待做) —— 64 个平铺命令 → 分层能力面。
 任务文件: `docs/task_tree/tasks/L1_cli_layering.md`; 生成物清单: `docs/CLI_SURFACE.md`; 降级政策: `docs/EXP_NAMESPACE.md`。
 **P0 已交付**: `_registry.py`(单一真相源) + `svq capabilities`(agent 工具面) + `tools/check_cli_layers.py`(R1~R6 机械检查) + `tools/gen_cli_surface.py`(清单生成物)。
-**下一步 P1**: 目录分层 `core/view/exp/dev` + 老命令名 alias + 补 3 条 `--json`(`search`/`snapshot save`/`snapshot delete`) + `fanin→drivers`/`fanout→loads`。
+**P1a ✅ 完成 (iter_231)**: 规范入口 `svq drivers` / `svq loads` (顶层, 方案 a) + 老名 `trace fanin`/`trace fanout` 保留为**同一实现的别名**
++ 补 3 条 `--json` (`search`/`snapshot save`/`snapshot delete`) + 检查器新增 **R7 (builtin 遮蔽)** + 17 条新测试。
+**P1a 顺带抓出 1 个 pre-existing 真 bug**: `snapshot.py` 的 `def list(...)` 遮蔽 builtin `list` →
+`snapshot save --filelist` 的 `files` 元数据永远为空 + stdout 被污染 **55,577 行** (实测) → 改名 `list_cmd` 根因修复。
+**下一步 P1b**: 目录分层 `src/cli/{core,view,exp,dev}/` (26 个命令文件搬迁 + auto-discovery 挂载)。
 
 **历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
@@ -61,6 +65,19 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_231 (CLI 分层 P1a: 规范入口 + 别名 + 补 JSON — 方豆: 以 a 来做)**: 语义 core 的规范入口改为**顶层关系名**:
+`svq drivers`(谁驱动这个信号, 上游) / `svq loads`(被谁使用, 下游); 老名 `trace fanin`/`trace fanout` 保留为**兼容别名**
+—— 关键是**同一个函数对象双注册** (`app.command("drivers")(fanin)` + `trace_app.command("fanin")(fanin)`), 无双份实现/签名, 实测输出完全一致。
+注册表加 `ALIASES`/`canonical()`/`aliases_of()`, capabilities 与 `CLI_SURFACE.md` 输出别名。
+补 3 条 core 契约: `search --json` (文本模式逐字不变) / `snapshot save --json` / `snapshot delete --json`。
+**⚠️ 顺带抓出 pre-existing 真 bug**: `commands/snapshot.py` 模块级 `def list(...)` **遮蔽 builtin `list`** →
+同模块 `list(sources.keys())` 变成"执行 list 命令": `snapshot save --filelist` 的 `files` 元数据**永远是空**,
+且实测污染 stdout **55,577 行** (发现路径: 我给 save 加 `--json` 后看到 4956 行快照表, 插桩 `print_stack` 30 秒定位)。
+根因修复: 命令函数改名 `list_cmd` + 显式 `@command("list")`; 并新增检查器 **R7 (CLI 模块不得遮蔽 builtin)** + 测试 `TestNoBuiltinShadowing`。
+新增 `sim/tests/unit/test_cli_layering.py` **17 passed** (注册表一致性/别名等价/capabilities 分层/JSON 契约/filelist 元数据回归);
+全量 canonical **3334 passed / 0 failed** (3317 + 新测试 17, 0 退化)。
+[iter_231](docs/task_tree/iterations/iter_231_semantic_core_naming_and_alias.md)
 
 **iter_230 (CLI 分层专注化 P0 — 方豆: 你来给一些建议 → 逐条拍板)**: 把"分层"从讨论变成**可机械校验的代码事实**。
 ① `src/cli/_registry.py`: 层规范 + **65 条命令分类** (core=23 / view=13 / exp=24 / dev=3 / out=2; core 内 semantic/locate/state/diagnose),

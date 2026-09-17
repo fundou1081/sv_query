@@ -75,6 +75,8 @@ def save(
     git: bool = typer.Option(False, "--git", "-g", help="Auto-capture git commit hash"),
     filelist: str = typer.Option(None, "--filelist", help="[Req-20 2026-06-12] Path to filelist (.f/.fl) for multi-file projects"),
     preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="[Req-20] 跨文件 `MACRO 展开"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="[iter_231] Output JSON (core 契约)"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print"),
 ):
     """Save current code state as a snapshot
 
@@ -125,6 +127,17 @@ def save(
             files = []
         saved_path = manager.save(tag, graph_data, git_commit=git_commit, files=files)
 
+        if json_output:
+            print(json.dumps({
+                "ok": True, "tag": tag, "path": str(saved_path),
+                "files": len(files),
+                "node_count": graph_data["node_count"],
+                "edge_count": graph_data["edge_count"],
+                "elaboration_errors": len(elaboration_errors),
+                "failed_files": [str(f) for f in (failed_files or [])],
+            }, indent=2 if pretty else None, ensure_ascii=False))
+            return
+
         print(f"✅ Snapshot saved: {tag}")
         print(f"   Path: {saved_path}")
         print(f"   Files: {len(files)}")
@@ -150,11 +163,17 @@ def save(
         raise typer.Exit(code=1) from None
 
 
-@snapshot_app.command()
-def list(
+@snapshot_app.command("list")
+def list_cmd(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ):
-    """List all snapshots"""
+    """List all snapshots
+
+    [iter_231] 函数改名 `list_cmd` —— 模块级 `def list(...)` 会**遮蔽 builtin list**,
+    导致本模块内所有 `list(...)` 调用都去执行这个命令 (实测: `snapshot save --json`
+    打印 4956 行快照表; `snapshot save --filelist` 的 `list(sources.keys())` 也中招,
+    静默拿到 None)。命令名仍是 `list` (显式 command("list"))。
+    """
     manager = SnapshotManager()
     tags = manager.list_tags()
     snapshots = [manager.show(t) for t in tags]
@@ -208,18 +227,34 @@ def show(
 def delete(
     tag: str = typer.Argument(..., help="Snapshot tag"),
     force: bool = typer.Option(False, "--force", "-f", help="Force delete without confirmation"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="[iter_231] Output JSON (core 契约)"),
+    pretty: bool = typer.Option(False, "--pretty", "-p", help="[JSON] Pretty-print"),
 ):
     """Delete a snapshot"""
     manager = SnapshotManager()
     if not manager.show(tag):
+        if json_output:
+            print(json.dumps({"ok": False, "tag": tag, "deleted": False,
+                              "error": "snapshot not found"},
+                             indent=2 if pretty else None, ensure_ascii=False))
+            raise typer.Exit(code=1)
         print(f"Snapshot not found: {tag}")
         raise typer.Exit(code=1)
     if not force:
         confirm = input(f"Delete snapshot '{tag}'? [y/N]: ")
         if confirm.lower() != "y":
+            if json_output:
+                print(json.dumps({"ok": True, "tag": tag, "deleted": False,
+                                  "cancelled": True},
+                                 indent=2 if pretty else None, ensure_ascii=False))
+                return
             print("Cancelled")
             return
     manager.delete(tag)
+    if json_output:
+        print(json.dumps({"ok": True, "tag": tag, "deleted": True},
+                         indent=2 if pretty else None, ensure_ascii=False))
+        return
     print(f"✅ Deleted: {tag}")
 
 

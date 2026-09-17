@@ -35,7 +35,8 @@ def collect() -> dict:
     import click
     import typer
     from cli.main import app
-    from cli._registry import COMMANDS, LAYERS, NEW_PLANNED, counts
+    from cli._registry import (ALIASES, COMMANDS, LAYERS, NEW_PLANNED,
+                               aliases_of, counts)
 
     root = typer.main.get_command(app)
     leaves: dict[str, click.Command] = {}
@@ -59,6 +60,7 @@ def collect() -> dict:
         rows.append({
             "name": spec.key,
             "planned_name": spec.planned_name,
+            "aliases": aliases_of(spec.key),
             "layer": spec.layer,
             "group": spec.group,
             "kind": spec.kind,
@@ -81,6 +83,7 @@ def collect() -> dict:
                        "schema_version": l.schema_version, "note": l.note}
                    for n, l in LAYERS.items()},
         "planned_new": NEW_PLANNED,
+        "aliases": dict(ALIASES),
         "rows": rows,
     }
 
@@ -117,15 +120,26 @@ def render(data: dict) -> str:
             continue
         L.append(f"## `{layer}` ({len(rows)} 个)")
         L.append("")
-        L.append("| 命令 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |")
-        L.append("|---|---|---|---|---|---|---|---|---|")
+        L.append("| 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |")
+        L.append("|---|---|---|---|---|---|---|---|---|---|")
         for r in sorted(rows, key=lambda x: (x["group"], x["name"])):
             state = "✅" if r["exists"] else "❌ 不存在"
             if not r["json"] and layer == "core":
                 state += " ⚠️缺JSON"
-            L.append(f"| `{r['name']}` | {r['planned_name'] or '—'} | {r['group']} | "
-                     f"{r['kind']} | {r['cost']} | {'✅' if r['json'] else '—'} | "
+            alias_txt = ", ".join(f"`{a}`" for a in r["aliases"]) or "—"
+            L.append(f"| `{r['name']}` | {alias_txt} | {r['planned_name'] or '—'} | "
+                     f"{r['group']} | {r['kind']} | {r['cost']} | "
+                     f"{'✅' if r['json'] else '—'} | "
                      f"{'✅' if r['filelist'] else '—'} | {state} | {r['note']} |")
+        L.append("")
+
+    if data.get("aliases"):
+        L.append("## 兼容别名 (老名保留, 同一实现)")
+        L.append("")
+        L.append("| 别名 | 规范名 |")
+        L.append("|---|---|")
+        for a, c in sorted(data["aliases"].items()):
+            L.append(f"| `{a}` | `{c}` |")
         L.append("")
 
     L.append("## 计划新增 (语义 core 缺口: instance 查询)")
