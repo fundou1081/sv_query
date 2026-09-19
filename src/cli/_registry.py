@@ -58,7 +58,7 @@ LAYERS: dict[str, LayerSpec] = {
     "exp": LayerSpec(
         name="exp", consumer="none", stability="unstable", readonly=True,
         json_required=False, in_capabilities=False, schema_version=None,
-        note="降级区: 无 schema 承诺, 只修 bug 不加功能; --include-exp 才列出",
+        note="降级区: 规范入口 svq exp <组> <子> (老路径为别名); 无 schema 承诺, 只修 bug; --include-exp 才列出",
     ),
     "dev": LayerSpec(
         name="dev", consumer="dev", stability="none", readonly=True,
@@ -194,23 +194,23 @@ COMMANDS: list[CommandSpec] = [
        note="[计划] 归入 view/overview"),
 
     # ---- exp / bus (总线结构域: 方豆定 —— 也降级) ----
-    _e("protocol detect", "bus"), _e("protocol show", "bus"),
-    _e("protocol list", "bus", cost="cheap"), _e("protocol semantics", "bus"),
-    _e("handshake scan", "bus"), _e("handshake analyze", "bus"),
-    _e("handshake pair", "bus"),
-    _e("backpressure analyze", "bus"), _e("backpressure deadlock", "bus"),
+    _e("exp protocol detect", "bus"), _e("exp protocol show", "bus"),
+    _e("exp protocol list", "bus", cost="cheap"), _e("exp protocol semantics", "bus"),
+    _e("exp handshake scan", "bus"), _e("exp handshake analyze", "bus"),
+    _e("exp handshake pair", "bus"),
+    _e("exp backpressure analyze", "bus"), _e("exp backpressure deadlock", "bus"),
 
     # ---- exp / verif (验证域: 统一降级) ----
-    _e("sva extract", "verif"), _e("sva coverage", "verif"), _e("sva timing", "verif"),
-    _e("coverage suggest", "verif"), _e("coverage gap", "verif"),
-    _e("coverage generate", "verif"), _e("coverage analyze", "verif"),
-    _e("verify gap", "verif"), _e("risk analyze", "verif"),
-    _e("randomize list", "verif"), _e("randomize extract", "verif"),
-    _e("randomize trace", "verif"), _e("randomize reachability", "verif"),
+    _e("exp sva extract", "verif"), _e("exp sva coverage", "verif"), _e("exp sva timing", "verif"),
+    _e("exp coverage suggest", "verif"), _e("exp coverage gap", "verif"),
+    _e("exp coverage generate", "verif"), _e("exp coverage analyze", "verif"),
+    _e("exp verify gap", "verif"), _e("exp risk analyze", "verif"),
+    _e("exp randomize list", "verif"), _e("exp randomize extract", "verif"),
+    _e("exp randomize trace", "verif"), _e("exp randomize reachability", "verif"),
 
     # ---- exp / struct (cdc/timing: 算法待定, 附晋升门槛) ----
-    _e("cdc analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
-    _e("timing analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
+    _e("exp cdc analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
+    _e("exp timing analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
 
     # ---- dev (内部调试) ----
     _d("expression build"), _d("expression func"), _d("expression cond"),
@@ -236,6 +236,31 @@ ALIASES: dict[str, str] = {
     "fix widths": "diagnose widths",
     "fix imports": "diagnose imports",
     "fix timescale": "diagnose timescale",
+    # [iter_235 P3] exp 降级区收进 `svq exp ...` 前缀; 老路径保留为兼容别名
+    "protocol detect": "exp protocol detect",
+    "protocol show": "exp protocol show",
+    "protocol list": "exp protocol list",
+    "protocol semantics": "exp protocol semantics",
+    "handshake scan": "exp handshake scan",
+    "handshake analyze": "exp handshake analyze",
+    "handshake pair": "exp handshake pair",
+    "backpressure analyze": "exp backpressure analyze",
+    "backpressure deadlock": "exp backpressure deadlock",
+    "sva extract": "exp sva extract",
+    "sva coverage": "exp sva coverage",
+    "sva timing": "exp sva timing",
+    "coverage suggest": "exp coverage suggest",
+    "coverage gap": "exp coverage gap",
+    "coverage generate": "exp coverage generate",
+    "coverage analyze": "exp coverage analyze",
+    "verify gap": "exp verify gap",
+    "risk analyze": "exp risk analyze",
+    "randomize list": "exp randomize list",
+    "randomize extract": "exp randomize extract",
+    "randomize trace": "exp randomize trace",
+    "randomize reachability": "exp randomize reachability",
+    "cdc analyze": "exp cdc analyze",
+    "timing analyze": "exp timing analyze",
 }
 
 
