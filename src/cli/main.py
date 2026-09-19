@@ -96,6 +96,25 @@ app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")
 app.add_typer(controlflow_app, name="controlflow")
+# [iter_235 P3] exp 降级区: **规范入口 = `svq exp <组> <子命令>`**;
+# 下面这 10 个顶层组保留为**兼容别名** (老脚本/老测试继续可用, 见 cli/_registry.py ALIASES)。
+exp_app = typer.Typer(
+    help="[UNSTABLE] 降级区 (无 schema 承诺, 只修 bug 不加功能): "
+         "bus 总线结构域 / verif 验证域 / struct 算法待定 — 见 docs/EXP_NAMESPACE.md"
+)
+exp_app.add_typer(protocol_app, name="protocol")
+exp_app.add_typer(handshake_app, name="handshake")
+exp_app.add_typer(backpressure_app, name="backpressure")
+exp_app.add_typer(sva_app, name="sva")
+exp_app.add_typer(coverage_app, name="coverage")
+exp_app.add_typer(verify_app, name="verify")
+exp_app.add_typer(risk_app, name="risk")
+exp_app.add_typer(randomize_app, name="randomize")
+exp_app.add_typer(cdc_app, name="cdc")
+exp_app.add_typer(timing_app, name="timing")
+app.add_typer(exp_app, name="exp")
+
+# ---- 兼容别名 (老路径) ----
 app.add_typer(risk_app, name="risk")
 app.add_typer(sva_app, name="sva")
 app.add_typer(timing_app, name="timing")

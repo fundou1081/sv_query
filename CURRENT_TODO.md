@@ -41,7 +41,10 @@
 写入能力移到 `tools/fix_timescale.py --apply` / 新增 `tools/fix_imports.py --write` (后者拒绝原地覆盖);
 **R3 检查器零基线** (CLI 内任何写文件立即失败); 顺带抓出并修复第 5 个真 bug (`tools/fix_timescale.py` 路径 guard 导致 `import trace` 命中 stdlib → 长期无法运行)。
 **P2 剩余**: snapshot 目录迁 `$SVQ_CACHE_DIR` (顺带治理仓库根 4987 个快照 / 137MB)。
-**P3 待做**: `svq exp ...` 前缀 + 别名过渡 (命令路径最后一次变更); 之后 P1b-3 (拆 trace.py / visualize.py) 收尾。
+**P3 ✅ 完成 (iter_235)**: 24 个 exp 命令收进 **`svq exp <组> <子>`** 规范前缀 (组帮助标 `[UNSUSTABLE]`→指向 EXP_NAMESPACE),
+老路径 (10 个顶层组) 全保留为**兼容别名** (同一 Typer 子应用挂两处, 零实现重复);
+`capabilities` 默认输出 **65 → 38** 条; 别名总数 6 → 30。**刻意不隐藏老路径** (兼容期内可发现; 隐藏/移除留 P6)。
+**剩余**: ① P2 剩余: snapshot 目录迁 `$SVQ_CACHE_DIR` + 只读证明测试 (目录树 hash 不变); ② P1b-3: 拆 `trace.py`(1819)/`visualize.py`(2380); ③ P6: exp 复审 + 别名隐藏。
 
 **历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
@@ -77,6 +80,15 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_235 (CLI 分层 P3: exp 收进 `svq exp ...` 前缀 — 方豆: 做 p2 p3)**: 降级区从顶层平铺收进统一前缀。
+① 新顶层组 `svq exp` 下挂 10 个子组 (protocol/handshake/backpressure/sva/coverage/verify/risk/randomize/cdc/timing), 组帮助标 `[UNSTABLE]` + 指向 `docs/EXP_NAMESPACE.md`;
+② 老路径 (`svq protocol detect` / `svq sva extract` …) **全部保留为兼容别名** —— 同一 Typer 子应用挂两处, 零实现重复 (别名机制本轮已是第三次复用: drivers/loads → diagnose/fix → exp/*);
+③ 注册表: 24 条 exp 规范名加 `exp ` 前缀 + `ALIASES` 增 24 条; **`capabilities` 默认输出 65 → 38 条** (core 25 + view 13), 别名总数 6 → 30;
+④ **刻意不隐藏老组** (兼容期内"老路径仍可发现"优先; 隐藏/移除留 P6 复审, 有明确期限避免"待定变永久")。
+验证: `check_cli_layers` rc=0 (R1 接受别名: 95 叶子 = 65 规范 + 30 别名, 0 违规) / `exp sva extract` 与老路径均 rc=0 /
+定向 49 passed / CLI_SURFACE 重生成 / 全量 **3336 passed / 0 failed**。
+[iter_235](docs/task_tree/iterations/iter_235_p3_exp_namespace.md)
 
 **iter_234 (CLI 分层 P2: fix* 拆分 → CLI 只读 + 写入移出 — 方豆: 做 p2 p3)**: 落地方豆硬约束 **"sv_query 不改 RTL"**。
 ① `fix*` 三文件 → `core/diagnose/{report,timescale,imports,widths}.py` (一个命令一个文件), `src/cli/commands/` 现在**只剩 `__init__.py`**;

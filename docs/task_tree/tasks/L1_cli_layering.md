@@ -61,7 +61,7 @@ src/cli/
 | P1b-3 | 拆分 `trace.py` (core signal + view overview) 与 `visualize.py` (10 个 view 命令) | 待做 |
 | **P2 (部分)** | `fix*` → `core/diagnose` 只读 (4 命令) + 写入移出到 `tools/` + R3 零基线 + `tools/_bootstrap.py` | ✅ **完成 (iter_234)** |
 | P2 剩余 | `snapshot` 默认目录迁 `$SVQ_CACHE_DIR` (顺带治理仓库根 4987 快照/137MB) + 只读证明测试 (目录树 hash 不变) | 待做 |
-| P3 | `exp` 收纳 (bus/verif/struct 三域) + capabilities 分层过滤生效 | 待做 |
+| **P3** | exp 收进 `svq exp <组> <子>` 规范前缀 (老路径 = 别名); capabilities 默认 65 → 38 | ✅ **完成 (iter_235)** |
 | P4 | 域内合并: bus 9→4; verif 13→~8; `diff compare` 并入 `snapshot compare` | 待做 |
 | P5 | `view` 重点建设: 迁完 4 个旧渲染器 → VizData; 解冻 12 个 SVG 断言; `datapath` 补测试转正 | 待做 |
 | P6 | `exp` 复审 (转正/归档) + cdc/timing 晋升门槛评估 | 待做 |
