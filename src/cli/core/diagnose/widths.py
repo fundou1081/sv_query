@@ -135,7 +135,7 @@ def _evaluate_clog2(value_or_macro: int | str, sources: dict[str, str]) -> int |
 # CLI 命令
 # ----------------------------------------------------------------------------
 
-def fix_widths_cmd(
+def widths_cmd(
     filelist: str = typer.Option(..., "--filelist", help="Path to filelist (.f/.fl)"),
     project_root: str = typer.Option(
         None, "--project-root", help="要扫描的目录 (默认: filelist 同级 src/)"

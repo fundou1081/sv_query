@@ -76,7 +76,7 @@ def test_extract_definitions_finds_typedef():
     """_extract_definitions_from_file 应识别 typedef / module / package / define"""
     import tempfile
 
-    from cli.commands.fix_imports import _extract_definitions_from_file
+    from cli.core.diagnose.imports import _extract_definitions_from_file
     with tempfile.NamedTemporaryFile(suffix=".sv", mode="w", delete=False) as f:
         f.write("`timescale 1ns/1ps\nmodule foo (input wire clk); endmodule\ntypedef logic [7:0] my_typedef_t;\npackage my_pkg; endpackage\n`define MY_MACRO 1\n")
         f_path = f.name
@@ -93,7 +93,7 @@ def test_extract_definitions_finds_typedef():
 
 def test_scan_project_finds_identifier():
     """_scan_project_for_identifier 应找到含 identifier 定义的文件"""
-    from cli.commands.fix_imports import _scan_project_for_identifier
+    from cli.core.diagnose.imports import _scan_project_for_identifier
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     found = _scan_project_for_identifier(Path(proj), "my_typedef_t")
     assert found is not None, "应找到 my_typedef_t 定义, got None"
@@ -103,7 +103,7 @@ def test_scan_project_finds_identifier():
 
 def test_scan_project_returns_none_for_missing():
     """_scan_project_for_identifier 找不到时返回 None"""
-    from cli.commands.fix_imports import _scan_project_for_identifier
+    from cli.core.diagnose.imports import _scan_project_for_identifier
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     found = _scan_project_for_identifier(Path(proj), "totally_undefined_xyz")
     assert found is None
@@ -153,22 +153,42 @@ def test_fix_imports_json_output():
     print(f"✅ fix imports --json: {len(data['identifiers'])} identifier(s), {data['fixable_count']} fixable")
 
 
-def test_fix_imports_write_new_filelist():
-    """--write 生成新 filelist"""
+def test_fix_imports_cli_is_readonly_no_write_option():
+    """[iter_234 P2] CLI 只读: `diagnose imports` **不提供 --write** (不写项目文件)。"""
+    r = _run("diagnose", "imports", "--help")
+    assert r.returncode == 0
+    assert "--filelist" in r.stdout
+    assert "tools/fix_imports.py" in r.stdout, "help 应指向写入工具"
+    # 真正的契约: CLI 拒绝 --write (不是"help 里没这个词" —— help 会提到工具)
+    r2 = _run("diagnose", "imports", "--filelist", "/dev/null", "--write", "/tmp/x.f")
+    assert r2.returncode == 2 and "No such option" in (r2.stdout + r2.stderr), \
+        f"CLI 必须拒绝 --write: rc={r2.returncode} {r2.stdout[-200:]}"
+    print("✅ diagnose imports: 只读 (无 --write), 指向 tools/fix_imports.py")
+
+
+def test_tools_fix_imports_writes_new_filelist():
+    """写入能力搬到 tools/fix_imports.py: --write 生成新 filelist (独立验证)。"""
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
     new_fl = Path(tmpdir) / "test_fixed.f"
-    r = _run("fix", "imports", "--filelist", fl, "--project-root", proj, "--write", str(new_fl), "--log-level", "ERROR")
-    assert r.returncode == 0
-    # 新 filelist 存在
-    assert new_fl.exists(), f"新 filelist 应生成: {new_fl}"
+    tool = Path(__file__).resolve().parents[3] / "tools" / "fix_imports.py"
+    r = subprocess.run(
+        ["python3", str(tool), "--filelist", fl, "--project-root", proj,
+         "--write", str(new_fl), "--log-level", "ERROR"],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert r.returncode == 0, f"tool rc={r.returncode}: {r.stdout[-300:]}{r.stderr[-300:]}"
+    assert new_fl.exists(), "应生成新 filelist"
     content = new_fl.read_text()
-    # 应含原 filelist 内容
-    assert "main.sv" in content
-    assert "broken.sv" in content
-    # 输出应说明
-    assert "Wrote" in r.stdout
-    assert "Added" in r.stdout
-    print(f"✅ fix imports --write: 生成 {new_fl}")
+    assert "main.sv" in content and "broken.sv" in content
+    assert "Wrote" in r.stdout and "Added" in r.stdout
+
+    # 安全约束: 目标 == 原 filelist → 拒绝 (早期 CLI 会原地覆盖)
+    r2 = subprocess.run(
+        ["python3", str(tool), "--filelist", fl, "--project-root", proj, "--write", fl],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert r2.returncode == 2 and "拒绝写入" in (r2.stdout + r2.stderr)
+    print(f"✅ tools/fix_imports.py: 写 {new_fl} + 拒绝原地覆盖")
 
 
 def test_fix_imports_help_documented():

@@ -37,8 +37,11 @@
 **稳定指纹不变** (`045f029e…`, 新加 `gen_cli_surface.py --fingerprint` 作为纯搬迁证据);
 引用清单靠 `find_module_refs.py` 一次扫清 (含上一轮漏掉的 `.sh` 脚本引用)。
 `commands/` 只剩 `fix.py`/`fix_imports.py`/`fix_widths.py` (P2 拆分: 只读 → `core/diagnose`, 会写文件的 → `tools/`)。
-**下一步 P1b-3** (风险最高, 需动函数体): 拆 `trace.py` (1819 行, core signal + view overview) 与
-`visualize.py` (2380 行, 10 个 view 命令各自成文件); 之后 P2 (fix 拆分 + snapshot 目录迁缓存) / P3 (`svq exp` 前缀 + 别名)。
+**P2 部分完成 (iter_234)**: `fix*` 拆分 → `core/diagnose/` 四个**只读**命令 (规范名 `diagnose <x>`, 老名 `fix <x>` 为别名);
+写入能力移到 `tools/fix_timescale.py --apply` / 新增 `tools/fix_imports.py --write` (后者拒绝原地覆盖);
+**R3 检查器零基线** (CLI 内任何写文件立即失败); 顺带抓出并修复第 5 个真 bug (`tools/fix_timescale.py` 路径 guard 导致 `import trace` 命中 stdlib → 长期无法运行)。
+**P2 剩余**: snapshot 目录迁 `$SVQ_CACHE_DIR` (顺带治理仓库根 4987 个快照 / 137MB)。
+**P3 待做**: `svq exp ...` 前缀 + 别名过渡 (命令路径最后一次变更); 之后 P1b-3 (拆 trace.py / visualize.py) 收尾。
 
 **历史任务 (参考)**: **全量归零 + 收尾清零 ✅ 完成** — iter_215~229: 彻底移除 strict (全仓 strict = 0)
 + 严格模式暴露的 12 个失败清零 + 最后 16 个可视化红清零 →
@@ -74,6 +77,19 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_234 (CLI 分层 P2: fix* 拆分 → CLI 只读 + 写入移出 — 方豆: 做 p2 p3)**: 落地方豆硬约束 **"sv_query 不改 RTL"**。
+① `fix*` 三文件 → `core/diagnose/{report,timescale,imports,widths}.py` (一个命令一个文件), `src/cli/commands/` 现在**只剩 `__init__.py`**;
+规范入口 `svq diagnose <x>` (顶层组), 老名 `svq fix <x>` 为**兼容别名组** (同一函数对象); CLI 侧彻底移除 `--apply` / `--write`。
+② 写入能力落点: `tools/fix_timescale.py --apply` (已有) + **新增 `tools/fix_imports.py --write`** (并新增"拒绝原地覆盖"守卫: 目标==原 filelist → rc=2);
+③ 检查器 **R3 零基线**: 原有 3 条已知违规 (fix.py×2 原地改 RTL / fix_imports 写 filelist) 全部消除, 现在 CLI 内**任何**写文件立即失败;
+④ **抓出第 5 个真 bug**: `tools/fix_timescale.py` 的路径引导用 `if src not in sys.path` 守护 → src 已由 .pth 加入但**排在 stdlib 之后** → guard 跳过插入
+→ `import trace` 命中 **stdlib trace.py** ("'trace' is not a package") → 该工具**长期无法运行** (由本轮新增的 tools 级测试首次暴露);
+新增 `tools/_bootstrap.py` (无条件插到最前) 根因修复; 教训: "在 path 里" ≠ "在 stdlib 之前";
+⑤ **附带发现**: `MissingTimeScale` 在当前 pyslang 配置下**根本不触发** (带 `#5` 延迟也不报) → `diagnose timescale` 对任何输入都返回"无需修复";
+不掩盖: 写入逻辑抽成 `apply_timescale_to_files()` 直接单测 (写 + .bak + idempotent), 触发条件问题登记 `KNOWN_LIMITATIONS.md` §3.2 待单独诊断。
+测试: 3 个"测被移除能力"的用例改为 (a) 断言 CLI **拒绝**该选项 (b) 到 tools/ 测真实写入 → 全量 **3336 passed / 0 failed**。
+[iter_234](docs/task_tree/iterations/iter_234_p2_fix_split_readonly_cli.md)
 
 **iter_233 (CLI 分层 P1b-2: core/view/dev 目录落地 + 稳定指纹 — 方豆: 继续)**: 延续"一次一层 + 表面零变化 + 全量门禁"节奏,
 把 `core/{locate,state,semantic}/` + `view/` + `dev/` 共 **13 文件** `git mv` 到位 (每层 `__init__.py` 声明 LAYER)。

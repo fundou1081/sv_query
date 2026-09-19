@@ -1,14 +1,14 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-09-18  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-09-19  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
 - 叶子命令总数: **65**
-- 按层: `core`=23, `dev`=3, `exp`=24, `out`=2, `view`=13
-- core 内分组: `semantic`=8, `locate`=7, `state`=6, `diagnose`=2
+- 按层: `core`=25, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=8, `locate`=7, `state`=6, `diagnose`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,12 +18,14 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (23 个)
+## `core` (25 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `fix report` | — | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | [计划] 改名 diagnose report (去 fix 暗示) |
-| `fix widths` | — | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | [计划] 改名 diagnose widths |
+| `diagnose imports` | `fix imports` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 找 UndeclaredIdentifier 的定义来源; **只读** —— 写新 filelist 用 tools/fix_imports.py (老名 fix imports) |
+| `diagnose report` | `fix report` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | [规范入口] 按错误码给出修复方向; 只读 (老名 fix report) |
+| `diagnose timescale` | `fix timescale` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale) |
+| `diagnose widths` | `fix widths` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
 | `graph dump` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件 |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件 |
@@ -101,17 +103,14 @@
 | `expression cond` | — | — | internal | debug | cheap | ✅ | — | ✅ |  |
 | `expression func` | — | — | internal | debug | cheap | ✅ | — | ✅ |  |
 
-## `out` (2 个)
-
-| 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
-|---|---|---|---|---|---|---|---|---|---|
-| `fix imports` | — | — | mutating | mutating | cheap | ✅ | ✅ | ✅ | --write 会写 filelist → tools/ |
-| `fix timescale` | — | — | mutating | mutating | cheap | — | ✅ | ✅ | --apply 会改 RTL (.sv) + .bak 备份 → tools/fix_timescale.py |
-
 ## 兼容别名 (老名保留, 同一实现)
 
 | 别名 | 规范名 |
 |---|---|
+| `fix imports` | `diagnose imports` |
+| `fix report` | `diagnose report` |
+| `fix timescale` | `diagnose timescale` |
+| `fix widths` | `diagnose widths` |
 | `trace fanin` | `drivers` |
 | `trace fanout` | `loads` |
 

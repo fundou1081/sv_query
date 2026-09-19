@@ -247,8 +247,8 @@ def import_edges(path: Path, all_modules: dict[str, Path]) -> list[tuple[str, st
 # 作用: 检查器**立刻**能挡住新增违规, 同时不阻塞 P1/P2 的推进。
 # (与项目既有手法一致: 门禁失败数基线、regen_baselines --check 漂移检测。)
 KNOWN: list[tuple[str, str, str]] = [
-    ("R3", "src/cli/commands/fix.py", "原地改 RTL (--apply) → P2 移出到 tools/fix_timescale.py"),
-    ("R3", "src/cli/commands/fix_imports.py", "写 filelist (--write) → P2 移出到 tools/"),
+    # [iter_234 P2] 原 fix.py / fix_imports.py 的写操作已移出 CLI →
+    # 检查器现在对 R3 是**零基线** (任何 CLI 内写文件都会立即失败)。
 ]
 
 
