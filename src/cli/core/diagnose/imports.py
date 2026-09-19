@@ -7,7 +7,7 @@ fix_imports.py - 自动找 UndeclaredIdentifier / UnknownModule 的源文件
 - 一行命令: python run_cli.py fix imports --filelist project.f
 - 自动扫项目根目录 (filelist 同级), 找含缺失标识符定义的 .sv 文件
 - 生成新 filelist (e.g. project_fixed.f) 加进原 filelist 即可
-- 默认 dry-run, 加 --write 写到文件
+- **只读**: 只报告; 写新 filelist 见 tools/fix_imports.py --write
 - 显示每个缺失 identifier 推荐的 fix 来源 (e.g. 'service_message_t 可能在 npu_message_service_defines.sv')
 
 Algorithm:
@@ -145,17 +145,60 @@ def _build_suggestions(
     }
 
 
+
+
+# ----------------------------------------------------------------------------
+# [iter_234 P2] 可复用的分析步骤 (CLI 只读命令 与 tools/fix_imports.py 共用)
+# 注意: 这里全部是**纯读**逻辑; 写文件的能力只在 tools/fix_imports.py
+# ----------------------------------------------------------------------------
+
+def resolve_project_root(fl_path: Path, explicit: str | None = None) -> Path:
+    """默认 project_root: 从 filelist 第一个 .sv 向上找含 src/ 的目录, 回退 filelist 同级。"""
+    if explicit:
+        return Path(explicit).resolve()
+    first_sv = None
+    try:
+        for line in fl_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith(("//", "#", "+", "-")):
+                continue
+            if line.endswith((".sv", ".svh")):
+                first_sv = Path(line).resolve()
+                break
+    except Exception as e:
+        logger.warning("%s: 忽略 Exception: %s", __name__, e)
+    if first_sv:
+        current = first_sv.parent
+        for _ in range(5):
+            if (current / "src").is_dir():
+                return (current / "src").resolve()
+            if current.parent == current:
+                break
+            current = current.parent
+    fl_dir = fl_path.parent
+    candidate = fl_dir / "src"
+    return (candidate if candidate.exists() else fl_dir).resolve()
+
+
+def load_existing_files(fl_path: Path) -> set:
+    """读 filelist 里已列出的文件 (跳过我指令/注释)。"""
+    existing = set()
+    for line in fl_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith(("//", "#", "+", "-")):
+            continue
+        existing.add(Path(line).resolve())
+    return existing
+
+
 # ----------------------------------------------------------------------------
 # CLI 命令
 # ----------------------------------------------------------------------------
 
-def fix_imports_cmd(
+def imports_cmd(
     filelist: str = typer.Option(..., "--filelist", help="Path to filelist (.f/.fl)"),
     project_root: str = typer.Option(
         None, "--project-root", help="要扫描的目录 (默认: filelist 所在目录的 src/)"
-    ),
-    write: str = typer.Option(
-        None, "--write", help="把推荐的文件写到新 filelist (例: project_fixed.f). 不传则只打印"
     ),
     log_level: str = typer.Option("ERROR", "--log-level", help="Compiler log level"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
@@ -168,7 +211,7 @@ def fix_imports_cmd(
     1. 跑 fix report 拿所有 UndeclaredIdentifier 错 (含 identifier 名字)
     2. 扫 --project-root 找含该 identifier 定义的文件
     3. 推荐 fix: 'add path/to/x.sv to your filelist'
-    4. 默认 dry-run 打印, --write project_fixed.f 写新 filelist
+    4. **只读**: 只打印建议 (写文件 = tools/fix_imports.py --write)
 
     Examples:
         # 找 fix 源
@@ -178,7 +221,7 @@ def fix_imports_cmd(
         python run_cli.py fix imports --filelist project.f --project-root /path/to/project/src
 
         # 生成新 filelist
-        python run_cli.py fix imports --filelist project.f --write project_fixed.f
+        python run_cli.py diagnose imports --filelist project.f
 
     Note: 不能 fix:
     - 标识符是 system task ($clog2 等)
@@ -190,59 +233,18 @@ def fix_imports_cmd(
         typer.echo(f"Error: filelist not found: {filelist}", err=True)
         raise typer.Exit(code=1)
 
-    # 默认 project_root: 从 filelist 里第一个 .sv 文件的目录往回找
-    if project_root is None:
-        # 读 filelist 找第一个 .sv 路径
-        first_sv = None
-        try:
-            for line in fl_path.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if not line or line.startswith(("//", "#", "+", "-")):
-                    continue
-                if line.endswith(".sv") or line.endswith(".svh"):
-                    first_sv = Path(line).resolve()
-                    break
-        except Exception as e:
-            logger.warning("%s: 忽略 Exception: %s", __name__, e)
-
-        if first_sv:
-            # 从 first_sv 开始, 向上找含 src/ 的父级
-            current = first_sv.parent
-            for _ in range(5):  # 最多向上 5 层
-                if (current / "src").exists() and (current / "src").is_dir():
-                    project_root = str(current / "src")
-                    break
-                if current.parent == current:  # 到达根
-                    break
-                current = current.parent
-
-        # 回退: filelist 同级
-        if not project_root:
-            fl_dir = fl_path.parent
-            candidate = fl_dir / "src"
-            if candidate.exists():
-                project_root = str(candidate)
-            else:
-                project_root = str(fl_dir)
-    project_root = Path(project_root).resolve()
+    # [iter_234 P2] 默认 project_root + 现有 filelist: 用共享 helper (与 tools/fix_imports.py 同一实现)
+    project_root = resolve_project_root(fl_path, project_root)
     if not project_root.exists():
         typer.echo(f"Error: project_root not found: {project_root}", err=True)
         raise typer.Exit(code=1)
 
-    # 读现有 filelist 内容
-    existing_files: set[Path] = set()
     try:
-        for line in fl_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("//") or line.startswith("#") or line.startswith("+"):
-                continue
-            # 跳过 -F/-f/+/ 等指令
-            if line.startswith("-"):
-                continue
-            existing_files.add(Path(line).resolve())
+        existing_files = load_existing_files(fl_path)
     except Exception as e:
         typer.echo(f"Error: read filelist failed: {e}", err=True)
         raise typer.Exit(code=1) from e
+
 
     # 拿 elaboration errors (fix 的输入就是有错的项目, 见 helper 契约)
     diag = collect_elaboration_diagnostics(filelist=filelist, log_level=log_level)
@@ -291,35 +293,9 @@ def fix_imports_cmd(
     typer.echo(f"  🟢 Fixable: {result['fixable_count']} identifier(s)  (扫到了定义文件)")
     typer.echo(f"  🔴 Not in project: {result['unfixable_count']} identifier(s)  (项目本身缺定义 / 宏 / 系统函数)")
 
-    # 写新 filelist
+    # [iter_234 P2] 只读: 本命令不再提供 --write (方豆决定: sv_query 不写项目文件)。
+    # 生成新 filelist 的动作在 tools/fix_imports.py --write, 见本文件 docstring。
     fixable = [s for s in result["identifiers"] if s["fixable"]]
-    if fixable and write:
-        try:
-            new_files = []
-            seen = set()
-            for s in fixable:
-                fp = Path(s["found_in"])
-                if fp not in seen and fp not in existing_files:
-                    new_files.append(fp)
-                    seen.add(fp)
-            # 追加到原 filelist
-            with open(write, "w") as f:
-                f.write("# Generated by sv_query fix imports\n")
-                f.write(f"# Project: {project_root}\n")
-                f.write(f"# Added {len(new_files)} file(s) to fix {len(fixable)} identifier(s)\n\n")
-                f.write(fl_path.read_text(encoding="utf-8"))
-                f.write("\n\n# === Auto-added by fix imports ===\n")
-                for fp in new_files:
-                    f.write(f"{fp}\n")
-            typer.echo(f"\n✅ Wrote new filelist: {write}")
-            typer.echo(f"   Added {len(new_files)} file(s):")
-            for fp in new_files[:top]:
-                rel = fp.relative_to(project_root) if fp.is_relative_to(project_root) else fp
-                typer.echo(f"     + {rel}")
-            if len(new_files) > top:
-                typer.echo(f"     ... ({len(new_files) - top} more)")
-            typer.echo(f"\nNext: 试 `python run_cli.py fix report --filelist {write}` 看剩余错")
-        except Exception as e:
-            typer.echo(f"\n❌ Write {write} failed: {e}", err=True)
-    elif fixable:
-        typer.echo("\nNext: 跑 'fix imports --write project_fixed.f' 自动生成新 filelist")
+    if fixable:
+        typer.echo("\n要自动生成修好的 filelist: "
+                   "python tools/fix_imports.py --filelist <f> --write project_fixed.f")

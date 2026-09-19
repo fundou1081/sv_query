@@ -59,7 +59,8 @@ src/cli/
 | **P1b-1** | `exp/` 层目录落地 (`src/cli/exp/{bus,verif,struct}/`, 9 文件) + `_paths.py` 锚点 + R8 + 引用扫描工具 | ✅ **完成 (iter_232)** |
 | **P1b-2** | `dev/` + `core/{locate,state,semantic}/` + `view/` 整文件搬迁 (13 文件; fix*.py 留 P2) | ✅ **完成 (iter_233)** |
 | P1b-3 | 拆分 `trace.py` (core signal + view overview) 与 `visualize.py` (10 个 view 命令) | 待做 |
-| P2 | 只读落地: `fix timescale --apply` / `fix imports --write` 移出到 `tools/`; `snapshot` 默认目录迁 `$SVQ_CACHE_DIR`; 只读证明测试 (目录树 hash 不变) | 待做 |
+| **P2 (部分)** | `fix*` → `core/diagnose` 只读 (4 命令) + 写入移出到 `tools/` + R3 零基线 + `tools/_bootstrap.py` | ✅ **完成 (iter_234)** |
+| P2 剩余 | `snapshot` 默认目录迁 `$SVQ_CACHE_DIR` (顺带治理仓库根 4987 快照/137MB) + 只读证明测试 (目录树 hash 不变) | 待做 |
 | P3 | `exp` 收纳 (bus/verif/struct 三域) + capabilities 分层过滤生效 | 待做 |
 | P4 | 域内合并: bus 9→4; verif 13→~8; `diff compare` 并入 `snapshot compare` | 待做 |
 | P5 | `view` 重点建设: 迁完 4 个旧渲染器 → VizData; 解冻 12 个 SVG 断言; `datapath` 补测试转正 | 待做 |
@@ -73,6 +74,7 @@ src/cli/
 | `python3 tools/gen_cli_surface.py [--check]` | 生成/校验 `docs/CLI_SURFACE.md` (清单不再手写) | ✅ 一致 |
 | `python3 tools/gen_cli_surface.py --fingerprint` | **稳定指纹** (只含命令面) —— 搬目录时证明纯搬迁 | ✅ 当前 `045f029e…` |
 | `python3 tools/find_module_refs.py <模块>` | **搬目录前**的引用扫描单 (import-dotted / from-import / 路径串 / `__file__` 深度运算) | ✅ 新增 (iter_232) |
+| `tools/_bootstrap.py` | 仓库内脚本的路径引导 (无条件把 src 插到最前; 防 stdlib `trace` 遮蔽) | ✅ 新增 (iter_234) |
 | `svq capabilities [--json] [--recommended] [--include-exp]` | agent 的工具面真相源 | ✅ |
 
 ## 📎 相关

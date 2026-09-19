@@ -168,10 +168,14 @@ COMMANDS: list[CommandSpec] = [
        note="[计划] 并入 snapshot compare"),
 
     # ---- core / diagnose (原 fix 只读部分) ----
-    _c("fix report", "diagnose", kind="diagnosis", cost="cheap", recommended=True,
-       note="[计划] 改名 diagnose report (去 fix 暗示)"),
-    _c("fix widths", "diagnose", kind="diagnosis", cost="cheap",
-       note="[计划] 改名 diagnose widths"),
+    _c("diagnose report", "diagnose", kind="diagnosis", cost="cheap", recommended=True,
+       note="[规范入口] 按错误码给出修复方向; 只读 (老名 fix report)"),
+    _c("diagnose widths", "diagnose", kind="diagnosis", cost="cheap",
+       note="用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths)"),
+    _c("diagnose imports", "diagnose", kind="diagnosis", cost="cheap",
+       note="找 UndeclaredIdentifier 的定义来源; **只读** —— 写新 filelist 用 tools/fix_imports.py (老名 fix imports)"),
+    _c("diagnose timescale", "diagnose", kind="diagnosis", cost="cheap",
+       note="列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale)"),
 
     # ---- view (人眼面, 默认含于 capabilities) ----
     _v("visualize graph", cost="expensive"),
@@ -211,9 +215,9 @@ COMMANDS: list[CommandSpec] = [
     # ---- dev (内部调试) ----
     _d("expression build"), _d("expression func"), _d("expression cond"),
 
-    # ---- out (会写文件 → tools/) ----
-    _o("fix timescale", note="--apply 会改 RTL (.sv) + .bak 备份 → tools/fix_timescale.py"),
-    _o("fix imports", note="--write 会写 filelist → tools/"),
+    # ---- out: CLI 内已无会写文件的命令 (2026-09-09 方豆: sv_query 不改 RTL) ----
+    # 写入能力现在只在 tools/: fix_timescale.py --apply (改 .sv) / fix_imports.py --write (写 filelist)
+    # 若将来再加会写文件的命令 → 归入本层, 并由 R3 检查器拦截。
 ]
 
 COMMANDS_BY_KEY: dict[str, CommandSpec] = {c.key: c for c in COMMANDS}
@@ -227,6 +231,11 @@ COMMANDS_BY_KEY: dict[str, CommandSpec] = {c.key: c for c in COMMANDS}
 ALIASES: dict[str, str] = {
     "trace fanin": "drivers",
     "trace fanout": "loads",
+    # [iter_234 P2] 诊断命令改名: fix <x> → diagnose <x> (fix 组保留为兼容别名组)
+    "fix report": "diagnose report",
+    "fix widths": "diagnose widths",
+    "fix imports": "diagnose imports",
+    "fix timescale": "diagnose timescale",
 }
 
 

@@ -44,7 +44,7 @@ def _run(*args):
 
 def test_fix_recommendations_cover_common_codes():
     """FIX_RECOMMENDATIONS 应含常见错误码"""
-    from cli.commands.fix import FIX_RECOMMENDATIONS
+    from cli.core.diagnose.report import FIX_RECOMMENDATIONS
     expected = {"MissingTimeScale", "UndeclaredIdentifier", "TooFewArguments", "UnknownModule", "CaseTypeMismatch", "DuplicateDefinition", "EmptyMember"}
     for code in expected:
         assert code in FIX_RECOMMENDATIONS, f"缺 {code} 修复建议"

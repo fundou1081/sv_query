@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 
 REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
-# 让 `from cli.commands.fix import ...` 能工作
+# 让 `from cli.core.diagnose.timescale import ...` 能工作
 SRC_DIR = str(REPO_ROOT / "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
@@ -46,7 +46,7 @@ def _run(*args):
 
 def test_has_timescale_detects_backtick_timescale():
     """_has_timescale 应识别 `timescale directive"""
-    from cli.commands.fix import _has_timescale
+    from cli.core.diagnose.timescale import _has_timescale
     assert _has_timescale("`timescale 1ns/1ps\nmodule top; endmodule\n")
     assert _has_timescale("\n`timescale 1ps/1ps\n")
     assert not _has_timescale("module top; endmodule\n")
@@ -54,7 +54,7 @@ def test_has_timescale_detects_backtick_timescale():
 
 def test_has_timescale_variations():
     """_has_timescale 应识别多种格式"""
-    from cli.commands.fix import _has_timescale
+    from cli.core.diagnose.timescale import _has_timescale
     # 带空格的
     assert _has_timescale("  `timescale  1ns/1ps\nmodule m; endmodule\n")
     # 大写
@@ -68,7 +68,7 @@ def test_has_timescale_variations():
 
 def test_has_timescale_false_positives():
     """_has_timescale 不应对普通文本误判"""
-    from cli.commands.fix import _has_timescale
+    from cli.core.diagnose.timescale import _has_timescale
     assert not _has_timescale("module top; endmodule\n")
     assert not _has_timescale("// timescale comment\nmodule m; endmodule\n")
     assert not _has_timescale("/* timescale in block comment */\nmodule m; endmodule\n")
@@ -77,7 +77,7 @@ def test_has_timescale_false_positives():
 
 def test_insert_timescale_idempotent():
     """_insert_timescale 已有 timescale 应不动"""
-    from cli.commands.fix import _has_timescale, _insert_timescale
+    from cli.core.diagnose.timescale import _has_timescale, _insert_timescale
     content = "`timescale 1ns/1ps\nmodule top; endmodule\n"
     assert _has_timescale(content)
     # 调用也不该改
@@ -88,7 +88,7 @@ def test_insert_timescale_idempotent():
 
 def test_insert_timescale_at_top():
     """_insert_timescale 应插在文件最开头 (line 1)"""
-    from cli.commands.fix import _insert_timescale
+    from cli.core.diagnose.timescale import _insert_timescale
     content = "// copyright\n\nmodule top;\nendmodule\n"
     new, line_no = _insert_timescale(content, "1ns/1ps")
     assert line_no == 1
@@ -97,7 +97,7 @@ def test_insert_timescale_at_top():
 
 def test_insert_timescale_preserves_content():
     """_insert_timescale 应保留原文件内容"""
-    from cli.commands.fix import _insert_timescale
+    from cli.core.diagnose.timescale import _insert_timescale
     original = "// copyright\nmodule top;\nendmodule\n"
     new, line_no = _insert_timescale(original, "1ns/1ps")
     assert "// copyright" in new
@@ -106,7 +106,7 @@ def test_insert_timescale_preserves_content():
 
 def test_insert_timescale_custom_timescale():
     """_insert_timescale 支持自定义 timescale 值"""
-    from cli.commands.fix import _insert_timescale
+    from cli.core.diagnose.timescale import _insert_timescale
     original = "module m; endmodule\n"
     new, line_no = _insert_timescale(original, "1ps/1ps")
     assert "`timescale 1ps/1ps" in new
@@ -114,7 +114,7 @@ def test_insert_timescale_custom_timescale():
 
 def test_insert_timescale_on_empty_content():
     """_insert_timescale 对空内容也应正常返回"""
-    from cli.commands.fix import _insert_timescale
+    from cli.core.diagnose.timescale import _insert_timescale
     new, line_no = _insert_timescale("", "1ns/1ps")
     assert new == "`timescale 1ns/1ps\n"
     assert line_no == 1
@@ -122,7 +122,7 @@ def test_insert_timescale_on_empty_content():
 
 def test_insert_timescale_with_only_whitespace():
     """_insert_timescale 对纯空白内容也应正常"""
-    from cli.commands.fix import _insert_timescale
+    from cli.core.diagnose.timescale import _insert_timescale
     new, line_no = _insert_timescale("   \n\n", "1ns/1ps")
     assert "`timescale 1ns/1ps" in new
 
@@ -131,37 +131,60 @@ def test_insert_timescale_with_only_whitespace():
 # CLI 集成测试 (不依赖 MissingTimeScale 诊断)
 # ----------------------------------------------------------------------------
 
-def test_fix_timescale_no_backup():
-    """--no-backup 不创建 .bak"""
-    sv_a = "`timescale 1ns/1ps\nmodule top (input wire clk); other u_other (.clk(clk)); endmodule\n"
-    sv_b = "`timescale 1ns/1ps\nmodule other (input wire clk); wire x; assign #5 x = clk; endmodule\n"
-    tmpdir = tempfile.mkdtemp()
-    sv_a_path = Path(tmpdir) / "a.sv"
-    sv_a_path.write_text(sv_a)
-    sv_b_path = Path(tmpdir) / "b.sv"
-    sv_b_path.write_text(sv_b)
-    fl = Path(tmpdir) / "test.f"
-    fl.write_text(f"{sv_a_path.absolute()}\n{sv_b_path.absolute()}\n")
+def test_fix_timescale_cli_is_readonly_no_apply_option():
+    """[iter_234 P2] CLI 只读: `diagnose timescale` **不提供 --apply** (方豆: sv_query 不改 RTL)。
 
-    Path(str(sv_b_path) + ".bak")
-    r = _run("fix", "timescale", "--filelist", str(fl), "--apply", "--no-backup", "--log-level", "ERROR")
-    assert r.returncode in (0, 1)
-    # 不创建 .bak 文件 (由于文件已有 timescale, 不会有任何修改, 但命令跑通)
-    # 注意: 如果 pyslang 不报 MissingTimeScale, 这两个文件都不会被标记为待修
-    # 所以 --no-backup 不创建 .bak 的行为是在有修复目标时才生效
-    # 此测试主要验证 --no-backup flag 不导致崩溃
-    print("✅ --no-backup: flag 不导致崩溃")
+    会写文件的动作在 tools/fix_timescale.py —— 那才是带 .bak 备份的写入路径。
+    """
+    r = _run("diagnose", "timescale", "--help")
+    assert r.returncode == 0
+    assert "--filelist" in r.stdout
+    assert "--apply" not in r.stdout, "CLI 不应再提供 --apply (只读硬约束)"
+    assert "tools/fix_timescale.py" in r.stdout, "应指向真正的写入工具"
+
+    # 老名 fix timescale 仍是同一实现的兼容别名 (同样只读)
+    r2 = _run("fix", "timescale", "--help")
+    assert r2.returncode == 0 and "--apply" not in r2.stdout
+    print("✅ diagnose timescale: 只读 (无 --apply), 指向 tools/fix_timescale.py")
+
+
+def test_tools_fix_timescale_apply_writes_and_backs_up():
+    """写入能力搬到 tools/fix_timescale.py: 直接测写入函数 (写 + .bak + idempotent)。
+
+    为什么不走端到端: **实测当前 pyslang 配置不报 MissingTimeScale**
+    (带 `#5` 延迟的模块也不报) → `find_files_needing_fix` 永远返回空,
+    所以写入路径只能直接单测。这个"命令形同虚设"的问题已登记 (见 iter_234 / KNOWN_LIMITATIONS)。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
+    from fix_timescale import apply_timescale_to_files
+
+    tmpdir = tempfile.mkdtemp()
+    sv = Path(tmpdir) / "need_ts.sv"
+    sv.write_text("module need_ts (input wire clk); endmodule\n")
+
+    fixed, skipped = apply_timescale_to_files({str(sv): [{"line": 1}]}, "1ns/1ps", backup=True)
+    assert (fixed, skipped) == (1, 0)
+    assert "`timescale 1ns/1ps" in sv.read_text(), "应写入 timescale"
+    assert Path(str(sv) + ".bak").exists(), "应生成 .bak 备份"
+
+    # idempotent: 再跑一次不重复插入
+    fixed2, skipped2 = apply_timescale_to_files({str(sv): [{"line": 1}]}, "1ns/1ps", backup=False)
+    assert (fixed2, skipped2) == (0, 1), "已有 timescale 应 skip"
+    assert sv.read_text().count("`timescale") == 1
+    print("✅ apply_timescale_to_files: 写入 + 备份 + idempotent")
 
 
 def test_fix_timescale_help_documented():
-    """fix timescale --help 应文档化所有 flag"""
-    r = _run("fix", "timescale", "--help")
+    """diagnose timescale --help 应文档化只读 flag"""
+    r = _run("diagnose", "timescale", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
-    assert "--apply" in r.stdout
     assert "--timescale" in r.stdout
-    assert "--backup" in r.stdout
-    print("✅ fix timescale --help: 文档化所有 flag")
+    print("✅ diagnose timescale --help: 文档化 flag (只读)")
+
+
+
 
 
 # ----------------------------------------------------------------------------

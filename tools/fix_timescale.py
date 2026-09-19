@@ -2,9 +2,9 @@
 """
 fix_timescale.py - Standalone MissingTimeScale fixer (no CLI overhead)
 
-[ADD 2026-06-12] 跟 `python run_cli.py fix timescale` 等价, 但作为独立 script,
-用户可以直接 python tools/fix_timescale.py project.f --apply 调用, 不用依赖
-完整 sv_query CLI 启动.
+[iter_234 P2] **写入 RTL 的唯一入口**: 方豆决定 "sv_query 不改 RTL" → CLI 的
+`fix timescale --apply` 已移除, CLI 侧只保留只读报告 (`svq diagnose timescale`)。
+本工具带 .bak 备份, 是唯一会改 .sv 的地方。
 
 Usage:
     # Dry-run: 看哪些文件会改
@@ -29,10 +29,13 @@ import re
 import sys
 from pathlib import Path
 
-# 让 script 能 import sv_query (假定从 sv_query 仓库根目录跑)
-_sv_query_root = Path(__file__).resolve().parent.parent
-if str(_sv_query_root / "src") not in sys.path:
-    sys.path.insert(0, str(_sv_query_root / "src"))
+# [iter_234 P2] 统一路径引导: **无条件**把 src 插到最前
+# (旧写法用 `if ... not in sys.path` 守护 → src 已在 path 但排在 stdlib 之后时跳过插入
+#  → `import trace` 命中 stdlib trace.py; 由 tools 级测试首次暴露, 详见 tools/_bootstrap.py)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _bootstrap import ensure_src_first  # noqa: E402
+
+ensure_src_first()
 
 
 def _has_timescale(content: str) -> bool:
@@ -62,6 +65,43 @@ def find_files_needing_fix(filelist_path: str, include_headers: bool = False):
             if file_path and (include_headers or not file_path.endswith(".svh")):
                 files_to_fix[file_path].append(err)
     return dict(files_to_fix)
+
+
+def apply_timescale_to_files(files_to_fix: dict, timescale: str = "1ns/1ps",
+                             backup: bool = True) -> tuple[int, int]:
+    """把 `timescale 插进待修文件 (idempotent; backup=True 时写 .bak)。
+
+    [iter_234 P2] 从 main() 抽出 —— 写入逻辑原先在 CLI (`fix timescale --apply`),
+    随"sv_query 不改 RTL"搬到本工具; 抽成函数后可直接单测 (不必依赖编译器是否报
+    MissingTimeScale —— 实测该诊断在当前 pyslang 配置下不触发, 见 iter_234)。
+
+    Returns:
+        (fixed, skipped)
+    """
+    fixed = skipped = 0
+    for fpath, _ in files_to_fix.items():
+        try:
+            content = Path(fpath).read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            print(f"  ❌ {fpath}: read failed ({e})")
+            continue
+        if _has_timescale(content):
+            print(f"  ⏭  {fpath}: already has timescale, skipped")
+            skipped += 1
+            continue
+        new_content, line_no = _insert_timescale(content, timescale)
+        if backup:
+            try:
+                Path(fpath + ".bak").write_text(content, encoding="utf-8")
+            except Exception as e:
+                print(f"  ⚠️  {fpath}: backup failed ({e}), continue anyway")
+        try:
+            Path(fpath).write_text(new_content, encoding="utf-8")
+            print(f"  ✅ {fpath}: inserted `timescale {timescale}` at line {line_no}")
+            fixed += 1
+        except Exception as e:
+            print(f"  ❌ {fpath}: write failed ({e})")
+    return fixed, skipped
 
 
 def main():
@@ -95,40 +135,11 @@ def main():
         print(f"\nRun with --apply to actually modify these files.")
         sys.exit(0)
 
-    # 真改
-    print(f"Applying `timescale {args.timescale}` to {len(files_to_fix)} file(s)...\n")
-    fixed = 0
-    skipped = 0
-    for fpath, _ in files_to_fix.items():
-        try:
-            content = Path(fpath).read_text(encoding="utf-8", errors="replace")
-        except Exception as e:
-            print(f"  ❌ {fpath}: read failed ({e})")
-            continue
-
-        if _has_timescale(content):
-            print(f"  ⏭  {fpath}: already has timescale, skipped")
-            skipped += 1
-            continue
-
-        new_content, line_no = _insert_timescale(content, args.timescale)
-
-        if args.backup:
-            try:
-                Path(fpath + ".bak").write_text(content, encoding="utf-8")
-            except Exception as e:
-                print(f"  ⚠️  {fpath}: backup failed ({e}), continue anyway")
-
-        try:
-            Path(fpath).write_text(new_content, encoding="utf-8")
-            print(f"  ✅ {fpath}: inserted `timescale {args.timescale}` at line {line_no}")
-            fixed += 1
-        except Exception as e:
-            print(f"  ❌ {fpath}: write failed ({e})")
-
+    # 真改 (逻辑抽成 apply_timescale_to_files, 便于直接单测 —— 见 iter_234 记录)
+    fixed, skipped = apply_timescale_to_files(files_to_fix, args.timescale, args.backup)
     print(f"\nDone: {fixed} fixed, {skipped} skipped (already has timescale).")
     if args.backup and fixed > 0:
-        print(f"Original files backed up to *.bak")
+        print("Original files backed up to *.bak")
     sys.exit(0)
 
 

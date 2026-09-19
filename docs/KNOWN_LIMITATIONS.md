@@ -71,6 +71,25 @@ slang 走 script 模式 → 根节点成了**表达式** (`DivideExpression`, �
 回归测试: `sim/tests/unit/test_compiler_non_design_unit_guard.py` (守卫失效时测试进程
 会以 exit 133 死掉, 信号明确)。
 
+### 3.2 `MissingTimeScale` 诊断不触发 → `diagnose timescale` 形同虚设 (iter_234 发现)
+
+`svq diagnose timescale` (原 `fix timescale`) 的判定依赖编译器报 `MissingTimeScale`,
+但**实测当前 pyslang + 我们的编译配置下该诊断不触发**:
+
+```
+# 构造: 缺 `timescale 的模块 (含 #5 延迟)
+svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors found. Nothing to fix.
+```
+
+推断: 该诊断可能只在特定选项/上下文下出现 (e.g. 命令行 `--timescale` 未给 + 需要时间语义的构造),
+而我们没有开启对应条件 → **命令对任何输入都返回"无需修复"**。
+
+**旁证**: 仓库里原有两个 `--apply` 端到端测试**早已被注释** (注释写着"如果 pyslang 不报 MissingTimeScale…"),
+说明这条路径从未被真正验证过。
+
+**当前处置 (iter_234)**: 不掩盖 —— 写入逻辑抽成 `tools/fix_timescale.py::apply_timescale_to_files()` 直接单测
+(写入 + `.bak` + idempotent 已验证); 命令本身的"触发条件"问题**待单独诊断** (新任务, 需查 pyslang 选项)。
+
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
 | 模块 | 数量 | 原因 |

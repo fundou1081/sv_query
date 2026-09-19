@@ -61,7 +61,7 @@ typedef logic [$clog2(`MY_DEPTH) - 1 : 0] deep_t;
 
 def test_parse_clog2_literal():
     """_parse_clog2_from_text 应识别字面 $clog2(N)"""
-    from cli.commands.fix_widths import _parse_clog2_from_text
+    from cli.core.diagnose.widths import _parse_clog2_from_text
     match, value = _parse_clog2_from_text("logic [$clog2(8) - 1 : 0] eight_t;")
     assert match == "$clog2(8)"
     assert value == 8
@@ -70,7 +70,7 @@ def test_parse_clog2_literal():
 
 def test_parse_clog2_macro():
     """_parse_clog2_from_text 应识别 $clog2(`MACRO)"""
-    from cli.commands.fix_widths import _parse_clog2_from_text
+    from cli.core.diagnose.widths import _parse_clog2_from_text
     match, value = _parse_clog2_from_text("logic [$clog2(`MY_DEPTH) - 1 : 0] deep_t;")
     assert match == "$clog2(`MY_DEPTH)"
     assert value == "MY_DEPTH"
@@ -79,7 +79,7 @@ def test_parse_clog2_macro():
 
 def test_resolve_macro_value_literal():
     """_resolve_macro_value 解析字面宏值"""
-    from cli.commands.fix_widths import _resolve_macro_value
+    from cli.core.diagnose.widths import _resolve_macro_value
     sources = {"a.sv": "`define MY_DEPTH 64\n"}
     assert _resolve_macro_value("MY_DEPTH", sources) == 64
     print("✅ _resolve_macro_value: 字面宏值")
@@ -87,7 +87,7 @@ def test_resolve_macro_value_literal():
 
 def test_resolve_macro_value_indirect():
     """_resolve_macro_value 递归解析嵌套宏"""
-    from cli.commands.fix_widths import _resolve_macro_value
+    from cli.core.diagnose.widths import _resolve_macro_value
     sources = {"a.sv": "`define USER_MY_DEPTH 8\n`define MY_DEPTH `USER_MY_DEPTH\n"}
     assert _resolve_macro_value("MY_DEPTH", sources) == 8
     print("✅ _resolve_macro_value: 嵌套宏 (DCACHE_WAY→USER_DCACHE_WAY→4)")
@@ -95,7 +95,7 @@ def test_resolve_macro_value_indirect():
 
 def test_resolve_macro_value_undefined():
     """_resolve_macro_value 找不到返回 None"""
-    from cli.commands.fix_widths import _resolve_macro_value
+    from cli.core.diagnose.widths import _resolve_macro_value
     sources = {"a.sv": "`define OTHER 5\n"}
     assert _resolve_macro_value("MY_UNKNOWN", sources) is None
     print("✅ _resolve_macro_value: 找不到返回 None")
@@ -103,7 +103,7 @@ def test_resolve_macro_value_undefined():
 
 def test_evaluate_clog2_pyslang():
     """_evaluate_clog2 用 pyslang.clog2 算真实位宽"""
-    from cli.commands.fix_widths import _evaluate_clog2
+    from cli.core.diagnose.widths import _evaluate_clog2
     # 字面常量
     assert _evaluate_clog2(4, {}) == 2  # clog2(4)=2
     assert _evaluate_clog2(8, {}) == 3
