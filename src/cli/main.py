@@ -109,8 +109,8 @@ app.command("paths", help="[规范入口] 图上路径 (跨模块端口可跳转
 app.command("classes", help="[规范入口] 列出编译域内的 class 名")(classes_cmd)
 app.command("class", help="[规范入口] class 的成员(类型级)与实例(实例级); --member 查成员实例")(class_cmd)
 
-app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游 drivers; 兼容别名: trace fanin)")(_fanin_cmd)
-app.command("loads", help="[规范入口] 这个信号被谁使用 (下游 loads; 兼容别名: trace fanout)")(_fanout_cmd)
+app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanin_cmd)
+app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanout_cmd)
 app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")

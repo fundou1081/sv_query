@@ -132,8 +132,14 @@ def test_p2_fanout_from_snapshot():
     data1 = json.loads(r1.stdout)
     data2 = json.loads(r2.stdout)
     sig1, sig2 = data1["result"]["signals"][0], data2["result"]["signals"][0]
-    assert sig1["count"] == sig2["count"]
-    print(f"✅ P2 fanout --from-snapshot: {sig1['count']} loads match")
+    # [iter_240] 两个模式**不再等值**: live 模式有 MIG (端口↔内部信号映射), 跨模块遍历
+    # 能继续往下走; snapshot 模式只有图 (快照里没有 adapter/MIG) → 结果必然 ⊆ live。
+    ids1 = {x["id"] for x in sig1["loads"]}
+    ids2 = {x["id"] for x in sig2["loads"]}
+    assert ids2 <= ids1, f"snapshot 结果应是 live 的子集: {ids2} ⊄ {ids1}"
+    assert sig1["count"] >= sig2["count"]
+    print(f"✅ P2 fanout --from-snapshot: snapshot {len(ids2)} ⊆ live {len(ids1)} loads "
+          f"(snapshot 无 MIG, 跨模块不可达)")
 
 
 def test_p3_impact_from_snapshot():

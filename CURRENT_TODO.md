@@ -88,6 +88,21 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_240 (`loads`/`drivers` 跨模块传递 — 方豆: 先搁置 2a, 优先处理这个问题)**: 方豆追问"BFS 只进不出修了吗" →
+复核确认 PathResolver 已修 (iter_237), 但**同类审计**发现 `SignalTracer` 的跨模块处理是"兜底补丁"而非遍历机制, 有三个缺陷:
+**D1 不传递** (`loads sub_adder.sum` 到不了 `inst_demo.add_out`), **D2 被抑制** (兜底只在图上零结果时触发),
+**D3 depth 不一致** (`depth=1` 走另一入口不查 MIG → 同一查询不同 depth 答案不同)。
+**修法**: 新增 `_mig_neighbors()` (端口↔内部两个方向, `use_mig` 门控) 并注入**四个入口** (两个递归入口 + 两个 depth=1 入口),
+每跳记 1 层深度; 删掉两处一次性兜底。效果: `loads sub_adder.sum` 1→2 条; `loads inst_demo.in_a` 1→**5 条完整链**; `drivers sub_adder.sum` 2→7 条。
+**过程中两个坑 (如实记录)**: ① 我第一版在递归前预 add 对端到 `seen_ids` → 递归入口立即 return → 传递性仍失效;
+② **全量门禁抓到作用域越界** —— 测试 `test_parameterized_module` 是**限定模块**查询 `trace_signal('dout','top')`,
+我的改动答到了 `testbench` 层 → 引入**第二个设计决策: 作用域 = 是否给 `--module`** (全局查询跨模块; 限定查询不越界)。
+实现上 11 处 drivers 递归调用**没透传**新参数 (默认 True) → 最深一层作用域失效, 补齐后才对。
+另发现 drivers 里**既有** P2 跨模块块 (`_port_to_internal` 反查) 也要门控; 同类型实例间 wrapper passthrough 保留。
+影响面: loads/drivers 相关 **557 passed / 0 failed**; 全量 **3399 passed / 0 failed** (+11 新测试)。
+**登记 3 条 (未修, 已写进 `KNOWN_LIMITATIONS §3.3`)**: snapshot 模式无 MIG (结果 ⊆ live) / `distance` 恒为 1 / `LoadTracer` 无跨模块。
+[iter_240](docs/task_tree/iterations/iter_240_cross_module_traversal_fix.md)
+
 **iter_239 (1b: 快照目录迁出项目 + 只读行为证明 — 方豆: 开始 1b)**: ① 新增 `resolve_snapshot_dir()` (显式 > `SVQ_SNAPSHOT_DIR` > `<cache_dir>/snapshots`),
 `SnapshotManager` 默认改走它 (6 个调用点自动受益), **不做 silent fallback** (旧位置只在 `snapshot list` 空结果时给一行提示 + 迁移命令);
 ② 受限环境可操作报错: 沙箱拒写 `~/.svq` 时给出 `用 SVQ_SNAPSHOT_DIR=... 覆盖` 的一行提示 (实测遇到并修);
