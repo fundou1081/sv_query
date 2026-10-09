@@ -13,13 +13,19 @@ test_cli_semantic_queries.py — [iter_237] 语义查询补全: params / ports /
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+# [iter_239 1b] 快照默认目录已在缓存目录 → 测试隔离 (否则写用户 home / 受限环境失败)
+os.environ.setdefault("SVQ_SNAPSHOT_DIR", tempfile.mkdtemp(prefix="svq_snap_"))
+os.environ["SVQ_SNAPSHOT_DIR"] = os.environ["SVQ_SNAPSHOT_DIR"]
 RUN_CLI = str(PROJECT_ROOT / "run_cli.py")
 SRC = str(PROJECT_ROOT / "src")
 if SRC not in sys.path:

@@ -177,7 +177,7 @@ COMMANDS: list[CommandSpec] = [
 
     # ---- core / state (你已定: graph 比较算 core) ----
     _c("snapshot save", "state", kind="state", cost="medium", stateful=True,
-       note="[iter_231] 已补 --json; 默认写 .svq/ (P2 迁 $SVQ_CACHE_DIR)"),
+       note="[iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖)"),
     _c("snapshot list", "state", kind="state", cost="cheap", stateful=True),
     _c("snapshot show", "state", kind="state", cost="cheap", stateful=True),
     _c("snapshot compare", "state", kind="state", cost="medium", stateful=True,
