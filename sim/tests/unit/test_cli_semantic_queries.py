@@ -188,3 +188,78 @@ class TestClasses:
     def test_unknown_class_fails_loudly(self):
         r = _run("class", "no_such_class", "-f", CLASS_FIX, "--json")
         assert r.returncode != 0 and json.loads(r.stdout)["ok"] is False
+
+
+# ---------------------------------------------------------------------------
+# 5. 覆盖补强 (审计发现的空白): 多级嵌套 / 空结果 / 上限接线
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def nested_fixture(tmp_path_factory) -> str:
+    """三级嵌套 (top → mid → leaf), 用于验证 full_path/parent 的**多层**推导。"""
+    d = tmp_path_factory.mktemp("nestedq")
+    f = d / "n.sv"
+    f.write_text('''module leaf (input logic a, output logic y);
+  assign y = a;
+endmodule
+module mid (input logic a, output logic y);
+  leaf u_leaf (.a(a), .y(y));
+endmodule
+module top (input logic a, output logic y);
+  mid u_mid (.a(a), .y(y));
+endmodule
+''')
+    return str(f)
+
+
+class TestNestedHierarchy:
+    def test_multi_level_parent_chain(self, nested_fixture):
+        """bug #6 修复的深层验证: parent 由 full_path 去尾段推导, 多层也要对。"""
+        d = _json("instances", "-f", nested_fixture, "--json")
+        by = {i["full_path"]: i for i in d["instances"]}
+        assert "top.u_mid" in by and "top.u_mid.u_leaf" in by, f"应枚举到两级实例: {list(by)}"
+        assert by["top.u_mid"]["parent"] == "top"
+        assert by["top.u_mid"]["module_type"] == "mid"
+        assert by["top.u_mid.u_leaf"]["parent"] == "top.u_mid"
+        assert by["top.u_mid.u_leaf"]["module_type"] == "leaf"
+
+    def test_hierarchy_tree_is_nested(self, nested_fixture):
+        d = _json("hierarchy", "-f", nested_fixture, "--json")
+        roots = d["tree"]
+        assert len(roots) == 1 and roots[0]["full_path"] == "top"       # 合成根 = 顶层模块
+        assert roots[0].get("synthetic") is True
+        mid = roots[0]["children"][0]
+        assert mid["full_path"] == "top.u_mid"
+        assert mid["children"][0]["full_path"] == "top.u_mid.u_leaf"    # 三级都出来了
+        assert d["instance_count"] == 2                                 # 真实实例 2 个
+
+
+class TestEmptyResultsAreNotFailures:
+    def test_instance_without_parameters(self, nested_fixture):
+        """无参数模块: count=0 且 ok=true (不是错误 —— 与"找不到实例"区分开)。"""
+        d = _json("params", "top.u_mid", "-f", nested_fixture, "--json")
+        assert d["ok"] is True and d["count"] == 0 and d["parameters"] == []
+
+    def test_design_without_classes(self):
+        """无 class 的设计: classes 返回空列表而不是报错。"""
+        d = _json("classes", "-f", INST_DEMO, "--json")
+        assert d["ok"] is True and d["count"] == 0 and d["classes"] == []
+
+
+class TestPathsCliBounds:
+    def test_max_flag_wires_truncation(self):
+        """CLI --max 必须接到 find_all_paths 的上限并标注 truncated。"""
+        full = _json("paths", "inst_demo.in_a", "inst_demo.add_out", "--all", "-f", INST_DEMO, "--json")
+        assert full["count"] >= 2 and full["truncated"] is False
+        capped = _json("paths", "inst_demo.in_a", "inst_demo.add_out", "--all", "--max", "1",
+                       "-f", INST_DEMO, "--json")
+        assert capped["count"] == 1 and capped["truncated"] is True
+
+    def test_unknown_dst_reported(self):
+        r = _run("paths", "inst_demo.in_a", "nope.out", "-f", INST_DEMO, "--json")
+        assert r.returncode != 0
+        d = json.loads(r.stdout)
+        assert d["ok"] is False and "nope.out" in d["unknown"]
+
+    def test_same_src_dst_single_node_path(self):
+        d = _json("paths", "inst_demo.in_a", "inst_demo.in_a", "-f", INST_DEMO, "--json")
+        assert d["found"] is True and d["path"] == ["inst_demo.in_a"] and d["hop_count"] == 0

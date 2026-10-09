@@ -86,6 +86,19 @@ unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
 
+**iter_238 (针对修复的测试评审 + 覆盖补强 + 全量复核 — 方豆: 先跑测试/评估补测/确认功能/全量评估)**:
+① **跑修复处的测试**: 不只跑新测试, 还跑了 8 个**间接覆盖** MIG/PathResolver 的既有套件 (test_mig_* / test_pr3_mig_fallback /
+test_pr4_visualize_l2 / test_cross_module_tracking / test_portconn_native_poc / test_comment_handling / test_mig_validator) → **122 passed, 0 回归**;
+② **覆盖审计补 16 条**: 新增 `test_path_resolver_semantics.py` (9 条: 截断/max_depth/**环安全**(真实组合环 fixture)/最短跳数契约/未知节点/同点) +
+CLI 补 7 条 (多级嵌套 parent 链 / 无参数实例 / 无 class 设计 / --max 截断接线 / 未知 dst / 同点);
+③ **真实输入确认 → 又发现 1 个语义缺陷 (第 8 个)**: 真实项目 `hierarchy` 显示 **7 实例 / 7 根** —— 根因: 顶层模块本身不是"实例",
+其子实例的 parent 不在实例表里 → 旧逻辑把每个子实例当根, 树完全失真 (而 `arch show` 是 1 顶 + 7 子) → 修为**合成根** (`synthetic:true`) +
+`instance_count` 只数真实实例 + 新增 `tree_node_count`;
+④ **全量评估**: 3364 → **3380 passed / 0 failed** (补 16 条测试; hierarchy 修复仅改断言)。
+**第 3 次印证**: fixture 单测全绿 ≠ 功能正确 —— 14 条 CLI 断言都过, 真实项目一跑就露馅 (fixture 只有 1 层)。
+**数字更正**: 我最初把 hierarchy 修复也记成 +16 (3364→3380→3396) —— 那是重复计数, 已按实测改正。
+[iter_238](docs/task_tree/iterations/iter_238_fix_verification_and_test_audit.md)
+
 **iter_237 (语义查询补全: params/ports/paths/classes+class — 方豆: 先把上面做好)**: 把 1a 后列出的 4 类同类缺口一次做完 (都是"库有、CLI 没有")。
 ① `svq params <实例路径>` —— **参数生效值** + `is_overridden` (实测 `u_child_default` 的 DEPTH=2 是默认值, W=4 是 override);
 ② `svq ports <模块名>` —— 端口表 (方向/位宽/`in_edges`/`out_edges`), 字段刻意**不冒充**语义 driver/load;
