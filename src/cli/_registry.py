@@ -139,6 +139,15 @@ COMMANDS: list[CommandSpec] = [
     _c("controlflow list-conditioned", "semantic", cost="expensive",
        note="列出所有带条件驱动的信号 (枚举, 用于找入口)"),
     _c("dataflow analyze", "semantic", recommended=True, note="源→目标路径"),
+    # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
+    _c("instances", "semantic", cost="cheap", recommended=True,
+       note="[规范入口] 列出模块实例 (full_path/module_type/parent); 支持 --filelist"),
+    _c("instance", "semantic", cost="cheap", recommended=True,
+       note="[规范入口] 单实例详情: 类型/父/子/端口(方向+位宽+内部信号)"),
+    _c("connections", "semantic", cost="medium", recommended=True,
+       note="[规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as)"),
+    _c("hierarchy", "semantic", cost="medium", recommended=True,
+       note="[规范入口] 实例层级树 (机器可读版 arch show)"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),
@@ -274,19 +283,8 @@ def aliases_of(canonical_key: str) -> list[str]:
 
 # 计划新增 (P1+, 语义 core 缺口): instance 查询
 NEW_PLANNED: list[dict] = [
-    {"name": "instances", "layer": "core", "group": "semantic",
-     "reuse": "UnifiedTracer.get_instances()",
-     "output": "[{full_path,name,module_type,parent}]",
-     "note": "实例列表/过滤 —— 目前 CLI 零暴露"},
-    {"name": "instance", "layer": "core", "group": "semantic",
-     "reuse": "get_instances() + 端口/参数",
-     "output": "{full_path,module_type,ports[],param_overrides[],src_file,src_line}"},
-    {"name": "connections", "layer": "core", "group": "semantic",
-     "reuse": "trace_module / trace_port",
-     "output": "{inputs[],outputs[],internals[],cross_module[],confidence,caveats}"},
-    {"name": "hierarchy", "layer": "core", "group": "semantic",
-     "reuse": "module_instance_graph (MIG)",
-     "output": "{path,module_type,children[]}  ← arch show 的机器面"},
+    # [iter_236 1a] instances / instance / connections / hierarchy 已落地 (core/semantic)。
+    # 候选 (未拍板): 参数/端口 override 查询; class 实例成员 (trace_member_instances 仍未暴露)。
 ]
 
 

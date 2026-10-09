@@ -11,7 +11,8 @@ import typer
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
 ensure_on_path(PROJECT_ROOT)
 
-from trace.unified_tracer import UnifiedTracer
+from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]
+from trace.core.compiler import CompilationError
 
 
 def output_json(data: dict, pretty: bool = False) -> None:
@@ -24,16 +25,15 @@ graph_app = typer.Typer(help="Inspect signal graph")
 
 @graph_app.command("dump")
 def dump(
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
     module: str | None = typer.Option(None, "--module", "-m", help="Filter by module name"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
 ) -> None:
     """Dump the signal graph as JSON"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
 
         nodes = []
@@ -81,7 +81,7 @@ def dump(
         data = {
             "ok": True,
             "command": "graph_dump",
-            "params": {"file": str(file), "module": module},
+            "params": {"file": str(file) if file else None, "filelist": filelist, "module": module},
             "result": {
                 "nodes": nodes,
                 "edges": edges,
@@ -102,6 +102,9 @@ def dump(
                 edge_strs = [f"{e['src']}->{e['dst']}" for e in edges[:20]]
                 print(f"Edges: {edge_strs}{'...' if len(edges) > 20 else ''}")
 
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
     except Exception as e:
         data = {"ok": False, "command": "graph_dump", "error": str(e)}
         if json_output:
@@ -113,16 +116,15 @@ def dump(
 
 @graph_app.command("nodes")
 def list_nodes(
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
     kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by node kind (SIGNAL, EXPRESSION, etc)"),
     module: str | None = typer.Option(None, "--module", "-m", help="Filter by module name"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
     """List all nodes in the graph"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
 
         nodes = []
@@ -148,7 +150,7 @@ def list_nodes(
         data = {
             "ok": True,
             "command": "list_nodes",
-            "params": {"file": str(file), "kind": kind, "module": module},
+            "params": {"file": str(file) if file else None, "filelist": filelist, "kind": kind, "module": module},
             "result": {"nodes": nodes, "total": len(nodes)},
             "errors": [],
         }
@@ -160,6 +162,9 @@ def list_nodes(
             for n in nodes:
                 print(f"  [{n['kind']}] {n['id']} ({n['module']})")
 
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
     except Exception as e:
         data = {"ok": False, "command": "list_nodes", "error": str(e)}
         if json_output:
@@ -171,7 +176,8 @@ def list_nodes(
 
 @graph_app.command("edges")
 def list_edges(
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
     kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by edge kind (DRIVER, etc)"),
     src: str | None = typer.Option(None, "--src", "-s", help="Filter by source node"),
     dst: str | None = typer.Option(None, "--dst", "-d", help="Filter by destination node"),
@@ -179,9 +185,7 @@ def list_edges(
 ) -> None:
     """List all edges in the graph"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
 
         edges = []
@@ -208,7 +212,7 @@ def list_edges(
         data = {
             "ok": True,
             "command": "list_edges",
-            "params": {"file": str(file), "kind": kind, "src": src, "dst": dst},
+            "params": {"file": str(file) if file else None, "filelist": filelist, "kind": kind, "src": src, "dst": dst},
             "result": {"edges": edges, "total": len(edges)},
             "errors": [],
         }
@@ -220,6 +224,9 @@ def list_edges(
             for e in edges:
                 print(f"  {e['src']} → {e['dst']} ({e['kind']})")
 
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
     except Exception as e:
         data = {"ok": False, "command": "list_edges", "error": str(e)}
         if json_output:
@@ -232,14 +239,13 @@ def list_edges(
 @graph_app.command("find")
 def find(
     pattern: str = typer.Argument(..., help="Pattern to search (partial match)"),
-    file: Path = typer.Option(..., "--file", "-f", help="SystemVerilog source file"),
+    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
+    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
     """Find nodes matching a pattern"""
     try:
-        with open(str(file)) as f:
-            source = f.read()
-        tracer = UnifiedTracer(sources={str(file): source})
+        tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
 
         matches = []
@@ -259,7 +265,7 @@ def find(
         data = {
             "ok": True,
             "command": "find",
-            "params": {"pattern": pattern, "file": str(file)},
+            "params": {"pattern": pattern, "file": str(file) if file else None, "filelist": filelist},
             "result": {"matches": matches, "total": len(matches)},
             "errors": [],
         }
@@ -271,6 +277,9 @@ def find(
             for m in matches:
                 print(f"  [{m['kind']}] {m['id']} ({m['module']})")
 
+    except CompilationError as e:
+        handle_compilation_error(e)
+        return
     except Exception as e:
         data = {"ok": False, "command": "find", "error": str(e)}
         if json_output:

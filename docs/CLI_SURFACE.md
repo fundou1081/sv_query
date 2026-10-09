@@ -1,14 +1,14 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-09-19  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-10-09  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
-- 叶子命令总数: **65**
-- 按层: `core`=25, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=8, `locate`=7, `state`=6, `diagnose`=4
+- 叶子命令总数: **69**
+- 按层: `core`=29, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=12, `locate`=7, `state`=6, `diagnose`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (25 个)
+## `core` (29 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -27,17 +27,21 @@
 | `diagnose timescale` | `fix timescale` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale) |
 | `diagnose widths` | `fix widths` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
-| `graph dump` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph edges` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph find` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph nodes` | — | — | locate | primitive | cheap | ✅ | — | ✅ | [缺口] 只支持 --file 单文件, 真实项目(filelist)不可用 |
+| `graph dump` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
+| `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
+| `graph find` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
+| `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件, 真实项目(filelist)不可用 |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
+| `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
 | `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析 |
 | `controlflow conditions` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的全部驱动条件 |
 | `controlflow list-conditioned` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 列出所有带条件驱动的信号 (枚举, 用于找入口) |
 | `dataflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源→目标路径 |
 | `drivers` | `trace fanin` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin |
+| `hierarchy` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 实例层级树 (机器可读版 arch show) |
+| `instance` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 单实例详情: 类型/父/子/端口(方向+位宽+内部信号) |
+| `instances` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 列出模块实例 (full_path/module_type/parent); 支持 --filelist |
 | `loads` | `trace fanout` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
 | `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 风险分级 |
@@ -142,8 +146,4 @@
 
 | 新命令 | 复用现有 API | 输出 |
 |---|---|---|
-| `instances` | UnifiedTracer.get_instances() | [{full_path,name,module_type,parent}] |
-| `instance` | get_instances() + 端口/参数 | {full_path,module_type,ports[],param_overrides[],src_file,src_line} |
-| `connections` | trace_module / trace_port | {inputs[],outputs[],internals[],cross_module[],confidence,caveats} |
-| `hierarchy` | module_instance_graph (MIG) | {path,module_type,children[]}  ← arch show 的机器面 |
 
