@@ -76,6 +76,10 @@ from cli.core.semantic.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
 from cli.core.semantic.instances import (  # [iter_236 1a]
     instances_cmd, instance_cmd, connections_cmd, hierarchy_cmd,
 )
+from cli.core.semantic.params import params_cmd       # [iter_237]
+from cli.core.semantic.ports import ports_cmd         # [iter_237]
+from cli.core.semantic.paths import paths_cmd         # [iter_237]
+from cli.core.semantic.classes import classes_cmd, class_cmd  # [iter_237]
 from src.cli.exp.verif.verify import verify_app
 from cli.view.visualize import vis_app
 import logging
@@ -98,6 +102,12 @@ app.command("instances", help="[规范入口] 列出模块实例 (--json: full_p
 app.command("instance", help="[规范入口] 单个实例详情 (类型/父/子/端口/位宽)")(instance_cmd)
 app.command("connections", help="[规范入口] 连接: 实例端口↔内部信号 / 模块四类边")(connections_cmd)
 app.command("hierarchy", help="[规范入口] 实例层级树 (机器可读版 arch show)")(hierarchy_cmd)
+# [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)
+app.command("params", help="[规范入口] 实例的生效参数值 (含是否被 override)")(params_cmd)
+app.command("ports", help="[规范入口] 模块端口总览 (方向/位宽/驱动数/负载数)")(ports_cmd)
+app.command("paths", help="[规范入口] 图上路径 (跨模块端口可跳转; --all 枚举全部)")(paths_cmd)
+app.command("classes", help="[规范入口] 列出编译域内的 class 名")(classes_cmd)
+app.command("class", help="[规范入口] class 的成员(类型级)与实例(实例级); --member 查成员实例")(class_cmd)
 
 app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游 drivers; 兼容别名: trace fanin)")(_fanin_cmd)
 app.command("loads", help="[规范入口] 这个信号被谁使用 (下游 loads; 兼容别名: trace fanout)")(_fanout_cmd)

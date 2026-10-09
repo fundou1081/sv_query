@@ -4,7 +4,7 @@
 - **Task Tree Level**: L1
 - **Created**: 2026-09-09 GMT+8
 - **Author**: 方豆 / AI 助手
-- **Status**: 🟡 IN PROGRESS (1a ✅ done / 候选待拍板)
+- **Status**: ✅ CLOSED (1a ✅ iter_236 / 候选 1~4 ✅ iter_237)
 - **触发**: 方豆 2026-09-09 列出的缺口 —— **"instance 查询 / trace driver 信号驱动了谁 / trace loader 信号被谁使用"**
 
 ---
@@ -40,12 +40,18 @@
 
 ## 📋 候选 (未拍板)
 
-| # | 能力 | 依据 |
+| # | 能力 | 状态 |
 |---|---|---|
-| 1 | 参数 / 端口 override 查询 (`#(.WIDTH(8))` 实际生效值) | MIG `PortInfo` 已有方向/位宽; 参数覆盖需查 `InstanceSymbol` |
-| 2 | class 实例成员查询 (`trace_member_instances` 仍未暴露) | 库 API 存在, CLI 零暴露 (与 1a 同类缺口) |
-| 3 | 跨模块路径查询 (`PathResolver.find_all_paths`) | 库存在; `dataflow analyze` 只覆盖同图路径 |
-| 4 | 端口方向的机器可读总览 (per-module port table) | `trace_port` 已存在, 可包装 |
+| 1 | 参数 override 查询 | ✅ **完成 (iter_237)**: `svq params <实例>` + `is_overridden` |
+| 2 | class 实例成员查询 | ✅ **完成 (iter_237)**: `svq classes` / `svq class <name> [--member M]` |
+| 3 | 跨模块路径查询 | ✅ **完成 (iter_237)**: `svq paths <src> <dst> [--all]` (并修 PathResolver 跨模块缺陷) |
+| 4 | per-module 端口总览 | ✅ **完成 (iter_237)**: `svq ports <模块>` |
+
+## 🔜 仍可挖掘 (未拍板)
+
+- 参数**类型/表达式**级信息 (当前只有生效值; `$clog2` 之类派生参数未展开)
+- 跨模块**约束**查询 (constraint 域已在 C1~C5 闭环, 但无 CLI)
+- 时序/CDC 的**可靠算法** (见 `docs/EXP_NAMESPACE.md` 晋升门槛)
 
 ## 🔗 相关
 

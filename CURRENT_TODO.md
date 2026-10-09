@@ -24,6 +24,8 @@
 
 **当前任务 (方豆方向)**: **Agent 语义能力缺口补全** (L1, 🟡 1a ✅ 完成 / 候选待拍板) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
 **1a ✅ (iter_236)**: `svq instances` / `instance` / `connections` / `hierarchy` 四个只读 JSON 命令上线 (+ `graph` 组补 `--filelist`); 顺带修 **bug #6**: `UnifiedTracer.get_instances()` 从未工作 (双重包装 adapter + 按错误形状解析)。
+**候选 1~4 ✅ (iter_237)**: 再补 5 个命令 —— `params`(参数**生效值**+是否 override) / `ports`(端口表) / `paths`(跨模块路径, --all) / `classes` / `class`(类型级成员 vs 实例级节点); 顺带修 **bug #7**: `PathResolver` 只做"进模块"映射不做"出模块" → 跨模块路径恒 None, 且 `find_path` 与 `find_all_paths` 遍历不一致 → 抽 `_neighbors` 统一 + 加 `max_paths` 上限 + 锁定不变式。
+**本任务 (Agent 语义能力缺口) ✅ 全部完成**; 下一步候选见任务文件 (参数化 class 深处、跨模块约束等)。
 
 **上一任务 (结构面)**: **CLI 分层与专注化** (L1, P0~P3 ✅ / P1b-3·P2 剩余·P6 待做) —— 64 个平铺命令 → 分层能力面。
 任务文件: `docs/task_tree/tasks/L1_cli_layering.md`; 生成物清单: `docs/CLI_SURFACE.md`; 降级政策: `docs/EXP_NAMESPACE.md`。
@@ -83,6 +85,19 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_237 (语义查询补全: params/ports/paths/classes+class — 方豆: 先把上面做好)**: 把 1a 后列出的 4 类同类缺口一次做完 (都是"库有、CLI 没有")。
+① `svq params <实例路径>` —— **参数生效值** + `is_overridden` (实测 `u_child_default` 的 DEPTH=2 是默认值, W=4 是 override);
+② `svq ports <模块名>` —— 端口表 (方向/位宽/`in_edges`/`out_edges`), 字段刻意**不冒充**语义 driver/load;
+③ `svq paths <src> <dst> [--all]` —— 跨模块路径 (端口↔内部信号跳转), `--all` 枚举全部 + `truncated` 标记;
+④ `svq classes` / `svq class <name> [--member M]` —— class 列表 + 类型级成员 vs 实例级节点 (遵循 iter_152 D3 决策)。
+**⚠️ 顺带修 bug #7**: `PathResolver` ①只做"进模块"映射 (`get_internal_signal`) 不做"出模块" (`get_port_path`) → 走到模块内部就出不来 → 跨模块路径恒 `None`;
+② `find_path` 走 successors+predecessors 而 `find_all_paths` 只走 successors → 两者结论矛盾。
+根因修复: 新增 `_neighbors` (四路邻接: 前后继 + 进/出模块) 作为**单一真相源**, 两个入口共用; `find_all_paths` 加 `max_paths=50`/`max_depth=60` 上限。
+实测 inst_demo: `in_a → add_out` 从 **0 条 → 4 条**路径 (3 条穿越模块内部); 不变式 "find_path ⊆ find_all_paths" 已由测试锁定。
+新增 `test_cli_semantic_queries.py` **14 passed**; 全量 **3364 passed / 0 failed**。
+**教训 (本轮第 2 次印证)**: "库 API 存在" ≠ "能用" —— `get_instances`(iter_236) 与 `PathResolver`(本轮) 都零调用方且都是坏的; 暴露前必须先手动跑真实输入。
+[iter_237](docs/task_tree/iterations/iter_237_semantic_query_completion.md)
 
 **iter_236 (1a: 实例/层级查询 + graph 补 filelist — 方豆: 先做 1a)**: 补上方豆点名的能力缺口 ——
 `svq instances [--module] [--depth]` / `svq instance <路径>` / `svq connections <实例路径|模块名>` / `svq hierarchy [--module] [--depth]`,

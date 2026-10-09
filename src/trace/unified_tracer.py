@@ -594,6 +594,13 @@ class UnifiedTracer:
     def get_graph(self) -> SignalGraph | None:
         return self._graph
 
+    def get_path_resolver(self):
+        """[iter_237] 公开访问 PathResolver (跨模块路径查询)。
+
+        返回 None 表示尚未构建 (需先 build_graph)。
+        """
+        return getattr(self, "_path_resolver", None)
+
     def get_module_graph(self):
         """[iter_236 1a] 公开访问 ModuleInstanceGraph (实例层级 + 端口映射)。
 
