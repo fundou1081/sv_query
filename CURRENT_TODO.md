@@ -22,7 +22,10 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **CLI 分层与专注化** (L1, 🟡 P0 完成 / P1~P6 待做) —— 64 个平铺命令 → 分层能力面。
+**当前任务 (方豆方向)**: **Agent 语义能力缺口补全** (L1, 🟡 1a ✅ 完成 / 候选待拍板) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
+**1a ✅ (iter_236)**: `svq instances` / `instance` / `connections` / `hierarchy` 四个只读 JSON 命令上线 (+ `graph` 组补 `--filelist`); 顺带修 **bug #6**: `UnifiedTracer.get_instances()` 从未工作 (双重包装 adapter + 按错误形状解析)。
+
+**上一任务 (结构面)**: **CLI 分层与专注化** (L1, P0~P3 ✅ / P1b-3·P2 剩余·P6 待做) —— 64 个平铺命令 → 分层能力面。
 任务文件: `docs/task_tree/tasks/L1_cli_layering.md`; 生成物清单: `docs/CLI_SURFACE.md`; 降级政策: `docs/EXP_NAMESPACE.md`。
 **P0 已交付**: `_registry.py`(单一真相源) + `svq capabilities`(agent 工具面) + `tools/check_cli_layers.py`(R1~R6 机械检查) + `tools/gen_cli_surface.py`(清单生成物)。
 **P1a ✅ 完成 (iter_231)**: 规范入口 `svq drivers` / `svq loads` (顶层, 方案 a) + 老名 `trace fanin`/`trace fanout` 保留为**同一实现的别名**
@@ -80,6 +83,18 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_236 (1a: 实例/层级查询 + graph 补 filelist — 方豆: 先做 1a)**: 补上方豆点名的能力缺口 ——
+`svq instances [--module] [--depth]` / `svq instance <路径>` / `svq connections <实例路径|模块名>` / `svq hierarchy [--module] [--depth]`,
+四个**只读 + JSON** 命令 (全登记 core/semantic + recommended), `connections` 用 `resolved_as` 显式声明双语义, 端口位宽输出结构化 list。
+`graph dump/nodes/edges/find` 补 **`--filelist`** (此前只有 `--file`, 真实多文件项目不可用) + 统一错误处理 + `params.file` 不再输出字符串 "None"。
+**⚠️ 顺带修 pre-existing bug #6**: `UnifiedTracer.get_instances()` **从未工作过** —— ① 把 SemanticAdapter 又包一层 →
+`self._root.topInstances` AttributeError; ② 解析函数按原始 `InstanceSymbol` 形状写, 而生产返回 `SemanticInstanceWrapper` → 即使不炸也永远解析不出东西;
+根因修复: 直接调 `_get_adapter().get_module_instances()` + 新增 `_instance_info_from_wrapper()` (full_path 取 `hierarchicalPath`) + **删 76 行死代码**。
+**教训**: 声称"库已就绪"前必须手动调一次 —— 该 API 零 CLI 调用方, 契约从来是想象出来的; 形状要探针确认, 不能信 docstring (实测 wrapper 无 id/def_name)。
+新增 `sim/tests/unit/test_cli_instance_query.py` **14 passed**; 全量 **3350 passed / 0 failed**;
+真实项目口径: `graph nodes --filelist scheduler_minimal/filelist.f` → 98 节点 (此前不可达)。
+[iter_236](docs/task_tree/iterations/iter_236_instance_query_and_graph_filelist.md) / [任务文件](docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md)
 
 **iter_235 (CLI 分层 P3: exp 收进 `svq exp ...` 前缀 — 方豆: 做 p2 p3)**: 降级区从顶层平铺收进统一前缀。
 ① 新顶层组 `svq exp` 下挂 10 个子组 (protocol/handshake/backpressure/sva/coverage/verify/risk/randomize/cdc/timing), 组帮助标 `[UNSTABLE]` + 指向 `docs/EXP_NAMESPACE.md`;

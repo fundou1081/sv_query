@@ -594,6 +594,14 @@ class UnifiedTracer:
     def get_graph(self) -> SignalGraph | None:
         return self._graph
 
+    def get_module_graph(self):
+        """[iter_236 1a] 公开访问 ModuleInstanceGraph (实例层级 + 端口映射)。
+
+        CLI 的 instances/instance/connections/hierarchy 需要它; 之前只有私有
+        `self._module_graph`, 让 CLI 直接摸私有属性不是契约。返回 None 表示尚未构建。
+        """
+        return getattr(self, "_module_graph", None)
+
     def get_elaboration_errors(self) -> list[dict]:
         """[FIX 2026-06-11 Issue 17] 公开 API: 返回 elaboration 错误列表
 
@@ -954,104 +962,51 @@ class UnifiedTracer:
             for inst in top_instances:
                 print(f"{inst.full_path} ({inst.module_type})")
         """
-        adapter = self._get_adapter()  # SemanticAdapter
-        semantic_adapter = SemanticAdapter(adapter)
-
-        # 获取 Module 和 Generate 中的实例
-        module_insts = semantic_adapter.get_module_instances()
-        gen_insts = []  # Semantic AST 暂不处理 generate 实例
-
-        # 合并并去重
-        seen = set()
-        result = []
-
-        for inst_list in [module_insts, gen_insts]:
-            for node in inst_list:
-                inst_info = self._parse_instance_node(node)
-                if inst_info and inst_info.full_path not in seen:
-                    seen.add(inst_info.full_path)
-                    # 模块过滤
-                    if module is None or inst_info.parent == module or inst_info.full_path == module:
-                        result.append(inst_info)
-
+        # [iter_236 1a] 修两个 pre-existing bug (该 API 此前**无任何 CLI 调用方**, 所以没人发现):
+        #   ① 旧写法 `SemanticAdapter(adapter)` —— 把 SemanticAdapter 又包一层,
+        #      新 adapter 的 _root 是 SemanticAdapter 而非 pyslang root
+        #      → native 实例枚举访问 `self._root.topInstances` 直接 AttributeError;
+        #   ② `_parse_instance_node` 期望**原始** InstanceSymbol (`hasattr(node,'kind')`),
+        #      而 native/生产路径返回的是 `SemanticInstanceWrapper` → 永远解析不出东西。
+        adapter = self._get_adapter()  # SemanticAdapter (已 wrap pyslang root)
+        seen: set[str] = set()
+        result: list[InstanceInfo] = []
+        for wrapper in adapter.get_module_instances():
+            info = self._instance_info_from_wrapper(wrapper)
+            if info is None or info.full_path in seen:
+                continue
+            seen.add(info.full_path)
+            # 模块过滤: 父**实例路径** == module, 或自身就是 module
+            if module is None or info.parent == module or info.full_path == module:
+                result.append(info)
         return result
 
-    def _parse_instance_node(self, node) -> InstanceInfo | None:
-        """解析模块实例节点为 InstanceInfo
+    @staticmethod
+    def _instance_info_from_wrapper(wrapper) -> InstanceInfo | None:
+        """`SemanticInstanceWrapper` → `InstanceInfo` (按实测字段形状解析)。
 
-        支持 Semantic AST (InstanceSymbol) 和 SyntaxTree (HierarchyInstantiationSyntax)
-
-        Args:
-            node: InstanceSymbol 或 HierarchyInstantiationSyntax 节点
-
-        Returns:
-            InstanceInfo 或 None (解析失败)
+        实测形状 (iter_236 探针): `.name` / `.parent_module`(父**模块名**) /
+        `.type.value`(模块类型) / `._symbol.hierarchicalPath`(完整路径, 如 "top.u_dut")。
+        full_path 取 `hierarchicalPath` (唯一可靠来源); parent 由 full_path 去掉最后一段得到
+        (比 `parent_module` 更准: 后者是模块名, 数组/generate 场景会与实例路径不一致)。
         """
-        try:
-            # Semantic AST: InstanceSymbol
-            if hasattr(node, "kind") and "Instance" in str(node.kind):
-                name = getattr(node, "name", None)
-                if not name:
-                    return None
-
-                # 获取模块类型
-                module_type = None
-                if hasattr(node, "definition"):
-                    defn = node.definition
-                    if hasattr(defn, "name"):
-                        module_type = getattr(defn, "name", None) or str(defn)
-                elif hasattr(node, "body"):
-                    # InstanceBodySymbol
-                    if hasattr(node.body, "definition"):
-                        defn = node.body.definition
-                        module_type = getattr(defn, "name", None) or str(defn)
-
-                return InstanceInfo(
-                    name=str(name),
-                    module_type=str(module_type) if module_type else "unknown",
-                    full_path=str(name),
-                    parent=None,
-                )
-
-            # SyntaxTree: HierarchyInstantiationSyntax
-            module_type = None
-            if hasattr(node, "type"):
-                if hasattr(node.type, "value"):
-                    module_type = node.type.value
-                elif hasattr(node.type, "text"):
-                    module_type = node.type.text
-
-            if not module_type:
-                return None
-
-            if not hasattr(node, "instances") or not node.instances:
-                return None
-
-            instances = []
-            for inst_item in node.instances:
-                if not hasattr(inst_item, "kind") or str(inst_item.kind) != "SyntaxKind.HierarchicalInstance":
-                    continue
-
-                name = None
-                if hasattr(inst_item, "decl") and hasattr(inst_item.decl, "name"):
-                    name_val = getattr(inst_item.decl.name, "value", None) or getattr(inst_item.decl.name, "text", None)
-                    name = name_val
-
-                if not name:
-                    continue
-
-                instances.append(InstanceInfo(name=name, module_type=module_type, full_path=name, parent=None))
-
-            # 返回第一个实例 (通常 HierarchyInstantiation 每个节点只有一个实例)
-            return instances[0] if instances else None
-
-        except Exception as e:
-            _main_logger.debug(f"[InstanceInfo] parse failed: {e}")
+        sym = getattr(wrapper, "_symbol", None)
+        full = getattr(sym, "hierarchicalPath", None)
+        name = getattr(wrapper, "name", None) or getattr(sym, "name", None)
+        if not full:
+            pm = getattr(wrapper, "parent_module", None)
+            full = f"{pm}.{name}" if (pm and name) else name
+        if not full:
             return None
+        full = str(full)
+        name = str(name) if name else full.rsplit(".", 1)[-1]
+        mtype = ""
+        tp = getattr(wrapper, "type", None)
+        if tp is not None:
+            mtype = str(getattr(tp, "value", "") or "")
+        parent = full.rsplit(".", 1)[0] if "." in full else None
+        return InstanceInfo(name=name, module_type=mtype, full_path=full, parent=parent)
 
-    # =========================================================================
-    # 信号追踪 API
-    # =========================================================================
     def trace_signal(self, signal: str, module: str = None) -> SignalChain:
         self.build_graph()
         return self._signal_tracer.trace(signal, module)
