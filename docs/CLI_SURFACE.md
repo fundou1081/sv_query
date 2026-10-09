@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **69**
-- 按层: `core`=29, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=12, `locate`=7, `state`=6, `diagnose`=4
+- 叶子命令总数: **74**
+- 按层: `core`=34, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=17, `locate`=7, `state`=6, `diagnose`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (29 个)
+## `core` (34 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -33,6 +33,8 @@
 | `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件, 真实项目(filelist)不可用 |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
+| `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | class 成员(类型级) + 实例(实例级); --member 查某成员的实例节点 |
+| `classes` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 列出编译域内 class 名 |
 | `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
 | `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析 |
 | `controlflow conditions` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的全部驱动条件 |
@@ -43,6 +45,9 @@
 | `instance` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 单实例详情: 类型/父/子/端口(方向+位宽+内部信号) |
 | `instances` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 列出模块实例 (full_path/module_type/parent); 支持 --filelist |
 | `loads` | `trace fanout` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout |
+| `params` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认) |
+| `paths` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 图上路径 (跨模块端口跳转; --all 枚举全部, 有上限) |
+| `ports` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 模块端口总览 (方向/位宽/入边数/出边数) |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
 | `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 风险分级 |
 | `diff compare` | — | — | state | state | medium | ✅ | — | ✅ | [计划] 并入 snapshot compare |

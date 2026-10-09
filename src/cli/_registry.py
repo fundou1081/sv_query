@@ -148,6 +148,17 @@ COMMANDS: list[CommandSpec] = [
        note="[规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as)"),
     _c("hierarchy", "semantic", cost="medium", recommended=True,
        note="[规范入口] 实例层级树 (机器可读版 arch show)"),
+    # [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)
+    _c("params", "semantic", cost="cheap", recommended=True,
+       note="[规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认)"),
+    _c("ports", "semantic", cost="cheap", recommended=True,
+       note="[规范入口] 模块端口总览 (方向/位宽/入边数/出边数)"),
+    _c("paths", "semantic", cost="medium", recommended=True,
+       note="[规范入口] 图上路径 (跨模块端口跳转; --all 枚举全部, 有上限)"),
+    _c("classes", "semantic", cost="cheap",
+       note="列出编译域内 class 名"),
+    _c("class", "semantic", cost="medium",
+       note="class 成员(类型级) + 实例(实例级); --member 查某成员的实例节点"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),

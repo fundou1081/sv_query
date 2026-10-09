@@ -289,90 +289,81 @@ class PathResolver:
         self.signal_graph = signal_graph
         self.module_graph = module_graph
 
-    def find_path(self, src: str, dst: str) -> list[str] | None:
-        """查找从 src 到 dst 的路径
+    def _neighbors(self, node: str) -> list[str]:
+        """统一的邻接定义: successors + predecessors + 跨模块端口映射(两个方向)。
 
-        使用 BFS 追踪跨模块路径，自动处理:
-        - 跨模块边界的端口映射 (top.u_dut.clk → dut.clk)
-        - 双向扩展 (successors + predecessors)
-        - 通过端口映射跨越模块边界
+        [iter_237] 旧实现里 `find_path` 走 successors+predecessors + 进模块映射, 而
+        `find_all_paths` 只走 successors → 两者结论互相矛盾 (实测同一对信号:
+        一个有路径一个返回 [])。现在两个入口共用本方法, 保证
+        "find_path 找得到的路径必然出现在 find_all_paths 里"。
+        """
+        out: list[str] = []
+        for fn in (self.signal_graph.successors, self.signal_graph.predecessors):
+            try:
+                out.extend(fn(node))
+            except (KeyError, nx.NetworkXError) as _e:
+                logger.debug("图无邻居 (正常): %s", _e)
+        inner = self.module_graph.get_internal_signal(node)     # 进模块
+        if inner:
+            out.append(inner)
+        outer = self.module_graph.get_port_path(node)           # 出模块
+        if outer:
+            out.append(outer)
+        return out
+
+    def find_path(self, src: str, dst: str) -> list[str] | None:
+        """查找从 src 到 dst 的一条路径 (BFS, 跨模块感知)。
+
+        返回**最短跳数**的那一条 (可能经由实例节点而非模块内部); 要走遍所有
+        路线 (含穿越模块内部) 用 `find_all_paths`。
+
+        Args:
+            src/dst: 信号 id (如 "inst_demo.in_a" / "sub_adder.sum");
+                     用 `svq graph nodes --json` 列可用 id。
         """
         if src == dst:
             return [src]
+        dst_internal = self.module_graph.get_internal_signal(dst)
+        dst_target = dst_internal if dst_internal else dst
+        queue: list[tuple[str, list[str]]] = [(src, [src])]
+        visited = {src}
+        while queue:
+            current, path = queue.pop(0)
+            for neighbor in self._neighbors(current):
+                if neighbor in visited:
+                    continue
+                if neighbor == dst_target:
+                    return path + [neighbor]
+                visited.add(neighbor)
+                queue.append((neighbor, path + [neighbor]))
+        return None
 
-        # 如果 dst 是端口，记录目标映射
+    def find_all_paths(self, src: str, dst: str, max_paths: int = 50,
+                       max_depth: int = 60) -> list[list[str]]:
+        """枚举 src → dst 的所有简单路径 (与 `find_path` 共用邻接定义)。
+
+        Args:
+            max_paths: 结果上限 (有环图里防爆; 调用方应据此标注 truncated)
+            max_depth: 单条路径最大节点数
+        """
+        paths: list[list[str]] = []
         dst_internal = self.module_graph.get_internal_signal(dst)
         dst_target = dst_internal if dst_internal else dst
 
-        # BFS 队列: (current_node, path_from_src)
-        # 从原始 src 开始（不要映射），这样可以访问所有相邻节点
-        queue = [(src, [src])]
-        visited = {src}
-
-        while queue:
-            current, path = queue.pop(0)
-
-            # 获取所有直接相连的节点 (successors + predecessors)
-            neighbors = set()
-            try:
-                neighbors.update(self.signal_graph.successors(current))
-            except (KeyError, nx.NetworkXError) as _e:
-                logger.debug("图无路径 (正常): %s", _e)
-            try:
-                neighbors.update(self.signal_graph.predecessors(current))
-            except (KeyError, nx.NetworkXError) as _e:
-                logger.debug("图无路径 (正常): %s", _e)
-
-            for neighbor in neighbors:
-                if neighbor in visited:
+        def _dfs(current: str, path: list[str], visited: set) -> None:
+            if len(paths) >= max_paths or len(path) > max_depth:
+                return
+            if current == dst_target and len(path) > 1:
+                paths.append(path.copy())
+                return
+            for nxt in self._neighbors(current):
+                if nxt in visited:
                     continue
+                visited.add(nxt)
+                path.append(nxt)
+                _dfs(nxt, path, visited)
+                path.pop()
+                visited.discard(nxt)
 
-                # 检查是否到达目标
-                if neighbor == dst_target:
-                    return path + [neighbor]
-
-                visited.add(neighbor)
-
-                # 如果 neighbor 是模块端口，映射到内部信号并加入队列
-                # 这样可以继续追踪模块内部信号
-                neighbor_internal = self.module_graph.get_internal_signal(neighbor)
-                if neighbor_internal:
-                    if neighbor_internal not in visited:
-                        visited.add(neighbor_internal)
-                        queue.append((neighbor_internal, path + [neighbor, neighbor_internal]))
-                else:
-                    queue.append((neighbor, path + [neighbor]))
-
-        return None
-
-    def find_all_paths(self, src: str, dst: str) -> list[list[str]]:
-        """查找所有路径"""
-        paths = []
-        path = [src]
-        visited = set()
-
-        self._find_all_paths_impl(src, dst, path, visited, paths)
+        _dfs(src, [src], {src})
         return paths
-
-    def _find_all_paths_impl(self, current: str, dst: str, path: list[str], visited: set, paths: list[list[str]]):
-        """递归查找所有路径的实现 (使用 successors)"""
-        if current in visited:
-            return
-        visited.add(current)
-
-        if current == dst:
-            paths.append(path.copy())
-            visited.discard(current)
-            return
-
-        try:
-            successors = list(self.signal_graph.successors(current))
-        except (KeyError, nx.NetworkXError):
-            successors = []
-
-        for driven_id in successors:
-            path.append(driven_id)
-            self._find_all_paths_impl(driven_id, dst, path, visited, paths)
-            path.pop()
-
-        visited.discard(current)
