@@ -617,6 +617,9 @@ def fanin(
     [iter_231 P1] 规范入口: `svq drivers` (顶层)。
     `svq trace fanin` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
 
+    [iter_240] 跨模块: **不给 --module 时**会跨实例端口继续追 (输入→端口→模块内→端口→输出);
+    给了 --module 则限定在该模块内 (不越界)。
+
     单信号: sv_query drivers top.clk -f top.sv
             (等价老写法: sv_query trace fanin top.clk -f top.sv)
     Batch:        sv_query trace fanin --batch 'top.clk,top.rst_n' -f top.sv
@@ -808,6 +811,9 @@ def fanout(
 
     [iter_231 P1] 规范入口: `svq loads` (顶层)。
     `svq trace fanout` 是同一实现的兼容别名 (老名保留, 输出完全一致)。
+
+    [iter_240] 跨模块: **不给 --module 时**会跨实例端口继续追 (输入→端口→模块内→端口→输出);
+    给了 --module 则限定在该模块内 (不越界)。
 
     [ADD 2026-06-11 Req-12 Issue 19] 默认只走 DRIVER+CONNECTION 边, 不含 CLOCK/RESET/CONTROL.
     用 --include-clock/reset/control flag 可加入. 完整视图请用 'visualize graph'.

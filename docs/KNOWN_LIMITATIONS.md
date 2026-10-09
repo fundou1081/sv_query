@@ -90,6 +90,23 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **当前处置 (iter_234)**: 不掩盖 —— 写入逻辑抽成 `tools/fix_timescale.py::apply_timescale_to_files()` 直接单测
 (写入 + `.bak` + idempotent 已验证); 命令本身的"触发条件"问题**待单独诊断** (新任务, 需查 pyslang 选项)。
 
+### 3.3 查询作用域与跨模块遍历 (iter_240)
+
+`loads` / `drivers` / `fanin` / `fanout` 的跨模块能力**按查询作用域开关**:
+
+| 查询形式 | 行为 |
+|---|---|
+| 全局 (`module=None`, 即不给 `--module`) | **跨模块**: 端口↔内部信号映射成为遍历的一步 (每跳 1 层深度) |
+| 限定 (`--module M`) | **不跨模块**: 只答 M 内 (保护"在 M 里看"的语义与 golden 断言) |
+
+**已知不足 (登记, 未修)**:
+
+| # | 问题 | 影响 | 修的前提 |
+|---|---|---|---|
+| 1 | `--from-snapshot` 模式**没有 MIG** (快照只存图) | snapshot 结果 ⊆ live 结果 (跨模块链缺失) | 要把端口映射写进快照 → 快照 schema 变更, 影响 diff/viz; 待方豆拍板 |
+| 2 | `distance` 字段**恒为 1** (`signal.py` 的 `# TODO: 计算实际距离`) | 跨 5 跳也标 distance=1, 对 agent 有误导 | 需定 API 形态 (返回副本 vs `(node, depth)`), 且不能 mutate 图里共享的 TraceNode |
+| 3 | `LoadTracer` (API `trace_loads`) **完全无跨模块支持** | `trace_loads('sub_adder.sum')` → `[]` | 非 CLI 路径 (只被 `trace.core` 导出 + 1 个测试用); 要对齐 SignalTracer 的遍历 |
+
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
 | 模块 | 数量 | 原因 |
