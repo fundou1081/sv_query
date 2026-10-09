@@ -68,11 +68,19 @@ class TestInstances:
 # ---------------------------------------------------------------------------
 class TestHierarchyAndInstance:
     def test_hierarchy_tree(self):
+        """[iter_237 复核] 顶层模块本身不是实例 → 作为**合成根**呈现 (synthetic=True)。
+
+        旧实现把 7 个顶层实例各自当根 (真实项目出现 "7 实例 / 7 根"), 树失真。
+        """
         d = _json("hierarchy", "-f", INST_DEMO, "--json")
-        assert d["ok"] is True and d["instance_count"] == 2
-        assert len(d["tree"]) == 2
-        node = next(n for n in d["tree"] if n["full_path"] == "inst_demo.u_adder")
-        assert node["module_type"] == "sub_adder" and node["children"] == []
+        assert d["ok"] is True
+        assert d["root_count"] == 1 and d["instance_count"] == 2      # 真实实例 2 个
+        assert d["tree_node_count"] == 3                              # +1 合成根
+        root = d["tree"][0]
+        assert root["full_path"] == "inst_demo" and root.get("synthetic") is True
+        kids = {c["full_path"]: c for c in root["children"]}
+        assert kids["inst_demo.u_adder"]["module_type"] == "sub_adder"
+        assert kids["inst_demo.u_adder"]["children"] == []
 
     def test_instance_detail_has_ports(self):
         d = _json("instance", "inst_demo.u_adder", "-f", INST_DEMO, "--json")

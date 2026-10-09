@@ -232,23 +232,45 @@ def hierarchy_cmd(
 
     def build(node: dict, level: int) -> dict:
         kids = by_parent.get(node["full_path"], []) if (depth is None or level < depth) else []
-        return {
+        out = {
             "full_path": node["full_path"],
             "module_type": node["module_type"],
             "children": [build(k, level + 1) for k in kids],
         }
+        if node.get("synthetic"):
+            out["synthetic"] = True      # 顶层模块节点 (非实例), 供消费者区分
+        return out
 
     if module:
         roots = [i for i in all_inst if i["full_path"] == module]
     else:
-        # 顶层: parent 为 None, 或 parent 不在实例表里 (未实例化的模块)
+        # [iter_237 复核] 顶层模块本身**不是实例**, 所以它的子实例 parent 指向一个不在实例表里的
+        # 路径。旧实现把这些子实例各自当成根 → 真实项目出现 "7 实例 / 7 根" (应为 1 根 + 7 子)。
+        # 现在为这类 parent 造**合成根** (synthetic=True), 让树真正呈现设计层级。
         known = {i["full_path"] for i in all_inst}
-        roots = [i for i in all_inst if not i["parent"] or i["parent"] not in known]
+        roots = [i for i in all_inst if not i["parent"]]
+        synth_parents: list[str] = []
+        for i in all_inst:
+            p = i["parent"]
+            if p and p not in known and p not in synth_parents:
+                synth_parents.append(p)
+        for p in synth_parents:
+            roots.append({"full_path": p, "name": p.rsplit(".", 1)[-1],
+                          "module_type": None, "parent": None, "synthetic": True})
     tree = [build(r, 1) for r in roots]
 
-    def count(nodes):
-        return sum(1 + count(n["children"]) for n in nodes)
+    def count(nodes, only_real: bool = True):
+        """统计树内节点; only_real=True 时**不把合成根算作实例**。"""
+        total = 0
+        for n in nodes:
+            real = not n.get("synthetic")
+            if real or not only_real:
+                total += 1
+            total += count(n["children"], only_real)
+        return total
 
-    _emit({"ok": True, "root_count": len(tree), "instance_count": count(tree),
+    _emit({"ok": True, "root_count": len(tree),
+           "instance_count": count(tree),          # 真实实例数 (不含合成根)
+           "tree_node_count": count(tree, only_real=False),
            "root": module, "depth": depth, "tree": tree},
           json_output, pretty)
