@@ -45,7 +45,9 @@
 **P2 部分完成 (iter_234)**: `fix*` 拆分 → `core/diagnose/` 四个**只读**命令 (规范名 `diagnose <x>`, 老名 `fix <x>` 为别名);
 写入能力移到 `tools/fix_timescale.py --apply` / 新增 `tools/fix_imports.py --write` (后者拒绝原地覆盖);
 **R3 检查器零基线** (CLI 内任何写文件立即失败); 顺带抓出并修复第 5 个真 bug (`tools/fix_timescale.py` 路径 guard 导致 `import trace` 命中 stdlib → 长期无法运行)。
-**P2 剩余**: snapshot 目录迁 `$SVQ_CACHE_DIR` (顺带治理仓库根 4987 个快照 / 137MB)。
+**P2 剩余 ✅ (iter_239 = 1b)**: snapshot 默认目录迁出项目 (`resolve_snapshot_dir`: 显式 > `SVQ_SNAPSHOT_DIR` > `<cache_dir>/snapshots`);
+新增**只读行为证明测试** (16 条命令 → 目录树 sha256 指纹不变); 4 个落盘测试隔离到临时目录; 旧快照**归档不删** (`.svq/legacy-2026-09-09-snapshots/`, 5035 个/137MB)。
+`TESTING.md` 新增"落盘位置与测试隔离"规则。
 **P3 ✅ 完成 (iter_235)**: 24 个 exp 命令收进 **`svq exp <组> <子>`** 规范前缀 (组帮助标 `[UNSUSTABLE]`→指向 EXP_NAMESPACE),
 老路径 (10 个顶层组) 全保留为**兼容别名** (同一 Typer 子应用挂两处, 零实现重复);
 `capabilities` 默认输出 **65 → 38** 条; 别名总数 6 → 30。**刻意不隐藏老路径** (兼容期内可发现; 隐藏/移除留 P6)。
@@ -85,6 +87,16 @@ pr5 套件 1 failed → **13 passed + 1 skipped**。iter_184 基于错诊断放�
 unit+regression **2113 passed + 35 subtests** / 全量 canonical
 `sim/tests/ -m "not opensource"` **3237 passed / 0 failed** (8 skipped / 164 deselected)。
 [iter_185](docs/task_tree/iterations/iter_185_slang_sourcemanager_lifetime.md)
+
+**iter_239 (1b: 快照目录迁出项目 + 只读行为证明 — 方豆: 开始 1b)**: ① 新增 `resolve_snapshot_dir()` (显式 > `SVQ_SNAPSHOT_DIR` > `<cache_dir>/snapshots`),
+`SnapshotManager` 默认改走它 (6 个调用点自动受益), **不做 silent fallback** (旧位置只在 `snapshot list` 空结果时给一行提示 + 迁移命令);
+② 受限环境可操作报错: 沙箱拒写 `~/.svq` 时给出 `用 SVQ_SNAPSHOT_DIR=... 覆盖` 的一行提示 (实测遇到并修);
+③ **只读行为证明测试** `test_cli_readonly_guarantee.py`: 临时项目目录里跑 16 条只读命令, 比对**目录树逐文件 sha256 指纹** (无新增/删除/修改),
+并锁定 `snapshot save` 不再在项目里建 `.svq/` —— 与 R3 静态检查互为双保险;
+④ 测试隔离: 4 个落盘测试改用临时 `SVQ_SNAPSHOT_DIR` (子进程传 env), `TESTING.md` 新增"落盘位置与测试隔离"规则; `test_cache_dir_config` +5 条解析测试;
+⑤ 旧快照**归档不删**: `.svq/snapshots` → `.svq/legacy-2026-09-09-snapshots` (5035 个/137MB, 其中 ~4998 个是测试残留; 删除决定权交回方豆)。
+全量 **3388 passed / 0 failed** (+8)。
+[iter_239](docs/task_tree/iterations/iter_239_snapshot_dir_migration_and_readonly_proof.md)
 
 **iter_238 (针对修复的测试评审 + 覆盖补强 + 全量复核 — 方豆: 先跑测试/评估补测/确认功能/全量评估)**:
 ① **跑修复处的测试**: 不只跑新测试, 还跑了 8 个**间接覆盖** MIG/PathResolver 的既有套件 (test_mig_* / test_pr3_mig_fallback /

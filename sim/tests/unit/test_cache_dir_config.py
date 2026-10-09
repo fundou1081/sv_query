@@ -159,3 +159,60 @@ class TestCliUnwritableCacheStillSucceeds(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSnapshotDirResolution(unittest.TestCase):
+    """[iter_239 1b] 快照目录: 显式 > SVQ_SNAPSHOT_DIR > <cache_dir>/snapshots"""
+
+    def setUp(self):
+        from trace.core.snapshot_manager import ENV_SNAPSHOT_DIR
+        self.ENV_SNAPSHOT_DIR = ENV_SNAPSHOT_DIR
+        self._saved = {k: os.environ.get(k) for k in (ENV_SNAPSHOT_DIR, ENV_CACHE_DIR)}
+        for k in (ENV_SNAPSHOT_DIR, ENV_CACHE_DIR):
+            os.environ.pop(k, None)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def test_default_is_under_cache_dir(self):
+        from trace.core.snapshot_manager import resolve_snapshot_dir
+
+        self.assertEqual(resolve_snapshot_dir(), resolve_cache_dir() / "snapshots")
+
+    def test_env_override(self):
+        from trace.core.snapshot_manager import SnapshotManager, resolve_snapshot_dir
+
+        os.environ[self.ENV_SNAPSHOT_DIR] = self.tmp.name
+        self.assertEqual(resolve_snapshot_dir(), Path(self.tmp.name))
+        self.assertEqual(SnapshotManager().base_dir, Path(self.tmp.name))
+
+    def test_env_follows_cache_dir(self):
+        from trace.core.snapshot_manager import resolve_snapshot_dir
+
+        os.environ[ENV_CACHE_DIR] = self.tmp.name
+        self.assertEqual(resolve_snapshot_dir(), Path(self.tmp.name) / "snapshots")
+
+    def test_explicit_beats_env(self):
+        from trace.core.snapshot_manager import resolve_snapshot_dir
+
+        os.environ[self.ENV_SNAPSHOT_DIR] = self.tmp.name
+        self.assertEqual(resolve_snapshot_dir("/tmp/explicit_snap"), Path("/tmp/explicit_snap"))
+
+    def test_unwritable_dir_gives_actionable_error(self):
+        """受限环境 (沙箱/只读 home) 下要报可操作的错, 而不是裸 Errno。"""
+        from trace.core.snapshot_manager import SnapshotManager
+
+        blocker = Path(self.tmp.name) / "afile"
+        blocker.write_text("not a dir")
+        with self.assertRaises(OSError) as cm:
+            SnapshotManager(base_dir=str(blocker / "snapshots"))
+        msg = str(cm.exception)
+        self.assertIn("SVQ_SNAPSHOT_DIR", msg)
+        self.assertIn("快照目录不可写", msg)

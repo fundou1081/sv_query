@@ -55,6 +55,21 @@ python -m pytest sim/tests/unit/ -v
 - Python 3.11 / 3.12
 - pyslang via GitHub source install
 
+## 落盘位置与测试隔离 (2026-09-09 iter_239 新增)
+
+**规则: 涉及落盘的测试必须显式指定写入位置**, 不许依赖默认值 —— 默认值一改就会写进
+用户 home 或项目目录 (历史上仓库根累积过 5035 个测试快照 / 137MB)。
+
+| 落盘 | 环境变量 | 默认位置 | 测试里怎么做 |
+|---|---|---|---|
+| AST / 图缓存 | `SVQ_CACHE_DIR` | `$XDG_CACHE_HOME/svq` → `~/.svq/cache` | 指到 `tmp_path` |
+| **快照** | `SVQ_SNAPSHOT_DIR` | `<cache_dir>/snapshots` | 指到 `tmp_path` (子进程要传 `env=`) |
+
+**只读行为证明**: `sim/tests/unit/test_cli_readonly_guarantee.py` 在临时项目目录跑一遍只读命令,
+比对**目录树 sha256 指纹** (无新增/删除/修改) —— 与 `tools/check_cli_layers.py` 的 R3 静态检查互为双保险。
+
+---
+
 ## 已知限制 (2026-07-29, iter_187 更新)
 
 | 限制 | 状态 | 处理方式 |

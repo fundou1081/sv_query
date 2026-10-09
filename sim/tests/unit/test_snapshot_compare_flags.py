@@ -25,11 +25,17 @@ warnings.filterwarnings("ignore")
 REPO_ROOT = Path("/Users/fundou/my_dv_proj/sv_query")
 RUN_CLI_PATH = str(REPO_ROOT / "run_cli.py")
 
+# [iter_239 1b] 快照默认写到缓存目录 (~/.svq/cache/snapshots) → 测试隔离到临时目录,
+# 避免污染用户 home / 受限环境失败。
+SNAPSHOT_DIR = os.environ.setdefault("SVQ_SNAPSHOT_DIR", tempfile.mkdtemp(prefix="svq_snap_"))
+os.environ["SVQ_SNAPSHOT_DIR"] = SNAPSHOT_DIR
+
 
 def _run(*args):
     return subprocess.run(
         ["python3", RUN_CLI_PATH, *args],
         cwd=str(REPO_ROOT),
+        env={**os.environ, "SVQ_SNAPSHOT_DIR": SNAPSHOT_DIR},
         capture_output=True,
         text=True,
         timeout=60,

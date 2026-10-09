@@ -177,6 +177,15 @@ def list_cmd(
     """
     manager = SnapshotManager()
     tags = manager.list_tags()
+    # [iter_239 1b] 旧位置提示 (只提示, **不读取** —— 不做 silent fallback)
+    from trace.core.snapshot_manager import LEGACY_SNAPSHOT_DIR
+    _legacy = Path(LEGACY_SNAPSHOT_DIR)
+    if not tags and _legacy.is_dir() and any(_legacy.glob("*.json")):
+        print(f"💡 当前目录 ({manager.base_dir}) 无快照, 但旧位置 {LEGACY_SNAPSHOT_DIR}/ 有 "
+              f"{len(list(_legacy.glob('*.json')))} 个 (iter_239 起默认不再写项目目录)。",
+              file=sys.stderr)
+        print(f"   要使用旧快照: SVQ_SNAPSHOT_DIR={LEGACY_SNAPSHOT_DIR} svq snapshot list",
+              file=sys.stderr)
     snapshots = [manager.show(t) for t in tags]
 
     if json_output:

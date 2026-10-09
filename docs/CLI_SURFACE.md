@@ -54,7 +54,7 @@
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | graph 差异 (diff compare 计划并入这里) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ |  |
-| `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_231] 已补 --json; 默认写 .svq/ (P2 迁 $SVQ_CACHE_DIR) |
+| `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖) |
 | `snapshot show` | — | — | state | state | cheap | ✅ | — | ✅ |  |
 
 ## `view` (13 个)

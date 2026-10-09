@@ -2,7 +2,7 @@
 # snapshot_manager.py - 快照管理 (CRUD)
 # [铁律13] 金标准测试优先
 # ==============================================================================
-# 目标: 管理 .svq/snapshots/ 目录下的快照文件
+# 目标: 管理快照文件 (# [iter_239 1b] 默认位置迁到缓存目录, 不再写项目目录)
 #
 # 快照格式:
 # {
@@ -21,10 +21,38 @@
 
 import json
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .cache.ast_cache import resolve_cache_dir  # [iter_239] 缓存目录解析
+
 logger = logging.getLogger(__name__)
+
+
+# ----------------------------------------------------------------------------
+# [iter_239 1b] 快照目录解析 (单一真相源)
+#   顺序: 显式参数 > $SVQ_SNAPSHOT_DIR > <cache_dir>/snapshots
+#   cache_dir 复用 resolve_cache_dir(): $SVQ_CACHE_DIR > $XDG_CACHE_HOME/svq > ~/.svq/cache
+#
+# 为什么改: 旧默认是**相对 cwd 的 `.svq/snapshots`** —— 测试与日常使用会把快照写进
+# 项目目录 (实测仓库根累积 5035 个 / 137MB, 其中 ~4998 个是测试残留)。
+# 迁移: 旧目录不会被自动读取 (不做 silent fallback); 需要旧快照请用 SVQ_SNAPSHOT_DIR
+#      指过去, 或把它们拷到新目录。见 docs/task_tree/iterations/iter_239_*.md。
+# ----------------------------------------------------------------------------
+ENV_SNAPSHOT_DIR = "SVQ_SNAPSHOT_DIR"
+#: 历史默认位置 (仅用于提示/迁移, 不再作为默认写入目标)
+LEGACY_SNAPSHOT_DIR = ".svq/snapshots"
+
+
+def resolve_snapshot_dir(explicit: str | os.PathLike | None = None) -> Path:
+    """快照目录解析: 显式 > $SVQ_SNAPSHOT_DIR > <cache_dir>/snapshots。"""
+    if explicit:
+        return Path(explicit).expanduser()
+    env_dir = os.environ.get(ENV_SNAPSHOT_DIR)
+    if env_dir:
+        return Path(env_dir).expanduser()
+    return resolve_cache_dir() / "snapshots"
 
 
 class SnapshotManager:
@@ -38,9 +66,17 @@ class SnapshotManager:
     - compare: 对比两个快照
     """
 
-    def __init__(self, base_dir: str = ".svq/snapshots"):
-        self.base_dir = Path(base_dir)
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, base_dir: str | None = None):
+        # [iter_239 1b] 默认位置 = resolve_snapshot_dir() (缓存目录), 不再是 cwd 下的 .svq/
+        self.base_dir = resolve_snapshot_dir(base_dir)
+        try:
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            # [iter_239] 受限环境 (沙箱/只读 home/CI) 下给**可操作**提示, 而不是裸 Errno
+            raise OSError(
+                f"快照目录不可写: {self.base_dir} ({e}). "
+                f"用 {ENV_SNAPSHOT_DIR}=<可写目录> 覆盖 (如 {ENV_SNAPSHOT_DIR}=$PWD/.svq-snapshots)"
+            ) from e
 
     def _snapshot_path(self, tag: str) -> Path:
         """根据 tag 获取快照文件路径"""

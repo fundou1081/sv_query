@@ -3,7 +3,8 @@ test_trace_snapshot.py - Tests for trace --from-snapshot option (B4)
 ==================================================================
 [ADD 2026-07-03 B4] Week 3 trace 做深 Task 4/4.
 
-**目标**: trace 命令能从已存的 snapshot (.svq/snapshots/<tag>.json) 加载 graph,
+**目标**: trace 命令能从已存的 snapshot 加载 graph (`$SVQ_SNAPSHOT_DIR/<tag>.json`;
+[iter_239 1b] 默认位置已迁到缓存目录, 本测试用临时目录隔离),
 跳过 SV parse, 加速多次 trace (parse 1 次, trace N 次).
 
 **Fixture**:
@@ -28,6 +29,7 @@ test_trace_snapshot.py - Tests for trace --from-snapshot option (B4)
 **Golden**: snapshot-based fanin baseline
 """
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -60,16 +62,23 @@ GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 TEST_SNAPSHOT_TAG = "b4_test_fixture"
 
 
+# [iter_239 1b] 快照默认位置迁到缓存目录 (~/.svq/cache/snapshots)。测试**必须**用
+# SVQ_SNAPSHOT_DIR 指到临时目录, 否则会写进用户 home (受限环境下还会失败)。
+SNAPSHOT_DIR = os.environ.setdefault(
+    "SVQ_SNAPSHOT_DIR", tempfile.mkdtemp(prefix="svq_snap_"))
+os.environ["SVQ_SNAPSHOT_DIR"] = SNAPSHOT_DIR
+
+
 def _save_test_snapshot() -> None:
-    """Save a test snapshot to a unique tag (idempotent)."""
-    snap_path = PROJECT_ROOT / ".svq" / "snapshots" / f"{TEST_SNAPSHOT_TAG}.json"
+    """Save a test snapshot to a unique tag (idempotent) —— 写到 SVQ_SNAPSHOT_DIR。"""
+    snap_path = Path(SNAPSHOT_DIR) / f"{TEST_SNAPSHOT_TAG}.json"
     if snap_path.exists():
         return
     r = subprocess.run(
         ["sv_query", "snapshot", "save", STRICT_UART_FILELIST,
          "--tag", TEST_SNAPSHOT_TAG, "--filelist", STRICT_UART_FILELIST],
         capture_output=True, text=True, timeout=60,
-        cwd=str(PROJECT_ROOT))
+        cwd=str(PROJECT_ROOT), env={**os.environ, "SVQ_SNAPSHOT_DIR": SNAPSHOT_DIR})
     if r.returncode != 0:
         pytest.skip(f"Could not save test snapshot: {r.stderr[:200]}")
 
@@ -77,6 +86,7 @@ def _save_test_snapshot() -> None:
 def _run(*args, timeout=60) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["sv_query", "trace", *args],
+        env={**os.environ, "SVQ_SNAPSHOT_DIR": SNAPSHOT_DIR},
         capture_output=True, text=True, timeout=timeout,
         cwd=str(PROJECT_ROOT))
 
