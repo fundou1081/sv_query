@@ -105,7 +105,12 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 |---|---|---|---|
 | 1 | `--from-snapshot` 模式**没有 MIG** (快照只存图) | snapshot 结果 ⊆ live 结果 (跨模块链缺失) | 要把端口映射写进快照 → 快照 schema 变更, 影响 diff/viz; 待方豆拍板 |
 | 2 | `distance` 字段**恒为 1** (`signal.py` 的 `# TODO: 计算实际距离`) | 跨 5 跳也标 distance=1, 对 agent 有误导 | 需定 API 形态 (返回副本 vs `(node, depth)`), 且不能 mutate 图里共享的 TraceNode |
-| 3 | `LoadTracer` (API `trace_loads`) **完全无跨模块支持** | `trace_loads('sub_adder.sum')` → `[]` | 非 CLI 路径 (只被 `trace.core` 导出 + 1 个测试用); 要对齐 SignalTracer 的遍历 |
+
+**已修 (iter_241)**: 原第 3 条 `LoadTracer` 无跨模块支持 —— 实测比登记更严重:
+`module=None` 时它自己拼 `f"{module}.{signal}"` 得到 `"None.sig"`, 连**单模块**查询都
+静默返回空且 `root` 是伪造 id。根因是**存在第二份遍历实现** (`GraphTraversal` 子类);
+已改为 `SignalTracer.trace_fanout` 的薄适配层并删除死基类, `trace_loads` 与
+`trace_fanout` 现由测试锁定为逐节点一致 (`sim/tests/unit/test_load_tracer_adapter.py`)。
 
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 

@@ -1018,10 +1018,19 @@ class UnifiedTracer:
         self.build_graph()
         return self._signal_tracer.trace(signal, module)
 
-    def trace_loads(self, signal: str, module: str = None) -> LoadChain:
-        """Trace signal fanout (loads)"""
+    def trace_loads(self, signal: str, module: str = None, depth: int | None = None) -> LoadChain:
+        """Trace signal fanout (loads).
+
+        [iter_241] 与 `trace_fanout` 现在**同源** (LoadTracer 是薄适配层),
+        因此两者的结果逐节点相同。
+
+        Args:
+            signal: 信号名; 不给 module 时按**完整 id** 解析 (例 `'top.u.d'`)
+            module: 模块名。给定 = 限定查询 (不跨模块); None = 全局查询 (跨模块)
+            depth: 1=只看直接后继, N=递归 N 层, None=递归到底
+        """
         self.build_graph()
-        return self._load_tracer.trace(signal, module)
+        return self._load_tracer.trace(signal, module, depth=depth)
 
     def trace_fanout(
         self,
@@ -1290,7 +1299,9 @@ class UnifiedTracer:
         self._signal_tracer = SignalTracer(self._graph, mig=getattr(self, "_module_graph", None))
         self._module_tracer = ModuleTracer(self._graph)
         self._clock_tracer = ClockDomainTracer(self._graph)
-        self._load_tracer = LoadTracer(self._graph)
+        # [iter_241] LoadTracer 现在是 SignalTracer 的薄适配层, 同样需要 mig
+        # (此前不给 mig → API `trace_loads` 的跨模块结果恒空)
+        self._load_tracer = LoadTracer(self._graph, mig=getattr(self, "_module_graph", None))
 
     def _backfill_source_locations(self, semantic_adapter) -> int:
         """[V6.2.1 2026-07-20] Backfill file/line on nodes that lack it.

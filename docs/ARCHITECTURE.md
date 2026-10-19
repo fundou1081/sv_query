@@ -231,10 +231,14 @@ src/trace/core/graph/viz/
 
 | 类 | 文件 | 职责 |
 |----|------|------|
-| **SignalTracer** | `query/signal.py` | trace_fanin / trace_fanout / trace_fanin_detailed |
-| **LoadTracer** | `query/load.py` | trace_loads |
+| **SignalTracer** | `query/signal.py` | trace_fanin / trace_fanout / trace_fanin_detailed (`make_id` 是 id 解析的**唯一**规则) |
+| **LoadTracer** | `query/load.py` | trace_loads —— **薄适配层** (iter_241): 遍历委托 `SignalTracer.trace_fanout`, 只做入参解析 + `LoadChain` 打包, 不再持有第二份遍历 |
 | **ClockDomainTracer** | `query/clock_domain.py` | trace_clock_domain |
 | **ModuleTracer** | `query/module.py` | trace_module |
+
+> [iter_241] 原 `core/graph_traversal.py` (`GraphTraversal` 基类) 的唯一子类是
+> `LoadTracer`; 改成适配层后它成为死代码, 已删除。任何"再写一份 loads 遍历"的改动
+> 都会被 `test_load_tracer_adapter.py` 的结构性断言挡住。
 
 `trace_fanin_detailed()` 返回 `list[DriverInfo]`，DriverInfo 包含 SignalSource.
 
