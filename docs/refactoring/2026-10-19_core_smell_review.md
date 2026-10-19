@@ -156,6 +156,9 @@ FSM          analyze_fsm  (+ 同文件里的 StateMachineAnalyzer/StateMachineIn
 > 属中等风险。本次只提取了 2 个纯函数 (`_parse_gen_block` / `collect_signals`，捕获数 0)，
 > 函数 908→858 行；主体拆解计划（context 对象字段清单 + AST 改写 + SVG 逐字节基线验收）
 > 见 `docs/task_tree/iterations/iter_256_elk_bridge_partial.md` §拆解计划。
+> **[iter_257 已完成主体拆分]** 引入 `_ElkCtx`（16 字段）→ `_render_tree`(292) / `_render_ternary`(135) /
+> `_resolve_emitted_port_id`(7) 变模块级；`expr_trees_to_elk` **858 → 438 行**；
+> 验收用 6 份 SVG **逐字节比对**（重构前 stash 基线 vs 重构后），全部一致。
 
 ### A5 🟡 P2 — `driver_extractor.py` 1,445 行中有 14 个"薄壳"
 

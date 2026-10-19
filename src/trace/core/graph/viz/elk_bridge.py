@@ -84,6 +84,7 @@ from __future__ import annotations
 import json, subprocess, os, sys, re
 import re as _re_v1610  # [iter_256] _parse_gen_block 移到模块级后需要
 from collections import defaultdict
+from dataclasses import dataclass
 from .viz_data_models import VizData
 
 
@@ -254,13 +255,6 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
     # _fulls[0] 可能未 emit → edge 引用悬空 id. 本 helper 优先返回**已 emit** 的
     # 端口 id, 保证 edge 端点与 shape 一一对应. 无匹配时回退原行为 (保持兼容).
     # 注意: 定义在 _emitted_port_ids 之前, 但只在 render_tree (emit 之后) 调用.
-    def _resolve_emitted_port_id(short: str, role: str) -> str:
-        _dedup = input_short_to_fulls if role == 'in' else output_short_to_fulls
-        for _full in _dedup.get(short, []):
-            _pid = _resolve_port_id(_full, role, input_short_to_fulls, output_short_to_fulls)
-            if _pid in _emitted_port_ids:
-                return _pid
-        return _resolve_port_id(short, role, input_short_to_fulls, output_short_to_fulls)
     
     def ne(): ctr[0] += 1; return f'e{ctr[0]}'
     
@@ -436,437 +430,24 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 _emitted_port_ids.add(_parent_pid)
     
 
-    def render_ternary(node_id, children, prefix, nc, parent_module='', gen_block='', gen_iter=''):
-        """轻量三元渲染：?: OP 节点 + 条件虚线边
-
-        children[0] = 条件信号 (SignalRef)
-        children[1] = true 分支数据
-        children[2] = false 分支数据
-
-        效果: 条件信号 → ?: 节点 (灰色虚线, cond 标签)
-              true/false 数据 → ?: (普通实线)
-        节点 label: ?: (sel_name)
-
-        [Plan D1 2026-08-10] parent_module: 上下文传递给 child render_tree.
-
-        [V16 Plan Phase 1.3 2026-08-14] 修正: cond 是表达式树 (e.g. > (din, 11'd255)),
-        之前 V15 只收集 cond_sigs 然后直接 emit 虚线边, 丢失 cond 内部的 op 和 const 节点
-        (e.g. > op, 11'd255). 修复: 递归 render_tree 渲染 cond 子树, 双重 emit (虚线边 + 节点).
-        """
-        cond = children[0] if len(children) >= 1 else None
-        true_child = children[1] if len(children) >= 2 else None
-        false_child = children[2] if len(children) >= 3 else None
-
-        # 收集条件信号名 (仅 SignalRef)
-        cond_sigs = set()
-        if cond:
-            collect_signals(cond, cond_sigs)
-        sel_label = ', '.join(sorted(cond_sigs)) if cond_sigs else '?'
-
-        # [Plan B Step A3 2026-08-22] 提前重命名 node_id 为内部 graph ID
-        # 内部 graph 层 (unified_tracer._emit_conditional_op_nodes) 已经 emit
-        # OP_TERNARY TraceNode (commit 90b9076), 通过 viz_data_builder 流入 viz.
-        # 内部 ID 格式: "{module}.{lhs}.ternary_{sel}" (确定性)
-        # 重命名后, 后续 emit 的边也用新 ID → 避免 dangling edge 引起 ELK layout error.
-        if viz is not None:
-            for _vn in viz.nodes:
-                if getattr(_vn, 'kind', '') == 'OP_TERNARY':
-                    _vn_label = getattr(_vn, 'label', '')
-                    if _vn_label == f'?: ({sel_label})':
-                        node_id = _vn.id
-                        break
-
-        # ?: OP 节点
-        op_w = max(OP_W, len(sel_label) * 8 + 20)
-        # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
-        # 之前 op 节点 _meta 只有 kind, 没 cluster_id → _wrap_into_clusters 靠 node id 反推 (脆弱)
-        # → case26 的 `>` op 错放到 cluster_target_top, 跟 const `11'd255` 在 cluster_u_clamp 跨 cluster → CROSS_TOP 染红
-        _target_mod_op = (viz.meta or {}).get('target_module', '') if viz is not None else ''
-        _op_cluster_id = parent_module or ''
-        if _target_mod_op and _op_cluster_id == _target_mod_op:
-            _op_cluster_id = ''  # 顶层, 归 cluster_target_top
-        elif _target_mod_op and _op_cluster_id.startswith(_target_mod_op + '.'):
-            _op_cluster_id = _op_cluster_id[len(_target_mod_op) + 1:]
-        # [V16.10 2026-08-17] emit gen_block/gen_iter 到 _meta (供 _wrap_into_clusters sub-group)
-        # 优先用入参 (顶层 for loop 传下来的真值), fallback 才用 helper (防御性)
-        _gb, _gi = (gen_block or ''), (gen_iter or '')
-        if not _gb:
-            _gb, _gi = _parse_gen_block(parent_module)
-        root_children.append({
-            'id': node_id, 'width': op_w, 'height': OP_H,
-            'labels': [{'text': f'?: ({sel_label})', 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
-        })
-
-        # 条件信号 → ?: 节点 (虚线 cond 边)
-        # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
-        for sig in sorted(cond_sigs):
-            # [Plan D1] 尝试 full path 解析
-            if parent_module and sig in input_short_to_fulls and len(input_short_to_fulls[sig]) > 1:
-                full_path = f"{parent_module}.{sig}"
-                if full_path in input_paths:
-                    src_id = _resolve_port_id(full_path, 'in', input_short_to_fulls, output_short_to_fulls)
-                else:
-                    src_id = _resolve_port_id(sig, 'in', input_short_to_fulls, output_short_to_fulls)
-            elif sig in input_set:
-                src_id = _resolve_port_id(sig, 'in', input_short_to_fulls, output_short_to_fulls)
-            else:
-                sig_id = f'sig_{_safe(sig)}_{nc}'
-                existing = any(c.get('id') == sig_id for c in root_children)
-                if not existing:
-                    root_children.append({
-                        'id': sig_id, 'width': SIG_W, 'height': SIG_H,
-                        'labels': [{'text': sig, 'fontSize': 8, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal'},
-                    })
-                src_id = sig_id
-            root_edges.append(_emit_edge(ne(), [src_id], [node_id], kind='condition_select'))
-
-        # [V16 Plan Phase 1.3 2026-08-14] 递归渲染 cond 子树 (e.g. > (din, 11'd255))
-        # 产生 > op 节点和 11'd255 const 节点, 这些之前丢失
-        if cond and cond.get('op') not in ('SignalRef',):
-            # cond 是表达式 (如 GreaterThan), 递归 render
-            cond_op_id = render_tree(cond, f'{prefix}_cond', parent_module=parent_module)
-            if cond_op_id:
-                # 让 cond op 节点 → ?: 也连一条 dataflow 边 (不仅 cond_sigs 虚线)
-                root_edges.append(_emit_edge(ne(), [cond_op_id], [node_id]))
-
-        # true/false 分支数据 → ?: (普通 dataflow 边)
-        for child in (true_child, false_child):
-            if child:
-                child_id = render_tree(child, f'{prefix}_btf', parent_module=parent_module)
-                if child_id:
-                    root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
-
-        # [V101 2026-08-26 13:30] Part A: emit op → lhs flat 边 (BRANCH_RESULT)
-        # 目的: 解决 1:1 真值呈现 — ternary op 节点必须有一条边指向它的结果 signal
-        # 之前只有 cond_sigs + true/false → op 边 (5 条), 没有 op → dst (悬空节点)
-        # node_id 格式: "{parent_module}.{lhs_short}.ternary_{sel}" (从 unified_tracer._emit_conditional_op_nodes)
-        # 反推 lhs: 从 node_id 倒数第二段拆 .ternary
-        _op_id_str = str(node_id)
-        _lhs_short = ''
-        if '.ternary_' in _op_id_str:
-            _parts = _op_id_str.rsplit('.ternary_', 1)
-            _lhs_full = _parts[0]  # e.g. 'ternary_scope.z' 或 'golden_hier_top.u_scale.dout'
-            _lhs_short = _lhs_full.rsplit('.', 1)[-1]
-        # resolve lhs_id (跟 cond_sigs 同样的 fallback 模式)
-        _lhs_id = None
-        if _lhs_short:
-            # 尝试 full path 解析 (port_out id)
-            _lhs_full_path = f"{parent_module}.{_lhs_short}" if parent_module else _lhs_short
-            if _lhs_short in output_names:
-                _lhs_id = _resolve_port_id(_lhs_full_path, 'out', input_short_to_fulls, output_short_to_fulls)
-            else:
-                # fallback: 中间信号 → sig 节点
-                _lhs_sig_id = f'sig_{_safe(_lhs_short)}_{nc}'
-                existing = any(c.get('id') == _lhs_sig_id for c in root_children)
-                if not existing:
-                    root_children.append({
-                        'id': _lhs_sig_id, 'width': SIG_W, 'height': SIG_H,
-                        'labels': [{'text': _lhs_short, 'fontSize': 8, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal'},
-                    })
-                _lhs_id = _lhs_sig_id
-        if _lhs_id and _lhs_id != node_id:
-            root_edges.append(_emit_edge(ne(), [node_id], [_lhs_id], kind='dataflow'))
-
-        return node_id
 
     # 已渲染的中间信号缓存: signal_short_name -> node_id
     _signal_cache = {}
 
-    def render_tree(tree_node, prefix, parent_module='', gen_block='', gen_iter=''):
-        """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id
+    # [iter_257 T3-6] 显式 context: 原 render_tree / render_ternary 闭包捕获的 12 个
+    # 外层变量统一放进 ctx, 让两个渲染函数成为模块级函数 (可独立阅读/单测)。
+    ctx = _ElkCtx(
+        root_children=root_children, root_edges=root_edges,
+        input_set=input_set, output_set=output_set,
+        input_paths=input_paths, output_paths=output_paths,
+        input_short_to_fulls=input_short_to_fulls,
+        output_short_to_fulls=output_short_to_fulls,
+        signal_cache=_signal_cache, being_rendered=_being_rendered,
+        gen_block_map_global=_gen_block_map_global,
+        emitted_port_ids=_emitted_port_ids, ctr=ctr,
+        viz=viz, expr_trees=expr_trees, output_names=output_names,
+    )
 
-        [Plan D1 2026-08-10] parent_module: 从 expr_tree key 推导的父路径
-        (如 'golden_hier_top.u_scale' for key 'golden_hier_top.u_scale.dout').
-        用于 SignalRef 上下文感知 — 同名短名 'din' 在不同 parent_module 下
-        指向不同 full path, 必须区分以避免 dedup loss.
-
-        [V16.10 2026-08-17] gen_block / gen_iter: 从顶层 expr_trees 的 dst_short 推导出的
-        generate block context (如 'gen_stage1', 'i=0'). pyslang 摊平后只能从 dst 信号名
-        反推 (buf1[K]→gen_stage1, buf2[K]→gen_stage2 等). 顶层 expr_trees loop 一次
-        解析后传给所有递归的 render_tree, emit op / sig / const 节点的 _meta 都带上.
-
-        [V16.11 2026-08-18] gen_block_map: 优先从 viz.meta.datapath.gen_block_map (pyslang
-        native API 真值) 取; fallback 才用启发式 _parse_gen_block. 适用于任意命名 (case27
-        gen_accum 块, acc[] 信号, 启发式不识别但真值正确). 传入 gen_block_map 是可选
-        参数, 默认从 viz.meta 取, 递归调用不需重传 (顶层一解析后面复用).
-        """
-        # [V16.11] 优先用 gen_block_map 真值 (从 viz.meta 拿一次, 后续递归复用)
-        _gbm = _gen_block_map_global
-        if _gbm is not None and not gen_block:
-            # 从 tree_node.label 拿 base signal short name 查 gen_block
-            # SignalRef 'buf3' / ElementSelect 'buf3[i+1]' 都查同一个 base 'buf3'
-            _lbl = tree_node.get('label', '') or ''
-            _match = _lbl
-            _bracket_idx = _lbl.find('[')
-            if _bracket_idx > 0:
-                _match = _lbl[:_bracket_idx]
-            _gb = _gbm.get(_match, '')
-            if _gb:
-                gen_block = _gb
-                gen_iter = 'i=?'  # 递归子节点 index 不明
-        label = tree_node.get('label', '?')
-        op = tree_node.get('op', '?')
-        children = tree_node.get('children', [])
-        nc = len(root_children)
-        node_id = f"op_{_safe(label)}_{prefix}_{nc}"
-
-        if op == 'SignalRef':
-            # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
-            # [V16.12 Fix E 2026-08-18] 移除 'len > 1' 限制: 只要 parent_module + label
-            # 组合出 full_path 且在 input_paths/output_paths 里, 就走 full path 分支.
-            # 原因: case26 中 'golden_hier_top.u_off.offset' 是 sub-module port, 而 top-level
-            # input 'offset' **不在 viz.nodes** (filtered by Phase 3 target_module=level2_scale).
-            # input_short_to_fulls['offset'] 长度=1 (只有 sub-module port), 走 fallback emit
-            # 'port_offset' 但 root_children 没有 'port_offset' node (有的是 full path 节点).
-            # 修复: parent_module 已是上下文, 不依赖 dedup_map count 即可正确选 full path.
-            if parent_module:
-                full_path = f"{parent_module}.{label}"
-                if full_path in input_paths:
-                    return _resolve_port_id(full_path, 'in', input_short_to_fulls, output_short_to_fulls)
-                if full_path in output_paths:
-                    return _resolve_port_id(full_path, 'out', input_short_to_fulls, output_short_to_fulls)
-            # Fallback: 短名只在只有一个实例时使用
-            # [iter_106] 缺陷 E (picorv32 ELK dangling): 短名 fallback 的
-            # _resolve_port_id(short) 取 dedup_map _fulls[0] **任意项**, 可能与
-            # emit 侧不一致 → edge 引用未 emit 的 port id → ELK 'Referenced shape
-            # does not exist'. 修复: 优先解析到**已 emit** 的端口 (emit 循环先跑,
-            # _emitted_port_ids 可用); 无匹配才回退原行为.
-            if label in input_set:
-                return _resolve_emitted_port_id(label, 'in')
-            elif label in output_set:
-                return _resolve_emitted_port_id(label, 'out')
-            # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
-            # 连接一个带信号名的标签节点（→ sum → 下游引用）
-            # expr_trees keys 格式: module.signal → 需要短名匹配
-            # 同时支持 prod[15:8] → 去 [...] 后缀匹配 prod 中间 wire
-            _match_label = label
-            _bracket_idx = label.find('[')
-            if _bracket_idx > 0:
-                _match_label = label[:_bracket_idx]
-            # 先查缓存（带后缀匹配）
-            if _match_label in _signal_cache:
-                return _signal_cache[_match_label]
-            if label in _signal_cache:
-                return _signal_cache[label]
-            matched_tree = None
-            for ek, ev in expr_trees.items():
-                ek_short = ek.rsplit('.', 1)[-1]
-                if ek_short == label or ek_short == _match_label:
-                    matched_tree = ev
-                    break
-            if matched_tree is not None:
-                # 先查缓存
-                if label in _signal_cache:
-                    return _signal_cache[label]
-                if _match_label in _signal_cache:
-                    return _signal_cache[_match_label]
-                # [Plan D1] matched_tree 递归: 新的 parent_module 是 matched_tree key 的父路径
-                _matched_key = None
-                for _ek, _ev in expr_trees.items():
-                    _ek_short = _ek.rsplit('.', 1)[-1]
-                    if _ev is matched_tree:
-                        _matched_key = _ek
-                        break
-                # [Plan B Step F Fix #4 v3 2026-08-25] cycle detection.
-                # picorv32_pcpi_mul 的 mul_finish / pcpi_wait_q / mul_waiting 等信号在
-                # expr_trees 里互相引用 (A→B→A 形成环). 之前没防护 → RecursionError.
-                # 修复: 检查 _matched_key 是否在 _being_rendered set 里 (表示正在递归
-                # 渲染该信号). 是 → 跳过递归, 让 op_id = None, 外层 if op_id 跳过 sig
-                # emit → 安全失败, ELK 不会崩. 同时 add/remove 用 try/finally 确保.
-                op_id = None  # [Fix v3 follow-up] default for cycle case
-                if _matched_key in _being_rendered:
-                    pass  # cycle detected, skip recursion (op_id stays None)
-                else:
-                    _being_rendered.add(_matched_key)
-                    try:
-                        _matched_parent = _matched_key.rsplit('.', 1)[0] if _matched_key else parent_module
-                        op_id = render_tree(matched_tree, f'{prefix}_wire', parent_module=_matched_parent)
-                    finally:
-                        _being_rendered.discard(_matched_key)
-                if op_id:
-                    # 如果 op_id 就是 sig_id（可能是递归匹配的缓存结果），直接返回
-                    if op_id.startswith('sig_'):
-                        _signal_cache[_match_label] = op_id
-                        _signal_cache[label] = op_id
-                        return op_id
-                    # 创建信号标签节点，OP 输出连到这里
-                    sig_id = f'sig_{_safe(_match_label)}_expr'
-                    existing = [c for c in root_children if c.get('id') == sig_id]
-                    if existing:
-                        _signal_cache[_match_label] = sig_id
-                        _signal_cache[label] = sig_id
-                        return sig_id
-                    # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
-                    _target_mod_sig = (viz.meta or {}).get('target_module', '') if viz is not None else ''
-                    _sig_cluster_id = parent_module
-                    # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig (parent_module == target_mod)
-                    # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
-                    # Bug 路径: case13/19/24/27/28/29 (单 module + function/generate) 的 sig 节点
-                    # 实际归到 cluster_<mod> 子框, → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
-                    # 注意: 真正的子 instance sig 仍归对应 instance cluster (parent_module != target_mod)
-                    if _target_mod_sig and _sig_cluster_id == _target_mod_sig:
-                        _sig_cluster_id = ''  # 顶层, 归 cluster_target_top
-                    elif _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
-                        _sig_cluster_id = _sig_cluster_id[len(_target_mod_sig) + 1:]
-                    # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
-                    _gb, _gi = (gen_block or ''), (gen_iter or '')
-                    if not _gb:
-                        _gb, _gi = _parse_gen_block(parent_module)
-                    root_children.append({
-                        'id': sig_id, 'width': SIG_W, 'height': SIG_H,
-                        'labels': [{'text': _match_label, 'fontSize': 8, 'fontName': 'Courier'}],
-                        '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
-                    })
-                    root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
-                    _signal_cache[_match_label] = sig_id
-                    _signal_cache[label] = sig_id
-                    return sig_id
-            sig_id = f'sig_{_safe(label)}_{nc}'
-            existing = [c for c in root_children if c.get('id') == sig_id]
-            if not existing:
-                # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
-                _target_mod_sig2 = (viz.meta or {}).get('target_module', '') if viz is not None else ''
-                _sig_cluster_id2 = parent_module
-                # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig 同样问题 (与 line 406 注释相同)
-                if _target_mod_sig2 and _sig_cluster_id2 == _target_mod_sig2:
-                    _sig_cluster_id2 = ''  # 顶层, 归 cluster_target_top
-                elif _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
-                    _sig_cluster_id2 = _sig_cluster_id2[len(_target_mod_sig2) + 1:]
-                # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
-                _gb2, _gi2 = (gen_block or ''), (gen_iter or '')
-                if not _gb2:
-                    _gb2, _gi2 = _parse_gen_block(parent_module)
-                root_children.append({
-                    'id': sig_id, 'width': SIG_W, 'height': SIG_H,
-                    'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
-                    '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id2 or '', 'gen_block': _gb2, 'gen_iter': _gi2},
-                })
-            return sig_id
-        
-        if op == 'Const':
-            const_id = f'const_{_safe(label)}_{nc}'
-            # [V16 Plan Phase 1.1 2026-08-14] const 节点归位: cluster_id = parent_module
-            # 例: level2_clamp.u_clamp.dout 的 expr 树里 11'd255 的 parent_module = 'golden_hier_top.u_clamp'
-            # → const 归到 u_clamp cluster (短名), 而不是顶层 cluster_target_top
-            # 注: viz.meta.target_module 是 'golden_hier_top', 需去掉前缀匹配 VizNode.cluster_id 短名规则
-            _target_mod = (viz.meta or {}).get('target_module', '') if viz is not None else ''
-            _cluster_id = parent_module
-            # [V16 Plan Phase 1.5 2026-08-14] FIX: 顶层 const (parent_module == target_mod) 
-            # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
-            # Bug 路径: case2 (with_const) const 8'd128/2 实际归到 cluster_with_const 子框,
-            # → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
-            if _target_mod and _cluster_id == _target_mod:
-                _cluster_id = ''  # 顶层, 归 cluster_target_top
-            elif _target_mod and _cluster_id.startswith(_target_mod + '.'):
-                _cluster_id = _cluster_id[len(_target_mod) + 1:]
-            # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
-            _gb_c, _gi_c = (gen_block or ''), (gen_iter or '')
-            if not _gb_c:
-                _gb_c, _gi_c = _parse_gen_block(parent_module)
-            _meta = {'kind': 'const', 'cluster_id': _cluster_id or '', 'gen_block': _gb_c, 'gen_iter': _gi_c}
-            root_children.append({
-                'id': const_id, 'width': 40, 'height': SIG_H,
-                'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
-                'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
-                '_meta': _meta,
-            })
-            return const_id
-        
-        # ── Ternary: compound case/branch structure ──
-        if op == 'Ternary':
-            # [Plan B Step A12.3 2026-08-24] 嵌套 ternary 时用内部 graph ID 格式
-            # 背景: A3 重命名只在 viz.nodes 有匹配 OP_TERNARY 时生效.
-            # 嵌套 ternary 的内部 OP_TERNARY 不在 viz.nodes (unified_tracer 只 emit 外层),
-            # 所以重命名静默失败, 嵌套 OP 仍用 counter-based ID (op_xxx_y_btf_5),
-            # 跟内部 graph 的 ID (ternary_test.y.ternary_sel) 不一致 → BRANCH_* 边 dangle.
-            # 修复: 从 prefix 反推 lhs_short, 跟 unified_tracer._emit_conditional_op_nodes 同样的 ID 公式.
-            # 公式: f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
-            _lhs_short_a12 = None
-            if prefix.startswith('wire_'):
-                # 拔掉 'wire_' 前缀, 取第一个 '_' 前的部分
-                _after = prefix[len('wire_'):]
-                # 容忍嵌套: 'wire_y' → 'y'; 'wire_y_btf' → 'y' (后面是 btf/cond)
-                for _marker in ('_btf', '_cond', '_wire', '_c'):
-                    if _marker in _after:
-                        _lhs_short_a12 = _after.split(_marker)[0]
-                        break
-                if _lhs_short_a12 is None:
-                    _lhs_short_a12 = _after.split('_')[0] if '_' in _after else _after
-            if _lhs_short_a12 is None:
-                _lhs_short_a12 = prefix.split('_')[0] if '_' in prefix else prefix
-            # 提取 sel_label 从 cond 子树 (跟 render_ternary 同样逻辑)
-            _sel_label_a12 = '?'
-            if children and isinstance(children[0], dict):
-                _cond_a12 = children[0]
-                _cond_sigs_a12 = []
-                def _a12_collect(n):
-                    if isinstance(n, dict):
-                        if n.get('op') == 'SignalRef':
-                            _lbl = n.get('label', '')
-                            if _lbl and _lbl not in _cond_sigs_a12:
-                                _cond_sigs_a12.append(_lbl)
-                        for _ch in n.get('children', []) or []:
-                            _a12_collect(_ch)
-                _a12_collect(_cond_a12)
-                _sel_label_a12 = ', '.join(sorted(_cond_sigs_a12)) if _cond_sigs_a12 else '?'
-            _safe_sel_a12 = _sel_label_a12.replace(',', '_').replace(' ', '')
-            _det_id_a12 = f"{parent_module}.{_lhs_short_a12}.ternary_{_safe_sel_a12}"
-            # 如果内部 graph 有这个 ID, 用它 (跟 A3 一致). 否则用计算的 deterministic ID
-            # (这样嵌套 ternary 也能跟内部 graph 对齐, 修复 5 nested case)
-            _use_det_id = True
-            if viz is not None:
-                _matched_in_viz = False
-                for _vn in viz.nodes:
-                    if getattr(_vn, 'kind', '') == 'OP_TERNARY' and getattr(_vn, 'id', '') == _det_id_a12:
-                        _matched_in_viz = True
-                        node_id = _det_id_a12
-                        break
-                if not _matched_in_viz:
-                    # 嵌套情况: 用计算的 deterministic ID (内部 graph 未 emit, 但 ID 格式对齐)
-                    node_id = _det_id_a12
-            else:
-                node_id = _det_id_a12
-            return render_ternary(node_id, children, prefix, nc, parent_module=parent_module, gen_block=gen_block, gen_iter=gen_iter)
-        
-        # Operator node
-        op_w = OP_W
-        if op == 'Call':
-            op_w = max(OP_W + len(label) * 6, 50)
-        op_h = OP_H + max(0, (len(children) - 2) * 8)
-
-        # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
-        _target_mod_op2 = (viz.meta or {}).get('target_module', '') if viz is not None else ''
-        _op_cluster_id2 = parent_module or ''
-        if _target_mod_op2 and _op_cluster_id2 == _target_mod_op2:
-            _op_cluster_id2 = ''  # 顶层, 归 cluster_target_top
-        elif _target_mod_op2 and _op_cluster_id2.startswith(_target_mod_op2 + '.'):
-            _op_cluster_id2 = _op_cluster_id2[len(_target_mod_op2) + 1:]
-
-        # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
-        _gb_op, _gi_op = (gen_block or ''), (gen_iter or '')
-        if not _gb_op:
-            _gb_op, _gi_op = _parse_gen_block(parent_module)
-        root_children.append({
-            'id': node_id, 'width': op_w, 'height': op_h,
-            'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
-            '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id2 or '', 'gen_block': _gb_op, 'gen_iter': _gi_op},
-        })
-
-        for child in children:
-            # [V16.10.2 2026-08-17] 递归子节点传 gen_block/gen_iter (避免 OUTPUT 路径下 BitSelect/SignalRef 子节点
-            # 坬立). 原因: case29 chain_out = buf3[N-2] 场景, OUTPUT 路径 render_tree 返回顶层 BitSelect op,
-            # 递归 child 是 SignalRef buf3. 之前递归不传 gen_block/gen_iter, 子节点 fallback 调
-            # _parse_gen_block(parent_module), 但 parent_module='generate_for_chain' 没有 'gen_stage3' 字样
-            # → fallback 失败 → 子节点 _meta.gen_block='' → 不归位到 genblk → 坬立飘在画布左上角.
-            child_id = render_tree(child, f"{prefix}_c", parent_module=parent_module,
-                                    gen_block=_gb_op, gen_iter=_gi_op)
-            if child_id:
-                root_edges.append(_emit_edge(ne(), [child_id], [node_id]))
-        
-        return node_id
     
     for dst_name, tree_data in expr_trees.items():
         dst_short = _short(dst_name)
@@ -914,7 +495,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 '_meta': {'kind': 'signal', 'gen_block': _dst_gb, 'gen_iter': _dst_gi},
             })
             _signal_cache[sig_key] = sig_id
-            op_id = render_tree(tree_data, f'wire_{dst_name}', parent_module=_parent_module,
+            op_id = _render_tree(ctx, tree_data, f'wire_{dst_name}', parent_module=_parent_module,
                                  gen_block=_dst_gb, gen_iter=_dst_gi)
             if op_id:
                 root_edges.append(_emit_edge(ne(), [op_id], [sig_id]))
@@ -946,7 +527,7 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
             _scanned = _scan_gen_signal_ref(tree_data)
             if _scanned:
                 _dst_gb, _dst_gi = _scanned
-        top_op_id = render_tree(tree_data, f'wire_{dst_short}', parent_module=_parent_module,
+        top_op_id = _render_tree(ctx, tree_data, f'wire_{dst_short}', parent_module=_parent_module,
                                 gen_block=_dst_gb, gen_iter=_dst_gi)
         if dst_short in output_set and top_op_id:
             # [Plan D1] 用 full path port ID
@@ -2348,3 +1929,482 @@ def collect_signals(tree_node, into):
         into.add(tree_node.get('label', ''))
     for c in tree_node.get('children', []):
         collect_signals(c, into)
+
+
+# ==============================================================================
+# [iter_257 T3-6] expr_trees_to_elk 的渲染实现 (从 858 行函数拆出)
+# 原为闭包; 现通过 _ElkCtx 显式传状态, 可独立阅读与单测。
+# ==============================================================================
+
+
+@dataclass
+class _ElkCtx:
+    """[iter_257] `expr_trees_to_elk` 的显式渲染上下文。
+
+    拆之前 `render_tree` / `render_ternary` 是闭包, 隐式捕获 11 / 6 个外层局部变量
+    (AST 实测)。要拆成模块级函数, 必须把这份状态显式化。
+    """
+    root_children: list
+    root_edges: list
+    input_set: set
+    output_set: set
+    input_paths: dict
+    output_paths: dict
+    input_short_to_fulls: dict
+    output_short_to_fulls: dict
+    signal_cache: dict
+    being_rendered: set
+    gen_block_map_global: dict
+    emitted_port_ids: set
+    ctr: list
+    viz: object = None
+    expr_trees: dict = None
+    output_names: list = None
+
+    def ne(self) -> str:
+        """下一个 ELK edge id (与调用方共享 ctr, 保证 id 连续)。"""
+        self.ctr[0] += 1
+        return f'e{self.ctr[0]}'
+
+    def emit_edge(self, eid, srcs, tgts, kind='dataflow'):
+        return {'id': eid, 'sources': list(srcs), 'targets': list(tgts),
+                '_meta': {'kind': kind}}
+
+def _resolve_emitted_port_id(ctx, short: str, role: str) -> str:
+    _dedup = ctx.input_short_to_fulls if role == 'in' else ctx.output_short_to_fulls
+    for _full in _dedup.get(short, []):
+        _pid = _resolve_port_id(_full, role, ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+        if _pid in ctx.emitted_port_ids:
+            return _pid
+    return _resolve_port_id(short, role, ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+
+
+def _render_ternary(ctx, node_id, children, prefix, nc, parent_module='', gen_block='', gen_iter=''):
+    """轻量三元渲染：?: OP 节点 + 条件虚线边
+
+    children[0] = 条件信号 (SignalRef)
+    children[1] = true 分支数据
+    children[2] = false 分支数据
+
+    效果: 条件信号 → ?: 节点 (灰色虚线, cond 标签)
+          true/false 数据 → ?: (普通实线)
+    节点 label: ?: (sel_name)
+
+    [Plan D1 2026-08-10] parent_module: 上下文传递给 child render_tree.
+
+    [V16 Plan Phase 1.3 2026-08-14] 修正: cond 是表达式树 (e.g. > (din, 11'd255)),
+    之前 V15 只收集 cond_sigs 然后直接 emit 虚线边, 丢失 cond 内部的 op 和 const 节点
+    (e.g. > op, 11'd255). 修复: 递归 render_tree 渲染 cond 子树, 双重 emit (虚线边 + 节点).
+    """
+    cond = children[0] if len(children) >= 1 else None
+    true_child = children[1] if len(children) >= 2 else None
+    false_child = children[2] if len(children) >= 3 else None
+
+    # 收集条件信号名 (仅 SignalRef)
+    cond_sigs = set()
+    if cond:
+        collect_signals(cond, cond_sigs)
+    sel_label = ', '.join(sorted(cond_sigs)) if cond_sigs else '?'
+
+    # [Plan B Step A3 2026-08-22] 提前重命名 node_id 为内部 graph ID
+    # 内部 graph 层 (unified_tracer._emit_conditional_op_nodes) 已经 emit
+    # OP_TERNARY TraceNode (commit 90b9076), 通过 viz_data_builder 流入 viz.
+    # 内部 ID 格式: "{module}.{lhs}.ternary_{sel}" (确定性)
+    # 重命名后, 后续 emit 的边也用新 ID → 避免 dangling edge 引起 ELK layout error.
+    if ctx.viz is not None:
+        for _vn in ctx.viz.nodes:
+            if getattr(_vn, 'kind', '') == 'OP_TERNARY':
+                _vn_label = getattr(_vn, 'label', '')
+                if _vn_label == f'?: ({sel_label})':
+                    node_id = _vn.id
+                    break
+
+    # ?: OP 节点
+    op_w = max(OP_W, len(sel_label) * 8 + 20)
+    # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
+    # 之前 op 节点 _meta 只有 kind, 没 cluster_id → _wrap_into_clusters 靠 node id 反推 (脆弱)
+    # → case26 的 `>` op 错放到 cluster_target_top, 跟 const `11'd255` 在 cluster_u_clamp 跨 cluster → CROSS_TOP 染红
+    _target_mod_op = (ctx.viz.meta or {}).get('target_module', '') if ctx.viz is not None else ''
+    _op_cluster_id = parent_module or ''
+    if _target_mod_op and _op_cluster_id == _target_mod_op:
+        _op_cluster_id = ''  # 顶层, 归 cluster_target_top
+    elif _target_mod_op and _op_cluster_id.startswith(_target_mod_op + '.'):
+        _op_cluster_id = _op_cluster_id[len(_target_mod_op) + 1:]
+    # [V16.10 2026-08-17] emit gen_block/gen_iter 到 _meta (供 _wrap_into_clusters sub-group)
+    # 优先用入参 (顶层 for loop 传下来的真值), fallback 才用 helper (防御性)
+    _gb, _gi = (gen_block or ''), (gen_iter or '')
+    if not _gb:
+        _gb, _gi = _parse_gen_block(parent_module)
+    ctx.root_children.append({
+        'id': node_id, 'width': op_w, 'height': OP_H,
+        'labels': [{'text': f'?: ({sel_label})', 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+        '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
+    })
+
+    # 条件信号 → ?: 节点 (虚线 cond 边)
+    # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
+    for sig in sorted(cond_sigs):
+        # [Plan D1] 尝试 full path 解析
+        if parent_module and sig in ctx.input_short_to_fulls and len(ctx.input_short_to_fulls[sig]) > 1:
+            full_path = f"{parent_module}.{sig}"
+            if full_path in ctx.input_paths:
+                src_id = _resolve_port_id(full_path, 'in', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+            else:
+                src_id = _resolve_port_id(sig, 'in', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+        elif sig in ctx.input_set:
+            src_id = _resolve_port_id(sig, 'in', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+        else:
+            sig_id = f'sig_{_safe(sig)}_{nc}'
+            existing = any(c.get('id') == sig_id for c in ctx.root_children)
+            if not existing:
+                ctx.root_children.append({
+                    'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                    'labels': [{'text': sig, 'fontSize': 8, 'fontName': 'Courier'}],
+                    '_meta': {'kind': 'signal'},
+                })
+            src_id = sig_id
+        ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [src_id], [node_id], kind='condition_select'))
+
+    # [V16 Plan Phase 1.3 2026-08-14] 递归渲染 cond 子树 (e.g. > (din, 11'd255))
+    # 产生 > op 节点和 11'd255 const 节点, 这些之前丢失
+    if cond and cond.get('op') not in ('SignalRef',):
+        # cond 是表达式 (如 GreaterThan), 递归 render
+        cond_op_id = _render_tree(ctx, cond, f'{prefix}_cond', parent_module=parent_module)
+        if cond_op_id:
+            # 让 cond op 节点 → ?: 也连一条 dataflow 边 (不仅 cond_sigs 虚线)
+            ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [cond_op_id], [node_id]))
+
+    # true/false 分支数据 → ?: (普通 dataflow 边)
+    for child in (true_child, false_child):
+        if child:
+            child_id = _render_tree(ctx, child, f'{prefix}_btf', parent_module=parent_module)
+            if child_id:
+                ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [child_id], [node_id]))
+
+    # [V101 2026-08-26 13:30] Part A: emit op → lhs flat 边 (BRANCH_RESULT)
+    # 目的: 解决 1:1 真值呈现 — ternary op 节点必须有一条边指向它的结果 signal
+    # 之前只有 cond_sigs + true/false → op 边 (5 条), 没有 op → dst (悬空节点)
+    # node_id 格式: "{parent_module}.{lhs_short}.ternary_{sel}" (从 unified_tracer._emit_conditional_op_nodes)
+    # 反推 lhs: 从 node_id 倒数第二段拆 .ternary
+    _op_id_str = str(node_id)
+    _lhs_short = ''
+    if '.ternary_' in _op_id_str:
+        _parts = _op_id_str.rsplit('.ternary_', 1)
+        _lhs_full = _parts[0]  # e.g. 'ternary_scope.z' 或 'golden_hier_top.u_scale.dout'
+        _lhs_short = _lhs_full.rsplit('.', 1)[-1]
+    # resolve lhs_id (跟 cond_sigs 同样的 fallback 模式)
+    _lhs_id = None
+    if _lhs_short:
+        # 尝试 full path 解析 (port_out id)
+        _lhs_full_path = f"{parent_module}.{_lhs_short}" if parent_module else _lhs_short
+        if _lhs_short in ctx.output_names:
+            _lhs_id = _resolve_port_id(_lhs_full_path, 'out', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+        else:
+            # fallback: 中间信号 → sig 节点
+            _lhs_sig_id = f'sig_{_safe(_lhs_short)}_{nc}'
+            existing = any(c.get('id') == _lhs_sig_id for c in ctx.root_children)
+            if not existing:
+                ctx.root_children.append({
+                    'id': _lhs_sig_id, 'width': SIG_W, 'height': SIG_H,
+                    'labels': [{'text': _lhs_short, 'fontSize': 8, 'fontName': 'Courier'}],
+                    '_meta': {'kind': 'signal'},
+                })
+            _lhs_id = _lhs_sig_id
+    if _lhs_id and _lhs_id != node_id:
+        ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [node_id], [_lhs_id], kind='dataflow'))
+
+    return node_id
+
+
+def _render_tree(ctx, tree_node, prefix, parent_module='', gen_block='', gen_iter=''):
+    """递归渲染 ExpressionTree → ELK nodes + edges，返回 node_id
+
+    [Plan D1 2026-08-10] parent_module: 从 expr_tree key 推导的父路径
+    (如 'golden_hier_top.u_scale' for key 'golden_hier_top.u_scale.dout').
+    用于 SignalRef 上下文感知 — 同名短名 'din' 在不同 parent_module 下
+    指向不同 full path, 必须区分以避免 dedup loss.
+
+    [V16.10 2026-08-17] gen_block / gen_iter: 从顶层 expr_trees 的 dst_short 推导出的
+    generate block context (如 'gen_stage1', 'i=0'). pyslang 摊平后只能从 dst 信号名
+    反推 (buf1[K]→gen_stage1, buf2[K]→gen_stage2 等). 顶层 expr_trees loop 一次
+    解析后传给所有递归的 render_tree, emit op / sig / const 节点的 _meta 都带上.
+
+    [V16.11 2026-08-18] gen_block_map: 优先从 viz.meta.datapath.gen_block_map (pyslang
+    native API 真值) 取; fallback 才用启发式 _parse_gen_block. 适用于任意命名 (case27
+    gen_accum 块, acc[] 信号, 启发式不识别但真值正确). 传入 gen_block_map 是可选
+    参数, 默认从 viz.meta 取, 递归调用不需重传 (顶层一解析后面复用).
+    """
+    # [V16.11] 优先用 gen_block_map 真值 (从 viz.meta 拿一次, 后续递归复用)
+    _gbm = ctx.gen_block_map_global
+    if _gbm is not None and not gen_block:
+        # 从 tree_node.label 拿 base signal short name 查 gen_block
+        # SignalRef 'buf3' / ElementSelect 'buf3[i+1]' 都查同一个 base 'buf3'
+        _lbl = tree_node.get('label', '') or ''
+        _match = _lbl
+        _bracket_idx = _lbl.find('[')
+        if _bracket_idx > 0:
+            _match = _lbl[:_bracket_idx]
+        _gb = _gbm.get(_match, '')
+        if _gb:
+            gen_block = _gb
+            gen_iter = 'i=?'  # 递归子节点 index 不明
+    label = tree_node.get('label', '?')
+    op = tree_node.get('op', '?')
+    children = tree_node.get('children', [])
+    nc = len(ctx.root_children)
+    node_id = f"op_{_safe(label)}_{prefix}_{nc}"
+
+    if op == 'SignalRef':
+        # [V16.12 2026-08-18] 统一用 _resolve_port_id (单源 of truth)
+        # [V16.12 Fix E 2026-08-18] 移除 'len > 1' 限制: 只要 parent_module + label
+        # 组合出 full_path 且在 input_paths/output_paths 里, 就走 full path 分支.
+        # 原因: case26 中 'golden_hier_top.u_off.offset' 是 sub-module port, 而 top-level
+        # input 'offset' **不在 viz.nodes** (filtered by Phase 3 target_module=level2_scale).
+        # input_short_to_fulls['offset'] 长度=1 (只有 sub-module port), 走 fallback emit
+        # 'port_offset' 但 root_children 没有 'port_offset' node (有的是 full path 节点).
+        # 修复: parent_module 已是上下文, 不依赖 dedup_map count 即可正确选 full path.
+        if parent_module:
+            full_path = f"{parent_module}.{label}"
+            if full_path in ctx.input_paths:
+                return _resolve_port_id(full_path, 'in', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+            if full_path in ctx.output_paths:
+                return _resolve_port_id(full_path, 'out', ctx.input_short_to_fulls, ctx.output_short_to_fulls)
+        # Fallback: 短名只在只有一个实例时使用
+        # [iter_106] 缺陷 E (picorv32 ELK dangling): 短名 fallback 的
+        # _resolve_port_id(short) 取 dedup_map _fulls[0] **任意项**, 可能与
+        # emit 侧不一致 → edge 引用未 emit 的 port id → ELK 'Referenced shape
+        # does not exist'. 修复: 优先解析到**已 emit** 的端口 (emit 循环先跑,
+        # _emitted_port_ids 可用); 无匹配才回退原行为.
+        if label in ctx.input_set:
+            return _resolve_emitted_port_id(ctx, label, 'in')
+        elif label in ctx.output_set:
+            return _resolve_emitted_port_id(ctx, label, 'out')
+        # 如果该信号有自己的表达式树（中间 wire），渲染表达式树后
+        # 连接一个带信号名的标签节点（→ sum → 下游引用）
+        # expr_trees keys 格式: module.signal → 需要短名匹配
+        # 同时支持 prod[15:8] → 去 [...] 后缀匹配 prod 中间 wire
+        _match_label = label
+        _bracket_idx = label.find('[')
+        if _bracket_idx > 0:
+            _match_label = label[:_bracket_idx]
+        # 先查缓存（带后缀匹配）
+        if _match_label in ctx.signal_cache:
+            return ctx.signal_cache[_match_label]
+        if label in ctx.signal_cache:
+            return ctx.signal_cache[label]
+        matched_tree = None
+        for ek, ev in ctx.expr_trees.items():
+            ek_short = ek.rsplit('.', 1)[-1]
+            if ek_short == label or ek_short == _match_label:
+                matched_tree = ev
+                break
+        if matched_tree is not None:
+            # 先查缓存
+            if label in ctx.signal_cache:
+                return ctx.signal_cache[label]
+            if _match_label in ctx.signal_cache:
+                return ctx.signal_cache[_match_label]
+            # [Plan D1] matched_tree 递归: 新的 parent_module 是 matched_tree key 的父路径
+            _matched_key = None
+            for _ek, _ev in ctx.expr_trees.items():
+                _ek_short = _ek.rsplit('.', 1)[-1]
+                if _ev is matched_tree:
+                    _matched_key = _ek
+                    break
+            # [Plan B Step F Fix #4 v3 2026-08-25] cycle detection.
+            # picorv32_pcpi_mul 的 mul_finish / pcpi_wait_q / mul_waiting 等信号在
+            # expr_trees 里互相引用 (A→B→A 形成环). 之前没防护 → RecursionError.
+            # 修复: 检查 _matched_key 是否在 _being_rendered set 里 (表示正在递归
+            # 渲染该信号). 是 → 跳过递归, 让 op_id = None, 外层 if op_id 跳过 sig
+            # emit → 安全失败, ELK 不会崩. 同时 add/remove 用 try/finally 确保.
+            op_id = None  # [Fix v3 follow-up] default for cycle case
+            if _matched_key in ctx.being_rendered:
+                pass  # cycle detected, skip recursion (op_id stays None)
+            else:
+                ctx.being_rendered.add(_matched_key)
+                try:
+                    _matched_parent = _matched_key.rsplit('.', 1)[0] if _matched_key else parent_module
+                    op_id = _render_tree(ctx, matched_tree, f'{prefix}_wire', parent_module=_matched_parent)
+                finally:
+                    ctx.being_rendered.discard(_matched_key)
+            if op_id:
+                # 如果 op_id 就是 sig_id（可能是递归匹配的缓存结果），直接返回
+                if op_id.startswith('sig_'):
+                    ctx.signal_cache[_match_label] = op_id
+                    ctx.signal_cache[label] = op_id
+                    return op_id
+                # 创建信号标签节点，OP 输出连到这里
+                sig_id = f'sig_{_safe(_match_label)}_expr'
+                existing = [c for c in ctx.root_children if c.get('id') == sig_id]
+                if existing:
+                    ctx.signal_cache[_match_label] = sig_id
+                    ctx.signal_cache[label] = sig_id
+                    return sig_id
+                # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
+                _target_mod_sig = (ctx.viz.meta or {}).get('target_module', '') if ctx.viz is not None else ''
+                _sig_cluster_id = parent_module
+                # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig (parent_module == target_mod)
+                # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
+                # Bug 路径: case13/19/24/27/28/29 (单 module + function/generate) 的 sig 节点
+                # 实际归到 cluster_<mod> 子框, → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
+                # 注意: 真正的子 instance sig 仍归对应 instance cluster (parent_module != target_mod)
+                if _target_mod_sig and _sig_cluster_id == _target_mod_sig:
+                    _sig_cluster_id = ''  # 顶层, 归 cluster_target_top
+                elif _target_mod_sig and _sig_cluster_id.startswith(_target_mod_sig + '.'):
+                    _sig_cluster_id = _sig_cluster_id[len(_target_mod_sig) + 1:]
+                # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+                _gb, _gi = (gen_block or ''), (gen_iter or '')
+                if not _gb:
+                    _gb, _gi = _parse_gen_block(parent_module)
+                ctx.root_children.append({
+                    'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                    'labels': [{'text': _match_label, 'fontSize': 8, 'fontName': 'Courier'}],
+                    '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id or '', 'gen_block': _gb, 'gen_iter': _gi},
+                })
+                ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [op_id], [sig_id]))
+                ctx.signal_cache[_match_label] = sig_id
+                ctx.signal_cache[label] = sig_id
+                return sig_id
+        sig_id = f'sig_{_safe(label)}_{nc}'
+        existing = [c for c in ctx.root_children if c.get('id') == sig_id]
+        if not existing:
+            # [V16 Plan Phase 1.4 2026-08-14] sig 节点归位: cluster_id = parent_module (去 target_module 前缀)
+            _target_mod_sig2 = (ctx.viz.meta or {}).get('target_module', '') if ctx.viz is not None else ''
+            _sig_cluster_id2 = parent_module
+            # [V16 Plan Phase 1.7 2026-08-16] FIX: 顶层 sig 同样问题 (与 line 406 注释相同)
+            if _target_mod_sig2 and _sig_cluster_id2 == _target_mod_sig2:
+                _sig_cluster_id2 = ''  # 顶层, 归 cluster_target_top
+            elif _target_mod_sig2 and _sig_cluster_id2.startswith(_target_mod_sig2 + '.'):
+                _sig_cluster_id2 = _sig_cluster_id2[len(_target_mod_sig2) + 1:]
+            # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+            _gb2, _gi2 = (gen_block or ''), (gen_iter or '')
+            if not _gb2:
+                _gb2, _gi2 = _parse_gen_block(parent_module)
+            ctx.root_children.append({
+                'id': sig_id, 'width': SIG_W, 'height': SIG_H,
+                'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+                '_meta': {'kind': 'signal', 'cluster_id': _sig_cluster_id2 or '', 'gen_block': _gb2, 'gen_iter': _gi2},
+            })
+        return sig_id
+    
+    if op == 'Const':
+        const_id = f'const_{_safe(label)}_{nc}'
+        # [V16 Plan Phase 1.1 2026-08-14] const 节点归位: cluster_id = parent_module
+        # 例: level2_clamp.u_clamp.dout 的 expr 树里 11'd255 的 parent_module = 'golden_hier_top.u_clamp'
+        # → const 归到 u_clamp cluster (短名), 而不是顶层 cluster_target_top
+        # 注: viz.meta.target_module 是 'golden_hier_top', 需去掉前缀匹配 VizNode.cluster_id 短名规则
+        _target_mod = (ctx.viz.meta or {}).get('target_module', '') if ctx.viz is not None else ''
+        _cluster_id = parent_module
+        # [V16 Plan Phase 1.5 2026-08-14] FIX: 顶层 const (parent_module == target_mod) 
+        # 应当归到 cluster_target_top (cluster_id=''), 而不是创建嵌套子框 cluster_<mod>
+        # Bug 路径: case2 (with_const) const 8'd128/2 实际归到 cluster_with_const 子框,
+        # → 与 op_+ 在外层 cluster_target_top 跨 cluster → CROSS_TOP 染红 (错!)
+        if _target_mod and _cluster_id == _target_mod:
+            _cluster_id = ''  # 顶层, 归 cluster_target_top
+        elif _target_mod and _cluster_id.startswith(_target_mod + '.'):
+            _cluster_id = _cluster_id[len(_target_mod) + 1:]
+        # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+        _gb_c, _gi_c = (gen_block or ''), (gen_iter or '')
+        if not _gb_c:
+            _gb_c, _gi_c = _parse_gen_block(parent_module)
+        _meta = {'kind': 'const', 'cluster_id': _cluster_id or '', 'gen_block': _gb_c, 'gen_iter': _gi_c}
+        ctx.root_children.append({
+            'id': const_id, 'width': 40, 'height': SIG_H,
+            'labels': [{'text': label, 'fontSize': 8, 'fontName': 'Courier'}],
+            'layoutOptions': {'elk.layered.layering.layerConstraint': 'FIRST'},
+            '_meta': _meta,
+        })
+        return const_id
+    
+    # ── Ternary: compound case/branch structure ──
+    if op == 'Ternary':
+        # [Plan B Step A12.3 2026-08-24] 嵌套 ternary 时用内部 graph ID 格式
+        # 背景: A3 重命名只在 viz.nodes 有匹配 OP_TERNARY 时生效.
+        # 嵌套 ternary 的内部 OP_TERNARY 不在 viz.nodes (unified_tracer 只 emit 外层),
+        # 所以重命名静默失败, 嵌套 OP 仍用 counter-based ID (op_xxx_y_btf_5),
+        # 跟内部 graph 的 ID (ternary_test.y.ternary_sel) 不一致 → BRANCH_* 边 dangle.
+        # 修复: 从 prefix 反推 lhs_short, 跟 unified_tracer._emit_conditional_op_nodes 同样的 ID 公式.
+        # 公式: f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
+        _lhs_short_a12 = None
+        if prefix.startswith('wire_'):
+            # 拔掉 'wire_' 前缀, 取第一个 '_' 前的部分
+            _after = prefix[len('wire_'):]
+            # 容忍嵌套: 'wire_y' → 'y'; 'wire_y_btf' → 'y' (后面是 btf/cond)
+            for _marker in ('_btf', '_cond', '_wire', '_c'):
+                if _marker in _after:
+                    _lhs_short_a12 = _after.split(_marker)[0]
+                    break
+            if _lhs_short_a12 is None:
+                _lhs_short_a12 = _after.split('_')[0] if '_' in _after else _after
+        if _lhs_short_a12 is None:
+            _lhs_short_a12 = prefix.split('_')[0] if '_' in prefix else prefix
+        # 提取 sel_label 从 cond 子树 (跟 render_ternary 同样逻辑)
+        _sel_label_a12 = '?'
+        if children and isinstance(children[0], dict):
+            _cond_a12 = children[0]
+            _cond_sigs_a12 = []
+            def _a12_collect(n):
+                if isinstance(n, dict):
+                    if n.get('op') == 'SignalRef':
+                        _lbl = n.get('label', '')
+                        if _lbl and _lbl not in _cond_sigs_a12:
+                            _cond_sigs_a12.append(_lbl)
+                    for _ch in n.get('children', []) or []:
+                        _a12_collect(_ch)
+            _a12_collect(_cond_a12)
+            _sel_label_a12 = ', '.join(sorted(_cond_sigs_a12)) if _cond_sigs_a12 else '?'
+        _safe_sel_a12 = _sel_label_a12.replace(',', '_').replace(' ', '')
+        _det_id_a12 = f"{parent_module}.{_lhs_short_a12}.ternary_{_safe_sel_a12}"
+        # 如果内部 graph 有这个 ID, 用它 (跟 A3 一致). 否则用计算的 deterministic ID
+        # (这样嵌套 ternary 也能跟内部 graph 对齐, 修复 5 nested case)
+        _use_det_id = True
+        if ctx.viz is not None:
+            _matched_in_viz = False
+            for _vn in ctx.viz.nodes:
+                if getattr(_vn, 'kind', '') == 'OP_TERNARY' and getattr(_vn, 'id', '') == _det_id_a12:
+                    _matched_in_viz = True
+                    node_id = _det_id_a12
+                    break
+            if not _matched_in_viz:
+                # 嵌套情况: 用计算的 deterministic ID (内部 graph 未 emit, 但 ID 格式对齐)
+                node_id = _det_id_a12
+        else:
+            node_id = _det_id_a12
+        return _render_ternary(ctx, node_id, children, prefix, nc, parent_module=parent_module, gen_block=gen_block, gen_iter=gen_iter)
+    
+    # Operator node
+    op_w = OP_W
+    if op == 'Call':
+        op_w = max(OP_W + len(label) * 6, 50)
+    op_h = OP_H + max(0, (len(children) - 2) * 8)
+
+    # [V16 Plan Phase 1.8 2026-08-17] op 节点归位: cluster_id = parent_module (跟 sig/const 完全对称)
+    _target_mod_op2 = (ctx.viz.meta or {}).get('target_module', '') if ctx.viz is not None else ''
+    _op_cluster_id2 = parent_module or ''
+    if _target_mod_op2 and _op_cluster_id2 == _target_mod_op2:
+        _op_cluster_id2 = ''  # 顶层, 归 cluster_target_top
+    elif _target_mod_op2 and _op_cluster_id2.startswith(_target_mod_op2 + '.'):
+        _op_cluster_id2 = _op_cluster_id2[len(_target_mod_op2) + 1:]
+
+    # [V16.10 2026-08-17] emit gen_block/gen_iter (优先入参, fallback helper)
+    _gb_op, _gi_op = (gen_block or ''), (gen_iter or '')
+    if not _gb_op:
+        _gb_op, _gi_op = _parse_gen_block(parent_module)
+    ctx.root_children.append({
+        'id': node_id, 'width': op_w, 'height': op_h,
+        'labels': [{'text': label, 'fontSize': 9, 'fontName': 'Helvetica-Bold'}],
+        '_meta': {'kind': 'op', 'cluster_id': _op_cluster_id2 or '', 'gen_block': _gb_op, 'gen_iter': _gi_op},
+    })
+
+    for child in children:
+        # [V16.10.2 2026-08-17] 递归子节点传 gen_block/gen_iter (避免 OUTPUT 路径下 BitSelect/SignalRef 子节点
+        # 坬立). 原因: case29 chain_out = buf3[N-2] 场景, OUTPUT 路径 render_tree 返回顶层 BitSelect op,
+        # 递归 child 是 SignalRef buf3. 之前递归不传 gen_block/gen_iter, 子节点 fallback 调
+        # _parse_gen_block(parent_module), 但 parent_module='generate_for_chain' 没有 'gen_stage3' 字样
+        # → fallback 失败 → 子节点 _meta.gen_block='' → 不归位到 genblk → 坬立飘在画布左上角.
+        child_id = _render_tree(ctx, child, f"{prefix}_c", parent_module=parent_module,
+                                gen_block=_gb_op, gen_iter=_gi_op)
+        if child_id:
+            ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [child_id], [node_id]))
+    
+    return node_id
