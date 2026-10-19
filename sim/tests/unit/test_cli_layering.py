@@ -227,3 +227,41 @@ class TestNewJsonContracts:
         assert r.returncode != 0
         d = json.loads(r.stdout)
         assert d["ok"] is False and d["deleted"] is False
+
+
+class TestCheckerSelfTest:
+    """检查器自身能检出违规 (否则规则形同虚设)。"""
+
+    @staticmethod
+    def _load_checker():
+        import importlib.util
+
+        path = PROJECT_ROOT / "tools/check_cli_layers.py"
+        spec = importlib.util.spec_from_file_location("_chk_cli_layers", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_r9_flags_local_output_helper(self, tmp_path):
+        """R9: 命令模块自己定义 output_json 必须被检出。"""
+        bad = tmp_path / "bad_cmd.py"
+        bad.write_text("def output_json(data, pretty=False):\n    print(data)\n")
+        chk = self._load_checker()
+        hits = chk.local_output_helpers(bad)
+        assert [n for _l, n in hits] == ["output_json"], hits
+
+    def test_r9_allows_shared_output_module(self, tmp_path):
+        """R9: cli/_output.py 里的定义是唯一合法位置。"""
+        good = tmp_path / "_output.py"
+        good.write_text("def emit_json(data, pretty=False):\n    print(data)\n")
+        chk = self._load_checker()
+        assert chk.local_output_helpers(good) == []
+
+    def test_r9_passes_on_real_tree(self):
+        """R9: 当前 src/cli 树必须零违规。"""
+        chk = self._load_checker()
+        offenders = []
+        for path in chk.iter_cli_py():
+            for lineno, name in chk.local_output_helpers(path):
+                offenders.append(f"{path.name}:{lineno} {name}")
+        assert offenders == [], offenders

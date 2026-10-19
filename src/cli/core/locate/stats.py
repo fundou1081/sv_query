@@ -2,7 +2,6 @@
 # stats.py - graph statistics command
 # ============================================================================
 
-import json
 import sys
 from pathlib import Path
 
@@ -21,11 +20,7 @@ from cli._common import (
 )
 from trace.core.compiler import CompilationError
 from trace.core.graph.models import EdgeKind
-
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
+from cli._output import emit_json
 
 
 def output_text(data: dict) -> None:
@@ -165,7 +160,7 @@ def stats(
             data["result"].update(fanout_data)
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             if fanout_rank:
                 output_fanout_rank(data, top_n)
@@ -178,7 +173,7 @@ def stats(
     except Exception as e:
         data = {"ok": False, "command": "stats", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None

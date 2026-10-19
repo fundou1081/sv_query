@@ -36,16 +36,12 @@ from trace.core.graph.models import EdgeKind
 from trace.core.sva_extractor import SVAExtractor
 from trace.unified_tracer import UnifiedTracer
 import logging
+from cli._output import emit_json
 
 logger = logging.getLogger(__name__)
 
 
 # JSON 输出格式化函数
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
-
-
 def _sanitize_trace_dot_id(s: str) -> str:
     """Sanitize signal ID for DOT. Replace non-alphanumeric with underscore.
 
@@ -176,7 +172,6 @@ def _generate_trace_dot(
 
     lines.append("}")
     return "\n".join(lines)
-
 
 
 def _collect_signals(
@@ -724,7 +719,7 @@ def fanin(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         elif format == "dot":
             # [Phase 2 2026-07-09] Generate DOT visualization for fanin
             all_drivers = []
@@ -764,7 +759,7 @@ def fanin(
             # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
             # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
             # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
-            output_json(data)
+            emit_json(data)
         else:
             output_text(data, human=human, tree=tree)
 
@@ -773,7 +768,7 @@ def fanin(
         from src.cli.errors import code_for_exception, make_error
         data = make_error(code_for_exception(e), str(e), command="trace_fanin")
         if json_output:
-            output_json(data)
+            emit_json(data)
         elif format == "dot":
             print("Error: failed to generate DOT", file=sys.stderr)
         else:
@@ -919,7 +914,7 @@ def fanout(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         elif format == "dot":
             # [Phase 2 2026-07-09] Generate DOT visualization for fanout
             all_loads = []
@@ -960,7 +955,7 @@ def fanout(
             # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
             # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
             # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
-            output_json(data)
+            emit_json(data)
         else:
             output_text(data, human=human, tree=tree)
 
@@ -973,7 +968,7 @@ def fanout(
             command="trace_fanout",
         )
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -1105,19 +1100,19 @@ def impact(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         elif format == "json":
             # [iter_203] `--format json` 是旧别名, 过去落到 text 分支 → stdout 变成
             # **被 JSON 转义的字符串** (实测 `"Fanin of '...':\n  (no drivers)\n"`),
             # 不是结构化 JSON。现与 `--json` 走同一路径 (单一实现)。
-            output_json(data)
+            emit_json(data)
         else:
             output_text(data, human=human, tree=tree)
 
     except Exception as e:
         data = {"ok": False, "command": "trace_impact", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -1420,7 +1415,7 @@ def evidence(
             data["evidence"] = signals_result[0]["evidence"]
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             # Text mode: render each signal's evidence with header
             for sig_entry in signals_result:
@@ -1441,7 +1436,7 @@ def evidence(
     except Exception as e:
         data = {"ok": False, "command": "trace_evidence", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None

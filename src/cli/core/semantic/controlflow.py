@@ -2,7 +2,6 @@
 # controlflow.py - controlflow analysis subcommand
 # ==============================================================================
 
-import json
 import sys
 from pathlib import Path
 
@@ -30,11 +29,8 @@ from trace.core.graph.analyzer.controlflow_analyzer import (
     ControlFlowAnalyzer,
 )
 from trace.core.graph_builder import GraphBuilder
+from cli._output import emit_json
 
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 def _is_constant(src: str) -> bool:
     """检查是否为常量（字面量）"""
@@ -188,7 +184,7 @@ def analyze(
     }
 
     if json_output:
-        output_json(data, pretty)
+        emit_json(data, pretty)
     else:
         output_text(data, human=human, tree=tree)
 
@@ -249,7 +245,7 @@ def list_conditioned(
     }
 
     if json_output:
-        output_json(data, pretty)
+        emit_json(data, pretty)
     else:
         print(f"Signals with conditional drivers ({len(signals)}):")
         for sig in signals:
@@ -317,9 +313,8 @@ def get_conditions(
     }
 
     if json_output:
-        output_json(data, pretty)
+        emit_json(data, pretty)
     else:
         print(f"Conditions for {signal} ({len(conditions)}):")
         for cond in conditions:
             print(f"  - {cond}")
-

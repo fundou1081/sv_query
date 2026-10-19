@@ -3,20 +3,14 @@
 # ============================================================================
 # [Expression Node] CLI commands for building expression nodes
 
-import json
 import sys
 from pathlib import Path
 
 import typer
 
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
+from cli._output import emit_json
 ensure_on_path(PROJECT_ROOT)
-
-
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
 def output_text(data: dict) -> None:
@@ -125,14 +119,14 @@ def build(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             output_text(data)
 
     except Exception as e:
         data = {"ok": False, "command": "build_expression", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -181,14 +175,14 @@ def function_call(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             output_text(data)
 
     except Exception as e:
         data = {"ok": False, "command": "build_function_call", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -242,14 +236,14 @@ def conditional(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             output_text(data)
 
     except Exception as e:
         data = {"ok": False, "command": "build_conditional", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None

@@ -2,7 +2,6 @@
 # graph.py - graph inspection subcommands
 # ============================================================================
 
-import json
 import sys
 from pathlib import Path
 
@@ -13,11 +12,7 @@ ensure_on_path(PROJECT_ROOT)
 
 from cli._common import _build_tracer, handle_compilation_error  # [iter_236 1a]
 from trace.core.compiler import CompilationError
-
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
+from cli._output import emit_json
 
 
 graph_app = typer.Typer(help="Inspect signal graph")
@@ -92,11 +87,11 @@ def dump(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             print(f"Graph dump: {len(nodes)} nodes, {len(edges)} edges")
             if pretty:
-                output_json(data, pretty)
+                emit_json(data, pretty)
             else:
                 print(f"Nodes: {[n['id'] for n in nodes[:20]]}{'...' if len(nodes) > 20 else ''}")
                 edge_strs = [f"{e['src']}->{e['dst']}" for e in edges[:20]]
@@ -108,7 +103,7 @@ def dump(
     except Exception as e:
         data = {"ok": False, "command": "graph_dump", "error": str(e)}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -156,7 +151,7 @@ def list_nodes(
         }
 
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Nodes ({len(nodes)}):")
             for n in nodes:
@@ -168,7 +163,7 @@ def list_nodes(
     except Exception as e:
         data = {"ok": False, "command": "list_nodes", "error": str(e)}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -218,7 +213,7 @@ def list_edges(
         }
 
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Edges ({len(edges)}):")
             for e in edges:
@@ -230,7 +225,7 @@ def list_edges(
     except Exception as e:
         data = {"ok": False, "command": "list_edges", "error": str(e)}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None
@@ -271,7 +266,7 @@ def find(
         }
 
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Found {len(matches)} matches for '{pattern}':")
             for m in matches:
@@ -283,7 +278,7 @@ def find(
     except Exception as e:
         data = {"ok": False, "command": "find", "error": str(e)}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None

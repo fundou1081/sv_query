@@ -53,9 +53,5 @@ def emit(data: dict, json_output: bool, pretty: bool) -> None:
             typer.echo(f"{k}: {v}")
 
 
-def fail(msg: str, json_output: bool, pretty: bool, **extra) -> None:
-    """结构化失败 (rc=1), 不静默返回空结果。"""
-    payload = {"ok": False, "error": msg, **extra}
-    typer.echo(json.dumps(payload, indent=2 if pretty else None, ensure_ascii=False)
-               if json_output else f"❌ {msg}")
-    raise typer.Exit(code=1)
+# [iter_246 B4] `fail` 的唯一实现在 cli/_output.py; 这里 re-export 保持既有导入路径有效
+from cli._output import fail  # noqa: E402,F401

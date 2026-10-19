@@ -2,7 +2,6 @@
 # dataflow.py - dataflow path analysis subcommand
 # ==============================================================================
 
-import json
 import sys
 from pathlib import Path
 
@@ -27,11 +26,7 @@ from cli._evidence_helpers import (  # noqa: E402
     make_resolver as _make_evidence_resolver,
 )
 from trace.core.graph.dataflow import DataFlowGraph
-
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
+from cli._output import emit_json
 
 
 def output_text(data: dict, human: bool = False, tree: bool = False) -> None:
@@ -218,7 +213,6 @@ def analyze(
     }
 
     if json_output:
-        output_json(data, pretty)
+        emit_json(data, pretty)
     else:
         output_text(data, human=human, tree=tree)
-
