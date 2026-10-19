@@ -129,19 +129,17 @@ exp_app.add_typer(timing_app, name="timing")
 app.add_typer(exp_app, name="exp")
 
 # ---- 兼容别名 (老路径) ----
-app.add_typer(risk_app, name="risk")
-app.add_typer(sva_app, name="sva")
-app.add_typer(timing_app, name="timing")
-app.add_typer(cdc_app, name="cdc")
-app.add_typer(coverage_app, name="coverage")
-app.add_typer(verify_app, name="verify")
-app.add_typer(backpressure_app, name="backpressure")
-app.add_typer(handshake_app, name="handshake")
-app.add_typer(protocol_app, name="protocol")
+# [iter_251] 老路径仍可调用, 但**从 --help 隐藏** (hidden=True): 它们只是历史入口,
+# 规范入口是 `svq exp <组> <子>`. 彻底删除要更新 ~151 处测试调用, 留给版本边界。
+for _legacy_name, _legacy_app in (
+    ("risk", risk_app), ("sva", sva_app), ("timing", timing_app), ("cdc", cdc_app),
+    ("coverage", coverage_app), ("verify", verify_app), ("backpressure", backpressure_app),
+    ("handshake", handshake_app), ("protocol", protocol_app), ("randomize", randomize_app),
+):
+    app.add_typer(_legacy_app, name=_legacy_name, hidden=True)
 app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
 app.add_typer(design_app, name="design")
-app.add_typer(randomize_app, name="randomize")
 
 # [FIX 2026-07-05] expression 是早期写但从未注册的 Typer app (build/func/cond 3 commands)
 # 修底层 metadata kwargs bug 之后, 重新启用, 让 CLI 可以手动构造 expression/func/cond 节点
