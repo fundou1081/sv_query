@@ -965,50 +965,6 @@ def viz_to_elk(viz: VizData) -> dict:
     #   - branch_true: 实线绿色 (case true 分支源)
     #   - branch_false: 实线红色 (ternary false 分支源)
     #   - case_item: 实线蓝色 (case 各项驱动)
-    _EDGE_STYLES = {
-        'condition_select': {
-            'elk.edge': 'direct',
-            'edgeRouting': 'ORTHOGONAL',
-            'stroke': '#888888',
-            'strokeDasharray': '4 4',  # 虚线
-            'strokeWidth': 1.2,
-        },
-        'branch_true': {
-            'elk.edge': 'direct',
-            'edgeRouting': 'ORTHOGONAL',
-            'stroke': '#2e7d32',  # 绿色
-            'strokeDasharray': 'none',
-            'strokeWidth': 1.4,
-        },
-        'branch_false': {
-            'elk.edge': 'direct',
-            'edgeRouting': 'ORTHOGONAL',
-            'stroke': '#c62828',  # 红色
-            'strokeDasharray': 'none',
-            'strokeWidth': 1.4,
-        },
-        'case_item': {
-            'elk.edge': 'direct',
-            'edgeRouting': 'ORTHOGONAL',
-            'stroke': '#1565c0',  # 蓝色
-            'strokeDasharray': 'none',
-            'strokeWidth': 1.4,
-        },
-    }
-    def _emit_edge(eid, srcs, tgts, edge_obj=None, kind='signal'):
-        meta = {'kind': kind}
-        if edge_obj is not None:
-            at = getattr(edge_obj, 'assign_type', '') or ''
-            if at:
-                meta['assign_type'] = at
-        edge = {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
-        # [Plan B Step C] 应用不同样式
-        if kind in _EDGE_STYLES:
-            edge['layoutOptions'] = dict(_EDGE_STYLES[kind])
-        # [FIX 2026-08-26 iter_026] also store kind in layoutOptions so it survives
-        # ELK.js round-trip (ELK.js only preserves ELK-specific fields, _meta gets lost)
-        edge['layoutOptions']['kind'] = kind
-        return edge
 
     # ── Phase 1: PORT_IN nodes (top-level, LEFT column) ──
     # [V16.12 2026-08-18] dedup-aware: 同一短名多实例时, 用 full path 避免短名冲突.
@@ -1121,7 +1077,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 tgt_id = _resolve_port_id(e.dst, 'out', input_short_to_fulls, output_short_to_fulls) if dst_short_e in output_names else _safe(e.dst)
                 # 注: 'endpoint 未在 root_children 中' 的防御性 filter 移到末尾统一处理,
                 # 这里不逐个 filter (避免里应一致问题)
-                root_edges.append(_emit_edge(ne(), [src_id], [tgt_id], e))
+                root_edges.append(_emit_edge_viz(ne(), [src_id], [tgt_id], e))
             continue
 
         sd = _safe(dst_id)
@@ -1248,7 +1204,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 for ge in group:
                     sn = _short(ge.src)
                     sid = f'sig_{sn}_{sd}_{sc}'
-                    branch_edges.append(_emit_edge(ne(), [sid], [op_id], ge, _branch_edge_kind))
+                    branch_edges.append(_emit_edge_viz(ne(), [sid], [op_id], ge, _branch_edge_kind))
 
             case_children.append({
                 'id': bid,
@@ -1275,7 +1231,7 @@ def viz_to_elk(viz: VizData) -> dict:
                 sid = f'sig_{sn}_{sd}_{sc}'
                 # PORT_IN → signal
                 if sn in input_names:
-                    root_edges.append(_emit_edge(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge, kind=_branch_edge_kind))
+                    root_edges.append(_emit_edge_viz(ne(), [_resolve_port_id(ge.src, 'in', input_short_to_fulls, output_short_to_fulls)], [sid], ge, kind=_branch_edge_kind))
 
             if op_id:
                 # [V16.13 Fix M 2026-08-18] dst_name 不存在于 viz_to_elk scope (原本是
@@ -1284,14 +1240,14 @@ def viz_to_elk(viz: VizData) -> dict:
                 # [FIX 2026-08-26 iter_026] op → PORT_OUT 边统一应用 _branch_edge_kind
                 # [V101 2026-08-26 11:46 reverted] Part B (改 kind → 'branch_result') 引入 7 regression
                 # (case 8/9/11/15/16/17/18/22 'Phase 1: PORT_IN nodes' error). 保留 _branch_edge_kind.
-                root_edges.append(_emit_edge(ne(), [op_id], [_resolve_port_id(dst_id, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], None, _branch_edge_kind))
+                root_edges.append(_emit_edge_viz(ne(), [op_id], [_resolve_port_id(dst_id, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], None, _branch_edge_kind))
             for ge in group:
                 sn = _short(ge.src)
                 sid = f'sig_{sn}_{sd}_{sc}'
                 if not getattr(ge, 'source_op', None):
                     # [V16.13 Fix M 2026-08-18] output_set → output_names (viz_to_elk 只定义 output_names)
                     # [FIX 2026-08-26 iter_026] signal → PORT_OUT 边统一应用 _branch_edge_kind
-                    root_edges.append(_emit_edge(ne(), [sid], [_resolve_port_id(ge.dst, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], ge, _branch_edge_kind))
+                    root_edges.append(_emit_edge_viz(ne(), [sid], [_resolve_port_id(ge.dst, 'out', input_short_to_fulls, output_short_to_fulls)] if dst_short in output_names else [], ge, _branch_edge_kind))
 
         # sel → case scope (condition select edge)
         sel_anchor_id = f'cond_sel_{sd}'
@@ -1327,7 +1283,7 @@ def viz_to_elk(viz: VizData) -> dict:
                         '_meta': {'kind': 'port_in', 'file': _sel_file, 'line': _sel_line},
                     })
                     _emitted_port_ids.add(_sel_port_id)
-                root_edges.append(_emit_edge(ne(), [_sel_port_id], [sel_anchor_id], kind='condition_select'))
+                root_edges.append(_emit_edge_viz(ne(), [_sel_port_id], [sel_anchor_id], kind='condition_select'))
 
         # Phase 4: Assemble case scope
         case_node = {
@@ -1351,16 +1307,6 @@ def viz_to_elk(viz: VizData) -> dict:
     # 等. 这些引用在 ELK JSON 里会报 "Referenced shape does not exist".
     # 防御性 filter: 递归收集所有已 emit 节点 ID (含 case compound 内部), 跳过不在其中的 src/tgt.
     # 关键: ELK 允许跨层级引用 (root edge 可以连到 case compound 内部节点), 所以收集必须递归.
-    def _collect_all_emitted_ids(node, acc):
-        """递归收集 ELK JSON 节点下所有已 emit 的 ID (含嵌套 children 和 ports)."""
-        if isinstance(node, dict):
-            if 'id' in node:
-                acc.add(node['id'])
-            for c in node.get('children', []) or []:
-                _collect_all_emitted_ids(c, acc)
-            for p in node.get('ports', []) or []:
-                if 'id' in p:
-                    acc.add(p['id'])
     all_emitted_ids = set()
     for c in root_children:
         _collect_all_emitted_ids(c, all_emitted_ids)
@@ -1454,15 +1400,6 @@ def viz_to_elk(viz: VizData) -> dict:
     #       里才被加入 graph.edges, B1 第一轮扫描 (line 1541) 太早.
     # 修复: cross-instance edges 加入后, 再扫一轮. 仍然缺失就补 emit.
     _post_emitted = set()
-    def _collect_post_ids(node, acc):
-        if isinstance(node, dict):
-            if 'id' in node:
-                acc.add(node['id'])
-            for c in node.get('children', []) or []:
-                _collect_post_ids(c, acc)
-            for p in node.get('ports', []) or []:
-                if 'id' in p:
-                    acc.add(p['id'])
     _collect_post_ids(graph, _post_emitted)
     _post_edge_port_refs = set()
     for _e in graph.get('edges', []) or []:
@@ -2408,3 +2345,76 @@ def _render_tree(ctx, tree_node, prefix, parent_module='', gen_block='', gen_ite
             ctx.root_edges.append(ctx.emit_edge(ctx.ne(), [child_id], [node_id]))
     
     return node_id
+
+# ==============================================================================
+# [iter_258 T3-7] viz_to_elk 的 helper 提到模块级 (AST 实测捕获数 = 0)
+# ==============================================================================
+_EDGE_STYLES_VIZ = {
+    'condition_select': {
+        'elk.edge': 'direct',
+        'edgeRouting': 'ORTHOGONAL',
+        'stroke': '#888888',
+        'strokeDasharray': '4 4',  # 虚线
+        'strokeWidth': 1.2,
+    },
+    'branch_true': {
+        'elk.edge': 'direct',
+        'edgeRouting': 'ORTHOGONAL',
+        'stroke': '#2e7d32',  # 绿色
+        'strokeDasharray': 'none',
+        'strokeWidth': 1.4,
+    },
+    'branch_false': {
+        'elk.edge': 'direct',
+        'edgeRouting': 'ORTHOGONAL',
+        'stroke': '#c62828',  # 红色
+        'strokeDasharray': 'none',
+        'strokeWidth': 1.4,
+    },
+    'case_item': {
+        'elk.edge': 'direct',
+        'edgeRouting': 'ORTHOGONAL',
+        'stroke': '#1565c0',  # 蓝色
+        'strokeDasharray': 'none',
+        'strokeWidth': 1.4,
+    },
+}
+
+
+def _emit_edge_viz(eid, srcs, tgts, edge_obj=None, kind='signal'):
+    meta = {'kind': kind}
+    if edge_obj is not None:
+        at = getattr(edge_obj, 'assign_type', '') or ''
+        if at:
+            meta['assign_type'] = at
+    edge = {'id': eid, 'sources': list(srcs), 'targets': list(tgts), '_meta': meta}
+    # [Plan B Step C] 应用不同样式
+    if kind in _EDGE_STYLES_VIZ:
+        edge['layoutOptions'] = dict(_EDGE_STYLES_VIZ[kind])
+    # [FIX 2026-08-26 iter_026] also store kind in layoutOptions so it survives
+    # ELK.js round-trip (ELK.js only preserves ELK-specific fields, _meta gets lost)
+    edge['layoutOptions']['kind'] = kind
+    return edge
+
+
+def _collect_all_emitted_ids(node, acc):
+    """递归收集 ELK JSON 节点下所有已 emit 的 ID (含嵌套 children 和 ports)."""
+    if isinstance(node, dict):
+        if 'id' in node:
+            acc.add(node['id'])
+        for c in node.get('children', []) or []:
+            _collect_all_emitted_ids(c, acc)
+        for p in node.get('ports', []) or []:
+            if 'id' in p:
+                acc.add(p['id'])
+
+
+def _collect_post_ids(node, acc):
+    if isinstance(node, dict):
+        if 'id' in node:
+            acc.add(node['id'])
+        for c in node.get('children', []) or []:
+            _collect_post_ids(c, acc)
+        for p in node.get('ports', []) or []:
+            if 'id' in p:
+                acc.add(p['id'])
