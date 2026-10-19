@@ -136,6 +136,13 @@ FSM          analyze_fsm  (+ 同文件里的 StateMachineAnalyzer/StateMachineIn
 `ClockQuery`，`UnifiedTracer` 退化为**组合根**（构造 + 持有 + 转发），
 而不是所有逻辑的宿主。
 
+> **[iter_255 复核, 结论已修正]** 用 AST 量了方法体: 46 个方法**中位数 10 行**,
+> 36 个公开方法里 **19 个 < 10 行** (`trace_signal` / `trace_loads` 都是 3 行转发) ——
+> 它**已经是合格的门面**。真正的复杂度在 3 个私有方法:
+> `_emit_conditional_op_nodes`(173) / `_resolve_class_member_access`(134) / `build_graph`(151)。
+> **领域门面拆分否决** (多一层转发、逻辑一行不少); 改为「拆这 3 个巨型私有方法」列为 backlog。
+> 本次已提取与门面无关的 FSM 三件套 (191 行 → `trace/core/fsm_analyzer.py`)。
+
 ### A4 🟠 P1 — `elk_bridge.py` 单函数 908 行
 
 **证据**: `expr_trees_to_elk` 908 行（L150）、`viz_to_elk` 584 行（L1379）、`_wrap_into_clusters` 288 行。
