@@ -174,12 +174,10 @@ COMMANDS: list[CommandSpec] = [
        note="[iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖)"),
     _c("snapshot list", "state", kind="state", cost="cheap", stateful=True),
     _c("snapshot show", "state", kind="state", cost="cheap", stateful=True),
-    _c("snapshot compare", "state", kind="state", cost="medium", stateful=True,
-       recommended=True, note="graph 差异 (diff compare 计划并入这里)"),
+    _c("snapshot compare", "state", kind="state", cost="medium", recommended=True,
+       note="比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异)"),
     _c("snapshot delete", "state", kind="state", cost="cheap", stateful=True,
        note="[iter_231] 已补 --json"),
-    _c("diff compare", "state", kind="state", cost="medium", stateful=True,
-       note="[计划] 并入 snapshot compare"),
 
     # ---- core / diagnose (原 fix 只读部分) ----
 

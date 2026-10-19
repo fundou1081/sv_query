@@ -39,7 +39,7 @@
     显示 graph statistics (single)
   * `sv_query search KEYWORD -f FILE`
     grep-like 文本搜索 (single)
-  * `sv_query diff compare FILE FILE`
+  * `sv_query snapshot compare FILE FILE`   # 文件模式 (原 diff compare)
     两版代码 graph diff
 
 ──────────────────────────────────────────────────────────────────────
