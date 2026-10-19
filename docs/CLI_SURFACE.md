@@ -1,7 +1,7 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-10-09  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-10-19  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
@@ -27,10 +27,10 @@
 | `diagnose timescale` | `fix timescale` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale) |
 | `diagnose widths` | `fix widths` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
-| `graph dump` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph find` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件 |
-| `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | [缺口] 只支持 --file 单文件, 真实项目(filelist)不可用 |
+| `graph dump` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 整图 JSON 导出; 支持 --file / --filelist (iter_236 补) |
+| `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
+| `graph find` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 按模式查图节点; 支持 --file / --filelist (iter_236 补) |
+| `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图节点; 支持 --file / --filelist (iter_236 补) |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
 | `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | class 成员(类型级) + 实例(实例级); --member 查某成员的实例节点 |

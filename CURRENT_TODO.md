@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-19 GMT+8 (iter_244: 核心代码坏味道评审 + CLI 减法方案)
+> **最后更新**: 2026-10-19 GMT+8 (iter_245: 减法 T1 完成 — src −4,562 行)
 
 ---
 
@@ -36,7 +36,11 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **核心代码坏味道评审 + CLI 减法方案** (L1, ✅ 评审完成 iter_244 / 🟡 减法待拍板) —— 任务文件 `docs/task_tree/tasks/L1_core_review_and_cli_subtraction.md`。
+**当前任务 (方豆方向)**: **核心代码减法与分层 (长期 goal)** (L1, 🟡 执行中: 评审 ✅ iter_244 / **T1 ✅ iter_245** / T2·T3 待做) —— 任务文件 `docs/task_tree/tasks/L1_core_review_and_cli_subtraction.md`。
+**T1 ✅ (iter_245)**: `src` 183→164 文件、64,336→**59,774 行 (−4,562)**，全量 **3419 passed / 0 failed**：
+归档 16 个历史渲染器 3,248 行（0 import）+ 孤立模块 1,026 行（`signal_graph_viewer` 实测跑不通）+ 删 `LoadExtractor._get_signal` 285 行（仅自递归）+ 修 4 条 `graph` 过期 note（早就支持 `--filelist`）；
+`diff compare` 推迟 T2（入参与 schema 都不同，不属零风险）。
+**下一步**: 统一 CLI 输出层（7 份 `output_json` → `cli/_output.py`）→ T2 同族命令合并（74→~52）。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。
 **结论: 没有 P0**（分层方向是对的: 无反向依赖 / 无裸 except / 单一注册表 / 只读证明都在生效）；问题是规模与表面积:
 🟠 P1 ×5 —— 3,248 行归档代码仍在 src 打包路径内 / `LoadExtractor._get_signal` 283 行死方法 / `UnifiedTracer` 36 方法跨 10 领域 / **CLI 74 规范 + 30 别名 = 104 叶子** / `elk_bridge` 单函数 908 行。

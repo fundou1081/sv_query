@@ -8,9 +8,9 @@ trace.core.graph.viz — 统一可视化层 (V12 ELK.js)
   viz_data_models: VizNode / VizEdge / VizData
   viz_data_builder: build_viz_data(graph, options)
   elk_bridge: viz_to_elk() → ELK.js 布局 → get_layout()
-  elk_svg_renderer: render_svg(layout) → SVG 字符串
+  viz_engine: render_svg(layout) → SVG 字符串
 
-已归档 DOT 渲染器 → _archived_dot/
+[iter_245] 旧 DOT 渲染器已归档出本包 → docs/archive/2026-10-19-src-archived/
 """
 
 from .viz_data_builder import VizBuildOptions, build_viz_data

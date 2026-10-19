@@ -5,7 +5,7 @@ from trace.core.graph.viz import (
     VizBuildOptions,
     build_viz_data,
 )
-from trace.core.graph.viz._archived_dot.viz_dot_renderer import render_dot
+from trace.core.graph.viz.elk_bridge import viz_to_elk
 from trace.unified_tracer import UnifiedTracer
 
 # ── helpers ──
@@ -139,55 +139,31 @@ class TestVizDataExpression:
             assert not e.expression, f"expression should be empty but got {e.expression!r}"
 
 
-class TestVizDataRender:
-    """DOT 渲染"""
+class TestVizDataToElk:
+    """VizData → ELK 布局输入
 
-    def test_render_dot_produces_valid_digraph(self):
-        """render_dot 生成有效的 digraph"""
-        graph = _build_graph(SIMPLE_BINARY, target="test")
-        viz = build_viz_data(graph)
-        dot = render_dot(viz)
-        assert dot.startswith("digraph viz {\n")
-        assert "}\n" in dot or dot.endswith("}")
-        assert "rankdir=TB" in dot
+    [iter_245] 原 `TestVizDataRender` 测的是 `_archived_dot/viz_dot_renderer.render_dot`。
+    该渲染器已随 A1 归档出 `src/`（V6.7 起唯一渲染路径是 VizData → ELK → SVG），
+    所以改为锁定**活路径**的结构不变式，而不是删掉覆盖。
+    """
 
-    def test_render_dot_shows_condition(self):
-        """DOT 输出包含边条件"""
-        graph = _build_graph(ALWAYS_COND, target="test")
-        viz = build_viz_data(graph, VizBuildOptions(
-            include_edge_condition=True,
-            include_edge_expression=True,
-        ))
-        dot = render_dot(viz)
-        # 应该包含条件文本
-        assert "a > b" in dot or "a" in dot, f"Condition not found in DOT:\n{dot}"
+    def test_viz_to_elk_structure(self):
+        """ELK 输入必须是 compound graph: id + children + edges"""
+        viz = build_viz_data(_build_graph(SIMPLE_BINARY, target="test"))
+        elk = viz_to_elk(viz)
+        assert isinstance(elk, dict)
+        assert {"id", "children", "edges"} <= set(elk), f"缺字段: {sorted(elk)}"
+        assert len(elk["children"]) >= 3
+        for child in elk["children"]:
+            assert "id" in child, f"child 缺 id: {child}"
+            assert "labels" in child, f"child 缺 labels: {child}"
 
-    def test_render_dot_layout_config(self):
-        """layout 配置生效"""
-        graph = _build_graph(PIPELINE, target="test")
-        viz = build_viz_data(graph)
-        dot_lr = render_dot(viz, {"layout": "LR"})
-        assert "rankdir=LR" in dot_lr
-        dot_tb = render_dot(viz, {"layout": "TB"})
-        assert "rankdir=TB" in dot_tb
-
-    def test_render_dot_hides_clock_by_default(self):
-        """默认不显示 CLOCK/RESET 边"""
-        graph = _build_graph(PIPELINE, target="test")
-        viz = build_viz_data(graph)
-        dot = render_dot(viz)  # 默认 show_clock_reset=False
-        # 不应该包含 CLOCK 或 RESET 边的渲染
-        assert "CLOCK" not in dot or "clock" not in dot.lower()
-
-    def test_render_dot_shows_clock_when_enabled(self):
-        """开启 show_clock_reset 后显示时钟边"""
-        graph = _build_graph(PIPELINE, target="test")
-        viz = build_viz_data(graph)
-        dot = render_dot(viz, {"show_clock_reset": True})
-        # CLOCK 边现在应该出现
-        # (具体显示取决于节点名，格式是 \"src\" -> \"dst\")
-        assert "->" in dot
-
+    def test_viz_to_elk_ids_are_dot_safe(self):
+        """ELK 节点 id 不得包含 '.' —— 它会进 SVG/DOM id 与选择器"""
+        viz = build_viz_data(_build_graph(SIMPLE_BINARY, target="test"))
+        elk = viz_to_elk(viz)
+        for child in elk["children"]:
+            assert "." not in child["id"], f"id 含 '.': {child['id']}"
 
 class TestVizDataJson:
     """JSON 导出"""

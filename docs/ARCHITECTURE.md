@@ -217,8 +217,7 @@ src/trace/core/graph/viz/
 
 | 文件 | 状态 |
 |------|------|
-| `signal_graph_viewer.py::render_html` | ⛔ 内部 helper 仍在使用 |
-| `signal_graph_viewer.py::render_mermaid` | ⛔ 内部 helper 仍在使用 |
+| `signal_graph_viewer.py` | 📦 **已归档出源码树** (iter_245 → `docs/archive/2026-10-19-src-archived/`): 零 import 方, 且自带 `__main__` 实测跑不通 (`KeyError: show_type`); 主渲染路径是 VizData → ELK → SVG |
 | `dataflow_viz.py::generate_dataflow_dot` | ⛔ `_emit_split_by_module` 仍在使用 |
 | `pipeline_viz.py::generate_pipeline_dot` | 🗑 deprecated [V6.7] |
 | `pipeline_viz.py::generate_pipeline_timing_dot` | 🗑 deprecated [V6.7] |

@@ -21,7 +21,7 @@
 - 风险: 🔴 HIGH (全量回归)
 
 ### V6.9: 旧渲染器清理
-- 删除 `signal_graph_viewer.render_html/render_mermaid`
+- ~~删除 `signal_graph_viewer.render_html/render_mermaid`~~ — ✅ iter_245: 整个文件归档出 `src/` (不可运行, 无调用方)
 - 把所有内部 helper 迁移到 VizData
 - 删除 `_emit_split_by_module`
 
