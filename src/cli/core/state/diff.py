@@ -2,7 +2,6 @@
 # diff.py - graph diff command
 # ============================================================================
 
-import json
 import sys
 from pathlib import Path
 
@@ -13,13 +12,9 @@ ensure_on_path(PROJECT_ROOT)
 
 from trace.core.graph.diff import diff_reachability, diff_with_health
 from trace.unified_tracer import UnifiedTracer
+from cli._output import emit_json
 
 diff_app = typer.Typer(help="Compare two versions of SystemVerilog code")
-
-
-def output_json(data: dict, pretty: bool = False) -> None:
-    indent = 2 if pretty else None
-    print(json.dumps(data, indent=indent, ensure_ascii=False))
 
 
 def output_text(data: dict) -> None:
@@ -148,14 +143,14 @@ def compare(
         }
 
         if json_output:
-            output_json(data, pretty)
+            emit_json(data, pretty)
         else:
             output_text(data)
 
     except Exception as e:
         data = {"ok": False, "command": "diff_compare", "error": str(e), "errors": [str(e)]}
         if json_output:
-            output_json(data)
+            emit_json(data)
         else:
             print(f"Error: {e}", file=sys.stderr)
         raise typer.Exit(code=1) from None

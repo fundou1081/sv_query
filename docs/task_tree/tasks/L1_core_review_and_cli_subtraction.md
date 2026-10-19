@@ -57,7 +57,7 @@ CLI 已经长到 **74 个规范命令 + 30 个别名 = 104 个叶子**（默认�
 | 阶段 | 状态 | 结果 |
 |---|---|---|
 | T1 零风险 | ✅ iter_245 | `src` 183→164 文件 / 64,336→59,774 行 (−4,562)；3419 passed / 0 failed |
-| B4 统一输出层 | ⏳ 下一步 | 7 份 `output_json` 收敛到 `cli/_output.py` |
+| B4 统一输出层 | ✅ iter_246 | 7 份 `output_json` → 1 / `fail` 2→1 / 新增 R9 + 3 自检；剩 45 处内联 `json.dumps` 列为后续 |
 | T2 命令合并 | ⏳ | 目标 74→~52 / 别名 30→6 / 默认可见 47→~33 |
 | T3 结构性 | ⏳ | UnifiedTracer 门面 / elk_bridge / visualize.py / semantic trace.py |
 

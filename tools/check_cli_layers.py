@@ -15,6 +15,7 @@ check_cli_layers.py — [iter_230 P0] CLI 分层的机械保障
   R6 exp 不得出现在 capabilities 默认输出 (须 --include-exp)
   R7 模块级不得定义与 builtin 同名的函数/类 (会劫持同模块的 builtin 调用)
   R8 不得用 __file__ 做路径深度运算 (搬目录即错位) —— 一律用 cli/_paths.py 锚点
+  R9 JSON/失败输出必须用 cli/_output.py (禁止各命令再定义 output_json/emit_json/fail)
 
 INFO (不算违规, 但列出来当待办):
   - 只支持 --file 单文件、不支持 --filelist 的命令 (真实项目用不了)
@@ -219,6 +220,27 @@ def file_depth_math(path: Path) -> list[tuple[int, str]]:
     return out
 
 
+def local_output_helpers(path: Path) -> list[tuple[int, str]]:
+    """R9: 命令模块不得自己定义 JSON/失败输出 helper —— 必须用 cli/_output.py。
+
+    实例 (iter_246 实测): `def output_json(data, pretty)` 在 7 个模块各写一份,
+    **逐字节相同**; 改缩进/加字段要改 7 处, 迟早分叉。已收敛到 `cli/_output.py`
+    (`emit_json` / `fail`), 本规则防止再长出副本。
+    """
+    allowed = {"_output.py"}
+    if path.name in allowed:
+        return []
+    banned = {"output_json", "emit_json", "fail", "output_error"}
+    out: list[tuple[int, str]] = []
+    try:
+        tree = ast.parse(path.read_text())
+    except SyntaxError:
+        return out
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in banned:
+            out.append((node.lineno, node.name))
+    return out
+
 def import_edges(path: Path, all_modules: dict[str, Path]) -> list[tuple[str, str]]:
     """返回该文件的 (它 → 它 import 的 cli 模块) 边。"""
     edges: list[tuple[str, str]] = []
@@ -347,6 +369,12 @@ def main() -> int:
         for lineno, seg in file_depth_math(path):
             errors.append(f"R8 __file__ 深度运算: {path.relative_to(ROOT)}:{lineno} {seg} "
                           f"—— 改用 cli/_paths.py 锚点")
+
+    # ---- R9: 禁止本地输出 helper (统一走 cli/_output.py) ----
+    for path in iter_cli_py():
+        for lineno, name in local_output_helpers(path):
+            errors.append(f"R9 本地输出 helper: {path.relative_to(ROOT)}:{lineno} "
+                          f"def {name}(...) —— 用 cli/_output.py 的 emit_json / fail")
 
     # ---- R4: core 必须 --json ----
     for key, cmd in sorted(leaves.items()):
