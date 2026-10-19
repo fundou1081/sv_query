@@ -124,9 +124,7 @@ SignalGraph → build_viz_data(options) → VizData → render_dot(config) → D
 
 | 渲染器 | 状态 | 迁移计划 |
 |--------|------|---------|
-| `signal_graph_viewer.render_dot` | ⛔ 内部 helper | 不再用于用户命令 |
-| `signal_graph_viewer.render_html` | ⛔ 内部 helper | 未来替换 |
-| `signal_graph_viewer.render_mermaid` | ⛔ 内部 helper | 未来替换 |
+| `signal_graph_viewer.*` | 📦 已归档出源码树 | iter_245: 整体归档 (无 import 方 + 自带入口实测跑不通) |
 | `dataflow_viz.generate_dataflow_dot` | ⛔ _emit_split_by_module | 待迁移 |
 | `pipeline_viz.generate_pipeline_dot` | 🗑 deprecated | 已替换 |
 | `pipeline_viz.generate_pipeline_timing_dot` | 🗑 deprecated | 已替换 |
