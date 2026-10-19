@@ -268,16 +268,37 @@ def delete(
     print(f"✅ Deleted: {tag}")
 
 
+def _looks_like_file(arg: str) -> bool:
+    """[iter_260] 判断参数是文件路径还是快照 tag。"""
+    try:
+        if Path(arg).exists():
+            return True
+    except OSError as e:      # 路径过长/非法字符: 当作 tag
+        logger.debug("路径判断失败 (%s): %s", arg, e)
+    return arg.endswith((".sv", ".v", ".svh"))
+
+
 @snapshot_app.command()
 def compare(
-    tag1: str = typer.Argument(..., help="First snapshot tag"),
-    tag2: str = typer.Argument(..., help="Second snapshot tag"),
+    tag1: str = typer.Argument(..., help="快照 tag, 或 SV 文件路径 (两个都是文件时走文件模式)"),
+    tag2: str = typer.Argument(..., help="第二个快照 tag / SV 文件路径"),
     top: int = typer.Option(20, "--top", "-n", help="Number of top changes to show"),
+    signal: str = typer.Option(None, "--signal", "-s", help="[文件模式] 只分析该信号的可达性差异"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     show_edges: bool = typer.Option(False, "--show-edges/--no-show-edges", help="Show edge-level diff details (default OFF, 跟旧行为兼容)"),
 ):
-    """Compare two snapshots"""
+    """比较两个快照, 或两个 SV 文件 (iter_260 合并原 `diff compare`)。
+
+    - 两个参数都是**已存在的文件** (或 .sv/.v/.svh 结尾) → 编译成图后做健康度/可达性 diff
+    - 否则按**快照 tag** 比较
+    """
+    # [iter_260] 文件模式: 原 `diff compare` 并入本命令
+    if _looks_like_file(tag1) and _looks_like_file(tag2):
+        from cli.core.state.diff import compare_files
+        compare_files(tag1, tag2, signal, json_output, pretty)
+        return
+
     manager = SnapshotManager()
     snap1 = manager.load(tag1)
     snap2 = manager.load(tag2)

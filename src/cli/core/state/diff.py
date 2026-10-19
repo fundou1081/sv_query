@@ -84,15 +84,12 @@ def output_text(data: dict) -> None:
             print(f"  No longer impacted: {', '.join(no_longer[:5])}{'...' if len(no_longer) > 5 else ''}")
 
 
-@diff_app.command()
-def compare(
-    old: Path = typer.Argument(..., help="Old version SystemVerilog file"),
-    new: Path = typer.Argument(..., help="New version SystemVerilog file"),
-    signal: str = typer.Option(None, "--signal", "-s", help="Signal to analyze reachability diff"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
-    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
-) -> None:
-    """Compare two versions of SystemVerilog code"""
+def compare_files(old, new, signal=None, json_output: bool = False, pretty: bool = False) -> None:
+    """[iter_260] 比较两个 SV 文件 (原 `diff compare` 的实现)。
+
+    由 `snapshot compare` 在"两个参数都是文件"时分派调用 —— 合并后规范入口只有
+    `snapshot compare`, 见 docs/EXP_NAMESPACE 与 iter_260 迭代记录。
+    """
     try:
         with open(str(old)) as f:
             source_old = f.read()

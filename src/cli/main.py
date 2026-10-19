@@ -105,7 +105,6 @@ app.command("class", help="[规范入口] 不给 class 名→列出所有 class;
 
 app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanin_cmd)
 app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanout_cmd)
-app.add_typer(diff_app, name="diff")
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")
 app.add_typer(controlflow_app, name="controlflow")

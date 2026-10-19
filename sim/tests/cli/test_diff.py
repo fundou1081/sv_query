@@ -51,7 +51,7 @@ module top(input clk, output logic [7:0] q);
 endmodule
 ''')
         try:
-            result = self._run_svq(["diff", "compare", old, new])
+            result = self._run_svq(["snapshot", "compare", old, new])
             self.assertEqual(result.returncode, 0, f"Error: {result.stderr}")
             self.assertIn("top.b", result.stdout)
             self.assertIn("Added", result.stdout)
@@ -77,7 +77,7 @@ module top(input clk, output logic [7:0] q);
 endmodule
 ''')
         try:
-            result = self._run_svq(["diff", "compare", old, new])
+            result = self._run_svq(["snapshot", "compare", old, new])
             self.assertEqual(result.returncode, 0, f"Error: {result.stderr}")
             self.assertIn("top.b", result.stdout)
             self.assertIn("Removed", result.stdout)
@@ -94,7 +94,7 @@ module top(input clk);
 endmodule
 ''')
         try:
-            result = self._run_svq(["diff", "compare", source, source])
+            result = self._run_svq(["snapshot", "compare", source, source])
             self.assertEqual(result.returncode, 0)
             self.assertIn("identical", result.stdout.lower())
         finally:
@@ -116,7 +116,7 @@ module top(output logic q);
 endmodule
 ''')
         try:
-            result = self._run_svq(["diff", "compare", old, new, "--json"])
+            result = self._run_svq(["snapshot", "compare", old, new, "--json"])
             self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
             data = json.loads(result.stdout)
             self.assertTrue(data.get("ok"))

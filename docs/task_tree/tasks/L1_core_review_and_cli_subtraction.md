@@ -63,7 +63,7 @@ CLI 已经长到 **74 个规范命令 + 30 个别名 = 104 个叶子**（默认�
 
 **T1 具体产出**：归档 16 个历史渲染器 (3,248 行) + 孤立模块 (1,026 行) → `docs/archive/2026-10-19-src-archived/`；
 删 `LoadExtractor._get_signal` (285 行)；删空包 `cli/commands/`；修 4 条 graph 过期 note；
-`diff compare` 推迟到 T2（入参与 schema 都不同，不满足零风险）。
+`diff compare` 原推迟到 T2，**iter_260 已并入 `snapshot compare`**（文件模式）。
 
 ## 下一步（待方豆选择）
 
