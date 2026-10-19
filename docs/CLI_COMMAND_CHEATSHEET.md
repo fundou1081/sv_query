@@ -77,7 +77,7 @@
     信号控制条件 (if/case 树)
   * `sv_query controlflow list-conditioned --file F`
     列出条件化信号 (有 if/case 控制)
-  * `sv_query controlflow conditions --file F SIGNAL`
+  * `sv_query controlflow analyze --conditions-only --file F SIGNAL`
     信号的条件细节
   * `sv_query timing analyze --file F [--max-paths N]`
     关键路径分析 (寄存器深度, DAG longest path, SCC)

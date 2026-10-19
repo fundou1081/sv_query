@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **63**
-- 按层: `core`=26, `exp`=24, `view`=13
-- core 内分组: `semantic`=15, `locate`=5, `diagnose`=1, `state`=5
+- 叶子命令总数: **62**
+- 按层: `core`=25, `exp`=24, `view`=13
+- core 内分组: `semantic`=14, `locate`=5, `diagnose`=1, `state`=5
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (26 个)
+## `core` (25 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -30,8 +30,7 @@
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
 | `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例 |
 | `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
-| `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析 |
-| `controlflow conditions` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的全部驱动条件 |
+| `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions) |
 | `controlflow list-conditioned` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 列出所有带条件驱动的信号 (枚举, 用于找入口) |
 | `dataflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源→目标路径 |
 | `drivers` | `trace fanin` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin |

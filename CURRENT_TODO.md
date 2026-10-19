@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-20 GMT+8 (iter_260: diff compare 并入 snapshot compare, 命令 63)
+> **最后更新**: 2026-10-20 GMT+8 (iter_261: controlflow conditions 并入 analyze, 命令 62)
 
 ---
 
@@ -55,6 +55,7 @@
 **T3-7 ✅ (iter_258)**: `viz_to_elk` 584→**521 行**（3 个纯 helper + 常量表提到模块级；6 份 SVG 逐字节一致）；主体评估后不拆（顺序相位 + 20+ 共享可变状态）。
 **T2-f ✅ (iter_259)**: 删除 24 个 exp 老路径别名（先改 151 处测试，再删注册）—— 别名 **26→2**、叶子 **90→66**；顺带发现 `tools/coverage_gen_demo.py` 内部 shell out 到老路径（不在 import 图里）。
 **T1 遗留 ✅ (iter_260)**: `diff compare` 并入 `snapshot compare`（文件模式）—— 命令 64→63、state 6→5、叶子 65。
+**T2-g ✅ (iter_261)**: `controlflow conditions` 并入 `analyze --conditions-only` —— 命令 63→62、core 26→25、叶子 64；细化合并判据（输入相同 + 严格子视图才可合）。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

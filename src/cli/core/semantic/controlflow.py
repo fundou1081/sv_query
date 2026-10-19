@@ -102,8 +102,15 @@ def analyze(
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each condition (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    conditions_only: bool = typer.Option(False, "--conditions-only",
+                                        help="[iter_261] 只列条件的扁平列表 (原 `controlflow conditions` 视图)"),
 ) -> None:
-    """Analyze control flow conditions for a signal"""
+    """Analyze control flow conditions for a signal.
+
+    [iter_261] 合并原 `controlflow conditions` (2 → 1): 该命令的 `conditions` 是
+    本命令 `conditioned_drivers[].conditions[]` 的**扁平子视图** —— 同一输入、同一分析器,
+    只是输出形状更窄。用 `--conditions-only` 取子视图。
+    """
     if not file and not filelist:
         typer.echo("Error: --file or --filelist is required", err=True)
         raise typer.Exit(code=1)
@@ -134,6 +141,25 @@ def analyze(
     graph_builder._module_graph = tracer._module_graph
 
     analyzer = ControlFlowAnalyzer(graph_builder)
+
+    # [iter_261] 子视图: 只输出扁平条件列表 (原 `controlflow conditions`)
+    if conditions_only:
+        conditions = analyzer.get_conditions_for_signal(signal)
+        params_file = display_path(file, sources, filelist)
+        data = {
+            "ok": True, "command": "controlflow", "subcommand": "conditions",
+            "params": {"signal": signal, "file": str(params_file)},
+            "result": {"signal": signal, "conditions": conditions, "count": len(conditions)},
+            "errors": [],
+        }
+        if json_output:
+            emit_json(data, pretty)
+        else:
+            print(f"Conditions for {signal} ({len(conditions)}):")
+            for cond in conditions:
+                print(f"  - {cond}")
+        return
+
     result = analyzer.analyze(signal)
 
     # [Stage 5] (可选) evidence 召回 - 每个 condition 的 to_node 独立解析
@@ -251,70 +277,3 @@ def list_conditioned(
         for sig in signals:
             print(f"  - {sig}")
 
-@controlflow_app.command("conditions")
-def get_conditions(
-    signal: str = typer.Argument(..., help="Signal to get conditions for"),
-    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file (单文件模式)"),
-    filelist: str = typer.Option(None, "--filelist", help="Path to filelist (.f/.fl) for multi-file projects (项目模式)"),
-
-    preprocess_macros: bool = typer.Option(True, "--preprocess/--no-preprocess", help="Preprocess macros (default): 跨文件 `MACRO 展开, 避免 TooFewArguments. Use --no-preprocess 退回 pyslang 内置处理"),
-    log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
-    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
-) -> None:
-    """Get all conditions for a signal"""
-    if not file and not filelist:
-        typer.echo("Error: --file or --filelist is required", err=True)
-        raise typer.Exit(code=1)
-
-    try:
-        tracer = _build_tracer(
-            file=file,
-            filelist=filelist,
-            
-            log_level=log_level,
-            preprocess_macros=preprocess_macros,
-        )
-        graph = tracer.build_graph()
-        sources = tracer._sources
-    except CompilationError as e:
-        handle_compilation_error(e)
-        return
-
-    from trace.core.compiler import SVCompiler
-    from trace.core.semantic_adapter import SemanticAdapter
-
-    compiler = SVCompiler(sources)
-    semantic_adapter = SemanticAdapter(compiler.get_root(), compiler)
-
-    graph_builder = GraphBuilder(semantic_adapter)
-    graph_builder.graph = graph
-    graph_builder._module_graph = tracer._module_graph
-
-    analyzer = ControlFlowAnalyzer(graph_builder)
-    conditions = analyzer.get_conditions_for_signal(signal)
-
-    # [ADD 2026-06-11 Req-9] 统一 file/filelist 模式 params 输出
-    params_file = display_path(file, sources, filelist)  # [iter_206]
-    data = {
-        "ok": True,
-        "command": "controlflow",
-        "subcommand": "conditions",
-        "params": {
-            "signal": signal,
-            "file": str(params_file),
-        },
-        "result": {
-            "signal": signal,
-            "conditions": conditions,
-            "count": len(conditions),
-        },
-        "errors": [],
-    }
-
-    if json_output:
-        emit_json(data, pretty)
-    else:
-        print(f"Conditions for {signal} ({len(conditions)}):")
-        for cond in conditions:
-            print(f"  - {cond}")
