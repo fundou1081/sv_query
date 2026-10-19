@@ -15,6 +15,11 @@
 
 **不在 exp**: `core` (只读事实与语义) / `view` (人眼图与叙述) / `dev` (内部调试) / `out` (会写文件, 移出 CLI)。
 
+**老路径 (iter_251 起)**: 10 个历史顶层组 (`protocol` / `handshake` / `backpressure` /
+`coverage` / `randomize` / `risk` / `sva` / `verify` / `cdc` / `timing`) **仍可调用, 但已从
+`--help` 隐藏** (`hidden=True`)。规范入口是 `svq exp <组> <子>`。
+彻底删除需要更新约 151 处测试调用 → 留到下一个 minor 版本边界执行。
+
 ## 2. exp 的五条硬约束 (缺一不可, 否则"降级"只是改名)
 
 1. **不进 `capabilities` 默认输出** —— 必须 `svq capabilities --json --include-exp` 才列出
