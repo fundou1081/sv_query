@@ -56,11 +56,8 @@ from cli.core.semantic.dataflow import dataflow_app
 from cli.view.design import design_app
 from cli.core.state.diff import diff_app
 from cli.dev.expression import expression_app
-# [iter_234 P2] 诊断: 规范名 diagnose (只读); fix_app 保留为兼容别名组 (同一函数对象)
-from src.cli.core.diagnose.report import fix_report
-from src.cli.core.diagnose.timescale import fix_timescale
-from src.cli.core.diagnose.imports import imports_cmd
-from src.cli.core.diagnose.widths import widths_cmd
+# [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
+from cli.core.diagnose.dispatch import diagnose_cmd
 from cli.core.locate.graph import graph_app
 from cli.core.locate.capabilities import capabilities
 from src.cli.exp.bus.handshake import handshake_app
@@ -145,8 +142,6 @@ app.add_typer(protocol_app, name="protocol")
 app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
 app.add_typer(design_app, name="design")
-fix_app = typer.Typer(help="[兼容别名] 老名保留: 请改用 diagnose (只读诊断)")
-app.add_typer(fix_app, name="fix")
 app.add_typer(randomize_app, name="randomize")
 
 # [FIX 2026-07-05] expression 是早期写但从未注册的 Typer app (build/func/cond 3 commands)
@@ -160,17 +155,9 @@ app.add_typer(graph_app, name="graph")
 # [iter_230] 能力清单 (agent 的工具面真相源; 只读 + JSON)。普通顶层命令
 app.command("capabilities")(capabilities)
 
-# [iter_234 P2] 诊断命令: 规范入口 diagnose (core/diagnose, 只读) + 老名 fix 作兼容别名
-diagnose_app = typer.Typer(help="只读诊断: 编译/依赖问题报告 (不改任何文件)")
-diagnose_app.command("report")(fix_report)
-diagnose_app.command("widths")(widths_cmd)
-diagnose_app.command("imports")(imports_cmd)
-diagnose_app.command("timescale")(fix_timescale)
-app.add_typer(diagnose_app, name="diagnose")
-fix_app.command("report")(fix_report)
-fix_app.command("widths")(widths_cmd)
-fix_app.command("imports")(imports_cmd)
-fix_app.command("timescale")(fix_timescale)
+# [iter_248 T2] 诊断: 单一入口 `diagnose <check>` (imports|report|timescale|widths)
+# 不传 help= → 用 docstring (里面写清了 4 项检查与两个写入工具)
+app.command("diagnose")(diagnose_cmd)
 
 # stats 是单独命令，不需要子 Typer
 # 动态导入避免循环依赖

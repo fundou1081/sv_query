@@ -58,7 +58,7 @@ CLI 已经长到 **74 个规范命令 + 30 个别名 = 104 个叶子**（默认�
 |---|---|---|
 | T1 零风险 | ✅ iter_245 | `src` 183→164 文件 / 64,336→59,774 行 (−4,562)；3419 passed / 0 failed |
 | B4 统一输出层 | ✅ iter_246 | 7 份 `output_json` → 1 / `fail` 2→1 / 新增 R9 + 3 自检；剩 45 处内联 `json.dumps` 列为后续 |
-| T2 命令合并 | 🟡 进行中 | 已完成: `classes`→`class` (2→1, iter_247)。待做: diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1 |
+| T2 命令合并 | 🟡 进行中 | 已完成: `classes`→`class` (2→1, iter_247)、`diagnose` 4→1 (iter_248)。待做: graph 4→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1（controlflow 经复核不合并: schema 不同构） |
 | T3 结构性 | ⏳ | UnifiedTracer 门面 / elk_bridge / visualize.py / semantic trace.py |
 
 **T1 具体产出**：归档 16 个历史渲染器 (3,248 行) + 孤立模块 (1,026 行) → `docs/archive/2026-10-19-src-archived/`；

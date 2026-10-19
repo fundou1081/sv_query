@@ -161,14 +161,9 @@
 ──────────────────────────────────────────────────────────────────────
 ## ⟨8⟩ 自动修复 / 工具
 
-  * `sv_query fix timescale --filelist F`
-    MissingTimeScale 检测 + 修复
-  * `sv_query fix report --filelist F`
-    所有 diagnostic 报告
-  * `sv_query fix imports --filelist F`
-    缺模块 → 推荐补 filelist
-  * `sv_query fix widths --filelist F`
-    typedef $clog2 真实位宽分析
+  * `sv_query diagnose <check> --filelist F`  (check = imports | report | timescale | widths)
+    只读诊断: 缺依赖 / 错误分类 / 缺 timescale / typedef $clog2 位宽
+    (写文件用 `tools/fix_imports.py` / `tools/fix_timescale.py`)
   * `sv_query expression build --operands O -e EXPR -r RESULT`
     构造 expression node (e.g. a + b)
   * `sv_query expression func --name N --args A,B -r RESULT`

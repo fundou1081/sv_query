@@ -122,7 +122,7 @@ def test_evaluate_clog2_pyslang():
 def test_fix_widths_resolves_literal_and_macro():
     """fix widths 应解析字面 $clog2(8) → 3, $clog2(`MY_DEPTH) → 6 (因 MY_DEPTH=64)"""
     tmpdir, fl, sv = _setup_with_clog2_typedefs()
-    r = _run("fix", "widths", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "widths", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0, f"stderr={r.stderr[:300]}"
     # 2 个 typedef, 都应解析
     assert "clog2 = 3" in r.stdout, f"应含 $clog2(8)=3, stdout={r.stdout[:500]}"  # 8→3
@@ -134,7 +134,7 @@ def test_fix_widths_resolves_literal_and_macro():
 def test_fix_widths_json_structure():
     """fix widths --json 结构"""
     tmpdir, fl, sv = _setup_with_clog2_typedefs()
-    r = _run("fix", "widths", "--filelist", fl, "--log-level", "ERROR", "--json")
+    r = _run("diagnose", "widths", "--filelist", fl, "--log-level", "ERROR", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     assert "total_typedefs" in data
@@ -150,7 +150,7 @@ def test_fix_widths_json_structure():
 
 def test_fix_widths_help_documented():
     """fix widths --help 文档化"""
-    r = _run("fix", "widths", "--help")
+    r = _run("diagnose", "widths", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
     assert "--json" in r.stdout

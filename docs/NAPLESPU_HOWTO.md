@@ -60,10 +60,10 @@ vlog $COMPILE_FLAGS -sv \
 # 见 scripts/generate_naplespu_filelist.sh
 ```
 
-### Step 2: 用 `fix report` 看现状
+### Step 2: 用 `diagnose report` 看现状
 
 ```bash
-python run_cli.py fix report --filelist /tmp/naplespu_modelsim.f
+python run_cli.py diagnose report --filelist /tmp/naplespu_modelsim.f
 # → 65 UndeclaredIdentifier errors, 0 auto-fixable
 ```
 

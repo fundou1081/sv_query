@@ -30,7 +30,7 @@ mkdir -p /tmp/ofdm_tx_fixed
 cp ~/my_dv_proj/openrtl/openwifi-hw/ip/openofdm_tx/src/*.v /tmp/ofdm_tx_fixed/
 
 # 2. 自动修复 timescale
-sv_query fix timescale --filelist /tmp/ofdm_tx_fix.f --apply
+python3 tools/fix_timescale.py /tmp/ofdm_tx_fix.f --apply   # 写文件走 tools/ (CLI 只读)
 # → 22 fixed, 0 skipped
 
 # 3. 跑 filelist (25 files + openofdm_tx + helpers)
@@ -273,7 +273,7 @@ dot -Tpng /tmp/ifft_graph.dot -o docs/images/openwifi_ifft_graph.png
 
 ### 7.2 缺 timescale
 
-openwifi-hw .v 文件缺 timescale (22/25). 跑前必须 `sv_query fix timescale --apply` (在副本目录, 不动原文件).
+openwifi-hw .v 文件缺 timescale (22/25). 跑前必须 `python3 tools/fix_timescale.py /tmp/ofdm_tx_fix.f --apply` (在副本目录, 不动原文件).
 
 ### 7.3 memory 限制 (8GB MBA)
 
@@ -296,7 +296,7 @@ cat > /tmp/ofdm_tx_fix.f << EOF
 EOF
 for f in /tmp/ofdm_tx_fixed/*.v; do echo "$f" >> /tmp/ofdm_tx_fix.f; done
 
-sv_query fix timescale --filelist /tmp/ofdm_tx_fix.f --apply
+python3 tools/fix_timescale.py /tmp/ofdm_tx_fix.f --apply   # 写文件走 tools/ (CLI 只读)
 
 cat > /tmp/ofdm_tx_fixed.f << EOF
 +incdir+/tmp/ofdm_tx_fixed

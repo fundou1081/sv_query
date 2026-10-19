@@ -117,7 +117,7 @@ def test_scan_project_returns_none_for_missing():
 def test_fix_imports_lists_undefined_identifiers():
     """fix imports 应列出未定义 identifier (即使项目里没定义, 也列出)"""
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
-    r = _run("fix", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
+    r = _run("diagnose", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
     assert r.returncode == 0, f"stderr={r.stderr[:300]}"
     # 应有 undefined_typedef_t (项目里没定义)
     assert "undefined_typedef_t" in r.stdout, f"应列出 undefined_typedef_t, stdout={r.stdout[:500]}"
@@ -130,7 +130,7 @@ def test_fix_imports_lists_undefined_identifiers():
 def test_fix_imports_explicit_project_root():
     """--project-root 显式指定"""
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
-    r = _run("fix", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
+    r = _run("diagnose", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR")
     assert "Project root:" in r.stdout
     assert proj in r.stdout
     print("✅ fix imports --project-root: 显式指定生效")
@@ -139,7 +139,7 @@ def test_fix_imports_explicit_project_root():
 def test_fix_imports_json_output():
     """fix imports --json 结构"""
     tmpdir, fl, proj = _setup_project_with_missing_typedef()
-    r = _run("fix", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR", "--json")
+    r = _run("diagnose", "imports", "--filelist", fl, "--project-root", proj, "--log-level", "ERROR", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     assert "identifiers" in data
@@ -155,7 +155,8 @@ def test_fix_imports_json_output():
 
 def test_fix_imports_cli_is_readonly_no_write_option():
     """[iter_234 P2] CLI 只读: `diagnose imports` **不提供 --write** (不写项目文件)。"""
-    r = _run("diagnose", "imports", "--help")
+    # [iter_248] 4 个子命令合并为 `diagnose <check>`: help 是顶层命令的 help
+    r = _run("diagnose", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
     assert "tools/fix_imports.py" in r.stdout, "help 应指向写入工具"
@@ -192,14 +193,15 @@ def test_tools_fix_imports_writes_new_filelist():
 
 
 def test_fix_imports_help_documented():
-    """fix imports --help 文档化"""
-    r = _run("fix", "imports", "--help")
+    """`diagnose --help` 文档化 (iter_248 起 4 项检查共用同一个帮助)。"""
+    r = _run("diagnose", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
     assert "--project-root" in r.stdout
-    assert "--write" in r.stdout
     assert "--json" in r.stdout
-    print("✅ fix imports --help: 文档化")
+    # 只读硬约束: 帮助里不得出现 --write (写入在 tools/fix_imports.py)
+    assert "--write" not in r.stdout
+    print("✅ diagnose --help: 文档化")
 
 
 # ----------------------------------------------------------------------------
