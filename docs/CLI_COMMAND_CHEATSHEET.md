@@ -49,7 +49,7 @@
     保存当前代码 state 为 snapshot
   * `sv_query snapshot list`
     列所有 snapshot
-  * `sv_query snapshot show TAG`
+  * `sv_query snapshot list TAG`
     显示 snapshot 详情
   * `sv_query snapshot compare TAG1 TAG2`
     对比两 snapshot

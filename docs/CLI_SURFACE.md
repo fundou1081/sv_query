@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **62**
-- 按层: `core`=25, `exp`=24, `view`=13
-- core 内分组: `semantic`=14, `locate`=5, `diagnose`=1, `state`=5
+- 叶子命令总数: **61**
+- 按层: `core`=24, `exp`=24, `view`=13
+- core 内分组: `semantic`=14, `locate`=5, `diagnose`=1, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (25 个)
+## `core` (24 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -44,9 +44,8 @@
 | `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 风险分级 |
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | 比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
-| `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ |  |
+| `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |
 | `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖) |
-| `snapshot show` | — | — | state | state | cheap | ✅ | — | ✅ |  |
 
 ## `view` (13 个)
 
