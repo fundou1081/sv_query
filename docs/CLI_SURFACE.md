@@ -6,8 +6,8 @@
 
 ## 总览
 
-- 叶子命令总数: **67**
-- 按层: `core`=27, `dev`=3, `exp`=24, `view`=13
+- 叶子命令总数: **64**
+- 按层: `core`=27, `exp`=24, `view`=13
 - core 内分组: `semantic`=15, `locate`=5, `diagnose`=1, `state`=6
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
@@ -15,7 +15,7 @@
 | `core` | agent | stable | ✅ | ✅ | 1 | agent 一等公民: 只读 + JSON + 稳定 schema |
 | `view` | human | stable | ✅ | — | — | 人眼面 (图/叙述); 默认含于 capabilities, 后续重点开发 |
 | `exp` | none | unstable | ✅ | — | — | 降级区: 规范入口 svq exp <组> <子> (老路径为别名); 无 schema 承诺, 只修 bug; --include-exp 才列出 |
-| `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
+| `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
 ## `core` (27 个)
@@ -96,14 +96,6 @@
 | `exp sva extract` | `sva extract` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
 | `exp sva timing` | `sva timing` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
 | `exp verify gap` | `verify gap` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-
-## `dev` (3 个)
-
-| 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
-|---|---|---|---|---|---|---|---|---|---|
-| `expression build` | — | — | internal | debug | cheap | ✅ | — | ✅ |  |
-| `expression cond` | — | — | internal | debug | cheap | ✅ | — | ✅ |  |
-| `expression func` | — | — | internal | debug | cheap | ✅ | — | ✅ |  |
 
 ## 兼容别名 (老名保留, 同一实现)
 

@@ -1,7 +1,9 @@
 # sv_query CLI 命令速查 (Cheatsheet)
 #
+# ⚠️ 本文是 2026-08-26 的人工速查, 已部分过期 (命令增删多次)。
+#    **权威清单 = docs/CLI_SURFACE.md** (由 tools/gen_cli_surface.py 从注册表生成);
+#    本文保留作为"按场景怎么用"的示例集, 结构类描述以 CLI_SURFACE 为准。
 # Updated 2026-08-26 from `sv_query --help` + `sv_query <cmd> --help`
-# 23 top-level commands (2026-08-26), expression/graph 加入) (Phase 1 2026-07-07 added randomize: list + extract)
 
 用法: `sv_query <command> [subcommand] [OPTIONS]`
 
@@ -27,9 +29,7 @@
   protocol      Bus protocol detection (Phase A)
   visualize     Signal graph visualization: DOT, Mermaid, HTML with data flow
   arch          Project architecture visualization (L1 + L2 overview)
-  fix           自动修复 elaboration 问题 (MissingTimeScale 等)
   randomize     [Phase 1 2026-07-07] Randomize 分析 (rand vars + randomize calls + inline constraint)
-  expression    Build expression nodes
   graph         Inspect signal graph
 
 ──────────────────────────────────────────────────────────────────────
@@ -164,12 +164,6 @@
   * `sv_query diagnose <check> --filelist F`  (check = imports | report | timescale | widths)
     只读诊断: 缺依赖 / 错误分类 / 缺 timescale / typedef $clog2 位宽
     (写文件用 `tools/fix_imports.py` / `tools/fix_timescale.py`)
-  * `sv_query expression build --operands O -e EXPR -r RESULT`
-    构造 expression node (e.g. a + b)
-  * `sv_query expression func --name N --args A,B -r RESULT`
-    构造 function call node
-  * `sv_query expression cond --cond C --true T --false F -r RESULT`
-    构造 ternary conditional node
   * `sv_query graph nodes --detail --file F [--json]`
     图节点 + 富字段 (表达式/条件/分支; 原 graph dump)
   * `sv_query graph nodes --file F`
