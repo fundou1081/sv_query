@@ -18,7 +18,7 @@
 | 全量 (canonical) | **3422 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 167 deselected) | 2026-10-19 实测 (iter_241): 在 iter_240 (3399) 基础上 +23 (LoadTracer 适配层测试)。**注**: iter_227~240 期间本行未被同步更新 (停在 iter_226 的 3317), iter_241 一并纠正 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (230 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (231 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -139,7 +139,7 @@
 | [PROJECT_PLAN.md](PROJECT_PLAN.md) | 开源 RTL 验证问题生成计划 (独立工作流) |
 | [TODO.md](TODO.md) | 版本级功能待办 (月~季) |
 
-## 📓 记录类 (按 AGENTS.md 设施表)
+## 📓 记录类 (按 [WORKFLOW §0.1](dev/WORKFLOW.md) 设施表)
 
 | 位置 | 内容 |
 |---|---|
