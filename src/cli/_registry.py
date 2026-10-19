@@ -172,8 +172,8 @@ COMMANDS: list[CommandSpec] = [
     # ---- core / state (你已定: graph 比较算 core) ----
     _c("snapshot save", "state", kind="state", cost="medium", stateful=True,
        note="[iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖)"),
-    _c("snapshot list", "state", kind="state", cost="cheap", stateful=True),
-    _c("snapshot show", "state", kind="state", cost="cheap", stateful=True),
+    _c("snapshot list", "state", kind="state", cost="cheap", stateful=True,
+       note="列出快照; 给 tag → 该快照详情 (原 snapshot show)"),
     _c("snapshot compare", "state", kind="state", cost="medium", recommended=True,
        note="比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异)"),
     _c("snapshot delete", "state", kind="state", cost="cheap", stateful=True,

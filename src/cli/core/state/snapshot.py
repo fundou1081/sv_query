@@ -166,9 +166,10 @@ def save(
 
 @snapshot_app.command("list")
 def list_cmd(
+    tag: str = typer.Argument(None, help="[iter_262] 给 tag → 显示该快照详情 (原 snapshot show); 省略 → 列出全部"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ):
-    """List all snapshots
+    """List all snapshots (gives one tag → that snapshot's details)
 
     [iter_231] 函数改名 `list_cmd` —— 模块级 `def list(...)` 会**遮蔽 builtin list**,
     导致本模块内所有 `list(...)` 调用都去执行这个命令 (实测: `snapshot save --json`
@@ -176,6 +177,12 @@ def list_cmd(
     静默拿到 None)。命令名仍是 `list` (显式 command("list"))。
     """
     manager = SnapshotManager()
+
+    # [iter_262] 合并原 `snapshot show`: 给了 tag 就是"列表的特例 (一个元素)"
+    if tag is not None:
+        _emit_snapshot_detail(manager, tag, json_output)
+        return
+
     tags = manager.list_tags()
     # [iter_239 1b] 旧位置提示 (只提示, **不读取** —— 不做 silent fallback)
     from trace.core.snapshot_manager import LEGACY_SNAPSHOT_DIR
@@ -205,14 +212,8 @@ def list_cmd(
             print(f"{s['tag']:<20} {created:<25} {s['node_count']:<8} {s['edge_count']:<8} {files}")
 
 
-@snapshot_app.command()
-def show(
-    tag: str = typer.Argument(..., help="Snapshot tag"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
-):
-    """Show snapshot details"""
-    manager = SnapshotManager()
-    # [FIX 2026-07-06] SnapshotManager API 已用 'show(tag)' / 'delete(tag)', 不是 'get_snapshot' / 'delete_snapshot'
+def _emit_snapshot_detail(manager, tag: str, json_output: bool) -> None:
+    """[iter_262] 单个快照详情 (原 `snapshot show` 的实现, 由 `snapshot list TAG` 分派)。"""
     info = manager.show(tag)
     if not info:
         print(f"Snapshot not found: {tag}")

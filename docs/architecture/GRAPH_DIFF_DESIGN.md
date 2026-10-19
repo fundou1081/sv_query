@@ -210,7 +210,7 @@ def diff_with_health(G1, G2) -> Dict:
 ```bash
 svq snapshot save <file> -t <tag>   # 保存快照
 svq snapshot list                    # 列出所有快照
-svq snapshot show <tag>             # 查看详情
+svq snapshot list <tag>             # 查看详情
 svq snapshot delete <tag>           # 删除
 svq snapshot compare <tag1> <tag2> # 对比两个快照
 ```
