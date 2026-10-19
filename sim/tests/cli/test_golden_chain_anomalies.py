@@ -249,7 +249,7 @@ class TestTimingAnomalyDetection(unittest.TestCase):
         filelist = GOLDEN_DIR / tc_dir / "filelist.f"
         dot_out = Path(f"/tmp/_timing_{tc_dir}.dot")
         result = subprocess.run(
-            ["sv_query", "timing", "analyze",
+            ["sv_query", "exp", "timing", "analyze",
              "-f", str(filelist),
              "--max-paths", str(max_paths),
              "--emit-dot", str(dot_out)],

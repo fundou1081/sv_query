@@ -45,7 +45,7 @@ class TestVerifyGapEvidence:
 
     def test_default_no_evidence_field(self):
         """默认 (无 --evidence): top_signals[].evidence 字段不存在"""
-        rc, out, err = _run_cli("verify", "gap", "-f", TEST_FILE, "--json")
+        rc, out, err = _run_cli("exp", "verify", "gap", "-f", TEST_FILE, "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         for sig in data["top_signals"]:
@@ -55,7 +55,7 @@ class TestVerifyGapEvidence:
 
     def test_with_flag_evidence_in_json(self):
         """--evidence: top_signals[].evidence 字段存在, 含 source_text + score"""
-        rc, out, err = _run_cli("verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
+        rc, out, err = _run_cli("exp", "verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         # 至少 1 个信号有 evidence
@@ -69,13 +69,13 @@ class TestVerifyGapEvidence:
 
     def test_with_flag_evidence_in_text(self):
         """--evidence: 文本输出含 '└─' 缩进 summary"""
-        rc, out, err = _run_cli("verify", "gap", "-f", TEST_FILE, "--evidence")
+        rc, out, err = _run_cli("exp", "verify", "gap", "-f", TEST_FILE, "--evidence")
         assert rc == 0, f"CLI failed: {err}"
         assert "└─" in out, f"Expected indented summary in text output, got:\n{out}"
 
     def test_default_no_text_summary(self):
         """默认: 文本输出不含 '└─' summary"""
-        rc, out, err = _run_cli("verify", "gap", "-f", TEST_FILE)
+        rc, out, err = _run_cli("exp", "verify", "gap", "-f", TEST_FILE)
         assert rc == 0, f"CLI failed: {err}"
         assert "└─" not in out, "Default mode should not show evidence summary"
 
@@ -90,7 +90,7 @@ class TestRiskAnalyzeEvidence:
 
     def test_default_no_evidence_field(self):
         """默认: data_signals[].evidence 字段不存在"""
-        rc, out, err = _run_cli("risk", "analyze", "-f", TEST_FILE, "--json")
+        rc, out, err = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         for sig in data["result"]["data_signals"]:
@@ -98,7 +98,7 @@ class TestRiskAnalyzeEvidence:
 
     def test_with_flag_evidence_in_json(self):
         """--evidence: data_signals[].evidence 字段存在, credibility_score 有效"""
-        rc, out, err = _run_cli("risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
+        rc, out, err = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         with_ev = [s for s in data["result"]["data_signals"] if s.get("evidence")]
@@ -114,13 +114,13 @@ class TestRiskAnalyzeEvidence:
 
     def test_with_flag_evidence_in_text(self):
         """--evidence: 文本输出含 '└─' summary"""
-        rc, out, err = _run_cli("risk", "analyze", "-f", TEST_FILE, "--evidence")
+        rc, out, err = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--evidence")
         assert rc == 0, f"CLI failed: {err}"
         assert "└─" in out
 
     def test_known_signals_have_meaningful_evidence(self):
         """[V6.9] risk analyze --evidence returns evidence fields (light check for 8GB MBA)."""
-        rc, out, err = _run_cli("risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
+        rc, out, err = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         by_name = {s["name"]: s for s in data["result"]["data_signals"]}
@@ -268,7 +268,7 @@ class TestCdcEvidence:
 
     def test_default_no_evidence(self):
         """默认: paths[].source_evidence / target_evidence 字段不存在"""
-        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
+        rc, out, err = _run_cli("exp", "cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         for p in data["result"]["paths"]:
@@ -277,7 +277,7 @@ class TestCdcEvidence:
 
     def test_with_flag_evidence_in_json(self):
         """--evidence: 每条 CDC 路径的 source/target 都有 evidence"""
-        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
+        rc, out, err = _run_cli("exp", "cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         paths = data["result"]["paths"]
@@ -292,7 +292,7 @@ class TestCdcEvidence:
 
     def test_with_flag_evidence_in_text(self):
         """--evidence: 文本输出含 CDC 路径信息"""
-        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence")
+        rc, out, err = _run_cli("exp", "cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence")
         assert rc == 0, f"CLI failed: {err}"
         # [V6.9] 文本格式变更: 用 → 显示 CDC 路径而非 "source:/target:"
         assert "→" in out or "reg_a" in out
@@ -300,7 +300,7 @@ class TestCdcEvidence:
 
     def test_high_risk_path_evidence_works(self):
         """高风险路径的 source/target evidence 都应有效 (包含 enclosing 上下文)"""
-        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
+        rc, out, err = _run_cli("exp", "cdc", "analyze", "-f", CDC_TEST_FILE, "--evidence", "--json")
         assert rc == 0, f"CLI failed: {err}"
         data = json.loads(out)
         high_risk = [p for p in data["result"]["paths"] if p["risk"] == "HIGH"]
@@ -315,7 +315,7 @@ class TestCdcEvidence:
 
     def test_json_no_tuple_key_error(self):
         """[Stage 5] domain_pairs 以前用 tuple key 报错, 现在应能正常 JSON 序列化"""
-        rc, out, err = _run_cli("cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
+        rc, out, err = _run_cli("exp", "cdc", "analyze", "-f", CDC_TEST_FILE, "--json")
         assert rc == 0, f"cdc --json should not crash: {err}"
         data = json.loads(out)
         assert data["ok"] is True

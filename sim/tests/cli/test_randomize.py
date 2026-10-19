@@ -42,13 +42,13 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_help(self):
         """测试 randomize list --help 返回 0 + 含 description"""
-        result = _run_svq(["randomize", "list", "--help"])
+        result = _run_svq(["exp", "randomize", "list", "--help"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("randomize", result.stdout.lower())
 
     def test_randomize_list_finds_rand_vars(self):
         """测试 randomize list 找到 rand/randc 变量"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("addr", result.stdout)
         self.assertIn("mode", result.stdout)
@@ -58,7 +58,7 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_distinguishes_rand_randc(self):
         """测试 randomize list 区分 rand / randc"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # mode 是 randc
         self.assertIn("randc", result.stdout)
@@ -67,14 +67,14 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_finds_hooks(self):
         """测试 randomize list 找到 pre_randomize / post_randomize"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("pre_randomize", result.stdout)
         self.assertIn("post_randomize", result.stdout)
 
     def test_randomize_list_finds_calls(self):
         """测试 randomize list 找到 randomize() 调用"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("req.randomize", result.stdout)
         # 应该有 inline constraint
@@ -83,7 +83,7 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_class_filter(self):
         """测试 randomize list --class filter"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH), "--class", "my_seq"])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH), "--class", "my_seq"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # my_seq 没 rand var, 但有 hook + call
         self.assertIn("my_seq", result.stdout)
@@ -95,14 +95,14 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_class_filter_empty(self):
         """测试 randomize list --class 不存在的 class 返回 (none)"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH), "--class", "nonexistent"])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH), "--class", "nonexistent"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # 应该没东西
         self.assertIn("(none found)", result.stdout)
 
     def test_randomize_list_json_output(self):
         """测试 randomize list --json 输出 valid JSON"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH), "--json"])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH), "--json"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         data = json.loads(result.stdout)
         self.assertIn("rand_variables", data)
@@ -112,7 +112,7 @@ class TestRandomizeListCLI(unittest.TestCase):
 
     def test_randomize_list_json_content(self):
         """测试 randomize list --json 内容正确"""
-        result = _run_svq(["randomize", "list", "-f", str(FIXTURE_PATH), "--json"])
+        result = _run_svq(["exp", "randomize", "list", "-f", str(FIXTURE_PATH), "--json"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         data = json.loads(result.stdout)
 
@@ -140,13 +140,13 @@ class TestRandomizeExtractCLI(unittest.TestCase):
 
     def test_randomize_extract_help(self):
         """测试 randomize extract --help"""
-        result = _run_svq(["randomize", "extract", "--help"])
+        result = _run_svq(["exp", "randomize", "extract", "--help"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("constraint", result.stdout.lower())
 
     def test_randomize_extract_finds_inline_constraints(self):
         """测试 randomize extract 找到 inline constraint"""
-        result = _run_svq(["randomize", "extract", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "extract", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # constraint 表达式
         self.assertIn("addr", result.stdout)
@@ -157,21 +157,21 @@ class TestRandomizeExtractCLI(unittest.TestCase):
 
     def test_randomize_extract_target(self):
         """测试 randomize extract 显示 target receiver"""
-        result = _run_svq(["randomize", "extract", "-f", str(FIXTURE_PATH)])
+        result = _run_svq(["exp", "randomize", "extract", "-f", str(FIXTURE_PATH)])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # target 应该是 req
         self.assertIn("req", result.stdout)
 
     def test_randomize_extract_class_filter(self):
         """测试 randomize extract --class filter"""
-        result = _run_svq(["randomize", "extract", "-f", str(FIXTURE_PATH), "--class", "my_seq"])
+        result = _run_svq(["exp", "randomize", "extract", "-f", str(FIXTURE_PATH), "--class", "my_seq"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         # 应该能看到 constraint
         self.assertIn("addr", result.stdout)
 
     def test_randomize_extract_json_output(self):
         """测试 randomize extract --json 输出 valid JSON"""
-        result = _run_svq(["randomize", "extract", "-f", str(FIXTURE_PATH), "--json"])
+        result = _run_svq(["exp", "randomize", "extract", "-f", str(FIXTURE_PATH), "--json"])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         data = json.loads(result.stdout)
         self.assertIsInstance(data, list)
@@ -200,13 +200,13 @@ endmodule
 
     def test_randomize_list_on_empty(self):
         """测试空 SV file 不 crash"""
-        result = _run_svq(["randomize", "list", "-f", self.tmpfile.name])
+        result = _run_svq(["exp", "randomize", "list", "-f", self.tmpfile.name])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("(none found)", result.stdout)
 
     def test_randomize_extract_on_empty(self):
         """测试空 SV file 不 crash"""
-        result = _run_svq(["randomize", "extract", "-f", self.tmpfile.name])
+        result = _run_svq(["exp", "randomize", "extract", "-f", self.tmpfile.name])
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
         self.assertIn("(no", result.stdout)
 

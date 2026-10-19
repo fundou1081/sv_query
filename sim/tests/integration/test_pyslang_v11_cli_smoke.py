@@ -73,7 +73,7 @@ class TestV11CLISmoke:
         assert d["evidence"]["source_text"] == "data = din;"
 
     def test_verify_gap_evidence(self):
-        rc, out, _ = _run_cli("verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
+        rc, out, _ = _run_cli("exp", "verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
         for sig in d["top_signals"]:
@@ -83,7 +83,7 @@ class TestV11CLISmoke:
         pytest.fail("Expected at least one signal with evidence")
 
     def test_risk_analyze_evidence(self):
-        rc, out, _ = _run_cli("risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
+        rc, out, _ = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
         with_ev = [s for s in d["result"]["data_signals"] if s.get("evidence")]
@@ -106,7 +106,7 @@ class TestV11CLISmoke:
         assert len(with_ev) >= 1
 
     def test_cdc_analyze_evidence(self):
-        rc, out, _ = _run_cli("cdc", "analyze", "-f", TEST_CDC_FILE, "--evidence", "--json")
+        rc, out, _ = _run_cli("exp", "cdc", "analyze", "-f", TEST_CDC_FILE, "--evidence", "--json")
         assert rc == 0
         d = json.loads(out)
         paths = d["result"]["paths"]

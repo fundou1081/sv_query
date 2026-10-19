@@ -31,7 +31,7 @@ def test_json_output_pure_json():
     """[P1-6] --json output must be parseable as JSON without errors."""
     cmd = [
         sys.executable, str(RUN_CLI),
-        "protocol", "detect",
+        "exp", "protocol", "detect",
         "--protocol", "TL-UL",
         "--json",
         "-f", str(PROJECT_ROOT / "config" / "protocols" / "tlul.yaml"),
@@ -59,7 +59,7 @@ def test_analyzing_message_on_stderr():
     """[P1-6] 'Analyzing:' progress info must go to stderr, not stdout."""
     cmd = [
         sys.executable, str(RUN_CLI),
-        "protocol", "detect",
+        "exp", "protocol", "detect",
         "--protocol", "TL-UL",
         "--json",
         "-f", "/Users/fundou/my_dv_proj/OpenTitan/hw/dv/sv/sim_sram/tlul_sink.sv",

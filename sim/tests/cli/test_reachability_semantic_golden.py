@@ -39,7 +39,7 @@ def _run_svq(args):
 def _get_status(fixture, class_name):
     """Run reachability --json, return dict of var_name -> status."""
     result = _run_svq([
-        "randomize", "reachability",
+        "exp", "randomize", "reachability",
         "-f", str(fixture),
         "--class", class_name,
         "--json",

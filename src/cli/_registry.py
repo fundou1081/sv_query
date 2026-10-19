@@ -239,30 +239,6 @@ ALIASES: dict[str, str] = {
     "trace fanout": "loads",
     # [iter_248 T2] fix <x> 别名已删除: 诊断统一为 `diagnose <check>`, 只读
     # [iter_235 P3] exp 降级区收进 `svq exp ...` 前缀; 老路径保留为兼容别名
-    "protocol detect": "exp protocol detect",
-    "protocol show": "exp protocol show",
-    "protocol list": "exp protocol list",
-    "protocol semantics": "exp protocol semantics",
-    "handshake scan": "exp handshake scan",
-    "handshake analyze": "exp handshake analyze",
-    "handshake pair": "exp handshake pair",
-    "backpressure analyze": "exp backpressure analyze",
-    "backpressure deadlock": "exp backpressure deadlock",
-    "sva extract": "exp sva extract",
-    "sva coverage": "exp sva coverage",
-    "sva timing": "exp sva timing",
-    "coverage suggest": "exp coverage suggest",
-    "coverage gap": "exp coverage gap",
-    "coverage generate": "exp coverage generate",
-    "coverage analyze": "exp coverage analyze",
-    "verify gap": "exp verify gap",
-    "risk analyze": "exp risk analyze",
-    "randomize list": "exp randomize list",
-    "randomize extract": "exp randomize extract",
-    "randomize trace": "exp randomize trace",
-    "randomize reachability": "exp randomize reachability",
-    "cdc analyze": "exp cdc analyze",
-    "timing analyze": "exp timing analyze",
 }
 
 

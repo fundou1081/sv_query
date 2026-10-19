@@ -88,7 +88,7 @@ class TestTreeOutput:
     def test_cdc_works_with_tree_flag(self):
         """cdc 接受 --tree (即使短链)"""
         rc, out, _ = _run_cli(
-            "cdc", "analyze", "-f", str(REPO_ROOT / "sim" / "test_cdc.sv"),
+            "exp", "cdc", "analyze", "-f", str(REPO_ROOT / "sim" / "test_cdc.sv"),
             "--human", "--tree",
         )
         assert rc == 0

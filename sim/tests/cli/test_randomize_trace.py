@@ -38,14 +38,14 @@ class TestRandomizeTraceCLI(unittest.TestCase):
 
     def test_randomize_trace_help(self):
         """测试 randomize trace --help 返回 0 + description"""
-        result = _run_svq(["randomize", "trace", "--help"])
+        result = _run_svq(["exp", "randomize", "trace", "--help"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("randomize", result.stdout.lower())
 
     def test_randomize_trace_finds_calls(self):
         """测试 randomize trace 找到 randomize() calls"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body"])
@@ -57,7 +57,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_finds_hooks(self):
         """测试 randomize trace 找到 pre/post_randomize hooks"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body"])
@@ -71,7 +71,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_extracts_inline_constraint(self):
         """测试 randomize trace 提取 inline constraint"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body"])
@@ -85,7 +85,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_json_output(self):
         """测试 randomize trace --json 输出 valid JSON"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body",
@@ -100,7 +100,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_json_randomize_calls(self):
         """测试 randomize trace --json randomize_calls 完整"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body",
@@ -115,7 +115,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_unknown_class(self):
         """测试 randomize trace 不存在的 class 不 crash"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "nonexistent",
             "--method", "body"])
@@ -126,7 +126,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_no_strict(self):
         """测试 randomize trace  工作"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body"])
@@ -136,7 +136,7 @@ class TestRandomizeTraceCLI(unittest.TestCase):
     def test_randomize_trace_summary_line(self):
         """测试 randomize trace 输出有 summary line"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", str(FIXTURE_PATH),
             "--class", "my_seq",
             "--method", "body"])
@@ -165,7 +165,7 @@ endclass
     def test_trace_no_randomize(self):
         """测试 SV file 没 randomize() 时 trace 正常"""
         result = _run_svq([
-            "randomize", "trace",
+            "exp", "randomize", "trace",
             "-f", self.tmpfile.name,
             "--class", "simple",
             "--method", "do_something"])

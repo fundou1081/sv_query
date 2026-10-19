@@ -30,7 +30,7 @@ class TestCoverageGapCLI(unittest.TestCase):
         """Run svq command and return CompletedProcess"""
         # sim/tests/cli/ -> sim/tests/ -> sim/ -> project root -> src/
         src_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")
-        cmd = ["python", "-m", "cli.main", "coverage", "gap"] + args
+        cmd = ["python", "-m", "cli.main", "exp", "coverage", "gap"] + args
         result = subprocess.run(
             cmd,
             cwd=src_dir,
@@ -53,7 +53,7 @@ class TestCoverageGapCLI(unittest.TestCase):
     def test_coverage_gap_help(self):
         """[Golden] `coverage gap --help` should print usage info"""
         result = subprocess.run(
-            ["python", "-m", "cli.main", "coverage", "gap", "--help"],
+            ["python", "-m", "cli.main", "exp", "coverage", "gap", "--help"],
             cwd=os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"),
             capture_output=True,
             text=True,

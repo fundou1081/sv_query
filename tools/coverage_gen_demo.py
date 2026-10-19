@@ -134,7 +134,8 @@ def query_risk_json(
     #   小项目 (e.g. prim_max_tree) 的 pyslang 在内存碎片化/swap 压力下
     #   str(token) 返回非法 UTF-8 → UnicodeDecodeError → risk analyze 崩溃.
     #   原注释: [FIX 2026-07-05] 加 retry + 4GB reclaim (已废弃, 应移除).
-    args = [_sys.executable, "run_cli.py", "risk", "analyze", "--json"]
+    # [iter_259] 老路径 `risk analyze` 已删除(iter_259), 改走规范入口 `exp risk analyze`
+    args = [_sys.executable, "run_cli.py", "exp", "risk", "analyze", "--json"]
     # filelist 模式下不传 -f (避免 sv_query 重复加载 source 冲突)
     # file 只用于 RTL regex 解析 (width/typedef/param)
     if filelist:

@@ -154,7 +154,7 @@ class TestCrossVizConsistency(unittest.TestCase):
         pipeline = run_sv(["visualize", "pipeline", "-f", filelist,
                           "--module", target,
                           "--svg", "/tmp/_pipeline.dot"])
-        timing = run_sv(["timing", "analyze", "-f", filelist,
+        timing = run_sv(["exp", "timing", "analyze", "-f", filelist,
                          "--max-paths", "5"])
         return {
             "arch": parse_arch_summary(arch["text"]),
@@ -288,7 +288,7 @@ class TestCrossVizHelpEachOther(unittest.TestCase):
                 pipe = run_sv(["visualize", "pipeline", "-f", filelist,
                               "--module", tc,
                               "--svg", f"/tmp/_pipe_{tc}.dot"])
-                time = run_sv(["timing", "analyze", "-f", filelist,
+                time = run_sv(["exp", "timing", "analyze", "-f", filelist,
                               "--max-paths", "5"])
                 pipe_info = parse_pipeline(pipe["text"])
                 time_info = parse_timing(time["text"])

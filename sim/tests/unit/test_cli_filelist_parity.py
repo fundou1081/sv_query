@@ -102,8 +102,8 @@ def _setup_workdir(use_cond=False):
 
 def test_risk_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("risk", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("risk", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "risk", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "risk", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.returncode == 0, f"file mode fail: {r1.stderr[:200]}"
     assert r2.returncode == 0, f"filelist mode fail: {r2.stderr[:200]}"
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
@@ -111,7 +111,7 @@ def test_risk_file_vs_filelist_parity():
 
 
 def test_risk_no_args_errors():
-    r = _run("risk", "analyze", cwd="/tmp")
+    r = _run("exp", "risk", "analyze", cwd="/tmp")
     assert r.returncode != 0
     assert "--file" in r.stderr or "--filelist" in r.stderr
     print(f"✅ risk analyze no-args: exit {r.returncode}")
@@ -123,8 +123,8 @@ def test_risk_no_args_errors():
 
 def test_cdc_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("cdc", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("cdc", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "cdc", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "cdc", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.returncode == 0, f"file mode fail: {r1.stderr[:200]}"
     assert r2.returncode == 0, f"filelist mode fail: {r2.stderr[:200]}"
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
@@ -132,7 +132,7 @@ def test_cdc_file_vs_filelist_parity():
 
 
 def test_cdc_no_args_errors():
-    r = _run("cdc", "analyze", cwd="/tmp")
+    r = _run("exp", "cdc", "analyze", cwd="/tmp")
     assert r.returncode != 0
     print(f"✅ cdc analyze no-args: exit {r.returncode}")
 
@@ -143,8 +143,8 @@ def test_cdc_no_args_errors():
 
 def test_coverage_suggest_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("coverage", "suggest", "-f", sv, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("coverage", "suggest", "--filelist", fl, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "coverage", "suggest", "-f", sv, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "coverage", "suggest", "--filelist", fl, "--signal", "top.q", "--log-level", "ERROR", cwd=tmpdir)
     # coverage suggest may exit 1 (no atomic signals) but should not crash
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ coverage suggest: --file == --filelist")
@@ -199,15 +199,15 @@ def test_controlflow_conditions_file_vs_filelist_parity():
 
 def test_sva_extract_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("sva", "extract", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("sva", "extract", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "sva", "extract", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "sva", "extract", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.returncode == 0
     assert r2.returncode == 0
     # sva extract 输出结构一样, 但第一行 "SVA 提取: <file>" 可能不同
     # 因为 filelist 模式 sva extract 没有用 _build_tracer, 走的是 _read_filelist
     # 用 JSON 模式确保一致性
-    r1j = _run("sva", "extract", "-f", sv, "--json", "--log-level", "ERROR", cwd=tmpdir)
-    r2j = _run("sva", "extract", "--filelist", fl, "--json", "--log-level", "ERROR", cwd=tmpdir)
+    r1j = _run("exp", "sva", "extract", "-f", sv, "--json", "--log-level", "ERROR", cwd=tmpdir)
+    r2j = _run("exp", "sva", "extract", "--filelist", fl, "--json", "--log-level", "ERROR", cwd=tmpdir)
     assert r1j.returncode == 0
     assert r2j.returncode == 0
     assert r1j.stdout == r2j.stdout, f"file != filelist:\n{diff(r1j.stdout, r2j.stdout)}"
@@ -216,16 +216,16 @@ def test_sva_extract_file_vs_filelist_parity():
 
 def test_sva_coverage_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("sva", "coverage", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("sva", "coverage", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "sva", "coverage", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "sva", "coverage", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ sva coverage: --file == --filelist")
 
 
 def test_sva_timing_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("sva", "timing", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("sva", "timing", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "sva", "timing", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "sva", "timing", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ sva timing: --file == --filelist")
 
@@ -236,8 +236,8 @@ def test_sva_timing_file_vs_filelist_parity():
 
 def test_timing_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("timing", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("timing", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "timing", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "timing", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ timing analyze: --file == --filelist")
 
@@ -248,8 +248,8 @@ def test_timing_file_vs_filelist_parity():
 
 def test_verify_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("verify", "gap", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("verify", "gap", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("exp", "verify", "gap", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("exp", "verify", "gap", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ verify gap: --file == --filelist")
 

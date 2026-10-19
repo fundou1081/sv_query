@@ -59,7 +59,7 @@ CLI 已经长到 **74 个规范命令 + 30 个别名 = 104 个叶子**（默认�
 | T1 零风险 | ✅ iter_245 | `src` 183→164 文件 / 64,336→59,774 行 (−4,562)；3419 passed / 0 failed |
 | B4 统一输出层 | ✅ iter_246 | 7 份 `output_json` → 1 / `fail` 2→1 / 新增 R9 + 3 自检；剩 45 处内联 `json.dumps` 列为后续 |
 | T2 命令合并 | 🟡 进行中 | 已完成: `classes`→`class`、`diagnose` 4→1、`graph` 4→2、`instance`→`instances`。**经复核不再合并**: controlflow (schema 不同构) / snapshot show (单条 vs 全部) / view 叙述类 (arch/design/trace overview 输入完全不同) / paths+dataflow (**两套实现且一真一假**, 见 KNOWN_LIMITATIONS)。剩: `dev` 3→0 ✅ (iter_252)；别名收敛留版本边界 |
-| T3 结构性 | 🟡 进行中 | ✅ `semantic/trace.py` 1,835→1,081 (iter_253)；✅ `view/visualize.py` 2,376→70+5 模块 (iter_254)；✅ FSM 三件套提取 + **门面拆分否决** (iter_255, 实测中位数 10 行)。✅ elk_bridge: 908→858→**438 行** (iter_257 ctx) ; `viz_to_elk` 584→**521** (iter_258 helper) — 主体评估后不拆 (顺序相位 + 20 共享状态) / 剩: UnifiedTracer 3 个巨型私有方法 (backlog) |
+| T3 结构性 | 🟡 进行中 | ✅ `semantic/trace.py` 1,835→1,081 (iter_253)；✅ `view/visualize.py` 2,376→70+5 模块 (iter_254)；✅ FSM 三件套提取 + **门面拆分否决** (iter_255, 实测中位数 10 行)。✅ elk_bridge: 908→858→**438 行** (iter_257 ctx) ; `viz_to_elk` 584→**521** (iter_258 helper) — 主体评估后不拆 (顺序相位 + 20 共享状态) / 别名 26→**2** (iter_259, 老路径彻底删除)。剩: UnifiedTracer 3 个巨型私有方法 (backlog) |
 
 **T1 具体产出**：归档 16 个历史渲染器 (3,248 行) + 孤立模块 (1,026 行) → `docs/archive/2026-10-19-src-archived/`；
 删 `LoadExtractor._get_signal` (285 行)；删空包 `cli/commands/`；修 4 条 graph 过期 note；

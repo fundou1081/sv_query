@@ -37,7 +37,7 @@ class TestCoverageGenerateCommand:
 
     def test_subcommand_registered(self):
         """coverage --help 列出 generate 子命令."""
-        rc, out, _ = _run_cli("coverage", "--help")
+        rc, out, _ = _run_cli("exp", "coverage", "--help")
         assert rc == 0
         assert "generate" in out
         assert "suggest" in out  # 已有
@@ -45,7 +45,7 @@ class TestCoverageGenerateCommand:
 
     def test_generate_help(self):
         """coverage generate --help 显示所有 flag."""
-        rc, out, _ = _run_cli("coverage", "generate", "--help")
+        rc, out, _ = _run_cli("exp", "coverage", "generate", "--help")
         assert rc == 0
         for flag in ["--file", "-f", "--signal", "-s", "--related", "-r",
                      "--filelist", "--include", "-I", "--module",
@@ -62,7 +62,7 @@ class TestCoverageGenerateSingleFile:
     def test_state_q_with_related(self):
         """state_q (FSM, 3-bit) + 2 related → covergroup 含 cross."""
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/openTitan_validation.sv",
             "-s", "state_q",
             "-r", "mode_i", "-r", "valid_i",
@@ -81,7 +81,7 @@ class TestCoverageGenerateSingleFile:
     def test_data_i_32bit_input(self):
         """data_i (32-bit input port) → no iff, 32-bit DATA bins."""
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/openTitan_validation.sv",
             "-s", "data_i",
         )
@@ -105,7 +105,7 @@ class TestCoverageGenerateFilelist:
         if not fl.exists() or not Path("/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v").exists():
             pytest.skip("picorv32 not available")
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "/Users/fundou/my_dv_proj/openrtl/picorv32/picorv32.v",
             "--filelist", str(fl),
             "-s", "mem_addr",
@@ -123,7 +123,7 @@ class TestCoverageGenerateFilelist:
         if not fl.exists() or not Path("/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv").exists():
             pytest.skip("OpenTitan not available")
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "/Users/fundou/my_dv_proj/openrtl/opentitan/hw/ip/prim/rtl/prim_max_tree.sv",
             "--filelist", str(fl),
             "-s", "max_idx_o",
@@ -137,7 +137,7 @@ class TestCoverageGenerateFilelist:
         """[V6.9] 降低内存需求: 用 sync_fifo 代替 NaplesPU 项目."""
         fl = PROJECT_ROOT / "sim/tests/pyslang_type_fixtures/industrial_filelists/light/sync_fifo.f"
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/integration/dataflow_fixtures/sync_fifo.sv",
             "--filelist", str(fl),
             "-s", "count_q",
@@ -156,7 +156,7 @@ class TestCoverageGenerateOutput:
         """--output writes valid SystemVerilog to file."""
         out_file = tmp_path / "cg_state.sv"
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/openTitan_validation.sv",
             "-s", "state_q",
             "-o", str(out_file),
@@ -175,7 +175,7 @@ class TestCoverageGenerateOutput:
         """--output 相对路径: 用 cwd 解析."""
         # 切到 tmp_path 跑
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", str(PROJECT_ROOT / "sim/openTitan_validation.sv"),
             "-s", "data_i",
             "-o", "cg_data_i.sv",
@@ -196,7 +196,7 @@ class TestCoverageGenerateNoHeader:
     def test_no_header_strips_meta(self):
         """--no-header → 去掉 risk score / fan_in / generator 行."""
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/openTitan_validation.sv",
             "-s", "state_q",
             "--no-header",
@@ -221,7 +221,7 @@ class TestCoverageGenerateErrors:
     def test_missing_required_signal_arg(self):
         """没 -s → typer 报 missing option."""
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/openTitan_validation.sv",
         )
         assert rc != 0  # typer exit 2
@@ -230,7 +230,7 @@ class TestCoverageGenerateErrors:
     def test_missing_file_arg(self):
         """没 -f 也没 --filelist → 报 ERROR."""
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-s", "state_q",
         )
         assert rc != 0
@@ -246,7 +246,7 @@ class TestCoverageGenerateCrossModule:
     def test_submodule_1level(self):
         """1 层 submodule: u_middle.pipe_q (32-bit)."""
         rc, out, _ = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
             "-s", "u_middle.pipe_q",
         )
@@ -259,7 +259,7 @@ class TestCoverageGenerateCrossModule:
     def test_submodule_2level_nested(self):
         """2 层 nested submodule: u_middle.u_sub.data_o."""
         rc, out, _ = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
             "-s", "u_middle.u_sub.data_o",
         )
@@ -271,7 +271,7 @@ class TestCoverageGenerateCrossModule:
     def test_submodule_clog2_across_modules(self):
         """2 层 nested + $clog2(4)=2-bit: u_middle.u_sub.depth_idx_o."""
         rc, out, _ = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
             "-s", "u_middle.u_sub.depth_idx_o",
         )
@@ -284,7 +284,7 @@ class TestCoverageGenerateCrossModule:
     def test_submodule_with_related_filters_data(self):
         """Cross 跨 module: related 含 DATA (din 32-bit) 应被过滤, 只留 CONTROL (enable_i)."""
         rc, out, _ = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
             "-s", "u_middle.u_sub.depth_idx_o",
             "-r", "enable_i",  # CONTROL 1-bit
@@ -298,7 +298,7 @@ class TestCoverageGenerateCrossModule:
     def test_nonexistent_submodule_prints_error(self):
         """不存在的 submodule path → 工具 graceful (返回 None width, 1-bit fallback)."""
         rc, out, _ = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "-f", "sim/tests/pyslang_type_fixtures/cross_module_hier.sv",
             "-s", "u_nonexistent.signal",
         )
@@ -324,7 +324,7 @@ class TestPackedStructFieldBins:
         """packed struct 字段 bins 出现在 covergroup body."""
         from pathlib import Path as P
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/type_taxonomy.f",
             "-f", str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")),
             "-s", "instr_i",
@@ -344,7 +344,7 @@ class TestPackedStructFieldBins:
         """
         from pathlib import Path as P
         rc, out, err = _run_cli(
-            "coverage", "generate",
+            "exp", "coverage", "generate",
             "--filelist", "sim/tests/pyslang_type_fixtures/industrial_filelists/type_taxonomy.f",
             "-f", str(P("sim/tests/pyslang_type_fixtures/type_taxonomy.sv")),
             "-s", "word_u_i",

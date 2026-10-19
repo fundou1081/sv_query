@@ -941,7 +941,7 @@ class TestCLICoverageSuggest(unittest.TestCase):
         # 跑 CLI
         result = subprocess.run(
             [
-                sys.executable, "run_cli.py", "coverage", "suggest",
+                sys.executable, "run_cli.py", "exp", "coverage", "suggest",
                 "-f", sv_file,
                 "--signal", "data_path.din",
                 "--max-signals", "5",
@@ -1467,7 +1467,7 @@ class TestCLICoverageSuggestJSONV2C(unittest.TestCase):
         if not os.path.exists(sv_file):
             self.skipTest(f"SV file not found: {sv_file}")
         cmd = [
-            sys.executable, "run_cli.py", "coverage", "suggest",
+            sys.executable, "run_cli.py", "exp", "coverage", "suggest",
             "-f", sv_file,
             *args,
         ]
@@ -1769,7 +1769,7 @@ class TestCLIMultiSignalsV2B(unittest.TestCase):
         if not os.path.exists(sv_file):
             self.skipTest(f"SV file not found: {sv_file}")
         cmd = [
-            sys.executable, "run_cli.py", "coverage", "suggest",
+            sys.executable, "run_cli.py", "exp", "coverage", "suggest",
             "-f", sv_file,
             *args,
         ]
@@ -2187,7 +2187,7 @@ class TestCLIAstUtilizationV2A2(unittest.TestCase):
         if not os.path.exists(sv_file):
             self.skipTest(f"SV file not found: {sv_file}")
         cmd = [
-            sys.executable, "run_cli.py", "coverage", "suggest",
+            sys.executable, "run_cli.py", "exp", "coverage", "suggest",
             "-f", sv_file,
             *args,
         ]

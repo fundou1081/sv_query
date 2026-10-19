@@ -39,14 +39,14 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
 
     def test_reachability_help(self):
         """测试 reachability --help"""
-        result = _run_svq(["randomize", "reachability", "--help"])
+        result = _run_svq(["exp", "randomize", "reachability", "--help"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("reachability", result.stdout.lower())
 
     def test_reachability_detects_alive(self):
         """测试 reachability 检测 alive rand vars (driver consumes)"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DRIVER_FIXTURE),
             "--class", "packet",
         ])
@@ -59,7 +59,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_detects_dead(self):
         """测试 reachability 检测 dead rand vars"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DEAD_FIXTURE),
             "--class", "packet",
         ])
@@ -72,7 +72,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_randomized_in(self):
         """测试 reachability 显示 randomized_in (哪 randomize call)"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(PACKET_FIXTURE),
             "--class", "packet",
         ])
@@ -87,7 +87,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_json_output(self):
         """测试 reachability --json 输出 valid JSON"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DEAD_FIXTURE),
             "--class", "packet",
             "--json",
@@ -103,7 +103,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_json_content_dead(self):
         """测试 reachability --json 正确标 dead"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DEAD_FIXTURE),
             "--class", "packet",
             "--json",
@@ -127,7 +127,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_json_content_driver(self):
         """测试 reachability --json 全 alive (driver fixture)"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DRIVER_FIXTURE),
             "--class", "packet",
             "--json",
@@ -143,7 +143,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_unknown_class(self):
         """测试 reachability 不存在的 class exit 1"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(PACKET_FIXTURE),
             "--class", "nonexistent_class_xyz",
         ])
@@ -153,7 +153,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_json_unknown_class(self):
         """测试 reachability --json unknown class 也有 JSON error"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(PACKET_FIXTURE),
             "--class", "nonexistent_class_xyz",
             "--json",
@@ -165,7 +165,7 @@ class TestRandomizeReachabilityCLI(unittest.TestCase):
     def test_reachability_summary(self):
         """测试 reachability 输出 summary"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(DRIVER_FIXTURE),
             "--class", "packet",
         ])

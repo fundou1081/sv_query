@@ -297,14 +297,14 @@ def test_strict_default_12_commands_exits_zero():
     # 注意: visualize 用 --html 需要特定参数顺序, 单独跑 (不能加 --log-level)
     commands = [
         (["stats"],                              ["--log-level", "ERROR"]),
-        (["risk", "analyze"],                    ["--log-level", "ERROR"]),
-        (["cdc",  "analyze"],                    ["--log-level", "ERROR"]),
-        (["sva",  "extract"],                    ["--log-level", "ERROR"]),
-        (["sva",  "coverage"],                   ["--log-level", "ERROR"]),
-        (["sva",  "timing"],                     ["--log-level", "ERROR"]),
-        (["timing", "analyze"],                  ["--log-level", "ERROR"]),
-        (["verify", "gap"],                      ["--log-level", "ERROR"]),
-        (["coverage", "suggest", "-s", "synchronizer.sync0_o"], ["--log-level", "ERROR"]),
+        (["exp", "risk", "analyze"],                    ["--log-level", "ERROR"]),
+        (["exp", "cdc",  "analyze"],                    ["--log-level", "ERROR"]),
+        (["exp", "sva",  "extract"],                    ["--log-level", "ERROR"]),
+        (["exp", "sva",  "coverage"],                   ["--log-level", "ERROR"]),
+        (["exp", "sva",  "timing"],                     ["--log-level", "ERROR"]),
+        (["exp", "timing", "analyze"],                  ["--log-level", "ERROR"]),
+        (["exp", "verify", "gap"],                      ["--log-level", "ERROR"]),
+        (["exp", "coverage", "suggest", "-s", "synchronizer.sync0_o"], ["--log-level", "ERROR"]),
         (["controlflow", "analyze", "synchronizer.sync0_o"],   ["--log-level", "ERROR"]),
         (["dataflow", "analyze", "synchronizer.async_i", "synchronizer.sync0_o"], ["--log-level", "ERROR"]),
     ]
