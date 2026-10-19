@@ -133,11 +133,12 @@ class TestGraphFilelist:
         assert d["params"]["filelist"] == SCHED_FL
         assert d["params"]["file"] is None            # 不再输出字符串 "None"
 
-    def test_graph_edges_and_find_with_filelist(self):
+    def test_graph_edges_and_match_with_filelist(self):
         d = _json("graph", "edges", "--filelist", SCHED_FL, "--json")
         assert d["ok"] is True and len(d["result"]["edges"]) > 0
-        d2 = _json("graph", "find", "clk", "--filelist", SCHED_FL, "--json")
-        assert d2["ok"] is True
+        # [iter_249] `graph find` 已并入 `graph nodes --match`
+        d2 = _json("graph", "nodes", "--match", "clk", "--filelist", SCHED_FL, "--json")
+        assert d2["ok"] is True and d2["result"]["total"] > 0
 
     def test_graph_single_file_still_works(self):
         d = _json("graph", "nodes", "-f", INST_DEMO, "--json")

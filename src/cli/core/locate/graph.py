@@ -18,106 +18,23 @@ from cli._output import emit_json
 graph_app = typer.Typer(help="Inspect signal graph")
 
 
-@graph_app.command("dump")
-def dump(
-    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
-    module: str | None = typer.Option(None, "--module", "-m", help="Filter by module name"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
-    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
-) -> None:
-    """Dump the signal graph as JSON"""
-    try:
-        tracer = _build_tracer(file=file, filelist=filelist)
-        graph = tracer.build_graph()
-
-        nodes = []
-        for nid in graph.nodes():
-            node = graph.get_node(nid)
-            if node:
-                if module and node.module != module:
-                    continue
-                # [FIX 2026-07-06] TraceNode 没 expression/operands/signals/function_name/condition
-                # etc 字段 — 它们存到 node.extra dict. 用 .get() 而非直接 .X attribute (避免 AttributeError)
-                extra = node.extra if hasattr(node, 'extra') else {}
-                nodes.append(
-                    {
-                        "id": nid,
-                        "name": node.name,
-                        "kind": node.kind.name if hasattr(node.kind, "name") else str(node.kind),
-                        "module": node.module,
-                        "width": node.width,
-                        "expression": extra.get("expression", ""),
-                        "operands": extra.get("operands", []),
-                        "signals": extra.get("signals", []),
-                        "function_name": extra.get("function_name", ""),
-                        "condition": extra.get("condition", ""),
-                        "true_branch": extra.get("true_branch", ""),
-                        "false_branch": extra.get("false_branch", ""),
-                    }
-                )
-
-        edges = []
-        for src, dst in graph.edges():
-            edge = graph.get_edge(src, dst)
-            if edge:
-                # [FIX 2026-07-06] edge.function_return 现在是真 attribute (之前 fix 加),
-                # 但用 getattr 防 future 移除
-                edges.append(
-                    {
-                        "src": src,
-                        "dst": dst,
-                        "kind": edge.kind.name if hasattr(edge.kind, "name") else str(edge.kind),
-                        "condition": edge.condition,
-                        "function_return": getattr(edge, "function_return", False),
-                    }
-                )
-
-        data = {
-            "ok": True,
-            "command": "graph_dump",
-            "params": {"file": str(file) if file else None, "filelist": filelist, "module": module},
-            "result": {
-                "nodes": nodes,
-                "edges": edges,
-                "total_nodes": len(nodes),
-                "total_edges": len(edges),
-            },
-            "errors": [],
-        }
-
-        if json_output:
-            emit_json(data, pretty)
-        else:
-            print(f"Graph dump: {len(nodes)} nodes, {len(edges)} edges")
-            if pretty:
-                emit_json(data, pretty)
-            else:
-                print(f"Nodes: {[n['id'] for n in nodes[:20]]}{'...' if len(nodes) > 20 else ''}")
-                edge_strs = [f"{e['src']}->{e['dst']}" for e in edges[:20]]
-                print(f"Edges: {edge_strs}{'...' if len(edges) > 20 else ''}")
-
-    except CompilationError as e:
-        handle_compilation_error(e)
-        return
-    except Exception as e:
-        data = {"ok": False, "command": "graph_dump", "error": str(e)}
-        if json_output:
-            emit_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1) from None
-
-
 @graph_app.command("nodes")
 def list_nodes(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
     kind: str | None = typer.Option(None, "--kind", "-k", help="Filter by node kind (SIGNAL, EXPRESSION, etc)"),
     module: str | None = typer.Option(None, "--module", "-m", help="Filter by module name"),
+    match: str | None = typer.Option(None, "--match", help="[iter_249] 只保留 id 含该子串的节点 "
+                                                  "(原 `graph find`, 大小写不敏感)"),
+    detail: bool = typer.Option(False, "--detail", help="[iter_249] 附带表达式/条件等富字段 "
+                                                       "(原 `graph dump` 的节点部分)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
 ) -> None:
-    """List all nodes in the graph"""
+    """列图节点 (可按 kind/module/子串过滤; --detail 给富字段)。
+
+    [iter_249 T2] 合并原 `graph find` (`--match`) 与 `graph dump` 的节点视图 (`--detail`);
+    整图导出请用 `graph nodes --detail --json` + `graph edges --json`。
+    """
     try:
         tracer = _build_tracer(file=file, filelist=filelist)
         graph = tracer.build_graph()
@@ -132,20 +49,35 @@ def list_nodes(
                     continue
                 if module and node.module != module:
                     continue
+                if match and match.lower() not in nid.lower():
+                    continue
 
-                nodes.append(
-                    {
-                        "id": nid,
-                        "name": node.name,
-                        "kind": node_kind,
-                        "module": node.module,
-                    }
-                )
+                item = {
+                    "id": nid,
+                    "name": node.name,
+                    "kind": node_kind,
+                    "module": node.module,
+                }
+                if detail:
+                    # TraceNode 无这些属性 —— 都在 node.extra 里 (原 dump 的做法)
+                    extra = node.extra if hasattr(node, "extra") else {}
+                    item.update({
+                        "width": node.width,
+                        "expression": extra.get("expression", ""),
+                        "operands": extra.get("operands", []),
+                        "signals": extra.get("signals", []),
+                        "function_name": extra.get("function_name", ""),
+                        "condition": extra.get("condition", ""),
+                        "true_branch": extra.get("true_branch", ""),
+                        "false_branch": extra.get("false_branch", ""),
+                    })
+                nodes.append(item)
 
         data = {
             "ok": True,
             "command": "list_nodes",
-            "params": {"file": str(file) if file else None, "filelist": filelist, "kind": kind, "module": module},
+            "params": {"file": str(file) if file else None, "filelist": filelist,
+                       "kind": kind, "module": module, "match": match, "detail": detail},
             "result": {"nodes": nodes, "total": len(nodes)},
             "errors": [],
         }
@@ -224,59 +156,6 @@ def list_edges(
         return
     except Exception as e:
         data = {"ok": False, "command": "list_edges", "error": str(e)}
-        if json_output:
-            emit_json(data)
-        else:
-            print(f"Error: {e}", file=sys.stderr)
-        raise typer.Exit(code=1) from None
-
-
-@graph_app.command("find")
-def find(
-    pattern: str = typer.Argument(..., help="Pattern to search (partial match)"),
-    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: str = typer.Option(None, "--filelist", help="[iter_236 1a] filelist (.f/.fl) 多文件项目"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
-) -> None:
-    """Find nodes matching a pattern"""
-    try:
-        tracer = _build_tracer(file=file, filelist=filelist)
-        graph = tracer.build_graph()
-
-        matches = []
-        for nid in graph.nodes():
-            if pattern.lower() in nid.lower():
-                node = graph.get_node(nid)
-                if node:
-                    matches.append(
-                        {
-                            "id": nid,
-                            "name": node.name,
-                            "kind": node.kind.name if hasattr(node.kind, "name") else str(node.kind),
-                            "module": node.module,
-                        }
-                    )
-
-        data = {
-            "ok": True,
-            "command": "find",
-            "params": {"pattern": pattern, "file": str(file) if file else None, "filelist": filelist},
-            "result": {"matches": matches, "total": len(matches)},
-            "errors": [],
-        }
-
-        if json_output:
-            emit_json(data)
-        else:
-            print(f"Found {len(matches)} matches for '{pattern}':")
-            for m in matches:
-                print(f"  [{m['kind']}] {m['id']} ({m['module']})")
-
-    except CompilationError as e:
-        handle_compilation_error(e)
-        return
-    except Exception as e:
-        data = {"ok": False, "command": "find", "error": str(e)}
         if json_output:
             emit_json(data)
         else:
