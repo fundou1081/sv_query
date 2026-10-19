@@ -29,7 +29,7 @@
 | 命令 | 契约 |
 |---|---|
 | `svq instances [--module] [--depth]` | 实例列表 (full_path / module_type / parent), 支持 `--filelist` |
-| `svq instance <路径>` | 详情 + 子实例 + 端口 (方向/位宽/内部信号) |
+| `svq instance <路径>` | 详情 + 子实例 + 端口 (方向/位宽/内部信号) — **[iter_250] 已并入 `svq instances <路径>`** |
 | `svq connections <实例路径\|模块名>` | 实例→端口映射 / 模块→四类边; 带 `resolved_as` |
 | `svq hierarchy [--module] [--depth]` | 层级树 (机器可读版 `arch show`) |
 

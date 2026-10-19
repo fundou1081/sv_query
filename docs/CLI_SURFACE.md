@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **68**
-- 按层: `core`=28, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=16, `locate`=5, `diagnose`=1, `state`=6
+- 叶子命令总数: **67**
+- 按层: `core`=27, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=15, `locate`=5, `diagnose`=1, `state`=6
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (28 个)
+## `core` (27 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -36,8 +36,7 @@
 | `dataflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源→目标路径 |
 | `drivers` | `trace fanin` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 谁驱动这个信号 (上游; DRIVER 边反向遍历); 兼容别名 trace fanin |
 | `hierarchy` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 实例层级树 (机器可读版 arch show) |
-| `instance` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 单实例详情: 类型/父/子/端口(方向+位宽+内部信号) |
-| `instances` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 列出模块实例 (full_path/module_type/parent); 支持 --filelist |
+| `instances` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist |
 | `loads` | `trace fanout` | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout |
 | `params` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 实例的**生效**参数值 (含 is_overridden: 区分 override 与默认) |
 | `paths` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 图上路径 (跨模块端口跳转; --all 枚举全部, 有上限) |

@@ -71,7 +71,7 @@ from src.cli.exp.struct.timing import timing_app
 from cli.core.semantic.trace import trace_app
 from cli.core.semantic.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
 from cli.core.semantic.instances import (  # [iter_236 1a]
-    instances_cmd, instance_cmd, connections_cmd, hierarchy_cmd,
+    instances_cmd, connections_cmd, hierarchy_cmd,
 )
 from cli.core.semantic.params import params_cmd       # [iter_237]
 from cli.core.semantic.ports import ports_cmd         # [iter_237]
@@ -95,8 +95,7 @@ app.add_typer(trace_app, name="trace")
 # [iter_231 P1] 语义 core 的规范入口 (顶层): 关系名而非方向名 —— agent 更易选对。
 # 老名 `trace fanin` / `trace fanout` 保留为兼容别名 (同一实现)。
 # [iter_236 1a] 实例/层级查询 (agent 理解架构的第一步; 只读 + JSON)
-app.command("instances", help="[规范入口] 列出模块实例 (--json: full_path/module_type/parent)")(instances_cmd)
-app.command("instance", help="[规范入口] 单个实例详情 (类型/父/子/端口/位宽)")(instance_cmd)
+app.command("instances", help="[规范入口] 列出实例; 给实例路径 → 详情 (类型/父/子/端口)")(instances_cmd)
 app.command("connections", help="[规范入口] 连接: 实例端口↔内部信号 / 模块四类边")(connections_cmd)
 app.command("hierarchy", help="[规范入口] 实例层级树 (机器可读版 arch show)")(hierarchy_cmd)
 # [iter_237] 语义查询补全 (参数 override / 端口总览 / 跨模块路径 / class)

@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-19 GMT+8 (iter_249: T2-c graph 4→2)
+> **最后更新**: 2026-10-19 GMT+8 (iter_250: T2-d instance→instances)
 
 ---
 
@@ -44,7 +44,8 @@
 `fail` 2→1，删 6 个无用 `import json`；新增检查规则 **R9**（禁止本地定义输出 helper）+ 3 条自检；全量 **3422 passed**。
 **T2 ✅ 进行中**: `classes` → `class`（iter_247，74→73）；`diagnose` 4 项检查合成 `diagnose <check>` + 删 `fix` 别名（iter_248，73→70，叶子 96）。
 **T2-c ✅ (iter_249)**: `graph` 4→2 —— `find`→`nodes --match`, `dump`→`nodes --detail`。
-累计：规范命令 **74→68**、别名 **30→22**、默认可见 **47→41**、叶子 **104→94**。
+**T2-d ✅ (iter_250)**: `instance`→`instances <path>`；顺带发现 `paths` 与 `dataflow analyze` 是两套路径实现且一真一假（已登记 KNOWN_LIMITATIONS §3.3-3）。
+累计：规范命令 **74→67**、别名 **30→22**、默认可见 **47→40**、叶子 **104→93**。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。
 **结论: 没有 P0**（分层方向是对的: 无反向依赖 / 无裸 except / 单一注册表 / 只读证明都在生效）；问题是规模与表面积:
