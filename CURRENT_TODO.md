@@ -45,9 +45,9 @@
 **T2 ✅ 进行中**: `classes` → `class`（iter_247，74→73）；`diagnose` 4 项检查合成 `diagnose <check>` + 删 `fix` 别名（iter_248，73→70，叶子 96）。
 **T2-c ✅ (iter_249)**: `graph` 4→2 —— `find`→`nodes --match`, `dump`→`nodes --detail`。
 **T2-d ✅ (iter_250)**: `instance`→`instances <path>`；顺带发现 `paths` 与 `dataflow analyze` 是两套路径实现且一真一假（已登记 KNOWN_LIMITATIONS §3.3-3）。
-**T2-e ✅ (iter_251)**: 10 个历史 exp 顶层组从 `--help` 隐藏（仍可调用）—— 可见顶层组 **34→24**。
+**T2-e ✅ (iter_251)**: 10 个历史 exp 顶层组从 `--help` 隐藏（仍可调用）—— 可见顶层条目 **33→23**。
 **T2-f ✅ (iter_252)**: 删除 `dev` 层 `expression` 3 命令（模块归档）—— dev 层清零。
-累计：规范命令 **74→64**、别名 **26**、默认可见 **47→37**、叶子 **90**、可见组 **34→24**。
+累计：规范命令 **74→64**、别名 **26**、默认可见 **47→40**、叶子 **90**、可见条目 **33→23**。
 
 **T3-3 起手 ✅ (iter_253)**: `semantic/trace.py` 1,835→**1,081 行**，拆出 `trace_common.py`(298) / `trace_evidence.py`(219) / `trace_overview.py`(321)。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
