@@ -80,7 +80,7 @@ class TestHumanOutput:
         assert "when" in out
 
     def test_cdc_human_has_arrow(self):
-        rc, out, _ = _run_cli("cdc", "analyze", "-f", TEST_CDC_FILE, "--human")
+        rc, out, _ = _run_cli("exp", "cdc", "analyze", "-f", TEST_CDC_FILE, "--human")
         assert rc == 0
         assert "→" in out
         # 应有 NO SYNC / SYNC 标
@@ -108,7 +108,7 @@ class TestHumanOutput:
     def test_human_with_evidence_works(self):
         """--human + --evidence 同时给, 应都生效"""
         rc, out, _ = _run_cli(
-            "cdc", "analyze", "-f", TEST_CDC_FILE,
+            "exp", "cdc", "analyze", "-f", TEST_CDC_FILE,
             "--human", "--evidence",
         )
         assert rc == 0

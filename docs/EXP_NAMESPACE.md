@@ -15,10 +15,11 @@
 
 **不在 exp**: `core` (只读事实与语义) / `view` (人眼图与叙述) / `dev` (内部调试) / `out` (会写文件, 移出 CLI)。
 
-**老路径 (iter_251 起)**: 10 个历史顶层组 (`protocol` / `handshake` / `backpressure` /
-`coverage` / `randomize` / `risk` / `sva` / `verify` / `cdc` / `timing`) **仍可调用, 但已从
-`--help` 隐藏** (`hidden=True`)。规范入口是 `svq exp <组> <子>`。
-彻底删除需要更新约 151 处测试调用 → 留到下一个 minor 版本边界执行。
+**老路径已删除 (iter_259)**: 10 个历史顶层组 (`protocol` / `handshake` / `backpressure` /
+`coverage` / `randomize` / `risk` / `sva` / `verify` / `cdc` / `timing`) 已**彻底移除**。
+规范入口只有 `svq exp <组> <子>`。删除时同步改写了 ~151 处测试调用，并发现 1 处**内部工具依赖**
+(`tools/coverage_gen_demo.py` 会 shell out 到 `run_cli.py risk analyze`)。
+历史: iter_251 先 `hidden=True` 隐藏 → iter_259 删除。
 
 ## 2. exp 的五条硬约束 (缺一不可, 否则"降级"只是改名)
 

@@ -36,7 +36,7 @@ def _run_svq(args):
 def _get_reachability_status(fixture_path, class_name):
     """Run reachability --json, return dict of var_name -> status."""
     result = _run_svq([
-        "randomize", "reachability",
+        "exp", "randomize", "reachability",
         "-f", str(fixture_path),
         "--class", class_name,
         "--json",
@@ -77,7 +77,7 @@ class TestReachabilityInheritance(unittest.TestCase):
     def test_inheritance_alive_count(self):
         """inheritance 总 alive 跟 dead count 跟 expected match"""
         result = _run_svq([
-            "randomize", "reachability",
+            "exp", "randomize", "reachability",
             "-f", str(FIXTURE_DIR / "inheritance.sv"),
             "--class", "extended_packet",
             "--json",
@@ -253,7 +253,7 @@ class TestReachabilityFixturesOverview(unittest.TestCase):
         """每个 fixture 应该返回 valid JSON"""
         for fixture, cls, _, _ in self.FIXTURES:
             result = _run_svq([
-                "randomize", "reachability",
+                "exp", "randomize", "reachability",
                 "-f", str(FIXTURE_DIR / fixture),
                 "--class", cls,
                 "--json",
@@ -266,7 +266,7 @@ class TestReachabilityFixturesOverview(unittest.TestCase):
         """每个 fixture 应该匹配 expected alive_count / dead_count"""
         for fixture, cls, expected_alive, expected_dead in self.FIXTURES:
             result = _run_svq([
-                "randomize", "reachability",
+                "exp", "randomize", "reachability",
                 "-f", str(FIXTURE_DIR / fixture),
                 "--class", cls,
                 "--json",

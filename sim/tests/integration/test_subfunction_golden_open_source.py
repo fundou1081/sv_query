@@ -104,23 +104,23 @@ _GOLDEN_RUNNERS = {
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "sva_extract": _make_runner(lambda p: [
-        "sva", "extract",
+        "exp", "sva", "extract",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "sva_coverage": _make_runner(lambda p: [
-        "sva", "coverage",
+        "exp", "sva", "coverage",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "timing_analyze": _make_runner(lambda p: [
-        "timing", "analyze",
+        "exp", "timing", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "cdc_analyze": _make_runner(lambda p: [
-        "cdc", "analyze",
+        "exp", "cdc", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--json"]),
     "risk_analyze": _make_runner(lambda p: [
-        "risk", "analyze",
+        "exp", "risk", "analyze",
         "--filelist", STRICT_UART_FILELIST if p == "strict_uart" else PRIM_ARBITER_FILELIST,
         "--summary", "--json"]),
     "controlflow_analyze": _make_runner(lambda p: [

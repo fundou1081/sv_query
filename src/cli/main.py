@@ -128,14 +128,9 @@ exp_app.add_typer(timing_app, name="timing")
 app.add_typer(exp_app, name="exp")
 
 # ---- 兼容别名 (老路径) ----
-# [iter_251] 老路径仍可调用, 但**从 --help 隐藏** (hidden=True): 它们只是历史入口,
-# 规范入口是 `svq exp <组> <子>`. 彻底删除要更新 ~151 处测试调用, 留给版本边界。
-for _legacy_name, _legacy_app in (
-    ("risk", risk_app), ("sva", sva_app), ("timing", timing_app), ("cdc", cdc_app),
-    ("coverage", coverage_app), ("verify", verify_app), ("backpressure", backpressure_app),
-    ("handshake", handshake_app), ("protocol", protocol_app), ("randomize", randomize_app),
-):
-    app.add_typer(_legacy_app, name=_legacy_name, hidden=True)
+# [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):
+# 规范入口只有 `svq exp <组> <子>`。测试调用点已同步改写 (~151 处)。
+# 如需恢复, 见 git 历史与 docs/EXP_NAMESPACE.md。
 app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
 app.add_typer(design_app, name="design")

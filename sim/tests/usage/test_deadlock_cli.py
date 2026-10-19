@@ -43,7 +43,7 @@ def _run(args: list[str], timeout: int = 60) -> tuple[int, str, str]:
 
 
 def test_cli_deadlock_help():
-    rc, stdout, stderr = _run(["backpressure", "deadlock", "--help"])
+    rc, stdout, stderr = _run(["exp", "backpressure", "deadlock", "--help"])
     assert rc == 0
     assert "--protocol" in stdout
     assert "--json" in stdout
@@ -52,7 +52,7 @@ def test_cli_deadlock_help():
 
 def test_cli_deadlock_missing_file():
     """没传 --file/--filelist 应该报错"""
-    rc, stdout, stderr = _run(["backpressure", "deadlock", "-p", "TL-UL"])
+    rc, stdout, stderr = _run(["exp", "backpressure", "deadlock", "-p", "TL-UL"])
     assert rc != 0
     combined = stdout + stderr
     assert "Error" in combined or "need" in combined
@@ -62,7 +62,7 @@ def test_cli_deadlock_missing_protocol():
     """协议名错应该报错"""
     _require_filelist(NAPLES_UART_F)
     rc, stdout, stderr = _run([
-        "backpressure", "deadlock",
+        "exp", "backpressure", "deadlock",
         "--filelist", str(NAPLES_UART_F),
         "-p", "DOES_NOT_EXIST",
     ])
@@ -75,7 +75,7 @@ def test_cli_deadlock_no_findings_npu():
     """NPU uart 没有 valid/ready → 0 findings"""
     _require_filelist(NAPLES_UART_F)
     rc, stdout, stderr = _run([
-        "backpressure", "deadlock",
+        "exp", "backpressure", "deadlock",
         "--filelist", str(NAPLES_UART_F),
         "-p", "TL-UL",
     ])
@@ -87,7 +87,7 @@ def test_cli_deadlock_json_output():
     """[P1-6] --json 输出必须可被 json.loads 解析"""
     _require_filelist(OPENTITAN_TLUL_F)
     rc, stdout, stderr = _run([
-        "backpressure", "deadlock",
+        "exp", "backpressure", "deadlock",
         "--filelist", str(OPENTITAN_TLUL_F),
         "-p", "TL-UL",
         "--json",
@@ -110,7 +110,7 @@ def test_cli_deadlock_axi4_opentitan():
     """AXI4 跑 OpenTitan 应该能找到 cross-channel 候选"""
     _require_filelist(OPENTITAN_TLUL_F)
     rc, stdout, stderr = _run([
-        "backpressure", "deadlock",
+        "exp", "backpressure", "deadlock",
         "--filelist", str(OPENTITAN_TLUL_F),
         "-p", "AXI4",
     ])
@@ -123,7 +123,7 @@ def test_cli_deadlock_all_protocols_load():
     """4 个协议都能加载"""
     for proto in ("TL-UL", "AXI4", "AHB", "APB"):
         rc, stdout, stderr = _run([
-            "backpressure", "deadlock",
+            "exp", "backpressure", "deadlock",
             "--filelist", "/tmp/opentitan_tlul.f",
             "-p", proto,
         ])

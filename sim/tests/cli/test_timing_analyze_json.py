@@ -33,7 +33,7 @@ PATH_KEYS = {"depth", "score", "registers", "full_path"}
 
 def _run_json(sv_file: Path, *extra: str) -> tuple[dict, str]:
     r = subprocess.run(
-        [sys.executable, str(REPO / "run_cli.py"), "timing", "analyze",
+        [sys.executable, str(REPO / "run_cli.py"), "exp", "timing", "analyze",
          "-f", str(sv_file), "--json", *extra],
         capture_output=True, text=True, timeout=300, cwd=REPO,
     )

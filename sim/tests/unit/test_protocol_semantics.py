@@ -111,7 +111,7 @@ def _run_cli(args: list[str], timeout: int = 30) -> tuple[int, str, str]:
 
 
 def test_cli_semantics_tlul():
-    rc, stdout, stderr = _run_cli(["protocol", "semantics", "TL-UL"])
+    rc, stdout, stderr = _run_cli(["exp", "protocol", "semantics", "TL-UL"])
     assert rc == 0
     # 关键 sections
     assert "Protocol: TL-UL" in stdout
@@ -126,7 +126,7 @@ def test_cli_semantics_tlul():
 
 
 def test_cli_semantics_axi4():
-    rc, stdout, stderr = _run_cli(["protocol", "semantics", "AXI4"])
+    rc, stdout, stderr = _run_cli(["exp", "protocol", "semantics", "AXI4"])
     assert rc == 0
     assert "Protocol: AXI4" in stdout
     assert "Channels (5):" in stdout
@@ -138,7 +138,7 @@ def test_cli_semantics_axi4():
 
 def test_cli_semantics_json():
     """[P1-6] --json 输出必须可被 json.loads 解析"""
-    rc, stdout, stderr = _run_cli(["protocol", "semantics", "AXI4", "--json"])
+    rc, stdout, stderr = _run_cli(["exp", "protocol", "semantics", "AXI4", "--json"])
     assert rc == 0
     data = json.loads(stdout)
     assert data["protocol"] == "AXI4"
@@ -153,7 +153,7 @@ def test_cli_semantics_json():
 
 def test_cli_semantics_missing_protocol():
     """不存在的协议应该报错"""
-    rc, stdout, stderr = _run_cli(["protocol", "semantics", "DOES_NOT_EXIST"])
+    rc, stdout, stderr = _run_cli(["exp", "protocol", "semantics", "DOES_NOT_EXIST"])
     assert rc != 0
     # 错误应该走 stderr
     err_combined = stderr + stdout

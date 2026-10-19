@@ -1,7 +1,7 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-10-19  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-10-20  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
@@ -72,61 +72,37 @@
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `exp backpressure analyze` | `backpressure analyze` | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp backpressure deadlock` | `backpressure deadlock` | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp handshake analyze` | `handshake analyze` | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp handshake pair` | `handshake pair` | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp handshake scan` | `handshake scan` | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp protocol detect` | `protocol detect` | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp protocol list` | `protocol list` | — | bus | experimental | cheap | — | — | ✅ |  |
-| `exp protocol semantics` | `protocol semantics` | — | bus | experimental | medium | ✅ | — | ✅ |  |
-| `exp protocol show` | `protocol show` | — | bus | experimental | medium | — | — | ✅ |  |
-| `exp cdc analyze` | `cdc analyze` | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
-| `exp timing analyze` | `timing analyze` | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
-| `exp coverage analyze` | `coverage analyze` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp coverage gap` | `coverage gap` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp coverage generate` | `coverage generate` | — | verif | experimental | medium | — | ✅ | ✅ |  |
-| `exp coverage suggest` | `coverage suggest` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize extract` | `randomize extract` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize list` | `randomize list` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize reachability` | `randomize reachability` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize trace` | `randomize trace` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp risk analyze` | `risk analyze` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva coverage` | `sva coverage` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva extract` | `sva extract` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva timing` | `sva timing` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp verify gap` | `verify gap` | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp backpressure analyze` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
+| `exp backpressure deadlock` | — | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp handshake analyze` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
+| `exp handshake pair` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
+| `exp handshake scan` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
+| `exp protocol detect` | — | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp protocol list` | — | — | bus | experimental | cheap | — | — | ✅ |  |
+| `exp protocol semantics` | — | — | bus | experimental | medium | ✅ | — | ✅ |  |
+| `exp protocol show` | — | — | bus | experimental | medium | — | — | ✅ |  |
+| `exp cdc analyze` | — | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
+| `exp timing analyze` | — | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
+| `exp coverage analyze` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp coverage gap` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp coverage generate` | — | — | verif | experimental | medium | — | ✅ | ✅ |  |
+| `exp coverage suggest` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp randomize extract` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp randomize list` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp randomize reachability` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp randomize trace` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp risk analyze` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp sva coverage` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp sva extract` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp sva timing` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
+| `exp verify gap` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
 
 ## 兼容别名 (老名保留, 同一实现)
 
 | 别名 | 规范名 |
 |---|---|
-| `backpressure analyze` | `exp backpressure analyze` |
-| `backpressure deadlock` | `exp backpressure deadlock` |
-| `cdc analyze` | `exp cdc analyze` |
-| `coverage analyze` | `exp coverage analyze` |
-| `coverage gap` | `exp coverage gap` |
-| `coverage generate` | `exp coverage generate` |
-| `coverage suggest` | `exp coverage suggest` |
-| `handshake analyze` | `exp handshake analyze` |
-| `handshake pair` | `exp handshake pair` |
-| `handshake scan` | `exp handshake scan` |
-| `protocol detect` | `exp protocol detect` |
-| `protocol list` | `exp protocol list` |
-| `protocol semantics` | `exp protocol semantics` |
-| `protocol show` | `exp protocol show` |
-| `randomize extract` | `exp randomize extract` |
-| `randomize list` | `exp randomize list` |
-| `randomize reachability` | `exp randomize reachability` |
-| `randomize trace` | `exp randomize trace` |
-| `risk analyze` | `exp risk analyze` |
-| `sva coverage` | `exp sva coverage` |
-| `sva extract` | `exp sva extract` |
-| `sva timing` | `exp sva timing` |
-| `timing analyze` | `exp timing analyze` |
 | `trace fanin` | `drivers` |
 | `trace fanout` | `loads` |
-| `verify gap` | `exp verify gap` |
 
 ## 计划新增 (语义 core 缺口: instance 查询)
 
