@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **70**
-- 按层: `core`=30, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=16, `locate`=7, `diagnose`=1, `state`=6
+- 叶子命令总数: **68**
+- 按层: `core`=28, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=16, `locate`=5, `diagnose`=1, `state`=6
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,16 +18,14 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (30 个)
+## `core` (28 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
 | `diagnose` | — | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 只读诊断: <检查项> = imports|report|timescale|widths; 不改文件 (写文件用 tools/fix_*.py) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
-| `graph dump` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 整图 JSON 导出; 支持 --file / --filelist (iter_236 补) |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
-| `graph find` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 按模式查图节点; 支持 --file / --filelist (iter_236 补) |
-| `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图节点; 支持 --file / --filelist (iter_236 补) |
+| `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列图节点 (kind/module/--match 过滤; --detail 给表达式等富字段); 支持 --file / --filelist |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
 | `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例 |

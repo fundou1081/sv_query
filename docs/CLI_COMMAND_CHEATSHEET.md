@@ -170,13 +170,13 @@
     构造 function call node
   * `sv_query expression cond --cond C --true T --false F -r RESULT`
     构造 ternary conditional node
-  * `sv_query graph dump --file F [--json]`
-    graph 整图 JSON dump (含 TraceNode extra metadata)
+  * `sv_query graph nodes --detail --file F [--json]`
+    图节点 + 富字段 (表达式/条件/分支; 原 graph dump)
   * `sv_query graph nodes --file F`
     列所有节点 ([KIND] id)
   * `sv_query graph edges --file F`
     列所有边 (src → dst kind)
-  * `sv_query graph find --file F PATTERN`
+  * `sv_query graph nodes --match PATTERN --file F`
     按名字模式搜索节点 (substring match)
 
 ──────────────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ sv_query coverage generate -f top.sv -s data_o --related mode_i --related valid_
 sv_query backpressure analyze -f axi_adapter.sv --output bp.mmd
 
 # 找所有 cpu 相关 signals
-sv_query graph find cpu -f picorv32.v
+sv_query graph nodes --match cpu -f picorv32.v
 
 ──────────────────────────────────────────────────────────────────────
 ## 测试统计

@@ -65,7 +65,7 @@ READONLY_COMMANDS = [
     ("search", "module", "-f", "inst_demo.sv", "--json"),
     ("graph", "nodes", "-f", "inst_demo.sv", "--json"),
     ("graph", "edges", "-f", "inst_demo.sv", "--json"),
-    ("graph", "find", "clk", "-f", "inst_demo.sv", "--json"),
+    ("graph", "nodes", "--match", "clk", "-f", "inst_demo.sv", "--json"),
     ("instances", "-f", "inst_demo.sv", "--json"),
     ("hierarchy", "-f", "inst_demo.sv", "--json"),
     ("instance", "inst_demo.u_adder", "-f", "inst_demo.sv", "--json"),
@@ -119,7 +119,7 @@ class TestReadonlyGuarantee:
         out_dir = proj.parent / "artifacts"
         out_dir.mkdir()
         before = _tree_fingerprint(proj)
-        r = _run(env, proj, "graph", "dump", "-f", "inst_demo.sv",
-                 "--json")   # graph dump 无 -o, 纯 stdout
+        r = _run(env, proj, "graph", "nodes", "--detail", "-f", "inst_demo.sv",
+                 "--json")   # 原 graph dump, 现为 nodes --detail; 纯 stdout
         assert r.returncode == 0
         assert _tree_fingerprint(proj) == before
