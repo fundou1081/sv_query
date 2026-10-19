@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **74**
-- 按层: `core`=34, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=17, `locate`=7, `state`=6, `diagnose`=4
+- 叶子命令总数: **73**
+- 按层: `core`=33, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=16, `locate`=7, `state`=6, `diagnose`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (34 个)
+## `core` (33 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -33,8 +33,7 @@
 | `graph nodes` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图节点; 支持 --file / --filelist (iter_236 补) |
 | `search` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 文本/正则搜索; [iter_231] 已补 --json |
 | `stats` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ |  |
-| `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | class 成员(类型级) + 实例(实例级); --member 查某成员的实例节点 |
-| `classes` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | 列出编译域内 class 名 |
+| `class` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例 |
 | `connections` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as) |
 | `controlflow analyze` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的驱动条件分析 |
 | `controlflow conditions` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 信号的全部驱动条件 |

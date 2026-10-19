@@ -155,10 +155,8 @@ COMMANDS: list[CommandSpec] = [
        note="[规范入口] 模块端口总览 (方向/位宽/入边数/出边数)"),
     _c("paths", "semantic", cost="medium", recommended=True,
        note="[规范入口] 图上路径 (跨模块端口跳转; --all 枚举全部, 有上限)"),
-    _c("classes", "semantic", cost="cheap",
-       note="列出编译域内 class 名"),
     _c("class", "semantic", cost="medium",
-       note="class 成员(类型级) + 实例(实例级); --member 查某成员的实例节点"),
+       note="不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),

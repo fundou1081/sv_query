@@ -176,7 +176,7 @@ class TestPaths:
 # ---------------------------------------------------------------------------
 class TestClasses:
     def test_list_classes(self):
-        d = _json("classes", "-f", CLASS_FIX, "--json")
+        d = _json("class", "-f", CLASS_FIX, "--json")
         assert d["ok"] is True and "packet" in d["classes"] and "inner" in d["classes"]
 
     def test_class_members_and_instances(self):
@@ -247,7 +247,7 @@ class TestEmptyResultsAreNotFailures:
 
     def test_design_without_classes(self):
         """无 class 的设计: classes 返回空列表而不是报错。"""
-        d = _json("classes", "-f", INST_DEMO, "--json")
+        d = _json("class", "-f", INST_DEMO, "--json")
         assert d["ok"] is True and d["count"] == 0 and d["classes"] == []
 
 
