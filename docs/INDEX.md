@@ -18,7 +18,7 @@
 | 全量 (canonical) | **3422 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 167 deselected) | 2026-10-19 实测 (iter_241): 在 iter_240 (3399) 基础上 +23 (LoadTracer 适配层测试)。**注**: iter_227~240 期间本行未被同步更新 (停在 iter_226 的 3317), iter_241 一并纠正 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (229 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (230 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -31,13 +31,25 @@
 | 文档 | 作用 |
 |---|---|
 | [README.md](../README.md) | 项目介绍 + 能力声明 + 快速开始 |
-| [AGENTS.md](../AGENTS.md) | **开发纪律 (强制)**: 禁 --no-strict / 禁 silent fallback / 文档卫生规则 |
+| [AGENTS.md](../AGENTS.md) | **协作入口 (强制)**: 流程 + 铁律速查 + 细则索引 (细则在 `docs/dev/`) |
 | [CURRENT_TODO.md](../CURRENT_TODO.md) | **此刻在做的事** (唯一当前任务追踪点) |
 | [TESTING.md](../TESTING.md) | 测试流程 / marker / 命令 (唯一测试入口) |
 | [CHANGELOG.md](../CHANGELOG.md) | 变更日志 (历史记录) |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 贡献指南 |
 | [DEVELOPMENT.md](../DEVELOPMENT.md) | 开发环境与工作流 |
 | [MEMORY.md](../MEMORY.md) | 经验沉淀索引 (`memory/` 按日) |
+
+## 🛠️ 开发纪律与流程 (`docs/dev/` — 细则层)
+
+> 入口在 [AGENTS.md](../AGENTS.md)；本节是它链接到的细则文件。
+> 规则变更必须**同一次改动**里同步检查器或测试 (见 WORKFLOW §5)。
+
+| 文档 | 作用 |
+|---|---|
+| [dev/DISCIPLINE.md](dev/DISCIPLINE.md) | **开发纪律 (强制)**: 产品不变量 I1~I5 + 5 条硬规则 + 归因顺序 + 例外 + 违规处置 |
+| [dev/CODING_STYLE.md](dev/CODING_STYLE.md) | 编码风格与设计决策: 先探索后决策 / 单一实现 / 修根因 / 函数职责 / 结构化数据 / 影响面 / 协作规则 |
+| [dev/WORKFLOW.md](dev/WORKFLOW.md) | 开发流程: 任务生命周期 / 迭代记录 / 文档卫生 / 测试与冒烟 / 机械检查 / ADR / 提交合并 |
+| [dev/REVIEW_CHECKLIST.md](dev/REVIEW_CHECKLIST.md) | 提交前检查清单: 机械检查命令 + 纪律/设计/影响面/记录四组自检 + 反模式表 |
 
 ## 📜 能力与边界 (对外声明)
 
@@ -147,7 +159,7 @@
 
 ---
 
-## 🧹 文档卫生规则 (强制, 与 AGENTS.md 一致)
+## 🧹 文档卫生规则 (强制, 细则见 [dev/WORKFLOW.md §3](dev/WORKFLOW.md))
 
 1. **新增文档必须登记在本文件** — `tools/check_docs.py` 检查 (未登记 = 失败)。
 2. **过期报告 / 被取代的稿子 → 归档不删** — 移到 `docs/archive/<日期>-cleanup/`,

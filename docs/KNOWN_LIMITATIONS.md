@@ -48,7 +48,7 @@ D5 锁定: 以后仅支持 v11 API, 不再考虑 v9/v10 兼容.
 ### 3.1 `-f` / `--file` 传 filelist → 原生 SIGTRAP (用法不一致, 不是上游缺陷)
 
 > **方豆判定 (2026-09-09)**: 这是**用法不一致**问题 —— **不向上游 pyslang 报 issue**,
-> 记录清楚并**避免这样使用**即可 (见 `AGENTS.md` 核心纪律 4)。
+> 记录清楚并**避免这样使用**即可 (见 [DISCIPLINE.md §4](dev/DISCIPLINE.md))。
 
 **正确用法**: `-f` / `--file` 只接受 SystemVerilog **源码**; filelist 一律用 `--filelist`。
 

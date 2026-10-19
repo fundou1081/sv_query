@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-19 GMT+8 (iter_241 LoadTracer 收尾 + 合并回 main)
+> **最后更新**: 2026-10-19 GMT+8 (iter_242: 开发纪律 v2.0 + AGENTS.md 重构为流程入口)
 
 ---
 
@@ -36,7 +36,15 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **Agent 语义能力缺口补全** (L1, ✅ 1a / 候选 1~4 / 跨模块遍历 / LoadTracer 全部完成) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
+**当前任务 (方豆方向)**: **开发纪律 v2.0 + AGENTS.md 重构为流程入口** (L1, ✅ 完成 iter_242) —— 任务文件 `docs/task_tree/tasks/L1_dev_discipline_v2.md`。
+**做了什么**: `AGENTS.md` 522 行 → **149 行入口**（流程 + 铁律速查 + 索引），细则拆到 `docs/dev/` 四份职责单一的文件：
+`DISCIPLINE.md`(产品不变量 I1~I5 + 5 条硬规则) / `CODING_STYLE.md`(决策逻辑与风格) /
+`WORKFLOW.md`(任务生命周期/记录/文档卫生/测试/机械检查/提交合并) / `REVIEW_CHECKLIST.md`(提交前清单)。
+**"重新确立"而非搬家**: 新增 I1 不改用户 RTL / I3 单一实现 / I5 登记缺陷写可观察后果,
+以及"机械保障优先于文档声明""计数更新要核验 diff""真实项目冒烟"三条流程教训。
+全仓交叉引用同步直连细则（硬规则编号 1~5 保持不变，旧引用仍成立）。
+
+**上一任务 (查询面)**: **Agent 语义能力缺口补全** (L1, ✅ 全部完成) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
 **1a ✅ (iter_236)**: `svq instances` / `instance` / `connections` / `hierarchy` 四个只读 JSON 命令上线 (+ `graph` 组补 `--filelist`); 顺带修 **bug #6**: `UnifiedTracer.get_instances()` 从未工作 (双重包装 adapter + 按错误形状解析)。
 **候选 1~4 ✅ (iter_237)**: 再补 5 个命令 —— `params`(参数**生效值**+是否 override) / `ports`(端口表) / `paths`(跨模块路径, --all) / `classes` / `class`(类型级成员 vs 实例级节点); 顺带修 **bug #7**: `PathResolver` 只做"进模块"映射不做"出模块" → 跨模块路径恒 None, 且 `find_path` 与 `find_all_paths` 遍历不一致 → 抽 `_neighbors` 统一 + 加 `max_paths` 上限 + 锁定不变式。
 **跨模块遍历 ✅ (iter_240)**: loads/drivers 的 MIG 从"零结果兜底"改成**遍历的一步** (修 D1 不传递 / D2 被抑制 / D3 depth 不一致); 定下**作用域规则**: 全局查询 (不给 `--module`) 跨模块, 限定查询不越界。

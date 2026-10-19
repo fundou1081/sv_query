@@ -3,13 +3,13 @@
 > **创建日期**: 2026-08-28 21:45
 > **维护人**: 方豆 + AI 助手
 > **状态**: 持续维护 — 发现新的 fallback / sentinel / 吞异常模式时**必须**登记到这里
-> **关联**: [ARCHITECTURE_REVIEW_2026-08-27.md §三.7](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) / [ARCHITECTURE_TODOLIST #4](ARCHITECTURE_TODOLIST.md) / [AGENTS.md 核心纪律 #2](../AGENTS.md)
+> **关联**: [ARCHITECTURE_REVIEW_2026-08-27.md §三.7](archive/2026-09-08-cleanup/ARCHITECTURE_REVIEW_2026-08-27.md) / [ARCHITECTURE_TODOLIST #4](ARCHITECTURE_TODOLIST.md) / [DISCIPLINE.md §2](dev/DISCIPLINE.md)
 
 ---
 
 ## 🎯 目的
 
-AGENTS.md 核心纪律 #2 禁止 silent fallback。但"禁止"不等于"不存在"——
+DISCIPLINE.md §2 禁止 silent fallback。但"禁止"不等于"不存在"——
 **代码库里现存大量 fallback 模式** (2026-08-28 全仓扫描), 其中一部分是
 **有意设计的防御** (有注释、有 warning、有 sentinel), 一部分是**历史遗留的 silent fallback**
 (吞异常 / 静默 default / 无注释兜底)。
@@ -37,7 +37,7 @@ AGENTS.md 核心纪律 #2 禁止 silent fallback。但"禁止"不等于"不存�
 
 ### 分类 A: ✅ 合规 — 显式 sentinel + warning (正面参考)
 
-**原则**: 失败时返回 sentinel + `logger.warning`, 调用方能识别。**这是 AGENTS.md 要求的样子。**
+**原则**: 失败时返回 sentinel + `logger.warning`, 调用方能识别。**这是 DISCIPLINE.md 要求的样子。**
 
 | 位置 | 模式 | 触发条件 | 行为 | 修复建议 |
 |---|---|---|---|---|
@@ -138,7 +138,7 @@ elif direction == "unknown":
 | 🟡 边界 | 20 | 有防御意图但无日志, 建议加 logger.debug |
 
 **处理状态**: iter_048 (36 违规+20 边界+23 冗余) / iter_051 (10 宽异常) / iter_052 (**全仓 except: pass 清零**) 已落地.
-**全面禁止 except: pass** (AGENTS.md 核心纪律 2.5): 所有 except: pass 改为 `except X as e: logger...` 或加注释, 全仓计数 = 0.
+**全面禁止 except: pass** (DISCIPLINE.md §3): 所有 except: pass 改为 `except X as e: logger...` 或加注释, 全仓计数 = 0.
 
 **违规分布** (按文件):
 - `class_graph_builder.py` (7 处): 类约束/成员提取失败静默 — **最高危** (约束数据丢失)
@@ -177,7 +177,7 @@ except Exception:
 | ⚠️ 需注意 | ~5% | `driver_extractor:450` filelist mutex fallback (特殊处理, 合规但复杂) |
 
 **结论**: 分类 C 无系统性违规, 注释驱动的 fallback 是项目设计的一部分。
-重点是**新增代码**不要引入 silent fallback (AGENTS.md 纪律 #2)。
+重点是**新增代码**不要引入 silent fallback (DISCIPLINE.md §2)。
 
 ### 分类 E 审查结果: 163 处 getattr+default = **绝大多数合规**
 
@@ -216,6 +216,6 @@ except Exception:
 
 1. **发现新的 silent fallback → 必须登记到此表** (位置/触发/行为/建议)
 2. **修复某条 → 移到"已修复"并在 commit 里引用本表条目**
-3. **新代码** → 遵循 AGENTS.md 核心纪律 #2: 显式报错或 sentinel + warning,
+3. **新代码** → 遵循 DISCIPLINE.md §2: 显式报错或 sentinel + warning,
    **禁止** silent fallback
 4. 本表是**活文档**, 随代码库演变持续更新

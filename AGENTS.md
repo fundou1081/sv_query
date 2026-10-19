@@ -1,522 +1,149 @@
-# AGENTS.md - sv_query 项目纪律 (Project Discipline)
+# AGENTS.md — sv_query 协作入口 (Process & Index)
 
-> 创建时间: 2026-08-27
-> 维护人: 方豆 + AI 助手
-> 状态: **强制执行** — 所有 AI 助手 (包括 QClaw, Claude Code, GitHub Copilot 等) 在本项目工作时必须遵守
+> **维护人**: 方豆 + AI 助手 · **状态**: 强制执行 · **版本**: v2.0 (2026-10-19 重构为"流程入口 + 细则索引")
+> **适用**: 所有在本仓库工作的 AI 助手 (QClaw / Claude Code / Copilot / DeepSeek Harness 等) 与人类开发者。
 
 ---
 
 ## 🎯 项目一句话
 
-**sv_query** = SystemVerilog 静态分析工具 (基于 pyslang + 自研 4 维分析: L1 module 抽取 / L2 端口连接 / L3 内部信号 / L4 可视化)。
+**sv_query** = SystemVerilog 静态分析工具，基于 pyslang + 自研 4 维分析：
+**L1 module 抽取 / L2 端口连接 / L3 内部信号 / L4 可视化**。
 
-目标: 让验证工程师直接问 "这个信号谁驱动的？" 而不是读代码。
+目标：让验证工程师 (或其 agent) 直接问"这个信号谁驱动的"，而不是读代码。
+**主消费者是 agent** → 查询面以只读、JSON、稳定 schema 为第一优先。
 
 ---
 
-## 🚫 核心纪律 (Hard Rules — 违反任何一条 = 立即停止并报告方豆)
+## 📌 这份文件是什么
 
-### 1. 禁止 `--no-strict`
+**本文只写"该怎么协作 + 细则在哪"。具体条例不在这里展开。**
 
-**绝对禁止**在 `run_cli.py` / 测试 / 脚本中使用 `--no-strict` 标志。
+| 想知道什么 | 看哪里 |
+|---|---|
+| 硬性禁止项、产品不变量、违规处置 | [docs/dev/DISCIPLINE.md](docs/dev/DISCIPLINE.md) |
+| 编码风格、设计决策逻辑、与方豆协作规则 | [docs/dev/CODING_STYLE.md](docs/dev/CODING_STYLE.md) |
+| 任务生命周期、迭代记录、文档卫生、机械检查、提交/合并 | [docs/dev/WORKFLOW.md](docs/dev/WORKFLOW.md) |
+| 提交前逐项检查清单 | [docs/dev/REVIEW_CHECKLIST.md](docs/dev/REVIEW_CHECKLIST.md) |
+| 测试怎么跑、marker、落盘隔离 | [TESTING.md](TESTING.md) |
+| 文档总索引与当前基线计数 | [docs/INDEX.md](docs/INDEX.md) |
+| 架构分层与模块职责 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| 当前在做什么 | [CURRENT_TODO.md](CURRENT_TODO.md) |
+| 已知缺陷与能力边界 | [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) |
 
-**理由**: `--no-strict` 是 sv_query 早期为了应对不完整 RTL/elaboration 报错时做的 graceful degradation,
-但它掩盖了真实的代码质量问题 (空 graph、节点缺失、expr tree 拿不到), 让 debug 变得不可能。
+---
 
-**如果命令在 strict 模式下失败**, 不要加 `--no-strict` 让它"能跑" — **应该诊断根因**:
-- 测试源码 (test fixture) 有语法/语义错误 → 修 fixture
-- 功能 (src/) 有 bug → 修 src
-- filelist 不完整 → 补 filelist
-- 环境配置 (pyslang 版本、Python 版本) 不匹配 → 修环境
+## 🔄 开工前必读顺序 (长对话压缩 / 新 session 恢复时强制执行)
 
-**禁止**"为了测试通过而加 --no-strict"。
+1. **本文件** —— 确认协作方式与细则位置
+2. [CURRENT_TODO.md](CURRENT_TODO.md) —— 此刻在做什么、仓库状态
+3. [docs/dev/DISCIPLINE.md](docs/dev/DISCIPLINE.md) —— 硬规则 (压缩后必重读)
+4. 最近 10 个 commit + [docs/task_tree/overview.md](docs/task_tree/overview.md) 的最近 3 行
 
-### 2. 禁止 `fallback` 模式
+**禁止**凭残留印象继续工作。上下文会被压缩，**只有文档留得住**。
 
-**绝对禁止**实现"AST 拿不到就 string parse fallback"、"primary 失败就 secondary path"这类 silent fallback。
+---
 
-**理由**: Silent fallback = 隐藏 bug。所有 fallback 必须:
-- **显式报错** (raise / log ERROR)
-- **返回 sentinel** (如 `NO_TREE_MARKER`, `None`, `[]`)
-- **不静默继续** (不返回假数据)
+## 🚫 铁律速查 (违反任一条 = 停下来报告方豆)
 
-**例外 (不算 fallback)**:
-- `sv_preprocessor.py` 的 source content preprocessing (有明确注释说 NOT fallback)
-- 用户**显式 opt-in** 的可选路径 (e.g., `--allow-incomplete` 如果将来需要)
+**硬性禁止** (详见 [DISCIPLINE.md](docs/dev/DISCIPLINE.md))：
 
-**正面参考**: `coverage_generator.py` 已经贯彻 "no string fallback" 原则,
-提取失败时返回 `NO_TREE_MARKER` + WARNING, 而不是悄悄走 string 解析。
-**新代码必须遵守同样的严格性**。
-
-### 2.5 全面禁止 `except: pass` (2026-08-29 新增)
-
-**绝对禁止** `except ...: pass` 这种写法 — 异常被捕获后**什么都不做** = silent fallback 的变体。
-
-**理由**: `except: pass` 让"失败"与"正常"不可区分。调用方无法知道:
-- 是数据处理成功了, 还是被吞了异常
-- 结果是真实数据, 还是因异常走了空路径
-
-**必须改为** (三选一):
-- `except X as e: logger.warning/debug(...)` — 捕获 + 记录 (失败可见)
-- `except X: return <sentinel>` — 捕获 + 显式返回 (契约明确)
-- `except X: raise` — 不处理就让它抛 (不吞)
-
-**例外 (允许 pass, 但必须满足)**:
-- 异常类型**已收窄** (非 Exception)
-- 失败语义**明确** (如 `int()` 转换失败 = 非数字)
-- **必须有注释**说明为什么跳过是合理的
-
-**状态 (2026-09-08 iter_190 更正)**: v1.4 声称 "2026-08-29 已全仓清理, 计数 = 0" —
-但 iter_190 实测 **src/ 里有 52 处** (其中 25 处 `except Exception: pass`):
-**声明没有机械保障 = 会重新长回来**。现已全部改为可见日志, 并新增检查器:
-
-```bash
-python3 tools/check_except_pass.py     # 必须 ✅ (非 0 = 违规, 提交前必跑)
-```
-
-回归测试: `sim/tests/unit/test_discipline_except_pass.py` (含"检查器能检出违规"的自检)。
-**新代码禁止引入 `except ...: pass`** — 唯一允许形态: 收窄异常类型 + `...` + 注释说明
-为什么跳过合理 (检查器给警告级)。
-
-### 3. 失败时正确归因
-
-遇到任何 test / command / analyze 失败, **必须按下面顺序排查**:
-
-| 顺序 | 检查项 | 工具 |
+| # | 规则 | 一句话 |
 |---|---|---|
-| 1 | 测试 fixture 源码 (sim/tests/fixtures/...) | `cat` / `vim` / `pyslang` parse |
-| 2 | 功能代码 (src/trace/...) | `git log -p` / `git blame` / 单测 |
-| 3 | filelist (sim/filelists/..., *.f) | `cat` / 对比 working filelist |
-| 4 | 环境配置 (pyslang 版本、Python 版本、依赖) | `pip show pyslang` / `python --version` |
-| 5 | (最后) 工具/CLI 本身的 bug | reproduce + 隔离 test |
+| 1 | 禁 `--no-strict` | 命令失败要诊断根因，不许开逃生口 |
+| 2 | 禁 silent fallback | 失败必须显式：报错 / sentinel / 抛异常 |
+| 3 | 禁 `except ...: pass` | 吞异常 = 让失败与正常不可区分 |
+| 4 | 禁 `-f/--file` 传 filelist | filelist 一律 `--filelist`（误用会触发原生 SIGTRAP） |
+| 5 | 失败按序归因 | fixture → 功能代码 → filelist → 环境 → (最后) 工具 bug |
 
-**禁止**在第 5 步之前用 `--no-strict` / 加 `try/except` 兜底 / 改 return type 让它"能跑"。
+**产品不变量** (改它 = 改产品定义，必须先问)：
 
-### 4. 禁止用 `-f` / `--file` 传 filelist (2026-09-09 新增)
+| # | 不变量 |
+|---|---|
+| I1 | **不修改用户的 RTL / 工程文件** — 写能力只能放在 `tools/`，默认关闭 |
+| I2 | `core` 层**只读 + JSON + 稳定 schema**（消费者是 agent） |
+| I3 | **单一实现原则** — 同一语义只允许一份实现，发现两份就合并或删除 |
+| I4 | 降级必须显式：实验能力进 `exp/`，在 `capabilities` 里降级，不伪装稳定 |
+| I5 | 登记缺陷要写**可观察后果**（什么输入 → 什么错误输出），按输入形态枚举 |
 
-**`-f` / `--file` 只接受 SystemVerilog 源码; filelist 一律用 `--filelist`。**
+---
 
-**理由**: 这是**用法不一致**的问题, 不是上游 bug —— 本项目 `-f` = `--file` (单文件),
-而很多其他工具 `-f` 就是 filelist, 习惯迁移过来就会写错。写错的后果不是普通报错:
+## 🔧 工作流速查
 
-```
-sv_query visualize module -f project.f     # ← 禁止
-```
+完整流程见 [WORKFLOW.md](docs/dev/WORKFLOW.md)。
 
-filelist 的内容 (如 `/path/to/mod.sv`) 被当源码解析 → slang 走 script 模式 →
-根节点成了**表达式** (`DivideExpression`, 因为路径里有 `/`) →
-`pyslang` 的 `Compilation.addSyntaxTree()` **原生 SIGTRAP** (exit 133, 无输出、
-无 Python 异常可捕获, `faulthandler` 也拿不到栈)。
+**开工**（缺一步不要动手）：
+建 `docs/task_tree/tasks/L<N>_<任务>.md` → 更新 `CURRENT_TODO.md` → 挂到 `overview.md` → 写可验证的 sub-task
 
-**机械保障** (已有):
-- `SVCompiler._reject_non_design_unit()` 在 `addSyntaxTree` 之前拒绝表达式根,
-  抛可行动的 `CompilationError` (提示"请用 --filelist")
-- 回归测试 `sim/tests/unit/test_compiler_non_design_unit_guard.py`
-  (守卫失效时 pytest 会以 exit 133 崩 —— 最原始的报警方式)
-- 详见 `docs/KNOWN_LIMITATIONS.md` §3.1
+**迭代**：一个迭代 = 一个可观察动作；每个迭代写 `docs/task_tree/iterations/iter_NNN_*.md`（**边做边写**）
 
-**方豆决定 (2026-09-09)**: **不向上游 pyslang 报 issue** —— 判定为"用法不一致",
-正确做法是**记录清楚并避免这样使用** (即本条纪律), 而不是把用户误用当成上游缺陷。
+**收尾**：更新 `CURRENT_TODO.md`（移入"最近完成"）+ `overview.md` 汇总表 + 长期 todolist；
+涉及新文档 → 登记 `docs/INDEX.md`；涉及计数 → 只改 `docs/INDEX.md` 的"当前基线"
 
-**正确写法**:
+**完成判定**：**代码 ✅ + 测试 ✅ + 文档 ✅**。只做完代码就说"完成了" = 谎报进度。
+
+---
+
+## 📋 提交前必跑
 
 ```bash
-sv_query stats --filelist project.f          # ✅ filelist
-sv_query stats -f design.sv                 # ✅ 单文件源码
-sv_query visualize module --filelist project.f --target top   # ✅
+python3 -m pytest sim/tests/ -m "not opensource" -q -p no:randomly   # 全量门禁
+python3 tools/check_docs.py                                          # 死链/归档/未登记
+python3 tools/check_except_pass.py                                   # 禁 except:pass
+python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
+python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
 ```
 
----
-
-## 📐 工作流规范
-
-### 代码改动前
-1. 读相关模块的 AGENTS.md / docs/ (有就遵守)
-2. 看最近 10 个 commit, 理解最近 5 个 plan/cycle 在做什么
-3. **写 G2/G3 计划**: 明确 1-N 个 sub-task, 每个有可验证输出
-
-### 代码改动后
-1. `python -m pytest sim/tests/unit sim/tests/cli -q` — 必须全绿
-2. `python -m pytest sim/tests/test_case27_1to1_truth.py -q` — 1to1 truth 必须全绿
-3. `git diff` 复查: 没有未预期的 fall-through / 死代码
-4. **更新文档**: `CURRENT_TODO.md` 状态 + `docs/task_tree/` 迭代记录 + 对应长期 todolist
-   (详见 "📓 开发日志与迭代记录 → 任务前后必须更新文档")
-5. `git commit -m "feat(...): ..."` 引用 plan/cycle 名 (e.g., `Plan G2 2026-08-27`)
-   — **代码和文档同一个 commit**, 不要分开提交
-
-### 调试时
-1. **不要用 `--no-strict` 让 test 跳过** — 那等于不测
-2. **不要 silent `except Exception: pass`** — 至少 `logger.warning()`
-3. **不要 "为通过而改 assertion"** — assertion 是 spec, 不是障碍
+逐项清单见 [REVIEW_CHECKLIST.md](docs/dev/REVIEW_CHECKLIST.md)。
+涉及查询/图/CLI 语义的改动**必须**额外跑真实多文件项目冒烟（见 [WORKFLOW.md](docs/dev/WORKFLOW.md) §4）。
 
 ---
 
-## 🗂️ 项目必备设施 (Required Artifacts — 位置固定, 不得新建平行体系)
-
-**本项目这 5 项已经存在**。需要记录时**用下面的路径**, 不要另起炉灶建新目录/新文件。
+## 🗂️ 项目设施 (位置固定，不得新建平行体系)
 
 | # | 设施 | 唯一位置 | 作用 |
 |---|---|---|---|
-| 1 | **纪律文件** | `AGENTS.md` (本文件) | 开发纪律, 长对话压缩后**必须重新加载** |
-| 2 | **当前 todolist** | `CURRENT_TODO.md` (根目录) | **此刻**在做什么 — 唯一稳定追踪点 |
-| 3 | **迭代记录 (records)** | `docs/task_tree/` | 任务树 + 每次迭代一个文件 |
-| 4 | **架构决策** | `docs/architecture/` + `docs/ARCHITECTURE.md` | 架构变更 / 决策记录 |
-| 5 | **测试** | `TESTING.md` + `sim/tests/` | 唯一测试手段与流程 |
+| 1 | **协作入口** | `AGENTS.md` (本文件) | 流程 + 细则索引，压缩后必重读 |
+| 2 | **细则** | `docs/dev/` | 纪律 / 风格 / 流程 / 清单 |
+| 3 | **当前 todolist** | [CURRENT_TODO.md](CURRENT_TODO.md) | **此刻**在做什么 — 唯一稳定追踪点 |
+| 4 | **迭代记录** | [docs/task_tree/](docs/task_tree/) | 任务树 + 每次迭代一个文件 |
+| 5 | **架构决策** | [docs/architecture/](docs/architecture/) + [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构变更 / 决策记录 |
+| 6 | **测试** | [TESTING.md](TESTING.md) + `sim/tests/` | 唯一测试手段与流程 |
+| 7 | **文档索引** | [docs/INDEX.md](docs/INDEX.md) | 唯一文档入口 + 计数单一真相源 |
 
-**辅助 (不是入口, 别和上面搞混)**:
-- `docs/ARCHITECTURE_TODOLIST.md` — 架构改造 7 项的**长期**追踪 (周~月尺度)
-- `docs/TODO.md` — 版本级功能待办 (月~季尺度)
-- `memory/YYYY-MM-DD.md` + `MEMORY.md` — 按日的经验沉淀
-- `docs/debugging_lessons/` — 单次 debug 的深度复盘
+**辅助 (不是入口)**：[docs/ARCHITECTURE_TODOLIST.md](docs/ARCHITECTURE_TODOLIST.md)（架构改造长期追踪）、
+[docs/TODO.md](docs/TODO.md)（版本级待办）、`memory/`（按日经验）、
+[docs/debugging_lessons/](docs/debugging_lessons/)（单次 debug 复盘）。
 
-**禁止**: 新建 `records/` `logs/` `notes/` 等与上表重复的目录。要加内容 → 加进已有位置。
-
----
-
-## 📓 开发日志与迭代记录 (Records)
-
-### 唯一位置: `docs/task_tree/`
-
-```
-docs/task_tree/
-├── overview.md                    # 任务树全局视图 + 迭代汇总表 (summary)
-├── tasks/                         # 每个任务一个文件, 按层级命名
-│   ├── L1_<任务名>.md             #   L1 = 顶层任务
-│   ├── L2_<任务名>.md             #   L2 = 子任务
-│   └── L3_<任务名>.md             #   L3 = 具体动作
-└── iterations/                    # 每次迭代一个独立文件
-    └── iter_NNN_<简述>.md         #   NNN 三位数递增, 永不复用
-```
-
-**一次迭代 = 一个可观察的动作** (读代码 / 跑测试 / 修 bug / 验证结果)。
-
-### 新任务开工流程 (强制顺序)
-
-1. **先建任务日志** — 在 `docs/task_tree/tasks/` 建 `L<N>_<任务名>.md`
-2. **更新 `CURRENT_TODO.md`** — 把它设为"当前任务", 列出 sub-task
-3. **更新 `overview.md`** — 把新任务挂到任务树上
-4. **然后才开始动手**, 每个迭代写一个 `iterations/iter_NNN_*.md`
-5. **在日志文件里持续记录开发状态** — 不是做完才写, 是**边做边写**
-
-### 迭代文件必备字段
-
-```markdown
-# Iteration NNN: <标题>
-
-**Metadata**:
-- **Iteration #**: NNN
-- **Task Tree Level**: L1 / L2 / L3
-- **Parent Task**: <所属任务, 对应 tasks/ 下的文件名>
-- **Created**: YYYY-MM-DD HH:MM GMT+8
-- **Author**: 方豆 / <AI 助手名>
-- **Outcome**: ✅ 成功 / ❌ 失败 / 🚧 未收敛 / ⚠️ 部分完成
-
-## 🎯 本次目标
-<这次迭代要达成什么, 附用户原话指令>
-
-## 📊 当前状态 / 预期结果
-<开工时的状态, 预期会得到什么>
-
-## 🔬 实际结果
-<真实发生了什么 — 失败也如实写>
-
-## 💡 关键发现 / 关键技术 / 决策
-<最有价值的部分: 根因、踩的坑、为什么这么选>
-```
-
-### 任务前后必须更新文档 (硬要求)
-
-> **文档更新和实际工作同等重要** — 代码写完但文档没更新 = **任务没完成**。
-
-| 时机 | 必须更新 | 内容 |
-|---|---|---|
-| **任务开始前** | `CURRENT_TODO.md` | 设为当前任务, 列出 sub-task, 状态标 🟡 in_progress |
-| | `docs/task_tree/tasks/L<N>_*.md` | 建任务文件, 写清目标和背景 |
-| | `docs/task_tree/overview.md` | 把任务挂到任务树上 |
-| **任务进行中** | `CURRENT_TODO.md` | 每完成一个 sub-task 就勾选; 遇阻塞立刻写明阻塞点 |
-| | `iterations/iter_NNN_*.md` | 每个迭代一个文件, **边做边写** |
-| **任务完成后** | `CURRENT_TODO.md` | 移到"最近完成", 清出当前任务位 |
-| | `docs/task_tree/overview.md` | 更新任务树状态 + 迭代汇总表 |
-| | 对应长期 todolist | `ARCHITECTURE_TODOLIST.md` 或 `docs/TODO.md` 改状态 + 写状态变更日志 |
-| | `TESTING.md` | 若新增/变更了测试流程 |
-| | `docs/architecture/` | 若涉及架构决策 |
-
-**判定标准**: 一个任务算"完成", 当且仅当 **代码 ✅ + 测试 ✅ + 文档 ✅** 三者都到位。
-只完成代码就说"做完了" = **谎报进度**。
-
-**禁止**:
-- ❌ "先写代码, 文档以后补" — 以后 = 永远不补
-- ❌ 只更新代码不更新状态, 导致下次 session 不知道进行到哪
-- ❌ 任务完成后 `CURRENT_TODO.md` 还挂着旧任务
-- ❌ 状态标 ✅ done 但实际 sub-task 还有未勾选的
-
-**理由**: 文档是**跨 session 的唯一记忆载体**。上下文会被压缩, 对话会中断, 只有文档留得住。
-文档没更新, 下一个 session (或下一个人) 就要重新摸索一遍 — 这个成本远高于当场写两行。
-
-### 记录纪律 (硬要求)
-
-- **如实记录** — 失败的尝试**必须写**, 写清楚为什么失败。
-  正面参考: `overview.md` 里 `Fix_v1` / `Fix_v2` 都标 `FAILED ❌` 并说明原因, 这才让 `Fix_v3` 找到真根因。
-- **禁止**事后美化: 不要把"试了 3 次才对"写成"一次就对"
-- **禁止**只写结论不写过程 — 关键发现的**推导路径**比结论更值钱
-- **必须记**: 关键发现 / 关键技术 / 决策及其理由
-- **迭代号只增不减**, 不复用、不回填
-- 迭代结束后**同步更新** `overview.md` 的汇总表和 `CURRENT_TODO.md`
-
-### 架构决策记录 (`docs/architecture/`)
-
-架构发生变更时, 单独写一份决策记录, 必备字段:
-
-| 字段 | 内容 |
-|---|---|
-| **时间** | YYYY-MM-DD HH:MM GMT+8 |
-| **遇到的问题** | 具体是什么触发了这次架构讨论 |
-| **考虑的方案** | 至少 2 个, 各自的利弊 |
-| **决策结果** | 选了哪个 |
-| **利弊权衡** | 为什么接受它的缺点, 放弃了什么 |
-
-**参考**: `docs/architecture/case27_signal_graph_completeness_decision.md`
-
-### 测试记录 (`TESTING.md`)
-
-- **唯一测试手段**: `sim/tests/` + pytest, 命令与 marker 见 `TESTING.md`
-- 不同开发阶段/任务用哪套测试流程, **记录在 `TESTING.md`**, 不要散落在各处
-- **某个开发任务缺少测试 → 必须要求补充** (见 "📢 主动告知")
-
-### 🧹 文档卫生 (2026-09-08 iter_171 新增 — 方豆 "先把文档清理")
-
-> 背景: 文档曾膨胀到 370 份 (含大量过期报告/重复稿/三份索引), 计数在十几处
-> 各写一份且互相矛盾。文档是项目**第二产品**, 同样要防通胀。
-
-1. **唯一文档入口 = `docs/INDEX.md`** — 新增/改名/移动任何文档后必须更新它;
-   未登记 = 检查失败。根目录入口文档 (README/AGENTS/CURRENT_TODO/TESTING)
-   在 INDEX 中登记即可, 不重复建索引。
-2. **过期报告 / 被取代的稿子 → 归档, 不删除** — 移到
-   `docs/archive/` 下按日期命名的 cleanup 目录, 并在该目录的 `README.md`
-   写清归档原因 (信息不丢, 历史可追; 见 `docs/INDEX.md` 记录类的归档区入口)。
-3. **计数只有一个真相源** — 全量测试/规模计数只写在 `docs/INDEX.md`
-   "当前基线" 一节; 其他文档引用它, **禁止**写死 "N passed"。分套件计数
-   (如 integration 419 passed) 可写, 但必须是当期实测。
-4. **历史快照豁免** — `docs/task_tree/iterations/`、`CHANGELOG.md`、
-   `memory/`、重构轮快照可保留当时计数 (它们是时间点记录)。
-5. **提交前必跑** `python3 tools/check_docs.py` — 死链 / 归档越界 / 未登记
-   三项必须 0; 计数漂移为警告 (需人工确认)。
-6. **提交前必跑** `python3 tools/check_except_pass.py` (iter_190 新增) —
-   `except ...: pass` 计数必须 0 (核心纪律 2.5 的机械保障)。
+**禁止**新建 `records/` `logs/` `notes/` 等与上表重复的目录 —— 要加内容就加进已有位置。
 
 ---
 
-## 🛡️ 可信的开发纪律 (Trustworthy Development)
+## 📢 主动告知 (原则，细则见 CODING_STYLE §11)
 
-### 1. 不了解的代码不要贸然修改
+发现这些情况**主动说**，不要默默决定或跳过：缺少测试 / 更好的架构 / 更好的方案 /
+更简洁的实现 / 更高效的算法 / 登记过的"已知局限"实际更严重。
 
-**"了解"的定义 — 下面 4 条全部满足才算**:
-
-- [ ] 知道这段代码**在架构里的位置** (属于哪层? L1/L2/L3/L4? 谁的上下游?)
-- [ ] 知道这段代码**做什么**
-- [ ] 知道这段代码**要解决什么问题** (它为什么存在)
-- [ ] 知道**哪些代码和它相关** (调用方、被调用方、共享状态、测试)
-
-**任何一条答不上来 → 先读代码 / 先问方豆, 不要改。**
-"我猜它是做 X 的" ≠ 了解。
-
-### 2. 先诊断, 再定方案, 后动手
-
-**强制顺序**:
-
-1. **诊断问题** — 确认现象、复现、定位根因 (不是猜)
-2. **制定 ≥2 个修复方案**
-3. **评估每个方案的成本 / 收益 / 风险**
-4. **优先选能从根本解决问题的** — 而不是最快的
-5. 动手
-
-**禁止**: 跳过 1-4 直接改, 或只想出一个方案就动手。
-
-### 3. 用户决策与已有信息冲突 → 反复确认
-
-当方豆的指示与代码/文档/测试中的已有事实矛盾:
-
-- **不要默默照做**, 也不要默默按自己的理解改
-- **明确指出冲突点**: "你说的是 A, 但 `<文件:行>` 显示的是 B"
-- **说明照做的后果**: 会破坏什么、影响哪些测试、有什么风险
-- **反复确认** — 直到方豆明确知情并拍板
-
-### 4. 新决策与旧决策冲突 → 停下来问
-
-当一个新决策与之前的决策存在**冲突或矛盾**:
-
-- **立即停止工作** — 不要"先做着看"
-- **主动向方豆询问**: 列出旧决策 (出处) + 新决策 + 矛盾在哪
-- **等方豆明确答复后再继续**
-
-**理由**: 在矛盾的前提上继续开发, 产出的代码必然要返工, 而且会污染后续所有决策。
-
-### 5. 长对话压缩后必须重新加载本文件
-
-对话被压缩 / 上下文被截断 / session 重启后, **第一件事是重新读 `AGENTS.md`**,
-然后读 `CURRENT_TODO.md` 确认当前在做什么。**禁止**凭残留印象继续工作。
-
----
-
-## 🧠 代码决策逻辑 (Decision Logic)
-
-写代码前先想清楚"该怎么做", 而不是"能不能跑通"。
-
-### 1. 先探索, 后决策
-
-- 动手改之前先读: 相关模块、调用方、已有的同类实现
-- 至少考虑 2 个方案, 说明为什么选这个 (而不是第一个想到的就写)
-- **禁止**"边猜边改" — 猜测出的改动等于引入未知
-
-### 2. 找通用型最佳方案
-
-- 优先选**对整类问题成立**的方案, 而不是只对当前 case 成立的补丁
-- 如果一个改法需要为 case A / case B 各写一个分支 → 说明抽象层选错了, 回退重想
-- 特判 (special case) 必须有注释说明"为什么这里天然是特例"
-
-### 3. 修 bug 要修根因
-
-| 层次 | 表现 | 是否可接受 |
-|---|---|---|
-| 症状层 | 改 assertion / 加 try-except / 加特判绕过 | ❌ 禁止 |
-| 行为层 | 修正这个函数的输出 | ⚠️ 仅当根因确实在此 |
-| 根因层 | 修正数据结构 / 契约 / 调用时机 | ✅ 目标 |
-
-修完要能回答: **"同类 bug 还会不会再出现？"** 答案必须是"不会"。
-
-### 4. 看架构方向的问题
-
-- 发现"这个 bug 是架构缺陷的必然产物"时 → **停下来报告**, 不要在错的架构上继续打补丁
-- 关注信号: 反复在同一处修 bug、修一处坏三处、新功能都要改同一个巨型函数
-
-### 5. 函数要简洁
-
-- 一个函数**只做一件事**, 命名能说清它做什么
-- 经验阈值: 超过 ~50 行 / 嵌套超过 3 层 / 需要滚动才能读完 → 考虑拆分
-- 禁止"什么都干"的巨型函数 (parse + transform + validate + write 混在一起)
-- 拆分依据是**职责**, 不是行数 — 不要为了凑行数硬拆出无意义的辅助函数
-
-### 6. 结构化数据优于字符串
-
-- 用 `dataclass` / `NamedTuple` / `Enum` / `dict`, 不用拼接字符串再解析
-- **禁止**把结构信息编码进字符串再 `split()` 取回来 (e.g. `"mod.inst.sig"` 当数据传递)
-- 字符串只用于: 最终输出、日志、用户可见文本
-- 这条与"禁止 string fallback"是同一个原则的两面
-
-### 7. 决策前评估影响范围
-
-改动之前先确认:
-- 谁调用了它 (`grep` 全仓)
-- 改了返回类型 / 语义, 下游会不会静默出错
-- 有没有测试覆盖这条路径 (没有 → 见下一节)
-- 是否影响已有的 truth / baseline 结果
-
-**影响范围不明确时, 先查清楚再改, 不要"改了跑测试看看"。**
-
-### 8. 发现缺少测试要主动说
-
-写代码时发现某条路径没有测试覆盖 → **主动告知方豆**, 并说明:
-- 哪个函数 / 分支没覆盖
-- 建议补什么测试 (unit / cli / truth)
-- 补测试的成本估计
-
-**不要**默默跳过, 也不要未经确认就大批量补测试。
-
----
-
-## 📢 主动告知 (Proactive Reporting)
-
-发现下面任何一项时, **主动、明确地告诉方豆**, 而不是自己默默决定或跳过。
-说明要包含: **现状 → 问题 → 建议 → 代价**, 然后**等方豆决定**。
-
-| 发现 | 应该说什么 |
-|---|---|
-| **缺少测试** | 哪条路径没覆盖、建议补什么级别的测试 |
-| **有更好的架构** | 当前架构的具体缺陷、更好的结构、迁移成本 |
-| **有更好的解决方案** | 现方案的局限、替代方案、取舍 |
-| **有更好的哲学思路** | 当前设计假设错在哪、更合适的心智模型 |
-| **有更简洁的实现** | 现实现的冗余点、简化后的形态、行为是否等价 |
-| **有更高效的算法** | 当前复杂度、可优化到多少、是否真的是瓶颈 |
-
-**原则**:
-- 告知 ≠ 擅自动手 — 大改动 (架构 / 重构 / 换算法) 必须**先说, 后做**
-- 小而安全的改进 (改名、拆函数、去冗余) 可以直接做, 但要在总结里**列出来**
-- 宁可多说一句, 不要"我觉得这样更好所以就改了"
-
----
-
-## 🔍 自我审视清单 (每完成一个 sub-task)
-
-- [ ] 我有没有用 `--no-strict`? → 如果有, 立刻删除, 改诊断根因
-- [ ] 我有没有用 `-f` / `--file` 传 filelist? → 如果有, 改成 `--filelist` (核心纪律 4)
-- [ ] 我有没有 silent fallback? → 如果有, 改成显式错误 + sentinel
-- [ ] 我有没有为通过测试改 assertion / fixture 而不修功能? → 如果有, revert
-- [ ] 我有没有改 src/ 让一个本来失败的 case "意外通过"? → 如果有, 仔细 review
-- [ ] 我有没有"先探索再决策"? 还是猜着改的? → 猜的话, 回去读代码
-- [ ] 我的改法是通用的, 还是只针对当前 case 的特判? → 特判要有理由
-- [ ] 我修的是根因还是症状? "同类 bug 会不会再出现?"
-- [ ] 我有没有写出过长/职责混杂的函数? → 按职责拆
-- [ ] 我有没有用字符串承载结构信息? → 改用结构化类型
-- [ ] 我有没有确认改动的影响范围 (调用方 / 下游 / truth)?
-- [ ] 我有没有发现"缺测试 / 更好架构 / 更优方案"却没说? → 现在就说
-- [ ] 我改的代码, 我真的"了解"吗 (架构位置/作用/要解决的问题/相关代码 4 条)?
-- [ ] 我有没有先诊断、出 ≥2 个方案、评估成本收益, 才动手?
-- [ ] 有没有出现"新决策 vs 旧决策"矛盾却没停下来问?
-- [ ] 迭代记录写了吗 (`docs/task_tree/iterations/iter_NNN_*.md`)? 失败的尝试如实写了吗?
-- [ ] `CURRENT_TODO.md` 和 `overview.md` 同步更新了吗?
-- [ ] **我是不是只做完代码就想说"完成了"?** → 代码 ✅ + 测试 ✅ + 文档 ✅ 才算完成
-
----
-
-## 🆘 例外: 何时可以暂时违反
-
-只有当**所有**下面条件都满足:
-1. **方豆明确指示** "临时跳过这个" / "先用 --no-strict"
-2. **issue tracker / TODO** 已记录这个临时跳过 + 后续要修
-3. **commit message** 明确说明 "TEMPORARY: --no-strict due to issue #N, see TODO"
-
-**禁止** "没方豆指示就自己加 --no-strict" — 这是 discipline breach。
-
----
-
-## 📚 历史背景
-
-| 日期 | 事件 | 教训 |
-|---|---|---|
-| 2026-08-27 | Plan G2 发现 case27 test 用 `--no-strict`, 掩盖了 expr tree 缺失 | `--no-strict` 是 debug 杀手, 必须禁用 |
-| 2026-08-26 | D5 cleanup 删除 v10/v11 compat, 触发回归 | silent fallback 让旧路径隐藏了 |
-| 2026-08-15 | PR1+PR2+PR3 推行 strict pyslang API | "pure semantic API" = 不允许 fallback 到 string |
+说明格式：**现状 → 问题 → 建议 → 代价**，然后**等方豆决定**。
+大改动 (架构 / 重构 / 换算法) 必须**先说后做**；小而安全的改动可以直接做，但要在总结里列出来。
 
 ---
 
 ## 📝 版本
 
-- v1.0 (2026-08-27 12:02 GMT+8) — 初版, 方豆指示 "禁止 no strict, 禁止 fallback"
-- v1.1 — 新增 "🧠 代码决策逻辑" + "📢 主动告知" 两节, 同步扩充自我审视清单;
-  方豆指示 "先探索后决策 / 修根因 / 函数简洁 / 结构化数据优于字符串 / 有更好方案要主动说"
-- v1.2 — 新增 "🗂️ 项目必备设施" + "📓 开发日志与迭代记录" + "🛡️ 可信的开发纪律" 三节,
-  新建根级 `CURRENT_TODO.md`; 方豆指示 "记录开发日志 / todo file 管理 / 不了解的代码不要贸然修改 /
-  先诊断再定方案 / 决策冲突要停下来问 / 每个项目必备 5 项设施"。
-  **注**: 方豆确认 "task tree 和 records 是同一个意思", 故 records 指向已有的 `docs/task_tree/`, 不新建目录。
-- v1.3 — 新增 "任务前后必须更新文档 (硬要求)" 小节 + 工作流第 4 步 + 清单末条;
-  方豆指示 "任务完成前后应更新任务清单/状态等必要内容, **文档更新和实际工作同等重要**"。
-  确立完成判定: **代码 ✅ + 测试 ✅ + 文档 ✅** 三者齐备才算完成。
-- v1.4 — 新增核心纪律 **2.5 全面禁止 `except: pass`**;
-  方豆指示 "这30收窄的也要显式爆出来, 全面禁止 except pass 这种写法"。
-  2026-08-29 全仓清理: 所有 except: pass 改为 except X as e: logger... 或加注释,
-  全仓计数 = 0。
-- v1.5 (2026-09-08) — 新增 **🧹 文档卫生** 小节 (唯一入口 `docs/INDEX.md` /
-  归档不删 / 计数单一真相源 / 提交前跑 `tools/check_docs.py`);
-  方豆指示 "先进行A，先把文档清理" (A 路线第一项)。
-- v1.6 (2026-09-08 iter_190) — 核心纪律 2.5 补**机械保障**: v1.4 声称 "全仓
-  `except: pass` 计数 = 0" 被实测证伪 (src/ 有 52 处, 25 处 `except Exception: pass`)
-  → 全部改为可见日志 + 新增 `tools/check_except_pass.py` (提交前必跑, 见 🧹 文档卫生
-  第 6 条) + 回归测试含"检查器能检出违规"自检。
-  方豆指示 "继续" (查 CLI 敌意输入时发现)。
-- v1.7 (2026-09-09 iter_229) — 新增核心纪律 **4. 禁止用 `-f` / `--file` 传 filelist**
-  (`-f` 只接源码, filelist 一律 `--filelist`) + 自我审视清单对应一条;
-  方豆判定: 这是**用法不一致**, **不向上游 pyslang 报 issue**, 记录清楚避免这样使用。
-  背景: 误用时 slang 把 filelist 内容当 script 解析成表达式根 →
-  `Compilation.addSyntaxTree()` 原生 SIGTRAP (exit 133, 无输出、不可捕获);
-  已有守卫 + 回归测试 (iter_189)。
-
+- **v2.0 (2026-10-19)** — 重构为"流程入口 + 细则索引"：正文拆到
+  [docs/dev/DISCIPLINE.md](docs/dev/DISCIPLINE.md)、[CODING_STYLE.md](docs/dev/CODING_STYLE.md)、
+  [WORKFLOW.md](docs/dev/WORKFLOW.md)、[REVIEW_CHECKLIST.md](docs/dev/REVIEW_CHECKLIST.md)；
+  新增产品不变量 I1~I5（只读 / core 契约 / 单一实现 / 显式降级 / 可观察后果）；
+  流程补：真实项目冒烟、机械保障优先、提交用 `-F`、合并前全量门禁。
+  方豆指示："重新确立一份项目的开发纪律，写一份 AGENTS.md，流程类的放这里，
+  具体要求用 link 放到其他文件。"
+- v1.7 (2026-09-09 iter_229) — 新增核心纪律 4（`-f` 只接源码，filelist 用 `--filelist`）。
+- v1.6 (2026-09-08 iter_190) — 纪律 2.5 补机械保障 `tools/check_except_pass.py`
+  （"已全仓清零"的声明被实测证伪：src/ 仍有 52 处）。
+- v1.5 (2026-09-08) — 新增文档卫生小节（INDEX 唯一入口 / 归档不删 / 计数单一真相源）。
+- v1.4 — 新增"全面禁止 `except: pass`"。
+- v1.3 — 新增"任务前后必须更新文档"，确立完成判定 = 代码+测试+文档。
+- v1.2 — 新增项目设施表 + 迭代记录规范 + 可信开发纪律（先诊断再动手 / 冲突要停）。
+- v1.1 — 新增代码决策逻辑 + 主动告知 + 自我审视清单。
+- v1.0 (2026-08-27) — 初版：禁止 `--no-strict`、禁止 fallback。

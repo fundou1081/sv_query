@@ -277,7 +277,7 @@
   - 4 个 helper: `_prepare_lhs_and_dst` (53) / `_resolve_rhs_signals` (78) / `_build_ternary_edge_signals` (183) / `_build_simple_edge_signals` (62)
   - **诚实标注**: 实施中 2 个失误 (早期 return 改 4 元组 + 漏写 helper 末尾 return), 当场测试发现, 未污染 commit
   - 验证: integration 13→13 / cli 20→20 / unit 4→4 (沙箱) / truth 4 passed / 4 dispatch 探针 byte-identical
-  - 183 行的 `_build_ternary_edge_signals` 仍超 AGENTS.md ~50 行阈值, 但合理: 含 3 个递归嵌套 helper 共 60 行, 主体调度而非单层复杂度
+  - 183 行的 `_build_ternary_edge_signals` 仍超 [CODING_STYLE.md §5](dev/CODING_STYLE.md) 的 ~50 行阈值, 但合理: 含 3 个递归嵌套 helper 共 60 行, 主体调度而非单层复杂度
 - **2026-08-28 18:20** — #1 **Step 5 完成** (iter_040). 拆 8 个 `_flatten_*` 方法 (204 行) → `extractors/statement_flattener.py`.
   - 依赖极简: 仅 `_get_signal` (Callable 注入) + `_cond_ast_by_str` (作为参数传入, 非全局单例 — 遵守纪律 #2)
   - 6 个 visitor 纯模块内互调, 无外部依赖
