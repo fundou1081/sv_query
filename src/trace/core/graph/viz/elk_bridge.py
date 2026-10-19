@@ -82,6 +82,7 @@ Edge routing: ELK 原生 orthogonal, cross-hierarchy 自动处理
 
 from __future__ import annotations
 import json, subprocess, os, sys, re
+import re as _re_v1610  # [iter_256] _parse_gen_block 移到模块级后需要
 from collections import defaultdict
 from .viz_data_models import VizData
 
@@ -189,48 +190,6 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
         _gen_block_map_global = _dp.get('gen_block_map', {}) or {}
         _gen_iter_map_global = _dp.get('gen_iter_map', {}) or {}
 
-    import re as _re_v1610
-    _genblk_re = _re_v1610.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\[(\d+)\]$')
-    def _parse_gen_block(parent_module: str, signal_label: str = ''):
-        """[V16.10 2026-08-17] 从 signal_label 反推 generate block 名称.
-
-        规则 (基于 case29 generate_for_chain):
-          - signal_label='buf1[K]' (K=1..N-1) → 'gen_stage1', 'i=K-1'
-          - signal_label='buf2[K]' (K=0..N-2) → 'gen_stage2', 'i=K'
-          - signal_label='buf3[K]' (K=0..N-2) → 'gen_stage3', 'i=K'
-          - [V16.10.3 2026-08-17] signal_label='buf1'/'buf2'/'buf3' (无索引, bit-select base)
-            → 'gen_stageN', 'i=0' (BitSelect buf3[N-2] 的 base 'buf3' 语义上属 gen_stage3)
-        启发式: signal_name 以 'buf' 开头且后面是数字 → gen_stage{数字}
-        其他模式 → 返回 ('', '') (不标记为 generate iteration)
-        """
-        if not signal_label:
-            return '', ''
-        # [V16.10.3] 先试匹配无索引 'bufN' 形式 (避免 signal_label='buf3' 被坬立)
-        _bn_no_idx = _re_v1610.match(r'^(buf)(\d+)$', signal_label)
-        if _bn_no_idx:
-            stage_num = _bn_no_idx.group(2)
-            return f'gen_stage{stage_num}', 'i=0'
-        m = _genblk_re.match(signal_label)
-        if not m:
-            return '', ''
-        name, idx = m.group(1), m.group(2)
-        # 检测是否以 buf + 数字 开头 (case29 风格)
-        bn = _re_v1610.match(r'^(buf)(\d+)$', name)
-        if bn:
-            stage_num = bn.group(2)
-            stage_label = f'gen_stage{stage_num}'
-            # 迭代标签: buf1[K] → gen_stage1, i=K-1 (因为 buf1[0] 是顶层 assign)
-            #           buf2[K] → gen_stage2, i=K
-            try:
-                k = int(idx)
-                if stage_num == '1':
-                    iter_label = f'i={max(0, k-1)}'
-                else:
-                    iter_label = f'i={k}'
-                return stage_label, iter_label
-            except ValueError:
-                return '', ''
-        return '', ''
 
     root_children = []
     root_edges = []
@@ -476,14 +435,6 @@ def expr_trees_to_elk(expr_trees, input_names, output_names, viz=None) -> dict:
                 })
                 _emitted_port_ids.add(_parent_pid)
     
-    def collect_signals(tree_node, into):
-        """递归收集表达式树中所有 SignalRef labels"""
-        if not tree_node:
-            return
-        if tree_node.get('op') == 'SignalRef':
-            into.add(tree_node.get('label', ''))
-        for c in tree_node.get('children', []):
-            collect_signals(c, into)
 
     def render_ternary(node_id, children, prefix, nc, parent_module='', gen_block='', gen_iter=''):
         """轻量三元渲染：?: OP 节点 + 条件虚线边
@@ -2338,3 +2289,62 @@ def _map_to_elk_id(path, _instance_ports, _wire_nodes, _all_top_ports,
         short = path.rsplit('.', 1)[-1] if '.' in path else path
         return f'sig_{short}_wire'
     return None
+
+
+# ==============================================================================
+# [iter_256 T3-5] 从 expr_trees_to_elk (908 行) 提取的纯 helper
+# 这 2 个不捕获任何外层局部变量, 放模块级后可独立测试。
+# render_tree / render_ternary 分别捕获 11 / 6 个外层变量 (闭包状态),
+# 拆分需先引入显式 context 对象 —— 计划见 iter_256 迭代记录。
+# ==============================================================================
+_genblk_re = _re_v1610.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\[(\d+)\]$')
+def _parse_gen_block(parent_module: str, signal_label: str = ''):
+    """[V16.10 2026-08-17] 从 signal_label 反推 generate block 名称.
+
+    规则 (基于 case29 generate_for_chain):
+      - signal_label='buf1[K]' (K=1..N-1) → 'gen_stage1', 'i=K-1'
+      - signal_label='buf2[K]' (K=0..N-2) → 'gen_stage2', 'i=K'
+      - signal_label='buf3[K]' (K=0..N-2) → 'gen_stage3', 'i=K'
+      - [V16.10.3 2026-08-17] signal_label='buf1'/'buf2'/'buf3' (无索引, bit-select base)
+        → 'gen_stageN', 'i=0' (BitSelect buf3[N-2] 的 base 'buf3' 语义上属 gen_stage3)
+    启发式: signal_name 以 'buf' 开头且后面是数字 → gen_stage{数字}
+    其他模式 → 返回 ('', '') (不标记为 generate iteration)
+    """
+    if not signal_label:
+        return '', ''
+    # [V16.10.3] 先试匹配无索引 'bufN' 形式 (避免 signal_label='buf3' 被坬立)
+    _bn_no_idx = _re_v1610.match(r'^(buf)(\d+)$', signal_label)
+    if _bn_no_idx:
+        stage_num = _bn_no_idx.group(2)
+        return f'gen_stage{stage_num}', 'i=0'
+    m = _genblk_re.match(signal_label)
+    if not m:
+        return '', ''
+    name, idx = m.group(1), m.group(2)
+    # 检测是否以 buf + 数字 开头 (case29 风格)
+    bn = _re_v1610.match(r'^(buf)(\d+)$', name)
+    if bn:
+        stage_num = bn.group(2)
+        stage_label = f'gen_stage{stage_num}'
+        # 迭代标签: buf1[K] → gen_stage1, i=K-1 (因为 buf1[0] 是顶层 assign)
+        #           buf2[K] → gen_stage2, i=K
+        try:
+            k = int(idx)
+            if stage_num == '1':
+                iter_label = f'i={max(0, k-1)}'
+            else:
+                iter_label = f'i={k}'
+            return stage_label, iter_label
+        except ValueError:
+            return '', ''
+    return '', ''
+
+
+def collect_signals(tree_node, into):
+    """递归收集表达式树中所有 SignalRef labels"""
+    if not tree_node:
+        return
+    if tree_node.get('op') == 'SignalRef':
+        into.add(tree_node.get('label', ''))
+    for c in tree_node.get('children', []):
+        collect_signals(c, into)

@@ -151,6 +151,12 @@ FSM          analyze_fsm  (+ 同文件里的 StateMachineAnalyzer/StateMachineIn
 **影响**: 无法单元测试单个阶段；改布局逻辑要通读近千行。
 **建议**: 按"收集 → 转换 → 聚类 → 序列化"四阶段拆函数，每阶段可独立断言。
 
+> **[iter_256 复核]** 用 AST 量了 7 个嵌套函数的闭包捕获：`render_tree`(292 行) 捕获 **11** 个外层变量、
+> `render_ternary`(135) 捕获 **6** 个 —— 主体是**闭包状态**，直接按行切 = 把隐式共享状态改成显式参数，
+> 属中等风险。本次只提取了 2 个纯函数 (`_parse_gen_block` / `collect_signals`，捕获数 0)，
+> 函数 908→858 行；主体拆解计划（context 对象字段清单 + AST 改写 + SVG 逐字节基线验收）
+> 见 `docs/task_tree/iterations/iter_256_elk_bridge_partial.md` §拆解计划。
+
 ### A5 🟡 P2 — `driver_extractor.py` 1,445 行中有 14 个"薄壳"
 
 **证据**: 文件内 14 处注释写着"[ARCHITECTURE_TODOLIST #1 Step N] 薄壳, 实际逻辑在 extractors/*"。
