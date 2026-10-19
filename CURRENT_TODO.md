@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-19 GMT+8 (iter_246: CLI 输出层收敛 + R9)
+> **最后更新**: 2026-10-19 GMT+8 (iter_247: T2-a classes 合并进 class)
 
 ---
 
@@ -42,7 +42,8 @@
 `diff compare` 推迟 T2（入参与 schema 都不同，不属零风险）。
 **B4 ✅ (iter_246)**: CLI 输出层收敛 —— 7 份**逐字节相同**的 `output_json` → `src/cli/_output.py`（`emit_json`/`fail`），
 `fail` 2→1，删 6 个无用 `import json`；新增检查规则 **R9**（禁止本地定义输出 helper）+ 3 条自检；全量 **3422 passed**。
-**下一步**: T2 同族命令合并（74→~52；graph 4→2 / diagnose 4→1 / class 2→1 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1）。
+**T2-a ✅ (iter_247)**: `classes` 合并进 `class`（name 可选；不给则列出所有 class）—— 命令 **74→73**、默认可见 **47→46**，刻意不留别名。
+**下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。
 **结论: 没有 P0**（分层方向是对的: 无反向依赖 / 无裸 except / 单一注册表 / 只读证明都在生效）；问题是规模与表面积:
 🟠 P1 ×5 —— 3,248 行归档代码仍在 src 打包路径内 / `LoadExtractor._get_signal` 283 行死方法 / `UnifiedTracer` 36 方法跨 10 领域 / **CLI 74 规范 + 30 别名 = 104 叶子** / `elk_bridge` 单函数 908 行。
