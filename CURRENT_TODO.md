@@ -3,7 +3,21 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-09-06 GMT+8 (iter_167: covergroup 对抗轮完成 — 2 真 bug 修 + 边界登记)
+> **最后更新**: 2026-10-19 GMT+8 (iter_241 LoadTracer 收尾 + 合并回 main)
+
+---
+
+## 📦 仓库状态 (2026-10-19)
+
+- **工作分支 = `main`**（`chore/v11-only-cleanup` 已 fast-forward 合并进 main 并删除；
+  本地 main = 远端 `backup/main` = `8bf4eba`）
+- 合并前基线：**3422 passed / 0 failed**（`sim/tests/`, `-m "not opensource"`），
+  四项检查全绿（`check_docs` / `check_cli_layers` / `gen_cli_surface --check` / `check_except_pass`）
+- 分支清理：5 个**已合并**陈旧分支已删（`backup-before-filter` / `backup-before-merge` /
+  `backup/pre-portconn-mig` / `hierarchical-2026-08-13` / `chore/v11-only-cleanup`）；
+  **保留** `merged-semantic`（2026-05-08，有 1 个未合并提交 `da6e132`，待方豆确认可删）
+- 遗留未处理：远端仍保留 `backup/chore/v11-only-cleanup`；`.svq/` 137MB 旧快照未清；
+  `tmp_v101_pngs/` 2.7MB（均未跟踪）
 
 ---
 
