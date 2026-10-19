@@ -16,6 +16,24 @@
 | 代码 + 文档 | **同一个 commit**，不分开提交 |
 | 合并 | 只在全量门禁 + 机械检查全绿后合并；能 fast-forward 就 fast-forward |
 
+### 0.1 设施与唯一位置 (不得新建平行体系)
+
+| # | 设施 | 唯一位置 | 作用 |
+|---|---|---|---|
+| 1 | **协作入口** | [AGENTS.md](../../AGENTS.md) | 流程与铁律，压缩后必重读 |
+| 2 | **细则** | `docs/dev/` | 纪律 / 风格 / 流程 / 清单 |
+| 3 | **当前 todolist** | [CURRENT_TODO.md](../../CURRENT_TODO.md) | **此刻**在做什么 — 唯一稳定追踪点 |
+| 4 | **迭代记录** | [docs/task_tree/](../task_tree/) | 任务树 + 每次迭代一个文件 |
+| 5 | **架构决策** | [docs/architecture/](../architecture/) + [ARCHITECTURE.md](../ARCHITECTURE.md) | 架构变更 / 决策记录 |
+| 6 | **测试** | [TESTING.md](../../TESTING.md) + `sim/tests/` | 唯一测试手段与流程 |
+| 7 | **文档索引** | [docs/INDEX.md](../INDEX.md) | 唯一文档入口 + 计数单一真相源 |
+
+**辅助 (不是入口)**: [ARCHITECTURE_TODOLIST.md](../ARCHITECTURE_TODOLIST.md)（架构改造长期追踪）、
+[TODO.md](../TODO.md)（版本级待办）、`memory/`（按日经验）、
+[debugging_lessons/](../debugging_lessons/)（单次 debug 复盘）。
+
+**禁止**新建 `records/` `logs/` `notes/` 等与上表重复的目录 —— 要加内容就加进已有位置。
+
 ---
 
 ## 1. 任务生命周期 (强制顺序)
@@ -34,7 +52,7 @@
 - **一个迭代 = 一个可观察的动作**（读代码 / 跑测试 / 修 bug / 验证结果）
 - 每个迭代写一个 `docs/task_tree/iterations/iter_NNN_<简述>.md`，**边做边写**
 - 每完成一个 sub-task 就勾选 `CURRENT_TODO.md`；遇阻塞立刻写明阻塞点
-- 迭代号**只增不减**，不复用、不回填（下一个是 `iter_242` 之后顺延）
+- 迭代号**只增不减**，不复用、不回填（当前最新 `iter_243`，下一个 `iter_244` 起顺延）
 
 ### 1.3 收尾
 
