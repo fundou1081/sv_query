@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-19 GMT+8 (iter_243: AGENTS.md 压缩为纯规则 69 行)
+> **最后更新**: 2026-10-19 GMT+8 (iter_244: 核心代码坏味道评审 + CLI 减法方案)
 
 ---
 
@@ -36,7 +36,16 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **开发纪律 v2.0 + AGENTS.md 重构为流程入口** (L1, ✅ 完成 iter_242) —— 任务文件 `docs/task_tree/tasks/L1_dev_discipline_v2.md`。
+**当前任务 (方豆方向)**: **核心代码坏味道评审 + CLI 减法方案** (L1, ✅ 评审完成 iter_244 / 🟡 减法待拍板) —— 任务文件 `docs/task_tree/tasks/L1_core_review_and_cli_subtraction.md`。
+**产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。
+**结论: 没有 P0**（分层方向是对的: 无反向依赖 / 无裸 except / 单一注册表 / 只读证明都在生效）；问题是规模与表面积:
+🟠 P1 ×5 —— 3,248 行归档代码仍在 src 打包路径内 / `LoadExtractor._get_signal` 283 行死方法 / `UnifiedTracer` 36 方法跨 10 领域 / **CLI 74 规范 + 30 别名 = 104 叶子** / `elk_bridge` 单函数 908 行。
+🟡 P2 ×6 —— CLI 输出层 7 份副本 / **双导入根**（`from src.*` 27 vs `from cli|trace.*` 1,012, 实测 `cli.errors is src.cli.errors` == False）/ 孤立模块 1,026 行 / registry note 过期 / `diff compare` 宣布合并未执行。
+**减法方案（三档）**: **T1 零风险** -4,560 行（归档 + 删死方法/孤立模块 + 修 note + 删 `diff compare`）；
+**T2 合并同族** 命令 74→~52、别名 30→6、默认可见 47→~33（graph 4→2 / diagnose 4→1 / class 2→1 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1）；
+**T3 结构性** 拆 `UnifiedTracer` / 统一输出层 / 拆 `visualize.py`+`semantic/trace.py` / 拆 `elk_bridge`（需拍板，与 2a 排期协调）。
+
+**上一任务 (流程)**: **开发纪律 v2.0 + AGENTS.md 重构为流程入口** (L1, ✅ 完成 iter_242/243) —— 任务文件 `docs/task_tree/tasks/L1_dev_discipline_v2.md`。
 **做了什么**: `AGENTS.md` 522 行 → **149 行入口** (iter_242) → **69 行纯规则** (iter_243, 方豆要求 ≤100 行)，细则拆到 `docs/dev/` 四份职责单一的文件：
 `DISCIPLINE.md`(产品不变量 I1~I5 + 5 条硬规则) / `CODING_STYLE.md`(决策逻辑与风格) /
 `WORKFLOW.md`(任务生命周期/记录/文档卫生/测试/机械检查/提交合并) / `REVIEW_CHECKLIST.md`(提交前清单)。
