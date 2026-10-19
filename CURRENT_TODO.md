@@ -22,10 +22,12 @@
 
 ## 🔥 当前任务
 
-**当前任务 (方豆方向)**: **Agent 语义能力缺口补全** (L1, 🟡 1a ✅ 完成 / 候选待拍板) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
+**当前任务 (方豆方向)**: **Agent 语义能力缺口补全** (L1, ✅ 1a / 候选 1~4 / 跨模块遍历 / LoadTracer 全部完成) —— 任务文件 `docs/task_tree/tasks/L1_agent_semantic_capability_gaps.md`。
 **1a ✅ (iter_236)**: `svq instances` / `instance` / `connections` / `hierarchy` 四个只读 JSON 命令上线 (+ `graph` 组补 `--filelist`); 顺带修 **bug #6**: `UnifiedTracer.get_instances()` 从未工作 (双重包装 adapter + 按错误形状解析)。
 **候选 1~4 ✅ (iter_237)**: 再补 5 个命令 —— `params`(参数**生效值**+是否 override) / `ports`(端口表) / `paths`(跨模块路径, --all) / `classes` / `class`(类型级成员 vs 实例级节点); 顺带修 **bug #7**: `PathResolver` 只做"进模块"映射不做"出模块" → 跨模块路径恒 None, 且 `find_path` 与 `find_all_paths` 遍历不一致 → 抽 `_neighbors` 统一 + 加 `max_paths` 上限 + 锁定不变式。
-**本任务 (Agent 语义能力缺口) ✅ 全部完成**; 下一步候选见任务文件 (参数化 class 深处、跨模块约束等)。
+**跨模块遍历 ✅ (iter_240)**: loads/drivers 的 MIG 从"零结果兜底"改成**遍历的一步** (修 D1 不传递 / D2 被抑制 / D3 depth 不一致); 定下**作用域规则**: 全局查询 (不给 `--module`) 跨模块, 限定查询不越界。
+**LoadTracer ✅ (iter_241)**: 消除 `loads` 的第二份遍历实现 —— 实测三个缺陷 (L1 `"None.sig"` 假 root 让**任何不给 module 的调用**静默返回空 / L2 无跨模块 / L3 无 depth); 改成 `SignalTracer.trace_fanout` 的**薄适配层** + 删死基类 `graph_traversal.py` (177 行); `trace_loads` 与 `trace_fanout` 由测试锁定逐节点一致 + 结构性断言禁止再长出第二份遍历。全量 **3422 passed / 0 failed**。
+**本任务 (Agent 语义能力缺口) ✅ 全部完成**; 已登记但未做的只有 `--from-snapshot` 无 MIG 与 `distance` 恒为 1 (见 `docs/KNOWN_LIMITATIONS.md` §3.3)。
 
 **上一任务 (结构面)**: **CLI 分层与专注化** (L1, P0~P3 ✅ / P1b-3·P2 剩余·P6 待做) —— 64 个平铺命令 → 分层能力面。
 任务文件: `docs/task_tree/tasks/L1_cli_layering.md`; 生成物清单: `docs/CLI_SURFACE.md`; 降级政策: `docs/EXP_NAMESPACE.md`。

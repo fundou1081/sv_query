@@ -394,7 +394,7 @@ class InstanceResolver:
 
 ```
 trace_signal()       → SignalTracer (基于 SignalGraph)
-trace_loads()         → LoadTracer (基于 SignalGraph)
+trace_loads()         → LoadTracer (iter_241 起委托 SignalTracer.trace_fanout)
 trace_fanout/fanin() → SignalTracer
 trace_module()       → ModuleTracer
 trace_port()         → ModuleTracer

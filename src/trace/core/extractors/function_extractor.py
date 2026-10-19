@@ -173,7 +173,7 @@ def _handle_invocation(invocation, ctx, module, module_name, result, lhs_name=No
         ctx: 上下文(时钟、复位等)
         module: 模块 AST 节点
         module_name: 模块名
-        result: TraceResult 用于收集节点和边
+        result: 图构建结果 (承载 nodes/edges; duck-typed, 由 GraphBuilder 提供)
         lhs_name: 可选,函数调用的目标信号名(ContinuousAssign 的 LHS)
     """
     call_info = _parse_invocation_call(invocation, h=h)

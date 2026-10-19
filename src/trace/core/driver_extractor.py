@@ -116,7 +116,7 @@ class DriverExtractor:
         保证三元展开后的列表形式写到 TraceEdge 上。
 
         Args:
-            result: TraceResult.
+            result: 图构建结果 (承载 nodes/edges; duck-typed, 由 GraphBuilder 提供).
             src/dst: 边端点.
             kind: EdgeKind enum (default EdgeKind.DRIVER).
             assign_type: "continuous" / "nonblocking" / "alias" / "internal".

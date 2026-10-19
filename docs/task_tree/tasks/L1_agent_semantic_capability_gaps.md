@@ -53,7 +53,22 @@
 - 跨模块**约束**查询 (constraint 域已在 C1~C5 闭环, 但无 CLI)
 - 时序/CDC 的**可靠算法** (见 `docs/EXP_NAMESPACE.md` 晋升门槛)
 
+## 🧹 收尾 (审计发现的查询正确性缺口)
+
+前两轮补"有没有命令"，这两轮补"答案对不对"：
+
+| 迭代 | 内容 | 结果 |
+|---|---|---|
+| **iter_240** | `loads`/`drivers` 的 MIG 端口映射从"零结果兜底"改成**遍历的一步** | 修 D1 不传递 / D2 被抑制 / D3 depth 不一致；定下作用域规则（全局跨模块 / `--module` 限定不越界） |
+| **iter_241** | `LoadTracer` 消除第二份遍历实现（方案 A） | 修 L1 `"None.sig"` 假 root / L2 无跨模块 / L3 无 depth；删死基类 177 行；`trace_loads` ≡ `trace_fanout` 由测试锁定 |
+
+剩余登记（未修，见 `docs/KNOWN_LIMITATIONS.md` §3.3）：`--from-snapshot` 无 MIG、
+`distance` 字段恒为 1。
+
 ## 🔗 相关
 
 - 迭代: [iter_236](../iterations/iter_236_instance_query_and_graph_filelist.md)
+  / [iter_237](../iterations/iter_237_semantic_query_completion.md)
+  / [iter_240](../iterations/iter_240_cross_module_traversal_fix.md)
+  / [iter_241](../iterations/iter_241_loadtracer_adapter.md)
 - 分层任务: [L1_cli_layering.md](L1_cli_layering.md) (本任务补的是其中的"能力"面, "结构"面已完成 P0~P3)

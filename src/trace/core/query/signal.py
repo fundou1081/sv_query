@@ -45,7 +45,7 @@ class SignalTracer:
 
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
-        signal_id = self._make_id(signal, module)
+        signal_id = self.make_id(signal, module)
 
         # [铁律3] 不可信则不输出 - 节点不存在时返回 uncertain
         if signal_id not in self.graph.nodes():
@@ -61,7 +61,13 @@ class SignalTracer:
 
         return SignalChain(root=signal_id, drivers=drivers, loads=loads, confidence=confidence)
 
-    def _make_id(self, signal: str, module: str = None) -> str:
+    def make_id(self, signal: str, module: str = None) -> str:
+        """把 (signal, module) 解析成图里的节点 id; module=None 时把 signal 当完整 id.
+
+        [iter_241] 从 _make_id 转正: `LoadTracer` 等需要同一个解析规则的调用方
+        必须复用它 —— 自己拼 `f"{module}.{signal}"` 会产生 `"None.sig"` 这种
+        永不存在的 id (静默空结果).
+        """
         # [方案B修正] 如果 signal 包含 '.',检查是否以 module. 开头
         if module and "." in signal:
             # 如果已经以 module. 开头,认为是完整路径
@@ -824,7 +830,7 @@ class SignalTracer:
 
         默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
-        signal_id = self._make_id(signal, module)
+        signal_id = self.make_id(signal, module)
         if signal_id not in self.graph.nodes():
             return []
         # [ADD 2026-06-11 Req-12] 计算要包含的边类型
@@ -864,7 +870,7 @@ class SignalTracer:
             module: module name (optional, for relative paths)
             depth: 1=direct drivers only, N=recursive N levels, None=recursive all
         """
-        signal_id = self._make_id(signal, module)
+        signal_id = self.make_id(signal, module)
         # [iter_240] 作用域同上 (显式覆盖优先: 内部调用已传完整 id, 不能再按 module 推导)
         allow_cross = (module is None) if allow_cross_module is None else allow_cross_module
         if depth == 1:
@@ -886,7 +892,7 @@ class SignalTracer:
         Returns:
             List[DriverInfo] - 驱动信息列表
         """
-        signal_id = self._make_id(signal, module)
+        signal_id = self.make_id(signal, module)
 
         # 获取所有驱动节点 (作用域透传: None = 按 module 推导)
         driver_nodes = self.trace_fanin(signal_id, depth=depth,
@@ -1070,7 +1076,7 @@ class SignalTracer:
         Returns:
             DriverChain - 包含 DriverInfo 列表
         """
-        signal_id = self._make_id(signal, module)
+        signal_id = self.make_id(signal, module)
 
         if signal_id not in self.graph.nodes():
             return DriverChain(root=signal_id, drivers=[], loads=[], confidence="uncertain")
