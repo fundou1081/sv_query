@@ -187,8 +187,8 @@ def test_controlflow_list_conditioned_file_vs_filelist_parity():
 
 def test_controlflow_conditions_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir(use_cond=True)
-    r1 = _run("controlflow", "conditions", "top.dout", "-f", sv, "--json", "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("controlflow", "conditions", "top.dout", "--filelist", fl, "--json", "--log-level", "ERROR", cwd=tmpdir)
+    r1 = _run("controlflow", "analyze", "top.dout", "--conditions-only", "-f", sv, "--json", "--log-level", "ERROR", cwd=tmpdir)
+    r2 = _run("controlflow", "analyze", "top.dout", "--conditions-only", "--filelist", fl, "--json", "--log-level", "ERROR", cwd=tmpdir)
     assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
     print("✅ controlflow conditions: --file == --filelist")
 
