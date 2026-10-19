@@ -73,6 +73,7 @@ def _emit(data: dict, json_output: bool, pretty: bool) -> None:
 # 1. instances
 # ----------------------------------------------------------------------------
 def instances_cmd(
+    path: str = typer.Argument(None, help="[iter_250] 给实例路径 → 显示详情; 省略 → 列出所有实例"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
     module: str = typer.Option(None, "--module", "-m", help="只看该模块(实例)下的直接实例"),
@@ -81,10 +82,13 @@ def instances_cmd(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
 ) -> None:
-    """列出模块实例 (full_path / module_type / parent)。
+    """实例查询: 不给路径 → 列出实例; 给了路径 → 该实例的详情 (类型/父/子/端口)。
+
+    [iter_250 T2] 合并原 `instance` 命令 (2 → 1): 两者只是"有没有给实例路径"的差别。
 
     例: svq instances --filelist project.f --json
         svq instances -f top.sv --module top --depth 1 --json
+        svq instances top.u_dut --filelist project.f --json
     """
     try:
         tracer = _tracer(file, filelist, log_level)
@@ -93,6 +97,9 @@ def instances_cmd(
         handle_compilation_error(e)
         return
     all_inst = _instances(tracer)
+    if path is not None:
+        _emit_instance_detail(tracer, all_inst, path, json_output, pretty)
+        return
     rows = all_inst
     if module:
         rows = [i for i in all_inst if i["parent"] == module or i["full_path"] == module]
@@ -102,25 +109,11 @@ def instances_cmd(
 
 
 # ----------------------------------------------------------------------------
-# 2. instance <path>
+# 2. 实例详情 (由 instances <path> 分派, iter_250 合并)
 # ----------------------------------------------------------------------------
-def instance_cmd(
-    path: str = typer.Argument(..., help="实例路径 (如 top.u_dut)"),
-    file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
-    filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
-    json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
-    pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
-    log_level: str = typer.Option("WARNING", "--log-level"),
-) -> None:
-    """单个实例的详情 (类型/父/子/端口/位宽)。"""
-    try:
-        tracer = _tracer(file, filelist, log_level)
-        tracer.build_graph()
-    except CompilationError as e:
-        handle_compilation_error(e)
-        return
-
-    all_inst = _instances(tracer)
+def _emit_instance_detail(tracer, all_inst: list[dict], path: str,
+                          json_output: bool, pretty: bool) -> None:
+    """输出单个实例的详情 (类型/父/子/端口); 找不到 → 结构化失败 rc=1。"""
     me = next((i for i in all_inst if i["full_path"] == path), None)
     if me is None:
         typer.echo(json.dumps({"ok": False, "error": "instance not found", "path": path,

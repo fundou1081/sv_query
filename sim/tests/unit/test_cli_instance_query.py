@@ -83,7 +83,7 @@ class TestHierarchyAndInstance:
         assert kids["inst_demo.u_adder"]["children"] == []
 
     def test_instance_detail_has_ports(self):
-        d = _json("instance", "inst_demo.u_adder", "-f", INST_DEMO, "--json")
+        d = _json("instances", "inst_demo.u_adder", "-f", INST_DEMO, "--json")
         assert d["ok"] is True and d["full_path"] == "inst_demo.u_adder"
         assert d["has_mig_data"] is True
         ports = {p["port"]: p for p in d["ports"]}
@@ -93,7 +93,7 @@ class TestHierarchyAndInstance:
         assert ports["a"]["internal_signal"]             # 端口↔内部信号映射存在
 
     def test_instance_not_found_is_structured_error(self):
-        r = _run("instance", "inst_demo.nope", "-f", INST_DEMO, "--json")
+        r = _run("instances", "inst_demo.nope", "-f", INST_DEMO, "--json")
         assert r.returncode != 0
         d = json.loads(r.stdout)
         assert d["ok"] is False and "hint" in d

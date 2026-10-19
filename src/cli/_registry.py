@@ -141,9 +141,7 @@ COMMANDS: list[CommandSpec] = [
     _c("dataflow analyze", "semantic", recommended=True, note="源→目标路径"),
     # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
     _c("instances", "semantic", cost="cheap", recommended=True,
-       note="[规范入口] 列出模块实例 (full_path/module_type/parent); 支持 --filelist"),
-    _c("instance", "semantic", cost="cheap", recommended=True,
-       note="[规范入口] 单实例详情: 类型/父/子/端口(方向+位宽+内部信号)"),
+       note="列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist"),
     _c("connections", "semantic", cost="medium", recommended=True,
        note="[规范入口] 连接: 实例→端口↔内部信号 / 模块→四类边+置信度 (输出带 resolved_as)"),
     _c("hierarchy", "semantic", cost="medium", recommended=True,

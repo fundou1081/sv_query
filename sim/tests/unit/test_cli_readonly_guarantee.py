@@ -68,7 +68,7 @@ READONLY_COMMANDS = [
     ("graph", "nodes", "--match", "clk", "-f", "inst_demo.sv", "--json"),
     ("instances", "-f", "inst_demo.sv", "--json"),
     ("hierarchy", "-f", "inst_demo.sv", "--json"),
-    ("instance", "inst_demo.u_adder", "-f", "inst_demo.sv", "--json"),
+    ("instances", "inst_demo.u_adder", "-f", "inst_demo.sv", "--json"),
     ("connections", "inst_demo.u_adder", "-f", "inst_demo.sv", "--json"),
     ("params", "inst_demo.u_adder", "-f", "inst_demo.sv", "--json"),
     ("ports", "inst_demo", "-f", "inst_demo.sv", "--json"),

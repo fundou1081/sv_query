@@ -105,6 +105,7 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 |---|---|---|---|
 | 1 | `--from-snapshot` 模式**没有 MIG** (快照只存图) | snapshot 结果 ⊆ live 结果 (跨模块链缺失) | 要把端口映射写进快照 → 快照 schema 变更, 影响 diff/viz; 待方豆拍板 |
 | 2 | `distance` 字段**恒为 1** (`signal.py` 的 `# TODO: 计算实际距离`) | 跨 5 跳也标 distance=1, 对 agent 有误导 | 需定 API 形态 (返回副本 vs `(node, depth)`), 且不能 mutate 图里共享的 TraceNode |
+| 3 | **两套路径实现**: `paths` (PathResolver, 跨模块) 与 `dataflow analyze` (旧 dataflow 引擎, **不跨模块**) | 同一对信号: `paths in_a→add_out` 找到 4 跳, `dataflow analyze` 报**不可达** (iter_250 实测) | 让 dataflow 复用 PathResolver, 或把 dataflow 的路径部分下线; 需先确认 golden 影响 |
 
 **已修 (iter_241)**: 原第 3 条 `LoadTracer` 无跨模块支持 —— 实测比登记更严重:
 `module=None` 时它自己拼 `f"{module}.{signal}"` 得到 `"None.sig"`, 连**单模块**查询都
