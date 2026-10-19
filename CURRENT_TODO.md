@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-20 GMT+8 (iter_254: 拆 view/visualize.py, 2,376→70+5)
+> **最后更新**: 2026-10-20 GMT+8 (iter_255: FSM 提取 + 门面结论修正)
 
 ---
 
@@ -50,7 +50,8 @@
 累计：规范命令 **74→64**、别名 **26**、默认可见 **47→40**、叶子 **90**、可见条目 **33→23**。
 
 **T3-3 ✅ (iter_253/254)**: `semantic/trace.py` 1,835→**1,081 行**（拆出 common/evidence/overview）；`view/visualize.py` 2,376→**70 行入口 + 5 模块**（plots/chain/teach/common/module）。
-**T3 剩余**: `elk_bridge.expr_trees_to_elk` 908 行函数；`UnifiedTracer` 36 个公开方法。
+**T3-4 ✅ (iter_255)**: FSM 三件套 191 行 → `trace/core/fsm_analyzer.py`（re-export 零改动）；并用 AST 复核否掉了「拆领域门面」（46 方法中位数 10 行、19 个是纯转发）——真复杂度是 3 个私有方法，列 backlog。
+**T3 剩余**: `elk_bridge.expr_trees_to_elk` 908 行函数；`UnifiedTracer` 3 个巨型私有方法。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。
 **结论: 没有 P0**（分层方向是对的: 无反向依赖 / 无裸 except / 单一注册表 / 只读证明都在生效）；问题是规模与表面积:
