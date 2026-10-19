@@ -55,7 +55,6 @@ from src.cli.exp.verif.coverage import coverage_app
 from cli.core.semantic.dataflow import dataflow_app
 from cli.view.design import design_app
 from cli.core.state.diff import diff_app
-from cli.dev.expression import expression_app
 # [iter_248 T2] 诊断: 4 个子命令合并为 1 个 `diagnose <check>` (fix 老路径已删除)
 from cli.core.diagnose.dispatch import diagnose_cmd
 from cli.core.locate.graph import graph_app
@@ -141,9 +140,9 @@ app.add_typer(vis_app, name="visualize")
 app.add_typer(arch_app, name="arch")
 app.add_typer(design_app, name="design")
 
-# [FIX 2026-07-05] expression 是早期写但从未注册的 Typer app (build/func/cond 3 commands)
-# 修底层 metadata kwargs bug 之后, 重新启用, 让 CLI 可以手动构造 expression/func/cond 节点
-app.add_typer(expression_app, name="expression")
+# [iter_252] 删除 `expression` (dev 层 3 命令): 内部调试用, 0 测试, `--file` 路径未实现;
+# 模块已归档到 docs/archive/2026-10-19-src-archived/cli_dev/。构造 expression 节点请用
+# Python API `trace.core.builder.expression_builder.ExpressionBuilder`。
 
 # [FIX 2026-07-06] graph 是早期写但从未注册的 Typer app (dump/nodes/edges/find 4 commands)
 # 修 dump 的 TraceNode attribute bug 之后, 重新启用

@@ -63,7 +63,7 @@ LAYERS: dict[str, LayerSpec] = {
     "dev": LayerSpec(
         name="dev", consumer="dev", stability="none", readonly=True,
         json_required=False, in_capabilities=False, schema_version=None,
-        note="开发者内部调试, 不进用户文档",
+        note="开发者内部调试 (当前无命令; expression 已于 iter_252 归档)",
     ),
     "out": LayerSpec(
         name="out", consumer="none", stability="none", readonly=True,
@@ -219,7 +219,7 @@ COMMANDS: list[CommandSpec] = [
     _e("exp timing analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
 
     # ---- dev (内部调试) ----
-    _d("expression build"), _d("expression func"), _d("expression cond"),
+
 
     # ---- out: CLI 内已无会写文件的命令 (2026-09-09 方豆: sv_query 不改 RTL) ----
     # 写入能力现在只在 tools/: fix_timescale.py --apply (改 .sv) / fix_imports.py --write (写 filelist)

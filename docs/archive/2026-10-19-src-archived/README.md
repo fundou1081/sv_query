@@ -22,6 +22,7 @@
 | `_archived/` | `control_tree.py` / `elk_svg_renderer.py` / `viz_dataflow_new.py` / `viz_signal_new.py` / `elk_render.js` | ELK 迁移期的旧渲染路径 |
 | `_archived_dot/` | 12 个 `viz_*_renderer.py` + `viz_style.py` | Graphviz DOT 时代的渲染器（V6.7 起由 `VizData` + ELK 取代） |
 | `function_expander.py` | 131 行 | 原本在 `src/trace/core/builder/`，全仓 0 引用（`builder/__init__.py` 也不导出） |
+| `cli_dev/expression.py` | 255 行 | 原 `src/cli/dev/`；iter_252 移除 `expression build/func/cond` 三个命令（内部调试、0 测试、`--file` 路径从未实现），模块整体归档 |
 
 | `signal_graph_viewer.py` | 895 行 | 原 `src/trace/core/graph/`；全仓 0 import，且**自带的 `__main__` 跑不通**：`render_dot` 读 `self.config["node_style"]["show_type"]`，而 `configure()` 从不设置该键 → `KeyError: 'show_type'`（实测，移动前就坏） |
 
