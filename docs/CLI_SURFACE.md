@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **73**
-- 按层: `core`=33, `dev`=3, `exp`=24, `view`=13
-- core 内分组: `semantic`=16, `locate`=7, `state`=6, `diagnose`=4
+- 叶子命令总数: **70**
+- 按层: `core`=30, `dev`=3, `exp`=24, `view`=13
+- core 内分组: `semantic`=16, `locate`=7, `diagnose`=1, `state`=6
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,14 +18,11 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试, 不进用户文档 |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (33 个)
+## `core` (30 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `diagnose imports` | `fix imports` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 找 UndeclaredIdentifier 的定义来源; **只读** —— 写新 filelist 用 tools/fix_imports.py (老名 fix imports) |
-| `diagnose report` | `fix report` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | [规范入口] 按错误码给出修复方向; 只读 (老名 fix report) |
-| `diagnose timescale` | `fix timescale` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale) |
-| `diagnose widths` | `fix widths` | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths) |
+| `diagnose` | — | — | diagnose | diagnosis | cheap | ✅ | ✅ | ✅ | 只读诊断: <检查项> = imports|report|timescale|widths; 不改文件 (写文件用 tools/fix_*.py) |
 | `capabilities` | — | — | locate | primitive | cheap | ✅ | — | ✅ | 本清单自身 (agent 应先读它再决定调什么) |
 | `graph dump` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 整图 JSON 导出; 支持 --file / --filelist (iter_236 补) |
 | `graph edges` | — | — | locate | primitive | cheap | ✅ | ✅ | ✅ | 列出图边; 支持 --file / --filelist (iter_236 补) |
@@ -122,10 +119,6 @@
 | `coverage gap` | `exp coverage gap` |
 | `coverage generate` | `exp coverage generate` |
 | `coverage suggest` | `exp coverage suggest` |
-| `fix imports` | `diagnose imports` |
-| `fix report` | `diagnose report` |
-| `fix timescale` | `diagnose timescale` |
-| `fix widths` | `diagnose widths` |
 | `handshake analyze` | `exp handshake analyze` |
 | `handshake pair` | `exp handshake pair` |
 | `handshake scan` | `exp handshake scan` |

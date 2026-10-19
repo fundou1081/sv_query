@@ -136,15 +136,16 @@ def test_fix_timescale_cli_is_readonly_no_apply_option():
 
     会写文件的动作在 tools/fix_timescale.py —— 那才是带 .bak 备份的写入路径。
     """
-    r = _run("diagnose", "timescale", "--help")
+    # [iter_248] 4 项检查合并为 `diagnose <check>`: help 是顶层命令的 help
+    r = _run("diagnose", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
     assert "--apply" not in r.stdout, "CLI 不应再提供 --apply (只读硬约束)"
     assert "tools/fix_timescale.py" in r.stdout, "应指向真正的写入工具"
 
-    # 老名 fix timescale 仍是同一实现的兼容别名 (同样只读)
-    r2 = _run("fix", "timescale", "--help")
-    assert r2.returncode == 0 and "--apply" not in r2.stdout
+    # 运行时也必须拒绝 --apply
+    r2 = _run("diagnose", "timescale", "--filelist", "/dev/null", "--apply")
+    assert r2.returncode == 2 and "No such option" in (r2.stdout + r2.stderr)
     print("✅ diagnose timescale: 只读 (无 --apply), 指向 tools/fix_timescale.py")
 
 

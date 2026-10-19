@@ -83,7 +83,7 @@ def test_fix_report_lists_categories():
     _setup_three_sv() 实际产生的错误 (UnknownModule / UndeclaredIdentifier) 能被正确分类.
     """
     tmpdir, fl = _setup_three_sv()
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # 关键 sections
     assert "Fix Report" in r.stdout
@@ -102,7 +102,7 @@ def test_fix_report_lists_categories():
 def test_fix_report_json_structure():
     """fix report --json 应含 by_category / by_code / auto_fixable"""
     tmpdir, fl = _setup_three_sv()
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR", "--json")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR", "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
     assert "total_errors" in data
@@ -125,7 +125,7 @@ def test_fix_report_clean_project():
     sv.write_text("`timescale 1ns/1ps\nmodule clean (input wire clk, output reg q);\n  always_ff @(posedge clk) q <= ~q;\nendmodule\n")
     fl = Path(tmpdir) / "test.f"
     fl.write_text(f"{sv.absolute()}\n")
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     assert "Project is clean" in r.stdout
     print("✅ fix report: 完整无错 SV → 'Project is clean'")
@@ -144,7 +144,7 @@ def test_fix_report_unresolvable_filelist_fails_loudly():
     fl = Path(tmpdir) / "empty.f"
     fl.write_text(f"{Path(tmpdir) / 'does_not_exist.sv'}\n")
 
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
 
     assert r.returncode != 0, f"应非零退出, 实际 rc=0\nstdout={r.stdout}"
     assert "Project is clean" not in r.stdout, "不得把'输入无效'报成 clean"
@@ -156,7 +156,7 @@ def test_fix_report_unresolvable_filelist_fails_loudly():
 def test_fix_report_counts_auto_vs_manual():
     """fix report 应区分 auto-fixable (MissingTimeScale) vs manual (其他)"""
     tmpdir, fl = _setup_three_sv()
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # Summary section
     assert "Auto-fixable" in r.stdout
@@ -172,7 +172,7 @@ def test_fix_report_suggests_next_step():
     报告给出了 '检查 filelist' 方向的 fix_command 指引.
     """
     tmpdir, fl = _setup_three_sv()
-    r = _run("fix", "report", "--filelist", fl, "--log-level", "ERROR")
+    r = _run("diagnose", "report", "--filelist", fl, "--log-level", "ERROR")
     assert r.returncode == 0
     # filelist 完整性问题的 fix_command 应出现在报告中
     assert "filelist" in r.stdout.lower()
@@ -183,7 +183,7 @@ def test_fix_report_suggests_next_step():
 
 def test_fix_report_help_documented():
     """fix report --help 文档化"""
-    r = _run("fix", "report", "--help")
+    r = _run("diagnose", "report", "--help")
     assert r.returncode == 0
     assert "--filelist" in r.stdout
     assert "--json" in r.stdout

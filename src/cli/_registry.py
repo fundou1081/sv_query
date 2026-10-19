@@ -77,7 +77,7 @@ CORE_GROUPS = {
     "semantic": "语义事实: 关系查询 (drivers/loads/conditions/path) —— agent 推理链主力",
     "locate": "定位原语: 枚举与统计 (search/stats/graph) —— 低层但 agent 需要",
     "state": "状态: graph 快照与比较 (写自有状态, 不碰项目文件)",
-    "diagnose": "只读诊断: 编译/依赖问题报告 (原 fix report/widths)",
+    "diagnose": "只读诊断: diagnose <check> (imports/report/timescale/widths), 不改文件",
 }
 
 
@@ -170,6 +170,8 @@ COMMANDS: list[CommandSpec] = [
        note="按模式查图节点; 支持 --file / --filelist (iter_236 补)"),
     _c("graph dump", "locate", kind="primitive", cost="cheap",
        note="整图 JSON 导出; 支持 --file / --filelist (iter_236 补)"),
+    _c("diagnose", "diagnose", kind="diagnosis", cost="cheap", recommended=True,
+       note="只读诊断: <检查项> = imports|report|timescale|widths; 不改文件 (写文件用 tools/fix_*.py)"),
     _c("capabilities", "locate", kind="primitive", cost="cheap", recommended=True,
        note="本清单自身 (agent 应先读它再决定调什么)"),
 
@@ -186,14 +188,6 @@ COMMANDS: list[CommandSpec] = [
        note="[计划] 并入 snapshot compare"),
 
     # ---- core / diagnose (原 fix 只读部分) ----
-    _c("diagnose report", "diagnose", kind="diagnosis", cost="cheap", recommended=True,
-       note="[规范入口] 按错误码给出修复方向; 只读 (老名 fix report)"),
-    _c("diagnose widths", "diagnose", kind="diagnosis", cost="cheap",
-       note="用 syntax tree + pyslang.clog2 解析 typedef 真实位宽; 只读 (老名 fix widths)"),
-    _c("diagnose imports", "diagnose", kind="diagnosis", cost="cheap",
-       note="找 UndeclaredIdentifier 的定义来源; **只读** —— 写新 filelist 用 tools/fix_imports.py (老名 fix imports)"),
-    _c("diagnose timescale", "diagnose", kind="diagnosis", cost="cheap",
-       note="列出缺 timescale 的文件; **只读** —— 写文件用 tools/fix_timescale.py --apply (老名 fix timescale)"),
 
     # ---- view (人眼面, 默认含于 capabilities) ----
     _v("visualize graph", cost="expensive"),
@@ -249,11 +243,7 @@ COMMANDS_BY_KEY: dict[str, CommandSpec] = {c.key: c for c in COMMANDS}
 ALIASES: dict[str, str] = {
     "trace fanin": "drivers",
     "trace fanout": "loads",
-    # [iter_234 P2] 诊断命令改名: fix <x> → diagnose <x> (fix 组保留为兼容别名组)
-    "fix report": "diagnose report",
-    "fix widths": "diagnose widths",
-    "fix imports": "diagnose imports",
-    "fix timescale": "diagnose timescale",
+    # [iter_248 T2] fix <x> 别名已删除: 诊断统一为 `diagnose <check>`, 只读
     # [iter_235 P3] exp 降级区收进 `svq exp ...` 前缀; 老路径保留为兼容别名
     "protocol detect": "exp protocol detect",
     "protocol show": "exp protocol show",

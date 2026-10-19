@@ -138,7 +138,7 @@ sv_query -q verify gap --no-strict --file x.sv
 | `sva extract/coverage/timing` | SVA 抽 + 覆盖 | 真稳 |
 | `snapshot save/list/show/delete/compare` | graph 快照 | 真稳 |
 | `diff compare` | 2 版本对比 | 真稳 |
-| `fix timescale/report/imports/widths` | elaboration 修 | 真稳 |
+| `diagnose <check>` (imports/report/timescale/widths) | elaboration 诊断 (只读) | 真稳 |
 
 **承诺**: 真稳可用, 但**不主推, 资源不投** (主推给 dataflow + controlflow). 偶尔修 bug.
 
