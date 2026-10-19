@@ -447,7 +447,7 @@ dot -Tpng -Gsize="20,10" -Gratio=compress in.dot -o out.png
 - `docs/ARCHITECTURE.md` - 架构说明
 - `docs/FILELIST.md` - Filelist 详细格式
 - `docs/DOC_IMPL_GAP.md` - 文档与实现差异
-- `AGENTS.md` - 已知限制
+- `AGENTS.md` - 协作入口与纪律索引 (细则在 `docs/dev/`)
 
 ---
 
