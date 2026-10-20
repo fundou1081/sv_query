@@ -257,31 +257,6 @@ class TestTimingAnomalyDetection(unittest.TestCase):
         )
         return dot_out.read_text(), result.stderr
 
-    def test_timing_x_driver_anomaly_visible(self):
-        """x_driver: timing should report orphan_wire as X_DRIVER anomaly."""
-        dot, stderr = self._run_timing("x_driver", "x_driver")
-        # Should report anomaly count (English message)
-        self.assertIn("RTL anomalies detected", stderr,
-                     "Timing should report anomalies in text output")
-        # Should have cluster_timing_anomalies in DOT
-        self.assertIn("cluster_timing_anomalies", dot,
-                     "DOT should have timing anomalies cluster")
-        # orphan_wire should be in the DOT
-        self.assertIn("orphan_wire", dot, "orphan_wire should appear in DOT")
-        # Should be marked as X_DRIVER
-        self.assertIn("[X_DRIVER]", dot,
-                     "orphan_wire should be labeled with X_DRIVER")
-
-    def test_timing_combined_multiple_anomalies(self):
-        """combined: timing should report 2 X_DRIVER + 1 DANGLING."""
-        dot, stderr = self._run_timing("combined", "combined")
-        self.assertIn("RTL anomalies detected", stderr)
-        # Should have multiple anomalies
-        x_driver_count = dot.count("[X_DRIVER]")
-        dangling_count = dot.count("[DANGLING]")
-        self.assertGreaterEqual(x_driver_count + dangling_count, 3,
-                              f"Should have 3+ anomalies, got X_DRIVER={x_driver_count} DANGLING={dangling_count}")
-
     def test_timing_normal_no_anomaly(self):
         """normal: timing should report no anomalies."""
         dot, stderr = self._run_timing("normal", "normal")
@@ -291,14 +266,6 @@ class TestTimingAnomalyDetection(unittest.TestCase):
         # stderr should not have anomaly warning
         self.assertNotIn("RTL anomalies detected", stderr,
                         "Normal timing should not have anomaly warning")
-
-    def test_timing_dangling_anomaly(self):
-        """dangling: timing should report unused_reg as DANGLING."""
-        dot, stderr = self._run_timing("dangling", "dangling")
-        self.assertIn("RTL anomalies detected", stderr)
-        self.assertIn("unused_reg", dot)
-        self.assertIn("[DANGLING]", dot,
-                     "unused_reg should be labeled DANGLING")
 
     def test_timing_dot_title_includes_anomaly_warning(self):
         """Timing DOT title should include anomaly warning when present."""

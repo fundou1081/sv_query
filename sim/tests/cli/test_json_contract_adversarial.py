@@ -38,7 +38,7 @@ def _json_or_none(out: str):
 # ── F1: 错误路径的结构化信封 ────────────────────────────────────────────────
 @pytest.mark.parametrize("name,args", [
     ("二进制文件", ["visualize", "pipeline", "-f", str(BINARY), "--json"]),
-    ("文件不存在", ["exp", "timing", "analyze", "-f", str(REPO / "no_such.sv"), "--json"]),
+    ("文件不存在", ["dataflow", "analyze", "a", "b", "-f", str(REPO / "no_such.sv"), "--json"]),
     ("filelist 缺条目", ["visualize", "pipeline", "--filelist", str(MISSING), "--json"]),
 ])
 def test_f1_error_path_emits_json_envelope(name, args):
@@ -78,20 +78,6 @@ def test_f2_f3_ignored_flag_warns(flag, tmp_path):
 
 
 # ── F4: 参数校验 ────────────────────────────────────────────────────────────
-def test_f4_negative_max_paths_rejected():
-    """F4: --max-paths 负值必须报错 (过去静默当 0)。"""
-    r = _run(["exp", "timing", "analyze", "-f", str(CORDIC), "--json", "--max-paths", "-1"])
-    assert r.returncode != 0, f"负值应报错: {r.stdout[:200]}"
-    assert "不能为负" in (r.stderr + r.stdout), (r.stderr[-300:], r.stdout[:200])
-
-
-def test_f4_zero_max_paths_is_valid():
-    """F4 反向: 0 是合法值 (不输出路径), 不能误报。"""
-    r = _run(["exp", "timing", "analyze", "-f", str(CORDIC), "--json", "--max-paths", "0"])
-    assert r.returncode == 0, r.stderr[-300:]
-    payload = _json_or_none(r.stdout)
-    assert payload and payload["result"]["critical_paths"] == []
-
 
 # ── F5 (iter_202): --quiet 契约必须真的安静 ─────────────────────────────────
 def test_f5_quiet_suppresses_all_stderr():

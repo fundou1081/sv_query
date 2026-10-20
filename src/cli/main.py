@@ -48,10 +48,7 @@ from src.cli._common import (
     handle_compilation_error,
 )
 from cli.view.arch import arch_app
-from src.cli.exp.bus.backpressure import backpressure_app
-from src.cli.exp.struct.cdc import cdc_app
 from cli.core.semantic.controlflow import controlflow_app
-from src.cli.exp.verif.coverage import coverage_app
 from cli.core.semantic.dataflow import dataflow_app
 from cli.view.design import design_app
 from cli.core.state.diff import diff_app
@@ -59,14 +56,8 @@ from cli.core.state.diff import diff_app
 from cli.core.diagnose.dispatch import diagnose_cmd
 from cli.core.locate.graph import graph_app
 from cli.core.locate.capabilities import capabilities
-from src.cli.exp.bus.handshake import handshake_app
-from src.cli.exp.bus.protocol import protocol_app
-from src.cli.exp.verif.randomize import randomize_app
-from src.cli.exp.verif.risk import risk_app
 from cli.core.locate.search import search
 from cli.core.state.snapshot import snapshot_app
-from src.cli.exp.verif.sva import sva_app
-from src.cli.exp.struct.timing import timing_app
 from cli.core.semantic.trace import trace_app
 from cli.core.semantic.trace import fanin as _fanin_cmd, fanout as _fanout_cmd
 from cli.core.semantic.instances import (  # [iter_236 1a]
@@ -76,7 +67,6 @@ from cli.core.semantic.params import params_cmd       # [iter_237]
 from cli.core.semantic.ports import ports_cmd         # [iter_237]
 from cli.core.semantic.paths import paths_cmd         # [iter_237]
 from cli.core.semantic.classes import class_cmd  # [iter_237, iter_247 合并 classes]
-from src.cli.exp.verif.verify import verify_app
 from cli.view.visualize import vis_app
 import logging
 
@@ -108,23 +98,6 @@ app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")
 app.add_typer(controlflow_app, name="controlflow")
-# [iter_235 P3] exp 降级区: **规范入口 = `svq exp <组> <子命令>`**;
-# 下面这 10 个顶层组保留为**兼容别名** (老脚本/老测试继续可用, 见 cli/_registry.py ALIASES)。
-exp_app = typer.Typer(
-    help="[UNSTABLE] 降级区 (无 schema 承诺, 只修 bug 不加功能): "
-         "bus 总线结构域 / verif 验证域 / struct 算法待定 — 见 docs/EXP_NAMESPACE.md"
-)
-exp_app.add_typer(protocol_app, name="protocol")
-exp_app.add_typer(handshake_app, name="handshake")
-exp_app.add_typer(backpressure_app, name="backpressure")
-exp_app.add_typer(sva_app, name="sva")
-exp_app.add_typer(coverage_app, name="coverage")
-exp_app.add_typer(verify_app, name="verify")
-exp_app.add_typer(risk_app, name="risk")
-exp_app.add_typer(randomize_app, name="randomize")
-exp_app.add_typer(cdc_app, name="cdc")
-exp_app.add_typer(timing_app, name="timing")
-app.add_typer(exp_app, name="exp")
 
 # ---- 兼容别名 (老路径) ----
 # [iter_259] 10 个历史顶层组已**删除** (iter_251 先隐藏, 本次彻底移除):

@@ -6,8 +6,8 @@
 
 ## 总览
 
-- 叶子命令总数: **61**
-- 按层: `core`=24, `exp`=24, `view`=13
+- 叶子命令总数: **37**
+- 按层: `core`=24, `view`=13
 - core 内分组: `semantic`=14, `locate`=5, `diagnose`=1, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
@@ -64,35 +64,6 @@
 | `visualize pipeline` | — | — | render | presentation | medium | ✅ | ✅ | ✅ |  |
 | `visualize teach` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize timed` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 仅 1 测试文件 |
-
-## `exp` (24 个)
-
-| 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
-|---|---|---|---|---|---|---|---|---|---|
-| `exp backpressure analyze` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp backpressure deadlock` | — | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp handshake analyze` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp handshake pair` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp handshake scan` | — | — | bus | experimental | medium | — | ✅ | ✅ |  |
-| `exp protocol detect` | — | — | bus | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp protocol list` | — | — | bus | experimental | cheap | — | — | ✅ |  |
-| `exp protocol semantics` | — | — | bus | experimental | medium | ✅ | — | ✅ |  |
-| `exp protocol show` | — | — | bus | experimental | medium | — | — | ✅ |  |
-| `exp cdc analyze` | — | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
-| `exp timing analyze` | — | — | struct | experimental | medium | ✅ | ✅ | ✅ | 算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛 |
-| `exp coverage analyze` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp coverage gap` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp coverage generate` | — | — | verif | experimental | medium | — | ✅ | ✅ |  |
-| `exp coverage suggest` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize extract` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize list` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize reachability` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp randomize trace` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp risk analyze` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva coverage` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva extract` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp sva timing` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
-| `exp verify gap` | — | — | verif | experimental | medium | ✅ | ✅ | ✅ |  |
 
 ## 兼容别名 (老名保留, 同一实现)
 

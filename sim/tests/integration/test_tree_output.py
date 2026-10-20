@@ -85,15 +85,6 @@ class TestTreeOutput:
         # 至少 1 个 when 出现
         assert "when" in out
 
-    def test_cdc_works_with_tree_flag(self):
-        """cdc 接受 --tree (即使短链)"""
-        rc, out, _ = _run_cli(
-            "exp", "cdc", "analyze", "-f", str(REPO_ROOT / "sim" / "test_cdc.sv"),
-            "--human", "--tree",
-        )
-        assert rc == 0
-        assert "NO SYNC" in out
-
     def test_tree_preserves_text_mode(self):
         """不加 --human 时, --tree 无效 (回退到 plain text)"""
         rc, out, _ = _run_cli("trace", "fanin", "-f", TEST_FILE, "top.dout", "--tree")

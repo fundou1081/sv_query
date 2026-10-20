@@ -196,26 +196,6 @@ COMMANDS: list[CommandSpec] = [
     _v("design show", cost="expensive", note="[缺口] 仅 3 测试文件"),
     _v("trace overview", kind="presentation", cost="expensive",
        note="[计划] 归入 view/overview"),
-
-    # ---- exp / bus (总线结构域: 方豆定 —— 也降级) ----
-    _e("exp protocol detect", "bus"), _e("exp protocol show", "bus"),
-    _e("exp protocol list", "bus", cost="cheap"), _e("exp protocol semantics", "bus"),
-    _e("exp handshake scan", "bus"), _e("exp handshake analyze", "bus"),
-    _e("exp handshake pair", "bus"),
-    _e("exp backpressure analyze", "bus"), _e("exp backpressure deadlock", "bus"),
-
-    # ---- exp / verif (验证域: 统一降级) ----
-    _e("exp sva extract", "verif"), _e("exp sva coverage", "verif"), _e("exp sva timing", "verif"),
-    _e("exp coverage suggest", "verif"), _e("exp coverage gap", "verif"),
-    _e("exp coverage generate", "verif"), _e("exp coverage analyze", "verif"),
-    _e("exp verify gap", "verif"), _e("exp risk analyze", "verif"),
-    _e("exp randomize list", "verif"), _e("exp randomize extract", "verif"),
-    _e("exp randomize trace", "verif"), _e("exp randomize reachability", "verif"),
-
-    # ---- exp / struct (cdc/timing: 算法待定, 附晋升门槛) ----
-    _e("exp cdc analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
-    _e("exp timing analyze", "struct", note="算法可靠性待验证; 见 docs/EXP_NAMESPACE.md 晋升门槛"),
-
     # ---- dev (内部调试) ----
 
 

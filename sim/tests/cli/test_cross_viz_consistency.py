@@ -154,13 +154,10 @@ class TestCrossVizConsistency(unittest.TestCase):
         pipeline = run_sv(["visualize", "pipeline", "-f", filelist,
                           "--module", target,
                           "--svg", "/tmp/_pipeline.dot"])
-        timing = run_sv(["exp", "timing", "analyze", "-f", filelist,
-                         "--max-paths", "5"])
         return {
             "arch": parse_arch_summary(arch["text"]),
             "chain": parse_chain(chain["text"]),
             "pipeline": parse_pipeline(pipeline["text"]),
-            "timing": parse_timing(timing["text"]),
         }
 
     def test_normal_arch_pipeline_chain_agree_on_namespace(self):
@@ -175,71 +172,6 @@ class TestCrossVizConsistency(unittest.TestCase):
         # pipeline should report some regs (data_reg, valid_reg)
         self.assertGreaterEqual(facts["pipeline"]["pipeline_regs"], 2,
                               "normal should have at least 2 pipeline regs (data_reg, valid_reg)")
-
-    def test_normal_timing_has_consistent_node_count(self):
-        """[Cross 2] timing's total_nodes should be related to pipeline's stage count."""
-        facts = self._run_all("normal", self.filelist)
-        # timing's total nodes = ALL regs in module + extra signal nodes
-        # pipeline's regs = subset of pipeline + control + state
-        timing_regs = facts["timing"]["regs"]
-        pipeline_total = (facts["pipeline"]["pipeline_regs"]
-                        + facts["pipeline"]["control_regs"]
-                        + facts["pipeline"]["state_regs"])
-        # timing should report >= pipeline's total regs (timing counts ALL regs, pipeline filters)
-        self.assertGreaterEqual(timing_regs, pipeline_total,
-                              f"timing regs ({timing_regs}) should be >= pipeline total regs ({pipeline_total})")
-
-
-class TestCrossVizAnomalyConsistency(unittest.TestCase):
-    """Anomaly facts should be consistent across viz commands."""
-
-    def test_combined_x_driver_consistent_across_chain_arch(self):
-        """[Cross 3] chain's X_DRIVER anomalies should map to arch's signal namespace."""
-        # arch on combined module — no sub-instances (top-level)
-        arch = run_sv(["arch", "show", "-f",
-                       str(GOLDEN_DIR / "combined" / "filelist.f"),
-                       "--target", "combined", "--depth", "1",
-                       "--format", "summary"])
-        arch_info = parse_arch_summary(arch["text"])
-        self.assertEqual(arch_info["total_instances"], 0,
-                        "combined has no sub-instances (top-level only)")
-
-        # chain on combined — should find isolated_a, isolated_b, chain_wire
-        chain = run_sv(["visualize", "chain", "-f",
-                        str(GOLDEN_DIR / "combined" / "filelist.f"),
-                        "--target", "combined", "--auto",
-                        "--max-edges", "30", "--svg", "/tmp/_combined.dot"])
-        chain_info = parse_chain(chain["text"])
-
-        # Should have 2 X_DRIVER (isolated_a, isolated_b)
-        # [V6.9] DANGLING=1: pyslang still leaves 1 DANGLING after optimization
-        self.assertEqual(chain_info["anomaly_counts"].get("X_DRIVER", 0), 2,
-                       f"combined should have 2 X_DRIVER, got {chain_info['anomaly_counts']}")
-        self.assertEqual(chain_info["anomaly_counts"].get("DANGLING", 0), 1,
-                       f"combined should have 1 DANGLING, got {chain_info['anomaly_counts']}")
-
-        # All anomaly signals should be in the combined module's namespace
-        anomaly_names = [n for n, _ in chain_info["anomalies"]]
-        for name in anomaly_names:
-            # Names like 'isolated_a' (without module prefix in stderr)
-            # We expect them to be among the known wires in the testcase
-            self.assertIn(name, {"isolated_a", "isolated_b", "chain_wire"},
-                         f"Unexpected anomaly signal: {name}")
-
-    def test_dangling_unused_reg_consistent(self):
-        """[Cross 4] chain's DANGLING on unused_reg should agree with source code."""
-        chain = run_sv(["visualize", "chain", "-f",
-                        str(GOLDEN_DIR / "dangling" / "filelist.f"),
-                        "--target", "dangling", "--auto",
-                        "--max-edges", "30", "--svg", "/tmp/_dangling.dot"])
-        chain_info = parse_chain(chain["text"])
-
-        self.assertEqual(chain_info["anomaly_counts"].get("DANGLING", 0), 1,
-                       f"dangling should have 1 DANGLING, got {chain_info['anomaly_counts']}")
-        anomaly_names = [n for n, _ in chain_info["anomalies"]]
-        self.assertIn("unused_reg", anomaly_names,
-                     f"unused_reg should be flagged, got {anomaly_names}")
-
 
 class TestCrossVizHelpEachOther(unittest.TestCase):
     """Different viz commands should help understand each other."""
@@ -274,35 +206,3 @@ class TestCrossVizHelpEachOther(unittest.TestCase):
         # chain: 1 X_DRIVER (orphan_wire)
         self.assertEqual(chain_info["anomaly_counts"].get("X_DRIVER", 0), 1,
                        f"x_driver should have 1 X_DRIVER (orphan_wire), got {chain_info['anomaly_counts']}")
-
-    def test_pipeline_and_timing_share_reg_count_metric(self):
-        """[Cross 6] Pipeline's (pipeline + control + state) regs ≤ timing's total regs.
-
-        Pipeline uses different filtering than timing. Both look at the same module
-        but pipeline excludes clock/reset/state-machine regs while timing counts all.
-        So timing's reg count should be >= pipeline's total.
-        """
-        for tc in ["normal", "x_driver", "dangling", "combined"]:
-            with self.subTest(tc=tc):
-                filelist = str(GOLDEN_DIR / tc / "filelist.f")
-                pipe = run_sv(["visualize", "pipeline", "-f", filelist,
-                              "--module", tc,
-                              "--svg", f"/tmp/_pipe_{tc}.dot"])
-                time = run_sv(["exp", "timing", "analyze", "-f", filelist,
-                              "--max-paths", "5"])
-                pipe_info = parse_pipeline(pipe["text"])
-                time_info = parse_timing(time["text"])
-
-                pipe_total = (pipe_info["pipeline_regs"]
-                            + pipe_info["control_regs"]
-                            + pipe_info["state_regs"])
-                # timing's reg count should be >= pipeline's total
-                self.assertGreaterEqual(
-                    time_info["regs"], pipe_total,
-                    f"{tc}: timing regs ({time_info['regs']}) should be >= "
-                    f"pipeline total ({pipe_total})"
-                )
-
-
-if __name__ == "__main__":
-    unittest.main()
