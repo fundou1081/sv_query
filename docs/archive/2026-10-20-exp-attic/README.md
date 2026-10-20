@@ -11,6 +11,12 @@
 | `cli_exp/` | exp 的 24 个命令（bus / verif / struct 三域） |
 | `applications/` | 支撑这些命令的库：`bus`（协议识别 / 握手 / 反压 / 结构化信号提取） |
 | `tests/` | 这些命令与库的测试（unit / cli / integration / usage） |
+| `trace_libs/` | [iter_264] exp 退役后失去唯一调用方的 14 个 trace 库模块：
+`coverage_generator`(950) / `uvm_testbench_extractor`(592) / `pattern_matcher`(470) /
+`handshake_detector`(456) / `call_graph_builder`(388) / `mig_validator`(326) /
+`cdc_analyzer` / `timing_analyzer` / `covergroup_analyzer`(221) / `constraint_visitor`(226) /
+`expression_builder`(165) / `stage_inferrer`(105) / `covergroup_binding`(98) /
+`cli/core/locate/stats`(273, 与 main.py 内联 stats 重复) |
 
 ## 为什么退役而不是保留
 
