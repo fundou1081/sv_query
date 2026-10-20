@@ -72,23 +72,6 @@ class TestV11CLISmoke:
         assert d["ok"] is True
         assert d["evidence"]["source_text"] == "data = din;"
 
-    def test_verify_gap_evidence(self):
-        rc, out, _ = _run_cli("exp", "verify", "gap", "-f", TEST_FILE, "--evidence", "--json")
-        assert rc == 0
-        d = json.loads(out)
-        for sig in d["top_signals"]:
-            if "evidence" in sig and sig["evidence"]:
-                assert "credibility_score" in sig["evidence"]
-                return  # 至少找到一个
-        pytest.fail("Expected at least one signal with evidence")
-
-    def test_risk_analyze_evidence(self):
-        rc, out, _ = _run_cli("exp", "risk", "analyze", "-f", TEST_FILE, "--evidence", "--json")
-        assert rc == 0
-        d = json.loads(out)
-        with_ev = [s for s in d["result"]["data_signals"] if s.get("evidence")]
-        assert len(with_ev) >= 1
-
     def test_dataflow_evidence(self):
         rc, out, _ = _run_cli("dataflow", "analyze", "top.din", "top.dout", "-f", TEST_FILE, "--evidence", "--json")
         assert rc == 0
@@ -104,13 +87,3 @@ class TestV11CLISmoke:
         cds = d["result"]["conditioned_drivers"]
         with_ev = [c for cd in cds for c in cd["conditions"] if c.get("evidence")]
         assert len(with_ev) >= 1
-
-    def test_cdc_analyze_evidence(self):
-        rc, out, _ = _run_cli("exp", "cdc", "analyze", "-f", TEST_CDC_FILE, "--evidence", "--json")
-        assert rc == 0
-        d = json.loads(out)
-        paths = d["result"]["paths"]
-        assert len(paths) >= 1
-        for p in paths:
-            assert p.get("source_evidence") is not None
-            assert p.get("target_evidence") is not None

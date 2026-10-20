@@ -281,7 +281,7 @@ def _setup_strict_uart_fixture():
     return str(fl_path)
 
 
-def test_strict_default_12_commands_exits_zero():
+def test_strict_default_core_commands_exits_zero():
     """完整 4-SV filelist fixture + strict 默认 → 12 个命令全 EXIT 0.
 
     测试目的: 验证 sv_query 12 个核心命令 (stats/risk/cdc/sva/timing/verify/
@@ -293,18 +293,10 @@ def test_strict_default_12_commands_exits_zero():
     """
     fl_path = _setup_strict_uart_fixture()
 
-    # 12 个核心命令 + 它们的预期行为
+    # 核心命令 + 它们的预期行为 (iter_263: exp 已退役, 只剩 core)
     # 注意: visualize 用 --html 需要特定参数顺序, 单独跑 (不能加 --log-level)
     commands = [
         (["stats"],                              ["--log-level", "ERROR"]),
-        (["exp", "risk", "analyze"],                    ["--log-level", "ERROR"]),
-        (["exp", "cdc",  "analyze"],                    ["--log-level", "ERROR"]),
-        (["exp", "sva",  "extract"],                    ["--log-level", "ERROR"]),
-        (["exp", "sva",  "coverage"],                   ["--log-level", "ERROR"]),
-        (["exp", "sva",  "timing"],                     ["--log-level", "ERROR"]),
-        (["exp", "timing", "analyze"],                  ["--log-level", "ERROR"]),
-        (["exp", "verify", "gap"],                      ["--log-level", "ERROR"]),
-        (["exp", "coverage", "suggest", "-s", "synchronizer.sync0_o"], ["--log-level", "ERROR"]),
         (["controlflow", "analyze", "synchronizer.sync0_o"],   ["--log-level", "ERROR"]),
         (["dataflow", "analyze", "synchronizer.async_i", "synchronizer.sync0_o"], ["--log-level", "ERROR"]),
     ]

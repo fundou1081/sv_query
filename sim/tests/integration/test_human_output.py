@@ -79,15 +79,6 @@ class TestHumanOutput:
         # 应有 when 条件
         assert "when" in out
 
-    def test_cdc_human_has_arrow(self):
-        rc, out, _ = _run_cli("exp", "cdc", "analyze", "-f", TEST_CDC_FILE, "--human")
-        assert rc == 0
-        assert "→" in out
-        # 应有 NO SYNC / SYNC 标
-        assert "NO SYNC" in out or "SYNC" in out
-        # 应有风险
-        assert "HIGH" in out or "LOW" in out
-
     def test_human_preserves_json_mode(self):
         """--human 和 --json 不能同时用 (应报错或忽略 --human)"""
         # 实际行为: typer 通常 mutual exclusive, 这里只检查 --json 仍工作
@@ -104,18 +95,6 @@ class TestHumanOutput:
         assert "Fanin of 'top.dout'" in out
         # 旧格式没有 "→" 箭头 (或者至少有 drivers 列表)
         assert "[1]" in out or "[2]" in out  # 旧的 [distance] format
-
-    def test_human_with_evidence_works(self):
-        """--human + --evidence 同时给, 应都生效"""
-        rc, out, _ = _run_cli(
-            "exp", "cdc", "analyze", "-f", TEST_CDC_FILE,
-            "--human", "--evidence",
-        )
-        assert rc == 0
-        assert "→" in out
-        assert "NO SYNC" in out
-        # evidence 提供的 source_location 信息
-        assert "test_cdc.sv" in out  # 至少 1 个 file 引用
 
     def test_human_output_is_multiline(self):
         """--human 输出应该多行, 适合人看"""

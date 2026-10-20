@@ -76,3 +76,37 @@ def pytest_configure(config):
                     dst.symlink_to(src.resolve())
                 except (OSError, FileExistsError):
                     pass
+
+
+# ==============================================================================
+# [iter_263] 测试隔离: `trace` logger 级别泄漏
+# ==============================================================================
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _restore_trace_log_levels():
+    """每个测试前后快照并恢复 `trace` / `trace.core` 的 logger 级别。
+
+    背景: `UnifiedTracer.set_log_level()` 会改**模块级 logger** 的级别
+    (`_root_logger.setLevel`)。某些测试用 `--log-level ERROR` 跑完之后不复位,
+    后续任何用 `caplog.at_level("WARNING")` 的测试就收不到 WARNING 记录。
+    实测: `test_filelist_resolution::test_missing_entry_warns_and_skips`
+    单独跑通过、全量跑失败 (exp 退役删测试后暴露了顺序依赖)。
+    """
+    import logging
+
+    names = ("trace", "trace.core")
+    baseline = logging.WARNING      # 项目默认 (unified_tracer 的 _default_log_level)
+
+    def _reset() -> None:
+        for n in names:
+            logging.getLogger(n).setLevel(baseline)
+
+    # 前后都归位: 有些测试在 **模块 import 期** 就构造了 UnifiedTracer(log_level='ERROR'),
+    # 那会在 collection 阶段泄漏 (快照再恢复也救不回来), 所以这里归位到固定基线。
+    _reset()
+    try:
+        yield
+    finally:
+        _reset()

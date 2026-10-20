@@ -125,16 +125,13 @@ class TestCapabilities:
         assert set(d["layers"]) >= {"core", "view", "exp", "dev", "out"}
         assert any(c["name"] == "drivers" and c["layer"] == "core" for c in d["commands"])
 
-    def test_exp_excluded_by_default_included_with_flag(self):
-        """降级区默认不出现 (方豆决定: 验证域 + 总线域统一降级)。"""
-        default = _json("capabilities", "--json")
-        names = {c["name"] for c in default["commands"]}
-        assert not any(c["layer"] == "exp" for c in default["commands"]), \
-            f"exp 不应出现在默认清单: {sorted(n for n in names if 'protocol' in n)}"
-
-        with_exp = _json("capabilities", "--json", "--include-exp")
-        exp_names = [c["name"] for c in with_exp["commands"] if c["layer"] == "exp"]
-        assert len(exp_names) >= 20, f"exp 应有 20+ 命令, 实得 {len(exp_names)}"
+    def test_exp_namespace_retired(self):
+        """[iter_263] exp 已整体退役: `svq exp` 不再是命令, 想法记录在 docs/EXP_IDEAS.md。"""
+        from cli._registry import COMMANDS
+        assert [c.key for c in COMMANDS if c.layer == "exp"] == []
+        r = subprocess.run([sys.executable, str(PROJECT_ROOT / "run_cli.py"), "exp", "--help"],
+                           capture_output=True, text=True)
+        assert r.returncode != 0, "exp 命令应已不存在"
 
     def test_view_included_by_default(self):
         """方豆决定: capabilities 默认包含 view (人眼面)。"""

@@ -100,37 +100,6 @@ def _setup_workdir(use_cond=False):
 # 风险分析 risk analyze
 # ----------------------------------------------------------------------------
 
-def test_risk_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "risk", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "risk", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.returncode == 0, f"file mode fail: {r1.stderr[:200]}"
-    assert r2.returncode == 0, f"filelist mode fail: {r2.stderr[:200]}"
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ risk analyze: --file == --filelist")
-
-
-def test_risk_no_args_errors():
-    r = _run("exp", "risk", "analyze", cwd="/tmp")
-    assert r.returncode != 0
-    assert "--file" in r.stderr or "--filelist" in r.stderr
-    print(f"✅ risk analyze no-args: exit {r.returncode}")
-
-
-# ----------------------------------------------------------------------------
-# CDC 分析
-# ----------------------------------------------------------------------------
-
-def test_cdc_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "cdc", "analyze", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "cdc", "analyze", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.returncode == 0, f"file mode fail: {r1.stderr[:200]}"
-    assert r2.returncode == 0, f"filelist mode fail: {r2.stderr[:200]}"
-    assert r1.stdout == r2.stdout, f"file != filelist:\n{diff(r1.stdout, r2.stdout)}"
-    print("✅ cdc analyze: --file == --filelist")
-
-
 def test_cdc_no_args_errors():
     r = _run("exp", "cdc", "analyze", cwd="/tmp")
     assert r.returncode != 0
@@ -196,23 +165,6 @@ def test_controlflow_conditions_file_vs_filelist_parity():
 # ----------------------------------------------------------------------------
 # SVA extract / coverage / timing
 # ----------------------------------------------------------------------------
-
-def test_sva_extract_file_vs_filelist_parity():
-    tmpdir, sv, fl = _setup_workdir()
-    r1 = _run("exp", "sva", "extract", "-f", sv, "--log-level", "ERROR", cwd=tmpdir)
-    r2 = _run("exp", "sva", "extract", "--filelist", fl, "--log-level", "ERROR", cwd=tmpdir)
-    assert r1.returncode == 0
-    assert r2.returncode == 0
-    # sva extract 输出结构一样, 但第一行 "SVA 提取: <file>" 可能不同
-    # 因为 filelist 模式 sva extract 没有用 _build_tracer, 走的是 _read_filelist
-    # 用 JSON 模式确保一致性
-    r1j = _run("exp", "sva", "extract", "-f", sv, "--json", "--log-level", "ERROR", cwd=tmpdir)
-    r2j = _run("exp", "sva", "extract", "--filelist", fl, "--json", "--log-level", "ERROR", cwd=tmpdir)
-    assert r1j.returncode == 0
-    assert r2j.returncode == 0
-    assert r1j.stdout == r2j.stdout, f"file != filelist:\n{diff(r1j.stdout, r2j.stdout)}"
-    print("✅ sva extract: --file == --filelist (JSON)")
-
 
 def test_sva_coverage_file_vs_filelist_parity():
     tmpdir, sv, fl = _setup_workdir()
