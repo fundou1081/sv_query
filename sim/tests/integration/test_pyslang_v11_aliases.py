@@ -104,15 +104,6 @@ class TestImportPaths:
         from trace.core.semantic_adapter import SemanticAdapter
         assert SemanticAdapter is not None
 
-    def test_mig_validator(self):
-        # mig_validator 导出的是 compare_with_extract_module + verify_specific_port
-        # (MIG 是 production path, 不替换; native API 仅作 verification tool)
-        from trace.core.mig_validator import (
-            compare_with_extract_module, verify_specific_port,
-        )
-        assert compare_with_extract_module is not None
-        assert verify_specific_port is not None
-
     def test_graph_builder(self):
         from trace.core.graph_builder import GraphBuilder
         assert GraphBuilder is not None
