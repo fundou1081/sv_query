@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-20 GMT+8 (iter_264: 失联库清理, src 46,480 行)
+> **最后更新**: 2026-10-21 GMT+8 (iter_265: 删 3 个 view 命令, 命令 34 / 默认可见 34)
 
 ---
 
@@ -59,6 +59,7 @@
 **T2-h ✅ (iter_262)**: `snapshot show` 并入 `snapshot list TAG` —— 命令 62→61、core 25→24、state 5→4。**core 24 已到"不损失能力"的减法边界**（再压只剩 view 叙述类 / trace evidence+impact / exp 24 条）。
 **exp 退役 ✅ (iter_263)**: 方豆拍板整体退役 —— 命令 **61→37**（core 24 + view 13），`src` −8,118 行，测试 3422→**2633**（789 个随退役功能归档）。想法留档 `docs/EXP_IDEAS.md`（只记想法+场景），代码与测试归档 `docs/archive/2026-10-20-exp-attic/`；顺带修了 logger 级别泄漏的测试隔离 bug。
 **失联库清理 ✅ (iter_264)**: exp 退役后只被测试引用的 14 个 trace 库模块归档 （`src` 51,607→**46,480 行**，测试 2633→**2310**）。判定口径：**只被测试引用的模块 = 死代码**。
+**view 收口 ✅ (iter_265)**: 删 `visualize compute/timed/gap` —— 命令 37→**34**，view 13→10，**默认可见 37→34（达成 ~33 目标）**；gap 属退役想法的孤儿视图（0 测试）。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

@@ -147,8 +147,6 @@
     数据流 + Mermaid (.mmd + .dot, V6.2.1+ 支持 `--show-source`)
   * `sv_query visualize pipeline --file F`
     时序管道 (寄存器串联链) 图
-  * `sv_query visualize gap --file F --min-risk N`
-    覆盖率缺口图
   * `sv_query visualize module --file F`
     module 结构图 (1 box = 1 sub-instance)
   * `sv_query visualize chain --file F`

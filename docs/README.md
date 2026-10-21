@@ -194,7 +194,6 @@ $HOME/my_project/module.sv
 
 ```bash
 # 可视化高风险但无 SVA/Coverage 的信号
-python run_cli.py visualize gap -f <file.sv> --svg gap.dot --png --min-risk 25
 ```
 
 ---

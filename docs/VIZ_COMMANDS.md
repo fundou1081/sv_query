@@ -146,31 +146,6 @@ sv_query visualize pipeline \
 
 ---
 
-### 1.4 `visualize gap` — 验证缺口图
-
-**做什么**: 高亮**有风险但没 SVA 没 Coverage** 的信号 (🚨).
-
-**什么时候用**:
-- 想知道 RTL 里哪些信号值得加 SVA
-- code review 时找盲区
-- 跑完 `verify gap` 后想可视化
-
-**示例**:
-```bash
-sv_query visualize gap \
-  -f sim/tests/fixtures/golden_mini/coverage_demo.sv \
-  --no-strict \
-  --min-risk 20 \
-  --svg 
-```
-
-**输出特点**:
-- 节点颜色 = 风险等级 (红🚨 > 黄⚠ > 绿✓)
-- 节点标签尾部: ✓ (有 SVA) / 🟡 (有 cov) / ✓🟡 (都有) / 🚨 (都没有)
-
-**额外选项**:
-- `--min-risk N`: 只显示风险 ≥ N 的 (默认 20)
-
 ---
 
 ### 1.5 `visualize chain` — input → output 全链路
@@ -421,7 +396,6 @@ backpressure.svg     backpressure.mmd
 | **看 MUX 怎么选通** | `visualize teach --focus OUT --upstream` (边上有 `sel` / `op == 2'd0` label) |
 | **看流水线几级** | `visualize pipeline --unfold` |
 | **看数据流分类** (data vs control) | `visualize dataflow --with-clk-rst` |
-| **找验证缺口** | `visualize gap --min-risk 20` 或 `verify gap --svg` |
 | **看项目架构** | `arch show --format dot --depth 3` |
 | **跨模块追溯** | `visualize module --depth 2` |
 | **一次出全套图** | `design show --graph --graph-dir /tmp/g/` |

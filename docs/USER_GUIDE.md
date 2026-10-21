@@ -126,16 +126,6 @@ python run_cli.py visualize graph \
     --filelist project.fl              # filelist 路径
 ```
 
-### `visualize gap` 选项
-
-```bash
-python run_cli.py visualize gap \
-    -f <file.sv> \
-    --svg gap.svg \
-    --html gap.html \
-    --min-risk 20.0
-```
-
 ---
 
 ## Python API
@@ -337,7 +327,6 @@ python run_cli.py visualize graph -f module.sv --svg out.svg && \
 ### 验证缺口
 
 ```bash
-python run_cli.py visualize gap -f module.sv --svg gap.svg --min-risk 25
 ```
 
 高亮无 SVA/Coverage 的高风险信号。
