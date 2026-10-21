@@ -41,7 +41,7 @@
 | `paths` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | [规范入口] 图上路径 (跨模块端口跳转; --all 枚举全部, 有上限) |
 | `ports` | — | — | semantic | fact | cheap | ✅ | ✅ | ✅ | [规范入口] 模块端口总览 (方向/位宽/入边数/出边数) |
 | `trace evidence` | — | — | semantic | fact | medium | ✅ | ✅ | ✅ | 源码证据 (always/if 块原文) |
-| `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 风险分级 |
+| `trace impact` | — | — | semantic | fact | expensive | ✅ | ✅ | ✅ | 传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4) |
 | `snapshot compare` | — | — | state | state | medium | ✅ | — | ✅ | 比较两个快照, 或两个 SV 文件 (文件模式 = 原 diff compare; --signal 看可达性差异) |
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |
@@ -51,12 +51,12 @@
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
-| `arch show` | — | — | render | presentation | expensive | — | ✅ | ✅ | [计划] 迁 VizData 统一渲染 |
-| `design show` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 仅 3 测试文件 |
-| `trace overview` | — | — | render | presentation | expensive | ✅ | ✅ | ✅ | [计划] 归入 view/overview |
+| `arch show` | — | — | render | presentation | expensive | — | ✅ | ✅ | 项目架构总览 (L1 模块 + L2 端口) |
+| `design show` | — | — | render | presentation | expensive | — | ✅ | ✅ | IP 级设计理解; 仅 1 个测试文件 (覆盖缺口) |
+| `trace overview` | — | — | render | presentation | expensive | ✅ | ✅ | ✅ | 两个信号之间的综合叙述 (dataflow + controlflow + evidence) |
 | `visualize chain` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize dataflow` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize datapath` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 0 测试 |
+| `visualize datapath` | — | — | render | presentation | expensive | — | ✅ | ✅ | 定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口) |
 | `visualize graph` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize module` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize pipeline` | — | — | render | presentation | medium | ✅ | ✅ | ✅ |  |

@@ -132,7 +132,7 @@ COMMANDS: list[CommandSpec] = [
     _c("loads", "semantic", recommended=True, cost="medium",
        note="[规范入口] 这个信号被谁使用 (下游; DRIVER 边正向遍历); 兼容别名 trace fanout"),
     _c("trace impact", "semantic", recommended=True, cost="expensive",
-       note="传递影响 + 风险分级"),
+       note="传递影响 + 启发式风险分 (未标定, 仅用于同一图内相对排序; 见 KNOWN_LIMITATIONS §3.4)"),
     _c("trace evidence", "semantic", recommended=True, note="源码证据 (always/if 块原文)"),
     _c("controlflow analyze", "semantic", cost="medium", recommended=True,
        note="信号的驱动条件分析; --conditions-only 只要扁平条件列表 (原 controlflow conditions)"),
@@ -188,11 +188,11 @@ COMMANDS: list[CommandSpec] = [
     _v("visualize chain"),
     _v("visualize module"),
     _v("visualize teach"),
-    _v("visualize datapath", note="[缺口] 0 测试"),
-    _v("arch show", note="[计划] 迁 VizData 统一渲染"),
-    _v("design show", cost="expensive", note="[缺口] 仅 3 测试文件"),
+    _v("visualize datapath", note="定点计算架构图; 0 个测试文件 (只有 fixture 名引用, 覆盖缺口)"),
+    _v("arch show", note="项目架构总览 (L1 模块 + L2 端口)"),
+    _v("design show", cost="expensive", note="IP 级设计理解; 仅 1 个测试文件 (覆盖缺口)"),
     _v("trace overview", kind="presentation", cost="expensive",
-       note="[计划] 归入 view/overview"),
+       note="两个信号之间的综合叙述 (dataflow + controlflow + evidence)"),
     # ---- dev (内部调试) ----
 
 
