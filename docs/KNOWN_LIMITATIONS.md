@@ -113,6 +113,28 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 已改为 `SignalTracer.trace_fanout` 的薄适配层并删除死基类, `trace_loads` 与
 `trace_fanout` 现由测试锁定为逐节点一致 (`sim/tests/unit/test_load_tracer_adapter.py`)。
 
+### 3.4 `trace impact` 的风险分是**未标定的启发式** (iter_266)
+
+**可观察后果** — 同一个设计，风险分的绝对值没有物理含义，只有**同一份图内的相对排序**有意义：
+
+| 场景 | 实测输出 |
+|---|---|
+| `trace impact calc_chain.a -f calc_chain.sv` | 8 条路径全部 `HIGH`（32~34 分） |
+| 其中任一路径 | 分数构成 = 路径长度 2×5 + 扇出 1×2 + **无 SVA/无 covergroup +20** + 条件 +10 |
+| 换一个"有 SVA 有 coverage"的信号 | 同样路径长度/扇出下，分数直接少 20 → 可能从 HIGH 掉到 MEDIUM |
+
+**结论**：等级主要由"有没有断言/覆盖率"驱动（这部分是**真实数据**，来自
+`SVAExtractor` / `CovergroupExtractor`），其余权重（长度 ×5、扇出 ×2、名字含
+`clk|rst` +20、有条件 +10）是**手工设定、从未用真实项目标定**。
+
+**因此**：
+- ❌ 不要把它当"改动风险有多大"的度量，也不要跨设计比较分数
+- ✅ 可以在**一次运行内**用它排序（"先看哪条路径"）
+- 输出里已加 `result.risk_model = "heuristic_v1 (未标定; 仅用于相对排序)"` 做显式标注
+
+**要修的前提**：拿真实项目 + 已知 bug 位置做标定（哪些信号改动真的引发问题），
+否则调权重只是换一组同样未经验证的魔数。
+
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
 | 模块 | 数量 | 原因 |

@@ -726,6 +726,13 @@ def impact(
     - Coverage status (SVA/Covergroup)
     - Suggestions for safe modification
 
+    [iter_266] 风险分的口径必须说清: 它是**人工给定的启发式** (`_calculate_risk`),
+    权重未用真实项目标定 —— 路径长度 ×5 / 扇出 ×2 / 无覆盖 +20 / 高扇出 +15(>10)
+    或 +10(>5) / 信号名含 clk|clock +20 / 含 rst|reset +20 / 有条件 +10;
+    再按 `--min-risk` (默认 30) 切成 HIGH / MEDIUM(×0.6) / LOW。
+    它回答的是"相对排序", **不是**"改动风险有多大"的绝对值 —— 见
+    docs/KNOWN_LIMITATIONS.md §3.4。
+
     Single signal: sv_query trace impact top.rst_ni -f top.sv
     Batch:        sv_query trace impact --batch 'top.clk,top.rst_ni' -f top.sv
     """
@@ -819,6 +826,8 @@ def impact(
             "command": "trace_impact",
             "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
+                # [iter_266] 显式标注风险分的模型, 避免消费方把启发式当成标定过的度量
+                "risk_model": "heuristic_v1 (未标定; 仅用于相对排序)",
                 "signals": signals_result,
                 "total_signals": len(signals),
                 "total_paths": total_paths_all,
