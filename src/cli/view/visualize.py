@@ -52,7 +52,7 @@ vis_app = typer.Typer(help="Signal graph visualization: DOT, Mermaid, HTML with 
 
 # [iter_254 T3-3] 实现拆到 5 个模块 (原 2,376 行 → 5 文件); 这里只做注册。
 from cli.view.visualize_plots import (  # noqa: E402
-    graph, dataflow, pipeline, compute, timed, gap, datapath,
+    graph, dataflow, pipeline, datapath,
 )
 from cli.view.visualize_chain import chain  # noqa: E402
 from cli.view.visualize_module import module  # noqa: E402
@@ -61,9 +61,6 @@ from cli.view.visualize_teach import teach  # noqa: E402
 vis_app.command("graph")(graph)
 vis_app.command("dataflow")(dataflow)
 vis_app.command("pipeline")(pipeline)
-vis_app.command("compute")(compute)
-vis_app.command("timed")(timed)
-vis_app.command("gap")(gap)
 vis_app.command("datapath")(datapath)
 vis_app.command("chain")(chain)
 vis_app.command("module")(module)

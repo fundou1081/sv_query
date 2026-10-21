@@ -1,13 +1,13 @@
 # CLI 能力清单 (生成物 — 请勿手改)
 
 > **生成方式**: `python3 tools/gen_cli_surface.py`  (数据源: `src/cli/_registry.py` + typer introspection)
-> **生成日期**: 2026-10-20  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
+> **生成日期**: 2026-10-21  |  **漂移校验**: `python3 tools/gen_cli_surface.py --check`
 > **分层检查**: `python3 tools/check_cli_layers.py` (R1~R6)
 
 ## 总览
 
-- 叶子命令总数: **37**
-- 按层: `core`=24, `view`=13
+- 叶子命令总数: **34**
+- 按层: `core`=24, `view`=10
 - core 内分组: `semantic`=14, `locate`=5, `diagnose`=1, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
@@ -47,7 +47,7 @@
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |
 | `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖) |
 
-## `view` (13 个)
+## `view` (10 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -55,15 +55,12 @@
 | `design show` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 仅 3 测试文件 |
 | `trace overview` | — | — | render | presentation | expensive | ✅ | ✅ | ✅ | [计划] 归入 view/overview |
 | `visualize chain` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize compute` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 仅 1 测试文件 |
 | `visualize dataflow` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize datapath` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 0 测试 |
-| `visualize gap` | — | — | render | presentation | medium | — | — | ✅ |  |
 | `visualize graph` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize module` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
 | `visualize pipeline` | — | — | render | presentation | medium | ✅ | ✅ | ✅ |  |
 | `visualize teach` | — | — | render | presentation | expensive | — | ✅ | ✅ |  |
-| `visualize timed` | — | — | render | presentation | expensive | — | ✅ | ✅ | [缺口] 仅 1 测试文件 |
 
 ## 兼容别名 (老名保留, 同一实现)
 
