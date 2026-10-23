@@ -153,7 +153,7 @@ def test_p7_filter_with_batch():
     """P7: filter + batch 组合."""
     r = _run(
         "fanin",
-        "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+        "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
         "--type", "REG",
         "--json",
@@ -172,7 +172,7 @@ def test_p7_filter_with_batch():
 def test_p8_fanout_also_supports_filters():
     """P8: fanout 也支持 5 filters."""
     r = _run(
-        "fanout", "sync_fifo.count_q",
+        "fanout", "uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
         "--type", "REG",
         "--include-clock",
@@ -296,7 +296,7 @@ def _read_golden(name: str) -> dict:
     if not path.exists():
         # 首次跑: 生成 baseline (用 --type REG)
         r = _run(
-            "fanin", "sync_fifo.count_q",
+            "fanin", "uart_top.rx_fifo.count_q",
             "--filelist", STRICT_UART_FILELIST,
             "--type", "REG",
             "--width-min", "2",
@@ -311,7 +311,7 @@ def _read_golden(name: str) -> dict:
 def test_golden_filter_type_and_width():
     """Golden: --type REG + --width-min 2 跟 baseline 一致."""
     r = _run(
-        "fanin", "sync_fifo.count_q",
+        "fanin", "uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
         "--type", "REG",
         "--width-min", "2",

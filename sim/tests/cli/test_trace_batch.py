@@ -65,7 +65,7 @@ def test_p2_batch_inline_multiple_signals():
     """P2: --batch inline 多 signal."""
     r = _run(
         "fanin",
-        "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+        "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
         "--json",
     )
@@ -75,7 +75,7 @@ def test_p2_batch_inline_multiple_signals():
     signals = data["result"]["signals"]
     assert len(signals) == 2
     assert signals[0]["signal"] == "uart_top.rx_data_o"
-    assert signals[1]["signal"] == "sync_fifo.count_q"
+    assert signals[1]["signal"] == "uart_top.rx_fifo.count_q"
     print("✅ P2 --batch inline: 2 signals")
 
 
@@ -90,7 +90,7 @@ def test_p3_batch_file_with_comments_and_dedup():
 uart_top.rx_data_o
 
 # Another comment
-sync_fifo.count_q
+uart_top.rx_fifo.count_q
 
 # Duplicate of first
 uart_top.rx_data_o
@@ -109,7 +109,7 @@ uart_top.rx_data_o
         assert len(signals) == 2, f"expected 2 dedup'd, got {len(signals)}"
         sig_names = [s["signal"] for s in signals]
         assert sig_names[0] == "uart_top.rx_data_o", f"order: {sig_names}"
-        assert sig_names[1] == "sync_fifo.count_q"
+        assert sig_names[1] == "uart_top.rx_fifo.count_q"
         print("✅ P3 --batch-file: 3 lines + 1 dup → 2 dedup'd, comment+blank skipped")
     finally:
         Path(batch_file.name).unlink(missing_ok=True)
@@ -119,7 +119,7 @@ def test_p4_positional_plus_batch_mix():
     """P4: positional + --batch 混合."""
     r = _run(
         "fanin", "uart_top.rx_data_o",  # positional
-        "--batch", "sync_fifo.count_q,sync_fifo.wr_ptr_q",  # inline batch
+        "--batch", "uart_top.rx_fifo.count_q,uart_top.rx_fifo.wr_ptr_q",  # inline batch
         "--filelist", STRICT_UART_FILELIST,
         "--json",
     )
@@ -129,8 +129,8 @@ def test_p4_positional_plus_batch_mix():
     # 1 positional + 2 inline = 3 total
     assert len(signals) == 3
     assert signals[0]["signal"] == "uart_top.rx_data_o"
-    assert signals[1]["signal"] == "sync_fifo.count_q"
-    assert signals[2]["signal"] == "sync_fifo.wr_ptr_q"
+    assert signals[1]["signal"] == "uart_top.rx_fifo.count_q"
+    assert signals[2]["signal"] == "uart_top.rx_fifo.wr_ptr_q"
     print("✅ P4 mixed: 1 positional + 2 inline → 3 total")
 
 
@@ -138,13 +138,13 @@ def test_p5_text_output_batch_header():
     """P5: text mode batch 输出应带 'signal N/M:' header."""
     r = _run(
         "fanin",
-        "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+        "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
     )
     assert r.returncode == 0
     # 应有 2 个 signal header
     assert "signal 1/2: uart_top.rx_data_o" in r.stdout
-    assert "signal 2/2: sync_fifo.count_q" in r.stdout
+    assert "signal 2/2: uart_top.rx_fifo.count_q" in r.stdout
     print("✅ P5 text mode: 'signal 1/2:' + 'signal 2/2:' headers present")
 
 
@@ -281,7 +281,7 @@ def _read_golden(name: str) -> dict:
         # 用 2-signal inline batch
         r = _run(
             "fanin",
-            "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+            "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
             "--filelist", STRICT_UART_FILELIST,
             "--json",
         )
@@ -295,7 +295,7 @@ def test_golden_batch_fanin_2_signals():
     """Golden: 2-signal inline batch 跟 baseline 一致."""
     r = _run(
         "fanin",
-        "--batch", "uart_top.rx_data_o,sync_fifo.count_q",
+        "--batch", "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
         "--filelist", STRICT_UART_FILELIST,
         "--json",
     )

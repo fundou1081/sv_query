@@ -11,7 +11,7 @@
     "module": null,
     "no_cache": false,
     "signals": [
-      "sync_fifo.count_q"
+      "uart_top.rx_fifo.count_q"
     ],
     "type": "REG",
     "width_max": null,
@@ -25,7 +25,7 @@
         "drivers": [],
         "index": 0,
         "pre_filter_count": 2,
-        "signal": "sync_fifo.count_q",
+        "signal": "uart_top.rx_fifo.count_q",
         "truncated": false
       }
     ],

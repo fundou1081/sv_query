@@ -129,7 +129,8 @@ class TestCacheGracefulDegradation(unittest.TestCase):
         c = ASTCache(cache_dir=str(self.root / "ok"))
         self.assertTrue(c.enabled)
         c.put_by_key("key1", {"v": 42})
-        self.assertTrue((self.root / "ok" / "key1.json").exists())
+        # [iter_271] 缓存改成 gzip 压缩 (单工程图 JSON 20MB → 通常 3~5MB)
+        self.assertTrue((self.root / "ok" / "key1.json.gz").exists())
         fresh = ASTCache(cache_dir=str(self.root / "ok"))
         self.assertEqual(fresh.get_by_key("key1")["data"]["v"], 42)
 

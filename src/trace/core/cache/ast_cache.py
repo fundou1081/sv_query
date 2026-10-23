@@ -28,6 +28,7 @@
 - 磁盘缓存（持久化）
 """
 
+import gzip
 import hashlib
 import json
 import logging
@@ -60,6 +61,13 @@ CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
 CACHE_VERSION = "1.0"
+
+# [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
+# 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。
+CACHE_SUFFIX = ".json.gz"
+LEGACY_SUFFIX = ".json"
+DEFAULT_MAX_CACHE_MB = 1024
+ENV_CACHE_MAX_MB = "SVQ_CACHE_MAX_MB"
 
 
 class ASTCache:
@@ -139,8 +147,55 @@ class ASTCache:
         return hasher.hexdigest()[:16]
 
     def _cache_path(self, cache_key: str) -> Path:
-        """获取缓存文件路径"""
-        return self.cache_dir / f"{cache_key}.json"
+        """获取缓存文件路径 (gzip 压缩, iter_271)"""
+        return self.cache_dir / f"{cache_key}{CACHE_SUFFIX}"
+
+    def _legacy_cache_path(self, cache_key: str) -> Path:
+        """旧格式 (未压缩) 路径 — 仅用于向后兼容读取与清理。"""
+        return self.cache_dir / f"{cache_key}{LEGACY_SUFFIX}"
+
+    def _max_cache_bytes(self) -> int:
+        """缓存总量上限 (字节)。SVQ_CACHE_MAX_MB 可覆盖; 0/负数 = 不限制。"""
+        raw = os.environ.get(ENV_CACHE_MAX_MB)
+        if raw is None or not str(raw).strip():
+            mb = DEFAULT_MAX_CACHE_MB
+        else:
+            try:
+                mb = int(str(raw).strip())
+            except ValueError:
+                logger.warning("SVQ_CACHE_MAX_MB 不是整数 (%r), 用默认 %d", raw, DEFAULT_MAX_CACHE_MB)
+                mb = DEFAULT_MAX_CACHE_MB
+        return max(0, mb) * 1024 * 1024
+
+    def _enforce_size_limit(self) -> None:
+        """[iter_271] 超过上限时按 mtime LRU 淘汰最旧条目 (跳过刚写入的文件)。"""
+        limit = self._max_cache_bytes()
+        if limit <= 0:
+            return
+        entries = []
+        for p in list(self.cache_dir.glob(f"*{CACHE_SUFFIX}")) + \
+                 list(self.cache_dir.glob(f"*{LEGACY_SUFFIX}")):
+            try:
+                stat = p.stat()
+            except OSError:
+                continue
+            entries.append((stat.st_mtime, stat.st_size, p))
+        total = sum(size for _m, size, _p in entries)
+        if total <= limit:
+            return
+        entries.sort(key=lambda x: x[0])          # 最旧在前
+        removed = 0
+        for _mtime, size, path in entries:
+            if total <= limit:
+                break
+            try:
+                path.unlink()
+                total -= size
+                removed += 1
+            except OSError as e:
+                logger.warning("缓存淘汰失败 (%s): %s", path, e)
+        if removed:
+            logger.info("缓存超限, 已按 LRU 淘汰 %d 个条目 (上限 %d MB)", removed, limit // (1024 * 1024))
 
     def get_by_key(self, cache_key: str, force: bool = False) -> dict | None:
         """[Golden] 通过 cache_key 获取缓存数据
@@ -163,15 +218,22 @@ class ASTCache:
         if not self.enabled:
             return None  # 磁盘缓存不可用 → 仅内存 (已 warning, 不再刷屏)
 
-        # 检查磁盘缓存
+        # 检查磁盘缓存 (优先压缩格式, 兼容旧 .json)
         cache_path = self._cache_path(cache_key)
+        legacy_path = self._legacy_cache_path(cache_key)
         if not cache_path.exists():
-            logger.debug(f"Cache miss: {cache_key[:8]}...")
-            return None
+            if not legacy_path.exists():
+                logger.debug(f"Cache miss: {cache_key[:8]}...")
+                return None
+            cache_path = legacy_path
 
         try:
-            with open(cache_path, encoding="utf-8") as f:
-                data = json.load(f)
+            if cache_path.suffix == ".gz":
+                with gzip.open(cache_path, "rt", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                with open(cache_path, encoding="utf-8") as f:
+                    data = json.load(f)
 
             # 验证缓存版本
             if data.get("version") != CACHE_VERSION:
@@ -216,8 +278,9 @@ class ASTCache:
         # 保存到磁盘 (失败 → 降级)
         cache_path = self._cache_path(cache_key)
         try:
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(cache_data, f, indent=2, ensure_ascii=False)
+            # [iter_271] gzip 压缩: 单工程图 JSON 20MB → 通常 3~5MB
+            with gzip.open(cache_path, "wt", encoding="utf-8") as f:
+                json.dump(cache_data, f, ensure_ascii=False)
         except OSError as e:
             self.enabled = False
             logger.warning(
@@ -228,6 +291,8 @@ class ASTCache:
             return
 
         logger.info(f"Cache saved: {cache_key[:8]}... -> {cache_path}")
+        # [iter_271] 写盘后检查总量上限, 按 mtime LRU 淘汰旧条目
+        self._enforce_size_limit()
 
     def get(self, source_file: str, force: bool = False) -> dict | None:
         """[Legacy] 通过文件路径获取缓存（已废弃，仅保留兼容）"""
@@ -249,19 +314,19 @@ class ASTCache:
                 del self._memory_cache[cache_key]
             if not self.enabled:
                 return
-            cache_path = self._cache_path(cache_key)
-            try:
-                if cache_path.exists():
-                    cache_path.unlink()
-                    logger.info(f"Cache invalidated: {cache_key[:8]}...")
-            except OSError as e:
-                logger.warning("缓存清除失败 (%s): %s", cache_path, e)
+            for cache_path in (self._cache_path(cache_key), self._legacy_cache_path(cache_key)):
+                try:
+                    if cache_path.exists():
+                        cache_path.unlink()
+                        logger.info(f"Cache invalidated: {cache_key[:8]}...")
+                except OSError as e:
+                    logger.warning("缓存清除失败 (%s): %s", cache_path, e)
         else:
             # 清除所有
             self._memory_cache.clear()
             if not self.enabled:
                 return
-            for p in self.cache_dir.glob("*.json"):
+            for p in list(self.cache_dir.glob(f"*{CACHE_SUFFIX}")) + list(self.cache_dir.glob(f"*{LEGACY_SUFFIX}")):
                 try:
                     p.unlink()
                 except OSError as e:
@@ -273,13 +338,19 @@ class ASTCache:
         result = []
         if not self.enabled:
             return result
-        for p in sorted(self.cache_dir.glob("*.json")):
+        candidates = sorted(self.cache_dir.glob(f"*{CACHE_SUFFIX}")) + \
+                     sorted(self.cache_dir.glob(f"*{LEGACY_SUFFIX}"))
+        for p in candidates:
             try:
-                with open(p, encoding="utf-8") as f:
-                    data = json.load(f)
+                if p.suffix == ".gz":
+                    with gzip.open(p, "rt", encoding="utf-8") as f:
+                        data = json.load(f)
+                else:
+                    with open(p, encoding="utf-8") as f:
+                        data = json.load(f)
                 result.append(
                     {
-                        "key": p.stem,
+                        "key": p.name.replace(CACHE_SUFFIX, "").replace(LEGACY_SUFFIX, ""),
                         "sources_hash": data.get("sources_hash", "")[:8],
                         "cached_at": data.get("cached_at", ""),
                         "size_bytes": p.stat().st_size,

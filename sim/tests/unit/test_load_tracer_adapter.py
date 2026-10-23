@@ -83,7 +83,7 @@ class TestL1RootResolution:
         assert chain.loads, "完整 id + module=None 必须能查出 loads (旧实现恒空)"
 
     def test_root_never_contains_none_prefix(self, multi):
-        for sig in ("inst_demo.in_a", "sub_adder.sum", "sub_adder.a"):
+        for sig in ("inst_demo.in_a", "inst_demo.u_adder.sum", "sub_adder.a"):
             root = multi.trace_loads(sig).root
             assert not root.startswith("None."), f"root 被伪造成 {root!r}"
             assert root == sig
@@ -105,27 +105,32 @@ class TestL2CrossModule:
     """L2: 跨模块端口映射必须进入遍历 (不再是兜底补丁)。"""
 
     def test_internal_signal_crosses_out(self, multi):
-        ids = _ids(multi.trace_loads("sub_adder.sum").loads)
-        assert "inst_demo.u_adder.sum" in ids, "应跨出到例化端口"
-        assert "inst_demo.add_out" in ids, "应继续到外层消费者"
+        # [iter_271] 实例级图: 跨模块由**图边**完成 (不再依赖 MIG 虚拟跳),
+        # 所以 MIG 的"进入模块"中间节点不存在了。
+        ids = _ids(multi.trace_loads("inst_demo.u_adder.sum").loads)
+        assert "inst_demo.add_out" in ids, "应跨到外层消费者"
 
     def test_top_input_full_chain(self, multi):
         ids = _ids(multi.trace_loads("inst_demo.in_a").loads)
-        for expected in ("inst_demo.u_adder.a", "sub_adder.a", "sub_adder.sum",
-                         "inst_demo.u_adder.sum", "inst_demo.add_out"):
+        for expected in ("inst_demo.u_adder.a", "inst_demo.u_adder.sum",
+                         "inst_demo.add_out"):
             assert expected in ids, f"链条缺 {expected}: {sorted(ids)}"
 
     def test_scoped_query_does_not_cross_module(self, multi):
         """限定查询 (给了 module) 只看该模块内 —— 与 CLI 作用域规则一致。"""
-        ids = _ids(multi.trace_loads("sum", "sub_adder").loads)
-        assert all(i.startswith("sub_adder.") for i in ids), f"越界: {ids}"
+        # 实例作用域下的"限定查询": module 参数是实例路径
+        ids = _ids(multi.trace_loads("a", "inst_demo.u_adder").loads)
+        assert all(i.startswith("inst_demo.u_adder.") for i in ids), f"越界: {ids}"
 
-    def test_use_mig_false_disables_cross_module(self, multi):
+    def test_use_mig_false_still_crosses_via_graph_edges(self, multi):
+        """[iter_271] 实例级图里跨模块是**图边**, 与 MIG 开关无关。
+
+        旧模型: 关掉 MIG 就跨不过去 (需要虚拟跳)。新模型: 图本身就跨模块。
+        """
         lt = LoadTracer(multi.get_graph(), mig=multi.get_module_graph(), use_mig=False)
         ids = _ids(lt.trace("inst_demo.in_a").loads)
-        assert "sub_adder.a" not in ids, f"use_mig=False 仍跨模块: {ids}"
-        # 但模块内结果必须还在
         assert "inst_demo.u_adder.a" in ids
+        assert "inst_demo.add_out" in ids, "实例级图跨模块不依赖 MIG 开关"
 
 
 class TestL3DepthAndConfidence:
@@ -138,7 +143,7 @@ class TestL3DepthAndConfidence:
     def test_depth_2_reaches_two_hops(self, multi):
         ids = _ids(multi.trace_loads("inst_demo.in_a", depth=2).loads)
         assert "inst_demo.u_adder.a" in ids
-        assert "sub_adder.a" in ids
+        assert "inst_demo.u_adder.sum" in ids
         assert "inst_demo.add_out" not in ids, "depth=2 不应追到最外层"
 
     def test_depth_none_is_full_closure(self, multi):
@@ -188,7 +193,7 @@ class TestNoSecondImplementation:
 
 @pytest.mark.parametrize("signal,module", [
     ("inst_demo.in_a", None),
-    ("sub_adder.sum", None),
+    ("inst_demo.u_adder.sum", None),
     ("sub_adder.a", None),
     ("inst_demo.u_adder.sum", None),
     ("sum", "sub_adder"),

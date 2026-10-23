@@ -44,27 +44,29 @@ def _ids(nodes) -> set[str]:
 class TestLoadsTransitivity:
     def test_internal_signal_reaches_outer_consumer(self, tracer):
         """D1: 从模块内部信号出发, 必须能跨出端口到达外层消费者。"""
-        ids = _ids(tracer.trace_fanout("sub_adder.sum"))
-        assert "inst_demo.u_adder.sum" in ids, "应跨出到例化端口"
-        assert "inst_demo.add_out" in ids, "应继续到外层消费者 (旧实现到此为止)"
+        # [iter_271] 实例级图: 只有一个命名空间, 模块内部信号 = 实例端口
+        # `inst_demo.u_adder.sum` (不再有 `sub_adder.sum` 这类模块定义 id)
+        ids = _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
+        assert "inst_demo.add_out" in ids, "应从实例端口跨到外层消费者"
 
     def test_top_input_full_chain(self, tracer):
         """D2: 从顶层输入出发, 整条 输入→端口→内部→端口→输出 链都要在结果里。"""
         ids = _ids(tracer.trace_fanout("inst_demo.in_a"))
-        for expected in ("inst_demo.u_adder.a", "sub_adder.a", "sub_adder.sum",
-                         "inst_demo.u_adder.sum", "inst_demo.add_out"):
+        for expected in ("inst_demo.u_adder.a", "inst_demo.u_adder.sum",
+                         "inst_demo.add_out"):
             assert expected in ids, f"链条缺 {expected}: {sorted(ids)}"
 
     def test_instance_port_reaches_both_sides(self, tracer):
-        ids = _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
-        assert "sub_adder.sum" in ids      # 进入模块
-        assert "inst_demo.add_out" in ids  # 外层消费者
+        loads = _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
+        assert "inst_demo.add_out" in loads          # 外层消费者
+        drivers = _ids(tracer.trace_fanin("inst_demo.u_adder.sum"))
+        assert "inst_demo.in_a" in drivers            # 反方向能回溯到顶层输入
 
 
 class TestDriversTransitivity:
     def test_internal_signal_traces_back_to_top_inputs(self, tracer):
-        ids = _ids(tracer.trace_fanin("sub_adder.sum"))
-        assert "inst_demo.u_adder.a" in ids, "应跨出到例化端口"
+        ids = _ids(tracer.trace_fanin("inst_demo.u_adder.sum"))
+        assert "inst_demo.u_adder.a" in ids, "应到实例输入端口"
         assert "inst_demo.in_a" in ids, "应继续回溯到顶层输入"
 
     def test_output_signal_traces_into_module(self, tracer):
@@ -75,23 +77,22 @@ class TestDriversTransitivity:
 class TestDepthConsistency:
     def test_depth_one_is_subset_and_nonempty(self, tracer):
         """D3: depth=1 与更深 depth 必须自洽 (旧实现 depth=1 返回空)。"""
-        d1 = _ids(tracer.trace_fanout("sub_adder.sum", depth=1))
-        d2 = _ids(tracer.trace_fanout("sub_adder.sum", depth=2))
-        dall = _ids(tracer.trace_fanout("sub_adder.sum"))
+        d1 = _ids(tracer.trace_fanout("inst_demo.u_adder.sum", depth=1))
+        d2 = _ids(tracer.trace_fanout("inst_demo.u_adder.sum", depth=2))
+        dall = _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
         assert d1, "depth=1 不应为空 (旧实现 bug: 空)"
         assert d1 <= d2 <= dall, f"depth 单调性被破坏: {d1=} {d2=} {dall=}"
 
     def test_drivers_depth_one_nonempty(self, tracer):
-        d1 = _ids(tracer.trace_fanin("sub_adder.sum", depth=1))
+        d1 = _ids(tracer.trace_fanin("inst_demo.u_adder.sum", depth=1))
         assert d1, "drivers depth=1 不应为空"
 
 
 class TestSupersetAndFlags:
     def test_results_are_superset_of_graph_only(self, tracer):
         """修复前的旧结果 (纯图遍历) 必须仍全部在结果里 (不丢信息)。"""
-        # sub_adder.sum 在纯图上是 0 条 (旧实现的 MIG 兜底给了 inst_demo.u_adder.sum)
-        assert "inst_demo.u_adder.sum" in _ids(tracer.trace_fanout("sub_adder.sum"))
-        # inst_demo.u_adder.sum 在纯图上是 inst_demo.add_out
+        # 实例级图: 纯图遍历即可得到跨模块结果 (不再依赖 MIG 兜底)
+        assert "inst_demo.u_adder.sum" in _ids(tracer.trace_fanout("inst_demo.in_a"))
         assert "inst_demo.add_out" in _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
 
     def test_use_mig_false_keeps_graph_only(self, tracer):
@@ -99,18 +100,17 @@ class TestSupersetAndFlags:
         from trace.core.query.signal import SignalTracer
 
         st = SignalTracer(tracer.get_graph(), mig=None, use_mig=False)
-        assert _ids(st.trace_fanout("sub_adder.sum")) == set()
         assert "inst_demo.add_out" in _ids(st.trace_fanout("inst_demo.u_adder.sum"))
 
 
 class TestTermination:
     def test_port_internal_pingpong_terminates(self, tracer):
         """端口↔内部是双向映射, 遍历必须靠 visited 收敛 (不重复、不无限循环)。"""
-        loads = tracer.trace_fanout("sub_adder.sum")
+        loads = tracer.trace_fanout("inst_demo.u_adder.sum")
         ids = [n.id for n in loads]
         assert len(ids) == len(set(ids)), f"结果出现重复: {ids}"
 
     def test_drivers_terminates(self, tracer):
-        drivers = tracer.trace_fanin("sub_adder.sum")
+        drivers = tracer.trace_fanin("inst_demo.u_adder.sum")
         ids = [n.id for n in drivers]
         assert len(ids) == len(set(ids))

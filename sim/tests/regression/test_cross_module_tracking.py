@@ -109,20 +109,20 @@ endmodule'''
         # 原断言 (out_edges > 0) 依赖已移除的 self-loop, 过时。
         # 跨模块内部连接的正确验证: 模块定义层的内部驱动关系
         # (实例端口被驱动后, 模块内部信号如何被驱动)。
-        edge_internal_tb = graph.get_edge('tb.clk', 'tb.clk_out')
+        edge_internal_tb = graph.get_edge('top.u_tb.clk', 'top.u_tb.clk_out')
         self.assertIsNotNone(
             edge_internal_tb,
-            "tb 内部 assign clk_out = clk 应生成 tb.clk → tb.clk_out DRIVER 边",
+            "tb 内部 assign clk_out = clk 应生成 top.u_tb.clk → top.u_tb.clk_out DRIVER 边 (实例级 id)",
         )
-        edge_clk_dut = graph.get_edge('dut.clk', 'dut.reg_data')
+        edge_clk_dut = graph.get_edge('top.u_dut.clk', 'top.u_dut.reg_data')
         self.assertIsNotNone(
             edge_clk_dut,
-            "dut 内部 always_ff 应生成 dut.clk → dut.reg_data CLOCK 边",
+            "dut 内部 always_ff 应生成 top.u_dut.clk → top.u_dut.reg_data CLOCK 边",
         )
-        edge_drv_dut = graph.get_edge('32\'d0', 'dut.reg_data')
+        edge_drv_dut = graph.get_edge('32\'d0', 'top.u_dut.reg_data')
         self.assertIsNotNone(
             edge_drv_dut,
-            "dut 内部 reg_data <= 0 应生成 32'd0 → dut.reg_data DRIVER 边",
+            "dut 内部 reg_data <= 0 应生成 32'd0 → top.u_dut.reg_data DRIVER 边",
         )
 
 
@@ -193,8 +193,9 @@ endmodule'''
         # 尝试获取路径解析器
         path_resolver = getattr(tracer, '_path_resolver', None)
         if path_resolver:
-            path = path_resolver.find_path('top.u_tb.clk', 'dut.reg_data')
-            self.assertIsNotNone(path, "应有从 top.u_tb.clk 到 dut.reg_data 的路径")
+            # [iter_271] 实例级图: 终点用实例路径 (模块定义 id 已不存在)
+            path = path_resolver.find_path('top.u_tb.clk', 'top.u_dut.reg_data')
+            self.assertIsNotNone(path, "应有从 top.u_tb.clk 到 top.u_dut.reg_data 的路径")
             # 路径应包含关键节点
             self.assertIn('top.u_dut.clk', path, "路径应包含 top.u_dut.clk")
         else:
@@ -1237,11 +1238,11 @@ endmodule'''
             f"top.u_sub.out 应有 out_edges (内部连接), 实际: {out_edges}"
         )
 
-        # 验证 sub.out 的 driver
-        drivers = graph.find_drivers('sub.out')
+        # [iter_271] 实例级图: 内部信号用实例路径 (`top.u_sub.internal`)
+        drivers = graph.find_drivers('top.u_sub.out')
         driver_ids = [d.id for d in drivers]
-        self.assertIn('sub.internal', driver_ids,
-            f"sub.out 的 driver 应是 sub.internal，实际: {driver_ids}")
+        self.assertIn('top.u_sub.internal', driver_ids,
+            f"top.u_sub.out 的 driver 应是 top.u_sub.internal，实际: {driver_ids}")
 
     def test_load_multi_level(self):
         """[金标准] Load 多级追踪

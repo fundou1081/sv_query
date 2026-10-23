@@ -61,14 +61,18 @@ class TestA1AutoTarget(unittest.TestCase):
                     srcs.append(s)
         return srcs
 
-    def test_default_library_keeps_type_level_contract(self):
-        # 默认 (auto_target_single_top=False): 库 API 旧契约 — generate 实例
-        # 内部无真实 assign 驱动 (只有 self-loop 标记), 类型级驱动 leaf.a→leaf.y 在
+    def test_default_is_instance_scope(self):
+        """[iter_271] 默认已切实例级: 只有实例路径, 且实例内部有真实驱动。
+
+        旧契约 (类型级 `leaf.a→leaf.y` 存在 / 实例内部无真实驱动) 已随默认切换作废。
+        """
         tr, g = _graph(GENFIX)
-        self.assertIn('leaf.a', self._real_drivers(g, 'leaf.y'),
-                      "类型级驱动应在 (leaf.a → leaf.y)")
-        self.assertEqual(self._real_drivers(g, 'top.G[3].u_leaf.y'), [],
-                         "默认库契约: 实例内部无真实驱动 (A1 flag 未开)")
+        nodes = set(g.nodes())
+        self.assertNotIn('leaf.a', nodes, "实例级图不应再有模块定义命名空间节点")
+        self.assertIn('top.G[3].u_leaf.a', nodes, "实例内部信号应在")
+        self.assertEqual(self._real_drivers(g, 'top.G[3].u_leaf.y'),
+                         ['top.G[3].u_leaf.a'],
+                         "实例内部应有真实 a→y DRIVER (默认即生效)")
 
     def test_generate_internal_present_with_flag(self):
         # CLI 可视化入口等价调用 (auto_target_single_top=True): 实例内部真实
