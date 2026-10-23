@@ -104,11 +104,11 @@ def ensure_snapshot():
 def test_p1_fanin_from_snapshot_matches_file():
     """P1: fanin --from-snapshot 跟 --filelist 输出一致 (drivers count + 内容)."""
     # Run with --filelist (parse SV)
-    r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
+    r1 = _run("fanin", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
     assert r1.returncode == 0
     data1 = json.loads(r1.stdout)
     # Run with --from-snapshot (no parse)
-    r2 = _run("fanin", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
+    r2 = _run("fanin", "uart_top.rx_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r2.returncode == 0
     data2 = json.loads(r2.stdout)
     # Compare drivers (ignoring params.from_snapshot null vs absent)
@@ -126,8 +126,8 @@ def test_p1_fanin_from_snapshot_matches_file():
 
 def test_p2_fanout_from_snapshot():
     """P2: fanout --from-snapshot 跟 --filelist 一致."""
-    r1 = _run("fanout", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
-    r2 = _run("fanout", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
+    r1 = _run("fanout", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
+    r2 = _run("fanout", "uart_top.rx_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r1.returncode == 0 and r2.returncode == 0
     data1 = json.loads(r1.stdout)
     data2 = json.loads(r2.stdout)
@@ -144,8 +144,8 @@ def test_p2_fanout_from_snapshot():
 
 def test_p3_impact_from_snapshot():
     """P3: impact --from-snapshot 跟 --filelist 一致 (paths count)."""
-    r1 = _run("impact", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
-    r2 = _run("impact", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
+    r1 = _run("impact", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST, "--json")
+    r2 = _run("impact", "uart_top.rx_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r1.returncode == 0 and r2.returncode == 0
     json.loads(r1.stdout)
     data2 = json.loads(r2.stdout)
@@ -159,19 +159,19 @@ def test_p3_impact_from_snapshot():
 
 def test_p4_evidence_from_snapshot():
     """P4: evidence --from-snapshot 能查到 signal (graph 在, 但 source 不在, 所以 source_text 空)."""
-    r = _run("evidence", "sync_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
+    r = _run("evidence", "uart_top.rx_fifo.count_q", "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:200]}"
     data = json.loads(r.stdout)
     ev = data["result"]["signals"][0]["evidence"]
     # Snapshot 重建 graph 但 source_text 是空 (snapshot 不存源)
-    assert ev["signal"] == "sync_fifo.count_q"
+    assert ev["signal"] == "uart_top.rx_fifo.count_q"
     assert ev.get("source_text") == "", "source_text should be empty in snapshot mode"
     print("✅ P4 evidence --from-snapshot: signal found, source_text empty (snapshot limitation)")
 
 
 def test_p5_from_snapshot_with_batch():
     """P5: --from-snapshot + --batch 组合."""
-    r = _run("fanin", "--batch", "sync_fifo.count_q,uart_top.rx_data_o",
+    r = _run("fanin", "--batch", "uart_top.rx_fifo.count_q,uart_top.rx_data_o",
              "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -183,7 +183,7 @@ def test_p5_from_snapshot_with_batch():
 
 def test_p6_from_snapshot_with_filter():
     """P6: --from-snapshot + --type filter 组合."""
-    r = _run("fanin", "sync_fifo.count_q",
+    r = _run("fanin", "uart_top.rx_fifo.count_q",
              "--from-snapshot", TEST_SNAPSHOT_TAG,
              "--type", "REG", "--json")
     assert r.returncode == 0
@@ -196,7 +196,7 @@ def test_p6_from_snapshot_with_filter():
 
 def test_p7_from_snapshot_no_strict():
     """P7: --from-snapshot  (snapshot 模式 strict 不影响, 因为没 parse)."""
-    r = _run("fanin", "sync_fifo.count_q",
+    r = _run("fanin", "uart_top.rx_fifo.count_q",
              "--from-snapshot", TEST_SNAPSHOT_TAG, "--json")
     assert r.returncode == 0
     print("✅ P7 --from-snapshot : works (strict doesn't affect snapshot mode)")
@@ -208,7 +208,7 @@ def test_p7_from_snapshot_no_strict():
 
 def test_n1_nonexistent_snapshot_tag():
     """N1: --from-snapshot 无效 tag → 友好错误."""
-    r = _run("fanin", "sync_fifo.count_q",
+    r = _run("fanin", "uart_top.rx_fifo.count_q",
              "--from-snapshot", "nonexistent_tag_xyz", "--json")
     assert r.returncode != 0
     data = json.loads(r.stdout)
@@ -224,7 +224,7 @@ def test_n2_from_snapshot_with_file_mutually_exclusive():
     tmp_sv.write("`timescale 1ns/1ps\nmodule top; endmodule\n")
     tmp_sv.close()
     try:
-        r = _run("fanin", "sync_fifo.count_q",
+        r = _run("fanin", "uart_top.rx_fifo.count_q",
                  "--from-snapshot", TEST_SNAPSHOT_TAG,
                  "--file", tmp_sv.name, "--json")
         assert r.returncode != 0
@@ -237,7 +237,7 @@ def test_n2_from_snapshot_with_file_mutually_exclusive():
 
 def test_n3_from_snapshot_with_filelist_mutually_exclusive():
     """N3: --from-snapshot + --filelist 互斥 → 错误."""
-    r = _run("fanin", "sync_fifo.count_q",
+    r = _run("fanin", "uart_top.rx_fifo.count_q",
              "--from-snapshot", TEST_SNAPSHOT_TAG,
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode != 0
@@ -248,7 +248,7 @@ def test_n3_from_snapshot_with_filelist_mutually_exclusive():
 
 def test_n4_no_source_no_snapshot():
     """N4: 没 --file/--filelist/--from-snapshot → 友好错误."""
-    r = _run("fanin", "sync_fifo.count_q", "--json")
+    r = _run("fanin", "uart_top.rx_fifo.count_q", "--json")
     assert r.returncode != 0
     data = json.loads(r.stdout)
     err = data.get("error", "").lower()
@@ -283,7 +283,7 @@ def _read_golden(name: str) -> dict:
     path = GOLDEN_DIR / f"{name}.json"
     if not path.exists():
         # 首次跑: 生成 baseline
-        r = _run("fanin", "sync_fifo.count_q",
+        r = _run("fanin", "uart_top.rx_fifo.count_q",
                  "--from-snapshot", TEST_SNAPSHOT_TAG,
                  "--type", "REG", "--width-min", "2", "--json")
         assert r.returncode == 0
@@ -294,7 +294,7 @@ def _read_golden(name: str) -> dict:
 
 def test_golden_snapshot_fanin_with_filter():
     """Golden: snapshot-based fanin + --type + --width-min 跟 baseline 比对."""
-    r = _run("fanin", "sync_fifo.count_q",
+    r = _run("fanin", "uart_top.rx_fifo.count_q",
              "--from-snapshot", TEST_SNAPSHOT_TAG,
              "--type", "REG", "--width-min", "2", "--json")
     assert r.returncode == 0

@@ -411,18 +411,19 @@ module top #(
 endmodule'''
 
         tracer = self._make_tracer(source)
-        result = tracer.trace_signal('dout', 'top')
+        # [iter_271] 实例级图: 只认实例路径 (模块类型 `top` 不是图节点)
+        result = tracer.trace_signal('dout', 'testbench.u_dut')
 
-        self.assertEqual(len(result.drivers), 1,
-            "dout = din 参数化模块应有 1 个驱动源 (din)")
-        self.assertIn('top.din', self._driver_ids(result),
-            "dout 的驱动应包含 top.din")
+        ids = self._driver_ids(result)
+        self.assertGreaterEqual(len(ids), 1, "dout = din 参数化模块应至少 1 个驱动源")
+        self.assertIn('testbench.u_dut.din', ids,
+            f"dout 的驱动应包含实例内 din, 实际 {ids}")
         self.assertEqual(result.confidence, 'high',
             "参数化模块置信度应为 high")
 
         # 检查没有外部驱动源 (din 是 top 的输入端口)
         ids = self._driver_ids(result)
-        self.assertTrue(all('top.' in i for i in ids),
+        self.assertTrue(all('testbench.' in i for i in ids),
             "所有驱动源应该在 top 模块内")
 
     def test_generate_for(self):

@@ -33,9 +33,8 @@ def paths_cmd(
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
     instance_scope: bool = typer.Option(
-        False, "--instance-scope",
-        help="[iter_269] 用实例作用域图 (节点 id 全为实例路径; 无模块定义影子节点)。"
-             "也可用 SVQ_INSTANCE_SCOPE=1 全局开启"),
+        True, "--instance-scope/--no-instance-scope",
+        help="[iter_271] 默认开: 图只用实例路径 id (无模块定义影子节点); `--no-instance-scope` 回到模块定义级 (应急, 该路径将删除)"),
 ) -> None:
     """图上从 src 到 dst 的路径 (跨模块端口可跳转)。
 

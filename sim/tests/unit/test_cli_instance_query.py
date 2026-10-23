@@ -111,10 +111,18 @@ class TestConnections:
         assert all({"port", "direction", "width", "internal_signal"} <= set(p)
                    for p in d["ports"])
 
-    def test_connections_for_module_returns_edge_classes(self):
-        d = _json("connections", "sub_adder", "-f", INST_DEMO, "--json")
-        assert d["resolved_as"] == "module"
-        assert {"inputs", "outputs", "internals", "cross_module", "confidence", "caveats"} <= set(d)
+    def test_connections_rejects_module_type(self):
+        """[iter_271] 实例级图只认实例路径: 模块类型查询必须**显式失败**并给提示。
+
+        旧行为: 返回模块定义命名空间的四类边 (inputs/outputs/...)。
+        现在: 那些 id 不在图里 → 报错 + 提示该类型有哪些实例 (不再抛 networkx 异常)。
+        """
+        r = _run("connections", "sub_adder", "-f", INST_DEMO, "--json")
+        assert r.returncode != 0
+        d = json.loads(r.stdout)
+        assert d["ok"] is False
+        assert "实例路径" in d.get("hint", "")
+        assert "inst_demo.u_adder" in d.get("hint", "")
 
     def test_connections_unknown_target_fails_loudly(self):
         r = _run("connections", "no_such_thing", "-f", INST_DEMO, "--json")

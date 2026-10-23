@@ -3,7 +3,7 @@
   "errors": [],
   "ok": true,
   "params": {
-    "batch": "uart_top.rx_data_o,sync_fifo.count_q",
+    "batch": "uart_top.rx_data_o,uart_top.rx_fifo.count_q",
     "batch_file": null,
     "depth": null,
     "exclude": null,
@@ -13,7 +13,7 @@
     "no_cache": false,
     "signals": [
       "uart_top.rx_data_o",
-      "sync_fifo.count_q"
+      "uart_top.rx_fifo.count_q"
     ],
     "type": null,
     "width_max": null,
@@ -27,12 +27,12 @@
         "drivers": [
           {
             "distance": 1,
-            "id": "uart_top.rx_fifo.pop_data_o",
-            "kind": "PORT_OUT",
+            "id": "uart_top.rx_fifo.mem",
+            "kind": "SIGNAL",
             "module": "uart_top.rx_fifo",
-            "width": 8,
+            "width": 1,
             "width_lsb": 0,
-            "width_msb": 7
+            "width_msb": 0
           }
         ],
         "index": 0,
@@ -45,9 +45,9 @@
         "drivers": [
           {
             "distance": 1,
-            "id": "sync_fifo.count_q",
+            "id": "uart_top.rx_fifo.count_q",
             "kind": "REG",
-            "module": "sync_fifo",
+            "module": "uart_top.rx_fifo",
             "width": 1,
             "width_lsb": 0,
             "width_msb": 0
@@ -64,7 +64,7 @@
         ],
         "index": 1,
         "pre_filter_count": 2,
-        "signal": "sync_fifo.count_q",
+        "signal": "uart_top.rx_fifo.count_q",
         "truncated": false
       }
     ],

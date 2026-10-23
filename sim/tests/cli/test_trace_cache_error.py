@@ -43,14 +43,14 @@ def test_a1_default_cache_enabled():
     Path.home() / ".svq" / "cache"
     # 跑 1st (cache miss) + 2nd (cache hit)
     t0 = time.time()
-    r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
+    r1 = _run("fanin", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
               "--json")
     t1 = time.time() - t0
     assert r1.returncode == 0
     data1 = json.loads(r1.stdout)
 
     t0 = time.time()
-    r2 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
+    r2 = _run("fanin", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
               "--json")
     t2 = time.time() - t0
     assert r2.returncode == 0
@@ -66,13 +66,13 @@ def test_a1_default_cache_enabled():
 def test_a1_no_cache_forces_rebuild():
     """A1: --no-cache 强制重新 parse (cache 文件存在时也 skip)."""
     t0 = time.time()
-    r1 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
+    r1 = _run("fanin", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
               "--no-cache", "--json")
     t1 = time.time() - t0
     assert r1.returncode == 0
 
     t0 = time.time()
-    r2 = _run("fanin", "sync_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
+    r2 = _run("fanin", "uart_top.rx_fifo.count_q", "--filelist", STRICT_UART_FILELIST,
               "--no-cache", "--json")
     t2 = time.time() - t0
     assert r2.returncode == 0
@@ -109,7 +109,7 @@ def test_a1_no_cache_flag_in_help():
 def test_a3_batch_with_nonexistent_sig_silent():
     """A3: 不存在 sig 走静默 (跟 N5 一致), 但 schema 兼容 (errors[], failed_signals)."""
     r = _run("fanin",
-             "--batch", "sync_fifo.count_q,nonexistent.foo,uart_top.rx_data_o",
+             "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo,uart_top.rx_data_o",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0, f"rc={r.returncode} stderr={r.stderr[:200]}"
     data = json.loads(r.stdout)
@@ -126,7 +126,7 @@ def test_a3_batch_with_nonexistent_sig_silent():
     # 3 个 sig 都在 signals[]
     sigs = data["result"]["signals"]
     assert len(sigs) == 3
-    assert sigs[0]["count"] >= 1  # sync_fifo.count_q 成功
+    assert sigs[0]["count"] >= 1  # uart_top.rx_fifo.count_q 成功 (实例级 id)
     assert sigs[1]["count"] == 0  # nonexistent.foo 静默
     assert sigs[2]["count"] >= 1  # uart_top.rx_data_o 成功
 
@@ -136,7 +136,7 @@ def test_a3_batch_with_nonexistent_sig_silent():
 def test_a3_batch_with_nonexistent_fanout():
     """A3: fanout 不存在 sig 静默 + schema 兼容."""
     r = _run("fanout",
-             "--batch", "sync_fifo.count_q,nonexistent.foo",
+             "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -149,7 +149,7 @@ def test_a3_batch_with_nonexistent_fanout():
 def test_a3_batch_with_nonexistent_impact():
     """A3: impact 不存在 sig 静默 + schema 兼容."""
     r = _run("impact",
-             "--batch", "sync_fifo.count_q,nonexistent.foo",
+             "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -162,7 +162,7 @@ def test_a3_batch_with_nonexistent_impact():
 def test_a3_batch_with_nonexistent_evidence():
     """A3: evidence 不存在 sig 静默 + schema 兼容 (evidence=null)."""
     r = _run("evidence",
-             "--batch", "sync_fifo.count_q,nonexistent.foo",
+             "--batch", "uart_top.rx_fifo.count_q,nonexistent.foo",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -176,7 +176,7 @@ def test_a3_batch_with_nonexistent_evidence():
 def test_a3_batch_all_succeed_ok_true():
     """A3: 全部 sig 成功 → ok=true, errors=[]."""
     r = _run("fanin",
-             "--batch", "sync_fifo.count_q,uart_top.rx_data_o",
+             "--batch", "uart_top.rx_fifo.count_q,uart_top.rx_data_o",
              "--filelist", STRICT_UART_FILELIST, "--json")
     assert r.returncode == 0
     data = json.loads(r.stdout)
@@ -201,7 +201,7 @@ def test_a3_per_sig_error_recovery_with_mock():
     bad_sv.close()
     try:
         r = _run("fanin",
-                 "--batch", "sync_fifo.count_q,bad_syntax_module.x",
+                 "--batch", "uart_top.rx_fifo.count_q,bad_syntax_module.x",
                  "--filelist", STRICT_UART_FILELIST,
                   # 优雅降级
                  "--json")
@@ -213,7 +213,7 @@ def test_a3_per_sig_error_recovery_with_mock():
         # signals[] 包含 2 个
         assert len(data["result"]["signals"]) == 2
         # 顺序保留
-        assert data["result"]["signals"][0]["signal"] == "sync_fifo.count_q"
+        assert data["result"]["signals"][0]["signal"] == "uart_top.rx_fifo.count_q"
         assert data["result"]["signals"][1]["signal"] == "bad_syntax_module.x"
         print(f"✅ A3 mock test: schema 兼容, signals={len(data['result']['signals'])}, errors={data.get('errors', [])}, failed_signals={data['result']['failed_signals']}")
     finally:

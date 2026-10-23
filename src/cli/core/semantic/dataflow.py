@@ -128,9 +128,8 @@ def analyze(
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
     instance_scope: bool = typer.Option(
-        False, "--instance-scope",
-        help="[iter_269] 用实例作用域图 (节点 id 全为实例路径; 无模块定义影子节点)。"
-             "也可用 SVQ_INSTANCE_SCOPE=1 全局开启"),
+        True, "--instance-scope/--no-instance-scope",
+        help="[iter_271] 默认开: 图只用实例路径 id (无模块定义影子节点); `--no-instance-scope` 回到模块定义级 (应急, 该路径将删除)"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     if not file and not filelist:

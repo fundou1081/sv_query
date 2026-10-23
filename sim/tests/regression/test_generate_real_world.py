@@ -43,7 +43,10 @@ def zipcpu_graph():
         except OSError:
             continue
     tracer = UnifiedTracer(sources=sources)
-    tracer.build_graph()  # strict=True (默认) — 编译不过即抛错
+    # [iter_271] 本文件断言的是**模块定义级** generate 展开 (idecode/zipcore 类型节点)。
+    # 默认已切实例级图 (只认实例路径), 这些类型名不再出现 → 显式用逃生开关保留
+    # 这条路径的覆盖, 直到它被删除为止。
+    tracer.build_graph(instance_scope=False)  # strict=True (默认) — 编译不过即抛错
     return tracer.get_graph()
 
 

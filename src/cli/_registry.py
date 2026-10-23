@@ -139,7 +139,7 @@ COMMANDS: list[CommandSpec] = [
     _c("controlflow list-conditioned", "semantic", cost="expensive",
        note="列出所有带条件驱动的信号 (枚举, 用于找入口)"),
     _c("dataflow analyze", "semantic", recommended=True,
-       note="源→目标路径 (有向, 跨模块; 与 paths --directed 结论一致)"),
+       note="源→目标路径 (有向, 跨模块; 实例级 id; 与 paths --directed 结论一致)"),
     # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
     _c("instances", "semantic", cost="cheap", recommended=True,
        note="列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist"),
@@ -153,7 +153,7 @@ COMMANDS: list[CommandSpec] = [
     _c("ports", "semantic", cost="cheap", recommended=True,
        note="[规范入口] 模块端口总览 (方向/位宽/入边数/出边数)"),
     _c("paths", "semantic", cost="medium", recommended=True,
-       note="[规范入口] 图上路径 (跨模块端口跳转; --all 枚举; "
+       note="[规范入口] 图上路径 (实例级 id; --all 枚举; "
             "--directed 只沿数据流方向, 与 dataflow analyze 结论一致)"),
     _c("class", "semantic", cost="medium",
        note="不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例"),

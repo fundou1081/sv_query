@@ -69,11 +69,11 @@ class TestInstanceScope:
             assert any(node == t or node.startswith(t + ".") for t in tops), \
                 f"节点不在任何实例命名空间下: {node}"
 
-    def test_default_still_has_type_nodes(self, default):
-        """B: 默认模式保持不变 —— 模块定义命名空间仍在 (暂不切换默认)。"""
+    def test_default_is_instance_scope(self, default):
+        """B: [iter_271] 默认已切实例级 —— 不应再有模块定义命名空间节点。"""
         tops = _tops(default)
         extra = _namespace_prefixes(default.get_graph()) - (tops | {"0"})
-        assert extra, "默认模式应仍包含模块定义命名空间节点 (开关未影响老行为)"
+        assert not extra, f"默认模式仍含模块定义节点: {sorted(extra)}"
 
     def test_directed_path_agrees_with_dataflow(self, scoped):
         """C: instance_scope 下 paths(directed) 与 dataflow 结论一致。"""

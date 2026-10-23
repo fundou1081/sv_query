@@ -56,7 +56,7 @@ class TestPathResolverInvariants:
         pr = inst_tracer.get_path_resolver()
         for src, dst in [("inst_demo.in_a", "inst_demo.add_out"),
                          ("inst_demo.in_c", "inst_demo.mult_out"),
-                         ("sub_adder.a", "sub_adder.sum")]:
+                         ("inst_demo.u_adder.a", "inst_demo.u_adder.sum")]:
             one = pr.find_path(src, dst)
             assert one is not None, f"{src}->{dst} 应有路径 (跨模块修复后)"
             assert one in pr.find_all_paths(src, dst)
@@ -73,10 +73,10 @@ class TestPathResolverInvariants:
         """跨模块路线的存在性: 必须有路径穿越模块内部 (端口↔内部信号映射的证明)。"""
         pr = inst_tracer.get_path_resolver()
         allp = pr.find_all_paths("inst_demo.in_a", "inst_demo.add_out")
-        interior = [p for p in allp if any(n.startswith("sub_adder.") for n in p)]
+        interior = [p for p in allp if any(n.startswith("inst_demo.u_adder.") for n in p)]
         assert interior, "应存在穿越 sub_adder 内部的跨模块路径"
         # 且该路线确实经过内部信号 (不是只走实例节点)
-        assert any("sub_adder.sum" in p for p in interior)
+        assert any("inst_demo.u_adder.sum" in p for p in interior)
 
 
 class TestPathResolverBounds:

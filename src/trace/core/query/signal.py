@@ -80,7 +80,8 @@ class SignalTracer:
         return signal
 
     def _collect_all_drivers(self, signal_id: str, max_depth: int | None = None,
-                             allow_cross_module: bool = True) -> list[TraceNode]:
+                             allow_cross_module: bool = True,
+                             scope_prefix: str | None = None) -> list[TraceNode]:
         """[P2] 递归收集所有驱动,包括实例端口追溯
 
         Args:
@@ -92,7 +93,7 @@ class SignalTracer:
         # [iter_240] 跨模块跳转已是遍历的一步 (见 _trace_drivers_recursive 的对端注入),
         # 不再需要"零结果时补一条 MIG"的兜底。
         self._trace_drivers_recursive(signal_id, drivers, seen_ids, current_depth=0, max_depth=max_depth,
-                                      allow_cross_module=allow_cross_module)
+                                      allow_cross_module=allow_cross_module, scope_prefix=scope_prefix)
         return drivers
 
     def _trace_drivers_recursive(
@@ -103,6 +104,7 @@ class SignalTracer:
         current_depth: int = 0,
         max_depth: int | None = None,
         allow_cross_module: bool = True,
+        scope_prefix: str | None = None,
     ):
         """递归追溯驱动
 
@@ -115,6 +117,11 @@ class SignalTracer:
         """
         # depth 限制检查
         if max_depth is not None and current_depth >= max_depth:
+            return
+
+        # [iter_271] 限定查询 (module=...) 的命名空间守卫: 实例级图里跨模块是普通图边,
+        # 单靠 allow_cross_module=False 挡不住, 必须在递归入口按前缀剪枝。
+        if scope_prefix and not self._in_scope(signal_id, scope_prefix):
             return
 
         if signal_id not in self.graph.nodes():
@@ -529,7 +536,8 @@ class SignalTracer:
                 if src in self.graph.nodes() and src not in seen_ids:
                     self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth, allow_cross_module)
 
-    def _find_drivers(self, signal_id: str, allow_cross_module: bool = True) -> list[TraceNode]:
+    def _find_drivers(self, signal_id: str, allow_cross_module: bool = True,
+                      scope_prefix: str | None = None) -> list[TraceNode]:
         """[兼容] 直接驱动"""
         if signal_id not in self.graph.nodes():
             return []
@@ -541,7 +549,8 @@ class SignalTracer:
         drivers = []
         # [iter_240 D3] depth=1 也要跨模块 (与 _find_loads 对称)
         for peer in self._mig_neighbors(signal_id, allow_cross_module):
-            drivers.append(peer)
+            if self._in_scope(peer.id, scope_prefix):
+                drivers.append(peer)
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
@@ -555,7 +564,7 @@ class SignalTracer:
                     ):
                         continue
                 node = self.graph.get_node(src)
-                if node:
+                if node and self._in_scope(node.id, scope_prefix):
                     drivers.append(node)
         return drivers
 
@@ -569,6 +578,24 @@ class SignalTracer:
             return True
         n = str(name).strip()
         return n in self._BINARY_PATTERNS
+
+    @staticmethod
+    def _scope_prefix_for(signal_id: str, allow_cross: bool) -> str | None:
+        """限定查询的命名空间前缀 (允许跨模块时为 None)。"""
+        if allow_cross or "." not in signal_id:
+            return None
+        return signal_id.rsplit(".", 1)[0]
+
+    @staticmethod
+    def _in_scope(node_id: str, scope_prefix: str | None) -> bool:
+        """[iter_271] 限定查询的作用域判定 (实例级图下的 "只看这个实例内部")。
+
+        实例级图里跨模块是普通图边, 单靠 `allow_cross_module=False` 已经挡不住
+        (那只关掉 MIG 虚拟跳)。这里按**命名空间前缀**过滤。
+        """
+        if not scope_prefix:
+            return True
+        return node_id == scope_prefix or node_id.startswith(scope_prefix + ".")
 
     def _mig_neighbors(self, signal_id: str, allow_cross_module: bool = True) -> list[TraceNode]:
         """[iter_240] 跨模块端口映射的**对端**节点 (两个方向)。
@@ -705,7 +732,8 @@ class SignalTracer:
         return drivers
 
     def _find_loads(self, signal_id: str, allowed_kinds: set | None = None,
-                    allow_cross_module: bool = True) -> list[TraceNode]:
+                    allow_cross_module: bool = True,
+                    scope_prefix: str | None = None) -> list[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
 
@@ -717,11 +745,16 @@ class SignalTracer:
             allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
 
         for succ in self.graph.successors(signal_id):
+            if succ == signal_id:
+                # [iter_271] 图里存在自环 (端口直通/位桥产生的 x→x)。
+                # 自环不是"loads": 返回自己会让 depth=1 与 depth=2 不单调
+                # (实测: depth=1 含 self, depth=2 不含)。
+                continue
             edge = self.graph.get_edge(signal_id, succ)
             if edge and edge.kind not in allowed_kinds:
                 continue
             node = self.graph.get_node(succ)
-            if node and node.id not in seen_ids:
+            if node and node.id not in seen_ids and self._in_scope(node.id, scope_prefix):
                 loads.append(node)
                 seen_ids.add(node.id)
 
@@ -735,7 +768,8 @@ class SignalTracer:
         return loads
 
     def _collect_all_loads(self, signal_id: str, max_depth: int | None = None, allowed_kinds: set | None = None,
-                           allow_cross_module: bool = True) -> list[TraceNode]:
+                           allow_cross_module: bool = True,
+                           scope_prefix: str | None = None) -> list[TraceNode]:
         """递归收集所有后继(被这个信号驱动的所有节点)
 
         Args:
@@ -750,7 +784,8 @@ class SignalTracer:
         # [iter_240] 不再需要"零结果时补一条 MIG"的兜底 —— 跨模块跳转已是遍历的一步
         # (见 _trace_loads_recursive 里的 _mig_neighbors 注入)。
         self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth,
-                                    allowed_kinds=allowed_kinds, allow_cross_module=allow_cross_module)
+                                    allowed_kinds=allowed_kinds, allow_cross_module=allow_cross_module,
+                                    scope_prefix=scope_prefix)
         return loads
 
     def _trace_loads_recursive(
@@ -762,6 +797,7 @@ class SignalTracer:
         max_depth: int | None = None,
         allowed_kinds: set | None = None,
         allow_cross_module: bool = True,
+        scope_prefix: str | None = None,
     ):
         """递归追溯负载(被 signal_id 驱动的节点)
 
@@ -777,6 +813,9 @@ class SignalTracer:
             return
         if signal_id in seen_ids:
             return
+        # [iter_271] 限定查询的命名空间守卫 (见 _trace_drivers_recursive 同款注释)
+        if scope_prefix and not self._in_scope(signal_id, scope_prefix):
+            return
         if signal_id not in self.graph.nodes():
             return
         seen_ids.add(signal_id)
@@ -790,20 +829,25 @@ class SignalTracer:
                 loads.append(peer)
                 # 注意: 这里**不能**预先 add 到 seen_ids —— 递归入口会自己 add,
                 # 预先 add 会让递归第一步就 return (链条断掉, 传递性失效)。
+                if not self._in_scope(peer.id, scope_prefix):
+                    continue
                 self._trace_loads_recursive(peer.id, loads, seen_ids,
                                             current_depth + 1, max_depth, allowed_kinds,
-                                            allow_cross_module)
+                                            allow_cross_module, scope_prefix)
 
         for src, dst in list(self.graph.edges()):
             if src == signal_id:
                 edge = self.graph.get_edge(src, dst)
                 if edge and edge.kind not in allowed_kinds:
                     continue
+                if not self._in_scope(dst, scope_prefix):
+                    continue
                 node = self.graph.get_node(dst)
                 if node and node.id not in seen_ids:
                     loads.append(node)
                 if dst in self.graph.nodes():
-                    self._trace_loads_recursive(dst, loads, seen_ids, current_depth + 1, max_depth, allowed_kinds, allow_cross_module)
+                    self._trace_loads_recursive(dst, loads, seen_ids, current_depth + 1, max_depth,
+                                                allowed_kinds, allow_cross_module, scope_prefix)
 
     def trace_fanout(
         self,
@@ -854,12 +898,13 @@ class SignalTracer:
             })
         # [iter_240] 作用域: 指定了 module (限定查询) → 不跨模块边界, 只答该模块内
         allow_cross = (module is None) if allow_cross_module is None else allow_cross_module
+        scope_prefix = self._scope_prefix_for(signal_id, allow_cross)
         # depth=1 用 _find_loads 过滤
         if depth == 1:
             return self._find_loads(signal_id, allowed_kinds=allowed_kinds,
-                                    allow_cross_module=allow_cross)
+                                    allow_cross_module=allow_cross, scope_prefix=scope_prefix)
         return self._collect_all_loads(signal_id, max_depth=depth, allowed_kinds=allowed_kinds,
-                                       allow_cross_module=allow_cross)
+                                       allow_cross_module=allow_cross, scope_prefix=scope_prefix)
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
                     allow_cross_module: bool | None = None) -> list[TraceNode]:
@@ -873,10 +918,13 @@ class SignalTracer:
         signal_id = self.make_id(signal, module)
         # [iter_240] 作用域同上 (显式覆盖优先: 内部调用已传完整 id, 不能再按 module 推导)
         allow_cross = (module is None) if allow_cross_module is None else allow_cross_module
+        scope_prefix = self._scope_prefix_for(signal_id, allow_cross)
         if depth == 1:
-            return self._find_drivers(signal_id, allow_cross_module=allow_cross)
+            return self._find_drivers(signal_id, allow_cross_module=allow_cross,
+                                      scope_prefix=scope_prefix)
         return self._collect_all_drivers(signal_id, max_depth=depth,
-                                        allow_cross_module=allow_cross)
+                                        allow_cross_module=allow_cross,
+                                        scope_prefix=scope_prefix)
 
     def trace_fanin_detailed(self, signal: str, module: str = None, depth: int | None = None,
                              allow_cross_module: bool | None = None) -> list[DriverInfo]:

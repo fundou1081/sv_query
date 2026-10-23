@@ -177,23 +177,18 @@ def connections_cmd(
               json_output, pretty)
         return
 
-    mc = tracer.trace_module(target)
-    if not (mc.inputs or mc.outputs or mc.internals or mc.cross_module):
-        typer.echo(json.dumps({"ok": False, "error": "target not found as instance or module",
-                               "target": target,
-                               "hint": "用 `svq instances --json` 或 `svq hierarchy --json` 查"},
-                              indent=2 if pretty else None, ensure_ascii=False))
-        raise typer.Exit(code=1)
-
-    def _edges(edges):
-        return [{"src": e.src, "dst": e.dst, "kind": e.kind.name if hasattr(e.kind, "name") else str(e.kind),
-                 "condition": e.condition, "expression": e.expression} for e in edges]
-
-    _emit({"ok": True, "resolved_as": "module", "module": target,
-           "confidence": mc.confidence, "caveats": mc.caveats,
-           "inputs": _edges(mc.inputs), "outputs": _edges(mc.outputs),
-           "internals": _edges(mc.internals), "cross_module": _edges(mc.cross_module)},
+    # [iter_271] 实例级图只认实例路径 (方豆决策: "只认实例, 干净一些")。
+    # 以前这里走 `trace_module(target)`, 输出模块定义命名空间的边; 切换到实例级后
+    # 那些 id 不在图里 → networkx 抛 "node not in digraph" (不是友好错误)。
+    # 现在显式失败, 并给出"该类型有哪些实例"的提示。
+    same_type = [i for i in _instances(tracer) if i.get("module_type") == target]
+    hint = "connections 只接受**实例路径**"
+    if same_type:
+        hint += "；该类型的实例: " + ", ".join(i["full_path"] for i in same_type[:5])
+    _emit({"ok": False, "error": "target is not an instance path", "target": target,
+           "resolved_as": "unknown", "hint": hint},
           json_output, pretty)
+    raise typer.Exit(code=1)
 
 
 # ----------------------------------------------------------------------------

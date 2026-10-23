@@ -130,7 +130,7 @@ class TestPaths:
         allp = _json("paths", "inst_demo.in_a", "inst_demo.add_out", "--all",
                      "-f", INST_DEMO, "--json")
         assert path in allp["all_paths"], "find_path 结果必须在 all_paths 中"
-        assert any("sub_adder.a" in p for p in allp["all_paths"]), \
+        assert any("inst_demo.u_adder.a" in p for p in allp["all_paths"]), \
             "应存在穿越模块内部的跨模块路径 (端口↔内部信号映射跳转)"
 
     def test_all_paths_and_truncation_flag(self):
@@ -153,7 +153,7 @@ class TestPaths:
         t.build_graph()
         pr = t.get_path_resolver()
         assert pr is not None
-        for a, b in [("inst_demo.in_a", "inst_demo.add_out"), ("sub_adder.a", "sub_adder.sum")]:
+        for a, b in [("inst_demo.in_a", "inst_demo.add_out"), ("inst_demo.u_adder.a", "inst_demo.u_adder.sum")]:
             one = pr.find_path(a, b)
             allp = pr.find_all_paths(a, b)
             assert one is not None

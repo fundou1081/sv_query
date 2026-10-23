@@ -126,7 +126,7 @@ endmodule'''
         nodes = list(graph.nodes())
         self.assertIn('top.u1', nodes, "defparam 目标实例应存在")
         self.assertIn('top.u2', nodes, "命名 override 实例应存在")
-        self.assertIn('sub.d', nodes, "参数化子模块端口应被提取")
+        self.assertIn('top.u1.d', nodes, "参数化子模块端口应被提取 (实例级 id)")
 
     def test_array_write_index(self):
         """[Golden] 数组写索引 mem[idx] <= data — always_ff 动态索引写入

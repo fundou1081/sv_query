@@ -288,10 +288,12 @@ class UnifiedTracer:
                            of auto-detected first top instance). This ensures
                            pipeline/timing/dataflow show signals in user namespace.
         """
-        # [iter_269] instance_scope 迁移开关: 显式参数优先, 否则读 SVQ_INSTANCE_SCOPE。
-        # 默认关闭 (模块定义级图) —— 稳定后再切默认。
+        # [iter_271] 实例级图**已切默认** (方豆 2026-10-23 决策)。
+        # 显式参数优先; 否则读 SVQ_INSTANCE_SCOPE —— 只有显式 "0/false/no" 才回到
+        # 模块定义级图 (应急逃生口, 因为那条路径最终会删除)。
         if instance_scope is None:
-            instance_scope = os.environ.get("SVQ_INSTANCE_SCOPE", "").strip().lower() in ("1", "true", "yes")
+            raw = os.environ.get("SVQ_INSTANCE_SCOPE", "").strip().lower()
+            instance_scope = raw not in ("0", "false", "no")
 
         # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
         # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
