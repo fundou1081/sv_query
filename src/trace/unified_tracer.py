@@ -248,17 +248,26 @@ class UnifiedTracer:
 
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
-                    auto_target_single_top: bool = False) -> SignalGraph:
+                    auto_target_single_top: bool = False,
+                    instance_scope: bool | None = None) -> SignalGraph:
         """构建信号流图
 
         Args:
             force: 强制重新构建（忽略缓存）
             use_cache: 使用缓存加速（基于内容 hash）
+            instance_scope: [iter_269] 图只用**实例作用域** id (elaborated namespace),
+                           不产出"模块定义命名空间"的影子节点。与 target_module 的区别:
+                           target 只建一个子树并过滤; instance_scope 建所有 top 的实例树。
             target_module: [Phase 3 2026-07-11] User-specified target. If set,
                            SignalGraph nodes use this as root namespace (instead
                            of auto-detected first top instance). This ensures
                            pipeline/timing/dataflow show signals in user namespace.
         """
+        # [iter_269] instance_scope 迁移开关: 显式参数优先, 否则读 SVQ_INSTANCE_SCOPE。
+        # 默认关闭 (模块定义级图) —— 稳定后再切默认。
+        if instance_scope is None:
+            instance_scope = os.environ.get("SVQ_INSTANCE_SCOPE", "").strip().lower() in ("1", "true", "yes")
+
         # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
         # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
         if self._graph is None or force:
@@ -319,7 +328,8 @@ class UnifiedTracer:
             def _step_graph(ctx):
                 semantic_adapter = ctx["adapter"]
                 builder = GraphBuilder(semantic_adapter,
-                                       target_module=ctx.get("target", target_module))
+                                       target_module=ctx.get("target", target_module),
+                                       instance_scope=instance_scope)
                 graph = builder.build()
                 # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
                 # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast
