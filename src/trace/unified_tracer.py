@@ -181,6 +181,31 @@ class UnifiedTracer:
         if log_level is not None:
             self.set_log_level(log_level)
 
+    def _graph_cache_key(self, instance_scope: bool, target_module: str | None) -> str | None:
+        """[iter_270] 图缓存 key: 内容 hash + **图模式**。
+
+        旧 key 只有 sources hash → 模块级/实例级共用同一个 key, 先建哪个就命中哪个
+        (实测: 先模块级再请求实例级, 直接返回旧图, 静默错误)。现在把
+        instance_scope 与 target_module 编进 key。
+
+        filelist 模式: 用 filelist + 所有引用文件的内容 hash (iter_270 新增),
+        以前 `_sources` 为空直接跳过缓存 → 真实工程永远不命中。
+        """
+        from trace.core.cache import get_cache
+
+        cache = get_cache()
+        try:
+            if self._sources:
+                base = cache.compute_sources_hash(self._sources)
+            elif self._filelist:
+                base = cache.compute_filelist_hash(self._filelist, self._include_dirs)
+            else:
+                return None
+        except (OSError, FileNotFoundError) as e:
+            _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
+            return None
+        return f"{base}-s{int(bool(instance_scope))}-t{target_module or 'all'}"
+
     def set_log_level(self, level: str) -> None:
         """动态设置日志级别
 
@@ -272,16 +297,19 @@ class UnifiedTracer:
         # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
         if self._graph is None or force:
             # 尝试从缓存加载
-            if use_cache and self._sources:
+            cache_key = self._graph_cache_key(instance_scope, target_module) if use_cache else None
+            if use_cache and cache_key:
                 from trace.core.cache import get_cache
 
                 cache = get_cache()
-                # 计算内容的 hash 作为缓存 key
-                cache_key = cache.compute_sources_hash(self._sources)
                 cached = cache.get_by_key(cache_key, force=force)
-                if cached and "graph_data" in cached:
+                # [iter_270] ASTCache 把 payload 包在 "data" 里 (put_by_key 的契约,
+                # 测试锁定 get_by_key(...)["data"][...])。旧代码直接查 "graph_data"
+                # → **永远不命中**, 图缓存自诞生起就是死代码 (静默 miss, 无 warning)。
+                payload = (cached or {}).get("data") or {}
+                if payload.get("graph_data"):
                     _main_logger.info(f"Loading graph from cache (key={cache_key[:8]}...)")
-                    self._graph = SignalGraph.from_dict(cached["graph_data"])
+                    self._graph = SignalGraph.from_dict(payload["graph_data"])
                     self._init_tracers()
                     return self._graph
 
@@ -397,11 +425,10 @@ class UnifiedTracer:
             pipeline.run({"compiler": self._get_compiler()})
 
             # 保存到缓存
-            if use_cache and self._sources:
+            if use_cache and cache_key:
                 from trace.core.cache import get_cache
 
                 cache = get_cache()
-                cache_key = cache.compute_sources_hash(self._sources)
                 cache_data = {
                     "graph_data": self._graph.to_dict(),
                 }

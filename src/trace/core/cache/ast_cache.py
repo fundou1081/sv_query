@@ -90,6 +90,54 @@ class ASTCache:
             hasher.update(sources[fname].encode())
         return hasher.hexdigest()[:16]
 
+    def compute_filelist_hash(self, filelist: str, include_dirs=()) -> str:
+        """[iter_270] filelist 模式的内容 hash (filelist + 它引用的所有文件内容)。
+
+        为什么不用 mtime: 判断"图是否还成立"必须看内容, mtime 在 checkout /
+        复制 / touch 后会产生假失效或假命中。文件数通常几十~几百, 读取开销远小于
+        一次图构建 (verilog-axi: 126 文件 ≈ 几十 ms vs 16~26s)。
+        """
+        fl = Path(filelist)
+        if not fl.exists():
+            raise FileNotFoundError(f"filelist 不存在: {filelist}")
+        base = fl.parent
+        hasher = hashlib.sha256()
+        hasher.update(fl.name.encode())
+        for raw in fl.read_text(errors="replace").splitlines():
+            line = raw.strip()
+            if not line or line.startswith(("//", "#", "+incdir+", "+define+")):
+                continue
+            p = Path(line)
+            p = p if p.is_absolute() else (base / p)
+            if not p.is_file():
+                continue
+            hasher.update(str(p).encode())
+            try:
+                hasher.update(p.read_bytes())
+            except OSError as e:
+                logger.warning("缓存 key 计算跳过不可读文件 %s: %s", p, e)
+
+        # [iter_270] 头文件也必须进 hash: `\`include` 的文件通常不在 filelist 里,
+        # 只 hash filelist 会产生"改了头文件仍命中旧图"的静默错误。
+        # 策略: 把 include 目录下所有 HDL 文件内容纳入 (目录通常几十~几百个文件,
+        # 代价远小于一次图构建)。
+        HDL_EXTS = {".sv", ".svh", ".v", ".vh", ".inc"}
+        for inc in include_dirs or ():
+            inc_dir = Path(inc)
+            if not inc_dir.is_absolute():
+                inc_dir = base / inc_dir
+            if not inc_dir.is_dir():
+                continue
+            for hf in sorted(inc_dir.rglob("*")):
+                if hf.suffix not in HDL_EXTS or not hf.is_file():
+                    continue
+                hasher.update(str(hf).encode())
+                try:
+                    hasher.update(hf.read_bytes())
+                except OSError as e:
+                    logger.warning("缓存 key 计算跳过不可读头文件 %s: %s", hf, e)
+        return hasher.hexdigest()[:16]
+
     def _cache_path(self, cache_key: str) -> Path:
         """获取缓存文件路径"""
         return self.cache_dir / f"{cache_key}.json"
