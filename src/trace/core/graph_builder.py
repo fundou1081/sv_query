@@ -33,7 +33,8 @@ __all__ = [
 ]
 
 class GraphBuilder:
-    def __init__(self, adapter: SemanticAdapter, target_module: str | None = None):
+    def __init__(self, adapter: SemanticAdapter, target_module: str | None = None,
+                 instance_scope: bool = False):
         """[Phase 3 2026-07-11] GraphBuilder + target_module filter.
 
         Args:
@@ -44,6 +45,13 @@ class GraphBuilder:
         """
         self.adapter = adapter
         self.target_module = target_module  # [Phase 3]
+        # [iter_269] 实例级图: 节点 id 一律用**实例路径**(elaborated namespace),
+        # 不再产出"模块定义命名空间"的影子节点 (见 POC 2026-10-23: 影子节点占
+        # 图的 30~38% 且从顶层输入 0 可达)。与 target_module 的区别:
+        #   - target_module: 只建该子树, 并做 out-of-target 过滤 (单模块调试)
+        #   - instance_scope: 建**所有 top 的实例树**, 不做过滤 (全设计视图)
+        self.instance_scope = instance_scope
+        self._instance_path_list: list[str] = []
         self.graph = SignalGraph()
         self._extractors = {
             "driver": DriverExtractor(adapter),
@@ -67,7 +75,7 @@ class GraphBuilder:
         # to find (instance_path, instance_symbol) pairs. Pass to DriverExtractor
         # so it emits signal IDs with full instance paths (e.g.,
         # 'darksocv.bridge0.core0.REGS' instead of 'darkriscv.REGS').
-        if self.target_module:
+        if self.target_module or self.instance_scope:
             self._configure_instance_paths()
 
         self._extract_all_nodes()
@@ -97,6 +105,14 @@ class GraphBuilder:
         # [V16.11 2026-08-18] 抓 pyslang GenerateBlock{Array} → assign LHS base signal 映射
         # 替代 V16.10.3 的启发式: 直接从源码读 generate block 真实 label
         self._capture_generate_block_map()
+
+        # [iter_269] 实例级图: 清掉"模块定义命名空间"的孤儿节点。
+        # instance_scope 下 DriverExtractor 已按实例路径出边, 但其它 extractor
+        # (connection/load/clock) 仍会为**模块定义**建节点; 实测这些节点
+        # 在 instance_scope 下全部零度 (minimal_3module 14/14, scheduler 26/26)。
+        # 只删零度的非实例节点; 有边的保留并告警 (不静默丢信息)。
+        if self.instance_scope:
+            self._drop_orphan_type_nodes()
 
         return self.graph
 
@@ -391,6 +407,73 @@ class GraphBuilder:
             # [P0 核实 2026-08-29] 失败显式记录 (原 print 调试残留)
             logger.warning("_capture_generate_block_map failed: %s", e)
 
+    def _instance_namespaces(self) -> set[str]:
+        """[iter_269] 所有实例路径 (含顶层实例名) —— 实例级图的合法命名空间。"""
+        namespaces: set[str] = set()
+        root = getattr(self.adapter, "_root", None)
+        for top in getattr(root, "topInstances", []) or []:
+            try:
+                namespaces.add(str(top.name))
+            except (UnicodeDecodeError, TypeError) as e:
+                logger.debug("top 名字不可读: %s", e)
+        for inst in getattr(self, "_instance_path_list", []):
+            namespaces.add(inst)
+        return namespaces
+
+    def _drop_orphan_type_nodes(self) -> None:
+        """删除"模块定义命名空间"的零度节点 (instance_scope 专用)。
+
+        判定: 节点 id 不落在任何实例路径下, 且 degree == 0。
+        保留常量节点 "0" (表达式里的 0 驱动) 与有边节点 (后者告警)。
+        """
+        namespaces = self._instance_namespaces()
+        if not namespaces:
+            logger.warning("instance_scope: 没有实例命名空间, 跳过孤儿节点清理")
+            return
+
+        def under_instance(node: str) -> bool:
+            return any(node == ns or node.startswith(ns + ".") for ns in namespaces)
+
+        orphans, kept_with_edges = [], []
+        for node in list(self.graph.nodes()):
+            if node == "0" or under_instance(node):
+                continue
+            if self.graph.degree(node) == 0:
+                orphans.append(node)
+            else:
+                kept_with_edges.append(node)
+
+        for node in orphans:
+            self.graph.remove_node(node)
+
+        if kept_with_edges:
+            logger.warning(
+                "instance_scope: 仍有 %d 个非实例节点带边 (未删除): %s",
+                len(kept_with_edges), sorted(kept_with_edges)[:5],
+            )
+        logger.info("instance_scope: 删除 %d 个模块定义命名空间孤儿节点", len(orphans))
+
+    def _all_top_instances(self) -> list[tuple[str, Any]]:
+        """[iter_269] 所有顶层实例 (name, symbol), 供 instance_scope 模式 walk。
+
+        来源: SemanticAdapter 的 root.topInstances (elaborated)。取不到就返回空,
+        由调用方决定是否降级 (本函数不静默造假)。
+        """
+        root = getattr(self.adapter, "_root", None)
+        if root is None:
+            logger.warning("instance_scope: adapter 没有 _root, 无法枚举顶层实例")
+            return []
+        tops = []
+        for top in getattr(root, "topInstances", []) or []:
+            try:
+                name = str(getattr(top, "name", ""))
+            except (UnicodeDecodeError, TypeError) as e:
+                logger.debug("top instance 名字不可读, 跳过: %s", e)
+                continue
+            if name:
+                tops.append((name, top))
+        return tops
+
     def _configure_instance_paths(self):
         """[Phase 4 2026-07-11] Walk target instance tree, configure extractors.
 
@@ -412,8 +495,17 @@ class GraphBuilder:
         (get_module_instances hp 路径) 命名一致, 两边节点才对得上。
         """
         try:
-            target_top = self._find_target_top(self.target_module)
-            if target_top is None:
+            # [iter_269] instance_scope: walk **所有** top 的实例树 (全设计视图);
+            # 否则沿用 target_module 的单一子树行为。
+            if self.instance_scope and not self.target_module:
+                roots = self._all_top_instances()
+            else:
+                target_top = self._find_target_top(self.target_module)
+                if target_top is None:
+                    return
+                roots = [(self.target_module, target_top)]
+
+            if not roots:
                 return
 
             paths = []
@@ -499,7 +591,11 @@ class GraphBuilder:
                 except Exception as e:
                     logger.warning("generate 块下钻失败: %s", e)
 
-            walk(target_top, self.target_module)
+            for root_name, root_sym in roots:
+                walk(root_sym, root_name)
+
+            # [iter_269] 供 _drop_orphan_type_nodes 判定命名空间
+            self._instance_path_list = [p for p, _sym in paths]
 
             # Pass to DriverExtractor
             driver = self._extractors.get('driver')

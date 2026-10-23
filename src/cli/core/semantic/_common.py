@@ -13,14 +13,14 @@ from cli._common import _build_tracer, handle_compilation_error
 from trace.core.compiler import CompilationError
 
 
-def build_tracer(file, filelist, log_level: str = "WARNING"):
+def build_tracer(file, filelist, log_level: str = "WARNING", instance_scope: bool = False):
     """统一构建 tracer (支持 --file / --filelist) 并 build_graph。
 
     编译失败 → 走统一错误格式化 (结构化 exit), 返回 None (调用方直接 return)。
     """
     try:
         tracer = _build_tracer(file=file, filelist=filelist, log_level=log_level)
-        tracer.build_graph()
+        tracer.build_graph(instance_scope=instance_scope)
         return tracer
     except CompilationError as e:
         handle_compilation_error(e)

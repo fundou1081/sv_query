@@ -127,6 +127,10 @@ def analyze(
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each segment (optional)"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
+    instance_scope: bool = typer.Option(
+        False, "--instance-scope",
+        help="[iter_269] 用实例作用域图 (节点 id 全为实例路径; 无模块定义影子节点)。"
+             "也可用 SVQ_INSTANCE_SCOPE=1 全局开启"),
 ) -> None:
     """Analyze dataflow path from source signal to target signal"""
     if not file and not filelist:
@@ -141,7 +145,7 @@ def analyze(
             log_level=log_level,
             preprocess_macros=preprocess_macros,
         )
-        _ = tracer.build_graph()
+        _ = tracer.build_graph(instance_scope=instance_scope)
     except CompilationError as e:
         handle_compilation_error(e)
         return
