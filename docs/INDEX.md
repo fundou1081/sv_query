@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2291 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 8 skipped / 152 deselected) | 2026-10-21 实测 (iter_266): registry note 修正 + impact 风险分标注 (命令数不变)。历史: iter_265 2291 / iter_264 2310 / iter_263 2633 / iter_262 3422 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (254 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (255 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -59,6 +59,7 @@
 | [EXPERIMENTAL_FEATURES.md](EXPERIMENTAL_FEATURES.md) | 实验功能 (6): cdc / verify gap / risk / timing / coverage generate / deadlock — **不承诺** |
 | [EXP_IDEAS.md](EXP_IDEAS.md) | **exp 创意清单 (未落地)**: 10 条想法 + 各自要解决的问题场景 |
 | [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | exp 层已退役说明 (代码归档在 archive/2026-10-20-exp-attic) |
+| [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
 | [architecture/signal_graph_accuracy_audit.md](architecture/signal_graph_accuracy_audit.md) | **Accuracy Claim 分层声明** (L1/L2/L3 + 反例表 + covergroup 观察域) |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
