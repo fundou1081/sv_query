@@ -310,6 +310,21 @@ class DataFlowGraph:
         Returns:
             内部信号名
         """
+        # [iter_268] 图里**已有**的 id 一律原样返回。
+        # 旧实现无条件把实例端口改写成"模块定义命名空间"的名字
+        # (top_minimal.sa1.valid_i → sub_aggregator.valid_i)，而后者在
+        # SignalGraph 里是一个**孤立节点** (POC 实测: 从顶层输入 0 可达)，
+        # 于是 dataflow 对一切跨模块查询都报 unreachable —— 实测
+        # `top_minimal.valid_i → top_minimal.sa1.valid_i`: nx.has_path=True
+        # 但 analyze() 走完 _resolve_cross_module 后变成不可达 (iter_268)。
+        # 现在: 图里的 id 不重写；只有不在图里的名字 (用户按模块定义名查询)
+        # 才走旧映射，保持向后兼容。
+        try:
+            if signal in self.signal_graph.nodes():
+                return signal
+        except Exception as e:       # 图未就绪/非 nx: 退回旧行为 (显式记录, 不静默)
+            logger.debug("图节点检查失败, 退回 MIG 映射 (%s): %s", signal, e)
+
         # 1. 尝试 MIG 映射
         if signal in self._port_to_internal:
             return self._port_to_internal[signal]
