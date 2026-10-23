@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-21 GMT+8 (iter_266: registry note 修正 + impact 风险分标注)
+> **最后更新**: 2026-10-23 GMT+8 (iter_268: 路径语义修复, 2311 passed)
 
 ---
 
@@ -61,6 +61,7 @@
 **失联库清理 ✅ (iter_264)**: exp 退役后只被测试引用的 14 个 trace 库模块归档 （`src` 51,607→**46,480 行**，测试 2633→**2310**）。判定口径：**只被测试引用的模块 = 死代码**。
 **view 收口 ✅ (iter_265)**: 删 `visualize compute/timed/gap` —— 命令 37→**34**，view 13→10，**默认可见 37→34（达成 ~33 目标）**；gap 属退役想法的孤儿视图（0 测试）。
 **registry/风险分 ✅ (iter_266)**: 4 条过期 note 修正（含 2 条无 task 承接的孤儿"[计划]"）；`trace impact` 风险分显式标注 `risk_model=heuristic_v1 (未标定)` + KNOWN_LIMITATIONS §3.4。**更正**：impact 的风险分级并不依赖已退役的 exp 逻辑。
+**路径语义 ✅ (iter_268)**: 按 POC 结论修 —— `PathResolver` 端点不再漂移（65~78/120 → 0）、`dataflow` 不再把图内 id 改写成影子节点（跨模块 0/3 → **3/3**）、新增 `paths --directed`；`test_path_directed_parity.py` 锁三条不变式（全量 **2311 passed**）。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

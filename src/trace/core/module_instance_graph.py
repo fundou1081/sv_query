@@ -18,6 +18,8 @@ module_instance_graph.py - 模块实例层级图
 import logging
 from typing import Any
 
+from collections import deque
+
 import networkx as nx
 
 from .._safe import _safe_attr, _safe_str, safe_attr, safe_str
@@ -289,29 +291,41 @@ class PathResolver:
         self.signal_graph = signal_graph
         self.module_graph = module_graph
 
-    def _neighbors(self, node: str) -> list[str]:
-        """统一的邻接定义: successors + predecessors + 跨模块端口映射(两个方向)。
+    def _neighbors(self, node: str, directed: bool = False) -> list[str]:
+        """统一的邻接定义。
+
+        无向模式 (默认, `directed=False`): successors + predecessors +
+        跨模块端口映射(两个方向) —— 回答**结构连通性**。
+
+        有向模式 (`directed=True`): 只走 successors, 且**不**做 MIG 虚拟跳转 ——
+        SignalGraph 本身已含跨模块端口边 (父网 ↔ 实例端口), 与 `dataflow analyze`
+        走同一张有向图, 因此两者结论一致 (iter_268)。
 
         [iter_237] 旧实现里 `find_path` 走 successors+predecessors + 进模块映射, 而
-        `find_all_paths` 只走 successors → 两者结论互相矛盾 (实测同一对信号:
-        一个有路径一个返回 [])。现在两个入口共用本方法, 保证
-        "find_path 找得到的路径必然出现在 find_all_paths 里"。
+        `find_all_paths` 只走 successors → 两者结论互相矛盾。现在两个入口共用本方法。
         """
         out: list[str] = []
-        for fn in (self.signal_graph.successors, self.signal_graph.predecessors):
-            try:
-                out.extend(fn(node))
-            except (KeyError, nx.NetworkXError) as _e:
-                logger.debug("图无邻居 (正常): %s", _e)
-        inner = self.module_graph.get_internal_signal(node)     # 进模块
+        try:
+            out.extend(self.signal_graph.successors(node))
+        except (KeyError, nx.NetworkXError) as _e:
+            logger.debug("图无后继 (正常): %s", _e)
+
+        if directed:
+            return out
+
+        try:
+            out.extend(self.signal_graph.predecessors(node))
+        except (KeyError, nx.NetworkXError) as _e:
+            logger.debug("图无前驱 (正常): %s", _e)
+        inner = self.module_graph.get_internal_signal(node)     # 进模块 (虚拟跳, 仅无向)
         if inner:
             out.append(inner)
-        outer = self.module_graph.get_port_path(node)           # 出模块
+        outer = self.module_graph.get_port_path(node)           # 出模块 (虚拟跳, 仅无向)
         if outer:
             out.append(outer)
         return out
 
-    def find_path(self, src: str, dst: str) -> list[str] | None:
+    def find_path(self, src: str, dst: str, directed: bool = False) -> list[str] | None:
         """查找从 src 到 dst 的一条路径 (BFS, 跨模块感知)。
 
         返回**最短跳数**的那一条 (可能经由实例节点而非模块内部); 要走遍所有
@@ -323,23 +337,25 @@ class PathResolver:
         """
         if src == dst:
             return [src]
-        dst_internal = self.module_graph.get_internal_signal(dst)
-        dst_target = dst_internal if dst_internal else dst
-        queue: list[tuple[str, list[str]]] = [(src, [src])]
+        # [iter_268] 不再把 dst 规范化为"模块内部信号"(模块定义命名空间影子节点)。
+        # 旧实现 `dst_target = get_internal_signal(dst) or dst` 会让返回路径的
+        # **最后一项不等于用户请求的 dst** (POC 实测 65~78/120 个采样对端点漂移),
+        # 甚至越过 dst 继续走到影子节点。契约: 路径必须以 dst 结尾。
+        queue: deque[tuple[str, list[str]]] = deque([(src, [src])])
         visited = {src}
         while queue:
-            current, path = queue.pop(0)
-            for neighbor in self._neighbors(current):
+            current, path = queue.popleft()
+            for neighbor in self._neighbors(current, directed=directed):
                 if neighbor in visited:
                     continue
-                if neighbor == dst_target:
+                if neighbor == dst:
                     return path + [neighbor]
                 visited.add(neighbor)
                 queue.append((neighbor, path + [neighbor]))
         return None
 
     def find_all_paths(self, src: str, dst: str, max_paths: int = 50,
-                       max_depth: int = 60) -> list[list[str]]:
+                       max_depth: int = 60, directed: bool = False) -> list[list[str]]:
         """枚举 src → dst 的所有简单路径 (与 `find_path` 共用邻接定义)。
 
         Args:
@@ -347,16 +363,15 @@ class PathResolver:
             max_depth: 单条路径最大节点数
         """
         paths: list[list[str]] = []
-        dst_internal = self.module_graph.get_internal_signal(dst)
-        dst_target = dst_internal if dst_internal else dst
+        # [iter_268] 与 find_path 一致: 端点就是用户给的 dst, 不做影子节点规范化。
 
         def _dfs(current: str, path: list[str], visited: set) -> None:
             if len(paths) >= max_paths or len(path) > max_depth:
                 return
-            if current == dst_target and len(path) > 1:
+            if current == dst and len(path) > 1:
                 paths.append(path.copy())
                 return
-            for nxt in self._neighbors(current):
+            for nxt in self._neighbors(current, directed=directed):
                 if nxt in visited:
                     continue
                 visited.add(nxt)
