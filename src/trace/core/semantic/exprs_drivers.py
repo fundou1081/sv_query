@@ -37,6 +37,71 @@ from ._expr_helpers import (  # noqa: E402
 class ExprsDriversMixin:
     """exprs_drivers 域方法集 (mixin — 由 SemanticAdapter 组合)"""
 
+    def get_generate_locals_index(self) -> dict[str, set[str]]:
+        """[iter_274] 所有 generate 块的 `{块路径: 块内声明的信号名}`。
+
+        供 connection_extractor 用: 实例端口连到**块内局部信号**时, 父侧 id 必须带
+        块路径 (`top.G[0].local_wire`), 否则跨轮同名 wire 会塌缩成 `top.local_wire`。
+
+        路径相对层级起点 (含顶层实例名), 与实例的 hierarchicalPath 前缀一致。
+        结果缓存在 adapter 上 (elaboration 不变 → 索引不变)。
+        """
+        cached = getattr(self, "_gen_locals_index", None)
+        if cached is not None:
+            return cached
+
+        index: dict[str, set[str]] = {}
+
+        def locals_of(block) -> set[str]:
+            names = set()
+            try:
+                members = list(block)
+            except TypeError:
+                return names
+            for sym in members:
+                if str(getattr(sym, "kind", "")) in ("SymbolKind.Net", "SymbolKind.Variable"):
+                    try:
+                        nm = str(getattr(sym, "name", "") or "")
+                    except (UnicodeDecodeError, TypeError):
+                        nm = ""
+                    if nm:
+                        names.add(nm)
+            return names
+
+        def path_of(sym) -> str:
+            try:
+                return str(sym.hierarchicalPath)
+            except (UnicodeDecodeError, TypeError, AttributeError):
+                return ""
+
+        def walk_scope(scope, depth: int = 0) -> None:
+            if depth > 40:
+                return
+            try:
+                members = list(scope)
+            except TypeError:
+                return
+            for m in members:
+                kind = str(getattr(m, "kind", ""))
+                if "GenerateBlockArray" in kind:
+                    for entry in (getattr(m, "entries", None) or list(m)):
+                        p = path_of(entry)
+                        if p:
+                            index[p] = locals_of(entry)
+                        walk_scope(entry, depth + 1)
+                elif "GenerateBlock" in kind:
+                    p = path_of(m)
+                    if p:
+                        index[p] = locals_of(m)
+                    walk_scope(m, depth + 1)
+
+        root = getattr(self, "_root", None)
+        for top in getattr(root, "topInstances", []) or []:
+            walk_scope(getattr(top, "body", None))
+
+        self._gen_locals_index = index
+        return index
+
     def get_assignments(self, module) -> list:
         """获取模块的连续赋值语句
 
@@ -55,6 +120,47 @@ class ExprsDriversMixin:
         `acc[i+1]` 节点.
         """
         assignments = []
+
+        def _rel_scope(node, module) -> str:
+            """[iter_274] generate 块的相对作用域路径 (如 "G[0]" / "GEN_IF")。"""
+            try:
+                hp = str(node.hierarchicalPath)
+                mhp = str(module.hierarchicalPath)
+            except (UnicodeDecodeError, TypeError, AttributeError):
+                return ""
+            if hp.startswith(mhp + "."):
+                return hp[len(mhp) + 1:]
+            return ""
+
+        def _block_locals(block) -> set[str]:
+            """[iter_274] 块内**声明**的信号名 (Net / Variable); genvar 参数不算。"""
+            names = set()
+            try:
+                members = list(block)
+            except TypeError:
+                return names
+            for sym in members:
+                kind = str(getattr(sym, "kind", ""))
+                if kind in ("SymbolKind.Net", "SymbolKind.Variable"):
+                    try:
+                        nm = str(getattr(sym, "name", "") or "")
+                    except (UnicodeDecodeError, TypeError):
+                        nm = ""
+                    if nm:
+                        names.add(nm)
+            return names
+
+        def _with_scope(ctx: dict, scope: str, locals_: set[str]) -> dict:
+            """把作用域信息并入 ctx (保留 genvar 替换 + 父块路径)。"""
+            if not scope:
+                return ctx
+            out = dict(ctx)
+            parent = out.get("__scope_path__", "")
+            out["__scope_path__"] = f"{parent}.{scope}" if parent else scope
+            merged = set(out.get("__scope_locals__") or ())
+            merged |= locals_
+            out["__scope_locals__"] = merged
+            return out
 
         def find_assignments(node: object, genvar_ctx: dict | None = None) -> None:
             import os as _os
@@ -112,6 +218,9 @@ class ExprsDriversMixin:
                                 child_ctx[genvar_name] = int(str(ai))
                             except Exception as e:
                                 logger.warning("提取失败: %s", e)
+                    # [iter_274] generate 块作用域: 块内局部信号必须带块路径
+                    # (top.G[0].local_wire), 否则 4 轮同名 wire 会塌缩成一个节点。
+                    child_ctx = _with_scope(child_ctx, _rel_scope(entry, module), _block_locals(entry))
                     for child in self._iter_children(entry):
                         find_assignments(child, child_ctx)
                 return
@@ -123,8 +232,10 @@ class ExprsDriversMixin:
                 #  需手动 filter 避免 hallucinatory driver 边)
                 if getattr(node, 'isUninstantiated', False):
                     return
+                # [iter_274] generate if/case 块的作用域 (如 GEN_IF)
+                child_ctx = _with_scope(ctx, _rel_scope(node, module), _block_locals(node))
                 for child in self._iter_children(node):
-                    find_assignments(child, ctx)
+                    find_assignments(child, child_ctx)
                 return
 
             # ProceduralBlock (always_ff 等)

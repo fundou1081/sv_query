@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-24 GMT+8 (iter_273: generate 作用域缺陷登记 + xfail)
+> **最后更新**: 2026-10-24 GMT+8 (iter_274: generate 作用域限定, 2308 passed)
 
 ---
 
@@ -68,7 +68,8 @@
 **模块定义级路径已删除 ✅ (iter_272)**: 图只剩实例级一种模式 —— `instance_scope` 引用 47→0、`use_mig` 34→0、DriverExtractor 模块级分支删除、MIG 虚拟跳全删；全量 **2306 passed**。
 **generate 缺陷已登记 ✅ (iter_273)**: 实测 4 个 `local_wire` 塌缩成 1 个节点并产生跨轮假边；
 登记 `KNOWN_LIMITATIONS §3.5` + 2 个 xfail 守卫（断言期望的 `top.G[i].local_wire`）。
-**下一步（待拍板）**: 选修法 —— A 作用域限定（推荐，约 1 迭代）或 B 丢弃（违背信息完整不变量）。
+**generate 作用域已修 ✅ (iter_274)**: 按方案 A 落地 —— 块内局部信号命名 `top.G[i].local_wire`，跨轮假边 4→0，2 个 xfail 转正；全量 **2308 passed**。
+**下一步**: 无待办中的结构性任务；可考虑（需拍板）—— `_drop_orphan_type_nodes` 的根源治理（让 connection/load/clock 三个 extractor 也产实例级节点，彻底删掉清理 pass）。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

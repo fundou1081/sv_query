@@ -428,6 +428,19 @@ class ConnectionExtractor:
                     port_name = port_names[idx]
                     named_conns[port_name] = signal_name
 
+            # [iter_274] generate 块内的**局部**信号必须带块路径 (top.G[0].local_wire)。
+            # `_sig_scope` 会去掉 generate 段 (为修 case26 的 rotator 误连), 但那对
+            # 块内局部声明是错的: 每轮同名 wire 会塌缩到模块作用域。
+            _gen_parent_path = inst_path.rsplit(".", 1)[0] if "." in inst_path else parent_path
+            _gen_local_names: set[str] = set()
+            if _gen_parent_path:
+                _index = getattr(self, "_gen_locals_index", None)
+                if _index is None:
+                    _get_index = getattr(self.adapter, "get_generate_locals_index", None)
+                    _index = _get_index() if callable(_get_index) else {}
+                    self._gen_locals_index = _index
+                _gen_local_names = _index.get(_gen_parent_path, set())
+
             # 如果在 generate block 中,创建 generate block 容器节点
             if gen_block:
                 gen_path = inst_path.rsplit(".", 1)[0]  # e.g., top.GEN from top.GEN.g
@@ -562,7 +575,11 @@ class ConnectionExtractor:
 
                 if direction_clean == "input":
                     # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
-                    _sig_parent = _sig_scope if _sig_scope else parent_path
+                    # [iter_274] 但块内**局部声明**必须保留块路径, 否则跨轮塌缩。
+                    if signal_name in _gen_local_names and _gen_parent_path:
+                        _sig_parent = _gen_parent_path
+                    else:
+                        _sig_parent = _sig_scope if _sig_scope else parent_path
                     parent_sig = f"{_sig_parent}.{signal_name}"
                     # [FIX 2026-08-13] 跳过 SELFLOOP (SELFLOOP 边不画)。
                     # 当 parent_sig 路径与 inst_path 路径冲突时 (e.g. case26 中
@@ -603,8 +620,11 @@ class ConnectionExtractor:
                     # 边2: instance port -> parent wire (CONNECTION)
                     # [FIX 2026-07-08] 同上, child_signal_id 用 inst_path
                     child_signal_id = f"{inst_path}.{port_name}"
-                    # [iter_109] generate 内实例: 信号作用域取模块路径 (去掉 generate 段)
-                    _sig_parent2 = _sig_scope if _sig_scope else parent_path
+                    # [iter_109]/[iter_274] 同上: 局部声明保留块路径
+                    if signal_name in _gen_local_names and _gen_parent_path:
+                        _sig_parent2 = _gen_parent_path
+                    else:
+                        _sig_parent2 = _sig_scope if _sig_scope else parent_path
                     parent_signal = f"{_sig_parent2}.{signal_name}"
                     # 边1: child output -> instance port (DRIVER)
                     # [FIX 2026-07-08] child_signal_id 用 inst_path — 自环作为"模块内部
@@ -633,7 +653,11 @@ class ConnectionExtractor:
                     # (三态 assign 的 DRIVER/BRANCH 边)。不建 input 式
                     # (parent → inst_port), 避免双向边让 fanin 把"外部线"当
                     # 实例端口驱动源 (i2c 开漏多驱动归属 = 更深语义, 待专项)。
-                    _inout_parent = f"{_sig_scope if _sig_scope else parent_path}.{signal_name}"
+                    _inout_scope = (
+                        _gen_parent_path if (signal_name in _gen_local_names and _gen_parent_path)
+                        else (_sig_scope if _sig_scope else parent_path)
+                    )
+                    _inout_parent = f"{_inout_scope}.{signal_name}"
                     if _inout_parent != inst_port_id:
                         result.edges.append(
                             TraceEdge(
