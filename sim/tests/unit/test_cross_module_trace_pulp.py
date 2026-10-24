@@ -195,7 +195,6 @@ class MockSignalTracer(SignalTracer):
         # SignalTracer 期望 .graph 属性
         self.graph = graph
         self.mig = None
-        self.use_mig = False
 
     def _collect_all_drivers(self, sig, max_depth=2):
         nodes = self._graph.get_drivers(sig, max_depth)

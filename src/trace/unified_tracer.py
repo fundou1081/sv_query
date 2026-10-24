@@ -181,12 +181,12 @@ class UnifiedTracer:
         if log_level is not None:
             self.set_log_level(log_level)
 
-    def _graph_cache_key(self, instance_scope: bool, target_module: str | None) -> str | None:
+    def _graph_cache_key(self, target_module: str | None) -> str | None:
         """[iter_270] 图缓存 key: 内容 hash + **图模式**。
 
         旧 key 只有 sources hash → 模块级/实例级共用同一个 key, 先建哪个就命中哪个
         (实测: 先模块级再请求实例级, 直接返回旧图, 静默错误)。现在把
-        instance_scope 与 target_module 编进 key。
+        target_module 编进 key (v2: 图模式只有实例级, 用固定版本段区分旧缓存)。
 
         filelist 模式: 用 filelist + 所有引用文件的内容 hash (iter_270 新增),
         以前 `_sources` 为空直接跳过缓存 → 真实工程永远不命中。
@@ -204,7 +204,7 @@ class UnifiedTracer:
         except (OSError, FileNotFoundError) as e:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
-        return f"{base}-s{int(bool(instance_scope))}-t{target_module or 'all'}"
+        return f"{base}-v2-t{target_module or 'all'}"
 
     def set_log_level(self, level: str) -> None:
         """动态设置日志级别
@@ -273,33 +273,22 @@ class UnifiedTracer:
 
     def build_graph(self, force: bool = False, use_cache: bool = False,
                     target_module: str | None = None,
-                    auto_target_single_top: bool = False,
-                    instance_scope: bool | None = None) -> SignalGraph:
+                    auto_target_single_top: bool = False) -> SignalGraph:
         """构建信号流图
 
         Args:
             force: 强制重新构建（忽略缓存）
             use_cache: 使用缓存加速（基于内容 hash）
-            instance_scope: [iter_269] 图只用**实例作用域** id (elaborated namespace),
-                           不产出"模块定义命名空间"的影子节点。与 target_module 的区别:
-                           target 只建一个子树并过滤; instance_scope 建所有 top 的实例树。
             target_module: [Phase 3 2026-07-11] User-specified target. If set,
                            SignalGraph nodes use this as root namespace (instead
                            of auto-detected first top instance). This ensures
                            pipeline/timing/dataflow show signals in user namespace.
         """
-        # [iter_271] 实例级图**已切默认** (方豆 2026-10-23 决策)。
-        # 显式参数优先; 否则读 SVQ_INSTANCE_SCOPE —— 只有显式 "0/false/no" 才回到
-        # 模块定义级图 (应急逃生口, 因为那条路径最终会删除)。
-        if instance_scope is None:
-            raw = os.environ.get("SVQ_INSTANCE_SCOPE", "").strip().lower()
-            instance_scope = raw not in ("0", "false", "no")
-
         # [C-Flaky-3b 2026-06-27] reclaim moved to CLI main + conftest (process start).
         # build_graph() 不再调用, 避免 pytest test 内部多次调用累积 OOM.
         if self._graph is None or force:
             # 尝试从缓存加载
-            cache_key = self._graph_cache_key(instance_scope, target_module) if use_cache else None
+            cache_key = self._graph_cache_key(target_module) if use_cache else None
             if use_cache and cache_key:
                 from trace.core.cache import get_cache
 
@@ -358,8 +347,7 @@ class UnifiedTracer:
             def _step_graph(ctx):
                 semantic_adapter = ctx["adapter"]
                 builder = GraphBuilder(semantic_adapter,
-                                       target_module=ctx.get("target", target_module),
-                                       instance_scope=instance_scope)
+                                       target_module=ctx.get("target", target_module))
                 graph = builder.build()
                 # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
                 # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast

@@ -95,14 +95,6 @@ class TestSupersetAndFlags:
         assert "inst_demo.u_adder.sum" in _ids(tracer.trace_fanout("inst_demo.in_a"))
         assert "inst_demo.add_out" in _ids(tracer.trace_fanout("inst_demo.u_adder.sum"))
 
-    def test_use_mig_false_keeps_graph_only(self, tracer):
-        """use_mig=False → 不跨模块 (旧行为, 开关必须仍然有效)。"""
-        from trace.core.query.signal import SignalTracer
-
-        st = SignalTracer(tracer.get_graph(), mig=None, use_mig=False)
-        assert "inst_demo.add_out" in _ids(st.trace_fanout("inst_demo.u_adder.sum"))
-
-
 class TestTermination:
     def test_port_internal_pingpong_terminates(self, tracer):
         """端口↔内部是双向映射, 遍历必须靠 visited 收敛 (不重复、不无限循环)。"""

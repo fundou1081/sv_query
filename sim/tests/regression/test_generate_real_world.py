@@ -43,10 +43,9 @@ def zipcpu_graph():
         except OSError:
             continue
     tracer = UnifiedTracer(sources=sources)
-    # [iter_271] 本文件断言的是**模块定义级** generate 展开 (idecode/zipcore 类型节点)。
-    # 默认已切实例级图 (只认实例路径), 这些类型名不再出现 → 显式用逃生开关保留
-    # 这条路径的覆盖, 直到它被删除为止。
-    tracer.build_graph(instance_scope=False)  # strict=True (默认) — 编译不过即抛错
+    # [iter_272] 模块定义级路径已删除: 图恒为实例级。本文件改为断言**实例级**
+    # 的 generate 展开 (节点 id 带实例路径前缀)。
+    tracer.build_graph()  # strict=True (默认) — 编译不过即抛错
     return tracer.get_graph()
 
 
@@ -72,12 +71,12 @@ class TestRealWorldGenerateStrict:
         (核心, 大量 generate if/for). 这些经 generate 展开后的信号应出现在图.
         """
         node_ids = set(zipcpu_graph.nodes())
-        # idecode 的 generate 展开信号
-        idecode_hits = [n for n in node_ids if str(n).startswith('idecode')]
-        assert len(idecode_hits) > 50, f"idecode generate 展开信号应存在: {len(idecode_hits)}"
-        # zipcore 核心信号
-        zipcore_hits = [n for n in node_ids if str(n).startswith('zipcore')]
-        assert len(zipcore_hits) > 100, f"zipcore 信号应存在: {len(zipcore_hits)}"
+        # [iter_272] 实例级图: 节点 id 是 `<顶层实例>.<...>`; 这里断言
+        # ① 图仍覆盖多个顶层实例 ② generate 展开的位/数组节点仍存在。
+        prefixes = {str(n).split(".")[0] for n in node_ids}
+        assert len(prefixes) > 3, f"应覆盖多个顶层实例, 实际: {sorted(prefixes)}"
+        gen_nodes = [n for n in node_ids if "[" in str(n)]
+        assert len(gen_nodes) > 50, f"generate/数组展开节点应存在: {len(gen_nodes)}"
 
     def test_cross_module_driver_edges(self, zipcpu_graph):
         """[Golden] 真实 RTL 有跨模块 DRIVER 边 (generate 实例化的模块间连接)"""

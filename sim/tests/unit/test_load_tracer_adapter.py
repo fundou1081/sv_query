@@ -122,17 +122,6 @@ class TestL2CrossModule:
         ids = _ids(multi.trace_loads("a", "inst_demo.u_adder").loads)
         assert all(i.startswith("inst_demo.u_adder.") for i in ids), f"越界: {ids}"
 
-    def test_use_mig_false_still_crosses_via_graph_edges(self, multi):
-        """[iter_271] 实例级图里跨模块是**图边**, 与 MIG 开关无关。
-
-        旧模型: 关掉 MIG 就跨不过去 (需要虚拟跳)。新模型: 图本身就跨模块。
-        """
-        lt = LoadTracer(multi.get_graph(), mig=multi.get_module_graph(), use_mig=False)
-        ids = _ids(lt.trace("inst_demo.in_a").loads)
-        assert "inst_demo.u_adder.a" in ids
-        assert "inst_demo.add_out" in ids, "实例级图跨模块不依赖 MIG 开关"
-
-
 class TestL3DepthAndConfidence:
     """L3: depth 生效, confidence 词表保持向后兼容。"""
 
