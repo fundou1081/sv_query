@@ -249,6 +249,13 @@ def get_signal(
                 # [Plan F1] genvar substitute
                 if name_str in ctx:
                     return str(ctx[name_str])
+                # [iter_274] generate 块内局部信号 → 加块路径前缀
+                # (top.G[0].local_wire)。只有**块内声明**的名字才加, 模块级信号
+                # 在块内被引用时保持原名 (din[i] 仍是 din[i])。
+                scope = ctx.get("__scope_path__")
+                locals_ = ctx.get("__scope_locals__") or ()
+                if scope and name_str in locals_:
+                    return f"{scope}.{name_str}"
                 return name_str
     # IdentifierName: 通过 .identifier.value 获取
     if "IdentifierName" in sk:

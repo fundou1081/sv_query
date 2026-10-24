@@ -25,6 +25,7 @@ from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 #     (get_generate_instances / iter_modules / visit_module / get_class_name /
 #      get_definition) — **API 收缩**: 全仓 (src+tests) 零调用, AST+grep 双证
 FROZEN_METHODS = {
+    "get_generate_locals_index": "(self) -> dict[str, set[str]]",
     '__init__': '(self, root, compiler=None, target_module=None)',
     '_collect_drivers_from_stmt': '(self, stmt, func_name, drivers)',
     '_conn_expr_to_signal': '(self, expr, instance) -> str | None',

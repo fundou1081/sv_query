@@ -40,8 +40,12 @@ class TestGenvarFor(unittest.TestCase):
                'endmodule')
         pyslang.SyntaxTree.fromText(src)
         graph = _build_graph(src)
-        self.assertIsNotNone(graph.get_edge('top.a', 'top.w'),
-                             "generate-for 内 assign w = a 应生成 a→w 边")
+        # [iter_274] generate 块内局部信号按块路径限定 (top.g[i].w), 不再是 top.w
+        self.assertIsNotNone(graph.get_edge('top.a', 'top.g[0].w'),
+                             "generate-for 内 assign w = a 应生成 a→g[0].w 边")
+        self.assertIsNotNone(graph.get_edge('top.a', 'top.g[1].w'),
+                             "每轮都有自己的 w (不应塌缩成单个 top.w)")
+        self.assertNotIn('top.w', graph.nodes(), "块内局部信号不应塌缩到模块作用域")
 
     def test_genvar_not_signal(self):
         """[Golden] genvar 不产生信号节点: genvar i; → 无 top.i 节点."""
