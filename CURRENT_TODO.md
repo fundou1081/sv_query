@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-23 GMT+8 (iter_271: 实例级图切默认 + 缓存压缩, 2317 passed)
+> **最后更新**: 2026-10-24 GMT+8 (iter_272: 删除模块定义级路径, 2306 passed)
 
 ---
 
@@ -65,7 +65,8 @@
 **实例级图开关 ✅ (iter_269)**: 迁移第 1 步完成 —— `GraphBuilder(instance_scope=True)` 遍历所有 top、清掉零度模块定义节点（影子节点归零）；开关 `--instance-scope` + `SVQ_INSTANCE_SCOPE=1`；真实工程基准 verilog-axi **16.3s→25.8s（+58%）**、节点 11,622→13,188。默认未切换。
 **图缓存复活 ✅ (iter_270)**: 冷 24.9s → 热 **0.2s**（verilog-axi，≈125×）；修了三个 bug —— 缓存从未命中（payload 包在 data 里）、key 不含 scope/target（串味）、filelist 模式不进缓存。
 **实例级图切默认 ✅ (iter_271)**: 按方豆三项决策落地 —— ① 默认实例级（`SVQ_INSTANCE_SCOPE=0` / `--no-instance-scope` 逃生）② 缓存 gzip 压缩 **20.6MB→0.41MB** ③ `SVQ_CACHE_MAX_MB` 上限 + mtime LRU 淘汰。26 个测试迁移完成；顺带修 depth=1 自环、限定查询失效两个真 bug。全量 **2317 passed**。
-**下一步（待拍板）**: 删除模块定义级逃生路径（先观察一轮回归）；收敛 generate 语义（决策 D2）。
+**模块定义级路径已删除 ✅ (iter_272)**: 图只剩实例级一种模式 —— `instance_scope` 引用 47→0、`use_mig` 34→0、DriverExtractor 模块级分支删除、MIG 虚拟跳全删；全量 **2306 passed**。
+**下一步**: 收敛 generate 语义（决策 D2）—— `_configure_instance_paths` 会下钻 generate，需实测确认是否与 D2 冲突。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

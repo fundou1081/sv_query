@@ -1321,32 +1321,14 @@ class DriverExtractor:
                 # [iter_112] B-Phase 7: 门级原语输出 DRIVER 边 (leaf cell 建模)
                 self._create_primitive_edges(module, result, module_name)
         else:
-            # 旧路径: 遍历所有 modules (兼容行为)
-            for module in self.adapter.get_modules():
-                module_name = self.adapter.get_module_name(module)
-                # [FIX Issue 21] 设置当前模块上下文,供 _get_signal 获取参数映射
-                self._current_module = module
-                # [P1-3] 获取当前模块的源文件位置
-                src_file, src_line, _, _ = self.adapter.get_source_location(module)
-                self._current_source_file = src_file
-
-                # [REFACTOR 2026-06-26 B-Phase 1-2] 抽 _create_port_nodes + _create_var_nodes
-                self._create_port_nodes(module, result, module_name)
-                port_names = self._collect_port_names(module)
-                self._create_var_nodes(module, result, module_name, port_names)
-
-                # [REFACTOR 2026-06-26 B-Phase 3-4] 抽 _create_net_alias_edges + _create_net_decl_edges
-                self._create_net_alias_edges(module, result, module_name)
-                self._create_net_decl_edges(module, result, module_name, port_names)
-
-                # [REFACTOR 2026-06-26 B-Phase 5] 抽 _create_assign_edges (含 4 sub-method)
-                self._create_assign_edges(module, result, module_name)
-
-                # [REFACTOR 2026-06-26 B-Phase 6] 抽 _create_always_edges
-                self._create_always_edges(module, result, module_name)
-
-                # [iter_112] B-Phase 7: 门级原语输出 DRIVER 边 (leaf cell 建模)
-                self._create_primitive_edges(module, result, module_name)
+            # [iter_272] 模块定义级路径已删除: DriverExtractor **只**按实例抽取。
+            # 没有实例路径 = 图构建前置条件失败 (adapter 无 root / 无 topInstances),
+            # 显式告警并返回空结果 —— 不再静默退回"模块定义命名空间"抽取
+            # (那条路径会造出与实例图不连通的影子节点, 见 POC 2026-10-23)。
+            logger.warning(
+                "DriverExtractor: 没有实例路径 (adapter 无 root?), 本次不产出任何边。"
+                "图构建需要实例级抽取。"
+            )
 
         # [Stage 1] post-processing: 给带 condition_ast 的边填 source_location
         # 一次性后处理比每个创建点都填更简洁

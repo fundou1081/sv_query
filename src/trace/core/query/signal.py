@@ -27,7 +27,7 @@ class DriverChain:
 
 
 class SignalTracer:
-    def __init__(self, graph: SignalGraph, mig: object | None = None, use_mig: bool = True):
+    def __init__(self, graph: SignalGraph, mig: object | None = None):
         """[PR3 2026-06-15] Init SignalTracer.
 
         Args:
@@ -35,13 +35,12 @@ class SignalTracer:
             mig: ModuleInstanceGraph (optional) - 跨模块 port 映射.
                  设 None 时走纯 graph 路径 (兼容旧调用).
                  设非 None 时, _collect_all_* 会在 0 results 时 fallback 走 MIG.
-            use_mig: 启戆4 MIG fallback. 默认 True. 设 False 走纯 graph 路径.
+            [iter_272] MIG fallback 已删除: 图恒为实例级, 跨模块边就在图里。
         """
         self.graph = graph
         # [PR3 2026-06-15] ModuleInstanceGraph 是跨模块 port 映射.
         # 接受了 2569 个 clean port_to_internal 映射 (pulp axi_xbar_dp_ram).
         self.mig = mig
-        self.use_mig = use_mig
 
     def trace(self, signal: str, module: str = None) -> SignalChain:
         """Trace signal drivers and loads"""
@@ -142,15 +141,6 @@ class SignalTracer:
         # [FIX 2026-07-09] 防无限循环: 进入递归时立即添加 signal_id 到 seen_ids,
         # 这样后续能防止递归到 same signal_id (self-loop 等场景).
         seen_ids.add(signal_id)
-
-        # [iter_240] 跨模块端口映射 = 遍历的一步: 对端 (例化端口 ↔ 模块定义侧信号)
-        # 作为本节点的 driver 继续往上追 (每跳记 1 层深度)。
-        for peer in self._mig_neighbors(signal_id, allow_cross_module):
-            if peer.id not in seen_ids:
-                drivers.append(peer)
-                # 同上: 不预先 add (递归入口自己 add), 否则传递性失效
-                self._trace_drivers_recursive(peer.id, drivers, seen_ids,
-                                              current_depth + 1, max_depth, allow_cross_module)
 
         # [iter_154 C4-A / 架构决策 D3] 类型级 class 属性 (packet.data,
         # kind=CLASS_PROPERTY) = **结构宿主非数据端点** — 数据 fanin 不适用。
@@ -254,7 +244,7 @@ class SignalTracer:
         # 1) signal_id 是 module def port (短名) → 反向查 instance ports
         # 2) signal_id 是 instance port (full path, PORT_OUT 0 driver) → forward 查 module def port
         # [iter_240] 这段是 P2 时期的"实例端口追溯"(既有跨模块逻辑, 走
-        # graph._port_to_internal / _port_to_module_type, 不经过 _mig_neighbors)。
+        # graph._port_to_internal / _port_to_module_type)。
         # 限定模块查询 (allow_cross_module=False) 时同样必须关掉 —— 否则
         # "问 top 模块内" 会越界答到 testbench 层。
         if allow_cross_module and not has_driver_edge and hasattr(self.graph, "_port_to_internal"):
@@ -547,10 +537,7 @@ class SignalTracer:
             return []
 
         drivers = []
-        # [iter_240 D3] depth=1 也要跨模块 (与 _find_loads 对称)
-        for peer in self._mig_neighbors(signal_id, allow_cross_module):
-            if self._in_scope(peer.id, scope_prefix):
-                drivers.append(peer)
+        # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
                 # [iter_127 A3] 与 _trace_drivers_recursive 同规则: 跳过
@@ -597,140 +584,6 @@ class SignalTracer:
             return True
         return node_id == scope_prefix or node_id.startswith(scope_prefix + ".")
 
-    def _mig_neighbors(self, signal_id: str, allow_cross_module: bool = True) -> list[TraceNode]:
-        """[iter_240] 跨模块端口映射的**对端**节点 (两个方向)。
-
-        `port path ↔ module-def signal` 是**绑定关系** (同一信号在两个视角下的名字),
-        不是数据边, 因此它不该污染 SignalGraph; 但遍历必须能跨过它, 否则
-        "模块内部信号 → 例化端口 → 外层信号" 这条链断掉。
-
-        **作用域**: `allow_cross_module=False` (查询限定了 --module) 时不跨模块 ——
-        用户问 "top 模块内 dout 谁驱动" 就该只答模块内, 不该越界。
-
-        旧实现把映射当成"图上零结果时补一条"的**兜底**(one-shot, 不入队):
-          - D1 不传递 (只能出一跳)
-          - D2 图上有部分结果时**抑制**跨模块路径
-          - D3 `depth=1` 走 `_find_loads`, 完全不查 MIG → 同一查询不同 depth 答案不一致
-        现在把对端作为遍历的一步 (每跳记 1 层深度), 三个缺陷一并消除。
-
-        Returns:
-            对端 TraceNode 列表 (可能为空); `use_mig=False` 或非映射信号时为空。
-        """
-        if not (allow_cross_module and self.use_mig and self.mig
-                and signal_id in self.graph.nodes()):
-            return []
-        out: list[TraceNode] = []
-        seen_here: set[str] = set()
-
-        def _add(cand: str | None) -> None:
-            if not cand or cand == signal_id or cand in seen_here:
-                return
-            if self._is_binary_name(cand) or cand not in self.graph.nodes():
-                return
-            node = self.graph.get_node(cand)
-            if node is not None:
-                seen_here.add(cand)
-                out.append(node)
-
-        # ① 进模块: 例化端口路径 → 模块定义侧信号
-        try:
-            _add(self.mig.get_internal_signal(signal_id))
-        except Exception as e:      # MIG 查表失败不该中断遍历
-            logger.debug("MIG internal 查询失败: %s", e)
-        # ② 出模块: 模块定义侧信号 → 所有映射到它的例化端口路径
-        try:
-            for inst_port, int_sig in getattr(self.mig, "port_to_internal", {}).items():
-                if int_sig == signal_id:
-                    _add(inst_port)
-        except Exception as e:
-            logger.debug("MIG port 反查失败: %s", e)
-        return out
-
-    def _find_loads_via_mig(self, signal_id: str) -> list[TraceNode]:
-        """[PR3 2026-06-15] 用 MIG 跨模块 port 映射找 loads.
-
-        当 signal_id 是 module def port 或 instance port 时, MIG 可能知道
-        对应的 internal signal (例如 'top.u_dut.clk' → 'dut.clk') 或反之.
-        返回 graph 中存在的对应 node.
-
-        Returns:
-            list of TraceNode, 可能为空 (如果 MIG 不知道该信号或 mapping 不在 graph)
-        """
-        if not self.mig:
-            return []
-        loads: list[TraceNode] = []
-        seen = set()
-
-        # 1. 前向: signal_id → internal signal (例如 wrapper port → module def port)
-        try:
-            internal = self.mig.get_internal_signal(signal_id)
-        except Exception:
-            internal = None
-
-        if internal and not self._is_binary_name(internal) and internal != signal_id:
-            if internal in self.graph.nodes() and internal not in seen:
-                node = self.graph.get_node(internal)
-                if node:
-                    loads.append(node)
-                    seen.add(internal)
-
-        # 2. 反向: 找所有 mapping 到 signal_id 的 instance ports
-        #    (例如 'top.u_dut.clk' → 'dut.clk', 反向 'dut.clk' → 'top.u_dut.clk')
-        try:
-            pti = getattr(self.mig, "port_to_internal", {})
-            for inst_port, int_sig in pti.items():
-                if int_sig == signal_id and not self._is_binary_name(inst_port):
-                    if inst_port in self.graph.nodes() and inst_port not in seen:
-                        node = self.graph.get_node(inst_port)
-                        if node:
-                            loads.append(node)
-                            seen.add(inst_port)
-        except Exception as e:
-            logger.debug("load/driver 收集失败: %s", e)
-
-        return loads
-
-    def _find_drivers_via_mig(self, signal_id: str) -> list[TraceNode]:
-        """[PR3 2026-06-15] 用 MIG 跨模块 port 映射找 drivers (反向).
-
-        Returns:
-            list of TraceNode, 可能为空
-        """
-        if not self.mig:
-            return []
-        drivers: list[TraceNode] = []
-        seen = set()
-
-        # 反向: signal_id 是 instance port 时, 找它被谁驱动
-        # signal_id 例如 'top.u_dut.clk' (instance port)
-        # MIG 知道 internal 是 'dut.clk' (module def port)
-        try:
-            internal = self.mig.get_internal_signal(signal_id)
-        except Exception:
-            internal = None
-
-        if internal and not self._is_binary_name(internal) and internal != signal_id:
-            # internal 是 module def port, 找它的 driver (in graph)
-            if internal in self.graph.nodes() and internal not in seen:
-                node = self.graph.get_node(internal)
-                if node:
-                    drivers.append(node)
-                    seen.add(internal)
-            # 同时反向查所有 instance port mapping 到该 internal (其他 instance 可能驱动同一 internal)
-            try:
-                pti = getattr(self.mig, "port_to_internal", {})
-                for inst_port, int_sig in pti.items():
-                    if int_sig == internal and not self._is_binary_name(inst_port):
-                        if inst_port in self.graph.nodes() and inst_port not in seen:
-                            node = self.graph.get_node(inst_port)
-                            if node:
-                                drivers.append(node)
-                                seen.add(inst_port)
-            except Exception as e:
-                logger.debug("load 收集失败: %s", e)
-
-        return drivers
-
     def _find_loads(self, signal_id: str, allowed_kinds: set | None = None,
                     allow_cross_module: bool = True,
                     scope_prefix: str | None = None) -> list[TraceNode]:
@@ -758,12 +611,7 @@ class SignalTracer:
                 loads.append(node)
                 seen_ids.add(node.id)
 
-        # [iter_240 D3] depth=1 也要跨模块: 旧实现只走 graph.successors,
-        # 导致 `loads X --depth 1` 与 `loads X` 答案不一致。
-        for peer in self._mig_neighbors(signal_id, allow_cross_module):
-            if peer.id not in seen_ids:
-                loads.append(peer)
-                seen_ids.add(peer.id)
+        # [iter_272] 不再注入 MIG 虚拟对端: 图恒为实例级, 跨模块边本来就在图里。
 
         return loads
 
@@ -782,7 +630,7 @@ class SignalTracer:
         if allowed_kinds is None:
             allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
         # [iter_240] 不再需要"零结果时补一条 MIG"的兜底 —— 跨模块跳转已是遍历的一步
-        # (见 _trace_loads_recursive 里的 _mig_neighbors 注入)。
+        # (跨模块边已在图里)。
         self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth,
                                     allowed_kinds=allowed_kinds, allow_cross_module=allow_cross_module,
                                     scope_prefix=scope_prefix)
@@ -822,18 +670,6 @@ class SignalTracer:
 
         if allowed_kinds is None:
             allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
-
-        # [iter_240] 跨模块端口映射 = 遍历的一步 (对端作为本节点的 load 继续往下追)
-        for peer in self._mig_neighbors(signal_id, allow_cross_module):
-            if peer.id not in seen_ids:
-                loads.append(peer)
-                # 注意: 这里**不能**预先 add 到 seen_ids —— 递归入口会自己 add,
-                # 预先 add 会让递归第一步就 return (链条断掉, 传递性失效)。
-                if not self._in_scope(peer.id, scope_prefix):
-                    continue
-                self._trace_loads_recursive(peer.id, loads, seen_ids,
-                                            current_depth + 1, max_depth, allowed_kinds,
-                                            allow_cross_module, scope_prefix)
 
         for src, dst in list(self.graph.edges()):
             if src == signal_id:

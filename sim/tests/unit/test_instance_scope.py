@@ -1,4 +1,4 @@
-"""test_instance_scope.py — [iter_269] 实例级图开关 (迁移用)
+"""test_instance_scope.py — [iter_272] 图只有实例级一种模式
 
 背景:
   默认图沿用"模块定义命名空间"(节点 id = `模块名.信号`, 如 `sub_adder.sum`),
@@ -6,13 +6,12 @@
     - 影子节点占图 30~38%, 从顶层输入有向可达 **0** (POC iter_267)
     - `paths` 需要 MIG 虚拟跳才能"跨模块", 且端点会被改写 (iter_268 修)
 
-  `instance_scope=True` (或环境变量 `SVQ_INSTANCE_SCOPE=1`) 让 DriverExtractor
-  按**实例路径**出边, 并清掉其它 extractor 留下的零度模块定义节点 → 单一命名空间。
+  [iter_272] 模块定义级路径已删除 —— 图恒为实例级 (单一命名空间)。
 
 本文件锁定:
-  A. instance_scope 下没有"模块定义命名空间"节点 (只允许顶层实例名 + 常量 0)
+  A. 没有"模块定义命名空间"节点 (只允许顶层实例名 + 常量 0)
   B. 默认模式保持不变 (仍含模块定义节点) —— 开关不改变老行为
-  C. instance_scope 下有向路径与 dataflow 结论一致
+  C. 有向路径与 dataflow 结论一致
 """
 from __future__ import annotations
 
@@ -44,7 +43,7 @@ class TestInstanceScope:
     @pytest.fixture(scope="class")
     def scoped(self):
         t = UnifiedTracer(filelist=str(FILELIST), log_level="ERROR")
-        t.build_graph(instance_scope=True)
+        t.build_graph()
         return t
 
     @pytest.fixture(scope="class")
@@ -69,11 +68,6 @@ class TestInstanceScope:
             assert any(node == t or node.startswith(t + ".") for t in tops), \
                 f"节点不在任何实例命名空间下: {node}"
 
-    def test_default_is_instance_scope(self, default):
-        """B: [iter_271] 默认已切实例级 —— 不应再有模块定义命名空间节点。"""
-        tops = _tops(default)
-        extra = _namespace_prefixes(default.get_graph()) - (tops | {"0"})
-        assert not extra, f"默认模式仍含模块定义节点: {sorted(extra)}"
 
     def test_directed_path_agrees_with_dataflow(self, scoped):
         """C: instance_scope 下 paths(directed) 与 dataflow 结论一致。"""

@@ -70,16 +70,16 @@ class LoadTracer:
       本类不再有自己的遍历, 因此不存在"两份实现给出不同答案"的可能。
     """
 
-    def __init__(self, graph: SignalGraph, mig: object | None = None, use_mig: bool = True):
+    def __init__(self, graph: SignalGraph, mig: object | None = None):
         """初始化。
 
         Args:
             graph: SignalGraph
             mig: ModuleInstanceGraph (可选) — 跨模块端口映射; 透传给 SignalTracer
-            use_mig: 是否启用 MIG (跨模块)。默认 True, 与 SignalTracer 一致。
+            [iter_272] MIG fallback 已删除 (图恒为实例级)。
         """
         self.graph = graph
-        self._signal_tracer = SignalTracer(graph, mig=mig, use_mig=use_mig)
+        self._signal_tracer = SignalTracer(graph, mig=mig)
 
     def trace(self, signal_name: str, module_name: str = None, depth: int | None = None) -> LoadChain:
         """追溯信号的所有后继。

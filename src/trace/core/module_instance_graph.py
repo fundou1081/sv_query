@@ -317,12 +317,10 @@ class PathResolver:
             out.extend(self.signal_graph.predecessors(node))
         except (KeyError, nx.NetworkXError) as _e:
             logger.debug("图无前驱 (正常): %s", _e)
-        inner = self.module_graph.get_internal_signal(node)     # 进模块 (虚拟跳, 仅无向)
-        if inner:
-            out.append(inner)
-        outer = self.module_graph.get_port_path(node)           # 出模块 (虚拟跳, 仅无向)
-        if outer:
-            out.append(outer)
+        # [iter_272] MIG 虚拟跳 (进/出模块) 已删除:
+        # 图恒为实例级, 跨模块端口边本来就在 SignalGraph 里; 而 MIG 的
+        # port_to_internal 指向"模块定义命名空间"的影子 id (不在图里), 这两跳
+        # 只会把遍历导向不存在的节点。
         return out
 
     def find_path(self, src: str, dst: str, directed: bool = False) -> list[str] | None:

@@ -32,9 +32,6 @@ def paths_cmd(
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     log_level: str = typer.Option("WARNING", "--log-level"),
-    instance_scope: bool = typer.Option(
-        True, "--instance-scope/--no-instance-scope",
-        help="[iter_271] 默认开: 图只用实例路径 id (无模块定义影子节点); `--no-instance-scope` 回到模块定义级 (应急, 该路径将删除)"),
 ) -> None:
     """图上从 src 到 dst 的路径 (跨模块端口可跳转)。
 
@@ -44,7 +41,7 @@ def paths_cmd(
     例: svq paths inst_demo.in_a inst_demo.add_out --filelist project.f --json
         svq paths in_a add_out --directed --filelist project.f --json
     """
-    tracer = build_tracer(file, filelist, log_level, instance_scope=instance_scope)
+    tracer = build_tracer(file, filelist, log_level)
     if tracer is None:
         return
 

@@ -294,5 +294,5 @@ def _load_tracer_from_snapshot(
         sources={}, log_level=log_level, preprocess_macros=preprocess_macros,
     )
     tracer._graph = graph
-    tracer._signal_tracer = SignalTracer(graph, mig=None, use_mig=False)
+    tracer._signal_tracer = SignalTracer(graph, mig=None)
     return tracer
