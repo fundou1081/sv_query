@@ -152,6 +152,44 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **要修的前提**：拿真实项目 + 已知 bug 位置做标定（哪些信号改动真的引发问题），
 否则调权重只是换一组同样未经验证的魔数。
 
+### 3.5 generate 块内的局部信号会塌缩到模块作用域 (iter_273 实测)
+
+**可观察后果** — 同一个 generate 循环里每轮各有一个同名局部信号时，它们会合并成**一个**节点，
+并产生跨轮次的假边：
+
+```systemverilog
+generate for (i = 0; i < 4; i++) begin : G
+    logic local_wire;                       // 每轮一个独立的 local_wire
+    assign local_wire = din[i];
+    leaf u_leaf(.a(local_wire), .y(dout[i]));
+end endgenerate
+```
+
+实测图（`build_graph()`）：
+
+```
+din[0] → local_wire → G[0].u_leaf.a
+din[1] → local_wire → G[1].u_leaf.a     ← 4 个独立 wire 合并成 1 个节点
+din[2] → local_wire → G[2].u_leaf.a
+din[3] → local_wire → G[3].u_leaf.a
+```
+
+**影响**：
+- `drivers G[1].u_leaf.a` 会同时报 `din[0..3]` 与 `local_wire`（假源）
+- `loads local_wire` 会同时报 4 个实例端口（假负载）
+- 节点 id `top.local_wire` 不带 generate 块路径，与"只认实例路径"的命名规则不一致
+
+**根因**：`DriverExtractor` 处理 generate 内语句时只替换 **genvar 下标**
+（`acc[i]` → `acc[2]`），但对**局部声明的裸名**没有加作用域前缀（`G[i].local_wire`）。
+
+**两种修法**（待拍板）：
+| 方案 | 做法 | 代价 |
+|---|---|---|
+| A（推荐） | **限定作用域**：给 generate 内语句附加块路径，局部信号命名 `top.G[i].local_wire` | 改 `get_assignments` 的 scope 传递 + `get_signal` 前缀拼接；保留全部连通性 |
+| B | 按决策 D2 **丢弃** generate 内局部信号（连同它们的边） | 改动小，但会丢 `din[i] → u_leaf.a` 这条真实连通性 |
+
+当前按 B 的"不表示"原意**未**生效（信号被表示了，但作用域错）——
+
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 
 | 模块 | 数量 | 原因 |
