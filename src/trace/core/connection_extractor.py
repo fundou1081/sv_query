@@ -614,8 +614,6 @@ class ConnectionExtractor:
                                 src=inst_port_id, dst=child_signal_id, kind=EdgeKind.CONNECTION, assign_type="internal"
                             )
                         )
-                    # 同步构建 port_to_internal 映射 (full path)
-                    result.port_to_internal[inst_port_id] = child_signal_id
                     # 让 trace 跨 module boundary 仍能找 leaf module 内部 signal
                 elif direction_clean == "output":
                     # 输出端口: 子模块输出端口驱动实例端口
@@ -644,7 +642,6 @@ class ConnectionExtractor:
                                 src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
                             )
                         )
-                    result.port_to_internal[inst_port_id] = child_signal_id
                 elif "inout" in direction_clean:
                     # [iter_129 候选1] inout 双向端口: 父信号与实例端口是**同一根线**
                     # (物理连接, 无方向归属 — 谁驱动取决于上下文: 外部拉 or 实例
@@ -670,7 +667,6 @@ class ConnectionExtractor:
                             )
                         )
                     # port_to_internal 同 output 语义: 实例端口 → 内部 (self 同路径)
-                    result.port_to_internal[inst_port_id] = f"{inst_path}.{port_name}"
 
         # [FIX] 后处理:修复实例端口的位宽
         # 如果实例端口位宽为默认值(1,0),尝试从连接推断实际位宽

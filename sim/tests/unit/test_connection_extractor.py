@@ -4,7 +4,7 @@
 #
 # 覆盖核心逻辑:
 # 1. 命名端口连接 → CONNECTION 边
-# 2. port_to_internal 映射
+# 2. 实例端口节点
 # 3. 跨模块内部驱动 (实例输出端口)
 # 4. generate 展开实例的端口连接
 # 5. 缺模块警告
@@ -79,8 +79,12 @@ endmodule'''
                 for (s, d), k in edges.items()),
             "实例输出端口应有 DRIVER 边 (模块内部驱动)")
 
-    def test_port_to_internal_mapping(self):
-        """[Golden] port_to_internal 映射 (实例端口 → 内部信号路径)"""
+    def test_instance_port_node_exists(self):
+        """[Golden] 实例端口节点存在 (单一命名空间: 端口即内部节点)
+
+        [iter_277] `port_to_internal` 自映射已删除 —— 实例端口节点本身就是内部节点,
+        再存一份"端口→自身"的映射没有意义。
+        """
         source = '''module dut(input clk);
 endmodule
 module top;
@@ -88,8 +92,10 @@ module top;
     dut u_dut(.clk(clk));
 endmodule'''
         r = _extract(source)
-        self.assertIn('top.u_dut.clk', r.port_to_internal,
-                      "实例端口应进入 port_to_internal")
+        node_ids = {n.id for n in r.nodes}
+        self.assertIn('top.u_dut.clk', node_ids, "实例端口应有节点")
+        edges = {(e.src, e.dst) for e in r.edges}
+        self.assertIn(('top.clk', 'top.u_dut.clk'), edges, "外部信号应连到实例端口")
 
     def test_multi_instance_same_module(self):
         """[Golden] 同模块多实例 — 端口映射区分实例"""
@@ -101,11 +107,12 @@ module top;
     dut u_b(.clk(clk));
 endmodule'''
         r = _extract(source)
-        # [iter_276] port_to_module_type (模块定义 short name) 已删除 —— 单一命名空间后
-        # 不存在"模块类型端口"节点; 这里断言实例端口各自的 port_to_internal 映射。
-        self.assertIn('top.u_a.clk', r.port_to_internal)
-        self.assertIn('top.u_b.clk', r.port_to_internal)
-        self.assertNotEqual(r.port_to_internal['top.u_a.clk'], r.port_to_internal['top.u_b.clk'])
+        node_ids = {n.id for n in r.nodes}
+        self.assertIn('top.u_a.clk', node_ids)
+        self.assertIn('top.u_b.clk', node_ids)
+        edges = {(e.src, e.dst) for e in r.edges}
+        self.assertIn(('top.clk', 'top.u_a.clk'), edges)
+        self.assertIn(('top.clk', 'top.u_b.clk'), edges)
 
 
 class TestConnectionExtractorGenerate(unittest.TestCase):
@@ -158,9 +165,8 @@ module top;
     end
 endmodule'''
         r = _extract(source)
-        # [iter_276] 单一命名空间: 断言 generate 内实例端口各自有 port_to_internal
-        hits = [k for k in r.port_to_internal if '.u_b.' in k]
-        self.assertGreaterEqual(len(hits), 1, "generate 实例端口应有内部映射")
+        hits = [n.id for n in r.nodes if '.u_b.' in n.id and n.id.endswith('.en')]
+        self.assertGreaterEqual(len(hits), 1, "generate 实例端口应有节点")
 
 
 class TestConnectionExtractorWarnings(unittest.TestCase):
@@ -194,8 +200,9 @@ module top;
     sub #(.W(16)) u16(.d(d16), .q(q16));
 endmodule'''
         r = _extract(source)
-        self.assertIn('top.u16.d', r.port_to_internal)
-        self.assertIn('top.u16.q', r.port_to_internal)
+        node_ids = {n.id for n in r.nodes}
+        self.assertIn('top.u16.d', node_ids)
+        self.assertIn('top.u16.q', node_ids)
         edges = {(e.src, e.dst) for e in r.edges}
         self.assertIn(('top.d16', 'top.u16.d'), edges, "参数化实例应有连接边")
 
@@ -210,7 +217,7 @@ module top;
 endmodule'''
         r = _extract(source)
         # 位置端口: 实例端口名是 sub 的端口名 (d/q)
-        self.assertIn('top.u_pos.d', r.port_to_internal, "位置端口应建实例端口节点")
+        self.assertIn('top.u_pos.d', {n.id for n in r.nodes}, "位置端口应建实例端口节点")
         edges = {(e.src, e.dst) for e in r.edges}
         self.assertIn(('top.d8', 'top.u_pos.d'), edges, "位置端口应有连接边")
 
@@ -223,8 +230,7 @@ module top(input logic clk);
     bus_if ifc(.clk(clk));
 endmodule'''
         r = _extract(source)
-        # [iter_276] 单一命名空间: interface 端口同样走实例级映射
-        self.assertIn('top.ifc.clk', r.port_to_internal,
+        self.assertIn('top.ifc.clk', {n.id for n in r.nodes},
                       "interface 端口应建实例端口节点")
 
     def test_tri_state_inout_no_connection(self):
@@ -244,21 +250,6 @@ endmodule'''
         # inout bidir 无 CONNECTION 边 (三态, 由 BRANCH 逻辑表达)
         self.assertNotIn(('top.bidir', 'top.u_buf.bidir'), edges,
                          "inout 三态不应有普通 CONNECTION 边")
-
-    def test_port_to_internal_value_semantics(self):
-        """[Golden] port_to_internal 值语义: 实例端口映射到同路径 (self 映射)"""
-        source = '''module dut(input logic clk);
-endmodule
-module top;
-    logic clk;
-    dut u_dut(.clk(clk));
-endmodule'''
-        r = _extract(source)
-        internal = r.port_to_internal.get('top.u_dut.clk')
-        self.assertIsNotNone(internal, "port_to_internal 应有该键")
-        # 当前实现: 实例端口 → 自身 (self-loop 语义, 跳过自环边但保留映射)
-        self.assertEqual(internal, 'top.u_dut.clk',
-                         "port_to_internal 当前语义: 实例端口映射到自身")
 
 
 if __name__ == '__main__':
