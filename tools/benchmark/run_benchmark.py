@@ -10,7 +10,7 @@
 - L1: extract_module (AST) → instance count
 - L2: build_graph → node/edge/IM count
 - L3: trace_fanin/fanout on key signals → result count
-- L4: extract_module_edges_from_mig → cross-instance port edges
+- L4: extract_module_edges_from_graph → cross-instance port edges
 - Flakiness: 5 runs of build_graph, measure variance
 
 输出:
@@ -38,7 +38,7 @@ from trace.unified_tracer import UnifiedTracer  # noqa: E402
 from trace.core.graph.models import NodeKind  # noqa: E402
 from trace.core.module_extractor import (  # noqa: E402
     extract_module,
-    extract_module_edges_from_mig,
+    extract_module_edges_from_graph,
 )
 from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
 from trace.core.query.signal import SignalTracer  # noqa: E402
@@ -150,7 +150,7 @@ def collect_l4(tracer, target: str, depth: int) -> dict:
         if mig is None:
             return {"error": "no MIG available"}
 
-        edges = extract_module_edges_from_mig(mig, l1_result.instances, max_edges=2000)
+        edges = extract_module_edges_from_graph(tracer.get_graph(), l1_result.instances, max_edges=2000)
 
         # Group by port
         from collections import Counter
