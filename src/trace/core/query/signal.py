@@ -105,339 +105,297 @@ class SignalTracer:
         allow_cross_module: bool = True,
         scope_prefix: str | None = None,
     ):
-        """递归追溯驱动
+        """递归追溯驱动 —— **编排层**（规则实现见下方 `_rule_*` / `_handle_*`）。
 
-        Args:
-            signal_id: 当前信号 ID
-            drivers: 结果列表(inout)
-            seen_ids: 已访问节点集合(inout)
-            current_depth: 当前递归深度
-            max_depth: None=无限递归, N=最多递归 N 层
+        [iter_281 / PLAN P0.2] 原 343 行巨型函数按 6 类规则拆开：
+          ① 节点缺失/位查询回退   → `_trace_missing_node`
+          ② BIT_SELECT 位提升     → `_expand_incoming_bit_select` + `_maybe_lift_to_parent_bus`
+          ③ 自环分类              → `_handle_self_loop`
+          ④ 边类型过滤            → `_is_control_edge`
+          ⑤ 连接边源分类          → `_handle_connection_source`
+          ⑥ 驱动边追加/递归       → `_append_source` + `_recurse_if_unseen`
+
+        行为与原实现逐项一致（由 `sim/tests/golden/graph_baseline` 与全量门禁证明）。
         """
-        # depth 限制检查
+        # ① depth / 命名空间 / 节点存在性（含位查询回退）
         if max_depth is not None and current_depth >= max_depth:
             return
-
-        # [iter_271] 限定查询 (module=...) 的命名空间守卫: 实例级图里跨模块是普通图边,
-        # 单靠 allow_cross_module=False 挡不住, 必须在递归入口按前缀剪枝。
         if scope_prefix and not self._in_scope(signal_id, scope_prefix):
             return
-
         if signal_id not in self.graph.nodes():
-            if ":" in signal_id:
-                return  # [iter_126] part-select 范围 [a:b] 保持空答 (locked truth)
-            # [iter_126 A2] 位查询落到不存在位节点的总线: 纯总线直连
-            # (sub .y(y)) 无 per-bit 逻辑 → 无 bit 节点; 查询 top.y[3] 提升到
-            # 父总线 top.y 追总线级驱动 (粒度 bus; 位对位折算留待后续).
-            import re as _re
-            m = _re.match(r"^(.*)\[\d+\]$", signal_id)
-            if m:
-                base = m.group(1)
-                if base in self.graph.nodes() and base not in seen_ids:
-                    self._trace_drivers_recursive(
-                        base, drivers, seen_ids, current_depth, max_depth, allow_cross_module)
+            self._trace_missing_node(signal_id, drivers, seen_ids,
+                                     current_depth, max_depth, allow_cross_module)
             return
 
-        # [FIX 2026-07-09] 防无限循环: 进入递归时立即添加 signal_id 到 seen_ids,
-        # 这样后续能防止递归到 same signal_id (self-loop 等场景).
         seen_ids.add(signal_id)
 
-        # [iter_154 C4-A / 架构决策 D3] 类型级 class 属性 (packet.data,
-        # kind=CLASS_PROPERTY) = **结构宿主非数据端点** — 数据 fanin 不适用。
-        # 类型级方法体 DRIVER (packet.addr→packet.data, iter_075 结构建模)
-        # 是"定义内模板依赖", 非任何实例的真实驱动 (真实驱动在实例:
-        # top.p.data, C1 展开) — 作为 fanin 答案会误导 (模板驱动 ≠ 实例驱动)。
-        # 用户查类型级关系走 trace_class_members / trace_constraints;
-        # 实例级 (CLASS_INSTANCE_PROPERTY / REG 化实例属性) 数据流不受影响。
-        _kind_guard = self.graph.get_node(signal_id)
-        if (_kind_guard is not None
-                and _kind_guard.kind.name == "CLASS_PROPERTY"):
+        # 类型级 class 属性 = 结构宿主非数据端点（iter_154 C4-A / D3）
+        _node = self.graph.get_node(signal_id)
+        if _node is not None and _node.kind.name == "CLASS_PROPERTY":
             return
 
-        # [方案B修正] 如果当前节点没有 incoming DRIVER 边, 检查 BIT_SELECT 子节点
-        # 例如查询 'm' (modport实例) 时, 如果 'm' 没有直接驱动, 查找 'm.*' 子节点
-        has_driver_edge = any(
-            edge.kind == EdgeKind.DRIVER and dst == signal_id
-            for src, dst, edge in [(e[0], e[1], self.graph.get_edge(e[0], e[1])) for e in self.graph.edges()]
-        )
+        # ② 位级：先看"位 → 本节点"的子节点，再看"本节点 → 父总线"的提升
+        has_driver_edge = self._has_incoming_driver(signal_id)
         if not has_driver_edge:
-            # 查找 BIT_SELECT 子节点 (child → this_node)
-            for src, dst in list(self.graph.edges()):
-                if dst == signal_id:
-                    edge = self.graph.get_edge(src, dst)
-                    if edge and edge.kind == EdgeKind.BIT_SELECT:
-                        # 子节点有驱动
-                        if src not in seen_ids:
-                            self._trace_drivers_recursive(src, drivers, seen_ids, current_depth, max_depth, allow_cross_module)
+            self._expand_incoming_bit_select(signal_id, drivers, seen_ids,
+                                             current_depth, max_depth, allow_cross_module)
+        self._maybe_lift_to_parent_bus(signal_id, has_driver_edge, drivers, seen_ids,
+                                       current_depth, max_depth, allow_cross_module)
 
-        # [iter_126 A2] 位级查询提升: 叶子位节点 (top.y[3]) 无 incoming driver
-        # 时, 沿 BIT_SELECT **出边** (bit→bus) 提升到父总线 (top.y), 追总线级
-        # 驱动 — 修 "子模块输出总线直连顶层位" 空答 (审计 A2; 结果总线粒度,
-        # 位对位折算留待后续, 见 signal_graph_accuracy_audit.md)
-        # [iter_128 候选2/位选 fix] 提升条件必须同时满足:
-        #   not has_driver_edge — 有直接 incoming DRIVER (struct 字段 p.addr←a)
-        #     则不该绕路提升到父 struct p (会把兄弟字段驱动 p.data 带回, 假源)
-        #   not drivers       — 递归中间节点 (data[7] 作为 y 的驱动源被递归追
-        #     它自己的驱动时, drivers 已含 data[7]) 不该提升: 顶层输入位升到
-        #     父总线 data 无意义 (输入总线也无驱动), 且副作用会 seen 污染兄弟
-        #     位 data[0], 导致 y 主循环真源被过滤 (fanin(y) 丢 data[0])
-        #   原 iter_126 只查 not drivers: struct 根查询 (drivers 空) 误提升 →
-        #   p.data 泄漏; 只查 not has_driver_edge: data[7] 中间递归误提升 → 污染
-        # [iter_132] 再加 not has_incoming_connection: generate per-entry 位节点
-        #   (top.y[3]) 有 incoming CONNECTION (实例输出 PORT_OUT G[3].u_leaf.y →
-        #   top.y[3]) 时, 它是**有真实驱动源**的位 — 应走主循环 CONNECTION/
-        #   PORT_OUT 处理 (append G[3].u_leaf.y + 递归其内部驱动), 而非提升到
-        #   父总线 top.y (会把 4 个 generate entry 全串进来, fanin(y[3]) 假源:
-        #   G[0].u_leaf.y / a[1]/a[2] 等)。提升只用于**完全无 incoming** 的
-        #   叶子位。
-        _has_incoming_conn = any(
-            dst == signal_id
-            and (e := self.graph.get_edge(src, dst)) is not None
-            and e.kind == EdgeKind.CONNECTION
-            for src, dst in list(self.graph.edges())
-        )
-        if (not has_driver_edge and not _has_incoming_conn
-                and not drivers and ":" not in signal_id):
-            # [iter_129 候选3] 提升目标限 data 类节点 (SIGNAL/PORT_OUT/REG):
-            # interface 成员 (bf.addr) 的 BIT_SELECT 父是 **模块实例节点**
-            # (top.bf, INSTANTIATED_MODULE) — 不是父总线, 提升会把 interface
-            # 实例的全部成员驱动 + 其 PORT_IN (bf.clk←top.clk CONNECTION) 当源
-            # 收进结果 (fanin(bf.addr) 含 top.clk 假驱动)。只有 data 信号容器
-            # 才承载 "总线由位驱动" 语义。
-            _LIFTABLE = {"SIGNAL", "PORT_OUT", "PORT_IN", "REG"}
-            for src, dst in list(self.graph.edges()):
-                if src == signal_id and dst != signal_id and dst not in seen_ids:
-                    edge = self.graph.get_edge(src, dst)
-                    if edge and edge.kind == EdgeKind.BIT_SELECT:
-                        _dst_node = self.graph.get_node(dst)
-                        if _dst_node and _dst_node.kind.name in _LIFTABLE:
-                            self._trace_drivers_recursive(
-                                dst, drivers, seen_ids, current_depth + 1, max_depth, allow_cross_module)
-                            if drivers:
-                                break
-
-        # 遍历所有指向这个 signal 的边
-
-        # 遍历所有指向这个 signal 的边
+        # ③~⑥ 遍历所有指向本信号的边
         for src, dst in list(self.graph.edges()):
-            if dst == signal_id:
-                # [NEW] 自环 (state = state) 应该被记录为驱动
-                if src == dst:
-                    # [iter_127 A3] 区分两类自环:
-                    # ① assign_type="internal" DRIVER 自环 = 实例输出端口
-                    #    "模块内部驱动"标记 (connection_extractor output 边1,
-                    #    child_signal_id==inst_port_id 恒成立) — 不是真实驱动源,
-                    #    fanin 列它会污染集合 (truth 断言被迫手动排除), 跳过。
-                    #    真实驱动由同节点其他 DRIVER 边 (continuous 等) 或
-                    #    forward-lookup 提供。
-                    # ② 其他自环 (nonblocking/continuous, 如 state<=state+1 的
-                    #    nonblocking src==dst) — 操作数真含自身的驱动语义, 保留。
-                    _loop_edges = self.graph.get_edges(src, dst)
-                    _is_internal_marker = any(
-                        getattr(e, "assign_type", "") == "internal"
-                        and e.kind == EdgeKind.DRIVER
-                        for e in _loop_edges
-                    )
-                    if _is_internal_marker:
-                        continue
-                    node = self.graph.get_node(src)
-                    if node:
-                        drivers.append(node)
-                    continue
+            if dst != signal_id:
+                continue
 
-                edge = self.graph.get_edge(src, dst)
-                # [FIX 2026-06-11] get_edge 只返第 1 条, 可能是 CONNECTION (优先级高).
-                # 但 trace 查 driver 优先看 DRIVER 边. 如果同 (src, dst) 有 DRIVER 边,
-                # 用 DRIVER (e.g. wrapper_passthrough 跟 CONNECTION 同时存在).
-                if edge and edge.kind != EdgeKind.DRIVER:
-                    all_edges = self.graph.get_edges(src, dst)
-                    driver_edge = next((e for e in all_edges if e.kind == EdgeKind.DRIVER), None)
-                    if driver_edge:
-                        edge = driver_edge
-                # [FIX] 只接受 DRIVER 边作为驱动
-                if edge and edge.kind != EdgeKind.DRIVER:
-                    # [iter_128 候选4] CLOCK/RESET 边是时序采样关系, 不是数据
-                    # 驱动源 — 不 append 也不递归。此前落到下方 "其他边类型继续
-                    # 递归追溯", 会把时钟链当数据源追 (多模块: cnt_b ←CLOCK div2
-                    # ←CONNECTION u_div.clk ←CONNECTION top.clk → fanin(cnt_b)
-                    # 含 top.clk, 假驱动)。数据用 clk 场景 (assign out=clk) 走
-                    # DRIVER continuous, 不受影响。
-                    # [iter_139 方案2, 方豆拍板] 条件/分支边 (BRANCH_*/CASE_* =
-                    # 三目/条件赋值/三态使能的控制语义) 同规则 — 不 append 不
-                    # 递归。三态 `sda = en ? data : z` 的 en 是**门控控制信号**
-                    # (已记录在 data→sda DRIVER 的 condition 字段, 见铁律16),
-                    # 不是数据驱动源: BRANCH 链 fallthrough 递归会把顶层/实例
-                    # 输入使能当源 (i2c 场景 en_slave 混入 fanin 而 en_master 缺,
-                    # 不对称杂音)。数据分支本身 (a/b, data) 走各自 DRIVER 边
-                    # (cond=sel/en), 不受影响 (纯 ternary fanin(y)={a,b} 保持)。
-                    if edge.kind in (
-                            EdgeKind.CLOCK,
-                            EdgeKind.RESET,
-                            EdgeKind.BRANCH_CONDITION,
-                            EdgeKind.BRANCH_TRUE,
-                            EdgeKind.BRANCH_FALSE,
-                            EdgeKind.BRANCH_RESULT,
-                            EdgeKind.CASE_SELECT,
-                            EdgeKind.CASE_ITEM,
-                            EdgeKind.CASE_RESULT,
-                    ):
-                        continue
-                    # CONNECTION 边:检查 src 是否是实例端口
-                    if edge.kind == EdgeKind.CONNECTION:
-                        node = self.graph.get_node(src)
-                        if node:
-                            parts = src.split(".")
-                            # 实例输出端口 (PORT_OUT): 透明驱动映射点
-                            if len(parts) >= 3 and node.kind.name == "PORT_OUT":
-                                if node.id not in seen_ids:
-                                    drivers.append(node)
-                                    seen_ids.add(node.id)
-                                # 追溯到外部驱动: 找到实例输入端口并递归追溯
-                                inst_path = ".".join(parts[:-1])
-                                port_name = parts[-1]
-                                input_port_id = (
-                                    f"{inst_path}.d"
-                                    if port_name == "q"
-                                    else f"{inst_path}.q"
-                                    if port_name == "d"
-                                    else None
-                                )
-                                if input_port_id and input_port_id in self.graph.nodes():
-                                    if input_port_id not in seen_ids:
-                                        self._trace_drivers_recursive(
-                                            input_port_id, drivers, seen_ids, current_depth + 1, max_depth
-                                        , allow_cross_module)
-                                # [FIX 2026-06-11] wrapper-aware 跨 instance:
-                                # 如果 src 是 wrapper module 的 instance port, 跨到 wrapper
-                                # 其他 instance port, 让它们的 deep driver 链起作用.
-                                # 例: src=axi_dp_ram.a_if.s_axi_awready (axi_ram_wr_rd_if instance)
-                                #   跨到 axi_dp_ram.b_if.s_axi_awready (另一个 axi_ram_wr_rd_if instance)
-                                #   axi_ram_wr_rd_if 是 wrapper (0 internal driver), b_if 内部有 deep
-                                #   axi_ram_wr_if_inst.s_axi_awready (通过 _elaborate_wrapper_passthroughs 加边).
-                                # 避免乱跨: 只跨到 kind=PORT_OUT (output 端口, backpressure 关键)
-                                # [iter_276] 兄弟实例判定走 MIG 的 module_type (纯实例级),
-                                # 不再用 "模块定义 short name" 字符串映射。
-                                # [iter_132] wrapper cross 守卫: 仅当 src 端口
-                                # **无内部驱动** 才跨到其他同 short-name instance —
-                                # 设计意图 (注释) 是 wrapper (0 internal driver)
-                                # passthrough 场景 (axi_dp_ram.a_if ← b_if deep
-                                # driver); 实现漏了该检查 → generate per-entry 位
-                                # 查询串扰: fanin(top.y[3]) 沿 G[3].u_leaf.y (leaf,
-                                # 有内部 assign y=a) cross 到 G[0..2].u_leaf.y →
-                                # 4 entry 全串 (G[0].u_leaf.a / top.a[1] 等假源)。
-                                # 有内部驱动的端口 = 真实逻辑实例, 无 wrapper
-                                # passthrough 语义, 不跨。
-                                # [iter_134] 守卫必须遍历 (p, src) 的**全部**边:
-                                # get_edge 只返第一条 — u_leaf.y→u_mid.y 同时有
-                                # CONNECTION + wrapper_passthrough DRIVER 时,
-                                # get_edge 返 CONNECTION → 误判无内部驱动 → 仍
-                                # cross (G[2]→G[1] 串扰, 嵌套 generate fixture)。
-                                # wrapper_passthrough (graph_builder 后处理加的
-                                # "本实例内有 deep 驱动" 标记) 也算内部驱动 —
-                                # a_if.axi_ram_wr_if_inst.s_axi_awready→a_if.
-                                # s_axi_awready 表示 wrapper 实例内 reg 驱动,
-                                # 递归本实例即可达, 不需 cross (cross 仅给
-                                # 0 内部驱动的真 wrapper; test_deep_hierarchy
-                                # 依赖此拦截防止跨 b_if 长路径 depth 截断)。
-                                _src_has_internal_driver = any(
-                                    e2.kind == EdgeKind.DRIVER
-                                    and e2.assign_type != "internal"
-                                    for p, _d in list(self.graph.edges())
-                                    if _d == src
-                                    for e2 in self.graph.get_edges(p, src)
-                                )
-                                cross_targets = set()
-                                if not _src_has_internal_driver:
-                                    cross_targets = set(self._sibling_ports(inst_path, port_name))
-                                if cross_targets:
-                                    for k in cross_targets:
-                                        if (k in self.graph.nodes()
-                                                and k not in seen_ids):
-                                            self._trace_drivers_recursive(
-                                                k, drivers, seen_ids,
-                                                current_depth + 1, max_depth
-                                            , allow_cross_module)
-                                elif _src_has_internal_driver:
-                                    # [iter_134] src 端口有 wrapper_passthrough
-                                    # 驱动 (graph_builder 后处理: wrapper def port
-                                    # ← 内部 deep 实例端口): 顶层 CONNECTION 追到
-                                    # PORT_OUT 后须继续追内部 deep — 递归
-                                    # wrapper_passthrough 源 (a_if.axi_ram_wr_if_inst
-                                    # .s_axi_awready → reg)。
-                                    # 仅 wrapper_passthrough 触发 (continuous/
-                                    # nonblocking = 真模块内部 assign, leaf 场景
-                                    # 粒度停在此端口, iter_132 语义保持)。
-                                    for _ps, _pd in list(self.graph.edges()):
-                                        if _pd == src:
-                                            for _pe in self.graph.get_edges(_ps, _pd):
-                                                if (_pe.kind == EdgeKind.DRIVER
-                                                        and _pe.assign_type == "wrapper_passthrough"
-                                                        and _ps in self.graph.nodes()
-                                                        and _ps not in seen_ids):
-                                                    self._trace_drivers_recursive(
-                                                        _ps, drivers, seen_ids,
-                                                        current_depth + 1, max_depth
-                                                    , allow_cross_module)
-                                continue
-                            # PORT_IN via CONNECTION: 只有外部输入端口(无predecessors)才添加
-                            if node.kind.name == "PORT_IN":
-                                preds = list(self.graph.predecessors(node.id))
-                                if not preds:  # 外部输入端口,无前驱
-                                    if node.id not in seen_ids:
-                                        drivers.append(node)
-                                        seen_ids.add(node.id)
-                                continue
-                            # SIGNAL via CONNECTION: 中间线网,添加为驱动
-                            if node.kind.name == "SIGNAL":
-                                # [iter_137 A2 位对位] CONNECTION src 是实例
-                                # 输出端口的**位** (位桥边 u_sub.y[i]→top.y[i],
-                                # graph_builder._expand_bus_conn_bit_bridges):
-                                # 它是桥中间节点, 不 append 进结果 (粒度答案
-                                # 不含桥), 递归追其内部驱动 — 与直接查询
-                                # u_sub.y[i] 同语义 (fanin(top.y[3]) 贯通到
-                                # sub 内部 y[3] 逻辑源 a[3]/b[3], 对齐
-                                # fanin(top.u_sub.y[3]))。判据: src 位节点的
-                                # **bus 父** (剥 [N]) kind==PORT_OUT (driver 建
-                                # 的位节点 parent 属性常为 None, 不能依赖)。
-                                # 普通中间线网位 (bus 父非 PORT_OUT) 保持
-                                # append+stop (iter_132 粒度停靠不变)。
-                                _bpn = (src.rsplit('[', 1)[0]
-                                        if '[' in src else None)
-                                _bpnode = (self.graph.get_node(_bpn)
-                                           if _bpn else None)
-                                if (_bpnode is not None
-                                        and _bpnode.kind.name == "PORT_OUT"
-                                        and src in self.graph.nodes()
-                                        and src not in seen_ids):
-                                    self._trace_drivers_recursive(
-                                        src, drivers, seen_ids,
+            # ③ 自环（state = state）
+            if src == signal_id:
+                self._handle_self_loop(src, drivers)
+                continue
+
+            edge = self._pick_driver_edge(src, dst)
+
+            # 边不存在：按"其他边类型"继续向上追溯（原实现行为）
+            if edge is None:
+                self._recurse_if_unseen(src, drivers, seen_ids,
                                         current_depth + 1, max_depth, allow_cross_module)
-                                    continue
-                                if node.id not in seen_ids:
-                                    drivers.append(node)
-                                    seen_ids.add(node.id)
-                                continue
-                    # 其他边类型继续递归追溯
-                    if src in self.graph.nodes() and src not in seen_ids:
-                        self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth, allow_cross_module)
+                continue
+
+            if edge.kind != EdgeKind.DRIVER:
+                # ④ 控制类边（时钟/复位/分支/case）：不 append、不递归
+                if self._is_control_edge(edge.kind):
                     continue
-
-                node = self.graph.get_node(src)
-                # [FIX] 字面量节点(CONST)不继续追溯(它是叶子节点)
-                # 但如果它还没有被添加为驱动,则添加到结果
-                if node and node.kind == NodeKind.CONST:
-                    if node.id not in seen_ids:
-                        drivers.append(node)
-                        seen_ids.add(node.id)
+                # ⑤ 连接边：按源节点类别分流
+                if edge.kind == EdgeKind.CONNECTION:
+                    self._handle_connection_source(
+                        src, drivers, seen_ids, current_depth, max_depth, allow_cross_module)
                     continue
+                self._recurse_if_unseen(src, drivers, seen_ids,
+                                        current_depth + 1, max_depth, allow_cross_module)
+                continue
 
-                if node and node.id not in seen_ids:
-                    drivers.append(node)
+            # ⑥ 驱动边：追加源节点（字面量是叶子），并继续向上追溯
+            self._append_source(src, drivers, seen_ids,
+                                current_depth, max_depth, allow_cross_module)
 
-                # 继续递归追溯这个 src 的驱动(DRIVER 边)
-                # seen_ids 检查在函数开头进行,防止环路
-                if src in self.graph.nodes() and src not in seen_ids:
-                    self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1, max_depth, allow_cross_module)
+    # ------------------------------------------------------------------
+    # 6 类规则的具体实现
+    # ------------------------------------------------------------------
+
+    def _trace_missing_node(self, signal_id, drivers, seen_ids,
+                            current_depth, max_depth, allow_cross_module):
+        """节点不在图里：part-select 范围保持空答；位查询回退到父总线。"""
+        if ":" in signal_id:
+            return  # [iter_126] part-select 范围 [a:b] 保持空答 (locked truth)
+        import re as _re
+        m = _re.match(r"^(.*)\[\d+\]$", signal_id)
+        if not m:
+            return
+        base = m.group(1)
+        if base in self.graph.nodes() and base not in seen_ids:
+            self._trace_drivers_recursive(base, drivers, seen_ids, current_depth,
+                                          max_depth, allow_cross_module)
+
+    def _has_incoming_driver(self, signal_id: str) -> bool:
+        """是否存在指向本节点的 DRIVER 边（BIT_SELECT 不算）。"""
+        for src, dst in self.graph.edges():
+            if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.DRIVER:
+                return True
+        return False
+
+    def _expand_incoming_bit_select(self, signal_id, drivers, seen_ids,
+                                    current_depth, max_depth, allow_cross_module):
+        """无 DRIVER 时，先追"位 → 本节点"的 BIT_SELECT 子节点（如 modport 实例）。"""
+        for src, dst in list(self.graph.edges()):
+            if dst != signal_id:
+                continue
+            edge = self.graph.get_edge(src, dst)
+            if edge and edge.kind == EdgeKind.BIT_SELECT and src not in seen_ids:
+                self._trace_drivers_recursive(src, drivers, seen_ids, current_depth,
+                                              max_depth, allow_cross_module)
+
+    def _maybe_lift_to_parent_bus(self, signal_id, has_driver_edge, drivers, seen_ids,
+                                  current_depth, max_depth, allow_cross_module):
+        """位级查询提升：叶子位（无任何真实来源）沿 BIT_SELECT 出边提到父总线。
+
+        三个否定条件缺一不可（iter_126/128/132 的教训，详见 git 历史）：
+          - 无 incoming DRIVER：有直接驱动就不该绕到父 struct/总线（会带回兄弟字段）
+          - 无 incoming CONNECTION：generate per-entry 位有真实来源，提升会把各 entry 串起来
+          - drivers 为空：递归中间节点不提升（否则 seen 污染兄弟位）
+        提升目标限 data 类节点，避免把 interface 实例（INSTANTIATED_MODULE）当总线。
+        """
+        if has_driver_edge or drivers or ":" in signal_id:
+            return
+        if self._has_incoming_connection(signal_id):
+            return
+        _liftable = {"SIGNAL", "PORT_OUT", "PORT_IN", "REG"}
+        for src, dst in list(self.graph.edges()):
+            if src != signal_id or dst == signal_id or dst in seen_ids:
+                continue
+            edge = self.graph.get_edge(src, dst)
+            if not edge or edge.kind != EdgeKind.BIT_SELECT:
+                continue
+            dst_node = self.graph.get_node(dst)
+            if dst_node and dst_node.kind.name in _liftable:
+                self._trace_drivers_recursive(dst, drivers, seen_ids, current_depth + 1,
+                                              max_depth, allow_cross_module)
+                if drivers:
+                    break
+
+    def _has_incoming_connection(self, signal_id: str) -> bool:
+        for src, dst in self.graph.edges():
+            if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.CONNECTION:
+                return True
+        return False
+
+    def _handle_self_loop(self, src, drivers):
+        """自环分两类：internal 标记 = 实例端口占位（跳过）；其他 = 真自依赖（保留）。"""
+        loop_edges = self.graph.get_edges(src, src)
+        if any(getattr(e, "assign_type", "") == "internal" and e.kind == EdgeKind.DRIVER
+               for e in loop_edges):
+            return
+        node = self.graph.get_node(src)
+        if node:
+            drivers.append(node)
+
+    @staticmethod
+    def _is_control_edge(kind) -> bool:
+        """控制类边不是数据驱动源（时钟/复位/三目分支/case）。"""
+        return kind in (
+            EdgeKind.CLOCK,
+            EdgeKind.RESET,
+            EdgeKind.BRANCH_CONDITION,
+            EdgeKind.BRANCH_TRUE,
+            EdgeKind.BRANCH_FALSE,
+            EdgeKind.BRANCH_RESULT,
+            EdgeKind.CASE_SELECT,
+            EdgeKind.CASE_ITEM,
+            EdgeKind.CASE_RESULT,
+        )
+
+    def _pick_driver_edge(self, src, dst):
+        """同一 (src,dst) 有多条边时优先取 DRIVER（wrapper_passthrough 与 CONNECTION 并存）。"""
+        edge = self.graph.get_edge(src, dst)
+        if edge is not None and edge.kind != EdgeKind.DRIVER:
+            driver_edge = next((e for e in self.graph.get_edges(src, dst)
+                                if e.kind == EdgeKind.DRIVER), None)
+            if driver_edge is not None:
+                return driver_edge
+        return edge
+
+    def _append_source(self, src, drivers, seen_ids, current_depth, max_depth, allow_cross_module):
+        """DRIVER 边的源：字面量是叶子（只追加），其他追加后继续向上追溯。"""
+        node = self.graph.get_node(src)
+        if node is not None and node.kind == NodeKind.CONST:
+            if node.id not in seen_ids:
+                drivers.append(node)
+                seen_ids.add(node.id)
+            return
+        if node is not None and node.id not in seen_ids:
+            drivers.append(node)
+        self._recurse_if_unseen(src, drivers, seen_ids, current_depth + 1,
+                                max_depth, allow_cross_module)
+
+    def _recurse_if_unseen(self, src, drivers, seen_ids, next_depth, max_depth, allow_cross_module):
+        if src in self.graph.nodes() and src not in seen_ids:
+            self._trace_drivers_recursive(src, drivers, seen_ids, next_depth,
+                                          max_depth, allow_cross_module)
+
+    def _handle_connection_source(self, src, drivers, seen_ids,
+                                  current_depth, max_depth, allow_cross_module):
+        """CONNECTION 边的源节点分流：实例输出端口 / 外部输入 / 中间线网 / 其他。"""
+        node = self.graph.get_node(src)
+        kind = node.kind.name if node is not None else None
+        args = (src, drivers, seen_ids, current_depth, max_depth, allow_cross_module)
+        if kind == "PORT_OUT" and src.count(".") >= 2:
+            self._handle_port_out_source(*args)
+        elif kind == "PORT_IN":
+            self._handle_port_in_source(*args)
+        elif kind == "SIGNAL":
+            self._handle_wire_source(*args)
+        else:
+            # 其他类别（REG 等）按"其他边类型"继续向上追（原实现 fallthrough 行为）
+            self._recurse_if_unseen(src, drivers, seen_ids, current_depth + 1,
+                                    max_depth, allow_cross_module)
+
+    def _handle_port_out_source(self, src, drivers, seen_ids,
+                                current_depth, max_depth, allow_cross_module):
+        """实例输出端口 = 透明映射点（可能跨 wrapper 兄弟实例）。"""
+        node = self.graph.get_node(src)
+        if node.id not in seen_ids:
+            drivers.append(node)
+            seen_ids.add(node.id)
+        inst_path, port_name = src.rsplit(".", 1)
+
+        # 触发器 q/d 互补端口
+        mate = {"q": "d", "d": "q"}.get(port_name)
+        if mate:
+            mate_id = f"{inst_path}.{mate}"
+            if mate_id in self.graph.nodes() and mate_id not in seen_ids:
+                self._trace_drivers_recursive(mate_id, drivers, seen_ids,
+                                              current_depth + 1, max_depth, allow_cross_module)
+
+        if self._has_internal_driver(src):
+            # 实例内部有驱动：只沿 wrapper_passthrough 源继续
+            # （continuous/nonblocking = 真模块内部 assign，粒度停在此端口）
+            for ps in self._wrapper_passthrough_sources(src):
+                self._recurse_if_unseen(ps, drivers, seen_ids, current_depth + 1,
+                                        max_depth, allow_cross_module)
+        else:
+            # 真 wrapper 端口（无内部驱动）：跨到同模块类型的兄弟实例同名端口
+            for sib in self._sibling_ports(inst_path, port_name):
+                self._recurse_if_unseen(sib, drivers, seen_ids, current_depth + 1,
+                                        max_depth, allow_cross_module)
+
+    def _handle_port_in_source(self, src, drivers, seen_ids,
+                               current_depth, max_depth, allow_cross_module):
+        """外部输入端口（无前驱）才是有效驱动源；有前驱则不追加也不递归。
+
+        （与旧实现一致：PORT_IN 分支自带 `continue`，不再落到"其他边类型"追溯。）
+        """
+        node = self.graph.get_node(src)
+        if list(self.graph.predecessors(node.id)):
+            return
+        if node.id not in seen_ids:
+            drivers.append(node)
+            seen_ids.add(node.id)
+
+    def _handle_wire_source(self, src, drivers, seen_ids,
+                            current_depth, max_depth, allow_cross_module):
+        """中间线网：位桥中间节点继续追内部；普通线网作为驱动停靠。"""
+        node = self.graph.get_node(src)
+        bus_parent = src.rsplit("[", 1)[0] if "[" in src else None
+        bus_node = self.graph.get_node(bus_parent) if bus_parent else None
+        if (bus_node is not None and bus_node.kind.name == "PORT_OUT"
+                and src in self.graph.nodes() and src not in seen_ids):
+            self._trace_drivers_recursive(src, drivers, seen_ids, current_depth + 1,
+                                          max_depth, allow_cross_module)
+            return
+        if node.id not in seen_ids:
+            drivers.append(node)
+            seen_ids.add(node.id)
+
+    def _has_internal_driver(self, src: str) -> bool:
+        """该实例端口是否有真实内部驱动（任意非 internal 的 DRIVER 边指向它）。"""
+        for p, d in self.graph.edges():
+            if d != src:
+                continue
+            for e in self.graph.get_edges(p, src):
+                if e.kind == EdgeKind.DRIVER and e.assign_type != "internal":
+                    return True
+        return False
+
+    def _wrapper_passthrough_sources(self, src: str) -> list[str]:
+        """指向 src 的 wrapper_passthrough DRIVER 源（graph_builder 后处理加的直通边）。"""
+        out = []
+        for ps, pd in self.graph.edges():
+            if pd != src:
+                continue
+            for pe in self.graph.get_edges(ps, pd):
+                if (pe.kind == EdgeKind.DRIVER and pe.assign_type == "wrapper_passthrough"
+                        and ps in self.graph.nodes()):
+                    out.append(ps)
+                    break
+        return out
 
     def _find_drivers(self, signal_id: str, allow_cross_module: bool = True,
                       scope_prefix: str | None = None) -> list[TraceNode]:
