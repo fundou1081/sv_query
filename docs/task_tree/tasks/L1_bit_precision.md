@@ -22,8 +22,9 @@ iter_289 审计（[记录](../iterations/iter_289_bit_precision_audit.md)）实�
 | P5.1 | F1：缺位回退带位索引，父总线 `BIT_SELECT` 只取包含该位的子节点 | ✅ 反例 1/2 消除（iter_290） |
 | P5.2 | F2：位节点无 incoming 驱动且父总线有驱动时，补一次父总线追溯 | ✅ 反例 3 消除（iter_290） |
 | P5.3 | 测试加强 | ✅ `test_bit_precision.py` 19 个（精确/防污染/防断链/粗粒度契约） |
-| P5.4 | F3：slice 节点按位展开 | 评估：是否把 D/S 类升到真位精度（成本/风险） |
+| P5.4 | F3：slice 节点按位展开 | ✅ LHS/RHS 切片→逐位节点+偏移映射（iter_291）；verilog-axi +1.3% 节点 |
 | P5.5 | F4：bus↔无位节点侧合成位桥 | 与 iter_126「不造假节点」冲突，需方豆拍板 |
+| P5.6 | F5：load 方向位精度（fanout 按位） | 待做：表达式驱动需逐位边 |
 
 ## 约束
 
