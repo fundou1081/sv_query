@@ -81,6 +81,24 @@ def test_current_in_progress_must_be_leaf_doing():
     assert any(e.startswith("P7") for e in errs), errs
 
 
+def test_all_done_allows_completed_current():
+    """全部完成时 current 可标 已完成 —— 但仍有未完成项时必须报错。"""
+    text = VALID.replace("current item : P0.1 图快照基线工具 <待做>",
+                         "current item : P0.2 拆巨型函数 <已完成>")
+    text = text.replace("-- P0.1 图快照基线工具 <待做>", "-- P0.1 图快照基线工具 <已完成>")
+    text = text.replace("-- P0.2 拆巨型函数 <待做>", "-- P0.2 拆巨型函数 <已完成>")
+    text = text.replace("P0 建图层结构化拆分 <进行中>", "P0 建图层结构化拆分 <已完成>")
+    assert check(text) == []
+
+
+def test_completed_current_with_unfinished_item_fails():
+    text = VALID.replace("current item : P0.1 图快照基线工具 <待做>",
+                         "current item : P0.1 图快照基线工具 <已完成>")
+    text = text.replace("-- P0.1 图快照基线工具 <待做>", "-- P0.1 图快照基线工具 <已完成>")
+    errs = check(text)
+    assert any(e.startswith("P7") for e in errs), errs
+
+
 def test_real_plan_file_passes():
     plan = Path(__file__).resolve().parents[3] / "PLAN.md"
     assert plan.exists(), "PLAN.md 必须存在（全局唯一计划树）"

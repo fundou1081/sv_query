@@ -157,6 +157,9 @@ COMMANDS: list[CommandSpec] = [
             "--directed 只沿数据流方向, 与 dataflow analyze 结论一致)"),
     _c("class", "semantic", cost="medium",
        note="不给 name → 列出所有 class; 给了 → 成员(类型级)+实例(实例级); --member 查某成员实例"),
+    _c("audit", "semantic", cost="medium", recommended=True,
+       note="[规范入口] 设计审计 (只读): 协议识别/握手配对/反压环候选/断言覆盖/覆盖缺口/"
+            "验证缺口/改动风险/约束覆盖/CDC 候选/组合链长度; 每条带 confidence"),
 
     # ---- core / locate (枚举与统计) ----
     _c("stats", "locate", kind="primitive", cost="cheap", recommended=True),

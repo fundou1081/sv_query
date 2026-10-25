@@ -127,8 +127,13 @@ def check(text: str) -> list[str]:
         errors.append(f"P7: 叶子项最多一项 进行中，实际: {leaf_doing}")
     if cm.group("status") == "进行中" and current_id not in leaf_doing:
         errors.append(f"P7: current 标 进行中，但叶子进行中项是 {leaf_doing or '（无）'}")
-    if cm.group("status") not in ("待做", "进行中"):
-        errors.append(f"P7: current item 状态只能是 待做/进行中，实际 {cm.group('status')}")
+    if cm.group("status") not in ("待做", "进行中", "已完成"):
+        errors.append(f"P7: current item 状态只能是 待做/进行中/已完成，实际 {cm.group('status')}")
+    if cm.group("status") == "已完成":
+        unfinished = [it["id"] for it in items
+                      if it["status"] in ("待做", "进行中", "阻塞") and it["id"] != current_id]
+        if unfinished:
+            errors.append(f"P7: current 标已完成时仍有未完成项: {unfinished}")
 
     # P5
     tops = {it["id"] for it in items if not it["dash"]}

@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
+> current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -15,10 +15,11 @@
 > 状态词表：`待做` / `进行中` / `已完成` / `阻塞` / `放弃`（只能这五个）。
 > 父项可整体标 `进行中`（表示该组在做）；**叶子项**最多一项 `进行中`，
 > 且当 `current item` 标为 `进行中` 时，它必须是那个叶子项。
+> **全部完成时**：`current item` 可指向最后完成项并标 `已完成`（无 `待做/进行中/阻塞` 时才允许）。
 
 ## 当前项
 
-current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
+current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <已完成>
 
 ## 计划树
 
@@ -31,10 +32,10 @@ P1 视图层去双命名空间 <已完成>
 -- P1.2 删 `ModuleInstanceGraph.port_to_internal` / `internal_to_port` / `get_internal_signal` / `get_port_path` <已完成>
 P2 边缘场景补测 <已完成>
 -- P2.1 位选跨模块 / interface 成员 / inout 三态 / class-struct 成员 的 drive-load 回归 <已完成>
-P3 长期 backlog <进行中>
+P3 长期 backlog <已完成>
 -- P3.1 `UnifiedTracer` 三个巨型私有方法（173 / 134 / 151 行） <已完成>
 -- P3.2 缓存只有总量 LRU 上限，无"按工程过期" <已完成>
--- P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
+-- P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <已完成>
 
 ## 已完成（保留最近记录，便于核查上一轮）
 
@@ -48,3 +49,4 @@ P4 已完成归档 <已完成>
 | 日期 | 变更 |
 |---|---|
 | 2026-10-25 | 建立本计划树；P0~P3 来自底座审计结论（iter_278） |
+| 2026-10-26 | P0/P1/P2/P3 全部完成（iter_279~288）；计划树进入"无待办"状态 |
