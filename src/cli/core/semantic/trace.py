@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 
 
 # JSON 输出格式化函数
-from cli.core.semantic.trace_common import (  # noqa: E402
+from cli.core.semantic.trace_common import (
+    attach_distances,  # noqa: E402
     _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
 )
@@ -384,6 +385,7 @@ def fanin(
                 for d in result if hasattr(result, "__iter__") else []:
                     if hasattr(d, "id"):
                         drivers.append(_node_to_dict(d))
+                attach_distances(tracer.get_graph(), sig, drivers, reverse=True)
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
                 drivers = _apply_filters(
@@ -581,6 +583,8 @@ def fanout(
                 for load in result if hasattr(result, "__iter__") else []:
                     if hasattr(load, "id"):
                         loads.append(_node_to_dict(load))
+                # [iter_278] 填真实跳数 (原 distance 恒为 1)
+                attach_distances(tracer.get_graph(), sig, loads, reverse=False)
                 # [B2 2026-07-03] Apply 5 filters
                 loads_pre = len(loads)
                 loads = _apply_filters(

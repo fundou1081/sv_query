@@ -101,11 +101,11 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 
 **已知不足 (登记, 未修)**:
 
-| # | 问题 | 影响 | 修的前提 |
-|---|---|---|---|
-| 1 | `--from-snapshot` 模式**没有 MIG** (快照只存图) | snapshot 结果 ⊆ live 结果 (跨模块链缺失) | 要把端口映射写进快照 → 快照 schema 变更, 影响 diff/viz; 待方豆拍板 |
-| 2 | `distance` 字段**恒为 1** (`signal.py` 的 `# TODO: 计算实际距离`) | 跨 5 跳也标 distance=1, 对 agent 有误导 | 需定 API 形态 (返回副本 vs `(node, depth)`), 且不能 mutate 图里共享的 TraceNode |
-| 3 | ~~**两套路径实现**: `paths` (无向) 与 `dataflow analyze` (有向但不跨模块)~~ | **已修 (iter_268)** —— 见下方 | — |
+| # | 问题 | 状态 |
+|---|---|---|
+| 1 | `--from-snapshot` 模式没有 MIG (快照只存图) | ✅ **已修 (iter_278 实测)**: 单一命名空间后, 跨模块端口边**就在图里**, 快照查询与 live 逐条一致 (`loads`/`impact` 实测相同结果) |
+| 2 | `distance` 字段恒为 1 | ✅ **已修 (iter_278)**: `trace_common.attach_distances()` 在响应组装阶段按 BFS 最短跳数填真实 distance (不 mutate 图节点) |
+| 3 | **两套路径实现**: `paths` (无向) 与 `dataflow analyze` (有向但不跨模块) | ✅ **已修 (iter_268)** —— 见下方 |
 
 **已修 (iter_268)**: 两套路径实现的分歧，根因由 [POC iter_267](poc/2026-10-23_native_connectivity.md) 定位:
 
