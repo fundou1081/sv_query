@@ -1,0 +1,581 @@
+{
+  "edges": [
+    {
+      "assign_type": "",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.add_out",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.add_out[7:0]"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult.y",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.add_out[7:0]"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder.a",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.in_a"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder.b",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.in_b"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult.x",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.in_c"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.result",
+      "effective_condition": "",
+      "expression": "mult_out",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.mult_out"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder",
+      "effective_condition": "",
+      "expression": "a",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_adder.a"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder.sum",
+      "effective_condition": "",
+      "expression": "a + b",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_adder.a"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder",
+      "effective_condition": "",
+      "expression": "b",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_adder.b"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder.sum",
+      "effective_condition": "",
+      "expression": "a + b",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_adder.b"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.add_out",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.u_adder.sum"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder",
+      "effective_condition": "",
+      "expression": "sum",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_adder.sum"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_adder.sum",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_adder.sum"
+    },
+    {
+      "assign_type": "connection",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.mult_out",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "inst_demo.u_mult.prod"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult",
+      "effective_condition": "",
+      "expression": "prod",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_mult.prod"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult.prod",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_mult.prod"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult",
+      "effective_condition": "",
+      "expression": "x",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_mult.x"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult.prod",
+      "effective_condition": "",
+      "expression": "x * y",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_mult.x"
+    },
+    {
+      "assign_type": "internal",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult",
+      "effective_condition": "",
+      "expression": "y",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "BIT_SELECT",
+      "src": "inst_demo.u_mult.y"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "inst_demo.u_mult.prod",
+      "effective_condition": "",
+      "expression": "x * y",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "DRIVER",
+      "src": "inst_demo.u_mult.y"
+    }
+  ],
+  "input": {
+    "files": [
+      "sim/tests/fixtures/golden_mini/inst_demo.sv"
+    ]
+  },
+  "name": "inst_demo",
+  "nodes": [
+    {
+      "bit_range": null,
+      "id": "inst_demo.add_out",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        8,
+        0
+      ]
+    },
+    {
+      "bit_range": "[7:0]",
+      "id": "inst_demo.add_out[7:0]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": "inst_demo.add_out",
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.clk",
+      "is_clock": true,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        1,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.in_a",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.in_b",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.in_c",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.mult_out",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        15,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.result",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_OUT",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        15,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.rst_n",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": true,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo",
+      "parent": null,
+      "width": [
+        1,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_adder",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "INSTANTIATED_MODULE",
+      "modport_dir": null,
+      "module": "sub_adder",
+      "parent": null,
+      "width": [
+        1,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_adder.a",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo.u_adder",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_adder.b",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo.u_adder",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_adder.sum",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_OUT",
+      "modport_dir": null,
+      "module": "inst_demo.u_adder",
+      "parent": null,
+      "width": [
+        8,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_mult",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "INSTANTIATED_MODULE",
+      "modport_dir": null,
+      "module": "sub_mult",
+      "parent": null,
+      "width": [
+        1,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_mult.prod",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_OUT",
+      "modport_dir": null,
+      "module": "inst_demo.u_mult",
+      "parent": null,
+      "width": [
+        15,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_mult.x",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo.u_mult",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    },
+    {
+      "bit_range": null,
+      "id": "inst_demo.u_mult.y",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": true,
+      "is_reset": false,
+      "kind": "PORT_IN",
+      "modport_dir": null,
+      "module": "inst_demo.u_mult",
+      "parent": null,
+      "width": [
+        7,
+        0
+      ]
+    }
+  ],
+  "summary": {
+    "edge_kinds": {
+      "BIT_SELECT": 7,
+      "CONNECTION": 6,
+      "DRIVER": 7
+    },
+    "edges": 20,
+    "node_kinds": {
+      "INSTANTIATED_MODULE": 2,
+      "PORT_IN": 9,
+      "PORT_OUT": 3,
+      "SIGNAL": 3
+    },
+    "nodes": 17
+  },
+  "target": null,
+  "version": 1
+}

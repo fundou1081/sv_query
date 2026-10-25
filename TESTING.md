@@ -70,6 +70,32 @@ python -m pytest sim/tests/unit/ -v
 
 ---
 
+## 图快照基线 (2026-10-25 iter_280 新增, PLAN P0.1)
+
+重构建图/查询层前，用**图快照**证明行为没变（节点 + 边 + 语义属性，不含 file/line）。
+
+```bash
+# 1) 采集基线（重构前）
+python3 tools/graph_snapshot.py capture --name minimal_3module \
+    --filelist sim/tests/fixtures/minimal_3module/filelist.f \
+    --out sim/tests/golden/graph_baseline/minimal_3module.json
+
+# 2) 重构后验证（差异 → 退出码 1 + 前 20 处明细）
+python3 tools/graph_snapshot.py verify \
+    --snapshot sim/tests/golden/graph_baseline/minimal_3module.json \
+    --filelist sim/tests/fixtures/minimal_3module/filelist.f
+
+# 3) 两份快照直接 diff
+python3 tools/graph_snapshot.py diff a.json b.json [--json]
+```
+
+- 基线目录: `sim/tests/golden/graph_baseline/`（6 个 fixture: inst_demo / minimal_3module /
+  minimal_arbiter / wrapper_chain / generate_forms / scheduler_minimal）
+- 测试: `sim/tests/regression/test_graph_baseline.py`（含确定性 + diff 自校验）
+- **不自动 bless**：基线缺失时测试失败；有意改图语义才重新 `capture` 并在迭代记录写原因
+
+---
+
 ## 已知限制 (2026-07-29, iter_187 更新)
 
 | 限制 | 状态 | 处理方式 |

@@ -7,9 +7,9 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P0.1 图快照基线工具：图的节点/边 snapshot diff（拆 P0.2 的前提） <待做>
+> current item : P0.2 拆 `_trace_drivers_recursive`（343 行）：wrapper 跨实例 / 位级提升 / 自环分类 / q-d 互补 / 边过滤 / 源分类 六类规则拆成独立策略函数 <待做>
 >
-> P0 建图层与查询层的结构化拆分 <待做>
+> P0 建图层与查询层的结构化拆分 <进行中>
 > -- P0.1 图快照基线工具 <待做>
 > ```
 > 状态词表：`待做` / `进行中` / `已完成` / `阻塞` / `放弃`（只能这五个）。
@@ -18,12 +18,12 @@
 
 ## 当前项
 
-current item : P0.1 图快照基线工具：图的节点/边 snapshot diff（拆 P0.2 的前提） <待做>
+current item : P0.2 拆 `_trace_drivers_recursive`（343 行）：wrapper 跨实例 / 位级提升 / 自环分类 / q-d 互补 / 边过滤 / 源分类 六类规则拆成独立策略函数 <待做>
 
 ## 计划树
 
-P0 建图层与查询层的结构化拆分 <待做>
--- P0.1 图快照基线工具：图的节点/边 snapshot diff（拆 P0.2 的前提） <待做>
+P0 建图层与查询层的结构化拆分 <进行中>
+-- P0.1 图快照基线工具：图的节点/边 snapshot diff（拆 P0.2 的前提） <已完成>
 -- P0.2 拆 `_trace_drivers_recursive`（343 行）：wrapper 跨实例 / 位级提升 / 自环分类 / q-d 互补 / 边过滤 / 源分类 六类规则拆成独立策略函数 <待做>
 -- P0.3 `GraphBuilder` 6 个后处理 pass 改声明式 pipeline（inputs/outputs，与 UnifiedTracer 一致） <待做>
 P1 视图层去双命名空间 <待做>
