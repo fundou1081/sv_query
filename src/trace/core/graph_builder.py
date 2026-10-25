@@ -98,6 +98,13 @@ class GraphBuilder:
                 note="按 RTL 位选建位节点",
             ),
             Stage(
+                "slice_bits",
+                self._expand_slice_bit_nodes,
+                requires={"bit_nodes"},
+                provides={"slice_bits"},
+                note="[iter_291] 切片赋值展开成逐位节点 (LHS/RHS 切片 → 位对位 DRIVER)",
+            ),
+            Stage(
                 "struct_members",
                 self._collect_struct_members,
                 requires={"nodes", "edges"},
@@ -148,6 +155,134 @@ class GraphBuilder:
         ])
         pipeline.run()
         return self.graph
+
+    def _expand_slice_bit_nodes(self) -> None:
+        """[iter_291 / PLAN P5.4 F3] 把切片赋值展开成**逐位节点 + 位对位 DRIVER**。
+
+        背景：`assign y[7:4] = a;` 只在图里产生 slice 节点 `y[7:4]` 和一条
+        `a → y[7:4]` 的总线 DRIVER，查询 `y[5]` 只能回答 `a`（粗粒度）。
+        本 pass 对**显式切片**建逐位节点，让查询能回答 `a[1]`：
+
+          低位对齐（SV 声明序，与 iter_143 一致）:
+            LHS 切片 X[hi:lo] (hi>lo)      bit k ← 源 bus/slice 的 bit k
+            RHS 切片 S[hi:lo] (hi>lo)      bus[k] ← S[lo+k]
+
+        约束（避免造假节点 / 爆炸）：
+          - 只处理**显式切片节点**（id 带 `[hi:lo]`、hi>lo、宽度 = 源宽）
+          - 常量源（4'h0 / 1'b1 等）不展开（值位映射不在本版）
+          - 逐位节点**不加 BIT_SELECT 聚合边**（iter_143 的教训：避免父总线提升
+            把兄弟位的驱动带回来）
+          - 新节点总量上限 20000；超限显式 warning 并停止（不静默截断）
+        """
+        from .graph.models import NodeKind, TraceEdge
+
+        MAX_NEW_NODES = 20000
+        import re as _re
+
+        SLICE_RE = _re.compile(r"^(?P<base>.+?)\[(?P<hi>\d+):(?P<lo>\d+)\]$")
+        new_nodes = 0
+
+        def _slice_range(node_id: str):
+            m = SLICE_RE.match(node_id)
+            if not m:
+                return None
+            hi, lo = int(m.group("hi")), int(m.group("lo"))
+            if hi <= lo:
+                return None  # 只处理升序（常见）切片
+            return m.group("base"), hi, lo
+
+        def _ensure_bit(base: str, bit: int):
+            nonlocal new_nodes
+            bit_id = f"{base}[{bit}]"
+            if bit_id in self.graph._node_data:
+                return bit_id
+            base_node = self.graph.get_node(base)
+            if base_node is None:
+                return None
+            if new_nodes >= MAX_NEW_NODES:
+                logger.warning(
+                    "_expand_slice_bit_nodes: 新增位节点达到上限 %d，停止展开（图可能不完整）",
+                    MAX_NEW_NODES,
+                )
+                return None
+            self.graph.add_trace_node(TraceNode(
+                id=bit_id,
+                name=f"{base.rsplit('.', 1)[-1]}[{bit}]",
+                module=getattr(base_node, "module", ""),
+                kind=NodeKind.SIGNAL,
+                width=(0, 0),
+                parent=base,
+                parent_bit_start=bit,
+                parent_bit_end=bit,
+                bit_range=f"[{bit}]",
+            ))
+            new_nodes += 1
+            return bit_id
+
+        def _width_of(node) -> int | None:
+            w = getattr(node, "width", None)
+            if isinstance(w, (tuple, list)) and len(w) >= 2:
+                try:
+                    return abs(int(w[0]) - int(w[1])) + 1
+                except (TypeError, ValueError):
+                    return None
+            return None
+
+        def _add_driver(src_bit: str, dst_bit: str) -> None:
+            if src_bit is None or dst_bit is None:
+                return
+            existing = self.graph._edge_data.get((src_bit, dst_bit), [])
+            if any(e.kind == EdgeKind.DRIVER for e in existing):
+                return
+            self.graph.add_trace_edge(TraceEdge(
+                src=src_bit, dst=dst_bit, kind=EdgeKind.DRIVER, assign_type="continuous"))
+
+        for (src, dst), edges in list(self.graph._edge_data.items()):
+            if not any(e.kind == EdgeKind.DRIVER for e in edges):
+                continue
+            src_node = self.graph.get_node(src)
+            dst_node = self.graph.get_node(dst)
+            if src_node is None or dst_node is None:
+                continue
+
+            dst_slice = _slice_range(dst)
+            src_slice = _slice_range(src)
+
+            # --- LHS 切片: X[hi:lo] = source ---
+            if dst_slice is not None:
+                base, hi, lo = dst_slice
+                width = hi - lo + 1
+                if src_slice is not None:
+                    sbase, shi, slo = src_slice
+                    if (shi - slo + 1) != width:
+                        continue
+                    for k in range(width):
+                        _add_driver(_ensure_bit(sbase, slo + k), _ensure_bit(base, lo + k))
+                elif src_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
+                    continue  # 常量/运算节点：值位映射不在本版
+                else:
+                    # 源比切片窄时只映射真实存在的位（SV 高位零扩展；不造不存在的 bit）
+                    src_w = _width_of(src_node)
+                    limit = min(width, src_w) if src_w else width
+                    for k in range(limit):
+                        _add_driver(_ensure_bit(src, k), _ensure_bit(base, lo + k))
+                continue
+
+            # --- RHS 切片: bus = S[hi:lo] ---
+            if src_slice is not None and "[" not in dst:
+                sbase, shi, slo = src_slice
+                width = shi - slo + 1
+                dst_width = dst_node.width if isinstance(dst_node.width, tuple) else None
+                if dst_width is not None and dst_width[0] != dst_width[1]:
+                    dst_w = abs(int(dst_width[0]) - int(dst_width[1])) + 1
+                    if dst_w != width:
+                        continue
+                if dst_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
+                    continue
+                for k in range(width):
+                    _add_driver(_ensure_bit(sbase, slo + k), _ensure_bit(dst, k))
+
+        logger.debug("_expand_slice_bit_nodes: 新增 %d 个位节点", new_nodes)
 
     def _expand_bus_conn_bit_bridges(self):
         """[iter_137 A2 位对位] 同宽同构 bus↔bus CONNECTION 的位级桥边.

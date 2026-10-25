@@ -112,10 +112,11 @@ module top(input [3:0] a, output [7:0] y);
 endmodule'''
 
     def test_slice_outside_bit_has_no_slice_driver(self):
+        """F3: y[7:4]=a (a 4-bit) → y[5] 精确到 a[1]（低位对齐），不含 4'b0。"""
         tr = _build(self.SLICE)
         ids = _ids(tr, "top.y[5]")
         assert "4'b0" not in ids, f"y[5] 不应含 bit[3:0] 的驱动: {ids}"
-        assert ids == {"top.a"}, ids
+        assert ids == {"top.a[1]"}, ids
 
     def test_slice_inside_bit_has_no_other_slice_driver(self):
         tr = _build(self.SLICE)
@@ -140,9 +141,9 @@ module top(input [7:0] a, b, output [7:0] y);
   assign y[7:0] = a;
   assign y[3:0] = b;
 endmodule''')
-        assert _ids(tr, "top.y[5]") == {"top.a"}
-        # bit2 被两个切片同时覆盖 → 两个源都合法（真多驱动）
-        assert _ids(tr, "top.y[2]") == {"top.a", "top.b"}
+        assert _ids(tr, "top.y[5]") == {"top.a[5]"}
+        # bit2 被两个切片同时覆盖 → 两个位源都合法（真多驱动）
+        assert _ids(tr, "top.y[2]") == {"top.a[2]", "top.b[2]"}
 
     def test_dangling_bit_has_no_driver(self):
         """切片不覆盖的位：无驱动（而不是回退到别位的切片源）。"""
@@ -203,6 +204,65 @@ module top(input [7:0] data, output y);
   assign y = data[7];
 endmodule''')
         assert _ids(tr, "top.y") == {"top.data[7]"}
+
+
+# ---------------------------------------------------------------------------
+# C2. F3：切片按位展开（LHS / RHS / slice→slice）
+# ---------------------------------------------------------------------------
+class TestSliceBitExpansion:
+    def test_lhs_slice_offset(self):
+        """y[7:4] = a[3:0] → y[5] 精确到 a[1]（低位对齐）。"""
+        tr = _build('''
+module top(input [7:0] a, output [7:0] y);
+  assign y[7:4] = a[3:0];
+endmodule''')
+        for k, exp in ((0, "top.a[0]"), (1, "top.a[1]"), (2, "top.a[2]"), (3, "top.a[3]")):
+            assert _ids(tr, f"top.y[{4 + k}]") == {exp}, f"y[{4+k}] 应映射到 {exp}"
+
+    def test_lhs_slice_from_bus(self):
+        """y[7:4] = a（a 4-bit）→ y[5] 精确到 a[1]。"""
+        tr = _build('''
+module top(input [3:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule''')
+        assert _ids(tr, "top.y[5]") == {"top.a[1]"}
+
+    def test_rhs_slice_offset(self):
+        """y = a[7:4]（y 4-bit）→ y[2] 精确到 a[6]。"""
+        tr = _build('''
+module top(input [7:0] a, output [3:0] y);
+  assign y = a[7:4];
+endmodule''')
+        for k, exp in ((0, "top.a[4]"), (2, "top.a[6]"), (3, "top.a[7]")):
+            assert _ids(tr, f"top.y[{k}]") == {exp}, f"y[{k}] 应映射到 {exp}"
+
+    def test_slice_to_slice(self):
+        """y[7:4] = a[7:4] → 同偏移位对位。"""
+        tr = _build('''
+module top(input [7:0] a, output [7:0] y);
+  assign y[7:4] = a[7:4];
+endmodule''')
+        assert _ids(tr, "top.y[6]") == {"top.a[6]"}
+
+    def test_no_bit_select_edges_for_synthesized_bits(self):
+        """逐位节点不建 BIT_SELECT 聚合边（防父总线提升污染）。"""
+        tr = _build('''
+module top(input [3:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule''')
+        g = tr.get_graph()
+        for k in range(4, 8):
+            assert g.get_edge(f"top.y[{k}]", "top.y") is None, f"y[{k}] 不应有聚合边"
+
+    def test_short_source_does_not_create_fake_bits(self):
+        """源比切片窄：只映射真实存在的位（SV 零扩展，不造不存在的 bit）。"""
+        tr = _build('''
+module top(input [1:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule''')
+        g = tr.get_graph()
+        assert "top.a[1]" in g
+        assert "top.a[2]" not in g and "top.a[3]" not in g
 
 
 # ---------------------------------------------------------------------------

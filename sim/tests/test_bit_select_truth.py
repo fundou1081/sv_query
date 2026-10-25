@@ -52,10 +52,20 @@ class TestWithTruncSliceTruth(unittest.TestCase):
         cls.m = "with_trunc"
 
     def test_node_set_exact(self):
-        """节点集精确: 7 节点 (含 a[15:8] / sum[7:0] 位选节点)."""
-        expected = {f"{self.m}.a", f"{self.m}.a[15:8]", f"{self.m}.b",
-                    f"{self.m}.sum", f"{self.m}.sum[7:0]",
-                    f"{self.m}.y_slice", f"{self.m}.y_trunc"}
+        """节点集精确: 7 个总线/切片节点 + 32 个逐位节点.
+
+        [iter_291 / PLAN P5.4 F3] 切片赋值按位展开后，LHS/RHS 两侧都建逐位节点
+        （a[8..15] / sum[0..7] / y_trunc[0..7] / y_slice[0..7]），让位查询
+        能回答 `a[8+k]` 而不是停在 `a[15:8]` 切片。
+        """
+        m = self.m
+        expected = {f"{m}.a", f"{m}.a[15:8]", f"{m}.b",
+                    f"{m}.sum", f"{m}.sum[7:0]",
+                    f"{m}.y_slice", f"{m}.y_trunc"}
+        expected |= {f"{m}.a[{i}]" for i in range(8, 16)}
+        expected |= {f"{m}.sum[{i}]" for i in range(8)}
+        expected |= {f"{m}.y_trunc[{i}]" for i in range(8)}
+        expected |= {f"{m}.y_slice[{i}]" for i in range(8)}
         self.assertEqual(set(self.g.nodes()), expected, "with_trunc 节点集偏离")
 
     def test_bit_select_back_edges(self):
@@ -104,6 +114,14 @@ class TestArrayIndexSliceTruth(unittest.TestCase):
             f"{self.m}.mux_hi.ternary_sel",
             f"{self.m}.y_lo", f"{self.m}.y_mid", f"{self.m}.y_hi",
         }
+        # [iter_291 / PLAN P5.4 F3] 字节切片按位展开: bus[0..31] + byte0..3[0..7]
+        # + sum_lo[0..7] + y_lo[0..7]（每个 slice 两侧逐位建点，位查询不再停在切片）
+        m = self.m
+        expected |= {f"{m}.bus[{i}]" for i in range(32)}
+        for byte in ("byte0", "byte1", "byte2", "byte3"):
+            expected |= {f"{m}.{byte}[{i}]" for i in range(8)}
+        expected |= {f"{m}.sum_lo[{i}]" for i in range(8)}
+        expected |= {f"{m}.y_lo[{i}]" for i in range(8)}
         self.assertEqual(set(self.g.nodes()), expected, "array_index 节点集偏离")
 
     def test_byte_slice_back_edges(self):
