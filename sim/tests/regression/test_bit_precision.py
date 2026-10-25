@@ -8,6 +8,7 @@
 同时保留两类**已文档化的粗粒度**（不承诺位精度，测试只锁"不崩且有答案"）：
   - 拼接：任意位都返回两个操作数（总线粒度）
   - load 方向：表达式驱动只有总线级边，`fanout(a[i])` 返回总线负载
+    （但切片/寄存器产生的位节点在 load 方向是**精确**的，见 C3）
 """
 from __future__ import annotations
 
@@ -263,6 +264,65 @@ endmodule''')
         g = tr.get_graph()
         assert "top.a[1]" in g
         assert "top.a[2]" not in g and "top.a[3]" not in g
+
+
+# ---------------------------------------------------------------------------
+# C3. F5：load 方向按位（fanout）
+# ---------------------------------------------------------------------------
+class TestLoadSideBitPrecision:
+    def test_lhs_slice_fanout_bit(self):
+        """y[7:4]=a → fanout(a[1]) 精确到 y[5]（不是切片/总线）。"""
+        tr = _build('''
+module top(input [3:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule''')
+        assert _ids(tr, "top.a[1]", kind="fanout") == {"top.y[5]"}
+
+    def test_rhs_slice_fanout_bit(self):
+        """y=a[7:4] → fanout(a[6]) 精确到 y[2]。"""
+        tr = _build('''
+module top(input [7:0] a, output [3:0] y);
+  assign y = a[7:4];
+endmodule''')
+        assert _ids(tr, "top.a[6]", kind="fanout") == {"top.y[2]"}
+
+    def test_register_bit_fanout(self):
+        """q[3]<=d[1] → fanout(d[1]) 精确到 q[3]。"""
+        tr = _build('''
+module top(input clk, input [7:0] d, output reg [7:0] q);
+  always_ff @(posedge clk) q[3] <= d[1];
+endmodule''')
+        assert _ids(tr, "top.d[1]", kind="fanout") == {"top.q[3]"}
+
+    def test_adjacent_bits_not_cross(self):
+        """位负载不串位：a[1] 只到 y[5]。"""
+        tr = _build('''
+module top(input [3:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule''')
+        ids = _ids(tr, "top.a[1]", kind="fanout")
+        for other in ("top.y[4]", "top.y[6]", "top.y[7]"):
+            assert other not in ids, f"a[1] 串到 {other}: {ids}"
+
+    def test_unused_bit_falls_back_to_bus_loads(self):
+        """位节点存在但无 load 边 → 回退父总线负载（与 fanin F2 对称）。"""
+        tr = _build('''
+module top(input [3:0] a, output [7:0] w, output [7:0] z);
+  assign w[7:4] = a;
+  assign z = w;
+endmodule''')
+        # w[4] 由 F3 展开建出，但没有位级负载；w 有总线负载 z
+        assert _ids(tr, "top.w[4]", kind="fanout") == {"top.z"}
+
+    def test_expression_load_stays_coarse(self):
+        """表达式驱动只有总线边 → fanout(a[3]) 返回 s（已知粗粒度，非位精度承诺）。"""
+        tr = _build('''
+module top(input [7:0] a, b, output y);
+  wire [7:0] s;
+  assign s = a & b;
+  assign y = s[3];
+endmodule''')
+        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s"}
 
 
 # ---------------------------------------------------------------------------
