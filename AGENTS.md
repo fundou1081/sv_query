@@ -2,12 +2,15 @@
 
 > **强制**。本文件只写"怎么做"，细则与背景全部外链。
 > 细则: [DISCIPLINE](docs/dev/DISCIPLINE.md) · [CODING_STYLE](docs/dev/CODING_STYLE.md) · [WORKFLOW](docs/dev/WORKFLOW.md) · [CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)
-> 导航: [文档索引](docs/INDEX.md) · [当前任务](CURRENT_TODO.md) · [测试](TESTING.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
+> 导航: [计划树](PLAN.md) · [文档索引](docs/INDEX.md) · [当前任务](CURRENT_TODO.md) · [测试](TESTING.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
 
 ## 0. 恢复上下文 (压缩 / 新 session 必做)
 
-1. 本文件 → 2. [CURRENT_TODO.md](CURRENT_TODO.md) → 3. [DISCIPLINE.md](docs/dev/DISCIPLINE.md)
-→ 4. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
+1. 本文件 → 2. **[PLAN.md](PLAN.md) 计划树（唯一真相源）** → 3. [CURRENT_TODO.md](CURRENT_TODO.md)
+→ 4. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 5. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
+
+**核对上一轮状态**：读 `PLAN.md` 的 `current item` 与"已完成"区，确认上一项是否真的完成
+（代码 + 测试 + 文档）；未完成或状态不符，先修正计划树再继续。
 
 禁止凭残留印象继续工作。
 
@@ -26,11 +29,16 @@
 
 ## 2. 任务流程
 
-- **开工**（缺一步不动手）：建 `docs/task_tree/tasks/L<N>_<任务>.md` → 更新 [CURRENT_TODO.md](CURRENT_TODO.md)
+- **开工**（缺一步不动手）：**先在 [PLAN.md](PLAN.md) 登记**（新工作挂到对应 `P*` 下，
+  必要时扩展新子计划）→ 置 `current item` 为该项并标 `进行中` → 建
+  `docs/task_tree/tasks/L<N>_<任务>.md` → 更新 [CURRENT_TODO.md](CURRENT_TODO.md)
   → 挂到 [overview](docs/task_tree/overview.md) → 写可验证的 sub-task
+- **计划树纪律**：`PLAN.md` 是**全局唯一**的计划源，其它文档不得另立计划列表；
+  状态只允许 `待做/进行中/已完成/阻塞/放弃`；范围变化就**扩展子项**（不改旧项语义）
 - **迭代**：一个迭代 = 一个可观察动作，各自写 `docs/task_tree/iterations/iter_NNN_*.md`
   （**边做边写**，失败也如实写；迭代号只增不减）
-- **收尾**：`CURRENT_TODO` 移入"最近完成" + `overview` 加汇总行 + 新文档登记 [INDEX](docs/INDEX.md)
+- **收尾**：**更新 [PLAN.md](PLAN.md)**（该项标 `已完成`，`current item` 指向下一项）
+  + `CURRENT_TODO` 移入"最近完成" + `overview` 加汇总行 + 新文档登记 [INDEX](docs/INDEX.md)
   + 计数只改 INDEX 的"当前基线"
 - **完成判定**：**代码 ✅ + 测试 ✅ + 文档 ✅**。只做完代码就说"完成" = 谎报进度
 
@@ -42,6 +50,7 @@ python3 tools/check_docs.py                                          # 死链/�
 python3 tools/check_except_pass.py                                   # 禁 except:pass
 python3 tools/check_cli_layers.py                                    # CLI 分层 R1~R8
 python3 tools/gen_cli_surface.py --check                             # CLI 清单一致
+python3 tools/check_plan.py                                          # PLAN.md 计划树格式
 git status --porcelain                                               # 只含预期改动
 ```
 
@@ -63,7 +72,9 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
-- **v2.1 (2026-10-19)** — 精简为纯流程规则（≤100 行），设施表移入 [WORKFLOW](docs/dev/WORKFLOW.md)；
+- **v2.2 (2026-10-25)** — 新增 [PLAN.md](PLAN.md) **全局唯一计划树**：所有代码修改计划先登记、
+  开工置 `current item`、收尾改状态；恢复上下文时核对上一轮状态；`tools/check_plan.py` 机械校验
+- v2.1 (2026-10-19) — 精简为纯流程规则（≤100 行），设施表移入 [WORKFLOW](docs/dev/WORKFLOW.md)；
   方豆指示："只用规则，维持精简，其他都 link 出去"
 - v2.0 (2026-10-19) — 522 行拆为入口 + `docs/dev/` 四份细则；新增产品不变量 I1~I5
 - v1.0~v1.7 历史见 `git log -- AGENTS.md`
