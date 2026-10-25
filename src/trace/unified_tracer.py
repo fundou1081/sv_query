@@ -377,7 +377,7 @@ class UnifiedTracer:
                 return None
 
             def _step_module_graph(ctx):
-                module_graph = ModuleInstanceGraph(ctx["adapter"], ctx["graph"])
+                module_graph = ModuleInstanceGraph(ctx["adapter"])
                 module_graph.build(ctx["adapter"])
                 self._module_graph = module_graph
                 return module_graph

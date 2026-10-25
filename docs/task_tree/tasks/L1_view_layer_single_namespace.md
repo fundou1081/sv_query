@@ -1,6 +1,6 @@
 # L1 — 视图层去双命名空间（PLAN P1）
 
-**Status**: 🟡 进行中（PLAN.md `P1`）
+**Status**: ✅ 完成（PLAN.md `P1`，iter_283~284）
 **Created**: 2026-10-25
 **Owner**: 方豆 / AI
 
@@ -16,7 +16,7 @@ instance-to-instance 边，用 MIG 的 `port_to_internal`（`inst_port → modul
 | id | 内容 | 验收 |
 |---|---|---|
 | P1.1 | `visualize module` / `arch` 换实例级图推导 | ✅ 边来自真实跨实例网络；`--no-mig` 仍可关闭；测试改写（iter_283） |
-| P1.2 | 删 MIG `port_to_internal` / `internal_to_port` / `get_internal_signal` / `get_port_path` | 待做（无消费者；全量绿） |
+| P1.2 | 删 MIG `port_to_internal` / `internal_to_port` / `get_internal_signal` / `get_port_path` | ✅ 已删；`PortInfo.internal_signal` 改实例级 id；2330 passed（iter_284） |
 
 ## 约束
 

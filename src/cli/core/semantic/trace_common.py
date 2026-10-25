@@ -314,7 +314,7 @@ def _load_tracer_from_snapshot(
     if snap is None:
         raise ValueError(f"Snapshot not found: {tag}")
 
-    # [A2 2026-07-04] Use from_dict (handles all node/edge fields + port_to_internal)
+    # [A2 2026-07-04] Use from_dict (handles all node/edge fields)
     # Snapshot extra fields (version, files, elaboration_errors, ...) are ignored
     # by from_dict, which is what we want.
     graph = SignalGraph.from_dict(snap)

@@ -39,7 +39,6 @@ class SignalTracer:
         """
         self.graph = graph
         # [PR3 2026-06-15] ModuleInstanceGraph 是跨模块 port 映射.
-        # 接受了 2569 个 clean port_to_internal 映射 (pulp axi_xbar_dp_ram).
         self.mig = mig
 
     def trace(self, signal: str, module: str = None) -> SignalChain:

@@ -6,13 +6,13 @@ module_instance_graph.py - 模块实例层级图
 
 职责:
 1. 管理模块实例层级 (top.u_tb, top.u_dut)
-2. 维护端口到内部信号的映射
-3. 支持跨模块路径查找
+2. 维护实例端口信息（方向/位宽/实例级端口 id）
+3. 支持层级与跨模块路径查找
 
 使用方式:
   mig = ModuleInstanceGraph(adapter)
   mig.build(trees)
-  internal = mig.get_internal_signal('top.u_dut.clk')  # → 'dut.clk'
+  port = mig.get_instance('top.u_dut').get_port('clk')  # → PortInfo
 """
 
 import logging
@@ -52,10 +52,6 @@ class ModuleInstanceNode:
     def get_port(self, port_name: str) -> PortInfo | None:
         return self.ports.get(port_name)
 
-    def get_internal_signal(self, port_name: str) -> str | None:
-        port = self.get_port(port_name)
-        return port.internal_signal if port else None
-
 
 class ModuleInstanceGraph:
     """模块实例层级图
@@ -64,12 +60,9 @@ class ModuleInstanceGraph:
     支持跨模块边界追踪
     """
 
-    def __init__(self, adapter, signal_graph=None):
+    def __init__(self, adapter):
         self.adapter = adapter
-        self.signal_graph = signal_graph  # 可选,用于从 SignalGraph 获取 port_to_internal
         self.instances: dict[str, ModuleInstanceNode] = {}  # instance_id → Node
-        self.port_to_internal: dict[str, str] = {}  # "top.u_dut.clk" → "dut.clk" (保留用于兼容,已废弃)
-        self.internal_to_port: dict[str, str] = {}  # "dut.clk" → "top.u_dut.clk" (保留用于兼容,已废弃)
 
 
     def build(self, trees: dict[str, Any] | None = None, instance_source: str = "auto") -> None:
@@ -152,9 +145,10 @@ class ModuleInstanceGraph:
                                 # 现恢复: internal = inst_type.port_name (e.g. dut.clk).
                                 # 多 instance edge 创建改由 semantic_adapter.find_connections
                                 # 单独处理 (根据 port connection 直接找目标 wire).
-                                internal = f"{inst_type}.{port_name}"
-                                self.port_to_internal[port_path] = internal
-                                self.internal_to_port[internal] = port_path
+                                # [iter_284 / PLAN P1.2] 单一命名空间: 端口的"内部信号"
+                                # 就是实例级端口节点本身 (top.u_dut.clk), 不再存
+                                # 模块定义短名 (dut.clk) —— 那是双命名空间最后残留。
+                                internal = port_path
 
                                 # 填充 _module_ports (模块类型 -> 端口信息)
                                 if not hasattr(self, "_module_ports"):
@@ -223,50 +217,6 @@ class ModuleInstanceGraph:
         # 原 16 个 helper (/_extract_instances/_iter_children/_get_module_name 等
         # ~920 行) 一并删除, 见 docs/task_tree/iterations/iter_057_g3_stage2_full_native.md.
 
-    def get_internal_signal(self, port_path: str) -> str | None:
-        """端口路径 → 内部信号
-
-        MIG 维护自己的 port_to_internal 映射,基于模块端口定义(而非实际连接)。
-        CE 的 port_to_internal 来自实际连接,用于 SignalGraph 建边。
-        两者语义不同:
-          - MIG: 模块 Z 有端口 X,内部信号是 Z.X(结构定义)
-          - CE: 实例的端口 X 实际连接到信号 Y(实际连接)
-
-        Args:
-            port_path: "top.u_dut.clk"
-
-        Returns:
-            "dut.clk" 或 None
-        """
-        # MIG 自己的映射(基于模块定义)
-        if self.port_to_internal:
-            return self.port_to_internal.get(port_path)
-        # 备用:从 SignalGraph 获取(CE 构建的连接映射)
-        if self.signal_graph is not None:
-            return self.signal_graph.get_internal_signal(port_path)
-        return None
-
-    def get_port_path(self, internal_signal: str) -> str | None:
-        """内部信号 → 端口路径
-
-        Args:
-            internal_signal: "dut.clk"
-
-        Returns:
-            "top.u_dut.clk" 或 None
-        """
-        # MIG 自己的映射(基于模块定义)
-        if self.internal_to_port:
-            return self.internal_to_port.get(internal_signal)
-        # 备用:从 SignalGraph 获取(CE 构建的连接映射)
-        if self.signal_graph is not None:
-            port_to_internal = self.signal_graph.get_port_to_internal()
-            # 反向查找
-            for inst_port, internal in port_to_internal.items():
-                if internal == internal_signal:
-                    return inst_port
-        return None
-
     def get_instance(self, instance_id: str) -> ModuleInstanceNode | None:
         """获取实例节点"""
         return self.instances.get(instance_id)
@@ -319,7 +269,8 @@ class PathResolver:
             logger.debug("图无前驱 (正常): %s", _e)
         # [iter_272] MIG 虚拟跳 (进/出模块) 已删除:
         # 图恒为实例级, 跨模块端口边本来就在 SignalGraph 里; 而 MIG 的
-        # port_to_internal 指向"模块定义命名空间"的影子 id (不在图里), 这两跳
+        # 旧实现会把端口映射到"模块定义命名空间"的影子 id (不在图里); 单一命名
+        # 空间后端口 id 就是图节点, 这两跳
         # 只会把遍历导向不存在的节点。
         return out
 

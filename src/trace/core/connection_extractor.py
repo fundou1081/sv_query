@@ -666,7 +666,7 @@ class ConnectionExtractor:
                                 assign_type="connection",
                             )
                         )
-                    # port_to_internal 同 output 语义: 实例端口 → 内部 (self 同路径)
+                    # 端口与内部同 id (实例级命名空间): 不再维护单独的映射
 
         # [FIX] 后处理:修复实例端口的位宽
         # 如果实例端口位宽为默认值(1,0),尝试从连接推断实际位宽

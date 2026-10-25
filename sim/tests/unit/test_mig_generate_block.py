@@ -26,9 +26,9 @@ test_mig_generate_block.py - ModuleInstanceGraph generate block 支持金标准�
 预期结果 (金标准):
   1. MIG.instances 应包含: top.GEN[0].u_dut, top.GEN[1].u_dut
      (或 top.gen[0].u_dut，取决于命名规范化)
-  2. MIG.port_to_internal 应映射: top.GEN[0].u_dut.out -> dut.out
+  2. MIG 实例端口信息: top.GEN[0].u_dut 的 out 端口存在
   3. get_instance('top.GEN[0].u_dut') 应返回 ModuleInstanceNode
-  4. get_internal_signal('top.GEN[0].u_dut.out') 应返回 'dut.out'
+  4. 端口 internal_signal = 实例级端口 id (top.GEN[0].u_dut.out)
 """
 
 import os
@@ -85,11 +85,15 @@ endmodule'''
             self.assertIn('GEN', inst,
                 f"[金标准] 实例路径应包含 GEN，实际: {inst}")
 
-        # [金标准] 验证: port_to_internal 映射存在
-        matching = {k: v for k, v in mig.port_to_internal.items() if 'GEN' in k}
+        # [金标准] 验证: generate 实例的端口信息存在 (iter_284: 实例级命名空间)
+        gen_nodes = [n for iid, n in mig.instances.items() if 'GEN' in iid]
         self.assertGreater(
-            len(matching), 0,
-            f"[金标准] generate 实例应有端口映射，实际: {matching}"
+            len(gen_nodes), 0,
+            f"[金标准] generate 实例应有节点，实际: {list(mig.instances)}"
+        )
+        self.assertTrue(
+            any(n.ports for n in gen_nodes),
+            "[金标准] generate 实例应有端口信息"
         )
 
     def test_loop_generate_instance_with_clk_connection(self):
@@ -125,16 +129,12 @@ endmodule'''
             f"[金标准] for 循环生成应有 GEN 实例 (模板)，实际: {instances}"
         )
 
-        # [金标准] 验证: port_to_internal 映射存在
-        # 对于 generate 实例，映射格式可能是 top.GEN[0].u_dut.clk -> dut.clk
+        # [金标准] 验证: generate 实例的端口信息存在 (iter_284)
         gen_inst = next((i for i in instances if 'u_dut' in i), None)
         if gen_inst:
-            # 检查是否有端口映射
-            matching_keys = [k for k in mig.port_to_internal.keys() if 'u_dut' in k]
-            self.assertGreater(
-                len(matching_keys), 0,
-                f"[金标准] generate 实例应有端口映射，实际: {mig.port_to_internal}"
-            )
+            node = mig.instances.get(gen_inst)
+            self.assertIsNotNone(node, f"[金标准] 实例节点应存在: {gen_inst}")
+            self.assertTrue(node.ports, f"[金标准] generate 实例应有端口: {gen_inst}")
 
     def test_if_generate_instance(self):
         """[金标准] if 条件生成实例"""
@@ -216,7 +216,7 @@ endmodule'''
         mig = self._build_mig(source)
         self.assertIsNotNone(mig, "MIG 构建不应返回 None")
         self.assertIsInstance(mig.instances, dict, "instances 应为 dict")
-        self.assertIsInstance(mig.port_to_internal, dict, "port_to_internal 应为 dict")
+        self.assertIsInstance(mig.instances, dict, "instances 应为 dict")
 
     def test_get_instance_after_generate(self):
         """[金标准] 获取 generate 块内的实例"""

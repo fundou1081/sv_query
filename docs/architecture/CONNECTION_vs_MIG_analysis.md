@@ -1,5 +1,10 @@
 # ConnectionExtractor vs ModuleInstanceGraph 详细分析报告
 
+> **历史分析（2026-10 起过期）**：MIG 的 `port_to_internal` / `internal_to_port`
+> 与 `get_internal_signal` / `get_port_path` 已在 iter_284 删除；单一命名空间后
+> 端口 id 就是图节点。本文保留用于追溯当时的设计取舍。
+
+
 **生成时间**: 2026-05-13 01:47
 **更新**: 2026-05-13 13:18（融合评估结论 + 需求驱动架构变化分析）
 

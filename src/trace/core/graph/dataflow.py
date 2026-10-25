@@ -7,7 +7,7 @@
 职责:
 1. 路径搜索 - 使用 SignalGraph 进行 nx.all_simple_paths
 2. 段构建 - 从 SignalGraph edges 获取 driver/condition/timing
-3. 跨模块解析 - 使用 MIG 的 port_to_internal 映射
+3. 跨模块解析 - 直接使用实例级图节点 id
 4. 结果缓存 - 按需缓存 DataFlowSegment
 
 使用方式:
