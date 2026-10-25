@@ -63,6 +63,7 @@ python -m pytest sim/tests/unit/ -v
 | 落盘 | 环境变量 | 默认位置 | 测试里怎么做 |
 |---|---|---|---|
 | AST / 图缓存 | `SVQ_CACHE_DIR` | `$XDG_CACHE_HOME/svq` → `~/.svq/cache` | 指到 `tmp_path` |
+| 缓存淘汰 | `SVQ_CACHE_MAX_MB` / `SVQ_CACHE_MAX_ENTRIES_PER_PROJECT` / `SVQ_CACHE_MAX_AGE_DAYS` | 1024 MB / 8 / 30 天 | 需要时显式覆盖（0=不限） |
 | **快照** | `SVQ_SNAPSHOT_DIR` | `<cache_dir>/snapshots` | 指到 `tmp_path` (子进程要传 `env=`) |
 
 **只读行为证明**: `sim/tests/unit/test_cli_readonly_guarantee.py` 在临时项目目录跑一遍只读命令,

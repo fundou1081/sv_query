@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P3.2 缓存只有总量 LRU 上限，无"按工程过期" <待做>
+> current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -18,7 +18,7 @@
 
 ## 当前项
 
-current item : P3.2 缓存只有总量 LRU 上限，无"按工程过期" <待做>
+current item : P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
 
 ## 计划树
 
@@ -33,7 +33,7 @@ P2 边缘场景补测 <已完成>
 -- P2.1 位选跨模块 / interface 成员 / inout 三态 / class-struct 成员 的 drive-load 回归 <已完成>
 P3 长期 backlog <进行中>
 -- P3.1 `UnifiedTracer` 三个巨型私有方法（173 / 134 / 151 行） <已完成>
--- P3.2 缓存只有总量 LRU 上限，无"按工程过期" <待做>
+-- P3.2 缓存只有总量 LRU 上限，无"按工程过期" <已完成>
 -- P3.3 [docs/EXP_IDEAS.md](docs/EXP_IDEAS.md) 的 10 条退役想法 —— 未来逐个重做 <待做>
 
 ## 已完成（保留最近记录，便于核查上一轮）
