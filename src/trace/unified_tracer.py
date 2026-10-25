@@ -304,115 +304,30 @@ class UnifiedTracer:
                     self._init_tracers()
                     return self._graph
 
-            # =================================================================
-            # [ARCHITECTURE_TODOLIST #5 2026-08-28] 显式 DAG 管线
-            # 把原来的隐式顺序链重构为 PipelineStep 声明 (inputs/outputs)。
-            # 行为 1:1 一致 — 拓扑序与原来顺序相同, 产物存储方式不变。
-            # 依赖关系:
-            #   compile → adapter → graph → {class, class_member, bit_select, module_graph}
-            #   module_graph → path_resolver → tracers
-            #   graph → {cond_ops, backfill}
-            # 独立步骤 (class/bit_select vs module_graph) 结构上可并行。
-            # =================================================================
+            # [ARCHITECTURE_TODOLIST #5] 显式 DAG 管线 —— step 实现见下方
+            # `_step_*` 方法 (P3.1 从 153 行内联闭包拆出)。
             from .core.pipeline import Pipeline, PipelineStep
 
-            def _step_compile(ctx):
-                # [iter_126 A1] compile 成功后才探测: target_module=None 且仅 1 个
-                # top 时自动以该 top 为 target (修无 target 时 generate 实例内部
-                # 缺失: graph_builder.py:68 gate + driver_extractor.py:1287 旧路径).
-                # 多 top 库保持全图 (用户显式 --module 选域)。只在成功 root 上做,
-                # 避免对编译失败的二次 get_root (消耗性, root→None)。
-                root = self._get_compiler().get_root()
-                if (auto_target_single_top and target_module is None
-                        and root is not None):
-                    try:
-                        tops = list(root.topInstances)
-                        if len(tops) == 1:
-                            ctx["target"] = str(tops[0].name)
-                    except Exception as e:
-                        _main_logger.warning("自动 target 检测失败: %s", e)
-                return root
-
-            def _step_adapter(ctx):
-                from .core.semantic_adapter import SemanticAdapter
-
-                compiler = ctx["compiler"]
-                semantic_adapter = SemanticAdapter(
-                    ctx["root"], compiler,
-                    target_module=ctx.get("target", target_module),
-                )
-                self._adapter = semantic_adapter  # Store for later access by _get_adapter()
-                return semantic_adapter
-
-            def _step_graph(ctx):
-                semantic_adapter = ctx["adapter"]
-                builder = GraphBuilder(semantic_adapter,
-                                       target_module=ctx.get("target", target_module))
-                graph = builder.build()
-                # [V2.A.2 cycle 17c] 把 adapter 挂在 graph 上, 供 coverage_generator
-                # 的 SignalExpressionVisitor 使用 (否则 _extract_atomics_from_ast
-                # 走字符串 fallback, 真实 AST 路径不生效)
-                graph._adapter = semantic_adapter
-                self._graph = graph
-                return graph
-
-            def _step_class(ctx):
-                # [iter_154 C4-B / D5 namespace 规则] class 类型级节点
-                # (packet.*) 在 GraphBuilder._filter_by_target **之后**加入图 —
-                # 即**显式保留** (与 module 定义同级语义: 全局定义, 结构
-                # 需要, 不受 target 过滤); 实例节点 (top.p.*) 天然在 target
-                # 树内。此加入时机 = 规则本身 (勿移到 filter 前, 否则类型级
-                # 会被当 target 外节点 drop)。
-                class_builder = ClassGraphBuilder(ctx["adapter"])
-                class_builder.build(ctx["graph"])
-                return None
-
-            def _step_class_member(ctx):
-                self._resolve_class_member_access(ctx["adapter"], ctx["graph"])
-                return None
-
-            def _step_bit_select(ctx):
-                bit_select_handler = BitSelectHandler(ctx["adapter"], ctx["graph"])
-                bit_select_handler.process()
-                return None
-
-            def _step_module_graph(ctx):
-                module_graph = ModuleInstanceGraph(ctx["adapter"])
-                module_graph.build(ctx["adapter"])
-                self._module_graph = module_graph
-                return module_graph
-
-            def _step_path_resolver(ctx):
-                path_resolver = PathResolver(ctx["graph"], ctx["module_graph"])
-                self._path_resolver = path_resolver
-                return path_resolver
-
-            def _step_tracers(ctx):
-                self._init_tracers()
-                return None
-
-            def _step_cond_ops(ctx):
-                self._emit_conditional_op_nodes()
-                return None
-
-            def _step_backfill(ctx):
-                self._backfill_source_locations(ctx["adapter"])
-                return None
-
             pipeline = Pipeline([
-                PipelineStep("compile", _step_compile, outputs=("root",)),
-                PipelineStep("adapter", _step_adapter, inputs=("root",), outputs=("adapter",)),
-                PipelineStep("graph", _step_graph, inputs=("adapter",), outputs=("graph",)),
-                PipelineStep("class", _step_class, inputs=("adapter", "graph")),
-                PipelineStep("class_member", _step_class_member, inputs=("adapter", "graph")),
-                PipelineStep("bit_select", _step_bit_select, inputs=("adapter", "graph")),
-                PipelineStep("module_graph", _step_module_graph, inputs=("adapter", "graph"), outputs=("module_graph",)),
-                PipelineStep("path_resolver", _step_path_resolver, inputs=("graph", "module_graph"), outputs=("path_resolver",)),
-                PipelineStep("tracers", _step_tracers, inputs=("graph", "module_graph")),
-                PipelineStep("cond_ops", _step_cond_ops, inputs=("graph",)),
-                PipelineStep("backfill", _step_backfill, inputs=("adapter", "graph")),
+                PipelineStep("compile", self._step_compile, outputs=("root",)),
+                PipelineStep("adapter", self._step_adapter, inputs=("root",), outputs=("adapter",)),
+                PipelineStep("graph", self._step_graph, inputs=("adapter",), outputs=("graph",)),
+                PipelineStep("class", self._step_class, inputs=("adapter", "graph")),
+                PipelineStep("class_member", self._step_class_member, inputs=("adapter", "graph")),
+                PipelineStep("bit_select", self._step_bit_select, inputs=("adapter", "graph")),
+                PipelineStep("module_graph", self._step_module_graph,
+                             inputs=("adapter", "graph"), outputs=("module_graph",)),
+                PipelineStep("path_resolver", self._step_path_resolver,
+                             inputs=("graph", "module_graph"), outputs=("path_resolver",)),
+                PipelineStep("tracers", self._step_tracers, inputs=("graph", "module_graph")),
+                PipelineStep("cond_ops", self._step_cond_ops, inputs=("graph",)),
+                PipelineStep("backfill", self._step_backfill, inputs=("adapter", "graph")),
             ])
-            pipeline.run({"compiler": self._get_compiler()})
+            pipeline.run({
+                "compiler": self._get_compiler(),
+                "target": target_module,
+                "auto_target_single_top": auto_target_single_top,
+            })
 
             # 保存到缓存
             if use_cache and cache_key:
@@ -424,6 +339,79 @@ class UnifiedTracer:
                 }
                 cache.put_by_key(cache_key, cache_data)
         return self._graph
+
+    # ------------------------------------------------------------------
+    # build_graph 的 DAG step 实现（P3.1 从内联闭包拆出）
+    # ------------------------------------------------------------------
+    def _step_compile(self, ctx):
+        """编译并解析顶层；单 top 且未指定 target 时可自动取该 top。"""
+        root = self._get_compiler().get_root()
+        if (ctx.get("auto_target_single_top") and ctx.get("target") is None
+                and root is not None):
+            try:
+                tops = list(root.topInstances)
+                if len(tops) == 1:
+                    ctx["target"] = str(tops[0].name)
+            except Exception as e:
+                _main_logger.warning("自动 target 检测失败: %s", e)
+        return root
+
+    def _step_adapter(self, ctx):
+        from .core.semantic_adapter import SemanticAdapter
+
+        compiler = ctx["compiler"]
+        adapter = SemanticAdapter(
+            ctx["root"], compiler,
+            target_module=ctx.get("target"),
+        )
+        self._adapter = adapter
+        return adapter
+
+    def _step_graph(self, ctx):
+        adapter = ctx["adapter"]
+        builder = GraphBuilder(adapter,
+                               target_module=ctx.get("target"))
+        graph = builder.build()
+        # [V2.A.2 cycle 17c] coverage_generator 需要 adapter 上的 AST 访问
+        graph._adapter = adapter
+        self._graph = graph
+        return graph
+
+    def _step_class(self, ctx):
+        # [iter_154 C4-B / D5] class 类型级节点在 filter 之后加入（显式保留）
+        ClassGraphBuilder(ctx["adapter"]).build(ctx["graph"])
+        return None
+
+    def _step_class_member(self, ctx):
+        self._resolve_class_member_access(ctx["adapter"], ctx["graph"])
+        return None
+
+    def _step_bit_select(self, ctx):
+        BitSelectHandler(ctx["adapter"], ctx["graph"]).process()
+        return None
+
+    def _step_module_graph(self, ctx):
+        module_graph = ModuleInstanceGraph(ctx["adapter"])
+        module_graph.build(ctx["adapter"])
+        self._module_graph = module_graph
+        return module_graph
+
+    def _step_path_resolver(self, ctx):
+        path_resolver = PathResolver(ctx["graph"], ctx["module_graph"])
+        self._path_resolver = path_resolver
+        return path_resolver
+
+    def _step_tracers(self, ctx):
+        self._init_tracers()
+        return None
+
+    def _step_cond_ops(self, ctx):
+        self._emit_conditional_op_nodes()
+        return None
+
+    def _step_backfill(self, ctx):
+        self._backfill_source_locations(ctx["adapter"])
+        return None
 
     def load_graph(self, graph: SignalGraph) -> None:
         self._graph = graph
@@ -467,316 +455,225 @@ class UnifiedTracer:
         return self._compiler.get_elaboration_errors()
 
     def _resolve_class_member_access(self, adapter, graph):
-        """为 class 实例成员访问创建 MEMBER_SELECT 边
+        """为 class 实例成员访问建 MEMBER_SELECT 边（P0~P3 四步，实现在下方）。"""
+        from trace.core.graph.models import NodeKind
 
-        P0: top.p.addr --MEMBER_SELECT--> top.p, top.p.addr --MEMBER_SELECT--> packet.addr
-        P1: top.p (SIGNAL -> CLASS_INSTANCE), top.p --IS_INSTANCE_OF--> packet
-        P2: packet.range (CLASS_PROPERTY -> CLASS_INSTANCE, 组合成员)
-        P3: packet.range.min_addr (多层成员访问)
-        """
-        import re
-
-        from trace.core.graph.models import EdgeKind, NodeKind, TraceEdge
-
-        classes = adapter.get_classes()
-        class_names = set()
-        for cls in classes:
-            # [FIX 2026-06-26] pyslang binary garbage
-            try:
-                name = getattr(cls, "name", None)
-                if name:
-                    class_names.add(str(name).strip())
-            except (UnicodeDecodeError, TypeError):
-                continue
-
+        class_names = self._collect_class_names(adapter)
         if not class_names:
             return
 
-        # [P1] 识别模块级 class 实例 (p = new())，升级为 CLASS_INSTANCE
-        instance_to_class = {}  # {instance_path: class_name}
+        instance_to_class = self._find_class_instances(adapter)
+        self._upgrade_class_instances(graph, NodeKind, instance_to_class)
+        self._link_member_access(graph, NodeKind, class_names)
+
+    def _collect_class_names(self, adapter) -> set[str]:
+        """所有 class 名（pyslang 二进制垃圾名跳过）。"""
+        names: set[str] = set()
+        for cls in adapter.get_classes():
+            try:
+                name = getattr(cls, "name", None)
+                if name:
+                    names.add(str(name).strip())
+            except (UnicodeDecodeError, TypeError):
+                continue
+        return names
+
+    def _find_class_instances(self, adapter) -> dict[str, str]:
+        """模块级 class 实例 (p = new()) → {实例路径: class 名}。"""
+        found: dict[str, str] = {}
         for module in adapter.get_modules():
             module_name = adapter.get_module_name(module)
             for decl in adapter.get_data_declarations(module):
                 type_node = getattr(decl, "type", None)
                 if type_node is None:
                     continue
-                type_kind = str(getattr(type_node, "kind", ""))
-                if "ClassType" not in type_kind:
+                if "ClassType" not in str(getattr(type_node, "kind", "")):
                     continue
                 cls_name = getattr(type_node, "name", None)
                 if cls_name is None:
                     continue
-                cls_name = str(cls_name).strip()
                 sig_name = adapter.get_signal_name(decl)
-                instance_path = f"{module_name}.{sig_name}"
-                instance_to_class[instance_path] = cls_name
+                found[f"{module_name}.{sig_name}"] = str(cls_name).strip()
+        return found
 
-        # 升级模块级实例节点 + 创建 IS_INSTANCE_OF 边
+    def _upgrade_class_instances(self, graph, NodeKind, instance_to_class: dict[str, str]) -> None:
+        """P1: 实例节点 → CLASS_INSTANCE + IS_INSTANCE_OF；P2: 组合成员同升级。"""
+        from trace.core.graph.models import EdgeKind, TraceEdge
+
         for inst_path, cls_name in instance_to_class.items():
             inst_node = graph.get_node(inst_path)
             if inst_node is None:
                 continue
             inst_node.kind = NodeKind.CLASS_INSTANCE
-            existing = graph.get_edge(inst_path, cls_name)
-            if existing is None:
-                graph.add_trace_edge(
-                    TraceEdge(
-                        src=inst_path,
-                        dst=cls_name,
-                        kind=EdgeKind.IS_INSTANCE_OF,
-                    )
-                )
+            if graph.get_edge(inst_path, cls_name) is None:
+                graph.add_trace_edge(TraceEdge(
+                    src=inst_path, dst=cls_name, kind=EdgeKind.IS_INSTANCE_OF))
 
-        # [P2] 升级组合成员: CLASS_PROPERTY + IS_INSTANCE_OF -> CLASS_INSTANCE
         for node_id in list(graph.nodes()):
             node = graph.get_node(node_id)
             if node is None or node.kind != NodeKind.CLASS_PROPERTY:
                 continue
-            # 检查是否有 IS_INSTANCE_OF 边
             for src, dst in graph.edges():
-                if src == node_id:
-                    edge = graph.get_edge(src, dst)
-                    if edge.kind == EdgeKind.IS_INSTANCE_OF:
-                        node.kind = NodeKind.CLASS_INSTANCE
-                        instance_to_class[node_id] = dst
-                        break
+                if src != node_id:
+                    continue
+                edge = graph.get_edge(src, dst)
+                if edge.kind == EdgeKind.IS_INSTANCE_OF:
+                    node.kind = NodeKind.CLASS_INSTANCE
+                    instance_to_class[node_id] = dst
+                    break
 
-        # [P0/P3] 解析成员访问 (p.addr, range.min_addr)
+    def _link_member_access(self, graph, NodeKind, class_names: set[str]) -> None:
+        """P0/P3: 实例成员 (p.addr / range.min_addr) → MEMBER_SELECT 两条边。"""
+        import re
+
+        from trace.core.graph.models import EdgeKind, TraceEdge
+
         for node_id in list(graph.nodes()):
             match = re.match(r"^(.+)\.([^.]+)$", node_id)
             if not match:
                 continue
-
-            base_path = match.group(1)
-            member_name = match.group(2)
-
+            base_path, member_name = match.group(1), match.group(2)
             base_node = graph.get_node(base_path)
-            if base_node is None:
-                continue
-
-            # 只处理 SIGNAL 类型节点
             node = graph.get_node(node_id)
-            if node is None:
+            if base_node is None or node is None or node.kind != NodeKind.SIGNAL:
                 continue
-            if node.kind != NodeKind.SIGNAL:
-                continue
-
-            # 只有 base 是 CLASS_INSTANCE 时才升级（排除 struct 等）
+            # 只有 base 是 class 实例才升级（排除 struct 等）
             if base_node.kind != NodeKind.CLASS_INSTANCE:
                 continue
-
-            # 检查是否有对应的 class property
-            class_prop_id = None
-            for cls_name in class_names:
-                candidate = f"{cls_name}.{member_name}"
-                if graph.get_node(candidate) is not None:
-                    class_prop_id = candidate
-                    break
-
+            class_prop_id = next(
+                (f"{c}.{member_name}" for c in class_names
+                 if graph.get_node(f"{c}.{member_name}") is not None),
+                None,
+            )
             if class_prop_id is None:
                 continue
 
-            # 升级节点类型
             node.kind = NodeKind.CLASS_INSTANCE_PROPERTY
-
-            # MEMBER_SELECT: p.addr -> p
-            existing = graph.get_edge(node_id, base_path)
-            if existing is None:
-                graph.add_trace_edge(
-                    TraceEdge(
-                        src=node_id,
-                        dst=base_path,
-                        kind=EdgeKind.MEMBER_SELECT,
-                    )
-                )
-
-            # MEMBER_SELECT: p.addr -> packet.addr
-            existing2 = graph.get_edge(node_id, class_prop_id)
-            if existing2 is None:
-                graph.add_trace_edge(
-                    TraceEdge(
-                        src=node_id,
-                        dst=class_prop_id,
-                        kind=EdgeKind.MEMBER_SELECT,
-                    )
-                )
+            for dst in (base_path, class_prop_id):
+                if graph.get_edge(node_id, dst) is None:
+                    graph.add_trace_edge(TraceEdge(
+                        src=node_id, dst=dst, kind=EdgeKind.MEMBER_SELECT))
 
     # =========================================================================
     # [FIX 2026-08-21 Plan B Step 1] OP_TERNARY / OP_CASE 节点 emit
     # =========================================================================
+    _OP_TERNARY = ("Ternary", "ConditionalOp", "ConditionalExpression")
+    _OP_CASE = ("Case", "CaseStatement", "CaseExpression")
+
     def _emit_conditional_op_nodes(self) -> None:
-        """从 _expr_trees 提取 OP_TERNARY / OP_CASE 节点, 加到 graph.
+        """从 `_expr_trees` 提取 OP_TERNARY / OP_CASE 节点（P3.1 拆分后的编排）。
 
-        之前 ?: (sel) / case (sel) 是 ELK-only 合成节点, 内部 graph 看不到,
-        导致 `graph nodes -j` 不显示, lint 误报 orphan, trace 看不到条件分支.
-
-        现在遍历 _expr_trees, 找 op='Ternary' / 'Case' / 'CaseStatement' / 'ConditionalOp',
-        emit 为 NodeKind.OP_TERNARY / NodeKind.OP_CASE 节点.
-
-        op 别名 (pyslang 10/11 + syntactic_form):
-        - 'Ternary' (pyslang 11 ExpressionKind)
-        - 'ConditionalOp' (pyslang 10 semantic)
-        - 'ConditionalExpression' (pyslang 10/11 syntax)
-        - 'Case' / 'CaseStatement' (case 表达式)
+        之前 ?: / case 是 ELK-only 合成节点，内部 graph 看不到；现在按表达式树
+        建 OP_* 节点 + BRANCH_*/CASE_* 边，让 `graph nodes` / trace 都能看到条件分支。
         """
         if self._graph is None:
             return
-        from trace.core.graph.models import NodeKind, TraceNode
-
         expr_trees = getattr(self._graph, "_expr_trees", {}) or {}
-        if not expr_trees:
-            return
-
-        OP_TERNARY_OPS = ("Ternary", "ConditionalOp", "ConditionalExpression")
-        OP_CASE_OPS = ("Case", "CaseStatement", "CaseExpression")
-
-        for tree_key, tree_dict in expr_trees.items():
-            if not isinstance(tree_dict, dict):
+        for tree_key, tree in expr_trees.items():
+            if not isinstance(tree, dict):
                 continue
-            # tree_key 格式: "{module_name}.{lhs_name}" (e.g. "ternary_test.y")
-            # 解析 module 和 lhs_short
             parts = tree_key.rsplit(".", 1)
             if len(parts) != 2:
                 continue
             parent_module, lhs_short = parts
-
-            # 遍历 tree_dict 找 ConditionalOp / Case 节点
-            seen_keys: set[str] = set()
-
-            def _walk(node, path):
-                if not isinstance(node, dict):
-                    return
+            seen: set[str] = set()
+            for node in self._iter_op_nodes(tree):
                 op = node.get("op")
-                if op in OP_TERNARY_OPS:
-                    # 提取条件信号名
-                    cond_sigs = []
-                    children = node.get("children", []) or []
-                    if children:
-                        def _collect_sigrefs(n):
-                            if isinstance(n, dict):
-                                if n.get("op") == "SignalRef":
-                                    lbl = n.get("label", "")
-                                    if lbl and lbl not in cond_sigs:
-                                        cond_sigs.append(lbl)
-                                for ch in n.get("children", []) or []:
-                                    _collect_sigrefs(ch)
-                        _collect_sigrefs(children[0])
-                    sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
-                    op_label = f"?: ({sel_label})"
-                    op_node_id = f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
-                    if op_node_id not in seen_keys and op_node_id not in self._graph:
-                        seen_keys.add(op_node_id)
-                        try:
-                            tn = TraceNode(
-                                id=op_node_id,
-                                name=op_label,
-                                module=parent_module,
-                                kind=NodeKind.OP_TERNARY,
-                                width=(0, 0),
-                                extra={"op": "Ternary", "sel_label": sel_label},
-                            )
-                            self._graph.add_trace_node(tn)
-                            # [FIX 2026-08-22 Plan B Step 2b] emit BRANCH_* edges
-                            # cond_sigs → OP_TERNARY (BRANCH_CONDITION)
-                            # true_branch → OP_TERNARY (BRANCH_TRUE)
-                            # false_branch → OP_TERNARY (BRANCH_FALSE)
-                            # OP_TERNARY → lhs (BRANCH_RESULT)
-                            from trace.core.graph.models import EdgeKind, TraceEdge
-                            for cond_sig in cond_sigs:
-                                cond_full = f"{parent_module}.{cond_sig}"
-                                if cond_full in self._graph:
-                                    self._graph.add_trace_edge(TraceEdge(
-                                        src=cond_full, dst=op_node_id,
-                                        kind=EdgeKind.BRANCH_CONDITION,
-                                    ))
-                            # children[1] = true branch, children[2] = false branch
-                            for ci, edge_kind in [(1, EdgeKind.BRANCH_TRUE), (2, EdgeKind.BRANCH_FALSE)]:
-                                if ci < len(children):
-                                    branch_node = children[ci]
-                                    if isinstance(branch_node, dict) and branch_node.get('op') == 'SignalRef':
-                                        bl = branch_node.get('label', '')
-                                        if bl:
-                                            branch_full = f"{parent_module}.{bl}"
-                                            if branch_full in self._graph:
-                                                self._graph.add_trace_edge(TraceEdge(
-                                                    src=branch_full, dst=op_node_id,
-                                                    kind=edge_kind,
-                                                ))
-                            # OP_TERNARY → lhs (BRANCH_RESULT)
-                            lhs_full = f"{parent_module}.{lhs_short}"
-                            if lhs_full in self._graph:
-                                self._graph.add_trace_edge(TraceEdge(
-                                    src=op_node_id, dst=lhs_full,
-                                    kind=EdgeKind.BRANCH_RESULT,
-                                ))
-                        except Exception as e:
-                            # [FIX 2026-08-21] 不让错误中断 build_graph 主流程
-                            logger.debug("%s: 忽略 Exception: %s", __name__, e)
-                elif op in OP_CASE_OPS:
-                    cond_sigs = []
-                    children = node.get("children", []) or []
-                    if children:
-                        def _collect_sigrefs2(n):
-                            if isinstance(n, dict):
-                                if n.get("op") == "SignalRef":
-                                    lbl = n.get("label", "")
-                                    if lbl and lbl not in cond_sigs:
-                                        cond_sigs.append(lbl)
-                                for ch in n.get("children", []) or []:
-                                    _collect_sigrefs2(ch)
-                        _collect_sigrefs2(children[0])
-                    sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
-                    op_label = f"case ({sel_label})"
-                    op_node_id = f"{parent_module}.{lhs_short}.case_{sel_label.replace(',', '_').replace(' ', '')}"
-                    if op_node_id not in seen_keys and op_node_id not in self._graph:
-                        seen_keys.add(op_node_id)
-                        try:
-                            tn = TraceNode(
-                                id=op_node_id,
-                                name=op_label,
-                                module=parent_module,
-                                kind=NodeKind.OP_CASE,
-                                width=(0, 0),
-                                extra={"op": "Case", "sel_label": sel_label},
-                            )
-                            self._graph.add_trace_node(tn)
-                            # [FIX 2026-08-22 Plan B Step 2b] emit CASE_* edges
-                            # cond_sigs → OP_CASE (CASE_SELECT)
-                            # case_items → OP_CASE (CASE_ITEM)
-                            # OP_CASE → lhs (CASE_RESULT)
-                            from trace.core.graph.models import EdgeKind, TraceEdge
-                            for cond_sig in cond_sigs:
-                                cond_full = f"{parent_module}.{cond_sig}"
-                                if cond_full in self._graph:
-                                    self._graph.add_trace_edge(TraceEdge(
-                                        src=cond_full, dst=op_node_id,
-                                        kind=EdgeKind.CASE_SELECT,
-                                    ))
-                            # case 语句 items: children[1:] 是 case item 表达式
-                            for ci in range(1, len(children)):
-                                item_node = children[ci]
-                                if isinstance(item_node, dict) and item_node.get('op') == 'SignalRef':
-                                    il = item_node.get('label', '')
-                                    if il:
-                                        item_full = f"{parent_module}.{il}"
-                                        if item_full in self._graph:
-                                            self._graph.add_trace_edge(TraceEdge(
-                                                src=item_full, dst=op_node_id,
-                                                kind=EdgeKind.CASE_ITEM,
-                                            ))
-                            # OP_CASE → lhs (CASE_RESULT)
-                            lhs_full = f"{parent_module}.{lhs_short}"
-                            if lhs_full in self._graph:
-                                self._graph.add_trace_edge(TraceEdge(
-                                    src=op_node_id, dst=lhs_full,
-                                    kind=EdgeKind.CASE_RESULT,
-                                ))
-                        except Exception as e:
-                            logger.debug("%s: 忽略 Exception: %s", __name__, e)
-                for c in node.get("children", []) or []:
-                    _walk(c, path + [node])
+                if op in self._OP_TERNARY:
+                    self._emit_ternary_op(parent_module, lhs_short, node, seen)
+                elif op in self._OP_CASE:
+                    self._emit_case_op(parent_module, lhs_short, node, seen)
 
-            _walk(tree_dict, [])
+    def _iter_op_nodes(self, node):
+        """先序遍历表达式树，产出 Ternary/Case 节点。"""
+        if not isinstance(node, dict):
+            return
+        if node.get("op") in self._OP_TERNARY or node.get("op") in self._OP_CASE:
+            yield node
+        for child in node.get("children", []) or []:
+            yield from self._iter_op_nodes(child)
+
+    @staticmethod
+    def _signal_refs(node) -> list[str]:
+        """子树里的 SignalRef label（去重保序）。"""
+        out: list[str] = []
+
+        def walk(n):
+            if isinstance(n, dict):
+                if n.get("op") == "SignalRef":
+                    label = n.get("label", "")
+                    if label and label not in out:
+                        out.append(label)
+                for child in n.get("children", []) or []:
+                    walk(child)
+
+        walk(node)
+        return out
+
+    def _add_op_node(self, op_id: str, label: str, module: str, kind, extra: dict) -> bool:
+        """建 OP_* 节点；失败只 debug（不中断 build）。"""
+        from trace.core.graph.models import TraceNode
+
+        try:
+            self._graph.add_trace_node(TraceNode(
+                id=op_id, name=label, module=module, kind=kind, width=(0, 0), extra=extra))
+            return True
+        except Exception as e:  # [FIX 2026-08-21] 不让错误中断 build_graph
+            logger.debug("%s: 忽略 Exception: %s", __name__, e)
+            return False
+
+    def _link_op_edge(self, src: str, dst: str, kind) -> None:
+        from trace.core.graph.models import TraceEdge
+
+        if src in self._graph and dst in self._graph:
+            self._graph.add_trace_edge(TraceEdge(src=src, dst=dst, kind=kind))
+
+    def _emit_ternary_op(self, parent_module, lhs_short, node, seen: set[str]) -> None:
+        """OP_TERNARY + BRANCH_CONDITION/TRUE/FALSE/RESULT 边。"""
+        from trace.core.graph.models import EdgeKind, NodeKind
+
+        children = node.get("children", []) or []
+        cond_sigs = self._signal_refs(children[0]) if children else []
+        sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
+        op_id = f"{parent_module}.{lhs_short}.ternary_{sel_label.replace(',', '_').replace(' ', '')}"
+        if op_id in seen or op_id in self._graph:
+            return
+        seen.add(op_id)
+        if not self._add_op_node(op_id, f"?: ({sel_label})", parent_module,
+                                 NodeKind.OP_TERNARY, {"op": "Ternary", "sel_label": sel_label}):
+            return
+        for cond in cond_sigs:
+            self._link_op_edge(f"{parent_module}.{cond}", op_id, EdgeKind.BRANCH_CONDITION)
+        for ci, edge_kind in ((1, EdgeKind.BRANCH_TRUE), (2, EdgeKind.BRANCH_FALSE)):
+            branch = children[ci] if ci < len(children) else None
+            if isinstance(branch, dict) and branch.get("op") == "SignalRef":
+                label = branch.get("label", "")
+                if label:
+                    self._link_op_edge(f"{parent_module}.{label}", op_id, edge_kind)
+        self._link_op_edge(op_id, f"{parent_module}.{lhs_short}", EdgeKind.BRANCH_RESULT)
+
+    def _emit_case_op(self, parent_module, lhs_short, node, seen: set[str]) -> None:
+        """OP_CASE + CASE_SELECT/ITEM/RESULT 边。"""
+        from trace.core.graph.models import EdgeKind, NodeKind
+
+        children = node.get("children", []) or []
+        cond_sigs = self._signal_refs(children[0]) if children else []
+        sel_label = ", ".join(sorted(cond_sigs)) if cond_sigs else "?"
+        op_id = f"{parent_module}.{lhs_short}.case_{sel_label.replace(',', '_').replace(' ', '')}"
+        if op_id in seen or op_id in self._graph:
+            return
+        seen.add(op_id)
+        if not self._add_op_node(op_id, f"case ({sel_label})", parent_module,
+                                 NodeKind.OP_CASE, {"op": "Case", "sel_label": sel_label}):
+            return
+        for cond in cond_sigs:
+            self._link_op_edge(f"{parent_module}.{cond}", op_id, EdgeKind.CASE_SELECT)
+        for item in children[1:]:
+            if isinstance(item, dict) and item.get("op") == "SignalRef":
+                label = item.get("label", "")
+                if label:
+                    self._link_op_edge(f"{parent_module}.{label}", op_id, EdgeKind.CASE_ITEM)
+        self._link_op_edge(op_id, f"{parent_module}.{lhs_short}", EdgeKind.CASE_RESULT)
 
     # =========================================================================
     # 实例提取 API (Req-1: API 简化)
