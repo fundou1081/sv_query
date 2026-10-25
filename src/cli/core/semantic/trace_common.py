@@ -219,6 +219,36 @@ def _node_to_dict(node) -> dict:
     }
 
 
+def attach_distances(graph, root: str, items: list[dict], reverse: bool = False) -> None:
+    """[iter_278] 给 loads/drivers 结果填**真实跳数** (就地改 `distance` 字段)。
+
+    历史: `_node_to_dict` 一直写 `distance=1`（KNOWN_LIMITATIONS §3.3-2），因为
+    TraceNode 上没有深度信息，而**不能**在共享节点上写属性（同一图会被多次查询）。
+
+    这里在响应组装阶段做一次 BFS（fanout 沿 successors / fanin 沿 predecessors），
+    按最短跳数填 distance。只在内存 dict 上写，不碰图节点。
+    """
+    if graph is None or not items:
+        return
+    from collections import deque
+
+    adj = (lambda n: list(graph.predecessors(n))) if reverse else (lambda n: list(graph.successors(n)))
+    depth = {root: 0}
+    q = deque([root])
+    remaining = {it["id"] for it in items}
+    while q and remaining:
+        cur = q.popleft()
+        for nxt in adj(cur):
+            if nxt in depth:
+                continue
+            depth[nxt] = depth[cur] + 1
+            if nxt in remaining:
+                remaining.discard(nxt)
+            q.append(nxt)
+    for it in items:
+        it["distance"] = depth.get(it["id"], it.get("distance", 1))
+
+
 def _apply_filters(
     items: list[dict],
     type_filter: str | None = None,
