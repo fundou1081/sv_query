@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass, field
 
 from .._safe import _safe_attr, _safe_str
-from .graph.models import NodeKind, SignalGraph
+from .graph.models import EdgeKind, NodeKind, SignalGraph
 from .semantic_adapter import SemanticAdapter
 
 logger = logging.getLogger(__name__)
@@ -357,104 +357,137 @@ def _is_clean_id(s: str | None) -> bool:
     return True
 
 
-def extract_module_edges_from_mig(
-    mig,
+def extract_module_edges_from_graph(
+    graph,
     instances: list[ModuleInstance],
     max_edges: int = 500,
 ) -> list[dict]:
-    """[PR4 2026-06-15] 从 MIG 提取 instance-to-instance 的 port 连接.
+    """[iter_283 / PLAN P1.1] 从**实例级 SignalGraph** 推 instance-to-instance 边。
 
-    MIG 的 port_to_internal 映射是 (instance_path.port_name) → (module_def.port_name).
-    如果两个 instance port 映射到同一个 internal, 它们被同一条 wire 连接.
-    返回 [{src, dst, internal, port, width}] 列表.
+    取代 `extract_module_edges_from_mig`（按 MIG 的 `inst_port → module_type.port`
+    分组——同模块类型同名端口就算相连，是双命名空间时代的启发式，多实例会误连）。
 
-    Args:
-        mig: ModuleInstanceGraph (可 None, 返 [] 优雅降级)
-        instances: 已抽取的 instance 列表 (用于过滤 in-scope)
-        max_edges: 最大返回边数 (防止 graph 爆炸)
+    新判据（纯实例级，全部来自图）：
+      1. **直接边**：图中两端归属**不同实例**的 CONNECTION/DRIVER 边
+      2. **经过父级网络**：两端分别连着同一个网络节点（owner 不在 in-scope 实例内，
+         如 top 层 wire/port）的两个实例端点 → 该网络连接这两个实例
 
     Returns:
-        list of edge dicts: {src, dst, internal, port_src, port_dst, width}
+        [{src, dst, src_instance, dst_instance, internal, port, port_src,
+          port_dst, width}]；`internal` = 网络/端口节点 id。
     """
-    if mig is None:
+    if graph is None or not instances:
         return []
 
-    pti = getattr(mig, "port_to_internal", {})
-    if not pti:
-        return []
-
-    # 反向: internal -> [instance ports]
-    from collections import defaultdict
-    int_to_ports = defaultdict(list)
-    for inst_port, int_sig in pti.items():
-        if not _is_clean_id(inst_port) or not _is_clean_id(int_sig):
-            continue
-        int_to_ports[int_sig].append(inst_port)
-
-    # 跟 instances 取交集 (只保留 in-scope 的连接)
     inst_ids = {inst.id for inst in instances}
-    # 同时建一个 set: instance 的 port (instance.port_name) -> instance
-    # 因为 MIG 的 port_to_internal 是 instance-level + port suffix
-    inst_port_to_inst: dict[str, str] = {}
-    for inst in instances:
-        # 这个 instance 本身可能不在 pti 里, 但它的 port 在
-        # 通过 pti 找: 任何 'startswith(inst.id).' 的 port
-        for inst_port in pti.keys():
-            if inst_port.startswith(inst.id + "."):
-                inst_port_to_inst[inst_port] = inst.id
+    if not inst_ids:
+        return []
+
+    def owner(node_id: str) -> str | None:
+        """节点 → 所属实例（最长前缀匹配；generate 路径也能命中）。"""
+        parts = node_id.split(".")
+        for i in range(len(parts) - 1, 0, -1):
+            cand = ".".join(parts[:i])
+            if cand in inst_ids:
+                return cand
+        return None
+
+    def width_of(node_id: str) -> int | None:
+        node = graph.get_node(node_id)
+        w = getattr(node, "width", None)
+        if isinstance(w, (tuple, list)) and len(w) >= 2:
+            try:
+                return abs(int(w[0]) - int(w[1])) + 1
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def port_of(node_id: str) -> str:
+        return node_id.rsplit(".", 1)[-1]
+
+    # 预计算 owner（节点数有限，一次遍历）
+    owner_of: dict[str, str | None] = {}
+    for node_id in graph.nodes():
+        owner_of[node_id] = owner(node_id)
 
     edges: list[dict] = []
+    seen: set[tuple[str, str, str, str]] = set()
 
-    for int_sig, ports in int_to_ports.items():
-        if len(ports) < 2:
+    def add(a_inst: str, b_inst: str, net: str, a_port: str, b_port: str, width_id: str) -> bool:
+        if a_inst == b_inst:
+            return False
+        key = (a_inst, b_inst, a_port, b_port)
+        if key in seen:
+            return False
+        seen.add(key)
+        edges.append({
+            "src": a_inst,
+            "dst": b_inst,
+            "src_instance": a_inst,
+            "dst_instance": b_inst,
+            "internal": net,
+            "port": a_port,
+            "port_src": a_port,
+            "port_dst": b_port,
+            "width": width_of(width_id),
+        })
+        return True
+
+    # ---- 1. 直接跨实例边 ----
+    for (u, v), trace_edges in graph._edge_data.items():
+        if u == v:
             continue
-        # 两个 instance 都应该在 instances 里
-        in_scope_pairs = []
-        for i in range(len(ports) - 1):
-            for j in range(i + 1, len(ports)):
-                a, b = ports[i], ports[j]
-                # a, b 是 'instance.port_name'. 提取 instance 部分
-                a_inst = inst_port_to_inst.get(a)
-                b_inst = inst_port_to_inst.get(b)
-                if a_inst and b_inst and a_inst in inst_ids and b_inst in inst_ids and a_inst != b_inst:
-                    in_scope_pairs.append((a, b, a_inst, b_inst))
-
-        if not in_scope_pairs:
+        if not any(e.kind in (EdgeKind.CONNECTION, EdgeKind.DRIVER) for e in trace_edges):
             continue
-        # 限制每组最多 4 对, 防止 N×N 爆炸
-        if len(in_scope_pairs) > 4:
-            in_scope_pairs = in_scope_pairs[:4]
-
-        for a, b, a_inst, b_inst in in_scope_pairs:
-            a_port = a.rsplit(".", 1)[-1] if "." in a else ""
-            b_port = b.rsplit(".", 1)[-1] if "." in b else ""
-
-            # 从 MIG 查 width
-            width = None
-            try:
-                int_info = mig._module_ports.get(int_sig.split(".")[0], {}).get(a_port)
-                if int_info and hasattr(int_info, "width"):
-                    w = int_info.width
-                    if isinstance(w, tuple) and len(w) == 2:
-                        width = abs(int(w[0]) - int(w[1])) + 1
-            except Exception as e:
-                logger.warning("接口位宽提取失败: %s", e)
-
-            edges.append({
-                "src": a_inst,  # [PR4 fix] instance, not instance.port
-                "dst": b_inst,
-                "src_instance": a_inst,  # [Phase 4 2026-06-25] alias for arch command
-                "dst_instance": b_inst,
-                "internal": int_sig,
-                "port": int_sig.split(".", 1)[-1] if "." in int_sig else int_sig,  # net 名 (e.g. flush_i)
-                "port_src": a_port,
-                "port_dst": b_port,
-                "width": width,
-            })
-
+        ou, ov = owner_of.get(u), owner_of.get(v)
+        if ou and ov and ou != ov:
+            add(ou, ov, u, port_of(u), port_of(v), v)
             if len(edges) >= max_edges:
-                return edges
+                break
 
+    # ---- 2. 经过父级网络（net 的端点都是实例端口）----
+    # 每个网络最多贡献 4 对（与旧 MIG 启发式上限一致）：时钟/复位这类广播网络
+    # 连着 N 个实例，全展开是 N² 条边，对架构视图是噪声。
+    MAX_PAIRS_PER_NET = 4
+    if len(edges) < max_edges:
+        net_endpoints: dict[str, list[tuple[str, str]]] = {}
+        for (u, v), trace_edges in graph._edge_data.items():
+            if not any(e.kind in (EdgeKind.CONNECTION, EdgeKind.DRIVER) for e in trace_edges):
+                continue
+            def is_net(node_id: str) -> bool:
+                """父级网络节点；字面量常量（0 / 1'b0）不是网络，不能当连线。"""
+                n = graph.get_node(node_id)
+                return n is not None and n.kind != NodeKind.CONST
+
+            ou, ov = owner_of.get(u), owner_of.get(v)
+            if ou and not ov and is_net(v):
+                net_endpoints.setdefault(v, []).append((ou, u))
+            elif ov and not ou and is_net(u):
+                net_endpoints.setdefault(u, []).append((ov, v))
+
+        for net, endpoints in net_endpoints.items():
+            if len({inst for inst, _ in endpoints}) < 2:
+                continue
+            # 按实例去重（同一实例同一网络只取一个端口）
+            uniq: dict[str, str] = {}
+            for inst, port_node in endpoints:
+                uniq.setdefault(inst, port_node)
+            items = sorted(uniq.items())
+            pairs_added = 0
+            for i in range(len(items) - 1):
+                for j in range(i + 1, len(items)):
+                    a_inst, a_node = items[i]
+                    b_inst, b_node = items[j]
+                    if add(a_inst, b_inst, net, port_of(a_node), port_of(b_node), b_node):
+                        pairs_added += 1
+                    if pairs_added >= MAX_PAIRS_PER_NET or len(edges) >= max_edges:
+                        break
+                if pairs_added >= MAX_PAIRS_PER_NET or len(edges) >= max_edges:
+                    break
+            if len(edges) >= max_edges:
+                break
+
+    edges.sort(key=lambda e: (e["src"], e["dst"], e["port_src"], e["port_dst"]))
     return edges
 
 

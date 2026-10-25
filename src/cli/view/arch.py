@@ -10,7 +10,8 @@
 #   python run_cli.py arch -f top.sv --with-ports                # 显示跨 module 端口连接
 #   python run_cli.py arch --filelist=project.f -t top -d 3      # 多文件项目
 #
-# 设计: 复用 ModuleInstanceGraph (MIG) L1 + extract_module_edges_from_mig L2,
+# 设计: L1 复用 ModuleInstanceGraph (MIG); L2 由实例级图推导
+#       (extract_module_edges_from_graph, iter_283 起不再用 MIG 类型映射),
 #        跟 visualize module 同源, 但 arch 更聚焦"项目架构 overview"而非"单 module 内部".
 #==============================================================================
 """
@@ -159,7 +160,7 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, ):
     """
     from trace.core.module_extractor import (
         extract_module,
-        extract_module_edges_from_mig,
+        extract_module_edges_from_graph,
     )
     from trace.core.semantic_adapter import SemanticAdapter
 
@@ -208,12 +209,13 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, ):
     mig = getattr(tracer, "_module_graph", None)
     if mig is not None:
         try:
-            edges = extract_module_edges_from_mig(
-                mig, instances=result.instances, max_edges=500,
+            # [iter_283 / PLAN P1.1] 实例级图直接给真实连接（不再用 MIG 类型映射）
+            edges = extract_module_edges_from_graph(
+                tracer.get_graph(), instances=result.instances, max_edges=500,
             )
         except Exception as e:
             import traceback
-            print(f"DEBUG: extract_module_edges_from_mig fail: {e}", file=sys.stderr)
+            print(f"DEBUG: extract_module_edges_from_graph fail: {e}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             edges = []
 

@@ -82,7 +82,7 @@ def module(
     不是单纯 graph. 直接用 UnifiedTracer 构造, 保留原有的二进制垃圾-safe except.
     """
     from trace.core.module_extractor import (
-        extract_module_edges_from_mig,
+        extract_module_edges_from_graph,
         extract_module_from_graph,
     )
 
@@ -135,11 +135,10 @@ def module(
     # 0 改动 graph_builder, 复用 PR3 已用 MIG fallback 的架构.
     edges: list[dict] = []
     if show_edges and use_mig:
-        mig = getattr(tracer, "_module_graph", None)
-        if mig is not None:
-            edges = extract_module_edges_from_mig(
-                mig, result.instances, max_edges=max_edges,
-            )
+        # [iter_283 / PLAN P1.1] 实例级图直接给真实连接（不再依赖 MIG 类型映射）
+        edges = extract_module_edges_from_graph(
+            tracer.get_graph(), result.instances, max_edges=max_edges,
+        )
 
     typer.echo(f"Target: {result.top_module}")
     typer.echo(f"Depth: {depth}")

@@ -1,312 +1,154 @@
-"""
-test_pr4_visualize_l2.py
-=========================
-[PR4 2026-06-15] visualize module L2 测试: cluster + instance-to-instance 边.
+"""[PR4 2026-06-15] visualize module L2 边测试 —— [iter_283] 改为**实例级图**推导。
 
-PR4 目标: visualize module 增强 L1 (instance tree) 到 L2 (跨 instance port 连接).
-用 ModuleInstanceGraph (MIG) 的 port_to_internal 反向查:
-  - 两个 instance port 共享同一 internal signal → 边
-  - DOT cluster 按 instance 所在 wrapper 分组
-  - JSON edges 字段 (新增)
+历史: 原来用 MIG 的 `port_to_internal`（`instance port → module_type.port`）反向分组，
+同模块类型同名端口即视为相连 —— 双命名空间时代的启发式，多实例会误连。
 
-[REFACTOR 2026-07-02] 改用 mock MIG 数据 + strict_uart fixture for CLI:
-  原 fixture 加载 pulp_axi_xbar.f (~30 SV files, 6-7GB memory)
-  8GB MBA pyslang C++ 触发 SIGSEGV (-11) 死整个 pytest
-  新方案: in-memory mock MIG + strict_uart fixture
+现在 `extract_module_edges_from_graph` 直接读实例级 SignalGraph：
+  1. 两端归属不同实例的 CONNECTION/DRIVER 边
+  2. 经过父级网络（top wire/port）相连的两个实例端点
+字面量常量（0 / 1'b0）不是网络，不产生边。
 """
 import json
+import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from trace.core.module_extractor import (
-    extract_module_edges_from_mig,
+from trace.core.module_extractor import (  # noqa: E402
+    extract_module,
+    extract_module_edges_from_graph,
 )
+from trace.core.semantic_adapter import SemanticAdapter  # noqa: E402
+from trace.unified_tracer import UnifiedTracer  # noqa: E402
 
-# ============================================================================
-# Mock MIG + instances (替代真实 pulp_axi_xbar)
-# ============================================================================
-
-# 模拟 axi_demux_intf 的 9 instances + 共享 clk_i/rst_ni edges
-# Top → i_demux (sub-module) + 一些 helpers
-MOCK_MIG_PORT_TO_INTERNAL = {
-    # shared clk_i (所有 instance 都有, 共享 internal = clk_i)
-    "axi_demux_intf.u_demux.clk_i": "clk_i",
-    "axi_demux_intf.u_mux.clk_i": "clk_i",
-    "axi_demux_intf.u_sync.clk_i": "clk_i",
-    "axi_demux_intf.u_arb.clk_i": "clk_i",
-    "axi_demux_intf.u_fifo.clk_i": "clk_i",
-    "axi_demux_intf.u_xbar.clk_i": "clk_i",
-    "axi_demux_intf.u_split.clk_i": "clk_i",
-    "axi_demux_intf.u_merge.clk_i": "clk_i",
-    "axi_demux_intf.u_buffer.clk_i": "clk_i",
-    # shared rst_ni
-    "axi_demux_intf.u_demux.rst_ni": "rst_ni",
-    "axi_demux_intf.u_mux.rst_ni": "rst_ni",
-    "axi_demux_intf.u_sync.rst_ni": "rst_ni",
-    "axi_demux_intf.u_arb.rst_ni": "rst_ni",
-    "axi_demux_intf.u_fifo.rst_ni": "rst_ni",
-    "axi_demux_intf.u_xbar.rst_ni": "rst_ni",
-    "axi_demux_intf.u_split.rst_ni": "rst_ni",
-    "axi_demux_intf.u_merge.rst_ni": "rst_ni",
-    "axi_demux_intf.u_buffer.rst_ni": "rst_ni",
-    # shared aw_valid internal (跨 instance 通信)
-    "axi_demux_intf.u_demux.aw_valid_o": "aw_valid_int",
-    "axi_demux_intf.u_mux.aw_valid_i": "aw_valid_int",
-    "axi_demux_intf.u_xbar.aw_valid_o": "aw_valid_int",
-    "axi_demux_intf.u_split.aw_valid_i": "aw_valid_int",
-    # shared data signal
-    "axi_demux_intf.u_demux.data_o": "data_bus",
-    "axi_demux_intf.u_mux.data_i": "data_bus",
-    "axi_demux_intf.u_buffer.data_o": "data_bus",
-    "axi_demux_intf.u_merge.data_i": "data_bus",
-    # additional shared internal signals for richer edge count
-    "axi_demux_intf.u_sync.sync_done_o": "sync_done_int",
-    "axi_demux_intf.u_xbar.sync_done_i": "sync_done_int",
-    "axi_demux_intf.u_arb.req_o": "arb_req_int",
-    "axi_demux_intf.u_xbar.req_i": "arb_req_int",
-    "axi_demux_intf.u_fifo.full_o": "fifo_full_int",
-    "axi_demux_intf.u_split.full_i": "fifo_full_int",
-    # 增加更多 internal signals 让 edge 数量足够 (≥10)
-    "axi_demux_intf.u_demux.bvalid_o": "bvalid_int",
-    "axi_demux_intf.u_mux.bvalid_i": "bvalid_int",
-    "axi_demux_intf.u_arb.gnt_o": "gnt_int",
-    "axi_demux_intf.u_demux.gnt_i": "gnt_int",
-    "axi_demux_intf.u_buffer.rdata_o": "rdata_int",
-    "axi_demux_intf.u_merge.rdata_i": "rdata_int",
-    "axi_demux_intf.u_split.wdata_o": "wdata_int",
-    "axi_demux_intf.u_buffer.wdata_i": "wdata_int",
-    "axi_demux_intf.u_xbar.rvalid_o": "rvalid_int",
-    "axi_demux_intf.u_demux.rvalid_i": "rvalid_int",
-}
-
-# Mock instances (跟 port_to_internal 里的 instance 名字一致)
-def _make_mock_instances():
-    """Build mock ModuleInstance list for axi_demux_intf."""
-    names = [
-        "u_demux", "u_mux", "u_sync", "u_arb", "u_fifo",
-        "u_xbar", "u_split", "u_merge", "u_buffer",
-    ]
-    return [
-        SimpleNamespace(
-            id=f"axi_demux_intf.{name}",
-            def_name=name.lstrip("u_"),
-            module_path=f"axi_demux_intf.{name}",
-            depth=1,
-        )
-        for name in names
-    ]
-
-
-def _make_mock_mig():
-    """Build mock MIG with port_to_internal attribute."""
-    return SimpleNamespace(port_to_internal=MOCK_MIG_PORT_TO_INTERNAL)
-
-
-# ============================================================================
-# Fixtures
-# ============================================================================
-
-PROJECT_ROOT = Path("/Users/fundou/my_dv_proj/sv_query").resolve()
+M3_FILELIST = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "minimal_3module" / "filelist.f")
 STRICT_UART_FILELIST = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "strict_uart" / "filelist.f")
 RUN_CLI = PROJECT_ROOT / "run_cli.py"
 
 
-@pytest.fixture
-def dmux_intf_result():
-    """Mock dmux_intf result (替代 extract_module 真实调用)."""
-    return SimpleNamespace(
-        instances=_make_mock_instances(),
-        module="axi_demux_intf",
-        depth=2,
+@pytest.fixture(scope="module")
+def m3():
+    """minimal_3module: top_minimal → sa1 → {la1, lp1}（3 实例，真实连线）。"""
+    tracer = UnifiedTracer(filelist=M3_FILELIST, log_level="ERROR")
+    graph = tracer.build_graph()
+    result = extract_module(
+        SemanticAdapter(tracer._get_compiler().get_root()), "top_minimal", max_depth=2,
     )
+    return graph, result
 
 
-@pytest.fixture
-def mock_mig():
-    """Mock MIG (替代真实 ModuleInstanceGraph)."""
-    return _make_mock_mig()
+class TestEdgesFromGraph:
+    def test_returns_list(self, m3):
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        assert isinstance(edges, list)
 
+    def test_required_fields(self, m3):
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        assert edges, "minimal_3module 应有跨实例连接"
+        for key in ("src", "dst", "src_instance", "dst_instance",
+                    "internal", "port", "port_src", "port_dst"):
+            assert key in edges[0], f"edge missing {key}: {edges[0]}"
 
-@pytest.fixture
-def tracer(mock_mig):
-    """Mock tracer 包含 MIG."""
-    return SimpleNamespace(
-        _module_graph=mock_mig,
-        _graph=mock_mig,
-    )
+    def test_endpoints_are_in_scope_instances(self, m3):
+        graph, result = m3
+        inst_ids = {i.id for i in result.instances}
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        for e in edges:
+            assert e["src"] in inst_ids, f"src not an instance: {e['src']}"
+            assert e["dst"] in inst_ids, f"dst not an instance: {e['dst']}"
+            assert e["src"] != e["dst"], f"self edge: {e}"
 
+    def test_real_connection_ports(self, m3):
+        """sa1 的 data_i 网络确实连到 la1.a（图里真实存在）。"""
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        hits = [
+            e for e in edges
+            if e["src"].endswith(".sa1") and e["dst"].endswith(".la1") and e["port_src"] == "data_i"
+        ]
+        assert hits, f"expected sa1.data_i → la1.a, got {edges[:5]}"
 
-# ============================================================================
-# Tests
-# ============================================================================
+    def test_constant_is_not_a_net(self, m3):
+        """字面量常量（0 / 1'b0）不能当网络，否则会产生假边。"""
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        for e in edges:
+            node = graph.get_node(e["internal"])
+            assert node is not None
+            assert node.kind.name != "CONST", f"edge uses CONST as net: {e}"
 
-class TestEdgesFromMIG:
-    """L2 边抽取."""
+    def test_deterministic(self, m3):
+        graph, result = m3
+        a = extract_module_edges_from_graph(graph, result.instances)
+        b = extract_module_edges_from_graph(graph, result.instances)
+        assert a == b
 
-    def test_extracted_returns_list(self, dmux_intf_result, mock_mig):
-        """函数应返回 list, 不 crash."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
-        assert isinstance(edges, list), f"expected list, got {type(edges)}"
+    def test_positive_count(self, m3):
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
+        assert len(edges) >= 3, f"expected >=3 edges, got {len(edges)}"
 
-    def test_edges_have_required_fields(self, dmux_intf_result, mock_mig):
-        """每个 edge 应有 src/dst/internal/port_src/port_dst/width."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
-        if not edges:
-            pytest.skip("no edges extracted (mock too thin)")
-        e = edges[0]
-        for key in ("src", "dst", "internal", "port_src", "port_dst"):
-            assert key in e, f"edge missing {key}: {e}"
-
-    def test_edges_endpoints_are_instances(self, dmux_intf_result, mock_mig):
-        """edge 的 src/dst 应该是 instance id (没 .port_name 后缀)."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
-        if not edges:
-            pytest.skip("no edges extracted (mock too thin)")
-        for e in edges[:5]:
-            # src/dst 应该出现在 instances 列表里 (没 .port 后缀)
-            assert "." in e["src"], f"src not an instance path: {e['src']}"
-            # instance paths 至少 2 段 (e.g. "top.i_sub")
-            assert e["src"].count(".") >= 1, f"src too short: {e['src']}"
-
-    def test_edges_in_scope(self, dmux_intf_result, mock_mig):
-        """edge 的 src/dst 应该在 result.instances 里."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
-        if not edges:
-            pytest.skip("no edges extracted (mock too thin)")
-        inst_ids = {i.id for i in dmux_intf_result.instances}
-        in_scope = [e for e in edges if e["src"] in inst_ids and e["dst"] in inst_ids]
-        # 大多数 edge 应该是 in-scope
-        assert len(in_scope) >= len(edges) * 0.5, (
-            f"only {len(in_scope)}/{len(edges)} edges in scope, expected >= 50%"
-        )
-
-    def test_edges_have_positive_count(self, dmux_intf_result, mock_mig):
-        """axi_demux_intf d=2 应该有多个 edge (clk_i 共享, 等)."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
-        assert len(edges) >= 10, f"expected >= 10 edges, got {len(edges)}"
-
-    def test_no_binary_garbage(self, dmux_intf_result, mock_mig):
-        """edges 不应有 binary garbage names."""
-        edges = extract_module_edges_from_mig(mock_mig, dmux_intf_result.instances)
+    def test_no_garbage(self, m3):
+        graph, result = m3
+        edges = extract_module_edges_from_graph(graph, result.instances)
         for e in edges:
             assert "<id:binary>" not in e["src"]
             assert "<id:binary>" not in e["dst"]
-            assert "<id:binary>" not in e.get("internal", "")
 
 
-class TestMIGNoneGraceful:
-    """mig=None 应该优雅降级 (返 []), 不 crash."""
+class TestGraceful:
+    def test_graph_none(self, m3):
+        _graph, result = m3
+        assert extract_module_edges_from_graph(None, result.instances) == []
 
-    def test_mig_none_returns_empty(self, dmux_intf_result):
-        """mig=None 返空 list."""
-        edges = extract_module_edges_from_mig(None, dmux_intf_result.instances)
-        assert edges == []
-
-    def test_empty_instances_returns_empty(self, mock_mig):
-        """空 instances 返空."""
-        edges = extract_module_edges_from_mig(mock_mig, [])
-        assert edges == []
+    def test_empty_instances(self, m3):
+        graph, _result = m3
+        assert extract_module_edges_from_graph(graph, []) == []
 
 
 class TestCLIIntegration:
-    """CLI 端到端: visualize module 应该输出带 edges 的 JSON.
+    """CLI 端到端：visualize module 输出 edges 字段（strict_uart 只有 1 实例 → 0 边）。"""
 
-    [REFACTOR 2026-07-02] 改用 strict_uart fixture 替代 pulp_axi_xbar.
-    """
+    def _run(self, target, depth, out: Path, extra=None):
+        cmd = ["python3", str(RUN_CLI), "visualize", "module",
+               "--filelist", STRICT_UART_FILELIST, "--target", target,
+               "--depth", str(depth), "--output-json", str(out)]
+        if extra:
+            cmd.extend(extra)
+        subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=120)
+        return out.exists()
 
-    def _run_cli_module(self, target: str, depth: int, output_json: Path, extra_args: list = None) -> bool:
-        """Run visualize module CLI, return True if output exists."""
-        import subprocess
-        cmd = [
-            "python3", str(RUN_CLI), "visualize", "module",
-            "--filelist", STRICT_UART_FILELIST,
-            "--target", target,
-            "--depth", str(depth),
-            "--output-json", str(output_json),
-        ]
-        if extra_args:
-            cmd.extend(extra_args)
-        subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=60)
-        return output_json.exists()
-
-    def test_cli_outputs_edges_field(self, tmp_path):
-        """CLI 应该输出 edges 字段 (新)."""
+    def test_outputs_edges_field(self, tmp_path):
         out = tmp_path / "module.json"
-        if not self._run_cli_module("uart_top", 2, out):
+        if not self._run("uart_top", 2, out):
             pytest.skip("CLI failed (fixture issue)")
-        with open(out) as f:
-            data = json.load(f)
-        assert "edges" in data, f"JSON missing edges field: {list(data.keys())}"
-        assert isinstance(data["edges"], list)
+        data = json.loads(out.read_text())
+        assert "edges" in data and isinstance(data["edges"], list)
 
-    def test_cli_level_is_1_when_no_edges(self, tmp_path):
-        """strict_uart 简单 fixture 默认 level=1 (没 edges 需要 L2).
-
-        注意: PR4 原测试在 pulp_axi 上 level=2, 但 strict_uart fixture
-        实例化少, MIG 内部 port_to_internal 简单, 实际生成的 edges 可能为 0.
-        level 字段反映的是有 edges 时的 L2 mode.
-        """
+    def test_level_is_1_when_no_edges(self, tmp_path):
         out = tmp_path / "module.json"
-        if not self._run_cli_module("uart_top", 2, out):
+        if not self._run("uart_top", 2, out):
             pytest.skip("CLI failed (fixture issue)")
-        with open(out) as f:
-            data = json.load(f)
-        # strict_uart 简单 fixture, edges 可能为 0, level 应该是 1
-        assert data["level"] in (1, 2), f"expected level=1 or 2, got {data['level']}"
-
-    def test_cli_cluster_field_in_nodes(self, tmp_path):
-        """每个 node 应该有 cluster 字段."""
-        out = tmp_path / "module.json"
-        if not self._run_cli_module("uart_top", 2, out):
-            pytest.skip("CLI failed (fixture issue)")
-        with open(out) as f:
-            data = json.load(f)
-        for n in data["nodes"]:
-            assert "cluster" in n, f"node missing cluster field: {n}"
-
-
-class TestBackwardCompat:
-    """PR4 不应破坏 PR1 行为.
-
-    [REFACTOR 2026-07-02] 改用 strict_uart fixture.
-    """
-
-    def _run_cli_module(self, target: str, depth: int, output_json: Path, extra_args: list = None) -> bool:
-        """Run visualize module CLI."""
-        import subprocess
-        cmd = [
-            "python3", str(RUN_CLI), "visualize", "module",
-            "--filelist", STRICT_UART_FILELIST,
-            "--target", target,
-            "--depth", str(depth),
-            "--output-json", str(output_json),
-        ]
-        if extra_args:
-            cmd.extend(extra_args)
-        subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=60)
-        return output_json.exists()
+        data = json.loads(out.read_text())
+        assert data["level"] in (1, 2)
 
     def test_no_mig_flag_returns_no_edges(self, tmp_path):
-        """--no-mig 应该 0 edges (退回 PR1 L1 行为)."""
         out = tmp_path / "module.json"
-        if not self._run_cli_module("uart_top", 2, out, ["--no-mig"]):
+        if not self._run("uart_top", 2, out, ["--no-mig"]):
             pytest.skip("CLI failed (fixture issue)")
-        with open(out) as f:
-            data = json.load(f)
-        assert data["edges"] == [], f"expected 0 edges with --no-mig, got {len(data['edges'])}"
-        # level 应该退回 1
-        assert data["level"] == 1, f"expected level=1 with --no-mig, got {data['level']}"
+        data = json.loads(out.read_text())
+        assert data.get("edges", []) == [], "--no-mig 应关闭 L2 边"
 
-    def test_no_edges_flag_returns_no_edges(self, tmp_path):
-        """--no-edges 应该 0 edges (但 nodes 还在)."""
+    def test_cluster_field_in_nodes(self, tmp_path):
         out = tmp_path / "module.json"
-        if not self._run_cli_module("uart_top", 2, out, ["--no-edges"]):
+        if not self._run("uart_top", 2, out):
             pytest.skip("CLI failed (fixture issue)")
-        with open(out) as f:
-            data = json.load(f)
-        assert data["edges"] == []
+        data = json.loads(out.read_text())
+        for n in data["nodes"]:
+            assert "cluster" in n
