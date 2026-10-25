@@ -13,7 +13,6 @@
 #   "files": ["rtl/top.sv"],
 #   "node_count": 42,
 #   "edge_count": 67,
-#   "port_to_internal": {},
 #   "nodes": [...],
 #   "edges": [...]
 # }

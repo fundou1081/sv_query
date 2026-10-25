@@ -81,19 +81,6 @@ MOCK_XBAR_EDGES = {
 
 # Mock port_to_internal: instance_port → internal_signal
 # 模拟 wrapper passthrough
-MOCK_PORT_TO_INTERNAL = {
-    # dp_ram top-level ports → wrapper port names
-    "axi_xbar_dp_ram.s_axi_awvalid": "axi_xbar_intf.slv_ports_aw_valid_i",
-    "axi_xbar_dp_ram.s_axi_bvalid": "axi_xbar_intf.slv_ports_b_valid_o",
-    "axi_xbar_dp_ram.m_axi_awvalid": "axi_xbar_intf.mst_ports_aw_valid_o",
-    # wrapper port names → real xbar internal
-    "axi_xbar_intf.slv_ports_aw_valid_i": "axi_xbar_intf.aw_valid",
-    "axi_xbar_intf.slv_ports_aw_valid_o": "axi_xbar_intf.i_xbar.aw_valid",
-    "axi_xbar_intf.mst_ports_aw_valid_o": "axi_xbar_intf.i_xbar.aw_valid",
-    "axi_xbar_intf.slv_ports_b_valid_o": "axi_xbar_intf.b_valid",
-    # real xbar ports → unmuxed
-    "axi_xbar_intf.i_xbar.slv_stubs[0].aw_valid": "axi_xbar_intf.i_xbar.i_xbar_unmuxed.aw_valid",
-}
 
 # Mock node kind mapping
 MOCK_NODE_KINDS = {
@@ -141,7 +128,6 @@ class MockXbarGraph:
 
     Attributes:
         - nodes(): iterable of node ids
-        - _port_to_internal: dict {instance_port → internal_signal}
     """
     def __init__(self):
         self._nodes = MOCK_XBAR_NODES
@@ -150,7 +136,6 @@ class MockXbarGraph:
         for src, dst in MOCK_XBAR_EDGES:
             self._forward.setdefault(src, []).append(dst)
             self._backward.setdefault(dst, []).append(src)
-        self._port_to_internal = MOCK_PORT_TO_INTERNAL
 
     def nodes(self):
         return list(self._nodes)
@@ -235,21 +220,6 @@ def graph(tracer):
 # Tests
 # ============================================================================
 
-class TestPortToInternalMapping:
-    """port_to_internal 反向必须工作 (graph 已有)."""
-
-    def test_axi_xbar_intf_port_to_internal(self, tracer):
-        """axi_xbar_intf.s_axi_awvalid ← instance port in dp_ram."""
-        g = tracer._graph
-        if not hasattr(g, "_port_to_internal"):
-            pytest.skip("graph has no _port_to_internal")
-        pti = g._port_to_internal
-        # 应该有 ≥1 个 instance port mapped to slv_ports_aw_valid_i
-        instances = [k for k, v in pti.items() if v == "axi_xbar_intf.slv_ports_aw_valid_i"]
-        assert isinstance(instances, list), "instances should be a list"
-        assert len(instances) >= 1, f"expected ≥1 instance port, got {len(instances)}"
-
-
 class TestCrossModuleTrace:
     """核心: trace 必须能跨 module boundary 追到 leaf driver."""
 
@@ -306,15 +276,6 @@ class TestCrossModuleSignals:
         assert len(xbar_internal) >= 5, (
             f"xbar internal nodes too few: {len(xbar_internal)}, "
             f"expected >= 5 for proper cross-module trace"
-        )
-
-    def test_port_to_internal_populated(self, tracer):
-        """_port_to_internal 必须非空 (wrapper passthrough 依赖这个)."""
-        g = tracer._graph
-        pti = getattr(g, "_port_to_internal", {})
-        assert len(pti) >= 5, (
-            f"port_to_internal too small: {len(pti)}, "
-            f"expected >= 5 for cross-module trace"
         )
 
     def test_at_least_1_internal_xbar_awvalid_path(self, tracer):

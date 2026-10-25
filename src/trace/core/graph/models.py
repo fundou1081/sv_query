@@ -303,7 +303,6 @@ class SignalGraph(nx.DiGraph):
         self._node_data: dict[str, TraceNode] = {}
         # [FIX] 支持同一 (src, dst) 的多条边 (不同 condition)
         self._edge_data: dict[tuple[str, str], list[TraceEdge]] = {}
-        self._port_to_internal: dict[str, str] = {}  # {inst_port_id: child_signal_id}
         # [REFACTOR 2026-08-07 A计划] 表达式树/常量/函数信息 — 从 semantic AST 构建，消灭 viz 层源码重读
         self._expr_trees: dict[str, dict] = {}      # {dst_key → tree_dict}
         self._const_map: dict[str, list] = {}       # {dst_short → [const_str,...]}
@@ -317,21 +316,6 @@ class SignalGraph(nx.DiGraph):
         # case29 顶层: 'chain_out' (只一个 dst short) → entry_idx (0) — 全局 setdefault
         # elk_bridge 顶层 lookup 会按 _dst_short (tree key 短名) 查, 拿 per-element key.
         self._gen_iter_map: dict[str, int] = {}
-
-    def get_port_to_internal(self) -> dict[str, str]:
-        """获取端口到内部信号的映射"""
-        return self._port_to_internal
-
-    def get_internal_signal(self, inst_port_id: str) -> str | None:
-        """查询实例端口对应的内部信号
-
-        Args:
-            inst_port_id: 实例端口路径,如 'top.u_dut.clk'
-
-        Returns:
-            内部信号路径,如 'dut.clk',或 None
-        """
-        return self._port_to_internal.get(inst_port_id)
 
     def add_trace_node(self, node: TraceNode) -> None:
         self._node_data[node.id] = node
@@ -557,7 +541,6 @@ class SignalGraph(nx.DiGraph):
             "created_at": "ISO timestamp",
             "node_count": int,
             "edge_count": int,
-            "port_to_internal": Dict[str, str],
             "nodes": [
                 {"id": str, "name": str, "module": str, "kind": str, ...},
                 ...
@@ -618,7 +601,6 @@ class SignalGraph(nx.DiGraph):
             "created_at": "",  # 由调用方填充
             "node_count": len(nodes_data),
             "edge_count": len(edges_data),
-            "port_to_internal": dict(self._port_to_internal),
             "nodes": nodes_data,
             "edges": edges_data,
             # [REFACTOR 2026-08-07 A计划] 持久化表达式树/常量/函数信息
@@ -634,13 +616,8 @@ class SignalGraph(nx.DiGraph):
         金标准:
         - 遍历 nodes 重建 TraceNode
         - 遍历 edges 重建 TraceEdge
-        - 恢复 port_to_internal 映射
         """
         graph = cls()
-
-        # 恢复 port_to_internal
-        if "port_to_internal" in data:
-            graph._port_to_internal.update(data["port_to_internal"])
 
         # 恢复节点
         for node_dict in data.get("nodes", []):

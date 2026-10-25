@@ -143,34 +143,6 @@ class DataFlowGraph:
         # 段缓存: (from, to) → DataFlowSegment
         self._segment_cache: dict[tuple[str, str], DataFlowSegment] = {}
 
-        # MIG 的 port_to_internal 映射缓存
-        self._port_to_internal: dict[str, str] = {}
-        self._internal_to_port: dict[str, str] = {}
-
-        # 构建 MIG 映射缓存
-        self._build_mig_cache()
-
-    def _build_mig_cache(self):
-        """构建 MIG 映射缓存"""
-        if not self.mig:
-            return
-
-        # 从 MIG 获取 port_to_internal 映射
-        if hasattr(self.mig, "port_to_internal"):
-            self._port_to_internal = self.mig.port_to_internal.copy()
-
-        if hasattr(self.mig, "internal_to_port"):
-            self._internal_to_port = self.mig.internal_to_port.copy()
-
-        # 同时从 MIG.instances 构建
-        if hasattr(self.mig, "instances"):
-            for inst_id, inst_node in self.mig.instances.items():
-                if hasattr(inst_node, "ports"):
-                    for port_name, port_info in inst_node.ports.items():
-                        if hasattr(port_info, "internal_signal"):
-                            full_port = f"{inst_id}.{port_name}"
-                            self._port_to_internal[full_port] = port_info.internal_signal
-                            self._internal_to_port[port_info.internal_signal] = full_port
 
     def get_segment(self, from_signal: str, to_signal: str) -> DataFlowSegment | None:
         """获取单步驱动信息(带缓存) - 返回优先级最高的边
@@ -228,8 +200,8 @@ class DataFlowGraph:
             DataFlowSegment 或 None
         """
         # 1. 解析跨模块信号
-        resolved_from = self._resolve_cross_module(from_signal)
-        resolved_to = self._resolve_cross_module(to_signal)
+        resolved_from = from_signal
+        resolved_to = to_signal
 
         # 2. 获取所有边（可能有多个不同 condition 的边），取第一条（优先级最高）
         edge = self.signal_graph.get_edge(resolved_from, resolved_to)
@@ -266,8 +238,8 @@ class DataFlowGraph:
             List[DataFlowSegment]
         """
         # 1. 解析跨模块信号
-        resolved_from = self._resolve_cross_module(from_signal)
-        resolved_to = self._resolve_cross_module(to_signal)
+        resolved_from = from_signal
+        resolved_to = to_signal
 
         # 2. 获取所有边
         edges = self.signal_graph.get_edges(resolved_from, resolved_to)
@@ -296,53 +268,6 @@ class DataFlowGraph:
             )
 
         return segments
-
-    def _resolve_cross_module(self, signal: str) -> str:
-        """解析跨模块信号,返回内部信号
-
-        例如:
-            'top.u_dut.data_in' → 'u_dut.data_in' (如果 MIG 有此映射)
-            'top.u_dut.clk' → 'u_dut.clk'
-
-        Args:
-            signal: 完整 hierarchy path
-
-        Returns:
-            内部信号名
-        """
-        # [iter_268] 图里**已有**的 id 一律原样返回。
-        # 旧实现无条件把实例端口改写成"模块定义命名空间"的名字
-        # (top_minimal.sa1.valid_i → sub_aggregator.valid_i)，而后者在
-        # SignalGraph 里是一个**孤立节点** (POC 实测: 从顶层输入 0 可达)，
-        # 于是 dataflow 对一切跨模块查询都报 unreachable —— 实测
-        # `top_minimal.valid_i → top_minimal.sa1.valid_i`: nx.has_path=True
-        # 但 analyze() 走完 _resolve_cross_module 后变成不可达 (iter_268)。
-        # 现在: 图里的 id 不重写；只有不在图里的名字 (用户按模块定义名查询)
-        # 才走旧映射，保持向后兼容。
-        try:
-            if signal in self.signal_graph.nodes():
-                return signal
-        except Exception as e:       # 图未就绪/非 nx: 退回旧行为 (显式记录, 不静默)
-            logger.debug("图节点检查失败, 退回 MIG 映射 (%s): %s", signal, e)
-
-        # 1. 尝试 MIG 映射
-        if signal in self._port_to_internal:
-            return self._port_to_internal[signal]
-
-        # 2. 尝试反向映射 (internal → port)
-        if signal in self._internal_to_port:
-            return signal
-
-        # 3. 查找最长前缀匹配
-        best_match = signal
-        for port_path, internal in self._port_to_internal.items():
-            if signal.endswith("." + port_path) or signal == port_path:
-                # 找到了匹配的端口路径
-                suffix = signal[len(port_path) :]
-                best_match = internal + suffix
-                break
-
-        return best_match
 
     def _find_paths(self, from_signal: str, to_signal: str, cutoff: int = 50) -> list[list[str]]:
         """查找所有路径(允许循环)
@@ -472,8 +397,8 @@ class DataFlowGraph:
             return []
 
         # 解析跨模块信号
-        resolved_from = self._resolve_cross_module(from_signal)
-        resolved_to = self._resolve_cross_module(to_signal)
+        resolved_from = from_signal
+        resolved_to = to_signal
 
         # 展开位选择
         expanded_from, slice_from = _expand_bit_select(resolved_from)
@@ -606,7 +531,7 @@ class DataFlowGraph:
                     # dst_struct_path 可能是相对路径如 pkt2,需要解析为完整路径
                     # 尝试解析 dst_struct_path
                     try:
-                        dst_struct_resolved = self._resolve_cross_module(dst_struct_path)
+                        dst_struct_resolved = dst_struct_path
                     except Exception:
                         dst_struct_resolved = dst_struct_path
 
@@ -970,4 +895,4 @@ class DataFlowGraph:
 
     def get_cache_stats(self) -> dict[str, int]:
         """获取缓存统计"""
-        return {"segment_cache_size": len(self._segment_cache), "mig_mapping_size": len(self._port_to_internal)}
+        return {"segment_cache_size": len(self._segment_cache), "mig_mapping_size": 0}

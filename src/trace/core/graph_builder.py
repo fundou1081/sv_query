@@ -968,9 +968,6 @@ class GraphBuilder:
             result = extractor.extract()
             for edge in result.edges:
                 self.graph.add_trace_edge(edge)
-            # 收集 port_to_internal 映射
-            if hasattr(result, "port_to_internal") and result.port_to_internal:
-                self.graph._port_to_internal.update(result.port_to_internal)
             # [REFACTOR 2026-08-07 A计划] 收集 expr_trees/const_map/func_info (从 semantic AST, 消灭 viz 源码重读)
             if getattr(result, 'expr_trees', None):
                 self.graph._expr_trees.update(result.expr_trees)
