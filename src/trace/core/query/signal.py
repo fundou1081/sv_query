@@ -561,6 +561,30 @@ class SignalTracer:
         base = m.group(1)
         return base if base in self.graph.nodes() else None
 
+    def _load_bus_fallback(self, signal_id: str) -> str:
+        """[iter_292 / PLAN P5.6] 位节点无 load 边 → 用父总线的负载（与 fanin F2 对称）。
+
+        背景：F3 会把切片两侧展开成逐位节点，但负载可能仍挂在**总线**上
+        （如 `assign z = w` 读整条总线）。此时 `fanout(w[4])` 若只看位节点会空答。
+        规则：位节点存在、但没有任何 DRIVER/CONNECTION 出边（不含自环）→
+        若存在 BIT_SELECT 父总线且有负载，则改用父总线。
+        """
+        node = self.graph.get_node(signal_id)
+        if node is None or node.parent is None:
+            return signal_id
+        has_load = any(
+            src == signal_id and dst != signal_id
+            and any(e.kind in (EdgeKind.DRIVER, EdgeKind.CONNECTION)
+                    for e in self.graph.get_edges(src, dst))
+            for src, dst in self.graph.edges()
+        )
+        if has_load:
+            return signal_id
+        parent = node.parent
+        if parent in self.graph.nodes() and any(True for _ in self.graph.successors(parent)):
+            return parent
+        return signal_id
+
     @staticmethod
     def _in_scope(node_id: str, scope_prefix: str | None) -> bool:
         """[iter_271] 限定查询的作用域判定 (实例级图下的 "只看这个实例内部")。
@@ -702,6 +726,9 @@ class SignalTracer:
         signal_id = self._lift_missing_bit(signal_id)
         if signal_id is None:
             return []
+        # [iter_292 / PLAN P5.6 F5] 位节点存在但**没有任何 load 边**时，回退父总线：
+        # 与 fanin 的 F2 对称（位节点可能只是切片展开产物，真实负载挂在总线上）。
+        signal_id = self._load_bus_fallback(signal_id)
         # [ADD 2026-06-11 Req-12] 计算要包含的边类型
         allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
         if include_clock:
