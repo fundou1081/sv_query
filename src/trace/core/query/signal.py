@@ -468,6 +468,24 @@ class SignalTracer:
                 out.append(cand)
         return out
 
+    def _lift_missing_bit(self, signal_id: str) -> str | None:
+        """[iter_285 / PLAN P2.1] 位查询落到**不存在的位节点** → 提升到父总线。
+
+        与 fanin 的 `_trace_missing_node` 对称：纯总线直连（子模块 `.y(y)`）
+        没有 per-bit 节点时，`fanout(top.din[3])` 应回答 `top.din` 的总线级负载，
+        而不是空集。带 `:` 的 part-select 保持空答（与 fanin 契约一致）。
+        """
+        if signal_id in self.graph.nodes():
+            return signal_id
+        if ":" in signal_id:
+            return None
+        import re
+        m = re.match(r"^(.*)\[\d+\]$", signal_id)
+        if not m:
+            return None
+        base = m.group(1)
+        return base if base in self.graph.nodes() else None
+
     @staticmethod
     def _in_scope(node_id: str, scope_prefix: str | None) -> bool:
         """[iter_271] 限定查询的作用域判定 (实例级图下的 "只看这个实例内部")。
@@ -606,7 +624,8 @@ class SignalTracer:
         默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
         signal_id = self.make_id(signal, module)
-        if signal_id not in self.graph.nodes():
+        signal_id = self._lift_missing_bit(signal_id)
+        if signal_id is None:
             return []
         # [ADD 2026-06-11 Req-12] 计算要包含的边类型
         allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}

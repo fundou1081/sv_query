@@ -197,6 +197,8 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 | DriverInfo 不含位精确信息 | V6.6 (source: SignalSource) |
 | pipeline 图 5 种变体混乱 | V6.6/V6.7 (deprecated load_dot) |
 | NodeKind/EdgeKind 混乱 | V6.6 (命名空间分区) |
+| interface 设计构建崩溃（成员桥 `TraceNode` 漏 `width`） | iter_285 (P2.1) |
+| `fanout(<bit>)` 位节点不存在时返回空集（与 fanin 总线下沉不对称） | iter_285 (P2.1) |
 
 ---
 

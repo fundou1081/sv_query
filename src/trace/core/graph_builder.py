@@ -1077,11 +1077,16 @@ class GraphBuilder:
                     # 占位: 未出现的 interface 实例成员 (顶层未引用) 也建,
                     # 让桥稳定存在 (只读方 fanin 需要目标节点)
                     from trace.core.graph.models import NodeKind, TraceNode
+                    # [iter_285 / PLAN P2.1] TraceNode.width 是必填; 这里原先漏传 →
+                    # 带 interface 的设计直接 TypeError 崩溃 (P2.1 边缘回归暴露)。
+                    # 位宽优先沿用实例侧成员, 退化时用 (0, 0) sentinel。
+                    _inst_node = self.graph.get_node(inst_member_id)
                     self.graph.add_trace_node(TraceNode(
                         id=parent_member_id,
                         name=member,
                         module=parent_prefix,
                         kind=NodeKind.SIGNAL,
+                        width=_inst_node.width if _inst_node is not None else (0, 0),
                     ))
                 # 单向桥: 驱动方 → 观察方
                 if inst_driven:
