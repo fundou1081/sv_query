@@ -159,16 +159,19 @@ class TestPaths:
             assert one is not None
             assert one in allp, f"{a}->{b}: find_path 结果不在 all_paths 中"
 
-    def test_mig_maps_both_directions(self):
-        """MIG 双向映射是跨模块跳转的基础 (进模块 + 出模块)。"""
+    def test_mig_port_info_instance_scoped(self):
+        """[iter_284] MIG 端口信息是实例级 (不再有 module_type.port 短名映射)。"""
         from trace.unified_tracer import UnifiedTracer
 
         src = (PROJECT_ROOT / INST_DEMO).read_text()
         t = UnifiedTracer(sources={"inst_demo.sv": src})
         t.build_graph()
         mig = t.get_module_graph()
-        assert mig.get_internal_signal("inst_demo.u_adder.a") == "sub_adder.a"
-        assert mig.get_port_path("sub_adder.a") == "inst_demo.u_adder.a"
+        node = mig.get_instance("inst_demo.u_adder")
+        assert node is not None
+        port = node.get_port("a")
+        assert port is not None
+        assert port.internal_signal == "inst_demo.u_adder.a"
 
 
 # ---------------------------------------------------------------------------

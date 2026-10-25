@@ -185,9 +185,8 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, ):
 
     tracer.build_graph()
     # [Phase 2 2026-07-11] Pass target_module to SemanticAdapter so
-    # get_module_instances() filters to user target. This auto-prefixes
-    # pyslang hierarchicalPath with user target → MIG port_to_internal
-    # keys/values are already in user namespace, no rewrite needed below.
+    # get_module_instances() filters to user target (instance paths already in
+    # the user namespace).
     semantic_adapter = SemanticAdapter(tracer._get_compiler().get_root(), target_module=target)
 
     # L1: Module 抽取
@@ -201,10 +200,8 @@ def _build_arch_graph(file, filelist, target, depth, include_dirs, ):
 
     # L2: 跨 module 端口连接
     # [Phase 2 2026-07-11] Namespace rewrite removed (~95 lines).
-    # Reason: SemanticAdapter(target_module=...) auto-filters hierarchy,
-    # so MIG port_to_internal keys/values are already in user target namespace.
-    # No more "ariane.* → cva6.*" prefix replacement needed.
-    # See: commit 2d268b4 for the original rewrite logic (now obsolete).
+    # Reason: SemanticAdapter(target_module=...) auto-filters hierarchy, and
+    # instance ids are already in the user target namespace.
     edges = []
     mig = getattr(tracer, "_module_graph", None)
     if mig is not None:

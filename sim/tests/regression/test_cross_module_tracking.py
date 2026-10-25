@@ -31,6 +31,14 @@ from trace.core.graph.models import EdgeKind
 from trace.unified_tracer import UnifiedTracer
 
 
+def _port_signal(mig, port_path: str):
+    """[iter_284] 端口 → 实例级内部信号 id（MIG 不再有 module_type.port 短名映射）。"""
+    inst, _, port = port_path.rpartition(".")
+    node = mig.get_instance(inst) if mig is not None else None
+    info = node.get_port(port) if node is not None else None
+    return info.internal_signal if info is not None else None
+
+
 class TestModuleInstanceGraph(unittest.TestCase):
     """模块实例图测试"""
 
@@ -89,10 +97,10 @@ endmodule'''
 
         mig = getattr(tracer, '_module_graph', None)
         if mig:
-            # 检查映射
-            internal = mig.get_internal_signal('top.u_dut.clk')
-            self.assertEqual(internal, 'dut.clk',
-                f"top.u_dut.clk 应映射到 dut.clk，实际是 {internal}")
+            # 检查端口信息（实例级命名空间）
+            internal = _port_signal(mig, 'top.u_dut.clk')
+            self.assertEqual(internal, 'top.u_dut.clk',
+                f"top.u_dut.clk 的内部信号应为实例级端口 id，实际是 {internal}")
 
     def test_cross_module_connection(self):
         """[金标准] 跨模块连接"""
@@ -348,8 +356,8 @@ class TestMultiLevelHierarchy(unittest.TestCase):
         self.assertIn('top.u_mid.u_leaf', mig.instances, "应有 top.u_mid.u_leaf 实例")
 
         # 检查端口映射
-        clk_mapping = mig.get_internal_signal('top.u_mid.u_leaf.clk')
-        self.assertEqual(clk_mapping, 'leaf.clk', f"top.u_mid.u_leaf.clk 应映射到 leaf.clk，实际是 {clk_mapping}")
+        clk_mapping = _port_signal(mig, 'top.u_mid.u_leaf.clk')
+        self.assertEqual(clk_mapping, 'top.u_mid.u_leaf.clk', f"应为实例级端口 id，实际是 {clk_mapping}")
 
     def test_four_level_hierarchy(self):
         """[金标准] 四层层级路径追踪"""
@@ -362,8 +370,8 @@ class TestMultiLevelHierarchy(unittest.TestCase):
         self.assertIn('top.u_leaf', mig.instances, "应有 top.u_leaf 实例")
 
         # 检查端口映射
-        out_mapping = mig.get_internal_signal('top.u_leaf.out')
-        self.assertEqual(out_mapping, 'l1.out', "top.u_leaf.out 应映射到 l1.out")
+        out_mapping = _port_signal(mig, 'top.u_leaf.out')
+        self.assertEqual(out_mapping, 'top.u_leaf.out', "应为实例级端口 id")
 
 class TestArrayOfInstances(unittest.TestCase):
     """模块数组实例化测试"""
@@ -524,8 +532,8 @@ class TestCrossModuleClockPath(unittest.TestCase):
         self.assertIn('top.u_dut', mig.instances, "应有 top.u_dut 实例")
 
         # 检查端口映射
-        dut_clk_mapping = mig.get_internal_signal('top.u_dut.clk')
-        self.assertEqual(dut_clk_mapping, 'dut.clk', "top.u_dut.clk 应映射到 dut.clk")
+        dut_clk_mapping = _port_signal(mig, 'top.u_dut.clk')
+        self.assertEqual(dut_clk_mapping, 'top.u_dut.clk', "应为实例级端口 id")
 
 
 class TestMultipleConnections(unittest.TestCase):
@@ -610,7 +618,7 @@ endmodule'''
         self.assertIn('a', inst.ports, "应有 a 端口")
         self.assertIn('b', inst.ports, "应有 b 端口")
 
-        # b 未连接时，port_to_internal 仍应有映射 (只是无驱动)
+        # b 未连接时，端口信息仍应存在 (只是无驱动)
 
 
 class TestParameterOverride(unittest.TestCase):
@@ -833,8 +841,8 @@ class TestClockDividerCrossModule(unittest.TestCase):
         self.assertIn('top.u_div', mig.instances, "应有 top.u_div 实例")
         self.assertIn('top.u_dut', mig.instances, "应有 top.u_dut 实例")
 
-        # 检查端口映射 (即使没有实际连接，映射关系应存在)
-        dut_clk_map = mig.get_internal_signal('top.u_dut.clk')
+        # 检查端口信息 (即使没有实际连接，端口信息应存在)
+        dut_clk_map = _port_signal(mig, 'top.u_dut.clk')
         # dut.clk 是输入端口，应映射到内部
         self.assertIsNotNone(dut_clk_map, f"top.u_dut.clk 应有映射，实际是 {dut_clk_map}")
 
@@ -948,17 +956,17 @@ class TestCrossModuleBasicFunctions(unittest.TestCase):
 
         # 1. ModuleInstanceGraph: 实例 + 端口映射
         self.assertIn('top.u_sub', mig.instances, "应有 top.u_sub 实例")
-        self.assertIn('top.u_sub.out', mig.port_to_internal, "应有端口映射")
+        self.assertEqual(_port_signal(mig, 'top.u_sub.out'), 'top.u_sub.out', "应有端口信息")
 
         # 2. SignalGraph: 跨模块信号节点 (data 或 port_signal)
         nodes = list(graph.nodes())
         has_data = any('data' in n for n in nodes)
-        port_sig = mig.port_to_internal.get('top.u_sub.out', '')
-        has_port = port_sig and any(port_sig in n for n in nodes)
+        port_sig = _port_signal(mig, 'top.u_sub.out') or ''
+        has_port = bool(port_sig) and any(port_sig in n for n in nodes)
         self.assertTrue(has_data or has_port, f"应有 data 或 port 节点，实际: {nodes}")
 
-    def test_port_to_internal_mapping(self):
-        """[金标准] 端口到内部信号映射"""
+    def test_port_info_stored(self):
+        """[金标准] 端口信息（实例级）"""
         source = "module sub(input clk, output [7:0] out);\nendmodule\n\nmodule top;\n    logic clk;\n    sub u_sub(.clk(clk));\nendmodule"
 
         graph, tracer = self._build_graph(source)
@@ -1103,14 +1111,16 @@ endmodule'''
         if 'clk' in inst.ports:
             port = inst.ports['clk']
             self.assertEqual(port.direction, 'input', "clk 应为 input 端口")
-            self.assertEqual(port.internal_signal, 'dut.clk', "内部信号应为 dut.clk")
+            self.assertEqual(port.internal_signal, 'top.u_dut.clk',
+                             "内部信号应为实例级端口 id (iter_284)")
             self.assertEqual(port.module_type, 'dut', "模块类型应为 dut")
 
         # 检查 data 端口
         if 'data' in inst.ports:
             port = inst.ports['data']
             self.assertEqual(port.direction, 'output', "data 应为 output 端口")
-            self.assertEqual(port.internal_signal, 'dut.data', "内部信号应为 dut.data")
+            self.assertEqual(port.internal_signal, 'top.u_dut.data',
+                             "内部信号应为实例级端口 id (iter_284)")
 
     def test_mig_hierarchical_traversal(self):
         """[金标准] MIG 层级遍历"""

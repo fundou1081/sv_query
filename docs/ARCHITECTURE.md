@@ -178,7 +178,7 @@ class VizEdge:
 | CovergroupExtractor | `covergroup_extractor.py` | 覆盖率提取 |
 | UVMTestbenchExtractor | `uvm_testbench_extractor.py` | UVM 结构提取 |
 
-所有 extractor 返回 `ExtractorResult(nodes, edges, errors, port_to_internal)`.
+所有 extractor 返回 `ExtractorResult(nodes, edges, errors)`（端口即图节点，无单独映射表）。
 
 ---
 

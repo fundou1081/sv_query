@@ -20,7 +20,7 @@
 #   class       : ClassGraphBuilder(adapter).build(graph)   → (graph 副作用)
 #   class_member: _resolve_class_member_access    → (graph 副作用)
 #   bit_select  : BitSelectHandler(adapter, graph).process()
-#   module_graph: ModuleInstanceGraph(adapter, graph).build() → module_graph
+#   module_graph: ModuleInstanceGraph(adapter).build() → module_graph
 #   path_resolver: PathResolver(graph, module_graph)          → path_resolver
 #   tracers     : _init_tracers()                 → (self._xxx_tracer)
 #   cond_ops    : _emit_conditional_op_nodes()

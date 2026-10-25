@@ -899,7 +899,7 @@ class DataFlowGraph:
 
 ### Phase 3: 跨模块支持
 1. 实现 `_resolve_cross_module`
-2. 集成 MIG 的 port_to_internal 映射
+2. ~~集成 MIG 的 port_to_internal 映射~~（iter_277/284 已删除该映射；直接使用实例级图 id）
 
 ### Phase 4: 结果组装
 1. 实现 `analyze` 方法
