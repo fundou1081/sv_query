@@ -215,10 +215,15 @@ class TestA2SliceBridge(unittest.TestCase):
                              "不应串相邻位")
 
     def test_output_slice_dangling_bit_clean(self):
-        """非切片区悬空位 top.y[3]: bus 粒度且不串切片位驱动 (无污染)."""
+        """非切片区悬空位 top.y[3]: **无驱动** —— 切片 y[7:4] 不覆盖 bit3.
+
+        [iter_290 / P5.1 修正] 旧断言是 `{top.u_sub.y}`（总线回退），但 u_sub.y
+        只驱动 y[7:4]，把它的驱动算到 y[3] 上正是跨位污染。位过滤后 y[3] 没有任何
+        覆盖它的来源 → 空集才是正确语义（RTL 里该位未赋值）。
+        """
         ids = self._fanin(SLICE_OUT, 'top.y[3]')
-        self.assertEqual(ids, {'top.u_sub.y'},
-                         f"悬空位应保持 bus 粒度且不串位, 实际 {ids}")
+        self.assertEqual(ids, set(),
+                         f"未被切片覆盖的位不应有驱动, 实际 {ids}")
 
     def test_input_slice_offset_maps_bits(self):
         """输入切片 a[7:4]: sub 内 y[k] fanin 跨切片到 top.a[4+k]."""

@@ -186,7 +186,10 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **不能精确的形态**（总线/切片粒度，属既定契约）：纯总线直连、拼接、动态索引、
 叶子端口边界（`iter_126`/`iter_132` 的"粒度停"）。
 
-**但存在 3 类会**误导 agent**的反例（不是"粒度粗"，是答案里出现不成立的源/漏源）**：
+> **F1/F2 已修（iter_290）**：下面 3 类反例已消除；剩余的是"粗但不假"的粒度问题
+> （F3 slice 展开 / F4 合成位桥，见文末）。
+
+**曾存在的 3 类反例（iter_290 已修，保留原始证据供回归参照）**：
 
 1. **切片 LHS 的跨位污染**（`assign y[7:4]=a; assign y[3:0]=4'h0;`）：
 
@@ -215,7 +218,20 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
    要求 `not drivers`（iter_128 的防污染条件），而此路径下已经 append 了该位节点，
    于是**停在死胡同**，不返回父总线的真实驱动。
 
-**根因位置**：
+**修复结果（iter_290 / PLAN P5.1+P5.2）**：
+
+| 反例 | 修复前 | 修复后 |
+|---|---|---|
+| 切片 LHS | `fanin(y[5])={a, 4'b0}` | `{a}`（4'b0 被位过滤掉） |
+| 多驱动 | `fanin(y[4])={a, 1'b1}` | `{a}` |
+| 死胡同位 | `fanin(y)={s[3]}` | `{s[3], a, b}`（补父总线） |
+| 切片外悬空位 | `{u_sub.y}`（跨位污染） | `{}`（该位确实无驱动） |
+
+回归守卫：`sim/tests/regression/test_bit_precision.py`（19 个：精确 6 + 防污染 5 +
+防断链 4 + 粗粒度契约 4）。**注意**：load 方向仍是总线粒度（表达式驱动只有总线边），
+不在本次修复范围。
+
+**根因位置（历史）**：
 - `src/trace/core/query/signal.py::_trace_missing_node`（缺位回退不带位索引 → 无法过滤切片父）
 - `src/trace/core/query/signal.py::_maybe_lift_to_parent_bus`（`not drivers` 门槛挡住死胡同位）
 - `src/trace/core/graph_builder.py::_expand_bus_conn_bit_bridges`（只在**两侧都有位节点**时建位桥）
@@ -225,14 +241,12 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **没有**任何测试断言"按位对应关系"或"不得出现跨位源"。所以：
 当前测试不足以支撑"位精确"的对外表述。
 
-**建议修法（按性价比）**：
-1. F1（正确性，小）：缺位回退带位索引 `X[n]`，遍历父总线的 `BIT_SELECT` 子节点时
-   只取 `parent_bit_start <= n <= parent_bit_end` 的那些 → 消除反例 1/2 的污染
-2. F2（完整性，小-中）：位节点"无 incoming 驱动且父总线有驱动"时，补一次父总线追溯
-   （带 seen 保护，防 iter_128 的兄弟位污染）→ 反例 3 不再断链
-3. F3（精度，中）：slice 节点按位展开（`y[7:4]` → 4 个位节点 + 偏移映射），
-   让切片 LHS/链路也能位对位（D/S 类从"切片粒度"升级为"位精度"）
-4. F4（设计决策）：bus↔无位节点侧合成位桥（iter_126 曾明确"不造假节点"），需方豆拍板
+**剩余项**：
+1. F3（精度，中，待做）：slice 节点按位展开（`y[7:4]` → 位节点 + 偏移映射），
+   让切片 LHS/链路从"切片粒度"升级为"位精度"；需要评估大设计图规模影响
+2. F4（设计决策，暂缓）：bus↔无位节点侧合成位桥（iter_126 曾明确"不造假节点"），需方豆拍板
+3. load 方向位级映射（新发现）：表达式驱动只有总线级边，`fanout(a[i])` 返回总线负载；
+   要做需驱动侧提供逐位边（成本高，另行立项）
 
 ### 4. 测试已知失败 (55 个，全部为 pre-existing)
 

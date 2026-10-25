@@ -103,6 +103,7 @@ class SignalTracer:
         max_depth: int | None = None,
         allow_cross_module: bool = True,
         scope_prefix: str | None = None,
+        bit_filter: int | None = None,
     ):
         """递归追溯驱动 —— **编排层**（规则实现见下方 `_rule_*` / `_handle_*`）。
 
@@ -137,9 +138,11 @@ class SignalTracer:
         has_driver_edge = self._has_incoming_driver(signal_id)
         if not has_driver_edge:
             self._expand_incoming_bit_select(signal_id, drivers, seen_ids,
-                                             current_depth, max_depth, allow_cross_module)
+                                             current_depth, max_depth, allow_cross_module,
+                                             bit_filter)
         self._maybe_lift_to_parent_bus(signal_id, has_driver_edge, drivers, seen_ids,
-                                       current_depth, max_depth, allow_cross_module)
+                                       current_depth, max_depth, allow_cross_module,
+                                       bit_filter)
 
         # ③~⑥ 遍历所有指向本信号的边
         for src, dst in list(self.graph.edges()):
@@ -152,6 +155,13 @@ class SignalTracer:
                 continue
 
             edge = self._pick_driver_edge(src, dst)
+
+            # [iter_290 / P5.1 F1] 位级回退时, 父总线的 BIT_SELECT 子节点只取
+            # 覆盖该位的那个切片 —— 否则 y[5] 会把 y[3:0] 的驱动也带回来。
+            if (bit_filter is not None and edge is not None
+                    and edge.kind == EdgeKind.BIT_SELECT
+                    and not self._bit_in_range(src, bit_filter)):
+                continue
 
             # 边不存在：按"其他边类型"继续向上追溯（原实现行为）
             if edge is None:
@@ -182,17 +192,20 @@ class SignalTracer:
 
     def _trace_missing_node(self, signal_id, drivers, seen_ids,
                             current_depth, max_depth, allow_cross_module):
-        """节点不在图里：part-select 范围保持空答；位查询回退到父总线。"""
+        """节点不在图里：part-select 范围保持空答；位查询回退到父总线。
+
+        [iter_290 / P5.1] 回退时把**位索引**传下去：父总线的 BIT_SELECT 子节点
+        只取覆盖该位的切片，避免跨位污染。
+        """
         if ":" in signal_id:
             return  # [iter_126] part-select 范围 [a:b] 保持空答 (locked truth)
-        import re as _re
-        m = _re.match(r"^(.*)\[\d+\]$", signal_id)
-        if not m:
+        bit = self._bit_index_of(signal_id)
+        if bit is None:
             return
-        base = m.group(1)
+        base = signal_id.rsplit("[", 1)[0]
         if base in self.graph.nodes() and base not in seen_ids:
             self._trace_drivers_recursive(base, drivers, seen_ids, current_depth,
-                                          max_depth, allow_cross_module)
+                                          max_depth, allow_cross_module, bit_filter=bit)
 
     def _has_incoming_driver(self, signal_id: str) -> bool:
         """是否存在指向本节点的 DRIVER 边（BIT_SELECT 不算）。"""
@@ -202,18 +215,26 @@ class SignalTracer:
         return False
 
     def _expand_incoming_bit_select(self, signal_id, drivers, seen_ids,
-                                    current_depth, max_depth, allow_cross_module):
-        """无 DRIVER 时，先追"位 → 本节点"的 BIT_SELECT 子节点（如 modport 实例）。"""
+                                    current_depth, max_depth, allow_cross_module,
+                                    bit_filter=None):
+        """无 DRIVER 时，先追"位 → 本节点"的 BIT_SELECT 子节点（如 modport 实例）。
+
+        [iter_290 / P5.1] `bit_filter` 给定时只追覆盖该位的切片。
+        """
         for src, dst in list(self.graph.edges()):
             if dst != signal_id:
                 continue
             edge = self.graph.get_edge(src, dst)
-            if edge and edge.kind == EdgeKind.BIT_SELECT and src not in seen_ids:
-                self._trace_drivers_recursive(src, drivers, seen_ids, current_depth,
-                                              max_depth, allow_cross_module)
+            if not (edge and edge.kind == EdgeKind.BIT_SELECT and src not in seen_ids):
+                continue
+            if bit_filter is not None and not self._bit_in_range(src, bit_filter):
+                continue
+            self._trace_drivers_recursive(src, drivers, seen_ids, current_depth,
+                                          max_depth, allow_cross_module)
 
     def _maybe_lift_to_parent_bus(self, signal_id, has_driver_edge, drivers, seen_ids,
-                                  current_depth, max_depth, allow_cross_module):
+                                  current_depth, max_depth, allow_cross_module,
+                                  bit_filter=None):
         """位级查询提升：叶子位（无任何真实来源）沿 BIT_SELECT 出边提到父总线。
 
         三个否定条件缺一不可（iter_126/128/132 的教训，详见 git 历史）：
@@ -222,10 +243,24 @@ class SignalTracer:
           - drivers 为空：递归中间节点不提升（否则 seen 污染兄弟位）
         提升目标限 data 类节点，避免把 interface 实例（INSTANTIATED_MODULE）当总线。
         """
-        if has_driver_edge or drivers or ":" in signal_id:
+        if has_driver_edge or ":" in signal_id:
             return
         if self._has_incoming_connection(signal_id):
             return
+
+        # [iter_290 / P5.2 F2] 位节点死胡同：递归到这里时 drivers 已含该位节点
+        # （它只是"别人驱动列表里的一项"），但位节点本身没有 incoming 驱动
+        # （典型: assign s = a & b; assign y = s[3]; 的 s[3]）。
+        # 旧规则 "drivers 非空就不提升" 会停在死胡同, 丢掉 s 的真实驱动。
+        # 现在: 位节点 + 父总线**本身有 incoming** 时才补追父总线（总线粒度）;
+        # 父总线没有 incoming（顶层输入位）不提升, 保持原行为。
+        own_bit = self._bit_index_of(signal_id)
+        if drivers:
+            if own_bit is None:
+                return
+            parent = self._bit_select_parent(signal_id)
+            if parent is None or not self._has_any_incoming(parent):
+                return
         _liftable = {"SIGNAL", "PORT_OUT", "PORT_IN", "REG"}
         for src, dst in list(self.graph.edges()):
             if src != signal_id or dst == signal_id or dst in seen_ids:
@@ -235,10 +270,50 @@ class SignalTracer:
                 continue
             dst_node = self.graph.get_node(dst)
             if dst_node and dst_node.kind.name in _liftable:
+                # 位节点提升时把自己的位索引带下去（父总线按位过滤切片）
+                own_bit = self._bit_index_of(signal_id)
                 self._trace_drivers_recursive(dst, drivers, seen_ids, current_depth + 1,
-                                              max_depth, allow_cross_module)
+                                              max_depth, allow_cross_module,
+                                              bit_filter=own_bit)
                 if drivers:
                     break
+
+    @staticmethod
+    def _bit_index_of(node_id: str) -> int | None:
+        """从节点 id 取单 bit 索引（`top.y[3]` → 3）；slice/总线返回 None。"""
+        import re
+
+        m = re.search(r"\[(\d+)\]$", node_id)
+        return int(m.group(1)) if m else None
+
+    def _bit_in_range(self, child_id: str, bit: int) -> bool:
+        """`child_id` 这个切片是否覆盖父信号的 `bit` 位（无法判定时保守返回 True）。"""
+        node = self.graph.get_node(child_id)
+        if node is not None and node.parent_bit_start is not None:
+            end = node.parent_bit_end if node.parent_bit_end is not None else node.parent_bit_start
+            return node.parent_bit_start <= bit <= end
+        import re
+
+        m = re.search(r"\[(\d+)(?::(\d+))?\]$", child_id)
+        if not m:
+            return True
+        hi = int(m.group(1))
+        lo = int(m.group(2)) if m.group(2) is not None else hi
+        return min(lo, hi) <= bit <= max(lo, hi)
+
+    def _bit_select_parent(self, node_id: str) -> str | None:
+        """位节点 → BIT_SELECT 出边指向的父总线（不存在返回 None）。"""
+        for nxt in self.graph.successors(node_id):
+            if nxt == node_id:
+                continue
+            edge = self.graph.get_edge(node_id, nxt)
+            if edge is not None and edge.kind == EdgeKind.BIT_SELECT:
+                return nxt
+        return None
+
+    def _has_any_incoming(self, node_id: str) -> bool:
+        """节点是否有任何 incoming 边（DRIVER / CONNECTION 等）。"""
+        return any(True for _ in self.graph.predecessors(node_id))
 
     def _has_incoming_connection(self, signal_id: str) -> bool:
         for src, dst in self.graph.edges():
