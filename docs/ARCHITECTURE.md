@@ -170,9 +170,9 @@ class VizEdge:
 | Extractor | 文件 | 职责 |
 |-----------|------|------|
 | **DriverExtractor** | `driver_extractor.py` (3987行) | DRIVER/CLOCK/RESET 边 + SignalSource |
-| **LoadExtractor** | `load_extractor.py` (423行) | 模块端口节点 |
+| ~~**LoadExtractor**~~ | `load_extractor.py` (删除, iter_276) | 曾负责模块定义端口节点 |
 | **ConnectionExtractor** | `connection_extractor.py` (503行) | CONNECTION 边 (port mapping) |
-| **ClockDomainExtractor** | `clock_domain_extractor.py` | 时钟域推断 |
+| ~~**ClockDomainExtractor**~~ | `clock_domain_extractor.py` (删除, iter_276) | 曾负责模块定义端口节点 + clock/reset 标记 |
 | **ModuleExtractor** | `module_extractor.py` (467行) | 模块实例信息 |
 | SVAExtractor | `sva_extractor.py` | SVA assertion 提取 |
 | CovergroupExtractor | `covergroup_extractor.py` | 覆盖率提取 |

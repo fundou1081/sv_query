@@ -16,11 +16,9 @@ from .graph import (
     forward_reachability,
 )
 from .graph_builder import (
-    ClockDomainExtractor,
     ConnectionExtractor,
     DriverExtractor,
     GraphBuilder,
-    LoadExtractor,
 )
 from .query import (
     ClockDomainTrace,
@@ -49,9 +47,7 @@ __all__ = [
     # Builder
     "GraphBuilder",
     "DriverExtractor",
-    "LoadExtractor",
     "ConnectionExtractor",
-    "ClockDomainExtractor",
     # Signal Query
     "SignalTracer",
     "SignalChain",

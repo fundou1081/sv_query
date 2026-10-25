@@ -4,7 +4,7 @@
 #
 # 覆盖核心逻辑:
 # 1. 命名端口连接 → CONNECTION 边
-# 2. port_to_internal / port_to_module_type 映射
+# 2. port_to_internal 映射
 # 3. 跨模块内部驱动 (实例输出端口)
 # 4. generate 展开实例的端口连接
 # 5. 缺模块警告
@@ -91,18 +91,6 @@ endmodule'''
         self.assertIn('top.u_dut.clk', r.port_to_internal,
                       "实例端口应进入 port_to_internal")
 
-    def test_port_to_module_type_mapping(self):
-        """[Golden] port_to_module_type 映射 (实例端口 → 模块.端口)"""
-        source = '''module dut(input clk);
-endmodule
-module top;
-    logic clk;
-    dut u_dut(.clk(clk));
-endmodule'''
-        r = _extract(source)
-        self.assertEqual(r.port_to_module_type.get('top.u_dut.clk'), 'dut.clk',
-                         "实例端口应映射到 模块.端口 短名")
-
     def test_multi_instance_same_module(self):
         """[Golden] 同模块多实例 — 端口映射区分实例"""
         source = '''module dut(input clk);
@@ -113,10 +101,11 @@ module top;
     dut u_b(.clk(clk));
 endmodule'''
         r = _extract(source)
-        self.assertIn('top.u_a.clk', r.port_to_module_type)
-        self.assertIn('top.u_b.clk', r.port_to_module_type)
-        self.assertEqual(r.port_to_module_type['top.u_a.clk'], 'dut.clk')
-        self.assertEqual(r.port_to_module_type['top.u_b.clk'], 'dut.clk')
+        # [iter_276] port_to_module_type (模块定义 short name) 已删除 —— 单一命名空间后
+        # 不存在"模块类型端口"节点; 这里断言实例端口各自的 port_to_internal 映射。
+        self.assertIn('top.u_a.clk', r.port_to_internal)
+        self.assertIn('top.u_b.clk', r.port_to_internal)
+        self.assertNotEqual(r.port_to_internal['top.u_a.clk'], r.port_to_internal['top.u_b.clk'])
 
 
 class TestConnectionExtractorGenerate(unittest.TestCase):
@@ -153,7 +142,7 @@ endmodule'''
                           f"generate 展开实例 top.gen_b[{i}].u_b.data 应有端口连接")
 
     def test_generate_instance_port_module_type(self):
-        """[Golden] generate 内实例的 port_to_module_type
+        """generate 内实例的端口映射
 
         [iter_072] 同 test_generate_instance_connections: 模块需有直接实例
         才能被 get_modules 收集端口 (见 EXTRACTION_COVERAGE #45).
@@ -169,9 +158,9 @@ module top;
     end
 endmodule'''
         r = _extract(source)
-        hits = {k: v for k, v in r.port_to_module_type.items() if 'u_b' in k}
-        self.assertGreaterEqual(len(hits), 1, "generate 实例端口应映射到模块端口")
-        self.assertTrue(all(v == 'bufio.en' for v in hits.values()))
+        # [iter_276] 单一命名空间: 断言 generate 内实例端口各自有 port_to_internal
+        hits = [k for k in r.port_to_internal if '.u_b.' in k]
+        self.assertGreaterEqual(len(hits), 1, "generate 实例端口应有内部映射")
 
 
 class TestConnectionExtractorWarnings(unittest.TestCase):
@@ -205,9 +194,8 @@ module top;
     sub #(.W(16)) u16(.d(d16), .q(q16));
 endmodule'''
         r = _extract(source)
-        self.assertEqual(r.port_to_module_type.get('top.u16.d'), 'sub.d',
-                         "参数化实例端口应映射到模块端口")
-        self.assertEqual(r.port_to_module_type.get('top.u16.q'), 'sub.q')
+        self.assertIn('top.u16.d', r.port_to_internal)
+        self.assertIn('top.u16.q', r.port_to_internal)
         edges = {(e.src, e.dst) for e in r.edges}
         self.assertIn(('top.d16', 'top.u16.d'), edges, "参数化实例应有连接边")
 
@@ -222,8 +210,7 @@ module top;
 endmodule'''
         r = _extract(source)
         # 位置端口: 实例端口名是 sub 的端口名 (d/q)
-        self.assertEqual(r.port_to_module_type.get('top.u_pos.d'), 'sub.d',
-                         "位置端口应映射到模块端口名")
+        self.assertIn('top.u_pos.d', r.port_to_internal, "位置端口应建实例端口节点")
         edges = {(e.src, e.dst) for e in r.edges}
         self.assertIn(('top.d8', 'top.u_pos.d'), edges, "位置端口应有连接边")
 
@@ -236,8 +223,9 @@ module top(input logic clk);
     bus_if ifc(.clk(clk));
 endmodule'''
         r = _extract(source)
-        self.assertEqual(r.port_to_module_type.get('top.ifc.clk'), 'bus_if.clk',
-                         "interface 端口应映射到 interface 端口")
+        # [iter_276] 单一命名空间: interface 端口同样走实例级映射
+        self.assertIn('top.ifc.clk', r.port_to_internal,
+                      "interface 端口应建实例端口节点")
 
     def test_tri_state_inout_no_connection(self):
         """[Golden] 三态 inout 端口: 无 CONNECTION 边 (tri-state 方向特殊)"""

@@ -554,6 +554,7 @@ class ConnectionExtractor:
                 # 合并 port_extra + width_extra 到 TraceNode.extra
                 merged_extra = {**port_extra, **width_extra}
 
+                _lower = port_name.lower()
                 result.nodes.append(
                     TraceNode(
                         id=inst_port_id,
@@ -562,6 +563,11 @@ class ConnectionExtractor:
                         kind=kind,
                         width=final_width,
                         is_port=True,
+                        # [iter_276] 原 LoadExtractor/ClockDomainExtractor 只做"为
+                        # 模块定义建端口节点 + 打 clock/reset 标记"; 删除它们后标记
+                        # 收敛到实例端口节点 (这里), 不再有模块定义端口节点。
+                        is_clock=("clk" in _lower),
+                        is_reset=("rst" in _lower),
                         extra=merged_extra,
                     )
                 )
@@ -610,9 +616,7 @@ class ConnectionExtractor:
                         )
                     # 同步构建 port_to_internal 映射 (full path)
                     result.port_to_internal[inst_port_id] = child_signal_id
-                    # [FIX 2026-07-08] 同时保留 port_to_module_type 映射 (semantic short name)
                     # 让 trace 跨 module boundary 仍能找 leaf module 内部 signal
-                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
                 elif direction_clean == "output":
                     # 输出端口: 子模块输出端口驱动实例端口
                     # 连接关系: child.data (child output) -> top.u_driver.data (instance port) -> top.data (parent wire)
@@ -640,9 +644,7 @@ class ConnectionExtractor:
                                 src=inst_port_id, dst=parent_signal, kind=EdgeKind.CONNECTION, assign_type="connection"
                             )
                         )
-                    # 同步构建 port_to_internal (full path) + port_to_module_type (short)
                     result.port_to_internal[inst_port_id] = child_signal_id
-                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
                 elif "inout" in direction_clean:
                     # [iter_129 候选1] inout 双向端口: 父信号与实例端口是**同一根线**
                     # (物理连接, 无方向归属 — 谁驱动取决于上下文: 外部拉 or 实例
@@ -669,7 +671,6 @@ class ConnectionExtractor:
                         )
                     # port_to_internal 同 output 语义: 实例端口 → 内部 (self 同路径)
                     result.port_to_internal[inst_port_id] = f"{inst_path}.{port_name}"
-                    result.port_to_module_type[inst_port_id] = f"{inst_module_name}.{port_name}"
 
         # [FIX] 后处理:修复实例端口的位宽
         # 如果实例端口位宽为默认值(1,0),尝试从连接推断实际位宽
