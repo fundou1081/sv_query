@@ -3,13 +3,13 @@
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-25 GMT+8 (iter_280: 图快照基线工具, PLAN P0.1 完成)
+> **最后更新**: 2026-10-25 GMT+8 (iter_281: 拆 driver 递归, PLAN P0.2 完成)
 
 ---
 
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
-- **当前项**: `P0.2 拆 _trace_drivers_recursive` — 待做（前置 P0.1 已完成）
+- **当前项**: `P0.3 GraphBuilder 6 个后处理 pass 改声明式 pipeline` — 待做（前置 P0.1/P0.2 已完成）
 - 计划树共 17 项（P0 建图层/查询层拆分、P1 视图层去双命名空间、P2 边缘补测、P3 长期 backlog）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 

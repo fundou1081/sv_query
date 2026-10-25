@@ -18,7 +18,7 @@
 | id | 内容 | 验收 |
 |---|---|---|
 | P0.1 | 图快照基线工具 | ✅ `tools/graph_snapshot.py` + 6 个基线 + 回归测试（iter_280） |
-| P0.2 | 拆 `_trace_drivers_recursive` | 行为零变化（图基线 + 全量门禁全绿）；6 类规则各自可测 |
+| P0.2 | 拆 `_trace_drivers_recursive` | ✅ 343 → 81 行编排 + 14 方法；图基线零差异；2321 passed（iter_281） |
 | P0.3 | GraphBuilder pass 改声明式 pipeline | 每 pass 声明 inputs/outputs；顺序由依赖推导 |
 
 ## 约束
