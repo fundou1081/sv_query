@@ -22,11 +22,12 @@
 |---|---|---|---|
 | 1 | **协作入口** | [AGENTS.md](../../AGENTS.md) | 流程与铁律，压缩后必重读 |
 | 2 | **细则** | `docs/dev/` | 纪律 / 风格 / 流程 / 清单 |
-| 3 | **当前 todolist** | [CURRENT_TODO.md](../../CURRENT_TODO.md) | **此刻**在做什么 — 唯一稳定追踪点 |
-| 4 | **迭代记录** | [docs/task_tree/](../task_tree/) | 任务树 + 每次迭代一个文件 |
-| 5 | **架构决策** | [docs/architecture/](../architecture/) + [ARCHITECTURE.md](../ARCHITECTURE.md) | 架构变更 / 决策记录 |
-| 6 | **测试** | [TESTING.md](../../TESTING.md) + `sim/tests/` | 唯一测试手段与流程 |
-| 7 | **文档索引** | [docs/INDEX.md](../INDEX.md) | 唯一文档入口 + 计数单一真相源 |
+| 3 | **计划树（唯一计划源）** | [PLAN.md](../../PLAN.md) | **所有代码修改计划**的全局唯一登记处（含状态） |
+| 4 | **当前 todolist** | [CURRENT_TODO.md](../../CURRENT_TODO.md) | **此刻**在做什么 — 唯一稳定追踪点（计划以 PLAN.md 为准） |
+| 5 | **迭代记录** | [docs/task_tree/](../task_tree/) | 任务树 + 每次迭代一个文件 |
+| 6 | **架构决策** | [docs/architecture/](../architecture/) + [ARCHITECTURE.md](../ARCHITECTURE.md) | 架构变更 / 决策记录 |
+| 7 | **测试** | [TESTING.md](../../TESTING.md) + `sim/tests/` | 唯一测试手段与流程 |
+| 8 | **文档索引** | [docs/INDEX.md](../INDEX.md) | 唯一文档入口 + 计数单一真相源 |
 
 **辅助 (不是入口)**: [ARCHITECTURE_TODOLIST.md](../ARCHITECTURE_TODOLIST.md)（架构改造长期追踪）、
 [TODO.md](../TODO.md)（版本级待办）、`memory/`（按日经验）、
@@ -40,6 +41,11 @@
 
 ### 1.1 开工前 (缺一步就不要动手)
 
+0. **更新 [PLAN.md](../../PLAN.md) 计划树**（全局唯一计划源）:
+   - 新工作挂到对应 `P*` 下（必要时**扩展子计划**），id 全局唯一
+   - 把 `current item` 指向该项；开工后标 `进行中`
+   - 先**核对上一轮状态**：上一项是否真的完成（代码 + 测试 + 文档），不符先修正
+   - 校验: `python3 tools/check_plan.py`
 1. **建任务文件**: `docs/task_tree/tasks/L<N>_<任务名>.md`
    - `L1` = 顶层任务, `L2` = 子任务, `L3` = 具体动作
    - 写清：背景、现状实测、目标、验收方式
@@ -52,12 +58,14 @@
 - **一个迭代 = 一个可观察的动作**（读代码 / 跑测试 / 修 bug / 验证结果）
 - 每个迭代写一个 `docs/task_tree/iterations/iter_NNN_<简述>.md`，**边做边写**
 - 每完成一个 sub-task 就勾选 `CURRENT_TODO.md`；遇阻塞立刻写明阻塞点
-- 迭代号**只增不减**，不复用、不回填（当前最新 `iter_278`，下一个 `iter_279` 起顺延）
+- **计划变化先改计划树**：范围/顺序变了，先更新 `PLAN.md`（新增子项或改状态），再动手
+- 迭代号**只增不减**，不复用、不回填（当前最新 `iter_279`，下一个 `iter_280` 起顺延）
 
 ### 1.3 收尾
 
 | 必须更新 | 内容 |
 |---|---|
+| `PLAN.md` | 该项标 `已完成`；`current item` 指向下一项（或标 `待做` 留空档） |
 | `CURRENT_TODO.md` | 移到"最近完成"，清出当前任务位 |
 | `docs/task_tree/overview.md` | 任务树状态 + 迭代汇总表新增一行 |
 | 长期 todolist | `docs/ARCHITECTURE_TODOLIST.md` 或 `docs/TODO.md` 改状态 + 记录变更 |
