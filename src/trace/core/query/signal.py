@@ -154,25 +154,6 @@ class SignalTracer:
                 and _kind_guard.kind.name == "CLASS_PROPERTY"):
             return
 
-        # [FIX 2026-07-08] 治本后, instance port 也需要 forward-lookup 到 module def port,
-        # 这样可以跨 wrapper 的内部 assign (e.g. axi_ram_wr_if.s_axi_awready_reg → axi_ram_wr_if.s_axi_awready).
-        # 适用于 has_driver_edge=True (自环/internal DRIVER) 和 False 两个场景.
-        # 同样适用于 PORT_IN (例 axi_ram_wr_if_inst.s_axi_awready input port) —
-        # forward-lookup 才能跨到 wrapper 内部 DRIVER 边.
-        current_node_check = self.graph.get_node(signal_id)
-        if (current_node_check
-                and current_node_check.kind.name in ("PORT_OUT", "PORT_IN")
-                and hasattr(self.graph, "_port_to_module_type")
-                and current_node_check.id in self.graph._port_to_module_type):
-            short_name = self.graph._port_to_module_type[current_node_check.id]
-            if (short_name and short_name != signal_id
-                    and short_name in self.graph.nodes()
-                    and short_name not in seen_ids):
-                self._trace_drivers_recursive(
-                    short_name, drivers, seen_ids,
-                    current_depth + 1, max_depth,
-                 allow_cross_module)
-
         # [方案B修正] 如果当前节点没有 incoming DRIVER 边, 检查 BIT_SELECT 子节点
         # 例如查询 'm' (modport实例) 时, 如果 'm' 没有直接驱动, 查找 'm.*' 子节点
         has_driver_edge = any(
@@ -235,63 +216,7 @@ class SignalTracer:
                             if drivers:
                                 break
 
-        # [FIX 2026-06-11] 跨 module boundary: 当 target 是 module def PORT_OUT
-        # 且 0 driver 时, wrapper module 实际是 port mapping, 没内部 assign.
-        # 查 port_to_internal 反向找所有 instance port, 递归追它们的 driver.
-        # 例: axi_ram_wr_rd_if.s_axi_awready (wrapper) ← axi_dp_ram.a_if.s_axi_awready (instance)
-        #                                 ← axi_dp_ram.b_if.s_axi_awready (另一个 instance)
-        # [FIX 2026-07-08] 治本后: instance port 与 module def port 走两条路
-        # 1) signal_id 是 module def port (短名) → 反向查 instance ports
-        # 2) signal_id 是 instance port (full path, PORT_OUT 0 driver) → forward 查 module def port
-        # [iter_240] 这段是 P2 时期的"实例端口追溯"(既有跨模块逻辑, 走
-        # graph._port_to_internal / _port_to_module_type)。
-        # 限定模块查询 (allow_cross_module=False) 时同样必须关掉 —— 否则
-        # "问 top 模块内" 会越界答到 testbench 层。
-        if allow_cross_module and not has_driver_edge and hasattr(self.graph, "_port_to_internal"):
-            current_node = self.graph.get_node(signal_id)
-            if current_node and current_node.kind.name == "PORT_OUT":
-                # Case 1: signal_id 是 module def port (短名) → 反向找 instance ports
-                pti = self.graph._port_to_internal
-                instance_ports = [k for k, v in pti.items() if v == signal_id]
-                for inst_port_id in instance_ports:
-                    if inst_port_id in self.graph.nodes() and inst_port_id not in seen_ids:
-                        self._trace_drivers_recursive(
-                            inst_port_id, drivers, seen_ids, current_depth + 1, max_depth,
-                            allow_cross_module
-                        )
-
-                # Case 2: signal_id 是 instance port → forward 找 module def port
-                # 适用: axi_dp_ram.a_if.s_axi_awready → axi_ram_wr_rd_if.s_axi_awready (short)
-                if not instance_ports and hasattr(self.graph, "_port_to_module_type"):
-                    ptt = getattr(self.graph, "_port_to_module_type", {})
-                    short_name = ptt.get(signal_id)
-                    if short_name and short_name != signal_id and short_name in self.graph.nodes():
-                        if short_name not in seen_ids:
-                            self._trace_drivers_recursive(
-                                short_name, drivers, seen_ids,
-                                current_depth + 1, max_depth, allow_cross_module,
-                            )
-
-                # [FIX 2026-07-08] 治本后: port_to_internal 是 self-loop, 反向查
-                # 不起作用 (找不到 v == signal_id). 改为查 port_to_module_type
-                # 验证 module def port 是否仍是 "short name" 端口 (而非 inst_path).
-                # signal_id 格式 = "module_type.port_name"
-                if not instance_ports and hasattr(self.graph, "_port_to_module_type"):
-                    # signal_id 例如 'axi_ram_wr_rd_if.s_axi_awready' (module def port)
-                    ptt = getattr(self.graph, "_port_to_module_type", {})
-                    # 反向查: 找所有 instance port 映射到 module_type.port_name
-                    inst_ports_short = [
-                        k for k, v in ptt.items() if v == signal_id
-                    ]
-                    for inst_port_id in inst_ports_short:
-                        if (inst_port_id in self.graph.nodes()
-                                and inst_port_id not in seen_ids):
-                            self._trace_drivers_recursive(
-                                inst_port_id, drivers, seen_ids,
-                                current_depth + 1, max_depth
-                            , allow_cross_module)
-
-        # 标记当前节点已访问 (移到前面了, 避免 forward-lookup 死循环)
+        # 遍历所有指向这个 signal 的边
 
         # 遍历所有指向这个 signal 的边
         for src, dst in list(self.graph.edges()):
@@ -390,18 +315,8 @@ class SignalTracer:
                                 #   axi_ram_wr_rd_if 是 wrapper (0 internal driver), b_if 内部有 deep
                                 #   axi_ram_wr_if_inst.s_axi_awready (通过 _elaborate_wrapper_passthroughs 加边).
                                 # 避免乱跨: 只跨到 kind=PORT_OUT (output 端口, backpressure 关键)
-                                # [FIX 2026-07-08] 治本后: port_to_internal 是 self-loop,
-                                # 不能用于跨 instance. 改为查 port_to_module_type.
-                                # semantic short name 是  多个 instance 共享同一 def_port 名字
-                                # 所以可以通过它查 cross-instance mapping.
-                                ptt_for_cross = getattr(self.graph, "_port_to_module_type", {})
-                                (
-                                    self.graph._port_to_internal.get(src)
-                                    if hasattr(self.graph, "_port_to_internal")
-                                    else None
-                                )
-                                # semantic short name (eg axi_ram_wr_rd_if.s_axi_awready)
-                                def_port_short = ptt_for_cross.get(src)
+                                # [iter_276] 兄弟实例判定走 MIG 的 module_type (纯实例级),
+                                # 不再用 "模块定义 short name" 字符串映射。
                                 # [iter_132] wrapper cross 守卫: 仅当 src 端口
                                 # **无内部驱动** 才跨到其他同 short-name instance —
                                 # 设计意图 (注释) 是 wrapper (0 internal driver)
@@ -432,10 +347,8 @@ class SignalTracer:
                                     for e2 in self.graph.get_edges(p, src)
                                 )
                                 cross_targets = set()
-                                if def_port_short and not _src_has_internal_driver:
-                                    for k, v in ptt_for_cross.items():
-                                        if v == def_port_short and k != src:
-                                            cross_targets.add(k)
+                                if not _src_has_internal_driver:
+                                    cross_targets = set(self._sibling_ports(inst_path, port_name))
                                 if cross_targets:
                                     for k in cross_targets:
                                         if (k in self.graph.nodes()
@@ -572,6 +485,31 @@ class SignalTracer:
         if allow_cross or "." not in signal_id:
             return None
         return signal_id.rsplit(".", 1)[0]
+
+    def _sibling_ports(self, inst_path: str, port_name: str) -> list[str]:
+        """[iter_276] 同模块类型的**兄弟实例**同名端口 (wrapper 直通跨实例)。
+
+        旧实现比较"模块定义 short name" (`port_to_module_type`), 属双命名空间产物;
+        现在用 MIG 的 module_type 判定, 只看图里存在的节点。
+        """
+        mig = self.mig
+        if mig is None:
+            return []
+        instances = getattr(mig, "instances", {}) or {}
+        cur = instances.get(inst_path)
+        if cur is None:
+            return []
+        module_type = getattr(cur, "module_type", None)
+        if not module_type:
+            return []
+        out: list[str] = []
+        for iid, inode in instances.items():
+            if iid == inst_path or getattr(inode, "module_type", None) != module_type:
+                continue
+            cand = f"{iid}.{port_name}"
+            if cand in self.graph.nodes():
+                out.append(cand)
+        return out
 
     @staticmethod
     def _in_scope(node_id: str, scope_prefix: str | None) -> bool:

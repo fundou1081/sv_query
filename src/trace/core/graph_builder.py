@@ -12,12 +12,10 @@ import pyslang
 
 from .semantic_adapter import SemanticAdapter
 from .builder.subroutine_expander import SubroutineExpander
-from .clock_domain_extractor import ClockDomainExtractor  # [P1 cycle 9c] re-export 保兼容
 from .connection_extractor import ConnectionExtractor  # [P1 cycle 9b] re-export 保兼容
 from .driver_extractor import DriverExtractor  # [P1 cycle 8] re-export 保兼容
 from .extractor_models import ExtractorResult  # [P1 cycle 9] 共享 (避免循环 import)
 from .graph.models import EdgeKind, NodeKind, SignalGraph, TraceEdge, TraceNode
-from .load_extractor import LoadExtractor  # [P1 cycle 9] re-export 保兼容
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +25,7 @@ __all__ = [
     "ExtractorResult",
     "GraphBuilder",
     "DriverExtractor",
-    "LoadExtractor",
     "ConnectionExtractor",
-    "ClockDomainExtractor",
 ]
 
 class GraphBuilder:
@@ -47,13 +43,10 @@ class GraphBuilder:
         # [iter_272] 图**只有实例级**一种模式 (模块定义级路径已删除):
         #   - target_module 给定时: 只建该子树并过滤 (单模块调试)
         #   - 否则: 建所有 top 的实例树 (全设计视图)
-        self._instance_path_list: list[str] = []
         self.graph = SignalGraph()
         self._extractors = {
             "driver": DriverExtractor(adapter),
-            "load": LoadExtractor(adapter),
             "connection": ConnectionExtractor(adapter, root_module_name=target_module),
-            "clock": ClockDomainExtractor(adapter),
         }
         # Propagate target_module to other extractors that might need it
         for ext in self._extractors.values():
@@ -106,8 +99,6 @@ class GraphBuilder:
         # (connection/load/clock) 仍会为**模块定义**建节点; 实测这些节点
         # 实测全部零度 (minimal_3module 14/14, scheduler 26/26)。
         # 只删零度的非实例节点; 有边的保留并告警 (不静默丢信息)。
-        self._drop_orphan_type_nodes()
-
         return self.graph
 
     def _expand_bus_conn_bit_bridges(self):
@@ -401,52 +392,6 @@ class GraphBuilder:
             # [P0 核实 2026-08-29] 失败显式记录 (原 print 调试残留)
             logger.warning("_capture_generate_block_map failed: %s", e)
 
-    def _instance_namespaces(self) -> set[str]:
-        """[iter_269] 所有实例路径 (含顶层实例名) —— 实例级图的合法命名空间。"""
-        namespaces: set[str] = set()
-        root = getattr(self.adapter, "_root", None)
-        for top in getattr(root, "topInstances", []) or []:
-            try:
-                namespaces.add(str(top.name))
-            except (UnicodeDecodeError, TypeError) as e:
-                logger.debug("top 名字不可读: %s", e)
-        for inst in getattr(self, "_instance_path_list", []):
-            namespaces.add(inst)
-        return namespaces
-
-    def _drop_orphan_type_nodes(self) -> None:
-        """删除"模块定义命名空间"的零度节点 (单命名空间保证)。
-
-        判定: 节点 id 不落在任何实例路径下, 且 degree == 0。
-        保留常量节点 "0" (表达式里的 0 驱动) 与有边节点 (后者告警)。
-        """
-        namespaces = self._instance_namespaces()
-        if not namespaces:
-            logger.warning("实例命名空间为空, 跳过孤儿节点清理")
-            return
-
-        def under_instance(node: str) -> bool:
-            return any(node == ns or node.startswith(ns + ".") for ns in namespaces)
-
-        orphans, kept_with_edges = [], []
-        for node in list(self.graph.nodes()):
-            if node == "0" or under_instance(node):
-                continue
-            if self.graph.degree(node) == 0:
-                orphans.append(node)
-            else:
-                kept_with_edges.append(node)
-
-        for node in orphans:
-            self.graph.remove_node(node)
-
-        if kept_with_edges:
-            logger.warning(
-                "仍有 %d 个非实例节点带边 (未删除): %s",
-                len(kept_with_edges), sorted(kept_with_edges)[:5],
-            )
-        logger.info("删除 %d 个模块定义命名空间孤儿节点", len(orphans))
-
     def _all_top_instances(self) -> list[tuple[str, Any]]:
         """所有顶层实例 (name, symbol), 供全设计 walk。
 
@@ -588,8 +533,6 @@ class GraphBuilder:
             for root_name, root_sym in roots:
                 walk(root_sym, root_name)
 
-            # [iter_269] 供 _drop_orphan_type_nodes 判定命名空间
-            self._instance_path_list = [p for p, _sym in paths]
 
             # Pass to DriverExtractor
             driver = self._extractors.get('driver')
@@ -1028,11 +971,6 @@ class GraphBuilder:
             # 收集 port_to_internal 映射
             if hasattr(result, "port_to_internal") and result.port_to_internal:
                 self.graph._port_to_internal.update(result.port_to_internal)
-            # [FIX 2026-07-08] 同步收集 port_to_module_type (semantic short name)
-            if hasattr(result, "port_to_module_type") and getattr(result, "port_to_module_type", None):
-                if not hasattr(self.graph, "_port_to_module_type"):
-                    self.graph._port_to_module_type = {}
-                self.graph._port_to_module_type.update(result.port_to_module_type)
             # [REFACTOR 2026-08-07 A计划] 收集 expr_trees/const_map/func_info (从 semantic AST, 消灭 viz 源码重读)
             if getattr(result, 'expr_trees', None):
                 self.graph._expr_trees.update(result.expr_trees)
@@ -1227,117 +1165,65 @@ class GraphBuilder:
                                 node.is_port = True
 
     def _elaborate_wrapper_passthroughs(self):
-        """[FIX 2026-06-11] 补充 wrapper module 内部 port mapping 边.
+        """[iter_276] wrapper 直通边 —— **纯图 + 实例路径**实现。
 
-        问题: graph builder 只 elaboration 顶层 (top module 跟直接子 instance).
-        wrapper module (e.g. axi_ram_wr_rd_if) 内部 instance 的 port (e.g. axi_ram_wr_if_inst.s_axi_awready)
-        通过 .s_axi_awready(s_axi_awready) 接到 wrapper 自己的 port (axi_ram_wr_rd_if.s_axi_awready).
-        这条边没建, 导致 trace 跨 wrapper 边界时找不到 leaf driver.
+        旧实现遍历"模块定义端口"(如 `axi_ram_wr_rd_if.s_axi_awready`), 靠
+        `port_to_module_type` 的 short name 字符串把实例对上。那是双命名空间时代的
+        产物: 它要求模块定义端口节点存在, 于是 Load/Clock extractor 造出的影子节点
+        反过来成了它的前提 —— 这也是"阴影节点清理 pass"删不掉的根因。
 
-        修复 heuristic: 对每个 module def 的 PORT_OUT node:
-        1. 找所有 instance 化它的 parent instance (pti 反向)
-        2. 在每个 instance 内部 (path = parent_inst_path), 找跟 wrapper port 同名 port 的 deep instance port
-        3. 加 DRIVER 边: deep_port → wrapper_def_port (在 parent_inst scope)
+        新实现只看图里的实例端口节点 (id 形如 `top.G[0].u_mid.y`):
+          对每个实例端口 P = `I.p` (至少两级实例路径, 排除顶层 `top.p`),
+          找同一实例子树下**同名**的端口 D = `I.<...>.p`:
+            - P 是 PORT_OUT: D --DRIVER(wrapper_passthrough)--> P
+            - P 是 PORT_IN : P --DRIVER(wrapper_passthrough)--> D
+          仅当 (src,dst) 还没有 DRIVER 边时补。
 
-        实际生成: DRIVER 边 from "axi_dp_ram.b_if.axi_ram_wr_if_inst.s_axi_awready"
-        to "axi_ram_wr_rd_if.s_axi_awready"
-
-        [FIX 2026-07-08] 治本后: port_to_internal 是 self-loop, 反向查只能找到
-        instance 自己. 改为查 port_to_module_type (semantic short name) —
-        多个 instance 共享同一 def_port 名字, 能找齐 instance paths.
+        语义不变: "wrapper 端口由内部同名的子实例端口直通驱动"。
         """
-        from collections import defaultdict
+        from .graph.models import TraceEdge
 
-        pti = self.graph._port_to_internal
-        ptt = getattr(self.graph, "_port_to_module_type", {})
+        nodes = list(self.graph._node_data)
+        added = 0
 
-        # 1. 对每个 module def port (短名), 找 instance 化它的所有 instance paths
-        #    reverse_ptt[def_port_short] = [instance_port_1, instance_port_2, ...]
-        reverse_ptt = defaultdict(list)
-        for inst_port, def_port_short in ptt.items():
-            reverse_ptt[def_port_short].append(inst_port)
-        # 合并旧的 pti reverse (如果 def_port short 不在 ptt 中)
-        for inst_port, def_port_short in pti.items():
-            if inst_port not in ptt and def_port_short not in reverse_ptt:
-                reverse_ptt[def_port_short].append(inst_port)
-
-        added_edges = 0
-        # 2. 对每个 module def port
-        for def_port, inst_ports in reverse_ptt.items():
-            # [FIX 2026-07-16] 同时处理 PORT_OUT 和 PORT_IN.
-            # 之前只处理 PORT_OUT, 导致 wrapper input ports (PORT_IN) 的 wrapper passthrough
-            # edge (top.valid_i → wrapper inner.valid_i) 没建, chain/trace 跨 wrapper
-            # input 边界找不到 path.
-            # Edge 方向:
-            # - PORT_OUT: deep → inst_port (deep driver drives wrapper output)
-            # - PORT_IN:  inst_port → deep  (wrapper input drives inner deep port)
-            def_node = self.graph._node_data.get(def_port)
-            if not def_node or def_node.kind.name not in ("PORT_OUT", "PORT_IN"):
+        for port_id in nodes:
+            parts = port_id.split(".")
+            if len(parts) < 3:            # 顶层端口 (top.a) 不算 wrapper
                 continue
-            is_input = def_node.kind.name == "PORT_IN"
-            logger.debug(f"_elab_wrapper: PROCESSING {def_port} (is_input={is_input}, inst_ports={len(inst_ports)})")
-
-            # 检查 def_port 是否已经有 driver (避免重复加). 用 predecessors 更稳.
-            if def_port in self.graph._node_data:
-                preds = list(self.graph.predecessors(def_port))
-                if any(
-                    self.graph._edge_data.get((p, def_port), [None])[0]
-                    and self.graph._edge_data[(p, def_port)][0].kind == EdgeKind.DRIVER
-                    for p in preds if (p, def_port) in self.graph._edge_data
-                ):
-                    continue
-
-            # def_port 格式: "module_name.port_name"
-            if "." not in def_port:
+            node = self.graph._node_data.get(port_id)
+            if node is None:
                 continue
-            def_module, port_name = def_port.rsplit(".", 1)
+            kind = node.kind.name
+            if kind not in ("PORT_OUT", "PORT_IN"):
+                continue
 
-            # 3. 对每个 instance 化 wrapper 的 instance, 找 wrapper 内部 deep port
-            for inst_port in inst_ports:
-                # inst_port 格式: "parent.inst_name.port_name"
-                if "." not in inst_port:
+            inst_path, port_name = port_id.rsplit(".", 1)
+            prefix = inst_path + "."
+            suffix = "." + port_name
+            for deep_id in nodes:
+                if deep_id == port_id or not deep_id.startswith(prefix):
                     continue
-                # instance 路径 (parent.inst_name)
-                inst_path = inst_port.rsplit(".", 1)[0]
-                # 在 inst_path 内部, 找跟 port_name 同名的 deep port
-                # 即: f"{inst_path}.{sub_inst}.{port_name}" 或更深
-                # 用 graph 节点前缀搜索
-                prefix = f"{inst_path}."
-                for node_id in self.graph._node_data:
-                    if not node_id.startswith(prefix):
-                        continue
-                    if node_id == inst_port:
-                        continue
-                    # 检查末尾是否是 port_name
-                    if not node_id.endswith(f".{port_name}"):
-                        continue
-                    # 是 deep port: inst_path.sub_inst.port_name
-                    # 检是不是 instance port (kind=PORT_OUT/IN) — wrapper 内部 sub_inst 的 port
-                    deep_node = self.graph._node_data[node_id]
-                    if deep_node.kind.name not in ("PORT_OUT", "PORT_IN"):
-                        continue
-                    # Edge 方向根据 input/output:
-                    # - PORT_OUT: deep → inst_port (deep driver drives wrapper output)
-                    # - PORT_IN:  inst_port → deep  (wrapper input drives inner deep port)
-                    edge_src = inst_port if is_input else deep_node.id
-                    edge_dst = deep_node.id if is_input else inst_port
-                    # 加 DRIVER 边 wrapper_passthrough.
-                    # 注意: ConnectionExtractor 可能已加 CONNECTION 边 for 同一 (src,dst). 这里加 DRIVER 边. 二者不冲突.
-                    from .graph.models import TraceEdge
-                    already_has_driver = any(
-                        e.kind == EdgeKind.DRIVER
-                        for e in self.graph._edge_data.get((edge_src, edge_dst), [])
-                    )
-                    if not already_has_driver:
-                        self.graph.add_trace_edge(TraceEdge(
-                            src=edge_src,
-                            dst=edge_dst,
-                            kind=EdgeKind.DRIVER,
-                            assign_type="wrapper_passthrough",
-                        ))
-                        added_edges += 1
+                if not deep_id.endswith(suffix):
+                    continue
+                deep_node = self.graph._node_data.get(deep_id)
+                if deep_node is None or deep_node.kind.name not in ("PORT_OUT", "PORT_IN"):
+                    continue
+                edge_src, edge_dst = (
+                    (port_id, deep_id) if kind == "PORT_IN" else (deep_id, port_id)
+                )
+                already = any(
+                    e.kind == EdgeKind.DRIVER
+                    for e in self.graph._edge_data.get((edge_src, edge_dst), [])
+                )
+                if already:
+                    continue
+                self.graph.add_trace_edge(TraceEdge(
+                    src=edge_src, dst=edge_dst,
+                    kind=EdgeKind.DRIVER, assign_type="wrapper_passthrough",
+                ))
+                added += 1
 
-        logger.debug(f"_elaborate_wrapper_passthroughs: added {added_edges} passthrough edges")
+        logger.debug("_elaborate_wrapper_passthroughs: added %d passthrough edges", added)
 
     def _mark_special_signals(self):
         for _node_id, node in self.graph._node_data.items():

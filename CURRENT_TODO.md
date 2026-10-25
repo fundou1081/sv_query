@@ -3,7 +3,7 @@
 > **唯一入口**: 本文件是"此刻在做什么"的**唯一稳定追踪点**。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
-> **最后更新**: 2026-10-24 GMT+8 (iter_275: 孤儿清理 pass 根治尝试回滚, 2308 passed 不变)
+> **最后更新**: 2026-10-25 GMT+8 (iter_276: 单一命名空间收口, 影子节点归零, 2305 passed)
 
 ---
 
@@ -71,7 +71,8 @@
 **generate 作用域已修 ✅ (iter_274)**: 按方案 A 落地 —— 块内局部信号命名 `top.G[i].local_wire`，跨轮假边 4→0，2 个 xfail 转正；全量 **2308 passed**。
 **孤儿清理 pass 根治 ❌ 尝试回滚 (iter_275)**: 删 Load/Clock extractor + 清理 pass 后影子节点确实消失，但 wrapper 跨实例遍历依赖双变量命名空间语义 → 1 个回归（fanin 深度停在 u_mid.y）。已完整回滚。
 **结论**: `_drop_orphan_type_nodes` 当前是**必要护栏**。正确顺序是：先重写 wrapper 跨实例判据 → 再把 extractor 实例化 → 最后删 pass。
-**下一步（待拍板）**: 是否投入 1~2 个迭代做上述重构，还是维持现状。
+**单一命名空间收口 ✅ (iter_276)**: 按正确顺序完成 —— wrapper 直通改纯图实现 → 删 Load/Clock extractor → 删清理 pass + `port_to_module_type` + 死回退分支。**影子节点 17~30 → 0**，extractor 4→2，verilog-axi 构建 25.8s→23.4s，全量 **2305 passed**。
+**下一步**: 无待办结构任务；可选清理 —— `port_to_internal` 自映射、`wrapper_passthrough` 语义文档化。
 **T3 剩余**: `UnifiedTracer` 3 个巨型私有方法（backlog，与图构建强耦合）。
 **下一步**: 继续 T2 —— diagnose 4→1 / graph 4→2 / controlflow 3→2 / snapshot 5→4 / dev 3→1 / view 叙述类 3→1。
 **产出**: [评审文档](docs/refactoring/2026-10-19_core_smell_review.md) —— 量出 src 183 文件 / 64,336 行, 函数 1,609 个 (>200 行 26 个, 最长 908), `except Exception` 246 处, 裸 except 0。

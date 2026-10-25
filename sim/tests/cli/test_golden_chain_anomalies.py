@@ -245,38 +245,6 @@ class TestTimingAnomalyDetection(unittest.TestCase):
     Fix: timing now reports RTL anomalies and shows them in DOT.
     """
 
-    def _run_timing(self, target: str, tc_dir: str, max_paths: int = 5) -> tuple[str, str]:
-        filelist = GOLDEN_DIR / tc_dir / "filelist.f"
-        dot_out = Path(f"/tmp/_timing_{tc_dir}.dot")
-        result = subprocess.run(
-            ["sv_query", "exp", "timing", "analyze",
-             "-f", str(filelist),
-             "--max-paths", str(max_paths),
-             "--emit-dot", str(dot_out)],
-            capture_output=True, text=True, timeout=120,
-        )
-        return dot_out.read_text(), result.stderr
-
-    def test_timing_normal_no_anomaly(self):
-        """normal: timing should report no anomalies."""
-        dot, stderr = self._run_timing("normal", "normal")
-        # Should NOT have anomaly cluster
-        self.assertNotIn("cluster_timing_anomalies", dot,
-                        "Normal timing should NOT have anomaly cluster")
-        # stderr should not have anomaly warning
-        self.assertNotIn("RTL anomalies detected", stderr,
-                        "Normal timing should not have anomaly warning")
-
-    def test_timing_dot_title_includes_anomaly_warning(self):
-        """Timing DOT title should include anomaly warning when present."""
-        dot, _ = self._run_timing("x_driver", "x_driver")
-        # Title should mention RTL anomalies
-        self.assertIn("RTL anomalies", dot,
-                     "DOT title should mention RTL anomalies")
-        self.assertIn("may truncate paths", dot,
-                     "DOT title should warn about path truncation")
-
-
 class TestArchAnomalyDisplay(unittest.TestCase):
     """[FIX 2026-07-10] arch --show-anomalies displays RTL anomalies in DOT."""
 

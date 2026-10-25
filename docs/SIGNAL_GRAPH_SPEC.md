@@ -91,7 +91,6 @@ GraphBuilder(adapter, target_module)  .build()  →  SignalGraph
 | `_node_data` | `dict[str, TraceNode]` | node_id → TraceNode（节点的权威存储） |
 | `_edge_data` | `dict[tuple[str,str], list[TraceEdge]]` | (src,dst) → 边列表（支持多边，不同 condition） |
 | `_port_to_internal` | `dict[str, str]` | 实例端口路径 → 内部信号 id |
-| `_port_to_module_type` | `dict[str, str]` | 实例端口 → `<module_type>.<port>` 短名 |
 | `_expr_trees` | `dict[str, dict]` | dst_key → 结构化表达式树（driver_extractor 构建） |
 | `_const_map` | `dict[str, list]` | dst_short → 常量字符串列表 |
 | `_func_info` | `dict[str, tuple\|None]` | 函数名 → (msb, lsb) |

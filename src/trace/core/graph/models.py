@@ -304,7 +304,6 @@ class SignalGraph(nx.DiGraph):
         # [FIX] 支持同一 (src, dst) 的多条边 (不同 condition)
         self._edge_data: dict[tuple[str, str], list[TraceEdge]] = {}
         self._port_to_internal: dict[str, str] = {}  # {inst_port_id: child_signal_id}
-        self._port_to_module_type: dict[str, str] = {}  # {inst_port_id: <module_type>.<port_name>} (semantic short name)
         # [REFACTOR 2026-08-07 A计划] 表达式树/常量/函数信息 — 从 semantic AST 构建，消灭 viz 层源码重读
         self._expr_trees: dict[str, dict] = {}      # {dst_key → tree_dict}
         self._const_map: dict[str, list] = {}       # {dst_short → [const_str,...]}
