@@ -69,6 +69,14 @@ LEGACY_SUFFIX = ".json"
 DEFAULT_MAX_CACHE_MB = 1024
 ENV_CACHE_MAX_MB = "SVQ_CACHE_MAX_MB"
 
+# [iter_287 / PLAN P3.2] 按工程过期: 单个工程最多保留 N 个版本 + 条目最长存活天数。
+# 文件命名: <content_key>.p<project_key><CACHE_SUFFIX>, 无工程段 = 旧格式(仅参与全局 LRU)。
+DEFAULT_MAX_ENTRIES_PER_PROJECT = 8
+ENV_CACHE_MAX_ENTRIES_PER_PROJECT = "SVQ_CACHE_MAX_ENTRIES_PER_PROJECT"
+DEFAULT_MAX_AGE_DAYS = 30
+ENV_CACHE_MAX_AGE_DAYS = "SVQ_CACHE_MAX_AGE_DAYS"
+PROJECT_INFIX = ".p"
+
 
 class ASTCache:
     """AST 解析缓存管理器
@@ -146,9 +154,67 @@ class ASTCache:
                     logger.warning("缓存 key 计算跳过不可读头文件 %s: %s", hf, e)
         return hasher.hexdigest()[:16]
 
-    def _cache_path(self, cache_key: str) -> Path:
-        """获取缓存文件路径 (gzip 压缩, iter_271)"""
+    def compute_project_key(
+        self,
+        sources: dict[str, str] | None = None,
+        filelist: str | None = None,
+        include_dirs=(),
+    ) -> str | None:
+        """[iter_287] **工程身份** hash：只看路径（不看内容）。
+
+        用途: 缓存按工程分组淘汰（单工程最多保留 N 个版本 / 超龄过期），
+        避免一个改得很勤的大工程把其它工程的缓存挤出总量 LRU。
+        """
+        hasher = hashlib.sha256()
+        try:
+            if sources:
+                for fname in sorted(sources):
+                    hasher.update(str(Path(fname).resolve()).encode())
+            elif filelist:
+                fl = Path(filelist)
+                if not fl.exists():
+                    return None
+                hasher.update(str(fl.resolve()).encode())
+                base = fl.parent
+                for raw in fl.read_text(errors="replace").splitlines():
+                    line = raw.strip()
+                    if not line or line.startswith(("//", "#", "+incdir+", "+define+")):
+                        continue
+                    p = Path(line)
+                    p = p if p.is_absolute() else (base / p)
+                    hasher.update(str(p.resolve()).encode())
+                for inc in include_dirs or ():
+                    inc_dir = Path(inc)
+                    if not inc_dir.is_absolute():
+                        inc_dir = base / inc_dir
+                    hasher.update(str(inc_dir.resolve()).encode())
+            else:
+                return None
+        except OSError as e:
+            logger.debug("工程 key 计算失败: %s", e)
+            return None
+        return hasher.hexdigest()[:8]
+
+    def _cache_path(self, cache_key: str, project_key: str | None = None) -> Path:
+        """缓存文件路径；带工程段时 `<content>.p<project>.json.gz`（iter_287）。"""
+        if project_key:
+            return self.cache_dir / f"{cache_key}{PROJECT_INFIX}{project_key}{CACHE_SUFFIX}"
         return self.cache_dir / f"{cache_key}{CACHE_SUFFIX}"
+
+    @staticmethod
+    def _split_cache_name(path: Path) -> tuple[str, str | None]:
+        """文件名 → (content_key, project_key|None)。旧格式无工程段。"""
+        name = path.name
+        for suffix in (CACHE_SUFFIX, LEGACY_SUFFIX):
+            if name.endswith(suffix):
+                stem = name[: -len(suffix)]
+                break
+        else:
+            return name, None
+        if PROJECT_INFIX in stem:
+            content, _sep, project = stem.rpartition(PROJECT_INFIX)
+            return content, project or None
+        return stem, None
 
     def _legacy_cache_path(self, cache_key: str) -> Path:
         """旧格式 (未压缩) 路径 — 仅用于向后兼容读取与清理。"""
@@ -167,37 +233,108 @@ class ASTCache:
                 mb = DEFAULT_MAX_CACHE_MB
         return max(0, mb) * 1024 * 1024
 
-    def _enforce_size_limit(self) -> None:
-        """[iter_271] 超过上限时按 mtime LRU 淘汰最旧条目 (跳过刚写入的文件)。"""
-        limit = self._max_cache_bytes()
-        if limit <= 0:
-            return
+    def _max_entries_per_project(self) -> int:
+        """单工程保留版本数上限；0 = 不限制。"""
+        raw = os.environ.get(ENV_CACHE_MAX_ENTRIES_PER_PROJECT)
+        if raw is None or not str(raw).strip():
+            return DEFAULT_MAX_ENTRIES_PER_PROJECT
+        try:
+            return max(0, int(str(raw).strip()))
+        except ValueError:
+            logger.warning("SVQ_CACHE_MAX_ENTRIES_PER_PROJECT 不是整数 (%r), 用默认 %d",
+                           raw, DEFAULT_MAX_ENTRIES_PER_PROJECT)
+            return DEFAULT_MAX_ENTRIES_PER_PROJECT
+
+    def _max_age_seconds(self) -> int:
+        """条目最长存活时间；0 = 不限制。"""
+        raw = os.environ.get(ENV_CACHE_MAX_AGE_DAYS)
+        if raw is None or not str(raw).strip():
+            days = DEFAULT_MAX_AGE_DAYS
+        else:
+            try:
+                days = max(0, int(str(raw).strip()))
+            except ValueError:
+                logger.warning("SVQ_CACHE_MAX_AGE_DAYS 不是整数 (%r), 用默认 %d",
+                               raw, DEFAULT_MAX_AGE_DAYS)
+                days = DEFAULT_MAX_AGE_DAYS
+        return days * 86400
+
+    def _cache_entries(self) -> list[dict]:
+        """扫描缓存目录，返回 [{path, mtime, size, content, project}]（跳过不可读）。"""
+        import time as _time
+
+        now = _time.time()
         entries = []
         for p in list(self.cache_dir.glob(f"*{CACHE_SUFFIX}")) + \
                  list(self.cache_dir.glob(f"*{LEGACY_SUFFIX}")):
             try:
-                stat = p.stat()
+                st = p.stat()
             except OSError:
                 continue
-            entries.append((stat.st_mtime, stat.st_size, p))
-        total = sum(size for _m, size, _p in entries)
-        if total <= limit:
-            return
-        entries.sort(key=lambda x: x[0])          # 最旧在前
-        removed = 0
-        for _mtime, size, path in entries:
-            if total <= limit:
-                break
-            try:
-                path.unlink()
-                total -= size
-                removed += 1
-            except OSError as e:
-                logger.warning("缓存淘汰失败 (%s): %s", path, e)
-        if removed:
-            logger.info("缓存超限, 已按 LRU 淘汰 %d 个条目 (上限 %d MB)", removed, limit // (1024 * 1024))
+            content, project = self._split_cache_name(p)
+            entries.append({
+                "path": p, "mtime": st.st_mtime, "size": st.st_size,
+                "age": now - st.st_mtime, "content": content, "project": project,
+            })
+        return entries
 
-    def get_by_key(self, cache_key: str, force: bool = False) -> dict | None:
+    def _remove(self, entry: dict) -> bool:
+        try:
+            entry["path"].unlink()
+            return True
+        except OSError as e:
+            logger.warning("缓存淘汰失败 (%s): %s", entry["path"], e)
+            return False
+
+    def _enforce_size_limit(self) -> None:
+        """[iter_287] 三级淘汰：① 单工程条目数 ② 条目年龄 ③ 全局总量 LRU。"""
+        entries = self._cache_entries()
+        removed = 0
+
+        # ① 单工程最多 N 个版本（保留最新 N 个；旧格式无工程段不参与）
+        per_project = self._max_entries_per_project()
+        if per_project > 0:
+            groups: dict[str, list[dict]] = {}
+            for e in entries:
+                if e["project"]:
+                    groups.setdefault(e["project"], []).append(e)
+            for project, items in groups.items():
+                if len(items) <= per_project:
+                    continue
+                items.sort(key=lambda x: x["mtime"], reverse=True)
+                for e in items[per_project:]:
+                    if self._remove(e):
+                        entries.remove(e)
+                        removed += 1
+                logger.info("工程 %s 版本超限，已淘汰 %d 个旧版本",
+                            project, max(0, len(items) - per_project))
+
+        # ② 年龄过期（所有条目，含旧格式）
+        max_age = self._max_age_seconds()
+        if max_age > 0:
+            for e in list(entries):
+                if e["age"] > max_age:
+                    if self._remove(e):
+                        entries.remove(e)
+                        removed += 1
+
+        # ③ 全局总量上限（mtime LRU）
+        limit = self._max_cache_bytes()
+        if limit > 0:
+            total = sum(e["size"] for e in entries)
+            if total > limit:
+                for e in sorted(entries, key=lambda x: x["mtime"]):
+                    if total <= limit:
+                        break
+                    if self._remove(e):
+                        total -= e["size"]
+                        removed += 1
+
+        if removed:
+            logger.info("缓存淘汰完成: 删除 %d 个条目", removed)
+
+    def get_by_key(self, cache_key: str, force: bool = False,
+                   project_key: str | None = None) -> dict | None:
         """[Golden] 通过 cache_key 获取缓存数据
 
         Args:
@@ -218,14 +355,16 @@ class ASTCache:
         if not self.enabled:
             return None  # 磁盘缓存不可用 → 仅内存 (已 warning, 不再刷屏)
 
-        # 检查磁盘缓存 (优先压缩格式, 兼容旧 .json)
-        cache_path = self._cache_path(cache_key)
-        legacy_path = self._legacy_cache_path(cache_key)
-        if not cache_path.exists():
-            if not legacy_path.exists():
-                logger.debug(f"Cache miss: {cache_key[:8]}...")
-                return None
-            cache_path = legacy_path
+        # 检查磁盘缓存 (优先带工程段的新格式, 再旧格式)
+        candidates = []
+        if project_key:
+            candidates.append(self._cache_path(cache_key, project_key))
+        candidates.append(self._cache_path(cache_key))
+        candidates.append(self._legacy_cache_path(cache_key))
+        cache_path = next((p for p in candidates if p.exists()), None)
+        if cache_path is None:
+            logger.debug(f"Cache miss: {cache_key[:8]}...")
+            return None
 
         try:
             if cache_path.suffix == ".gz":
@@ -255,7 +394,7 @@ class ASTCache:
             logger.warning(f"Failed to load cache: {e}")
             return None
 
-    def put_by_key(self, cache_key: str, data: dict) -> None:
+    def put_by_key(self, cache_key: str, data: dict, project_key: str | None = None) -> None:
         """[Golden] 通过 cache_key 保存缓存
 
         写盘失败不致命 (iter_172): 降级为内存缓存 + warning, 磁盘缓存关闭
@@ -276,7 +415,7 @@ class ASTCache:
             return
 
         # 保存到磁盘 (失败 → 降级)
-        cache_path = self._cache_path(cache_key)
+        cache_path = self._cache_path(cache_key, project_key)
         try:
             # [iter_271] gzip 压缩: 单工程图 JSON 20MB → 通常 3~5MB
             with gzip.open(cache_path, "wt", encoding="utf-8") as f:
@@ -314,7 +453,9 @@ class ASTCache:
                 del self._memory_cache[cache_key]
             if not self.enabled:
                 return
-            for cache_path in (self._cache_path(cache_key), self._legacy_cache_path(cache_key)):
+            paths = {self._cache_path(cache_key), self._legacy_cache_path(cache_key)}
+            paths.update(self.cache_dir.glob(f"{cache_key}{PROJECT_INFIX}*{CACHE_SUFFIX}"))
+            for cache_path in sorted(paths):
                 try:
                     if cache_path.exists():
                         cache_path.unlink()

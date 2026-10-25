@@ -206,6 +206,20 @@ class UnifiedTracer:
             return None
         return f"{base}-v2-t{target_module or 'all'}"
 
+    def _graph_project_key(self) -> str | None:
+        """[iter_287 / PLAN P3.2] 工程身份（只看路径）—— 供缓存按工程过期。"""
+        from trace.core.cache import get_cache
+
+        try:
+            return get_cache().compute_project_key(
+                sources=self._sources or None,
+                filelist=self._filelist,
+                include_dirs=self._include_dirs,
+            )
+        except (OSError, FileNotFoundError) as e:
+            _main_logger.debug("工程 key 计算失败, 缓存不分组: %s", e)
+            return None
+
     def set_log_level(self, level: str) -> None:
         """动态设置日志级别
 
@@ -289,11 +303,12 @@ class UnifiedTracer:
         if self._graph is None or force:
             # 尝试从缓存加载
             cache_key = self._graph_cache_key(target_module) if use_cache else None
+            project_key = self._graph_project_key() if use_cache else None
             if use_cache and cache_key:
                 from trace.core.cache import get_cache
 
                 cache = get_cache()
-                cached = cache.get_by_key(cache_key, force=force)
+                cached = cache.get_by_key(cache_key, force=force, project_key=project_key)
                 # [iter_270] ASTCache 把 payload 包在 "data" 里 (put_by_key 的契约,
                 # 测试锁定 get_by_key(...)["data"][...])。旧代码直接查 "graph_data"
                 # → **永远不命中**, 图缓存自诞生起就是死代码 (静默 miss, 无 warning)。
@@ -337,7 +352,7 @@ class UnifiedTracer:
                 cache_data = {
                     "graph_data": self._graph.to_dict(),
                 }
-                cache.put_by_key(cache_key, cache_data)
+                cache.put_by_key(cache_key, cache_data, project_key=project_key)
         return self._graph
 
     # ------------------------------------------------------------------
