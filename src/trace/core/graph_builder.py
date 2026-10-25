@@ -11,6 +11,7 @@ from .._safe import safe_attr, safe_str, safe_str  # [iter_182]
 import pyslang
 
 from .semantic_adapter import SemanticAdapter
+from .builder.graph_pipeline import GraphPipeline, Stage
 from .builder.subroutine_expander import SubroutineExpander
 from .connection_extractor import ConnectionExtractor  # [P1 cycle 9b] re-export 保兼容
 from .driver_extractor import DriverExtractor  # [P1 cycle 8] re-export 保兼容
@@ -60,45 +61,92 @@ class GraphBuilder:
         self._struct_members: dict[str, set[str]] = {}
 
     def build(self) -> SignalGraph:
-        # [Phase 4 2026-07-11] If target_module set, walk target's instance tree
-        # to find (instance_path, instance_symbol) pairs. Pass to DriverExtractor
-        # so it emits signal IDs with full instance paths (e.g.,
-        # 'darksocv.bridge0.core0.REGS' instead of 'darkriscv.REGS').
-        self._configure_instance_paths()
-
-        self._extract_all_nodes()
-        self._extract_all_edges()
-        self._mark_special_signals()
-        self._create_hierarchical_bit_nodes()
-        self._collect_struct_members()  # [NEW] Collect struct member information
-        self._expand_struct_assignments()  # [NEW] Expand struct assignments to member assignments
-        self._upgrade_reg_nodes()  # Must be after _create_hierarchical_bit_nodes
-        # [FIX 2026-06-11] Wrapper module port mapping pass:
-        # wrapper module (e.g. axi_ram_wr_rd_if) 内部 instance 的 port (e.g. axi_ram_wr_if)
-        # 通过 .s_axi_awready(s_axi_awready) port mapping 接到 wrapper 自己的 port.
-        # graph builder 只跑了顶层 elaboration, 缺这层. 加 post-process pass 补上.
-        self._elaborate_wrapper_passthroughs()
-
-        # [Phase 3 2026-07-11] If target_module set, drop type-level nodes
-        # that don't belong to target's hierarchy. Without this filter,
-        # DriverExtractor emits nodes like "darkriscv.XRES" (module type +
-        # signal name) which confuse pipeline/timing rendering.
-        if self.target_module:
-            self._filter_by_target()
-
-        # [iter_137 A2 位对位] 位桥展开须在 _filter_by_target 之后 —
-        # 遍历的是最终保留节点, 不会给将被删除的 type-level 节点建悬空边.
-        self._expand_bus_conn_bit_bridges()
-
-        # [V16.11 2026-08-18] 抓 pyslang GenerateBlock{Array} → assign LHS base signal 映射
-        # 替代 V16.10.3 的启发式: 直接从源码读 generate block 真实 label
-        self._capture_generate_block_map()
-
-        # [iter_269] 实例级图: 清掉"模块定义命名空间"的孤儿节点。
-        # DriverExtractor 已按实例路径出边, 但其它 extractor
-        # (connection/load/clock) 仍会为**模块定义**建节点; 实测这些节点
-        # 实测全部零度 (minimal_3module 14/14, scheduler 26/26)。
-        # 只删零度的非实例节点; 有边的保留并告警 (不静默丢信息)。
+        """建图：extract → 12 个声明式后处理 pass（顺序由依赖推导，见 graph_pipeline）。"""
+        pipeline = GraphPipeline([
+            Stage(
+                "configure_instances",
+                self._configure_instance_paths,
+                provides={"instances"},
+                note="按 target/顶层实例配置 DriverExtractor 的实例路径",
+            ),
+            Stage(
+                "extract_nodes",
+                self._extract_all_nodes,
+                requires={"instances"},
+                provides={"nodes"},
+                note="driver/connection extractor 产出节点",
+            ),
+            Stage(
+                "extract_edges",
+                self._extract_all_edges,
+                requires={"nodes"},
+                provides={"edges"},
+                note="driver/connection extractor 产出边",
+            ),
+            Stage(
+                "special_signals",
+                self._mark_special_signals,
+                requires={"nodes", "edges"},
+                provides={"special_flags"},
+                note="打 clock/reset 标记",
+            ),
+            Stage(
+                "bit_nodes",
+                self._create_hierarchical_bit_nodes,
+                requires={"nodes", "edges"},
+                provides={"bit_nodes"},
+                note="按 RTL 位选建位节点",
+            ),
+            Stage(
+                "struct_members",
+                self._collect_struct_members,
+                requires={"nodes", "edges"},
+                provides={"struct_members"},
+            ),
+            Stage(
+                "struct_assigns",
+                self._expand_struct_assignments,
+                requires={"struct_members"},
+                provides={"struct_assigns"},
+                note="struct 整体赋值展开到成员",
+            ),
+            Stage(
+                "upgrade_regs",
+                self._upgrade_reg_nodes,
+                requires={"bit_nodes"},
+                provides={"reg_nodes"},
+                note="必须在 bit_nodes 之后",
+            ),
+            Stage(
+                "wrapper_passthrough",
+                self._elaborate_wrapper_passthroughs,
+                requires={"nodes", "bit_nodes"},
+                provides={"wrapper_passthrough"},
+                note="wrapper 端口 ↔ 内部同名子端口直通边（纯图实现）",
+            ),
+            Stage(
+                "filter_target",
+                self._filter_by_target,
+                requires={"bit_nodes"},
+                provides={"filtered"},
+                note="target_module 给定时裁剪子树（无 target 时内部直接返回）",
+            ),
+            Stage(
+                "bus_bit_bridges",
+                self._expand_bus_conn_bit_bridges,
+                requires={"bit_nodes", "filtered"},
+                provides={"bus_bit_bridges"},
+                note="必须在 filter_target 之后：只给最终保留节点建位桥",
+            ),
+            Stage(
+                "gen_block_map",
+                self._capture_generate_block_map,
+                requires={"nodes", "edges"},
+                provides={"gen_block_map"},
+                note="generate block 真实 label → LHS 基名映射（viz 用）",
+            ),
+        ])
+        pipeline.run()
         return self.graph
 
     def _expand_bus_conn_bit_bridges(self):
@@ -593,6 +641,8 @@ class GraphBuilder:
         We use a simple heuristic: if node_id contains '.' and first segment
         is NOT target and NOT a known sub-instance path within target, drop it.
         """
+        if not self.target_module:
+            return
         target = self.target_module
         # Collect all instance paths within target via pyslang
         target_sub_paths = set()
