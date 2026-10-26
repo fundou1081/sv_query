@@ -187,6 +187,9 @@ class TraceNode:
     # [FIX 2026-07-05] ExpressionBuilder 需要存 metadata (expression/function_name/operands/signals)
     # 因为 TraceNode 不接受这些 kwargs. 用 dict[str, Any] 存任意 metadata, 向后兼容
     extra: dict[str, Any] = field(default_factory=dict)
+    # [iter_297 / PLAN P9.1] 声明是否有符号 (None = 未知/未建模)
+    # 影响加宽时的扩展方向：signed → 符号位扩展；False → 零扩展；None → 保守（不承诺）
+    is_signed: bool | None = None
 
 
 @dataclass
@@ -333,8 +336,10 @@ class SignalGraph(nx.DiGraph):
             """
             if not node_id:
                 return False
-            # 匹配 4'b0, 1'b1, 4'b1011, 8'hFF, 11'd0 等
-            if len(node_id) >= 3 and "'" in node_id and node_id[0].isdigit():
+            # 匹配 4'b0, 1'b1, 4'b1011, 8'hFF, 11'd0, -4'sd1 (signed 规范化) 等
+            if (len(node_id) >= 3 and "'" in node_id
+                    and (node_id[0].isdigit()
+                         or (node_id[0] == "-" and node_id[1:2].isdigit()))):
                 return True
             # [Phase 8 / Fix F] Plain integer literals: '0', '1', ..., '42'
             # No '.' means not a scoped signal name
@@ -572,6 +577,7 @@ class SignalGraph(nx.DiGraph):
                         "is_reset": node.is_reset,
                         "is_enable": node.is_enable,
                         "is_port": node.is_port,
+                        "is_signed": node.is_signed,
                         "parent": node.parent,
                         "parent_bit_start": node.parent_bit_start,
                         "parent_bit_end": node.parent_bit_end,
@@ -648,6 +654,7 @@ class SignalGraph(nx.DiGraph):
                 is_reset=node_dict.get("is_reset", False),
                 is_enable=node_dict.get("is_enable", False),
                 is_port=node_dict.get("is_port", False),
+                is_signed=node_dict.get("is_signed"),
                 parent=node_dict.get("parent"),
                 parent_bit_start=node_dict.get("parent_bit_start"),
                 parent_bit_end=node_dict.get("parent_bit_end"),

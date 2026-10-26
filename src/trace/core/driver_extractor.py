@@ -521,6 +521,7 @@ class DriverExtractor:
                         is_port=True,
                         file=port_file,
                         line=port_line,
+                        is_signed=self.adapter.extract_port_signed(port_decl),
                     )
                 )
 

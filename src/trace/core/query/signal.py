@@ -369,38 +369,48 @@ class SignalTracer:
         return None
 
     @staticmethod
-    def _parse_const_token(token: str) -> tuple[int, int] | None:
-        """[iter_296 / PLAN P8] 解析常量字面量 → (value, width)。
+    def _parse_const_token(token: str) -> tuple[int, int, bool] | None:
+        """[iter_296/297] 解析常量字面量 → (value, width, signed)。
 
-        支持 `4'hF` / `8'd255` / `4'b1010` / `3'o7` / `'0` / `'1`；
-        不支持无宽度十进制（宽度依赖上下文，避免猜）。
+        支持 `4'hF` / `8'd255` / `4'b1010` / `3'o7` / `4'shF`（有符号）/
+        `'0` / `'1` / 无宽度十进制（32 位）。signed 影响加宽时的扩展位。
         """
         import re as _re
 
         tok = (token or "").strip().replace("_", "")
-        m = _re.match(r"^(\d+)'([bodhBODH])([0-9a-fA-F]+)$", tok)
+        m = _re.match(r"^(-?)(\d+)'([sS]?)([bodhBODH])(-?[0-9a-fA-F]+)$", tok)
         if m:
-            width = int(m.group(1))
-            base = {"b": 2, "o": 8, "d": 10, "h": 16}[m.group(2).lower()]
+            neg = m.group(1) == "-"
+            width = int(m.group(2))
+            signed = bool(m.group(3)) or neg
+            base = {"b": 2, "o": 8, "d": 10, "h": 16}[m.group(4).lower()]
+            digits = m.group(5)
+            if digits.startswith("-"):
+                neg = not neg
+                digits = digits[1:]
             try:
-                value = int(m.group(3), base)
+                value = int(digits, base)
             except ValueError:
                 return None
-            return value, width
+            if neg:
+                value = (-value) & ((1 << max(width, 1)) - 1)
+            return value, width, signed
         m = _re.match(r"^'([01])$", tok)
         if m:
-            # 无宽度填充字面量：'0 / '1 → 全 0 / 全 1；宽度取 32 (SV 默认)，由调用方扩展
-            return (0, 32) if m.group(1) == "0" else ((1 << 32) - 1, 32)
+            return (0, 32, False) if m.group(1) == "0" else ((1 << 32) - 1, 32, False)
         m = _re.match(r"^(\d+)$", tok)
         if m:
-            # 无宽度十进制：SV 默认 32 位
-            return int(m.group(1)), 32
+            return int(m.group(1)), 32, False
         return None
 
     @staticmethod
-    def _const_bit_id(value: int, width: int, pos: int) -> str:
-        """常量第 `pos` 位的节点 id（无符号零扩展；pos 越界 → 1'b0）。"""
-        if pos < 0 or pos >= width:
+    def _const_bit_id(value: int, width: int, pos: int, signed: bool = False) -> str:
+        """常量第 `pos` 位的节点 id；越界时 signed → 符号位，否则 1'b0。"""
+        if pos < 0:
+            return "1'b0"
+        if pos >= width:
+            if signed and width > 0:
+                return f"1'b{(value >> (width - 1)) & 1}"
             return "1'b0"
         return f"1'b{(value >> pos) & 1}"
 
@@ -429,15 +439,16 @@ class SignalTracer:
                 for item in items:
                     if (item.get("literal")
                             and item["start"] <= bit < item["start"] + item["width"]):
+                        # 拼接内字面量自决定宽度：不做符号扩展（SV 语义）
                         out.append(self._const_bit_id(
                             item["value"], item["width"], bit - item["start"]))
                 continue
             if _re.search(r"[&|^]", expr) and not _re.search(r"&&|\|\|", expr):
-                toks = _re.findall(r"\d+'[bdhoBDHO][0-9a-fA-F_]+", expr)
+                toks = _re.findall(r"-?\d+'[sS]?[bdhoBDHO][0-9a-fA-F_]+", expr)
                 if len(toks) == 1:
                     parsed = self._parse_const_token(toks[0])
                     if parsed is not None:
-                        out.append(self._const_bit_id(parsed[0], parsed[1], bit))
+                        out.append(self._const_bit_id(parsed[0], parsed[1], bit, parsed[2]))
         return out
 
     def _node_any(self, node_id: str):
@@ -452,11 +463,20 @@ class SignalTracer:
                              kind=NodeKind.CONST, width=(0, 0))
         return None
 
-    def _const_node_bits(self, node_id: str):
-        """CONST 节点 → (value, width)；非 CONST 或不可解析 → None。"""
+    def _const_node_bits(self, node_id: str, expression: str = ""):
+        """CONST 节点 → (value, width, signed)；非 CONST/不可解析 → None。
+
+        图里的常量 id 会被规范化为无符号二进制（`4'shF` → `4'b1111`），
+        所以优先用**边的原始表达式**（若它本身就是一个字面量）恢复 signed。
+        """
         node = self.graph.get_node(node_id)
         if node is None or node.kind != NodeKind.CONST:
             return None
+        expr = (expression or "").strip()
+        if expr:
+            parsed = self._parse_const_token(expr)
+            if parsed is not None:
+                return parsed
         parsed = self._parse_const_token(node.id)
         if parsed is None:
             parsed = self._parse_const_token(getattr(node, "name", "") or "")
@@ -543,9 +563,9 @@ class SignalTracer:
         for part in parts:
             lit = self._parse_const_token(part)
             if lit is not None:
-                value, width = lit
+                value, width, signed = lit
                 items.append({"name": None, "literal": True, "value": value,
-                              "base": None, "lo": 0, "width": width})
+                              "signed": signed, "base": None, "lo": 0, "width": width})
                 continue
             m = _re.match(r"^([A-Za-z_]\w*)(?:\[(\d+)(?::(\d+))?\])?$", part)
             if not m:
@@ -611,16 +631,16 @@ class SignalTracer:
         base = self._bit_base(edge.src)
 
         # 常量源：按位返回值位（常量边可能没有 source 元数据）
-        const = self._const_node_bits(edge.src)
+        const = self._const_node_bits(edge.src, getattr(edge, "expression", "") or "")
         if const is not None:
-            value, cwidth = const
+            value, cwidth, csigned = const
             if cwidth <= 0:
                 cwidth = max(1, src_w or dst_w)
             # 目标是位/切片节点时用节点内相对位（y[3] ← 1'b1 的位索引是 0）
             pos = abs_pos
             if dst_w == 1 or ("[" in dst_id and dst_w > 1):
                 pos = self._rel_bit(dst_id, abs_pos)
-            return [self._const_bit_id(value, cwidth, pos)]
+            return [self._const_bit_id(value, cwidth, pos, csigned)]
 
         if src_info is None:
             return None
@@ -631,7 +651,9 @@ class SignalTracer:
                 return None
 
         src_is_bus = "[" not in edge.src
-        pos = abs_pos if src_is_bus else rel_pos
+        # [iter_297 / PLAN P9.2] 目标是位/切片节点时用节点内相对位（1 位源的广播：
+        # clk → out[i] 的位索引是 0，而不是 i；否则会被误判成"加宽零扩展"）
+        pos = rel_pos if "[" in dst_id else abs_pos
 
         if src_info.bit_start is not None and src_info.bit_end is not None:
             lo = min(int(src_info.bit_start), int(src_info.bit_end))
@@ -667,16 +689,22 @@ class SignalTracer:
             if op == "BinaryAnd":
                 import re as _re
 
-                toks = _re.findall(r"\d+'[bdhoBDHO][0-9a-fA-F_]+", getattr(edge, "expression", "") or "")
+                toks = _re.findall(r"\d+'[sS]?[bdhoBDHO][0-9a-fA-F_]+",
+                                   getattr(edge, "expression", "") or "")
                 for tok in toks:
                     parsed = self._parse_const_token(tok)
-                    if parsed is not None and parsed[1] <= abs_pos:
+                    # 只有**无符号**常量的零扩展才是恒 0；有符号常量符号扩展后仍依赖信号
+                    if parsed is not None and not parsed[2] and parsed[1] <= pos:
                         return []
             if src_w == 1:
                 return [f"{base}[{lo}]"]
             bit = lo + pos
             if bit > hi:
-                return []
+                # [iter_297 / PLAN P9.2] 加宽：signed 源 → 符号位；unsigned → 恒 0
+                signed = src_is_bus and bool(getattr(src_node, "is_signed", False))
+                if signed and hi >= 0:
+                    return [f"{base}[{hi}]"]
+                return ["1'b0"]
             return [f"{base}[{bit}]"]
 
         if op in self._EXPR_PREFIX:
@@ -773,6 +801,10 @@ class SignalTracer:
             bit = 0 if src_w == 1 else pos
             if bit < 0 or bit >= dst_w:
                 return []
+            # [iter_297 / PLAN P9.2] signed 源的符号位驱动所有扩展高位
+            signed = src_is_bus and bool(getattr(src_node, "is_signed", False))
+            if signed and dst_w > src_w and bit == src_w - 1:
+                return [f"{dst_id}[{b}]" for b in range(bit, dst_w)]
             return [f"{dst_id}[{bit}]"]
 
         if op in self._EXPR_PREFIX:

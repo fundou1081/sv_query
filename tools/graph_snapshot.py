@@ -54,6 +54,7 @@ SNAPSHOT_VERSION = 1
 NODE_FIELDS = (
     "id", "kind", "module", "width",
     "is_port", "is_clock", "is_reset", "is_enable",
+    "is_signed",  # [iter_297 / P9.1] signedness 语义
     "parent", "bit_range", "modport_dir",
 )
 # 参与比对的边属性

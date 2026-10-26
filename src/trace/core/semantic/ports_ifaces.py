@@ -225,6 +225,27 @@ class PortsIfacesMixin:
         # 默认 1 位
         return (1, 0, 0)
 
+    def extract_port_signed(self, port_decl) -> bool | None:
+        """[iter_297 / PLAN P9.1] 端口是否 signed（None = 无法判定）。"""
+        for path in (("type",), ("declaredType", "type"), ("declaredType",)):
+            cur = port_decl
+            ok = True
+            for attr in path:
+                cur = getattr(cur, attr, None)
+                if cur is None:
+                    ok = False
+                    break
+            if not ok:
+                continue
+            try:
+                val = getattr(cur, "isSigned", None)
+            except Exception as e:
+                logger.debug("%s: isSigned 读取失败: %s", __name__, e)
+                continue
+            if val is not None:
+                return bool(val)
+        return None
+
     # =========================================================================
     # 赋值语句
     # =========================================================================
