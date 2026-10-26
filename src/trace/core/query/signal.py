@@ -150,6 +150,16 @@ class SignalTracer:
                                        current_depth, max_depth, allow_cross_module,
                                        bit_filter)
 
+        # [iter_296 / PLAN P8.1] 字面量位（常量没有源边，需要按表达式补）
+        if bit_filter is not None:
+            for cid in self._literal_bits_at(signal_id, bit_filter):
+                if cid in seen_ids:
+                    continue
+                cnode = self._node_any(cid)
+                if cnode is not None:
+                    drivers.append(cnode)
+                    seen_ids.add(cid)
+
         # ③~⑥ 遍历所有指向本信号的边
         for src, dst in list(self.graph.edges()):
             if dst != signal_id:
@@ -198,16 +208,16 @@ class SignalTracer:
                         if sid in seen_ids:
                             handled = True
                             continue
-                        if sid not in self.graph.nodes():
+                        node = self._node_any(sid)
+                        if node is None:
                             missing = True  # 位节点不存在 → 该操作数回落总线
                             continue
-                        node = self.graph.get_node(sid)
-                        if node is not None:
-                            drivers.append(node)
-                            seen_ids.add(sid)
-                        self._trace_drivers_recursive(
-                            sid, drivers, seen_ids, current_depth + 1, max_depth,
-                            allow_cross_module, bit_filter=self._bit_index_of(sid))
+                        drivers.append(node)
+                        seen_ids.add(sid)
+                        if sid in self.graph.nodes():
+                            self._trace_drivers_recursive(
+                                sid, drivers, seen_ids, current_depth + 1, max_depth,
+                                allow_cross_module, bit_filter=self._bit_index_of(sid))
                         handled = True
                     if missing:
                         # 部分位节点不存在：补该操作数的总线（保持完整，粒度退化为总线）
@@ -271,8 +281,12 @@ class SignalTracer:
                 continue
             if bit_filter is not None and not self._bit_in_range(src, bit_filter):
                 continue
+            child_bit = bit_filter
+            if bit_filter is not None:
+                child_bit = self._rel_bit(src, bit_filter)  # 切片内相对位
             self._trace_drivers_recursive(src, drivers, seen_ids, current_depth,
-                                          max_depth, allow_cross_module)
+                                          max_depth, allow_cross_module,
+                                          bit_filter=child_bit)
 
     def _maybe_lift_to_parent_bus(self, signal_id, has_driver_edge, drivers, seen_ids,
                                   current_depth, max_depth, allow_cross_module,
@@ -354,6 +368,100 @@ class SignalTracer:
                 return None
         return None
 
+    @staticmethod
+    def _parse_const_token(token: str) -> tuple[int, int] | None:
+        """[iter_296 / PLAN P8] 解析常量字面量 → (value, width)。
+
+        支持 `4'hF` / `8'd255` / `4'b1010` / `3'o7` / `'0` / `'1`；
+        不支持无宽度十进制（宽度依赖上下文，避免猜）。
+        """
+        import re as _re
+
+        tok = (token or "").strip().replace("_", "")
+        m = _re.match(r"^(\d+)'([bodhBODH])([0-9a-fA-F]+)$", tok)
+        if m:
+            width = int(m.group(1))
+            base = {"b": 2, "o": 8, "d": 10, "h": 16}[m.group(2).lower()]
+            try:
+                value = int(m.group(3), base)
+            except ValueError:
+                return None
+            return value, width
+        m = _re.match(r"^'([01])$", tok)
+        if m:
+            # 无宽度填充字面量：'0 / '1 → 全 0 / 全 1；宽度取 32 (SV 默认)，由调用方扩展
+            return (0, 32) if m.group(1) == "0" else ((1 << 32) - 1, 32)
+        m = _re.match(r"^(\d+)$", tok)
+        if m:
+            # 无宽度十进制：SV 默认 32 位
+            return int(m.group(1)), 32
+        return None
+
+    @staticmethod
+    def _const_bit_id(value: int, width: int, pos: int) -> str:
+        """常量第 `pos` 位的节点 id（无符号零扩展；pos 越界 → 1'b0）。"""
+        if pos < 0 or pos >= width:
+            return "1'b0"
+        return f"1'b{(value >> pos) & 1}"
+
+    def _literal_bits_at(self, node_id: str, bit: int) -> list[str]:
+        """[iter_296 / PLAN P8.1] 目标位依赖的**字面量位**（常量没有源边）。
+
+        处理两类表达式：
+          - 拼接里的字面量段：`{a, 4'h0}` → s[1] 依赖 1'b0
+          - 位运算里的单个常量操作数：`a & 4'hF` → s[1] 依赖 1'b1
+        """
+        import re as _re
+
+        node = self.graph.get_node(node_id)
+        if node is None:
+            return []
+        out = []
+        for src in self.graph.predecessors(node_id):
+            edge = self.graph.get_edge(src, node_id)
+            if edge is None or edge.kind != EdgeKind.DRIVER:
+                continue
+            expr = (getattr(edge, "expression", "") or "").strip()
+            if expr.startswith("{") and expr.endswith("}"):
+                items = self._concat_items(edge, node_id)
+                if not items:
+                    continue
+                for item in items:
+                    if (item.get("literal")
+                            and item["start"] <= bit < item["start"] + item["width"]):
+                        out.append(self._const_bit_id(
+                            item["value"], item["width"], bit - item["start"]))
+                continue
+            if _re.search(r"[&|^]", expr) and not _re.search(r"&&|\|\|", expr):
+                toks = _re.findall(r"\d+'[bdhoBDHO][0-9a-fA-F_]+", expr)
+                if len(toks) == 1:
+                    parsed = self._parse_const_token(toks[0])
+                    if parsed is not None:
+                        out.append(self._const_bit_id(parsed[0], parsed[1], bit))
+        return out
+
+    def _node_any(self, node_id: str):
+        """图节点或**虚拟常量位节点**（查询层临时节点，不写图）。"""
+        node = self.graph.get_node(node_id)
+        if node is not None:
+            return node
+        import re as _re
+
+        if _re.match(r"^1'b[01]$", node_id):
+            return TraceNode(id=node_id, name=node_id, module="",
+                             kind=NodeKind.CONST, width=(0, 0))
+        return None
+
+    def _const_node_bits(self, node_id: str):
+        """CONST 节点 → (value, width)；非 CONST 或不可解析 → None。"""
+        node = self.graph.get_node(node_id)
+        if node is None or node.kind != NodeKind.CONST:
+            return None
+        parsed = self._parse_const_token(node.id)
+        if parsed is None:
+            parsed = self._parse_const_token(getattr(node, "name", "") or "")
+        return parsed
+
     def _rel_bit(self, node_id: str, bit: int) -> int:
         """[iter_294] 把"信号内的绝对位索引"换算成**该节点内的相对位**。
 
@@ -433,9 +541,15 @@ class SignalTracer:
 
         items = []
         for part in parts:
+            lit = self._parse_const_token(part)
+            if lit is not None:
+                value, width = lit
+                items.append({"name": None, "literal": True, "value": value,
+                              "base": None, "lo": 0, "width": width})
+                continue
             m = _re.match(r"^([A-Za-z_]\w*)(?:\[(\d+)(?::(\d+))?\])?$", part)
             if not m:
-                return None  # 字面量/表达式：v1 不处理（避免猜宽度）
+                return None  # 其他表达式：不处理（避免猜宽度）
             name, hi_s, lo_s = m.group(1), m.group(2), m.group(3)
             full = f"{module}.{name}" if module else name
             if full not in self.graph.nodes():
@@ -451,7 +565,8 @@ class SignalTracer:
                 lo, width = min(hi, lo), abs(hi - lo) + 1
             if not width:
                 return None
-            items.append({"name": name, "base": full, "lo": lo, "width": width})
+            items.append({"name": name, "literal": False, "value": None,
+                          "base": full, "lo": lo, "width": width})
 
         start = 0
         for item in reversed(items):  # 最右操作数在低位
@@ -484,14 +599,6 @@ class SignalTracer:
           - `[id…]` = 候选操作数位（可能不在图里，调用方过滤）
         """
         src_info = getattr(edge, "source", None)
-        if src_info is None:
-            return None
-        op = (getattr(src_info, "op", "") or "").strip()
-        if not op:
-            op = self._direct_copy_op(edge)
-            if op is None:
-                return None
-
         src_node = self.graph.get_node(edge.src)
         dst_node = self.graph.get_node(dst_id)
         if dst_node is None:
@@ -501,9 +608,30 @@ class SignalTracer:
 
         abs_pos = want_bit
         rel_pos = self._rel_bit(dst_id, want_bit)
+        base = self._bit_base(edge.src)
+
+        # 常量源：按位返回值位（常量边可能没有 source 元数据）
+        const = self._const_node_bits(edge.src)
+        if const is not None:
+            value, cwidth = const
+            if cwidth <= 0:
+                cwidth = max(1, src_w or dst_w)
+            # 目标是位/切片节点时用节点内相对位（y[3] ← 1'b1 的位索引是 0）
+            pos = abs_pos
+            if dst_w == 1 or ("[" in dst_id and dst_w > 1):
+                pos = self._rel_bit(dst_id, abs_pos)
+            return [self._const_bit_id(value, cwidth, pos)]
+
+        if src_info is None:
+            return None
+        op = (getattr(src_info, "op", "") or "").strip()
+        if not op:
+            op = self._direct_copy_op(edge)
+            if op is None:
+                return None
+
         src_is_bus = "[" not in edge.src
         pos = abs_pos if src_is_bus else rel_pos
-        base = self._bit_base(edge.src)
 
         if src_info.bit_start is not None and src_info.bit_end is not None:
             lo = min(int(src_info.bit_start), int(src_info.bit_end))
@@ -518,6 +646,11 @@ class SignalTracer:
             dst_is_slice = "[" in dst_id and dst_w > 1
             pos = self._rel_bit(dst_id, abs_pos) if dst_is_slice else abs_pos
             for item in items:
+                if item.get("literal"):
+                    if item["start"] <= pos < item["start"] + item["width"]:
+                        return [self._const_bit_id(item["value"], item["width"],
+                                                   pos - item["start"])]
+                    continue
                 if item["name"] != src_name:
                     continue
                 if not (item["start"] <= pos < item["start"] + item["width"]):
@@ -529,6 +662,16 @@ class SignalTracer:
             return None
 
         if op in self._EXPR_SAME_INDEX:
+            # [iter_296 / PLAN P8.2] `a & 4'hF` 的高位：常量无符号零扩展 → 该位恒 0，
+            # 信号操作数不是依赖（否则会像"污染"一样高估）。
+            if op == "BinaryAnd":
+                import re as _re
+
+                toks = _re.findall(r"\d+'[bdhoBDHO][0-9a-fA-F_]+", getattr(edge, "expression", "") or "")
+                for tok in toks:
+                    parsed = self._parse_const_token(tok)
+                    if parsed is not None and parsed[1] <= abs_pos:
+                        return []
             if src_w == 1:
                 return [f"{base}[{lo}]"]
             bit = lo + pos
@@ -739,16 +882,16 @@ class SignalTracer:
                 if sid in seen_ids:
                     handled = True   # 依赖已由别的边满足，不再回退总线
                     continue
-                if sid not in self.graph.nodes():
+                node = self._node_any(sid)
+                if node is None:
                     missing = True
                     continue
-                node = self.graph.get_node(sid)
-                if node is not None:
-                    drivers.append(node)
-                    seen_ids.add(sid)
-                self._trace_drivers_recursive(
-                    sid, drivers, seen_ids, current_depth + 1, max_depth,
-                    allow_cross_module, bit_filter=self._bit_index_of(sid))
+                drivers.append(node)
+                seen_ids.add(sid)
+                if sid in self.graph.nodes():
+                    self._trace_drivers_recursive(
+                        sid, drivers, seen_ids, current_depth + 1, max_depth,
+                        allow_cross_module, bit_filter=self._bit_index_of(sid))
                 handled = True
             if missing or not handled:
                 if psrc in self.graph.nodes() and psrc not in seen_ids:
@@ -921,6 +1064,13 @@ class SignalTracer:
             return []
 
         drivers = []
+        # [iter_296 / PLAN P8.1] depth=1 也补字面量位
+        _want = self._bit_index_of(signal_id)
+        if _want is not None:
+            for cid in self._literal_bits_at(signal_id, _want):
+                cnode = self._node_any(cid)
+                if cnode is not None and cnode.id not in {d.id for d in drivers}:
+                    drivers.append(cnode)
         # [iter_272] 不再注入 MIG 虚拟对端 (实例级图跨模块是普通图边)。
         for src, dst in list(self.graph.edges()):
             if dst == signal_id:
@@ -1134,9 +1284,9 @@ class SignalTracer:
                 if not mapped:
                     continue
                 for did in mapped:
-                    if did in seen_ids or did not in self.graph.nodes():
+                    if did in seen_ids:
                         continue
-                    node = self.graph.get_node(did)
+                    node = self._node_any(did)
                     if node and self._in_scope(node.id, scope_prefix):
                         loads.append(node)
                         seen_ids.add(node.id)
@@ -1228,16 +1378,16 @@ class SignalTracer:
                             if did in seen_ids:
                                 handled = True
                                 continue
-                            if did not in self.graph.nodes():
+                            dnode = self._node_any(did)
+                            if dnode is None:
                                 missing = True
                                 continue
-                            dnode = self.graph.get_node(did)
-                            if dnode is not None:
-                                loads.append(dnode)
-                            self._trace_loads_recursive(
-                                did, loads, seen_ids, current_depth + 1, max_depth,
-                                allowed_kinds, allow_cross_module, scope_prefix,
-                                bit_index=self._bit_index_of(did))
+                            loads.append(dnode)
+                            if did in self.graph.nodes():
+                                self._trace_loads_recursive(
+                                    did, loads, seen_ids, current_depth + 1, max_depth,
+                                    allowed_kinds, allow_cross_module, scope_prefix,
+                                    bit_index=self._bit_index_of(did))
                             handled = True
                         if missing:
                             node = self.graph.get_node(dst)
@@ -1271,15 +1421,15 @@ class SignalTracer:
                     if did in seen_ids:
                         handled = True
                         continue
-                    if did not in self.graph.nodes():
+                    dnode = self._node_any(did)
+                    if dnode is None:
                         continue
-                    dnode = self.graph.get_node(did)
-                    if dnode is not None:
-                        loads.append(dnode)
-                    self._trace_loads_recursive(
-                        did, loads, seen_ids, current_depth + 1, max_depth,
-                        allowed_kinds, allow_cross_module, scope_prefix,
-                        bit_index=self._bit_index_of(did))
+                    loads.append(dnode)
+                    if did in self.graph.nodes():
+                        self._trace_loads_recursive(
+                            did, loads, seen_ids, current_depth + 1, max_depth,
+                            allowed_kinds, allow_cross_module, scope_prefix,
+                            bit_index=self._bit_index_of(did))
                     handled = True
                 if not handled and not mapped:
                     continue
