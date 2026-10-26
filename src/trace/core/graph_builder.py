@@ -161,6 +161,9 @@ class GraphBuilder:
             ),
         ])
         pipeline.run()
+        # [iter_299 / PLAN P11.2] 所有 pass 完成后统一修 packed 成员宽度/位段
+        # （成员节点可能由 bit_nodes/struct_assigns 等后续 pass 建出）
+        self._apply_packed_member_layout()
         return self.graph
 
     def _expand_slice_bit_nodes(self) -> None:
@@ -891,6 +894,62 @@ class GraphBuilder:
 
         # [DEBUG]
         # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
+
+    def _apply_packed_member_layout(self):
+        """packed struct/union 成员：宽度 + signedness + 在父聚合中的位段。
+
+        节点名模式 `module.var.member`；语义符号 `.hierarchicalPath` 与节点 id 对齐。
+        """
+        symbols = {}
+        try:
+            instances = []
+            root = getattr(self.adapter, "root", None)
+            if root is not None:
+                instances.extend(getattr(root, "topInstances", []) or [])
+            for wrapper in self.adapter.get_module_instances():
+                sym = getattr(wrapper, "_symbol", None)
+                if sym is not None:
+                    instances.append(sym)
+            for sym in instances:
+                body = getattr(sym, "body", None)
+                if body is None:
+                    continue
+                for member in body:
+                    if str(getattr(member, "kind", "")) != "SymbolKind.Variable":
+                        continue
+                    hp = str(getattr(member, "hierarchicalPath", "") or "")
+                    if hp:
+                        symbols[hp] = member
+        except Exception as e:
+            logger.debug("%s: packed 成员符号收集失败: %s", __name__, e)
+            return
+
+        # 重新扫描当前图（成员节点可能晚建），按 "父节点存在 + 至少 2 个成员" 识别
+        parent_members: dict[str, set] = {}
+        for node_id in list(self.graph.nodes()):
+            if "." not in node_id:
+                continue
+            parent_path, member_name = node_id.rsplit(".", 1)
+            if parent_path in self.graph.nodes():
+                parent_members.setdefault(parent_path, set()).add(member_name)
+
+        for parent_path in parent_members:
+            sym = symbols.get(parent_path)
+            if sym is None:
+                continue
+            layout = self.adapter.get_packed_member_layout(sym)
+            if not layout:
+                continue
+            for item in layout:
+                node = self.graph.get_node(f"{parent_path}.{item['name']}")
+                if node is None:
+                    continue
+                w = item["width"]
+                node.width = (w - 1, 0) if w > 1 else (1, 0)
+                node.is_signed = item["signed"]
+                node.parent = parent_path
+                node.parent_bit_start = item["offset"] + w - 1
+                node.parent_bit_end = item["offset"]
 
     def _expand_struct_assignments(self):
         """展开 struct 整体赋值为成员赋值

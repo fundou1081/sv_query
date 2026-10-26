@@ -86,6 +86,8 @@ FROZEN_METHODS = {
     'get_task_params': '(self, task) -> list',
     'get_top_level_subroutines': '(self) -> list',
     'get_variable_declarations': '(self, module) -> list',
+    'get_packed_member_layout': '(self, var_symbol) -> list[dict] | None',
+    'get_variable_symbols': '(self, module) -> dict',
     'items': '(self) -> object',
     'visit': '(self, callback: Callable) -> None',
 }

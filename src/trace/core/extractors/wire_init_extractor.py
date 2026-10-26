@@ -56,14 +56,20 @@ def create_var_nodes(
     from ..graph.models import NodeKind, TraceNode
 
     count = 0
+    symbols = adapter.get_variable_symbols(module)
     for var_decl in adapter.get_variable_declarations(module):
         var_name = adapter.get_signal_name(var_decl)
         if not var_name or var_name in port_names:
             continue
         var_name = adapter.clean_name(var_name)
         var_id = f"{module_name}.{var_name}"
-        var_width = adapter.extract_data_width(var_decl)
-        var_signed = adapter.extract_data_signed(var_decl)
+        # [iter_299 / PLAN P11.1] typedef（packed struct/union）在 syntax 层没有
+        # 宽度/signedness；优先用语义符号的 .type.bitWidth / .type.isSigned
+        sym = symbols.get(var_name)
+        var_width = (adapter.extract_data_width(sym) if sym is not None
+                     else adapter.extract_data_width(var_decl))
+        var_signed = (adapter.extract_data_signed(sym) if sym is not None
+                      else adapter.extract_data_signed(var_decl))
         existing = next((n for n in result.nodes if n.id == var_id), None)
         if existing is not None:
             # [iter_298 / PLAN P10.2] 懒建节点 (1,0) 回填声明宽度（integer 等）
