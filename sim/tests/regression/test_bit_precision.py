@@ -126,6 +126,7 @@ endmodule'''
         assert ids == {"4'b0"}, ids
 
     def test_multi_driver_no_cross_bit(self):
+        """多驱动：y=a + y[3]=1'b1 → y[4] 只来自 a；y[3] 两个驱动都算（a 为总线回退）。"""
         tr = _build('''
 module top(input [7:0] a, output [7:0] y);
   assign y = a;
@@ -134,7 +135,7 @@ endmodule''')
         ids = _ids(tr, "top.y[4]")
         assert "1'b1" not in ids, f"y[4] 不应含 bit3 的驱动: {ids}"
         assert ids == {"top.a"}, ids
-        assert _ids(tr, "top.y[3]") == {"1'b1"}
+        assert _ids(tr, "top.y[3]") == {"1'b1", "top.a"}
 
     def test_overlapping_slices_only_covering_ones(self):
         tr = _build('''
@@ -330,15 +331,28 @@ endmodule''')
 # D. 已文档化的粗粒度（只锁"有答案/不崩"，不承诺位精度）
 # ---------------------------------------------------------------------------
 class TestDocumentedCoarse:
-    def test_concat_is_coarse(self):
-        """拼接：任一位都返回两个操作数（总线粒度，KNOWN_LIMITATIONS §3.6）。"""
+    def test_concat_bit_mapped_when_bits_exist(self):
+        """拼接：按表达式顺序切段（a 占高位、b 占低位）；位节点存在时逐位精确。"""
+        tr = _build('''
+module top(input [3:0] a, b, output y, u, output [3:0] t);
+  wire [7:0] s;
+  assign s = {a, b};
+  assign y = s[5];
+  assign u = s[1];
+  assign t = b[1];
+  assign v = a[1];
+endmodule''')
+        assert _ids(tr, "top.y") == {"top.s[5]", "top.a[1]"}
+        assert _ids(tr, "top.u") == {"top.s[1]", "top.b[1]"}
+
+    def test_concat_without_bits_is_coarse(self):
         tr = _build('''
 module top(input [3:0] a, b, output [7:0] y);
   assign y = {a, b};
 endmodule''')
         ids = _ids(tr, "top.y[2]")
-        assert ids, "拼接位查询不应空答（粗粒度）"
-        assert "top.a" in ids and "top.b" in ids
+        assert ids, "拼接位查询不应空答"
+        assert "top.b" in ids and "top.a" not in ids  # bit2 属 b 段，回落 b
 
     def test_pure_bus_connection_is_coarse(self):
         tr = _build('''

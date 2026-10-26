@@ -196,6 +196,7 @@ class SignalTracer:
                     missing = False
                     for sid in mapped:
                         if sid in seen_ids:
+                            handled = True
                             continue
                         if sid not in self.graph.nodes():
                             missing = True  # 位节点不存在 → 该操作数回落总线
@@ -219,6 +220,13 @@ class SignalTracer:
             # 追加源节点（字面量是叶子），并继续向上追溯
             self._append_source(src, drivers, seen_ids,
                                 current_depth, max_depth, allow_cross_module)
+
+        # [iter_295 / PLAN P7.1] 位节点已有自己的位驱动（多驱动/位覆盖）时，
+        # F2 的父总线提升不会触发；这里补父总线的表达式/拷贝驱动（按位映射），
+        # 保证多驱动场景两个源都在（如 assign y=a; assign y[3]=1'b1）。
+        if bit_filter is not None and has_driver_edge:
+            self._trace_parent_bit_drivers(
+                signal_id, drivers, seen_ids, current_depth, max_depth, allow_cross_module)
 
     # ------------------------------------------------------------------
     # 6 类规则的具体实现
@@ -317,6 +325,8 @@ class SignalTracer:
         "BinaryAnd", "BinaryOr", "BinaryXor", "BinaryXnor",
         "And", "Or", "Xor", "Xnor",
         "Not", "BitwiseNot", "LogicalNot", "UnaryBitwiseNot",
+        # [iter_295 / PLAN P7.1] 直接拷贝 assign y = a（无 op 元数据）
+        "DirectCopy",
     })
     _EXPR_PREFIX = frozenset({
         "Add", "Subtract", "Multiply", "Power", "UnaryMinus", "UnaryPlus",
@@ -404,6 +414,64 @@ class SignalTracer:
                 out.append((succ, edge))
         return out
 
+    def _concat_items(self, edge, dst_id: str):
+        """[iter_295 / PLAN P7.2] 解析 `{a, b[3:0], ...}` 的位段布局。
+
+        返回 [{name, base, lo, width, start}]（start = 在 dst 中的起始位，
+        LSB 对齐：最右操作数占 start=0）；无法解析（字面量/嵌套/未知宽度）→ None。
+        """
+        import re as _re
+
+        expr = (getattr(edge, "expression", "") or "").strip()
+        if not (expr.startswith("{") and expr.endswith("}")):
+            return None
+        body = expr[1:-1]
+        if "{" in body or "}" in body:
+            return None  # 嵌套拼接：v1 不处理
+        parts = [p.strip() for p in body.split(",")]
+        module = dst_id.rsplit(".", 1)[0] if "." in dst_id else ""
+
+        items = []
+        for part in parts:
+            m = _re.match(r"^([A-Za-z_]\w*)(?:\[(\d+)(?::(\d+))?\])?$", part)
+            if not m:
+                return None  # 字面量/表达式：v1 不处理（避免猜宽度）
+            name, hi_s, lo_s = m.group(1), m.group(2), m.group(3)
+            full = f"{module}.{name}" if module else name
+            if full not in self.graph.nodes():
+                full = edge.src if edge.src.rsplit(".", 1)[-1] == name else None
+            if full is None or full not in self.graph.nodes():
+                return None
+            if hi_s is None:
+                lo, width = 0, self._node_width(self.graph.get_node(full))
+            elif lo_s is None:
+                lo, width = int(hi_s), 1
+            else:
+                hi, lo = int(hi_s), int(lo_s)
+                lo, width = min(hi, lo), abs(hi - lo) + 1
+            if not width:
+                return None
+            items.append({"name": name, "base": full, "lo": lo, "width": width})
+
+        start = 0
+        for item in reversed(items):  # 最右操作数在低位
+            item["start"] = start
+            start += item["width"]
+        return items
+
+    @staticmethod
+    def _direct_copy_op(edge) -> str | None:
+        """[iter_295 / PLAN P7.1] 无运算符但表达式就是源信号本身 → 直接拷贝。
+
+        `assign y = a;` 的 DRIVER 边没有 `source.op`，但 `expression == "a"`
+        （源短名）。这种边可以安全地按同索引做位映射。
+        """
+        expr = (getattr(edge, "expression", "") or "").strip()
+        if not expr:
+            return None
+        short = edge.src.rsplit(".", 1)[-1]
+        return "DirectCopy" if expr == short else None
+
     def _expr_source_bits(self, edge, dst_id: str, want_bit: int) -> list[str] | None:
         """[iter_294 / PLAN P6.1] `s[i]` 依赖的**操作数位节点 id** 列表。
 
@@ -420,7 +488,9 @@ class SignalTracer:
             return None
         op = (getattr(src_info, "op", "") or "").strip()
         if not op:
-            return None
+            op = self._direct_copy_op(edge)
+            if op is None:
+                return None
 
         src_node = self.graph.get_node(edge.src)
         dst_node = self.graph.get_node(dst_id)
@@ -440,6 +510,23 @@ class SignalTracer:
             hi = max(int(src_info.bit_start), int(src_info.bit_end))
         else:
             lo, hi = 0, max(0, (src_w or 1) - 1)
+
+        # 拼接表达式优先（操作数边可能是 op=Slice/Concat，expr 以 '{' 开头）
+        items = self._concat_items(edge, dst_id)
+        if items is not None:
+            src_name = getattr(src_info, "signal", "") or ""
+            dst_is_slice = "[" in dst_id and dst_w > 1
+            pos = self._rel_bit(dst_id, abs_pos) if dst_is_slice else abs_pos
+            for item in items:
+                if item["name"] != src_name:
+                    continue
+                if not (item["start"] <= pos < item["start"] + item["width"]):
+                    return []
+                if item["width"] == 1:
+                    return [f"{item['base']}[{item['lo']}]"]
+                r = pos - item["start"]
+                return [f"{item['base']}[{item['lo'] + r}]"]
+            return None
 
         if op in self._EXPR_SAME_INDEX:
             if src_w == 1:
@@ -474,6 +561,20 @@ class SignalTracer:
                 return []
             return [f"{base}[{bit}]"]
 
+        if op == "Concat":
+            items = self._concat_items(edge, dst_id)
+            if items is None:
+                return None
+            src_name = getattr(src_info, "signal", "") or ""
+            for item in items:
+                if item["name"] != src_name:
+                    continue
+                if not (item["start"] <= abs_pos < item["start"] + item["width"]):
+                    return []  # 该位属于别的操作数（无依赖）
+                r = abs_pos - item["start"]
+                return [f"{item['base']}[{item['lo'] + r}]"]
+            return None
+
         return None
 
     def _expr_dst_bits(self, edge, src_bit: int) -> list[str] | None:
@@ -489,7 +590,9 @@ class SignalTracer:
             return None
         op = (getattr(src_info, "op", "") or "").strip()
         if not op:
-            return None
+            op = self._direct_copy_op(edge)
+            if op is None:
+                return None
         dst_id = edge.dst
         if "[" in dst_id:
             return None
@@ -504,6 +607,24 @@ class SignalTracer:
         rel_pos = self._rel_bit(edge.src, src_bit)
         src_is_bus = "[" not in edge.src
         pos = abs_pos if src_is_bus else rel_pos
+
+        items = self._concat_items(edge, dst_id)
+        if items is not None:
+            src_name = getattr(src_info, "signal", "") or ""
+            for item in items:
+                if item["name"] != src_name:
+                    continue
+                if item["width"] == 1:
+                    bit = item["start"]
+                else:
+                    r = pos
+                    if not (0 <= r < item["width"]):
+                        return []
+                    bit = item["start"] + r
+                if bit < 0 or bit >= dst_w:
+                    return []
+                return [f"{dst_id}[{bit}]"]
+            return None
 
         if op in self._EXPR_SAME_INDEX:
             bit = 0 if src_w == 1 else pos
@@ -533,6 +654,23 @@ class SignalTracer:
             if bit < 0 or bit >= dst_w:
                 return []
             return [f"{dst_id}[{bit}]"]
+
+        if op == "Concat":
+            items = self._concat_items(edge, dst_id)
+            if items is None:
+                return None
+            src_name = getattr(src_info, "signal", "") or ""
+            for item in items:
+                if item["name"] != src_name:
+                    continue
+                r = src_bit - item["lo"]
+                if not (0 <= r < item["width"]):
+                    return []
+                bit = item["start"] + r
+                if bit < 0 or bit >= dst_w:
+                    return []
+                return [f"{dst_id}[{bit}]"]
+            return None
 
         return None
 
@@ -578,6 +716,49 @@ class SignalTracer:
             if dst == signal_id and self.graph.get_edge(src, dst).kind == EdgeKind.CONNECTION:
                 return True
         return False
+
+    def _trace_parent_bit_drivers(self, signal_id, drivers, seen_ids,
+                                  current_depth, max_depth, allow_cross_module):
+        """[iter_295 / PLAN P7.1] 位节点：父总线上的驱动按位映射后并入。
+
+        用于多驱动/位覆盖（`assign y = a; assign y[3] = 1'b1;`）：
+        位节点 y[3] 已有自己的驱动，F2 不会提升到父总线，但 y 的总线拷贝
+        仍然是 y[3] 的一个（同索引）驱动。
+        """
+        bit = self._bit_index_of(signal_id)
+        if bit is None:
+            return
+        for psrc, pedge in self._parent_driver_sources(signal_id):
+            # 父总线边的 dst 是总线本身；位位置用绝对索引（y[1] → 1）
+            mapped = self._expr_source_bits(pedge, pedge.dst, bit)
+            if mapped is None:
+                continue
+            handled = False
+            missing = False
+            for sid in mapped:
+                if sid in seen_ids:
+                    handled = True   # 依赖已由别的边满足，不再回退总线
+                    continue
+                if sid not in self.graph.nodes():
+                    missing = True
+                    continue
+                node = self.graph.get_node(sid)
+                if node is not None:
+                    drivers.append(node)
+                    seen_ids.add(sid)
+                self._trace_drivers_recursive(
+                    sid, drivers, seen_ids, current_depth + 1, max_depth,
+                    allow_cross_module, bit_filter=self._bit_index_of(sid))
+                handled = True
+            if missing or not handled:
+                if psrc in self.graph.nodes() and psrc not in seen_ids:
+                    node = self.graph.get_node(psrc)
+                    if node is not None:
+                        drivers.append(node)
+                        seen_ids.add(psrc)
+                    self._trace_drivers_recursive(
+                        psrc, drivers, seen_ids, current_depth + 1, max_depth,
+                        allow_cross_module)
 
     def _handle_self_loop(self, src, drivers):
         """自环分两类：internal 标记 = 实例端口占位（跳过）；其他 = 真自依赖（保留）。"""
@@ -780,7 +961,7 @@ class SignalTracer:
         want_bit = self._bit_index_of(signal_id)
         if want_bit is not None:
             for psrc, pedge in self._parent_driver_sources(signal_id):
-                mapped = self._expr_source_bits(pedge, signal_id, want_bit)
+                mapped = self._expr_source_bits(pedge, pedge.dst, want_bit)
                 if mapped is None:
                     continue
                 existing = [self.graph.get_node(m) for m in mapped
@@ -1045,6 +1226,7 @@ class SignalTracer:
                         missing = False
                         for did in mapped:
                             if did in seen_ids:
+                                handled = True
                                 continue
                             if did not in self.graph.nodes():
                                 missing = True
@@ -1086,7 +1268,10 @@ class SignalTracer:
                     continue
                 handled = False
                 for did in mapped:
-                    if did in seen_ids or did not in self.graph.nodes():
+                    if did in seen_ids:
+                        handled = True
+                        continue
+                    if did not in self.graph.nodes():
                         continue
                     dnode = self.graph.get_node(did)
                     if dnode is not None:
