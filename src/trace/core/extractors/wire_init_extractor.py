@@ -62,20 +62,29 @@ def create_var_nodes(
             continue
         var_name = adapter.clean_name(var_name)
         var_id = f"{module_name}.{var_name}"
-        if var_id not in [n.id for n in result.nodes]:
-            var_width = adapter.extract_data_width(var_decl)
-            var_file, var_line, _, _ = adapter.get_source_location(var_decl)
-            result.nodes.append(
-                TraceNode(
-                    id=var_id,
-                    name=var_name,
-                    module=module_name,
-                    kind=NodeKind.SIGNAL,
-                    width=var_width,
-                    file=var_file,
-                    line=var_line,
-                    is_signed=adapter.extract_data_signed(var_decl),
-                )
+        var_width = adapter.extract_data_width(var_decl)
+        var_signed = adapter.extract_data_signed(var_decl)
+        existing = next((n for n in result.nodes if n.id == var_id), None)
+        if existing is not None:
+            # [iter_298 / PLAN P10.2] 懒建节点 (1,0) 回填声明宽度（integer 等）
+            if (var_width is not None and var_width != (1, 0)
+                    and existing.width == (1, 0)):
+                existing.width = var_width
+            if existing.is_signed is None and var_signed is not None:
+                existing.is_signed = var_signed
+            continue
+        var_file, var_line, _, _ = adapter.get_source_location(var_decl)
+        result.nodes.append(
+            TraceNode(
+                id=var_id,
+                name=var_name,
+                module=module_name,
+                kind=NodeKind.SIGNAL,
+                width=var_width,
+                file=var_file,
+                line=var_line,
+                is_signed=var_signed,
             )
-            count += 1
+        )
+        count += 1
     return count
