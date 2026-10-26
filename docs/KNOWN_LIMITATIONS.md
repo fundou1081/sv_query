@@ -244,7 +244,8 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **剩余项**：
 1. 表达式位映射的**未覆盖算子**：比较/逻辑/归约/变量移位（所有位都可能影响）
    —— 仍返回总线（已文档化）
-2. 有符号字面量/signed 信号的**扩展方向已建模**（P9）；但 `integer` 的位宽提取仍是既有缺口
+2. 有符号字面量/signed 信号的**扩展方向已建模**（P9）；`integer/int/byte/shortint/longint/time`
+   位宽已修正（P10）。其算术逐位（进位链）仍无 per-bit 节点 → 位查询回落总线
 3. 动态 part-select（`bus[base +: 8]`）不展开；变量移位不做逐位（运行期决定）
 4. packed struct/union 的 signedness 未建模（None → 保守回退）
 4. 动态 part-select（`bus[base +: 8]`，`[?:?]` 节点）不展开
@@ -257,6 +258,10 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 >
 > **F5 已修（iter_292）**：load 方向同样精确 —— `fanout(a[1])` → `y[5]`、
 > `fanout(d[1])` → `q[3]`；位节点无负载时回退父总线（与 fanin F2 对称）。
+>
+> **P10 已落地（iter_298）**：整数类型宽度修正——`integer` 从假 `(1,0)` 改为
+> `(31,0)` signed，`byte/shortint/int/longint/time` 各归其位；懒建节点回填声明宽度；
+> 缓存 1.2。integer 的逐位算术仍无 per-bit 节点（位查询回落总线）。
 >
 > **P9 已落地（iter_297）**：`TraceNode.is_signed` 入图（端口/net/变量/generate），
 > 有符号字面量 `4'shF` 符号扩展为 1、有符号信号加宽高位映射到符号位；

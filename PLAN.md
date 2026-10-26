@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P9.3 测试与文档：signed/unsigned 扩展矩阵 + 图基线 <已完成>
+> current item : P10.3 测试与文档：类型矩阵 + 图基线 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P9.3 测试与文档：signed/unsigned 扩展矩阵 + 图基线 <已完成>
+current item : P10.3 测试与文档：类型矩阵 + 图基线 <已完成>
 
 ## 计划树
 
@@ -44,6 +44,10 @@ P6 表达式驱动的逐位映射 <已完成>
 P7 位精确性扩展（续） <已完成>
 P8 常量位分解 <已完成>
 P9 signedness 建模与符号扩展 <已完成>
+P10 整数类型位宽提取 <已完成>
+-- P10.1 `integer/int/byte/shortint/longint/time` 位宽（syntax keyword + semantic bitWidth） <已完成>
+-- P10.2 懒建节点宽度回填 + 缓存版本 <已完成>
+-- P10.3 测试与文档：类型矩阵 + 图基线 <已完成>
 -- P9.1 图节点 signedness：TraceNode.is_signed + adapter 提取 + 序列化/缓存版本 <已完成>
 -- P9.2 查询层：有符号字面量 & 有符号信号扩展（符号位/零扩展） <已完成>
 -- P9.3 测试与文档：signed/unsigned 扩展矩阵 + 图基线 <已完成>

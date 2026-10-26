@@ -916,6 +916,15 @@ class ExprsDriversMixin:
                                 lsb = get_int(right)
                                 return (msb, lsb)
 
+        # [iter_298 / PLAN P10.1] 整数类型关键字（DataDeclarationSyntax.type）
+        t = getattr(data_decl, "type", None)
+        if t is not None:
+            kw = " ".join(str(getattr(t, "keyword", "") or "").split()).lower()
+            widths = {"byte": 8, "shortint": 16, "int": 32,
+                      "integer": 32, "longint": 64, "time": 64}
+            if kw in widths:
+                return (widths[kw] - 1, 0)
+
         # 默认 1 位
         return (1, 0)
 
@@ -953,9 +962,12 @@ class ExprsDriversMixin:
                 return True
             if "Unsigned" in kind:
                 return False
-            kw = str(getattr(t, "keyword", "") or "").lower()
-            if "integer" in kw:
-                return True   # SV `integer` 默认 signed
+            kw = " ".join(str(getattr(t, "keyword", "") or "").split()).lower()
+            # [iter_298 / PLAN P10.1] 整数类型默认 signedness
+            if kw in ("integer", "int", "byte", "shortint", "longint"):
+                return True
+            if kw == "time":
+                return False
             return False      # logic/reg/bit 默认 unsigned
         return None
 
