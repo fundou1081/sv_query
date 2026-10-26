@@ -18,7 +18,7 @@
 | 全量 (canonical) | **2489 passed / 0 failed** ✅ (`sim/tests/`, `-m "not opensource"`; 7 skipped / 152 deselected) | 2026-10-26 实测 (iter_300): 成员位桥 +7。历史: iter_299 2482 / iter_298 2471 |
 | CLI / integration | **810 passed / 0 failed** (`sim/tests/cli sim/tests/integration`, `-m "not opensource"`) | 2026-09-08 实测 (iter_185 修复后) |
 | 缓存目录 | 可用 `SVQ_CACHE_DIR` 覆盖 (默认顺序: 显式 > env > `$XDG_CACHE_HOME/svq` > `~/.svq/cache`); 不可写自动降级内存缓存 | iter_172 |
-| 迭代记录 | `docs/task_tree/iterations/` (288 份, 只增不改) | 每次迭代一份 |
+| 迭代记录 | `docs/task_tree/iterations/` (289 份, 只增不改) | 每次迭代一份 |
 | 文档卫生 | `python3 tools/check_docs.py` 必须 ✅ | 死链 / 归档越界 / 未登记 三项 |
 | 静默失败纪律 | `python3 tools/check_except_pass.py` 必须 ✅ | `except ...: pass` 计数 = 0 (iter_190 起) |
 
@@ -62,6 +62,7 @@
 | [EXP_NAMESPACE.md](EXP_NAMESPACE.md) | exp 层已退役说明 (代码归档在 archive/2026-10-20-exp-attic) |
 | [poc/2026-10-23_native_connectivity.md](poc/2026-10-23_native_connectivity.md) | **POC**: slang-native 连通性 vs 现有两套路径实现 (影子节点 30~38%、0 可达; PathResolver 终点错误 60%+) |
 | [architecture/signal_graph_accuracy_audit.md](architecture/signal_graph_accuracy_audit.md) | **Accuracy Claim 分层声明** (L1/L2/L3 + 反例表 + covergroup 观察域) |
+| [architecture/trace_capability_review_2026-10-27.md](architecture/trace_capability_review_2026-10-27.md) | **信号追踪能力评审** (2026-10-27): 现状矩阵 + P0~P3 缺口 backlog（含缓存模式 P0 bug） |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
 | [EXTRACTION_FAILURES.md](EXTRACTION_FAILURES.md) | 提取失败路径集中表 |
