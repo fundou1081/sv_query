@@ -1,6 +1,6 @@
 # L1 — 位级 drive/load 精度修复（PLAN P5）
 
-**Status**: 🟡 进行中（P5.1/P5.2/P5.3 完成；P5.4/P5.5 待定）
+**Status**: ✅ 完成（P5.1~P5.6 全部完成，iter_290~293）
 **Created**: 2026-10-26
 **Owner**: 方豆 / AI
 
@@ -23,7 +23,7 @@ iter_289 审计（[记录](../iterations/iter_289_bit_precision_audit.md)）实�
 | P5.2 | F2：位节点无 incoming 驱动且父总线有驱动时，补一次父总线追溯 | ✅ 反例 3 消除（iter_290） |
 | P5.3 | 测试加强 | ✅ `test_bit_precision.py` 19 个（精确/防污染/防断链/粗粒度契约） |
 | P5.4 | F3：slice 节点按位展开 | ✅ LHS/RHS 切片→逐位节点+偏移映射（iter_291）；verilog-axi +1.3% 节点 |
-| P5.5 | F4：bus↔无位节点侧合成位桥 | 与 iter_126「不造假节点」冲突，需方豆拍板 |
+| P5.5 | F4：bus↔无位节点侧合成位桥 | ✅ one 默认 / full 可选（iter_293）；方豆拍板「要 f4」 |
 | P5.6 | F5：load 方向位精度（fanout 按位） | ✅ 切片/寄存器位负载精确 + 无负载位回退父总线（iter_292）；表达式仍粗粒度 |
 
 ## 约束

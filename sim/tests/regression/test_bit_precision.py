@@ -196,7 +196,8 @@ module top(input [7:0] a, output z);
 endmodule''')
         ids = _ids(tr, "top.z")
         assert "top.w[3]" in ids
-        assert "top.u.y" in ids, f"应补到父总线（子模块输出端口）: {ids}"
+        # F4(one 模式多轮): 端口两侧合成位节点后一路贯通到子模块输入与顶层源
+        assert "top.u.a[3]" in ids and "top.a[3]" in ids, ids
 
     def test_top_input_bit_no_lift(self):
         """顶层输入位没有父总线驱动 → 不提升，答案保持精确。"""
@@ -311,8 +312,8 @@ module top(input [3:0] a, output [7:0] w, output [7:0] z);
   assign w[7:4] = a;
   assign z = w;
 endmodule''')
-        # w[4] 由 F3 展开建出，但没有位级负载；w 有总线负载 z
-        assert _ids(tr, "top.w[4]", kind="fanout") == {"top.z"}
+        # F4: w 有位节点 → 给 z 合成位节点，位负载精确为 z[4]（无位点时才回退总线）
+        assert _ids(tr, "top.w[4]", kind="fanout") == {"top.z[4]"}
 
     def test_expression_load_stays_coarse(self):
         """表达式驱动只有总线边 → fanout(a[3]) 返回 s（已知粗粒度，非位精度承诺）。"""
