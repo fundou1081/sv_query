@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P12.3 测试与文档 <已完成>
+> current item : P13.1 缓存 key 纳入 SVQ_BIT_BRIDGE 模式（P0 静默错误） <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P12.3 测试与文档 <已完成>
+current item : P13.1 缓存 key 纳入 SVQ_BIT_BRIDGE 模式（P0 静默错误） <待做>
 
 ## 计划树
 
@@ -50,6 +50,14 @@ P12 packed 成员位级查询桥 <已完成>
 -- P12.1 成员位 → 聚合位换算（parent 链，struct/union/嵌套） <已完成>
 -- P12.2 未被引用的成员节点补齐（查询可达） <已完成>
 -- P12.3 测试与文档 <已完成>
+
+P13 信号追踪能力补强（2026-10-27 评审 backlog） <待做>
+-- P13.1 缓存 key 纳入 SVQ_BIT_BRIDGE 模式（P0 静默错误） <待做>
+-- P13.2 粗粒度回退显式标记（precision/warnings） <待做>
+-- P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>
+-- P13.4 深层 packed 成员节点（o.inner.a） <待做>
+-- P13.5 三元/case 分支按位映射 <待做>
+-- P13.6 多驱动标记 + 静态 memory 位精度 <待做>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>
@@ -86,3 +94,4 @@ P4 已完成归档 <已完成>
 |---|---|
 | 2026-10-25 | 建立本计划树；P0~P3 来自底座审计结论（iter_278） |
 | 2026-10-26 | P0/P1/P2/P3 全部完成（iter_279~288）；计划树进入"无待办"状态 |
+| 2026-10-27 | P5~P12 位精确性系列完成（iter_289~300）；P13 评审 backlog 登记（iter_301，见 architecture/trace_capability_review_2026-10-27） |
