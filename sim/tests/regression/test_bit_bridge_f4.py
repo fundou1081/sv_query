@@ -74,8 +74,11 @@ endmodule''')
         assert _ids(tr, "top.y[3]") == {"top.a[3]"}
         assert _ids(tr, "top.a[3]", kind="fanout") == {"top.y[3]"}
 
-    def test_expression_never_expanded(self, monkeypatch):
-        """`s = a + b` 的位映射不是同索引（进位）→ full 也必须跳过。"""
+    def test_expression_never_expanded_at_graph_level(self, monkeypatch):
+        """`s = a + b` 不做**图级**同索引展开（full 模式也不）。
+
+        查询层的位映射是另一层（P6），这里只锁"图里没有伪造的逐位边"。
+        """
         monkeypatch.setenv("SVQ_BIT_BRIDGE", "full")
         tr = _build('''
 module top(input [7:0] a, b, output y);
@@ -83,7 +86,8 @@ module top(input [7:0] a, b, output y);
   assign s = a + b;
   assign y = s[3];
 endmodule''')
-        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s"}
+        g = tr.get_graph()
+        assert "top.a[3]" not in g and "top.s[2]" not in g
 
     def test_synthesized_bits_have_no_aggregation_edge(self, monkeypatch):
         """合成位节点不加 BIT_SELECT 聚合边（防父总线提升污染）。"""
