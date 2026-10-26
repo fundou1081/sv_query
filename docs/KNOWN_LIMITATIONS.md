@@ -244,8 +244,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **剩余项**：
 1. 表达式位映射的**未覆盖算子**：比较/逻辑/归约/变量移位（所有位都可能影响）
    —— 仍返回总线（已文档化）
-2. **有符号字面量**（`4'shF`）暂不分解（符号扩展语义），回落常量总线
+2. 有符号字面量/signed 信号的**扩展方向已建模**（P9）；但 `integer` 的位宽提取仍是既有缺口
 3. 动态 part-select（`bus[base +: 8]`）不展开；变量移位不做逐位（运行期决定）
+4. packed struct/union 的 signedness 未建模（None → 保守回退）
 4. 动态 part-select（`bus[base +: 8]`，`[?:?]` 节点）不展开
 5. `SVQ_BIT_BRIDGE=full` 在超大设计（新增位节点 > 30000）会部分展开（显式 warning）；
    默认 `one` 模式不做纯总线合成
@@ -256,6 +257,10 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 >
 > **F5 已修（iter_292）**：load 方向同样精确 —— `fanout(a[1])` → `y[5]`、
 > `fanout(d[1])` → `q[3]`；位节点无负载时回退父总线（与 fanin F2 对称）。
+>
+> **P9 已落地（iter_297）**：`TraceNode.is_signed` 入图（端口/net/变量/generate），
+> 有符号字面量 `4'shF` 符号扩展为 1、有符号信号加宽高位映射到符号位；
+> 拼接内字面量自决定（不扩展）。缓存版本 1.1，图基线因新增字段有意重生成。
 >
 > **P8 已落地（iter_296）**：常量位分解——`y=4'hA` 的 `fanin(y[1])` 返回 `1'b1`；
 > 拼接字面量段 `{a,4'b10}` 逐位；`a & 4'hF` 高位零扩展后不再误导依赖。

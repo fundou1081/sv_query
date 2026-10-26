@@ -476,6 +476,8 @@ class ExprsDriversMixin:
                 "loop_var": loop_var,
                 # [iter_101] 缺陷 B: 带声明位宽, net_decl_extractor 建节点用
                 "width": self.extract_data_width(child),
+                # [iter_297 / PLAN P9.1] signedness（加宽扩展方向）
+                "signed": self.extract_data_signed(child),
             })
         return results
 
@@ -916,6 +918,46 @@ class ExprsDriversMixin:
 
         # 默认 1 位
         return (1, 0)
+
+    def extract_data_signed(self, data_decl) -> bool | None:
+        """[iter_297 / PLAN P9.1] 声明是否 signed（None = 无法判定）。
+
+        依次尝试 semantic 的 `type.isSigned` / `declaredType.type.isSigned` /
+        `declaredType.isSigned`；pyslang 对 PackedArrayType/ScalarType 支持 isSigned。
+        """
+        for path in (("type",), ("declaredType", "type"), ("declaredType",)):
+            cur = data_decl
+            ok = True
+            for attr in path:
+                cur = getattr(cur, attr, None)
+                if cur is None:
+                    ok = False
+                    break
+            if not ok:
+                continue
+            try:
+                val = getattr(cur, "isSigned", None)
+            except Exception as e:  # 某些类型属性访问会抛
+                logger.debug("%s: isSigned 读取失败: %s", __name__, e)
+                continue
+            if val is not None:
+                return bool(val)
+
+        # Syntax 回退（get_variable_declarations 返回 DataDeclarationSyntax）：
+        #   type.signing.kind = TokenKind.SignedKeyword / UnsignedKeyword / Unknown
+        t = getattr(data_decl, "type", None)
+        if t is not None:
+            signing = getattr(t, "signing", None)
+            kind = str(getattr(signing, "kind", "") or "")
+            if "Signed" in kind:
+                return True
+            if "Unsigned" in kind:
+                return False
+            kw = str(getattr(t, "keyword", "") or "").lower()
+            if "integer" in kw:
+                return True   # SV `integer` 默认 signed
+            return False      # logic/reg/bit 默认 unsigned
+        return None
 
     # =========================================================================
     # 遍历

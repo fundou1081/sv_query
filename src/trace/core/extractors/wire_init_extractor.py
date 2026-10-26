@@ -74,6 +74,7 @@ def create_var_nodes(
                     width=var_width,
                     file=var_file,
                     line=var_line,
+                    is_signed=adapter.extract_data_signed(var_decl),
                 )
             )
             count += 1

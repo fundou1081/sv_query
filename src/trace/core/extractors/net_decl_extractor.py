@@ -85,7 +85,8 @@ def create_net_decl_edges(
         # 之前只有带 init 的建节点, 无 init 的惰性由 ensure_signal_node 建 (1,0) 假宽度.
         lhs_id = f"{module_name}.{lhs_name}"
         _ensure_net_node(result, lhs_id, lhs_name, module_name,
-                         adapter.extract_data_width(net_decl))
+                         adapter.extract_data_width(net_decl),
+                         adapter.extract_data_signed(net_decl))
 
         try:
             init = getattr(net_decl, "initializer", None)
@@ -147,7 +148,8 @@ def create_net_decl_edges(
             g_short = g_name
 
         # [iter_101] 缺陷 B: generate 内 wire 也用声明位宽建节点 (ensure_signal_node 硬编码 1 位)
-        _ensure_net_node(result, g_lhs_id, g_short, module_name, g_decl.get("width"))
+        _ensure_net_node(result, g_lhs_id, g_short, module_name, g_decl.get("width"),
+                         g_decl.get("signed"))
         # expr tree (换入 entry ctx, weights[i] → 数值), 用 g_lhs_id 当 tree_key 区分
         store_expr_tree(g_lhs_id, g_init, "", result, genvar_ctx=g_ctx)
         g_rhs_str = get_signal(g_init) or ""
@@ -167,7 +169,8 @@ def create_net_decl_edges(
     return edge_count
 
 
-def _ensure_net_node(result, node_id: str, name: str, module_name: str, width) -> None:
+def _ensure_net_node(result, node_id: str, name: str, module_name: str, width,
+                     signed: bool | None = None) -> None:
     """[iter_101] 创建 net 声明节点, 用声明位宽 (缺陷 B 修复).
 
     ensure_signal_node 硬编码 width=(1,0) — `wire [15:0] x = ...` 的位宽
@@ -180,10 +183,14 @@ def _ensure_net_node(result, node_id: str, name: str, module_name: str, width) -
             if (width is not None and width != (1, 0)
                     and n.width == (1, 0)):
                 n.width = width
+            # [iter_297 / PLAN P9.1] 懒建节点 signedness 未知 → 声明已知时补上
+            if n.is_signed is None and signed is not None:
+                n.is_signed = signed
             return
     result.nodes.append(
         TraceNode(id=node_id, name=name, module=module_name,
-                  kind=NodeKind.SIGNAL, width=width or (1, 0))
+                  kind=NodeKind.SIGNAL, width=width or (1, 0),
+                  is_signed=signed)
     )
 
 

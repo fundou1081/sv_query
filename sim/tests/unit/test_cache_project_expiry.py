@@ -23,6 +23,7 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))
 
 from trace.core.cache.ast_cache import (  # noqa: E402
+    CACHE_VERSION,
     DEFAULT_MAX_AGE_DAYS,
     ENV_CACHE_MAX_AGE_DAYS,
     ENV_CACHE_MAX_ENTRIES_PER_PROJECT,
@@ -141,7 +142,7 @@ class TestBackwardCompatibility:
     def test_legacy_file_readable(self, cache):
         """旧格式（无工程段）仍可读 —— 升级后不强制重建全部缓存。"""
         legacy = cache._cache_path("oldkey-v2-tall")
-        body = {"version": "1.0", "sources_hash": "oldkey-v2-tall",
+        body = {"version": CACHE_VERSION, "sources_hash": "oldkey-v2-tall",
                 "cached_at": "", "data": {"graph_data": {"n": 2}}}
         with gzip.open(legacy, "wt", encoding="utf-8") as f:
             json.dump(body, f)
@@ -152,7 +153,7 @@ class TestBackwardCompatibility:
     def test_legacy_participates_in_age_expiry(self, cache, monkeypatch):
         monkeypatch.setenv(ENV_CACHE_MAX_AGE_DAYS, "1")
         legacy = cache._cache_path("oldkey-v2-tall")
-        body = {"version": "1.0", "sources_hash": "oldkey-v2-tall",
+        body = {"version": CACHE_VERSION, "sources_hash": "oldkey-v2-tall",
                 "cached_at": "", "data": {}}
         with gzip.open(legacy, "wt", encoding="utf-8") as f:
             json.dump(body, f)
