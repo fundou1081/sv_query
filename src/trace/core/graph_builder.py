@@ -933,23 +933,43 @@ class GraphBuilder:
             if parent_path in self.graph.nodes():
                 parent_members.setdefault(parent_path, set()).add(member_name)
 
-        for parent_path in parent_members:
+        # [iter_300 / PLAN P12] 除"已有成员节点"的父路径外，也要覆盖未被引用的
+        # struct 变量（需要为其建成员节点，查询才可达）
+        for parent_path in set(parent_members) | set(symbols):
             sym = symbols.get(parent_path)
-            if sym is None:
+            if sym is None or parent_path not in self.graph.nodes():
                 continue
             layout = self.adapter.get_packed_member_layout(sym)
             if not layout:
                 continue
+            parent_node = self.graph.get_node(parent_path)
             for item in layout:
-                node = self.graph.get_node(f"{parent_path}.{item['name']}")
-                if node is None:
-                    continue
+                node_id = f"{parent_path}.{item['name']}"
+                node = self.graph.get_node(node_id)
                 w = item["width"]
+                if node is None:
+                    # [iter_300 / PLAN P12] 未被引用的成员也建节点（查询可达）
+                    from .graph.models import NodeKind, TraceNode
+                    node = TraceNode(
+                        id=node_id, name=item["name"],
+                        module=getattr(parent_node, "module", "") if parent_node else "",
+                        kind=NodeKind.SIGNAL,
+                        width=(w - 1, 0) if w > 1 else (1, 0),
+                        is_signed=item["signed"],
+                        parent=parent_path,
+                        parent_bit_start=item["offset"] + w - 1,
+                        parent_bit_end=item["offset"],
+                        extra={"packed_member": True},
+                    )
+                    self.graph.add_trace_node(node)
+                    continue
                 node.width = (w - 1, 0) if w > 1 else (1, 0)
                 node.is_signed = item["signed"]
                 node.parent = parent_path
                 node.parent_bit_start = item["offset"] + w - 1
                 node.parent_bit_end = item["offset"]
+                # [iter_300 / PLAN P12] 标记 packed 成员（查询层位桥按 parent 链换算）
+                node.extra["packed_member"] = True
 
     def _expand_struct_assignments(self):
         """展开 struct 整体赋值为成员赋值

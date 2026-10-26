@@ -150,6 +150,19 @@ class SignalTracer:
                                        current_depth, max_depth, allow_cross_module,
                                        bit_filter)
 
+        # [iter_300 / PLAN P12] packed 成员位：换到父聚合位后继续追（p.a[1] → p[5]）
+        if (bit_filter is not None and not has_driver_edge
+                and not self._has_incoming_connection(signal_id)):
+            step = self._packed_parent_step(signal_id, bit_filter)
+            if step is not None:
+                parent_id, parent_bit = step
+                if parent_id not in seen_ids:
+                    self._trace_drivers_recursive(
+                        parent_id, drivers, seen_ids, current_depth + 1, max_depth,
+                        allow_cross_module, bit_filter=parent_bit)
+                if drivers:
+                    return
+
         # [iter_296 / PLAN P8.1] 字面量位（常量没有源边，需要按表达式补）
         if bit_filter is not None:
             for cid in self._literal_bits_at(signal_id, bit_filter):
@@ -481,6 +494,48 @@ class SignalTracer:
         if parsed is None:
             parsed = self._parse_const_token(getattr(node, "name", "") or "")
         return parsed
+
+    def _packed_parent_step(self, node_id: str, bit: int):
+        """[iter_300 / PLAN P12] packed 成员位 → 父聚合位的一步换算。
+
+        返回 (parent_id, parent_bit) 或 None：
+          - 成员总线（p.a，extra.packed_member）: p.a[k] ↔ p[lo + k]
+          - 成员的位节点（p.a[1]）: 父是成员总线 → (p.a, 1)
+        非 packed 成员返回 None（不改变普通信号语义）。
+        """
+        node = self.graph.get_node(node_id)
+        if node is None:
+            return None
+        parent = getattr(node, "parent", None)
+        if not parent or parent not in self.graph.nodes():
+            return None
+        parent_node = self.graph.get_node(parent)
+        if node.extra.get("packed_member"):
+            if node.parent_bit_start is None or node.parent_bit_end is None:
+                return None
+            lo = min(node.parent_bit_start, node.parent_bit_end)
+            return parent, lo + bit
+        # 成员的位节点（F3 建出）：id 的位索引就是成员内绝对位
+        if (self._node_width(node) == 1
+                and parent_node is not None
+                and parent_node.extra.get("packed_member")
+                and self._bit_index_of(node_id) is not None):
+            return parent, self._bit_index_of(node_id)
+        return None
+
+    def _packed_top_bit(self, node_id: str, bit: int):
+        """沿 packed 成员链换到顶层聚合位；非成员返回 None。"""
+        cur, pos = node_id, bit
+        seen = set()
+        moved = False
+        while cur not in seen:
+            seen.add(cur)
+            step = self._packed_parent_step(cur, pos)
+            if step is None:
+                break
+            cur, pos = step
+            moved = True
+        return (cur, pos) if moved else None
 
     def _rel_bit(self, node_id: str, bit: int) -> int:
         """[iter_294] 把"信号内的绝对位索引"换算成**该节点内的相对位**。
@@ -1312,7 +1367,13 @@ class SignalTracer:
         # [iter_294 / PLAN P6.2] depth=1 也把父总线上的表达式负载按位映射过来
         if bit_index is not None:
             for _succ, pedge in self._parent_driver_loads(signal_id):
-                mapped = self._expr_dst_bits(pedge, bit_index)
+                # [iter_300 / PLAN P12] packed 成员的位要换到父聚合位再映射父边
+                _node = self.graph.get_node(signal_id)
+                _rel = bit_index
+                if (_node is not None and _node.extra.get("packed_member")
+                        and _node.parent_bit_start is not None):
+                    _rel = min(_node.parent_bit_start, _node.parent_bit_end) + bit_index
+                mapped = self._expr_dst_bits(pedge, _rel)
                 if not mapped:
                     continue
                 for did in mapped:
@@ -1445,7 +1506,12 @@ class SignalTracer:
             for succ, pedge in self._parent_driver_loads(signal_id):
                 if not self._in_scope(succ, scope_prefix):
                     continue
-                mapped = self._expr_dst_bits(pedge, bit_index)
+                _node = self.graph.get_node(signal_id)
+                _rel = bit_index
+                if (_node is not None and _node.extra.get("packed_member")
+                        and _node.parent_bit_start is not None):
+                    _rel = min(_node.parent_bit_start, _node.parent_bit_end) + bit_index
+                mapped = self._expr_dst_bits(pedge, _rel)
                 if mapped is None:
                     continue
                 handled = False
@@ -1504,9 +1570,14 @@ class SignalTracer:
         signal_id = self._lift_missing_bit(signal_id)
         if signal_id is None:
             return []
-        # [iter_292 / PLAN P5.6 F5] 位节点存在但**没有任何 load 边**时，回退父总线：
-        # 与 fanin 的 F2 对称（位节点可能只是切片展开产物，真实负载挂在总线上）。
-        signal_id = self._load_bus_fallback(signal_id)
+        # [iter_300 / PLAN P12] packed 成员位：先换到聚合位，避免 _load_bus_fallback
+        # 把成员位当成"父总线的同位"（p.a[1] 会错误落到 p[1] 而不是 p[5]）
+        _member_top = (self._packed_top_bit(signal_id, _orig_bit)
+                       if _orig_bit is not None else None)
+        if _member_top is None:
+            # [iter_292 / PLAN P5.6 F5] 位节点存在但**没有任何 load 边**时，回退父总线：
+            # 与 fanin 的 F2 对称（位节点可能只是切片展开产物，真实负载挂在总线上）。
+            signal_id = self._load_bus_fallback(signal_id)
         # [ADD 2026-06-11 Req-12] 计算要包含的边类型
         allowed_kinds = {EdgeKind.DRIVER, EdgeKind.CONNECTION}
         if include_clock:
@@ -1530,13 +1601,40 @@ class SignalTracer:
         allow_cross = (module is None) if allow_cross_module is None else allow_cross_module
         scope_prefix = self._scope_prefix_for(signal_id, allow_cross)
         # depth=1 用 _find_loads 过滤
+        # [iter_300 / PLAN P12] packed 成员位：聚合位 p[5] 的负载也要并入
+        extra = []
+        top = _member_top
+        if top is not None:
+            if True:
+                t_id, t_bit = top
+                if depth == 1:
+                    extra = self._find_loads(
+                        t_id, allowed_kinds=allowed_kinds,
+                        allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+                        bit_index=t_bit)
+                else:
+                    extra = self._collect_all_loads(
+                        t_id, max_depth=depth, allowed_kinds=allowed_kinds,
+                        allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+                        bit_index=t_bit)
+
+        def _merge(main):
+            seen = {n.id for n in main}
+            for n in extra:
+                if n.id not in seen:
+                    main.append(n)
+                    seen.add(n.id)
+            return main
+
         if depth == 1:
-            return self._find_loads(signal_id, allowed_kinds=allowed_kinds,
-                                    allow_cross_module=allow_cross, scope_prefix=scope_prefix,
-                                    bit_index=_orig_bit)
-        return self._collect_all_loads(signal_id, max_depth=depth, allowed_kinds=allowed_kinds,
-                                       allow_cross_module=allow_cross, scope_prefix=scope_prefix,
-                                       bit_index=_orig_bit)
+            return _merge(self._find_loads(
+                signal_id, allowed_kinds=allowed_kinds,
+                allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+                bit_index=_orig_bit))
+        return _merge(self._collect_all_loads(
+            signal_id, max_depth=depth, allowed_kinds=allowed_kinds,
+            allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+            bit_index=_orig_bit))
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
                     allow_cross_module: bool | None = None) -> list[TraceNode]:

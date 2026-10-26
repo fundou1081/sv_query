@@ -35,6 +35,10 @@ endmodule
 """
 
 
+def _ids(tr, sig, kind="fanin") -> set[str]:
+    return {r.id for r in getattr(tr, f"trace_{kind}")(sig)}
+
+
 def _build(src: str = SRC) -> UnifiedTracer:
     t = UnifiedTracer(sources={"t.sv": src}, log_level="ERROR")
     t.build_graph()
@@ -120,6 +124,58 @@ endmodule""").get_graph()
         assert g.get_node("top.sp.sa").width == (3, 0)
         # 成员自身是 logic（unsigned）；struct 整体的 signed 见上面聚合测试
         assert g.get_node("top.sp.sa").is_signed is False
+
+
+class TestMemberBitBridge:
+    SRC = """
+typedef struct packed { logic [3:0] a; logic [3:0] b; } pkt_t;
+typedef union packed { logic [7:0] u8; logic [1:0][3:0] u2; } pun_t;
+typedef struct packed { pkt_t inner; logic [3:0] c; } outer_t;
+module top(input [7:0] x, output [7:0] y, output [4:0] z);
+  pkt_t p;
+  pun_t pu;
+  outer_t o;
+  assign p[5] = x[5];
+  assign pu[5] = x[4];
+  assign o[5] = x[3];
+  assign y = p;
+  assign z = {pu.u8[5], o.inner[1]};
+endmodule
+"""
+
+    def test_struct_member_bit_to_aggregate(self):
+        """p.a[1] ↔ p[5]（a 在 MSB [7:4]）。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.p.a[1]") == {"top.x[5]"}
+
+    def test_struct_member_fanout_inverse(self):
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.p.a[1]", kind="fanout") == {"top.y[5]"}
+
+    def test_low_member_offset(self):
+        """p.b[2] ↔ p[2]（b 在 [3:0]）。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.p.b[2]", kind="fanout") == {"top.y[2]"}
+
+    def test_union_member_bit(self):
+        """union 成员 u8[5] ↔ pu[5]（offset=0）。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.pu.u8[5]") == {"top.x[4]"}
+
+    def test_nested_member_bit(self):
+        """o.inner[1] → o[5]（inner 在 [11:4]）。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.o.inner[1]") == {"top.x[3]"}
+
+    def test_no_cross_bit(self):
+        tr = _build(self.SRC)
+        ids = _ids(tr, "top.p.a[1]")
+        assert "top.x[4]" not in ids and "top.x[6]" not in ids
+
+    def test_member_bus_query_not_hijacked(self):
+        """总线级成员查询不触发位桥（保持成员自身语义）。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.p.a") == set()
 
 
 class TestPackedStructSerialization:
