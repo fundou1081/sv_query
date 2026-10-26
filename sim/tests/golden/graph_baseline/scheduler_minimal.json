@@ -547,6 +547,118 @@
       "src": "Scheduler_minimal.SourceA_dut.data_o.ternary_phy_tx_start"
     },
     {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[0]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[0]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[1]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[1]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[2]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[2]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[3]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[3]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[4]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[4]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[5]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[5]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[6]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[6]"
+    },
+    {
+      "assign_type": "continuous",
+      "bit_slice": "",
+      "clock_domain": "",
+      "condition": "",
+      "confidence": "high",
+      "dst": "Scheduler_minimal.s0_reg[7]",
+      "effective_condition": "",
+      "expression": "",
+      "function_return": false,
+      "is_function_call": false,
+      "kind": "CONNECTION",
+      "src": "Scheduler_minimal.SourceA_dut.data_o[7]"
+    },
+    {
       "assign_type": "internal",
       "bit_slice": "",
       "clock_domain": "",
@@ -3359,6 +3471,134 @@
       ]
     },
     {
+      "bit_range": "[0]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[0]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[1]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[1]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[2]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[2]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[3]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[3]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[4]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[4]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[5]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[5]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[6]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[6]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[7]",
+      "id": "Scheduler_minimal.SourceA_dut.data_o[7]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal.SourceA_dut",
+      "parent": "Scheduler_minimal.SourceA_dut.data_o",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
       "bit_range": null,
       "id": "Scheduler_minimal.SourceA_dut.phy_tx_start",
       "is_clock": false,
@@ -3739,6 +3979,118 @@
       "parent": "Scheduler_minimal.s0_reg",
       "width": [
         1,
+        0
+      ]
+    },
+    {
+      "bit_range": "[1]",
+      "id": "Scheduler_minimal.s0_reg[1]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[2]",
+      "id": "Scheduler_minimal.s0_reg[2]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[3]",
+      "id": "Scheduler_minimal.s0_reg[3]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[4]",
+      "id": "Scheduler_minimal.s0_reg[4]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[5]",
+      "id": "Scheduler_minimal.s0_reg[5]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[6]",
+      "id": "Scheduler_minimal.s0_reg[6]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
+        0
+      ]
+    },
+    {
+      "bit_range": "[7]",
+      "id": "Scheduler_minimal.s0_reg[7]",
+      "is_clock": false,
+      "is_enable": false,
+      "is_port": false,
+      "is_reset": false,
+      "kind": "SIGNAL",
+      "modport_dir": null,
+      "module": "Scheduler_minimal",
+      "parent": "Scheduler_minimal.s0_reg",
+      "width": [
+        0,
         0
       ]
     },
@@ -4374,11 +4726,11 @@
       "BRANCH_FALSE": 1,
       "BRANCH_RESULT": 1,
       "CLOCK": 52,
-      "CONNECTION": 25,
+      "CONNECTION": 33,
       "DRIVER": 67,
       "RESET": 52
     },
-    "edges": 228,
+    "edges": 236,
     "node_kinds": {
       "CONST": 1,
       "INSTANTIATED_MODULE": 7,
@@ -4386,9 +4738,9 @@
       "PORT_IN": 24,
       "PORT_OUT": 7,
       "REG": 26,
-      "SIGNAL": 7
+      "SIGNAL": 22
     },
-    "nodes": 73
+    "nodes": 88
   },
   "target": null,
   "version": 1

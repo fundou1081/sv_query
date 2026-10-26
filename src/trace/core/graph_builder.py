@@ -146,6 +146,13 @@ class GraphBuilder:
                 note="必须在 filter_target 之后：只给最终保留节点建位桥",
             ),
             Stage(
+                "bit_bridge_synth",
+                self._synthesize_missing_bit_bridges,
+                requires={"bus_bit_bridges"},
+                provides={"bit_bridge_synth"},
+                note="[iter_293] bus↔bus 端口/赋值桥: 缺位一侧合成位节点（模式见 env）",
+            ),
+            Stage(
                 "gen_block_map",
                 self._capture_generate_block_map,
                 requires={"nodes", "edges"},
@@ -1350,6 +1357,143 @@ class GraphBuilder:
                             node.kind = NodeKind.REG
                             if was_port:
                                 node.is_port = True
+
+    def _synthesize_missing_bit_bridges(self) -> None:
+        """[iter_293 / PLAN P5.5 F4] bus↔bus 连接/赋值的位桥（缺位一侧合成位节点）。
+
+        iter_137/143 的位桥只在**两侧位节点都已存在**时补边；纯总线连接
+        （`sub .y(w)`、`assign y = a`）两侧都没有位节点 → 位查询停在总线。
+
+        本 pass 的两种模式（环境变量 `SVQ_BIT_BRIDGE`）：
+          - `one`（默认）: 只处理**一侧已有位节点**的连接 —— 给缺位一侧补位节点，
+            再建位对位边。不改 iter_126 的"纯总线不造假节点"契约。
+          - `full`: 纯总线连接也两侧合成位节点（`i ↔ i` 同索引），位查询可全贯通；
+            图会变大（verilog-axi 实测见迭代记录），需显式开启。
+
+        覆盖两类边：CONNECTION（端口/网络连接）与 DRIVER（`assign bus = bus`）。
+        合成节点**不加 BIT_SELECT 聚合边**（防父总线提升污染），并受总量上限保护。
+        """
+        import os as _os
+        from .graph.models import NodeKind, TraceEdge
+
+        mode = (_os.environ.get("SVQ_BIT_BRIDGE") or "one").strip().lower()
+        if mode not in ("one", "full"):
+            logger.warning("SVQ_BIT_BRIDGE 取值非法 (%r)，用默认 one", mode)
+            mode = "one"
+
+        MAX_NEW_NODES = 30000
+        new_nodes = 0
+        new_edges = 0
+
+        def width_of(node) -> int | None:
+            w = getattr(node, "width", None)
+            if isinstance(w, (tuple, list)) and len(w) >= 2:
+                try:
+                    return abs(int(w[0]) - int(w[1])) + 1
+                except (TypeError, ValueError):
+                    return None
+            return None
+
+        def has_bits(base: str, width: int) -> bool:
+            return any(f"{base}[{i}]" in self.graph._node_data for i in range(width))
+
+        def ensure_bit(base: str, bit: int) -> str | None:
+            nonlocal new_nodes
+            bit_id = f"{base}[{bit}]"
+            if bit_id in self.graph._node_data:
+                return bit_id
+            base_node = self.graph.get_node(base)
+            if base_node is None:
+                return None
+            if new_nodes >= MAX_NEW_NODES:
+                logger.warning(
+                    "_synthesize_missing_bit_bridges: 新节点达到上限 %d，停止（图可能不完整）",
+                    MAX_NEW_NODES,
+                )
+                return None
+            self.graph.add_trace_node(TraceNode(
+                id=bit_id,
+                name=f"{base.rsplit('.', 1)[-1]}[{bit}]",
+                module=getattr(base_node, "module", ""),
+                kind=NodeKind.SIGNAL,
+                width=(0, 0),
+                parent=base,
+                parent_bit_start=bit,
+                parent_bit_end=bit,
+                bit_range=f"[{bit}]",
+            ))
+            new_nodes += 1
+            return bit_id
+
+        def add_edge(a: str | None, b: str | None, kind) -> None:
+            nonlocal new_edges
+            if a is None or b is None:
+                return
+            if any(e.kind == kind for e in self.graph._edge_data.get((a, b), [])):
+                return
+            self.graph.add_trace_edge(TraceEdge(src=a, dst=b, kind=kind, assign_type="continuous"))
+            new_edges += 1
+
+        # 最多 3 轮：合成位节点会让"另一侧有位"的 pair 变为可处理（端口/内部
+        # DRIVER 的先后顺序不应影响结果）。稳定或达上限即停。
+        for _round in range(3):
+            before_nodes, before_edges = new_nodes, new_edges
+            for (src, dst), edges in list(self.graph._edge_data.items()):
+                if "[" in src or "[" in dst:
+                    continue
+                kinds = {e.kind for e in edges}
+                is_conn = EdgeKind.CONNECTION in kinds
+                is_drv = EdgeKind.DRIVER in kinds
+                if not (is_conn or is_drv):
+                    continue
+                src_node = self.graph.get_node(src)
+                dst_node = self.graph.get_node(dst)
+                if src_node is None or dst_node is None:
+                    continue
+                if src_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
+                    continue
+                if dst_node.kind.name in ("CONST", "OP_TERNARY", "OP_CASE"):
+                    continue
+                w = width_of(src_node)
+                if not w or w <= 1 or w != width_of(dst_node):
+                    continue
+
+                # DRIVER 只对**直接拷贝**（assign y = a）做同索引位桥：
+                # 算术/逻辑表达式（s = a + b）的位映射不是同索引（进位/移位），
+                # 合成会给出错误的位依赖。CONNECTION 是网络连接，同索引恒成立。
+                if is_drv and not is_conn:
+                    src_short = src.rsplit(".", 1)[-1]
+                    drv_edges = [e for e in edges if e.kind == EdgeKind.DRIVER]
+                    if not drv_edges or any((e.expression or "") != src_short for e in drv_edges):
+                        continue
+                    # dst 已有位级驱动（多驱动/部分赋值）→ 不做，避免把总线拷贝
+                    # 混进已有位驱动（语义是多驱动解析，不是同索引覆盖）
+                    if any(f"{dst}[{i}]" in self.graph._node_data
+                           and any(True for _ in self.graph.predecessors(f"{dst}[{i}]"))
+                           for i in range(w)):
+                        continue
+
+                src_has = has_bits(src, w)
+                dst_has = has_bits(dst, w)
+                if src_has and dst_has:
+                    continue  # iter_137 已处理
+                if mode != "full" and not (src_has or dst_has):
+                    continue  # one 模式：纯总线不合成
+
+                edge_kind = EdgeKind.CONNECTION if is_conn else EdgeKind.DRIVER
+                for i in range(w):
+                    sb = ensure_bit(src, i) if (mode == "full" or src_has or dst_has) else None
+                    db = ensure_bit(dst, i) if (mode == "full" or src_has or dst_has) else None
+                    add_edge(sb, db, edge_kind)
+
+            if (new_nodes, new_edges) == (before_nodes, before_edges):
+                break
+
+        if new_nodes or new_edges:
+            logger.info(
+                "_synthesize_missing_bit_bridges (%s): +%d 位节点 / +%d 位边",
+                mode, new_nodes, new_edges,
+            )
 
     def _elaborate_wrapper_passthroughs(self):
         """[iter_276] wrapper 直通边 —— **纯图 + 实例路径**实现。
