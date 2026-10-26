@@ -315,15 +315,15 @@ endmodule''')
         # F4: w 有位节点 → 给 z 合成位节点，位负载精确为 z[4]（无位点时才回退总线）
         assert _ids(tr, "top.w[4]", kind="fanout") == {"top.z[4]"}
 
-    def test_expression_load_stays_coarse(self):
-        """表达式驱动只有总线边 → fanout(a[3]) 返回 s（已知粗粒度，非位精度承诺）。"""
+    def test_expression_load_is_bit_mapped(self):
+        """[iter_294 P6] 表达式位运算 → fanout(a[3]) 精确到 s[3]（再递归到 y）。"""
         tr = _build('''
 module top(input [7:0] a, b, output y);
   wire [7:0] s;
   assign s = a & b;
   assign y = s[3];
 endmodule''')
-        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s"}
+        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s[3]", "top.y"}
 
 
 # ---------------------------------------------------------------------------
@@ -350,15 +350,15 @@ module top(input [7:0] a, output [7:0] y);
 endmodule''')
         assert _ids(tr, "top.y[3]") == {"top.u_sub.y"}
 
-    def test_fanout_load_side_is_bus_coarse(self):
-        """load 方向：表达式驱动只有总线级边 → fanout(bit) 返回总线负载。"""
+    def test_fanout_load_side_bitwise_mapped(self):
+        """[iter_294 P6] load 方向：位运算按同索引映射（不再是总线负载）。"""
         tr = _build('''
 module top(input [7:0] a, b, output y);
   wire [7:0] s;
   assign s = a & b;
   assign y = s[3];
 endmodule''')
-        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s"}
+        assert _ids(tr, "top.a[3]", kind="fanout") == {"top.s[3]", "top.y"}
 
 
 def test_bus_query_still_aggregates_all_slices():

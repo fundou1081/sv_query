@@ -129,6 +129,12 @@ class SignalTracer:
 
         seen_ids.add(signal_id)
 
+        # [iter_294 / PLAN P6.1] 位节点自动带位上下文：表达式驱动按位映射
+        # （`s[3]` 或回退到总线 s 且 bit_filter=3 时，s[i]←操作数位）
+        _own_bit = self._bit_index_of(signal_id)
+        if _own_bit is not None and bit_filter is None:
+            bit_filter = _own_bit
+
         # 类型级 class 属性 = 结构宿主非数据端点（iter_154 C4-A / D3）
         _node = self.graph.get_node(signal_id)
         if _node is not None and _node.kind.name == "CLASS_PROPERTY":
@@ -182,7 +188,35 @@ class SignalTracer:
                                         current_depth + 1, max_depth, allow_cross_module)
                 continue
 
-            # ⑥ 驱动边：追加源节点（字面量是叶子），并继续向上追溯
+            # ⑥ 驱动边：先试表达式按位映射（s[i] ← 操作数位），再回退总线
+            if bit_filter is not None:
+                mapped = self._expr_source_bits(edge, signal_id, bit_filter)
+                if mapped is not None:
+                    handled = False
+                    missing = False
+                    for sid in mapped:
+                        if sid in seen_ids:
+                            continue
+                        if sid not in self.graph.nodes():
+                            missing = True  # 位节点不存在 → 该操作数回落总线
+                            continue
+                        node = self.graph.get_node(sid)
+                        if node is not None:
+                            drivers.append(node)
+                            seen_ids.add(sid)
+                        self._trace_drivers_recursive(
+                            sid, drivers, seen_ids, current_depth + 1, max_depth,
+                            allow_cross_module, bit_filter=self._bit_index_of(sid))
+                        handled = True
+                    if missing:
+                        # 部分位节点不存在：补该操作数的总线（保持完整，粒度退化为总线）
+                        self._append_source(src, drivers, seen_ids,
+                                            current_depth, max_depth, allow_cross_module)
+                        handled = True
+                    if handled or not mapped:
+                        continue
+
+            # 追加源节点（字面量是叶子），并继续向上追溯
             self._append_source(src, drivers, seen_ids,
                                 current_depth, max_depth, allow_cross_module)
 
@@ -277,6 +311,230 @@ class SignalTracer:
                                               bit_filter=own_bit)
                 if drivers:
                     break
+
+    # [iter_294 / PLAN P6.1] 表达式运算符 → 位依赖规则
+    _EXPR_SAME_INDEX = frozenset({
+        "BinaryAnd", "BinaryOr", "BinaryXor", "BinaryXnor",
+        "And", "Or", "Xor", "Xnor",
+        "Not", "BitwiseNot", "LogicalNot", "UnaryBitwiseNot",
+    })
+    _EXPR_PREFIX = frozenset({
+        "Add", "Subtract", "Multiply", "Power", "UnaryMinus", "UnaryPlus",
+    })
+    _EXPR_SHIFT = frozenset({
+        "LogicalShiftLeft", "LogicalShiftRight",
+        "ArithmeticShiftLeft", "ArithmeticShiftRight",
+    })
+
+    @staticmethod
+    def _bit_base(node_id: str) -> str:
+        """`top.a[7:4]` / `top.a[3]` → `top.a`；普通总线原样返回。"""
+        import re as _re
+
+        m = _re.match(r"^(.*)\[\d+(?::\d+)?\]$", node_id)
+        return m.group(1) if m else node_id
+
+    @staticmethod
+    def _node_width(node) -> int | None:
+        w = getattr(node, "width", None)
+        if isinstance(w, (tuple, list)) and len(w) >= 2:
+            try:
+                return abs(int(w[0]) - int(w[1])) + 1
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    def _rel_bit(self, node_id: str, bit: int) -> int:
+        """[iter_294] 把"信号内的绝对位索引"换算成**该节点内的相对位**。
+
+        位节点（宽 1）的绝对索引是它在父总线里的位置，映射到自身时相对位 = 0；
+        切片节点 `a[7:4]` 的相对位 = bit - 4；普通总线原样返回。
+        """
+        node = self.graph.get_node(node_id)
+        if node is None:
+            return bit
+        if self._node_width(node) == 1 and node.parent_bit_start is not None:
+            return 0
+        import re as _re
+
+        m = _re.match(r"^(.*)\[(\d+):(\d+)\]$", node_id)
+        if m:
+            return bit - min(int(m.group(2)), int(m.group(3)))
+        # 单 bit 节点（ElementSelect 未设 parent_bit_start）→ 相对位 0
+        if _re.match(r"^.*\[\d+\]$", node_id):
+            return 0
+        return bit
+
+    def _parent_driver_sources(self, node_id: str):
+        """[iter_294 / PLAN P6.1] 位节点的**父总线** incoming DRIVER 边。
+
+        表达式驱动挂在总线上（`s = a & b` 的边是 `a → s`），不在 `s[3]` 上；
+        depth=1 的位查询也要按运算符映射这些父总线边。
+        """
+        node = self.graph.get_node(node_id)
+        parent = getattr(node, "parent", None) if node is not None else None
+        if not parent or parent == node_id or parent not in self.graph.nodes():
+            return []
+        out = []
+        for src in self.graph.predecessors(parent):
+            if src in (node_id, parent):
+                continue
+            edge = self.graph.get_edge(src, parent)
+            if edge is not None and edge.kind == EdgeKind.DRIVER:
+                out.append((src, edge))
+        return out
+
+    def _parent_driver_loads(self, node_id: str):
+        """[iter_294 / PLAN P6.2] 位节点的**父总线** outgoing DRIVER 边。
+
+        表达式负载挂在总线上（`a & b` 的边是 `a → s`），不在 `a[3]` 上；
+        位查询 fanout 时必须把父总线的表达式边按位映射过来。
+        返回 [(succ, edge), ...]，排除自环与节点自身。
+        """
+        node = self.graph.get_node(node_id)
+        parent = getattr(node, "parent", None) if node is not None else None
+        if not parent or parent == node_id or parent not in self.graph.nodes():
+            return []
+        out = []
+        for succ in self.graph.successors(parent):
+            if succ in (node_id, parent):
+                continue
+            edge = self.graph.get_edge(parent, succ)
+            if edge is not None and edge.kind == EdgeKind.DRIVER and edge.source is not None:
+                out.append((succ, edge))
+        return out
+
+    def _expr_source_bits(self, edge, dst_id: str, want_bit: int) -> list[str] | None:
+        """[iter_294 / PLAN P6.1] `s[i]` 依赖的**操作数位节点 id** 列表。
+
+        `want_bit` 是**父总线内的绝对位索引**（位节点 s[3] → 3）。
+        来源是总线时用绝对位；来源本身是位/切片节点时用节点内相对位。
+
+        返回:
+          - `None`  = 该运算符不做逐位映射（调用方回落总线）
+          - `[]`    = 已知该位不依赖此操作数（如移位越界，直接跳过）
+          - `[id…]` = 候选操作数位（可能不在图里，调用方过滤）
+        """
+        src_info = getattr(edge, "source", None)
+        if src_info is None:
+            return None
+        op = (getattr(src_info, "op", "") or "").strip()
+        if not op:
+            return None
+
+        src_node = self.graph.get_node(edge.src)
+        dst_node = self.graph.get_node(dst_id)
+        if dst_node is None:
+            return None
+        dst_w = self._node_width(dst_node) or 1
+        src_w = self._node_width(src_node) or dst_w
+
+        abs_pos = want_bit
+        rel_pos = self._rel_bit(dst_id, want_bit)
+        src_is_bus = "[" not in edge.src
+        pos = abs_pos if src_is_bus else rel_pos
+        base = self._bit_base(edge.src)
+
+        if src_info.bit_start is not None and src_info.bit_end is not None:
+            lo = min(int(src_info.bit_start), int(src_info.bit_end))
+            hi = max(int(src_info.bit_start), int(src_info.bit_end))
+        else:
+            lo, hi = 0, max(0, (src_w or 1) - 1)
+
+        if op in self._EXPR_SAME_INDEX:
+            if src_w == 1:
+                return [f"{base}[{lo}]"]
+            bit = lo + pos
+            if bit > hi:
+                return []
+            return [f"{base}[{bit}]"]
+
+        if op in self._EXPR_PREFIX:
+            if src_w == 1:
+                return [f"{base}[{lo}]"]
+            top = min(hi, lo + pos)
+            return [f"{base}[{b}]" for b in range(lo, top + 1)]
+
+        if op in self._EXPR_SHIFT:
+            import re as _re
+
+            m = _re.search(r"(<<<|>>>|<<|>>)\s*(\d+)", getattr(edge, "expression", "") or "")
+            if not m:
+                return None
+            k = int(m.group(2))
+            left = "<<" in m.group(1)
+            bit = pos - k if left else pos + k
+            if bit < lo or bit > hi:
+                return []
+            return [f"{base}[{bit}]"]
+
+        if op == "Slice":
+            bit = lo + rel_pos
+            if bit > hi:
+                return []
+            return [f"{base}[{bit}]"]
+
+        return None
+
+    def _expr_dst_bits(self, edge, src_bit: int) -> list[str] | None:
+        """[iter_294 / PLAN P6.2] `a[j]` 影响的**结果位节点 id** 列表（fanout 方向）。
+
+        `src_bit` 是源信号在父总线内的绝对位索引；源本身是位/切片时用相对位。
+
+        None = 该运算符不做逐位映射；[] = 已知不影响任何位（移位越界）；
+        [id…] = 候选结果位（可能不在图里）。
+        """
+        src_info = getattr(edge, "source", None)
+        if src_info is None:
+            return None
+        op = (getattr(src_info, "op", "") or "").strip()
+        if not op:
+            return None
+        dst_id = edge.dst
+        if "[" in dst_id:
+            return None
+        dst_node = self.graph.get_node(dst_id)
+        if dst_node is None:
+            return None
+        dst_w = self._node_width(dst_node) or 0
+        src_node = self.graph.get_node(edge.src)
+        src_w = self._node_width(src_node) or dst_w
+
+        abs_pos = src_bit
+        rel_pos = self._rel_bit(edge.src, src_bit)
+        src_is_bus = "[" not in edge.src
+        pos = abs_pos if src_is_bus else rel_pos
+
+        if op in self._EXPR_SAME_INDEX:
+            bit = 0 if src_w == 1 else pos
+            if bit < 0 or bit >= dst_w:
+                return []
+            return [f"{dst_id}[{bit}]"]
+
+        if op in self._EXPR_PREFIX:
+            start = max(0, pos)
+            return [f"{dst_id}[{b}]" for b in range(start, dst_w)]
+
+        if op in self._EXPR_SHIFT:
+            import re as _re
+
+            m = _re.search(r"(<<<|>>>|<<|>>)\s*(\d+)", getattr(edge, "expression", "") or "")
+            if not m:
+                return None
+            k = int(m.group(2))
+            left = "<<" in m.group(1)
+            bit = pos + k if left else pos - k
+            if bit < 0 or bit >= dst_w:
+                return []
+            return [f"{dst_id}[{bit}]"]
+
+        if op == "Slice":
+            bit = rel_pos
+            if bit < 0 or bit >= dst_w:
+                return []
+            return [f"{dst_id}[{bit}]"]
+
+        return None
 
     @staticmethod
     def _bit_index_of(node_id: str) -> int | None:
@@ -495,9 +753,48 @@ class SignalTracer:
                         for e in _loop_edges
                     ):
                         continue
+                # [iter_294 / PLAN P6.1] 位查询的直接驱动也按运算符映射到操作数位
+                want_bit = self._bit_index_of(signal_id)
+                if want_bit is not None:
+                    edge = self.graph.get_edge(src, dst)
+                    if edge is not None and edge.kind == EdgeKind.DRIVER:
+                        mapped = self._expr_source_bits(edge, signal_id, want_bit)
+                        if mapped is not None:
+                            existing = [self.graph.get_node(m) for m in mapped
+                                        if m in self.graph.nodes()]
+                            existing = [n for n in existing if n is not None]
+                            if existing:
+                                for n in existing:
+                                    if n.id not in {d.id for d in drivers}:
+                                        drivers.append(n)
+                            else:
+                                node = self.graph.get_node(src)
+                                if node and self._in_scope(node.id, scope_prefix):
+                                    drivers.append(node)
+                            continue
                 node = self.graph.get_node(src)
                 if node and self._in_scope(node.id, scope_prefix):
                     drivers.append(node)
+
+        # [iter_294 / PLAN P6.1] 位节点：父总线上的表达式驱动按位映射
+        want_bit = self._bit_index_of(signal_id)
+        if want_bit is not None:
+            for psrc, pedge in self._parent_driver_sources(signal_id):
+                mapped = self._expr_source_bits(pedge, signal_id, want_bit)
+                if mapped is None:
+                    continue
+                existing = [self.graph.get_node(m) for m in mapped
+                            if m in self.graph.nodes()]
+                existing = [n for n in existing if n is not None]
+                if existing:
+                    for n in existing:
+                        if n.id not in {d.id for d in drivers}:
+                            drivers.append(n)
+                else:
+                    node = self.graph.get_node(psrc)
+                    if (node and self._in_scope(node.id, scope_prefix)
+                            and node.id not in {d.id for d in drivers}):
+                        drivers.append(node)
         return drivers
 
     # [PR3 2026-06-15] Binary garbage filter — 跟 L1 一致, 防止 MIG 返回 binary
@@ -598,9 +895,13 @@ class SignalTracer:
 
     def _find_loads(self, signal_id: str, allowed_kinds: set | None = None,
                     allow_cross_module: bool = True,
-                    scope_prefix: str | None = None) -> list[TraceNode]:
+                    scope_prefix: str | None = None,
+                    bit_index: int | None = None) -> list[TraceNode]:
         if signal_id not in self.graph.nodes():
             return []
+
+        if bit_index is None:
+            bit_index = self._bit_index_of(signal_id)
 
         loads = []
         seen_ids = set()
@@ -618,10 +919,46 @@ class SignalTracer:
             edge = self.graph.get_edge(signal_id, succ)
             if edge and edge.kind not in allowed_kinds:
                 continue
+
+            # [iter_294 / PLAN P6.2] depth=1 也做表达式按位映射
+            if (bit_index is not None and edge is not None
+                    and edge.kind == EdgeKind.DRIVER and edge.source is not None):
+                mapped = self._expr_dst_bits(edge, bit_index)
+                if mapped is not None:
+                    existing = [self.graph.get_node(m) for m in mapped
+                                if m in self.graph.nodes()]
+                    existing = [n for n in existing if n is not None]
+                    if existing:
+                        for n in existing:
+                            if n.id not in seen_ids and self._in_scope(n.id, scope_prefix):
+                                loads.append(n)
+                                seen_ids.add(n.id)
+                    else:
+                        node = self.graph.get_node(succ)
+                        if (node and node.id not in seen_ids
+                                and self._in_scope(node.id, scope_prefix)):
+                            loads.append(node)
+                            seen_ids.add(node.id)
+                    continue
+
             node = self.graph.get_node(succ)
             if node and node.id not in seen_ids and self._in_scope(node.id, scope_prefix):
                 loads.append(node)
                 seen_ids.add(node.id)
+
+        # [iter_294 / PLAN P6.2] depth=1 也把父总线上的表达式负载按位映射过来
+        if bit_index is not None:
+            for _succ, pedge in self._parent_driver_loads(signal_id):
+                mapped = self._expr_dst_bits(pedge, bit_index)
+                if not mapped:
+                    continue
+                for did in mapped:
+                    if did in seen_ids or did not in self.graph.nodes():
+                        continue
+                    node = self.graph.get_node(did)
+                    if node and self._in_scope(node.id, scope_prefix):
+                        loads.append(node)
+                        seen_ids.add(node.id)
 
         # [iter_272] 不再注入 MIG 虚拟对端: 图恒为实例级, 跨模块边本来就在图里。
 
@@ -629,7 +966,8 @@ class SignalTracer:
 
     def _collect_all_loads(self, signal_id: str, max_depth: int | None = None, allowed_kinds: set | None = None,
                            allow_cross_module: bool = True,
-                           scope_prefix: str | None = None) -> list[TraceNode]:
+                           scope_prefix: str | None = None,
+                           bit_index: int | None = None) -> list[TraceNode]:
         """递归收集所有后继(被这个信号驱动的所有节点)
 
         Args:
@@ -645,7 +983,7 @@ class SignalTracer:
         # (跨模块边已在图里)。
         self._trace_loads_recursive(signal_id, loads, seen_ids, current_depth=0, max_depth=max_depth,
                                     allowed_kinds=allowed_kinds, allow_cross_module=allow_cross_module,
-                                    scope_prefix=scope_prefix)
+                                    scope_prefix=scope_prefix, bit_index=bit_index)
         return loads
 
     def _trace_loads_recursive(
@@ -658,8 +996,12 @@ class SignalTracer:
         allowed_kinds: set | None = None,
         allow_cross_module: bool = True,
         scope_prefix: str | None = None,
+        bit_index: int | None = None,
     ):
         """递归追溯负载(被 signal_id 驱动的节点)
+
+        [iter_294 / PLAN P6.2] `bit_index` 给定时，按运算符把 a[j] 映射到结果位
+        （`s = a & b` → `a[j]` 只影响 `s[j]`；加法影响 `s[j..W-1]`）。
 
         Args:
             signal_id: 当前信号 ID
@@ -669,6 +1011,9 @@ class SignalTracer:
             max_depth: None=无限递归, N=最多递归 N 层
             allowed_kinds: [Req-12] 允许的边类型集合, None=默认 DRIVER+CONNECTION
         """
+        if bit_index is None:
+            bit_index = self._bit_index_of(signal_id)
+
         if max_depth is not None and current_depth >= max_depth:
             return
         if signal_id in seen_ids:
@@ -690,12 +1035,76 @@ class SignalTracer:
                     continue
                 if not self._in_scope(dst, scope_prefix):
                     continue
+
+                # [iter_294 / PLAN P6.2] 表达式按位映射（fanout 方向）
+                if (bit_index is not None and edge is not None
+                        and edge.kind == EdgeKind.DRIVER and edge.source is not None):
+                    mapped = self._expr_dst_bits(edge, bit_index)
+                    if mapped is not None:
+                        handled = False
+                        missing = False
+                        for did in mapped:
+                            if did in seen_ids:
+                                continue
+                            if did not in self.graph.nodes():
+                                missing = True
+                                continue
+                            dnode = self.graph.get_node(did)
+                            if dnode is not None:
+                                loads.append(dnode)
+                            self._trace_loads_recursive(
+                                did, loads, seen_ids, current_depth + 1, max_depth,
+                                allowed_kinds, allow_cross_module, scope_prefix,
+                                bit_index=self._bit_index_of(did))
+                            handled = True
+                        if missing:
+                            node = self.graph.get_node(dst)
+                            if node and node.id not in seen_ids:
+                                loads.append(node)
+                            if dst in self.graph.nodes():
+                                self._trace_loads_recursive(
+                                    dst, loads, seen_ids, current_depth + 1, max_depth,
+                                    allowed_kinds, allow_cross_module, scope_prefix)
+                            handled = True
+                        if handled or not mapped:
+                            continue
+
                 node = self.graph.get_node(dst)
                 if node and node.id not in seen_ids:
                     loads.append(node)
                 if dst in self.graph.nodes():
                     self._trace_loads_recursive(dst, loads, seen_ids, current_depth + 1, max_depth,
                                                 allowed_kinds, allow_cross_module, scope_prefix)
+
+        # [iter_294 / PLAN P6.2] 位节点：父总线上的表达式负载按位映射
+        if bit_index is not None:
+            for succ, pedge in self._parent_driver_loads(signal_id):
+                if not self._in_scope(succ, scope_prefix):
+                    continue
+                mapped = self._expr_dst_bits(pedge, bit_index)
+                if mapped is None:
+                    continue
+                handled = False
+                for did in mapped:
+                    if did in seen_ids or did not in self.graph.nodes():
+                        continue
+                    dnode = self.graph.get_node(did)
+                    if dnode is not None:
+                        loads.append(dnode)
+                    self._trace_loads_recursive(
+                        did, loads, seen_ids, current_depth + 1, max_depth,
+                        allowed_kinds, allow_cross_module, scope_prefix,
+                        bit_index=self._bit_index_of(did))
+                    handled = True
+                if not handled and not mapped:
+                    continue
+                if not handled:
+                    node = self.graph.get_node(succ)
+                    if node and node.id not in seen_ids:
+                        loads.append(node)
+                        self._trace_loads_recursive(
+                            succ, loads, seen_ids, current_depth + 1, max_depth,
+                            allowed_kinds, allow_cross_module, scope_prefix)
 
     def trace_fanout(
         self,
@@ -723,6 +1132,8 @@ class SignalTracer:
         默认只走 DRIVER + CONNECTION 边. 要看全部边, 用 visualize graph.
         """
         signal_id = self.make_id(signal, module)
+        # [iter_294 / PLAN P6.2] 记录原始位索引：lift/回退到总线后仍按位映射表达式负载
+        _orig_bit = self._bit_index_of(signal_id)
         signal_id = self._lift_missing_bit(signal_id)
         if signal_id is None:
             return []
@@ -754,9 +1165,11 @@ class SignalTracer:
         # depth=1 用 _find_loads 过滤
         if depth == 1:
             return self._find_loads(signal_id, allowed_kinds=allowed_kinds,
-                                    allow_cross_module=allow_cross, scope_prefix=scope_prefix)
+                                    allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+                                    bit_index=_orig_bit)
         return self._collect_all_loads(signal_id, max_depth=depth, allowed_kinds=allowed_kinds,
-                                       allow_cross_module=allow_cross, scope_prefix=scope_prefix)
+                                       allow_cross_module=allow_cross, scope_prefix=scope_prefix,
+                                       bit_index=_orig_bit)
 
     def trace_fanin(self, signal: str, module: str = None, depth: int | None = None,
                     allow_cross_module: bool | None = None) -> list[TraceNode]:
