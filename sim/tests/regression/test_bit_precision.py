@@ -123,7 +123,8 @@ endmodule'''
         tr = _build(self.SLICE)
         ids = _ids(tr, "top.y[2]")
         assert "top.a" not in ids, f"y[2] 不应含 bit[7:4] 的驱动: {ids}"
-        assert ids == {"4'b0"}, ids
+        # [iter_296 P8] 常量切片现在分解到位值：4'b0 的 bit2 → 1'b0
+        assert ids == {"1'b0"}, ids
 
     def test_multi_driver_no_cross_bit(self):
         """多驱动：y=a + y[3]=1'b1 → y[4] 只来自 a；y[3] 两个驱动都算（a 为总线回退）。"""
