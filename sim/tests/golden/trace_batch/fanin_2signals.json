@@ -30,9 +30,9 @@
             "id": "uart_top.rx_fifo.mem",
             "kind": "SIGNAL",
             "module": "uart_top.rx_fifo",
-            "width": 1,
+            "width": 2,
             "width_lsb": 0,
-            "width_msb": 0
+            "width_msb": 1
           }
         ],
         "index": 0,
@@ -48,9 +48,9 @@
             "id": "uart_top.rx_fifo.count_q",
             "kind": "REG",
             "module": "uart_top.rx_fifo",
-            "width": 1,
+            "width": 5,
             "width_lsb": 0,
-            "width_msb": 0
+            "width_msb": 4
           },
           {
             "distance": 1,

@@ -247,7 +247,7 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 2. 有符号字面量/signed 信号的**扩展方向已建模**（P9）；`integer/int/byte/shortint/longint/time`
    位宽已修正（P10）。其算术逐位（进位链）仍无 per-bit 节点 → 位查询回落总线
 3. 动态 part-select（`bus[base +: 8]`）不展开；变量移位不做逐位（运行期决定）
-4. packed struct/union 的 signedness 未建模（None → 保守回退）
+4. packed struct/union 聚合宽度/signedness 与成员位段已建模（P11）；成员位级桥仍粗粒度
 4. 动态 part-select（`bus[base +: 8]`，`[?:?]` 节点）不展开
 5. `SVQ_BIT_BRIDGE=full` 在超大设计（新增位节点 > 30000）会部分展开（显式 warning）；
    默认 `one` 模式不做纯总线合成
@@ -258,6 +258,10 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 >
 > **F5 已修（iter_292）**：load 方向同样精确 —— `fanout(a[1])` → `y[5]`、
 > `fanout(d[1])` → `q[3]`；位节点无负载时回退父总线（与 fanin F2 对称）。
+>
+> **P11 已落地（iter_299）**：packed struct/union 聚合宽度/signedness（含嵌套、端口/net）
+> 与成员布局（`p.a` 4 位、父 p、位段 [7:4]；union 成员重叠 offset=0）。
+> 成员位级查询桥（p.a[1] → p[5]）仍粗粒度；缓存 1.3。
 >
 > **P10 已落地（iter_298）**：整数类型宽度修正——`integer` 从假 `(1,0)` 改为
 > `(31,0)` signed，`byte/shortint/int/longint/time` 各归其位；懒建节点回填声明宽度；

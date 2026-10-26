@@ -869,13 +869,30 @@ class ExprsDriversMixin:
                         import re as _re_bw
                         _m = _re_bw.match(r"\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]", rng_str)
                         if _m:
-                            return (int(_m.group(1)), int(_m.group(2)))
+                            _msb, _lsb = int(_m.group(1)), int(_m.group(2))
+                            if _msb == _lsb == 0 and type(data_decl).__name__ == "VariableSymbol":
+                                return (1, 0)  # 标量变量沿用历史 (1,0) 约定
+                            return (_msb, _lsb)
             except Exception as e:
                 logger.debug("%s: 忽略 Exception: %s", __name__, e)
             if hasattr(declared_type, "width"):
                 w = declared_type.width
                 if hasattr(w, "value"):
                     return (int(w.value), 0)
+            # [iter_299 / PLAN P11.1] packed struct/union 的 typedef 类型：
+            # TypeAliasType 没有 getBitVectorRange/width，但有 bitWidth
+            dtt = getattr(declared_type, "type", None)
+            if dtt is not None and type(dtt).__name__ in (
+                    "TypeAliasType", "PackedStructType", "PackedUnionType"):
+                bw = getattr(dtt, "bitWidth", None)
+                if bw:
+                    try:
+                        if int(bw) == 1:
+                            return (1, 0)   # 标量沿用历史 (1,0) 约定
+                        if int(bw) > 0:
+                            return (int(bw) - 1, 0)
+                    except (TypeError, ValueError) as _e:
+                        logger.debug("bitWidth 提取失败: %s", _e)
 
         # Syntax Tree: 从 type.dimensions 获取位宽
         # 数据声明结构: safe_attr(data_decl, "type", None).dimensions[0].specifier.selector.left/right
@@ -927,6 +944,69 @@ class ExprsDriversMixin:
 
         # 默认 1 位
         return (1, 0)
+
+    def get_packed_member_layout(self, var_symbol) -> list[dict] | None:
+        """[iter_299 / PLAN P11.2] packed struct/union 的成员布局。
+
+        返回 [{name, width, offset, signed}]（offset = 成员 LSB 在聚合中的位置）；
+        非 packed struct/union 或无法解析 → None。
+        struct: 首成员在 MSB；union: 所有成员 offset=0。
+        """
+        t = getattr(var_symbol, "type", None)
+        ct = getattr(t, "canonicalType", None) or t
+        if ct is None:
+            return None
+        is_struct = bool(getattr(ct, "isStruct", False))
+        is_union = bool(getattr(ct, "isPackedUnion", False))
+        if not (is_struct or is_union):
+            return None
+        syn = getattr(ct, "syntax", None)
+        out = []
+        for mem in getattr(syn, "members", []) or []:
+            for decl in getattr(mem, "declarators", []) or []:
+                try:
+                    name = str(getattr(decl, "name", "") or "").strip()
+                except (UnicodeDecodeError, TypeError):
+                    name = ""
+                if not name:
+                    continue
+                try:
+                    field = ct.lookupName(name)
+                except Exception as e:
+                    logger.debug("%s: lookupName(%s) 失败: %s", __name__, name, e)
+                    continue
+                ftype = getattr(field, "type", None)
+                width = getattr(ftype, "bitWidth", None)
+                offset = getattr(field, "bitOffset", None)
+                if width is None or offset is None:
+                    continue
+                out.append({
+                    "name": name,
+                    "width": int(width),
+                    "offset": int(offset),
+                    "signed": bool(getattr(ftype, "isSigned", False)),
+                })
+        return out or None
+
+    def get_variable_symbols(self, module) -> dict:
+        """[iter_299 / PLAN P11.1] 变量名 → 语义 VariableSymbol。
+
+        `get_variable_declarations` 返回 syntax DataDeclarationSyntax，typedef
+        （packed struct/union）在 syntax 层没有宽度/signedness；语义符号的
+        `.type.bitWidth` / `.type.isSigned` 才是权威值。
+        """
+        out = {}
+        if hasattr(module, "body") and safe_attr(module, "body", []):
+            for member in safe_attr(module, "body", []):
+                if str(getattr(member, "kind", "")) != "SymbolKind.Variable":
+                    continue
+                try:
+                    name = self.clean_name(str(getattr(member, "name", "") or ""))
+                except (UnicodeDecodeError, TypeError):
+                    continue
+                if name:
+                    out[name] = member
+        return out
 
     def extract_data_signed(self, data_decl) -> bool | None:
         """[iter_297 / PLAN P9.1] 声明是否 signed（None = 无法判定）。

@@ -209,6 +209,14 @@ class PortsIfacesMixin:
             # ScalarType -> 1 bit
             elif hasattr(port_type, "kind") and "ScalarType" in str(port_type.kind):
                 return (1, 0)
+            # [iter_299 / PLAN P11.1] packed struct/union typedef（无 range）
+            bw = getattr(port_type, "bitWidth", None)
+            if bw:
+                try:
+                    if int(bw) > 0:
+                        return (int(bw) - 1, 0)
+                except (TypeError, ValueError) as _e:
+                    logger.debug("端口 bitWidth 提取失败: %s", _e)
 
         # Fallback: try declaredType.width for literal values
         declared_type = getattr(port_decl, "declaredType", None)
