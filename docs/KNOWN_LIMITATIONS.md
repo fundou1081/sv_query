@@ -247,8 +247,8 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 2. 有符号字面量/signed 信号的**扩展方向已建模**（P9）；`integer/int/byte/shortint/longint/time`
    位宽已修正（P10）。其算术逐位（进位链）仍无 per-bit 节点 → 位查询回落总线
 3. 动态 part-select（`bus[base +: 8]`）不展开；变量移位不做逐位（运行期决定）
-4. packed struct/union 聚合宽度/signedness 与成员位段已建模（P11）；成员位级桥仍粗粒度
-4. 动态 part-select（`bus[base +: 8]`，`[?:?]` 节点）不展开
+4. packed struct/union 聚合宽度/signedness、成员位段、成员位级查询桥已建模（P11/P12：
+   `fanin(p.a[1])` → `p[5]`）；但更深层成员节点（`o.inner.a`）不会自动创建
 5. `SVQ_BIT_BRIDGE=full` 在超大设计（新增位节点 > 30000）会部分展开（显式 warning）；
    默认 `one` 模式不做纯总线合成
 
@@ -261,7 +261,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 >
 > **P11 已落地（iter_299）**：packed struct/union 聚合宽度/signedness（含嵌套、端口/net）
 > 与成员布局（`p.a` 4 位、父 p、位段 [7:4]；union 成员重叠 offset=0）。
-> 成员位级查询桥（p.a[1] → p[5]）仍粗粒度；缓存 1.3。
+>
+> **P12 已落地（iter_300）**：packed 成员位级查询桥——`p.a[1]` ↔ `p[5]`，
+> fanin/fanout 双向贯通；未被引用的成员节点自动补齐。缓存 1.4。
 >
 > **P10 已落地（iter_298）**：整数类型宽度修正——`integer` 从假 `(1,0)` 改为
 > `(31,0)` signed，`byte/shortint/int/longint/time` 各归其位；懒建节点回填声明宽度；
