@@ -181,6 +181,14 @@ class UnifiedTracer:
         if log_level is not None:
             self.set_log_level(log_level)
 
+    @staticmethod
+    def _bit_bridge_mode() -> str:
+        """[iter_302 / PLAN P13.1] 当前生效的位桥模式（非法值按 one，与 GraphBuilder 一致）。"""
+        import os as _os
+
+        mode = (_os.environ.get("SVQ_BIT_BRIDGE") or "one").strip().lower()
+        return mode if mode in ("one", "full") else "one"
+
     def _graph_cache_key(self, target_module: str | None) -> str | None:
         """[iter_270] 图缓存 key: 内容 hash + **图模式**。
 
@@ -204,7 +212,8 @@ class UnifiedTracer:
         except (OSError, FileNotFoundError) as e:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
-        return f"{base}-v2-t{target_module or 'all'}"
+        # [iter_302 / PLAN P13.1] 位桥模式影响图内容；不编进 key 会串模式（静默错误）
+        return f"{base}-v2-t{target_module or 'all'}-bb{self._bit_bridge_mode()}"
 
     def _graph_project_key(self) -> str | None:
         """[iter_287 / PLAN P3.2] 工程身份（只看路径）—— 供缓存按工程过期。"""

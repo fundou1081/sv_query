@@ -44,7 +44,8 @@ class TestCacheKey:
         t = UnifiedTracer(filelist=str(FILELIST), log_level="ERROR")
         assert not t._sources, "该模式应没有 sources"
         key = t._graph_cache_key(None)
-        assert key and key.endswith("-tall")
+        # [iter_302 / P13.1] key 末尾带位桥模式段（-bbone / -bbfull）
+        assert key and key.endswith("-tall-bbone")
 
 
 class TestCacheHit:

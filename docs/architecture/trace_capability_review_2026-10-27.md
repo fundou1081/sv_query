@@ -36,7 +36,7 @@
 
 ### P0 — 静默错误（必须先修）
 
-**C1. 图缓存 key 不含 `SVQ_BIT_BRIDGE` 模式**
+**C1. 图缓存 key 不含 `SVQ_BIT_BRIDGE` 模式** —— ✅ 已修（iter_302 / P13.1）
 - 现象（实测）：默认 `one` 建图后，切 `full` 用同一份缓存 → 仍是 5 节点（应 37）；
   反方向 `full`→`one` 会拿到过度展开的图。
 - 根因：`UnifiedTracer._graph_cache_key` = 内容 hash + `-v2-t{target}`，模式未入 key。

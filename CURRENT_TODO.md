@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.1 缓存 key 纳入 SVQ_BIT_BRIDGE 模式（P0 静默错误） <待做>`
+- **当前 item**: `P13.2 粗粒度回退显式标记（precision/warnings） <待做>`
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1（静默错误）→ P13.2/13.3（可解释性/契约）→ P13.4/13.5（位精确性）
+- **建议顺序**: P13.1 ✅ → P13.2/13.3（可解释性/契约）→ P13.4/13.5（位精确性）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -48,12 +48,20 @@
 
 ---
 
-## 🔥 下一项（P13.1，P0 静默错误）
+## ✅ 刚完成（P13.1，P0 静默错误）
 
 **现象（实测）**: 默认 `one` 建图后切换 `SVQ_BIT_BRIDGE=full` 再用缓存 → 仍是 5 节点（应 37）。
 **根因**: `UnifiedTracer._graph_cache_key` 未包含 bit-bridge 模式。
 **修法**: key 加 `-bb{one|full}`；补回归测试（两种模式各建一次，节点数不同且互不串）。
 **验收**: 切换模式后必须重建；同模式缓存仍命中；全量 0 failed。
+**结果 (iter_302)**: key 加 `-bb{one|full}`；one→full 5→37、full→one 37→5；同模式命中；
+新增 `test_bit_bridge_cache.py`（5 个）；全量 **2494 passed**。
+
+## 🔥 下一项（P13.2，粗粒度回退标记）
+
+位查询在"位节点缺失/不支持"时回落总线，输出与位精确结果同形 → agent 可能误读。
+修法：trace JSON 增加 `precision: bit|bus|unknown`（结果级 warnings 可选）；
+落点：`_expr_source_bits` 的 `None`/缺失分支 + CLI `_node_to_dict`。
 
 ---
 
