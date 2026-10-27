@@ -105,7 +105,8 @@
 ### P3 — 已知限制/暂不做
 
 - 比较/逻辑/归约：所有位都可能影响，位级不可分（保持总线粒度）。
-- 变量移位 / 动态 part-select / 动态 memory 索引：运行期决定（显式 `unknown` 即可，不做求解）。
+- 变量移位 / 动态 part-select / 动态 memory 索引：运行期决定；动态 memory 索引已显式
+  `precision=unknown` + `dynamic_index=true`（✅ iter_308 / P14.1），不做求解。
 - 函数调用返回值：黑盒；可选做法是 inline（已有 `SubroutineExpander`，未接入查询）。
 - `SVQ_BIT_BRIDGE=full` 超过 30000 新节点会部分展开（warning）；建议加 `graph_complete` 标记。
 - 有符号算术/比较语义：位依赖规则不变，暂不建模。

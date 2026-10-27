@@ -48,6 +48,7 @@ from cli.core.semantic.trace_common import (
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
     query_precision,  # [iter_303 P13.2]
     resolve_node_id, driver_stats,  # [iter_307 P13.6]
+    has_dynamic_index,  # [iter_308 P14.1]
 )
 
 
@@ -394,6 +395,9 @@ def fanin(
                 _g = tracer.get_graph()
                 _root = resolve_node_id(_g, sig)
                 driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
+                _dynamic = has_dynamic_index(_g, _root, incoming=True)
+                if _dynamic:
+                    precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
                 drivers = _apply_filters(
@@ -422,6 +426,7 @@ def fanin(
                     "driver_count": driver_count,
                     "multi_driver": multi_driver,
                     "conditional_drivers": conditional_drivers,
+                    "dynamic_index": _dynamic,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -450,6 +455,7 @@ def fanin(
                     "driver_count": 0,
                     "multi_driver": False,
                     "conditional_drivers": False,
+                    "dynamic_index": False,
                 })
 
         data = {
@@ -605,6 +611,11 @@ def fanout(
                 attach_distances(tracer.get_graph(), sig, loads, reverse=False)
                 # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前
                 precision, coarse_fallback = query_precision(sig, list(loads))
+                _g = tracer.get_graph()
+                _root = resolve_node_id(_g, sig)
+                _dynamic = has_dynamic_index(_g, _root, incoming=False)
+                if _dynamic:
+                    precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 loads_pre = len(loads)
                 loads = _apply_filters(
@@ -629,6 +640,7 @@ def fanout(
                     "truncated": truncated,
                     "precision": precision,
                     "coarse_fallback": coarse_fallback,
+                    "dynamic_index": _dynamic,
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -653,6 +665,7 @@ def fanout(
                     "truncated": False,
                     "precision": "unknown",
                     "coarse_fallback": False,
+                    "dynamic_index": False,
                 })
 
         data = {

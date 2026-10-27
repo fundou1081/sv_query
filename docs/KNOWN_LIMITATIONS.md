@@ -321,7 +321,8 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 `fanin(o.inner.a[1])` → `o[9]`）；三元/case 分支在源位节点存在时按位
 （✅ iter_306 / P13.5）；多驱动/条件分支标记（`driver_count`/`multi_driver`/
 `conditional_drivers`）与**静态索引 memory 位精度**（`mem[1][3]`）已补
-（✅ iter_307 / P13.6）。动态 memory 索引仍粗粒度（运行期决定）。
+（✅ iter_307 / P13.6）。动态 memory 索引**显式标注** `precision=unknown` +
+`dynamic_index=true`（✅ iter_308 / P14.1），不再伪装成总线精度。
 
 ## 已修复限制
 
