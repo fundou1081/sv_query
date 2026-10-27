@@ -47,6 +47,7 @@ from cli.core.semantic.trace_common import (
     _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
     query_precision,  # [iter_303 P13.2]
+    resolve_node_id, driver_stats,  # [iter_307 P13.6]
 )
 
 
@@ -389,6 +390,10 @@ def fanin(
                 attach_distances(tracer.get_graph(), sig, drivers, reverse=True)
                 # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前（过滤会掩盖粗粒度回退）
                 precision, coarse_fallback = query_precision(sig, list(drivers))
+                # [iter_307 / PLAN P13.6] 直接驱动统计（多驱动/条件分支）
+                _g = tracer.get_graph()
+                _root = resolve_node_id(_g, sig)
+                driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
                 drivers = _apply_filters(
@@ -414,6 +419,9 @@ def fanin(
                     "truncated": truncated,
                     "precision": precision,
                     "coarse_fallback": coarse_fallback,
+                    "driver_count": driver_count,
+                    "multi_driver": multi_driver,
+                    "conditional_drivers": conditional_drivers,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -439,6 +447,9 @@ def fanin(
                     "truncated": False,
                     "precision": "unknown",
                     "coarse_fallback": False,
+                    "driver_count": 0,
+                    "multi_driver": False,
+                    "conditional_drivers": False,
                 })
 
         data = {

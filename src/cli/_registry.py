@@ -283,6 +283,7 @@ BIT_PRECISION = {
         "signed literal/signal extension (sign bit vs zero extend)",
         "integer/int/byte/shortint/longint/time widths",
         "packed struct/union aggregate + member layout + member bit bridge",
+        "static-indexed memory element bits (mem[1][3])",
     ],
     "coarse_forms": [
         "comparison / logical / reduction (all bits may participate)",

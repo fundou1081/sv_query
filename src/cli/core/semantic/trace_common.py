@@ -246,6 +246,66 @@ def query_precision(signal: str, items: list[dict]) -> tuple[str, bool]:
     return "bus", True
 
 
+def resolve_node_id(graph, signal_id: str) -> str | None:
+    """[iter_307 / PLAN P13.6] 驱动统计用节点 id。
+
+    位查询优先用**父总线**统计（多驱动冲突是总线级事实；位节点可能只建了一部分边）；
+    unpacked array 元素节点例外（它本身是完整元素）。
+    """
+    if graph is None:
+        return None
+    node = graph.get_node(signal_id)
+    if node is not None:
+        parent = getattr(node, "parent", None)
+        if (parent in graph and not (node.extra or {}).get("array_element")):
+            w = getattr(node, "width", None)
+            width = 0
+            if isinstance(w, (tuple, list)) and len(w) >= 2:
+                try:
+                    width = int(w[0]) - int(w[1]) + 1
+                except (TypeError, ValueError):
+                    width = 0
+            if width == 1:
+                return parent
+        if not (node.extra or {}).get("array_element") and "[" in signal_id:
+            base = signal_id.rsplit("[", 1)[0]
+            if base in graph:
+                return base
+        return signal_id
+    if "[" in signal_id:
+        base = signal_id.rsplit("[", 1)[0]
+        if base in graph:
+            return base
+    return None
+
+
+def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
+    """[iter_307 / PLAN P13.6] 直接驱动统计。
+
+    返回 `(driver_count, multi_driver, conditional_drivers)`：
+      - driver_count: 直接 DRIVER 边的**不同源**数量（含条件分支）
+      - multi_driver: 有 >=2 个**无条件**直接源（潜在冲突；条件 mux 不算）
+      - conditional_drivers: 存在带条件的直接驱动（ternary/case/if）
+    """
+    if graph is None or node_id is None or node_id not in graph:
+        return 0, False, False
+    srcs = set()
+    unconditional = set()
+    conditional = False
+    for src, dst in graph.edges():
+        if dst != node_id:
+            continue
+        for e in graph.get_edges(src, dst):
+            if getattr(e.kind, "name", "") != "DRIVER":
+                continue
+            srcs.add(src)
+            if getattr(e, "condition", ""):
+                conditional = True
+            else:
+                unconditional.add(src)
+    return len(srcs), len(unconditional) >= 2, conditional
+
+
 def _node_to_dict(node) -> dict:
     """[B2 2026-07-03] Convert TraceNode to dict with module + width info.
 

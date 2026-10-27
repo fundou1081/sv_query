@@ -105,6 +105,13 @@ class GraphBuilder:
                 note="[iter_291] 切片赋值展开成逐位节点 (LHS/RHS 切片 → 位对位 DRIVER)",
             ),
             Stage(
+                "array_elements",
+                self._fix_array_element_widths,
+                requires={"nodes"},
+                provides={"array_elements"},
+                note="[iter_307 P13.6] unpacked array 元素节点宽度 = 元素宽度",
+            ),
+            Stage(
                 "struct_members",
                 self._collect_struct_members,
                 requires={"nodes", "edges"},
@@ -148,7 +155,7 @@ class GraphBuilder:
             Stage(
                 "bit_bridge_synth",
                 self._synthesize_missing_bit_bridges,
-                requires={"bus_bit_bridges"},
+                requires={"bus_bit_bridges", "array_elements"},
                 provides={"bit_bridge_synth"},
                 note="[iter_293] bus↔bus 端口/赋值桥: 缺位一侧合成位节点（模式见 env）",
             ),
@@ -897,6 +904,31 @@ class GraphBuilder:
         # [DEBUG]
         # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
 
+    def _fix_array_element_widths(self):
+        """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。
+
+        `logic [7:0] mem [0:3];` 的元素节点 `mem[1]` 之前是 (1,0)（懒建默认），
+        这里用父数组的元素宽度/ signedness 回填，后续 F4 位桥才能按 8 位工作。
+        """
+        import re as _re
+
+        for node_id in list(self.graph.nodes()):
+            m = _re.match(r"^(.+)\[(\d+)\]$", node_id)
+            if not m:
+                continue
+            parent_id = m.group(1)
+            parent = self.graph.get_node(parent_id)
+            if parent is None or not (parent.extra or {}).get("is_array"):
+                continue
+            node = self.graph.get_node(node_id)
+            if node is None:
+                continue
+            if node.width in (None, (1, 0)) and parent.width not in (None, (1, 0)):
+                node.width = parent.width
+                node.is_signed = parent.is_signed
+            node.parent = parent_id
+            node.extra.setdefault("array_element", True)
+
     def _apply_packed_member_layout(self):
         """packed struct/union 成员：宽度 + signedness + 在父聚合中的位段。
 
@@ -977,6 +1009,8 @@ class GraphBuilder:
                     node.parent_bit_start = off + w - 1
                     node.parent_bit_end = off
                     node.bit_range = br
+                    if node.extra is None:
+                        node.extra = {}
                     node.extra["packed_member"] = True
                 walk(item.get("children") or [], node_id, node)
 
@@ -1535,10 +1569,21 @@ class GraphBuilder:
 
         # 最多 3 轮：合成位节点会让"另一侧有位"的 pair 变为可处理（端口/内部
         # DRIVER 的先后顺序不应影响结果）。稳定或达上限即停。
+        def _is_bit_like(nid: str) -> bool:
+            """[iter_307 / PLAN P13.6] 位节点 vs unpacked array 元素节点。
+
+            array 元素 id 也带 `[index]`（mem[1]），但它本身是完整元素（宽度=元素宽度），
+            应参与位桥；真正的位/切片节点才跳过。
+            """
+            if "[" not in nid:
+                return False
+            node = self.graph.get_node(nid)
+            return not (node is not None and (node.extra or {}).get("array_element"))
+
         for _round in range(3):
             before_nodes, before_edges = new_nodes, new_edges
             for (src, dst), edges in list(self.graph._edge_data.items()):
-                if "[" in src or "[" in dst:
+                if _is_bit_like(src) or _is_bit_like(dst):
                     continue
                 kinds = {e.kind for e in edges}
                 is_conn = EdgeKind.CONNECTION in kinds

@@ -319,7 +319,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契约与 trace 输出 `is_signed`/`parent`/`bit_range`
 已补（✅ iter_304 / P13.3）；深层成员已可建/可查（✅ iter_305 / P13.4：
 `fanin(o.inner.a[1])` → `o[9]`）；三元/case 分支在源位节点存在时按位
-（✅ iter_306 / P13.5）；多驱动标记 + 静态 memory 位精度（P13.6）仍待做。
+（✅ iter_306 / P13.5）；多驱动/条件分支标记（`driver_count`/`multi_driver`/
+`conditional_drivers`）与**静态索引 memory 位精度**（`mem[1][3]`）已补
+（✅ iter_307 / P13.6）。动态 memory 索引仍粗粒度（运行期决定）。
 
 ## 已修复限制
 

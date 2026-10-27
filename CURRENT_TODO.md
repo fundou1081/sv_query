@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.6 多驱动标记 + 静态 memory 位精度 <待做>`
+- **当前 item**: 无（P13 backlog 全部完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4 ✅ → P13.5 ✅ → P13.6
+- **P13 状态**: 1~6 全部完成（iter_302~307）；位精确性/可解释性 backlog 清空
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -86,11 +86,20 @@
 `fanin(y)={s[3],a[3],b[3]}`、`fanout(a[3])={ta,s[3],y}`；case 同理；宽度不等回落总线。
 新增 7 测试，全量 **2519 passed**。
 
-## 🔥 下一项（P13.6，多驱动标记 + 静态 memory 位精度）
+## ✅ 刚完成（P13.6，多驱动标记 + 静态 memory 位精度）
 
-- 多驱动：`assign y=a; assign y=b` → `drivers(y[3])={a,b}` 无标记；加 `multi_driver`/`driver_count`
-- 静态 memory：`mem[1]` 元素可追但位查询停住；让静态索引元素参与现有位桥
-- 动态索引显式 `unknown`（不猜测）
+- 多驱动：`assign y=a; assign y=b` → 无标记；现输出 `driver_count/multi_driver/conditional_drivers`
+- 静态 memory：`mem[1]` 宽度 (1,0) → 8 位；F4 合成 `mem[1][k]`；`fanin(z)={y[3],mem[1][3],d[3]}`
+- 顺带修 `extra=None`（wire_init）与两处 `except: pass`（纪律 2.5）
+**结果 (iter_307)**: 新增 9 测试；全量 **2528 passed**；缓存 1.5。
+
+## 🔥 下一项
+
+P13 backlog 已清空。可选方向（见评审文档 P3/后续需求）：
+- 动态 memory 索引显式 `unknown`（当前回落总线）
+- 位级 paths/impact 便捷入口（`--bits`）
+- 函数调用 inline 后参与查询
+- 有符号算术/比较语义（当前位依赖规则不区分 signed）
 
 ---
 

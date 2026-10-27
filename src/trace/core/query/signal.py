@@ -365,11 +365,13 @@ class SignalTracer:
         "ArithmeticShiftLeft", "ArithmeticShiftRight",
     })
 
-    @staticmethod
-    def _bit_base(node_id: str) -> str:
-        """`top.a[7:4]` / `top.a[3]` → `top.a`；普通总线原样返回。"""
+    def _bit_base(self, node_id: str) -> str:
+        """`top.a[7:4]` / `top.a[3]` → `top.a`；普通总线/array 元素原样返回。"""
         import re as _re
 
+        node = self.graph.get_node(node_id)
+        if node is not None and (node.extra or {}).get("array_element"):
+            return node_id  # mem[1] 是完整元素，`[1]` 不是位索引
         m = _re.match(r"^(.*)\[\d+(?::\d+)?\]$", node_id)
         return m.group(1) if m else node_id
 
@@ -531,7 +533,7 @@ class SignalTracer:
         if not parent or parent not in self.graph.nodes():
             return None
         parent_node = self.graph.get_node(parent)
-        if node.extra.get("packed_member"):
+        if (node.extra or {}).get("packed_member"):
             if node.parent_bit_start is None or node.parent_bit_end is None:
                 return None
             lo = min(node.parent_bit_start, node.parent_bit_end)
@@ -539,7 +541,7 @@ class SignalTracer:
         # 成员的位节点（F3 建出）：id 的位索引就是成员内绝对位
         if (self._node_width(node) == 1
                 and parent_node is not None
-                and parent_node.extra.get("packed_member")
+                and (parent_node.extra or {}).get("packed_member")
                 and self._bit_index_of(node_id) is not None):
             return parent, self._bit_index_of(node_id)
         return None
@@ -566,6 +568,8 @@ class SignalTracer:
         """
         node = self.graph.get_node(node_id)
         if node is None:
+            return bit
+        if (node.extra or {}).get("array_element"):
             return bit
         if self._node_width(node) == 1 and node.parent_bit_start is not None:
             return 0
@@ -729,12 +733,15 @@ class SignalTracer:
                 else:
                     return None
 
-        src_is_bus = "[" not in edge.src
+        src_array = bool(src_node is not None
+                         and (src_node.extra or {}).get("array_element"))
+        src_is_bus = ("[" not in edge.src) or src_array
         # [iter_297 / PLAN P9.2] 目标是位/切片节点时用节点内相对位（1 位源的广播：
         # clk → out[i] 的位索引是 0，而不是 i；否则会被误判成"加宽零扩展"）
         pos = rel_pos if "[" in dst_id else abs_pos
 
-        if src_info.bit_start is not None and src_info.bit_end is not None:
+        if (not src_array and src_info.bit_start is not None
+                and src_info.bit_end is not None):
             lo = min(int(src_info.bit_start), int(src_info.bit_end))
             hi = max(int(src_info.bit_start), int(src_info.bit_end))
         else:
@@ -860,7 +867,9 @@ class SignalTracer:
 
         abs_pos = src_bit
         rel_pos = self._rel_bit(edge.src, src_bit)
-        src_is_bus = "[" not in edge.src
+        src_array = bool(src_node is not None
+                         and (src_node.extra or {}).get("array_element"))
+        src_is_bus = ("[" not in edge.src) or src_array
         pos = abs_pos if src_is_bus else rel_pos
 
         items = self._concat_items(edge, dst_id)
@@ -935,13 +944,21 @@ class SignalTracer:
 
         return None
 
-    @staticmethod
-    def _bit_index_of(node_id: str) -> int | None:
-        """从节点 id 取单 bit 索引（`top.y[3]` → 3）；slice/总线返回 None。"""
+    def _bit_index_of(self, node_id: str) -> int | None:
+        """从节点 id 取单 bit 索引（`top.y[3]` → 3）；slice/总线/array 元素返回 None。
+
+        [iter_307 / PLAN P13.6] unpacked array 元素 id 也是 `mem[1]`，但它是
+        完整元素（宽度=元素宽度），不能当位节点；宽度 >1 的节点同理。
+        """
         import re
 
         m = re.search(r"\[(\d+)\]$", node_id)
-        return int(m.group(1)) if m else None
+        if not m:
+            return None
+        node = self.graph.get_node(node_id)
+        if node is not None and (node.extra or {}).get("array_element"):
+            return None
+        return int(m.group(1))
 
     def _bit_in_range(self, child_id: str, bit: int) -> bool:
         """`child_id` 这个切片是否覆盖父信号的 `bit` 位（无法判定时保守返回 True）。"""
@@ -1401,7 +1418,7 @@ class SignalTracer:
                 # [iter_300 / PLAN P12] packed 成员的位要换到父聚合位再映射父边
                 _node = self.graph.get_node(signal_id)
                 _rel = bit_index
-                if (_node is not None and _node.extra.get("packed_member")
+                if (_node is not None and (_node.extra or {}).get("packed_member")
                         and _node.parent_bit_start is not None):
                     _rel = min(_node.parent_bit_start, _node.parent_bit_end) + bit_index
                 mapped = self._expr_dst_bits(pedge, _rel)
@@ -1539,7 +1556,7 @@ class SignalTracer:
                     continue
                 _node = self.graph.get_node(signal_id)
                 _rel = bit_index
-                if (_node is not None and _node.extra.get("packed_member")
+                if (_node is not None and (_node.extra or {}).get("packed_member")
                         and _node.parent_bit_start is not None):
                     _rel = min(_node.parent_bit_start, _node.parent_bit_end) + bit_index
                 mapped = self._expr_dst_bits(pedge, _rel)
