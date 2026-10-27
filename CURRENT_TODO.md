@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.5 三元/case 分支按位映射 <待做>`
+- **当前 item**: `P13.6 多驱动标记 + 静态 memory 位精度 <待做>`
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4 ✅ → P13.5（位精确性）→ P13.6
+- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4 ✅ → P13.5 ✅ → P13.6
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -79,11 +79,18 @@
 （上限 5000）；fanout 同时并入聚合总线与位子节点负载。
 `fanin(o.inner.a[1])` → `{x[1]}`，`fanout` → `{y[9]}`；新增 4 测试，全量 **2512 passed**。
 
-## 🔥 下一项（P13.5，三元/case 分支按位）
+## ✅ 刚完成（P13.5，三元/case 分支按位）
 
-`s = c ? a : b; y = s[3]` 目前 fanin 返回 `{s[3], a, b}`（分支总线级）。
-修法：同宽分支按位映射（`s[i]` → `a[i]`/`b[i]`），条件经 BRANCH/CONTROL 保留；
-不同宽/聚合分支维持总线。
+`s = c ? a : b; y = s[3]` 之前返回 `{s[3], a, b}`（分支总线级）。
+**结果 (iter_306)**: `TernaryBranch` 同索引（要求等宽）；源位节点存在时
+`fanin(y)={s[3],a[3],b[3]}`、`fanout(a[3])={ta,s[3],y}`；case 同理；宽度不等回落总线。
+新增 7 测试，全量 **2519 passed**。
+
+## 🔥 下一项（P13.6，多驱动标记 + 静态 memory 位精度）
+
+- 多驱动：`assign y=a; assign y=b` → `drivers(y[3])={a,b}` 无标记；加 `multi_driver`/`driver_count`
+- 静态 memory：`mem[1]` 元素可追但位查询停住；让静态索引元素参与现有位桥
+- 动态索引显式 `unknown`（不猜测）
 
 ---
 
