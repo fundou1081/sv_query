@@ -97,6 +97,22 @@ class TestPrecisionMarkers:
         assert [(d["id"], d["precision"]) for d in sig["loads"]] == [
             ("top.y[5]", "bit")]
 
+    def test_node_metadata_exposed(self, tmp_path):
+        """[iter_304 / P13.3] 节点输出带 is_signed/parent/bit_range。"""
+        f = _write(tmp_path, "slice.sv", SLICE)
+        d = _run("fanin", "top.y[5]", "--file", f)["result"]["signals"][0]["drivers"][0]
+        assert d["is_signed"] is False
+        assert d["parent"] == "top.a"
+        assert d["bit_range"] == "[1]"
+
+    def test_signed_metadata_exposed(self, tmp_path):
+        f = _write(tmp_path, "signed.sv", """
+module top(input logic signed [7:0] a, output [7:0] y);
+  assign y[7:4] = a;
+endmodule""")
+        d = _run("fanin", "top.y[5]", "--file", f)["result"]["signals"][0]["drivers"][0]
+        assert d["is_signed"] is True
+
     def test_filters_do_not_hide_coarse_fallback(self, tmp_path):
         """过滤掉总线节点后，coarse_fallback 仍应为 true（判定在过滤前）。"""
         f = _write(tmp_path, "bus.sv", BUS)

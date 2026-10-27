@@ -80,12 +80,12 @@
 
 ### P2 — 查询面/可发现性
 
-**D1. `capabilities` 缺位精确性契约**
+**D1. `capabilities` 缺位精确性契约** —— ✅ 已修（iter_304 / P13.3）
 - agent 先读 `capabilities`，但不知道"哪些位查询可信、哪些会回落"。
 - 修法：加 `bit_precision` 段（precise/coarse/env 模式/已知边界），与本文档同步生成。
 - 代价：小。
 
-**D2. 追踪输出缺 signedness/位段字段**
+**D2. 追踪输出缺 signedness/位段字段** —— ✅ 已修（iter_304 / P13.3）
 - `_node_to_dict` 只有 id/kind/module/width/distance；P9 的 `is_signed`、packed 成员的
   `parent/bit_range` 未暴露，agent 无法判断扩展方向。
 - 修法：输出加 `is_signed`/`parent`/`bit_range`（schema 版本 +1）。

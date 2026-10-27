@@ -27,10 +27,13 @@
         "count": 1,
         "drivers": [
           {
+            "bit_range": null,
             "distance": 2,
             "id": "uart_top.rx_fifo.mem",
+            "is_signed": false,
             "kind": "SIGNAL",
             "module": "uart_top.rx_fifo",
+            "parent": null,
             "precision": "bus",
             "width": 2,
             "width_lsb": 0,
@@ -48,20 +51,26 @@
         "count": 2,
         "drivers": [
           {
+            "bit_range": null,
             "distance": 0,
             "id": "uart_top.rx_fifo.count_q",
+            "is_signed": false,
             "kind": "REG",
             "module": "uart_top.rx_fifo",
+            "parent": null,
             "precision": "bus",
             "width": 5,
             "width_lsb": 0,
             "width_msb": 4
           },
           {
+            "bit_range": null,
             "distance": 1,
             "id": "5'b0",
+            "is_signed": null,
             "kind": "CONST",
             "module": "",
+            "parent": null,
             "precision": "constant",
             "width": 1,
             "width_lsb": 0,

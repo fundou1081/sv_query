@@ -225,6 +225,8 @@ class GraphBuilder:
                 parent_bit_start=bit,
                 parent_bit_end=bit,
                 bit_range=f"[{bit}]",
+                # [iter_304 / PLAN P13.3] 位节点继承声明 signedness（供输出/扩展判断）
+                is_signed=getattr(base_node, "is_signed", None),
             ))
             new_nodes += 1
             return bit_id
@@ -955,6 +957,8 @@ class GraphBuilder:
                         module=getattr(parent_node, "module", "") if parent_node else "",
                         kind=NodeKind.SIGNAL,
                         width=(w - 1, 0) if w > 1 else (1, 0),
+                        bit_range=(f"[{item['offset']}]" if w == 1
+                                   else f"[{item['offset'] + w - 1}:{item['offset']}]"),
                         is_signed=item["signed"],
                         parent=parent_path,
                         parent_bit_start=item["offset"] + w - 1,
@@ -968,6 +972,8 @@ class GraphBuilder:
                 node.parent = parent_path
                 node.parent_bit_start = item["offset"] + w - 1
                 node.parent_bit_end = item["offset"]
+                node.bit_range = (f"[{item['offset']}]" if w == 1
+                                  else f"[{item['offset'] + w - 1}:{item['offset']}]")
                 # [iter_300 / PLAN P12] 标记 packed 成员（查询层位桥按 parent 链换算）
                 node.extra["packed_member"] = True
 
@@ -1500,6 +1506,8 @@ class GraphBuilder:
                 parent_bit_start=bit,
                 parent_bit_end=bit,
                 bit_range=f"[{bit}]",
+                # [iter_304 / PLAN P13.3] 位节点继承声明 signedness（供输出/扩展判断）
+                is_signed=getattr(base_node, "is_signed", None),
             ))
             new_nodes += 1
             return bit_id
