@@ -879,6 +879,16 @@ class ExprsDriversMixin:
                 w = declared_type.width
                 if hasattr(w, "value"):
                     return (int(w.value), 0)
+            # [iter_307 / PLAN P13.6] unpacked array：节点宽度 = 元素宽度
+            dtt0 = getattr(declared_type, "type", None)
+            if dtt0 is not None and bool(getattr(dtt0, "isUnpackedArray", False)):
+                et = getattr(dtt0, "elementType", None)
+                ebw = getattr(et, "bitWidth", None)
+                if ebw:
+                    try:
+                        return (1, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
+                    except (TypeError, ValueError) as _e:
+                        logger.debug("unpacked array 元素宽度提取失败: %s", _e)
             # [iter_299 / PLAN P11.1] packed struct/union 的 typedef 类型：
             # TypeAliasType 没有 getBitVectorRange/width，但有 bitWidth
             dtt = getattr(declared_type, "type", None)
@@ -893,6 +903,17 @@ class ExprsDriversMixin:
                             return (int(bw) - 1, 0)
                     except (TypeError, ValueError) as _e:
                         logger.debug("bitWidth 提取失败: %s", _e)
+
+        # [iter_307 / PLAN P13.6] 语义符号本身是 unpacked array（无 declaredType 时）
+        st = getattr(data_decl, "type", None)
+        if st is not None and bool(getattr(st, "isUnpackedArray", False)):
+            et = getattr(st, "elementType", None)
+            ebw = getattr(et, "bitWidth", None)
+            if ebw:
+                try:
+                    return (1, 0) if int(ebw) == 1 else (int(ebw) - 1, 0)
+                except (TypeError, ValueError) as _e:
+                    logger.debug("unpacked array 元素宽度提取失败: %s", _e)
 
         # Syntax Tree: 从 type.dimensions 获取位宽
         # 数据声明结构: safe_attr(data_decl, "type", None).dimensions[0].specifier.selector.left/right
@@ -1070,6 +1091,14 @@ class ExprsDriversMixin:
                     ok = False
                     break
             if not ok:
+                continue
+            # [iter_307 / PLAN P13.6] unpacked array: signedness 取元素类型
+            if bool(getattr(cur, "isUnpackedArray", False)):
+                et = getattr(cur, "elementType", None)
+                if et is not None:
+                    ev = getattr(et, "isSigned", None)
+                    if ev is not None:
+                        return bool(ev)
                 continue
             try:
                 val = getattr(cur, "isSigned", None)

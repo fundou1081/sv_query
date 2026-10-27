@@ -23,7 +23,9 @@
     "signals": [
       {
         "coarse_fallback": false,
+        "conditional_drivers": true,
         "count": 1,
+        "driver_count": 2,
         "drivers": [
           {
             "bit_range": null,
@@ -40,6 +42,7 @@
           }
         ],
         "index": 0,
+        "multi_driver": false,
         "pre_filter_count": 2,
         "precision": "bus",
         "signal": "uart_top.rx_fifo.count_q",

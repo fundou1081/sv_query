@@ -67,13 +67,13 @@
   不同宽/聚合分支保持总线。
 - 代价：中（OP_TERNARY/BRANCH 边模型 + 测试）。
 
-**A3. 静态 memory/数组的位精度**
+**A3. 静态 memory/数组的位精度** —— ✅ 已修（iter_307 / P13.6，静态索引；动态仍粗粒度）
 - 现象：`mem[1]` 能作为元素节点（`fanin(y)={mem[1],d}`），但位查询 `y[3]` 停在校验层；
   动态索引 `mem[i]` 只能粗粒度。
 - 修法：静态索引元素按普通信号参与现有位桥；动态索引显式标 `unknown`（见 C2）。
 - 代价：中（元素节点宽度/位节点建图 + 动态标记）。
 
-**A4. 多驱动语义**
+**A4. 多驱动语义** —— ✅ 已补标记（iter_307 / P13.6：`driver_count`/`multi_driver`/`conditional_drivers`）
 - 现象：`assign y=a; assign y=b;` → `drivers(y[3])={a,b}`，无 `multi_driver` 标记/冲突提示。
 - 修法：结果加 `driver_count` / `multi_driver: true`（不做 SV 解析求解，只暴露事实）。
 - 代价：小。

@@ -70,6 +70,8 @@ def create_var_nodes(
                      else adapter.extract_data_width(var_decl))
         var_signed = (adapter.extract_data_signed(sym) if sym is not None
                       else adapter.extract_data_signed(var_decl))
+        # [iter_307 / PLAN P13.6] 标记 unpacked array（元素节点宽度据此回填）
+        is_array = bool(getattr(getattr(sym, "type", None), "isUnpackedArray", False))
         existing = next((n for n in result.nodes if n.id == var_id), None)
         if existing is not None:
             # [iter_298 / PLAN P10.2] 懒建节点 (1,0) 回填声明宽度（integer 等）
@@ -78,6 +80,10 @@ def create_var_nodes(
                 existing.width = var_width
             if existing.is_signed is None and var_signed is not None:
                 existing.is_signed = var_signed
+            if is_array:
+                if existing.extra is None:
+                    existing.extra = {}
+                existing.extra["is_array"] = True
             continue
         var_file, var_line, _, _ = adapter.get_source_location(var_decl)
         result.nodes.append(
@@ -90,6 +96,7 @@ def create_var_nodes(
                 file=var_file,
                 line=var_line,
                 is_signed=var_signed,
+                extra={"is_array": True} if is_array else {},
             )
         )
         count += 1

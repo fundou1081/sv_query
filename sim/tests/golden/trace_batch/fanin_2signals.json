@@ -24,7 +24,9 @@
     "signals": [
       {
         "coarse_fallback": false,
+        "conditional_drivers": false,
         "count": 1,
+        "driver_count": 0,
         "drivers": [
           {
             "bit_range": null,
@@ -35,12 +37,13 @@
             "module": "uart_top.rx_fifo",
             "parent": null,
             "precision": "bus",
-            "width": 2,
+            "width": 8,
             "width_lsb": 0,
-            "width_msb": 1
+            "width_msb": 7
           }
         ],
         "index": 0,
+        "multi_driver": false,
         "pre_filter_count": 1,
         "precision": "bus",
         "signal": "uart_top.rx_data_o",
@@ -48,7 +51,9 @@
       },
       {
         "coarse_fallback": false,
+        "conditional_drivers": true,
         "count": 2,
+        "driver_count": 2,
         "drivers": [
           {
             "bit_range": null,
@@ -78,6 +83,7 @@
           }
         ],
         "index": 1,
+        "multi_driver": false,
         "pre_filter_count": 2,
         "precision": "bus",
         "signal": "uart_top.rx_fifo.count_q",
