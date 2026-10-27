@@ -988,6 +988,53 @@ class ExprsDriversMixin:
                 })
         return out or None
 
+    def _packed_members_of_type(self, ftype, depth: int) -> list[dict]:
+        """packed struct/union 类型的成员（递归 children，深度上限 depth）。"""
+        ct = getattr(ftype, "canonicalType", None) or ftype
+        if ct is None or depth <= 0:
+            return []
+        if not (bool(getattr(ct, "isStruct", False))
+                or bool(getattr(ct, "isPackedUnion", False))):
+            return []
+        syn = getattr(ct, "syntax", None)
+        out = []
+        for mem in getattr(syn, "members", []) or []:
+            for decl in getattr(mem, "declarators", []) or []:
+                try:
+                    name = str(getattr(decl, "name", "") or "").strip()
+                except (UnicodeDecodeError, TypeError):
+                    name = ""
+                if not name:
+                    continue
+                try:
+                    field = ct.lookupName(name)
+                except Exception as e:
+                    logger.debug("%s: lookupName(%s) 失败: %s", __name__, name, e)
+                    continue
+                ftype2 = getattr(field, "type", None)
+                width = getattr(ftype2, "bitWidth", None)
+                offset = getattr(field, "bitOffset", None)
+                if width is None or offset is None:
+                    continue
+                out.append({
+                    "name": name,
+                    "width": int(width),
+                    "offset": int(offset),
+                    "signed": bool(getattr(ftype2, "isSigned", False)),
+                    "children": self._packed_members_of_type(ftype2, depth - 1),
+                })
+        return out
+
+    def get_packed_member_tree(self, var_symbol, max_depth: int = 8) -> list[dict] | None:
+        """[iter_305 / PLAN P13.4] packed struct/union 的**递归**成员树。
+
+        每项 {name,width,offset,signed,children}（offset 相对直接父成员）。
+        非 packed 类型/不可解析 → None。深度上限 max_depth（默认 8）。
+        """
+        t = getattr(var_symbol, "type", None)
+        tree = self._packed_members_of_type(t, max_depth)
+        return tree or None
+
     def get_variable_symbols(self, module) -> dict:
         """[iter_299 / PLAN P11.1] 变量名 → 语义 VariableSymbol。
 

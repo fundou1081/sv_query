@@ -178,6 +178,43 @@ endmodule
         assert _ids(tr, "top.p.a") == set()
 
 
+class TestDeepMemberBridge:
+    SRC = """
+typedef struct packed { logic [3:0] a; logic [3:0] b; } pkt_t;
+typedef struct packed { pkt_t inner; logic [3:0] c; } outer_t;
+module top(input [7:0] x, output [9:0] y);
+  outer_t o;
+  assign o[9] = x[1];
+  assign y[9] = o[9];
+endmodule
+"""
+
+    def test_nested_member_nodes_materialized(self):
+        """[iter_305 / P13.4] 二级成员 o.inner.a 也要建节点并挂 parent 链。"""
+        g = _build(self.SRC).get_graph()
+        a = g.get_node("top.o.inner.a")
+        assert a is not None and a.width == (3, 0)
+        assert a.parent == "top.o.inner"
+        assert (a.parent_bit_start, a.parent_bit_end) == (7, 4)
+        assert a.bit_range == "[7:4]"
+        inner = g.get_node("top.o.inner")
+        assert inner.parent == "top.o"
+        assert (inner.parent_bit_start, inner.parent_bit_end) == (11, 4)
+
+    def test_deep_member_fanin(self):
+        """o.inner.a[1] → inner[5] → o[9] → x[1]。"""
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.o.inner.a[1]") == {"top.x[1]"}
+
+    def test_deep_member_fanout(self):
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.o.inner.a[1]", kind="fanout") == {"top.y[9]"}
+
+    def test_deep_member_bus_not_hijacked(self):
+        tr = _build(self.SRC)
+        assert _ids(tr, "top.o.inner.a") == set()
+
+
 class TestPackedStructSerialization:
     def test_json_roundtrip(self):
         g = _build().get_graph()

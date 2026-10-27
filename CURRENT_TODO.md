@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.4 深层 packed 成员节点（o.inner.a） <待做>`
+- **当前 item**: `P13.5 三元/case 分支按位映射 <待做>`
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4/13.5（位精确性）→ P13.6
+- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4 ✅ → P13.5（位精确性）→ P13.6
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -72,10 +72,18 @@
 节点输出三字段；位节点继承 signedness；3 个 CLI golden + scheduler 基线有意重生成；
 全量 **2508 passed**。
 
-## 🔥 下一项（P13.4，深层 packed 成员）
+## ✅ 刚完成（P13.4，深层 packed 成员）
 
-`o.inner.a` 目前不建节点 → 查询空答。修法：布局递归成员类型，建二级成员节点并挂 parent 链；
-查询层 `_packed_parent_step` 已支持多级。
+`o.inner.a` 之前不建节点 → 查询空答。
+**结果 (iter_305)**: 适配器 `get_packed_member_tree`（递归、深度 8）；layout pass 递归建节点
+（上限 5000）；fanout 同时并入聚合总线与位子节点负载。
+`fanin(o.inner.a[1])` → `{x[1]}`，`fanout` → `{y[9]}`；新增 4 测试，全量 **2512 passed**。
+
+## 🔥 下一项（P13.5，三元/case 分支按位）
+
+`s = c ? a : b; y = s[3]` 目前 fanin 返回 `{s[3], a, b}`（分支总线级）。
+修法：同宽分支按位映射（`s[i]` → `a[i]`/`b[i]`），条件经 BRANCH/CONTROL 保留；
+不同宽/聚合分支维持总线。
 
 ---
 
