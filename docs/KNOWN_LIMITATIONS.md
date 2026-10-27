@@ -315,7 +315,8 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 建图后切 `full` 会命中旧图（实测 5 vs 37 节点）。现在 key 带 `-bb{one|full}`，
 切换模式自动重建；同模式仍命中。
 
-**P1/P2**: 粗粒度回退无显式标记（P13.2）、`capabilities` 缺位精确性契约 + 输出缺
+**P1/P2**: 粗粒度回退已显式标记（✅ iter_303 / P13.2：结果节点 `precision: bit|bus|constant`，
+signal 级 `precision` + `coarse_fallback`）；`capabilities` 缺位精确性契约 + 输出缺
 `is_signed`/位段（P13.3）、深层成员（`o.inner.a`，P13.4）、三元/case 分支按位（P13.5）、
 多驱动标记 + 静态 memory 位精度（P13.6）。
 

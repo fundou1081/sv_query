@@ -23,6 +23,7 @@
     "failed_signals": 0,
     "signals": [
       {
+        "coarse_fallback": false,
         "count": 1,
         "drivers": [
           {
@@ -30,6 +31,7 @@
             "id": "uart_top.rx_fifo.mem",
             "kind": "SIGNAL",
             "module": "uart_top.rx_fifo",
+            "precision": "bus",
             "width": 2,
             "width_lsb": 0,
             "width_msb": 1
@@ -37,10 +39,12 @@
         ],
         "index": 0,
         "pre_filter_count": 1,
+        "precision": "bus",
         "signal": "uart_top.rx_data_o",
         "truncated": false
       },
       {
+        "coarse_fallback": false,
         "count": 2,
         "drivers": [
           {
@@ -48,6 +52,7 @@
             "id": "uart_top.rx_fifo.count_q",
             "kind": "REG",
             "module": "uart_top.rx_fifo",
+            "precision": "bus",
             "width": 5,
             "width_lsb": 0,
             "width_msb": 4
@@ -57,6 +62,7 @@
             "id": "5'b0",
             "kind": "CONST",
             "module": "",
+            "precision": "constant",
             "width": 1,
             "width_lsb": 0,
             "width_msb": 0
@@ -64,6 +70,7 @@
         ],
         "index": 1,
         "pre_filter_count": 2,
+        "precision": "bus",
         "signal": "uart_top.rx_fifo.count_q",
         "truncated": false
       }

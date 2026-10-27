@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
 import typer
@@ -195,6 +196,56 @@ def _collect_signals(
     return deduped
 
 
+_BIT_SUFFIX_RE = re.compile(r"\[\d+\]$")
+_CONST_WIDTH_RE = re.compile(r"^-?(\d+)'[sS]?[bodhBODH][0-9a-fA-F_]+$")
+
+
+def node_precision(node) -> str:
+    """[iter_303 / PLAN P13.2] 单个结果节点的粒度: bit / bus / constant。
+
+    - `1'b0/1'b1`：位常量
+    - `N'...`（N>1）：常量总线（未分解）
+    - id 带 `[k]` 或宽度 1：位
+    - 其余：总线/切片/成员聚合
+    """
+    nid = getattr(node, "id", "") or ""
+    if re.match(r"^1'b[01]$", nid):
+        return "bit"
+    m = _CONST_WIDTH_RE.match(nid)
+    if m:
+        return "bit" if int(m.group(1)) == 1 else "constant"
+    width = 0
+    wt = getattr(node, "width", None)
+    if isinstance(wt, (tuple, list)) and len(wt) >= 2:
+        try:
+            width = max(0, int(wt[0]) - int(wt[1]) + 1)
+        except (TypeError, ValueError):
+            width = 0
+    if _BIT_SUFFIX_RE.search(nid) or width == 1:
+        return "bit"
+    return "bus"
+
+
+def query_precision(signal: str, items: list[dict]) -> tuple[str, bool]:
+    """[iter_303 / PLAN P13.2] 本次查询的粒度结论 + 是否粗粒度回退。
+
+    返回 `(precision, coarse_fallback)`：
+      - 非位查询（总线/切片）→ `("bus", False)`（总线粒度是查询本身的粒度）
+      - 位查询空结果 → `("unknown", False)`
+      - 位查询且结果全是位 → `("bit", False)`
+      - 位查询但混入总线/常量总线 → `("bus", True)`（回落/混合，agent 应降级解读）
+    """
+    bit_query = bool(_BIT_SUFFIX_RE.search((signal or "").strip()))
+    if not bit_query:
+        return "bus", False
+    if not items:
+        return "unknown", False
+    precs = {it.get("precision", "bus") for it in items}
+    if precs <= {"bit"}:
+        return "bit", False
+    return "bus", True
+
+
 def _node_to_dict(node) -> dict:
     """[B2 2026-07-03] Convert TraceNode to dict with module + width info.
 
@@ -216,6 +267,8 @@ def _node_to_dict(node) -> dict:
         "width_lsb": width_lsb,
         "width": width,
         "distance": getattr(node, "distance", 1) if hasattr(node, "distance") else 1,
+        # [iter_303 / PLAN P13.2] 结果粒度标记（bit/bus/constant）
+        "precision": node_precision(node),
     }
 
 
@@ -229,6 +282,10 @@ def attach_distances(graph, root: str, items: list[dict], reverse: bool = False)
     按最短跳数填 distance。只在内存 dict 上写，不碰图节点。
     """
     if graph is None or not items:
+        return
+    # [iter_303 / P13.2] 位查询可能查"图中不存在的位"（由 fanin 回退父总线回答）；
+    # root 不在图里时 BFS 会抛 networkx 错误，这里保持 distance 默认值即可。
+    if root not in graph:
         return
     from collections import deque
 

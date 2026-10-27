@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.2 粗粒度回退显式标记（precision/warnings） <待做>`
+- **当前 item**: `P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>`
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1 ✅ → P13.2/13.3（可解释性/契约）→ P13.4/13.5（位精确性）
+- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3（可解释性/契约）→ P13.4/13.5（位精确性）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -57,11 +57,18 @@
 **结果 (iter_302)**: key 加 `-bb{one|full}`；one→full 5→37、full→one 37→5；同模式命中；
 新增 `test_bit_bridge_cache.py`（5 个）；全量 **2494 passed**。
 
-## 🔥 下一项（P13.2，粗粒度回退标记）
+## ✅ 刚完成（P13.2，粗粒度回退标记）
 
-位查询在"位节点缺失/不支持"时回落总线，输出与位精确结果同形 → agent 可能误读。
-修法：trace JSON 增加 `precision: bit|bus|unknown`（结果级 warnings 可选）；
-落点：`_expr_source_bits` 的 `None`/缺失分支 + CLI `_node_to_dict`。
+位查询回落总线时输出与位精确同形 → agent 可能误读。
+**结果 (iter_303)**: 节点 `precision: bit|bus|constant`；signal 级 `precision`（bit/bus/unknown）
++ `coarse_fallback`（过滤前判定）；顺带修 CLI 位查询"节点不在图"直接报错的 bug
+（`attach_distances` root 缺失）；新增 6 个 CLI 测试，全量 **2500 passed**。
+
+## 🔥 下一项（P13.3，capabilities + 输出字段）
+
+- `capabilities` 增加 `bit_precision` 段：精确/粗粒度形态、`SVQ_BIT_BRIDGE` 模式、已知边界
+- trace 输出节点补 `is_signed` / `parent` / `bit_range`（P9/P11 的图元数据目前未暴露）
+- 需要 schema 版本策略（core 层 JSON 契约）
 
 ---
 
