@@ -311,9 +311,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 
 完整盘点与 P0~P3 backlog: [architecture/trace_capability_review_2026-10-27.md](architecture/trace_capability_review_2026-10-27.md)。
 
-**P0（未修，优先开工）**: 图缓存 key 未包含 `SVQ_BIT_BRIDGE` 模式 —— 先 `one` 建图后切
-`full` 会命中旧图（实测 5 vs 37 节点），反方向会拿到过度展开的图 → **查询结果静默错误**。
-逃生: `--no-cache` 或切换前清缓存；修复登记 `PLAN P13.1`。
+**P0（已修，iter_302 / P13.1）**: 图缓存 key 未包含 `SVQ_BIT_BRIDGE` 模式 —— 先 `one`
+建图后切 `full` 会命中旧图（实测 5 vs 37 节点）。现在 key 带 `-bb{one|full}`，
+切换模式自动重建；同模式仍命中。
 
 **P1/P2**: 粗粒度回退无显式标记（P13.2）、`capabilities` 缺位精确性契约 + 输出缺
 `is_signed`/位段（P13.3）、深层成员（`o.inner.a`，P13.4）、三元/case 分支按位（P13.5）、
