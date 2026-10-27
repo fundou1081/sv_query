@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P13 backlog 全部完成；等待新需求/评审项）
+- **当前 item**: 无（P13/P14 backlog 全部完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P13 状态**: 1~6 全部完成（iter_302~307）；位精确性/可解释性 backlog 清空
+- **P13/P14 状态**: 全部完成（iter_302~308）；位精确性/可解释性 backlog 清空
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -93,13 +93,18 @@
 - 顺带修 `extra=None`（wire_init）与两处 `except: pass`（纪律 2.5）
 **结果 (iter_307)**: 新增 9 测试；全量 **2528 passed**；缓存 1.5。
 
+## ✅ 刚完成（P14.1，动态索引显式 unknown）
+
+`mem[i]` 动态读之前和总线答案同形；现在 `precision=unknown` + `dynamic_index=true`
+（fanin/fanout/节点级），静态 memory 不受影响。新增 5 个 CLI 测试，全量 **2533 passed**。
+
 ## 🔥 下一项
 
-P13 backlog 已清空。可选方向（见评审文档 P3/后续需求）：
-- 动态 memory 索引显式 `unknown`（当前回落总线）
+P13/P14 backlog 已清空。可选方向（见评审文档 P3/后续需求）：
 - 位级 paths/impact 便捷入口（`--bits`）
 - 函数调用 inline 后参与查询
 - 有符号算术/比较语义（当前位依赖规则不区分 signed）
+- 更深层的动态索引递归标注（当前只看查询根直接边）
 
 ---
 

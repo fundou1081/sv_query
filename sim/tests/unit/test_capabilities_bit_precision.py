@@ -39,6 +39,7 @@ class TestBitPrecisionContract:
         assert "bit | bus | constant" in markers["node.precision"]
         assert "signal.coarse_fallback" in markers
         assert "true" in markers["signal.coarse_fallback"]
+        assert "signal.dynamic_index" in markers
 
     def test_cli_json_exposes_contract(self):
         r = subprocess.run(["sv_query", "capabilities", "--json"],

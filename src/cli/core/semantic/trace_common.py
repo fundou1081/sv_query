@@ -200,6 +200,36 @@ _BIT_SUFFIX_RE = re.compile(r"\[\d+\]$")
 _CONST_WIDTH_RE = re.compile(r"^-?(\d+)'[sS]?[bodhBODH][0-9a-fA-F_]+$")
 
 
+_DYNAMIC_INDEX_RE = re.compile(r"\[[^\]]*[A-Za-z_?][^\]]*\]$")
+
+
+def is_dynamic_index(node_id: str) -> bool:
+    """[iter_308 / PLAN P14.1] 动态索引（`mem[i]` / `bus[?:?]`）→ 运行期决定。"""
+    return bool(_DYNAMIC_INDEX_RE.search(node_id or ""))
+
+
+def has_dynamic_index(graph, node_id: str | None, incoming: bool = True) -> bool:
+    """[iter_308 / PLAN P14.1] 查询涉及的边/节点里是否有动态索引。
+
+    动态 memory 读的图表示是 `mem --(expr="mem[i]")--> y`（目标节点仍是数组），
+    所以只看返回节点 id 不够，要扫查询根的直接入射/出射边的 expression。
+    """
+    if graph is None or node_id is None:
+        return False
+    if is_dynamic_index(node_id):
+        return True
+    neighbors = (graph.predecessors(node_id) if incoming
+                 else graph.successors(node_id))
+    for other in neighbors:
+        edge = (graph.get_edge(other, node_id) if incoming
+                else graph.get_edge(node_id, other))
+        if edge is None:
+            continue
+        if _DYNAMIC_INDEX_RE.search(getattr(edge, "expression", "") or ""):
+            return True
+    return False
+
+
 def node_precision(node) -> str:
     """[iter_303 / PLAN P13.2] 单个结果节点的粒度: bit / bus / constant。
 
@@ -209,6 +239,8 @@ def node_precision(node) -> str:
     - 其余：总线/切片/成员聚合
     """
     nid = getattr(node, "id", "") or ""
+    if is_dynamic_index(nid):
+        return "unknown"
     if re.match(r"^1'b[01]$", nid):
         return "bit"
     m = _CONST_WIDTH_RE.match(nid)
@@ -256,6 +288,8 @@ def resolve_node_id(graph, signal_id: str) -> str | None:
         return None
     node = graph.get_node(signal_id)
     if node is not None:
+        if is_dynamic_index(signal_id):
+            return signal_id  # 动态索引节点自身就是"未知"来源，不再回退父数组
         parent = getattr(node, "parent", None)
         if (parent in graph and not (node.extra or {}).get("array_element")):
             w = getattr(node, "width", None)
@@ -333,6 +367,8 @@ def _node_to_dict(node) -> dict:
         "is_signed": getattr(node, "is_signed", None),
         "parent": getattr(node, "parent", None),
         "bit_range": getattr(node, "bit_range", None),
+        # [iter_308 / PLAN P14.1] 动态索引（运行期决定）
+        "dynamic_index": is_dynamic_index(getattr(node, "id", "") or ""),
     }
 
 
