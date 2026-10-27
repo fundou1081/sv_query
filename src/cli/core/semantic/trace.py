@@ -46,6 +46,7 @@ from cli.core.semantic.trace_common import (
     attach_distances,  # noqa: E402
     _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
+    query_precision,  # [iter_303 P13.2]
 )
 
 
@@ -386,6 +387,8 @@ def fanin(
                     if hasattr(d, "id"):
                         drivers.append(_node_to_dict(d))
                 attach_distances(tracer.get_graph(), sig, drivers, reverse=True)
+                # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前（过滤会掩盖粗粒度回退）
+                precision, coarse_fallback = query_precision(sig, list(drivers))
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
                 drivers = _apply_filters(
@@ -409,6 +412,8 @@ def fanin(
                     "count": len(drivers),
                     "pre_filter_count": drivers_pre,
                     "truncated": truncated,
+                    "precision": precision,
+                    "coarse_fallback": coarse_fallback,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -432,6 +437,8 @@ def fanin(
                     "count": 0,
                     "pre_filter_count": 0,
                     "truncated": False,
+                    "precision": "unknown",
+                    "coarse_fallback": False,
                 })
 
         data = {
@@ -585,6 +592,8 @@ def fanout(
                         loads.append(_node_to_dict(load))
                 # [iter_278] 填真实跳数 (原 distance 恒为 1)
                 attach_distances(tracer.get_graph(), sig, loads, reverse=False)
+                # [iter_303 / PLAN P13.2] 粒度判定必须在过滤前
+                precision, coarse_fallback = query_precision(sig, list(loads))
                 # [B2 2026-07-03] Apply 5 filters
                 loads_pre = len(loads)
                 loads = _apply_filters(
@@ -607,6 +616,8 @@ def fanout(
                     "count": len(loads),
                     "pre_filter_count": loads_pre,
                     "truncated": truncated,
+                    "precision": precision,
+                    "coarse_fallback": coarse_fallback,
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -629,6 +640,8 @@ def fanout(
                     "count": 0,
                     "pre_filter_count": 0,
                     "truncated": False,
+                    "precision": "unknown",
+                    "coarse_fallback": False,
                 })
 
         data = {
