@@ -318,8 +318,8 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 **P1/P2**: 粗粒度回退已显式标记（✅ iter_303 / P13.2：结果节点 `precision: bit|bus|constant`，
 signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契约与 trace 输出 `is_signed`/`parent`/`bit_range`
 已补（✅ iter_304 / P13.3）；深层成员已可建/可查（✅ iter_305 / P13.4：
-`fanin(o.inner.a[1])` → `o[9]`）；三元/case 分支按位（P13.5）、
-多驱动标记 + 静态 memory 位精度（P13.6）仍待做。
+`fanin(o.inner.a[1])` → `o[9]`）；三元/case 分支在源位节点存在时按位
+（✅ iter_306 / P13.5）；多驱动标记 + 静态 memory 位精度（P13.6）仍待做。
 
 ## 已修复限制
 

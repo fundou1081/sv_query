@@ -354,6 +354,8 @@ class SignalTracer:
         "Not", "BitwiseNot", "LogicalNot", "UnaryBitwiseNot",
         # [iter_295 / PLAN P7.1] 直接拷贝 assign y = a（无 op 元数据）
         "DirectCopy",
+        # [iter_306 / PLAN P13.5] 三元分支（c ? a : b 的 a/b 边）
+        "TernaryBranch",
     })
     _EXPR_PREFIX = frozenset({
         "Add", "Subtract", "Multiply", "Power", "UnaryMinus", "UnaryPlus",
@@ -494,6 +496,25 @@ class SignalTracer:
         if parsed is None:
             parsed = self._parse_const_token(getattr(node, "name", "") or "")
         return parsed
+
+    @staticmethod
+    def _is_ternary_branch_edge(edge, src_info) -> bool:
+        """[iter_306 / PLAN P13.5] `c ? a : b` 的分支操作数边（不是条件边）。
+
+        条件存在 + 表达式含 `?:` + 源 op 为空 + 源名字出现在 `?` 之后的分支部分。
+        """
+        expr = (getattr(edge, "expression", "") or "")
+        if not getattr(edge, "condition", "") or "?" not in expr or ":" not in expr:
+            return False
+        if src_info is None or (getattr(src_info, "op", "") or "").strip():
+            return False
+        name = getattr(src_info, "signal", "") or ""
+        if not name:
+            return False
+        import re as _re
+
+        after_q = expr.split("?", 1)[1]
+        return _re.search(r"\b" + _re.escape(name) + r"\b", after_q) is not None
 
     def _packed_parent_step(self, node_id: str, bit: int):
         """[iter_300 / PLAN P12] packed 成员位 → 父聚合位的一步换算。
@@ -703,7 +724,10 @@ class SignalTracer:
         if not op:
             op = self._direct_copy_op(edge)
             if op is None:
-                return None
+                if self._is_ternary_branch_edge(edge, src_info):
+                    op = "TernaryBranch"
+                else:
+                    return None
 
         src_is_bus = "[" not in edge.src
         # [iter_297 / PLAN P9.2] 目标是位/切片节点时用节点内相对位（1 位源的广播：
@@ -739,6 +763,8 @@ class SignalTracer:
             return None
 
         if op in self._EXPR_SAME_INDEX:
+            if op == "TernaryBranch" and src_w != dst_w:
+                return None
             # [iter_296 / PLAN P8.2] `a & 4'hF` 的高位：常量无符号零扩展 → 该位恒 0，
             # 信号操作数不是依赖（否则会像"污染"一样高估）。
             if op == "BinaryAnd":
@@ -818,7 +844,10 @@ class SignalTracer:
         if not op:
             op = self._direct_copy_op(edge)
             if op is None:
-                return None
+                if self._is_ternary_branch_edge(edge, src_info):
+                    op = "TernaryBranch"
+                else:
+                    return None
         dst_id = edge.dst
         if "[" in dst_id:
             return None
@@ -853,6 +882,8 @@ class SignalTracer:
             return None
 
         if op in self._EXPR_SAME_INDEX:
+            if op == "TernaryBranch" and src_w != dst_w:
+                return None
             bit = 0 if src_w == 1 else pos
             if bit < 0 or bit >= dst_w:
                 return []
