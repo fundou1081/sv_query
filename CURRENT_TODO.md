@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: `P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>`
+- **当前 item**: `P13.4 深层 packed 成员节点（o.inner.a） <待做>`
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3（可解释性/契约）→ P13.4/13.5（位精确性）
+- **建议顺序**: P13.1 ✅ → P13.2 ✅ → P13.3 ✅ → P13.4/13.5（位精确性）→ P13.6
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -64,11 +64,18 @@
 + `coarse_fallback`（过滤前判定）；顺带修 CLI 位查询"节点不在图"直接报错的 bug
 （`attach_distances` root 缺失）；新增 6 个 CLI 测试，全量 **2500 passed**。
 
-## 🔥 下一项（P13.3，capabilities + 输出字段）
+## ✅ 刚完成（P13.3，capabilities + 输出字段）
 
 - `capabilities` 增加 `bit_precision` 段：精确/粗粒度形态、`SVQ_BIT_BRIDGE` 模式、已知边界
-- trace 输出节点补 `is_signed` / `parent` / `bit_range`（P9/P11 的图元数据目前未暴露）
-- 需要 schema 版本策略（core 层 JSON 契约）
+- trace 输出节点补 `is_signed` / `parent` / `bit_range`（位节点继承父 signedness）
+**结果 (iter_304)**: `capabilities --json` 带 12 项 precise / 6 项 coarse / 模式 / markers；
+节点输出三字段；位节点继承 signedness；3 个 CLI golden + scheduler 基线有意重生成；
+全量 **2508 passed**。
+
+## 🔥 下一项（P13.4，深层 packed 成员）
+
+`o.inner.a` 目前不建节点 → 查询空答。修法：布局递归成员类型，建二级成员节点并挂 parent 链；
+查询层 `_packed_parent_step` 已支持多级。
 
 ---
 

@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>
+> current item : P13.4 深层 packed 成员节点（o.inner.a） <待做>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>
+current item : P13.4 深层 packed 成员节点（o.inner.a） <待做>
 
 ## 计划树
 
@@ -54,7 +54,7 @@ P12 packed 成员位级查询桥 <已完成>
 P13 信号追踪能力补强（2026-10-27 评审 backlog） <进行中>
 -- P13.1 缓存 key 纳入 SVQ_BIT_BRIDGE 模式（P0 静默错误） <已完成>
 -- P13.2 粗粒度回退显式标记（precision/warnings） <已完成>
--- P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <待做>
+-- P13.3 capabilities bit_precision 契约 + 输出 is_signed/parent/bit_range <已完成>
 -- P13.4 深层 packed 成员节点（o.inner.a） <待做>
 -- P13.5 三元/case 分支按位映射 <待做>
 -- P13.6 多驱动标记 + 静态 memory 位精度 <待做>

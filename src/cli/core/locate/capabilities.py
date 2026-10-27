@@ -72,5 +72,10 @@ def capabilities(
         for n in data["planned_new"]:
             typer.echo(f"    + {n['name']:<14} 复用 {n['reuse']}")
         typer.echo("")
+    bp = data["bit_precision"]
+    typer.echo(f"[bit precision] modes={', '.join(bp['modes'])}  "
+               f"precise={len(bp['precise_forms'])} forms  coarse={len(bp['coarse_forms'])} forms")
+    typer.echo("   详见 `--json` 的 bit_precision 段; 位查询结果看 precision/coarse_fallback。")
+    typer.echo("")
     typer.echo("提示: agent 建议用 `svq capabilities --json --recommended` 取最小工具集;")
     typer.echo("      降级区需显式 `--include-exp`。")

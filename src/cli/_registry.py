@@ -260,6 +260,48 @@ def counts() -> dict:
     return {"total": len(COMMANDS), "by_layer": by_layer, "core_by_group": by_group}
 
 
+# ---------------------------------------------------------------------------
+# 位精确性契约 (agent 可发现性; 与 docs/architecture/trace_capability_review 同步)
+# 只描述"静态可判定"部分, 运行期相关形态明确列为 coarse。
+# ---------------------------------------------------------------------------
+BIT_PRECISION = {
+    "schema_version": "1",
+    "modes": {
+        "one": "默认: 只为'一侧已有位节点'的连接补位桥；纯总线保持总线粒度",
+        "full": "SVQ_BIT_BRIDGE=full: 纯总线连接也按同索引合成位节点（图更大）",
+    },
+    "precise_forms": [
+        "explicit bit select/assignment (y[3], y[3]=a[7])",
+        "slice (y[7:4]=a, y=a[7:4], offsets, slice-to-slice)",
+        "register bit / always_ff bit assignment",
+        "generate per-entry bit",
+        "bus<->bus connection (one: one side already has bits; full: pure bus)",
+        "direct copy assign y=a (source bit nodes exist)",
+        "expressions: bitwise (& | ^ ~), add/sub/mul, constant shift, slice",
+        "concatenation {a,b} (signal operands and literal segments)",
+        "constants (sized N'b/o/d/h, unsized, concat literal; unsigned extension)",
+        "signed literal/signal extension (sign bit vs zero extend)",
+        "integer/int/byte/shortint/longint/time widths",
+        "packed struct/union aggregate + member layout + member bit bridge",
+    ],
+    "coarse_forms": [
+        "comparison / logical / reduction (all bits may participate)",
+        "variable shift / dynamic part-select / dynamic memory index",
+        "function/task return values",
+        "deep packed members (o.inner.a) not materialized",
+        "non-packed struct",
+        "source bit node absent -> falls back to bus",
+    ],
+    "markers": {
+        "node.precision": "bit | bus | constant",
+        "signal.precision": "bit | bus | unknown",
+        "signal.coarse_fallback": "true when a bit query mixes bit with bus/constant results",
+    },
+    "notes": "precision markers describe granularity, not a proof of bit-exact dependency; "
+             "coarse_fallback=true means the answer should be downgraded to bus level.",
+}
+
+
 def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dict:
     """capabilities / 生成器共用的结构 (agent 的工具面真相源)。"""
     cmds = []
@@ -296,6 +338,7 @@ def to_json(*, include_exp: bool = False, recommended_only: bool = False) -> dic
         "core_groups": CORE_GROUPS,
         "counts": counts(),
         "planned_new": NEW_PLANNED,
+        "bit_precision": BIT_PRECISION,
         "commands": cmds,
     }
 

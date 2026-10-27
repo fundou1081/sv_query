@@ -269,6 +269,10 @@ def _node_to_dict(node) -> dict:
         "distance": getattr(node, "distance", 1) if hasattr(node, "distance") else 1,
         # [iter_303 / PLAN P13.2] 结果粒度标记（bit/bus/constant）
         "precision": node_precision(node),
+        # [iter_304 / PLAN P13.3] 图元数据（signedness / 位段归属）
+        "is_signed": getattr(node, "is_signed", None),
+        "parent": getattr(node, "parent", None),
+        "bit_range": getattr(node, "bit_range", None),
     }
 
 

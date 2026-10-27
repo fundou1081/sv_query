@@ -316,9 +316,9 @@ svq diagnose timescale --filelist p.f   →  ✅ No MissingTimeScale errors foun
 切换模式自动重建；同模式仍命中。
 
 **P1/P2**: 粗粒度回退已显式标记（✅ iter_303 / P13.2：结果节点 `precision: bit|bus|constant`，
-signal 级 `precision` + `coarse_fallback`）；`capabilities` 缺位精确性契约 + 输出缺
-`is_signed`/位段（P13.3）、深层成员（`o.inner.a`，P13.4）、三元/case 分支按位（P13.5）、
-多驱动标记 + 静态 memory 位精度（P13.6）。
+signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契约与 trace 输出 `is_signed`/`parent`/`bit_range`
+已补（✅ iter_304 / P13.3）；深层成员（`o.inner.a`，P13.4）、三元/case 分支按位（P13.5）、
+多驱动标记 + 静态 memory 位精度（P13.6）仍待做。
 
 ## 已修复限制
 

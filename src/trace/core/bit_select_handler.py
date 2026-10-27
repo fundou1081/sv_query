@@ -281,6 +281,7 @@ class BitSelectHandler:
                                 parent=parent_id,
                                 parent_bit_start=min(msb, lsb),
                                 parent_bit_end=max(msb, lsb),
+                                is_signed=getattr(parent_node, "is_signed", None),
                             )
                             self.graph.add_trace_node(node)
 
