@@ -1603,20 +1603,31 @@ class SignalTracer:
         # depth=1 用 _find_loads 过滤
         # [iter_300 / PLAN P12] packed 成员位：聚合位 p[5] 的负载也要并入
         extra = []
+        extra_seen = set()
         top = _member_top
         if top is not None:
-            if True:
-                t_id, t_bit = top
+            t_id, t_bit = top
+            # [iter_305 / PLAN P13.4] 聚合位的负载既可能在总线上（整总线拷贝），
+            # 也可能挂在位子节点上（`assign y[9]=o[9]`）；两者都要并入。
+            targets = [t_id]
+            bit_child = f"{t_id}[{t_bit}]"
+            if bit_child in self.graph.nodes() and bit_child != t_id:
+                targets.append(bit_child)
+            for target in targets:
                 if depth == 1:
-                    extra = self._find_loads(
-                        t_id, allowed_kinds=allowed_kinds,
+                    got = self._find_loads(
+                        target, allowed_kinds=allowed_kinds,
                         allow_cross_module=allow_cross, scope_prefix=scope_prefix,
                         bit_index=t_bit)
                 else:
-                    extra = self._collect_all_loads(
-                        t_id, max_depth=depth, allowed_kinds=allowed_kinds,
+                    got = self._collect_all_loads(
+                        target, max_depth=depth, allowed_kinds=allowed_kinds,
                         allow_cross_module=allow_cross, scope_prefix=scope_prefix,
                         bit_index=t_bit)
+                for n in got:
+                    if n.id not in extra_seen:
+                        extra.append(n)
+                        extra_seen.add(n.id)
 
         def _merge(main):
             seen = {n.id for n in main}

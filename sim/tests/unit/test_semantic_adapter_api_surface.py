@@ -87,6 +87,8 @@ FROZEN_METHODS = {
     'get_top_level_subroutines': '(self) -> list',
     'get_variable_declarations': '(self, module) -> list',
     'get_packed_member_layout': '(self, var_symbol) -> list[dict] | None',
+    'get_packed_member_tree': '(self, var_symbol, max_depth: int = 8) -> list[dict] | None',
+    '_packed_members_of_type': '(self, ftype, depth: int) -> list[dict]',
     'get_variable_symbols': '(self, module) -> dict',
     'items': '(self) -> object',
     'visit': '(self, callback: Callable) -> None',

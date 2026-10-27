@@ -54,7 +54,7 @@
 
 ### P1 — 位精确性可继续推进
 
-**A1. 深层 packed 成员节点（`o.inner.a`）**
+**A1. 深层 packed 成员节点（`o.inner.a`）** —— ✅ 已修（iter_305 / P13.4）
 - 现象：成员补齐只到一层；`fanin(o.inner.a[1])` 空答。
 - 修法：`_apply_packed_member_layout` 递归成员类型，建 `o.inner.a` 并挂 parent 链；
   查询层 `_packed_parent_step` 已支持多级。

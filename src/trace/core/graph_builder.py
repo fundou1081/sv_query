@@ -935,47 +935,59 @@ class GraphBuilder:
             if parent_path in self.graph.nodes():
                 parent_members.setdefault(parent_path, set()).add(member_name)
 
-        # [iter_300 / PLAN P12] 除"已有成员节点"的父路径外，也要覆盖未被引用的
-        # struct 变量（需要为其建成员节点，查询才可达）
-        for parent_path in set(parent_members) | set(symbols):
-            sym = symbols.get(parent_path)
-            if sym is None or parent_path not in self.graph.nodes():
-                continue
-            layout = self.adapter.get_packed_member_layout(sym)
-            if not layout:
-                continue
-            parent_node = self.graph.get_node(parent_path)
-            for item in layout:
-                node_id = f"{parent_path}.{item['name']}"
-                node = self.graph.get_node(node_id)
+        # [iter_300/P12 + iter_305/P13.4] 覆盖未被引用的 struct 变量，并递归建
+        # 嵌套成员（o.inner.a）：每层 offset 相对直接父成员，parent 链供查询换算。
+        MAX_MEMBER_NODES = 5000
+        created = 0
+
+        def walk(members, parent_id, parent_node):
+            nonlocal created
+            for item in members:
+                if created >= MAX_MEMBER_NODES:
+                    logger.warning(
+                        "_apply_packed_member_layout: 成员节点达到上限 %d，停止补齐",
+                        MAX_MEMBER_NODES,
+                    )
+                    return
+                node_id = f"{parent_id}.{item['name']}"
                 w = item["width"]
+                off = item["offset"]
+                br = f"[{off}]" if w == 1 else f"[{off + w - 1}:{off}]"
+                node = self.graph.get_node(node_id)
                 if node is None:
-                    # [iter_300 / PLAN P12] 未被引用的成员也建节点（查询可达）
                     from .graph.models import NodeKind, TraceNode
                     node = TraceNode(
                         id=node_id, name=item["name"],
                         module=getattr(parent_node, "module", "") if parent_node else "",
                         kind=NodeKind.SIGNAL,
                         width=(w - 1, 0) if w > 1 else (1, 0),
-                        bit_range=(f"[{item['offset']}]" if w == 1
-                                   else f"[{item['offset'] + w - 1}:{item['offset']}]"),
+                        bit_range=br,
                         is_signed=item["signed"],
-                        parent=parent_path,
-                        parent_bit_start=item["offset"] + w - 1,
-                        parent_bit_end=item["offset"],
+                        parent=parent_id,
+                        parent_bit_start=off + w - 1,
+                        parent_bit_end=off,
                         extra={"packed_member": True},
                     )
                     self.graph.add_trace_node(node)
-                    continue
-                node.width = (w - 1, 0) if w > 1 else (1, 0)
-                node.is_signed = item["signed"]
-                node.parent = parent_path
-                node.parent_bit_start = item["offset"] + w - 1
-                node.parent_bit_end = item["offset"]
-                node.bit_range = (f"[{item['offset']}]" if w == 1
-                                  else f"[{item['offset'] + w - 1}:{item['offset']}]")
-                # [iter_300 / PLAN P12] 标记 packed 成员（查询层位桥按 parent 链换算）
-                node.extra["packed_member"] = True
+                    created += 1
+                else:
+                    node.width = (w - 1, 0) if w > 1 else (1, 0)
+                    node.is_signed = item["signed"]
+                    node.parent = parent_id
+                    node.parent_bit_start = off + w - 1
+                    node.parent_bit_end = off
+                    node.bit_range = br
+                    node.extra["packed_member"] = True
+                walk(item.get("children") or [], node_id, node)
+
+        for parent_path in set(parent_members) | set(symbols):
+            sym = symbols.get(parent_path)
+            if sym is None or parent_path not in self.graph.nodes():
+                continue
+            tree = self.adapter.get_packed_member_tree(sym)
+            if not tree:
+                continue
+            walk(tree, parent_path, self.graph.get_node(parent_path))
 
     def _expand_struct_assignments(self):
         """展开 struct 整体赋值为成员赋值
