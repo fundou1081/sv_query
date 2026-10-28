@@ -171,6 +171,8 @@ class GraphBuilder:
         # [iter_299 / PLAN P11.2] 所有 pass 完成后统一修 packed 成员宽度/位段
         # （成员节点可能由 bit_nodes/struct_assigns 等后续 pass 建出）
         self._apply_packed_member_layout()
+        # [iter_310 / PLAN P16] 动态索引传播必须在所有位/元素节点建好之后
+        self._mark_dynamic_provenance()
         return self.graph
 
     def _expand_slice_bit_nodes(self) -> None:
@@ -903,6 +905,111 @@ class GraphBuilder:
 
         # [DEBUG]
         # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
+
+    def _mark_dynamic_provenance(self):
+        """[iter_310 / PLAN P16] 动态索引递归标注（节点级，沿数据流传播）。
+
+        - 种子：动态索引节点（`mem[i]`）与表达式含**运行期索引**的边目标
+        - 传播：沿 DRIVER/CONNECTION 边向下游（动态值派生出的信号也是 unknown）
+        - 结果：`node.extra["dynamic"] = True` + `graph._dynamic_nodes`
+
+        运行期索引判定：`[...]` 内的标识符能在图中解析为节点（`i`/`sel`）；
+        参数/常量表达式（`a[W-1:0]` 的 W 不是节点）不算动态（避免误报）。
+        """
+        import re as _re
+
+        brackets = _re.compile(r"\[([^\]]*)\]")
+        ident = _re.compile(r"[A-Za-z_]\w*")
+
+        def runtime_index(expr: str, module: str) -> bool:
+            """`[...]` 内的标识符是否解析为**同 module** 的运行期节点。
+
+            按 module 作用域解析（而不是全图短名），避免参数名与其它模块端口
+            同名时误报（实测：top 参数 P 与 top.u.P 端口 → 假动态）。
+            """
+            for m in brackets.finditer(expr or ""):
+                for name in ident.findall(m.group(1)):
+                    if module and f"{module}.{name}" in self.graph.nodes():
+                        return True
+            return False
+
+        def node_module(nid: str) -> str:
+            node = self.graph.get_node(nid)
+            return getattr(node, "module", "") if node is not None else ""
+
+        def is_dynamic_id(nid: str) -> bool:
+            return runtime_index(nid, node_module(nid))
+
+        seeds = set()
+        for nid in self.graph.nodes():
+            if is_dynamic_id(nid):
+                seeds.add(nid)
+        for (_src, dst), edges in list(self.graph._edge_data.items()):
+            for e in edges:
+                if e.kind.name not in ("DRIVER", "CONNECTION"):
+                    continue
+                dst_node = self.graph.get_node(dst)
+                module = getattr(dst_node, "module", "") if dst_node is not None else ""
+                if runtime_index(getattr(e, "expression", "") or "", module):
+                    seeds.add(dst)
+
+        # [iter_310 / PLAN P16] 动态**写**（d -> mem[i]）会污染整个数组：
+        # 标记数组基址与其所有已元素化子节点，避免静态读 mem[1] 被误判为精确。
+        children_by_parent: dict[str, list[str]] = {}
+        for nid in self.graph.nodes():
+            node = self.graph.get_node(nid)
+            parent = getattr(node, "parent", None) if node is not None else None
+            if parent:
+                children_by_parent.setdefault(parent, []).append(nid)
+        def descendants(root: str) -> set[str]:
+            out = set()
+            stack = [root]
+            while stack:
+                cur = stack.pop()
+                for child in children_by_parent.get(cur, []):
+                    if child not in out:
+                        out.add(child)
+                        stack.append(child)
+            return out
+
+        for nid in list(seeds):
+            if not is_dynamic_id(nid):
+                continue
+            # 只有动态**写**（该节点有 DRIVER 入射）才污染整个数组；
+            # 动态读（mem[i] 仅作为读占位）只标记读取结果。
+            has_write = any(
+                any(e.kind.name == "DRIVER" for e in self.graph.get_edges(pred, nid))
+                for pred in self.graph.predecessors(nid)
+            )
+            if not has_write:
+                continue
+            base = nid.rsplit("[", 1)[0]
+            if base in self.graph.nodes():
+                seeds.add(base)
+                seeds.update(descendants(base))
+
+        # 沿数据流向下游传播（跳过 BIT_SELECT：位/成员聚合不是数据源）
+        frontier = list(seeds)
+        seen = set(seeds)
+        while frontier:
+            cur = frontier.pop()
+            for succ in self.graph.successors(cur):
+                edge = self.graph.get_edge(cur, succ)
+                if edge is None or edge.kind.name not in ("DRIVER", "CONNECTION"):
+                    continue
+                if succ in seen:
+                    continue
+                seen.add(succ)
+                frontier.append(succ)
+
+        for nid in seen:
+            node = self.graph.get_node(nid)
+            if node is None:
+                continue
+            if node.extra is None:
+                node.extra = {}
+            node.extra["dynamic"] = True
+        self.graph._dynamic_nodes = seen
 
     def _fix_array_element_widths(self):
         """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。

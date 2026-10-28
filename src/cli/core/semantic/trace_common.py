@@ -203,6 +203,15 @@ _CONST_WIDTH_RE = re.compile(r"^-?(\d+)'[sS]?[bodhBODH][0-9a-fA-F_]+$")
 _DYNAMIC_INDEX_RE = re.compile(r"\[[^\]]*[A-Za-z_?][^\]]*\]$")
 
 
+def node_is_dynamic(node) -> bool:
+    """[iter_310 / PLAN P16] 节点是否动态索引派生（图级传播标记或动态 id）。"""
+    if node is None:
+        return False
+    if (getattr(node, "extra", None) or {}).get("dynamic"):
+        return True
+    return is_dynamic_index(getattr(node, "id", "") or "")
+
+
 def is_dynamic_index(node_id: str) -> bool:
     """[iter_308 / PLAN P14.1] 动态索引（`mem[i]` / `bus[?:?]`）→ 运行期决定。"""
     return bool(_DYNAMIC_INDEX_RE.search(node_id or ""))
@@ -216,7 +225,8 @@ def has_dynamic_index(graph, node_id: str | None, incoming: bool = True) -> bool
     """
     if graph is None or node_id is None:
         return False
-    if is_dynamic_index(node_id):
+    node = graph.get_node(node_id)
+    if node_is_dynamic(node):
         return True
     neighbors = (graph.predecessors(node_id) if incoming
                  else graph.successors(node_id))
@@ -368,7 +378,7 @@ def _node_to_dict(node) -> dict:
         "parent": getattr(node, "parent", None),
         "bit_range": getattr(node, "bit_range", None),
         # [iter_308 / PLAN P14.1] 动态索引（运行期决定）
-        "dynamic_index": is_dynamic_index(getattr(node, "id", "") or ""),
+        "dynamic_index": node_is_dynamic(node),
     }
 
 

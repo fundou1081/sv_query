@@ -49,7 +49,7 @@ from cli.core.semantic.trace_common import (
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
     query_precision,  # [iter_303 P13.2]
     resolve_node_id, driver_stats,  # [iter_307 P13.6]
-    has_dynamic_index,  # [iter_308 P14.1]
+    has_dynamic_index, node_is_dynamic,  # [iter_308 P14.1 / iter_310 P16]
 )
 
 
@@ -396,7 +396,9 @@ def fanin(
                 _g = tracer.get_graph()
                 _root = resolve_node_id(_g, sig)
                 driver_count, multi_driver, conditional_drivers = driver_stats(_g, _root)
-                _dynamic = has_dynamic_index(_g, _root, incoming=True)
+                _root_node = _g.get_node(_root) if _root else None
+                _dynamic = (node_is_dynamic(_root_node)
+                            or any(d.get("dynamic_index") for d in drivers))
                 if _dynamic:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
@@ -614,7 +616,9 @@ def fanout(
                 precision, coarse_fallback = query_precision(sig, list(loads))
                 _g = tracer.get_graph()
                 _root = resolve_node_id(_g, sig)
-                _dynamic = has_dynamic_index(_g, _root, incoming=False)
+                _root_node = _g.get_node(_root) if _root else None
+                _dynamic = (node_is_dynamic(_root_node)
+                            or any(x.get("dynamic_index") for x in loads))
                 if _dynamic:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters

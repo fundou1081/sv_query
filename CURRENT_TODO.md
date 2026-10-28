@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P13/P14/P15 全部完成；等待新需求/评审项）
+- **当前 item**: 无（P13~P16 全部完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P13/P14/P15 状态**: 全部完成（iter_302~309）；位精确性/可解释性/位级入口清空
+- **P13~P16 状态**: 全部完成（iter_302~310）；位精确性/可解释性/位级入口/动态传播清空
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -104,13 +104,19 @@
 位节点存在 → precision=bit；缺失 → 回落总线 + `coarse_fallback=true`。
 新增 7 个 CLI 测试，全量 **2540 passed**。
 
+## ✅ 刚完成（P16，动态索引递归传播）
+
+动态索引标记改到**图级**（`_mark_dynamic_provenance` + `SignalGraph._dynamic_nodes`）：
+深链、depth=1、fanout、动态写污染静态读都正确 unknown；参数同名切片不再误报；
+标记随缓存序列化（CACHE_VERSION 1.6）。新增 7 测试，全量 **2547 passed**。
+
 ## 🔥 下一项
 
-P13/P14/P15 backlog 已清空。可选方向（见评审文档 P3/后续需求）：
+P13~P16 backlog 已清空。可选方向（见评审文档 P3/后续需求）：
 - 函数调用 inline 后参与查询
 - 有符号算术/比较语义（当前位依赖规则不区分 signed）
-- 更深层的动态索引递归标注（当前只看查询根直接边）
-- 位级路径的 `--bits` 范围（`3:0`）与批量映射（`src=dst`）
+- 动态**条件**（`if (mem[i])`）控制依赖传播
+- `--bits` 范围（`3:0`）与显式映射（`src=1,dst=5`）
 
 ---
 

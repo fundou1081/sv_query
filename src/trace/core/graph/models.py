@@ -319,6 +319,8 @@ class SignalGraph(nx.DiGraph):
         # case29 顶层: 'chain_out' (只一个 dst short) → entry_idx (0) — 全局 setdefault
         # elk_bridge 顶层 lookup 会按 _dst_short (tree key 短名) 查, 拿 per-element key.
         self._gen_iter_map: dict[str, int] = {}
+        # [iter_310 / PLAN P16] 动态索引传播标记（运行期决定 → unknown）
+        self._dynamic_nodes: set[str] = set()
 
     def add_trace_node(self, node: TraceNode) -> None:
         self._node_data[node.id] = node
@@ -610,6 +612,7 @@ class SignalGraph(nx.DiGraph):
             "nodes": nodes_data,
             "edges": edges_data,
             # [REFACTOR 2026-08-07 A计划] 持久化表达式树/常量/函数信息
+            "dynamic_nodes": sorted(self._dynamic_nodes),
             "expr_trees": dict(self._expr_trees),
             "const_map": dict(self._const_map),
             "func_info": dict(self._func_info),
@@ -661,6 +664,13 @@ class SignalGraph(nx.DiGraph):
                 modport_dir=node_dict.get("modport_dir"),
             )
             graph.add_trace_node(node)
+
+        # [iter_310 / PLAN P16] 恢复动态索引传播标记
+        for nid in data.get("dynamic_nodes", []) or []:
+            node = graph.get_node(nid)
+            if node is not None:
+                node.extra["dynamic"] = True
+                graph._dynamic_nodes.add(nid)
 
         # 恢复边
         for edge_dict in data.get("edges", []):
