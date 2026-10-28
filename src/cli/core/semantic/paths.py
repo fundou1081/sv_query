@@ -15,6 +15,7 @@ from pathlib import Path
 
 import typer
 
+from cli.core.semantic._bit_args import normalize_endpoint, parse_bits
 from cli.core.semantic._common import build_tracer, emit, fail
 
 
@@ -27,6 +28,10 @@ def paths_cmd(
         help="[iter_268] 只沿数据流方向搜索 (与 `dataflow analyze` 同一张有向图); "
              "默认无向 = 结构连通性 (逆流也能找到)"),
     max_paths: int = typer.Option(50, "--max", "-n", help="--all 时的路径数上限"),
+    bits: str = typer.Option(
+        None, "--bits",
+        help="[iter_309 P15] 位级端点: 两个逗号分隔位索引（src_bit,dst_bit）；"
+             "位节点缺失时回落总线并在 JSON 标 coarse_fallback"),
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     filelist: str = typer.Option(None, "--filelist", help="filelist (.f/.fl) for multi-file projects"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON"),
@@ -50,18 +55,43 @@ def paths_cmd(
         fail("path resolver unavailable (graph not built?)", json_output, pretty)
 
     graph = tracer.get_graph()
+    try:
+        bit_list = parse_bits(bits)
+    except ValueError as e:
+        fail(str(e), json_output, pretty)
+        return
+    if bit_list and len(bit_list) != 2:
+        fail("--bits 需要两个值（src_bit,dst_bit，示例 --bits 1,5）", json_output, pretty)
+        return
+    try:
+        src_info = normalize_endpoint(graph, src, bit_list[0] if bit_list else None)
+        dst_info = normalize_endpoint(graph, dst, bit_list[1] if bit_list else None)
+    except ValueError as e:
+        fail(str(e), json_output, pretty)
+        return
+    src_id, dst_id = src_info["resolved"], dst_info["resolved"]
+    bit_info = {"src": src_info, "dst": dst_info}
+    coarse = bool(src_info["coarse_fallback"] or dst_info["coarse_fallback"])
+    if coarse:
+        # 位节点缺失 → 总线结果，显式告知调用方（不静默）
+        bit_info["coarse_fallback"] = True
+
     known = set(graph.nodes()) if graph is not None else set()
-    unknown = [x for x in (src, dst) if x not in known]
+    unknown = [x for x in (src_id, dst_id) if x not in known]
     if unknown:
         fail("signal id not found in graph", json_output, pretty, unknown=unknown,
              hint="用 `svq graph nodes --json` 列出可用 id")
 
     if all_paths:
-        found = resolver.find_all_paths(src, dst, max_paths=max_paths, directed=directed)
-        emit({"ok": True, "src": src, "dst": dst, "directed": directed, "count": len(found),
-              "truncated": len(found) >= max_paths, "all_paths": found}, json_output, pretty)
+        found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths, directed=directed)
+        emit({"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
+              "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+              "count": len(found), "truncated": len(found) >= max_paths,
+              "all_paths": found}, json_output, pretty)
         return
 
-    one = resolver.find_path(src, dst, directed=directed)
-    emit({"ok": True, "src": src, "dst": dst, "directed": directed, "found": one is not None,
+    one = resolver.find_path(src_id, dst_id, directed=directed)
+    emit({"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
+          "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+          "found": one is not None,
           "hop_count": (len(one) - 1) if one else None, "path": one}, json_output, pretty)

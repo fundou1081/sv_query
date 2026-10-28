@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 
 from cli._common import _build_tracer, handle_compilation_error  # [ADD 2026-06-11 Req-9]
+from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
 from trace.core.compiler import CompilationError  # [ADD 2026-06-11 任务3]
 
 from cli._paths import ensure_on_path, PROJECT_ROOT  # noqa: E402
@@ -122,6 +123,9 @@ def analyze(
 
     log_level: str = typer.Option("WARNING", "--log-level", help="Compiler log level (DEBUG/INFO/WARNING/ERROR)"),
     max_paths: int = typer.Option(100, "--max-paths", "-n", help="Maximum number of paths to return"),
+    bits: str = typer.Option(
+        None, "--bits",
+        help="[iter_309 P15] 位级端点: src_bit,dst_bit；位节点缺失时回落总线并标 coarse_fallback"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     evidence: bool = typer.Option(False, "--evidence", "-e", help="Include source evidence for each segment (optional)"),
@@ -146,9 +150,27 @@ def analyze(
         handle_compilation_error(e)
         return
 
+    try:
+        bit_list = parse_bits(bits)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=2) from None
+    if bit_list and len(bit_list) != 2:
+        typer.echo("Error: --bits 需要两个值（src_bit,dst_bit，示例 --bits 1,5）", err=True)
+        raise typer.Exit(code=2)
+    try:
+        src_info = normalize_endpoint(tracer.get_graph(), from_signal,
+                                      bit_list[0] if bit_list else None)
+        dst_info = normalize_endpoint(tracer.get_graph(), to_signal,
+                                      bit_list[1] if bit_list else None)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=2) from None
+    from_id, to_id = src_info["resolved"], dst_info["resolved"]
+
     dfg = DataFlowGraph(tracer._graph, tracer._module_graph)
     try:
-        result = dfg.analyze(from_signal, to_signal, max_paths=max_paths)
+        result = dfg.analyze(from_id, to_id, max_paths=max_paths)
     except ValueError as e:
         # [ADD 2026-06-11 Req-11] 信号名不存在的友好错误 (Issue 20)
         # ValueError 已含 hint 和 available signals, 不暴露 traceback
@@ -194,10 +216,16 @@ def analyze(
     data = {
         "ok": True,
         "command": "dataflow",
-        "params": {"from_signal": from_signal, "to_signal": to_signal, "file": str(file), "max_paths": max_paths, "evidence": evidence},
+        "params": {"from_signal": from_signal, "to_signal": to_signal, "bits": bits,
+                   "file": str(file), "max_paths": max_paths, "evidence": evidence},
         "result": {
             "from_signal": result.from_signal,
             "to_signal": result.to_signal,
+            "from_resolved": from_id,
+            "to_resolved": to_id,
+            "bits": {"src": src_info, "dst": dst_info,
+                     "coarse_fallback": bool(src_info["coarse_fallback"]
+                                             or dst_info["coarse_fallback"])},
             "is_reachable": result.is_reachable,
             "paths_count": result.paths_count,
             "intermediate_signals": sorted(result.intermediate_signals),

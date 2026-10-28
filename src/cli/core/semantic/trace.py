@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 # JSON 输出格式化函数
+from cli.core.semantic._bit_args import normalize_endpoint, parse_bits  # [iter_309 P15]
 from cli.core.semantic.trace_common import (
     attach_distances,  # noqa: E402
     _sanitize_trace_dot_id, _format_trace_label, _generate_trace_dot,
@@ -758,6 +759,10 @@ def impact(
     batch_file: str = typer.Option(None, "--batch-file", help="[B1 2026-07-03] Path to file with one signal per line (# comment, blank skipped)."),
     batch: str = typer.Option(None, "--batch", help="[B1 2026-07-03] Inline batch of signals, comma-separated (e.g., 'top.clk,top.rst_n')."),
     from_snapshot: str = typer.Option(None, "--from-snapshot", help="[B4 2026-07-03] Load graph from saved snapshot tag. Mutually exclusive with --file/--filelist."),
+    bits: str = typer.Option(
+        None, "--bits",
+        help="[iter_309 P15] 位级信号: 单个位索引（单信号）或逗号列表（batch，与 signals 对齐）；"
+             "位节点缺失时回落总线并标 coarse_fallback"),
     no_cache: bool = typer.Option(False, "--no-cache", help="[A1 2026-07-04] Disable AST cache (default: cache enabled for repeat invocations)."),
 ) -> None:
     """Analyze impact of changing a signal
@@ -794,6 +799,24 @@ def impact(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", preprocess_macros=preprocess_macros)
         graph = tracer.build_graph(use_cache=not no_cache)
 
+        # [iter_309 / PLAN P15] --bits 归一化（与 signals 对齐）
+        try:
+            _bits = parse_bits(bits)
+        except ValueError as e:
+            raise ValueError(str(e)) from None
+        if not _bits:
+            _bits = [None] * len(signals)
+        elif len(_bits) == 1 and len(signals) == 1:
+            pass
+        elif len(_bits) != len(signals):
+            raise ValueError(
+                f"--bits 数量 ({len(_bits)}) 与 signals 数量 ({len(signals)}) 不一致")
+        try:
+            _endpoints = [normalize_endpoint(graph, sig, _bits[i])
+                          for i, sig in enumerate(signals)]
+        except ValueError as e:
+            raise ValueError(str(e)) from None
+
         # 提取 SVA 和 Coverage 信息 (shared across batch)
         if filelist or from_snapshot:
             # [BUGFIX 2026-07-03] c.sources 是 dict (不是 callable!), 之前 .sources() 错
@@ -824,9 +847,11 @@ def impact(
         total_paths_all = 0
         total_high_risk_all = 0
         for i, sig in enumerate(signals):
+            ep = _endpoints[i]
+            resolved = ep["resolved"]
             try:
-                load_nodes = tracer.trace_fanout(sig, depth=None)
-                paths = _build_impact_paths(sig, load_nodes, graph, sva_signals, cov_signals, min_risk)
+                load_nodes = tracer.trace_fanout(resolved, depth=None)
+                paths = _build_impact_paths(resolved, load_nodes, graph, sva_signals, cov_signals, min_risk)
                 modules = _extract_modules(paths)
                 risk_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
                 paths.sort(key=lambda x: risk_order.get(x.get("risk", "LOW"), 2))
@@ -834,6 +859,10 @@ def impact(
                 signals_result.append({
                     "signal": sig,
                     "index": i,
+                    "resolved_signal": resolved,
+                    "requested_bit": ep["requested_bit"],
+                    "precision": ep["precision"],
+                    "coarse_fallback": ep["coarse_fallback"],
                     "total_paths": len(paths),
                     "high_risk_count": high_risk_count,
                     "modules": modules,
@@ -856,6 +885,10 @@ def impact(
                 signals_result.append({
                     "signal": sig,
                     "index": i,
+                    "resolved_signal": ep["resolved"],
+                    "requested_bit": ep["requested_bit"],
+                    "precision": ep["precision"],
+                    "coarse_fallback": ep["coarse_fallback"],
                     "total_paths": 0,
                     "high_risk_count": 0,
                     "modules": [],
@@ -865,7 +898,7 @@ def impact(
         data = {
             "ok": per_signal_errors == [],
             "command": "trace_impact",
-            "params": {"signals": signals, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
+            "params": {"signals": signals, "bits": bits, "file": str(file), "min_risk": min_risk, "batch_file": batch_file, "batch": batch, "from_snapshot": from_snapshot, "no_cache": no_cache},
             "result": {
                 # [iter_266] 显式标注风险分的模型, 避免消费方把启发式当成标定过的度量
                 "risk_model": "heuristic_v1 (未标定; 仅用于相对排序)",
