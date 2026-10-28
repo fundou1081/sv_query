@@ -91,7 +91,7 @@
 - 修法：输出加 `is_signed`/`parent`/`bit_range`（schema 版本 +1）。
 - 代价：小。
 
-**D3. 位级路径/影响分析**
+**D3. 位级路径/影响分析** —— ✅ 已修（iter_309 / P15：`--bits` 归一化，缺失回退总线+标记）
 - `paths`/`dataflow`/`impact` 是节点级；传位节点 id 可工作（实测 `a[1]→y[5]`），
   但没有 `--bits` 便捷入口，也不保证位节点存在（纯总线拷贝时）。
 - 修法：加 `--bits` 归一化（缺失则显式 `precision=bus`）；impact 支持位过滤。
