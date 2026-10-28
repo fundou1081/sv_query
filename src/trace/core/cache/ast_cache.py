@@ -60,7 +60,7 @@ def resolve_cache_dir(explicit: str | os.PathLike | None = None) -> Path:
 CACHE_DIR = resolve_cache_dir()
 
 # 缓存版本
-CACHE_VERSION = "1.6"  # [iter_310] 动态索引传播标记
+CACHE_VERSION = "1.7"  # [iter_311] 动态条件/控制传播
 
 # [iter_271] 缓存文件: gzip 压缩 + 总量上限 (LRU 淘汰)
 # 单工程图 JSON 可达 20MB, 压缩后通常 3~5MB。上限默认 1GB, 可用 SVQ_CACHE_MAX_MB 覆盖。
