@@ -143,3 +143,131 @@ class TestDeepDynamicProvenance:
         s = _run("fanin", "top.y", PARAM_COLLISION, tmp_path)
         assert s["dynamic_index"] is False
         assert s["precision"] == "bus"
+
+
+IF_COND = """
+module top(input clk, input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  always_ff @(posedge clk) begin
+    if (mem[i] > 0) y <= a; else y <= b;
+  end
+endmodule
+"""
+
+CASE_COND = """
+module top(input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  always_comb case (mem[i])
+    8'd0: y = a;
+    default: y = b;
+  endcase
+endmodule
+"""
+
+BIT_COND = """
+module top(input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  always_comb begin
+    if (mem[i][0]) y = a; else y = b;
+  end
+endmodule
+"""
+
+COMPUTED_COND = """
+module top(input clk, input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  logic [7:0] mem [0:3];
+  logic [7:0] t;
+  assign mem[1] = d;
+  assign t = mem[i];
+  always_ff @(posedge clk) begin
+    if (t > 0) y <= a; else y <= b;
+  end
+endmodule
+"""
+
+DYN_CLOCK = """
+module top(input [7:0] d, input [1:0] i, output reg [7:0] q);
+  logic [7:0] mem [0:3];
+  logic t;
+  assign mem[1] = d;
+  assign t = mem[i][0];
+  always_ff @(posedge t) q <= d;
+endmodule
+"""
+
+PARAM_COND = """
+module sub(input [7:0] P, output [7:0] q);
+  assign q = P;
+endmodule
+module top #(parameter int P = 4) (input [7:0] a,b, output reg [7:0] y);
+  logic [7:0] s;
+  sub u(.P(s), .q());
+  always_comb begin
+    if (a[P-1:0]) y = b; else y = a;
+  end
+endmodule
+"""
+
+STATIC_COND = """
+module top(input [7:0] a,b, input c, output reg [7:0] y);
+  always_comb begin
+    if (c) y = b; else y = a;
+  end
+endmodule
+"""
+
+
+class TestDynamicConditionPropagation:
+    """[iter_311 / PLAN P17] 动态索引出现在条件/时钟里也要向上传播。"""
+
+    def test_if_condition(self, tmp_path):
+        s = _run("fanin", "top.y", IF_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_case_condition(self, tmp_path):
+        s = _run("fanin", "top.y", CASE_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_bit_select_condition(self, tmp_path):
+        """`mem[i][0]` 在图上出现 mem[?] 占位，条件表达式仍是运行期。"""
+        s = _run("fanin", "top.y", BIT_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_computed_condition_signal(self, tmp_path):
+        """条件引用已动态派生的 t（t=mem[i]）→ y 也应 unknown。"""
+        s = _run("fanin", "top.y", COMPUTED_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_dynamic_clock(self, tmp_path):
+        s = _run("fanin", "top.q", DYN_CLOCK, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_dynamic_reset(self, tmp_path):
+        src = """
+module top(input clk, input [7:0] d, input [1:0] i, output reg [7:0] q);
+  logic [7:0] mem [0:3];
+  logic t;
+  assign mem[1] = d;
+  assign t = mem[i][0];
+  always_ff @(posedge clk or negedge t) q <= d;
+endmodule"""
+        s = _run("fanin", "top.q", src, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_parameter_condition_not_dynamic(self, tmp_path):
+        s = _run("fanin", "top.y", PARAM_COND, tmp_path)
+        assert s["dynamic_index"] is False
+
+    def test_static_condition_not_dynamic(self, tmp_path):
+        s = _run("fanin", "top.y", STATIC_COND, tmp_path)
+        assert s["dynamic_index"] is False
+        assert s["precision"] == "bus"

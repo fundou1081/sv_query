@@ -907,60 +907,85 @@ class GraphBuilder:
         # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
 
     def _mark_dynamic_provenance(self):
-        """[iter_310 / PLAN P16] 动态索引递归标注（节点级，沿数据流传播）。
+        """[iter_310/P16 + iter_311/P17] 动态索引递归标注（含条件依赖）。
 
-        - 种子：动态索引节点（`mem[i]`）与表达式含**运行期索引**的边目标
-        - 传播：沿 DRIVER/CONNECTION 边向下游（动态值派生出的信号也是 unknown）
-        - 结果：`node.extra["dynamic"] = True` + `graph._dynamic_nodes`
-
-        运行期索引判定：`[...]` 内的标识符能在图中解析为节点（`i`/`sel`）；
-        参数/常量表达式（`a[W-1:0]` 的 W 不是节点）不算动态（避免误报）。
+        种子：
+          - 动态索引节点（`mem[i]`）
+          - 表达式含运行期索引的边目标
+          - **条件**（edge.condition/effective_condition/condition_chain）含运行期索引的边目标
+        传播：
+          - 数据边 DRIVER/CONNECTION
+          - 分支/选择边 BRANCH_*/CASE_*（动态值作为 ?: 条件/选择子）
+          - **条件依赖**：边的条件引用了已标记 dynamic 的信号 → 目标也 dynamic
+        动态写（有 DRIVER 入射的 `mem[i]`）污染整个数组元素子树。
         """
         import re as _re
 
         brackets = _re.compile(r"\[([^\]]*)\]")
         ident = _re.compile(r"[A-Za-z_]\w*")
+        data_kinds = {"DRIVER", "CONNECTION"}
+        control_kinds = {"BRANCH_CONDITION", "BRANCH_TRUE", "BRANCH_FALSE",
+                         "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM", "CASE_RESULT",
+                         # 动态值当时钟/复位 → 下游时序行为运行期决定
+                         "CLOCK", "RESET"}
 
-        def runtime_index(expr: str, module: str) -> bool:
-            """`[...]` 内的标识符是否解析为**同 module** 的运行期节点。
+        def module_of(nid: str) -> str:
+            node = self.graph.get_node(nid)
+            return getattr(node, "module", "") if node is not None else ""
 
-            按 module 作用域解析（而不是全图短名），避免参数名与其它模块端口
-            同名时误报（实测：top 参数 P 与 top.u.P 端口 → 假动态）。
-            """
-            for m in brackets.finditer(expr or ""):
+        def runtime_index(text: str, module: str) -> bool:
+            """`[...]` 内的标识符是否解析为**同 module** 的运行期节点。"""
+            for m in brackets.finditer(text or ""):
                 for name in ident.findall(m.group(1)):
                     if module and f"{module}.{name}" in self.graph.nodes():
                         return True
             return False
 
-        def node_module(nid: str) -> str:
-            node = self.graph.get_node(nid)
-            return getattr(node, "module", "") if node is not None else ""
+        def node_refs(text: str, module: str) -> set[str]:
+            """条件文本里能解析为同 module 节点的标识符 → 节点 id。
+
+            `mem[i] > 0` → {mem, i}；`!(t)` → {t}；参数名（非节点）忽略。
+            """
+            refs = set()
+            for name in ident.findall(text or ""):
+                nid = f"{module}.{name}" if module else name
+                if nid in self.graph.nodes():
+                    refs.add(nid)
+            return refs
 
         def is_dynamic_id(nid: str) -> bool:
-            return runtime_index(nid, node_module(nid))
+            return runtime_index(nid, module_of(nid))
+
+        def cond_text(edge) -> str:
+            parts = [getattr(edge, "condition", "") or "",
+                     getattr(edge, "effective_condition", "") or ""]
+            parts.extend(getattr(edge, "condition_chain", []) or [])
+            return " ; ".join(p for p in parts if p)
 
         seeds = set()
+        cond_targets: dict[str, set[str]] = {}
         for nid in self.graph.nodes():
             if is_dynamic_id(nid):
                 seeds.add(nid)
         for (_src, dst), edges in list(self.graph._edge_data.items()):
+            dst_node = self.graph.get_node(dst)
+            module = getattr(dst_node, "module", "") if dst_node is not None else ""
             for e in edges:
-                if e.kind.name not in ("DRIVER", "CONNECTION"):
-                    continue
-                dst_node = self.graph.get_node(dst)
-                module = getattr(dst_node, "module", "") if dst_node is not None else ""
-                if runtime_index(getattr(e, "expression", "") or "", module):
+                expr = getattr(e, "expression", "") or ""
+                cond = cond_text(e)
+                if runtime_index(expr, module) or runtime_index(cond, module):
                     seeds.add(dst)
+                for ref in node_refs(cond, module):
+                    cond_targets.setdefault(ref, set()).add(dst)
 
-        # [iter_310 / PLAN P16] 动态**写**（d -> mem[i]）会污染整个数组：
-        # 标记数组基址与其所有已元素化子节点，避免静态读 mem[1] 被误判为精确。
+        # 动态**写**（d -> mem[i]）污染数组基址 + 整个元素子树
         children_by_parent: dict[str, list[str]] = {}
         for nid in self.graph.nodes():
             node = self.graph.get_node(nid)
             parent = getattr(node, "parent", None) if node is not None else None
             if parent:
                 children_by_parent.setdefault(parent, []).append(nid)
+
         def descendants(root: str) -> set[str]:
             out = set()
             stack = [root]
@@ -975,8 +1000,6 @@ class GraphBuilder:
         for nid in list(seeds):
             if not is_dynamic_id(nid):
                 continue
-            # 只有动态**写**（该节点有 DRIVER 入射）才污染整个数组；
-            # 动态读（mem[i] 仅作为读占位）只标记读取结果。
             has_write = any(
                 any(e.kind.name == "DRIVER" for e in self.graph.get_edges(pred, nid))
                 for pred in self.graph.predecessors(nid)
@@ -988,19 +1011,21 @@ class GraphBuilder:
                 seeds.add(base)
                 seeds.update(descendants(base))
 
-        # 沿数据流向下游传播（跳过 BIT_SELECT：位/成员聚合不是数据源）
-        frontier = list(seeds)
+        # 不动点传播：数据边 + 分支/选择边 + 条件依赖
         seen = set(seeds)
+        frontier = list(seeds)
         while frontier:
             cur = frontier.pop()
+            nxts = set()
             for succ in self.graph.successors(cur):
-                edge = self.graph.get_edge(cur, succ)
-                if edge is None or edge.kind.name not in ("DRIVER", "CONNECTION"):
-                    continue
-                if succ in seen:
-                    continue
-                seen.add(succ)
-                frontier.append(succ)
+                if any(e.kind.name in (data_kinds | control_kinds)
+                       for e in self.graph.get_edges(cur, succ)):
+                    nxts.add(succ)
+            nxts.update(cond_targets.get(cur, ()))
+            for nid in nxts:
+                if nid not in seen:
+                    seen.add(nid)
+                    frontier.append(nid)
 
         for nid in seen:
             node = self.graph.get_node(nid)
