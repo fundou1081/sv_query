@@ -297,7 +297,7 @@ BIT_PRECISION = {
         "node.precision": "bit | bus | constant",
         "signal.precision": "bit | bus | unknown",
         "signal.coarse_fallback": "true when a bit query mixes bit with bus/constant results",
-        "signal.dynamic_index": "true when the query involves a runtime index (mem[i]) -> precision=unknown",
+        "signal.dynamic_index": "true when runtime index (mem[i]) affects the query; propagated downstream (incl. dynamic writes) -> precision=unknown",
     },
     "notes": "precision markers describe granularity, not a proof of bit-exact dependency; "
              "coarse_fallback=true means the answer should be downgraded to bus level.",

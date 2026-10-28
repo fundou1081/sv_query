@@ -43,11 +43,11 @@
             "width_msb": 7
           }
         ],
-        "dynamic_index": false,
+        "dynamic_index": true,
         "index": 0,
         "multi_driver": false,
         "pre_filter_count": 1,
-        "precision": "bus",
+        "precision": "unknown",
         "signal": "uart_top.rx_data_o",
         "truncated": false
       },

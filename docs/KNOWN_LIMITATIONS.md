@@ -322,7 +322,8 @@ signal 级 `precision` + `coarse_fallback`）；`capabilities.bit_precision` 契
 （✅ iter_306 / P13.5）；多驱动/条件分支标记（`driver_count`/`multi_driver`/
 `conditional_drivers`）与**静态索引 memory 位精度**（`mem[1][3]`）已补
 （✅ iter_307 / P13.6）。动态 memory 索引**显式标注** `precision=unknown` +
-`dynamic_index=true`（✅ iter_308 / P14.1），不再伪装成总线精度。
+`dynamic_index=true`，并沿数据流**递归传播**（含 depth=1、动态写污染整个数组；
+✅ iter_308/P14.1 + iter_310/P16）。参数/常量索引不误报（同 module 作用域解析）。
 
 ## 已修复限制
 
