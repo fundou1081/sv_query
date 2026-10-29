@@ -198,3 +198,106 @@ class TestPackageFunctionCondition:
         s = _run("fanin", "top.y", FUNC_PACKAGE, tmp_path)
         assert s["precision"] == "unknown"
         assert s["function_call"] is True
+
+
+FUNC_MACRO_ALIAS = """
+`define FN f
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+  always_comb begin
+    if (`FN(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_MACRO_CALL = """
+`define CALL(x) f(x)
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+  always_comb begin
+    if (`CALL(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_MACRO_PASTE = """
+`define DECL(name) function automatic bit name(input [7:0] x); name = x[0]; endfunction
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  `DECL(f)
+  always_comb begin
+    if (f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_IFDEF = """
+`define USE_F
+module top(input [7:0] a,b,c, output reg [7:0] y);
+`ifdef USE_F
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+`else
+  function automatic bit g(input [7:0] x); g = x[0]; endfunction
+`endif
+  always_comb begin
+    if (f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_DPI = """
+import "DPI-C" function int f(input int x);
+module top(input int a,b,c, output reg [7:0] y);
+  always_comb begin
+    if (f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+
+class TestMacroAndExternalFunctions:
+    """[iter_316 / PLAN P20.1] 宏展开/令牌拼接/ifdef/DPI 函数条件。"""
+
+    def test_macro_alias(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_MACRO_ALIAS, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"
+
+    def test_macro_call_wrapper(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_MACRO_CALL, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"
+
+    def test_macro_token_paste_declaration(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_MACRO_PASTE, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"
+
+    def test_ifdef_selected_function(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_IFDEF, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"
+
+    def test_dpi_import_function(self, tmp_path):
+        """DPI 函数没有 module/package body；从 compilation unit 收集。"""
+        s = _run("fanin", "top.y", FUNC_DPI, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"
+
+
+FUNC_INTERFACE = """
+interface ifc(input [7:0] x);
+  function automatic bit f(input [7:0] v); f = v[0]; endfunction
+endinterface
+module top(ifc i, input [7:0] a,b,c, output reg [7:0] y);
+  always_comb begin
+    if (i.f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+
+class TestInterfaceFunctionCondition:
+    def test_interface_function_in_condition(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_INTERFACE, tmp_path)
+        assert s["function_call"] is True
+        assert s["precision"] == "unknown"

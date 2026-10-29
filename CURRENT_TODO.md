@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P19 完成；等待新需求/评审项）
+- **当前 item**: 无（P20 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18 状态**: ✅ 完成（iter_312~314）；**P19** 函数条件诚实标记 ✅（iter_315）
+- **P18 状态**: ✅（iter_312~314）；**P19** ✅（iter_315）；**P20** ✅（iter_316）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -127,6 +127,12 @@
 `if (f(a))` / `if (f(a) > 0)` / `f(a) ? b : c` / `case (f(a))` /
 `posedge f(a)` / package 函数：即使图上没有 `top.f` 结果节点，也标
 `function_call=true` + `precision=unknown`。新增 7 测试，全量 **2579 passed**。
+
+## ✅ 刚完成（P20，宏/动态拼接函数）
+
+宏 alias/包装/令牌拼接/ifdef/package/层次函数均已覆盖并加回归测试；
+补上 DPI import（`$unit`）与 interface 函数两个真缺口；系统函数有意不标。
+新增 6 测试，全量 **2585 passed**。
 
 ## 后续候选
 

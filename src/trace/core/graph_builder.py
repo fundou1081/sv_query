@@ -1131,25 +1131,39 @@ class GraphBuilder:
         # 条件文本只剩叶名 f，需要把 package 函数名也纳入已知集合。
         compilation = getattr(root, "compilation", None)
         get_packages = getattr(compilation, "getPackages", None)
-        if callable(get_packages):
-            def collect_from_visit(sym):
-                if type(sym).__name__ != "SubroutineSymbol":
-                    return
-                if "Function" not in str(getattr(sym, "subroutineKind", "")):
-                    return
-                path = str(getattr(sym, "hierarchicalPath", "") or "").strip()
-                if not path:
-                    return
-                leaf = function_leaf(path)
-                function_names.add(leaf)
-                if path in self.graph.nodes():
-                    seeds.add(path)
-                    function_nodes.add(path)
 
+        def collect_from_visit(sym):
+            if type(sym).__name__ != "SubroutineSymbol":
+                return
+            if "Function" not in str(getattr(sym, "subroutineKind", "")):
+                return
+            path = str(getattr(sym, "hierarchicalPath", "") or "").strip()
+            if not path:
+                return
+            leaf = function_leaf(path)
+            function_names.add(leaf)
+            if path in self.graph.nodes():
+                seeds.add(path)
+                function_nodes.add(path)
+
+        if callable(get_packages):
             for pkg in get_packages() or ():
                 visit = getattr(pkg, "visit", None)
                 if callable(visit):
                     visit(collect_from_visit)
+
+        # DPI import / `$unit` 作用域函数：不在 module body 或 package 里，
+        # 但条件里同样可能只剩叶名。遍历 compilation units 收集。
+        for cu in getattr(compilation, "getCompilationUnits", lambda: [])() or ():
+            visit = getattr(cu, "visit", None)
+            if callable(visit):
+                visit(collect_from_visit)
+
+        # interface/class 等更深作用域内的函数：root.visit 全量兜底
+        # （实测 verilog-axi 177k symbols 仅 +0.12s，相对建图可忽略）
+        visit_root = getattr(root, "visit", None)
+        if callable(visit_root):
+            visit_root(collect_from_visit)
 
         # 2) 边表达式兜底：package/外部函数等符号路径可能不是图节点 id。
         for (_src, dst), edges in list(self.graph._edge_data.items()):

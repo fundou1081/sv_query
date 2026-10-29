@@ -36,3 +36,8 @@ assign y = f(a) ? b : c;
 
 - P19.1 ✅ iter_315：if/case/ternary/clock/package 函数条件均标 function_call=true + unknown
 - P19.2 ✅ 全量 2579 passed / 0 failed；检查全绿；图缓存 v7
+
+
+## 后续（P20）
+
+宏/令牌拼接/ifdef 已核查通过；DPI/interface 函数条件在 iter_316 / P20.1 补齐。
