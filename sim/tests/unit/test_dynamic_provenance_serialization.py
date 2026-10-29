@@ -28,6 +28,22 @@ def test_dynamic_flags_survive_roundtrip():
     assert "top.y" in g2._dynamic_nodes
 
 
+def test_function_flags_survive_roundtrip():
+    t = UnifiedTracer(sources={"t.sv": """
+module top(input [7:0] a, output [7:0] y);
+  function automatic [7:0] f(input [7:0] x);
+    f = x;
+  endfunction
+  assign y = f(a);
+endmodule"""}, log_level="ERROR")
+    g = t.build_graph()
+    assert g.get_node("top.f").extra.get("function_call") is True
+    assert g.get_node("top.y").extra.get("function_call") is True
+    g2 = SignalGraph.from_dict(g.to_dict())
+    assert g2.get_node("top.f").extra.get("function_call") is True
+    assert "top.f" in g2._function_nodes
+
+
 def test_static_signal_not_marked():
     t = UnifiedTracer(sources={"t.sv": """
 module top(input [7:0] d, output [7:0] y);

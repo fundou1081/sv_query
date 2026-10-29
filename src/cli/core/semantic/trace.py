@@ -49,7 +49,7 @@ from cli.core.semantic.trace_common import (
     _collect_signals, _node_to_dict, _apply_filters, _load_tracer_from_snapshot,
     query_precision,  # [iter_303 P13.2]
     resolve_node_id, driver_stats,  # [iter_307 P13.6]
-    has_dynamic_index, node_is_dynamic,  # [iter_308 P14.1 / iter_310 P16]
+    has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
 )
 
 
@@ -399,7 +399,9 @@ def fanin(
                 _root_node = _g.get_node(_root) if _root else None
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(d.get("dynamic_index") for d in drivers))
-                if _dynamic:
+                _function = (node_is_function_call(_root_node)
+                             or any(d.get("function_call") for d in drivers))
+                if _dynamic or _function:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 drivers_pre = len(drivers)
@@ -430,6 +432,7 @@ def fanin(
                     "multi_driver": multi_driver,
                     "conditional_drivers": conditional_drivers,
                     "dynamic_index": _dynamic,
+                    "function_call": _function,
                 })
                 total_count += len(drivers)
                 total_pre_filter += drivers_pre
@@ -459,6 +462,7 @@ def fanin(
                     "multi_driver": False,
                     "conditional_drivers": False,
                     "dynamic_index": False,
+                    "function_call": False,
                 })
 
         data = {
@@ -619,7 +623,9 @@ def fanout(
                 _root_node = _g.get_node(_root) if _root else None
                 _dynamic = (node_is_dynamic(_root_node)
                             or any(x.get("dynamic_index") for x in loads))
-                if _dynamic:
+                _function = (node_is_function_call(_root_node)
+                             or any(x.get("function_call") for x in loads))
+                if _dynamic or _function:
                     precision = "unknown"
                 # [B2 2026-07-03] Apply 5 filters
                 loads_pre = len(loads)
@@ -646,6 +652,7 @@ def fanout(
                     "precision": precision,
                     "coarse_fallback": coarse_fallback,
                     "dynamic_index": _dynamic,
+                    "function_call": _function,
                 })
                 total_count += len(loads)
                 total_pre_filter += loads_pre
@@ -671,6 +678,7 @@ def fanout(
                     "precision": "unknown",
                     "coarse_fallback": False,
                     "dynamic_index": False,
+                    "function_call": False,
                 })
 
         data = {

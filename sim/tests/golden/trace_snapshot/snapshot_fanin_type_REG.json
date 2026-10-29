@@ -30,6 +30,7 @@
             "bit_range": null,
             "distance": 0,
             "dynamic_index": false,
+            "function_call": false,
             "id": "uart_top.rx_fifo.count_q",
             "is_signed": false,
             "kind": "REG",
@@ -42,6 +43,7 @@
           }
         ],
         "dynamic_index": false,
+        "function_call": false,
         "index": 0,
         "multi_driver": false,
         "pre_filter_count": 2,

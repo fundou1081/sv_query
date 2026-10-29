@@ -10,10 +10,10 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P18.2 函数调用诚实标记（进行中）
+- **当前 item**: P18.3 --bits 范围/显式映射（进行中）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
 - **P17 状态**: ✅ 完成（iter_311）；P18 按方豆排序：1 层次条件 → 2 函数诚实标记 → 3 bits 范围；4/5 不做
-  → P18.1 层次化条件作用域 ✅（iter_312）；P18.2 函数诚实标记进行中
+  → P18.1 层次条件 ✅（iter_312）；P18.2 函数诚实标记 ✅（iter_313）；P18.3 bits 范围进行中
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 

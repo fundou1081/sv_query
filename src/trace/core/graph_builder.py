@@ -173,6 +173,8 @@ class GraphBuilder:
         self._apply_packed_member_layout()
         # [iter_310 / PLAN P16] 动态索引传播必须在所有位/元素节点建好之后
         self._mark_dynamic_provenance()
+        # [iter_313 / PLAN P18.2] 函数调用诚实标记（不 inline）
+        self._mark_function_calls()
         return self.graph
 
     def _expand_slice_bit_nodes(self) -> None:
@@ -1080,6 +1082,100 @@ class GraphBuilder:
                 node.extra = {}
             node.extra["dynamic"] = True
         self.graph._dynamic_nodes = seen
+
+    def _mark_function_calls(self):
+        """[iter_313 / PLAN P18.2] 函数调用结果节点诚实标记（不 inline）。
+
+        函数调用在图上的形态：`a --(expr="f(a)")--> f --(expr="f")--> y`，
+        其中 `f` 是伪信号节点（SIGNAL，宽度可能拍成 1）。
+        这里标记调用结果节点 `extra["function_call"]=True`，并沿数据流/位子树传播，
+        让下游/位查询都得到 precision=unknown，而不是把 `f` 当普通总线。
+        """
+        import re as _re
+
+        call_re = _re.compile(r"^\s*([A-Za-z_]\w*)\s*\(")
+        seeds = set()
+
+        # 1) 语义符号：Function 的 hierarchicalPath 就是伪信号节点 id。
+        #    能覆盖无参调用（图上可能没有 "f()" 表达式边）。
+        def collect_functions(body, seen_scopes):
+            """遍历 SymbolBody：Function 符号 + 递归 InstanceSymbol 的 body。"""
+            if body is None or id(body) in seen_scopes:
+                return
+            seen_scopes.add(id(body))
+            for member in body or ():
+                kind_name = type(member).__name__
+                if kind_name == "SubroutineSymbol":
+                    if "Function" in str(getattr(member, "subroutineKind", "")):
+                        path = str(getattr(member, "hierarchicalPath", "") or "").strip()
+                        if path and path in self.graph.nodes():
+                            seeds.add(path)
+                elif kind_name == "InstanceSymbol":
+                    collect_functions(getattr(member, "body", None), seen_scopes)
+
+        root = getattr(self.adapter, "root", None)
+        for top in getattr(root, "topInstances", ()) or ():
+            collect_functions(getattr(top, "body", None), set())
+
+        # 2) 边表达式兜底：package/外部函数等符号路径可能不是图节点 id。
+        for (_src, dst), edges in list(self.graph._edge_data.items()):
+            node = self.graph.get_node(dst)
+            if node is None or node.kind.name != "SIGNAL":
+                continue
+            leaf = dst.rsplit(".", 1)[-1]
+            for e in edges:
+                if e.kind.name not in ("DRIVER", "CONNECTION"):
+                    continue
+                m = call_re.match(getattr(e, "expression", "") or "")
+                if m and m.group(1) == leaf:
+                    seeds.add(dst)
+                    break
+        if not seeds:
+            self.graph._function_nodes = set()
+            return
+
+        children_by_parent: dict[str, list[str]] = {}
+        for nid in self.graph.nodes():
+            node = self.graph.get_node(nid)
+            parent = getattr(node, "parent", None) if node is not None else None
+            if parent:
+                children_by_parent.setdefault(parent, []).append(nid)
+
+        def descendants(root: str) -> set[str]:
+            out = set()
+            stack = [root]
+            while stack:
+                cur = stack.pop()
+                for child in children_by_parent.get(cur, []):
+                    if child not in out:
+                        out.add(child)
+                        stack.append(child)
+            return out
+
+        data_kinds = {"DRIVER", "CONNECTION", "BRANCH_CONDITION", "BRANCH_TRUE",
+                      "BRANCH_FALSE", "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM",
+                      "CASE_RESULT"}
+        seen = set(seeds)
+        frontier = list(seeds)
+        while frontier:
+            cur = frontier.pop()
+            nxts = set(descendants(cur))
+            for succ in self.graph.successors(cur):
+                if any(e.kind.name in data_kinds for e in self.graph.get_edges(cur, succ)):
+                    nxts.add(succ)
+            for nid in nxts:
+                if nid not in seen:
+                    seen.add(nid)
+                    frontier.append(nid)
+
+        for nid in seen:
+            node = self.graph.get_node(nid)
+            if node is None:
+                continue
+            if node.extra is None:
+                node.extra = {}
+            node.extra["function_call"] = True
+        self.graph._function_nodes = seen
 
     def _fix_array_element_widths(self):
         """[iter_307 / PLAN P13.6] unpacked array 元素节点宽度回填。

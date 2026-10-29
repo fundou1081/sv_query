@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P18.2 函数调用诚实标记（function_call + precision=unknown，不做 inline） <进行中>
+> current item : P18.3 `--bits` 范围（3:0）与显式映射（src=1,dst=5） <进行中>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P18.2 函数调用诚实标记（function_call + precision=unknown，不做 inline） <进行中>
+current item : P18.3 `--bits` 范围（3:0）与显式映射（src=1,dst=5） <进行中>
 
 ## 计划树
 
@@ -77,8 +77,8 @@ P17 动态条件传播 <已完成>
 
 P18 可信性与测试入口补强（方豆 2026-10-29 排序：1→2→3，不做函数 inline/signed 逐位） <进行中>
 -- P18.1 层次化条件作用域解析（u.q → 实例路径/端口，修动态漏标） <已完成>
--- P18.2 函数调用诚实标记（function_call + precision=unknown，不做 inline） <进行中>
--- P18.3 `--bits` 范围（3:0）与显式映射（src=1,dst=5） <待做>
+-- P18.2 函数调用诚实标记（function_call + precision=unknown，不做 inline） <已完成>
+-- P18.3 `--bits` 范围（3:0）与显式映射（src=1,dst=5） <进行中>
 -- P18.4 全量测试与文档收尾 <待做>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
