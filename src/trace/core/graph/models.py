@@ -321,6 +321,8 @@ class SignalGraph(nx.DiGraph):
         self._gen_iter_map: dict[str, int] = {}
         # [iter_310 / PLAN P16] 动态索引传播标记（运行期决定 → unknown）
         self._dynamic_nodes: set[str] = set()
+        # [iter_313 / PLAN P18.2] 函数调用结果节点（诚实标记，不 inline）
+        self._function_nodes: set[str] = set()
 
     def add_trace_node(self, node: TraceNode) -> None:
         self._node_data[node.id] = node
@@ -613,6 +615,7 @@ class SignalGraph(nx.DiGraph):
             "edges": edges_data,
             # [REFACTOR 2026-08-07 A计划] 持久化表达式树/常量/函数信息
             "dynamic_nodes": sorted(self._dynamic_nodes),
+            "function_nodes": sorted(self._function_nodes),
             "expr_trees": dict(self._expr_trees),
             "const_map": dict(self._const_map),
             "func_info": dict(self._func_info),
@@ -671,6 +674,13 @@ class SignalGraph(nx.DiGraph):
             if node is not None:
                 node.extra["dynamic"] = True
                 graph._dynamic_nodes.add(nid)
+
+        # [iter_313 / PLAN P18.2] 恢复函数调用标记
+        for nid in data.get("function_nodes", []) or []:
+            node = graph.get_node(nid)
+            if node is not None:
+                node.extra["function_call"] = True
+                graph._function_nodes.add(nid)
 
         # 恢复边
         for edge_dict in data.get("edges", []):

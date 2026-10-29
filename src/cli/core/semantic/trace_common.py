@@ -203,6 +203,11 @@ _CONST_WIDTH_RE = re.compile(r"^-?(\d+)'[sS]?[bodhBODH][0-9a-fA-F_]+$")
 _DYNAMIC_INDEX_RE = re.compile(r"\[[^\]]*[A-Za-z_?][^\]]*\]$")
 
 
+def node_is_function_call(node) -> bool:
+    """[iter_313 / PLAN P18.2] 函数调用结果节点（图级标记）。"""
+    return bool((getattr(node, "extra", None) or {}).get("function_call"))
+
+
 def node_is_dynamic(node) -> bool:
     """[iter_310 / PLAN P16] 节点是否动态索引派生（图级传播标记或动态 id）。"""
     if node is None:
@@ -249,7 +254,7 @@ def node_precision(node) -> str:
     - 其余：总线/切片/成员聚合
     """
     nid = getattr(node, "id", "") or ""
-    if is_dynamic_index(nid):
+    if node_is_function_call(node) or is_dynamic_index(nid):
         return "unknown"
     if re.match(r"^1'b[01]$", nid):
         return "bit"
@@ -379,6 +384,8 @@ def _node_to_dict(node) -> dict:
         "bit_range": getattr(node, "bit_range", None),
         # [iter_308 / PLAN P14.1] 动态索引（运行期决定）
         "dynamic_index": node_is_dynamic(node),
+        # [iter_313 / PLAN P18.2] 函数调用结果（未 inline，仅诚实标记）
+        "function_call": node_is_function_call(node),
     }
 
 

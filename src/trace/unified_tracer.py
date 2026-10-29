@@ -213,7 +213,10 @@ class UnifiedTracer:
             _main_logger.debug("缓存 key 计算失败, 跳过缓存: %s", e)
             return None
         # [iter_302 / PLAN P13.1] 位桥模式影响图内容；不编进 key 会串模式（静默错误）
-        return f"{base}-v2-t{target_module or 'all'}-bb{self._bit_bridge_mode()}"
+        # [iter_313] 图缓存 schema/语义版本：节点 metadata（dynamic/function_call）
+        # 随版本变化，旧图缺标记会静默复用 → v3 显式失效一次。
+        return (f"{base}-v4-t{target_module or 'all'}"
+                f"-bb{self._bit_bridge_mode()}")
 
     def _graph_project_key(self) -> str | None:
         """[iter_287 / PLAN P3.2] 工程身份（只看路径）—— 供缓存按工程过期。"""
