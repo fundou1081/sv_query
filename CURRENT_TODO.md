@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P18 全部完成；等待新需求/评审项）
+- **当前 item**: 无（P19 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18 状态**: ✅ 全部完成（iter_312~314）：1 层次条件 → 2 函数诚实标记 → 3 bits 范围；4/5 按方豆决定不做
+- **P18 状态**: ✅ 完成（iter_312~314）；**P19** 函数条件诚实标记 ✅（iter_315）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -122,7 +122,13 @@
 
 **不做**：函数 inline（第 4 项）、有符号算术逐位（第 5 项）。
 
-## 🔥 下一项
+## ✅ 刚完成（P19，函数条件诚实标记）
+
+`if (f(a))` / `if (f(a) > 0)` / `f(a) ? b : c` / `case (f(a))` /
+`posedge f(a)` / package 函数：即使图上没有 `top.f` 结果节点，也标
+`function_call=true` + `precision=unknown`。新增 7 测试，全量 **2579 passed**。
+
+## 后续候选
 
 P0~P18 backlog 已清空。可选方向：
 - 函数 inline（需单独立项；当前只做诚实标记）

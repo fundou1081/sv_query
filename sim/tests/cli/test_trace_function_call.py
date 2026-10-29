@@ -84,3 +84,117 @@ class TestFunctionCallHonesty:
         s = _run("fanin", "top.y", STATIC, tmp_path)
         assert s["function_call"] is False
         assert s["precision"] == "bus"
+
+
+FUNC_IF = """
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+  always_comb begin
+    if (f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_IF_CMP = """
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  function automatic [7:0] f(input [7:0] x); f = x + 1; endfunction
+  always_comb begin
+    if (f(a) > 0) y = b; else y = c;
+  end
+endmodule
+"""
+
+FUNC_TERNARY = """
+module top(input [7:0] a,b,c, output [7:0] y);
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+  assign y = f(a) ? b : c;
+endmodule
+"""
+
+FUNC_CASE = """
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  function automatic [1:0] f(input [7:0] x); f = x[1:0]; endfunction
+  always_comb case (f(a))
+    2'd0: y = b;
+    default: y = c;
+  endcase
+endmodule
+"""
+
+FUNC_CLOCK = """
+module top(input [7:0] a,d, output reg [7:0] q);
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+  always_ff @(posedge f(a)) q <= d;
+endmodule
+"""
+
+FUNC_NAME_COLLISION = """
+module sub(input [7:0] x, output [7:0] q);
+  function automatic [7:0] f(input [7:0] v); f = v; endfunction
+  assign q = f(x);
+endmodule
+module top(input [7:0] f, output reg [7:0] y);
+  wire [7:0] w;
+  sub u(.x(f), .q(w));
+  always_comb begin
+    if (f) y = f; else y = 8'd0;
+  end
+endmodule
+"""
+
+
+class TestFunctionInCondition:
+    """[iter_315 / PLAN P19.1] 函数只在条件里、图上无结果节点也要标。"""
+
+    def test_if_condition(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_IF, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True
+        # 条件函数没有结果节点；drivers 只有 b/c
+        assert [x["id"] for x in s["drivers"]] == ["top.b", "top.c"]
+
+    def test_if_comparison(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_IF_CMP, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True
+
+    def test_ternary_condition(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_TERNARY, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True
+
+    def test_case_condition(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_CASE, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True
+
+    def test_function_as_clock(self, tmp_path):
+        s = _run("fanin", "top.q", FUNC_CLOCK, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True
+
+    def test_same_name_real_signal_not_misreported(self, tmp_path):
+        """其它 module 有函数 f；top 的 f 是真实输入信号 → 不误报。"""
+        s = _run("fanin", "top.y", FUNC_NAME_COLLISION, tmp_path)
+        assert s["function_call"] is False
+        assert s["precision"] == "bus"
+
+
+FUNC_PACKAGE = """
+package p;
+  function automatic bit f(input [7:0] x); f = x[0]; endfunction
+endpackage
+module top(input [7:0] a,b,c, output reg [7:0] y);
+  import p::*;
+  always_comb begin
+    if (f(a)) y = b; else y = c;
+  end
+endmodule
+"""
+
+
+class TestPackageFunctionCondition:
+    def test_package_function_in_condition(self, tmp_path):
+        s = _run("fanin", "top.y", FUNC_PACKAGE, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["function_call"] is True

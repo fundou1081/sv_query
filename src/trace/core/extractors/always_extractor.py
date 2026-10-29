@@ -113,6 +113,16 @@ def _extract_clock_from_event_ctrl(n, *, h: 'AlwaysHelpers') -> str:
             _cn = safe_symbol_name(sym)
             if _cn:
                 return _cn
+        # [iter_315 / PLAN P19.1] 函数调用当时钟表达式：f(a) → 函数名 f
+        # （后续 function_call 传播会标 q；不再直接丢弃 clock 边）
+        _kind = str(getattr(expr, "kind", ""))
+        if "Call" in _kind or "Invocation" in _kind:
+            sub = getattr(expr, "subroutine", None)
+            name = getattr(sub, "name", None) if sub is not None else None
+            if name is None:
+                name = getattr(expr, "subroutineName", None)
+            if name:
+                return str(name).strip()
         if hasattr(expr, "left") and hasattr(expr, "right"):
             left_res = find_clock(expr.left)
             return left_res if left_res else find_clock(expr.right)
