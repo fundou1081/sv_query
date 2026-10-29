@@ -907,51 +907,96 @@ class GraphBuilder:
         # print(f"[DEBUG] _collect_struct_members: {self._struct_members}")
 
     def _mark_dynamic_provenance(self):
-        """[iter_310/P16 + iter_311/P17] 动态索引递归标注（含条件依赖）。
+        """[iter_310/P16 + iter_311/P17 + iter_312/P18.1] 动态索引递归标注。
 
         种子：
           - 动态索引节点（`mem[i]`）
-          - 表达式含运行期索引的边目标
-          - **条件**（edge.condition/effective_condition/condition_chain）含运行期索引的边目标
+          - 表达式/条件含运行期索引的边目标（条件见 edge.condition/chain）
         传播：
-          - 数据边 DRIVER/CONNECTION
-          - 分支/选择边 BRANCH_*/CASE_*（动态值作为 ?: 条件/选择子）
-          - **条件依赖**：边的条件引用了已标记 dynamic 的信号 → 目标也 dynamic
-        动态写（有 DRIVER 入射的 `mem[i]`）污染整个数组元素子树。
+          - 数据边 DRIVER/CONNECTION；分支/选择 BRANCH_*/CASE_*；时钟/复位 CLOCK/RESET
+          - 条件引用了已标记 dynamic 的信号 → 目标也 dynamic
+          - 动态写（有 DRIVER 入射的 `mem[i]`）污染数组元素子树
+
+        [P18.1] 条件里的层次化引用（`u.q` / `u.sub.q` / `top.u.q`）按**实例路径**
+        解析到真实节点；参数/常量名不是节点，仍不误报。
         """
         import re as _re
 
         brackets = _re.compile(r"\[([^\]]*)\]")
+        hier = _re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+")
         ident = _re.compile(r"[A-Za-z_]\w*")
         data_kinds = {"DRIVER", "CONNECTION"}
         control_kinds = {"BRANCH_CONDITION", "BRANCH_TRUE", "BRANCH_FALSE",
                          "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM", "CASE_RESULT",
                          # 动态值当时钟/复位 → 下游时序行为运行期决定
                          "CLOCK", "RESET"}
+        graph_nodes = set(self.graph.nodes())
+        # [P18.1] 层次化引用退化时（深层 `u.u2.q` 被抽成 `q`）的候选索引
+        leaf_index: dict[str, list[str]] = {}
+        for nid in graph_nodes:
+            leaf_index.setdefault(nid.rsplit(".", 1)[-1], []).append(nid)
 
         def module_of(nid: str) -> str:
             node = self.graph.get_node(nid)
             return getattr(node, "module", "") if node is not None else ""
 
-        def runtime_index(text: str, module: str) -> bool:
-            """`[...]` 内的标识符是否解析为**同 module** 的运行期节点。"""
-            for m in brackets.finditer(text or ""):
-                for name in ident.findall(m.group(1)):
-                    if module and f"{module}.{name}" in self.graph.nodes():
-                        return True
-            return False
+        def resolve_ref(ref: str, module: str) -> str | None:
+            """标识符/层次路径 → 图中节点 id（相对当前 module 或绝对路径）。"""
+            if ref in graph_nodes:
+                return ref
+            if module:
+                candidate = f"{module}.{ref}"
+                if candidate in graph_nodes:
+                    return candidate
+            return None
 
-        def node_refs(text: str, module: str) -> set[str]:
-            """条件文本里能解析为同 module 节点的标识符 → 节点 id。
+        def descendant_refs(name: str, module: str) -> set[str]:
+            """[P18.1] 同 module 下叶名匹配的后代节点（层次引用退化兜底）。
 
-            `mem[i] > 0` → {mem, i}；`!(t)` → {t}；参数名（非节点）忽略。
+            例如深层 `u.u2.q` 在条件字符串里退化成 `q`，用叶名 `q` 找回
+            `top.u.q`/`top.u.u2.q`；参数名不在图里，仍解析不到。
             """
-            refs = set()
-            for name in ident.findall(text or ""):
-                nid = f"{module}.{name}" if module else name
-                if nid in self.graph.nodes():
-                    refs.add(nid)
+            out = set()
+            for cand in leaf_index.get(name, ()):
+                if module and not cand.startswith(module + "."):
+                    continue
+                out.add(cand)
+            return out
+
+        def node_refs(text: str, module: str,
+                      allow_descendant: bool = True) -> set[str]:
+            """文本里能解析为节点的标识符/层次路径。
+
+            `u.q > 0` → {top.u.q}；`mem[i]` → {top.mem, top.i}；
+            参数名（树里没有节点）忽略。简单名解析失败且不在 `[...]` 内时，
+            回退到同 module 下同叶名的后代（仅条件文本）。
+            """
+            raw = text or ""
+            refs: set[str] = set()
+            hier_spans: list[tuple[int, int]] = []
+            bracket_spans = [m.span() for m in brackets.finditer(raw)]
+            for m in hier.finditer(raw):
+                hier_spans.append(m.span())
+                resolved = resolve_ref(m.group(0), module)
+                if resolved:
+                    refs.add(resolved)
+            for m in ident.finditer(raw):
+                pos = m.start()
+                if any(a <= pos < b for a, b in hier_spans):
+                    continue
+                resolved = resolve_ref(m.group(0), module)
+                if resolved:
+                    refs.add(resolved)
+                elif allow_descendant and not any(a <= pos < b for a, b in bracket_spans):
+                    refs.update(descendant_refs(m.group(0), module))
             return refs
+
+        def runtime_index(text: str, module: str) -> bool:
+            """`[...]` 内是否含解析为节点的运行期标识符（含层次路径）。"""
+            for m in brackets.finditer(text or ""):
+                if node_refs(m.group(1), module, allow_descendant=False):
+                    return True
+            return False
 
         def is_dynamic_id(nid: str) -> bool:
             return runtime_index(nid, module_of(nid))
@@ -1007,11 +1052,11 @@ class GraphBuilder:
             if not has_write:
                 continue
             base = nid.rsplit("[", 1)[0]
-            if base in self.graph.nodes():
+            if base in graph_nodes:
                 seeds.add(base)
                 seeds.update(descendants(base))
 
-        # 不动点传播：数据边 + 分支/选择边 + 条件依赖
+        # 不动点传播：数据边 + 分支/选择/时钟/复位 + 条件依赖
         seen = set(seeds)
         frontier = list(seeds)
         while frontier:

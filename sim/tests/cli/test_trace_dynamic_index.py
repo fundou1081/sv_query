@@ -271,3 +271,71 @@ endmodule"""
         s = _run("fanin", "top.y", STATIC_COND, tmp_path)
         assert s["dynamic_index"] is False
         assert s["precision"] == "bus"
+
+
+HIER_COND = """
+module sub(input [1:0] i, input [7:0] d, output [7:0] q);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  assign q = mem[i];
+endmodule
+module top(input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  wire [7:0] w;
+  sub u(.i(i), .d(d), .q(w));
+  always_comb begin
+    if (u.q > 0) y = a; else y = b;
+  end
+endmodule
+"""
+
+DEEP_HIER_COND = """
+module leaf(input [1:0] i, input [7:0] d, output [7:0] q);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  assign q = mem[i];
+endmodule
+module mid(input [1:0] i, input [7:0] d, output [7:0] q);
+  leaf u2(.i(i), .d(d), .q(q));
+endmodule
+module top(input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  wire [7:0] w;
+  mid u(.i(i), .d(d), .q(w));
+  always_comb begin
+    if (u.u2.q > 0) y = a; else y = b;
+  end
+endmodule
+"""
+
+ABS_HIER_COND = """
+module sub(input [1:0] i, input [7:0] d, output [7:0] q);
+  logic [7:0] mem [0:3];
+  assign mem[1] = d;
+  assign q = mem[i];
+endmodule
+module top(input [7:0] a,b,d, input [1:0] i, output reg [7:0] y);
+  wire [7:0] w;
+  sub u(.i(i), .d(d), .q(w));
+  always_comb begin
+    if (top.u.q > 0) y = a; else y = b;
+  end
+endmodule
+"""
+
+
+class TestHierarchicalConditionScope:
+    """[iter_312 / PLAN P18.1] 条件里的层次化引用（u.q）要解析到实例节点。"""
+
+    def test_instance_port_condition(self, tmp_path):
+        s = _run("fanin", "top.y", HIER_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_deep_hierarchy_condition(self, tmp_path):
+        s = _run("fanin", "top.y", DEEP_HIER_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
+
+    def test_absolute_hierarchy_condition(self, tmp_path):
+        s = _run("fanin", "top.y", ABS_HIER_COND, tmp_path)
+        assert s["precision"] == "unknown"
+        assert s["dynamic_index"] is True
