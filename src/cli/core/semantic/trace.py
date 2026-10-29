@@ -811,18 +811,24 @@ def impact(
             tracer = UnifiedTracer(sources={str(file): source}, log_level="ERROR", preprocess_macros=preprocess_macros)
         graph = tracer.build_graph(use_cache=not no_cache)
 
-        # [iter_309 / PLAN P15] --bits 归一化（与 signals 对齐）
+        # [iter_309/P15 + iter_314/P18.3] --bits 归一化（与 signals 对齐）
         try:
-            _bits = parse_bits(bits)
+            _spec = parse_bits(bits, names=("signal",))
         except ValueError as e:
             raise ValueError(str(e)) from None
-        if not _bits:
-            _bits = [None] * len(signals)
-        elif len(_bits) == 1 and len(signals) == 1:
-            pass
-        elif len(_bits) != len(signals):
-            raise ValueError(
-                f"--bits 数量 ({len(_bits)}) 与 signals 数量 ({len(signals)}) 不一致")
+        if _spec.named:
+            if len(signals) != 1:
+                raise ValueError("--bits signal=<...> 只适用于单个 signal")
+            _bits = [_spec.named["signal"]]
+        else:
+            _bits = list(_spec.positional)
+            if not _bits:
+                _bits = [None] * len(signals)
+            elif len(_bits) == 1 and len(signals) == 1:
+                pass
+            elif len(_bits) != len(signals):
+                raise ValueError(
+                    f"--bits 数量 ({len(_bits)}) 与 signals 数量 ({len(signals)}) 不一致")
         try:
             _endpoints = [normalize_endpoint(graph, sig, _bits[i])
                           for i, sig in enumerate(signals)]

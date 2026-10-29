@@ -18,6 +18,12 @@ module top(input [7:0] a, output [7:0] y);
 endmodule
 """
 
+SLICE_BOTH = """
+module top(input [7:0] a, output [7:0] y);
+  assign y[7:4] = a[7:4];
+endmodule
+"""
+
 
 def _run(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(["sv_query", *args], capture_output=True, text=True,
@@ -96,3 +102,74 @@ class TestImpactBits:
         sigs = d["result"]["signals"]
         assert [s["resolved_signal"] for s in sigs] == ["top.a[1]", "top.y[5]"]
         assert all(s["precision"] == "bit" for s in sigs)
+
+
+class TestBitRangesAndMapping:
+    """[iter_314 / PLAN P18.3] 范围（7:4）与显式映射（src=1,dst=5）。"""
+
+    def test_paths_range_precise(self, tmp_path):
+        p = tmp_path / "t.sv"
+        p.write_text(SLICE_BOTH)
+        d = _json(_run(["paths", "top.a", "top.y", "--bits", "7:4,7:4",
+                        "--directed", "--file", str(p), "--json"]))
+        assert d["src_resolved"] == "top.a[7:4]"
+        assert d["dst_resolved"] == "top.y[7:4]"
+        assert d["bits"]["src"]["precision"] == "bus"
+        assert d["bits"]["src"]["requested_range"] == "7:4"
+        assert d["bits"]["coarse_fallback"] is False
+        assert d["found"] is True
+
+    def test_paths_explicit_mapping(self, tmp_path):
+        d = _json(_run(["paths", "top.a", "top.y", "--bits", "src=1,dst=5",
+                        "--directed", "--file", _file(tmp_path), "--json"]))
+        assert d["src_resolved"] == "top.a[1]"
+        assert d["dst_resolved"] == "top.y[5]"
+        assert d["bits"]["src"]["precision"] == "bit"
+
+    def test_paths_explicit_range(self, tmp_path):
+        p = tmp_path / "t.sv"
+        p.write_text(SLICE_BOTH)
+        d = _json(_run(["paths", "top.a", "top.y",
+                        "--bits", "src=7:4,dst=7:4",
+                        "--directed", "--file", str(p), "--json"]))
+        assert d["src_resolved"] == "top.a[7:4]"
+        assert d["dst_resolved"] == "top.y[7:4]"
+
+    def test_paths_range_fallback(self, tmp_path):
+        d = _json(_run(["paths", "top.a", "top.y", "--bits", "3:0,3:0",
+                        "--directed", "--file", _file(tmp_path), "--json"]))
+        assert d["src_resolved"] == "top.a"
+        assert d["dst_resolved"] == "top.y"
+        assert d["bits"]["coarse_fallback"] is True
+
+    def test_paths_explicit_missing_endpoint_fails(self, tmp_path):
+        r = _run(["paths", "top.a", "top.y", "--bits", "src=1",
+                  "--file", _file(tmp_path), "--json"])
+        assert r.returncode != 0
+
+    def test_paths_mixed_forms_fails(self, tmp_path):
+        r = _run(["paths", "top.a", "top.y", "--bits", "src=1,5",
+                  "--file", _file(tmp_path), "--json"])
+        assert r.returncode != 0
+
+    def test_dataflow_range(self, tmp_path):
+        p = tmp_path / "t.sv"
+        p.write_text(SLICE_BOTH)
+        d = _json(_run(["dataflow", "analyze", "top.a", "top.y",
+                        "--bits", "7:4,7:4", "--file", str(p), "--json"]))
+        r = d["result"]
+        assert r["from_resolved"] == "top.a[7:4]"
+        assert r["to_resolved"] == "top.y[7:4]"
+        assert r["bits"]["src"]["requested_range"] == "7:4"
+        assert r["is_reachable"] is True
+
+    def test_impact_range(self, tmp_path):
+        p = tmp_path / "t.sv"
+        p.write_text(SLICE_BOTH)
+        d = _json(_run(["trace", "impact", "top.a", "--bits", "7:4",
+                        "--file", str(p), "--json", "--no-cache"]))
+        s = d["result"]["signals"][0]
+        assert s["resolved_signal"] == "top.a[7:4]"
+        assert s["precision"] == "bus"
+        assert s["coarse_fallback"] is False
+        assert s["total_paths"] >= 1
