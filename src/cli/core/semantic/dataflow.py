@@ -151,18 +151,11 @@ def analyze(
         return
 
     try:
-        bit_list = parse_bits(bits)
-    except ValueError as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=2) from None
-    if bit_list and len(bit_list) != 2:
-        typer.echo("Error: --bits 需要两个值（src_bit,dst_bit，示例 --bits 1,5）", err=True)
-        raise typer.Exit(code=2)
-    try:
-        src_info = normalize_endpoint(tracer.get_graph(), from_signal,
-                                      bit_list[0] if bit_list else None)
-        dst_info = normalize_endpoint(tracer.get_graph(), to_signal,
-                                      bit_list[1] if bit_list else None)
+        spec = parse_bits(bits, names=("src", "dst"))
+        if not spec.named and spec.positional and len(spec.positional) != 2:
+            raise ValueError("--bits 需要两个值（src,dst；示例 --bits 1,5 或 7:4,3:0）")
+        src_info = normalize_endpoint(tracer.get_graph(), from_signal, spec.get(0, "src"))
+        dst_info = normalize_endpoint(tracer.get_graph(), to_signal, spec.get(1, "dst"))
     except ValueError as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=2) from None

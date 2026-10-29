@@ -37,3 +37,11 @@
 
 - 函数 inline：`SubroutineExpander` 保持未接入；只做诚实标记
 - 有符号算术逐位：保持总线粒度 + `coarse_fallback`
+
+
+## 完成记录（2026-10-29）
+
+- P18.1 ✅ iter_312（2558 passed）
+- P18.2 ✅ iter_313（2564 passed）
+- P18.3 ✅ iter_314（2572 passed）
+- P18.4 ✅ 全量 2572 passed / 0 failed；四检查 + gen_cli_surface 全绿

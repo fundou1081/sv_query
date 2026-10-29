@@ -56,25 +56,19 @@ def paths_cmd(
 
     graph = tracer.get_graph()
     try:
-        bit_list = parse_bits(bits)
-    except ValueError as e:
-        fail(str(e), json_output, pretty)
-        return
-    if bit_list and len(bit_list) != 2:
-        fail("--bits 需要两个值（src_bit,dst_bit，示例 --bits 1,5）", json_output, pretty)
-        return
-    try:
-        src_info = normalize_endpoint(graph, src, bit_list[0] if bit_list else None)
-        dst_info = normalize_endpoint(graph, dst, bit_list[1] if bit_list else None)
+        spec = parse_bits(bits, names=("src", "dst"))
+        if not spec.named and spec.positional and len(spec.positional) != 2:
+            raise ValueError("--bits 需要两个值（src,dst；示例 --bits 1,5 或 7:4,3:0）")
+        src_info = normalize_endpoint(graph, src, spec.get(0, "src"))
+        dst_info = normalize_endpoint(graph, dst, spec.get(1, "dst"))
     except ValueError as e:
         fail(str(e), json_output, pretty)
         return
     src_id, dst_id = src_info["resolved"], dst_info["resolved"]
     bit_info = {"src": src_info, "dst": dst_info}
     coarse = bool(src_info["coarse_fallback"] or dst_info["coarse_fallback"])
-    if coarse:
-        # 位节点缺失 → 总线结果，显式告知调用方（不静默）
-        bit_info["coarse_fallback"] = True
+    # 位/范围节点缺失 → 总线结果，显式告知调用方（不静默）
+    bit_info["coarse_fallback"] = coarse
 
     known = set(graph.nodes()) if graph is not None else set()
     unknown = [x for x in (src_id, dst_id) if x not in known]
