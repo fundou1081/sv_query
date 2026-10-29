@@ -263,6 +263,15 @@ def get_signal(
         if ident:
             val = getattr(ident, "value", None) or str(ident)
             return str(val).strip()
+    # Call/Invocation: 返回函数名（条件/表达式文本用；参数由调用方另行提取）
+    if "Call" in sk or "Invocation" in sk:
+        sub = getattr(signal, "subroutine", None)
+        name = safe_attr(sub, "name", None) if sub is not None else None
+        if name is None:
+            name = getattr(signal, "subroutineName", None)
+        if name:
+            return str(name).strip()
+
     # BinaryOp: 递归展开为 "left op right" — 保留操作符
     if "BinaryOp" in sk:
         left = getattr(signal, "left", None)

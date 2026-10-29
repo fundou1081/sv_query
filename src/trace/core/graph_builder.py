@@ -1095,6 +1095,12 @@ class GraphBuilder:
 
         call_re = _re.compile(r"^\s*([A-Za-z_]\w*)\s*\(")
         seeds = set()
+        function_names: set[str] = set()
+        function_nodes: set[str] = set()
+
+        def function_leaf(path: str) -> str:
+            leaf = path.rsplit(".", 1)[-1]
+            return leaf.rsplit("::", 1)[-1]
 
         # 1) 语义符号：Function 的 hierarchicalPath 就是伪信号节点 id。
         #    能覆盖无参调用（图上可能没有 "f()" 表达式边）。
@@ -1108,14 +1114,42 @@ class GraphBuilder:
                 if kind_name == "SubroutineSymbol":
                     if "Function" in str(getattr(member, "subroutineKind", "")):
                         path = str(getattr(member, "hierarchicalPath", "") or "").strip()
-                        if path and path in self.graph.nodes():
-                            seeds.add(path)
+                        if path:
+                            leaf = function_leaf(path)
+                            function_names.add(leaf)
+                            if path in self.graph.nodes():
+                                seeds.add(path)
+                                function_nodes.add(path)
                 elif kind_name == "InstanceSymbol":
                     collect_functions(getattr(member, "body", None), seen_scopes)
 
         root = getattr(self.adapter, "root", None)
         for top in getattr(root, "topInstances", ()) or ():
             collect_functions(getattr(top, "body", None), set())
+
+        # package 内函数（`p::f` / import p::*）不在 module body 里；
+        # 条件文本只剩叶名 f，需要把 package 函数名也纳入已知集合。
+        compilation = getattr(root, "compilation", None)
+        get_packages = getattr(compilation, "getPackages", None)
+        if callable(get_packages):
+            def collect_from_visit(sym):
+                if type(sym).__name__ != "SubroutineSymbol":
+                    return
+                if "Function" not in str(getattr(sym, "subroutineKind", "")):
+                    return
+                path = str(getattr(sym, "hierarchicalPath", "") or "").strip()
+                if not path:
+                    return
+                leaf = function_leaf(path)
+                function_names.add(leaf)
+                if path in self.graph.nodes():
+                    seeds.add(path)
+                    function_nodes.add(path)
+
+            for pkg in get_packages() or ():
+                visit = getattr(pkg, "visit", None)
+                if callable(visit):
+                    visit(collect_from_visit)
 
         # 2) 边表达式兜底：package/外部函数等符号路径可能不是图节点 id。
         for (_src, dst), edges in list(self.graph._edge_data.items()):
@@ -1130,6 +1164,35 @@ class GraphBuilder:
                 if m and m.group(1) == leaf:
                     seeds.add(dst)
                     break
+        # 3) 函数只出现在条件里（图上可能没有结果节点）：条件文本含函数名 → 目标标记。
+        if function_names:
+            name_res = [
+                (_re.compile(rf"(?<![\w$]){_re.escape(n)}(?![\w])"), n)
+                for n in sorted(function_names, key=len, reverse=True)
+            ]
+            for (_src, dst), edges in list(self.graph._edge_data.items()):
+                dst_node = self.graph.get_node(dst)
+                if dst_node is None:
+                    continue
+                module = getattr(dst_node, "module", "") or ""
+                for e in edges:
+                    parts = [getattr(e, "condition", "") or "",
+                             getattr(e, "effective_condition", "") or ""]
+                    parts.extend(getattr(e, "condition_chain", []) or [])
+                    cond = " ; ".join(p for p in parts if p)
+                    if not cond:
+                        continue
+                    matched = next((n for rx, n in name_res if rx.search(cond)), None)
+                    if matched is None:
+                        continue
+                    local_id = f"{module}.{matched}" if module else matched
+                    local = self.graph.get_node(local_id)
+                    if (local is not None and local_id not in function_nodes
+                            and not (local.extra or {}).get("function_call")):
+                        continue  # 同 module 有同名真实信号 → 不误报
+                    seeds.add(dst)
+                    break
+
         if not seeds:
             self.graph._function_nodes = set()
             return
@@ -1154,7 +1217,9 @@ class GraphBuilder:
 
         data_kinds = {"DRIVER", "CONNECTION", "BRANCH_CONDITION", "BRANCH_TRUE",
                       "BRANCH_FALSE", "BRANCH_RESULT", "CASE_SELECT", "CASE_ITEM",
-                      "CASE_RESULT"}
+                      "CASE_RESULT",
+                      # 函数结果当时钟/复位 → 下游时序行为运行期决定
+                      "CLOCK", "RESET"}
         seen = set(seeds)
         frontier = list(seeds)
         while frontier:

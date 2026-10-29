@@ -108,7 +108,8 @@
 - 变量移位 / 动态 part-select / 动态 memory 索引：运行期决定；动态 memory 索引已显式
   `precision=unknown` + `dynamic_index=true`（✅ iter_308 / P14.1），不做求解。
 - 函数调用返回值：不 inline（方豆 2026-10-29 决定）；已做诚实标记
-  `function_call=true` + `precision=unknown`（✅ iter_313 / P18.2）。
+  `function_call=true` + `precision=unknown`（✅ iter_313/P18.2；条件/时钟/package 函数
+  ✅ iter_315/P19.1）。
 - `SVQ_BIT_BRIDGE=full` 超过 30000 新节点会部分展开（warning）；建议加 `graph_complete` 标记。
 - 有符号算术/比较语义：位依赖规则不变，暂不建模。
 - integer 算术逐位（进位链）：按方豆决定暂不做。
