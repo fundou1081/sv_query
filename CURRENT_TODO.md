@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P22.1 fanin/fanout 条件输出（进行中）
+- **当前 item**: 无（P22 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18** ✅ P19 ✅ P20 ✅；**P21** 真实工程 smoke ✅（iter_317）；P22 fanin/fanout 条件输出 → 进行中
+- **P18** ✅ P19 ✅ P20 ✅；**P21** 真实工程 smoke ✅（iter_317）；**P22** 条件输出 ✅（iter_318）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -134,11 +134,15 @@
 补上 DPI import（`$unit`）与 interface 函数两个真缺口；系统函数有意不标。
 新增 6 测试，全量 **2585 passed**。
 
-## 🔥 当前任务（P21→P22）
+## ✅ 刚完成（P21→P22）
 
-方豆: "先1 后2"。
-1. 真实工程 smoke（strict_uart / verilog-axi / picorv32）：构建、查询、精度标记、缓存复用。
-2. fanin/fanout 输出条件（per-driver condition / conditions 列表）。
+1. **P21 真实工程 smoke** ✅（iter_317）：strict_uart / verilog-axi / picorv32
+   构建+查询+缓存标记验证；新增 smoke 工具与仓库内回归测试。
+2. **P22 条件输出** ✅（iter_318）：fanin/fanout 输出每个结果节点的
+   `condition`/`conditions`，signal 级 `conditions`；无条件字段为空；
+   嵌套条件/ternary 测试覆盖。
+
+全量 **2591 passed**。
 
 ## 后续候选
 
