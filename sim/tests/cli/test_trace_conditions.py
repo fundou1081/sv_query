@@ -91,3 +91,35 @@ class TestTraceConditions:
         assert s["conditions"] == []
         assert s["drivers"][0]["condition"] == ""
         assert s["drivers"][0]["conditions"] == []
+
+
+PATH_CHAIN = """
+module top(input c1, c2, input [7:0] a,d, output [7:0] y);
+  reg [7:0] t;
+  always_comb if (c1) t = a; else t = 8'd0;
+  assign y = c2 ? t : d;
+endmodule
+"""
+
+
+class TestPathConditionComposition:
+    """[iter_319 / PLAN P23.1] depth>1 沿最短路径组合条件。"""
+
+    def test_deep_fanin_composes(self, tmp_path):
+        s = _run("fanin", "top.y", PATH_CHAIN, tmp_path)
+        a = next(d for d in s["drivers"] if d["id"] == "top.a")
+        assert a["condition"] == "(c1) && (c2)"
+        assert a["condition_path"] == ["c1", "c2"]
+        assert a["conditions"] == ["(c1) && (c2)"]
+
+    def test_deep_fanout_composes(self, tmp_path):
+        s = _run("fanout", "top.a", PATH_CHAIN, tmp_path)
+        y = next(d for d in s["loads"] if d["id"] == "top.y")
+        assert y["condition"] == "(c1) && (c2)"
+        assert y["condition_path"] == ["c1", "c2"]
+
+    def test_direct_still_uses_direct_condition(self, tmp_path):
+        s = _run("fanin", "top.y", PATH_CHAIN, tmp_path)
+        d = next(d for d in s["drivers"] if d["id"] == "top.d")
+        assert d["condition"] == "!(c2)"
+        assert d["conditions"] == ["!(c2)"]

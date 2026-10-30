@@ -357,46 +357,129 @@ def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
 
 def _edge_condition_text(edge) -> str:
     """[iter_318 / PLAN P22.1] 单条边的条件文本（优先 condition，退化 chain/effective）。"""
+    chain = getattr(edge, "condition_chain", None) or []
+    parts = [c.strip() for c in chain if c and c.strip()]
+    if len(parts) > 1:
+        # [iter_319] 嵌套 if/ternary: condition 只存最外层，chain 才是完整条件
+        return " && ".join(parts)
     text = (getattr(edge, "condition", "") or "").strip()
     if text:
         return text
-    chain = getattr(edge, "condition_chain", None) or []
-    parts = [c.strip() for c in chain if c and c.strip()]
     if parts:
-        return " && ".join(parts)
+        return parts[0]
     return (getattr(edge, "effective_condition", "") or "").strip()
+
+
+def _build_condition_paths(graph, root: str, reverse: bool) -> dict:
+    """[iter_319 / PLAN P23.1] 从查询根做一次 BFS，记录最短路径上的边。
+
+    reverse=True (fanin): root 反向遍历 predecessors；prev[node] = (closer_root, edge)
+    reverse=False (fanout): root 正向遍历 successors；prev[node] = (closer_root, edge)
+    只走 DRIVER/CONNECTION（与默认 fanin/fanout 遍历一致）；BIT_SELECT 跳过。
+    """
+    from collections import deque
+
+    allowed = {"DRIVER", "CONNECTION"}
+    prev: dict[str, tuple[str, object]] = {}
+    seen = {root}
+    queue = deque([root])
+    while queue:
+        cur = queue.popleft()
+        neighbors = (graph.predecessors(cur) if reverse
+                     else graph.successors(cur))
+        for other in neighbors:
+            if other in seen:
+                continue
+            edges = (graph.get_edges(other, cur) if reverse
+                     else graph.get_edges(cur, other))
+            edge = next((e for e in edges
+                         if getattr(e.kind, "name", "") in allowed), None)
+            if edge is None:
+                continue
+            seen.add(other)
+            prev[other] = (cur, edge)
+            queue.append(other)
+    return prev
+
+
+def _compose_path_condition(prev: dict, node: str, root: str,
+                            reverse: bool) -> tuple[str, list[str]]:
+    """沿 BFS 最短路径组合条件：raw 列表 + `(c1) && (c2)` 文本。"""
+    if node == root:
+        return "", []
+    conds: list[str] = []
+    cur = node
+    while cur != root:
+        item = prev.get(cur)
+        if item is None:
+            return "", []
+        parent, edge = item
+        text = _edge_condition_text(edge)
+        if text:
+            conds.append(text)
+        cur = parent
+    ordered = conds if reverse else list(reversed(conds))
+    if not ordered:
+        return "", []
+    combined = " && ".join(f"({c})" if len(ordered) > 1 else c for c in ordered)
+    return combined, ordered
 
 
 def attach_edge_conditions(graph, items: list[dict], endpoints: list[str | None],
                            reverse: bool) -> list[str]:
-    """给 fanin/fanout 结果补 `condition`/`conditions`，返回 signal 级条件并集。
+    """给 fanin/fanout 结果补条件，返回 signal 级条件并集。
 
-    - fanin (`reverse=True`): edge 从结果节点 → 查询端点
-    - fanout (`reverse=False`): edge 从查询端点 → 结果节点
-    只取**直接边**；depth>1 的深层节点没有直接边时条件为空（不猜测路径条件）。
+    - 直接边：node.condition = `" | "` 连接；node.conditions = 原列表
+    - 无直接边（depth>1 深层节点）：沿**最短路径**组合条件
+      node.condition = `(c1) && (c2)`；node.conditions = [combined]；
+      node.condition_path = 原始条件序列（数据流方向）
+    - 无条件的普通连接仍输出空字段（契约稳定）
     """
     if graph is None:
         return []
     eps = [e for e in endpoints if e]
+    # 位查询节点可能不存在（attach_distances guarded 场景）；条件端点必须真实存在
+    root = next((e for e in eps if e in graph), None)
     all_conditions: list[str] = []
+    need_paths: list[dict] = []
+
     for item in items:
         nid = item.get("id")
         conds: list[str] = []
+        direct_found = False
         if nid:
             for ep in eps:
                 src, dst = (nid, ep) if reverse else (ep, nid)
+                if nid not in graph or ep not in graph:
+                    continue
                 edges = graph.get_edges(src, dst)
+                if edges:
+                    direct_found = True
                 for edge in edges:
                     if getattr(edge.kind, "name", "") == "BIT_SELECT":
                         continue
                     text = _edge_condition_text(edge)
                     if text and text not in conds:
                         conds.append(text)
-        item["conditions"] = conds
         item["condition"] = " | ".join(conds)
+        item["conditions"] = conds
+        item["condition_path"] = list(conds)
         for c in conds:
             if c not in all_conditions:
                 all_conditions.append(c)
+        if not direct_found and nid and root and nid != root:
+            need_paths.append(item)
+
+    if need_paths and root:
+        prev = _build_condition_paths(graph, root, reverse)
+        for item in need_paths:
+            combined, raw = _compose_path_condition(prev, item["id"], root, reverse)
+            item["condition"] = combined
+            item["conditions"] = [combined] if combined else []
+            item["condition_path"] = raw
+            if combined and combined not in all_conditions:
+                all_conditions.append(combined)
+
     return all_conditions
 
 
@@ -434,6 +517,7 @@ def _node_to_dict(node) -> dict:
         # [iter_318 / PLAN P22.1] 由 attach_edge_conditions 填（直接边条件）
         "condition": "",
         "conditions": [],
+        "condition_path": [],
     }
 
 
