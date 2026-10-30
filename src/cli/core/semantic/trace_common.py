@@ -355,6 +355,51 @@ def driver_stats(graph, node_id: str | None) -> tuple[int, bool, bool]:
     return len(srcs), len(unconditional) >= 2, conditional
 
 
+def _edge_condition_text(edge) -> str:
+    """[iter_318 / PLAN P22.1] 单条边的条件文本（优先 condition，退化 chain/effective）。"""
+    text = (getattr(edge, "condition", "") or "").strip()
+    if text:
+        return text
+    chain = getattr(edge, "condition_chain", None) or []
+    parts = [c.strip() for c in chain if c and c.strip()]
+    if parts:
+        return " && ".join(parts)
+    return (getattr(edge, "effective_condition", "") or "").strip()
+
+
+def attach_edge_conditions(graph, items: list[dict], endpoints: list[str | None],
+                           reverse: bool) -> list[str]:
+    """给 fanin/fanout 结果补 `condition`/`conditions`，返回 signal 级条件并集。
+
+    - fanin (`reverse=True`): edge 从结果节点 → 查询端点
+    - fanout (`reverse=False`): edge 从查询端点 → 结果节点
+    只取**直接边**；depth>1 的深层节点没有直接边时条件为空（不猜测路径条件）。
+    """
+    if graph is None:
+        return []
+    eps = [e for e in endpoints if e]
+    all_conditions: list[str] = []
+    for item in items:
+        nid = item.get("id")
+        conds: list[str] = []
+        if nid:
+            for ep in eps:
+                src, dst = (nid, ep) if reverse else (ep, nid)
+                edges = graph.get_edges(src, dst)
+                for edge in edges:
+                    if getattr(edge.kind, "name", "") == "BIT_SELECT":
+                        continue
+                    text = _edge_condition_text(edge)
+                    if text and text not in conds:
+                        conds.append(text)
+        item["conditions"] = conds
+        item["condition"] = " | ".join(conds)
+        for c in conds:
+            if c not in all_conditions:
+                all_conditions.append(c)
+    return all_conditions
+
+
 def _node_to_dict(node) -> dict:
     """[B2 2026-07-03] Convert TraceNode to dict with module + width info.
 
@@ -386,6 +431,9 @@ def _node_to_dict(node) -> dict:
         "dynamic_index": node_is_dynamic(node),
         # [iter_313 / PLAN P18.2] 函数调用结果（未 inline，仅诚实标记）
         "function_call": node_is_function_call(node),
+        # [iter_318 / PLAN P22.1] 由 attach_edge_conditions 填（直接边条件）
+        "condition": "",
+        "conditions": [],
     }
 
 
