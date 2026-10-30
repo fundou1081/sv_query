@@ -10,9 +10,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: 无（P22 完成；等待新需求/评审项）
+- **当前 item**: 无（P23 完成；等待新需求/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18** ✅ P19 ✅ P20 ✅；**P21** 真实工程 smoke ✅（iter_317）；**P22** 条件输出 ✅（iter_318）
+- **P18** ✅ P19 ✅ P20 ✅；P21 ✅ P22 ✅；**P23** 路径条件组合 ✅（iter_319）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -143,6 +143,14 @@
    嵌套条件/ternary 测试覆盖。
 
 全量 **2591 passed**。
+
+## ✅ 刚完成（P23，路径条件组合）
+
+depth>1 深层 driver 沿最短路径组合条件 `(c1) && (c2)`，输出 `condition_path`；
+嵌套 if/ternary 用完整 `condition_chain`。顺带修缺失位节点导致的
+`NetworkXError`（smoke 发现）。全量 **2594 passed**。
+
+> 边界：只走最短路径，不枚举多路径 OR；无图路径的位节点条件可能为空。
 
 ## 后续候选
 

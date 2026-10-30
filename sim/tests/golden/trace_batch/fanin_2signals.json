@@ -25,14 +25,21 @@
       {
         "coarse_fallback": false,
         "conditional_drivers": false,
-        "conditions": [],
+        "conditions": [
+          "!(!rst_ni) && pop_i && !empty_o"
+        ],
         "count": 1,
         "driver_count": 0,
         "drivers": [
           {
             "bit_range": null,
-            "condition": "",
-            "conditions": [],
+            "condition": "!(!rst_ni) && pop_i && !empty_o",
+            "condition_path": [
+              "!(!rst_ni) && pop_i && !empty_o"
+            ],
+            "conditions": [
+              "!(!rst_ni) && pop_i && !empty_o"
+            ],
             "distance": 2,
             "dynamic_index": false,
             "function_call": false,
@@ -70,6 +77,10 @@
           {
             "bit_range": null,
             "condition": "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1 | !(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10",
+            "condition_path": [
+              "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
+              "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
+            ],
             "conditions": [
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b1",
               "!(!rst_ni) && {push_i && !full_o, pop_i && !empty_o} == 2'b10"
@@ -90,6 +101,9 @@
           {
             "bit_range": null,
             "condition": "!rst_ni",
+            "condition_path": [
+              "!rst_ni"
+            ],
             "conditions": [
               "!rst_ni"
             ],
