@@ -400,6 +400,7 @@ JSON_CONTRACT = {
         },
         "paths": {
             "envelope": "direct",
+            "optional_fields": ["edge_evidence"],
             "base_fields": ["ok", "src", "dst", "src_resolved", "dst_resolved",
                             "bits", "directed"],
             "modes": {"one": ["found", "hop_count", "path"],
@@ -821,6 +822,14 @@ JSON_CONTRACT = {
         "path": {"type": "string", "desc": "requested path (instances/params)"},
         "target": {"type": "string", "desc": "requested target (connections)"},
         "resolved_as": {"type": "string", "desc": "connection target resolution kind"},
+    },
+    "edge_evidence": {
+        "kind": {"type": "string", "desc": "edge kind"},
+        "assign_type": {"type": "string", "desc": "continuous/always_ff/..."},
+        "condition": {"type": "string", "desc": "edge condition (empty = unconditional)"},
+        "expression": {"type": "string", "desc": "driver expression"},
+        "file": {"type": "string|null", "desc": "edge source file"},
+        "line": {"type": "integer|null", "desc": "edge source line"},
     },
     "profile_clock": {
         "signal": {"type": "string", "desc": "CLOCK edge source"},

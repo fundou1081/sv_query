@@ -11,9 +11,9 @@
 ## 🎯 当前计划（以 [PLAN.md](PLAN.md) 为准）
 
 - **已完成**: P0~P12 全部完成（含 P5~P12 位精确性系列，iter_289~300）
-- **当前 item**: P37.1 evidence 粒度（待做，下一步）
+- **当前 item**: 无（P37 完成；等待下一阶段/评审项）
 - **P13 评审 backlog**: 见 [trace_capability_review_2026-10-27](docs/architecture/trace_capability_review_2026-10-27.md)
-- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P36** profile ✅（iter_332）；**P37** evidence 粒度 → 待做
+- **P18~P30** ✅；**P25** 条件化简/互斥仅记录（未排期）；**P31** exp 降级 ✅（iter_327）；**P32** evidence 稳定性 ✅（iter_328）；**P33** ✅；**P34** verify ✅（iter_330）；**P35** include_control ✅（iter_331）；**P36** profile ✅（iter_332）；**P37** evidence 粒度 ✅（iter_333）
   → P13.6（多驱动/静态 memory）
 - 开工前先更新 PLAN.md + 跑 `python3 tools/check_plan.py`
 
@@ -219,9 +219,17 @@ graph edges / search / stats / trace evidence / controlflow analyze+list 字段�
 - clock_domains 去重；driver 位置用 evidence 修正；stage 显式未计算；
 - 5 个 profile 测试 + 1 契约测试；全量 **2661 passed**。
 
-## 🔜 下一步（P37，待做）
+## ✅ 刚完成（P37，edge evidence）
 
-per-driver / per-path evidence：把 file:line/表达式证据挂到每个驱动/路径跳。
+- `trace fanin/fanout --evidence`：每 driver/load 边级 `kind/assign_type/condition/expression/file/line`；
+- `paths --evidence`：每 hop `edge_evidence`，无边 hop 为 null；
+- 默认输出不变；4 个测试 + 2 契约测试；全量 **2667 passed**。
+
+## 🔜 下一步候选
+
+- profile `--no-cache`/`--from-snapshot` 对齐
+- CONTINUE：波形工具联调 / class 关系 / 性能优化（按实际需求）
+
 
 ## 后续候选
 

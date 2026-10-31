@@ -52,6 +52,7 @@ from cli.core.semantic.trace_common import (
     has_dynamic_index, node_is_dynamic, node_is_function_call,  # [iter_308 P14.1 / iter_310 P16 / iter_313 P18.2]
     attach_edge_conditions,  # [iter_318 P22.1]
     resolve_signal, resolution_fields, resolution_error_message, SignalResolutionError,  # [iter_329 P33.1]
+    attach_edge_evidence,  # [iter_333 P37.1]
     detect_cycles, truncated_by_depth,  # [iter_321 P26.1]
     node_is_runtime_system_call,  # [iter_322 P26.2]
 )
@@ -346,6 +347,7 @@ def fanin(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    evidence: bool = typer.Option(False, "--evidence", help="[iter_333] attach per-driver edge evidence"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
@@ -460,6 +462,8 @@ def fanin(
                     drivers = drivers[:max_results]
                     truncated = True
                     truncated_global = True
+                if evidence:
+                    attach_edge_evidence(_g, _query_sig, drivers, reverse=True)
                 signals_result.append({
                     "signal": sig,
                     "index": i,
@@ -605,6 +609,7 @@ def fanout(
     file: Path = typer.Option(None, "--file", "-f", help="SystemVerilog source file"),
     depth: int | None = typer.Option(None, "--depth", "-d", help="Max trace depth (None=unlimited)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output JSON format"),
+    evidence: bool = typer.Option(False, "--evidence", help="[iter_333] attach per-load edge evidence"),
     pretty: bool = typer.Option(False, "--pretty", "-p", help="Pretty-print JSON"),
     human: bool = typer.Option(False, "--human", "-H", help="Human-friendly arrow output (default off)"),
     tree: bool = typer.Option(False, "--tree", "-T", help="Tree-style vertical output (default off; auto for chains > 6)"),
@@ -722,6 +727,8 @@ def fanout(
                     loads = loads[:max_results]
                     truncated = True
                     truncated_global = True
+                if evidence:
+                    attach_edge_evidence(_g, _query_sig, loads, reverse=False)
                 signals_result.append({
                     "signal": sig,
                     "index": i,
