@@ -1,10 +1,13 @@
 # sv_query — SystemVerilog 信号追踪查询引擎
 
-**让验证工程师直接问"这个信号谁驱动的"，而不是去读代码。**
+**让 agent 查询并验证 RTL 事实，而不是靠读源码猜。**
 
-> 3071 测试 (非 opensource 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+> agent 面向的 RTL **查询 + 客观校验层**：服务动态 debug（波形值由外部工具提供）与 design 理解；
+> 核心是 canonical identity、evidence、双向验证，而不是自然语言解释。
 
-> 更新日期: 2026-09-05
+> 2635 passed (canonical 主回归) | Python 3.11+ | pyslang 语义 AST | NetworkX graph | 真实项目验证
+
+> 更新日期: 2026-10-31
 
 ---
 
@@ -32,6 +35,21 @@
 > 追踪范围: 可综合 RTL + **class/constraint** (方法链/实例↔类型/约束查询) + **covergroup 联系** (采样结构/实例绑定/联系查询 Q1-Q4, iter_162~166 转正); 可视化后置 (当前 focus 追踪)
 
 > 反例表 7 项 → 全闭环或暂缓。**不能无限制说"一定准确"**：语义域外 (SVA/inline)、语料非穷举、上游 pyslang 边界 — 每处不准/不全都有文档登记 + 失败可见。
+
+---
+
+## 项目定位（2026-10-31）
+
+完整方向见 [docs/architecture/product_direction_2026-10-31.md](docs/architecture/product_direction_2026-10-31.md)。
+
+- **主场景**：agent 的 RTL debug / design 理解；迭代查询、多批脚本、按结论继续追问。
+- **动态 debug 分工**：波形值由外部工具提取；sv_query 提供 canonical id/别名、层级、位映射、
+  clock/reset、sequential stage、源码 evidence 等关联信息。
+- **函数/class**：RTL 函数名 + 源码足够（不 inline）；class 关注调用链/继承/对象关系，
+  不展开内部细节。
+- **核心原则**：事实与证据优先；未知/空/歧义显式；双向一致性 + claim verification；
+  启发式结论必须标 `heuristic`，不能伪装成事实。
+- **已完成降级**：`audit` / `diagnose` / 全部 `view` 已移到 exp，默认不提供、不承诺契约。
 
 ---
 

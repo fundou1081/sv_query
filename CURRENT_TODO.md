@@ -1,6 +1,7 @@
 # CURRENT_TODO — 当前正在做的事
 
 > **计划源**: 代码修改计划以 [PLAN.md](PLAN.md) 为**全局唯一真相源**；本文件只记录"此刻"的上下文。
+> **产品方向**: [product_direction_2026-10-31](docs/architecture/product_direction_2026-10-31.md) — agent RTL 查询+客观校验；动态值由外部波形工具提供。
 > **位置固定**: 根目录 `CURRENT_TODO.md`, 路径永不变更。
 > **更新时机**: 每次开始任务 / 完成 sub-task / 被打断切换任务时, 立即更新。
 > **最后更新**: 2026-10-29 GMT+8 (iter_314: P18 可信性与测试入口收尾)

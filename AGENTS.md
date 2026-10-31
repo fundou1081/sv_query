@@ -1,13 +1,17 @@
 # AGENTS.md — sv_query 协作规则 (流程)
 
+> **产品方向**: [Agent RTL 查询 + 客观校验层](docs/architecture/product_direction_2026-10-31.md)
+> 恢复上下文时先读它，再读 PLAN；它定义“做什么/不做什么”。
+
 > **强制**。本文件只写"怎么做"，细则与背景全部外链。
 > 细则: [DISCIPLINE](docs/dev/DISCIPLINE.md) · [CODING_STYLE](docs/dev/CODING_STYLE.md) · [WORKFLOW](docs/dev/WORKFLOW.md) · [CHECKLIST](docs/dev/REVIEW_CHECKLIST.md)
 > 导航: [计划树](PLAN.md) · [文档索引](docs/INDEX.md) · [当前任务](CURRENT_TODO.md) · [测试](TESTING.md) · [已知限制](docs/KNOWN_LIMITATIONS.md)
 
 ## 0. 恢复上下文 (压缩 / 新 session 必做)
 
-1. 本文件 → 2. **[PLAN.md](PLAN.md) 计划树（唯一真相源）** → 3. [CURRENT_TODO.md](CURRENT_TODO.md)
-→ 4. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 5. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
+1. 本文件 → 2. **[产品方向](docs/architecture/product_direction_2026-10-31.md)（做什么/不做什么）**
+→ 3. **[PLAN.md](PLAN.md) 计划树（唯一真相源）** → 4. [CURRENT_TODO.md](CURRENT_TODO.md)
+→ 5. [DISCIPLINE.md](docs/dev/DISCIPLINE.md) → 6. 最近 10 个 commit + [overview](docs/task_tree/overview.md) 末尾 3 行
 
 **核对上一轮状态**：读 `PLAN.md` 的 `current item` 与"已完成"区，确认上一项是否真的完成
 （代码 + 测试 + 文档）；未完成或状态不符，先修正计划树再继续。
@@ -72,6 +76,8 @@ git status --porcelain                                               # 只含预
 
 ## 6. 版本
 
+- **v2.3 (2026-10-31)** — 新增 [产品方向](docs/architecture/product_direction_2026-10-31.md)：
+  agent RTL 查询 + 客观校验；恢复上下文先读产品方向再读 PLAN；低完成度能力降级 exp
 - **v2.2 (2026-10-25)** — 新增 [PLAN.md](PLAN.md) **全局唯一计划树**：所有代码修改计划先登记、
   开工置 `current item`、收尾改状态；恢复上下文时核对上一轮状态；`tools/check_plan.py` 机械校验
 - v2.1 (2026-10-19) — 精简为纯流程规则（≤100 行），设施表移入 [WORKFLOW](docs/dev/WORKFLOW.md)；
