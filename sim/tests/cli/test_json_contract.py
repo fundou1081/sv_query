@@ -299,3 +299,28 @@ def test_structure_error_shapes():
                                 "--json"]).stdout)
     assert set(bad_conn) <= set(c["direct_error"])
     assert bad_conn["ok"] is False
+
+
+STRUCT_FIX = str(PROJECT_ROOT / "sim" / "tests" / "fixtures" / "json_contract" / "struct.sv")
+
+
+def test_verify_consistency_contract():
+    _, c = _contract()
+    data = json.loads(_run(["verify", "consistency", "--file", STRUCT_FIX,
+                            "--checks", "connection", "--json"]).stdout)
+    cmd = c["commands"]["verify consistency"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    assert set(data["result"]["checks"][0]) <= set(c["verify_check"])
+
+
+def test_verify_claim_contract():
+    _, c = _contract()
+    claim = {"type": "connection", "instance": "top.u", "port": "a",
+             "internal": "top.u.a"}
+    data = json.loads(_run(["verify", "claim", "--file", STRUCT_FIX,
+                            "--claim", json.dumps(claim), "--json"]).stdout)
+    cmd = c["commands"]["verify claim"]
+    assert set(data) == set(c["top_level"])
+    assert set(data["result"]) == set(cmd["result_fields"])
+    assert data["result"]["status"] == "verified"

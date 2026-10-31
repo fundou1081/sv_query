@@ -266,3 +266,39 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
   不再返回 `ok=true + drivers=[]`。
 
 > 这是 grounding P0 的第一步：空结果不再等价于“信号不存在”。
+
+---
+
+## P34 扩展：verify（客观检查，2026-10-31）
+
+### verify consistency
+
+- `result.verified`：所有 check pass 且没有 unknown（不等于“命令成功”）
+- `result.total_violations` / `unknown_checks` / `checks[]`
+- check：`check/status(checked/skipped)/violations[]/truncated/error?`
+
+检查项：
+
+| check | 语义 |
+|---|---|
+| `reciprocity` | 信号节点的 fanin/fanout 互逆（抽样，默认 200 节点；跳过实例/常量/父位聚合） |
+| `bit_mapping` | `parent` 存在、`parent_bit_start/end` 范围、节点宽度、id 前缀 |
+| `connection` | MIG 的 port → internal 映射；internal/port 节点存在 |
+
+> `ok=true` 只表示命令执行；**结论看 `result.verified` 与各 check 的 status**。
+
+### verify claim
+
+- 输入：`--claim JSON` 或 `--claim-file`
+- 输出：`claim/status/reason/evidence[]/counterevidence[]`
+- `status`：`verified | contradicted | unknown`
+- 支持类型：
+
+| type | claim 字段 | 语义 |
+|---|---|---|
+| `driver` | `signal`,`driver`,`transitive?` | driver 在 fanin 中 |
+| `path` | `from`,`to`,`nodes?`,`bidirectional?` | 路径边存在 / 可达；bidirectional 同时查反向 |
+| `connection` | `instance`,`port`,`internal` | MIG 端口映射匹配 |
+| `bit` | `target`,`source` | 两位节点之间直接边存在；位节点缺失 → unknown |
+
+> 不把“无法证明”伪造成 contradicted；位节点缺失返回 unknown。

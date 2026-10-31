@@ -6,9 +6,9 @@
 
 ## 总览
 
-- 叶子命令总数: **35**
-- 按层: `core`=23, `exp`=12
-- core 内分组: `semantic`=14, `locate`=5, `state`=4
+- 叶子命令总数: **37**
+- 按层: `core`=25, `exp`=12
+- core 内分组: `semantic`=14, `verify`=2, `locate`=5, `state`=4
 
 | 层 | 消费者 | 稳定性 | 只读 | 必须 JSON | schema | 说明 |
 |---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@
 | `dev` | dev | none | ✅ | — | — | 开发者内部调试 (当前无命令; expression 已于 iter_252 归档) |
 | `out` | none | none | ✅ | — | — | 移出 CLI (会写 RTL/项目文件) → tools/; 不算产品命令 |
 
-## `core` (23 个)
+## `core` (25 个)
 
 | 命令 | 兼容别名 | 计划改名 | 组 | 类型 | 成本 | JSON | filelist | 状态 | 说明 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -45,6 +45,8 @@
 | `snapshot delete` | — | — | state | state | cheap | ✅ | — | ✅ | [iter_231] 已补 --json |
 | `snapshot list` | — | — | state | state | cheap | ✅ | — | ✅ | 列出快照; 给 tag → 该快照详情 (原 snapshot show) |
 | `snapshot save` | — | — | state | state | medium | ✅ | ✅ | ✅ | [iter_239 1b] 默认写缓存目录 (~/.svq/cache/snapshots; 可用 SVQ_SNAPSHOT_DIR 覆盖) |
+| `verify claim` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 验证 claim: driver/path/connection/bit → verified|contradicted|unknown |
+| `verify consistency` | — | — | verify | fact | medium | ✅ | ✅ | ✅ | 双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal |
 
 ## `exp` (12 个)
 

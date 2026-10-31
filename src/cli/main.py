@@ -48,6 +48,7 @@ from src.cli._common import (
     handle_compilation_error,
 )
 from cli.view.arch import arch_app
+from cli.core.semantic.verify import verify_app
 from cli.core.semantic.controlflow import controlflow_app
 from cli.core.semantic.dataflow import dataflow_app
 from cli.view.design import design_app
@@ -99,6 +100,7 @@ app.command("drivers", help="[规范入口] 谁驱动这个信号 (上游); 不�
 app.command("loads", help="[规范入口] 这个信号被谁使用 (下游); 不给 --module 时跨模块追, 给了则限定模块内")(_fanout_cmd)
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(dataflow_app, name="dataflow")
+app.add_typer(verify_app, name="verify")
 app.add_typer(controlflow_app, name="controlflow")
 
 # ---- 兼容别名 (老路径) ----

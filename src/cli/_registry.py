@@ -142,6 +142,11 @@ COMMANDS: list[CommandSpec] = [
        note="列出所有带条件驱动的信号 (枚举, 用于找入口)"),
     _c("dataflow analyze", "semantic", recommended=True,
        note="源→目标路径 (有向, 跨模块; 实例级 id; 与 paths --directed 结论一致)"),
+    # [iter_330 / PLAN P34.1] 客观检查: 双向一致性 + claim verification
+    _c("verify consistency", "verify", kind="fact", cost="medium", recommended=True,
+       note="双向一致性: fanin/fanout、bit parent/bit_range、connection port↔internal"),
+    _c("verify claim", "verify", kind="fact", cost="medium", recommended=True,
+       note="验证 claim: driver/path/connection/bit → verified|contradicted|unknown"),
     # [iter_236 1a] 实例/层级查询 (补 agent 理解架构的第一步; 复用 get_instances/MIG)
     _c("instances", "semantic", cost="cheap", recommended=True,
        note="列出实例; 给实例路径 → 详情 (类型/父/子/端口); 支持 --filelist"),
@@ -448,6 +453,13 @@ JSON_CONTRACT = {
         "controlflow list-conditioned": {
             "optional_top_level": ["subcommand"],
             "result_fields": ["signals", "count"],
+        },
+        "verify consistency": {
+            "result_fields": ["verified", "total_violations", "unknown_checks", "checks"],
+            "check_fields": "verify_check",
+        },
+        "verify claim": {
+            "result_fields": ["claim", "status", "reason", "evidence", "counterevidence"],
         },
         "instances": {
             "envelope": "direct",
@@ -803,6 +815,30 @@ JSON_CONTRACT = {
         "path": {"type": "string", "desc": "requested path (instances/params)"},
         "target": {"type": "string", "desc": "requested target (connections)"},
         "resolved_as": {"type": "string", "desc": "connection target resolution kind"},
+    },
+    "verify_check": {
+        "check": {"type": "string", "desc": "reciprocity|bit_mapping|connection"},
+        "status": {"type": "string", "enum": ["pass", "fail", "unknown"],
+                   "desc": "pass/fail/unknown (insufficient metadata)"},
+        "checked": {"type": "integer", "desc": "items checked"},
+        "skipped": {"type": "integer", "desc": "unknown/insufficient metadata"},
+        "violations": {"type": "array<object>", "desc": "violation records"},
+        "truncated": {"type": "boolean", "desc": "sample cap reached"},
+        "error": {"type": "string", "desc": "check unavailable reason"},
+    },
+    "verify_consistency_result": {
+        "verified": {"type": "boolean", "desc": "all checks pass and none unknown"},
+        "total_violations": {"type": "integer", "desc": "sum of check violations"},
+        "unknown_checks": {"type": "array<string>", "desc": "checks that could not run"},
+        "checks": {"type": "array<verify_check>", "desc": "per-check results"},
+    },
+    "verify_claim_result": {
+        "claim": {"type": "object", "desc": "original claim object"},
+        "status": {"type": "string", "enum": ["verified", "contradicted", "unknown"],
+                   "desc": "claim verdict; unknown = insufficient evidence"},
+        "reason": {"type": "string", "desc": "why status was chosen"},
+        "evidence": {"type": "array<object>", "desc": "supporting graph evidence"},
+        "counterevidence": {"type": "array<object>", "desc": "counterexamples"},
     },
     "precision_values": ["bit", "bus", "unknown"],
     "notes": (
