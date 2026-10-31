@@ -478,6 +478,39 @@ def resolve_signal(graph, raw: str, max_candidates: int = 20) -> dict:
             "candidates": [], "suggestions": suggestions, "bit_fallback": False}
 
 
+def edge_evidence_dict(edge) -> dict:
+    """[iter_333 / PLAN P37.1] 单条边的源码/条件证据（轻量，不重读源码）。"""
+    loc = getattr(edge, "source_location", None)
+    has_loc = loc is not None and not loc.is_empty()
+    return {
+        "kind": getattr(getattr(edge, "kind", None), "name", ""),
+        "assign_type": getattr(edge, "assign_type", ""),
+        "condition": getattr(edge, "condition", "") or getattr(edge, "effective_condition", ""),
+        "expression": getattr(edge, "expression", ""),
+        "file": loc.file if has_loc else None,
+        "line": loc.line_start if has_loc else None,
+    }
+
+
+def attach_edge_evidence(graph, target: str, items: list[dict], reverse: bool) -> None:
+    """[iter_333 / PLAN P37.1] 给 fanin/fanout 的每个 driver/load 挂边证据。
+
+    reverse=True: fanin (item.id -> target)
+    reverse=False: fanout (target -> item.id)
+    """
+    for item in items:
+        nid = item.get("id")
+        if not nid:
+            continue
+        src, dst = (nid, target) if reverse else (target, nid)
+        edges = graph.get_edges(src, dst) if graph is not None else []
+        if not edges:
+            item["evidence"] = None
+            continue
+        edge = next((e for e in edges if getattr(e, "condition_ast", None) is not None), edges[0])
+        item["evidence"] = edge_evidence_dict(edge)
+
+
 def resolution_error_message(raw: str, result: dict) -> str:
     status = result.get("status")
     if status == "ambiguous":

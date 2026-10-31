@@ -17,6 +17,7 @@ import typer
 
 from cli.core.semantic._bit_args import normalize_endpoint, parse_bits
 from cli.core.semantic._common import build_tracer, emit, fail
+from cli.core.semantic.trace_common import edge_evidence_dict
 
 
 def paths_cmd(
@@ -27,6 +28,8 @@ def paths_cmd(
         False, "--directed", "-d",
         help="[iter_268] 只沿数据流方向搜索 (与 `dataflow analyze` 同一张有向图); "
              "默认无向 = 结构连通性 (逆流也能找到)"),
+    evidence: bool = typer.Option(False, "--evidence",
+                                  help="[iter_333] attach per-hop edge evidence (file/line/condition)"),
     max_paths: int = typer.Option(50, "--max", "-n", help="--all 时的路径数上限"),
     bits: str = typer.Option(
         None, "--bits",
@@ -76,16 +79,29 @@ def paths_cmd(
         fail("signal id not found in graph", json_output, pretty, unknown=unknown,
              hint="用 `svq graph nodes --json` 列出可用 id")
 
+    def _edge_ev(path):
+        out = []
+        for a, b in zip(path, path[1:]):
+            edges = graph.get_edges(a, b)
+            out.append(edge_evidence_dict(edges[0]) if edges else None)
+        return out
+
     if all_paths:
         found = resolver.find_all_paths(src_id, dst_id, max_paths=max_paths, directed=directed)
-        emit({"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
-              "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
-              "count": len(found), "truncated": len(found) >= max_paths,
-              "all_paths": found}, json_output, pretty)
+        data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
+                "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+                "count": len(found), "truncated": len(found) >= max_paths,
+                "all_paths": found}
+        if evidence:
+            data["edge_evidence"] = [_edge_ev(p) for p in found]
+        emit(data, json_output, pretty)
         return
 
     one = resolver.find_path(src_id, dst_id, directed=directed)
-    emit({"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
-          "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
-          "found": one is not None,
-          "hop_count": (len(one) - 1) if one else None, "path": one}, json_output, pretty)
+    data = {"ok": True, "src": src, "dst": dst, "src_resolved": src_id,
+            "dst_resolved": dst_id, "bits": bit_info, "directed": directed,
+            "found": one is not None,
+            "hop_count": (len(one) - 1) if one else None, "path": one}
+    if evidence and one:
+        data["edge_evidence"] = _edge_ev(one)
+    emit(data, json_output, pretty)

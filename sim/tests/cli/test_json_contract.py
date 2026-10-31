@@ -341,3 +341,26 @@ def test_profile_contract():
     assert set(sig["sequential"]) == set(c["profile_sequential"])
     assert set(sig["clocks"][0]) == set(c["profile_clock"])
     assert set(sig["resets"][0]) == set(c["profile_reset"])
+
+
+def test_fanin_evidence_contract(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(FIXTURE)
+    data = json.loads(_run(["trace", "fanin", "top.y", "--file", str(p),
+                            "--evidence", "--json", "--no-cache"]).stdout)
+    _, c = _contract()
+    node = data["result"]["signals"][0]["drivers"][0]
+    assert set(node) == set(c["trace_node"]) | {"evidence"}
+    assert set(node["evidence"]) == set(c["edge_evidence"])
+
+
+def test_paths_evidence_contract(tmp_path):
+    p = tmp_path / "t.sv"
+    p.write_text(PATH_SRC)
+    data = json.loads(_run(["paths", "top.a", "top.y", "--bits", "7:4,7:4",
+                            "--directed", "--evidence", "--file", str(p),
+                            "--json"]).stdout)
+    _, c = _contract()
+    assert set(data) == set(c["commands"]["paths"]["base_fields"]) | \
+        set(c["commands"]["paths"]["modes"]["one"]) | {"edge_evidence"}
+    assert set(data["edge_evidence"][0]) == set(c["edge_evidence"])

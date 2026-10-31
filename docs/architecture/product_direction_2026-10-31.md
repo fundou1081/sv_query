@@ -165,7 +165,7 @@
 - ✅ 双向一致性 + claim verification（P34，iter_330）：
   `verify consistency` / `verify claim`，三态 verified/contradicted/unknown
 - ✅ trace profile / clock/reset/sequential（P36，iter_332）
-- 🕐 evidence 粒度到 driver/path（下一步）
+- ✅ evidence 粒度到 driver/path（P37，iter_333）
 
 ## 7. 成功标准
 

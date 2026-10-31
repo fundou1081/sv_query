@@ -7,7 +7,7 @@
 >
 > 格式（每行一项，子项用 `-- ` 前缀，id 全局唯一）：
 > ```
-> current item : P37.1 per-driver/per-path evidence <待做>
+> current item : P37.2 测试与文档 <已完成>
 >
 > P0 建图层与查询层的结构化拆分 <已完成>
 > -- P0.1 图快照基线工具 <待做>
@@ -19,7 +19,7 @@
 
 ## 当前项
 
-current item : P37.1 per-driver/per-path evidence <待做>
+current item : P37.2 测试与文档 <已完成>
 
 ## 计划树
 
@@ -149,9 +149,9 @@ P36 trace profile（波形关联元数据） <已完成>
 -- P36.1 signal profile：clock/reset/sequential/source/bit/aliases <已完成>
 -- P36.2 测试与契约 <已完成>
 
-P37 evidence 粒度（driver/path） <待做>
--- P37.1 per-driver/per-path evidence <待做>
--- P37.2 测试与文档 <待做>
+P37 evidence 粒度（driver/path） <已完成>
+-- P37.1 per-driver/per-path evidence <已完成>
+-- P37.2 测试与文档 <已完成>
 -- P11.1 聚合宽度/signedness（var/net/port，含嵌套） <已完成>
 -- P11.2 成员宽度/位偏移（p.a → 4 位 + 在 p 中的位段） <已完成>
 -- P11.3 测试与文档：聚合/成员矩阵 + 基线 <已完成>

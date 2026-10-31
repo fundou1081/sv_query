@@ -326,3 +326,33 @@ member：`id/name/kind/module/width`；instance：`id/name/kind/module/width`。
 
 > `stage` 暂未计算：`stage=null, stage_known=false`，不伪造流水级数。
 > evidence 缺失时 `source.driver` 可能为 null；aliases 是波形候选名，消歧仍需 canonical id。
+
+---
+
+## P37 扩展：per-driver / per-hop evidence（2026-10-31）
+
+### trace fanin / fanout `--evidence`
+
+默认输出不变；加 flag 后每个 driver/load 多一个 `evidence`：
+
+| 字段 | 语义 |
+|---|---|
+| `kind` | 边类型 |
+| `assign_type` | continuous/always_ff/nonblocking... |
+| `condition` | 边条件（空 = 无条件） |
+| `expression` | 驱动表达式 |
+| `file` / `line` | 边 source_location；缺失为 null |
+
+- 契约：`edge_evidence`；命令的 `optional_node_fields=["evidence"]`。
+- `evidence` 只加在**返回的节点**上（过滤/截断后）。
+
+### paths `--evidence`
+
+默认输出不变；加 flag 后：
+
+- 单路径：`edge_evidence[]`，长度 = `len(path)-1`；
+- `--all`：`edge_evidence[][]`，与 `all_paths` 对齐；
+- 每跳：`edge_evidence` 同结构；无边的 hop 为 `null`（例如纯 parent/bit-select 聚合）。
+
+> evidence 的 `line` 可能来自 edge.source_location（条件行），不是赋值行；
+> 需要赋值行时用 `trace evidence`（已做 assignment-line 修正）。
