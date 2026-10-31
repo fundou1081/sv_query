@@ -159,6 +159,13 @@
 
 ---
 
+## 6.1 P0 进度（2026-10-31）
+
+- ✅ canonical signal identity / aliases / not_found / ambiguous（P33，iter_329）
+- ✅ 双向一致性 + claim verification（P34，iter_330）：
+  `verify consistency` / `verify claim`，三态 verified/contradicted/unknown
+- 🕐 evidence 粒度到 driver/path（下一步）
+
 ## 7. 成功标准
 
 - agent 的每个 debug 结论都能被 `verify` 判定为 verified/contradicted/unknown；
