@@ -65,6 +65,7 @@
 | [architecture/trace_capability_review_2026-10-27.md](architecture/trace_capability_review_2026-10-27.md) | **信号追踪能力评审** (2026-10-27): 现状矩阵 + P0~P3 缺口 backlog（含缓存模式 P0 bug） |
 | [architecture/condition_analysis_plan_2026-10-31.md](architecture/condition_analysis_plan_2026-10-31.md) | **条件化简/互斥设计评估** (2026-10-31, 未排期): L1 局部布尔 / L2 来源互斥 / L3 真值表-BDD |
 | [architecture/json_contract_2026-10-31.md](architecture/json_contract_2026-10-31.md) | **Agent JSON 契约** (schema v1): envelope + trace signal/node 字段/版本策略/示例 |
+| [architecture/product_direction_2026-10-31.md](architecture/product_direction_2026-10-31.md) | **产品方向**: agent RTL 查询+客观校验；debug/design 场景、P0 grounding、波形元数据、非目标 |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | 已知限制 (含 pyslang 侧限制) |
 | [EXTRACTION_COVERAGE.md](EXTRACTION_COVERAGE.md) | SV 语法抽取覆盖率总表 (逐语法 ✅/⚠️/❌) |
 | [EXTRACTION_FAILURES.md](EXTRACTION_FAILURES.md) | 提取失败路径集中表 |
